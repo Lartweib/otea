@@ -11,19 +11,27 @@
   "scripts": {
     "lint": "biome check",
     "format": "biome check --write",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p ui",
     "test": "vitest run",
-    "check": "npm run lint && npm run typecheck && npm run test",
+    "build:ui": "vite build ui",
+    "dev:ui": "vite ui",
+    "check": "npm run lint && npm run typecheck && npm run test && npm run build:ui",
     "otea": "node --disable-warning=ExperimentalWarning src/cli/main.ts"
   },
   "devDependencies": {
     "@biomejs/biome": "2.6.3",
     "@types/node": "24.19.2",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.1.2",
     "typescript": "7.0.2",
+    "vite": "8.3.5",
     "vitest": "5.0.5"
   },
   "dependencies": {
     "@hono/node-server": "2.1.5",
-    "hono": "4.13.14"
+    "hono": "4.13.14",
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
   }
 }
