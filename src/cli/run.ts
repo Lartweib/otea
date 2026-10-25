@@ -1,0 +1,132 @@
+import { type ParseArgsOptionsConfig, parseArgs } from 'node:util';
+import { OteaError } from '../core/errors.ts';
+import type { Actor } from '../core/item.ts';
+import { type Command, type Input, UsageError, usageOf } from './command.ts';
+import { COMMANDS, findCommand } from './commands.ts';
+import { EXIT_CODES, type FailureCode } from './exit-codes.ts';
+import { commandHelp, generalHelp, HELP_HINT } from './help.ts';
+
+type Writer = { write(chunk: string): unknown };
+
+export type Io = {
+  cwd: string;
+  env: Readonly<Record<string, string | undefined>>;
+  stdout: Writer;
+  stderr: Writer;
+};
+
+type Values = Record<string, string | boolean | (string | boolean)[] | undefined>;
+
+const GLOBAL_OPTIONS: ParseArgsOptionsConfig = {
+  json: { type: 'boolean' },
+  as: { type: 'string' },
+  help: { type: 'boolean', short: 'h' },
+};
+
+const PARSE_OPTIONS: ParseArgsOptionsConfig = Object.assign(
+  {},
+  GLOBAL_OPTIONS,
+  ...COMMANDS.flatMap((command) =>
+    Object.keys(command.options).map((name) => ({ [name]: { type: 'string' } })),
+  ),
+);
+
+function parse(argv: string[]): { values: Values; positionals: string[] } {
+  try {
+    return parseArgs({ args: argv, options: PARSE_OPTIONS, allowPositionals: true, strict: true });
+  } catch (error) {
+    throw new UsageError(error instanceof Error ? error.message : String(error));
+  }
+}
+
+function actorFrom(values: Values, env: Io['env']): Actor {
+  const name = (typeof values.as === 'string' && values.as) || env.OTEA_AGENT || 'agent';
+  return { kind: 'agent', name };
+}
+
+function validate(command: Command, values: Values, args: string[]): void {
+  for (const name of Object.keys(values)) {
+    if (!(name in GLOBAL_OPTIONS) && !(name in command.options)) {
+      throw new UsageError(`Unknown option --${name} for "otea ${command.name}"`);
+    }
+  }
+  for (const [name, spec] of Object.entries(command.options)) {
+    const value = values[name];
+    if (typeof value === 'string' && spec.choices && !spec.choices.includes(value)) {
+      throw new UsageError(`--${name} must be one of ${spec.choices.join(', ')}`);
+    }
+  }
+  if (args.length !== command.args.length) {
+    throw new UsageError(`"otea ${command.name}" expects ${command.args.length} argument(s)`);
+  }
+}
+
+function inputFor(command: Command, values: Values, args: string[], io: Io): Input {
+  const option = (name: string) => {
+    const value = values[name];
+    return typeof value === 'string' ? value : undefined;
+  };
+  return {
+    cwd: io.cwd,
+    actor: actorFrom(values, io.env),
+    args,
+    option,
+    required: (name) => {
+      const value = option(name);
+      if (value === undefined) throw new UsageError(`Missing --${name} for "otea ${command.name}"`);
+      return value;
+    },
+  };
+}
+
+function dispatch(argv: string[], io: Io, json: boolean): number {
+  const { values, positionals } = parse(argv);
+  if (positionals[0] === 'help' || (values.help && positionals.length === 0)) {
+    io.stdout.write(`${generalHelp()}\n`);
+    return EXIT_CODES.ok;
+  }
+  if (positionals.length === 0) throw new UsageError('Missing command');
+  const command = findCommand(positionals);
+  if (!command) throw new UsageError(`Unknown command "${positionals[0]}"`);
+  if (values.help) {
+    io.stdout.write(`${commandHelp(command)}\n`);
+    return EXIT_CODES.ok;
+  }
+  const args = positionals.slice(command.name.split(' ').length);
+  validate(command, values, args);
+  const output = command.execute(inputFor(command, values, args, io));
+  io.stdout.write(json ? `${JSON.stringify(output.data, null, 2)}\n` : `${output.text}\n`);
+  return EXIT_CODES.ok;
+}
+
+function failureCode(error: unknown): FailureCode {
+  if (error instanceof UsageError) return 'usage';
+  if (error instanceof OteaError) return error.code;
+  return 'unexpected';
+}
+
+function usageHint(argv: string[]): string {
+  const command = findCommand(argv.filter((token) => !token.startsWith('-')));
+  return command ? `Usage: ${usageOf(command)}` : HELP_HINT;
+}
+
+function report(error: unknown, argv: string[], io: Io, json: boolean): number {
+  const code = failureCode(error);
+  const message = error instanceof Error ? error.message : String(error);
+  if (json) {
+    io.stderr.write(`${JSON.stringify({ error: { code, message } })}\n`);
+  } else {
+    const hint = code === 'usage' ? `\n${usageHint(argv)}` : '';
+    io.stderr.write(`otea: ${message}${hint}\n`);
+  }
+  return EXIT_CODES[code];
+}
+
+export function run(argv: string[], io: Io): number {
+  const json = argv.includes('--json');
+  try {
+    return dispatch(argv, io, json);
+  } catch (error) {
+    return report(error, argv, io, json);
+  }
+}
