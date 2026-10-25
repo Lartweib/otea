@@ -3,11 +3,12 @@ import { getItem, type ListItemsFilter, listItems } from '../app/items.ts';
 import type { Project } from '../app/project.ts';
 import { TURNS, type Turn } from '../core/workflow.ts';
 import { createChangeFeed } from './changes.ts';
-import { errorBody, InvalidQuery, toErrorResponse } from './errors.ts';
+import { errorBody, ForbiddenHost, InvalidQuery, toErrorResponse } from './errors.ts';
+import { DEFAULT_PORT, isAllowedHost } from './hosts.ts';
 import { type LiveStreams, liveStreams } from './stream.ts';
 import { BUILT_UI_DIR, mountUi } from './ui.ts';
 
-export type OteaServer = { app: Hono; close(): void };
+export type OteaServer = { app: Hono; listeningOn(port: number): void; close(): void };
 
 export type ServerOptions = { pollIntervalMs?: number; uiDir?: string };
 
@@ -38,7 +39,13 @@ function api(project: Project, streams: LiveStreams): Hono {
 export function createServer(project: Project, options: ServerOptions = {}): OteaServer {
   const feed = createChangeFeed(project.db, options.pollIntervalMs);
   const streams = liveStreams(feed);
+  let port = DEFAULT_PORT;
   const app = new Hono();
+  app.use(async (c, next) => {
+    const host = c.req.header('host');
+    if (!isAllowedHost(host, port)) throw new ForbiddenHost(`Host "${host ?? ''}" is not allowed`);
+    await next();
+  });
   app.route('/api', api(project, streams));
   mountUi(app, options.uiDir ?? BUILT_UI_DIR);
   app.onError((error, c) => {
@@ -47,6 +54,9 @@ export function createServer(project: Project, options: ServerOptions = {}): Ote
   });
   return {
     app,
+    listeningOn(listened) {
+      port = listened;
+    },
     close() {
       streams.closeAll();
       feed.close();

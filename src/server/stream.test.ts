@@ -4,7 +4,7 @@ import { addCollection } from '../app/collections.ts';
 import { createItem } from '../app/items.ts';
 import { migrate } from '../store/migrations.ts';
 import { createServer, type OteaServer } from './server.ts';
-import { tempDatabase } from './testing.ts';
+import { request, tempDatabase } from './testing.ts';
 
 type Reader = ReadableStreamDefaultReader<Uint8Array>;
 
@@ -26,7 +26,7 @@ describe('GET /api/stream', () => {
   let server: OteaServer;
 
   const connect = async () => {
-    const response = await server.app.request('/api/stream');
+    const response = await request(server, '/api/stream');
     const reader = response.body?.getReader() as Reader;
     await readUntil(reader, 'event: ready');
     return { response, reader };

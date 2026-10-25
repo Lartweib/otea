@@ -1,9 +1,10 @@
 import type { Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { createAdaptorServer } from '@hono/node-server';
+import { DEFAULT_PORT } from './hosts.ts';
 import type { OteaServer } from './server.ts';
 
-export const DEFAULT_PORT = 4400;
+export { DEFAULT_PORT } from './hosts.ts';
 
 const HOST = '127.0.0.1';
 
@@ -33,6 +34,7 @@ export function listen(server: OteaServer, port = DEFAULT_PORT): Promise<Listeni
     });
     http.listen(port, HOST, () => {
       const { port: bound } = http.address() as AddressInfo;
+      server.listeningOn(bound);
       resolve({ url: `http://${HOST}:${bound}`, close: () => stop(http, server) });
     });
   });

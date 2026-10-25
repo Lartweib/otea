@@ -6,6 +6,7 @@ import type { DatabaseSync } from 'node:sqlite';
 import type { Project } from '../app/project.ts';
 import { openDatabase } from '../store/database.ts';
 import { migrate } from '../store/migrations.ts';
+import type { OteaServer } from './server.ts';
 
 export function memoryProject(): Project {
   const db = openDatabase(':memory:');
@@ -21,4 +22,10 @@ export function tempDatabase(): { open: () => DatabaseSync; remove: () => void }
       for (const suffix of ['', '-wal', '-shm']) rmSync(`${path}${suffix}`, { force: true });
     },
   };
+}
+
+export const LOCAL_HOST = '127.0.0.1:4400';
+
+export function request(server: OteaServer, path: string, host = LOCAL_HOST): Promise<Response> {
+  return Promise.resolve(server.app.request(path, { headers: { host } }));
 }
