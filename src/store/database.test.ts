@@ -3,7 +3,7 @@ import { rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { openDatabase, transaction } from './database.ts';
+import { dataVersion, openDatabase, transaction } from './database.ts';
 
 const pragma = (db: ReturnType<typeof openDatabase>, name: string) =>
   Object.values(db.prepare(`PRAGMA ${name}`).get() ?? {})[0];
@@ -72,5 +72,26 @@ describe('transaction', () => {
     expect(count(db)).toBe(0);
     expect(db.isTransaction).toBe(false);
     db.close();
+  });
+});
+
+describe('dataVersion', () => {
+  it('changes after another connection commits, not after own commits', () => {
+    const path = join(tmpdir(), `otea-test-${randomUUID()}.db`);
+    const own = openDatabase(path);
+    const other = openDatabase(path);
+    own.exec('CREATE TABLE notes (text TEXT)');
+    const initial = dataVersion(own);
+
+    own.exec("INSERT INTO notes VALUES ('own')");
+    const afterOwn = dataVersion(own);
+    other.exec("INSERT INTO notes VALUES ('other')");
+    const afterOther = dataVersion(own);
+
+    own.close();
+    other.close();
+    for (const suffix of ['', '-wal', '-shm']) rmSync(`${path}${suffix}`, { force: true });
+    expect(afterOwn).toBe(initial);
+    expect(afterOther).not.toBe(initial);
   });
 });
