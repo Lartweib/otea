@@ -147,6 +147,12 @@ In the UI the human navigates between linked projects and, inside a project, bet
 - **Node.js only**, TypeScript end to end. Electron already ships Node; a second runtime would mean two SQLite drivers on the same file.
 - The installed CLI runs on Electron's bundled Node (as editors like VS Code do for their CLI); without the installer it is `npm i -g @otea/cli`.
 - `node:sqlite` (built in, no native module to rebuild for Electron). Its API is still marked release candidate, so all database access is confined to `src/store/`; swapping to `better-sqlite3` would stay local to that folder.
+- Verified by spike (Electron 45.0.0, Node 24.22, SQLite 3.53.4, Windows):
+  - `node:sqlite` works without flags in the Electron main process and under `ELECTRON_RUN_AS_NODE` (the bundled CLI). Plain Node 22 also works but prints an `ExperimentalWarning`; the npm-installed CLI requires Node >= 24 or filters the warning.
+  - Two processes on one WAL database: no corruption, no `SQLITE_BUSY` escaping with `busy_timeout`, atomic claim with exactly one winner. Write transactions must stay short: tight write loops starve other writers.
+  - Change detection: poll `PRAGMA data_version` (ignores own commits, caught every external commit). `fs.watch` on the `-wal` file is only a wake-up hint; never watch the `.db` file.
+  - esbuild bundles `.tsx` from Node and from Electron. Packaging must unpack its native binary from the asar and ship the per-OS `@esbuild/<platform>` package.
+  - `npm i electron` may skip the binary download; setup runs `node node_modules/electron/install.js` if `dist/` is missing.
 - Hono (HTTP + SSE), React + Vite (UI), Electron (desktop), esbuild (module loading), Zod (preset and module config validation).
 
 ### Code structure
