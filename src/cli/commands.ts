@@ -1,9 +1,13 @@
 import { join } from 'node:path';
 import type { DatabaseSync } from 'node:sqlite';
 import { addCollection } from '../app/collections.ts';
-import { createItem } from '../app/items.ts';
+import { createItem, getItem, type ListItemsFilter, listItems, moveItem } from '../app/items.ts';
 import { initProject, openProject } from '../app/project.ts';
-import type { Command } from './command.ts';
+import type { Turn } from '../core/workflow.ts';
+import type { Command, Input } from './command.ts';
+import { formatItem, formatItems, formatItemWithEvents } from './format.ts';
+
+const TURNS: readonly Turn[] = ['human', 'agent', 'none'];
 
 function withProject<T>(cwd: string, use: (db: DatabaseSync) => T): T {
   const { db } = openProject(cwd);
@@ -55,7 +59,51 @@ const create: Command = {
   },
 };
 
-export const COMMANDS: readonly Command[] = [init, collectionAdd, create];
+function listFilter({ option }: Input): ListItemsFilter {
+  const filter: ListItemsFilter = {};
+  const collection = option('collection');
+  const state = option('state');
+  const turn = option('turn');
+  if (collection !== undefined) filter.collection = collection;
+  if (state !== undefined) filter.state = state;
+  if (turn !== undefined) filter.turn = turn as Turn;
+  return filter;
+}
+
+const list: Command = {
+  name: 'list',
+  summary: 'List items in creation order, optionally filtered',
+  args: [],
+  options: { collection: {}, state: {}, turn: { choices: TURNS } },
+  execute: (input) => {
+    const items = withProject(input.cwd, (db) => listItems(db, listFilter(input)));
+    return { data: items, text: formatItems(items) };
+  },
+};
+
+const show: Command = {
+  name: 'show',
+  summary: 'Show an item and its events timeline',
+  args: ['id'],
+  options: {},
+  execute: ({ cwd, args: [id = ''] }) => {
+    const item = withProject(cwd, (db) => getItem(db, id));
+    return { data: item, text: formatItemWithEvents(item) };
+  },
+};
+
+const move: Command = {
+  name: 'move',
+  summary: 'Move an item to another state of its workflow',
+  args: ['id', 'state'],
+  options: {},
+  execute: ({ cwd, actor, args: [id = '', to = ''] }) => {
+    const item = withProject(cwd, (db) => moveItem(db, { id, to, actor }));
+    return { data: item, text: formatItem(item) };
+  },
+};
+
+export const COMMANDS: readonly Command[] = [init, collectionAdd, create, list, show, move];
 
 export function findCommand(tokens: readonly string[]): Command | undefined {
   return COMMANDS.find((command) =>

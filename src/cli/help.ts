@@ -1,7 +1,7 @@
 import { type Command, usageOf } from './command.ts';
 import { COMMANDS } from './commands.ts';
 import { EXIT_CODES } from './exit-codes.ts';
-import { columns } from './format.ts';
+import { columns, indent } from './format.ts';
 
 const GLOBAL_OPTIONS = [
   ['--json', 'Print JSON to stdout; errors go to stderr as {"error":{"code","message"}}'],
@@ -15,10 +15,6 @@ function exitCodeRows(): string[][] {
     names.set(code, [...(names.get(code) ?? []), name]);
   }
   return [...names].map(([code, group]) => [String(code), group.join(', ')]);
-}
-
-function indent(text: string): string {
-  return text.replace(/^/gm, '  ');
 }
 
 export const HELP_HINT = 'Run "otea help" for usage.';
