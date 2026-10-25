@@ -16,8 +16,8 @@ describe('run', () => {
   afterEach(() => repo.remove());
 
   describe('help', () => {
-    it.each([['help'], ['--help'], ['-h']])('prints general help for %s', (flag) => {
-      const { code, out, err } = otea(flag);
+    it.each([['help'], ['--help'], ['-h']])('prints general help for %s', async (flag) => {
+      const { code, out, err } = await otea(flag);
 
       expect(code).toBe(0);
       expect(err).toBe('');
@@ -25,16 +25,16 @@ describe('run', () => {
       expect(out).toContain('otea init');
     });
 
-    it('documents every exit code', () => {
-      const { out } = otea('help');
+    it('documents every exit code', async () => {
+      const { out } = await otea('help');
 
       for (const [name, code] of Object.entries(EXIT_CODES)) {
         expect(out).toMatch(new RegExp(`^ +${code} +.*\\b${name}\\b`, 'm'));
       }
     });
 
-    it('prints command usage for <command> --help', () => {
-      const { code, out } = otea('init', '--help');
+    it('prints command usage for <command> --help', async () => {
+      const { code, out } = await otea('init', '--help');
 
       expect(code).toBe(0);
       expect(out).toContain('Usage: otea init');
@@ -43,8 +43,8 @@ describe('run', () => {
   });
 
   describe('usage errors', () => {
-    it('fails with exit 2 and the general hint without a command', () => {
-      const { code, out, err } = otea();
+    it('fails with exit 2 and the general hint without a command', async () => {
+      const { code, out, err } = await otea();
 
       expect(code).toBe(EXIT_CODES.usage);
       expect(out).toBe('');
@@ -52,30 +52,30 @@ describe('run', () => {
       expect(err).toContain('otea help');
     });
 
-    it('rejects an unknown command', () => {
-      const { code, err } = otea('frobnicate');
+    it('rejects an unknown command', async () => {
+      const { code, err } = await otea('frobnicate');
 
       expect(code).toBe(2);
       expect(err).toContain('Unknown command "frobnicate"');
     });
 
-    it('rejects an unknown option with the command usage', () => {
-      const { code, err } = otea('init', '--bogus');
+    it('rejects an unknown option with the command usage', async () => {
+      const { code, err } = await otea('init', '--bogus');
 
       expect(code).toBe(2);
       expect(err).toContain('--bogus');
       expect(err).toContain('Usage: otea init');
     });
 
-    it('rejects unexpected positionals with the command usage', () => {
-      const { code, err } = otea('init', 'extra');
+    it('rejects unexpected positionals with the command usage', async () => {
+      const { code, err } = await otea('init', 'extra');
 
       expect(code).toBe(2);
       expect(err).toContain('Usage: otea init');
     });
 
-    it('prints errors as JSON on stderr with --json', () => {
-      const { code, out, err } = otea('frobnicate', '--json');
+    it('prints errors as JSON on stderr with --json', async () => {
+      const { code, out, err } = await otea('frobnicate', '--json');
 
       expect(code).toBe(2);
       expect(out).toBe('');
@@ -88,22 +88,22 @@ describe('run', () => {
   describe('init', () => {
     const oteaDir = () => join(repo.dir, '.otea');
 
-    it('creates the project and prints the .otea path', () => {
-      const { code, out } = otea('init');
+    it('creates the project and prints the .otea path', async () => {
+      const { code, out } = await otea('init');
 
       expect(code).toBe(0);
       expect(out.trim()).toBe(oteaDir());
       expect(existsSync(join(oteaDir(), 'otea.db'))).toBe(true);
     });
 
-    it('is idempotent', () => {
-      otea('init');
+    it('is idempotent', async () => {
+      await otea('init');
 
-      expect(otea('init')).toMatchObject({ code: 0, out: `${oteaDir()}\n` });
+      expect(await otea('init')).toMatchObject({ code: 0, out: `${oteaDir()}\n` });
     });
 
-    it('prints root and path with --json', () => {
-      const { out } = otea('init', '--json');
+    it('prints root and path with --json', async () => {
+      const { out } = await otea('init', '--json');
 
       expect(JSON.parse(out)).toEqual({ root: repo.dir, path: oteaDir() });
     });
