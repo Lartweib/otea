@@ -4,7 +4,7 @@ import { createItem, moveItem } from '../app/items.ts';
 import type { Project } from '../app/project.ts';
 import type { Actor } from '../core/item.ts';
 import { createServer, type OteaServer } from './server.ts';
-import { memoryProject } from './testing.ts';
+import { memoryProject, request } from './testing.ts';
 
 const ana: Actor = { kind: 'human', name: 'ana' };
 const bot: Actor = { kind: 'agent', name: 'claude' };
@@ -13,7 +13,7 @@ describe('api', () => {
   let project: Project;
   let server: OteaServer;
 
-  const get = (path: string) => server.app.request(path);
+  const get = (path: string) => request(server, path);
   const ids = async (path: string) =>
     ((await (await get(path)).json()) as Array<{ id: string }>).map((item) => item.id);
 

@@ -11,6 +11,8 @@ export const HTTP_STATUS: Readonly<Record<ErrorCode, ContentfulStatusCode>> = {
 
 export class InvalidQuery extends Error {}
 
+export class ForbiddenHost extends Error {}
+
 export type ErrorBody = { error: { code: string; message: string } };
 
 export type ErrorResponse = { status: ContentfulStatusCode; body: ErrorBody };
@@ -25,6 +27,9 @@ export function toErrorResponse(error: unknown): ErrorResponse {
   }
   if (error instanceof InvalidQuery) {
     return { status: 400, body: errorBody('invalid_query', error.message) };
+  }
+  if (error instanceof ForbiddenHost) {
+    return { status: 403, body: errorBody('forbidden_host', error.message) };
   }
   return { status: 500, body: errorBody('unexpected', 'Unexpected error') };
 }

@@ -4,14 +4,14 @@ import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { Project } from '../app/project.ts';
 import { createServer, type OteaServer } from './server.ts';
-import { memoryProject } from './testing.ts';
+import { memoryProject, request } from './testing.ts';
 
 describe('ui', () => {
   let dir: string;
   let project: Project;
   let server: OteaServer;
 
-  const get = (path: string) => server.app.request(path);
+  const get = (path: string) => request(server, path);
 
   beforeEach(() => {
     dir = mkdtempSync(join(tmpdir(), 'otea-ui-'));

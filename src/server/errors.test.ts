@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { OteaError } from '../core/errors.ts';
-import { HTTP_STATUS, InvalidQuery, toErrorResponse } from './errors.ts';
+import { ForbiddenHost, HTTP_STATUS, InvalidQuery, toErrorResponse } from './errors.ts';
 
 describe('errors', () => {
   it.each([
@@ -24,6 +24,13 @@ describe('errors', () => {
     expect(toErrorResponse(new InvalidQuery('Bad turn'))).toEqual({
       status: 400,
       body: { error: { code: 'invalid_query', message: 'Bad turn' } },
+    });
+  });
+
+  it('describes a forbidden host as 403', () => {
+    expect(toErrorResponse(new ForbiddenHost('Nope'))).toEqual({
+      status: 403,
+      body: { error: { code: 'forbidden_host', message: 'Nope' } },
     });
   });
 
