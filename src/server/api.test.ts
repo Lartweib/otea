@@ -1,0 +1,100 @@
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { addCollection } from '../app/collections.ts';
+import { createItem, moveItem } from '../app/items.ts';
+import type { Project } from '../app/project.ts';
+import type { Actor } from '../core/item.ts';
+import { createServer, type OteaServer } from './server.ts';
+import { memoryProject } from './testing.ts';
+
+const ana: Actor = { kind: 'human', name: 'ana' };
+const bot: Actor = { kind: 'agent', name: 'claude' };
+
+describe('api', () => {
+  let project: Project;
+  let server: OteaServer;
+
+  const get = (path: string) => server.app.request(path);
+  const ids = async (path: string) =>
+    ((await (await get(path)).json()) as Array<{ id: string }>).map((item) => item.id);
+
+  beforeEach(() => {
+    project = memoryProject();
+    addCollection(project.db, { name: 'tasks' });
+    addCollection(project.db, { name: 'bugs' });
+    createItem(project.db, {
+      collection: 'tasks',
+      title: 'Write docs',
+      body: 'For v1',
+      actor: ana,
+    });
+    createItem(project.db, { collection: 'bugs', title: 'Fix login', actor: bot });
+    moveItem(project.db, { id: 'BUGS-1', to: 'in_progress', actor: bot });
+    moveItem(project.db, { id: 'BUGS-1', to: 'review', actor: bot });
+    server = createServer(project);
+  });
+
+  afterEach(() => {
+    project.db.close();
+  });
+
+  describe('GET /api/items', () => {
+    it('lists every item with its turn', async () => {
+      const response = await get('/api/items');
+
+      expect(response.status).toBe(200);
+      expect(await response.json()).toMatchObject([
+        { id: 'TASKS-1', title: 'Write docs', state: 'todo', turn: 'agent' },
+        { id: 'BUGS-1', title: 'Fix login', state: 'review', turn: 'human' },
+      ]);
+    });
+
+    it.each([
+      ['?collection=tasks', ['TASKS-1']],
+      ['?state=review', ['BUGS-1']],
+      ['?turn=human', ['BUGS-1']],
+      ['?collection=tasks&turn=human', []],
+    ])('filters with %s', async (query, expected) => {
+      expect(await ids(`/api/items${query}`)).toEqual(expected);
+    });
+
+    it('rejects an unknown turn with 400', async () => {
+      const response = await get('/api/items?turn=robot');
+
+      expect(response.status).toBe(400);
+      expect(await response.json()).toEqual({
+        error: { code: 'invalid_query', message: 'turn must be one of human, agent, none' },
+      });
+    });
+  });
+
+  describe('GET /api/items/:id', () => {
+    it('returns the item with its events', async () => {
+      const response = await get('/api/items/BUGS-1');
+      const item = (await response.json()) as { events: Array<{ type: string }> };
+
+      expect(response.status).toBe(200);
+      expect(item).toMatchObject({ id: 'BUGS-1', state: 'review', turn: 'human' });
+      expect(item.events.map((event) => event.type)).toEqual([
+        'created',
+        'transitioned',
+        'transitioned',
+      ]);
+    });
+
+    it('returns 404 with the error code for an unknown id', async () => {
+      const response = await get('/api/items/TASKS-9');
+
+      expect(response.status).toBe(404);
+      expect(await response.json()).toEqual({
+        error: { code: 'not_found', message: 'Item "TASKS-9" not found' },
+      });
+    });
+  });
+
+  it('returns a JSON 404 for an unknown api route', async () => {
+    const response = await get('/api/nope');
+
+    expect(response.status).toBe(404);
+    expect(await response.json()).toMatchObject({ error: { code: 'not_found' } });
+  });
+});
