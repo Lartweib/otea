@@ -16,6 +16,15 @@ Agents produce work faster than a human can follow it live. Otea is where work c
 
 Early design. Nothing is usable yet. The product definition lives in [`docs/otea-product-definition.md`](docs/otea-product-definition.md).
 
+## Development
+
+Requirements: Node.js 22.18 or later (Node 24 recommended, see `.nvmrc`).
+
+```sh
+npm install
+npm run check   # lint, typecheck and tests
+```
+
 ## License
 
 [MIT](LICENSE)
