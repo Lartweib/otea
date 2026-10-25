@@ -1,0 +1,16 @@
+export type ErrorCode =
+  | 'invalid_transition'
+  | 'not_found'
+  | 'already_exists'
+  | 'invalid_name'
+  | 'invalid_id';
+
+export class OteaError extends Error {
+  readonly code: ErrorCode;
+
+  constructor(code: ErrorCode, message: string) {
+    super(message);
+    this.name = 'OteaError';
+    this.code = code;
+  }
+}
