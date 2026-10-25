@@ -5,10 +5,11 @@ import { TURNS, type Turn } from '../core/workflow.ts';
 import { createChangeFeed } from './changes.ts';
 import { errorBody, InvalidQuery, toErrorResponse } from './errors.ts';
 import { type LiveStreams, liveStreams } from './stream.ts';
+import { BUILT_UI_DIR, mountUi } from './ui.ts';
 
 export type OteaServer = { app: Hono; close(): void };
 
-export type ServerOptions = { pollIntervalMs?: number };
+export type ServerOptions = { pollIntervalMs?: number; uiDir?: string };
 
 function isTurn(value: string): value is Turn {
   return (TURNS as readonly string[]).includes(value);
@@ -39,6 +40,7 @@ export function createServer(project: Project, options: ServerOptions = {}): Ote
   const streams = liveStreams(feed);
   const app = new Hono();
   app.route('/api', api(project, streams));
+  mountUi(app, options.uiDir ?? BUILT_UI_DIR);
   app.onError((error, c) => {
     const { status, body } = toErrorResponse(error);
     return c.json(body, status);
