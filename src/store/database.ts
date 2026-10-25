@@ -19,3 +19,7 @@ export function transaction<T>(db: DatabaseSync, fn: () => T): T {
     throw error;
   }
 }
+
+export function dataVersion(db: DatabaseSync): number {
+  return Number(db.prepare('PRAGMA data_version').get()?.data_version);
+}
