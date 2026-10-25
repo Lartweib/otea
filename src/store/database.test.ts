@@ -3,7 +3,7 @@ import { rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { openDatabase } from './database.ts';
+import { openDatabase, transaction } from './database.ts';
 
 const pragma = (db: ReturnType<typeof openDatabase>, name: string) =>
   Object.values(db.prepare(`PRAGMA ${name}`).get() ?? {})[0];
@@ -34,5 +34,43 @@ describe('openDatabase', () => {
 
     expect(db.isOpen).toBe(true);
     expect(pragma(db, 'foreign_keys')).toBe(1);
+  });
+});
+
+describe('transaction', () => {
+  const setup = () => {
+    const db = openDatabase(':memory:');
+    db.exec('CREATE TABLE notes (text TEXT)');
+    return db;
+  };
+  const count = (db: ReturnType<typeof openDatabase>) =>
+    db.prepare('SELECT count(*) AS n FROM notes').get()?.n;
+
+  it('commits and returns the result', () => {
+    const db = setup();
+
+    const result = transaction(db, () => {
+      db.exec("INSERT INTO notes VALUES ('a')");
+      return 'ok';
+    });
+
+    expect(result).toBe('ok');
+    expect(count(db)).toBe(1);
+    expect(db.isTransaction).toBe(false);
+    db.close();
+  });
+
+  it('rolls back and rethrows on error', () => {
+    const db = setup();
+    const failing = () =>
+      transaction(db, () => {
+        db.exec("INSERT INTO notes VALUES ('a')");
+        throw new Error('boom');
+      });
+
+    expect(failing).toThrow('boom');
+    expect(count(db)).toBe(0);
+    expect(db.isTransaction).toBe(false);
+    db.close();
   });
 });
