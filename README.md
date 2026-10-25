@@ -25,6 +25,16 @@ npm install
 npm run check   # lint, typecheck and tests
 ```
 
+There is no build step or installable `otea` binary yet; run the CLI from source through npm:
+
+```sh
+npm run otea -- init
+npm run otea -- collection add tasks
+npm run otea -- create --collection tasks --title "Write the docs"
+npm run otea -- list --turn agent --json
+npm run otea -- help   # every command, global options and exit codes
+```
+
 ## License
 
 [MIT](LICENSE)
