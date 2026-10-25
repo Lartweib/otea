@@ -13,6 +13,7 @@ export type Io = {
   env: Readonly<Record<string, string | undefined>>;
   stdout: Writer;
   stderr: Writer;
+  signal: AbortSignal;
 };
 
 type Values = Record<string, string | boolean | (string | boolean)[] | undefined>;
@@ -69,6 +70,7 @@ function inputFor(command: Command, values: Values, args: string[], io: Io): Inp
   return {
     cwd: io.cwd,
     actor: actorFrom(values, io.env),
+    signal: io.signal,
     args,
     option,
     required: (name) => {
@@ -79,7 +81,7 @@ function inputFor(command: Command, values: Values, args: string[], io: Io): Inp
   };
 }
 
-function dispatch(argv: string[], io: Io, json: boolean): number {
+async function dispatch(argv: string[], io: Io, json: boolean): Promise<number> {
   const { values, positionals } = parse(argv);
   if (positionals[0] === 'help' || (values.help && positionals.length === 0)) {
     io.stdout.write(`${generalHelp()}\n`);
@@ -94,7 +96,7 @@ function dispatch(argv: string[], io: Io, json: boolean): number {
   }
   const args = positionals.slice(command.name.split(' ').length);
   validate(command, values, args);
-  const output = command.execute(inputFor(command, values, args, io));
+  const output = await command.execute(inputFor(command, values, args, io));
   io.stdout.write(json ? `${JSON.stringify(output.data, null, 2)}\n` : `${output.text}\n`);
   return EXIT_CODES.ok;
 }
@@ -122,10 +124,10 @@ function report(error: unknown, argv: string[], io: Io, json: boolean): number {
   return EXIT_CODES[code];
 }
 
-export function run(argv: string[], io: Io): number {
+export async function run(argv: string[], io: Io): Promise<number> {
   const json = argv.includes('--json');
   try {
-    return dispatch(argv, io, json);
+    return await dispatch(argv, io, json);
   } catch (error) {
     return report(error, argv, io, json);
   }

@@ -5,6 +5,7 @@ export type OptionSpec = { required?: boolean; choices?: readonly string[] };
 export type Input = {
   cwd: string;
   actor: Actor;
+  signal: AbortSignal;
   args: string[];
   option(name: string): string | undefined;
   required(name: string): string;
@@ -17,7 +18,7 @@ export type Command = {
   summary: string;
   args: readonly string[];
   options: Readonly<Record<string, OptionSpec>>;
-  execute(input: Input): Output;
+  execute(input: Input): Output | Promise<Output>;
 };
 
 export class UsageError extends Error {

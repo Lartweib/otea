@@ -6,15 +6,20 @@ import { run } from './run.ts';
 
 export type Result = { code: number; out: string; err: string };
 
-export type Cli = (...argv: string[]) => Result;
+export type Cli = (...argv: string[]) => Promise<Result>;
 
-export function cliAt(cwd: string, env: Record<string, string> = {}): Cli {
-  return (...argv) => {
+export function cliAt(
+  cwd: string,
+  env: Record<string, string> = {},
+  signal = new AbortController().signal,
+): Cli {
+  return async (...argv) => {
     let out = '';
     let err = '';
-    const code = run(argv, {
+    const code = await run(argv, {
       cwd,
       env,
+      signal,
       stdout: { write: (chunk: string) => (out += chunk) },
       stderr: { write: (chunk: string) => (err += chunk) },
     });
