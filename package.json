@@ -13,7 +13,8 @@
     "format": "biome check --write",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "check": "npm run lint && npm run typecheck && npm run test"
+    "check": "npm run lint && npm run typecheck && npm run test",
+    "otea": "node --disable-warning=ExperimentalWarning src/cli/main.ts"
   },
   "devDependencies": {
     "@biomejs/biome": "2.6.3",
