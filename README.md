@@ -25,14 +25,17 @@ npm install
 npm run check   # lint, typecheck and tests
 ```
 
-There is no build step or installable `otea` binary yet; run the CLI from source through npm:
+There is no installable `otea` binary yet. Run the CLI from source inside the project you want to track (npm scripts always run from the Otea checkout, so `npm run otea` is only useful for `help`):
 
 ```sh
-npm run otea -- init
-npm run otea -- collection add tasks
-npm run otea -- create --collection tasks --title "Write the docs"
-npm run otea -- list --turn agent --json
-npm run otea -- help   # every command, global options and exit codes
+alias otea='node --disable-warning=ExperimentalWarning /path/to/otea/src/cli/main.ts'
+
+cd /path/to/your/project
+otea init
+otea collection add tasks
+otea create --collection tasks --title "Write the docs"
+otea list --turn agent --json
+otea help   # every command, global options and exit codes
 ```
 
 ## License
