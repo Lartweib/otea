@@ -38,6 +38,26 @@ otea list --turn agent --json
 otea help   # every command, global options and exit codes
 ```
 
+### See it live
+
+The web UI is read-only for now and updates as items change.
+
+```sh
+npm run build:ui            # once, in the Otea checkout
+
+cd /path/to/your/project
+otea serve                  # Otea running at http://127.0.0.1:4400
+```
+
+Open the URL, then in another terminal in the same project create and move items and watch them update:
+
+```sh
+otea create --collection tasks --title "Review the copy"
+otea move TASKS-1 in_progress
+```
+
+Working on the UI itself: keep `otea serve` running and start `npm run dev:ui` in the Otea checkout for hot reload (it proxies `/api` to port 4400).
+
 ## License
 
 [MIT](LICENSE)
