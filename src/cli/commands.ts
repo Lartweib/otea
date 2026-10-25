@@ -4,7 +4,9 @@ import { addCollection } from '../app/collections.ts';
 import { createItem, getItem, type ListItemsFilter, listItems, moveItem } from '../app/items.ts';
 import { initProject, openProject } from '../app/project.ts';
 import { TURNS, type Turn } from '../core/workflow.ts';
-import type { Command, Input } from './command.ts';
+import { DEFAULT_PORT, listen } from '../server/listen.ts';
+import { createServer } from '../server/server.ts';
+import { type Command, type Input, UsageError } from './command.ts';
 import { formatItem, formatItems, formatItemWithEvents } from './format.ts';
 
 function withProject<T>(cwd: string, use: (db: DatabaseSync) => T): T {
@@ -101,7 +103,42 @@ const move: Command = {
   },
 };
 
-export const COMMANDS: readonly Command[] = [init, collectionAdd, create, list, show, move];
+const PORT_PATTERN = /^\d{1,5}$/;
+
+function portFrom(value: string | undefined): number {
+  if (value === undefined) return DEFAULT_PORT;
+  const port = Number(value);
+  if (!PORT_PATTERN.test(value) || port > 65535) {
+    throw new UsageError('--port must be an integer between 0 and 65535');
+  }
+  return port;
+}
+
+async function serveUntil(signal: AbortSignal, cwd: string, port: number): Promise<string> {
+  const project = openProject(cwd);
+  try {
+    const running = await listen(createServer(project), port);
+    const stop = () => running.close().finally(() => project.db.close());
+    signal.addEventListener('abort', stop, { once: true });
+    return running.url;
+  } catch (error) {
+    project.db.close();
+    throw error;
+  }
+}
+
+const serve: Command = {
+  name: 'serve',
+  summary: `Serve the live read-only UI on 127.0.0.1 (default port ${DEFAULT_PORT}) until Ctrl+C`,
+  args: [],
+  options: { port: {} },
+  execute: async ({ cwd, option, signal }) => {
+    const url = await serveUntil(signal, cwd, portFrom(option('port')));
+    return { data: { url }, text: `Otea running at ${url}` };
+  },
+};
+
+export const COMMANDS: readonly Command[] = [init, collectionAdd, create, list, show, move, serve];
 
 export function findCommand(tokens: readonly string[]): Command | undefined {
   return COMMANDS.find((command) =>
