@@ -2,6 +2,8 @@ import { OteaError } from './errors.ts';
 
 export type Turn = 'human' | 'agent' | 'none';
 
+export const TURNS: readonly Turn[] = ['human', 'agent', 'none'];
+
 export type State = { name: string; turn: Turn };
 
 export type Workflow = {

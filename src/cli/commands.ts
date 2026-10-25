@@ -3,11 +3,9 @@ import type { DatabaseSync } from 'node:sqlite';
 import { addCollection } from '../app/collections.ts';
 import { createItem, getItem, type ListItemsFilter, listItems, moveItem } from '../app/items.ts';
 import { initProject, openProject } from '../app/project.ts';
-import type { Turn } from '../core/workflow.ts';
+import { TURNS, type Turn } from '../core/workflow.ts';
 import type { Command, Input } from './command.ts';
 import { formatItem, formatItems, formatItemWithEvents } from './format.ts';
-
-const TURNS: readonly Turn[] = ['human', 'agent', 'none'];
 
 function withProject<T>(cwd: string, use: (db: DatabaseSync) => T): T {
   const { db } = openProject(cwd);
