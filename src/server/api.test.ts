@@ -34,6 +34,7 @@ describe('api', () => {
   });
 
   afterEach(() => {
+    server.close();
     project.db.close();
   });
 
