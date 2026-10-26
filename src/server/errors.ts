@@ -19,6 +19,17 @@ export class InvalidQuery extends Error {}
 
 export class ForbiddenHost extends Error {}
 
+export class RejectedRequest extends Error {
+  readonly status: ContentfulStatusCode;
+  readonly code: string;
+
+  constructor(status: ContentfulStatusCode, code: string, message: string) {
+    super(message);
+    this.status = status;
+    this.code = code;
+  }
+}
+
 export type ErrorBody = { error: { code: string; message: string } };
 
 export type ErrorResponse = { status: ContentfulStatusCode; body: ErrorBody };
@@ -33,6 +44,9 @@ export function toErrorResponse(error: unknown): ErrorResponse {
   }
   if (error instanceof InvalidQuery) {
     return { status: 400, body: errorBody('invalid_query', error.message) };
+  }
+  if (error instanceof RejectedRequest) {
+    return { status: error.status, body: errorBody(error.code, error.message) };
   }
   if (error instanceof ForbiddenHost) {
     return { status: 403, body: errorBody('forbidden_host', error.message) };
