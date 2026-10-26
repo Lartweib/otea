@@ -1,4 +1,5 @@
-import { useEffect, useState, useSyncExternalStore } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { afterFailure, type Remote } from './remote.ts';
 import { idFromHash } from './selection.ts';
 
 export type Connection = 'connecting' | 'live' | 'reconnecting';
@@ -22,16 +23,14 @@ export function useLive(url = '/api/stream'): Live {
   return { connection, version };
 }
 
-export type Remote<T> =
-  | { status: 'loading' }
-  | { status: 'ready'; value: T }
-  | { status: 'failed'; message: string };
-
 export function useRemote<T>(
   load: (signal: AbortSignal) => Promise<T>,
   version: number,
+  connection: Connection,
 ): Remote<T> {
   const [remote, setRemote] = useState<Remote<T>>({ status: 'loading' });
+  const connectionRef = useRef(connection);
+  connectionRef.current = connection;
   // biome-ignore lint/correctness/useExhaustiveDependencies: a new version means the data changed
   useEffect(() => {
     const controller = new AbortController();
@@ -39,7 +38,7 @@ export function useRemote<T>(
       (value) => setRemote({ status: 'ready', value }),
       (error: unknown) => {
         if (controller.signal.aborted) return;
-        setRemote({ status: 'failed', message: error instanceof Error ? error.message : 'Failed' });
+        setRemote((previous) => afterFailure(previous, error, connectionRef.current));
       },
     );
     return () => controller.abort();
