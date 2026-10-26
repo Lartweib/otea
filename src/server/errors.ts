@@ -10,6 +10,7 @@ export const HTTP_STATUS: Readonly<Record<ErrorCode, ContentfulStatusCode>> = {
   forbidden: 403,
   reason_required: 400,
   invalid_preset: 500,
+  invalid_fields: 422,
 };
 
 export class InvalidQuery extends Error {}
