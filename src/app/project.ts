@@ -1,12 +1,13 @@
 import { execFileSync } from 'node:child_process';
 import { appendFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
-import type { DatabaseSync } from 'node:sqlite';
 import { OteaError } from '../core/errors.ts';
 import { openDatabase } from '../store/database.ts';
 import { migrate } from '../store/migrations.ts';
+import type { Context } from './context.ts';
+import { loadPresets } from './presets.ts';
 
-export type Project = { root: string; db: DatabaseSync };
+export type Project = Context & { root: string };
 
 type Location = { root: string; gitCommonDir?: string };
 
@@ -49,7 +50,7 @@ function excludeFromGit(gitCommonDir: string): void {
 function open(root: string): Project {
   const db = openDatabase(databasePath(root));
   migrate(db);
-  return { root, db };
+  return { root, db, presets: loadPresets(root) };
 }
 
 export function initProject(cwd: string): Project {

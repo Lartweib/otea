@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { tasks } from '../core/workflow.ts';
+import { tasks } from '../core/testing.ts';
 import { loadPresets, OFFICIAL_PRESETS_DIR, type PresetCatalog, requirePreset } from './presets.ts';
 
 const NOTES = `

@@ -1,7 +1,7 @@
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, realpathSync, rmSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { run } from './run.ts';
 
 export type Result = { code: number; out: string; err: string };
@@ -27,8 +27,22 @@ export function cliAt(
   };
 }
 
-export function tempGitRepo(): { dir: string; remove: () => void } {
+export type TempRepo = {
+  dir: string;
+  write: (path: string, content: string) => void;
+  remove: () => void;
+};
+
+export function tempGitRepo(): TempRepo {
   const dir = realpathSync.native(mkdtempSync(join(tmpdir(), 'otea-cli-')));
   execFileSync('git', ['init', '--quiet'], { cwd: dir, stdio: 'ignore' });
-  return { dir, remove: () => rmSync(dir, { recursive: true, force: true }) };
+  return {
+    dir,
+    write: (path, content) => {
+      const target = join(dir, path);
+      mkdirSync(dirname(target), { recursive: true });
+      writeFileSync(target, content);
+    },
+    remove: () => rmSync(dir, { recursive: true, force: true }),
+  };
 }

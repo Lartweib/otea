@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { authorizeMove, mayPerform, type Performer } from './authority.ts';
-import { tasks } from './workflow.ts';
+import { tasks } from './testing.ts';
 
 const agentCli: Performer = { actor: { kind: 'agent', name: 'claude' }, channel: 'cli' };
 const humanCli: Performer = { actor: { kind: 'human', name: 'ana' }, channel: 'cli' };

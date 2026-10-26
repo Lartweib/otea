@@ -1,14 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { OteaError } from './errors.ts';
-import {
-  assertTransition,
-  tasks,
-  transitionsBetween,
-  transitionsFrom,
-  turnOf,
-} from './workflow.ts';
+import { tasks } from './testing.ts';
+import { assertTransition, transitionsBetween, transitionsFrom, turnOf } from './workflow.ts';
 
-describe('tasks workflow', () => {
+describe('the official tasks workflow', () => {
   it('starts in todo and enriches in incomplete', () => {
     expect(tasks.initial).toBe('todo');
     expect(tasks.incomplete).toBe('incomplete');

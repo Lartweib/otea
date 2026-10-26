@@ -39,7 +39,8 @@ describe('project', () => {
     const project = track(initProject(repo));
 
     expect(project.root).toBe(repo);
-    expect(project.db.prepare('PRAGMA user_version').get()?.user_version).toBe(1);
+    expect(project.db.prepare('PRAGMA user_version').get()?.user_version).toBe(2);
+    expect(project.presets.presets.has('tasks')).toBe(true);
     expect(exclude(repo).split(/\r?\n/)).toContain('.otea/');
   });
 

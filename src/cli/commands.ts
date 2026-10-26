@@ -1,20 +1,20 @@
 import { join } from 'node:path';
-import type { DatabaseSync } from 'node:sqlite';
-import { addCollection } from '../app/collections.ts';
+import { addCollection, DEFAULT_PRESET } from '../app/collections.ts';
 import { createItem, getItem, type ListItemsFilter, listItems, moveItem } from '../app/items.ts';
-import { initProject, openProject } from '../app/project.ts';
+import { initProject, openProject, type Project } from '../app/project.ts';
+import type { FieldValues } from '../core/fields.ts';
 import { TURNS, type Turn } from '../core/workflow.ts';
 import { DEFAULT_PORT, listen } from '../server/listen.ts';
 import { createServer } from '../server/server.ts';
 import { type Command, type Input, UsageError } from './command.ts';
 import { formatItem, formatItems, formatItemWithEvents } from './format.ts';
 
-function withProject<T>(cwd: string, use: (db: DatabaseSync) => T): T {
-  const { db } = openProject(cwd);
+function withProject<T>(cwd: string, use: (project: Project) => T): T {
+  const project = openProject(cwd);
   try {
-    return use(db);
+    return use(project);
   } finally {
-    db.close();
+    project.db.close();
   }
 }
 
@@ -33,28 +33,56 @@ const init: Command = {
 
 const collectionAdd: Command = {
   name: 'collection add',
-  summary: 'Add a collection that uses the built-in tasks workflow',
+  summary: `Add a collection governed by a preset (default: ${DEFAULT_PRESET})`,
   args: ['name'],
-  options: {},
-  execute: ({ cwd, args: [name = ''] }) => {
-    const collection = withProject(cwd, (db) => addCollection(db, { name }));
+  options: { preset: {} },
+  execute: ({ cwd, option, args: [name = ''] }) => {
+    const preset = option('preset') ?? DEFAULT_PRESET;
+    const collection = withProject(cwd, (project) => addCollection(project, { name, preset }));
+    const { prefix, presetVersion } = collection;
     return {
       data: collection,
-      text: `Added collection "${collection.name}" (ids ${collection.prefix}-<n>)`,
+      text: `Added collection "${name}" with preset ${preset} v${presetVersion} (ids ${prefix}-<n>)`,
     };
   },
 };
 
+function fieldsFrom({ option, options }: Input): FieldValues {
+  const fields: FieldValues = {};
+  const set = (key: string, value: string) => {
+    if (key === 'title') throw new UsageError('Use --title for the title');
+    if (key in fields) throw new UsageError(`Field "${key}" given twice`);
+    fields[key] = value;
+  };
+  const description = option('description');
+  if (description !== undefined) set('description', description);
+  for (const pair of options('field')) {
+    const separator = pair.indexOf('=');
+    if (separator < 1) throw new UsageError(`--field expects key=value, got "${pair}"`);
+    set(pair.slice(0, separator), pair.slice(separator + 1));
+  }
+  return fields;
+}
+
 const create: Command = {
   name: 'create',
-  summary: 'Create an item in its collection initial state and print its id',
+  summary:
+    'Create an item and print its id; it starts incomplete when a field required to complete it is missing',
   args: [],
-  options: { collection: { required: true }, title: { required: true }, body: {} },
-  execute: ({ cwd, actor, option, required }) => {
-    const collection = required('collection');
-    const title = required('title');
-    const body = option('body') ?? '';
-    const item = withProject(cwd, (db) => createItem(db, { collection, title, body, actor }));
+  options: {
+    collection: { required: true },
+    title: { required: true },
+    description: {},
+    field: { multiple: true, placeholder: 'key=value' },
+  },
+  execute: (input) => {
+    const collection = input.required('collection');
+    const title = input.required('title');
+    const fields = fieldsFrom(input);
+    const { actor } = input;
+    const item = withProject(input.cwd, (project) =>
+      createItem(project, { collection, title, fields, actor }),
+    );
     return { data: item, text: item.id };
   },
 };
@@ -76,7 +104,7 @@ const list: Command = {
   args: [],
   options: { collection: {}, state: {}, turn: { choices: TURNS } },
   execute: (input) => {
-    const items = withProject(input.cwd, (db) => listItems(db, listFilter(input)));
+    const items = withProject(input.cwd, (project) => listItems(project, listFilter(input)));
     return { data: items, text: formatItems(items) };
   },
 };
@@ -87,7 +115,7 @@ const show: Command = {
   args: ['id'],
   options: {},
   execute: ({ cwd, args: [id = ''] }) => {
-    const item = withProject(cwd, (db) => getItem(db, id));
+    const item = withProject(cwd, (project) => getItem(project, id));
     return { data: item, text: formatItemWithEvents(item) };
   },
 };
@@ -100,7 +128,7 @@ const move: Command = {
   execute: ({ cwd, actor, option, args: [id = '', to = ''] }) => {
     const reason = option('reason');
     const input = { id, to, actor, channel: 'cli' as const, ...(reason ? { reason } : {}) };
-    const item = withProject(cwd, (db) => moveItem(db, input));
+    const item = withProject(cwd, (project) => moveItem(project, input));
     return { data: item, text: formatItem(item) };
   },
 };

@@ -209,6 +209,11 @@ dd {
   gap: var(--space-4);
 }
 
+.item-fields {
+  display: grid;
+  gap: var(--space-3);
+}
+
 .field dt {
   font-size: var(--text-sm);
   color: var(--color-muted);

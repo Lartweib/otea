@@ -28,7 +28,9 @@ const PARSE_OPTIONS: ParseArgsOptionsConfig = Object.assign(
   {},
   GLOBAL_OPTIONS,
   ...COMMANDS.flatMap((command) =>
-    Object.keys(command.options).map((name) => ({ [name]: { type: 'string' } })),
+    Object.entries(command.options).map(([name, spec]) => ({
+      [name]: { type: 'string', multiple: spec.multiple ?? false },
+    })),
   ),
 );
 
@@ -67,12 +69,17 @@ function inputFor(command: Command, values: Values, args: string[], io: Io): Inp
     const value = values[name];
     return typeof value === 'string' ? value : undefined;
   };
+  const options = (name: string) => {
+    const value = values[name];
+    return Array.isArray(value) ? value.map(String) : [];
+  };
   return {
     cwd: io.cwd,
     actor: actorFrom(values, io.env),
     signal: io.signal,
     args,
     option,
+    options,
     required: (name) => {
       const value = option(name);
       if (value === undefined) throw new UsageError(`Missing --${name} for "otea ${command.name}"`);

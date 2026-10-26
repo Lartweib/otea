@@ -24,24 +24,69 @@ describe('migrate', () => {
     migrate(db);
 
     expect(tables(db)).toEqual(expect.arrayContaining(['collections', 'items', 'events']));
-    expect(userVersion(db)).toBe(1);
+    expect(userVersion(db)).toBe(2);
   });
 
   it('is idempotent', () => {
     migrate(db);
     migrate(db);
 
-    expect(userVersion(db)).toBe(1);
+    expect(userVersion(db)).toBe(2);
+  });
+
+  describe('from version 1', () => {
+    beforeEach(() => {
+      migrate(db, 1);
+      db.exec(`
+        INSERT INTO collections (name, prefix, workflow, next_seq) VALUES ('tasks', 'TASKS', '{}', 3);
+        INSERT INTO items (id, collection, seq, title, body, state, created_at, updated_at,
+          created_by_kind, created_by_name)
+        VALUES
+          ('TASKS-1', 'tasks', 1, 'A', '', 'todo', 't', 't', 'human', 'ana'),
+          ('TASKS-2', 'tasks', 2, 'B', 'Details', 'review', 't', 't', 'agent', 'bot');
+        INSERT INTO events (item_id, type, actor_kind, actor_name, at, data)
+        VALUES ('TASKS-1', 'created', 'human', 'ana', 't', '{"state":"todo"}');
+      `);
+      migrate(db);
+    });
+
+    it('moves collections to the tasks preset version 1', () => {
+      expect(db.prepare('SELECT * FROM collections').all()).toEqual([
+        { name: 'tasks', prefix: 'TASKS', next_seq: 3, preset: 'tasks', preset_version: 1 },
+      ]);
+    });
+
+    it('gives items preset fields, keeping a body as the description', () => {
+      const rows = db.prepare('SELECT id, fields, preset_version FROM items ORDER BY id').all();
+
+      expect(rows).toEqual([
+        { id: 'TASKS-1', fields: '{}', preset_version: 1 },
+        { id: 'TASKS-2', fields: '{"description":"Details"}', preset_version: 1 },
+      ]);
+    });
+
+    it('drops the replaced columns and keeps events', () => {
+      const columns = (table: string) =>
+        db
+          .prepare(`PRAGMA table_info(${table})`)
+          .all()
+          .map((column) => column.name);
+
+      expect(columns('collections')).not.toContain('workflow');
+      expect(columns('items')).not.toContain('body');
+      expect(db.prepare('SELECT count(*) AS n FROM events').get()?.n).toBe(1);
+    });
   });
 
   describe('events', () => {
     beforeEach(() => {
       migrate(db);
       db.exec(`
-        INSERT INTO collections (name, prefix, workflow, next_seq) VALUES ('tasks', 'TASKS', '{}', 2);
-        INSERT INTO items (id, collection, seq, title, body, state, created_at, updated_at,
-          created_by_kind, created_by_name)
-        VALUES ('TASKS-1', 'tasks', 1, 'A', '', 'todo', 't', 't', 'human', 'ana');
+        INSERT INTO collections (name, prefix, preset, preset_version, next_seq)
+        VALUES ('tasks', 'TASKS', 'tasks', 1, 2);
+        INSERT INTO items (id, collection, seq, title, fields, preset_version, state, created_at,
+          updated_at, created_by_kind, created_by_name)
+        VALUES ('TASKS-1', 'tasks', 1, 'A', '{}', 1, 'todo', 't', 't', 'human', 'ana');
         INSERT INTO events (item_id, type, actor_kind, actor_name, at, data)
         VALUES ('TASKS-1', 'created', 'human', 'ana', 't', '{}');
       `);

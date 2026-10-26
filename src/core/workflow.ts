@@ -20,36 +20,6 @@ export type Workflow = {
   transitions: Transition[];
 };
 
-const DISCARDABLE = ['incomplete', 'todo', 'in_progress', 'review'];
-
-export const tasks: Workflow = {
-  name: 'tasks',
-  initial: 'todo',
-  incomplete: 'incomplete',
-  states: [
-    { name: 'incomplete', turn: 'agent' },
-    { name: 'todo', turn: 'agent' },
-    { name: 'in_progress', turn: 'agent' },
-    { name: 'review', turn: 'human' },
-    { name: 'done', turn: 'none' },
-    { name: 'discarded', turn: 'none' },
-  ],
-  transitions: [
-    { from: 'incomplete', to: 'todo', by: 'agent', reasonRequired: false },
-    { from: 'todo', to: 'in_progress', by: 'agent', reasonRequired: false },
-    { from: 'in_progress', to: 'review', by: 'agent', reasonRequired: false },
-    { from: 'review', to: 'done', by: 'human-ui', reasonRequired: false },
-    { from: 'review', to: 'todo', by: 'human-ui', reasonRequired: true },
-    ...DISCARDABLE.map((from) => ({
-      from,
-      to: 'discarded',
-      by: 'human' as const,
-      reasonRequired: true,
-    })),
-    { from: 'incomplete', to: 'discarded', by: 'agent', reasonRequired: true },
-  ],
-};
-
 export function turnOf(workflow: Workflow, stateName: string): Turn {
   const state = workflow.states.find((candidate) => candidate.name === stateName);
   if (!state) throw new OteaError('not_found', `Unknown state "${stateName}" in ${workflow.name}`);

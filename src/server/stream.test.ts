@@ -2,6 +2,7 @@ import type { DatabaseSync } from 'node:sqlite';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { addCollection } from '../app/collections.ts';
 import { createItem } from '../app/items.ts';
+import { catalogWith } from '../app/testing.ts';
 import { migrate } from '../store/migrations.ts';
 import { createServer, type OteaServer } from './server.ts';
 import { request, tempDatabase } from './testing.ts';
@@ -36,9 +37,9 @@ describe('GET /api/stream', () => {
     temp = tempDatabase();
     db = temp.open();
     migrate(db);
-    addCollection(db, { name: 'tasks' });
+    addCollection({ db, presets: catalogWith() }, { name: 'tasks' });
     other = temp.open();
-    server = createServer({ root: '/tmp', db }, { pollIntervalMs: 10 });
+    server = createServer({ root: '/tmp', db, presets: catalogWith() }, { pollIntervalMs: 10 });
   });
 
   afterEach(() => {
@@ -59,11 +60,14 @@ describe('GET /api/stream', () => {
   it('emits change after another connection writes', async () => {
     const { reader } = await connect();
 
-    createItem(other, {
-      collection: 'tasks',
-      title: 'From elsewhere',
-      actor: { kind: 'agent', name: 'a' },
-    });
+    createItem(
+      { db: other, presets: catalogWith() },
+      {
+        collection: 'tasks',
+        title: 'From elsewhere',
+        actor: { kind: 'agent', name: 'a' },
+      },
+    );
 
     expect(await readUntil(reader, 'event: change')).toContain('event: change');
     await reader.cancel();

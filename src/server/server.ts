@@ -30,8 +30,8 @@ function itemsFilter(query: Record<string, string>): ListItemsFilter {
 
 function api(project: Project, streams: LiveStreams): Hono {
   return new Hono()
-    .get('/items', (c) => c.json(listItems(project.db, itemsFilter(c.req.query()))))
-    .get('/items/:id', (c) => c.json(getItem(project.db, c.req.param('id'))))
+    .get('/items', (c) => c.json(listItems(project, itemsFilter(c.req.query()))))
+    .get('/items/:id', (c) => c.json(getItem(project, c.req.param('id'))))
     .get('/stream', (c) => streams.handle(c))
     .all('*', (c) => c.json(errorBody('not_found', `No route ${c.req.path}`), 404));
 }

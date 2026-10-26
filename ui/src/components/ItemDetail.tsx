@@ -28,7 +28,17 @@ export function ItemDetail({ item }: { item: ItemWithEvents }) {
         <Field label="Collection">{item.collection}</Field>
         <Field label="Created by">{actorLabel(item.createdBy)}</Field>
       </dl>
-      {item.body ? <p className="body">{item.body}</p> : <p className="muted">No description.</p>}
+      {Object.keys(item.fields).length > 0 ? (
+        <dl className="item-fields">
+          {Object.entries(item.fields).map(([name, value]) => (
+            <Field key={name} label={name}>
+              <span className="body">{value}</span>
+            </Field>
+          ))}
+        </dl>
+      ) : (
+        <p className="muted">No fields.</p>
+      )}
       <h2 className="timeline-title">Timeline</h2>
       <ol className="timeline">
         {item.events.map((event) => (

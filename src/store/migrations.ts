@@ -42,15 +42,25 @@ const MIGRATIONS = [
   CREATE TRIGGER events_no_delete BEFORE DELETE ON events
   BEGIN SELECT RAISE(ABORT, 'events are append-only'); END;
   `,
+  `
+  ALTER TABLE collections ADD COLUMN preset TEXT NOT NULL DEFAULT 'tasks';
+  ALTER TABLE collections ADD COLUMN preset_version INTEGER NOT NULL DEFAULT 1;
+  ALTER TABLE collections DROP COLUMN workflow;
+
+  ALTER TABLE items ADD COLUMN fields TEXT NOT NULL DEFAULT '{}';
+  ALTER TABLE items ADD COLUMN preset_version INTEGER NOT NULL DEFAULT 1;
+  UPDATE items SET fields = json_object('description', body) WHERE body <> '';
+  ALTER TABLE items DROP COLUMN body;
+  `,
 ];
 
 function userVersion(db: DatabaseSync): number {
   return Number(db.prepare('PRAGMA user_version').get()?.user_version ?? 0);
 }
 
-export function migrate(db: DatabaseSync): void {
+export function migrate(db: DatabaseSync, target = MIGRATIONS.length): void {
   const current = userVersion(db);
-  for (const [offset, sql] of MIGRATIONS.slice(current).entries()) {
+  for (const [offset, sql] of MIGRATIONS.slice(current, target).entries()) {
     transaction(db, () => {
       db.exec(sql);
       db.exec(`PRAGMA user_version = ${current + offset + 1}`);

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { intake } from './fields.ts';
 import type { Preset } from './preset.ts';
-import { tasks } from './workflow.ts';
+import { tasks } from './testing.ts';
 
 const preset: Preset = {
   name: 'tasks',

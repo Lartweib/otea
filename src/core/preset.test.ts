@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { stringify } from 'yaml';
 import { parsePreset, readPreset } from './preset.ts';
-import { tasks } from './workflow.ts';
+import { tasks } from './testing.ts';
 
 const TASKS_YAML = `
 preset: tasks

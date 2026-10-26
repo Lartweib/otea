@@ -19,17 +19,22 @@ describe('api', () => {
 
   beforeEach(() => {
     project = memoryProject();
-    addCollection(project.db, { name: 'tasks' });
-    addCollection(project.db, { name: 'bugs' });
-    createItem(project.db, {
+    addCollection(project, { name: 'tasks' });
+    addCollection(project, { name: 'bugs' });
+    createItem(project, {
       collection: 'tasks',
       title: 'Write docs',
-      body: 'For v1',
+      fields: { description: 'For v1' },
       actor: ana,
     });
-    createItem(project.db, { collection: 'bugs', title: 'Fix login', actor: bot });
-    moveItem(project.db, { id: 'BUGS-1', to: 'in_progress', actor: bot, channel: 'cli' });
-    moveItem(project.db, { id: 'BUGS-1', to: 'review', actor: bot, channel: 'cli' });
+    createItem(project, {
+      collection: 'bugs',
+      title: 'Fix login',
+      fields: { description: 'Steps' },
+      actor: bot,
+    });
+    moveItem(project, { id: 'BUGS-1', to: 'in_progress', actor: bot, channel: 'cli' });
+    moveItem(project, { id: 'BUGS-1', to: 'review', actor: bot, channel: 'cli' });
     server = createServer(project);
   });
 
@@ -80,6 +85,15 @@ describe('api', () => {
         'transitioned',
         'transitioned',
       ]);
+    });
+
+    it('returns the preset fields of the item', async () => {
+      const item = await (await get('/api/items/TASKS-1')).json();
+
+      expect(item).toMatchObject({
+        fields: { description: 'For v1', priority: 'medium' },
+        presetVersion: 1,
+      });
     });
 
     it('returns 404 with the error code for an unknown id', async () => {
