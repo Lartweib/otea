@@ -184,7 +184,7 @@ export function moveItem(ctx: Context, input: MoveItemInput, now = systemClock):
       type: 'transitioned',
       actor: input.actor,
       at,
-      data: { from: item.state, to: input.to, ...(reason ? { reason } : {}) },
+      data: { from: item.state, to: input.to, ...(reason ? { reason } : {}), channel },
     });
     return withTurn({ ...item, state: input.to, updatedAt: at }, workflow);
   });

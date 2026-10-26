@@ -118,7 +118,12 @@ describe('items', () => {
         })),
       ).toEqual([
         { type: 'created', actor: ana, at: 't0', data: { state: 'todo' } },
-        { type: 'transitioned', actor: bot, at: 't1', data: { from: 'todo', to: 'in_progress' } },
+        {
+          type: 'transitioned',
+          actor: bot,
+          at: 't1',
+          data: { from: 'todo', to: 'in_progress', channel: 'cli' },
+        },
       ]);
     });
 
@@ -143,7 +148,7 @@ describe('items', () => {
       expect(getItem(ctx, 'TASKS-1').events).toHaveLength(3);
     });
 
-    it('records the reason in the transitioned event', () => {
+    it('records the reason and the channel in the transitioned event', () => {
       moveItem(ctx, { id: 'TASKS-1', to: 'in_progress', actor: bot, channel: 'cli' });
       moveItem(ctx, { id: 'TASKS-1', to: 'review', actor: bot, channel: 'cli' });
 
@@ -153,6 +158,7 @@ describe('items', () => {
         from: 'review',
         to: 'todo',
         reason: 'Add tests',
+        channel: 'ui',
       });
     });
 
