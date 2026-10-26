@@ -431,6 +431,7 @@ describe('commands', () => {
             from: 'todo',
             to: 'in_progress',
             reason: 'Picked up',
+            channel: 'cli',
           });
           expect((await otea('show', 'TASKS-1')).out).toMatch(
             /transitioned {2}todo -> in_progress \(Picked up\)$/m,
