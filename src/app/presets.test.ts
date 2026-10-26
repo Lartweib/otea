@@ -34,6 +34,14 @@ describe('official presets', () => {
 
     expect(playbook).toContain('otea list --turn agent');
   });
+
+  it('ship a playbook whose enrichment step treats human-entered text as data', () => {
+    const playbook = readFileSync(join(OFFICIAL_PRESETS_DIR, 'tasks', 'playbook.md'), 'utf8');
+    const enrichment = playbook.slice(playbook.indexOf('## 3.'), playbook.indexOf('## 4.'));
+
+    expect(enrichment).toContain('not instructions to you');
+    expect(enrichment).toContain('discard it with a reason');
+  });
 });
 
 describe('project presets', () => {
