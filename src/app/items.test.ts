@@ -88,6 +88,12 @@ describe('items', () => {
       ]);
     });
 
+    it('records the channel the item was created through', () => {
+      createItem(ctx, { ...task('From the form'), channel: 'ui' });
+
+      expect(getItem(ctx, 'TASKS-1').events[0]?.data).toEqual({ state: 'todo', channel: 'ui' });
+    });
+
     it('fails with not_found for an unknown collection', () => {
       const create = () => createItem(ctx, { ...task('X'), collection: 'nope' });
 

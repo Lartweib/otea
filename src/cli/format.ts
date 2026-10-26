@@ -85,11 +85,17 @@ function movesLine({ transitions }: ItemView): string {
   return `Agent can move to: ${moves.length > 0 ? moves.join(', ') : 'nothing'}`;
 }
 
+function createdLine({ createdBy, createdAt, events }: ItemView): string {
+  const channel = events.find(({ type }) => type === 'created')?.data.channel;
+  const via = typeof channel === 'string' ? ` via ${channel}` : '';
+  return `created by ${actorLabel(createdBy)}${via} at ${createdAt}`;
+}
+
 export function formatItemWithEvents(item: ItemView): string {
   return [
     `${item.id}  ${item.title}`,
     `state: ${item.state}  turn: ${item.turn}  collection: ${item.collection}`,
-    `created by ${actorLabel(item.createdBy)} at ${item.createdAt}`,
+    createdLine(item),
     ...fieldLines(item.fields),
     '',
     ...(item.missing.length > 0 && item.turn !== 'none'

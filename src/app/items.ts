@@ -60,6 +60,7 @@ export type CreateItemInput = {
   title: string;
   fields?: FieldValues;
   actor: Actor;
+  channel?: Channel;
 };
 
 export function createItem(ctx: Context, input: CreateItemInput, now = systemClock): Item {
@@ -83,7 +84,9 @@ export function createItem(ctx: Context, input: CreateItemInput, now = systemClo
       createdBy: input.actor,
     };
     insertItem(db, item);
-    appendEvent(db, { itemId: item.id, type: 'created', actor: input.actor, at, data: { state } });
+    const { channel } = input;
+    const data = channel === undefined ? { state } : { state, channel };
+    appendEvent(db, { itemId: item.id, type: 'created', actor: input.actor, at, data });
     return withTurn(item, preset.workflow);
   });
 }

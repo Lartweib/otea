@@ -115,6 +115,16 @@ describe('commands', () => {
         });
       });
 
+      it('records that the item was created through the cli', async () => {
+        await otea('create', '--collection', 'tasks', '--title', 'X');
+
+        expect((await json('show', 'TASKS-1')).events[0].data).toEqual({
+          state: 'incomplete',
+          channel: 'cli',
+        });
+        expect((await otea('show', 'TASKS-1')).out).toContain('created by agent:agent via cli at ');
+      });
+
       it('creates an item without its description as incomplete', async () => {
         const item = await json('create', '--collection', 'tasks', '--title', 'Vague');
 
