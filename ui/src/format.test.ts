@@ -18,6 +18,10 @@ describe('format', () => {
   it.each([
     [event('created', { state: 'todo' }), 'Created in todo'],
     [event('transitioned', { from: 'todo', to: 'in_progress' }), 'Moved from todo to in_progress'],
+    [
+      event('transitioned', { from: 'review', to: 'todo', reason: 'Add tests' }),
+      'Moved from review to todo: Add tests',
+    ],
     [event('commented', { text: 'hi' }), 'commented'],
   ])('describes %j', (input, expected) => {
     expect(describeEvent(input)).toBe(expected);

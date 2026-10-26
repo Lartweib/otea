@@ -118,7 +118,7 @@ function report(error: unknown, argv: string[], io: Io, json: boolean): number {
   if (json) {
     io.stderr.write(`${JSON.stringify({ error: { code, message } })}\n`);
   } else {
-    const hint = code === 'usage' ? `\n${usageHint(argv)}` : '';
+    const hint = EXIT_CODES[code] === EXIT_CODES.usage ? `\n${usageHint(argv)}` : '';
     io.stderr.write(`otea: ${message}${hint}\n`);
   }
   return EXIT_CODES[code];

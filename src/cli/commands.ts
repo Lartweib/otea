@@ -94,11 +94,13 @@ const show: Command = {
 
 const move: Command = {
   name: 'move',
-  summary: 'Move an item to another state of its workflow',
+  summary: 'Move an item to another state its workflow allows the agent to reach',
   args: ['id', 'state'],
-  options: {},
-  execute: ({ cwd, actor, args: [id = '', to = ''] }) => {
-    const item = withProject(cwd, (db) => moveItem(db, { id, to, actor }));
+  options: { reason: {} },
+  execute: ({ cwd, actor, option, args: [id = '', to = ''] }) => {
+    const reason = option('reason');
+    const input = { id, to, actor, channel: 'cli' as const, ...(reason ? { reason } : {}) };
+    const item = withProject(cwd, (db) => moveItem(db, input));
     return { data: item, text: formatItem(item) };
   },
 };

@@ -6,7 +6,10 @@ export function actorLabel(actor: Actor): string {
 
 export function describeEvent({ type, data }: ItemEvent): string {
   if (type === 'created') return `Created in ${String(data.state)}`;
-  if (type === 'transitioned') return `Moved from ${String(data.from)} to ${String(data.to)}`;
+  if (type === 'transitioned') {
+    const reason = data.reason === undefined ? '' : `: ${String(data.reason)}`;
+    return `Moved from ${String(data.from)} to ${String(data.to)}${reason}`;
+  }
   return type;
 }
 
