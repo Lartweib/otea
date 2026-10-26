@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { getItem, type ListItemsFilter, listItems } from '../app/items.ts';
+import { type ListItemsFilter, listItems, moveItem, showItem } from '../app/items.ts';
 import type { Project } from '../app/project.ts';
 import { TURNS, type Turn } from '../core/workflow.ts';
 import { createChangeFeed } from './changes.ts';
@@ -8,6 +8,7 @@ import { DEFAULT_PORT, isAllowedHost } from './hosts.ts';
 import { mountAuth, type Session, session } from './session.ts';
 import { type LiveStreams, liveStreams } from './stream.ts';
 import { BUILT_UI_DIR, mountUi } from './ui.ts';
+import { assertWritable, HUMAN_IN_UI, moveRequest } from './writes.ts';
 
 export type OteaServer = { app: Hono; listeningOn(port: number): void; close(): void };
 
@@ -33,7 +34,12 @@ function api(project: Project, streams: LiveStreams, auth: Session): Hono {
   return new Hono()
     .get('/session', (c) => c.json({ canWrite: auth.canWrite(c) }))
     .get('/items', (c) => c.json(listItems(project, itemsFilter(c.req.query()))))
-    .get('/items/:id', (c) => c.json(getItem(project, c.req.param('id'))))
+    .get('/items/:id', (c) => c.json(showItem(project, c.req.param('id'), HUMAN_IN_UI)))
+    .post('/items/:id/move', async (c) => {
+      assertWritable(c, auth);
+      const request = await moveRequest(c);
+      return c.json(moveItem(project, { id: c.req.param('id'), ...request, ...HUMAN_IN_UI }));
+    })
     .get('/stream', (c) => streams.handle(c))
     .all('*', (c) => c.json(errorBody('not_found', `No route ${c.req.path}`), 404));
 }

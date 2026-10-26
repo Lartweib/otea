@@ -87,6 +87,27 @@ describe('api', () => {
       ]);
     });
 
+    it('returns the moves available to the human in the ui', async () => {
+      const item = await (await get('/api/items/BUGS-1')).json();
+
+      expect(item).toMatchObject({
+        transitions: [
+          { to: 'done', by: 'human-ui', reasonRequired: false },
+          { to: 'todo', by: 'human-ui', reasonRequired: true },
+          { to: 'discarded', by: 'human', reasonRequired: true },
+        ],
+        missing: [],
+      });
+    });
+
+    it('returns the fields still missing to complete the item', async () => {
+      createItem(project, { collection: 'tasks', title: 'Vague', actor: bot });
+
+      const item = await (await get('/api/items/TASKS-2')).json();
+
+      expect(item).toMatchObject({ state: 'incomplete', missing: ['description'] });
+    });
+
     it('returns the preset fields of the item', async () => {
       const item = await (await get('/api/items/TASKS-1')).json();
 
