@@ -2,7 +2,9 @@ import type { Context, Hono } from 'hono';
 import { getCookie, setCookie } from 'hono/cookie';
 import { sameToken } from './token.ts';
 
-export const SESSION_COOKIE = 'otea_session';
+export type Port = () => number;
+
+export const sessionCookie = (port: number) => `otea_session_${port}`;
 
 const BAD_LINK = `<!doctype html>
 <meta charset="utf-8">
@@ -12,19 +14,20 @@ const BAD_LINK = `<!doctype html>
 
 export type Session = { canWrite(c: Context): boolean };
 
-export function session(token: string | undefined): Session {
+export function session(token: string | undefined, port: Port): Session {
   return {
-    canWrite: (c) => token !== undefined && sameToken(getCookie(c, SESSION_COOKIE) ?? '', token),
+    canWrite: (c) =>
+      token !== undefined && sameToken(getCookie(c, sessionCookie(port())) ?? '', token),
   };
 }
 
-export function mountAuth(app: Hono, token: string | undefined): void {
+export function mountAuth(app: Hono, token: string | undefined, port: Port): void {
   app.get('/auth', (c) => {
     c.header('referrer-policy', 'no-referrer');
     c.header('cache-control', 'no-store');
     const given = c.req.query('token') ?? '';
     if (token === undefined || !sameToken(given, token)) return c.html(BAD_LINK, 401);
-    setCookie(c, SESSION_COOKIE, token, { path: '/', httpOnly: true, sameSite: 'Strict' });
+    setCookie(c, sessionCookie(port()), token, { path: '/', httpOnly: true, sameSite: 'Strict' });
     return c.redirect('/', 302);
   });
 }

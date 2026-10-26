@@ -30,4 +30,4 @@ export function request(server: OteaServer, path: string, host = LOCAL_HOST): Pr
 
 export const TOKEN = 'test-token-0123456789abcdefghijklmnopqrstuv';
 
-export const SESSION_COOKIE = `otea_session=${TOKEN}`;
+export const SESSION_COOKIE = `otea_session_4400=${TOKEN}`;

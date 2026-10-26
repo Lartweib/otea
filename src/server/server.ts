@@ -54,8 +54,9 @@ export function createServer(project: Project, options: ServerOptions = {}): Ote
     if (!isAllowedHost(host, port)) throw new ForbiddenHost(`Host "${host ?? ''}" is not allowed`);
     await next();
   });
-  mountAuth(app, options.token);
-  app.route('/api', api(project, streams, session(options.token)));
+  const boundPort = () => port;
+  mountAuth(app, options.token, boundPort);
+  app.route('/api', api(project, streams, session(options.token, boundPort)));
   mountUi(app, options.uiDir ?? BUILT_UI_DIR);
   app.onError((error, c) => {
     const { status, body } = toErrorResponse(error);
