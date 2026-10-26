@@ -3,7 +3,8 @@ import { fetchItem, fetchItems } from './api.ts';
 import { ConnectionBadge } from './components/ConnectionBadge.tsx';
 import { ItemDetail } from './components/ItemDetail.tsx';
 import { ItemList } from './components/ItemList.tsx';
-import { type Remote, useLive, useRemote, useSelectedId } from './hooks.ts';
+import { type Connection, useLive, useRemote, useSelectedId } from './hooks.ts';
+import type { Remote } from './remote.ts';
 import { groupByTurn } from './sections.ts';
 import type { Item, ItemWithEvents } from './types.ts';
 
@@ -32,22 +33,22 @@ function ListPane({
 
 function DetailPane({ id, item }: { id: string; item: Remote<ItemWithEvents | null> }) {
   if (item.status === 'failed') return <Message muted={false}>{item.message}</Message>;
-  if (item.status === 'loading' || (item.value && item.value.id !== id)) {
-    return <Message>Loading…</Message>;
-  }
+  if (item.status === 'loading') return <Message>Loading…</Message>;
   if (!item.value) return <Message>Item {id} not found.</Message>;
   return <ItemDetail item={item.value} />;
 }
 
-function SelectedItem({ id, version }: { id: string; version: number }) {
+type SelectedItemProps = { id: string; version: number; connection: Connection };
+
+function SelectedItem({ id, version, connection }: SelectedItemProps) {
   const load = useCallback((signal: AbortSignal) => fetchItem(id, signal), [id]);
-  return <DetailPane id={id} item={useRemote(load, version)} />;
+  return <DetailPane id={id} item={useRemote(load, version, connection)} />;
 }
 
 export function App() {
   const { connection, version } = useLive();
   const selectedId = useSelectedId();
-  const items = useRemote(fetchItems, version);
+  const items = useRemote(fetchItems, version, connection);
   return (
     <div className="app">
       <header className="topbar">
@@ -60,7 +61,12 @@ export function App() {
         </div>
         <div className="detail-pane">
           {selectedId ? (
-            <SelectedItem id={selectedId} version={version} />
+            <SelectedItem
+              key={selectedId}
+              id={selectedId}
+              version={version}
+              connection={connection}
+            />
           ) : (
             <Message>Select an item to see its details.</Message>
           )}
