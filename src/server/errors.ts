@@ -12,6 +12,7 @@ export const HTTP_STATUS: Readonly<Record<ErrorCode, ContentfulStatusCode>> = {
   invalid_preset: 500,
   invalid_fields: 422,
   item_closed: 409,
+  missing_fields: 422,
 };
 
 export class InvalidQuery extends Error {}
