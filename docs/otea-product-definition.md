@@ -231,46 +231,60 @@ One write path: the CLI and the app use the same core and write to the same data
 
 Declarative YAML. **No expression language.** Complexity comes from composing more modules, not from more syntax. Derived scores are limited to product or weighted sum of enum weights.
 
-Sketch (illustrative, not final syntax):
+A preset is a folder: `preset.yaml` plus the playbook it points to. Official presets live in `presets/<name>/`; project presets in `.otea/presets/<name>/`, with the same structure. A project preset cannot reuse an official name.
+
+The official `tasks` preset:
 
 ```yaml
-preset: review-rounds
+preset: tasks
 preset_version: 1
 playbook: ./playbook.md
-
 fields:
-  deliverable: { module: text, required: complete }
-  criterion:   { module: enum, values: [taste, correctness], required: complete }
-  media:       { module: media, roles: [before, after, single] }
-  checks:      { module: checks, verdict: { authority: human-ui } }
-
+  title:       { module: text, required: create }
+  description: { module: markdown, required: complete }
+  priority:    { module: enum, values: [low, medium, high], default: medium }
 workflow:
-  module: workflow
+  initial: todo
+  incomplete: incomplete
   states:
-    incomplete: { turn: agent }
-    draft:      { turn: agent }
-    submitted:  { turn: human }
-    reopened:   { turn: agent }
-  derived:
-    answered: all(checks.verdict != null)
-    done:     answered and none(checks.verdict == ko)
-
-behaviors:
-  - { module: gate, when: { criterion: taste }, effect: block }
-  - { module: gate, when: { criterion: correctness }, effect: warn }
-
-views:
-  - { module: review, field: media, questions: checks }
-  - { module: grouped-grid, by: round, counters: [pending, ok, ko] }
+    incomplete:  { turn: agent }
+    todo:        { turn: agent }
+    in_progress: { turn: agent }
+    review:      { turn: human }
+    done:        { turn: none }
+    discarded:   { turn: none }
+  transitions:
+    - { from: incomplete,  to: todo,        by: agent }
+    - { from: todo,        to: in_progress, by: agent }
+    - { from: in_progress, to: review,      by: agent }
+    - { from: review,      to: done,        by: human-ui }
+    - { from: review,      to: todo,        by: human-ui, reason: required }
+    - { from: [incomplete, todo, in_progress, review], to: discarded, by: human, reason: required }
+    - { from: incomplete,  to: discarded,   by: agent, reason: required }
 ```
 
+**Fields**
+- `module`: the field module. Official field modules today: `text`, `markdown`, `enum` (`enum` takes `values` and an optional `default` from them).
+- `required: create`: the item cannot be created without it. Every preset has a `title` field (`text`, `required: create`).
+- `required: complete`: the item can be created without it, but then it starts in the workflow's `incomplete` state instead of `initial`, so an agent enriches it (§5).
+- `default`: applied at creation when the value is missing.
+
+**Workflow**
+- `initial`: where complete items start. `incomplete`: where items missing a `required: complete` field start; mandatory when any field uses it.
+- Every state declares its `turn` (`agent`, `human` or `none`).
+- Each transition declares `by`, the authority needed to take it (§6): `agent`, `human` or `human-ui`. `from` may list several states.
+- `reason: required` makes the actor give a reason; it is recorded in the event and shown in the timeline.
+- The same `from`/`to` pair may appear with different `by` (e.g. both humans and agents may discard an incomplete item); identical transitions are rejected.
+
 Rules:
-- **Store only what cannot be derived.** Computable states (`answered`, `done`) are derived, never stored.
-- Every state declares its `turn`.
-- Fields declare when they are required (`required: complete` drives the intake form and the incomplete state).
-- Every item records the `preset_version` it was written under. `otea validate` checks the whole project non-interactively.
+- **Store only what cannot be derived.** Computable states are derived, never stored. Turn is derived from the item's state and its collection's preset.
+- Loading checks the schema and its meaning: `initial`, `incomplete`, `from` and `to` name declared states; every state is reachable from `initial` or `incomplete`; states with turn `none` have no outgoing transitions and every other state has at least one; enum defaults are among their values; module names are known.
+- Collections record the preset name and `preset_version` they were created with; every item records the `preset_version` it was written under.
+- `otea validate` checks the whole project non-interactively: every preset (official and project), every collection's preset, and every item against its collection's preset (unknown state, wrong field type or enum value, missing `required: create` field; an older `preset_version` is a warning). It reports and never fixes; it exits non-zero only on errors.
 - Items survive preset edits; incompatibilities are reported, not silently fixed.
 - **Portability:** a preset that uses only official modules is shareable as-is. A preset that depends on local modules declares them; loading it elsewhere reports what is missing.
+
+Planned, not yet supported: more field modules (`media`, `checks`, relations), `behaviors` (gates) and `views`.
 
 ## 10. Modules
 
@@ -391,7 +405,7 @@ Fix:
 
 ## 16. Open decisions
 
-1. **Database schema**: which preset fields become columns vs a JSON column; how preset changes affect stored items.
+1. ~~**Database schema**~~ **Resolved:** core columns (id, collection, state, title, timestamps, creator) plus one JSON `fields` column for every other preset field, validated by the core against the preset. Collections store the preset name and version; items store the `preset_version` they were written under. Preset changes never rewrite items; `otea validate` reports incompatibilities.
 2. **Evidence in exports**: whether `otea export` copies media, references it, or leaves it out.
 3. **i18n**: shell UI in English first, preset-provided labels in any language.
 4. **Importers for the prototypes' formats**: whether they live in the public repo (as examples / fixtures) or stay private.
