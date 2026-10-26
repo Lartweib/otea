@@ -36,3 +36,25 @@ export async function moveRequest(c: Context): Promise<MoveRequest> {
   const { to, reason } = parsed.data;
   return reason === undefined ? { to } : { to, reason };
 }
+
+const CreateBody = z.object({
+  collection: z.string().min(1),
+  fields: z.record(z.string(), z.string()),
+});
+
+export type CreateRequest = { collection: string; title: string; fields: Record<string, string> };
+
+export async function createRequest(c: Context): Promise<CreateRequest> {
+  const raw: unknown = await c.req.json().catch(() => undefined);
+  const parsed = CreateBody.safeParse(raw);
+  if (!parsed.success) {
+    throw new RejectedRequest(
+      400,
+      'invalid_body',
+      'Expected {"collection": string, "fields": {[key]: string}}',
+    );
+  }
+  const { collection, fields } = parsed.data;
+  const { title = '', ...rest } = fields;
+  return { collection, title, fields: rest };
+}
