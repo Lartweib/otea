@@ -149,11 +149,12 @@ function stateProblems(raw: RawPreset, transitions: Transition[]): string[] {
       problems.push(`workflow.incomplete: missing, but field "${name}" is required: complete`);
     }
   }
-  const reached = reachable([initial, incomplete ?? initial], transitions);
+  const entries = [initial, incomplete ?? initial].filter((entry) => entry in states);
+  const reached = reachable(entries, transitions);
   for (const [name, { turn }] of Object.entries(states)) {
     const at = `workflow.states.${name}`;
     const leaves = transitions.some(({ from }) => from === name);
-    if (!reached.has(name)) {
+    if (entries.length > 0 && !reached.has(name)) {
       problems.push(`${at}: not reachable from the initial or incomplete state`);
     }
     if (turn === 'none' && leaves) problems.push(`${at}: has turn none but outgoing transitions`);
