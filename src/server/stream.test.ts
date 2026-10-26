@@ -103,6 +103,25 @@ describe('GET /api/stream', () => {
     await second.reader.cancel();
   });
 
+  it('emits change after an item is created from the ui', async () => {
+    const { reader } = await connect();
+
+    const response = await server.app.request('/api/items', {
+      method: 'POST',
+      body: JSON.stringify({ collection: 'tasks', fields: { title: 'From the form' } }),
+      headers: {
+        host: LOCAL_HOST,
+        origin: `http://${LOCAL_HOST}`,
+        cookie: SESSION_COOKIE,
+        'content-type': 'application/json',
+      },
+    });
+
+    expect(response.status).toBe(201);
+    expect(await readUntil(reader, 'event: change')).toContain('event: change');
+    await reader.cancel();
+  });
+
   it('stops polling when the client disconnects', async () => {
     vi.useFakeTimers();
     const { reader } = await connect();

@@ -1,12 +1,14 @@
 import type { DatabaseSync } from 'node:sqlite';
 import { OteaError } from '../core/errors.ts';
 import { prefixFor } from '../core/item.ts';
+import type { FieldSpec } from '../core/preset.ts';
 import { transaction } from '../store/database.ts';
 import {
   type CollectionRecord,
   collectionTaken,
   findCollection,
   insertCollection,
+  listCollections,
 } from '../store/queries.ts';
 import type { Context } from './context.ts';
 import { type LoadedPreset, requirePreset } from './presets.ts';
@@ -46,4 +48,30 @@ export function getCollection(db: DatabaseSync, name: string): Collection {
 
 export function presetOf(ctx: Context, collection: Collection): LoadedPreset {
   return requirePreset(ctx.presets, collection.preset);
+}
+
+export type FieldView = FieldSpec & { name: string };
+
+export type CollectionView = {
+  name: string;
+  prefix: string;
+  preset: string;
+  initial: string;
+  incomplete?: string;
+  fields: FieldView[];
+};
+
+export function listCollectionViews(ctx: Context): CollectionView[] {
+  return listCollections(ctx.db).map((collection) => {
+    const { fields, workflow } = presetOf(ctx, collection);
+    const view: CollectionView = {
+      name: collection.name,
+      prefix: collection.prefix,
+      preset: collection.preset,
+      initial: workflow.initial,
+      fields: Object.entries(fields).map(([name, spec]) => ({ name, ...spec })),
+    };
+    if (workflow.incomplete !== undefined) view.incomplete = workflow.incomplete;
+    return view;
+  });
 }

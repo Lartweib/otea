@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { addCollection, getCollection } from './collections.ts';
+import { addCollection, getCollection, listCollectionViews } from './collections.ts';
 import type { Context } from './context.ts';
 import { memoryContext, REVIEWS } from './testing.ts';
 
@@ -63,5 +63,37 @@ describe('collections', () => {
     expect(() => getCollection(ctx.db, 'missing')).toThrow(
       expect.objectContaining({ code: 'not_found' }),
     );
+  });
+
+  it('lists each collection with the fields and entry states of its preset', () => {
+    addCollection(ctx, { name: 'tasks' });
+    addCollection(ctx, { name: 'design', preset: 'reviews' });
+
+    expect(listCollectionViews(ctx)).toEqual([
+      {
+        name: 'tasks',
+        prefix: 'TASKS',
+        preset: 'tasks',
+        initial: 'todo',
+        incomplete: 'incomplete',
+        fields: [
+          { name: 'title', module: 'text', required: 'create' },
+          { name: 'description', module: 'markdown', required: 'complete' },
+          {
+            name: 'priority',
+            module: 'enum',
+            values: ['low', 'medium', 'high'],
+            default: 'medium',
+          },
+        ],
+      },
+      {
+        name: 'design',
+        prefix: 'DESIGN',
+        preset: 'reviews',
+        initial: 'open',
+        fields: [{ name: 'title', module: 'text', required: 'create' }],
+      },
+    ]);
   });
 });

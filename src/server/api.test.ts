@@ -43,6 +43,33 @@ describe('api', () => {
     project.db.close();
   });
 
+  describe('GET /api/collections', () => {
+    it('lists every collection with the preset fields a form needs, without a session', async () => {
+      const response = await get('/api/collections');
+
+      expect(response.status).toBe(200);
+      const collections = (await response.json()) as Array<{ name: string; fields: unknown[] }>;
+      expect(collections.map(({ name }) => name)).toEqual(['tasks', 'bugs']);
+      expect(collections[0]).toEqual({
+        name: 'tasks',
+        prefix: 'TASKS',
+        preset: 'tasks',
+        initial: 'todo',
+        incomplete: 'incomplete',
+        fields: [
+          { name: 'title', module: 'text', required: 'create' },
+          { name: 'description', module: 'markdown', required: 'complete' },
+          {
+            name: 'priority',
+            module: 'enum',
+            values: ['low', 'medium', 'high'],
+            default: 'medium',
+          },
+        ],
+      });
+    });
+  });
+
   describe('GET /api/items', () => {
     it('lists every item with its turn', async () => {
       const response = await get('/api/items');

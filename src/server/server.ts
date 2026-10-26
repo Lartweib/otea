@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
-import { type ListItemsFilter, listItems, moveItem, showItem } from '../app/items.ts';
+import { listCollectionViews } from '../app/collections.ts';
+import { createItem, type ListItemsFilter, listItems, moveItem, showItem } from '../app/items.ts';
 import type { Project } from '../app/project.ts';
 import { TURNS, type Turn } from '../core/workflow.ts';
 import { type ChangeFeed, createChangeFeed } from './changes.ts';
@@ -8,7 +9,7 @@ import { DEFAULT_PORT, isAllowedHost } from './hosts.ts';
 import { mountAuth, type Session, session } from './session.ts';
 import { type LiveStreams, liveStreams } from './stream.ts';
 import { BUILT_UI_DIR, mountUi } from './ui.ts';
-import { assertWritable, HUMAN_IN_UI, moveRequest } from './writes.ts';
+import { assertWritable, createRequest, HUMAN_IN_UI, moveRequest } from './writes.ts';
 
 export type OteaServer = { app: Hono; listeningOn(port: number): void; close(): void };
 
@@ -33,7 +34,15 @@ function itemsFilter(query: Record<string, string>): ListItemsFilter {
 function api(project: Project, feed: ChangeFeed, streams: LiveStreams, auth: Session): Hono {
   return new Hono()
     .get('/session', (c) => c.json({ canWrite: auth.canWrite(c) }))
+    .get('/collections', (c) => c.json(listCollectionViews(project)))
     .get('/items', (c) => c.json(listItems(project, itemsFilter(c.req.query()))))
+    .post('/items', async (c) => {
+      assertWritable(c, auth);
+      const request = await createRequest(c);
+      const item = createItem(project, { ...request, ...HUMAN_IN_UI });
+      feed.notify();
+      return c.json(item, 201);
+    })
     .get('/items/:id', (c) => c.json(showItem(project, c.req.param('id'), HUMAN_IN_UI)))
     .post('/items/:id/move', async (c) => {
       assertWritable(c, auth);
