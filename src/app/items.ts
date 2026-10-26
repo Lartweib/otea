@@ -7,7 +7,7 @@ import {
   type Performer,
 } from '../core/authority.ts';
 import { OteaError } from '../core/errors.ts';
-import { type FieldValues, intake } from '../core/fields.ts';
+import { type FieldValues, intake, revise } from '../core/fields.ts';
 import { type Actor, formatItemId } from '../core/item.ts';
 import { type Turn, turnOf, type Workflow } from '../core/workflow.ts';
 import { transaction } from '../store/database.ts';
@@ -21,6 +21,7 @@ import {
   listCollections,
   selectEvents,
   selectItems,
+  updateItemContent,
   updateItemState,
 } from '../store/queries.ts';
 import { type Collection, getCollection, presetOf } from './collections.ts';
@@ -109,6 +110,44 @@ export function showItem(ctx: Context, id: string, performer: Performer): ItemVi
   const item = getItem(ctx, id);
   const { workflow } = presetOf(ctx, getCollection(ctx.db, item.collection));
   return { ...item, transitions: availableMoves(workflow, item.state, performer) };
+}
+
+export type UpdateItemInput = { id: string; title?: string; fields?: FieldValues; actor: Actor };
+
+export function updateItem(ctx: Context, input: UpdateItemInput, now = systemClock): Item {
+  const { db } = ctx;
+  return transaction(db, () => {
+    const item = requireItem(db, input.id);
+    const preset = presetOf(ctx, getCollection(db, item.collection));
+    if (turnOf(preset.workflow, item.state) === 'none') {
+      throw new OteaError(
+        'item_closed',
+        `${item.id} is ${item.state} (turn none) and can no longer be updated`,
+      );
+    }
+    const changes = {
+      ...input.fields,
+      ...(input.title === undefined ? {} : { title: input.title }),
+    };
+    const revision = revise(preset, item, changes);
+    if (Object.keys(revision.changes).length === 0) return withTurn(item, preset.workflow);
+    const at = now();
+    const content = {
+      title: revision.title,
+      fields: revision.fields,
+      presetVersion: preset.version,
+      updatedAt: at,
+    };
+    updateItemContent(db, item.id, content);
+    appendEvent(db, {
+      itemId: item.id,
+      type: 'updated',
+      actor: input.actor,
+      at,
+      data: { changes: revision.changes },
+    });
+    return withTurn({ ...item, ...content }, preset.workflow);
+  });
 }
 
 export type MoveItemInput = {

@@ -8,6 +8,7 @@ export const EXIT_CODES: Readonly<Record<'ok' | FailureCode, number>> = {
   usage: 2,
   not_found: 3,
   invalid_transition: 4,
+  item_closed: 4,
   already_exists: 5,
   invalid_name: 6,
   invalid_id: 6,

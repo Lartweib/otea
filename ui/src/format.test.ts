@@ -22,6 +22,19 @@ describe('format', () => {
       event('transitioned', { from: 'review', to: 'todo', reason: 'Add tests' }),
       'Moved from review to todo: Add tests',
     ],
+    [
+      event('updated', {
+        changes: {
+          description: { from: null, to: 'Steps' },
+          priority: { from: 'low', to: 'high' },
+        },
+      }),
+      'Updated description (was empty), priority (was low)',
+    ],
+    [
+      event('updated', { changes: { description: { from: 'x'.repeat(50), to: 'y' } } }),
+      `Updated description (was ${'x'.repeat(40)}…)`,
+    ],
     [event('commented', { text: 'hi' }), 'commented'],
   ])('describes %j', (input, expected) => {
     expect(describeEvent(input)).toBe(expected);

@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { Actor } from '../core/item.ts';
 import { addCollection } from './collections.ts';
 import type { Context } from './context.ts';
-import { createItem, getItem, listItems, moveItem, showItem } from './items.ts';
+import { createItem, getItem, listItems, moveItem, showItem, updateItem } from './items.ts';
 import { memoryContext, REVIEWS } from './testing.ts';
 
 const ana: Actor = { kind: 'human', name: 'ana' };
@@ -170,6 +170,63 @@ describe('items', () => {
         moveItem(ctx, { id: 'TASKS-9', to: 'in_progress', actor: bot, channel: 'cli' });
 
       expect(move).toThrow(expect.objectContaining({ code: 'not_found' }));
+    });
+  });
+
+  describe('updateItem', () => {
+    beforeEach(() => {
+      createItem(ctx, { collection: 'tasks', title: 'Vague', actor: ana }, clock('t0'));
+    });
+
+    it('updates fields and title and appends an updated event with the changes', () => {
+      const updated = updateItem(
+        ctx,
+        { id: 'TASKS-1', title: 'Clear', fields: { description: 'Steps' }, actor: bot },
+        clock('t1'),
+      );
+
+      expect(updated).toMatchObject({
+        title: 'Clear',
+        fields: { priority: 'medium', description: 'Steps' },
+        state: 'incomplete',
+        updatedAt: 't1',
+      });
+      expect(getItem(ctx, 'TASKS-1').events.at(-1)).toMatchObject({
+        type: 'updated',
+        actor: bot,
+        at: 't1',
+        data: {
+          changes: {
+            title: { from: 'Vague', to: 'Clear' },
+            description: { from: null, to: 'Steps' },
+          },
+        },
+      });
+    });
+
+    it('writes nothing when no value changes', () => {
+      updateItem(ctx, { id: 'TASKS-1', fields: { priority: 'medium' }, actor: bot }, clock('t1'));
+
+      expect(getItem(ctx, 'TASKS-1')).toMatchObject({ updatedAt: 't0' });
+      expect(getItem(ctx, 'TASKS-1').events).toHaveLength(1);
+    });
+
+    it('rejects invalid values without writing anything', () => {
+      const update = () =>
+        updateItem(ctx, { id: 'TASKS-1', fields: { priority: 'urgent' }, actor: bot });
+
+      expect(update).toThrow(expect.objectContaining({ code: 'invalid_fields' }));
+      expect(getItem(ctx, 'TASKS-1').events).toHaveLength(1);
+    });
+
+    it('rejects updating an item in a terminal state with item_closed', () => {
+      moveItem(ctx, { id: 'TASKS-1', to: 'discarded', actor: bot, channel: 'cli', reason: 'Dup' });
+
+      const update = () =>
+        updateItem(ctx, { id: 'TASKS-1', fields: { description: 'Late' }, actor: bot });
+
+      expect(update).toThrow(expect.objectContaining({ code: 'item_closed' }));
+      expect(update).toThrow('TASKS-1 is discarded (turn none) and can no longer be updated');
     });
   });
 

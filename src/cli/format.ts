@@ -49,12 +49,28 @@ function fieldLines(fields: Record<string, unknown>): string[] {
   return lines.length > 0 ? ['', ...lines] : [];
 }
 
+function quote(value: unknown): string {
+  if (typeof value !== 'string') return '(none)';
+  const text = JSON.stringify(value);
+  return text.length > 42 ? `${text.slice(0, 40)}…"` : text;
+}
+
+function describeChanges(changes: unknown): string {
+  const entries = Object.entries(
+    (changes ?? {}) as Record<string, { from?: unknown; to?: unknown }>,
+  );
+  return entries
+    .map(([name, { from, to }]) => `${name}: ${quote(from)} -> ${quote(to)}`)
+    .join('; ');
+}
+
 function describeEvent({ type, data }: Event): string {
   if (type === 'created') return String(data.state);
   if (type === 'transitioned') {
     const reason = data.reason === undefined ? '' : ` (${String(data.reason)})`;
     return `${String(data.from)} -> ${String(data.to)}${reason}`;
   }
+  if (type === 'updated') return describeChanges(data.changes);
   return JSON.stringify(data);
 }
 

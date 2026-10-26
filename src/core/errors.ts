@@ -7,7 +7,8 @@ export type ErrorCode =
   | 'forbidden'
   | 'reason_required'
   | 'invalid_preset'
-  | 'invalid_fields';
+  | 'invalid_fields'
+  | 'item_closed';
 
 export class OteaError extends Error {
   readonly code: ErrorCode;
