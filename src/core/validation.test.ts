@@ -31,18 +31,18 @@ describe('itemFindings', () => {
     ],
     [
       'a field of the wrong type',
-      { fields: { description: 42 } },
-      ['error', 'field "description" must be a string, got number'],
+      { fields: { description: 'D', priority: 42 } },
+      ['error', 'field "priority" must be a string, got number'],
     ],
     [
       'an enum value outside its values',
-      { fields: { priority: 'urgent' } },
+      { fields: { description: 'D', priority: 'urgent' } },
       ['error', 'field "priority" must be one of low, medium, high'],
     ],
     ['a missing title', { title: ' ' }, ['error', 'missing required field "title"']],
     [
       'a field the preset does not declare',
-      { fields: { owner: 'ana' } },
+      { fields: { description: 'D', owner: 'ana' } },
       ['warning', 'field "owner" is not declared by preset tasks'],
     ],
   ])('reports %s', (_, overrides, finding) => {
@@ -61,6 +61,16 @@ describe('itemFindings', () => {
     expect(itemFindings(preset, item()).map(({ message }) => message)).toEqual([
       'missing required field "owner"',
     ]);
+  });
+
+  it('warns about a working item that lacks complete-required fields', () => {
+    expect(messages({ state: 'todo', fields: {} })).toEqual([
+      ['warning', 'missing field "description" required to complete'],
+    ]);
+  });
+
+  it('does not warn about closed items that lack complete-required fields', () => {
+    expect(messages({ state: 'done', fields: {} })).toEqual([]);
   });
 
   it('warns about items written under an older preset version', () => {

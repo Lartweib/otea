@@ -1,4 +1,4 @@
-import { valueProblem } from './fields.ts';
+import { missingToComplete, valueProblem } from './fields.ts';
 import type { Preset } from './preset.ts';
 
 export type Severity = 'error' | 'warning';
@@ -39,10 +39,14 @@ function fieldMessages(preset: Preset, item: StoredItem): Array<[Severity, strin
 
 export function itemFindings(preset: Preset, item: StoredItem): Finding[] {
   const found: Array<[Severity, string]> = [];
-  if (!preset.workflow.states.some(({ name }) => name === item.state)) {
-    found.push(['error', `unknown state "${item.state}" in preset ${preset.name}`]);
-  }
+  const state = preset.workflow.states.find(({ name }) => name === item.state);
+  if (!state) found.push(['error', `unknown state "${item.state}" in preset ${preset.name}`]);
   found.push(...fieldMessages(preset, item));
+  if (state && state.turn !== 'none' && state.name !== preset.workflow.incomplete) {
+    for (const name of missingToComplete(preset, item.fields)) {
+      found.push(['warning', `missing field "${name}" required to complete`]);
+    }
+  }
   if (item.presetVersion < preset.version) {
     found.push([
       'warning',
