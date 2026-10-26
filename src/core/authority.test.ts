@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { authorizeMove, mayPerform, type Performer } from './authority.ts';
+import { authorizeMove, availableMoves, mayPerform, type Performer } from './authority.ts';
 import { tasks } from './testing.ts';
 
 const agentCli: Performer = { actor: { kind: 'agent', name: 'claude' }, channel: 'cli' };
@@ -21,6 +21,23 @@ describe('mayPerform', () => {
     ['human-ui', humanUi, true],
   ] as const)('%s authority for %j is %s', (by, performer, expected) => {
     expect(mayPerform(by, performer)).toBe(expected);
+  });
+});
+
+describe('availableMoves', () => {
+  it('lists the moves the performer may make from a state, once per target', () => {
+    expect(availableMoves(tasks, 'incomplete', agentCli)).toEqual([
+      { to: 'todo', by: 'agent', reasonRequired: false },
+      { to: 'discarded', by: 'agent', reasonRequired: true },
+    ]);
+    expect(availableMoves(tasks, 'incomplete', humanUi).map(({ to, by }) => [to, by])).toEqual([
+      ['todo', 'agent'],
+      ['discarded', 'human'],
+    ]);
+  });
+
+  it('offers an agent nothing while the item waits for a human', () => {
+    expect(availableMoves(tasks, 'review', agentCli)).toEqual([]);
   });
 });
 

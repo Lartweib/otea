@@ -1,6 +1,6 @@
 import { join } from 'node:path';
 import { addCollection, DEFAULT_PRESET } from '../app/collections.ts';
-import { createItem, getItem, type ListItemsFilter, listItems, moveItem } from '../app/items.ts';
+import { createItem, type ListItemsFilter, listItems, moveItem, showItem } from '../app/items.ts';
 import { initProject, openProject, type Project } from '../app/project.ts';
 import type { FieldValues } from '../core/fields.ts';
 import { TURNS, type Turn } from '../core/workflow.ts';
@@ -111,11 +111,12 @@ const list: Command = {
 
 const show: Command = {
   name: 'show',
-  summary: 'Show an item and its events timeline',
+  summary: 'Show an item, its fields, the moves available to the agent and its events timeline',
   args: ['id'],
   options: {},
-  execute: ({ cwd, args: [id = ''] }) => {
-    const item = withProject(cwd, (project) => getItem(project, id));
+  execute: ({ cwd, actor, args: [id = ''] }) => {
+    const performer = { actor, channel: 'cli' as const };
+    const item = withProject(cwd, (project) => showItem(project, id, performer));
     return { data: item, text: formatItemWithEvents(item) };
   },
 };

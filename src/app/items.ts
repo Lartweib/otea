@@ -1,5 +1,11 @@
 import type { DatabaseSync } from 'node:sqlite';
-import { authorizeMove, type Channel } from '../core/authority.ts';
+import {
+  authorizeMove,
+  availableMoves,
+  type Channel,
+  type Move,
+  type Performer,
+} from '../core/authority.ts';
 import { OteaError } from '../core/errors.ts';
 import { type FieldValues, intake } from '../core/fields.ts';
 import { type Actor, formatItemId } from '../core/item.ts';
@@ -95,6 +101,14 @@ export function listItems(ctx: Context, filter: ListItemsFilter = {}): Item[] {
 export function getItem(ctx: Context, id: string): ItemWithEvents {
   const item = requireItem(ctx.db, id);
   return { ...withTurn(item, workflowOf(ctx, item.collection)), events: selectEvents(ctx.db, id) };
+}
+
+export type ItemView = ItemWithEvents & { transitions: Move[] };
+
+export function showItem(ctx: Context, id: string, performer: Performer): ItemView {
+  const item = getItem(ctx, id);
+  const { workflow } = presetOf(ctx, getCollection(ctx.db, item.collection));
+  return { ...item, transitions: availableMoves(workflow, item.state, performer) };
 }
 
 export type MoveItemInput = {

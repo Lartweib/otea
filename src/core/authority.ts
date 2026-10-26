@@ -1,6 +1,12 @@
 import { OteaError } from './errors.ts';
 import type { Actor } from './item.ts';
-import { type Authority, assertTransition, type Transition, type Workflow } from './workflow.ts';
+import {
+  type Authority,
+  assertTransition,
+  type Transition,
+  transitionsFrom,
+  type Workflow,
+} from './workflow.ts';
 
 export type Channel = 'cli' | 'ui';
 
@@ -29,6 +35,16 @@ function forbidden(from: string, to: string, transitions: Transition[], performe
     'forbidden',
     `Moving from "${from}" to "${to}" requires ${required.join(' or ')}; ${actor.kind} "${actor.name}" via ${channel} may not`,
   );
+}
+
+export type Move = { to: string; by: Authority; reasonRequired: boolean };
+
+export function availableMoves(workflow: Workflow, from: string, performer: Performer): Move[] {
+  const moves = new Map<string, Move>();
+  for (const { to, by, reasonRequired } of transitionsFrom(workflow, from)) {
+    if (!moves.has(to) && mayPerform(by, performer)) moves.set(to, { to, by, reasonRequired });
+  }
+  return [...moves.values()];
 }
 
 export function authorizeMove(
