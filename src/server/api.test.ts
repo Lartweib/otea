@@ -28,8 +28,8 @@ describe('api', () => {
       actor: ana,
     });
     createItem(project.db, { collection: 'bugs', title: 'Fix login', actor: bot });
-    moveItem(project.db, { id: 'BUGS-1', to: 'in_progress', actor: bot });
-    moveItem(project.db, { id: 'BUGS-1', to: 'review', actor: bot });
+    moveItem(project.db, { id: 'BUGS-1', to: 'in_progress', actor: bot, channel: 'cli' });
+    moveItem(project.db, { id: 'BUGS-1', to: 'review', actor: bot, channel: 'cli' });
     server = createServer(project);
   });
 

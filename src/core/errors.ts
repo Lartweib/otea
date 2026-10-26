@@ -3,7 +3,9 @@ export type ErrorCode =
   | 'not_found'
   | 'already_exists'
   | 'invalid_name'
-  | 'invalid_id';
+  | 'invalid_id'
+  | 'forbidden'
+  | 'reason_required';
 
 export class OteaError extends Error {
   readonly code: ErrorCode;

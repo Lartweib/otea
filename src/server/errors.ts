@@ -7,6 +7,8 @@ export const HTTP_STATUS: Readonly<Record<ErrorCode, ContentfulStatusCode>> = {
   already_exists: 409,
   invalid_name: 400,
   invalid_id: 400,
+  forbidden: 403,
+  reason_required: 400,
 };
 
 export class InvalidQuery extends Error {}

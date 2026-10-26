@@ -1,7 +1,8 @@
 import type { DatabaseSync } from 'node:sqlite';
+import { authorizeMove, type Channel } from '../core/authority.ts';
 import { OteaError } from '../core/errors.ts';
 import { type Actor, formatItemId } from '../core/item.ts';
-import { assertTransition, type Turn, turnOf, type Workflow } from '../core/workflow.ts';
+import { type Turn, turnOf, type Workflow } from '../core/workflow.ts';
 import { transaction } from '../store/database.ts';
 import {
   appendEvent,
@@ -81,13 +82,20 @@ export function getItem(db: DatabaseSync, id: string): ItemWithEvents {
   return { ...withTurn(item, workflow), events: selectEvents(db, id) };
 }
 
-export type MoveItemInput = { id: string; to: string; actor: Actor };
+export type MoveItemInput = {
+  id: string;
+  to: string;
+  actor: Actor;
+  channel: Channel;
+  reason?: string;
+};
 
 export function moveItem(db: DatabaseSync, input: MoveItemInput, now = systemClock): Item {
   return transaction(db, () => {
     const item = requireItem(db, input.id);
     const { workflow } = getCollection(db, item.collection);
-    assertTransition(workflow, item.state, input.to);
+    const { actor, channel, reason } = input;
+    authorizeMove(workflow, item.state, input.to, { actor, channel }, reason);
     const at = now();
     updateItemState(db, item.id, input.to, at);
     appendEvent(db, {
@@ -95,7 +103,7 @@ export function moveItem(db: DatabaseSync, input: MoveItemInput, now = systemClo
       type: 'transitioned',
       actor: input.actor,
       at,
-      data: { from: item.state, to: input.to },
+      data: { from: item.state, to: input.to, ...(reason ? { reason } : {}) },
     });
     return withTurn({ ...item, state: input.to, updatedAt: at }, workflow);
   });

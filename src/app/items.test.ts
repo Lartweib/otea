@@ -80,7 +80,11 @@ describe('items', () => {
     });
 
     it('moves the item and appends a transitioned event', () => {
-      const moved = moveItem(db, { id: 'TASKS-1', to: 'in_progress', actor: bot }, clock('t1'));
+      const moved = moveItem(
+        db,
+        { id: 'TASKS-1', to: 'in_progress', actor: bot, channel: 'cli' },
+        clock('t1'),
+      );
 
       expect(moved).toMatchObject({ state: 'in_progress', turn: 'agent', updatedAt: 't1' });
       expect(moved.createdAt).toBe('t0');
@@ -98,15 +102,51 @@ describe('items', () => {
     });
 
     it('rejects an invalid transition without writing anything', () => {
-      const move = () => moveItem(db, { id: 'TASKS-1', to: 'done', actor: bot }, clock('t1'));
+      const move = () =>
+        moveItem(db, { id: 'TASKS-1', to: 'done', actor: bot, channel: 'cli' }, clock('t1'));
 
       expect(move).toThrow(expect.objectContaining({ code: 'invalid_transition' }));
       expect(getItem(db, 'TASKS-1')).toMatchObject({ state: 'todo', updatedAt: 't0' });
       expect(getItem(db, 'TASKS-1').events).toHaveLength(1);
     });
 
+    it('rejects a move the actor lacks authority for without writing anything', () => {
+      moveItem(db, { id: 'TASKS-1', to: 'in_progress', actor: bot, channel: 'cli' }, clock('t1'));
+      moveItem(db, { id: 'TASKS-1', to: 'review', actor: bot, channel: 'cli' }, clock('t2'));
+
+      const approve = () =>
+        moveItem(db, { id: 'TASKS-1', to: 'done', actor: bot, channel: 'cli' }, clock('t3'));
+
+      expect(approve).toThrow(expect.objectContaining({ code: 'forbidden' }));
+      expect(getItem(db, 'TASKS-1')).toMatchObject({ state: 'review', updatedAt: 't2' });
+      expect(getItem(db, 'TASKS-1').events).toHaveLength(3);
+    });
+
+    it('records the reason in the transitioned event', () => {
+      moveItem(db, { id: 'TASKS-1', to: 'in_progress', actor: bot, channel: 'cli' });
+      moveItem(db, { id: 'TASKS-1', to: 'review', actor: bot, channel: 'cli' });
+
+      moveItem(db, { id: 'TASKS-1', to: 'todo', actor: ana, channel: 'ui', reason: 'Add tests' });
+
+      expect(getItem(db, 'TASKS-1').events.at(-1)?.data).toEqual({
+        from: 'review',
+        to: 'todo',
+        reason: 'Add tests',
+      });
+    });
+
+    it('requires a reason when the transition does', () => {
+      moveItem(db, { id: 'TASKS-1', to: 'in_progress', actor: bot, channel: 'cli' });
+      moveItem(db, { id: 'TASKS-1', to: 'review', actor: bot, channel: 'cli' });
+
+      const reject = () => moveItem(db, { id: 'TASKS-1', to: 'todo', actor: ana, channel: 'ui' });
+
+      expect(reject).toThrow(expect.objectContaining({ code: 'reason_required' }));
+    });
+
     it('fails with not_found for an unknown item', () => {
-      const move = () => moveItem(db, { id: 'TASKS-9', to: 'in_progress', actor: bot });
+      const move = () =>
+        moveItem(db, { id: 'TASKS-9', to: 'in_progress', actor: bot, channel: 'cli' });
 
       expect(move).toThrow(expect.objectContaining({ code: 'not_found' }));
     });
@@ -143,7 +183,7 @@ describe('items', () => {
       createItem(db, { collection: 'tasks', title: 'A', actor: ana }, now);
       createItem(db, { collection: 'reviews', title: 'B', actor: bot }, now);
       createItem(db, { collection: 'tasks', title: 'C', actor: ana }, now);
-      moveItem(db, { id: 'TASKS-2', to: 'in_progress', actor: bot }, now);
+      moveItem(db, { id: 'TASKS-2', to: 'in_progress', actor: bot, channel: 'cli' }, now);
     });
 
     const ids = (items: Array<{ id: string }>) => items.map((item) => item.id);

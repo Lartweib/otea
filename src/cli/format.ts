@@ -42,7 +42,10 @@ export function formatItems(items: readonly Item[]): string {
 
 function describeEvent({ type, data }: Event): string {
   if (type === 'created') return String(data.state);
-  if (type === 'transitioned') return `${String(data.from)} -> ${String(data.to)}`;
+  if (type === 'transitioned') {
+    const reason = data.reason === undefined ? '' : ` (${String(data.reason)})`;
+    return `${String(data.from)} -> ${String(data.to)}${reason}`;
+  }
   return JSON.stringify(data);
 }
 

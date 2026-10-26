@@ -9,6 +9,8 @@ describe('errors', () => {
     ['already_exists', 409],
     ['invalid_name', 400],
     ['invalid_id', 400],
+    ['forbidden', 403],
+    ['reason_required', 400],
   ] as const)('maps %s to %i', (code, status) => {
     expect(HTTP_STATUS[code]).toBe(status);
   });

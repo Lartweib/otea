@@ -237,11 +237,32 @@ describe('commands', () => {
           });
         });
 
+        it('rejects an agent approving work with forbidden', async () => {
+          const { code, err } = await otea('move', 'BUGS-1', 'done');
+
+          expect(code).toBe(7);
+          expect(err).toContain('requires human-ui authority');
+          expect((await json('show', 'BUGS-1')).state).toBe('review');
+        });
+
+        it('records an optional --reason and shows it in the timeline', async () => {
+          await otea('move', 'TASKS-1', 'in_progress', '--reason', 'Picked up');
+
+          expect((await json('show', 'TASKS-1')).events[1].data).toEqual({
+            from: 'todo',
+            to: 'in_progress',
+            reason: 'Picked up',
+          });
+          expect((await otea('show', 'TASKS-1')).out).toMatch(
+            /transitioned {2}todo -> in_progress \(Picked up\)$/m,
+          );
+        });
+
         it('requires the target state', async () => {
           const { code, err } = await otea('move', 'TASKS-1');
 
           expect(code).toBe(2);
-          expect(err).toContain('Usage: otea move <id> <state>');
+          expect(err).toContain('Usage: otea move <id> <state> [--reason <reason>]');
         });
       });
     });
