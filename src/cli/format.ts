@@ -1,7 +1,7 @@
-import type { Item, ItemWithEvents } from '../app/items.ts';
+import type { Item, ItemView } from '../app/items.ts';
 import type { Actor } from '../core/item.ts';
 
-type Event = ItemWithEvents['events'][number];
+type Event = ItemView['events'][number];
 
 export function columns(rows: readonly (readonly string[])[]): string {
   const widths: number[] = [];
@@ -61,12 +61,21 @@ function eventRow(event: Event): string[] {
   return [event.at, actorLabel(event.actor), event.type, describeEvent(event)];
 }
 
-export function formatItemWithEvents(item: ItemWithEvents): string {
+function movesLine({ transitions }: ItemView): string {
+  const moves = transitions.map(({ to, reasonRequired }) =>
+    reasonRequired ? `${to} (reason required)` : to,
+  );
+  return `Agent can move to: ${moves.length > 0 ? moves.join(', ') : 'nothing'}`;
+}
+
+export function formatItemWithEvents(item: ItemView): string {
   return [
     `${item.id}  ${item.title}`,
     `state: ${item.state}  turn: ${item.turn}  collection: ${item.collection}`,
     `created by ${actorLabel(item.createdBy)} at ${item.createdAt}`,
     ...fieldLines(item.fields),
+    '',
+    movesLine(item),
     '',
     'Events:',
     indent(columns(item.events.map(eventRow))),

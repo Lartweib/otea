@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { Actor } from '../core/item.ts';
 import { addCollection } from './collections.ts';
 import type { Context } from './context.ts';
-import { createItem, getItem, listItems, moveItem } from './items.ts';
+import { createItem, getItem, listItems, moveItem, showItem } from './items.ts';
 import { memoryContext, REVIEWS } from './testing.ts';
 
 const ana: Actor = { kind: 'human', name: 'ana' };
@@ -170,6 +170,19 @@ describe('items', () => {
         moveItem(ctx, { id: 'TASKS-9', to: 'in_progress', actor: bot, channel: 'cli' });
 
       expect(move).toThrow(expect.objectContaining({ code: 'not_found' }));
+    });
+  });
+
+  describe('showItem', () => {
+    it('adds the moves the performer may make from the current state', () => {
+      createItem(ctx, task('First'));
+
+      const shown = showItem(ctx, 'TASKS-1', { actor: bot, channel: 'cli' });
+
+      expect(shown).toMatchObject({ id: 'TASKS-1', events: [{ type: 'created' }] });
+      expect(shown.transitions).toEqual([
+        { to: 'in_progress', by: 'agent', reasonRequired: false },
+      ]);
     });
   });
 

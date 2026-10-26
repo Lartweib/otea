@@ -289,10 +289,25 @@ describe('commands', () => {
           const item = await json('show', 'BUGS-1');
 
           expect(item).toMatchObject({ id: 'BUGS-1', state: 'review', turn: 'human' });
+          expect(item.transitions).toEqual([]);
           expect(item.events.map((event: { type: string }) => event.type)).toEqual([
             'created',
             'transitioned',
             'transitioned',
+          ]);
+        });
+
+        it('lists the moves available to the agent', async () => {
+          await otea('create', '--collection', 'tasks', '--title', 'Vague');
+
+          expect((await otea('show', 'TASKS-1')).out).toContain('Agent can move to: in_progress');
+          expect((await otea('show', 'BUGS-1')).out).toContain('Agent can move to: nothing');
+          expect((await otea('show', 'TASKS-2')).out).toContain(
+            'Agent can move to: todo, discarded (reason required)',
+          );
+          expect((await json('show', 'TASKS-2')).transitions).toEqual([
+            { to: 'todo', by: 'agent', reasonRequired: false },
+            { to: 'discarded', by: 'agent', reasonRequired: true },
           ]);
         });
 
