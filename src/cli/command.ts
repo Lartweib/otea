@@ -37,6 +37,16 @@ export class UsageError extends Error {
   override readonly name = 'UsageError';
 }
 
+export class CommandFailure extends Error {
+  readonly failure: FailureCode;
+
+  constructor(failure: FailureCode, message: string) {
+    super(message);
+    this.name = 'CommandFailure';
+    this.failure = failure;
+  }
+}
+
 function optionUsage(name: string, spec: OptionSpec): string {
   if (spec.flag) return `[--${name}]`;
   const value = spec.placeholder ?? spec.choices?.join('|') ?? name;
