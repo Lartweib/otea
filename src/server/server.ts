@@ -5,12 +5,13 @@ import { TURNS, type Turn } from '../core/workflow.ts';
 import { createChangeFeed } from './changes.ts';
 import { errorBody, ForbiddenHost, InvalidQuery, toErrorResponse } from './errors.ts';
 import { DEFAULT_PORT, isAllowedHost } from './hosts.ts';
+import { mountAuth, type Session, session } from './session.ts';
 import { type LiveStreams, liveStreams } from './stream.ts';
 import { BUILT_UI_DIR, mountUi } from './ui.ts';
 
 export type OteaServer = { app: Hono; listeningOn(port: number): void; close(): void };
 
-export type ServerOptions = { pollIntervalMs?: number; uiDir?: string };
+export type ServerOptions = { pollIntervalMs?: number; uiDir?: string; token?: string };
 
 function isTurn(value: string): value is Turn {
   return (TURNS as readonly string[]).includes(value);
@@ -28,8 +29,9 @@ function itemsFilter(query: Record<string, string>): ListItemsFilter {
   return filter;
 }
 
-function api(project: Project, streams: LiveStreams): Hono {
+function api(project: Project, streams: LiveStreams, auth: Session): Hono {
   return new Hono()
+    .get('/session', (c) => c.json({ canWrite: auth.canWrite(c) }))
     .get('/items', (c) => c.json(listItems(project, itemsFilter(c.req.query()))))
     .get('/items/:id', (c) => c.json(getItem(project, c.req.param('id'))))
     .get('/stream', (c) => streams.handle(c))
@@ -46,7 +48,8 @@ export function createServer(project: Project, options: ServerOptions = {}): Ote
     if (!isAllowedHost(host, port)) throw new ForbiddenHost(`Host "${host ?? ''}" is not allowed`);
     await next();
   });
-  app.route('/api', api(project, streams));
+  mountAuth(app, options.token);
+  app.route('/api', api(project, streams, session(options.token)));
   mountUi(app, options.uiDir ?? BUILT_UI_DIR);
   app.onError((error, c) => {
     const { status, body } = toErrorResponse(error);
