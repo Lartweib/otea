@@ -7,7 +7,7 @@ import {
   type Performer,
 } from '../core/authority.ts';
 import { OteaError } from '../core/errors.ts';
-import { type FieldValues, intake, revise } from '../core/fields.ts';
+import { assertCanLeave, type FieldValues, intake, revise } from '../core/fields.ts';
 import { type Actor, formatItemId } from '../core/item.ts';
 import { type Turn, turnOf, type Workflow } from '../core/workflow.ts';
 import { transaction } from '../store/database.ts';
@@ -162,9 +162,11 @@ export function moveItem(ctx: Context, input: MoveItemInput, now = systemClock):
   const { db } = ctx;
   return transaction(db, () => {
     const item = requireItem(db, input.id);
-    const workflow = workflowOf(ctx, item.collection);
+    const preset = presetOf(ctx, getCollection(db, item.collection));
+    const { workflow } = preset;
     const { actor, channel, reason } = input;
     authorizeMove(workflow, item.state, input.to, { actor, channel }, reason);
+    assertCanLeave(preset, item.state, input.to, item.fields);
     const at = now();
     updateItemState(db, item.id, input.to, at);
     appendEvent(db, {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { intake, missingToComplete, revise } from './fields.ts';
+import { assertCanLeave, intake, missingToComplete, revise } from './fields.ts';
 import type { Preset } from './preset.ts';
 import { tasks } from './testing.ts';
 
@@ -110,5 +110,28 @@ describe('missingToComplete', () => {
     expect(missingToComplete(preset, { priority: 'low' })).toEqual(['description']);
     expect(missingToComplete(preset, { description: ' ' })).toEqual(['description']);
     expect(missingToComplete(preset, { description: 'D' })).toEqual([]);
+  });
+});
+
+describe('assertCanLeave', () => {
+  it('rejects leaving incomplete for a working state while complete-required fields are missing', () => {
+    const leave = () => assertCanLeave(preset, 'incomplete', 'todo', { priority: 'low' });
+
+    expect(leave).toThrow(expect.objectContaining({ code: 'missing_fields' }));
+    expect(leave).toThrow(
+      'Cannot move from "incomplete" to "todo" while fields required to complete are missing: description',
+    );
+  });
+
+  it('allows leaving incomplete once the fields are filled', () => {
+    expect(() => assertCanLeave(preset, 'incomplete', 'todo', { description: 'D' })).not.toThrow();
+  });
+
+  it('allows closing an incomplete item', () => {
+    expect(() => assertCanLeave(preset, 'incomplete', 'discarded', {})).not.toThrow();
+  });
+
+  it('ignores moves that do not leave incomplete', () => {
+    expect(() => assertCanLeave(preset, 'todo', 'in_progress', {})).not.toThrow();
   });
 });

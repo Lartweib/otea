@@ -1,5 +1,6 @@
 import { OteaError } from './errors.ts';
 import type { FieldSpec, Preset } from './preset.ts';
+import { turnOf } from './workflow.ts';
 
 export type FieldValues = Record<string, string>;
 
@@ -89,4 +90,20 @@ export function missingToComplete(preset: Preset, fields: Record<string, unknown
       return spec.required === 'complete' && (typeof value !== 'string' || value.trim() === '');
     })
     .map(([name]) => name);
+}
+
+export function assertCanLeave(
+  preset: Preset,
+  from: string,
+  to: string,
+  fields: Record<string, unknown>,
+): void {
+  const { workflow } = preset;
+  if (from !== workflow.incomplete || turnOf(workflow, to) === 'none') return;
+  const missing = missingToComplete(preset, fields);
+  if (missing.length === 0) return;
+  throw new OteaError(
+    'missing_fields',
+    `Cannot move from "${from}" to "${to}" while fields required to complete are missing: ${missing.join(', ')}`,
+  );
 }

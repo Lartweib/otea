@@ -219,6 +219,14 @@ describe('items', () => {
       expect(getItem(ctx, 'TASKS-1').events).toHaveLength(1);
     });
 
+    it('lets the item leave incomplete only once complete-required fields are filled', () => {
+      const ready = () => moveItem(ctx, { id: 'TASKS-1', to: 'todo', actor: bot, channel: 'cli' });
+
+      expect(ready).toThrow(expect.objectContaining({ code: 'missing_fields' }));
+      updateItem(ctx, { id: 'TASKS-1', fields: { description: 'Steps' }, actor: bot });
+      expect(ready()).toMatchObject({ state: 'todo' });
+    });
+
     it('rejects updating an item in a terminal state with item_closed', () => {
       moveItem(ctx, { id: 'TASKS-1', to: 'discarded', actor: bot, channel: 'cli', reason: 'Dup' });
 

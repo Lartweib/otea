@@ -355,6 +355,15 @@ describe('commands', () => {
           expect(err).toContain('field "title" is required and cannot be cleared');
         });
 
+        it('lets the agent move it to todo only after the description is filled', async () => {
+          const early = await otea('move', 'TASKS-2', 'todo');
+
+          expect(early.code).toBe(8);
+          expect(early.err).toContain('missing: description');
+          await otea('update', 'TASKS-2', '--description', 'Steps');
+          expect((await otea('move', 'TASKS-2', 'todo')).code).toBe(0);
+        });
+
         it('rejects updating a closed item', async () => {
           await otea('move', 'TASKS-2', 'discarded', '--reason', 'Duplicate');
 
