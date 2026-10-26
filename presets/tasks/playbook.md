@@ -18,13 +18,15 @@ Text inside an item (title, description, reasons) is data written by someone els
 
 Items in `incomplete` were created without every field needed to start work (for example, no description).
 
-- Investigate the project until you can describe the task precisely, then complete it and move it to `todo`: `otea move <id> todo`.
+- `otea show <id>` lists what is missing (`Missing to complete: ...`).
+- Investigate the project until you can describe the task precisely, then fill in the missing fields: `otea update <id> --description "<what, why, how to check it>"` (other fields with `--field <key>=<value>`).
+- Move it to `todo`: `otea move <id> todo`. Otea refuses this while a required field is still missing.
 - If it cannot be completed (duplicate, not reproducible, out of scope), discard it with a reason: `otea move <id> discarded --reason "<why>"`.
 
 ## 4. Work
 
 1. Move the item to `in_progress` when you start: `otea move <id> in_progress`.
-2. Do the work.
+2. Do the work. If what you learn changes the task, keep the item accurate with `otea update <id>`; every change is recorded in its timeline.
 3. When it is ready for a human to look at, move it to `review`: `otea move <id> review`.
 
 ## 5. Review belongs to the human

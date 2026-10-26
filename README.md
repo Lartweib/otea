@@ -36,15 +36,19 @@ otea collection add tasks                  # --preset tasks is the default
 otea create --collection tasks --title "Write the docs" --description "Install and first steps"
 otea create --collection tasks --title "Flaky login test"   # no description: starts incomplete
 otea create --collection tasks --title "Fix the footer" --description "Wrong year" --field priority=high
+otea create --collection tasks --title "Dark mode?"           # also incomplete
 otea list --turn agent --json
 otea show TASKS-1                          # fields, moves available to the agent, timeline
 otea move TASKS-1 in_progress
-otea move TASKS-2 discarded --reason "Duplicate of TASKS-3"
+otea move TASKS-2 todo                     # refused (exit 8) while a required field is missing
+otea update TASKS-2 --description "Fails on CI only, see run 42"   # fill what was missing
+otea move TASKS-2 todo
+otea move TASKS-4 discarded --reason "Out of scope"   # an incomplete item can be closed with a reason
 otea validate                              # check presets, collections and items
 otea help                                  # every command, global options and exit codes
 ```
 
-Agents act through the CLI, so it only performs transitions whose authority is `agent`. Approving work (`review` -> `done` in the tasks preset) is `human-ui`: the CLI refuses it with exit code 7 (`forbidden`).
+`otea update` changes fields of an open item (a blank value clears an optional field) and records the old and new values in the timeline; items in a closed state (turn `none`) cannot be updated. Agents act through the CLI, so it only performs transitions whose authority is `agent`. Approving work (`review` -> `done` in the tasks preset) is `human-ui`: the CLI refuses it with exit code 7 (`forbidden`).
 
 ### Presets
 
