@@ -80,9 +80,16 @@ describe('actions', () => {
     });
   });
 
-  it('returns to choosing after a successful move', () => {
-    const posting: ActionState = { step: 'posting', to: 'done', reason: '' };
+  it.each([
+    ['without', ''],
+    ['with', 'Add tests'],
+  ])('returns to idle with buttons enabled after a successful move %s a reason', (_, reason) => {
+    const posting: ActionState = { step: 'posting', to: 'todo', reason };
 
-    expect(reduceAction(posting, { type: 'succeeded' })).toEqual(IDLE);
+    const after = reduceAction(posting, { type: 'succeeded' });
+
+    expect(after).toEqual(IDLE);
+    expect(isBusy(after)).toBe(false);
+    expect(canConfirm(after)).toBe(false);
   });
 });
