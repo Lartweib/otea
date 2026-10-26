@@ -1,11 +1,13 @@
-import { type ReactNode, useCallback } from 'react';
+import { type ReactNode, useCallback, useState } from 'react';
 import { fetchItem, fetchItems, fetchSession } from './api.ts';
 import { ConnectionBadge } from './components/ConnectionBadge.tsx';
 import { ItemDetail } from './components/ItemDetail.tsx';
 import { ItemList } from './components/ItemList.tsx';
+import { NewItemForm } from './components/NewItemForm.tsx';
 import { type Connection, useLive, useRemote, useSelectedId } from './hooks.ts';
 import type { Remote } from './remote.ts';
 import { groupByTurn } from './sections.ts';
+import { hashFor } from './selection.ts';
 import type { Item, ItemView } from './types.ts';
 
 function Message({ children, muted = true }: { children: ReactNode; muted?: boolean }) {
@@ -52,24 +54,47 @@ function SelectedItem({ id, version, connection, canWrite }: SelectedItemProps) 
   return <DetailPane id={id} item={useRemote(load, version, connection)} canWrite={canWrite} />;
 }
 
+type Intake = { openedOn: string | undefined };
+
 export function App() {
   const { connection, version } = useLive();
   const selectedId = useSelectedId();
   const items = useRemote(fetchItems, version, connection);
   const session = useRemote(fetchSession, 0, connection);
   const canWrite = session.status === 'ready' && session.value.canWrite;
+  const [intake, setIntake] = useState<Intake>();
+  const creating = canWrite && intake !== undefined && intake.openedOn === selectedId;
+  const closeIntake = () => setIntake(undefined);
+  const showCreated = (id: string) => {
+    closeIntake();
+    window.location.hash = hashFor(id);
+  };
   return (
     <div className="app">
       <header className="topbar">
         <span className="brand">Otea</span>
-        <ConnectionBadge connection={connection} />
+        <div className="topbar-actions">
+          {canWrite ? (
+            <button
+              type="button"
+              className="action"
+              aria-pressed={creating}
+              onClick={() => setIntake({ openedOn: selectedId })}
+            >
+              New item
+            </button>
+          ) : null}
+          <ConnectionBadge connection={connection} />
+        </div>
       </header>
       <main className="layout">
         <div className="list-pane">
           <ListPane items={items} selectedId={selectedId} />
         </div>
         <div className="detail-pane">
-          {selectedId ? (
+          {creating ? (
+            <NewItemForm connection={connection} onCancel={closeIntake} onCreated={showCreated} />
+          ) : selectedId ? (
             <SelectedItem
               key={selectedId}
               id={selectedId}

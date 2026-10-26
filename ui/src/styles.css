@@ -361,3 +361,58 @@ dd {
     overflow-y: auto;
   }
 }
+
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.intake {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.intake-field {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.intake-field label {
+  font-size: var(--text-sm);
+  color: var(--color-muted);
+}
+
+.intake-field .required {
+  color: var(--color-warn);
+}
+
+.intake-field input,
+.intake-field select,
+.intake-field textarea {
+  padding: var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  color: inherit;
+  font: inherit;
+}
+
+.intake-field textarea {
+  min-height: 7rem;
+  resize: vertical;
+}
+
+.intake-hint {
+  margin: 0;
+  font-size: var(--text-sm);
+}
+
+.intake-start {
+  margin: 0;
+  font-size: var(--text-sm);
+}
+
+.intake-start[data-incomplete="true"] {
+  color: var(--color-warn);
+}

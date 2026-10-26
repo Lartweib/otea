@@ -32,3 +32,22 @@ export type Move = { to: string; by: Authority; reasonRequired: boolean };
 export type ItemView = ItemWithEvents & { transitions: Move[]; missing: string[] };
 
 export type Session = { canWrite: boolean };
+
+export type FieldModule = 'text' | 'markdown' | 'enum';
+
+export type FieldView = {
+  name: string;
+  module: FieldModule;
+  required?: 'create' | 'complete';
+  values?: string[];
+  default?: string;
+};
+
+export type CollectionView = {
+  name: string;
+  prefix: string;
+  preset: string;
+  initial: string;
+  incomplete?: string;
+  fields: FieldView[];
+};
