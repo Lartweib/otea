@@ -1,12 +1,12 @@
 import { type ReactNode, useCallback } from 'react';
-import { fetchItem, fetchItems } from './api.ts';
+import { fetchItem, fetchItems, fetchSession } from './api.ts';
 import { ConnectionBadge } from './components/ConnectionBadge.tsx';
 import { ItemDetail } from './components/ItemDetail.tsx';
 import { ItemList } from './components/ItemList.tsx';
 import { type Connection, useLive, useRemote, useSelectedId } from './hooks.ts';
 import type { Remote } from './remote.ts';
 import { groupByTurn } from './sections.ts';
-import type { Item, ItemWithEvents } from './types.ts';
+import type { Item, ItemView } from './types.ts';
 
 function Message({ children, muted = true }: { children: ReactNode; muted?: boolean }) {
   return <p className={muted ? 'pane-message muted' : 'pane-message'}>{children}</p>;
@@ -31,24 +31,33 @@ function ListPane({
   return <ItemList sections={groupByTurn(items.value)} selectedId={selectedId} />;
 }
 
-function DetailPane({ id, item }: { id: string; item: Remote<ItemWithEvents | null> }) {
+type DetailPaneProps = { id: string; item: Remote<ItemView | null>; canWrite: boolean };
+
+function DetailPane({ id, item, canWrite }: DetailPaneProps) {
   if (item.status === 'failed') return <Message muted={false}>{item.message}</Message>;
   if (item.status === 'loading') return <Message>Loading…</Message>;
   if (!item.value) return <Message>Item {id} not found.</Message>;
-  return <ItemDetail item={item.value} />;
+  return <ItemDetail item={item.value} canWrite={canWrite} />;
 }
 
-type SelectedItemProps = { id: string; version: number; connection: Connection };
+type SelectedItemProps = {
+  id: string;
+  version: number;
+  connection: Connection;
+  canWrite: boolean;
+};
 
-function SelectedItem({ id, version, connection }: SelectedItemProps) {
+function SelectedItem({ id, version, connection, canWrite }: SelectedItemProps) {
   const load = useCallback((signal: AbortSignal) => fetchItem(id, signal), [id]);
-  return <DetailPane id={id} item={useRemote(load, version, connection)} />;
+  return <DetailPane id={id} item={useRemote(load, version, connection)} canWrite={canWrite} />;
 }
 
 export function App() {
   const { connection, version } = useLive();
   const selectedId = useSelectedId();
   const items = useRemote(fetchItems, version, connection);
+  const session = useRemote(fetchSession, 0, connection);
+  const canWrite = session.status === 'ready' && session.value.canWrite;
   return (
     <div className="app">
       <header className="topbar">
@@ -66,6 +75,7 @@ export function App() {
               id={selectedId}
               version={version}
               connection={connection}
+              canWrite={canWrite}
             />
           ) : (
             <Message>Select an item to see its details.</Message>

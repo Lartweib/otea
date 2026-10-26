@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { actorLabel, describeEvent, formatTime } from './format.ts';
+import { actorLabel, describeEvent, eventActorLabel, formatTime } from './format.ts';
 import type { ItemEvent } from './types.ts';
 
 const event = (type: string, data: Record<string, unknown>): ItemEvent => ({
@@ -13,6 +13,17 @@ const event = (type: string, data: Record<string, unknown>): ItemEvent => ({
 describe('format', () => {
   it('labels an actor with its kind and name', () => {
     expect(actorLabel({ kind: 'human', name: 'ana' })).toBe('ana (human)');
+  });
+
+  it('labels a decision made in the ui apart from agent work', () => {
+    const ui = {
+      ...event('transitioned', { channel: 'ui' }),
+      actor: { kind: 'human', name: 'human' },
+    };
+
+    expect(eventActorLabel(ui as ItemEvent)).toBe('human (ui)');
+    expect(eventActorLabel(event('transitioned', { channel: 'cli' }))).toBe('claude (agent)');
+    expect(eventActorLabel(event('created', { state: 'todo' }))).toBe('claude (agent)');
   });
 
   it.each([

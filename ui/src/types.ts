@@ -24,3 +24,11 @@ export type ItemEvent = {
 };
 
 export type ItemWithEvents = Item & { events: ItemEvent[] };
+
+export type Authority = 'agent' | 'human' | 'human-ui';
+
+export type Move = { to: string; by: Authority; reasonRequired: boolean };
+
+export type ItemView = ItemWithEvents & { transitions: Move[]; missing: string[] };
+
+export type Session = { canWrite: boolean };

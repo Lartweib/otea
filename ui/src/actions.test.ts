@@ -1,0 +1,88 @@
+import { describe, expect, it } from 'vitest';
+import { type ActionState, canConfirm, IDLE, isBusy, moveTone, reduceAction } from './actions.ts';
+
+const explaining = (reason = ''): ActionState => ({ step: 'explaining', to: 'todo', reason });
+
+describe('actions', () => {
+  it.each([
+    [{ to: 'done', by: 'human-ui', reasonRequired: false }, 'approve'],
+    [{ to: 'discarded', by: 'human', reasonRequired: true }, 'caution'],
+    [{ to: 'todo', by: 'human-ui', reasonRequired: true }, 'caution'],
+    [{ to: 'in_progress', by: 'agent', reasonRequired: false }, 'neutral'],
+  ] as const)('styles %j as %s', (move, tone) => {
+    expect(moveTone(move)).toBe(tone);
+  });
+
+  it('asks for a reason before a move that requires one', () => {
+    expect(reduceAction(IDLE, { type: 'explain', to: 'todo' })).toEqual(explaining());
+  });
+
+  it('keeps the typed reason', () => {
+    expect(reduceAction(explaining(), { type: 'type', reason: 'Add tests' })).toEqual(
+      explaining('Add tests'),
+    );
+  });
+
+  it('goes back to choosing on cancel', () => {
+    expect(reduceAction(explaining('x'), { type: 'cancel' })).toEqual(IDLE);
+  });
+
+  it.each([
+    ['', false],
+    ['   ', false],
+    ['Add tests', true],
+  ])('confirms a reason %j: %s', (reason, expected) => {
+    expect(canConfirm(explaining(reason))).toBe(expected);
+  });
+
+  it('cannot confirm while choosing or posting', () => {
+    expect(canConfirm(IDLE)).toBe(false);
+    expect(canConfirm({ step: 'posting', to: 'todo', reason: 'x' })).toBe(false);
+  });
+
+  it('is busy only while posting', () => {
+    const posting = reduceAction(explaining('x'), { type: 'submit', to: 'todo', reason: 'x' });
+
+    expect(posting).toEqual({ step: 'posting', to: 'todo', reason: 'x' });
+    expect(isBusy(posting)).toBe(true);
+    expect(isBusy(IDLE)).toBe(false);
+    expect(isBusy(explaining())).toBe(false);
+  });
+
+  it('shows the server message and keeps the reason when a move with a reason fails', () => {
+    const posting: ActionState = { step: 'posting', to: 'todo', reason: 'x' };
+
+    expect(reduceAction(posting, { type: 'failed', message: 'Nope' })).toEqual({
+      step: 'explaining',
+      to: 'todo',
+      reason: 'x',
+      error: 'Nope',
+    });
+  });
+
+  it('shows the server message when a move without a reason fails', () => {
+    const posting: ActionState = { step: 'posting', to: 'done', reason: '' };
+
+    expect(reduceAction(posting, { type: 'failed', message: 'Nope' })).toEqual({
+      step: 'choosing',
+      error: 'Nope',
+    });
+  });
+
+  it('clears a previous error when choosing again', () => {
+    const failed: ActionState = { step: 'choosing', error: 'Nope' };
+
+    expect(reduceAction(failed, { type: 'explain', to: 'todo' })).toEqual(explaining());
+    expect(reduceAction(failed, { type: 'submit', to: 'done', reason: '' })).toEqual({
+      step: 'posting',
+      to: 'done',
+      reason: '',
+    });
+  });
+
+  it('returns to choosing after a successful move', () => {
+    const posting: ActionState = { step: 'posting', to: 'done', reason: '' };
+
+    expect(reduceAction(posting, { type: 'succeeded' })).toEqual(IDLE);
+  });
+});
