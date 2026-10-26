@@ -92,7 +92,7 @@ const create: Command = {
     const fields = fieldsFrom(input);
     const { actor } = input;
     const item = withProject(input.cwd, (project) =>
-      createItem(project, { collection, title, fields, actor }),
+      createItem(project, { collection, title, fields, actor, channel: 'cli' }),
     );
     return { data: item, text: item.id };
   },
