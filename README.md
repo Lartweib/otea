@@ -32,11 +32,23 @@ alias otea='node --disable-warning=ExperimentalWarning /path/to/otea/src/cli/mai
 
 cd /path/to/your/project
 otea init
-otea collection add tasks
-otea create --collection tasks --title "Write the docs"
+otea collection add tasks                  # --preset tasks is the default
+otea create --collection tasks --title "Write the docs" --description "Install and first steps"
+otea create --collection tasks --title "Flaky login test"   # no description: starts incomplete
+otea create --collection tasks --title "Fix the footer" --description "Wrong year" --field priority=high
 otea list --turn agent --json
-otea help   # every command, global options and exit codes
+otea show TASKS-1                          # fields, moves available to the agent, timeline
+otea move TASKS-1 in_progress
+otea move TASKS-2 discarded --reason "Duplicate of TASKS-3"
+otea validate                              # check presets, collections and items
+otea help                                  # every command, global options and exit codes
 ```
+
+Agents act through the CLI, so it only performs transitions whose authority is `agent`. Approving work (`review` -> `done` in the tasks preset) is `human-ui`: the CLI refuses it with exit code 7 (`forbidden`).
+
+### Presets
+
+Every collection is governed by a preset: its fields, states, turns and transitions, plus a playbook for agents. Official presets live in [`presets/`](presets/) (`tasks` for now). A project can add its own in `.otea/presets/<name>/preset.yaml` (with its `playbook.md`) and use it with `otea collection add <collection> --preset <name>`; project presets cannot reuse an official name. The format is described in §9 of the [product definition](docs/otea-product-definition.md#9-preset-format).
 
 ### See it live
 
@@ -52,7 +64,7 @@ otea serve                  # Otea running at http://127.0.0.1:4400
 Open the URL, then in another terminal in the same project create and move items and watch them update:
 
 ```sh
-otea create --collection tasks --title "Review the copy"
+otea create --collection tasks --title "Review the copy" --description "Landing page"
 otea move TASKS-1 in_progress
 ```
 
