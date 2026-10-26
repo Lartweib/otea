@@ -1,0 +1,25 @@
+preset: tasks
+preset_version: 1
+playbook: ./playbook.md
+fields:
+  title: { module: text, required: create }
+  description: { module: markdown, required: complete }
+  priority: { module: enum, values: [low, medium, high], default: medium }
+workflow:
+  initial: todo
+  incomplete: incomplete
+  states:
+    incomplete: { turn: agent }
+    todo: { turn: agent }
+    in_progress: { turn: agent }
+    review: { turn: human }
+    done: { turn: none }
+    discarded: { turn: none }
+  transitions:
+    - { from: incomplete, to: todo, by: agent }
+    - { from: todo, to: in_progress, by: agent }
+    - { from: in_progress, to: review, by: agent }
+    - { from: review, to: done, by: human-ui }
+    - { from: review, to: todo, by: human-ui, reason: required }
+    - { from: [incomplete, todo, in_progress, review], to: discarded, by: human, reason: required }
+    - { from: incomplete, to: discarded, by: agent, reason: required }
