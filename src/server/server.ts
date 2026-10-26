@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { type ListItemsFilter, listItems, moveItem, showItem } from '../app/items.ts';
 import type { Project } from '../app/project.ts';
 import { TURNS, type Turn } from '../core/workflow.ts';
-import { createChangeFeed } from './changes.ts';
+import { type ChangeFeed, createChangeFeed } from './changes.ts';
 import { errorBody, ForbiddenHost, InvalidQuery, toErrorResponse } from './errors.ts';
 import { DEFAULT_PORT, isAllowedHost } from './hosts.ts';
 import { mountAuth, type Session, session } from './session.ts';
@@ -30,7 +30,7 @@ function itemsFilter(query: Record<string, string>): ListItemsFilter {
   return filter;
 }
 
-function api(project: Project, streams: LiveStreams, auth: Session): Hono {
+function api(project: Project, feed: ChangeFeed, streams: LiveStreams, auth: Session): Hono {
   return new Hono()
     .get('/session', (c) => c.json({ canWrite: auth.canWrite(c) }))
     .get('/items', (c) => c.json(listItems(project, itemsFilter(c.req.query()))))
@@ -38,7 +38,9 @@ function api(project: Project, streams: LiveStreams, auth: Session): Hono {
     .post('/items/:id/move', async (c) => {
       assertWritable(c, auth);
       const request = await moveRequest(c);
-      return c.json(moveItem(project, { id: c.req.param('id'), ...request, ...HUMAN_IN_UI }));
+      const item = moveItem(project, { id: c.req.param('id'), ...request, ...HUMAN_IN_UI });
+      feed.notify();
+      return c.json(item);
     })
     .get('/stream', (c) => streams.handle(c))
     .all('*', (c) => c.json(errorBody('not_found', `No route ${c.req.path}`), 404));
@@ -56,7 +58,7 @@ export function createServer(project: Project, options: ServerOptions = {}): Ote
   });
   const boundPort = () => port;
   mountAuth(app, options.token, boundPort);
-  app.route('/api', api(project, streams, session(options.token, boundPort)));
+  app.route('/api', api(project, feed, streams, session(options.token, boundPort)));
   mountUi(app, options.uiDir ?? BUILT_UI_DIR);
   app.onError((error, c) => {
     const { status, body } = toErrorResponse(error);

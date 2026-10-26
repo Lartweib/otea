@@ -54,6 +54,19 @@ describe('createChangeFeed', () => {
     expect(listener).toHaveBeenCalledOnce();
   });
 
+  it('notifies every subscriber right away for a write made on its own connection', () => {
+    const first = vi.fn();
+    const second = vi.fn();
+    feed.subscribe(first);
+    feed.subscribe(second);
+
+    commitFrom(own);
+    feed.notify();
+
+    expect(first).toHaveBeenCalledOnce();
+    expect(second).toHaveBeenCalledOnce();
+  });
+
   it('ignores commits from its own connection', () => {
     const listener = vi.fn();
     feed.subscribe(listener);

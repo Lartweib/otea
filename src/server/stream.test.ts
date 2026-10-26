@@ -1,11 +1,11 @@
 import type { DatabaseSync } from 'node:sqlite';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { addCollection } from '../app/collections.ts';
-import { createItem } from '../app/items.ts';
+import { createItem, moveItem } from '../app/items.ts';
 import { catalogWith } from '../app/testing.ts';
 import { migrate } from '../store/migrations.ts';
 import { createServer, type OteaServer } from './server.ts';
-import { request, tempDatabase } from './testing.ts';
+import { LOCAL_HOST, request, SESSION_COOKIE, TOKEN, tempDatabase } from './testing.ts';
 
 type Reader = ReadableStreamDefaultReader<Uint8Array>;
 
@@ -39,7 +39,10 @@ describe('GET /api/stream', () => {
     migrate(db);
     addCollection({ db, presets: catalogWith() }, { name: 'tasks' });
     other = temp.open();
-    server = createServer({ root: '/tmp', db, presets: catalogWith() }, { pollIntervalMs: 10 });
+    server = createServer(
+      { root: '/tmp', db, presets: catalogWith() },
+      { pollIntervalMs: 10, token: TOKEN },
+    );
   });
 
   afterEach(() => {
@@ -71,6 +74,33 @@ describe('GET /api/stream', () => {
 
     expect(await readUntil(reader, 'event: change')).toContain('event: change');
     await reader.cancel();
+  });
+
+  it('emits change to every open tab after a move from the ui', async () => {
+    const ctx = { db, presets: catalogWith() };
+    const actor = { kind: 'agent', name: 'a' } as const;
+    createItem(ctx, { collection: 'tasks', title: 'Ship', fields: { description: 'x' }, actor });
+    moveItem(ctx, { id: 'TASKS-1', to: 'in_progress', actor, channel: 'cli' });
+    moveItem(ctx, { id: 'TASKS-1', to: 'review', actor, channel: 'cli' });
+    const first = await connect();
+    const second = await connect();
+
+    const response = await server.app.request('/api/items/TASKS-1/move', {
+      method: 'POST',
+      body: JSON.stringify({ to: 'done' }),
+      headers: {
+        host: LOCAL_HOST,
+        origin: `http://${LOCAL_HOST}`,
+        cookie: SESSION_COOKIE,
+        'content-type': 'application/json',
+      },
+    });
+
+    expect(response.status).toBe(200);
+    expect(await readUntil(first.reader, 'event: change')).toContain('event: change');
+    expect(await readUntil(second.reader, 'event: change')).toContain('event: change');
+    await first.reader.cancel();
+    await second.reader.cancel();
   });
 
   it('stops polling when the client disconnects', async () => {
