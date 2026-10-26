@@ -21,7 +21,7 @@ function stop(http: Server, server: OteaServer): Promise<void> {
   server.close();
   return new Promise((resolve) => {
     http.close(() => resolve());
-    http.closeIdleConnections();
+    http.closeAllConnections();
   });
 }
 

@@ -1,4 +1,4 @@
-import { createServer as createNetServer, type Server } from 'node:net';
+import { connect, createServer as createNetServer, type Server } from 'node:net';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { Project } from '../app/project.ts';
 import { DEFAULT_PORT, type Listening, listen } from './listen.ts';
@@ -13,6 +13,26 @@ function occupyPort(): Promise<{ port: number; server: Server }> {
       resolve({ port: typeof address === 'object' && address ? address.port : 0, server });
     });
   });
+}
+
+function reopenStreamOnSameSocket(url: string): Promise<void> {
+  const { hostname, port } = new URL(url);
+  const socket = connect(Number(port), hostname);
+  const request = `GET /api/stream HTTP/1.1\r\nHost: ${hostname}:${port}\r\n\r\n`;
+  const { promise: ready, resolve } = Promise.withResolvers<void>();
+  let received = '';
+  let reopened = false;
+  socket.on('error', () => {});
+  socket.on('data', (chunk) => {
+    received += chunk.toString();
+    if (received.includes('event: ready')) resolve();
+    if (!reopened && received.includes('\r\n0\r\n\r\n')) {
+      reopened = true;
+      socket.write(request);
+    }
+  });
+  socket.write(request);
+  return ready;
 }
 
 describe('listen', () => {
@@ -59,7 +79,18 @@ describe('listen', () => {
     listening = undefined;
 
     let done = false;
-    while (!done) done = (await reader?.read())?.done ?? true;
+    while (!done) done = (await reader?.read().catch(() => undefined))?.done ?? true;
     await expect(fetch(`${url}/api/items`)).rejects.toThrow();
+  });
+
+  it('closes promptly when a client reopens the stream on its kept-alive connection', async () => {
+    listening = await listen(createServer(project), 0);
+    await reopenStreamOnSameSocket(listening.url);
+
+    const closed = listening.close().then(() => 'closed');
+    listening = undefined;
+    const timeout = new Promise((resolve) => setTimeout(resolve, 1000, 'timed out'));
+
+    await expect(Promise.race([closed, timeout])).resolves.toBe('closed');
   });
 });
