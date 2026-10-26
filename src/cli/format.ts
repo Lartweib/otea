@@ -40,6 +40,14 @@ export function formatItems(items: readonly Item[]): string {
   return items.length === 0 ? 'No items.' : columns(items.map(itemRow));
 }
 
+function fieldLines(fields: Record<string, unknown>): string[] {
+  const lines = Object.entries(fields).map(([name, value]) => {
+    const text = typeof value === 'string' ? value : JSON.stringify(value);
+    return text.includes('\n') ? `${name}:\n${indent(text)}` : `${name}: ${text}`;
+  });
+  return lines.length > 0 ? ['', ...lines] : [];
+}
+
 function describeEvent({ type, data }: Event): string {
   if (type === 'created') return String(data.state);
   if (type === 'transitioned') {
@@ -58,7 +66,7 @@ export function formatItemWithEvents(item: ItemWithEvents): string {
     `${item.id}  ${item.title}`,
     `state: ${item.state}  turn: ${item.turn}  collection: ${item.collection}`,
     `created by ${actorLabel(item.createdBy)} at ${item.createdAt}`,
-    ...(item.body ? ['', item.body] : []),
+    ...fieldLines(item.fields),
     '',
     'Events:',
     indent(columns(item.events.map(eventRow))),

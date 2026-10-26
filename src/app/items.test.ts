@@ -1,13 +1,19 @@
-import type { DatabaseSync } from 'node:sqlite';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { Actor } from '../core/item.ts';
-import { openDatabase } from '../store/database.ts';
-import { migrate } from '../store/migrations.ts';
 import { addCollection } from './collections.ts';
+import type { Context } from './context.ts';
 import { createItem, getItem, listItems, moveItem } from './items.ts';
+import { memoryContext, REVIEWS } from './testing.ts';
 
 const ana: Actor = { kind: 'human', name: 'ana' };
 const bot: Actor = { kind: 'agent', name: 'claude' };
+
+const task = (title: string, actor = ana) => ({
+  collection: 'tasks',
+  title,
+  fields: { description: 'Details' },
+  actor,
+});
 
 function clock(...times: string[]) {
   let index = 0;
@@ -15,47 +21,62 @@ function clock(...times: string[]) {
 }
 
 describe('items', () => {
-  let db: DatabaseSync;
+  let ctx: Context;
 
   beforeEach(() => {
-    db = openDatabase(':memory:');
-    migrate(db);
-    addCollection(db, { name: 'tasks' });
+    ctx = memoryContext(REVIEWS);
+    addCollection(ctx, { name: 'tasks' });
   });
 
-  afterEach(() => db.close());
+  afterEach(() => ctx.db.close());
 
   describe('createItem', () => {
-    it('creates an item in the initial state with a sequential id', () => {
+    it('creates a complete item in the initial state with a sequential id', () => {
       const now = clock('2026-01-01T00:00:00.000Z');
 
-      const first = createItem(db, { collection: 'tasks', title: 'First', actor: ana }, now);
-      const second = createItem(
-        db,
-        { collection: 'tasks', title: 'Second', body: 'Details', actor: bot },
-        now,
-      );
+      const first = createItem(ctx, task('First'), now);
+      const second = createItem(ctx, task('Second', bot), now);
 
       expect(first).toEqual({
         id: 'TASKS-1',
         collection: 'tasks',
         seq: 1,
         title: 'First',
-        body: '',
+        fields: { description: 'Details', priority: 'medium' },
+        presetVersion: 1,
         state: 'todo',
         turn: 'agent',
         createdAt: '2026-01-01T00:00:00.000Z',
         updatedAt: '2026-01-01T00:00:00.000Z',
         createdBy: ana,
       });
-      expect(second).toMatchObject({ id: 'TASKS-2', seq: 2, body: 'Details', createdBy: bot });
+      expect(second).toMatchObject({ id: 'TASKS-2', seq: 2, createdBy: bot });
+    });
+
+    it('starts an item without its description in the incomplete state', () => {
+      const item = createItem(ctx, { collection: 'tasks', title: 'Vague', actor: ana });
+
+      expect(item).toMatchObject({
+        state: 'incomplete',
+        turn: 'agent',
+        fields: { priority: 'medium' },
+      });
+    });
+
+    it('rejects invalid fields with invalid_fields without writing anything', () => {
+      const create = () =>
+        createItem(ctx, { ...task('X'), fields: { description: 'D', priority: 'urgent' } });
+
+      expect(create).toThrow(expect.objectContaining({ code: 'invalid_fields' }));
+      expect(listItems(ctx)).toEqual([]);
+      expect(createItem(ctx, task('Y')).id).toBe('TASKS-1');
     });
 
     it('records a created event in the same write', () => {
       const now = clock('2026-01-01T00:00:00.000Z');
-      createItem(db, { collection: 'tasks', title: 'First', actor: ana }, now);
+      createItem(ctx, task('First'), now);
 
-      expect(getItem(db, 'TASKS-1').events).toEqual([
+      expect(getItem(ctx, 'TASKS-1').events).toEqual([
         {
           id: 1,
           itemId: 'TASKS-1',
@@ -68,7 +89,7 @@ describe('items', () => {
     });
 
     it('fails with not_found for an unknown collection', () => {
-      const create = () => createItem(db, { collection: 'nope', title: 'X', actor: ana });
+      const create = () => createItem(ctx, { ...task('X'), collection: 'nope' });
 
       expect(create).toThrow(expect.objectContaining({ code: 'not_found' }));
     });
@@ -76,12 +97,12 @@ describe('items', () => {
 
   describe('moveItem', () => {
     beforeEach(() => {
-      createItem(db, { collection: 'tasks', title: 'First', actor: ana }, clock('t0'));
+      createItem(ctx, task('First'), clock('t0'));
     });
 
     it('moves the item and appends a transitioned event', () => {
       const moved = moveItem(
-        db,
+        ctx,
         { id: 'TASKS-1', to: 'in_progress', actor: bot, channel: 'cli' },
         clock('t1'),
       );
@@ -89,7 +110,7 @@ describe('items', () => {
       expect(moved).toMatchObject({ state: 'in_progress', turn: 'agent', updatedAt: 't1' });
       expect(moved.createdAt).toBe('t0');
       expect(
-        getItem(db, 'TASKS-1').events.map(({ type, actor, at, data }) => ({
+        getItem(ctx, 'TASKS-1').events.map(({ type, actor, at, data }) => ({
           type,
           actor,
           at,
@@ -103,32 +124,32 @@ describe('items', () => {
 
     it('rejects an invalid transition without writing anything', () => {
       const move = () =>
-        moveItem(db, { id: 'TASKS-1', to: 'done', actor: bot, channel: 'cli' }, clock('t1'));
+        moveItem(ctx, { id: 'TASKS-1', to: 'done', actor: bot, channel: 'cli' }, clock('t1'));
 
       expect(move).toThrow(expect.objectContaining({ code: 'invalid_transition' }));
-      expect(getItem(db, 'TASKS-1')).toMatchObject({ state: 'todo', updatedAt: 't0' });
-      expect(getItem(db, 'TASKS-1').events).toHaveLength(1);
+      expect(getItem(ctx, 'TASKS-1')).toMatchObject({ state: 'todo', updatedAt: 't0' });
+      expect(getItem(ctx, 'TASKS-1').events).toHaveLength(1);
     });
 
     it('rejects a move the actor lacks authority for without writing anything', () => {
-      moveItem(db, { id: 'TASKS-1', to: 'in_progress', actor: bot, channel: 'cli' }, clock('t1'));
-      moveItem(db, { id: 'TASKS-1', to: 'review', actor: bot, channel: 'cli' }, clock('t2'));
+      moveItem(ctx, { id: 'TASKS-1', to: 'in_progress', actor: bot, channel: 'cli' }, clock('t1'));
+      moveItem(ctx, { id: 'TASKS-1', to: 'review', actor: bot, channel: 'cli' }, clock('t2'));
 
       const approve = () =>
-        moveItem(db, { id: 'TASKS-1', to: 'done', actor: bot, channel: 'cli' }, clock('t3'));
+        moveItem(ctx, { id: 'TASKS-1', to: 'done', actor: bot, channel: 'cli' }, clock('t3'));
 
       expect(approve).toThrow(expect.objectContaining({ code: 'forbidden' }));
-      expect(getItem(db, 'TASKS-1')).toMatchObject({ state: 'review', updatedAt: 't2' });
-      expect(getItem(db, 'TASKS-1').events).toHaveLength(3);
+      expect(getItem(ctx, 'TASKS-1')).toMatchObject({ state: 'review', updatedAt: 't2' });
+      expect(getItem(ctx, 'TASKS-1').events).toHaveLength(3);
     });
 
     it('records the reason in the transitioned event', () => {
-      moveItem(db, { id: 'TASKS-1', to: 'in_progress', actor: bot, channel: 'cli' });
-      moveItem(db, { id: 'TASKS-1', to: 'review', actor: bot, channel: 'cli' });
+      moveItem(ctx, { id: 'TASKS-1', to: 'in_progress', actor: bot, channel: 'cli' });
+      moveItem(ctx, { id: 'TASKS-1', to: 'review', actor: bot, channel: 'cli' });
 
-      moveItem(db, { id: 'TASKS-1', to: 'todo', actor: ana, channel: 'ui', reason: 'Add tests' });
+      moveItem(ctx, { id: 'TASKS-1', to: 'todo', actor: ana, channel: 'ui', reason: 'Add tests' });
 
-      expect(getItem(db, 'TASKS-1').events.at(-1)?.data).toEqual({
+      expect(getItem(ctx, 'TASKS-1').events.at(-1)?.data).toEqual({
         from: 'review',
         to: 'todo',
         reason: 'Add tests',
@@ -136,17 +157,17 @@ describe('items', () => {
     });
 
     it('requires a reason when the transition does', () => {
-      moveItem(db, { id: 'TASKS-1', to: 'in_progress', actor: bot, channel: 'cli' });
-      moveItem(db, { id: 'TASKS-1', to: 'review', actor: bot, channel: 'cli' });
+      moveItem(ctx, { id: 'TASKS-1', to: 'in_progress', actor: bot, channel: 'cli' });
+      moveItem(ctx, { id: 'TASKS-1', to: 'review', actor: bot, channel: 'cli' });
 
-      const reject = () => moveItem(db, { id: 'TASKS-1', to: 'todo', actor: ana, channel: 'ui' });
+      const reject = () => moveItem(ctx, { id: 'TASKS-1', to: 'todo', actor: ana, channel: 'ui' });
 
       expect(reject).toThrow(expect.objectContaining({ code: 'reason_required' }));
     });
 
     it('fails with not_found for an unknown item', () => {
       const move = () =>
-        moveItem(db, { id: 'TASKS-9', to: 'in_progress', actor: bot, channel: 'cli' });
+        moveItem(ctx, { id: 'TASKS-9', to: 'in_progress', actor: bot, channel: 'cli' });
 
       expect(move).toThrow(expect.objectContaining({ code: 'not_found' }));
     });
@@ -154,59 +175,48 @@ describe('items', () => {
 
   describe('getItem', () => {
     it('fails with not_found for an unknown id', () => {
-      expect(() => getItem(db, 'TASKS-9')).toThrow(expect.objectContaining({ code: 'not_found' }));
+      expect(() => getItem(ctx, 'TASKS-9')).toThrow(expect.objectContaining({ code: 'not_found' }));
     });
 
     it('does not change the item when read', () => {
-      createItem(db, { collection: 'tasks', title: 'First', actor: ana }, clock('t0'));
-      const before = getItem(db, 'TASKS-1');
+      createItem(ctx, task('First'), clock('t0'));
+      const before = getItem(ctx, 'TASKS-1');
 
-      expect(getItem(db, 'TASKS-1')).toEqual(before);
+      expect(getItem(ctx, 'TASKS-1')).toEqual(before);
     });
   });
 
   describe('listItems', () => {
     beforeEach(() => {
-      addCollection(db, {
-        name: 'reviews',
-        workflow: {
-          name: 'reviews',
-          initial: 'open',
-          states: [
-            { name: 'open', turn: 'human' },
-            { name: 'closed', turn: 'none' },
-          ],
-          transitions: [{ from: 'open', to: 'closed', by: 'agent', reasonRequired: false }],
-        },
-      });
+      addCollection(ctx, { name: 'reviews', preset: 'reviews' });
       const now = clock('t0');
-      createItem(db, { collection: 'tasks', title: 'A', actor: ana }, now);
-      createItem(db, { collection: 'reviews', title: 'B', actor: bot }, now);
-      createItem(db, { collection: 'tasks', title: 'C', actor: ana }, now);
-      moveItem(db, { id: 'TASKS-2', to: 'in_progress', actor: bot, channel: 'cli' }, now);
+      createItem(ctx, task('A'), now);
+      createItem(ctx, { collection: 'reviews', title: 'B', actor: bot }, now);
+      createItem(ctx, task('C'), now);
+      moveItem(ctx, { id: 'TASKS-2', to: 'in_progress', actor: bot, channel: 'cli' }, now);
     });
 
     const ids = (items: Array<{ id: string }>) => items.map((item) => item.id);
 
     it('lists every item in creation order', () => {
-      expect(ids(listItems(db))).toEqual(['TASKS-1', 'REVIEWS-1', 'TASKS-2']);
+      expect(ids(listItems(ctx))).toEqual(['TASKS-1', 'REVIEWS-1', 'TASKS-2']);
     });
 
     it('filters by collection', () => {
-      expect(ids(listItems(db, { collection: 'tasks' }))).toEqual(['TASKS-1', 'TASKS-2']);
+      expect(ids(listItems(ctx, { collection: 'tasks' }))).toEqual(['TASKS-1', 'TASKS-2']);
     });
 
     it('filters by state', () => {
-      expect(ids(listItems(db, { state: 'in_progress' }))).toEqual(['TASKS-2']);
+      expect(ids(listItems(ctx, { state: 'in_progress' }))).toEqual(['TASKS-2']);
     });
 
     it('filters by derived turn', () => {
-      expect(ids(listItems(db, { turn: 'human' }))).toEqual(['REVIEWS-1']);
-      expect(ids(listItems(db, { turn: 'agent' }))).toEqual(['TASKS-1', 'TASKS-2']);
+      expect(ids(listItems(ctx, { turn: 'human' }))).toEqual(['REVIEWS-1']);
+      expect(ids(listItems(ctx, { turn: 'agent' }))).toEqual(['TASKS-1', 'TASKS-2']);
     });
 
     it('combines filters', () => {
-      expect(ids(listItems(db, { collection: 'tasks', state: 'todo', turn: 'agent' }))).toEqual([
+      expect(ids(listItems(ctx, { collection: 'tasks', state: 'todo', turn: 'agent' }))).toEqual([
         'TASKS-1',
       ]);
     });

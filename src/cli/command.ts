@@ -1,6 +1,11 @@
 import type { Actor } from '../core/item.ts';
 
-export type OptionSpec = { required?: boolean; choices?: readonly string[] };
+export type OptionSpec = {
+  required?: boolean;
+  choices?: readonly string[];
+  multiple?: boolean;
+  placeholder?: string;
+};
 
 export type Input = {
   cwd: string;
@@ -8,6 +13,7 @@ export type Input = {
   signal: AbortSignal;
   args: string[];
   option(name: string): string | undefined;
+  options(name: string): string[];
   required(name: string): string;
 };
 
@@ -26,7 +32,8 @@ export class UsageError extends Error {
 }
 
 function optionUsage(name: string, spec: OptionSpec): string {
-  const flag = `--${name} <${spec.choices?.join('|') ?? name}>`;
+  const value = spec.placeholder ?? spec.choices?.join('|') ?? name;
+  const flag = `--${name} <${value}>${spec.multiple ? '...' : ''}`;
   return spec.required ? flag : `[${flag}]`;
 }
 

@@ -27,20 +27,34 @@ describe('commands', () => {
     });
 
     describe('collection add', () => {
-      it('adds a collection with the tasks workflow', async () => {
+      it('adds a collection with the tasks preset by default', async () => {
         const { code, out } = await otea('collection', 'add', 'tasks');
 
         expect(code).toBe(0);
-        expect(out).toBe('Added collection "tasks" (ids TASKS-<n>)\n');
+        expect(out).toBe('Added collection "tasks" with preset tasks v1 (ids TASKS-<n>)\n');
       });
 
       it('prints the collection with --json', async () => {
-        expect(await json('collection', 'add', 'bugs')).toMatchObject({
+        expect(await json('collection', 'add', 'bugs', '--preset', 'tasks')).toEqual({
           name: 'bugs',
           prefix: 'BUGS',
+          preset: 'tasks',
+          presetVersion: 1,
           nextSeq: 1,
-          workflow: { name: 'tasks', initial: 'todo' },
         });
+      });
+
+      it('fails with not_found for an unknown preset', async () => {
+        const { code, err } = await otea('collection', 'add', 'bugs', '--preset', 'nope');
+
+        expect(code).toBe(3);
+        expect(err).toContain('Preset "nope" not found');
+      });
+
+      it('fails with invalid_preset for a broken project preset', async () => {
+        repo.write('.otea/presets/broken/preset.yaml', 'preset: broken\n');
+
+        expect((await otea('collection', 'add', 'bugs', '--preset', 'broken')).code).toBe(9);
       });
 
       it('fails with already_exists for a duplicate', async () => {
@@ -67,13 +81,14 @@ describe('commands', () => {
       });
 
       it('prints the new id', async () => {
-        expect(await otea('create', '--collection', 'tasks', '--title', 'First')).toMatchObject({
+        const create = (title: string) =>
+          otea('create', '--collection', 'tasks', '--title', title, '--description', 'D');
+
+        expect(await create('First')).toMatchObject({
           code: 0,
           out: 'TASKS-1\n',
         });
-        expect((await otea('create', '--collection', 'tasks', '--title', 'Second')).out).toBe(
-          'TASKS-2\n',
-        );
+        expect((await create('Second')).out).toBe('TASKS-2\n');
       });
 
       it('prints the item with --json', async () => {
@@ -83,18 +98,78 @@ describe('commands', () => {
           'tasks',
           '--title',
           'First',
-          '--body',
+          '--description',
           'Why',
+          '--field',
+          'priority=high',
         );
 
         expect(item).toMatchObject({
           id: 'TASKS-1',
           title: 'First',
-          body: 'Why',
+          fields: { description: 'Why', priority: 'high' },
+          presetVersion: 1,
           state: 'todo',
           turn: 'agent',
           createdBy: { kind: 'agent', name: 'agent' },
         });
+      });
+
+      it('creates an item without its description as incomplete', async () => {
+        const item = await json('create', '--collection', 'tasks', '--title', 'Vague');
+
+        expect(item).toMatchObject({ state: 'incomplete', fields: { priority: 'medium' } });
+      });
+
+      it('accepts every field through repeated --field', async () => {
+        const item = await json(
+          'create',
+          '--collection',
+          'tasks',
+          '--title',
+          'T',
+          '--field',
+          'description=a=b',
+          '--field',
+          'priority=low',
+        );
+
+        expect(item.fields).toEqual({ description: 'a=b', priority: 'low' });
+      });
+
+      it.each([
+        [['--field', 'priority=urgent'], 'field "priority" must be one of low, medium, high'],
+        [['--field', 'owner=ana'], 'unknown field "owner"'],
+      ])('fails with invalid_fields for %j', async (extra, message) => {
+        const { code, err } = await otea(
+          'create',
+          '--collection',
+          'tasks',
+          '--title',
+          'T',
+          ...extra,
+        );
+
+        expect(code).toBe(8);
+        expect(err).toContain(message);
+      });
+
+      it.each([
+        [['--field', 'priority'], '--field expects key=value'],
+        [['--field', 'title=Other'], 'Use --title for the title'],
+        [['--description', 'a', '--field', 'description=b'], 'Field "description" given twice'],
+      ])('rejects %j as usage', async (extra, message) => {
+        const { code, err } = await otea(
+          'create',
+          '--collection',
+          'tasks',
+          '--title',
+          'T',
+          ...extra,
+        );
+
+        expect(code).toBe(2);
+        expect(err).toContain(message);
       });
 
       it('records the actor from OTEA_AGENT', async () => {
@@ -120,7 +195,7 @@ describe('commands', () => {
         expect(code).toBe(2);
         expect(err).toContain('Missing --title');
         expect(err).toContain(
-          'Usage: otea create --collection <collection> --title <title> [--body <body>]',
+          'Usage: otea create --collection <collection> --title <title> [--description <description>] [--field <key=value>...]',
         );
       });
 
@@ -133,8 +208,24 @@ describe('commands', () => {
       beforeEach(async () => {
         await otea('collection', 'add', 'tasks');
         await otea('collection', 'add', 'bugs');
-        await otea('create', '--collection', 'tasks', '--title', 'Write docs', '--body', 'For v1');
-        await otea('create', '--collection', 'bugs', '--title', 'Fix login');
+        await otea(
+          'create',
+          '--collection',
+          'tasks',
+          '--title',
+          'Write docs',
+          '--description',
+          'For v1',
+        );
+        await otea(
+          'create',
+          '--collection',
+          'bugs',
+          '--title',
+          'Fix login',
+          '--description',
+          'Steps',
+        );
         await otea('move', 'BUGS-1', 'in_progress');
         await otea('move', 'BUGS-1', 'review');
       });
@@ -181,7 +272,7 @@ describe('commands', () => {
           expect(code).toBe(0);
           expect(out).toContain('TASKS-1  Write docs');
           expect(out).toContain('state: todo  turn: agent  collection: tasks');
-          expect(out).toContain('For v1');
+          expect(out).toContain('description: For v1\npriority: medium');
           expect(out).toMatch(/agent:agent {2}created {2}todo/);
         });
 
@@ -255,6 +346,19 @@ describe('commands', () => {
           });
           expect((await otea('show', 'TASKS-1')).out).toMatch(
             /transitioned {2}todo -> in_progress \(Picked up\)$/m,
+          );
+        });
+
+        it('requires a reason when the transition does, with the usage', async () => {
+          await otea('create', '--collection', 'tasks', '--title', 'Vague');
+
+          const { code, err } = await otea('move', 'TASKS-2', 'discarded');
+
+          expect(code).toBe(2);
+          expect(err).toContain('Moving from "incomplete" to "discarded" requires a reason');
+          expect(err).toContain('Usage: otea move <id> <state> [--reason <reason>]');
+          expect((await otea('move', 'TASKS-2', 'discarded', '--reason', 'Duplicate')).code).toBe(
+            0,
           );
         });
 

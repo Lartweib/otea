@@ -1,7 +1,6 @@
 import type { DatabaseSync } from 'node:sqlite';
 import { OteaError } from '../core/errors.ts';
 import { prefixFor } from '../core/item.ts';
-import { tasks, type Workflow } from '../core/workflow.ts';
 import { transaction } from '../store/database.ts';
 import {
   type CollectionRecord,
@@ -9,16 +8,22 @@ import {
   findCollection,
   insertCollection,
 } from '../store/queries.ts';
+import type { Context } from './context.ts';
+import { type LoadedPreset, requirePreset } from './presets.ts';
 
 export type Collection = CollectionRecord;
 
-export type AddCollectionInput = { name: string; workflow?: Workflow };
+export const DEFAULT_PRESET = 'tasks';
 
-export function addCollection(db: DatabaseSync, input: AddCollectionInput): Collection {
+export type AddCollectionInput = { name: string; preset?: string };
+
+export function addCollection({ db, presets }: Context, input: AddCollectionInput): Collection {
+  const preset = requirePreset(presets, input.preset ?? DEFAULT_PRESET);
   const collection = {
     name: input.name,
     prefix: prefixFor(input.name),
-    workflow: input.workflow ?? tasks,
+    preset: preset.name,
+    presetVersion: preset.version,
     nextSeq: 1,
   };
   return transaction(db, () => {
@@ -37,4 +42,8 @@ export function getCollection(db: DatabaseSync, name: string): Collection {
   const collection = findCollection(db, name);
   if (!collection) throw new OteaError('not_found', `Collection "${name}" not found`);
   return collection;
+}
+
+export function presetOf(ctx: Context, collection: Collection): LoadedPreset {
+  return requirePreset(ctx.presets, collection.preset);
 }

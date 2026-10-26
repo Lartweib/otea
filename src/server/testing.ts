@@ -4,14 +4,12 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { DatabaseSync } from 'node:sqlite';
 import type { Project } from '../app/project.ts';
+import { memoryContext } from '../app/testing.ts';
 import { openDatabase } from '../store/database.ts';
-import { migrate } from '../store/migrations.ts';
 import type { OteaServer } from './server.ts';
 
 export function memoryProject(): Project {
-  const db = openDatabase(':memory:');
-  migrate(db);
-  return { root: '/memory', db };
+  return { root: '/memory', ...memoryContext() };
 }
 
 export function tempDatabase(): { open: () => DatabaseSync; remove: () => void } {

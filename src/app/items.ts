@@ -1,6 +1,7 @@
 import type { DatabaseSync } from 'node:sqlite';
 import { authorizeMove, type Channel } from '../core/authority.ts';
 import { OteaError } from '../core/errors.ts';
+import { type FieldValues, intake } from '../core/fields.ts';
 import { type Actor, formatItemId } from '../core/item.ts';
 import { type Turn, turnOf, type Workflow } from '../core/workflow.ts';
 import { transaction } from '../store/database.ts';
@@ -16,7 +17,8 @@ import {
   selectItems,
   updateItemState,
 } from '../store/queries.ts';
-import { getCollection } from './collections.ts';
+import { type Collection, getCollection, presetOf } from './collections.ts';
+import type { Context } from './context.ts';
 
 export type Clock = () => string;
 
@@ -36,50 +38,63 @@ function requireItem(db: DatabaseSync, id: string): ItemRecord {
   return item;
 }
 
-export type CreateItemInput = { collection: string; title: string; body?: string; actor: Actor };
+function workflowOf(ctx: Context, collection: string): Workflow {
+  return presetOf(ctx, getCollection(ctx.db, collection)).workflow;
+}
 
-export function createItem(db: DatabaseSync, input: CreateItemInput, now = systemClock): Item {
+export type CreateItemInput = {
+  collection: string;
+  title: string;
+  fields?: FieldValues;
+  actor: Actor;
+};
+
+export function createItem(ctx: Context, input: CreateItemInput, now = systemClock): Item {
+  const { db } = ctx;
   return transaction(db, () => {
-    const { prefix, workflow } = getCollection(db, input.collection);
-    const seq = claimNextSeq(db, input.collection);
+    const collection = getCollection(db, input.collection);
+    const preset = presetOf(ctx, collection);
+    const { title, fields, state } = intake(preset, { ...input.fields, title: input.title });
+    const seq = claimNextSeq(db, collection.name);
     const at = now();
     const item: ItemRecord = {
-      id: formatItemId(prefix, seq),
-      collection: input.collection,
+      id: formatItemId(collection.prefix, seq),
+      collection: collection.name,
       seq,
-      title: input.title,
-      body: input.body ?? '',
-      state: workflow.initial,
+      title,
+      fields,
+      presetVersion: preset.version,
+      state,
       createdAt: at,
       updatedAt: at,
       createdBy: input.actor,
     };
     insertItem(db, item);
-    appendEvent(db, {
-      itemId: item.id,
-      type: 'created',
-      actor: input.actor,
-      at,
-      data: { state: item.state },
-    });
-    return withTurn(item, workflow);
+    appendEvent(db, { itemId: item.id, type: 'created', actor: input.actor, at, data: { state } });
+    return withTurn(item, preset.workflow);
   });
 }
 
 export type ListItemsFilter = { collection?: string; state?: string; turn?: Turn };
 
-export function listItems(db: DatabaseSync, filter: ListItemsFilter = {}): Item[] {
-  const workflows = new Map(listCollections(db).map(({ name, workflow }) => [name, workflow]));
+export function listItems(ctx: Context, filter: ListItemsFilter = {}): Item[] {
+  const collections = new Map(listCollections(ctx.db).map((record) => [record.name, record]));
+  const workflows = new Map<string, Workflow>();
+  const workflowFor = (name: string): Workflow => {
+    const workflow =
+      workflows.get(name) ?? presetOf(ctx, collections.get(name) as Collection).workflow;
+    workflows.set(name, workflow);
+    return workflow;
+  };
   const { turn, ...stored } = filter;
-  return selectItems(db, stored)
-    .map((item) => withTurn(item, workflows.get(item.collection) as Workflow))
+  return selectItems(ctx.db, stored)
+    .map((item) => withTurn(item, workflowFor(item.collection)))
     .filter((item) => turn === undefined || item.turn === turn);
 }
 
-export function getItem(db: DatabaseSync, id: string): ItemWithEvents {
-  const item = requireItem(db, id);
-  const { workflow } = getCollection(db, item.collection);
-  return { ...withTurn(item, workflow), events: selectEvents(db, id) };
+export function getItem(ctx: Context, id: string): ItemWithEvents {
+  const item = requireItem(ctx.db, id);
+  return { ...withTurn(item, workflowOf(ctx, item.collection)), events: selectEvents(ctx.db, id) };
 }
 
 export type MoveItemInput = {
@@ -90,10 +105,11 @@ export type MoveItemInput = {
   reason?: string;
 };
 
-export function moveItem(db: DatabaseSync, input: MoveItemInput, now = systemClock): Item {
+export function moveItem(ctx: Context, input: MoveItemInput, now = systemClock): Item {
+  const { db } = ctx;
   return transaction(db, () => {
     const item = requireItem(db, input.id);
-    const { workflow } = getCollection(db, item.collection);
+    const workflow = workflowOf(ctx, item.collection);
     const { actor, channel, reason } = input;
     authorizeMove(workflow, item.state, input.to, { actor, channel }, reason);
     const at = now();

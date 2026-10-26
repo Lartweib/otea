@@ -1,30 +1,40 @@
 import type { DatabaseSync } from 'node:sqlite';
 import type { Actor } from '../core/item.ts';
-import type { Workflow } from '../core/workflow.ts';
 
 export type CollectionRecord = {
   name: string;
   prefix: string;
-  workflow: Workflow;
+  preset: string;
+  presetVersion: number;
   nextSeq: number;
 };
 
-type CollectionRow = { name: string; prefix: string; workflow: string; next_seq: number };
+type CollectionRow = {
+  name: string;
+  prefix: string;
+  preset: string;
+  preset_version: number;
+  next_seq: number;
+};
 
 function toCollection(row: CollectionRow): CollectionRecord {
   return {
     name: row.name,
     prefix: row.prefix,
-    workflow: JSON.parse(row.workflow) as Workflow,
+    preset: row.preset,
+    presetVersion: row.preset_version,
     nextSeq: row.next_seq,
   };
 }
 
 export function insertCollection(db: DatabaseSync, collection: CollectionRecord): void {
-  db.prepare('INSERT INTO collections (name, prefix, workflow, next_seq) VALUES (?, ?, ?, ?)').run(
+  db.prepare(
+    'INSERT INTO collections (name, prefix, preset, preset_version, next_seq) VALUES (?, ?, ?, ?, ?)',
+  ).run(
     collection.name,
     collection.prefix,
-    JSON.stringify(collection.workflow),
+    collection.preset,
+    collection.presetVersion,
     collection.nextSeq,
   );
 }
@@ -54,7 +64,8 @@ export type ItemRecord = {
   collection: string;
   seq: number;
   title: string;
-  body: string;
+  fields: Record<string, unknown>;
+  presetVersion: number;
   state: string;
   createdAt: string;
   updatedAt: string;
@@ -66,7 +77,8 @@ type ItemRow = {
   collection: string;
   seq: number;
   title: string;
-  body: string;
+  fields: string;
+  preset_version: number;
   state: string;
   created_at: string;
   updated_at: string;
@@ -80,7 +92,8 @@ function toItem(row: ItemRow): ItemRecord {
     collection: row.collection,
     seq: row.seq,
     title: row.title,
-    body: row.body,
+    fields: JSON.parse(row.fields) as Record<string, unknown>,
+    presetVersion: row.preset_version,
     state: row.state,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -90,15 +103,16 @@ function toItem(row: ItemRow): ItemRecord {
 
 export function insertItem(db: DatabaseSync, item: ItemRecord): void {
   db.prepare(
-    `INSERT INTO items (id, collection, seq, title, body, state, created_at, updated_at,
-      created_by_kind, created_by_name)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO items (id, collection, seq, title, fields, preset_version, state, created_at,
+      updated_at, created_by_kind, created_by_name)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     item.id,
     item.collection,
     item.seq,
     item.title,
-    item.body,
+    JSON.stringify(item.fields),
+    item.presetVersion,
     item.state,
     item.createdAt,
     item.updatedAt,

@@ -6,7 +6,8 @@ export type Item = {
   id: string;
   collection: string;
   title: string;
-  body: string;
+  fields: Record<string, string>;
+  presetVersion: number;
   state: string;
   turn: Turn;
   createdAt: string;
