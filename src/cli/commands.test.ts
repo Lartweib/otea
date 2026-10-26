@@ -321,6 +321,12 @@ describe('commands', () => {
           await otea('create', '--collection', 'tasks', '--title', 'Vague');
         });
 
+        it('is shown with the fields it still needs', async () => {
+          expect((await otea('show', 'TASKS-2')).out).toContain('Missing to complete: description');
+          expect((await json('show', 'TASKS-2')).missing).toEqual(['description']);
+          expect((await otea('show', 'TASKS-1')).out).not.toContain('Missing to complete');
+        });
+
         it('prints the updated item as a list row', async () => {
           expect(await otea('update', 'TASKS-2', '--title', 'Clear')).toMatchObject({
             code: 0,

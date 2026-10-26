@@ -92,6 +92,9 @@ export function formatItemWithEvents(item: ItemView): string {
     `created by ${actorLabel(item.createdBy)} at ${item.createdAt}`,
     ...fieldLines(item.fields),
     '',
+    ...(item.missing.length > 0 && item.turn !== 'none'
+      ? [`Missing to complete: ${item.missing.join(', ')}`]
+      : []),
     movesLine(item),
     '',
     'Events:',

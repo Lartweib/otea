@@ -248,6 +248,15 @@ describe('items', () => {
       expect(shown.transitions).toEqual([
         { to: 'in_progress', by: 'agent', reasonRequired: false },
       ]);
+      expect(shown.missing).toEqual([]);
+    });
+
+    it('lists the fields an incomplete item still needs', () => {
+      createItem(ctx, { collection: 'tasks', title: 'Vague', actor: ana });
+
+      expect(showItem(ctx, 'TASKS-1', { actor: bot, channel: 'cli' }).missing).toEqual([
+        'description',
+      ]);
     });
   });
 

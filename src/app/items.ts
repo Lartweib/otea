@@ -7,7 +7,13 @@ import {
   type Performer,
 } from '../core/authority.ts';
 import { OteaError } from '../core/errors.ts';
-import { assertCanLeave, type FieldValues, intake, revise } from '../core/fields.ts';
+import {
+  assertCanLeave,
+  type FieldValues,
+  intake,
+  missingToComplete,
+  revise,
+} from '../core/fields.ts';
 import { type Actor, formatItemId } from '../core/item.ts';
 import { type Turn, turnOf, type Workflow } from '../core/workflow.ts';
 import { transaction } from '../store/database.ts';
@@ -104,12 +110,16 @@ export function getItem(ctx: Context, id: string): ItemWithEvents {
   return { ...withTurn(item, workflowOf(ctx, item.collection)), events: selectEvents(ctx.db, id) };
 }
 
-export type ItemView = ItemWithEvents & { transitions: Move[] };
+export type ItemView = ItemWithEvents & { transitions: Move[]; missing: string[] };
 
 export function showItem(ctx: Context, id: string, performer: Performer): ItemView {
   const item = getItem(ctx, id);
-  const { workflow } = presetOf(ctx, getCollection(ctx.db, item.collection));
-  return { ...item, transitions: availableMoves(workflow, item.state, performer) };
+  const preset = presetOf(ctx, getCollection(ctx.db, item.collection));
+  return {
+    ...item,
+    transitions: availableMoves(preset.workflow, item.state, performer),
+    missing: missingToComplete(preset, item.fields),
+  };
 }
 
 export type UpdateItemInput = { id: string; title?: string; fields?: FieldValues; actor: Actor };
