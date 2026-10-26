@@ -8,14 +8,16 @@ import {
   showItem,
   updateItem,
 } from '../app/items.ts';
-import { initProject, openProject, type Project } from '../app/project.ts';
+import { initProject, openProject, oteaDir, type Project } from '../app/project.ts';
 import { validateProject } from '../app/validate.ts';
 import type { FieldValues } from '../core/fields.ts';
 import { TURNS, type Turn } from '../core/workflow.ts';
 import { DEFAULT_PORT, listen } from '../server/listen.ts';
 import { createServer } from '../server/server.ts';
+import { ensureUiToken } from '../server/token.ts';
 import { type Command, type Input, UsageError } from './command.ts';
 import { formatItem, formatItems, formatItemWithEvents, formatReport } from './format.ts';
+import { removeServeFile, writeServeFile } from './serve-file.ts';
 
 function withProject<T>(cwd: string, use: (project: Project) => T): T {
   const project = openProject(cwd);
@@ -190,26 +192,44 @@ function portFrom(value: string | undefined): number {
   return port;
 }
 
-async function serveUntil(signal: AbortSignal, cwd: string, port: number): Promise<string> {
+type Served = { url: string; signInUrl: string };
+
+async function serveUntil(signal: AbortSignal, cwd: string, port: number): Promise<Served> {
   const project = openProject(cwd);
   try {
-    const running = await listen(createServer(project), port);
-    const stop = () => running.close().finally(() => project.db.close());
+    const dir = oteaDir(project.root);
+    const token = ensureUiToken(dir);
+    const running = await listen(createServer(project, { token }), port);
+    writeServeFile(dir, { port: running.port, pid: process.pid });
+    const stop = () => {
+      removeServeFile(dir, process.pid);
+      return running.close().finally(() => project.db.close());
+    };
     signal.addEventListener('abort', stop, { once: true });
-    return running.url;
+    return { url: running.url, signInUrl: signInUrl(running.url, token) };
   } catch (error) {
     project.db.close();
     throw error;
   }
 }
 
+function signInUrl(url: string, token: string): string {
+  return `${url}/auth?token=${encodeURIComponent(token)}`;
+}
+
 const serve: Command = {
   name: 'serve',
-  summary: `Serve the live read-only UI on 127.0.0.1 (default port ${DEFAULT_PORT}) until Ctrl+C`,
+  summary: `Serve the live UI on 127.0.0.1 (default port ${DEFAULT_PORT}) until Ctrl+C and sign this browser in`,
   args: [],
-  options: { port: {} },
-  execute: async ({ cwd, option, signal }) => {
-    const url = await serveUntil(signal, cwd, portFrom(option('port')));
+  options: { port: {}, 'no-open': { flag: true } },
+  execute: async ({ cwd, option, flag, signal, openUrl, warn }) => {
+    const { url, signInUrl } = await serveUntil(signal, cwd, portFrom(option('port')));
+    if (!flag('no-open')) {
+      await openUrl(signInUrl).catch((error: unknown) => {
+        const reason = error instanceof Error ? error.message : String(error);
+        warn(`Could not open a browser (${reason}); run "otea open" to try again`);
+      });
+    }
     return { data: { url }, text: `Otea running at ${url}` };
   },
 };

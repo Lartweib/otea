@@ -2,6 +2,7 @@ import { execFileSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
+import type { Opener } from './opener.ts';
 import { run } from './run.ts';
 
 export type Result = { code: number; out: string; err: string };
@@ -12,6 +13,7 @@ export function cliAt(
   cwd: string,
   env: Record<string, string> = {},
   signal = new AbortController().signal,
+  openUrl: Opener = async () => {},
 ): Cli {
   return async (...argv) => {
     let out = '';
@@ -20,6 +22,7 @@ export function cliAt(
       cwd,
       env,
       signal,
+      openUrl,
       stdout: { write: (chunk: string) => (out += chunk) },
       stderr: { write: (chunk: string) => (err += chunk) },
     });
