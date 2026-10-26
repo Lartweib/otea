@@ -13,5 +13,6 @@ export const EXIT_CODES: Readonly<Record<'ok' | FailureCode, number>> = {
   invalid_id: 6,
   forbidden: 7,
   reason_required: 2,
+  invalid_fields: 8,
   invalid_preset: 9,
 };

@@ -6,7 +6,8 @@ export type ErrorCode =
   | 'invalid_id'
   | 'forbidden'
   | 'reason_required'
-  | 'invalid_preset';
+  | 'invalid_preset'
+  | 'invalid_fields';
 
 export class OteaError extends Error {
   readonly code: ErrorCode;
