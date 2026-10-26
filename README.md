@@ -56,7 +56,7 @@ Every collection is governed by a preset: its fields, states, turns and transiti
 
 ### See it live
 
-The web UI is read-only for now and updates as items change.
+The web UI updates live as items change, and it is where you take the decisions agents cannot, such as approving a task in review.
 
 ```sh
 npm run build:ui            # once, in the Otea checkout
@@ -65,12 +65,17 @@ cd /path/to/your/project
 otea serve                  # Otea running at http://127.0.0.1:4400
 ```
 
-Open the URL, then in another terminal in the same project create and move items and watch them update:
+`otea serve` opens your browser already signed in to act on items (the session lives in an HTTP-only cookie; the token in `.otea/ui-token` is never printed). Pass `--no-open` to skip the browser, and run `otea open` from the project later to sign a browser in to the running server. A tab opened on the plain URL without signing in is read-only.
+
+In another terminal in the same project, create and move items and watch them update:
 
 ```sh
 otea create --collection tasks --title "Review the copy" --description "Landing page"
 otea move TASKS-1 in_progress
+otea move TASKS-1 review
 ```
+
+`TASKS-1` is now waiting for you: approve it (`done`) or send it back with a reason (`todo`) from its detail in the UI. The CLI refuses those moves, and the timeline shows your decision as `human (ui)`.
 
 Working on the UI itself: keep `otea serve` running and start `npm run dev:ui` in the Otea checkout for hot reload (it proxies `/api` to port 4400).
 

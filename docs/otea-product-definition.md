@@ -184,10 +184,12 @@ docs/
 The app process runs a local HTTP server that serves the UI. The Electron window is just one client of it; a browser on the same machine (when running from source) or on a phone is another.
 
 - **LAN access is opt-in and off by default.** When enabled, the server also listens on the local network.
+- **Browser session**: each project has a random UI token (32 bytes, base64url) in `.otea/ui-token`, created on the first `otea serve` with owner-only permissions where the file system allows it, and never printed. `otea serve` and `otea open` launch the browser at `/auth?token=...`; the server compares the token in constant time, sets `otea_session` as an `HttpOnly; SameSite=Strict; Path=/` cookie (no `Secure`: it is plain HTTP on 127.0.0.1) and redirects to `/`, so the token never reaches the page's JavaScript. A browser without that cookie sees a read-only UI.
+- **Writes from the UI** (`POST /api/items/:id/move`, JSON `{ to, reason? }`) need the session cookie (else 401), `Content-Type: application/json` (else 415) and an `Origin` equal to the server's own origin (else 403), on top of the `Host` check that blocks DNS rebinding. They act as `human` on the `ui` channel, so `agent`, `human` and `human-ui` transitions are reachable there and only there; the event records the channel, which is how the timeline tells a direct UI decision apart.
 - **Pairing**: the app shows a QR code carrying a device token. A paired device acts as the human, so it can perform `human-ui` actions. Devices can be revoked.
 - Plain HTTP on the LAN: the token can be sniffed on a shared network. The UI states "trusted networks only".
 - **Otea handles local access only.** For access outside the LAN (and HTTPS), the docs include a guide using Tailscale's free personal plan with `tailscale serve` (valid certificates, private to the user's devices; never `funnel`). Users who refuse a third-party account can self-host the coordination server with Headscale, at the cost of running a public server. Otea ships no certificate or remote-access code of its own.
-- **The server never trusts the request origin.** Every request needs a valid token, even from localhost: a reverse proxy (e.g. `tailscale serve`) makes remote requests look local.
+- **The server never trusts the request origin.** Every write needs a valid session, even from localhost: a reverse proxy (e.g. `tailscale serve`) makes remote requests look local. While the server only listens on 127.0.0.1 and accepts only its own `Host`, reads stay open so a plain browser tab shows the read-only UI; once LAN access or pairing exist, reads require a session too.
 - Closing the window keeps the app in the tray, so paired devices keep working; quitting stops the server.
 - The UI is responsive: triage and review must be usable on a phone.
 
@@ -224,6 +226,8 @@ One write path: the CLI and the app use the same core and write to the same data
   presets/                 local presets (or references to official ones)
   modules/                 local modules (§10.3)
   otea.db                  items, iterations, leases, events (append-only)
+  ui-token                 browser session token (never committed, never printed)
+  serve.json               port and pid of the running `otea serve`, removed on shutdown
   evidence/<collection>/<item-id>/...
 ```
 
