@@ -140,6 +140,25 @@ export function updateItemState(db: DatabaseSync, id: string, state: string, at:
   db.prepare('UPDATE items SET state = ?, updated_at = ? WHERE id = ?').run(state, at, id);
 }
 
+export type ItemContent = {
+  title: string;
+  fields: Record<string, unknown>;
+  presetVersion: number;
+  updatedAt: string;
+};
+
+export function updateItemContent(db: DatabaseSync, id: string, content: ItemContent): void {
+  db.prepare(
+    'UPDATE items SET title = ?, fields = ?, preset_version = ?, updated_at = ? WHERE id = ?',
+  ).run(
+    content.title,
+    JSON.stringify(content.fields),
+    content.presetVersion,
+    content.updatedAt,
+    id,
+  );
+}
+
 export type EventRecord = {
   id: number;
   itemId: string;

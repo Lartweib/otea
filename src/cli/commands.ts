@@ -1,6 +1,13 @@
 import { join } from 'node:path';
 import { addCollection, DEFAULT_PRESET } from '../app/collections.ts';
-import { createItem, type ListItemsFilter, listItems, moveItem, showItem } from '../app/items.ts';
+import {
+  createItem,
+  type ListItemsFilter,
+  listItems,
+  moveItem,
+  showItem,
+  updateItem,
+} from '../app/items.ts';
 import { initProject, openProject, type Project } from '../app/project.ts';
 import { validateProject } from '../app/validate.ts';
 import type { FieldValues } from '../core/fields.ts';
@@ -148,6 +155,30 @@ const validate: Command = {
   },
 };
 
+const update: Command = {
+  name: 'update',
+  summary:
+    'Change fields of an open item; a blank value clears a field that is not create-required',
+  args: ['id'],
+  options: {
+    title: {},
+    description: {},
+    field: { multiple: true, placeholder: 'key=value' },
+  },
+  execute: (input) => {
+    const [id = ''] = input.args;
+    const title = input.option('title');
+    const fields = fieldsFrom(input);
+    if (title === undefined && Object.keys(fields).length === 0) {
+      throw new UsageError('Nothing to update; pass --title, --description or --field');
+    }
+    const { actor } = input;
+    const changes = { id, fields, actor, ...(title === undefined ? {} : { title }) };
+    const item = withProject(input.cwd, (project) => updateItem(project, changes));
+    return { data: item, text: formatItem(item) };
+  },
+};
+
 const PORT_PATTERN = /^\d{1,5}$/;
 
 function portFrom(value: string | undefined): number {
@@ -189,6 +220,7 @@ export const COMMANDS: readonly Command[] = [
   create,
   list,
   show,
+  update,
   move,
   validate,
   serve,

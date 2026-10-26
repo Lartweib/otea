@@ -10,7 +10,17 @@ export function describeEvent({ type, data }: ItemEvent): string {
     const reason = data.reason === undefined ? '' : `: ${String(data.reason)}`;
     return `Moved from ${String(data.from)} to ${String(data.to)}${reason}`;
   }
+  if (type === 'updated') return describeUpdate(data.changes);
   return type;
+}
+
+type Changes = Record<string, { from: string | null; to: string | null }>;
+
+function describeUpdate(changes: unknown): string {
+  const entries = Object.entries((changes ?? {}) as Changes);
+  const shorten = (text: string) => (text.length > 40 ? `${text.slice(0, 40)}…` : text);
+  const parts = entries.map(([name, { from }]) => `${name} (was ${shorten(from ?? 'empty')})`);
+  return `Updated ${parts.join(', ')}`;
 }
 
 export function formatTime(iso: string, timeZone?: string): string {

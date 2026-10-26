@@ -316,6 +316,64 @@ describe('commands', () => {
         });
       });
 
+      describe('update', () => {
+        beforeEach(async () => {
+          await otea('create', '--collection', 'tasks', '--title', 'Vague');
+        });
+
+        it('prints the updated item as a list row', async () => {
+          expect(await otea('update', 'TASKS-2', '--title', 'Clear')).toMatchObject({
+            code: 0,
+            out: 'TASKS-2  incomplete  agent  Clear\n',
+          });
+        });
+
+        it('updates fields and shows the change in the timeline', async () => {
+          const item = await json(
+            'update',
+            'TASKS-2',
+            '--description',
+            'Steps',
+            '--field',
+            'priority=high',
+          );
+
+          expect(item.fields).toEqual({ description: 'Steps', priority: 'high' });
+          expect((await otea('show', 'TASKS-2')).out).toMatch(
+            /updated {2}description: \(none\) -> "Steps"; priority: "medium" -> "high"$/m,
+          );
+        });
+
+        it('clears an optional field with a blank value', async () => {
+          expect((await json('update', 'TASKS-2', '--field', 'priority=')).fields).toEqual({});
+        });
+
+        it('rejects clearing a create-required field', async () => {
+          const { code, err } = await otea('update', 'TASKS-2', '--title', ' ');
+
+          expect(code).toBe(8);
+          expect(err).toContain('field "title" is required and cannot be cleared');
+        });
+
+        it('rejects updating a closed item', async () => {
+          await otea('move', 'TASKS-2', 'discarded', '--reason', 'Duplicate');
+
+          const { code, err } = await otea('update', 'TASKS-2', '--description', 'Late');
+
+          expect(code).toBe(4);
+          expect(err).toContain('can no longer be updated');
+        });
+
+        it('requires something to update', async () => {
+          const { code, err } = await otea('update', 'TASKS-2');
+
+          expect(code).toBe(2);
+          expect(err).toContain(
+            'Usage: otea update <id> [--title <title>] [--description <description>] [--field <key=value>...]',
+          );
+        });
+      });
+
       describe('move', () => {
         it('prints the moved item as a list row', async () => {
           expect(await otea('move', 'TASKS-1', 'in_progress')).toMatchObject({

@@ -13,6 +13,7 @@ describe('errors', () => {
     ['reason_required', 400],
     ['invalid_preset', 500],
     ['invalid_fields', 422],
+    ['item_closed', 409],
   ] as const)('maps %s to %i', (code, status) => {
     expect(HTTP_STATUS[code]).toBe(status);
   });
