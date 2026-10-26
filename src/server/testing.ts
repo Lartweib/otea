@@ -27,3 +27,7 @@ export const LOCAL_HOST = '127.0.0.1:4400';
 export function request(server: OteaServer, path: string, host = LOCAL_HOST): Promise<Response> {
   return Promise.resolve(server.app.request(path, { headers: { host } }));
 }
+
+export const TOKEN = 'test-token-0123456789abcdefghijklmnopqrstuv';
+
+export const SESSION_COOKIE = `otea_session=${TOKEN}`;
