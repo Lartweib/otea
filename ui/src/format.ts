@@ -4,6 +4,10 @@ export function actorLabel(actor: Actor): string {
   return `${actor.name} (${actor.kind})`;
 }
 
+export function eventActorLabel({ actor, data }: ItemEvent): string {
+  return data.channel === 'ui' ? `${actor.name} (ui)` : actorLabel(actor);
+}
+
 export function describeEvent({ type, data }: ItemEvent): string {
   if (type === 'created') return `Created in ${String(data.state)}`;
   if (type === 'transitioned') {

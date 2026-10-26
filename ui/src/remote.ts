@@ -17,3 +17,11 @@ export function afterFailure<T>(
   if (unreachable) return { status: 'failed', message: UNREACHABLE };
   return { status: 'failed', message: error instanceof Error ? error.message : 'Failed' };
 }
+
+export const SIGN_IN = 'This browser is not signed in. Run `otea open` to act from it.';
+
+export function serverMessage(body: unknown, status: number): string {
+  if (status === 401) return SIGN_IN;
+  const message = (body as { error?: { message?: unknown } } | undefined)?.error?.message;
+  return typeof message === 'string' ? message : `Request failed with ${status}`;
+}

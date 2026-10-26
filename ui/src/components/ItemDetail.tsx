@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
-import { actorLabel, describeEvent, formatTime } from '../format.ts';
-import type { ItemWithEvents } from '../types.ts';
+import { actorLabel, describeEvent, eventActorLabel, formatTime } from '../format.ts';
+import type { ItemView } from '../types.ts';
+import { ItemActions } from './ItemActions.tsx';
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -11,7 +12,9 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-export function ItemDetail({ item }: { item: ItemWithEvents }) {
+type ItemDetailProps = { item: ItemView; canWrite: boolean };
+
+export function ItemDetail({ item, canWrite }: ItemDetailProps) {
   return (
     <article className="detail">
       <header>
@@ -28,6 +31,16 @@ export function ItemDetail({ item }: { item: ItemWithEvents }) {
         <Field label="Collection">{item.collection}</Field>
         <Field label="Created by">{actorLabel(item.createdBy)}</Field>
       </dl>
+      {canWrite ? (
+        <ItemActions key={`${item.id}:${item.state}`} id={item.id} moves={item.transitions} />
+      ) : (
+        <p className="muted read-only">
+          Read-only. Run <code>otea open</code> to act from this browser.
+        </p>
+      )}
+      {item.missing.length > 0 ? (
+        <p className="missing">Missing to complete: {item.missing.join(', ')}</p>
+      ) : null}
       {Object.keys(item.fields).length > 0 ? (
         <dl className="item-fields">
           {Object.entries(item.fields).map(([name, value]) => (
@@ -45,7 +58,7 @@ export function ItemDetail({ item }: { item: ItemWithEvents }) {
           <li key={event.id}>
             <span>{describeEvent(event)}</span>
             <span className="muted">
-              {actorLabel(event.actor)} · <time dateTime={event.at}>{formatTime(event.at)}</time>
+              {eventActorLabel(event)} · <time dateTime={event.at}>{formatTime(event.at)}</time>
             </span>
           </li>
         ))}
