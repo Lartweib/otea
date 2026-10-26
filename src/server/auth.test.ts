@@ -29,7 +29,7 @@ describe('auth', () => {
       expect(response.status).toBe(302);
       expect(response.headers.get('location')).toBe('/');
       expect(response.headers.get('set-cookie')).toBe(
-        `otea_session=${TOKEN}; Path=/; HttpOnly; SameSite=Strict`,
+        `otea_session_4400=${TOKEN}; Path=/; HttpOnly; SameSite=Strict`,
       );
       expect(response.headers.get('referrer-policy')).toBe('no-referrer');
     });
@@ -67,7 +67,7 @@ describe('auth', () => {
     });
 
     it('cannot write with a wrong cookie', async () => {
-      expect(await session({ cookie: 'otea_session=wrong' })).toEqual({ canWrite: false });
+      expect(await session({ cookie: 'otea_session_4400=wrong' })).toEqual({ canWrite: false });
     });
   });
 });

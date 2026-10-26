@@ -114,7 +114,7 @@ describe('POST /api/items/:id/move', () => {
   describe('guards', () => {
     const unchanged = () => expect(getItem(project, 'TASKS-1').state).toBe('review');
 
-    it.each([{}, { cookie: 'otea_session=wrong' }])(
+    it.each([{}, { cookie: 'otea_session_4400=wrong' }])(
       'rejects a request without a valid session with 401',
       async (headers) => {
         const response = await move('TASKS-1', { to: 'done' }, { cookie: '', ...headers });
