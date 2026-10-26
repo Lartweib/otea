@@ -1,6 +1,6 @@
 import type { ErrorCode } from '../core/errors.ts';
 
-export type FailureCode = ErrorCode | 'usage' | 'unexpected';
+export type FailureCode = ErrorCode | 'usage' | 'unexpected' | 'validation_failed';
 
 export const EXIT_CODES: Readonly<Record<'ok' | FailureCode, number>> = {
   ok: 0,
@@ -15,4 +15,5 @@ export const EXIT_CODES: Readonly<Record<'ok' | FailureCode, number>> = {
   reason_required: 2,
   invalid_fields: 8,
   invalid_preset: 9,
+  validation_failed: 10,
 };

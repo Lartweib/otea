@@ -105,7 +105,7 @@ async function dispatch(argv: string[], io: Io, json: boolean): Promise<number> 
   validate(command, values, args);
   const output = await command.execute(inputFor(command, values, args, io));
   io.stdout.write(json ? `${JSON.stringify(output.data, null, 2)}\n` : `${output.text}\n`);
-  return EXIT_CODES.ok;
+  return EXIT_CODES[output.failure ?? 'ok'];
 }
 
 function failureCode(error: unknown): FailureCode {

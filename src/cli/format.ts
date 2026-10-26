@@ -1,4 +1,5 @@
 import type { Item, ItemView } from '../app/items.ts';
+import type { ValidationReport } from '../app/validate.ts';
 import type { Actor } from '../core/item.ts';
 
 type Event = ItemView['events'][number];
@@ -80,4 +81,14 @@ export function formatItemWithEvents(item: ItemView): string {
     'Events:',
     indent(columns(item.events.map(eventRow))),
   ].join('\n');
+}
+
+function plural(count: number, noun: string): string {
+  return `${count} ${noun}${count === 1 ? '' : 's'}`;
+}
+
+export function formatReport({ errors, warnings, findings }: ValidationReport): string {
+  if (findings.length === 0) return 'No problems found.';
+  const rows = findings.map(({ severity, subject, message }) => [severity, subject, message]);
+  return `${columns(rows)}\n${plural(errors, 'error')}, ${plural(warnings, 'warning')}`;
 }

@@ -2,12 +2,13 @@ import { join } from 'node:path';
 import { addCollection, DEFAULT_PRESET } from '../app/collections.ts';
 import { createItem, type ListItemsFilter, listItems, moveItem, showItem } from '../app/items.ts';
 import { initProject, openProject, type Project } from '../app/project.ts';
+import { validateProject } from '../app/validate.ts';
 import type { FieldValues } from '../core/fields.ts';
 import { TURNS, type Turn } from '../core/workflow.ts';
 import { DEFAULT_PORT, listen } from '../server/listen.ts';
 import { createServer } from '../server/server.ts';
 import { type Command, type Input, UsageError } from './command.ts';
-import { formatItem, formatItems, formatItemWithEvents } from './format.ts';
+import { formatItem, formatItems, formatItemWithEvents, formatReport } from './format.ts';
 
 function withProject<T>(cwd: string, use: (project: Project) => T): T {
   const project = openProject(cwd);
@@ -134,6 +135,19 @@ const move: Command = {
   },
 };
 
+const validate: Command = {
+  name: 'validate',
+  summary:
+    'Check presets, collections and items without fixing anything; fails only on errors, not warnings',
+  args: [],
+  options: {},
+  execute: ({ cwd }) => {
+    const report = withProject(cwd, (project) => validateProject(project));
+    const failure = report.errors > 0 ? ('validation_failed' as const) : undefined;
+    return { data: report, text: formatReport(report), ...(failure ? { failure } : {}) };
+  },
+};
+
 const PORT_PATTERN = /^\d{1,5}$/;
 
 function portFrom(value: string | undefined): number {
@@ -169,7 +183,16 @@ const serve: Command = {
   },
 };
 
-export const COMMANDS: readonly Command[] = [init, collectionAdd, create, list, show, move, serve];
+export const COMMANDS: readonly Command[] = [
+  init,
+  collectionAdd,
+  create,
+  list,
+  show,
+  move,
+  validate,
+  serve,
+];
 
 export function findCommand(tokens: readonly string[]): Command | undefined {
   return COMMANDS.find((command) =>

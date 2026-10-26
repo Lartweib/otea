@@ -1,4 +1,5 @@
 import type { Actor } from '../core/item.ts';
+import type { FailureCode } from './exit-codes.ts';
 
 export type OptionSpec = {
   required?: boolean;
@@ -17,7 +18,7 @@ export type Input = {
   required(name: string): string;
 };
 
-export type Output = { data: unknown; text: string };
+export type Output = { data: unknown; text: string; failure?: FailureCode };
 
 export type Command = {
   name: string;

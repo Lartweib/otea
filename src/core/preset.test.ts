@@ -196,6 +196,12 @@ describe('readPreset', () => {
     expect(problemsOf(change)).toContain(problem);
   });
 
+  it('does not report reachability when there is no known entry state', () => {
+    expect(problemsOf((raw) => (raw.workflow.initial = 'nope'))).toEqual([
+      'workflow.initial: unknown state "nope"',
+    ]);
+  });
+
   it('reports every problem at once', () => {
     const problems = problemsOf((raw) => {
       raw.workflow.initial = 'nope';
