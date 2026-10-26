@@ -136,7 +136,7 @@ describe('items', () => {
             { name: 'open', turn: 'human' },
             { name: 'closed', turn: 'none' },
           ],
-          transitions: { open: ['closed'] },
+          transitions: [{ from: 'open', to: 'closed', by: 'agent', reasonRequired: false }],
         },
       });
       const now = clock('t0');

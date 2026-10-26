@@ -1,13 +1,21 @@
 import { describe, expect, it } from 'vitest';
 import { OteaError } from './errors.ts';
-import { assertTransition, canTransition, tasks, turnOf } from './workflow.ts';
+import {
+  assertTransition,
+  tasks,
+  transitionsBetween,
+  transitionsFrom,
+  turnOf,
+} from './workflow.ts';
 
 describe('tasks workflow', () => {
-  it('starts in todo', () => {
+  it('starts in todo and enriches in incomplete', () => {
     expect(tasks.initial).toBe('todo');
+    expect(tasks.incomplete).toBe('incomplete');
   });
 
   it.each([
+    ['incomplete', 'agent'],
     ['todo', 'agent'],
     ['in_progress', 'agent'],
     ['review', 'human'],
@@ -18,15 +26,15 @@ describe('tasks workflow', () => {
   });
 
   it.each([
-    ['todo', 'in_progress'],
-    ['in_progress', 'review'],
-    ['review', 'done'],
-    ['review', 'todo'],
-    ['todo', 'discarded'],
-    ['in_progress', 'discarded'],
-    ['review', 'discarded'],
-  ])('allows %s -> %s', (from, to) => {
-    expect(canTransition(tasks, from, to)).toBe(true);
+    ['incomplete', 'todo', 'agent', false],
+    ['todo', 'in_progress', 'agent', false],
+    ['in_progress', 'review', 'agent', false],
+    ['review', 'done', 'human-ui', false],
+    ['review', 'todo', 'human-ui', true],
+    ['todo', 'discarded', 'human', true],
+    ['review', 'discarded', 'human', true],
+  ])('allows %s -> %s by %s', (from, to, by, reasonRequired) => {
+    expect(transitionsBetween(tasks, from, to)).toEqual([{ from, to, by, reasonRequired }]);
   });
 
   it.each([
@@ -37,13 +45,28 @@ describe('tasks workflow', () => {
     ['done', 'discarded'],
     ['discarded', 'todo'],
     ['todo', 'todo'],
-  ])('rejects %s -> %s', (from, to) => {
-    expect(canTransition(tasks, from, to)).toBe(false);
+  ])('has no %s -> %s transition', (from, to) => {
+    expect(transitionsBetween(tasks, from, to)).toEqual([]);
+  });
+
+  it('lets humans and agents discard an incomplete item through separate transitions', () => {
+    expect(transitionsBetween(tasks, 'incomplete', 'discarded').map(({ by }) => by)).toEqual([
+      'human',
+      'agent',
+    ]);
   });
 
   it('gives terminal states no outgoing transitions', () => {
     const terminal = tasks.states.filter((state) => state.turn === 'none');
-    for (const state of terminal) expect(tasks.transitions[state.name] ?? []).toEqual([]);
+    for (const state of terminal) expect(transitionsFrom(tasks, state.name)).toEqual([]);
+  });
+
+  it('lists the transitions leaving a state in declaration order', () => {
+    expect(transitionsFrom(tasks, 'incomplete').map(({ to, by }) => [to, by])).toEqual([
+      ['todo', 'agent'],
+      ['discarded', 'human'],
+      ['discarded', 'agent'],
+    ]);
   });
 });
 
@@ -54,8 +77,8 @@ describe('turnOf', () => {
 });
 
 describe('assertTransition', () => {
-  it('accepts an allowed transition', () => {
-    expect(() => assertTransition(tasks, 'todo', 'in_progress')).not.toThrow();
+  it('returns the matching transitions', () => {
+    expect(assertTransition(tasks, 'todo', 'in_progress')).toMatchObject([{ by: 'agent' }]);
   });
 
   it('throws an invalid_transition domain error otherwise', () => {
