@@ -14,10 +14,11 @@ import type { FieldValues } from '../core/fields.ts';
 import { TURNS, type Turn } from '../core/workflow.ts';
 import { DEFAULT_PORT, listen } from '../server/listen.ts';
 import { createServer } from '../server/server.ts';
-import { ensureUiToken } from '../server/token.ts';
-import { type Command, type Input, UsageError } from './command.ts';
+import { ensureUiToken, readUiToken } from '../server/token.ts';
+import { type Command, CommandFailure, type Input, UsageError } from './command.ts';
 import { formatItem, formatItems, formatItemWithEvents, formatReport } from './format.ts';
-import { removeServeFile, writeServeFile } from './serve-file.ts';
+import { probeSignIn } from './probe.ts';
+import { readServeFile, removeServeFile, writeServeFile } from './serve-file.ts';
 
 function withProject<T>(cwd: string, use: (project: Project) => T): T {
   const project = openProject(cwd);
@@ -234,6 +235,39 @@ const serve: Command = {
   },
 };
 
+function notRunning(message: string): CommandFailure {
+  return new CommandFailure('not_running', `${message}; run "otea serve" in this project first`);
+}
+
+function portToOpen(dir: string, option: string | undefined): number {
+  if (option !== undefined) return portFrom(option);
+  return readServeFile(dir)?.port ?? DEFAULT_PORT;
+}
+
+const open: Command = {
+  name: 'open',
+  summary: 'Open the UI of the running "otea serve" in the browser, signed in to act on items',
+  args: [],
+  options: { port: {} },
+  execute: async ({ cwd, option, openUrl }) => {
+    const dir = withProject(cwd, (project) => oteaDir(project.root));
+    const port = portToOpen(dir, option('port'));
+    const token = readUiToken(dir);
+    if (!token) throw notRunning('No Otea server has been started for this project');
+    const url = `http://127.0.0.1:${port}`;
+    const link = signInUrl(url, token);
+    const probe = await probeSignIn(link);
+    if (probe === 'down') throw notRunning(`No Otea server answers on port ${port}`);
+    if (probe === 'other')
+      throw notRunning(`The Otea server on port ${port} serves another project`);
+    await openUrl(link).catch((error: unknown) => {
+      const reason = error instanceof Error ? error.message : String(error);
+      throw new Error(`Could not open a browser (${reason})`);
+    });
+    return { data: { url }, text: `Opened Otea at ${url}` };
+  },
+};
+
 export const COMMANDS: readonly Command[] = [
   init,
   collectionAdd,
@@ -244,6 +278,7 @@ export const COMMANDS: readonly Command[] = [
   move,
   validate,
   serve,
+  open,
 ];
 
 export function findCommand(tokens: readonly string[]): Command | undefined {
