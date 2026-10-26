@@ -33,8 +33,12 @@ function locate(cwd: string): Location {
   return { root: dirname(commonDir), gitCommonDir: commonDir };
 }
 
+export function oteaDir(root: string): string {
+  return join(root, OTEA_DIR);
+}
+
 function databasePath(root: string): string {
-  return join(root, OTEA_DIR, 'otea.db');
+  return join(oteaDir(root), 'otea.db');
 }
 
 function excludeFromGit(gitCommonDir: string): void {

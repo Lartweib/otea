@@ -1,10 +1,12 @@
 import type { Actor } from '../core/item.ts';
 import type { FailureCode } from './exit-codes.ts';
+import type { Opener } from './opener.ts';
 
 export type OptionSpec = {
   required?: boolean;
   choices?: readonly string[];
   multiple?: boolean;
+  flag?: boolean;
   placeholder?: string;
 };
 
@@ -12,7 +14,10 @@ export type Input = {
   cwd: string;
   actor: Actor;
   signal: AbortSignal;
+  openUrl: Opener;
+  warn(message: string): void;
   args: string[];
+  flag(name: string): boolean;
   option(name: string): string | undefined;
   options(name: string): string[];
   required(name: string): string;
@@ -33,6 +38,7 @@ export class UsageError extends Error {
 }
 
 function optionUsage(name: string, spec: OptionSpec): string {
+  if (spec.flag) return `[--${name}]`;
   const value = spec.placeholder ?? spec.choices?.join('|') ?? name;
   const flag = `--${name} <${value}>${spec.multiple ? '...' : ''}`;
   return spec.required ? flag : `[${flag}]`;

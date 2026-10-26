@@ -5,6 +5,7 @@ import { type Command, type Input, UsageError, usageOf } from './command.ts';
 import { COMMANDS, findCommand } from './commands.ts';
 import { EXIT_CODES, type FailureCode } from './exit-codes.ts';
 import { commandHelp, generalHelp, HELP_HINT } from './help.ts';
+import type { Opener } from './opener.ts';
 
 type Writer = { write(chunk: string): unknown };
 
@@ -14,6 +15,7 @@ export type Io = {
   stdout: Writer;
   stderr: Writer;
   signal: AbortSignal;
+  openUrl: Opener;
 };
 
 type Values = Record<string, string | boolean | (string | boolean)[] | undefined>;
@@ -29,7 +31,9 @@ const PARSE_OPTIONS: ParseArgsOptionsConfig = Object.assign(
   GLOBAL_OPTIONS,
   ...COMMANDS.flatMap((command) =>
     Object.entries(command.options).map(([name, spec]) => ({
-      [name]: { type: 'string', multiple: spec.multiple ?? false },
+      [name]: spec.flag
+        ? { type: 'boolean' }
+        : { type: 'string', multiple: spec.multiple ?? false },
     })),
   ),
 );
@@ -77,7 +81,12 @@ function inputFor(command: Command, values: Values, args: string[], io: Io): Inp
     cwd: io.cwd,
     actor: actorFrom(values, io.env),
     signal: io.signal,
+    openUrl: io.openUrl,
+    warn: (message) =>
+      io.stderr.write(`otea: ${message}
+`),
     args,
+    flag: (name) => values[name] === true,
     option,
     options,
     required: (name) => {

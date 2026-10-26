@@ -8,7 +8,7 @@ export { DEFAULT_PORT } from './hosts.ts';
 
 const HOST = '127.0.0.1';
 
-export type Listening = { url: string; close(): Promise<void> };
+export type Listening = { url: string; port: number; close(): Promise<void> };
 
 export class PortInUseError extends Error {
   constructor(port: number) {
@@ -35,7 +35,7 @@ export function listen(server: OteaServer, port = DEFAULT_PORT): Promise<Listeni
     http.listen(port, HOST, () => {
       const { port: bound } = http.address() as AddressInfo;
       server.listeningOn(bound);
-      resolve({ url: `http://${HOST}:${bound}`, close: () => stop(http, server) });
+      resolve({ url: `http://${HOST}:${bound}`, port: bound, close: () => stop(http, server) });
     });
   });
 }

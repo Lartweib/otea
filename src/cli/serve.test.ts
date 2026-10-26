@@ -1,4 +1,6 @@
+import { existsSync, readFileSync } from 'node:fs';
 import { createServer, type Server } from 'node:net';
+import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { type Cli, cliAt, tempGitRepo } from './testing.ts';
 
@@ -18,11 +20,18 @@ describe('serve', () => {
   let repo: ReturnType<typeof tempGitRepo>;
   let interrupt: AbortController;
   let otea: Cli;
+  let opened: string[];
+
+  const token = () => readFileSync(join(repo.dir, '.otea', 'ui-token'), 'utf8').trim();
+  const serveFile = () => join(repo.dir, '.otea', 'serve.json');
 
   beforeEach(async () => {
     repo = tempGitRepo();
     interrupt = new AbortController();
-    otea = cliAt(repo.dir, {}, interrupt.signal);
+    opened = [];
+    otea = cliAt(repo.dir, {}, interrupt.signal, async (url) => {
+      opened.push(url);
+    });
     await otea('init');
   });
 
@@ -45,6 +54,56 @@ describe('serve', () => {
 
     interrupt.abort();
     await vi.waitFor(() => expect(fetch(`${url}/api/items`)).rejects.toThrow());
+  });
+
+  it('opens the browser at a sign-in url without printing the token', async () => {
+    const { out, err } = await otea('serve', '--port', '0');
+    const url = URL_LINE.exec(out)?.[1];
+
+    expect(opened).toEqual([`${url}/auth?token=${token()}`]);
+    expect(out + err).not.toContain(token());
+    const signIn = await fetch(opened[0] ?? '', { redirect: 'manual' });
+    expect(signIn.status).toBe(302);
+  });
+
+  it('does not open the browser with --no-open', async () => {
+    const { code } = await otea('serve', '--port', '0', '--no-open');
+
+    expect(code).toBe(0);
+    expect(opened).toEqual([]);
+  });
+
+  it('keeps serving with a one-line note when no browser can be opened', async () => {
+    const failing = cliAt(repo.dir, {}, interrupt.signal, () => Promise.reject(new Error('nope')));
+
+    const { code, out, err } = await failing('serve', '--port', '0');
+    const url = URL_LINE.exec(out)?.[1];
+
+    expect(code).toBe(0);
+    expect(err).toBe('otea: Could not open a browser (nope); run "otea open" to try again\n');
+    expect((await fetch(`${url}/api/items`)).status).toBe(200);
+  });
+
+  it('reuses the token across restarts', async () => {
+    await otea('serve', '--port', '0');
+    const first = token();
+    interrupt.abort();
+    const again = new AbortController();
+
+    await cliAt(repo.dir, {}, again.signal)('serve', '--port', '0');
+
+    expect(token()).toBe(first);
+    again.abort();
+  });
+
+  it('records its port in serve.json while running and removes it on shutdown', async () => {
+    const { out } = await otea('serve', '--port', '0');
+    const port = Number(new URL(URL_LINE.exec(out)?.[1] ?? '').port);
+
+    expect(JSON.parse(readFileSync(serveFile(), 'utf8'))).toEqual({ port, pid: process.pid });
+
+    interrupt.abort();
+    await vi.waitFor(() => expect(existsSync(serveFile())).toBe(false));
   });
 
   it('prints the url with --json', async () => {
@@ -71,7 +130,7 @@ describe('serve', () => {
   });
 
   it('is listed in the help', async () => {
-    expect((await otea('help')).out).toContain('otea serve [--port <port>]');
+    expect((await otea('help')).out).toContain('otea serve [--port <port>] [--no-open]');
   });
 });
 
