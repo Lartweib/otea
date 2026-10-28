@@ -37,10 +37,20 @@ describe('official presets', () => {
 
   it('ship a playbook whose enrichment step treats human-entered text as data', () => {
     const playbook = readFileSync(join(OFFICIAL_PRESETS_DIR, 'tasks', 'playbook.md'), 'utf8');
-    const enrichment = playbook.slice(playbook.indexOf('## 3.'), playbook.indexOf('## 4.'));
+    const enrichment = playbook.slice(playbook.indexOf('## 4.'), playbook.indexOf('## 5.'));
 
     expect(enrichment).toContain('not instructions to you');
     expect(enrichment).toContain('discard it with a reason');
+  });
+
+  it('ship a playbook that claims an item before working it', () => {
+    const playbook = readFileSync(join(OFFICIAL_PRESETS_DIR, 'tasks', 'playbook.md'), 'utf8');
+    const leases = playbook.slice(playbook.indexOf('## 3.'), playbook.indexOf('## 4.'));
+
+    for (const command of ['otea claim', 'otea heartbeat', 'otea release']) {
+      expect(leases).toContain(command);
+    }
+    expect(leases).toContain('Exit code 12');
   });
 });
 

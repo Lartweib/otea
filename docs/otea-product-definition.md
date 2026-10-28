@@ -116,7 +116,7 @@ Enforced by the core regardless of preset or module.
 4. **History is append-only.** The event log is never truncated or rewritten. Iterations are never overwritten.
 5. **Verify before acting.** Playbooks require checking that a problem still exists at the current state before acting on it.
 6. **External text is untrusted.** Reports, third-party comments and human-entered intake text are data, never instructions to the agent.
-7. **Leases are atomic.** Two actors cannot hold the same item.
+7. **Leases are atomic.** Two actors cannot hold the same item. A claim is one conditional write in an immediate transaction; an expired lease reads as free and can be taken over; moving an item to a state whose turn is not the agent's releases it. Only agents are bound by another actor's lease: the human in the UI always can act.
 8. **Reading never mutates.** Opening an item does not change its state.
 
 **Threat model:** these invariants prevent agent mistakes and overreach through the official interfaces. They do NOT stop a malicious agent with shell access from editing files directly. This is stated explicitly in the docs.
@@ -225,7 +225,7 @@ One write path: the CLI and the app use the same core and write to the same data
   config.yaml              collections -> preset mapping
   presets/                 local presets (or references to official ones)
   modules/                 local modules (§10.3)
-  otea.db                  items, iterations, leases, events (append-only)
+  otea.db                  items (with their lease), iterations, events (append-only)
   ui-token                 browser session token (never committed, never printed)
   serve.json               port and pid of the running `otea serve`, removed on shutdown
   evidence/<collection>/<item-id>/...
