@@ -1,4 +1,5 @@
 import { leaseLabel } from '../format.ts';
+import { useActiveLease } from '../hooks.ts';
 import type { Section } from '../sections.ts';
 import { hashFor } from '../selection.ts';
 import type { Item } from '../types.ts';
@@ -6,13 +7,14 @@ import type { Item } from '../types.ts';
 type ItemListProps = { sections: Section[]; selectedId: string | undefined };
 
 function ItemRow({ item, selected }: { item: Item; selected: boolean }) {
+  const lease = useActiveLease(item.lease);
   return (
     <li>
       <a className="item-row" href={hashFor(item.id)} aria-current={selected ? 'true' : undefined}>
         <span className="item-row-title">{item.title}</span>
         <span className="item-row-meta">
           {item.id} · {item.state}
-          {item.lease ? <span className="lease"> · {leaseLabel(item.lease)}</span> : null}
+          {lease ? <span className="lease"> · {leaseLabel(lease)}</span> : null}
         </span>
       </a>
     </li>
