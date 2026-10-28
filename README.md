@@ -37,9 +37,11 @@ otea create --collection tasks --title "Write the docs" --description "Install a
 otea create --collection tasks --title "Flaky login test"   # no description: starts incomplete
 otea create --collection tasks --title "Fix the footer" --description "Wrong year" --field priority=high
 otea create --collection tasks --title "Dark mode?"           # also incomplete
-otea list --turn agent --json
-otea show TASKS-1                          # fields, moves available to the agent, timeline
-otea move TASKS-1 in_progress
+otea list --turn agent --unclaimed --json # waiting for agents and not held by another one
+otea show TASKS-1                          # fields, moves available to the agent, lease, timeline
+otea claim TASKS-1 --as claude             # hold it for 15 minutes (--ttl 30m for another length)
+otea heartbeat TASKS-1 --as claude         # extend the lease on long work
+otea move TASKS-1 in_progress --as claude
 otea move TASKS-2 todo                     # refused (exit 8) while a required field is missing
 otea update TASKS-2 --description "Fails on CI only, see run 42"   # fill what was missing
 otea move TASKS-2 todo
@@ -47,6 +49,8 @@ otea move TASKS-4 discarded --reason "Out of scope"   # an incomplete item can b
 otea validate                              # check presets, collections and items
 otea help                                  # every command, global options and exit codes
 ```
+
+Agents claim an item before working it. A lease is atomic: while one agent holds an item, `otea claim`, `otea update` and `otea move` from any other agent fail with exit code 12 (`lease_held`), and `otea heartbeat` or `otea release` by someone who does not hold it fail with exit code 12 (`not_lease_holder`). An expired lease reads as free and can be taken over; moving an item off the agent turn (for example to `review`) releases it automatically. Items nobody claimed stay writable, and the human in the web UI is never blocked by a lease. The agent is named by `--as <name>`, then `$OTEA_AGENT`, then `agent`. Only items whose turn is the agent can be claimed (exit code 4, `not_claimable`, otherwise).
 
 `otea update` changes fields of an open item (a blank value clears an optional field) and records the old and new values in the timeline; items in a closed state (turn `none`) cannot be updated. Agents act through the CLI, so it only performs transitions whose authority is `agent`. Approving work (`review` -> `done` in the tasks preset) is `human-ui`: the CLI refuses it with exit code 7 (`forbidden`).
 
