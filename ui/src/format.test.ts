@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { actorLabel, describeEvent, eventActorLabel, formatTime } from './format.ts';
+import { actorLabel, describeEvent, eventActorLabel, formatTime, leaseLabel } from './format.ts';
 import type { ItemEvent } from './types.ts';
 
 const event = (type: string, data: Record<string, unknown>): ItemEvent => ({
@@ -46,6 +46,16 @@ describe('format', () => {
       event('updated', { changes: { description: { from: 'x'.repeat(50), to: 'y' } } }),
       `Updated description (was ${'x'.repeat(40)}…)`,
     ],
+    [event('claimed', { holder: 'claude', expiresAt: 'x' }), 'Claimed by claude'],
+    [
+      event('claimed', { holder: 'codex', expiresAt: 'x', previous: 'claude' }),
+      'Claimed by codex, taking over from claude',
+    ],
+    [event('released', { holder: 'claude', cause: 'release' }), 'Released by claude'],
+    [
+      event('released', { holder: 'claude', cause: 'handoff' }),
+      'Lease of claude released on handoff',
+    ],
     [event('commented', { text: 'hi' }), 'commented'],
   ])('describes %j', (input, expected) => {
     expect(describeEvent(input)).toBe(expected);
@@ -56,6 +66,12 @@ describe('format', () => {
     expect(formatTime('2026-03-04T23:30:00.000Z', 'America/Argentina/Buenos_Aires')).toBe(
       '2026-03-04 20:30',
     );
+  });
+
+  it('labels a lease with its holder and the time it expires in the given zone', () => {
+    const lease = { holder: 'claude', expiresAt: '2026-03-04T14:32:00.000Z' };
+
+    expect(leaseLabel(lease, 'UTC')).toBe('held by claude until 14:32');
   });
 
   it('returns invalid timestamps unchanged', () => {

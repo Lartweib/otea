@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { actorLabel, describeEvent, eventActorLabel, formatTime } from '../format.ts';
+import { actorLabel, describeEvent, eventActorLabel, formatTime, leaseLabel } from '../format.ts';
 import type { ItemView } from '../types.ts';
 import { ItemActions } from './ItemActions.tsx';
 
@@ -30,6 +30,11 @@ export function ItemDetail({ item, canWrite }: ItemDetailProps) {
         </Field>
         <Field label="Collection">{item.collection}</Field>
         <Field label="Created by">{actorLabel(item.createdBy)}</Field>
+        {item.lease ? (
+          <Field label="Lease">
+            <span className="lease">{leaseLabel(item.lease)}</span>
+          </Field>
+        ) : null}
       </dl>
       {canWrite ? (
         <ItemActions key={`${item.id}:${item.state}`} id={item.id} moves={item.transitions} />

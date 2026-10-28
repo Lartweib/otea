@@ -1,4 +1,4 @@
-import type { Actor, ItemEvent } from './types.ts';
+import type { Actor, ItemEvent, Lease } from './types.ts';
 
 export function actorLabel(actor: Actor): string {
   return `${actor.name} (${actor.kind})`;
@@ -15,6 +15,16 @@ export function describeEvent({ type, data }: ItemEvent): string {
     return `Moved from ${String(data.from)} to ${String(data.to)}${reason}`;
   }
   if (type === 'updated') return describeUpdate(data.changes);
+  if (type === 'claimed') {
+    const previous =
+      data.previous === undefined ? '' : `, taking over from ${String(data.previous)}`;
+    return `Claimed by ${String(data.holder)}${previous}`;
+  }
+  if (type === 'released') {
+    return data.cause === 'handoff'
+      ? `Lease of ${String(data.holder)} released on handoff`
+      : `Released by ${String(data.holder)}`;
+  }
   return type;
 }
 
@@ -25,6 +35,10 @@ function describeUpdate(changes: unknown): string {
   const shorten = (text: string) => (text.length > 40 ? `${text.slice(0, 40)}…` : text);
   const parts = entries.map(([name, { from }]) => `${name} (was ${shorten(from ?? 'empty')})`);
   return `Updated ${parts.join(', ')}`;
+}
+
+export function leaseLabel({ holder, expiresAt }: Lease, timeZone?: string): string {
+  return `held by ${holder} until ${formatTime(expiresAt, timeZone).slice(-5)}`;
 }
 
 export function formatTime(iso: string, timeZone?: string): string {

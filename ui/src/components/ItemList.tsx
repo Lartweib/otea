@@ -1,3 +1,4 @@
+import { leaseLabel } from '../format.ts';
 import type { Section } from '../sections.ts';
 import { hashFor } from '../selection.ts';
 import type { Item } from '../types.ts';
@@ -11,6 +12,7 @@ function ItemRow({ item, selected }: { item: Item; selected: boolean }) {
         <span className="item-row-title">{item.title}</span>
         <span className="item-row-meta">
           {item.id} · {item.state}
+          {item.lease ? <span className="lease"> · {leaseLabel(item.lease)}</span> : null}
         </span>
       </a>
     </li>

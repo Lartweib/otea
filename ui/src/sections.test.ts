@@ -13,6 +13,7 @@ const item = (id: string, turn: Turn): Item => ({
   createdAt: 't',
   updatedAt: 't',
   createdBy: { kind: 'agent', name: 'a' },
+  lease: null,
 });
 
 describe('groupByTurn', () => {

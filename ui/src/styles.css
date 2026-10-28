@@ -237,6 +237,10 @@ dd {
   color: var(--color-none);
 }
 
+.lease {
+  color: var(--color-agent);
+}
+
 .body {
   white-space: pre-wrap;
   overflow-wrap: anywhere;

@@ -2,6 +2,8 @@ export type Turn = 'human' | 'agent' | 'none';
 
 export type Actor = { kind: 'human' | 'agent'; name: string };
 
+export type Lease = { holder: string; expiresAt: string };
+
 export type Item = {
   id: string;
   collection: string;
@@ -13,6 +15,7 @@ export type Item = {
   createdAt: string;
   updatedAt: string;
   createdBy: Actor;
+  lease: Lease | null;
 };
 
 export type ItemEvent = {
