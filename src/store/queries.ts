@@ -1,5 +1,6 @@
 import type { DatabaseSync } from 'node:sqlite';
 import type { Actor } from '../core/item.ts';
+import type { Lease } from '../core/lease.ts';
 
 export type CollectionRecord = {
   name: string;
@@ -70,6 +71,7 @@ export type ItemRecord = {
   createdAt: string;
   updatedAt: string;
   createdBy: Actor;
+  lease: Lease | null;
 };
 
 type ItemRow = {
@@ -84,6 +86,8 @@ type ItemRow = {
   updated_at: string;
   created_by_kind: Actor['kind'];
   created_by_name: string;
+  lease_holder: string | null;
+  lease_expires_at: string | null;
 };
 
 function toItem(row: ItemRow): ItemRecord {
@@ -98,6 +102,10 @@ function toItem(row: ItemRow): ItemRecord {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     createdBy: { kind: row.created_by_kind, name: row.created_by_name },
+    lease:
+      row.lease_holder === null || row.lease_expires_at === null
+        ? null
+        : { holder: row.lease_holder, expiresAt: row.lease_expires_at },
   };
 }
 
@@ -138,6 +146,18 @@ export function selectItems(db: DatabaseSync, filter: ItemFilter): ItemRecord[] 
 
 export function updateItemState(db: DatabaseSync, id: string, state: string, at: string): void {
   db.prepare('UPDATE items SET state = ?, updated_at = ? WHERE id = ?').run(state, at, id);
+}
+
+// Takes the lease only if it is free, expired or already the holder's: one conditional write, so
+// two writers racing for the same item cannot both win.
+export function takeLease(db: DatabaseSync, id: string, lease: Lease, at: string): boolean {
+  const sql = `UPDATE items SET lease_holder = :holder, lease_expires_at = :expiresAt
+    WHERE id = :id AND (lease_holder IS NULL OR lease_expires_at <= :at OR lease_holder = :holder)`;
+  return db.prepare(sql).run({ id, at, ...lease }).changes === 1;
+}
+
+export function clearLease(db: DatabaseSync, id: string): void {
+  db.prepare('UPDATE items SET lease_holder = NULL, lease_expires_at = NULL WHERE id = ?').run(id);
 }
 
 export type ItemContent = {

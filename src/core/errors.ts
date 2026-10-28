@@ -9,7 +9,10 @@ export type ErrorCode =
   | 'invalid_preset'
   | 'invalid_fields'
   | 'item_closed'
-  | 'missing_fields';
+  | 'missing_fields'
+  | 'not_claimable'
+  | 'lease_held'
+  | 'not_lease_holder';
 
 export class OteaError extends Error {
   readonly code: ErrorCode;
