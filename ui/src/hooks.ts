@@ -1,6 +1,8 @@
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { useEffect, useReducer, useRef, useState, useSyncExternalStore } from 'react';
+import { activeLease } from './lease.ts';
 import { afterFailure, type Remote } from './remote.ts';
 import { idFromHash } from './selection.ts';
+import type { Lease } from './types.ts';
 
 export type Connection = 'connecting' | 'live' | 'reconnecting';
 
@@ -44,6 +46,20 @@ export function useRemote<T>(
     return () => controller.abort();
   }, [load, version]);
   return remote;
+}
+
+// Expiry writes nothing, so no change event arrives: re-render when the lease runs out.
+export function useActiveLease(lease: Lease | null): Lease | null {
+  const [, tick] = useReducer((count: number) => count + 1, 0);
+  const expiresAt = lease?.expiresAt;
+  useEffect(() => {
+    if (!expiresAt) return;
+    const remaining = Date.parse(expiresAt) - Date.now();
+    if (remaining <= 0) return;
+    const timer = setTimeout(tick, remaining + 10);
+    return () => clearTimeout(timer);
+  }, [expiresAt]);
+  return activeLease(lease, Date.now());
 }
 
 function subscribeToHash(onChange: () => void): () => void {

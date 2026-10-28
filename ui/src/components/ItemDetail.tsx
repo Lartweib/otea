@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { actorLabel, describeEvent, eventActorLabel, formatTime, leaseLabel } from '../format.ts';
+import { useActiveLease } from '../hooks.ts';
 import type { ItemView } from '../types.ts';
 import { ItemActions } from './ItemActions.tsx';
 
@@ -15,6 +16,7 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
 type ItemDetailProps = { item: ItemView; canWrite: boolean };
 
 export function ItemDetail({ item, canWrite }: ItemDetailProps) {
+  const lease = useActiveLease(item.lease);
   return (
     <article className="detail">
       <header>
@@ -30,9 +32,9 @@ export function ItemDetail({ item, canWrite }: ItemDetailProps) {
         </Field>
         <Field label="Collection">{item.collection}</Field>
         <Field label="Created by">{actorLabel(item.createdBy)}</Field>
-        {item.lease ? (
+        {lease ? (
           <Field label="Lease">
-            <span className="lease">{leaseLabel(item.lease)}</span>
+            <span className="lease">{leaseLabel(lease)}</span>
           </Field>
         ) : null}
       </dl>
