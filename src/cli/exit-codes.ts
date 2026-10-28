@@ -9,6 +9,7 @@ export const EXIT_CODES: Readonly<Record<'ok' | FailureCode, number>> = {
   not_found: 3,
   invalid_transition: 4,
   item_closed: 4,
+  not_claimable: 4,
   already_exists: 5,
   invalid_name: 6,
   invalid_id: 6,
@@ -19,4 +20,6 @@ export const EXIT_CODES: Readonly<Record<'ok' | FailureCode, number>> = {
   invalid_preset: 9,
   validation_failed: 10,
   not_running: 11,
+  lease_held: 12,
+  not_lease_holder: 12,
 };

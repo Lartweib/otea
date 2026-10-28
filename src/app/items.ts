@@ -15,11 +15,13 @@ import {
   revise,
 } from '../core/fields.ts';
 import { type Actor, formatItemId } from '../core/item.ts';
+import { activeLease, assertMayWrite } from '../core/lease.ts';
 import { type Turn, turnOf, type Workflow } from '../core/workflow.ts';
 import { transaction } from '../store/database.ts';
 import {
   appendEvent,
   claimNextSeq,
+  clearLease,
   type EventRecord,
   findItem,
   type ItemRecord,
@@ -39,19 +41,20 @@ export type Item = ItemRecord & { turn: Turn };
 
 export type ItemWithEvents = Item & { events: EventRecord[] };
 
-const systemClock: Clock = () => new Date().toISOString();
+export const systemClock: Clock = () => new Date().toISOString();
 
-function withTurn(item: ItemRecord, workflow: Workflow): Item {
-  return { ...item, turn: turnOf(workflow, item.state) };
+// What readers see: the turn derived from the state and only a lease that is still active at `at`.
+export function present(item: ItemRecord, workflow: Workflow, at: string): Item {
+  return { ...item, turn: turnOf(workflow, item.state), lease: activeLease(item.lease, at) };
 }
 
-function requireItem(db: DatabaseSync, id: string): ItemRecord {
+export function requireItem(db: DatabaseSync, id: string): ItemRecord {
   const item = findItem(db, id);
   if (!item) throw new OteaError('not_found', `Item "${id}" not found`);
   return item;
 }
 
-function workflowOf(ctx: Context, collection: string): Workflow {
+export function workflowOf(ctx: Context, collection: string): Workflow {
   return presetOf(ctx, getCollection(ctx.db, collection)).workflow;
 }
 
@@ -82,18 +85,25 @@ export function createItem(ctx: Context, input: CreateItemInput, now = systemClo
       createdAt: at,
       updatedAt: at,
       createdBy: input.actor,
+      lease: null,
     };
     insertItem(db, item);
     const { channel } = input;
     const data = channel === undefined ? { state } : { state, channel };
     appendEvent(db, { itemId: item.id, type: 'created', actor: input.actor, at, data });
-    return withTurn(item, preset.workflow);
+    return present(item, preset.workflow, at);
   });
 }
 
-export type ListItemsFilter = { collection?: string; state?: string; turn?: Turn };
+// `availableTo` hides items whose active lease is held by anyone other than that actor.
+export type ListItemsFilter = {
+  collection?: string;
+  state?: string;
+  turn?: Turn;
+  availableTo?: string;
+};
 
-export function listItems(ctx: Context, filter: ListItemsFilter = {}): Item[] {
+export function listItems(ctx: Context, filter: ListItemsFilter = {}, now = systemClock): Item[] {
   const collections = new Map(listCollections(ctx.db).map((record) => [record.name, record]));
   const workflows = new Map<string, Workflow>();
   const workflowFor = (name: string): Workflow => {
@@ -102,21 +112,29 @@ export function listItems(ctx: Context, filter: ListItemsFilter = {}): Item[] {
     workflows.set(name, workflow);
     return workflow;
   };
-  const { turn, ...stored } = filter;
+  const { turn, availableTo, ...stored } = filter;
+  const at = now();
   return selectItems(ctx.db, stored)
-    .map((item) => withTurn(item, workflowFor(item.collection)))
-    .filter((item) => turn === undefined || item.turn === turn);
+    .map((item) => present(item, workflowFor(item.collection), at))
+    .filter((item) => turn === undefined || item.turn === turn)
+    .filter(({ lease }) => availableTo === undefined || !lease || lease.holder === availableTo);
 }
 
-export function getItem(ctx: Context, id: string): ItemWithEvents {
+export function getItem(ctx: Context, id: string, now = systemClock): ItemWithEvents {
   const item = requireItem(ctx.db, id);
-  return { ...withTurn(item, workflowOf(ctx, item.collection)), events: selectEvents(ctx.db, id) };
+  const workflow = workflowOf(ctx, item.collection);
+  return { ...present(item, workflow, now()), events: selectEvents(ctx.db, id) };
 }
 
 export type ItemView = ItemWithEvents & { transitions: Move[]; missing: string[] };
 
-export function showItem(ctx: Context, id: string, performer: Performer): ItemView {
-  const item = getItem(ctx, id);
+export function showItem(
+  ctx: Context,
+  id: string,
+  performer: Performer,
+  now = systemClock,
+): ItemView {
+  const item = getItem(ctx, id, now);
   const preset = presetOf(ctx, getCollection(ctx.db, item.collection));
   return {
     ...item,
@@ -132,6 +150,8 @@ export function updateItem(ctx: Context, input: UpdateItemInput, now = systemClo
   return transaction(db, () => {
     const item = requireItem(db, input.id);
     const preset = presetOf(ctx, getCollection(db, item.collection));
+    const at = now();
+    assertMayWrite(item.id, activeLease(item.lease, at), input.actor);
     if (turnOf(preset.workflow, item.state) === 'none') {
       throw new OteaError(
         'item_closed',
@@ -143,8 +163,7 @@ export function updateItem(ctx: Context, input: UpdateItemInput, now = systemClo
       ...(input.title === undefined ? {} : { title: input.title }),
     };
     const revision = revise(preset, item, changes);
-    if (Object.keys(revision.changes).length === 0) return withTurn(item, preset.workflow);
-    const at = now();
+    if (Object.keys(revision.changes).length === 0) return present(item, preset.workflow, at);
     const content = {
       title: revision.title,
       fields: revision.fields,
@@ -159,7 +178,7 @@ export function updateItem(ctx: Context, input: UpdateItemInput, now = systemClo
       at,
       data: { changes: revision.changes },
     });
-    return withTurn({ ...item, ...content }, preset.workflow);
+    return present({ ...item, ...content }, preset.workflow, at);
   });
 }
 
@@ -178,17 +197,26 @@ export function moveItem(ctx: Context, input: MoveItemInput, now = systemClock):
     const preset = presetOf(ctx, getCollection(db, item.collection));
     const { workflow } = preset;
     const { actor, channel, reason } = input;
+    const at = now();
+    const lease = activeLease(item.lease, at);
+    assertMayWrite(item.id, lease, actor);
     authorizeMove(workflow, item.state, input.to, { actor, channel }, reason);
     assertCanLeave(preset, item.state, input.to, item.fields);
-    const at = now();
     updateItemState(db, item.id, input.to, at);
     appendEvent(db, {
       itemId: item.id,
       type: 'transitioned',
-      actor: input.actor,
+      actor,
       at,
       data: { from: item.state, to: input.to, ...(reason ? { reason } : {}), channel },
     });
-    return withTurn({ ...item, state: input.to, updatedAt: at }, workflow);
+    const handoff = lease !== null && turnOf(workflow, input.to) !== 'agent';
+    if (handoff) {
+      clearLease(db, item.id);
+      const data = { holder: lease.holder, cause: 'handoff' };
+      appendEvent(db, { itemId: item.id, type: 'released', actor, at, data });
+    }
+    const moved = { ...item, state: input.to, updatedAt: at, lease: handoff ? null : item.lease };
+    return present(moved, workflow, at);
   });
 }

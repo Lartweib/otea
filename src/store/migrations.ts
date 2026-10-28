@@ -52,6 +52,10 @@ const MIGRATIONS = [
   UPDATE items SET fields = json_object('description', body) WHERE body <> '';
   ALTER TABLE items DROP COLUMN body;
   `,
+  `
+  ALTER TABLE items ADD COLUMN lease_holder TEXT;
+  ALTER TABLE items ADD COLUMN lease_expires_at TEXT;
+  `,
 ];
 
 function userVersion(db: DatabaseSync): number {
