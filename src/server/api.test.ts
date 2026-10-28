@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { addCollection } from '../app/collections.ts';
 import { createItem, moveItem } from '../app/items.ts';
+import { claimItem } from '../app/leases.ts';
 import type { Project } from '../app/project.ts';
 import type { Actor } from '../core/item.ts';
 import { createServer, type OteaServer } from './server.ts';
@@ -81,6 +82,15 @@ describe('api', () => {
       ]);
     });
 
+    it('includes the active lease of each item', async () => {
+      const { lease } = claimItem(project, { id: 'TASKS-1', actor: bot });
+
+      expect(await (await get('/api/items')).json()).toMatchObject([
+        { id: 'TASKS-1', lease: { holder: 'claude', expiresAt: lease?.expiresAt } },
+        { id: 'BUGS-1', lease: null },
+      ]);
+    });
+
     it.each([
       ['?collection=tasks', ['TASKS-1']],
       ['?state=review', ['BUGS-1']],
@@ -112,6 +122,16 @@ describe('api', () => {
         'transitioned',
         'transitioned',
       ]);
+    });
+
+    it('returns the active lease of the item', async () => {
+      claimItem(project, { id: 'TASKS-1', actor: bot });
+
+      expect(await (await get('/api/items/TASKS-1')).json()).toMatchObject({
+        lease: { holder: 'claude' },
+        events: [{ type: 'created' }, { type: 'claimed', data: { holder: 'claude' } }],
+      });
+      expect(await (await get('/api/items/BUGS-1')).json()).toMatchObject({ lease: null });
     });
 
     it('returns the moves available to the human in the ui', async () => {

@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { addCollection } from '../app/collections.ts';
 import { createItem, getItem, moveItem } from '../app/items.ts';
+import { claimItem } from '../app/leases.ts';
 import type { Project } from '../app/project.ts';
 import type { Actor } from '../core/item.ts';
 import { createServer, type OteaServer } from './server.ts';
@@ -87,6 +88,26 @@ describe('POST /api/items/:id/move', () => {
       expect(await errorOf(response)).toBe('reason_required');
     },
   );
+
+  it('ignores a lease an agent holds and releases it when handing the item off', async () => {
+    createItem(project, {
+      collection: 'tasks',
+      title: 'Held',
+      fields: { description: 'D' },
+      actor: bot,
+    });
+    claimItem(project, { id: 'TASKS-2', actor: bot });
+
+    const response = await move('TASKS-2', { to: 'discarded', reason: 'Not needed' });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ state: 'discarded', lease: null });
+    expect(getItem(project, 'TASKS-2').events.at(-1)).toMatchObject({
+      type: 'released',
+      actor: { kind: 'human', name: 'human' },
+      data: { holder: 'claude', cause: 'handoff' },
+    });
+  });
 
   it('rejects a transition the workflow does not allow with 409', async () => {
     const response = await move('TASKS-1', { to: 'in_progress' });
