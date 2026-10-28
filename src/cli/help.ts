@@ -5,7 +5,10 @@ import { columns, indent } from './format.ts';
 
 const GLOBAL_OPTIONS = [
   ['--json', 'Print JSON to stdout; errors go to stderr as {"error":{"code","message"}}'],
-  ['--as <name>', 'Agent name recorded on writes (default: $OTEA_AGENT, then "agent")'],
+  [
+    '--as <name>',
+    'Agent name recorded on writes and holding leases (default: $OTEA_AGENT, then "agent")',
+  ],
   ['-h, --help', 'Show help'],
 ];
 

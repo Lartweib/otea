@@ -8,9 +8,11 @@ import {
   showItem,
   updateItem,
 } from '../app/items.ts';
+import { claimItem, heartbeatItem, releaseItem } from '../app/leases.ts';
 import { initProject, openProject, oteaDir, type Project } from '../app/project.ts';
 import { validateProject } from '../app/validate.ts';
 import type { FieldValues } from '../core/fields.ts';
+import { parseDuration } from '../core/lease.ts';
 import { TURNS, type Turn } from '../core/workflow.ts';
 import { DEFAULT_PORT, listen } from '../server/listen.ts';
 import { createServer } from '../server/server.ts';
@@ -98,7 +100,7 @@ const create: Command = {
   },
 };
 
-function listFilter({ option }: Input): ListItemsFilter {
+function listFilter({ option, flag, actor }: Input): ListItemsFilter {
   const filter: ListItemsFilter = {};
   const collection = option('collection');
   const state = option('state');
@@ -106,14 +108,15 @@ function listFilter({ option }: Input): ListItemsFilter {
   if (collection !== undefined) filter.collection = collection;
   if (state !== undefined) filter.state = state;
   if (turn !== undefined) filter.turn = turn as Turn;
+  if (flag('unclaimed')) filter.availableTo = actor.name;
   return filter;
 }
 
 const list: Command = {
   name: 'list',
-  summary: 'List items in creation order, optionally filtered',
+  summary: 'List items in creation order, optionally filtered; --unclaimed hides items others hold',
   args: [],
-  options: { collection: {}, state: {}, turn: { choices: TURNS } },
+  options: { collection: {}, state: {}, turn: { choices: TURNS }, unclaimed: { flag: true } },
   execute: (input) => {
     const items = withProject(input.cwd, (project) => listItems(project, listFilter(input)));
     return { data: items, text: formatItems(items) };
@@ -141,6 +144,55 @@ const move: Command = {
     const reason = option('reason');
     const input = { id, to, actor, channel: 'cli' as const, ...(reason ? { reason } : {}) };
     const item = withProject(cwd, (project) => moveItem(project, input));
+    return { data: item, text: formatItem(item) };
+  },
+};
+
+function ttlFrom(value: string | undefined): number | undefined {
+  if (value === undefined) return undefined;
+  const ttl = parseDuration(value);
+  if (ttl === undefined) {
+    throw new UsageError('--ttl must be a positive duration such as 90s, 15m or 1h');
+  }
+  return ttl;
+}
+
+const TTL = { ttl: { placeholder: 'duration' } };
+
+const claim: Command = {
+  name: 'claim',
+  summary:
+    'Hold an item on the agent turn so no other agent can write it (default --ttl 15m); claiming it again extends it',
+  args: ['id'],
+  options: TTL,
+  execute: ({ cwd, actor, option, args: [id = ''] }) => {
+    const ttl = ttlFrom(option('ttl'));
+    const input = { id, actor, ...(ttl === undefined ? {} : { ttlMs: ttl }) };
+    const item = withProject(cwd, (project) => claimItem(project, input));
+    return { data: item, text: formatItem(item) };
+  },
+};
+
+const heartbeat: Command = {
+  name: 'heartbeat',
+  summary: 'Extend the lease you hold on an item (default --ttl 15m from now)',
+  args: ['id'],
+  options: TTL,
+  execute: ({ cwd, actor, option, args: [id = ''] }) => {
+    const ttl = ttlFrom(option('ttl'));
+    const input = { id, actor, ...(ttl === undefined ? {} : { ttlMs: ttl }) };
+    const item = withProject(cwd, (project) => heartbeatItem(project, input));
+    return { data: item, text: formatItem(item) };
+  },
+};
+
+const release: Command = {
+  name: 'release',
+  summary: 'Drop the lease you hold on an item; moving it off the agent turn releases it too',
+  args: ['id'],
+  options: {},
+  execute: ({ cwd, actor, args: [id = ''] }) => {
+    const item = withProject(cwd, (project) => releaseItem(project, { id, actor }));
     return { data: item, text: formatItem(item) };
   },
 };
@@ -274,6 +326,9 @@ export const COMMANDS: readonly Command[] = [
   create,
   list,
   show,
+  claim,
+  heartbeat,
+  release,
   update,
   move,
   validate,

@@ -1,7 +1,8 @@
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawn } from 'node:child_process';
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import type { Opener } from './opener.ts';
 import { run } from './run.ts';
 
@@ -28,6 +29,22 @@ export function cliAt(
     });
     return { code, out, err };
   };
+}
+
+const MAIN = fileURLToPath(new URL('./main.ts', import.meta.url));
+
+// Runs the CLI as a separate process, for tests that need real concurrent writers.
+export function spawnCli(cwd: string, ...argv: string[]): Promise<Result> {
+  return new Promise((resolve, reject) => {
+    const args = ['--disable-warning=ExperimentalWarning', MAIN, ...argv];
+    const child = spawn(process.execPath, args, { cwd, env: { ...process.env, OTEA_AGENT: '' } });
+    let out = '';
+    let err = '';
+    child.stdout.setEncoding('utf8').on('data', (chunk: string) => (out += chunk));
+    child.stderr.setEncoding('utf8').on('data', (chunk: string) => (err += chunk));
+    child.on('error', reject);
+    child.on('close', (code) => resolve({ code: code ?? -1, out, err }));
+  });
 }
 
 export type TempRepo = {

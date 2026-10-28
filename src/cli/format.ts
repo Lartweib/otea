@@ -1,6 +1,7 @@
 import type { Item, ItemView } from '../app/items.ts';
 import type { ValidationReport } from '../app/validate.ts';
 import type { Actor } from '../core/item.ts';
+import type { Lease } from '../core/lease.ts';
 
 type Event = ItemView['events'][number];
 
@@ -29,8 +30,18 @@ function actorLabel(actor: Actor): string {
   return `${actor.kind}:${actor.name}`;
 }
 
+function clockTime(iso: string): string {
+  const date = new Date(iso);
+  const pad = (value: number) => String(value).padStart(2, '0');
+  return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+function leaseLabel({ holder, expiresAt }: Lease): string {
+  return `held by ${holder} until ${clockTime(expiresAt)}`;
+}
+
 function itemRow(item: Item): string[] {
-  return [item.id, item.state, item.turn, item.title];
+  return [item.id, item.state, item.turn, item.title, item.lease ? leaseLabel(item.lease) : ''];
 }
 
 export function formatItem(item: Item): string {
@@ -71,6 +82,14 @@ function describeEvent({ type, data }: Event): string {
     return `${String(data.from)} -> ${String(data.to)}${reason}`;
   }
   if (type === 'updated') return describeChanges(data.changes);
+  if (type === 'claimed') {
+    const previous =
+      data.previous === undefined ? '' : `, taken over from ${String(data.previous)}`;
+    return `${String(data.holder)} until ${String(data.expiresAt)}${previous}`;
+  }
+  if (type === 'released') {
+    return `${String(data.holder)} (${data.cause === 'handoff' ? 'handed off' : 'released'})`;
+  }
   return JSON.stringify(data);
 }
 
@@ -95,6 +114,7 @@ export function formatItemWithEvents(item: ItemView): string {
   return [
     `${item.id}  ${item.title}`,
     `state: ${item.state}  turn: ${item.turn}  collection: ${item.collection}`,
+    ...(item.lease ? [leaseLabel(item.lease)] : []),
     createdLine(item),
     ...fieldLines(item.fields),
     '',
