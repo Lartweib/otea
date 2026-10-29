@@ -59,3 +59,13 @@ export type CollectionView = {
   incomplete?: string;
   fields: FieldView[];
 };
+
+export type PresetOrigin = 'official' | 'project';
+
+export type PresetView = {
+  name: string;
+  version: number;
+  origin: PresetOrigin;
+  fields: FieldView[];
+  collections: string[];
+};

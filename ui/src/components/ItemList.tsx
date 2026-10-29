@@ -25,7 +25,7 @@ type ItemListProps = {
 
 type ItemRowProps = { item: Item; selected: boolean; x: number; collectionOf: CollectionOf };
 
-// What each field module puts in the row; most put nothing.
+// What each field module puts in the row; most put nothing (an empty wrapper is hidden by CSS).
 function RowValues({ item, collection }: { item: Item; collection: CollectionView | undefined }) {
   const marks = valuesOf(collection?.fields, item.fields).flatMap(({ field, value }) => {
     const { Row } = moduleFor(field.module);

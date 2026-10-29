@@ -181,6 +181,10 @@
   margin-left: 8px;
 }
 
+.row-values:empty {
+  display: none;
+}
+
 .row[data-kind="done"] .row-values .pill,
 .row[data-kind="discarded"] .row-values .pill {
   color: var(--mut);
