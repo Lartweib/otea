@@ -75,6 +75,43 @@ How an item maps to a kind (`ui/src/node-kind.ts`): turn `human` is yours; turn 
 
 Geometry lives in `ui/src/lanes.ts` (tested). The list gutter is 56px: agent lane at x=16, your lane at x=40, trunk at x=28. Rows are 56px. Open sections come first and closed items last, most recently closed on top. Each lane runs straight down to the last open row, then curves into the trunk at the first closed row (`M x 0 V lastOpen C x mid 28 mid 28 firstClosed`), so the lanes never end in a broken Y; with nothing closed they meet at the bottom. Your lane is drawn in your color at 42% opacity.
 
+## Workspace
+
+The items view is the **Split** composition: three columns in one grid (`.workspace`, `ui/src/styles/workspace.css`).
+
+| Column | Content |
+| --- | --- |
+| rail (13.75rem, from 64rem) | collections from `/api/collections`, plus "all items"; each shows what waits for you / what is still open (`railEntries` in `ui/src/workspace.ts`). Choosing one filters the list; the filter is local state. |
+| list | list head (collection name, `j k to move · f to expand`), then the lanes list |
+| detail | the selected item, the intake form, or a hint |
+
+The rail keeps its grid track even when it is hidden (below 64rem it is 0 wide), so the list and detail never change tracks and the columns can animate. Below 48rem the panes stack and the rail is not shown (the phone layout comes later). Routes are unchanged: `#<id>` selects an item, `#/modules` opens the catalog.
+
+The detail has two parts: the **primary** column (head, moves, missing fields, field values) and the **side** (collection, creator, lease, history). Stacked by default.
+
+### Focus mode
+
+A quiet 28px icon button at the end of the detail header row (icon 14px, stroke 1.25), tooltip `Expand · f` / `Collapse · esc`. Its four corners are one path whose `d` transitions between the two shapes (same commands in both), so the corners slide out to expand and in to collapse. Hidden below 48rem.
+
+Turning it on, over `--travel` with `--e-move`:
+
+- The grid columns animate from `rail 1.1fr 1fr` to `0 0.5fr 1.375fr` (equal track count, so Chrome interpolates them). The rail fades out in 220ms; coming back it waits 380ms so it never shows clipped.
+- Rows shed their meta line and field marks (opacity first, then the row's second grid row closes), leaving node and title.
+- The title grows from 28px to 32px.
+- Once the detail pane is wider than 56rem (a container query on the pane, so it happens on the way, when there is room), the side moves beside the primary column (20rem) and arrives from 16px to the right. Below that width focus mode is a wider single column.
+
+State lives in React state, not the hash: focus is a way of looking, not a place, so links and history keep pointing at items and Back never toggles it.
+
+### Keys
+
+Pure logic in `ui/src/keys.ts` (tested): `f` toggles focus, `Escape` leaves it, `j` and `k` move the selection in list order (stopping at both ends; from nothing they start at the top) and keep the row in view. Keys are ignored while typing in an input, text area, select or editable element, and while Ctrl, Meta or Alt is held. Keys are only bound on the items view.
+
+## Timeline
+
+The history in the detail is the item's own path (`ui/src/timeline.ts`, tested; drawn by `ui/src/components/Timeline.tsx`). Newest first. At the top sits the **current state node** (the item's node kind, on the lane of whose turn it is, or on the trunk at x=28 when closed), with `now` and its state. Below it, one stop per event: on your lane (x=40, filled in your color) when a human acted, on the agent lane (x=16, ink) when an agent did. The path runs straight down while the lane stays and swings across with a cubic curve (`C x0 mid x1 mid x1 y`, `mid` halfway between the two stops) when it changes, ending at creation. Both lanes are drawn behind it as quiet guides.
+
+Each block is measured (ResizeObserver), so an event that wraps keeps its stop centred on it. When the timeline is narrower than 26rem (a phone, the focus side column), the time goes above the event. Events that arrive while the item is open fade in from 8px above (`--arrive`).
+
 ## Controls
 
 - **Buttons** are pills: `Button` with `primary`, `quiet`, `sm` and `icon`. One primary per screen, always the move that hands the turn on (`moveVariants` in `ui/src/actions.ts`); moves that throw work away are quiet.
@@ -82,6 +119,7 @@ Geometry lives in `ui/src/lanes.ts` (tested). The list gutter is 56px: agent lan
 - **Severity** (`Severity`): four signal bars; level 4 in `--warn`.
 - **Kbd** (`Kbd`): keyboard hints inside buttons.
 - **Icons** (`Icon`): thin (stroke 1.25), 16px, current color. No emoji.
+- **Tooltips** (`.tip` with `data-tip`): ink on surface, mono 11.5, below and right-aligned; on hover after 350ms and on keyboard focus.
 - **Fields**: inputs are pills on the surface, text areas round to 8px; labels are `t-label`.
 - Touch targets grow to 40px on coarse pointers.
 
@@ -122,11 +160,27 @@ One gesture for every change: lift, carry, set down.
 
 | Token | Value | Use |
 | --- | --- | --- |
-| `--travel` + `--e-move` | 680ms `cubic-bezier(.65,0,.35,1)` | carry: a node or lane changing place |
+| `--travel` + `--e-move` | 680ms `cubic-bezier(.65,0,.35,1)` | carry: a node or lane changing place, focus mode columns |
 | `--arrive` + `--e-out` | 520ms `cubic-bezier(.22,1,.36,1)` | arrive, morph |
+| make room | 600ms `--e-out`, 90ms after | rows that shift to make room |
+| ripple | 760ms `--e-out`, 560ms after | the halo when an item reaches your lane |
 | `--micro` | 160ms | hover, press |
 
-Nothing blinks; only an agent at work keeps moving. Every animation has a `prefers-reduced-motion` fallback: transitions collapse to 1ms and the orbit stands still (the arc stays visible).
+`TIMING` in `ui/src/motion.ts` mirrors these for animations started from script.
+
+### Turn change
+
+When an item changes turn, from a move in the UI or a change from the CLI that arrives over the live stream, the list animates the difference (FLIP), without a dependency:
+
+1. `Carry` (`ui/src/components/Carry.tsx`) wraps the list body. In `getSnapshotBeforeUpdate`, the one React hook that reads the DOM before it changes, it records where every `[data-flip]` block sits (rows, section headings, "Nothing here."), each row's turn and lane, and its node's look (fill, stroke, dash) and text color.
+2. After the update it measures again and `planMotion` (`ui/src/motion.ts`, tested) decides: a row whose turn changed is **carried** (or **closed** into the trunk, or **reopened**); any other block that shifted **makes room**; a new block **enters**. Changing the collection filter is a new list, not a motion.
+3. The carried row travels from its old place (Web Animations `translateY`, `--travel`) while its node is carried across to the new lane (`translateX`) and lifted: up 8px and 118% at 42%, set down slightly under size at 84%. The row rides on a raised surface (`--sf`, shadow) above the others; arriving on your lane it is tinted in your color from 380ms and a halo ripples out from 560ms. A carry between lanes leaves a ghost ring that fades where it left.
+4. A row that changes section is a new element, so its old look is played back into the new one: the node keeps its old fill until a third of the way, takes the new one by 81%, and the check or slash draws in after 560ms; the text recedes over 420ms; a discarded title's strike is drawn in.
+5. Everything else slides from its old place (make room). The lanes reshape with a `d` transition over `--travel`.
+
+Interrupted mid-flight, a row starts again from where it is on screen. Decorations are CSS keyframes switched on by `data-motion` and cleared after 1.5s.
+
+Nothing blinks; only an agent at work keeps moving. Every animation has a `prefers-reduced-motion` fallback: transitions collapse to 1ms, the orbit stands still (the arc stays visible), focus mode switches at once, and a turn change does not travel: what changed crossfades in place (200ms) and the rest is already where it belongs.
 
 ## Bans
 
@@ -136,4 +190,4 @@ Side-stripe borders, gradient text, glassmorphism, hero-metric templates (big nu
 
 1. **Primitives** in `ui/src/kit/`: small, presentational, no data fetching. Done.
 2. **Field and evidence modules**: the field module registry and its catalog are done (see Field modules). Evidence kinds (gif, mp4, png, diff, log, before/after compare) and loading local modules come next, on the same registry.
-3. **Shells** after: triage and review views composed from modules, including the detail timeline drawn as the item's own path swinging between lanes.
+3. **Shells**: the workspace (Split with collections rail, focus mode, keys), the lanes timeline and the turn-change motion are done. Evidence-led review views and the phone layout come next.
