@@ -1,0 +1,200 @@
+/* The item list drawn on lanes. Heights come from ItemList.tsx so rows and geometry stay in step. */
+
+/* ---- list with lanes ---- */
+.item-list {
+  position: relative;
+}
+
+/* Lane names, centred over their lanes (agent x=16, you x=40). */
+.lane-head {
+  position: relative;
+  height: 16px;
+  font: 500 11px / 16px var(--font-machine);
+  color: var(--mut);
+}
+
+.lane-head span {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+}
+
+.lane-head span:first-child {
+  left: 14px;
+}
+
+.lane-head-you {
+  left: 42px;
+  color: var(--you-ink);
+}
+
+.lanes-body {
+  position: relative;
+}
+
+.lanes {
+  position: absolute;
+  left: 0;
+  top: 0;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.ln,
+.lny {
+  fill: none;
+  stroke-width: 1.5;
+  transition: d var(--travel) var(--e-move);
+}
+
+.ln {
+  stroke: var(--lane);
+}
+
+.lny {
+  stroke: var(--you);
+  opacity: 0.42;
+}
+
+.section-title {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  height: var(--head-h);
+  padding: 0 0 10px 56px;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+}
+
+.count {
+  font: 400 12px var(--font-machine);
+  color: var(--mut);
+}
+
+.section[data-turn="human"] .count {
+  color: var(--you-ink);
+}
+
+.section-empty {
+  display: flex;
+  align-items: center;
+  height: var(--empty-h);
+  padding-left: 56px;
+  font-size: 13px;
+  color: var(--mut);
+}
+
+.rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr);
+  align-items: center;
+  height: var(--row-h);
+  padding-right: 12px;
+  color: var(--ink);
+  text-decoration: none;
+  transition: color 420ms ease;
+}
+
+.row::before {
+  content: "";
+  position: absolute;
+  left: 52px;
+  right: 0;
+  top: 3px;
+  bottom: 3px;
+  z-index: -1;
+  border-radius: var(--r-m);
+  transition: background-color 180ms;
+}
+
+.row:hover::before {
+  background: var(--hov);
+}
+
+.row[aria-current="true"]::before {
+  background: var(--sel);
+}
+
+.row:focus-visible {
+  outline: none;
+}
+
+.row:focus-visible::before {
+  outline: 2px solid var(--you);
+  outline-offset: -2px;
+}
+
+.rows,
+.row-main {
+  position: relative;
+  z-index: 1;
+}
+
+.row-node {
+  overflow: visible;
+}
+
+.row-main {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+  padding-left: 10px;
+}
+
+.ttl {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.35;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.row-meta {
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+  overflow: hidden;
+  font: 400 12px var(--font-machine);
+  color: var(--mut);
+  white-space: nowrap;
+}
+
+.row-meta > span:not(:last-child)::after {
+  content: "·";
+  margin-left: 8px;
+}
+
+.row-lease {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Closed rows recede but stay readable (muted ink, not the lighter closed grey). */
+.row[data-kind="done"],
+.row[data-kind="discarded"] {
+  color: var(--mut);
+}
+
+.row[data-kind="discarded"] .ttl {
+  text-decoration: line-through;
+  text-decoration-thickness: 1.5px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ln,
+  .lny,
+  .row,
+  .row::before {
+    transition-duration: 1ms;
+  }
+}

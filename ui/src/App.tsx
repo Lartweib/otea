@@ -1,5 +1,5 @@
 import { type ReactNode, useCallback, useState } from 'react';
-import { fetchItem, fetchItems, fetchSession } from './api.ts';
+import { fetchCollections, fetchItem, fetchItems, fetchSession } from './api.ts';
 import { ConnectionBadge } from './components/ConnectionBadge.tsx';
 import { ItemDetail } from './components/ItemDetail.tsx';
 import { ItemList } from './components/ItemList.tsx';
@@ -8,18 +8,22 @@ import { type Connection, useLive, useRemote, useSelectedId } from './hooks.ts';
 import type { Remote } from './remote.ts';
 import { groupByTurn } from './sections.ts';
 import { hashFor } from './selection.ts';
-import type { Item, ItemView } from './types.ts';
+import type { CollectionView, Item, ItemView } from './types.ts';
 
 function Message({ children, muted = true }: { children: ReactNode; muted?: boolean }) {
   return <p className={muted ? 'pane-message muted' : 'pane-message'}>{children}</p>;
 }
 
+type IncompleteOf = (collection: string) => string | undefined;
+
 function ListPane({
   items,
   selectedId,
+  incompleteOf,
 }: {
   items: Remote<Item[]>;
   selectedId: string | undefined;
+  incompleteOf: IncompleteOf;
 }) {
   if (items.status === 'loading') return <Message>Loading…</Message>;
   if (items.status === 'failed') return <Message muted={false}>{items.message}</Message>;
@@ -30,7 +34,13 @@ function ListPane({
       </Message>
     );
   }
-  return <ItemList sections={groupByTurn(items.value)} selectedId={selectedId} />;
+  return (
+    <ItemList
+      sections={groupByTurn(items.value)}
+      selectedId={selectedId}
+      incompleteOf={incompleteOf}
+    />
+  );
 }
 
 type DetailPaneProps = { id: string; item: Remote<ItemView | null>; canWrite: boolean };
@@ -54,6 +64,12 @@ function SelectedItem({ id, version, connection, canWrite }: SelectedItemProps) 
   return <DetailPane id={id} item={useRemote(load, version, connection)} canWrite={canWrite} />;
 }
 
+// Which state of a collection means "incomplete" comes from its preset.
+function incompleteLookup(collections: Remote<CollectionView[]>): IncompleteOf {
+  const list = collections.status === 'ready' ? collections.value : [];
+  return (name) => list.find((collection) => collection.name === name)?.incomplete;
+}
+
 type Intake = { openedOn: string | undefined };
 
 export function App() {
@@ -61,6 +77,8 @@ export function App() {
   const selectedId = useSelectedId();
   const items = useRemote(fetchItems, version, connection);
   const session = useRemote(fetchSession, 0, connection);
+  const collections = useRemote(fetchCollections, 0, connection);
+  const incompleteOf = incompleteLookup(collections);
   const canWrite = session.status === 'ready' && session.value.canWrite;
   const [intake, setIntake] = useState<Intake>();
   const creating = canWrite && intake !== undefined && intake.openedOn === selectedId;
@@ -89,7 +107,7 @@ export function App() {
       </header>
       <main className="layout">
         <div className="list-pane">
-          <ListPane items={items} selectedId={selectedId} />
+          <ListPane items={items} selectedId={selectedId} incompleteOf={incompleteOf} />
         </div>
         <div className="detail-pane">
           {creating ? (
