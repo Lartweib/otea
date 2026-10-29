@@ -1,9 +1,8 @@
 import { type ParseArgsOptionsConfig, parseArgs } from 'node:util';
-import { OteaError } from '../core/errors.ts';
 import type { Actor } from '../core/item.ts';
-import { type Command, CommandFailure, type Input, UsageError, usageOf } from './command.ts';
+import { type Command, failureCode, type Input, UsageError, usageOf } from './command.ts';
 import { COMMANDS, findCommand } from './commands.ts';
-import { EXIT_CODES, type FailureCode } from './exit-codes.ts';
+import { EXIT_CODES } from './exit-codes.ts';
 import { commandHelp, generalHelp, HELP_HINT } from './help.ts';
 import type { Opener } from './opener.ts';
 
@@ -117,13 +116,6 @@ async function dispatch(argv: string[], io: Io, json: boolean): Promise<number> 
   if (output === undefined) return EXIT_CODES.ok;
   io.stdout.write(json ? `${JSON.stringify(output.data, null, 2)}\n` : `${output.text}\n`);
   return EXIT_CODES[output.failure ?? 'ok'];
-}
-
-function failureCode(error: unknown): FailureCode {
-  if (error instanceof UsageError) return 'usage';
-  if (error instanceof CommandFailure) return error.failure;
-  if (error instanceof OteaError) return error.code;
-  return 'unexpected';
 }
 
 function usageHint(argv: string[]): string {
