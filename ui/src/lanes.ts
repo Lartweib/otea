@@ -10,7 +10,8 @@ export function laneX(turn: Turn): number {
 }
 
 // A block is one stacked slice of the list: a row (it has a turn) or anything else (headings, notes).
-export type Block = { height: number; turn?: Turn };
+// node is how far below its top a row draws its node: the centre, unless the row is unfolded.
+export type Block = { height: number; turn?: Turn; node?: number };
 
 export type LaneLayout = {
   height: number;
@@ -25,12 +26,13 @@ export function layoutLanes(blocks: readonly Block[]): LaneLayout {
   let lastOpen = 0;
   let firstClosed: number | undefined;
   let top = 0;
-  for (const { height, turn } of blocks) {
+  for (const { height, turn, node = height / 2 } of blocks) {
     if (turn) {
-      const y = top + height / 2;
+      const y = top + node;
       rows.push({ y, x: laneX(turn) });
+      // An open row keeps the lanes straight as far past its bottom as its node sits below its top.
       if (turn === 'none') firstClosed ??= y;
-      else lastOpen = y;
+      else lastOpen = top + height - node;
     }
     top += height;
   }
