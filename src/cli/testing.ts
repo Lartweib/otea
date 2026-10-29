@@ -31,6 +31,43 @@ export function cliAt(
   };
 }
 
+export type Running = {
+  out: () => string;
+  err: () => string;
+  done: Promise<number>;
+  // Interrupts the command, as Ctrl+C does, and resolves with its exit code.
+  stop: () => Promise<number>;
+};
+
+// Starts a long-running command (wait, events --follow) and lets the test read its output so far.
+export function startCli(cwd: string, ...argv: string[]): Running {
+  const interrupt = new AbortController();
+  let out = '';
+  let err = '';
+  const done = run(argv, {
+    cwd,
+    env: {},
+    signal: interrupt.signal,
+    openUrl: async () => {},
+    stdout: { write: (chunk: string) => (out += chunk) },
+    stderr: { write: (chunk: string) => (err += chunk) },
+  });
+  const stop = () => {
+    interrupt.abort();
+    return done;
+  };
+  return { out: () => out, err: () => err, done, stop };
+}
+
+// Resolves once `ready` holds, polling, or rejects after `timeoutMs`.
+export async function until(ready: () => boolean, timeoutMs = 5000): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  while (!ready()) {
+    if (Date.now() > deadline) throw new Error('Timed out waiting for the condition');
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+}
+
 const MAIN = fileURLToPath(new URL('./main.ts', import.meta.url));
 
 // Runs the CLI as a separate process, for tests that need real concurrent writers.

@@ -1,5 +1,6 @@
 import { join } from 'node:path';
 import { addCollection, DEFAULT_PRESET } from '../app/collections.ts';
+import { listEvents } from '../app/events.ts';
 import {
   createItem,
   type ListItemsFilter,
@@ -12,14 +13,22 @@ import { claimItem, heartbeatItem, releaseItem } from '../app/leases.ts';
 import { initProject, openProject, oteaDir, type Project } from '../app/project.ts';
 import { relayDecision } from '../app/relay.ts';
 import { validateProject } from '../app/validate.ts';
+import { watch } from '../app/watch.ts';
 import type { FieldValues } from '../core/fields.ts';
 import { parseDuration } from '../core/lease.ts';
 import { TURNS, type Turn } from '../core/workflow.ts';
 import { DEFAULT_PORT, listen } from '../server/listen.ts';
 import { createServer } from '../server/server.ts';
 import { ensureUiToken, readUiToken } from '../server/token.ts';
+import type { EventFilter } from '../store/queries.ts';
 import { type Command, CommandFailure, type Input, UsageError } from './command.ts';
-import { formatItem, formatItems, formatItemWithEvents, formatReport } from './format.ts';
+import {
+  formatEvent,
+  formatItem,
+  formatItems,
+  formatItemWithEvents,
+  formatReport,
+} from './format.ts';
 import { probeSignIn } from './probe.ts';
 import { readServeFile, removeServeFile, writeServeFile } from './serve-file.ts';
 
@@ -27,6 +36,15 @@ function withProject<T>(cwd: string, use: (project: Project) => T): T {
   const project = openProject(cwd);
   try {
     return use(project);
+  } finally {
+    project.db.close();
+  }
+}
+
+async function withProjectWhile<T>(cwd: string, use: (project: Project) => Promise<T>): Promise<T> {
+  const project = openProject(cwd);
+  try {
+    return await use(project);
   } finally {
     project.db.close();
   }
@@ -164,6 +182,64 @@ const relay: Command = {
     const relayed = { id, to, via, quote, ...(reason ? { reason } : {}) };
     const item = withProject(input.cwd, (project) => relayDecision(project, relayed));
     return { data: item, text: formatItem(item) };
+  },
+};
+
+const COUNT_PATTERN = /^\d+$/;
+
+function countFrom(name: string, value: string | undefined, min: number): number | undefined {
+  if (value === undefined) return undefined;
+  const count = Number(value);
+  if (!COUNT_PATTERN.test(value) || count < min) {
+    throw new UsageError(`--${name} must be an integer of at least ${min}`);
+  }
+  return count;
+}
+
+function eventFilter({ option }: Input): EventFilter {
+  const filter: EventFilter = {};
+  const item = option('item');
+  const collection = option('collection');
+  const since = countFrom('since', option('since'), 0);
+  const limit = countFrom('limit', option('limit'), 1);
+  if (item !== undefined) filter.item = item;
+  if (collection !== undefined) filter.collection = collection;
+  if (since !== undefined) filter.since = since;
+  if (limit !== undefined) filter.limit = limit;
+  return filter;
+}
+
+const events: Command = {
+  name: 'events',
+  summary:
+    'Print the event log in commit order, after the event id given to --since; --follow keeps printing new events until Ctrl+C',
+  args: [],
+  options: {
+    item: { placeholder: 'id' },
+    collection: {},
+    since: { placeholder: 'event id' },
+    limit: { placeholder: 'n' },
+    follow: { flag: true },
+  },
+  execute: async (input) => {
+    const filter = eventFilter(input);
+    const follow = input.flag('follow');
+    if (follow && filter.limit !== undefined) {
+      throw new UsageError('--limit cannot be combined with --follow');
+    }
+    await withProjectWhile(input.cwd, async (project) => {
+      let since = filter.since ?? 0;
+      const printNew = () => {
+        for (const event of listEvents(project, { ...filter, since })) {
+          input.print(event, formatEvent(event));
+          since = event.id;
+        }
+        return undefined;
+      };
+      printNew();
+      if (follow) await watch(project.db, printNew, { signal: input.signal });
+    });
+    return undefined;
   },
 };
 
@@ -345,6 +421,7 @@ export const COMMANDS: readonly Command[] = [
   create,
   list,
   show,
+  events,
   claim,
   heartbeat,
   release,
