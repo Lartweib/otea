@@ -16,6 +16,8 @@ import './styles/list.css';
 import './styles/detail.css';
 import './styles/workspace.css';
 import './styles/modules.css';
+import './styles/phone.css';
+import './styles/triage.css';
 import { applyChoice, loadChoice } from './theme-dom.ts';
 
 applyChoice(loadChoice());

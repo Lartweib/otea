@@ -1,0 +1,173 @@
+/* Below 48rem: one column. A compact topbar, collections as pills, and items that unfold in place. */
+
+/* ---- unfold: the selected row opens into its detail, the lanes keep running beside it ---- */
+.unfold {
+  /* clip, not hidden: the moves at the bottom stay sticky to the screen. */
+  overflow: clip;
+  overflow-clip-margin: 4px;
+}
+
+.unfold-content {
+  padding: 2px 0 14px 52px;
+}
+
+.detail[data-layout="unfold"] {
+  gap: 20px;
+  padding: 16px 16px 0;
+  border-radius: var(--r-l);
+  background: var(--sf);
+  box-shadow:
+    0 0 0 1px var(--line),
+    0 18px 32px -24px var(--shadow);
+}
+
+.detail[data-layout="unfold"] .detail-primary,
+.detail[data-layout="unfold"] .detail-side {
+  gap: 20px;
+}
+
+.detail[data-layout="unfold"] .input {
+  background-color: var(--bg);
+}
+
+/* The moves wait at the bottom of the screen while the detail is on it, in reach of a thumb. */
+.unfold-actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  margin: 0 -16px;
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--line);
+  border-radius: 0 0 var(--r-l) var(--r-l);
+  background: var(--sf);
+}
+
+.unfold-actions .btn {
+  height: 44px;
+  padding: 0 18px;
+  font-size: 14px;
+}
+
+.unfold-actions .action-buttons {
+  gap: 8px;
+}
+
+/* The row draws its own pressed and selected state. */
+.row {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.row[aria-expanded="true"]::before {
+  background: var(--sel);
+}
+
+@media (max-width: 47.99rem) {
+  /* ---- topbar: brand, connection dot and four 44px controls ---- */
+  .topbar {
+    gap: 8px;
+    height: 56px;
+    padding: 0 8px 0 16px;
+  }
+
+  .topbar-actions {
+    gap: 2px;
+  }
+
+  .topbar-label,
+  .connection-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .connection {
+    position: relative;
+    justify-content: center;
+    width: 28px;
+    height: 44px;
+    margin-right: 0;
+  }
+
+  .brand {
+    min-height: 44px;
+  }
+
+  .topbar-link,
+  .topbar .btn.icon,
+  .topbar .btn.topbar-new {
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+  }
+
+  .topbar-link {
+    gap: 0;
+  }
+
+  /* ---- collections: a row of pills that scrolls sideways ---- */
+  .workspace .rail {
+    display: flex;
+    flex-direction: row;
+    gap: 8px;
+    margin: 0 -16px;
+    padding: 4px 16px 12px;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+  }
+
+  .rail-label {
+    display: none;
+  }
+
+  .rail-entry {
+    flex: none;
+    gap: 8px;
+    height: 44px;
+    padding: 0 16px;
+    background: var(--sf);
+    box-shadow: 0 0 0 1px var(--line);
+  }
+
+  .rail-entry[aria-pressed="true"] {
+    background: var(--ink);
+    box-shadow: none;
+    color: var(--sf);
+  }
+
+  .rail-entry[aria-pressed="true"] .rail-yours,
+  .rail-entry[aria-pressed="true"] .t-cap {
+    color: inherit;
+  }
+
+  /* Intake opens above the list, where the tap that opened it can see it. */
+  .workspace .detail-pane {
+    order: -1;
+  }
+
+  .list-head {
+    padding-bottom: 6px;
+  }
+
+  .section-title .btn.triage-open {
+    height: 44px;
+    margin: 0 -8px -10px auto;
+  }
+}
+
+/* The quiet way into swipe triage, at the end of the "Waiting for you" heading. */
+.triage-open {
+  margin-left: auto;
+  margin-bottom: -6px;
+}
+
+/* From 48rem the topbar keeps its words, and the catalog link needs no picture. */
+@media (min-width: 48rem) {
+  .topbar-link .icon {
+    display: none;
+  }
+}

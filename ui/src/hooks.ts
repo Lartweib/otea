@@ -1,4 +1,4 @@
-import { useEffect, useReducer, useRef, useState, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useReducer, useRef, useState, useSyncExternalStore } from 'react';
 import { activeLease } from './lease.ts';
 import { afterFailure, type Remote } from './remote.ts';
 import { type Route, routeFromHash } from './selection.ts';
@@ -69,4 +69,25 @@ function subscribeToHash(onChange: () => void): () => void {
 
 export function useRoute(): Route {
   return routeFromHash(useSyncExternalStore(subscribeToHash, () => window.location.hash));
+}
+
+export function useMediaQuery(query: string): boolean {
+  const subscribe = useCallback(
+    (onChange: () => void) => {
+      const list = window.matchMedia(query);
+      list.addEventListener('change', onChange);
+      return () => list.removeEventListener('change', onChange);
+    },
+    [query],
+  );
+  return useSyncExternalStore(subscribe, () => window.matchMedia(query).matches);
+}
+
+// Below 48rem the workspace is one column, and an item unfolds where it sits in the list.
+export function usePhone(): boolean {
+  return !useMediaQuery('(min-width: 48rem)');
+}
+
+export function useReducedMotion(): boolean {
+  return useMediaQuery('(prefers-reduced-motion: reduce)');
 }

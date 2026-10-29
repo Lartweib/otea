@@ -5,17 +5,18 @@ import { CollectionRail } from './components/CollectionRail.tsx';
 import { ConnectionBadge } from './components/ConnectionBadge.tsx';
 import { FocusToggle } from './components/FocusToggle.tsx';
 import { ItemDetail } from './components/ItemDetail.tsx';
-import { type CollectionOf, ItemList } from './components/ItemList.tsx';
+import { type CollectionOf, ItemList, type Unfolding } from './components/ItemList.tsx';
 import { CatalogOverview, ModuleIndex, ModulePanel } from './components/ModuleCatalog.tsx';
 import { NewItemForm } from './components/NewItemForm.tsx';
 import { ThemeToggle } from './components/ThemeToggle.tsx';
-import { type Connection, useLive, useRemote, useRoute } from './hooks.ts';
+import { Triage } from './components/Triage.tsx';
+import { type Connection, useLive, usePhone, useRemote, useRoute } from './hooks.ts';
 import { keyCommand, keyTargetOf, stepSelection } from './keys.ts';
 import { Button, Icon } from './kit/index.ts';
 import { MODULES } from './modules/registry.ts';
 import type { Remote } from './remote.ts';
 import { groupByTurn, type Section } from './sections.ts';
-import { hashFor, ITEMS_HASH, modulesHash } from './selection.ts';
+import { hashFor, ITEMS_HASH, modulesHash, TRIAGE_HASH } from './selection.ts';
 import type { CollectionView, Item, ItemView, PresetView } from './types.ts';
 import { inCollection, listOrder, railEntries } from './workspace.ts';
 
@@ -29,9 +30,19 @@ type ListPaneProps = {
   selectedId: string | undefined;
   collection: string | undefined;
   collectionOf: CollectionOf;
+  unfolding: Unfolding | undefined;
+  onTriage: (() => void) | undefined;
 };
 
-function ListPane({ items, sections, selectedId, collection, collectionOf }: ListPaneProps) {
+function ListPane({
+  items,
+  sections,
+  selectedId,
+  collection,
+  collectionOf,
+  unfolding,
+  onTriage,
+}: ListPaneProps) {
   if (items.status === 'loading') return <Message>Loading…</Message>;
   if (items.status === 'failed') return <Message muted={false}>{items.message}</Message>;
   if (items.value.length === 0) {
@@ -52,6 +63,8 @@ function ListPane({ items, sections, selectedId, collection, collectionOf }: Lis
         selectedId={selectedId}
         collectionOf={collectionOf}
         scope={collection ?? ''}
+        {...(unfolding ? { unfolding } : {})}
+        {...(onTriage ? { onTriage } : {})}
       />
     </>
   );
@@ -63,9 +76,19 @@ type DetailPaneProps = {
   canWrite: boolean;
   collectionOf: CollectionOf;
   headAction: ReactNode;
+  layout?: 'pane' | 'unfold';
+  onMoved?: () => void;
 };
 
-function DetailPane({ id, item, canWrite, collectionOf, headAction }: DetailPaneProps) {
+function DetailPane({
+  id,
+  item,
+  canWrite,
+  collectionOf,
+  headAction,
+  layout,
+  onMoved,
+}: DetailPaneProps) {
   if (item.status === 'failed') return <Message muted={false}>{item.message}</Message>;
   if (item.status === 'loading') return <Message>Loading…</Message>;
   if (!item.value) return <Message>Item {id} not found.</Message>;
@@ -75,6 +98,8 @@ function DetailPane({ id, item, canWrite, collectionOf, headAction }: DetailPane
       canWrite={canWrite}
       collection={collectionOf(item.value.collection)}
       headAction={headAction}
+      {...(layout ? { layout } : {})}
+      {...(onMoved ? { onMoved } : {})}
     />
   );
 }
@@ -180,6 +205,7 @@ function useWorkspaceKeys({ enabled, focus, setFocus, order, selectedId }: Works
 export function App() {
   const { connection, version } = useLive();
   const route = useRoute();
+  const phone = usePhone();
   const selectedId = route.view === 'items' ? route.id : undefined;
   const items = useRemote(fetchItems, version, connection);
   const session = useRemote(fetchSession, 0, connection);
@@ -207,10 +233,45 @@ export function App() {
     // From the catalog, intake opens next to the item list (nothing is selected there).
     if (route.view === 'modules') window.location.hash = ITEMS_HASH;
     setIntake({ openedOn: selectedId });
+    // On a phone intake opens above the list.
+    if (phone) window.scrollTo({ top: 0 });
   };
   const toggle = <FocusToggle focus={focus} onToggle={() => setFocus((current) => !current)} />;
   const names = collections.status === 'ready' ? collections.value.map((each) => each.name) : [];
   const rail = railEntries(names, allItems);
+  // On a phone the selected row unfolds into its detail, and the detail pane only holds intake.
+  // A move made from the unfolded item folds it, and the row carries itself home.
+  const fold = () => {
+    window.location.hash = ITEMS_HASH;
+  };
+  const unfolding: Unfolding | undefined =
+    phone && !creating
+      ? {
+          detail: (id) => (
+            <SelectedItem
+              key={id}
+              id={id}
+              version={version}
+              connection={connection}
+              canWrite={canWrite}
+              collectionOf={collectionOf}
+              headAction={null}
+              layout="unfold"
+              onMoved={fold}
+            />
+          ),
+          onFold: fold,
+        }
+      : undefined;
+  const openTriage = canWrite
+    ? () => {
+        window.location.hash = TRIAGE_HASH;
+      }
+    : undefined;
+  const leaveTriage = () => {
+    window.location.hash = ITEMS_HASH;
+  };
+  const waiting = sections.find((section) => section.turn === 'human')?.items ?? [];
   return (
     <div className="app">
       <header className="topbar">
@@ -222,19 +283,30 @@ export function App() {
             href={modulesHash()}
             aria-current={route.view === 'modules' ? 'page' : undefined}
           >
-            Modules
+            <Icon name="modules" />
+            <span className="topbar-label">Modules</span>
           </a>
           <ThemeToggle />
           {canWrite ? (
-            <Button size="sm" aria-pressed={creating} onClick={openIntake}>
+            <Button size="sm" className="topbar-new" aria-pressed={creating} onClick={openIntake}>
               <Icon name="plus" />
-              New item
+              <span className="topbar-label">New item</span>
             </Button>
           ) : null}
         </div>
       </header>
       {route.view === 'modules' ? (
         <Catalog name={route.name} presets={presets} />
+      ) : route.view === 'triage' && canWrite ? (
+        <main className="layout triage-layout">
+          <Triage
+            waiting={waiting}
+            collectionOf={collectionOf}
+            version={version}
+            connection={connection}
+            onExit={leaveTriage}
+          />
+        </main>
       ) : (
         <main className="layout workspace" data-focus={focus}>
           <CollectionRail
@@ -252,31 +324,35 @@ export function App() {
               selectedId={selectedId}
               collection={collection}
               collectionOf={collectionOf}
+              unfolding={unfolding}
+              onTriage={openTriage}
             />
           </div>
-          <div className="detail-pane">
-            <div className="detail-panel raised">
-              {creating ? (
-                <NewItemForm
-                  connection={connection}
-                  onCancel={closeIntake}
-                  onCreated={showCreated}
-                />
-              ) : selectedId ? (
-                <SelectedItem
-                  key={selectedId}
-                  id={selectedId}
-                  version={version}
-                  connection={connection}
-                  canWrite={canWrite}
-                  collectionOf={collectionOf}
-                  headAction={toggle}
-                />
-              ) : (
-                <Message>Select an item to see its details.</Message>
-              )}
+          {phone && !creating ? null : (
+            <div className="detail-pane">
+              <div className="detail-panel raised">
+                {creating ? (
+                  <NewItemForm
+                    connection={connection}
+                    onCancel={closeIntake}
+                    onCreated={showCreated}
+                  />
+                ) : selectedId ? (
+                  <SelectedItem
+                    key={selectedId}
+                    id={selectedId}
+                    version={version}
+                    connection={connection}
+                    canWrite={canWrite}
+                    collectionOf={collectionOf}
+                    headAction={toggle}
+                  />
+                ) : (
+                  <Message>Select an item to see its details.</Message>
+                )}
+              </div>
             </div>
-          </div>
+          )}
         </main>
       )}
     </div>

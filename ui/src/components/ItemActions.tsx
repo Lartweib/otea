@@ -4,9 +4,10 @@ import { moveItem } from '../api.ts';
 import { Button } from '../kit/index.ts';
 import type { Move } from '../types.ts';
 
-type ItemActionsProps = { id: string; moves: Move[] };
+// onMoved: after a move lands (on a phone the unfolded item then folds and carries itself home).
+type ItemActionsProps = { id: string; moves: Move[]; onMoved?: (() => void) | undefined };
 
-export function ItemActions({ id, moves }: ItemActionsProps) {
+export function ItemActions({ id, moves, onMoved }: ItemActionsProps) {
   const [state, dispatch] = useReducer(reduceAction, IDLE);
   const busy = isBusy(state);
   const explaining =
@@ -16,7 +17,10 @@ export function ItemActions({ id, moves }: ItemActionsProps) {
   const submit = (to: string, reason: string) => {
     dispatch({ type: 'submit', to, reason });
     moveItem(id, to, reason).then(
-      () => dispatch({ type: 'succeeded' }),
+      () => {
+        dispatch({ type: 'succeeded' });
+        onMoved?.();
+      },
       (error: unknown) =>
         dispatch({ type: 'failed', message: error instanceof Error ? error.message : 'Failed' }),
     );
