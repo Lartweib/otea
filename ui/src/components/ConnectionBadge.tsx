@@ -6,6 +6,7 @@ const LABELS: Record<Connection, string> = {
   reconnecting: 'Reconnecting…',
 };
 
+// Filled when live, a still ring while (re)connecting. Nothing blinks.
 export function ConnectionBadge({ connection }: { connection: Connection }) {
   return (
     <output className="connection" data-connection={connection}>

@@ -4,14 +4,16 @@ import { ConnectionBadge } from './components/ConnectionBadge.tsx';
 import { ItemDetail } from './components/ItemDetail.tsx';
 import { ItemList } from './components/ItemList.tsx';
 import { NewItemForm } from './components/NewItemForm.tsx';
+import { ThemeToggle } from './components/ThemeToggle.tsx';
 import { type Connection, useLive, useRemote, useSelectedId } from './hooks.ts';
+import { Button, Icon } from './kit/index.ts';
 import type { Remote } from './remote.ts';
 import { groupByTurn } from './sections.ts';
 import { hashFor } from './selection.ts';
 import type { CollectionView, Item, ItemView } from './types.ts';
 
 function Message({ children, muted = true }: { children: ReactNode; muted?: boolean }) {
-  return <p className={muted ? 'pane-message muted' : 'pane-message'}>{children}</p>;
+  return <p className={muted ? 'pane-message t-small' : 'pane-message action-error'}>{children}</p>;
 }
 
 type IncompleteOf = (collection: string) => string | undefined;
@@ -43,13 +45,24 @@ function ListPane({
   );
 }
 
-type DetailPaneProps = { id: string; item: Remote<ItemView | null>; canWrite: boolean };
+type DetailPaneProps = {
+  id: string;
+  item: Remote<ItemView | null>;
+  canWrite: boolean;
+  incompleteOf: IncompleteOf;
+};
 
-function DetailPane({ id, item, canWrite }: DetailPaneProps) {
+function DetailPane({ id, item, canWrite, incompleteOf }: DetailPaneProps) {
   if (item.status === 'failed') return <Message muted={false}>{item.message}</Message>;
   if (item.status === 'loading') return <Message>Loading…</Message>;
   if (!item.value) return <Message>Item {id} not found.</Message>;
-  return <ItemDetail item={item.value} canWrite={canWrite} />;
+  return (
+    <ItemDetail
+      item={item.value}
+      canWrite={canWrite}
+      incompleteState={incompleteOf(item.value.collection)}
+    />
+  );
 }
 
 type SelectedItemProps = {
@@ -57,17 +70,40 @@ type SelectedItemProps = {
   version: number;
   connection: Connection;
   canWrite: boolean;
+  incompleteOf: IncompleteOf;
 };
 
-function SelectedItem({ id, version, connection, canWrite }: SelectedItemProps) {
+function SelectedItem({ id, version, connection, canWrite, incompleteOf }: SelectedItemProps) {
   const load = useCallback((signal: AbortSignal) => fetchItem(id, signal), [id]);
-  return <DetailPane id={id} item={useRemote(load, version, connection)} canWrite={canWrite} />;
+  return (
+    <DetailPane
+      id={id}
+      item={useRemote(load, version, connection)}
+      canWrite={canWrite}
+      incompleteOf={incompleteOf}
+    />
+  );
 }
 
 // Which state of a collection means "incomplete" comes from its preset.
 function incompleteLookup(collections: Remote<CollectionView[]>): IncompleteOf {
   const list = collections.status === 'ready' ? collections.value : [];
   return (name) => list.find((collection) => collection.name === name)?.incomplete;
+}
+
+function Brand() {
+  return (
+    <span className="brand">
+      <svg width="22" height="26" viewBox="0 0 22 26" aria-hidden="true">
+        <path
+          className="brand-fork"
+          d="M5 0 V8 C5 14 11 12 11 18 V26 M17 0 V8 C17 14 11 12 11 18"
+        />
+        <circle className="brand-dot" cx="17" cy="4.5" r="3.5" />
+      </svg>
+      otea
+    </span>
+  );
 }
 
 type Intake = { openedOn: string | undefined };
@@ -90,19 +126,20 @@ export function App() {
   return (
     <div className="app">
       <header className="topbar">
-        <span className="brand">Otea</span>
+        <Brand />
         <div className="topbar-actions">
+          <ConnectionBadge connection={connection} />
+          <ThemeToggle />
           {canWrite ? (
-            <button
-              type="button"
-              className="action"
+            <Button
+              size="sm"
               aria-pressed={creating}
               onClick={() => setIntake({ openedOn: selectedId })}
             >
+              <Icon name="plus" />
               New item
-            </button>
+            </Button>
           ) : null}
-          <ConnectionBadge connection={connection} />
         </div>
       </header>
       <main className="layout">
@@ -110,19 +147,22 @@ export function App() {
           <ListPane items={items} selectedId={selectedId} incompleteOf={incompleteOf} />
         </div>
         <div className="detail-pane">
-          {creating ? (
-            <NewItemForm connection={connection} onCancel={closeIntake} onCreated={showCreated} />
-          ) : selectedId ? (
-            <SelectedItem
-              key={selectedId}
-              id={selectedId}
-              version={version}
-              connection={connection}
-              canWrite={canWrite}
-            />
-          ) : (
-            <Message>Select an item to see its details.</Message>
-          )}
+          <div className="detail-panel raised">
+            {creating ? (
+              <NewItemForm connection={connection} onCancel={closeIntake} onCreated={showCreated} />
+            ) : selectedId ? (
+              <SelectedItem
+                key={selectedId}
+                id={selectedId}
+                version={version}
+                connection={connection}
+                canWrite={canWrite}
+                incompleteOf={incompleteOf}
+              />
+            ) : (
+              <Message>Select an item to see its details.</Message>
+            )}
+          </div>
         </div>
       </main>
     </div>

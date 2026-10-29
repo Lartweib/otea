@@ -11,8 +11,9 @@ import { App } from './App.tsx';
 import './styles/tokens.css';
 import './styles/base.css';
 import './kit/kit.css';
-import './styles.css';
+import './styles/shell.css';
 import './styles/list.css';
+import './styles/detail.css';
 import { applyChoice, loadChoice } from './theme-dom.ts';
 
 applyChoice(loadChoice());

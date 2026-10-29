@@ -1,3 +1,5 @@
+import type { ButtonVariant } from './kit/Button.tsx';
+import { isDiscardedState } from './node-kind.ts';
 import type { Move } from './types.ts';
 
 export type ActionState =
@@ -20,6 +22,19 @@ export const IDLE: ActionState = { step: 'choosing' };
 export function moveTone({ by, reasonRequired }: Move): Tone {
   if (reasonRequired) return 'caution';
   return by === 'agent' ? 'neutral' : 'approve';
+}
+
+// One primary per screen: the first move that hands the turn on. Throwing work away is never the primary.
+export function moveVariants(moves: readonly Move[]): ButtonVariant[] {
+  let primaryTaken = false;
+  return moves.map((move) => {
+    if (isDiscardedState(move.to)) return 'quiet';
+    if (!primaryTaken && moveTone(move) === 'approve') {
+      primaryTaken = true;
+      return 'primary';
+    }
+    return 'default';
+  });
 }
 
 export function reduceAction(state: ActionState, event: ActionEvent): ActionState {

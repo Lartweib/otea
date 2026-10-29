@@ -12,6 +12,7 @@ import {
   startMessage,
   startOf,
 } from '../intake.ts';
+import { Button } from '../kit/index.ts';
 import type { CollectionView, FieldView } from '../types.ts';
 
 type FieldControlProps = {
@@ -35,12 +36,12 @@ function FieldControl({ field, value, disabled, onChange }: FieldControlProps) {
   const control = controlFor(field);
   return (
     <div className="intake-field">
-      <label htmlFor={id}>
+      <label className="t-label" htmlFor={id}>
         {fieldLabel(field.name)}
         {shared.required ? <span className="required"> (required)</span> : null}
       </label>
       {control === 'select' ? (
-        <select {...shared} onChange={(event) => onChange(event.target.value)}>
+        <select {...shared} className="input" onChange={(event) => onChange(event.target.value)}>
           {field.default === undefined ? <option value="">—</option> : null}
           {(field.values ?? []).map((option) => (
             <option key={option} value={option}>
@@ -49,12 +50,21 @@ function FieldControl({ field, value, disabled, onChange }: FieldControlProps) {
           ))}
         </select>
       ) : control === 'textarea' ? (
-        <textarea {...shared} onChange={(event) => onChange(event.target.value)} />
+        <textarea
+          {...shared}
+          className="input"
+          onChange={(event) => onChange(event.target.value)}
+        />
       ) : (
-        <input type="text" {...shared} onChange={(event) => onChange(event.target.value)} />
+        <input
+          type="text"
+          {...shared}
+          className="input"
+          onChange={(event) => onChange(event.target.value)}
+        />
       )}
       {hint ? (
-        <p className="muted intake-hint" id={hintId}>
+        <p className="t-small" id={hintId}>
           {hint}
         </p>
       ) : null}
@@ -111,9 +121,12 @@ function IntakeForm({ collections, first, onCancel, onCreated }: IntakeFormProps
     >
       {collections.length > 1 ? (
         <div className="intake-field">
-          <label htmlFor="intake-collection">Collection</label>
+          <label className="t-label" htmlFor="intake-collection">
+            Collection
+          </label>
           <select
             id="intake-collection"
+            className="input"
             value={collection.name}
             disabled={posting}
             onChange={(event) => choose(event.target.value)}
@@ -135,16 +148,16 @@ function IntakeForm({ collections, first, onCancel, onCreated }: IntakeFormProps
           onChange={(value) => change(field.name, value)}
         />
       ))}
-      <p className="intake-start" data-incomplete={start.incomplete}>
+      <p className="intake-start t-small" data-incomplete={start.incomplete}>
         {startMessage(start)}
       </p>
       <div className="action-buttons">
-        <button type="submit" className="action" data-tone="approve" disabled={!ready || posting}>
+        <Button type="submit" variant="primary" disabled={!ready || posting}>
           {posting ? 'Creating…' : 'Create'}
-        </button>
-        <button type="button" className="action" disabled={posting} onClick={onCancel}>
+        </Button>
+        <Button variant="quiet" disabled={posting} onClick={onCancel}>
           Cancel
-        </button>
+        </Button>
       </div>
       {error ? (
         <p className="action-error" role="alert">
@@ -164,13 +177,13 @@ type NewItemFormProps = {
 export function NewItemForm({ connection, onCancel, onCreated }: NewItemFormProps) {
   const collections = useRemote(fetchCollections, 0, connection);
   const body = () => {
-    if (collections.status === 'loading') return <p className="muted">Loading…</p>;
+    if (collections.status === 'loading') return <p className="t-small">Loading…</p>;
     if (collections.status === 'failed')
       return <p className="action-error">{collections.message}</p>;
     const [first] = collections.value;
     if (!first) {
       return (
-        <p className="muted">
+        <p className="t-small">
           No collections yet. Add one with <code>otea collection add &lt;name&gt;</code>.
         </p>
       );
@@ -186,8 +199,8 @@ export function NewItemForm({ connection, onCancel, onCreated }: NewItemFormProp
   };
   return (
     <article className="detail">
-      <header>
-        <h1 className="detail-title">New item</h1>
+      <header className="detail-head">
+        <h1 className="t-display">New item</h1>
       </header>
       {body()}
     </article>
