@@ -6,6 +6,7 @@ import {
   type ListItemsFilter,
   listItems,
   moveItem,
+  oldestWaiting,
   showItem,
   updateItem,
 } from '../app/items.ts';
@@ -243,16 +244,53 @@ const events: Command = {
   },
 };
 
-function ttlFrom(value: string | undefined): number | undefined {
+function durationFrom(name: string, value: string | undefined): number | undefined {
   if (value === undefined) return undefined;
-  const ttl = parseDuration(value);
-  if (ttl === undefined) {
-    throw new UsageError('--ttl must be a positive duration such as 90s, 15m or 1h');
+  const duration = parseDuration(value);
+  if (duration === undefined) {
+    throw new UsageError(`--${name} must be a positive duration such as 90s, 15m or 1h`);
   }
-  return ttl;
+  return duration;
 }
 
+const ttlFrom = (value: string | undefined) => durationFrom('ttl', value);
+
 const TTL = { ttl: { placeholder: 'duration' } };
+
+// Lease expiry writes nothing, so a wait for unclaimed items also checks again on this timer.
+const LEASE_RECHECK_MS = 1000;
+
+const wait: Command = {
+  name: 'wait',
+  summary:
+    'Wait until an item is on the turn and print it as a list row, at once if one already is; the one waiting longest in its state comes first',
+  args: [],
+  options: {
+    turn: { required: true, choices: ['agent', 'human'] },
+    collection: {},
+    unclaimed: { flag: true },
+    timeout: { placeholder: 'duration' },
+  },
+  execute: async (input) => {
+    const turn = input.required('turn');
+    const timeout = input.option('timeout');
+    const timeoutMs = durationFrom('timeout', timeout);
+    const filter = listFilter(input);
+    const options = {
+      signal: input.signal,
+      ...(timeoutMs === undefined ? {} : { timeoutMs }),
+      ...(filter.availableTo === undefined ? {} : { recheckMs: LEASE_RECHECK_MS }),
+    };
+    const result = await withProjectWhile(input.cwd, async (project) =>
+      watch(project.db, () => oldestWaiting(project, filter), options),
+    );
+    if ('found' in result) return { data: result.found, text: formatItem(result.found) };
+    if (result.stopped === 'timeout') {
+      throw new CommandFailure('timeout', `No item reached the ${turn} turn within ${timeout}`);
+    }
+    throw new CommandFailure('interrupted', 'Interrupted while waiting');
+  },
+};
 
 const claim: Command = {
   name: 'claim',
@@ -422,6 +460,7 @@ export const COMMANDS: readonly Command[] = [
   list,
   show,
   events,
+  wait,
   claim,
   heartbeat,
   release,
