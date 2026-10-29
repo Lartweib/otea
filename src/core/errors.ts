@@ -12,7 +12,9 @@ export type ErrorCode =
   | 'missing_fields'
   | 'not_claimable'
   | 'lease_held'
-  | 'not_lease_holder';
+  | 'not_lease_holder'
+  | 'not_relayable'
+  | 'quote_required';
 
 export class OteaError extends Error {
   readonly code: ErrorCode;

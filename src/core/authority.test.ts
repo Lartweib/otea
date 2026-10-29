@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { authorizeMove, availableMoves, mayPerform, type Performer } from './authority.ts';
+import {
+  authorizeMove,
+  authorizeRelay,
+  availableMoves,
+  mayPerform,
+  type Performer,
+} from './authority.ts';
 import { tasks } from './testing.ts';
 
 const agentCli: Performer = { actor: { kind: 'agent', name: 'claude' }, channel: 'cli' };
@@ -98,6 +104,53 @@ describe('authorizeMove', () => {
   it('checks authority before the reason', () => {
     expect(() => authorizeMove(tasks, 'review', 'todo', agentCli)).toThrow(
       expect.objectContaining({ code: 'forbidden' }),
+    );
+  });
+});
+
+describe('authorizeRelay', () => {
+  it('returns the human transition a relayed decision takes', () => {
+    expect(authorizeRelay(tasks, 'review', 'discarded', 'duplicate')).toMatchObject({
+      by: 'human',
+    });
+  });
+
+  it('picks the human transition when an agent one connects the same states', () => {
+    expect(authorizeRelay(tasks, 'incomplete', 'discarded', 'duplicate')).toMatchObject({
+      by: 'human',
+    });
+  });
+
+  it('refuses a human-ui move with forbidden, pointing to the web UI', () => {
+    const approve = () => authorizeRelay(tasks, 'review', 'done');
+
+    expect(approve).toThrow(expect.objectContaining({ code: 'forbidden' }));
+    expect(approve).toThrow(
+      'Moving from "review" to "done" requires human-ui authority (a human in the web UI) and cannot be relayed; the human must make it in the web UI',
+    );
+  });
+
+  it('refuses an agent move with not_relayable, pointing to otea move', () => {
+    const start = () => authorizeRelay(tasks, 'todo', 'in_progress');
+
+    expect(start).toThrow(expect.objectContaining({ code: 'not_relayable' }));
+    expect(start).toThrow(
+      'Moving from "todo" to "in_progress" needs no human decision; make it with "otea move"',
+    );
+  });
+
+  it('rejects an undeclared move with invalid_transition', () => {
+    expect(() => authorizeRelay(tasks, 'todo', 'done')).toThrow(
+      expect.objectContaining({ code: 'invalid_transition' }),
+    );
+  });
+
+  it('requires a reason when the human transition does', () => {
+    expect(() => authorizeRelay(tasks, 'review', 'discarded')).toThrow(
+      expect.objectContaining({ code: 'reason_required' }),
+    );
+    expect(() => authorizeRelay(tasks, 'review', 'discarded', ' ')).toThrow(
+      'Moving from "review" to "discarded" requires a reason',
     );
   });
 });
