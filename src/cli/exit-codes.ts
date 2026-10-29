@@ -1,6 +1,13 @@
 import type { ErrorCode } from '../core/errors.ts';
 
-export type FailureCode = ErrorCode | 'usage' | 'unexpected' | 'validation_failed' | 'not_running';
+export type FailureCode =
+  | ErrorCode
+  | 'usage'
+  | 'unexpected'
+  | 'validation_failed'
+  | 'not_running'
+  | 'timeout'
+  | 'interrupted';
 
 export const EXIT_CODES: Readonly<Record<'ok' | FailureCode, number>> = {
   ok: 0,
@@ -24,4 +31,7 @@ export const EXIT_CODES: Readonly<Record<'ok' | FailureCode, number>> = {
   not_running: 11,
   lease_held: 12,
   not_lease_holder: 12,
+  timeout: 13,
+  // 128 + SIGINT, as shells report a command stopped by Ctrl+C.
+  interrupted: 130,
 };
