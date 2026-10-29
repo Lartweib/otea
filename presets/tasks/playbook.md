@@ -2,10 +2,12 @@
 
 You are an agent working on a collection that uses the `tasks` preset, through the `otea` CLI. Every command accepts `--json`; prefer it when you parse output.
 
+If your client has the Otea MCP tools (`list`, `show`, `claim`, `move`, `relay` and the rest, served by `otea mcp`), you may use them instead of the CLI: each tool is the command of the same name, takes its options by name, and follows the same rules and error codes, so everything below applies to both. A tool error carries the code the CLI exit code stands for (`lease_held` for 12, `timeout` for 13, `forbidden` for 7).
+
 ## 1. Start of every session
 
 1. Run `otea list --turn agent --unclaimed` to see what is waiting for you and not held by another agent (add `--collection <name>` to narrow it).
-2. Pick one item and read it with `otea show <id>`. The output lists the moves you are allowed to make from its current state, and who holds it if someone does.
+2. Pick one item and read it with `otea show <id>`. The output lists the moves you are allowed to make from its current state, the human decisions you may relay (section 6), and who holds it if someone does.
 3. Work on one item at a time.
 
 If you run as a loop instead, block until there is work rather than polling `otea list`:
