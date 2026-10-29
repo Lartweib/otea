@@ -110,6 +110,11 @@
     color 300ms,
     box-shadow 300ms;
 }
+.pill.sm {
+  height: 18px;
+  padding: 0 6px;
+  font-size: 11px;
+}
 .pill.ask {
   background: none;
   box-shadow: inset 0 0 0 1.5px var(--you);

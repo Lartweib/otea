@@ -3,7 +3,6 @@ import { createItem, fetchCollections } from '../api.ts';
 import { type Connection, useRemote } from '../hooks.ts';
 import {
   canSubmit,
-  controlFor,
   type FormValues,
   fieldHint,
   fieldLabel,
@@ -13,6 +12,7 @@ import {
   startOf,
 } from '../intake.ts';
 import { Button } from '../kit/index.ts';
+import { moduleFor } from '../modules/registry.ts';
 import type { CollectionView, FieldView } from '../types.ts';
 
 type FieldControlProps = {
@@ -26,43 +26,23 @@ function FieldControl({ field, value, disabled, onChange }: FieldControlProps) {
   const id = `intake-${field.name}`;
   const hint = fieldHint(field);
   const hintId = hint ? `${id}-hint` : undefined;
-  const shared = {
-    id,
-    value,
-    disabled,
-    required: field.required === 'create',
-    'aria-describedby': hintId,
-  };
-  const control = controlFor(field);
+  const required = field.required === 'create';
+  const { Edit } = moduleFor(field.module);
   return (
     <div className="intake-field">
       <label className="t-label" htmlFor={id}>
         {fieldLabel(field.name)}
-        {shared.required ? <span className="required"> (required)</span> : null}
+        {required ? <span className="required"> (required)</span> : null}
       </label>
-      {control === 'select' ? (
-        <select {...shared} className="input" onChange={(event) => onChange(event.target.value)}>
-          {field.default === undefined ? <option value="">—</option> : null}
-          {(field.values ?? []).map((option) => (
-            <option key={option} value={option}>
-              {option}
-            </option>
-          ))}
-        </select>
-      ) : control === 'textarea' ? (
-        <textarea
-          {...shared}
-          className="input"
-          onChange={(event) => onChange(event.target.value)}
-        />
-      ) : (
-        <input
-          type="text"
-          {...shared}
-          className="input"
-          onChange={(event) => onChange(event.target.value)}
-        />
-      )}
+      <Edit
+        id={id}
+        field={field}
+        value={value}
+        disabled={disabled}
+        required={required}
+        describedBy={hintId}
+        onChange={onChange}
+      />
       {hint ? (
         <p className="t-small" id={hintId}>
           {hint}

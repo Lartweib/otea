@@ -2,8 +2,10 @@ import type { ReactNode } from 'react';
 import { actorLabel, describeEvent, eventActorLabel, formatTime, leaseLabel } from '../format.ts';
 import { useActiveLease } from '../hooks.ts';
 import { NODE_LABEL, Node, Pill } from '../kit/index.ts';
+import { moduleFor } from '../modules/registry.ts';
+import { valuesOf } from '../modules/values.ts';
 import { nodeKind } from '../node-kind.ts';
-import type { ItemView, Turn } from '../types.ts';
+import type { CollectionView, ItemView, Turn } from '../types.ts';
 import { ItemActions } from './ItemActions.tsx';
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
@@ -21,16 +23,21 @@ const TURN_LABEL: Record<Turn, string> = {
   none: 'closed',
 };
 
-type ItemDetailProps = { item: ItemView; canWrite: boolean; incompleteState: string | undefined };
+type ItemDetailProps = {
+  item: ItemView;
+  canWrite: boolean;
+  collection: CollectionView | undefined;
+};
 
-export function ItemDetail({ item, canWrite, incompleteState }: ItemDetailProps) {
+export function ItemDetail({ item, canWrite, collection }: ItemDetailProps) {
   const lease = useActiveLease(item.lease);
   const kind = nodeKind({
     turn: item.turn,
     state: item.state,
     leased: lease !== null,
-    incomplete: item.state === incompleteState,
+    incomplete: item.state === collection?.incomplete,
   });
+  const values = valuesOf(collection?.fields, item.fields);
   return (
     <article className="detail">
       <header className="detail-head">
@@ -60,13 +67,16 @@ export function ItemDetail({ item, canWrite, incompleteState }: ItemDetailProps)
         </div>
       ) : null}
       <hr className="hr" />
-      {Object.keys(item.fields).length > 0 ? (
+      {values.length > 0 ? (
         <dl className="fields">
-          {Object.entries(item.fields).map(([name, value]) => (
-            <Field key={name} label={name}>
-              <span className="body">{value}</span>
-            </Field>
-          ))}
+          {values.map(({ field, value }) => {
+            const { Detail } = moduleFor(field.module);
+            return (
+              <Field key={field.name} label={field.name}>
+                <Detail field={field} value={value} />
+              </Field>
+            );
+          })}
         </dl>
       ) : (
         <p className="t-small">No fields.</p>

@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
   canSubmit,
-  controlFor,
   fieldHint,
   fieldLabel,
   initialValues,
@@ -41,14 +40,6 @@ const reviews: CollectionView = {
 describe('intake', () => {
   it('starts every field blank except those with a default', () => {
     expect(initialValues(tasks)).toEqual({ title: '', description: '', priority: 'medium' });
-  });
-
-  it.each([
-    ['text', 'input'],
-    ['markdown', 'textarea'],
-    ['enum', 'select'],
-  ] as const)('renders a %s field as %s', (module, control) => {
-    expect(controlFor({ name: 'x', module })).toBe(control);
   });
 
   it('explains that a field required to complete can be left to an agent', () => {

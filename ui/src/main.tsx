@@ -14,6 +14,7 @@ import './kit/kit.css';
 import './styles/shell.css';
 import './styles/list.css';
 import './styles/detail.css';
+import './styles/modules.css';
 import { applyChoice, loadChoice } from './theme-dom.ts';
 
 applyChoice(loadChoice());
