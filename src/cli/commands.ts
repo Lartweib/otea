@@ -18,6 +18,7 @@ import { watch } from '../app/watch.ts';
 import type { FieldValues } from '../core/fields.ts';
 import { parseDuration } from '../core/lease.ts';
 import { TURNS, type Turn } from '../core/workflow.ts';
+import { createMcpServer, serveStdio } from '../mcp/server.ts';
 import { DEFAULT_PORT, listen } from '../server/listen.ts';
 import { createServer } from '../server/server.ts';
 import { ensureUiToken, readUiToken } from '../server/token.ts';
@@ -453,6 +454,19 @@ const open: Command = {
   },
 };
 
+// Stdout carries the protocol, so the command prints nothing itself.
+const mcp: Command = {
+  name: 'mcp',
+  summary:
+    'Serve the agent commands as MCP tools on stdin and stdout, acting as the agent named by --as, until the client disconnects',
+  args: [],
+  options: {},
+  execute: async ({ cwd, actor, signal, warn }) => {
+    await serveStdio(createMcpServer(COMMANDS, { cwd, actor, warn }), signal);
+    return undefined;
+  },
+};
+
 export const COMMANDS: readonly Command[] = [
   init,
   collectionAdd,
@@ -470,6 +484,7 @@ export const COMMANDS: readonly Command[] = [
   validate,
   serve,
   open,
+  mcp,
 ];
 
 export function findCommand(tokens: readonly string[]): Command | undefined {
