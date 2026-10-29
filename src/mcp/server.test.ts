@@ -149,6 +149,35 @@ describe('mcp server', () => {
     });
   });
 
+  describe('provenance', () => {
+    it('records the writes made through the tools as made via mcp', async () => {
+      const { id } = await data('create', {
+        collection: 'tasks',
+        title: 'Footer',
+        description: 'D',
+      });
+      await data('move', { id, state: 'in_progress' });
+      await data('relay', { id: 'TASKS-2', state: 'discarded', quote: 'Drop it', reason: 'Vague' });
+
+      const channels = async (item: string) =>
+        (await json('show', item)).events.map(
+          ({ data }: { data: { channel?: string } }) => data.channel,
+        );
+      expect(await channels(id)).toEqual(['mcp', 'mcp']);
+      expect(await channels('TASKS-2')).toEqual(['cli', 'mcp']);
+      expect((await otea('show', id)).out).toContain('created by agent:claude via mcp at ');
+    });
+
+    it('names the mcp channel when it refuses a move', async () => {
+      await otea('move', 'TASKS-1', 'in_progress');
+      await otea('move', 'TASKS-1', 'review');
+
+      const reply = await call('move', { id: 'TASKS-1', state: 'done' });
+
+      expect(reply.content[0]?.text).toContain('agent \\"claude\\" via mcp may not');
+    });
+  });
+
   describe('errors', () => {
     const errorOf = async (name: string, args: Record<string, unknown>, as = client) => {
       const reply = await call(name, args, as);
@@ -169,8 +198,10 @@ describe('mcp server', () => {
 
       const text = await errorOf('move', { id: 'TASKS-1', state: 'done' });
 
-      expect(JSON.parse(text).error.code).toBe('forbidden');
-      expect(text).toBe(await cliError('move', 'TASKS-1', 'done'));
+      const cli = JSON.parse(await cliError('move', 'TASKS-1', 'done'));
+      expect(JSON.parse(text)).toEqual({
+        error: { code: 'forbidden', message: cli.error.message.replace('via cli', 'via mcp') },
+      });
       expect(
         JSON.parse(await errorOf('relay', { id: 'TASKS-1', state: 'done', quote: 'Yes' })),
       ).toMatchObject({ error: { code: 'forbidden' } });

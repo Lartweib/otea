@@ -96,6 +96,7 @@ function inputFor(
   return {
     cwd: context.cwd,
     actor: context.actor,
+    channel: 'mcp',
     signal,
     openUrl: async () => {
       throw new Error('No browser to open over MCP');

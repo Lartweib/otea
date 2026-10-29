@@ -113,9 +113,9 @@ const create: Command = {
     const collection = input.required('collection');
     const title = input.required('title');
     const fields = fieldsFrom(input);
-    const { actor } = input;
+    const { actor, channel } = input;
     const item = withProject(input.cwd, (project) =>
-      createItem(project, { collection, title, fields, actor, channel: 'cli' }),
+      createItem(project, { collection, title, fields, actor, channel }),
     );
     return { data: item, text: item.id };
   },
@@ -149,8 +149,8 @@ const show: Command = {
   summary: 'Show an item, its fields, the moves available to the agent and its events timeline',
   args: ['id'],
   options: {},
-  execute: ({ cwd, actor, args: [id = ''] }) => {
-    const performer = { actor, channel: 'cli' as const };
+  execute: ({ cwd, actor, channel, args: [id = ''] }) => {
+    const performer = { actor, channel };
     const item = withProject(cwd, (project) => showItem(project, id, performer));
     return { data: item, text: formatItemWithEvents(item) };
   },
@@ -161,9 +161,9 @@ const move: Command = {
   summary: 'Move an item to another state its workflow allows the agent to reach',
   args: ['id', 'state'],
   options: { reason: {} },
-  execute: ({ cwd, actor, option, args: [id = '', to = ''] }) => {
+  execute: ({ cwd, actor, channel, option, args: [id = '', to = ''] }) => {
     const reason = option('reason');
-    const input = { id, to, actor, channel: 'cli' as const, ...(reason ? { reason } : {}) };
+    const input = { id, to, actor, channel, ...(reason ? { reason } : {}) };
     const item = withProject(cwd, (project) => moveItem(project, input));
     return { data: item, text: formatItem(item) };
   },
@@ -181,7 +181,8 @@ const relay: Command = {
     const quote = input.required('quote');
     const reason = input.option('reason');
     const via = input.actor.name;
-    const relayed = { id, to, via, quote, ...(reason ? { reason } : {}) };
+    const { channel } = input;
+    const relayed = { id, to, via, channel, quote, ...(reason ? { reason } : {}) };
     const item = withProject(input.cwd, (project) => relayDecision(project, relayed));
     return { data: item, text: formatItem(item) };
   },
