@@ -33,6 +33,17 @@ describe('groupByTurn', () => {
     expect(agent?.items.map(({ id }) => id)).toEqual(['A', 'C']);
   });
 
+  it('sinks the most recently closed item to the top of the closed section', () => {
+    const closed = (id: string, updatedAt: string) => ({ ...item(id, 'none'), updatedAt });
+    const [, , done] = groupByTurn([
+      closed('A', '2026-01-01T10:00:00Z'),
+      closed('B', '2026-01-03T10:00:00Z'),
+      closed('C', '2026-01-02T10:00:00Z'),
+    ]);
+
+    expect(done?.items.map(({ id }) => id)).toEqual(['B', 'C', 'A']);
+  });
+
   it('keeps empty sections', () => {
     expect(groupByTurn([]).map(({ items }) => items)).toEqual([[], [], []]);
   });
