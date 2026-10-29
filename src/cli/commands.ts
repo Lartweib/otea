@@ -1,6 +1,7 @@
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { addCollection, DEFAULT_PRESET } from '../app/collections.ts';
 import { listEvents } from '../app/events.ts';
+import { attachEvidence } from '../app/evidence.ts';
 import {
   createItem,
   type ListItemsFilter,
@@ -15,6 +16,7 @@ import { initProject, openProject, oteaDir, type Project } from '../app/project.
 import { relayDecision } from '../app/relay.ts';
 import { validateProject } from '../app/validate.ts';
 import { watch } from '../app/watch.ts';
+import { EVIDENCE_ROLES, type EvidenceRole, MAX_EVIDENCE_MB } from '../core/evidence.ts';
 import type { FieldValues } from '../core/fields.ts';
 import { parseDuration } from '../core/lease.ts';
 import { TURNS, type Turn } from '../core/workflow.ts';
@@ -26,6 +28,7 @@ import type { EventFilter } from '../store/queries.ts';
 import { type Command, CommandFailure, type Input, UsageError } from './command.ts';
 import {
   formatEvent,
+  formatEvidence,
   formatItem,
   formatItems,
   formatItemWithEvents,
@@ -369,6 +372,27 @@ const update: Command = {
   },
 };
 
+const attach: Command = {
+  name: 'attach',
+  summary: `Attach a file to an open item as evidence (at most ${MAX_EVIDENCE_MB} MB); --role before and after pair a visual fix`,
+  args: ['id', 'file'],
+  options: { role: { choices: EVIDENCE_ROLES }, caption: { placeholder: 'text' } },
+  execute: ({ cwd, actor, channel, option, args: [id = '', file = ''] }) => {
+    const role = option('role') as EvidenceRole | undefined;
+    const caption = option('caption');
+    const input = {
+      id,
+      path: resolve(cwd, file),
+      actor,
+      channel,
+      ...(role === undefined ? {} : { role }),
+      ...(caption === undefined ? {} : { caption }),
+    };
+    const evidence = withProject(cwd, (project) => attachEvidence(project, input));
+    return { data: evidence, text: formatEvidence(evidence) };
+  },
+};
+
 const PORT_PATTERN = /^\d{1,5}$/;
 
 function portFrom(value: string | undefined): number {
@@ -480,6 +504,7 @@ export const COMMANDS: readonly Command[] = [
   heartbeat,
   release,
   update,
+  attach,
   move,
   relay,
   validate,
