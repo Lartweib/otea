@@ -242,6 +242,33 @@
   }
 }
 
+/* ---- tooltip: data-tip on a positioned control, shown on hover after a beat and on keyboard focus ---- */
+.tip::after {
+  content: attr(data-tip);
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 5;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: var(--ink);
+  color: var(--sf);
+  font: 500 11.5px var(--font-machine);
+  white-space: nowrap;
+  opacity: 0;
+  transform: translateY(-4px);
+  pointer-events: none;
+  transition:
+    opacity var(--micro) var(--e-out),
+    transform var(--micro) var(--e-out);
+}
+.tip:hover::after,
+.tip:focus-visible::after {
+  opacity: 1;
+  transform: none;
+  transition-delay: 350ms;
+}
+
 /* Comfortable touch targets on phones and tablets. */
 @media (pointer: coarse) {
   .btn {
@@ -264,7 +291,8 @@
   .sev i,
   .node .shape,
   .node .mark,
-  .node .orbit {
+  .node .orbit,
+  .tip::after {
     transition-duration: 1ms;
   }
   /* The arc stays, still: the agent is at work, nothing moves. */

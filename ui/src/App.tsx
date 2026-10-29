@@ -1,33 +1,37 @@
-import { type ReactNode, useCallback, useState } from 'react';
+import { type ReactNode, useCallback, useEffect, useState } from 'react';
 import { fetchCollections, fetchItem, fetchItems, fetchPresets, fetchSession } from './api.ts';
 import { catalogEntries } from './catalog.ts';
+import { CollectionRail } from './components/CollectionRail.tsx';
 import { ConnectionBadge } from './components/ConnectionBadge.tsx';
+import { FocusToggle } from './components/FocusToggle.tsx';
 import { ItemDetail } from './components/ItemDetail.tsx';
 import { type CollectionOf, ItemList } from './components/ItemList.tsx';
 import { CatalogOverview, ModuleIndex, ModulePanel } from './components/ModuleCatalog.tsx';
 import { NewItemForm } from './components/NewItemForm.tsx';
 import { ThemeToggle } from './components/ThemeToggle.tsx';
 import { type Connection, useLive, useRemote, useRoute } from './hooks.ts';
+import { keyCommand, keyTargetOf, stepSelection } from './keys.ts';
 import { Button, Icon } from './kit/index.ts';
 import { MODULES } from './modules/registry.ts';
 import type { Remote } from './remote.ts';
-import { groupByTurn } from './sections.ts';
+import { groupByTurn, type Section } from './sections.ts';
 import { hashFor, ITEMS_HASH, modulesHash } from './selection.ts';
 import type { CollectionView, Item, ItemView, PresetView } from './types.ts';
+import { inCollection, listOrder, railEntries } from './workspace.ts';
 
 function Message({ children, muted = true }: { children: ReactNode; muted?: boolean }) {
   return <p className={muted ? 'pane-message t-small' : 'pane-message action-error'}>{children}</p>;
 }
 
-function ListPane({
-  items,
-  selectedId,
-  collectionOf,
-}: {
+type ListPaneProps = {
   items: Remote<Item[]>;
+  sections: Section[];
   selectedId: string | undefined;
+  collection: string | undefined;
   collectionOf: CollectionOf;
-}) {
+};
+
+function ListPane({ items, sections, selectedId, collection, collectionOf }: ListPaneProps) {
   if (items.status === 'loading') return <Message>Loading…</Message>;
   if (items.status === 'failed') return <Message muted={false}>{items.message}</Message>;
   if (items.value.length === 0) {
@@ -38,11 +42,13 @@ function ListPane({
     );
   }
   return (
-    <ItemList
-      sections={groupByTurn(items.value)}
-      selectedId={selectedId}
-      collectionOf={collectionOf}
-    />
+    <>
+      <div className="list-head">
+        <h2 className="t-h">{collection ?? 'all items'}</h2>
+        <span className="t-cap list-hint">j k to move · f to expand</span>
+      </div>
+      <ItemList sections={sections} selectedId={selectedId} collectionOf={collectionOf} />
+    </>
   );
 }
 
@@ -51,9 +57,10 @@ type DetailPaneProps = {
   item: Remote<ItemView | null>;
   canWrite: boolean;
   collectionOf: CollectionOf;
+  headAction: ReactNode;
 };
 
-function DetailPane({ id, item, canWrite, collectionOf }: DetailPaneProps) {
+function DetailPane({ id, item, canWrite, collectionOf, headAction }: DetailPaneProps) {
   if (item.status === 'failed') return <Message muted={false}>{item.message}</Message>;
   if (item.status === 'loading') return <Message>Loading…</Message>;
   if (!item.value) return <Message>Item {id} not found.</Message>;
@@ -62,28 +69,19 @@ function DetailPane({ id, item, canWrite, collectionOf }: DetailPaneProps) {
       item={item.value}
       canWrite={canWrite}
       collection={collectionOf(item.value.collection)}
+      headAction={headAction}
     />
   );
 }
 
-type SelectedItemProps = {
-  id: string;
+type SelectedItemProps = Omit<DetailPaneProps, 'item'> & {
   version: number;
   connection: Connection;
-  canWrite: boolean;
-  collectionOf: CollectionOf;
 };
 
-function SelectedItem({ id, version, connection, canWrite, collectionOf }: SelectedItemProps) {
+function SelectedItem({ id, version, connection, ...rest }: SelectedItemProps) {
   const load = useCallback((signal: AbortSignal) => fetchItem(id, signal), [id]);
-  return (
-    <DetailPane
-      id={id}
-      item={useRemote(load, version, connection)}
-      canWrite={canWrite}
-      collectionOf={collectionOf}
-    />
-  );
+  return <DetailPane id={id} item={useRemote(load, version, connection)} {...rest} />;
 }
 
 // A collection's preset decides its fields and which state means "incomplete".
@@ -137,6 +135,43 @@ function Catalog({ name, presets }: CatalogProps) {
 
 type Intake = { openedOn: string | undefined };
 
+type WorkspaceKeys = {
+  enabled: boolean;
+  focus: boolean;
+  setFocus: (update: (focus: boolean) => boolean) => void;
+  order: string[];
+  selectedId: string | undefined;
+};
+
+// f toggles focus mode, Escape leaves it, j and k walk the list. Keys typed into a field stay there.
+function useWorkspaceKeys({ enabled, focus, setFocus, order, selectedId }: WorkspaceKeys) {
+  useEffect(() => {
+    if (!enabled) return;
+    const onKey = (event: KeyboardEvent) => {
+      const command = keyCommand(
+        {
+          key: event.key,
+          ctrlKey: event.ctrlKey,
+          metaKey: event.metaKey,
+          altKey: event.altKey,
+          target: keyTargetOf(event.target),
+        },
+        { focus },
+      );
+      if (!command) return;
+      event.preventDefault();
+      if (command === 'toggle-focus') setFocus((current) => !current);
+      else if (command === 'leave-focus') setFocus(() => false);
+      else {
+        const next = stepSelection(order, selectedId, command === 'next' ? 1 : -1);
+        if (next !== undefined && next !== selectedId) window.location.hash = hashFor(next);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [enabled, focus, setFocus, order, selectedId]);
+}
+
 export function App() {
   const { connection, version } = useLive();
   const route = useRoute();
@@ -148,6 +183,14 @@ export function App() {
   const collectionOf = collectionLookup(collections);
   const canWrite = session.status === 'ready' && session.value.canWrite;
   const [intake, setIntake] = useState<Intake>();
+  // Focus mode is a way of looking, not a place: it stays out of the hash, so links and history
+  // keep pointing at items.
+  const [focus, setFocus] = useState(false);
+  const [collection, setCollection] = useState<string>();
+  const allItems = items.status === 'ready' ? items.value : [];
+  const sections = groupByTurn(inCollection(allItems, collection));
+  const order = listOrder(sections);
+  useWorkspaceKeys({ enabled: route.view === 'items', focus, setFocus, order, selectedId });
   const creating =
     canWrite && route.view === 'items' && intake !== undefined && intake.openedOn === selectedId;
   const closeIntake = () => setIntake(undefined);
@@ -160,6 +203,9 @@ export function App() {
     if (route.view === 'modules') window.location.hash = ITEMS_HASH;
     setIntake({ openedOn: selectedId });
   };
+  const toggle = <FocusToggle focus={focus} onToggle={() => setFocus((current) => !current)} />;
+  const names = collections.status === 'ready' ? collections.value.map((each) => each.name) : [];
+  const rail = railEntries(names, allItems);
   return (
     <div className="app">
       <header className="topbar">
@@ -185,9 +231,23 @@ export function App() {
       {route.view === 'modules' ? (
         <Catalog name={route.name} presets={presets} />
       ) : (
-        <main className="layout">
+        <main className="layout workspace" data-focus={focus}>
+          <CollectionRail
+            entries={rail}
+            yoursTotal={rail.reduce((sum, entry) => sum + entry.yours, 0)}
+            openTotal={rail.reduce((sum, entry) => sum + entry.open, 0)}
+            selected={collection}
+            onSelect={setCollection}
+            hidden={focus}
+          />
           <div className="list-pane">
-            <ListPane items={items} selectedId={selectedId} collectionOf={collectionOf} />
+            <ListPane
+              items={items}
+              sections={sections}
+              selectedId={selectedId}
+              collection={collection}
+              collectionOf={collectionOf}
+            />
           </div>
           <div className="detail-pane">
             <div className="detail-panel raised">
@@ -205,6 +265,7 @@ export function App() {
                   connection={connection}
                   canWrite={canWrite}
                   collectionOf={collectionOf}
+                  headAction={toggle}
                 />
               ) : (
                 <Message>Select an item to see its details.</Message>
