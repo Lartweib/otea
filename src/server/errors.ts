@@ -16,6 +16,8 @@ export const HTTP_STATUS: Readonly<Record<ErrorCode, ContentfulStatusCode>> = {
   not_claimable: 409,
   lease_held: 409,
   not_lease_holder: 409,
+  not_relayable: 409,
+  quote_required: 400,
 };
 
 export class InvalidQuery extends Error {}

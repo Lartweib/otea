@@ -51,6 +51,13 @@ export function availableMoves(workflow: Workflow, from: string, performer: Perf
   return [...moves.values()];
 }
 
+function requireReason(transition: Transition, reason: string | undefined): void {
+  if (transition.reasonRequired && !reason?.trim()) {
+    const { from, to } = transition;
+    throw new OteaError('reason_required', `Moving from "${from}" to "${to}" requires a reason`);
+  }
+}
+
 export function authorizeMove(
   workflow: Workflow,
   from: string,
@@ -61,8 +68,32 @@ export function authorizeMove(
   const transitions = assertTransition(workflow, from, to);
   const allowed = transitions.find(({ by }) => mayPerform(by, performer));
   if (!allowed) throw forbidden(from, to, transitions, performer);
-  if (allowed.reasonRequired && !reason?.trim()) {
-    throw new OteaError('reason_required', `Moving from "${from}" to "${to}" requires a reason`);
-  }
+  requireReason(allowed, reason);
   return allowed;
+}
+
+// A relayed decision is the human's, made in conversation and recorded by an agent: it may take
+// only a `human` transition. `human-ui` stays in the web UI and `agent` moves need no human.
+export function authorizeRelay(
+  workflow: Workflow,
+  from: string,
+  to: string,
+  reason?: string,
+): Transition {
+  const transitions = assertTransition(workflow, from, to);
+  const human = transitions.find(({ by }) => by === 'human');
+  if (human) {
+    requireReason(human, reason);
+    return human;
+  }
+  if (transitions.some(({ by }) => by === 'agent')) {
+    throw new OteaError(
+      'not_relayable',
+      `Moving from "${from}" to "${to}" needs no human decision; make it with "otea move"`,
+    );
+  }
+  throw new OteaError(
+    'forbidden',
+    `Moving from "${from}" to "${to}" requires human-ui authority (${WHO['human-ui']}) and cannot be relayed; the human must make it in the web UI`,
+  );
 }
