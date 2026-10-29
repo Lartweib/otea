@@ -28,10 +28,13 @@ type ItemDetailProps = {
   item: ItemView;
   canWrite: boolean;
   collection: CollectionView | undefined;
+  // Drawn at the end of the header row (the focus toggle).
+  headAction?: ReactNode;
 };
 
-// The primary column holds what to decide on; the side holds where the item has been.
-export function ItemDetail({ item, canWrite, collection }: ItemDetailProps) {
+// The primary column holds what to decide on; the side holds where the item has been. Side by side in
+// focus mode, stacked otherwise.
+export function ItemDetail({ item, canWrite, collection, headAction }: ItemDetailProps) {
   const lease = useActiveLease(item.lease);
   const kind = nodeKind({
     turn: item.turn,
@@ -54,6 +57,7 @@ export function ItemDetail({ item, canWrite, collection }: ItemDetailProps) {
               </Pill>
               <span className="t-cap">{standing}</span>
             </div>
+            {headAction}
           </div>
           <h1 className="t-display">{item.title}</h1>
         </header>

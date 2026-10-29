@@ -1,0 +1,168 @@
+/* The items workspace: collections rail, list and detail (Split), and focus mode. */
+
+/* ---- collections rail ---- */
+.rail {
+  display: none;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding: 4px 12px 24px 8px;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.rail-label {
+  padding: 8px 12px;
+}
+
+.rail-entry {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  height: 36px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  font-size: 14px;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background-color var(--micro),
+    box-shadow var(--micro);
+}
+
+.rail-entry:hover {
+  background: var(--hov);
+}
+
+.rail-entry[aria-pressed="true"] {
+  background: var(--sf);
+  box-shadow: 0 0 0 1px var(--line);
+}
+
+.rail-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rail-count {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.rail-yours {
+  font: 600 11.5px var(--font-machine);
+  color: var(--you-ink);
+}
+
+/* ---- list head ---- */
+.list-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 12px 14px 56px;
+  white-space: nowrap;
+}
+
+.list-hint {
+  display: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: opacity 200ms var(--e-out);
+}
+
+/* ---- focus toggle: a quiet 28px button whose four corners slide out or in ---- */
+.focus-toggle {
+  display: none;
+  position: relative;
+  flex: none;
+}
+
+.focus-corners {
+  transition: d var(--travel) var(--e-move);
+}
+
+/* ---- Split from 48rem: rail (from 64rem), list, detail ---- */
+@media (min-width: 48rem) {
+  .workspace {
+    --rail-w: 0rem;
+    grid-template-columns: var(--rail-w) minmax(0, 1.1fr) minmax(0, 1fr);
+    gap: 0;
+    transition: grid-template-columns var(--travel) var(--e-move);
+  }
+
+  /* The rail keeps its track even while hidden, so the list and detail never change tracks. */
+  .workspace .rail {
+    display: flex;
+    visibility: hidden;
+  }
+
+  .workspace .list-pane {
+    padding-right: 24px;
+  }
+
+  .workspace .detail-pane {
+    container: detail / inline-size;
+  }
+
+  .focus-toggle {
+    display: inline-flex;
+  }
+
+  .list-hint {
+    display: inline;
+  }
+
+  /* Focus: the rail folds away, the list narrows to node and title, the detail takes the room. */
+  .workspace[data-focus="true"] {
+    grid-template-columns: 0rem minmax(0, 0.5fr) minmax(0, 1.375fr);
+  }
+
+  .workspace[data-focus="true"] .list-hint {
+    opacity: 0;
+  }
+}
+
+@media (min-width: 64rem) {
+  .workspace {
+    --rail-w: 13.75rem;
+  }
+
+  /* Coming back, the rail waits until its track has opened most of the way. */
+  .workspace .rail {
+    visibility: visible;
+    transition:
+      opacity 220ms var(--e-out) 380ms,
+      visibility 0s;
+  }
+
+  .workspace[data-focus="true"] .rail {
+    opacity: 0;
+    visibility: hidden;
+    transition:
+      opacity 220ms var(--e-out),
+      visibility 0s 220ms;
+  }
+}
+
+@media (pointer: coarse) {
+  .list-hint {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .workspace,
+  .workspace .rail,
+  .rail-entry,
+  .list-hint,
+  .focus-corners {
+    transition-duration: 1ms;
+  }
+}

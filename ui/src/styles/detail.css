@@ -31,6 +31,108 @@
   gap: 16px;
 }
 
+.detail .t-display {
+  transition: font-size var(--travel) var(--e-move);
+}
+
+/* Focus mode: the title grows, and once the pane is wide enough the history moves beside the decision.
+   The pane widens over the travel, so the switch happens on the way, when there is room for both. */
+@media (min-width: 48rem) {
+  .workspace[data-focus="true"] .detail .t-display {
+    font-size: 32px;
+  }
+}
+
+@container detail (min-width: 56rem) {
+  .workspace[data-focus="true"] .detail {
+    grid-template-columns: minmax(0, 1fr) 20rem;
+    align-items: start;
+    gap: 32px;
+    max-width: 76rem;
+  }
+
+  .workspace[data-focus="true"] .detail-side {
+    animation: side-in-beside 560ms var(--e-out) both;
+  }
+}
+
+/* Two names, so switching between stacked and beside replays the arrival. */
+@keyframes side-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+@keyframes side-in-beside {
+  from {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+}
+
+.detail-tags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.actions {
+  display: grid;
+  gap: 12px;
+}
+
+.action-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.reason {
+  display: grid;
+  gap: 8px;
+  max-width: 34rem;
+}
+
+.missing {
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  border-radius: var(--r-m);
+}
+
+.fields {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 10px 16px;
+}
+
+.fields dt {
+  padding-top: 3px;
+  font: 500 11.5px var(--font-machine);
+  color: var(--mut);
+  overflow-wrap: anywhere;
+}
+
+.fields dd {
+  min-width: 0;
+  font-size: 14.5px;
+  line-height: 1.55;
+  text-wrap: pretty;
+}
+
+.fields-meta dd {
+  font: 400 12.5px / 1.7 var(--font-machine);
+  color: var(--mut);
+}
+
+.body {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 /* ---- timeline: the item's own path between the lanes, newest first ---- */
 .timeline-section {
   display: grid;
@@ -212,11 +314,13 @@ select.input {
 
 @media (prefers-reduced-motion: reduce) {
   .input,
-  .timeline-path {
+  .timeline-path,
+  .detail .t-display {
     transition-duration: 1ms;
   }
 
   .detail-side,
+  .workspace[data-focus="true"] .detail-side,
   .ev.new {
     animation-duration: 1ms;
     animation-delay: 0ms;

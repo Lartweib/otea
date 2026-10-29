@@ -1,4 +1,4 @@
-import type { CSSProperties } from 'react';
+import { type CSSProperties, useEffect, useRef } from 'react';
 import { leaseLabel } from '../format.ts';
 import { useActiveLease } from '../hooks.ts';
 import { NodeMark } from '../kit/index.ts';
@@ -83,7 +83,18 @@ function blocksOf(sections: Section[]): Block[] {
   ]);
 }
 
+// Keeps the selected row in view when it changes (j and k move it beyond the fold).
+function useSelectedInView(selectedId: string | undefined) {
+  const list = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (selectedId === undefined) return;
+    list.current?.querySelector('[aria-current="true"]')?.scrollIntoView({ block: 'nearest' });
+  }, [selectedId]);
+  return list;
+}
+
 export function ItemList({ sections, selectedId, collectionOf }: ItemListProps) {
+  const list = useSelectedInView(selectedId);
   const layout = layoutLanes(blocksOf(sections));
   const sizes = {
     '--row-h': `${ROW_H}px`,
@@ -91,7 +102,7 @@ export function ItemList({ sections, selectedId, collectionOf }: ItemListProps) 
     '--empty-h': `${EMPTY_H}px`,
   } as CSSProperties;
   return (
-    <nav className="item-list" aria-label="Items" style={sizes}>
+    <nav className="item-list" aria-label="Items" style={sizes} ref={list}>
       <div className="lane-head" aria-hidden="true">
         <span>ag</span>
         <span className="lane-head-you">you</span>

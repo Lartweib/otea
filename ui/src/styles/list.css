@@ -144,9 +144,11 @@
 
 .row-main {
   display: grid;
+  grid-template-rows: auto 18px;
   gap: 1px;
   min-width: 0;
   padding-left: 10px;
+  transition: grid-template-rows var(--travel) var(--e-move);
 }
 
 .ttl {
@@ -167,6 +169,7 @@
   font: 400 12px var(--font-machine);
   color: var(--mut);
   white-space: nowrap;
+  transition: opacity 200ms var(--e-out) 120ms;
 }
 
 .row-meta > span:not(:last-child)::after {
@@ -178,7 +181,13 @@
 .row-values {
   display: flex;
   gap: 4px;
+  max-width: 12rem;
   margin-left: 8px;
+  overflow: hidden;
+  transition:
+    opacity 200ms var(--e-out) 120ms,
+    max-width var(--travel) var(--e-move),
+    margin var(--travel) var(--e-move);
 }
 
 .row-values:empty {
@@ -206,11 +215,32 @@
   text-decoration-thickness: 1.5px;
 }
 
+/* ---- focus mode: rows shed their meta before the list narrows to node and title ---- */
+@media (min-width: 48rem) {
+  .workspace[data-focus="true"] .row-main {
+    grid-template-rows: auto 0px;
+  }
+
+  .workspace[data-focus="true"] .row-meta,
+  .workspace[data-focus="true"] .row-values {
+    opacity: 0;
+    transition-delay: 0ms;
+  }
+
+  .workspace[data-focus="true"] .row-values {
+    max-width: 0;
+    margin-left: 0;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .ln,
   .lny,
   .row,
-  .row::before {
+  .row::before,
+  .row-main,
+  .row-meta,
+  .row-values {
     transition-duration: 1ms;
   }
 }
