@@ -39,7 +39,7 @@ otea create --collection tasks --title "Fix the footer" --description "Wrong yea
 otea create --collection tasks --title "Dark mode?"           # also incomplete
 otea list --turn agent --unclaimed --json # waiting for agents and not held by another one
 otea wait --turn agent --unclaimed         # or block until there is one (see below)
-otea show TASKS-1                          # fields, moves available to the agent, lease, timeline
+otea show TASKS-1                          # fields, moves the agent can make or relay, lease, timeline
 otea claim TASKS-1 --as claude             # hold it for 15 minutes (--ttl 30m for another length)
 otea heartbeat TASKS-1 --as claude         # extend the lease on long work
 otea move TASKS-1 in_progress --as claude
@@ -83,6 +83,19 @@ otea events --item TASKS-1 --follow                        # keep printing new e
 - `--timeout <duration>` (`90s`, `15m`, `1h`) gives up with exit 13 (`timeout`); without it, `wait` waits until interrupted (exit 130, `interrupted`).
 - `otea events` prints the event log in commit order, filtered by `--item` and `--collection`. Each event has an id; pass the last one you read to `--since` to get only newer ones, and `--limit <n>` to read at most n. With `--json` each line is an event shaped like the ones in `otea show --json` (`id`, `itemId`, `type`, `actor`, `at`, `data`). `--follow` keeps printing new events as any process commits them, until Ctrl+C (exit 0); it cannot be combined with `--limit`.
 
+### Working from an MCP client
+
+`otea mcp` serves the agent commands as tools of a [Model Context Protocol](https://modelcontextprotocol.io) server on stdin and stdout, so Claude Code and other MCP clients can work Otea without shelling out. Register it once per project, naming the agent it acts as:
+
+```sh
+cd /path/to/your/project
+claude mcp add otea -- node --disable-warning=ExperimentalWarning /path/to/otea/src/cli/main.ts mcp --as claude
+```
+
+- Tools: `list`, `show`, `create`, `update`, `move`, `claim`, `heartbeat`, `release`, `relay`, `events` and `wait`, one per agent command. Each takes that command's arguments and options by name (`{"id": "TASKS-1", "state": "review"}`, `"field": ["priority=high"]`, durations as `"90s"`, `"15m"`, `"1h"`) and runs the command itself, so the rules, the validations and the error codes are those of the CLI. Setup and human commands (`init`, `collection add`, `validate`, `serve`, `open`) stay in the CLI, and `human-ui` moves are refused (`forbidden`) as in the CLI.
+- A tool returns the JSON the command prints with `--json`; `events` returns its events as one array. A failure is a tool error whose text is the same `{"error":{"code","message"}}`.
+- `wait` gives up with the `timeout` error after 5 minutes unless `timeout` says otherwise, and refuses more than 15 minutes, since clients time out long tool calls: call it again to keep waiting. A cancelled call stops waiting. `events` has no `follow`: call it again with the last event id as `since`.
+- The agent is named by `--as`, then `$OTEA_AGENT`, then `agent`, as in the CLI, and the project is found from the directory the client starts the server in. Nothing but the protocol goes to stdout.
 
 ### Presets
 
