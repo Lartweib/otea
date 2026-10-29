@@ -70,6 +70,37 @@ function settle(card: HTMLElement) {
   card.animate([{ transform: from }, { transform: 'none' }], TIMING.arrive);
 }
 
+// The marks an item's card starts with: where it stands, its id, state and collection.
+function CardTags({ item, collectionOf }: { item: Item; collectionOf: CollectionOf }) {
+  const lease = useActiveLease(item.lease);
+  const kind = nodeKind({
+    turn: item.turn,
+    state: item.state,
+    leased: lease !== null,
+    incomplete: collectionOf(item.collection)?.incomplete === item.state,
+  });
+  return (
+    <div className="detail-tags">
+      <Node kind={kind} label={NODE_LABEL[kind]} />
+      <span className="t-id">{item.id}</span>
+      <Pill tone="state" yours={item.turn === 'human'}>
+        {item.state}
+      </Pill>
+      <span className="t-cap">{item.collection}</span>
+    </div>
+  );
+}
+
+// The card waiting behind the top one: already readable, and lifted as the top one is pulled away.
+function NextCard({ item, collectionOf }: { item: Item; collectionOf: CollectionOf }) {
+  return (
+    <div className="tcard raised tcard-next" aria-hidden="true">
+      <CardTags item={item} collectionOf={collectionOf} />
+      <p className="tcard-title">{item.title}</p>
+    </div>
+  );
+}
+
 type Drag = {
   pointer: number;
   x: number;
@@ -93,23 +124,25 @@ type CardProps = {
   onCommit: () => void;
   onLeft: (decision: Decision) => void;
   onFailed: () => void;
-  // How many cards wait behind this one (drawn as a stack, at most two).
+  // How many cards wait behind this one (drawn as a stack, at most two), and the first of them.
   behind: number;
+  next: Item | undefined;
 };
 
-function TriageCard({ item, collectionOf, plan, onCommit, onLeft, onFailed, behind }: CardProps) {
+function TriageCard({
+  item,
+  collectionOf,
+  plan,
+  onCommit,
+  onLeft,
+  onFailed,
+  behind,
+  next,
+}: CardProps) {
   const card = useRef<HTMLElement>(null);
   const drag = useRef<Drag | null>(null);
   const [state, setState] = useState<CardStep>({ step: 'idle' });
-  const lease = useActiveLease(item.lease);
-  const collection = collectionOf(item.collection);
-  const kind = nodeKind({
-    turn: item.turn,
-    state: item.state,
-    leased: lease !== null,
-    incomplete: collection?.incomplete === item.state,
-  });
-  const values = valuesOf(collection?.fields, item.fields);
+  const values = valuesOf(collectionOf(item.collection)?.fields, item.fields);
   const ready = plan !== undefined && state.step === 'idle';
 
   // The arrival of a card, from just behind the one that left.
@@ -240,6 +273,7 @@ function TriageCard({ item, collectionOf, plan, onCommit, onLeft, onFailed, behi
   return (
     <>
       <div className="triage-stack" data-behind={Math.min(2, behind)}>
+        {next ? <NextCard item={next} collectionOf={collectionOf} /> : null}
         <article
           ref={arrive}
           className="tcard raised"
@@ -259,14 +293,7 @@ function TriageCard({ item, collectionOf, plan, onCommit, onLeft, onFailed, behi
               {back.to}
             </span>
           ) : null}
-          <div className="detail-tags">
-            <Node kind={kind} label={NODE_LABEL[kind]} />
-            <span className="t-id">{item.id}</span>
-            <Pill tone="state" yours={item.turn === 'human'}>
-              {item.state}
-            </Pill>
-            <span className="t-cap">{item.collection}</span>
-          </div>
+          <CardTags item={item} collectionOf={collectionOf} />
           <h2 className="tcard-title" id="tcard-title">
             {item.title}
           </h2>
@@ -422,6 +449,8 @@ export function Triage({ waiting, collectionOf, version, connection, onExit }: T
   );
   const top = held ?? waiting.find((item) => item.id === queue[0]);
   const remaining = held && !queue.includes(held.id) ? queue.length + 1 : queue.length;
+  const nextId = queue.find((id) => id !== top?.id);
+  const next = waiting.find((item) => item.id === nextId);
   const decide = (decision: Decision) => {
     setSeen((current) => new Set(current).add(decision.id));
     setLog((current) => [...current, decision]);
@@ -463,6 +492,7 @@ export function Triage({ waiting, collectionOf, version, connection, onExit }: T
           onLeft={decide}
           onFailed={() => setHeld(undefined)}
           behind={remaining - 1}
+          next={next}
         />
       ) : (
         <Summary log={log} onExit={onExit} onAgain={again} />
