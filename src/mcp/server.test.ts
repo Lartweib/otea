@@ -138,6 +138,26 @@ describe('mcp server', () => {
       });
     });
 
+    it('attaches evidence read from a path resolved as the CLI resolves it', async () => {
+      repo.write('shots/after.png', 'png-after');
+      const cli = await json('attach', 'TASKS-1', 'shots/after.png', '--role', 'after');
+
+      const attached = await data('attach', {
+        id: 'TASKS-1',
+        file: 'shots/after.png',
+        role: 'after',
+        caption: 'Saved',
+      });
+
+      const { id: _cliId, channel: _cliChannel, caption: _none, createdAt: _t1, ...same } = cli;
+      expect(attached).toMatchObject({ ...same, id: 2, caption: 'Saved', channel: 'mcp' });
+      expect((await data('show', { id: 'TASKS-1' })).evidence).toEqual([cli, attached]);
+      expect((await json('show', 'TASKS-1')).events.at(-1)).toMatchObject({
+        type: 'evidence_added',
+        data: { evidenceId: 2, role: 'after', caption: 'Saved', channel: 'mcp' },
+      });
+    });
+
     it('relays a human decision with the quote', async () => {
       const quote = 'Drop it, it is too vague';
       await data('relay', { id: 'TASKS-2', state: 'discarded', quote, reason: 'Vague' });
@@ -189,6 +209,9 @@ describe('mcp server', () => {
       expect(await errorOf('show', { id: 'TASKS-9' })).toBe(await cliError('show', 'TASKS-9'));
       expect(await errorOf('events', { since: 'soon' })).toBe(
         await cliError('events', '--since', 'soon'),
+      );
+      expect(await errorOf('attach', { id: 'TASKS-1', file: 'nope.png' })).toBe(
+        await cliError('attach', 'TASKS-1', 'nope.png'),
       );
     });
 

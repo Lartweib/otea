@@ -2,6 +2,7 @@ import type { Item, ItemView } from '../app/items.ts';
 import type { ValidationReport } from '../app/validate.ts';
 import type { Actor } from '../core/item.ts';
 import type { Lease } from '../core/lease.ts';
+import type { EvidenceRecord } from '../store/queries.ts';
 
 type Event = ItemView['events'][number];
 
@@ -101,6 +102,11 @@ function describeAction({ type, data }: Event): string {
   if (type === 'released') {
     return `${String(data.holder)} (${data.cause === 'handoff' ? 'handed off' : 'released'})`;
   }
+  if (type === 'evidence_added') {
+    const caption = typeof data.caption === 'string' ? ` (${JSON.stringify(data.caption)})` : '';
+    const { evidenceId, role, kind, filename } = data;
+    return `#${String(evidenceId)} ${String(role)} ${String(kind)} ${String(filename)}${caption}`;
+  }
   return JSON.stringify(data);
 }
 
@@ -110,6 +116,20 @@ function eventRow(event: Event): string[] {
 
 export function formatEvent(event: Event): string {
   return [String(event.id), event.itemId, ...eventRow(event)].join('  ');
+}
+
+function byteSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function evidenceRow({ id, role, kind, filename, size, caption }: EvidenceRecord): string[] {
+  return [`#${id}`, role, kind, filename, byteSize(size), caption ?? ''];
+}
+
+export function formatEvidence(evidence: EvidenceRecord): string {
+  return columns([evidenceRow(evidence)]);
 }
 
 function movesLine(label: string, moves: ItemView['transitions']): string {
@@ -139,6 +159,9 @@ export function formatItemWithEvents(item: ItemView): string {
     movesLine('move', item.transitions),
     movesLine('relay', item.relayable),
     '',
+    ...(item.evidence.length > 0
+      ? ['Evidence:', indent(columns(item.evidence.map(evidenceRow))), '']
+      : []),
     'Events:',
     indent(columns(item.events.map(eventRow))),
   ].join('\n');
