@@ -1,10 +1,22 @@
 /* Item detail, actions, timeline and intake. */
 
-/* ---- detail ---- */
+/* ---- detail: what to decide on, then where the item has been ---- */
 .detail {
   display: grid;
   gap: 24px;
   max-width: 46rem;
+}
+
+.detail-primary,
+.detail-side {
+  display: grid;
+  align-content: start;
+  gap: 24px;
+  min-width: 0;
+}
+
+.detail-side {
+  animation: side-in 560ms var(--e-out) both;
 }
 
 .detail-head {
@@ -12,118 +24,79 @@
   gap: 10px;
 }
 
-.detail-tags {
+.detail-head-row {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
 }
 
-.actions {
-  display: grid;
-  gap: 12px;
-}
-
-.action-buttons {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-}
-
-.reason {
-  display: grid;
-  gap: 8px;
-  max-width: 34rem;
-}
-
-.missing {
-  display: grid;
-  gap: 4px;
-  padding: 12px 14px;
-  border-radius: var(--r-m);
-}
-
-.fields {
-  display: grid;
-  grid-template-columns: 96px minmax(0, 1fr);
-  gap: 10px 16px;
-}
-
-.fields dt {
-  padding-top: 3px;
-  font: 500 11.5px var(--font-machine);
-  color: var(--mut);
-  overflow-wrap: anywhere;
-}
-
-.fields dd {
-  min-width: 0;
-  font-size: 14.5px;
-  line-height: 1.55;
-  text-wrap: pretty;
-}
-
-.fields-meta dd {
-  font: 400 12.5px / 1.7 var(--font-machine);
-  color: var(--mut);
-}
-
-.body {
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}
-
-/* ---- timeline: dots on the lane of who acted (yours in your color) ---- */
+/* ---- timeline: the item's own path between the lanes, newest first ---- */
 .timeline-section {
   display: grid;
-  gap: 10px;
+  gap: 6px;
 }
 
 .timeline {
+  position: relative;
+  container-type: inline-size;
+}
+
+.timeline-lanes {
+  position: absolute;
+  left: 0;
+  top: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.timeline-guides {
+  fill: none;
+  stroke: var(--lane);
+  stroke-width: 1.5;
+  opacity: 0.5;
+}
+
+.timeline-path {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 1.6;
+  transition: d var(--travel) var(--e-move);
+}
+
+.timeline-dot {
+  fill: var(--ink);
+}
+
+.timeline-dot[data-actor="human"] {
+  fill: var(--you);
+}
+
+.timeline-events {
   list-style: none;
   margin: 0;
   padding: 0;
 }
 
 .ev {
-  position: relative;
   display: grid;
   grid-template-columns: 118px minmax(0, 1fr);
   gap: 2px 10px;
   align-items: baseline;
-  min-height: 40px;
-  padding: 10px 0 10px 56px;
+  min-height: 44px;
+  padding: 12px 0 12px 56px;
   font-size: 13.5px;
 }
 
-.ev::before,
-.ev::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  width: 1.5px;
-  background: var(--lane);
-  opacity: 0.6;
+.ev.new {
+  animation: ot-in var(--arrive) var(--e-out) both;
 }
 
-.ev::before {
-  left: 15.25px;
-}
-
-.ev::after {
-  left: 39.25px;
-}
-
-.ev:first-child::before,
-.ev:first-child::after {
-  top: 50%;
-}
-
-.ev:last-child::before,
-.ev:last-child::after {
-  bottom: 50%;
+@keyframes ot-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
 }
 
 .ev-m {
@@ -141,26 +114,15 @@
   white-space: nowrap;
 }
 
-/* The dot: a 9px circle centred on its lane, beside the first line of text. */
-.ev-m::before {
-  content: "";
-  position: absolute;
-  top: 50%;
-  width: 9px;
-  height: 9px;
-  margin-top: -4.5px;
-  border-radius: 50%;
-  z-index: 1;
+.ev-now .ev-m {
+  font-weight: 500;
 }
 
-.ev[data-actor="agent"] .ev-m::before {
-  left: 11.5px;
-  background: var(--ink);
-}
-
-.ev[data-actor="human"] .ev-m::before {
-  left: 35.5px;
-  background: var(--you);
+/* Narrow (a phone, the side column of focus mode): the time goes over the event. */
+@container (max-width: 26rem) {
+  .ev {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 /* ---- intake: fields of the system ---- */
@@ -246,14 +208,17 @@ select.input {
   .fields dd + dt {
     margin-top: 10px;
   }
-
-  .ev {
-    grid-template-columns: minmax(0, 1fr);
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .input {
+  .input,
+  .timeline-path {
     transition-duration: 1ms;
+  }
+
+  .detail-side,
+  .ev.new {
+    animation-duration: 1ms;
+    animation-delay: 0ms;
   }
 }
