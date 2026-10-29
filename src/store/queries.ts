@@ -1,4 +1,6 @@
 import type { DatabaseSync } from 'node:sqlite';
+import type { Channel } from '../core/authority.ts';
+import type { EvidenceKind, EvidenceRole } from '../core/evidence.ts';
 import type { Actor } from '../core/item.ts';
 import type { Lease } from '../core/lease.ts';
 
@@ -251,4 +253,85 @@ export function selectStateEntries(db: DatabaseSync): Map<string, string> {
     SELECT max(id) FROM events WHERE type IN ('created', 'transitioned') GROUP BY item_id)`;
   const rows = db.prepare(sql).all() as Array<{ item_id: string; at: string }>;
   return new Map(rows.map((row) => [row.item_id, row.at]));
+}
+
+export type EvidenceRecord = {
+  id: number;
+  itemId: string;
+  role: EvidenceRole;
+  kind: EvidenceKind;
+  filename: string;
+  contentType: string;
+  size: number;
+  sha256: string;
+  caption: string | null;
+  createdAt: string;
+  actor: Actor;
+  channel: Channel;
+};
+
+type EvidenceRow = {
+  id: number;
+  item_id: string;
+  role: EvidenceRole;
+  kind: EvidenceKind;
+  filename: string;
+  content_type: string;
+  size: number;
+  sha256: string;
+  caption: string | null;
+  created_at: string;
+  actor_kind: Actor['kind'];
+  actor_name: string;
+  channel: Channel;
+};
+
+function toEvidence(row: EvidenceRow): EvidenceRecord {
+  return {
+    id: row.id,
+    itemId: row.item_id,
+    role: row.role,
+    kind: row.kind,
+    filename: row.filename,
+    contentType: row.content_type,
+    size: row.size,
+    sha256: row.sha256,
+    caption: row.caption,
+    createdAt: row.created_at,
+    actor: { kind: row.actor_kind, name: row.actor_name },
+    channel: row.channel,
+  };
+}
+
+export function insertEvidence(db: DatabaseSync, evidence: Omit<EvidenceRecord, 'id'>): number {
+  const sql = `INSERT INTO evidence (item_id, role, kind, filename, content_type, size, sha256,
+      caption, created_at, actor_kind, actor_name, channel)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`;
+  const row = db
+    .prepare(sql)
+    .get(
+      evidence.itemId,
+      evidence.role,
+      evidence.kind,
+      evidence.filename,
+      evidence.contentType,
+      evidence.size,
+      evidence.sha256,
+      evidence.caption,
+      evidence.createdAt,
+      evidence.actor.kind,
+      evidence.actor.name,
+      evidence.channel,
+    );
+  return Number(row?.id);
+}
+
+export function findEvidence(db: DatabaseSync, id: number): EvidenceRecord | undefined {
+  const row = db.prepare('SELECT * FROM evidence WHERE id = ?').get(id);
+  return row && toEvidence(row as EvidenceRow);
+}
+
+export function selectEvidence(db: DatabaseSync, itemId: string): EvidenceRecord[] {
+  const sql = 'SELECT * FROM evidence WHERE item_id = ? ORDER BY id';
+  return (db.prepare(sql).all(itemId) as EvidenceRow[]).map(toEvidence);
 }

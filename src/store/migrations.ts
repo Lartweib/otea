@@ -56,6 +56,31 @@ const MIGRATIONS = [
   ALTER TABLE items ADD COLUMN lease_holder TEXT;
   ALTER TABLE items ADD COLUMN lease_expires_at TEXT;
   `,
+  `
+  CREATE TABLE evidence (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    item_id TEXT NOT NULL REFERENCES items (id),
+    role TEXT NOT NULL,
+    kind TEXT NOT NULL,
+    filename TEXT NOT NULL,
+    content_type TEXT NOT NULL,
+    size INTEGER NOT NULL,
+    sha256 TEXT NOT NULL,
+    caption TEXT,
+    created_at TEXT NOT NULL,
+    actor_kind TEXT NOT NULL,
+    actor_name TEXT NOT NULL,
+    channel TEXT NOT NULL
+  );
+
+  CREATE INDEX evidence_item_id ON evidence (item_id);
+
+  CREATE TRIGGER evidence_no_update BEFORE UPDATE ON evidence
+  BEGIN SELECT RAISE(ABORT, 'evidence is append-only'); END;
+
+  CREATE TRIGGER evidence_no_delete BEFORE DELETE ON evidence
+  BEGIN SELECT RAISE(ABORT, 'evidence is append-only'); END;
+  `,
 ];
 
 function userVersion(db: DatabaseSync): number {

@@ -14,7 +14,9 @@ export type ErrorCode =
   | 'lease_held'
   | 'not_lease_holder'
   | 'not_relayable'
-  | 'quote_required';
+  | 'quote_required'
+  | 'file_not_found'
+  | 'evidence_too_large';
 
 export class OteaError extends Error {
   readonly code: ErrorCode;

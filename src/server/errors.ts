@@ -18,6 +18,8 @@ export const HTTP_STATUS: Readonly<Record<ErrorCode, ContentfulStatusCode>> = {
   not_lease_holder: 409,
   not_relayable: 409,
   quote_required: 400,
+  file_not_found: 404,
+  evidence_too_large: 413,
 };
 
 export class InvalidQuery extends Error {}

@@ -24,11 +24,13 @@ import {
   claimNextSeq,
   clearLease,
   type EventRecord,
+  type EvidenceRecord,
   findItem,
   type ItemRecord,
   insertItem,
   listCollections,
   selectEvents,
+  selectEvidence,
   selectItems,
   selectStateEntries,
   updateItemContent,
@@ -144,11 +146,12 @@ export function getItem(ctx: Context, id: string, now = systemClock): ItemWithEv
 }
 
 // `transitions` are the moves the performer may make, `relayable` the human decisions an agent
-// may relay.
+// may relay, `evidence` the files attached to the item, oldest first.
 export type ItemView = ItemWithEvents & {
   transitions: Move[];
   relayable: Move[];
   missing: string[];
+  evidence: EvidenceRecord[];
 };
 
 export function showItem(
@@ -164,6 +167,7 @@ export function showItem(
     transitions: availableMoves(preset.workflow, item.state, performer),
     relayable: relayableMoves(preset.workflow, item.state),
     missing: missingToComplete(preset, item.fields),
+    evidence: selectEvidence(ctx.db, item.id),
   };
 }
 
