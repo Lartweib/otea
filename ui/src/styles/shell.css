@@ -1,0 +1,136 @@
+/* App shell: topbar, panes and messages. */
+
+.pane-message {
+  padding: 16px 0;
+}
+
+.action-error {
+  color: var(--minus);
+}
+
+.hr {
+  height: 1px;
+  margin: 0;
+  border: 0;
+  background: var(--line);
+}
+
+/* ---- topbar ---- */
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  height: 60px;
+  padding: 0 16px;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+  font-size: 17px;
+  letter-spacing: -0.02em;
+}
+
+.brand-fork {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 2;
+}
+
+.brand-dot {
+  fill: var(--you);
+}
+
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.connection {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-right: 4px;
+  font: 400 12px var(--font-machine);
+  color: var(--mut);
+}
+
+.connection-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1.5px var(--mut);
+  transition:
+    background-color var(--arrive) var(--e-out),
+    box-shadow var(--arrive) var(--e-out);
+}
+
+.connection[data-connection="live"] .connection-dot {
+  background: var(--ink);
+  box-shadow: none;
+}
+
+/* ---- layout ---- */
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+  padding: 0 16px 16px;
+}
+
+.list-pane,
+.detail-pane {
+  min-width: 0;
+}
+
+.detail-panel {
+  padding: 24px 20px;
+}
+
+/* ---- two panes from 48rem ---- */
+@media (min-width: 48rem) {
+  .app {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    height: 100dvh;
+  }
+
+  .topbar {
+    padding: 0 24px;
+  }
+
+  .layout {
+    grid-template-columns: minmax(20rem, 28rem) minmax(0, 1fr);
+    gap: 24px;
+    min-height: 0;
+    padding: 0 16px 16px 8px;
+  }
+
+  .list-pane {
+    overflow-y: auto;
+    padding: 4px 8px 24px 0;
+    scrollbar-width: thin;
+    scrollbar-color: var(--line) transparent;
+  }
+
+  .detail-pane {
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--line) transparent;
+  }
+
+  .detail-panel {
+    min-height: 100%;
+    padding: 28px 32px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .connection-dot {
+    transition-duration: 1ms;
+  }
+}

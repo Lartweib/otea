@@ -1,6 +1,7 @@
 import { useReducer } from 'react';
-import { canConfirm, IDLE, isBusy, moveTone, reduceAction } from '../actions.ts';
+import { canConfirm, IDLE, isBusy, moveVariants, reduceAction } from '../actions.ts';
 import { moveItem } from '../api.ts';
+import { Button } from '../kit/index.ts';
 import type { Move } from '../types.ts';
 
 type ItemActionsProps = { id: string; moves: Move[] };
@@ -10,6 +11,7 @@ export function ItemActions({ id, moves }: ItemActionsProps) {
   const busy = isBusy(state);
   const explaining =
     state.step === 'explaining' || (state.step === 'posting' && state.reason !== '');
+  const variants = moveVariants(moves);
 
   const submit = (to: string, reason: string) => {
     dispatch({ type: 'submit', to, reason });
@@ -25,23 +27,25 @@ export function ItemActions({ id, moves }: ItemActionsProps) {
     else submit(move.to, '');
   };
 
-  if (moves.length === 0) return <p className="muted">No moves from this state.</p>;
+  if (moves.length === 0) return <p className="t-small">No moves from this state.</p>;
   return (
     <section className="actions" aria-label="Actions">
       <div className="action-buttons">
-        {moves.map((move) => (
-          <button
-            key={move.to}
-            type="button"
-            className="action"
-            data-tone={moveTone(move)}
-            aria-pressed={state.step === 'explaining' && state.to === move.to}
-            disabled={busy}
-            onClick={() => choose(move)}
-          >
-            {move.to}
-          </button>
-        ))}
+        {moves.map((move, index) => {
+          const variant = variants[index] ?? 'default';
+          return (
+            <Button
+              key={move.to}
+              // While a reason is being written, Confirm is the one primary on screen.
+              variant={explaining && variant === 'primary' ? 'default' : variant}
+              aria-pressed={state.step === 'explaining' && state.to === move.to}
+              disabled={busy}
+              onClick={() => choose(move)}
+            >
+              {move.to}
+            </Button>
+          );
+        })}
       </div>
       {explaining ? (
         <form
@@ -53,30 +57,23 @@ export function ItemActions({ id, moves }: ItemActionsProps) {
             }
           }}
         >
-          <label htmlFor="reason">Reason for moving to {state.to}</label>
+          <label className="t-label" htmlFor="reason">
+            Reason for moving to {state.to}
+          </label>
           <textarea
             id="reason"
+            className="input"
             value={state.reason}
             disabled={busy}
             onChange={(event) => dispatch({ type: 'type', reason: event.target.value })}
           />
           <div className="action-buttons">
-            <button
-              type="submit"
-              className="action"
-              data-tone="approve"
-              disabled={!canConfirm(state)}
-            >
+            <Button type="submit" variant="primary" disabled={!canConfirm(state)}>
               Confirm
-            </button>
-            <button
-              type="button"
-              className="action"
-              disabled={busy}
-              onClick={() => dispatch({ type: 'cancel' })}
-            >
+            </Button>
+            <Button variant="quiet" disabled={busy} onClick={() => dispatch({ type: 'cancel' })}>
               Cancel
-            </button>
+            </Button>
           </div>
         </form>
       ) : null}

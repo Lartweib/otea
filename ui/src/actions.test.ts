@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { type ActionState, canConfirm, IDLE, isBusy, moveTone, reduceAction } from './actions.ts';
+import {
+  type ActionState,
+  canConfirm,
+  IDLE,
+  isBusy,
+  moveTone,
+  moveVariants,
+  reduceAction,
+} from './actions.ts';
 
 const explaining = (reason = ''): ActionState => ({ step: 'explaining', to: 'todo', reason });
 
@@ -91,5 +99,29 @@ describe('actions', () => {
     expect(after).toEqual(IDLE);
     expect(isBusy(after)).toBe(false);
     expect(canConfirm(after)).toBe(false);
+  });
+
+  describe('moveVariants', () => {
+    const done = { to: 'done', by: 'human-ui', reasonRequired: false } as const;
+    const back = { to: 'todo', by: 'human-ui', reasonRequired: true } as const;
+    const discard = { to: 'discarded', by: 'human', reasonRequired: true } as const;
+
+    it('makes the move that hands the turn on primary, discards quiet and the rest plain', () => {
+      expect(moveVariants([done, back, discard])).toEqual(['primary', 'default', 'quiet']);
+    });
+
+    it('never offers more than one primary', () => {
+      const ship = { to: 'shipped', by: 'human', reasonRequired: false } as const;
+      expect(moveVariants([done, ship])).toEqual(['primary', 'default']);
+    });
+
+    it('offers no primary when no move hands the turn on without a reason', () => {
+      expect(moveVariants([back, discard])).toEqual(['default', 'quiet']);
+    });
+
+    it('does not make a discard primary even when it needs no reason', () => {
+      const drop = { to: 'discarded', by: 'human', reasonRequired: false } as const;
+      expect(moveVariants([drop, done])).toEqual(['quiet', 'primary']);
+    });
   });
 });

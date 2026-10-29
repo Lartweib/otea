@@ -1,0 +1,259 @@
+/* Item detail, actions, timeline and intake. */
+
+/* ---- detail ---- */
+.detail {
+  display: grid;
+  gap: 24px;
+  max-width: 46rem;
+}
+
+.detail-head {
+  display: grid;
+  gap: 10px;
+}
+
+.detail-tags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.actions {
+  display: grid;
+  gap: 12px;
+}
+
+.action-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.reason {
+  display: grid;
+  gap: 8px;
+  max-width: 34rem;
+}
+
+.missing {
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  border-radius: var(--r-m);
+}
+
+.fields {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 10px 16px;
+}
+
+.fields dt {
+  padding-top: 3px;
+  font: 500 11.5px var(--font-machine);
+  color: var(--mut);
+  overflow-wrap: anywhere;
+}
+
+.fields dd {
+  min-width: 0;
+  font-size: 14.5px;
+  line-height: 1.55;
+  text-wrap: pretty;
+}
+
+.fields-meta dd {
+  font: 400 12.5px / 1.7 var(--font-machine);
+  color: var(--mut);
+}
+
+.body {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* ---- timeline: dots on the lane of who acted (yours in your color) ---- */
+.timeline-section {
+  display: grid;
+  gap: 10px;
+}
+
+.timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.ev {
+  position: relative;
+  display: grid;
+  grid-template-columns: 118px minmax(0, 1fr);
+  gap: 2px 10px;
+  align-items: baseline;
+  min-height: 40px;
+  padding: 10px 0 10px 56px;
+  font-size: 13.5px;
+}
+
+.ev::before,
+.ev::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1.5px;
+  background: var(--lane);
+  opacity: 0.6;
+}
+
+.ev::before {
+  left: 15.25px;
+}
+
+.ev::after {
+  left: 39.25px;
+}
+
+.ev:first-child::before,
+.ev:first-child::after {
+  top: 50%;
+}
+
+.ev:last-child::before,
+.ev:last-child::after {
+  bottom: 50%;
+}
+
+.ev-m {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.ev-m em {
+  font-style: normal;
+  color: var(--mut);
+  white-space: nowrap;
+}
+
+.ev time {
+  white-space: nowrap;
+}
+
+/* The dot: a 9px circle centred on its lane, beside the first line of text. */
+.ev-m::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  width: 9px;
+  height: 9px;
+  margin-top: -4.5px;
+  border-radius: 50%;
+  z-index: 1;
+}
+
+.ev[data-actor="agent"] .ev-m::before {
+  left: 11.5px;
+  background: var(--ink);
+}
+
+.ev[data-actor="human"] .ev-m::before {
+  left: 35.5px;
+  background: var(--you);
+}
+
+/* ---- intake: fields of the system ---- */
+.intake {
+  display: grid;
+  gap: 16px;
+  max-width: 34rem;
+}
+
+.intake-field {
+  display: grid;
+  gap: 6px;
+}
+
+.intake-field .required {
+  color: var(--mut);
+  font-weight: 400;
+}
+
+.input {
+  width: 100%;
+  min-height: 36px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--sf);
+  box-shadow: 0 0 0 1px var(--line);
+  color: var(--ink);
+  font-size: 14px;
+  transition: box-shadow var(--micro);
+}
+
+.input:hover:not(:disabled) {
+  box-shadow: 0 0 0 1px var(--lane);
+}
+
+.input:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--you);
+}
+
+.input:disabled {
+  opacity: 0.6;
+}
+
+textarea.input {
+  min-height: 7rem;
+  padding: 10px 14px;
+  border-radius: var(--r-m);
+  line-height: 1.55;
+  resize: vertical;
+}
+
+select.input {
+  appearance: none;
+  padding-right: 34px;
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--mut) 50%),
+    linear-gradient(135deg, var(--mut) 50%, transparent 50%);
+  background-position:
+    right 18px center,
+    right 13px center;
+  background-size: 5px 5px;
+  background-repeat: no-repeat;
+}
+
+/* Detail panel and intake inputs sit on the raised surface: inputs go to the well there. */
+.detail-panel .input {
+  background-color: var(--bg);
+}
+
+.intake-start[data-incomplete="true"] {
+  color: var(--ink);
+}
+
+/* ---- phone: stack labels over values ---- */
+@media (max-width: 30rem) {
+  .fields {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
+  }
+
+  .fields dd + dt {
+    margin-top: 10px;
+  }
+
+  .ev {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .input {
+    transition-duration: 1ms;
+  }
+}
