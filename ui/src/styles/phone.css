@@ -12,6 +12,7 @@
 }
 
 .detail[data-layout="unfold"] {
+  view-timeline: --unfold-detail block;
   gap: 20px;
   padding: 16px 16px 0;
   border-radius: var(--r-l);
@@ -40,6 +41,22 @@
   border-top: 1px solid var(--line);
   border-radius: 0 0 var(--r-l) var(--r-l);
   background: var(--sf);
+}
+
+/* While only the top of the detail is on screen, the moves are pushed up against it: their line would
+   sit right under the row, dividing nothing. It draws once the detail has come far enough in. */
+@supports (animation-timeline: view()) {
+  .unfold-actions {
+    animation: unfold-actions-line linear both;
+    animation-timeline: --unfold-detail;
+    animation-range: entry 72px entry 120px;
+  }
+}
+
+@keyframes unfold-actions-line {
+  from {
+    border-top-color: transparent;
+  }
 }
 
 .unfold-actions .btn {

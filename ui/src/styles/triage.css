@@ -38,27 +38,37 @@
   margin-bottom: 16px;
 }
 
-.triage-stack::before,
+/* The next card, readable but dimmed until the top one is pulled off it. */
+.tcard.tcard-next {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  min-height: 0;
+  overflow: hidden;
+  transform: translateY(calc(8px - 8px * var(--p))) scale(calc(0.96 + 0.04 * var(--p)));
+  transform-origin: bottom center;
+  pointer-events: none;
+  touch-action: auto;
+  cursor: auto;
+}
+
+.tcard-next > * {
+  opacity: calc(0.5 + 0.5 * var(--p));
+}
+
+/* The one after it: only an edge. */
 .triage-stack::after {
   content: "";
   position: absolute;
   inset: 0;
-  z-index: -1;
+  z-index: -2;
   border-radius: var(--r-l);
   background: var(--sf);
   box-shadow: 0 0 0 1px var(--line);
   opacity: 0;
 }
 
-.triage-stack[data-behind="1"]::before,
-.triage-stack[data-behind="2"]::before {
-  opacity: 1;
-  transform: translateY(calc(8px - 8px * var(--p))) scale(calc(0.96 + 0.04 * var(--p)));
-  transform-origin: bottom center;
-}
-
 .triage-stack[data-behind="2"]::after {
-  z-index: -2;
   opacity: 0.7;
   transform: translateY(calc(16px - 8px * var(--p))) scale(calc(0.92 + 0.04 * var(--p)));
   transform-origin: bottom center;
