@@ -1,0 +1,44 @@
+preset: bug-triage
+preset_version: 1
+playbook: ./playbook.md
+fields:
+  title: { module: text, required: create }
+  description: { module: markdown, required: complete }
+  steps: { module: markdown, required: complete }
+  expected: { module: markdown, required: complete }
+  actual: { module: markdown, required: complete }
+  environment: { module: text }
+  severity: { module: severity, required: complete }
+  area: { module: text }
+workflow:
+  initial: reported
+  incomplete: incomplete
+  states:
+    incomplete: { turn: agent }
+    reported: { turn: human }
+    needs_info: { turn: agent }
+    accepted: { turn: agent }
+    fixing: { turn: agent }
+    verify: { turn: human }
+    fixed: { turn: none }
+    rejected: { turn: none }
+    duplicate: { turn: none }
+    wont_fix: { turn: none }
+  transitions:
+    - { from: incomplete, to: reported, by: agent }
+    - { from: reported, to: accepted, by: human }
+    - { from: reported, to: needs_info, by: human, reason: required }
+    - { from: needs_info, to: reported, by: agent }
+    - { from: accepted, to: fixing, by: agent }
+    - { from: fixing, to: verify, by: agent, reason: required }
+    - { from: [accepted, fixing], to: reported, by: agent, reason: required }
+    - { from: verify, to: fixed, by: human-ui }
+    - { from: verify, to: fixing, by: human, reason: required }
+    - { from: [incomplete, reported, needs_info], to: rejected, by: human-ui, reason: required }
+    - { from: [incomplete, reported, needs_info], to: duplicate, by: human-ui, reason: required }
+    - {
+        from: [incomplete, reported, needs_info, accepted, fixing, verify],
+        to: wont_fix,
+        by: human-ui,
+        reason: required,
+      }

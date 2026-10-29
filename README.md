@@ -99,7 +99,12 @@ claude mcp add otea -- node --disable-warning=ExperimentalWarning /path/to/otea/
 
 ### Presets
 
-Every collection is governed by a preset: its fields, states, turns and transitions, plus a playbook for agents. Official presets live in [`presets/`](presets/) (`tasks` for now). A project can add its own in `.otea/presets/<name>/preset.yaml` (with its `playbook.md`) and use it with `otea collection add <collection> --preset <name>`; project presets cannot reuse an official name. The format is described in §9 of the [product definition](docs/otea-product-definition.md#9-preset-format).
+Every collection is governed by a preset: its fields, states, turns and transitions, plus a playbook for agents. Official presets live in [`presets/`](presets/):
+
+- [`tasks`](presets/tasks/playbook.md): the default; an agent works a task and a human approves it in review.
+- [`bug-triage`](presets/bug-triage/playbook.md): an agent files a documented bug (steps, expected and actual, environment, severity), you triage it, the agent fixes the ones you accept and returns proof, and you verify the fix. `otea collection add bugs --preset bug-triage`
+
+A project can add its own in `.otea/presets/<name>/preset.yaml` (with its `playbook.md`) and use it with `otea collection add <collection> --preset <name>`; project presets cannot reuse an official name. The format is described in §9 of the [product definition](docs/otea-product-definition.md#9-preset-format).
 
 ### See it live
 

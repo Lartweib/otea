@@ -77,24 +77,30 @@ describe('api', () => {
       const response = await get('/api/presets');
 
       expect(response.status).toBe(200);
-      expect(await response.json()).toEqual([
-        {
-          name: 'tasks',
-          version: 1,
-          origin: 'official',
-          fields: [
-            { name: 'title', module: 'text', required: 'create' },
-            { name: 'description', module: 'markdown', required: 'complete' },
-            {
-              name: 'priority',
-              module: 'enum',
-              values: ['low', 'medium', 'high'],
-              default: 'medium',
-            },
-          ],
-          collections: ['tasks', 'bugs'],
-        },
-      ]);
+      const presets = (await response.json()) as Array<{ name: string; fields: unknown[] }>;
+      expect(presets.map(({ name }) => name)).toEqual(['bug-triage', 'tasks']);
+      expect(presets[0]?.fields).toContainEqual({
+        name: 'severity',
+        module: 'severity',
+        required: 'complete',
+        values: ['low', 'medium', 'high', 'critical'],
+      });
+      expect(presets[1]).toEqual({
+        name: 'tasks',
+        version: 1,
+        origin: 'official',
+        fields: [
+          { name: 'title', module: 'text', required: 'create' },
+          { name: 'description', module: 'markdown', required: 'complete' },
+          {
+            name: 'priority',
+            module: 'enum',
+            values: ['low', 'medium', 'high'],
+            default: 'medium',
+          },
+        ],
+        collections: ['tasks', 'bugs'],
+      });
     });
 
     it('includes project presets with their origin', async () => {
@@ -107,6 +113,7 @@ describe('api', () => {
       }>;
 
       expect(presets.map(({ name, origin }) => ({ name, origin }))).toEqual([
+        { name: 'bug-triage', origin: 'official' },
         { name: 'tasks', origin: 'official' },
         { name: 'reviews', origin: 'project' },
       ]);
