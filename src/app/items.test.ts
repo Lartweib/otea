@@ -2,7 +2,16 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { Actor } from '../core/item.ts';
 import { addCollection } from './collections.ts';
 import type { Context } from './context.ts';
-import { createItem, getItem, listItems, moveItem, showItem, updateItem } from './items.ts';
+import {
+  createItem,
+  getItem,
+  listItems,
+  moveItem,
+  oldestWaiting,
+  showItem,
+  updateItem,
+} from './items.ts';
+import { claimItem } from './leases.ts';
 import { memoryContext, REVIEWS } from './testing.ts';
 
 const ana: Actor = { kind: 'human', name: 'ana' };
@@ -319,6 +328,43 @@ describe('items', () => {
       expect(ids(listItems(ctx, { collection: 'tasks', state: 'todo', turn: 'agent' }))).toEqual([
         'TASKS-1',
       ]);
+    });
+  });
+
+  describe('oldestWaiting', () => {
+    const time = (minute: number) => () => `2026-01-01T00:0${minute}:00.000Z`;
+    const oldest = (filter: Parameters<typeof oldestWaiting>[1], minute = 9) =>
+      oldestWaiting(ctx, filter, time(minute))?.id;
+
+    beforeEach(() => {
+      createItem(ctx, task('A'), time(1));
+      createItem(ctx, task('B'), time(2));
+      createItem(ctx, task('C'), time(3));
+      moveItem(ctx, { id: 'TASKS-1', to: 'in_progress', actor: bot, channel: 'cli' }, time(4));
+    });
+
+    it('returns the item that entered its current state first, not the first created', () => {
+      updateItem(ctx, { id: 'TASKS-2', title: 'B2', actor: bot }, time(5));
+
+      expect(oldest({ turn: 'agent' })).toBe('TASKS-2');
+    });
+
+    it('breaks ties by creation order', () => {
+      createItem(ctx, task('D'), time(2));
+
+      expect(oldest({ turn: 'agent' })).toBe('TASKS-2');
+    });
+
+    it('returns nothing when no item is on the turn', () => {
+      expect(oldest({ turn: 'human' })).toBeUndefined();
+    });
+
+    it('applies the list filters, hiding items others hold', () => {
+      claimItem(ctx, { id: 'TASKS-2', actor: { kind: 'agent', name: 'codex' } }, time(5));
+
+      expect(oldest({ turn: 'agent', availableTo: 'claude' }, 6)).toBe('TASKS-3');
+      expect(oldest({ turn: 'agent', availableTo: 'codex' }, 6)).toBe('TASKS-2');
+      expect(oldest({ turn: 'agent', collection: 'reviews' })).toBeUndefined();
     });
   });
 });

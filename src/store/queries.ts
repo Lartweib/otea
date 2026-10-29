@@ -226,3 +226,29 @@ export function selectEvents(db: DatabaseSync, itemId: string): EventRecord[] {
   const sql = 'SELECT * FROM events WHERE item_id = ? ORDER BY id';
   return (db.prepare(sql).all(itemId) as EventRow[]).map(toEvent);
 }
+
+export type EventFilter = { item?: string; collection?: string; since?: number; limit?: number };
+
+// Ids follow commit order (writers are serialized by BEGIN IMMEDIATE), so the last id read is a
+// cursor: nothing committed later can land below it.
+export function selectEventsAfter(db: DatabaseSync, filter: EventFilter): EventRecord[] {
+  const sql = `SELECT events.* FROM events JOIN items ON items.id = events.item_id
+    WHERE events.id > :since AND (:item IS NULL OR events.item_id = :item)
+      AND (:collection IS NULL OR items.collection = :collection)
+    ORDER BY events.id LIMIT :limit`;
+  const params = {
+    since: filter.since ?? 0,
+    item: filter.item ?? null,
+    collection: filter.collection ?? null,
+    limit: filter.limit ?? -1,
+  };
+  return (db.prepare(sql).all(params) as EventRow[]).map(toEvent);
+}
+
+// When each item entered its current state: the time of its last created or transitioned event.
+export function selectStateEntries(db: DatabaseSync): Map<string, string> {
+  const sql = `SELECT item_id, at FROM events WHERE id IN (
+    SELECT max(id) FROM events WHERE type IN ('created', 'transitioned') GROUP BY item_id)`;
+  const rows = db.prepare(sql).all() as Array<{ item_id: string; at: string }>;
+  return new Map(rows.map((row) => [row.item_id, row.at]));
+}
