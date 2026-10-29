@@ -2,7 +2,7 @@ import { type ReactNode, useCallback, useState } from 'react';
 import { fetchCollections, fetchItem, fetchItems, fetchSession } from './api.ts';
 import { ConnectionBadge } from './components/ConnectionBadge.tsx';
 import { ItemDetail } from './components/ItemDetail.tsx';
-import { ItemList } from './components/ItemList.tsx';
+import { type CollectionOf, ItemList } from './components/ItemList.tsx';
 import { NewItemForm } from './components/NewItemForm.tsx';
 import { ThemeToggle } from './components/ThemeToggle.tsx';
 import { type Connection, useLive, useRemote, useSelectedId } from './hooks.ts';
@@ -16,16 +16,14 @@ function Message({ children, muted = true }: { children: ReactNode; muted?: bool
   return <p className={muted ? 'pane-message t-small' : 'pane-message action-error'}>{children}</p>;
 }
 
-type IncompleteOf = (collection: string) => string | undefined;
-
 function ListPane({
   items,
   selectedId,
-  incompleteOf,
+  collectionOf,
 }: {
   items: Remote<Item[]>;
   selectedId: string | undefined;
-  incompleteOf: IncompleteOf;
+  collectionOf: CollectionOf;
 }) {
   if (items.status === 'loading') return <Message>Loading…</Message>;
   if (items.status === 'failed') return <Message muted={false}>{items.message}</Message>;
@@ -40,7 +38,7 @@ function ListPane({
     <ItemList
       sections={groupByTurn(items.value)}
       selectedId={selectedId}
-      incompleteOf={incompleteOf}
+      collectionOf={collectionOf}
     />
   );
 }
@@ -49,10 +47,10 @@ type DetailPaneProps = {
   id: string;
   item: Remote<ItemView | null>;
   canWrite: boolean;
-  incompleteOf: IncompleteOf;
+  collectionOf: CollectionOf;
 };
 
-function DetailPane({ id, item, canWrite, incompleteOf }: DetailPaneProps) {
+function DetailPane({ id, item, canWrite, collectionOf }: DetailPaneProps) {
   if (item.status === 'failed') return <Message muted={false}>{item.message}</Message>;
   if (item.status === 'loading') return <Message>Loading…</Message>;
   if (!item.value) return <Message>Item {id} not found.</Message>;
@@ -60,7 +58,7 @@ function DetailPane({ id, item, canWrite, incompleteOf }: DetailPaneProps) {
     <ItemDetail
       item={item.value}
       canWrite={canWrite}
-      incompleteState={incompleteOf(item.value.collection)}
+      collection={collectionOf(item.value.collection)}
     />
   );
 }
@@ -70,25 +68,25 @@ type SelectedItemProps = {
   version: number;
   connection: Connection;
   canWrite: boolean;
-  incompleteOf: IncompleteOf;
+  collectionOf: CollectionOf;
 };
 
-function SelectedItem({ id, version, connection, canWrite, incompleteOf }: SelectedItemProps) {
+function SelectedItem({ id, version, connection, canWrite, collectionOf }: SelectedItemProps) {
   const load = useCallback((signal: AbortSignal) => fetchItem(id, signal), [id]);
   return (
     <DetailPane
       id={id}
       item={useRemote(load, version, connection)}
       canWrite={canWrite}
-      incompleteOf={incompleteOf}
+      collectionOf={collectionOf}
     />
   );
 }
 
-// Which state of a collection means "incomplete" comes from its preset.
-function incompleteLookup(collections: Remote<CollectionView[]>): IncompleteOf {
+// A collection's preset decides its fields and which state means "incomplete".
+function collectionLookup(collections: Remote<CollectionView[]>): CollectionOf {
   const list = collections.status === 'ready' ? collections.value : [];
-  return (name) => list.find((collection) => collection.name === name)?.incomplete;
+  return (name) => list.find((collection) => collection.name === name);
 }
 
 function Brand() {
@@ -114,7 +112,7 @@ export function App() {
   const items = useRemote(fetchItems, version, connection);
   const session = useRemote(fetchSession, 0, connection);
   const collections = useRemote(fetchCollections, 0, connection);
-  const incompleteOf = incompleteLookup(collections);
+  const collectionOf = collectionLookup(collections);
   const canWrite = session.status === 'ready' && session.value.canWrite;
   const [intake, setIntake] = useState<Intake>();
   const creating = canWrite && intake !== undefined && intake.openedOn === selectedId;
@@ -144,7 +142,7 @@ export function App() {
       </header>
       <main className="layout">
         <div className="list-pane">
-          <ListPane items={items} selectedId={selectedId} incompleteOf={incompleteOf} />
+          <ListPane items={items} selectedId={selectedId} collectionOf={collectionOf} />
         </div>
         <div className="detail-pane">
           <div className="detail-panel raised">
@@ -157,7 +155,7 @@ export function App() {
                 version={version}
                 connection={connection}
                 canWrite={canWrite}
-                incompleteOf={incompleteOf}
+                collectionOf={collectionOf}
               />
             ) : (
               <Message>Select an item to see its details.</Message>

@@ -1,3 +1,5 @@
+import type { FieldRequirement } from '../../src/core/preset.ts';
+
 export type Turn = 'human' | 'agent' | 'none';
 
 export type Actor = { kind: 'human' | 'agent'; name: string };
@@ -36,12 +38,15 @@ export type ItemView = ItemWithEvents & { transitions: Move[]; missing: string[]
 
 export type Session = { canWrite: boolean };
 
-export type FieldModule = 'text' | 'markdown' | 'enum';
+// Module names have one source, the core preset format. Type-only: nothing from src/ is bundled.
+export type { FieldModule, FieldRequirement } from '../../src/core/preset.ts';
 
+// A field as the server sends it. `module` stays a string: a newer server or a local module can
+// name a module this UI build does not know, and the registry falls back to plain text for it.
 export type FieldView = {
   name: string;
-  module: FieldModule;
-  required?: 'create' | 'complete';
+  module: string;
+  required?: FieldRequirement;
   values?: string[];
   default?: string;
 };

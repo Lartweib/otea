@@ -1,16 +1,8 @@
-import type { CollectionView, FieldModule, FieldView } from './types.ts';
+import type { CollectionView, FieldView } from './types.ts';
 
 export type FormValues = Record<string, string>;
 
-export type Control = 'input' | 'textarea' | 'select';
-
 export type Start = { state: string; incomplete: boolean; missing: string[] };
-
-const CONTROLS: Readonly<Record<FieldModule, Control>> = {
-  text: 'input',
-  markdown: 'textarea',
-  enum: 'select',
-};
 
 export const LEFT_TO_AGENT = 'Optional now — if left empty, an agent will complete it';
 
@@ -36,10 +28,6 @@ export function initialValues({ fields }: CollectionView): FormValues {
 export function fieldLabel(name: string): string {
   const words = name.replaceAll('_', ' ');
   return words.charAt(0).toUpperCase() + words.slice(1);
-}
-
-export function controlFor(field: FieldView): Control {
-  return CONTROLS[field.module];
 }
 
 export function fieldHint(field: FieldView): string | undefined {

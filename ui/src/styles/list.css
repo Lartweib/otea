@@ -94,7 +94,7 @@
 .row {
   position: relative;
   display: grid;
-  grid-template-columns: 56px minmax(0, 1fr);
+  grid-template-columns: 56px minmax(0, 1fr) auto;
   align-items: center;
   height: var(--row-h);
   padding-right: 12px;
@@ -172,6 +172,18 @@
 .row-meta > span:not(:last-child)::after {
   content: "·";
   margin-left: 8px;
+}
+
+/* What field modules put in the row (an enum off its default): after the title, quiet. */
+.row-values {
+  display: flex;
+  gap: 4px;
+  margin-left: 8px;
+}
+
+.row[data-kind="done"] .row-values .pill,
+.row[data-kind="discarded"] .row-values .pill {
+  color: var(--mut);
 }
 
 .row-lease {

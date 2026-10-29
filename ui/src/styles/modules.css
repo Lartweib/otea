@@ -1,0 +1,110 @@
+/* Field modules: rendered markdown. */
+
+/* ---- markdown, set in the system type ---- */
+.md {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.md > * {
+  margin: 0;
+}
+
+.md h1,
+.md h2,
+.md h3,
+.md h4,
+.md h5,
+.md h6 {
+  margin-top: 6px;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.008em;
+  line-height: 1.35;
+}
+
+.md h1 {
+  font-size: 17px;
+}
+
+.md > :first-child {
+  margin-top: 0;
+}
+
+.md ul,
+.md ol {
+  display: grid;
+  gap: 4px;
+  padding-left: 22px;
+}
+
+.md li > ul,
+.md li > ol {
+  margin-top: 4px;
+}
+
+.md li::marker {
+  color: var(--mut);
+}
+
+.md a {
+  color: var(--you-ink);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+
+.md a:hover {
+  text-decoration-thickness: 2px;
+}
+
+.md code {
+  padding: 1px 5px;
+  border-radius: var(--r-s);
+  background: var(--well);
+  font-size: 12.5px;
+}
+
+.md pre {
+  padding: 10px 14px;
+  border-radius: var(--r-m);
+  background: var(--well);
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.md pre code {
+  padding: 0;
+  background: none;
+  font-size: 12.5px;
+  line-height: 1.6;
+  overflow-wrap: normal;
+}
+
+.md blockquote {
+  padding-left: 16px;
+  color: var(--mut);
+}
+
+.md hr {
+  height: 1px;
+  border: 0;
+  background: var(--line);
+}
+
+.md table {
+  border-collapse: collapse;
+  font-size: 13.5px;
+}
+
+.md th,
+.md td {
+  padding: 4px 10px 4px 0;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+}
+
+.md img {
+  max-width: 100%;
+}

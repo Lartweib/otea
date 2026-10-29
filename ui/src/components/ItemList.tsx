@@ -3,33 +3,45 @@ import { leaseLabel } from '../format.ts';
 import { useActiveLease } from '../hooks.ts';
 import { NodeMark } from '../kit/index.ts';
 import { type Block, laneX, layoutLanes } from '../lanes.ts';
+import { moduleFor } from '../modules/registry.ts';
+import { valuesOf } from '../modules/values.ts';
 import { nodeKind } from '../node-kind.ts';
 import type { Section } from '../sections.ts';
 import { hashFor } from '../selection.ts';
-import type { Item } from '../types.ts';
+import type { CollectionView, Item } from '../types.ts';
 
 // Fixed heights keep the lane geometry and the rows in step.
 const ROW_H = 56;
 const HEAD_H = 48;
 const EMPTY_H = 40;
 
-type IncompleteOf = (collection: string) => string | undefined;
+export type CollectionOf = (name: string) => CollectionView | undefined;
 
 type ItemListProps = {
   sections: Section[];
   selectedId: string | undefined;
-  incompleteOf: IncompleteOf;
+  collectionOf: CollectionOf;
 };
 
-type ItemRowProps = { item: Item; selected: boolean; x: number; incompleteOf: IncompleteOf };
+type ItemRowProps = { item: Item; selected: boolean; x: number; collectionOf: CollectionOf };
 
-function ItemRow({ item, selected, x, incompleteOf }: ItemRowProps) {
+// What each field module puts in the row; most put nothing.
+function RowValues({ item, collection }: { item: Item; collection: CollectionView | undefined }) {
+  const marks = valuesOf(collection?.fields, item.fields).flatMap(({ field, value }) => {
+    const { Row } = moduleFor(field.module);
+    return Row ? [<Row key={field.name} field={field} value={value} />] : [];
+  });
+  return marks.length > 0 ? <span className="row-values">{marks}</span> : null;
+}
+
+function ItemRow({ item, selected, x, collectionOf }: ItemRowProps) {
   const lease = useActiveLease(item.lease);
+  const collection = collectionOf(item.collection);
   const kind = nodeKind({
     turn: item.turn,
     state: item.state,
     leased: lease !== null,
-    incomplete: incompleteOf(item.collection) === item.state,
+    incomplete: collection?.incomplete === item.state,
   });
   return (
     <li>
@@ -56,6 +68,7 @@ function ItemRow({ item, selected, x, incompleteOf }: ItemRowProps) {
             {lease ? <span className="row-lease">{leaseLabel(lease)}</span> : null}
           </span>
         </span>
+        <RowValues item={item} collection={collection} />
       </a>
     </li>
   );
@@ -70,7 +83,7 @@ function blocksOf(sections: Section[]): Block[] {
   ]);
 }
 
-export function ItemList({ sections, selectedId, incompleteOf }: ItemListProps) {
+export function ItemList({ sections, selectedId, collectionOf }: ItemListProps) {
   const layout = layoutLanes(blocksOf(sections));
   const sizes = {
     '--row-h': `${ROW_H}px`,
@@ -111,7 +124,7 @@ export function ItemList({ sections, selectedId, incompleteOf }: ItemListProps) 
                     item={item}
                     x={laneX(item.turn)}
                     selected={item.id === selectedId}
-                    incompleteOf={incompleteOf}
+                    collectionOf={collectionOf}
                   />
                 ))}
               </ul>
