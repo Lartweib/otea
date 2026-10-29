@@ -24,6 +24,7 @@ export const EXIT_CODES: Readonly<Record<'ok' | FailureCode, number>> = {
   forbidden: 7,
   reason_required: 2,
   quote_required: 2,
+  file_not_found: 3,
   invalid_fields: 8,
   missing_fields: 8,
   invalid_preset: 9,
@@ -32,6 +33,7 @@ export const EXIT_CODES: Readonly<Record<'ok' | FailureCode, number>> = {
   lease_held: 12,
   not_lease_holder: 12,
   timeout: 13,
+  evidence_too_large: 14,
   // 128 + SIGINT, as shells report a command stopped by Ctrl+C.
   interrupted: 130,
 };

@@ -23,15 +23,17 @@ describe('migrate', () => {
   it('creates the schema and records its version', () => {
     migrate(db);
 
-    expect(tables(db)).toEqual(expect.arrayContaining(['collections', 'items', 'events']));
-    expect(userVersion(db)).toBe(3);
+    expect(tables(db)).toEqual(
+      expect.arrayContaining(['collections', 'items', 'events', 'evidence']),
+    );
+    expect(userVersion(db)).toBe(4);
   });
 
   it('is idempotent', () => {
     migrate(db);
     migrate(db);
 
-    expect(userVersion(db)).toBe(3);
+    expect(userVersion(db)).toBe(4);
   });
 
   describe('from version 1', () => {
@@ -95,6 +97,39 @@ describe('migrate', () => {
       expect(db.prepare('SELECT id, lease_holder, lease_expires_at FROM items').all()).toEqual([
         { id: 'TASKS-1', lease_holder: null, lease_expires_at: null },
       ]);
+    });
+  });
+
+  describe('from version 3', () => {
+    const ITEM = `INSERT INTO items (id, collection, seq, title, fields, preset_version, state,
+      created_at, updated_at, created_by_kind, created_by_name)
+      VALUES ('TASKS-1', 'tasks', 1, 'A', '{}', 1, 'todo', 't', 't', 'human', 'ana')`;
+    const evidenceOf = (item: string) => `INSERT INTO evidence (item_id, role, kind, filename,
+      content_type, size, sha256, caption, created_at, actor_kind, actor_name, channel)
+      VALUES ('${item}', 'single', 'log', 'a.log', 'text/plain', 1, 'abc', NULL, 't', 'agent',
+        'bot', 'cli')`;
+
+    beforeEach(() => {
+      migrate(db, 3);
+      db.exec(`
+        INSERT INTO collections (name, prefix, preset, preset_version, next_seq)
+        VALUES ('tasks', 'TASKS', 'tasks', 1, 2);
+        ${ITEM};
+      `);
+      migrate(db);
+    });
+
+    it('adds an empty evidence table and keeps the items', () => {
+      expect(db.prepare('SELECT count(*) AS n FROM evidence').get()?.n).toBe(0);
+      expect(db.prepare('SELECT id FROM items').all()).toEqual([{ id: 'TASKS-1' }]);
+    });
+
+    it('keeps evidence append-only, on existing items', () => {
+      db.exec(evidenceOf('TASKS-1'));
+
+      expect(() => db.exec("UPDATE evidence SET caption = 'x'")).toThrow(/append-only/);
+      expect(() => db.exec('DELETE FROM evidence')).toThrow(/append-only/);
+      expect(() => db.exec(evidenceOf('TASKS-9'))).toThrow(/FOREIGN KEY/);
     });
   });
 
