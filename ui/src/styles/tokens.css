@@ -1,0 +1,87 @@
+/* Lanes tokens. Light is never white, dark is never black; neutrals carry a trace of the accent hue. */
+
+:root {
+  color-scheme: light;
+  --you: #3b5bff;
+  --bg: oklch(0.95 0.006 265);
+  --sf: oklch(0.973 0.004 265);
+  --well: oklch(0.925 0.008 265);
+  --hov: oklch(0.945 0.007 265);
+  --sel: oklch(0.932 0.013 265);
+  --ink: oklch(0.24 0.02 265);
+  --mut: oklch(0.46 0.016 265);
+  --lane: oklch(0.8 0.012 265);
+  --line: oklch(0.89 0.007 265);
+  --chip: oklch(0.915 0.008 265);
+  --off: oklch(0.86 0.008 265);
+  --closed: oklch(0.58 0.012 265);
+  --pat: oklch(0.87 0.01 265);
+  --warn: oklch(0.6 0.19 28);
+  --plus: oklch(0.52 0.12 155);
+  --minus: oklch(0.55 0.15 25);
+  --shadow: oklch(0.24 0.02 265 / 0.16);
+  --on-you: oklch(0.99 0.005 265);
+  /* Text set in your color: deepened on light, lifted on dark, to stay above 4.5:1 on every surface. */
+  --you-ink: color-mix(in oklch, var(--you) 78%, oklch(0.24 0.02 265));
+
+  --font-human: "Schibsted Grotesk", system-ui, sans-serif;
+  --font-machine: "Spline Sans Mono", ui-monospace, monospace;
+
+  /* Motion: lift, carry, set down. */
+  --travel: 680ms;
+  --arrive: 520ms;
+  --micro: 160ms;
+  --e-move: cubic-bezier(0.65, 0, 0.35, 1);
+  --e-out: cubic-bezier(0.22, 1, 0.36, 1);
+
+  --r-s: 4px;
+  --r-m: 8px;
+  --r-l: 12px;
+  --row-h: 56px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: oklch(0.215 0.014 265);
+    --sf: oklch(0.243 0.015 265);
+    --well: oklch(0.195 0.013 265);
+    --hov: oklch(0.262 0.016 265);
+    --sel: oklch(0.285 0.022 265);
+    --ink: oklch(0.93 0.008 265);
+    --mut: oklch(0.74 0.014 265);
+    --lane: oklch(0.42 0.018 265);
+    --line: oklch(0.31 0.015 265);
+    --chip: oklch(0.31 0.016 265);
+    --off: oklch(0.36 0.014 265);
+    --closed: oklch(0.62 0.012 265);
+    --pat: oklch(0.3 0.015 265);
+    --warn: oklch(0.72 0.16 30);
+    --plus: oklch(0.76 0.12 155);
+    --minus: oklch(0.74 0.13 25);
+    --shadow: oklch(0.08 0.01 265 / 0.55);
+    --you-ink: color-mix(in oklch, var(--you) 55%, oklch(0.97 0.01 265));
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: oklch(0.215 0.014 265);
+  --sf: oklch(0.243 0.015 265);
+  --well: oklch(0.195 0.013 265);
+  --hov: oklch(0.262 0.016 265);
+  --sel: oklch(0.285 0.022 265);
+  --ink: oklch(0.93 0.008 265);
+  --mut: oklch(0.74 0.014 265);
+  --lane: oklch(0.42 0.018 265);
+  --line: oklch(0.31 0.015 265);
+  --chip: oklch(0.31 0.016 265);
+  --off: oklch(0.36 0.014 265);
+  --closed: oklch(0.62 0.012 265);
+  --pat: oklch(0.3 0.015 265);
+  --warn: oklch(0.72 0.16 30);
+  --plus: oklch(0.76 0.12 155);
+  --minus: oklch(0.74 0.13 25);
+  --shadow: oklch(0.08 0.01 265 / 0.55);
+  --you-ink: color-mix(in oklch, var(--you) 55%, oklch(0.97 0.01 265));
+}
