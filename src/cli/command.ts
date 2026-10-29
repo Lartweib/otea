@@ -1,3 +1,4 @@
+import { OteaError } from '../core/errors.ts';
 import type { Actor } from '../core/item.ts';
 import type { FailureCode } from './exit-codes.ts';
 import type { Opener } from './opener.ts';
@@ -48,6 +49,14 @@ export class CommandFailure extends Error {
     this.name = 'CommandFailure';
     this.failure = failure;
   }
+}
+
+// The code a failed command reports: the exit code it maps to, and the one --json prints.
+export function failureCode(error: unknown): FailureCode {
+  if (error instanceof UsageError) return 'usage';
+  if (error instanceof CommandFailure) return error.failure;
+  if (error instanceof OteaError) return error.code;
+  return 'unexpected';
 }
 
 function optionUsage(name: string, spec: OptionSpec): string {
