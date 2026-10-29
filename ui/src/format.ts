@@ -37,6 +37,11 @@ export function describeEvent({ type, data }: ItemEvent): string {
       ? `Lease of ${String(data.holder)} released on handoff`
       : `Released by ${String(data.holder)}`;
   }
+  if (type === 'evidence_added') {
+    const role = data.role === 'single' ? '' : ` (${String(data.role)})`;
+    const caption = typeof data.caption === 'string' ? `: ${data.caption}` : '';
+    return `Attached ${String(data.filename)}${role}${caption}`;
+  }
   return type;
 }
 

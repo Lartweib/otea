@@ -89,6 +89,20 @@ describe('format', () => {
       event('released', { holder: 'claude', cause: 'handoff' }),
       'Lease of claude released on handoff',
     ],
+    [
+      event('evidence_added', { evidenceId: 1, role: 'before', kind: 'image', filename: 'a.png' }),
+      'Attached a.png (before)',
+    ],
+    [
+      event('evidence_added', {
+        evidenceId: 2,
+        role: 'single',
+        kind: 'log',
+        filename: 'test.log',
+        caption: 'All green',
+      }),
+      'Attached test.log: All green',
+    ],
     [event('commented', { text: 'hi' }), 'commented'],
   ])('describes %j', (input, expected) => {
     expect(describeEvent(input)).toBe(expected);

@@ -18,6 +18,11 @@ export async function fetchItem(id: string, signal: AbortSignal): Promise<ItemVi
   return response.status === 404 ? null : response.json();
 }
 
+// Served only to a signed-in browser, as a download unless it is an image, a video or plain text.
+export function evidenceFileUrl(id: number): string {
+  return `/api/evidence/${id}/file`;
+}
+
 export async function fetchSession(signal: AbortSignal): Promise<Session> {
   return (await get('/api/session', signal)).json();
 }

@@ -35,11 +35,32 @@ export type Authority = 'agent' | 'human' | 'human-ui';
 // turn: whose turn the item is on once the move lands.
 export type Move = { to: string; by: Authority; reasonRequired: boolean; turn: Turn };
 
+export type EvidenceRole = 'before' | 'after' | 'single';
+
+export type EvidenceKind = 'image' | 'video' | 'diff' | 'log' | 'file';
+
+// A file an agent attached as proof. Before/after carry no pair id: the latest of each pair up.
+export type Evidence = {
+  id: number;
+  itemId: string;
+  role: EvidenceRole;
+  kind: EvidenceKind;
+  filename: string;
+  contentType: string;
+  size: number;
+  sha256: string;
+  caption: string | null;
+  createdAt: string;
+  actor: Actor;
+  channel: string;
+};
+
 // relayable: the human decisions an agent may relay from the current state.
 export type ItemView = ItemWithEvents & {
   transitions: Move[];
   relayable: Move[];
   missing: string[];
+  evidence: Evidence[];
 };
 
 export type Session = { canWrite: boolean };
