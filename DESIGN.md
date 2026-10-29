@@ -85,7 +85,7 @@ The items view is the **Split** composition: three columns in one grid (`.worksp
 | list | list head (collection name, `j k to move · f to expand`), then the lanes list |
 | detail | the selected item, the intake form, or a hint |
 
-The rail keeps its grid track even when it is hidden (below 64rem it is 0 wide), so the list and detail never change tracks and the columns can animate. Below 48rem the panes stack and the rail is not shown (the phone layout comes later). Routes are unchanged: `#<id>` selects an item, `#/modules` opens the catalog.
+The rail keeps its grid track even when it is hidden (below 64rem it is 0 wide), so the list and detail never change tracks and the columns can animate. Below 48rem the workspace is the phone layout (see Phone). Routes: `#<id>` selects an item, `#/modules` opens the catalog, `#/triage` opens swipe triage.
 
 The detail has two parts: the **primary** column (head, moves, missing fields, field values) and the **side** (collection, creator, lease, history). Stacked by default.
 
@@ -182,6 +182,30 @@ Interrupted mid-flight, a row starts again from where it is on screen. Decoratio
 
 Nothing blinks; only an agent at work keeps moving. Every animation has a `prefers-reduced-motion` fallback: transitions collapse to 1ms, the orbit stands still (the arc stays visible), focus mode switches at once, and a turn change does not travel: what changed crossfades in place (200ms) and the rest is already where it belongs.
 
+## Phone
+
+Below 48rem the workspace is one column (`ui/src/styles/phone.css`), the phone take on the **Unfold** composition.
+
+- **Topbar** keeps brand, connection dot, Modules, theme and New item as 44px icon buttons; their words stay for screen readers (the connection label too).
+- **Collections** become a row of 44px pills that scrolls sideways; the chosen one is filled with `--ink`.
+- **Unfold**: tapping a row opens its detail in place, under the row and beside the lanes, which keep running through it (an unfolded row's block grows by the detail's height, and its node stays at the head: `node` in `layoutLanes`). There is no detail pane and no "select an item" card; the row is the header, so the detail drops its title. The rows below make room as the detail grows over `--arrive` (the box follows its content as it loads), and the row is scrolled to the top. Tapping the row again, or Back, folds it (the hash goes back to the list); choosing another row moves the detail there at once. The moves sit in a bar sticky to the bottom of the screen while the detail is on it, the one primary among them. A move made there folds the item and the row carries itself home (the turn-change motion). A detail belongs to the row on the turn it had when it opened (`ui/src/unfold.ts`, tested): if the row changes hands it moves to another section, and the detail is dropped rather than reopened there; a tap opens it again.
+- **Intake** opens above the list.
+
+### Swipe triage
+
+`#/triage`, entered from a quiet **Triage** control at the end of the *Waiting for you* heading (only when something waits and the browser can act). It works on desktop too (one centred column), with the mouse.
+
+One card per item on your turn, in list order, the next ones stacked behind (at most two). The rule lives in `ui/src/triage.ts` (tested):
+
+- **Right** is the primary move: the same one the primary button gets (`moveVariants`).
+- **Left** sends the item back: the first other move whose target state is an agent's turn (each move the API returns says the turn it hands the item to). If that move requires a reason, the swipe opens the reason form on the card and moves nothing; Confirm makes the move. A gesture never performs a move that requires a reason.
+- A direction with no move snaps back. Buttons below the card do the same as the swipes (back, Skip, primary), for accessibility and for the mouse.
+- A drag starts after 10px of mostly sideways motion (vertical motion scrolls the page: `touch-action: pan-y`). It commits past a third of the card's width (kept between 80 and 160px), or on a flick of at least 0.5px/ms over 40px in the same direction; otherwise the card settles back over `--arrive`. While it is dragged, the card tilts with the pull and a stamp names the move on the side it leans from; the cards behind rise with the pull.
+- A committed card leaves to its side over `--arrive` while the move is posted; if the move fails it comes back with the error. The next card arrives from just behind.
+- The end of the stack lists what was decided and skipped, with a way back to the list and to see the skipped again. Back, or **List**, leaves triage.
+
+Reduced motion: the unfold is instant, the card does not travel while dragged, and cards crossfade.
+
 ## Bans
 
 Side-stripe borders, gradient text, glassmorphism, hero-metric templates (big number, small label, stats), identical card grids, uppercase tracked eyebrows over every section, numbered section markers, cream or sand backgrounds, emoji icons.
@@ -190,4 +214,4 @@ Side-stripe borders, gradient text, glassmorphism, hero-metric templates (big nu
 
 1. **Primitives** in `ui/src/kit/`: small, presentational, no data fetching. Done.
 2. **Field and evidence modules**: the field module registry and its catalog are done (see Field modules). Evidence kinds (gif, mp4, png, diff, log, before/after compare) and loading local modules come next, on the same registry.
-3. **Shells**: the workspace (Split with collections rail, focus mode, keys), the lanes timeline and the turn-change motion are done. Evidence-led review views and the phone layout come next.
+3. **Shells**: the workspace (Split with collections rail, focus mode, keys), the lanes timeline and the turn-change motion are done. The phone layout (Unfold and swipe triage) is done. Evidence-led review views come next.
