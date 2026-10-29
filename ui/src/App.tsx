@@ -47,7 +47,12 @@ function ListPane({ items, sections, selectedId, collection, collectionOf }: Lis
         <h2 className="t-h">{collection ?? 'all items'}</h2>
         <span className="t-cap list-hint">j k to move · f to expand</span>
       </div>
-      <ItemList sections={sections} selectedId={selectedId} collectionOf={collectionOf} />
+      <ItemList
+        sections={sections}
+        selectedId={selectedId}
+        collectionOf={collectionOf}
+        scope={collection ?? ''}
+      />
     </>
   );
 }
