@@ -209,12 +209,15 @@ describe('bug-triage preset', () => {
     expect(relayable()).toEqual(['fixing']);
   });
 
-  it('ships a playbook with the agent loop, the proof and the relay rules', () => {
+  it('ships a playbook with the agent loop, the evidence, the proof and the relay rules', () => {
     const text = playbook();
 
     for (const phrase of [
       'otea wait --turn agent --unclaimed',
       'otea claim',
+      'otea attach <id> <file>',
+      '--role before',
+      '--role after',
       'otea move <id> verify --reason',
       'otea relay',
       'You never approve your own fix',
