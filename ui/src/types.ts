@@ -35,7 +35,12 @@ export type Authority = 'agent' | 'human' | 'human-ui';
 // turn: whose turn the item is on once the move lands.
 export type Move = { to: string; by: Authority; reasonRequired: boolean; turn: Turn };
 
-export type ItemView = ItemWithEvents & { transitions: Move[]; missing: string[] };
+// relayable: the human decisions an agent may relay from the current state.
+export type ItemView = ItemWithEvents & {
+  transitions: Move[];
+  relayable: Move[];
+  missing: string[];
+};
 
 export type Session = { canWrite: boolean };
 
