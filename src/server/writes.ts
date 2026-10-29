@@ -14,10 +14,14 @@ function isJson(contentType: string | undefined): boolean {
   return contentType?.split(';')[0]?.trim().toLowerCase() === 'application/json';
 }
 
-export function assertWritable(c: Context, auth: Session): void {
+export function assertSignedIn(c: Context, auth: Session, purpose = 'act from the UI'): void {
   if (!auth.canWrite(c)) {
-    throw new RejectedRequest(401, 'unauthorized', 'Sign in with "otea open" to act from the UI');
+    throw new RejectedRequest(401, 'unauthorized', `Sign in with "otea open" to ${purpose}`);
   }
+}
+
+export function assertWritable(c: Context, auth: Session): void {
+  assertSignedIn(c, auth);
   const origin = c.req.header('origin');
   if (origin !== `http://${c.req.header('host')}`) {
     throw new RejectedRequest(403, 'forbidden_origin', `Origin "${origin ?? ''}" is not allowed`);

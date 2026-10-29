@@ -6,11 +6,18 @@ import type { Project } from '../app/project.ts';
 import { TURNS, type Turn } from '../core/workflow.ts';
 import { type ChangeFeed, createChangeFeed } from './changes.ts';
 import { errorBody, ForbiddenHost, InvalidQuery, toErrorResponse } from './errors.ts';
+import { serveEvidence } from './evidence.ts';
 import { DEFAULT_PORT, isAllowedHost } from './hosts.ts';
 import { mountAuth, type Session, session } from './session.ts';
 import { type LiveStreams, liveStreams } from './stream.ts';
 import { BUILT_UI_DIR, mountUi } from './ui.ts';
-import { assertWritable, createRequest, HUMAN_IN_UI, moveRequest } from './writes.ts';
+import {
+  assertSignedIn,
+  assertWritable,
+  createRequest,
+  HUMAN_IN_UI,
+  moveRequest,
+} from './writes.ts';
 
 export type OteaServer = { app: Hono; listeningOn(port: number): void; close(): void };
 
@@ -52,6 +59,10 @@ function api(project: Project, feed: ChangeFeed, streams: LiveStreams, auth: Ses
       const item = moveItem(project, { id: c.req.param('id'), ...request, ...HUMAN_IN_UI });
       feed.notify();
       return c.json(item);
+    })
+    .get('/evidence/:id/file', (c) => {
+      assertSignedIn(c, auth, 'open evidence files');
+      return serveEvidence(c, project, c.req.param('id'));
     })
     .get('/stream', (c) => streams.handle(c))
     .all('*', (c) => c.json(errorBody('not_found', `No route ${c.req.path}`), 404));
