@@ -1,7 +1,6 @@
 import type { DatabaseSync } from 'node:sqlite';
 import { OteaError } from '../core/errors.ts';
 import { prefixFor } from '../core/item.ts';
-import type { FieldSpec } from '../core/preset.ts';
 import { transaction } from '../store/database.ts';
 import {
   type CollectionRecord,
@@ -11,6 +10,7 @@ import {
   listCollections,
 } from '../store/queries.ts';
 import type { Context } from './context.ts';
+import { type FieldView, fieldViews } from './preset-views.ts';
 import { type LoadedPreset, requirePreset } from './presets.ts';
 
 export type Collection = CollectionRecord;
@@ -50,8 +50,6 @@ export function presetOf(ctx: Context, collection: Collection): LoadedPreset {
   return requirePreset(ctx.presets, collection.preset);
 }
 
-export type FieldView = FieldSpec & { name: string };
-
 export type CollectionView = {
   name: string;
   prefix: string;
@@ -69,7 +67,7 @@ export function listCollectionViews(ctx: Context): CollectionView[] {
       prefix: collection.prefix,
       preset: collection.preset,
       initial: workflow.initial,
-      fields: Object.entries(fields).map(([name, spec]) => ({ name, ...spec })),
+      fields: fieldViews(fields),
     };
     if (workflow.incomplete !== undefined) view.incomplete = workflow.incomplete;
     return view;
