@@ -10,6 +10,7 @@ import {
 } from '../app/items.ts';
 import { claimItem, heartbeatItem, releaseItem } from '../app/leases.ts';
 import { initProject, openProject, oteaDir, type Project } from '../app/project.ts';
+import { relayDecision } from '../app/relay.ts';
 import { validateProject } from '../app/validate.ts';
 import type { FieldValues } from '../core/fields.ts';
 import { parseDuration } from '../core/lease.ts';
@@ -144,6 +145,24 @@ const move: Command = {
     const reason = option('reason');
     const input = { id, to, actor, channel: 'cli' as const, ...(reason ? { reason } : {}) };
     const item = withProject(cwd, (project) => moveItem(project, input));
+    return { data: item, text: formatItem(item) };
+  },
+};
+
+// Kept apart from every other write so a harness can ask the human to confirm each relay.
+const relay: Command = {
+  name: 'relay',
+  summary:
+    'Record a decision the human made in conversation: move the item as the human, via you (human transitions only; human-ui ones stay in the web UI)',
+  args: ['id', 'state'],
+  options: { quote: { required: true, placeholder: 'what the human said' }, reason: {} },
+  execute: (input) => {
+    const [id = '', to = ''] = input.args;
+    const quote = input.required('quote');
+    const reason = input.option('reason');
+    const via = input.actor.name;
+    const relayed = { id, to, via, quote, ...(reason ? { reason } : {}) };
+    const item = withProject(input.cwd, (project) => relayDecision(project, relayed));
     return { data: item, text: formatItem(item) };
   },
 };
@@ -331,6 +350,7 @@ export const COMMANDS: readonly Command[] = [
   release,
   update,
   move,
+  relay,
   validate,
   serve,
   open,
