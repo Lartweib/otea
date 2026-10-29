@@ -51,6 +51,17 @@ export function availableMoves(workflow: Workflow, from: string, performer: Perf
   return [...moves.values()];
 }
 
+// The moves a relayed decision may take from a state: the targets of its `human` transitions, as
+// authorizeRelay allows them.
+export function relayableMoves(workflow: Workflow, from: string): Move[] {
+  const moves = new Map<string, Move>();
+  for (const { to, by, reasonRequired } of transitionsFrom(workflow, from)) {
+    if (moves.has(to) || by !== 'human') continue;
+    moves.set(to, { to, by, reasonRequired, turn: turnOf(workflow, to) });
+  }
+  return [...moves.values()];
+}
+
 function requireReason(transition: Transition, reason: string | undefined): void {
   if (transition.reasonRequired && !reason?.trim()) {
     const { from, to } = transition;

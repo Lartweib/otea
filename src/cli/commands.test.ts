@@ -321,6 +321,15 @@ describe('commands', () => {
           ]);
         });
 
+        it('lists the human decisions the agent may relay', async () => {
+          expect((await otea('show', 'BUGS-1')).out).toContain(
+            'Agent can move to: nothing\nAgent can relay to: discarded (reason required)',
+          );
+          expect((await json('show', 'BUGS-1')).relayable).toEqual([
+            { to: 'discarded', by: 'human', reasonRequired: true, turn: 'none' },
+          ]);
+        });
+
         it('fails with not_found for an unknown id', async () => {
           expect((await otea('show', 'TASKS-9')).code).toBe(3);
         });

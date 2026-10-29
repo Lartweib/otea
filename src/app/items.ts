@@ -5,6 +5,7 @@ import {
   type Channel,
   type Move,
   type Performer,
+  relayableMoves,
 } from '../core/authority.ts';
 import { OteaError } from '../core/errors.ts';
 import {
@@ -142,7 +143,13 @@ export function getItem(ctx: Context, id: string, now = systemClock): ItemWithEv
   return { ...present(item, workflow, now()), events: selectEvents(ctx.db, id) };
 }
 
-export type ItemView = ItemWithEvents & { transitions: Move[]; missing: string[] };
+// `transitions` are the moves the performer may make, `relayable` the human decisions an agent
+// may relay.
+export type ItemView = ItemWithEvents & {
+  transitions: Move[];
+  relayable: Move[];
+  missing: string[];
+};
 
 export function showItem(
   ctx: Context,
@@ -155,6 +162,7 @@ export function showItem(
   return {
     ...item,
     transitions: availableMoves(preset.workflow, item.state, performer),
+    relayable: relayableMoves(preset.workflow, item.state),
     missing: missingToComplete(preset, item.fields),
   };
 }
