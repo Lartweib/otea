@@ -27,6 +27,7 @@ describe('relayDecision', () => {
         id: 'TASKS-1',
         to: 'discarded',
         via: 'claude',
+        channel: 'cli',
         quote: 'Drop it, we no longer need it',
         reason: 'No longer needed',
         ...input,
@@ -65,6 +66,12 @@ describe('relayDecision', () => {
         quote: 'Drop it, we no longer need it',
       },
     });
+  });
+
+  it('records the channel the relaying agent used', () => {
+    relay({ channel: 'mcp' });
+
+    expect(item().events.at(-1)?.data.channel).toBe('mcp');
   });
 
   it('trims the quote it records', () => {

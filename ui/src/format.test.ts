@@ -30,6 +30,7 @@ describe('format', () => {
 
     expect(eventActorLabel(ui as ItemEvent)).toBe('human (ui)');
     expect(eventActorLabel(event('transitioned', { channel: 'cli' }))).toBe('claude (agent)');
+    expect(eventActorLabel(event('transitioned', { channel: 'mcp' }))).toBe('claude (agent)');
     expect(eventActorLabel(event('created', { state: 'todo' }))).toBe('claude (agent)');
   });
 

@@ -13,6 +13,8 @@ const agentCli: Performer = { actor: { kind: 'agent', name: 'claude' }, channel:
 const humanCli: Performer = { actor: { kind: 'human', name: 'ana' }, channel: 'cli' };
 const humanUi: Performer = { actor: { kind: 'human', name: 'ana' }, channel: 'ui' };
 const agentUi: Performer = { actor: { kind: 'agent', name: 'claude' }, channel: 'ui' };
+const agentMcp: Performer = { actor: { kind: 'agent', name: 'claude' }, channel: 'mcp' };
+const humanMcp: Performer = { actor: { kind: 'human', name: 'ana' }, channel: 'mcp' };
 
 describe('mayPerform', () => {
   it.each([
@@ -26,6 +28,11 @@ describe('mayPerform', () => {
     ['human-ui', agentUi, false],
     ['human-ui', humanCli, false],
     ['human-ui', humanUi, true],
+    ['agent', agentMcp, true],
+    ['human', agentMcp, false],
+    ['human', humanMcp, false],
+    ['human-ui', agentMcp, false],
+    ['human-ui', humanMcp, false],
   ] as const)('%s authority for %j is %s', (by, performer, expected) => {
     expect(mayPerform(by, performer)).toBe(expected);
   });

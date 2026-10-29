@@ -1,3 +1,4 @@
+import type { AgentChannel } from '../core/authority.ts';
 import { OteaError } from '../core/errors.ts';
 import type { Actor } from '../core/item.ts';
 import type { FailureCode } from './exit-codes.ts';
@@ -14,6 +15,8 @@ export type OptionSpec = {
 export type Input = {
   cwd: string;
   actor: Actor;
+  // How the agent reached the command, recorded on its writes: the CLI itself or the MCP server.
+  channel: AgentChannel;
   signal: AbortSignal;
   openUrl: Opener;
   warn(message: string): void;

@@ -79,6 +79,7 @@ function inputFor(command: Command, values: Values, args: string[], io: Io, json
   return {
     cwd: io.cwd,
     actor: actorFrom(values, io.env),
+    channel: 'cli',
     signal: io.signal,
     openUrl: io.openUrl,
     warn: (message) =>

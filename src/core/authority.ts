@@ -10,12 +10,16 @@ import {
   type Workflow,
 } from './workflow.ts';
 
-export type Channel = 'cli' | 'ui';
+export type Channel = 'cli' | 'mcp' | 'ui';
+
+// The channels agents act through: the CLI and the MCP server, which serves the same commands.
+export type AgentChannel = Exclude<Channel, 'ui'>;
 
 export type Performer = { actor: Actor; channel: Channel };
 
 const CHANNEL_REACH: Readonly<Record<Channel, readonly Authority[]>> = {
   cli: ['agent'],
+  mcp: ['agent'],
   ui: ['agent', 'human', 'human-ui'],
 };
 
