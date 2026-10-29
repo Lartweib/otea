@@ -4,7 +4,9 @@ import {
   type Authority,
   assertTransition,
   type Transition,
+  type Turn,
   transitionsFrom,
+  turnOf,
   type Workflow,
 } from './workflow.ts';
 
@@ -37,12 +39,14 @@ function forbidden(from: string, to: string, transitions: Transition[], performe
   );
 }
 
-export type Move = { to: string; by: Authority; reasonRequired: boolean };
+// A move the performer may make, and whose turn the item is on once it lands.
+export type Move = { to: string; by: Authority; reasonRequired: boolean; turn: Turn };
 
 export function availableMoves(workflow: Workflow, from: string, performer: Performer): Move[] {
   const moves = new Map<string, Move>();
   for (const { to, by, reasonRequired } of transitionsFrom(workflow, from)) {
-    if (!moves.has(to) && mayPerform(by, performer)) moves.set(to, { to, by, reasonRequired });
+    if (moves.has(to) || !mayPerform(by, performer)) continue;
+    moves.set(to, { to, by, reasonRequired, turn: turnOf(workflow, to) });
   }
   return [...moves.values()];
 }

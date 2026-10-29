@@ -259,7 +259,7 @@ describe('items', () => {
 
       expect(shown).toMatchObject({ id: 'TASKS-1', events: [{ type: 'created' }] });
       expect(shown.transitions).toEqual([
-        { to: 'in_progress', by: 'agent', reasonRequired: false },
+        { to: 'in_progress', by: 'agent', reasonRequired: false, turn: 'agent' },
       ]);
       expect(shown.missing).toEqual([]);
     });

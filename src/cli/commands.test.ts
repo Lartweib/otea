@@ -316,8 +316,8 @@ describe('commands', () => {
             'Agent can move to: todo, discarded (reason required)',
           );
           expect((await json('show', 'TASKS-2')).transitions).toEqual([
-            { to: 'todo', by: 'agent', reasonRequired: false },
-            { to: 'discarded', by: 'agent', reasonRequired: true },
+            { to: 'todo', by: 'agent', reasonRequired: false, turn: 'agent' },
+            { to: 'discarded', by: 'agent', reasonRequired: true, turn: 'none' },
           ]);
         });
 

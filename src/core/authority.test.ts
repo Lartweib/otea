@@ -27,12 +27,20 @@ describe('mayPerform', () => {
 describe('availableMoves', () => {
   it('lists the moves the performer may make from a state, once per target', () => {
     expect(availableMoves(tasks, 'incomplete', agentCli)).toEqual([
-      { to: 'todo', by: 'agent', reasonRequired: false },
-      { to: 'discarded', by: 'agent', reasonRequired: true },
+      { to: 'todo', by: 'agent', reasonRequired: false, turn: 'agent' },
+      { to: 'discarded', by: 'agent', reasonRequired: true, turn: 'none' },
     ]);
     expect(availableMoves(tasks, 'incomplete', humanUi).map(({ to, by }) => [to, by])).toEqual([
       ['todo', 'agent'],
       ['discarded', 'human'],
+    ]);
+  });
+
+  it('says whose turn each move hands the item to', () => {
+    expect(availableMoves(tasks, 'review', humanUi).map(({ to, turn }) => [to, turn])).toEqual([
+      ['done', 'none'],
+      ['todo', 'agent'],
+      ['discarded', 'none'],
     ]);
   });
 
