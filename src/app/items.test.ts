@@ -273,6 +273,14 @@ describe('items', () => {
       expect(shown.missing).toEqual([]);
     });
 
+    it('adds the human decisions an agent may relay from the current state', () => {
+      createItem(ctx, task('First'));
+
+      expect(showItem(ctx, 'TASKS-1', { actor: bot, channel: 'cli' }).relayable).toEqual([
+        { to: 'discarded', by: 'human', reasonRequired: true, turn: 'none' },
+      ]);
+    });
+
     it('lists the fields an incomplete item still needs', () => {
       createItem(ctx, { collection: 'tasks', title: 'Vague', actor: ana });
 

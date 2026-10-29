@@ -5,6 +5,7 @@ import {
   availableMoves,
   mayPerform,
   type Performer,
+  relayableMoves,
 } from './authority.ts';
 import { tasks } from './testing.ts';
 
@@ -52,6 +53,19 @@ describe('availableMoves', () => {
 
   it('offers an agent nothing while the item waits for a human', () => {
     expect(availableMoves(tasks, 'review', agentCli)).toEqual([]);
+  });
+});
+
+describe('relayableMoves', () => {
+  it('lists the human moves a relayed decision may take from a state, once per target', () => {
+    expect(relayableMoves(tasks, 'review')).toEqual([
+      { to: 'discarded', by: 'human', reasonRequired: true, turn: 'none' },
+    ]);
+    expect(relayableMoves(tasks, 'incomplete').map(({ to }) => to)).toEqual(['discarded']);
+  });
+
+  it('offers nothing where every move belongs to the agent or the web UI', () => {
+    expect(relayableMoves(tasks, 'done')).toEqual([]);
   });
 });
 

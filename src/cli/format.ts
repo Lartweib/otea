@@ -112,11 +112,11 @@ export function formatEvent(event: Event): string {
   return [String(event.id), event.itemId, ...eventRow(event)].join('  ');
 }
 
-function movesLine({ transitions }: ItemView): string {
-  const moves = transitions.map(({ to, reasonRequired }) =>
+function movesLine(label: string, moves: ItemView['transitions']): string {
+  const targets = moves.map(({ to, reasonRequired }) =>
     reasonRequired ? `${to} (reason required)` : to,
   );
-  return `Agent can move to: ${moves.length > 0 ? moves.join(', ') : 'nothing'}`;
+  return `Agent can ${label} to: ${targets.length > 0 ? targets.join(', ') : 'nothing'}`;
 }
 
 function createdLine({ createdBy, createdAt, events }: ItemView): string {
@@ -136,7 +136,8 @@ export function formatItemWithEvents(item: ItemView): string {
     ...(item.missing.length > 0 && item.turn !== 'none'
       ? [`Missing to complete: ${item.missing.join(', ')}`]
       : []),
-    movesLine(item),
+    movesLine('move', item.transitions),
+    movesLine('relay', item.relayable),
     '',
     'Events:',
     indent(columns(item.events.map(eventRow))),
