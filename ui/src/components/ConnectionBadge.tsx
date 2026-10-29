@@ -11,7 +11,7 @@ export function ConnectionBadge({ connection }: { connection: Connection }) {
   return (
     <output className="connection" data-connection={connection}>
       <span className="connection-dot" aria-hidden="true" />
-      {LABELS[connection]}
+      <span className="connection-label">{LABELS[connection]}</span>
     </output>
   );
 }

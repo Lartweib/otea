@@ -30,11 +30,22 @@ type ItemDetailProps = {
   collection: CollectionView | undefined;
   // Drawn at the end of the header row (the focus toggle).
   headAction?: ReactNode;
+  // unfold: opened inside its own row on a phone. The row is the header, and the moves wait at the
+  // bottom, in reach of a thumb.
+  layout?: 'pane' | 'unfold';
+  onMoved?: (() => void) | undefined;
 };
 
 // The primary column holds what to decide on; the side holds where the item has been. Side by side in
 // focus mode, stacked otherwise.
-export function ItemDetail({ item, canWrite, collection, headAction }: ItemDetailProps) {
+export function ItemDetail({
+  item,
+  canWrite,
+  collection,
+  headAction,
+  layout = 'pane',
+  onMoved,
+}: ItemDetailProps) {
   const lease = useActiveLease(item.lease);
   const kind = nodeKind({
     turn: item.turn,
@@ -44,37 +55,46 @@ export function ItemDetail({ item, canWrite, collection, headAction }: ItemDetai
   });
   const values = valuesOf(collection?.fields, item.fields);
   const standing = lease ? `${lease.holder} is on it` : TURN_LABEL[item.turn];
+  const unfolded = layout === 'unfold';
+  const actions = canWrite ? (
+    <ItemActions
+      key={`${item.id}:${item.state}`}
+      id={item.id}
+      moves={item.transitions}
+      onMoved={onMoved}
+    />
+  ) : (
+    <p className="t-small">
+      Read-only. Run <code>otea open</code> to act from this browser.
+    </p>
+  );
   return (
-    <article className="detail">
+    <article className="detail" data-layout={layout} aria-label={unfolded ? item.title : undefined}>
       <div className="detail-primary">
-        <header className="detail-head">
-          <div className="detail-head-row">
-            <div className="detail-tags">
-              <Node kind={kind} label={NODE_LABEL[kind]} />
-              <span className="t-id">{item.id}</span>
-              <Pill tone="state" yours={item.turn === 'human'}>
-                {item.state}
-              </Pill>
-              <span className="t-cap">{standing}</span>
+        {unfolded ? null : (
+          <header className="detail-head">
+            <div className="detail-head-row">
+              <div className="detail-tags">
+                <Node kind={kind} label={NODE_LABEL[kind]} />
+                <span className="t-id">{item.id}</span>
+                <Pill tone="state" yours={item.turn === 'human'}>
+                  {item.state}
+                </Pill>
+                <span className="t-cap">{standing}</span>
+              </div>
+              {headAction}
             </div>
-            {headAction}
-          </div>
-          <h1 className="t-display">{item.title}</h1>
-        </header>
-        {canWrite ? (
-          <ItemActions key={`${item.id}:${item.state}`} id={item.id} moves={item.transitions} />
-        ) : (
-          <p className="t-small">
-            Read-only. Run <code>otea open</code> to act from this browser.
-          </p>
+            <h1 className="t-display">{item.title}</h1>
+          </header>
         )}
+        {unfolded ? null : actions}
         {item.missing.length > 0 ? (
           <div className="missing well">
             <span className="t-label">missing to complete</span>
             <span className="t-ui">{item.missing.join(', ')}</span>
           </div>
         ) : null}
-        <hr className="hr" />
+        {unfolded ? null : <hr className="hr" />}
         {values.length > 0 ? (
           <dl className="fields">
             {values.map(({ field, value }) => {
@@ -108,6 +128,7 @@ export function ItemDetail({ item, canWrite, collection, headAction }: ItemDetai
           />
         </section>
       </div>
+      {unfolded ? <div className="unfold-actions">{actions}</div> : null}
     </article>
   );
 }

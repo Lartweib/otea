@@ -1,0 +1,204 @@
+/* Swipe triage: one card per item waiting for you, the rest stacked behind it. */
+
+.layout.triage-layout {
+  display: block;
+  padding-bottom: 0;
+  /* A card on its way out never widens the page. */
+  overflow-x: clip;
+}
+
+.triage {
+  display: grid;
+  gap: 16px;
+  max-width: 30rem;
+  margin: 0 auto;
+}
+
+.triage-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-left: -10px;
+}
+
+.triage-head .btn {
+  height: 44px;
+}
+
+.triage .t-display {
+  font-size: 26px;
+}
+
+/* ---- the stack: the cards behind rise as the top one is pulled away (--p, 0 to 1) ---- */
+.triage-stack {
+  --p: 0;
+  position: relative;
+  isolation: isolate;
+  margin-bottom: 16px;
+}
+
+.triage-stack::before,
+.triage-stack::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: var(--r-l);
+  background: var(--sf);
+  box-shadow: 0 0 0 1px var(--line);
+  opacity: 0;
+}
+
+.triage-stack[data-behind="1"]::before,
+.triage-stack[data-behind="2"]::before {
+  opacity: 1;
+  transform: translateY(calc(8px - 8px * var(--p))) scale(calc(0.96 + 0.04 * var(--p)));
+  transform-origin: bottom center;
+}
+
+.triage-stack[data-behind="2"]::after {
+  z-index: -2;
+  opacity: 0.7;
+  transform: translateY(calc(16px - 8px * var(--p))) scale(calc(0.92 + 0.04 * var(--p)));
+  transform-origin: bottom center;
+}
+
+/* ---- the card ---- */
+.tcard {
+  position: relative;
+  display: grid;
+  align-content: start;
+  gap: 14px;
+  min-width: 0;
+  min-height: 16rem;
+  padding: 20px;
+  border-radius: var(--r-l);
+  box-shadow:
+    0 0 0 1px var(--line),
+    0 18px 32px -24px var(--shadow);
+  overflow-wrap: anywhere;
+  /* Vertical motion still scrolls the page; sideways motion drags the card. */
+  touch-action: pan-y;
+  cursor: grab;
+}
+
+.tcard[data-dragging] {
+  cursor: grabbing;
+  user-select: none;
+}
+
+.tcard-title {
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  line-height: 1.3;
+  text-wrap: balance;
+}
+
+.tcard .fields {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+}
+
+.tcard-field {
+  display: grid;
+  gap: 2px;
+}
+
+.tcard .input {
+  background-color: var(--bg);
+}
+
+/* The move a release would make, stamped on the side the card leans away from. */
+.stamp {
+  position: absolute;
+  top: -13px;
+  z-index: 1;
+  padding: 3px 10px;
+  border: 1.5px solid;
+  border-radius: 999px;
+  background: var(--sf);
+  font: 600 12px var(--font-machine);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.stamp[data-side="right"] {
+  left: 18px;
+  color: var(--you-ink);
+  border-color: var(--you);
+  rotate: -8deg;
+}
+
+.stamp[data-side="left"] {
+  right: 18px;
+  color: var(--ink);
+  rotate: 8deg;
+}
+
+.tcard[data-lean="right"] .stamp[data-side="right"],
+.tcard[data-lean="left"] .stamp[data-side="left"] {
+  opacity: var(--p);
+}
+
+/* ---- the moves, in reach at the bottom of the screen ---- */
+.triage-bar {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  display: grid;
+  gap: 6px;
+  margin: 0 -16px;
+  padding: 16px 16px calc(10px + env(safe-area-inset-bottom));
+  background: linear-gradient(transparent, var(--bg) 22%);
+}
+
+.triage-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.triage-buttons .btn {
+  height: 48px;
+  font-size: 14px;
+}
+
+.triage-buttons .btn:not(.quiet) {
+  flex: 1;
+}
+
+.triage-hint {
+  text-align: center;
+  white-space: pre;
+}
+
+/* ---- the end of the stack ---- */
+.tcard-end {
+  min-height: 0;
+  cursor: auto;
+  touch-action: auto;
+}
+
+.triage-log {
+  display: grid;
+  list-style: none;
+  padding: 0;
+}
+
+.triage-log li {
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 14px;
+}
+
+.triage-log .t-id {
+  min-width: 5.5rem;
+}
+
+.tcard-end .btn {
+  height: 44px;
+}
