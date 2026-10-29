@@ -125,7 +125,7 @@ Each block is measured (ResizeObserver), so an event that wraps keeps its stop c
 
 ## Field modules
 
-Every preset field names a module (`text`, `markdown`, `enum`). The UI draws each value through a registry in [`ui/src/modules/`](ui/src/modules/): one file per module plus `registry.ts`, so no component switches on module names. The names come from the core preset format (`FIELD_MODULES` in `src/core/preset.ts`, imported type-only), and the registry is keyed by them, so a module added to the format fails the UI typecheck until it is drawn.
+Every preset field names a module (`text`, `markdown`, `enum`, `severity`). The UI draws each value through a registry in [`ui/src/modules/`](ui/src/modules/): one file per module plus `registry.ts`, so no component switches on module names. The names come from the core preset format (`FIELD_MODULES` in `src/core/preset.ts`, imported type-only), and the registry is keyed by them, so a module added to the format fails the UI typecheck until it is drawn.
 
 A module (`FieldModuleUi` in `ui/src/modules/contract.ts`) declares:
 
@@ -142,13 +142,14 @@ A module (`FieldModuleUi` in `ui/src/modules/contract.ts`) declares:
 | `text` | nothing (the list draws the title) | plain text | text input |
 | `markdown` | nothing | rendered Markdown | text area |
 | `enum` | a small pill, only off its default | pill | select (a blank choice only without a default) |
+| `severity` | signal bars, at every level (they recede with a closed row) | bars and the level name | select of the four levels, least severe first |
 
 Rules:
 
 - Modules are built only from the kit primitives and tokens.
 - A module name the UI does not know (a newer server, a local module) shows and edits as plain text. It never crashes the UI.
 - Markdown renders with `micromark`, safe by default: raw HTML is shown as text and links with a dangerous protocol lose their href. Never enable its dangerous options. Headings use the human font at 15-17px, lists hang from muted markers, code and code blocks are Spline Sans Mono on `--well`, links are `--you-ink`.
-- A row stays calm: an enum at its default puts nothing in the row.
+- A row stays calm: an enum at its default puts nothing in the row. Severity is the exception, since a list of bugs is read by it: its bars always show, and only `critical` (level 4) is drawn in `--warn`.
 
 ### Catalog
 

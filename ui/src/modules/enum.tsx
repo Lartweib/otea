@@ -16,7 +16,7 @@ function RowValue({ field, value }: ShowProps) {
   );
 }
 
-function Select({ id, field, value, disabled, required, describedBy, onChange }: EditProps) {
+export function Select({ id, field, value, disabled, required, describedBy, onChange }: EditProps) {
   return (
     <select
       id={id}

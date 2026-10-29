@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { assertCanLeave, intake, missingToComplete, revise } from './fields.ts';
-import type { Preset } from './preset.ts';
+import { type Preset, parsePreset } from './preset.ts';
 import { tasks } from './testing.ts';
 
 const preset: Preset = {
@@ -133,5 +133,33 @@ describe('assertCanLeave', () => {
 
   it('ignores moves that do not leave incomplete', () => {
     expect(() => assertCanLeave(preset, 'todo', 'in_progress', {})).not.toThrow();
+  });
+});
+
+describe('severity values', () => {
+  const bugs = parsePreset(`
+preset: bugs
+preset_version: 1
+fields:
+  title: { module: text, required: create }
+  severity: { module: severity }
+workflow:
+  initial: open
+  states: { open: { turn: agent }, closed: { turn: none } }
+  transitions: [{ from: open, to: closed, by: agent }]
+`);
+
+  it('takes a level of the scale', () => {
+    expect(intake(bugs, { title: 'Crash', severity: 'critical' }).fields).toEqual({
+      severity: 'critical',
+    });
+  });
+
+  it('rejects a value outside the scale at intake and on update', () => {
+    const message = 'field "severity" must be one of low, medium, high, critical';
+    const content = { title: 'Crash', fields: {} };
+
+    expect(() => intake(bugs, { title: 'Crash', severity: '4' })).toThrow(message);
+    expect(() => revise(bugs, content, { severity: 'blocker' })).toThrow(message);
   });
 });

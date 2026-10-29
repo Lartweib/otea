@@ -3,7 +3,10 @@ import { z } from 'zod';
 import { OteaError } from './errors.ts';
 import { AUTHORITIES, type Transition, TURNS, type Workflow } from './workflow.ts';
 
-export const FIELD_MODULES = ['text', 'markdown', 'enum'] as const;
+export const FIELD_MODULES = ['text', 'markdown', 'enum', 'severity'] as const;
+
+// The severity module's fixed scale, from least to most severe: levels 1 to 4, in that order.
+export const SEVERITY_SCALE = ['low', 'medium', 'high', 'critical'] as const;
 
 export type FieldModule = (typeof FIELD_MODULES)[number];
 
@@ -80,10 +83,16 @@ function fieldProblems(name: string, field: RawField): string[] {
   if (field.module !== 'enum' && field.values) {
     problems.push(`${at}.values: only the enum module takes values`);
   }
-  if (field.values && field.default !== undefined && !field.values.includes(field.default)) {
-    problems.push(`${at}.default: "${field.default}" is not one of ${field.values.join(', ')}`);
+  const values = valuesOf(field);
+  if (values && field.default !== undefined && !values.includes(field.default)) {
+    problems.push(`${at}.default: "${field.default}" is not one of ${values.join(', ')}`);
   }
   return problems;
+}
+
+// The values a field may take: an enum's own, or the severity scale.
+function valuesOf(field: RawField): string[] | undefined {
+  return field.module === 'severity' ? [...SEVERITY_SCALE] : field.values;
 }
 
 function titleProblems(title: RawField | undefined): string[] {
@@ -168,7 +177,8 @@ function stateProblems(raw: RawPreset, transitions: Transition[]): string[] {
 function toField(field: RawField): FieldSpec {
   const spec: FieldSpec = { module: field.module as FieldModule };
   if (field.required) spec.required = field.required;
-  if (field.values) spec.values = [...field.values];
+  const values = valuesOf(field);
+  if (values) spec.values = [...values];
   if (field.default !== undefined) spec.default = field.default;
   return spec;
 }

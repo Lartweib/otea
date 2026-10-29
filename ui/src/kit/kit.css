@@ -164,6 +164,12 @@
 .sev i.hot {
   background: var(--warn);
 }
+/* A severity value in the detail: its bars, then the level name. */
+.sev-value {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
 
 /* ---- node: one circle, its state in fill, stroke and mark ---- */
 .glyph {
