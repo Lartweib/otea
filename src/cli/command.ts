@@ -16,6 +16,8 @@ export type Input = {
   signal: AbortSignal;
   openUrl: Opener;
   warn(message: string): void;
+  // Prints one record right away: a single JSON line under --json, the text otherwise.
+  print(data: unknown, text: string): void;
   args: string[];
   flag(name: string): boolean;
   option(name: string): string | undefined;
@@ -30,7 +32,8 @@ export type Command = {
   summary: string;
   args: readonly string[];
   options: Readonly<Record<string, OptionSpec>>;
-  execute(input: Input): Output | Promise<Output>;
+  // Resolves with nothing when the command printed its output itself, record by record.
+  execute(input: Input): Output | undefined | Promise<Output | undefined>;
 };
 
 export class UsageError extends Error {

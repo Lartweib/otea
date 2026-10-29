@@ -68,7 +68,7 @@ function validate(command: Command, values: Values, args: string[]): void {
   }
 }
 
-function inputFor(command: Command, values: Values, args: string[], io: Io): Input {
+function inputFor(command: Command, values: Values, args: string[], io: Io, json: boolean): Input {
   const option = (name: string) => {
     const value = values[name];
     return typeof value === 'string' ? value : undefined;
@@ -85,6 +85,7 @@ function inputFor(command: Command, values: Values, args: string[], io: Io): Inp
     warn: (message) =>
       io.stderr.write(`otea: ${message}
 `),
+    print: (data, text) => io.stdout.write(`${json ? JSON.stringify(data) : text}\n`),
     args,
     flag: (name) => values[name] === true,
     option,
@@ -112,7 +113,8 @@ async function dispatch(argv: string[], io: Io, json: boolean): Promise<number> 
   }
   const args = positionals.slice(command.name.split(' ').length);
   validate(command, values, args);
-  const output = await command.execute(inputFor(command, values, args, io));
+  const output = await command.execute(inputFor(command, values, args, io, json));
+  if (output === undefined) return EXIT_CODES.ok;
   io.stdout.write(json ? `${JSON.stringify(output.data, null, 2)}\n` : `${output.text}\n`);
   return EXIT_CODES[output.failure ?? 'ok'];
 }

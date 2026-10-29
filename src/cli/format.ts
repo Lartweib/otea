@@ -108,6 +108,10 @@ function eventRow(event: Event): string[] {
   return [event.at, actorLabel(event.actor), event.type, describeEvent(event)];
 }
 
+export function formatEvent(event: Event): string {
+  return [String(event.id), event.itemId, ...eventRow(event)].join('  ');
+}
+
 function movesLine({ transitions }: ItemView): string {
   const moves = transitions.map(({ to, reasonRequired }) =>
     reasonRequired ? `${to} (reason required)` : to,
