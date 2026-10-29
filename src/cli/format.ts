@@ -75,7 +75,18 @@ function describeChanges(changes: unknown): string {
     .join('; ');
 }
 
-function describeEvent({ type, data }: Event): string {
+// A decision relayed from conversation names the agent that relayed it and what the human said.
+function relayNote({ via, quote }: Event['data']): string {
+  if (typeof via !== 'string') return '';
+  const said = typeof quote === 'string' ? `: ${JSON.stringify(quote)}` : '';
+  return `, relayed by ${via}${said}`;
+}
+
+function describeEvent(event: Event): string {
+  return `${describeAction(event)}${relayNote(event.data)}`;
+}
+
+function describeAction({ type, data }: Event): string {
   if (type === 'created') return String(data.state);
   if (type === 'transitioned') {
     const reason = data.reason === undefined ? '' : ` (${String(data.reason)})`;
