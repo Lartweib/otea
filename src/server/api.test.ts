@@ -189,9 +189,9 @@ describe('api', () => {
 
       expect(item).toMatchObject({
         transitions: [
-          { to: 'done', by: 'human-ui', reasonRequired: false },
-          { to: 'todo', by: 'human-ui', reasonRequired: true },
-          { to: 'discarded', by: 'human', reasonRequired: true },
+          { to: 'done', by: 'human-ui', reasonRequired: false, turn: 'none' },
+          { to: 'todo', by: 'human-ui', reasonRequired: true, turn: 'agent' },
+          { to: 'discarded', by: 'human', reasonRequired: true, turn: 'none' },
         ],
         missing: [],
       });

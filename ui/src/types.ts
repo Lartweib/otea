@@ -32,7 +32,8 @@ export type ItemWithEvents = Item & { events: ItemEvent[] };
 
 export type Authority = 'agent' | 'human' | 'human-ui';
 
-export type Move = { to: string; by: Authority; reasonRequired: boolean };
+// turn: whose turn the item is on once the move lands.
+export type Move = { to: string; by: Authority; reasonRequired: boolean; turn: Turn };
 
 export type ItemView = ItemWithEvents & { transitions: Move[]; missing: string[] };
 
