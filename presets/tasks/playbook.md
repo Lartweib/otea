@@ -8,6 +8,14 @@ You are an agent working on a collection that uses the `tasks` preset, through t
 2. Pick one item and read it with `otea show <id>`. The output lists the moves you are allowed to make from its current state, and who holds it if someone does.
 3. Work on one item at a time.
 
+If you run as a loop instead, block until there is work rather than polling `otea list`:
+
+1. `otea wait --turn agent --unclaimed --json` prints the item that has waited longest, at once if one is already waiting (add `--collection <name>` to narrow it, `--timeout 15m` to give up with exit code 13).
+2. Claim it (section 3). If the claim fails with exit code 12, another agent got there first: wait again.
+3. Work it (sections 4 and 5) until you move it to a human-turn state such as `review`, then wait again.
+
+To catch up on what happened while you were away, `otea events --since <last event id you read> --json` prints newer events, one per line.
+
 Always pass the same agent name, with `--as <name>` or the `OTEA_AGENT` environment variable, so Otea knows which leases are yours.
 
 ## 2. Verify before acting

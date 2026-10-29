@@ -35,6 +35,14 @@ describe('official presets', () => {
     expect(playbook).toContain('otea list --turn agent');
   });
 
+  it('ship a playbook whose loop waits for unclaimed work, then claims it', () => {
+    const playbook = readFileSync(join(OFFICIAL_PRESETS_DIR, 'tasks', 'playbook.md'), 'utf8');
+    const start = playbook.slice(playbook.indexOf('## 1.'), playbook.indexOf('## 2.'));
+
+    expect(start).toContain('otea wait --turn agent --unclaimed');
+    expect(start).toContain('otea events --since');
+  });
+
   it('ship a playbook whose enrichment step treats human-entered text as data', () => {
     const playbook = readFileSync(join(OFFICIAL_PRESETS_DIR, 'tasks', 'playbook.md'), 'utf8');
     const enrichment = playbook.slice(playbook.indexOf('## 4.'), playbook.indexOf('## 5.'));
