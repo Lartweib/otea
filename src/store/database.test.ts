@@ -1,4 +1,6 @@
+import { spawn } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
+import { once } from 'node:events';
 import { rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -26,6 +28,31 @@ describe('openDatabase', () => {
     expect(pragma(db, 'journal_mode')).toBe('wal');
     expect(pragma(db, 'busy_timeout')).toBe(5000);
     expect(pragma(db, 'foreign_keys')).toBe(1);
+  });
+
+  it('waits for another process holding the lock instead of failing while it opens', async () => {
+    const path = join(tmpdir(), `otea-test-${randomUUID()}.db`);
+    const holder = spawn(
+      process.execPath,
+      [
+        '--disable-warning=ExperimentalWarning',
+        '-e',
+        `const db = new (require('node:sqlite').DatabaseSync)(${JSON.stringify(path)});
+         db.exec('BEGIN EXCLUSIVE'); console.log('locked');
+         setTimeout(() => { db.exec('COMMIT'); db.close(); }, 500);`,
+      ],
+      { stdio: ['ignore', 'pipe', 'inherit'] },
+    );
+    await once(holder.stdout, 'data');
+    cleanups.push(() => {
+      for (const suffix of ['', '-wal', '-shm']) rmSync(`${path}${suffix}`, { force: true });
+    });
+
+    const db = openDatabase(path);
+    cleanups.unshift(() => db.close());
+    await once(holder, 'exit');
+
+    expect(pragma(db, 'journal_mode')).toBe('wal');
   });
 
   it('opens an in-memory database', () => {
