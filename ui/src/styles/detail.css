@@ -133,6 +133,64 @@
   overflow-wrap: anywhere;
 }
 
+/* ---- evidence: the files attached as proof ---- */
+.evidence-section {
+  display: grid;
+  gap: 8px;
+}
+
+.evidence {
+  display: grid;
+  gap: 12px;
+  padding: 0;
+  list-style: none;
+}
+
+.evidence-entry {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-width: 0;
+}
+
+.evidence-thumb {
+  flex: none;
+  display: block;
+  width: 112px;
+  height: 80px;
+  overflow: hidden;
+  box-shadow: 0 0 0 1px var(--line);
+}
+
+.evidence-thumb img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.evidence-text {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.evidence-tags {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.evidence-name {
+  font: 400 13px var(--font-machine);
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+a.evidence-name {
+  color: var(--you-ink);
+}
+
 /* ---- timeline: the item's own path between the lanes, newest first ---- */
 .timeline-section {
   display: grid;

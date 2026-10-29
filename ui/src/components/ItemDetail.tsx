@@ -6,6 +6,7 @@ import { moduleFor } from '../modules/registry.ts';
 import { valuesOf } from '../modules/values.ts';
 import { nodeKind } from '../node-kind.ts';
 import type { CollectionView, ItemView, Turn } from '../types.ts';
+import { EvidenceList } from './EvidenceList.tsx';
 import { ItemActions } from './ItemActions.tsx';
 import { Timeline } from './Timeline.tsx';
 
@@ -109,6 +110,14 @@ export function ItemDetail({
         ) : (
           <p className="t-small">No fields.</p>
         )}
+        {item.evidence.length > 0 ? (
+          <section className="evidence-section" aria-labelledby="evidence-title">
+            <h2 className="t-label" id="evidence-title">
+              evidence
+            </h2>
+            <EvidenceList evidence={item.evidence} canWrite={canWrite} />
+          </section>
+        ) : null}
       </div>
       <div className="detail-side">
         <dl className="fields fields-meta">
