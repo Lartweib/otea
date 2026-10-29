@@ -30,6 +30,8 @@
 
 .lanes-body {
   position: relative;
+  /* One stacking context for the whole list, so a row in flight passes over every other section. */
+  isolation: isolate;
 }
 
 .lanes {
@@ -91,6 +93,13 @@
   padding: 0;
 }
 
+/* Rows and headings are transformed while they travel or make room (see motion.ts). */
+.rows > li,
+.section-title,
+.section-empty {
+  position: relative;
+}
+
 .row {
   position: relative;
   display: grid;
@@ -132,7 +141,6 @@
   outline-offset: -2px;
 }
 
-.rows,
 .row-main {
   position: relative;
   z-index: 1;
@@ -152,6 +160,8 @@
 }
 
 .ttl {
+  justify-self: start;
+  max-width: 100%;
   min-width: 0;
   overflow: hidden;
   font-size: 15px;
@@ -159,6 +169,8 @@
   line-height: 1.35;
   white-space: nowrap;
   text-overflow: ellipsis;
+  /* The strike of a discarded title is drawn, so it can be drawn in. */
+  background: linear-gradient(currentColor, currentColor) no-repeat 0 58% / 0% 1.5px;
 }
 
 .row-meta {
@@ -211,8 +223,7 @@
 }
 
 .row[data-kind="discarded"] .ttl {
-  text-decoration: line-through;
-  text-decoration-thickness: 1.5px;
+  background-size: 100% 1.5px;
 }
 
 /* ---- focus mode: rows shed their meta before the list narrows to node and title ---- */
@@ -233,6 +244,113 @@
   }
 }
 
+/* ---- turn change: lift, carry, set down (started from Carry.tsx) ---- */
+.row-node .lift,
+.row-node .halo,
+.row-node .ghost {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.row-node .halo {
+  fill: none;
+  stroke: var(--you);
+  stroke-width: 1.4;
+  opacity: 0;
+}
+
+.row-node .ghost {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 1.4;
+  opacity: 0;
+}
+
+/* The row that moves passes over the rows that make room for it. */
+.rows > li[data-motion] {
+  z-index: 3;
+}
+
+[data-motion~="lift"] .lift {
+  animation: ot-lift var(--travel) both;
+}
+
+[data-motion~="ghost"] .ghost {
+  animation: ot-ghost 560ms var(--e-out) both;
+}
+
+[data-motion~="you"] .halo {
+  animation: ot-ripple 760ms var(--e-out) 560ms both;
+}
+
+/* The row lifts onto a surface while it travels; arriving on your lane it is tinted in your color. */
+[data-motion~="lift"] .row::before {
+  animation: ot-raise var(--travel);
+}
+
+[data-motion~="you"] .row::before {
+  animation:
+    ot-raise var(--travel),
+    ot-tint 1100ms var(--e-out) 380ms;
+}
+
+@keyframes ot-lift {
+  0% {
+    transform: translateY(0) scale(1);
+    animation-timing-function: cubic-bezier(0.3, 0, 0.2, 1);
+  }
+  42% {
+    transform: translateY(-8px) scale(1.18);
+    animation-timing-function: cubic-bezier(0.45, 0, 0.55, 1);
+  }
+  84% {
+    transform: translateY(0) scale(0.92);
+    animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  100% {
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes ot-ghost {
+  0% {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.55);
+  }
+}
+
+@keyframes ot-ripple {
+  0% {
+    opacity: 0.6;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(2.7);
+  }
+}
+
+/* Raise and tint start from and return to the row's own background (hover, selection). */
+@keyframes ot-raise {
+  30%,
+  72% {
+    background: var(--sf);
+    box-shadow:
+      0 14px 28px -14px var(--shadow),
+      0 0 0 1px var(--line);
+  }
+}
+
+@keyframes ot-tint {
+  30% {
+    background: color-mix(in oklch, var(--you) 11%, transparent);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .ln,
   .lny,
@@ -242,5 +360,12 @@
   .row-meta,
   .row-values {
     transition-duration: 1ms;
+  }
+
+  [data-motion] .lift,
+  [data-motion] .ghost,
+  [data-motion] .halo,
+  [data-motion] .row::before {
+    animation: none;
   }
 }

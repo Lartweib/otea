@@ -9,6 +9,7 @@ import { nodeKind } from '../node-kind.ts';
 import type { Section } from '../sections.ts';
 import { hashFor } from '../selection.ts';
 import type { CollectionView, Item } from '../types.ts';
+import { Carry } from './Carry.tsx';
 
 // Fixed heights keep the lane geometry and the rows in step.
 const ROW_H = 56;
@@ -21,6 +22,8 @@ type ItemListProps = {
   sections: Section[];
   selectedId: string | undefined;
   collectionOf: CollectionOf;
+  // The list being shown (a collection, or all): changing it is not a motion.
+  scope: string;
 };
 
 type ItemRowProps = { item: Item; selected: boolean; x: number; collectionOf: CollectionOf };
@@ -44,7 +47,7 @@ function ItemRow({ item, selected, x, collectionOf }: ItemRowProps) {
     incomplete: collection?.incomplete === item.state,
   });
   return (
-    <li>
+    <li data-flip={item.id} data-turn={item.turn} data-x={x}>
       <a
         className="row"
         data-kind={kind}
@@ -58,7 +61,13 @@ function ItemRow({ item, selected, x, collectionOf }: ItemRowProps) {
           viewBox={`0 0 56 ${ROW_H}`}
           aria-hidden="true"
         >
-          <NodeMark kind={kind} cx={x} cy={ROW_H / 2} />
+          <circle className="ghost" cx={x} cy={ROW_H / 2} r="6" />
+          <g className="carry">
+            <g className="lift">
+              <circle className="halo" cx={x} cy={ROW_H / 2} r="6" />
+              <NodeMark kind={kind} cx={x} cy={ROW_H / 2} />
+            </g>
+          </g>
         </svg>
         <span className="row-main">
           <span className="ttl">{item.title}</span>
@@ -93,7 +102,7 @@ function useSelectedInView(selectedId: string | undefined) {
   return list;
 }
 
-export function ItemList({ sections, selectedId, collectionOf }: ItemListProps) {
+export function ItemList({ sections, selectedId, collectionOf, scope }: ItemListProps) {
   const list = useSelectedInView(selectedId);
   const layout = layoutLanes(blocksOf(sections));
   const sizes = {
@@ -107,7 +116,7 @@ export function ItemList({ sections, selectedId, collectionOf }: ItemListProps) 
         <span>ag</span>
         <span className="lane-head-you">you</span>
       </div>
-      <div className="lanes-body" style={{ height: layout.height }}>
+      <Carry scope={scope} className="lanes-body" style={{ height: layout.height }}>
         <svg
           className="lanes"
           width="56"
@@ -121,12 +130,14 @@ export function ItemList({ sections, selectedId, collectionOf }: ItemListProps) 
         </svg>
         {sections.map((section) => (
           <section key={section.turn} className="section" data-turn={section.turn}>
-            <h2 className="section-title">
+            <h2 className="section-title" data-flip={`head:${section.turn}`}>
               {section.title}
               <span className="count">{section.items.length}</span>
             </h2>
             {section.items.length === 0 ? (
-              <p className="section-empty">Nothing here.</p>
+              <p className="section-empty" data-flip={`empty:${section.turn}`}>
+                Nothing here.
+              </p>
             ) : (
               <ul className="rows">
                 {section.items.map((item) => (
@@ -142,7 +153,7 @@ export function ItemList({ sections, selectedId, collectionOf }: ItemListProps) 
             )}
           </section>
         ))}
-      </div>
+      </Carry>
     </nav>
   );
 }
