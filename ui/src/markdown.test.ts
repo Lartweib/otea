@@ -9,7 +9,9 @@ describe('markdown', () => {
 
     expect(html).toContain('<h2>Steps</h2>');
     expect(html).toContain('<li>open <code>login</code></li>');
-    expect(html).toContain('<a href="https://ci.example/42">run 42</a>');
+    expect(html).toContain(
+      '<a href="https://ci.example/42" target="_blank" rel="noopener noreferrer">run 42</a>',
+    );
     expect(html).toContain('<pre><code>npm test\n</code></pre>');
   });
 
@@ -25,6 +27,6 @@ describe('markdown', () => {
     const html = renderMarkdown('[click](javascript:alert(1))');
 
     expect(html).not.toContain('javascript:');
-    expect(html).toContain('<a href="">click</a>');
+    expect(html).toContain('<a href="" target="_blank" rel="noopener noreferrer">click</a>');
   });
 });
