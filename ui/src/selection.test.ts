@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { hashFor, ITEMS_HASH, idFromHash, modulesHash, routeFromHash } from './selection.ts';
+import {
+  hashFor,
+  ITEMS_HASH,
+  idFromHash,
+  modulesHash,
+  routeFromHash,
+  TRIAGE_HASH,
+} from './selection.ts';
 
 describe('selection', () => {
   it.each([
@@ -30,12 +37,18 @@ describe('selection', () => {
     ['#/modulesx', { view: 'items' }],
     ['#/elsewhere', { view: 'items' }],
     ['#/modules/%E0%A4%A', { view: 'modules' }],
+    ['#/triage', { view: 'triage' }],
+    ['#/triagex', { view: 'items' }],
   ])('routes %j to %j', (hash, route) => {
     expect(routeFromHash(hash)).toEqual(route);
   });
 
   it('writes the item list with nothing selected as a hash', () => {
     expect(routeFromHash(ITEMS_HASH)).toEqual({ view: 'items' });
+  });
+
+  it('writes swipe triage as a hash', () => {
+    expect(routeFromHash(TRIAGE_HASH)).toEqual({ view: 'triage' });
   });
 
   it('writes the catalog and one module as a hash', () => {
