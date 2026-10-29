@@ -38,6 +38,7 @@ otea create --collection tasks --title "Flaky login test"   # no description: st
 otea create --collection tasks --title "Fix the footer" --description "Wrong year" --field priority=high
 otea create --collection tasks --title "Dark mode?"           # also incomplete
 otea list --turn agent --unclaimed --json # waiting for agents and not held by another one
+otea wait --turn agent --unclaimed         # or block until there is one (see below)
 otea show TASKS-1                          # fields, moves available to the agent, lease, timeline
 otea claim TASKS-1 --as claude             # hold it for 15 minutes (--ttl 30m for another length)
 otea heartbeat TASKS-1 --as claude         # extend the lease on long work
@@ -66,6 +67,21 @@ otea relay TASKS-3 discarded --quote "Drop it, billing moves to the vendor" --re
 - `--quote` is required and cannot be blank (exit 2, `quote_required`). When the transition requires a reason, `--reason` is required too (exit 2, `reason_required`): the quote is evidence of the approval, the reason is the same field the UI records, and a quote such as "yes" explains nothing.
 - `human-ui` transitions (approving, sending back from review) cannot be relayed: exit 7 (`forbidden`), make them in the web UI. Transitions an agent may make itself are refused with exit 4 (`not_relayable`): use `otea move`. Unknown items and undeclared moves fail as usual (exit 3, exit 4).
 - A relayed decision is the human's, so like a move in the UI it is not blocked by another agent's lease; moving off the agent turn releases that lease as usual (the release is marked as relayed too).
+
+### Waiting for work and following events
+
+An agent does not have to poll `otea list`: `otea wait` blocks until there is work, and `otea events` reads what happened. Both work across processes without `otea serve`.
+
+```sh
+otea wait --turn agent --unclaimed --timeout 15m --json   # then: otea claim <id>
+otea events --since 42 --json                              # events after id 42, one JSON object per line
+otea events --item TASKS-1 --follow                        # keep printing new events until Ctrl+C
+```
+
+- `otea wait --turn agent|human` returns at once when an item is already on that turn, otherwise as soon as one gets there. It prints the item as a row of `otea list` (with `--json`, one object shaped like an entry of `otea list --json`). When several match, it prints the one that has waited longest: the first to enter its current state (field updates and leases do not reset it), ties going to the first created.
+- `--collection` narrows it and `--unclaimed` skips items another agent holds, as in `otea list`; a lease that expires frees its item for the wait without anything being written. `wait` only reads: claim the item afterwards with `otea claim`, and if that fails with exit 12 because another agent got there first, wait again.
+- `--timeout <duration>` (`90s`, `15m`, `1h`) gives up with exit 13 (`timeout`); without it, `wait` waits until interrupted (exit 130, `interrupted`).
+- `otea events` prints the event log in commit order, filtered by `--item` and `--collection`. Each event has an id; pass the last one you read to `--since` to get only newer ones, and `--limit <n>` to read at most n. With `--json` each line is an event shaped like the ones in `otea show --json` (`id`, `itemId`, `type`, `actor`, `at`, `data`). `--follow` keeps printing new events as any process commits them, until Ctrl+C (exit 0); it cannot be combined with `--limit`.
 
 
 ### Presets
