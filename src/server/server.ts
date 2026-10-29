@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { listCollectionViews } from '../app/collections.ts';
 import { createItem, type ListItemsFilter, listItems, moveItem, showItem } from '../app/items.ts';
+import { listPresetViews } from '../app/preset-views.ts';
 import type { Project } from '../app/project.ts';
 import { TURNS, type Turn } from '../core/workflow.ts';
 import { type ChangeFeed, createChangeFeed } from './changes.ts';
@@ -35,6 +36,7 @@ function api(project: Project, feed: ChangeFeed, streams: LiveStreams, auth: Ses
   return new Hono()
     .get('/session', (c) => c.json({ canWrite: auth.canWrite(c) }))
     .get('/collections', (c) => c.json(listCollectionViews(project)))
+    .get('/presets', (c) => c.json(listPresetViews(project)))
     .get('/items', (c) => c.json(listItems(project, itemsFilter(c.req.query()))))
     .post('/items', async (c) => {
       assertWritable(c, auth);

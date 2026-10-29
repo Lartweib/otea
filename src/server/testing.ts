@@ -5,11 +5,12 @@ import { join } from 'node:path';
 import type { DatabaseSync } from 'node:sqlite';
 import type { Project } from '../app/project.ts';
 import { memoryContext } from '../app/testing.ts';
+import type { Preset } from '../core/preset.ts';
 import { openDatabase } from '../store/database.ts';
 import type { OteaServer } from './server.ts';
 
-export function memoryProject(): Project {
-  return { root: '/memory', ...memoryContext() };
+export function memoryProject(...presets: Preset[]): Project {
+  return { root: '/memory', ...memoryContext(...presets) };
 }
 
 export function tempDatabase(): { open: () => DatabaseSync; remove: () => void } {

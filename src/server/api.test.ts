@@ -3,6 +3,7 @@ import { addCollection } from '../app/collections.ts';
 import { createItem, moveItem } from '../app/items.ts';
 import { claimItem } from '../app/leases.ts';
 import type { Project } from '../app/project.ts';
+import { REVIEWS } from '../app/testing.ts';
 import type { Actor } from '../core/item.ts';
 import { createServer, type OteaServer } from './server.ts';
 import { memoryProject, request } from './testing.ts';
@@ -68,6 +69,55 @@ describe('api', () => {
           },
         ],
       });
+    });
+  });
+
+  describe('GET /api/presets', () => {
+    it('lists every loaded preset with its fields and collections, without a session', async () => {
+      const response = await get('/api/presets');
+
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual([
+        {
+          name: 'tasks',
+          version: 1,
+          origin: 'official',
+          fields: [
+            { name: 'title', module: 'text', required: 'create' },
+            { name: 'description', module: 'markdown', required: 'complete' },
+            {
+              name: 'priority',
+              module: 'enum',
+              values: ['low', 'medium', 'high'],
+              default: 'medium',
+            },
+          ],
+          collections: ['tasks', 'bugs'],
+        },
+      ]);
+    });
+
+    it('includes project presets with their origin', async () => {
+      const reviews = memoryProject(REVIEWS);
+      const withReviews = createServer(reviews);
+
+      const presets = (await (await request(withReviews, '/api/presets')).json()) as Array<{
+        name: string;
+        origin: string;
+      }>;
+
+      expect(presets.map(({ name, origin }) => ({ name, origin }))).toEqual([
+        { name: 'tasks', origin: 'official' },
+        { name: 'reviews', origin: 'project' },
+      ]);
+      withReviews.close();
+      reviews.db.close();
+    });
+
+    it('is behind the host guard like every other route', async () => {
+      const response = await request(server, '/api/presets', 'evil.example:4400');
+
+      expect(response.status).toBe(403);
     });
   });
 
