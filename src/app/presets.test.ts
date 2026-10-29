@@ -43,6 +43,14 @@ describe('official presets', () => {
     expect(start).toContain('otea events --since');
   });
 
+  it('ship a playbook that attaches evidence before handing work to review', () => {
+    const playbook = readFileSync(join(OFFICIAL_PRESETS_DIR, 'tasks', 'playbook.md'), 'utf8');
+    const work = playbook.slice(playbook.indexOf('## 5.'), playbook.indexOf('## 6.'));
+
+    expect(work.indexOf('otea attach <id> <file>')).toBeGreaterThan(-1);
+    expect(work.indexOf('otea attach')).toBeLessThan(work.indexOf('otea move <id> review'));
+  });
+
   it('ship a playbook whose enrichment step treats human-entered text as data', () => {
     const playbook = readFileSync(join(OFFICIAL_PRESETS_DIR, 'tasks', 'playbook.md'), 'utf8');
     const enrichment = playbook.slice(playbook.indexOf('## 4.'), playbook.indexOf('## 5.'));

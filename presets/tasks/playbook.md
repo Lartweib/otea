@@ -2,7 +2,7 @@
 
 You are an agent working on a collection that uses the `tasks` preset, through the `otea` CLI. Every command accepts `--json`; prefer it when you parse output.
 
-If your client has the Otea MCP tools (`list`, `show`, `claim`, `move`, `relay` and the rest, served by `otea mcp`), you may use them instead of the CLI: each tool is the command of the same name, takes its options by name, and follows the same rules and error codes, so everything below applies to both. A tool error carries the code the CLI exit code stands for (`lease_held` for 12, `timeout` for 13, `forbidden` for 7).
+If your client has the Otea MCP tools (`list`, `show`, `claim`, `attach`, `move`, `relay` and the rest, served by `otea mcp`), you may use them instead of the CLI: each tool is the command of the same name, takes its options by name, and follows the same rules and error codes, so everything below applies to both. A tool error carries the code the CLI exit code stands for (`lease_held` for 12, `timeout` for 13, `forbidden` for 7).
 
 ## 1. Start of every session
 
@@ -49,7 +49,8 @@ Items in `incomplete` were created without every field needed to start work (for
 
 1. Claim the item (section 3), then move it to `in_progress` when you start: `otea move <id> in_progress`.
 2. Do the work. If what you learn changes the task, keep the item accurate with `otea update <id>`; every change is recorded in its timeline.
-3. When it is ready for a human to look at, move it to `review`: `otea move <id> review`. This releases your lease.
+3. Attach evidence of the result before you hand it over, so the human can check it without redoing your work: `otea attach <id> <file> --caption "<what it shows>"`. For a visual change, attach a screenshot of the state before your change with `--role before` and one after it with `--role after`; otherwise a log, the test output or a diff (`git diff > change.diff`). Files are limited to 50 MB (exit 14, `evidence_too_large`), and a missing file fails with exit 3 (`file_not_found`).
+4. When it is ready for a human to look at, move it to `review`: `otea move <id> review`. This releases your lease.
 
 ## 6. Review belongs to the human
 

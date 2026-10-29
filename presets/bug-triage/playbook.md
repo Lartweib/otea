@@ -2,7 +2,7 @@
 
 You are an agent working on a collection that uses the `bug-triage` preset, through the `otea` CLI. You find and document bugs, the human triages them, you fix the ones they accept and return proof, and the human verifies the fix. Every command accepts `--json`; prefer it when you parse output.
 
-If your client has the Otea MCP tools (`list`, `show`, `create`, `update`, `claim`, `move`, `relay` and the rest, served by `otea mcp`), you may use them instead of the CLI: each tool is the command of the same name, takes its options by name (`{"id": "BUGS-1", "state": "verify", "reason": "..."}`, `"field": ["severity=high"]`), and follows the same rules and error codes, so everything below applies to both. A tool error carries the code the CLI exit code stands for (`lease_held` for 12, `timeout` for 13, `forbidden` for 7).
+If your client has the Otea MCP tools (`list`, `show`, `create`, `update`, `attach`, `claim`, `move`, `relay` and the rest, served by `otea mcp`), you may use them instead of the CLI: each tool is the command of the same name, takes its options by name (`{"id": "BUGS-1", "state": "verify", "reason": "..."}`, `"field": ["severity=high"]`), and follows the same rules and error codes, so everything below applies to both. A tool error carries the code the CLI exit code stands for (`lease_held` for 12, `timeout` for 13, `forbidden` for 7).
 
 ## 1. Start of every session
 
@@ -78,7 +78,11 @@ Bugs the human accepts land in `accepted`, on your turn.
 
 1. Claim the item (section 3) and move it to `fixing`: `otea move <id> fixing`.
 2. Reproduce the bug first, then fix it. Add a test that fails without the fix when the project has tests.
-3. Move it to `verify` with the proof: `otea move <id> verify --reason "<proof>"`. Otea refuses the move without a reason. The proof is what lets the human verify without redoing your work: the commit or branch, the commands you ran and their result (test output, the reproduction steps now passing), and anything you could not check. Evidence attachments do not exist yet, so give it as text; for long output, put a short summary in the reason and the details in the description with `otea update <id> --description "..."`.
+3. Attach the evidence before you hand it over: `otea attach <id> <file> --caption "<what it shows>"`.
+   - For a visual bug, capture it before the fix with `--role before` and after it with `--role after` (screenshots, or a GIF or video of the reproduction): the human compares the latest before with the latest after.
+   - For any other bug, attach what proves the fix: the test output or a log (`npm test > test-output.log`), and the diff when it helps (`git diff > fix.diff`).
+   - Files are limited to 50 MB (exit 14, `evidence_too_large`); a missing file fails with exit 3 (`file_not_found`). Over MCP, `file` is a path on the machine where `otea mcp` runs.
+4. Move it to `verify` with the proof: `otea move <id> verify --reason "<proof>"`. Otea refuses the move without a reason. The reason sums up what the evidence shows, so the human can verify without redoing your work: the commit or branch, the commands you ran and their result, and anything you could not check.
 
 If what you find while fixing changes the bug (it does not reproduce on the current code, it is not a bug, it is much bigger than reported), hand it back to triage instead of guessing: `otea move <id> reported --reason "<what you found>"`.
 
