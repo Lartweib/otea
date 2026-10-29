@@ -54,6 +54,20 @@ Agents claim an item before working it. A lease is atomic: while one agent holds
 
 `otea update` changes fields of an open item (a blank value clears an optional field) and records the old and new values in the timeline; items in a closed state (turn `none`) cannot be updated. Agents act through the CLI, so it only performs transitions whose authority is `agent`. Approving work (`review` -> `done` in the tasks preset) is `human-ui`: the CLI refuses it with exit code 7 (`forbidden`).
 
+### Relaying a decision made in conversation
+
+Transitions with `human` authority (discarding a task in the tasks preset) can also be made by an agent relaying what the human decided in the conversation. That is a separate command, so a harness can ask the human to confirm every call:
+
+```sh
+otea relay TASKS-3 discarded --quote "Drop it, billing moves to the vendor" --reason "Billing moves to the vendor" --as claude
+```
+
+- The move is recorded as the human's (`actor: human`) with `via: <agent>`, `source: conversation` and the quote, and `otea show` (and `--json`) and the UI timeline always mark it as relayed (`human, relayed by claude`), never as a UI decision.
+- `--quote` is required and cannot be blank (exit 2, `quote_required`). When the transition requires a reason, `--reason` is required too (exit 2, `reason_required`): the quote is evidence of the approval, the reason is the same field the UI records, and a quote such as "yes" explains nothing.
+- `human-ui` transitions (approving, sending back from review) cannot be relayed: exit 7 (`forbidden`), make them in the web UI. Transitions an agent may make itself are refused with exit 4 (`not_relayable`): use `otea move`. Unknown items and undeclared moves fail as usual (exit 3, exit 4).
+- A relayed decision is the human's, so like a move in the UI it is not blocked by another agent's lease; moving off the agent turn releases that lease as usual (the release is marked as relayed too).
+
+
 ### Presets
 
 Every collection is governed by a preset: its fields, states, turns and transitions, plus a playbook for agents. Official presets live in [`presets/`](presets/) (`tasks` for now). A project can add its own in `.otea/presets/<name>/preset.yaml` (with its `playbook.md`) and use it with `otea collection add <collection> --preset <name>`; project presets cannot reuse an official name. The format is described in §9 of the [product definition](docs/otea-product-definition.md#9-preset-format).
