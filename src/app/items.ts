@@ -15,7 +15,7 @@ import {
   revise,
 } from '../core/fields.ts';
 import { type Actor, formatItemId } from '../core/item.ts';
-import { activeLease, assertMayWrite } from '../core/lease.ts';
+import { activeLease, assertMayWrite, type Lease } from '../core/lease.ts';
 import { type Turn, turnOf, type Workflow } from '../core/workflow.ts';
 import { transaction } from '../store/database.ts';
 import {
@@ -190,33 +190,48 @@ export type MoveItemInput = {
   reason?: string;
 };
 
+// Lands an authorized move: the new state, its transitioned event and, when the item leaves the agent
+// turn, the release of the lease it carried. `trail` (who relayed it) is recorded on both.
+export function landMove(
+  db: DatabaseSync,
+  workflow: Workflow,
+  item: ItemRecord,
+  move: { to: string; actor: Actor; at: string; lease: Lease | null },
+  data: Record<string, unknown>,
+  trail: Record<string, unknown> = {},
+): Item {
+  const { to, actor, at, lease } = move;
+  updateItemState(db, item.id, to, at);
+  appendEvent(db, {
+    itemId: item.id,
+    type: 'transitioned',
+    actor,
+    at,
+    data: { from: item.state, to, ...data, ...trail },
+  });
+  const handoff = lease !== null && turnOf(workflow, to) !== 'agent';
+  if (handoff) {
+    clearLease(db, item.id);
+    const released = { holder: lease.holder, cause: 'handoff', ...trail };
+    appendEvent(db, { itemId: item.id, type: 'released', actor, at, data: released });
+  }
+  const moved = { ...item, state: to, updatedAt: at, lease: handoff ? null : item.lease };
+  return present(moved, workflow, at);
+}
+
 export function moveItem(ctx: Context, input: MoveItemInput, now = systemClock): Item {
   const { db } = ctx;
   return transaction(db, () => {
     const item = requireItem(db, input.id);
     const preset = presetOf(ctx, getCollection(db, item.collection));
     const { workflow } = preset;
-    const { actor, channel, reason } = input;
+    const { actor, channel, reason, to } = input;
     const at = now();
     const lease = activeLease(item.lease, at);
     assertMayWrite(item.id, lease, actor);
-    authorizeMove(workflow, item.state, input.to, { actor, channel }, reason);
-    assertCanLeave(preset, item.state, input.to, item.fields);
-    updateItemState(db, item.id, input.to, at);
-    appendEvent(db, {
-      itemId: item.id,
-      type: 'transitioned',
-      actor,
-      at,
-      data: { from: item.state, to: input.to, ...(reason ? { reason } : {}), channel },
-    });
-    const handoff = lease !== null && turnOf(workflow, input.to) !== 'agent';
-    if (handoff) {
-      clearLease(db, item.id);
-      const data = { holder: lease.holder, cause: 'handoff' };
-      appendEvent(db, { itemId: item.id, type: 'released', actor, at, data });
-    }
-    const moved = { ...item, state: input.to, updatedAt: at, lease: handoff ? null : item.lease };
-    return present(moved, workflow, at);
+    authorizeMove(workflow, item.state, to, { actor, channel }, reason);
+    assertCanLeave(preset, item.state, to, item.fields);
+    const data = { ...(reason ? { reason } : {}), channel };
+    return landMove(db, workflow, item, { to, actor, at, lease }, data);
   });
 }
