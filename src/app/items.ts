@@ -29,6 +29,7 @@ import {
   listCollections,
   selectEvents,
   selectItems,
+  selectStateEntries,
   updateItemContent,
   updateItemState,
 } from '../store/queries.ts';
@@ -118,6 +119,21 @@ export function listItems(ctx: Context, filter: ListItemsFilter = {}, now = syst
     .map((item) => present(item, workflowFor(item.collection), at))
     .filter((item) => turn === undefined || item.turn === turn)
     .filter(({ lease }) => availableTo === undefined || !lease || lease.holder === availableTo);
+}
+
+// The matching item that has waited longest: the first to enter its current state, ties going to
+// the first created. Field updates and leases do not reset the wait.
+export function oldestWaiting(
+  ctx: Context,
+  filter: ListItemsFilter,
+  now = systemClock,
+): Item | undefined {
+  const entered = selectStateEntries(ctx.db);
+  const since = (item: Item) => entered.get(item.id) ?? item.createdAt;
+  return listItems(ctx, filter, now).reduce<Item | undefined>(
+    (oldest, item) => (oldest === undefined || since(item) < since(oldest) ? item : oldest),
+    undefined,
+  );
 }
 
 export function getItem(ctx: Context, id: string, now = systemClock): ItemWithEvents {
