@@ -78,12 +78,43 @@ Geometry lives in `ui/src/lanes.ts` (tested). The list gutter is 56px: agent lan
 ## Controls
 
 - **Buttons** are pills: `Button` with `primary`, `quiet`, `sm` and `icon`. One primary per screen, always the move that hands the turn on (`moveVariants` in `ui/src/actions.ts`); moves that throw work away are quiet.
-- **Pills** (`Pill`): mono tags; `ask` for an open question for you, `state` for a workflow state (tinted in your color when it waits for you).
+- **Pills** (`Pill`): mono tags; `ask` for an open question for you, `state` for a workflow state (tinted in your color when it waits for you); `size="sm"` inside a list row.
 - **Severity** (`Severity`): four signal bars; level 4 in `--warn`.
 - **Kbd** (`Kbd`): keyboard hints inside buttons.
 - **Icons** (`Icon`): thin (stroke 1.25), 16px, current color. No emoji.
 - **Fields**: inputs are pills on the surface, text areas round to 8px; labels are `t-label`.
 - Touch targets grow to 40px on coarse pointers.
+
+## Field modules
+
+Every preset field names a module (`text`, `markdown`, `enum`). The UI draws each value through a registry in [`ui/src/modules/`](ui/src/modules/): one file per module plus `registry.ts`, so no component switches on module names. The names come from the core preset format (`FIELD_MODULES` in `src/core/preset.ts`, imported type-only), and the registry is keyed by them, so a module added to the format fails the UI typecheck until it is drawn.
+
+A module (`FieldModuleUi` in `ui/src/modules/contract.ts`) declares:
+
+| Part | Use |
+| --- | --- |
+| `name`, `summary`, `origin` | what it is; `official`, or `local` for `.otea/modules/` (not loaded yet; shown as unofficial, at your own risk) |
+| `Row` | optional: what it adds to a list row, after the title |
+| `Detail` | the value in the item detail |
+| `Edit` | the intake control; the caller owns the label and the hint |
+| `samples`, `yaml` | example fields and values for the catalog, and how a preset declares it |
+
+| Module | Row | Detail | Edit |
+| --- | --- | --- | --- |
+| `text` | nothing (the list draws the title) | plain text | text input |
+| `markdown` | nothing | rendered Markdown | text area |
+| `enum` | a small pill, only off its default | pill | select (a blank choice only without a default) |
+
+Rules:
+
+- Modules are built only from the kit primitives and tokens.
+- A module name the UI does not know (a newer server, a local module) shows and edits as plain text. It never crashes the UI.
+- Markdown renders with `micromark`, safe by default: raw HTML is shown as text and links with a dangerous protocol lose their href. Never enable its dangerous options. Headings use the human font at 15-17px, lists hang from muted markers, code and code blocks are Spline Sans Mono on `--well`, links are `--you-ink`.
+- A row stays calm: an enum at its default puts nothing in the row.
+
+### Catalog
+
+`#/modules` opens the catalog in the two panes: the index of modules on the left, and on the right an overview of the loaded presets and which module each field picks. `#/modules/<name>` shows one module: its origin, a live preview of every sample in the row, the detail and the edit control (the edit control drives that sample's row and detail, locally; nothing is saved), the preset fields that use it (from `GET /api/presets`) and its `preset.yaml` snippet. Modules that presets name but the UI does not know are listed apart, as "unknown module · renders as plain text". Routes are parsed by `routeFromHash` in `ui/src/selection.ts`; item ids never start with a slash, so `#<item-id>` keeps working.
 
 ## Motion
 
@@ -104,5 +135,5 @@ Side-stripe borders, gradient text, glassmorphism, hero-metric templates (big nu
 ## Layering
 
 1. **Primitives** in `ui/src/kit/`: small, presentational, no data fetching. Done.
-2. **Field and evidence modules** next: a registry that renders each preset field module and evidence kind (gif, mp4, png, diff, log, before/after compare) from the primitives, plus a user-visible catalog of them.
+2. **Field and evidence modules**: the field module registry and its catalog are done (see Field modules). Evidence kinds (gif, mp4, png, diff, log, before/after compare) and loading local modules come next, on the same registry.
 3. **Shells** after: triage and review views composed from modules, including the detail timeline drawn as the item's own path swinging between lanes.
