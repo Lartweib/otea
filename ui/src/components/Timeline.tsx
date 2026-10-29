@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, useState } from 'react';
-import { describeEvent, eventActorLabel, formatTime } from '../format.ts';
+import { describeEvent, eventActorLabel, formatTime, relayOf } from '../format.ts';
 import { NodeMark } from '../kit/index.ts';
 import { laneX } from '../lanes.ts';
 import type { NodeKind } from '../node-kind.ts';
@@ -32,6 +32,9 @@ function useHeights(count: number) {
   return { list, heightOf: (index: number) => heights[index] ?? BLOCK_H };
 }
 
+// A relayed decision is drawn apart from one made in the UI: a ring on your lane, not a filled dot.
+const relayed = (event: ItemEvent | undefined) => (event && relayOf(event) ? true : undefined);
+
 // The item's own path: from where it stands now, at the top, down to where it was created.
 export function Timeline({ events, turn, kind, now }: TimelineProps) {
   const newestFirst = [...events].reverse();
@@ -62,6 +65,7 @@ export function Timeline({ events, turn, kind, now }: TimelineProps) {
             key={index}
             className="timeline-dot"
             data-actor={newestFirst[index]?.actor.kind}
+            data-relayed={relayed(newestFirst[index])}
             cx={stop.x}
             cy={stop.y}
             r="4.5"
@@ -74,20 +78,25 @@ export function Timeline({ events, turn, kind, now }: TimelineProps) {
           <span className="t-cap">now</span>
           <span className="ev-m">{now}</span>
         </li>
-        {newestFirst.map((event) => (
-          <li
-            key={event.id}
-            className={event.id > knownUpTo ? 'ev new' : 'ev'}
-            data-actor={event.actor.kind}
-          >
-            <time className="t-cap" dateTime={event.at}>
-              {formatTime(event.at)}
-            </time>
-            <span className="ev-m">
-              {describeEvent(event)} <em>· {eventActorLabel(event)}</em>
-            </span>
-          </li>
-        ))}
+        {newestFirst.map((event) => {
+          const quote = relayOf(event)?.quote;
+          return (
+            <li
+              key={event.id}
+              className={event.id > knownUpTo ? 'ev new' : 'ev'}
+              data-actor={event.actor.kind}
+              data-relayed={relayed(event)}
+            >
+              <time className="t-cap" dateTime={event.at}>
+                {formatTime(event.at)}
+              </time>
+              <span className="ev-m">
+                {describeEvent(event)} <em>· {eventActorLabel(event)}</em>
+              </span>
+              {quote ? <q className="ev-quote">{quote}</q> : null}
+            </li>
+          );
+        })}
       </ol>
     </div>
   );

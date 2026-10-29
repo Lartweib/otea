@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { actorLabel, describeEvent, eventActorLabel, formatTime, leaseLabel } from './format.ts';
+import {
+  actorLabel,
+  describeEvent,
+  eventActorLabel,
+  formatTime,
+  leaseLabel,
+  relayOf,
+} from './format.ts';
 import type { ItemEvent } from './types.ts';
 
 const event = (type: string, data: Record<string, unknown>): ItemEvent => ({
@@ -24,6 +31,31 @@ describe('format', () => {
     expect(eventActorLabel(ui as ItemEvent)).toBe('human (ui)');
     expect(eventActorLabel(event('transitioned', { channel: 'cli' }))).toBe('claude (agent)');
     expect(eventActorLabel(event('created', { state: 'todo' }))).toBe('claude (agent)');
+  });
+
+  it('labels a relayed decision as the human, relayed by the agent, never as the ui', () => {
+    const relayed = {
+      ...event('transitioned', { channel: 'cli', via: 'claude-a', quote: 'Drop it' }),
+      actor: { kind: 'human', name: 'human' },
+    } as ItemEvent;
+
+    expect(eventActorLabel(relayed)).toBe('human, relayed by claude-a');
+    expect(eventActorLabel({ ...relayed, data: { ...relayed.data, channel: 'ui' } })).toBe(
+      'human, relayed by claude-a',
+    );
+  });
+
+  it('reads the relay of an event: who relayed it and what the human said', () => {
+    expect(relayOf(event('transitioned', { via: 'claude-a', quote: 'Drop it' }))).toEqual({
+      via: 'claude-a',
+      quote: 'Drop it',
+    });
+    expect(relayOf(event('released', { via: 'claude-a', holder: 'codex' }))).toEqual({
+      via: 'claude-a',
+      quote: null,
+    });
+    expect(relayOf(event('transitioned', { channel: 'ui' }))).toBeNull();
+    expect(relayOf(event('transitioned', { via: 42 }))).toBeNull();
   });
 
   it.each([
