@@ -189,9 +189,10 @@
   margin-left: 8px;
 }
 
-/* What field modules put in the row (an enum off its default): after the title, quiet. */
+/* What field modules put in the row (an enum off its default, severity bars): after the title, quiet. */
 .row-values {
   display: flex;
+  align-items: center;
   gap: 4px;
   max-width: 12rem;
   margin-left: 8px;
@@ -209,6 +210,12 @@
 .row[data-kind="done"] .row-values .pill,
 .row[data-kind="discarded"] .row-values .pill {
   color: var(--mut);
+}
+
+/* A closed bug no longer warns: its severity recedes with the row. */
+.row[data-kind="done"] .row-values .sev i.hot,
+.row[data-kind="discarded"] .row-values .sev i.hot {
+  background: currentColor;
 }
 
 .row-lease {

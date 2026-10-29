@@ -268,7 +268,7 @@ workflow:
 ```
 
 **Fields**
-- `module`: the field module. Official field modules today: `text`, `markdown`, `enum` (`enum` takes `values` and an optional `default` from them).
+- `module`: the field module. Official field modules today: `text`, `markdown`, `enum` (`enum` takes `values` and an optional `default` from them) and `severity` (a fixed scale `low`, `medium`, `high`, `critical`, levels 1 to 4; it takes no `values`, and an optional `default` from the scale).
 - `required: create`: the item cannot be created without it. Every preset has a `title` field (`text`, `required: create`).
 - `required: complete`: the item can be created without it, but then it starts in the workflow's `incomplete` state instead of `initial`, so an agent enriches it (§5) with `otea update`. The item cannot leave `incomplete` for a working state until these fields are filled; closing it (a state with turn `none`, e.g. `discarded` with a reason) stays allowed.
 - `default`: applied at creation when the value is missing.
@@ -282,7 +282,7 @@ workflow:
 
 Rules:
 - **Store only what cannot be derived.** Computable states are derived, never stored. Turn is derived from the item's state and its collection's preset.
-- Loading checks the schema and its meaning: `initial`, `incomplete`, `from` and `to` name declared states; every state is reachable from `initial` or `incomplete`; states with turn `none` have no outgoing transitions and every other state has at least one; enum defaults are among their values; module names are known.
+- Loading checks the schema and its meaning: `initial`, `incomplete`, `from` and `to` name declared states; every state is reachable from `initial` or `incomplete`; states with turn `none` have no outgoing transitions and every other state has at least one; enum and severity defaults are among their values; module names are known.
 - Collections record the preset name and `preset_version` they were created with; every item records the `preset_version` it was written under (set again when its fields are updated).
 - Updates are validated like intake (unknown fields, enum values; a create-required field cannot be cleared), recorded as an `updated` event with old and new values, and rejected on items in a state with turn `none`.
 - `otea validate` checks the whole project non-interactively: every preset (official and project), every collection's preset, and every item against its collection's preset (unknown state, wrong field type or enum value, missing `required: create` field; an older `preset_version`, and a working item outside `incomplete` that lacks a `required: complete` field, are warnings). It reports and never fixes; it exits non-zero only on errors.

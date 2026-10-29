@@ -53,4 +53,12 @@ describe('module catalog view', () => {
     expect(html).toContain('Named by presets, not in this UI');
     expect(html).toContain('href="#/modules/rating" aria-current="page"');
   });
+
+  it('previews the severity module with its bars, critical in the warning hue', () => {
+    const html = panel({ name: 'severity', origin: 'official', uses: [] });
+
+    expect(html).toContain('Sample: critical, in the warning hue');
+    expect(html).toContain('<i class="hot"></i>');
+    expect(html).toContain('module: severity');
+  });
 });

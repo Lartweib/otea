@@ -34,6 +34,16 @@ const priority: FieldView = {
   default: 'medium',
 };
 
+const severity: FieldView = {
+  name: 'severity',
+  module: 'severity',
+  required: 'complete',
+  values: ['low', 'medium', 'high', 'critical'],
+};
+
+const bars = (html: string): string[] =>
+  [...html.matchAll(/<i( class="(\w+)")?><\/i>/g)].map(([, , lit]) => lit ?? 'off');
+
 describe('module registry', () => {
   it('registers exactly the official modules of the preset format, in order', () => {
     expect(MODULES.map(({ name }) => name)).toEqual([...FIELD_MODULES]);
@@ -70,9 +80,14 @@ describe('module registry', () => {
     ['text', '<input type="text"'],
     ['markdown', '<textarea'],
     ['enum', '<select'],
+    ['severity', '<select'],
   ] as const)('edits a %s field with %s', (module, tag) => {
     const field: FieldView =
-      module === 'enum' ? priority : { name: 'x', module, required: 'create' };
+      module === 'enum'
+        ? priority
+        : module === 'severity'
+          ? severity
+          : { name: 'x', module, required: 'create' };
 
     expect(edit(field)).toContain(tag);
   });
@@ -108,5 +123,48 @@ describe('module registry', () => {
   it('keeps text and markdown out of the row', () => {
     expect(moduleFor('text').Row).toBeUndefined();
     expect(moduleFor('markdown').Row).toBeUndefined();
+  });
+});
+
+describe('severity module', () => {
+  it('lights one bar per level of the scale, in ink up to high', () => {
+    expect(bars(row(severity, 'low'))).toEqual(['on', 'off', 'off', 'off']);
+    expect(bars(row(severity, 'medium'))).toEqual(['on', 'on', 'off', 'off']);
+    expect(bars(row(severity, 'high'))).toEqual(['on', 'on', 'on', 'off']);
+  });
+
+  it('draws critical, level 4, in the warning hue on every bar', () => {
+    expect(bars(row(severity, 'critical'))).toEqual(['hot', 'hot', 'hot', 'hot']);
+    expect(row(severity, 'critical')).toContain('aria-label="Severity 4 of 4"');
+  });
+
+  it('marks the row whatever the level, and nothing while it is empty or off the scale', () => {
+    expect(row(severity, 'low')).toContain('class="sev"');
+    expect(row(severity, '')).toBe('');
+    expect(row(severity, 'blocker')).toBe('');
+  });
+
+  it('shows the bars and the level name in the detail', () => {
+    const html = detail(severity, 'high');
+
+    expect(bars(html)).toEqual(['on', 'on', 'on', 'off']);
+    expect(html).toContain('>high</span>');
+  });
+
+  it('shows a value off the scale as plain text in the detail', () => {
+    expect(detail(severity, 'blocker')).toBe('<span class="body">blocker</span>');
+  });
+
+  it('offers the levels of the scale from least to most severe, blank without a default', () => {
+    const html = edit(severity, 'high');
+
+    expect([...html.matchAll(/<option value="(\w*)"/g)].map(([, value]) => value)).toEqual([
+      '',
+      'low',
+      'medium',
+      'high',
+      'critical',
+    ]);
+    expect(html).toContain('<option value="high" selected="">high</option>');
   });
 });

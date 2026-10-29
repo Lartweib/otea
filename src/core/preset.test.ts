@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { stringify } from 'yaml';
-import { parsePreset, readPreset } from './preset.ts';
+import { parsePreset, readPreset, SEVERITY_SCALE } from './preset.ts';
 import { tasks } from './testing.ts';
 
 const TASKS_YAML = `
@@ -65,6 +65,22 @@ describe('readPreset', () => {
       priority: { module: 'enum', values: ['low', 'medium', 'high'], default: 'medium' },
     });
     expect(preset.workflow).toEqual(tasks);
+  });
+
+  it('reads a severity field with its fixed scale of four levels as its values', () => {
+    const raw = minimal();
+    raw.fields.severity = { module: 'severity', required: 'complete', default: 'high' };
+    raw.workflow.incomplete = 'draft';
+    raw.workflow.states.draft = { turn: 'agent' };
+    raw.workflow.transitions.push({ from: 'draft', to: 'open', by: 'agent' });
+
+    expect(SEVERITY_SCALE).toEqual(['low', 'medium', 'high', 'critical']);
+    expect(parsePreset(stringify(raw)).fields.severity).toEqual({
+      module: 'severity',
+      required: 'complete',
+      values: ['low', 'medium', 'high', 'critical'],
+      default: 'high',
+    });
   });
 
   it('accepts a minimal preset without playbook or incomplete state', () => {
@@ -175,7 +191,7 @@ describe('readPreset', () => {
     [
       'an unknown module',
       (raw) => (raw.fields.media = { module: 'media' }),
-      'fields.media.module: unknown module "media" (official: text, markdown, enum)',
+      'fields.media.module: unknown module "media" (official: text, markdown, enum, severity)',
     ],
     [
       'an enum without values',
@@ -191,6 +207,16 @@ describe('readPreset', () => {
       'an enum default outside its values',
       (raw) => (raw.fields.size = { module: 'enum', values: ['s', 'm'], default: 'xl' }),
       'fields.size.default: "xl" is not one of s, m',
+    ],
+    [
+      'values on a severity field, whose scale is fixed',
+      (raw) => (raw.fields.sev = { module: 'severity', values: ['minor', 'major'] }),
+      'fields.sev.values: only the enum module takes values',
+    ],
+    [
+      'a severity default outside its scale',
+      (raw) => (raw.fields.sev = { module: 'severity', default: 'urgent' }),
+      'fields.sev.default: "urgent" is not one of low, medium, high, critical',
     ],
   ])('rejects %s', (_, change, problem) => {
     expect(problemsOf(change)).toContain(problem);

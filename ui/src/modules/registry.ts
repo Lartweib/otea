@@ -2,6 +2,7 @@ import type { FieldModule } from '../types.ts';
 import type { FieldModuleUi } from './contract.ts';
 import { enumModule } from './enum.tsx';
 import { markdown } from './markdown.tsx';
+import { severityModule } from './severity.tsx';
 import { PlainText, TextInput, text } from './text.tsx';
 
 // Keyed by the core module names: a module added to the preset format fails the typecheck here.
@@ -9,6 +10,7 @@ const OFFICIAL: Readonly<Record<FieldModule, FieldModuleUi>> = {
   text,
   markdown,
   enum: enumModule,
+  severity: severityModule,
 };
 
 export const MODULES: readonly FieldModuleUi[] = Object.values(OFFICIAL);
