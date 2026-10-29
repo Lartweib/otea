@@ -14,7 +14,10 @@ describe('preset views', () => {
   afterEach(() => ctx.db.close());
 
   it('lists every loaded preset, official first, with its origin and fields', () => {
-    expect(listPresetViews(ctx)).toEqual([
+    const views = listPresetViews(ctx);
+
+    expect(views.map(({ name }) => name)).toEqual(['bug-triage', 'tasks', 'reviews']);
+    expect(views.slice(1)).toEqual([
       {
         name: 'tasks',
         version: 1,
@@ -47,6 +50,7 @@ describe('preset views', () => {
     addCollection(ctx, { name: 'bugs' });
 
     expect(listPresetViews(ctx).map(({ name, collections }) => ({ name, collections }))).toEqual([
+      { name: 'bug-triage', collections: [] },
       { name: 'tasks', collections: ['tasks', 'bugs'] },
       { name: 'reviews', collections: ['design'] },
     ]);
