@@ -1,16 +1,19 @@
 import { type ReactNode, useCallback, useState } from 'react';
-import { fetchCollections, fetchItem, fetchItems, fetchSession } from './api.ts';
+import { fetchCollections, fetchItem, fetchItems, fetchPresets, fetchSession } from './api.ts';
+import { catalogEntries } from './catalog.ts';
 import { ConnectionBadge } from './components/ConnectionBadge.tsx';
 import { ItemDetail } from './components/ItemDetail.tsx';
 import { type CollectionOf, ItemList } from './components/ItemList.tsx';
+import { CatalogOverview, ModuleIndex, ModulePanel } from './components/ModuleCatalog.tsx';
 import { NewItemForm } from './components/NewItemForm.tsx';
 import { ThemeToggle } from './components/ThemeToggle.tsx';
-import { type Connection, useLive, useRemote, useSelectedId } from './hooks.ts';
+import { type Connection, useLive, useRemote, useRoute } from './hooks.ts';
 import { Button, Icon } from './kit/index.ts';
+import { MODULES } from './modules/registry.ts';
 import type { Remote } from './remote.ts';
 import { groupByTurn } from './sections.ts';
-import { hashFor } from './selection.ts';
-import type { CollectionView, Item, ItemView } from './types.ts';
+import { hashFor, ITEMS_HASH, modulesHash } from './selection.ts';
+import type { CollectionView, Item, ItemView, PresetView } from './types.ts';
 
 function Message({ children, muted = true }: { children: ReactNode; muted?: boolean }) {
   return <p className={muted ? 'pane-message t-small' : 'pane-message action-error'}>{children}</p>;
@@ -91,7 +94,7 @@ function collectionLookup(collections: Remote<CollectionView[]>): CollectionOf {
 
 function Brand() {
   return (
-    <span className="brand">
+    <a className="brand" href={ITEMS_HASH} aria-label="otea, all items">
       <svg width="22" height="26" viewBox="0 0 22 26" aria-hidden="true">
         <path
           className="brand-fork"
@@ -100,7 +103,35 @@ function Brand() {
         <circle className="brand-dot" cx="17" cy="4.5" r="3.5" />
       </svg>
       otea
-    </span>
+    </a>
+  );
+}
+
+type CatalogProps = { name: string | undefined; presets: Remote<PresetView[]> };
+
+// The module catalog: the index on the left, the chosen module (or an overview) on the right.
+function Catalog({ name, presets }: CatalogProps) {
+  const entries = catalogEntries(MODULES, presets.status === 'ready' ? presets.value : []);
+  const entry = entries.find((candidate) => candidate.name === name);
+  return (
+    <main className="layout">
+      <div className="list-pane">
+        <ModuleIndex entries={entries} selected={name} />
+      </div>
+      <div className="detail-pane">
+        <div className="detail-panel raised">
+          {name === undefined ? (
+            <CatalogOverview presets={presets} />
+          ) : entry ? (
+            <ModulePanel key={entry.name} entry={entry} presets={presets} />
+          ) : presets.status === 'loading' ? (
+            <Message>Loading…</Message>
+          ) : (
+            <Message>No module named {name}.</Message>
+          )}
+        </div>
+      </div>
+    </main>
   );
 }
 
@@ -108,18 +139,26 @@ type Intake = { openedOn: string | undefined };
 
 export function App() {
   const { connection, version } = useLive();
-  const selectedId = useSelectedId();
+  const route = useRoute();
+  const selectedId = route.view === 'items' ? route.id : undefined;
   const items = useRemote(fetchItems, version, connection);
   const session = useRemote(fetchSession, 0, connection);
   const collections = useRemote(fetchCollections, 0, connection);
+  const presets = useRemote(fetchPresets, 0, connection);
   const collectionOf = collectionLookup(collections);
   const canWrite = session.status === 'ready' && session.value.canWrite;
   const [intake, setIntake] = useState<Intake>();
-  const creating = canWrite && intake !== undefined && intake.openedOn === selectedId;
+  const creating =
+    canWrite && route.view === 'items' && intake !== undefined && intake.openedOn === selectedId;
   const closeIntake = () => setIntake(undefined);
   const showCreated = (id: string) => {
     closeIntake();
     window.location.hash = hashFor(id);
+  };
+  const openIntake = () => {
+    // From the catalog, intake opens next to the item list (nothing is selected there).
+    if (route.view === 'modules') window.location.hash = ITEMS_HASH;
+    setIntake({ openedOn: selectedId });
   };
   return (
     <div className="app">
@@ -127,42 +166,53 @@ export function App() {
         <Brand />
         <div className="topbar-actions">
           <ConnectionBadge connection={connection} />
+          <a
+            className="topbar-link"
+            href={modulesHash()}
+            aria-current={route.view === 'modules' ? 'page' : undefined}
+          >
+            Modules
+          </a>
           <ThemeToggle />
           {canWrite ? (
-            <Button
-              size="sm"
-              aria-pressed={creating}
-              onClick={() => setIntake({ openedOn: selectedId })}
-            >
+            <Button size="sm" aria-pressed={creating} onClick={openIntake}>
               <Icon name="plus" />
               New item
             </Button>
           ) : null}
         </div>
       </header>
-      <main className="layout">
-        <div className="list-pane">
-          <ListPane items={items} selectedId={selectedId} collectionOf={collectionOf} />
-        </div>
-        <div className="detail-pane">
-          <div className="detail-panel raised">
-            {creating ? (
-              <NewItemForm connection={connection} onCancel={closeIntake} onCreated={showCreated} />
-            ) : selectedId ? (
-              <SelectedItem
-                key={selectedId}
-                id={selectedId}
-                version={version}
-                connection={connection}
-                canWrite={canWrite}
-                collectionOf={collectionOf}
-              />
-            ) : (
-              <Message>Select an item to see its details.</Message>
-            )}
+      {route.view === 'modules' ? (
+        <Catalog name={route.name} presets={presets} />
+      ) : (
+        <main className="layout">
+          <div className="list-pane">
+            <ListPane items={items} selectedId={selectedId} collectionOf={collectionOf} />
           </div>
-        </div>
-      </main>
+          <div className="detail-pane">
+            <div className="detail-panel raised">
+              {creating ? (
+                <NewItemForm
+                  connection={connection}
+                  onCancel={closeIntake}
+                  onCreated={showCreated}
+                />
+              ) : selectedId ? (
+                <SelectedItem
+                  key={selectedId}
+                  id={selectedId}
+                  version={version}
+                  connection={connection}
+                  canWrite={canWrite}
+                  collectionOf={collectionOf}
+                />
+              ) : (
+                <Message>Select an item to see its details.</Message>
+              )}
+            </div>
+          </div>
+        </main>
+      )}
     </div>
   );
 }

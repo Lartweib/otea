@@ -1,7 +1,7 @@
 import { useEffect, useReducer, useRef, useState, useSyncExternalStore } from 'react';
 import { activeLease } from './lease.ts';
 import { afterFailure, type Remote } from './remote.ts';
-import { idFromHash } from './selection.ts';
+import { type Route, routeFromHash } from './selection.ts';
 import type { Lease } from './types.ts';
 
 export type Connection = 'connecting' | 'live' | 'reconnecting';
@@ -67,6 +67,6 @@ function subscribeToHash(onChange: () => void): () => void {
   return () => window.removeEventListener('hashchange', onChange);
 }
 
-export function useSelectedId(): string | undefined {
-  return idFromHash(useSyncExternalStore(subscribeToHash, () => window.location.hash));
+export function useRoute(): Route {
+  return routeFromHash(useSyncExternalStore(subscribeToHash, () => window.location.hash));
 }

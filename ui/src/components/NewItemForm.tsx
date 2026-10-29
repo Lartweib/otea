@@ -4,53 +4,14 @@ import { type Connection, useRemote } from '../hooks.ts';
 import {
   canSubmit,
   type FormValues,
-  fieldHint,
-  fieldLabel,
   initialValues,
   payloadOf,
   startMessage,
   startOf,
 } from '../intake.ts';
 import { Button } from '../kit/index.ts';
-import { moduleFor } from '../modules/registry.ts';
-import type { CollectionView, FieldView } from '../types.ts';
-
-type FieldControlProps = {
-  field: FieldView;
-  value: string;
-  disabled: boolean;
-  onChange: (value: string) => void;
-};
-
-function FieldControl({ field, value, disabled, onChange }: FieldControlProps) {
-  const id = `intake-${field.name}`;
-  const hint = fieldHint(field);
-  const hintId = hint ? `${id}-hint` : undefined;
-  const required = field.required === 'create';
-  const { Edit } = moduleFor(field.module);
-  return (
-    <div className="intake-field">
-      <label className="t-label" htmlFor={id}>
-        {fieldLabel(field.name)}
-        {required ? <span className="required"> (required)</span> : null}
-      </label>
-      <Edit
-        id={id}
-        field={field}
-        value={value}
-        disabled={disabled}
-        required={required}
-        describedBy={hintId}
-        onChange={onChange}
-      />
-      {hint ? (
-        <p className="t-small" id={hintId}>
-          {hint}
-        </p>
-      ) : null}
-    </div>
-  );
-}
+import type { CollectionView } from '../types.ts';
+import { FieldControl } from './FieldControl.tsx';
 
 type IntakeFormProps = {
   collections: CollectionView[];
@@ -122,6 +83,7 @@ function IntakeForm({ collections, first, onCancel, onCreated }: IntakeFormProps
       {collection.fields.map((field) => (
         <FieldControl
           key={`${collection.name}:${field.name}`}
+          id={`intake-${field.name}`}
           field={field}
           value={values[field.name] ?? ''}
           disabled={posting}

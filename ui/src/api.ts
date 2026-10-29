@@ -1,5 +1,5 @@
 import { serverMessage, UNREACHABLE } from './remote.ts';
-import type { CollectionView, Item, ItemView, Session } from './types.ts';
+import type { CollectionView, Item, ItemView, PresetView, Session } from './types.ts';
 
 async function get(path: string, signal: AbortSignal): Promise<Response> {
   const response = await fetch(path, { signal, headers: { accept: 'application/json' } });
@@ -24,6 +24,10 @@ export async function fetchSession(signal: AbortSignal): Promise<Session> {
 
 export async function fetchCollections(signal: AbortSignal): Promise<CollectionView[]> {
   return (await get('/api/collections', signal)).json();
+}
+
+export async function fetchPresets(signal: AbortSignal): Promise<PresetView[]> {
+  return (await get('/api/presets', signal)).json();
 }
 
 async function post<T>(path: string, payload: unknown): Promise<T> {

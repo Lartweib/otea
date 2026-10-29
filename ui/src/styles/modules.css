@@ -108,3 +108,222 @@
 .md img {
   max-width: 100%;
 }
+
+/* ---- topbar link to the catalog: quiet text ---- */
+.brand {
+  color: var(--ink);
+  text-decoration: none;
+  border-radius: var(--r-s);
+}
+
+.topbar-link {
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  color: var(--mut);
+  font-size: 12.5px;
+  font-weight: 500;
+  text-decoration: none;
+  transition:
+    background-color var(--micro),
+    color var(--micro);
+}
+
+.topbar-link:hover {
+  background: var(--hov);
+  color: var(--ink);
+}
+
+.topbar-link[aria-current="page"] {
+  color: var(--ink);
+  background: var(--chip);
+}
+
+.quiet-link {
+  color: var(--mut);
+  text-underline-offset: 2px;
+}
+
+.quiet-link:hover {
+  color: var(--ink);
+}
+
+/* ---- catalog index: a calm list, not tiles ---- */
+.mod-index {
+  display: grid;
+  gap: 12px;
+  padding-top: 4px;
+}
+
+.mod-index-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 12px;
+}
+
+.mod-index-title {
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.mod-index-sub {
+  padding: 8px 12px 0;
+}
+
+.mod-entries {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.mod-entry {
+  display: grid;
+  gap: 3px;
+  padding: 10px 12px;
+  border-radius: var(--r-m);
+  color: var(--ink);
+  text-decoration: none;
+  transition: background-color 180ms;
+}
+
+.mod-entry:hover {
+  background: var(--hov);
+}
+
+.mod-entry[aria-current="page"] {
+  background: var(--sel);
+}
+
+.mod-entry:focus-visible {
+  outline-offset: -2px;
+}
+
+.mod-entry-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mod-entry-name {
+  font: 500 14px var(--font-machine);
+}
+
+/* ---- one module ---- */
+.mod-name {
+  font-family: var(--font-machine);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.mod-note {
+  color: var(--ink);
+}
+
+.mod-section {
+  display: grid;
+  gap: 14px;
+}
+
+.mod-section-head {
+  display: grid;
+  gap: 2px;
+}
+
+.sample {
+  display: grid;
+  gap: 10px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.sample-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.sample-row-title {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  font-size: 15px;
+  font-weight: 500;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.sample-views .intake-field {
+  max-width: 28rem;
+}
+
+.mod-uses {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+}
+
+.mod-use {
+  display: grid;
+  gap: 4px;
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+}
+
+.mod-use:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.mod-use-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+}
+
+.mod-use-field {
+  font-size: 13.5px;
+  font-weight: 500;
+}
+
+.mod-use-modules {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+}
+
+.mod-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: var(--r-s);
+  color: inherit;
+  text-decoration: none;
+}
+
+.mod-chip:hover .pill {
+  background: var(--sel);
+}
+
+.mod-yaml {
+  margin: 0;
+  padding: 12px 14px;
+  overflow-x: auto;
+  font: 400 12.5px / 1.6 var(--font-machine);
+  scrollbar-width: thin;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .topbar-link,
+  .mod-entry {
+    transition-duration: 1ms;
+  }
+}
