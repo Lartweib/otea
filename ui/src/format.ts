@@ -4,7 +4,19 @@ export function actorLabel(actor: Actor): string {
   return `${actor.name} (${actor.kind})`;
 }
 
-export function eventActorLabel({ actor, data }: ItemEvent): string {
+export type Relay = { via: string; quote: string | null };
+
+// A decision the human made in conversation and an agent relayed: it is the human's, but it never
+// reads as one made in the UI.
+export function relayOf({ data }: ItemEvent): Relay | null {
+  if (typeof data.via !== 'string') return null;
+  return { via: data.via, quote: typeof data.quote === 'string' ? data.quote : null };
+}
+
+export function eventActorLabel(event: ItemEvent): string {
+  const { actor, data } = event;
+  const relay = relayOf(event);
+  if (relay) return `${actor.name}, relayed by ${relay.via}`;
   return data.channel === 'ui' ? `${actor.name} (ui)` : actorLabel(actor);
 }
 
