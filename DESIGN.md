@@ -69,7 +69,7 @@ One circle; its state lives in fill, stroke and mark.
 | done | filled grey plus check |
 | discarded | hollow grey plus slash |
 
-How an item maps to a kind (`ui/src/node-kind.ts`): turn `human` is yours; turn `agent` is working while a lease is held, incomplete when the item sits in its collection's `incomplete` state, queued otherwise; turn `none` is discarded when the state name reads as thrown away (`discard`, `cancel`, `reject`, `drop`, `wont`, `duplicate`, `obsolete`, `abandon`) and done otherwise. Presets do not mark closed states as success or failure, so the name is the only signal today.
+How an item maps to a kind (`ui/src/node-kind.ts`): turn `human` is yours; turn `agent` is working while a lease is held, incomplete when the item sits in its type's `incomplete` state, queued otherwise; turn `none` is done or discarded as the preset declares for the item's state (`closes: done` or `closes: discarded`, sent as the item's `closes`), whatever the state is called. The same `closes` on a move keeps a discarding move quiet (`moveVariants`).
 
 ## Lanes
 
@@ -88,6 +88,8 @@ The items view is the **Split** composition: three columns in one grid (`.worksp
 The rail keeps its grid track even when it is hidden (below 64rem it is 0 wide), so the list and detail never change tracks and the columns can animate. Below 48rem the workspace is the phone layout (see Phone). Routes: `#<id>` selects an item, `#/modules` opens the catalog, `#/triage` opens swipe triage.
 
 The detail has two parts: the **primary** column (head, moves, missing fields, field values) and the **side** (collection, creator, lease, history). Stacked by default.
+
+What the detail shows follows the item type's layout (`detailBlocks` in `ui/src/item-types.ts`, tested): the `header` slot as a field list under the title, then the `evidence` and `body` slots in the primary column in their order, and the `side` slot atop the side. The evidence list (every attached file) sits at the first evidence module (`images`, `recording`, `diff`, `log`), or after the fields when the layout places none. Reserved modules draw nothing yet. Values whose field the type does not declare still show, as plain text, at the end of the body. A type without a layout draws as before layouts: every field in the body. The list row draws the `row` slot, and the create form asks for the `intake` slot's fields, with a **Type** select after the collection when the collection has several types.
 
 ### Focus mode
 
@@ -116,6 +118,7 @@ Each block is measured (ResizeObserver), so an event that wraps keeps its stop c
 
 - **Buttons** are pills: `Button` with `primary`, `quiet`, `sm` and `icon`. One primary per screen, always the move that hands the turn on (`moveVariants` in `ui/src/actions.ts`); moves that throw work away are quiet.
 - **Pills** (`Pill`): mono tags; `ask` for an open question for you, `state` for a workflow state (tinted in your color when it waits for you); `size="sm"` inside a list row.
+- **Type tag** (`TypeTag`): the item type's short name (`bug`, `impr`), mono 10.5/500 in `--mut`, in a square box (2px radius, 1px `--line` ring), so it never reads as a pill or a state; never in your color. Shown first in a row's meta line, in the detail and the triage card tags, only when the item's collection has two or more types; the label (`Improvement`) is its tooltip.
 - **Severity** (`Severity`): four signal bars; level 4 in `--warn`.
 - **Kbd** (`Kbd`): keyboard hints inside buttons.
 - **Icons** (`Icon`): thin (stroke 1.25), 16px, current color. No emoji.
