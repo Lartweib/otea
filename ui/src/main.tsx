@@ -14,6 +14,7 @@ import './kit/kit.css';
 import './styles/shell.css';
 import './styles/list.css';
 import './styles/detail.css';
+import './styles/evidence.css';
 import './styles/workspace.css';
 import './styles/modules.css';
 import './styles/phone.css';

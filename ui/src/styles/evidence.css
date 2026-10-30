@@ -1,0 +1,565 @@
+/* Evidence modules: the proof an agent attached, drawn where the type's layout places it. Media sits
+   in wells; code and logs are machine text. Nothing here may push the page wider than its column. */
+
+.ev-module {
+  container-type: inline-size;
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.ev-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+/* ---- empty: what the agent should attach. Required and still empty: dashed, as incomplete is ---- */
+.ev-empty {
+  display: grid;
+  gap: 4px;
+  padding: 18px 16px;
+  border-radius: var(--r-m);
+}
+
+.ev-empty[data-required="true"] {
+  background: transparent;
+  box-shadow: none;
+  outline: 1.5px dashed var(--lane);
+  outline-offset: -1.5px;
+}
+
+/* ---- a file: a well with the media, the file's name and caption under it ---- */
+.ev-figure,
+.ev-frame {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  margin: 0;
+}
+
+.ev-stage {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  min-height: 120px;
+  overflow: hidden;
+  border-radius: var(--r-m);
+}
+
+.ev-img {
+  display: block;
+  max-width: 100%;
+  max-height: min(70vh, 560px);
+  object-fit: contain;
+}
+
+/* Set down: a newly shown image arrives from just below. */
+.ev-set {
+  animation: ev-set var(--arrive) var(--e-out) both;
+}
+
+@keyframes ev-set {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+.ev-tag {
+  position: absolute;
+  top: 10px;
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: color-mix(in oklch, var(--sf) 88%, transparent);
+  font: 400 11.5px var(--font-machine);
+  color: var(--ink);
+  pointer-events: none;
+}
+
+.ev-tag.l {
+  left: 10px;
+}
+
+.ev-tag.r {
+  right: 10px;
+}
+
+.ev-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 10px;
+  min-width: 0;
+  margin: 0;
+}
+
+.ev-file {
+  font: 400 12px var(--font-machine);
+  color: var(--mut);
+  overflow-wrap: anywhere;
+  text-decoration: none;
+}
+
+.ev-file:hover {
+  color: var(--ink);
+  text-decoration: underline;
+}
+
+/* ---- several files where one shows: pick which ---- */
+.ev-one {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.ev-picker,
+.ev-modes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.ev-pick {
+  max-width: 100%;
+  font-family: var(--font-machine);
+  font-weight: 400;
+}
+
+.ev-latest {
+  font: 400 11px var(--font-machine);
+  opacity: 0.7;
+}
+
+/* ---- compare: before and after on one frame, a divider between them ---- */
+.ev-compare {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.ev-cmp {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  max-height: min(70vh, 560px);
+  overflow: hidden;
+  border-radius: var(--r-m);
+  cursor: ew-resize;
+  user-select: none;
+  /* A vertical swipe still scrolls the page on a phone; a sideways one moves the divider. */
+  touch-action: pan-y;
+}
+
+.ev-cmp .ev-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-height: none;
+}
+
+.ev-divider {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--ink);
+  outline: none;
+}
+
+/* A wider grip than the line. */
+.ev-divider::before {
+  content: "";
+  position: absolute;
+  inset: 0 -12px;
+}
+
+.ev-knob {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  margin: -16px 0 0 -16px;
+  border-radius: 50%;
+  background: var(--ink);
+  color: var(--sf);
+  box-shadow: 0 6px 16px -6px var(--shadow);
+  transition:
+    transform var(--arrive) var(--e-out),
+    box-shadow var(--arrive) var(--e-out);
+}
+
+.ev-knob .icon {
+  width: 11px;
+  height: 11px;
+  stroke-width: 1.6;
+}
+
+/* Lift while carried, set down on release. */
+.ev-cmp[data-dragging="true"] .ev-knob {
+  transform: scale(1.14);
+  box-shadow: 0 14px 26px -10px var(--shadow);
+}
+
+.ev-divider:focus-visible .ev-knob {
+  outline: 2px solid var(--you);
+  outline-offset: 2px;
+}
+
+.ev-pair-meta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 16px;
+}
+
+.ev-pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.ev-missing {
+  display: grid;
+  place-items: center;
+  min-height: 160px;
+  border-radius: var(--r-m);
+  background: transparent;
+  outline: 1.5px dashed var(--lane);
+  outline-offset: -1.5px;
+}
+
+@container (max-width: 30rem) {
+  .ev-pair {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* ---- gallery and frames: one large, the rest as thumbnails ---- */
+.ev-gallery,
+.ev-frames {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.ev-nav {
+  position: absolute;
+  top: 50%;
+  translate: 0 -50%;
+  border-color: transparent;
+  background: color-mix(in oklch, var(--sf) 88%, transparent);
+}
+
+.ev-nav.l {
+  left: 10px;
+}
+
+.ev-nav.r {
+  right: 10px;
+}
+
+.ev-thumbs,
+.ev-strip {
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  padding: 3px;
+  overflow-x: auto;
+  list-style: none;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
+}
+
+.ev-strip li {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+}
+
+.ev-thumb {
+  display: block;
+  flex: none;
+  width: 72px;
+  height: 52px;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: var(--r-s);
+  cursor: pointer;
+  box-shadow: 0 0 0 1px var(--line);
+  transition:
+    box-shadow var(--micro),
+    transform var(--micro) var(--e-out);
+}
+
+.ev-thumb img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ev-thumb:hover {
+  transform: translateY(-1px);
+}
+
+.ev-thumb[aria-current="true"] {
+  box-shadow: 0 0 0 2px var(--ink);
+}
+
+.ev-thumb:focus-visible {
+  outline: 2px solid var(--you);
+  outline-offset: 2px;
+}
+
+.ev-frames-switch {
+  justify-self: start;
+}
+
+.ev-reading {
+  min-height: 200px;
+}
+
+/* ---- recording ---- */
+.ev-media {
+  display: block;
+  width: 100%;
+  max-height: min(70vh, 560px);
+  background: var(--well);
+}
+
+/* ---- code: diffs and logs, numbered, scrolled sideways inside their well ---- */
+.ev-diff,
+.ev-log {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.ev-diff-sum {
+  margin: 0;
+}
+
+.ev-plus {
+  color: var(--plus);
+}
+
+.ev-minus {
+  color: var(--minus);
+}
+
+.ev-diff-file {
+  min-width: 0;
+  overflow: hidden;
+  border-radius: var(--r-m);
+  background: var(--well);
+  box-shadow: 0 0 0 1px var(--line);
+}
+
+.ev-diff-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 12px;
+  background: var(--sf);
+  font: 400 12.5px var(--font-machine);
+  cursor: pointer;
+  list-style: none;
+}
+
+.ev-diff-head::-webkit-details-marker {
+  display: none;
+}
+
+.ev-diff-file[open] > .ev-diff-head {
+  box-shadow: 0 1px 0 var(--line);
+}
+
+.ev-path {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.ev-path::before {
+  content: "";
+  display: inline-block;
+  width: 0;
+  height: 0;
+  margin-right: 8px;
+  border-block: 4px solid transparent;
+  border-left: 5px solid var(--mut);
+  vertical-align: 1px;
+  transition: transform var(--micro) var(--e-out);
+}
+
+.ev-diff-file[open] .ev-path::before {
+  transform: rotate(90deg);
+}
+
+.ev-counts {
+  display: flex;
+  flex: none;
+  gap: 8px;
+}
+
+.ev-code {
+  min-width: 0;
+  padding: 8px 0;
+  overflow-x: auto;
+  border-radius: var(--r-m);
+  background: var(--well);
+  font: 400 12.5px / 1.7 var(--font-machine);
+  color: var(--ink);
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
+}
+
+.ev-diff-file .ev-code {
+  border-radius: 0;
+}
+
+.ev-lines {
+  display: inline-block;
+  min-width: 100%;
+}
+
+.ev-line {
+  display: flex;
+  background: var(--tint, transparent);
+}
+
+.ev-line[data-kind="add"] {
+  --tint: color-mix(in oklch, var(--plus) 14%, transparent);
+  color: var(--plus);
+}
+
+.ev-line[data-kind="del"] {
+  --tint: color-mix(in oklch, var(--minus) 12%, transparent);
+  color: var(--minus);
+}
+
+.ev-line[data-kind="ctx"],
+.ev-line[data-kind="note"] {
+  color: var(--mut);
+}
+
+.ev-line[data-kind="hunk"] {
+  --tint: color-mix(in oklch, var(--mut) 10%, transparent);
+  color: var(--mut);
+}
+
+/* The line numbers stay put while a long line scrolls sideways. */
+.ev-gutter {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  display: flex;
+  flex: none;
+  background: linear-gradient(var(--tint, transparent), var(--tint, transparent)), var(--well);
+  user-select: none;
+}
+
+.ev-no {
+  box-sizing: content-box;
+  min-width: calc(var(--digits, 2) * 1ch);
+  font-variant-numeric: tabular-nums;
+  padding: 0 6px 0 10px;
+  text-align: right;
+  color: var(--mut);
+  opacity: 0.75;
+}
+
+.ev-text {
+  flex: 1 0 auto;
+  padding: 0 14px 0 8px;
+  white-space: pre;
+}
+
+.ev-sign {
+  display: inline-block;
+  width: 1.4ch;
+  user-select: none;
+}
+
+.ev-code[data-wrap="true"] .ev-lines {
+  display: block;
+}
+
+.ev-code[data-wrap="true"] .ev-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.ev-tools {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.ev-more {
+  position: sticky;
+  left: 0;
+  display: block;
+  width: min(100%, 100cqw);
+  margin: 4px 0;
+  padding: 6px 14px;
+  border: 0;
+  border-block: 1px dashed var(--line);
+  background: transparent;
+  font: inherit;
+  color: var(--mut);
+  text-align: left;
+  cursor: pointer;
+}
+
+.ev-more:hover {
+  color: var(--ink);
+}
+
+.ev-more:focus-visible {
+  outline: 2px solid var(--you);
+  outline-offset: -2px;
+}
+
+.ev-code-state {
+  display: grid;
+  place-items: center;
+  min-height: 80px;
+  border-radius: var(--r-m);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ev-set {
+    animation: none;
+  }
+
+  .ev-knob,
+  .ev-thumb,
+  .ev-path::before {
+    transition-duration: 1ms;
+  }
+
+  .ev-cmp[data-dragging="true"] .ev-knob {
+    transform: none;
+  }
+}

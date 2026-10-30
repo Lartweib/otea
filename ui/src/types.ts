@@ -60,6 +60,8 @@ export type Evidence = {
   id: number;
   itemId: string;
   role: EvidenceRole;
+  // The id of the layout module that draws it; null when none does.
+  module: string | null;
   kind: EvidenceKind;
   filename: string;
   contentType: string;
