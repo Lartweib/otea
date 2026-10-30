@@ -7,6 +7,7 @@ import { transaction } from '../store/database.ts';
 import { typeOfItem } from './collections.ts';
 import type { Context } from './context.ts';
 import { type Item, landMove, requireItem, systemClock } from './items.ts';
+import { assertMayEnter } from './relations.ts';
 
 // The human a relayed decision belongs to: the same actor the web UI records.
 export const RELAYED_HUMAN: Actor = { kind: 'human', name: 'human' };
@@ -41,6 +42,7 @@ export function relayDecision(ctx: Context, input: RelayInput, now = systemClock
     authorizeRelay(workflow, item.state, to, reason);
     assertCanLeave(type, item.state, to, item.fields);
     const at = now();
+    assertMayEnter(ctx, item, workflow, to, at);
     const move = { to, actor: RELAYED_HUMAN, at, lease: activeLease(item.lease, at) };
     const data = { ...(reason ? { reason } : {}), channel, quote, source: 'conversation' };
     return landMove(db, workflow, item, move, data, { via });

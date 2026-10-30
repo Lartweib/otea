@@ -18,6 +18,7 @@ import {
 import { type Actor, formatItemId } from '../core/item.ts';
 import { activeLease, assertMayWrite, type Lease } from '../core/lease.ts';
 import { type ItemType, typeFor, typeOf } from '../core/preset.ts';
+import { type ChildrenSummary, childrenSummary, type RelationRef } from '../core/relations.ts';
 import { type Closing, closesOf, type Turn, turnOf, type Workflow } from '../core/workflow.ts';
 import { transaction } from '../store/database.ts';
 import {
@@ -33,6 +34,7 @@ import {
   selectEvents,
   selectEvidence,
   selectItems,
+  selectRelations,
   selectStateEntries,
   updateItemContent,
   updateItemState,
@@ -40,11 +42,27 @@ import {
 import { getCollection, presetOf, typeOfItem } from './collections.ts';
 import type { Context } from './context.ts';
 import { presentEvidence } from './evidence.ts';
+import {
+  addRelation,
+  assertMayEnter,
+  childIds,
+  childrenOf,
+  type RelatedItem,
+  refsOf,
+  relatedItems,
+  withRelations,
+} from './relations.ts';
 
 export type Clock = () => string;
 
 // turn and closes are derived from the state: whose turn it is and, once closed, how it closed.
-export type Item = ItemRecord & { turn: Turn; closes?: Closing };
+// Lists add the item's relations and, for a parent, how far its children got, when it has them.
+export type Item = ItemRecord & {
+  turn: Turn;
+  closes?: Closing;
+  relations?: RelationRef[];
+  children?: ChildrenSummary;
+};
 
 export type ItemWithEvents = Item & { events: EventRecord[] };
 
@@ -74,12 +92,14 @@ export function workflowOf(ctx: Context, item: Pick<ItemRecord, 'collection' | '
   return typeOfItem(ctx, item).workflow;
 }
 
-// `type` may be left out when the collection's preset has a single type.
+// `type` may be left out when the collection's preset has a single type. `parent` creates the item
+// as a child of that item, in the same write.
 export type CreateItemInput = {
   collection: string;
   type?: string;
   title: string;
   fields?: FieldValues;
+  parent?: string;
   actor: Actor;
   channel?: Channel;
 };
@@ -111,17 +131,23 @@ export function createItem(ctx: Context, input: CreateItemInput, now = systemClo
     const { channel } = input;
     const data = channel === undefined ? { state } : { state, channel };
     appendEvent(db, { itemId: item.id, type: 'created', actor: input.actor, at, data });
-    return present(item, type.workflow, at);
+    const created = present(item, type.workflow, at);
+    if (input.parent === undefined) return created;
+    const parent = { kind: 'parent' as const, from: item.id, to: input.parent };
+    addRelation(ctx, parent, { actor: input.actor, channel: channel ?? 'cli' }, at);
+    return { ...created, relations: refsOf([parent], item.id) };
   });
 }
 
-// `availableTo` hides items whose active lease is held by anyone other than that actor.
+// `availableTo` hides items whose active lease is held by anyone other than that actor; `parent`
+// keeps the children of that item.
 export type ListItemsFilter = {
   collection?: string;
   state?: string;
   type?: string;
   turn?: Turn;
   availableTo?: string;
+  parent?: string;
 };
 
 export function listItems(ctx: Context, filter: ListItemsFilter = {}, now = systemClock): Item[] {
@@ -133,12 +159,22 @@ export function listItems(ctx: Context, filter: ListItemsFilter = {}, now = syst
     if (!preset) throw new OteaError('not_found', `Collection "${collection}" not found`);
     return typeOf(preset, type).workflow;
   };
-  const { turn, availableTo, ...stored } = filter;
+  const { turn, availableTo, parent, ...stored } = filter;
+  if (parent !== undefined) requireItem(ctx.db, parent);
+  const relations = selectRelations(ctx.db);
+  const children = parent === undefined ? undefined : new Set(childIds(relations, parent));
   const at = now();
-  return selectItems(ctx.db, stored)
+  const items = selectItems(ctx.db, stored)
     .map((item) => present(item, workflowFor(item), at))
     .filter((item) => turn === undefined || item.turn === turn)
-    .filter(({ lease }) => availableTo === undefined || !lease || lease.holder === availableTo);
+    .filter(({ lease }) => availableTo === undefined || !lease || lease.holder === availableTo)
+    .filter(({ id }) => children === undefined || children.has(id));
+  if (relations.length === 0) return items;
+  // A child may sit outside the filter, so the summaries read every item.
+  const closings = new Map(
+    selectItems(ctx.db, {}).map((item) => [item.id, present(item, workflowFor(item), at)]),
+  );
+  return withRelations(items, relations, (id) => closings.get(id) ?? {});
 }
 
 // The matching item that has waited longest: the first to enter its current state, ties going to
@@ -163,12 +199,15 @@ export function getItem(ctx: Context, id: string, now = systemClock): ItemWithEv
 }
 
 // `transitions` are the moves the performer may make, `relayable` the human decisions an agent
-// may relay, `evidence` the files attached to the item, oldest first, each with the module that draws it.
+// may relay, `evidence` the files attached to the item, oldest first, each with the module that draws
+// it, `relations` its links with where each other item stands, and `children`, for a parent, how far
+// its children got.
 export type ItemView = ItemWithEvents & {
   transitions: Move[];
   relayable: Move[];
   missing: string[];
   evidence: EvidenceRecord[];
+  relations: RelatedItem[];
 };
 
 export function showItem(
@@ -177,14 +216,18 @@ export function showItem(
   performer: Performer,
   now = systemClock,
 ): ItemView {
-  const item = getItem(ctx, id, now);
+  const at = now();
+  const item = getItem(ctx, id, () => at);
   const type = typeOfItem(ctx, item);
+  const children = childrenOf(ctx, item.id, at);
   return {
     ...item,
     transitions: availableMoves(type.workflow, item.state, performer),
     relayable: relayableMoves(type.workflow, item.state),
     missing: missingToComplete(type, item.fields),
     evidence: presentEvidence(type.layout, selectEvidence(ctx.db, item.id)),
+    relations: relatedItems(ctx, item.id, at),
+    ...(children.length > 0 ? { children: childrenSummary(children) } : {}),
   };
 }
 
@@ -277,6 +320,7 @@ export function moveItem(ctx: Context, input: MoveItemInput, now = systemClock):
     assertMayWrite(item.id, lease, actor);
     authorizeMove(workflow, item.state, to, { actor, channel }, reason);
     assertCanLeave(type, item.state, to, item.fields);
+    assertMayEnter(ctx, item, workflow, to, at);
     const data = { ...(reason ? { reason } : {}), channel };
     return landMove(db, workflow, item, { to, actor, at, lease }, data);
   });
