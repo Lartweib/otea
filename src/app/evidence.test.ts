@@ -13,7 +13,7 @@ import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { MAX_EVIDENCE_BYTES } from '../core/evidence.ts';
 import type { Actor } from '../core/item.ts';
-import { parsePreset } from '../core/preset.ts';
+import { evidencePreset } from '../core/testing.ts';
 import { addCollection } from './collections.ts';
 import { type AttachInput, attachEvidence, evidenceDir, evidenceFile } from './evidence.ts';
 import { createItem, getItem, moveItem, showItem } from './items.ts';
@@ -205,30 +205,6 @@ describe('attachEvidence', () => {
   });
 });
 
-// bug: a compare and a log; impr: a gallery and a mockup (both images), a diff and a recording.
-const EVIDENCE_PRESET = parsePreset(`
-preset: proof
-preset_version: 1
-fields:
-  title: { module: text, required: create }
-workflow:
-  initial: open
-  states: { open: { turn: agent }, closed: { turn: none, closes: discarded } }
-  transitions: [{ from: open, to: closed, by: agent }]
-types:
-  bug:
-    label: Bug
-    layout:
-      evidence:
-        - { module: images, variant: compare, accepts: [png, gif] }
-        - { module: log, required: true }
-  impr:
-    label: Improvement
-    layout:
-      evidence: [{ module: images, id: screens, variant: gallery }, { module: diff }]
-      side: [{ module: images, id: mockup }, { module: recording }]
-`);
-
 describe('attachEvidence to a type that places evidence modules', () => {
   let project: Project;
   let files: string;
@@ -250,7 +226,7 @@ describe('attachEvidence to a type that places evidence modules', () => {
     const root = mkdtempSync(join(tmpdir(), 'otea-evidence-'));
     files = join(root, 'files');
     mkdirSync(files);
-    project = { root, ...memoryContext(EVIDENCE_PRESET) };
+    project = { root, ...memoryContext(evidencePreset) };
     addCollection(project, { name: 'proof', preset: 'proof' });
     for (const type of ['bug', 'impr']) {
       createItem(project, { collection: 'proof', type, title: type, actor: claude }, at(T0));

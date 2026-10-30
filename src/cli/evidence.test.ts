@@ -3,6 +3,7 @@ import { readFileSync, truncateSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { MAX_EVIDENCE_BYTES } from '../core/evidence.ts';
+import { EVIDENCE_YAML } from '../core/testing.ts';
 import { type Cli, cliAt, tempGitRepo } from './testing.ts';
 
 describe('attach', () => {
@@ -150,5 +151,88 @@ describe('attach', () => {
       expect(code).toBe(4);
       expect(errorCode(err)).toBe('item_closed');
     });
+  });
+});
+
+describe('attach to a type that places evidence modules', () => {
+  let repo: ReturnType<typeof tempGitRepo>;
+  let otea: Cli;
+
+  const failure = async (...argv: string[]) => {
+    const { code, err } = await otea(...argv, '--json');
+    return { exit: code, ...JSON.parse(err).error };
+  };
+
+  beforeEach(async () => {
+    repo = tempGitRepo();
+    otea = cliAt(repo.dir, { OTEA_AGENT: 'claude' });
+    await otea('init');
+    repo.write('.otea/presets/proof/preset.yaml', EVIDENCE_YAML);
+    await otea('collection', 'add', 'proof', '--preset', 'proof');
+    await otea('create', '--collection', 'proof', '--type', 'bug', '--title', 'Crash');
+    await otea('create', '--collection', 'proof', '--type', 'impr', '--title', 'Faster');
+    repo.write('before.png', 'png-before');
+    repo.write('home.png', 'png-home');
+    repo.write('run.log', 'PASS\n');
+    repo.write('notes.zip', 'zip');
+  });
+
+  afterEach(() => repo.remove());
+
+  it('prints the module the file went to', async () => {
+    const { out } = await otea('attach', 'PROOF-1', 'before.png', '--role', 'before');
+
+    expect(out).toBe('#1  images  before  image  before.png  10 B\n');
+  });
+
+  it('places a file in the module named by --module', async () => {
+    const { out } = await otea('attach', 'PROOF-2', 'home.png', '--module', 'mockup');
+
+    expect(out).toBe('#1  mockup  single  image  home.png  8 B\n');
+  });
+
+  it('refuses a kind no module takes with evidence_not_accepted (exit 15)', async () => {
+    expect(await failure('attach', 'PROOF-1', 'notes.zip')).toEqual({
+      exit: 15,
+      code: 'evidence_not_accepted',
+      message:
+        'PROOF-1 (bug) does not take notes.zip. It takes: "images" (images, compare): png, gif; "log" (log): log',
+    });
+  });
+
+  it('asks for --module when two modules take the file (exit 2)', async () => {
+    const { exit, code, message } = await failure('attach', 'PROOF-2', 'home.png');
+
+    expect([exit, code]).toEqual([2, 'module_required']);
+    expect(message).toBe(
+      'home.png fits more than one evidence module of PROOF-2 (impr): pass --module screens or --module mockup',
+    );
+  });
+
+  it('refuses a compare without --role before or after (exit 2)', async () => {
+    const { exit, code, message } = await failure('attach', 'PROOF-1', 'before.png');
+
+    expect([exit, code]).toEqual([2, 'invalid_role']);
+    expect(message).toContain('pass --role before or --role after');
+  });
+
+  it('groups evidence by module in show, with what is still empty', async () => {
+    await otea('attach', 'PROOF-1', 'before.png', '--role', 'before', '--caption', 'Blank');
+    await otea('attach', 'PROOF-2', 'home.png', '--module', 'mockup');
+
+    expect((await otea('show', 'PROOF-1')).out).toContain(
+      [
+        'Evidence:',
+        '  images (images, compare)',
+        '    #1  before  image  before.png  10 B  Blank',
+        '  log (log, required)',
+        '    nothing yet',
+        '',
+        'Events:',
+      ].join('\n'),
+    );
+    expect((await otea('show', 'PROOF-2')).out).toContain(
+      '  mockup (images)\n    #2  single  image  home.png  8 B\n',
+    );
   });
 });

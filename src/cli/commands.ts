@@ -1,5 +1,5 @@
 import { join, resolve } from 'node:path';
-import { addCollection, DEFAULT_PRESET } from '../app/collections.ts';
+import { addCollection, DEFAULT_PRESET, typeOfItem } from '../app/collections.ts';
 import { listEvents } from '../app/events.ts';
 import { attachEvidence } from '../app/evidence.ts';
 import {
@@ -171,8 +171,11 @@ const show: Command = {
   options: {},
   execute: ({ cwd, actor, channel, args: [id = ''] }) => {
     const performer = { actor, channel };
-    const item = withProject(cwd, (project) => showItem(project, id, performer));
-    return { data: item, text: formatItemWithEvents(item) };
+    const { item, layout } = withProject(cwd, (project) => {
+      const shown = showItem(project, id, performer);
+      return { item: shown, layout: typeOfItem(project, shown).layout };
+    });
+    return { data: item, text: formatItemWithEvents(item, layout) };
   },
 };
 
@@ -391,11 +394,16 @@ const update: Command = {
 
 const attach: Command = {
   name: 'attach',
-  summary: `Attach a file to an open item as evidence (at most ${MAX_EVIDENCE_MB} MB); --role before and after pair a visual fix`,
+  summary: `Attach a file to an open item as evidence (at most ${MAX_EVIDENCE_MB} MB), into an evidence module of its type that accepts it; --module picks one when several do, --role before and after fill a compare`,
   args: ['id', 'file'],
-  options: { role: { choices: EVIDENCE_ROLES }, caption: { placeholder: 'text' } },
+  options: {
+    role: { choices: EVIDENCE_ROLES },
+    module: { placeholder: 'id' },
+    caption: { placeholder: 'text' },
+  },
   execute: ({ cwd, actor, channel, option, args: [id = '', file = ''] }) => {
     const role = option('role') as EvidenceRole | undefined;
+    const module = option('module');
     const caption = option('caption');
     const input = {
       id,
@@ -403,6 +411,7 @@ const attach: Command = {
       actor,
       channel,
       ...(role === undefined ? {} : { role }),
+      ...(module === undefined ? {} : { module }),
       ...(caption === undefined ? {} : { caption }),
     };
     const evidence = withProject(cwd, (project) => attachEvidence(project, input));

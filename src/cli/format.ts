@@ -2,6 +2,8 @@ import type { Item, ItemView } from '../app/items.ts';
 import type { ValidationReport } from '../app/validate.ts';
 import type { Actor } from '../core/item.ts';
 import type { Lease } from '../core/lease.ts';
+import type { Layout } from '../core/modules.ts';
+import { type EvidenceModuleEntry, groupEvidence } from '../core/placement.ts';
 import { DEFAULT_TYPE } from '../core/preset.ts';
 import type { EvidenceRecord } from '../store/queries.ts';
 
@@ -115,7 +117,8 @@ function describeAction({ type, data }: Event): string {
   if (type === 'evidence_added') {
     const caption = typeof data.caption === 'string' ? ` (${JSON.stringify(data.caption)})` : '';
     const { evidenceId, role, kind, filename } = data;
-    return `#${String(evidenceId)} ${String(role)} ${String(kind)} ${String(filename)}${caption}`;
+    const into = typeof data.module === 'string' ? ` in ${data.module}` : '';
+    return `#${String(evidenceId)} ${String(role)} ${String(kind)} ${String(filename)}${into}${caption}`;
   }
   return JSON.stringify(data);
 }
@@ -138,8 +141,30 @@ function evidenceRow({ id, role, kind, filename, size, caption }: EvidenceRecord
   return [`#${id}`, role, kind, filename, byteSize(size), caption ?? ''];
 }
 
+// An attached entry, led by the module it went to.
 export function formatEvidence(evidence: EvidenceRecord): string {
-  return columns([evidenceRow(evidence)]);
+  const [id = '', ...rest] = evidenceRow(evidence);
+  return columns([evidence.module === null ? [id, ...rest] : [id, evidence.module, ...rest]]);
+}
+
+function moduleHeading({ id, module, variant, required, label }: EvidenceModuleEntry): string {
+  const traits = [module, ...(variant ? [variant] : []), ...(required ? ['required'] : [])];
+  return `${id} (${traits.join(', ')})${label ? `: ${label}` : ''}`;
+}
+
+function evidenceLines(evidence: EvidenceRecord[], layout: Layout | undefined): string[] {
+  const rows = (entries: EvidenceRecord[]) => columns(entries.map(evidenceRow));
+  const groups = layout ? groupEvidence(layout, evidence) : { modules: [], others: evidence };
+  if (groups.modules.length === 0) {
+    return evidence.length > 0 ? ['Evidence:', indent(rows(evidence)), ''] : [];
+  }
+  const sections = groups.modules.map(({ module, evidence: held }) =>
+    [moduleHeading(module), indent(held.length > 0 ? rows(held) : 'nothing yet')].join('\n'),
+  );
+  if (groups.others.length > 0) {
+    sections.push(['other files', indent(rows(groups.others))].join('\n'));
+  }
+  return ['Evidence:', indent(sections.join('\n')), ''];
 }
 
 function movesLine(label: string, moves: ItemView['transitions']): string {
@@ -155,7 +180,8 @@ function createdLine({ createdBy, createdAt, events }: ItemView): string {
   return `created by ${actorLabel(createdBy)}${via} at ${createdAt}`;
 }
 
-export function formatItemWithEvents(item: ItemView): string {
+// With the item type's layout, evidence is grouped by the module that draws it.
+export function formatItemWithEvents(item: ItemView, layout?: Layout): string {
   return [
     `${item.id}  ${item.title}`,
     `state: ${item.state}  turn: ${item.turn}  ${typed(item) ? `type: ${item.type}  ` : ''}collection: ${item.collection}`,
@@ -169,9 +195,7 @@ export function formatItemWithEvents(item: ItemView): string {
     movesLine('move', item.transitions),
     movesLine('relay', item.relayable),
     '',
-    ...(item.evidence.length > 0
-      ? ['Evidence:', indent(columns(item.evidence.map(evidenceRow))), '']
-      : []),
+    ...evidenceLines(item.evidence, layout),
     'Events:',
     indent(columns(item.events.map(eventRow))),
   ].join('\n');

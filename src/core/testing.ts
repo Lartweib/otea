@@ -54,3 +54,29 @@ types:
 `;
 
 export const mixedPreset = parsePreset(MIXED_YAML);
+
+// bug: a compare and a log; impr: a gallery and a mockup (both images), a diff and a recording.
+export const EVIDENCE_YAML = `
+preset: proof
+preset_version: 1
+fields:
+  title: { module: text, required: create }
+workflow:
+  initial: open
+  states: { open: { turn: agent }, closed: { turn: none, closes: discarded } }
+  transitions: [{ from: open, to: closed, by: agent }]
+types:
+  bug:
+    label: Bug
+    layout:
+      evidence:
+        - { module: images, variant: compare, accepts: [png, gif] }
+        - { module: log, required: true }
+  impr:
+    label: Improvement
+    layout:
+      evidence: [{ module: images, id: screens, variant: gallery }, { module: diff }]
+      side: [{ module: images, id: mockup }, { module: recording }]
+`;
+
+export const evidencePreset = parsePreset(EVIDENCE_YAML);
