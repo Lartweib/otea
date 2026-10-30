@@ -89,6 +89,24 @@ const MIGRATIONS = [
   `
   ALTER TABLE evidence ADD COLUMN module TEXT;
   `,
+  // Typed links between items: the current ones, one per kind and pair (a symmetric kind stores its
+  // ids in order). Their history is the relation_added and relation_removed events.
+  `
+  CREATE TABLE relations (
+    kind TEXT NOT NULL,
+    from_id TEXT NOT NULL REFERENCES items (id),
+    to_id TEXT NOT NULL REFERENCES items (id),
+    created_at TEXT NOT NULL,
+    actor_kind TEXT NOT NULL,
+    actor_name TEXT NOT NULL,
+    channel TEXT NOT NULL,
+    PRIMARY KEY (kind, from_id, to_id)
+  );
+
+  CREATE INDEX relations_to_id ON relations (to_id);
+
+  CREATE UNIQUE INDEX relations_one_parent ON relations (from_id) WHERE kind = 'parent';
+  `,
 ];
 
 function userVersion(db: DatabaseSync): number {

@@ -3,6 +3,7 @@ import type { Channel } from '../core/authority.ts';
 import type { EvidenceKind, EvidenceRole } from '../core/evidence.ts';
 import type { Actor } from '../core/item.ts';
 import type { Lease } from '../core/lease.ts';
+import type { Relation, RelationKind } from '../core/relations.ts';
 
 export type CollectionRecord = {
   name: string;
@@ -348,4 +349,65 @@ export function findEvidence(db: DatabaseSync, id: number): EvidenceRecord | und
 export function selectEvidence(db: DatabaseSync, itemId: string): EvidenceRecord[] {
   const sql = 'SELECT * FROM evidence WHERE item_id = ? ORDER BY id';
   return (db.prepare(sql).all(itemId) as EvidenceRow[]).map(toEvidence);
+}
+
+// A stored relation and who made it.
+export type RelationRecord = Relation & { createdAt: string; actor: Actor; channel: Channel };
+
+type RelationRow = {
+  kind: RelationKind;
+  from_id: string;
+  to_id: string;
+  created_at: string;
+  actor_kind: Actor['kind'];
+  actor_name: string;
+  channel: Channel;
+};
+
+function toRelation(row: RelationRow): RelationRecord {
+  return {
+    kind: row.kind,
+    from: row.from_id,
+    to: row.to_id,
+    createdAt: row.created_at,
+    actor: { kind: row.actor_kind, name: row.actor_name },
+    channel: row.channel,
+  };
+}
+
+export function insertRelation(db: DatabaseSync, relation: RelationRecord): void {
+  db.prepare(
+    `INSERT INTO relations (kind, from_id, to_id, created_at, actor_kind, actor_name, channel)
+    VALUES (?, ?, ?, ?, ?, ?, ?)`,
+  ).run(
+    relation.kind,
+    relation.from,
+    relation.to,
+    relation.createdAt,
+    relation.actor.kind,
+    relation.actor.name,
+    relation.channel,
+  );
+}
+
+export function deleteRelation(db: DatabaseSync, { kind, from, to }: Relation): void {
+  db.prepare('DELETE FROM relations WHERE kind = ? AND from_id = ? AND to_id = ?').run(
+    kind,
+    from,
+    to,
+  );
+}
+
+// Every relation, oldest first; `kind` narrows them to one kind.
+export function selectRelations(db: DatabaseSync, kind?: RelationKind): RelationRecord[] {
+  const sql = `SELECT * FROM relations WHERE (:kind IS NULL OR kind = :kind)
+    ORDER BY created_at, rowid`;
+  return (db.prepare(sql).all({ kind: kind ?? null }) as RelationRow[]).map(toRelation);
+}
+
+// The relations an item takes part in, from either side, oldest first.
+export function selectRelationsOf(db: DatabaseSync, id: string): RelationRecord[] {
+  const sql = `SELECT * FROM relations WHERE from_id = :id OR to_id = :id
+    ORDER BY created_at, rowid`;
+  return (db.prepare(sql).all({ id }) as RelationRow[]).map(toRelation);
 }

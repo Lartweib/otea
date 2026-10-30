@@ -24,16 +24,16 @@ describe('migrate', () => {
     migrate(db);
 
     expect(tables(db)).toEqual(
-      expect.arrayContaining(['collections', 'items', 'events', 'evidence']),
+      expect.arrayContaining(['collections', 'items', 'events', 'evidence', 'relations']),
     );
-    expect(userVersion(db)).toBe(6);
+    expect(userVersion(db)).toBe(7);
   });
 
   it('is idempotent', () => {
     migrate(db);
     migrate(db);
 
-    expect(userVersion(db)).toBe(6);
+    expect(userVersion(db)).toBe(7);
   });
 
   describe('from version 1', () => {
@@ -174,6 +174,47 @@ describe('migrate', () => {
       expect(db.prepare('SELECT id, module FROM evidence').all()).toEqual([
         { id: 1, module: null },
       ]);
+    });
+  });
+
+  describe('relations', () => {
+    const insert = (kind: string, from: string, to: string) =>
+      db
+        .prepare(
+          `INSERT INTO relations (kind, from_id, to_id, created_at, actor_kind, actor_name, channel)
+          VALUES (?, ?, ?, 't', 'agent', 'bot', 'cli')`,
+        )
+        .run(kind, from, to);
+
+    beforeEach(() => {
+      migrate(db);
+      db.exec(`
+        INSERT INTO collections (name, prefix, preset, preset_version, next_seq)
+        VALUES ('tasks', 'TASKS', 'tasks', 1, 4);
+        INSERT INTO items (id, collection, seq, title, fields, preset_version, state, created_at,
+          updated_at, created_by_kind, created_by_name)
+        VALUES ('TASKS-1', 'tasks', 1, 'A', '{}', 1, 'todo', 't', 't', 'human', 'ana'),
+          ('TASKS-2', 'tasks', 2, 'B', '{}', 1, 'todo', 't', 't', 'human', 'ana'),
+          ('TASKS-3', 'tasks', 3, 'C', '{}', 1, 'todo', 't', 't', 'human', 'ana');
+      `);
+    });
+
+    it('stores one link per kind and pair', () => {
+      insert('blocks', 'TASKS-1', 'TASKS-2');
+
+      expect(() => insert('blocks', 'TASKS-1', 'TASKS-2')).toThrow(/UNIQUE/);
+      expect(() => insert('relates', 'TASKS-1', 'TASKS-2')).not.toThrow();
+    });
+
+    it('gives an item at most one parent', () => {
+      insert('parent', 'TASKS-2', 'TASKS-1');
+
+      expect(() => insert('parent', 'TASKS-2', 'TASKS-3')).toThrow(/UNIQUE/);
+      expect(() => insert('parent', 'TASKS-3', 'TASKS-1')).not.toThrow();
+    });
+
+    it('references existing items', () => {
+      expect(() => insert('blocks', 'TASKS-1', 'TASKS-9')).toThrow(/FOREIGN KEY/);
     });
   });
 

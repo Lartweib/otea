@@ -60,7 +60,10 @@ export function matchesRelation(stored: Relation, given: Relation): boolean {
   return a.kind === b.kind && a.from === b.from && a.to === b.to;
 }
 
-export function viewOf(relation: Relation, id: string): { kind: RelationView; id: string } {
+// A relation as one of its items reads it: the kind seen from that item and the other item's id.
+export type RelationRef = { kind: RelationView; id: string };
+
+export function viewOf(relation: Relation, id: string): RelationRef {
   if (relation.from === id) return { kind: relation.kind, id: relation.to };
   return { kind: INVERSE[relation.kind], id: relation.from };
 }
