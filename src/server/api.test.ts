@@ -46,29 +46,37 @@ describe('api', () => {
   });
 
   describe('GET /api/collections', () => {
-    it('lists every collection with the preset fields a form needs, without a session', async () => {
+    it('lists every collection with the preset types a form needs, without a session', async () => {
       const response = await get('/api/collections');
 
       expect(response.status).toBe(200);
-      const collections = (await response.json()) as Array<{ name: string; fields: unknown[] }>;
+      const collections = (await response.json()) as Array<{ name: string; types: unknown[] }>;
       expect(collections.map(({ name }) => name)).toEqual(['tasks', 'bugs']);
-      expect(collections[0]).toEqual({
+      expect(collections[0]).toMatchObject({
         name: 'tasks',
         prefix: 'TASKS',
         preset: 'tasks',
-        initial: 'todo',
-        incomplete: 'incomplete',
-        fields: [
-          { name: 'title', module: 'text', required: 'create' },
-          { name: 'description', module: 'markdown', required: 'complete' },
-          {
-            name: 'priority',
-            module: 'enum',
-            values: ['low', 'medium', 'high'],
-            default: 'medium',
-          },
-        ],
+        view: { kind: 'list', groupBy: 'turn' },
       });
+      expect(collections[0]?.types).toEqual([
+        expect.objectContaining({
+          name: 'item',
+          label: 'Item',
+          initial: 'todo',
+          incomplete: 'incomplete',
+          layout: expect.objectContaining({ body: expect.any(Array) }),
+          fields: [
+            { name: 'title', module: 'text', required: 'create' },
+            { name: 'description', module: 'markdown', required: 'complete' },
+            {
+              name: 'priority',
+              module: 'enum',
+              values: ['low', 'medium', 'high'],
+              default: 'medium',
+            },
+          ],
+        }),
+      ]);
     });
   });
 
@@ -85,7 +93,13 @@ describe('api', () => {
         required: 'complete',
         values: ['low', 'medium', 'high', 'critical'],
       });
-      expect(presets[1]).toEqual({
+      expect(presets[1]).toMatchObject({
+        types: [expect.objectContaining({ name: 'item', layout: expect.any(Object) })],
+        view: { kind: 'list', groupBy: 'turn' },
+      });
+      expect({ ...presets[1], types: undefined, view: undefined }).toEqual({
+        types: undefined,
+        view: undefined,
         name: 'tasks',
         version: 1,
         origin: 'official',
@@ -153,6 +167,8 @@ describe('api', () => {
       ['?state=review', ['BUGS-1']],
       ['?turn=human', ['BUGS-1']],
       ['?collection=tasks&turn=human', []],
+      ['?type=item', ['TASKS-1', 'BUGS-1']],
+      ['?type=bug', []],
     ])('filters with %s', async (query, expected) => {
       expect(await ids(`/api/items${query}`)).toEqual(expected);
     });

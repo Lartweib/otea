@@ -17,7 +17,7 @@ describe('preset views', () => {
     const views = listPresetViews(ctx);
 
     expect(views.map(({ name }) => name)).toEqual(['bug-triage', 'tasks', 'reviews']);
-    expect(views.slice(1)).toEqual([
+    expect(views.slice(1).map(({ types, view, ...rest }) => rest)).toEqual([
       {
         name: 'tasks',
         version: 1,
@@ -42,6 +42,8 @@ describe('preset views', () => {
         collections: [],
       },
     ]);
+    expect(views[1]?.types.map(({ name, label }) => [name, label])).toEqual([['item', 'Item']]);
+    expect(views[1]?.view).toEqual({ kind: 'list', groupBy: 'turn' });
   });
 
   it('names the collections that use each preset', () => {

@@ -81,6 +81,10 @@ const MIGRATIONS = [
   CREATE TRIGGER evidence_no_delete BEFORE DELETE ON evidence
   BEGIN SELECT RAISE(ABORT, 'evidence is append-only'); END;
   `,
+  // 'item' is the type of every item of a preset that declares no types (DEFAULT_TYPE in core).
+  `
+  ALTER TABLE items ADD COLUMN type TEXT NOT NULL DEFAULT 'item';
+  `,
 ];
 
 function userVersion(db: DatabaseSync): number {

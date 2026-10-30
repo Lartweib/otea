@@ -66,6 +66,7 @@ export type ItemRecord = {
   id: string;
   collection: string;
   seq: number;
+  type: string;
   title: string;
   fields: Record<string, unknown>;
   presetVersion: number;
@@ -80,6 +81,7 @@ type ItemRow = {
   id: string;
   collection: string;
   seq: number;
+  type: string;
   title: string;
   fields: string;
   preset_version: number;
@@ -97,6 +99,7 @@ function toItem(row: ItemRow): ItemRecord {
     id: row.id,
     collection: row.collection,
     seq: row.seq,
+    type: row.type,
     title: row.title,
     fields: JSON.parse(row.fields) as Record<string, unknown>,
     presetVersion: row.preset_version,
@@ -113,13 +116,14 @@ function toItem(row: ItemRow): ItemRecord {
 
 export function insertItem(db: DatabaseSync, item: ItemRecord): void {
   db.prepare(
-    `INSERT INTO items (id, collection, seq, title, fields, preset_version, state, created_at,
-      updated_at, created_by_kind, created_by_name)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO items (id, collection, seq, type, title, fields, preset_version, state,
+      created_at, updated_at, created_by_kind, created_by_name)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     item.id,
     item.collection,
     item.seq,
+    item.type,
     item.title,
     JSON.stringify(item.fields),
     item.presetVersion,
@@ -136,13 +140,18 @@ export function findItem(db: DatabaseSync, id: string): ItemRecord | undefined {
   return row && toItem(row as ItemRow);
 }
 
-export type ItemFilter = { collection?: string; state?: string };
+export type ItemFilter = { collection?: string; state?: string; type?: string };
 
 export function selectItems(db: DatabaseSync, filter: ItemFilter): ItemRecord[] {
   const sql = `SELECT * FROM items
     WHERE (:collection IS NULL OR collection = :collection) AND (:state IS NULL OR state = :state)
+      AND (:type IS NULL OR type = :type)
     ORDER BY created_at, rowid`;
-  const params = { collection: filter.collection ?? null, state: filter.state ?? null };
+  const params = {
+    collection: filter.collection ?? null,
+    state: filter.state ?? null,
+    type: filter.type ?? null,
+  };
   return (db.prepare(sql).all(params) as ItemRow[]).map(toItem);
 }
 

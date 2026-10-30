@@ -21,7 +21,7 @@ export function claimItem(ctx: Context, input: LeaseInput, now = systemClock): I
   const { db } = ctx;
   return transaction(db, () => {
     const item = requireItem(db, input.id);
-    const workflow = workflowOf(ctx, item.collection);
+    const workflow = workflowOf(ctx, item);
     const turn = turnOf(workflow, item.state);
     if (turn !== 'agent') {
       throw new OteaError(
@@ -59,7 +59,7 @@ export function heartbeatItem(ctx: Context, input: LeaseInput, now = systemClock
       expiresAt: leaseExpiry(at, input.ttlMs ?? DEFAULT_LEASE_TTL_MS),
     };
     takeLease(db, item.id, lease, at);
-    return present({ ...item, lease }, workflowOf(ctx, item.collection), at);
+    return present({ ...item, lease }, workflowOf(ctx, item), at);
   });
 }
 
@@ -73,6 +73,6 @@ export function releaseItem(ctx: Context, input: LeaseInput, now = systemClock):
     clearLease(db, item.id);
     const data = { holder: current.holder, cause: 'release' };
     appendEvent(db, { itemId: item.id, type: 'released', actor: input.actor, at, data });
-    return present({ ...item, lease: null }, workflowOf(ctx, item.collection), at);
+    return present({ ...item, lease: null }, workflowOf(ctx, item), at);
   });
 }

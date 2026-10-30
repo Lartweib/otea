@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { tasksPreset } from './testing.ts';
+import type { ItemType } from './preset.ts';
+import { mixedPreset, tasksPreset } from './testing.ts';
 import { itemFindings, type StoredItem } from './validation.ts';
 
 const item = (overrides: Partial<StoredItem> = {}): StoredItem => ({
   id: 'TASKS-1',
+  type: 'item',
   title: 'Ship it',
   state: 'todo',
   fields: { description: 'Why', priority: 'medium' },
@@ -50,13 +52,10 @@ describe('itemFindings', () => {
   });
 
   it('reports a missing create-required field', () => {
-    const preset = {
-      ...tasksPreset,
-      fields: {
-        ...tasksPreset.fields,
-        owner: { module: 'text' as const, required: 'create' as const },
-      },
-    };
+    const [only] = tasksPreset.types;
+    const owner = { module: 'text' as const, required: 'create' as const };
+    const fields = { ...only?.fields, owner };
+    const preset = { ...tasksPreset, types: [{ ...(only as ItemType), fields }] };
 
     expect(itemFindings(preset, item()).map(({ message }) => message)).toEqual([
       'missing required field "owner"',
@@ -83,5 +82,34 @@ describe('itemFindings', () => {
         message: 'written under preset tasks v1; the preset is now v3',
       },
     ]);
+  });
+
+  describe('in a preset with several types', () => {
+    const work = (overrides: Partial<StoredItem>) =>
+      itemFindings(mixedPreset, {
+        id: 'WORK-1',
+        type: 'bug',
+        title: 'Crash',
+        state: 'reported',
+        fields: { severity: 'high' },
+        presetVersion: 1,
+        ...overrides,
+      }).map(({ severity, message }) => [severity, message]);
+
+    it('checks an item against the fields and workflow of its own type', () => {
+      expect(work({})).toEqual([]);
+      expect(work({ type: 'impr', state: 'idea', fields: { pitch: 'Faster' } })).toEqual([]);
+      expect(work({ type: 'impr', state: 'reported', fields: { severity: 'high' } })).toEqual([
+        ['error', 'unknown state "reported" in preset work (type impr)'],
+        ['warning', 'field "severity" is not declared by preset work (type impr)'],
+      ]);
+      expect(work({ fields: {} })).toEqual([['error', 'missing required field "severity"']]);
+    });
+
+    it('reports an item of a type the preset does not declare', () => {
+      expect(work({ type: 'item' })).toEqual([
+        ['error', 'unknown type "item" in preset work (types: bug, impr)'],
+      ]);
+    });
   });
 });
