@@ -9,7 +9,7 @@ import {
   startMessage,
   startOf,
 } from './intake.ts';
-import type { CollectionView, FieldView } from './types.ts';
+import type { FieldView, Layout, TypeView } from './types.ts';
 
 const title: FieldView = { name: 'title', module: 'text', required: 'create' };
 const description: FieldView = { name: 'description', module: 'markdown', required: 'complete' };
@@ -20,21 +20,33 @@ const priority: FieldView = {
   default: 'medium',
 };
 
-const tasks: CollectionView = {
-  name: 'tasks',
-  prefix: 'TASKS',
-  preset: 'tasks',
-  initial: 'todo',
-  incomplete: 'incomplete',
-  fields: [title, description, priority],
+const LAYOUT: Layout = {
+  header: [],
+  evidence: [],
+  body: [],
+  side: [],
+  row: [],
+  phone: [],
+  intake: [],
 };
 
-const reviews: CollectionView = {
-  name: 'design',
-  prefix: 'DESIGN',
-  preset: 'reviews',
+const tasks: TypeView = {
+  name: 'item',
+  label: 'Item',
+  initial: 'todo',
+  states: [],
+  incomplete: 'incomplete',
+  fields: [title, description, priority],
+  layout: LAYOUT,
+};
+
+const reviews: TypeView = {
+  name: 'item',
+  label: 'Item',
   initial: 'open',
+  states: [],
   fields: [title],
+  layout: LAYOUT,
 };
 
 describe('intake', () => {

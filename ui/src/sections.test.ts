@@ -5,6 +5,7 @@ import type { Item, Turn } from './types.ts';
 const item = (id: string, turn: Turn): Item => ({
   id,
   collection: 'tasks',
+  type: 'item',
   title: id,
   fields: {},
   presetVersion: 1,

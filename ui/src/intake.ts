@@ -1,4 +1,4 @@
-import type { CollectionView, FieldView } from './types.ts';
+import type { FieldView, TypeView } from './types.ts';
 
 export type FormValues = Record<string, string>;
 
@@ -11,7 +11,7 @@ function isBlank(value: string | undefined): boolean {
 }
 
 function blankFields(
-  { fields }: CollectionView,
+  { fields }: TypeView,
   values: FormValues,
   required: FieldView['required'],
 ): string[] {
@@ -21,7 +21,7 @@ function blankFields(
     .map((field) => field.name);
 }
 
-export function initialValues({ fields }: CollectionView): FormValues {
+export function initialValues({ fields }: TypeView): FormValues {
   return Object.fromEntries(fields.map((field) => [field.name, field.default ?? '']));
 }
 
@@ -34,17 +34,17 @@ export function fieldHint(field: FieldView): string | undefined {
   return field.required === 'complete' ? LEFT_TO_AGENT : undefined;
 }
 
-export function missingToCreate(collection: CollectionView, values: FormValues): string[] {
-  return blankFields(collection, values, 'create');
+export function missingToCreate(type: TypeView, values: FormValues): string[] {
+  return blankFields(type, values, 'create');
 }
 
-export function canSubmit(collection: CollectionView, values: FormValues): boolean {
-  return missingToCreate(collection, values).length === 0;
+export function canSubmit(type: TypeView, values: FormValues): boolean {
+  return missingToCreate(type, values).length === 0;
 }
 
-export function startOf(collection: CollectionView, values: FormValues): Start {
-  const missing = blankFields(collection, values, 'complete');
-  const { initial, incomplete } = collection;
+export function startOf(type: TypeView, values: FormValues): Start {
+  const missing = blankFields(type, values, 'complete');
+  const { initial, incomplete } = type;
   if (missing.length === 0 || incomplete === undefined) {
     return { state: initial, incomplete: false, missing: [] };
   }

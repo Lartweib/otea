@@ -52,6 +52,10 @@ export async function moveItem(id: string, to: string, reason: string): Promise<
   await post(`/api/items/${encodeURIComponent(id)}/move`, reason === '' ? { to } : { to, reason });
 }
 
-export function createItem(collection: string, fields: Record<string, string>): Promise<Item> {
-  return post<Item>('/api/items', { collection, fields });
+export function createItem(
+  collection: string,
+  type: string,
+  fields: Record<string, string>,
+): Promise<Item> {
+  return post<Item>('/api/items', { collection, type, fields });
 }

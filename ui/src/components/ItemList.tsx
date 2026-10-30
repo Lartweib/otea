@@ -1,11 +1,11 @@
 import { type CSSProperties, type ReactNode, useEffect, useRef, useState } from 'react';
 import { leaseLabel } from '../format.ts';
 import { useActiveLease } from '../hooks.ts';
-import { Button, Icon, NodeMark } from '../kit/index.ts';
+import { rowValues, showsTypes, typeOf } from '../item-types.ts';
+import { Button, Icon, NodeMark, TypeTag } from '../kit/index.ts';
 import { type Block, laneX, layoutLanes } from '../lanes.ts';
 import { moduleFor } from '../modules/registry.ts';
-import { valuesOf } from '../modules/values.ts';
-import { nodeKind } from '../node-kind.ts';
+import { itemNodeKind } from '../node-kind.ts';
 import type { Section } from '../sections.ts';
 import { hashFor } from '../selection.ts';
 import type { CollectionView, Item } from '../types.ts';
@@ -45,9 +45,11 @@ type ItemRowProps = {
   children?: ReactNode;
 };
 
-// What each field module puts in the row; most put nothing (an empty wrapper is hidden by CSS).
+// What each field module of the type's row slot puts in the row; most put nothing (an empty
+// wrapper is hidden by CSS).
 function RowValues({ item, collection }: { item: Item; collection: CollectionView | undefined }) {
-  const marks = valuesOf(collection?.fields, item.fields).flatMap(({ field, value }) => {
+  const type = typeOf(collection, item.type);
+  const marks = rowValues(type, item.fields).flatMap(({ field, value }) => {
     const { Row } = moduleFor(field.module);
     return Row ? [<Row key={field.name} field={field} value={value} />] : [];
   });
@@ -57,12 +59,8 @@ function RowValues({ item, collection }: { item: Item; collection: CollectionVie
 function ItemRow({ item, selected, x, collectionOf, expanded, onTap, children }: ItemRowProps) {
   const lease = useActiveLease(item.lease);
   const collection = collectionOf(item.collection);
-  const kind = nodeKind({
-    turn: item.turn,
-    state: item.state,
-    leased: lease !== null,
-    incomplete: collection?.incomplete === item.state,
-  });
+  const type = typeOf(collection, item.type);
+  const kind = itemNodeKind(item, type, lease !== null);
   return (
     <li data-flip={item.id} data-turn={item.turn} data-x={x}>
       <a
@@ -95,6 +93,9 @@ function ItemRow({ item, selected, x, collectionOf, expanded, onTap, children }:
         <span className="row-main">
           <span className="ttl">{item.title}</span>
           <span className="row-meta">
+            {showsTypes(collection) ? (
+              <TypeTag name={item.type} label={type?.label ?? item.type} />
+            ) : null}
             <span className="row-id">{item.id}</span>
             <span>{item.state}</span>
             {lease ? <span className="row-lease">{leaseLabel(lease)}</span> : null}
