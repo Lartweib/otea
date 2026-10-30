@@ -1,0 +1,462 @@
+/* Relations and children: an item's links to other items, each drawn with the node it has in the list,
+   and a parent's children as nodes on the lanes turned on their side. Quiet while there is nothing. */
+
+.rel-module,
+.children-module {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  min-width: 0;
+}
+
+/* Each kind reads like a field of the detail: its name on the left, the related items on the right. */
+.rel-group {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 0 16px;
+}
+
+.rel-kind {
+  margin: 0;
+  padding-top: 9px;
+  font: 500 11.5px var(--font-machine);
+  color: var(--mut);
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 30rem) {
+  .rel-group {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .rel-kind {
+    padding-top: 0;
+  }
+}
+
+.rel-list {
+  display: grid;
+  gap: 1px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rel-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  transition: opacity var(--micro);
+}
+
+.rel-row[data-removing] {
+  opacity: 0.4;
+}
+
+.rel-link,
+.link-result {
+  display: grid;
+  grid-template-columns: 20px auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+  min-height: 32px;
+  margin: 0 -6px;
+  padding: 3px 6px;
+  border-radius: var(--r-m);
+  color: var(--ink);
+  text-decoration: none;
+  transition: background-color var(--micro);
+}
+
+.rel-link:hover,
+.link-result:hover:not(:disabled) {
+  background: var(--hov);
+}
+
+.rel-link:focus-visible,
+.link-result:focus-visible {
+  outline: 2px solid var(--you);
+  outline-offset: -2px;
+}
+
+.rel-id {
+  font: 400 12px var(--font-machine);
+  color: var(--mut);
+  white-space: nowrap;
+}
+
+.rel-title {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rel-state {
+  font: 400 11.5px var(--font-machine);
+  color: var(--mut);
+  white-space: nowrap;
+}
+
+/* Closed items recede, as closed rows of the list do. */
+.rel-row[data-kind="done"] .rel-title,
+.rel-row[data-kind="discarded"] .rel-title {
+  color: var(--mut);
+}
+
+.rel-remove {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 28px;
+  height: 28px;
+  margin-left: 6px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--mut);
+  cursor: pointer;
+  opacity: 0;
+  transition:
+    opacity var(--micro),
+    background-color var(--micro),
+    color var(--micro);
+}
+
+.rel-remove .icon {
+  width: 14px;
+  height: 14px;
+}
+
+.rel-row:hover .rel-remove,
+.rel-remove:focus-visible {
+  opacity: 1;
+}
+
+.rel-remove:hover:not(:disabled) {
+  background: var(--hov);
+  color: var(--ink);
+}
+
+.rel-remove:focus-visible {
+  outline: 2px solid var(--you);
+  outline-offset: -2px;
+}
+
+/* ---- adding: a quiet mono action, "link" or "+ child" ---- */
+.rel-add {
+  display: inline-flex;
+  align-items: center;
+  justify-self: start;
+  gap: 6px;
+  height: 24px;
+  padding: 0 10px 0 7px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--mut);
+  font: 500 11.5px var(--font-machine);
+  cursor: pointer;
+  transition:
+    opacity var(--micro),
+    background-color var(--micro),
+    color var(--micro);
+}
+
+.rel-add .icon {
+  width: 13px;
+  height: 13px;
+}
+
+.rel-add-plus {
+  width: 13px;
+  font-size: 14px;
+  line-height: 1;
+  text-align: center;
+}
+
+.rel-add:hover {
+  background: var(--hov);
+  color: var(--ink);
+}
+
+.rel-add:focus-visible {
+  outline: 2px solid var(--you);
+  outline-offset: 1px;
+}
+
+/* Nothing to show: the module takes no room, and its action waits in the gap before the next block
+   until the detail is hovered or focused. A grid row cannot be shorter than nothing, so the block
+   before it (or, first in its column, the column itself) gives the gap back. Touch screens cannot
+   hover, so there the action keeps its place, still quiet. */
+.detail-primary,
+.detail-side {
+  --slot-gap: 24px;
+}
+
+.detail[data-layout="unfold"] .detail-primary,
+.detail[data-layout="unfold"] .detail-side {
+  --slot-gap: 20px;
+}
+
+@media (hover: hover) {
+  [data-quiet] {
+    position: relative;
+    height: 0;
+  }
+
+  [data-quiet] > .rel-add {
+    position: absolute;
+    top: calc((var(--slot-gap) - 24px) / 2);
+    left: -7px;
+    opacity: 0;
+  }
+
+  /* Stacked, an empty body's children and an empty side's relations wait in the same gap: side by
+     side, "link" then "+ child". */
+  .children-module[data-quiet] > .rel-add {
+    left: 62px;
+  }
+
+  .detail-primary > :has(+ [data-quiet]),
+  .detail-side > :has(+ [data-quiet]) {
+    margin-bottom: calc(-1 * var(--slot-gap));
+  }
+
+  .detail-primary:has(> [data-quiet]:first-child),
+  .detail-side:has(> [data-quiet]:first-child) {
+    margin-top: calc(-1 * var(--slot-gap));
+  }
+
+  .detail:hover [data-quiet] > .rel-add,
+  [data-quiet] > .rel-add:focus-visible {
+    opacity: 1;
+  }
+}
+
+/* ---- the link form, on a well ---- */
+.link-form {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border-radius: var(--r-m);
+  background: var(--well);
+  animation: link-in var(--arrive) var(--e-out) both;
+}
+
+.link-form-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.link-kind {
+  flex: 1;
+  min-width: 0;
+}
+
+.link-form .input {
+  background-color: var(--sf);
+}
+
+.link-results {
+  display: grid;
+  gap: 1px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.link-result {
+  width: calc(100% + 12px);
+  border: 0;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.link-result[aria-busy="true"] {
+  background: var(--sel);
+}
+
+.link-none {
+  margin: 0;
+}
+
+@keyframes link-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+/* ---- children: progress on the lanes, then each child ---- */
+.children-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+}
+
+.child-track {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+/* A child that changes hands is carried to its new lane, or set down on the trunk when it closes. */
+.child-node {
+  transition: transform var(--travel) var(--e-move);
+}
+
+/* ---- list: a parent's open children, folding them, and a child under its parent ---- */
+.row-children {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.row-children .icon {
+  width: 12px;
+  height: 12px;
+}
+
+.rows > li[data-folds] > .row {
+  padding-right: 44px;
+}
+
+.row-fold {
+  position: absolute;
+  top: calc((var(--row-h) - 28px) / 2);
+  right: 8px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 4px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--mut);
+  font: 500 11px var(--font-machine);
+  cursor: pointer;
+  transition:
+    background-color var(--micro),
+    color var(--micro);
+}
+
+.row-fold .icon {
+  width: 14px;
+  height: 14px;
+  transition: rotate var(--micro) var(--e-out);
+}
+
+.row-fold[data-folded] .icon {
+  rotate: -90deg;
+}
+
+.row-fold:hover {
+  background: var(--hov);
+  color: var(--ink);
+}
+
+.row-fold:focus-visible {
+  outline: 2px solid var(--you);
+  outline-offset: -2px;
+}
+
+/* A child sits under its parent, its title stepped in and hooked to the one above. Its node stays
+   on its own lane, in the gutter. */
+.row[data-depth] .row-main {
+  padding-left: calc(10px + var(--depth) * 18px);
+}
+
+.row[data-depth="1"] {
+  --depth: 1;
+}
+
+.row[data-depth="2"] {
+  --depth: 2;
+}
+
+.row[data-depth="3"] {
+  --depth: 3;
+}
+
+.row[data-depth] .row-main::before {
+  content: "";
+  position: absolute;
+  top: 1px;
+  left: calc(var(--depth) * 18px - 6px);
+  width: 9px;
+  height: 11px;
+  border-bottom: 1.5px solid var(--lane);
+  border-left: 1.5px solid var(--lane);
+  border-bottom-left-radius: 6px;
+}
+
+/* ---- a move that waits for open children: disabled, with why beside it ---- */
+.move-blocked {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.move-block-note {
+  margin-right: 6px;
+  white-space: nowrap;
+}
+
+/* In triage, what waits for children sits under the swipe buttons, never among them. */
+.triage-blocked {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+/* ---- the create form, for a child ---- */
+.intake-parent {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 4px 4px 4px 14px;
+  border-radius: var(--r-m);
+}
+
+.intake-parent-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rel-row,
+  .rel-link,
+  .rel-remove,
+  .rel-add,
+  .link-result,
+  .child-node,
+  .row-fold,
+  .row-fold .icon {
+    transition-duration: 1ms;
+  }
+
+  .link-form {
+    animation: none;
+  }
+}

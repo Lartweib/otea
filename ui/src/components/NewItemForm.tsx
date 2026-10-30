@@ -10,13 +10,17 @@ import {
   startOf,
 } from '../intake.ts';
 import { intakeFields } from '../item-types.ts';
-import { Button } from '../kit/index.ts';
+import { Button, Icon } from '../kit/index.ts';
 import type { CollectionView, TypeView } from '../types.ts';
 import { FieldControl } from './FieldControl.tsx';
+
+// The item the new one is created under, as its child.
+export type IntakeParent = { id: string; title: string; collection: string };
 
 type IntakeFormProps = {
   collections: CollectionView[];
   first: CollectionView;
+  parent: IntakeParent | undefined;
   onCancel: () => void;
   onCreated: (id: string) => void;
 };
@@ -26,8 +30,15 @@ function firstType(collection: CollectionView): TypeView | undefined {
   return collection.types[0];
 }
 
-function IntakeForm({ collections, first, onCancel, onCreated }: IntakeFormProps) {
+function IntakeForm({
+  collections,
+  first,
+  parent: initialParent,
+  onCancel,
+  onCreated,
+}: IntakeFormProps) {
   const [collection, setCollection] = useState(first);
+  const [parent, setParent] = useState(initialParent);
   const [type, setType] = useState(() => firstType(first));
   const [values, setValues] = useState(() => (type ? initialValues(type) : {}));
   const [posting, setPosting] = useState(false);
@@ -57,7 +68,7 @@ function IntakeForm({ collections, first, onCancel, onCreated }: IntakeFormProps
     if (!ready || posting) return;
     setPosting(true);
     setError(undefined);
-    createItem(collection.name, type.name, payloadOf(values)).then(
+    createItem(collection.name, type.name, payloadOf(values), parent?.id).then(
       (item) => onCreated(item.id),
       (failure: unknown) => {
         setPosting(false);
@@ -75,6 +86,23 @@ function IntakeForm({ collections, first, onCancel, onCreated }: IntakeFormProps
         submit();
       }}
     >
+      {parent ? (
+        <div className="intake-parent well">
+          <span className="t-label">child of</span>
+          <span className="rel-id">{parent.id}</span>
+          <span className="intake-parent-title">{parent.title}</span>
+          <Button
+            variant="quiet"
+            size="sm"
+            icon
+            aria-label={`Do not make it a child of ${parent.id}`}
+            disabled={posting}
+            onClick={() => setParent(undefined)}
+          >
+            <Icon name="close" />
+          </Button>
+        </div>
+      ) : null}
       {collections.length > 1 ? (
         <div className="intake-field">
           <label className="t-label" htmlFor="intake-collection">
@@ -149,17 +177,20 @@ function IntakeForm({ collections, first, onCancel, onCreated }: IntakeFormProps
 
 type NewItemFormProps = {
   connection: Connection;
+  // Set by "+ child": the form starts in the parent's collection, any other can be chosen.
+  parent?: IntakeParent | undefined;
   onCancel: () => void;
   onCreated: (id: string) => void;
 };
 
-export function NewItemForm({ connection, onCancel, onCreated }: NewItemFormProps) {
+export function NewItemForm({ connection, parent, onCancel, onCreated }: NewItemFormProps) {
   const collections = useRemote(fetchCollections, 0, connection);
   const body = () => {
     if (collections.status === 'loading') return <p className="t-small">Loading…</p>;
     if (collections.status === 'failed')
       return <p className="action-error">{collections.message}</p>;
-    const [first] = collections.value;
+    const first =
+      collections.value.find(({ name }) => name === parent?.collection) ?? collections.value[0];
     if (!first) {
       return (
         <p className="t-small">
@@ -171,6 +202,7 @@ export function NewItemForm({ connection, onCancel, onCreated }: NewItemFormProp
       <IntakeForm
         collections={collections.value}
         first={first}
+        parent={parent}
         onCancel={onCancel}
         onCreated={onCreated}
       />
@@ -179,7 +211,7 @@ export function NewItemForm({ connection, onCancel, onCreated }: NewItemFormProp
   return (
     <article className="detail">
       <header className="detail-head">
-        <h1 className="t-display">New item</h1>
+        <h1 className="t-display">{parent ? 'New child' : 'New item'}</h1>
       </header>
       {body()}
     </article>

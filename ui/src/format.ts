@@ -1,5 +1,12 @@
 import type { Actor, ItemEvent, Lease } from './types.ts';
 
+// A stored relation as a sentence, the way the CLI says it.
+export function relationSentence(kind: string, from: string, to: string): string {
+  if (kind === 'parent') return `${from} is a child of ${to}`;
+  if (kind === 'relates') return `${from} relates to ${to}`;
+  return `${from} ${kind} ${to}`;
+}
+
 export function actorLabel(actor: Actor): string {
   return `${actor.name} (${actor.kind})`;
 }
@@ -36,6 +43,10 @@ export function describeEvent({ type, data }: ItemEvent): string {
     return data.cause === 'handoff'
       ? `Lease of ${String(data.holder)} released on handoff`
       : `Released by ${String(data.holder)}`;
+  }
+  if (type === 'relation_added' || type === 'relation_removed') {
+    const said = relationSentence(String(data.kind), String(data.from), String(data.to));
+    return `${type === 'relation_added' ? 'Linked' : 'Unlinked'}: ${said}`;
   }
   if (type === 'evidence_added') {
     const role = data.role === 'single' ? '' : ` (${String(data.role)})`;

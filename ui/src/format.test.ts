@@ -103,6 +103,18 @@ describe('format', () => {
       }),
       'Attached test.log: All green',
     ],
+    [
+      event('relation_added', { kind: 'parent', from: 'P-2', to: 'E-1', channel: 'cli' }),
+      'Linked: P-2 is a child of E-1',
+    ],
+    [
+      event('relation_removed', { kind: 'blocks', from: 'P-2', to: 'P-3', channel: 'ui' }),
+      'Unlinked: P-2 blocks P-3',
+    ],
+    [
+      event('relation_added', { kind: 'relates', from: 'B-1', to: 'B-2' }),
+      'Linked: B-1 relates to B-2',
+    ],
     [event('commented', { text: 'hi' }), 'commented'],
   ])('describes %j', (input, expected) => {
     expect(describeEvent(input)).toBe(expected);

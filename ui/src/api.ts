@@ -1,3 +1,4 @@
+import type { LinkRequest } from './relations.ts';
 import { serverMessage, UNREACHABLE } from './remote.ts';
 import type { CollectionView, Item, ItemView, PresetView, Session } from './types.ts';
 
@@ -52,10 +53,21 @@ export async function moveItem(id: string, to: string, reason: string): Promise<
   await post(`/api/items/${encodeURIComponent(id)}/move`, reason === '' ? { to } : { to, reason });
 }
 
+// parent: the item the new one is created under, as its child.
 export function createItem(
   collection: string,
   type: string,
   fields: Record<string, string>,
+  parent?: string,
 ): Promise<Item> {
-  return post<Item>('/api/items', { collection, type, fields });
+  const payload = { collection, type, fields, ...(parent === undefined ? {} : { parent }) };
+  return post<Item>('/api/items', payload);
+}
+
+export async function linkItems({ id, kind, other }: LinkRequest): Promise<void> {
+  await post(`/api/items/${encodeURIComponent(id)}/link`, { kind, other });
+}
+
+export async function unlinkItems({ id, kind, other }: LinkRequest): Promise<void> {
+  await post(`/api/items/${encodeURIComponent(id)}/unlink`, { kind, other });
 }

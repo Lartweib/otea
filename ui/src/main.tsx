@@ -17,6 +17,7 @@ import './styles/detail.css';
 import './styles/evidence.css';
 import './styles/workspace.css';
 import './styles/modules.css';
+import './styles/relations.css';
 import './styles/phone.css';
 import './styles/triage.css';
 import { applyChoice, loadChoice } from './theme-dom.ts';

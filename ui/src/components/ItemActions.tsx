@@ -1,18 +1,24 @@
 import { useReducer } from 'react';
-import { canConfirm, IDLE, isBusy, moveVariants, reduceAction } from '../actions.ts';
+import { canConfirm, IDLE, isBusy, moveBlock, moveVariants, reduceAction } from '../actions.ts';
 import { moveItem } from '../api.ts';
 import { Button } from '../kit/index.ts';
-import type { Move } from '../types.ts';
+import type { ChildrenSummary, Move } from '../types.ts';
 
 // onMoved: after a move lands (on a phone the unfolded item then folds and carries itself home).
-type ItemActionsProps = { id: string; moves: Move[]; onMoved?: (() => void) | undefined };
+// openChildren: the item's children summary, so a move waiting for them is drawn disabled.
+type ItemActionsProps = {
+  id: string;
+  moves: Move[];
+  openChildren?: ChildrenSummary | undefined;
+  onMoved?: (() => void) | undefined;
+};
 
-export function ItemActions({ id, moves, onMoved }: ItemActionsProps) {
+export function ItemActions({ id, moves, openChildren: children, onMoved }: ItemActionsProps) {
   const [state, dispatch] = useReducer(reduceAction, IDLE);
   const busy = isBusy(state);
   const explaining =
     state.step === 'explaining' || (state.step === 'posting' && state.reason !== '');
-  const variants = moveVariants(moves);
+  const variants = moveVariants(moves, children);
 
   const submit = (to: string, reason: string) => {
     dispatch({ type: 'submit', to, reason });
@@ -37,17 +43,30 @@ export function ItemActions({ id, moves, onMoved }: ItemActionsProps) {
       <div className="action-buttons">
         {moves.map((move, index) => {
           const variant = variants[index] ?? 'default';
-          return (
+          const blocked = moveBlock(move, children);
+          const noteId = `move-block-${id}-${move.to}`;
+          const button = (
             <Button
               key={move.to}
               // While a reason is being written, Confirm is the one primary on screen.
               variant={explaining && variant === 'primary' ? 'default' : variant}
               aria-pressed={state.step === 'explaining' && state.to === move.to}
-              disabled={busy}
+              aria-describedby={blocked ? noteId : undefined}
+              disabled={busy || blocked !== undefined}
               onClick={() => choose(move)}
             >
               {move.to}
             </Button>
+          );
+          if (!blocked) return button;
+          // Waiting for children: the move stays in view, disabled, with why next to it.
+          return (
+            <span key={move.to} className="move-blocked">
+              {button}
+              <span className="move-block-note t-cap" id={noteId}>
+                {blocked}
+              </span>
+            </span>
           );
         })}
       </div>
