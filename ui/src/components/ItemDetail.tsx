@@ -1,10 +1,16 @@
 import type { ReactNode } from 'react';
 import { actorLabel, leaseLabel } from '../format.ts';
 import { useActiveLease } from '../hooks.ts';
-import { NODE_LABEL, Node, Pill } from '../kit/index.ts';
+import {
+  type DetailBlock,
+  detailBlocks,
+  type PlacedValue,
+  showsTypes,
+  typeOf,
+} from '../item-types.ts';
+import { NODE_LABEL, Node, Pill, TypeTag } from '../kit/index.ts';
 import { moduleFor } from '../modules/registry.ts';
-import { valuesOf } from '../modules/values.ts';
-import { nodeKind } from '../node-kind.ts';
+import { itemNodeKind } from '../node-kind.ts';
 import type { CollectionView, ItemView, Turn } from '../types.ts';
 import { EvidenceList } from './EvidenceList.tsx';
 import { ItemActions } from './ItemActions.tsx';
@@ -16,6 +22,27 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
       <dt>{label}</dt>
       <dd>{children}</dd>
     </>
+  );
+}
+
+function FieldList({
+  values,
+  className = 'fields',
+}: {
+  values: PlacedValue[];
+  className?: string;
+}) {
+  return (
+    <dl className={className}>
+      {values.map(({ field, value, label }) => {
+        const { Detail } = moduleFor(field.module);
+        return (
+          <Field key={field.name} label={label}>
+            <Detail field={field} value={value} />
+          </Field>
+        );
+      })}
+    </dl>
   );
 }
 
@@ -48,13 +75,22 @@ export function ItemDetail({
   onMoved,
 }: ItemDetailProps) {
   const lease = useActiveLease(item.lease);
-  const kind = nodeKind({
-    turn: item.turn,
-    state: item.state,
-    leased: lease !== null,
-    incomplete: item.state === collection?.incomplete,
-  });
-  const values = valuesOf(collection?.fields, item.fields);
+  const type = typeOf(collection, item.type);
+  const kind = itemNodeKind(item, type, lease !== null);
+  const { head, primary, side } = detailBlocks(type, item.fields);
+  const hasFields = primary.some((block) => block.kind === 'fields');
+  const block = (part: DetailBlock, index: number) => {
+    if (part.kind === 'fields') return <FieldList key={`fields:${index}`} values={part.values} />;
+    if (item.evidence.length === 0) return null;
+    return (
+      <section key="evidence" className="evidence-section" aria-labelledby="evidence-title">
+        <h2 className="t-label" id="evidence-title">
+          evidence
+        </h2>
+        <EvidenceList evidence={item.evidence} canWrite={canWrite} />
+      </section>
+    );
+  };
   const standing = lease ? `${lease.holder} is on it` : TURN_LABEL[item.turn];
   const unfolded = layout === 'unfold';
   const actions = canWrite ? (
@@ -77,6 +113,9 @@ export function ItemDetail({
             <div className="detail-head-row">
               <div className="detail-tags">
                 <Node kind={kind} label={NODE_LABEL[kind]} />
+                {showsTypes(collection) ? (
+                  <TypeTag name={item.type} label={type?.label ?? item.type} />
+                ) : null}
                 <span className="t-id">{item.id}</span>
                 <Pill tone="state" yours={item.turn === 'human'}>
                   {item.state}
@@ -86,6 +125,7 @@ export function ItemDetail({
               {headAction}
             </div>
             <h1 className="t-display">{item.title}</h1>
+            {head.length > 0 ? <FieldList values={head} className="fields fields-head" /> : null}
           </header>
         )}
         {unfolded ? null : actions}
@@ -96,30 +136,11 @@ export function ItemDetail({
           </div>
         ) : null}
         {unfolded ? null : <hr className="hr" />}
-        {values.length > 0 ? (
-          <dl className="fields">
-            {values.map(({ field, value }) => {
-              const { Detail } = moduleFor(field.module);
-              return (
-                <Field key={field.name} label={field.name}>
-                  <Detail field={field} value={value} />
-                </Field>
-              );
-            })}
-          </dl>
-        ) : (
-          <p className="t-small">No fields.</p>
-        )}
-        {item.evidence.length > 0 ? (
-          <section className="evidence-section" aria-labelledby="evidence-title">
-            <h2 className="t-label" id="evidence-title">
-              evidence
-            </h2>
-            <EvidenceList evidence={item.evidence} canWrite={canWrite} />
-          </section>
-        ) : null}
+        {hasFields ? null : <p className="t-small">No fields.</p>}
+        {primary.map(block)}
       </div>
       <div className="detail-side">
+        {side.length > 0 ? <FieldList values={side} /> : null}
         <dl className="fields fields-meta">
           <Field label="collection">{item.collection}</Field>
           <Field label="created by">{actorLabel(item.createdBy)}</Field>

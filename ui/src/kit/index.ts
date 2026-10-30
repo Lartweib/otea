@@ -4,3 +4,4 @@ export { Kbd } from './Kbd.tsx';
 export { NODE_LABEL, Node, NodeMark } from './Node.tsx';
 export { Pill, type PillTone } from './Pill.tsx';
 export { Severity, type SeverityLevel } from './Severity.tsx';
+export { TypeTag } from './TypeTag.tsx';

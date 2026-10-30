@@ -189,6 +189,15 @@
   margin-left: 8px;
 }
 
+/* The type tag is boxed: it needs no separator after it. */
+.row-meta > span.type-tag::after {
+  content: none;
+}
+
+.row-meta > .type-tag {
+  align-self: center;
+}
+
 /* What field modules put in the row (an enum off its default, severity bars): after the title, quiet. */
 .row-values {
   display: flex;

@@ -1,3 +1,4 @@
+import type { Layout } from '../../src/core/modules.ts';
 import type { FieldRequirement } from '../../src/core/preset.ts';
 
 export type Turn = 'human' | 'agent' | 'none';
@@ -6,14 +7,21 @@ export type Actor = { kind: 'human' | 'agent'; name: string };
 
 export type Lease = { holder: string; expiresAt: string };
 
+// How a closed state closes an item: its work was done, or thrown away.
+export type Closing = 'done' | 'discarded';
+
 export type Item = {
   id: string;
   collection: string;
+  // The item type: "item" in a collection whose preset declares no types.
+  type: string;
   title: string;
   fields: Record<string, string>;
   presetVersion: number;
   state: string;
   turn: Turn;
+  // Set once the item is in a closed state (turn none), from that state's `closes`.
+  closes?: Closing;
   createdAt: string;
   updatedAt: string;
   createdBy: Actor;
@@ -32,8 +40,16 @@ export type ItemWithEvents = Item & { events: ItemEvent[] };
 
 export type Authority = 'agent' | 'human' | 'human-ui';
 
-// turn: whose turn the item is on once the move lands.
-export type Move = { to: string; by: Authority; reasonRequired: boolean; turn: Turn };
+// turn: whose turn the item is on once the move lands; closes: how a move into a closed state closes it.
+export type Move = {
+  to: string;
+  by: Authority;
+  reasonRequired: boolean;
+  turn: Turn;
+  closes?: Closing;
+};
+
+export type State = { name: string; turn: Turn; closes?: Closing };
 
 export type EvidenceRole = 'before' | 'after' | 'single';
 
@@ -78,13 +94,30 @@ export type FieldView = {
   default?: string;
 };
 
+// Where a type's layout places modules, from the core preset format. Type-only.
+export type { Layout, LayoutEntry, LayoutSlot } from '../../src/core/modules.ts';
+
+// A type of a collection's preset: its fields, where its items start and its layout.
+export type TypeView = {
+  name: string;
+  label: string;
+  initial: string;
+  incomplete?: string;
+  states: State[];
+  fields: FieldView[];
+  layout: Layout;
+};
+
+// How a collection lists its items. Only a list grouped by turn is drawn yet: every other kind and
+// grouping falls back to it.
+export type ViewSpec = { kind: 'list' | 'board' | 'grid'; groupBy: string };
+
 export type CollectionView = {
   name: string;
   prefix: string;
   preset: string;
-  initial: string;
-  incomplete?: string;
-  fields: FieldView[];
+  types: TypeView[];
+  view: ViewSpec;
 };
 
 export type PresetOrigin = 'official' | 'project';
@@ -94,5 +127,7 @@ export type PresetView = {
   version: number;
   origin: PresetOrigin;
   fields: FieldView[];
+  types: TypeView[];
+  view: ViewSpec;
   collections: string[];
 };

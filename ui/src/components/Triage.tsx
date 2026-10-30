@@ -1,11 +1,12 @@
 import { type PointerEvent, useCallback, useRef, useState } from 'react';
 import { fetchItem, moveItem } from '../api.ts';
 import { type Connection, useActiveLease, useRemote } from '../hooks.ts';
-import { Button, Icon, NODE_LABEL, Node, Pill } from '../kit/index.ts';
+import { showsTypes, typeOf } from '../item-types.ts';
+import { Button, Icon, NODE_LABEL, Node, Pill, TypeTag } from '../kit/index.ts';
 import { moduleFor } from '../modules/registry.ts';
 import { valuesOf } from '../modules/values.ts';
 import { TIMING } from '../motion.ts';
-import { nodeKind } from '../node-kind.ts';
+import { itemNodeKind } from '../node-kind.ts';
 import {
   type Direction,
   dragIntent,
@@ -73,15 +74,14 @@ function settle(card: HTMLElement) {
 // The marks an item's card starts with: where it stands, its id, state and collection.
 function CardTags({ item, collectionOf }: { item: Item; collectionOf: CollectionOf }) {
   const lease = useActiveLease(item.lease);
-  const kind = nodeKind({
-    turn: item.turn,
-    state: item.state,
-    leased: lease !== null,
-    incomplete: collectionOf(item.collection)?.incomplete === item.state,
-  });
+  const collection = collectionOf(item.collection);
+  const kind = itemNodeKind(item, typeOf(collection, item.type), lease !== null);
   return (
     <div className="detail-tags">
       <Node kind={kind} label={NODE_LABEL[kind]} />
+      {showsTypes(collection) ? (
+        <TypeTag name={item.type} label={typeOf(collection, item.type)?.label ?? item.type} />
+      ) : null}
       <span className="t-id">{item.id}</span>
       <Pill tone="state" yours={item.turn === 'human'}>
         {item.state}
@@ -142,7 +142,7 @@ function TriageCard({
   const card = useRef<HTMLElement>(null);
   const drag = useRef<Drag | null>(null);
   const [state, setState] = useState<CardStep>({ step: 'idle' });
-  const values = valuesOf(collectionOf(item.collection)?.fields, item.fields);
+  const values = valuesOf(typeOf(collectionOf(item.collection), item.type)?.fields, item.fields);
   const ready = plan !== undefined && state.step === 'idle';
 
   // The arrival of a card, from just behind the one that left.

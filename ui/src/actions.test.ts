@@ -13,8 +13,14 @@ const explaining = (reason = ''): ActionState => ({ step: 'explaining', to: 'tod
 
 describe('actions', () => {
   it.each([
-    [{ to: 'done', by: 'human-ui', reasonRequired: false, turn: 'none' }, 'approve'],
-    [{ to: 'discarded', by: 'human', reasonRequired: true, turn: 'none' }, 'caution'],
+    [
+      { to: 'done', by: 'human-ui', reasonRequired: false, turn: 'none', closes: 'done' },
+      'approve',
+    ],
+    [
+      { to: 'discarded', by: 'human', reasonRequired: true, turn: 'none', closes: 'discarded' },
+      'caution',
+    ],
     [{ to: 'todo', by: 'human-ui', reasonRequired: true, turn: 'agent' }, 'caution'],
     [{ to: 'in_progress', by: 'agent', reasonRequired: false, turn: 'agent' }, 'neutral'],
   ] as const)('styles %j as %s', (move, tone) => {
@@ -102,16 +108,34 @@ describe('actions', () => {
   });
 
   describe('moveVariants', () => {
-    const done = { to: 'done', by: 'human-ui', reasonRequired: false, turn: 'none' } as const;
+    const done = {
+      to: 'done',
+      by: 'human-ui',
+      reasonRequired: false,
+      turn: 'none',
+      closes: 'done',
+    } as const;
     const back = { to: 'todo', by: 'human-ui', reasonRequired: true, turn: 'agent' } as const;
-    const discard = { to: 'discarded', by: 'human', reasonRequired: true, turn: 'none' } as const;
+    const discard = {
+      to: 'discarded',
+      by: 'human',
+      reasonRequired: true,
+      turn: 'none',
+      closes: 'discarded',
+    } as const;
 
     it('makes the move that hands the turn on primary, discards quiet and the rest plain', () => {
       expect(moveVariants([done, back, discard])).toEqual(['primary', 'default', 'quiet']);
     });
 
     it('never offers more than one primary', () => {
-      const ship = { to: 'shipped', by: 'human', reasonRequired: false, turn: 'none' } as const;
+      const ship = {
+        to: 'shipped',
+        by: 'human',
+        reasonRequired: false,
+        turn: 'none',
+        closes: 'done',
+      } as const;
       expect(moveVariants([done, ship])).toEqual(['primary', 'default']);
     });
 
@@ -119,8 +143,33 @@ describe('actions', () => {
       expect(moveVariants([back, discard])).toEqual(['default', 'quiet']);
     });
 
+    it('reads a discard from how the move closes the item, not from the state name', () => {
+      const park = {
+        to: 'parked',
+        by: 'human',
+        reasonRequired: false,
+        turn: 'none',
+        closes: 'discarded',
+      } as const;
+      const reject = {
+        to: 'rejected',
+        by: 'human-ui',
+        reasonRequired: false,
+        turn: 'none',
+        closes: 'done',
+      } as const;
+
+      expect(moveVariants([park, reject])).toEqual(['quiet', 'primary']);
+    });
+
     it('does not make a discard primary even when it needs no reason', () => {
-      const drop = { to: 'discarded', by: 'human', reasonRequired: false, turn: 'none' } as const;
+      const drop = {
+        to: 'discarded',
+        by: 'human',
+        reasonRequired: false,
+        turn: 'none',
+        closes: 'discarded',
+      } as const;
       expect(moveVariants([drop, done])).toEqual(['quiet', 'primary']);
     });
   });

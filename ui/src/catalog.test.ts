@@ -11,6 +11,8 @@ const tasks: PresetView = {
     { name: 'description', module: 'markdown', required: 'complete' },
     { name: 'priority', module: 'enum', values: ['low', 'high'], default: 'low' },
   ],
+  types: [],
+  view: { kind: 'list', groupBy: 'turn' },
   collections: ['tasks', 'bugs'],
 };
 
@@ -23,6 +25,8 @@ const research: PresetView = {
     { name: 'score', module: 'rating' },
     { name: 'clip', module: 'audio' },
   ],
+  types: [],
+  view: { kind: 'list', groupBy: 'turn' },
   collections: [],
 };
 

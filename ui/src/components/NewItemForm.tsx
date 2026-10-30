@@ -9,8 +9,9 @@ import {
   startMessage,
   startOf,
 } from '../intake.ts';
+import { intakeFields } from '../item-types.ts';
 import { Button } from '../kit/index.ts';
-import type { CollectionView } from '../types.ts';
+import type { CollectionView, TypeView } from '../types.ts';
 import { FieldControl } from './FieldControl.tsx';
 
 type IntakeFormProps = {
@@ -20,20 +21,34 @@ type IntakeFormProps = {
   onCreated: (id: string) => void;
 };
 
+// The type a form starts with: the collection's first.
+function firstType(collection: CollectionView): TypeView | undefined {
+  return collection.types[0];
+}
+
 function IntakeForm({ collections, first, onCancel, onCreated }: IntakeFormProps) {
   const [collection, setCollection] = useState(first);
-  const [values, setValues] = useState(() => initialValues(first));
+  const [type, setType] = useState(() => firstType(first));
+  const [values, setValues] = useState(() => (type ? initialValues(type) : {}));
   const [posting, setPosting] = useState(false);
   const [error, setError] = useState<string>();
-  const start = startOf(collection, values);
-  const ready = canSubmit(collection, values);
+  const start = type ? startOf(type, values) : undefined;
+  const ready = type !== undefined && canSubmit(type, values);
+
+  const reset = (next: TypeView | undefined) => {
+    setType(next);
+    setValues(next ? initialValues(next) : {});
+    setError(undefined);
+  };
 
   const choose = (name: string) => {
     const next = collections.find((candidate) => candidate.name === name) ?? first;
     setCollection(next);
-    setValues(initialValues(next));
-    setError(undefined);
+    reset(firstType(next));
   };
+
+  const chooseType = (name: string) =>
+    reset(collection.types.find((candidate) => candidate.name === name));
 
   const change = (name: string, value: string) =>
     setValues((current: FormValues) => ({ ...current, [name]: value }));
@@ -42,7 +57,7 @@ function IntakeForm({ collections, first, onCancel, onCreated }: IntakeFormProps
     if (!ready || posting) return;
     setPosting(true);
     setError(undefined);
-    createItem(collection.name, payloadOf(values)).then(
+    createItem(collection.name, type.name, payloadOf(values)).then(
       (item) => onCreated(item.id),
       (failure: unknown) => {
         setPosting(false);
@@ -80,9 +95,29 @@ function IntakeForm({ collections, first, onCancel, onCreated }: IntakeFormProps
           </select>
         </div>
       ) : null}
-      {collection.fields.map((field) => (
+      {collection.types.length > 1 ? (
+        <div className="intake-field">
+          <label className="t-label" htmlFor="intake-type">
+            Type
+          </label>
+          <select
+            id="intake-type"
+            className="input"
+            value={type?.name}
+            disabled={posting}
+            onChange={(event) => chooseType(event.target.value)}
+          >
+            {collection.types.map(({ name, label }) => (
+              <option key={name} value={name}>
+                {label}
+              </option>
+            ))}
+          </select>
+        </div>
+      ) : null}
+      {(type ? intakeFields(type) : []).map((field) => (
         <FieldControl
-          key={`${collection.name}:${field.name}`}
+          key={`${collection.name}:${type?.name}:${field.name}`}
           id={`intake-${field.name}`}
           field={field}
           value={values[field.name] ?? ''}
@@ -90,9 +125,11 @@ function IntakeForm({ collections, first, onCancel, onCreated }: IntakeFormProps
           onChange={(value) => change(field.name, value)}
         />
       ))}
-      <p className="intake-start t-small" data-incomplete={start.incomplete}>
-        {startMessage(start)}
-      </p>
+      {start ? (
+        <p className="intake-start t-small" data-incomplete={start.incomplete}>
+          {startMessage(start)}
+        </p>
+      ) : null}
       <div className="action-buttons">
         <Button type="submit" variant="primary" disabled={!ready || posting}>
           {posting ? 'Creating…' : 'Create'}

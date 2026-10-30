@@ -1,5 +1,4 @@
 import type { ButtonVariant } from './kit/Button.tsx';
-import { isDiscardedState } from './node-kind.ts';
 import type { Move } from './types.ts';
 
 export type ActionState =
@@ -28,7 +27,7 @@ export function moveTone({ by, reasonRequired }: Move): Tone {
 export function moveVariants(moves: readonly Move[]): ButtonVariant[] {
   let primaryTaken = false;
   return moves.map((move) => {
-    if (isDiscardedState(move.to)) return 'quiet';
+    if (move.closes === 'discarded') return 'quiet';
     if (!primaryTaken && moveTone(move) === 'approve') {
       primaryTaken = true;
       return 'primary';
