@@ -43,7 +43,7 @@ const WAIT_MAX = { text: '15m', ms: 15 * 60_000 };
 
 const NOTES: Readonly<Record<string, string>> = {
   attach:
-    'file is a path on this machine, which the server reads; a relative one is resolved against the directory otea mcp runs in.',
+    'file is a path on this machine, which the server reads; a relative one is resolved against the directory otea mcp runs in. The file goes to an evidence module of the item type that accepts it: pass module (its id, shown by show) when several do, and role before or after for a compare.',
   events:
     'Returns the events after the event id given to since, as a JSON array; call it again with the last id to read newer ones.',
   wait: `Gives up with the timeout error after timeout (default ${WAIT_TIMEOUT}, at most ${WAIT_MAX.text}); call it again to keep waiting.`,

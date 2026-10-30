@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { COMMANDS } from '../cli/commands.ts';
 import { type Cli, cliAt, tempGitRepo } from '../cli/testing.ts';
 import type { Actor } from '../core/item.ts';
-import { MIXED_YAML } from '../core/testing.ts';
+import { EVIDENCE_YAML, MIXED_YAML } from '../core/testing.ts';
 import { AGENT_COMMANDS, CLI_ONLY_COMMANDS, createMcpServer, OMITTED_OPTIONS } from './server.ts';
 
 type Reply = { isError?: boolean; content: { type: string; text: string }[] };
@@ -238,6 +238,28 @@ describe('mcp server', () => {
       expect(JSON.parse(listed.content[0]?.text ?? '')).toEqual(
         await json('list', '--type', 'bug'),
       );
+    });
+
+    it('places evidence in a layout module and refuses what the layout does not take, as the CLI does', async () => {
+      repo.write('.otea/presets/proof/preset.yaml', EVIDENCE_YAML);
+      await otea('collection', 'add', 'proof', '--preset', 'proof');
+      await otea('create', '--collection', 'proof', '--type', 'impr', '--title', 'Faster');
+      repo.write('home.png', 'png-home');
+      repo.write('notes.zip', 'zip');
+      const fresh = await connect(repo.dir, 'claude');
+
+      const placed = await call(
+        'attach',
+        { id: 'PROOF-1', file: 'home.png', module: 'mockup' },
+        fresh,
+      );
+      const ambiguous = await call('attach', { id: 'PROOF-1', file: 'home.png' }, fresh);
+      const refused = await call('attach', { id: 'PROOF-1', file: 'notes.zip' }, fresh);
+      await fresh.close();
+
+      expect(JSON.parse(placed.content[0]?.text ?? '')).toMatchObject({ module: 'mockup' });
+      expect(ambiguous.content[0]?.text).toBe(await cliError('attach', 'PROOF-1', 'home.png'));
+      expect(refused.content[0]?.text).toBe(await cliError('attach', 'PROOF-1', 'notes.zip'));
     });
 
     it('refuses a human-ui move with forbidden, as the CLI does', async () => {
