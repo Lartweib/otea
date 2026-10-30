@@ -5,6 +5,7 @@ import type { Lease } from '../core/lease.ts';
 import type { Layout } from '../core/modules.ts';
 import { type EvidenceModuleEntry, groupEvidence } from '../core/placement.ts';
 import { DEFAULT_TYPE } from '../core/preset.ts';
+import { describeRelation, type Relation, type RelationView } from '../core/relations.ts';
 import type { EvidenceRecord } from '../store/queries.ts';
 
 type Event = ItemView['events'][number];
@@ -114,6 +115,9 @@ function describeAction({ type, data }: Event): string {
   if (type === 'released') {
     return `${String(data.holder)} (${data.cause === 'handoff' ? 'handed off' : 'released'})`;
   }
+  if (type === 'relation_added' || type === 'relation_removed') {
+    return describeRelation(data as Relation);
+  }
   if (type === 'evidence_added') {
     const caption = typeof data.caption === 'string' ? ` (${JSON.stringify(data.caption)})` : '';
     const { evidenceId, role, kind, filename } = data;
@@ -167,6 +171,40 @@ function evidenceLines(evidence: EvidenceRecord[], layout: Layout | undefined): 
   return ['Evidence:', indent(sections.join('\n')), ''];
 }
 
+const VIEW_HEADING: Readonly<Record<RelationView, string>> = {
+  parent: 'parent',
+  child: 'children',
+  blocks: 'blocks',
+  blocked_by: 'blocked by',
+  duplicates: 'duplicates',
+  duplicated_by: 'duplicated by',
+  implements: 'implements',
+  implemented_by: 'implemented by',
+  relates: 'related',
+};
+
+// The children summary of a parent, then its relations grouped by kind, each other item as a row.
+function relationLines({ relations, children }: ItemView): string[] {
+  const lines: string[] = [];
+  if (children) {
+    const closed = children.total - children.open;
+    lines.push(
+      `Children: ${closed} of ${children.total} closed (${children.done} done, ${children.discarded} discarded)`,
+    );
+  }
+  if (relations.length > 0) {
+    const groups = new Map<RelationView, string[][]>();
+    for (const { kind, id, state, turn, title } of relations) {
+      groups.set(kind, [...(groups.get(kind) ?? []), [id, state, turn, title]]);
+    }
+    const sections = [...groups].map(
+      ([kind, rows]) => `${VIEW_HEADING[kind]}\n${indent(columns(rows))}`,
+    );
+    lines.push('Relations:', indent(sections.join('\n')));
+  }
+  return lines.length > 0 ? [...lines, ''] : [];
+}
+
 function movesLine(label: string, moves: ItemView['transitions']): string {
   const targets = moves.map(({ to, reasonRequired }) =>
     reasonRequired ? `${to} (reason required)` : to,
@@ -195,6 +233,7 @@ export function formatItemWithEvents(item: ItemView, layout?: Layout): string {
     movesLine('move', item.transitions),
     movesLine('relay', item.relayable),
     '',
+    ...relationLines(item),
     ...evidenceLines(item.evidence, layout),
     'Events:',
     indent(columns(item.events.map(eventRow))),

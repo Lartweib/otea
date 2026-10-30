@@ -20,6 +20,8 @@ export const AGENT_COMMANDS = [
   'create',
   'update',
   'attach',
+  'link',
+  'unlink',
   'move',
   'claim',
   'heartbeat',

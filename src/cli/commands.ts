@@ -13,12 +13,14 @@ import {
 } from '../app/items.ts';
 import { claimItem, heartbeatItem, releaseItem } from '../app/leases.ts';
 import { initProject, openProject, oteaDir, type Project } from '../app/project.ts';
+import { linkItems, unlinkItems } from '../app/relations.ts';
 import { relayDecision } from '../app/relay.ts';
 import { validateProject } from '../app/validate.ts';
 import { watch } from '../app/watch.ts';
 import { EVIDENCE_ROLES, type EvidenceRole, MAX_EVIDENCE_MB } from '../core/evidence.ts';
 import type { FieldValues } from '../core/fields.ts';
 import { parseDuration } from '../core/lease.ts';
+import { describeRelation, RELATION_KINDS } from '../core/relations.ts';
 import { TURNS, type Turn } from '../core/workflow.ts';
 import { createMcpServer, serveStdio } from '../mcp/server.ts';
 import { DEFAULT_PORT, listen } from '../server/listen.ts';
@@ -112,11 +114,13 @@ const create: Command = {
     title: { required: true },
     description: {},
     field: { multiple: true, placeholder: 'key=value' },
+    parent: { placeholder: 'id' },
   },
   execute: (input) => {
     const collection = input.required('collection');
     const type = input.option('type');
     const title = input.required('title');
+    const parent = input.option('parent');
     const fields = fieldsFrom(input);
     const { actor, channel } = input;
     const item = withProject(input.cwd, (project) =>
@@ -125,6 +129,7 @@ const create: Command = {
         ...(type === undefined ? {} : { type }),
         title,
         fields,
+        ...(parent === undefined ? {} : { parent }),
         actor,
         channel,
       }),
@@ -139,7 +144,9 @@ function listFilter({ option, flag, actor }: Input): ListItemsFilter {
   const state = option('state');
   const type = option('type');
   const turn = option('turn');
+  const parent = option('parent');
   if (collection !== undefined) filter.collection = collection;
+  if (parent !== undefined) filter.parent = parent;
   if (state !== undefined) filter.state = state;
   if (type !== undefined) filter.type = type;
   if (turn !== undefined) filter.turn = turn as Turn;
@@ -149,13 +156,15 @@ function listFilter({ option, flag, actor }: Input): ListItemsFilter {
 
 const list: Command = {
   name: 'list',
-  summary: 'List items in creation order, optionally filtered; --unclaimed hides items others hold',
+  summary:
+    'List items in creation order, optionally filtered; --unclaimed hides items others hold, --parent keeps the children of an item',
   args: [],
   options: {
     collection: {},
     type: {},
     state: {},
     turn: { choices: TURNS },
+    parent: { placeholder: 'id' },
     unclaimed: { flag: true },
   },
   execute: (input) => {
@@ -189,6 +198,34 @@ const move: Command = {
     const input = { id, to, actor, channel, ...(reason ? { reason } : {}) };
     const item = withProject(cwd, (project) => moveItem(project, input));
     return { data: item, text: formatItem(item) };
+  },
+};
+
+const KINDS = RELATION_KINDS.join(', ');
+
+const link: Command = {
+  name: 'link',
+  summary: `Link an item to another, in this project, with a typed relation (${KINDS}): "<id> blocks <other>" reads as it says, "<id> parent <other>" makes <other> the parent of <id>`,
+  args: ['id', 'kind', 'other'],
+  options: {},
+  execute: ({ cwd, actor, channel, args: [id = '', kind = '', other = ''] }) => {
+    const relation = withProject(cwd, (project) =>
+      linkItems(project, { id, kind, other, actor, channel }),
+    );
+    return { data: relation, text: describeRelation(relation) };
+  },
+};
+
+const unlink: Command = {
+  name: 'unlink',
+  summary: 'Remove a relation made with "otea link", named the same way',
+  args: ['id', 'kind', 'other'],
+  options: {},
+  execute: ({ cwd, actor, channel, args: [id = '', kind = '', other = ''] }) => {
+    const relation = withProject(cwd, (project) =>
+      unlinkItems(project, { id, kind, other, actor, channel }),
+    );
+    return { data: relation, text: `Removed: ${describeRelation(relation)}` };
   },
 };
 
@@ -531,6 +568,8 @@ export const COMMANDS: readonly Command[] = [
   release,
   update,
   attach,
+  link,
+  unlink,
   move,
   relay,
   validate,

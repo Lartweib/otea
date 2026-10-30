@@ -189,6 +189,27 @@ describe('mcp server', () => {
       expect((await otea('show', id)).out).toContain('created by agent:claude via mcp at ');
     });
 
+    it('links and unlinks items as the agent via mcp, with the errors of the CLI', async () => {
+      const relation = await data('link', { id: 'TASKS-2', kind: 'parent', other: 'TASKS-1' });
+      const { id } = await data('create', {
+        collection: 'tasks',
+        title: 'Part',
+        parent: 'TASKS-1',
+      });
+
+      expect(relation).toMatchObject({ from: 'TASKS-2', to: 'TASKS-1', channel: 'mcp' });
+      expect(
+        (await data('list', { parent: 'TASKS-1' })).map((item: { id: string }) => item.id),
+      ).toEqual(['TASKS-2', id]);
+      expect(await data('unlink', { id: 'TASKS-2', kind: 'parent', other: 'TASKS-1' })).toEqual({
+        kind: 'parent',
+        from: 'TASKS-2',
+        to: 'TASKS-1',
+      });
+      const reply = await call('link', { id: 'TASKS-1', kind: 'parent', other: 'TASKS-1' });
+      expect(reply.content[0]?.text).toBe(await cliError('link', 'TASKS-1', 'parent', 'TASKS-1'));
+    });
+
     it('names the mcp channel when it refuses a move', async () => {
       await otea('move', 'TASKS-1', 'in_progress');
       await otea('move', 'TASKS-1', 'review');
