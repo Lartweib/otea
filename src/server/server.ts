@@ -3,6 +3,7 @@ import { listCollectionViews } from '../app/collections.ts';
 import { createItem, type ListItemsFilter, listItems, moveItem, showItem } from '../app/items.ts';
 import { listPresetViews } from '../app/preset-views.ts';
 import type { Project } from '../app/project.ts';
+import { linkItems, unlinkItems } from '../app/relations.ts';
 import { TURNS, type Turn } from '../core/workflow.ts';
 import { type ChangeFeed, createChangeFeed } from './changes.ts';
 import { errorBody, ForbiddenHost, InvalidQuery, toErrorResponse } from './errors.ts';
@@ -16,6 +17,7 @@ import {
   assertWritable,
   createRequest,
   HUMAN_IN_UI,
+  linkRequest,
   moveRequest,
 } from './writes.ts';
 
@@ -28,9 +30,10 @@ function isTurn(value: string): value is Turn {
 }
 
 function itemsFilter(query: Record<string, string>): ListItemsFilter {
-  const { collection, state, type, turn } = query;
+  const { collection, state, type, turn, parent } = query;
   const filter: ListItemsFilter = {};
   if (collection !== undefined) filter.collection = collection;
+  if (parent !== undefined) filter.parent = parent;
   if (state !== undefined) filter.state = state;
   if (type !== undefined) filter.type = type;
   if (turn !== undefined) {
@@ -60,6 +63,20 @@ function api(project: Project, feed: ChangeFeed, streams: LiveStreams, auth: Ses
       const item = moveItem(project, { id: c.req.param('id'), ...request, ...HUMAN_IN_UI });
       feed.notify();
       return c.json(item);
+    })
+    .post('/items/:id/link', async (c) => {
+      assertWritable(c, auth);
+      const request = await linkRequest(c);
+      const relation = linkItems(project, { id: c.req.param('id'), ...request, ...HUMAN_IN_UI });
+      feed.notify();
+      return c.json(relation, 201);
+    })
+    .post('/items/:id/unlink', async (c) => {
+      assertWritable(c, auth);
+      const request = await linkRequest(c);
+      const relation = unlinkItems(project, { id: c.req.param('id'), ...request, ...HUMAN_IN_UI });
+      feed.notify();
+      return c.json(relation);
     })
     .get('/evidence/:id/file', (c) => {
       assertSignedIn(c, auth, 'open evidence files');
