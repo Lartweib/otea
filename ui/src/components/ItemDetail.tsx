@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { leftovers } from '../evidence.ts';
 import { actorLabel, leaseLabel } from '../format.ts';
 import { useActiveLease } from '../hooks.ts';
 import {
@@ -13,6 +14,7 @@ import { moduleFor } from '../modules/registry.ts';
 import { itemNodeKind } from '../node-kind.ts';
 import type { CollectionView, ItemView, Turn } from '../types.ts';
 import { EvidenceList } from './EvidenceList.tsx';
+import { EvidenceModule } from './evidence/EvidenceModule.tsx';
 import { ItemActions } from './ItemActions.tsx';
 import { Timeline } from './Timeline.tsx';
 
@@ -79,15 +81,28 @@ export function ItemDetail({
   const kind = itemNodeKind(item, type, lease !== null);
   const { head, primary, side } = detailBlocks(type, item.fields);
   const hasFields = primary.some((block) => block.kind === 'fields');
+  const loose = leftovers(type, item.evidence);
   const block = (part: DetailBlock, index: number) => {
     if (part.kind === 'fields') return <FieldList key={`fields:${index}`} values={part.values} />;
-    if (item.evidence.length === 0) return null;
+    if (part.kind === 'module') {
+      return (
+        <EvidenceModule
+          key={`module:${part.entry.id}`}
+          entry={part.entry}
+          evidence={item.evidence}
+          canWrite={canWrite}
+        />
+      );
+    }
+    if (loose.length === 0) return null;
+    // Beside modules, the plain list holds what none of them draws.
+    const others = loose.length < item.evidence.length;
     return (
       <section key="evidence" className="evidence-section" aria-labelledby="evidence-title">
         <h2 className="t-label" id="evidence-title">
-          evidence
+          {others ? 'other files' : 'evidence'}
         </h2>
-        <EvidenceList evidence={item.evidence} canWrite={canWrite} />
+        <EvidenceList evidence={loose} canWrite={canWrite} />
       </section>
     );
   };
@@ -140,7 +155,7 @@ export function ItemDetail({
         {primary.map(block)}
       </div>
       <div className="detail-side">
-        {side.length > 0 ? <FieldList values={side} /> : null}
+        {side.map(block)}
         <dl className="fields fields-meta">
           <Field label="collection">{item.collection}</Field>
           <Field label="created by">{actorLabel(item.createdBy)}</Field>

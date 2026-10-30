@@ -1,21 +1,17 @@
-import type { EvidenceModule } from '../../src/core/modules.ts';
+import { isEvidenceModule } from './evidence.ts';
 import type { CollectionView, FieldView, LayoutEntry, LayoutSlot, TypeView } from './types.ts';
 
 // A value with the field that shapes it and the label its layout entry gives it.
 export type PlacedValue = { field: FieldView; value: string; label: string };
 
-// The primary column of an item detail: runs of field values, and where the evidence list goes.
-export type DetailBlock = { kind: 'fields'; values: PlacedValue[] } | { kind: 'evidence' };
+// A column of an item detail: runs of field values, the evidence modules where the layout places
+// them, and the plain evidence list (the files no drawn module holds).
+export type DetailBlock =
+  | { kind: 'fields'; values: PlacedValue[] }
+  | { kind: 'module'; entry: LayoutEntry }
+  | { kind: 'evidence' };
 
-export type DetailBlocks = { head: PlacedValue[]; primary: DetailBlock[]; side: PlacedValue[] };
-
-// Keyed by the core evidence modules, so one added to the format fails the typecheck here.
-const EVIDENCE_MODULES: Readonly<Record<EvidenceModule, true>> = {
-  images: true,
-  recording: true,
-  diff: true,
-  log: true,
-};
+export type DetailBlocks = { head: PlacedValue[]; primary: DetailBlock[]; side: DetailBlock[] };
 
 // The type an item is of; undefined while its collection loads or when its preset lost the type.
 export function typeOf(collection: CollectionView | undefined, name: string): TypeView | undefined {
@@ -76,31 +72,30 @@ export function rowValues(
   return type ? slotValues(type, 'row', values) : undeclared(type, values);
 }
 
-function primaryBlocks(type: TypeView, values: Readonly<Record<string, string>>): DetailBlock[] {
+function blocksOf(
+  type: TypeView,
+  entries: readonly LayoutEntry[],
+  values: Readonly<Record<string, string>>,
+  extra: PlacedValue[] = [],
+): DetailBlock[] {
   const blocks: DetailBlock[] = [];
-  let evidence = false;
   const add = (found: PlacedValue[]) => {
     if (found.length === 0) return;
     const last = blocks.at(-1);
     if (last?.kind === 'fields') last.values.push(...found);
     else blocks.push({ kind: 'fields', values: found });
   };
-  for (const entry of [...type.layout.evidence, ...type.layout.body]) {
-    if (Object.hasOwn(EVIDENCE_MODULES, entry.module)) {
-      if (!evidence) blocks.push({ kind: 'evidence' });
-      evidence = true;
-    } else {
-      add(placed(type, entry, values));
-    }
+  for (const entry of entries) {
+    if (isEvidenceModule(entry)) blocks.push({ kind: 'module', entry });
+    else add(placed(type, entry, values));
   }
-  add(undeclared(type, values));
-  if (!evidence) blocks.push({ kind: 'evidence' });
+  add(extra);
   return blocks;
 }
 
 // The item detail in the order of the type's layout: the header slot under the title, the evidence
 // and body slots in the primary column, the side slot atop the side. Reserved modules draw nothing
-// yet; the evidence list sits at the first evidence module, or after the fields when there is none.
+// yet. The plain evidence list closes the primary column.
 export function detailBlocks(
   type: TypeView | undefined,
   values: Readonly<Record<string, string>>,
@@ -112,7 +107,15 @@ export function detailBlocks(
   }
   return {
     head: slotValues(type, 'header', values),
-    primary: primaryBlocks(type, values),
-    side: slotValues(type, 'side', values),
+    primary: [
+      ...blocksOf(
+        type,
+        [...type.layout.evidence, ...type.layout.body],
+        values,
+        undeclared(type, values),
+      ),
+      { kind: 'evidence' },
+    ],
+    side: blocksOf(type, type.layout.side, values),
   };
 }

@@ -19,6 +19,9 @@ const EMPTY: Layout = {
 
 const entry = ({ name, module }: FieldView) => ({ module, field: name }) as Layout['body'][number];
 
+const shots = { module: 'images', id: 'shots', variant: 'compare' } as const;
+const recording = { module: 'recording', id: 'recording' } as const;
+
 const bug: TypeView = {
   name: 'bug',
   label: 'Bug',
@@ -28,9 +31,9 @@ const bug: TypeView = {
   layout: {
     ...EMPTY,
     header: [entry(severity)],
-    evidence: [{ module: 'images', variant: 'compare' }],
+    evidence: [shots],
     body: [{ ...entry(area), label: 'Where' }, { module: 'questions' }],
-    side: [entry(severity)],
+    side: [entry(severity), recording],
     row: [entry(severity)],
     intake: [entry(title), entry(severity)],
   },
@@ -88,13 +91,17 @@ describe('item types', () => {
 
       expect(blocks.head).toEqual([{ field: severity, value: 'high', label: 'severity' }]);
       expect(blocks.primary).toEqual([
-        { kind: 'evidence' },
+        { kind: 'module', entry: shots },
         { kind: 'fields', values: [{ field: area, value: 'Login', label: 'Where' }] },
+        { kind: 'evidence' },
       ]);
-      expect(blocks.side).toEqual([{ field: severity, value: 'high', label: 'severity' }]);
+      expect(blocks.side).toEqual([
+        { kind: 'fields', values: [{ field: severity, value: 'high', label: 'severity' }] },
+        { kind: 'module', entry: recording },
+      ]);
     });
 
-    it('keeps the evidence after the fields when no evidence module places it', () => {
+    it('keeps the plain evidence list after the fields', () => {
       expect(detailBlocks(impr, { pitch: 'Cache it' }).primary).toEqual([
         { kind: 'fields', values: [{ field: pitch, value: 'Cache it', label: 'pitch' }] },
         { kind: 'evidence' },
