@@ -89,8 +89,20 @@ describe('readLayout', () => {
     expect(problems).toEqual([]);
     expect(layout.header).toEqual([{ module: 'severity', field: 'severity' }]);
     expect(layout.evidence).toEqual([
-      { module: 'images', variant: 'compare', accepts: ['png', 'gif'], required: true },
-      { module: 'recording', variant: 'player', accepts: ['video'], label: 'Repro' },
+      {
+        module: 'images',
+        id: 'images',
+        variant: 'compare',
+        accepts: ['png', 'gif'],
+        required: true,
+      },
+      {
+        module: 'recording',
+        id: 'recording',
+        variant: 'player',
+        accepts: ['video'],
+        label: 'Repro',
+      },
     ]);
     expect(layout.body).toEqual([
       { module: 'markdown', field: 'description', label: 'What happens' },
@@ -98,6 +110,24 @@ describe('readLayout', () => {
     ]);
     expect(layout.side).toEqual([{ module: 'relations' }]);
     expect(layout.intake).toEqual(defaultLayout(FIELDS).intake);
+  });
+
+  it('names each evidence module by its id, its module kind unless it declares one', () => {
+    const { layout, problems } = readLayout(
+      {
+        evidence: [
+          { module: 'images', variant: 'compare' },
+          { module: 'images', id: 'screens', variant: 'gallery' },
+        ],
+        side: [{ module: 'log', id: 'test-output' }],
+      },
+      FIELDS,
+      AT,
+    );
+
+    expect(problems).toEqual([]);
+    expect(layout.evidence.map(({ id }) => id)).toEqual(['images', 'screens']);
+    expect(layout.side).toEqual([{ module: 'log', id: 'test-output' }]);
   });
 
   it('accepts every reserved module in a slot it may sit in, before its component exists', () => {
@@ -192,6 +222,31 @@ describe('readLayout', () => {
       'the same field twice in a slot',
       { row: ['severity', { module: 'severity', field: 'severity' }] },
       `${AT}.row[1]: field "severity" is already in row`,
+    ],
+    [
+      'an id that is not kebab-case',
+      { evidence: [{ module: 'images', id: 'Before After' }] },
+      `${AT}.evidence[0].id: ids are lowercase letters, digits and dashes, starting with a letter`,
+    ],
+    [
+      'two evidence modules of one kind without ids',
+      { evidence: [{ module: 'images' }], body: [{ module: 'images', variant: 'gallery' }] },
+      `${AT}.body[0].id: "images" already names evidence[0]; give each images module its own id`,
+    ],
+    [
+      'the same id twice',
+      {
+        evidence: [
+          { module: 'images', id: 'proof' },
+          { module: 'log', id: 'proof' },
+        ],
+      },
+      `${AT}.evidence[1].id: "proof" already names evidence[0]; give each log module its own id`,
+    ],
+    [
+      'an id on a field module',
+      { body: [{ module: 'text', field: 'area', id: 'where' }] },
+      `${AT}.body[0]: Unrecognized key: "id"`,
     ],
     [
       'an intake without a field required to create',

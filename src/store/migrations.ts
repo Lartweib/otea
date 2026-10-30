@@ -85,6 +85,10 @@ const MIGRATIONS = [
   `
   ALTER TABLE items ADD COLUMN type TEXT NOT NULL DEFAULT 'item';
   `,
+  // The id of the layout module evidence was attached to; NULL for evidence attached before modules.
+  `
+  ALTER TABLE evidence ADD COLUMN module TEXT;
+  `,
 ];
 
 function userVersion(db: DatabaseSync): number {

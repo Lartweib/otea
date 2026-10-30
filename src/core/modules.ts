@@ -44,9 +44,11 @@ export const LAYOUT_SLOTS = [
 
 export type LayoutSlot = (typeof LAYOUT_SLOTS)[number];
 
-// One placed module. Field modules name the field they draw; evidence modules say what they accept.
+// One placed module. Field modules name the field they draw; evidence modules say what they accept,
+// and carry an id that names them to `otea attach --module` (their module kind unless declared).
 export type LayoutEntry = {
   module: ModuleKind;
+  id?: string;
   field?: string;
   variant?: string;
   accepts?: string[];
@@ -66,11 +68,19 @@ export type ModuleSpec = {
 
 const label = z.string().min(1).optional();
 
+const ID = /^[a-z][a-z0-9-]*$/;
+
+const id = z
+  .string()
+  .regex(ID, 'ids are lowercase letters, digits and dashes, starting with a letter')
+  .optional();
+
 const fieldConfig = z.strictObject({ module: z.string(), field: z.string(), label });
 
 function evidenceConfig(variants?: readonly [string, ...string[]]) {
   return z.strictObject({
     module: z.string(),
+    id,
     ...(variants ? { variant: z.enum(variants).optional() } : {}),
     accepts: z.array(z.string()).nonempty().optional(),
     required: z.boolean().optional(),
@@ -170,12 +180,12 @@ function acceptsProblems(entry: LayoutEntry, spec: ModuleSpec, at: string): stri
   });
 }
 
-function normalized(entry: LayoutEntry): LayoutEntry {
-  if (!entry.accepts) return entry;
-  return {
-    ...entry,
-    accepts: entry.accepts.map((accept) => accept.toLowerCase().replace(/^\./, '')),
-  };
+// Evidence modules always carry their id, and their accepts in lowercase without the dot.
+function normalized(entry: LayoutEntry, family: ModuleFamily): LayoutEntry {
+  if (family !== 'evidence') return entry;
+  const { module, id = module, ...rest } = entry;
+  const accepts = entry.accepts?.map((accept) => accept.toLowerCase().replace(/^\./, ''));
+  return { module, id, ...rest, ...(accepts ? { accepts } : {}) };
 }
 
 function readModule(
@@ -195,7 +205,7 @@ function readModule(
     );
     return { problems };
   }
-  const entry = normalized(result.data);
+  const entry = normalized(result.data, spec.family);
   if (spec.family === 'field') {
     const name = entry.field ?? '';
     const declared = fields[name];
@@ -223,11 +233,27 @@ function readEntry(value: unknown, fields: Record<string, FieldSpec>, at: string
   return { problems: [`${at}: must be a field name or { module: <kind>, ... }`] };
 }
 
+// Where each evidence module id is first placed, across the slots of a layout.
+type Ids = Map<string, string>;
+
+function idProblems(entry: LayoutEntry, ids: Ids, where: string, place: string): string[] {
+  if (entry.id === undefined) return [];
+  const first = ids.get(entry.id);
+  if (first === undefined) {
+    ids.set(entry.id, place);
+    return [];
+  }
+  return [
+    `${where}.id: "${entry.id}" already names ${first}; give each ${entry.module} module its own id`,
+  ];
+}
+
 function readSlot(
   slot: LayoutSlot,
   value: unknown,
   fields: Record<string, FieldSpec>,
   at: string,
+  ids: Ids,
 ): { entries: LayoutEntry[]; problems: string[] } {
   if (!Array.isArray(value)) return { entries: [], problems: [`${at}.${slot}: must be a list`] };
   const entries: LayoutEntry[] = [];
@@ -244,6 +270,7 @@ function readSlot(
         `${where}: the ${entry.module} module cannot sit in ${slot} (slots: ${slots.join(', ')})`,
       );
     }
+    problems.push(...idProblems(entry, ids, where, `${slot}[${index}]`));
     if (entry.field !== undefined) {
       if (placed.has(entry.field))
         problems.push(`${where}: field "${entry.field}" is already in ${slot}`);
@@ -278,12 +305,13 @@ export function readLayout(
     return { layout, problems: [`${at}: must be a map of slots`] };
   }
   const problems: string[] = [];
+  const ids: Ids = new Map();
   for (const [slot, value] of Object.entries(raw)) {
     if (!(LAYOUT_SLOTS as readonly string[]).includes(slot)) {
       problems.push(`${at}.${slot}: unknown slot (slots: ${LAYOUT_SLOTS.join(', ')})`);
       continue;
     }
-    const read = readSlot(slot as LayoutSlot, value, fields, at);
+    const read = readSlot(slot as LayoutSlot, value, fields, at, ids);
     layout[slot as LayoutSlot] = read.entries;
     problems.push(...read.problems);
   }

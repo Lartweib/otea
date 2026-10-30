@@ -11,6 +11,8 @@ import {
 } from '../core/evidence.ts';
 import type { Actor } from '../core/item.ts';
 import { activeLease, assertMayWrite } from '../core/lease.ts';
+import type { Layout } from '../core/modules.ts';
+import { holderOf, placeEvidence } from '../core/placement.ts';
 import { turnOf } from '../core/workflow.ts';
 import { transaction } from '../store/database.ts';
 import {
@@ -19,7 +21,8 @@ import {
   findEvidence,
   insertEvidence,
 } from '../store/queries.ts';
-import { requireItem, systemClock, workflowOf } from './items.ts';
+import { typeOfItem } from './collections.ts';
+import { requireItem, systemClock } from './items.ts';
 import { oteaDir, type Project } from './project.ts';
 
 // Files are stored once under .otea/evidence, named by their sha256, so attaching the same file
@@ -32,11 +35,13 @@ export function evidenceFile(root: string, sha256: string): string {
   return join(evidenceDir(root), sha256);
 }
 
-// `path` is absolute: the CLI and the MCP tool resolve it against their working directory.
+// `path` is absolute: the CLI and the MCP tool resolve it against their working directory. `module`
+// is the id of the layout module the file goes to, needed only when several accept it.
 export type AttachInput = {
   id: string;
   path: string;
   role?: EvidenceRole;
+  module?: string;
   caption?: string;
   actor: Actor;
   channel: Channel;
@@ -66,7 +71,8 @@ function store(root: string, sha256: string, bytes: Buffer): void {
 }
 
 // Evidence is append-only, like the event log. It obeys the rules of an update: another agent's
-// lease and a closed item refuse it, and a refusal stores nothing.
+// lease and a closed item refuse it. It goes to a module of the item's layout that accepts it, in a
+// role that module takes (see placeEvidence). A refusal stores nothing.
 export function attachEvidence(
   project: Project,
   input: AttachInput,
@@ -80,20 +86,27 @@ export function attachEvidence(
   const { db } = project;
   return transaction(db, () => {
     const item = requireItem(db, input.id);
-    const workflow = workflowOf(project, item);
+    const type = typeOfItem(project, item);
     const at = now();
-    const { actor, channel, role = 'single' } = input;
+    const { actor, channel } = input;
     assertMayWrite(item.id, activeLease(item.lease, at), actor);
-    if (turnOf(workflow, item.state) === 'none') {
+    if (turnOf(type.workflow, item.state) === 'none') {
       throw new OteaError(
         'item_closed',
         `${item.id} is ${item.state} (turn none) and can no longer take evidence`,
       );
     }
+    const request = {
+      filename,
+      ...(input.role === undefined ? {} : { role: input.role }),
+      ...(input.module === undefined ? {} : { module: input.module }),
+    };
+    const { module, role } = placeEvidence(type.layout, { id: item.id, type: type.name }, request);
     store(project.root, sha256, bytes);
     const entry = {
       itemId: item.id,
       role,
+      module,
       kind,
       filename,
       contentType,
@@ -105,10 +118,23 @@ export function attachEvidence(
       channel,
     };
     const id = insertEvidence(db, entry);
-    const data = { evidenceId: id, role, kind, filename, ...(caption ? { caption } : {}), channel };
+    const data = {
+      evidenceId: id,
+      role,
+      ...(module === null ? {} : { module }),
+      kind,
+      filename,
+      ...(caption ? { caption } : {}),
+      channel,
+    };
     appendEvent(db, { itemId: item.id, type: 'evidence_added', actor, at, data });
     return { id, ...entry };
   });
+}
+
+// Each entry with the module that draws it in this layout (see holderOf), for readers.
+export function presentEvidence(layout: Layout, evidence: EvidenceRecord[]): EvidenceRecord[] {
+  return evidence.map((entry) => ({ ...entry, module: holderOf(layout, entry) }));
 }
 
 const EVIDENCE_ID = /^[1-9][0-9]*$/;
