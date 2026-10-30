@@ -2,6 +2,7 @@ import type { Item, ItemView } from '../app/items.ts';
 import type { ValidationReport } from '../app/validate.ts';
 import type { Actor } from '../core/item.ts';
 import type { Lease } from '../core/lease.ts';
+import { DEFAULT_TYPE } from '../core/preset.ts';
 import type { EvidenceRecord } from '../store/queries.ts';
 
 type Event = ItemView['events'][number];
@@ -41,16 +42,25 @@ function leaseLabel({ holder, expiresAt }: Lease): string {
   return `held by ${holder} until ${clockTime(expiresAt)}`;
 }
 
-function itemRow(item: Item): string[] {
-  return [item.id, item.state, item.turn, item.title, item.lease ? leaseLabel(item.lease) : ''];
+// Items of a preset without types are all of the implicit type, so the text leaves it out.
+function typed(item: Item): boolean {
+  return item.type !== DEFAULT_TYPE;
+}
+
+function itemRow(item: Item, withType: boolean): string[] {
+  const lease = item.lease ? leaseLabel(item.lease) : '';
+  const type = withType ? [item.type] : [];
+  return [item.id, ...type, item.state, item.turn, item.title, lease];
 }
 
 export function formatItem(item: Item): string {
-  return columns([itemRow(item)]);
+  return columns([itemRow(item, typed(item))]);
 }
 
 export function formatItems(items: readonly Item[]): string {
-  return items.length === 0 ? 'No items.' : columns(items.map(itemRow));
+  if (items.length === 0) return 'No items.';
+  const withType = items.some(typed);
+  return columns(items.map((item) => itemRow(item, withType)));
 }
 
 function fieldLines(fields: Record<string, unknown>): string[] {
@@ -148,7 +158,7 @@ function createdLine({ createdBy, createdAt, events }: ItemView): string {
 export function formatItemWithEvents(item: ItemView): string {
   return [
     `${item.id}  ${item.title}`,
-    `state: ${item.state}  turn: ${item.turn}  collection: ${item.collection}`,
+    `state: ${item.state}  turn: ${item.turn}  ${typed(item) ? `type: ${item.type}  ` : ''}collection: ${item.collection}`,
     ...(item.lease ? [leaseLabel(item.lease)] : []),
     createdLine(item),
     ...fieldLines(item.fields),
