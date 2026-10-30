@@ -276,6 +276,7 @@ workflow:
 **Workflow**
 - `initial`: where complete items start. `incomplete`: where items missing a `required: complete` field start; mandatory when any field uses it.
 - Every state declares its `turn` (`agent`, `human` or `none`).
+- A closed state may declare `close_requires: children_closed`: an item cannot move into it (by a move in the UI, an agent move or a relayed decision) while any of its children is open; the refusal is `children_open` (exit 4, HTTP 409) and lists each open child with its state. A move into such a state carries `closeRequires: "children_closed"` in the moves `otea show --json` and the API list, as `closes` does, so a UI can tell it waits. The rule sits on the state rather than on each transition into it, so every way in is covered by one line. Nothing ever moves a parent for its children: its state is never derived from theirs.
 - Every closed state (turn `none`) declares `closes`: `done` (the work was accepted) or `discarded` (it was thrown away). Other states cannot declare it. Like the turn, it is derived, never stored: a closed item and a move into a closed state carry `closes` in their JSON, and the UI draws the done or discarded node from it, whatever the state is called.
 - Each transition declares `by`, the authority needed to take it (§6): `agent`, `human` or `human-ui`. `from` may list several states.
 - `reason: required` makes the actor give a reason; it is recorded in the event and shown in the timeline.
@@ -317,11 +318,13 @@ The modules a layout may place, the slots each one may sit in and the config it 
 |---|---|---|---|
 | Field | `text`, `markdown`, `enum`, `severity` | header, body, side, row, phone, intake | `field` (required, a field of that module), `label` |
 | Evidence | `images`, `recording`, `diff`, `log` | evidence, body, side, phone | `id`, `variant` (`images`: `single`, `gallery`, `compare`; `recording`: `player`, `frames`), `accepts`, `required`, `label` |
-| Reserved | `questions`, `rounds`, `relations`, `children`, `score`, `options`, `diagram` | per module (e.g. `score`: header, side, row; `diagram`: evidence, body) | `label` |
+| Relation | `relations`, `children` | body, side | `label` |
+| Reserved | `questions`, `rounds`, `score`, `options`, `diagram` | per module (e.g. `score`: header, side, row; `diagram`: evidence, body) | `label` |
 
 - A field name is shorthand for `{ module: <its module>, field: <name> }`. A field module must match its field's module.
 - `accepts` lists file kinds (`image`, `video`, `diff`, `log`) or extensions (`png`, `.mp4`), and each must belong to the module's family: `images` accepts images, `recording` videos, `diff` diffs, `log` logs.
 - Reserved modules validate today; their components come later, and until then they draw nothing.
+- `relations` lists the item's relations grouped by kind (§9.1), each other item with its node, id and title; `children` draws a parent's children as nodes on the lanes with how many closed, done and discarded, and lists them. Both draw nothing while there is nothing to show, beyond a quiet action to add one. Every type's default layout places `children` at the end of `body` and `relations` in `side`, so items without relations look as they did before.
 - An evidence module's `id` (lowercase letters, digits and dashes) names it to `otea attach --module`; it defaults to the module kind, and must be unique within the type's layout, so a type with two `images` modules gives at least one of them an id. `otea show`, `--json` and the API report each entry's `module`.
 - Attaching follows the layout: a file goes to a module that accepts it (`evidence_not_accepted`, exit 15, when none does); `--module <id>` picks one when several do (`module_required`, exit 2, without it); a `compare` takes only `before` and `after`, every other module single files (`invalid_role`, exit 2). A type that places no evidence module takes any file, as before modules existed. Evidence whose module is unknown (attached earlier, or the preset changed) belongs to the first module that accepts it, else to a plain list of other files.
 - Each evidence module draws its own component where it is placed (single image, gallery, before/after slider, video player, frames, diff, log); empty, it says what agents attach, dashed when `required`. The `phone` slot is not drawn differently yet: on a phone the detail draws the same modules, at its width.
@@ -406,7 +409,24 @@ Rules:
 - Items survive preset edits; incompatibilities are reported, not silently fixed.
 - **Portability:** a preset that uses only official modules is shareable as-is. A preset that depends on local modules declares them; loading it elsewhere reports what is missing.
 
-Planned, not yet supported: more field modules (`media`, `checks`, relations), `behaviors` (gates), the components of the reserved layout modules, and drawing `board` and `grid` views.
+Planned, not yet supported: more field modules (`media`, `checks`), `behaviors` (gates), the components of the reserved layout modules, and drawing `board` and `grid` views.
+
+### 9.1 Relations
+
+Items link to other items of the same project, across collections, with a typed relation. Each is stored once and read from both sides:
+
+| Kind | `otea link A <kind> B` means | Read from A | Read from B |
+|---|---|---|---|
+| `parent` | B is the parent of A | parent | child |
+| `blocks` | A must be done before B | blocks | blocked by |
+| `duplicates` | A is a copy of B | duplicates | duplicated by |
+| `implements` | A is work that implements B | implements | implemented by |
+| `relates` | A and B are related (no direction) | relates | relates |
+
+- Rules, enforced by the core: no item related to itself (`self_relation`, exit 16); both items must exist (`not_found`, exit 3); one link per pair and kind (`already_exists`, exit 5; `relates` is the same either way, and `A duplicates B` excludes `B duplicates A`); at most one parent (`parent_exists`, exit 16); no cycle in `parent` nor in `blocks` (`relation_cycle`, exit 16, naming the path). An unknown kind is `invalid_relation` (exit 2). An open item cannot get a closed parent (`item_closed`, exit 4).
+- Relations change neither item's fields nor its state, so linking is not bound by leases and works on closed items. Agents and humans link alike; each link and unlink appends `relation_added` or `relation_removed` to both items' timelines with the actor and channel, so the history stays append-only while the table holds only the current links.
+- A parent's state is never derived from its children. `close_requires: children_closed` (§9) is the only coupling, and it only refuses.
+- `orderByBlocks` (`src/core/relations.ts`) orders a set of items so whatever blocks another comes right before it, keeping the given order wherever blocks allow and putting what is caught in a cycle last. It is the order the brief will list items in.
 
 ## 10. Modules
 
