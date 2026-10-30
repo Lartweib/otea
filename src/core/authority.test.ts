@@ -39,6 +39,28 @@ describe('mayPerform', () => {
 });
 
 describe('availableMoves', () => {
+  it('says what a move into a closed state waits for', () => {
+    const parents = {
+      ...tasks,
+      states: tasks.states.map((state) =>
+        state.name === 'done' ? { ...state, closeRequires: 'children_closed' as const } : state,
+      ),
+    };
+
+    expect(availableMoves(parents, 'review', humanUi)).toEqual([
+      {
+        to: 'done',
+        by: 'human-ui',
+        reasonRequired: false,
+        turn: 'none',
+        closes: 'done',
+        closeRequires: 'children_closed',
+      },
+      { to: 'todo', by: 'human-ui', reasonRequired: true, turn: 'agent' },
+      { to: 'discarded', by: 'human', reasonRequired: true, turn: 'none', closes: 'discarded' },
+    ]);
+  });
+
   it('lists the moves the performer may make from a state, once per target', () => {
     expect(availableMoves(tasks, 'incomplete', agentCli)).toEqual([
       { to: 'todo', by: 'agent', reasonRequired: false, turn: 'agent' },

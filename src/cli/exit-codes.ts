@@ -38,6 +38,11 @@ export const EXIT_CODES: Readonly<Record<'ok' | FailureCode, number>> = {
   evidence_not_accepted: 15,
   module_required: 2,
   invalid_role: 2,
+  invalid_relation: 2,
+  self_relation: 16,
+  parent_exists: 16,
+  relation_cycle: 16,
+  children_open: 4,
   // 128 + SIGINT, as shells report a command stopped by Ctrl+C.
   interrupted: 130,
 };
