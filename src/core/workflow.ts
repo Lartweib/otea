@@ -8,7 +8,12 @@ export type Authority = 'agent' | 'human' | 'human-ui';
 
 export const AUTHORITIES: readonly Authority[] = ['agent', 'human', 'human-ui'];
 
-export type State = { name: string; turn: Turn };
+// What reaching a closed state (turn none) means: the work is done, or it was thrown away.
+export type Closing = 'done' | 'discarded';
+
+export const CLOSINGS: readonly Closing[] = ['done', 'discarded'];
+
+export type State = { name: string; turn: Turn; closes?: Closing };
 
 export type Transition = { from: string; to: string; by: Authority; reasonRequired: boolean };
 
@@ -24,6 +29,11 @@ export function turnOf(workflow: Workflow, stateName: string): Turn {
   const state = workflow.states.find((candidate) => candidate.name === stateName);
   if (!state) throw new OteaError('not_found', `Unknown state "${stateName}" in ${workflow.name}`);
   return state.turn;
+}
+
+// How an item in the state is closed, or nothing while it is still open.
+export function closesOf(workflow: Workflow, stateName: string): Closing | undefined {
+  return workflow.states.find((candidate) => candidate.name === stateName)?.closes;
 }
 
 export function transitionsFrom(workflow: Workflow, from: string): Transition[] {

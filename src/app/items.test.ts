@@ -277,7 +277,7 @@ describe('items', () => {
       createItem(ctx, task('First'));
 
       expect(showItem(ctx, 'TASKS-1', { actor: bot, channel: 'cli' }).relayable).toEqual([
-        { to: 'discarded', by: 'human', reasonRequired: true, turn: 'none' },
+        { to: 'discarded', by: 'human', reasonRequired: true, turn: 'none', closes: 'discarded' },
       ]);
     });
 

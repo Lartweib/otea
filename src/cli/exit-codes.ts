@@ -26,6 +26,7 @@ export const EXIT_CODES: Readonly<Record<'ok' | FailureCode, number>> = {
   quote_required: 2,
   file_not_found: 3,
   invalid_fields: 8,
+  invalid_type: 8,
   missing_fields: 8,
   invalid_preset: 9,
   validation_failed: 10,

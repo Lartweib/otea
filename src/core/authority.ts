@@ -3,6 +3,8 @@ import type { Actor } from './item.ts';
 import {
   type Authority,
   assertTransition,
+  type Closing,
+  closesOf,
   type Transition,
   type Turn,
   transitionsFrom,
@@ -43,14 +45,29 @@ function forbidden(from: string, to: string, transitions: Transition[], performe
   );
 }
 
-// A move the performer may make, and whose turn the item is on once it lands.
-export type Move = { to: string; by: Authority; reasonRequired: boolean; turn: Turn };
+// A move the performer may make, whose turn the item is on once it lands and, for a move into a
+// closed state, how it closes the item.
+export type Move = {
+  to: string;
+  by: Authority;
+  reasonRequired: boolean;
+  turn: Turn;
+  closes?: Closing;
+};
+
+function moveTo(workflow: Workflow, { to, by, reasonRequired }: Transition): Move {
+  const move: Move = { to, by, reasonRequired, turn: turnOf(workflow, to) };
+  const closes = closesOf(workflow, to);
+  if (closes !== undefined) move.closes = closes;
+  return move;
+}
 
 export function availableMoves(workflow: Workflow, from: string, performer: Performer): Move[] {
   const moves = new Map<string, Move>();
-  for (const { to, by, reasonRequired } of transitionsFrom(workflow, from)) {
+  for (const transition of transitionsFrom(workflow, from)) {
+    const { to, by } = transition;
     if (moves.has(to) || !mayPerform(by, performer)) continue;
-    moves.set(to, { to, by, reasonRequired, turn: turnOf(workflow, to) });
+    moves.set(to, moveTo(workflow, transition));
   }
   return [...moves.values()];
 }
@@ -59,9 +76,10 @@ export function availableMoves(workflow: Workflow, from: string, performer: Perf
 // authorizeRelay allows them.
 export function relayableMoves(workflow: Workflow, from: string): Move[] {
   const moves = new Map<string, Move>();
-  for (const { to, by, reasonRequired } of transitionsFrom(workflow, from)) {
+  for (const transition of transitionsFrom(workflow, from)) {
+    const { to, by } = transition;
     if (moves.has(to) || by !== 'human') continue;
-    moves.set(to, { to, by, reasonRequired, turn: turnOf(workflow, to) });
+    moves.set(to, moveTo(workflow, transition));
   }
   return [...moves.values()];
 }

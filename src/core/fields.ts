@@ -1,5 +1,5 @@
 import { OteaError } from './errors.ts';
-import type { FieldSpec, Preset } from './preset.ts';
+import type { FieldSpec, Shape } from './preset.ts';
 import { turnOf } from './workflow.ts';
 
 export type FieldValues = Record<string, string>;
@@ -17,7 +17,7 @@ export function valueProblem(name: string, spec: FieldSpec, value: string): stri
   return undefined;
 }
 
-export function intake(preset: Preset, input: FieldValues): Intake {
+export function intake(preset: Shape, input: FieldValues): Intake {
   const problems = Object.keys(input)
     .filter((name) => !(name in preset.fields))
     .map((name) => `unknown field "${name}"`);
@@ -55,7 +55,7 @@ function stored(value: unknown): string | null {
   return typeof value === 'string' ? value : null;
 }
 
-export function revise(preset: Preset, current: Content, input: FieldValues): Revision {
+export function revise(preset: Shape, current: Content, input: FieldValues): Revision {
   const values: Record<string, unknown> = { ...current.fields, title: current.title };
   const problems: string[] = [];
   const changes: Record<string, Change> = {};
@@ -83,7 +83,7 @@ export function revise(preset: Preset, current: Content, input: FieldValues): Re
   return { title: String(title), fields, changes };
 }
 
-export function missingToComplete(preset: Preset, fields: Record<string, unknown>): string[] {
+export function missingToComplete(preset: Shape, fields: Record<string, unknown>): string[] {
   return Object.entries(preset.fields)
     .filter(([name, spec]) => {
       const value = fields[name];
@@ -93,7 +93,7 @@ export function missingToComplete(preset: Preset, fields: Record<string, unknown
 }
 
 export function assertCanLeave(
-  preset: Preset,
+  preset: Shape,
   from: string,
   to: string,
   fields: Record<string, unknown>,

@@ -94,7 +94,7 @@ describe('mcp server', () => {
 
       expect(shown).toEqual(await json('show', 'TASKS-2'));
       expect(shown.relayable).toEqual([
-        { to: 'discarded', by: 'human', reasonRequired: true, turn: 'none' },
+        { to: 'discarded', by: 'human', reasonRequired: true, turn: 'none', closes: 'discarded' },
       ]);
     });
 

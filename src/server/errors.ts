@@ -11,6 +11,7 @@ export const HTTP_STATUS: Readonly<Record<ErrorCode, ContentfulStatusCode>> = {
   reason_required: 400,
   invalid_preset: 500,
   invalid_fields: 422,
+  invalid_type: 422,
   item_closed: 409,
   missing_fields: 422,
   not_claimable: 409,

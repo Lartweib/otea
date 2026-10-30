@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { stringify } from 'yaml';
-import { parsePreset, readPreset, SEVERITY_SCALE } from './preset.ts';
+import { defaultLayout } from './modules.ts';
+import {
+  DEFAULT_TYPE,
+  parsePreset,
+  readPreset,
+  SEVERITY_SCALE,
+  typeFor,
+  typeOf,
+} from './preset.ts';
 import { tasks } from './testing.ts';
 
 const TASKS_YAML = `
@@ -19,8 +27,8 @@ workflow:
     todo:        { turn: agent }
     in_progress: { turn: agent }
     review:      { turn: human }
-    done:        { turn: none }
-    discarded:   { turn: none }
+    done:        { turn: none, closes: done }
+    discarded:   { turn: none, closes: discarded }
   transitions:
     - { from: incomplete,  to: todo,        by: agent }
     - { from: todo,        to: in_progress, by: agent }
@@ -41,7 +49,7 @@ function minimal(): Raw {
     fields: { title: { module: 'text', required: 'create' } },
     workflow: {
       initial: 'open',
-      states: { open: { turn: 'agent' }, closed: { turn: 'none' } },
+      states: { open: { turn: 'agent' }, closed: { turn: 'none', closes: 'discarded' } },
       transitions: [{ from: 'open', to: 'closed', by: 'agent' }],
     },
   };
@@ -157,7 +165,7 @@ describe('readPreset', () => {
     ],
     [
       'an unreachable state',
-      (raw) => (raw.workflow.states.limbo = { turn: 'none' }),
+      (raw) => (raw.workflow.states.limbo = { turn: 'none', closes: 'discarded' }),
       'workflow.states.limbo: not reachable from the initial or incomplete state',
     ],
     [
@@ -244,5 +252,230 @@ describe('parsePreset', () => {
 
     expect(parse).toThrow(expect.objectContaining({ code: 'invalid_preset' }));
     expect(parse).toThrow(/fields\.title: missing/);
+  });
+});
+
+describe('closing kinds', () => {
+  it('records what each closed state means', () => {
+    const preset = parsePreset(TASKS_YAML);
+
+    expect(preset.workflow.states.filter(({ closes }) => closes)).toEqual([
+      { name: 'done', turn: 'none', closes: 'done' },
+      { name: 'discarded', turn: 'none', closes: 'discarded' },
+    ]);
+  });
+
+  it.each<[string, (raw: Raw) => void, string]>([
+    [
+      'a closed state that does not say how it closes',
+      (raw) => delete raw.workflow.states.closed.closes,
+      'workflow.states.closed.closes: required on a state with turn none (done or discarded)',
+    ],
+    [
+      'an open state that closes',
+      (raw) => (raw.workflow.states.open.closes = 'done'),
+      'workflow.states.open.closes: only a state with turn none closes',
+    ],
+    [
+      'an agent closing an item as done',
+      (raw) => (raw.workflow.states.closed.closes = 'done'),
+      'workflow.transitions.0: an agent cannot close an item as done ("open" -> "closed"); use human or human-ui',
+    ],
+  ])('rejects %s', (_, change, problem) => {
+    expect(problemsOf(change)).toContain(problem);
+  });
+
+  it('rejects an unknown closing kind by its path', () => {
+    expect(problemsOf((raw) => (raw.workflow.states.closed.closes = 'won'))).toEqual([
+      expect.stringContaining('workflow.states.closed.closes'),
+    ]);
+  });
+});
+
+function twoTypes(): Raw {
+  const raw = minimal();
+  raw.fields.area = { module: 'text' };
+  raw.types = {
+    bug: {
+      label: 'Bug',
+      fields: { severity: { module: 'severity', required: 'create' } },
+      layout: { header: ['severity'], evidence: [{ module: 'images', variant: 'compare' }] },
+    },
+    impr: {
+      label: 'Improvement',
+      fields: { pitch: { module: 'markdown' } },
+      workflow: {
+        initial: 'idea',
+        states: {
+          idea: { turn: 'human' },
+          planned: { turn: 'none', closes: 'done' },
+          dropped: { turn: 'none', closes: 'discarded' },
+        },
+        transitions: [
+          { from: 'idea', to: 'planned', by: 'human' },
+          { from: 'idea', to: 'dropped', by: 'agent' },
+        ],
+      },
+    },
+  };
+  return raw;
+}
+
+function typeProblems(change: (raw: Raw) => void): string[] {
+  const raw = twoTypes();
+  change(raw);
+  const result = readPreset(stringify(raw));
+  return result.ok ? [] : result.problems;
+}
+
+describe('item types', () => {
+  it('reads a preset without types as one implicit type with the preset fields and workflow', () => {
+    const preset = parsePreset(TASKS_YAML);
+
+    expect(DEFAULT_TYPE).toBe('item');
+    expect(preset.types).toEqual([
+      {
+        name: 'item',
+        label: 'Item',
+        fields: preset.fields,
+        workflow: preset.workflow,
+        layout: defaultLayout(preset.fields),
+      },
+    ]);
+    expect(preset.view).toEqual({ kind: 'list', groupBy: 'turn' });
+  });
+
+  it('reads declared types: shared fields plus their own, their own workflow or the preset one', () => {
+    const preset = parsePreset(stringify(twoTypes()));
+    const [bug, impr] = preset.types;
+
+    expect(preset.types.map(({ name, label }) => [name, label])).toEqual([
+      ['bug', 'Bug'],
+      ['impr', 'Improvement'],
+    ]);
+    expect(Object.keys(bug?.fields ?? {})).toEqual(['title', 'area', 'severity']);
+    expect(bug?.workflow).toEqual(preset.workflow);
+    expect(bug?.layout.header).toEqual([{ module: 'severity', field: 'severity' }]);
+    expect(bug?.layout.body).toEqual(defaultLayout(bug?.fields ?? {}).body);
+    expect(Object.keys(impr?.fields ?? {})).toEqual(['title', 'area', 'pitch']);
+    expect(impr?.workflow).toMatchObject({ name: 'notes:impr', initial: 'idea' });
+  });
+
+  it('reads the collection view', () => {
+    const raw = twoTypes();
+    raw.view = { kind: 'board', group_by: 'type' };
+
+    expect(parsePreset(stringify(raw)).view).toEqual({ kind: 'board', groupBy: 'type' });
+  });
+
+  it.each<[string, (raw: Raw) => void, string]>([
+    ['no types at all', (raw) => (raw.types = {}), 'types: declare at least one type'],
+    [
+      'a type redeclaring a shared field',
+      (raw) => (raw.types.bug.fields.area = { module: 'markdown' }),
+      'types.bug.fields.area: already declared by the preset',
+    ],
+    [
+      'a bad field in a type',
+      (raw) => (raw.types.impr.fields.size = { module: 'enum' }),
+      'types.impr.fields.size.values: required by the enum module',
+    ],
+    [
+      'a problem in a type workflow',
+      (raw) => (raw.types.impr.workflow.initial = 'nope'),
+      'types.impr.workflow.initial: unknown state "nope"',
+    ],
+    [
+      'an agent closing a type item as done',
+      (raw) => (raw.types.impr.workflow.transitions[1].to = 'planned'),
+      'types.impr.workflow.transitions.1: an agent cannot close an item as done ("idea" -> "planned"); use human or human-ui',
+    ],
+    [
+      'a type field required to complete with no incomplete state',
+      (raw) => (raw.types.impr.fields.pitch.required = 'complete'),
+      'types.impr.workflow.incomplete: missing, but field "pitch" is required: complete',
+    ],
+    [
+      'a type field required to complete in the preset workflow with no incomplete state',
+      (raw) => (raw.types.bug.fields.severity.required = 'complete'),
+      'workflow.incomplete: missing, but field "severity" of type bug is required: complete',
+    ],
+    [
+      'a type layout problem, by its path',
+      (raw) => (raw.types.bug.layout.evidence[0].accepts = ['mp4']),
+      'types.bug.layout.evidence[0].accepts: "mp4" is a video file; the images module accepts image',
+    ],
+    [
+      'a type layout naming a field of another type',
+      (raw) => (raw.types.bug.layout.body = ['pitch']),
+      'types.bug.layout.body[0]: unknown field "pitch"',
+    ],
+    [
+      'a preset layout next to types',
+      (raw) => (raw.layout = { body: ['area'] }),
+      'layout: declare the layout of each type under types.<type>.layout',
+    ],
+    [
+      'an unknown view kind',
+      (raw) => (raw.view = { kind: 'gallery' }),
+      'view.kind: Invalid option: expected one of "list"|"board"|"grid"',
+    ],
+    [
+      'grouping by a field that is not an enum',
+      (raw) => (raw.view = { group_by: 'area' }),
+      'view.group_by: "area" is not turn, state, type or an enum or severity field of every type',
+    ],
+    [
+      'grouping by a field only some types have',
+      (raw) => (raw.view = { group_by: 'severity' }),
+      'view.group_by: "severity" is not turn, state, type or an enum or severity field of every type',
+    ],
+  ])('rejects %s', (_, change, problem) => {
+    expect(typeProblems(change)).toContain(problem);
+  });
+
+  it('reads the layout of the implicit type from the preset', () => {
+    const raw = minimal();
+    raw.fields.area = { module: 'text' };
+    raw.layout = { row: ['area'], body: [{ module: 'questions' }] };
+
+    const [only] = parsePreset(stringify(raw)).types;
+
+    expect(only?.layout.row).toEqual([{ module: 'text', field: 'area' }]);
+    expect(only?.layout.body).toEqual([{ module: 'questions' }]);
+  });
+
+  it('groups by an enum field every type shares', () => {
+    const raw = twoTypes();
+    raw.fields.priority = { module: 'enum', values: ['low', 'high'] };
+    raw.view = { group_by: 'priority' };
+
+    expect(parsePreset(stringify(raw)).view).toEqual({ kind: 'list', groupBy: 'priority' });
+  });
+});
+
+describe('typeOf and typeFor', () => {
+  const single = parsePreset(TASKS_YAML);
+  const mixed = parsePreset(stringify(twoTypes()));
+
+  it('finds a type by name', () => {
+    expect(typeOf(mixed, 'impr').label).toBe('Improvement');
+    expect(() => typeOf(mixed, 'item')).toThrow(
+      expect.objectContaining({
+        code: 'invalid_type',
+        message: 'Unknown type "item" in preset notes (types: bug, impr)',
+      }),
+    );
+  });
+
+  it('defaults to the only type, and needs one when there are several', () => {
+    expect(typeFor(single, undefined).name).toBe('item');
+    expect(typeFor(mixed, 'bug').name).toBe('bug');
+    expect(() => typeFor(mixed, undefined)).toThrow(
+      expect.objectContaining({
+        code: 'invalid_type',
+        message: 'Preset notes has several types; give one of: bug, impr',
+      }),
+    );
   });
 });

@@ -42,7 +42,7 @@ describe('availableMoves', () => {
   it('lists the moves the performer may make from a state, once per target', () => {
     expect(availableMoves(tasks, 'incomplete', agentCli)).toEqual([
       { to: 'todo', by: 'agent', reasonRequired: false, turn: 'agent' },
-      { to: 'discarded', by: 'agent', reasonRequired: true, turn: 'none' },
+      { to: 'discarded', by: 'agent', reasonRequired: true, turn: 'none', closes: 'discarded' },
     ]);
     expect(availableMoves(tasks, 'incomplete', humanUi).map(({ to, by }) => [to, by])).toEqual([
       ['todo', 'agent'],
@@ -58,6 +58,14 @@ describe('availableMoves', () => {
     ]);
   });
 
+  it('says how each move into a closed state closes the item', () => {
+    expect(availableMoves(tasks, 'review', humanUi).map(({ to, closes }) => [to, closes])).toEqual([
+      ['done', 'done'],
+      ['todo', undefined],
+      ['discarded', 'discarded'],
+    ]);
+  });
+
   it('offers an agent nothing while the item waits for a human', () => {
     expect(availableMoves(tasks, 'review', agentCli)).toEqual([]);
   });
@@ -66,7 +74,7 @@ describe('availableMoves', () => {
 describe('relayableMoves', () => {
   it('lists the human moves a relayed decision may take from a state, once per target', () => {
     expect(relayableMoves(tasks, 'review')).toEqual([
-      { to: 'discarded', by: 'human', reasonRequired: true, turn: 'none' },
+      { to: 'discarded', by: 'human', reasonRequired: true, turn: 'none', closes: 'discarded' },
     ]);
     expect(relayableMoves(tasks, 'incomplete').map(({ to }) => to)).toEqual(['discarded']);
   });
