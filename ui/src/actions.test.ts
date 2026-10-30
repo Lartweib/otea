@@ -4,6 +4,7 @@ import {
   canConfirm,
   IDLE,
   isBusy,
+  moveBlock,
   moveTone,
   moveVariants,
   reduceAction,
@@ -123,6 +124,28 @@ describe('actions', () => {
       turn: 'none',
       closes: 'discarded',
     } as const;
+
+    const waits = { ...done, closeRequires: 'children_closed' } as const;
+    const accept = { to: 'accepted', by: 'human', reasonRequired: false, turn: 'agent' } as const;
+    const open = (count: number) => ({ total: 4, open: count, done: 4 - count, discarded: 0 });
+
+    it('blocks a move that waits for children while some are open, and says how many', () => {
+      expect(moveBlock(waits, open(3))).toBe('3 children open');
+      expect(moveBlock(waits, open(1))).toBe('1 child open');
+      expect(moveBlock(waits, open(0))).toBeUndefined();
+      expect(moveBlock(waits, undefined)).toBeUndefined();
+      expect(moveBlock(done, open(3))).toBeUndefined();
+    });
+
+    it('never makes a blocked move primary: the next eligible one is', () => {
+      expect(moveVariants([waits, accept, discard], open(2))).toEqual([
+        'default',
+        'primary',
+        'quiet',
+      ]);
+      expect(moveVariants([waits, back], open(2))).toEqual(['default', 'default']);
+      expect(moveVariants([waits, accept], open(0))).toEqual(['primary', 'default']);
+    });
 
     it('makes the move that hands the turn on primary, discards quiet and the rest plain', () => {
       expect(moveVariants([done, back, discard])).toEqual(['primary', 'default', 'quiet']);

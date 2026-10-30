@@ -1,5 +1,14 @@
 import type { Layout } from '../../src/core/modules.ts';
 import type { FieldRequirement } from '../../src/core/preset.ts';
+import type { ChildrenSummary, RelationRef, RelationView } from '../../src/core/relations.ts';
+
+// Relation kinds and how they read from either item, from the core. Type-only.
+export type {
+  ChildrenSummary,
+  RelationKind,
+  RelationRef,
+  RelationView,
+} from '../../src/core/relations.ts';
 
 export type Turn = 'human' | 'agent' | 'none';
 
@@ -26,6 +35,9 @@ export type Item = {
   updatedAt: string;
   createdBy: Actor;
   lease: Lease | null;
+  // The item's relations, read from it, and a parent's children summary; absent when it has none.
+  relations?: RelationRef[];
+  children?: ChildrenSummary;
 };
 
 export type ItemEvent = {
@@ -40,13 +52,15 @@ export type ItemWithEvents = Item & { events: ItemEvent[] };
 
 export type Authority = 'agent' | 'human' | 'human-ui';
 
-// turn: whose turn the item is on once the move lands; closes: how a move into a closed state closes it.
+// turn: whose turn the item is on once the move lands; closes: how a move into a closed state closes it;
+// closeRequires: what it waits for (`children_closed`: every child of the item closed).
 export type Move = {
   to: string;
   by: Authority;
   reasonRequired: boolean;
   turn: Turn;
   closes?: Closing;
+  closeRequires?: 'children_closed';
 };
 
 export type State = { name: string; turn: Turn; closes?: Closing };
@@ -73,12 +87,26 @@ export type Evidence = {
   channel: string;
 };
 
+// A relation as the detail lists it: how it reads from the item, and where the other item stands.
+export type RelatedItem = {
+  kind: RelationView;
+  id: string;
+  collection: string;
+  type: string;
+  title: string;
+  state: string;
+  turn: Turn;
+  closes?: Closing;
+  lease: Lease | null;
+};
+
 // relayable: the human decisions an agent may relay from the current state.
-export type ItemView = ItemWithEvents & {
+export type ItemView = Omit<ItemWithEvents, 'relations'> & {
   transitions: Move[];
   relayable: Move[];
   missing: string[];
   evidence: Evidence[];
+  relations: RelatedItem[];
 };
 
 export type Session = { canWrite: boolean };

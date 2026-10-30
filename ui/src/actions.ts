@@ -1,5 +1,5 @@
 import type { ButtonVariant } from './kit/Button.tsx';
-import type { Move } from './types.ts';
+import type { ChildrenSummary, Move } from './types.ts';
 
 export type ActionState =
   | { step: 'choosing'; error?: string }
@@ -23,11 +23,24 @@ export function moveTone({ by, reasonRequired }: Move): Tone {
   return by === 'agent' ? 'neutral' : 'approve';
 }
 
-// One primary per screen: the first move that hands the turn on. Throwing work away is never the primary.
-export function moveVariants(moves: readonly Move[]): ButtonVariant[] {
+// Why a move cannot be made yet: it closes into a state that waits for every child
+// (close_requires: children_closed) while some are open. The server refuses it too.
+export function moveBlock(move: Move, children: ChildrenSummary | undefined): string | undefined {
+  const open = children?.open ?? 0;
+  if (move.closeRequires !== 'children_closed' || open === 0) return undefined;
+  return `${open} ${open === 1 ? 'child' : 'children'} open`;
+}
+
+// One primary per screen: the first move that hands the turn on. Throwing work away is never the
+// primary, nor is a move still waiting for children: the next eligible one takes it.
+export function moveVariants(
+  moves: readonly Move[],
+  children?: ChildrenSummary | undefined,
+): ButtonVariant[] {
   let primaryTaken = false;
   return moves.map((move) => {
     if (move.closes === 'discarded') return 'quiet';
+    if (moveBlock(move, children) !== undefined) return 'default';
     if (!primaryTaken && moveTone(move) === 'approve') {
       primaryTaken = true;
       return 'primary';

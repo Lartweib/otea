@@ -7,15 +7,23 @@ import { FocusToggle } from './components/FocusToggle.tsx';
 import { ItemDetail } from './components/ItemDetail.tsx';
 import { type CollectionOf, ItemList, type Unfolding } from './components/ItemList.tsx';
 import { CatalogOverview, ModuleIndex, ModulePanel } from './components/ModuleCatalog.tsx';
-import { NewItemForm } from './components/NewItemForm.tsx';
+import { type IntakeParent, NewItemForm } from './components/NewItemForm.tsx';
 import { ThemeToggle } from './components/ThemeToggle.tsx';
 import { Triage } from './components/Triage.tsx';
 import { type Connection, useLive, usePhone, useRemote, useRoute } from './hooks.ts';
 import { keyCommand, keyTargetOf, stepSelection } from './keys.ts';
 import { Button, Icon } from './kit/index.ts';
 import { MODULES } from './modules/registry.ts';
+import {
+  type NestedSection,
+  nestSections,
+  type RowNesting,
+  readCollapsed,
+  toggleCollapsed,
+  writeCollapsed,
+} from './nesting.ts';
 import type { Remote } from './remote.ts';
-import { groupByTurn, type Section } from './sections.ts';
+import { groupByTurn } from './sections.ts';
 import { hashFor, ITEMS_HASH, modulesHash, TRIAGE_HASH } from './selection.ts';
 import type { CollectionView, Item, ItemView, PresetView } from './types.ts';
 import { inCollection, listOrder, railEntries } from './workspace.ts';
@@ -26,7 +34,9 @@ function Message({ children, muted = true }: { children: ReactNode; muted?: bool
 
 type ListPaneProps = {
   items: Remote<Item[]>;
-  sections: Section[];
+  sections: NestedSection[];
+  nesting: ReadonlyMap<string, RowNesting>;
+  onToggleChildren: (id: string) => void;
   selectedId: string | undefined;
   collection: string | undefined;
   collectionOf: CollectionOf;
@@ -37,6 +47,8 @@ type ListPaneProps = {
 function ListPane({
   items,
   sections,
+  nesting,
+  onToggleChildren,
   selectedId,
   collection,
   collectionOf,
@@ -60,6 +72,8 @@ function ListPane({
       </div>
       <ItemList
         sections={sections}
+        nesting={nesting}
+        onToggleChildren={onToggleChildren}
         selectedId={selectedId}
         collectionOf={collectionOf}
         scope={collection ?? ''}
@@ -78,6 +92,7 @@ type DetailPaneProps = {
   headAction: ReactNode;
   layout?: 'pane' | 'unfold';
   onMoved?: () => void;
+  onAddChild?: (parent: ItemView) => void;
 };
 
 function DetailPane({
@@ -88,6 +103,7 @@ function DetailPane({
   headAction,
   layout,
   onMoved,
+  onAddChild,
 }: DetailPaneProps) {
   if (item.status === 'failed') return <Message muted={false}>{item.message}</Message>;
   if (item.status === 'loading') return <Message>Loading…</Message>;
@@ -97,6 +113,8 @@ function DetailPane({
       item={item.value}
       canWrite={canWrite}
       collection={collectionOf(item.value.collection)}
+      collectionOf={collectionOf}
+      onAddChild={onAddChild}
       headAction={headAction}
       {...(layout ? { layout } : {})}
       {...(onMoved ? { onMoved } : {})}
@@ -163,7 +181,32 @@ function Catalog({ name, presets }: CatalogProps) {
   );
 }
 
-type Intake = { openedOn: string | undefined };
+// parent: the item a "+ child" opened the form for; the form starts in its collection.
+type Intake = { openedOn: string | undefined; parent?: IntakeParent };
+
+// Reading window.localStorage itself can throw when site data is blocked.
+function browserStorage(): Storage | undefined {
+  try {
+    return window.localStorage;
+  } catch {
+    return undefined;
+  }
+}
+
+// The parents this viewer folded in the list, remembered in this browser.
+function useCollapsed(): [ReadonlySet<string>, (id: string) => void] {
+  const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(() =>
+    readCollapsed(browserStorage()),
+  );
+  const toggle = useCallback((id: string) => {
+    setCollapsed((current) => {
+      const next = toggleCollapsed(current, id);
+      writeCollapsed(browserStorage(), next);
+      return next;
+    });
+  }, []);
+  return [collapsed, toggle];
+}
 
 type WorkspaceKeys = {
   enabled: boolean;
@@ -219,7 +262,9 @@ export function App() {
   const [focus, setFocus] = useState(false);
   const [collection, setCollection] = useState<string>();
   const allItems = items.status === 'ready' ? items.value : [];
-  const sections = groupByTurn(inCollection(allItems, collection));
+  const [collapsed, toggleChildren] = useCollapsed();
+  const grouped = groupByTurn(inCollection(allItems, collection));
+  const { sections, rows: nesting } = nestSections(grouped, collapsed);
   const order = listOrder(sections);
   useWorkspaceKeys({ enabled: route.view === 'items', focus, setFocus, order, selectedId });
   const creating =
@@ -234,6 +279,11 @@ export function App() {
     if (route.view === 'modules') window.location.hash = ITEMS_HASH;
     setIntake({ openedOn: selectedId });
     // On a phone intake opens above the list.
+    if (phone) window.scrollTo({ top: 0 });
+  };
+  const addChild = (parent: ItemView) => {
+    const { id, title } = parent;
+    setIntake({ openedOn: selectedId, parent: { id, title, collection: parent.collection } });
     if (phone) window.scrollTo({ top: 0 });
   };
   const toggle = <FocusToggle focus={focus} onToggle={() => setFocus((current) => !current)} />;
@@ -258,6 +308,7 @@ export function App() {
               headAction={null}
               layout="unfold"
               onMoved={fold}
+              onAddChild={addChild}
             />
           ),
           onFold: fold,
@@ -271,7 +322,8 @@ export function App() {
   const leaveTriage = () => {
     window.location.hash = ITEMS_HASH;
   };
-  const waiting = sections.find((section) => section.turn === 'human')?.items ?? [];
+  // Triage takes everything that waits for you, folded under a parent or not.
+  const waiting = grouped.find((section) => section.turn === 'human')?.items ?? [];
   return (
     <div className="app">
       <header className="topbar">
@@ -321,6 +373,8 @@ export function App() {
             <ListPane
               items={items}
               sections={sections}
+              nesting={nesting}
+              onToggleChildren={toggleChildren}
               selectedId={selectedId}
               collection={collection}
               collectionOf={collectionOf}
@@ -333,7 +387,9 @@ export function App() {
               <div className="detail-panel raised">
                 {creating ? (
                   <NewItemForm
+                    key={intake?.parent?.id ?? 'new'}
                     connection={connection}
+                    parent={intake?.parent}
                     onCancel={closeIntake}
                     onCreated={showCreated}
                   />
@@ -346,6 +402,7 @@ export function App() {
                     canWrite={canWrite}
                     collectionOf={collectionOf}
                     headAction={toggle}
+                    onAddChild={addChild}
                   />
                 ) : (
                   <Message>Select an item to see its details.</Message>

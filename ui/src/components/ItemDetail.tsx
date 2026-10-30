@@ -6,6 +6,7 @@ import {
   type DetailBlock,
   detailBlocks,
   type PlacedValue,
+  placesChildren,
   showsTypes,
   typeOf,
 } from '../item-types.ts';
@@ -16,6 +17,9 @@ import type { CollectionView, ItemView, Turn } from '../types.ts';
 import { EvidenceList } from './EvidenceList.tsx';
 import { EvidenceModule } from './evidence/EvidenceModule.tsx';
 import { ItemActions } from './ItemActions.tsx';
+import type { CollectionOf } from './ItemList.tsx';
+import { ChildrenModule } from './relations/ChildrenModule.tsx';
+import { RelationsModule } from './relations/RelationsModule.tsx';
 import { Timeline } from './Timeline.tsx';
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
@@ -58,6 +62,10 @@ type ItemDetailProps = {
   item: ItemView;
   canWrite: boolean;
   collection: CollectionView | undefined;
+  // Finds the collection of a related item, to draw its node.
+  collectionOf: CollectionOf;
+  // Opens the create form for a child of this item.
+  onAddChild?: ((parent: ItemView) => void) | undefined;
   // Drawn at the end of the header row (the focus toggle).
   headAction?: ReactNode;
   // unfold: opened inside its own row on a phone. The row is the header, and the moves wait at the
@@ -72,6 +80,8 @@ export function ItemDetail({
   item,
   canWrite,
   collection,
+  collectionOf,
+  onAddChild,
   headAction,
   layout = 'pane',
   onMoved,
@@ -84,6 +94,28 @@ export function ItemDetail({
   const loose = leftovers(type, item.evidence);
   const block = (part: DetailBlock, index: number) => {
     if (part.kind === 'fields') return <FieldList key={`fields:${index}`} values={part.values} />;
+    if (part.kind === 'relation') {
+      const key = `relation:${part.entry.module}:${index}`;
+      return part.entry.module === 'children' ? (
+        <ChildrenModule
+          key={key}
+          item={item}
+          entry={part.entry}
+          canWrite={canWrite}
+          collectionOf={collectionOf}
+          onAddChild={onAddChild}
+        />
+      ) : (
+        <RelationsModule
+          key={key}
+          item={item}
+          entry={part.entry}
+          canWrite={canWrite}
+          collectionOf={collectionOf}
+          withChildren={!placesChildren(type)}
+        />
+      );
+    }
     if (part.kind === 'module') {
       return (
         <EvidenceModule
@@ -113,6 +145,7 @@ export function ItemDetail({
       key={`${item.id}:${item.state}`}
       id={item.id}
       moves={item.transitions}
+      openChildren={item.children}
       onMoved={onMoved}
     />
   ) : (

@@ -5,8 +5,8 @@ import { rowValues, showsTypes, typeOf } from '../item-types.ts';
 import { Button, Icon, NodeMark, TypeTag } from '../kit/index.ts';
 import { type Block, laneX, layoutLanes } from '../lanes.ts';
 import { moduleFor } from '../modules/registry.ts';
+import type { NestedSection, RowNesting } from '../nesting.ts';
 import { itemNodeKind } from '../node-kind.ts';
-import type { Section } from '../sections.ts';
 import { hashFor } from '../selection.ts';
 import type { CollectionView, Item } from '../types.ts';
 import { afterFold, panelOf, reopen, select, type UnfoldState } from '../unfold.ts';
@@ -24,7 +24,10 @@ export type CollectionOf = (name: string) => CollectionView | undefined;
 export type Unfolding = { detail: (id: string) => ReactNode; onFold: () => void };
 
 type ItemListProps = {
-  sections: Section[];
+  sections: NestedSection[];
+  // How each row nests under its parent, and the parents folded by this viewer.
+  nesting?: ReadonlyMap<string, RowNesting>;
+  onToggleChildren?: (id: string) => void;
   selectedId: string | undefined;
   collectionOf: CollectionOf;
   // The list being shown (a collection, or all): changing it is not a motion.
@@ -39,6 +42,8 @@ type ItemRowProps = {
   selected: boolean;
   x: number;
   collectionOf: CollectionOf;
+  nesting?: RowNesting | undefined;
+  onToggleChildren?: (() => void) | undefined;
   // Set on a phone: whether the row is unfolded, and what tapping it does instead of following its link.
   expanded?: boolean | undefined;
   onTap?: (() => void) | undefined;
@@ -56,16 +61,67 @@ function RowValues({ item, collection }: { item: Item; collection: CollectionVie
   return marks.length > 0 ? <span className="row-values">{marks}</span> : null;
 }
 
-function ItemRow({ item, selected, x, collectionOf, expanded, onTap, children }: ItemRowProps) {
+// A parent's open children, quiet in the meta line: how many of all are still open.
+function OpenChildren({ item }: { item: Item }) {
+  const summary = item.children;
+  if (!summary || summary.open === 0) return null;
+  return (
+    <span className="row-children" title={`${summary.open} of ${summary.total} children open`}>
+      <Icon name="branch" />
+      {summary.open}/{summary.total} open
+    </span>
+  );
+}
+
+// Folds or unfolds the children nested under a parent row; folded, it says how many it holds.
+function FoldChildren({
+  item,
+  nesting,
+  onToggle,
+}: {
+  item: Item;
+  nesting: RowNesting;
+  onToggle: () => void;
+}) {
+  const folded = nesting.collapsed === true;
+  return (
+    <button
+      type="button"
+      className="row-fold"
+      aria-expanded={!folded}
+      aria-label={`${folded ? 'Show' : 'Fold'} the children of ${item.id}`}
+      data-folded={folded || undefined}
+      onClick={onToggle}
+    >
+      {folded ? <span className="row-fold-count">{nesting.nested}</span> : null}
+      <Icon name="chevron" />
+    </button>
+  );
+}
+
+function ItemRow({
+  item,
+  selected,
+  x,
+  collectionOf,
+  nesting,
+  onToggleChildren,
+  expanded,
+  onTap,
+  children,
+}: ItemRowProps) {
   const lease = useActiveLease(item.lease);
   const collection = collectionOf(item.collection);
   const type = typeOf(collection, item.type);
   const kind = itemNodeKind(item, type, lease !== null);
+  const depth = Math.min(nesting?.depth ?? 0, 3);
+  const folds = nesting?.nested !== undefined && onToggleChildren !== undefined;
   return (
-    <li data-flip={item.id} data-turn={item.turn} data-x={x}>
+    <li data-flip={item.id} data-turn={item.turn} data-x={x} data-folds={folds || undefined}>
       <a
         className="row"
         data-kind={kind}
+        data-depth={depth > 0 ? depth : undefined}
         href={hashFor(item.id)}
         aria-current={selected ? 'true' : undefined}
         aria-expanded={expanded}
@@ -99,17 +155,21 @@ function ItemRow({ item, selected, x, collectionOf, expanded, onTap, children }:
             <span className="row-id">{item.id}</span>
             <span>{item.state}</span>
             {lease ? <span className="row-lease">{leaseLabel(lease)}</span> : null}
+            <OpenChildren item={item} />
           </span>
         </span>
         <RowValues item={item} collection={collection} />
       </a>
+      {folds && nesting && onToggleChildren ? (
+        <FoldChildren item={item} nesting={nesting} onToggle={onToggleChildren} />
+      ) : null}
       {children}
     </li>
   );
 }
 
 // panels: the height of each unfolded detail, which its row's block grows by.
-function blocksOf(sections: Section[], panels: ReadonlyMap<string, number>): Block[] {
+function blocksOf(sections: NestedSection[], panels: ReadonlyMap<string, number>): Block[] {
   return sections.flatMap((section) => [
     { height: HEAD_H },
     ...(section.items.length === 0
@@ -151,7 +211,7 @@ function useSelectedInView(selectedId: string | undefined, unfolds: boolean) {
 }
 
 // The rows that show a detail (see unfold.ts), and how tall each detail is.
-function useUnfolded(selectedId: string | undefined, sections: Section[]) {
+function useUnfolded(selectedId: string | undefined, sections: NestedSection[]) {
   const [state, setState] = useState<UnfoldState>({});
   const [heights, setHeights] = useState<ReadonlyMap<string, number>>(new Map());
   const items = sections.flatMap((section) => section.items);
@@ -191,6 +251,8 @@ const NO_PANELS: ReadonlyMap<string, number> = new Map();
 
 export function ItemList({
   sections,
+  nesting,
+  onToggleChildren,
   selectedId,
   collectionOf,
   scope,
@@ -227,7 +289,7 @@ export function ItemList({
           <section key={section.turn} className="section" data-turn={section.turn}>
             <h2 className="section-title" data-flip={`head:${section.turn}`}>
               {section.title}
-              <span className="count">{section.items.length}</span>
+              <span className="count">{section.total}</span>
               {section.turn === 'human' && section.items.length > 0 && onTriage ? (
                 <TriageOpen onTriage={onTriage} />
               ) : null}
@@ -250,6 +312,10 @@ export function ItemList({
                       x={laneX(item.turn)}
                       selected={selected}
                       collectionOf={collectionOf}
+                      nesting={nesting?.get(item.id)}
+                      onToggleChildren={
+                        onToggleChildren ? () => onToggleChildren(item.id) : undefined
+                      }
                       expanded={unfolding ? shows === 'open' : undefined}
                       onTap={unfolding && selected ? tap : undefined}
                     >

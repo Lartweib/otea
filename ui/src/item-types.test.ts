@@ -118,7 +118,27 @@ describe('item types', () => {
       ]);
     });
 
-    it('shows every value in the body while the type is unknown', () => {
+    it('places the relation modules where the layout puts them', () => {
+      const parts: TypeView = {
+        ...impr,
+        layout: {
+          ...impr.layout,
+          body: [entry(pitch), { module: 'children', label: 'Parts' }],
+          side: [{ module: 'relations' }],
+        },
+      };
+
+      const blocks = detailBlocks(parts, { pitch: 'Wolf' });
+
+      expect(blocks.primary).toEqual([
+        { kind: 'fields', values: [{ field: pitch, value: 'Wolf', label: 'pitch' }] },
+        { kind: 'relation', entry: { module: 'children', label: 'Parts' } },
+        { kind: 'evidence' },
+      ]);
+      expect(blocks.side).toEqual([{ kind: 'relation', entry: { module: 'relations' } }]);
+    });
+
+    it('shows every value in the body and the relations aside while the type is unknown', () => {
       expect(detailBlocks(undefined, { area: 'Login' })).toEqual({
         head: [],
         primary: [
@@ -128,7 +148,7 @@ describe('item types', () => {
           },
           { kind: 'evidence' },
         ],
-        side: [],
+        side: [{ kind: 'relation', entry: { module: 'relations' } }],
       });
     });
   });

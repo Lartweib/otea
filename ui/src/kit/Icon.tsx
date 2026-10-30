@@ -1,4 +1,16 @@
-export type IconName = 'plus' | 'sun' | 'moon' | 'system' | 'modules' | 'cards' | 'left' | 'right';
+export type IconName =
+  | 'plus'
+  | 'sun'
+  | 'moon'
+  | 'system'
+  | 'modules'
+  | 'cards'
+  | 'left'
+  | 'right'
+  | 'close'
+  | 'chevron'
+  | 'link'
+  | 'branch';
 
 const PATHS: Record<IconName, string> = {
   plus: 'M8 3.5 V12.5 M3.5 8 H12.5',
@@ -10,6 +22,10 @@ const PATHS: Record<IconName, string> = {
   cards: 'M5 5 H13.5 V13.5 H5 Z M2.5 11 V2.5 H11',
   left: 'M13 8 H3 M7 4 L3 8 L7 12',
   right: 'M3 8 H13 M9 4 L13 8 L9 12',
+  close: 'M4.75 4.75 L11.25 11.25 M11.25 4.75 L4.75 11.25',
+  chevron: 'M5 6.5 L8 9.5 L11 6.5',
+  link: 'M6.75 9.25 L9.25 6.75 M7.25 4.75 L8.4 3.6 A2.47 2.47 0 0 1 12.4 7.6 L11.25 8.75 M8.75 11.25 L7.6 12.4 A2.47 2.47 0 0 1 3.6 8.4 L4.75 7.25',
+  branch: 'M5 2.5 V13.5 M5 5.5 C5 8 7 8 9.5 8 H12.5 M5 9.5 C5 12 7 12 9.5 12 H12.5',
 };
 
 // Thin, small and quiet: 16px, stroke 1.25, current color.

@@ -4,12 +4,23 @@ import type { CollectionView, FieldView, LayoutEntry, LayoutSlot, TypeView } fro
 // A value with the field that shapes it and the label its layout entry gives it.
 export type PlacedValue = { field: FieldView; value: string; label: string };
 
-// A column of an item detail: runs of field values, the evidence modules where the layout places
-// them, and the plain evidence list (the files no drawn module holds).
+// A column of an item detail: runs of field values, the evidence and relation modules where the
+// layout places them, and the plain evidence list (the files no drawn module holds).
 export type DetailBlock =
   | { kind: 'fields'; values: PlacedValue[] }
   | { kind: 'module'; entry: LayoutEntry }
+  | { kind: 'relation'; entry: LayoutEntry }
   | { kind: 'evidence' };
+
+export function isRelationModule(entry: LayoutEntry): boolean {
+  return entry.module === 'relations' || entry.module === 'children';
+}
+
+// Whether the type's detail draws a children module, which then owns the children of a parent.
+export function placesChildren(type: TypeView | undefined): boolean {
+  if (!type) return false;
+  return [...type.layout.body, ...type.layout.side].some(({ module }) => module === 'children');
+}
 
 export type DetailBlocks = { head: PlacedValue[]; primary: DetailBlock[]; side: DetailBlock[] };
 
@@ -87,6 +98,7 @@ function blocksOf(
   };
   for (const entry of entries) {
     if (isEvidenceModule(entry)) blocks.push({ kind: 'module', entry });
+    else if (isRelationModule(entry)) blocks.push({ kind: 'relation', entry });
     else add(placed(type, entry, values));
   }
   add(extra);
@@ -95,7 +107,8 @@ function blocksOf(
 
 // The item detail in the order of the type's layout: the header slot under the title, the evidence
 // and body slots in the primary column, the side slot atop the side. Reserved modules draw nothing
-// yet. The plain evidence list closes the primary column.
+// yet. The plain evidence list closes the primary column. While the type is unknown, the relations
+// still show aside.
 export function detailBlocks(
   type: TypeView | undefined,
   values: Readonly<Record<string, string>>,
@@ -103,7 +116,8 @@ export function detailBlocks(
   if (!type) {
     const all = undeclared(type, values);
     const primary: DetailBlock[] = all.length > 0 ? [{ kind: 'fields', values: all }] : [];
-    return { head: [], primary: [...primary, { kind: 'evidence' }], side: [] };
+    const relations: DetailBlock = { kind: 'relation', entry: { module: 'relations' } };
+    return { head: [], primary: [...primary, { kind: 'evidence' }], side: [relations] };
   }
   return {
     head: slotValues(type, 'header', values),

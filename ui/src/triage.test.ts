@@ -16,6 +16,33 @@ const back: Move = { to: 'todo', by: 'human-ui', reasonRequired: false, turn: 'a
 const discard: Move = { to: 'discarded', by: 'human', reasonRequired: true, turn: 'none' };
 const ask: Move = { to: 'needs_info', by: 'human', reasonRequired: false, turn: 'human' };
 
+describe('triagePlan with open children', () => {
+  const close = {
+    to: 'done',
+    by: 'human',
+    reasonRequired: false,
+    turn: 'none',
+    closes: 'done',
+    closeRequires: 'children_closed',
+  } as const;
+  const rework = { to: 'building', by: 'human', reasonRequired: true, turn: 'agent' } as const;
+  const children = { total: 3, open: 2, done: 1, discarded: 0 };
+
+  it('never swipes a move that waits for children, and names it as blocked', () => {
+    expect(triagePlan([close, rework], children)).toEqual({
+      back: rework,
+      blocked: [{ move: close, note: '2 children open' }],
+    });
+  });
+
+  it('swipes it once every child is closed', () => {
+    expect(triagePlan([close, rework], { ...children, open: 0 })).toEqual({
+      forward: close,
+      back: rework,
+    });
+  });
+});
+
 describe('triagePlan', () => {
   it('swipes right to the primary move and left to the move that sends the item back to an agent', () => {
     expect(triagePlan([done, backWithReason, discard])).toEqual({

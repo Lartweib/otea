@@ -372,6 +372,20 @@ function TriageCard({
             </Button>
           ) : null}
         </div>
+        {plan?.blocked ? (
+          <div className="triage-blocked">
+            {plan.blocked.map(({ move, note }) => (
+              <span key={move.to} className="move-blocked">
+                <Button size="sm" disabled aria-describedby={`triage-block-${move.to}`}>
+                  {move.to}
+                </Button>
+                <span className="move-block-note t-cap" id={`triage-block-${move.to}`}>
+                  {note}
+                </span>
+              </span>
+            ))}
+          </div>
+        ) : null}
         <p className="t-cap triage-hint" aria-hidden="true">
           {[back ? `swipe left · ${back.to}` : '', forward ? `swipe right · ${forward.to}` : '']
             .filter(Boolean)
@@ -386,7 +400,8 @@ function TriageCard({
 function useMoves(id: string, version: number, connection: Connection): TriagePlan | undefined {
   const load = useCallback((signal: AbortSignal) => fetchItem(id, signal), [id]);
   const view = useRemote(load, version, connection);
-  return view.status === 'ready' && view.value ? triagePlan(view.value.transitions) : undefined;
+  if (view.status !== 'ready' || !view.value) return undefined;
+  return triagePlan(view.value.transitions, view.value.children);
 }
 
 type TopCardProps = Omit<CardProps, 'plan'> & { version: number; connection: Connection };
