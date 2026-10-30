@@ -13,6 +13,7 @@ import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { MAX_EVIDENCE_BYTES } from '../core/evidence.ts';
 import type { Actor } from '../core/item.ts';
+import { parsePreset } from '../core/preset.ts';
 import { addCollection } from './collections.ts';
 import { type AttachInput, attachEvidence, evidenceDir, evidenceFile } from './evidence.ts';
 import { createItem, getItem, moveItem, showItem } from './items.ts';
@@ -70,6 +71,7 @@ describe('attachEvidence', () => {
       id: 1,
       itemId: 'TASKS-1',
       role: 'before',
+      module: null,
       kind: 'image',
       filename: 'repro.png',
       contentType: 'image/png',
@@ -200,5 +202,104 @@ describe('attachEvidence', () => {
 
       expect(attach({ path: edge }).size).toBe(MAX_EVIDENCE_BYTES);
     });
+  });
+});
+
+// bug: a compare and a log; impr: a gallery and a mockup (both images), a diff and a recording.
+const EVIDENCE_PRESET = parsePreset(`
+preset: proof
+preset_version: 1
+fields:
+  title: { module: text, required: create }
+workflow:
+  initial: open
+  states: { open: { turn: agent }, closed: { turn: none, closes: discarded } }
+  transitions: [{ from: open, to: closed, by: agent }]
+types:
+  bug:
+    label: Bug
+    layout:
+      evidence:
+        - { module: images, variant: compare, accepts: [png, gif] }
+        - { module: log, required: true }
+  impr:
+    label: Improvement
+    layout:
+      evidence: [{ module: images, id: screens, variant: gallery }, { module: diff }]
+      side: [{ module: images, id: mockup }, { module: recording }]
+`);
+
+describe('attachEvidence to a type that places evidence modules', () => {
+  let project: Project;
+  let files: string;
+
+  const file = (name: string, content: string | Buffer = PNG) => {
+    const path = join(files, name);
+    writeFileSync(path, content);
+    return path;
+  };
+  const attach = (id: string, name: string, input: Partial<AttachInput> = {}) =>
+    attachEvidence(
+      project,
+      { id, path: file(name), actor: claude, channel: 'mcp', ...input },
+      at(T5),
+    );
+  const events = (id: string) => getItem(project, id, at(T5)).events.map(({ type }) => type);
+
+  beforeEach(() => {
+    const root = mkdtempSync(join(tmpdir(), 'otea-evidence-'));
+    files = join(root, 'files');
+    mkdirSync(files);
+    project = { root, ...memoryContext(EVIDENCE_PRESET) };
+    addCollection(project, { name: 'proof', preset: 'proof' });
+    for (const type of ['bug', 'impr']) {
+      createItem(project, { collection: 'proof', type, title: type, actor: claude }, at(T0));
+    }
+  });
+
+  afterEach(() => {
+    project.db.close();
+    rmSync(project.root, { recursive: true, force: true });
+  });
+
+  it('records the module a file goes to, and records it on the event', () => {
+    expect(attach('PROOF-1', 'run.log')).toMatchObject({ module: 'log', role: 'single' });
+    expect(attach('PROOF-1', 'before.png', { role: 'before' })).toMatchObject({
+      module: 'images',
+      role: 'before',
+    });
+    expect(getItem(project, 'PROOF-1', at(T5)).events.at(-1)?.data).toMatchObject({
+      module: 'images',
+    });
+  });
+
+  it('places a file in the module named by --module when two accept it', () => {
+    expect(attach('PROOF-2', 'home.png', { module: 'mockup' }).module).toBe('mockup');
+  });
+
+  it.each<[string, string, Partial<AttachInput>, string]>([
+    ['a kind no module accepts', 'PROOF-1', {}, 'evidence_not_accepted'],
+    ['an ambiguous module', 'PROOF-2', {}, 'module_required'],
+    ['a compare without a role', 'PROOF-1', {}, 'invalid_role'],
+  ])('refuses %s, storing nothing', (_, id, input, code) => {
+    const name = code === 'evidence_not_accepted' ? 'clip.mp4' : 'shot.png';
+    expect(() => attach(id, name, input)).toThrow(expect.objectContaining({ code }));
+    expect(events(id)).not.toContain('evidence_added');
+    expect(() => readdirSync(evidenceDir(project.root))).toThrow();
+  });
+
+  it('shows each entry with the module that draws it, falling back for older evidence', () => {
+    attach('PROOF-2', 'home.png', { module: 'mockup' });
+    project.db.exec(`INSERT INTO evidence (item_id, role, kind, filename, content_type, size,
+      sha256, caption, created_at, actor_kind, actor_name, channel)
+      VALUES ('PROOF-2', 'single', 'image', 'old.png', 'image/png', 1, 'abc', NULL, 't', 'agent',
+        'bot', 'cli')`);
+
+    const shown = showItem(project, 'PROOF-2', { actor: claude, channel: 'cli' }, at(T5));
+
+    expect(shown.evidence.map(({ filename, module }) => [filename, module])).toEqual([
+      ['home.png', 'mockup'],
+      ['old.png', 'screens'],
+    ]);
   });
 });

@@ -39,6 +39,7 @@ import {
 } from '../store/queries.ts';
 import { getCollection, presetOf, typeOfItem } from './collections.ts';
 import type { Context } from './context.ts';
+import { presentEvidence } from './evidence.ts';
 
 export type Clock = () => string;
 
@@ -162,7 +163,7 @@ export function getItem(ctx: Context, id: string, now = systemClock): ItemWithEv
 }
 
 // `transitions` are the moves the performer may make, `relayable` the human decisions an agent
-// may relay, `evidence` the files attached to the item, oldest first.
+// may relay, `evidence` the files attached to the item, oldest first, each with the module that draws it.
 export type ItemView = ItemWithEvents & {
   transitions: Move[];
   relayable: Move[];
@@ -183,7 +184,7 @@ export function showItem(
     transitions: availableMoves(type.workflow, item.state, performer),
     relayable: relayableMoves(type.workflow, item.state),
     missing: missingToComplete(type, item.fields),
-    evidence: selectEvidence(ctx.db, item.id),
+    evidence: presentEvidence(type.layout, selectEvidence(ctx.db, item.id)),
   };
 }
 

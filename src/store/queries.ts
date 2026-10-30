@@ -268,6 +268,8 @@ export type EvidenceRecord = {
   id: number;
   itemId: string;
   role: EvidenceRole;
+  // The id of the layout module it was attached to; null before modules, or for a type without any.
+  module: string | null;
   kind: EvidenceKind;
   filename: string;
   contentType: string;
@@ -283,6 +285,7 @@ type EvidenceRow = {
   id: number;
   item_id: string;
   role: EvidenceRole;
+  module: string | null;
   kind: EvidenceKind;
   filename: string;
   content_type: string;
@@ -300,6 +303,7 @@ function toEvidence(row: EvidenceRow): EvidenceRecord {
     id: row.id,
     itemId: row.item_id,
     role: row.role,
+    module: row.module,
     kind: row.kind,
     filename: row.filename,
     contentType: row.content_type,
@@ -313,14 +317,15 @@ function toEvidence(row: EvidenceRow): EvidenceRecord {
 }
 
 export function insertEvidence(db: DatabaseSync, evidence: Omit<EvidenceRecord, 'id'>): number {
-  const sql = `INSERT INTO evidence (item_id, role, kind, filename, content_type, size, sha256,
-      caption, created_at, actor_kind, actor_name, channel)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`;
+  const sql = `INSERT INTO evidence (item_id, role, module, kind, filename, content_type, size,
+      sha256, caption, created_at, actor_kind, actor_name, channel)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`;
   const row = db
     .prepare(sql)
     .get(
       evidence.itemId,
       evidence.role,
+      evidence.module,
       evidence.kind,
       evidence.filename,
       evidence.contentType,

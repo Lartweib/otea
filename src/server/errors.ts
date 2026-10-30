@@ -21,6 +21,9 @@ export const HTTP_STATUS: Readonly<Record<ErrorCode, ContentfulStatusCode>> = {
   quote_required: 400,
   file_not_found: 404,
   evidence_too_large: 413,
+  evidence_not_accepted: 422,
+  module_required: 400,
+  invalid_role: 400,
 };
 
 export class InvalidQuery extends Error {}

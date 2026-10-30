@@ -17,7 +17,10 @@ export type ErrorCode =
   | 'not_relayable'
   | 'quote_required'
   | 'file_not_found'
-  | 'evidence_too_large';
+  | 'evidence_too_large'
+  | 'evidence_not_accepted'
+  | 'module_required'
+  | 'invalid_role';
 
 export class OteaError extends Error {
   readonly code: ErrorCode;
