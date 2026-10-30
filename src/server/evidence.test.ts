@@ -79,6 +79,56 @@ describe('evidence api', () => {
       });
     });
 
+    describe('byte ranges, which video players need to seek', () => {
+      const ranged = (range: string) =>
+        Promise.resolve(
+          server.app.request('/api/evidence/1/file', {
+            headers: { host: LOCAL_HOST, cookie: SESSION_COOKIE, range },
+          }),
+        );
+
+      beforeEach(() => {
+        attach('clip.mp4', '0123456789');
+      });
+
+      it('announces that it serves ranges', async () => {
+        expect((await get('/api/evidence/1/file')).headers.get('accept-ranges')).toBe('bytes');
+      });
+
+      it.each([
+        ['bytes=2-5', '2345', 'bytes 2-5/10'],
+        ['bytes=7-', '789', 'bytes 7-9/10'],
+        ['bytes=-3', '789', 'bytes 7-9/10'],
+        ['bytes=8-99', '89', 'bytes 8-9/10'],
+      ])('answers %s with 206 and that part', async (range, body, contentRange) => {
+        const response = await ranged(range);
+
+        expect(response.status).toBe(206);
+        expect(await response.text()).toBe(body);
+        expect(Object.fromEntries(response.headers)).toMatchObject({
+          'content-range': contentRange,
+          'content-length': String(body.length),
+          'content-type': 'video/mp4',
+          'x-content-type-options': 'nosniff',
+          'content-security-policy': 'sandbox',
+        });
+      });
+
+      it('answers a range past the end with 416', async () => {
+        const response = await ranged('bytes=10-');
+
+        expect(response.status).toBe(416);
+        expect(response.headers.get('content-range')).toBe('bytes */10');
+      });
+
+      it('serves the whole file for a range it does not read', async () => {
+        const response = await ranged('bytes=0-1,4-5');
+
+        expect(response.status).toBe(200);
+        expect(await response.text()).toBe('0123456789');
+      });
+    });
+
     it('serves diffs and logs as plain text', async () => {
       attach('fix.diff', '<script>alert(1)</script>');
 
