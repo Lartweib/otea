@@ -316,13 +316,15 @@ The modules a layout may place, the slots each one may sit in and the config it 
 | Kind | Modules | Slots | Config |
 |---|---|---|---|
 | Field | `text`, `markdown`, `enum`, `severity` | header, body, side, row, phone, intake | `field` (required, a field of that module), `label` |
-| Evidence | `images`, `recording`, `diff`, `log` | evidence, body, side, phone | `variant` (`images`: `single`, `gallery`, `compare`; `recording`: `player`, `frames`), `accepts`, `required`, `label` |
+| Evidence | `images`, `recording`, `diff`, `log` | evidence, body, side, phone | `id`, `variant` (`images`: `single`, `gallery`, `compare`; `recording`: `player`, `frames`), `accepts`, `required`, `label` |
 | Reserved | `questions`, `rounds`, `relations`, `children`, `score`, `options`, `diagram` | per module (e.g. `score`: header, side, row; `diagram`: evidence, body) | `label` |
 
 - A field name is shorthand for `{ module: <its module>, field: <name> }`. A field module must match its field's module.
 - `accepts` lists file kinds (`image`, `video`, `diff`, `log`) or extensions (`png`, `.mp4`), and each must belong to the module's family: `images` accepts images, `recording` videos, `diff` diffs, `log` logs.
 - Reserved modules validate today; their components come later, and until then they draw nothing.
-- Today the UI keeps one evidence list (every attached file); it sits where the first evidence module is placed, or after the body when none is. Richer evidence components, and refusing attachments no module accepts, come later.
+- An evidence module's `id` (lowercase letters, digits and dashes) names it to `otea attach --module`; it defaults to the module kind, and must be unique within the type's layout, so a type with two `images` modules gives at least one of them an id. `otea show`, `--json` and the API report each entry's `module`.
+- Attaching follows the layout: a file goes to a module that accepts it (`evidence_not_accepted`, exit 15, when none does); `--module <id>` picks one when several do (`module_required`, exit 2, without it); a `compare` takes only `before` and `after`, every other module single files (`invalid_role`, exit 2). A type that places no evidence module takes any file, as before modules existed. Evidence whose module is unknown (attached earlier, or the preset changed) belongs to the first module that accepts it, else to a plain list of other files.
+- Each evidence module draws its own component where it is placed (single image, gallery, before/after slider, video player, frames, diff, log); empty, it says what agents attach, dashed when `required`. The `phone` slot is not drawn differently yet: on a phone the detail draws the same modules, at its width.
 
 **Collection view**
 
@@ -404,7 +406,7 @@ Rules:
 - Items survive preset edits; incompatibilities are reported, not silently fixed.
 - **Portability:** a preset that uses only official modules is shareable as-is. A preset that depends on local modules declares them; loading it elsewhere reports what is missing.
 
-Planned, not yet supported: more field modules (`media`, `checks`, relations), `behaviors` (gates), the components of the reserved layout modules, rich evidence components, and drawing `board` and `grid` views.
+Planned, not yet supported: more field modules (`media`, `checks`, relations), `behaviors` (gates), the components of the reserved layout modules, and drawing `board` and `grid` views.
 
 ## 10. Modules
 
