@@ -255,8 +255,8 @@ workflow:
     todo:        { turn: agent }
     in_progress: { turn: agent }
     review:      { turn: human }
-    done:        { turn: none }
-    discarded:   { turn: none }
+    done:        { turn: none, closes: done }
+    discarded:   { turn: none, closes: discarded }
   transitions:
     - { from: incomplete,  to: todo,        by: agent }
     - { from: todo,        to: in_progress, by: agent }
@@ -276,20 +276,135 @@ workflow:
 **Workflow**
 - `initial`: where complete items start. `incomplete`: where items missing a `required: complete` field start; mandatory when any field uses it.
 - Every state declares its `turn` (`agent`, `human` or `none`).
+- Every closed state (turn `none`) declares `closes`: `done` (the work was accepted) or `discarded` (it was thrown away). Other states cannot declare it. Like the turn, it is derived, never stored: a closed item and a move into a closed state carry `closes` in their JSON, and the UI draws the done or discarded node from it, whatever the state is called.
 - Each transition declares `by`, the authority needed to take it (§6): `agent`, `human` or `human-ui`. `from` may list several states.
 - `reason: required` makes the actor give a reason; it is recorded in the event and shown in the timeline.
 - The same `from`/`to` pair may appear with different `by` (e.g. both humans and agents may discard an incomplete item); identical transitions are rejected.
+- A transition with `by: agent` into a `closes: done` state is a preset error: agents never approve their own work. Closing as `discarded` is allowed (an agent may close an incomplete report it could not reproduce).
+
+**Item types**
+
+A collection can hold items of several kinds (bugs and improvements of one product, say). `types` declares them; each type has:
+
+- `label`: how people read it (`Improvement`); the key (`impr`) is the short name the CLI and the list rows show.
+- `fields` (optional): its own fields, added to the preset's `fields`, which every type shares. A type cannot redeclare a shared field; `title` is always shared.
+- `workflow` (optional): its own workflow, same format as the preset's. Without it the type follows the preset's `workflow`, which stays mandatory.
+- `layout` (optional): how its items are drawn (below).
+
+A preset without `types` has exactly one implicit type, named `item` (label `Item`), with the preset's fields and workflow; existing items are of that type. Every item stores its type. `otea create --type <type>` is required only when the preset declares more than one; `otea list --type <type>` filters by it; turns, moves, updates and field validation follow the item's type.
+
+**Layout**
+
+A type's `layout` places modules in slots. Each slot is an ordered list whose entries are a field name, or a module reference `{ module: <kind>, ...config }`:
+
+| Slot | Where |
+|---|---|
+| `header` | under the title in the item detail |
+| `evidence` | the evidence area of the detail, before the body |
+| `body` | the main column of the detail |
+| `side` | the side column of the detail, above its metadata |
+| `row` | the list row, after the title |
+| `phone` | the phone detail (reserved: not drawn differently yet) |
+| `intake` | the create form, in order; it must include every `required: create` field |
+
+A slot the layout leaves out keeps its default. A type without `layout` gets the default layout, which draws items as before layouts existed: `body` and `row` hold every field but the title, `intake` every field, the other slots nothing. A preset without `types` may declare `layout` at the top level for its implicit type; with `types`, each type declares its own.
+
+**Module registry**
+
+The modules a layout may place, the slots each one may sit in and the config it takes are listed in one registry in the core (`src/core/modules.ts`):
+
+| Kind | Modules | Slots | Config |
+|---|---|---|---|
+| Field | `text`, `markdown`, `enum`, `severity` | header, body, side, row, phone, intake | `field` (required, a field of that module), `label` |
+| Evidence | `images`, `recording`, `diff`, `log` | evidence, body, side, phone | `variant` (`images`: `single`, `gallery`, `compare`; `recording`: `player`, `frames`), `accepts`, `required`, `label` |
+| Reserved | `questions`, `rounds`, `relations`, `children`, `score`, `options`, `diagram` | per module (e.g. `score`: header, side, row; `diagram`: evidence, body) | `label` |
+
+- A field name is shorthand for `{ module: <its module>, field: <name> }`. A field module must match its field's module.
+- `accepts` lists file kinds (`image`, `video`, `diff`, `log`) or extensions (`png`, `.mp4`), and each must belong to the module's family: `images` accepts images, `recording` videos, `diff` diffs, `log` logs.
+- Reserved modules validate today; their components come later, and until then they draw nothing.
+- Today the UI keeps one evidence list (every attached file); it sits where the first evidence module is placed, or after the body when none is. Richer evidence components, and refusing attachments no module accepts, come later.
+
+**Collection view**
+
+`view: { kind, group_by }` says how the collection lists its items, for the whole preset (collections have no settings of their own). `kind` is `list` (default), `board` or `grid`; `group_by` is `turn` (default: waiting for you, with agents, closed), `state`, `type`, or an `enum` or `severity` field every type has. Only the list grouped by turn is drawn yet: other kinds and groupings validate and fall back to it without an error.
+
+**Example: two types in one collection**
+
+```yaml
+preset: work
+preset_version: 1
+playbook: ./playbook.md
+fields:                       # shared by every type
+  title: { module: text, required: create }
+  area:  { module: text }
+workflow:                     # followed by every type without its own
+  initial: reported
+  incomplete: incomplete
+  states:
+    incomplete: { turn: agent }
+    reported:   { turn: human }
+    fixing:     { turn: agent }
+    verify:     { turn: human }
+    fixed:      { turn: none, closes: done }
+    rejected:   { turn: none, closes: discarded }
+  transitions:
+    - { from: incomplete, to: reported, by: agent }
+    - { from: reported,   to: fixing,   by: human }
+    - { from: fixing,     to: verify,   by: agent }
+    - { from: verify,     to: fixed,    by: human-ui }
+    - { from: verify,     to: fixing,   by: human, reason: required }
+    - { from: [incomplete, reported, fixing, verify], to: rejected, by: human, reason: required }
+types:
+  bug:
+    label: Bug
+    fields:
+      severity: { module: severity, required: create }
+      steps:    { module: markdown, required: complete }
+    layout:
+      header: [severity]
+      evidence:
+        - { module: images, variant: compare, accepts: [png, gif], label: Before and after }
+        - { module: recording, variant: player, accepts: [video] }
+      body: [steps, area]
+      side: [{ module: relations }]
+      row: [severity]
+      intake: [title, severity, steps, area]
+  impr:
+    label: Improvement
+    fields:
+      pitch:  { module: markdown, required: complete }
+      effort: { module: enum, values: [small, medium, large], default: medium }
+    workflow:
+      initial: proposed
+      incomplete: draft
+      states:
+        draft:    { turn: agent }
+        proposed: { turn: human }
+        building: { turn: agent }
+        shipped:  { turn: none, closes: done }
+        dropped:  { turn: none, closes: discarded }
+      transitions:
+        - { from: draft,    to: proposed, by: agent }
+        - { from: proposed, to: building, by: human }
+        - { from: building, to: shipped,  by: human-ui }
+        - { from: [draft, proposed, building], to: dropped, by: human, reason: required }
+    layout:
+      body: [pitch, { module: questions }, effort]
+      row: [effort]
+      intake: [title, pitch, effort]
+view: { kind: list, group_by: turn }
+```
 
 Rules:
 - **Store only what cannot be derived.** Computable states are derived, never stored. Turn is derived from the item's state and its collection's preset.
-- Loading checks the schema and its meaning: `initial`, `incomplete`, `from` and `to` name declared states; every state is reachable from `initial` or `incomplete`; states with turn `none` have no outgoing transitions and every other state has at least one; enum and severity defaults are among their values; module names are known.
+- Loading checks the schema and its meaning: `initial`, `incomplete`, `from` and `to` name declared states; every state is reachable from `initial` or `incomplete`; states with turn `none` have no outgoing transitions and declare `closes`, and every other state has at least one; no agent transition closes as `done`; enum and severity defaults are among their values; module names are known; every type's fields, workflow and layout pass the same checks, layouts those of the module registry (kinds, slots, config, `accepts` families, a complete intake); `view.group_by` names a grouping every type supports. Each problem names its path (`types.bug.layout.evidence[0].accepts`). Schema problems (an unknown key, kind or closing) are reported first and alone, since the rest cannot be checked until the shape is right.
 - Collections record the preset name and `preset_version` they were created with; every item records the `preset_version` it was written under (set again when its fields are updated).
 - Updates are validated like intake (unknown fields, enum values; a create-required field cannot be cleared), recorded as an `updated` event with old and new values, and rejected on items in a state with turn `none`.
-- `otea validate` checks the whole project non-interactively: every preset (official and project), every collection's preset, and every item against its collection's preset (unknown state, wrong field type or enum value, missing `required: create` field; an older `preset_version`, and a working item outside `incomplete` that lacks a `required: complete` field, are warnings). It reports and never fixes; it exits non-zero only on errors.
+- `otea validate` checks the whole project non-interactively: every preset (official and project), every collection's preset, and every item against its type in its collection's preset (unknown type, unknown state, wrong field type or enum value, missing `required: create` field; an older `preset_version`, and a working item outside `incomplete` that lacks a `required: complete` field, are warnings). It reports and never fixes; it exits non-zero only on errors.
 - Items survive preset edits; incompatibilities are reported, not silently fixed.
 - **Portability:** a preset that uses only official modules is shareable as-is. A preset that depends on local modules declares them; loading it elsewhere reports what is missing.
 
-Planned, not yet supported: more field modules (`media`, `checks`, relations), `behaviors` (gates) and `views`.
+Planned, not yet supported: more field modules (`media`, `checks`, relations), `behaviors` (gates), the components of the reserved layout modules, rich evidence components, and drawing `board` and `grid` views.
 
 ## 10. Modules
 
