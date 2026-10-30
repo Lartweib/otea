@@ -8,6 +8,7 @@ export type ErrorCode =
   | 'reason_required'
   | 'invalid_preset'
   | 'invalid_fields'
+  | 'invalid_type'
   | 'item_closed'
   | 'missing_fields'
   | 'not_claimable'

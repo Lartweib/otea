@@ -1,11 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { assertCanLeave, intake, missingToComplete, revise } from './fields.ts';
-import { type Preset, parsePreset } from './preset.ts';
+import { parsePreset, type Shape } from './preset.ts';
 import { tasks } from './testing.ts';
 
-const preset: Preset = {
-  name: 'tasks',
-  version: 1,
+const preset: Shape = {
   fields: {
     title: { module: 'text', required: 'create' },
     description: { module: 'markdown', required: 'complete' },
@@ -145,7 +143,7 @@ fields:
   severity: { module: severity }
 workflow:
   initial: open
-  states: { open: { turn: agent }, closed: { turn: none } }
+  states: { open: { turn: agent }, closed: { turn: none, closes: discarded } }
   transitions: [{ from: open, to: closed, by: agent }]
 `);
 

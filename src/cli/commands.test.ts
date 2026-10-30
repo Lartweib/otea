@@ -317,7 +317,13 @@ describe('commands', () => {
           );
           expect((await json('show', 'TASKS-2')).transitions).toEqual([
             { to: 'todo', by: 'agent', reasonRequired: false, turn: 'agent' },
-            { to: 'discarded', by: 'agent', reasonRequired: true, turn: 'none' },
+            {
+              to: 'discarded',
+              by: 'agent',
+              reasonRequired: true,
+              turn: 'none',
+              closes: 'discarded',
+            },
           ]);
         });
 
@@ -326,7 +332,13 @@ describe('commands', () => {
             'Agent can move to: nothing\nAgent can relay to: discarded (reason required)',
           );
           expect((await json('show', 'BUGS-1')).relayable).toEqual([
-            { to: 'discarded', by: 'human', reasonRequired: true, turn: 'none' },
+            {
+              to: 'discarded',
+              by: 'human',
+              reasonRequired: true,
+              turn: 'none',
+              closes: 'discarded',
+            },
           ]);
         });
 

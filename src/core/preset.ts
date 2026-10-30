@@ -1,14 +1,23 @@
 import { parse } from 'yaml';
 import { z } from 'zod';
 import { OteaError } from './errors.ts';
-import { AUTHORITIES, type Transition, TURNS, type Workflow } from './workflow.ts';
+import {
+  FIELD_MODULES,
+  type FieldModule,
+  type Layout,
+  readLayout,
+  SEVERITY_SCALE,
+} from './modules.ts';
+import {
+  AUTHORITIES,
+  CLOSINGS,
+  type State,
+  type Transition,
+  TURNS,
+  type Workflow,
+} from './workflow.ts';
 
-export const FIELD_MODULES = ['text', 'markdown', 'enum', 'severity'] as const;
-
-// The severity module's fixed scale, from least to most severe: levels 1 to 4, in that order.
-export const SEVERITY_SCALE = ['low', 'medium', 'high', 'critical'] as const;
-
-export type FieldModule = (typeof FIELD_MODULES)[number];
+export { FIELD_MODULES, type FieldModule, SEVERITY_SCALE } from './modules.ts';
 
 export type FieldRequirement = 'create' | 'complete';
 
@@ -19,12 +28,37 @@ export type FieldSpec = {
   default?: string;
 };
 
+// The type of a preset that declares no `types`: every item of it.
+export const DEFAULT_TYPE = 'item';
+
+// An item type: the preset's shared fields plus its own, its own workflow or the preset's, and how
+// its items are laid out.
+export type ItemType = {
+  name: string;
+  label: string;
+  fields: Record<string, FieldSpec>;
+  workflow: Workflow;
+  layout: Layout;
+};
+
+// What field rules and workflows are checked against: a type, or a preset read as its only type.
+export type Shape = { fields: Record<string, FieldSpec>; workflow: Workflow };
+
+export const VIEW_KINDS = ['list', 'board', 'grid'] as const;
+
+export type ViewKind = (typeof VIEW_KINDS)[number];
+
+// How a collection lists its items. groupBy is turn, state, type or an enum or severity field.
+export type CollectionLayout = { kind: ViewKind; groupBy: string };
+
 export type Preset = {
   name: string;
   version: number;
   playbook?: string;
   fields: Record<string, FieldSpec>;
   workflow: Workflow;
+  types: ItemType[];
+  view: CollectionLayout;
 };
 
 export type PresetReading = { ok: true; preset: Preset } | { ok: false; problems: string[] };
@@ -39,6 +73,8 @@ const fieldSchema = z.strictObject({
   default: z.string().optional(),
 });
 
+const fieldsSchema = z.record(z.string().regex(KEY, 'field names must be snake_case'), fieldSchema);
+
 const transitionSchema = z.strictObject({
   from: z.union([z.string(), z.array(z.string()).nonempty()]),
   to: z.string(),
@@ -46,31 +82,49 @@ const transitionSchema = z.strictObject({
   reason: z.literal('required').optional(),
 });
 
+const workflowSchema = z.strictObject({
+  initial: z.string(),
+  incomplete: z.string().optional(),
+  states: z.record(
+    z.string().regex(KEY, 'state names must be snake_case'),
+    z.strictObject({ turn: z.enum(TURNS), closes: z.enum(CLOSINGS).optional() }),
+  ),
+  transitions: z.array(transitionSchema),
+});
+
+// Layouts are read by the module registry, which reports their problems by slot and position.
+const layoutSchema = z.unknown();
+
+const typeSchema = z.strictObject({
+  label: z.string().min(1),
+  fields: fieldsSchema.optional(),
+  workflow: workflowSchema.optional(),
+  layout: layoutSchema.optional(),
+});
+
 const presetSchema = z.strictObject({
   preset: z.string().regex(NAME, 'must be lowercase letters, digits and dashes'),
   preset_version: z.int().positive(),
   playbook: z.string().optional(),
-  fields: z.record(z.string().regex(KEY, 'field names must be snake_case'), fieldSchema),
-  workflow: z.strictObject({
-    initial: z.string(),
-    incomplete: z.string().optional(),
-    states: z.record(
-      z.string().regex(KEY, 'state names must be snake_case'),
-      z.strictObject({ turn: z.enum(TURNS) }),
-    ),
-    transitions: z.array(transitionSchema),
-  }),
+  fields: fieldsSchema,
+  workflow: workflowSchema,
+  types: z.record(z.string().regex(KEY, 'type names must be snake_case'), typeSchema).optional(),
+  layout: layoutSchema.optional(),
+  view: z
+    .strictObject({ kind: z.enum(VIEW_KINDS).optional(), group_by: z.string().optional() })
+    .optional(),
 });
 
 type RawPreset = z.infer<typeof presetSchema>;
 type RawField = z.infer<typeof fieldSchema>;
+type RawFields = Record<string, RawField>;
+type RawWorkflow = z.infer<typeof workflowSchema>;
 
 function isModule(module: string): module is FieldModule {
   return (FIELD_MODULES as readonly string[]).includes(module);
 }
 
-function fieldProblems(name: string, field: RawField): string[] {
-  const at = `fields.${name}`;
+function fieldProblems(at: string, field: RawField): string[] {
   const problems: string[] = [];
   if (!isModule(field.module)) {
     problems.push(
@@ -90,6 +144,10 @@ function fieldProblems(name: string, field: RawField): string[] {
   return problems;
 }
 
+function fieldsProblems(at: string, fields: RawFields): string[] {
+  return Object.entries(fields).flatMap(([name, field]) => fieldProblems(`${at}.${name}`, field));
+}
+
 // The values a field may take: an enum's own, or the severity scale.
 function valuesOf(field: RawField): string[] | undefined {
   return field.module === 'severity' ? [...SEVERITY_SCALE] : field.values;
@@ -103,29 +161,35 @@ function titleProblems(title: RawField | undefined): string[] {
   return problems;
 }
 
-function expand(raw: RawPreset): Transition[] {
-  return raw.workflow.transitions.flatMap(({ from, to, by, reason }) =>
+function expand(workflow: RawWorkflow): Transition[] {
+  return workflow.transitions.flatMap(({ from, to, by, reason }) =>
     [from]
       .flat()
       .map((source) => ({ from: source, to, by, reasonRequired: reason === 'required' })),
   );
 }
 
-function transitionProblems(raw: RawPreset): string[] {
-  const states = raw.workflow.states;
+function transitionProblems(at: string, workflow: RawWorkflow): string[] {
+  const { states } = workflow;
   const problems: string[] = [];
   const seen = new Set<string>();
-  raw.workflow.transitions.forEach(({ from, to, by }, index) => {
-    const at = `workflow.transitions.${index}`;
+  workflow.transitions.forEach(({ from, to, by }, index) => {
+    const where = `${at}.transitions.${index}`;
     for (const source of [from].flat()) {
-      if (!(source in states)) problems.push(`${at}.from: unknown state "${source}"`);
+      if (!(source in states)) problems.push(`${where}.from: unknown state "${source}"`);
       const key = JSON.stringify([source, to, by]);
       if (seen.has(key))
-        problems.push(`${at}: duplicate transition "${source}" -> "${to}" by ${by}`);
+        problems.push(`${where}: duplicate transition "${source}" -> "${to}" by ${by}`);
       seen.add(key);
-      if (source === to) problems.push(`${at}: "${source}" -> "${to}" does not change state`);
+      if (source === to) problems.push(`${where}: "${source}" -> "${to}" does not change state`);
+      // Agents never approve their own work: only a human may close an item as done.
+      if (by === 'agent' && states[to]?.closes === 'done') {
+        problems.push(
+          `${where}: an agent cannot close an item as done ("${source}" -> "${to}"); use human or human-ui`,
+        );
+      }
     }
-    if (!(to in states)) problems.push(`${at}.to: unknown state "${to}"`);
+    if (!(to in states)) problems.push(`${where}.to: unknown state "${to}"`);
   });
   return problems;
 }
@@ -144,34 +208,54 @@ function reachable(entries: string[], transitions: Transition[]): Set<string> {
   return reached;
 }
 
-function stateProblems(raw: RawPreset, transitions: Transition[]): string[] {
-  const { initial, incomplete, states } = raw.workflow;
+function stateProblems(at: string, workflow: RawWorkflow, transitions: Transition[]): string[] {
+  const { initial, incomplete, states } = workflow;
   const problems: string[] = [];
-  if (!(initial in states)) problems.push(`workflow.initial: unknown state "${initial}"`);
+  if (!(initial in states)) problems.push(`${at}.initial: unknown state "${initial}"`);
   if (incomplete !== undefined && !(incomplete in states)) {
-    problems.push(`workflow.incomplete: unknown state "${incomplete}"`);
+    problems.push(`${at}.incomplete: unknown state "${incomplete}"`);
   }
-  if (incomplete === initial) problems.push('workflow.incomplete: must differ from initial');
-  const completeFields = Object.entries(raw.fields).filter(([, f]) => f.required === 'complete');
-  if (incomplete === undefined) {
-    for (const [name] of completeFields) {
-      problems.push(`workflow.incomplete: missing, but field "${name}" is required: complete`);
-    }
-  }
+  if (incomplete === initial) problems.push(`${at}.incomplete: must differ from initial`);
   const entries = [initial, incomplete ?? initial].filter((entry) => entry in states);
   const reached = reachable(entries, transitions);
-  for (const [name, { turn }] of Object.entries(states)) {
-    const at = `workflow.states.${name}`;
+  for (const [name, { turn, closes }] of Object.entries(states)) {
+    const where = `${at}.states.${name}`;
     const leaves = transitions.some(({ from }) => from === name);
     if (entries.length > 0 && !reached.has(name)) {
-      problems.push(`${at}: not reachable from the initial or incomplete state`);
+      problems.push(`${where}: not reachable from the initial or incomplete state`);
     }
-    if (turn === 'none' && leaves) problems.push(`${at}: has turn none but outgoing transitions`);
+    if (turn === 'none' && leaves)
+      problems.push(`${where}: has turn none but outgoing transitions`);
     if (turn !== 'none' && !leaves) {
-      problems.push(`${at}: has turn ${turn} but no outgoing transitions`);
+      problems.push(`${where}: has turn ${turn} but no outgoing transitions`);
+    }
+    if (turn === 'none' && closes === undefined) {
+      problems.push(`${where}.closes: required on a state with turn none (done or discarded)`);
+    }
+    if (turn !== 'none' && closes !== undefined) {
+      problems.push(`${where}.closes: only a state with turn none closes`);
     }
   }
   return problems;
+}
+
+function workflowProblems(at: string, workflow: RawWorkflow): string[] {
+  const transitions = expand(workflow);
+  return [...transitionProblems(at, workflow), ...stateProblems(at, workflow, transitions)];
+}
+
+// A field required to complete needs an incomplete state to start in. `of` names the type when the
+// workflow is the preset's but the field is the type's own.
+function incompleteProblems(
+  at: string,
+  workflow: RawWorkflow,
+  fields: RawFields,
+  of = '',
+): string[] {
+  if (workflow.incomplete !== undefined) return [];
+  return Object.entries(fields)
+    .filter(([, field]) => field.required === 'complete')
+    .map(([name]) => `${at}.incomplete: missing, but field "${name}"${of} is required: complete`);
 }
 
 function toField(field: RawField): FieldSpec {
@@ -183,20 +267,83 @@ function toField(field: RawField): FieldSpec {
   return spec;
 }
 
-function toPreset(raw: RawPreset, transitions: Transition[]): Preset {
-  const workflow: Workflow = {
-    name: raw.preset,
-    initial: raw.workflow.initial,
-    states: Object.entries(raw.workflow.states).map(([name, { turn }]) => ({ name, turn })),
-    transitions,
+function toFields(fields: RawFields): Record<string, FieldSpec> {
+  return Object.fromEntries(Object.entries(fields).map(([name, field]) => [name, toField(field)]));
+}
+
+function toWorkflow(name: string, raw: RawWorkflow): Workflow {
+  const states = Object.entries(raw.states).map(([state, { turn, closes }]) => {
+    const spec: State = { name: state, turn };
+    if (closes !== undefined) spec.closes = closes;
+    return spec;
+  });
+  const workflow: Workflow = { name, initial: raw.initial, states, transitions: expand(raw) };
+  if (raw.incomplete !== undefined) workflow.incomplete = raw.incomplete;
+  return workflow;
+}
+
+type TypeReading = { types: ItemType[]; problems: string[] };
+
+function implicitType(raw: RawPreset, fields: Record<string, FieldSpec>, workflow: Workflow) {
+  const { layout, problems } = readLayout(raw.layout, fields, 'layout');
+  const type: ItemType = { name: DEFAULT_TYPE, label: 'Item', fields, workflow, layout };
+  return { types: [type], problems };
+}
+
+function readTypes(raw: RawPreset, fields: Record<string, FieldSpec>, workflow: Workflow) {
+  const reading: TypeReading = { types: [], problems: [] };
+  const declared = Object.entries(raw.types ?? {});
+  if (declared.length === 0) reading.problems.push('types: declare at least one type');
+  if (raw.layout !== undefined) {
+    reading.problems.push('layout: declare the layout of each type under types.<type>.layout');
+  }
+  for (const [name, type] of declared) {
+    const at = `types.${name}`;
+    const own = type.fields ?? {};
+    for (const field of Object.keys(own)) {
+      if (field in raw.fields)
+        reading.problems.push(`${at}.fields.${field}: already declared by the preset`);
+    }
+    reading.problems.push(...fieldsProblems(`${at}.fields`, own));
+    if (type.workflow) {
+      reading.problems.push(...workflowProblems(`${at}.workflow`, type.workflow));
+      reading.problems.push(
+        ...incompleteProblems(`${at}.workflow`, type.workflow, { ...raw.fields, ...own }),
+      );
+    } else {
+      reading.problems.push(
+        ...incompleteProblems('workflow', raw.workflow, own, ` of type ${name}`),
+      );
+    }
+    const typeFields = { ...fields, ...toFields(own) };
+    const { layout, problems } = readLayout(type.layout, typeFields, `${at}.layout`);
+    reading.problems.push(...problems);
+    reading.types.push({
+      name,
+      label: type.label,
+      fields: typeFields,
+      workflow: type.workflow ? toWorkflow(`${raw.preset}:${name}`, type.workflow) : workflow,
+      layout,
+    });
+  }
+  return reading;
+}
+
+const GROUPS = ['turn', 'state', 'type'];
+
+function readView(raw: RawPreset, types: ItemType[]) {
+  const view: CollectionLayout = {
+    kind: raw.view?.kind ?? 'list',
+    groupBy: raw.view?.group_by ?? 'turn',
   };
-  if (raw.workflow.incomplete !== undefined) workflow.incomplete = raw.workflow.incomplete;
-  const fields = Object.fromEntries(
-    Object.entries(raw.fields).map(([name, field]) => [name, toField(field)]),
-  );
-  const preset: Preset = { name: raw.preset, version: raw.preset_version, fields, workflow };
-  if (raw.playbook !== undefined) preset.playbook = raw.playbook;
-  return preset;
+  const { groupBy } = view;
+  const grouping = (type: ItemType) => {
+    const module = type.fields[groupBy]?.module;
+    return module === 'enum' || module === 'severity';
+  };
+  if (GROUPS.includes(groupBy) || types.every(grouping)) return { view, problems: [] };
+  const problem = `view.group_by: "${groupBy}" is not turn, state, type or an enum or severity field of every type`;
+  return { view, problems: [problem] };
 }
 
 function parseYaml(text: string): { ok: true; value: unknown } | { ok: false; problem: string } {
@@ -218,20 +365,60 @@ export function readPreset(text: string): PresetReading {
     return { ok: false, problems };
   }
   const raw = result.data;
-  const transitions = expand(raw);
+  const fields = toFields(raw.fields);
+  const workflow = toWorkflow(raw.preset, raw.workflow);
+  const typed =
+    raw.types === undefined
+      ? implicitType(raw, fields, workflow)
+      : readTypes(raw, fields, workflow);
+  const { view, problems: viewProblems } = readView(raw, typed.types);
   const problems = [
     ...titleProblems(raw.fields.title),
-    ...Object.entries(raw.fields).flatMap(([name, field]) => fieldProblems(name, field)),
-    ...transitionProblems(raw),
-    ...stateProblems(raw, transitions),
+    ...fieldsProblems('fields', raw.fields),
+    ...workflowProblems('workflow', raw.workflow),
+    ...incompleteProblems('workflow', raw.workflow, raw.fields),
+    ...typed.problems,
+    ...viewProblems,
   ];
-  return problems.length > 0
-    ? { ok: false, problems }
-    : { ok: true, preset: toPreset(raw, transitions) };
+  if (problems.length > 0) return { ok: false, problems: [...new Set(problems)] };
+  const preset: Preset = {
+    name: raw.preset,
+    version: raw.preset_version,
+    fields,
+    workflow,
+    types: typed.types,
+    view,
+  };
+  if (raw.playbook !== undefined) preset.playbook = raw.playbook;
+  return { ok: true, preset };
 }
 
 export function parsePreset(text: string): Preset {
   const reading = readPreset(text);
   if (reading.ok) return reading.preset;
   throw new OteaError('invalid_preset', `Invalid preset: ${reading.problems.join('; ')}`);
+}
+
+function typeNames(preset: Preset): string {
+  return preset.types.map(({ name }) => name).join(', ');
+}
+
+export function typeOf(preset: Preset, name: string): ItemType {
+  const type = preset.types.find((candidate) => candidate.name === name);
+  if (type) return type;
+  throw new OteaError(
+    'invalid_type',
+    `Unknown type "${name}" in preset ${preset.name} (types: ${typeNames(preset)})`,
+  );
+}
+
+// The type a new item takes: the one given, or the preset's only type.
+export function typeFor(preset: Preset, name: string | undefined): ItemType {
+  if (name !== undefined) return typeOf(preset, name);
+  const [only, ...others] = preset.types;
+  if (only && others.length === 0) return only;
+  throw new OteaError(
+    'invalid_type',
+    `Preset ${preset.name} has several types; give one of: ${typeNames(preset)}`,
+  );
 }

@@ -11,7 +11,7 @@ fields:
   title: { module: text, required: create }
 workflow:
   initial: open
-  states: { open: { turn: human }, closed: { turn: none } }
+  states: { open: { turn: human }, closed: { turn: none, closes: discarded } }
   transitions: [{ from: open, to: closed, by: agent }]
 `);
 

@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { OteaError } from './errors.ts';
 import { tasks } from './testing.ts';
-import { assertTransition, transitionsBetween, transitionsFrom, turnOf } from './workflow.ts';
+import {
+  assertTransition,
+  closesOf,
+  transitionsBetween,
+  transitionsFrom,
+  turnOf,
+} from './workflow.ts';
 
 describe('the official tasks workflow', () => {
   it('starts in todo and enriches in incomplete', () => {
@@ -18,6 +24,14 @@ describe('the official tasks workflow', () => {
     ['discarded', 'none'],
   ])('gives %s the %s turn', (state, turn) => {
     expect(turnOf(tasks, state)).toBe(turn);
+  });
+
+  it.each([
+    ['done', 'done'],
+    ['discarded', 'discarded'],
+    ['review', undefined],
+  ])('says %s closes as %s', (state, closes) => {
+    expect(closesOf(tasks, state)).toBe(closes);
   });
 
   it.each([

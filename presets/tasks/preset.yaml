@@ -13,8 +13,8 @@ workflow:
     todo: { turn: agent }
     in_progress: { turn: agent }
     review: { turn: human }
-    done: { turn: none }
-    discarded: { turn: none }
+    done: { turn: none, closes: done }
+    discarded: { turn: none, closes: discarded }
   transitions:
     - { from: incomplete, to: todo, by: agent }
     - { from: todo, to: in_progress, by: agent }
