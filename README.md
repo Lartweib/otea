@@ -156,4 +156,10 @@ Working on the UI itself: keep `otea serve` running and start `npm run dev:ui` i
 
 ## License
 
-[MIT](LICENSE)
+Otea is free software under the [GNU Affero General Public License v3.0](LICENSE). You can use, study, modify and share it. If you distribute a modified version, or let people use it over a network, you must publish its source under the same license, keeping the copyright notices.
+
+**Commercial license.** If the AGPL does not fit your use (for example, embedding Otea in a closed product), a commercial license is available. Open an issue or contact [@Lartweib](https://github.com/Lartweib).
+
+**Name.** "Otea" and its logo identify this project. Forks are welcome under the AGPL, but must use a different name.
+
+Contributions are accepted under the [Contributor License Agreement](CLA.md); see [CONTRIBUTING.md](CONTRIBUTING.md).
