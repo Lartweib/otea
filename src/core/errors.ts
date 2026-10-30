@@ -20,7 +20,12 @@ export type ErrorCode =
   | 'evidence_too_large'
   | 'evidence_not_accepted'
   | 'module_required'
-  | 'invalid_role';
+  | 'invalid_role'
+  | 'invalid_relation'
+  | 'self_relation'
+  | 'parent_exists'
+  | 'relation_cycle'
+  | 'children_open';
 
 export class OteaError extends Error {
   readonly code: ErrorCode;

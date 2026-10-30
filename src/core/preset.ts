@@ -10,6 +10,7 @@ import {
 } from './modules.ts';
 import {
   AUTHORITIES,
+  CLOSE_REQUIREMENTS,
   CLOSINGS,
   type State,
   type Transition,
@@ -87,7 +88,11 @@ const workflowSchema = z.strictObject({
   incomplete: z.string().optional(),
   states: z.record(
     z.string().regex(KEY, 'state names must be snake_case'),
-    z.strictObject({ turn: z.enum(TURNS), closes: z.enum(CLOSINGS).optional() }),
+    z.strictObject({
+      turn: z.enum(TURNS),
+      closes: z.enum(CLOSINGS).optional(),
+      close_requires: z.enum(CLOSE_REQUIREMENTS).optional(),
+    }),
   ),
   transitions: z.array(transitionSchema),
 });
@@ -218,7 +223,7 @@ function stateProblems(at: string, workflow: RawWorkflow, transitions: Transitio
   if (incomplete === initial) problems.push(`${at}.incomplete: must differ from initial`);
   const entries = [initial, incomplete ?? initial].filter((entry) => entry in states);
   const reached = reachable(entries, transitions);
-  for (const [name, { turn, closes }] of Object.entries(states)) {
+  for (const [name, { turn, closes, close_requires }] of Object.entries(states)) {
     const where = `${at}.states.${name}`;
     const leaves = transitions.some(({ from }) => from === name);
     if (entries.length > 0 && !reached.has(name)) {
@@ -234,6 +239,9 @@ function stateProblems(at: string, workflow: RawWorkflow, transitions: Transitio
     }
     if (turn !== 'none' && closes !== undefined) {
       problems.push(`${where}.closes: only a state with turn none closes`);
+    }
+    if (turn !== 'none' && close_requires !== undefined) {
+      problems.push(`${where}.close_requires: only a state with turn none closes`);
     }
   }
   return problems;
@@ -272,9 +280,10 @@ function toFields(fields: RawFields): Record<string, FieldSpec> {
 }
 
 function toWorkflow(name: string, raw: RawWorkflow): Workflow {
-  const states = Object.entries(raw.states).map(([state, { turn, closes }]) => {
+  const states = Object.entries(raw.states).map(([state, { turn, closes, close_requires }]) => {
     const spec: State = { name: state, turn };
     if (closes !== undefined) spec.closes = closes;
+    if (close_requires !== undefined) spec.closeRequires = close_requires;
     return spec;
   });
   const workflow: Workflow = { name, initial: raw.initial, states, transitions: expand(raw) };

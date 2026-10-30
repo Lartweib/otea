@@ -22,7 +22,7 @@ function problemsOf(raw: unknown): string[] {
 }
 
 describe('the module registry', () => {
-  it('knows the field, evidence and reserved modules', () => {
+  it('knows the field, evidence, relation and reserved modules', () => {
     expect(Object.keys(MODULE_REGISTRY)).toEqual([
       'text',
       'markdown',
@@ -32,16 +32,18 @@ describe('the module registry', () => {
       'recording',
       'diff',
       'log',
-      'questions',
-      'rounds',
       'relations',
       'children',
+      'questions',
+      'rounds',
       'score',
       'options',
       'diagram',
     ]);
     expect(moduleFamily('severity')).toBe('field');
     expect(moduleFamily('recording')).toBe('evidence');
+    expect(moduleFamily('relations')).toBe('relation');
+    expect(moduleFamily('children')).toBe('relation');
     expect(moduleFamily('rounds')).toBe('reserved');
   });
 
@@ -61,8 +63,8 @@ describe('defaultLayout', () => {
     expect(defaultLayout(FIELDS)).toEqual({
       header: [],
       evidence: [],
-      body: fields('description', 'severity', 'area'),
-      side: [],
+      body: [...fields('description', 'severity', 'area'), { module: 'children' }],
+      side: [{ module: 'relations' }],
       row: fields('description', 'severity', 'area'),
       phone: [],
       intake: fields('title', 'description', 'severity', 'area'),
@@ -130,13 +132,13 @@ describe('readLayout', () => {
     expect(layout.side).toEqual([{ module: 'log', id: 'test-output' }]);
   });
 
-  it('accepts every reserved module in a slot it may sit in, before its component exists', () => {
+  it('accepts every reserved and relation module in a slot it may sit in', () => {
     const { problems } = readLayout(
       {
         body: [
           { module: 'questions' },
           { module: 'rounds' },
-          { module: 'children' },
+          { module: 'children', label: 'Parts' },
           { module: 'options' },
           { module: 'diagram', label: 'Flow' },
         ],

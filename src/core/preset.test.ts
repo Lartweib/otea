@@ -292,6 +292,34 @@ describe('closing kinds', () => {
   });
 });
 
+describe('close_requires', () => {
+  it('records that a closed state requires every child closed first', () => {
+    const raw = minimal();
+    raw.workflow.states.closed.close_requires = 'children_closed';
+
+    const preset = parsePreset(stringify(raw));
+
+    expect(preset.workflow.states.find(({ name }) => name === 'closed')).toEqual({
+      name: 'closed',
+      turn: 'none',
+      closes: 'discarded',
+      closeRequires: 'children_closed',
+    });
+  });
+
+  it('rejects it on an open state', () => {
+    expect(
+      problemsOf((raw) => (raw.workflow.states.open.close_requires = 'children_closed')),
+    ).toContain('workflow.states.open.close_requires: only a state with turn none closes');
+  });
+
+  it('rejects an unknown requirement by its path', () => {
+    expect(problemsOf((raw) => (raw.workflow.states.closed.close_requires = 'all_done'))).toEqual([
+      expect.stringContaining('workflow.states.closed.close_requires'),
+    ]);
+  });
+});
+
 function twoTypes(): Raw {
   const raw = minimal();
   raw.fields.area = { module: 'text' };

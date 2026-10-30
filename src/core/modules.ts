@@ -13,22 +13,20 @@ export const EVIDENCE_MODULES = ['images', 'recording', 'diff', 'log'] as const;
 
 export type EvidenceModule = (typeof EVIDENCE_MODULES)[number];
 
+// Relation modules draw the item's typed links to other items (`relations`) and, for a parent, its
+// children and how far they got (`children`).
+export const RELATION_MODULES = ['relations', 'children'] as const;
+
+export type RelationModule = (typeof RELATION_MODULES)[number];
+
 // Reserved modules validate in a layout today; their components come later and draw nothing yet.
-export const RESERVED_MODULES = [
-  'questions',
-  'rounds',
-  'relations',
-  'children',
-  'score',
-  'options',
-  'diagram',
-] as const;
+export const RESERVED_MODULES = ['questions', 'rounds', 'score', 'options', 'diagram'] as const;
 
 export type ReservedModule = (typeof RESERVED_MODULES)[number];
 
-export type ModuleKind = FieldModule | EvidenceModule | ReservedModule;
+export type ModuleKind = FieldModule | EvidenceModule | RelationModule | ReservedModule;
 
-export type ModuleFamily = 'field' | 'evidence' | 'reserved';
+export type ModuleFamily = 'field' | 'evidence' | 'relation' | 'reserved';
 
 // Where a type's layout places things: the item detail (header, evidence, body, side), the list row,
 // the phone detail and the create form (intake).
@@ -88,7 +86,7 @@ function evidenceConfig(variants?: readonly [string, ...string[]]) {
   });
 }
 
-const reservedConfig = z.strictObject({ module: z.string(), label });
+const labelConfig = z.strictObject({ module: z.string(), label });
 
 const FIELD_SLOTS: readonly LayoutSlot[] = ['header', 'body', 'side', 'row', 'phone', 'intake'];
 
@@ -106,8 +104,12 @@ function evidence(
   return { family: 'evidence', slots: EVIDENCE_SLOTS, config, accepts };
 }
 
+function relation(...slots: LayoutSlot[]): ModuleSpec {
+  return { family: 'relation', slots, config: labelConfig as z.ZodType<LayoutEntry> };
+}
+
 function reserved(...slots: LayoutSlot[]): ModuleSpec {
-  return { family: 'reserved', slots, config: reservedConfig as z.ZodType<LayoutEntry> };
+  return { family: 'reserved', slots, config: labelConfig as z.ZodType<LayoutEntry> };
 }
 
 export const MODULE_REGISTRY: Readonly<Record<ModuleKind, ModuleSpec>> = {
@@ -119,10 +121,10 @@ export const MODULE_REGISTRY: Readonly<Record<ModuleKind, ModuleSpec>> = {
   recording: evidence(['video'], ['player', 'frames']),
   diff: evidence(['diff']),
   log: evidence(['log']),
+  relations: relation('body', 'side'),
+  children: relation('body', 'side'),
   questions: reserved('body', 'side', 'phone'),
   rounds: reserved('body', 'phone'),
-  relations: reserved('body', 'side'),
-  children: reserved('body', 'side'),
   score: reserved('header', 'side', 'row'),
   options: reserved('body', 'phone'),
   diagram: reserved('evidence', 'body'),
@@ -143,14 +145,16 @@ function fieldEntries(fields: Record<string, FieldSpec>, skipTitle: boolean): La
 }
 
 // The layout of a type that declares none: what the UI drew before layouts existed. The detail shows
-// every field in the body (the header already shows the title), so does the row, and the create
-// form asks for every field.
+// every field in the body (the header already shows the title), then the children of a parent, so
+// does the row, and the create form asks for every field. The side lists the item's relations. Both
+// relation modules draw nothing while there is nothing to draw, so an item without links looks as
+// it did before them.
 export function defaultLayout(fields: Record<string, FieldSpec>): Layout {
   return {
     header: [],
     evidence: [],
-    body: fieldEntries(fields, true),
-    side: [],
+    body: [...fieldEntries(fields, true), { module: 'children' }],
+    side: [{ module: 'relations' }],
     row: fieldEntries(fields, true),
     phone: [],
     intake: fieldEntries(fields, false),

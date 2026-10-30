@@ -24,6 +24,11 @@ export const HTTP_STATUS: Readonly<Record<ErrorCode, ContentfulStatusCode>> = {
   evidence_not_accepted: 422,
   module_required: 400,
   invalid_role: 400,
+  invalid_relation: 400,
+  self_relation: 400,
+  parent_exists: 409,
+  relation_cycle: 409,
+  children_open: 409,
 };
 
 export class InvalidQuery extends Error {}
