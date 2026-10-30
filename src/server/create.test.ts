@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { addCollection } from '../app/collections.ts';
 import { getItem, listItems } from '../app/items.ts';
 import type { Project } from '../app/project.ts';
+import { mixedPreset } from '../core/testing.ts';
 import { createServer, type OteaServer } from './server.ts';
 import { LOCAL_HOST, memoryProject, SESSION_COOKIE, TOKEN } from './testing.ts';
 
@@ -34,8 +35,9 @@ describe('POST /api/items', () => {
   const nothingWritten = () => expect(listItems(project)).toEqual([]);
 
   beforeEach(() => {
-    project = memoryProject();
+    project = memoryProject(mixedPreset);
     addCollection(project, { name: 'tasks' });
+    addCollection(project, { name: 'work', preset: 'work' });
     server = createServer(project, { token: TOKEN });
   });
 
@@ -53,6 +55,19 @@ describe('POST /api/items', () => {
       title: 'Ship',
       fields: { description: 'Now', priority: 'high' },
     });
+  });
+
+  it('creates an item of the type given, and needs one when the preset has several', async () => {
+    const typed = (type: string | undefined) =>
+      post({ body: JSON.stringify({ collection: 'work', type, fields: { title: 'Boot' } }) });
+
+    const impr = await typed('impr');
+    const untyped = await typed(undefined);
+
+    expect(impr.status).toBe(201);
+    expect(await impr.json()).toMatchObject({ id: 'WORK-1', type: 'impr', state: 'draft' });
+    expect(untyped.status).toBe(422);
+    expect(await errorOf(untyped)).toBe('invalid_type');
   });
 
   it('starts an item without the fields required to complete it in incomplete', async () => {
@@ -130,6 +145,7 @@ describe('POST /api/items', () => {
       '{"collection":"tasks"}',
       '{"collection":"tasks","fields":{"title":3}}',
       '{"collection":"tasks","fields":[]}',
+      '{"collection":"tasks","type":3,"fields":{"title":"X"}}',
     ])('rejects body %s with 400', async (body) => {
       const response = await post({ body });
 

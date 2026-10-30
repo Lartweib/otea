@@ -43,10 +43,17 @@ export async function moveRequest(c: Context): Promise<MoveRequest> {
 
 const CreateBody = z.object({
   collection: z.string().min(1),
+  type: z.string().min(1).optional(),
   fields: z.record(z.string(), z.string()),
 });
 
-export type CreateRequest = { collection: string; title: string; fields: Record<string, string> };
+// `type` may be left out when the collection's preset has a single type.
+export type CreateRequest = {
+  collection: string;
+  type?: string;
+  title: string;
+  fields: Record<string, string>;
+};
 
 export async function createRequest(c: Context): Promise<CreateRequest> {
   const raw: unknown = await c.req.json().catch(() => undefined);
@@ -55,10 +62,12 @@ export async function createRequest(c: Context): Promise<CreateRequest> {
     throw new RejectedRequest(
       400,
       'invalid_body',
-      'Expected {"collection": string, "fields": {[key]: string}}',
+      'Expected {"collection": string, "type"?: string, "fields": {[key]: string}}',
     );
   }
-  const { collection, fields } = parsed.data;
+  const { collection, type, fields } = parsed.data;
   const { title = '', ...rest } = fields;
-  return { collection, title, fields: rest };
+  return type === undefined
+    ? { collection, title, fields: rest }
+    : { collection, type, title, fields: rest };
 }

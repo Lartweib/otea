@@ -205,7 +205,7 @@ describe('commands', () => {
         expect(code).toBe(2);
         expect(err).toContain('Missing --title');
         expect(err).toContain(
-          'Usage: otea create --collection <collection> --title <title> [--description <description>] [--field <key=value>...]',
+          'Usage: otea create --collection <collection> [--type <type>] --title <title> [--description <description>] [--field <key=value>...]',
         );
       });
 

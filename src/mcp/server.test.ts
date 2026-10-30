@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { COMMANDS } from '../cli/commands.ts';
 import { type Cli, cliAt, tempGitRepo } from '../cli/testing.ts';
 import type { Actor } from '../core/item.ts';
+import { MIXED_YAML } from '../core/testing.ts';
 import { AGENT_COMMANDS, CLI_ONLY_COMMANDS, createMcpServer, OMITTED_OPTIONS } from './server.ts';
 
 type Reply = { isError?: boolean; content: { type: string; text: string }[] };
@@ -212,6 +213,30 @@ describe('mcp server', () => {
       );
       expect(await errorOf('attach', { id: 'TASKS-1', file: 'nope.png' })).toBe(
         await cliError('attach', 'TASKS-1', 'nope.png'),
+      );
+    });
+
+    it('creates items of a type and refuses a missing type as the CLI does', async () => {
+      repo.write('.otea/presets/work/preset.yaml', MIXED_YAML);
+      await otea('collection', 'add', 'work', '--preset', 'work');
+      const fresh = await connect(repo.dir, 'claude');
+
+      const bug = await call(
+        'create',
+        { collection: 'work', type: 'bug', title: 'Crash', field: ['severity=high'] },
+        fresh,
+      );
+      const untyped = await call('create', { collection: 'work', title: 'Crash' }, fresh);
+      const listed = await call('list', { type: 'bug' }, fresh);
+      await fresh.close();
+
+      expect(JSON.parse(bug.content[0]?.text ?? '')).toMatchObject({ id: 'WORK-1', type: 'bug' });
+      expect(untyped.isError).toBe(true);
+      expect(untyped.content[0]?.text).toBe(
+        await cliError('create', '--collection', 'work', '--title', 'Crash'),
+      );
+      expect(JSON.parse(listed.content[0]?.text ?? '')).toEqual(
+        await json('list', '--type', 'bug'),
       );
     });
 

@@ -108,17 +108,26 @@ const create: Command = {
   args: [],
   options: {
     collection: { required: true },
+    type: { placeholder: 'type' },
     title: { required: true },
     description: {},
     field: { multiple: true, placeholder: 'key=value' },
   },
   execute: (input) => {
     const collection = input.required('collection');
+    const type = input.option('type');
     const title = input.required('title');
     const fields = fieldsFrom(input);
     const { actor, channel } = input;
     const item = withProject(input.cwd, (project) =>
-      createItem(project, { collection, title, fields, actor, channel }),
+      createItem(project, {
+        collection,
+        ...(type === undefined ? {} : { type }),
+        title,
+        fields,
+        actor,
+        channel,
+      }),
     );
     return { data: item, text: item.id };
   },
@@ -128,9 +137,11 @@ function listFilter({ option, flag, actor }: Input): ListItemsFilter {
   const filter: ListItemsFilter = {};
   const collection = option('collection');
   const state = option('state');
+  const type = option('type');
   const turn = option('turn');
   if (collection !== undefined) filter.collection = collection;
   if (state !== undefined) filter.state = state;
+  if (type !== undefined) filter.type = type;
   if (turn !== undefined) filter.turn = turn as Turn;
   if (flag('unclaimed')) filter.availableTo = actor.name;
   return filter;
@@ -140,7 +151,13 @@ const list: Command = {
   name: 'list',
   summary: 'List items in creation order, optionally filtered; --unclaimed hides items others hold',
   args: [],
-  options: { collection: {}, state: {}, turn: { choices: TURNS }, unclaimed: { flag: true } },
+  options: {
+    collection: {},
+    type: {},
+    state: {},
+    turn: { choices: TURNS },
+    unclaimed: { flag: true },
+  },
   execute: (input) => {
     const items = withProject(input.cwd, (project) => listItems(project, listFilter(input)));
     return { data: items, text: formatItems(items) };
