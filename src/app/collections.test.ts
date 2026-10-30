@@ -65,17 +65,38 @@ describe('collections', () => {
     );
   });
 
-  it('lists each collection with the fields and entry states of its preset', () => {
+  it('lists each collection with the types, entry states and view of its preset', () => {
     addCollection(ctx, { name: 'tasks' });
     addCollection(ctx, { name: 'design', preset: 'reviews' });
 
-    expect(listCollectionViews(ctx)).toEqual([
+    const views = listCollectionViews(ctx);
+
+    expect(views.map(({ name, prefix, preset, view }) => ({ name, prefix, preset, view }))).toEqual(
+      [
+        {
+          name: 'tasks',
+          prefix: 'TASKS',
+          preset: 'tasks',
+          view: { kind: 'list', groupBy: 'turn' },
+        },
+        {
+          name: 'design',
+          prefix: 'DESIGN',
+          preset: 'reviews',
+          view: { kind: 'list', groupBy: 'turn' },
+        },
+      ],
+    );
+    expect(views[0]?.types).toEqual([
       {
-        name: 'tasks',
-        prefix: 'TASKS',
-        preset: 'tasks',
+        name: 'item',
+        label: 'Item',
         initial: 'todo',
         incomplete: 'incomplete',
+        states: expect.arrayContaining([
+          { name: 'review', turn: 'human' },
+          { name: 'done', turn: 'none', closes: 'done' },
+        ]),
         fields: [
           { name: 'title', module: 'text', required: 'create' },
           { name: 'description', module: 'markdown', required: 'complete' },
@@ -86,14 +107,21 @@ describe('collections', () => {
             default: 'medium',
           },
         ],
+        layout: expect.objectContaining({
+          intake: [
+            { module: 'text', field: 'title' },
+            { module: 'markdown', field: 'description' },
+            { module: 'enum', field: 'priority' },
+          ],
+        }),
       },
-      {
-        name: 'design',
-        prefix: 'DESIGN',
-        preset: 'reviews',
+    ]);
+    expect(views[1]?.types).toEqual([
+      expect.objectContaining({
+        name: 'item',
         initial: 'open',
         fields: [{ name: 'title', module: 'text', required: 'create' }],
-      },
+      }),
     ]);
   });
 });

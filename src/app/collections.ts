@@ -1,6 +1,7 @@
 import type { DatabaseSync } from 'node:sqlite';
 import { OteaError } from '../core/errors.ts';
 import { prefixFor } from '../core/item.ts';
+import { type CollectionLayout, type ItemType, typeOf } from '../core/preset.ts';
 import { transaction } from '../store/database.ts';
 import {
   type CollectionRecord,
@@ -10,7 +11,7 @@ import {
   listCollections,
 } from '../store/queries.ts';
 import type { Context } from './context.ts';
-import { type FieldView, fieldViews } from './preset-views.ts';
+import { type TypeView, typeViews } from './preset-views.ts';
 import { type LoadedPreset, requirePreset } from './presets.ts';
 
 export type Collection = CollectionRecord;
@@ -50,26 +51,28 @@ export function presetOf(ctx: Context, collection: Collection): LoadedPreset {
   return requirePreset(ctx.presets, collection.preset);
 }
 
+// The type an item is of, in its collection's preset.
+export function typeOfItem(ctx: Context, item: { collection: string; type: string }): ItemType {
+  return typeOf(presetOf(ctx, getCollection(ctx.db, item.collection)), item.type);
+}
+
 export type CollectionView = {
   name: string;
   prefix: string;
   preset: string;
-  initial: string;
-  incomplete?: string;
-  fields: FieldView[];
+  types: TypeView[];
+  view: CollectionLayout;
 };
 
 export function listCollectionViews(ctx: Context): CollectionView[] {
   return listCollections(ctx.db).map((collection) => {
-    const { fields, workflow } = presetOf(ctx, collection);
-    const view: CollectionView = {
+    const { types, view } = presetOf(ctx, collection);
+    return {
       name: collection.name,
       prefix: collection.prefix,
       preset: collection.preset,
-      initial: workflow.initial,
-      fields: fieldViews(fields),
+      types: typeViews(types),
+      view,
     };
-    if (workflow.incomplete !== undefined) view.incomplete = workflow.incomplete;
-    return view;
   });
 }

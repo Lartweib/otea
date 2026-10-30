@@ -4,7 +4,7 @@ import { assertCanLeave } from '../core/fields.ts';
 import type { Actor } from '../core/item.ts';
 import { activeLease } from '../core/lease.ts';
 import { transaction } from '../store/database.ts';
-import { getCollection, presetOf } from './collections.ts';
+import { typeOfItem } from './collections.ts';
 import type { Context } from './context.ts';
 import { type Item, landMove, requireItem, systemClock } from './items.ts';
 
@@ -35,11 +35,11 @@ export function relayDecision(ctx: Context, input: RelayInput, now = systemClock
   const { db } = ctx;
   return transaction(db, () => {
     const item = requireItem(db, input.id);
-    const preset = presetOf(ctx, getCollection(db, item.collection));
-    const { workflow } = preset;
+    const type = typeOfItem(ctx, item);
+    const { workflow } = type;
     const { to, reason, via, channel } = input;
     authorizeRelay(workflow, item.state, to, reason);
-    assertCanLeave(preset, item.state, to, item.fields);
+    assertCanLeave(type, item.state, to, item.fields);
     const at = now();
     const move = { to, actor: RELAYED_HUMAN, at, lease: activeLease(item.lease, at) };
     const data = { ...(reason ? { reason } : {}), channel, quote, source: 'conversation' };

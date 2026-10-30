@@ -50,6 +50,7 @@ describe('items', () => {
         id: 'TASKS-1',
         collection: 'tasks',
         seq: 1,
+        type: 'item',
         title: 'First',
         fields: { description: 'Details', priority: 'medium' },
         presetVersion: 1,

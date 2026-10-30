@@ -28,10 +28,11 @@ function isTurn(value: string): value is Turn {
 }
 
 function itemsFilter(query: Record<string, string>): ListItemsFilter {
-  const { collection, state, turn } = query;
+  const { collection, state, type, turn } = query;
   const filter: ListItemsFilter = {};
   if (collection !== undefined) filter.collection = collection;
   if (state !== undefined) filter.state = state;
+  if (type !== undefined) filter.type = type;
   if (turn !== undefined) {
     if (!isTurn(turn)) throw new InvalidQuery(`turn must be one of ${TURNS.join(', ')}`);
     filter.turn = turn;

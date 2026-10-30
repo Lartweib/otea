@@ -26,14 +26,14 @@ describe('migrate', () => {
     expect(tables(db)).toEqual(
       expect.arrayContaining(['collections', 'items', 'events', 'evidence']),
     );
-    expect(userVersion(db)).toBe(4);
+    expect(userVersion(db)).toBe(5);
   });
 
   it('is idempotent', () => {
     migrate(db);
     migrate(db);
 
-    expect(userVersion(db)).toBe(4);
+    expect(userVersion(db)).toBe(5);
   });
 
   describe('from version 1', () => {
@@ -130,6 +130,26 @@ describe('migrate', () => {
       expect(() => db.exec("UPDATE evidence SET caption = 'x'")).toThrow(/append-only/);
       expect(() => db.exec('DELETE FROM evidence')).toThrow(/append-only/);
       expect(() => db.exec(evidenceOf('TASKS-9'))).toThrow(/FOREIGN KEY/);
+    });
+  });
+
+  describe('from version 4', () => {
+    beforeEach(() => {
+      migrate(db, 4);
+      db.exec(`
+        INSERT INTO collections (name, prefix, preset, preset_version, next_seq)
+        VALUES ('tasks', 'TASKS', 'tasks', 1, 2);
+        INSERT INTO items (id, collection, seq, title, fields, preset_version, state, created_at,
+          updated_at, created_by_kind, created_by_name)
+        VALUES ('TASKS-1', 'tasks', 1, 'A', '{}', 1, 'todo', 't', 't', 'human', 'ana');
+      `);
+      migrate(db);
+    });
+
+    it('gives existing items the type of a preset without types', () => {
+      expect(db.prepare('SELECT id, type FROM items').all()).toEqual([
+        { id: 'TASKS-1', type: 'item' },
+      ]);
     });
   });
 

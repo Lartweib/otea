@@ -80,7 +80,7 @@ export function attachEvidence(
   const { db } = project;
   return transaction(db, () => {
     const item = requireItem(db, input.id);
-    const workflow = workflowOf(project, item.collection);
+    const workflow = workflowOf(project, item);
     const at = now();
     const { actor, channel, role = 'single' } = input;
     assertMayWrite(item.id, activeLease(item.lease, at), actor);
