@@ -7,7 +7,7 @@ If your client has the Otea MCP tools (`list`, `show`, `create`, `update`, `atta
 ## 1. Start of every session
 
 1. Run `otea list --turn agent --unclaimed --collection bugs` to see what is waiting for you and not held by another agent.
-2. Pick one item and read it with `otea show <id>`. The output lists the moves you may make from its current state, the human decisions you may relay (section 7), what is missing, and who holds it if someone does.
+2. Pick one item and read it with `otea show <id>`. The output lists the moves you may make from its current state, the human decisions you may relay (section 8), what is missing, and who holds it if someone does.
 3. Work on one item at a time.
 
 If you run as a loop instead, block until there is work rather than polling `otea list`:
@@ -88,7 +88,18 @@ If what you find while fixing changes the bug (it does not reproduce on the curr
 
 When a fix comes back from `verify` to `fixing`, read the reason in its timeline and address it before moving it to `verify` again.
 
-## 7. Triage and verification belong to the human
+## 7. Link what you find
+
+Link items while you investigate, so the human sees how findings connect and a later brief can order the work. Linking needs no claim and works on closed items.
+
+- **Duplicates**: when a report describes a bug already filed, link it to the original instead of copying it: `otea link <copy> duplicates <original>`. Then say so in the copy's description and hand it to triage (`otea move <copy> reported`); closing it as `duplicate` is the human's decision (section 8), and the link tells them which bug it repeats.
+- **Blocks**: when one fix needs another first, `otea link <first> blocks <second>`. Otea refuses a loop (exit 16, `relation_cycle`).
+- **Implements**: a task that carries out a fix, in another collection, `otea link <task> implements <bug>`.
+- **Relates**: anything else worth seeing together, `otea link <a> relates <b>`.
+- A bug too big for one fix can be split: create the parts with `otea create --collection bugs ... --parent <id>`. `otea show <id>` then lists them and how many are closed.
+- `otea unlink` removes a link named the same way. `otea show <id>` lists an item's relations by kind.
+
+## 8. Triage and verification belong to the human
 
 You never approve your own fix. Accepting a report, asking for info, rejecting it, closing it as a duplicate or won't fix, approving a fix (`fixed`) and sending one back to `fixing` are decisions for the human, and `otea move` refuses them (exit 7). Once an item is in `reported` or `verify`, stop and leave it there.
 

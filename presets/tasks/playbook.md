@@ -7,7 +7,7 @@ If your client has the Otea MCP tools (`list`, `show`, `claim`, `attach`, `move`
 ## 1. Start of every session
 
 1. Run `otea list --turn agent --unclaimed` to see what is waiting for you and not held by another agent (add `--collection <name>` to narrow it).
-2. Pick one item and read it with `otea show <id>`. The output lists the moves you are allowed to make from its current state, the human decisions you may relay (section 6), and who holds it if someone does.
+2. Pick one item and read it with `otea show <id>`. The output lists the moves you are allowed to make from its current state, the human decisions you may relay (section 7), and who holds it if someone does.
 3. Work on one item at a time.
 
 If you run as a loop instead, block until there is work rather than polling `otea list`:
@@ -52,7 +52,15 @@ Items in `incomplete` were created without every field needed to start work (for
 3. Attach evidence of the result before you hand it over, so the human can check it without redoing your work: `otea attach <id> <file> --caption "<what it shows>"`. For a visual change, attach a screenshot of the state before your change with `--role before` and one after it with `--role after`; otherwise a log, the test output or a diff (`git diff > change.diff`). Files are limited to 50 MB (exit 14, `evidence_too_large`), and a missing file fails with exit 3 (`file_not_found`).
 4. When it is ready for a human to look at, move it to `review`: `otea move <id> review`. This releases your lease.
 
-## 6. Review belongs to the human
+## 6. Decompose and link
+
+Split a task too big for one handoff into children, each one a task of its own that you can claim, finish and hand over: `otea create --collection tasks --title "Movement" --description "..." --parent <id>`. A "Create wolf" task, say, gets "Body", "Movement" and "Animation" children, which may live in another collection. `otea show <id>` lists the children and how many are closed, and `otea list --parent <id>` lists them as rows.
+
+- Order them with `blocks` when one needs another first: `otea link <body> blocks <movement>`. A loop is refused (exit 16).
+- Link related work as you find it: `otea link <a> relates <b>`, `otea link <task> implements <bug>`. `otea unlink` removes a link named the same way.
+- A parent is never moved for you when its children finish: move it yourself when its own work is done. A project preset can make its closed state wait for every child (`close_requires: children_closed`); then the move is refused with exit 4 (`children_open`) until they are all closed.
+
+## 7. Review belongs to the human
 
 You never approve your own work. Moving an item from `review` to `done`, sending it back to `todo` or discarding it are decisions for the human, and `otea move` will refuse them. Once an item is in `review`, stop and leave it there.
 

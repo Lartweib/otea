@@ -79,6 +79,30 @@ otea show BUGS-1                           # lists the evidence above the timeli
 - `otea show --json` and `GET /api/items/:id` list the entries under `evidence`. `GET /api/evidence/:id/file` serves the file to a signed-in browser only (401 otherwise), with `X-Content-Type-Options: nosniff` and `Content-Security-Policy: sandbox`: images and videos inline with their type, diffs and logs as `text/plain`, anything else as a download, so no attached file runs in the UI's origin. It serves byte ranges (`Range: bytes=…`, 206), so videos seek.
 - The item detail draws each evidence module where the layout places it: `images` as one image (`single`), a gallery with thumbnails (`gallery`, left and right arrows step through it) or a before/after slider with a draggable divider and a side-by-side mode (`compare`; the divider is a keyboard slider); `recording` in the browser's player (`player`, nothing autoplays) or as a strip of eight frames read from the video (`frames`, falling back to the player when the browser cannot read frames); `diff` as files, hunks and numbered lines; `log` numbered, with a wrap toggle, keeping only its start and end until "show all" when longer than 160 lines. An empty module says what agents attach, and a required one is drawn dashed. A browser that is not signed in lists file names only.
 
+### Relations between items
+
+Items link to each other, across collections of the project, with a typed relation: `parent`, `blocks`, `duplicates`, `implements` and `relates`.
+
+```sh
+otea create --collection epics --title "Create wolf" --description "A wolf for the forest"
+otea create --collection parts --title "Body" --description "Mesh and rig" --parent EPICS-1
+otea create --collection parts --title "Movement" --description "Walk, trot, run" --parent EPICS-1
+otea link PARTS-1 blocks PARTS-2            # body before movement
+otea link BUGS-7 duplicates BUGS-3          # BUGS-7 is a copy of BUGS-3
+otea link PARTS-9 implements BUGS-3
+otea link PARTS-2 parent EPICS-4            # EPICS-4 becomes the parent of PARTS-2
+otea unlink PARTS-1 blocks PARTS-2
+otea list --parent EPICS-1                  # the children of EPICS-1
+otea show EPICS-1                           # children summary and relations by kind
+```
+
+- `otea link <id> <kind> <other>` reads as a sentence for `blocks`, `duplicates`, `implements` and `relates`; `<id> parent <other>` makes `<other>` the parent of `<id>`. `otea create --parent <id>` creates the item as a child in the same write. `otea unlink` takes the link named the same way (`relates` either way round).
+- Each pair is linked once per kind; an item has at most one parent; `parent` and `blocks` never loop. Refusals: a self link, a second parent or a cycle exit 16 (`self_relation`, `parent_exists`, `relation_cycle`, the cycle's path in the message); a missing item exits 3 (`not_found`); a repeated link exits 5 (`already_exists`); an unknown kind exits 2 (`invalid_relation`); an open child under a closed parent exits 4 (`item_closed`).
+- Linking changes neither item's fields nor state, so it is not bound by leases and works on closed items. Every link and unlink is recorded in both items' timelines (`relation_added`, `relation_removed`), with who did it and through which channel.
+- `otea show` prints, for a parent, `Children: n of m closed (d done, x discarded)`, then the relations grouped by kind with each other item's state and turn. `--json`, `otea list --json` and the API carry `relations` (and `children` for a parent) on the items that have them.
+- A preset can make a closed state wait for the children: `done: { turn: none, closes: done, close_requires: children_closed }`. Moving or relaying into it while a child is open fails with exit 4 (`children_open`), listing the open children. A parent never moves on its own.
+- The MCP server serves `link` and `unlink` as tools. In the web UI the relations show in the side of the detail and a parent's children in its body; a signed-in browser adds and removes links there (`POST /api/items/:id/link` and `/unlink`, `{kind, other}`, behind the same checks as moves) and creates children with **+ child**. In the list a parent shows how many children are still open, and children in the same section sit under their parent, foldable.
+
 ### Relaying a decision made in conversation
 
 Transitions with `human` authority (discarding a task in the tasks preset) can also be made by an agent relaying what the human decided in the conversation. That is a separate command, so a harness can ask the human to confirm every call:
@@ -116,7 +140,7 @@ cd /path/to/your/project
 claude mcp add otea -- node --disable-warning=ExperimentalWarning /path/to/otea/src/cli/main.ts mcp --as claude
 ```
 
-- Tools: `list`, `show`, `create`, `update`, `attach`, `move`, `claim`, `heartbeat`, `release`, `relay`, `events` and `wait`, one per agent command. Each takes that command's arguments and options by name (`{"id": "TASKS-1", "state": "review"}`, `"field": ["priority=high"]`, durations as `"90s"`, `"15m"`, `"1h"`; `attach` takes `file` as a path the server reads, relative to the directory it runs in) and runs the command itself, so the rules, the validations and the error codes are those of the CLI. Setup and human commands (`init`, `collection add`, `validate`, `serve`, `open`) stay in the CLI, and `human-ui` moves are refused (`forbidden`) as in the CLI.
+- Tools: `list`, `show`, `create`, `update`, `attach`, `link`, `unlink`, `move`, `claim`, `heartbeat`, `release`, `relay`, `events` and `wait`, one per agent command. Each takes that command's arguments and options by name (`{"id": "TASKS-1", "state": "review"}`, `"field": ["priority=high"]`, durations as `"90s"`, `"15m"`, `"1h"`; `attach` takes `file` as a path the server reads, relative to the directory it runs in) and runs the command itself, so the rules, the validations and the error codes are those of the CLI. Setup and human commands (`init`, `collection add`, `validate`, `serve`, `open`) stay in the CLI, and `human-ui` moves are refused (`forbidden`) as in the CLI.
 - A tool returns the JSON the command prints with `--json`; `events` returns its events as one array. A failure is a tool error whose text is the same `{"error":{"code","message"}}`.
 - `wait` gives up with the `timeout` error after 5 minutes unless `timeout` says otherwise, and refuses more than 15 minutes, since clients time out long tool calls: call it again to keep waiting. A cancelled call stops waiting. `events` has no `follow`: call it again with the last event id as `since`.
 - The agent is named by `--as`, then `$OTEA_AGENT`, then `agent`, as in the CLI, and the project is found from the directory the client starts the server in. Nothing but the protocol goes to stdout.
