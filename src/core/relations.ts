@@ -198,8 +198,8 @@ export function childrenSummary(children: readonly { closes?: Closing }[]): Chil
 
 export type ChildState = { id: string; state: string; closes?: Closing };
 
-// A state that declares `close_requires: children_closed` takes a parent only once none of its
-// children is open. Nothing ever closes the parent for them.
+// A state that declares `requires: children_closed` takes a parent only once none of its children
+// is open, whatever the state's turn. Nothing ever moves the parent for them.
 export function assertChildrenClosed(
   id: string,
   to: string,

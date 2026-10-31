@@ -16,11 +16,18 @@ function resolve(ctx: Context, name: string): LoadedPreset | string {
 }
 
 export function validateProject(ctx: Context): ValidationReport {
-  const findings: Finding[] = ctx.presets.problems.map(({ preset, message }) => ({
-    severity: 'error',
-    subject: `preset ${preset}`,
-    message,
-  }));
+  const findings: Finding[] = [
+    ...ctx.presets.problems.map(({ preset, message }) => ({
+      severity: 'error' as const,
+      subject: `preset ${preset}`,
+      message,
+    })),
+    ...ctx.presets.warnings.map(({ preset, message }) => ({
+      severity: 'warning' as const,
+      subject: `preset ${preset}`,
+      message,
+    })),
+  ];
   for (const collection of listCollections(ctx.db)) {
     const preset = resolve(ctx, collection.preset);
     if (typeof preset === 'string') {

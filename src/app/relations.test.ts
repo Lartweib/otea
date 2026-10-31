@@ -29,6 +29,27 @@ workflow:
     - { from: [open, review], to: dropped, by: agent }
 `);
 
+// review is a working state, on the human's turn, that waits for every child; done does too, through
+// the deprecated close_requires.
+const EPIC = parsePreset(`
+preset: epic
+preset_version: 1
+fields:
+  title: { module: text, required: create }
+workflow:
+  initial: building
+  states:
+    building: { turn: agent }
+    parked: { turn: human }
+    review: { turn: human, requires: children_closed }
+    done: { turn: none, closes: done, close_requires: children_closed }
+  transitions:
+    - { from: building, to: review, by: agent }
+    - { from: building, to: parked, by: agent }
+    - { from: parked, to: review, by: human }
+    - { from: review, to: done, by: human }
+`);
+
 const ana: Actor = { kind: 'human', name: 'ana' };
 const bot: Actor = { kind: 'agent', name: 'claude' };
 const other: Actor = { kind: 'agent', name: 'codex' };
@@ -354,6 +375,82 @@ describe('relations', () => {
 
     it('does not apply to a closed state without the rule', () => {
       expect(move('EPICS-1', 'dropped').state).toBe('dropped');
+    });
+  });
+
+  describe('entering a working state that requires closed children', () => {
+    let epics: Context;
+
+    beforeEach(() => {
+      epics = memoryContext(EPIC);
+      addCollection(epics, { name: 'epics', preset: 'epic' });
+      for (const title of ['Create wolf', 'Body', 'Movement']) {
+        createItem(epics, { collection: 'epics', title, actor: bot });
+      }
+      linkItems(epics, {
+        id: 'EPICS-2',
+        kind: 'parent',
+        other: 'EPICS-1',
+        actor: bot,
+        channel: 'cli',
+      });
+      linkItems(epics, {
+        id: 'EPICS-3',
+        kind: 'parent',
+        other: 'EPICS-1',
+        actor: bot,
+        channel: 'cli',
+      });
+    });
+
+    afterEach(() => epics.db.close());
+
+    const enter = (id: string, to: string, actor: Actor = bot) =>
+      moveItem(epics, { id, to, actor, channel: actor.kind === 'human' ? 'ui' : 'cli' });
+
+    it('refuses an agent move, naming each open child with its state', () => {
+      enter('EPICS-2', 'parked');
+
+      const back = () => enter('EPICS-1', 'review');
+
+      expect(codeOf(back)).toBe('children_open');
+      expect(back).toThrow('EPICS-2 (parked), EPICS-3 (building)');
+      expect(getItem(epics, 'EPICS-1').state).toBe('building');
+    });
+
+    it('refuses a move in the UI and a relayed decision alike', () => {
+      enter('EPICS-1', 'parked');
+
+      expect(codeOf(() => enter('EPICS-1', 'review', ana))).toBe('children_open');
+      const relay = () =>
+        relayDecision(epics, {
+          id: 'EPICS-1',
+          to: 'review',
+          via: 'claude',
+          channel: 'cli',
+          quote: 'Send it back to me',
+        });
+      expect(codeOf(relay)).toBe('children_open');
+      expect(getItem(epics, 'EPICS-1').state).toBe('parked');
+    });
+
+    it('lets the parent in once every child is closed, and never moves it on its own', () => {
+      for (const child of ['EPICS-2', 'EPICS-3']) enter(child, 'review');
+      expect(getItem(epics, 'EPICS-1').state).toBe('building');
+
+      for (const child of ['EPICS-2', 'EPICS-3']) enter(child, 'done', ana);
+
+      expect(getItem(epics, 'EPICS-1').state).toBe('building');
+      expect(enter('EPICS-1', 'review').state).toBe('review');
+    });
+
+    it('says on the move what entering waits for', () => {
+      const moves = showItem(epics, 'EPICS-1', { actor: bot, channel: 'cli' }).transitions;
+
+      expect(moves.find(({ to }) => to === 'review')).toMatchObject({
+        requires: 'children_closed',
+      });
+      expect(moves.find(({ to }) => to === 'parked')).not.toHaveProperty('requires');
     });
   });
 });

@@ -11,8 +11,8 @@ import {
 } from './modules.ts';
 import {
   AUTHORITIES,
-  CLOSE_REQUIREMENTS,
   CLOSINGS,
+  REQUIREMENTS,
   type State,
   type Transition,
   TURNS,
@@ -64,7 +64,10 @@ export type Preset = {
   view: CollectionLayout;
 };
 
-export type PresetReading = { ok: true; preset: Preset } | { ok: false; problems: string[] };
+// A preset that reads may still carry warnings: what it should change, never what stops it loading.
+export type PresetReading =
+  | { ok: true; preset: Preset; warnings: string[] }
+  | { ok: false; problems: string[] };
 
 const NAME = /^[a-z0-9][a-z0-9-]*$/;
 const KEY = /^[a-z][a-z0-9_]*$/;
@@ -93,7 +96,9 @@ const workflowSchema = z.strictObject({
     z.strictObject({
       turn: z.enum(TURNS),
       closes: z.enum(CLOSINGS).optional(),
-      close_requires: z.enum(CLOSE_REQUIREMENTS).optional(),
+      requires: z.enum(REQUIREMENTS).optional(),
+      // Deprecated: the former name of requires, read with the same meaning.
+      close_requires: z.enum(REQUIREMENTS).optional(),
     }),
   ),
   transitions: z.array(transitionSchema),
@@ -228,7 +233,7 @@ function stateProblems(at: string, workflow: RawWorkflow, transitions: Transitio
   if (incomplete === initial) problems.push(`${at}.incomplete: must differ from initial`);
   const entries = [initial, incomplete ?? initial].filter((entry) => entry in states);
   const reached = reachable(entries, transitions);
-  for (const [name, { turn, closes, close_requires }] of Object.entries(states)) {
+  for (const [name, { turn, closes, requires, close_requires }] of Object.entries(states)) {
     const where = `${at}.states.${name}`;
     const leaves = transitions.some(({ from }) => from === name);
     if (entries.length > 0 && !reached.has(name)) {
@@ -245,11 +250,28 @@ function stateProblems(at: string, workflow: RawWorkflow, transitions: Transitio
     if (turn !== 'none' && closes !== undefined) {
       problems.push(`${where}.closes: only a state with turn none closes`);
     }
-    if (turn !== 'none' && close_requires !== undefined) {
-      problems.push(`${where}.close_requires: only a state with turn none closes`);
+    if (requires !== undefined && close_requires !== undefined) {
+      problems.push(`${where}: declares both requires and close_requires; keep requires`);
     }
   }
   return problems;
+}
+
+// close_requires still reads, as requires, but each use is reported until it is renamed.
+function workflowWarnings(at: string, workflow: RawWorkflow): string[] {
+  return Object.entries(workflow.states)
+    .filter(([, state]) => state.close_requires !== undefined && state.requires === undefined)
+    .map(
+      ([name, state]) =>
+        `${at}.states.${name}.close_requires: deprecated; write requires: ${state.close_requires}`,
+    );
+}
+
+function presetWarnings(raw: RawPreset): string[] {
+  const typed = Object.entries(raw.types ?? {}).flatMap(([name, { workflow }]) =>
+    workflow ? workflowWarnings(`types.${name}.workflow`, workflow) : [],
+  );
+  return [...workflowWarnings('workflow', raw.workflow), ...typed];
 }
 
 function workflowProblems(at: string, workflow: RawWorkflow): string[] {
@@ -285,10 +307,12 @@ function toFields(fields: RawFields): Record<string, FieldSpec> {
 }
 
 function toWorkflow(name: string, raw: RawWorkflow): Workflow {
-  const states = Object.entries(raw.states).map(([state, { turn, closes, close_requires }]) => {
+  const states = Object.entries(raw.states).map(([state, declared]) => {
+    const { turn, closes } = declared;
     const spec: State = { name: state, turn };
     if (closes !== undefined) spec.closes = closes;
-    if (close_requires !== undefined) spec.closeRequires = close_requires;
+    const requires = declared.requires ?? declared.close_requires;
+    if (requires !== undefined) spec.requires = requires;
     return spec;
   });
   const workflow: Workflow = { name, initial: raw.initial, states, transitions: expand(raw) };
@@ -415,7 +439,7 @@ export function readPreset(text: string): PresetReading {
     view,
   };
   if (raw.playbook !== undefined) preset.playbook = raw.playbook;
-  return { ok: true, preset };
+  return { ok: true, preset, warnings: presetWarnings(raw) };
 }
 
 export function parsePreset(text: string): Preset {

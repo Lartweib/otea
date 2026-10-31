@@ -112,6 +112,29 @@ describe('project presets', () => {
     expect(requirePreset(catalog, 'tasks').origin).toBe('official');
   });
 
+  it('loads a project preset that uses a deprecated key and keeps a warning for it', () => {
+    const deprecated = NOTES.replace(
+      'closed: { turn: none, closes: discarded }',
+      'closed: { turn: none, closes: discarded, close_requires: children_closed }',
+    );
+    write('notes', { 'preset.yaml': deprecated });
+
+    const catalog = loadPresets(root);
+
+    expect(catalog.problems).toEqual([]);
+    expect(requirePreset(catalog, 'notes').workflow.states[1]).toMatchObject({
+      requires: 'children_closed',
+    });
+    expect(catalog.warnings).toEqual([
+      expect.objectContaining({
+        preset: 'notes',
+        origin: 'project',
+        message:
+          'workflow.states.closed.close_requires: deprecated; write requires: children_closed',
+      }),
+    ]);
+  });
+
   it('reports a preset whose name does not match its directory', () => {
     write('other', { 'preset.yaml': NOTES });
 

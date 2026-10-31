@@ -18,7 +18,11 @@ workflow:
 export function catalogWith(...presets: Preset[]): PresetCatalog {
   const official = loadPresets();
   const extra = presets.map((preset) => [preset.name, { ...preset, origin: 'project' }] as const);
-  return { presets: new Map([...official.presets, ...extra]), problems: official.problems };
+  return {
+    presets: new Map([...official.presets, ...extra]),
+    problems: official.problems,
+    warnings: official.warnings,
+  };
 }
 
 export function memoryContext(...presets: Preset[]): Context {
