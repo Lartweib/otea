@@ -77,29 +77,54 @@ Geometry lives in `ui/src/lanes.ts` (tested). The list gutter is 56px: agent lan
 
 **One line language.** The rail is the signature, so it is the only line that moves between lanes. Everything else borrows its 1.5px stroke, its lane grey and its node shapes and stays still: the history is one straight lane, children are a list and a bar. Nodes come in three scales: 12px in the rail, 10px for a child, 8px in the history.
 
-**Rows** read in three levels:
+**Rows** sit on one grid, at every nesting level (`ui/src/row-grid.ts`, tested; `.row` in `ui/src/styles/list.css`). Fixed slots, not fixed content: a row without children keeps its fold slot empty and a type without an icon keeps its type slot, so the title starts at the same x on every row of a level.
+
+| Column | Width | Holds |
+| --- | --- | --- |
+| rail | 56 | the node on its lane, and the lanes |
+| fold | 28, always reserved | a 20px chevron button when children are nested under the row |
+| indent | 28 a level | nothing: children step in |
+| type | 30, always reserved | a 20px slot: the type's icon (16px, 14px on a child, at 86% ink), or a small filled square (6px, 5px on a child, radius 1.5) for a type without one; never a circle (a node), a dash (a fold) or an outlined square (a checkbox) |
+| title | the one that flexes | line one: the title, led by a muted parent breadcrumb when the parent sits in another group (`Create wolf › Movement`, it truncates first and selects the parent); line two: always `ID · state`, then a parent's segmented bar and `N of M open` behind a hairline, then signals (enum values off their default) |
+| priority | 48 | the severity bars; priority never sits in line two |
+| who | 80 | the agent holding the item, right-aligned up to the dot |
+| when | 56 | starts after the dot: until when the agent holds it, or the age. Held by nobody, who is empty and the age stays in when |
 
 | Level | Spec |
 | --- | --- |
-| group header | 14/500 `--mut`, sentence case, its count in mono 12 (`--you-ink` only for *Waiting for you*), a hairline carrying it across; 60px tall (34px for the first), so groups get room above them |
-| title | 15/600 `--ink` with the type icon (16px) before it; a row whose parent sits in another group is led by the parent's title as a muted breadcrumb (`Create wolf › Movement`), which truncates first and selects the parent; at the end, who and when in mono 12 `--mut` (`claude-a · 20:18` while an agent holds it, the age otherwise) |
-| meta | mono 12 `--mut` under the title: id · state, a parent's segmented bar and `N of M open` behind a hairline, and the field modules' signals (severity, evidence chips) at the end |
+| group header | 14/500 `--mut`, sentence case, its count in mono 12 (`--you-ink` only for *Waiting for you*), a hairline carrying it across; 60px tall (34px for the first), the label on the type slot (x=84) |
+| top-level row | 62px, padding 10px; title 15/600 on a 22px line (the node at y=21), line two mono 12 `--mut` on 18px |
+| child row | 54px, padding 8px; two lines as well: title 14/500 on 20px (the node at y=18, 10px), line two on 16px |
 
-A row is 66px with its node on the title line (y=24). The content starts at x=68 and the row highlight at x=58. Nothing wraps: a narrow row (a container query on the row) drops the time first, then the agent. The title is the row's link, stretched over the whole row, so the breadcrumb before it can be a link of its own.
+A row stops at 760px, so on a wide pane the time stays near its title; past that the pane only gains margin. The row band starts at x=58 (right of the rail). On hover the band shows and a dotted leader in lane grey runs from the title across the empty priority cell to who, so the eye finds which time belongs to which title. The title is the row's link, stretched over the whole row, so the breadcrumb and the fold button can be links of their own above it.
 
-**Branches.** A child in the same group as its parent sits right under it, one line and one size smaller (44px, 14/500, a 10px node, its id and state at the end of the line), stepped in 28px a level; its node stays on its own lane. The lanes mean turn and the branch means hierarchy, so the branch (`layoutBranches`, tested) never touches the lanes: it is a quiet tree inside the content column, in lane grey, the same for a parent on either lane. It starts 6px below the parent's type icon, on the icon's centre, drops straight down and turns into each child with an 8px elbow, its leg on the child's icon centre, ending 8px before the icon. A deeper level hangs the same way from its own parent's icon.
+**Hide order.** What a row shows is decided by the list pane's width alone (`hideTier`, tested; a `ResizeObserver` on the pane sets `data-tier`), the same while the divider is dragged, when the window changes, or on a phone. Things leave in one order and nothing else ever does:
+
+| List width | Tier | What changes |
+| --- | --- | --- |
+| ≥ 600 | 1 | everything shows |
+| 480 – 599 | 2 | the priority column and evidence chips go |
+| 380 – 479 | 3 | who becomes a monogram (`monogram`: the first letter and the first of the suffix after the last dash, `cb` for claude-b; otherwise the first two letters; `you` stays `you`); a parent's count shortens to `N open` |
+| < 380 | 4 | who goes; a parent keeps only its bar |
+
+Always there: the node, the fold and type slots, the title, `ID · state` and the time.
+
+**Branches.** A child in the same group as its parent sits right under it, stepped in 28px a level; its node stays on its own lane. The lanes mean turn and the branch means hierarchy, so the branch (`branchPieces`, tested) never touches the lanes: it is a quiet tree in lane grey, the same for a parent on either lane. It leaves from the parent's type slot, its horizontal centre 3px under the slot, icon or not (the origin belongs to the slot, never to the drawing in it), drops straight down and turns into each child with an 8px elbow, stopping 4px before the child's slot. A deeper level hangs the same way from its own parent's slot.
+
+**Lines live in their rows.** Every block of the list (header, row, "Nothing here.") draws its own slice of the lanes and its own piece of the branch in an SVG of its own: the lanes are laid out once over the whole list (`layoutLanes`) and each block shows the slice it covers; the branch is cut into legs, elbows and a parent's stub, each tagged with the parent level it hangs from and the span the tree draw's head covers. A block that moves carries its lines with it; nothing is redrawn somewhere else, so nothing can jump to where it will be.
 
 ## Workspace
 
-The items view is the **Split** composition: three columns in one grid (`.workspace`, `ui/src/styles/workspace.css`).
+The items view is the **Split** composition: the sidebar, the list, the divider and the detail in one grid (`.workspace`, `ui/src/styles/workspace.css`).
 
 | Column | Content |
 | --- | --- |
-| rail (13.75rem, from 64rem) | collections from `/api/collections`, plus "all items"; each shows what waits for you / what is still open (`railEntries` in `ui/src/workspace.ts`). Choosing one filters the list; the filter is local state. |
-| list | list head (collection name, `j k to move · f to expand`), then the lanes list; it takes the rest of the width |
-| detail | the selected item, the intake form, or a hint: a reading column of 39rem (624px) with 40px margins, `min(44rem, 54%)` wide, on the ground, apart from the list by a 1px `--line` hairline |
+| sidebar (13.75rem, from 64rem) | collections from `/api/collections`, plus "all items"; each shows what waits for you / what is still open (`railEntries` in `ui/src/workspace.ts`). Choosing one filters the list; the filter is local state. |
+| list | list head (the sidebar toggle, the collection name, `j k to move · f collections`), then the lanes list; 520px by default, 340–783px |
+| divider | 9px: a 1px `--line` hairline that thickens to 2px with a grip under the pointer or on focus |
+| detail | the selected item, the intake form, or a hint: a reading column of 39rem (624px) centred in what is left, never under 440px |
 
-The rail keeps its grid track even when it is hidden (below 64rem it is 0 wide), so the list and detail never change tracks and the columns can animate. Below 48rem the workspace is the phone layout (see Phone). Routes: `#<id>` selects an item, `#/modules` opens the catalog, `#/triage` opens swipe triage.
+Below 48rem the workspace is the phone layout (see Phone). Routes: `#<id>` selects an item, `#/modules` opens the catalog, `#/triage` opens swipe triage.
 
 The detail is a **margin index**. The header holds the node, the id, the state pill and whose turn it is, with the type icon and its name at the end of the row (`epic`; a preset without types is named after itself), then the title (30/700) and the moves. Below it, each section is named in a 96px left margin (14/600) above a hairline, its content in the reading column beside it (above it on a phone or in a pane narrower than 34rem):
 
@@ -110,27 +135,21 @@ The detail is a **margin index**. The header holds the node, the id, the state p
 | Details | the rest of the `side` slot, then collection, created by (who and when), lease and updated |
 | History | the timeline |
 
-What the detail shows follows the item type's layout (`detailBlocks` in `ui/src/item-types.ts`, tested). The evidence list (every attached file) sits at the first evidence module (`images`, `recording`, `diff`, `log`), or after the fields when the layout places none. Reserved modules draw nothing yet. Values whose field the type does not declare still show, as plain text, at the end of the body. A type without a layout draws as before layouts: every field in the body. The list row draws the `row` slot, and the create form asks for the `intake` slot's fields, with a **Type** select after the collection when the collection has several types.
+What the detail shows follows the item type's layout (`detailBlocks` in `ui/src/item-types.ts`, tested). The evidence list (every attached file) sits at the first evidence module (`images`, `recording`, `diff`, `log`), or after the fields when the layout places none. Reserved modules draw nothing yet. Values whose field the type does not declare still show, as plain text, at the end of the body. A type without a layout draws as before layouts: every field in the body. The list row draws the `row` slot (a module's `rowColumn` puts it in the priority column or among the signals), and the create form asks for the `intake` slot's fields, with a **Type** select after the collection when the collection has several types.
 
-### Focus mode
+### Divider and sidebar
 
-A quiet 28px icon button at the end of the detail header row (icon 14px, stroke 1.25), tooltip `Expand · f` / `Collapse · esc`. Its four corners are one path whose `d` transitions between the two shapes (same commands in both), so the corners slide out to expand and in to collapse. Hidden below 48rem.
+The divider (`Divider` in `ui/src/components/Split.tsx`, a `role="separator"` with `aria-valuemin`, `aria-valuemax` and `aria-valuenow`) resizes the list with pointer events. The list is 340–783px and the detail never goes under 440px (`clampListWidth`, `listMax` in `ui/src/split.ts`, tested). While it is dragged nothing animates: one CSS variable (`--list-w`) follows the pointer, frame by frame, without a render. Focused, the arrows move it 16px (64 with Shift) and Home and End jump to the limits. A double-click or Enter eases it back to 520px (base, `--list-w` is a registered property so it animates on the tokens). The width is kept per browser in `localStorage` (`otea.listWidth`); a browser that refuses storage starts from the default.
 
-Turning it on, over `--travel` with `--e-move`:
-
-- The grid columns animate from `rail 1fr min(44rem, 54%)` to `0 1fr min(56rem, 66%)` (equal track count, so Chrome interpolates them): the list and the detail share the room the rail gave up. The rail fades out in 220ms; coming back it waits 380ms so it never shows clipped.
-- Rows shed their meta line and field marks (opacity first, then the row's second grid row closes), leaving node and title.
-- The reading column widens from 39rem to 50rem (800px), centred in its pane, and the title grows from 30px to 32px.
-
-State lives in React state, not the hash: focus is a way of looking, not a place, so links and history keep pointing at items and Back never toggles it.
+The collections sidebar (13.75rem, from 64rem) folds away with the button at the start of the list head or `f`, and is kept in `otea.sidebar`. The list keeps the width it was given, so folding never reflows a row: the sidebar slides out and fades, the list and divider slide over and the detail takes the freed room, the panes measured before and after and played back as a transform (FLIP, slow). State lives in React state and storage, not the hash: the split is a way of looking, not a place, so links and history keep pointing at items. The phone layout is untouched: no divider, and the collections stay a row of pills.
 
 ### Keys
 
-Pure logic in `ui/src/keys.ts` (tested): `f` toggles focus, `Escape` leaves it, `j` and `k` move the selection in list order (stopping at both ends; from nothing they start at the top) and keep the row in view. Keys are ignored while typing in an input, text area, select or editable element, and while Ctrl, Meta or Alt is held. Keys are only bound on the items view.
+Pure logic in `ui/src/keys.ts` (tested): `f` folds or unfolds the collections sidebar, `j` and `k` move the selection in list order (stopping at both ends; from nothing they start at the top) and keep the row in view. Keys are ignored while typing in an input, text area, select or editable element, and while Ctrl, Meta or Alt is held. Keys are only bound on the items view.
 
 ## Timeline
 
-The history in the detail (`ui/src/components/Timeline.tsx`) is the item's past, newest first, on **one straight lane** in lane grey: it never swings between lanes. A dot (8px) per event says who acted: filled in your color when a human did, ink when an agent did. A decision the human made in conversation and an agent relayed (`otea relay`; the event carries `via`) is a **ring** in your color, never the filled dot of a decision made in the UI; its label reads `human, relayed by <agent>` instead of `human (ui)`, and the quote of what the human said follows on its own line, in quotation marks (`relayOf` in `ui/src/format.ts`, tested). The time is mono (`14:02` today, `28 Oct, 12:31` before; `momentLabel`). The lane is drawn in CSS, so an event that wraps keeps its dot on its first line. Events that arrive while the item is open fade in from 8px above (`--arrive`).
+The history in the detail (`ui/src/components/Timeline.tsx`) is the item's past, newest first, on **one straight lane** in lane grey: it never swings between lanes. A dot (8px) per event says who acted: filled in your color when a human did, ink when an agent did. A decision the human made in conversation and an agent relayed (`otea relay`; the event carries `via`) is a **ring** in your color, never the filled dot of a decision made in the UI; its label reads `human, relayed by <agent>` instead of `human (ui)`, and the quote of what the human said follows on its own line, in quotation marks (`relayOf` in `ui/src/format.ts`, tested). The time is mono (`14:02` today, `28 Oct, 12:31` before; `momentLabel`). The lane is drawn in CSS, so an event that wraps keeps its dot on its first line. Events that arrive while the item is open fade in from 8px above (base).
 
 ## Controls
 
@@ -186,35 +205,58 @@ Relation modules (`ui/src/components/relations/`, logic in `ui/src/relations.ts`
 - **children**: a list, not a graph. Headed `4 children` with **+ child** at the end, then a segmented bar (`ChildBar`): one segment per child, colored like its node (yours in your color, an agent at work in ink, a queued or incomplete one an outline, done in the closed grey, discarded hatched), closed first, then yours, then the agents', so it fills from the left as children close (`childSegments` in `ui/src/relations.ts`, tested). A legend counts them (`1 yours · 2 with agents · 1 closed`), and each child follows as a row. **+ child** opens the create form with the parent set and its collection chosen (any other can be picked, and the parent dropped).
 - **Waiting for children**: a move whose target state declares `close_requires: children_closed` (the move's `closeRequires`) is drawn disabled while the item's children summary has open children, never primary (the next eligible move takes it, or none), with a quiet mono note beside it (`3 children open`, `moveBlock` in `ui/src/actions.ts`). The same holds in the phone's sticky moves bar and on triage cards, where it sits under the swipe buttons and is never swiped. The server refuses the move anyway.
 - **Empty**: with nothing to show, a module says so (`No children`, `No relations`) beside its action for a browser that can write; a read-only browser sees nothing.
-- **List** (`nestSections` in `ui/src/nesting.ts`, tested): a parent's meta line always shows its segmented bar and `N of M open`, whatever its group. A child is nested under its parent (the branch, the step in) only when it falls in the same group. A child in another group (waiting for you while its parent is with agents) is a row of its own in its own group, with a muted reference to its parent at the end of its meta line (`↑ CRE-40 Create wolf`) that selects the parent: nothing waiting for you folds out of sight. A closed child whose siblings are still open stays under *Closed*, with the reference. A parent still open whose children are all closed (it typically comes back to you for review) takes them under it, folded by default so the row stays compact; unfolded, they sit between the lanes with their closed look. A parent with nested children gets a fold control at the end of its title line (a chevron, and the count when folded). Folds are per viewer, in `localStorage`: the parents folded (`otea.collapsed`) and the settled parents unfolded (`otea.expanded`); failures are ignored. Section counts are the items of their own turn, shown or folded.
+- **List** (`nestSections` in `ui/src/nesting.ts`, tested): a parent's meta line always shows its segmented bar and `N of M open`, whatever its group. A child is nested under its parent (the branch, the step in) only when it falls in the same group. A child in another group (waiting for you while its parent is with agents) is a row of its own in its own group, with a muted reference to its parent at the end of its meta line (`↑ CRE-40 Create wolf`) that selects the parent: nothing waiting for you folds out of sight. A closed child whose siblings are still open stays under *Closed*, with the reference. A parent still open whose children are all closed (it typically comes back to you for review) takes them under it, folded by default so the row stays compact; unfolded, they sit between the lanes with their closed look. A parent with nested children gets a chevron in its fold slot; folding and unfolding draws the tree (see Motion). Folds are per viewer, in `localStorage`: the parents folded (`otea.collapsed`) and the settled parents unfolded (`otea.expanded`); failures are ignored. Section counts are the items of their own turn, shown or folded.
 
 ## Motion
 
-One gesture for every change: lift, carry, set down.
+One motion system: three durations and one easing, defined once as CSS custom properties (`ui/src/styles/tokens.css`) and mirrored by `MOTION` in `ui/src/motion.ts`. Everything that changes layout is measured before and after, and the difference is played back as a transform (FLIP). Nothing teleports.
 
 | Token | Value | Use |
 | --- | --- | --- |
-| `--travel` + `--e-move` | 680ms `cubic-bezier(.65,0,.35,1)` | carry: a node or lane changing place, focus mode columns |
-| `--arrive` + `--e-out` | 520ms `cubic-bezier(.22,1,.36,1)` | arrive, morph |
-| make room | 600ms `--e-out`, 90ms after | rows that shift to make room |
-| ripple | 760ms `--e-out`, 560ms after | the halo when an item reaches your lane |
-| `--micro` | 160ms | hover, press |
+| `--m-fast` | 120ms | hover, press, the selection band, the dotted leader; the reduced-motion crossfade |
+| `--m-base` | 200ms | the fold chevron, content coming in (the detail on selection, a new list row, a new history event), fades, the divider easing home |
+| `--m-slow` | 280ms | anything else that moves layout: the sidebar and the panes, rows making room, the phone unfold, triage cards |
+| `--m-ease` | `cubic-bezier(.25, 1, .5, 1)` | every one of them: ease-out-quart starts at full speed, so it answers at once, and settles without overshoot. No bounce, no spring |
 
-`TIMING` in `ui/src/motion.ts` mirrors these for animations started from script.
+The turn change keeps its own family (see below): `--travel` 680ms with `--e-move` `cubic-bezier(.65,0,.35,1)`; when a row changes hands the rows making room follow its clock (600ms, 90ms after) and the halo ripples at 760ms. `TIMING` in `ui/src/motion.ts` mirrors it.
+
+| Interaction | What moves | Property | ms |
+| --- | --- | --- | --- |
+| Unfold children | the line's head, down the branch from the parent's type slot | `stroke-dashoffset` per piece | tree |
+| | each elbow, as the head reaches its child | `stroke-dashoffset` | 20px of travel |
+| | the child's node, fold, icon, title, line two, priority, who, when | opacity · translateX −6px · blur 1.5px | 40px of travel, out-cubic |
+| | the children's room and every block after it | `clip-path` · `translateY`, on the head | tree |
+| Fold children | the same geometry upward: last child first, the line retracts into the parent | as unfold, reversed | tree × 0.8 |
+| Fold chevron | its glyph | rotate | base |
+| Collections sidebar | the sidebar; the list, divider and detail panes | translateX · opacity; translateX (FLIP) | slow · base |
+| Drag the divider | list and detail | width, live layout | none |
+| Reset the divider | list and detail | `--list-w`, eased | base |
+| Select a row | the selection band; the detail coming in (the old one leaves at once) | background-color; opacity · translateY 6px | fast; base |
+| Turn change | the carried row | lift, carry, set down | 680 |
+
+### Tree draw
+
+Folding and unfolding a parent's children (`ui/src/components/tree-draw.ts`, timing in `ui/src/motion.ts`, tested) has a single clock: where the line's head is. One head travels down the branch from the parent's type slot at constant speed for 60% of the time (75% of the line), then eases out (`headAt`). Every piece of the branch, every child row and the room the block takes read their progress from the head, so they cannot drift apart:
+
+- A leg fills as the head passes its span. An elbow draws out once the head reaches its child (over 20px of head travel), and the child resolves over the next 40px: opacity, a 6px slide and a 1.5px blur clearing.
+- The children's room grows with the head (each row is fully open by the time the head reaches its elbow, `roomAt`) and every block after them rides its edge: no drop, no lag, no overlap. Open nested children cascade in the same pass.
+- Duration: 180ms + 70ms per row drawn (open nested rows count), capped at 600ms (`treeDuration`): 2 rows 320, 4 rows 460, 6 rows 600. Folding runs at 0.8× in reverse: the last child undraws first and the line retracts into the parent; the rows are dropped once it is in, and the blocks after them are already where the drop puts them.
+- Clicking the chevron again midway reverses the head from where it is.
+- While the tree draws, the list's own FLIP (`Carry`) stands still for that change.
 
 ### Turn change
 
 When an item changes turn, from a move in the UI or a change from the CLI that arrives over the live stream, the list animates the difference (FLIP), without a dependency:
 
 1. `Carry` (`ui/src/components/Carry.tsx`) wraps the list body. In `getSnapshotBeforeUpdate`, the one React hook that reads the DOM before it changes, it records where every `[data-flip]` block sits (rows, section headings, "Nothing here."), each row's turn and lane, and its node's look (fill, stroke, dash) and text color.
-2. After the update it measures again and `planMotion` (`ui/src/motion.ts`, tested) decides: a row whose turn changed is **carried** (or **closed** into the trunk, or **reopened**); any other block that shifted **makes room**; a new block **enters**. Changing the collection filter is a new list, not a motion.
+2. After the update it measures again and `planMotion` (`ui/src/motion.ts`, tested) decides: a row whose turn changed is **carried** (or **closed** into the trunk, or **reopened**); any other block that shifted **makes room**; a new block **enters**. Changing the collection filter is a new list, not a motion. Without a turn change in the plan, making room is slow and entering is base, on `--m-ease`.
 3. The carried row travels from its old place (Web Animations `translateY`, `--travel`) while its node is carried across to the new lane (`translateX`) and lifted: up 8px and 118% at 42%, set down slightly under size at 84%. The row rides on a raised surface (`--sf`, shadow) above the others; arriving on your lane it is tinted in your color from 380ms and a halo ripples out from 560ms. A carry between lanes leaves a ghost ring that fades where it left.
 4. A row that changes section is a new element, so its old look is played back into the new one: the node keeps its old fill until a third of the way, takes the new one by 81%, and the check or slash draws in after 560ms; the text recedes over 420ms; a discarded title's strike is drawn in.
-5. Everything else slides from its old place (make room). The lanes reshape with a `d` transition over `--travel`.
+5. Everything else slides from its old place (make room), carrying its own slice of the lanes.
 
 Interrupted mid-flight, a row starts again from where it is on screen. Decorations are CSS keyframes switched on by `data-motion` and cleared after 1.5s.
 
-Nothing blinks; only an agent at work keeps moving. Every animation has a `prefers-reduced-motion` fallback: transitions collapse to 1ms, the orbit stands still (the arc stays visible), focus mode switches at once, and a turn change does not travel: what changed crossfades in place (200ms) and the rest is already where it belongs.
+Nothing blinks; only an agent at work keeps moving. Under `prefers-reduced-motion` nothing travels: layout changes are instant (transforms and clips are skipped and the layout is simply where it ends), and new content crossfades in 120ms (children unfolding, the detail, a new row, the sidebar). Folding children is instant. The orbit stands still (the arc stays visible), and a turn change crossfades in place.
 
 ## Phone
 
@@ -222,8 +264,8 @@ Below 48rem the workspace is one column (`ui/src/styles/phone.css`), the phone t
 
 - **Topbar** keeps brand, connection dot, Modules, theme and New item as 44px icon buttons; their words stay for screen readers (the connection label too).
 - **Collections** become a row of 44px pills that scrolls sideways; the chosen one is filled with `--ink`.
-- **Rows** keep what a line holds: the time and then the agent drop from the title line, a parent says `3 open` with a shorter bar, a child shows its state alone.
-- **Unfold**: tapping a row opens its detail in place, under the row and beside the lanes (60px in, right of the branch sub-lane), which keep running through it (an unfolded row's block grows by the detail's height, and its node stays at the head: `node` in `layoutLanes`). There is no detail pane and no "select an item" card; the row is the header, so the detail drops its title. The rows below make room as the detail grows over `--arrive` (the box follows its content as it loads), and the row is scrolled to the top. Tapping the row again, or Back, folds it (the hash goes back to the list); choosing another row moves the detail there at once. The moves sit in a bar sticky to the bottom of the screen while the detail is on it, the one primary among them. A move made there folds the item and the row carries itself home (the turn-change motion). A detail belongs to the row on the turn it had when it opened (`ui/src/unfold.ts`, tested): if the row changes hands it moves to another section, and the detail is dropped rather than reopened there; a tap opens it again.
+- **Rows** follow the list's width like everywhere else: at phone width the list is in tier 4, so who goes, a parent keeps only its bar, and the time stays.
+- **Unfold**: tapping a row opens its detail in place, under the row and beside the lanes (60px in, right of the branch sub-lane), which keep running through it (an unfolded row's block grows by the detail's height, and its node stays at the head: `node` in `layoutLanes`). There is no detail pane and no "select an item" card; the row is the header, so the detail drops its title. The rows below make room as the detail grows (slow) (the box follows its content as it loads), and the row is scrolled to the top. Tapping the row again, or Back, folds it (the hash goes back to the list); choosing another row moves the detail there at once. The moves sit in a bar sticky to the bottom of the screen while the detail is on it, the one primary among them. A move made there folds the item and the row carries itself home (the turn-change motion). A detail belongs to the row on the turn it had when it opened (`ui/src/unfold.ts`, tested): if the row changes hands it moves to another section, and the detail is dropped rather than reopened there; a tap opens it again.
 - **Intake** opens above the list.
 
 ### Swipe triage
@@ -235,8 +277,8 @@ One card per item on your turn, in list order, the next ones stacked behind (at 
 - **Right** is the primary move: the same one the primary button gets (`moveVariants`).
 - **Left** sends the item back: the first other move whose target state is an agent's turn (each move the API returns says the turn it hands the item to). If that move requires a reason, the swipe opens the reason form on the card and moves nothing; Confirm makes the move. A gesture never performs a move that requires a reason.
 - A direction with no move snaps back. Buttons below the card do the same as the swipes (back, Skip, primary), for accessibility and for the mouse.
-- A drag starts after 10px of mostly sideways motion (vertical motion scrolls the page: `touch-action: pan-y`). It commits past a third of the card's width (kept between 80 and 160px), or on a flick of at least 0.5px/ms over 40px in the same direction; otherwise the card settles back over `--arrive`. While it is dragged, the card tilts with the pull and a stamp names the move on the side it leans from; the cards behind rise with the pull.
-- A committed card leaves to its side over `--arrive` while the move is posted; if the move fails it comes back with the error. The next card arrives from just behind.
+- A drag starts after 10px of mostly sideways motion (vertical motion scrolls the page: `touch-action: pan-y`). It commits past a third of the card's width (kept between 80 and 160px), or on a flick of at least 0.5px/ms over 40px in the same direction; otherwise the card settles back (slow). While it is dragged, the card tilts with the pull and a stamp names the move on the side it leans from; the cards behind rise with the pull.
+- A committed card leaves to its side (slow) while the move is posted; if the move fails it comes back with the error. The next card arrives from just behind.
 - The end of the stack lists what was decided and skipped, with a way back to the list and to see the skipped again. Back, or **List**, leaves triage.
 
 Reduced motion: the unfold is instant, the card does not travel while dragged, and cards crossfade.
@@ -249,4 +291,4 @@ Side-stripe borders, gradient text, glassmorphism, hero-metric templates (big nu
 
 1. **Primitives** in `ui/src/kit/`: small, presentational, no data fetching. Done.
 2. **Field and evidence modules**: the field module registry and its catalog are done (see Field modules). Evidence kinds (gif, mp4, png, diff, log, before/after compare) and loading local modules come next, on the same registry.
-3. **Shells**: the workspace (Split with collections rail, focus mode, keys), the lanes timeline and the turn-change motion are done. The phone layout (Unfold and swipe triage) is done. Evidence-led review views come next.
+3. **Shells**: the workspace (Split with collections sidebar, divider, keys), the lanes timeline and the turn-change motion are done. The phone layout (Unfold and swipe triage) is done. Evidence-led review views come next.
