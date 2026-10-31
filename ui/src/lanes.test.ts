@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { LANE, laneX, layoutLanes } from './lanes.ts';
+import { LANE, laneX, layoutBranches, layoutLanes } from './lanes.ts';
 
 describe('laneX', () => {
   it('puts your turn on the right lane, agents on the left and closed items on the trunk', () => {
@@ -83,5 +83,58 @@ describe('layoutLanes', () => {
     expect(layout.height).toBe(0);
     expect(layout.rows).toEqual([]);
     expect(layout.agentLane).toBe('M16 0 V0 C16 0 28 0 28 0');
+  });
+});
+
+describe('layoutLanes with closed rows between the lanes', () => {
+  it('runs the lanes past a closed child nested in an open section, fusing at the closed section', () => {
+    const layout = layoutLanes([
+      { height: 66, turn: 'human', node: 24 },
+      { height: 44, turn: 'none', between: true },
+      { height: 60 },
+      { height: 66, turn: 'none', node: 24 },
+    ]);
+
+    expect(layout.rows).toEqual([
+      { y: 24, x: 40 },
+      { y: 88, x: 28 },
+      { y: 194, x: 28 },
+    ]);
+    // the nested closed row keeps the lanes open: they run to its bottom (110 - 22 = 88)
+    expect(layout.youLane).toBe('M40 0 V88 C40 141 28 141 28 194');
+  });
+});
+
+describe('layoutBranches', () => {
+  const parent = { top: 0, height: 66, node: 24, x: 40, depth: 0 };
+  const child = (top: number, x = 40) => ({ top, height: 44, node: 22, x, depth: 1 });
+
+  it('leaves the bottom of the parent node and bends into its own sub-lane', () => {
+    const [branch] = layoutBranches([parent, child(66), child(110, 16)]);
+
+    expect(branch?.yours).toBe(true);
+    expect(branch?.d).toBe(
+      'M40 30 C40 37 52 37 52 44 V80 Q52 88 60 88 H80 M52 80 V124 Q52 132 60 132 H80',
+    );
+  });
+
+  it('swings an agent parent across with a longer bend, and is not yours', () => {
+    const [branch] = layoutBranches([{ ...parent, x: 16 }, child(66, 16)]);
+
+    expect(branch?.yours).toBe(false);
+    expect(branch?.d.startsWith('M16 30 C16 44.4 52 44.4 52 58.8 V80')).toBe(true);
+  });
+
+  it('drops a deeper level from the bottom of its parent row, one step right', () => {
+    const grandchild = { top: 110, height: 44, node: 22, x: 40, depth: 2 };
+
+    const branches = layoutBranches([parent, child(66), grandchild]);
+
+    expect(branches).toHaveLength(2);
+    expect(branches[1]?.d).toBe('M72 110 V124 Q72 132 80 132 H100');
+  });
+
+  it('draws nothing without children', () => {
+    expect(layoutBranches([parent, { ...parent, top: 66 }])).toEqual([]);
   });
 });

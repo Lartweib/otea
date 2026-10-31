@@ -5,7 +5,12 @@ import { CollectionRail } from './components/CollectionRail.tsx';
 import { ConnectionBadge } from './components/ConnectionBadge.tsx';
 import { FocusToggle } from './components/FocusToggle.tsx';
 import { ItemDetail } from './components/ItemDetail.tsx';
-import { type CollectionOf, ItemList, type Unfolding } from './components/ItemList.tsx';
+import {
+  type ChildrenOf,
+  type CollectionOf,
+  ItemList,
+  type Unfolding,
+} from './components/ItemList.tsx';
 import { CatalogOverview, ModuleIndex, ModulePanel } from './components/ModuleCatalog.tsx';
 import { type IntakeParent, NewItemForm } from './components/NewItemForm.tsx';
 import { ThemeToggle } from './components/ThemeToggle.tsx';
@@ -15,11 +20,15 @@ import { keyCommand, keyTargetOf, stepSelection } from './keys.ts';
 import { Button, Icon } from './kit/index.ts';
 import { MODULES } from './modules/registry.ts';
 import {
+  COLLAPSED_KEY,
+  EXPANDED_KEY,
+  type Folds,
   type NestedSection,
   nestSections,
+  parentOf,
   type RowNesting,
   readCollapsed,
-  toggleCollapsed,
+  toggleFold,
   writeCollapsed,
 } from './nesting.ts';
 import type { Remote } from './remote.ts';
@@ -36,7 +45,8 @@ type ListPaneProps = {
   items: Remote<Item[]>;
   sections: NestedSection[];
   nesting: ReadonlyMap<string, RowNesting>;
-  onToggleChildren: (id: string) => void;
+  onToggleChildren: (id: string, settled: boolean) => void;
+  childrenOf: ChildrenOf;
   selectedId: string | undefined;
   collection: string | undefined;
   collectionOf: CollectionOf;
@@ -49,6 +59,7 @@ function ListPane({
   sections,
   nesting,
   onToggleChildren,
+  childrenOf,
   selectedId,
   collection,
   collectionOf,
@@ -74,6 +85,7 @@ function ListPane({
         sections={sections}
         nesting={nesting}
         onToggleChildren={onToggleChildren}
+        childrenOf={childrenOf}
         selectedId={selectedId}
         collectionOf={collectionOf}
         scope={collection ?? ''}
@@ -193,19 +205,32 @@ function browserStorage(): Storage | undefined {
   }
 }
 
-// The parents this viewer folded in the list, remembered in this browser.
-function useCollapsed(): [ReadonlySet<string>, (id: string) => void] {
-  const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(() =>
-    readCollapsed(browserStorage()),
-  );
-  const toggle = useCallback((id: string) => {
-    setCollapsed((current) => {
-      const next = toggleCollapsed(current, id);
-      writeCollapsed(browserStorage(), next);
+// The parents this viewer folded (or, whose children are all closed, unfolded) in the list,
+// remembered in this browser.
+function useFolds(): [Folds, (id: string, settled: boolean) => void] {
+  const [folds, setFolds] = useState<Folds>(() => ({
+    collapsed: readCollapsed(browserStorage()),
+    expanded: readCollapsed(browserStorage(), EXPANDED_KEY),
+  }));
+  const toggle = useCallback((id: string, settled: boolean) => {
+    setFolds((current) => {
+      const next = toggleFold(current, id, settled);
+      writeCollapsed(browserStorage(), next.collapsed, COLLAPSED_KEY);
+      writeCollapsed(browserStorage(), next.expanded, EXPANDED_KEY);
       return next;
     });
   }, []);
-  return [collapsed, toggle];
+  return [folds, toggle];
+}
+
+// Each item's children, from every item listed (any collection).
+function childrenIndex(items: readonly Item[]): ChildrenOf {
+  const index = new Map<string, Item[]>();
+  for (const item of items) {
+    const parent = parentOf(item);
+    if (parent !== undefined) index.set(parent, [...(index.get(parent) ?? []), item]);
+  }
+  return (id) => index.get(id) ?? [];
 }
 
 type WorkspaceKeys = {
@@ -262,9 +287,11 @@ export function App() {
   const [focus, setFocus] = useState(false);
   const [collection, setCollection] = useState<string>();
   const allItems = items.status === 'ready' ? items.value : [];
-  const [collapsed, toggleChildren] = useCollapsed();
+  const [folds, toggleChildren] = useFolds();
   const grouped = groupByTurn(inCollection(allItems, collection));
-  const { sections, rows: nesting } = nestSections(grouped, collapsed);
+  const { sections, rows: nesting } = nestSections(grouped, folds, (id) =>
+    allItems.find((item) => item.id === id),
+  );
   const order = listOrder(sections);
   useWorkspaceKeys({ enabled: route.view === 'items', focus, setFocus, order, selectedId });
   const creating =
@@ -375,6 +402,7 @@ export function App() {
               sections={sections}
               nesting={nesting}
               onToggleChildren={toggleChildren}
+              childrenOf={childrenIndex(allItems)}
               selectedId={selectedId}
               collection={collection}
               collectionOf={collectionOf}
@@ -384,7 +412,7 @@ export function App() {
           </div>
           {phone && !creating ? null : (
             <div className="detail-pane">
-              <div className="detail-panel raised">
+              <div className="detail-panel">
                 {creating ? (
                   <NewItemForm
                     key={intake?.parent?.id ?? 'new'}
