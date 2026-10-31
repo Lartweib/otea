@@ -53,14 +53,15 @@ export type ItemWithEvents = Item & { events: ItemEvent[] };
 export type Authority = 'agent' | 'human' | 'human-ui';
 
 // turn: whose turn the item is on once the move lands; closes: how a move into a closed state closes it;
-// closeRequires: what it waits for (`children_closed`: every child of the item closed).
+// requires: what entering the state waits for, whatever its turn (`children_closed`: every child of
+// the item closed).
 export type Move = {
   to: string;
   by: Authority;
   reasonRequired: boolean;
   turn: Turn;
   closes?: Closing;
-  closeRequires?: 'children_closed';
+  requires?: 'children_closed';
 };
 
 export type State = { name: string; turn: Turn; closes?: Closing };

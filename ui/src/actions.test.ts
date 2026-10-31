@@ -125,13 +125,13 @@ describe('actions', () => {
       closes: 'discarded',
     } as const;
 
-    const waits = { ...done, closeRequires: 'children_closed' } as const;
+    const waits = { ...done, requires: 'children_closed' } as const;
     const accept = { to: 'accepted', by: 'human', reasonRequired: false, turn: 'agent' } as const;
     const open = (count: number) => ({ total: 4, open: count, done: 4 - count, discarded: 0 });
 
     it('blocks a move that waits for children while some are open, and says how many', () => {
-      expect(moveBlock(waits, open(3))).toBe('3 children open');
-      expect(moveBlock(waits, open(1))).toBe('1 child open');
+      expect(moveBlock(waits, open(3))).toBe('waits for 3 open children');
+      expect(moveBlock(waits, open(1))).toBe('waits for 1 open child');
       expect(moveBlock(waits, open(0))).toBeUndefined();
       expect(moveBlock(waits, undefined)).toBeUndefined();
       expect(moveBlock(done, open(3))).toBeUndefined();
@@ -145,6 +145,20 @@ describe('actions', () => {
       ]);
       expect(moveVariants([waits, back], open(2))).toEqual(['default', 'default']);
       expect(moveVariants([waits, accept], open(0))).toEqual(['primary', 'default']);
+    });
+
+    it('blocks a move into a working state that waits for children the same way', () => {
+      const review = {
+        to: 'review',
+        by: 'agent',
+        reasonRequired: false,
+        turn: 'human',
+        requires: 'children_closed',
+      } as const;
+
+      expect(moveBlock(review, open(4))).toBe('waits for 4 open children');
+      expect(moveVariants([review, accept], open(4))).toEqual(['default', 'primary']);
+      expect(moveBlock(review, open(0))).toBeUndefined();
     });
 
     it('makes the move that hands the turn on primary, discards quiet and the rest plain', () => {
