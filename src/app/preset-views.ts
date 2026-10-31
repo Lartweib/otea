@@ -8,10 +8,11 @@ import type { PresetOrigin } from './presets.ts';
 export type FieldView = FieldSpec & { name: string };
 
 // A type as clients see it: its fields in order, where its items start, its states (whose turn
-// each is and how the closed ones close), and its layout.
+// each is and how the closed ones close), its layout, and its icon when the preset gives it one.
 export type TypeView = {
   name: string;
   label: string;
+  icon?: string;
   initial: string;
   incomplete?: string;
   states: State[];
@@ -35,7 +36,7 @@ export function fieldViews(fields: Record<string, FieldSpec>): FieldView[] {
 }
 
 export function typeViews(types: readonly ItemType[]): TypeView[] {
-  return types.map(({ name, label, fields, workflow, layout }) => {
+  return types.map(({ name, label, icon, fields, workflow, layout }) => {
     const view: TypeView = {
       name,
       label,
@@ -45,6 +46,7 @@ export function typeViews(types: readonly ItemType[]): TypeView[] {
       layout,
     };
     if (workflow.incomplete !== undefined) view.incomplete = workflow.incomplete;
+    if (icon !== undefined) view.icon = icon;
     return view;
   });
 }
