@@ -473,6 +473,52 @@ describe('item types', () => {
     expect(only?.layout.body).toEqual([{ module: 'questions' }]);
   });
 
+  it('reads the icon of each type, and of the implicit type from the preset', () => {
+    const typed = twoTypes();
+    typed.types.bug.icon = 'bug';
+    const raw = minimal();
+    raw.icon = 'checkbox';
+
+    const [bug, impr] = parsePreset(stringify(typed)).types;
+    const [only] = parsePreset(stringify(raw)).types;
+
+    expect(bug?.icon).toBe('bug');
+    expect(impr).not.toHaveProperty('icon');
+    expect(only?.icon).toBe('checkbox');
+    expect(parsePreset(stringify(minimal())).types[0]).not.toHaveProperty('icon');
+  });
+
+  it.each<[string, (raw: Raw) => void, string]>([
+    [
+      'a mistyped icon, with the close matches',
+      (raw) => (raw.types.bug.icon = 'bugg'),
+      'types.bug.icon: unknown icon "bugg" (did you mean bug?)',
+    ],
+    [
+      'an icon close to several',
+      (raw) => (raw.types.impr.icon = 'git'),
+      'types.impr.icon: unknown icon "git" (did you mean git-merge, git-branch, gift?)',
+    ],
+    [
+      'an icon close to none',
+      (raw) => (raw.types.bug.icon = 'zzzzzz'),
+      'types.bug.icon: unknown icon "zzzzzz" (none of the 96 icons is close; see the icon list in the preset format)',
+    ],
+    [
+      'a preset icon next to types',
+      (raw) => (raw.icon = 'bug'),
+      'icon: declare the icon of each type under types.<type>.icon',
+    ],
+  ])('rejects %s', (_, change, problem) => {
+    expect(typeProblems(change)).toContain(problem);
+  });
+
+  it('rejects an unknown icon on the implicit type', () => {
+    expect(problemsOf((raw) => (raw.icon = 'chekbox'))).toEqual([
+      'icon: unknown icon "chekbox" (did you mean checkbox?)',
+    ]);
+  });
+
   it('groups by an enum field every type shares', () => {
     const raw = twoTypes();
     raw.fields.priority = { module: 'enum', values: ['low', 'high'] };

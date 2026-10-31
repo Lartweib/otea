@@ -1,6 +1,7 @@
 import { parse } from 'yaml';
 import { z } from 'zod';
 import { OteaError } from './errors.ts';
+import { iconProblem } from './icons.ts';
 import {
   FIELD_MODULES,
   type FieldModule,
@@ -32,11 +33,12 @@ export type FieldSpec = {
 // The type of a preset that declares no `types`: every item of it.
 export const DEFAULT_TYPE = 'item';
 
-// An item type: the preset's shared fields plus its own, its own workflow or the preset's, and how
-// its items are laid out.
+// An item type: the preset's shared fields plus its own, its own workflow or the preset's, how its
+// items are laid out, and the icon drawn beside them (none when the preset gives it none).
 export type ItemType = {
   name: string;
   label: string;
+  icon?: string;
   fields: Record<string, FieldSpec>;
   workflow: Workflow;
   layout: Layout;
@@ -102,6 +104,7 @@ const layoutSchema = z.unknown();
 
 const typeSchema = z.strictObject({
   label: z.string().min(1),
+  icon: z.string().optional(),
   fields: fieldsSchema.optional(),
   workflow: workflowSchema.optional(),
   layout: layoutSchema.optional(),
@@ -114,7 +117,9 @@ const presetSchema = z.strictObject({
   fields: fieldsSchema,
   workflow: workflowSchema,
   types: z.record(z.string().regex(KEY, 'type names must be snake_case'), typeSchema).optional(),
+  // The layout and icon of the implicit type, in a preset without types.
   layout: layoutSchema.optional(),
+  icon: z.string().optional(),
   view: z
     .strictObject({ kind: z.enum(VIEW_KINDS).optional(), group_by: z.string().optional() })
     .optional(),
@@ -293,10 +298,16 @@ function toWorkflow(name: string, raw: RawWorkflow): Workflow {
 
 type TypeReading = { types: ItemType[]; problems: string[] };
 
+function iconProblems(at: string, icon: string | undefined): string[] {
+  const problem = icon === undefined ? undefined : iconProblem(at, icon);
+  return problem ? [problem] : [];
+}
+
 function implicitType(raw: RawPreset, fields: Record<string, FieldSpec>, workflow: Workflow) {
   const { layout, problems } = readLayout(raw.layout, fields, 'layout');
   const type: ItemType = { name: DEFAULT_TYPE, label: 'Item', fields, workflow, layout };
-  return { types: [type], problems };
+  if (raw.icon !== undefined) type.icon = raw.icon;
+  return { types: [type], problems: [...problems, ...iconProblems('icon', raw.icon)] };
 }
 
 function readTypes(raw: RawPreset, fields: Record<string, FieldSpec>, workflow: Workflow) {
@@ -305,6 +316,9 @@ function readTypes(raw: RawPreset, fields: Record<string, FieldSpec>, workflow: 
   if (declared.length === 0) reading.problems.push('types: declare at least one type');
   if (raw.layout !== undefined) {
     reading.problems.push('layout: declare the layout of each type under types.<type>.layout');
+  }
+  if (raw.icon !== undefined) {
+    reading.problems.push('icon: declare the icon of each type under types.<type>.icon');
   }
   for (const [name, type] of declared) {
     const at = `types.${name}`;
@@ -326,14 +340,16 @@ function readTypes(raw: RawPreset, fields: Record<string, FieldSpec>, workflow: 
     }
     const typeFields = { ...fields, ...toFields(own) };
     const { layout, problems } = readLayout(type.layout, typeFields, `${at}.layout`);
-    reading.problems.push(...problems);
-    reading.types.push({
+    reading.problems.push(...problems, ...iconProblems(`${at}.icon`, type.icon));
+    const read: ItemType = {
       name,
       label: type.label,
       fields: typeFields,
       workflow: type.workflow ? toWorkflow(`${raw.preset}:${name}`, type.workflow) : workflow,
       layout,
-    });
+    };
+    if (type.icon !== undefined) read.icon = type.icon;
+    reading.types.push(read);
   }
   return reading;
 }
