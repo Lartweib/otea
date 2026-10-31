@@ -253,7 +253,9 @@ function TriageCard({ item, collectionOf, plan, onLeave, behind, next }: CardPro
   const place = (dx: number) => {
     const element = card.current;
     if (!element) return;
-    element.style.transform = reducedMotion() ? '' : `translateX(${dx}px) rotate(${dx * 0.02}deg)`;
+    // It tilts with the pull, never past a slight 3°.
+    const tilt = Math.max(-3, Math.min(3, dx * 0.01));
+    element.style.transform = reducedMotion() ? '' : `translateX(${dx}px) rotate(${tilt}deg)`;
     pull(element, dragProgress(dx, element.offsetWidth), dx > 0 ? 'right' : 'left');
   };
 
