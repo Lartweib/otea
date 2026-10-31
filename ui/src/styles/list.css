@@ -58,9 +58,13 @@
   opacity: 0.42;
 }
 
-/* A parent's children hang from its node on a branch of the rail (see layoutBranches in lanes.ts). */
+/* A parent's children hang from its icon in a quiet tree, off the lanes (see layoutBranches). */
 .br {
+  fill: none;
+  stroke: var(--lane);
+  stroke-width: 1.5;
   stroke-linecap: round;
+  transition: d var(--travel) var(--e-move);
 }
 
 /* Rows and headings are transformed while they travel or make room (see motion.ts). */
@@ -68,6 +72,11 @@
 .section-title,
 .section-empty {
   position: relative;
+}
+
+/* A row knows its own width, to drop what does not fit. */
+.rows > li {
+  container: row / inline-size;
 }
 
 /* ---- group headers: a quiet label, its count, a hairline carrying it across ---- */
@@ -219,6 +228,75 @@
   background: linear-gradient(currentColor, currentColor) no-repeat 0 58% / 0% 1.5px;
 }
 
+/* The parent of a row in another group, as a muted breadcrumb: it gives way before the title. It sits
+   above the row's link, so it selects the parent. */
+.row-crumb {
+  position: relative;
+  z-index: 2;
+  flex: 0 1000 auto;
+  min-width: 2.5em;
+  overflow: hidden;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 22px;
+  color: var(--mut);
+  text-decoration: none;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  transition: color var(--micro);
+}
+
+.row-crumb:hover {
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.row-crumb:focus-visible {
+  border-radius: var(--r-s);
+  outline: 2px solid var(--you);
+  outline-offset: 1px;
+}
+
+.row-crumb-sep {
+  flex: none;
+  margin: 0 -2px;
+  color: var(--mut);
+}
+
+/* Who and when, at the end of the title line, muted. */
+.row-who {
+  display: flex;
+  flex: none;
+  gap: 8px;
+  margin-left: auto;
+  padding-left: 12px;
+  font: 400 12px / 22px var(--font-machine);
+  color: var(--mut);
+  white-space: nowrap;
+  transition: opacity 200ms var(--e-out) 120ms;
+}
+
+.row-holder + .row-when::before {
+  content: "·";
+  margin-right: 8px;
+}
+
+/* A narrow row drops the time first, then the agent. */
+@container row (max-width: 25rem) {
+  .row-when {
+    display: none;
+  }
+}
+
+@container row (max-width: 20rem) {
+  .row-who {
+    display: none;
+  }
+}
+
+/* Under the title: the id and state, a parent's progress, and the field modules' signals at the
+   end. */
 .row-meta {
   display: flex;
   align-items: center;
@@ -231,8 +309,10 @@
   transition: opacity 200ms var(--e-out) 120ms;
 }
 
-/* Under the title, not under the icon. */
-.row-line:has(> .type-icon) + .row-meta {
+/* Under the title, not under the icon; a parent whose children hang below it keeps the room even
+   without an icon, so its branch never runs through the meta line. */
+.row-line:has(> .type-icon) + .row-meta,
+.row[data-nests] .row-meta {
   padding-left: 26px;
 }
 
@@ -240,18 +320,12 @@
   flex: none;
 }
 
-.row-meta > span:not(:last-child)::after {
+.row-id::after {
   content: "·";
   margin-left: 8px;
 }
 
-/* The type tag is boxed, and the progress stands apart behind a hairline: no separator before them. */
-.row-meta > span.type-tag::after,
-.row-meta > span:has(+ .row-progress)::after {
-  content: none;
-}
-
-/* A parent's children: its segmented bar and how many are open. */
+/* A parent's children: its segmented bar and how many are open, behind a hairline. */
 .row-progress {
   display: inline-flex;
   align-items: center;
@@ -260,13 +334,15 @@
   border-left: 1px solid var(--line);
 }
 
-/* What field modules put in the row (an enum off its default, severity bars): at the end of the title
-   line, quiet. */
+/* What field modules put in the row (an enum off its default, severity bars): signals at the end of
+   the meta line, quiet. */
 .row-values {
   display: flex;
+  flex: 0 1 auto;
   align-items: center;
   gap: 8px;
   max-width: 12rem;
+  min-width: 0;
   margin-left: auto;
   padding-left: 8px;
   overflow: hidden;
@@ -288,11 +364,6 @@
 .row[data-kind="done"] .row-values .sev i.hot,
 .row[data-kind="discarded"] .row-values .sev i.hot {
   background: currentColor;
-}
-
-.row-lease {
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 /* Closed rows recede but stay readable (muted ink, not the lighter closed grey). */
@@ -320,7 +391,7 @@
   grid-template-rows: none;
   align-content: center;
   gap: 12px;
-  padding: 0 0 0 calc(8px + var(--depth) * 20px);
+  padding: 0 0 0 calc(8px + var(--depth) * 28px);
 }
 
 .row[data-depth="1"] {
@@ -349,36 +420,6 @@
   padding-left: 0;
 }
 
-/* ---- a row whose parent sits in another group: the parent, on the meta line ---- */
-/* It gives way first when the line is short, and sits above the row's link. */
-.row-parent {
-  position: relative;
-  z-index: 2;
-  flex: 0 1 auto;
-  min-width: 0;
-  overflow: hidden;
-  color: var(--mut);
-  text-decoration: none;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  border-radius: var(--r-s);
-  transition: color var(--micro);
-}
-
-.row-parent:hover {
-  color: var(--ink);
-}
-
-.row-parent:hover .row-parent-id {
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-
-.row-parent:focus-visible {
-  outline: 2px solid var(--you);
-  outline-offset: 2px;
-}
-
 /* ---- focus mode: rows shed their meta before the list narrows to node and title ---- */
 @media (min-width: 48rem) {
   .workspace[data-focus="true"] .row-main {
@@ -387,7 +428,7 @@
 
   .workspace[data-focus="true"] .row-meta,
   .workspace[data-focus="true"] .row-values,
-  .workspace[data-focus="true"] .row-parent {
+  .workspace[data-focus="true"] .row-who {
     opacity: 0;
     transition-delay: 0ms;
   }

@@ -51,21 +51,27 @@ export function layoutLanes(blocks: readonly Block[]): LaneLayout {
   };
 }
 
-// Branches: a parent's children hang from it. The branch leaves the bottom of the parent's node, bends
-// once (the lanes' own S-bend) into a sub-lane of its own right of your lane and left of the rows,
-// drops beside the children and turns into each child's icon column with a soft elbow. It stays
-// clear of the parent's icon, its title and its highlight. Deeper levels drop from the bottom of their
-// parent row, one step further right. Geometry shared with list.css: row content starts at x=68 and
-// steps 20px per level; the row highlight starts at x=58.
-export const BRANCH = { x: 52, step: 20, elbow: 8, content: 68, gap: 8, node: 6 } as const;
+// Branches: a parent's children hang from it in a quiet tree inside the content column, off the
+// lanes: the lanes mean turn, the branch means hierarchy, and the two never touch. The branch starts
+// 6px below the parent's type icon, on the icon's centre, drops straight down and turns into each
+// child with the elbow, its leg on the child's icon centre, ending 8px before the icon. It is drawn
+// the same for a parent on either lane. Geometry shared with list.css: row content starts at x=68,
+// steps 28px a level, and its icon is 16px (14px for a child) centred on the row's node line.
+export const BRANCH = { content: 68, step: 28, elbow: 8, gap: 8, below: 6 } as const;
 
-// A row as the branches see it: where it sits, where its node is, and how deep it nests.
-export type BranchRow = { top: number; height: number; node: number; x: number; depth: number };
+const iconSize = (depth: number) => (depth === 0 ? 16 : 14);
 
-export type Branch = { d: string; yours: boolean };
+// Where a row's icon starts, at its depth.
+export function iconX(depth: number): number {
+  return BRANCH.content + depth * BRANCH.step;
+}
 
-export function layoutBranches(rows: readonly BranchRow[]): Branch[] {
-  const branches: Branch[] = [];
+// A row as the branches see it: where it sits, how far down its icon centre is, and how deep it
+// nests.
+export type BranchRow = { top: number; height: number; node: number; depth: number };
+
+export function layoutBranches(rows: readonly BranchRow[]): string[] {
+  const branches: string[] = [];
   rows.forEach((parent, index) => {
     const children: BranchRow[] = [];
     for (const row of rows.slice(index + 1)) {
@@ -73,23 +79,16 @@ export function layoutBranches(rows: readonly BranchRow[]): Branch[] {
       if (row.depth === parent.depth + 1) children.push(row);
     }
     if (children.length === 0) return;
-    const x = BRANCH.x + parent.depth * BRANCH.step;
-    let d: string;
-    if (parent.depth === 0) {
-      const from = parent.top + parent.node + BRANCH.node;
-      const drop = Math.max(14, Math.abs(x - parent.x) * 0.8);
-      d = `M${parent.x} ${from} C${parent.x} ${from + drop / 2} ${x} ${from + drop / 2} ${x} ${from + drop}`;
-    } else {
-      d = `M${x} ${parent.top + parent.height}`;
-    }
+    const size = iconSize(parent.depth);
+    const x = iconX(parent.depth) + size / 2;
+    let d = `M${x} ${parent.top + parent.node + size / 2 + BRANCH.below}`;
     children.forEach((child, at) => {
       const y = child.top + child.node;
-      const end = BRANCH.content + child.depth * BRANCH.step - BRANCH.gap;
       const bend = y - BRANCH.elbow;
-      d += ` V${bend} Q${x} ${y} ${x + BRANCH.elbow} ${y} H${end}`;
+      d += ` V${bend} Q${x} ${y} ${x + BRANCH.elbow} ${y} H${iconX(child.depth) - BRANCH.gap}`;
       if (at < children.length - 1) d += ` M${x} ${bend}`;
     });
-    branches.push({ d, yours: parent.x === LANE.you });
+    branches.push(d);
   });
   return branches;
 }
