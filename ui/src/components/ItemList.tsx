@@ -1,24 +1,35 @@
 import { type CSSProperties, type ReactNode, useEffect, useRef, useState } from 'react';
-import { leaseLabel } from '../format.ts';
+import { ageLabel, holdLabel } from '../format.ts';
 import { useActiveLease } from '../hooks.ts';
+import { TypeIcon } from '../icons/TypeIcon.tsx';
 import { rowValues, showsTypes, typeOf } from '../item-types.ts';
 import { Button, Icon, NodeMark, TypeTag } from '../kit/index.ts';
-import { type Block, laneX, layoutLanes } from '../lanes.ts';
+import { type Block, type BranchRow, laneX, layoutBranches, layoutLanes } from '../lanes.ts';
+import { activeLease } from '../lease.ts';
 import { moduleFor } from '../modules/registry.ts';
-import type { NestedSection, RowNesting } from '../nesting.ts';
-import { itemNodeKind } from '../node-kind.ts';
+import type { NestedSection, ParentRef, RowNesting } from '../nesting.ts';
+import { itemNodeKind, type NodeKind } from '../node-kind.ts';
+import { openLabel } from '../relations.ts';
 import { hashFor } from '../selection.ts';
 import type { CollectionView, Item } from '../types.ts';
 import { afterFold, panelOf, reopen, select, type UnfoldState } from '../unfold.ts';
 import { Carry } from './Carry.tsx';
+import { ChildBar } from './relations/ChildBar.tsx';
 import { Unfold } from './Unfold.tsx';
 
-// Fixed heights keep the lane geometry and the rows in step.
-const ROW_H = 56;
-const HEAD_H = 48;
+// Fixed heights keep the lane geometry and the rows in step. A row reads in two lines, title over
+// meta, its node on the title line; a child under its parent is one line, one size smaller.
+const ROW_H = 66;
+const CHILD_H = 44;
+const NODE_Y = 24;
+const HEAD_H = 60;
+const FIRST_HEAD_H = 34;
 const EMPTY_H = 40;
 
 export type CollectionOf = (name: string) => CollectionView | undefined;
+
+// The children of an item, wherever they are listed.
+export type ChildrenOf = (id: string) => readonly Item[];
 
 // On a phone the selected row unfolds in place into its detail; tapping it again folds it.
 export type Unfolding = { detail: (id: string) => ReactNode; onFold: () => void };
@@ -27,7 +38,8 @@ type ItemListProps = {
   sections: NestedSection[];
   // How each row nests under its parent, and the parents folded by this viewer.
   nesting?: ReadonlyMap<string, RowNesting>;
-  onToggleChildren?: (id: string) => void;
+  onToggleChildren?: (id: string, settled: boolean) => void;
+  childrenOf?: ChildrenOf;
   selectedId: string | undefined;
   collectionOf: CollectionOf;
   // The list being shown (a collection, or all): changing it is not a motion.
@@ -42,6 +54,8 @@ type ItemRowProps = {
   selected: boolean;
   x: number;
   collectionOf: CollectionOf;
+  // The node of each of its children, for a parent's progress bar.
+  childKinds: NodeKind[];
   nesting?: RowNesting | undefined;
   onToggleChildren?: (() => void) | undefined;
   // Set on a phone: whether the row is unfolded, and what tapping it does instead of following its link.
@@ -61,19 +75,22 @@ function RowValues({ item, collection }: { item: Item; collection: CollectionVie
   return marks.length > 0 ? <span className="row-values">{marks}</span> : null;
 }
 
-// A parent's open children, quiet in the meta line: how many of all are still open.
-function OpenChildren({ item }: { item: Item }) {
+// A parent's children at a glance: one segment each, and how many are still open.
+function Progress({ item, kinds }: { item: Item; kinds: NodeKind[] }) {
   const summary = item.children;
-  if (!summary || summary.open === 0) return null;
+  if (!summary || kinds.length === 0) return null;
   return (
-    <span className="row-children" title={`${summary.open} of ${summary.total} children open`}>
-      <Icon name="branch" />
-      {summary.open}/{summary.total} open
+    <span className="row-progress">
+      <ChildBar kinds={kinds} size="sm" />
+      <span title={openLabel(summary)}>
+        {summary.open}
+        <span className="row-progress-of"> of {summary.total}</span> open
+      </span>
     </span>
   );
 }
 
-// Folds or unfolds the children nested under a parent row; folded, it says how many it holds.
+// Folds or unfolds the children nested under a parent; folded, it says how many it holds.
 function FoldChildren({
   item,
   nesting,
@@ -99,11 +116,26 @@ function FoldChildren({
   );
 }
 
+// The parent of a row listed in another group, on the row's meta line: it selects the parent.
+function ParentLink({ parent }: { parent: ParentRef }) {
+  return (
+    <a
+      className="row-parent"
+      href={hashFor(parent.id)}
+      title={parent.title ? `Child of ${parent.id} ${parent.title}` : `Child of ${parent.id}`}
+    >
+      <span aria-hidden="true">↑</span> <span className="row-parent-id">{parent.id}</span>
+      {parent.title ? ` ${parent.title}` : null}
+    </a>
+  );
+}
+
 function ItemRow({
   item,
   selected,
   x,
   collectionOf,
+  childKinds,
   nesting,
   onToggleChildren,
   expanded,
@@ -115,51 +147,71 @@ function ItemRow({
   const type = typeOf(collection, item.type);
   const kind = itemNodeKind(item, type, lease !== null);
   const depth = Math.min(nesting?.depth ?? 0, 3);
+  const height = depth > 0 ? CHILD_H : ROW_H;
+  const node = depth > 0 ? CHILD_H / 2 : NODE_Y;
   const folds = nesting?.nested !== undefined && onToggleChildren !== undefined;
+  const label = type?.label ?? item.type;
+  const marked = showsTypes(collection);
+  const icon = type?.icon;
+  const parent = depth === 0 ? nesting?.parent : undefined;
   return (
     <li data-flip={item.id} data-turn={item.turn} data-x={x} data-folds={folds || undefined}>
-      <a
+      {/* The title is the row's link, stretched over the whole row; the parent reference on the
+          meta line is a link of its own above it. */}
+      <div
         className="row"
         data-kind={kind}
         data-depth={depth > 0 ? depth : undefined}
-        href={hashFor(item.id)}
-        aria-current={selected ? 'true' : undefined}
-        aria-expanded={expanded}
-        onClick={(event) => {
-          if (!onTap) return;
-          event.preventDefault();
-          onTap();
-        }}
+        data-current={selected || undefined}
+        data-expanded={expanded || undefined}
       >
         <svg
           className="row-node"
           width="56"
-          height={ROW_H}
-          viewBox={`0 0 56 ${ROW_H}`}
+          height={height}
+          viewBox={`0 0 56 ${height}`}
           aria-hidden="true"
         >
-          <circle className="ghost" cx={x} cy={ROW_H / 2} r="6" />
+          <circle className="ghost" cx={x} cy={node} r="6" />
           <g className="carry">
             <g className="lift">
-              <circle className="halo" cx={x} cy={ROW_H / 2} r="6" />
-              <NodeMark kind={kind} cx={x} cy={ROW_H / 2} />
+              <circle className="halo" cx={x} cy={node} r="6" />
+              <NodeMark kind={kind} cx={x} cy={node} r={depth > 0 ? 5 : 6} />
             </g>
           </g>
         </svg>
         <span className="row-main">
-          <span className="ttl">{item.title}</span>
+          <span className="row-line">
+            <TypeIcon name={icon} size={depth > 0 ? 14 : 16} label={marked ? label : undefined} />
+            <a
+              className="ttl row-link"
+              href={hashFor(item.id)}
+              aria-current={selected ? 'true' : undefined}
+              aria-expanded={expanded}
+              onClick={(event) => {
+                if (!onTap) return;
+                event.preventDefault();
+                onTap();
+              }}
+            >
+              {item.title}
+            </a>
+            <RowValues item={item} collection={collection} />
+          </span>
           <span className="row-meta">
-            {showsTypes(collection) ? (
-              <TypeTag name={item.type} label={type?.label ?? item.type} />
-            ) : null}
+            {marked && !icon ? <TypeTag name={item.type} label={label} /> : null}
             <span className="row-id">{item.id}</span>
             <span>{item.state}</span>
-            {lease ? <span className="row-lease">{leaseLabel(lease)}</span> : null}
-            <OpenChildren item={item} />
+            {lease ? (
+              <span className="row-lease">{holdLabel(lease)}</span>
+            ) : depth === 0 ? (
+              <span>{ageLabel(item.updatedAt, Date.now())}</span>
+            ) : null}
+            <Progress item={item} kinds={childKinds} />
+            {parent ? <ParentLink parent={parent} /> : null}
           </span>
         </span>
-        <RowValues item={item} collection={collection} />
-      </a>
+      </div>
       {folds && nesting && onToggleChildren ? (
         <FoldChildren item={item} nesting={nesting} onToggle={onToggleChildren} />
       ) : null}
@@ -168,19 +220,37 @@ function ItemRow({
   );
 }
 
-// panels: the height of each unfolded detail, which its row's block grows by.
-function blocksOf(sections: NestedSection[], panels: ReadonlyMap<string, number>): Block[] {
-  return sections.flatMap((section) => [
-    { height: HEAD_H },
-    ...(section.items.length === 0
-      ? [{ height: EMPTY_H }]
-      : section.items.map((item) => {
-          const panel = panels.get(item.id);
-          return panel === undefined
-            ? { height: ROW_H, turn: item.turn }
-            : { height: ROW_H + panel, turn: item.turn, node: ROW_H / 2 };
-        })),
-  ]);
+// The blocks the lanes are laid out from, and the rows the branches hang from. panels: the height
+// of each unfolded detail, which its row's block grows by.
+function geometryOf(
+  sections: NestedSection[],
+  nesting: ReadonlyMap<string, RowNesting> | undefined,
+  panels: ReadonlyMap<string, number>,
+) {
+  const blocks: Block[] = [];
+  const rows: BranchRow[] = [];
+  let top = 0;
+  const add = (block: Block) => {
+    blocks.push(block);
+    top += block.height;
+  };
+  sections.forEach((section, index) => {
+    add({ height: index === 0 ? FIRST_HEAD_H : HEAD_H });
+    if (section.items.length === 0) add({ height: EMPTY_H });
+    for (const item of section.items) {
+      const depth = Math.min(nesting?.get(item.id)?.depth ?? 0, 3);
+      const node = depth > 0 ? CHILD_H / 2 : NODE_Y;
+      const height = (depth > 0 ? CHILD_H : ROW_H) + (panels.get(item.id) ?? 0);
+      rows.push({ top, height, node, x: laneX(item.turn), depth });
+      add({
+        height,
+        turn: item.turn,
+        node,
+        ...(item.turn === 'none' && section.turn !== 'none' ? { between: true } : {}),
+      });
+    }
+  });
+  return { blocks, rows };
 }
 
 // Where an element sits in the page, ignoring the transforms of rows still making room.
@@ -248,11 +318,13 @@ function TriageOpen({ onTriage }: { onTriage: () => void }) {
 }
 
 const NO_PANELS: ReadonlyMap<string, number> = new Map();
+const NO_CHILDREN: ChildrenOf = () => [];
 
 export function ItemList({
   sections,
   nesting,
   onToggleChildren,
+  childrenOf = NO_CHILDREN,
   selectedId,
   collectionOf,
   scope,
@@ -261,10 +333,24 @@ export function ItemList({
 }: ItemListProps) {
   const list = useSelectedInView(selectedId, unfolding !== undefined);
   const { panel, panels, measured, folded, open } = useUnfolded(selectedId, sections);
-  const layout = layoutLanes(blocksOf(sections, unfolding ? panels : NO_PANELS));
+  const { blocks, rows } = geometryOf(sections, nesting, unfolding ? panels : NO_PANELS);
+  const layout = layoutLanes(blocks);
+  const branches = layoutBranches(rows);
+  const now = Date.now();
+  const kindsOf = (item: Item): NodeKind[] =>
+    childrenOf(item.id).map((child) =>
+      itemNodeKind(
+        child,
+        typeOf(collectionOf(child.collection), child.type),
+        activeLease(child.lease, now) !== null,
+      ),
+    );
   const sizes = {
     '--row-h': `${ROW_H}px`,
+    '--child-h': `${CHILD_H}px`,
+    '--node-y': `${NODE_Y}px`,
     '--head-h': `${HEAD_H}px`,
+    '--first-head-h': `${FIRST_HEAD_H}px`,
     '--empty-h': `${EMPTY_H}px`,
   } as CSSProperties;
   return (
@@ -284,6 +370,9 @@ export function ItemList({
           <path className="ln" d={layout.agentLane} />
           <path className="lny" d={layout.youLane} />
           <path className="ln" d={layout.trunk} />
+          {branches.map(({ d, yours }) => (
+            <path key={d.split(' V')[0]} className={yours ? 'lny br' : 'ln br'} d={d} />
+          ))}
         </svg>
         {sections.map((section) => (
           <section key={section.turn} className="section" data-turn={section.turn}>
@@ -303,6 +392,7 @@ export function ItemList({
                 {section.items.map((item) => {
                   const selected = item.id === selectedId;
                   const shows = unfolding ? panel(item) : undefined;
+                  const rowNesting = nesting?.get(item.id);
                   // A selected row that changed hands sits folded in its new place: a tap opens it again.
                   const tap = shows === 'open' ? unfolding?.onFold : () => open(item);
                   return (
@@ -312,9 +402,12 @@ export function ItemList({
                       x={laneX(item.turn)}
                       selected={selected}
                       collectionOf={collectionOf}
-                      nesting={nesting?.get(item.id)}
+                      childKinds={item.children ? kindsOf(item) : []}
+                      nesting={rowNesting}
                       onToggleChildren={
-                        onToggleChildren ? () => onToggleChildren(item.id) : undefined
+                        onToggleChildren
+                          ? () => onToggleChildren(item.id, rowNesting?.settled === true)
+                          : undefined
                       }
                       expanded={unfolding ? shows === 'open' : undefined}
                       onTap={unfolding && selected ? tap : undefined}

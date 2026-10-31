@@ -8,12 +8,14 @@
 }
 
 .unfold-content {
-  padding: 2px 0 14px 52px;
+  /* Right of the branch sub-lane (x=52), so a parent's branch never runs along its card. */
+  padding: 2px 0 14px 60px;
 }
 
 .detail[data-layout="unfold"] {
   view-timeline: --unfold-detail block;
-  gap: 20px;
+  gap: 28px;
+  max-width: none;
   padding: 16px 16px 0;
   border-radius: var(--r-l);
   background: var(--sf);
@@ -22,9 +24,10 @@
     0 18px 32px -24px var(--shadow);
 }
 
-.detail[data-layout="unfold"] .detail-primary,
-.detail[data-layout="unfold"] .detail-side {
-  gap: 20px;
+/* The row is the header: the first section needs no hairline over it. */
+.detail[data-layout="unfold"] > .detail-section:first-of-type {
+  padding-top: 0;
+  border-top: 0;
 }
 
 .detail[data-layout="unfold"] .input {
@@ -74,7 +77,7 @@
   -webkit-tap-highlight-color: transparent;
 }
 
-.row[aria-expanded="true"]::before {
+.row[data-expanded]::before {
   background: var(--sel);
 }
 
@@ -185,6 +188,29 @@
 /* From 48rem the topbar keeps its words, and the catalog link needs no picture. */
 @media (min-width: 48rem) {
   .topbar-link .icon {
+    display: none;
+  }
+}
+
+/* ---- narrow rows: what a phone keeps on a line ---- */
+@media (max-width: 30rem) {
+  /* A parent says how many are open, not how long ago; a child, its state. */
+  .row-progress-of,
+  .row[data-depth] .row-id,
+  .row-meta > span:has(+ .row-progress) {
+    display: none;
+  }
+
+  .row-meta > span:has(+ span + .row-progress)::after {
+    content: none;
+  }
+
+  /* Children and relations drop the id: node, icon, title and state. */
+  .rel-link {
+    grid-template-columns: 20px minmax(0, 1fr) auto;
+  }
+
+  .rel-link .rel-id {
     display: none;
   }
 }

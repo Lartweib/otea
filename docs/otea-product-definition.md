@@ -291,8 +291,11 @@ A collection can hold items of several kinds (bugs and improvements of one produ
 - `fields` (optional): its own fields, added to the preset's `fields`, which every type shares. A type cannot redeclare a shared field; `title` is always shared.
 - `workflow` (optional): its own workflow, same format as the preset's. Without it the type follows the preset's `workflow`, which stays mandatory.
 - `layout` (optional): how its items are drawn (below).
+- `icon` (optional): the icon the web UI draws beside its items (list rows, children and relations, the detail header), by name: `icon: bug`. Without one, the items have no icon.
 
-A preset without `types` has exactly one implicit type, named `item` (label `Item`), with the preset's fields and workflow; existing items are of that type. Every item stores its type. `otea create --type <type>` is required only when the preset declares more than one; `otea list --type <type>` filters by it; turns, moves, updates and field validation follow the item's type.
+A preset without `types` has exactly one implicit type, named `item` (label `Item`), with the preset's fields and workflow; existing items are of that type. It takes its icon from a top-level `icon`, as it takes its layout from a top-level `layout`; with `types`, each type declares its own and a top-level `icon` is a problem.
+
+**Icons** are drawn by Otea, 96 of them, named by what they depict: `layers`, `checkbox`, `list`, `stack`, `inbox`, `flag`, `milestone`, `target`, `rocket`, `clipboard`, `calendar`, `clock`, `hourglass` (work); `bug`, `git-branch`, `git-merge`, `terminal`, `code`, `brackets`, `database`, `server`, `plug`, `cpu`, `package`, `gear`, `wrench`, `shield`, `lock`, `key`, `cloud` (code); `image`, `film`, `camera`, `play`, `music`, `palette`, `brush`, `pen`, `ruler`, `shapes`, `eye`, `frame`, `sparkle` (design and media); `book`, `doc`, `note`, `chat-bubble`, `question`, `lightbulb`, `megaphone`, `bookmark`, `quote`, `link`, `mail` (docs and talk); `paw`, `feather`, `bone`, `egg`, `fish`, `bird`, `leaf`, `sprout`, `tree`, `mountain`, `flame`, `drop`, `moon`, `sun`, `crystal`, `sword`, `shieldcrest`, `potion`, `map`, `compass`, `dice`, `controller`, `heart`, `star`, `skull`, `crown`, `ghost` (game and creatures); `puzzle`, `beaker`, `magnet`, `bolt`, `anchor`, `hook`, `trophy`, `gift`, `tag`, `pin`, `globe`, `home`, `user`, `users`, `robot` (status and flow). An unknown name is a preset problem that names the close matches (`types.bug.icon: unknown icon "bugg" (did you mean bug?)`), at load and in `otea validate`. The list lives in `src/core/icons.ts`; the drawings in the web UI are keyed by it. Every item stores its type. `otea create --type <type>` is required only when the preset declares more than one; `otea list --type <type>` filters by it; turns, moves, updates and field validation follow the item's type.
 
 **Layout**
 
@@ -362,6 +365,7 @@ workflow:                     # followed by every type without its own
 types:
   bug:
     label: Bug
+    icon: bug
     fields:
       severity: { module: severity, required: create }
       steps:    { module: markdown, required: complete }
@@ -376,6 +380,7 @@ types:
       intake: [title, severity, steps, area]
   impr:
     label: Improvement
+    icon: lightbulb
     fields:
       pitch:  { module: markdown, required: complete }
       effort: { module: enum, values: [small, medium, large], default: medium }
@@ -402,7 +407,7 @@ view: { kind: list, group_by: turn }
 
 Rules:
 - **Store only what cannot be derived.** Computable states are derived, never stored. Turn is derived from the item's state and its collection's preset.
-- Loading checks the schema and its meaning: `initial`, `incomplete`, `from` and `to` name declared states; every state is reachable from `initial` or `incomplete`; states with turn `none` have no outgoing transitions and declare `closes`, and every other state has at least one; no agent transition closes as `done`; enum and severity defaults are among their values; module names are known; every type's fields, workflow and layout pass the same checks, layouts those of the module registry (kinds, slots, config, `accepts` families, a complete intake); `view.group_by` names a grouping every type supports. Each problem names its path (`types.bug.layout.evidence[0].accepts`). Schema problems (an unknown key, kind or closing) are reported first and alone, since the rest cannot be checked until the shape is right.
+- Loading checks the schema and its meaning: `initial`, `incomplete`, `from` and `to` name declared states; every state is reachable from `initial` or `incomplete`; states with turn `none` have no outgoing transitions and declare `closes`, and every other state has at least one; no agent transition closes as `done`; enum and severity defaults are among their values; module names are known; every type's fields, workflow and layout pass the same checks, layouts those of the module registry (kinds, slots, config, `accepts` families, a complete intake); `view.group_by` names a grouping every type supports. Icons are known by name. Each problem names its path (`types.bug.layout.evidence[0].accepts`). Schema problems (an unknown key, kind or closing) are reported first and alone, since the rest cannot be checked until the shape is right.
 - Collections record the preset name and `preset_version` they were created with; every item records the `preset_version` it was written under (set again when its fields are updated).
 - Updates are validated like intake (unknown fields, enum values; a create-required field cannot be cleared), recorded as an `updated` event with old and new values, and rejected on items in a state with turn `none`.
 - `otea validate` checks the whole project non-interactively: every preset (official and project), every collection's preset, and every item against its type in its collection's preset (unknown type, unknown state, wrong field type or enum value, missing `required: create` field; an older `preset_version`, and a working item outside `incomplete` that lacks a `required: complete` field, are warnings). It reports and never fixes; it exits non-zero only on errors.

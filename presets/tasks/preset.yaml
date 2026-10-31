@@ -1,6 +1,7 @@
 preset: tasks
 preset_version: 1
 playbook: ./playbook.md
+icon: checkbox
 fields:
   title: { module: text, required: create }
   description: { module: markdown, required: complete }

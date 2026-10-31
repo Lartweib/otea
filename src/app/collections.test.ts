@@ -90,6 +90,7 @@ describe('collections', () => {
     expect(views[0]?.types).toEqual([
       {
         name: 'item',
+        icon: 'checkbox',
         label: 'Item',
         initial: 'todo',
         incomplete: 'incomplete',

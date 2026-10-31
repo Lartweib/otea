@@ -1,6 +1,7 @@
 preset: bug-triage
 preset_version: 1
 playbook: ./playbook.md
+icon: bug
 fields:
   title: { module: text, required: create }
   description: { module: markdown, required: complete }
