@@ -1,5 +1,12 @@
-import { Component, type CSSProperties, createRef, type ReactNode } from 'react';
-import { type Motion, type Placement, planMotion, TIMING } from '../motion.ts';
+import { Component, createRef, type ReactNode, type RefObject } from 'react';
+import {
+  MOTION,
+  type Motion,
+  type Placement,
+  planMotion,
+  reducedMotion,
+  TIMING,
+} from '../motion.ts';
 import type { Turn } from '../types.ts';
 
 // What a row looked like before it changed hands. A row that changes section is a new element, so its
@@ -13,13 +20,12 @@ type CarryProps = {
   // Motion only explains a change in place: a new scope (another collection) is a new list.
   scope: string;
   className: string;
-  style: CSSProperties;
+  // Set while something else moves the list (the tree draw): the update is not played back.
+  still?: RefObject<boolean>;
 };
 
 const FLIP = 'flip';
 const SETTLE_MS = 1500;
-
-const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 function blocksOf(root: HTMLElement): HTMLElement[] {
   return [...root.querySelectorAll<HTMLElement>('[data-flip]')];
@@ -97,7 +103,7 @@ function replayLook(element: HTMLElement, look: Look) {
     {
       duration: 360,
       delay: 560,
-      easing: TIMING.arrive.easing,
+      easing: MOTION.ease,
       fill: 'backwards',
     },
   );
@@ -113,23 +119,32 @@ function replayLook(element: HTMLElement, look: Look) {
       {
         duration: 480,
         delay: 380,
-        easing: TIMING.arrive.easing,
+        easing: MOTION.ease,
         fill: 'backwards',
       },
     );
   }
 }
 
-function play(element: HTMLElement, motion: Motion, look: Look | undefined, reduced: boolean) {
+// carried: a turn change is in the plan, so the rows making room follow the carry's clock;
+// otherwise a layout change is a plain FLIP on the motion tokens.
+function play(
+  element: HTMLElement,
+  motion: Motion,
+  look: Look | undefined,
+  reduced: boolean,
+  carried: boolean,
+) {
   const { kind, dy, fromX, toX } = motion;
   if (reduced) {
     // No travel: what changed crossfades in place, the rest is already where it belongs.
-    if (kind !== 'room') run(element, [{ opacity: 0 }, { opacity: 1 }], { duration: 200 });
+    if (kind !== 'room') run(element, [{ opacity: 0 }, { opacity: 1 }], { duration: MOTION.fast });
     return;
   }
   if (kind === 'room') {
+    const timing = carried ? TIMING.room : { duration: MOTION.slow, easing: MOTION.ease };
     run(element, [{ transform: `translateY(${dy}px)` }, { transform: 'none' }], {
-      ...TIMING.room,
+      ...timing,
       fill: 'backwards',
     });
     return;
@@ -138,13 +153,14 @@ function play(element: HTMLElement, motion: Motion, look: Look | undefined, redu
     run(
       element,
       [
-        { opacity: 0, transform: 'translateY(-8px)' },
+        { opacity: 0, transform: 'translateY(-6px)' },
         { opacity: 1, transform: 'none' },
       ],
       {
-        ...TIMING.arrive,
+        duration: MOTION.base,
+        easing: MOTION.ease,
         fill: 'backwards',
-        delay: TIMING.room.delay,
+        delay: carried ? TIMING.room.delay : 0,
       },
     );
     return;
@@ -166,7 +182,7 @@ export class Carry extends Component<CarryProps> {
 
   override getSnapshotBeforeUpdate(previous: CarryProps): Snapshot | null {
     const root = this.root.current;
-    if (!root || previous.scope !== this.props.scope) return null;
+    if (!root || previous.scope !== this.props.scope || this.props.still?.current) return null;
     return measure(root);
   }
 
@@ -182,15 +198,17 @@ export class Carry extends Component<CarryProps> {
     }
     const after = measure(root);
     const reduced = reducedMotion();
-    for (const motion of planMotion(before.places, after.places)) {
+    const plan = planMotion(before.places, after.places);
+    const carried = plan.some(({ kind }) => kind !== 'room' && kind !== 'enter');
+    for (const motion of plan) {
       const element = blocks.get(motion.key);
-      if (element) play(element, motion, before.looks.get(motion.key), reduced);
+      if (element) play(element, motion, before.looks.get(motion.key), reduced, carried);
     }
   }
 
   override render() {
     return (
-      <div ref={this.root} className={this.props.className} style={this.props.style}>
+      <div ref={this.root} className={this.props.className}>
         {this.props.children}
       </div>
     );

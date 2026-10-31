@@ -1,5 +1,5 @@
 import { type ReactNode, useLayoutEffect, useRef } from 'react';
-import { TIMING } from '../motion.ts';
+import { MOTION, reducedMotion } from '../motion.ts';
 
 type UnfoldProps = {
   // false folds it away; onFolded runs once it is closed, so it can be dropped.
@@ -12,8 +12,6 @@ type UnfoldProps = {
 
 const ID = 'unfold';
 
-const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
 // Animates the box from where it is now to a height; the rows below follow in the flow.
 function slide(box: HTMLElement, to: number, fill: FillMode = 'none'): Animation | undefined {
   const from = box.getBoundingClientRect().height;
@@ -22,8 +20,8 @@ function slide(box: HTMLElement, to: number, fill: FillMode = 'none'): Animation
   if (reducedMotion() || from === to) return undefined;
   return box.animate([{ height: `${from}px` }, { height: `${to}px` }], {
     id: ID,
-    duration: TIMING.arrive.duration,
-    easing: TIMING.arrive.easing,
+    duration: MOTION.slow,
+    easing: MOTION.ease,
     fill,
   });
 }
@@ -63,12 +61,11 @@ export function Unfold({ open, onFolded, onHeight, children }: UnfoldProps) {
       report.current(next);
     };
     follow();
-    if (!reducedMotion()) {
-      inner.animate([{ opacity: 0 }, { opacity: 1 }], {
-        duration: TIMING.arrive.duration,
-        easing: TIMING.arrive.easing,
-      });
-    }
+    // Under reduced motion the box is there at once and its content crossfades in.
+    inner.animate(
+      [{ opacity: 0 }, { opacity: 1 }],
+      reducedMotion() ? { duration: MOTION.fast } : { duration: MOTION.base, easing: MOTION.ease },
+    );
     const observer = new ResizeObserver(follow);
     observer.observe(inner);
     return () => observer.disconnect();

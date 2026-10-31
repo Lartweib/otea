@@ -5,7 +5,7 @@ import { showsTypes, typeOf } from '../item-types.ts';
 import { Button, Icon, NODE_LABEL, Node, Pill, TypeTag } from '../kit/index.ts';
 import { moduleFor } from '../modules/registry.ts';
 import { valuesOf } from '../modules/values.ts';
-import { TIMING } from '../motion.ts';
+import { MOTION, reducedMotion } from '../motion.ts';
 import { itemNodeKind } from '../node-kind.ts';
 import {
   type Direction,
@@ -32,7 +32,8 @@ type TriageProps = {
   onExit: () => void;
 };
 
-const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+// A card that moves (leaves, settles back, comes up) moves layout: the slow token.
+const SLIDE = { duration: MOTION.slow, easing: MOTION.ease };
 
 // Where a card goes when it leaves: off to the side it was swiped to, or down a little when skipped.
 type Exit = Direction | 'skip';
@@ -40,7 +41,10 @@ type Exit = Direction | 'skip';
 function leave(card: HTMLElement, exit: Exit): Animation {
   const from = card.style.transform || 'none';
   if (reducedMotion()) {
-    return card.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 200, fill: 'forwards' });
+    return card.animate([{ opacity: 1 }, { opacity: 0 }], {
+      duration: MOTION.fast,
+      fill: 'forwards',
+    });
   }
   const side = exit === 'right' ? 1 : -1;
   const to =
@@ -52,7 +56,7 @@ function leave(card: HTMLElement, exit: Exit): Animation {
       { transform: from, opacity: 1 },
       { transform: to, opacity: 0 },
     ],
-    { ...TIMING.arrive, fill: 'forwards' },
+    { ...SLIDE, fill: 'forwards' },
   );
 }
 
@@ -68,7 +72,7 @@ function settle(card: HTMLElement) {
   card.style.transform = '';
   pull(card, 0);
   if (reducedMotion() || from === 'none') return;
-  card.animate([{ transform: from }, { transform: 'none' }], TIMING.arrive);
+  card.animate([{ transform: from }, { transform: 'none' }], SLIDE);
 }
 
 // The marks an item's card starts with: where it stands, its id, state and collection.
@@ -155,7 +159,7 @@ function TriageCard({
           { transform: 'translateY(12px) scale(0.96)', opacity: 0.4 },
           { transform: 'none', opacity: 1 },
         ];
-    element.animate(keyframes, reducedMotion() ? { duration: 200 } : TIMING.arrive);
+    element.animate(keyframes, reducedMotion() ? { duration: MOTION.fast } : SLIDE);
   }, []);
 
   const commit = (exit: Exit, to: string | undefined, reason = '') => {

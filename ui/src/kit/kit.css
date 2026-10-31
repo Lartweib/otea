@@ -16,10 +16,10 @@
   cursor: pointer;
   white-space: nowrap;
   transition:
-    background-color var(--micro),
-    border-color var(--micro),
-    color var(--micro),
-    transform var(--micro) var(--e-out);
+    background-color var(--m-fast) var(--m-ease),
+    border-color var(--m-fast) var(--m-ease),
+    color var(--m-fast) var(--m-ease),
+    transform var(--m-fast) var(--m-ease);
 }
 .btn:hover:not(:disabled) {
   background: var(--hov);
@@ -120,9 +120,9 @@
   color: var(--ink);
   white-space: nowrap;
   transition:
-    background-color 300ms,
-    color 300ms,
-    box-shadow 300ms;
+    background-color var(--m-base) var(--m-ease),
+    color var(--m-base) var(--m-ease),
+    box-shadow var(--m-base) var(--m-ease);
 }
 .pill.sm {
   height: 18px;
@@ -158,7 +158,7 @@
   width: 3px;
   background: var(--off);
   border-radius: 1px;
-  transition: background-color 300ms;
+  transition: background-color var(--m-base) var(--m-ease);
 }
 .sev i:nth-child(1) {
   height: 4px;
@@ -198,9 +198,9 @@
 .node .shape {
   stroke-width: 1.6;
   transition:
-    fill 320ms var(--e-out),
-    stroke 320ms var(--e-out),
-    stroke-dasharray 320ms;
+    fill var(--m-base) var(--m-ease),
+    stroke var(--m-base) var(--m-ease),
+    stroke-dasharray var(--m-base) var(--m-ease);
 }
 .s-you {
   fill: var(--you);
@@ -230,7 +230,7 @@
   stroke-linejoin: round;
   stroke-dasharray: 14;
   stroke-dashoffset: 14;
-  transition: stroke-dashoffset 360ms var(--e-out);
+  transition: stroke-dashoffset var(--m-base) var(--m-ease);
 }
 .node .mark.on {
   stroke-dashoffset: 0;
@@ -250,8 +250,8 @@
   opacity: 0;
   animation: ot-spin 1.7s linear infinite;
   transition:
-    opacity var(--arrive) var(--e-out),
-    stroke-dasharray var(--arrive) var(--e-out);
+    opacity var(--m-base) var(--m-ease),
+    stroke-dasharray var(--m-base) var(--m-ease);
 }
 .node .orbit.on {
   opacity: 1;
@@ -279,8 +279,8 @@
   transform: translateY(-4px);
   pointer-events: none;
   transition:
-    opacity var(--micro) var(--e-out),
-    transform var(--micro) var(--e-out);
+    opacity var(--m-fast) var(--m-ease),
+    transform var(--m-fast) var(--m-ease);
 }
 .tip:hover::after,
 .tip:focus-visible::after {
