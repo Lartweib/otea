@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react';
 import { leftovers } from '../evidence.ts';
-import { actorLabel, leaseLabel } from '../format.ts';
+import { actorLabel, leaseLabel, momentLabel } from '../format.ts';
 import { useActiveLease } from '../hooks.ts';
+import { TypeIcon } from '../icons/TypeIcon.tsx';
 import {
   type DetailBlock,
   detailBlocks,
@@ -52,6 +53,23 @@ function FieldList({
   );
 }
 
+// One section of the detail: its name in the left margin above a hairline, its content in the
+// reading column beside it (above it on a phone).
+function Section({ label, children }: { label: string; children: ReactNode }) {
+  const id = `detail-${label.toLowerCase()}`;
+  return (
+    <section className="detail-section" aria-labelledby={id}>
+      <h2 className="detail-section-label" id={id}>
+        {label}
+      </h2>
+      <div className="detail-section-body">{children}</div>
+    </section>
+  );
+}
+
+// The field that leads the brief, as `otea create --description` fills it.
+const LEAD = 'description';
+
 const TURN_LABEL: Record<Turn, string> = {
   human: 'your turn',
   agent: 'agent’s turn',
@@ -74,8 +92,8 @@ type ItemDetailProps = {
   onMoved?: (() => void) | undefined;
 };
 
-// The primary column holds what to decide on; the side holds where the item has been. Side by side in
-// focus mode, stacked otherwise.
+// A margin index: the header (where the item stands, its title, its moves), then Brief (what to
+// decide on), Structure (children and relations), Details (where it lives, who made it) and History.
 export function ItemDetail({
   item,
   canWrite,
@@ -90,10 +108,24 @@ export function ItemDetail({
   const type = typeOf(collection, item.type);
   const kind = itemNodeKind(item, type, lease !== null);
   const { head, primary, side } = detailBlocks(type, item.fields);
-  const hasFields = primary.some((block) => block.kind === 'fields');
   const loose = leftovers(type, item.evidence);
   const block = (part: DetailBlock, index: number) => {
-    if (part.kind === 'fields') return <FieldList key={`fields:${index}`} values={part.values} />;
+    if (part.kind === 'fields') {
+      // The description leads the brief as plain text, without a label; the other fields follow it.
+      const lead = part.values.find(({ field }) => field.name === LEAD);
+      const rest = part.values.filter((value) => value !== lead);
+      const Lead = lead ? moduleFor(lead.field.module).Detail : undefined;
+      return (
+        <div key={`fields:${index}`} className="detail-fields">
+          {lead && Lead ? (
+            <div className="detail-lead">
+              <Lead field={lead.field} value={lead.value} />
+            </div>
+          ) : null}
+          {rest.length > 0 ? <FieldList values={rest} /> : null}
+        </div>
+      );
+    }
     if (part.kind === 'relation') {
       const key = `relation:${part.entry.module}:${index}`;
       return part.entry.module === 'children' ? (
@@ -131,13 +163,20 @@ export function ItemDetail({
     const others = loose.length < item.evidence.length;
     return (
       <section key="evidence" className="evidence-section" aria-labelledby="evidence-title">
-        <h2 className="t-label" id="evidence-title">
+        <h3 className="t-label" id="evidence-title">
           {others ? 'other files' : 'evidence'}
-        </h2>
+        </h3>
         <EvidenceList evidence={loose} canWrite={canWrite} />
       </section>
     );
   };
+  // Relation modules make the Structure, wherever the layout places them; the rest of the side
+  // goes with the details.
+  const brief = primary.filter((part) => part.kind !== 'relation');
+  const structure = [...primary, ...side].filter((part) => part.kind === 'relation');
+  const aside = side.filter((part) => part.kind !== 'relation');
+  const briefParts = brief.map(block).filter((part) => part !== null);
+  const structureParts = structure.map(block).filter((part) => part !== null);
   const standing = lease ? `${lease.holder} is on it` : TURN_LABEL[item.turn];
   const unfolded = layout === 'unfold';
   const actions = canWrite ? (
@@ -153,59 +192,67 @@ export function ItemDetail({
       Read-only. Run <code>otea open</code> to act from this browser.
     </p>
   );
+  const typeLabel = type?.label ?? item.type;
+  // A preset without types names its only type after itself (an epic, a bug-triage item).
+  const kindWord = showsTypes(collection)
+    ? typeLabel.toLowerCase()
+    : (collection?.preset ?? item.type);
   return (
     <article className="detail" data-layout={layout} aria-label={unfolded ? item.title : undefined}>
-      <div className="detail-primary">
-        {unfolded ? null : (
-          <header className="detail-head">
-            <div className="detail-head-row">
-              <div className="detail-tags">
-                <Node kind={kind} label={NODE_LABEL[kind]} />
-                {showsTypes(collection) ? (
-                  <TypeTag name={item.type} label={type?.label ?? item.type} />
-                ) : null}
-                <span className="t-id">{item.id}</span>
-                <Pill tone="state" yours={item.turn === 'human'}>
-                  {item.state}
-                </Pill>
-                <span className="t-cap">{standing}</span>
-              </div>
-              {headAction}
+      {unfolded ? null : (
+        <header className="detail-head">
+          <div className="detail-head-row">
+            <div className="detail-tags">
+              <Node kind={kind} label={NODE_LABEL[kind]} />
+              <span className="t-id">{item.id}</span>
+              <Pill tone="state" yours={item.turn === 'human'}>
+                {item.state}
+              </Pill>
+              <span className="t-cap">{standing}</span>
             </div>
-            <h1 className="t-display">{item.title}</h1>
-            {head.length > 0 ? <FieldList values={head} className="fields fields-head" /> : null}
-          </header>
-        )}
-        {unfolded ? null : actions}
-        {item.missing.length > 0 ? (
-          <div className="missing well">
-            <span className="t-label">missing to complete</span>
-            <span className="t-ui">{item.missing.join(', ')}</span>
+            {type?.icon ? (
+              <span className="detail-type">
+                <TypeIcon name={type.icon} size={14} />
+                {kindWord}
+              </span>
+            ) : showsTypes(collection) ? (
+              <TypeTag name={item.type} label={typeLabel} />
+            ) : null}
+            {headAction}
           </div>
-        ) : null}
-        {unfolded ? null : <hr className="hr" />}
-        {hasFields ? null : <p className="t-small">No fields.</p>}
-        {primary.map(block)}
-      </div>
-      <div className="detail-side">
-        {side.map(block)}
+          <h1 className="t-display">{item.title}</h1>
+          {actions}
+        </header>
+      )}
+      {item.missing.length > 0 ? (
+        <div className="missing well">
+          <span className="t-label">missing to complete</span>
+          <span className="t-ui">{item.missing.join(', ')}</span>
+        </div>
+      ) : null}
+      <Section label="Brief">
+        {head.length > 0 ? <FieldList values={head} className="fields fields-head" /> : null}
+        {briefParts.length > 0 || head.length > 0 ? (
+          briefParts
+        ) : (
+          <p className="t-small">No fields.</p>
+        )}
+      </Section>
+      {structureParts.length > 0 ? <Section label="Structure">{structureParts}</Section> : null}
+      <Section label="Details">
+        {aside.map(block)}
         <dl className="fields fields-meta">
           <Field label="collection">{item.collection}</Field>
-          <Field label="created by">{actorLabel(item.createdBy)}</Field>
+          <Field label="created by">
+            {actorLabel(item.createdBy)} · {momentLabel(item.createdAt, Date.now())}
+          </Field>
           {lease ? <Field label="lease">{leaseLabel(lease)}</Field> : null}
+          <Field label="updated">{momentLabel(item.updatedAt, Date.now())}</Field>
         </dl>
-        <section className="timeline-section" aria-labelledby="timeline-title">
-          <h2 className="t-label" id="timeline-title">
-            history
-          </h2>
-          <Timeline
-            events={item.events}
-            turn={item.turn}
-            kind={kind}
-            now={`${item.state} · ${standing}`}
-          />
-        </section>
-      </div>
+      </Section>
+      <Section label="History">
+        <Timeline events={item.events} />
+      </Section>
       {unfolded ? <div className="unfold-actions">{actions}</div> : null}
     </article>
   );

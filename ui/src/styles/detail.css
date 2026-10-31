@@ -1,74 +1,86 @@
 /* Item detail, actions, timeline and intake. */
 
-/* ---- detail: what to decide on, then where the item has been ---- */
+/* ---- detail: one reading column, a margin index of sections ---- */
 .detail {
-  display: grid;
-  gap: 24px;
-  max-width: 46rem;
-}
-
-.detail-primary,
-.detail-side {
-  display: grid;
-  align-content: start;
-  gap: 24px;
-  min-width: 0;
-}
-
-.detail-side {
-  animation: side-in 560ms var(--e-out) both;
+  display: flex;
+  flex-direction: column;
+  gap: 36px;
+  max-width: 39rem;
 }
 
 .detail-head {
-  display: grid;
-  gap: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
 }
 
 .detail-head-row {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
+  align-items: center;
+  gap: 10px;
+}
+
+.detail-type {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  font: 400 12px var(--font-machine);
+  color: var(--mut);
+  white-space: nowrap;
+}
+
+.detail-head-row > .type-tag {
+  margin-left: auto;
 }
 
 .detail .t-display {
+  font-size: 30px;
   transition: font-size var(--travel) var(--e-move);
 }
 
-/* Focus mode: the title grows, and once the pane is wide enough the history moves beside the decision.
-   The pane widens over the travel, so the switch happens on the way, when there is room for both. */
+/* Focus mode: the title grows; the column stays a reading column. */
 @media (min-width: 48rem) {
   .workspace[data-focus="true"] .detail .t-display {
     font-size: 32px;
   }
 }
 
-@container detail (min-width: 56rem) {
-  .workspace[data-focus="true"] .detail {
-    grid-template-columns: minmax(0, 1fr) 20rem;
-    align-items: start;
-    gap: 32px;
-    max-width: 76rem;
-  }
+/* Each section is named in the left margin, above a hairline; its content keeps the reading column. */
+.detail-section {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  column-gap: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+}
 
-  .workspace[data-focus="true"] .detail-side {
-    animation: side-in-beside 560ms var(--e-out) both;
+.detail-section-label {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 28px;
+}
+
+.detail-section-body {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  min-width: 0;
+  padding-top: 4px;
+}
+
+/* Narrow (a phone, a narrow pane): the name goes above its content. */
+@container detail (max-width: 34rem) {
+  .detail-section {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: 10px;
   }
 }
 
-/* Two names, so switching between stacked and beside replays the arrival. */
-@keyframes side-in {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-}
-
-@keyframes side-in-beside {
-  from {
-    opacity: 0;
-    transform: translateX(16px);
-  }
+.detail[data-layout="unfold"] .detail-section {
+  grid-template-columns: minmax(0, 1fr);
+  row-gap: 10px;
 }
 
 .detail-tags {
@@ -81,6 +93,10 @@
 .actions {
   display: grid;
   gap: 12px;
+}
+
+.detail-head .actions {
+  margin-top: 6px;
 }
 
 .action-buttons {
@@ -106,7 +122,8 @@
 .fields {
   display: grid;
   grid-template-columns: 96px minmax(0, 1fr);
-  gap: 10px 16px;
+  gap: 12px 16px;
+  margin: 0;
 }
 
 .fields dt {
@@ -118,14 +135,30 @@
 
 .fields dd {
   min-width: 0;
-  font-size: 14.5px;
+  margin: 0;
+  font-size: 15px;
   line-height: 1.55;
   text-wrap: pretty;
 }
 
+.fields-meta {
+  gap: 8px 16px;
+}
+
 .fields-meta dd {
-  font: 400 12.5px / 1.7 var(--font-machine);
-  color: var(--mut);
+  font-size: 13.5px;
+}
+
+.detail-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.detail-lead {
+  font-size: 15px;
+  line-height: 1.6;
+  text-wrap: pretty;
 }
 
 .body {
@@ -191,68 +224,74 @@ a.evidence-name {
   color: var(--you-ink);
 }
 
-/* ---- timeline: the item's own path between the lanes, newest first ---- */
-.timeline-section {
-  display: grid;
-  gap: 6px;
-}
-
+/* ---- history: one straight lane, newest first; a dot per event says who acted ---- */
 .timeline {
-  position: relative;
-  container-type: inline-size;
-}
-
-.timeline-lanes {
-  position: absolute;
-  left: 0;
-  top: 0;
-  overflow: visible;
-  pointer-events: none;
-}
-
-.timeline-guides {
-  fill: none;
-  stroke: var(--lane);
-  stroke-width: 1.5;
-  opacity: 0.5;
-}
-
-.timeline-path {
-  fill: none;
-  stroke: var(--ink);
-  stroke-width: 1.6;
-  transition: d var(--travel) var(--e-move);
-}
-
-.timeline-dot {
-  fill: var(--ink);
-}
-
-.timeline-dot[data-actor="human"] {
-  fill: var(--you);
-}
-
-/* Relayed from conversation by an agent: still yours, but a ring, never the filled dot of the UI. */
-.timeline-dot[data-relayed] {
-  fill: var(--sf);
-  stroke: var(--you);
-  stroke-width: 1.6;
-}
-
-.timeline-events {
-  list-style: none;
   margin: 0;
   padding: 0;
+  list-style: none;
 }
 
 .ev {
+  position: relative;
   display: grid;
-  grid-template-columns: 118px minmax(0, 1fr);
-  gap: 2px 10px;
+  grid-template-columns: 20px auto minmax(0, 1fr);
+  column-gap: 12px;
   align-items: baseline;
-  min-height: 44px;
-  padding: 12px 0 12px 56px;
+  padding: 10px 0;
   font-size: 13.5px;
+  line-height: 20px;
+}
+
+/* The lane runs through every event, from the newest dot down to the oldest. */
+.ev::before {
+  content: "";
+  position: absolute;
+  left: 9.25px;
+  top: 0;
+  bottom: 0;
+  width: 1.5px;
+  background: var(--lane);
+}
+
+.ev:first-child::before {
+  top: 20px;
+}
+
+.ev:last-child::before {
+  bottom: calc(100% - 20px);
+}
+
+.ev:only-child::before {
+  content: none;
+}
+
+/* An agent's dot in ink, yours in your color. */
+.ev::after {
+  content: "";
+  position: absolute;
+  left: 6px;
+  top: 16px;
+  width: 8px;
+  height: 8px;
+  box-sizing: border-box;
+  border-radius: 50%;
+  background: var(--ink);
+}
+
+.ev[data-actor="human"]::after {
+  background: var(--you);
+}
+
+/* Relayed from conversation by an agent: still yours, but a ring, never the filled dot of the UI. */
+.ev[data-relayed]::after {
+  border: 1.5px solid var(--you);
+  background: var(--bg);
+}
+
+.ev time {
+  grid-column: 2;
+  min-width: 44px;
+  white-space: nowrap;
 }
 
 .ev.new {
@@ -267,6 +306,7 @@ a.evidence-name {
 }
 
 .ev-m {
+  grid-column: 3;
   min-width: 0;
   overflow-wrap: anywhere;
 }
@@ -274,33 +314,13 @@ a.evidence-name {
 .ev-m em {
   font-style: normal;
   color: var(--mut);
-  white-space: nowrap;
-}
-
-.ev time {
-  white-space: nowrap;
 }
 
 /* What the human said, as the agent relayed it. */
 .ev-quote {
-  grid-column: 2;
+  grid-column: 3;
   color: var(--ink);
   overflow-wrap: anywhere;
-}
-
-.ev-now .ev-m {
-  font-weight: 500;
-}
-
-/* Narrow (a phone, the side column of focus mode): the time goes over the event. */
-@container (max-width: 26rem) {
-  .ev {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .ev-quote {
-    grid-column: 1;
-  }
 }
 
 /* ---- intake: fields of the system ---- */
@@ -367,8 +387,8 @@ select.input {
   background-repeat: no-repeat;
 }
 
-/* Detail panel and intake inputs sit on the raised surface: inputs go to the well there. */
-.detail-panel .input {
+/* On a raised surface (the catalog) inputs go to the ground. */
+.raised .input {
   background-color: var(--bg);
 }
 
@@ -390,13 +410,10 @@ select.input {
 
 @media (prefers-reduced-motion: reduce) {
   .input,
-  .timeline-path,
   .detail .t-display {
     transition-duration: 1ms;
   }
 
-  .detail-side,
-  .workspace[data-focus="true"] .detail-side,
   .ev.new {
     animation-duration: 1ms;
     animation-delay: 0ms;

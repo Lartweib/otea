@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest';
+import type { NodeKind } from './node-kind.ts';
 import {
-  childTrack,
+  childSegments,
+  childTally,
   groupRelations,
   LINK_CHOICES,
   linkRequestOf,
   matchItems,
-  progressLabel,
+  openLabel,
   unlinkRequestOf,
 } from './relations.ts';
 import type { Item, RelatedItem } from './types.ts';
@@ -141,44 +143,29 @@ describe('matchItems', () => {
   });
 });
 
-describe('progressLabel', () => {
-  it('says how many children closed, and how', () => {
-    expect(progressLabel({ total: 4, open: 1, done: 2, discarded: 1 })).toBe(
-      '3 of 4 closed · 2 done · 1 discarded',
-    );
-    expect(progressLabel({ total: 2, open: 2, done: 0, discarded: 0 })).toBe('0 of 2 closed');
+describe('openLabel', () => {
+  it('says how many of the children are still open', () => {
+    expect(openLabel({ total: 4, open: 3, done: 1, discarded: 0 })).toBe('3 of 4 open');
+    expect(openLabel({ total: 2, open: 0, done: 1, discarded: 1 })).toBe('0 of 2 open');
   });
 });
 
-describe('childTrack', () => {
-  it('lays the children on one track: closed first, the trunk running through them', () => {
-    const children = [
-      related('child', 'P-1', { turn: 'agent' }),
-      related('child', 'P-2', { turn: 'none', closes: 'done' }),
-      related('child', 'P-3', { turn: 'human' }),
-      related('child', 'P-4', { turn: 'none', closes: 'discarded' }),
-    ];
+describe('childSegments and childTally', () => {
+  const kinds: NodeKind[] = ['queued', 'you', 'discarded', 'working', 'done', 'incomplete'];
 
-    const track = childTrack(children, 120);
-
-    expect(track.nodes.map(({ id }) => id)).toEqual(['P-2', 'P-4', 'P-1', 'P-3']);
-    expect(track.nodes.map(({ x }) => x)).toEqual([10, 43.33, 76.67, 110]);
-    expect(track.closedUntil).toBe(43.33);
+  it('orders the bar closed first, then yours, then the agents at work, then waiting', () => {
+    expect(childSegments(kinds)).toEqual([
+      'done',
+      'discarded',
+      'you',
+      'working',
+      'queued',
+      'incomplete',
+    ]);
   });
 
-  it('has no closed stretch while nothing closed, and starts a single child at the head', () => {
-    const track = childTrack([related('child', 'P-1')], 120);
-
-    expect(track.nodes.map(({ x }) => x)).toEqual([10]);
-    expect(track.closedUntil).toBeUndefined();
-  });
-
-  it('shrinks the nodes to fit many children', () => {
-    const many = Array.from({ length: 30 }, (_, index) => related('child', `P-${index}`));
-
-    const track = childTrack(many, 300);
-
-    expect(track.r).toBeLessThan(5.5);
-    expect(track.nodes.at(-1)?.x).toBeLessThanOrEqual(300 - track.r);
+  it('counts the legend: yours, with agents, closed', () => {
+    expect(childTally(kinds)).toEqual({ yours: 1, agents: 3, closed: 2 });
+    expect(childTally([])).toEqual({ yours: 0, agents: 0, closed: 0 });
   });
 });
