@@ -26,10 +26,27 @@ function ended(animation: Animation): Promise<void> {
   );
 }
 
-// A copy of the card, fixed over where the card is, for the flight; the card itself is hidden so
-// that the next card is seen rising behind it.
-function copyOf(card: HTMLElement): HTMLElement {
+// Where a dragged card is pulled to: its sideways offset and tilt (about its centre), from the
+// transform the drag gave it.
+function pulled(card: HTMLElement): { x: number; tilt: number } {
+  const transform = card.style.transform;
+  const x = /translateX\(([-\d.e]+)px\)/.exec(transform);
+  const tilt = /rotate\(([-\d.e]+)deg\)/.exec(transform);
+  return { x: x ? Number(x[1]) : 0, tilt: tilt ? Number(tilt[1]) : 0 };
+}
+
+// The card's box without what a drag did to it.
+function restingBox(card: HTMLElement): DOMRect {
+  const transform = card.style.transform;
+  card.style.transform = '';
   const box = card.getBoundingClientRect();
+  card.style.transform = transform;
+  return box;
+}
+
+// A copy of the card, fixed over where the card rests, for the flight; the card itself is hidden so
+// that the next card is seen rising behind it.
+function copyOf(card: HTMLElement, box: DOMRect): HTMLElement {
   const copy = card.cloneNode(true) as HTMLElement;
   for (const element of copy.querySelectorAll('[id]')) element.removeAttribute('id');
   copy.removeAttribute('aria-labelledby');
@@ -45,16 +62,21 @@ function copyOf(card: HTMLElement): HTMLElement {
 }
 
 export function flyToSlot(card: HTMLElement, slot: HTMLElement, side: Direction): Flight {
-  const from = card.getBoundingClientRect();
+  const from = restingBox(card);
   const to = slot.getBoundingClientRect();
   const { dx, dy, scale, cut } = landingOf(from, to);
-  const copy = copyOf(card);
+  // A card released from a drag starts its flight where the pointer left it, tilted about its
+  // centre as it was, so the hand-over to the copy does not jump.
+  const drag = pulled(card);
+  const cx = from.width / 2;
+  const cy = from.height / 2;
+  const copy = copyOf(card, from);
   card.style.visibility = 'hidden';
   const tilt = side === 'right' ? TILT : -TILT;
   const flight = copy.animate(
     [
       {
-        transform: 'translate(0px, 0px) scale(1) rotate(0deg)',
+        transform: `translate(${drag.x}px, 0px) translate(${cx}px, ${cy}px) rotate(${drag.tilt}deg) translate(${-cx}px, ${-cy}px)`,
         clipPath: `inset(0px 0px 0px 0px round ${RADIUS.card}px)`,
         opacity: 1,
       },

@@ -54,6 +54,10 @@
 }
 
 .triage-main {
+  /* The stage sits above the trays: a card dragged, swiped, snapped back or slid out over them is
+     never painted under them. */
+  position: relative;
+  z-index: var(--z-raised);
   display: grid;
   grid-column: 2;
   gap: 18px;
