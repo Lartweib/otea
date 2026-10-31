@@ -120,11 +120,13 @@ The items view is the **Split** composition: the sidebar, the list, the divider 
 | Column | Content |
 | --- | --- |
 | sidebar (13.75rem, from 64rem) | collections from `/api/collections`, plus "all items"; each shows what waits for you / what is still open (`railEntries` in `ui/src/workspace.ts`). Choosing one filters the list; the filter is local state. |
-| list | list head (the sidebar toggle, the collection name, `j k to move · f collections`), then the lanes list; 520px by default, 340–783px |
+| list | list head, then the lanes list. Until the viewer sets a width it takes 34% of the workspace, between 520 and 783px (`defaultListWidth`, tested), so a wide screen spreads its room instead of piling it up on the right; the viewer can set 340–783px |
 | divider | 9px: a 1px `--line` hairline that thickens to 2px with a grip under the pointer or on focus |
-| detail | the selected item, the intake form, or a hint: a reading column of 39rem (624px) centred in what is left, never under 440px |
+| detail | the selected item, the intake form, or a hint, anchored next to the divider with a 40px gutter, never under 440px. It stops at a 50rem (800px) reading measure, prose at 72ch; past that the screen keeps a plain right margin instead of a column floating in the middle |
 
-Below 48rem the workspace is the phone layout (see Phone). Routes: `#<id>` selects an item, `#/modules` opens the catalog, `#/triage` opens swipe triage.
+**List head.** One row on one baseline: the lane names (`ag`, `you`, mono 11) centred on their lanes at x=16 and x=40, the title starting where the row titles do (x=114, the grid's title column), and the key hint (`j k to move · f collections`, mono 12, muted) ending where the time does. View names are in sentence case (*All items*); a collection's name shows as written.
+
+Below 48rem the workspace is the phone layout (see Phone). Routes: `#<id>` selects an item, `#/modules` opens the catalog, `#/triage` opens triage.
 
 The detail is a **margin index**. The header holds the node, the id, the state pill and whose turn it is, with the type icon and its name at the end of the row (`epic`; a preset without types is named after itself), then the title (30/700) and the moves. Below it, each section is named in a 96px left margin (14/600) above a hairline, its content in the reading column beside it (above it on a phone or in a pane narrower than 34rem):
 
@@ -139,9 +141,9 @@ What the detail shows follows the item type's layout (`detailBlocks` in `ui/src/
 
 ### Divider and sidebar
 
-The divider (`Divider` in `ui/src/components/Split.tsx`, a `role="separator"` with `aria-valuemin`, `aria-valuemax` and `aria-valuenow`) resizes the list with pointer events. The list is 340–783px and the detail never goes under 440px (`clampListWidth`, `listMax` in `ui/src/split.ts`, tested). While it is dragged nothing animates: one CSS variable (`--list-w`) follows the pointer, frame by frame, without a render. Focused, the arrows move it 16px (64 with Shift) and Home and End jump to the limits. A double-click or Enter eases it back to 520px (base, `--list-w` is a registered property so it animates on the tokens). The width is kept per browser in `localStorage` (`otea.listWidth`); a browser that refuses storage starts from the default.
+The divider (`Divider` in `ui/src/components/Split.tsx`, a `role="separator"` with `aria-valuemin`, `aria-valuemax` and `aria-valuenow`) resizes the list with pointer events. The list is 340–783px and the detail never goes under 440px (`clampListWidth`, `listMax` in `ui/src/split.ts`, tested). While it is dragged nothing animates: one CSS variable (`--list-w`) follows the pointer, frame by frame, without a render. Focused, the arrows move it 16px (64 with Shift) and Home and End jump to the limits. A double-click or Enter eases it back to the default (the list's share of the room; base, `--list-w` is a registered property so it animates on the tokens) and forgets the viewer's width. The width is kept per browser in `localStorage` (`otea.listWidth`); a browser that refuses storage starts from the default.
 
-The collections sidebar (13.75rem, from 64rem) folds away with the button at the start of the list head or `f`, and is kept in `otea.sidebar`. The list keeps the width it was given, so folding never reflows a row: the sidebar slides out and fades, the list and divider slide over and the detail takes the freed room, the panes measured before and after and played back as a transform (FLIP, slow). State lives in React state and storage, not the hash: the split is a way of looking, not a place, so links and history keep pointing at items. The phone layout is untouched: no divider, and the collections stay a row of pills.
+The collections sidebar (13.75rem, from 64rem) has a header of its own: its label and a quiet button that folds it away. Its grid track carries 24px of air after it, so the first lane sits 40px clear of the sidebar's edge, and the air folds with it. Folded, the sidebar comes back from a button in the top bar, right after the brand, always in that spot; `f` folds and unfolds it from anywhere. The state is kept in `otea.sidebar`. The list keeps the width it was given, so folding never reflows a row: the sidebar slides out and fades, the list and divider slide over and the detail takes the freed room, the panes measured before and after and played back as a transform (FLIP, slow). State lives in React state and storage, not the hash: the split is a way of looking, not a place, so links and history keep pointing at items. The phone layout is untouched: no divider, and the collections stay a row of pills.
 
 ### Keys
 
@@ -268,20 +270,26 @@ Below 48rem the workspace is one column (`ui/src/styles/phone.css`), the phone t
 - **Unfold**: tapping a row opens its detail in place, under the row and beside the lanes (60px in, right of the branch sub-lane), which keep running through it (an unfolded row's block grows by the detail's height, and its node stays at the head: `node` in `layoutLanes`). There is no detail pane and no "select an item" card; the row is the header, so the detail drops its title. The rows below make room as the detail grows (slow) (the box follows its content as it loads), and the row is scrolled to the top. Tapping the row again, or Back, folds it (the hash goes back to the list); choosing another row moves the detail there at once. The moves sit in a bar sticky to the bottom of the screen while the detail is on it, the one primary among them. A move made there folds the item and the row carries itself home (the turn-change motion). A detail belongs to the row on the turn it had when it opened (`ui/src/unfold.ts`, tested): if the row changes hands it moves to another section, and the detail is dropped rather than reopened there; a tap opens it again.
 - **Intake** opens above the list.
 
-### Swipe triage
+### Triage
 
-`#/triage`, entered from a quiet **Triage** control at the end of the *Waiting for you* heading (only when something waits and the browser can act). It works on desktop too (one centred column), with the mouse.
+`#/triage`, entered from a quiet **Triage** control at the end of the *Waiting for you* heading (only when something waits and the browser can act). Triage is a mode of its own (`ui/src/components/Triage.tsx`, the Triage C board: one at a time), at a real size on every screen:
 
-One card per item on your turn, in list order, the next ones stacked behind (at most two). The rule lives in `ui/src/triage.ts` (tested):
+- **Head**: the way out (**List**, or Esc), what is left (`4 left on your turn`) with a tally (`2 decided · 1 for later`), and where the pass stands (`3 of 6`).
+- **Stage**: one card at a time, 760px wide (the width on a phone), at least `clamp(18rem, 40vh, 26rem)` tall. The card holds the item's tags and a link to open it, its title (26/700), the description as plain text (72ch) and the other fields in a 96px-label list, and at its foot where it stands (who holds it, its children, its relations, how long ago it changed). The next cards wait behind it as edges only (at most two), so nothing of them shows through.
+- **Moves**: back (`r`), later (`s`) and the primary move (`a`), each with its key; under them one mark per card of the pass (decided in ink, for later as a ring, the current one in your color).
+- **Trays** (from 80rem): what was sent back to agents on the left, what was otherwise decided on the right, each settling in as it is decided.
+- **Nothing to triage**: the stage keeps its size and says so (*Nothing waits for you*), with the way back. At the end of a pass the stage says *All caught up*, with what was decided and a way to see the ones left for later again.
+
+The rule lives in `ui/src/triage.ts` (tested):
 
 - **Right** is the primary move: the same one the primary button gets (`moveVariants`).
-- **Left** sends the item back: the first other move whose target state is an agent's turn (each move the API returns says the turn it hands the item to). If that move requires a reason, the swipe opens the reason form on the card and moves nothing; Confirm makes the move. A gesture never performs a move that requires a reason.
-- A direction with no move snaps back. Buttons below the card do the same as the swipes (back, Skip, primary), for accessibility and for the mouse.
+- **Left** sends the item back: the first other move whose target state is an agent's turn (each move the API returns says the turn it hands the item to). If that move requires a reason, the swipe (or `r`) opens the reason form on the card and moves nothing; Confirm makes the move, Esc cancels it. A gesture never performs a move that requires a reason.
+- A direction with no move snaps back.
 - A drag starts after 10px of mostly sideways motion (vertical motion scrolls the page: `touch-action: pan-y`). It commits past a third of the card's width (kept between 80 and 160px), or on a flick of at least 0.5px/ms over 40px in the same direction; otherwise the card settles back (slow). While it is dragged, the card tilts with the pull and a stamp names the move on the side it leans from; the cards behind rise with the pull.
-- A committed card leaves to its side (slow) while the move is posted; if the move fails it comes back with the error. The next card arrives from just behind.
-- The end of the stack lists what was decided and skipped, with a way back to the list and to see the skipped again. Back, or **List**, leaves triage.
+- Motion, on the tokens: the mode comes in rising 8px (base); a committed card leaves to its side (slow) while the move is posted, and if the move fails it comes back with the error; the next card rises from where it waited behind (slow, a transform only).
+- On a phone the head stacks, the card takes the width and the moves wait in a bar sticky to the bottom, in reach of a thumb; the keys are hidden.
 
-Reduced motion: the unfold is instant, the card does not travel while dragged, and cards crossfade.
+Reduced motion: the unfold is instant, the card does not travel while dragged, and cards and the mode crossfade (fast).
 
 ## Bans
 
