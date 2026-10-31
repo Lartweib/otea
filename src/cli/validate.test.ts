@@ -54,6 +54,15 @@ describe('validate', () => {
     expect(out).toContain('1 error, 0 warnings');
   });
 
+  it('reports an unknown type icon with the close matches', async () => {
+    repo.write('.otea/presets/notes/preset.yaml', `${NOTES(1)}icon: noet\n`);
+
+    const { code, out } = await otea('validate');
+
+    expect(code).toBe(10);
+    expect(out).toContain('error  preset notes  icon: unknown icon "noet" (did you mean note?)');
+  });
+
   it('prints the report with --json', async () => {
     repo.write('.otea/presets/tasks/preset.yaml', NOTES(1));
 
