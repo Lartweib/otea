@@ -5,6 +5,7 @@ import { claimItem } from '../app/leases.ts';
 import type { Project } from '../app/project.ts';
 import { REVIEWS } from '../app/testing.ts';
 import type { Actor } from '../core/item.ts';
+import { parsePreset } from '../core/preset.ts';
 import { createServer, type OteaServer } from './server.ts';
 import { memoryProject, request } from './testing.ts';
 
@@ -133,6 +134,40 @@ describe('api', () => {
       ]);
       withReviews.close();
       reviews.db.close();
+    });
+
+    it('sends the icon of each type that has one, and none for a type without', async () => {
+      const icons = parsePreset(`
+preset: icons
+preset_version: 1
+fields: { title: { module: text, required: create } }
+workflow:
+  initial: open
+  states: { open: { turn: human }, closed: { turn: none, closes: done } }
+  transitions: [{ from: open, to: closed, by: human }]
+types:
+  bug: { label: Bug, icon: bug }
+  note: { label: Note }
+`);
+      const withIcons = memoryProject(icons);
+      addCollection(withIcons, { name: 'mixed', preset: 'icons' });
+      const app = createServer(withIcons);
+      const typesOf = async (path: string, name: string) =>
+        (
+          (await (await request(app, path)).json()) as Array<{ name: string; types: object[] }>
+        ).find((each) => each.name === name)?.types;
+
+      for (const [path, name] of [
+        ['/api/presets', 'icons'],
+        ['/api/collections', 'mixed'],
+      ] as const) {
+        const [bug, note] = (await typesOf(path, name)) ?? [];
+        expect(bug).toMatchObject({ name: 'bug', label: 'Bug', icon: 'bug' });
+        expect(note).toMatchObject({ name: 'note', label: 'Note' });
+        expect(note).not.toHaveProperty('icon');
+      }
+      app.close();
+      withIcons.db.close();
     });
 
     it('is behind the host guard like every other route', async () => {

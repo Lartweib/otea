@@ -131,6 +131,8 @@ export type { Layout, LayoutEntry, LayoutSlot } from '../../src/core/modules.ts'
 export type TypeView = {
   name: string;
   label: string;
+  // The name of its icon in the UI catalog (ui/src/icons/); none when the preset gives it none.
+  icon?: string;
   initial: string;
   incomplete?: string;
   states: State[];
