@@ -139,6 +139,21 @@ The detail is a **margin index**. The header holds the node, the id, the state p
 
 What the detail shows follows the item type's layout (`detailBlocks` in `ui/src/item-types.ts`, tested). The evidence list (every attached file) sits at the first evidence module (`images`, `recording`, `diff`, `log`), or after the fields when the layout places none. Reserved modules draw nothing yet. Values whose field the type does not declare still show, as plain text, at the end of the body. A type without a layout draws as before layouts: every field in the body. The list row draws the `row` slot (a module's `rowColumn` puts it in the priority column or among the signals), and the create form asks for the `intake` slot's fields, with a **Type** select after the collection when the collection has several types.
 
+### The aside
+
+On a wide pane the detail becomes two columns (`detailForm` in `ui/src/detail-form.ts`, tested). From a detail pane of 1268px (40 gutter + 800 main + 48 gap + 340 aside + 40 gutter), the main column keeps the header (id, state, turn, type), the title, the moves, Brief, the evidence and Structure, and an **aside** beside it holds Details (collection, created by, updated, and any modules the preset's layout puts in the `side` slot) on top, then History, newest first. Below the threshold everything stacks as before. On a 2560 screen the default list leaves a 1516px pane, so the aside shows; on 1440 and 1920 it stacks unless the list is narrowed or the sidebar folded.
+
+| | Spec |
+| --- | --- |
+| Widths | Main 800 (prose 72ch). Aside 340–380px; past 380 the rest is right margin. The 48px gap holds a 1px `--line` rule at its middle. |
+| Alignment | The aside starts on the Brief's row, so Details' hairline continues the Brief's. In the aside the section names sit on top (14/600, History's count in mono beside it), and Details' terms narrow to 88px; stacked, they stay in the margin. |
+| Sticky | The aside sticks 16px under the top of the pane and is never taller than the room it has under its top (`asideHeight`, at least 240px), so a long history scrolls inside it and never lengthens the pane. It scrolls on its own; overscroll is contained. |
+| History | Mono time, the event wrapping under itself, who acted on a muted line below; one lane with today's dots (yours, an agent's, a relayed ring). |
+| When it switches | The pane is measured with a `ResizeObserver` (`ui/src/components/detail-aside.ts`). While the divider is dragged the layout follows the pointer and the form waits for the release; a sidebar fold (or a step of the divider from the keyboard) switches at once; a window resize switches after 150ms of quiet. |
+| Motion | Details and History travel from where they were (FLIP) on `--m-slow` with `--m-ease`, on one path of three legs (`travelPath`, tested): to the aside they go sideways first, out of the main column, and rise after; back, they drop first, then slide; they never cross the main column. Their content dips to 50% opacity while it re-flows. A pane that slides at the same time (a sidebar fold) carries them. Reduced motion: a 120ms crossfade. |
+
+The phone's unfolded detail is always one column.
+
 ### Divider and sidebar
 
 The divider (`Divider` in `ui/src/components/Split.tsx`, a `role="separator"` with `aria-valuemin`, `aria-valuemax` and `aria-valuenow`) resizes the list with pointer events. The list is 340–783px and the detail never goes under 440px (`clampListWidth`, `listMax` in `ui/src/split.ts`, tested). While it is dragged nothing animates: one CSS variable (`--list-w`) follows the pointer, frame by frame, without a render. Focused, the arrows move it 16px (64 with Shift) and Home and End jump to the limits. A double-click or Enter eases it back to the default (the list's share of the room; base, `--list-w` is a registered property so it animates on the tokens) and forgets the viewer's width. The width is kept per browser in `localStorage` (`otea.listWidth`); a browser that refuses storage starts from the default.
