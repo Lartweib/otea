@@ -192,31 +192,8 @@
   }
 }
 
-/* ---- narrow rows: what a phone keeps on a line ---- */
+/* ---- narrow: what a phone keeps on a line (rows follow the list's width, see list.css) ---- */
 @media (max-width: 30rem) {
-  /* A parent says how many are open; a child, its state. */
-  .row-progress-of,
-  .row[data-depth] .row-id {
-    display: none;
-  }
-
-  .row-meta,
-  .row-progress {
-    gap: 6px;
-  }
-
-  .row-id::after {
-    margin-left: 6px;
-  }
-
-  .row-progress {
-    padding-left: 8px;
-  }
-
-  .row-progress .child-bar {
-    width: 24px;
-  }
-
   /* Children and relations drop the id: node, icon, title and state. */
   .rel-link {
     grid-template-columns: 20px minmax(0, 1fr) auto;

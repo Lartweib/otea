@@ -61,7 +61,7 @@
   display: flex;
   align-items: center;
   min-width: 0;
-  transition: opacity var(--micro);
+  transition: opacity var(--m-fast) var(--m-ease);
 }
 
 .rel-row[data-removing] {
@@ -84,7 +84,7 @@
   color: var(--ink);
   font-size: 14px;
   text-decoration: none;
-  transition: background-color var(--micro);
+  transition: background-color var(--m-fast) var(--m-ease);
 }
 
 .rel-link:hover,
@@ -157,9 +157,9 @@
   cursor: pointer;
   opacity: 0;
   transition:
-    opacity var(--micro),
-    background-color var(--micro),
-    color var(--micro);
+    opacity var(--m-fast) var(--m-ease),
+    background-color var(--m-fast) var(--m-ease),
+    color var(--m-fast) var(--m-ease);
 }
 
 .rel-remove .icon {
@@ -203,8 +203,8 @@
   font-size: 13px;
   cursor: pointer;
   transition:
-    background-color var(--micro),
-    color var(--micro);
+    background-color var(--m-fast) var(--m-ease),
+    color var(--m-fast) var(--m-ease);
 }
 
 .sub-head .rel-add {
@@ -233,7 +233,7 @@
   padding: 10px;
   border-radius: var(--r-m);
   background: var(--well);
-  animation: link-in var(--arrive) var(--e-out) both;
+  animation: link-in var(--m-base) var(--m-ease) both;
 }
 
 .link-form-row {
@@ -371,58 +371,6 @@
   background: var(--ink);
 }
 
-/* ---- list: folding the children nested under a parent ---- */
-.rows > li[data-folds] .row-line {
-  padding-right: 32px;
-}
-
-.row-fold {
-  position: absolute;
-  top: calc(var(--node-y) - 14px);
-  right: 8px;
-  z-index: 2;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
-  min-width: 28px;
-  height: 28px;
-  padding: 0 4px;
-  border: 0;
-  border-radius: 999px;
-  background: transparent;
-  color: var(--mut);
-  font: 500 11px var(--font-machine);
-  cursor: pointer;
-  transition:
-    background-color var(--micro),
-    color var(--micro);
-}
-
-.row[data-depth] + .row-fold {
-  top: calc((var(--child-h) - 28px) / 2);
-}
-
-.row-fold .icon {
-  width: 14px;
-  height: 14px;
-  transition: rotate var(--micro) var(--e-out);
-}
-
-.row-fold[data-folded] .icon {
-  rotate: -90deg;
-}
-
-.row-fold:hover {
-  background: var(--hov);
-  color: var(--ink);
-}
-
-.row-fold:focus-visible {
-  outline: 2px solid var(--you);
-  outline-offset: -2px;
-}
-
 /* ---- a move that waits for open children: disabled, with why beside it ---- */
 .move-blocked {
   display: inline-flex;
@@ -467,13 +415,11 @@
   .rel-link,
   .rel-remove,
   .rel-add,
-  .link-result,
-  .row-fold,
-  .row-fold .icon {
+  .link-result {
     transition-duration: 1ms;
   }
 
   .link-form {
-    animation: none;
+    animation: ot-fade var(--m-fast) both;
   }
 }

@@ -30,6 +30,8 @@ export type FieldModuleUi = {
   origin: ModuleOrigin;
   // In a list row, after the title. Absent: the module stays out of the row.
   Row?: (props: ShowProps) => ReactNode;
+  // Where the row puts it: among the signals of line two (the default), or in the priority column.
+  rowColumn?: 'signals' | 'priority';
   // In the item detail.
   Detail: (props: ShowProps) => ReactNode;
   // In intake: the control that writes the value.

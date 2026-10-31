@@ -40,6 +40,7 @@ export const severityModule: FieldModuleUi = {
   summary: 'How bad it is, on a fixed scale of four levels drawn as signal bars.',
   origin: 'official',
   Row: RowValue,
+  rowColumn: 'priority',
   Detail: Value,
   Edit: Select,
   samples: [
