@@ -1,14 +1,7 @@
-import {
-  type PointerEvent,
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-} from 'react';
+import { type PointerEvent, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { fetchItem, moveItem } from '../api.ts';
 import { ageLabel } from '../format.ts';
-import { type Connection, useActiveLease, useRemote } from '../hooks.ts';
+import { useActiveLease } from '../hooks.ts';
 import { showsTypes, typeOf } from '../item-types.ts';
 import { keyTargetOf } from '../keys.ts';
 import { Button, Icon, Kbd, NODE_LABEL, Node, Pill, TypeTag } from '../kit/index.ts';
@@ -30,6 +23,7 @@ import {
 } from '../triage.ts';
 import type { Item, Move, Turn } from '../types.ts';
 import type { CollectionOf } from './ItemList.tsx';
+import { type Exit, type Flight, leaveStage } from './triage-flight.ts';
 
 // What happened to a card: moved to a state (handing the turn to `turn`), or skipped (to is
 // undefined).
@@ -42,7 +36,6 @@ type TriageProps = {
   loading?: boolean;
   collectionOf: CollectionOf;
   version: number;
-  connection: Connection;
   onExit: () => void;
 };
 
@@ -51,31 +44,6 @@ const SLIDE = { duration: MOTION.slow, easing: MOTION.ease };
 
 // The field that leads a card as plain text, as it leads the detail.
 const LEAD = 'description';
-
-// Where a card goes when it leaves: off to the side it was swiped to, or down a little when skipped.
-type Exit = Direction | 'skip';
-
-function leave(card: HTMLElement, exit: Exit): Animation {
-  const from = card.style.transform || 'none';
-  if (reducedMotion()) {
-    return card.animate([{ opacity: 1 }, { opacity: 0 }], {
-      duration: MOTION.fast,
-      fill: 'forwards',
-    });
-  }
-  const side = exit === 'right' ? 1 : -1;
-  const to =
-    exit === 'skip'
-      ? 'translateY(24px) scale(0.97)'
-      : `translateX(${side * (card.offsetWidth + 96)}px) rotate(${side * 8}deg)`;
-  return card.animate(
-    [
-      { transform: from, opacity: 1 },
-      { transform: to, opacity: 0 },
-    ],
-    { ...SLIDE, fill: 'forwards' },
-  );
-}
 
 // The pull of a drag, 0 to 1, read by the card's stamps and the cards behind it.
 function pull(card: HTMLElement, progress: number, lean?: Direction) {
@@ -128,11 +96,17 @@ function CardStanding({ item }: { item: Item }) {
   return <p className="tcard-standing t-cap">{facts.join(' · ')}</p>;
 }
 
-// The card waiting behind the top one: its edge and title only, so nothing of it shows through.
-function NextCard({ item }: { item: Item }) {
+// The card waiting behind the top one, already complete: when the top one leaves, this is what is
+// seen rising, never an empty frame. Hidden from assistive tech and the keyboard until its turn.
+function NextCard({ item, collectionOf }: { item: Item; collectionOf: CollectionOf }) {
   return (
-    <div className="tcard tcard-next" aria-hidden="true">
-      <p className="tcard-next-title">{item.title}</p>
+    <div className="tcard raised tcard-next" aria-hidden="true" inert>
+      <div className="tcard-head">
+        <CardTags item={item} collectionOf={collectionOf} />
+      </div>
+      <p className="tcard-title">{item.title}</p>
+      <CardBody item={item} collectionOf={collectionOf} />
+      <CardStanding item={item} />
     </div>
   );
 }
@@ -185,29 +159,28 @@ type CardStep =
   | { step: 'explaining'; move: Move; reason: string; error?: string }
   | { step: 'posting' };
 
+// A card on its way out: what was decided, the move being posted, and how to bring the card back
+// if the move fails. The mode flies it to where it goes (see triage-flight.ts).
+type Leaving = {
+  element: HTMLElement;
+  exit: Exit;
+  decision: Decision;
+  moved: Promise<unknown>;
+  restore: (message: string) => void;
+};
+
 type CardProps = {
   item: Item;
   collectionOf: CollectionOf;
   plan: TriagePlan | undefined;
-  // The card holds on to its item from the first move until it has left, whatever the list says.
-  onCommit: () => void;
-  onLeft: (decision: Decision) => void;
-  onFailed: () => void;
+  // The mode holds on to the card's item from the first move until it has left.
+  onLeave: (leaving: Leaving) => void;
   // How many cards wait behind this one (drawn as a stack, at most two), and the first of them.
   behind: number;
   next: Item | undefined;
 };
 
-function TriageCard({
-  item,
-  collectionOf,
-  plan,
-  onCommit,
-  onLeft,
-  onFailed,
-  behind,
-  next,
-}: CardProps) {
+function TriageCard({ item, collectionOf, plan, onLeave, behind, next }: CardProps) {
   const card = useRef<HTMLElement>(null);
   const drag = useRef<Drag | null>(null);
   const [state, setState] = useState<CardStep>({ step: 'idle' });
@@ -227,32 +200,25 @@ function TriageCard({
 
   const commit = (exit: Exit, move: Move | undefined, reason = '') => {
     const element = card.current;
-    if (!element) return;
-    onCommit();
+    if (!element || state.step === 'posting') return;
     setState({ step: 'posting' });
-    const gone = leave(element, exit).finished;
-    const moved = move === undefined ? Promise.resolve() : moveItem(item.id, move.to, reason);
-    moved.then(
-      () =>
-        gone.then(() =>
-          onLeft(
-            move === undefined
-              ? { id: item.id, title: item.title }
-              : { id: item.id, title: item.title, to: move.to, turn: move.turn },
-          ),
-        ),
-      (error: unknown) => {
-        for (const animation of element.getAnimations()) animation.cancel();
+    onLeave({
+      element,
+      exit,
+      decision:
+        move === undefined
+          ? { id: item.id, title: item.title }
+          : { id: item.id, title: item.title, to: move.to, turn: move.turn },
+      moved: move === undefined ? Promise.resolve() : moveItem(item.id, move.to, reason),
+      restore: (message) => {
         settle(element);
-        onFailed();
-        const message = error instanceof Error ? error.message : 'Failed';
         setState(
           reason === '' || move === undefined
             ? { step: 'idle', error: message }
             : { step: 'explaining', move, reason, error: message },
         );
       },
-    );
+    });
   };
 
   const act = (direction: Direction) => {
@@ -358,7 +324,7 @@ function TriageCard({
   return (
     <>
       <div className="triage-stack" data-behind={Math.min(2, behind)}>
-        {next ? <NextCard item={next} /> : null}
+        {next ? <NextCard item={next} collectionOf={collectionOf} /> : null}
         <article
           ref={card}
           className="tcard raised"
@@ -482,29 +448,42 @@ function TriageCard({
   );
 }
 
-// The moves of the card on top, read from the server.
-function useMoves(id: string, version: number, connection: Connection): TriagePlan | undefined {
-  const load = useCallback((signal: AbortSignal) => fetchItem(id, signal), [id]);
-  const view = useRemote(load, version, connection);
-  if (view.status !== 'ready' || !view.value) return undefined;
-  return triagePlan(view.value.transitions, view.value.children);
-}
-
-type TopCardProps = Omit<CardProps, 'plan'> & { version: number; connection: Connection };
-
-function TopCard({ version, connection, ...rest }: TopCardProps) {
-  return <TriageCard plan={useMoves(rest.item.id, version, connection)} {...rest} />;
+// The moves of the card on top and of the one behind it, read from the server ahead of time, so a
+// card rises with its moves ready. Read again whenever the live stream says something changed.
+function usePlans(ids: readonly string[], version: number): ReadonlyMap<string, TriagePlan> {
+  const [plans, setPlans] = useState<ReadonlyMap<string, TriagePlan>>(new Map());
+  const key = ids.join(' ');
+  // biome-ignore lint/correctness/useExhaustiveDependencies: version asks for a fresh read
+  useEffect(() => {
+    const controller = new AbortController();
+    for (const id of key.split(' ').filter(Boolean)) {
+      fetchItem(id, controller.signal).then(
+        (view) => {
+          if (!view) return;
+          const plan = triagePlan(view.transitions, view.children);
+          setPlans((known) => new Map(known).set(id, plan));
+        },
+        () => undefined,
+      );
+    }
+    return () => controller.abort();
+  }, [key, version]);
+  return plans;
 }
 
 // What this pass decided, on one side of the stage: handed back to agents, or settled otherwise.
+// landing: the id of a decision whose card is still flying here; its entry is laid out (so the card
+// can land on it) but unseen until the card hands over to it.
 function Tray({
   label,
   decisions,
   empty,
+  landing,
 }: {
   label: string;
   decisions: Decision[];
   empty: string;
+  landing?: string | undefined;
 }) {
   return (
     <aside className="triage-tray" aria-label={label}>
@@ -514,7 +493,11 @@ function Tray({
       ) : (
         <ul>
           {[...decisions].reverse().map((decision) => (
-            <li key={decision.id} className="triage-tray-row">
+            <li
+              key={decision.id}
+              className="triage-tray-row"
+              data-landing={decision.id === landing ? decision.id : undefined}
+            >
               <span className="t-id">{decision.id}</span>
               <span className="triage-tray-title">{decision.title}</span>
               <span className="t-cap">moved to {decision.to}</span>
@@ -587,14 +570,7 @@ function End({
 // Triage: what waits for you, one card at a time, as a mode of its own. The card fills the stage;
 // right (a) is the primary move, left (r) sends it back, s leaves it for later, Esc leaves.
 // What was decided settles in the trays beside the stage: back with agents, or decided otherwise.
-export function Triage({
-  waiting,
-  loading = false,
-  collectionOf,
-  version,
-  connection,
-  onExit,
-}: TriageProps) {
+export function Triage({ waiting, loading = false, collectionOf, version, onExit }: TriageProps) {
   const [seen, setSeen] = useState<ReadonlySet<string>>(new Set());
   const [log, setLog] = useState<Decision[]>([]);
   // The card in play: kept while it leaves, even once the list no longer has it waiting.
@@ -602,6 +578,9 @@ export function Triage({
   // Every card of this pass, in the order met: what was decided, then what still waits.
   const [met, setMet] = useState<string[]>([]);
   const root = useRef<HTMLElement>(null);
+  // The card leaving now, and its flight.
+  const [leaving, setLeaving] = useState<Leaving>();
+  const flight = useRef<Flight | undefined>(undefined);
   const queue = queueOf(
     waiting.map((item) => item.id),
     seen,
@@ -610,6 +589,10 @@ export function Triage({
   const remaining = held && !queue.includes(held.id) ? queue.length + 1 : queue.length;
   const nextId = queue.find((id) => id !== top?.id);
   const next = waiting.find((item) => item.id === nextId);
+  const plans = usePlans(
+    [top?.id, next?.id].filter((id): id is string => id !== undefined),
+    version,
+  );
   const ids = [...new Set([...met, ...log.map(({ id }) => id), ...queue])];
   if (ids.length !== met.length || ids.some((id, at) => met[at] !== id)) setMet(ids);
   const decide = (decision: Decision) => {
@@ -638,6 +621,39 @@ export function Triage({
     );
   }, []);
 
+  // A card leaves once its tray has laid out the entry it lands on: the flight and the move run
+  // together, and the decision is kept when both are done. A move that fails brings the card back.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: each leaving card flies once
+  useLayoutEffect(() => {
+    if (!leaving) return;
+    const { element, exit, decision, moved, restore } = leaving;
+    const slot =
+      decision.to === undefined
+        ? null
+        : (root.current?.querySelector<HTMLElement>(
+            `[data-landing="${CSS.escape(decision.id)}"]`,
+          ) ?? null);
+    const side = decision.turn === 'agent' ? 'left' : 'right';
+    const current = leaveStage(element, exit === 'skip' ? 'skip' : side, slot);
+    flight.current = current;
+    Promise.all([current.done, moved]).then(
+      () => {
+        flight.current = undefined;
+        setLeaving(undefined);
+        decide(decision);
+      },
+      (error: unknown) => {
+        current.cancel();
+        flight.current = undefined;
+        setLeaving(undefined);
+        setHeld(undefined);
+        restore(error instanceof Error ? error.message : 'Failed');
+      },
+    );
+  }, [leaving]);
+
+  useEffect(() => () => flight.current?.cancel(), []);
+
   // Esc leaves triage (a reason being written takes its own Esc first).
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -650,8 +666,11 @@ export function Triage({
   }, [onExit]);
 
   const decided = log.filter((decision) => decision.to !== undefined);
-  const backed = decided.filter((decision) => decision.turn === 'agent');
-  const settled = decided.filter((decision) => decision.turn !== 'agent');
+  // The entry a flying card lands on is in its tray from the start of the flight.
+  const landing = leaving?.decision.to !== undefined ? leaving.decision : undefined;
+  const trayed = landing ? [...decided, landing] : decided;
+  const backed = trayed.filter((decision) => decision.turn === 'agent');
+  const settled = trayed.filter((decision) => decision.turn !== 'agent');
   // A pass is on once there is something to triage (or something was): the trays show then.
   const pass = !loading && (waiting.length > 0 || log.length > 0);
   const position = log.length + 1;
@@ -688,21 +707,22 @@ export function Triage({
             label="back with agents"
             decisions={backed}
             empty="What you send back lands here, on its way to the agent lane."
+            landing={landing?.id}
           />
         ) : null}
         <div className="triage-main">
           {loading ? (
             <p className="t-small triage-loading">Loading…</p>
           ) : top ? (
-            <TopCard
+            <TriageCard
               key={top.id}
               item={top}
               collectionOf={collectionOf}
-              version={version}
-              connection={connection}
-              onCommit={() => setHeld(top)}
-              onLeft={decide}
-              onFailed={() => setHeld(undefined)}
+              plan={plans.get(top.id)}
+              onLeave={(card) => {
+                setHeld(top);
+                setLeaving(card);
+              }}
               behind={remaining - 1}
               next={next}
             />
@@ -718,6 +738,7 @@ export function Triage({
             label="decided"
             decisions={settled}
             empty="What you move on settles here until you leave."
+            landing={landing?.id}
           />
         ) : null}
       </div>

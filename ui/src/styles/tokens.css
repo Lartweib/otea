@@ -38,6 +38,13 @@
   --travel: 680ms;
   --e-move: cubic-bezier(0.65, 0, 0.35, 1);
 
+  /* Stacking, by what a layer is for: raised above its neighbours, stuck to an edge, a tooltip,
+     something in flight across the page (above everything while it moves). */
+  --z-raised: 1;
+  --z-sticky: 2;
+  --z-tooltip: 5;
+  --z-flight: 20;
+
   --r-s: 4px;
   --r-m: 8px;
   --r-l: 12px;

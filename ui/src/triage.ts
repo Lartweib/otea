@@ -85,3 +85,21 @@ export function dragProgress(dx: number, width: number): number {
 export function queueOf(waiting: readonly string[], seen: ReadonlySet<string>): string[] {
   return waiting.filter((id) => !seen.has(id));
 }
+
+// A box on screen (getBoundingClientRect).
+export type Box = { left: number; top: number; width: number; height: number };
+
+// How a decided card lands in its tray entry: moved onto the slot's corner and scaled to its width,
+// its overflow cut from the bottom so what is left has the slot's height. dx and dy move the card's
+// top-left corner; cut is in the card's own (unscaled) pixels.
+export type Landing = { dx: number; dy: number; scale: number; cut: number };
+
+export function landingOf(card: Box, slot: Box): Landing {
+  const scale = card.width > 0 ? slot.width / card.width : 1;
+  return {
+    dx: slot.left - card.left,
+    dy: slot.top - card.top,
+    scale,
+    cut: Math.max(0, card.height - slot.height / scale),
+  };
+}
