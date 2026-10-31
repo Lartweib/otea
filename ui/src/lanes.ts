@@ -1,3 +1,4 @@
+import { GRID, slotCentre, slotLeft } from './row-grid.ts';
 import type { Turn } from './types.ts';
 
 // Lane geometry of the list gutter (56px wide): agent lane left, your lane right, closed items on the trunk.
@@ -51,44 +52,82 @@ export function layoutLanes(blocks: readonly Block[]): LaneLayout {
   };
 }
 
-// Branches: a parent's children hang from it in a quiet tree inside the content column, off the
-// lanes: the lanes mean turn, the branch means hierarchy, and the two never touch. The branch starts
-// 6px below the parent's type icon, on the icon's centre, drops straight down and turns into each
-// child with the elbow, its leg on the child's icon centre, ending 8px before the icon. It is drawn
-// the same for a parent on either lane. Geometry shared with list.css: row content starts at x=68,
-// steps 28px a level, and its icon is 16px (14px for a child) centred on the row's node line.
-export const BRANCH = { content: 68, step: 28, elbow: 8, gap: 8, below: 6 } as const;
+// Branches: a parent's children hang from it in a quiet tree, off the lanes: the lanes mean turn,
+// the branch means hierarchy, and the two never touch. The branch leaves from the parent's type slot
+// (its centre, 3px under the slot, icon or not), drops straight down and turns into each child with
+// an 8px elbow, stopping 4px before the child's slot. Lines live in their rows: each row draws its
+// own piece, so a row that moves carries its piece with it.
+export const BRANCH = { below: 3, elbow: 8, gap: 4 } as const;
 
-const iconSize = (depth: number) => (depth === 0 ? 16 : 14);
+// A row as the branch sees it: how deep it nests, its height and how far down its title line sits,
+// and whether its children are shown right under it.
+export type TreeRow = { depth: number; height: number; node: number; opens: boolean };
 
-// Where a row's icon starts, at its depth.
-export function iconX(depth: number): number {
-  return BRANCH.content + depth * BRANCH.step;
+// A piece of the branch inside one row, in the row's own coordinates. level: the depth of the parent
+// it hangs from. y0..y1: the span the line's head covers while it draws this piece (tree draw).
+export type BranchPiece = {
+  kind: 'leg' | 'elbow' | 'stub';
+  level: number;
+  y0: number;
+  y1: number;
+  d: string;
+};
+
+// The head of the tree draw covers 20px of travel while it draws an elbow.
+const ELBOW_TRAVEL = 20;
+
+// For each row (in list order, depth stepping by one), whether it is the last child of its parent.
+function lastChildren(rows: readonly TreeRow[]): boolean[] {
+  return rows.map((row, index) => {
+    for (const next of rows.slice(index + 1)) {
+      if (next.depth < row.depth) return true;
+      if (next.depth === row.depth) return false;
+    }
+    return true;
+  });
 }
 
-// A row as the branches see it: where it sits, how far down its icon centre is, and how deep it
-// nests.
-export type BranchRow = { top: number; height: number; node: number; depth: number };
-
-export function layoutBranches(rows: readonly BranchRow[]): string[] {
-  const branches: string[] = [];
-  rows.forEach((parent, index) => {
-    const children: BranchRow[] = [];
-    for (const row of rows.slice(index + 1)) {
-      if (row.depth <= parent.depth) break;
-      if (row.depth === parent.depth + 1) children.push(row);
+export function branchPieces(rows: readonly TreeRow[]): BranchPiece[][] {
+  const last = lastChildren(rows);
+  // The row at each depth on the way down to the current one.
+  const chain: number[] = [];
+  return rows.map((row, index) => {
+    const { depth, height, node } = row;
+    chain[depth] = index;
+    chain.length = depth + 1;
+    const pieces: BranchPiece[] = [];
+    if (depth > 0) {
+      // An ancestor's branch runs on past this row while that ancestor has siblings still to come.
+      for (let level = 0; level < depth - 1; level++) {
+        const ancestor = chain[level + 1];
+        if (ancestor !== undefined && !last[ancestor]) {
+          const x = slotCentre(level);
+          pieces.push({ kind: 'leg', level, y0: 0, y1: height, d: `M${x} 0 V${height}` });
+        }
+      }
+      const x = slotCentre(depth - 1);
+      const bend = node - BRANCH.elbow;
+      const end = last[index] ? bend : height;
+      pieces.push({ kind: 'leg', level: depth - 1, y0: 0, y1: end, d: `M${x} 0 V${end}` });
+      pieces.push({
+        kind: 'elbow',
+        level: depth - 1,
+        y0: bend,
+        y1: bend + ELBOW_TRAVEL,
+        d: `M${x} ${bend} Q${x} ${node} ${x + BRANCH.elbow} ${node} H${slotLeft(depth) - BRANCH.gap}`,
+      });
     }
-    if (children.length === 0) return;
-    const size = iconSize(parent.depth);
-    const x = iconX(parent.depth) + size / 2;
-    let d = `M${x} ${parent.top + parent.node + size / 2 + BRANCH.below}`;
-    children.forEach((child, at) => {
-      const y = child.top + child.node;
-      const bend = y - BRANCH.elbow;
-      d += ` V${bend} Q${x} ${y} ${x + BRANCH.elbow} ${y} H${iconX(child.depth) - BRANCH.gap}`;
-      if (at < children.length - 1) d += ` M${x} ${bend}`;
-    });
-    branches.push(d);
+    if (row.opens) {
+      const x = slotCentre(depth);
+      const from = node + GRID.slot / 2 + BRANCH.below;
+      pieces.push({
+        kind: 'stub',
+        level: depth,
+        y0: from,
+        y1: height,
+        d: `M${x} ${from} V${height}`,
+      });
+    }
+    return pieces;
   });
-  return branches;
 }

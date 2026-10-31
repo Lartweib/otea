@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { iconX, LANE, laneX, layoutBranches, layoutLanes } from './lanes.ts';
+import { branchPieces, LANE, laneX, layoutLanes } from './lanes.ts';
 
 describe('laneX', () => {
   it('puts your turn on the right lane, agents on the left and closed items on the trunk', () => {
@@ -105,36 +105,58 @@ describe('layoutLanes with closed rows between the lanes', () => {
   });
 });
 
-describe('layoutBranches', () => {
-  const parent = { top: 0, height: 66, node: 24, depth: 0 };
-  const child = (top: number) => ({ top, height: 44, node: 22, depth: 1 });
+describe('branchPieces', () => {
+  const top = (opens = false) => ({ depth: 0, height: 62, node: 21, opens });
+  const child = (depth: number, opens = false) => ({ depth, height: 54, node: 18, opens });
 
-  it('starts 6px below the parent icon, on its centre, and turns into each child at its icon centre', () => {
-    const [branch] = layoutBranches([parent, child(66), child(110)]);
+  it('leaves from the parent type slot centre, 3px under the slot', () => {
+    const [parent] = branchPieces([top(true), child(1)]);
 
-    // icon 68..84 centred at y=24: x=76, from 24 + 8 + 6; legs on y=88 and y=132, ending 8px before
-    // the child icon at 96.
-    expect(branch).toBe('M76 38 V80 Q76 88 84 88 H88 M76 80 V124 Q76 132 84 132 H88');
+    // slot 84..104 centred at x=94 on y=21: its bottom is 31, the stub starts at 34.
+    expect(parent).toEqual([{ kind: 'stub', level: 0, y0: 34, y1: 62, d: 'M94 34 V62' }]);
   });
 
-  it('stays in the content column, clear of the lanes (x <= 40)', () => {
-    const [branch] = layoutBranches([parent, child(66)]);
-    const xs = [...(branch ?? '').matchAll(/[MQH](\d+)/g)].map((match) => Number(match[1]));
+  it('turns into each child with an elbow that stops 4px before its slot', () => {
+    const [, first, second] = branchPieces([top(true), child(1), child(1)]);
 
-    expect(Math.min(...xs)).toBeGreaterThan(40 + 8);
-    expect(iconX(1) - Math.max(...xs)).toBe(8);
+    expect(first).toEqual([
+      { kind: 'leg', level: 0, y0: 0, y1: 54, d: 'M94 0 V54' },
+      { kind: 'elbow', level: 0, y0: 10, y1: 30, d: 'M94 10 Q94 18 102 18 H108' },
+    ]);
+    // the last child ends the leg where its elbow starts
+    expect(second?.[0]).toEqual({ kind: 'leg', level: 0, y0: 0, y1: 10, d: 'M94 0 V10' });
   });
 
-  it('hangs a deeper level from its own parent icon, one step right', () => {
-    const grandchild = { top: 110, height: 44, node: 22, depth: 2 };
+  it('runs an ancestor branch past a nested block while the ancestor has siblings to come', () => {
+    const pieces = branchPieces([top(true), child(1, true), child(2), child(2), child(1)]);
 
-    const branches = layoutBranches([parent, child(66), grandchild]);
-
-    expect(branches).toHaveLength(2);
-    expect(branches[1]).toBe('M103 101 V124 Q103 132 111 132 H116');
+    // the grandchildren carry the level-0 leg on to the last child, and hang from x=122
+    expect(pieces[2]?.map((piece) => piece.d)).toEqual([
+      'M94 0 V54',
+      'M122 0 V54',
+      'M122 10 Q122 18 130 18 H136',
+    ]);
+    expect(pieces[3]?.map((piece) => piece.d)).toEqual([
+      'M94 0 V54',
+      'M122 0 V10',
+      'M122 10 Q122 18 130 18 H136',
+    ]);
+    expect(pieces[1]?.at(-1)).toEqual({
+      kind: 'stub',
+      level: 1,
+      y0: 31,
+      y1: 54,
+      d: 'M122 31 V54',
+    });
   });
 
-  it('draws nothing without children', () => {
-    expect(layoutBranches([parent, { ...parent, top: 66 }])).toEqual([]);
+  it('stops an ancestor branch after its last child', () => {
+    const pieces = branchPieces([top(true), child(1), child(1, true), child(2)]);
+
+    expect(pieces[3]?.map((piece) => piece.level)).toEqual([1, 1]);
+  });
+
+  it('draws nothing for a row with no parent and no children shown', () => {
+    expect(branchPieces([top(), top()])).toEqual([[], []]);
   });
 });
