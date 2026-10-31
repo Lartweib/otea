@@ -7,33 +7,27 @@ type CollectionRailProps = {
   openTotal: number;
   selected: string | undefined;
   onSelect: (collection: string | undefined) => void;
+  // Folded to its strip: only the toggle stays.
   hidden: boolean;
-  // Folds the sidebar away, from its own header.
+  // Folds the sidebar to its strip or opens it, from its own header.
   onToggle?: () => void;
 };
 
-// Folds the collections sidebar away, or brings it back: the list keeps its width and the detail
-// takes the room.
-export function SidebarToggle({
-  shown,
-  onToggle,
-  className = '',
-}: {
-  shown: boolean;
-  onToggle: () => void;
-  className?: string;
-}) {
-  const tip = shown ? 'Hide collections · f' : 'Show collections · f';
+// Folds the collections sidebar to a strip that holds only this button, or opens it again. The
+// button leads the sidebar's header and never moves: the list keeps its width and slides over, and
+// the detail takes the room.
+function SidebarToggle({ shown, onToggle }: { shown: boolean; onToggle: () => void }) {
+  const label = shown ? 'Hide collections' : 'Show collections';
   return (
     <Button
       variant="quiet"
       size="sm"
       icon
-      className={`sidebar-toggle tip ${className}`.trim()}
-      data-tip={tip}
-      aria-label={tip}
+      className="sidebar-toggle tip"
+      data-tip={`${label} · f`}
+      aria-label={label}
       aria-expanded={shown}
-      aria-controls="collections"
+      aria-controls="collection-list"
       aria-keyshortcuts="f"
       onClick={onToggle}
     >
@@ -64,32 +58,36 @@ export function CollectionRail({
   onToggle,
 }: CollectionRailProps) {
   return (
-    <nav id="collections" className="rail" aria-label="Collections" inert={hidden}>
+    <nav id="collections" className="rail" aria-label="Collections">
       <div className="rail-head">
-        <span className="t-label rail-label">collections</span>
-        {onToggle ? <SidebarToggle shown onToggle={onToggle} /> : null}
+        {onToggle ? <SidebarToggle shown={!hidden} onToggle={onToggle} /> : null}
+        <span className="t-label rail-label" inert={hidden}>
+          collections
+        </span>
       </div>
-      <button
-        type="button"
-        className="rail-entry"
-        aria-pressed={selected === undefined}
-        onClick={() => onSelect(undefined)}
-      >
-        <span>All items</span>
-        <Count yours={yoursTotal} open={openTotal} />
-      </button>
-      {entries.map((entry) => (
+      <div id="collection-list" className="rail-entries" inert={hidden}>
         <button
-          key={entry.name}
           type="button"
           className="rail-entry"
-          aria-pressed={selected === entry.name}
-          onClick={() => onSelect(entry.name)}
+          aria-pressed={selected === undefined}
+          onClick={() => onSelect(undefined)}
         >
-          <span className="rail-name">{entry.name}</span>
-          <Count yours={entry.yours} open={entry.open} />
+          <span>All items</span>
+          <Count yours={yoursTotal} open={openTotal} />
         </button>
-      ))}
+        {entries.map((entry) => (
+          <button
+            key={entry.name}
+            type="button"
+            className="rail-entry"
+            aria-pressed={selected === entry.name}
+            onClick={() => onSelect(entry.name)}
+          >
+            <span className="rail-name">{entry.name}</span>
+            <Count yours={entry.yours} open={entry.open} />
+          </button>
+        ))}
+      </div>
     </nav>
   );
 }

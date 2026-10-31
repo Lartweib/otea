@@ -1,7 +1,7 @@
 import { type ReactNode, useCallback, useEffect, useState } from 'react';
 import { fetchCollections, fetchItem, fetchItems, fetchPresets, fetchSession } from './api.ts';
 import { catalogEntries } from './catalog.ts';
-import { CollectionRail, SidebarToggle } from './components/CollectionRail.tsx';
+import { CollectionRail } from './components/CollectionRail.tsx';
 import { ConnectionBadge } from './components/ConnectionBadge.tsx';
 import { ItemDetail } from './components/ItemDetail.tsx';
 import {
@@ -347,10 +347,6 @@ export function App() {
     <div className="app">
       <header className="topbar">
         <Brand />
-        {route.view === 'items' && !split.sidebar && !phone ? (
-          // Folded, the sidebar comes back from the same spot every time: next to the brand.
-          <SidebarToggle shown={false} onToggle={split.toggleSidebar} className="topbar-sidebar" />
-        ) : null}
         <div className="topbar-actions">
           <ConnectionBadge connection={connection} />
           <a
