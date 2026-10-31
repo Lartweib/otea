@@ -15,7 +15,7 @@ import {
   type RelationRef,
   viewOf,
 } from '../core/relations.ts';
-import { type Closing, closeRequirementOf, type Turn, type Workflow } from '../core/workflow.ts';
+import { type Closing, requirementOf, type Turn, type Workflow } from '../core/workflow.ts';
 import { transaction } from '../store/database.ts';
 import {
   appendEvent,
@@ -159,7 +159,8 @@ export function childrenOf(ctx: Context, id: string, at: string): Item[] {
   );
 }
 
-// A move into a state that declares close_requires: children_closed waits for every child.
+// A move into a state that declares requires: children_closed waits for every child, whatever the
+// state's turn: every way in (a UI move, an agent move, a relay) passes through here.
 export function assertMayEnter(
   ctx: Context,
   item: ItemRecord,
@@ -167,7 +168,7 @@ export function assertMayEnter(
   to: string,
   at: string,
 ): void {
-  if (closeRequirementOf(workflow, to) !== 'children_closed') return;
+  if (requirementOf(workflow, to) !== 'children_closed') return;
   assertChildrenClosed(item.id, to, childrenOf(ctx, item.id, at));
 }
 

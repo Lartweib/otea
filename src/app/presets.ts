@@ -12,12 +12,14 @@ export type LoadedPreset = Preset & { origin: PresetOrigin };
 
 export type PresetProblem = { preset: string; origin: PresetOrigin; path: string; message: string };
 
+// Problems keep a preset from loading; warnings, such as a deprecated key, do not.
 export type PresetCatalog = {
   presets: ReadonlyMap<string, LoadedPreset>;
   problems: readonly PresetProblem[];
+  warnings: readonly PresetProblem[];
 };
 
-type Loaded = { preset?: LoadedPreset; problems: PresetProblem[] };
+type Loaded = { preset?: LoadedPreset; problems: PresetProblem[]; warnings?: PresetProblem[] };
 
 function projectPresetsDir(root: string): string {
   return join(root, '.otea', 'presets');
@@ -45,7 +47,8 @@ function loadOne(dir: string, name: string, origin: PresetOrigin): Loaded {
   if (preset.playbook !== undefined && !existsSync(resolve(dir, name, preset.playbook))) {
     problems.push(problem(`playbook: ${preset.playbook} does not exist`));
   }
-  return problems.length > 0 ? { problems } : { preset: { ...preset, origin }, problems };
+  if (problems.length > 0) return { problems };
+  return { preset: { ...preset, origin }, problems, warnings: reading.warnings.map(problem) };
 }
 
 export function loadPresets(
@@ -54,12 +57,14 @@ export function loadPresets(
 ): PresetCatalog {
   const presets = new Map<string, LoadedPreset>();
   const problems: PresetProblem[] = [];
-  const add = ({ preset, problems: found }: Loaded) => {
+  const warnings: PresetProblem[] = [];
+  const add = ({ preset, problems: found, warnings: warned = [] }: Loaded) => {
     if (preset) presets.set(preset.name, preset);
     problems.push(...found);
+    warnings.push(...warned);
   };
   for (const name of subdirectories(officialDir)) add(loadOne(officialDir, name, 'official'));
-  if (projectRoot === undefined) return { presets, problems };
+  if (projectRoot === undefined) return { presets, problems, warnings };
   const projectDir = projectPresetsDir(projectRoot);
   for (const name of subdirectories(projectDir)) {
     if (presets.has(name)) {
@@ -73,7 +78,7 @@ export function loadPresets(
       add(loadOne(projectDir, name, 'project'));
     }
   }
-  return { presets, problems };
+  return { presets, problems, warnings };
 }
 
 export function requirePreset(catalog: PresetCatalog, name: string): LoadedPreset {

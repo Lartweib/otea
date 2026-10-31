@@ -13,17 +13,17 @@ export type Closing = 'done' | 'discarded';
 
 export const CLOSINGS: readonly Closing[] = ['done', 'discarded'];
 
-// What must hold before an item may enter a closed state: `children_closed`, that none of its
-// children is still open. A parent's state is never derived from its children.
-export const CLOSE_REQUIREMENTS = ['children_closed'] as const;
+// What must hold before an item may enter a state, whatever its turn: `children_closed`, that none
+// of its children is still open. A parent's state is never derived from its children.
+export const REQUIREMENTS = ['children_closed'] as const;
 
-export type CloseRequirement = (typeof CLOSE_REQUIREMENTS)[number];
+export type Requirement = (typeof REQUIREMENTS)[number];
 
 export type State = {
   name: string;
   turn: Turn;
   closes?: Closing;
-  closeRequires?: CloseRequirement;
+  requires?: Requirement;
 };
 
 export type Transition = { from: string; to: string; by: Authority; reasonRequired: boolean };
@@ -48,11 +48,8 @@ export function closesOf(workflow: Workflow, stateName: string): Closing | undef
 }
 
 // What entering the state requires, if anything.
-export function closeRequirementOf(
-  workflow: Workflow,
-  stateName: string,
-): CloseRequirement | undefined {
-  return workflow.states.find((candidate) => candidate.name === stateName)?.closeRequires;
+export function requirementOf(workflow: Workflow, stateName: string): Requirement | undefined {
+  return workflow.states.find((candidate) => candidate.name === stateName)?.requires;
 }
 
 export function transitionsFrom(workflow: Workflow, from: string): Transition[] {

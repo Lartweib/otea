@@ -39,11 +39,13 @@ describe('mayPerform', () => {
 });
 
 describe('availableMoves', () => {
-  it('says what a move into a closed state waits for', () => {
+  it('says what a move into a state waits for, whatever its turn', () => {
     const parents = {
       ...tasks,
       states: tasks.states.map((state) =>
-        state.name === 'done' ? { ...state, closeRequires: 'children_closed' as const } : state,
+        state.name === 'done' || state.name === 'todo'
+          ? { ...state, requires: 'children_closed' as const }
+          : state,
       ),
     };
 
@@ -54,9 +56,15 @@ describe('availableMoves', () => {
         reasonRequired: false,
         turn: 'none',
         closes: 'done',
-        closeRequires: 'children_closed',
+        requires: 'children_closed',
       },
-      { to: 'todo', by: 'human-ui', reasonRequired: true, turn: 'agent' },
+      {
+        to: 'todo',
+        by: 'human-ui',
+        reasonRequired: true,
+        turn: 'agent',
+        requires: 'children_closed',
+      },
       { to: 'discarded', by: 'human', reasonRequired: true, turn: 'none', closes: 'discarded' },
     ]);
   });

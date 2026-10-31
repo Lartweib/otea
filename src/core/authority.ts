@@ -3,10 +3,10 @@ import type { Actor } from './item.ts';
 import {
   type Authority,
   assertTransition,
-  type CloseRequirement,
   type Closing,
-  closeRequirementOf,
   closesOf,
+  type Requirement,
+  requirementOf,
   type Transition,
   type Turn,
   transitionsFrom,
@@ -47,23 +47,24 @@ function forbidden(from: string, to: string, transitions: Transition[], performe
   );
 }
 
-// A move the performer may make, whose turn the item is on once it lands and, for a move into a
-// closed state, how it closes the item and what it waits for (`children_closed`: every child closed).
+// A move the performer may make, whose turn the item is on once it lands, for a move into a closed
+// state how it closes the item, and what entering its state waits for (`children_closed`: every
+// child closed).
 export type Move = {
   to: string;
   by: Authority;
   reasonRequired: boolean;
   turn: Turn;
   closes?: Closing;
-  closeRequires?: CloseRequirement;
+  requires?: Requirement;
 };
 
 function moveTo(workflow: Workflow, { to, by, reasonRequired }: Transition): Move {
   const move: Move = { to, by, reasonRequired, turn: turnOf(workflow, to) };
   const closes = closesOf(workflow, to);
   if (closes !== undefined) move.closes = closes;
-  const requires = closeRequirementOf(workflow, to);
-  if (requires !== undefined) move.closeRequires = requires;
+  const requires = requirementOf(workflow, to);
+  if (requires !== undefined) move.requires = requires;
   return move;
 }
 

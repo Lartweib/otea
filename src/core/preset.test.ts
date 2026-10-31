@@ -292,30 +292,69 @@ describe('closing kinds', () => {
   });
 });
 
-describe('close_requires', () => {
-  it('records that a closed state requires every child closed first', () => {
+describe('requires', () => {
+  const stateOf = (raw: Raw, name: string) => {
+    const result = readPreset(stringify(raw));
+    if (!result.ok) throw new Error(result.problems.join('; '));
+    return { state: result.preset.workflow.states.find((s) => s.name === name), result };
+  };
+
+  it('records that entering a closed state requires every child closed first', () => {
     const raw = minimal();
-    raw.workflow.states.closed.close_requires = 'children_closed';
+    raw.workflow.states.closed.requires = 'children_closed';
 
-    const preset = parsePreset(stringify(raw));
-
-    expect(preset.workflow.states.find(({ name }) => name === 'closed')).toEqual({
-      name: 'closed',
-      turn: 'none',
-      closes: 'discarded',
-      closeRequires: 'children_closed',
+    expect(stateOf(raw, 'closed')).toEqual({
+      state: { name: 'closed', turn: 'none', closes: 'discarded', requires: 'children_closed' },
+      result: expect.objectContaining({ warnings: [] }),
     });
   });
 
-  it('rejects it on an open state', () => {
+  it('records it on a working state too', () => {
+    const raw = minimal();
+    raw.workflow.states.open.requires = 'children_closed';
+
+    expect(stateOf(raw, 'open').state).toEqual({
+      name: 'open',
+      turn: 'agent',
+      requires: 'children_closed',
+    });
+  });
+
+  it('reads the deprecated close_requires as requires, with a warning', () => {
+    const raw = minimal();
+    raw.workflow.states.closed.close_requires = 'children_closed';
+
+    const { state, result } = stateOf(raw, 'closed');
+
+    expect(state).toMatchObject({ requires: 'children_closed' });
+    expect(result).toMatchObject({
+      warnings: [
+        'workflow.states.closed.close_requires: deprecated; write requires: children_closed',
+      ],
+    });
+  });
+
+  it('warns on close_requires in a type workflow by its path', () => {
+    const raw = twoTypes();
+    raw.types.impr.workflow.states.planned.close_requires = 'children_closed';
+
+    expect(stateOf(raw, 'closed').result).toMatchObject({
+      warnings: [expect.stringContaining('types.impr.workflow.states.planned.close_requires')],
+    });
+  });
+
+  it('rejects a state that declares both', () => {
     expect(
-      problemsOf((raw) => (raw.workflow.states.open.close_requires = 'children_closed')),
-    ).toContain('workflow.states.open.close_requires: only a state with turn none closes');
+      problemsOf((raw) => {
+        raw.workflow.states.closed.requires = 'children_closed';
+        raw.workflow.states.closed.close_requires = 'children_closed';
+      }),
+    ).toContain('workflow.states.closed: declares both requires and close_requires; keep requires');
   });
 
   it('rejects an unknown requirement by its path', () => {
-    expect(problemsOf((raw) => (raw.workflow.states.closed.close_requires = 'all_done'))).toEqual([
-      expect.stringContaining('workflow.states.closed.close_requires'),
+    expect(problemsOf((raw) => (raw.workflow.states.closed.requires = 'all_done'))).toEqual([
+      expect.stringContaining('workflow.states.closed.requires'),
     ]);
   });
 });
