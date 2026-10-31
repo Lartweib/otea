@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useReducer, useRef, useState, useSyncExternalStore } from 'react';
 import { activeLease } from './lease.ts';
 import { afterFailure, type Remote } from './remote.ts';
+import { hideTier } from './row-grid.ts';
 import { type Route, routeFromHash } from './selection.ts';
 import type { Lease } from './types.ts';
 
@@ -86,6 +87,24 @@ export function useMediaQuery(query: string): boolean {
 // Below 48rem the workspace is one column, and an item unfolds where it sits in the list.
 export function usePhone(): boolean {
   return !useMediaQuery('(min-width: 48rem)');
+}
+
+// Marks an element (the list pane) with the hide tier its width puts it in (data-tier, see
+// hideTier), as it resizes: dragging the divider, the window, a smaller screen. A callback ref.
+export function useHideTier(): (element: HTMLElement | null) => (() => void) | undefined {
+  return useCallback((element: HTMLElement | null) => {
+    if (!element) return undefined;
+    const mark = (width: number) => {
+      const tier = String(hideTier(width));
+      if (element.dataset.tier !== tier) element.dataset.tier = tier;
+    };
+    mark(element.getBoundingClientRect().width);
+    const observer = new ResizeObserver(([entry]) => {
+      mark(entry?.borderBoxSize?.[0]?.inlineSize ?? element.getBoundingClientRect().width);
+    });
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
 }
 
 export function useReducedMotion(): boolean {

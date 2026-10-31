@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { type ReactNode, useLayoutEffect, useRef } from 'react';
 import { leftovers } from '../evidence.ts';
 import { actorLabel, leaseLabel, momentLabel } from '../format.ts';
 import { useActiveLease } from '../hooks.ts';
@@ -13,6 +13,7 @@ import {
 } from '../item-types.ts';
 import { NODE_LABEL, Node, Pill, TypeTag } from '../kit/index.ts';
 import { moduleFor } from '../modules/registry.ts';
+import { MOTION, reducedMotion } from '../motion.ts';
 import { itemNodeKind } from '../node-kind.ts';
 import type { CollectionView, ItemView, Turn } from '../types.ts';
 import { EvidenceList } from './EvidenceList.tsx';
@@ -84,13 +85,31 @@ type ItemDetailProps = {
   collectionOf: CollectionOf;
   // Opens the create form for a child of this item.
   onAddChild?: ((parent: ItemView) => void) | undefined;
-  // Drawn at the end of the header row (the focus toggle).
-  headAction?: ReactNode;
   // unfold: opened inside its own row on a phone. The row is the header, and the moves wait at the
   // bottom, in reach of a thumb.
   layout?: 'pane' | 'unfold';
   onMoved?: (() => void) | undefined;
 };
+
+// The detail of another item comes in (the old one leaves at once): it rises 6px into place, or
+// under reduced motion crossfades. An unfolded detail has its own motion (Unfold).
+function useContentIn(id: string, enabled: boolean) {
+  const root = useRef<HTMLElement>(null);
+  useLayoutEffect(() => {
+    if (!enabled || !id) return;
+    const reduced = reducedMotion();
+    root.current?.animate(
+      reduced
+        ? [{ opacity: 0 }, { opacity: 1 }]
+        : [
+            { opacity: 0, transform: 'translateY(6px)' },
+            { opacity: 1, transform: 'none' },
+          ],
+      reduced ? { duration: MOTION.fast } : { duration: MOTION.base, easing: MOTION.ease },
+    );
+  }, [id, enabled]);
+  return root;
+}
 
 // A margin index: the header (where the item stands, its title, its moves), then Brief (what to
 // decide on), Structure (children and relations), Details (where it lives, who made it) and History.
@@ -100,11 +119,11 @@ export function ItemDetail({
   collection,
   collectionOf,
   onAddChild,
-  headAction,
   layout = 'pane',
   onMoved,
 }: ItemDetailProps) {
   const lease = useActiveLease(item.lease);
+  const root = useContentIn(item.id, layout === 'pane');
   const type = typeOf(collection, item.type);
   const kind = itemNodeKind(item, type, lease !== null);
   const { head, primary, side } = detailBlocks(type, item.fields);
@@ -198,7 +217,12 @@ export function ItemDetail({
     ? typeLabel.toLowerCase()
     : (collection?.preset ?? item.type);
   return (
-    <article className="detail" data-layout={layout} aria-label={unfolded ? item.title : undefined}>
+    <article
+      ref={root}
+      className="detail"
+      data-layout={layout}
+      aria-label={unfolded ? item.title : undefined}
+    >
       {unfolded ? null : (
         <header className="detail-head">
           <div className="detail-head-row">
@@ -218,7 +242,6 @@ export function ItemDetail({
             ) : showsTypes(collection) ? (
               <TypeTag name={item.type} label={typeLabel} />
             ) : null}
-            {headAction}
           </div>
           <h1 className="t-display">{item.title}</h1>
           {actions}

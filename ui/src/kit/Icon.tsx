@@ -10,7 +10,8 @@ export type IconName =
   | 'close'
   | 'chevron'
   | 'link'
-  | 'branch';
+  | 'branch'
+  | 'sidebar';
 
 const PATHS: Record<IconName, string> = {
   plus: 'M8 3.5 V12.5 M3.5 8 H12.5',
@@ -25,6 +26,8 @@ const PATHS: Record<IconName, string> = {
   close: 'M4.75 4.75 L11.25 11.25 M11.25 4.75 L4.75 11.25',
   chevron: 'M5 6.5 L8 9.5 L11 6.5',
   link: 'M6.75 9.25 L9.25 6.75 M7.25 4.75 L8.4 3.6 A2.47 2.47 0 0 1 12.4 7.6 L11.25 8.75 M8.75 11.25 L7.6 12.4 A2.47 2.47 0 0 1 3.6 8.4 L4.75 7.25',
+  sidebar:
+    'M3.5 2.75 H12.5 A0.75 0.75 0 0 1 13.25 3.5 V12.5 A0.75 0.75 0 0 1 12.5 13.25 H3.5 A0.75 0.75 0 0 1 2.75 12.5 V3.5 A0.75 0.75 0 0 1 3.5 2.75 Z M6.25 2.75 V13.25',
   branch: 'M5 2.5 V13.5 M5 5.5 C5 8 7 8 9.5 8 H12.5 M5 9.5 C5 12 7 12 9.5 12 H12.5',
 };
 

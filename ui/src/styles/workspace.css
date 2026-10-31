@@ -1,4 +1,11 @@
-/* The items workspace: collections rail, list and detail (Split), and focus mode. */
+/* The items workspace: the collections sidebar, the list, the divider and the detail. */
+
+/* The list's width, registered so the divider can ease it home with the motion tokens. */
+@property --list-w {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 520px;
+}
 
 /* ---- collections rail ---- */
 .rail {
@@ -30,8 +37,8 @@
   text-align: left;
   cursor: pointer;
   transition:
-    background-color var(--micro),
-    box-shadow var(--micro);
+    background-color var(--m-fast) var(--m-ease),
+    box-shadow var(--m-fast) var(--m-ease);
 }
 
 .rail-entry:hover {
@@ -60,79 +67,131 @@
   color: var(--you-ink);
 }
 
-/* ---- list head ---- */
+/* ---- list head: the sidebar toggle, the collection's name, the keys ---- */
 .list-head {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 8px 12px 14px 56px;
+  align-items: center;
+  gap: 8px;
+  max-width: 760px;
+  padding: 8px 16px 14px 56px;
   white-space: nowrap;
+}
+
+.list-head .t-h {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .list-hint {
   display: none;
+  margin-left: auto;
   overflow: hidden;
   text-overflow: ellipsis;
-  transition: opacity 200ms var(--e-out);
 }
 
-/* ---- focus toggle: a quiet 28px button whose four corners slide out or in ---- */
-.focus-toggle {
+.sidebar-toggle {
   display: none;
-  position: relative;
   flex: none;
+  margin-left: -8px;
 }
 
-.focus-corners {
-  transition: d var(--travel) var(--e-move);
+/* ---- the divider: a hairline that thickens under the pointer, with a grip ---- */
+.divider {
+  position: relative;
+  z-index: 2;
+  cursor: col-resize;
+  touch-action: none;
+  outline: none;
 }
 
-/* ---- Split from 48rem: rail (from 64rem), list, detail ---- */
+.divider::before {
+  content: "";
+  position: absolute;
+  left: 4px;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--line);
+  transition:
+    background-color var(--m-fast) var(--m-ease),
+    left var(--m-fast) var(--m-ease),
+    width var(--m-fast) var(--m-ease);
+}
+
+.divider i {
+  position: absolute;
+  left: 2px;
+  top: 50%;
+  width: 5px;
+  height: 36px;
+  margin-top: -18px;
+  border-radius: 3px;
+  background: var(--ink);
+  opacity: 0;
+  transition: opacity var(--m-fast) var(--m-ease);
+}
+
+.divider:hover::before,
+.divider:focus-visible::before,
+.workspace[data-dragging] .divider::before {
+  left: 3.5px;
+  width: 2px;
+  background: color-mix(in oklch, var(--ink) 45%, transparent);
+}
+
+.divider:hover i,
+.workspace[data-dragging] .divider i {
+  opacity: 0.55;
+}
+
+.workspace .divider:focus-visible i {
+  background: var(--you);
+  opacity: 1;
+}
+
+/* While dragging, nothing animates and nothing else takes the pointer: the layout follows it. */
+.workspace[data-dragging],
+.workspace[data-dragging] * {
+  cursor: col-resize;
+  user-select: none;
+}
+
+/* ---- from 48rem: list, divider, detail; from 64rem the collections sidebar before them ---- */
 @media (min-width: 48rem) {
   .workspace {
-    --rail-w: 0rem;
-    /* The detail is a reading column (39rem plus its margins); the list takes the rest. */
-    grid-template-columns: var(--rail-w) minmax(0, 1fr) min(44rem, 54%);
+    --rail-w: 0px;
+    position: relative;
+    /* The list keeps the width it was given (340-783px); the detail never gets under 440px. */
+    grid-template-columns:
+      var(--rail-w) max(340px, min(var(--list-w), 100% - var(--rail-w) - 9px - 440px))
+      9px minmax(0, 1fr);
     gap: 0;
-    transition: grid-template-columns var(--travel) var(--e-move);
-  }
-
-  /* The rail keeps its track even while hidden, so the list and detail never change tracks. */
-  .workspace .rail {
-    display: flex;
-    visibility: hidden;
+    padding: 0 0 0 8px;
+    overflow-x: clip;
   }
 
   .workspace .list-pane {
-    padding-right: 24px;
+    grid-column: 2;
+    padding: 4px 0 24px;
+  }
+
+  .workspace .divider {
+    grid-column: 3;
   }
 
   .workspace .detail-pane {
+    grid-column: 4;
     container: detail / inline-size;
-    border-left: 1px solid var(--line);
   }
 
   .workspace .detail-panel {
     min-height: 0;
-    padding: 12px 40px 64px;
-  }
-
-  .focus-toggle {
-    display: inline-flex;
+    padding: 12px 40px 64px 36px;
   }
 
   .list-hint {
     display: inline;
-  }
-
-  /* Focus: the rail folds away, the list narrows to node and title, the detail takes the room. */
-  .workspace[data-focus="true"] {
-    grid-template-columns: 0rem minmax(0, 1fr) min(56rem, 66%);
-  }
-
-  .workspace[data-focus="true"] .list-hint {
-    opacity: 0;
   }
 }
 
@@ -141,20 +200,36 @@
     --rail-w: 13.75rem;
   }
 
-  /* Coming back, the rail waits until its track has opened most of the way. */
+  .workspace[data-sidebar="off"] {
+    --rail-w: 0px;
+  }
+
+  /* The sidebar keeps its width and slides out of its track; the panes are played back (FLIP). */
   .workspace .rail {
-    visibility: visible;
+    position: absolute;
+    left: 8px;
+    top: 0;
+    bottom: 0;
+    display: flex;
+    width: 13.75rem;
     transition:
-      opacity 220ms var(--e-out) 380ms,
+      transform var(--m-slow) var(--m-ease),
+      opacity var(--m-base) var(--m-ease),
       visibility 0s;
   }
 
-  .workspace[data-focus="true"] .rail {
+  .workspace[data-sidebar="off"] .rail {
+    transform: translateX(-100%);
     opacity: 0;
     visibility: hidden;
     transition:
-      opacity 220ms var(--e-out),
-      visibility 0s 220ms;
+      transform var(--m-slow) var(--m-ease),
+      opacity var(--m-base) var(--m-ease),
+      visibility 0s var(--m-slow);
+  }
+
+  .sidebar-toggle {
+    display: inline-flex;
   }
 }
 
@@ -164,12 +239,27 @@
   }
 }
 
+/* Reduced motion: the sidebar does not travel, it crossfades. */
 @media (prefers-reduced-motion: reduce) {
-  .workspace,
-  .workspace .rail,
   .rail-entry,
-  .list-hint,
-  .focus-corners {
+  .divider::before,
+  .divider i {
     transition-duration: 1ms;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) and (min-width: 64rem) {
+  .workspace .rail {
+    transform: none;
+    transition:
+      opacity var(--m-fast) linear,
+      visibility 0s;
+  }
+
+  .workspace[data-sidebar="off"] .rail {
+    transform: none;
+    transition:
+      opacity var(--m-fast) linear,
+      visibility 0s var(--m-fast);
   }
 }
