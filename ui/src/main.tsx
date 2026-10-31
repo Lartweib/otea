@@ -11,6 +11,7 @@ import { App } from './App.tsx';
 import './styles/tokens.css';
 import './styles/base.css';
 import './kit/kit.css';
+import './icons/icons.css';
 import './styles/shell.css';
 import './styles/list.css';
 import './styles/detail.css';
