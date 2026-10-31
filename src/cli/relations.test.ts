@@ -1,6 +1,26 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { type Cli, cliAt, tempGitRepo } from './testing.ts';
 
+// review is on the human's turn and waits for every child: a parent comes back only once they close.
+const EPIC = `
+preset: epic
+preset_version: 1
+fields:
+  title: { module: text, required: create }
+workflow:
+  initial: building
+  states:
+    building: { turn: agent }
+    parked: { turn: human }
+    review: { turn: human, requires: children_closed }
+    done: { turn: none, closes: done, requires: children_closed }
+  transitions:
+    - { from: building, to: review, by: agent }
+    - { from: building, to: parked, by: agent }
+    - { from: parked, to: review, by: human }
+    - { from: review, to: done, by: human }
+`;
+
 describe('relations', () => {
   let repo: ReturnType<typeof tempGitRepo>;
   let otea: Cli;
@@ -150,6 +170,53 @@ describe('relations', () => {
       const events = (await otea('show', 'PARTS-2')).out;
 
       expect(events).toMatch(/relation_added\s+PARTS-1 blocks PARTS-2/);
+    });
+  });
+
+  describe('a working state that requires closed children', () => {
+    beforeEach(async () => {
+      repo.write('.otea/presets/epic/preset.yaml', EPIC);
+      await otea('collection', 'add', 'creatures', '--preset', 'epic');
+      for (const title of ['Create wolf', 'Body', 'Movement']) {
+        await otea('create', '--collection', 'creatures', '--title', title);
+      }
+      await otea('link', 'CREATURES-2', 'parent', 'CREATURES-1');
+      await otea('link', 'CREATURES-3', 'parent', 'CREATURES-1');
+      await otea('move', 'CREATURES-3', 'parked');
+    });
+
+    it('refuses a move into it with exit 4, listing each open child with its state', async () => {
+      const result = await otea('move', 'CREATURES-1', 'review');
+
+      expect(result.code).toBe(4);
+      expect(result.err).toContain('CREATURES-2 (building), CREATURES-3 (parked)');
+      expect(await errorOf('move', 'CREATURES-1', 'review')).toEqual({
+        code: 4,
+        error: 'children_open',
+      });
+    });
+
+    it('refuses a relayed decision into it the same way', async () => {
+      await otea('move', 'CREATURES-1', 'parked');
+
+      expect(
+        await errorOf('relay', 'CREATURES-1', 'review', '--quote', 'Send it back to me'),
+      ).toEqual({ code: 4, error: 'children_open' });
+    });
+
+    it('reports the requirement on the move in show --json', async () => {
+      const { transitions } = await json('show', 'CREATURES-1');
+
+      expect(transitions).toEqual([
+        {
+          to: 'review',
+          by: 'agent',
+          reasonRequired: false,
+          turn: 'human',
+          requires: 'children_closed',
+        },
+        { to: 'parked', by: 'agent', reasonRequired: false, turn: 'human' },
+      ]);
     });
   });
 });
