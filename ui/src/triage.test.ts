@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   dragIntent,
   dragProgress,
+  landingOf,
   queueOf,
   releaseDirection,
   swipeAction,
@@ -170,5 +171,26 @@ describe('queueOf', () => {
 
   it('keeps the order of the list', () => {
     expect(queueOf(['C', 'A'], new Set())).toEqual(['C', 'A']);
+  });
+});
+
+describe('landingOf', () => {
+  const card = { left: 580, top: 133, width: 760, height: 416 };
+  const slot = { left: 1380, top: 180, width: 285, height: 76 };
+
+  it('moves the card onto the slot and scales it to the slot width', () => {
+    const landing = landingOf(card, slot);
+    expect(landing.dx).toBe(800);
+    expect(landing.dy).toBe(47);
+    expect(landing.scale).toBeCloseTo(285 / 760);
+  });
+
+  it('cuts the card so that, scaled, it has the slot height', () => {
+    const { scale, cut } = landingOf(card, slot);
+    expect((card.height - cut) * scale).toBeCloseTo(slot.height);
+  });
+
+  it('never cuts below nothing, for a slot taller than the scaled card', () => {
+    expect(landingOf(card, { ...slot, height: 400 }).cut).toBe(0);
   });
 });

@@ -375,7 +375,6 @@ export function App() {
             loading={items.status === 'loading'}
             collectionOf={collectionOf}
             version={version}
-            connection={connection}
             onExit={leaveTriage}
           />
         </main>

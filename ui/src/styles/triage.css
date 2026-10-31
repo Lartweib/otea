@@ -91,6 +91,22 @@
   animation: ot-in var(--m-base) var(--m-ease) both;
 }
 
+/* The entry a card is flying onto: laid out from the start, seen only as the card hands over. */
+.triage-tray-row[data-landing] {
+  opacity: 0;
+  animation: none;
+}
+
+/* A decided card in flight to its tray: a copy, fixed above everything while it moves. */
+.tcard.tcard-flight {
+  position: fixed;
+  z-index: var(--z-flight);
+  margin: 0;
+  transform-origin: 0 0;
+  pointer-events: none;
+  will-change: transform, clip-path, opacity;
+}
+
 .triage-tray-title {
   overflow: hidden;
   font-size: 13.5px;
@@ -119,8 +135,8 @@
   margin-bottom: 14px;
 }
 
-/* The next card: its edge, and its title only once the top one is pulled off it, so nothing of it
-   ever shows through the card on top. */
+/* The next card, complete behind the top one (which is opaque), so whatever uncovers it shows a
+   whole card, never an empty frame. */
 .tcard.tcard-next {
   position: absolute;
   inset: 0;
@@ -128,19 +144,11 @@
   min-height: 0;
   overflow: hidden;
   background: var(--sf);
-  box-shadow: 0 0 0 1px var(--line);
   transform: translateY(calc(10px - 10px * var(--p))) scale(calc(0.97 + 0.03 * var(--p)));
   transform-origin: bottom center;
   pointer-events: none;
   touch-action: auto;
   cursor: auto;
-}
-
-.tcard-next-title {
-  margin: 0;
-  font-size: 20px;
-  font-weight: 600;
-  opacity: var(--p);
 }
 
 /* The one after it: only an edge. */
@@ -434,7 +442,7 @@
   .triage-bar {
     position: sticky;
     bottom: 0;
-    z-index: 2;
+    z-index: var(--z-sticky);
     margin: 0 -16px;
     padding: 16px 16px calc(10px + env(safe-area-inset-bottom));
     background: linear-gradient(transparent, var(--bg) 22%);
