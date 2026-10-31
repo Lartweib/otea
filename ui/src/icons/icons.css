@@ -1,0 +1,19 @@
+/* Type icons: 1.5px at every size (non-scaling stroke), round caps and joins, current color. */
+.type-icon {
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  overflow: visible;
+}
+
+.type-icon path {
+  vector-effect: non-scaling-stroke;
+}
+
+.type-icon .type-icon-fill {
+  fill: currentColor;
+  stroke: none;
+}
