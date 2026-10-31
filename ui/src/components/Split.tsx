@@ -11,7 +11,9 @@ import {
 import { MOTION, reducedMotion } from '../motion.ts';
 import {
   clampListWidth,
+  defaultListWidth,
   dividerKeyWidth,
+  forgetListWidth,
   LIST_WIDTH,
   listMax,
   readListWidth,
@@ -41,15 +43,38 @@ function panesOf(workspace: HTMLElement): HTMLElement[] {
 // reflows a row: the list keeps its width and slides over, and the detail takes the room. The panes
 // are measured before and after and the difference is played back as a transform (FLIP).
 export function useSplit() {
-  const workspace = useRef<HTMLElement>(null);
-  const [width, setWidth] = useState(() => readListWidth(browserStorage()));
+  const workspace = useRef<HTMLElement | null>(null);
+  // The viewer's width, or undefined while the list takes its share of the room.
+  const [chosen, setChosen] = useState(() => readListWidth(browserStorage()));
+  const [room, setRoom] = useState(0);
+  const width = chosen ?? defaultListWidth(room);
+
+  // The workspace, measured as it resizes: the list's share follows the window until the viewer
+  // sets a width (the sidebar folding does not change it).
+  const attach = useCallback((element: HTMLElement | null) => {
+    workspace.current = element;
+    if (!element) return undefined;
+    const measure = () => setRoom(element.clientWidth);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    return () => {
+      observer.disconnect();
+      if (workspace.current === element) workspace.current = null;
+    };
+  }, []);
   const [sidebar, setSidebar] = useState(() => readSidebar(browserStorage()));
   const before = useRef<Map<string, number> | null>(null);
 
   const commitWidth = useCallback((next: number) => {
     const clamped = clampListWidth(next);
     writeListWidth(browserStorage(), clamped);
-    setWidth(clamped);
+    setChosen(clamped);
+  }, []);
+
+  const resetWidth = useCallback(() => {
+    forgetListWidth(browserStorage());
+    setChosen(undefined);
   }, []);
 
   const toggleSidebar = useCallback(() => {
@@ -85,13 +110,26 @@ export function useSplit() {
   }, [sidebar]);
 
   const style = { '--list-w': `${width}px` } as CSSProperties;
-  return { workspace, width, commitWidth, sidebar, toggleSidebar, style };
+  return {
+    workspace,
+    attach,
+    width,
+    home: defaultListWidth(room),
+    commitWidth,
+    resetWidth,
+    sidebar,
+    toggleSidebar,
+    style,
+  };
 }
 
 type DividerProps = {
   workspace: RefObject<HTMLElement | null>;
   width: number;
+  // The default width, which a double-click or Enter eases back to.
+  home: number;
   onCommit: (width: number) => void;
+  onReset: () => void;
 };
 
 // How wide the list may get: the list and the detail share their room, and the detail keeps 440px.
@@ -111,7 +149,7 @@ function renderedWidth(workspace: HTMLElement | null, fallback: number): number 
 // The divider between the list and the detail: drag it (pointer events, live layout, no
 // animation), or focus it and use the arrows (Shift for bigger steps), Home and End. A double-click
 // or Enter eases it back to the default width.
-export function Divider({ workspace, width, onCommit }: DividerProps) {
+export function Divider({ workspace, width, home, onCommit, onReset }: DividerProps) {
   const [max, setMax] = useState<number>(LIST_WIDTH.max);
   const self = useRef<HTMLDivElement>(null);
 
@@ -133,11 +171,11 @@ export function Divider({ workspace, width, onCommit }: DividerProps) {
 
   const reset = () => {
     const root = workspace.current;
-    const to = clampListWidth(LIST_WIDTH.initial, maxOf(root));
+    const to = clampListWidth(home, maxOf(root));
     const from = renderedWidth(root, width);
     if (!root || from === to || reducedMotion()) {
       live(to);
-      onCommit(to);
+      onReset();
       return;
     }
     for (const animation of root.getAnimations()) animation.cancel();
@@ -150,7 +188,7 @@ export function Divider({ workspace, width, onCommit }: DividerProps) {
       () => {
         live(to);
         animation.cancel();
-        onCommit(to);
+        onReset();
       },
       () => undefined,
     );

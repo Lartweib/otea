@@ -4,6 +4,15 @@
 
 export const LIST_WIDTH = { min: 340, max: 783, initial: 520 } as const;
 
+// Until the viewer sets a width, the list takes a share of the workspace, so a wide screen spreads
+// its room between list and detail instead of piling it up on the right.
+export const LIST_SHARE = 0.34;
+
+export function defaultListWidth(room: number): number {
+  if (!Number.isFinite(room) || room <= 0) return LIST_WIDTH.initial;
+  return Math.round(Math.max(LIST_WIDTH.initial, Math.min(LIST_WIDTH.max, room * LIST_SHARE)));
+}
+
 // The detail never gets narrower than this, so the list's room is what is left of it.
 export const DETAIL_MIN = 440;
 
@@ -27,6 +36,7 @@ export function clampListWidth(width: number, max: number = LIST_WIDTH.max): num
 export type SplitStorage = {
   getItem: (key: string) => string | null;
   setItem: (key: string, value: string) => void;
+  removeItem?: (key: string) => void;
 };
 
 function read(storage: SplitStorage | undefined, key: string): string | null {
@@ -45,10 +55,20 @@ function write(storage: SplitStorage | undefined, key: string, value: string): v
   }
 }
 
-export function readListWidth(storage: SplitStorage | undefined): number {
+// The width the viewer set, or undefined while they have not set one (the list takes its share).
+export function readListWidth(storage: SplitStorage | undefined): number | undefined {
   const raw = read(storage, LIST_WIDTH_KEY);
   const width = raw === null || raw.trim() === '' ? Number.NaN : Number(raw);
-  return Number.isFinite(width) ? clampListWidth(width) : LIST_WIDTH.initial;
+  return Number.isFinite(width) ? clampListWidth(width) : undefined;
+}
+
+// Back to the default: the viewer's width is forgotten.
+export function forgetListWidth(storage: SplitStorage | undefined): void {
+  try {
+    storage?.removeItem?.(LIST_WIDTH_KEY);
+  } catch {
+    // Nothing to forget in a browser that refuses storage.
+  }
 }
 
 export function writeListWidth(storage: SplitStorage | undefined, width: number): void {

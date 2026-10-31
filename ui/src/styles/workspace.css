@@ -1,6 +1,7 @@
 /* The items workspace: the collections sidebar, the list, the divider and the detail. */
 
-/* The list's width, registered so the divider can ease it home with the motion tokens. */
+/* The list's width, registered so the divider can ease it home with the motion tokens. Until the
+   viewer sets one, it is the list's share of the room (defaultListWidth). */
 @property --list-w {
   syntax: "<length>";
   inherits: true;
@@ -16,6 +17,16 @@
   padding: 4px 12px 24px 8px;
   overflow: hidden;
   white-space: nowrap;
+}
+
+/* The sidebar's own header: its label, and the button that folds it away. */
+.rail-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 36px;
+  padding: 2px 0 6px;
 }
 
 .rail-label {
@@ -67,33 +78,58 @@
   color: var(--you-ink);
 }
 
-/* ---- list head: the sidebar toggle, the collection's name, the keys ---- */
+/* ---- list head: one row on one baseline. The lane names sit centred on their lanes (x=16 and
+   x=40), the title starts where the row titles do (x=114: rail, fold and type), the keys end where
+   the time does. ---- */
 .list-head {
   display: flex;
-  align-items: center;
-  gap: 8px;
+  align-items: baseline;
   max-width: 760px;
-  padding: 8px 16px 14px 56px;
+  padding: 10px 16px 10px 0;
   white-space: nowrap;
+}
+
+.lane-names {
+  display: inline-grid;
+  flex: none;
+  grid-template-columns: 32px 16px 8px;
+  width: 56px;
+  font: 500 11px / 16px var(--font-machine);
+  color: var(--mut);
+}
+
+.lane-names > span {
+  justify-self: center;
+  width: max-content;
+}
+
+.lane-names-you {
+  color: var(--you-ink);
 }
 
 .list-head .t-h {
   min-width: 0;
+  margin-left: 58px;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .list-hint {
   display: none;
+  flex: none;
   margin-left: auto;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  padding-left: 16px;
+  color: color-mix(in oklch, var(--mut) 80%, transparent);
 }
 
 .sidebar-toggle {
   display: none;
   flex: none;
-  margin-left: -8px;
+}
+
+/* Folded, the sidebar comes back from the top bar, right after the brand. */
+.topbar .brand + .topbar-sidebar {
+  margin-right: auto;
 }
 
 /* ---- the divider: a hairline that thickens under the pointer, with a grip ---- */
@@ -185,9 +221,20 @@
     container: detail / inline-size;
   }
 
+  /* The detail is anchored to the divider and stops at a reading measure; past it the screen keeps
+     a plain right margin instead of a column floating in the middle. */
   .workspace .detail-panel {
     min-height: 0;
-    padding: 12px 40px 64px 36px;
+    padding: 12px 40px 64px;
+  }
+
+  .workspace .detail {
+    max-width: 50rem;
+    margin-inline: 0;
+  }
+
+  .workspace .detail :is(.detail-lead, .md, .body) {
+    max-width: 72ch;
   }
 
   .list-hint {
@@ -196,8 +243,10 @@
 }
 
 @media (min-width: 64rem) {
+  /* The sidebar's track holds its 13.75rem and 24px of air before the lanes, so the first lane
+     sits 40px clear of the sidebar's edge; the air folds away with it. */
   .workspace {
-    --rail-w: 13.75rem;
+    --rail-w: calc(13.75rem + 24px);
   }
 
   .workspace[data-sidebar="off"] {

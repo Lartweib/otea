@@ -1,7 +1,7 @@
 import { type ReactNode, useCallback, useEffect, useState } from 'react';
 import { fetchCollections, fetchItem, fetchItems, fetchPresets, fetchSession } from './api.ts';
 import { catalogEntries } from './catalog.ts';
-import { CollectionRail } from './components/CollectionRail.tsx';
+import { CollectionRail, SidebarToggle } from './components/CollectionRail.tsx';
 import { ConnectionBadge } from './components/ConnectionBadge.tsx';
 import { ItemDetail } from './components/ItemDetail.tsx';
 import {
@@ -52,31 +52,7 @@ type ListPaneProps = {
   collectionOf: CollectionOf;
   unfolding: Unfolding | undefined;
   onTriage: (() => void) | undefined;
-  sidebar: boolean;
-  onToggleSidebar: () => void;
 };
-
-// Folds the collections sidebar away (or brings it back): the list keeps its width, the detail
-// takes the room.
-function SidebarToggle({ shown, onToggle }: { shown: boolean; onToggle: () => void }) {
-  const tip = shown ? 'Hide collections · f' : 'Show collections · f';
-  return (
-    <Button
-      variant="quiet"
-      size="sm"
-      icon
-      className="sidebar-toggle tip"
-      data-tip={tip}
-      aria-label={tip}
-      aria-expanded={shown}
-      aria-controls="collections"
-      aria-keyshortcuts="f"
-      onClick={onToggle}
-    >
-      <Icon name="sidebar" />
-    </Button>
-  );
-}
 
 function ListPane({
   items,
@@ -89,8 +65,6 @@ function ListPane({
   collectionOf,
   unfolding,
   onTriage,
-  sidebar,
-  onToggleSidebar,
 }: ListPaneProps) {
   if (items.status === 'loading') return <Message>Loading…</Message>;
   if (items.status === 'failed') return <Message muted={false}>{items.message}</Message>;
@@ -103,9 +77,13 @@ function ListPane({
   }
   return (
     <>
+      {/* One row: the lane names over their lanes, the title over the row titles, the keys. */}
       <div className="list-head">
-        <SidebarToggle shown={sidebar} onToggle={onToggleSidebar} />
-        <h2 className="t-h">{collection ?? 'all items'}</h2>
+        <span className="lane-names" aria-hidden="true">
+          <span>ag</span>
+          <span className="lane-names-you">you</span>
+        </span>
+        <h2 className="t-h">{collection ?? 'All items'}</h2>
         <span className="t-cap list-hint">j k to move · f collections</span>
       </div>
       <ItemList
@@ -369,6 +347,10 @@ export function App() {
     <div className="app">
       <header className="topbar">
         <Brand />
+        {route.view === 'items' && !split.sidebar && !phone ? (
+          // Folded, the sidebar comes back from the same spot every time: next to the brand.
+          <SidebarToggle shown={false} onToggle={split.toggleSidebar} className="topbar-sidebar" />
+        ) : null}
         <div className="topbar-actions">
           <ConnectionBadge connection={connection} />
           <a
@@ -403,7 +385,7 @@ export function App() {
       ) : (
         <main
           className="layout workspace"
-          ref={split.workspace}
+          ref={split.attach}
           data-sidebar={split.sidebar ? 'on' : 'off'}
           style={split.style}
         >
@@ -414,6 +396,7 @@ export function App() {
             selected={collection}
             onSelect={setCollection}
             hidden={!split.sidebar && !phone}
+            onToggle={split.toggleSidebar}
           />
           <div className="list-pane" data-pane="list" ref={listPane}>
             <ListPane
@@ -427,12 +410,16 @@ export function App() {
               collectionOf={collectionOf}
               unfolding={unfolding}
               onTriage={openTriage}
-              sidebar={split.sidebar}
-              onToggleSidebar={split.toggleSidebar}
             />
           </div>
           {phone ? null : (
-            <Divider workspace={split.workspace} width={split.width} onCommit={split.commitWidth} />
+            <Divider
+              workspace={split.workspace}
+              width={split.width}
+              home={split.home}
+              onCommit={split.commitWidth}
+              onReset={split.resetWidth}
+            />
           )}
           {phone && !creating ? null : (
             <div className="detail-pane" data-pane="detail">

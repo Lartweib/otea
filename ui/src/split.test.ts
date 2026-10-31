@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 import {
   clampListWidth,
   DETAIL_MIN,
+  defaultListWidth,
   dividerKeyWidth,
+  forgetListWidth,
   LIST_WIDTH,
   LIST_WIDTH_KEY,
   listMax,
@@ -23,6 +25,9 @@ function memory(
     getItem: (key) => data[key] ?? null,
     setItem: (key, value) => {
       data[key] = value;
+    },
+    removeItem: (key) => {
+      delete data[key];
     },
   };
 }
@@ -54,6 +59,19 @@ describe('clampListWidth', () => {
   });
 });
 
+describe('defaultListWidth', () => {
+  it('takes 34% of the room, between 520 and 783', () => {
+    expect(defaultListWidth(1400)).toBe(520);
+    expect(defaultListWidth(1900)).toBe(646);
+    expect(defaultListWidth(2560)).toBe(783);
+  });
+
+  it('falls back to 520 before the room is known', () => {
+    expect(defaultListWidth(0)).toBe(520);
+    expect(defaultListWidth(Number.NaN)).toBe(520);
+  });
+});
+
 describe('listMax', () => {
   it('leaves the detail at least 440px', () => {
     expect(listMax(1000)).toBe(1000 - DETAIL_MIN);
@@ -63,9 +81,16 @@ describe('listMax', () => {
 });
 
 describe('the list width in storage', () => {
-  it('starts at 520 with nothing stored', () => {
-    expect(readListWidth(memory())).toBe(520);
-    expect(readListWidth(undefined)).toBe(520);
+  it('is unset with nothing stored, so the list takes its share', () => {
+    expect(readListWidth(memory())).toBeUndefined();
+    expect(readListWidth(undefined)).toBeUndefined();
+  });
+
+  it('forgets the width on reset, even where storage throws', () => {
+    const storage = memory({ [LIST_WIDTH_KEY]: '600' });
+    forgetListWidth(storage);
+    expect(readListWidth(storage)).toBeUndefined();
+    expect(() => forgetListWidth(broken)).not.toThrow();
   });
 
   it('reads back what was written, clamped', () => {
@@ -77,9 +102,9 @@ describe('the list width in storage', () => {
   });
 
   it('ignores garbage and storage that throws', () => {
-    expect(readListWidth(memory({ [LIST_WIDTH_KEY]: 'wide' }))).toBe(520);
-    expect(readListWidth(memory({ [LIST_WIDTH_KEY]: '' }))).toBe(520);
-    expect(readListWidth(broken)).toBe(520);
+    expect(readListWidth(memory({ [LIST_WIDTH_KEY]: 'wide' }))).toBeUndefined();
+    expect(readListWidth(memory({ [LIST_WIDTH_KEY]: '' }))).toBeUndefined();
+    expect(readListWidth(broken)).toBeUndefined();
     expect(() => writeListWidth(broken, 600)).not.toThrow();
   });
 });

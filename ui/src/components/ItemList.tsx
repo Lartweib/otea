@@ -592,10 +592,6 @@ export function ItemList({
   } as CSSProperties;
   return (
     <nav className="item-list" aria-label="Items" style={sizes} ref={list}>
-      <div className="lane-head" aria-hidden="true">
-        <span>ag</span>
-        <span className="lane-head-you">you</span>
-      </div>
       <Carry scope={scope} className="lanes-body" still={tree.still}>
         {sections.map((section) => (
           <section key={section.turn} className="section" data-turn={section.turn}>
