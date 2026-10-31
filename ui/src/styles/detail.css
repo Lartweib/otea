@@ -6,6 +6,7 @@
   flex-direction: column;
   gap: 36px;
   max-width: 39rem;
+  margin-inline: auto;
 }
 
 .detail-head {
@@ -39,8 +40,13 @@
   transition: font-size var(--travel) var(--e-move);
 }
 
-/* Focus mode: the title grows; the column stays a reading column. */
+/* Focus mode: the column widens to a longer reading measure, centred in the room the list gave up,
+   and the title grows. */
 @media (min-width: 48rem) {
+  .workspace[data-focus="true"] .detail {
+    max-width: 50rem;
+  }
+
   .workspace[data-focus="true"] .detail .t-display {
     font-size: 32px;
   }

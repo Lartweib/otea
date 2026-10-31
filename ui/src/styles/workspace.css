@@ -128,7 +128,7 @@
 
   /* Focus: the rail folds away, the list narrows to node and title, the detail takes the room. */
   .workspace[data-focus="true"] {
-    grid-template-columns: 0rem minmax(0, 1fr) min(60rem, 72%);
+    grid-template-columns: 0rem minmax(0, 1fr) min(56rem, 66%);
   }
 
   .workspace[data-focus="true"] .list-hint {
