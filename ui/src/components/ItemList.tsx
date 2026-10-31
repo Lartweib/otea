@@ -1,5 +1,5 @@
 import { type CSSProperties, type ReactNode, useEffect, useRef, useState } from 'react';
-import { ageLabel, holdLabel } from '../format.ts';
+import { ageLabel, untilLabel } from '../format.ts';
 import { useActiveLease } from '../hooks.ts';
 import { TypeIcon } from '../icons/TypeIcon.tsx';
 import { rowValues, showsTypes, typeOf } from '../item-types.ts';
@@ -11,7 +11,7 @@ import type { NestedSection, ParentRef, RowNesting } from '../nesting.ts';
 import { itemNodeKind, type NodeKind } from '../node-kind.ts';
 import { openLabel } from '../relations.ts';
 import { hashFor } from '../selection.ts';
-import type { CollectionView, Item } from '../types.ts';
+import type { CollectionView, Item, Lease } from '../types.ts';
 import { afterFold, panelOf, reopen, select, type UnfoldState } from '../unfold.ts';
 import { Carry } from './Carry.tsx';
 import { ChildBar } from './relations/ChildBar.tsx';
@@ -116,17 +116,31 @@ function FoldChildren({
   );
 }
 
-// The parent of a row listed in another group, on the row's meta line: it selects the parent.
-function ParentLink({ parent }: { parent: ParentRef }) {
+// The parent of a row listed in another group, as a muted breadcrumb before its title
+// (`Create wolf › Movement`): it truncates first, and selects the parent.
+function ParentCrumb({ parent }: { parent: ParentRef }) {
   return (
-    <a
-      className="row-parent"
-      href={hashFor(parent.id)}
-      title={parent.title ? `Child of ${parent.id} ${parent.title}` : `Child of ${parent.id}`}
-    >
-      <span aria-hidden="true">↑</span> <span className="row-parent-id">{parent.id}</span>
-      {parent.title ? ` ${parent.title}` : null}
-    </a>
+    <>
+      <a className="row-crumb" href={hashFor(parent.id)} title={`Child of ${parent.id}`}>
+        {parent.title ?? parent.id}
+      </a>
+      <span className="row-crumb-sep" aria-hidden="true">
+        ›
+      </span>
+    </>
+  );
+}
+
+// Who and when, at the end of the title line: the agent holding the item and until when, or how
+// long ago it last changed. A narrow row drops the time first, then the agent.
+function WhoWhen({ item, lease }: { item: Item; lease: Lease | null }) {
+  return (
+    <span className="row-who">
+      {lease ? <span className="row-holder">{lease.holder}</span> : null}
+      <span className="row-when">
+        {lease ? untilLabel(lease) : ageLabel(item.updatedAt, Date.now())}
+      </span>
+    </span>
   );
 }
 
@@ -156,12 +170,13 @@ function ItemRow({
   const parent = depth === 0 ? nesting?.parent : undefined;
   return (
     <li data-flip={item.id} data-turn={item.turn} data-x={x} data-folds={folds || undefined}>
-      {/* The title is the row's link, stretched over the whole row; the parent reference on the
-          meta line is a link of its own above it. */}
+      {/* The title is the row's link, stretched over the whole row; the parent breadcrumb before it
+          is a link of its own above it. */}
       <div
         className="row"
         data-kind={kind}
         data-depth={depth > 0 ? depth : undefined}
+        data-nests={folds && nesting?.collapsed === false ? true : undefined}
         data-current={selected || undefined}
         data-expanded={expanded || undefined}
       >
@@ -183,6 +198,7 @@ function ItemRow({
         <span className="row-main">
           <span className="row-line">
             <TypeIcon name={icon} size={depth > 0 ? 14 : 16} label={marked ? label : undefined} />
+            {parent ? <ParentCrumb parent={parent} /> : null}
             <a
               className="ttl row-link"
               href={hashFor(item.id)}
@@ -196,19 +212,14 @@ function ItemRow({
             >
               {item.title}
             </a>
-            <RowValues item={item} collection={collection} />
+            {depth === 0 ? <WhoWhen item={item} lease={lease} /> : null}
           </span>
           <span className="row-meta">
             {marked && !icon ? <TypeTag name={item.type} label={label} /> : null}
             <span className="row-id">{item.id}</span>
-            <span>{item.state}</span>
-            {lease ? (
-              <span className="row-lease">{holdLabel(lease)}</span>
-            ) : depth === 0 ? (
-              <span>{ageLabel(item.updatedAt, Date.now())}</span>
-            ) : null}
+            <span className="row-state">{item.state}</span>
             <Progress item={item} kinds={childKinds} />
-            {parent ? <ParentLink parent={parent} /> : null}
+            <RowValues item={item} collection={collection} />
           </span>
         </span>
       </div>
@@ -241,7 +252,7 @@ function geometryOf(
       const depth = Math.min(nesting?.get(item.id)?.depth ?? 0, 3);
       const node = depth > 0 ? CHILD_H / 2 : NODE_Y;
       const height = (depth > 0 ? CHILD_H : ROW_H) + (panels.get(item.id) ?? 0);
-      rows.push({ top, height, node, x: laneX(item.turn), depth });
+      rows.push({ top, height, node, depth });
       add({
         height,
         turn: item.turn,
@@ -370,8 +381,8 @@ export function ItemList({
           <path className="ln" d={layout.agentLane} />
           <path className="lny" d={layout.youLane} />
           <path className="ln" d={layout.trunk} />
-          {branches.map(({ d, yours }) => (
-            <path key={d.split(' V')[0]} className={yours ? 'lny br' : 'ln br'} d={d} />
+          {branches.map((d) => (
+            <path key={d.split(' V')[0]} className="br" d={d} />
           ))}
         </svg>
         {sections.map((section) => (

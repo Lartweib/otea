@@ -194,15 +194,27 @@
 
 /* ---- narrow rows: what a phone keeps on a line ---- */
 @media (max-width: 30rem) {
-  /* A parent says how many are open, not how long ago; a child, its state. */
+  /* A parent says how many are open; a child, its state. */
   .row-progress-of,
-  .row[data-depth] .row-id,
-  .row-meta > span:has(+ .row-progress) {
+  .row[data-depth] .row-id {
     display: none;
   }
 
-  .row-meta > span:has(+ span + .row-progress)::after {
-    content: none;
+  .row-meta,
+  .row-progress {
+    gap: 6px;
+  }
+
+  .row-id::after {
+    margin-left: 6px;
+  }
+
+  .row-progress {
+    padding-left: 8px;
+  }
+
+  .row-progress .child-bar {
+    width: 24px;
   }
 
   /* Children and relations drop the id: node, icon, title and state. */

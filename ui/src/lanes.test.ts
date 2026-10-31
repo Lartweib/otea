@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { LANE, laneX, layoutBranches, layoutLanes } from './lanes.ts';
+import { iconX, LANE, laneX, layoutBranches, layoutLanes } from './lanes.ts';
 
 describe('laneX', () => {
   it('puts your turn on the right lane, agents on the left and closed items on the trunk', () => {
@@ -106,32 +106,32 @@ describe('layoutLanes with closed rows between the lanes', () => {
 });
 
 describe('layoutBranches', () => {
-  const parent = { top: 0, height: 66, node: 24, x: 40, depth: 0 };
-  const child = (top: number, x = 40) => ({ top, height: 44, node: 22, x, depth: 1 });
+  const parent = { top: 0, height: 66, node: 24, depth: 0 };
+  const child = (top: number) => ({ top, height: 44, node: 22, depth: 1 });
 
-  it('leaves the bottom of the parent node and bends into its own sub-lane', () => {
-    const [branch] = layoutBranches([parent, child(66), child(110, 16)]);
+  it('starts 6px below the parent icon, on its centre, and turns into each child at its icon centre', () => {
+    const [branch] = layoutBranches([parent, child(66), child(110)]);
 
-    expect(branch?.yours).toBe(true);
-    expect(branch?.d).toBe(
-      'M40 30 C40 37 52 37 52 44 V80 Q52 88 60 88 H80 M52 80 V124 Q52 132 60 132 H80',
-    );
+    // icon 68..84 centred at y=24: x=76, from 24 + 8 + 6; legs on y=88 and y=132, ending 8px before
+    // the child icon at 96.
+    expect(branch).toBe('M76 38 V80 Q76 88 84 88 H88 M76 80 V124 Q76 132 84 132 H88');
   });
 
-  it('swings an agent parent across with a longer bend, and is not yours', () => {
-    const [branch] = layoutBranches([{ ...parent, x: 16 }, child(66, 16)]);
+  it('stays in the content column, clear of the lanes (x <= 40)', () => {
+    const [branch] = layoutBranches([parent, child(66)]);
+    const xs = [...(branch ?? '').matchAll(/[MQH](\d+)/g)].map((match) => Number(match[1]));
 
-    expect(branch?.yours).toBe(false);
-    expect(branch?.d.startsWith('M16 30 C16 44.4 52 44.4 52 58.8 V80')).toBe(true);
+    expect(Math.min(...xs)).toBeGreaterThan(40 + 8);
+    expect(iconX(1) - Math.max(...xs)).toBe(8);
   });
 
-  it('drops a deeper level from the bottom of its parent row, one step right', () => {
-    const grandchild = { top: 110, height: 44, node: 22, x: 40, depth: 2 };
+  it('hangs a deeper level from its own parent icon, one step right', () => {
+    const grandchild = { top: 110, height: 44, node: 22, depth: 2 };
 
     const branches = layoutBranches([parent, child(66), grandchild]);
 
     expect(branches).toHaveLength(2);
-    expect(branches[1]?.d).toBe('M72 110 V124 Q72 132 80 132 H100');
+    expect(branches[1]).toBe('M103 101 V124 Q103 132 111 132 H116');
   });
 
   it('draws nothing without children', () => {

@@ -97,9 +97,9 @@ export function ageLabel(iso: string, now: number): string {
   return hours < 48 ? 'yesterday' : `${Math.floor(hours / 24)}d`;
 }
 
-// An agent at work in a row: who holds the item, and until when.
-export function holdLabel({ holder, expiresAt }: Lease, timeZone?: string): string {
-  return `${holder} · ~${formatTime(expiresAt, timeZone).slice(-5)}`;
+// Until when an agent holds an item, as its row says it.
+export function untilLabel({ expiresAt }: Lease, timeZone?: string): string {
+  return formatTime(expiresAt, timeZone).slice(-5);
 }
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];

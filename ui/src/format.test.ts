@@ -5,10 +5,10 @@ import {
   describeEvent,
   eventActorLabel,
   formatTime,
-  holdLabel,
   leaseLabel,
   momentLabel,
   relayOf,
+  untilLabel,
 } from './format.ts';
 import type { ItemEvent } from './types.ts';
 
@@ -160,11 +160,11 @@ describe('ageLabel', () => {
   });
 });
 
-describe('holdLabel', () => {
-  it('names the holder and when the hold runs out', () => {
+describe('untilLabel', () => {
+  it('says when the hold runs out', () => {
     const lease = { holder: 'claude', expiresAt: '2026-03-04T14:32:00.000Z' };
 
-    expect(holdLabel(lease, 'UTC')).toBe('claude · ~14:32');
+    expect(untilLabel(lease, 'UTC')).toBe('14:32');
   });
 });
 
