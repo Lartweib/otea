@@ -85,3 +85,33 @@ export function formatTime(iso: string, timeZone?: string): string {
     parts.find((candidate) => candidate.type === type)?.value ?? '';
   return `${part('year')}-${part('month')}-${part('day')} ${part('hour')}:${part('minute')}`;
 }
+
+// How long ago, as a list row says it: now, 12m, 3h, yesterday, 5d.
+export function ageLabel(iso: string, now: number): string {
+  const minutes = Math.floor((now - Date.parse(iso)) / 60_000);
+  if (Number.isNaN(minutes)) return '';
+  if (minutes < 1) return 'now';
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h`;
+  return hours < 48 ? 'yesterday' : `${Math.floor(hours / 24)}d`;
+}
+
+// An agent at work in a row: who holds the item, and until when.
+export function holdLabel({ holder, expiresAt }: Lease, timeZone?: string): string {
+  return `${holder} · ~${formatTime(expiresAt, timeZone).slice(-5)}`;
+}
+
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+// A moment as the detail says it: the time on the day it happened, the day and time otherwise
+// (28 Oct, 12:31); with the year when it is not this one.
+export function momentLabel(iso: string, now: number, timeZone?: string): string {
+  const [date = '', time = ''] = formatTime(iso, timeZone).split(' ');
+  const [today = ''] = formatTime(new Date(now).toISOString(), timeZone).split(' ');
+  if (time === '') return iso;
+  if (date === today) return time;
+  const [year, month, day] = date.split('-');
+  const short = `${Number(day)} ${MONTHS[Number(month) - 1]}`;
+  return `${year === today.slice(0, 4) ? short : `${short} ${year}`}, ${time}`;
+}

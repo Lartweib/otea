@@ -1,3 +1,4 @@
+import type { NodeKind } from './node-kind.ts';
 import type { ChildrenSummary, Item, RelatedItem, RelationKind, RelationView } from './types.ts';
 
 // How a relation reads from the item that shows it, in the order the detail lists them.
@@ -87,40 +88,35 @@ export function matchItems(
   return [...exact, ...found.filter((item) => !exact.includes(item))].slice(0, limit);
 }
 
-export function progressLabel({ total, open, done, discarded }: ChildrenSummary): string {
-  const closed = total - open;
-  const how = [
-    ...(done > 0 ? [`${done} done`] : []),
-    ...(discarded > 0 ? [`${discarded} discarded`] : []),
-  ];
-  return [`${closed} of ${total} closed`, ...how].join(' · ');
+// A parent's open children, as its row says it.
+export function openLabel({ total, open }: ChildrenSummary): string {
+  return `${open} of ${total} open`;
 }
 
-const round = (value: number) => Math.round(value * 100) / 100;
-
-const PAD = 10;
-const R = 5.5;
-
-// A parent's children as nodes on one track, the way closed items fuse into the trunk of a list:
-// closed ones first, the trunk drawn through them up to `closedUntil`, then the open ones on the
-// lane. Nodes shrink to keep apart when there are many.
-export type ChildTrack = {
-  r: number;
-  nodes: Array<{ id: string; x: number; child: RelatedItem }>;
-  closedUntil?: number;
+const SEGMENT_ORDER: Readonly<Record<NodeKind, number>> = {
+  done: 0,
+  discarded: 1,
+  you: 2,
+  working: 3,
+  queued: 4,
+  incomplete: 4,
 };
 
-export function childTrack(children: readonly RelatedItem[], width: number): ChildTrack {
-  const closed = children.filter(({ closes }) => closes !== undefined);
-  const open = children.filter(({ closes }) => closes === undefined);
-  const ordered = [...closed, ...open];
-  const step = ordered.length > 1 ? (width - 2 * PAD) / (ordered.length - 1) : 0;
-  const r = step === 0 ? R : Math.min(R, Math.max(2.5, step * 0.38));
-  const nodes = ordered.map((child, index) => ({
-    id: child.id,
-    x: round(PAD + index * step),
-    child,
-  }));
-  const last = nodes[closed.length - 1];
-  return last === undefined ? { r, nodes } : { r, nodes, closedUntil: last.x };
+// A parent's progress bar, one segment per child: closed first, then yours, then the agents', so the
+// bar fills from the left as children close.
+export function childSegments(kinds: readonly NodeKind[]): NodeKind[] {
+  return [...kinds].sort((a, b) => SEGMENT_ORDER[a] - SEGMENT_ORDER[b]);
+}
+
+export type ChildTally = { yours: number; agents: number; closed: number };
+
+// The bar's legend: children on your turn, with agents, and closed.
+export function childTally(kinds: readonly NodeKind[]): ChildTally {
+  const tally: ChildTally = { yours: 0, agents: 0, closed: 0 };
+  for (const kind of kinds) {
+    if (kind === 'you') tally.yours += 1;
+    else if (kind === 'done' || kind === 'discarded') tally.closed += 1;
+    else tally.agents += 1;
+  }
+  return tally;
 }

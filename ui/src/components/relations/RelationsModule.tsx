@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { unlinkItems } from '../../api.ts';
-import { Icon } from '../../kit/index.ts';
 import { groupRelations, unlinkRequestOf } from '../../relations.ts';
 import type { ItemView, LayoutEntry, RelatedItem } from '../../types.ts';
 import type { CollectionOf } from '../ItemList.tsx';
@@ -18,8 +17,8 @@ type RelationsModuleProps = {
 
 const keyOf = ({ kind, id }: RelatedItem) => `${kind}:${id}`;
 
-// The item's links grouped by how they read from it. With none it draws nothing but, for a browser
-// that can write, a quiet way to add one, shown when the detail is hovered or focused.
+// The item's links grouped by how they read from it, each kind in a narrow column beside its items.
+// A browser that can write adds one with "link" and removes one with the cross on its row.
 export function RelationsModule({
   item,
   entry,
@@ -43,17 +42,24 @@ export function RelationsModule({
       },
     );
   };
-  const empty = groups.length === 0;
-  // Each kind is labelled like a field, so the module needs no heading of its own.
+  const count = groups.reduce((sum, group) => sum + group.items.length, 0);
+  const label = entry.label ?? (count === 1 ? 'relation' : 'relations');
+  const headingId = `relations-${item.id}`;
   return (
-    <section
-      className="rel-module"
-      aria-label={entry.label ?? 'Relations'}
-      data-quiet={(empty && !adding) || undefined}
-    >
+    <section className="rel-module" aria-labelledby={headingId}>
+      <header className="sub-head">
+        <h3 className="sub-title" id={headingId}>
+          {count === 0 ? `No ${entry.label ?? 'relations'}` : `${count} ${label}`}
+        </h3>
+        {canWrite && !adding ? (
+          <button type="button" className="rel-add" onClick={() => setAdding(true)}>
+            link
+          </button>
+        ) : null}
+      </header>
       {groups.map((group) => (
         <div key={group.kind} className="rel-group">
-          <h3 className="rel-kind">{group.label}</h3>
+          <h4 className="rel-kind">{group.label}</h4>
           <ul className="rel-list">
             {group.items.map((related) => (
               <RelatedRow
@@ -69,12 +75,6 @@ export function RelationsModule({
       ))}
       {canWrite && adding ? (
         <LinkForm item={item} collectionOf={collectionOf} onDone={() => setAdding(false)} />
-      ) : null}
-      {canWrite && !adding ? (
-        <button type="button" className="rel-add" onClick={() => setAdding(true)}>
-          <Icon name="link" />
-          link
-        </button>
       ) : null}
       {error ? (
         <p className="action-error" role="alert">

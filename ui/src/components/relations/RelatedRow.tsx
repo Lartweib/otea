@@ -1,3 +1,4 @@
+import { TypeIcon } from '../../icons/TypeIcon.tsx';
 import { typeOf } from '../../item-types.ts';
 import { Icon, NODE_LABEL, Node } from '../../kit/index.ts';
 import { activeLease } from '../../lease.ts';
@@ -16,29 +17,29 @@ export function relatedNodeKind(related: RelatedItem, collectionOf: CollectionOf
 type RelatedRowProps = {
   related: RelatedItem;
   collectionOf: CollectionOf;
-  // Shows the other item's state after its title (the children list does).
-  withState?: boolean;
   // Removes the link; only for a browser that can write.
   onRemove?: (() => void) | undefined;
   removing?: boolean;
 };
 
-// One related item, compact: its node, id and title, linking to it.
-export function RelatedRow({
-  related,
-  collectionOf,
-  withState = false,
-  onRemove,
-  removing = false,
-}: RelatedRowProps) {
+// One related item, compact: its node, id, type icon, title and state (with who holds it while an
+// agent works on it), linking to it.
+export function RelatedRow({ related, collectionOf, onRemove, removing = false }: RelatedRowProps) {
   const kind = relatedNodeKind(related, collectionOf);
+  const type = typeOf(collectionOf(related.collection), related.type);
+  const lease = activeLease(related.lease, Date.now());
   return (
     <li className="rel-row" data-kind={kind} data-removing={removing || undefined}>
       <a className="rel-link" href={hashFor(related.id)}>
         <Node kind={kind} label={NODE_LABEL[kind]} />
         <span className="rel-id">{related.id}</span>
-        <span className="rel-title">{related.title}</span>
-        {withState ? <span className="rel-state">{related.state}</span> : null}
+        <span className="rel-title">
+          <TypeIcon name={type?.icon} size={14} />
+          <span>{related.title}</span>
+        </span>
+        <span className="rel-state">
+          {lease ? `${related.state} · ${lease.holder}` : related.state}
+        </span>
       </a>
       {onRemove ? (
         <button

@@ -1,10 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
   actorLabel,
+  ageLabel,
   describeEvent,
   eventActorLabel,
   formatTime,
+  holdLabel,
   leaseLabel,
+  momentLabel,
   relayOf,
 } from './format.ts';
 import type { ItemEvent } from './types.ts';
@@ -135,5 +138,42 @@ describe('format', () => {
 
   it('returns invalid timestamps unchanged', () => {
     expect(formatTime('not a date', 'UTC')).toBe('not a date');
+  });
+});
+
+describe('ageLabel', () => {
+  const now = Date.parse('2026-10-31T12:00:00.000Z');
+  const ago = (ms: number) => new Date(now - ms).toISOString();
+
+  it.each([
+    [20_000, 'now'],
+    [12 * 60_000, '12m'],
+    [3 * 3_600_000, '3h'],
+    [30 * 3_600_000, 'yesterday'],
+    [5 * 86_400_000, '5d'],
+  ])('says %ims ago as %s', (ms, label) => {
+    expect(ageLabel(ago(ms), now)).toBe(label);
+  });
+
+  it('says nothing for a date it cannot read', () => {
+    expect(ageLabel('nope', now)).toBe('');
+  });
+});
+
+describe('holdLabel', () => {
+  it('names the holder and when the hold runs out', () => {
+    const lease = { holder: 'claude', expiresAt: '2026-03-04T14:32:00.000Z' };
+
+    expect(holdLabel(lease, 'UTC')).toBe('claude · ~14:32');
+  });
+});
+
+describe('momentLabel', () => {
+  const now = Date.parse('2026-10-31T18:00:00.000Z');
+
+  it('gives the time alone today, the day and time before, and the year from another year', () => {
+    expect(momentLabel('2026-10-31T12:31:00.000Z', now, 'UTC')).toBe('12:31');
+    expect(momentLabel('2026-10-28T12:31:00.000Z', now, 'UTC')).toBe('28 Oct, 12:31');
+    expect(momentLabel('2025-01-02T09:05:00.000Z', now, 'UTC')).toBe('2 Jan 2025, 09:05');
   });
 });
