@@ -82,12 +82,12 @@ Geometry lives in `ui/src/lanes.ts` (tested). The list gutter is 56px: agent lan
 | Level | Spec |
 | --- | --- |
 | group header | 14/500 `--mut`, sentence case, its count in mono 12 (`--you-ink` only for *Waiting for you*), a hairline carrying it across; 60px tall (34px for the first), so groups get room above them |
-| title | 15/600 `--ink` with the type icon (16px) before it, the field modules' row marks at the end of the line |
-| meta | mono 12 `--mut` under the title: id · state · age (or who holds it and until when), and for a parent its segmented bar and `N of M open` behind a hairline |
+| title | 15/600 `--ink` with the type icon (16px) before it; a row whose parent sits in another group is led by the parent's title as a muted breadcrumb (`Create wolf › Movement`), which truncates first and selects the parent; at the end, who and when in mono 12 `--mut` (`claude-a · 20:18` while an agent holds it, the age otherwise) |
+| meta | mono 12 `--mut` under the title: id · state, a parent's segmented bar and `N of M open` behind a hairline, and the field modules' signals (severity, evidence chips) at the end |
 
-A row is 66px with its node on the title line (y=24). The content starts at x=68 and the row highlight at x=58. The title is the row's link, stretched over the whole row, so the parent reference on the meta line can be a link of its own.
+A row is 66px with its node on the title line (y=24). The content starts at x=68 and the row highlight at x=58. Nothing wraps: a narrow row (a container query on the row) drops the time first, then the agent. The title is the row's link, stretched over the whole row, so the breadcrumb before it can be a link of its own.
 
-**Branches.** A child in the same group as its parent sits right under it, one line and one size smaller (44px, 14/500, a 10px node, its id and state at the end of the line), stepped in 20px a level; its node stays on its own lane. The parent's branch (`layoutBranches`, tested) leaves the bottom of its node, bends once with the lanes' S-curve into a sub-lane of its own at x=52 (right of your lane, left of the highlight), drops beside the children and turns into each child's icon column with an 8px elbow, ending 8px before the icon. It never comes near the parent's icon, title or highlight. A deeper level drops from the bottom of its parent row, 20px further right. The branch takes the color of the parent's lane.
+**Branches.** A child in the same group as its parent sits right under it, one line and one size smaller (44px, 14/500, a 10px node, its id and state at the end of the line), stepped in 28px a level; its node stays on its own lane. The lanes mean turn and the branch means hierarchy, so the branch (`layoutBranches`, tested) never touches the lanes: it is a quiet tree inside the content column, in lane grey, the same for a parent on either lane. It starts 6px below the parent's type icon, on the icon's centre, drops straight down and turns into each child with an 8px elbow, its leg on the child's icon centre, ending 8px before the icon. A deeper level hangs the same way from its own parent's icon.
 
 ## Workspace
 
@@ -118,9 +118,9 @@ A quiet 28px icon button at the end of the detail header row (icon 14px, stroke 
 
 Turning it on, over `--travel` with `--e-move`:
 
-- The grid columns animate from `rail 1fr min(44rem, 54%)` to `0 1fr min(60rem, 72%)` (equal track count, so Chrome interpolates them). The rail fades out in 220ms; coming back it waits 380ms so it never shows clipped.
+- The grid columns animate from `rail 1fr min(44rem, 54%)` to `0 1fr min(56rem, 66%)` (equal track count, so Chrome interpolates them): the list and the detail share the room the rail gave up. The rail fades out in 220ms; coming back it waits 380ms so it never shows clipped.
 - Rows shed their meta line and field marks (opacity first, then the row's second grid row closes), leaving node and title.
-- The title grows from 30px to 32px; the detail stays a reading column.
+- The reading column widens from 39rem to 50rem (800px), centred in its pane, and the title grows from 30px to 32px.
 
 State lives in React state, not the hash: focus is a way of looking, not a place, so links and history keep pointing at items and Back never toggles it.
 
@@ -222,7 +222,7 @@ Below 48rem the workspace is one column (`ui/src/styles/phone.css`), the phone t
 
 - **Topbar** keeps brand, connection dot, Modules, theme and New item as 44px icon buttons; their words stay for screen readers (the connection label too).
 - **Collections** become a row of 44px pills that scrolls sideways; the chosen one is filled with `--ink`.
-- **Rows** keep what a line holds: a parent says `3 open` without its age, a child shows its state alone.
+- **Rows** keep what a line holds: the time and then the agent drop from the title line, a parent says `3 open` with a shorter bar, a child shows its state alone.
 - **Unfold**: tapping a row opens its detail in place, under the row and beside the lanes (60px in, right of the branch sub-lane), which keep running through it (an unfolded row's block grows by the detail's height, and its node stays at the head: `node` in `layoutLanes`). There is no detail pane and no "select an item" card; the row is the header, so the detail drops its title. The rows below make room as the detail grows over `--arrive` (the box follows its content as it loads), and the row is scrolled to the top. Tapping the row again, or Back, folds it (the hash goes back to the list); choosing another row moves the detail there at once. The moves sit in a bar sticky to the bottom of the screen while the detail is on it, the one primary among them. A move made there folds the item and the row carries itself home (the turn-change motion). A detail belongs to the row on the turn it had when it opened (`ui/src/unfold.ts`, tested): if the row changes hands it moves to another section, and the detail is dropped rather than reopened there; a tap opens it again.
 - **Intake** opens above the list.
 
