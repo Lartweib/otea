@@ -60,8 +60,15 @@ export function layoutLanes(blocks: readonly Block[]): LaneLayout {
 export const BRANCH = { below: 3, elbow: 8, gap: 4 } as const;
 
 // A row as the branch sees it: how deep it nests, its height and how far down its title line sits,
-// and whether its children are shown right under it.
-export type TreeRow = { depth: number; height: number; node: number; opens: boolean };
+// and whether its children are shown right under it. panel: the height of the detail unfolded in
+// place at the bottom of its block (on a phone), which the branch never crosses.
+export type TreeRow = {
+  depth: number;
+  height: number;
+  node: number;
+  opens: boolean;
+  panel?: number;
+};
 
 // A piece of the branch inside one row, in the row's own coordinates. level: the depth of the parent
 // it hangs from. y0..y1: the span the line's head covers while it draws this piece (tree draw).
@@ -92,7 +99,11 @@ export function branchPieces(rows: readonly TreeRow[]): BranchPiece[][] {
   // The row at each depth on the way down to the current one.
   const chain: number[] = [];
   return rows.map((row, index) => {
-    const { depth, height, node } = row;
+    const { depth, node } = row;
+    // A detail unfolded in place fills the bottom of the block: every line through the row stops at
+    // the row itself and picks up again in the block below the card, so none runs through the card,
+    // however far it has grown while it unfolds (its settled height is reserved from the start).
+    const height = row.height - (row.panel ?? 0);
     chain[depth] = index;
     chain.length = depth + 1;
     const pieces: BranchPiece[] = [];

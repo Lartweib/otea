@@ -8,7 +8,7 @@
 }
 
 .unfold-content {
-  /* Right of the branch sub-lane (x=52), so a parent's branch never runs along its card. */
+  /* Right of the lanes (x<=40); a branch stops at the row above the card (see branchPieces). */
   padding: 2px 0 14px 60px;
 }
 

@@ -373,7 +373,8 @@ function geometryOf(
     for (const item of section.items) {
       const depth = depthOf(nesting, item.id);
       const size = depth > 0 ? ROW.child : ROW.top;
-      const height = size.height + (panels.get(item.id) ?? 0);
+      const panel = panels.get(item.id) ?? 0;
+      const height = size.height + panel;
       const place = add({
         height,
         turn: item.turn,
@@ -381,7 +382,7 @@ function geometryOf(
         ...(item.turn === 'none' && section.turn !== 'none' ? { between: true } : {}),
       });
       const row = nesting?.get(item.id);
-      tree.push({ depth, height, node: size.node, opens: row?.collapsed === false });
+      tree.push({ depth, height, node: size.node, opens: row?.collapsed === false, panel });
       placed.push({ ...place, depth, node: size.node });
     }
     const pieces = branchPieces(tree);
