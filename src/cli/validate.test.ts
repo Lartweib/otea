@@ -43,6 +43,22 @@ describe('validate', () => {
     expect(out).toContain('0 errors, 1 warning');
   });
 
+  it('warns on a preset that uses close_requires, suggesting requires', async () => {
+    const deprecated = NOTES(1).replace(
+      'closes: discarded }',
+      'closes: discarded, close_requires: children_closed }',
+    );
+    repo.write('.otea/presets/notes/preset.yaml', deprecated);
+
+    const { code, out } = await otea('validate');
+
+    expect(code).toBe(0);
+    expect(out).toContain(
+      'warning  preset notes  workflow.states.closed.close_requires: deprecated; write requires: children_closed',
+    );
+    expect(out).toContain('0 errors, 1 warning');
+  });
+
   it('reports a broken project preset and exits with validation_failed', async () => {
     const broken = NOTES(1).replace('notes', 'broken').replace('initial: open', 'initial: x');
     repo.write('.otea/presets/broken/preset.yaml', broken);

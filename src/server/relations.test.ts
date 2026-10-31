@@ -4,12 +4,30 @@ import { createItem, getItem } from '../app/items.ts';
 import type { Project } from '../app/project.ts';
 import { listRelations } from '../app/relations.ts';
 import type { Actor } from '../core/item.ts';
+import { parsePreset } from '../core/preset.ts';
 import { createServer, type OteaServer } from './server.ts';
 import { LOCAL_HOST, memoryProject, request, SESSION_COOKIE, TOKEN } from './testing.ts';
 
 const ORIGIN = `http://${LOCAL_HOST}`;
 
 const bot: Actor = { kind: 'agent', name: 'claude' };
+
+// review, a working state on the human's turn, waits for every child.
+const EPIC = parsePreset(`
+preset: epic
+preset_version: 1
+fields:
+  title: { module: text, required: create }
+workflow:
+  initial: building
+  states:
+    building: { turn: agent }
+    review: { turn: human, requires: children_closed }
+    done: { turn: none, closes: done }
+  transitions:
+    - { from: building, to: review, by: human-ui }
+    - { from: review, to: done, by: human }
+`);
 
 describe('relations over the API', () => {
   let project: Project;
@@ -150,6 +168,30 @@ describe('relations over the API', () => {
     expect(await response.json()).toMatchObject({
       relations: [{ kind: 'child', id: 'TASKS-3', title: 'Movement', turn: 'agent' }],
       children: { total: 1, open: 1, done: 0, discarded: 0 },
+    });
+  });
+
+  describe('a move into a state that requires closed children', () => {
+    beforeEach(() => {
+      server.close();
+      project.db.close();
+      project = memoryProject(EPIC);
+      addCollection(project, { name: 'creatures', preset: 'epic' });
+      for (const title of ['Create wolf', 'Body']) {
+        createItem(project, { collection: 'creatures', title, actor: bot });
+      }
+      server = createServer(project, { token: TOKEN });
+    });
+
+    it('lists the requirement on the move and answers 409 while a child is open', async () => {
+      await post('/api/items/CREATURES-2/link', { kind: 'parent', other: 'CREATURES-1' });
+
+      const shown = await (await request(server, '/api/items/CREATURES-1')).json();
+      const moved = await post('/api/items/CREATURES-1/move', { to: 'review' });
+
+      expect(shown).toMatchObject({ transitions: [{ to: 'review', requires: 'children_closed' }] });
+      expect([moved.status, await errorOf(moved)]).toEqual([409, 'children_open']);
+      expect(getItem(project, 'CREATURES-1').state).toBe('building');
     });
   });
 });
