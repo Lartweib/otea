@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { branchPieces, LANE, laneX, layoutLanes } from './lanes.ts';
+import { branchPieces, LANE, laneX, layoutLanes, type TreeRow } from './lanes.ts';
 
 describe('laneX', () => {
   it('puts your turn on the right lane, agents on the left and closed items on the trunk', () => {
@@ -154,6 +154,36 @@ describe('branchPieces', () => {
     const pieces = branchPieces([top(true), child(1), child(1, true), child(2)]);
 
     expect(pieces[3]?.map((piece) => piece.level)).toEqual([1, 1]);
+  });
+
+  it('never runs a branch through a detail unfolded in place, whatever row it opens in', () => {
+    const open = (row: TreeRow, panel: number): TreeRow => ({
+      ...row,
+      height: row.height + panel,
+      panel,
+    });
+
+    // The parent opened: its stub stops at the row, the first child's leg picks up under the card.
+    const [parent, first] = branchPieces([open(top(true), 400), child(1)]);
+    expect(parent).toEqual([{ kind: 'stub', level: 0, y0: 34, y1: 62, d: 'M94 34 V62' }]);
+    expect(first?.[0]).toMatchObject({ d: 'M94 0 V10' });
+
+    // A child opened between siblings, with a grandchild level running past it: every line in its
+    // block ends at its own 54px.
+    const pieces = branchPieces([
+      top(true),
+      child(1, true),
+      open(child(2), 300),
+      child(2),
+      child(1),
+    ]);
+    const ends = (pieces[2] ?? []).map((piece) => piece.y1);
+    expect(Math.max(...ends)).toBeLessThanOrEqual(54);
+    expect(pieces[2]?.map((piece) => piece.d)).toEqual([
+      'M94 0 V54',
+      'M122 0 V54',
+      'M122 10 Q122 18 130 18 H136',
+    ]);
   });
 
   it('draws nothing for a row with no parent and no children shown', () => {
