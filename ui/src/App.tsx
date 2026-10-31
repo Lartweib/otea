@@ -376,6 +376,7 @@ export function App() {
         <main className="layout triage-layout">
           <Triage
             waiting={waiting}
+            loading={items.status === 'loading'}
             collectionOf={collectionOf}
             version={version}
             connection={connection}

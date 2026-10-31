@@ -1,33 +1,114 @@
-/* Swipe triage: one card per item waiting for you, the rest stacked behind it. */
+/* Triage: a mode of its own. What waits for you, one card at a time, the card filling the stage;
+   what was decided settles in the trays beside it. */
 
 .layout.triage-layout {
   display: block;
-  padding-bottom: 0;
+  padding: 0 16px;
   /* A card on its way out never widens the page. */
   overflow-x: clip;
 }
 
 .triage {
   display: grid;
-  gap: 16px;
-  max-width: 30rem;
+  gap: 20px;
+  max-width: 88rem;
   margin: 0 auto;
+  padding: 4px 0 24px;
 }
 
+/* ---- the head: the way out, where the pass stands, how far along ---- */
 .triage-head {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  gap: 16px;
+}
+
+.triage-exit {
+  justify-self: start;
+  height: 40px;
   margin-left: -10px;
 }
 
-.triage-head .btn {
-  height: 44px;
+.triage-heading {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  text-align: center;
 }
 
-.triage .t-display {
+.triage .triage-title {
   font-size: 26px;
+}
+
+.triage-count {
+  justify-self: end;
+}
+
+/* ---- the body: tray, stage, tray ---- */
+.triage-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) min(760px, 100%) minmax(0, 1fr);
+  align-items: start;
+  gap: 40px;
+}
+
+.triage-main {
+  display: grid;
+  grid-column: 2;
+  gap: 18px;
+  min-width: 0;
+}
+
+.triage-tray {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  max-width: 18rem;
+  padding-top: 6px;
+}
+
+.triage-tray:first-child {
+  justify-self: end;
+  width: 100%;
+}
+
+.triage-tray ul {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.triage-tray-row {
+  display: grid;
+  gap: 2px 10px;
+  padding: 10px 12px;
+  border-radius: var(--r-m);
+  background: var(--sf);
+  box-shadow: 0 0 0 1px var(--line);
+  animation: ot-in var(--m-base) var(--m-ease) both;
+}
+
+.triage-tray-title {
+  overflow: hidden;
+  font-size: 13.5px;
+  font-weight: 500;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.triage-tray-empty {
+  margin: 0;
+  padding: 14px;
+  border-radius: var(--r-m);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+.triage-loading {
+  padding: 24px 0;
+  text-align: center;
 }
 
 /* ---- the stack: the cards behind rise as the top one is pulled away (--p, 0 to 1) ---- */
@@ -35,25 +116,31 @@
   --p: 0;
   position: relative;
   isolation: isolate;
-  margin-bottom: 16px;
+  margin-bottom: 14px;
 }
 
-/* The next card, readable but dimmed until the top one is pulled off it. */
+/* The next card: its edge, and its title only once the top one is pulled off it, so nothing of it
+   ever shows through the card on top. */
 .tcard.tcard-next {
   position: absolute;
   inset: 0;
   z-index: -1;
   min-height: 0;
   overflow: hidden;
-  transform: translateY(calc(8px - 8px * var(--p))) scale(calc(0.96 + 0.04 * var(--p)));
+  background: var(--sf);
+  box-shadow: 0 0 0 1px var(--line);
+  transform: translateY(calc(10px - 10px * var(--p))) scale(calc(0.97 + 0.03 * var(--p)));
   transform-origin: bottom center;
   pointer-events: none;
   touch-action: auto;
   cursor: auto;
 }
 
-.tcard-next > * {
-  opacity: calc(0.5 + 0.5 * var(--p));
+.tcard-next-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  opacity: var(--p);
 }
 
 /* The one after it: only an edge. */
@@ -70,23 +157,24 @@
 
 .triage-stack[data-behind="2"]::after {
   opacity: 0.7;
-  transform: translateY(calc(16px - 8px * var(--p))) scale(calc(0.92 + 0.04 * var(--p)));
+  transform: translateY(calc(20px - 10px * var(--p))) scale(calc(0.94 + 0.03 * var(--p)));
   transform-origin: bottom center;
 }
 
-/* ---- the card ---- */
+/* ---- the card: the item at a reading size ---- */
 .tcard {
   position: relative;
   display: grid;
   align-content: start;
-  gap: 14px;
+  gap: 16px;
   min-width: 0;
-  min-height: 16rem;
-  padding: 20px;
+  grid-template-rows: auto auto auto 1fr auto;
+  min-height: clamp(18rem, 40vh, 26rem);
+  padding: 26px 32px 22px;
   border-radius: var(--r-l);
   box-shadow:
     0 0 0 1px var(--line),
-    0 18px 32px -24px var(--shadow);
+    0 24px 48px -32px var(--shadow);
   overflow-wrap: anywhere;
   /* Vertical motion still scrolls the page; sideways motion drags the card. */
   touch-action: pan-y;
@@ -98,22 +186,77 @@
   user-select: none;
 }
 
+.tcard-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+}
+
+.tcard-open {
+  position: relative;
+  z-index: 1;
+  flex: none;
+  color: var(--mut);
+  text-decoration: none;
+  transition: color var(--m-fast) var(--m-ease);
+}
+
+.tcard-open:hover {
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 .tcard-title {
-  font-size: 20px;
-  font-weight: 600;
-  letter-spacing: -0.015em;
-  line-height: 1.3;
+  margin: 0;
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
   text-wrap: balance;
 }
 
-.tcard .fields {
-  grid-template-columns: minmax(0, 1fr);
-  gap: 12px;
+.tcard-lead {
+  max-width: 72ch;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.tcard-fields {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 10px 16px;
+  max-width: 72ch;
+  margin: 0;
 }
 
 .tcard-field {
-  display: grid;
-  gap: 2px;
+  display: contents;
+}
+
+.tcard-field dt {
+  padding-top: 2px;
+  font: 500 11.5px var(--font-machine);
+  color: var(--mut);
+}
+
+.tcard-field dd {
+  margin: 0;
+  min-width: 0;
+}
+
+.tcard-standing {
+  grid-row: -2;
+  align-self: end;
+  margin: 0;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.tcard-empty {
+  margin: 0;
 }
 
 .tcard .input {
@@ -152,30 +295,25 @@
   opacity: var(--p);
 }
 
-/* ---- the moves, in reach at the bottom of the screen ---- */
+/* ---- the moves, each with its key ---- */
 .triage-bar {
-  position: sticky;
-  bottom: 0;
-  z-index: 2;
   display: grid;
-  gap: 6px;
-  margin: 0 -16px;
-  padding: 16px 16px calc(10px + env(safe-area-inset-bottom));
-  background: linear-gradient(transparent, var(--bg) 22%);
+  gap: 8px;
 }
 
 .triage-buttons {
   display: flex;
-  gap: 8px;
+  justify-content: center;
+  gap: 10px;
 }
 
 .triage-buttons .btn {
-  height: 48px;
+  height: 44px;
   font-size: 14px;
 }
 
 .triage-buttons .btn:not(.quiet) {
-  flex: 1;
+  min-width: 11rem;
 }
 
 .triage-hint {
@@ -183,32 +321,160 @@
   white-space: pre;
 }
 
-/* ---- the end of the stack ---- */
-.tcard-end {
-  min-height: 0;
-  cursor: auto;
-  touch-action: auto;
-}
-
-.triage-log {
-  display: grid;
-  list-style: none;
-  padding: 0;
-}
-
-.triage-log li {
+/* ---- progress: one mark per card of the pass ---- */
+.triage-strip {
   display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+.triage-strip i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--lane);
+  transition:
+    background-color var(--m-base) var(--m-ease),
+    box-shadow var(--m-base) var(--m-ease);
+}
+
+.triage-strip i[data-mark="decided"] {
+  background: var(--ink);
+}
+
+.triage-strip i[data-mark="skipped"] {
+  background: none;
+  box-shadow: inset 0 0 0 1.5px var(--lane);
+}
+
+.triage-strip i[data-mark="current"] {
+  background: var(--you);
+  box-shadow: 0 0 0 3px color-mix(in oklch, var(--you) 22%, transparent);
+}
+
+/* ---- the end of the pass, or nothing to triage: the stage keeps its size ---- */
+.triage-end {
+  display: grid;
+  place-content: center;
+  justify-items: center;
   gap: 12px;
-  align-items: baseline;
-  padding: 10px 0;
-  border-bottom: 1px solid var(--line);
-  font-size: 14px;
+  min-height: clamp(18rem, 40vh, 26rem);
+  padding: 32px;
+  border-radius: var(--r-l);
+  box-shadow: inset 0 0 0 1px var(--line);
+  text-align: center;
+  animation: ot-in var(--m-base) var(--m-ease) both;
 }
 
-.triage-log .t-id {
-  min-width: 5.5rem;
+.triage-end .t-small {
+  max-width: 44ch;
+  margin: 0;
 }
 
-.tcard-end .btn {
-  height: 44px;
+.triage-end .action-buttons {
+  justify-content: center;
+  margin-top: 8px;
+}
+
+/* ---- narrower: the trays step aside, the stage keeps the middle ---- */
+@media (max-width: 79.99rem) {
+  .triage-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .triage-main {
+    grid-column: 1;
+    justify-self: center;
+    width: min(760px, 100%);
+  }
+
+  .triage-tray {
+    display: none;
+  }
+}
+
+/* ---- phone: the card takes the width, the moves wait at the bottom, in reach of a thumb ---- */
+@media (max-width: 47.99rem) {
+  .triage-head {
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 4px 12px;
+  }
+
+  .triage-heading {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    justify-items: start;
+    text-align: left;
+  }
+
+  .triage .triage-title {
+    font-size: 22px;
+  }
+
+  .tcard {
+    min-height: 16rem;
+    padding: 20px;
+  }
+
+  .tcard-title {
+    font-size: 21px;
+  }
+
+  .tcard-fields {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
+  }
+
+  .tcard-field dd + dt,
+  .tcard-field + .tcard-field dt {
+    margin-top: 10px;
+  }
+
+  .triage-bar {
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+    margin: 0 -16px;
+    padding: 16px 16px calc(10px + env(safe-area-inset-bottom));
+    background: linear-gradient(transparent, var(--bg) 22%);
+  }
+
+  .triage-buttons .btn {
+    height: 48px;
+  }
+
+  .triage-buttons .btn:not(.quiet) {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .triage-end {
+    min-height: 18rem;
+  }
+}
+
+/* Keys are for keyboards. */
+@media (pointer: coarse), (max-width: 47.99rem) {
+  .triage .kbd {
+    display: none;
+  }
+}
+
+@media (pointer: fine) {
+  .triage-hint {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tcard-open,
+  .triage-strip i {
+    transition-duration: 1ms;
+  }
+
+  .triage-tray-row,
+  .triage-end {
+    animation: ot-fade var(--m-fast) both;
+  }
 }
