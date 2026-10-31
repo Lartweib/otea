@@ -76,6 +76,20 @@
   row-gap: 10px;
 }
 
+/* The main column and the aside: stacked, they are simply one column, the sections in order. */
+.detail-main,
+.detail-aside {
+  display: flex;
+  flex-direction: column;
+  gap: 36px;
+  min-width: 0;
+}
+
+.detail-section-count {
+  display: none;
+  font-weight: 400;
+}
+
 .detail-tags {
   display: flex;
   flex-wrap: wrap;
@@ -409,4 +423,92 @@ select.input {
   .ev.new {
     animation: ot-fade var(--m-fast) both;
   }
+}
+
+/* ---- the aside: from a 1268px pane (detail-form.ts), Details and History beside the main column.
+   main 800 · gap 48 with a 1px rule at its middle · aside 340–380, the rest right margin. It starts
+   on the Brief's row (Details' hairline continues the Brief's), sticks 16px under the top of the
+   pane, is never taller than the room it has (set from script) and scrolls on its own. ---- */
+.detail[data-form="aside"] {
+  display: grid;
+  grid-template-areas:
+    "head ."
+    "main aside";
+  grid-template-columns: 800px minmax(364px, 404px);
+  column-gap: 24px;
+  row-gap: 36px;
+  align-items: start;
+}
+
+.detail[data-form="aside"] > .detail-head {
+  grid-area: head;
+}
+
+.detail[data-form="aside"] > .detail-main {
+  grid-area: main;
+}
+
+.detail[data-form="aside"] > .detail-aside {
+  position: sticky;
+  top: 16px;
+  grid-area: aside;
+  gap: 28px;
+  padding-left: 23px;
+  border-left: 1px solid var(--line);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
+}
+
+/* In the aside the names sit on top of their sections, a count beside History's. */
+.detail[data-form="aside"] .detail-aside .detail-section {
+  display: block;
+  padding-top: 12px;
+}
+
+.detail[data-form="aside"] .detail-aside .detail-section-label {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 6px;
+  line-height: 24px;
+}
+
+.detail[data-form="aside"] .detail-section-count {
+  display: inline;
+}
+
+.detail[data-form="aside"] .detail-aside .detail-section-body {
+  padding-top: 0;
+}
+
+.detail[data-form="aside"] .detail-aside .fields {
+  grid-template-columns: 88px minmax(0, 1fr);
+}
+
+.detail[data-form="aside"] .detail-aside [data-travel="history"] {
+  padding-top: 0;
+  border-top-color: transparent;
+}
+
+/* History in the aside: mono time, the event wrapping under itself, who acted on a muted line. */
+.detail[data-form="aside"] .ev {
+  grid-template-columns: 20px 42px minmax(0, 1fr);
+  padding: 8px 0;
+}
+
+.detail[data-form="aside"] .ev time {
+  min-width: 0;
+}
+
+.detail[data-form="aside"] .ev-sep {
+  display: none;
+}
+
+.detail[data-form="aside"] .ev-m em {
+  display: block;
+  margin-top: 1px;
+  font-size: 12.5px;
+  line-height: 1.4;
 }

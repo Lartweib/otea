@@ -30,7 +30,11 @@ export function Timeline({ events }: TimelineProps) {
               {momentLabel(event.at, now)}
             </time>
             <span className="ev-m">
-              {describeEvent(event)} <em>· {eventActorLabel(event)}</em>
+              {describeEvent(event)}{' '}
+              <em>
+                <span className="ev-sep">· </span>
+                {eventActorLabel(event)}
+              </em>
             </span>
             {quote ? <q className="ev-quote">{quote}</q> : null}
           </li>

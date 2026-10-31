@@ -232,6 +232,11 @@
     margin-inline: 0;
   }
 
+  /* With the aside, the main column keeps the 50rem measure and the aside comes beside it. */
+  .workspace .detail[data-form="aside"] {
+    max-width: none;
+  }
+
   .workspace .detail :is(.detail-lead, .md, .body) {
     max-width: 72ch;
   }
