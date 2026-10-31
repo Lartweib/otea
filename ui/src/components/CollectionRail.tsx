@@ -1,3 +1,4 @@
+import { Button, Icon } from '../kit/index.ts';
 import type { RailEntry } from '../workspace.ts';
 
 type CollectionRailProps = {
@@ -7,7 +8,39 @@ type CollectionRailProps = {
   selected: string | undefined;
   onSelect: (collection: string | undefined) => void;
   hidden: boolean;
+  // Folds the sidebar away, from its own header.
+  onToggle?: () => void;
 };
+
+// Folds the collections sidebar away, or brings it back: the list keeps its width and the detail
+// takes the room.
+export function SidebarToggle({
+  shown,
+  onToggle,
+  className = '',
+}: {
+  shown: boolean;
+  onToggle: () => void;
+  className?: string;
+}) {
+  const tip = shown ? 'Hide collections · f' : 'Show collections · f';
+  return (
+    <Button
+      variant="quiet"
+      size="sm"
+      icon
+      className={`sidebar-toggle tip ${className}`.trim()}
+      data-tip={tip}
+      aria-label={tip}
+      aria-expanded={shown}
+      aria-controls="collections"
+      aria-keyshortcuts="f"
+      onClick={onToggle}
+    >
+      <Icon name="sidebar" />
+    </Button>
+  );
+}
 
 function Count({ yours, open }: { yours: number; open: number }) {
   return (
@@ -28,17 +61,21 @@ export function CollectionRail({
   selected,
   onSelect,
   hidden,
+  onToggle,
 }: CollectionRailProps) {
   return (
     <nav id="collections" className="rail" aria-label="Collections" inert={hidden}>
-      <span className="t-label rail-label">collections</span>
+      <div className="rail-head">
+        <span className="t-label rail-label">collections</span>
+        {onToggle ? <SidebarToggle shown onToggle={onToggle} /> : null}
+      </div>
       <button
         type="button"
         className="rail-entry"
         aria-pressed={selected === undefined}
         onClick={() => onSelect(undefined)}
       >
-        <span>all items</span>
+        <span>All items</span>
         <Count yours={yoursTotal} open={openTotal} />
       </button>
       {entries.map((entry) => (

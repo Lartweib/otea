@@ -6,29 +6,6 @@
   position: relative;
 }
 
-/* Lane names, centred over their lanes (agent x=16, you x=40). */
-.lane-head {
-  position: relative;
-  height: 16px;
-  font: 500 11px / 16px var(--font-machine);
-  color: var(--mut);
-}
-
-.lane-head span {
-  position: absolute;
-  top: 0;
-  transform: translateX(-50%);
-}
-
-.lane-head span:first-child {
-  left: 14px;
-}
-
-.lane-head-you {
-  left: 42px;
-  color: var(--you-ink);
-}
-
 .lanes-body {
   position: relative;
   /* One stacking context for the whole list, so a row in flight passes over every other section. */
