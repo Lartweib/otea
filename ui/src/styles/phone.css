@@ -25,7 +25,12 @@
 }
 
 /* The row is the header: the first section needs no hairline over it. */
-.detail[data-layout="unfold"] > .detail-section:first-of-type {
+/* The detail's columns are one column here, with the same spacing. */
+.detail[data-layout="unfold"] :is(.detail-main, .detail-aside) {
+  gap: 28px;
+}
+
+.detail[data-layout="unfold"] > .detail-main > .detail-section:first-of-type {
   padding-top: 0;
   border-top: 0;
 }

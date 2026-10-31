@@ -16,6 +16,7 @@ import { moduleFor } from '../modules/registry.ts';
 import { MOTION, reducedMotion } from '../motion.ts';
 import { itemNodeKind } from '../node-kind.ts';
 import type { CollectionView, ItemView, Turn } from '../types.ts';
+import { useDetailForm } from './detail-aside.ts';
 import { EvidenceList } from './EvidenceList.tsx';
 import { EvidenceModule } from './evidence/EvidenceModule.tsx';
 import { ItemActions } from './ItemActions.tsx';
@@ -55,13 +56,26 @@ function FieldList({
 }
 
 // One section of the detail: its name in the left margin above a hairline, its content in the
-// reading column beside it (above it on a phone).
-function Section({ label, children }: { label: string; children: ReactNode }) {
+// reading column beside it (above it on a phone, and on top inside the aside). travel: the key a
+// section that moves between the main column and the aside is followed by. count: shown next to
+// the name in the aside.
+function Section({
+  label,
+  children,
+  travel,
+  count,
+}: {
+  label: string;
+  children: ReactNode;
+  travel?: string;
+  count?: string;
+}) {
   const id = `detail-${label.toLowerCase()}`;
   return (
-    <section className="detail-section" aria-labelledby={id}>
+    <section className="detail-section" aria-labelledby={id} data-travel={travel}>
       <h2 className="detail-section-label" id={id}>
-        {label}
+        <span>{label}</span>
+        {count ? <span className="t-cap detail-section-count">{count}</span> : null}
       </h2>
       <div className="detail-section-body">{children}</div>
     </section>
@@ -113,6 +127,7 @@ function useContentIn(id: string, enabled: boolean) {
 
 // A margin index: the header (where the item stands, its title, its moves), then Brief (what to
 // decide on), Structure (children and relations), Details (where it lives, who made it) and History.
+// On a wide pane the last two move to an aside beside the rest (detail-form.ts).
 export function ItemDetail({
   item,
   canWrite,
@@ -124,6 +139,8 @@ export function ItemDetail({
 }: ItemDetailProps) {
   const lease = useActiveLease(item.lease);
   const root = useContentIn(item.id, layout === 'pane');
+  // On a wide pane Details and History move to an aside beside the main column.
+  const form = useDetailForm(root, layout === 'pane');
   const type = typeOf(collection, item.type);
   const kind = itemNodeKind(item, type, lease !== null);
   const { head, primary, side } = detailBlocks(type, item.fields);
@@ -221,6 +238,7 @@ export function ItemDetail({
       ref={root}
       className="detail"
       data-layout={layout}
+      data-form={form}
       aria-label={unfolded ? item.title : undefined}
     >
       {unfolded ? null : (
@@ -247,35 +265,43 @@ export function ItemDetail({
           {actions}
         </header>
       )}
-      {item.missing.length > 0 ? (
-        <div className="missing well">
-          <span className="t-label">missing to complete</span>
-          <span className="t-ui">{item.missing.join(', ')}</span>
-        </div>
-      ) : null}
-      <Section label="Brief">
-        {head.length > 0 ? <FieldList values={head} className="fields fields-head" /> : null}
-        {briefParts.length > 0 || head.length > 0 ? (
-          briefParts
-        ) : (
-          <p className="t-small">No fields.</p>
-        )}
-      </Section>
-      {structureParts.length > 0 ? <Section label="Structure">{structureParts}</Section> : null}
-      <Section label="Details">
-        {aside.map(block)}
-        <dl className="fields fields-meta">
-          <Field label="collection">{item.collection}</Field>
-          <Field label="created by">
-            {actorLabel(item.createdBy)} · {momentLabel(item.createdAt, Date.now())}
-          </Field>
-          {lease ? <Field label="lease">{leaseLabel(lease)}</Field> : null}
-          <Field label="updated">{momentLabel(item.updatedAt, Date.now())}</Field>
-        </dl>
-      </Section>
-      <Section label="History">
-        <Timeline events={item.events} />
-      </Section>
+      <div className="detail-main">
+        {item.missing.length > 0 ? (
+          <div className="missing well">
+            <span className="t-label">missing to complete</span>
+            <span className="t-ui">{item.missing.join(', ')}</span>
+          </div>
+        ) : null}
+        <Section label="Brief">
+          {head.length > 0 ? <FieldList values={head} className="fields fields-head" /> : null}
+          {briefParts.length > 0 || head.length > 0 ? (
+            briefParts
+          ) : (
+            <p className="t-small">No fields.</p>
+          )}
+        </Section>
+        {structureParts.length > 0 ? <Section label="Structure">{structureParts}</Section> : null}
+      </div>
+      <aside className="detail-aside" aria-label="Details and history">
+        <Section label="Details" travel="details">
+          {aside.map(block)}
+          <dl className="fields fields-meta">
+            <Field label="collection">{item.collection}</Field>
+            <Field label="created by">
+              {actorLabel(item.createdBy)} · {momentLabel(item.createdAt, Date.now())}
+            </Field>
+            {lease ? <Field label="lease">{leaseLabel(lease)}</Field> : null}
+            <Field label="updated">{momentLabel(item.updatedAt, Date.now())}</Field>
+          </dl>
+        </Section>
+        <Section
+          label="History"
+          travel="history"
+          count={`${item.events.length} ${item.events.length === 1 ? 'event' : 'events'}`}
+        >
+          <Timeline events={item.events} />
+        </Section>
+      </aside>
       {unfolded ? <div className="unfold-actions">{actions}</div> : null}
     </article>
   );
