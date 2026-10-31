@@ -19,18 +19,22 @@
   white-space: nowrap;
 }
 
-/* The sidebar's own header: its label, and the button that folds it away. */
+/* The sidebar's own header: the button that folds it, then its label. */
 .rail-head {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+  gap: 2px;
   min-height: 36px;
   padding: 2px 0 6px;
 }
 
 .rail-label {
-  padding: 8px 12px;
+  padding: 8px 4px;
+}
+
+/* The entries are laid out as the rail's own children; the wrapper only goes inert when folded. */
+.rail-entries {
+  display: contents;
 }
 
 .rail-entry {
@@ -125,11 +129,6 @@
 .sidebar-toggle {
   display: none;
   flex: none;
-}
-
-/* Folded, the sidebar comes back from the top bar, right after the brand. */
-.topbar .brand + .topbar-sidebar {
-  margin-right: auto;
 }
 
 /* ---- the divider: a hairline that thickens under the pointer, with a grip ---- */
@@ -244,16 +243,19 @@
 
 @media (min-width: 64rem) {
   /* The sidebar's track holds its 13.75rem and 24px of air before the lanes, so the first lane
-     sits 40px clear of the sidebar's edge; the air folds away with it. */
+     sits 40px clear of the sidebar's edge. Folded, the track keeps a strip just wide enough for the
+     toggle (8 + 28 + 8) and the same 24px of air. */
   .workspace {
+    --rail-strip: 44px;
     --rail-w: calc(13.75rem + 24px);
   }
 
   .workspace[data-sidebar="off"] {
-    --rail-w: 0px;
+    --rail-w: calc(var(--rail-strip) + 24px);
   }
 
-  /* The sidebar keeps its width and slides out of its track; the panes are played back (FLIP). */
+  /* The sidebar keeps its place: folding it, the label and the collections fade and clip out
+     towards the toggle, which never moves; the panes are played back (FLIP). */
   .workspace .rail {
     position: absolute;
     left: 8px;
@@ -261,24 +263,46 @@
     bottom: 0;
     display: flex;
     width: 13.75rem;
+    overflow: visible;
+  }
+
+  .workspace .rail .sidebar-toggle {
+    position: relative;
+    display: inline-flex;
+  }
+
+  /* At the left edge of the screen, its tooltip opens to the right. */
+  .workspace .rail .sidebar-toggle::after {
+    right: auto;
+    left: 0;
+  }
+
+  .workspace .rail :is(.rail-label, .rail-entry) {
+    clip-path: inset(0 0 0 0);
     transition:
-      transform var(--m-slow) var(--m-ease),
       opacity var(--m-base) var(--m-ease),
-      visibility 0s;
+      clip-path var(--m-slow) var(--m-ease),
+      visibility 0s,
+      background-color var(--m-fast) var(--m-ease),
+      box-shadow var(--m-fast) var(--m-ease);
   }
 
   .workspace[data-sidebar="off"] .rail {
-    transform: translateX(-100%);
+    pointer-events: none;
+  }
+
+  .workspace[data-sidebar="off"] .rail .sidebar-toggle {
+    pointer-events: auto;
+  }
+
+  .workspace[data-sidebar="off"] .rail :is(.rail-label, .rail-entry) {
+    clip-path: inset(0 100% 0 0);
     opacity: 0;
     visibility: hidden;
     transition:
-      transform var(--m-slow) var(--m-ease),
       opacity var(--m-base) var(--m-ease),
+      clip-path var(--m-slow) var(--m-ease),
       visibility 0s var(--m-slow);
-  }
-
-  .sidebar-toggle {
-    display: inline-flex;
   }
 }
 
@@ -288,7 +312,7 @@
   }
 }
 
-/* Reduced motion: the sidebar does not travel, it crossfades. */
+/* Reduced motion: folding the sidebar is instant. */
 @media (prefers-reduced-motion: reduce) {
   .rail-entry,
   .divider::before,
@@ -298,17 +322,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) and (min-width: 64rem) {
-  .workspace .rail {
-    transform: none;
-    transition:
-      opacity var(--m-fast) linear,
-      visibility 0s;
-  }
-
-  .workspace[data-sidebar="off"] .rail {
-    transform: none;
-    transition:
-      opacity var(--m-fast) linear,
-      visibility 0s var(--m-fast);
+  .workspace .rail :is(.rail-label, .rail-entry),
+  .workspace[data-sidebar="off"] .rail :is(.rail-label, .rail-entry) {
+    transition: none;
   }
 }
