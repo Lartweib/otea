@@ -57,7 +57,7 @@
 
 /* Set down: a newly shown image arrives from just below. */
 .ev-set {
-  animation: ev-set var(--arrive) var(--e-out) both;
+  animation: ev-set var(--m-base) var(--m-ease) both;
 }
 
 @keyframes ev-set {
@@ -199,8 +199,8 @@
   color: var(--sf);
   box-shadow: 0 6px 16px -6px var(--shadow);
   transition:
-    transform var(--arrive) var(--e-out),
-    box-shadow var(--arrive) var(--e-out);
+    transform var(--m-slow) var(--m-ease),
+    box-shadow var(--m-slow) var(--m-ease);
 }
 
 .ev-knob .icon {
@@ -304,8 +304,8 @@
   cursor: pointer;
   box-shadow: 0 0 0 1px var(--line);
   transition:
-    box-shadow var(--micro),
-    transform var(--micro) var(--e-out);
+    box-shadow var(--m-fast),
+    transform var(--m-fast) var(--m-ease);
 }
 
 .ev-thumb img {
@@ -406,7 +406,7 @@
   border-block: 4px solid transparent;
   border-left: 5px solid var(--mut);
   vertical-align: 1px;
-  transition: transform var(--micro) var(--e-out);
+  transition: transform var(--m-fast) var(--m-ease);
 }
 
 .ev-diff-file[open] .ev-path::before {
@@ -550,7 +550,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .ev-set {
-    animation: none;
+    animation: ot-fade var(--m-fast) both;
   }
 
   .ev-knob,

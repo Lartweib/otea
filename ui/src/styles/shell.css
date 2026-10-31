@@ -65,8 +65,8 @@
   border-radius: 50%;
   box-shadow: inset 0 0 0 1.5px var(--mut);
   transition:
-    background-color var(--arrive) var(--e-out),
-    box-shadow var(--arrive) var(--e-out);
+    background-color var(--m-base) var(--m-ease),
+    box-shadow var(--m-base) var(--m-ease);
 }
 
 .connection[data-connection="live"] .connection-dot {

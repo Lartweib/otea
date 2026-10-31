@@ -27,12 +27,16 @@
   --font-human: "Schibsted Grotesk", system-ui, sans-serif;
   --font-machine: "Spline Sans Mono", ui-monospace, monospace;
 
-  /* Motion: lift, carry, set down. */
+  /* Motion: one system, three durations and one easing (mirrored by MOTION in motion.ts).
+     fast: hover, press, the selection band; base: the chevron, content coming in, fades; slow:
+     anything that moves layout. Ease-out-quart: it answers at once and settles without overshoot. */
+  --m-fast: 120ms;
+  --m-base: 200ms;
+  --m-slow: 280ms;
+  --m-ease: cubic-bezier(0.25, 1, 0.5, 1);
+  /* The turn change keeps its own clock: lift, carry, set down. */
   --travel: 680ms;
-  --arrive: 520ms;
-  --micro: 160ms;
   --e-move: cubic-bezier(0.65, 0, 0.35, 1);
-  --e-out: cubic-bezier(0.22, 1, 0.36, 1);
 
   --r-s: 4px;
   --r-m: 8px;

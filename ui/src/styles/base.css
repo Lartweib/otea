@@ -23,8 +23,8 @@ body {
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   transition:
-    background-color 320ms var(--e-out),
-    color 320ms;
+    background-color var(--m-base) var(--m-ease),
+    color var(--m-base) var(--m-ease);
 }
 
 button,
@@ -118,6 +118,13 @@ code {
 .well {
   background: var(--well);
   border-radius: var(--r-s);
+}
+
+/* Under reduced motion nothing travels: what comes in crossfades (fast). */
+@keyframes ot-fade {
+  from {
+    opacity: 0;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
