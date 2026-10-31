@@ -37,19 +37,6 @@
 
 .detail .t-display {
   font-size: 30px;
-  transition: font-size var(--travel) var(--e-move);
-}
-
-/* Focus mode: the column widens to a longer reading measure, centred in the room the list gave up,
-   and the title grows. */
-@media (min-width: 48rem) {
-  .workspace[data-focus="true"] .detail {
-    max-width: 50rem;
-  }
-
-  .workspace[data-focus="true"] .detail .t-display {
-    font-size: 32px;
-  }
 }
 
 /* Each section is named in the left margin, above a hairline; its content keeps the reading column. */
@@ -301,7 +288,7 @@ a.evidence-name {
 }
 
 .ev.new {
-  animation: ot-in var(--arrive) var(--e-out) both;
+  animation: ot-in var(--m-base) var(--m-ease) both;
 }
 
 @keyframes ot-in {
@@ -356,7 +343,7 @@ a.evidence-name {
   box-shadow: 0 0 0 1px var(--line);
   color: var(--ink);
   font-size: 14px;
-  transition: box-shadow var(--micro);
+  transition: box-shadow var(--m-fast) var(--m-ease);
 }
 
 .input:hover:not(:disabled) {
@@ -415,13 +402,11 @@ select.input {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .input,
-  .detail .t-display {
+  .input {
     transition-duration: 1ms;
   }
 
   .ev.new {
-    animation-duration: 1ms;
-    animation-delay: 0ms;
+    animation: ot-fade var(--m-fast) both;
   }
 }

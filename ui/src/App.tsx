@@ -3,7 +3,6 @@ import { fetchCollections, fetchItem, fetchItems, fetchPresets, fetchSession } f
 import { catalogEntries } from './catalog.ts';
 import { CollectionRail } from './components/CollectionRail.tsx';
 import { ConnectionBadge } from './components/ConnectionBadge.tsx';
-import { FocusToggle } from './components/FocusToggle.tsx';
 import { ItemDetail } from './components/ItemDetail.tsx';
 import {
   type ChildrenOf,
@@ -13,9 +12,10 @@ import {
 } from './components/ItemList.tsx';
 import { CatalogOverview, ModuleIndex, ModulePanel } from './components/ModuleCatalog.tsx';
 import { type IntakeParent, NewItemForm } from './components/NewItemForm.tsx';
+import { browserStorage, Divider, useSplit } from './components/Split.tsx';
 import { ThemeToggle } from './components/ThemeToggle.tsx';
 import { Triage } from './components/Triage.tsx';
-import { type Connection, useLive, usePhone, useRemote, useRoute } from './hooks.ts';
+import { type Connection, useHideTier, useLive, usePhone, useRemote, useRoute } from './hooks.ts';
 import { keyCommand, keyTargetOf, stepSelection } from './keys.ts';
 import { Button, Icon } from './kit/index.ts';
 import { MODULES } from './modules/registry.ts';
@@ -52,7 +52,31 @@ type ListPaneProps = {
   collectionOf: CollectionOf;
   unfolding: Unfolding | undefined;
   onTriage: (() => void) | undefined;
+  sidebar: boolean;
+  onToggleSidebar: () => void;
 };
+
+// Folds the collections sidebar away (or brings it back): the list keeps its width, the detail
+// takes the room.
+function SidebarToggle({ shown, onToggle }: { shown: boolean; onToggle: () => void }) {
+  const tip = shown ? 'Hide collections · f' : 'Show collections · f';
+  return (
+    <Button
+      variant="quiet"
+      size="sm"
+      icon
+      className="sidebar-toggle tip"
+      data-tip={tip}
+      aria-label={tip}
+      aria-expanded={shown}
+      aria-controls="collections"
+      aria-keyshortcuts="f"
+      onClick={onToggle}
+    >
+      <Icon name="sidebar" />
+    </Button>
+  );
+}
 
 function ListPane({
   items,
@@ -65,6 +89,8 @@ function ListPane({
   collectionOf,
   unfolding,
   onTriage,
+  sidebar,
+  onToggleSidebar,
 }: ListPaneProps) {
   if (items.status === 'loading') return <Message>Loading…</Message>;
   if (items.status === 'failed') return <Message muted={false}>{items.message}</Message>;
@@ -78,8 +104,9 @@ function ListPane({
   return (
     <>
       <div className="list-head">
+        <SidebarToggle shown={sidebar} onToggle={onToggleSidebar} />
         <h2 className="t-h">{collection ?? 'all items'}</h2>
-        <span className="t-cap list-hint">j k to move · f to expand</span>
+        <span className="t-cap list-hint">j k to move · f collections</span>
       </div>
       <ItemList
         sections={sections}
@@ -101,7 +128,6 @@ type DetailPaneProps = {
   item: Remote<ItemView | null>;
   canWrite: boolean;
   collectionOf: CollectionOf;
-  headAction: ReactNode;
   layout?: 'pane' | 'unfold';
   onMoved?: () => void;
   onAddChild?: (parent: ItemView) => void;
@@ -112,7 +138,6 @@ function DetailPane({
   item,
   canWrite,
   collectionOf,
-  headAction,
   layout,
   onMoved,
   onAddChild,
@@ -127,7 +152,6 @@ function DetailPane({
       collection={collectionOf(item.value.collection)}
       collectionOf={collectionOf}
       onAddChild={onAddChild}
-      headAction={headAction}
       {...(layout ? { layout } : {})}
       {...(onMoved ? { onMoved } : {})}
     />
@@ -196,15 +220,6 @@ function Catalog({ name, presets }: CatalogProps) {
 // parent: the item a "+ child" opened the form for; the form starts in its collection.
 type Intake = { openedOn: string | undefined; parent?: IntakeParent };
 
-// Reading window.localStorage itself can throw when site data is blocked.
-function browserStorage(): Storage | undefined {
-  try {
-    return window.localStorage;
-  } catch {
-    return undefined;
-  }
-}
-
 // The parents this viewer folded (or, whose children are all closed, unfolded) in the list,
 // remembered in this browser.
 function useFolds(): [Folds, (id: string, settled: boolean) => void] {
@@ -235,31 +250,26 @@ function childrenIndex(items: readonly Item[]): ChildrenOf {
 
 type WorkspaceKeys = {
   enabled: boolean;
-  focus: boolean;
-  setFocus: (update: (focus: boolean) => boolean) => void;
+  toggleSidebar: () => void;
   order: string[];
   selectedId: string | undefined;
 };
 
-// f toggles focus mode, Escape leaves it, j and k walk the list. Keys typed into a field stay there.
-function useWorkspaceKeys({ enabled, focus, setFocus, order, selectedId }: WorkspaceKeys) {
+// f folds the collections sidebar, j and k walk the list. Keys typed into a field stay there.
+function useWorkspaceKeys({ enabled, toggleSidebar, order, selectedId }: WorkspaceKeys) {
   useEffect(() => {
     if (!enabled) return;
     const onKey = (event: KeyboardEvent) => {
-      const command = keyCommand(
-        {
-          key: event.key,
-          ctrlKey: event.ctrlKey,
-          metaKey: event.metaKey,
-          altKey: event.altKey,
-          target: keyTargetOf(event.target),
-        },
-        { focus },
-      );
+      const command = keyCommand({
+        key: event.key,
+        ctrlKey: event.ctrlKey,
+        metaKey: event.metaKey,
+        altKey: event.altKey,
+        target: keyTargetOf(event.target),
+      });
       if (!command) return;
       event.preventDefault();
-      if (command === 'toggle-focus') setFocus((current) => !current);
-      else if (command === 'leave-focus') setFocus(() => false);
+      if (command === 'toggle-sidebar') toggleSidebar();
       else {
         const next = stepSelection(order, selectedId, command === 'next' ? 1 : -1);
         if (next !== undefined && next !== selectedId) window.location.hash = hashFor(next);
@@ -267,7 +277,7 @@ function useWorkspaceKeys({ enabled, focus, setFocus, order, selectedId }: Works
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [enabled, focus, setFocus, order, selectedId]);
+  }, [enabled, toggleSidebar, order, selectedId]);
 }
 
 export function App() {
@@ -282,9 +292,10 @@ export function App() {
   const collectionOf = collectionLookup(collections);
   const canWrite = session.status === 'ready' && session.value.canWrite;
   const [intake, setIntake] = useState<Intake>();
-  // Focus mode is a way of looking, not a place: it stays out of the hash, so links and history
-  // keep pointing at items.
-  const [focus, setFocus] = useState(false);
+  // The split is a way of looking, not a place: it stays out of the hash, so links and history keep
+  // pointing at items.
+  const split = useSplit();
+  const listPane = useHideTier();
   const [collection, setCollection] = useState<string>();
   const allItems = items.status === 'ready' ? items.value : [];
   const [folds, toggleChildren] = useFolds();
@@ -293,7 +304,12 @@ export function App() {
     allItems.find((item) => item.id === id),
   );
   const order = listOrder(sections);
-  useWorkspaceKeys({ enabled: route.view === 'items', focus, setFocus, order, selectedId });
+  useWorkspaceKeys({
+    enabled: route.view === 'items',
+    toggleSidebar: split.toggleSidebar,
+    order,
+    selectedId,
+  });
   const creating =
     canWrite && route.view === 'items' && intake !== undefined && intake.openedOn === selectedId;
   const closeIntake = () => setIntake(undefined);
@@ -313,7 +329,6 @@ export function App() {
     setIntake({ openedOn: selectedId, parent: { id, title, collection: parent.collection } });
     if (phone) window.scrollTo({ top: 0 });
   };
-  const toggle = <FocusToggle focus={focus} onToggle={() => setFocus((current) => !current)} />;
   const names = collections.status === 'ready' ? collections.value.map((each) => each.name) : [];
   const rail = railEntries(names, allItems);
   // On a phone the selected row unfolds into its detail, and the detail pane only holds intake.
@@ -332,7 +347,6 @@ export function App() {
               connection={connection}
               canWrite={canWrite}
               collectionOf={collectionOf}
-              headAction={null}
               layout="unfold"
               onMoved={fold}
               onAddChild={addChild}
@@ -387,16 +401,21 @@ export function App() {
           />
         </main>
       ) : (
-        <main className="layout workspace" data-focus={focus}>
+        <main
+          className="layout workspace"
+          ref={split.workspace}
+          data-sidebar={split.sidebar ? 'on' : 'off'}
+          style={split.style}
+        >
           <CollectionRail
             entries={rail}
             yoursTotal={rail.reduce((sum, entry) => sum + entry.yours, 0)}
             openTotal={rail.reduce((sum, entry) => sum + entry.open, 0)}
             selected={collection}
             onSelect={setCollection}
-            hidden={focus}
+            hidden={!split.sidebar && !phone}
           />
-          <div className="list-pane">
+          <div className="list-pane" data-pane="list" ref={listPane}>
             <ListPane
               items={items}
               sections={sections}
@@ -408,10 +427,15 @@ export function App() {
               collectionOf={collectionOf}
               unfolding={unfolding}
               onTriage={openTriage}
+              sidebar={split.sidebar}
+              onToggleSidebar={split.toggleSidebar}
             />
           </div>
+          {phone ? null : (
+            <Divider workspace={split.workspace} width={split.width} onCommit={split.commitWidth} />
+          )}
           {phone && !creating ? null : (
-            <div className="detail-pane">
+            <div className="detail-pane" data-pane="detail">
               <div className="detail-panel">
                 {creating ? (
                   <NewItemForm
@@ -429,7 +453,6 @@ export function App() {
                     connection={connection}
                     canWrite={canWrite}
                     collectionOf={collectionOf}
-                    headAction={toggle}
                     onAddChild={addChild}
                   />
                 ) : (

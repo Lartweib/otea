@@ -11,38 +11,32 @@ const press = (key: string, extra: Partial<KeyPress> = {}): KeyPress => ({
 });
 
 describe('keyCommand', () => {
-  it('toggles focus with f, in and out', () => {
-    expect(keyCommand(press('f'), { focus: false })).toBe('toggle-focus');
-    expect(keyCommand(press('f'), { focus: true })).toBe('toggle-focus');
-  });
-
-  it('leaves focus with Escape, and ignores Escape outside focus', () => {
-    expect(keyCommand(press('Escape'), { focus: true })).toBe('leave-focus');
-    expect(keyCommand(press('Escape'), { focus: false })).toBeUndefined();
+  it('folds and unfolds the collections sidebar with f', () => {
+    expect(keyCommand(press('f'))).toBe('toggle-sidebar');
   });
 
   it('moves the selection with j and k', () => {
-    expect(keyCommand(press('j'), { focus: false })).toBe('next');
-    expect(keyCommand(press('k'), { focus: true })).toBe('previous');
+    expect(keyCommand(press('j'))).toBe('next');
+    expect(keyCommand(press('k'))).toBe('previous');
   });
 
   it.each(['input', 'textarea', 'select', 'editable'] as const)(
     'ignores keys while typing in %s',
     (target) => {
-      expect(keyCommand(press('f', { target }), { focus: false })).toBeUndefined();
-      expect(keyCommand(press('Escape', { target }), { focus: true })).toBeUndefined();
-      expect(keyCommand(press('j', { target }), { focus: false })).toBeUndefined();
+      expect(keyCommand(press('f', { target }))).toBeUndefined();
+      expect(keyCommand(press('j', { target }))).toBeUndefined();
     },
   );
 
   it.each(['ctrlKey', 'metaKey', 'altKey'] as const)('ignores keys held with %s', (modifier) => {
-    expect(keyCommand(press('f', { [modifier]: true }), { focus: false })).toBeUndefined();
-    expect(keyCommand(press('j', { [modifier]: true }), { focus: false })).toBeUndefined();
+    expect(keyCommand(press('f', { [modifier]: true }))).toBeUndefined();
+    expect(keyCommand(press('j', { [modifier]: true }))).toBeUndefined();
   });
 
-  it('ignores other keys and shifted letters', () => {
-    expect(keyCommand(press('F'), { focus: false })).toBeUndefined();
-    expect(keyCommand(press('x'), { focus: false })).toBeUndefined();
+  it('ignores other keys, shifted letters and Escape (there is no focus mode to leave)', () => {
+    expect(keyCommand(press('F'))).toBeUndefined();
+    expect(keyCommand(press('x'))).toBeUndefined();
+    expect(keyCommand(press('Escape'))).toBeUndefined();
   });
 });
 

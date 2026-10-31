@@ -30,7 +30,7 @@ export function CollectionRail({
   hidden,
 }: CollectionRailProps) {
   return (
-    <nav className="rail" aria-label="Collections" inert={hidden}>
+    <nav id="collections" className="rail" aria-label="Collections" inert={hidden}>
       <span className="t-label rail-label">collections</span>
       <button
         type="button"

@@ -1,4 +1,4 @@
-// Workspace keys: f toggles focus mode, Escape leaves it, j and k move the selection.
+// Workspace keys: f folds or unfolds the collections sidebar, j and k move the selection.
 
 // Where a key was pressed: anywhere text is typed, keys belong to the field.
 export type KeyTarget = 'body' | 'input' | 'textarea' | 'select' | 'editable';
@@ -11,16 +11,14 @@ export type KeyPress = {
   target: KeyTarget;
 };
 
-export type KeyCommand = 'toggle-focus' | 'leave-focus' | 'next' | 'previous';
+export type KeyCommand = 'toggle-sidebar' | 'next' | 'previous';
 
-export function keyCommand(press: KeyPress, { focus }: { focus: boolean }): KeyCommand | undefined {
+export function keyCommand(press: KeyPress): KeyCommand | undefined {
   if (press.target !== 'body') return undefined;
   if (press.ctrlKey || press.metaKey || press.altKey) return undefined;
   switch (press.key) {
     case 'f':
-      return 'toggle-focus';
-    case 'Escape':
-      return focus ? 'leave-focus' : undefined;
+      return 'toggle-sidebar';
     case 'j':
       return 'next';
     case 'k':
