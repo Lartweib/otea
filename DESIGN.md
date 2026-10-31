@@ -35,7 +35,7 @@ Themes: light and dark follow the system by default. The topbar toggle cycles sy
 ## Ground and surfaces
 
 - **Ground**: `--bg` with a dotted 24px pattern (`radial-gradient` of `--pat`) on the page.
-- **Raised** (`.raised`): `--sf` with a 1px `--line` ring, radius 8px. Panels such as the item detail.
+- **Raised** (`.raised`): `--sf` with a 1px `--line` ring, radius 8px. Panels such as the module catalog. The item detail is not raised: it sits on the ground, apart from the list by a hairline.
 - **Well** (`.well`): `--well`, for evidence and inset notes.
 
 ## Type
@@ -73,7 +73,21 @@ How an item maps to a kind (`ui/src/node-kind.ts`): turn `human` is yours; turn 
 
 ## Lanes
 
-Geometry lives in `ui/src/lanes.ts` (tested). The list gutter is 56px: agent lane at x=16, your lane at x=40, trunk at x=28. Rows are 56px. Open sections come first and closed items last, most recently closed on top. Each lane runs straight down to the last open row, then curves into the trunk at the first closed row (`M x 0 V lastOpen C x mid 28 mid 28 firstClosed`), so the lanes never end in a broken Y; with nothing closed they meet at the bottom. Your lane is drawn in your color at 42% opacity.
+Geometry lives in `ui/src/lanes.ts` (tested). The list gutter is 56px: agent lane at x=16, your lane at x=40, trunk at x=28. Open sections come first and closed items last, most recently closed on top. Each lane runs straight down to the last open row, then curves into the trunk at the first closed row of the Closed group (`M x 0 V lastOpen C x mid 28 mid 28 firstClosed`), so the lanes never end in a broken Y; with nothing closed they meet at the bottom. A closed child shown under an open parent sits on x=28, between the lanes, which run on past it. Your lane is drawn in your color at 42% opacity.
+
+**One line language.** The rail is the signature, so it is the only line that moves between lanes. Everything else borrows its 1.5px stroke, its lane grey and its node shapes and stays still: the history is one straight lane, children are a list and a bar. Nodes come in three scales: 12px in the rail, 10px for a child, 8px in the history.
+
+**Rows** read in three levels:
+
+| Level | Spec |
+| --- | --- |
+| group header | 14/500 `--mut`, sentence case, its count in mono 12 (`--you-ink` only for *Waiting for you*), a hairline carrying it across; 60px tall (34px for the first), so groups get room above them |
+| title | 15/600 `--ink` with the type icon (16px) before it, the field modules' row marks at the end of the line |
+| meta | mono 12 `--mut` under the title: id · state · age (or who holds it and until when), and for a parent its segmented bar and `N of M open` behind a hairline |
+
+A row is 66px with its node on the title line (y=24). The content starts at x=68 and the row highlight at x=58. The title is the row's link, stretched over the whole row, so the parent reference on the meta line can be a link of its own.
+
+**Branches.** A child in the same group as its parent sits right under it, one line and one size smaller (44px, 14/500, a 10px node, its id and state at the end of the line), stepped in 20px a level; its node stays on its own lane. The parent's branch (`layoutBranches`, tested) leaves the bottom of its node, bends once with the lanes' S-curve into a sub-lane of its own at x=52 (right of your lane, left of the highlight), drops beside the children and turns into each child's icon column with an 8px elbow, ending 8px before the icon. It never comes near the parent's icon, title or highlight. A deeper level drops from the bottom of its parent row, 20px further right. The branch takes the color of the parent's lane.
 
 ## Workspace
 
@@ -82,14 +96,21 @@ The items view is the **Split** composition: three columns in one grid (`.worksp
 | Column | Content |
 | --- | --- |
 | rail (13.75rem, from 64rem) | collections from `/api/collections`, plus "all items"; each shows what waits for you / what is still open (`railEntries` in `ui/src/workspace.ts`). Choosing one filters the list; the filter is local state. |
-| list | list head (collection name, `j k to move · f to expand`), then the lanes list |
-| detail | the selected item, the intake form, or a hint |
+| list | list head (collection name, `j k to move · f to expand`), then the lanes list; it takes the rest of the width |
+| detail | the selected item, the intake form, or a hint: a reading column of 39rem (624px) with 40px margins, `min(44rem, 54%)` wide, on the ground, apart from the list by a 1px `--line` hairline |
 
 The rail keeps its grid track even when it is hidden (below 64rem it is 0 wide), so the list and detail never change tracks and the columns can animate. Below 48rem the workspace is the phone layout (see Phone). Routes: `#<id>` selects an item, `#/modules` opens the catalog, `#/triage` opens swipe triage.
 
-The detail has two parts: the **primary** column (head, moves, missing fields, field values) and the **side** (collection, creator, lease, history). Stacked by default.
+The detail is a **margin index**. The header holds the node, the id, the state pill and whose turn it is, with the type icon and its name at the end of the row (`epic`; a preset without types is named after itself), then the title (30/700) and the moves. Below it, each section is named in a 96px left margin (14/600) above a hairline, its content in the reading column beside it (above it on a phone or in a pane narrower than 34rem):
 
-What the detail shows follows the item type's layout (`detailBlocks` in `ui/src/item-types.ts`, tested): the `header` slot as a field list under the title, then the `evidence` and `body` slots in the primary column in their order, and the `side` slot atop the side. The evidence list (every attached file) sits at the first evidence module (`images`, `recording`, `diff`, `log`), or after the fields when the layout places none. The `relations` and `children` modules draw where the layout places them (see Relations). Reserved modules draw nothing yet. Values whose field the type does not declare still show, as plain text, at the end of the body. A type without a layout draws as before layouts: every field in the body. The list row draws the `row` slot, and the create form asks for the `intake` slot's fields, with a **Type** select after the collection when the collection has several types.
+| Section | Content |
+| --- | --- |
+| Brief | the `header` slot, then the `evidence` and `body` slots in their order; the `description` leads as plain text without a label, the other fields follow as a field list |
+| Structure | the `children` and `relations` modules, wherever the layout places them (see Relations); absent when the layout places neither |
+| Details | the rest of the `side` slot, then collection, created by (who and when), lease and updated |
+| History | the timeline |
+
+What the detail shows follows the item type's layout (`detailBlocks` in `ui/src/item-types.ts`, tested). The evidence list (every attached file) sits at the first evidence module (`images`, `recording`, `diff`, `log`), or after the fields when the layout places none. Reserved modules draw nothing yet. Values whose field the type does not declare still show, as plain text, at the end of the body. A type without a layout draws as before layouts: every field in the body. The list row draws the `row` slot, and the create form asks for the `intake` slot's fields, with a **Type** select after the collection when the collection has several types.
 
 ### Focus mode
 
@@ -97,10 +118,9 @@ A quiet 28px icon button at the end of the detail header row (icon 14px, stroke 
 
 Turning it on, over `--travel` with `--e-move`:
 
-- The grid columns animate from `rail 1.1fr 1fr` to `0 0.5fr 1.375fr` (equal track count, so Chrome interpolates them). The rail fades out in 220ms; coming back it waits 380ms so it never shows clipped.
+- The grid columns animate from `rail 1fr min(44rem, 54%)` to `0 1fr min(60rem, 72%)` (equal track count, so Chrome interpolates them). The rail fades out in 220ms; coming back it waits 380ms so it never shows clipped.
 - Rows shed their meta line and field marks (opacity first, then the row's second grid row closes), leaving node and title.
-- The title grows from 28px to 32px.
-- Once the detail pane is wider than 56rem (a container query on the pane, so it happens on the way, when there is room), the side moves beside the primary column (20rem) and arrives from 16px to the right. Below that width focus mode is a wider single column.
+- The title grows from 30px to 32px; the detail stays a reading column.
 
 State lives in React state, not the hash: focus is a way of looking, not a place, so links and history keep pointing at items and Back never toggles it.
 
@@ -110,18 +130,17 @@ Pure logic in `ui/src/keys.ts` (tested): `f` toggles focus, `Escape` leaves it, 
 
 ## Timeline
 
-The history in the detail is the item's own path (`ui/src/timeline.ts`, tested; drawn by `ui/src/components/Timeline.tsx`). Newest first. At the top sits the **current state node** (the item's node kind, on the lane of whose turn it is, or on the trunk at x=28 when closed), with `now` and its state. Below it, one stop per event: on your lane (x=40, filled in your color) when a human acted, on the agent lane (x=16, ink) when an agent did. A decision the human made in conversation and an agent relayed (`otea relay`; the event carries `via`) is still on your lane, but as a **ring** in your color on `--sf`, never the filled dot of a decision made in the UI; its label reads `human, relayed by <agent>` instead of `human (ui)`, and the quote of what the human said follows on its own line, in quotation marks (`relayOf` in `ui/src/format.ts`, tested). The path runs straight down while the lane stays and swings across with a cubic curve (`C x0 mid x1 mid x1 y`, `mid` halfway between the two stops) when it changes, ending at creation. Both lanes are drawn behind it as quiet guides.
-
-Each block is measured (ResizeObserver), so an event that wraps keeps its stop centred on it. When the timeline is narrower than 26rem (a phone, the focus side column), the time goes above the event. Events that arrive while the item is open fade in from 8px above (`--arrive`).
+The history in the detail (`ui/src/components/Timeline.tsx`) is the item's past, newest first, on **one straight lane** in lane grey: it never swings between lanes. A dot (8px) per event says who acted: filled in your color when a human did, ink when an agent did. A decision the human made in conversation and an agent relayed (`otea relay`; the event carries `via`) is a **ring** in your color, never the filled dot of a decision made in the UI; its label reads `human, relayed by <agent>` instead of `human (ui)`, and the quote of what the human said follows on its own line, in quotation marks (`relayOf` in `ui/src/format.ts`, tested). The time is mono (`14:02` today, `28 Oct, 12:31` before; `momentLabel`). The lane is drawn in CSS, so an event that wraps keeps its dot on its first line. Events that arrive while the item is open fade in from 8px above (`--arrive`).
 
 ## Controls
 
 - **Buttons** are pills: `Button` with `primary`, `quiet`, `sm` and `icon`. One primary per screen, always the move that hands the turn on (`moveVariants` in `ui/src/actions.ts`); moves that throw work away are quiet.
 - **Pills** (`Pill`): mono tags; `ask` for an open question for you, `state` for a workflow state (tinted in your color when it waits for you); `size="sm"` inside a list row.
-- **Type tag** (`TypeTag`): the item type's short name (`bug`, `impr`), mono 10.5/500 in `--mut`, in a square box (2px radius, 1px `--line` ring), so it never reads as a pill or a state; never in your color. Shown first in a row's meta line, in the detail and the triage card tags, only when the item's collection has two or more types; the label (`Improvement`) is its tooltip.
+- **Type tag** (`TypeTag`): the item type's short name (`bug`, `impr`), mono 10.5/500 in `--mut`, in a square box (2px radius, 1px `--line` ring), so it never reads as a pill or a state; never in your color. Shown first in a row's meta line, in the detail and the triage card tags, only when the item's collection has two or more types and the type has no icon (the icon marks it then); the label (`Improvement`) is its tooltip.
+- **Type icons** (`TypeIcon`, `ui/src/icons/`): the icon a preset gives a type (`icon: bug`), drawn by Otea on a 24 grid with a 1.5px non-scaling stroke, round caps and joins, current color; a plain circle is never the silhouette (a circle is a turn node). 96 icons in six groups (work, code, design and media, docs and talk, game and creatures, status and flow). The names come from the core (`ICON_NAMES` in `src/core/icons.ts`) and the catalog is keyed by them, so a name without a drawing fails the UI typecheck. 16px before a row's title, 14px in a child row, a children or relations row and the detail header. No icon means no icon, and a name the UI does not know draws nothing.
 - **Severity** (`Severity`): four signal bars; level 4 in `--warn`.
 - **Kbd** (`Kbd`): keyboard hints inside buttons.
-- **Icons** (`Icon`): thin (stroke 1.25), 16px, current color. No emoji.
+- **Icons** (`Icon`): the interface's own, thin (stroke 1.25), 16px, current color. No emoji.
 - **Tooltips** (`.tip` with `data-tip`): ink on surface, mono 11.5, below and right-aligned; on hover after 350ms and on keyboard focus.
 - **Fields**: inputs are pills on the surface, text areas round to 8px; labels are `t-label`.
 - Touch targets grow to 40px on coarse pointers.
@@ -162,11 +181,12 @@ Rules:
 
 Relation modules (`ui/src/components/relations/`, logic in `ui/src/relations.ts` and `ui/src/nesting.ts`, tested) draw an item's links with the list's own marks.
 
-- **relations**: one group per kind, read from the item (`parent`, `children`, `blocks`, `blocked by`, `duplicates`, `duplicated by`, `implements`, `implemented by`, `related`), laid out like fields: the kind in mono on the left, the items on the right. Each item is a compact row: its node (the same node kinds as the list), its id in mono and its title; it links to the item, and a closed one recedes to `--mut`. Children are left to a `children` module when the layout has one. A signed-in browser removes a link with the quiet cross that shows on hover, and adds one with **link**: a well with the kind (phrased from the item: "is blocked by") and a search by id or title. Nothing is in your color but your-turn nodes.
-- **children**: the label and `n of m closed · d done · x discarded`, then the progress as a track: the list's lanes turned on their side, the agent lane above, yours below (at 42%), fused into one trunk on the left where the closed children sit; each open child sits on the lane of whose turn it is. No progress bar. A child that changes hands is carried along the track (`--travel`). Below, each child with its node, id, title and state, and **+ child**, which opens the create form with the parent set and its collection chosen (any other can be picked, and the parent dropped).
+- **One row** for children and relations alike: the node (the same node kinds as the list), the id in mono, the type icon and title, and the state (with who holds it while an agent works on it); it links to the item, a closed one recedes to `--mut` and a discarded one is struck through. On a phone the id drops.
+- **relations**: headed `3 relations` with **link** at the end, then one group per kind, read from the item (`parent`, `children`, `blocks`, `blocked by`, `duplicates`, `duplicated by`, `implements`, `implemented by`, `related`): the kind in mono in an 84px column, its rows beside it. Children are left to a `children` module when the layout has one. A signed-in browser removes a link with the quiet cross that shows on hover (always on touch screens), and adds one with **link**: a well with the kind (phrased from the item: "is blocked by") and a search by id or title. Nothing is in your color but your-turn nodes.
+- **children**: a list, not a graph. Headed `4 children` with **+ child** at the end, then a segmented bar (`ChildBar`): one segment per child, colored like its node (yours in your color, an agent at work in ink, a queued or incomplete one an outline, done in the closed grey, discarded hatched), closed first, then yours, then the agents', so it fills from the left as children close (`childSegments` in `ui/src/relations.ts`, tested). A legend counts them (`1 yours · 2 with agents · 1 closed`), and each child follows as a row. **+ child** opens the create form with the parent set and its collection chosen (any other can be picked, and the parent dropped).
 - **Waiting for children**: a move whose target state declares `close_requires: children_closed` (the move's `closeRequires`) is drawn disabled while the item's children summary has open children, never primary (the next eligible move takes it, or none), with a quiet mono note beside it (`3 children open`, `moveBlock` in `ui/src/actions.ts`). The same holds in the phone's sticky moves bar and on triage cards, where it sits under the swipe buttons and is never swiped. The server refuses the move anyway.
-- **Quiet when empty**: with nothing to show, a module takes no room (the block before it gives back the gap) and its action waits there, shown when the detail is hovered or focused; on touch screens it keeps its place. A read-only browser sees nothing.
-- **List**: a parent's meta line ends with a branch glyph and `open/total open` while children are open. A child in the same section as its parent sits right under it, its title stepped in 18px per level with a hairline hook; its node stays on its own lane, which a section shares by turn, so the lanes stay coherent. A child on another turn stays in its own section: nothing waiting for you folds out of sight. A parent with nested children gets a fold control at the end of the row (a chevron, and the count when folded); folds are per viewer, in `localStorage` (`otea.collapsed`, failures ignored). Section counts include folded rows.
+- **Empty**: with nothing to show, a module says so (`No children`, `No relations`) beside its action for a browser that can write; a read-only browser sees nothing.
+- **List** (`nestSections` in `ui/src/nesting.ts`, tested): a parent's meta line always shows its segmented bar and `N of M open`, whatever its group. A child is nested under its parent (the branch, the step in) only when it falls in the same group. A child in another group (waiting for you while its parent is with agents) is a row of its own in its own group, with a muted reference to its parent at the end of its meta line (`↑ CRE-40 Create wolf`) that selects the parent: nothing waiting for you folds out of sight. A closed child whose siblings are still open stays under *Closed*, with the reference. A parent still open whose children are all closed (it typically comes back to you for review) takes them under it, folded by default so the row stays compact; unfolded, they sit between the lanes with their closed look. A parent with nested children gets a fold control at the end of its title line (a chevron, and the count when folded). Folds are per viewer, in `localStorage`: the parents folded (`otea.collapsed`) and the settled parents unfolded (`otea.expanded`); failures are ignored. Section counts are the items of their own turn, shown or folded.
 
 ## Motion
 
@@ -202,7 +222,8 @@ Below 48rem the workspace is one column (`ui/src/styles/phone.css`), the phone t
 
 - **Topbar** keeps brand, connection dot, Modules, theme and New item as 44px icon buttons; their words stay for screen readers (the connection label too).
 - **Collections** become a row of 44px pills that scrolls sideways; the chosen one is filled with `--ink`.
-- **Unfold**: tapping a row opens its detail in place, under the row and beside the lanes, which keep running through it (an unfolded row's block grows by the detail's height, and its node stays at the head: `node` in `layoutLanes`). There is no detail pane and no "select an item" card; the row is the header, so the detail drops its title. The rows below make room as the detail grows over `--arrive` (the box follows its content as it loads), and the row is scrolled to the top. Tapping the row again, or Back, folds it (the hash goes back to the list); choosing another row moves the detail there at once. The moves sit in a bar sticky to the bottom of the screen while the detail is on it, the one primary among them. A move made there folds the item and the row carries itself home (the turn-change motion). A detail belongs to the row on the turn it had when it opened (`ui/src/unfold.ts`, tested): if the row changes hands it moves to another section, and the detail is dropped rather than reopened there; a tap opens it again.
+- **Rows** keep what a line holds: a parent says `3 open` without its age, a child shows its state alone.
+- **Unfold**: tapping a row opens its detail in place, under the row and beside the lanes (60px in, right of the branch sub-lane), which keep running through it (an unfolded row's block grows by the detail's height, and its node stays at the head: `node` in `layoutLanes`). There is no detail pane and no "select an item" card; the row is the header, so the detail drops its title. The rows below make room as the detail grows over `--arrive` (the box follows its content as it loads), and the row is scrolled to the top. Tapping the row again, or Back, folds it (the hash goes back to the list); choosing another row moves the detail there at once. The moves sit in a bar sticky to the bottom of the screen while the detail is on it, the one primary among them. A move made there folds the item and the row carries itself home (the turn-change motion). A detail belongs to the row on the turn it had when it opened (`ui/src/unfold.ts`, tested): if the row changes hands it moves to another section, and the detail is dropped rather than reopened there; a tap opens it again.
 - **Intake** opens above the list.
 
 ### Swipe triage
