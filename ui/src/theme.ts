@@ -24,6 +24,11 @@ export function resolveTheme(choice: ThemeChoice, prefersDark: boolean): Theme {
   return choice;
 }
 
+// System to light on a light system changes the choice but nothing on screen.
+export function shownChanges(from: ThemeChoice, to: ThemeChoice, prefersDark: boolean): boolean {
+  return resolveTheme(from, prefersDark) !== resolveTheme(to, prefersDark);
+}
+
 export function themeLabel(choice: ThemeChoice): string {
   return `Theme: ${choice}`;
 }

@@ -4,6 +4,7 @@ import {
   parseChoice,
   readChoice,
   resolveTheme,
+  shownChanges,
   THEME_KEY,
   themeLabel,
   writeChoice,
@@ -97,5 +98,19 @@ describe('writeChoice', () => {
   it('does not throw when storage is missing or throws', () => {
     expect(() => writeChoice(undefined, 'dark')).not.toThrow();
     expect(() => writeChoice(broken, 'dark')).not.toThrow();
+  });
+});
+
+describe('shownChanges', () => {
+  it('is true when the theme on screen changes', () => {
+    expect(shownChanges('light', 'dark', false)).toBe(true);
+    expect(shownChanges('system', 'light', true)).toBe(true);
+    expect(shownChanges('dark', 'system', false)).toBe(true);
+  });
+
+  it('is false when the choice changes but the screen does not', () => {
+    expect(shownChanges('system', 'light', false)).toBe(false);
+    expect(shownChanges('dark', 'system', true)).toBe(false);
+    expect(shownChanges('light', 'light', true)).toBe(false);
   });
 });
