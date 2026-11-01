@@ -773,20 +773,32 @@ select.input {
   border-top: 0;
 }
 
-/* The rule left of Details runs from the band's top to the line; History's continues below it. */
+/* The rule left of Details runs from the band's top to the line; below it the rule runs the body
+   row, as tall as the taller of main and History (History's own box is capped and sticky). */
 .detail[data-form="aside"] > [data-travel] {
   display: block;
   min-width: 0;
   padding-top: 0;
-  padding-left: 23px;
+  padding-left: 24px;
   border-top: 0;
-  border-left: 1px solid var(--line);
 }
 
 .detail[data-form="aside"] > [data-travel="details"] {
   grid-area: details;
   align-self: stretch;
   padding-bottom: 28px;
+  padding-left: 23px;
+  border-left: 1px solid var(--line);
+}
+
+.detail[data-form="aside"]::after {
+  content: "";
+  grid-area: history;
+  align-self: stretch;
+  justify-self: start;
+  width: 1px;
+  background: var(--line);
+  pointer-events: none;
 }
 
 .detail[data-form="aside"] > [data-travel="history"] {
