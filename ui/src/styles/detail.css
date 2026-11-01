@@ -232,7 +232,12 @@ a.evidence-name {
 }
 
 /* ---- history: one straight lane, newest first; a dot per event says who acted ---- */
+/* The events share the list's columns, so the time column is as wide as its longest label (an older
+   day stacked over its time) and no wider: 01:19 alone when everything happened today. */
 .timeline {
+  display: grid;
+  grid-template-columns: 20px max-content minmax(0, 1fr);
+  column-gap: 12px;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -241,8 +246,8 @@ a.evidence-name {
 .ev {
   position: relative;
   display: grid;
-  grid-template-columns: 20px auto minmax(0, 1fr);
-  column-gap: 12px;
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
   align-items: baseline;
   padding: 10px 0;
   font-size: 13.5px;
@@ -297,8 +302,13 @@ a.evidence-name {
 
 .ev time {
   grid-column: 2;
-  min-width: 44px;
+  font-variant-numeric: tabular-nums;
   white-space: nowrap;
+}
+
+/* An older day sits over its time, on the event's first line. */
+.ev-day {
+  display: block;
 }
 
 .ev.new {
@@ -494,12 +504,7 @@ select.input {
 
 /* History in the aside: mono time, the event wrapping under itself, who acted on a muted line. */
 .detail[data-form="aside"] .ev {
-  grid-template-columns: 20px 42px minmax(0, 1fr);
   padding: 8px 0;
-}
-
-.detail[data-form="aside"] .ev time {
-  min-width: 0;
 }
 
 .detail[data-form="aside"] .ev-sep {

@@ -7,6 +7,7 @@ import {
   formatTime,
   leaseLabel,
   momentLabel,
+  momentParts,
   relayOf,
   untilLabel,
 } from './format.ts';
@@ -175,5 +176,21 @@ describe('momentLabel', () => {
     expect(momentLabel('2026-10-31T12:31:00.000Z', now, 'UTC')).toBe('12:31');
     expect(momentLabel('2026-10-28T12:31:00.000Z', now, 'UTC')).toBe('28 Oct, 12:31');
     expect(momentLabel('2025-01-02T09:05:00.000Z', now, 'UTC')).toBe('2 Jan 2025, 09:05');
+  });
+});
+
+describe('momentParts', () => {
+  const now = Date.parse('2026-10-31T18:00:00.000Z');
+
+  it('splits a moment into its day, if not today, and its time, for History to stack them', () => {
+    expect(momentParts('2026-10-31T12:31:00.000Z', now, 'UTC')).toEqual({ time: '12:31' });
+    expect(momentParts('2026-10-28T12:31:00.000Z', now, 'UTC')).toEqual({
+      day: '28 Oct',
+      time: '12:31',
+    });
+    expect(momentParts('2025-01-02T09:05:00.000Z', now, 'UTC')).toEqual({
+      day: '2 Jan 2025',
+      time: '09:05',
+    });
   });
 });

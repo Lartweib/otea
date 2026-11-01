@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { describeEvent, eventActorLabel, momentLabel, relayOf } from '../format.ts';
+import { describeEvent, eventActorLabel, momentParts, relayOf } from '../format.ts';
 import type { ItemEvent } from '../types.ts';
 
 type TimelineProps = { events: ItemEvent[] };
@@ -19,6 +19,7 @@ export function Timeline({ events }: TimelineProps) {
     <ol className="timeline">
       {newestFirst.map((event) => {
         const quote = relayOf(event)?.quote;
+        const { day, time } = momentParts(event.at, now);
         return (
           <li
             key={event.id}
@@ -27,7 +28,13 @@ export function Timeline({ events }: TimelineProps) {
             data-relayed={relayed(event)}
           >
             <time className="t-cap" dateTime={event.at}>
-              {momentLabel(event.at, now)}
+              {day ? (
+                <span className="ev-day">
+                  {day}
+                  <span className="visually-hidden">, </span>
+                </span>
+              ) : null}
+              {time}
             </time>
             <span className="ev-m">
               {describeEvent(event)}{' '}
