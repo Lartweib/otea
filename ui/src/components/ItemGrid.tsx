@@ -7,7 +7,6 @@ import {
   useRef,
   useState,
 } from 'react';
-import { ageLabel } from '../format.ts';
 import {
   autoWidth,
   cellText,
@@ -31,7 +30,7 @@ import { hashFor } from '../selection.ts';
 import type { CollectionView, Item } from '../types.ts';
 import { Carry } from './Carry.tsx';
 import { GroupLabel } from './GroupLabel.tsx';
-import { Holder, Lines } from './ItemList.tsx';
+import { Holder, Lines, When } from './ItemList.tsx';
 
 // The grid's rows are one line: 40px, the node at y=20 (10px). Group headers are 34px over the
 // first group and 46 over the others, the label on the id column.
@@ -87,7 +86,7 @@ function Cell({ item, column, compact }: { item: Item; column: GridColumn; compa
       );
     }
     case 'age':
-      return <span data-m={`${item.id}:a`}>{ageLabel(text, Date.now())}</span>;
+      return <When item={item} m={`${item.id}:a`} />;
     case 'severity': {
       const level = LEVELS.indexOf(text) + 1;
       if (level === 0) return text === '' ? null : <span>{text}</span>;
