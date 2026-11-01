@@ -339,9 +339,130 @@
 
 .gh.gh-age .gh-menu {
   position: absolute;
-  left: -14px;
+  left: calc(var(--air, 0px) - 14px);
   top: 50%;
   margin-top: -10px;
+}
+
+/* The air: one equal gap before every column after the title, inside its track (grid.ts). */
+.grid :is(.gh, .gc)[data-air] {
+  padding-left: var(--air, 0px);
+}
+
+/* A release, a key or a reset shares the spare again, eased on base; a drag follows the pointer. */
+.grid[data-easing] :is(.grid-head, .grid-row) {
+  transition: grid-template-columns var(--m-base) var(--m-ease);
+}
+
+.grid[data-easing] :is(.gh, .gc)[data-air] {
+  transition: padding-left var(--m-base) var(--m-ease);
+}
+
+/* ---- the resize edge: the column's edge that faces the title, 9px to catch the pointer ---- */
+.gh-edge {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(var(--air, 0px) - 14px);
+  z-index: 3;
+  width: 9px;
+  cursor: col-resize;
+  touch-action: none;
+  outline-offset: -2px;
+}
+
+.gh-edge[data-side="end"] {
+  left: auto;
+  right: -4.5px;
+}
+
+.gh-edge-i {
+  position: absolute;
+  left: 4px;
+  top: 11px;
+  width: 1px;
+  height: 14px;
+  border-radius: 1px;
+  background: var(--lane);
+  opacity: 0;
+  transition:
+    opacity var(--m-fast) var(--m-ease),
+    top var(--m-fast) var(--m-ease),
+    height var(--m-fast) var(--m-ease),
+    background-color var(--m-fast) var(--m-ease);
+}
+
+.grid-head:hover .gh-edge-i {
+  opacity: 1;
+}
+
+.gh-edge:is(:hover, :focus-visible, [data-on]) .gh-edge-i {
+  left: 3.5px;
+  top: 6px;
+  width: 2px;
+  height: 24px;
+  background: color-mix(in oklch, var(--ink) 45%, transparent);
+  opacity: 1;
+}
+
+.gh-edge[data-on] .gh-edge-i {
+  top: 0;
+  height: 36px;
+}
+
+.gh-edge:focus-visible {
+  outline: 2px solid var(--you);
+}
+
+/* Dragging: the line runs down the rows, a chip says the width. */
+.gh-line {
+  position: absolute;
+  top: 36px;
+  left: calc(var(--air, 0px) - 10px);
+  z-index: 5;
+  width: 1px;
+  background: color-mix(in oklch, var(--ink) 45%, transparent);
+  pointer-events: none;
+}
+
+.gh-readout {
+  position: absolute;
+  top: 44px;
+  left: calc(var(--air, 0px) - 2px);
+  z-index: 6;
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 6px;
+  background: var(--ink);
+  font: 500 11.5px var(--font-machine);
+  color: var(--bg);
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow: 0 10px 24px -12px var(--shadow);
+}
+
+.gh-line[data-side="end"] {
+  left: auto;
+  right: 0;
+}
+
+.gh-readout[data-side="end"] {
+  left: calc(100% + 8px);
+}
+
+.grid[data-dragging],
+.grid[data-dragging] * {
+  cursor: col-resize;
+  user-select: none;
+}
+
+/* Touch has no hover: the edges stay drawn. */
+@media (pointer: coarse) {
+  .gh-edge-i {
+    opacity: 1;
+  }
 }
 
 /* A compact column (severity as bars) keeps its short label; its menu stays
@@ -816,6 +937,30 @@
   color: var(--mut);
 }
 
+/* "No area": the empty value reads as words, not as a value. */
+.grid-menu-vl[data-none] {
+  font: 400 13px var(--font-human);
+}
+
+/* The columns menu: id and title always show; a ticked column the room cannot fit is greyed. */
+.grid-menu-c[data-locked] {
+  color: var(--mut);
+  cursor: default;
+}
+
+.grid-menu-c[data-locked]:hover {
+  background: none;
+}
+
+.grid-menu-c[data-locked] .grid-menu-box {
+  background: var(--mut);
+  opacity: 0.55;
+}
+
+.grid-menu-c[data-off] .grid-menu-vl {
+  color: var(--mut);
+}
+
 .grid-menu-note {
   margin: 0;
   padding: 6px 8px 8px;
@@ -987,7 +1132,8 @@
   .gh-menu,
   .grid-check,
   .grid-row::before,
-  .grid-menu-i {
+  .grid-menu-i,
+  .gh-edge-i {
     transition-duration: 1ms;
   }
 

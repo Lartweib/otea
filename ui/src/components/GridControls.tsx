@@ -8,25 +8,31 @@ import {
 } from 'react';
 import { createPortal } from 'react-dom';
 import {
+  ALWAYS,
   type FilterChoice,
   type Filters,
+  filterable,
   filterChoices,
   firstDirection,
   type GridColumn,
-  hasValues,
+  type GridFit,
   type Sort,
+  valueLabel,
+  type Widths,
 } from '../grid.ts';
 import { Button, Icon, Severity, type SeverityLevel } from '../kit/index.ts';
 import type { Item } from '../types.ts';
 import type { ViewMode } from '../view-prefs.ts';
 
-// What the list head offers a collection: its grouping, its filters and the switch between list and
-// grid, then a token per filtered column. One menu is open at a time: a column's (sort, group by
-// it, show only some values), the grouping's or the filter's (which column to filter).
+// What the list head offers a collection: its grouping, its filters, the grid's columns and the
+// switch between list and grid, then a token per filtered column. One menu is open at a time: a
+// column's (sort, group by it, show only some values), the grouping's, the filter's (which column
+// to filter) or the columns' (which to show).
 export type OpenMenu =
   | { kind: 'column'; key: string; anchor: HTMLElement }
   | { kind: 'group'; anchor: HTMLElement }
-  | { kind: 'filter'; anchor: HTMLElement };
+  | { kind: 'filter'; anchor: HTMLElement }
+  | { kind: 'columns'; anchor: HTMLElement };
 
 const LEVELS = ['low', 'medium', 'high', 'critical'];
 
@@ -76,6 +82,9 @@ type HeadControlsProps = {
   onMenu: (menu: OpenMenu | null) => void;
   mode: ViewMode | undefined;
   onMode: (mode: ViewMode) => void;
+  // Over the grid: how many columns show, and whether they are not the preset's.
+  columns: number | undefined;
+  columnsSet: boolean;
 };
 
 export function HeadControls({
@@ -85,8 +94,10 @@ export function HeadControls({
   onMenu,
   mode,
   onMode,
+  columns,
+  columnsSet,
 }: HeadControlsProps) {
-  const toggle = (kind: 'group' | 'filter') => (anchor: HTMLElement) =>
+  const toggle = (kind: 'group' | 'filter' | 'columns') => (anchor: HTMLElement) =>
     onMenu(menu?.kind === kind ? null : { kind, anchor });
   return (
     <span className="list-tools">
@@ -114,6 +125,21 @@ export function HeadControls({
         <Icon name="filter" />
         <span className="list-tool-label">filter</span>
       </Button>
+      {columns !== undefined ? (
+        // Words and a count, no icon: the app has none for columns.
+        <Button
+          variant="quiet"
+          size="sm"
+          className="list-tool"
+          aria-haspopup="menu"
+          aria-expanded={menu?.kind === 'columns'}
+          data-set={columnsSet || undefined}
+          onClick={(event) => toggle('columns')(event.currentTarget)}
+        >
+          <span>columns</span>
+          <b>{columns}</b>
+        </Button>
+      ) : null}
       {mode ? <ViewSwitch mode={mode} onChange={onMode} /> : null}
     </span>
   );
@@ -137,27 +163,30 @@ export function FilterTokens({
   if (active.length === 0) return null;
   return (
     <div className="filter-tokens">
-      {active.map(({ key, label }) => (
-        <span key={key} className="filter-token">
-          <button
-            type="button"
-            className="filter-token-l"
-            aria-haspopup="menu"
-            onClick={(event) => onOpen(key, event.currentTarget)}
-          >
-            <em>{label}</em>
-            <b>{(filters[key] ?? []).join(', ')}</b>
-          </button>
-          <button
-            type="button"
-            className="filter-token-x"
-            aria-label={`Remove the ${label} filter`}
-            onClick={() => onClear(key)}
-          >
-            <Icon name="close" />
-          </button>
-        </span>
-      ))}
+      {active.map((column) => {
+        const { key, label } = column;
+        return (
+          <span key={key} className="filter-token">
+            <button
+              type="button"
+              className="filter-token-l"
+              aria-haspopup="menu"
+              onClick={(event) => onOpen(key, event.currentTarget)}
+            >
+              <em>{label}</em>
+              <b>{(filters[key] ?? []).map((value) => valueLabel(column, value)).join(', ')}</b>
+            </button>
+            <button
+              type="button"
+              className="filter-token-x"
+              aria-label={`Remove the ${label} filter`}
+              onClick={() => onClear(key)}
+            >
+              <Icon name="close" />
+            </button>
+          </span>
+        );
+      })}
       <Button variant="quiet" size="sm" onClick={onClearAll}>
         clear all
       </Button>
@@ -175,6 +204,15 @@ type MenuItem =
       quiet?: boolean;
     }
   | { kind: 'check'; choice: FilterChoice; bars: boolean; run: () => void }
+  | {
+      kind: 'column';
+      label: string;
+      note: string;
+      on: boolean;
+      locked: boolean;
+      off: boolean;
+      run: () => void;
+    }
   | { kind: 'radio'; label: string; on: boolean; run: () => void }
   | { kind: 'open'; label: string; note: string; run: () => void }
   | { kind: 'rule' }
@@ -183,7 +221,15 @@ type MenuItem =
 
 type MenuProps = {
   menu: OpenMenu;
+  // The columns shown, every column offered, and what the room fits of those shown.
   columns: readonly GridColumn[];
+  available: readonly GridColumn[];
+  fitted: GridFit;
+  widths: Widths;
+  columnsChanged: boolean;
+  onColumns: (keys: readonly string[]) => void;
+  onResetColumns: () => void;
+  onResetWidths: () => void;
   items: readonly Item[];
   groupings: readonly string[];
   presetGroup: string;
@@ -198,7 +244,7 @@ type MenuProps = {
 };
 
 function columnItems(props: MenuProps, column: GridColumn): MenuItem[] {
-  const { sort, filters, items, groupings, group, presetGroup } = props;
+  const { sort, filters, items, groupings, group, presetGroup, available } = props;
   const first = firstDirection(column);
   const other = first === 'asc' ? 'desc' : 'asc';
   const word = (dir: 'asc' | 'desc') => (dir === 'asc' ? 'Sort ascending' : 'Sort descending');
@@ -232,16 +278,13 @@ function columnItems(props: MenuProps, column: GridColumn): MenuItem[] {
       run: () => props.onGroup(grouped ? presetGroup : column.key),
     });
   }
-  if (!hasValues(column)) {
+  if (!filterable(column)) {
     list.push({ kind: 'rule' });
-    list.push({
-      kind: 'note',
-      label: 'This column sorts; only columns with a set of values filter.',
-    });
+    list.push({ kind: 'note', label: 'This column sorts; fields, state and type filter.' });
     return list;
   }
   const chosen = filters[column.key] ?? [];
-  const choices = filterChoices(items, column, filters);
+  const choices = filterChoices(items, column, filters, available);
   if (choices.length > 0) {
     list.push({ kind: 'rule' }, { kind: 'title', label: 'Show only' });
     for (const choice of choices) {
@@ -270,8 +313,49 @@ function columnItems(props: MenuProps, column: GridColumn): MenuItem[] {
   return list;
 }
 
+// Every column the collection offers, ticked when shown, in the order the table shows them; a field
+// says its kind. Id and title always show. A ticked column the room cannot fit says so.
+function columnsItems(props: MenuProps): MenuItem[] {
+  const { columns, available, fitted, widths } = props;
+  const shown = columns.map(({ key }) => key);
+  const list: MenuItem[] = [{ kind: 'title', label: 'Columns' }];
+  for (const column of available) {
+    const locked = ALWAYS.includes(column.key);
+    const on = locked || shown.includes(column.key);
+    const off = on && fitted.dropped.includes(column.key);
+    const kind = ['enum', 'severity', 'text'].includes(column.kind) ? column.kind : '';
+    list.push({
+      kind: 'column',
+      label: column.label,
+      note: locked ? 'always' : off ? 'no room' : kind,
+      on,
+      locked,
+      off,
+      run: () => {
+        if (locked) return;
+        props.onColumns(on ? shown.filter((key) => key !== column.key) : [...shown, column.key]);
+      },
+    });
+  }
+  const sized = Object.keys(widths).length > 0;
+  if (sized || props.columnsChanged) list.push({ kind: 'rule' });
+  if (sized) {
+    list.push({ kind: 'item', label: 'Reset widths', quiet: true, run: props.onResetWidths });
+  }
+  if (props.columnsChanged) {
+    list.push({
+      kind: 'item',
+      label: 'Reset to preset',
+      quiet: true,
+      run: props.onResetColumns,
+    });
+  }
+  return list;
+}
+
 function menuItems(props: MenuProps): MenuItem[] {
-  const { menu, columns, groupings, group, presetGroup, filters } = props;
+  const { menu, columns, available, groupings, group, presetGroup, filters } = props;
+  if (menu.kind === 'columns') return columnsItems(props);
   if (menu.kind === 'group') {
     return [
       { kind: 'title', label: 'Group by' },
@@ -288,7 +372,7 @@ function menuItems(props: MenuProps): MenuItem[] {
   if (menu.kind === 'filter') {
     return [
       { kind: 'title', label: 'Filter by' },
-      ...columns.filter(hasValues).map(
+      ...columns.filter(filterable).map(
         (column): MenuItem => ({
           kind: 'open',
           label: column.label,
@@ -299,7 +383,8 @@ function menuItems(props: MenuProps): MenuItem[] {
       ),
     ];
   }
-  const column = columns.find(({ key }) => key === menu.key);
+  // A token's column may be hidden: its menu still opens.
+  const column = available.find(({ key }) => key === menu.key);
   return column ? columnItems(props, column) : [];
 }
 
@@ -408,8 +493,28 @@ export function GridMenu(props: MenuProps) {
               >
                 <i className="grid-menu-box" aria-hidden="true" />
                 {item.bars ? <Bars value={item.choice.value} /> : null}
-                <span className="grid-menu-vl">{item.choice.value}</span>
+                <span className="grid-menu-vl" data-none={item.choice.value === '' || undefined}>
+                  {item.choice.label}
+                </span>
                 <span className="grid-menu-n">{item.choice.count}</span>
+              </button>
+            );
+          case 'column':
+            return (
+              <button
+                key={key}
+                type="button"
+                role="menuitemcheckbox"
+                aria-checked={item.on}
+                aria-disabled={item.locked || undefined}
+                className="grid-menu-i grid-menu-v grid-menu-c"
+                data-locked={item.locked || undefined}
+                data-off={item.off || undefined}
+                onClick={item.run}
+              >
+                <i className="grid-menu-box" aria-hidden="true" />
+                <span className="grid-menu-vl">{item.label}</span>
+                <span className="grid-menu-n">{item.note}</span>
               </button>
             );
           case 'radio':
