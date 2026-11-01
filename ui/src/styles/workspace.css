@@ -210,7 +210,7 @@
   }
 
   /* A collection seen as a grid: the grid takes up to its own measure beside the detail (--grid-w,
-     split.ts), or the whole room while nothing is open and the room cannot hold both. */
+     split.ts), or the whole room while nothing is open (workspace-motion.ts eases between them). */
   .workspace[data-view="grid"] {
     grid-template-columns:
       var(--rail-w) max(340px, min(var(--grid-w), 100% - var(--rail-w) - 9px))
@@ -219,6 +219,13 @@
 
   .workspace[data-detail="off"] :is(.divider, .detail-pane) {
     visibility: hidden;
+  }
+
+  /* With the whole room the table runs as wide as the room, its head and filters too; it keeps that
+     measure while the room eases to the grid's width beside the detail, so it never jumps. */
+  .workspace:is([data-detail="off"], [data-easing])
+    :is(.grid, .list-head[data-view="grid"], .filter-tokens) {
+    max-width: none;
   }
 
   .workspace .divider {
