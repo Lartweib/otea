@@ -386,13 +386,15 @@ export function ListPane(props: ListPaneProps) {
           ) : null}
         </div>
       )}
-      {prefs && view === 'grid' ? (
+      {/* Kept while the list shows, so switching views lets the tray leave with its own motion. */}
+      {prefs && !phone ? (
         <BulkTray
-          selected={selected}
+          selected={view === 'grid' ? selected : []}
           canWrite={props.canWrite}
           host={props.bulkHost}
           onKeep={selection.set}
           onClear={() => selection.set([])}
+          away={view !== 'grid'}
         />
       ) : null}
       {menu && collection ? (
