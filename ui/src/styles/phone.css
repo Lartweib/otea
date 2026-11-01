@@ -26,7 +26,7 @@
 
 /* The row is the header: the first section needs no hairline over it. */
 /* The detail's columns are one column here, with the same spacing. */
-.detail[data-layout="unfold"] :is(.detail-main, .detail-aside) {
+.detail[data-layout="unfold"] .detail-main {
   gap: 28px;
 }
 

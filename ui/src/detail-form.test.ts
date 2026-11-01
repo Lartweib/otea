@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { ASIDE_FROM, asideHeight, composition, detailForm, travelPath } from './detail-form.ts';
+import {
+  ASIDE_FROM,
+  asideHeight,
+  composition,
+  detailForm,
+  detailsCut,
+  travelPath,
+} from './detail-form.ts';
 
 describe('detailForm', () => {
   it('shows the aside from a 1268px pane: gutters, main, gap and the narrowest aside', () => {
@@ -41,6 +48,22 @@ describe('composition', () => {
   it('switches form where detailForm does', () => {
     expect(composition(ASIDE_FROM - 1).form).toBe(detailForm(ASIDE_FROM - 1));
     expect(composition(ASIDE_FROM).form).toBe(detailForm(ASIDE_FROM));
+  });
+});
+
+describe('detailsCut', () => {
+  it('shows every row up to five', () => {
+    expect(detailsCut(5, false)).toEqual({ shown: 5, more: 0 });
+    expect(detailsCut(3, false)).toEqual({ shown: 3, more: 0 });
+  });
+
+  it('from the sixth row, shows five and how many more', () => {
+    expect(detailsCut(6, false)).toEqual({ shown: 5, more: 1 });
+    expect(detailsCut(7, false)).toEqual({ shown: 5, more: 2 });
+  });
+
+  it('shows them all once opened', () => {
+    expect(detailsCut(7, true)).toEqual({ shown: 7, more: 0 });
   });
 });
 

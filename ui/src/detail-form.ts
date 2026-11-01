@@ -26,6 +26,15 @@ export function detailForm(paneWidth: number): DetailForm {
   return composition(paneWidth).form;
 }
 
+// Details sits beside the header in the band and never makes it much taller: from the sixth row it
+// shows five and a toggle with how many more.
+export const DETAILS_ROWS = 5;
+
+export function detailsCut(rows: number, open: boolean): { shown: number; more: number } {
+  if (open || rows <= DETAILS_ROWS) return { shown: rows, more: 0 };
+  return { shown: DETAILS_ROWS, more: rows - DETAILS_ROWS };
+}
+
 // The aside is never taller than the room under its top in the pane, so a long history scrolls
 // inside it and never lengthens the pane; it keeps at least 240px.
 export const ASIDE_MIN_HEIGHT = 240;
