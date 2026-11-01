@@ -78,11 +78,31 @@ describe('mcp server', () => {
       const { tools } = await client.listTools();
       const readOnly = tools.filter(({ annotations }) => annotations?.readOnlyHint);
 
-      expect(readOnly.map(({ name }) => name).sort()).toEqual(['events', 'list', 'show', 'wait']);
+      expect(readOnly.map(({ name }) => name).sort()).toEqual([
+        'events',
+        'list',
+        'playbook',
+        'show',
+        'wait',
+      ]);
     });
   });
 
   describe('reads', () => {
+    it('serves the playbook and its index as otea playbook --json does', async () => {
+      expect(await data('playbook')).toEqual(await json('playbook'));
+      expect(await data('playbook', { collection: 'tasks' })).toEqual(
+        await json('playbook', '--collection', 'tasks'),
+      );
+    });
+
+    it('fails with not_found for an unknown collection, as the CLI does', async () => {
+      const reply = await call('playbook', { collection: 'nope' });
+
+      expect(reply.isError).toBe(true);
+      expect(reply.content[0]?.text).toBe(await cliError('playbook', '--collection', 'nope'));
+    });
+
     it('lists items as otea list --json does, with the same filters', async () => {
       expect(await data('list')).toEqual(await json('list'));
       expect(await data('list', { turn: 'agent', unclaimed: true, collection: 'tasks' })).toEqual(
