@@ -224,8 +224,9 @@
     scrollbar-gutter: stable;
   }
 
-  /* The detail is anchored to the divider and stops at a reading measure; past it the screen keeps
-     a plain right margin instead of a column floating in the middle. */
+  /* The detail is anchored to the divider. A form stops at a reading measure; an item's detail fills
+     the pane between its two 40px gutters (composition in detail-form.ts), so no screen leaves an
+     empty band on the right, and its prose keeps the 72ch measure inside. */
   .workspace .detail-panel {
     min-height: 0;
     padding: 12px 40px 64px;
@@ -236,8 +237,7 @@
     margin-inline: 0;
   }
 
-  /* With the aside, the main column keeps the 50rem measure and the aside comes beside it. */
-  .workspace .detail[data-form="aside"] {
+  .workspace .detail[data-layout="pane"] {
     max-width: none;
   }
 

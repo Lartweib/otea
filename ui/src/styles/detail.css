@@ -436,15 +436,17 @@ select.input {
 }
 
 /* ---- the aside: from a 1268px pane (detail-form.ts), Details and History beside the main column.
-   main 800 · gap 48 with a 1px rule at its middle · aside 340–380, the rest right margin. It starts
-   on the Brief's row (Details' hairline continues the Brief's), sticks 16px under the top of the
-   pane, is never taller than the room it has (set from script) and scrolls on its own. ---- */
+   The detail fills the pane (the container, its width 100cqw): the aside takes a quarter of every
+   pixel past 1268, 340 to 440, and main the rest; the 48px gap holds a 1px rule at its middle. It
+   starts on the Brief's row (Details' hairline continues the Brief's), sticks 16px under the top of
+   the pane, is never taller than the room it has (set from script) and scrolls on its own. ---- */
 .detail[data-form="aside"] {
+  --aside: clamp(340px, round(340px + (100cqw - 1268px) / 4, 1px), 440px);
   display: grid;
   grid-template-areas:
     "head ."
     "main aside";
-  grid-template-columns: 800px minmax(364px, 404px);
+  grid-template-columns: minmax(0, 1fr) calc(var(--aside) + 24px);
   column-gap: 24px;
   row-gap: 36px;
   align-items: start;
