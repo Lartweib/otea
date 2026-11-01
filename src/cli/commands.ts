@@ -12,7 +12,7 @@ import {
   updateItem,
 } from '../app/items.ts';
 import { claimItem, heartbeatItem, releaseItem } from '../app/leases.ts';
-import { collectionPlaybook, playbookIndex } from '../app/playbook.ts';
+import { collectionPlaybook, hintFor, playbookIndex } from '../app/playbook.ts';
 import { initProject, openProject, oteaDir, type Project } from '../app/project.ts';
 import { linkItems, unlinkItems } from '../app/relations.ts';
 import { relayDecision } from '../app/relay.ts';
@@ -178,14 +178,16 @@ const list: Command = {
 
 const show: Command = {
   name: 'show',
-  summary: 'Show an item, its fields, the moves available to the agent and its events timeline',
+  summary:
+    'Show an item, what to do with it now, its fields, the moves available to the agent and its events timeline',
   args: ['id'],
   options: {},
   execute: ({ cwd, actor, channel, args: [id = ''] }) => {
     const performer = { actor, channel };
     const { item, layout } = withProject(cwd, (project) => {
       const shown = showItem(project, id, performer);
-      return { item: shown, layout: typeOfItem(project, shown).layout };
+      const hint = hintFor(project, shown, actor.name);
+      return { item: { ...shown, hint }, layout: typeOfItem(project, shown).layout };
     });
     return { data: item, text: formatItemWithEvents(item, layout) };
   },
