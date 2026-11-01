@@ -222,6 +222,9 @@
     grid-column: 4;
     container: detail / inline-size;
     scrollbar-gutter: stable;
+    /* Details and History travel clear of a full-width main column, past the pane's edge: they
+       never give it a horizontal scrollbar. */
+    overflow-x: hidden;
   }
 
   /* The detail is anchored to the divider. A form stops at a reading measure; an item's detail fills
@@ -243,6 +246,11 @@
 
   .workspace .detail :is(.detail-lead, .md, .body) {
     max-width: 72ch;
+  }
+
+  /* Past the prose, the detail uses its width: the evidence list lays its files side by side. */
+  .workspace .detail[data-layout="pane"] .evidence {
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   }
 
   .list-hint {

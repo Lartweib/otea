@@ -8,7 +8,8 @@ import { MOTION, reducedMotion } from '../motion.ts';
 // The detail pane is measured with a ResizeObserver. While the divider is dragged the layout
 // follows the pointer and the form waits for the release; a sidebar fold (or a step of the divider
 // from the keyboard) switches at once; a window resize switches once it has been quiet for 150ms.
-// Details and History then travel from where they were (FLIP), on the slow token.
+// Details (into the band, or back under Structure) and History (beside the main column, or back to
+// the end) then travel from where they were (FLIP), on the slow token.
 
 const TRAVEL = 'travel';
 const RESIZE_QUIET = 150;
@@ -29,8 +30,8 @@ function snapshot(root: HTMLElement): Map<string, DOMRect> {
 }
 
 // Details and History travel from their old boxes to their new ones. Every box is measured before
-// anything starts; the two share one path (detail-form.ts) so they never cross the main column,
-// and their content dips to half opacity while it re-flows. Reduced motion: a 120ms crossfade.
+// anything starts; each takes its own path (detail-form.ts), clear of the main column, and their
+// content dips to half opacity while it re-flows. Reduced motion: a 120ms crossfade.
 function travel(root: HTMLElement, before: Map<string, DOMRect>, toAside: boolean) {
   const elements = travellersOf(root);
   for (const element of elements) {
@@ -45,8 +46,7 @@ function travel(root: HTMLElement, before: Map<string, DOMRect>, toAside: boolea
     const dy = was.top - now.top;
     return Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5 ? [] : [{ element, now, dx, dy }];
   });
-  const lead = moves[0];
-  if (!lead) return;
+  if (moves.length === 0) return;
   if (reducedMotion()) {
     for (const { element } of moves) {
       element.animate([{ opacity: 0 }, { opacity: 1 }], { id: TRAVEL, duration: MOTION.fast });
@@ -58,10 +58,6 @@ function travel(root: HTMLElement, before: Map<string, DOMRect>, toAside: boolea
       (element) => element.getBoundingClientRect().right,
     ),
   );
-  const { xw, t1, t2 } = travelPath(lead.dx, lead.dy, mainRight + AIR - lead.now.left, toAside);
-  // The aside scrolls on its own: the travellers fly out of it, and it clips again once they land.
-  const aside = root.querySelector<HTMLElement>('.detail-aside');
-  if (aside) aside.style.overflow = 'visible';
   const options = { id: TRAVEL, duration: MOTION.slow };
   const x = (value: number, offset: number, easing: string) => ({
     transform: `translateX(${value}px)`,
@@ -73,7 +69,8 @@ function travel(root: HTMLElement, before: Map<string, DOMRect>, toAside: boolea
     offset,
     easing,
   });
-  const flights = moves.map(({ element, dx, dy }) => {
+  for (const { element, now, dx, dy } of moves) {
+    const { xw, t1, t2 } = travelPath(dx, dy, mainRight + AIR - now.left, toAside);
     element.animate(
       [x(dx, 0, MOTION.ease), x(xw, t1, 'linear'), x(xw, t2, MOTION.ease), x(0, 1, 'linear')],
       options,
@@ -82,17 +79,13 @@ function travel(root: HTMLElement, before: Map<string, DOMRect>, toAside: boolea
       [y(dy, 0, 'linear'), y(dy, t1, MOTION.ease), y(0, t2, 'linear'), y(0, 1, 'linear')],
       { ...options, composite: 'add' },
     );
-    return element.animate([{ opacity: 1 }, { opacity: 0.5, offset: 0.3 }, { opacity: 1 }], options)
-      .finished;
-  });
-  Promise.allSettled(flights).then(() => {
-    if (aside) aside.style.overflow = '';
-  });
+    element.animate([{ opacity: 1 }, { opacity: 0.5, offset: 0.3 }, { opacity: 1 }], options);
+  }
 }
 
-// The aside is never taller than the room it has under its top in the pane.
+// History, beside the main column, is never taller than the room it has under its top in the pane.
 function fitAside(root: HTMLElement, pane: HTMLElement) {
-  const aside = root.querySelector<HTMLElement>('.detail-aside');
+  const aside = root.querySelector<HTMLElement>('[data-travel="history"]');
   if (!aside) return;
   if (root.dataset.form !== 'aside') {
     aside.style.maxHeight = '';
@@ -175,7 +168,7 @@ export function useDetailForm(root: RefObject<HTMLElement | null>, enabled: bool
     };
   }, [root, enabled]);
 
-  // Once the form is in the page, the aside gets the room it has.
+  // Once the form is in the page, History gets the room it has.
   // biome-ignore lint/correctness/useExhaustiveDependencies: each new form is fitted
   useLayoutEffect(() => {
     const element = root.current;

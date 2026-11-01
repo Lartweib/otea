@@ -19,6 +19,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
+  min-height: 22px;
 }
 
 .detail-type {
@@ -36,7 +37,124 @@
 }
 
 .detail .t-display {
+  max-width: 28ch;
   font-size: 30px;
+  text-wrap: balance;
+}
+
+/* ---- the handoff line: who handed the item over, when and what they said, then what to look at
+   first, each part after a short rule ---- */
+.handoff {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 21px;
+  min-height: 26px;
+  margin: -4px 0 0;
+  overflow-x: clip;
+  font-size: 14px;
+}
+
+.handoff > * {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+/* The rule sits in the gap before a part; a part that wraps to a new line starts it without one. */
+.handoff > * + * {
+  position: relative;
+}
+
+.handoff > * + *::before {
+  content: "";
+  position: absolute;
+  top: calc(50% - 8px);
+  left: -11px;
+  width: 1px;
+  height: 16px;
+  background: var(--line);
+}
+
+.handoff-who {
+  flex-wrap: wrap;
+  column-gap: 8px;
+}
+
+.handoff-mark {
+  display: inline-grid;
+  place-items: center;
+  min-width: 22px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: var(--r-s);
+  background: var(--chip);
+  font: 500 10.5px var(--font-machine);
+}
+
+.handoff-says {
+  font-weight: 500;
+}
+
+.handoff-note {
+  color: var(--mut);
+  overflow-wrap: anywhere;
+}
+
+.handoff-dot {
+  color: var(--mut);
+}
+
+.handoff .child-bar {
+  width: 120px;
+  height: 4px;
+  gap: 3px;
+}
+
+.handoff-thumb {
+  display: block;
+  width: 40px;
+  height: 26px;
+  object-fit: cover;
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px var(--line);
+}
+
+.handoff-waiting {
+  flex-wrap: wrap;
+  column-gap: 10px;
+  color: var(--mut);
+}
+
+.handoff-child,
+.handoff-rel {
+  color: var(--you-ink);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in oklch, var(--you) 30%, transparent);
+  text-underline-offset: 3px;
+}
+
+.handoff-child {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-weight: 500;
+}
+
+.handoff-child .glyph {
+  width: 16px;
+  height: 16px;
+}
+
+.handoff-rel {
+  color: inherit;
+  text-decoration-color: var(--lane);
+}
+
+.handoff-rel:hover,
+.handoff-child:hover {
+  text-decoration-color: currentColor;
 }
 
 /* Each section is named in the left margin, above a hairline; its content keeps the reading column. */
@@ -76,9 +194,13 @@
   row-gap: 10px;
 }
 
-/* The main column and the aside: stacked, they are simply one column, the sections in order. */
-.detail-main,
-.detail-aside {
+/* The main column: stacked, the sections in order, Details and History after it. The line that
+   closes the band shows only in the aside form. */
+.detail-line {
+  display: none;
+}
+
+.detail-main {
   display: flex;
   flex-direction: column;
   gap: 36px;
@@ -171,6 +293,12 @@
 .body {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
+}
+
+/* The handoff line names the severity in mono, beside its bars. */
+.handoff-severity .body {
+  font: 400 12px var(--font-machine);
+  color: var(--mut);
 }
 
 /* ---- evidence: the files attached as proof ---- */
@@ -435,73 +563,121 @@ select.input {
   }
 }
 
-/* ---- the aside: from a 1268px pane (detail-form.ts), Details and History beside the main column.
-   The detail fills the pane (the container, its width 100cqw): the aside takes a quarter of every
-   pixel past 1268, 340 to 440, and main the rest; the 48px gap holds a 1px rule at its middle. It
-   starts on the Brief's row (Details' hairline continues the Brief's), sticks 16px under the top of
-   the pane, is never taller than the room it has (set from script) and scrolls on its own. ---- */
+/* ---- the band and the aside: from a 1268px pane (detail-form.ts). The detail fills the pane (the
+   container, its width 100cqw): the aside column takes a quarter of every pixel past 1268, 340 to
+   440, and main the rest; the 48px gap holds a 1px rule at its middle. The header and Details form a
+   band, both starting on the meta row; one line across both columns closes it, as tall as the
+   taller of the two. Below the line History sits beside Brief and Structure, sticks 16px under the
+   top of the pane, is never taller than the room it has (set from script) and scrolls on its own.
+   ---- */
 .detail[data-form="aside"] {
   --aside: clamp(340px, round(340px + (100cqw - 1268px) / 4, 1px), 440px);
   display: grid;
   grid-template-areas:
-    "head ."
-    "main aside";
+    "head details"
+    "line line"
+    "main history";
   grid-template-columns: minmax(0, 1fr) calc(var(--aside) + 24px);
   column-gap: 24px;
-  row-gap: 36px;
+  row-gap: 0;
   align-items: start;
 }
 
 .detail[data-form="aside"] > .detail-head {
   grid-area: head;
+  padding-bottom: 28px;
 }
 
+.detail[data-form="aside"] > .detail-line {
+  display: block;
+  grid-area: line;
+  height: 1px;
+  background: var(--line);
+}
+
+/* The line replaces the Brief's own hairline. */
 .detail[data-form="aside"] > .detail-main {
   grid-area: main;
+  padding-top: 28px;
 }
 
-.detail[data-form="aside"] > .detail-aside {
+.detail[data-form="aside"] > .detail-main > .detail-section:first-of-type {
+  padding-top: 0;
+  border-top: 0;
+}
+
+/* The rule left of Details runs from the band's top to the line; History's continues below it. */
+.detail[data-form="aside"] > [data-travel] {
+  display: block;
+  min-width: 0;
+  padding-top: 0;
+  padding-left: 23px;
+  border-top: 0;
+  border-left: 1px solid var(--line);
+}
+
+.detail[data-form="aside"] > [data-travel="details"] {
+  grid-area: details;
+  align-self: stretch;
+  padding-bottom: 28px;
+}
+
+.detail[data-form="aside"] > [data-travel="history"] {
   position: sticky;
   top: 16px;
-  grid-area: aside;
-  gap: 28px;
-  padding-left: 23px;
-  border-left: 1px solid var(--line);
+  grid-area: history;
+  padding-top: 28px;
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-width: thin;
   scrollbar-color: var(--line) transparent;
 }
 
-/* In the aside the names sit on top of their sections, a count beside History's. */
-.detail[data-form="aside"] .detail-aside .detail-section {
-  display: block;
-  padding-top: 12px;
-}
-
-.detail[data-form="aside"] .detail-aside .detail-section-label {
+/* In the band and the aside the names sit on top of their sections, a count beside History's;
+   "Details" sits on the meta row's 22px line. */
+.detail[data-form="aside"] > [data-travel] .detail-section-label {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   margin-bottom: 6px;
-  line-height: 24px;
+  line-height: 28px;
+}
+
+.detail[data-form="aside"] > [data-travel="details"] .detail-section-label {
+  margin-bottom: 8px;
+  line-height: 22px;
 }
 
 .detail[data-form="aside"] .detail-section-count {
   display: inline;
 }
 
-.detail[data-form="aside"] .detail-aside .detail-section-body {
+.detail[data-form="aside"] > [data-travel] .detail-section-body {
+  gap: 10px;
   padding-top: 0;
 }
 
-.detail[data-form="aside"] .detail-aside .fields {
+.detail[data-form="aside"] > [data-travel] .fields {
   grid-template-columns: 88px minmax(0, 1fr);
 }
 
-.detail[data-form="aside"] .detail-aside [data-travel="history"] {
-  padding-top: 0;
-  border-top-color: transparent;
+/* A long Details shows five rows and how many more. */
+.details-more {
+  align-self: flex-start;
+  margin-left: 104px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--you-ink);
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 3px;
+  transition: text-decoration-color var(--m-fast) var(--m-ease);
+}
+
+.details-more:hover {
+  text-decoration-color: currentColor;
 }
 
 /* History in the aside: mono time, the event wrapping under itself, who acted on a muted line. */

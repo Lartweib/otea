@@ -1,4 +1,5 @@
-import { type ReactNode, useLayoutEffect, useRef } from 'react';
+import { type ReactNode, useLayoutEffect, useRef, useState } from 'react';
+import { DETAILS_ROWS, detailsCut } from '../detail-form.ts';
 import { leftovers } from '../evidence.ts';
 import { actorLabel, leaseLabel, momentLabel } from '../format.ts';
 import { useActiveLease } from '../hooks.ts';
@@ -19,6 +20,7 @@ import type { CollectionView, ItemView, Turn } from '../types.ts';
 import { useDetailForm } from './detail-aside.ts';
 import { EvidenceList } from './EvidenceList.tsx';
 import { EvidenceModule } from './evidence/EvidenceModule.tsx';
+import { HandoffLine } from './HandoffLine.tsx';
 import { ItemActions } from './ItemActions.tsx';
 import type { CollectionOf } from './ItemList.tsx';
 import { ChildrenModule } from './relations/ChildrenModule.tsx';
@@ -56,9 +58,9 @@ function FieldList({
 }
 
 // One section of the detail: its name in the left margin above a hairline, its content in the
-// reading column beside it (above it on a phone, and on top inside the aside). travel: the key a
-// section that moves between the main column and the aside is followed by. count: shown next to
-// the name in the aside.
+// reading column beside it (above it on a phone, and on top in the band and the aside). travel: the
+// key a section that moves between the forms is followed by. count: shown next to the name in the
+// aside.
 function Section({
   label,
   children,
@@ -125,9 +127,10 @@ function useContentIn(id: string, enabled: boolean) {
   return root;
 }
 
-// A margin index: the header (where the item stands, its title, its moves), then Brief (what to
-// decide on), Structure (children and relations), Details (where it lives, who made it) and History.
-// On a wide pane the last two move to an aside beside the rest (detail-form.ts).
+// A margin index: the header (where the item stands, its title, who handed it over, its moves), then
+// Brief (what to decide on), Structure (children and relations), Details (where it lives, who made
+// it) and History. On a wide pane (detail-form.ts) the header and Details form a band, closed by one
+// line across both columns; below it, History sits beside Brief and Structure.
 export function ItemDetail({
   item,
   canWrite,
@@ -139,8 +142,10 @@ export function ItemDetail({
 }: ItemDetailProps) {
   const lease = useActiveLease(item.lease);
   const root = useContentIn(item.id, layout === 'pane');
-  // On a wide pane Details and History move to an aside beside the main column.
+  // On a wide pane Details moves into the band and History beside the main column.
   const form = useDetailForm(root, layout === 'pane');
+  // Which item's long Details is shown whole in the band.
+  const [allDetails, setAllDetails] = useState<string | null>(null);
   const type = typeOf(collection, item.type);
   const kind = itemNodeKind(item, type, lease !== null);
   const { head, primary, side } = detailBlocks(type, item.fields);
@@ -210,7 +215,28 @@ export function ItemDetail({
   // goes with the details.
   const brief = primary.filter((part) => part.kind !== 'relation');
   const structure = [...primary, ...side].filter((part) => part.kind === 'relation');
+  // Details: the side slot's values and where the item lives, one row each; the side's modules
+  // follow them.
   const aside = side.filter((part) => part.kind !== 'relation');
+  const detailRows: { label: string; value: ReactNode }[] = [
+    ...aside.flatMap((part) =>
+      part.kind === 'fields'
+        ? part.values.map(({ field, value, label }) => {
+            const { Detail } = moduleFor(field.module);
+            return { label, value: <Detail field={field} value={value} /> };
+          })
+        : [],
+    ),
+    { label: 'collection', value: item.collection },
+    {
+      label: 'created by',
+      value: `${actorLabel(item.createdBy)} · ${momentLabel(item.createdAt, Date.now())}`,
+    },
+    ...(lease ? [{ label: 'lease', value: leaseLabel(lease) }] : []),
+    { label: 'updated', value: momentLabel(item.updatedAt, Date.now()) },
+  ];
+  const cut = detailsCut(detailRows.length, form !== 'aside' || allDetails === item.id);
+  const asideModules = aside.filter((part) => part.kind !== 'fields');
   const briefParts = brief.map(block).filter((part) => part !== null);
   const structureParts = structure.map(block).filter((part) => part !== null);
   const standing = lease ? `${lease.holder} is on it` : TURN_LABEL[item.turn];
@@ -262,9 +288,11 @@ export function ItemDetail({
             ) : null}
           </div>
           <h1 className="t-display">{item.title}</h1>
+          <HandoffLine item={item} type={type} canWrite={canWrite} collectionOf={collectionOf} />
           {actions}
         </header>
       )}
+      {unfolded ? null : <i className="detail-line" aria-hidden="true" />}
       <div className="detail-main">
         {item.missing.length > 0 ? (
           <div className="missing well">
@@ -282,26 +310,33 @@ export function ItemDetail({
         </Section>
         {structureParts.length > 0 ? <Section label="Structure">{structureParts}</Section> : null}
       </div>
-      <aside className="detail-aside" aria-label="Details and history">
-        <Section label="Details" travel="details">
-          {aside.map(block)}
-          <dl className="fields fields-meta">
-            <Field label="collection">{item.collection}</Field>
-            <Field label="created by">
-              {actorLabel(item.createdBy)} · {momentLabel(item.createdAt, Date.now())}
+      <Section label="Details" travel="details">
+        <dl className="fields fields-meta">
+          {detailRows.slice(0, cut.shown).map(({ label, value }) => (
+            <Field key={label} label={label}>
+              {value}
             </Field>
-            {lease ? <Field label="lease">{leaseLabel(lease)}</Field> : null}
-            <Field label="updated">{momentLabel(item.updatedAt, Date.now())}</Field>
-          </dl>
-        </Section>
-        <Section
-          label="History"
-          travel="history"
-          count={`${item.events.length} ${item.events.length === 1 ? 'event' : 'events'}`}
-        >
-          <Timeline events={item.events} />
-        </Section>
-      </aside>
+          ))}
+        </dl>
+        {form === 'aside' && detailRows.length > DETAILS_ROWS ? (
+          <button
+            type="button"
+            className="details-more t-cap"
+            aria-expanded={cut.more === 0}
+            onClick={() => setAllDetails(cut.more > 0 ? item.id : null)}
+          >
+            {cut.more > 0 ? `${cut.more} more` : 'fewer'}
+          </button>
+        ) : null}
+        {asideModules.map(block)}
+      </Section>
+      <Section
+        label="History"
+        travel="history"
+        count={`${item.events.length} ${item.events.length === 1 ? 'event' : 'events'}`}
+      >
+        <Timeline events={item.events} />
+      </Section>
       {unfolded ? <div className="unfold-actions">{actions}</div> : null}
     </article>
   );
