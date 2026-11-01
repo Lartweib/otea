@@ -24,11 +24,10 @@ function SidebarToggle({ shown, onToggle }: { shown: boolean; onToggle: () => vo
       size="sm"
       icon
       className="sidebar-toggle tip"
-      data-tip={`${label} · f`}
+      data-tip={label}
       aria-label={label}
       aria-expanded={shown}
       aria-controls="collection-list"
-      aria-keyshortcuts="f"
       onClick={onToggle}
     >
       <Icon name="sidebar" />

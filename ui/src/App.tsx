@@ -1,4 +1,4 @@
-import { type ReactNode, useCallback, useEffect, useState } from 'react';
+import { type ReactNode, useCallback, useState } from 'react';
 import { fetchCollections, fetchItem, fetchItems, fetchPresets, fetchSession } from './api.ts';
 import { catalogEntries } from './catalog.ts';
 import { CollectionRail } from './components/CollectionRail.tsx';
@@ -16,7 +16,6 @@ import { browserStorage, Divider, useSplit } from './components/Split.tsx';
 import { ThemeToggle } from './components/ThemeToggle.tsx';
 import { Triage } from './components/Triage.tsx';
 import { type Connection, useHideTier, useLive, usePhone, useRemote, useRoute } from './hooks.ts';
-import { keyCommand, keyTargetOf, stepSelection } from './keys.ts';
 import { Button, Icon } from './kit/index.ts';
 import { MODULES } from './modules/registry.ts';
 import {
@@ -35,7 +34,7 @@ import type { Remote } from './remote.ts';
 import { groupByTurn } from './sections.ts';
 import { hashFor, ITEMS_HASH, modulesHash, TRIAGE_HASH } from './selection.ts';
 import type { CollectionView, Item, ItemView, PresetView } from './types.ts';
-import { inCollection, listOrder, railEntries } from './workspace.ts';
+import { inCollection, railEntries } from './workspace.ts';
 
 function Message({ children, muted = true }: { children: ReactNode; muted?: boolean }) {
   return <p className={muted ? 'pane-message t-small' : 'pane-message action-error'}>{children}</p>;
@@ -77,14 +76,13 @@ function ListPane({
   }
   return (
     <>
-      {/* One row: the lane names over their lanes, the title over the row titles, the keys. */}
+      {/* One row: the lane names over their lanes, the title over the row titles. */}
       <div className="list-head">
         <span className="lane-names" aria-hidden="true">
           <span>ag</span>
           <span className="lane-names-you">you</span>
         </span>
         <h2 className="t-h">{collection ?? 'All items'}</h2>
-        <span className="t-cap list-hint">j k to move · f collections</span>
       </div>
       <ItemList
         sections={sections}
@@ -226,38 +224,6 @@ function childrenIndex(items: readonly Item[]): ChildrenOf {
   return (id) => index.get(id) ?? [];
 }
 
-type WorkspaceKeys = {
-  enabled: boolean;
-  toggleSidebar: () => void;
-  order: string[];
-  selectedId: string | undefined;
-};
-
-// f folds the collections sidebar, j and k walk the list. Keys typed into a field stay there.
-function useWorkspaceKeys({ enabled, toggleSidebar, order, selectedId }: WorkspaceKeys) {
-  useEffect(() => {
-    if (!enabled) return;
-    const onKey = (event: KeyboardEvent) => {
-      const command = keyCommand({
-        key: event.key,
-        ctrlKey: event.ctrlKey,
-        metaKey: event.metaKey,
-        altKey: event.altKey,
-        target: keyTargetOf(event.target),
-      });
-      if (!command) return;
-      event.preventDefault();
-      if (command === 'toggle-sidebar') toggleSidebar();
-      else {
-        const next = stepSelection(order, selectedId, command === 'next' ? 1 : -1);
-        if (next !== undefined && next !== selectedId) window.location.hash = hashFor(next);
-      }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [enabled, toggleSidebar, order, selectedId]);
-}
-
 export function App() {
   const { connection, version } = useLive();
   const route = useRoute();
@@ -281,13 +247,6 @@ export function App() {
   const { sections, rows: nesting } = nestSections(grouped, folds, (id) =>
     allItems.find((item) => item.id === id),
   );
-  const order = listOrder(sections);
-  useWorkspaceKeys({
-    enabled: route.view === 'items',
-    toggleSidebar: split.toggleSidebar,
-    order,
-    selectedId,
-  });
   const creating =
     canWrite && route.view === 'items' && intake !== undefined && intake.openedOn === selectedId;
   const closeIntake = () => setIntake(undefined);
