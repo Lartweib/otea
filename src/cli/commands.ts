@@ -12,6 +12,7 @@ import {
   updateItem,
 } from '../app/items.ts';
 import { claimItem, heartbeatItem, releaseItem } from '../app/leases.ts';
+import { collectionPlaybook, playbookIndex } from '../app/playbook.ts';
 import { initProject, openProject, oteaDir, type Project } from '../app/project.ts';
 import { linkItems, unlinkItems } from '../app/relations.ts';
 import { relayDecision } from '../app/relay.ts';
@@ -29,12 +30,14 @@ import { ensureUiToken, readUiToken } from '../server/token.ts';
 import type { EventFilter } from '../store/queries.ts';
 import { type Command, CommandFailure, type Input, UsageError } from './command.ts';
 import {
+  columns,
   formatEvent,
   formatEvidence,
   formatItem,
   formatItems,
   formatItemWithEvents,
   formatReport,
+  indent,
 } from './format.ts';
 import { probeSignIn } from './probe.ts';
 import { readServeFile, removeServeFile, writeServeFile } from './serve-file.ts';
@@ -185,6 +188,37 @@ const show: Command = {
       return { item: shown, layout: typeOfItem(project, shown).layout };
     });
     return { data: item, text: formatItemWithEvents(item, layout) };
+  },
+};
+
+const playbook: Command = {
+  name: 'playbook',
+  summary:
+    "Print the playbook an agent follows in a collection; without --collection, the project's collections and how to read each playbook",
+  args: [],
+  options: { collection: {} },
+  execute: ({ cwd, option }) => {
+    const name = option('collection');
+    return withProject(cwd, (project) => {
+      if (name !== undefined) {
+        const found = collectionPlaybook(project, name);
+        const text =
+          found.playbook?.trimEnd() ??
+          `The ${found.preset} preset of collection "${name}" has no playbook.`;
+        return { data: found, text };
+      }
+      const collections = playbookIndex(project);
+      const text =
+        collections.length === 0
+          ? 'No collections yet; a human adds one with "otea collection add <name>".'
+          : [
+              'Each collection follows the playbook of its preset. Read the one you work in before acting:',
+              indent(
+                columns(collections.map(({ name, preset, command }) => [name, preset, command])),
+              ),
+            ].join('\n');
+      return { data: { collections }, text };
+    });
   },
 };
 
@@ -561,6 +595,7 @@ export const COMMANDS: readonly Command[] = [
   create,
   list,
   show,
+  playbook,
   events,
   wait,
   claim,

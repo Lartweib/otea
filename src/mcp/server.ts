@@ -15,6 +15,7 @@ import { parseDuration } from '../core/lease.ts';
 // The commands an agent runs, each served as the tool of the same name. The rest belong to the
 // human or to setup and stay in the CLI.
 export const AGENT_COMMANDS = [
+  'playbook',
   'list',
   'show',
   'create',
@@ -33,7 +34,7 @@ export const AGENT_COMMANDS = [
 
 export const CLI_ONLY_COMMANDS = ['init', 'collection add', 'validate', 'serve', 'open', 'mcp'];
 
-const READ_ONLY = new Set(['list', 'show', 'events', 'wait']);
+const READ_ONLY = new Set(['playbook', 'list', 'show', 'events', 'wait']);
 
 // A tool call answers once, so it cannot follow the event log.
 export const OMITTED_OPTIONS: Readonly<Record<string, readonly string[]>> = { events: ['follow'] };
