@@ -75,6 +75,7 @@ const bugs: CollectionView = {
         { name: 'area', module: 'text' },
         { name: 'severity', module: 'severity', values: ['low', 'medium', 'high', 'critical'] },
         { name: 'category', module: 'enum', values: ['crash', 'visual'] },
+        { name: 'steps', module: 'markdown' },
       ],
       layout: { header: [], evidence: [], body: [], side: [], row: [], phone: [], intake: [] },
     },
@@ -132,14 +133,41 @@ describe('groupItems', () => {
   });
 
   it('falls back to turn for a grouping the collection does not offer', () => {
-    expect(keys('area')).toEqual(keys('turn'));
+    expect(keys('title')).toEqual(keys('turn'));
+    expect(keys('steps')).toEqual(keys('turn'));
   });
 
-  it('offers turn, state, the type with several types, and the enum and severity fields', () => {
-    expect(groupings(bugs)).toEqual(['turn', 'state', 'severity', 'category']);
+  it('groups by free text on its values as the items spell them: trimmed, lowercase, A to Z, none last', () => {
+    const spelled = [
+      typed('A', 'human', 'reported', { area: 'Farm' }),
+      typed('B', 'agent', 'fixing', { area: ' farm ' }),
+      typed('C', 'human', 'reported', { area: 'UI' }),
+      typed('D', 'human', 'reported', { area: '  ' }),
+      typed('E', 'none', 'fixed', { area: 'forest   Biome' }),
+      typed('F', 'human', 'reported'),
+    ];
+
+    expect(
+      groupItems(spelled, 'area', bugs).map(({ key, title, items }) => [
+        key,
+        title,
+        items.map(({ id }) => id).join(''),
+      ]),
+    ).toEqual([
+      ['farm', 'farm', 'AB'],
+      ['forest biome', 'forest biome', 'E'],
+      ['ui', 'ui', 'C'],
+      ['', 'no area', 'DF'],
+    ]);
+  });
+
+  it('offers turn, state, the type with several types, and the one-line fields but the title', () => {
+    expect(groupings(bugs)).toEqual(['turn', 'state', 'area', 'severity', 'category']);
     const [only] = bugs.types;
     if (!only) throw new Error('no type');
     const two = { ...bugs, types: [only, { ...only, name: 'impr' }] };
-    expect(groupings(two)).toEqual(['turn', 'state', 'type', 'severity', 'category']);
+    expect(groupings(two)).toEqual(['turn', 'state', 'type', 'area', 'severity', 'category']);
+    const lacking = { ...bugs, types: [only, { ...only, name: 'impr', fields: [] }] };
+    expect(groupings(lacking)).toEqual(['turn', 'state', 'type']);
   });
 });

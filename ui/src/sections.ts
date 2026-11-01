@@ -1,3 +1,4 @@
+import { normalText, textValues } from './grid.ts';
 import type { CollectionView, Item, Turn } from './types.ts';
 
 // A group of the list or the grid. Grouped by turn, a section holds one turn (and stays even when
@@ -21,13 +22,17 @@ export function groupByTurn(items: readonly Item[]): Section[] {
   });
 }
 
-// What a collection can be grouped by: turn, state, its type when it has several, and every enum or
-// severity field all its types have, in the order they declare them.
+const GROUPS: readonly string[] = ['enum', 'severity', 'text'];
+
+// What a collection can be grouped by: turn, state, its type when it has several, and every
+// one-line field all its types have (an enum, a severity, free text), in the order they declare
+// them; never the title, which every item has its own.
 export function groupings(collection: CollectionView): string[] {
   const [first, ...rest] = collection.types;
   const fields = (first?.fields ?? []).filter(
     ({ name, module }) =>
-      (module === 'enum' || module === 'severity') &&
+      name !== 'title' &&
+      GROUPS.includes(module) &&
       rest.every((type) => type.fields.some((field) => field.name === name)),
   );
   return [
@@ -42,6 +47,7 @@ export function groupings(collection: CollectionView): string[] {
 function groupsOf(
   by: string,
   collection: CollectionView,
+  items: readonly Item[],
 ): { values: string[]; of: (item: Item) => string } {
   if (by === 'state') {
     const states = collection.types.flatMap((type) => type.states.map(({ name }) => name));
@@ -51,6 +57,11 @@ function groupsOf(
     return { values: collection.types.map(({ name }) => name), of: (item) => item.type };
   }
   const field = collection.types[0]?.fields.find(({ name }) => name === by);
+  if (field?.module === 'text') {
+    // Free text: one group per value the items hold, as normalText reads it, A to Z.
+    const of = (item: Item) => normalText(item.fields[by] ?? '');
+    return { values: textValues(items, by), of };
+  }
   const values = field?.module === 'severity' ? [...(field.values ?? [])].reverse() : field?.values;
   return { values: [...(values ?? []), ''], of: (item) => item.fields[by] ?? '' };
 }
@@ -64,7 +75,7 @@ export function groupItems(
 ): Section[] {
   if (by === 'turn' || !collection || !groupings(collection).includes(by))
     return groupByTurn(items);
-  const { values: declared, of } = groupsOf(by, collection);
+  const { values: declared, of } = groupsOf(by, collection, items);
   // A value the preset no longer lists (an older item) still shows, in a group of its own.
   const stale = items.map(of).filter((value) => value !== '' && !declared.includes(value));
   const values = [...declared.filter((value) => value !== ''), ...new Set(stale), ''];
