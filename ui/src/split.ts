@@ -118,12 +118,10 @@ function clampWidth(width: number, max: number, limits: WidthLimits): number {
 
 // ---- the grid beside the detail ----
 // The grid pane takes up to the table's own measure (1320px) and leaves the detail 520 by default;
-// it may grow until the detail keeps 440. Once the room holds a full grid and 560px beside it, the
-// detail stays docked; otherwise the grid takes the whole room until an item is opened.
+// it may grow until the detail keeps 440. While nothing is open the grid takes the whole room.
 export const GRID_WIDTH = { min: 340, max: Number.POSITIVE_INFINITY } as const;
 export const GRID_CAP = 1320;
 const GRID_DETAIL = 520;
-const DOCKED_DETAIL = 560;
 const DIVIDER_W = 9;
 
 export const GRID_WIDTH_KEY = 'otea.gridWidth';
@@ -147,10 +145,6 @@ export function defaultGridWidth(room: number): number {
 export function gridRoom(workspace: number, sidebar: boolean, wide: boolean): number {
   const rail = wide ? (sidebar ? 13.75 * 16 + 24 : 44 + 24) : 0;
   return Math.max(0, workspace - 8 - rail);
-}
-
-export function gridDocked(room: number): boolean {
-  return room - DIVIDER_W - GRID_CAP >= DOCKED_DETAIL;
 }
 
 export function readGridWidth(storage: SplitStorage | undefined): number | undefined {

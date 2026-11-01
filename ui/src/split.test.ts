@@ -9,7 +9,6 @@ import {
   forgetListWidth,
   GRID_WIDTH,
   GRID_WIDTH_KEY,
-  gridDocked,
   gridMax,
   gridRoom,
   LIST_WIDTH,
@@ -174,12 +173,6 @@ describe('the grid beside the detail', () => {
     expect(gridRoom(1440, true, true)).toBe(1188);
     expect(gridRoom(1440, false, true)).toBe(1364);
     expect(gridRoom(900, true, false)).toBe(892);
-  });
-
-  it('keeps the detail docked once the room holds a full grid and 560px beside it', () => {
-    expect(gridDocked(2343)).toBe(true);
-    expect(gridDocked(1703)).toBe(false);
-    expect(gridDocked(1889)).toBe(true);
   });
 
   it('remembers the grid width apart from the list width', () => {

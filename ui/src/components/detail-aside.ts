@@ -2,11 +2,13 @@ import { type RefObject, useLayoutEffect, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { asideHeight, type DetailForm, detailForm, travelPath } from '../detail-form.ts';
 import { MOTION, reducedMotion } from '../motion.ts';
+import { ROOM_EASE } from './workspace-motion.ts';
 
 // The detail's two forms (see detail-form.ts) and how it switches between them.
 //
 // The detail pane is measured with a ResizeObserver. While the divider is dragged the layout
-// follows the pointer and the form waits for the release; a sidebar fold (or a step of the divider
+// follows the pointer and the form waits for the release; while the grid eases between the whole
+// room and its width beside the detail (workspace-motion.ts), the form waits for it to land; a sidebar fold (or a step of the divider
 // from the keyboard) switches at once; a window resize switches once it has been quiet for 150ms.
 // Details (into the band, or back under Structure) and History (beside the main column, or back to
 // the end) then travel from where they were (FLIP), on the slow token.
@@ -112,6 +114,19 @@ function fitAside(root: HTMLElement, pane: HTMLElement) {
   aside.style.maxHeight = `${asideHeight(pane.clientHeight, top, bottom, stickyTop)}px`;
 }
 
+// The room's easing in the workspace a pane sits in, if it is easing.
+function roomEasing(pane: HTMLElement): Animation | undefined {
+  const workspace = pane.closest<HTMLElement>('.workspace');
+  return workspace?.getAnimations().find(({ id }) => id === ROOM_EASE);
+}
+
+// The width the detail is laid out at: the pane's, or while the room eases, the width it lands on
+// (the panel holds it until then, workspace-motion.ts).
+function paneWidth(element: HTMLElement, pane: HTMLElement): number {
+  const panel = element.closest<HTMLElement>('.detail-panel');
+  return roomEasing(pane) && panel ? panel.clientWidth : pane.clientWidth;
+}
+
 // The detail's form, following the pane it sits in. Off (a phone's unfolded detail): stacked.
 export function useDetailForm(root: RefObject<HTMLElement | null>, enabled: boolean): DetailForm {
   const [form, setForm] = useState<DetailForm>('stacked');
@@ -123,7 +138,7 @@ export function useDetailForm(root: RefObject<HTMLElement | null>, enabled: bool
       setForm('stacked');
       return;
     }
-    let current: DetailForm = detailForm(pane.clientWidth);
+    let current: DetailForm = detailForm(paneWidth(element, pane));
     // The first form is taken before anything is painted, without motion.
     setForm(current);
     let quiet = 0;
@@ -152,6 +167,15 @@ export function useDetailForm(root: RefObject<HTMLElement | null>, enabled: bool
     const onScroll = () => fitAside(element, pane);
     const observer = new ResizeObserver(() => {
       const workspace = pane.closest<HTMLElement>('.workspace');
+      const easing = roomEasing(pane);
+      if (easing) {
+        // The pane grows with the grid's easing; the form is taken where it lands.
+        if (!waiting) {
+          waiting = true;
+          easing.finished.then(afterDrag, afterDrag);
+        }
+        return;
+      }
       if (workspace?.dataset.dragging) {
         // The layout follows the pointer; the form waits for the release.
         if (!waiting) {

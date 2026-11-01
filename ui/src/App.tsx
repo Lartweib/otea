@@ -27,7 +27,6 @@ import {
 import type { Remote } from './remote.ts';
 import { groupByTurn } from './sections.ts';
 import { hashFor, ITEMS_HASH, modulesHash, TRIAGE_HASH } from './selection.ts';
-import { gridDocked } from './split.ts';
 import type { CollectionView, Item, ItemView, PresetView } from './types.ts';
 import { inCollection, railEntries } from './workspace.ts';
 
@@ -242,13 +241,12 @@ export function App() {
   };
   // Triage takes everything that waits for you, folded under a parent or not.
   const waiting = grouped.find((section) => section.turn === 'human')?.items ?? [];
-  // A collection seen as a grid takes the grid's room (and keeps it while the views morph). Unless
-  // the room holds a full grid and a detail beside it, the grid takes all of it until an item opens.
+  // A collection seen as a grid takes the grid's room (and keeps it while the views morph). While
+  // nothing is open the grid takes all of it, with no divider and no empty detail beside it.
   const gridded = !phone && prefs !== undefined && (prefs.mode === 'grid' || morphing);
-  const docked = gridDocked(split.grid.room);
-  const detailOff = gridded && !docked && !selectedId && !creating;
+  const detailOff = gridded && !selectedId && !creating;
   // The grid pane's width once the workspace is the grid's.
-  const gridPane = !docked && !selectedId && !creating ? split.grid.room - 9 : split.grid.width;
+  const gridPane = !selectedId && !creating ? split.grid.room - 9 : split.grid.width;
   const closeDetail = () => {
     window.location.hash = ITEMS_HASH;
   };
@@ -374,7 +372,7 @@ export function App() {
                     canWrite={canWrite}
                     collectionOf={collectionOf}
                     onAddChild={addChild}
-                    onClose={gridded && !docked ? closeDetail : undefined}
+                    onClose={gridded ? closeDetail : undefined}
                   />
                 ) : detailOff ? null : (
                   <Message>Select an item to see its details.</Message>
