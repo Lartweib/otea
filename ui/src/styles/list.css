@@ -114,12 +114,12 @@
 }
 
 /* ---- rows: one grid at every level ----
-   rail 56 · fold 28 · indent 28 a level · type 30 · title (flexes) · priority 48 · who 80 · when 56.
+   rail 56 · fold 28 · indent 28 a level · type 30 · title (flexes) · priority 48 · who 38 · when 56.
    Line one is the title, line two is always id · state, then a parent's bar, then signals. A row
    stops at 760px, so on a wide pane the time stays near its title. */
 .row {
   --c-pri: 48px;
-  --c-who: 80px;
+  --c-who: 38px;
   --c-when: 56px;
   position: relative;
   display: grid;
@@ -441,39 +441,30 @@
   margin-right: 8px;
 }
 
-.row-holder {
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.row-holder[data-you] {
-  color: var(--you-ink);
-}
-
-/* The agent's mark leads its name, and stands alone once the name goes (tier 3). */
-.row-agent {
-  margin-right: 6px;
-}
-
-[data-tier="3"] .row-agent {
-  margin-right: 0;
-}
-
-.row-mono {
-  display: none;
+/* Who is a mark, never the name written out: the agent's (see AgentMark), or `you` on your own
+   chip. The name is its tooltip, so the mark sits above the row's stretched link (in the grid
+   too), as the breadcrumb does. */
+.row-holder,
+.row-you {
+  position: relative;
+  z-index: 2;
   flex: none;
+}
+
+.row-holder {
+  display: inline-flex;
+}
+
+.row-you {
+  display: inline-grid;
   place-items: center;
+  box-sizing: border-box;
   min-width: 22px;
   height: 18px;
   padding: 0 4px;
   border-radius: var(--r-s);
-  background: var(--chip);
-  font: 500 10.5px / 18px var(--font-machine);
-  color: var(--ink);
-}
-
-.row-mono[data-you] {
   background: color-mix(in oklch, var(--you) 14%, transparent);
+  font: 500 10.5px / 18px var(--font-machine);
   color: var(--you-ink);
 }
 
@@ -534,8 +525,7 @@
 }
 
 /* ---- what a row shows is decided by the list pane's width, always in this order (hideTier) ----
-   2: the priority column and evidence chips go; 3: who becomes the agent mark and a parent says
-   "N open"; 4: who goes and a parent keeps only its bar. The time always stays. */
+   2: the priority column and evidence chips go; 3: a parent says "N open"; 4: who goes and a parent keeps only its bar. The time always stays. */
 [data-tier="2"] .row,
 [data-tier="3"] .row,
 [data-tier="4"] .row {
@@ -544,18 +534,6 @@
 
 :is([data-tier="2"], [data-tier="3"], [data-tier="4"]) :is(.row-pri, .row-chip) {
   display: none;
-}
-
-[data-tier="3"] .row {
-  --c-who: 38px;
-}
-
-[data-tier="3"] .row-holder {
-  display: none;
-}
-
-[data-tier="3"] .row-mono {
-  display: inline-grid;
 }
 
 :is([data-tier="3"], [data-tier="4"]) .row-progress-of {

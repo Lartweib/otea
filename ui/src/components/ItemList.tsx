@@ -217,29 +217,22 @@ function ParentCrumb({ parent }: { parent: ParentRef }) {
   );
 }
 
-// Who holds an item, wherever a row shows it (the list and the grid): an agent's mark and its
-// name, which a narrow pane drops to leave the mark; you, as `you`, on a chip once narrow.
-// m: the morph's key for the name, which travels between the two views.
+// Who holds an item, wherever a row shows it (the list and the grid): an agent's mark, or `you` on
+// your chip, never the name written out. The name is the tooltip, and what assistive tech reads.
+// m: the morph's key, which carries it between the two views.
 export function Holder({ holder, m }: { holder: string; m?: string }) {
   if (holder === 'you') {
     return (
-      <>
-        <span className="row-holder" data-you data-m={m}>
-          {holder}
-        </span>
-        <span className="row-mono" data-you title={holder}>
-          {holder}
-        </span>
-      </>
+      <span className="row-you" title={holder} data-m={m}>
+        {holder}
+      </span>
     );
   }
   return (
-    <>
-      <AgentMark name={holder} className="row-agent" decorative />
-      <span className="row-holder" title={holder} data-m={m}>
-        {holder}
-      </span>
-    </>
+    <span className="row-holder" title={holder} data-m={m}>
+      <AgentMark name={holder} decorative />
+      <span className="visually-hidden">{holder}</span>
+    </span>
   );
 }
 

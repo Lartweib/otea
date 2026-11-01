@@ -344,13 +344,14 @@
   margin-top: -10px;
 }
 
-/* A compact column (severity as bars, who as the agent's mark) keeps its short label; its menu stays
-   reachable from the filter and group buttons. */
-.gh[data-compact] .gh-menu {
+/* A compact column (severity as bars) keeps its short label; its menu stays
+   reachable from the filter and group buttons. Who, as narrow as its mark, is sorted by its label
+   alone: it has nothing to filter or group by. */
+.gh:is([data-compact], .gh-who) .gh-menu {
   display: none;
 }
 
-.gh[data-compact] .gh-sort {
+.gh:is([data-compact], .gh-who) .gh-sort {
   flex: none;
 }
 
@@ -628,19 +629,6 @@
   color: var(--mut);
 }
 
-/* A narrow grid draws who as the agent's mark alone, or `you` on its chip. */
-.grid-who[data-compact] .row-holder {
-  display: none;
-}
-
-.grid-who[data-compact] .row-agent {
-  margin-right: 0;
-}
-
-.grid-who[data-compact] .row-mono {
-  display: inline-grid;
-}
-
 /* Closed rows recede; a discarded title is struck, as in the list. */
 .grid-row:is([data-kind="done"], [data-kind="discarded"]) {
   color: var(--mut);
@@ -650,11 +638,11 @@
   font-weight: 500;
 }
 
-.grid-row:is([data-kind="done"], [data-kind="discarded"]) :is(.grid-tag, .grid-who .row-holder) {
+.grid-row:is([data-kind="done"], [data-kind="discarded"]) .grid-tag {
   color: var(--mut);
 }
 
-.grid-row:is([data-kind="done"], [data-kind="discarded"]) .row-mono {
+.grid-row:is([data-kind="done"], [data-kind="discarded"]) .row-you {
   background: var(--chip);
   color: var(--mut);
 }

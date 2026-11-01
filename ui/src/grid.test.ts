@@ -119,7 +119,7 @@ describe('the grid width tiers', () => {
     ]);
   });
 
-  it('drops columns in a fixed order: the last field first, then who and severity shrink, then the other fields', () => {
+  it('drops columns in a fixed order: the last field first, then severity shrinks, then the other fields', () => {
     const keys = (tier: 1 | 2 | 3 | 4) =>
       shownColumns(gridColumns(bugs), tier).map(({ column, compact }) =>
         compact ? `${column.key}*` : column.key,
@@ -127,8 +127,8 @@ describe('the grid width tiers', () => {
 
     expect(keys(1)).toEqual(['id', 'title', 'category', 'severity', 'area', 'state', 'who', 'age']);
     expect(keys(2)).toEqual(['id', 'title', 'category', 'severity', 'state', 'who', 'age']);
-    expect(keys(3)).toEqual(['id', 'title', 'category', 'severity*', 'state', 'who*', 'age']);
-    expect(keys(4)).toEqual(['id', 'title', 'severity*', 'state', 'who*', 'age']);
+    expect(keys(3)).toEqual(['id', 'title', 'category', 'severity*', 'state', 'who', 'age']);
+    expect(keys(4)).toEqual(['id', 'title', 'severity*', 'state', 'who', 'age']);
   });
 
   it('sizes each column, and lets only the title flex', () => {
@@ -137,8 +137,7 @@ describe('the grid width tiers', () => {
     expect(long && columnWidth(long, false)).toBe(107);
     expect(columnWidth(column('severity'), false)).toBe(112);
     expect(columnWidth(column('severity'), true)).toBe(52);
-    expect(columnWidth(column('who'), false)).toBe(88);
-    expect(columnWidth(column('who'), true)).toBe(44);
+    expect(columnWidth(column('who'), false)).toBe(44);
     expect(columnWidth(column('age'), false)).toBe(56);
     expect(columnWidth(column('category'), false)).toBe(117);
     expect(columnWidth(column('area'), false)).toBe(124);

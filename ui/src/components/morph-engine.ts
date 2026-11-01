@@ -15,12 +15,12 @@ import {
 // Elements shared by the two views carry the same `data-m` key.
 
 // What only the grid has: its header, select boxes, the cells the list row has no place for, the
-// `you` chips and the empty who. What only the list has: the fold and type slots, the priority, the
-// rest of line two, the hover leaders.
+// empty who. What only the list has: the fold and type slots, the priority, the rest of line two,
+// the hover leaders.
 const GRID_ONLY =
-  '.grid-head > .gh, .grid-row > .gc-chk, .grid-row > .gc-enum, .grid-row > .gc-severity, .grid-row > .gc-text, .grid-row > .gc-type, .grid-row .row-mono, .grid-row .grid-nobody, .grid-gh .group-yours';
+  '.grid-head > .gh, .grid-row > .gc-chk, .grid-row > .gc-enum, .grid-row > .gc-severity, .grid-row > .gc-text, .grid-row > .gc-type, .grid-row .grid-nobody, .grid-gh .group-yours';
 const LIST_ONLY =
-  '.row-fold, .row-type, .row-pri, .row-crumb, .row-crumb-sep, .row-progress, .row-values, .row-mono, .section-title .group-yours, .section-title .triage-open, .section-empty';
+  '.row-fold, .row-type, .row-pri, .row-crumb, .row-crumb-sep, .row-progress, .row-values, .section-title .group-yours, .section-title .triage-open, .section-empty';
 // Rows and headers whose rules, bands and outlines fade with the view they belong to (--c).
 const GRID_ROWS = '.grid-row, .grid-head, .grid-gh';
 const LIST_ROWS = '.rows > li, .section-title';
