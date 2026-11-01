@@ -201,7 +201,7 @@ describe('attachEvidence', () => {
       truncateSync(edge, MAX_EVIDENCE_BYTES);
 
       expect(attach({ path: edge }).size).toBe(MAX_EVIDENCE_BYTES);
-    });
+    }, 30_000); // hashing and copying 50 MB can pass the 5s default on a slow CI runner
   });
 });
 
