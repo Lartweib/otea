@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { bulkPlan, fitMoves, trayMoves } from './bulk.ts';
+import { bulkPlan, countsSummary, fitMoves, trayMoves } from './bulk.ts';
 import type { ChildrenSummary, Item, Move } from './types.ts';
 
 const item = (id: string, state: string, children?: ChildrenSummary): Item => ({
@@ -159,5 +159,39 @@ describe('fitMoves', () => {
 
   it('shows them all until the room is measured', () => {
     expect(fitMoves({ ...row, room: 0 })).toBe(5);
+  });
+});
+
+describe('countsSummary', () => {
+  const plan = bulkPlan(
+    [
+      ['BUGS-1', 'fixing'],
+      ['BUGS-2', 'reported'],
+      ['BUGS-3', 'accepted'],
+      ['BUGS-4', 'wont_fix'],
+      ['BUGS-5', 'accepted'],
+    ].map(([id = '', state = '']) => ({ item: item(id, state), moves: [] })),
+  );
+
+  it('counts each state in the order the selection meets them', () => {
+    expect(plan.states).toEqual([
+      { state: 'fixing', count: 1 },
+      { state: 'reported', count: 1 },
+      { state: 'accepted', count: 2 },
+      { state: 'wont_fix', count: 1 },
+    ]);
+    expect(countsSummary(plan.states)).toEqual([
+      '1 fixing',
+      '1 reported',
+      '2 accepted',
+      '1 wont_fix',
+    ]);
+    expect(plan.counts).toBe('1 fixing · 1 reported · 2 accepted · 1 wont_fix');
+  });
+
+  it('keeps the states with the most items, ties in their order, and says how many more', () => {
+    expect(countsSummary(plan.states, 2)).toEqual(['2 accepted', '1 fixing', '+2 more']);
+    expect(countsSummary(plan.states, 1)).toEqual(['2 accepted', '+3 more']);
+    expect(countsSummary(plan.states, 4)).toEqual(countsSummary(plan.states));
   });
 });
