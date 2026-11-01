@@ -1,3 +1,4 @@
+export { AgentMark } from './AgentMark.tsx';
 export { Button, type ButtonVariant } from './Button.tsx';
 export { Icon, type IconName } from './Icon.tsx';
 export { NODE_LABEL, Node, NodeMark } from './Node.tsx';

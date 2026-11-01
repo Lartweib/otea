@@ -1,6 +1,6 @@
 import { evidenceFileUrl } from '../api.ts';
 import { agoLabel, handoffOf, leadRelation, waitingChildren } from '../handoff.ts';
-import { NODE_LABEL, Node } from '../kit/index.ts';
+import { AgentMark, NODE_LABEL, Node } from '../kit/index.ts';
 import { moduleFor } from '../modules/registry.ts';
 import { openLabel } from '../relations.ts';
 import { hashFor } from '../selection.ts';
@@ -90,11 +90,7 @@ export function HandoffLine({ item, type, canWrite, collectionOf }: HandoffLineP
     <p className="handoff">
       {handoff ? (
         <span className="handoff-who">
-          {handoff.initials ? (
-            <span className="handoff-mark" aria-hidden="true">
-              {handoff.initials}
-            </span>
-          ) : null}
+          {handoff.agent ? <AgentMark name={handoff.agent} decorative /> : null}
           <span className="handoff-says">{handoff.says}</span>
           {handoff.note ? <q className="handoff-note">{handoff.note}</q> : null}
           <span className="handoff-dot" aria-hidden="true">

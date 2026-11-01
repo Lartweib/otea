@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { agoLabel, handoffOf, initialsOf, leadRelation, waitingChildren } from './handoff.ts';
+import { agoLabel, handoffOf, leadRelation, waitingChildren } from './handoff.ts';
 import type { ItemEvent, RelatedItem } from './types.ts';
 
 const agent = (name: string) => ({ kind: 'agent', name }) as const;
@@ -42,7 +42,7 @@ describe('handoffOf', () => {
     ];
     expect(handoffOf(events)).toEqual({
       who: 'claude-b',
-      initials: 'cb',
+      agent: 'claude-b',
       says: 'claude-b created it',
       at: '2026-11-01T09:00:00Z',
       note: null,
@@ -63,7 +63,7 @@ describe('handoffOf', () => {
     ];
     expect(handoffOf(events)).toEqual({
       who: 'claude-b',
-      initials: 'cb',
+      agent: 'claude-b',
       says: 'claude-b moved it to review',
       at: '2026-11-01T11:00:00Z',
       note: 'Rigged, see the clip',
@@ -83,19 +83,19 @@ describe('handoffOf', () => {
     ];
     expect(handoffOf(events)).toMatchObject({
       who: 'claude-a',
-      initials: 'ca',
+      agent: 'claude-a',
       says: 'claude-a relayed your move to discarded',
       note: 'after the art pass',
     });
   });
 
-  it('a move you made here is yours, without initials', () => {
+  it('a move you made here is yours, without a mark', () => {
     const events = [
       event('transitioned', human, { from: 'reported', to: 'accepted', channel: 'ui' }),
     ];
     expect(handoffOf(events)).toMatchObject({
       who: 'you',
-      initials: null,
+      agent: null,
       says: 'you moved it to accepted',
     });
   });
@@ -103,17 +103,6 @@ describe('handoffOf', () => {
   it('is nothing for an item without a creation or a move', () => {
     expect(handoffOf([event('updated', agent('claude-a'), { changes: {} })])).toBeNull();
     expect(handoffOf([])).toBeNull();
-  });
-});
-
-describe('initialsOf', () => {
-  it.each([
-    ['claude-b', 'cb'],
-    ['claude_code', 'cc'],
-    ['Codex', 'co'],
-    ['gpt 5 mini', 'g5'],
-  ])('%s is %s', (name, initials) => {
-    expect(initialsOf(name)).toBe(initials);
   });
 });
 

@@ -11,7 +11,7 @@ import { ageLabel, untilLabel } from '../format.ts';
 import { useActiveLease } from '../hooks.ts';
 import { TypeIcon } from '../icons/TypeIcon.tsx';
 import { rowValues, showsTypes, typeOf } from '../item-types.ts';
-import { Button, Icon, NodeMark } from '../kit/index.ts';
+import { AgentMark, Button, Icon, NodeMark } from '../kit/index.ts';
 import {
   type Block,
   type BranchPiece,
@@ -27,7 +27,7 @@ import { reducedMotion } from '../motion.ts';
 import type { NestedSection, ParentRef, RowNesting } from '../nesting.ts';
 import { itemNodeKind, type NodeKind } from '../node-kind.ts';
 import { openLabel } from '../relations.ts';
-import { GRID, MAX_DEPTH, monogram, ROW } from '../row-grid.ts';
+import { GRID, MAX_DEPTH, ROW } from '../row-grid.ts';
 import { hashFor } from '../selection.ts';
 import type { CollectionView, Item, Lease } from '../types.ts';
 import { afterFold, panelOf, reopen, select, type UnfoldState } from '../unfold.ts';
@@ -222,13 +222,20 @@ function WhoWhen({ item, lease }: { item: Item; lease: Lease | null }) {
     <>
       <span className="row-who">
         <i className="row-wf" aria-hidden="true" />
-        {holder ? (
+        {holder === 'you' ? (
           <>
-            <span className="row-holder" data-you={holder === 'you' || undefined}>
+            <span className="row-holder" data-you>
               {holder}
             </span>
-            <span className="row-mono" data-you={holder === 'you' || undefined} title={holder}>
-              {monogram(holder)}
+            <span className="row-mono" data-you title={holder}>
+              {holder}
+            </span>
+          </>
+        ) : holder ? (
+          <>
+            <AgentMark name={holder} className="row-agent" decorative />
+            <span className="row-holder" title={holder}>
+              {holder}
             </span>
           </>
         ) : null}
