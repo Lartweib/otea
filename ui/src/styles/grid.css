@@ -1164,8 +1164,16 @@
   text-overflow: ellipsis;
 }
 
+/* The states wrap to two lines at most (States in BulkTray.tsx keeps the ones with the most items
+   and `+N more` when even two do not hold them); a line breaks only between states. */
 .bulk-s {
+  max-height: 32px;
   padding-left: 25px;
+  white-space: normal;
+}
+
+.bulk-st {
+  white-space: nowrap;
 }
 
 .bulk-l2 {

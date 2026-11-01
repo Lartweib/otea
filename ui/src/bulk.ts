@@ -7,11 +7,15 @@ import type { Item, Move } from './types.ts';
 // others out. moves: an item's moves as the API serves them to this browser, undefined while loading.
 export type Selected = { item: Item; moves: readonly Move[] | undefined };
 
+export type StateCount = { state: string; count: number };
+
 export type BulkPlan = {
   moves: Move[];
   // The moves some items could take but not all, grouped by what keeps them out.
   hidden: { moves: string[]; why: string }[];
-  // How many of each state: `2 reported · 1 verify`.
+  // How many of each state, in the order the selection meets them, and as one line:
+  // `2 reported · 1 verify`.
+  states: StateCount[];
   counts: string;
   // With several states selected: keep only those of one state.
   narrow: { label: string; state: string; ids: string[] }[];
@@ -42,9 +46,19 @@ function blockedWhy(blocked: readonly { id: string; why: string }[]): string {
   return `${blocked.length} wait for open children`;
 }
 
+// The states as the tray's count zone says them: each with its count, or, when they do not all fit,
+// the `keep` states with the most items (ties in their order) and how many more there are.
+export function countsSummary(states: readonly StateCount[], keep = states.length): string[] {
+  const said = ({ state, count }: StateCount) => `${count} ${state}`;
+  if (keep >= states.length) return states.map(said);
+  const most = [...states].sort((a, b) => b.count - a.count).slice(0, keep);
+  return [...most.map(said), `+${states.length - keep} more`];
+}
+
 export function bulkPlan(selected: readonly Selected[]): BulkPlan {
   const states = statesOf(selected);
-  const counts = [...states].map(([state, ids]) => `${ids.length} ${state}`).join(' · ');
+  const counted = [...states].map(([state, ids]) => ({ state, count: ids.length }));
+  const counts = countsSummary(counted).join(' · ');
   const narrow =
     states.size > 1
       ? [...states].map(([state, ids]) => ({
@@ -54,7 +68,7 @@ export function bulkPlan(selected: readonly Selected[]): BulkPlan {
         }))
       : [];
   const loading = selected.some(({ moves }) => moves === undefined);
-  if (loading) return { moves: [], hidden: [], counts, narrow, loading };
+  if (loading) return { moves: [], hidden: [], states: counted, counts, narrow, loading };
   const all: Move[] = [];
   for (const { moves } of selected) {
     for (const move of moves ?? []) if (!all.some(({ to }) => to === move.to)) all.push(move);
@@ -85,6 +99,7 @@ export function bulkPlan(selected: readonly Selected[]): BulkPlan {
   return {
     moves: offered,
     hidden: [...hidden].map(([why, moves]) => ({ moves, why })),
+    states: counted,
     counts,
     narrow,
     loading,

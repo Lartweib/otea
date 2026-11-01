@@ -11,7 +11,15 @@ import {
 import { createPortal } from 'react-dom';
 import { moveVariants } from '../actions.ts';
 import { fetchItem, moveItem } from '../api.ts';
-import { type BulkPlan, bulkPlan, fitMoves, type Placed, trayMoves } from '../bulk.ts';
+import {
+  type BulkPlan,
+  bulkPlan,
+  countsSummary,
+  fitMoves,
+  type Placed,
+  type StateCount,
+  trayMoves,
+} from '../bulk.ts';
 import { Button, Icon } from '../kit/index.ts';
 import type { Item, Move } from '../types.ts';
 
@@ -60,7 +68,7 @@ function useGutter(host: HTMLElement | null): number {
 type Step =
   | { step: 'choosing' }
   | { step: 'explaining'; move: Move; reason: string }
-  | { step: 'posting'; move: Move; why: string; counts: string; total: number; done: number }
+  | { step: 'posting'; move: Move; why: string; states: StateCount[]; total: number; done: number }
   | { step: 'landed'; move: Move; moved: string[]; failed: { id: string; why: string }[] };
 
 type Layer = Step['step'];
@@ -185,8 +193,55 @@ function TrayMenu({
   );
 }
 
+// The states under the count, on two lines at most: when they do not fit, the states with the most
+// items and how many more (`+2 more`), measured before paint; the whole summary stays the tooltip
+// and what assistive tech reads. A line breaks only after a separator, never inside a state.
+function States({ states }: { states: readonly StateCount[] }) {
+  const self = useRef<HTMLSpanElement>(null);
+  const all = countsSummary(states).join(' · ');
+  const [keep, setKeep] = useState(states.length);
+  const [width, setWidth] = useState(0);
+  const measured = useRef('');
+  useLayoutEffect(() => {
+    const element = self.current;
+    if (!element) return;
+    // Every state again whenever they or the room change, then one fewer until they fit.
+    const key = `${all}@${width}`;
+    if (measured.current !== key) {
+      measured.current = key;
+      if (keep !== states.length) {
+        setKeep(states.length);
+        return;
+      }
+    }
+    if (keep > 1 && element.scrollHeight > element.clientHeight + 1) setKeep(keep - 1);
+  });
+  useEffect(() => {
+    const element = self.current;
+    if (!element) return undefined;
+    const observer = new ResizeObserver(() => setWidth(element.clientWidth));
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
+  const said = countsSummary(states, keep);
+  const cut = keep < states.length;
+  return (
+    <span ref={self} className="bulk-s" title={all}>
+      {cut ? <span className="visually-hidden">{all}</span> : null}
+      <span aria-hidden={cut || undefined}>
+        {said.map((each, index) => (
+          <Fragment key={each}>
+            {index > 0 ? ' ' : null}
+            <span className="bulk-st">{index < said.length - 1 ? `${each} ·` : each}</span>
+          </Fragment>
+        ))}
+      </span>
+    </span>
+  );
+}
+
 // The box and the count: how many are ticked and of which states.
-function Who({ count, counts }: { count: number; counts: string }) {
+function Who({ count, states }: { count: number; states: readonly StateCount[] }) {
   return (
     <div className="bulk-zone bulk-who">
       <span className="bulk-n">
@@ -197,9 +252,7 @@ function Who({ count, counts }: { count: number; counts: string }) {
         </i>
         <b>{count} selected</b>
       </span>
-      <span className="bulk-s" title={counts}>
-        {counts}
-      </span>
+      <States states={states} />
     </div>
   );
 }
@@ -341,7 +394,7 @@ export function BulkTray({ selected, canWrite, host, onKeep, onClear }: BulkTray
   const run = async (move: Move, why: string) => {
     const ids = selected.map(({ id }) => id);
     const failed: { id: string; why: string }[] = [];
-    const base = { step: 'posting', move, why, counts: plan.counts, total: ids.length } as const;
+    const base = { step: 'posting', move, why, states: plan.states, total: ids.length } as const;
     focusNext.current = 'tray';
     setMenu(null);
     setState({ ...base, done: 0 });
@@ -424,7 +477,7 @@ export function BulkTray({ selected, canWrite, host, onKeep, onClear }: BulkTray
     const rule = canWrite && !plan.loading ? ruleOf(plan, count) : '';
     return (
       <>
-        <Who count={count} counts={plan.counts} />
+        <Who count={count} states={plan.states} />
         <div className="bulk-zone bulk-what">
           <div className="bulk-l1" ref={line}>
             {!canWrite ? (
@@ -483,7 +536,7 @@ export function BulkTray({ selected, canWrite, host, onKeep, onClear }: BulkTray
     const count = selected.length;
     return (
       <>
-        <Who count={count} counts={plan.counts} />
+        <Who count={count} states={plan.states} />
         <div className="bulk-zone bulk-what">
           <form
             className="bulk-l1"
@@ -526,7 +579,7 @@ export function BulkTray({ selected, canWrite, host, onKeep, onClear }: BulkTray
 
   const posting = (step: Extract<Step, { step: 'posting' }>) => (
     <>
-      <Who count={step.total} counts={step.counts} />
+      <Who count={step.total} states={step.states} />
       <div className="bulk-zone bulk-what">
         <div className="bulk-l1">
           <span
