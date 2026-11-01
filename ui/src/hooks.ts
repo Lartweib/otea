@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useReducer, useRef, useState, useSyncExternalStore } from 'react';
 import { type Attention, attentionOf, nextLeaseExpiry } from './attention.ts';
-import { activeLease } from './lease.ts';
+import { activeLease, type TimeCell, timeCell } from './lease.ts';
 import { afterFailure, type Remote } from './remote.ts';
 import { hideTier } from './row-grid.ts';
 import { type Route, routeFromHash } from './selection.ts';
@@ -62,6 +62,20 @@ export function useActiveLease(lease: Lease | null): Lease | null {
     return () => clearTimeout(timer);
   }, [expiresAt]);
   return activeLease(lease, Date.now());
+}
+
+// The time column of a row, kept current: a lease's time left re-renders when its text changes
+// (the next minute, hour or day left, then `expired`); the age changes with the item, as before.
+export function useTimeCell(item: Pick<Item, 'updatedAt' | 'lease' | 'expiredLease'>): TimeCell {
+  const [, tick] = useReducer((count: number) => count + 1, 0);
+  const cell = timeCell(item, Date.now());
+  const changesAt = cell.tone === 'left' ? cell.changesAt : undefined;
+  useEffect(() => {
+    if (changesAt === undefined) return;
+    const timer = setTimeout(tick, Math.max(0, changesAt - Date.now()) + 10);
+    return () => clearTimeout(timer);
+  }, [changesAt]);
+  return cell;
 }
 
 // The workspace's attention, kept live: the items follow the stream, and since a lease running out

@@ -97,11 +97,6 @@ export function ageLabel(iso: string, now: number): string {
   return hours < 48 ? 'yesterday' : `${Math.floor(hours / 24)}d`;
 }
 
-// Until when an agent holds an item, as its row says it.
-export function untilLabel({ expiresAt }: Lease, timeZone?: string): string {
-  return formatTime(expiresAt, timeZone).slice(-5);
-}
-
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 // A moment split in two: its day when it is not today (28 Oct; 2 Jan 2025 from another year) and

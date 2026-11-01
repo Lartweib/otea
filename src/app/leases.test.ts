@@ -176,6 +176,19 @@ describe('leases', () => {
       expect(listItems(ctx, {}, at(T15)).map(({ lease }) => lease)).toEqual([null, null]);
     });
 
+    it('keep a lease that ran out without a release apart, as expiredLease', () => {
+      const expired = { holder: 'claude', expiresAt: T15 };
+
+      expect(getItem(ctx, 'TASKS-1', at(T5)).expiredLease).toBeUndefined();
+      expect(getItem(ctx, 'TASKS-1', at(T15)).expiredLease).toEqual(expired);
+      expect(listItems(ctx, {}, at(T20)).map((item) => item.expiredLease)).toEqual([
+        expired,
+        undefined,
+      ]);
+      claimItem(ctx, { id: 'TASKS-1', actor: codex }, at(T20));
+      expect(getItem(ctx, 'TASKS-1', at(T20)).expiredLease).toBeUndefined();
+    });
+
     it('write nothing, even when the lease has expired', () => {
       const before = changes();
 

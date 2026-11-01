@@ -125,7 +125,7 @@
 .row {
   --c-pri: 48px;
   --c-who: 38px;
-  --c-when: 56px;
+  --c-when: 74px;
   position: relative;
   display: grid;
   grid-template-columns:
@@ -494,6 +494,17 @@
   visibility: hidden;
 }
 
+/* A lease's time left, in the list and the grid: its tooltip (holder and expiry) sits above the
+   row's stretched link, as the mark does. A lease that ran out without a release is in --warn. */
+.row-lease {
+  position: relative;
+  z-index: 2;
+}
+
+.row-lease[data-tone="expired"] {
+  color: var(--warn);
+}
+
 .row[data-depth] :is(.row-who, .row-when) {
   line-height: 20px;
 }
@@ -547,7 +558,7 @@
 
 [data-tier="4"] .row {
   --c-who: 0px;
-  --c-when: 52px;
+  --c-when: 66px;
 }
 
 [data-tier="4"] :is(.row-who, .row-progress-count) {
