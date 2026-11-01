@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { GRID, hideTier, monogram, slotCentre, slotLeft } from './row-grid.ts';
+import { GRID, hideTier, slotCentre, slotLeft } from './row-grid.ts';
 
 describe('the row grid', () => {
   it('reserves the fold and type slots and steps 28px a level', () => {
@@ -22,22 +22,5 @@ describe('hideTier', () => {
     expect(hideTier(380)).toBe(3);
     expect(hideTier(379)).toBe(4);
     expect(hideTier(340)).toBe(4);
-  });
-});
-
-describe('monogram', () => {
-  it('takes the first letter and the first of the suffix after the last dash', () => {
-    expect(monogram('claude-b')).toBe('cb');
-    expect(monogram('codex-cloud-west')).toBe('cw');
-  });
-
-  it('takes the first two letters without a usable suffix', () => {
-    expect(monogram('gemini')).toBe('ge');
-    expect(monogram('claude-')).toBe('cl');
-    expect(monogram('-x')).toBe('-x');
-  });
-
-  it('keeps you as you', () => {
-    expect(monogram('you')).toBe('you');
   });
 });

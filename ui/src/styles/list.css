@@ -450,6 +450,15 @@
   color: var(--you-ink);
 }
 
+/* The agent's mark leads its name, and stands alone once the name goes (tier 3). */
+.row-agent {
+  margin-right: 6px;
+}
+
+[data-tier="3"] .row-agent {
+  margin-right: 0;
+}
+
 .row-mono {
   display: none;
   flex: none;
@@ -525,7 +534,7 @@
 }
 
 /* ---- what a row shows is decided by the list pane's width, always in this order (hideTier) ----
-   2: the priority column and evidence chips go; 3: who becomes a monogram and a parent says
+   2: the priority column and evidence chips go; 3: who becomes the agent mark and a parent says
    "N open"; 4: who goes and a parent keeps only its bar. The time always stays. */
 [data-tier="2"] .row,
 [data-tier="3"] .row,

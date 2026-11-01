@@ -1,5 +1,7 @@
 import { useState } from 'react';
+import { eventAgent } from '../agent-mark.ts';
 import { describeEvent, eventActorLabel, momentParts, relayOf } from '../format.ts';
+import { AgentMark } from '../kit/index.ts';
 import type { ItemEvent } from '../types.ts';
 
 type TimelineProps = { events: ItemEvent[] };
@@ -19,6 +21,7 @@ export function Timeline({ events }: TimelineProps) {
     <ol className="timeline">
       {newestFirst.map((event) => {
         const quote = relayOf(event)?.quote;
+        const agent = eventAgent(event);
         const { day, time } = momentParts(event.at, now);
         return (
           <li
@@ -40,6 +43,7 @@ export function Timeline({ events }: TimelineProps) {
               {describeEvent(event)}{' '}
               <em>
                 <span className="ev-sep">· </span>
+                {agent ? <AgentMark name={agent} className="ev-mark" decorative /> : null}
                 {eventActorLabel(event)}
               </em>
             </span>

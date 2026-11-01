@@ -33,7 +33,7 @@ export function slotCentre(depth: number): number {
 }
 
 // What a row shows is decided by the list pane's width alone, always in the same order:
-// 1 everything; 2 the priority column and evidence chips go; 3 who becomes a monogram and a
+// 1 everything; 2 the priority column and evidence chips go; 3 who becomes the agent mark and a
 // parent's count shortens; 4 who goes and a parent keeps only its bar. The time always stays.
 export type HideTier = 1 | 2 | 3 | 4;
 
@@ -44,13 +44,4 @@ export function hideTier(listWidth: number): HideTier {
   if (listWidth >= TIER_FLOORS[2]) return 2;
   if (listWidth >= TIER_FLOORS[3]) return 3;
   return 4;
-}
-
-// Who, in two letters: the first letter and the first of the suffix after the last dash (claude-b
-// is cb), otherwise the first two letters. You stay you.
-export function monogram(name: string): string {
-  if (name === 'you') return name;
-  const dash = name.lastIndexOf('-');
-  if (dash > 0 && dash < name.length - 1) return `${name[0]}${name[dash + 1]}`;
-  return name.slice(0, 2);
 }

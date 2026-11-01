@@ -23,6 +23,13 @@
   --on-you: oklch(0.99 0.005 265);
   /* Text set in your color: deepened on light, lifted on dark, to stay above 4.5:1 on every surface. */
   --you-ink: color-mix(in oklch, var(--you) 78%, oklch(0.24 0.02 265));
+  /* Agent marks: five quiet hues, away from your blue and from --warn's red. Each only tints
+     --chip, so one set works in both themes and never competes with the turn colors. */
+  --agent-0: oklch(0.72 0.12 75);
+  --agent-1: oklch(0.7 0.11 145);
+  --agent-2: oklch(0.7 0.09 200);
+  --agent-3: oklch(0.68 0.11 310);
+  --agent-4: oklch(0.7 0.1 350);
 
   --font-human: "Schibsted Grotesk", system-ui, sans-serif;
   --font-machine: "Spline Sans Mono", ui-monospace, monospace;

@@ -7,8 +7,8 @@ import type { ItemEvent, RelatedItem } from './types.ts';
 // a move says its target state, never a verb Otea would have to guess from a state's name.
 export type Handoff = {
   who: string;
-  // An agent's mark, two letters; none for you.
-  initials: string | null;
+  // The agent whose mark goes with it; none for you.
+  agent: string | null;
   says: string;
   at: string;
   // The reason the move carried, or the words of yours an agent relayed.
@@ -23,7 +23,7 @@ export function handoffOf(events: readonly ItemEvent[]): Handoff | null {
   if (relay) {
     return {
       who: relay.via,
-      initials: initialsOf(relay.via),
+      agent: relay.via,
       says: `${relay.via} relayed your move to ${to}`,
       at: last.at,
       note: relay.quote,
@@ -34,26 +34,11 @@ export function handoffOf(events: readonly ItemEvent[]): Handoff | null {
   const reason = last.data.reason;
   return {
     who,
-    initials: yours ? null : initialsOf(who),
+    agent: yours ? null : who,
     says: last.type === 'created' ? `${who} created it` : `${who} moved it to ${to}`,
     at: last.at,
     note: typeof reason === 'string' && reason !== '' ? reason : null,
   };
-}
-
-// claude-b is cb; a name of one word gives its first two letters.
-export function initialsOf(name: string): string {
-  const words = name
-    .toLowerCase()
-    .split(/[^\p{L}\p{N}]+/u)
-    .filter(Boolean);
-  const [first = ''] = words;
-  return words.length > 1
-    ? words
-        .map((word) => word.charAt(0))
-        .join('')
-        .slice(0, 2)
-    : first.slice(0, 2);
 }
 
 // How long ago, as a sentence says it: just now, 14m ago, 3h ago, yesterday, 5d ago.

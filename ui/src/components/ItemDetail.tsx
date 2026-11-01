@@ -14,7 +14,7 @@ import {
   typeMark,
   typeOf,
 } from '../item-types.ts';
-import { NODE_LABEL, Node, Pill, TypeTag } from '../kit/index.ts';
+import { AgentMark, NODE_LABEL, Node, Pill, TypeTag } from '../kit/index.ts';
 import { moduleFor } from '../modules/registry.ts';
 import { MOTION, reducedMotion } from '../motion.ts';
 import { itemNodeKind } from '../node-kind.ts';
@@ -251,7 +251,14 @@ export function ItemDetail({
     { label: 'collection', value: item.collection },
     {
       label: 'created by',
-      value: `${actorLabel(item.createdBy)} · ${momentLabel(item.createdAt, Date.now())}`,
+      value: (
+        <>
+          {item.createdBy.kind === 'agent' ? (
+            <AgentMark name={item.createdBy.name} className="created-mark" decorative />
+          ) : null}
+          {`${actorLabel(item.createdBy)} · ${momentLabel(item.createdAt, Date.now())}`}
+        </>
+      ),
     },
     ...(lease ? [{ label: 'lease', value: leaseLabel(lease) }] : []),
     { label: 'updated', value: momentLabel(item.updatedAt, Date.now()) },
