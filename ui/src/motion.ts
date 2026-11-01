@@ -102,5 +102,11 @@ export function roomAt(knots: readonly (readonly [number, number])[], head: numb
   return last[1];
 }
 
+// The theme switch opens the new theme as a circle from a point (the toggle's centre) on the turn
+// change's clock (TIMING.travel); its radius reaches the farthest corner of the viewport.
+export function revealRadius(x: number, y: number, width: number, height: number): number {
+  return Math.hypot(Math.max(x, width - x), Math.max(y, height - y));
+}
+
 export const reducedMotion = (): boolean =>
   typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
