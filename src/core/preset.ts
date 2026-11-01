@@ -397,19 +397,21 @@ function moduleOf(types: ItemType[], name: string): FieldModule | undefined {
   return types.map((type) => type.fields[name]?.module).find((module) => module !== undefined);
 }
 
+// A grouping is turn, state, type, or a one-line field every type has (an enum, a severity, or
+// free text, whose values come from the items); never the title, which every item has its own.
 function groupProblems(groupBy: string, types: ItemType[]): string[] {
-  const grouping = (type: ItemType) => {
-    const module = type.fields[groupBy]?.module;
-    return module === 'enum' || module === 'severity';
-  };
-  if (GROUPS.includes(groupBy) || types.every(grouping)) return [];
-  const module = moduleOf(types, groupBy);
-  if (module !== undefined && types.every((type) => type.fields[groupBy])) {
-    return [`view.group_by: ${groupBy} is ${module}, so it cannot group (make it an enum)`];
+  if (GROUPS.includes(groupBy)) return [];
+  if (groupBy === 'title') return ['view.group_by: title cannot group (every item has its own)'];
+  if (types.every((type) => type.fields[groupBy])) {
+    const module = types
+      .map((type) => type.fields[groupBy]?.module ?? '')
+      .find((name) => !ONE_LINE.includes(name));
+    if (module === undefined) return [];
+    return [
+      `view.group_by: ${groupBy} is ${module}; only one-line fields group (enum, severity, text)`,
+    ];
   }
-  return [
-    `view.group_by: "${groupBy}" is not turn, state, type or an enum or severity field of every type`,
-  ];
+  return [`view.group_by: "${groupBy}" is not turn, state, type or a one-line field of every type`];
 }
 
 // Without columns of its own, the grid shows the row slot's one-line fields between title and state.

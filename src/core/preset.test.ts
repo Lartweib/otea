@@ -492,14 +492,22 @@ describe('item types', () => {
       'view.kind: Invalid option: expected one of "list"|"board"|"grid"',
     ],
     [
-      'grouping by a field that is not an enum',
-      (raw) => (raw.view = { group_by: 'area' }),
-      'view.group_by: area is text, so it cannot group (make it an enum)',
+      'grouping by a multi-line field',
+      (raw) => {
+        raw.fields.steps = { module: 'markdown' };
+        raw.view = { group_by: 'steps' };
+      },
+      'view.group_by: steps is markdown; only one-line fields group (enum, severity, text)',
+    ],
+    [
+      'grouping by the title',
+      (raw) => (raw.view = { group_by: 'title' }),
+      'view.group_by: title cannot group (every item has its own)',
     ],
     [
       'grouping by a field only some types have',
       (raw) => (raw.view = { group_by: 'severity' }),
-      'view.group_by: "severity" is not turn, state, type or an enum or severity field of every type',
+      'view.group_by: "severity" is not turn, state, type or a one-line field of every type',
     ],
   ])('rejects %s', (_, change, problem) => {
     expect(typeProblems(change)).toContain(problem);
@@ -568,6 +576,13 @@ describe('item types', () => {
     raw.view = { group_by: 'priority' };
 
     expect(parsePreset(stringify(raw)).view).toMatchObject({ kind: 'list', groupBy: 'priority' });
+  });
+
+  it('groups by a one-line text field every type shares', () => {
+    const raw = twoTypes();
+    raw.view = { group_by: 'area' };
+
+    expect(parsePreset(stringify(raw)).view).toMatchObject({ kind: 'list', groupBy: 'area' });
   });
 });
 
