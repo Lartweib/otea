@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useReducer, useRef, useState, useSyncExternalStore } from 'react';
+import { type Attention, attentionOf, nextLeaseExpiry } from './attention.ts';
 import { activeLease } from './lease.ts';
 import { afterFailure, type Remote } from './remote.ts';
 import { hideTier } from './row-grid.ts';
 import { type Route, routeFromHash } from './selection.ts';
-import type { Lease } from './types.ts';
+import type { Item, Lease } from './types.ts';
 
 export type Connection = 'connecting' | 'live' | 'reconnecting';
 
@@ -61,6 +62,20 @@ export function useActiveLease(lease: Lease | null): Lease | null {
     return () => clearTimeout(timer);
   }, [expiresAt]);
   return activeLease(lease, Date.now());
+}
+
+// The workspace's attention, kept live: the items follow the stream, and since a lease running out
+// writes nothing, it reads itself again when the first active lease expires.
+export function useAttention(items: readonly Item[]): Attention {
+  const [, tick] = useReducer((count: number) => count + 1, 0);
+  const now = Date.now();
+  const expiry = nextLeaseExpiry(items, now);
+  useEffect(() => {
+    if (expiry === undefined) return;
+    const timer = setTimeout(tick, Math.max(0, expiry - Date.now()) + 10);
+    return () => clearTimeout(timer);
+  }, [expiry]);
+  return attentionOf(items, now);
 }
 
 function subscribeToHash(onChange: () => void): () => void {
