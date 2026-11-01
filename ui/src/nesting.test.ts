@@ -22,7 +22,7 @@ const item = (id: string, turn: Turn, parent?: string, open?: number) =>
     ...(open === undefined ? {} : { children: { total: open + 1, open, done: 1, discarded: 0 } }),
   }) as Item;
 
-const section = (turn: Turn, items: Item[]): Section => ({ turn, title: turn, items });
+const section = (turn: Turn, items: Item[]): Section => ({ key: turn, turn, title: turn, items });
 
 const folds = (collapsed: string[] = [], expanded: string[] = []): Folds => ({
   collapsed: new Set(collapsed),
