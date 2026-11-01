@@ -11,7 +11,7 @@ import {
   detailBlocks,
   type PlacedValue,
   placesChildren,
-  showsTypes,
+  typeMark,
   typeOf,
 } from '../item-types.ts';
 import { NODE_LABEL, Node, Pill, TypeTag } from '../kit/index.ts';
@@ -222,7 +222,24 @@ export function ItemDetail({
   // Details: the side slot's values and where the item lives, one row each; the side's modules
   // follow them.
   const aside = side.filter((part) => part.kind !== 'relation');
+  const mark = typeMark(collection, item.type);
   const detailRows: { label: string; value: ReactNode }[] = [
+    ...(mark
+      ? [
+          {
+            label: 'type',
+            value:
+              mark.kind === 'icon' ? (
+                <span className="detail-type">
+                  <TypeIcon name={mark.icon} size={14} />
+                  {mark.word}
+                </span>
+              ) : (
+                <TypeTag name={mark.name} label={mark.label} />
+              ),
+          },
+        ]
+      : []),
     ...aside.flatMap((part) =>
       part.kind === 'fields'
         ? part.values.map(({ field, value, label }) => {
@@ -278,11 +295,6 @@ export function ItemDetail({
       Read-only. Run <code>otea open</code> to act from this browser.
     </p>
   );
-  const typeLabel = type?.label ?? item.type;
-  // A preset without types names its only type after itself (an epic, a bug-triage item).
-  const kindWord = showsTypes(collection)
-    ? typeLabel.toLowerCase()
-    : (collection?.preset ?? item.type);
   return (
     <article
       ref={root}
@@ -302,18 +314,12 @@ export function ItemDetail({
               </Pill>
               <span className="t-cap">{standing}</span>
             </div>
-            {type?.icon ? (
-              <span className="detail-type">
-                <TypeIcon name={type.icon} size={14} />
-                {kindWord}
-              </span>
-            ) : showsTypes(collection) ? (
-              <TypeTag name={item.type} label={typeLabel} />
-            ) : null}
           </div>
-          <h1 className="t-display">{item.title}</h1>
-          <HandoffLine item={item} type={type} canWrite={canWrite} collectionOf={collectionOf} />
-          {actions}
+          <div className="detail-head-body">
+            <h1 className="t-display">{item.title}</h1>
+            <HandoffLine item={item} type={type} canWrite={canWrite} collectionOf={collectionOf} />
+            {actions}
+          </div>
         </header>
       )}
       {unfolded ? null : <i className="detail-line" aria-hidden="true" />}

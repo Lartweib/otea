@@ -34,6 +34,24 @@ export function showsTypes(collection: CollectionView | undefined): boolean {
   return (collection?.types.length ?? 0) > 1;
 }
 
+// How the detail names an item's type: its icon and a word, its tag when the type has no icon, or
+// nothing in a collection that never marks its type.
+export type TypeMark =
+  | { kind: 'icon'; icon: string; word: string }
+  | { kind: 'tag'; name: string; label: string }
+  | null;
+
+export function typeMark(collection: CollectionView | undefined, name: string): TypeMark {
+  const type = typeOf(collection, name);
+  const label = type?.label ?? name;
+  if (type?.icon) {
+    // A preset without types names its only type after itself (an epic, a bug-triage item).
+    const word = showsTypes(collection) ? label.toLowerCase() : (collection?.preset ?? name);
+    return { kind: 'icon', icon: type.icon, word };
+  }
+  return showsTypes(collection) ? { kind: 'tag', name, label } : null;
+}
+
 function fieldOf(type: TypeView, name: string): FieldView | undefined {
   return type.fields.find((field) => field.name === name);
 }

@@ -9,7 +9,10 @@
   margin-inline: auto;
 }
 
-.detail-head {
+/* The header: the meta row (where the item stands), then its body (the title, the handoff line and
+   the moves). */
+.detail-head,
+.detail-head-body {
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -22,18 +25,11 @@
   min-height: 22px;
 }
 
+/* The type, Details' first row: its icon and word. */
 .detail-type {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  margin-left: auto;
-  font: 400 12px var(--font-machine);
-  color: var(--mut);
-  white-space: nowrap;
-}
-
-.detail-head-row > .type-tag {
-  margin-left: auto;
 }
 
 .detail .t-display {
@@ -733,7 +729,8 @@ select.input {
 /* ---- the band and the aside: from a 1240px pane (detail-form.ts). The detail fills the pane (the
    container, its width 100cqw): the aside column takes a quarter of every pixel past 1240, 340 to
    440, and main the rest; the 48px gap holds a 1px rule at its middle. The header and Details form a
-   band, both starting on the meta row; one line across both columns closes it, as tall as the
+   band: the meta row has a row of its own, and Details starts on the next one, level with the
+   title, however the meta row wraps. One line across both columns closes the band, as tall as the
    taller of the two. Below the line History sits beside Brief and Structure, sticks 16px under the
    top of the pane, is never taller than the room it has (set from script) and scrolls on its own.
    ---- */
@@ -741,6 +738,7 @@ select.input {
   --aside: clamp(340px, round(340px + (100cqw - 1240px) / 4, 1px), 440px);
   display: grid;
   grid-template-areas:
+    "head ."
     "head details"
     "line line"
     "main history";
@@ -750,9 +748,18 @@ select.input {
   align-items: start;
 }
 
+/* The header spans the band's two rows (subgrid): the meta row sizes the first, its body starts the
+   second. */
 .detail[data-form="aside"] > .detail-head {
+  display: grid;
   grid-area: head;
+  grid-template-rows: subgrid;
+  gap: 0;
   padding-bottom: 28px;
+}
+
+.detail[data-form="aside"] > .detail-head > .detail-head-row {
+  padding-bottom: 14px;
 }
 
 .detail[data-form="aside"] > .detail-line {
@@ -773,8 +780,9 @@ select.input {
   border-top: 0;
 }
 
-/* The rule left of Details runs from the band's top to the line; below it the rule runs the body
-   row, as tall as the taller of main and History (History's own box is capped and sticky). */
+/* The rule left of Details runs from the band's top (the meta row's row) to the line; below it the
+   rule runs the body row, as tall as the taller of main and History (History's own box is capped
+   and sticky). */
 .detail[data-form="aside"] > [data-travel] {
   display: block;
   min-width: 0;
@@ -785,20 +793,25 @@ select.input {
 
 .detail[data-form="aside"] > [data-travel="details"] {
   grid-area: details;
-  align-self: stretch;
   padding-bottom: 28px;
-  padding-left: 23px;
-  border-left: 1px solid var(--line);
 }
 
+.detail[data-form="aside"]::before,
 .detail[data-form="aside"]::after {
   content: "";
-  grid-area: history;
   align-self: stretch;
   justify-self: start;
   width: 1px;
   background: var(--line);
   pointer-events: none;
+}
+
+.detail[data-form="aside"]::before {
+  grid-area: 1 / 2 / 3 / 3;
+}
+
+.detail[data-form="aside"]::after {
+  grid-area: history;
 }
 
 .detail[data-form="aside"] > [data-travel="history"] {
@@ -813,7 +826,7 @@ select.input {
 }
 
 /* In the band and the aside the names sit on top of their sections, a count beside History's;
-   "Details" sits on the meta row's 22px line. */
+   "Details" takes a 22px line, its top level with the title's. */
 .detail[data-form="aside"] > [data-travel] .detail-section-label {
   display: flex;
   align-items: baseline;
