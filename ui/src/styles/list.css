@@ -56,15 +56,18 @@
   isolation: isolate;
 }
 
-/* ---- group headers: a quiet label, its count, a hairline carrying it across ---- */
+/* ---- group headers: a quiet label, its count, a hairline carrying it across ----
+   The label starts on the title column (x=114, where the row titles and the list head's title do).
+   The label (14) and its counts (mono 12) share one baseline, kept at the bottom (last baseline):
+   bottom edges would set the smaller mono text 3px low; the hairline and Triage keep the bottom. */
 .section-title {
   display: flex;
-  align-items: flex-end;
+  align-items: last baseline;
   gap: 8px;
   max-width: 760px;
   height: var(--head-h);
   margin: 0;
-  padding: 0 16px 8px 84px;
+  padding: 0 16px 8px 114px;
   font-size: 14px;
   font-weight: 500;
   letter-spacing: -0.005em;
@@ -80,12 +83,14 @@
   flex: 1;
   height: 1px;
   order: 1;
+  align-self: flex-end;
   margin: 0 0 7px 6px;
   background: var(--line);
 }
 
 .section-title .triage-open {
   order: 2;
+  align-self: flex-end;
 }
 
 .count {
@@ -102,7 +107,7 @@
   align-items: center;
   height: var(--empty-h);
   margin: 0;
-  padding-left: 84px;
+  padding-left: 114px;
   font-size: 13px;
   color: var(--mut);
 }

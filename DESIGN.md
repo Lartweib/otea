@@ -122,7 +122,7 @@ Geometry lives in `ui/src/lanes.ts` (tested). The list gutter is 56px: agent lan
 
 | Level | Spec |
 | --- | --- |
-| group header | 14/500 `--mut`, sentence case, its count in mono 12 (`--you-ink` only for *Waiting for you*), a hairline carrying it across; 60px tall (34px for the first), the label on the type slot (x=84) |
+| group header | 14/500 `--mut`, sentence case, its count in mono 12 (`--you-ink` only for *Waiting for you*), a hairline carrying it across; 60px tall (34px for the first), the label on the title column (x=114, with the row titles and the list head's title), the label and its counts on one baseline (in the grid the label starts on the first column, x=84) |
 | top-level row | 62px, padding 10px; title 15/600 on a 22px line (the node at y=21), line two mono 12 `--mut` on 18px |
 | child row | 54px, padding 8px; two lines as well: title 14/500 on 20px (the node at y=18, 10px), line two on 16px |
 

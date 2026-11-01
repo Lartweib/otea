@@ -782,9 +782,11 @@
   position: relative;
 }
 
+/* The label starts on the table's first column (x=84, the id); it and its counts share one baseline,
+   kept at the bottom (last baseline), as in the list. */
 .grid-gh-cell {
   display: flex;
-  align-items: flex-end;
+  align-items: last baseline;
   gap: 8px;
   height: 100%;
   padding: 0 16px 9px 84px;
