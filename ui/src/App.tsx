@@ -230,6 +230,7 @@ export function App() {
   const collectionView = collection === undefined ? undefined : collectionOf(collection);
   const [prefs, setPrefs] = useViewPrefs(collectionView);
   const [morphing, setMorphing] = useState(false);
+  const [bulkHost, setBulkHost] = useState<HTMLDivElement | null>(null);
   const creating =
     canWrite && route.view === 'items' && intake !== undefined && intake.openedOn === selectedId;
   const closeIntake = () => setIntake(undefined);
@@ -374,8 +375,11 @@ export function App() {
               onMorphing={setMorphing}
               listWidth={split.width}
               gridWidth={gridPane}
+              bulkHost={bulkHost}
             />
           </div>
+          {/* The grid pane's cell again, over the scroller: the bulk tray docks to its bottom edge. */}
+          {phone ? null : <div className="bulk-host" ref={setBulkHost} />}
           {phone ? null : gridded ? (
             <Divider
               key="grid"
