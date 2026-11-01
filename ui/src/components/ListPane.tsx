@@ -8,16 +8,18 @@ import {
   useState,
 } from 'react';
 import {
+  availableColumns,
+  chosenColumns,
   type Filters,
   filterItems,
+  fitColumns,
   type GridColumn,
-  gridColumns,
   gridTemplate,
   gridTier,
   nextSort,
   type Sort,
-  shownColumns,
   sortItems,
+  type Widths,
 } from '../grid.ts';
 import { Button } from '../kit/index.ts';
 import { MOTION, reducedMotion } from '../motion.ts';
@@ -28,7 +30,7 @@ import type { CollectionView, Item } from '../types.ts';
 import type { ViewMode, ViewPrefs } from '../view-prefs.ts';
 import { BulkBar } from './BulkBar.tsx';
 import { FilterTokens, GridMenu, HeadControls, type OpenMenu } from './GridControls.tsx';
-import { ItemGrid } from './ItemGrid.tsx';
+import { type ColumnDrag, ItemGrid } from './ItemGrid.tsx';
 import { type ChildrenOf, type CollectionOf, ItemList, type Unfolding } from './ItemList.tsx';
 import { type MorphRun, morphEngine, runMorph } from './morph-engine.ts';
 
@@ -49,6 +51,33 @@ function useWidth() {
     return () => observer.disconnect();
   }, []);
   return { attach, width, setWidth };
+}
+
+// The widths the viewer gives the grid's columns: a drag follows the pointer (the air holds still),
+// a release, a key or a reset is kept and the spare is shared again, eased on base.
+function useColumnWidths(widths: Widths, onPrefs: (prefs: Partial<ViewPrefs>) => void) {
+  const [drag, setDrag] = useState<ColumnDrag | undefined>(undefined);
+  const [easing, setEasing] = useState(false);
+  const timer = useRef<number | undefined>(undefined);
+  useEffect(() => () => window.clearTimeout(timer.current), []);
+  const ease = () => {
+    if (reducedMotion()) return;
+    window.clearTimeout(timer.current);
+    setEasing(true);
+    timer.current = window.setTimeout(() => setEasing(false), MOTION.base);
+  };
+  const keep = (next: Widths) => {
+    setDrag(undefined);
+    ease();
+    onPrefs({ widths: next });
+  };
+  // null: back to automatic.
+  const size = (key: string, width: number | null) => {
+    const { [key]: _, ...rest } = widths;
+    keep(width === null ? rest : { ...rest, [key]: width });
+  };
+  const sized = drag ? { ...widths, [drag.key]: drag.width } : widths;
+  return { drag, setDrag, easing, size, reset: () => keep({}), sized };
 }
 
 // The selection is the collection's: ids the viewer ticked, kept while they stay shown.
@@ -105,6 +134,8 @@ type ListPaneProps = {
 export function ListPane(props: ListPaneProps) {
   const { items, scoped, collection, collectionName, prefs, onPrefs, phone } = props;
   const { attach: attachWidth, width, setWidth } = useWidth();
+  // The table's own width: the pane's, or its 1320 measure beside the detail.
+  const [tableWidth, setTableWidth] = useState(0);
   const [menu, setMenu] = useState<OpenMenu | null>(null);
   const layers = useRef<HTMLDivElement>(null);
   const pane = useRef<HTMLElement | null>(null);
@@ -114,11 +145,14 @@ export function ListPane(props: ListPaneProps) {
   // The view on screen: during a morph both are drawn.
   const [drawn, setDrawn] = useState<ViewMode | 'both'>(prefs?.mode ?? 'list');
   const mode: ViewMode = phone ? 'list' : (prefs?.mode ?? 'list');
-  const columns: GridColumn[] = collection ? gridColumns(collection) : [];
+  // Every column the collection offers (a filter stays on a hidden one), and those shown.
+  const available: GridColumn[] = collection ? availableColumns(collection) : [];
+  const columns: GridColumn[] = collection ? chosenColumns(collection, prefs?.columns) : [];
   const group = prefs?.group ?? 'turn';
   const sort: Sort = prefs?.sort ?? null;
   const filters: Filters = prefs?.filters ?? {};
-  const shownItems = sortItems(filterItems(scoped, filters), sort, columns);
+  const widths = useColumnWidths(prefs?.widths ?? {}, onPrefs);
+  const shownItems = sortItems(filterItems(scoped, filters, available), sort, columns);
   const sections: Section[] = groupItems(shownItems, group, collection);
   const severityGroups =
     collection?.types[0]?.fields.find(({ name }) => name === group)?.module === 'severity';
@@ -131,7 +165,10 @@ export function ListPane(props: ListPaneProps) {
   // Under 640px the table is no longer a table: the pane draws the list, with what the grid was set to.
   const gridFits = tier < 5;
   const view: ViewMode = mode === 'grid' && gridFits ? 'grid' : 'list';
-  const shown = shownColumns(columns, tier === 5 ? 4 : tier);
+  // The grid's room: what shows, how wide, and the air between the columns (grid.ts).
+  const room = tableWidth > 0 && view === 'grid' ? tableWidth : width;
+  const fitted = fitColumns(columns, room, widths.sized);
+  const template = gridTemplate(fitted.shown, room, widths.drag?.air);
   // The pane scrolls; the view measures its own width.
   const attach = useCallback(
     (element: HTMLElement | null) => {
@@ -227,6 +264,13 @@ export function ListPane(props: ListPaneProps) {
     collection && groupings(collection).includes(collection.view.groupBy)
       ? collection.view.groupBy
       : 'turn';
+  const presetColumns = collection ? chosenColumns(collection).map(({ key }) => key) : [];
+  const columnsChanged = columns.map(({ key }) => key).join() !== presetColumns.join();
+  // Hiding a sorted column clears the sort; a filter on it stays, as its token says.
+  const setColumns = (keys: readonly string[]) => {
+    const next = collection ? chosenColumns(collection, keys).map(({ key }) => key) : [];
+    onPrefs({ columns: next, ...(sort && !next.includes(sort.key) ? { sort: null } : {}) });
+  };
   const empty = shownItems.length === 0 && scoped.length > 0;
   const showList = drawn === 'list' || drawn === 'both';
   const showGrid = (drawn === 'grid' || drawn === 'both') && collection !== undefined;
@@ -261,6 +305,8 @@ export function ListPane(props: ListPaneProps) {
               onMenu={setMenu}
               mode={phone ? undefined : mode}
               onMode={switchTo}
+              columns={view === 'grid' ? fitted.shown.length : undefined}
+              columnsSet={columnsChanged}
             />
           </>
         ) : null}
@@ -268,7 +314,7 @@ export function ListPane(props: ListPaneProps) {
       {prefs ? (
         <FilterTokens
           filters={filters}
-          columns={columns}
+          columns={available}
           onOpen={(key, anchor) => setMenu({ kind: 'column', key, anchor })}
           onClear={(key) => setFilter(key, [])}
           onClearAll={() => onPrefs({ filters: {} })}
@@ -309,8 +355,14 @@ export function ListPane(props: ListPaneProps) {
               <ItemGrid
                 sections={sections}
                 collection={collection}
-                shown={shown}
-                template={gridTemplate(shown)}
+                shown={fitted.shown}
+                template={template}
+                room={room}
+                onRoom={setTableWidth}
+                drag={widths.drag}
+                easing={widths.easing}
+                onDrag={widths.setDrag}
+                onSize={widths.size}
                 sort={sort}
                 menu={menu?.kind === 'column' ? menu.key : undefined}
                 onSort={(column) => setSort(nextSort(sort, column))}
@@ -344,6 +396,13 @@ export function ListPane(props: ListPaneProps) {
         <GridMenu
           menu={menu}
           columns={columns}
+          available={available}
+          fitted={fitted}
+          widths={prefs?.widths ?? {}}
+          columnsChanged={columnsChanged}
+          onColumns={setColumns}
+          onResetColumns={() => setColumns(presetColumns)}
+          onResetWidths={widths.reset}
           items={scoped}
           groupings={groupings(collection)}
           presetGroup={presetGroup}

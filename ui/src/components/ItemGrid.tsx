@@ -1,6 +1,26 @@
-import type { CSSProperties, MouseEvent } from 'react';
+import {
+  type CSSProperties,
+  type KeyboardEvent,
+  type MouseEvent,
+  type PointerEvent,
+  useCallback,
+  useRef,
+  useState,
+} from 'react';
 import { ageLabel } from '../format.ts';
-import { cellText, type GridColumn, type ShownColumn, type Sort } from '../grid.ts';
+import {
+  autoWidth,
+  cellText,
+  type EdgeSide,
+  edgeKeyWidth,
+  type GridColumn,
+  type GridTemplate,
+  resizable,
+  type ShownColumn,
+  type Sort,
+  snapWidth,
+  widthLimits,
+} from '../grid.ts';
 import { useActiveLease } from '../hooks.ts';
 import { typeOf } from '../item-types.ts';
 import { Icon, NodeMark, Pill, Severity, type SeverityLevel } from '../kit/index.ts';
@@ -143,8 +163,12 @@ function GridRow({ item, collection, shown, place, lanes, selected, checked, onC
           <Check />
         </button>
       </td>
-      {shown.map(({ column, compact }) => (
-        <td key={column.key} className={`gc gc-${column.kind}`}>
+      {shown.map(({ column, compact }, index) => (
+        <td
+          key={column.key}
+          className={`gc gc-${column.kind}`}
+          data-air={index > titleAt(shown) || undefined}
+        >
           <Cell item={item} column={column} compact={compact} />
         </td>
       ))}
@@ -152,19 +176,138 @@ function GridRow({ item, collection, shown, place, lanes, selected, checked, onC
   );
 }
 
+// The columns after the title have the air before them (padding-left: var(--air)).
+const titleAt = (shown: readonly ShownColumn[]) =>
+  shown.findIndex(({ column }) => column.kind === 'title');
+
+// A column being dragged: its width, and the air held still while it moves.
+export type ColumnDrag = { key: string; width: number; air: number };
+
+type EdgeProps = {
+  column: GridColumn;
+  width: number;
+  auto: number;
+  limits: { min: number; max: number };
+  side: EdgeSide;
+  dragging: boolean;
+  onDrag: (width: number | undefined) => void;
+  onSize: (width: number | null) => void;
+};
+
+// The edge of a column that faces the title: drag it (the title gives or takes, the edge stays
+// under the pointer), double-click it or press Enter on it for the automatic width back. A
+// separator, as the divider is, with its own keys.
+function ColumnEdge({ column, width, auto, limits, side, dragging, onDrag, onSize }: EdgeProps) {
+  const [line, setLine] = useState(0);
+  const onPointerDown = (event: PointerEvent<HTMLSpanElement>) => {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const handle = event.currentTarget;
+    const x0 = event.clientX;
+    let next = width;
+    handle.setPointerCapture(event.pointerId);
+    setLine(handle.closest('.grid')?.getBoundingClientRect().height ?? 0);
+    const move = (moved: globalThis.PointerEvent) => {
+      const dx = side === 'start' ? x0 - moved.clientX : moved.clientX - x0;
+      const raw = Math.max(limits.min, Math.min(limits.max, Math.round(width + dx)));
+      const snapped = snapWidth(raw, auto);
+      if (snapped === next) return;
+      next = snapped;
+      onDrag(next);
+    };
+    const up = () => {
+      handle.removeEventListener('pointermove', move);
+      handle.removeEventListener('pointerup', up);
+      handle.removeEventListener('pointercancel', up);
+      setLine(0);
+      if (next === width) onDrag(undefined);
+      else onSize(next === auto ? null : next);
+    };
+    handle.addEventListener('pointermove', move);
+    handle.addEventListener('pointerup', up);
+    handle.addEventListener('pointercancel', up);
+  };
+  const onKeyDown = (event: KeyboardEvent<HTMLSpanElement>) => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      onSize(null);
+      return;
+    }
+    const next = edgeKeyWidth(event.key, event.shiftKey, width, limits, side);
+    if (next === undefined) return;
+    event.preventDefault();
+    if (next !== width) onSize(next === auto ? null : next);
+  };
+  const note = width >= limits.max ? ' · max' : width <= limits.min ? ' · min' : '';
+  return (
+    <>
+      {/* biome-ignore lint/a11y/useSemanticElements: a focusable, draggable separator has no element of its own */}
+      <span
+        className="gh-edge"
+        data-side={side}
+        data-on={dragging || undefined}
+        role="separator"
+        aria-orientation="vertical"
+        aria-label={`Width of the ${column.label} column`}
+        aria-valuemin={limits.min}
+        aria-valuemax={limits.max}
+        aria-valuenow={width}
+        aria-keyshortcuts="ArrowLeft ArrowRight Home End Enter"
+        title="Drag to resize · double-click resets"
+        tabIndex={0}
+        onPointerDown={onPointerDown}
+        onDoubleClick={() => onSize(null)}
+        onKeyDown={onKeyDown}
+      >
+        <i className="gh-edge-i" />
+      </span>
+      {dragging && line > 0 ? (
+        <>
+          <i className="gh-line" data-side={side} style={{ height: line - 36 }} />
+          <span className="gh-readout" data-side={side}>
+            {column.label} · {width === auto ? 'auto' : `${width}${note}`}
+          </span>
+        </>
+      ) : null}
+    </>
+  );
+}
+
 type HeadProps = {
   shown: readonly ShownColumn[];
+  template: GridTemplate;
+  room: number;
   sort: Sort;
   menu: string | undefined;
   onSort: (column: GridColumn) => void;
   onMenu: (column: GridColumn, anchor: HTMLElement) => void;
   all: boolean | 'mixed';
   onCheckAll: () => void;
+  drag: ColumnDrag | undefined;
+  onDrag: (drag: ColumnDrag | undefined) => void;
+  onSize: (key: string, width: number | null) => void;
 };
 
 const SHORT: Record<string, string> = { severity: 'sev' };
 
-function GridHead({ shown, sort, menu, onSort, onMenu, all, onCheckAll }: HeadProps) {
+function GridHead({
+  shown,
+  template,
+  room,
+  sort,
+  menu,
+  onSort,
+  onMenu,
+  all,
+  onCheckAll,
+  drag,
+  onDrag,
+  onSize,
+}: HeadProps) {
+  const at = titleAt(shown);
+  // The air held by a drag is the one the edge was pressed at.
+  const air = drag?.air ?? template.air;
   return (
     <thead className="grid-thead">
       <tr className="grid-head">
@@ -182,7 +325,7 @@ function GridHead({ shown, sort, menu, onSort, onMenu, all, onCheckAll }: HeadPr
             <Check />
           </button>
         </th>
-        {shown.map(({ column, compact }) => {
+        {shown.map(({ column, compact, width }, index) => {
           const on = sort?.key === column.key ? sort.dir : undefined;
           const label = compact ? (SHORT[column.key] ?? column.label) : column.label;
           return (
@@ -191,6 +334,7 @@ function GridHead({ shown, sort, menu, onSort, onMenu, all, onCheckAll }: HeadPr
               className={`gh gh-${column.kind}`}
               scope="col"
               data-col={column.key}
+              data-air={index > at || undefined}
               aria-sort={on === 'asc' ? 'ascending' : on === 'desc' ? 'descending' : 'none'}
               data-sort={on}
               data-menu={menu === column.key || undefined}
@@ -219,6 +363,20 @@ function GridHead({ shown, sort, menu, onSort, onMenu, all, onCheckAll }: HeadPr
               >
                 <Icon name="chevron" />
               </button>
+              {resizable(column) && at >= 0 ? (
+                <ColumnEdge
+                  column={column}
+                  width={width}
+                  auto={autoWidth(column, room)}
+                  limits={widthLimits(column, width, template.title)}
+                  side={index > at ? 'start' : 'end'}
+                  dragging={drag?.key === column.key}
+                  onDrag={(next) =>
+                    onDrag(next === undefined ? undefined : { key: column.key, width: next, air })
+                  }
+                  onSize={(next) => onSize(column.key, next)}
+                />
+              ) : null}
             </th>
           );
         })}
@@ -256,7 +414,14 @@ type ItemGridProps = {
   sections: readonly Section[];
   collection: CollectionView | undefined;
   shown: readonly ShownColumn[];
-  template: string;
+  template: GridTemplate;
+  // The width the template was laid out for, and how the table reports its own.
+  room: number;
+  onRoom: (width: number) => void;
+  drag: ColumnDrag | undefined;
+  easing: boolean;
+  onDrag: (drag: ColumnDrag | undefined) => void;
+  onSize: (key: string, width: number | null) => void;
   sort: Sort;
   menu: string | undefined;
   onSort: (column: GridColumn) => void;
@@ -279,6 +444,12 @@ export function ItemGrid({
   collection,
   shown,
   template,
+  room,
+  onRoom,
+  drag,
+  easing,
+  onDrag,
+  onSize,
   sort,
   menu,
   onSort,
@@ -296,16 +467,35 @@ export function ItemGrid({
   const picked = ids.filter((id) => checked.has(id)).length;
   const all = picked === 0 ? false : picked === ids.length ? true : 'mixed';
   const span = shown.length + 2;
+  const observer = useRef<ResizeObserver | undefined>(undefined);
+  const measure = useCallback(
+    (table: HTMLTableElement | null) => {
+      observer.current?.disconnect();
+      if (!table) return;
+      observer.current = new ResizeObserver(() => onRoom(table.clientWidth));
+      observer.current.observe(table);
+      onRoom(table.clientWidth);
+    },
+    [onRoom],
+  );
   return (
     <table
+      ref={measure}
       className="grid"
       aria-label={collection?.name ?? 'Items'}
-      style={{ '--cols': template } as CSSProperties}
+      style={{ '--cols': template.tracks, '--air': `${template.air}px` } as CSSProperties}
       data-picking={checked.size > 0 || undefined}
+      data-dragging={drag !== undefined || undefined}
+      data-easing={easing || undefined}
       data-lanes={JSON.stringify([lanes.agentLane, lanes.youLane, lanes.trunk])}
     >
       <GridHead
         shown={shown}
+        template={template}
+        room={room}
+        drag={drag}
+        onDrag={onDrag}
+        onSize={onSize}
         sort={sort}
         menu={menu}
         onSort={onSort}
