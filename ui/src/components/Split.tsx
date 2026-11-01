@@ -8,17 +8,26 @@ import {
   useRef,
   useState,
 } from 'react';
+import { useMediaQuery } from '../hooks.ts';
 import { MOTION, reducedMotion } from '../motion.ts';
 import {
+  clampGridWidth,
   clampListWidth,
+  defaultGridWidth,
   defaultListWidth,
   dividerKeyWidth,
+  forgetGridWidth,
   forgetListWidth,
+  GRID_WIDTH,
+  gridMax,
+  gridRoom,
   LIST_WIDTH,
   listMax,
+  readGridWidth,
   readListWidth,
   readSidebar,
   type SplitStorage,
+  writeGridWidth,
   writeListWidth,
   writeSidebar,
 } from '../split.ts';
@@ -109,6 +118,21 @@ export function useSplit() {
     }
   }, [sidebar]);
 
+  // The grid's own width beside the detail, kept apart from the list's (otea.gridWidth).
+  const wide = useMediaQuery('(min-width: 64rem)');
+  const [chosenGrid, setChosenGrid] = useState(() => readGridWidth(browserStorage()));
+  const gridSpace = gridRoom(room, sidebar, wide);
+  const gridWidth = clampGridWidth(chosenGrid ?? defaultGridWidth(gridSpace), gridMax(gridSpace));
+  const commitGridWidth = useCallback((next: number) => {
+    const clamped = clampGridWidth(next, Number.POSITIVE_INFINITY);
+    writeGridWidth(browserStorage(), clamped);
+    setChosenGrid(clamped);
+  }, []);
+  const resetGridWidth = useCallback(() => {
+    forgetGridWidth(browserStorage());
+    setChosenGrid(undefined);
+  }, []);
+
   const style = { '--list-w': `${width}px` } as CSSProperties;
   return {
     workspace,
@@ -120,8 +144,37 @@ export function useSplit() {
     sidebar,
     toggleSidebar,
     style,
+    grid: {
+      room: gridSpace,
+      width: gridWidth,
+      home: defaultGridWidth(gridSpace),
+      commit: commitGridWidth,
+      reset: resetGridWidth,
+    },
   };
 }
+
+// What the divider resizes: the list (340-783px) or the grid (from 340px until the detail keeps
+// 440), each through its own CSS variable.
+export type DividerRange = 'list' | 'grid';
+
+const RANGES = {
+  list: {
+    variable: '--list-w',
+    limits: LIST_WIDTH,
+    label: 'Resize the list',
+    max: (room: number) => listMax(room),
+    clamp: (width: number, max: number) => clampListWidth(width, max),
+  },
+  grid: {
+    variable: '--grid-w',
+    limits: GRID_WIDTH,
+    label: 'Resize the grid',
+    // The room measured is the two panes' (list and detail); the grid's own counts the divider.
+    max: (room: number) => gridMax(room + 9),
+    clamp: (width: number, max: number) => clampGridWidth(width, max),
+  },
+} as const;
 
 type DividerProps = {
   workspace: RefObject<HTMLElement | null>;
@@ -130,15 +183,19 @@ type DividerProps = {
   home: number;
   onCommit: (width: number) => void;
   onReset: () => void;
+  range?: DividerRange;
 };
 
-// How wide the list may get: the list and the detail share their room, and the detail keeps 440px.
-function maxOf(workspace: HTMLElement | null): number {
-  if (!workspace) return LIST_WIDTH.max;
+// How wide the pane may get: the list (or grid) and the detail share their room, and the detail
+// keeps 440px.
+function maxOf(workspace: HTMLElement | null, range: DividerRange): number {
+  const { limits, max } = RANGES[range];
+  const fallback = Number.isFinite(limits.max) ? limits.max : limits.min;
+  if (!workspace) return fallback;
   const list = workspace.querySelector<HTMLElement>('[data-pane="list"]');
   const detail = workspace.querySelector<HTMLElement>('[data-pane="detail"]');
-  if (!list || !detail) return LIST_WIDTH.max;
-  return listMax(list.offsetWidth + detail.offsetWidth);
+  if (!list || !detail) return fallback;
+  return max(list.offsetWidth + detail.offsetWidth);
 }
 
 function renderedWidth(workspace: HTMLElement | null, fallback: number): number {
@@ -146,32 +203,40 @@ function renderedWidth(workspace: HTMLElement | null, fallback: number): number 
   return list ? Math.round(list.offsetWidth) : fallback;
 }
 
-// The divider between the list and the detail: drag it (pointer events, live layout, no
-// animation), or focus it and use the arrows (Shift for bigger steps), Home and End. A double-click
-// or Enter eases it back to the default width.
-export function Divider({ workspace, width, home, onCommit, onReset }: DividerProps) {
+// The divider between the list (or the grid) and the detail: drag it (pointer events, live layout,
+// no animation), or focus it and use the arrows (Shift for bigger steps), Home and End. A
+// double-click or Enter eases it back to the default width.
+export function Divider({
+  workspace,
+  width,
+  home,
+  onCommit,
+  onReset,
+  range = 'list',
+}: DividerProps) {
+  const { variable, limits, label, clamp } = RANGES[range];
   const [max, setMax] = useState<number>(LIST_WIDTH.max);
   const self = useRef<HTMLDivElement>(null);
 
   useLayoutEffect(() => {
     const root = workspace.current;
     if (!root) return;
-    const measure = () => setMax(maxOf(root));
+    const measure = () => setMax(maxOf(root, range));
     measure();
     const observer = new ResizeObserver(measure);
     observer.observe(root);
     return () => observer.disconnect();
-  }, [workspace]);
+  }, [workspace, range]);
 
   // While dragging, one CSS variable follows the pointer: no render, no animation.
   const live = (next: number) => {
-    workspace.current?.style.setProperty('--list-w', `${next}px`);
+    workspace.current?.style.setProperty(variable, `${next}px`);
     self.current?.setAttribute('aria-valuenow', String(next));
   };
 
   const reset = () => {
     const root = workspace.current;
-    const to = clampListWidth(home, maxOf(root));
+    const to = clamp(home, maxOf(root, range));
     const from = renderedWidth(root, width);
     if (!root || from === to || reducedMotion()) {
       live(to);
@@ -179,7 +244,7 @@ export function Divider({ workspace, width, home, onCommit, onReset }: DividerPr
       return;
     }
     for (const animation of root.getAnimations()) animation.cancel();
-    const animation = root.animate([{ '--list-w': `${from}px` }, { '--list-w': `${to}px` }], {
+    const animation = root.animate([{ [variable]: `${from}px` }, { [variable]: `${to}px` }], {
       duration: MOTION.base,
       easing: MOTION.ease,
       fill: 'forwards',
@@ -201,7 +266,7 @@ export function Divider({ workspace, width, home, onCommit, onReset }: DividerPr
     event.preventDefault();
     const handle = event.currentTarget;
     for (const animation of root.getAnimations()) animation.cancel();
-    const top = maxOf(root);
+    const top = maxOf(root, range);
     setMax(top);
     const start = renderedWidth(root, width);
     const x0 = event.clientX;
@@ -209,7 +274,7 @@ export function Divider({ workspace, width, home, onCommit, onReset }: DividerPr
     handle.setPointerCapture(event.pointerId);
     root.dataset.dragging = 'true';
     const move = (moved: globalThis.PointerEvent) => {
-      next = clampListWidth(start + moved.clientX - x0, top);
+      next = clamp(start + moved.clientX - x0, top);
       live(next);
     };
     const up = () => {
@@ -230,12 +295,13 @@ export function Divider({ workspace, width, home, onCommit, onReset }: DividerPr
       reset();
       return;
     }
-    const top = maxOf(workspace.current);
+    const top = maxOf(workspace.current, range);
     const next = dividerKeyWidth(
       event.key,
       event.shiftKey,
       renderedWidth(workspace.current, width),
       top,
+      limits,
     );
     if (next === undefined) return;
     event.preventDefault();
@@ -252,8 +318,8 @@ export function Divider({ workspace, width, home, onCommit, onReset }: DividerPr
       data-pane="divider"
       role="separator"
       aria-orientation="vertical"
-      aria-label="Resize the list"
-      aria-valuemin={LIST_WIDTH.min}
+      aria-label={label}
+      aria-valuemin={limits.min}
       aria-valuemax={max}
       aria-valuenow={now}
       aria-keyshortcuts="ArrowLeft ArrowRight Home End Enter"

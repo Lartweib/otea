@@ -32,6 +32,7 @@ import { hashFor } from '../selection.ts';
 import type { CollectionView, Item, Lease } from '../types.ts';
 import { afterFold, panelOf, reopen, select, type UnfoldState } from '../unfold.ts';
 import { Carry } from './Carry.tsx';
+import { GroupLabel } from './GroupLabel.tsx';
 import { ChildBar } from './relations/ChildBar.tsx';
 import { measureTree, runTree, type Tree, type TreeRun } from './tree-draw.ts';
 import { Unfold } from './Unfold.tsx';
@@ -64,6 +65,8 @@ type ItemListProps = {
   unfolding?: Unfolding;
   // Opens swipe triage, from the head of what waits for you.
   onTriage?: () => void;
+  // Grouped by a severity field: each group's header leads with its bars.
+  severityGroups?: boolean;
 };
 
 // Where a block sits in the list, for the piece of the lanes it draws.
@@ -91,7 +94,7 @@ type ItemRowProps = {
 
 // The lines a block of the list draws: its slice of the lanes, and for a row its piece of the
 // branch. Lines live in the blocks they cross, so a block that moves carries its own.
-function Lines({
+export function Lines({
   lanes,
   place,
   width = GRID.rail,
@@ -214,6 +217,32 @@ function ParentCrumb({ parent }: { parent: ParentRef }) {
   );
 }
 
+// Who holds an item, wherever a row shows it (the list and the grid): an agent's mark and its
+// name, which a narrow pane drops to leave the mark; you, as `you`, on a chip once narrow.
+// m: the morph's key for the name, which travels between the two views.
+export function Holder({ holder, m }: { holder: string; m?: string }) {
+  if (holder === 'you') {
+    return (
+      <>
+        <span className="row-holder" data-you data-m={m}>
+          {holder}
+        </span>
+        <span className="row-mono" data-you title={holder}>
+          {holder}
+        </span>
+      </>
+    );
+  }
+  return (
+    <>
+      <AgentMark name={holder} className="row-agent" decorative />
+      <span className="row-holder" title={holder} data-m={m}>
+        {holder}
+      </span>
+    </>
+  );
+}
+
 // Who and when, in two fixed columns aligned on the dot between them: the agent holding the item
 // and until when, or, held by nobody, an empty who and how long ago it last changed.
 function WhoWhen({ item, lease }: { item: Item; lease: Lease | null }) {
@@ -222,26 +251,12 @@ function WhoWhen({ item, lease }: { item: Item; lease: Lease | null }) {
     <>
       <span className="row-who">
         <i className="row-wf" aria-hidden="true" />
-        {holder === 'you' ? (
-          <>
-            <span className="row-holder" data-you>
-              {holder}
-            </span>
-            <span className="row-mono" data-you title={holder}>
-              {holder}
-            </span>
-          </>
-        ) : holder ? (
-          <>
-            <AgentMark name={holder} className="row-agent" decorative />
-            <span className="row-holder" title={holder}>
-              {holder}
-            </span>
-          </>
-        ) : null}
+        {holder ? <Holder holder={holder} m={`${item.id}:w`} /> : null}
       </span>
       <span className="row-when" data-nobody={holder ? undefined : true}>
-        {lease ? untilLabel(lease) : ageLabel(item.updatedAt, Date.now())}
+        <span data-m={`${item.id}:a`}>
+          {lease ? untilLabel(lease) : ageLabel(item.updatedAt, Date.now())}
+        </span>
       </span>
     </>
   );
@@ -299,7 +314,7 @@ function ItemRow({
           aria-hidden="true"
         >
           <circle className="ghost" cx={x} cy={node} r="6" />
-          <g className="carry">
+          <g className="carry" data-m={`${item.id}:n`}>
             <g className="lift">
               <circle className="halo" cx={x} cy={node} r="6" />
               <NodeMark kind={kind} cx={x} cy={node} r={depth > 0 ? 5 : 6} />
@@ -322,6 +337,7 @@ function ItemRow({
           {parent ? <ParentCrumb parent={parent} /> : null}
           <a
             className="ttl row-link"
+            data-m={`${item.id}:t`}
             href={hashFor(item.id)}
             aria-current={selected ? 'true' : undefined}
             aria-expanded={expanded}
@@ -336,8 +352,12 @@ function ItemRow({
           <i className="row-lead" aria-hidden="true" />
         </span>
         <span className="row-t2">
-          <span className="row-id">{item.id}</span>
-          <span className="row-state">{item.state}</span>
+          <span className="row-id">
+            <span data-m={`${item.id}:i`}>{item.id}</span>
+          </span>
+          <span className="row-state" data-m={`${item.id}:s`}>
+            {item.state}
+          </span>
           <Progress item={item} kinds={childKinds} />
           {signals.length > 0 ? <span className="row-values">{signals}</span> : null}
         </span>
@@ -373,8 +393,8 @@ function geometryOf(
     return place;
   };
   sections.forEach((section, index) => {
-    heads.set(section.turn, add({ height: index === 0 ? FIRST_HEAD_H : HEAD_H }));
-    if (section.items.length === 0) empties.set(section.turn, add({ height: EMPTY_H }));
+    heads.set(section.key, add({ height: index === 0 ? FIRST_HEAD_H : HEAD_H }));
+    if (section.items.length === 0) empties.set(section.key, add({ height: EMPTY_H }));
     const tree: TreeRow[] = [];
     const placed: (Place & { depth: number; node: number })[] = [];
     for (const item of section.items) {
@@ -575,6 +595,7 @@ export function ItemList({
   scope,
   unfolding,
   onTriage,
+  severityGroups = false,
 }: ItemListProps) {
   const list = useSelectedInView(selectedId, unfolding !== undefined);
   const { panel, panels, measured, folded, open } = useUnfolded(selectedId, sections);
@@ -599,21 +620,26 @@ export function ItemList({
     '--empty-h': `${EMPTY_H}px`,
   } as CSSProperties;
   return (
-    <nav className="item-list" aria-label="Items" style={sizes} ref={list}>
+    <nav
+      className="item-list"
+      aria-label="Items"
+      style={sizes}
+      ref={list}
+      data-lanes={JSON.stringify([lanes.agentLane, lanes.youLane, lanes.trunk])}
+    >
       <Carry scope={scope} className="lanes-body" still={tree.still}>
         {sections.map((section) => (
-          <section key={section.turn} className="section" data-turn={section.turn}>
-            <h2 className="section-title" data-flip={`head:${section.turn}`}>
-              <Lines lanes={lanes} place={heads.get(section.turn) ?? NO_PLACE} />
-              {section.title}
-              <span className="count">{section.total}</span>
+          <section key={section.key} className="section" data-turn={section.turn}>
+            <h2 className="section-title" data-flip={`head:${section.key}`}>
+              <Lines lanes={lanes} place={heads.get(section.key) ?? NO_PLACE} />
+              <GroupLabel section={section} total={section.total} severity={severityGroups} />
               {section.turn === 'human' && section.items.length > 0 && onTriage ? (
                 <TriageOpen onTriage={onTriage} />
               ) : null}
             </h2>
             {section.items.length === 0 ? (
-              <p className="section-empty" data-flip={`empty:${section.turn}`}>
-                <Lines lanes={lanes} place={empties.get(section.turn) ?? NO_PLACE} />
+              <p className="section-empty" data-flip={`empty:${section.key}`}>
+                <Lines lanes={lanes} place={empties.get(section.key) ?? NO_PLACE} />
                 Nothing here.
               </p>
             ) : (

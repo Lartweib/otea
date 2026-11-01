@@ -133,6 +133,8 @@ describe('the grid width tiers', () => {
 
   it('sizes each column, and lets only the title flex', () => {
     expect(columnWidth(column('id'), false)).toBe(72);
+    const long = gridColumns({ ...bugs, prefix: 'CREATURES' })[0];
+    expect(long && columnWidth(long, false)).toBe(107);
     expect(columnWidth(column('severity'), false)).toBe(112);
     expect(columnWidth(column('severity'), true)).toBe(52);
     expect(columnWidth(column('who'), false)).toBe(88);

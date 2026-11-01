@@ -20,6 +20,8 @@ type CarryProps = {
   // Motion only explains a change in place: a new scope (another collection) is a new list.
   scope: string;
   className: string;
+  // The element that holds the blocks: a div, or a table body (the grid).
+  as?: 'div' | 'tbody';
   // Set while something else moves the list (the tree draw): the update is not played back.
   still?: RefObject<boolean>;
 };
@@ -178,7 +180,7 @@ function play(
 // Measures every [data-flip] block before and after each update and animates the difference (FLIP).
 // A class, because getSnapshotBeforeUpdate is the one hook that reads the DOM before React changes it.
 export class Carry extends Component<CarryProps> {
-  private readonly root = createRef<HTMLDivElement>();
+  private readonly root = createRef<HTMLDivElement & HTMLTableSectionElement>();
 
   override getSnapshotBeforeUpdate(previous: CarryProps): Snapshot | null {
     const root = this.root.current;
@@ -207,10 +209,11 @@ export class Carry extends Component<CarryProps> {
   }
 
   override render() {
+    const { as: Tag = 'div', className, children } = this.props;
     return (
-      <div ref={this.root} className={this.props.className}>
-        {this.props.children}
-      </div>
+      <Tag ref={this.root} className={className}>
+        {children}
+      </Tag>
     );
   }
 }

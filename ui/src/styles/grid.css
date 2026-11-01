@@ -1,0 +1,1011 @@
+/* The grid (view.kind: grid): a collection's items as a table beside the list. Columns and widths
+   come from grid.ts (--cols); the first column is the turn node on its lanes, as the list's rail.
+   Rows are 40px with the node at y=20; group headers 34px over the first group, 46 over the others. */
+
+/* ---- the list head's tools: grouping, filter and the switch between list and grid ---- */
+/* Over the grid the head runs as wide as the table. */
+.list-head[data-view="grid"] {
+  max-width: 1320px;
+}
+
+.list-count {
+  margin-left: 10px;
+  white-space: nowrap;
+}
+
+.list-tools {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.list-tool {
+  gap: 6px;
+  padding: 0 9px;
+}
+
+.list-tool b {
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.list-tool[aria-expanded="true"],
+.list-tool[data-set] {
+  background: var(--hov);
+  color: var(--ink);
+}
+
+.view-switch {
+  display: inline-flex;
+  gap: 2px;
+  margin-left: 6px;
+  padding: 2px;
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+.view-switch-b {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 24px;
+  padding: 0 9px;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  font: 500 12px var(--font-human);
+  color: var(--mut);
+  cursor: pointer;
+  transition:
+    background-color var(--m-fast) var(--m-ease),
+    color var(--m-fast) var(--m-ease),
+    box-shadow var(--m-fast) var(--m-ease);
+}
+
+.view-switch-b:hover {
+  color: var(--ink);
+}
+
+.view-switch-b[aria-pressed="true"] {
+  background: var(--sf);
+  box-shadow:
+    0 0 0 1px var(--line),
+    0 1px 2px var(--shadow);
+  color: var(--ink);
+}
+
+.view-switch-b:focus-visible,
+.filter-token button:focus-visible,
+.gh button:focus-visible,
+.grid-check:focus-visible,
+.grid-menu-i:focus-visible {
+  outline: 2px solid var(--you);
+  outline-offset: 1px;
+}
+
+/* A narrow pane keeps the icons: the words go. */
+.list-view[data-narrow] :is(.view-switch-b span, .list-tool-label) {
+  display: none;
+}
+
+/* ---- filter tokens: one removable token per filtered column ---- */
+.filter-tokens {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  max-width: 1320px;
+  padding: 0 16px 8px 84px;
+}
+
+.filter-token {
+  display: inline-flex;
+  align-items: center;
+  height: 26px;
+  border-radius: 999px;
+  background: var(--chip);
+  font-size: 12.5px;
+  animation: grid-in var(--m-base) var(--m-ease) both;
+}
+
+.filter-token button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+}
+
+.filter-token-l {
+  padding: 0 4px 0 10px;
+  border-radius: 999px 0 0 999px;
+}
+
+.filter-token-l em {
+  font: 400 11.5px var(--font-machine);
+  font-style: normal;
+  color: var(--mut);
+}
+
+.filter-token-l b {
+  font-weight: 500;
+}
+
+.filter-token-x {
+  justify-content: center;
+  width: 26px;
+  border-radius: 0 999px 999px 0;
+  color: var(--mut);
+}
+
+.filter-token-x .icon {
+  width: 14px;
+  height: 14px;
+}
+
+.filter-token-x:hover {
+  background: color-mix(in oklch, var(--ink) 8%, transparent);
+  color: var(--ink);
+}
+
+.list-empty {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 28px 16px 0 84px;
+}
+
+@keyframes grid-in {
+  from {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+}
+
+/* ---- the two views, stacked while they morph ---- */
+.view-layers {
+  position: relative;
+}
+
+/* A table draws its own ground: the dots stop at its edge. */
+.workspace[data-view="grid"] .view-layers {
+  background: var(--bg);
+}
+
+.view-layers[data-morph] > .view-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+}
+
+/* The list keeps the width it had beside the detail while the workspace is the grid's. */
+.view-layers[data-drawn="both"] > [data-layer="list"] {
+  right: auto;
+  width: var(--list-layer-w);
+}
+
+/* While the views morph both are laid out; the taller one holds the room. */
+.view-layers[data-drawn="both"] {
+  min-height: 100%;
+}
+
+.view-layers[data-drawn="both"] > [data-layer="grid"] {
+  position: relative;
+}
+
+/* ---- the table ---- */
+.grid {
+  display: block;
+  width: 100%;
+  max-width: 1320px;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.grid :is(thead, tbody) {
+  display: block;
+}
+
+.grid :is(.grid-head, .grid-row) {
+  display: grid;
+  grid-template-columns: var(--cols);
+  align-items: center;
+  padding-right: 16px;
+}
+
+:where(.grid) :is(th, td) {
+  display: block;
+  padding: 0;
+  font-weight: inherit;
+  text-align: left;
+}
+
+/* The header: sticky over the rows, sortable, each column with its menu. */
+.grid-thead {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+  background: var(--bg);
+}
+
+.grid-head {
+  position: relative;
+  height: 36px;
+}
+
+.grid-head::after {
+  content: "";
+  position: absolute;
+  left: 56px;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: var(--line);
+  opacity: var(--c, 1);
+}
+
+.gh {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  padding-right: 12px;
+}
+
+.gh-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  height: 24px;
+  margin-left: -6px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  font: 500 11.5px var(--font-machine);
+  color: var(--mut);
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color var(--m-fast) var(--m-ease),
+    color var(--m-fast) var(--m-ease);
+}
+
+.gh-sort > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gh-sort:hover {
+  background: var(--hov);
+  color: var(--ink);
+}
+
+.gh-menu {
+  position: relative;
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  margin-left: 1px;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  background: none;
+  color: var(--mut);
+  cursor: pointer;
+  opacity: 0;
+  transition:
+    opacity var(--m-fast) var(--m-ease),
+    background-color var(--m-fast) var(--m-ease);
+}
+
+.gh-menu .icon {
+  width: 14px;
+  height: 14px;
+}
+
+.gh:hover .gh-menu,
+.gh[data-menu] .gh-menu,
+.gh-menu:focus-visible {
+  opacity: 1;
+}
+
+.gh-menu:hover,
+.gh[data-menu] .gh-menu {
+  background: var(--chip);
+  color: var(--ink);
+}
+
+/* Age sits at the right edge: its label too, the caret before it. */
+.gh-age {
+  justify-content: flex-end;
+  padding-right: 0;
+}
+
+.gh-age .gh-sort {
+  flex-direction: row-reverse;
+  margin: 0 -6px 0 0;
+}
+
+.gh.gh-age .gh-menu {
+  position: absolute;
+  left: -14px;
+  top: 50%;
+  margin-top: -10px;
+}
+
+/* A compact column (severity as bars, who as the agent's mark) keeps its short label; its menu stays
+   reachable from the filter and group buttons. */
+.gh[data-compact] .gh-menu {
+  display: none;
+}
+
+.gh[data-compact] .gh-sort {
+  flex: none;
+}
+
+/* The sorted column: its label in ink, its arrow saying the direction. */
+.gh[data-sort] .gh-sort {
+  color: var(--ink);
+}
+
+.gh-sort .icon {
+  flex: none;
+  width: 11px;
+  height: 11px;
+  opacity: 0;
+  transition:
+    opacity var(--m-fast) var(--m-ease),
+    rotate var(--m-base) var(--m-ease);
+}
+
+.gh:hover .gh-sort .icon {
+  opacity: 0.45;
+}
+
+.gh[data-sort] .gh-sort .icon {
+  opacity: 1;
+}
+
+.gh[data-sort="desc"] .gh-sort .icon {
+  rotate: 180deg;
+}
+
+/* Touch screens have no hover: the carets stay. */
+@media (pointer: coarse) {
+  .gh-menu {
+    opacity: 1;
+  }
+}
+
+/* ---- rows ---- */
+.grid-row {
+  position: relative;
+  isolation: isolate;
+  height: 40px;
+  color: var(--ink);
+}
+
+/* The band starts right of the rail, as the list's does; the rule under each row too. */
+.grid-row::before {
+  content: "";
+  position: absolute;
+  left: 58px;
+  right: 4px;
+  top: 2px;
+  bottom: 2px;
+  z-index: -1;
+  border-radius: 6px;
+  opacity: var(--c, 1);
+  transition: background-color var(--m-fast) var(--m-ease);
+}
+
+.grid-row::after {
+  content: "";
+  position: absolute;
+  left: 56px;
+  right: 0;
+  bottom: 0;
+  z-index: -2;
+  height: 1px;
+  background: var(--line);
+  opacity: var(--c, 1);
+}
+
+.grid-row:hover::before {
+  background: var(--hov);
+}
+
+.grid-row[data-checked]::before {
+  background: color-mix(in oklch, var(--ink) 6%, transparent);
+}
+
+.grid-row[data-current]::before {
+  background: var(--sel);
+}
+
+.grid-row:has(.row-link:focus-visible)::before {
+  outline: 2px solid var(--you);
+  outline-offset: -2px;
+}
+
+.gc {
+  min-width: 0;
+  padding-right: 12px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.gc-turn {
+  position: relative;
+  align-self: stretch;
+  padding: 0;
+  overflow: visible;
+}
+
+.grid-node {
+  position: absolute;
+  left: 0;
+  top: 0;
+  overflow: visible;
+}
+
+/* The select box: shown on hover, once anything is selected, and when focused. */
+.gc-chk,
+.gh-chk {
+  display: flex;
+  align-items: center;
+  padding: 0;
+  overflow: visible;
+}
+
+.grid-check {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  margin-left: -4px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity var(--m-fast) var(--m-ease);
+}
+
+.grid-check > i {
+  display: grid;
+  place-items: center;
+  width: 15px;
+  height: 15px;
+  border-radius: 4px;
+  box-shadow: inset 0 0 0 1.25px color-mix(in oklch, var(--mut) 75%, transparent);
+  transition:
+    background-color var(--m-fast) var(--m-ease),
+    box-shadow var(--m-fast) var(--m-ease);
+}
+
+.grid-check svg {
+  fill: none;
+  stroke: var(--bg);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0;
+}
+
+.grid-check .grid-dash {
+  display: none;
+}
+
+.grid-check:is([aria-pressed="true"], [aria-pressed="mixed"]) > i {
+  background: var(--ink);
+  box-shadow: none;
+}
+
+.grid-check:is([aria-pressed="true"], [aria-pressed="mixed"]) svg {
+  opacity: 1;
+}
+
+.grid-check[aria-pressed="mixed"] .grid-ck {
+  display: none;
+}
+
+.grid-check[aria-pressed="mixed"] .grid-dash {
+  display: block;
+}
+
+.grid-row:hover .grid-check,
+.grid-head:hover .grid-check,
+.grid[data-picking] .grid-check,
+.grid-check:is([aria-pressed="true"], [aria-pressed="mixed"], :focus-visible) {
+  opacity: 1;
+}
+
+@media (pointer: coarse) {
+  .grid-check {
+    opacity: 1;
+  }
+}
+
+.gc-id {
+  font: 400 12px var(--font-machine);
+  font-variant-numeric: tabular-nums;
+  color: var(--mut);
+}
+
+/* The title is the row's link, stretched over the whole row; one line, an ellipsis, the whole
+   title in its tooltip. */
+.grid-ttl {
+  display: block;
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  line-height: 20px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: linear-gradient(currentColor, currentColor) no-repeat 0 58% / 0% 1.5px;
+}
+
+.grid-tag {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 7px;
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 1px var(--line);
+  font: 400 11.5px var(--font-machine);
+  color: var(--ink);
+}
+
+.grid-text {
+  font-size: 13px;
+}
+
+.gc-enum:has(> .grid-tag:only-child) {
+  overflow: hidden;
+}
+
+.grid-sev {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.grid-sev .sev {
+  flex: none;
+  color: var(--ink);
+}
+
+.grid-sevl {
+  font: 400 12px var(--font-machine);
+  color: var(--mut);
+}
+
+.gc-state .pill {
+  height: 20px;
+  padding: 0 7px;
+  font-size: 11px;
+  box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--line) calc(var(--c, 1) * 100%), transparent);
+}
+
+.grid-who {
+  display: flex;
+  min-width: 0;
+  font: 400 12px var(--font-machine);
+  color: var(--mut);
+}
+
+/* Held by nobody: a short lane-grey dash. */
+.grid-nobody {
+  display: inline-block;
+  width: 12px;
+  height: 1px;
+  vertical-align: middle;
+  background: var(--lane);
+}
+
+.gc-age {
+  padding-right: 0;
+  font: 400 12px var(--font-machine);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  color: var(--mut);
+}
+
+/* A narrow grid draws who as the agent's mark alone, or `you` on its chip. */
+.grid-who[data-compact] .row-holder {
+  display: none;
+}
+
+.grid-who[data-compact] .row-agent {
+  margin-right: 0;
+}
+
+.grid-who[data-compact] .row-mono {
+  display: inline-grid;
+}
+
+/* Closed rows recede; a discarded title is struck, as in the list. */
+.grid-row:is([data-kind="done"], [data-kind="discarded"]) {
+  color: var(--mut);
+}
+
+.grid-row:is([data-kind="done"], [data-kind="discarded"]) .grid-ttl {
+  font-weight: 500;
+}
+
+.grid-row:is([data-kind="done"], [data-kind="discarded"]) :is(.grid-tag, .grid-who .row-holder) {
+  color: var(--mut);
+}
+
+.grid-row:is([data-kind="done"], [data-kind="discarded"]) .row-mono {
+  background: var(--chip);
+  color: var(--mut);
+}
+
+.grid-row[data-kind="discarded"] .grid-ttl {
+  background-size: 100% 1.5px;
+}
+
+.grid-row:is([data-kind="done"], [data-kind="discarded"]) .sev i.hot {
+  background: currentColor;
+}
+
+/* Group headers: the label on the id column, the lanes running through. */
+.grid-gh {
+  display: block;
+  position: relative;
+}
+
+.grid-gh-cell {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  height: 100%;
+  padding: 0 16px 9px 84px;
+  color: var(--mut);
+  font-weight: 500;
+}
+
+.grid-gh-cell .group-name {
+  font-size: 13.5px;
+  white-space: nowrap;
+}
+
+.group-bars {
+  display: flex;
+  align-self: flex-end;
+  margin-bottom: 4px;
+}
+
+.group-bars .sev {
+  color: var(--ink);
+}
+
+.group-yours {
+  font: 400 12px var(--font-machine);
+  color: var(--you-ink);
+}
+
+.grid-gh[data-turn="human"] .count {
+  color: var(--you-ink);
+}
+
+/* ---- the menu: sort, group by, show only ---- */
+.grid-menu {
+  position: fixed;
+  z-index: var(--z-tooltip);
+  width: 248px;
+  max-height: calc(100dvh - 24px);
+  overflow-y: auto;
+  padding: 6px;
+  border-radius: 12px;
+  background: var(--sf);
+  box-shadow:
+    0 0 0 1px var(--line),
+    0 18px 40px -18px var(--shadow);
+  animation: grid-pop var(--m-fast) var(--m-ease) both;
+}
+
+@keyframes grid-pop {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+.grid-menu-t {
+  display: flex;
+  align-items: center;
+  height: 28px;
+  padding: 0 8px;
+  font: 500 11.5px var(--font-machine);
+  color: var(--mut);
+}
+
+.grid-menu-hr {
+  height: 1px;
+  margin: 6px 4px;
+  background: var(--line);
+}
+
+.grid-menu-i {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  height: 30px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 7px;
+  background: none;
+  font: 400 13px var(--font-human);
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--m-fast) var(--m-ease);
+}
+
+.grid-menu-i:hover,
+.grid-menu-i:focus-visible {
+  background: var(--hov);
+}
+
+.grid-menu-i[data-quiet] {
+  color: var(--mut);
+}
+
+.grid-menu-i[data-on] {
+  font-weight: 600;
+}
+
+.grid-menu-n {
+  margin-left: auto;
+  font: 400 11.5px var(--font-machine);
+  font-variant-numeric: tabular-nums;
+  color: var(--mut);
+}
+
+.grid-menu-box,
+.grid-menu-dot {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 15px;
+  height: 15px;
+  border-radius: 4px;
+  box-shadow: inset 0 0 0 1.25px color-mix(in oklch, var(--mut) 75%, transparent);
+}
+
+.grid-menu-dot {
+  border-radius: 50%;
+}
+
+.grid-menu-v[aria-checked="true"] .grid-menu-box {
+  background: var(--ink);
+  box-shadow: none;
+}
+
+.grid-menu-v[aria-checked="true"] .grid-menu-box::after {
+  content: "";
+  width: 7px;
+  height: 4px;
+  margin-top: -2px;
+  border: solid var(--sf);
+  border-width: 0 0 1.6px 1.6px;
+  rotate: -45deg;
+}
+
+.grid-menu-r[aria-checked="true"] .grid-menu-dot {
+  box-shadow: inset 0 0 0 4.5px var(--ink);
+}
+
+.grid-menu-vl {
+  font: 400 12.5px var(--font-machine);
+}
+
+.grid-menu-v .sev {
+  color: var(--ink);
+}
+
+.grid-menu-v[data-zero] {
+  color: var(--mut);
+}
+
+.grid-menu-note {
+  margin: 0;
+  padding: 6px 8px 8px;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--mut);
+  text-wrap: pretty;
+}
+
+/* ---- the bulk bar: the moves every selected item can take ---- */
+.bulk-bar {
+  position: sticky;
+  bottom: 20px;
+  z-index: var(--z-sticky);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: max-content;
+  max-width: calc(100% - 32px);
+  margin: 12px auto 0;
+  padding: 10px 10px 10px 14px;
+  border-radius: 14px;
+  background: var(--sf);
+  box-shadow:
+    0 0 0 1px var(--line),
+    0 20px 44px -20px var(--shadow);
+  animation: bulk-up var(--m-base) var(--m-ease) both;
+}
+
+@keyframes bulk-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+.bulk-cap {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding-right: 4px;
+  font: 400 11.5px var(--font-machine);
+  color: var(--mut);
+}
+
+.bulk-cap b {
+  font: 600 13px var(--font-human);
+  color: var(--ink);
+}
+
+.bulk-row,
+.bulk-reason {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.bulk-rule {
+  margin: 0;
+  font: 400 11.5px var(--font-machine);
+  color: var(--mut);
+  text-wrap: pretty;
+}
+
+.bulk-sep {
+  width: 1px;
+  height: 20px;
+  margin: 0 2px;
+  background: var(--line);
+}
+
+.bulk-none {
+  font-size: 13px;
+  color: var(--mut);
+}
+
+.bulk-x {
+  margin-left: auto;
+}
+
+.bulk-receipt {
+  font-size: 13.5px;
+}
+
+.bulk-input {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  min-width: 220px;
+  height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: var(--bg);
+  box-shadow: inset 0 0 0 1px var(--line);
+  transition: box-shadow var(--m-fast) var(--m-ease);
+}
+
+.bulk-input:focus-within {
+  box-shadow: inset 0 0 0 1.5px var(--ink);
+}
+
+.bulk-input input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: none;
+  font: 400 13.5px var(--font-human);
+  color: var(--ink);
+}
+
+.bulk-input input::placeholder {
+  color: var(--mut);
+}
+
+/* ---- the detail beside the grid: a way to close it ---- */
+.detail-close {
+  margin-left: auto;
+}
+
+/* ---- the morph (list <-> grid): both layers stacked while it runs ---- */
+.view-layers[data-morph] :is(.row-lines, .grid-head::after) {
+  visibility: hidden;
+}
+
+.view-layers[data-morph] .grid-row > .gc,
+.view-layers[data-morph] .gc-title {
+  overflow: visible;
+}
+
+.view-layers[data-morph] span[data-m]:not(.grid-ttl) {
+  display: inline-block;
+}
+
+.view-layers[data-morph] .grid-thead {
+  background: transparent;
+}
+
+.view-layers[data-morph] :is(.rows > li, .section-title, .grid-row, .grid-head, .grid-gh) {
+  --c: 1;
+}
+
+.view-layers[data-morph] .rows > li .row::before,
+.view-layers[data-morph] .section-title::after,
+.view-layers[data-morph] .row-id::after,
+.view-layers[data-morph] .row-when::before {
+  opacity: var(--c, 1);
+  transition: none;
+}
+
+.view-layers[data-morph] :is(.grid-check, .grid-row::before) {
+  transition: none;
+}
+
+.morph-lanes {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .view-switch-b,
+  .gh-sort,
+  .gh-sort .icon,
+  .gh-menu,
+  .grid-check,
+  .grid-row::before,
+  .grid-menu-i {
+    transition-duration: 1ms;
+  }
+
+  .filter-token,
+  .grid-menu,
+  .bulk-bar {
+    animation-duration: 1ms;
+  }
+}

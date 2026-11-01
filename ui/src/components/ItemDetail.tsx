@@ -14,7 +14,7 @@ import {
   typeMark,
   typeOf,
 } from '../item-types.ts';
-import { AgentMark, NODE_LABEL, Node, Pill, TypeTag } from '../kit/index.ts';
+import { AgentMark, Button, Icon, NODE_LABEL, Node, Pill, TypeTag } from '../kit/index.ts';
 import { moduleFor } from '../modules/registry.ts';
 import { MOTION, reducedMotion } from '../motion.ts';
 import { itemNodeKind } from '../node-kind.ts';
@@ -107,6 +107,8 @@ type ItemDetailProps = {
   // bottom, in reach of a thumb.
   layout?: 'pane' | 'unfold';
   onMoved?: (() => void) | undefined;
+  // Beside a grid that takes the room back once nothing is open: closes the detail.
+  onClose?: (() => void) | undefined;
 };
 
 // The detail of another item comes in (the old one leaves at once): it rises 6px into place, or
@@ -141,6 +143,7 @@ export function ItemDetail({
   onAddChild,
   layout = 'pane',
   onMoved,
+  onClose,
 }: ItemDetailProps) {
   const lease = useActiveLease(item.lease);
   const root = useContentIn(item.id, layout === 'pane');
@@ -321,6 +324,19 @@ export function ItemDetail({
               </Pill>
               <span className="t-cap">{standing}</span>
             </div>
+            {onClose ? (
+              <Button
+                variant="quiet"
+                size="sm"
+                icon
+                className="detail-close"
+                aria-label="Close the detail"
+                title="Close"
+                onClick={onClose}
+              >
+                <Icon name="close" />
+              </Button>
+            ) : null}
           </div>
           <div className="detail-head-body">
             <h1 className="t-display">{item.title}</h1>

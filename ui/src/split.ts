@@ -141,6 +141,14 @@ export function defaultGridWidth(room: number): number {
   return clampGridWidth(Math.min(GRID_CAP, room - DIVIDER_W - GRID_DETAIL), gridMax(room));
 }
 
+// The room for the grid, the divider and the detail: the workspace past its 8px gutter and the
+// sidebar's track (13.75rem and 24px of air, or folded the toggle's 44px strip and the same air;
+// none under 64rem).
+export function gridRoom(workspace: number, sidebar: boolean, wide: boolean): number {
+  const rail = wide ? (sidebar ? 13.75 * 16 + 24 : 44 + 24) : 0;
+  return Math.max(0, workspace - 8 - rail);
+}
+
 export function gridDocked(room: number): boolean {
   return room - DIVIDER_W - GRID_CAP >= DOCKED_DETAIL;
 }

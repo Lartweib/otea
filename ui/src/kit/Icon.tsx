@@ -11,7 +11,12 @@ export type IconName =
   | 'chevron'
   | 'link'
   | 'branch'
-  | 'sidebar';
+  | 'sidebar'
+  | 'list'
+  | 'grid'
+  | 'filter'
+  | 'group'
+  | 'up';
 
 const PATHS: Record<IconName, string> = {
   plus: 'M8 3.5 V12.5 M3.5 8 H12.5',
@@ -29,6 +34,11 @@ const PATHS: Record<IconName, string> = {
   sidebar:
     'M3.5 2.75 H12.5 A0.75 0.75 0 0 1 13.25 3.5 V12.5 A0.75 0.75 0 0 1 12.5 13.25 H3.5 A0.75 0.75 0 0 1 2.75 12.5 V3.5 A0.75 0.75 0 0 1 3.5 2.75 Z M6.25 2.75 V13.25',
   branch: 'M5 2.5 V13.5 M5 5.5 C5 8 7 8 9.5 8 H12.5 M5 9.5 C5 12 7 12 9.5 12 H12.5',
+  list: 'M2.75 3.5 H13.25 M2.75 6 H9.5 M2.75 10 H13.25 M2.75 12.5 H9.5',
+  grid: 'M3.25 2.75 H12.75 A0.5 0.5 0 0 1 13.25 3.25 V12.75 A0.5 0.5 0 0 1 12.75 13.25 H3.25 A0.5 0.5 0 0 1 2.75 12.75 V3.25 A0.5 0.5 0 0 1 3.25 2.75 Z M2.75 6.25 H13.25 M2.75 9.75 H13.25 M6.25 2.75 V13.25',
+  filter: 'M2.75 4.25 H13.25 M4.75 8 H11.25 M6.75 11.75 H9.25',
+  group: 'M2.75 3.25 H8 M5 5.75 H13.25 M5 8.25 H13.25 M2.75 10.75 H8 M5 13.25 H13.25',
+  up: 'M8 12.5 V3.75 M4.75 7 L8 3.75 L11.25 7',
 };
 
 // Thin, small and quiet: 16px, stroke 1.25, current color.

@@ -14,6 +14,7 @@ import './kit/kit.css';
 import './icons/icons.css';
 import './styles/shell.css';
 import './styles/list.css';
+import './styles/grid.css';
 import './styles/detail.css';
 import './styles/evidence.css';
 import './styles/workspace.css';

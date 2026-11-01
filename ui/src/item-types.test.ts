@@ -60,7 +60,7 @@ const work: CollectionView = {
   prefix: 'WORK',
   preset: 'work',
   types: [bug, impr],
-  view: { kind: 'list', groupBy: 'turn' },
+  view: { kind: 'list', groupBy: 'turn', columns: ['id', 'title', 'state', 'who', 'age'] },
 };
 
 describe('item types', () => {

@@ -11,6 +11,7 @@ import {
   GRID_WIDTH_KEY,
   gridDocked,
   gridMax,
+  gridRoom,
   LIST_WIDTH,
   LIST_WIDTH_KEY,
   listMax,
@@ -167,6 +168,12 @@ describe('the grid beside the detail', () => {
     expect(gridMax(600)).toBe(340);
     expect(clampGridWidth(2000, gridMax(1223))).toBe(774);
     expect(clampGridWidth(100, 774)).toBe(340);
+  });
+
+  it('measures its room past the sidebar, or its folded strip, and the workspace gutter', () => {
+    expect(gridRoom(1440, true, true)).toBe(1188);
+    expect(gridRoom(1440, false, true)).toBe(1364);
+    expect(gridRoom(900, true, false)).toBe(892);
   });
 
   it('keeps the detail docked once the room holds a full grid and 560px beside it', () => {
