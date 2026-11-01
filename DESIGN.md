@@ -78,6 +78,29 @@ One circle; its state lives in fill, stroke and mark.
 
 How an item maps to a kind (`ui/src/node-kind.ts`): turn `human` is yours; turn `agent` is working while a lease is held, incomplete when the item sits in its type's `incomplete` state, queued otherwise; turn `none` is done or discarded as the preset declares for the item's state (`closes: done` or `closes: discarded`, sent as the item's `closes`), whatever the state is called. The same `closes` on a move keeps a discarding move quiet (`moveVariants`).
 
+## Brand
+
+The logo is the word: "otea" in Schibsted Grotesk 700, -0.02em, whose o is drawn as a node (the **letter node**). Its ring is the letter, in `--ink` at the letters' weight; its counter is the turn, in `--you` while something waits for you and empty otherwise. Hollow, it is simply the word.
+
+**Construction** (1/1000 em of Schibsted Grotesk 700, `Brand` in `ui/src/App.tsx`). The node is a true circle on the o's centre (305.5, −263.5): outer radius 273 (the mean of the o's half-width and half-height, so it overshoots the baseline and the x-height as the o does), ring 128 (between the o's thin 107 and its stem 152), counter 145. It is an inline SVG on the o's own advance (584.44: 610.84, −20 of letter-spacing, −6.4 of kerning), so "tea" stays live text and starts exactly where it would after the font's o. The topbar sets it at 20px, 18px on the phone's 56px bar; the brand link keeps the label "otea, all items".
+
+**States** come from one place, `ui/src/attention.ts` (tested): `attentionOf` counts the items waiting for you across every collection and says whether any agent holds an active lease; `attentionFrame` turns that into one of four frames. Yours comes first; the orbit is added while an agent works.
+
+| Frame | Counter | Orbit | Favicon |
+| --- | --- | --- | --- |
+| `yours` | filled | none | `otea-yours.svg` |
+| `yours-working` | filled | turning | `otea-yours-working.svg` |
+| `working` | empty | turning | `otea-working.svg` |
+| `idle` (all with agents) | empty | none | `otea-idle.svg` |
+
+The items follow the live stream; a lease that runs out writes nothing, so `useAttention` reads the state again when the first active lease expires. The state never lives in the mark alone: the document title carries the count, "(2) Otea", and is plain "Otea" at zero.
+
+**Motion** (the app's tokens, `ui/src/styles/shell.css`). Becoming yours, the counter fills from the centre: scale .2 → 1 over `--m-slow`, opacity over `--m-base`, on `--m-ease`; it empties the same way. When an agent starts, the orbit (r 378, weight 60, outside the o) draws in, dash 0 → 25 of 100 over `--m-slow`, and turns once every 1.7s, linear, the list's orbit; it undraws when the work stops. The orbit is masked from where the t begins, so it passes behind the word. The ring never moves. Under reduced motion the counter and the orbit crossfade over `--m-fast`, the orbit drawn still at 1 o'clock.
+
+**Favicon.** Four static SVG files in `ui/public/` with their own 16px drawing (ring outer 7 at weight 3, counter 4, every edge on a whole pixel; working: node 5 at 2.14, orbit arc r 7.25 at 1.5, still at 1 o'clock). Each carries a `prefers-color-scheme` rule, so the ring is dark ink on a light tab strip and light ink on a dark one. `index.html` links the idle frame; the page swaps the link's href when the frame changes (`applyAttention`). A favicon swaps, it does not animate.
+
+**The desktop shell** reads the same state without an API of its own: the window's title and favicon are the state (Electron's `page-title-updated` and `page-favicon-updated`), for the taskbar icon, the tray and a notification when the count grows. `attentionOf` is pure and takes the items as `/api/items` returns them, so the main process can derive it the same way.
+
 ## Lanes
 
 Geometry lives in `ui/src/lanes.ts` (tested). The list gutter is 56px: agent lane at x=16, your lane at x=40, trunk at x=28. Open sections come first and closed items last, most recently closed on top. Each lane runs straight down to the last open row, then curves into the trunk at the first closed row of the Closed group (`M x 0 V lastOpen C x mid 28 mid 28 firstClosed`), so the lanes never end in a broken Y; with nothing closed they meet at the bottom. A closed child shown under an open parent sits on x=28, between the lanes, which run on past it. Your lane is drawn in your color at 42% opacity.

@@ -137,6 +137,7 @@ In the UI the human navigates between linked projects and, inside a project, bet
 ### Distribution
 
 - **Desktop app (Electron)** with a traditional installer per OS that ends by opening the app. Native window, taskbar icon, system notifications when it is the human's turn, tray.
+  - The web UI already publishes whose turn it is (the living mark, see DESIGN.md, Brand): the page title counts what waits for the human ("(2) Otea") and the favicon swaps between four frames. The shell can follow both off the window it hosts, and `ui/src/attention.ts` derives the same state from the items for the main process.
 - Electron was chosen over Tauri for render consistency: one bundled Chromium on every OS, so testing on one OS covers the UI on all of them. Accepted cost: larger installer.
 - **The CLI is independent of the window**: the installer puts `otea` on the PATH for agents; it never needs the app running.
 - **Running from source** (clone + run) works without the installer, including serving the UI in a browser.
