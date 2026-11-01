@@ -1,4 +1,3 @@
-import type { Section } from './sections.ts';
 import type { Item } from './types.ts';
 
 // One collection in the rail: how many items wait for you, out of those still open.
@@ -19,9 +18,4 @@ export function inCollection(items: readonly Item[], collection: string | undefi
   return collection === undefined
     ? [...items]
     : items.filter((item) => item.collection === collection);
-}
-
-// The ids in the order the list draws them, for j and k.
-export function listOrder(sections: readonly Section[]): string[] {
-  return sections.flatMap((section) => section.items.map((item) => item.id));
 }

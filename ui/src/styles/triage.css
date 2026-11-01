@@ -307,7 +307,7 @@
   opacity: var(--p);
 }
 
-/* ---- the moves, each with its key ---- */
+/* ---- the moves ---- */
 .triage-bar {
   display: grid;
   gap: 8px;
@@ -463,13 +463,6 @@
 
   .triage-end {
     min-height: 18rem;
-  }
-}
-
-/* Keys are for keyboards. */
-@media (pointer: coarse), (max-width: 47.99rem) {
-  .triage .kbd {
-    display: none;
   }
 }
 

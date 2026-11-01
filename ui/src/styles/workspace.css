@@ -83,8 +83,7 @@
 }
 
 /* ---- list head: one row on one baseline. The lane names sit centred on their lanes (x=16 and
-   x=40), the title starts where the row titles do (x=114: rail, fold and type), the keys end where
-   the time does. ---- */
+   x=40), and the title starts where the row titles do (x=114: rail, fold and type). ---- */
 .list-head {
   display: flex;
   align-items: baseline;
@@ -116,14 +115,6 @@
   margin-left: 58px;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.list-hint {
-  display: none;
-  flex: none;
-  margin-left: auto;
-  padding-left: 16px;
-  color: color-mix(in oklch, var(--mut) 80%, transparent);
 }
 
 .sidebar-toggle {
@@ -252,10 +243,6 @@
   .workspace .detail[data-layout="pane"] .evidence {
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   }
-
-  .list-hint {
-    display: inline;
-  }
 }
 
 @media (min-width: 64rem) {
@@ -320,12 +307,6 @@
       opacity var(--m-base) var(--m-ease),
       clip-path var(--m-slow) var(--m-ease),
       visibility 0s var(--m-slow);
-  }
-}
-
-@media (pointer: coarse) {
-  .list-hint {
-    display: none;
   }
 }
 

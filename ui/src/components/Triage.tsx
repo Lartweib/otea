@@ -4,7 +4,7 @@ import { ageLabel } from '../format.ts';
 import { useActiveLease } from '../hooks.ts';
 import { showsTypes, typeOf } from '../item-types.ts';
 import { keyTargetOf } from '../keys.ts';
-import { Button, Icon, Kbd, NODE_LABEL, Node, Pill, TypeTag } from '../kit/index.ts';
+import { Button, Icon, NODE_LABEL, Node, Pill, TypeTag } from '../kit/index.ts';
 import { moduleFor } from '../modules/registry.ts';
 import { valuesOf } from '../modules/values.ts';
 import { MOTION, reducedMotion } from '../motion.ts';
@@ -233,23 +233,6 @@ function TriageCard({ item, collectionOf, plan, onLeave, behind, next }: CardPro
     }
   };
 
-  // Keys: a for the primary move, r to send it back, s for later. Typing stays in its field.
-  const keys = useRef<(event: KeyboardEvent) => void>(() => undefined);
-  keys.current = (event: KeyboardEvent) => {
-    if (event.ctrlKey || event.metaKey || event.altKey) return;
-    if (keyTargetOf(event.target) !== 'body') return;
-    if (event.key === 'a' && ready && plan?.forward) act('right');
-    else if (event.key === 'r' && ready && plan?.back) act('left');
-    else if (event.key === 's' && state.step !== 'posting') commit('skip', undefined);
-    else return;
-    event.preventDefault();
-  };
-  useEffect(() => {
-    const onKey = (event: KeyboardEvent) => keys.current(event);
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, []);
-
   const place = (dx: number) => {
     const element = card.current;
     if (!element) return;
@@ -406,12 +389,10 @@ function TriageCard({ item, collectionOf, plan, onLeave, behind, next }: CardPro
             <Button disabled={!ready} aria-label={`Move to ${back.to}`} onClick={() => act('left')}>
               <Icon name="left" />
               {back.to}
-              <Kbd>r</Kbd>
             </Button>
           ) : null}
           <Button variant="quiet" disabled={busy} onClick={() => commit('skip', undefined)}>
             Later
-            <Kbd>s</Kbd>
           </Button>
           {forward ? (
             <Button
@@ -421,7 +402,6 @@ function TriageCard({ item, collectionOf, plan, onLeave, behind, next }: CardPro
               onClick={() => act('right')}
             >
               {forward.to}
-              <Kbd>a</Kbd>
               <Icon name="right" />
             </Button>
           ) : null}
@@ -557,7 +537,6 @@ function End({
       <div className="action-buttons">
         <Button variant="primary" onClick={onExit}>
           Back to the list
-          <Kbd>esc</Kbd>
         </Button>
         {skipped > 0 ? (
           <Button variant="quiet" onClick={onAgain}>
@@ -570,7 +549,7 @@ function End({
 }
 
 // Triage: what waits for you, one card at a time, as a mode of its own. The card fills the stage;
-// right (a) is the primary move, left (r) sends it back, s leaves it for later, Esc leaves.
+// right is the primary move, left sends it back, Later leaves it for later, Esc leaves.
 // What was decided settles in the trays beside the stage: back with agents, or decided otherwise.
 export function Triage({ waiting, loading = false, collectionOf, version, onExit }: TriageProps) {
   const [seen, setSeen] = useState<ReadonlySet<string>>(new Set());
@@ -683,7 +662,6 @@ export function Triage({ waiting, loading = false, collectionOf, version, onExit
         <Button variant="quiet" className="triage-exit" onClick={onExit}>
           <Icon name="left" />
           List
-          <Kbd>esc</Kbd>
         </Button>
         <div className="triage-heading">
           <h1 className="t-display triage-title">
