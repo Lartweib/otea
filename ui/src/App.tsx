@@ -1,20 +1,17 @@
-import { type ReactNode, useCallback, useState } from 'react';
+import { type CSSProperties, type ReactNode, useCallback, useState } from 'react';
 import { fetchCollections, fetchItem, fetchItems, fetchPresets, fetchSession } from './api.ts';
 import { catalogEntries } from './catalog.ts';
 import { CollectionRail } from './components/CollectionRail.tsx';
 import { ConnectionBadge } from './components/ConnectionBadge.tsx';
 import { ItemDetail } from './components/ItemDetail.tsx';
-import {
-  type ChildrenOf,
-  type CollectionOf,
-  ItemList,
-  type Unfolding,
-} from './components/ItemList.tsx';
+import type { ChildrenOf, CollectionOf, Unfolding } from './components/ItemList.tsx';
+import { ListPane } from './components/ListPane.tsx';
 import { CatalogOverview, ModuleIndex, ModulePanel } from './components/ModuleCatalog.tsx';
 import { type IntakeParent, NewItemForm } from './components/NewItemForm.tsx';
 import { browserStorage, Divider, useSplit } from './components/Split.tsx';
 import { ThemeToggle } from './components/ThemeToggle.tsx';
 import { Triage } from './components/Triage.tsx';
+import { useDetailMotion, useViewPrefs } from './components/workspace-motion.ts';
 import { type Connection, useHideTier, useLive, usePhone, useRemote, useRoute } from './hooks.ts';
 import { Button, Icon } from './kit/index.ts';
 import { MODULES } from './modules/registry.ts';
@@ -22,10 +19,7 @@ import {
   COLLAPSED_KEY,
   EXPANDED_KEY,
   type Folds,
-  type NestedSection,
-  nestSections,
   parentOf,
-  type RowNesting,
   readCollapsed,
   toggleFold,
   writeCollapsed,
@@ -33,70 +27,12 @@ import {
 import type { Remote } from './remote.ts';
 import { groupByTurn } from './sections.ts';
 import { hashFor, ITEMS_HASH, modulesHash, TRIAGE_HASH } from './selection.ts';
+import { gridDocked } from './split.ts';
 import type { CollectionView, Item, ItemView, PresetView } from './types.ts';
 import { inCollection, railEntries } from './workspace.ts';
 
 function Message({ children, muted = true }: { children: ReactNode; muted?: boolean }) {
   return <p className={muted ? 'pane-message t-small' : 'pane-message action-error'}>{children}</p>;
-}
-
-type ListPaneProps = {
-  items: Remote<Item[]>;
-  sections: NestedSection[];
-  nesting: ReadonlyMap<string, RowNesting>;
-  onToggleChildren: (id: string, settled: boolean) => void;
-  childrenOf: ChildrenOf;
-  selectedId: string | undefined;
-  collection: string | undefined;
-  collectionOf: CollectionOf;
-  unfolding: Unfolding | undefined;
-  onTriage: (() => void) | undefined;
-};
-
-function ListPane({
-  items,
-  sections,
-  nesting,
-  onToggleChildren,
-  childrenOf,
-  selectedId,
-  collection,
-  collectionOf,
-  unfolding,
-  onTriage,
-}: ListPaneProps) {
-  if (items.status === 'loading') return <Message>Loading…</Message>;
-  if (items.status === 'failed') return <Message muted={false}>{items.message}</Message>;
-  if (items.value.length === 0) {
-    return (
-      <Message>
-        No items yet. Create one with <code>otea create</code>.
-      </Message>
-    );
-  }
-  return (
-    <>
-      {/* One row: the lane names over their lanes, the title over the row titles. */}
-      <div className="list-head">
-        <span className="lane-names" aria-hidden="true">
-          <span>ag</span>
-          <span className="lane-names-you">you</span>
-        </span>
-        <h2 className="t-h">{collection ?? 'All items'}</h2>
-      </div>
-      <ItemList
-        sections={sections}
-        nesting={nesting}
-        onToggleChildren={onToggleChildren}
-        childrenOf={childrenOf}
-        selectedId={selectedId}
-        collectionOf={collectionOf}
-        scope={collection ?? ''}
-        {...(unfolding ? { unfolding } : {})}
-        {...(onTriage ? { onTriage } : {})}
-      />
-    </>
-  );
 }
 
 type DetailPaneProps = {
@@ -107,6 +43,7 @@ type DetailPaneProps = {
   layout?: 'pane' | 'unfold';
   onMoved?: () => void;
   onAddChild?: (parent: ItemView) => void;
+  onClose?: (() => void) | undefined;
 };
 
 function DetailPane({
@@ -117,6 +54,7 @@ function DetailPane({
   layout,
   onMoved,
   onAddChild,
+  onClose,
 }: DetailPaneProps) {
   if (item.status === 'failed') return <Message muted={false}>{item.message}</Message>;
   if (item.status === 'loading') return <Message>Loading…</Message>;
@@ -128,6 +66,7 @@ function DetailPane({
       collection={collectionOf(item.value.collection)}
       collectionOf={collectionOf}
       onAddChild={onAddChild}
+      onClose={onClose}
       {...(layout ? { layout } : {})}
       {...(onMoved ? { onMoved } : {})}
     />
@@ -243,10 +182,11 @@ export function App() {
   const [collection, setCollection] = useState<string>();
   const allItems = items.status === 'ready' ? items.value : [];
   const [folds, toggleChildren] = useFolds();
-  const grouped = groupByTurn(inCollection(allItems, collection));
-  const { sections, rows: nesting } = nestSections(grouped, folds, (id) =>
-    allItems.find((item) => item.id === id),
-  );
+  const scoped = inCollection(allItems, collection);
+  const grouped = groupByTurn(scoped);
+  const collectionView = collection === undefined ? undefined : collectionOf(collection);
+  const [prefs, setPrefs] = useViewPrefs(collectionView);
+  const [morphing, setMorphing] = useState(false);
   const creating =
     canWrite && route.view === 'items' && intake !== undefined && intake.openedOn === selectedId;
   const closeIntake = () => setIntake(undefined);
@@ -302,6 +242,17 @@ export function App() {
   };
   // Triage takes everything that waits for you, folded under a parent or not.
   const waiting = grouped.find((section) => section.turn === 'human')?.items ?? [];
+  // A collection seen as a grid takes the grid's room (and keeps it while the views morph). Unless
+  // the room holds a full grid and a detail beside it, the grid takes all of it until an item opens.
+  const gridded = !phone && prefs !== undefined && (prefs.mode === 'grid' || morphing);
+  const docked = gridDocked(split.grid.room);
+  const detailOff = gridded && !docked && !selectedId && !creating;
+  // The grid pane's width once the workspace is the grid's.
+  const gridPane = !docked && !selectedId && !creating ? split.grid.room - 9 : split.grid.width;
+  const closeDetail = () => {
+    window.location.hash = ITEMS_HASH;
+  };
+  useDetailMotion(split.workspace, gridded, detailOff, split.grid.room - 9, split.grid.width);
   return (
     <div className="app">
       <header className="topbar">
@@ -342,7 +293,14 @@ export function App() {
           className="layout workspace"
           ref={split.attach}
           data-sidebar={split.sidebar ? 'on' : 'off'}
-          style={split.style}
+          data-view={gridded ? 'grid' : 'list'}
+          data-detail={detailOff ? 'off' : undefined}
+          style={
+            {
+              ...split.style,
+              '--grid-w': `${detailOff ? split.grid.room - 9 : split.grid.width}px`,
+            } as CSSProperties
+          }
         >
           <CollectionRail
             entries={rail}
@@ -356,19 +314,39 @@ export function App() {
           <div className="list-pane" data-pane="list" ref={listPane}>
             <ListPane
               items={items}
-              sections={sections}
-              nesting={nesting}
+              scoped={scoped}
+              allItems={allItems}
+              folds={folds}
               onToggleChildren={toggleChildren}
               childrenOf={childrenIndex(allItems)}
               selectedId={selectedId}
-              collection={collection}
+              collection={collectionView}
+              collectionName={collection}
               collectionOf={collectionOf}
               unfolding={unfolding}
               onTriage={openTriage}
+              canWrite={canWrite}
+              phone={phone}
+              prefs={prefs}
+              onPrefs={setPrefs}
+              onMorphing={setMorphing}
+              listWidth={split.width}
+              gridWidth={gridPane}
             />
           </div>
-          {phone ? null : (
+          {phone ? null : gridded ? (
             <Divider
+              key="grid"
+              range="grid"
+              workspace={split.workspace}
+              width={split.grid.width}
+              home={split.grid.home}
+              onCommit={split.grid.commit}
+              onReset={split.grid.reset}
+            />
+          ) : (
+            <Divider
+              key="list"
               workspace={split.workspace}
               width={split.width}
               home={split.home}
@@ -396,8 +374,9 @@ export function App() {
                     canWrite={canWrite}
                     collectionOf={collectionOf}
                     onAddChild={addChild}
+                    onClose={gridded && !docked ? closeDetail : undefined}
                   />
-                ) : (
+                ) : detailOff ? null : (
                   <Message>Select an item to see its details.</Message>
                 )}
               </div>

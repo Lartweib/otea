@@ -141,8 +141,8 @@ export type TypeView = {
   layout: Layout;
 };
 
-// How a collection lists its items. Only a list grouped by turn is drawn yet: every other kind and
-// grouping falls back to it.
+// How a collection lists its items: the list or the grid (a board is drawn as the list), its
+// grouping, and the grid's columns, in order.
 export type ViewSpec = { kind: 'list' | 'board' | 'grid'; groupBy: string; columns: string[] };
 
 export type CollectionView = {

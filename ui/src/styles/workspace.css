@@ -8,6 +8,13 @@
   initial-value: 520px;
 }
 
+/* The grid's width beside the detail, registered so opening and closing an item can ease it. */
+@property --grid-w {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 1320px;
+}
+
 /* ---- collections rail ---- */
 .rail {
   display: none;
@@ -200,6 +207,18 @@
   .workspace .list-pane {
     grid-column: 2;
     padding: 4px 0 24px;
+  }
+
+  /* A collection seen as a grid: the grid takes up to its own measure beside the detail (--grid-w,
+     split.ts), or the whole room while nothing is open and the room cannot hold both. */
+  .workspace[data-view="grid"] {
+    grid-template-columns:
+      var(--rail-w) max(340px, min(var(--grid-w), 100% - var(--rail-w) - 9px))
+      9px minmax(0, 1fr);
+  }
+
+  .workspace[data-detail="off"] :is(.divider, .detail-pane) {
+    visibility: hidden;
   }
 
   .workspace .divider {

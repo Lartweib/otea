@@ -16,6 +16,8 @@ export type GridColumn = {
   label: string;
   field?: FieldView;
   values?: string[];
+  // The id column: how many characters its ids take (the prefix, a dash and three digits).
+  chars?: number;
 };
 
 export type SortDirection = 'asc' | 'desc';
@@ -55,6 +57,8 @@ function columnOf(collection: CollectionView, key: string): GridColumn | undefin
   if (builtIn === 'type') {
     return { key, kind: builtIn, label: key, values: collection.types.map(({ name }) => name) };
   }
+  if (builtIn === 'id')
+    return { key, kind: builtIn, label: key, chars: collection.prefix.length + 4 };
   if (builtIn) return { key, kind: builtIn, label: key };
   const field = fieldOf(collection, key);
   if (!field) return undefined;
@@ -80,7 +84,7 @@ export function hasValues(column: GridColumn): boolean {
 
 export type GridTier = 1 | 2 | 3 | 4 | 5;
 
-// 1 everything; 2 the last field goes; 3 who becomes a monogram and severity only its bars; 4 the
+// 1 everything; 2 the last field goes; 3 who becomes the agent's mark and severity only its bars; 4 the
 // other fields go; 5 the table is no longer a table: the pane draws the list.
 export const GRID_TIERS = { 1: 1000, 2: 880, 3: 760, 4: 640 } as const;
 
@@ -120,7 +124,8 @@ const widthFor = (texts: readonly string[], min: number) =>
 export function columnWidth(column: GridColumn, compact: boolean): number {
   switch (column.kind) {
     case 'id':
-      return 72;
+      // 72 holds BUGS-123; a longer prefix widens it (mono 12 is about 7.3px a character).
+      return Math.max(72, Math.round((column.chars ?? 0) * 7.3 + 12));
     case 'title':
       return 0;
     case 'severity':
@@ -231,7 +236,8 @@ const groupValue = (item: Item, key: string) =>
 // skip: a column whose own filter is left out, to count what choosing its values would show.
 function passes(item: Item, filters: Filters, skip?: string): boolean {
   return Object.entries(filters).every(
-    ([key, chosen]) => key === skip || chosen.length === 0 || chosen.includes(groupValue(item, key)),
+    ([key, chosen]) =>
+      key === skip || chosen.length === 0 || chosen.includes(groupValue(item, key)),
   );
 }
 

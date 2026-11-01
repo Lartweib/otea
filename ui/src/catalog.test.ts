@@ -12,7 +12,7 @@ const tasks: PresetView = {
     { name: 'priority', module: 'enum', values: ['low', 'high'], default: 'low' },
   ],
   types: [],
-  view: { kind: 'list', groupBy: 'turn' },
+  view: { kind: 'list', groupBy: 'turn', columns: ['id', 'title', 'state', 'who', 'age'] },
   collections: ['tasks', 'bugs'],
 };
 
@@ -26,7 +26,7 @@ const research: PresetView = {
     { name: 'clip', module: 'audio' },
   ],
   types: [],
-  view: { kind: 'list', groupBy: 'turn' },
+  view: { kind: 'list', groupBy: 'turn', columns: ['id', 'title', 'state', 'who', 'age'] },
   collections: [],
 };
 
