@@ -15,6 +15,8 @@ export type Io = {
   stderr: Writer;
   signal: AbortSignal;
   openUrl: Opener;
+  // Present only when a person can answer at the terminal.
+  ask?: (question: string) => Promise<string>;
 };
 
 type Values = Record<string, string | boolean | (string | boolean)[] | undefined>;
@@ -85,6 +87,7 @@ function inputFor(command: Command, values: Values, args: string[], io: Io, json
     warn: (message) =>
       io.stderr.write(`otea: ${message}
 `),
+    ask: async (question) => io.ask?.(question),
     print: (data, text) => io.stdout.write(`${json ? JSON.stringify(data) : text}\n`),
     args,
     flag: (name) => values[name] === true,

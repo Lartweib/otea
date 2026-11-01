@@ -15,6 +15,7 @@ export function cliAt(
   env: Record<string, string> = {},
   signal = new AbortController().signal,
   openUrl: Opener = async () => {},
+  ask?: (question: string) => Promise<string>,
 ): Cli {
   return async (...argv) => {
     let out = '';
@@ -24,6 +25,7 @@ export function cliAt(
       env,
       signal,
       openUrl,
+      ...(ask ? { ask } : {}),
       stdout: { write: (chunk: string) => (out += chunk) },
       stderr: { write: (chunk: string) => (err += chunk) },
     });

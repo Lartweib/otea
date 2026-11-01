@@ -1,4 +1,6 @@
 import { join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { type AgentsMdAction, connectAgent, writeAgentsMd } from '../app/agents.ts';
 import { addCollection, DEFAULT_PRESET, typeOfItem } from '../app/collections.ts';
 import { listEvents } from '../app/events.ts';
 import { attachEvidence } from '../app/evidence.ts';
@@ -60,16 +62,45 @@ async function withProjectWhile<T>(cwd: string, use: (project: Project) => Promi
   }
 }
 
+const AGENTS_MD_TEXT: Readonly<Record<AgentsMdAction, (path: string) => string>> = {
+  created: (path) => `Added the Otea block to ${path}`,
+  added: (path) => `Added the Otea block to ${path}`,
+  updated: (path) => `Updated the Otea block in ${path}`,
+  unchanged: (path) => `The Otea block in ${path} is up to date`,
+};
+
 const init: Command = {
   name: 'init',
-  summary: 'Create or reuse the .otea project at the repository root',
+  summary:
+    'Create or reuse the .otea project at the repository root; --agents-md also adds (or refreshes) a block in AGENTS.md telling agents to run "otea playbook"',
   args: [],
-  options: {},
-  execute: ({ cwd }) => {
+  options: { 'agents-md': { flag: true } },
+  execute: ({ cwd, flag }) => {
     const { root, db } = initProject(cwd);
     db.close();
     const path = join(root, '.otea');
-    return { data: { root, path }, text: path };
+    if (!flag('agents-md')) return { data: { root, path }, text: path };
+    const agentsMd = writeAgentsMd(root);
+    const text = `${path}\n${AGENTS_MD_TEXT[agentsMd.action](agentsMd.path)}`;
+    return { data: { root, path, agentsMd }, text };
+  },
+};
+
+const MAIN = fileURLToPath(new URL('./main.ts', import.meta.url));
+
+const connect: Command = {
+  name: 'connect',
+  summary:
+    'Pin an agent name in the project MCP config (.mcp.json) so every MCP action is attributed to it; asks for the name unless --as gives it',
+  args: [],
+  options: {},
+  execute: async ({ cwd, option, ask }) => {
+    const root = withProject(cwd, (project) => project.root);
+    const name = option('as') ?? (await ask('Agent name (short, like claude-b): '))?.trim();
+    if (name === undefined) throw new UsageError('Name the agent with --as <name>');
+    const connection = connectAgent(root, name, MAIN);
+    const text = `Connected "${name}": ${connection.path} serves otea mcp --as ${name}`;
+    return { data: connection, text };
   },
 };
 
@@ -593,6 +624,7 @@ const mcp: Command = {
 
 export const COMMANDS: readonly Command[] = [
   init,
+  connect,
   collectionAdd,
   create,
   list,
