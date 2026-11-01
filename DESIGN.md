@@ -29,6 +29,13 @@ Two vertical lanes run down every list: the **agent lane** on the left, **your l
 | `--closed` | done and discarded glyphs |
 | `--warn`, `--plus`, `--minus` | severity 4; diff added and removed |
 | `--you`, `--on-you`, `--you-ink` | your color; text on it; text in it |
+| `--agent-0` … `--agent-4` | the five hues that tint agent marks, never used alone |
+
+## Agent marks
+
+An agent is shown by one mark everywhere (`AgentMark` in `ui/src/kit/`, logic in `ui/src/agent-mark.ts`, tested): its initials in mono 10.5/500 on a small chip (22×18, `--r-s`), `cb` for claude-b, the first two letters of a one-word name. The chip is `--chip` mixed in OKLab with one of five hues (ochre, green, teal, plum, rose: away from your blue and from `--warn`), chosen by a stable hash of the name, so claude-b has the same tint in every row, theme and session. The text stays `--ink`, so the mark reads in both themes, and the tint is weak enough that the turn colors (your blue, the agents' ink) stay dominant: a mark identifies, it never says whose turn it is.
+
+It leads the agent's name wherever an agent acted or acts: the list row's *who* (alone at tier 3), the handoff line, each History event (the agent that acted, or the one that relayed your words) and *created by* in Details. You never get a mark. Agents get their names from `otea connect`, which pins one per MCP server, so the marks stay stable.
 
 Themes: light and dark follow the system by default. The topbar toggle cycles system, light and dark; the choice is stored in `localStorage` (failures fall back to system) and applied as `data-theme` on `<html>`.
 
@@ -104,7 +111,7 @@ A row stops at 760px, so on a wide pane the time stays near its title; past that
 | --- | --- | --- |
 | ≥ 600 | 1 | everything shows |
 | 480 – 599 | 2 | the priority column and evidence chips go |
-| 380 – 479 | 3 | who becomes a monogram (`monogram`: the first letter and the first of the suffix after the last dash, `cb` for claude-b; otherwise the first two letters; `you` stays `you`); a parent's count shortens to `N open` |
+| 380 – 479 | 3 | who keeps only the agent's mark (see *Agent marks*); a parent's count shortens to `N open` |
 | < 380 | 4 | who goes; a parent keeps only its bar |
 
 Always there: the node, the fold and type slots, the title, `ID · state` and the time.
@@ -143,7 +150,7 @@ What the detail shows follows the item type's layout (`detailBlocks` in `ui/src/
 
 One line under the title (`HandoffLine`, logic in `ui/src/handoff.ts`, tested) says who handed the item over, when and what they said, then what to look at first, each part after a short 1px rule (a part that wraps starts its line without one). It is read only from what the item holds, never guessed:
 
-- **Who and when**: the item's last move, or its creation while nothing moved it: `claude-b moved it to review · 14m ago` (`created it` for a creation), the actor's two-letter mark in a mono chip first (`cb`; none for you). A relayed decision names the agent that relayed it (`claude-a relayed your move to discarded`). The reason the move carried, or your relayed words, follows in quotes. A move says its target state; Otea never turns a state's name into a verb.
+- **Who and when**: the item's last move, or its creation while nothing moved it: `claude-b moved it to review · 14m ago` (`created it` for a creation), the agent's mark first (`cb`, see *Agent marks*; none for you). A relayed decision names the agent that relayed it (`claude-a relayed your move to discarded`). The reason the move carried, or your relayed words, follows in quotes. A move says its target state; Otea never turns a state's name into a verb.
 - **Evidence**: two image thumbnails (40×26, for a signed-in browser) and the count of files.
 - **Severity**: when the type has a `severity` field with a value, its bars and level.
 - **One relation**: the first the detail lists, children aside (`duplicates BUGS-1`, linking to it).
@@ -178,7 +185,7 @@ The web UI has **no keyboard shortcuts**: people drive it with the mouse, and ke
 
 ## Timeline
 
-The history in the detail (`ui/src/components/Timeline.tsx`) is the item's past, newest first, on **one straight lane** in lane grey: it never swings between lanes. A dot (8px) per event says who acted: filled in your color when a human did, ink when an agent did. A decision the human made in conversation and an agent relayed (`otea relay`; the event carries `via`) is a **ring** in your color, never the filled dot of a decision made in the UI; its label reads `human, relayed by <agent>` instead of `human (ui)`, and the quote of what the human said follows on its own line, in quotation marks (`relayOf` in `ui/src/format.ts`, tested). The time is mono, `14:02` today and, before, the day over the time (`28 Oct` over `12:31`, with the year from another year; `momentParts`, tested); the events share the list's columns, so the time column is as wide as its longest label and no wider. The lane is drawn in CSS, so an event that wraps keeps its dot on its first line. Events that arrive while the item is open fade in from 8px above (base).
+The history in the detail (`ui/src/components/Timeline.tsx`) is the item's past, newest first, on **one straight lane** in lane grey: it never swings between lanes. A dot (8px) per event says who acted: filled in your color when a human did, ink when an agent did; the agent's mark leads its name. A decision the human made in conversation and an agent relayed (`otea relay`; the event carries `via`) is a **ring** in your color, never the filled dot of a decision made in the UI; its label reads `human, relayed by <agent>` instead of `human (ui)`, and the quote of what the human said follows on its own line, in quotation marks (`relayOf` in `ui/src/format.ts`, tested). The time is mono, `14:02` today and, before, the day over the time (`28 Oct` over `12:31`, with the year from another year; `momentParts`, tested); the events share the list's columns, so the time column is as wide as its longest label and no wider. The lane is drawn in CSS, so an event that wraps keeps its dot on its first line. Events that arrive while the item is open fade in from 8px above (base).
 
 ## Controls
 
