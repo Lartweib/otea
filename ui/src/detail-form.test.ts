@@ -9,14 +9,14 @@ import {
 } from './detail-form.ts';
 
 describe('detailForm', () => {
-  it('shows the aside from a 1268px pane: gutters, main, gap and the narrowest aside', () => {
-    expect(ASIDE_FROM).toBe(40 + 800 + 48 + 340 + 40);
-    expect(detailForm(1268)).toBe('aside');
+  it('shows the aside from a 1240px pane: gutters, main, gap and the narrowest aside', () => {
+    expect(ASIDE_FROM).toBe(40 + 772 + 48 + 340 + 40);
+    expect(detailForm(1240)).toBe('aside');
     expect(detailForm(1548)).toBe('aside');
   });
 
   it('stacks below it, as on 1440 and 1920 screens with the default list', () => {
-    expect(detailForm(1267)).toBe('stacked');
+    expect(detailForm(1239)).toBe('stacked');
     expect(detailForm(691)).toBe('stacked');
     expect(detailForm(1038)).toBe('stacked');
   });
@@ -26,11 +26,12 @@ describe('composition', () => {
   // The detail fills the pane: two 40px gutters, then one column, or main, a 48px gap and an aside
   // that takes a quarter of every pixel past the threshold, between 340 and 440.
   it.each([
-    [1267, { form: 'stacked', main: 1187 }],
-    [1268, { form: 'aside', main: 800, aside: 340 }],
-    [1355, { form: 'aside', main: 865, aside: 362 }],
-    [1517, { form: 'aside', main: 987, aside: 402 }],
-    [1588, { form: 'aside', main: 1040, aside: 420 }],
+    [1239, { form: 'stacked', main: 1159 }],
+    [1240, { form: 'aside', main: 772, aside: 340 }],
+    [1257, { form: 'aside', main: 785, aside: 344 }],
+    [1355, { form: 'aside', main: 858, aside: 369 }],
+    [1517, { form: 'aside', main: 980, aside: 409 }],
+    [1588, { form: 'aside', main: 1033, aside: 427 }],
     [1693, { form: 'aside', main: 1125, aside: 440 }],
     [1748, { form: 'aside', main: 1180, aside: 440 }],
     [2396, { form: 'aside', main: 1828, aside: 440 }],
@@ -39,7 +40,7 @@ describe('composition', () => {
   });
 
   it('leaves no band on the right: gutter, main, gap, aside and gutter fill the pane', () => {
-    for (const pane of [1268, 1300, 1517, 1693, 2396]) {
+    for (const pane of [1240, 1257, 1300, 1517, 1693, 2396]) {
       const { main, aside = 0 } = composition(pane);
       expect(40 + main + 48 + aside + 40).toBe(pane);
     }
