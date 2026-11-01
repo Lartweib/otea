@@ -82,7 +82,7 @@ describe('bug-triage preset', () => {
     expect(validateProject(ctx)).toEqual({ errors: 0, warnings: 0, findings: [] });
   });
 
-  it('lists bugs in a grid, with category and area as enums', () => {
+  it('lists bugs in a grid, with category as an enum and area as free text', () => {
     const preset = requirePreset(ctx.presets, 'bug-triage');
 
     expect(preset.version).toBe(2);
@@ -90,10 +90,7 @@ describe('bug-triage preset', () => {
       module: 'enum',
       values: ['crash', 'visual', 'gameplay', 'physics', 'audio', 'performance', 'ui'],
     });
-    expect(preset.fields.area).toEqual({
-      module: 'enum',
-      values: ['forest biome', 'farm', 'den', 'ui', 'save system'],
-    });
+    expect(preset.fields.area).toEqual({ module: 'text' });
     expect(preset.view).toEqual({
       kind: 'grid',
       groupBy: 'turn',
