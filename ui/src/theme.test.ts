@@ -5,6 +5,7 @@ import {
   readChoice,
   resolveTheme,
   shownChanges,
+  switchMotion,
   THEME_KEY,
   themeLabel,
   writeChoice,
@@ -112,5 +113,22 @@ describe('shownChanges', () => {
     expect(shownChanges('system', 'light', false)).toBe(false);
     expect(shownChanges('dark', 'system', true)).toBe(false);
     expect(shownChanges('light', 'light', true)).toBe(false);
+  });
+});
+
+describe('switchMotion', () => {
+  const env = { prefersDark: false, reduced: false, transitions: true };
+
+  it('reveals the new theme as a circle when the theme on screen changes', () => {
+    expect(switchMotion('light', 'dark', env)).toBe('reveal');
+  });
+
+  it('swaps at once under reduced motion: no transition, so nothing passes through grey', () => {
+    expect(switchMotion('light', 'dark', { ...env, reduced: true })).toBe('instant');
+  });
+
+  it('swaps at once without View Transitions, or when the screen does not change', () => {
+    expect(switchMotion('light', 'dark', { ...env, transitions: false })).toBe('instant');
+    expect(switchMotion('system', 'light', env)).toBe('instant');
   });
 });
