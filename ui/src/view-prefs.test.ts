@@ -19,6 +19,8 @@ const bugs: CollectionView = {
         { name: 'title', module: 'text' },
         { name: 'severity', module: 'severity', values: ['low', 'medium', 'high', 'critical'] },
         { name: 'category', module: 'enum', values: ['crash', 'visual'] },
+        { name: 'area', module: 'text' },
+        { name: 'steps', module: 'markdown' },
       ],
       layout: { header: [], evidence: [], body: [], side: [], row: [], phone: [], intake: [] },
     },
@@ -46,8 +48,10 @@ describe('readViewPrefs', () => {
       group: 'severity',
       sort: null,
       filters: {},
+      columns: ['id', 'title', 'category', 'severity', 'state', 'who', 'age'],
+      widths: {},
     });
-    const list = { ...bugs, view: { ...bugs.view, kind: 'board' as const, groupBy: 'area' } };
+    const list = { ...bugs, view: { ...bugs.view, kind: 'board' as const, groupBy: 'steps' } };
     expect(readViewPrefs(undefined, list)).toMatchObject({ mode: 'list', group: 'turn' });
   });
 
@@ -59,7 +63,7 @@ describe('readViewPrefs', () => {
       'otea.filters.bugs': '{"category":["crash"],"state":["reported"]}',
     });
 
-    expect(readViewPrefs(storage, bugs)).toEqual({
+    expect(readViewPrefs(storage, bugs)).toMatchObject({
       mode: 'list',
       group: 'category',
       sort: { key: 'severity', dir: 'desc' },
@@ -67,19 +71,57 @@ describe('readViewPrefs', () => {
     });
   });
 
+  it('reads free text filters and groups, as their normalized values', () => {
+    const storage = memory({
+      'otea.group.bugs': 'area',
+      'otea.filters.bugs': '{"area":["farm",""],"steps":["x"]}',
+    });
+
+    expect(readViewPrefs(storage, bugs)).toMatchObject({
+      group: 'area',
+      filters: { area: ['farm', ''] },
+    });
+  });
+
+  it('reads the columns shown, id and title always, in their place; the widths of resizable ones', () => {
+    const storage = memory({
+      'otea.columns.bugs': '["state","area","gone",3,"who"]',
+      'otea.widths.bugs': '{"state":150.4,"area":2000,"id":300,"who":90,"category":"wide"}',
+    });
+
+    expect(readViewPrefs(storage, bugs)).toMatchObject({
+      columns: ['id', 'title', 'area', 'state', 'who'],
+      widths: { state: 150, area: 480 },
+    });
+    expect(readViewPrefs(memory({ 'otea.columns.bugs': '{}' }), bugs).columns).toEqual(
+      readViewPrefs(memory(), bugs).columns,
+    );
+  });
+
+  it('keeps a sort only on a column shown', () => {
+    const storage = memory({
+      'otea.columns.bugs': '["state"]',
+      'otea.sort.bugs': '{"key":"severity","dir":"desc"}',
+    });
+
+    expect(readViewPrefs(storage, bugs).sort).toBeNull();
+  });
+
   it('ignores what no longer fits the preset, and what is not well formed', () => {
     const storage = memory({
       'otea.view.bugs': 'board',
-      'otea.group.bugs': 'area',
-      'otea.sort.bugs': '{"key":"area","dir":"asc"}',
-      'otea.filters.bugs': '{"area":["den"],"category":[3,"visual"],"title":["x"]}',
+      'otea.group.bugs': 'steps',
+      'otea.sort.bugs': '{"key":"steps","dir":"asc"}',
+      'otea.filters.bugs': '{"steps":["den"],"category":[3,"visual"],"title":["x"]}',
+      'otea.widths.bugs': '[150]',
     });
 
-    expect(readViewPrefs(storage, bugs)).toEqual({
+    expect(readViewPrefs(storage, bugs)).toMatchObject({
       mode: 'grid',
       group: 'severity',
       sort: null,
       filters: { category: ['visual'] },
+      widths: {},
     });
     expect(readViewPrefs(memory({ 'otea.sort.bugs': '{' }), bugs).sort).toBeNull();
   });
@@ -108,12 +150,15 @@ describe('writeViewPrefs', () => {
       filters: { category: ['crash'] },
     });
     writeViewPrefs(storage, 'bugs', { group: 'turn', sort: null });
+    writeViewPrefs(storage, 'bugs', { columns: ['id', 'title', 'state'], widths: { state: 150 } });
 
     expect(Object.fromEntries(storage.data)).toEqual({
       'otea.view.bugs': 'list',
       'otea.group.bugs': 'turn',
       'otea.sort.bugs': 'null',
       'otea.filters.bugs': '{"category":["crash"]}',
+      'otea.columns.bugs': '["id","title","state"]',
+      'otea.widths.bugs': '{"state":150}',
     });
   });
 });
