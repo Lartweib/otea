@@ -11,8 +11,8 @@ fields:
   environment: { module: text }
   severity: { module: severity, required: complete }
   category: { module: enum, values: [crash, visual, gameplay, physics, audio, performance, ui] }
-  # The part of the product, in the project's words. A project's own preset can make it an enum,
-  # with its own values, to filter and group by it.
+  # The part of the product, in the project's words. The grid filters and groups by it as written,
+  # lowercased; a project's own preset can make it an enum, to fix its values.
   area: { module: text }
 workflow:
   initial: reported
