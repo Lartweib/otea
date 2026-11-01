@@ -1,5 +1,6 @@
+import { relayOf } from './format.ts';
 import type { ButtonVariant } from './kit/Button.tsx';
-import type { ChildrenSummary, Move } from './types.ts';
+import type { ChildrenSummary, ItemEvent, Move, Turn } from './types.ts';
 
 export type ActionState =
   | { step: 'choosing'; error?: string }
@@ -47,6 +48,33 @@ export function moveVariants(
     }
     return 'default';
   });
+}
+
+// The agent a move would hand the item to: the last one that acted on it (or relayed your words).
+export function turnAgent(events: readonly ItemEvent[]): string | undefined {
+  for (const event of [...events].reverse()) {
+    const relay = relayOf(event);
+    if (relay) return relay.via;
+    if (event.actor.kind === 'agent') return event.actor.name;
+  }
+  return undefined;
+}
+
+// What a move does, as the line under the moves says it: whose turn it becomes (and whether the
+// item leaves or joins Waiting for you), or that it closes the item; and that it asks a reason.
+export function moveSays(move: Move, item: { turn: Turn; agent?: string | undefined }): string {
+  const parts: string[] = [];
+  if (move.closes || move.turn === 'none') {
+    parts.push(move.closes ? `closes the item as ${move.closes}` : 'closes the item');
+  } else if (move.turn === 'agent') {
+    parts.push(item.agent ? `${item.agent}’s turn` : 'an agent’s turn');
+    if (item.turn === 'human') parts.push('it leaves Waiting for you');
+  } else {
+    parts.push('your turn');
+    if (item.turn !== 'human') parts.push('it comes to Waiting for you');
+  }
+  if (move.reasonRequired) parts.push('asks a reason first');
+  return parts.join(' · ');
 }
 
 export function reduceAction(state: ActionState, event: ActionEvent): ActionState {

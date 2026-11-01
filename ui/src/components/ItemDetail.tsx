@@ -1,7 +1,9 @@
 import { type ReactNode, useLayoutEffect, useRef, useState } from 'react';
+import { turnAgent } from '../actions.ts';
 import { DETAILS_ROWS, detailsCut } from '../detail-form.ts';
 import { leftovers } from '../evidence.ts';
 import { actorLabel, leaseLabel, momentLabel } from '../format.ts';
+import { agoLabel } from '../handoff.ts';
 import { useActiveLease } from '../hooks.ts';
 import { TypeIcon } from '../icons/TypeIcon.tsx';
 import {
@@ -146,6 +148,8 @@ export function ItemDetail({
   const form = useDetailForm(root, layout === 'pane');
   // Which item's long Details is shown whole in the band.
   const [allDetails, setAllDetails] = useState<string | null>(null);
+  // The last move made here, said under the moves once the item has taken it.
+  const [landed, setLanded] = useState<{ id: string; to: string; at: string } | null>(null);
   const type = typeOf(collection, item.type);
   const kind = itemNodeKind(item, type, lease !== null);
   const { head, primary, side } = detailBlocks(type, item.fields);
@@ -241,13 +245,33 @@ export function ItemDetail({
   const structureParts = structure.map(block).filter((part) => part !== null);
   const standing = lease ? `${lease.holder} is on it` : TURN_LABEL[item.turn];
   const unfolded = layout === 'unfold';
+  const agent = turnAgent(item.events);
+  const receipt =
+    landed && landed.id === item.id && landed.to === item.state ? (
+      <span className="move-receipt">
+        <b>{landed.to}</b> · now{' '}
+        {item.turn === 'human'
+          ? 'your turn'
+          : item.turn === 'agent'
+            ? `${agent ?? 'an agent'}’s turn`
+            : 'closed'}{' '}
+        · {agoLabel(landed.at, Date.now())}
+      </span>
+    ) : undefined;
   const actions = canWrite ? (
     <ItemActions
       key={`${item.id}:${item.state}`}
       id={item.id}
       moves={item.transitions}
       openChildren={item.children}
-      onMoved={onMoved}
+      turn={item.turn}
+      agent={agent}
+      receipt={receipt}
+      compact={layout === 'unfold'}
+      onMoved={(to) => {
+        setLanded({ id: item.id, to, at: new Date().toISOString() });
+        onMoved?.();
+      }}
     />
   ) : (
     <p className="t-small">
