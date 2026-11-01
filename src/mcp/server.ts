@@ -32,7 +32,15 @@ export const AGENT_COMMANDS = [
   'wait',
 ] as const;
 
-export const CLI_ONLY_COMMANDS = ['init', 'collection add', 'validate', 'serve', 'open', 'mcp'];
+export const CLI_ONLY_COMMANDS = [
+  'init',
+  'connect',
+  'collection add',
+  'validate',
+  'serve',
+  'open',
+  'mcp',
+];
 
 const READ_ONLY = new Set(['playbook', 'list', 'show', 'events', 'wait']);
 
@@ -108,6 +116,7 @@ function inputFor(
       throw new Error('No browser to open over MCP');
     },
     warn: context.warn,
+    ask: async () => undefined,
     print: (data) => records.push(data),
     args: command.args.map((name) => String(values[name] ?? '')),
     flag: (name) => values[name] === true,
