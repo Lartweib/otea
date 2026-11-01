@@ -128,7 +128,7 @@ The items view is the **Split** composition: the sidebar, the list, the divider 
 
 Below 48rem the workspace is the phone layout (see Phone). Routes: `#<id>` selects an item, `#/modules` opens the catalog, `#/triage` opens triage.
 
-The detail is a **margin index**. The header holds the node, the id, the state pill and whose turn it is, with the type icon and its name at the end of the row (`epic`; a preset without types is named after itself), then the title (30/700) and the moves. Below it, each section is named in a 96px left margin (14/600) above a hairline, its content in the reading column beside it (above it on a phone or in a pane narrower than 34rem):
+The detail is a **margin index**. The header holds the node, the id, the state pill and whose turn it is, with the type icon and its name at the end of the row (`epic`; a preset without types is named after itself), then the title (30/700, at most 28ch, balanced), the handoff line and the moves. Below it, each section is named in a 96px left margin (14/600) above a hairline, its content in the reading column beside it (above it on a phone or in a pane narrower than 34rem):
 
 | Section | Content |
 | --- | --- |
@@ -139,18 +139,30 @@ The detail is a **margin index**. The header holds the node, the id, the state p
 
 What the detail shows follows the item type's layout (`detailBlocks` in `ui/src/item-types.ts`, tested). The evidence list (every attached file) sits at the first evidence module (`images`, `recording`, `diff`, `log`), or after the fields when the layout places none. Reserved modules draw nothing yet. Values whose field the type does not declare still show, as plain text, at the end of the body. A type without a layout draws as before layouts: every field in the body. The list row draws the `row` slot (a module's `rowColumn` puts it in the priority column or among the signals), and the create form asks for the `intake` slot's fields, with a **Type** select after the collection when the collection has several types.
 
-### The aside
+### The handoff line
 
-On a wide pane the detail becomes two columns (`detailForm` in `ui/src/detail-form.ts`, tested). From a detail pane of 1268px (40 gutter + 800 main + 48 gap + 340 aside + 40 gutter), the main column keeps the header (id, state, turn, type), the title, the moves, Brief, the evidence and Structure, and an **aside** beside it holds Details (collection, created by, updated, and any modules the preset's layout puts in the `side` slot) on top, then History, newest first. Below the threshold everything stacks as before. On a 2560 screen the default list leaves a 1516px pane, so the aside shows; on 1440 and 1920 it stacks unless the list is narrowed or the sidebar folded.
+One line under the title (`HandoffLine`, logic in `ui/src/handoff.ts`, tested) says who handed the item over, when and what they said, then what to look at first, each part after a short 1px rule (a part that wraps starts its line without one). It is read only from what the item holds, never guessed:
+
+- **Who and when**: the item's last move, or its creation while nothing moved it: `claude-b moved it to review · 14m ago` (`created it` for a creation), the actor's two-letter mark in a mono chip first (`cb`; none for you). A relayed decision names the agent that relayed it (`claude-a relayed your move to discarded`). The reason the move carried, or your relayed words, follows in quotes. A move says its target state; Otea never turns a state's name into a verb.
+- **Evidence**: two image thumbnails (40×26, for a signed-in browser) and the count of files.
+- **Severity**: when the type has a `severity` field with a value, its bars and level.
+- **One relation**: the first the detail lists, children aside (`duplicates BUGS-1`, linking to it).
+- **A parent**: instead of the relation, its children's bar and `4 of 5 open`, then `waiting for you:` with a link to each child on your turn.
+
+### The band and the aside
+
+On a wide pane the detail becomes two columns (`composition` and `detailForm` in `ui/src/detail-form.ts`, tested). It **fills the pane**: with C = pane − 80 (its two 40px gutters), stacked (pane < 1268) main is C; in two columns the aside is clamp(340, round(340 + (C − 1188) / 4), 440) and main is C − 48 − aside, so the aside takes a quarter of every pixel past the threshold and main the rest. No screen leaves an empty band on the right. Prose (the lead and markdown) keeps its 72ch measure inside main; fields, the evidence list (files side by side), children, relations and tables use the full width. The list keeps the width it was given: the detail never moves the divider. CSS computes the same widths from the pane, its container (`--aside` from `100cqw`, main the rest), so nothing waits for script while the divider is dragged.
 
 | | Spec |
 | --- | --- |
-| Widths | Main 800 (prose 72ch). Aside 340–380px; past 380 the rest is right margin. The 48px gap holds a 1px `--line` rule at its middle. |
-| Alignment | The aside starts on the Brief's row, so Details' hairline continues the Brief's. In the aside the section names sit on top (14/600, History's count in mono beside it), and Details' terms narrow to 88px; stacked, they stay in the margin. |
-| Sticky | The aside sticks 16px under the top of the pane and is never taller than the room it has under its top (`asideHeight`, at least 240px), so a long history scrolls inside it and never lengthens the pane. It scrolls on its own; overscroll is contained. |
-| History | Mono time, the event wrapping under itself, who acted on a muted line below; one lane with today's dots (yours, an agent's, a relayed ring). In every form an older day sits over its time (31 Oct over 23:58, with the year from another year), and the time column is as wide as its longest label: 01:19 alone when everything happened today. |
+| Widths | 2560 with the sidebar open (pane 1506): main 978, aside 400. Folded (1682): main 1114, aside 440. The 48px gap holds a 1px `--line` rule at its middle. |
+| The band | The header and Details form a band; both start on the meta row ("Details" sits on its 22px line), and Details sits boxed in the second column, its rule running from the band's top to the line. |
+| The line | One 1px `--line` hairline across both columns closes the band, 28px under the taller of the header and Details and 28px over the body. It replaces the Brief's own hairline. |
+| Long Details | From the sixth row, Details shows five and a `N more` toggle (`detailsCut`), so the band never grows much past the header. |
+| History | Below the line, beside Brief and Structure, its top on the Brief's label. Sticky 16px under the pane's top, never taller than the room under it (`asideHeight`, at least 240px), scrolling on its own; overscroll is contained. Mono time, the event wrapping under itself, who acted on a muted line below; one lane with today's dots (yours, an agent's, a relayed ring). In every form an older day sits over its time (31 Oct over 23:58, with the year from another year), and the time column is as wide as its longest label: 01:19 alone when everything happened today. |
+| Stacked | No band: header, Brief, Structure, Details, History, in one column. |
 | When it switches | The pane is measured with a `ResizeObserver` (`ui/src/components/detail-aside.ts`). While the divider is dragged the layout follows the pointer and the form waits for the release; a sidebar fold (or a step of the divider from the keyboard) switches at once; a window resize switches after 150ms of quiet. The pane always keeps its scrollbar's gutter (`scrollbar-gutter: stable`), so the width measured never depends on the form: otherwise a form that makes the pane scroll (the aside, or its travel, on a short item) narrows it under the threshold and the two forms swap every frame. |
-| Motion | Details and History travel from where they were (FLIP) on `--m-slow` with `--m-ease`, on one path of three legs (`travelPath`, tested): to the aside they go sideways first, out of the main column, and rise after; back, they drop first, then slide; they never cross the main column. Their content dips to 50% opacity while it re-flows. A pane that slides at the same time (a sidebar fold) carries them. Reduced motion: a 120ms crossfade. |
+| Motion | Details (into the band, or back under Structure) and History (beside the main column, or back to the end) travel from where they were (FLIP) on `--m-slow` with `--m-ease`, each on its own path of three legs (`travelPath`, tested): to two columns they go sideways first, out of the main column, then rise; back, they drop first while clear of it, then slide. The pane clips them horizontally, so a flight never gives it a scrollbar. Their content dips to 50% opacity while it re-flows. A pane that slides at the same time (a sidebar fold) carries them. Reduced motion: a 120ms crossfade. |
 
 The phone's unfolded detail is always one column.
 
@@ -171,6 +183,7 @@ The history in the detail (`ui/src/components/Timeline.tsx`) is the item's past,
 ## Controls
 
 - **Buttons** are pills: `Button` with `primary`, `quiet`, `sm` and `icon`. One primary per screen, always the move that hands the turn on (`moveVariants` in `ui/src/actions.ts`); moves that throw work away are quiet.
+- **Moves** (`ItemActions`) are text only: the target state's name, with `…` when the move asks a reason; no icons, route glyphs or key letters. Moves that throw work away sit last, after a short rule and `close as`, quieter. On hover a line draws itself around the move, the list's line language: ink around a plain move, a 1.5px ring in your color 3px outside the primary, an underline (and text from `--mut` to `--ink`) under a closing move. Nothing fills. Focus keeps the native ring and draws nothing. One mono line under the row says what the hovered or focused move does, the primary's by default (`moveSays`, tested): whose turn it becomes, from the target state's turn (the agent named is the last one that acted on the item, `turnAgent`), and whether it leaves or joins Waiting for you, or plainly that it closes the item (`closes the item as discarded`), then `asks a reason first`. A move waiting for children is dashed, never drawn, with its reason beside it. Moves that need a reason open the reason form. Once a move you made lands, the line becomes its receipt (`accepted · now claude-b’s turn · just now`) until another move is hovered. The phone's bar of moves keeps one run, without `close as` or the line.
 - **Pills** (`Pill`): mono tags; `ask` for an open question for you, `state` for a workflow state (tinted in your color when it waits for you); `size="sm"` inside a list row.
 - **Type tag** (`TypeTag`): the item type's short name (`bug`, `impr`), mono 10.5/500 in `--mut`, in a square box (2px radius, 1px `--line` ring), so it never reads as a pill or a state; never in your color. Shown first in a row's meta line, in the detail and the triage card tags, only when the item's collection has two or more types and the type has no icon (the icon marks it then); the label (`Improvement`) is its tooltip.
 - **Type icons** (`TypeIcon`, `ui/src/icons/`): the icon a preset gives a type (`icon: bug`), drawn by Otea on a 24 grid with a 1.5px non-scaling stroke, round caps and joins, current color; a plain circle is never the silhouette (a circle is a turn node). 96 icons in six groups (work, code, design and media, docs and talk, game and creatures, status and flow). The names come from the core (`ICON_NAMES` in `src/core/icons.ts`) and the catalog is keyed by them, so a name without a drawing fails the UI typecheck. 16px before a row's title, 14px in a child row, a children or relations row and the detail header. No icon means no icon, and a name the UI does not know draws nothing.
@@ -250,6 +263,11 @@ The turn change keeps its own family (see below): `--travel` 680ms with `--e-mov
 | Reset the divider | list and detail | `--list-w`, eased | base |
 | Select a row | the selection band; the detail coming in (the old one leaves at once) | background-color; opacity · translateY 6px | fast; base |
 | Turn change | the carried row | lift, carry, set down | 680 |
+| Hover a move | its line draws clockwise from the top-left round, and undraws the way it came | `stroke-dashoffset` 1 → 0 | slow in, base out |
+| | a closing move's underline, left to right; its text to ink | scaleX; color | base; fast |
+| Press a move | the pill | scale .97 | fast |
+| Commit a move | the moves fade after the press; the line becomes a receipt; the node morphs and the row carries | opacity · translateY −4px; opacity; the turn change | slow at +120; slow; 680 |
+| Reduced motion | a move's line or underline fades in whole: no draw, no scale | opacity | fast |
 
 ### Tree draw
 
