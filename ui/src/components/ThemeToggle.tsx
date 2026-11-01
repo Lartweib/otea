@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Button, Icon, type IconName } from '../kit/index.ts';
 import { nextChoice, type ThemeChoice, themeLabel } from '../theme.ts';
-import { loadChoice, saveChoice } from '../theme-dom.ts';
+import { loadChoice, switchChoice } from '../theme-dom.ts';
 
 const ICON: Record<ThemeChoice, IconName> = { system: 'system', light: 'sun', dark: 'moon' };
 
@@ -15,8 +15,8 @@ export function ThemeToggle() {
       icon
       aria-label={`${themeLabel(choice)}. Switch to ${next}.`}
       title={themeLabel(choice)}
-      onClick={() => {
-        saveChoice(next);
+      onClick={(event) => {
+        switchChoice(choice, next, event.currentTarget);
         setChoice(next);
       }}
     >
