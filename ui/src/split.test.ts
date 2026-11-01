@@ -1,17 +1,25 @@
 import { describe, expect, it } from 'vitest';
 import {
+  clampGridWidth,
   clampListWidth,
   DETAIL_MIN,
+  defaultGridWidth,
   defaultListWidth,
   dividerKeyWidth,
   forgetListWidth,
+  GRID_WIDTH,
+  GRID_WIDTH_KEY,
+  gridDocked,
+  gridMax,
   LIST_WIDTH,
   LIST_WIDTH_KEY,
   listMax,
+  readGridWidth,
   readListWidth,
   readSidebar,
   SIDEBAR_KEY,
   type SplitStorage,
+  writeGridWidth,
   writeListWidth,
   writeSidebar,
 } from './split.ts';
@@ -138,5 +146,41 @@ describe('dividerKeyWidth', () => {
     expect(dividerKeyWidth('ArrowLeft', true, 350, 783)).toBe(340);
     expect(dividerKeyWidth('ArrowRight', true, 760, 783)).toBe(783);
     expect(dividerKeyWidth('Enter', false, 520, 783)).toBeUndefined();
+  });
+
+  it('moves the grid past the list limit, up to the room it has', () => {
+    expect(dividerKeyWidth('ArrowRight', true, 1100, 1500, GRID_WIDTH)).toBe(1164);
+    expect(dividerKeyWidth('End', false, 1100, 1500, GRID_WIDTH)).toBe(1500);
+    expect(dividerKeyWidth('Home', false, 1100, 1500, GRID_WIDTH)).toBe(340);
+  });
+});
+
+describe('the grid beside the detail', () => {
+  it('takes up to 1320px and leaves the detail 520 by default, never under 340', () => {
+    expect(defaultGridWidth(1223)).toBe(694);
+    expect(defaultGridWidth(2343)).toBe(1320);
+    expect(defaultGridWidth(700)).toBe(340);
+  });
+
+  it('may grow until the detail keeps 440px', () => {
+    expect(gridMax(1223)).toBe(774);
+    expect(gridMax(600)).toBe(340);
+    expect(clampGridWidth(2000, gridMax(1223))).toBe(774);
+    expect(clampGridWidth(100, 774)).toBe(340);
+  });
+
+  it('keeps the detail docked once the room holds a full grid and 560px beside it', () => {
+    expect(gridDocked(2343)).toBe(true);
+    expect(gridDocked(1703)).toBe(false);
+    expect(gridDocked(1889)).toBe(true);
+  });
+
+  it('remembers the grid width apart from the list width', () => {
+    const storage = memory();
+    writeGridWidth(storage, 1012.4);
+
+    expect(storage.getItem(GRID_WIDTH_KEY)).toBe('1012');
+    expect(readGridWidth(storage)).toBe(1012);
+    expect(readGridWidth(memory())).toBeUndefined();
   });
 });

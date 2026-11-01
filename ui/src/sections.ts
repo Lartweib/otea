@@ -1,8 +1,10 @@
-import type { Item, Turn } from './types.ts';
+import type { CollectionView, Item, Turn } from './types.ts';
 
-export type Section = { turn: Turn; title: string; items: Item[] };
+// A group of the list or the grid. Grouped by turn, a section holds one turn (and stays even when
+// empty); grouped by anything else it has no turn of its own, and its rows sit on their own lanes.
+export type Section = { key: string; turn?: Turn; title: string; items: Item[] };
 
-const SECTIONS: ReadonlyArray<Omit<Section, 'items'>> = [
+const SECTIONS: ReadonlyArray<Omit<Section, 'items' | 'key'> & { turn: Turn }> = [
   { turn: 'human', title: 'Waiting for you' },
   { turn: 'agent', title: 'With agents' },
   { turn: 'none', title: 'Closed' },
@@ -14,6 +16,65 @@ const byClosedRecency = (a: Item, b: Item) => Date.parse(b.updatedAt) - Date.par
 export function groupByTurn(items: readonly Item[]): Section[] {
   return SECTIONS.map((section) => {
     const own = items.filter((item) => item.turn === section.turn);
-    return { ...section, items: section.turn === 'none' ? own.sort(byClosedRecency) : own };
+    const sorted = section.turn === 'none' ? own.sort(byClosedRecency) : own;
+    return { ...section, key: section.turn, items: sorted };
+  });
+}
+
+// What a collection can be grouped by: turn, state, its type when it has several, and every enum or
+// severity field all its types have, in the order they declare them.
+export function groupings(collection: CollectionView): string[] {
+  const [first, ...rest] = collection.types;
+  const fields = (first?.fields ?? []).filter(
+    ({ name, module }) =>
+      (module === 'enum' || module === 'severity') &&
+      rest.every((type) => type.fields.some((field) => field.name === name)),
+  );
+  return [
+    'turn',
+    'state',
+    ...(collection.types.length > 1 ? ['type'] : []),
+    ...fields.map(({ name }) => name),
+  ];
+}
+
+// The groups a grouping makes, in order, and how to read an item's group.
+function groupsOf(
+  by: string,
+  collection: CollectionView,
+): { values: string[]; of: (item: Item) => string } {
+  if (by === 'state') {
+    const states = collection.types.flatMap((type) => type.states.map(({ name }) => name));
+    return { values: [...new Set(states)], of: (item) => item.state };
+  }
+  if (by === 'type') {
+    return { values: collection.types.map(({ name }) => name), of: (item) => item.type };
+  }
+  const field = collection.types[0]?.fields.find(({ name }) => name === by);
+  const values = field?.module === 'severity' ? [...(field.values ?? [])].reverse() : field?.values;
+  return { values: [...(values ?? []), ''], of: (item) => item.fields[by] ?? '' };
+}
+
+// Grouped by anything but turn, only the groups that hold items show, those without a value last.
+// A grouping the collection does not offer (the preset changed) falls back to turn.
+export function groupItems(
+  items: readonly Item[],
+  by: string,
+  collection: CollectionView | undefined,
+): Section[] {
+  if (by === 'turn' || !collection || !groupings(collection).includes(by))
+    return groupByTurn(items);
+  const { values: declared, of } = groupsOf(by, collection);
+  // A value the preset no longer lists (an older item) still shows, in a group of its own.
+  const stale = items.map(of).filter((value) => value !== '' && !declared.includes(value));
+  const values = [...declared.filter((value) => value !== ''), ...new Set(stale), ''];
+  const labelOf = (key: string) => {
+    if (key === '') return `no ${by}`;
+    if (by !== 'type') return key;
+    return collection.types.find(({ name }) => name === key)?.label ?? key;
+  };
+  return values.flatMap((key) => {
+    const own = items.filter((item) => of(item) === key);
+    return own.length === 0 ? [] : [{ key, title: labelOf(key), items: own }];
   });
 }

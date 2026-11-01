@@ -84,24 +84,81 @@ export function writeSidebar(storage: SplitStorage | undefined, shown: boolean):
   write(storage, SIDEBAR_KEY, shown ? 'on' : 'off');
 }
 
+// The limits a pane's width keeps to: the list's, or the grid's (no limit of its own past the room).
+export type WidthLimits = { readonly min: number; readonly max: number };
+
 // The width a key on the focused divider asks for, or undefined for a key it does not use.
 export function dividerKeyWidth(
   key: string,
   shift: boolean,
   width: number,
   max: number,
+  limits: WidthLimits = LIST_WIDTH,
 ): number | undefined {
   const step = shift ? DIVIDER_STEP.large : DIVIDER_STEP.small;
+  const clamp = (next: number) => clampWidth(next, max, limits);
   switch (key) {
     case 'ArrowLeft':
-      return clampListWidth(width - step, max);
+      return clamp(width - step);
     case 'ArrowRight':
-      return clampListWidth(width + step, max);
+      return clamp(width + step);
     case 'Home':
-      return LIST_WIDTH.min;
+      return limits.min;
     case 'End':
-      return clampListWidth(LIST_WIDTH.max, max);
+      return clamp(Math.min(limits.max, max));
     default:
       return undefined;
+  }
+}
+
+function clampWidth(width: number, max: number, limits: WidthLimits): number {
+  if (limits === LIST_WIDTH) return clampListWidth(width, max);
+  return clampGridWidth(width, max);
+}
+
+// ---- the grid beside the detail ----
+// The grid pane takes up to the table's own measure (1320px) and leaves the detail 520 by default;
+// it may grow until the detail keeps 440. Once the room holds a full grid and 560px beside it, the
+// detail stays docked; otherwise the grid takes the whole room until an item is opened.
+export const GRID_WIDTH = { min: 340, max: Number.POSITIVE_INFINITY } as const;
+export const GRID_CAP = 1320;
+const GRID_DETAIL = 520;
+const DOCKED_DETAIL = 560;
+const DIVIDER_W = 9;
+
+export const GRID_WIDTH_KEY = 'otea.gridWidth';
+
+export function gridMax(room: number): number {
+  return Math.max(GRID_WIDTH.min, Math.floor(room - DIVIDER_W - DETAIL_MIN));
+}
+
+export function clampGridWidth(width: number, max: number): number {
+  if (!Number.isFinite(width)) return GRID_WIDTH.min;
+  return Math.round(Math.max(GRID_WIDTH.min, Math.min(max, width)));
+}
+
+export function defaultGridWidth(room: number): number {
+  return clampGridWidth(Math.min(GRID_CAP, room - DIVIDER_W - GRID_DETAIL), gridMax(room));
+}
+
+export function gridDocked(room: number): boolean {
+  return room - DIVIDER_W - GRID_CAP >= DOCKED_DETAIL;
+}
+
+export function readGridWidth(storage: SplitStorage | undefined): number | undefined {
+  const raw = read(storage, GRID_WIDTH_KEY);
+  const width = raw === null || raw.trim() === '' ? Number.NaN : Number(raw);
+  return Number.isFinite(width) ? clampGridWidth(width, Number.POSITIVE_INFINITY) : undefined;
+}
+
+export function writeGridWidth(storage: SplitStorage | undefined, width: number): void {
+  write(storage, GRID_WIDTH_KEY, String(clampGridWidth(width, Number.POSITIVE_INFINITY)));
+}
+
+export function forgetGridWidth(storage: SplitStorage | undefined): void {
+  try {
+    storage?.removeItem?.(GRID_WIDTH_KEY);
+  } catch {
+    // Nothing to forget in a browser that refuses storage.
   }
 }

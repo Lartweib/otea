@@ -143,7 +143,7 @@ export type TypeView = {
 
 // How a collection lists its items. Only a list grouped by turn is drawn yet: every other kind and
 // grouping falls back to it.
-export type ViewSpec = { kind: 'list' | 'board' | 'grid'; groupBy: string };
+export type ViewSpec = { kind: 'list' | 'board' | 'grid'; groupBy: string; columns: string[] };
 
 export type CollectionView = {
   name: string;
