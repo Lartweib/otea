@@ -43,7 +43,11 @@ describe('preset views', () => {
       },
     ]);
     expect(views[1]?.types.map(({ name, label }) => [name, label])).toEqual([['item', 'Item']]);
-    expect(views[1]?.view).toEqual({ kind: 'list', groupBy: 'turn' });
+    expect(views[1]?.view).toEqual({
+      kind: 'list',
+      groupBy: 'turn',
+      columns: ['id', 'title', 'priority', 'state', 'who', 'age'],
+    });
   });
 
   it('names the collections that use each preset', () => {

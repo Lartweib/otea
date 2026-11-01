@@ -1,7 +1,7 @@
 import { parse } from 'yaml';
 import { z } from 'zod';
 import { OteaError } from './errors.ts';
-import { iconProblem } from './icons.ts';
+import { closeNames, iconProblem } from './icons.ts';
 import {
   FIELD_MODULES,
   type FieldModule,
@@ -51,8 +51,14 @@ export const VIEW_KINDS = ['list', 'board', 'grid'] as const;
 
 export type ViewKind = (typeof VIEW_KINDS)[number];
 
-// How a collection lists its items. groupBy is turn, state, type or an enum or severity field.
-export type CollectionLayout = { kind: ViewKind; groupBy: string };
+// The columns of the grid that every collection can draw, beside its fields.
+export const BUILT_IN_COLUMNS = ['id', 'title', 'state', 'type', 'who', 'age'] as const;
+
+// How a collection lists its items. groupBy is turn, state, type or an enum or severity field;
+// columns are what the grid shows, in order: built-in columns and one-line fields (enum, severity,
+// text), the preset's own or, without them, id, title, the row slot's one-line fields, state, who
+// and age.
+export type CollectionLayout = { kind: ViewKind; groupBy: string; columns: string[] };
 
 export type Preset = {
   name: string;
@@ -126,7 +132,11 @@ const presetSchema = z.strictObject({
   layout: layoutSchema.optional(),
   icon: z.string().optional(),
   view: z
-    .strictObject({ kind: z.enum(VIEW_KINDS).optional(), group_by: z.string().optional() })
+    .strictObject({
+      kind: z.enum(VIEW_KINDS).optional(),
+      group_by: z.string().optional(),
+      columns: z.array(z.string()).nonempty().optional(),
+    })
     .optional(),
 });
 
@@ -380,19 +390,71 @@ function readTypes(raw: RawPreset, fields: Record<string, FieldSpec>, workflow: 
 
 const GROUPS = ['turn', 'state', 'type'];
 
-function readView(raw: RawPreset, types: ItemType[]) {
-  const view: CollectionLayout = {
-    kind: raw.view?.kind ?? 'list',
-    groupBy: raw.view?.group_by ?? 'turn',
-  };
-  const { groupBy } = view;
+// A column holds one line: a field of these modules can be one.
+const ONE_LINE: readonly string[] = ['enum', 'severity', 'text'];
+
+function moduleOf(types: ItemType[], name: string): FieldModule | undefined {
+  return types.map((type) => type.fields[name]?.module).find((module) => module !== undefined);
+}
+
+function groupProblems(groupBy: string, types: ItemType[]): string[] {
   const grouping = (type: ItemType) => {
     const module = type.fields[groupBy]?.module;
     return module === 'enum' || module === 'severity';
   };
-  if (GROUPS.includes(groupBy) || types.every(grouping)) return { view, problems: [] };
-  const problem = `view.group_by: "${groupBy}" is not turn, state, type or an enum or severity field of every type`;
-  return { view, problems: [problem] };
+  if (GROUPS.includes(groupBy) || types.every(grouping)) return [];
+  const module = moduleOf(types, groupBy);
+  if (module !== undefined && types.every((type) => type.fields[groupBy])) {
+    return [`view.group_by: ${groupBy} is ${module}, so it cannot group (make it an enum)`];
+  }
+  return [
+    `view.group_by: "${groupBy}" is not turn, state, type or an enum or severity field of every type`,
+  ];
+}
+
+// Without columns of its own, the grid shows the row slot's one-line fields between title and state.
+function defaultColumns(types: ItemType[]): string[] {
+  const row = types.flatMap((type) =>
+    type.layout.row.flatMap(({ field }) =>
+      field !== undefined && ONE_LINE.includes(type.fields[field]?.module ?? '') ? [field] : [],
+    ),
+  );
+  return ['id', 'title', ...new Set(row), 'state', 'who', 'age'];
+}
+
+function columnProblems(columns: string[], types: ItemType[]): string[] {
+  const fields = [...new Set(types.flatMap((type) => Object.keys(type.fields)))];
+  const known: readonly string[] = BUILT_IN_COLUMNS;
+  const problems = columns.flatMap((column, index) => {
+    const at = `view.columns[${index}]`;
+    if (columns.indexOf(column) !== index) return [`${at}: "${column}" is listed twice`];
+    if (known.includes(column)) return [];
+    const module = moduleOf(types, column);
+    if (module === undefined) {
+      const close = closeNames(column, [...known, ...fields]);
+      const hint = close.length > 0 ? ` (did you mean ${close.join(', ')}?)` : '';
+      return [`${at}: unknown column "${column}"${hint}`];
+    }
+    if (!ONE_LINE.includes(module))
+      return [`${at}: ${column} is ${module}; a column holds one line`];
+    return [];
+  });
+  if (!columns.includes('title')) problems.push('view.columns: title is always shown; list it');
+  return problems;
+}
+
+function readView(raw: RawPreset, types: ItemType[]) {
+  const declared = raw.view?.columns;
+  const view: CollectionLayout = {
+    kind: raw.view?.kind ?? 'list',
+    groupBy: raw.view?.group_by ?? 'turn',
+    columns: declared ?? defaultColumns(types),
+  };
+  const problems = [
+    ...groupProblems(view.groupBy, types),
+    ...(declared ? columnProblems(declared, types) : []),
+  ];
+  return { view, problems };
 }
 
 function parseYaml(text: string): { ok: true; value: unknown } | { ok: false; problem: string } {

@@ -409,7 +409,11 @@ describe('item types', () => {
         layout: defaultLayout(preset.fields),
       },
     ]);
-    expect(preset.view).toEqual({ kind: 'list', groupBy: 'turn' });
+    expect(preset.view).toEqual({
+      kind: 'list',
+      groupBy: 'turn',
+      columns: ['id', 'title', 'priority', 'state', 'who', 'age'],
+    });
   });
 
   it('reads declared types: shared fields plus their own, their own workflow or the preset one', () => {
@@ -432,7 +436,7 @@ describe('item types', () => {
     const raw = twoTypes();
     raw.view = { kind: 'board', group_by: 'type' };
 
-    expect(parsePreset(stringify(raw)).view).toEqual({ kind: 'board', groupBy: 'type' });
+    expect(parsePreset(stringify(raw)).view).toMatchObject({ kind: 'board', groupBy: 'type' });
   });
 
   it.each<[string, (raw: Raw) => void, string]>([
@@ -490,7 +494,7 @@ describe('item types', () => {
     [
       'grouping by a field that is not an enum',
       (raw) => (raw.view = { group_by: 'area' }),
-      'view.group_by: "area" is not turn, state, type or an enum or severity field of every type',
+      'view.group_by: area is text, so it cannot group (make it an enum)',
     ],
     [
       'grouping by a field only some types have',
@@ -563,7 +567,64 @@ describe('item types', () => {
     raw.fields.priority = { module: 'enum', values: ['low', 'high'] };
     raw.view = { group_by: 'priority' };
 
-    expect(parsePreset(stringify(raw)).view).toEqual({ kind: 'list', groupBy: 'priority' });
+    expect(parsePreset(stringify(raw)).view).toMatchObject({ kind: 'list', groupBy: 'priority' });
+  });
+});
+
+describe('the grid columns of the collection view', () => {
+  it('reads the columns in their order', () => {
+    const raw = twoTypes();
+    raw.view = {
+      kind: 'grid',
+      columns: ['id', 'title', 'severity', 'area', 'state', 'who', 'age'],
+    };
+
+    expect(parsePreset(stringify(raw)).view).toEqual({
+      kind: 'grid',
+      groupBy: 'turn',
+      columns: ['id', 'title', 'severity', 'area', 'state', 'who', 'age'],
+    });
+  });
+
+  it('falls back to id, title, the one-line fields of the row slot, state, who and age', () => {
+    const raw = twoTypes();
+    raw.types.bug.layout.row = ['severity', 'area'];
+    raw.types.impr.layout = { row: ['area', 'pitch'] };
+    raw.view = { kind: 'grid' };
+
+    expect(parsePreset(stringify(raw)).view.columns).toEqual([
+      'id',
+      'title',
+      'severity',
+      'area',
+      'state',
+      'who',
+      'age',
+    ]);
+  });
+
+  it('takes a field only some types have: the others show an empty cell', () => {
+    const raw = twoTypes();
+    raw.view = { columns: ['id', 'title', 'severity', 'type'] };
+
+    expect(parsePreset(stringify(raw)).view.columns).toEqual(['id', 'title', 'severity', 'type']);
+  });
+
+  it.each<[string, string[], string]>([
+    [
+      'an unknown column, with the close matches',
+      ['id', 'title', 'areas'],
+      'view.columns[2]: unknown column "areas" (did you mean area?)',
+    ],
+    [
+      'a markdown field',
+      ['id', 'title', 'pitch'],
+      'view.columns[2]: pitch is markdown; a column holds one line',
+    ],
+    ['a column listed twice', ['id', 'title', 'id'], 'view.columns[2]: "id" is listed twice'],
+    ['columns without the title', ['id', 'state'], 'view.columns: title is always shown; list it'],
+  ])('rejects %s', (_, columns, problem) => {
+    expect(typeProblems((raw) => (raw.view = { kind: 'grid', columns }))).toContain(problem);
   });
 });
 

@@ -128,7 +128,11 @@ describe('item types', () => {
     const work = listCollectionViews(ctx).find(({ name }) => name === 'work');
     const preset = listPresetViews(ctx).find(({ name }) => name === 'work');
 
-    expect(work?.view).toEqual({ kind: 'list', groupBy: 'turn' });
+    expect(work?.view).toEqual({
+      kind: 'list',
+      groupBy: 'turn',
+      columns: ['id', 'title', 'area', 'severity', 'state', 'who', 'age'],
+    });
     expect(work?.types.map(({ name, label, initial }) => [name, label, initial])).toEqual([
       ['bug', 'Bug', 'reported'],
       ['impr', 'Improvement', 'idea'],

@@ -131,18 +131,27 @@ function distance(a: string, b: string): number {
   return at(a.length, b.length);
 }
 
-// The icon names closest to a mistyped one: those containing it (or contained in it) first, then
-// those a few edits away, nearest first.
-export function closeIconNames(name: string, limit = 3): IconName[] {
+// The names closest to a mistyped one: those containing it (or contained in it) first, then those
+// a few edits away, nearest first.
+export function closeNames<T extends string>(name: string, names: readonly T[], limit = 3): T[] {
   const needle = name.trim().toLowerCase();
   const allowed = needle.length <= 4 ? 1 : 2;
-  const contains = (icon: string) =>
-    needle.length >= 3 && (icon.includes(needle) || needle.includes(icon));
-  return ICON_NAMES.map((icon) => ({ icon, edits: distance(needle, icon), part: contains(icon) }))
+  const contains = (candidate: string) =>
+    needle.length >= 3 && (candidate.includes(needle) || needle.includes(candidate));
+  return names
+    .map((candidate) => ({
+      candidate,
+      edits: distance(needle, candidate),
+      part: contains(candidate),
+    }))
     .filter(({ edits, part }) => part || edits <= allowed)
     .sort((a, b) => Number(b.part) - Number(a.part) || a.edits - b.edits)
     .slice(0, limit)
-    .map(({ icon }) => icon);
+    .map(({ candidate }) => candidate);
+}
+
+export function closeIconNames(name: string, limit = 3): IconName[] {
+  return closeNames(name, ICON_NAMES, limit);
 }
 
 export function iconProblem(at: string, name: string): string | undefined {

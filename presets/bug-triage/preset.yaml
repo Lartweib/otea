@@ -1,5 +1,5 @@
 preset: bug-triage
-preset_version: 1
+preset_version: 2
 playbook: ./playbook.md
 icon: bug
 fields:
@@ -10,7 +10,8 @@ fields:
   actual: { module: markdown, required: complete }
   environment: { module: text }
   severity: { module: severity, required: complete }
-  area: { module: text }
+  category: { module: enum, values: [crash, visual, gameplay, physics, audio, performance, ui] }
+  area: { module: enum, values: [forest biome, farm, den, ui, save system] }
 workflow:
   initial: reported
   incomplete: incomplete
@@ -43,3 +44,6 @@ workflow:
         by: human-ui,
         reason: required,
       }
+view:
+  kind: grid
+  columns: [id, title, category, severity, area, state, who, age]

@@ -77,13 +77,13 @@ describe('collections', () => {
           name: 'tasks',
           prefix: 'TASKS',
           preset: 'tasks',
-          view: { kind: 'list', groupBy: 'turn' },
+          view: expect.objectContaining({ kind: 'list', groupBy: 'turn' }),
         },
         {
           name: 'design',
           prefix: 'DESIGN',
           preset: 'reviews',
-          view: { kind: 'list', groupBy: 'turn' },
+          view: expect.objectContaining({ kind: 'list', groupBy: 'turn' }),
         },
       ],
     );
