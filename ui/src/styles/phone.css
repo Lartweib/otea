@@ -77,6 +77,15 @@
   gap: 8px;
 }
 
+/* The bar keeps the moves in one run, closing ones last, without the "close as" rule. */
+.unfold-actions .move-close {
+  display: contents;
+}
+
+.unfold-actions .move-row > .move-close::before {
+  content: none;
+}
+
 /* The row draws its own pressed and selected state. */
 .row {
   -webkit-tap-highlight-color: transparent;

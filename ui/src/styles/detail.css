@@ -235,6 +235,150 @@
   gap: 8px;
 }
 
+/* ---- the moves: text only. A line draws itself around the one under the pointer, the way the
+   list's tree lines draw: ink around a plain move, a ring in your color 3px outside the primary, an
+   underline under a closing move (after "close as", quieter). Nothing fills. Focus keeps the native
+   ring. One line under them says what the hovered or focused move does. ---- */
+.moves {
+  gap: 8px;
+}
+
+.move-close {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.move-row > :not(.move-close) ~ .move-close::before {
+  content: "";
+  width: 1px;
+  height: 20px;
+  margin: 0 6px;
+  background: var(--line);
+}
+
+.move-close-label {
+  margin-right: -2px;
+}
+
+.btn.move {
+  position: relative;
+}
+
+.btn.move:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.move-trace {
+  position: absolute;
+  top: -1px;
+  left: -1px;
+  width: calc(100% + 2px);
+  height: calc(100% + 2px);
+  overflow: visible;
+  pointer-events: none;
+}
+
+.btn.move.primary .move-trace {
+  top: -5px;
+  left: -5px;
+  width: calc(100% + 10px);
+  height: calc(100% + 10px);
+}
+
+.move-trace rect {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 1.25;
+  stroke-dasharray: 1 1;
+  stroke-dashoffset: 1;
+  transition: stroke-dashoffset var(--m-base) var(--m-ease);
+}
+
+.btn.move.primary .move-trace rect {
+  stroke: var(--you);
+  stroke-width: 1.5;
+}
+
+.move-under {
+  position: absolute;
+  right: 14px;
+  bottom: 7px;
+  left: 14px;
+  height: 1px;
+  background: currentColor;
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform var(--m-base) var(--m-ease);
+}
+
+@media (hover: hover) {
+  .btn.move:not([aria-pressed="true"]):hover:not(:disabled) {
+    background: var(--sf);
+  }
+
+  .btn.move.primary:hover:not(:disabled) {
+    background: var(--you);
+  }
+
+  .btn.move.quiet:hover:not(:disabled) {
+    background: transparent;
+    color: var(--ink);
+  }
+
+  .btn.move:hover:not(:disabled) .move-trace rect {
+    stroke-dashoffset: 0;
+    transition-duration: var(--m-slow);
+  }
+
+  .btn.move.quiet:hover:not(:disabled) .move-under {
+    transform: scaleX(1);
+  }
+}
+
+/* Waiting for children: dashed, never drawn; the reason beside it. */
+.btn.move[data-variant="blocked"]:disabled {
+  border-style: dashed;
+  border-color: var(--lane);
+  background: transparent;
+  color: var(--mut);
+  opacity: 1;
+}
+
+.move-says {
+  min-height: 18px;
+  margin: 0;
+}
+
+.move-says b {
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.move-says > span {
+  animation: ot-fade var(--m-fast) var(--m-ease) both;
+}
+
+.move-says > .move-receipt {
+  animation-duration: var(--m-slow);
+}
+
+/* A move commits: the moves fade (slow, after the press), and the line becomes a receipt once the
+   item has taken it. */
+.move-row,
+.move-says {
+  transition:
+    opacity var(--m-slow) var(--m-ease),
+    transform var(--m-slow) var(--m-ease);
+}
+
+.moves[data-step="posting"] :is(.move-row, .move-says) {
+  opacity: 0;
+  transform: translateY(-4px);
+  transition-delay: var(--m-fast);
+}
+
 .reason {
   display: grid;
   gap: 8px;
@@ -556,6 +700,29 @@ select.input {
 @media (prefers-reduced-motion: reduce) {
   .input {
     transition-duration: 1ms;
+  }
+
+  /* The line fades in whole: no draw, no scale. */
+  .move-trace rect,
+  .move-under {
+    opacity: 0;
+    transition: opacity var(--m-fast) linear;
+  }
+
+  .move-trace rect {
+    stroke-dashoffset: 0;
+  }
+
+  .move-under {
+    transform: none;
+  }
+
+  .btn.move:hover:not(:disabled) :is(.move-trace rect, .move-under) {
+    opacity: 1;
+  }
+
+  .moves[data-step="posting"] :is(.move-row, .move-says) {
+    transform: none;
   }
 
   .ev.new {

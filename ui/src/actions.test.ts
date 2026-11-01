@@ -5,10 +5,13 @@ import {
   IDLE,
   isBusy,
   moveBlock,
+  moveSays,
   moveTone,
   moveVariants,
   reduceAction,
+  turnAgent,
 } from './actions.ts';
+import type { ItemEvent } from './types.ts';
 
 const explaining = (reason = ''): ActionState => ({ step: 'explaining', to: 'todo', reason });
 
@@ -209,5 +212,86 @@ describe('actions', () => {
       } as const;
       expect(moveVariants([drop, done])).toEqual(['quiet', 'primary']);
     });
+  });
+});
+
+describe('turnAgent', () => {
+  const event = (actor: ItemEvent['actor'], data: Record<string, unknown> = {}): ItemEvent => ({
+    id: 1,
+    type: 'transitioned',
+    actor,
+    at: '2026-11-01T10:00:00Z',
+    data,
+  });
+
+  it('is the agent that acted last on the item', () => {
+    const events = [
+      event({ kind: 'agent', name: 'claude-a' }),
+      event({ kind: 'agent', name: 'claude-b' }),
+      event({ kind: 'human', name: 'human' }, { channel: 'ui' }),
+    ];
+    expect(turnAgent(events)).toBe('claude-b');
+  });
+
+  it('counts the agent that relayed your words', () => {
+    const events = [
+      event({ kind: 'agent', name: 'claude-a' }),
+      event({ kind: 'human', name: 'human' }, { via: 'claude-c' }),
+    ];
+    expect(turnAgent(events)).toBe('claude-c');
+  });
+
+  it('is nobody when no agent has acted', () => {
+    expect(turnAgent([event({ kind: 'human', name: 'human' })])).toBeUndefined();
+  });
+});
+
+describe('moveSays', () => {
+  const accept = { to: 'accepted', by: 'human', reasonRequired: false, turn: 'agent' } as const;
+  const ask = { ...accept, to: 'needs_info', reasonRequired: true } as const;
+  const reject = {
+    to: 'rejected',
+    by: 'human-ui',
+    reasonRequired: true,
+    turn: 'none',
+    closes: 'discarded',
+  } as const;
+  const fixed = {
+    to: 'fixed',
+    by: 'human-ui',
+    reasonRequired: false,
+    turn: 'none',
+    closes: 'done',
+  } as const;
+
+  it('hands the turn to the agent, out of Waiting for you', () => {
+    expect(moveSays(accept, { turn: 'human', agent: 'claude-b' })).toBe(
+      'claude-b’s turn · it leaves Waiting for you',
+    );
+  });
+
+  it('says when the move asks a reason first', () => {
+    expect(moveSays(ask, { turn: 'human', agent: 'claude-b' })).toBe(
+      'claude-b’s turn · it leaves Waiting for you · asks a reason first',
+    );
+  });
+
+  it('names no agent it does not know', () => {
+    expect(moveSays(accept, { turn: 'agent' })).toBe('an agent’s turn');
+  });
+
+  it('brings an item to you', () => {
+    const review = { ...accept, to: 'review', turn: 'human' } as const;
+    expect(moveSays(review, { turn: 'agent', agent: 'claude-a' })).toBe(
+      'your turn · it comes to Waiting for you',
+    );
+    expect(moveSays(review, { turn: 'human' })).toBe('your turn');
+  });
+
+  it('says plainly that a move closes the item, and how', () => {
+    expect(moveSays(fixed, { turn: 'human' })).toBe('closes the item as done');
+    expect(moveSays(reject, { turn: 'human' })).toBe(
+      'closes the item as discarded · asks a reason first',
+    );
   });
 });
