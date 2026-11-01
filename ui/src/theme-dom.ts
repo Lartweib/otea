@@ -1,7 +1,7 @@
 import { reducedMotion, revealRadius, TIMING } from './motion.ts';
 import {
   readChoice,
-  shownChanges,
+  switchMotion,
   type ThemeChoice,
   type ThemeStorage,
   writeChoice,
@@ -38,27 +38,33 @@ let running: ViewTransition | undefined;
 let wanted: ThemeChoice = 'system';
 
 // The new theme opens as a circle from the toggle's centre until it covers the window, on the turn
-// change's clock. It runs only when the theme on screen changes; without View Transitions the theme
-// changes at once. Under reduced motion the two snapshots crossfade (tokens.css).
+// change's clock. It runs only when the theme on screen changes; without View Transitions, and
+// under reduced motion, the theme changes at once (switchMotion).
 export function switchChoice(from: ThemeChoice, next: ThemeChoice, origin?: Element): void {
   wanted = next;
   running?.skipTransition();
-  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-  if (
-    typeof document.startViewTransition !== 'function' ||
-    !shownChanges(from, next, prefersDark)
-  ) {
+  const motion = switchMotion(from, next, {
+    prefersDark: window.matchMedia('(prefers-color-scheme: dark)').matches,
+    reduced: reducedMotion(),
+    transitions: typeof document.startViewTransition === 'function',
+  });
+  const root = document.documentElement;
+  // Nothing tweens its colours: inside the new snapshot, or on the page itself when it swaps at once.
+  root.setAttribute('data-theme-switching', '');
+  if (motion === 'instant') {
     saveChoice(next);
+    // Two frames: the new colours are drawn with transitions off, then they come back.
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => {
+        if (!running) root.removeAttribute('data-theme-switching');
+      }),
+    );
     return;
   }
-  const root = document.documentElement;
-  // Nothing tweens its colours inside the new snapshot.
-  root.setAttribute('data-theme-switching', '');
   const transition = document.startViewTransition(() => saveChoice(wanted));
   running = transition;
   transition.ready
     .then(() => {
-      if (reducedMotion()) return;
       const box = origin?.getBoundingClientRect();
       const x = box ? box.left + box.width / 2 : window.innerWidth / 2;
       const y = box ? box.top + box.height / 2 : 0;

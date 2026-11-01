@@ -29,6 +29,18 @@ export function shownChanges(from: ThemeChoice, to: ThemeChoice, prefersDark: bo
   return resolveTheme(from, prefersDark) !== resolveTheme(to, prefersDark);
 }
 
+// How a switch shows: the new theme opens as a circle when the theme on screen changes, the browser
+// has View Transitions and motion is welcome; otherwise it swaps at once. Reduced motion never
+// crossfades: halfway between light and dark is a washed-out grey.
+export function switchMotion(
+  from: ThemeChoice,
+  to: ThemeChoice,
+  env: { prefersDark: boolean; reduced: boolean; transitions: boolean },
+): 'reveal' | 'instant' {
+  const reveal = env.transitions && !env.reduced && shownChanges(from, to, env.prefersDark);
+  return reveal ? 'reveal' : 'instant';
+}
+
 export function themeLabel(choice: ThemeChoice): string {
   return `Theme: ${choice}`;
 }

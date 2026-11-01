@@ -136,8 +136,8 @@
 }
 
 /* The theme switch (switchChoice in theme-dom.ts): the new snapshot opens as a circle over the old
-   one, which holds still, so no crossfade. Nothing tweens its colours inside the new snapshot.
-   Reduced motion keeps the browser's crossfade, at 120ms linear. */
+   one, which holds still, so no crossfade. Nothing tweens its colours, inside the new snapshot or,
+   under reduced motion (no view transition: the theme swaps at once), on the page itself. */
 :root[data-theme-switching] *,
 :root[data-theme-switching] *::before,
 :root[data-theme-switching] *::after {
@@ -145,17 +145,8 @@
   transition: none !important;
 }
 
-@media not (prefers-reduced-motion: reduce) {
-  :root[data-theme-switching]::view-transition-old(root),
-  :root[data-theme-switching]::view-transition-new(root) {
-    animation: none;
-    mix-blend-mode: normal;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  :root[data-theme-switching]::view-transition-group(root) {
-    animation-duration: var(--m-fast);
-    animation-timing-function: linear;
-  }
+:root[data-theme-switching]::view-transition-old(root),
+:root[data-theme-switching]::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
 }
