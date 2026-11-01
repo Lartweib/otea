@@ -59,7 +59,7 @@ function Cell({ item, column, compact }: { item: Item; column: GridColumn; compa
     case 'who': {
       const holder = lease?.holder;
       return holder ? (
-        <span className="grid-who" data-compact={compact || undefined}>
+        <span className="grid-who">
           <Holder holder={holder} m={`${item.id}:w`} />
         </span>
       ) : (

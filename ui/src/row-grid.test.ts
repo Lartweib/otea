@@ -15,7 +15,7 @@ describe('hideTier', () => {
     expect(hideTier(783)).toBe(1);
   });
 
-  it('drops priority and evidence under 600, the name under 480, who under 380', () => {
+  it('drops priority and evidence under 600, shortens a parent count under 480, who under 380', () => {
     expect(hideTier(599)).toBe(2);
     expect(hideTier(480)).toBe(2);
     expect(hideTier(479.5)).toBe(3);

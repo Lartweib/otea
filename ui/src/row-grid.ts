@@ -2,7 +2,7 @@
 // with list.css (the grid) and lanes.ts (the branch hangs off the type slot).
 //
 // rail 56 · fold 28 (always reserved) · indent 28 a level · type 30 (a 20px slot and 10 of air) ·
-// title (the one column that flexes) · priority 48 · who 80 · when 56. A row stops at 760px.
+// title (the one column that flexes) · priority 48 · who 38 (a mark) · when 56. A row stops at 760px.
 export const GRID = {
   rail: 56,
   fold: 28,
@@ -10,7 +10,7 @@ export const GRID = {
   type: 30,
   slot: 20,
   priority: 48,
-  who: 80,
+  who: 38,
   when: 56,
   cap: 760,
 } as const;
@@ -33,8 +33,8 @@ export function slotCentre(depth: number): number {
 }
 
 // What a row shows is decided by the list pane's width alone, always in the same order:
-// 1 everything; 2 the priority column and evidence chips go; 3 who becomes the agent mark and a
-// parent's count shortens; 4 who goes and a parent keeps only its bar. The time always stays.
+// 1 everything; 2 the priority column and evidence chips go; 3 a parent's count shortens; 4 who
+// goes and a parent keeps only its bar. The time always stays.
 export type HideTier = 1 | 2 | 3 | 4;
 
 export const TIER_FLOORS = { 1: 600, 2: 480, 3: 380 } as const;

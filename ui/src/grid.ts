@@ -84,8 +84,8 @@ export function hasValues(column: GridColumn): boolean {
 
 export type GridTier = 1 | 2 | 3 | 4 | 5;
 
-// 1 everything; 2 the last field goes; 3 who becomes the agent's mark and severity only its bars; 4 the
-// other fields go; 5 the table is no longer a table: the pane draws the list.
+// 1 everything; 2 the last field goes; 3 severity keeps only its bars; 4 the other fields go;
+// 5 the table is no longer a table: the pane draws the list.
 export const GRID_TIERS = { 1: 1000, 2: 880, 3: 760, 4: 640 } as const;
 
 export function gridTier(width: number): GridTier {
@@ -112,7 +112,7 @@ export function shownColumns(columns: readonly GridColumn[], tier: GridTier): Sh
     })
     .map((column) => ({
       column,
-      compact: tier >= 3 && (column.kind === 'severity' || column.kind === 'who'),
+      compact: tier >= 3 && column.kind === 'severity',
     }));
 }
 
@@ -131,7 +131,8 @@ export function columnWidth(column: GridColumn, compact: boolean): number {
     case 'severity':
       return compact ? 52 : 112;
     case 'who':
-      return compact ? 44 : 88;
+      // The agent's mark or your chip, never the name.
+      return 44;
     case 'age':
       return 56;
     case 'text':
