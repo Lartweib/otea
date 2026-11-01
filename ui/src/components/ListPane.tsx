@@ -28,7 +28,7 @@ import type { Remote } from '../remote.ts';
 import { groupItems, groupings, type Section } from '../sections.ts';
 import type { CollectionView, Item } from '../types.ts';
 import type { ViewMode, ViewPrefs } from '../view-prefs.ts';
-import { BulkBar } from './BulkBar.tsx';
+import { BulkTray } from './BulkTray.tsx';
 import { FilterTokens, GridMenu, HeadControls, type OpenMenu } from './GridControls.tsx';
 import { type ColumnDrag, ItemGrid } from './ItemGrid.tsx';
 import { type ChildrenOf, type CollectionOf, ItemList, type Unfolding } from './ItemList.tsx';
@@ -126,11 +126,13 @@ type ListPaneProps = {
   // the grid's pane is, to know before switching whether a table fits.
   listWidth: number;
   gridWidth: number;
+  // Where the bulk tray docks: the grid pane's own cell, over the scroller.
+  bulkHost: HTMLElement | null;
 };
 
 // The list pane: its head (the lane names, the title, and for a collection its grouping, filters and
-// the switch between list and grid), then the list or the grid, and the bar of bulk moves under a
-// selection. Switching views morphs one into the other.
+// the switch between list and grid), then the list or the grid, and the tray of bulk moves under a
+// grid selection. Switching views morphs one into the other.
 export function ListPane(props: ListPaneProps) {
   const { items, scoped, collection, collectionName, prefs, onPrefs, phone } = props;
   const { attach: attachWidth, width, setWidth } = useWidth();
@@ -385,9 +387,10 @@ export function ListPane(props: ListPaneProps) {
         </div>
       )}
       {prefs && view === 'grid' ? (
-        <BulkBar
+        <BulkTray
           selected={selected}
           canWrite={props.canWrite}
+          host={props.bulkHost}
           onKeep={selection.set}
           onClear={() => selection.set([])}
         />

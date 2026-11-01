@@ -30,6 +30,19 @@
   --agent-2: oklch(0.7 0.09 200);
   --agent-3: oklch(0.68 0.11 310);
   --agent-4: oklch(0.7 0.1 350);
+  /* The bulk tray docked under a grid selection: light is the surface with a firmer edge (ink 16%
+     into the hairline) and a soft upward shadow; dark lifts it over the page with a top highlight
+     and a neutral glow (ink, never your blue). */
+  --tray: var(--sf);
+  --tray-btn: var(--sf);
+  --tray-btn-edge: var(--line);
+  --tray-sh:
+    0 0 0 1px color-mix(in oklch, var(--ink) 16%, var(--line)), 0 -18px 36px -22px var(--shadow);
+  /* Capped and centred over a wide grid, the tray stands free: the same edge and shadow, plus a
+     softer one that reaches its sides. */
+  --tray-sh-tab:
+    0 0 0 1px color-mix(in oklch, var(--ink) 16%, var(--line)), 0 -18px 36px -22px var(--shadow),
+    0 -4px 24px -10px var(--shadow);
 
   --font-human: "Schibsted Grotesk", system-ui, sans-serif;
   --font-machine: "Spline Sans Mono", ui-monospace, monospace;
@@ -79,6 +92,15 @@
     --minus: oklch(0.74 0.13 25);
     --shadow: oklch(0.08 0.01 265 / 0.55);
     --you-ink: color-mix(in oklch, var(--you) 55%, oklch(0.97 0.01 265));
+    --tray: oklch(0.305 0.017 265);
+    --tray-btn: oklch(0.355 0.018 265);
+    --tray-btn-edge: oklch(0.93 0.008 265 / 0.12);
+    --tray-sh:
+      inset 0 1px 0 oklch(0.93 0.008 265 / 0.14), 0 0 0 1px oklch(0.93 0.008 265 / 0.07),
+      0 -14px 36px -16px oklch(0.93 0.008 265 / 0.09);
+    --tray-sh-tab:
+      inset 0 1px 0 oklch(0.93 0.008 265 / 0.14), 0 0 0 1px oklch(0.93 0.008 265 / 0.1),
+      0 -14px 36px -16px oklch(0.93 0.008 265 / 0.09), 0 -2px 24px -8px oklch(0.93 0.008 265 / 0.08);
   }
 }
 
@@ -102,4 +124,13 @@
   --minus: oklch(0.74 0.13 25);
   --shadow: oklch(0.08 0.01 265 / 0.55);
   --you-ink: color-mix(in oklch, var(--you) 55%, oklch(0.97 0.01 265));
+  --tray: oklch(0.305 0.017 265);
+  --tray-btn: oklch(0.355 0.018 265);
+  --tray-btn-edge: oklch(0.93 0.008 265 / 0.12);
+  --tray-sh:
+    inset 0 1px 0 oklch(0.93 0.008 265 / 0.14), 0 0 0 1px oklch(0.93 0.008 265 / 0.07),
+    0 -14px 36px -16px oklch(0.93 0.008 265 / 0.09);
+  --tray-sh-tab:
+    inset 0 1px 0 oklch(0.93 0.008 265 / 0.14), 0 0 0 1px oklch(0.93 0.008 265 / 0.1),
+    0 -14px 36px -16px oklch(0.93 0.008 265 / 0.09), 0 -2px 24px -8px oklch(0.93 0.008 265 / 0.08);
 }
