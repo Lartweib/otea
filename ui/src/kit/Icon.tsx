@@ -16,7 +16,9 @@ export type IconName =
   | 'grid'
   | 'filter'
   | 'group'
-  | 'up';
+  | 'up'
+  | 'done'
+  | 'warn';
 
 const PATHS: Record<IconName, string> = {
   plus: 'M8 3.5 V12.5 M3.5 8 H12.5',
@@ -39,6 +41,8 @@ const PATHS: Record<IconName, string> = {
   filter: 'M2.75 4.25 H13.25 M4.75 8 H11.25 M6.75 11.75 H9.25',
   group: 'M2.75 3.25 H8 M5 5.75 H13.25 M5 8.25 H13.25 M2.75 10.75 H8 M5 13.25 H13.25',
   up: 'M8 12.5 V3.75 M4.75 7 L8 3.75 L11.25 7',
+  done: 'M8 1.75 A6.25 6.25 0 1 0 8 14.25 A6.25 6.25 0 1 0 8 1.75 M5.4 8.2 L7.2 10 L10.7 6.3',
+  warn: 'M8 1.75 A6.25 6.25 0 1 0 8 14.25 A6.25 6.25 0 1 0 8 1.75 M8 4.9 V8.6 M8 11 V11.1',
 };
 
 // Thin, small and quiet: 16px, stroke 1.25, current color.

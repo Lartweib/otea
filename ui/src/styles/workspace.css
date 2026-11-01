@@ -209,6 +209,18 @@
     padding: 4px 0 24px;
   }
 
+  /* The list pane's cell again, laid over the scroller (not in it): the bulk tray docks to its
+     bottom edge, and what is still below that edge while the tray rises is clipped. */
+  .workspace .bulk-host {
+    position: absolute;
+    inset: 0;
+    grid-column: 2 / 3;
+    grid-row: 1 / 2;
+    z-index: var(--z-sticky);
+    overflow: clip;
+    pointer-events: none;
+  }
+
   /* A collection seen as a grid: the grid takes up to its own measure beside the detail (--grid-w,
      split.ts), or the whole room while nothing is open (workspace-motion.ts eases between them). */
   .workspace[data-view="grid"] {

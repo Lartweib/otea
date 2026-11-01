@@ -970,97 +970,295 @@
   text-wrap: pretty;
 }
 
-/* ---- the bulk bar: the moves every selected item can take ---- */
-.bulk-bar {
-  position: sticky;
-  bottom: 20px;
-  z-index: var(--z-sticky);
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  width: max-content;
-  max-width: calc(100% - 32px);
-  margin: 12px auto 0;
-  padding: 10px 10px 10px 14px;
-  border-radius: 14px;
-  background: var(--sf);
-  box-shadow:
-    0 0 0 1px var(--line),
-    0 20px 44px -20px var(--shadow);
-  animation: bulk-up var(--m-base) var(--m-ease) both;
+/* ---- the bulk tray: docked to the grid pane's bottom edge under a selection ----
+   The dock grows 0 -> 80px at the pane's bottom edge (enter slow, exit base, both --m-ease) and the
+   tray, 80px from the dock's top, rises with it: the rows stay where they are, the rising edge
+   covers the last ones, and the room under the list lets them scroll clear. The zones follow it in
+   (who +40ms, what +80ms, the way out +100ms, 6px up) and fade first on the way out. A state swap
+   happens inside the fixed tray: one layer per state, the old one fades, the new one comes in from
+   4px below. */
+.bulk-room {
+  height: 0;
+  transition: height var(--m-base) var(--m-ease);
 }
 
-@keyframes bulk-up {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
+.bulk-room[data-on] {
+  height: 80px;
+}
+
+.bulk-dock {
+  position: absolute;
+  left: 52px;
+  right: 0;
+  bottom: 0;
+  height: 0;
+  container-type: inline-size;
+  pointer-events: auto;
+  transition: height var(--m-base) var(--m-ease);
+}
+
+.bulk-dock[data-on] {
+  height: 80px;
+  transition-duration: var(--m-slow);
+}
+
+.bulk-tray {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 80px;
+  border-radius: 14px 14px 0 0;
+  background: var(--tray);
+  box-shadow: var(--tray-sh);
+}
+
+.bulk-tray:focus {
+  outline: none;
+}
+
+.bulk-layer {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: 264px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 24px;
+  padding: 0 16px 0 24px;
+  opacity: 0;
+  transform: translateY(4px);
+  pointer-events: none;
+  transition:
+    opacity var(--m-fast) var(--m-ease),
+    transform var(--m-base) var(--m-ease);
+}
+
+.bulk-layer[data-cur] {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+  transition:
+    opacity var(--m-base) var(--m-ease) 60ms,
+    transform var(--m-slow) var(--m-ease) 60ms;
+}
+
+/* Beside an open detail at 1440 the grid pane is about 660px: the count zone narrows. */
+@container (max-width: 760px) {
+  .bulk-layer {
+    grid-template-columns: 200px minmax(0, 1fr) auto;
   }
 }
 
-.bulk-cap {
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-  padding-right: 4px;
-  font: 400 11.5px var(--font-machine);
-  color: var(--mut);
+/* A wide grid (room for 1120 and 48px of air each side): the tray is capped at 1120 and centred over
+   the table (the dock: the pane right of the lanes), still docked to the bottom edge. Free-standing,
+   its sides carry the edge and, in dark, the glow; the zones stay together (232 / the moves / out). */
+@container (min-width: 1216px) {
+  .bulk-tray {
+    right: auto;
+    left: calc(50% - 560px);
+    width: 1120px;
+    box-shadow: var(--tray-sh-tab);
+  }
+
+  .bulk-layer {
+    grid-template-columns: 232px minmax(0, 1fr) auto;
+  }
 }
 
-.bulk-cap b {
-  font: 600 13px var(--font-human);
+.bulk-zone {
+  transition:
+    opacity var(--m-fast) var(--m-ease),
+    transform var(--m-fast) var(--m-ease);
+}
+
+.bulk-dock:not([data-on]) .bulk-zone {
+  opacity: 0;
+  transform: translateY(6px);
+}
+
+.bulk-dock[data-on] .bulk-zone {
+  transition:
+    opacity var(--m-slow) var(--m-ease) var(--d),
+    transform var(--m-slow) var(--m-ease) var(--d);
+}
+
+.bulk-who {
+  --d: 40ms;
+}
+
+.bulk-what {
+  --d: 80ms;
+}
+
+.bulk-out {
+  --d: 100ms;
+}
+
+.bulk-who,
+.bulk-what {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.bulk-out {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* who: the box and the count (17/600), the states under it in mono */
+.bulk-n {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.bulk-n b {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.012em;
+}
+
+.bulk-ok {
+  color: var(--plus);
+}
+
+.bulk-warn {
+  color: var(--warn);
+}
+
+.bulk-box {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 15px;
+  height: 15px;
+  border-radius: 4px;
+  background: var(--ink);
+}
+
+.bulk-ck {
+  fill: none;
+  stroke: var(--bg);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.bulk-s,
+.bulk-l2 {
+  margin: 0;
+  min-width: 0;
+  overflow: hidden;
+  font: 400 12px / 16px var(--font-machine);
+  color: var(--mut);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.bulk-s {
+  padding-left: 25px;
+}
+
+.bulk-l2 {
+  height: 16px;
+}
+
+/* what: one line of 34px (the moves, the reason, the progress, the receipt), the rule under it */
+.bulk-l1 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  height: 34px;
+}
+
+.bulk-tray .btn:not(.primary):not(.quiet) {
+  border-color: var(--tray-btn-edge);
+  background: var(--tray-btn);
+}
+
+.bulk-tray .btn:not(.primary):not(.quiet):hover:not(:disabled) {
+  background: color-mix(in oklch, var(--tray-btn) 82%, var(--ink));
+}
+
+.bulk-tray .btn[aria-expanded="true"]:not(.primary) {
+  background: var(--hov);
   color: var(--ink);
 }
 
-.bulk-row,
-.bulk-reason {
+.bulk-ca {
+  margin: 0 2px 0 6px;
+  white-space: nowrap;
+}
+
+.bulk-caret {
+  display: inline-flex;
+  margin-right: -2px;
+}
+
+/* "N more" opens upward. */
+.bulk-more .bulk-caret {
+  transform: rotate(180deg);
+}
+
+.bulk-keep {
+  gap: 6px;
+}
+
+.bulk-clear {
+  gap: 6px;
+  padding: 0 12px 0 10px;
+}
+
+.bulk-measure {
+  position: absolute;
+  top: 0;
+  left: 0;
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
   gap: 8px;
-}
-
-.bulk-rule {
-  margin: 0;
-  font: 400 11.5px var(--font-machine);
-  color: var(--mut);
-  text-wrap: pretty;
-}
-
-.bulk-sep {
-  width: 1px;
-  height: 20px;
-  margin: 0 2px;
-  background: var(--line);
+  visibility: hidden;
+  pointer-events: none;
+  white-space: nowrap;
 }
 
 .bulk-none {
-  font-size: 13px;
-  color: var(--mut);
-}
-
-.bulk-x {
-  margin-left: auto;
-}
-
-.bulk-receipt {
-  font-size: 13.5px;
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .bulk-input {
   display: flex;
   flex: 1;
   align-items: center;
-  min-width: 220px;
+  gap: 10px;
+  min-width: 0;
+  max-width: 620px;
   height: 34px;
-  padding: 0 12px;
+  padding: 0 14px;
   border-radius: 999px;
   background: var(--bg);
-  box-shadow: inset 0 0 0 1px var(--line);
+  box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--ink) 16%, var(--line));
   transition: box-shadow var(--m-fast) var(--m-ease);
 }
 
 .bulk-input:focus-within {
   box-shadow: inset 0 0 0 1.5px var(--ink);
+}
+
+.bulk-input-l {
+  flex: none;
+  font: 500 11.5px var(--font-machine);
+  color: var(--mut);
 }
 
 .bulk-input input {
@@ -1069,12 +1267,109 @@
   border: 0;
   outline: 0;
   background: none;
-  font: 400 13.5px var(--font-human);
+  font: 400 14px var(--font-human);
   color: var(--ink);
 }
 
 .bulk-input input::placeholder {
   color: var(--mut);
+}
+
+.bulk-prog {
+  position: relative;
+  flex: none;
+  width: 240px;
+  height: 6px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: var(--chip);
+}
+
+.bulk-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 3px;
+  background: var(--ink);
+  transition: width var(--m-slow) var(--m-ease);
+}
+
+.bulk-pc {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 14px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.bulk-pc b {
+  font: 500 13px var(--font-machine);
+}
+
+.bulk-fail {
+  gap: 10px;
+}
+
+.bulk-ok,
+.bulk-warn {
+  display: inline-flex;
+  flex: none;
+}
+
+/* The tray's menus open upward from their button. */
+.bulk-menu {
+  animation-name: bulk-pop;
+}
+
+@keyframes bulk-pop {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+/* Reduced motion: the tray crossfades 120ms; nothing slides or grows. */
+@media (prefers-reduced-motion: reduce) {
+  .bulk-room {
+    transition: none;
+  }
+
+  .bulk-dock {
+    transition: height 0s linear var(--m-fast);
+  }
+
+  .bulk-dock[data-on] {
+    transition: height 0s;
+  }
+
+  .bulk-tray {
+    opacity: 0;
+    transition: opacity var(--m-fast) linear;
+  }
+
+  .bulk-dock[data-on] .bulk-tray {
+    opacity: 1;
+  }
+
+  .bulk-zone,
+  .bulk-dock:not([data-on]) .bulk-zone,
+  .bulk-dock[data-on] .bulk-zone,
+  .bulk-layer,
+  .bulk-layer[data-cur] {
+    transform: none;
+    transition: opacity var(--m-fast) linear;
+  }
+
+  .bulk-dock:not([data-on]) .bulk-zone {
+    opacity: 1;
+  }
+
+  .bulk-fill {
+    transition: none;
+  }
+
+  .bulk-menu {
+    animation-duration: 1ms;
+  }
 }
 
 /* ---- the detail beside the grid: a way to close it ---- */
@@ -1138,8 +1433,7 @@
   }
 
   .filter-token,
-  .grid-menu,
-  .bulk-bar {
+  .grid-menu {
     animation-duration: 1ms;
   }
 }
