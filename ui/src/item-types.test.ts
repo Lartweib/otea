@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { detailBlocks, intakeFields, rowValues, showsTypes, typeOf } from './item-types.ts';
+import {
+  detailBlocks,
+  intakeFields,
+  rowValues,
+  showsTypes,
+  typeMark,
+  typeOf,
+} from './item-types.ts';
 import type { CollectionView, FieldView, Layout, TypeView } from './types.ts';
 
 const title: FieldView = { name: 'title', module: 'text', required: 'create' };
@@ -67,6 +74,24 @@ describe('item types', () => {
     expect(showsTypes(work)).toBe(true);
     expect(showsTypes({ ...work, types: [bug] })).toBe(false);
     expect(showsTypes(undefined)).toBe(false);
+  });
+
+  it('names the type by its icon and word, by its tag without an icon, or not at all', () => {
+    const iconic = { ...bug, icon: 'bug' };
+    expect(typeMark({ ...work, types: [iconic, impr] }, 'bug')).toEqual({
+      kind: 'icon',
+      icon: 'bug',
+      word: 'bug',
+    });
+    expect(typeMark(work, 'impr')).toEqual({ kind: 'tag', name: 'impr', label: 'Improvement' });
+    // A preset without types names its only type after itself.
+    expect(typeMark({ ...work, preset: 'bug-triage', types: [iconic] }, 'bug')).toEqual({
+      kind: 'icon',
+      icon: 'bug',
+      word: 'bug-triage',
+    });
+    expect(typeMark({ ...work, types: [bug] }, 'bug')).toBeNull();
+    expect(typeMark(undefined, 'bug')).toBeNull();
   });
 
   it('asks for the fields of the intake slot, in its order', () => {
