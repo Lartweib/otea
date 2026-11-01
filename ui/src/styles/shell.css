@@ -28,20 +28,61 @@
 .brand {
   display: flex;
   align-items: center;
-  gap: 10px;
   font-weight: 700;
-  font-size: 17px;
+  font-size: 20px;
+  line-height: 1;
   letter-spacing: -0.02em;
 }
 
-.brand-fork {
-  fill: none;
-  stroke: var(--ink);
-  stroke-width: 2;
+/* The o: an SVG on the o's own advance (584.44 of 1000), from the cap height down to 120 below the
+   baseline, so the orbit has room; overflow shows the orbit's swing past the left and the bottom. */
+.brand-o {
+  width: 0.58444em;
+  height: 0.823em;
+  overflow: visible;
+  vertical-align: -0.12em;
 }
 
-.brand-dot {
+.brand-ring {
+  fill: none;
+  stroke: var(--ink);
+}
+
+/* The living mark. The counter fills from the centre when something is yours, and empties the same
+   way; the ring never moves. */
+.brand-fill {
   fill: var(--you);
+  opacity: 0;
+  transform: scale(0.2);
+  transform-box: fill-box;
+  transform-origin: center;
+  transition:
+    transform var(--m-slow) var(--m-ease),
+    opacity var(--m-base) var(--m-ease);
+}
+.brand[data-attention|="yours"] .brand-fill {
+  opacity: 1;
+  transform: none;
+}
+
+/* While an agent works the orbit draws in (a quarter of the turn) and turns with the list's orbit;
+   it undraws when the work stops. */
+.brand-orbit {
+  fill: none;
+  stroke: var(--ink);
+  stroke-linecap: round;
+  stroke-dasharray: 0 100;
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: ot-spin 1.7s linear infinite;
+  transition:
+    stroke-dasharray var(--m-slow) var(--m-ease),
+    opacity var(--m-base) var(--m-ease);
+}
+.brand[data-attention$="working"] .brand-orbit {
+  stroke-dasharray: 25 75;
+  opacity: 1;
 }
 
 .topbar-actions {
@@ -132,5 +173,17 @@
 @media (prefers-reduced-motion: reduce) {
   .connection-dot {
     transition-duration: 1ms;
+  }
+
+  /* No scale and no spin: the counter and the orbit crossfade, the orbit drawn still at 1 o'clock. */
+  .brand-fill {
+    transform: none;
+    transition: opacity var(--m-fast) linear;
+  }
+  .brand-orbit {
+    stroke-dasharray: 25 75;
+    rotate: -80deg;
+    animation: none;
+    transition: opacity var(--m-fast) linear;
   }
 }

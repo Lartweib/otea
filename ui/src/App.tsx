@@ -1,5 +1,7 @@
-import { type CSSProperties, type ReactNode, useCallback, useState } from 'react';
+import { type CSSProperties, type ReactNode, useCallback, useEffect, useState } from 'react';
 import { fetchCollections, fetchItem, fetchItems, fetchPresets, fetchSession } from './api.ts';
+import { type Attention, attentionFrame } from './attention.ts';
+import { applyAttention } from './attention-dom.ts';
 import { catalogEntries } from './catalog.ts';
 import { CollectionRail } from './components/CollectionRail.tsx';
 import { ConnectionBadge } from './components/ConnectionBadge.tsx';
@@ -12,7 +14,15 @@ import { browserStorage, Divider, useSplit } from './components/Split.tsx';
 import { ThemeToggle } from './components/ThemeToggle.tsx';
 import { Triage } from './components/Triage.tsx';
 import { useDetailMotion, useViewPrefs } from './components/workspace-motion.ts';
-import { type Connection, useHideTier, useLive, usePhone, useRemote, useRoute } from './hooks.ts';
+import {
+  type Connection,
+  useAttention,
+  useHideTier,
+  useLive,
+  usePhone,
+  useRemote,
+  useRoute,
+} from './hooks.ts';
 import { Button, Icon } from './kit/index.ts';
 import { MODULES } from './modules/registry.ts';
 import {
@@ -88,17 +98,47 @@ function collectionLookup(collections: Remote<CollectionView[]>): CollectionOf {
   return (name) => list.find((collection) => collection.name === name);
 }
 
-function Brand() {
+// The wordmark: its o is the node, drawn in 1/1000 em of Schibsted Grotesk 700 on the o's own
+// advance, so "tea" stays live text and starts where it would. A true circle on the o's centre
+// (305.5, −263.5): outer radius 273, a ring at the letters' weight (128) around a counter of 145
+// that holds your color while something is yours. The orbit runs outside the o while an agent
+// works, masked from where the t begins so it passes behind the word.
+function Brand({ attention }: { attention: Attention }) {
   return (
-    <a className="brand" href={ITEMS_HASH} aria-label="otea, all items">
-      <svg width="22" height="26" viewBox="0 0 22 26" aria-hidden="true">
-        <path
-          className="brand-fork"
-          d="M5 0 V8 C5 14 11 12 11 18 V26 M17 0 V8 C17 14 11 12 11 18"
-        />
-        <circle className="brand-dot" cx="17" cy="4.5" r="3.5" />
-      </svg>
-      otea
+    <a
+      className="brand"
+      href={ITEMS_HASH}
+      aria-label="otea, all items"
+      data-attention={attentionFrame(attention)}
+    >
+      <span className="brand-word">
+        <svg className="brand-o" viewBox="0 -703 584.44 823" aria-hidden="true">
+          <mask
+            id="brand-orbit-mask"
+            maskUnits="userSpaceOnUse"
+            x="-600"
+            y="-1200"
+            width="1800"
+            height="1600"
+          >
+            <rect x="-600" y="-1200" width="1800" height="1600" fill="#fff" />
+            <rect x="564.44" y="-1200" width="900" height="1600" fill="#000" />
+          </mask>
+          <g mask="url(#brand-orbit-mask)">
+            <circle
+              className="brand-orbit"
+              cx="305.5"
+              cy="-263.5"
+              r="378"
+              strokeWidth="60"
+              pathLength={100}
+            />
+          </g>
+          <circle className="brand-fill" cx="305.5" cy="-263.5" r="209" />
+          <circle className="brand-ring" cx="305.5" cy="-263.5" r="209" strokeWidth="128" />
+        </svg>
+        tea
+      </span>
     </a>
   );
 }
@@ -180,6 +220,10 @@ export function App() {
   const listPane = useHideTier();
   const [collection, setCollection] = useState<string>();
   const allItems = items.status === 'ready' ? items.value : [];
+  // What waits for you anywhere, whatever collection is chosen: the brand, the favicon and the title.
+  const attention = useAttention(allItems);
+  const { yours, working } = attention;
+  useEffect(() => applyAttention({ yours, working }), [yours, working]);
   const [folds, toggleChildren] = useFolds();
   const scoped = inCollection(allItems, collection);
   const grouped = groupByTurn(scoped);
@@ -254,7 +298,7 @@ export function App() {
   return (
     <div className="app">
       <header className="topbar">
-        <Brand />
+        <Brand attention={attention} />
         <div className="topbar-actions">
           <ConnectionBadge connection={connection} />
           <a
