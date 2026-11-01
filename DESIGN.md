@@ -37,7 +37,7 @@ An agent is shown by one mark everywhere (`AgentMark` in `ui/src/kit/`, logic in
 
 It leads the agent's name wherever an agent acted or acts: the handoff line, each History event (the agent that acted, or the one that relayed your words) and *created by* in Details. In the *who* of a list row or a grid it stands alone, the name only its tooltip (the mark sits above the row's stretched link so the tooltip shows) and the text assistive tech reads (`Holder` in `ItemList.tsx`); an item you hold shows `you` on a chip of your color instead, the same size. You never get a mark. Agents get their names from `otea connect`, which pins one per MCP server, so the marks stay stable.
 
-Themes: light and dark follow the system by default. The topbar toggle cycles system, light and dark; the choice is stored in `localStorage` (failures fall back to system) and applied as `data-theme` on `<html>`.
+Themes: light and dark follow the system by default. The topbar toggle cycles system, light and dark; the choice is stored in `localStorage` (failures fall back to system) and applied as `data-theme` on `<html>`. Switching it opens the new theme as a circle from the toggle (see Motion).
 
 ## Ground and surfaces
 
@@ -334,6 +334,8 @@ When an item changes turn, from a move in the UI or a change from the CLI that a
 5. Everything else slides from its old place (make room), carrying its own slice of the lanes.
 
 Interrupted mid-flight, a row starts again from where it is on screen. Decorations are CSS keyframes switched on by `data-motion` and cleared after 1.5s.
+
+**The theme switch** (`switchChoice` in `ui/src/theme-dom.ts`, CSS in `ui/src/styles/tokens.css`) is on the turn change's clock: the new theme opens as a circle from the centre of the toggle that was pressed until it covers the farthest corner of the window (`revealRadius` in `ui/src/motion.ts`, tested), `--travel` 680ms on `--e-move`. It is a same-document View Transition: the old snapshot holds still (no crossfade, `animation: none; mix-blend-mode: normal`) and `clip-path: circle()` animates on `::view-transition-new(root)`. It runs only when the theme on screen changes (`shownChanges` in `ui/src/theme.ts`, tested): system to light on a light system changes nothing. While it runs, `data-theme-switching` on `<html>` sets `transition: none` on everything, so no colour tweens inside the new snapshot; `color-scheme` flips with `data-theme`, so native scrollbars and inputs switch in step. A second press skips the running switch (`skipTransition()`) and starts the next from where the page is. The stored choice is applied before React mounts, so a load never transitions. Reduced motion: the browser's crossfade of the two snapshots, 120ms linear. Without the API the theme changes at once. Same-document View Transitions ship in Chrome and Edge 111, Safari 18 (macOS and iOS) and Firefox 144 (MDN browser-compat-data), so an Electron shell gets it too.
 
 Nothing blinks; only an agent at work keeps moving. Under `prefers-reduced-motion` nothing travels: layout changes are instant (transforms and clips are skipped and the layout is simply where it ends), and new content crossfades in 120ms (children unfolding, the detail, a new row, the sidebar). Folding children is instant. The orbit stands still (the arc stays visible), and a turn change crossfades in place.
 
