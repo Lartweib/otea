@@ -730,15 +730,15 @@ select.input {
   }
 }
 
-/* ---- the band and the aside: from a 1268px pane (detail-form.ts). The detail fills the pane (the
-   container, its width 100cqw): the aside column takes a quarter of every pixel past 1268, 340 to
+/* ---- the band and the aside: from a 1240px pane (detail-form.ts). The detail fills the pane (the
+   container, its width 100cqw): the aside column takes a quarter of every pixel past 1240, 340 to
    440, and main the rest; the 48px gap holds a 1px rule at its middle. The header and Details form a
    band, both starting on the meta row; one line across both columns closes it, as tall as the
    taller of the two. Below the line History sits beside Brief and Structure, sticks 16px under the
    top of the pane, is never taller than the room it has (set from script) and scrolls on its own.
    ---- */
 .detail[data-form="aside"] {
-  --aside: clamp(340px, round(340px + (100cqw - 1268px) / 4, 1px), 440px);
+  --aside: clamp(340px, round(340px + (100cqw - 1240px) / 4, 1px), 440px);
   display: grid;
   grid-template-areas:
     "head details"

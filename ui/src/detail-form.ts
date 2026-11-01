@@ -2,9 +2,9 @@
 // beside it that holds History, under a band where Details sits beside the header. Geometry shared
 // with detail.css, which computes the same widths from the pane (container units).
 
-export const ASIDE = { gutter: 40, main: 800, gap: 48, min: 340, max: 440 } as const;
+export const ASIDE = { gutter: 40, main: 772, gap: 48, min: 340, max: 440 } as const;
 
-// The detail pane width (gutters included) from which the aside shows: 40 + 800 + 48 + 340 + 40.
+// The detail pane width (gutters included) from which the aside shows: 40 + 772 + 48 + 340 + 40.
 export const ASIDE_FROM = ASIDE.gutter + ASIDE.main + ASIDE.gap + ASIDE.min + ASIDE.gutter;
 
 export type DetailForm = 'stacked' | 'aside';
