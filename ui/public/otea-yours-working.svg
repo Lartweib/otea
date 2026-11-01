@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
+  <title>Otea</title>
+  <style>.ink{fill:none;stroke:#1b1f29;stroke-linecap:round}@media (prefers-color-scheme:dark){.ink{stroke:#e5e8ed}}</style>
+  <path class="ink" d="M9.26 0.86 A7.25 7.25 0 0 1 15.14 9.26" stroke-width="1.5"/>
+  <circle cx="8" cy="8" r="3.93" fill="#3b5bff"/>
+  <circle class="ink" cx="8" cy="8" r="3.93" stroke-width="2.14"/>
+</svg>
