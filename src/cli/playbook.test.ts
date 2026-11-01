@@ -123,6 +123,93 @@ describe('playbook', () => {
     expect(await json('playbook')).toEqual({ collections: [] });
   });
 
+  describe('show', () => {
+    beforeEach(async () => {
+      await otea('collection', 'add', 'tasks');
+      await otea('create', '--collection', 'tasks', '--title', 'Docs', '--description', 'For v1');
+    });
+
+    it('says what the agent should do now', async () => {
+      const { out } = await otea('show', 'TASKS-1');
+
+      expect(out).toContain(
+        '\nNext: Your turn: claim it, move it to in_progress, work it, then move it to review with evidence.\n',
+      );
+      expect((await json('show', 'TASKS-1')).hint).toBe(
+        'Your turn: claim it, move it to in_progress, work it, then move it to review with evidence.',
+      );
+    });
+
+    it('follows the lease and the turn', async () => {
+      await otea('claim', 'TASKS-1', '--as', 'claude-b');
+
+      expect((await json('show', 'TASKS-1', '--as', 'claude')).hint).toMatch(
+        /^Held by claude-b until \d\d:\d\d: pick another item\.$/,
+      );
+      await otea('move', 'TASKS-1', 'in_progress', '--as', 'claude-b');
+      await otea('move', 'TASKS-1', 'review', '--as', 'claude-b');
+      expect((await json('show', 'TASKS-1')).hint).toBe("Human's turn: wait (otea wait).");
+    });
+
+    it('names the required evidence modules still empty', async () => {
+      repo.write(
+        '.otea/presets/shots/preset.yaml',
+        [
+          'preset: shots',
+          'preset_version: 1',
+          'fields:',
+          '  title: { module: text, required: create }',
+          'layout:',
+          '  evidence:',
+          '    - { module: images, id: screens, required: true }',
+          '    - { module: log }',
+          'workflow:',
+          '  initial: open',
+          '  states:',
+          '    open: { turn: agent }',
+          '    check: { turn: human }',
+          '    closed: { turn: none, closes: done }',
+          '  transitions:',
+          '    - { from: open, to: check, by: agent }',
+          '    - { from: check, to: closed, by: human }',
+          '',
+        ].join('\n'),
+      );
+      await otea('collection', 'add', 'shots', '--preset', 'shots');
+      await otea('create', '--collection', 'shots', '--title', 'Hero');
+
+      expect((await json('show', 'SHOTS-1')).hint).toBe(
+        'Your turn: claim it, work it, then move it to check with evidence in screens.',
+      );
+    });
+
+    it('uses the section of the playbook that names the state', async () => {
+      repo.write(
+        '.otea/presets/notes/preset.yaml',
+        [
+          'preset: notes',
+          'preset_version: 1',
+          'playbook: ./playbook.md',
+          'fields:',
+          '  title: { module: text, required: create }',
+          'workflow:',
+          '  initial: open',
+          '  states:',
+          '    open: { turn: agent }',
+          '    closed: { turn: none, closes: done }',
+          '  transitions:',
+          '    - { from: open, to: closed, by: human }',
+          '',
+        ].join('\n'),
+      );
+      repo.write('.otea/presets/notes/playbook.md', '# Notes\n\n## `open`\n\nWrite it down.\n');
+      await otea('collection', 'add', 'notes', '--preset', 'notes');
+      await otea('create', '--collection', 'notes', '--title', 'Idea');
+
+      expect((await json('show', 'NOTES-1')).hint).toBe('Your turn: Write it down.');
+    });
+  });
+
   it('fails with not_found for an unknown collection', async () => {
     const { code, err } = await otea('playbook', '--collection', 'nope', '--json');
 

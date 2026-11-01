@@ -114,6 +114,7 @@ describe('mcp server', () => {
       const shown = await data('show', { id: 'TASKS-2' });
 
       expect(shown).toEqual(await json('show', 'TASKS-2'));
+      expect(shown.hint).toBe('Your turn: claim it, fill in description, then move it to todo.');
       expect(shown.relayable).toEqual([
         { to: 'discarded', by: 'human', reasonRequired: true, turn: 'none', closes: 'discarded' },
       ]);

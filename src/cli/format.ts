@@ -1,5 +1,6 @@
 import type { Item, ItemView } from '../app/items.ts';
 import type { ValidationReport } from '../app/validate.ts';
+import { clockTime } from '../core/hint.ts';
 import type { Actor } from '../core/item.ts';
 import type { Lease } from '../core/lease.ts';
 import type { Layout } from '../core/modules.ts';
@@ -33,12 +34,6 @@ export function indent(text: string): string {
 
 function actorLabel(actor: Actor): string {
   return `${actor.kind}:${actor.name}`;
-}
-
-function clockTime(iso: string): string {
-  const date = new Date(iso);
-  const pad = (value: number) => String(value).padStart(2, '0');
-  return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
 function leaseLabel({ holder, expiresAt }: Lease): string {
@@ -219,12 +214,13 @@ function createdLine({ createdBy, createdAt, events }: ItemView): string {
 }
 
 // With the item type's layout, evidence is grouped by the module that draws it.
-export function formatItemWithEvents(item: ItemView, layout?: Layout): string {
+export function formatItemWithEvents(item: ItemView & { hint?: string }, layout?: Layout): string {
   return [
     `${item.id}  ${item.title}`,
     `state: ${item.state}  turn: ${item.turn}  ${typed(item) ? `type: ${item.type}  ` : ''}collection: ${item.collection}`,
     ...(item.lease ? [leaseLabel(item.lease)] : []),
     createdLine(item),
+    ...(item.hint ? [`Next: ${item.hint}`] : []),
     ...fieldLines(item.fields),
     '',
     ...(item.missing.length > 0 && item.turn !== 'none'
