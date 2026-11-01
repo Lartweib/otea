@@ -215,9 +215,13 @@
     grid-column: 3;
   }
 
+  /* The scrollbar's gutter is always kept, so the width the detail is given (its form follows it,
+     detail-aside.ts) never depends on how tall the detail is: the aside, or its travel, making the
+     pane scroll would narrow it below the aside's width and switch the form back, over and over. */
   .workspace .detail-pane {
     grid-column: 4;
     container: detail / inline-size;
+    scrollbar-gutter: stable;
   }
 
   /* The detail is anchored to the divider and stops at a reading measure; past it the screen keeps
