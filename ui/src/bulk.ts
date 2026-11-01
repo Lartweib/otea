@@ -1,7 +1,8 @@
 import { moveBlock } from './actions.ts';
+import type { ButtonVariant } from './kit/index.ts';
 import type { Item, Move } from './types.ts';
 
-// Bulk moves: the bar under a selection offers only the moves every selected item can take now,
+// Bulk moves: the tray under a selection offers only the moves every selected item can take now,
 // never one waiting for an item's open children (requires: children_closed), and says what keeps the
 // others out. moves: an item's moves as the API serves them to this browser, undefined while loading.
 export type Selected = { item: Item; moves: readonly Move[] | undefined };
@@ -13,7 +14,7 @@ export type BulkPlan = {
   // How many of each state: `2 reported · 1 verify`.
   counts: string;
   // With several states selected: keep only those of one state.
-  narrow: { label: string; ids: string[] }[];
+  narrow: { label: string; state: string; ids: string[] }[];
   loading: boolean;
 };
 
@@ -48,6 +49,7 @@ export function bulkPlan(selected: readonly Selected[]): BulkPlan {
     states.size > 1
       ? [...states].map(([state, ids]) => ({
           label: ids.length === 1 ? `only ${ids[0]}` : `only the ${ids.length} ${state}`,
+          state,
           ids,
         }))
       : [];
@@ -87,4 +89,61 @@ export function bulkPlan(selected: readonly Selected[]): BulkPlan {
     narrow,
     loading,
   };
+}
+
+// The moves in the tray, as the detail's action row has them: those that keep the items going, then
+// those that throw work away (quiet, after "close as"). Past `fit` the rest wait under "N more";
+// "close as" heads the closing moves where the first of them is.
+export type Placed = { move: Move; variant: ButtonVariant };
+export type TrayMoves = { shown: Placed[]; more: Placed[]; closeAs: 'shown' | 'more' | undefined };
+
+export function trayMoves(
+  moves: readonly Move[],
+  variants: readonly ButtonVariant[],
+  fit: number,
+): TrayMoves {
+  const placed = moves.map((move, index) => ({ move, variant: variants[index] ?? 'default' }));
+  const ordered = [
+    ...placed.filter(({ variant }) => variant !== 'quiet'),
+    ...placed.filter(({ variant }) => variant === 'quiet'),
+  ];
+  const shown = ordered.slice(0, fit);
+  const more = ordered.slice(fit);
+  const closes = (some: readonly Placed[]) => some.some(({ variant }) => variant === 'quiet');
+  return {
+    shown,
+    more,
+    closeAs: closes(shown) ? 'shown' : closes(more) ? 'more' : undefined,
+  };
+}
+
+// How many moves the tray's middle line holds, measured: the moves' widths in tray order, where the
+// closing ones start (closeAt) with the "close as" label before them, the width of "N more", and the
+// gap between each. Every move the room holds, six at most, with room left for more when some wait;
+// a seventh never waits alone. Until the room is measured (0), all of them.
+export type FitRow = {
+  widths: readonly number[];
+  closeAt: number;
+  label: number;
+  more: number;
+  gap: number;
+  room: number;
+};
+
+const MOST_SHOWN = 6;
+
+export function fitMoves({ widths, closeAt, label, more, gap, room }: FitRow): number {
+  const total = widths.length;
+  if (room <= 0) return total;
+  const span = (count: number, withMore: boolean) => {
+    const labelled = closeAt < count;
+    const pieces = count + (labelled ? 1 : 0) + (withMore ? 1 : 0);
+    const sum = widths.slice(0, count).reduce((all, width) => all + width, 0);
+    return sum + (labelled ? label : 0) + (withMore ? more : 0) + gap * Math.max(0, pieces - 1);
+  };
+  if (total <= MOST_SHOWN + 1 && span(total, false) <= room) return total;
+  for (let count = Math.min(MOST_SHOWN, total - 1); count > 0; count--) {
+    if (span(count, true) <= room) return count;
+  }
+  return 0;
 }
