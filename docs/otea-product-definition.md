@@ -482,6 +482,8 @@ Three origins, one folder structure:
 - **Two toolsets**, to keep per-session token cost low:
   - **Operate** (always on, kept small): create item, query items (including "my turn"), claim/heartbeat/release, update agent-writable fields, attach evidence, submit iteration, record a relayed human decision (`human` authority only), check blocked.
   - **Build** (CLI only or separate MCP server): list/describe modules, validate/preview presets, scaffold and test modules.
+- **Playbook delivery**: an agent reads its instructions from the project. `otea playbook` (and the MCP `playbook` tool) indexes the collections and prints a collection's preset playbook; `otea show` adds a one-line hint of what to do now, derived from the item's turn, lease and workflow (or from the playbook's section for the state); `otea init --agents-md` opts a project into a marked AGENTS.md block that points agents at `otea playbook`.
+- **Agent naming**: `otea connect --as <name>` pins a short slug name in the project's MCP config, so every MCP action is attributed to it; the web UI marks each agent by its initials on a hue derived from its name.
 - **Preset builder flow**: the agent interviews the user ("what do you want to track?") following a builder playbook and using the Build toolset. No wizard inside the server.
 - **Brief generator**: selected items -> Markdown brief ordered by dependencies, with success criteria and limits.
 - **Turn notification** (how an agent learns the turn came back):

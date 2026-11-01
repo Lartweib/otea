@@ -39,7 +39,7 @@ otea create --collection tasks --title "Fix the footer" --description "Wrong yea
 otea create --collection tasks --title "Dark mode?"           # also incomplete
 otea list --turn agent --unclaimed --json # waiting for agents and not held by another one
 otea wait --turn agent --unclaimed         # or block until there is one (see below)
-otea show TASKS-1                          # fields, moves the agent can make or relay, lease, timeline
+otea show TASKS-1                          # what to do next, fields, moves the agent can make or relay, lease, timeline
 otea claim TASKS-1 --as claude             # hold it for 15 minutes (--ttl 30m for another length)
 otea heartbeat TASKS-1 --as claude         # extend the lease on long work
 otea move TASKS-1 in_progress --as claude
@@ -131,16 +131,33 @@ otea events --item TASKS-1 --follow                        # keep printing new e
 - `--timeout <duration>` (`90s`, `15m`, `1h`) gives up with exit 13 (`timeout`); without it, `wait` waits until interrupted (exit 130, `interrupted`).
 - `otea events` prints the event log in commit order, filtered by `--item` and `--collection`. Each event has an id; pass the last one you read to `--since` to get only newer ones, and `--limit <n>` to read at most n. With `--json` each line is an event shaped like the ones in `otea show --json` (`id`, `itemId`, `type`, `actor`, `at`, `data`). `--follow` keeps printing new events as any process commits them, until Ctrl+C (exit 0); it cannot be combined with `--limit`.
 
+### Telling agents what to do
+
+An agent finds its instructions in the project itself:
+
+```sh
+otea playbook                         # the collections, each with its preset and how to read its playbook
+otea playbook --collection bugs       # the playbook of that collection's preset, as Markdown
+otea show BUGS-2                      # ... Next: Your turn: claim it, move it to fixing, work it, then move it to verify with evidence and a reason.
+otea init --agents-md                 # opt in: point agents at "otea playbook" from AGENTS.md
+```
+
+- `otea playbook --collection <name>` prints the playbook of the collection's preset (`--json`: `collection`, `preset` and `playbook`, `null` when the preset ships none). An unknown collection fails with exit 3 (`not_found`). Without `--collection` it prints the index (`--json`: `collections`, each with `name`, `preset` and `command`).
+- `otea show` (and `--json`, as `hint`) says what the agent should do now, in one line, derived from the item and never written per preset: its turn, who holds it (`Held by claude-b until 04:21: pick another item.`), the fields an incomplete item lacks, the agent moves that bring it back to the human (forward through the states in the order the workflow declares them), the evidence the handover needs (naming required evidence modules still empty), the reason a move requires and the open children a gated state waits for. When the preset's playbook has a heading that names the state (`## in_progress` or ``### 3. `review` ``), its first paragraph is the hint instead.
+- `otea init --agents-md` adds a short block between `<!-- otea:begin -->` and `<!-- otea:end -->` to `AGENTS.md` at the project root (creating the file if needed) telling agents to run `otea playbook`. Running it again replaces the block, never duplicates it, and leaves the rest of the file alone. `otea init` alone never touches `AGENTS.md`.
+
 ### Working from an MCP client
 
-`otea mcp` serves the agent commands as tools of a [Model Context Protocol](https://modelcontextprotocol.io) server on stdin and stdout, so Claude Code and other MCP clients can work Otea without shelling out. Register it once per project, naming the agent it acts as:
+`otea mcp` serves the agent commands as tools of a [Model Context Protocol](https://modelcontextprotocol.io) server on stdin and stdout, so Claude Code and other MCP clients can work Otea without shelling out. Connect it once per project, naming the agent it acts as:
 
 ```sh
 cd /path/to/your/project
-claude mcp add otea -- node --disable-warning=ExperimentalWarning /path/to/otea/src/cli/main.ts mcp --as claude
+otea connect --as claude-b     # or just "otea connect" at a terminal, which asks for the name
 ```
 
-- Tools: `list`, `show`, `create`, `update`, `attach`, `link`, `unlink`, `move`, `claim`, `heartbeat`, `release`, `relay`, `events` and `wait`, one per agent command. Each takes that command's arguments and options by name (`{"id": "TASKS-1", "state": "review"}`, `"field": ["priority=high"]`, durations as `"90s"`, `"15m"`, `"1h"`; `attach` takes `file` as a path the server reads, relative to the directory it runs in) and runs the command itself, so the rules, the validations and the error codes are those of the CLI. Setup and human commands (`init`, `collection add`, `validate`, `serve`, `open`) stay in the CLI, and `human-ui` moves are refused (`forbidden`) as in the CLI.
+- `otea connect` writes the `otea` server into `.mcp.json` at the project root (the project config Claude Code reads), running `node --disable-warning=ExperimentalWarning /path/to/otea/src/cli/main.ts mcp --as claude-b`, so every action through it is attributed to `claude-b`. Other servers in the file are kept, and connecting again replaces the entry. `--json` prints the path, the agent, and the `command` and `args`, to copy into clients that keep their config elsewhere (or run `claude mcp add otea -- <command> <args>`).
+- The name is a short slug: at most 24 lowercase letters, digits and single dashes, starting with a letter, and not `you` or `human`. Anything else fails with exit 6 (`invalid_agent_name`) and writes nothing. Without `--as`, `connect` asks for the name at a terminal and fails with exit 2 otherwise, so scripts pass `--as`. The web UI shows each agent by a mark derived from its name, so a stable name keeps its mark stable.
+- Tools: `playbook`, `list`, `show`, `create`, `update`, `attach`, `link`, `unlink`, `move`, `claim`, `heartbeat`, `release`, `relay`, `events` and `wait`, one per agent command. Each takes that command's arguments and options by name (`{"id": "TASKS-1", "state": "review"}`, `"field": ["priority=high"]`, durations as `"90s"`, `"15m"`, `"1h"`; `attach` takes `file` as a path the server reads, relative to the directory it runs in) and runs the command itself, so the rules, the validations and the error codes are those of the CLI. Setup and human commands (`init`, `connect`, `collection add`, `validate`, `serve`, `open`) stay in the CLI, and `human-ui` moves are refused (`forbidden`) as in the CLI.
 - A tool returns the JSON the command prints with `--json`; `events` returns its events as one array. A failure is a tool error whose text is the same `{"error":{"code","message"}}`.
 - `wait` gives up with the `timeout` error after 5 minutes unless `timeout` says otherwise, and refuses more than 15 minutes, since clients time out long tool calls: call it again to keep waiting. A cancelled call stops waiting. `events` has no `follow`: call it again with the last event id as `since`.
 - The agent is named by `--as`, then `$OTEA_AGENT`, then `agent`, as in the CLI, and the project is found from the directory the client starts the server in. Nothing but the protocol goes to stdout.
