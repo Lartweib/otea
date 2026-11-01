@@ -335,7 +335,9 @@ The modules a layout may place, the slots each one may sit in and the config it 
 
 **Collection view**
 
-`view: { kind, group_by }` says how the collection lists its items, for the whole preset (collections have no settings of their own). `kind` is `list` (default), `board` or `grid`; `group_by` is `turn` (default: waiting for you, with agents, closed), `state`, `type`, or an `enum` or `severity` field every type has. Only the list grouped by turn is drawn yet: other kinds and groupings validate and fall back to it without an error.
+`view: { kind, group_by, columns }` says how the collection lists its items, for the whole preset (collections have no settings of their own). `kind` is `list` (default), `board` or `grid`; a board is drawn as the list for now. `group_by` is `turn` (default: waiting for you, with agents, closed), `state`, `type`, or an `enum` or `severity` field every type has. `columns` names what the grid shows, in order: the built-in `id`, `title` (always listed), `state`, `type`, `who` (the holder) and `age` (since the last change), and one-line fields (`enum`, `severity`, `text`); a field only some types have shows an empty cell on the others. Without `columns` the grid shows `id`, `title`, the one-line fields of the row slot, `state`, `who` and `age`. Validate reports an unknown column (with the close names), a column listed twice, a multi-line field (`steps is markdown; a column holds one line`), columns without the title, and a `group_by` on a field that cannot group (`area is text, so it cannot group (make it an enum)`).
+
+A person can still switch a collection between list and grid, and group, sort and filter it; the web UI keeps those choices per collection in the browser (see `DESIGN.md`, Grid), and the list honours the same grouping, sort and filters.
 
 **Example: two types in one collection**
 
@@ -403,7 +405,7 @@ types:
       body: [pitch, { module: questions }, effort]
       row: [effort]
       intake: [title, pitch, effort]
-view: { kind: list, group_by: turn }
+view: { kind: grid, group_by: turn, columns: [id, title, severity, area, state, who, age] }
 ```
 
 Rules:
@@ -415,7 +417,7 @@ Rules:
 - Items survive preset edits; incompatibilities are reported, not silently fixed.
 - **Portability:** a preset that uses only official modules is shareable as-is. A preset that depends on local modules declares them; loading it elsewhere reports what is missing.
 
-Planned, not yet supported: more field modules (`media`, `checks`), `behaviors` (gates), the components of the reserved layout modules, and drawing `board` and `grid` views.
+Planned, not yet supported: more field modules (`media`, `checks`), `behaviors` (gates), the components of the reserved layout modules, and drawing the `board` view.
 
 ### 9.1 Relations
 
