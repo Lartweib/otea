@@ -49,7 +49,8 @@ otea create --collection bugs --title "Saving a draft with an emoji in the title
   --field actual="Blank page; the console logs RangeError: invalid code point" \
   --field environment="Firefox 131, macOS 15, commit abc123" \
   --field severity=high \
-  --field area=editor
+  --field category=crash \
+  --field area=ui
 ```
 
 - **title**: the symptom, specific enough to tell it apart from other bugs.
@@ -57,7 +58,8 @@ otea create --collection bugs --title "Saving a draft with an emoji in the title
 - **steps**: numbered, minimal, from a clean start; someone else must be able to follow them. Reproduce them yourself before filing.
 - **expected** and **actual**: what should happen and what does, quoting exact error messages.
 - **environment** (optional): version or commit, OS, browser, configuration; whatever the bug depends on.
-- **area** (optional): the part of the product, in the words the project uses.
+- **category** (optional): what kind of bug it is, one of `crash`, `visual`, `gameplay`, `physics`, `audio`, `performance`, `ui`.
+- **area** (optional): the part of the product it lives in, one of `forest biome`, `farm`, `den`, `ui`, `save system`. Any other value is refused: leave it out rather than guess.
 - **severity**: one of `low`, `medium`, `high`, `critical`. Judge the impact, not how hard the fix is:
   - `critical`: data loss or corruption, a security hole, or a crash or outage of a core flow with no workaround.
   - `high`: a core feature is broken or gives wrong results, and the workaround is painful or missing.

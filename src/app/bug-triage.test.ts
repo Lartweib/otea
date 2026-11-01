@@ -82,6 +82,25 @@ describe('bug-triage preset', () => {
     expect(validateProject(ctx)).toEqual({ errors: 0, warnings: 0, findings: [] });
   });
 
+  it('lists bugs in a grid, with category and area as enums', () => {
+    const preset = requirePreset(ctx.presets, 'bug-triage');
+
+    expect(preset.version).toBe(2);
+    expect(preset.fields.category).toEqual({
+      module: 'enum',
+      values: ['crash', 'visual', 'gameplay', 'physics', 'audio', 'performance', 'ui'],
+    });
+    expect(preset.fields.area).toEqual({
+      module: 'enum',
+      values: ['forest biome', 'farm', 'den', 'ui', 'save system'],
+    });
+    expect(preset.view).toEqual({
+      kind: 'grid',
+      groupBy: 'turn',
+      columns: ['id', 'title', 'category', 'severity', 'area', 'state', 'who', 'age'],
+    });
+  });
+
   it('files a complete report for triage, and a bare one as incomplete', () => {
     const complete = file();
     const bare = file({}, 'Players say the map flickers');
