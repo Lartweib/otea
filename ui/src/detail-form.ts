@@ -1,15 +1,29 @@
 // The detail's form: one column (stacked), or, on a wide enough pane, a main column and an aside
-// beside it that holds Details and History. Geometry shared with detail.css.
+// beside it that holds History, under a band where Details sits beside the header. Geometry shared
+// with detail.css, which computes the same widths from the pane (container units).
 
-export const ASIDE = { gutter: 40, main: 800, gap: 48, min: 340, max: 380 } as const;
+export const ASIDE = { gutter: 40, main: 800, gap: 48, min: 340, max: 440 } as const;
 
 // The detail pane width (gutters included) from which the aside shows: 40 + 800 + 48 + 340 + 40.
 export const ASIDE_FROM = ASIDE.gutter + ASIDE.main + ASIDE.gap + ASIDE.min + ASIDE.gutter;
 
 export type DetailForm = 'stacked' | 'aside';
 
+export type Composition = { form: DetailForm; main: number; aside?: number };
+
+// The detail fills its pane, whatever the screen: the column between the two gutters is all main
+// when stacked; beside an aside, the aside takes a quarter of every pixel past the threshold (340 to
+// 440) and main the rest, uncapped. Prose keeps its own 72ch measure inside main.
+export function composition(paneWidth: number): Composition {
+  const column = paneWidth - 2 * ASIDE.gutter;
+  if (paneWidth < ASIDE_FROM) return { form: 'stacked', main: column };
+  const grown = Math.round(ASIDE.min + (paneWidth - ASIDE_FROM) / 4);
+  const aside = Math.max(ASIDE.min, Math.min(ASIDE.max, grown));
+  return { form: 'aside', main: column - ASIDE.gap - aside, aside };
+}
+
 export function detailForm(paneWidth: number): DetailForm {
-  return paneWidth >= ASIDE_FROM ? 'aside' : 'stacked';
+  return composition(paneWidth).form;
 }
 
 // The aside is never taller than the room under its top in the pane, so a long history scrolls
