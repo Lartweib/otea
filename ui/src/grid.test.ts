@@ -7,6 +7,7 @@ import {
   gridColumns,
   gridTemplate,
   gridTier,
+  hasValues,
   nextSort,
   shownColumns,
   sortItems,
@@ -43,7 +44,7 @@ const bugs: CollectionView = {
           module: 'enum',
           values: ['crash', 'visual', 'gameplay', 'physics', 'audio', 'performance', 'ui'],
         },
-        { name: 'area', module: 'enum', values: ['forest biome', 'farm', 'den', 'ui'] },
+        { name: 'area', module: 'text' },
       ],
       layout: { header: [], evidence: [], body: [], side: [], row: [], phone: [], intake: [] },
     },
@@ -98,7 +99,7 @@ describe('gridColumns', () => {
       ['title', 'title'],
       ['category', 'enum'],
       ['severity', 'severity'],
-      ['area', 'enum'],
+      ['area', 'text'],
       ['state', 'state'],
       ['who', 'who'],
       ['age', 'age'],
@@ -109,6 +110,11 @@ describe('gridColumns', () => {
     const stale = { ...bugs, view: { ...bugs.view, columns: ['id', 'title', 'gone', 'state'] } };
 
     expect(gridColumns(stale).map(({ key }) => key)).toEqual(['id', 'title', 'state']);
+  });
+
+  it('filters and groups by an enum, and only sorts by free text', () => {
+    expect(hasValues(column('category'))).toBe(true);
+    expect(hasValues(column('area'))).toBe(false);
   });
 });
 
@@ -140,7 +146,7 @@ describe('the grid width tiers', () => {
     expect(columnWidth(column('who'), false)).toBe(44);
     expect(columnWidth(column('age'), false)).toBe(56);
     expect(columnWidth(column('category'), false)).toBe(117);
-    expect(columnWidth(column('area'), false)).toBe(124);
+    expect(columnWidth(column('area'), false)).toBe(160);
     expect(gridTemplate(shownColumns(gridColumns(bugs), 4))).toBe(
       '56px 28px 72px minmax(0, 1fr) 52px 110px 44px 56px',
     );
