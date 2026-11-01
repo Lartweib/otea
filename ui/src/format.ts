@@ -104,14 +104,25 @@ export function untilLabel({ expiresAt }: Lease, timeZone?: string): string {
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
+// A moment split in two: its day when it is not today (28 Oct; 2 Jan 2025 from another year) and
+// its time. History stacks the day over the time so its column stays narrow.
+export function momentParts(
+  iso: string,
+  now: number,
+  timeZone?: string,
+): { day?: string; time: string } {
+  const [date = '', time = ''] = formatTime(iso, timeZone).split(' ');
+  const [today = ''] = formatTime(new Date(now).toISOString(), timeZone).split(' ');
+  if (time === '') return { time: iso };
+  if (date === today) return { time };
+  const [year, month, day] = date.split('-');
+  const short = `${Number(day)} ${MONTHS[Number(month) - 1]}`;
+  return { day: year === today.slice(0, 4) ? short : `${short} ${year}`, time };
+}
+
 // A moment as the detail says it: the time on the day it happened, the day and time otherwise
 // (28 Oct, 12:31); with the year when it is not this one.
 export function momentLabel(iso: string, now: number, timeZone?: string): string {
-  const [date = '', time = ''] = formatTime(iso, timeZone).split(' ');
-  const [today = ''] = formatTime(new Date(now).toISOString(), timeZone).split(' ');
-  if (time === '') return iso;
-  if (date === today) return time;
-  const [year, month, day] = date.split('-');
-  const short = `${Number(day)} ${MONTHS[Number(month) - 1]}`;
-  return `${year === today.slice(0, 4) ? short : `${short} ${year}`}, ${time}`;
+  const { day, time } = momentParts(iso, now, timeZone);
+  return day ? `${day}, ${time}` : time;
 }
