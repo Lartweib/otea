@@ -36,11 +36,19 @@ export function detailsCut(rows: number, open: boolean): { shown: number; more: 
 }
 
 // The aside is never taller than the room under its top in the pane, so a long history scrolls
-// inside it and never lengthens the pane; it keeps at least 240px.
+// inside it and never lengthens the pane; it keeps at least 240px. asideTop is where its box sits in
+// the flow, relative to the visible pane (scrolled, never transformed); once that is above its sticky
+// offset it is stuck there, and the room is the pane under that offset.
 export const ASIDE_MIN_HEIGHT = 240;
 
-export function asideHeight(paneHeight: number, asideTop: number, paddingBottom: number): number {
-  return Math.max(ASIDE_MIN_HEIGHT, Math.floor(paneHeight - asideTop - paddingBottom));
+export function asideHeight(
+  paneHeight: number,
+  asideTop: number,
+  paddingBottom: number,
+  stickyTop: number,
+): number {
+  const top = Math.max(stickyTop, asideTop);
+  return Math.max(ASIDE_MIN_HEIGHT, Math.floor(paneHeight - top - paddingBottom));
 }
 
 // How Details and History travel between the forms, on one timeline of three legs: sideways to an

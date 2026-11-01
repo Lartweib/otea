@@ -83,7 +83,18 @@ function travel(root: HTMLElement, before: Map<string, DOMRect>, toAside: boolea
   }
 }
 
-// History, beside the main column, is never taller than the room it has under its top in the pane.
+// Where an element sits in the page's flow. Offsets ignore transforms, so a section still travelling
+// (FLIP) is measured where it lands, not where it is drawn.
+function flowTop(element: HTMLElement): number {
+  let top = 0;
+  for (let node: Element | null = element; node instanceof HTMLElement; node = node.offsetParent) {
+    top += node.offsetTop;
+  }
+  return top;
+}
+
+// History, beside the main column, is never taller than the room it has under its top in the pane:
+// fitted again as the pane scrolls, since that room grows until History sticks.
 function fitAside(root: HTMLElement, pane: HTMLElement) {
   const aside = root.querySelector<HTMLElement>('[data-travel="history"]');
   if (!aside) return;
@@ -91,13 +102,14 @@ function fitAside(root: HTMLElement, pane: HTMLElement) {
     aside.style.maxHeight = '';
     return;
   }
-  const top = aside.getBoundingClientRect().top - pane.getBoundingClientRect().top + pane.scrollTop;
+  const top = flowTop(aside) - flowTop(pane) - pane.clientTop - pane.scrollTop;
+  const stickyTop = Number.parseFloat(getComputedStyle(aside).top) || 0;
   // The room ends where the pane's content does: above the panel's bottom padding.
   const panel = root.parentElement ?? pane;
   const bottom =
     (Number.parseFloat(getComputedStyle(pane).paddingBottom) || 0) +
     (panel === pane ? 0 : Number.parseFloat(getComputedStyle(panel).paddingBottom) || 0);
-  aside.style.maxHeight = `${asideHeight(pane.clientHeight, top, bottom)}px`;
+  aside.style.maxHeight = `${asideHeight(pane.clientHeight, top, bottom, stickyTop)}px`;
 }
 
 // The detail's form, following the pane it sits in. Off (a phone's unfolded detail): stacked.
@@ -137,6 +149,7 @@ export function useDetailForm(root: RefObject<HTMLElement | null>, enabled: bool
     const onResize = () => {
       resizedAt = performance.now();
     };
+    const onScroll = () => fitAside(element, pane);
     const observer = new ResizeObserver(() => {
       const workspace = pane.closest<HTMLElement>('.workspace');
       if (workspace?.dataset.dragging) {
@@ -159,10 +172,12 @@ export function useDetailForm(root: RefObject<HTMLElement | null>, enabled: bool
     // The detail's own size (its header wrapping, content loading) moves the aside's top.
     observer.observe(element);
     window.addEventListener('resize', onResize);
+    pane.addEventListener('scroll', onScroll, { passive: true });
     return () => {
       observer.disconnect();
       window.clearTimeout(quiet);
       window.removeEventListener('resize', onResize);
+      pane.removeEventListener('scroll', onScroll);
       window.removeEventListener('pointerup', afterDrag);
       window.removeEventListener('pointercancel', afterDrag);
     };

@@ -70,11 +70,17 @@ describe('detailsCut', () => {
 
 describe('asideHeight', () => {
   it('is the room under the aside in the pane', () => {
-    expect(asideHeight(1000, 180, 64)).toBe(756);
+    expect(asideHeight(1000, 180, 64, 16)).toBe(756);
+  });
+
+  it('grows as the pane scrolls the aside up, until it sticks', () => {
+    expect(asideHeight(1000, 80, 64, 16)).toBe(856);
+    // Scrolled past its sticky offset, its top (in the flow) is above the pane: it is stuck at 16.
+    expect(asideHeight(1000, -500, 64, 16)).toBe(920);
   });
 
   it('never goes under 240px', () => {
-    expect(asideHeight(400, 300, 64)).toBe(240);
+    expect(asideHeight(400, 300, 64, 16)).toBe(240);
   });
 });
 
