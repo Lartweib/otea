@@ -80,19 +80,6 @@
   stroke-linejoin: round;
 }
 
-/* ---- keyboard hint ---- */
-.kbd {
-  display: inline-grid;
-  place-items: center;
-  min-width: 18px;
-  height: 18px;
-  padding: 0 4px;
-  border-radius: 4px;
-  font: 500 10.5px var(--font-machine);
-  background: color-mix(in oklch, currentColor 14%, transparent);
-  color: inherit;
-}
-
 /* ---- type tag: square, unlike the round pills, and never in your color ---- */
 .type-tag {
   display: inline-flex;

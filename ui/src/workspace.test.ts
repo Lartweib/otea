@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { groupByTurn } from './sections.ts';
 import type { Item, Turn } from './types.ts';
-import { inCollection, listOrder, railEntries } from './workspace.ts';
+import { inCollection, railEntries } from './workspace.ts';
 
 const item = (id: string, collection: string, turn: Turn, updatedAt = '2026-01-01T00:00:00Z') =>
   ({ id, collection, turn, updatedAt, title: id, state: 's' }) as Item;
@@ -30,11 +29,5 @@ describe('inCollection', () => {
 
   it('keeps only the items of the chosen collection', () => {
     expect(inCollection(items, 'notes').map((each) => each.id)).toEqual(['NOTES-1']);
-  });
-});
-
-describe('listOrder', () => {
-  it('reads ids in the order the list draws them: by section, then within it', () => {
-    expect(listOrder(groupByTurn(items))).toEqual(['TASKS-1', 'NOTES-1', 'TASKS-2', 'TASKS-3']);
   });
 });
