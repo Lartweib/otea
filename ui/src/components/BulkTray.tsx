@@ -264,14 +264,17 @@ type BulkTrayProps = {
   host: HTMLElement | null;
   onKeep: (ids: string[]) => void;
   onClear: () => void;
+  // The list is shown (or the views morph towards it): the tray leaves as it always does.
+  away: boolean;
 };
 
 // The tray under a grid selection, docked to the bottom edge of the grid pane: one size for every
 // state, three zones (who: how many and of which states; what: the moves every one of them can take,
 // the reason, the progress or the receipt; the way out: keep only, clear). A move that asks a reason
 // asks once, here, and records the same reason on each item. Then the tray says what landed for six
-// seconds and leaves. It rises with the first tick and keeps its last look while it leaves.
-export function BulkTray({ selected, canWrite, host, onKeep, onClear }: BulkTrayProps) {
+// seconds and leaves. It rises with the first tick and keeps its last look while it leaves, also
+// when the view switches to the list, alongside the morph.
+export function BulkTray({ selected, canWrite, host, onKeep, onClear, away }: BulkTrayProps) {
   const moves = useMoves(canWrite ? selected : []);
   const [state, setState] = useState<Step>({ step: 'choosing' });
   const [menu, setMenu] = useState<Menu | null>(null);
@@ -313,7 +316,7 @@ export function BulkTray({ selected, canWrite, host, onKeep, onClear }: BulkTray
         })
       : ordered.length;
   const placed = trayMoves(plan.moves, variants, fit);
-  const on = selected.length > 0 || state.step === 'posting' || state.step === 'landed';
+  const on = !away && (selected.length > 0 || state.step === 'posting' || state.step === 'landed');
 
   // The moves' own widths, once per set of moves: the room decides how many show.
   useLayoutEffect(() => {
