@@ -46,6 +46,7 @@ function itemsFilter(query: Record<string, string>): ListItemsFilter {
 function api(project: Project, feed: ChangeFeed, streams: LiveStreams, auth: Session): Hono {
   return new Hono()
     .get('/session', (c) => c.json({ canWrite: auth.canWrite(c) }))
+    .get('/project', (c) => c.json(project.identity))
     .get('/collections', (c) => c.json(listCollectionViews(project)))
     .get('/presets', (c) => c.json(listPresetViews(project)))
     .get('/items', (c) => c.json(listItems(project, itemsFilter(c.req.query()))))

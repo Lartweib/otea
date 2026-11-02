@@ -211,6 +211,7 @@ Chosen at `otea init`, which asks explicitly and explains the implications of ea
 
 - `.otea/` is resolved from the git common directory (`git rev-parse --git-common-dir`), so every worktree of a repo shares the same data. Parallel agents in worktrees are a primary use case.
 - **Discovery** (CLI, MCP server and `serve` alike): from that main repo root (or the folder itself outside git), walk up parent folders to the nearest one holding `.otea/otea.db`, stopping at the filesystem root. Matching the database, not `.otea/` alone, keeps the user-level `~/.otea` from passing for a project. So one project in a product folder (which need not be a repo) covers every repo below it, with their worktrees and subfolders. `OTEA_PROJECT=<path>` overrides discovery. `otea init` inside a repo already covered by a project above refuses unless `--here`, which creates a separate project at the repo; the nearest project wins.
+- **Identity**: every project database holds one `project` row, `id` and `name`, so a registry of projects can be rebuilt from the databases themselves. The name is the project folder's; the id is the name as a slug (lowercase ASCII and dashes, at most 32 characters) plus `-` and six random base32 characters (`my-app-k3x7qa`). It is written on `init`, and on the first open of a database created before identities.
 - `external` is meant for folders without git or users who want zero footprint; it is the only mode where the registry is not optional.
 - **Versioning is an export, not live data.** A binary database cannot be diffed or merged in git, so `otea export` writes a readable snapshot (items as Markdown, events as JSONL) that can be committed when a versioned history is wanted.
 
@@ -233,7 +234,7 @@ One write path: the CLI and the app use the same core and write to the same data
   config.yaml              collections -> preset mapping
   presets/                 local presets (or references to official ones)
   modules/                 local modules (§10.3)
-  otea.db                  items (with their lease), iterations, events (append-only)
+  otea.db                  project identity, items (with their lease), iterations, events (append-only)
   ui-token                 browser session token (never committed, never printed)
   serve.json               port and pid of the running `otea serve`, removed on shutdown
   evidence/<collection>/<item-id>/...

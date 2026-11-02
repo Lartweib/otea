@@ -76,13 +76,14 @@ const init: Command = {
   args: [],
   options: { 'agents-md': { flag: true }, here: { flag: true } },
   execute: ({ cwd, flag }) => {
-    const { root, db } = initProject(cwd, { here: flag('here') });
+    const { root, db, identity } = initProject(cwd, { here: flag('here') });
     db.close();
     const path = join(root, '.otea');
-    if (!flag('agents-md')) return { data: { root, path }, text: path };
+    const data = { root, path, ...identity };
+    if (!flag('agents-md')) return { data, text: path };
     const agentsMd = writeAgentsMd(root);
     const text = `${path}\n${AGENTS_MD_TEXT[agentsMd.action](agentsMd.path)}`;
-    return { data: { root, path, agentsMd }, text };
+    return { data: { ...data, agentsMd }, text };
   },
 };
 

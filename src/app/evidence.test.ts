@@ -19,7 +19,7 @@ import { type AttachInput, attachEvidence, evidenceDir, evidenceFile } from './e
 import { createItem, getItem, moveItem, showItem } from './items.ts';
 import { claimItem } from './leases.ts';
 import type { Project } from './project.ts';
-import { memoryContext } from './testing.ts';
+import { IDENTITY, memoryContext } from './testing.ts';
 
 const claude: Actor = { kind: 'agent', name: 'claude' };
 const codex: Actor = { kind: 'agent', name: 'codex' };
@@ -53,7 +53,7 @@ describe('attachEvidence', () => {
     const root = mkdtempSync(join(tmpdir(), 'otea-evidence-'));
     files = join(root, 'files');
     mkdirSync(files);
-    project = { root, ...memoryContext() };
+    project = { root, identity: IDENTITY, ...memoryContext() };
     addCollection(project, { name: 'tasks' });
     const fields = { description: 'Details' };
     createItem(project, { collection: 'tasks', title: 'First', fields, actor: claude }, at(T0));
@@ -226,7 +226,7 @@ describe('attachEvidence to a type that places evidence modules', () => {
     const root = mkdtempSync(join(tmpdir(), 'otea-evidence-'));
     files = join(root, 'files');
     mkdirSync(files);
-    project = { root, ...memoryContext(evidencePreset) };
+    project = { root, identity: IDENTITY, ...memoryContext(evidencePreset) };
     addCollection(project, { name: 'proof', preset: 'proof' });
     for (const type of ['bug', 'impr']) {
       createItem(project, { collection: 'proof', type, title: type, actor: claude }, at(T0));

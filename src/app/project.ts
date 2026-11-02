@@ -1,13 +1,21 @@
 import { execFileSync } from 'node:child_process';
+import { randomBytes } from 'node:crypto';
 import { appendFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
+import { basename, dirname, join, resolve } from 'node:path';
+import type { DatabaseSync } from 'node:sqlite';
 import { OteaError } from '../core/errors.ts';
+import { PROJECT_ID_RANDOM_BYTES, projectId } from '../core/project-id.ts';
 import { openDatabase } from '../store/database.ts';
 import { migrate } from '../store/migrations.ts';
+import {
+  insertProjectIdentity,
+  type ProjectIdentity,
+  selectProjectIdentity,
+} from '../store/queries.ts';
 import type { Context } from './context.ts';
 import { loadPresets } from './presets.ts';
 
-export type Project = Context & { root: string };
+export type Project = Context & { root: string; identity: ProjectIdentity };
 
 type Location = { root: string; gitCommonDir?: string };
 
@@ -51,10 +59,20 @@ function excludeFromGit(gitCommonDir: string): void {
   appendFileSync(excludePath, `${separator}${EXCLUDE_ENTRY}\n`);
 }
 
+// Named after its folder. A database from before identities gets one the first time it is opened;
+// reading first keeps every later open from taking the write lock.
+function ensureIdentity(db: DatabaseSync, root: string): ProjectIdentity {
+  const existing = selectProjectIdentity(db);
+  if (existing) return existing;
+  const name = basename(root) || root;
+  insertProjectIdentity(db, { id: projectId(name, randomBytes(PROJECT_ID_RANDOM_BYTES)), name });
+  return selectProjectIdentity(db) as ProjectIdentity;
+}
+
 function open(root: string): Project {
   const db = openDatabase(databasePath(root));
   migrate(db);
-  return { root, db, presets: loadPresets(root) };
+  return { root, db, presets: loadPresets(root), identity: ensureIdentity(db, root) };
 }
 
 export type Env = Readonly<Record<string, string | undefined>>;

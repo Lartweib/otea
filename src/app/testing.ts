@@ -25,6 +25,8 @@ export function catalogWith(...presets: Preset[]): PresetCatalog {
   };
 }
 
+export const IDENTITY = { id: 'memory-aaaaaa', name: 'memory' };
+
 export function memoryContext(...presets: Preset[]): Context {
   const db = openDatabase(':memory:');
   migrate(db);

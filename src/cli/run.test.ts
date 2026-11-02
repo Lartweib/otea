@@ -1,5 +1,5 @@
 import { existsSync } from 'node:fs';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { EXIT_CODES } from './exit-codes.ts';
 import { type Cli, cliAt, tempGitRepo } from './testing.ts';
@@ -102,10 +102,21 @@ describe('run', () => {
       expect(await otea('init')).toMatchObject({ code: 0, out: `${oteaDir()}\n` });
     });
 
-    it('prints root and path with --json', async () => {
+    it('prints root, path and the project identity with --json', async () => {
       const { out } = await otea('init', '--json');
 
-      expect(JSON.parse(out)).toEqual({ root: repo.dir, path: oteaDir() });
+      expect(JSON.parse(out)).toEqual({
+        root: repo.dir,
+        path: oteaDir(),
+        id: expect.stringMatching(/^otea-cli-[a-z0-9-]+-[a-z2-7]{6}$/),
+        name: basename(repo.dir),
+      });
+    });
+
+    it('keeps the identity when init runs again', async () => {
+      const first = JSON.parse((await otea('init', '--json')).out);
+
+      expect(JSON.parse((await otea('init', '--json')).out)).toEqual(first);
     });
   });
 });

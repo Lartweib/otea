@@ -62,6 +62,8 @@ Agents claim an item before working it. A lease is atomic: while one agent holds
 
 `otea init` creates the project in `.otea/` at the repository root (or in the folder itself outside git). Every command finds it from any subfolder or git worktree of that repo: it starts at the main repo root and walks up parent folders to the nearest one holding `.otea/otea.db`. So one project can also live in a product folder above several repos (the folder need not be a repo): run `otea init` there, and commands from inside any of those repos use it. `otea init` inside a repo that such a project already covers refuses; `otea init --here` creates a separate project at the repo, which then wins for it. `OTEA_PROJECT=<path>` skips discovery and names the project folder directly. The MCP server and `otea serve` find the project the same way.
 
+Each project has an identity stored in its database: a name (its folder's) and an id, the name as a slug plus six random base32 characters (`my-app-k3x7qa`). `otea init --json` prints both next to `root` and `path`, and `GET /api/project` returns them. A database created before identities gets one the first time it is opened.
+
 ### Attaching evidence
 
 Agents attach files to an item as proof of their work: a GIF reproducing a bug, a before and after screenshot, a video, a diff, a log or test output.

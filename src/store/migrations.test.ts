@@ -24,16 +24,23 @@ describe('migrate', () => {
     migrate(db);
 
     expect(tables(db)).toEqual(
-      expect.arrayContaining(['collections', 'items', 'events', 'evidence', 'relations']),
+      expect.arrayContaining([
+        'collections',
+        'items',
+        'events',
+        'evidence',
+        'relations',
+        'project',
+      ]),
     );
-    expect(userVersion(db)).toBe(7);
+    expect(userVersion(db)).toBe(8);
   });
 
   it('is idempotent', () => {
     migrate(db);
     migrate(db);
 
-    expect(userVersion(db)).toBe(7);
+    expect(userVersion(db)).toBe(8);
   });
 
   describe('from version 1', () => {
