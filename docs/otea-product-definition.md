@@ -26,6 +26,12 @@ Agents produce work faster than a human can follow it live. Otea is where work c
 
 You can leave agents working on several things across several projects, and sit down when you have time to see what is waiting for you.
 
+### The value: the session can close
+
+The handoff lives in the item: its evidence, its history and the next step. An agent hands an item over and leaves it; its session does not have to stay open so the thread is not lost. Any later session, of any agent, resumes from the item: `otea show` says what to do now (its `Next:` line, from the item and the playbook), `otea wait` blocks until an item is the agent's turn, and a lease left by a closed session expires on its own.
+
+This is the problem Otea answers first. In the owner's own work with agents, about 30% of prompts were handoff acts (approve, reject, attach proof), and sessions sat open more than an hour waiting on the human 711 times, more than four hours 257 times, kept open only to keep the thread. Traceability (who decided what, through which channel) comes with the item too, but it is the second value, not the first.
+
 ### What it is not
 
 - Not a project manager for human teams.

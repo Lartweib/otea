@@ -6,11 +6,14 @@
 
 Agents produce work faster than a human can follow it live. Otea is where work changes hands: agents leave findings, deliverables and evidence; you leave decisions and feedback; both can see at any moment where each thing stands and whose turn it is.
 
+**The handoff lives in the item, not in the session.** Evidence, history and the next step are stored with the item, so an agent can hand it over and its session can close instead of sitting open waiting for you. Any later session picks it up from `otea show`, whose `Next:` line says what to do now, and `otea wait` blocks until an item is the agent's turn again. A lease the closed session held expires on its own.
+
 - **Triage** many findings at once: filter, group, prioritize, discard.
 - **Review** results in depth: GIFs, video, diffs, logs, with concrete questions the agent reads back and acts on.
 - **Presets** shape each board and carry the agent playbook, so sharing a preset shares a way of working.
 - **Local-first**: data stays with your project. No cloud, no accounts.
 - **Harness-neutral**: any agent with a shell (CLI) or MCP support can use it.
+- **Traceable**: every change is an append-only event, with who made it and through which channel.
 
 ## Status
 
