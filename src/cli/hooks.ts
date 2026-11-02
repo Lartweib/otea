@@ -8,6 +8,8 @@ export type HookChange = {
   path: string;
   action: 'created' | 'updated' | 'unchanged' | 'removed' | 'absent';
   content?: string;
+  // Why the hook went where it did.
+  note?: string;
 };
 
 // The first lines of the pre-push hook Otea writes; a hook without them is someone else's.
@@ -57,11 +59,21 @@ export function installGitHook(cwd: string, main: string): HookChange {
       `${path} is another pre-push hook; Otea leaves it as it is. To gate pushes, add to it:\n\n${gitCheckLines(main)}`,
     );
   }
-  if (current === content) return { path, action: 'unchanged', content };
+  const note = gitHookNote(path);
+  if (current === content) return { path, action: 'unchanged', content, note };
   mkdirSync(dirname(path), { recursive: true });
   writeFileSync(path, content);
   chmodSync(path, 0o755);
-  return { path, action: current === undefined ? 'created' : 'updated', content };
+  return { path, action: current === undefined ? 'created' : 'updated', content, note };
+}
+
+// The hook names this machine's path to Otea: fine in .git/hooks, never committed, but a hooks
+// folder that core.hooksPath puts in the work tree may be.
+function gitHookNote(path: string): string {
+  if (path.split(/[\\/]/).includes('.git')) {
+    return '.git/hooks is per machine and never committed: the hook names the path to Otea on this machine';
+  }
+  return 'core.hooksPath puts it outside .git: do not commit it, the hook names the path to Otea on this machine';
 }
 
 export function removeGitHook(cwd: string): HookChange {
@@ -108,9 +120,13 @@ function isOurs(hook: unknown): boolean {
   );
 }
 
+// The hooks name this machine's path to Otea, so they go to the settings of this machine only.
 export function claudeSettingsFile(cwd: string): string {
-  return join(repoRoot(cwd), '.claude', 'settings.json');
+  return join(repoRoot(cwd), '.claude', 'settings.local.json');
 }
+
+const LOCAL_NOTE =
+  'settings.local.json is per machine and not committed: the hooks name the path to Otea on this machine';
 
 function readSettings(path: string): Settings {
   if (!existsSync(path)) return {};
@@ -158,11 +174,13 @@ export function installClaudeHook(cwd: string, main: string): HookChange {
     hooks: { ...(base.hooks ?? {}), PreToolUse: [...existing, group] },
   };
   const content = JSON.stringify(group, null, 2);
-  if (JSON.stringify(next) === JSON.stringify(before))
-    return { path, action: 'unchanged', content };
+  const note = LOCAL_NOTE;
+  if (JSON.stringify(next) === JSON.stringify(before)) {
+    return { path, action: 'unchanged', content, note };
+  }
   const existed = existsSync(path);
   writeSettings(path, next);
-  return { path, action: existed ? 'updated' : 'created', content };
+  return { path, action: existed ? 'updated' : 'created', content, note };
 }
 
 export function removeClaudeHook(cwd: string): HookChange {

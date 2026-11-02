@@ -9,7 +9,7 @@ describe('hook', () => {
   let otea: Cli;
 
   const read = (path: string) => readFileSync(join(repo.dir, path), 'utf8');
-  const settings = () => JSON.parse(read('.claude/settings.json'));
+  const settings = () => JSON.parse(read('.claude/settings.local.json'));
 
   beforeEach(() => {
     repo = tempGitRepo();
@@ -31,7 +31,9 @@ describe('hook', () => {
       const hook = read('.git/hooks/pre-push');
 
       expect(result.code).toBe(0);
-      expect(result.out).toContain(`Wrote ${join(repo.dir, '.git', 'hooks', 'pre-push')}:`);
+      expect(result.out).toContain(
+        `Wrote ${join(repo.dir, '.git', 'hooks', 'pre-push')} (.git/hooks is per machine and never committed: the hook names the path to Otea on this machine):`,
+      );
       expect(result.out).toContain('  # otea-hook: pre-push');
       expect(hook.startsWith('#!/bin/sh\n# otea-hook: pre-push\n')).toBe(true);
       expect(hook).toContain(`check --gate push --branch "\${local_ref#refs/heads/}" --repo`);
@@ -74,7 +76,7 @@ describe('hook', () => {
   describe('--claude', () => {
     it('adds PreToolUse hooks for git push and gh pr merge, keeping the other settings', async () => {
       repo.write(
-        '.claude/settings.json',
+        '.claude/settings.local.json',
         JSON.stringify({
           permissions: { allow: ['Bash(npm test)'] },
           hooks: { PreToolUse: [{ matcher: 'Edit', hooks: [{ type: 'command', command: 'x' }] }] },
@@ -85,7 +87,9 @@ describe('hook', () => {
       const { permissions, hooks } = settings();
       const [theirs, ours] = hooks.PreToolUse;
 
-      expect(result.out).toContain('Rewrote');
+      expect(result.out).toContain(
+        'settings.local.json (settings.local.json is per machine and not committed: the hooks name the path to Otea on this machine):',
+      );
       expect(permissions).toEqual({ allow: ['Bash(npm test)'] });
       expect(theirs).toEqual({ matcher: 'Edit', hooks: [{ type: 'command', command: 'x' }] });
       expect(ours.matcher).toBe('Bash');
@@ -101,7 +105,7 @@ describe('hook', () => {
 
     it('is idempotent, and remove leaves the settings as they were', async () => {
       const before = { permissions: { allow: ['Bash(npm test)'] } };
-      repo.write('.claude/settings.json', JSON.stringify(before));
+      repo.write('.claude/settings.local.json', JSON.stringify(before));
       await otea('hook', 'install', '--claude');
 
       expect((await otea('hook', 'install', '--claude')).out).toContain(
@@ -115,7 +119,7 @@ describe('hook', () => {
       await otea('hook', 'install', '--claude', '--git');
       await otea('hook', 'remove', '--claude', '--git');
 
-      expect(existsSync(join(repo.dir, '.claude/settings.json'))).toBe(false);
+      expect(existsSync(join(repo.dir, '.claude/settings.local.json'))).toBe(false);
       expect(existsSync(join(repo.dir, '.git/hooks/pre-push'))).toBe(false);
     });
   });
@@ -175,6 +179,28 @@ describe('hook', () => {
       const result = await garbled('check', '--gate', 'push', '--branch', '--claude-hook');
       expect(result.code).toBe(0);
       expect(result.err).toContain('could not check');
+    });
+
+    // `gh pr merge <pr>` is checked against that PR's head branch, which only gh can tell; here gh
+    // cannot (missing, or no remote to ask), so the merge goes on with a note.
+    const merge = (command: string) => {
+      const event = { cwd: repo.dir, tool_name: 'Bash', tool_input: { command } };
+      const at = cliAt(repo.dir, {}, undefined, undefined, undefined, JSON.stringify(event));
+      return at('check', '--gate', 'merge', '--branch', '--repo', 'elsewhere', '--claude-hook');
+    };
+
+    it('checks a bare gh pr merge against the current branch', async () => {
+      const result = await merge('gh pr merge --squash');
+
+      expect(result.code).toBe(2);
+      expect(result.err).toContain('merge refused: CHANGES-2 is proposed');
+    });
+
+    it('fails open when gh cannot tell the head branch of the PR named', async () => {
+      const result = await merge('gh pr merge 482 --squash');
+
+      expect(result.code).toBe(0);
+      expect(result.err).toContain('gh could not tell the head branch of PR 482');
     });
   });
 });
