@@ -87,9 +87,20 @@ describe('run', () => {
 
   describe('init', () => {
     const oteaDir = () => join(repo.dir, '.otea');
+    const dataDir = (id: string) => join(process.env.OTEA_HOME ?? '', 'data', id);
 
-    it('creates the project and prints the .otea path', async () => {
-      const { code, out } = await otea('init');
+    it('creates the project in the Otea home and prints its data folder', async () => {
+      const { code, out } = await otea('init', '--json');
+
+      const { id, path } = JSON.parse(out);
+      expect(code).toBe(0);
+      expect(path).toBe(dataDir(id));
+      expect(existsSync(join(path, 'otea.db'))).toBe(true);
+      expect(existsSync(oteaDir())).toBe(false);
+    });
+
+    it('keeps the project in .otea at the root with --local', async () => {
+      const { code, out } = await otea('init', '--local');
 
       expect(code).toBe(0);
       expect(out.trim()).toBe(oteaDir());
@@ -97,20 +108,22 @@ describe('run', () => {
     });
 
     it('is idempotent', async () => {
-      await otea('init');
+      const first = await otea('init');
 
-      expect(await otea('init')).toMatchObject({ code: 0, out: `${oteaDir()}\n` });
+      expect(await otea('init')).toMatchObject({ code: 0, out: first.out });
+      expect(await otea('init', '--local')).toMatchObject({ code: 0, out: first.out });
     });
 
-    it('prints root, path and the project identity with --json', async () => {
+    it('prints root, path, storage and the project identity with --json', async () => {
       const { out } = await otea('init', '--json');
 
+      const id = expect.stringMatching(/^otea-cli-[a-z0-9-]+-[a-z2-7]{6}$/);
       expect(JSON.parse(out)).toEqual({
         root: repo.dir,
-        path: oteaDir(),
-        id: expect.stringMatching(/^otea-cli-[a-z0-9-]+-[a-z2-7]{6}$/),
+        path: expect.any(String),
+        id,
         name: basename(repo.dir),
-        storage: 'local',
+        storage: 'common',
       });
     });
 

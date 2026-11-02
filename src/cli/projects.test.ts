@@ -28,8 +28,8 @@ describe('projects', () => {
     b.remove();
   });
 
-  it('init --common keeps the data in the Otea home and nothing in the repo', async () => {
-    const init = await json(a, 'init', '--common');
+  it('init keeps the data in the Otea home and nothing in the repo', async () => {
+    const init = await json(a, 'init');
 
     expect(init).toMatchObject({ root: a.dir, storage: 'common' });
     expect(init.path).toBe(join(process.env.OTEA_HOME ?? '', 'data', init.id));
@@ -37,7 +37,7 @@ describe('projects', () => {
   });
 
   it('init --join links a second repo, and items created in one are listed in the other', async () => {
-    const { id } = await json(a, 'init', '--common');
+    const { id } = await json(a, 'init');
 
     const joined = await json(b, 'init', '--join', id);
     await json(a, 'collection', 'add', 'tasks');
@@ -53,7 +53,7 @@ describe('projects', () => {
   }, 30_000);
 
   it('serves the shared project to an MCP client in the other repo', async () => {
-    const { id } = await json(a, 'init', '--common');
+    const { id } = await json(a, 'init');
     await json(b, 'init', '--join', id);
     await json(a, 'collection', 'add', 'tasks');
     await json(a, 'create', '--collection', 'tasks', '--title', 'From A');
@@ -73,8 +73,8 @@ describe('projects', () => {
   });
 
   it('projects current names the project this folder resolves to', async () => {
-    const { id, name, path } = await json(a, 'init', '--common');
-    await json(b, 'init');
+    const { id, name, path } = await json(a, 'init');
+    await json(b, 'init', '--local');
 
     expect(await json(a, 'projects', 'current')).toEqual({
       id,
@@ -90,7 +90,7 @@ describe('projects', () => {
   });
 
   it('projects add links a folder, and projects list shows every linked folder', async () => {
-    const { id } = await json(a, 'init', '--common');
+    const { id } = await json(a, 'init');
 
     const linked = await json(a, 'projects', 'add', b.dir, '--to', id);
     const listed = (await json(a, 'projects', 'list')).find(
@@ -108,8 +108,8 @@ describe('projects', () => {
     expect((await json(b, 'projects', 'current')).id).toBe(id);
   });
 
-  it('refuses --join together with --common', async () => {
-    const { code, err } = await cliAt(a.dir)('init', '--join', 'x', '--common');
+  it('refuses --join together with --local', async () => {
+    const { code, err } = await cliAt(a.dir)('init', '--join', 'x', '--local');
 
     expect(code).toBe(2);
     expect(err).toContain('--join');

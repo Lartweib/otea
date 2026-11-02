@@ -32,7 +32,7 @@ describe('serve', () => {
     otea = cliAt(repo.dir, {}, interrupt.signal, async (url) => {
       opened.push(url);
     });
-    await otea('init');
+    await otea('init', '--local');
   });
 
   afterEach(async () => {

@@ -1,7 +1,7 @@
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { Client } from '@modelcontextprotocol/client';
-import { StdioClientTransport } from '@modelcontextprotocol/client/stdio';
+import { getDefaultEnvironment, StdioClientTransport } from '@modelcontextprotocol/client/stdio';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { type Cli, cliAt, tempGitRepo, until } from './testing.ts';
 
@@ -15,7 +15,7 @@ describe('mcp', () => {
   beforeEach(async () => {
     repo = tempGitRepo();
     otea = cliAt(repo.dir);
-    await otea('init');
+    await otea('init', '--local');
     await otea('collection', 'add', 'tasks');
     await otea('create', '--collection', 'tasks', '--title', 'Docs', '--description', 'For v1');
   });
@@ -28,6 +28,8 @@ describe('mcp', () => {
       command: process.execPath,
       args: [...ARGS, '--as', 'claude'],
       cwd: repo.dir,
+      // The transport passes only a safe default environment; the test home must reach the server.
+      env: { ...getDefaultEnvironment(), OTEA_HOME: process.env.OTEA_HOME ?? '' },
       stderr: 'pipe',
     });
     await client.connect(transport);

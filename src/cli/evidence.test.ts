@@ -16,7 +16,7 @@ describe('attach', () => {
   beforeEach(async () => {
     repo = tempGitRepo();
     otea = cliAt(repo.dir, { OTEA_AGENT: 'claude' });
-    await otea('init');
+    await otea('init', '--local');
     await otea('collection', 'add', 'tasks');
     await otea('create', '--collection', 'tasks', '--title', 'Crash', '--description', 'On save');
     repo.write('shots/before.png', 'png-before');
@@ -166,7 +166,7 @@ describe('attach to a type that places evidence modules', () => {
   beforeEach(async () => {
     repo = tempGitRepo();
     otea = cliAt(repo.dir, { OTEA_AGENT: 'claude' });
-    await otea('init');
+    await otea('init', '--local');
     repo.write('.otea/presets/proof/preset.yaml', EVIDENCE_YAML);
     await otea('collection', 'add', 'proof', '--preset', 'proof');
     await otea('create', '--collection', 'proof', '--type', 'bug', '--title', 'Crash');

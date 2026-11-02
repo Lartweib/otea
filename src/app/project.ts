@@ -192,7 +192,7 @@ export function openProject(cwd: string, env: Env = process.env): Project {
   return openFound(found);
 }
 
-export type InitOptions = { here?: boolean; common?: boolean; join?: string };
+export type InitOptions = { here?: boolean; local?: boolean; join?: string };
 
 function createLocal({ root, gitCommonDir }: Location): Project {
   mkdirSync(oteaDir(root), { recursive: true });
@@ -254,9 +254,9 @@ function joinProject({ root }: Location, ref: string, env: Env): Project {
   return openFound({ root, dataDir: project.dataDir, storage: project.storage });
 }
 
-// Creates the project at the repo root (or the folder itself outside git), local unless `common`,
-// or links the root to an existing project with `join`. Inside a folder that a project above
-// already covers, it refuses unless `here` asks for a separate project.
+// Creates the project at the repo root (or the folder itself outside git), in common storage unless
+// `local` keeps it in .otea/ there, or links the root to an existing project with `join`. Inside a
+// folder that a project above already covers, it refuses unless `here` asks for a separate project.
 export function initProject(
   cwd: string,
   options: InitOptions = {},
@@ -273,5 +273,5 @@ export function initProject(
       `The Otea project at ${existing.root} already covers ${root}; run init --here to create a separate project at ${root}`,
     );
   }
-  return options.common ? createCommon(location, env) : createLocal(location);
+  return options.local ? createLocal(location) : createCommon(location, env);
 }

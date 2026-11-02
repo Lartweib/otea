@@ -16,7 +16,7 @@ describe('playbook', () => {
   beforeEach(async () => {
     repo = tempGitRepo();
     otea = cliAt(repo.dir);
-    await otea('init');
+    await otea('init', '--local');
   });
 
   afterEach(() => repo.remove());
