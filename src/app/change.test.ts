@@ -174,7 +174,7 @@ describe('change preset', () => {
   });
 
   it('sends a pull request back to revising with a reason, and the plan back to analysing', () => {
-    const { id, api } = executing();
+    const { api } = executing();
     inReview(api);
 
     expect(() => decide(api, 'revising')).toThrow(
