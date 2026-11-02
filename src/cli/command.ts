@@ -26,6 +26,8 @@ export type Input = {
   // Asks the person at the terminal and resolves with their answer, or with nothing when there is
   // nobody to ask (no terminal, or the MCP server).
   ask(question: string): Promise<string | undefined>;
+  // Everything piped to the command, or an empty string when nothing is.
+  stdin(): Promise<string>;
   // Prints one record right away: a single JSON line under --json, the text otherwise.
   print(data: unknown, text: string): void;
   args: string[];

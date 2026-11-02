@@ -31,7 +31,7 @@ import { DEFAULT_PORT, listen } from '../server/listen.ts';
 import { createServer } from '../server/server.ts';
 import { ensureUiToken, readUiToken } from '../server/token.ts';
 import type { EventFilter } from '../store/queries.ts';
-import { type Command, CommandFailure, type Input, UsageError } from './command.ts';
+import { type Command, CommandFailure, type Input, type Output, UsageError } from './command.ts';
 import {
   columns,
   formatEvent,
@@ -43,6 +43,13 @@ import {
   indent,
 } from './format.ts';
 import { currentBranch, repoName } from './gitrepo.ts';
+import {
+  type HookChange,
+  installClaudeHook,
+  installGitHook,
+  removeClaudeHook,
+  removeGitHook,
+} from './hooks.ts';
 import { probeSignIn } from './probe.ts';
 import { readServeFile, removeServeFile, writeServeFile } from './serve-file.ts';
 
@@ -635,7 +642,7 @@ const mcp: Command = {
 
 // The fields a gate check matches: --field pairs, plus the branch and the repo, which default to
 // the git checkout's when given without a value.
-function gateFields({ cwd, option, options }: Input): Record<string, string> {
+function gateFields({ option, options }: Input, cwd: string): Record<string, string> {
   const fields: Record<string, string> = {};
   const set = (key: string, value: string) => {
     if (key in fields) throw new UsageError(`Field "${key}" given twice`);
@@ -663,24 +670,35 @@ function gateText({ gate, allowed, items }: GateCheck): string {
     .join('\n');
 }
 
+// The directory a Claude Code PreToolUse hook ran the tool call in, from the JSON it pipes in.
+async function hookCwd(input: Input): Promise<string> {
+  const event: unknown = JSON.parse(await input.stdin());
+  const cwd = (event as { cwd?: unknown } | null)?.cwd;
+  return typeof cwd === 'string' && cwd !== '' ? cwd : input.cwd;
+}
+
 // A gate check fails open: anything that keeps it from answering allows the action, with a note.
+// As a Claude Code hook it refuses with exit 2 and the reason on stderr, which blocks the call.
 const check: Command = {
   name: 'check',
   summary:
-    'Check whether the items matching the fields allow a gated action: exit 0 when allowed, 1 when refused; it allows the action, with a note, when no item matches or the check cannot run. --branch and --repo default to the git checkout',
+    'Check whether the items matching the fields allow a gated action: exit 0 when allowed, 1 when refused; it allows the action, with a note, when no item matches or the check cannot run. --branch and --repo default to the git checkout; --claude-hook reads a Claude Code PreToolUse event on stdin and refuses with exit 2',
   args: [],
   options: {
     gate: { required: true, placeholder: 'action' },
     field: { multiple: true, placeholder: 'key=value' },
     branch: { optionalValue: true, placeholder: 'name' },
     repo: { optionalValue: true, placeholder: 'name' },
+    'claude-hook': { flag: true },
   },
-  execute: (input) => {
+  execute: async (input) => {
     const gate = input.required('gate');
+    const hook = input.flag('claude-hook');
     let result: GateCheck;
     try {
-      const fields = gateFields(input);
-      result = withProject(input.cwd, (project) => checkGate(project, gate, fields));
+      const cwd = hook ? await hookCwd(input) : input.cwd;
+      const fields = gateFields(input, cwd);
+      result = withProject(cwd, (project) => checkGate(project, gate, fields));
     } catch (error) {
       if (error instanceof UsageError) throw error;
       const message = error instanceof Error ? error.message : String(error);
@@ -689,10 +707,62 @@ const check: Command = {
     if (result.note) input.warn(`${result.note}; ${gate} allowed`);
     if (result.items.length === 0) return { data: result, text: '' };
     const text = gateText(result);
-    return result.allowed
-      ? { data: result, text }
-      : { data: result, text, failure: 'gate_refused' };
+    if (result.allowed) return { data: result, text };
+    if (!hook) return { data: result, text, failure: 'gate_refused' };
+    input.warn(text);
+    return { data: result, text: '', failure: 'hook_refused' };
   },
+};
+
+const HOOK_OPTIONS = { git: { flag: true }, claude: { flag: true } };
+
+// The hooks a command names: --git, --claude or both, never none.
+function hookTargets({ flag }: Input): Array<'git' | 'claude'> {
+  const targets = (['git', 'claude'] as const).filter((target) => flag(target));
+  if (targets.length === 0) throw new UsageError('Name the hook: --git, --claude or both');
+  return targets;
+}
+
+function hookText({ path, action, content }: HookChange): string {
+  if (action === 'unchanged') return `${path} already has the Otea hook`;
+  if (action === 'absent') return `${path} has no Otea hook`;
+  const done = { created: 'Wrote', updated: 'Rewrote', removed: 'Removed the Otea hook from' }[
+    action
+  ];
+  return content === undefined
+    ? `${done} ${path}`
+    : `${done} ${path}:\n${indent(content.trimEnd())}`;
+}
+
+function hookOutput(changes: HookChange[]): Output {
+  return { data: changes, text: changes.map(hookText).join('\n') };
+}
+
+const hookInstall: Command = {
+  name: 'hook install',
+  summary:
+    'Make the gates hard in the repo here: --git writes a pre-push hook that runs otea check --gate push, --claude adds Claude Code PreToolUse hooks that run otea check before git push and gh pr merge; never overwrites a hook of someone else',
+  args: [],
+  options: HOOK_OPTIONS,
+  execute: (input) =>
+    hookOutput(
+      hookTargets(input).map((target) =>
+        target === 'git' ? installGitHook(input.cwd, MAIN) : installClaudeHook(input.cwd, MAIN),
+      ),
+    ),
+};
+
+const hookRemove: Command = {
+  name: 'hook remove',
+  summary: 'Remove the hooks otea hook install wrote (--git, --claude), leaving every other hook',
+  args: [],
+  options: HOOK_OPTIONS,
+  execute: (input) =>
+    hookOutput(
+      hookTargets(input).map((target) =>
+        target === 'git' ? removeGitHook(input.cwd) : removeClaudeHook(input.cwd),
+      ),
+    ),
 };
 
 export const COMMANDS: readonly Command[] = [
@@ -716,6 +786,8 @@ export const COMMANDS: readonly Command[] = [
   relay,
   validate,
   check,
+  hookInstall,
+  hookRemove,
   serve,
   open,
   mcp,
