@@ -54,6 +54,7 @@ otea update TASKS-2 --description "Fails on CI only, see run 42"   # fill what w
 otea move TASKS-2 todo
 otea move TASKS-4 discarded --reason "Out of scope"   # an incomplete item can be closed with a reason
 otea validate                              # check presets, collections and items
+otea check --gate push --branch --repo     # may this branch be pushed? exit 0 yes, 1 no (fails open)
 otea help                                  # every command, global options and exit codes
 ```
 

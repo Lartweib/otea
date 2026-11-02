@@ -9,6 +9,9 @@ export type OptionSpec = {
   choices?: readonly string[];
   multiple?: boolean;
   flag?: boolean;
+  // Takes a value, or none when the next word is an option or there is none (`--branch` alone):
+  // the command then reads an empty string and picks its default.
+  optionalValue?: boolean;
   placeholder?: string;
 };
 
@@ -68,6 +71,7 @@ export function failureCode(error: unknown): FailureCode {
 function optionUsage(name: string, spec: OptionSpec): string {
   if (spec.flag) return `[--${name}]`;
   const value = spec.placeholder ?? spec.choices?.join('|') ?? name;
+  if (spec.optionalValue) return `[--${name} [<${value}>]]`;
   const flag = `--${name} <${value}>${spec.multiple ? '...' : ''}`;
   return spec.required ? flag : `[${flag}]`;
 }

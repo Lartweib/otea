@@ -37,6 +37,7 @@ export const CLI_ONLY_COMMANDS = [
   'connect',
   'collection add',
   'validate',
+  'check',
   'serve',
   'open',
   'mcp',
