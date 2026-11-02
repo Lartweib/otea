@@ -359,6 +359,47 @@ describe('requires', () => {
   });
 });
 
+describe('gates', () => {
+  it('reads the states each action is allowed in, on the workflow', () => {
+    const raw = minimal();
+    raw.workflow.gates = { push: ['open'], publish: ['open', 'closed'] };
+
+    expect(parsePreset(stringify(raw)).workflow.gates).toEqual({
+      push: ['open'],
+      publish: ['open', 'closed'],
+    });
+    expect(parsePreset(stringify(minimal())).workflow).not.toHaveProperty('gates');
+  });
+
+  it('rejects an unknown state and a state listed twice by their paths', () => {
+    expect(
+      problemsOf((raw) => (raw.workflow.gates = { merge: ['open', 'merged', 'open'] })),
+    ).toEqual([
+      'workflow.gates.merge[1]: unknown state "merged"',
+      'workflow.gates.merge[2]: "open" is listed twice',
+    ]);
+  });
+
+  it('checks a type workflow against its own states', () => {
+    const raw = twoTypes();
+    raw.types.impr.workflow.gates = { ship: ['planned', 'open'] };
+
+    expect(readPreset(stringify(raw))).toMatchObject({
+      ok: false,
+      problems: ['types.impr.workflow.gates.ship[1]: unknown state "open"'],
+    });
+  });
+
+  it.each<[string, unknown]>([
+    ['an action that is not snake_case', { 'Push Code': ['open'] }],
+    ['an action allowed in no state', { push: [] }],
+  ])('rejects %s by its path', (_, gates) => {
+    expect(problemsOf((raw) => (raw.workflow.gates = gates))).toEqual([
+      expect.stringContaining('workflow.gates'),
+    ]);
+  });
+});
+
 function twoTypes(): Raw {
   const raw = minimal();
   raw.fields.area = { module: 'text' };

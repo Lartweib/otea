@@ -108,6 +108,12 @@ const workflowSchema = z.strictObject({
     }),
   ),
   transitions: z.array(transitionSchema),
+  gates: z
+    .record(
+      z.string().regex(KEY, 'gate actions must be snake_case'),
+      z.array(z.string()).nonempty(),
+    )
+    .optional(),
 });
 
 // Layouts are read by the module registry, which reports their problems by slot and position.
@@ -284,9 +290,25 @@ function presetWarnings(raw: RawPreset): string[] {
   return [...workflowWarnings('workflow', raw.workflow), ...typed];
 }
 
+// Each gate lists states of its workflow, each once.
+function gateProblems(at: string, workflow: RawWorkflow): string[] {
+  return Object.entries(workflow.gates ?? {}).flatMap(([action, states]) =>
+    states.flatMap((state, index) => {
+      const where = `${at}.gates.${action}[${index}]`;
+      if (!(state in workflow.states)) return [`${where}: unknown state "${state}"`];
+      if (states.indexOf(state) !== index) return [`${where}: "${state}" is listed twice`];
+      return [];
+    }),
+  );
+}
+
 function workflowProblems(at: string, workflow: RawWorkflow): string[] {
   const transitions = expand(workflow);
-  return [...transitionProblems(at, workflow), ...stateProblems(at, workflow, transitions)];
+  return [
+    ...transitionProblems(at, workflow),
+    ...stateProblems(at, workflow, transitions),
+    ...gateProblems(at, workflow),
+  ];
 }
 
 // A field required to complete needs an incomplete state to start in. `of` names the type when the
@@ -327,6 +349,7 @@ function toWorkflow(name: string, raw: RawWorkflow): Workflow {
   });
   const workflow: Workflow = { name, initial: raw.initial, states, transitions: expand(raw) };
   if (raw.incomplete !== undefined) workflow.incomplete = raw.incomplete;
+  if (raw.gates !== undefined) workflow.gates = raw.gates;
   return workflow;
 }
 

@@ -239,6 +239,26 @@ types:
   });
 
   describe('GET /api/items/:id', () => {
+    it('answers which gated actions the item allows, only when its workflow has gates', async () => {
+      addCollection(project, { name: 'changes', preset: 'change' });
+      const change = { collection: 'changes', type: 'change', title: 'Rotate keys', actor: ana };
+      const { id } = createItem(project, change);
+      createItem(project, {
+        collection: 'changes',
+        type: 'repo_task',
+        parent: id,
+        title: 'Rotate keys in api',
+        fields: { repo: 'api', branch: 'chg-1/rotate-keys' },
+        actor: bot,
+      });
+
+      expect(await (await get('/api/items/CHANGES-2')).json()).toMatchObject({
+        gates: { push: false, merge: false },
+      });
+      expect(await (await get('/api/items/CHANGES-1')).json()).not.toHaveProperty('gates');
+      expect(await (await get('/api/items/TASKS-1')).json()).not.toHaveProperty('gates');
+    });
+
     it('returns the item with its events', async () => {
       const response = await get('/api/items/BUGS-1');
       const item = (await response.json()) as { events: Array<{ type: string }> };

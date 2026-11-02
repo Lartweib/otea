@@ -19,7 +19,14 @@ import { type Actor, formatItemId } from '../core/item.ts';
 import { activeLease, assertMayWrite, type Lease } from '../core/lease.ts';
 import { type ItemType, typeFor, typeOf } from '../core/preset.ts';
 import { type ChildrenSummary, childrenSummary, type RelationRef } from '../core/relations.ts';
-import { type Closing, closesOf, type Turn, turnOf, type Workflow } from '../core/workflow.ts';
+import {
+  type Closing,
+  closesOf,
+  gateVerdicts,
+  type Turn,
+  turnOf,
+  type Workflow,
+} from '../core/workflow.ts';
 import { transaction } from '../store/database.ts';
 import {
   appendEvent,
@@ -210,14 +217,15 @@ export function getItem(ctx: Context, id: string, now = systemClock): ItemWithEv
 
 // `transitions` are the moves the performer may make, `relayable` the human decisions an agent
 // may relay, `evidence` the files attached to the item, oldest first, each with the module that draws
-// it, `relations` its links with where each other item stands, and `children`, for a parent, how far
-// its children got.
+// it, `relations` its links with where each other item stands, `children`, for a parent, how far
+// its children got, and `gates`, when its workflow declares them, which actions its state allows.
 export type ItemView = ItemWithEvents & {
   transitions: Move[];
   relayable: Move[];
   missing: string[];
   evidence: EvidenceRecord[];
   relations: RelatedItem[];
+  gates?: Record<string, boolean>;
 };
 
 export function showItem(
@@ -230,6 +238,7 @@ export function showItem(
   const item = getItem(ctx, id, () => at);
   const type = typeOfItem(ctx, item);
   const children = childrenOf(ctx, item.id, at);
+  const gates = gateVerdicts(type.workflow, item.state);
   return {
     ...item,
     transitions: availableMoves(type.workflow, item.state, performer),
@@ -238,6 +247,7 @@ export function showItem(
     evidence: presentEvidence(type.layout, selectEvidence(ctx.db, item.id)),
     relations: relatedItems(ctx, item.id, at),
     ...(children.length > 0 ? { children: childrenSummary(children) } : {}),
+    ...(Object.keys(gates).length > 0 ? { gates } : {}),
   };
 }
 

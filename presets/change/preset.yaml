@@ -72,6 +72,11 @@ types:
             by: human,
             reason: required,
           }
+      # What the repo task's branch allows: pushing only while the agent works on it (frozen in
+      # review, so the human approves what they read), merging only once the human approved it.
+      gates:
+        push: [implementing, revising]
+        merge: [approved]
     layout:
       header: [repo, branch, pr]
       body: [description]

@@ -292,6 +292,7 @@ workflow:
 - `reason: required` makes the actor give a reason; it is recorded in the event and shown in the timeline.
 - The same `from`/`to` pair may appear with different `by` (e.g. both humans and agents may discard an incomplete item); identical transitions are rejected.
 - A transition with `by: agent` into a `closes: done` state is a preset error: agents never approve their own work. Closing as `discarded` is allowed (an agent may close an incomplete report it could not reproduce).
+- `gates` (optional) names actions done outside Otea and the states that allow each one: `gates: { push: [implementing, revising], merge: [approved] }`. The action is a free snake_case name (`push`, `merge`, `implement`, `publish`), not a version-control concept; Otea gives it no meaning. Each listed state must belong to the workflow, once; an action lists at least one state. `otea show --json`, the API and MCP carry the item's verdicts, `"gates": { "push": true, "merge": false }`, and `otea show` a `Gates:` line; an item whose workflow has no gates has none. Like the turn, a verdict is derived from the state, never stored. Otea only answers (§12): a gate holds because the agent checks it, as its playbook says, or because a hook the consumer installs refuses the action.
 
 **Item types**
 
@@ -426,7 +427,7 @@ Rules:
 - Items survive preset edits; incompatibilities are reported, not silently fixed.
 - **Portability:** a preset that uses only official modules is shareable as-is. A preset that depends on local modules declares them; loading it elsewhere reports what is missing.
 
-Planned, not yet supported: more field modules (`media`, `checks`), `behaviors` (gates), the components of the reserved layout modules, and drawing the `board` view.
+Planned, not yet supported: more field modules (`media`, `checks`), other `behaviors`, the components of the reserved layout modules, and drawing the `board` view.
 
 ### 9.1 Relations
 
