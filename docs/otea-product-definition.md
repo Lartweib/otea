@@ -178,7 +178,7 @@ src/
   modules/    module loader (esbuild)
 ui/           React + Vite shell + ui-kit
 modules/      official modules (same structure as local ones)
-presets/      bug-triage, review-rounds, tasks
+presets/      bug-triage, change, review-rounds, tasks
 docs/
 ```
 

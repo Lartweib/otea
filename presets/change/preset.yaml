@@ -1,0 +1,81 @@
+preset: change
+preset_version: 1
+playbook: ./playbook.md
+fields:
+  title: { module: text, required: create }
+  # What the change is and why; on a repo task, what it does in its repo.
+  description: { module: markdown }
+# The workflow of a change: an agent plans it as repo tasks, the human approves them, the agent
+# carries them out, and the human verifies the whole once every repo task is closed.
+workflow:
+  initial: analysing
+  states:
+    analysing: { turn: agent }
+    plan_review: { turn: human }
+    executing: { turn: agent }
+    verify: { turn: human, requires: children_closed }
+    done: { turn: none, closes: done, requires: children_closed }
+    discarded: { turn: none, closes: discarded }
+  transitions:
+    - { from: analysing, to: plan_review, by: agent }
+    - { from: plan_review, to: executing, by: human }
+    - { from: plan_review, to: analysing, by: human, reason: required }
+    - { from: executing, to: verify, by: agent }
+    - { from: verify, to: done, by: human-ui }
+    - { from: verify, to: executing, by: human, reason: required }
+    - {
+        from: [analysing, plan_review, executing, verify],
+        to: discarded,
+        by: human,
+        reason: required,
+      }
+types:
+  change:
+    label: Change
+    icon: layers
+    fields:
+      # The order across repos and what each one waits for.
+      plan: { module: markdown }
+    layout:
+      body: [description, plan, { module: children }]
+  # One per repo the change touches, a child of the change.
+  repo_task:
+    label: Repo task
+    icon: git-branch
+    fields:
+      # The repo, by the name the project knows it by (api, web, services/auth).
+      repo: { module: text, required: create }
+      branch: { module: text, required: create }
+      # The pull request, as the forge names it (#482) or its URL; filled once it is opened.
+      pr: { module: text }
+    workflow:
+      initial: proposed
+      states:
+        proposed: { turn: human }
+        ready: { turn: agent }
+        implementing: { turn: agent }
+        pr_review: { turn: human }
+        revising: { turn: agent }
+        approved: { turn: none, closes: done }
+        dropped: { turn: none, closes: discarded }
+      transitions:
+        - { from: proposed, to: ready, by: human }
+        - { from: [ready, implementing], to: proposed, by: agent, reason: required }
+        - { from: ready, to: implementing, by: agent }
+        - { from: implementing, to: pr_review, by: agent }
+        - { from: pr_review, to: approved, by: human-ui }
+        - { from: pr_review, to: revising, by: human, reason: required }
+        - { from: revising, to: pr_review, by: agent }
+        - {
+            from: [proposed, ready, implementing, pr_review, revising],
+            to: dropped,
+            by: human,
+            reason: required,
+          }
+    layout:
+      header: [repo, branch, pr]
+      body: [description]
+      row: [repo]
+view:
+  kind: grid
+  columns: [id, title, type, repo, branch, pr, state, who, age]
