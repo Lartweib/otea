@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { mergeTarget, readHookEvent } from './claude-hook.ts';
+import { mergeTarget, prHeadBranch, readHookEvent } from './claude-hook.ts';
+
+// Without gh, the check that calls this fails open with the note it throws.
+describe('prHeadBranch', () => {
+  it('throws when gh cannot tell the head branch', () => {
+    expect(() => prHeadBranch(process.cwd(), '482', 'otea-no-such-gh')).toThrow(
+      'gh could not tell the head branch of PR 482',
+    );
+  });
+});
 
 describe('mergeTarget', () => {
   it.each<[string, string | undefined]>([
