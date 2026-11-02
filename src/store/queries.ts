@@ -411,3 +411,16 @@ export function selectRelationsOf(db: DatabaseSync, id: string): RelationRecord[
     ORDER BY created_at, rowid`;
   return (db.prepare(sql).all({ id }) as RelationRow[]).map(toRelation);
 }
+
+export type ProjectIdentity = { id: string; name: string };
+
+export function selectProjectIdentity(db: DatabaseSync): ProjectIdentity | undefined {
+  return db.prepare('SELECT id, name FROM project').get() as ProjectIdentity | undefined;
+}
+
+// Writes the identity unless the project already has one, in one statement so that two processes
+// opening the same database at once still leave a single row.
+export function insertProjectIdentity(db: DatabaseSync, identity: ProjectIdentity): void {
+  const sql = 'INSERT INTO project (id, name) SELECT ?, ? WHERE NOT EXISTS (SELECT 1 FROM project)';
+  db.prepare(sql).run(identity.id, identity.name);
+}

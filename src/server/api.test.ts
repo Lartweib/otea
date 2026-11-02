@@ -46,6 +46,13 @@ describe('api', () => {
     project.db.close();
   });
 
+  it('GET /api/project returns the project identity without a session', async () => {
+    const response = await get('/api/project');
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual(project.identity);
+  });
+
   describe('GET /api/collections', () => {
     it('lists every collection with the preset types a form needs, without a session', async () => {
       const response = await get('/api/collections');

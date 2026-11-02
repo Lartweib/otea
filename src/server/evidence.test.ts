@@ -7,7 +7,7 @@ import { attachEvidence, evidenceFile } from '../app/evidence.ts';
 import type { ItemView } from '../app/items.ts';
 import { createItem } from '../app/items.ts';
 import type { Project } from '../app/project.ts';
-import { memoryContext } from '../app/testing.ts';
+import { IDENTITY, memoryContext } from '../app/testing.ts';
 import type { Actor } from '../core/item.ts';
 import { createServer, type OteaServer } from './server.ts';
 import { LOCAL_HOST, SESSION_COOKIE, TOKEN } from './testing.ts';
@@ -36,7 +36,11 @@ describe('evidence api', () => {
   };
 
   beforeEach(() => {
-    project = { root: mkdtempSync(join(tmpdir(), 'otea-evidence-api-')), ...memoryContext() };
+    project = {
+      root: mkdtempSync(join(tmpdir(), 'otea-evidence-api-')),
+      identity: IDENTITY,
+      ...memoryContext(),
+    };
     addCollection(project, { name: 'tasks' });
     const fields = { description: 'Details' };
     createItem(project, { collection: 'tasks', title: 'Crash', fields, actor: bot });

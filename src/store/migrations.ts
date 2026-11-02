@@ -107,6 +107,14 @@ const MIGRATIONS = [
 
   CREATE UNIQUE INDEX relations_one_parent ON relations (from_id) WHERE kind = 'parent';
   `,
+  // The project's own identity, one row, so a registry of projects can be rebuilt from their
+  // databases. The row is written when the project is opened (it needs a random id).
+  `
+  CREATE TABLE project (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL
+  );
+  `,
 ];
 
 function userVersion(db: DatabaseSync): number {

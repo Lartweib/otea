@@ -1,8 +1,10 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import { openDatabase } from '../store/database.ts';
+import { migrate } from '../store/migrations.ts';
 import { initProject, openProject, type Project } from './project.ts';
 
 const git = (cwd: string, ...args: string[]) => execFileSync('git', args, { cwd, stdio: 'ignore' });
@@ -41,9 +43,43 @@ describe('project', () => {
     const project = track(initProject(repo));
 
     expect(project.root).toBe(repo);
-    expect(project.db.prepare('PRAGMA user_version').get()?.user_version).toBe(7);
+    expect(project.db.prepare('PRAGMA user_version').get()?.user_version).toBe(8);
     expect(project.presets.presets.has('tasks')).toBe(true);
     expect(exclude(repo).split(/\r?\n/)).toContain('.otea/');
+  });
+
+  describe('identity', () => {
+    it('is created on init, named after the folder', () => {
+      const repo = gitRepo();
+
+      const { identity } = track(initProject(repo));
+
+      expect(identity).toEqual({
+        id: expect.stringMatching(/^otea-project-[a-z0-9-]+-[a-z2-7]{6}$/),
+        name: basename(repo),
+      });
+    });
+
+    it('stays the same on every later open', () => {
+      const repo = gitRepo();
+      const { identity } = track(initProject(repo));
+
+      expect(track(openProject(repo, {})).identity).toEqual(identity);
+      expect(track(initProject(repo)).identity).toEqual(identity);
+    });
+
+    it('is backfilled into a database from before identities', () => {
+      const dir = tempDir();
+      mkdirSync(join(dir, '.otea'));
+      const old = openDatabase(join(dir, '.otea', 'otea.db'));
+      migrate(old, 7);
+      old.close();
+
+      const project = track(openProject(dir, {}));
+
+      expect(project.identity.name).toBe(basename(dir));
+      expect(project.db.prepare('SELECT * FROM project').all()).toEqual([project.identity]);
+    });
   });
 
   it('resolves the root from a subdirectory', () => {
