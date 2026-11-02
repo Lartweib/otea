@@ -149,7 +149,7 @@ async function callCommand(
   try {
     const given = command.name === 'wait' ? waitValues(values) : values;
     const output = await command.execute(inputFor(command, given, context, signal, records));
-    return reply(JSON.stringify(output === undefined ? records : output.data, null, 2), false);
+    return reply(JSON.stringify(output === undefined ? records : output.data), false);
   } catch (error) {
     const code = failureCode(error);
     const message = error instanceof Error ? error.message : String(error);
