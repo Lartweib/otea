@@ -1,3 +1,7 @@
+import { execFileSync } from 'node:child_process';
+import { mkdirSync, mkdtempSync, realpathSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { type Cli, cliAt, tempGitRepo } from './testing.ts';
 
@@ -19,6 +23,39 @@ describe('commands', () => {
 
     expect(code).toBe(3);
     expect(err).toContain('run init first');
+  });
+
+  describe('with a project in a folder above the repo', () => {
+    let product: string;
+    let api: string;
+
+    beforeEach(async () => {
+      product = realpathSync.native(mkdtempSync(join(tmpdir(), 'otea-product-')));
+      await cliAt(product)('init');
+      api = join(product, 'api');
+      mkdirSync(join(api, 'src'), { recursive: true });
+      execFileSync('git', ['init', '--quiet'], { cwd: api, stdio: 'ignore' });
+      otea = cliAt(join(api, 'src'));
+    });
+
+    afterEach(() => rmSync(product, { recursive: true, force: true }));
+
+    it('works with it from inside the repo', async () => {
+      expect((await otea('collection', 'add', 'tasks')).code).toBe(0);
+
+      expect((await otea('list', '--json')).code).toBe(0);
+    });
+
+    it('refuses init in the repo unless --here', async () => {
+      const refused = await otea('init');
+
+      expect(refused.code).toBe(5);
+      expect(refused.err).toContain(`The Otea project at ${product} already covers`);
+      expect(refused.err).toContain('--here');
+
+      const here = await json('init', '--here');
+      expect(here.root).toBe(api);
+    });
   });
 
   describe('with a project', () => {

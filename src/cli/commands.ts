@@ -72,11 +72,11 @@ const AGENTS_MD_TEXT: Readonly<Record<AgentsMdAction, (path: string) => string>>
 const init: Command = {
   name: 'init',
   summary:
-    'Create or reuse the .otea project at the repository root; --agents-md also adds (or refreshes) a block in AGENTS.md telling agents to run "otea playbook"',
+    'Create or reuse the .otea project at the repository root (refused when a project in a folder above covers it, unless --here); --agents-md also adds (or refreshes) a block in AGENTS.md telling agents to run "otea playbook"',
   args: [],
-  options: { 'agents-md': { flag: true } },
+  options: { 'agents-md': { flag: true }, here: { flag: true } },
   execute: ({ cwd, flag }) => {
-    const { root, db } = initProject(cwd);
+    const { root, db } = initProject(cwd, { here: flag('here') });
     db.close();
     const path = join(root, '.otea');
     if (!flag('agents-md')) return { data: { root, path }, text: path };
