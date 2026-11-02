@@ -32,6 +32,7 @@ import { DEFAULT_PORT, listen } from '../server/listen.ts';
 import { createServer } from '../server/server.ts';
 import { ensureUiToken, readUiToken } from '../server/token.ts';
 import type { EventFilter } from '../store/queries.ts';
+import { mergeTarget, prHeadBranch, readHookEvent } from './claude-hook.ts';
 import { type Command, CommandFailure, type Input, type Output, UsageError } from './command.ts';
 import {
   columns,
@@ -704,8 +705,12 @@ const mcp: Command = {
 };
 
 // The fields a gate check matches: --field pairs, plus the branch and the repo, which default to
-// the git checkout's when given without a value.
-function gateFields({ option, options }: Input, cwd: string): Record<string, string> {
+// the git checkout's when given without a value (the branch to `defaultBranch`, when given).
+function gateFields(
+  { option, options }: Input,
+  cwd: string,
+  defaultBranch = () => currentBranch(cwd),
+): Record<string, string> {
   const fields: Record<string, string> = {};
   const set = (key: string, value: string) => {
     if (key in fields) throw new UsageError(`Field "${key}" given twice`);
@@ -713,7 +718,7 @@ function gateFields({ option, options }: Input, cwd: string): Record<string, str
   };
   for (const pair of options('field')) set(...fieldPair(pair));
   const branch = option('branch');
-  if (branch !== undefined) set('branch', branch || currentBranch(cwd));
+  if (branch !== undefined) set('branch', branch || defaultBranch());
   const repo = option('repo');
   if (repo !== undefined) set('repo', repo || repoName(cwd));
   return fields;
@@ -733,15 +738,10 @@ function gateText({ gate, allowed, items }: GateCheck): string {
     .join('\n');
 }
 
-// The directory a Claude Code PreToolUse hook ran the tool call in, from the JSON it pipes in.
-async function hookCwd(input: Input): Promise<string> {
-  const event: unknown = JSON.parse(await input.stdin());
-  const cwd = (event as { cwd?: unknown } | null)?.cwd;
-  return typeof cwd === 'string' && cwd !== '' ? cwd : input.cwd;
-}
-
 // A gate check fails open: anything that keeps it from answering allows the action, with a note.
-// As a Claude Code hook it refuses with exit 2 and the reason on stderr, which blocks the call.
+// As a Claude Code hook it reads the call from the event on stdin: it checks where the call runs
+// and, for `gh pr merge <pr>`, the head branch of that PR; it refuses with exit 2 and the reason on
+// stderr, which blocks the call.
 const check: Command = {
   name: 'check',
   summary:
@@ -759,8 +759,12 @@ const check: Command = {
     const hook = input.flag('claude-hook');
     let result: GateCheck;
     try {
-      const cwd = hook ? await hookCwd(input) : input.cwd;
-      const fields = gateFields(input, cwd);
+      const event = hook ? readHookEvent(await input.stdin()) : {};
+      const cwd = event.cwd ?? input.cwd;
+      const pr = event.command === undefined ? undefined : mergeTarget(event.command);
+      const fields = gateFields(input, cwd, () =>
+        pr === undefined ? currentBranch(cwd) : prHeadBranch(cwd, pr),
+      );
       result = withProject(cwd, (project) => checkGate(project, gate, fields));
     } catch (error) {
       if (error instanceof UsageError) throw error;
@@ -786,15 +790,15 @@ function hookTargets({ flag }: Input): Array<'git' | 'claude'> {
   return targets;
 }
 
-function hookText({ path, action, content }: HookChange): string {
-  if (action === 'unchanged') return `${path} already has the Otea hook`;
+function hookText({ path, action, content, note }: HookChange): string {
+  const why = note === undefined ? '' : ` (${note})`;
+  if (action === 'unchanged') return `${path} already has the Otea hook${why}`;
   if (action === 'absent') return `${path} has no Otea hook`;
   const done = { created: 'Wrote', updated: 'Rewrote', removed: 'Removed the Otea hook from' }[
     action
   ];
-  return content === undefined
-    ? `${done} ${path}`
-    : `${done} ${path}:\n${indent(content.trimEnd())}`;
+  const head = `${done} ${path}${why}`;
+  return content === undefined ? head : `${head}:\n${indent(content.trimEnd())}`;
 }
 
 function hookOutput(changes: HookChange[]): Output {
