@@ -141,7 +141,8 @@ export function createItem(ctx: Context, input: CreateItemInput, now = systemClo
 }
 
 // `availableTo` hides items whose active lease is held by anyone other than that actor; `parent`
-// keeps the children of that item.
+// keeps the children of that item; `fields` keeps the items whose fields hold every value given,
+// exactly as stored (title included).
 export type ListItemsFilter = {
   collection?: string;
   state?: string;
@@ -149,7 +150,14 @@ export type ListItemsFilter = {
   turn?: Turn;
   availableTo?: string;
   parent?: string;
+  fields?: Record<string, string>;
 };
+
+function holdsFields(item: ItemRecord, fields: Record<string, string>): boolean {
+  return Object.entries(fields).every(
+    ([key, value]) => (key === 'title' ? item.title : item.fields[key]) === value,
+  );
+}
 
 export function listItems(ctx: Context, filter: ListItemsFilter = {}, now = systemClock): Item[] {
   const presets = new Map(
@@ -160,7 +168,7 @@ export function listItems(ctx: Context, filter: ListItemsFilter = {}, now = syst
     if (!preset) throw new OteaError('not_found', `Collection "${collection}" not found`);
     return typeOf(preset, type).workflow;
   };
-  const { turn, availableTo, parent, ...stored } = filter;
+  const { turn, availableTo, parent, fields, ...stored } = filter;
   if (parent !== undefined) requireItem(ctx.db, parent);
   const relations = selectRelations(ctx.db);
   const children = parent === undefined ? undefined : new Set(childIds(relations, parent));
@@ -169,7 +177,8 @@ export function listItems(ctx: Context, filter: ListItemsFilter = {}, now = syst
     .map((item) => present(item, workflowFor(item), at))
     .filter((item) => turn === undefined || item.turn === turn)
     .filter(({ lease }) => availableTo === undefined || !lease || lease.holder === availableTo)
-    .filter(({ id }) => children === undefined || children.has(id));
+    .filter(({ id }) => children === undefined || children.has(id))
+    .filter((item) => fields === undefined || holdsFields(item, fields));
   if (relations.length === 0) return items;
   // A child may sit outside the filter, so the summaries read every item.
   const closings = new Map(

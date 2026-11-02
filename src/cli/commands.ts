@@ -130,12 +130,14 @@ function fieldsFrom({ option, options }: Input): FieldValues {
   };
   const description = option('description');
   if (description !== undefined) set('description', description);
-  for (const pair of options('field')) {
-    const separator = pair.indexOf('=');
-    if (separator < 1) throw new UsageError(`--field expects key=value, got "${pair}"`);
-    set(pair.slice(0, separator), pair.slice(separator + 1));
-  }
+  for (const pair of options('field')) set(...fieldPair(pair));
   return fields;
+}
+
+function fieldPair(pair: string): [string, string] {
+  const separator = pair.indexOf('=');
+  if (separator < 1) throw new UsageError(`--field expects key=value, got "${pair}"`);
+  return [pair.slice(0, separator), pair.slice(separator + 1)];
 }
 
 const create: Command = {
@@ -173,7 +175,7 @@ const create: Command = {
   },
 };
 
-function listFilter({ option, flag, actor }: Input): ListItemsFilter {
+function listFilter({ option, options, flag, actor }: Input): ListItemsFilter {
   const filter: ListItemsFilter = {};
   const collection = option('collection');
   const state = option('state');
@@ -186,13 +188,18 @@ function listFilter({ option, flag, actor }: Input): ListItemsFilter {
   if (type !== undefined) filter.type = type;
   if (turn !== undefined) filter.turn = turn as Turn;
   if (flag('unclaimed')) filter.availableTo = actor.name;
+  for (const [key, value] of options('field').map(fieldPair)) {
+    filter.fields ??= {};
+    if (key in filter.fields) throw new UsageError(`Field "${key}" given twice`);
+    filter.fields[key] = value;
+  }
   return filter;
 }
 
 const list: Command = {
   name: 'list',
   summary:
-    'List items in creation order, optionally filtered; --unclaimed hides items others hold, --parent keeps the children of an item',
+    'List items in creation order, optionally filtered; --unclaimed hides items others hold, --parent keeps the children of an item, --field key=value (repeatable) keeps items whose field holds exactly that value',
   args: [],
   options: {
     collection: {},
@@ -200,6 +207,7 @@ const list: Command = {
     state: {},
     turn: { choices: TURNS },
     parent: { placeholder: 'id' },
+    field: { multiple: true, placeholder: 'key=value' },
     unclaimed: { flag: true },
   },
   execute: (input) => {

@@ -290,6 +290,12 @@ describe('commands', () => {
           [['--state', 'todo'], ['TASKS-1']],
           [['--collection', 'tasks'], ['TASKS-1']],
           [['--collection', 'tasks', '--turn', 'human'], []],
+          [
+            ['--field', 'priority=medium'],
+            ['TASKS-1', 'BUGS-1'],
+          ],
+          [['--field', 'priority=medium', '--field', 'title=Fix login'], ['BUGS-1']],
+          [['--field', 'priority=high', '--field', 'title=Fix login'], []],
         ])('filters with %j', async (filters, ids) => {
           const items: Array<{ id: string }> = await json('list', ...filters);
 
@@ -309,6 +315,15 @@ describe('commands', () => {
 
         it('rejects options of other commands', async () => {
           expect((await otea('list', '--title', 'X')).code).toBe(2);
+        });
+
+        it('rejects a --field that is not key=value or names a field twice', async () => {
+          expect((await otea('list', '--field', 'priority')).err).toContain(
+            '--field expects key=value, got "priority"',
+          );
+          const twice = await otea('list', '--field', 'priority=low', '--field', 'priority=high');
+          expect(twice.code).toBe(2);
+          expect(twice.err).toContain('Field "priority" given twice');
         });
       });
 

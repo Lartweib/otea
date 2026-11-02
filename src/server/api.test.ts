@@ -211,8 +211,20 @@ types:
       ['?collection=tasks&turn=human', []],
       ['?type=item', ['TASKS-1', 'BUGS-1']],
       ['?type=bug', []],
+      ['?field=priority=medium', ['TASKS-1', 'BUGS-1']],
+      ['?field=priority=medium&field=title=Fix%20login', ['BUGS-1']],
+      ['?field=priority=high&field=title=Fix%20login', []],
     ])('filters with %s', async (query, expected) => {
       expect(await ids(`/api/items${query}`)).toEqual(expected);
+    });
+
+    it('rejects a field that is not key=value with 400', async () => {
+      const response = await get('/api/items?field=priority');
+
+      expect(response.status).toBe(400);
+      expect(await response.json()).toEqual({
+        error: { code: 'invalid_query', message: 'field expects key=value, got "priority"' },
+      });
     });
 
     it('rejects an unknown turn with 400', async () => {
