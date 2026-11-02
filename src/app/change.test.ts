@@ -267,6 +267,8 @@ describe('change preset', () => {
       'otea move <id> plan_review',
       'otea move <id> pr_review',
       'otea show <id> --json',
+      'otea check --gate push --branch --repo',
+      'otea check --gate merge --branch --repo',
       "Merge a pull request only once its repo task's `merge` gate allows it",
       'and then merge it yourself',
       'You never approve your own work',

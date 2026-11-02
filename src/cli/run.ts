@@ -39,9 +39,27 @@ const PARSE_OPTIONS: ParseArgsOptionsConfig = Object.assign(
   ),
 );
 
+const OPTIONAL_VALUES = new Set(
+  COMMANDS.flatMap((command) =>
+    Object.entries(command.options).flatMap(([name, spec]) =>
+      spec.optionalValue ? [`--${name}`] : [],
+    ),
+  ),
+);
+
+// An option whose value is optional, given without one, reads as an empty value.
+function withOptionalValues(argv: string[]): string[] {
+  return argv.map((token, index) => {
+    const next = argv[index + 1];
+    const bare = next === undefined || next.startsWith('-');
+    return OPTIONAL_VALUES.has(token) && bare ? `${token}=` : token;
+  });
+}
+
 function parse(argv: string[]): { values: Values; positionals: string[] } {
   try {
-    return parseArgs({ args: argv, options: PARSE_OPTIONS, allowPositionals: true, strict: true });
+    const args = withOptionalValues(argv);
+    return parseArgs({ args, options: PARSE_OPTIONS, allowPositionals: true, strict: true });
   } catch (error) {
     throw new UsageError(error instanceof Error ? error.message : String(error));
   }
@@ -118,7 +136,8 @@ async function dispatch(argv: string[], io: Io, json: boolean): Promise<number> 
   validate(command, values, args);
   const output = await command.execute(inputFor(command, values, args, io, json));
   if (output === undefined) return EXIT_CODES.ok;
-  io.stdout.write(json ? `${JSON.stringify(output.data)}\n` : `${output.text}\n`);
+  if (json) io.stdout.write(`${JSON.stringify(output.data)}\n`);
+  else if (output.text !== '') io.stdout.write(`${output.text}\n`);
   return EXIT_CODES[output.failure ?? 'ok'];
 }
 

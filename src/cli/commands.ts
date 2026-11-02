@@ -4,6 +4,7 @@ import { type AgentsMdAction, connectAgent, writeAgentsMd } from '../app/agents.
 import { addCollection, DEFAULT_PRESET, typeOfItem } from '../app/collections.ts';
 import { listEvents } from '../app/events.ts';
 import { attachEvidence } from '../app/evidence.ts';
+import { checkGate, type GateCheck } from '../app/gates.ts';
 import {
   createItem,
   type ListItemsFilter,
@@ -41,6 +42,7 @@ import {
   formatReport,
   indent,
 } from './format.ts';
+import { currentBranch, repoName } from './gitrepo.ts';
 import { probeSignIn } from './probe.ts';
 import { readServeFile, removeServeFile, writeServeFile } from './serve-file.ts';
 
@@ -631,6 +633,68 @@ const mcp: Command = {
   },
 };
 
+// The fields a gate check matches: --field pairs, plus the branch and the repo, which default to
+// the git checkout's when given without a value.
+function gateFields({ cwd, option, options }: Input): Record<string, string> {
+  const fields: Record<string, string> = {};
+  const set = (key: string, value: string) => {
+    if (key in fields) throw new UsageError(`Field "${key}" given twice`);
+    fields[key] = value;
+  };
+  for (const pair of options('field')) set(...fieldPair(pair));
+  const branch = option('branch');
+  if (branch !== undefined) set('branch', branch || currentBranch(cwd));
+  const repo = option('repo');
+  if (repo !== undefined) set('repo', repo || repoName(cwd));
+  return fields;
+}
+
+function gateText({ gate, allowed, items }: GateCheck): string {
+  if (allowed) {
+    const states = items.map(({ id, state }) => `${id} is ${state}`);
+    return `${gate} allowed: ${states.join(', ')}`;
+  }
+  return items
+    .filter((item) => !item.allowed)
+    .map(
+      ({ id, state, allowedIn }) =>
+        `${gate} refused: ${id} is ${state}; ${gate} is allowed only in ${allowedIn.join(', ')}`,
+    )
+    .join('\n');
+}
+
+// A gate check fails open: anything that keeps it from answering allows the action, with a note.
+const check: Command = {
+  name: 'check',
+  summary:
+    'Check whether the items matching the fields allow a gated action: exit 0 when allowed, 1 when refused; it allows the action, with a note, when no item matches or the check cannot run. --branch and --repo default to the git checkout',
+  args: [],
+  options: {
+    gate: { required: true, placeholder: 'action' },
+    field: { multiple: true, placeholder: 'key=value' },
+    branch: { optionalValue: true, placeholder: 'name' },
+    repo: { optionalValue: true, placeholder: 'name' },
+  },
+  execute: (input) => {
+    const gate = input.required('gate');
+    let result: GateCheck;
+    try {
+      const fields = gateFields(input);
+      result = withProject(input.cwd, (project) => checkGate(project, gate, fields));
+    } catch (error) {
+      if (error instanceof UsageError) throw error;
+      const message = error instanceof Error ? error.message : String(error);
+      result = { gate, allowed: true, items: [], note: `could not check (${message})` };
+    }
+    if (result.note) input.warn(`${result.note}; ${gate} allowed`);
+    if (result.items.length === 0) return { data: result, text: '' };
+    const text = gateText(result);
+    return result.allowed
+      ? { data: result, text }
+      : { data: result, text, failure: 'gate_refused' };
+  },
+};
+
 export const COMMANDS: readonly Command[] = [
   init,
   connect,
@@ -651,6 +715,7 @@ export const COMMANDS: readonly Command[] = [
   move,
   relay,
   validate,
+  check,
   serve,
   open,
   mcp,
