@@ -1,8 +1,10 @@
+import { join } from 'node:path';
 import { type Preset, parsePreset } from '../core/preset.ts';
 import { openDatabase } from '../store/database.ts';
 import { migrate } from '../store/migrations.ts';
 import type { Context } from './context.ts';
 import { loadPresets, type PresetCatalog } from './presets.ts';
+import type { Project } from './project.ts';
 
 export const REVIEWS = parsePreset(`
 preset: reviews
@@ -26,6 +28,11 @@ export function catalogWith(...presets: Preset[]): PresetCatalog {
 }
 
 export const IDENTITY = { id: 'memory-aaaaaa', name: 'memory' };
+
+// A local project at `root` over the given context, without touching the disk.
+export function projectOf(root: string, context: Context): Project {
+  return { root, dataDir: join(root, '.otea'), storage: 'local', identity: IDENTITY, ...context };
+}
 
 export function memoryContext(...presets: Preset[]): Context {
   const db = openDatabase(':memory:');
