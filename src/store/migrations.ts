@@ -121,12 +121,21 @@ function userVersion(db: DatabaseSync): number {
   return Number(db.prepare('PRAGMA user_version').get()?.user_version ?? 0);
 }
 
-export function migrate(db: DatabaseSync, target = MIGRATIONS.length): void {
+// Runs the migrations a database has not run yet, up to `target`; user_version counts the ones done.
+export function applyMigrations(
+  db: DatabaseSync,
+  migrations: readonly string[],
+  target = migrations.length,
+): void {
   const current = userVersion(db);
-  for (const [offset, sql] of MIGRATIONS.slice(current, target).entries()) {
+  for (const [offset, sql] of migrations.slice(current, target).entries()) {
     transaction(db, () => {
       db.exec(sql);
       db.exec(`PRAGMA user_version = ${current + offset + 1}`);
     });
   }
+}
+
+export function migrate(db: DatabaseSync, target = MIGRATIONS.length): void {
+  applyMigrations(db, MIGRATIONS, target);
 }

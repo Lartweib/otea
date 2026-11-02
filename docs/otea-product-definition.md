@@ -133,7 +133,7 @@ Enforced by the core regardless of preset or module.
 
 - **Data is per project**: one SQLite database plus evidence files, in one of two storage modes (below). Everything an agent needs is found from the project itself.
 - **The app is one per user**: a single local process serving the UI for every linked project. No web server per project.
-- **Project registry** (user-level, e.g. `~/.otea/projects`): only stores paths to linked projects. It is optional.
+- **Project registry** (user-level, `registry.db` in the Otea home: `OTEA_HOME`, or `~/.otea` on every OS): the linked projects (id, name, storage mode, data folder) and the folders that lead to each, compared by a key (the real path with forward slashes, lowercased on Windows and macOS). A project can have several folders; the nearest linked folder at or above a path names its project. It is optional, and not yet used to find projects.
 - **Global attention inbox**: the home view aggregates "waiting for me" across all linked projects and collections.
 
 **The app is never required.** An agent in a project works through the CLI (or MCP) with the app closed and the project unlinked. The human opens the UI whenever they want to look.
