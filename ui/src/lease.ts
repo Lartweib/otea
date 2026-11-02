@@ -1,4 +1,5 @@
-import { ageLabel, momentLabel } from './format.ts';
+import { ageLabel, momentLabel, spanLabel } from './format.ts';
+import { t } from './i18n/i18n.ts';
 import type { Item, Lease } from './types.ts';
 
 // Same rule as the server: a lease stops counting the moment it expires, even if no write follows.
@@ -14,7 +15,7 @@ const UNITS = [
   { minutes: 1, suffix: 'm' },
 ] as const;
 
-type Left = { count: number; unit: number; suffix: string };
+type Left = { count: number; unit: number; suffix: 'd' | 'h' | 'm' };
 
 // The time left on a lease in whole units: minutes rounded up (so it never says 0m), then hours
 // and days rounded down; `count` units of `unit` minutes. Undefined once it has run out.
@@ -28,7 +29,20 @@ function left(lease: Lease, now: number): Left | undefined {
 // How long an agent still holds an item, as the time column says it: 12m left, 2h left, expired.
 export function leaseLeft(lease: Lease, now: number): string {
   const time = left(lease, now);
-  return time ? `${time.count}${time.suffix} left` : 'expired';
+  return time ? leftLabel(time) : t('lease.expired');
+}
+
+const leftLabel = ({ count, suffix }: Left) => t('lease.left', { time: spanLabel(suffix, count) });
+
+// The widest the time column says a lease, in characters of the language on screen (`59m left`,
+// `quedan 59 min`): the list and the grid size that column by it.
+export function leaseChars(): number {
+  const said = [
+    leftLabel({ count: 59, unit: 1, suffix: 'm' }),
+    leftLabel({ count: 23, unit: 60, suffix: 'h' }),
+    t('lease.expired'),
+  ];
+  return Math.max(...said.map((text) => text.length));
 }
 
 export type TimeCell =
@@ -52,16 +66,16 @@ export function timeCell(
   if (!time) {
     return {
       tone: 'expired',
-      text: 'expired',
-      label: `held by ${lease.holder}, its lease expired at ${ends}`,
+      text: t('lease.expired'),
+      label: t('lease.heldExpired', { holder: lease.holder, time: ends }),
     };
   }
   // The text changes once the minutes left drop under the count it shows.
   const changesAt = Date.parse(lease.expiresAt) - (time.count * time.unit - 1) * MINUTE;
   return {
     tone: 'left',
-    text: `${time.count}${time.suffix} left`,
-    label: `held by ${lease.holder} until ${ends}`,
+    text: leftLabel(time),
+    label: t('lease.heldUntil', { holder: lease.holder, time: ends }),
     changesAt,
   };
 }

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { createItem, fetchCollections } from '../api.ts';
 import { type Connection, useRemote } from '../hooks.ts';
+import { presetText, t, tx } from '../i18n/i18n.ts';
 import {
   canSubmit,
   type FormValues,
@@ -72,7 +73,7 @@ function IntakeForm({
       (item) => onCreated(item.id),
       (failure: unknown) => {
         setPosting(false);
-        setError(failure instanceof Error ? failure.message : 'Failed');
+        setError(failure instanceof Error ? failure.message : t('common.failed'));
       },
     );
   };
@@ -80,7 +81,7 @@ function IntakeForm({
   return (
     <form
       className="intake"
-      aria-label="New item"
+      aria-label={t('app.newItem')}
       onSubmit={(event) => {
         event.preventDefault();
         submit();
@@ -88,14 +89,14 @@ function IntakeForm({
     >
       {parent ? (
         <div className="intake-parent well">
-          <span className="t-label">child of</span>
+          <span className="t-label">{t('intake.childOf')}</span>
           <span className="rel-id">{parent.id}</span>
           <span className="intake-parent-title">{parent.title}</span>
           <Button
             variant="quiet"
             size="sm"
             icon
-            aria-label={`Do not make it a child of ${parent.id}`}
+            aria-label={t('intake.unparent', { id: parent.id })}
             disabled={posting}
             onClick={() => setParent(undefined)}
           >
@@ -106,7 +107,7 @@ function IntakeForm({
       {collections.length > 1 ? (
         <div className="intake-field">
           <label className="t-label" htmlFor="intake-collection">
-            Collection
+            {t('intake.collection')}
           </label>
           <select
             id="intake-collection"
@@ -126,7 +127,7 @@ function IntakeForm({
       {collection.types.length > 1 ? (
         <div className="intake-field">
           <label className="t-label" htmlFor="intake-type">
-            Type
+            {t('intake.type')}
           </label>
           <select
             id="intake-type"
@@ -137,7 +138,7 @@ function IntakeForm({
           >
             {collection.types.map(({ name, label }) => (
               <option key={name} value={name}>
-                {label}
+                {presetText(label)}
               </option>
             ))}
           </select>
@@ -160,10 +161,10 @@ function IntakeForm({
       ) : null}
       <div className="action-buttons">
         <Button type="submit" variant="primary" disabled={!ready || posting}>
-          {posting ? 'Creating…' : 'Create'}
+          {t(posting ? 'intake.creating' : 'intake.create')}
         </Button>
         <Button variant="quiet" disabled={posting} onClick={onCancel}>
-          Cancel
+          {t('common.cancel')}
         </Button>
       </div>
       {error ? (
@@ -186,7 +187,7 @@ type NewItemFormProps = {
 export function NewItemForm({ connection, parent, onCancel, onCreated }: NewItemFormProps) {
   const collections = useRemote(fetchCollections, 0, connection);
   const body = () => {
-    if (collections.status === 'loading') return <p className="t-small">Loading…</p>;
+    if (collections.status === 'loading') return <p className="t-small">{t('common.loading')}</p>;
     if (collections.status === 'failed')
       return <p className="action-error">{collections.message}</p>;
     const first =
@@ -194,7 +195,7 @@ export function NewItemForm({ connection, parent, onCancel, onCreated }: NewItem
     if (!first) {
       return (
         <p className="t-small">
-          No collections yet. Add one with <code>otea collection add &lt;name&gt;</code>.
+          {tx('intake.noCollections', { command: <code>otea collection add &lt;name&gt;</code> })}
         </p>
       );
     }
@@ -211,7 +212,7 @@ export function NewItemForm({ connection, parent, onCancel, onCreated }: NewItem
   return (
     <article className="detail">
       <header className="detail-head">
-        <h1 className="t-display">{parent ? 'New child' : 'New item'}</h1>
+        <h1 className="t-display">{t(parent ? 'intake.newChild' : 'app.newItem')}</h1>
       </header>
       {body()}
     </article>

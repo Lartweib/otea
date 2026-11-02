@@ -23,19 +23,19 @@ const title = { name: 'title', module: 'text', required: 'create' } as const;
 
 export const text: FieldModuleUi = {
   name: 'text',
-  summary: 'A single line of plain text, such as a title.',
+  summary: 'module.text.summary',
   origin: 'official',
   Detail: PlainText,
   Edit: TextInput,
   samples: [
-    { label: 'short', field: title, value: 'Flaky login test' },
+    { label: 'module.text.short', field: title, value: 'Flaky login test' },
     {
-      label: 'long',
+      label: 'module.text.long',
       field: title,
       value:
         'Login fails on CI only when the session cookie expires between the two retries of the suite',
     },
-    { label: 'empty', field: { name: 'owner', module: 'text' }, value: '' },
+    { label: 'module.text.empty', field: { name: 'owner', module: 'text' }, value: '' },
   ],
   yaml: 'fields:\n  title: { module: text, required: create }',
 };

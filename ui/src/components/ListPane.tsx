@@ -21,6 +21,7 @@ import {
   sortItems,
   type Widths,
 } from '../grid.ts';
+import { t, tx } from '../i18n/i18n.ts';
 import { Button } from '../kit/index.ts';
 import { MOTION, reducedMotion } from '../motion.ts';
 import { type Folds, nestSections } from '../nesting.ts';
@@ -243,14 +244,10 @@ export function ListPane(props: ListPaneProps) {
 
   useEffect(() => () => run.current?.stop(), []);
 
-  if (items.status === 'loading') return <Message>Loading…</Message>;
+  if (items.status === 'loading') return <Message>{t('common.loading')}</Message>;
   if (items.status === 'failed') return <Message muted={false}>{items.message}</Message>;
   if (items.value.length === 0) {
-    return (
-      <Message>
-        No items yet. Create one with <code>otea create</code>.
-      </Message>
-    );
+    return <Message>{tx('list.empty', { command: <code>otea create</code> })}</Message>;
   }
 
   const setSort = (next: Sort) => {
@@ -281,23 +278,26 @@ export function ListPane(props: ListPaneProps) {
   const count =
     shownItems.length === scoped.length
       ? `${scoped.length}`
-      : `${shownItems.length} of ${scoped.length}`;
+      : t('list.count', { shown: shownItems.length, total: scoped.length });
   const sortColumn = sort ? columns.find(({ key }) => key === sort.key) : undefined;
   return (
     <div className="list-view" ref={attach} data-narrow={width < 760 || undefined}>
       {/* One row: the lane names over their lanes, the title over the row titles, the tools. */}
       <div className="list-head" data-view={view}>
         <span className="lane-names" aria-hidden="true">
-          <span>ag</span>
-          <span className="lane-names-you">you</span>
+          <span>{t('list.laneAgents')}</span>
+          <span className="lane-names-you">{t('list.laneYou')}</span>
         </span>
-        <h2 className="t-h">{collectionName ?? 'All items'}</h2>
+        <h2 className="t-h">{collectionName ?? t('common.allItems')}</h2>
         {prefs ? (
           <>
             <span className="list-count t-cap">{count}</span>
             {sortColumn && sort ? (
               <span className="list-count t-cap">
-                sorted by {sortColumn.label} {sort.dir === 'asc' ? '↑' : '↓'}
+                {t('list.sortedBy', {
+                  column: sortColumn.label,
+                  arrow: sort.dir === 'asc' ? '↑' : '↓',
+                })}
               </span>
             ) : null}
             <HeadControls
@@ -324,9 +324,9 @@ export function ListPane(props: ListPaneProps) {
       ) : null}
       {empty ? (
         <p className="list-empty t-small">
-          Nothing matches these filters.
+          {t('list.noMatch')}
           <Button size="sm" onClick={() => onPrefs({ filters: {} })}>
-            clear filters
+            {t('list.clearFilters')}
           </Button>
         </p>
       ) : (

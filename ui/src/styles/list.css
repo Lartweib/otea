@@ -125,7 +125,8 @@
 .row {
   --c-pri: 48px;
   --c-who: 38px;
-  --c-when: 74px;
+  /* The dot, then the time: --when-w fits the longest lease the language says (ItemList). */
+  --c-when: calc(16px + var(--when-w, 58px));
   position: relative;
   display: grid;
   grid-template-columns:
@@ -558,7 +559,7 @@
 
 [data-tier="4"] .row {
   --c-who: 0px;
-  --c-when: 66px;
+  --c-when: calc(8px + var(--when-w, 58px));
 }
 
 [data-tier="4"] :is(.row-who, .row-progress-count) {

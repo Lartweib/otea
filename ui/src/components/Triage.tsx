@@ -1,15 +1,16 @@
 import { type PointerEvent, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { fetchItem, moveItem } from '../api.ts';
-import { ageLabel } from '../format.ts';
+import { agoLabel } from '../format.ts';
 import { useActiveLease } from '../hooks.ts';
+import { t } from '../i18n/i18n.ts';
 import { showsTypes, typeOf } from '../item-types.ts';
 import { keyTargetOf } from '../keys.ts';
-import { Button, Icon, NODE_LABEL, Node, Pill, TypeTag } from '../kit/index.ts';
+import { Button, Icon, Node, nodeLabel, Pill, TypeTag } from '../kit/index.ts';
 import { moduleFor } from '../modules/registry.ts';
 import { valuesOf } from '../modules/values.ts';
 import { MOTION, reducedMotion } from '../motion.ts';
 import { itemNodeKind } from '../node-kind.ts';
-import { openLabel } from '../relations.ts';
+import { openLabel, relationLabel } from '../relations.ts';
 import { hashFor } from '../selection.ts';
 import {
   type Direction,
@@ -67,7 +68,7 @@ function CardTags({ item, collectionOf }: { item: Item; collectionOf: Collection
   const kind = itemNodeKind(item, typeOf(collection, item.type), lease !== null);
   return (
     <div className="detail-tags">
-      <Node kind={kind} label={NODE_LABEL[kind]} />
+      <Node kind={kind} label={nodeLabel(kind)} />
       {showsTypes(collection) ? (
         <TypeTag name={item.type} label={typeOf(collection, item.type)?.label ?? item.type} />
       ) : null}
@@ -84,14 +85,14 @@ function CardTags({ item, collectionOf }: { item: Item; collectionOf: Collection
 // how long ago it changed.
 function CardStanding({ item }: { item: Item }) {
   const lease = useActiveLease(item.lease);
-  const age = ageLabel(item.updatedAt, Date.now());
+  const ago = agoLabel(item.updatedAt, Date.now());
   const facts = [
-    lease ? `held by ${lease.holder}` : null,
-    item.children ? `children ${openLabel(item.children)}` : null,
+    lease ? t('lease.heldBy', { holder: lease.holder }) : null,
+    item.children ? t('triage.children', { open: openLabel(item.children) }) : null,
     ...(item.relations ?? [])
       .filter(({ kind }) => kind !== 'parent')
-      .map(({ kind, id }) => `${kind.replace('_', ' ')} ${id}`),
-    age === '' ? null : `updated ${age === 'now' ? 'just now' : `${age} ago`}`,
+      .map(({ kind, id }) => `${relationLabel(kind)} ${id}`),
+    ago === '' ? null : t('triage.updated', { ago }),
   ].filter((fact): fact is string => fact !== null);
   return <p className="tcard-standing t-cap">{facts.join(' · ')}</p>;
 }
@@ -117,7 +118,9 @@ function CardBody({ item, collectionOf }: { item: Item; collectionOf: Collection
   const lead = values.find(({ field }) => field.name === LEAD);
   const rest = values.filter((value) => value !== lead);
   const Lead = lead ? moduleFor(lead.field.module).Detail : undefined;
-  if (!lead && rest.length === 0) return <p className="t-small tcard-empty">No fields.</p>;
+  if (!lead && rest.length === 0) {
+    return <p className="t-small tcard-empty">{t('common.noFields')}</p>;
+  }
   return (
     <>
       {lead && Lead ? (
@@ -332,7 +335,7 @@ function TriageCard({ item, collectionOf, plan, onLeave, behind, next }: CardPro
           <div className="tcard-head">
             <CardTags item={item} collectionOf={collectionOf} />
             <a className="tcard-open t-cap" href={hashFor(item.id)}>
-              open the item
+              {t('triage.open')}
             </a>
           </div>
           <h2 className="tcard-title" id="tcard-title">
@@ -350,7 +353,7 @@ function TriageCard({ item, collectionOf, plan, onLeave, behind, next }: CardPro
               }}
             >
               <label className="t-label" htmlFor="triage-reason">
-                Reason for moving to {state.move.to}
+                {t('common.reasonFor', { state: state.move.to })}
               </label>
               <textarea
                 id="triage-reason"
@@ -368,10 +371,10 @@ function TriageCard({ item, collectionOf, plan, onLeave, behind, next }: CardPro
               />
               <div className="action-buttons">
                 <Button type="submit" variant="primary" disabled={state.reason.trim() === ''}>
-                  Confirm
+                  {t('common.confirm')}
                 </Button>
                 <Button variant="quiet" onClick={() => setState({ step: 'idle' })}>
-                  Cancel
+                  {t('common.cancel')}
                 </Button>
               </div>
             </form>
@@ -386,19 +389,23 @@ function TriageCard({ item, collectionOf, plan, onLeave, behind, next }: CardPro
       <div className="triage-bar">
         <div className="triage-buttons">
           {back ? (
-            <Button disabled={!ready} aria-label={`Move to ${back.to}`} onClick={() => act('left')}>
+            <Button
+              disabled={!ready}
+              aria-label={t('common.moveTo', { state: back.to })}
+              onClick={() => act('left')}
+            >
               <Icon name="left" />
               {back.to}
             </Button>
           ) : null}
           <Button variant="quiet" disabled={busy} onClick={() => commit('skip', undefined)}>
-            Later
+            {t('triage.later')}
           </Button>
           {forward ? (
             <Button
               variant={explaining ? 'default' : 'primary'}
               disabled={!ready}
-              aria-label={`Move to ${forward.to}`}
+              aria-label={t('common.moveTo', { state: forward.to })}
               onClick={() => act('right')}
             >
               {forward.to}
@@ -421,7 +428,10 @@ function TriageCard({ item, collectionOf, plan, onLeave, behind, next }: CardPro
           </div>
         ) : null}
         <p className="t-cap triage-hint" aria-hidden="true">
-          {[back ? `swipe left · ${back.to}` : '', forward ? `swipe right · ${forward.to}` : '']
+          {[
+            back ? t('triage.swipeLeft', { state: back.to }) : '',
+            forward ? t('triage.swipeRight', { state: forward.to }) : '',
+          ]
             .filter(Boolean)
             .join('   ')}
         </p>
@@ -482,7 +492,7 @@ function Tray({
             >
               <span className="t-id">{decision.id}</span>
               <span className="triage-tray-title">{decision.title}</span>
-              <span className="t-cap">moved to {decision.to}</span>
+              <span className="t-cap">{t('triage.movedTo', { state: decision.to ?? '' })}</span>
             </li>
           ))}
         </ul>
@@ -528,19 +538,24 @@ function End({
   const skipped = log.length - moved;
   return (
     <div className="triage-end">
-      <h2 className="t-h">{nothing ? 'Nothing waits for you' : 'All caught up'}</h2>
+      <h2 className="t-h">{t(nothing ? 'triage.nothing' : 'triage.caughtUp')}</h2>
       <p className="t-small">
         {nothing
-          ? 'Agents hold everything that is open. What comes back to you lands on your lane in the list.'
-          : `${moved} decided${skipped > 0 ? ` · ${skipped} for later` : ''}. The next thing for you lands on your lane in the list.`}
+          ? t('triage.nothingBody')
+          : t('triage.doneBody', {
+              tally: [
+                t('triage.decided', { count: moved }),
+                ...(skipped > 0 ? [t('triage.forLater', { count: skipped })] : []),
+              ].join(' · '),
+            })}
       </p>
       <div className="action-buttons">
         <Button variant="primary" onClick={onExit}>
-          Back to the list
+          {t('triage.backToList')}
         </Button>
         {skipped > 0 ? (
           <Button variant="quiet" onClick={onAgain}>
-            Show the {skipped} for later again
+            {t('triage.again', { count: skipped })}
           </Button>
         ) : null}
       </div>
@@ -628,7 +643,7 @@ export function Triage({ waiting, loading = false, collectionOf, version, onExit
         flight.current = undefined;
         setLeaving(undefined);
         setHeld(undefined);
-        restore(error instanceof Error ? error.message : 'Failed');
+        restore(error instanceof Error ? error.message : t('common.failed'));
       },
     );
   }, [leaving]);
@@ -657,42 +672,45 @@ export function Triage({ waiting, loading = false, collectionOf, version, onExit
   const position = log.length + 1;
   const total = log.length + remaining;
   return (
-    <section className="triage" aria-label="Triage" ref={root}>
+    <section className="triage" aria-label={t('triage.title')} ref={root}>
       <header className="triage-head">
         <Button variant="quiet" className="triage-exit" onClick={onExit}>
           <Icon name="left" />
-          List
+          {t('triage.list')}
         </Button>
         <div className="triage-heading">
           <h1 className="t-display triage-title">
             {loading
-              ? 'Triage'
+              ? t('triage.title')
               : top
-                ? `${remaining} left on your turn`
+                ? t('triage.left', { count: remaining })
                 : waiting.length === 0 && log.length === 0
-                  ? 'Triage'
-                  : 'All caught up'}
+                  ? t('triage.title')
+                  : t('triage.caughtUp')}
           </h1>
           {pass ? (
             <span className="t-cap">
-              {decided.length} decided · {log.length - decided.length} for later
+              {t('triage.decided', { count: decided.length })} ·{' '}
+              {t('triage.forLater', { count: log.length - decided.length })}
             </span>
           ) : null}
         </div>
-        <span className="t-cap triage-count">{top ? `${position} of ${total}` : ''}</span>
+        <span className="t-cap triage-count">
+          {top ? t('triage.position', { position, total }) : ''}
+        </span>
       </header>
       <div className="triage-body">
         {pass ? (
           <Tray
-            label="back with agents"
+            label={t('triage.backTray')}
             decisions={backed}
-            empty="What you send back lands here, on its way to the agent lane."
+            empty={t('triage.backEmpty')}
             landing={landing?.id}
           />
         ) : null}
         <div className="triage-main">
           {loading ? (
-            <p className="t-small triage-loading">Loading…</p>
+            <p className="t-small triage-loading">{t('common.loading')}</p>
           ) : top ? (
             <TriageCard
               key={top.id}
@@ -715,9 +733,9 @@ export function Triage({ waiting, loading = false, collectionOf, version, onExit
         </div>
         {pass ? (
           <Tray
-            label="decided"
+            label={t('triage.decidedTray')}
             decisions={settled}
-            empty="What you move on settles here until you leave."
+            empty={t('triage.decidedEmpty')}
             landing={landing?.id}
           />
         ) : null}

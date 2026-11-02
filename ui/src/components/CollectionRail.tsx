@@ -1,3 +1,4 @@
+import { t } from '../i18n/i18n.ts';
 import { Button, Icon } from '../kit/index.ts';
 import type { RailEntry } from '../workspace.ts';
 
@@ -17,7 +18,7 @@ type CollectionRailProps = {
 // button leads the sidebar's header and never moves: the list keeps its width and slides over, and
 // the detail takes the room.
 function SidebarToggle({ shown, onToggle }: { shown: boolean; onToggle: () => void }) {
-  const label = shown ? 'Hide collections' : 'Show collections';
+  const label = t(shown ? 'rail.hide' : 'rail.show');
   return (
     <Button
       variant="quiet"
@@ -38,7 +39,7 @@ function SidebarToggle({ shown, onToggle }: { shown: boolean; onToggle: () => vo
 function Count({ yours, open }: { yours: number; open: number }) {
   return (
     <span className="rail-count">
-      <span className="rail-yours" title="waiting for you">
+      <span className="rail-yours" title={t('rail.waiting')}>
         {yours}
       </span>
       <span className="t-cap">/ {open}</span>
@@ -57,11 +58,11 @@ export function CollectionRail({
   onToggle,
 }: CollectionRailProps) {
   return (
-    <nav id="collections" className="rail" aria-label="Collections">
+    <nav id="collections" className="rail" aria-label={t('rail.aria')}>
       <div className="rail-head">
         {onToggle ? <SidebarToggle shown={!hidden} onToggle={onToggle} /> : null}
         <span className="t-label rail-label" inert={hidden}>
-          collections
+          {t('rail.label')}
         </span>
       </div>
       <div id="collection-list" className="rail-entries" inert={hidden}>
@@ -71,7 +72,7 @@ export function CollectionRail({
           aria-pressed={selected === undefined}
           onClick={() => onSelect(undefined)}
         >
-          <span>All items</span>
+          <span>{t('rail.all')}</span>
           <Count yours={yoursTotal} open={openTotal} />
         </button>
         {entries.map((entry) => (

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { type CatalogEntry, type CatalogOrigin, type ModuleUse, usageSummary } from '../catalog.ts';
+import { type PlainKey, t, tx } from '../i18n/i18n.ts';
 import { Node, Pill } from '../kit/index.ts';
 import type { FieldModuleUi, Sample } from '../modules/contract.ts';
 import { moduleFor } from '../modules/registry.ts';
@@ -8,25 +9,23 @@ import { ITEMS_HASH, modulesHash } from '../selection.ts';
 import type { PresetView } from '../types.ts';
 import { FieldControl } from './FieldControl.tsx';
 
-const ORIGIN_NOTE: Record<CatalogOrigin, string | undefined> = {
+const ORIGIN_NOTE: Record<CatalogOrigin, PlainKey | undefined> = {
   official: undefined,
-  local: 'unofficial · at your own risk',
-  unknown: 'unknown module · renders as plain text',
+  local: 'catalog.localNote',
+  unknown: 'catalog.unknownNote',
 };
 
 // Official is the norm, so it stays outlined; local and unknown stand out a little.
 function OriginPill({ origin }: { origin: CatalogOrigin }) {
   return origin === 'official' ? (
-    <Pill tone="state">official</Pill>
+    <Pill tone="state">{t('catalog.official')}</Pill>
   ) : (
-    <Pill>{origin === 'local' ? 'local' : 'unknown'}</Pill>
+    <Pill>{t(origin === 'local' ? 'catalog.local' : 'catalog.unknown')}</Pill>
   );
 }
 
 function summaryOf(entry: CatalogEntry): string {
-  return entry.origin === 'unknown'
-    ? 'Named by a loaded preset, but this UI has no module for it.'
-    : moduleFor(entry.name).summary;
+  return t(entry.origin === 'unknown' ? 'catalog.unknownSummary' : moduleFor(entry.name).summary);
 }
 
 type IndexProps = { entries: CatalogEntry[]; selected: string | undefined };
@@ -45,7 +44,7 @@ function IndexEntry({ entry, selected }: { entry: CatalogEntry; selected: boolea
           <OriginPill origin={entry.origin} />
         </span>
         <span className="t-small">{summaryOf(entry)}</span>
-        <span className="t-cap">{note ?? usageSummary(entry.uses)}</span>
+        <span className="t-cap">{note ? t(note) : usageSummary(entry.uses)}</span>
       </a>
     </li>
   );
@@ -56,13 +55,13 @@ export function ModuleIndex({ entries, selected }: IndexProps) {
   const known = entries.filter(({ origin }) => origin !== 'unknown');
   const unknown = entries.filter(({ origin }) => origin === 'unknown');
   return (
-    <nav className="mod-index" aria-label="Field modules">
+    <nav className="mod-index" aria-label={t('catalog.title')}>
       <div className="mod-index-head">
         <a className="t-h mod-index-title" href={modulesHash()}>
-          Field modules
+          {t('catalog.title')}
         </a>
         <a className="quiet-link t-small" href={ITEMS_HASH}>
-          Back to items
+          {t('catalog.back')}
         </a>
       </div>
       <ul className="mod-entries">
@@ -72,7 +71,7 @@ export function ModuleIndex({ entries, selected }: IndexProps) {
       </ul>
       {unknown.length > 0 ? (
         <>
-          <h2 className="t-label mod-index-sub">Named by presets, not in this UI</h2>
+          <h2 className="t-label mod-index-sub">{t('catalog.unknownHeading')}</h2>
           <ul className="mod-entries">
             {unknown.map((entry) => (
               <IndexEntry key={entry.name} entry={entry} selected={entry.name === selected} />
@@ -99,9 +98,11 @@ function RowPreview({
   return (
     <span className="sample-row">
       <Node kind="queued" />
-      <span className="sample-row-title">{isTitle && value !== '' ? value : 'Sample item'}</span>
+      <span className="sample-row-title">
+        {isTitle && value !== '' ? value : t('catalog.sampleItem')}
+      </span>
       {Row ? <Row field={sample.field} value={value} /> : null}
-      {Row || isTitle ? null : <span className="t-small">stays out of the row</span>}
+      {Row || isTitle ? null : <span className="t-small">{t('catalog.outOfRow')}</span>}
     </span>
   );
 }
@@ -119,22 +120,22 @@ function SamplePreview({
   const [value, setValue] = useState(sample.value);
   const { Detail } = module;
   return (
-    <section className="sample" aria-label={`Sample: ${sample.label}`}>
-      <h3 className="t-label sample-label">{sample.label}</h3>
+    <section className="sample" aria-label={t('catalog.sample', { label: t(sample.label) })}>
+      <h3 className="t-label sample-label">{t(sample.label)}</h3>
       <dl className="fields sample-views">
-        <dt>row</dt>
+        <dt>{t('catalog.row')}</dt>
         <dd>
           <RowPreview module={module} sample={sample} value={value} />
         </dd>
-        <dt>detail</dt>
+        <dt>{t('catalog.detail')}</dt>
         <dd>
           {value.trim() === '' ? (
-            <span className="t-small">empty: the detail leaves it out</span>
+            <span className="t-small">{t('catalog.emptyDetail')}</span>
           ) : (
             <Detail field={sample.field} value={value} />
           )}
         </dd>
-        <dt>edit</dt>
+        <dt>{t('catalog.edit')}</dt>
         <dd>
           <FieldControl
             id={id}
@@ -151,16 +152,16 @@ function SamplePreview({
 
 function fieldFacts({ field }: ModuleUse): string[] {
   const facts: string[] = [];
-  if (field.required) facts.push(`required to ${field.required}`);
-  if (field.values) facts.push(`values ${field.values.join(', ')}`);
-  if (field.default !== undefined) facts.push(`default ${field.default}`);
+  if (field.required) facts.push(t('catalog.requiredTo', { when: field.required }));
+  if (field.values) facts.push(t('catalog.values', { values: field.values.join(', ') }));
+  if (field.default !== undefined) facts.push(t('catalog.default', { value: field.default }));
   return facts;
 }
 
 function Uses({ uses, presets }: { uses: ModuleUse[]; presets: Remote<PresetView[]> }) {
-  if (presets.status === 'loading') return <p className="t-small">Loading presets…</p>;
+  if (presets.status === 'loading') return <p className="t-small">{t('catalog.loadingPresets')}</p>;
   if (presets.status === 'failed') return <p className="action-error">{presets.message}</p>;
-  if (uses.length === 0) return <p className="t-small">No loaded preset uses it yet.</p>;
+  if (uses.length === 0) return <p className="t-small">{t('catalog.noUses')}</p>;
   return (
     <ul className="mod-uses">
       {uses.map((use) => (
@@ -170,7 +171,7 @@ function Uses({ uses, presets }: { uses: ModuleUse[]; presets: Remote<PresetView
               {use.preset}.{use.field.name}
             </code>
             <span className="t-cap">
-              {use.origin} preset · v{use.version}
+              {t('catalog.presetOrigin', { origin: use.origin, version: use.version })}
             </span>
           </span>
           {fieldFacts(use).length > 0 ? (
@@ -178,8 +179,8 @@ function Uses({ uses, presets }: { uses: ModuleUse[]; presets: Remote<PresetView
           ) : null}
           <span className="t-small">
             {use.collections.length > 0
-              ? `in ${use.collections.join(', ')}`
-              : 'no collection uses this preset yet'}
+              ? t('catalog.inCollections', { collections: use.collections.join(', ') })
+              : t('catalog.noCollectionUsesPreset')}
           </span>
         </li>
       ))}
@@ -199,23 +200,21 @@ export function ModulePanel({ entry, presets }: PanelProps) {
       <header className="detail-head">
         <div className="detail-tags">
           <OriginPill origin={entry.origin} />
-          <span className="t-cap">field module</span>
+          <span className="t-cap">{t('catalog.fieldModule')}</span>
         </div>
         <h1 className="t-display mod-name" id="mod-title">
           {entry.name}
         </h1>
         <p className="t-body">{summaryOf(entry)}</p>
-        {note ? <p className="mod-note t-small">{note}</p> : null}
+        {note ? <p className="mod-note t-small">{t(note)}</p> : null}
       </header>
       {known ? (
         <section className="mod-section" aria-labelledby="mod-preview">
           <div className="mod-section-head">
             <h2 className="t-h" id="mod-preview">
-              Preview
+              {t('catalog.preview')}
             </h2>
-            <p className="t-small">
-              Sample values. Edits here stay on this page and are never saved.
-            </p>
+            <p className="t-small">{t('catalog.previewNote')}</p>
           </div>
           {module.samples.map((sample, index) => (
             <SamplePreview
@@ -227,21 +226,18 @@ export function ModulePanel({ entry, presets }: PanelProps) {
           ))}
         </section>
       ) : (
-        <p className="t-body">
-          Its values show and edit as plain text until a module named <code>{entry.name}</code> is
-          available.
-        </p>
+        <p className="t-body">{tx('catalog.plainUntil', { name: <code>{entry.name}</code> })}</p>
       )}
       <section className="mod-section" aria-labelledby="mod-uses">
         <h2 className="t-h" id="mod-uses">
-          Used by
+          {t('catalog.usedBy')}
         </h2>
         <Uses uses={entry.uses} presets={presets} />
       </section>
       {known ? (
         <section className="mod-section" aria-labelledby="mod-yaml">
           <h2 className="t-h" id="mod-yaml">
-            In preset.yaml
+            {t('catalog.inYaml')}
           </h2>
           <pre className="mod-yaml well">
             <code>{module.yaml}</code>
@@ -253,7 +249,7 @@ export function ModulePanel({ entry, presets }: PanelProps) {
 }
 
 function PresetList({ presets }: { presets: Remote<PresetView[]> }) {
-  if (presets.status === 'loading') return <p className="t-small">Loading presets…</p>;
+  if (presets.status === 'loading') return <p className="t-small">{t('catalog.loadingPresets')}</p>;
   if (presets.status === 'failed') return <p className="action-error">{presets.message}</p>;
   return (
     <ul className="mod-uses">
@@ -262,7 +258,7 @@ function PresetList({ presets }: { presets: Remote<PresetView[]> }) {
           <span className="mod-use-head">
             <code className="mod-use-field">{preset.name}</code>
             <span className="t-cap">
-              {preset.origin} preset · v{preset.version}
+              {t('catalog.presetOrigin', { origin: preset.origin, version: preset.version })}
             </span>
           </span>
           <span className="mod-use-modules">
@@ -275,8 +271,8 @@ function PresetList({ presets }: { presets: Remote<PresetView[]> }) {
           </span>
           <span className="t-small">
             {preset.collections.length > 0
-              ? `in ${preset.collections.join(', ')}`
-              : 'no collection uses it yet'}
+              ? t('catalog.inCollections', { collections: preset.collections.join(', ') })
+              : t('catalog.noCollectionUsesIt')}
           </span>
         </li>
       ))}
@@ -290,18 +286,13 @@ export function CatalogOverview({ presets }: { presets: Remote<PresetView[]> }) 
     <article className="detail mod" aria-labelledby="mod-title">
       <header className="detail-head">
         <h1 className="t-display" id="mod-title">
-          Field modules
+          {t('catalog.title')}
         </h1>
-        <p className="t-body">
-          Every preset field picks a module. The module decides how the value shows in a list row
-          and in the item detail, and how you edit it. Official modules ship with Otea; local
-          modules from <code>.otea/modules/</code> will be marked unofficial and run at your own
-          risk.
-        </p>
+        <p className="t-body">{tx('catalog.intro', { folder: <code>.otea/modules/</code> })}</p>
       </header>
       <section className="mod-section" aria-labelledby="mod-presets">
         <h2 className="t-h" id="mod-presets">
-          Loaded presets
+          {t('catalog.loaded')}
         </h2>
         <PresetList presets={presets} />
       </section>

@@ -1,14 +1,15 @@
 import { normalText, textValues } from './grid.ts';
+import { type PlainKey, t } from './i18n/i18n.ts';
 import type { CollectionView, Item, Turn } from './types.ts';
 
 // A group of the list or the grid. Grouped by turn, a section holds one turn (and stays even when
 // empty); grouped by anything else it has no turn of its own, and its rows sit on their own lanes.
 export type Section = { key: string; turn?: Turn; title: string; items: Item[] };
 
-const SECTIONS: ReadonlyArray<Omit<Section, 'items' | 'key'> & { turn: Turn }> = [
-  { turn: 'human', title: 'Waiting for you' },
-  { turn: 'agent', title: 'With agents' },
-  { turn: 'none', title: 'Closed' },
+const SECTIONS: ReadonlyArray<{ turn: Turn; title: PlainKey }> = [
+  { turn: 'human', title: 'section.human' },
+  { turn: 'agent', title: 'section.agent' },
+  { turn: 'none', title: 'section.none' },
 ];
 
 // A closed item cannot be updated, so its updatedAt is when it was closed: the latest closed comes first.
@@ -18,11 +19,23 @@ export function groupByTurn(items: readonly Item[]): Section[] {
   return SECTIONS.map((section) => {
     const own = items.filter((item) => item.turn === section.turn);
     const sorted = section.turn === 'none' ? own.sort(byClosedRecency) : own;
-    return { ...section, key: section.turn, items: sorted };
+    return { turn: section.turn, title: t(section.title), key: section.turn, items: sorted };
   });
 }
 
 const GROUPS: readonly string[] = ['enum', 'severity', 'text'];
+
+const BUILT_IN_GROUPS: Readonly<Record<string, PlainKey>> = {
+  turn: 'group.turn',
+  state: 'group.state',
+  type: 'group.type',
+};
+
+// A grouping as the menus say it: turn, state and type in the language on screen, a field by its name.
+export function groupingLabel(key: string): string {
+  const builtIn = BUILT_IN_GROUPS[key];
+  return builtIn ? t(builtIn) : key;
+}
 
 // What a collection can be grouped by: turn, state, its type when it has several, and every
 // one-line field all its types have (an enum, a severity, free text), in the order they declare
@@ -80,7 +93,7 @@ export function groupItems(
   const stale = items.map(of).filter((value) => value !== '' && !declared.includes(value));
   const values = [...declared.filter((value) => value !== ''), ...new Set(stale), ''];
   const labelOf = (key: string) => {
-    if (key === '') return `no ${by}`;
+    if (key === '') return t('section.noValue', { group: groupingLabel(by) });
     if (by !== 'type') return key;
     return collection.types.find(({ name }) => name === key)?.label ?? key;
   };

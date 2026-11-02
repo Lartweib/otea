@@ -1,7 +1,8 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { fetchItems, linkItems } from '../../api.ts';
+import { t } from '../../i18n/i18n.ts';
 import { typeOf } from '../../item-types.ts';
-import { Button, NODE_LABEL, Node } from '../../kit/index.ts';
+import { Button, Node, nodeLabel } from '../../kit/index.ts';
 import { itemNodeKind } from '../../node-kind.ts';
 import { LINK_CHOICES, linkRequestOf, matchItems } from '../../relations.ts';
 import type { Item, ItemView, RelationView } from '../../types.ts';
@@ -36,13 +37,13 @@ export function LinkForm({ item, collectionOf, onDone }: LinkFormProps) {
     setError(undefined);
     linkItems(linkRequestOf(item.id, kind, other)).then(onDone, (failure: unknown) => {
       setPosting(undefined);
-      setError(failure instanceof Error ? failure.message : 'Failed');
+      setError(failure instanceof Error ? failure.message : t('common.failed'));
     });
   };
   return (
     <form
       className="link-form"
-      aria-label={`Link ${item.id}`}
+      aria-label={t('link.aria', { id: item.id })}
       onSubmit={(event) => {
         event.preventDefault();
         const [first] = found;
@@ -58,7 +59,7 @@ export function LinkForm({ item, collectionOf, onDone }: LinkFormProps) {
       <div className="link-form-row">
         <span className="t-id">{item.id}</span>
         <label className="visually-hidden" htmlFor={`${id}-kind`}>
-          Relation
+          {t('link.kind')}
         </label>
         <select
           id={`${id}-kind`}
@@ -69,27 +70,27 @@ export function LinkForm({ item, collectionOf, onDone }: LinkFormProps) {
         >
           {LINK_CHOICES.map((choice) => (
             <option key={choice.kind} value={choice.kind}>
-              {choice.label}
+              {t(choice.label)}
             </option>
           ))}
         </select>
       </div>
       <label className="visually-hidden" htmlFor={`${id}-search`}>
-        Item to link, by id or title
+        {t('link.search')}
       </label>
       <input
         id={`${id}-search`}
         ref={search}
         className="input"
         type="search"
-        placeholder="Item id or title"
+        placeholder={t('link.placeholder')}
         autoComplete="off"
         value={query}
         disabled={posting !== undefined}
         onChange={(event) => setQuery(event.target.value)}
       />
       {found.length > 0 ? (
-        <ul className="link-results" aria-label="Matching items">
+        <ul className="link-results" aria-label={t('link.matches')}>
           {found.map((candidate) => {
             const node = itemNodeKind(
               candidate,
@@ -105,7 +106,7 @@ export function LinkForm({ item, collectionOf, onDone }: LinkFormProps) {
                   aria-busy={posting === candidate.id || undefined}
                   onClick={() => link(candidate.id)}
                 >
-                  <Node kind={node} label={NODE_LABEL[node]} />
+                  <Node kind={node} label={nodeLabel(node)} />
                   <span className="rel-id">{candidate.id}</span>
                   <span className="rel-title">{candidate.title}</span>
                 </button>
@@ -114,11 +115,11 @@ export function LinkForm({ item, collectionOf, onDone }: LinkFormProps) {
           })}
         </ul>
       ) : query.trim() !== '' ? (
-        <p className="t-small link-none">No item matches.</p>
+        <p className="t-small link-none">{t('link.none')}</p>
       ) : null}
       <div className="action-buttons">
         <Button variant="quiet" size="sm" onClick={onDone}>
-          Cancel
+          {t('common.cancel')}
         </Button>
       </div>
       {error ? (

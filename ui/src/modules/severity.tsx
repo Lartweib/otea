@@ -37,16 +37,16 @@ const severity: FieldView = {
 
 export const severityModule: FieldModuleUi = {
   name: 'severity',
-  summary: 'How bad it is, on a fixed scale of four levels drawn as signal bars.',
+  summary: 'module.severity.summary',
   origin: 'official',
   Row: RowValue,
   rowColumn: 'priority',
   Detail: Value,
   Edit: Select,
   samples: [
-    { label: 'critical, in the warning hue', field: severity, value: 'critical' },
-    { label: 'medium', field: severity, value: 'medium' },
-    { label: 'empty', field: severity, value: '' },
+    { label: 'module.severity.critical', field: severity, value: 'critical' },
+    { label: 'module.severity.medium', field: severity, value: 'medium' },
+    { label: 'module.severity.empty', field: severity, value: '' },
   ],
   yaml: 'fields:\n  severity: { module: severity, required: complete }  # low, medium, high, critical',
 };

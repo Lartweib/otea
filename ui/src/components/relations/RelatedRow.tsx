@@ -1,6 +1,7 @@
+import { t } from '../../i18n/i18n.ts';
 import { TypeIcon } from '../../icons/TypeIcon.tsx';
 import { typeOf } from '../../item-types.ts';
-import { Icon, NODE_LABEL, Node } from '../../kit/index.ts';
+import { Icon, Node, nodeLabel } from '../../kit/index.ts';
 import { activeLease } from '../../lease.ts';
 import { itemNodeKind, type NodeKind } from '../../node-kind.ts';
 import { hashFor } from '../../selection.ts';
@@ -31,7 +32,7 @@ export function RelatedRow({ related, collectionOf, onRemove, removing = false }
   return (
     <li className="rel-row" data-kind={kind} data-removing={removing || undefined}>
       <a className="rel-link" href={hashFor(related.id)}>
-        <Node kind={kind} label={NODE_LABEL[kind]} />
+        <Node kind={kind} label={nodeLabel(kind)} />
         <span className="rel-id">{related.id}</span>
         <span className="rel-title">
           <TypeIcon name={type?.icon} size={14} />
@@ -45,7 +46,7 @@ export function RelatedRow({ related, collectionOf, onRemove, removing = false }
         <button
           type="button"
           className="rel-remove"
-          aria-label={`Remove the link to ${related.id}`}
+          aria-label={t('relations.remove', { id: related.id })}
           disabled={removing}
           onClick={onRemove}
         >

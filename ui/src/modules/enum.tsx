@@ -48,15 +48,15 @@ const area = { name: 'area', module: 'enum', values: ['api', 'cli', 'ui'] };
 
 export const enumModule: FieldModuleUi = {
   name: 'enum',
-  summary: 'One value from a fixed list, with an optional default.',
+  summary: 'module.enum.summary',
   origin: 'official',
   Row: RowValue,
   Detail: Value,
   Edit: Select,
   samples: [
-    { label: 'at its default', field: priority, value: 'medium' },
-    { label: 'off its default', field: priority, value: 'high' },
-    { label: 'no default, empty', field: area, value: '' },
+    { label: 'module.enum.atDefault', field: priority, value: 'medium' },
+    { label: 'module.enum.offDefault', field: priority, value: 'high' },
+    { label: 'module.enum.empty', field: area, value: '' },
   ],
   yaml: 'fields:\n  priority: { module: enum, values: [low, medium, high], default: medium }',
 };

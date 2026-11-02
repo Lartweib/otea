@@ -1,5 +1,6 @@
 import { type ReactNode, useState } from 'react';
 import { emptyText, evidenceOf, latestFirst, moduleTitle } from '../../evidence.ts';
+import { t } from '../../i18n/i18n.ts';
 import { Button } from '../../kit/index.ts';
 import type { Evidence, LayoutEntry } from '../../types.ts';
 import { EvidenceList } from '../EvidenceList.tsx';
@@ -20,11 +21,8 @@ function acceptsText(entry: LayoutEntry): string {
 }
 
 function hint(entry: LayoutEntry): string {
-  const roles =
-    entry.module === 'images' && entry.variant === 'compare'
-      ? ', one with --role before and one with --role after'
-      : '';
-  return `Agents attach ${acceptsText(entry)}${roles}.`;
+  const pair = entry.module === 'images' && entry.variant === 'compare';
+  return t(pair ? 'evidence.attachPair' : 'evidence.attach', { accepts: acceptsText(entry) });
 }
 
 // A quiet well that says what the agent should attach. A required module still empty is drawn
@@ -55,7 +53,7 @@ function OneOf({
   return (
     <div className="ev-one">
       {newest.length > 1 ? (
-        <fieldset className="ev-picker" aria-label={`${label}: files`}>
+        <fieldset className="ev-picker" aria-label={t('evidence.files', { label })}>
           {newest.map((entry, index) => (
             <Button
               key={entry.id}
@@ -65,7 +63,7 @@ function OneOf({
               onClick={() => setPicked(entry.id)}
             >
               {entry.filename}
-              {index === 0 ? <span className="ev-latest">latest</span> : null}
+              {index === 0 ? <span className="ev-latest">{t('evidence.latest')}</span> : null}
             </Button>
           ))}
         </fieldset>
@@ -115,7 +113,9 @@ export function EvidenceModule({ entry, evidence, canWrite }: EvidenceModuleProp
         <h2 className="t-label" id={headingId}>
           {title}
         </h2>
-        {entry.required ? <span className="ev-required t-cap">required</span> : null}
+        {entry.required ? (
+          <span className="ev-required t-cap">{t('evidence.required')}</span>
+        ) : null}
       </header>
       {held.length === 0 ? (
         <Empty entry={entry} />

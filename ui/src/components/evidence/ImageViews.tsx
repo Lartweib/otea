@@ -7,6 +7,7 @@ import {
 } from 'react';
 import { evidenceFileUrl } from '../../api.ts';
 import { comparePair, nudgeSplit, splitAt, stepIndex } from '../../evidence.ts';
+import { t } from '../../i18n/i18n.ts';
 import { Button, Icon } from '../../kit/index.ts';
 import type { Evidence } from '../../types.ts';
 import { stepWithArrows } from './arrows.ts';
@@ -41,7 +42,7 @@ export function ImageGallery({ evidence, label }: { evidence: Evidence[]; label:
   return (
     <section
       className="ev-gallery"
-      aria-roledescription="gallery"
+      aria-roledescription={t('evidence.galleryRole')}
       aria-label={label}
       onKeyDown={many ? onKeyDown : undefined}
     >
@@ -61,7 +62,7 @@ export function ImageGallery({ evidence, label }: { evidence: Evidence[]; label:
               className="ev-nav l"
               size="sm"
               icon
-              aria-label="Previous image"
+              aria-label={t('evidence.previous')}
               onClick={() => step(-1)}
             >
               <Icon name="left" />
@@ -70,7 +71,7 @@ export function ImageGallery({ evidence, label }: { evidence: Evidence[]; label:
               className="ev-nav r"
               size="sm"
               icon
-              aria-label="Next image"
+              aria-label={t('evidence.next')}
               onClick={() => step(1)}
             >
               <Icon name="right" />
@@ -87,7 +88,7 @@ export function ImageGallery({ evidence, label }: { evidence: Evidence[]; label:
                 type="button"
                 className="ev-thumb well"
                 aria-current={at === index ? 'true' : undefined}
-                aria-label={`Show ${entry.filename}`}
+                aria-label={t('evidence.show', { file: entry.filename })}
                 onClick={() => setIndex(at)}
               >
                 <img src={evidenceFileUrl(entry.id)} alt="" loading="lazy" />
@@ -102,24 +103,29 @@ export function ImageGallery({ evidence, label }: { evidence: Evidence[]; label:
 
 type CompareMode = 'slider' | 'side';
 
-function Missing({ side }: { side: 'before' | 'after' }) {
+type Side = 'before' | 'after';
+
+const sideLabel = (side: Side) => t(side === 'before' ? 'evidence.before' : 'evidence.after');
+
+const sideAlt = (side: Side, evidence: Evidence) =>
+  t('evidence.alt', { side: sideLabel(side), alt: altOf(evidence) });
+
+function Missing({ side }: { side: Side }) {
   return (
     <div className="ev-frame ev-missing well">
-      <span className="t-cap">no {side} yet</span>
+      <span className="t-cap">
+        {t(side === 'before' ? 'evidence.noBefore' : 'evidence.noAfter')}
+      </span>
     </div>
   );
 }
 
-function Framed({ evidence, side }: { evidence: Evidence; side: 'before' | 'after' }) {
+function Framed({ evidence, side }: { evidence: Evidence; side: Side }) {
   return (
     <figure className="ev-frame">
       <div className="ev-stage well">
-        <img
-          className="ev-img"
-          src={evidenceFileUrl(evidence.id)}
-          alt={`${side}: ${altOf(evidence)}`}
-        />
-        <span className="ev-tag l">{side}</span>
+        <img className="ev-img" src={evidenceFileUrl(evidence.id)} alt={sideAlt(side, evidence)} />
+        <span className="ev-tag l">{sideLabel(side)}</span>
       </div>
       <figcaption>
         <FileMeta evidence={evidence} />
@@ -172,12 +178,12 @@ export function ImageCompare({ evidence }: { evidence: Evidence[] }) {
   const shown = Math.round(split);
   return (
     <div className="ev-compare" data-mode={mode}>
-      <fieldset className="ev-modes" aria-label="How to compare">
+      <fieldset className="ev-modes" aria-label={t('evidence.howToCompare')}>
         <Button size="sm" aria-pressed={mode === 'slider'} onClick={() => setMode('slider')}>
-          slider
+          {t('evidence.slider')}
         </Button>
         <Button size="sm" aria-pressed={mode === 'side'} onClick={() => setMode('side')}>
-          side by side
+          {t('evidence.sideBySide')}
         </Button>
       </fieldset>
       {mode === 'slider' ? (
@@ -195,30 +201,30 @@ export function ImageCompare({ evidence }: { evidence: Evidence[] }) {
             <img
               className="ev-img"
               src={evidenceFileUrl(after.id)}
-              alt={`after: ${altOf(after)}`}
+              alt={sideAlt('after', after)}
               onLoad={onLoad}
               draggable={false}
             />
             <img
               className="ev-img ev-cmp-before"
               src={evidenceFileUrl(before.id)}
-              alt={`before: ${altOf(before)}`}
+              alt={sideAlt('before', before)}
               style={{ clipPath: `inset(0 ${100 - split}% 0 0)` }}
               draggable={false}
             />
-            <span className="ev-tag l">before</span>
-            <span className="ev-tag r">after</span>
+            <span className="ev-tag l">{sideLabel('before')}</span>
+            <span className="ev-tag r">{sideLabel('after')}</span>
             <div
               className="ev-divider"
               style={{ left: `${split}%` }}
               role="slider"
               tabIndex={0}
-              aria-label="Divider between before and after"
+              aria-label={t('evidence.divider')}
               aria-orientation="horizontal"
               aria-valuemin={0}
               aria-valuemax={100}
               aria-valuenow={shown}
-              aria-valuetext={`${shown}% before, ${100 - shown}% after`}
+              aria-valuetext={t('evidence.split', { before: shown, after: 100 - shown })}
               onKeyDown={onKeyDown}
             >
               <span className="ev-knob" aria-hidden="true">

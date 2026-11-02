@@ -1,10 +1,9 @@
+import { presetText, t } from './i18n/i18n.ts';
 import type { FieldView, TypeView } from './types.ts';
 
 export type FormValues = Record<string, string>;
 
 export type Start = { state: string; incomplete: boolean; missing: string[] };
-
-export const LEFT_TO_AGENT = 'Optional now — if left empty, an agent will complete it';
 
 function isBlank(value: string | undefined): boolean {
   return value === undefined || value.trim() === '';
@@ -25,13 +24,14 @@ export function initialValues({ fields }: TypeView): FormValues {
   return Object.fromEntries(fields.map((field) => [field.name, field.default ?? '']));
 }
 
+// A field's name as its label: the preset's words, never translated (presetText).
 export function fieldLabel(name: string): string {
   const words = name.replaceAll('_', ' ');
-  return words.charAt(0).toUpperCase() + words.slice(1);
+  return presetText(words.charAt(0).toUpperCase() + words.slice(1));
 }
 
 export function fieldHint(field: FieldView): string | undefined {
-  return field.required === 'complete' ? LEFT_TO_AGENT : undefined;
+  return field.required === 'complete' ? t('intake.leftToAgent') : undefined;
 }
 
 export function missingToCreate(type: TypeView, values: FormValues): string[] {
@@ -56,6 +56,6 @@ export function payloadOf(values: FormValues): FormValues {
 }
 
 export function startMessage({ state, incomplete, missing }: Start): string {
-  if (!incomplete) return `Starts ready in ${state}.`;
-  return `Starts in ${state}: an agent will complete ${missing.join(', ')} first.`;
+  if (!incomplete) return t('intake.startsReady', { state });
+  return t('intake.startsIncomplete', { state, fields: missing.join(', ') });
 }

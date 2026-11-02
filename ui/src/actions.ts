@@ -1,4 +1,5 @@
 import { relayOf } from './format.ts';
+import { t } from './i18n/i18n.ts';
 import type { ButtonVariant } from './kit/Button.tsx';
 import type { ChildrenSummary, ItemEvent, Move, Turn } from './types.ts';
 
@@ -29,7 +30,7 @@ export function moveTone({ by, reasonRequired }: Move): Tone {
 export function moveBlock(move: Move, children: ChildrenSummary | undefined): string | undefined {
   const open = children?.open ?? 0;
   if (move.requires !== 'children_closed' || open === 0) return undefined;
-  return `waits for ${open} open ${open === 1 ? 'child' : 'children'}`;
+  return t('move.waits', { count: open });
 }
 
 // One primary per screen: the first move that hands the turn on. Throwing work away is never the
@@ -65,15 +66,15 @@ export function turnAgent(events: readonly ItemEvent[]): string | undefined {
 export function moveSays(move: Move, item: { turn: Turn; agent?: string | undefined }): string {
   const parts: string[] = [];
   if (move.closes || move.turn === 'none') {
-    parts.push(move.closes ? `closes the item as ${move.closes}` : 'closes the item');
+    parts.push(move.closes ? t('move.closesAs', { as: move.closes }) : t('move.closes'));
   } else if (move.turn === 'agent') {
-    parts.push(item.agent ? `${item.agent}’s turn` : 'an agent’s turn');
-    if (item.turn === 'human') parts.push('it leaves Waiting for you');
+    parts.push(item.agent ? t('turn.agent', { agent: item.agent }) : t('turn.anAgent'));
+    if (item.turn === 'human') parts.push(t('move.leaves'));
   } else {
-    parts.push('your turn');
-    if (item.turn !== 'human') parts.push('it comes to Waiting for you');
+    parts.push(t('turn.yours'));
+    if (item.turn !== 'human') parts.push(t('move.comes'));
   }
-  if (move.reasonRequired) parts.push('asks a reason first');
+  if (move.reasonRequired) parts.push(t('move.asksReason'));
   return parts.join(' · ');
 }
 

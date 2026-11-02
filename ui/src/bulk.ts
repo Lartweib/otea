@@ -1,4 +1,5 @@
 import { moveBlock } from './actions.ts';
+import { t } from './i18n/i18n.ts';
 import type { ButtonVariant } from './kit/index.ts';
 import type { Item, Move } from './types.ts';
 
@@ -34,7 +35,10 @@ function whoOf(states: ReadonlyMap<string, string[]>, missing: readonly string[]
   return missing
     .map((state) => {
       const ids = states.get(state) ?? [];
-      return ids.length === 1 ? `${ids[0]} (${state})` : `the ${ids.length} ${state}`;
+      const [only] = ids;
+      return only && ids.length === 1
+        ? t('bulk.whoOne', { id: only, state })
+        : t('bulk.whoMany', { count: ids.length, state });
     })
     .join(', ');
 }
@@ -42,17 +46,17 @@ function whoOf(states: ReadonlyMap<string, string[]>, missing: readonly string[]
 // `EPICS-1 waits for 2 open children`, or how many wait when several do.
 function blockedWhy(blocked: readonly { id: string; why: string }[]): string {
   const [only] = blocked;
-  if (only && blocked.length === 1) return `${only.id} ${only.why}`;
-  return `${blocked.length} wait for open children`;
+  if (only && blocked.length === 1) return t('bulk.blockedOne', { id: only.id, why: only.why });
+  return t('bulk.blockedMany', { count: blocked.length });
 }
 
 // The states as the tray's count zone says them: each with its count, or, when they do not all fit,
 // the `keep` states with the most items (ties in their order) and how many more there are.
 export function countsSummary(states: readonly StateCount[], keep = states.length): string[] {
-  const said = ({ state, count }: StateCount) => `${count} ${state}`;
+  const said = ({ state, count }: StateCount) => t('bulk.stateCount', { count, state });
   if (keep >= states.length) return states.map(said);
   const most = [...states].sort((a, b) => b.count - a.count).slice(0, keep);
-  return [...most.map(said), `+${states.length - keep} more`];
+  return [...most.map(said), t('bulk.moreStates', { count: states.length - keep })];
 }
 
 export function bulkPlan(selected: readonly Selected[]): BulkPlan {
@@ -62,7 +66,10 @@ export function bulkPlan(selected: readonly Selected[]): BulkPlan {
   const narrow =
     states.size > 1
       ? [...states].map(([state, ids]) => ({
-          label: ids.length === 1 ? `only ${ids[0]}` : `only the ${ids.length} ${state}`,
+          label:
+            ids.length === 1
+              ? t('bulk.onlyOne', { id: ids[0] ?? '' })
+              : t('bulk.onlyMany', { count: ids.length, state }),
           state,
           ids,
         }))
@@ -85,7 +92,7 @@ export function bulkPlan(selected: readonly Selected[]): BulkPlan {
       ),
     ];
     if (missing.length > 0) {
-      hide(`not for ${whoOf(states, missing)}`, move.to);
+      hide(t('bulk.notFor', { who: whoOf(states, missing) }), move.to);
       continue;
     }
     const blocked = selected.flatMap(({ item, moves }) => {

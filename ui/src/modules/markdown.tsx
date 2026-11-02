@@ -24,14 +24,18 @@ const description = { name: 'description', module: 'markdown', required: 'comple
 
 export const markdown: FieldModuleUi = {
   name: 'markdown',
-  summary: 'Longer text in Markdown, rendered safely: raw HTML shows as text.',
+  summary: 'module.markdown.summary',
   origin: 'official',
   Detail: Rendered,
   Edit: TextArea,
   samples: [
-    { label: 'short', field: description, value: 'Fails on CI only, see *run 42*.' },
     {
-      label: 'long',
+      label: 'module.markdown.short',
+      field: description,
+      value: 'Fails on CI only, see *run 42*.',
+    },
+    {
+      label: 'module.markdown.long',
       field: description,
       value: [
         '## Steps',
@@ -47,7 +51,7 @@ export const markdown: FieldModuleUi = {
         '```',
       ].join('\n'),
     },
-    { label: 'empty, left to an agent', field: description, value: '' },
+    { label: 'module.markdown.empty', field: description, value: '' },
   ],
   yaml: 'fields:\n  description: { module: markdown, required: complete }',
 };

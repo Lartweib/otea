@@ -23,6 +23,7 @@ import {
   useRemote,
   useRoute,
 } from './hooks.ts';
+import { t, useLanguage } from './i18n/i18n.ts';
 import { Button, Icon } from './kit/index.ts';
 import { MODULES } from './modules/registry.ts';
 import {
@@ -66,8 +67,8 @@ function DetailPane({
   onClose,
 }: DetailPaneProps) {
   if (item.status === 'failed') return <Message muted={false}>{item.message}</Message>;
-  if (item.status === 'loading') return <Message>Loading…</Message>;
-  if (!item.value) return <Message>Item {id} not found.</Message>;
+  if (item.status === 'loading') return <Message>{t('common.loading')}</Message>;
+  if (!item.value) return <Message>{t('app.notFound', { id })}</Message>;
   return (
     <ItemDetail
       item={item.value}
@@ -108,7 +109,7 @@ function Brand({ attention }: { attention: Attention }) {
     <a
       className="brand"
       href={ITEMS_HASH}
-      aria-label="otea, all items"
+      aria-label={t('app.brand')}
       data-attention={attentionFrame(attention)}
     >
       <span className="brand-word">
@@ -161,9 +162,9 @@ function Catalog({ name, presets }: CatalogProps) {
           ) : entry ? (
             <ModulePanel key={entry.name} entry={entry} presets={presets} />
           ) : presets.status === 'loading' ? (
-            <Message>Loading…</Message>
+            <Message>{t('common.loading')}</Message>
           ) : (
-            <Message>No module named {name}.</Message>
+            <Message>{t('app.noModule', { name })}</Message>
           )}
         </div>
       </div>
@@ -203,6 +204,8 @@ function childrenIndex(items: readonly Item[]): ChildrenOf {
 }
 
 export function App() {
+  // Every word on screen follows the language: a switch renders the whole app again.
+  useLanguage();
   const { connection, version } = useLive();
   const route = useRoute();
   const phone = usePhone();
@@ -308,13 +311,13 @@ export function App() {
             aria-current={route.view === 'modules' ? 'page' : undefined}
           >
             <Icon name="modules" />
-            <span className="topbar-label">Modules</span>
+            <span className="topbar-label">{t('app.modules')}</span>
           </a>
           <ThemeToggle />
           {canWrite ? (
             <Button size="sm" className="topbar-new" aria-pressed={creating} onClick={openIntake}>
               <Icon name="plus" />
-              <span className="topbar-label">New item</span>
+              <span className="topbar-label">{t('app.newItem')}</span>
             </Button>
           ) : null}
         </div>
@@ -423,7 +426,7 @@ export function App() {
                     onClose={gridded ? closeDetail : undefined}
                   />
                 ) : detailOff ? null : (
-                  <Message>Select an item to see its details.</Message>
+                  <Message>{t('app.selectItem')}</Message>
                 )}
               </div>
             </div>

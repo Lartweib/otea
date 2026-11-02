@@ -18,7 +18,7 @@ export const MODULES: readonly FieldModuleUi[] = Object.values(OFFICIAL);
 // A module this build does not know (a newer server, a local module) shows and edits as plain text.
 export const FALLBACK_MODULE: FieldModuleUi = {
   name: 'unknown',
-  summary: 'Unknown module: renders as plain text.',
+  summary: 'module.unknown.summary',
   origin: 'official',
   Detail: PlainText,
   Edit: TextInput,

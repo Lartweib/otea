@@ -1,6 +1,7 @@
 import { evidenceFileUrl } from '../api.ts';
 import { agoLabel, handoffOf, leadRelation, waitingChildren } from '../handoff.ts';
-import { AgentMark, NODE_LABEL, Node } from '../kit/index.ts';
+import { t } from '../i18n/i18n.ts';
+import { AgentMark, Node, nodeLabel } from '../kit/index.ts';
 import { moduleFor } from '../modules/registry.ts';
 import { openLabel } from '../relations.ts';
 import { hashFor } from '../selection.ts';
@@ -40,9 +41,7 @@ export function HandoffLine({ item, type, canWrite, collectionOf }: HandoffLineP
         {thumbs.map((entry) => (
           <img key={entry.id} className="handoff-thumb" src={evidenceFileUrl(entry.id)} alt="" />
         ))}
-        <span className="t-cap">
-          {item.evidence.length} {item.evidence.length === 1 ? 'file' : 'files'}
-        </span>
+        <span className="t-cap">{t('common.files', { count: item.evidence.length })}</span>
       </span>,
     );
   }
@@ -64,10 +63,10 @@ export function HandoffLine({ item, type, canWrite, collectionOf }: HandoffLineP
     if (waiting.length > 0) {
       parts.push(
         <span key="waiting" className="handoff-waiting">
-          <span>waiting for you:</span>
+          <span>{t('handoff.waiting')}</span>
           {waiting.map((child) => (
             <a key={child.id} className="handoff-child" href={hashFor(child.id)}>
-              <Node kind="you" label={NODE_LABEL.you} />
+              <Node kind="you" label={nodeLabel('you')} />
               {child.title}
             </a>
           ))}

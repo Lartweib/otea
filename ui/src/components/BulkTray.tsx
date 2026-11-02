@@ -20,6 +20,7 @@ import {
   type StateCount,
   trayMoves,
 } from '../bulk.ts';
+import { listOf, t, tx } from '../i18n/i18n.ts';
 import { Button, Icon } from '../kit/index.ts';
 import type { Item, Move } from '../types.ts';
 
@@ -88,16 +89,20 @@ const label = (move: Move) => `${move.to}${move.reasonRequired ? '…' : ''}`;
 // The receipt's headline: what moved where, or that nothing did.
 function receiptOf(step: Extract<Step, { step: 'landed' }>): string {
   const [only] = step.moved;
-  if (!only) return 'Nothing moved';
-  return `${step.moved.length === 1 ? only : `${step.moved.length} items`} → ${step.move.to}`;
+  if (!only) return t('bulk.nothingMoved');
+  const items = step.moved.length === 1 ? only : t('bulk.items', { count: step.moved.length });
+  return t('bulk.landed', { items, state: step.move.to });
 }
 
 // What keeps the other moves out, or what the moves shown are.
 function ruleOf(plan: BulkPlan, count: number): string {
   if (plan.hidden.length > 0) {
-    return `hidden · ${plan.hidden.map(({ moves, why }) => `${moves.join(', ')}: ${why}`).join(' · ')}`;
+    const why = plan.hidden.map(({ moves, why }) =>
+      t('bulk.hiddenMoves', { moves: moves.join(', '), why }),
+    );
+    return t('bulk.hidden', { why: why.join(' · ') });
   }
-  return count === 1 ? 'the moves this item can take' : `only the moves all ${count} can take`;
+  return t('bulk.rule', { count });
 }
 
 // A menu that opens upward from the tray: role menu, its items reached with Tab or the arrows,
@@ -250,7 +255,7 @@ function Who({ count, states }: { count: number; states: readonly StateCount[] }
             <path d="M2 5.2 L4.1 7.2 L8 2.9" />
           </svg>
         </i>
-        <b>{count} selected</b>
+        <b>{t('bulk.selected', { count })}</b>
       </span>
       <States states={states} />
     </div>
@@ -405,7 +410,7 @@ export function BulkTray({ selected, canWrite, host, onKeep, onClear, away }: Bu
       try {
         await moveItem(id, move.to, why);
       } catch (error) {
-        failed.push({ id, why: error instanceof Error ? error.message : 'failed' });
+        failed.push({ id, why: error instanceof Error ? error.message : t('common.failed') });
       }
       setState({ ...base, done: index + 1 });
     }
@@ -444,7 +449,7 @@ export function BulkTray({ selected, canWrite, host, onKeep, onClear, away }: Bu
       aria-expanded={menu?.kind === 'keep'}
       onClick={(event) => openMenu('keep', event.currentTarget)}
     >
-      keep only
+      {t('bulk.keepOnly')}
       <span className="bulk-caret">
         <Icon name="chevron" />
       </span>
@@ -459,7 +464,7 @@ export function BulkTray({ selected, canWrite, host, onKeep, onClear, away }: Bu
         onClick={() => leave({ step: 'choosing' }, true)}
       >
         <Icon name="close" />
-        clear
+        {t('bulk.clear')}
       </Button>
     </div>
   );
@@ -467,7 +472,7 @@ export function BulkTray({ selected, canWrite, host, onKeep, onClear, away }: Bu
   const move = (each: Placed, index: number, closeAs: boolean) => (
     <Fragment key={each.move.to}>
       {closeAs && index === placed.shown.findIndex(({ variant }) => variant === 'quiet') ? (
-        <span className="bulk-ca t-cap">close as</span>
+        <span className="bulk-ca t-cap">{t('common.closeAs')}</span>
       ) : null}
       <Button variant={each.variant} data-move={each.move.to} onClick={() => choose(each.move)}>
         {label(each.move)}
@@ -484,11 +489,11 @@ export function BulkTray({ selected, canWrite, host, onKeep, onClear, away }: Bu
         <div className="bulk-zone bulk-what">
           <div className="bulk-l1" ref={line}>
             {!canWrite ? (
-              <span className="bulk-none">Read-only: run otea open to act from this browser.</span>
+              <span className="bulk-none">{t('bulk.readOnly', { command: 'otea open' })}</span>
             ) : plan.loading ? (
-              <span className="bulk-none">Reading the moves…</span>
+              <span className="bulk-none">{t('bulk.reading')}</span>
             ) : plan.moves.length === 0 ? (
-              <span className="bulk-none">No move fits all {count}.</span>
+              <span className="bulk-none">{t('bulk.noFit', { count })}</span>
             ) : (
               <>
                 {placed.shown.map((each, index) => move(each, index, placed.closeAs === 'shown'))}
@@ -499,7 +504,7 @@ export function BulkTray({ selected, canWrite, host, onKeep, onClear, away }: Bu
                     aria-expanded={menu?.kind === 'more'}
                     onClick={(event) => openMenu('more', event.currentTarget)}
                   >
-                    {placed.more.length} more
+                    {t('common.more', { count: placed.more.length })}
                     <span className="bulk-caret">
                       <Icon name="chevron" />
                     </span>
@@ -519,10 +524,10 @@ export function BulkTray({ selected, canWrite, host, onKeep, onClear, away }: Bu
               </Button>
             ))}
             <span className="bulk-ca t-cap" data-w="label">
-              close as
+              {t('common.closeAs')}
             </span>
             <Button className="bulk-more" data-w="more" tabIndex={-1}>
-              9 more
+              {t('common.more', { count: 9 })}
               <span className="bulk-caret">
                 <Icon name="chevron" />
               </span>
@@ -559,8 +564,8 @@ export function BulkTray({ selected, canWrite, host, onKeep, onClear, away }: Bu
               </span>
               <input
                 value={step.reason}
-                placeholder="Why? Agents read this"
-                aria-label={`Reason for moving ${count === 1 ? 'it' : `all ${count}`} to ${step.move.to}`}
+                placeholder={t('bulk.why')}
+                aria-label={t('bulk.reasonFor', { count, state: step.move.to })}
                 onChange={(event) => setState({ ...step, reason: event.target.value })}
               />
             </label>
@@ -568,12 +573,10 @@ export function BulkTray({ selected, canWrite, host, onKeep, onClear, away }: Bu
               {step.move.to} · {count}
             </Button>
             <Button variant="quiet" onClick={() => back(step.move)}>
-              cancel
+              {t('bulk.cancel')}
             </Button>
           </form>
-          <p className="bulk-l2">
-            a reason is required · the same reason is recorded on each · agents read it
-          </p>
+          <p className="bulk-l2">{t('bulk.reasonRule')}</p>
         </div>
         {out}
       </>
@@ -588,7 +591,7 @@ export function BulkTray({ selected, canWrite, host, onKeep, onClear, away }: Bu
           <span
             className="bulk-prog"
             role="progressbar"
-            aria-label={`Moving to ${step.move.to}`}
+            aria-label={t('bulk.movingTo', { state: step.move.to })}
             aria-valuemin={0}
             aria-valuemax={step.total}
             aria-valuenow={step.done}
@@ -599,11 +602,15 @@ export function BulkTray({ selected, canWrite, host, onKeep, onClear, away }: Bu
             />
           </span>
           <span className="bulk-pc">
-            moving {Math.min(step.total, step.done + 1)} of {step.total} to <b>{step.move.to}</b>
+            {tx('bulk.progress', {
+              done: Math.min(step.total, step.done + 1),
+              total: step.total,
+              state: <b>{step.move.to}</b>,
+            })}
           </span>
         </div>
         <p className="bulk-l2" title={step.why}>
-          {step.why ? `“${step.why}”` : 'one item at a time'}
+          {step.why ? `“${step.why}”` : t('bulk.oneAtATime')}
         </p>
       </div>
       <div className="bulk-zone bulk-out" />
@@ -622,7 +629,7 @@ export function BulkTray({ selected, canWrite, host, onKeep, onClear, away }: Bu
             </span>
             <b>{receiptOf(step)}</b>
           </span>
-          <span className="bulk-s">just now</span>
+          <span className="bulk-s">{t('ago.now')}</span>
         </div>
         <div className="bulk-zone bulk-what">
           {first ? (
@@ -631,23 +638,28 @@ export function BulkTray({ selected, canWrite, host, onKeep, onClear, away }: Bu
                 <Icon name="warn" />
               </span>
               <span className="bulk-pc">
-                <b>{first.id}</b> did not move: {first.why}
-                {others.length > 0 ? ` · ${others.length} more did not` : ''}
+                {tx('bulk.didNotMove', { id: <b>{first.id}</b>, why: first.why })}
+                {others.length > 0 ? ` · ${t('bulk.othersFailed', { count: others.length })}` : ''}
               </span>
             </div>
           ) : (
             <div className="bulk-l1">
               <span className="bulk-pc" title={step.moved.join(', ')}>
-                {step.moved.length > 3 ? `${step.moved.length} items` : step.moved.join(' and ')}{' '}
-                moved to <b>{step.move.to}</b>.
+                {tx('bulk.movedTo', {
+                  items:
+                    step.moved.length > 3
+                      ? t('bulk.items', { count: step.moved.length })
+                      : listOf(step.moved),
+                  state: <b>{step.move.to}</b>,
+                })}
               </span>
             </div>
           )}
-          <p className="bulk-l2">the selection is cleared · this receipt closes in 6 s</p>
+          <p className="bulk-l2">{t('bulk.cleared')}</p>
         </div>
         <div className="bulk-zone bulk-out">
           <Button variant="quiet" onClick={() => leave({ step: 'choosing' })}>
-            dismiss
+            {t('bulk.dismiss')}
           </Button>
         </div>
       </>
@@ -670,9 +682,10 @@ export function BulkTray({ selected, canWrite, host, onKeep, onClear, away }: Bu
   }
   const announce =
     on && state.step === 'landed'
-      ? [receiptOf(state), ...state.failed.map(({ id, why }) => `${id} did not move: ${why}`)].join(
-          '. ',
-        )
+      ? [
+          receiptOf(state),
+          ...state.failed.map(({ id, why }) => t('bulk.didNotMove', { id, why })),
+        ].join('. ')
       : '';
 
   const entries: MenuEntry[] =
@@ -687,7 +700,7 @@ export function BulkTray({ selected, canWrite, host, onKeep, onClear, away }: Bu
           };
           const first = placed.more.findIndex(({ variant }) => variant === 'quiet');
           return placed.closeAs === 'more' && index === first
-            ? [{ kind: 'title', label: 'close as' }, item]
+            ? [{ kind: 'title', label: t('common.closeAs') }, item]
             : [item];
         })
       : plan.narrow.map(({ state: kept, ids }) => ({
@@ -715,7 +728,7 @@ export function BulkTray({ selected, canWrite, host, onKeep, onClear, away }: Bu
               inert={!on}
               style={{ right: gutter }}
             >
-              <section ref={tray} className="bulk-tray" aria-label="Bulk moves" tabIndex={-1}>
+              <section ref={tray} className="bulk-tray" aria-label={t('bulk.aria')} tabIndex={-1}>
                 {LAYERS.map((layer) => (
                   <div
                     key={layer}
@@ -740,9 +753,11 @@ export function BulkTray({ selected, canWrite, host, onKeep, onClear, away }: Bu
       {menu && on ? (
         <TrayMenu
           anchor={menu.anchor}
-          title={menu.kind === 'more' ? 'More moves' : 'Keep only'}
+          title={t(menu.kind === 'more' ? 'bulk.moreMoves' : 'bulk.keepOnlyTitle')}
           entries={
-            menu.kind === 'keep' ? [{ kind: 'title', label: 'keep only' }, ...entries] : entries
+            menu.kind === 'keep'
+              ? [{ kind: 'title', label: t('bulk.keepOnly') }, ...entries]
+              : entries
           }
           onClose={closeMenu}
         />

@@ -1,3 +1,4 @@
+import { t } from '../../i18n/i18n.ts';
 import type { NodeKind } from '../../node-kind.ts';
 import { childSegments } from '../../relations.ts';
 
@@ -12,7 +13,7 @@ export function ChildBar({ kinds, size }: ChildBarProps) {
       className="child-bar"
       data-size={size}
       role="img"
-      aria-label={`${closed} of ${kinds.length} children closed`}
+      aria-label={t('children.closedOf', { closed, total: kinds.length })}
     >
       {childSegments(kinds).map((kind, index) => (
         // biome-ignore lint/suspicious/noArrayIndexKey: segments are drawn in a fixed order

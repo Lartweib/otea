@@ -1,3 +1,4 @@
+import { t } from '../i18n/i18n.ts';
 import { fieldHint, fieldLabel } from '../intake.ts';
 import { moduleFor } from '../modules/registry.ts';
 import type { FieldView } from '../types.ts';
@@ -20,7 +21,7 @@ export function FieldControl({ id, field, value, disabled, onChange }: FieldCont
     <div className="intake-field">
       <label className="t-label" htmlFor={id}>
         {fieldLabel(field.name)}
-        {required ? <span className="required"> (required)</span> : null}
+        {required ? <span className="required"> {t('intake.required')}</span> : null}
       </label>
       <Edit
         id={id}

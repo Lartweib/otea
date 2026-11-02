@@ -1,27 +1,28 @@
 import type { Connection } from './hooks.ts';
+import { t } from './i18n/i18n.ts';
 
 export type Remote<T> =
   | { status: 'loading' }
   | { status: 'ready'; value: T }
   | { status: 'failed'; message: string };
 
-export const UNREACHABLE = "Can't reach Otea. Is `otea serve` running?";
+export const unreachable = () => t('error.unreachable');
 
 export function afterFailure<T>(
   previous: Remote<T>,
   error: unknown,
   connection: Connection,
 ): Remote<T> {
-  const unreachable = error instanceof TypeError;
-  if (previous.status === 'ready' && (unreachable || connection !== 'live')) return previous;
-  if (unreachable) return { status: 'failed', message: UNREACHABLE };
-  return { status: 'failed', message: error instanceof Error ? error.message : 'Failed' };
+  const lost = error instanceof TypeError;
+  if (previous.status === 'ready' && (lost || connection !== 'live')) return previous;
+  if (lost) return { status: 'failed', message: unreachable() };
+  return { status: 'failed', message: error instanceof Error ? error.message : t('common.failed') };
 }
 
-export const SIGN_IN = 'This browser is not signed in. Run `otea open` to act from it.';
+export const signIn = () => t('error.signIn');
 
 export function serverMessage(body: unknown, status: number): string {
-  if (status === 401) return SIGN_IN;
+  if (status === 401) return signIn();
   const message = (body as { error?: { message?: unknown } } | undefined)?.error?.message;
-  return typeof message === 'string' ? message : `Request failed with ${status}`;
+  return typeof message === 'string' ? message : t('error.requestFailed', { status });
 }

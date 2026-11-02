@@ -1,6 +1,7 @@
 import { type CSSProperties, useEffect, useState } from 'react';
 import { evidenceFileUrl } from '../../api.ts';
 import { type DiffFile, type DiffLine, type LogLine, logView, parseDiff } from '../../evidence.ts';
+import { t } from '../../i18n/i18n.ts';
 import { Button } from '../../kit/index.ts';
 import type { Evidence } from '../../types.ts';
 import { FileMeta } from './FileMeta.tsx';
@@ -49,10 +50,10 @@ function useEvidenceText(evidence: Evidence): Text {
 function TextState({ state, evidence }: { state: Text; evidence: Evidence }) {
   const message =
     state.status === 'loading'
-      ? 'loading…'
+      ? t('evidence.loading')
       : evidence.size > MAX_TEXT_BYTES
-        ? 'Too large to show here: open the file.'
-        : 'Could not load this file: open it on its own.';
+        ? t('evidence.tooLarge')
+        : t('evidence.unreadable');
   return (
     <div className="ev-code-state well" aria-busy={state.status === 'loading'}>
       <span className="t-cap">{message}</span>
@@ -91,7 +92,7 @@ function DiffFileView({ file, open }: { file: DiffFile; open: boolean }) {
   return (
     <details className="ev-diff-file" open={open}>
       <summary className="ev-diff-head">
-        <span className="ev-path">{file.path || 'changes'}</span>
+        <span className="ev-path">{file.path || t('evidence.changes')}</span>
         <span className="ev-counts">
           <span className="ev-plus">+{file.additions}</span>
           <span className="ev-minus">−{file.deletions}</span>
@@ -144,8 +145,8 @@ export function DiffView({ evidence }: { evidence: Evidence }) {
   return (
     <div className="ev-diff">
       <p className="ev-diff-sum t-cap">
-        {files.length} {files.length === 1 ? 'file' : 'files'} ·{' '}
-        <span className="ev-plus">+{additions}</span> <span className="ev-minus">−{deletions}</span>
+        {t('common.files', { count: files.length })} · <span className="ev-plus">+{additions}</span>{' '}
+        <span className="ev-minus">−{deletions}</span>
       </p>
       {keyed.map(({ file, key, first }) => (
         <DiffFileView key={key} file={file} open={lines <= OPEN_LINES || first} />
@@ -176,11 +177,9 @@ export function LogView({ evidence }: { evidence: Evidence }) {
   return (
     <div className="ev-log">
       <div className="ev-tools">
-        <span className="t-cap">
-          {view.total} {view.total === 1 ? 'line' : 'lines'}
-        </span>
+        <span className="t-cap">{t('evidence.lines', { count: view.total })}</span>
         <Button size="sm" aria-pressed={wrap} onClick={() => setWrap(!wrap)}>
-          wrap
+          {t('evidence.wrap')}
         </Button>
       </div>
       <div className="ev-code" data-wrap={wrap ? 'true' : undefined} style={digits(view.total)}>
@@ -188,7 +187,7 @@ export function LogView({ evidence }: { evidence: Evidence }) {
           <LogRows lines={view.head} />
           {view.hidden > 0 ? (
             <button type="button" className="ev-more" onClick={() => setAll(true)}>
-              show all {view.total} lines · {view.hidden} hidden
+              {t('evidence.showAll', { total: view.total, hidden: view.hidden })}
             </button>
           ) : null}
           <LogRows lines={view.tail} />

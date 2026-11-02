@@ -1,4 +1,5 @@
 import { isEvidenceModule } from './evidence.ts';
+import { presetText } from './i18n/i18n.ts';
 import type { CollectionView, FieldView, LayoutEntry, LayoutSlot, TypeView } from './types.ts';
 
 // A value with the field that shapes it and the label its layout entry gives it.
@@ -43,7 +44,7 @@ export type TypeMark =
 
 export function typeMark(collection: CollectionView | undefined, name: string): TypeMark {
   const type = typeOf(collection, name);
-  const label = type?.label ?? name;
+  const label = presetText(type?.label ?? name);
   if (type?.icon) {
     // A preset without types names its only type after itself (an epic, a bug-triage item).
     const word = showsTypes(collection) ? label.toLowerCase() : (collection?.preset ?? name);
@@ -72,7 +73,7 @@ function placed(
   const value = name === undefined ? undefined : values[name];
   const field = name === undefined ? undefined : fieldOf(type, name);
   if (!field || value === undefined) return [];
-  return [{ field, value, label: label ?? field.name }];
+  return [{ field, value, label: presetText(label ?? field.name) }];
 }
 
 function slotValues(

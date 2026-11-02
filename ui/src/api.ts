@@ -1,11 +1,12 @@
+import { t } from './i18n/i18n.ts';
 import type { LinkRequest } from './relations.ts';
-import { serverMessage, UNREACHABLE } from './remote.ts';
+import { serverMessage, unreachable } from './remote.ts';
 import type { CollectionView, Item, ItemView, PresetView, Session } from './types.ts';
 
 async function get(path: string, signal: AbortSignal): Promise<Response> {
   const response = await fetch(path, { signal, headers: { accept: 'application/json' } });
   if (!response.ok && response.status !== 404) {
-    throw new Error(`GET ${path} failed with ${response.status}`);
+    throw new Error(t('error.getFailed', { path, status: response.status }));
   }
   return response;
 }
@@ -42,7 +43,7 @@ async function post<T>(path: string, payload: unknown): Promise<T> {
     headers: { accept: 'application/json', 'content-type': 'application/json' },
     body: JSON.stringify(payload),
   }).catch(() => {
-    throw new Error(UNREACHABLE);
+    throw new Error(unreachable());
   });
   const body: unknown = await response.json().catch(() => undefined);
   if (response.ok) return body as T;
