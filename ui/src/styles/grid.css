@@ -1208,6 +1208,21 @@
   white-space: nowrap;
 }
 
+/* Only closing moves: the label starts the line, on the rule's x. */
+.bulk-ca:first-child {
+  margin-left: 0;
+}
+
+/* A closing move reads as a button at rest, still behind the others: a hairline pill, muted text;
+   hover fills it. The "close as" label beside it stays plain text. */
+.bulk-l1 .btn.quiet[data-move] {
+  border-color: var(--tray-btn-edge);
+}
+
+.bulk-l1 .btn.quiet[data-move]:hover:not(:disabled) {
+  background: var(--hov);
+}
+
 .bulk-caret {
   display: inline-flex;
   margin-right: -2px;
