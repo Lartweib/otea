@@ -16,6 +16,7 @@ export function cliAt(
   signal = new AbortController().signal,
   openUrl: Opener = async () => {},
   ask?: (question: string) => Promise<string>,
+  stdin?: string,
 ): Cli {
   return async (...argv) => {
     let out = '';
@@ -26,6 +27,7 @@ export function cliAt(
       signal,
       openUrl,
       ...(ask ? { ask } : {}),
+      ...(stdin === undefined ? {} : { stdin: async () => stdin }),
       stdout: { write: (chunk: string) => (out += chunk) },
       stderr: { write: (chunk: string) => (err += chunk) },
     });

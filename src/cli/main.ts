@@ -15,6 +15,12 @@ async function ask(question: string): Promise<string> {
   }
 }
 
+async function stdin(): Promise<string> {
+  let text = '';
+  for await (const chunk of process.stdin) text += chunk;
+  return text;
+}
+
 process.exitCode = await run(process.argv.slice(2), {
   cwd: process.cwd(),
   env: process.env,
@@ -22,5 +28,5 @@ process.exitCode = await run(process.argv.slice(2), {
   stderr: process.stderr,
   signal: interrupt.signal,
   openUrl: systemOpener(),
-  ...(process.stdin.isTTY ? { ask } : {}),
+  ...(process.stdin.isTTY ? { ask } : { stdin }),
 });

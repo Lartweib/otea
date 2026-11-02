@@ -55,6 +55,7 @@ otea move TASKS-2 todo
 otea move TASKS-4 discarded --reason "Out of scope"   # an incomplete item can be closed with a reason
 otea validate                              # check presets, collections and items
 otea check --gate push --branch --repo     # may this branch be pushed? exit 0 yes, 1 no (fails open)
+otea hook install --git --claude           # in a repo: make that check a pre-push hook and a Claude Code hook
 otea help                                  # every command, global options and exit codes
 ```
 

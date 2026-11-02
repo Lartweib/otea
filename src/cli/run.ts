@@ -17,6 +17,8 @@ export type Io = {
   openUrl: Opener;
   // Present only when a person can answer at the terminal.
   ask?: (question: string) => Promise<string>;
+  // Present only when something is piped in.
+  stdin?: () => Promise<string>;
 };
 
 type Values = Record<string, string | boolean | (string | boolean)[] | undefined>;
@@ -106,6 +108,7 @@ function inputFor(command: Command, values: Values, args: string[], io: Io, json
       io.stderr.write(`otea: ${message}
 `),
     ask: async (question) => io.ask?.(question),
+    stdin: async () => (io.stdin ? io.stdin() : ''),
     print: (data, text) => io.stdout.write(`${json ? JSON.stringify(data) : text}\n`),
     args,
     flag: (name) => values[name] === true,

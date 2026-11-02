@@ -25,3 +25,18 @@ export function currentBranch(cwd: string): string {
 export function repoName(cwd: string): string {
   return basename(dirname(resolve(cwd, git(cwd, 'rev-parse', '--git-common-dir'))));
 }
+
+// The top folder of the repo at cwd, or cwd itself outside a repo.
+export function repoRoot(cwd: string): string {
+  try {
+    return git(cwd, 'rev-parse', '--show-toplevel');
+  } catch {
+    return resolve(cwd);
+  }
+}
+
+// Where the repo at cwd keeps a path of its git dir, following its config (core.hooksPath for
+// hooks/); throws outside a repo.
+export function gitPath(cwd: string, path: string): string {
+  return resolve(cwd, git(cwd, 'rev-parse', '--git-path', path));
+}
