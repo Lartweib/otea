@@ -7,8 +7,7 @@ import {
   useRef,
   useState,
 } from 'react';
-import { ageLabel, untilLabel } from '../format.ts';
-import { useActiveLease } from '../hooks.ts';
+import { useActiveLease, useTimeCell } from '../hooks.ts';
 import { TypeIcon } from '../icons/TypeIcon.tsx';
 import { rowValues, showsTypes, typeOf } from '../item-types.ts';
 import { AgentMark, Button, Icon, NodeMark } from '../kit/index.ts';
@@ -236,8 +235,22 @@ export function Holder({ holder, m }: { holder: string; m?: string }) {
   );
 }
 
+// The time of a row, in the list and the grid: the time left on an agent's lease (`12m left`), a
+// lease that ran out without a release (`expired`, in --warn), or the age. A lease's holder and when
+// it ends are its tooltip and what assistive tech reads. m: the morph's key.
+export function When({ item, m }: { item: Item; m: string }) {
+  const cell = useTimeCell(item);
+  if (cell.tone === 'age') return <span data-m={m}>{cell.text}</span>;
+  return (
+    <span className="row-lease" data-tone={cell.tone} title={cell.label} data-m={m}>
+      <span className="visually-hidden">{`${cell.text}, ${cell.label}`}</span>
+      <span aria-hidden="true">{cell.text}</span>
+    </span>
+  );
+}
+
 // Who and when, in two fixed columns aligned on the dot between them: the agent holding the item
-// and until when, or, held by nobody, an empty who and how long ago it last changed.
+// and the time left on its lease, or, held by nobody, an empty who and how long ago it last changed.
 function WhoWhen({ item, lease }: { item: Item; lease: Lease | null }) {
   const holder = lease?.holder;
   return (
@@ -247,9 +260,7 @@ function WhoWhen({ item, lease }: { item: Item; lease: Lease | null }) {
         {holder ? <Holder holder={holder} m={`${item.id}:w`} /> : null}
       </span>
       <span className="row-when" data-nobody={holder ? undefined : true}>
-        <span data-m={`${item.id}:a`}>
-          {lease ? untilLabel(lease) : ageLabel(item.updatedAt, Date.now())}
-        </span>
+        <When item={item} m={`${item.id}:a`} />
       </span>
     </>
   );

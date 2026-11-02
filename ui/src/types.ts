@@ -35,6 +35,8 @@ export type Item = {
   updatedAt: string;
   createdBy: Actor;
   lease: Lease | null;
+  // A lease that ran out with nobody releasing it; lease is null then.
+  expiredLease?: Lease;
   // The item's relations, read from it, and a parent's children summary; absent when it has none.
   relations?: RelationRef[];
   children?: ChildrenSummary;

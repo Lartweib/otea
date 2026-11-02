@@ -60,6 +60,9 @@ export type Clock = () => string;
 export type Item = ItemRecord & {
   turn: Turn;
   closes?: Closing;
+  // A lease that ran out with nobody releasing it (expiry is lazy, so it stays stored until a
+  // release, a handoff or a new claim): readers see lease null and this, the abandoned hold.
+  expiredLease?: Lease;
   relations?: RelationRef[];
   children?: ChildrenSummary;
 };
@@ -69,13 +72,11 @@ export type ItemWithEvents = Item & { events: EventRecord[] };
 export const systemClock: Clock = () => new Date().toISOString();
 
 // What readers see: the turn (and, once closed, how) derived from the state, and only a lease that
-// is still active at `at`.
+// is still active at `at`; one that ran out without a release is kept apart, as expiredLease.
 export function present(item: ItemRecord, workflow: Workflow, at: string): Item {
-  const presented: Item = {
-    ...item,
-    turn: turnOf(workflow, item.state),
-    lease: activeLease(item.lease, at),
-  };
+  const lease = activeLease(item.lease, at);
+  const presented: Item = { ...item, turn: turnOf(workflow, item.state), lease };
+  if (item.lease && !lease) presented.expiredLease = item.lease;
   const closes = closesOf(workflow, item.state);
   if (closes !== undefined) presented.closes = closes;
   return presented;

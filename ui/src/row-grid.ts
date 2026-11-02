@@ -2,7 +2,8 @@
 // with list.css (the grid) and lanes.ts (the branch hangs off the type slot).
 //
 // rail 56 · fold 28 (always reserved) · indent 28 a level · type 30 (a 20px slot and 10 of air) ·
-// title (the one column that flexes) · priority 48 · who 38 (a mark) · when 56. A row stops at 760px.
+// title (the one column that flexes) · priority 48 · who 38 (a mark) · when 74 (the dot, then up to
+// eight mono characters: `12m left`). A row stops at 760px.
 export const GRID = {
   rail: 56,
   fold: 28,
@@ -11,7 +12,7 @@ export const GRID = {
   slot: 20,
   priority: 48,
   who: 38,
-  when: 56,
+  when: 74,
   cap: 760,
 } as const;
 

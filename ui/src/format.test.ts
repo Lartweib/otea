@@ -9,7 +9,6 @@ import {
   momentLabel,
   momentParts,
   relayOf,
-  untilLabel,
 } from './format.ts';
 import type { ItemEvent } from './types.ts';
 
@@ -158,14 +157,6 @@ describe('ageLabel', () => {
 
   it('says nothing for a date it cannot read', () => {
     expect(ageLabel('nope', now)).toBe('');
-  });
-});
-
-describe('untilLabel', () => {
-  it('says when the hold runs out', () => {
-    const lease = { holder: 'claude', expiresAt: '2026-03-04T14:32:00.000Z' };
-
-    expect(untilLabel(lease, 'UTC')).toBe('14:32');
   });
 });
 

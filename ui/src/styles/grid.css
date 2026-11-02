@@ -1164,8 +1164,16 @@
   text-overflow: ellipsis;
 }
 
+/* The states wrap to two lines at most (States in BulkTray.tsx keeps the ones with the most items
+   and `+N more` when even two do not hold them); a line breaks only between states. */
 .bulk-s {
+  max-height: 32px;
   padding-left: 25px;
+  white-space: normal;
+}
+
+.bulk-st {
+  white-space: nowrap;
 }
 
 .bulk-l2 {
@@ -1198,6 +1206,21 @@
 .bulk-ca {
   margin: 0 2px 0 6px;
   white-space: nowrap;
+}
+
+/* Only closing moves: the label starts the line, on the rule's x. */
+.bulk-ca:first-child {
+  margin-left: 0;
+}
+
+/* A closing move reads as a button at rest, still behind the others: a hairline pill, muted text;
+   hover fills it. The "close as" label beside it stays plain text. */
+.bulk-l1 .btn.quiet[data-move] {
+  border-color: var(--tray-btn-edge);
+}
+
+.bulk-l1 .btn.quiet[data-move]:hover:not(:disabled) {
+  background: var(--hov);
 }
 
 .bulk-caret {

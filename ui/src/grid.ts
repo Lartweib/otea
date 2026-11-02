@@ -179,7 +179,8 @@ export function columnWidth(column: GridColumn, compact: boolean): number {
       // The agent's mark or your chip, never the name.
       return 44;
     case 'age':
-      return 56;
+      // An age, or the time left on a lease: `12m left`, eight mono characters.
+      return 60;
     case 'text':
       return 160;
     case 'state':
