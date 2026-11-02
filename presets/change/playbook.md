@@ -69,7 +69,7 @@ Start a repo task only when it is `ready` and its change is `executing`. A repo 
 
 1. Claim the repo task (section 3) and move it to `implementing`: `otea move <id> implementing`.
 2. Work in its repo, on its branch. If you work on a branch other than the one proposed, record it: `otea update <id> --field branch=<name>`.
-3. Push to the branch only while the repo task is `implementing` or later: never while it is `proposed` or `ready`.
+3. Push to the branch only while the repo task's `push` gate allows it: `otea show <id> --json` carries `"gates": {"push": true, "merge": false}`, and `otea show <id>` a `Gates:` line. Push is allowed only while the repo task is `implementing` or `revising`: never before the human approved its plan, and never while it is in `pr_review` or once it is `approved`, so the human approves exactly what they read.
 4. Open the pull request with the repo's own tools (Otea does not talk to GitHub or any forge) and record it: `otea update <id> --field pr="#482"` (the number or the URL).
 5. Attach the evidence before you hand it over, so the human can review without redoing your work: the diff (`git diff main... > change.diff`) and the test output (`npm test > tests.log`), with `otea attach <id> <file> --caption "<what it shows>"`. Files are limited to 50 MB (exit 14, `evidence_too_large`); a missing file fails with exit 3 (`file_not_found`).
 6. Move it to `pr_review`: `otea move <id> pr_review`. This releases your lease.
@@ -78,7 +78,7 @@ When the human sends a repo task back to `revising`, read the reason in its time
 
 If what you learn changes the plan for that repo (it needs no change after all, it needs another approach, it must wait for another repo), take it back to the human instead of guessing: `otea move <id> proposed --reason "<what you found>"`.
 
-Merge a pull request only once its repo task is `approved`, and then merge it yourself: the human has already approved it, so do not wait for them or ask again. Approving it closes the repo task; nothing is left to update on it.
+Merge a pull request only once its repo task's `merge` gate allows it, which happens only when the human approved it (`approved`), and then merge it yourself: the human has already approved it, so do not wait for them or ask again. Approving it closes the repo task; nothing is left to update on it. Otea does not stop a push or a merge by itself: these gates hold because you check them.
 
 ## 7. Finish the change
 

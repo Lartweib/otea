@@ -28,12 +28,18 @@ export type State = {
 
 export type Transition = { from: string; to: string; by: Authority; reasonRequired: boolean };
 
+// The actions an item allows by the state it is in: each named action (push, merge, publish, any
+// word the preset picks) lists the states that allow it. Otea only answers; enforcing is the
+// consumer's job.
+export type Gates = Record<string, string[]>;
+
 export type Workflow = {
   name: string;
   initial: string;
   incomplete?: string;
   states: State[];
   transitions: Transition[];
+  gates?: Gates;
 };
 
 export function turnOf(workflow: Workflow, stateName: string): Turn {
@@ -50,6 +56,16 @@ export function closesOf(workflow: Workflow, stateName: string): Closing | undef
 // What entering the state requires, if anything.
 export function requirementOf(workflow: Workflow, stateName: string): Requirement | undefined {
   return workflow.states.find((candidate) => candidate.name === stateName)?.requires;
+}
+
+// Whether each action of the workflow's gates is allowed in the state; empty without gates.
+export function gateVerdicts(workflow: Workflow, stateName: string): Record<string, boolean> {
+  return Object.fromEntries(
+    Object.entries(workflow.gates ?? {}).map(([action, states]) => [
+      action,
+      states.includes(stateName),
+    ]),
+  );
 }
 
 export function transitionsFrom(workflow: Workflow, from: string): Transition[] {

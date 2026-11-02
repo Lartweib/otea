@@ -234,6 +234,26 @@ describe('change preset', () => {
     ).toEqual(['ready', 'dropped']);
   });
 
+  it('gates a repo task: push while worked on, frozen in review, merge once approved', () => {
+    const { id, api } = executing();
+    const gates = (item: string) =>
+      showItem(ctx, item, { actor: claude, channel: 'cli' }, at).gates;
+    const proposed = repoTask(id, 'mobile');
+
+    expect(gates(proposed)).toEqual({ push: false, merge: false });
+    expect(gates(api)).toEqual({ push: false, merge: false });
+    move(api, 'implementing');
+    expect(gates(api)).toEqual({ push: true, merge: false });
+    move(api, 'pr_review');
+    expect(gates(api)).toEqual({ push: false, merge: false });
+    decide(api, 'revising', 'Pin the algorithm');
+    expect(gates(api)).toEqual({ push: true, merge: false });
+    move(api, 'pr_review');
+    decide(api, 'approved');
+    expect(gates(api)).toEqual({ push: false, merge: true });
+    expect(gates(id)).toBeUndefined();
+  });
+
   it('ships a playbook with the plan, the fields, the review and the relay rules', () => {
     const text = playbook();
 
@@ -246,7 +266,9 @@ describe('change preset', () => {
       'otea update <id> --field pr=',
       'otea move <id> plan_review',
       'otea move <id> pr_review',
-      'Merge a pull request only once its repo task is `approved`, and then merge it yourself',
+      'otea show <id> --json',
+      "Merge a pull request only once its repo task's `merge` gate allows it",
+      'and then merge it yourself',
       'You never approve your own work',
       'otea relay',
     ]) {
