@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import type { PlainKey } from '../i18n/i18n.ts';
 import type { FieldView } from '../types.ts';
 
 // Official modules ship with Otea. Local ones (.otea/modules/, not loaded yet) are unofficial and
@@ -19,14 +20,14 @@ export type EditProps = {
   onChange: (value: string) => void;
 };
 
-// An example field and value the catalog previews the module with.
-export type Sample = { label: string; field: FieldView; value: string };
+// An example field and value the catalog previews the module with; its label is a message.
+export type Sample = { label: PlainKey; field: FieldView; value: string };
 
 // How a preset field module looks in the UI. Built only from the kit primitives and tokens.
 export type FieldModuleUi = {
   name: string;
-  // One line: what the module is for.
-  summary: string;
+  // One line: what the module is for, as a message.
+  summary: PlainKey;
   origin: ModuleOrigin;
   // In a list row, after the title. Absent: the module stays out of the row.
   Row?: (props: ShowProps) => ReactNode;

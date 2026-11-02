@@ -21,6 +21,7 @@ import {
   widthLimits,
 } from '../grid.ts';
 import { useActiveLease } from '../hooks.ts';
+import { t } from '../i18n/i18n.ts';
 import { typeOf } from '../item-types.ts';
 import { Icon, NodeMark, Pill, Severity, type SeverityLevel } from '../kit/index.ts';
 import { type Block, type LaneLayout, laneX, layoutLanes } from '../lanes.ts';
@@ -82,7 +83,7 @@ function Cell({ item, column, compact }: { item: Item; column: GridColumn; compa
           <Holder holder={holder} m={`${item.id}:w`} />
         </span>
       ) : (
-        <i className="grid-nobody" role="img" aria-label="nobody" />
+        <i className="grid-nobody" role="img" aria-label={t('grid.nobody')} />
       );
     }
     case 'age':
@@ -91,7 +92,7 @@ function Cell({ item, column, compact }: { item: Item; column: GridColumn; compa
       const level = LEVELS.indexOf(text) + 1;
       if (level === 0) return text === '' ? null : <span>{text}</span>;
       return (
-        <span className="grid-sev" title={`Severity ${text}, ${level} of 4`}>
+        <span className="grid-sev" title={t('severity.named', { value: text, level })}>
           <Severity level={level as SeverityLevel} />
           {compact ? null : <span className="grid-sevl">{text}</span>}
         </span>
@@ -156,7 +157,7 @@ function GridRow({ item, collection, shown, place, lanes, selected, checked, onC
           type="button"
           className="grid-check"
           aria-pressed={checked}
-          aria-label={`Select ${item.id}`}
+          aria-label={t('grid.select', { id: item.id })}
           onClick={(event: MouseEvent) => onCheck(item.id, event.shiftKey)}
         >
           <Check />
@@ -248,12 +249,12 @@ function ColumnEdge({ column, width, auto, limits, side, dragging, onDrag, onSiz
         data-on={dragging || undefined}
         role="separator"
         aria-orientation="vertical"
-        aria-label={`Width of the ${column.label} column`}
+        aria-label={t('grid.width', { column: column.label })}
         aria-valuemin={limits.min}
         aria-valuemax={limits.max}
         aria-valuenow={width}
         aria-keyshortcuts="ArrowLeft ArrowRight Home End Enter"
-        title="Drag to resize · double-click resets"
+        title={t('common.dragToResize')}
         tabIndex={0}
         onPointerDown={onPointerDown}
         onDoubleClick={() => onSize(null)}
@@ -311,14 +312,14 @@ function GridHead({
     <thead className="grid-thead">
       <tr className="grid-head">
         <th className="gh gh-turn" scope="col">
-          <span className="visually-hidden">Whose turn</span>
+          <span className="visually-hidden">{t('grid.whoseTurn')}</span>
         </th>
         <th className="gh gh-chk" scope="col">
           <button
             type="button"
             className="grid-check"
             aria-pressed={all}
-            aria-label="Select every item shown"
+            aria-label={t('grid.selectAll')}
             onClick={onCheckAll}
           >
             <Check />
@@ -344,8 +345,8 @@ function GridHead({
                 className="gh-sort"
                 title={
                   on
-                    ? `Sorted ${on === 'asc' ? 'ascending' : 'descending'}`
-                    : `Sort by ${column.label}`
+                    ? t(on === 'asc' ? 'grid.sortedAsc' : 'grid.sortedDesc')
+                    : t('grid.sortBy', { column: column.label })
                 }
                 onClick={() => onSort(column)}
               >
@@ -357,7 +358,7 @@ function GridHead({
                 className="gh-menu"
                 aria-haspopup="menu"
                 aria-expanded={menu === column.key}
-                aria-label={`Sort, filter or group by ${column.label}`}
+                aria-label={t('grid.menu', { column: column.label })}
                 onClick={(event) => onMenu(column, event.currentTarget)}
               >
                 <Icon name="chevron" />
@@ -481,7 +482,7 @@ export function ItemGrid({
     <table
       ref={measure}
       className="grid"
-      aria-label={collection?.name ?? 'Items'}
+      aria-label={collection?.name ?? t('common.items')}
       style={{ '--cols': template.tracks, '--air': `${template.air}px` } as CSSProperties}
       data-picking={checked.size > 0 || undefined}
       data-dragging={drag !== undefined || undefined}

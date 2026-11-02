@@ -1,3 +1,4 @@
+import { type PlainKey, t } from '../i18n/i18n.ts';
 import type { NodeKind } from '../node-kind.ts';
 
 const SHAPE: Record<NodeKind, string> = {
@@ -9,14 +10,19 @@ const SHAPE: Record<NodeKind, string> = {
   discarded: 's-drop',
 };
 
-export const NODE_LABEL: Record<NodeKind, string> = {
-  you: 'Your turn',
-  working: 'Agent working',
-  queued: 'Agent queued',
-  incomplete: 'Agent: incomplete',
-  done: 'Done',
-  discarded: 'Discarded',
+const NODE_LABEL: Record<NodeKind, PlainKey> = {
+  you: 'node.you',
+  working: 'node.working',
+  queued: 'node.queued',
+  incomplete: 'node.incomplete',
+  done: 'node.done',
+  discarded: 'node.discarded',
 };
+
+// What a node says on its own: whose turn it is and how it stands.
+export function nodeLabel(kind: NodeKind): string {
+  return t(NODE_LABEL[kind]);
+}
 
 type NodeMarkProps = { kind: NodeKind; cx: number; cy: number; r?: number };
 

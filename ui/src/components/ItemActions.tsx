@@ -9,6 +9,7 @@ import {
   reduceAction,
 } from '../actions.ts';
 import { moveItem } from '../api.ts';
+import { t } from '../i18n/i18n.ts';
 import { Button, type ButtonVariant } from '../kit/index.ts';
 import type { ChildrenSummary, Move, Turn } from '../types.ts';
 
@@ -57,7 +58,10 @@ export function ItemActions({
         onMoved?.(to);
       },
       (error: unknown) =>
-        dispatch({ type: 'failed', message: error instanceof Error ? error.message : 'Failed' }),
+        dispatch({
+          type: 'failed',
+          message: error instanceof Error ? error.message : t('common.failed'),
+        }),
     );
   };
 
@@ -70,7 +74,7 @@ export function ItemActions({
     return receipt && !compact ? (
       <p className="move-says t-cap">{receipt}</p>
     ) : (
-      <p className="t-small">No moves from this state.</p>
+      <p className="t-small">{t('move.none')}</p>
     );
   }
 
@@ -136,12 +140,12 @@ export function ItemActions({
   const said =
     moves.find((move) => move.to === (pointed ?? chosen)) ?? (receipt ? undefined : primary);
   return (
-    <section className="actions moves" aria-label="Actions" data-step={state.step}>
+    <section className="actions moves" aria-label={t('move.aria')} data-step={state.step}>
       <div className="action-buttons move-row">
         {opening.map(({ move, variant }) => button(move, variant))}
         {closing.length > 0 ? (
           <span className="move-close">
-            {compact ? null : <span className="move-close-label t-cap">close as</span>}
+            {compact ? null : <span className="move-close-label t-cap">{t('common.closeAs')}</span>}
             {closing.map(({ move, variant }) => button(move, variant))}
           </span>
         ) : null}
@@ -168,7 +172,7 @@ export function ItemActions({
           }}
         >
           <label className="t-label" htmlFor="reason">
-            Reason for moving to {state.to}
+            {t('common.reasonFor', { state: state.to })}
           </label>
           <textarea
             id="reason"
@@ -179,10 +183,10 @@ export function ItemActions({
           />
           <div className="action-buttons">
             <Button type="submit" variant="primary" disabled={!canConfirm(state)}>
-              Confirm
+              {t('common.confirm')}
             </Button>
             <Button variant="quiet" disabled={busy} onClick={() => dispatch({ type: 'cancel' })}>
-              Cancel
+              {t('common.cancel')}
             </Button>
           </div>
         </form>

@@ -1,3 +1,4 @@
+import { type PlainKey, t } from './i18n/i18n.ts';
 import type { Evidence, LayoutEntry, LayoutSlot, TypeView } from './types.ts';
 
 // The slots of the detail that draw evidence modules. The phone slot is not drawn differently yet, so
@@ -46,17 +47,19 @@ export function comparePair(evidence: readonly Evidence[]): {
 
 type Wording = { title: string; empty: string };
 
+const say = (title: PlainKey, empty: PlainKey): Wording => ({ title: t(title), empty: t(empty) });
+
 function wording({ module, variant }: LayoutEntry): Wording {
   if (module === 'images' && variant === 'compare') {
-    return { title: 'Before and after', empty: 'No before/after yet' };
+    return say('evidence.compare', 'evidence.compareEmpty');
   }
   if (module === 'images' && variant === 'gallery') {
-    return { title: 'Screenshots', empty: 'No screenshots yet' };
+    return say('evidence.gallery', 'evidence.galleryEmpty');
   }
-  if (module === 'images') return { title: 'Screenshot', empty: 'No screenshot yet' };
-  if (module === 'recording') return { title: 'Recording', empty: 'No recording yet' };
-  if (module === 'diff') return { title: 'Diff', empty: 'No diff yet' };
-  return { title: 'Log', empty: 'No log yet' };
+  if (module === 'images') return say('evidence.image', 'evidence.imageEmpty');
+  if (module === 'recording') return say('evidence.recording', 'evidence.recordingEmpty');
+  if (module === 'diff') return say('evidence.diff', 'evidence.diffEmpty');
+  return say('evidence.log', 'evidence.logEmpty');
 }
 
 export function moduleTitle(entry: LayoutEntry): string {

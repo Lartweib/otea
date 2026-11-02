@@ -24,6 +24,11 @@ export const ROW = {
 
 export const MAX_DEPTH = 3;
 
+// How wide a run of mono characters is at 12px (0.6em a character), rounded up to whole pixels.
+export function monoWidth(chars: number): number {
+  return Math.ceil(chars * 7.2);
+}
+
 // Where the type slot of a row at a depth starts, and its centre.
 export function slotLeft(depth: number): number {
   return GRID.rail + GRID.fold + GRID.step * depth;

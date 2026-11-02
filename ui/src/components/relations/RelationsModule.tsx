@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { unlinkItems } from '../../api.ts';
+import { presetText, t } from '../../i18n/i18n.ts';
 import { groupRelations, unlinkRequestOf } from '../../relations.ts';
 import type { ItemView, LayoutEntry, RelatedItem } from '../../types.ts';
 import type { CollectionOf } from '../ItemList.tsx';
@@ -38,22 +39,28 @@ export function RelationsModule({
       () => setRemoving(undefined),
       (failure: unknown) => {
         setRemoving(undefined);
-        setError(failure instanceof Error ? failure.message : 'Failed');
+        setError(failure instanceof Error ? failure.message : t('common.failed'));
       },
     );
   };
   const count = groups.reduce((sum, group) => sum + group.items.length, 0);
-  const label = entry.label ?? (count === 1 ? 'relation' : 'relations');
+  const label = entry.label === undefined ? undefined : presetText(entry.label);
   const headingId = `relations-${item.id}`;
   return (
     <section className="rel-module" aria-labelledby={headingId}>
       <header className="sub-head">
         <h3 className="sub-title" id={headingId}>
-          {count === 0 ? `No ${entry.label ?? 'relations'}` : `${count} ${label}`}
+          {label === undefined
+            ? count === 0
+              ? t('relations.none')
+              : t('relations.count', { count })
+            : count === 0
+              ? t('relations.noneLabelled', { label })
+              : t('relations.labelled', { count, label })}
         </h3>
         {canWrite && !adding ? (
           <button type="button" className="rel-add" onClick={() => setAdding(true)}>
-            link
+            {t('relations.link')}
           </button>
         ) : null}
       </header>

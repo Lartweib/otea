@@ -8,6 +8,7 @@ import {
   useState,
 } from 'react';
 import { useActiveLease, useTimeCell } from '../hooks.ts';
+import { t, tx } from '../i18n/i18n.ts';
 import { TypeIcon } from '../icons/TypeIcon.tsx';
 import { rowValues, showsTypes, typeOf } from '../item-types.ts';
 import { AgentMark, Button, Icon, NodeMark } from '../kit/index.ts';
@@ -20,13 +21,13 @@ import {
   layoutLanes,
   type TreeRow,
 } from '../lanes.ts';
-import { activeLease } from '../lease.ts';
+import { activeLease, leaseChars } from '../lease.ts';
 import { moduleFor } from '../modules/registry.ts';
 import { reducedMotion } from '../motion.ts';
 import type { NestedSection, ParentRef, RowNesting } from '../nesting.ts';
 import { itemNodeKind, type NodeKind } from '../node-kind.ts';
 import { openLabel } from '../relations.ts';
-import { GRID, MAX_DEPTH, ROW } from '../row-grid.ts';
+import { GRID, MAX_DEPTH, monoWidth, ROW } from '../row-grid.ts';
 import { hashFor } from '../selection.ts';
 import type { CollectionView, Item, Lease } from '../types.ts';
 import { afterFold, panelOf, reopen, select, type UnfoldState } from '../unfold.ts';
@@ -157,8 +158,14 @@ function Progress({ item, kinds }: { item: Item; kinds: NodeKind[] }) {
     <span className="row-progress">
       <ChildBar kinds={kinds} size="sm" />
       <span className="row-progress-count" title={openLabel(summary)}>
-        {summary.open}
-        <span className="row-progress-of"> of {summary.total}</span> open
+        {tx('list.progress', {
+          open: summary.open,
+          of: (
+            <span className="row-progress-of">
+              {t('list.progressOf', { total: summary.total })}
+            </span>
+          ),
+        })}
       </span>
     </span>
   );
@@ -180,8 +187,11 @@ function FoldChildren({
       type="button"
       className="row-fold-button"
       aria-expanded={!folded}
-      aria-label={`${folded ? 'Show' : 'Fold'} the ${nesting.nested} children of ${item.id}`}
-      title={`${nesting.nested} ${nesting.nested === 1 ? 'child' : 'children'}`}
+      aria-label={t(folded ? 'list.show' : 'list.fold', {
+        count: nesting.nested ?? 0,
+        id: item.id,
+      })}
+      title={t('list.children', { count: nesting.nested ?? 0 })}
       data-folded={folded || undefined}
       onClick={onToggle}
     >
@@ -206,7 +216,11 @@ function TypeSlot({ icon, label, small }: { icon?: string; label?: string; small
 function ParentCrumb({ parent }: { parent: ParentRef }) {
   return (
     <>
-      <a className="row-crumb" href={hashFor(parent.id)} title={`Child of ${parent.id}`}>
+      <a
+        className="row-crumb"
+        href={hashFor(parent.id)}
+        title={t('list.childOf', { id: parent.id })}
+      >
         {parent.title ?? parent.id}
       </a>
       <span className="row-crumb-sep" aria-hidden="true">
@@ -221,9 +235,10 @@ function ParentCrumb({ parent }: { parent: ParentRef }) {
 // m: the morph's key, which carries it between the two views.
 export function Holder({ holder, m }: { holder: string; m?: string }) {
   if (holder === 'you') {
+    const you = t('turn.you');
     return (
-      <span className="row-you" title={holder} data-m={m}>
-        {holder}
+      <span className="row-you" title={you} data-m={m}>
+        {you}
       </span>
     );
   }
@@ -580,7 +595,7 @@ function TriageOpen({ onTriage }: { onTriage: () => void }) {
   return (
     <Button variant="quiet" size="sm" className="triage-open" onClick={onTriage}>
       <Icon name="cards" />
-      Triage
+      {t('list.triage')}
     </Button>
   );
 }
@@ -622,11 +637,12 @@ export function ItemList({
     '--head-h': `${HEAD_H}px`,
     '--first-head-h': `${FIRST_HEAD_H}px`,
     '--empty-h': `${EMPTY_H}px`,
+    '--when-w': `${monoWidth(leaseChars())}px`,
   } as CSSProperties;
   return (
     <nav
       className="item-list"
-      aria-label="Items"
+      aria-label={t('common.items')}
       style={sizes}
       ref={list}
       data-lanes={JSON.stringify([lanes.agentLane, lanes.youLane, lanes.trunk])}
@@ -644,7 +660,7 @@ export function ItemList({
             {section.items.length === 0 ? (
               <p className="section-empty" data-flip={`empty:${section.key}`}>
                 <Lines lanes={lanes} place={empties.get(section.key) ?? NO_PLACE} />
-                Nothing here.
+                {t('section.empty')}
               </p>
             ) : (
               <ul className="rows">

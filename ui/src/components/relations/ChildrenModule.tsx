@@ -1,3 +1,4 @@
+import { presetText, t } from '../../i18n/i18n.ts';
 import { childTally } from '../../relations.ts';
 import type { ItemView, LayoutEntry } from '../../types.ts';
 import type { CollectionOf } from '../ItemList.tsx';
@@ -29,21 +30,26 @@ export function ChildrenModule({
         <span className="rel-add-plus" aria-hidden="true">
           +
         </span>
-        child
+        {t('children.add')}
       </button>
     ) : null;
   if (children.length === 0 && !add) return null;
   const kinds = children.map((child) => relatedNodeKind(child, collectionOf));
   const tally = childTally(kinds);
   const headingId = `children-${item.id}`;
-  const label = entry.label ?? (children.length === 1 ? 'child' : 'children');
+  const count = children.length;
+  const label = entry.label === undefined ? undefined : presetText(entry.label);
   return (
     <section className="children-module" aria-labelledby={headingId}>
       <header className="sub-head">
         <h3 className="sub-title" id={headingId}>
-          {children.length === 0
-            ? `No ${entry.label ?? 'children'}`
-            : `${children.length} ${label}`}
+          {label === undefined
+            ? count === 0
+              ? t('children.none')
+              : t('children.count', { count })
+            : count === 0
+              ? t('relations.noneLabelled', { label })
+              : t('relations.labelled', { count, label })}
         </h3>
         {add}
       </header>
@@ -52,13 +58,13 @@ export function ChildrenModule({
           <ChildBar kinds={kinds} size="lg" />
           <p className="child-legend">
             <span className="child-legend-key" data-kind="you">
-              {tally.yours} yours
+              {t('children.yours', { count: tally.yours })}
             </span>
             <span className="child-legend-key" data-kind="working">
-              {tally.agents} with agents
+              {t('children.agents', { count: tally.agents })}
             </span>
             <span className="child-legend-key" data-kind="done">
-              {tally.closed} closed
+              {t('children.closed', { count: tally.closed })}
             </span>
           </p>
           <ul className="rel-list children-list">

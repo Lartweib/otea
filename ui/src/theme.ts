@@ -1,3 +1,5 @@
+import { type PlainKey, t } from './i18n/i18n.ts';
+
 export type ThemeChoice = 'system' | 'light' | 'dark';
 
 export type Theme = 'light' | 'dark';
@@ -41,8 +43,19 @@ export function switchMotion(
   return reveal ? 'reveal' : 'instant';
 }
 
+const CHOICE: Readonly<Record<ThemeChoice, PlainKey>> = {
+  system: 'theme.system',
+  light: 'theme.light',
+  dark: 'theme.dark',
+};
+
 export function themeLabel(choice: ThemeChoice): string {
-  return `Theme: ${choice}`;
+  return t('theme.label', { choice: t(CHOICE[choice]) });
+}
+
+// What the toggle says to assistive tech: the theme on screen, and the next one.
+export function themeSwitchLabel(choice: ThemeChoice, next: ThemeChoice): string {
+  return t('theme.switch', { choice: t(CHOICE[choice]), next: t(CHOICE[next]) });
 }
 
 // Storage can be missing or throw (private windows, blocked site data): the theme then just follows the system.

@@ -1,3 +1,4 @@
+import { t } from './i18n/i18n.ts';
 import type { ModuleOrigin } from './modules/contract.ts';
 import type { FieldView, PresetOrigin, PresetView } from './types.ts';
 
@@ -43,10 +44,10 @@ export function catalogEntries(
 }
 
 export function usageSummary(uses: readonly ModuleUse[]): string {
-  if (uses.length === 0) return 'not used by any loaded preset';
+  if (uses.length === 0) return t('catalog.unused');
   const presets = new Set(uses.map(({ preset }) => preset));
-  const fields = `${uses.length} ${uses.length === 1 ? 'field' : 'fields'}`;
+  const fields = t('catalog.fields', { count: uses.length });
   return presets.size === 1
-    ? `${fields} in ${[...presets][0]}`
-    : `${fields} in ${presets.size} presets`;
+    ? t('catalog.inPreset', { fields, preset: [...presets][0] ?? '' })
+    : t('catalog.inPresets', { fields, count: presets.size });
 }

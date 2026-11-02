@@ -1,3 +1,4 @@
+import { t } from '../i18n/i18n.ts';
 import { Severity, type SeverityLevel } from '../kit/index.ts';
 import type { Section } from '../sections.ts';
 
@@ -31,7 +32,9 @@ export function GroupLabel({
       <span className="count" data-m={`g:${section.key}:c`}>
         {total}
       </span>
-      {yours > 0 ? <span className="group-yours">· {yours} for you</span> : null}
+      {yours > 0 ? (
+        <span className="group-yours">{t('group.forYou', { count: yours })}</span>
+      ) : null}
     </>
   );
 }

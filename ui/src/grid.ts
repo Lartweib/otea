@@ -1,3 +1,6 @@
+import { type PlainKey, t } from './i18n/i18n.ts';
+import { leaseChars } from './lease.ts';
+import { monoWidth } from './row-grid.ts';
 import type { CollectionView, FieldView, Item } from './types.ts';
 
 // The grid: a collection's items as a table, one row each, its columns from the preset
@@ -53,15 +56,26 @@ function statesOf(collection: CollectionView): string[] {
   return [...new Set(collection.types.flatMap((type) => type.states.map(({ name }) => name)))];
 }
 
+// The built-in columns' headers, in the language on screen; a field's column is headed by its name.
+const BUILT_IN_LABEL: Readonly<Record<string, PlainKey>> = {
+  id: 'column.id',
+  title: 'column.title',
+  state: 'column.state',
+  type: 'column.type',
+  who: 'column.who',
+  age: 'column.age',
+};
+
 function columnOf(collection: CollectionView, key: string): GridColumn | undefined {
   const builtIn = BUILT_IN[key];
-  if (builtIn === 'state') return { key, kind: builtIn, label: key, values: statesOf(collection) };
+  const named = BUILT_IN_LABEL[key];
+  const label = builtIn && named ? t(named) : key;
+  if (builtIn === 'state') return { key, kind: builtIn, label, values: statesOf(collection) };
   if (builtIn === 'type') {
-    return { key, kind: builtIn, label: key, values: collection.types.map(({ name }) => name) };
+    return { key, kind: builtIn, label, values: collection.types.map(({ name }) => name) };
   }
-  if (builtIn === 'id')
-    return { key, kind: builtIn, label: key, chars: collection.prefix.length + 4 };
-  if (builtIn) return { key, kind: builtIn, label: key };
+  if (builtIn === 'id') return { key, kind: builtIn, label, chars: collection.prefix.length + 4 };
+  if (builtIn) return { key, kind: builtIn, label };
   const field = fieldOf(collection, key);
   const kind = field ? ONE_LINE[field.module] : undefined;
   if (!field || !kind) return undefined;
@@ -179,8 +193,8 @@ export function columnWidth(column: GridColumn, compact: boolean): number {
       // The agent's mark or your chip, never the name.
       return 44;
     case 'age':
-      // An age, or the time left on a lease: `12m left`, eight mono characters.
-      return 60;
+      // An age, or the time left on a lease: `12m left`, eight mono characters in English.
+      return Math.max(60, monoWidth(leaseChars()) + 2);
     case 'text':
       return 160;
     case 'state':
@@ -482,7 +496,7 @@ export type FilterChoice = { value: string; label: string; count: number; on: bo
 
 // How a filter value reads in a menu or a token: the empty one is "No <field>".
 export const valueLabel = (column: GridColumn, value: string) =>
-  value === '' ? `No ${column.label}` : value;
+  value === '' ? t('grid.noValue', { column: column.label }) : value;
 
 // A column's values (a text column's from the items) with how many items each would show beside
 // the other filters; a value with nothing left to show drops out, unless it is chosen.

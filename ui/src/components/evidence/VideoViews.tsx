@@ -1,5 +1,6 @@
 import { type KeyboardEvent, useEffect, useState } from 'react';
 import { evidenceFileUrl } from '../../api.ts';
+import { language, t } from '../../i18n/i18n.ts';
 import { Button } from '../../kit/index.ts';
 import type { Evidence } from '../../types.ts';
 import { stepWithArrows } from './arrows.ts';
@@ -106,7 +107,11 @@ function useFrames(url: string): Frames {
 }
 
 function seconds(time: number): string {
-  return `${time.toFixed(1)} s`;
+  const number = new Intl.NumberFormat(language(), {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  });
+  return t('evidence.seconds', { seconds: number.format(time) });
 }
 
 // The recording as a strip of frames to read at a glance; one is shown large. Left and right step
@@ -120,10 +125,10 @@ export function VideoFrames({ evidence }: { evidence: Evidence }) {
       <div className="ev-frames">
         {playing ? (
           <Button size="sm" className="ev-frames-switch" onClick={() => setPlaying(false)}>
-            frames
+            {t('evidence.frames')}
           </Button>
         ) : (
-          <p className="t-cap">No frames could be read from this file; it plays instead.</p>
+          <p className="t-cap">{t('evidence.noFrames')}</p>
         )}
         <VideoPlayer evidence={evidence} />
       </div>
@@ -132,7 +137,7 @@ export function VideoFrames({ evidence }: { evidence: Evidence }) {
   if (frames.status === 'reading') {
     return (
       <div className="ev-stage ev-reading well" aria-busy="true">
-        <span className="t-cap">reading frames…</span>
+        <span className="t-cap">{t('evidence.readingFrames')}</span>
       </div>
     );
   }
@@ -144,19 +149,19 @@ export function VideoFrames({ evidence }: { evidence: Evidence }) {
   return (
     <section
       className="ev-frames"
-      aria-roledescription="frames"
+      aria-roledescription={t('evidence.framesRole')}
       aria-label={evidence.filename}
       onKeyDown={onKeyDown}
     >
       <Button size="sm" className="ev-frames-switch" onClick={() => setPlaying(true)}>
-        play
+        {t('evidence.play')}
       </Button>
       <div className="ev-stage well">
         <img
           key={current.time}
           className="ev-img ev-set"
           src={current.src}
-          alt={`Frame at ${seconds(current.time)}`}
+          alt={t('evidence.frameAt', { time: seconds(current.time) })}
         />
         <span className="ev-tag r" aria-live="polite">
           {seconds(current.time)}
@@ -169,7 +174,7 @@ export function VideoFrames({ evidence }: { evidence: Evidence }) {
               type="button"
               className="ev-thumb well"
               aria-current={at === index ? 'true' : undefined}
-              aria-label={`Frame at ${seconds(frame.time)}`}
+              aria-label={t('evidence.frameAt', { time: seconds(frame.time) })}
               onClick={() => setIndex(at)}
             >
               <img src={frame.src} alt="" />

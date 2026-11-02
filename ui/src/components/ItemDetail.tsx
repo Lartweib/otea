@@ -5,6 +5,7 @@ import { leftovers } from '../evidence.ts';
 import { actorLabel, leaseLabel, momentLabel } from '../format.ts';
 import { agoLabel } from '../handoff.ts';
 import { useActiveLease } from '../hooks.ts';
+import { type PlainKey, t, tx } from '../i18n/i18n.ts';
 import { TypeIcon } from '../icons/TypeIcon.tsx';
 import {
   type DetailBlock,
@@ -14,7 +15,7 @@ import {
   typeMark,
   typeOf,
 } from '../item-types.ts';
-import { AgentMark, Button, Icon, NODE_LABEL, Node, Pill, TypeTag } from '../kit/index.ts';
+import { AgentMark, Button, Icon, Node, nodeLabel, Pill, TypeTag } from '../kit/index.ts';
 import { moduleFor } from '../modules/registry.ts';
 import { MOTION, reducedMotion } from '../motion.ts';
 import { itemNodeKind } from '../node-kind.ts';
@@ -62,19 +63,21 @@ function FieldList({
 // One section of the detail: its name in the left margin above a hairline, its content in the
 // reading column beside it (above it on a phone, and on top in the band and the aside). travel: the
 // key a section that moves between the forms is followed by. count: shown next to the name in the
-// aside.
+// aside. name: the section's own, for its heading's id.
 function Section({
+  name,
   label,
   children,
   travel,
   count,
 }: {
+  name: string;
   label: string;
   children: ReactNode;
   travel?: string;
   count?: string;
 }) {
-  const id = `detail-${label.toLowerCase()}`;
+  const id = `detail-${name}`;
   return (
     <section className="detail-section" aria-labelledby={id} data-travel={travel}>
       <h2 className="detail-section-label" id={id}>
@@ -89,10 +92,10 @@ function Section({
 // The field that leads the brief, as `otea create --description` fills it.
 const LEAD = 'description';
 
-const TURN_LABEL: Record<Turn, string> = {
-  human: 'your turn',
-  agent: 'agent’s turn',
-  none: 'closed',
+const TURN_LABEL: Record<Turn, PlainKey> = {
+  human: 'turn.yours',
+  agent: 'turn.agentGeneric',
+  none: 'turn.closed',
 };
 
 type ItemDetailProps = {
@@ -212,7 +215,7 @@ export function ItemDetail({
     return (
       <section key="evidence" className="evidence-section" aria-labelledby="evidence-title">
         <h3 className="t-label" id="evidence-title">
-          {others ? 'other files' : 'evidence'}
+          {t(others ? 'detail.otherFiles' : 'detail.evidence')}
         </h3>
         <EvidenceList evidence={loose} canWrite={canWrite} />
       </section>
@@ -230,7 +233,7 @@ export function ItemDetail({
     ...(mark
       ? [
           {
-            label: 'type',
+            label: t('detail.type'),
             value:
               mark.kind === 'icon' ? (
                 <span className="detail-type">
@@ -251,9 +254,9 @@ export function ItemDetail({
           })
         : [],
     ),
-    { label: 'collection', value: item.collection },
+    { label: t('detail.collection'), value: item.collection },
     {
-      label: 'created by',
+      label: t('detail.createdBy'),
       value: (
         <>
           {item.createdBy.kind === 'agent' ? (
@@ -263,26 +266,31 @@ export function ItemDetail({
         </>
       ),
     },
-    ...(lease ? [{ label: 'lease', value: leaseLabel(lease) }] : []),
-    { label: 'updated', value: momentLabel(item.updatedAt, Date.now()) },
+    ...(lease ? [{ label: t('detail.lease'), value: leaseLabel(lease) }] : []),
+    { label: t('detail.updated'), value: momentLabel(item.updatedAt, Date.now()) },
   ];
   const cut = detailsCut(detailRows.length, form !== 'aside' || allDetails === item.id);
   const asideModules = aside.filter((part) => part.kind !== 'fields');
   const briefParts = brief.map(block).filter((part) => part !== null);
   const structureParts = structure.map(block).filter((part) => part !== null);
-  const standing = lease ? `${lease.holder} is on it` : TURN_LABEL[item.turn];
+  const standing = lease ? t('detail.onIt', { holder: lease.holder }) : t(TURN_LABEL[item.turn]);
   const unfolded = layout === 'unfold';
   const agent = turnAgent(item.events);
   const receipt =
     landed && landed.id === item.id && landed.to === item.state ? (
       <span className="move-receipt">
-        <b>{landed.to}</b> · now{' '}
-        {item.turn === 'human'
-          ? 'your turn'
-          : item.turn === 'agent'
-            ? `${agent ?? 'an agent'}’s turn`
-            : 'closed'}{' '}
-        · {agoLabel(landed.at, Date.now())}
+        {tx('detail.receipt', {
+          state: <b>{landed.to}</b>,
+          turn:
+            item.turn === 'human'
+              ? t('turn.yours')
+              : item.turn === 'agent'
+                ? agent
+                  ? t('turn.agent', { agent })
+                  : t('turn.anAgent')
+                : t('turn.closed'),
+          ago: agoLabel(landed.at, Date.now()),
+        })}
       </span>
     ) : undefined;
   const actions = canWrite ? (
@@ -301,9 +309,7 @@ export function ItemDetail({
       }}
     />
   ) : (
-    <p className="t-small">
-      Read-only. Run <code>otea open</code> to act from this browser.
-    </p>
+    <p className="t-small">{tx('detail.readOnly', { command: <code>otea open</code> })}</p>
   );
   return (
     <article
@@ -317,7 +323,7 @@ export function ItemDetail({
         <header className="detail-head">
           <div className="detail-head-row">
             <div className="detail-tags">
-              <Node kind={kind} label={NODE_LABEL[kind]} />
+              <Node kind={kind} label={nodeLabel(kind)} />
               <span className="t-id">{item.id}</span>
               <Pill tone="state" yours={item.turn === 'human'}>
                 {item.state}
@@ -330,8 +336,8 @@ export function ItemDetail({
                 size="sm"
                 icon
                 className="detail-close"
-                aria-label="Close the detail"
-                title="Close"
+                aria-label={t('detail.close')}
+                title={t('common.close')}
                 onClick={onClose}
               >
                 <Icon name="close" />
@@ -349,21 +355,25 @@ export function ItemDetail({
       <div className="detail-main">
         {item.missing.length > 0 ? (
           <div className="missing well">
-            <span className="t-label">missing to complete</span>
+            <span className="t-label">{t('detail.missing')}</span>
             <span className="t-ui">{item.missing.join(', ')}</span>
           </div>
         ) : null}
-        <Section label="Brief">
+        <Section name="brief" label={t('detail.brief')}>
           {head.length > 0 ? <FieldList values={head} className="fields fields-head" /> : null}
           {briefParts.length > 0 || head.length > 0 ? (
             briefParts
           ) : (
-            <p className="t-small">No fields.</p>
+            <p className="t-small">{t('common.noFields')}</p>
           )}
         </Section>
-        {structureParts.length > 0 ? <Section label="Structure">{structureParts}</Section> : null}
+        {structureParts.length > 0 ? (
+          <Section name="structure" label={t('detail.structure')}>
+            {structureParts}
+          </Section>
+        ) : null}
       </div>
-      <Section label="Details" travel="details">
+      <Section name="details" label={t('detail.details')} travel="details">
         <dl className="fields fields-meta">
           {detailRows.slice(0, cut.shown).map(({ label, value }) => (
             <Field key={label} label={label}>
@@ -378,15 +388,16 @@ export function ItemDetail({
             aria-expanded={cut.more === 0}
             onClick={() => setAllDetails(cut.more > 0 ? item.id : null)}
           >
-            {cut.more > 0 ? `${cut.more} more` : 'fewer'}
+            {cut.more > 0 ? t('common.more', { count: cut.more }) : t('detail.fewer')}
           </button>
         ) : null}
         {asideModules.map(block)}
       </Section>
       <Section
-        label="History"
+        name="history"
+        label={t('detail.history')}
         travel="history"
-        count={`${item.events.length} ${item.events.length === 1 ? 'event' : 'events'}`}
+        count={t('detail.events', { count: item.events.length })}
       >
         <Timeline events={item.events} />
       </Section>

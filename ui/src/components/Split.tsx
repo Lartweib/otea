@@ -9,6 +9,7 @@ import {
   useState,
 } from 'react';
 import { useMediaQuery } from '../hooks.ts';
+import { t } from '../i18n/i18n.ts';
 import { MOTION, reducedMotion } from '../motion.ts';
 import {
   clampGridWidth,
@@ -162,14 +163,14 @@ const RANGES = {
   list: {
     variable: '--list-w',
     limits: LIST_WIDTH,
-    label: 'Resize the list',
+    label: 'split.list',
     max: (room: number) => listMax(room),
     clamp: (width: number, max: number) => clampListWidth(width, max),
   },
   grid: {
     variable: '--grid-w',
     limits: GRID_WIDTH,
-    label: 'Resize the grid',
+    label: 'split.grid',
     // The room measured is the two panes' (list and detail); the grid's own counts the divider.
     max: (room: number) => gridMax(room + 9),
     clamp: (width: number, max: number) => clampGridWidth(width, max),
@@ -318,12 +319,12 @@ export function Divider({
       data-pane="divider"
       role="separator"
       aria-orientation="vertical"
-      aria-label={label}
+      aria-label={t(label)}
       aria-valuemin={limits.min}
       aria-valuemax={max}
       aria-valuenow={now}
       aria-keyshortcuts="ArrowLeft ArrowRight Home End Enter"
-      title="Drag to resize · double-click resets"
+      title={t('common.dragToResize')}
       tabIndex={0}
       onPointerDown={onPointerDown}
       onDoubleClick={reset}

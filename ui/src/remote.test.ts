@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { afterFailure, type Remote, SIGN_IN, serverMessage, UNREACHABLE } from './remote.ts';
+import { afterFailure, type Remote, serverMessage, signIn, unreachable } from './remote.ts';
 
 const loaded: Remote<string[]> = { status: 'ready', value: ['A'] };
 const offline = new TypeError('Failed to fetch');
@@ -24,9 +24,9 @@ describe('afterFailure', () => {
   it('explains how to start the server when nothing was loaded and it cannot be reached', () => {
     expect(afterFailure({ status: 'loading' }, offline, 'connecting')).toEqual({
       status: 'failed',
-      message: UNREACHABLE,
+      message: unreachable(),
     });
-    expect(UNREACHABLE).toBe("Can't reach Otea. Is `otea serve` running?");
+    expect(unreachable()).toBe("Can't reach Otea. Is `otea serve` running?");
   });
 
   it('reports a server error when nothing was loaded', () => {
@@ -52,6 +52,6 @@ describe('serverMessage', () => {
   );
 
   it('explains how to sign in when the session is missing', () => {
-    expect(serverMessage({ error: { code: 'unauthorized', message: 'x' } }, 401)).toBe(SIGN_IN);
+    expect(serverMessage({ error: { code: 'unauthorized', message: 'x' } }, 401)).toBe(signIn());
   });
 });

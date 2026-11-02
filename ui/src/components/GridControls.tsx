@@ -20,7 +20,9 @@ import {
   valueLabel,
   type Widths,
 } from '../grid.ts';
+import { t } from '../i18n/i18n.ts';
 import { Button, Icon, Severity, type SeverityLevel } from '../kit/index.ts';
+import { groupingLabel } from '../sections.ts';
 import type { Item } from '../types.ts';
 import type { ViewMode } from '../view-prefs.ts';
 
@@ -50,26 +52,26 @@ export function ViewSwitch({
 }) {
   return (
     // biome-ignore lint/a11y/useSemanticElements: a pair of toggle buttons, labelled as one control
-    <span className="view-switch" role="group" aria-label="View">
+    <span className="view-switch" role="group" aria-label={t('view.aria')}>
       <button
         type="button"
         className="view-switch-b"
         aria-pressed={mode === 'list'}
-        aria-label="List view"
+        aria-label={t('view.list')}
         onClick={() => onChange('list')}
       >
         <Icon name="list" />
-        <span>List</span>
+        <span>{t('view.listShort')}</span>
       </button>
       <button
         type="button"
         className="view-switch-b"
         aria-pressed={mode === 'grid'}
-        aria-label="Grid view"
+        aria-label={t('view.grid')}
         onClick={() => onChange('grid')}
       >
         <Icon name="grid" />
-        <span>Grid</span>
+        <span>{t('view.gridShort')}</span>
       </button>
     </span>
   );
@@ -111,8 +113,8 @@ export function HeadControls({
         onClick={(event) => toggle('group')(event.currentTarget)}
       >
         <Icon name="group" />
-        <span className="list-tool-label">group</span>
-        <b>{group}</b>
+        <span className="list-tool-label">{t('tools.group')}</span>
+        <b>{groupingLabel(group)}</b>
       </Button>
       <Button
         variant="quiet"
@@ -123,7 +125,7 @@ export function HeadControls({
         onClick={(event) => toggle('filter')(event.currentTarget)}
       >
         <Icon name="filter" />
-        <span className="list-tool-label">filter</span>
+        <span className="list-tool-label">{t('tools.filter')}</span>
       </Button>
       {columns !== undefined ? (
         // Words and a count, no icon: the app has none for columns.
@@ -136,7 +138,7 @@ export function HeadControls({
           data-set={columnsSet || undefined}
           onClick={(event) => toggle('columns')(event.currentTarget)}
         >
-          <span>columns</span>
+          <span>{t('tools.columns')}</span>
           <b>{columns}</b>
         </Button>
       ) : null}
@@ -179,7 +181,7 @@ export function FilterTokens({
             <button
               type="button"
               className="filter-token-x"
-              aria-label={`Remove the ${label} filter`}
+              aria-label={t('filter.remove', { column: label })}
               onClick={() => onClear(key)}
             >
               <Icon name="close" />
@@ -188,7 +190,7 @@ export function FilterTokens({
         );
       })}
       <Button variant="quiet" size="sm" onClick={onClearAll}>
-        clear all
+        {t('filter.clearAll')}
       </Button>
     </div>
   );
@@ -247,7 +249,7 @@ function columnItems(props: MenuProps, column: GridColumn): MenuItem[] {
   const { sort, filters, items, groupings, group, presetGroup, available } = props;
   const first = firstDirection(column);
   const other = first === 'asc' ? 'desc' : 'asc';
-  const word = (dir: 'asc' | 'desc') => (dir === 'asc' ? 'Sort ascending' : 'Sort descending');
+  const word = (dir: 'asc' | 'desc') => t(dir === 'asc' ? 'menu.sortAsc' : 'menu.sortDesc');
   const on = (dir: 'asc' | 'desc') => sort?.key === column.key && sort.dir === dir;
   const list: MenuItem[] = [
     { kind: 'title', label: column.label },
@@ -267,26 +269,31 @@ function columnItems(props: MenuProps, column: GridColumn): MenuItem[] {
     },
   ];
   if (sort?.key === column.key) {
-    list.push({ kind: 'item', label: 'Clear sort', quiet: true, run: () => props.onSort(null) });
+    list.push({
+      kind: 'item',
+      label: t('menu.clearSort'),
+      quiet: true,
+      run: () => props.onSort(null),
+    });
   }
   if (groupings.includes(column.key)) {
     const grouped = group === column.key;
     list.push({
       kind: 'item',
-      label: grouped ? `Grouped by ${column.label}` : `Group by ${column.label}`,
+      label: t(grouped ? 'menu.groupedBy' : 'menu.groupBy', { column: column.label }),
       on: grouped,
       run: () => props.onGroup(grouped ? presetGroup : column.key),
     });
   }
   if (!filterable(column)) {
     list.push({ kind: 'rule' });
-    list.push({ kind: 'note', label: 'This column sorts; fields, state and type filter.' });
+    list.push({ kind: 'note', label: t('menu.sortsOnly') });
     return list;
   }
   const chosen = filters[column.key] ?? [];
   const choices = filterChoices(items, column, filters, available);
   if (choices.length > 0) {
-    list.push({ kind: 'rule' }, { kind: 'title', label: 'Show only' });
+    list.push({ kind: 'rule' }, { kind: 'title', label: t('menu.showOnly') });
     for (const choice of choices) {
       list.push({
         kind: 'check',
@@ -305,7 +312,7 @@ function columnItems(props: MenuProps, column: GridColumn): MenuItem[] {
   if (chosen.length > 0) {
     list.push({
       kind: 'item',
-      label: 'Show all',
+      label: t('menu.showAll'),
       quiet: true,
       run: () => props.onFilter(column.key, []),
     });
@@ -318,7 +325,7 @@ function columnItems(props: MenuProps, column: GridColumn): MenuItem[] {
 function columnsItems(props: MenuProps): MenuItem[] {
   const { columns, available, fitted, widths } = props;
   const shown = columns.map(({ key }) => key);
-  const list: MenuItem[] = [{ kind: 'title', label: 'Columns' }];
+  const list: MenuItem[] = [{ kind: 'title', label: t('menu.columns') }];
   for (const column of available) {
     const locked = ALWAYS.includes(column.key);
     const on = locked || shown.includes(column.key);
@@ -327,7 +334,7 @@ function columnsItems(props: MenuProps): MenuItem[] {
     list.push({
       kind: 'column',
       label: column.label,
-      note: locked ? 'always' : off ? 'no room' : kind,
+      note: locked ? t('menu.always') : off ? t('menu.noRoom') : kind,
       on,
       locked,
       off,
@@ -340,12 +347,17 @@ function columnsItems(props: MenuProps): MenuItem[] {
   const sized = Object.keys(widths).length > 0;
   if (sized || props.columnsChanged) list.push({ kind: 'rule' });
   if (sized) {
-    list.push({ kind: 'item', label: 'Reset widths', quiet: true, run: props.onResetWidths });
+    list.push({
+      kind: 'item',
+      label: t('menu.resetWidths'),
+      quiet: true,
+      run: props.onResetWidths,
+    });
   }
   if (props.columnsChanged) {
     list.push({
       kind: 'item',
-      label: 'Reset to preset',
+      label: t('menu.resetColumns'),
       quiet: true,
       run: props.onResetColumns,
     });
@@ -358,11 +370,14 @@ function menuItems(props: MenuProps): MenuItem[] {
   if (menu.kind === 'columns') return columnsItems(props);
   if (menu.kind === 'group') {
     return [
-      { kind: 'title', label: 'Group by' },
+      { kind: 'title', label: t('menu.groupTitle') },
       ...groupings.map(
         (key): MenuItem => ({
           kind: 'radio',
-          label: key === presetGroup ? `${key} · default` : key,
+          label:
+            key === presetGroup
+              ? t('menu.default', { group: groupingLabel(key) })
+              : groupingLabel(key),
           on: key === group,
           run: () => props.onGroup(key),
         }),
@@ -371,7 +386,7 @@ function menuItems(props: MenuProps): MenuItem[] {
   }
   if (menu.kind === 'filter') {
     return [
-      { kind: 'title', label: 'Filter by' },
+      { kind: 'title', label: t('menu.filterTitle') },
       ...columns.filter(filterable).map(
         (column): MenuItem => ({
           kind: 'open',
@@ -459,7 +474,7 @@ export function GridMenu(props: MenuProps) {
       ref={self}
       className="grid-menu"
       role="menu"
-      aria-label={title?.kind === 'title' ? title.label : 'Menu'}
+      aria-label={title?.kind === 'title' ? title.label : t('menu.aria')}
       style={{ left: place.left, top: place.top }}
       onKeyDown={onKeyDown}
     >

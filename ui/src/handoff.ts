@@ -1,4 +1,5 @@
-import { ageLabel, relayOf } from './format.ts';
+import { relayOf } from './format.ts';
+import { t } from './i18n/i18n.ts';
 import { groupRelations } from './relations.ts';
 import type { ItemEvent, RelatedItem } from './types.ts';
 
@@ -24,29 +25,30 @@ export function handoffOf(events: readonly ItemEvent[]): Handoff | null {
     return {
       who: relay.via,
       agent: relay.via,
-      says: `${relay.via} relayed your move to ${to}`,
+      says: t('handoff.relayed', { agent: relay.via, state: to }),
       at: last.at,
       note: relay.quote,
     };
   }
   const yours = last.actor.kind === 'human';
-  const who = yours ? 'you' : last.actor.name;
+  const who = yours ? t('turn.you') : last.actor.name;
   const reason = last.data.reason;
+  const created = last.type === 'created';
+  const says = yours
+    ? t(created ? 'handoff.youCreated' : 'handoff.youMoved', { state: to })
+    : created
+      ? t('handoff.created', { who })
+      : t('handoff.moved', { who, state: to });
   return {
     who,
     agent: yours ? null : who,
-    says: last.type === 'created' ? `${who} created it` : `${who} moved it to ${to}`,
+    says,
     at: last.at,
     note: typeof reason === 'string' && reason !== '' ? reason : null,
   };
 }
 
-// How long ago, as a sentence says it: just now, 14m ago, 3h ago, yesterday, 5d ago.
-export function agoLabel(iso: string, now: number): string {
-  const age = ageLabel(iso, now);
-  if (age === 'now') return 'just now';
-  return age === 'yesterday' || age === '' ? age : `${age} ago`;
-}
+export { agoLabel } from './format.ts';
 
 // A parent's children on your turn, as the handoff line links them.
 export function waitingChildren(relations: readonly RelatedItem[]): RelatedItem[] {
