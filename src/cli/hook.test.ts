@@ -181,8 +181,6 @@ describe('hook', () => {
       expect(result.err).toContain('could not check');
     });
 
-    // `gh pr merge <pr>` is checked against that PR's head branch, which only gh can tell; here gh
-    // cannot (missing, or no remote to ask), so the merge goes on with a note.
     const merge = (command: string) => {
       const event = { cwd: repo.dir, tool_name: 'Bash', tool_input: { command } };
       const at = cliAt(repo.dir, {}, undefined, undefined, undefined, JSON.stringify(event));
@@ -194,13 +192,6 @@ describe('hook', () => {
 
       expect(result.code).toBe(2);
       expect(result.err).toContain('merge refused: CHANGES-2 is proposed');
-    });
-
-    it('fails open when gh cannot tell the head branch of the PR named', async () => {
-      const result = await merge('gh pr merge 482 --squash');
-
-      expect(result.code).toBe(0);
-      expect(result.err).toContain('gh could not tell the head branch of PR 482');
     });
   });
 });

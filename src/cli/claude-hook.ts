@@ -52,19 +52,20 @@ export function mergeTarget(command: string): string | undefined {
   return undefined;
 }
 
-// The head branch of a PR, asked of gh in the repo at cwd; throws when gh is missing or fails.
-export function prHeadBranch(cwd: string, pr: string): string {
+// gh asks the forge over the network, so a hook never waits on it longer than this.
+const GH_TIMEOUT_MS = 10_000;
+
+// The head branch of a PR, asked of gh in the repo at cwd; throws when gh is missing, fails or
+// takes too long.
+export function prHeadBranch(cwd: string, pr: string, gh = 'gh'): string {
   let branch = '';
   try {
-    branch = execFileSync(
-      'gh',
-      ['pr', 'view', pr, '--json', 'headRefName', '--jq', '.headRefName'],
-      {
-        cwd,
-        encoding: 'utf8',
-        stdio: ['ignore', 'pipe', 'ignore'],
-      },
-    ).trim();
+    branch = execFileSync(gh, ['pr', 'view', pr, '--json', 'headRefName', '--jq', '.headRefName'], {
+      cwd,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+      timeout: GH_TIMEOUT_MS,
+    }).trim();
   } catch {}
   if (branch === '') throw new Error(`gh could not tell the head branch of PR ${pr}`);
   return branch;
