@@ -1,4 +1,4 @@
-import { mkdirSync, realpathSync } from 'node:fs';
+import { existsSync, mkdirSync, realpathSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
 import type { DatabaseSync } from 'node:sqlite';
@@ -14,6 +14,7 @@ import {
   type RegisteredProject,
   selectProjectPaths,
   selectRegisteredProject,
+  selectRegisteredProjects,
 } from '../store/registry.ts';
 import type { Env } from './project.ts';
 
@@ -22,19 +23,33 @@ export function oteaHome(env: Env = process.env): string {
   return env.OTEA_HOME ? resolve(env.OTEA_HOME) : join(homedir(), '.otea');
 }
 
+function registryPath(env: Env): string {
+  return join(oteaHome(env), 'registry.db');
+}
+
 export function openRegistry(env: Env = process.env): DatabaseSync {
-  const home = oteaHome(env);
-  mkdirSync(home, { recursive: true });
-  const db = openDatabase(join(home, 'registry.db'));
+  mkdirSync(oteaHome(env), { recursive: true });
+  const db = openDatabase(registryPath(env));
   migrateRegistry(db);
   return db;
+}
+
+// Runs `use` on the registry, or returns undefined without creating it when there is none yet.
+export function withRegistry<T>(env: Env, use: (registry: DatabaseSync) => T): T | undefined {
+  if (!existsSync(registryPath(env))) return undefined;
+  const registry = openRegistry(env);
+  try {
+    return use(registry);
+  } finally {
+    registry.close();
+  }
 }
 
 export function registerProject(registry: DatabaseSync, project: RegisteredProject): void {
   insertRegisteredProject(registry, project);
 }
 
-function keyOf(path: string): { path: string; pathKey: string } {
+export function keyOf(path: string): { path: string; pathKey: string } {
   const real = realpathSync.native(path);
   return { path: real, pathKey: pathKey(real, process.platform) };
 }
@@ -55,8 +70,41 @@ export function addProjectPath(
   return entry;
 }
 
-// The project of the nearest linked folder at or above `path`.
+export type Link = { link: ProjectPath; project: RegisteredProject };
+
+// The nearest linked folder at or above `path`, with its project.
+export function linkAt(registry: DatabaseSync, path: string): Link | undefined {
+  const link = longestContaining(selectProjectPaths(registry), keyOf(path).pathKey);
+  const project = link && selectRegisteredProject(registry, link.projectId);
+  return link && project && { link, project };
+}
+
 export function projectAt(registry: DatabaseSync, path: string): RegisteredProject | undefined {
-  const linked = longestContaining(selectProjectPaths(registry), keyOf(path).pathKey);
-  return linked && selectRegisteredProject(registry, linked.projectId);
+  return linkAt(registry, path)?.project;
+}
+
+// A registered project by id, or by name when no other project has it.
+export function findProject(registry: DatabaseSync, ref: string): RegisteredProject {
+  const projects = selectRegisteredProjects(registry);
+  const byId = projects.find((project) => project.id === ref);
+  if (byId) return byId;
+  const named = projects.filter((project) => project.name === ref);
+  if (named.length === 1 && named[0]) return named[0];
+  if (named.length > 1) {
+    const ids = named.map((project) => project.id).join(', ');
+    throw new OteaError('invalid_name', `Several projects are named "${ref}" (${ids}); use its id`);
+  }
+  throw new OteaError('not_found', `No registered project "${ref}"; run otea projects list`);
+}
+
+export type ListedProject = RegisteredProject & { paths: Array<{ path: string; kind: PathKind }> };
+
+export function listProjects(registry: DatabaseSync): ListedProject[] {
+  const paths = selectProjectPaths(registry);
+  return selectRegisteredProjects(registry).map((project) => ({
+    ...project,
+    paths: paths
+      .filter((linked) => linked.projectId === project.id)
+      .map(({ path, kind }) => ({ path, kind })),
+  }));
 }

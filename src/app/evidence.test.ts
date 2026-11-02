@@ -19,7 +19,7 @@ import { type AttachInput, attachEvidence, evidenceDir, evidenceFile } from './e
 import { createItem, getItem, moveItem, showItem } from './items.ts';
 import { claimItem } from './leases.ts';
 import type { Project } from './project.ts';
-import { IDENTITY, memoryContext } from './testing.ts';
+import { memoryContext, projectOf } from './testing.ts';
 
 const claude: Actor = { kind: 'agent', name: 'claude' };
 const codex: Actor = { kind: 'agent', name: 'codex' };
@@ -47,13 +47,13 @@ describe('attachEvidence', () => {
       { id: 'TASKS-1', path: file('repro.png'), actor: claude, channel: 'cli', ...input },
       at(T5),
     );
-  const stored = () => readdirSync(evidenceDir(project.root));
+  const stored = () => readdirSync(evidenceDir(project.dataDir));
 
   beforeEach(() => {
     const root = mkdtempSync(join(tmpdir(), 'otea-evidence-'));
     files = join(root, 'files');
     mkdirSync(files);
-    project = { root, identity: IDENTITY, ...memoryContext() };
+    project = projectOf(root, memoryContext());
     addCollection(project, { name: 'tasks' });
     const fields = { description: 'Details' };
     createItem(project, { collection: 'tasks', title: 'First', fields, actor: claude }, at(T0));
@@ -82,7 +82,7 @@ describe('attachEvidence', () => {
       actor: claude,
       channel: 'cli',
     });
-    expect(readFileSync(evidenceFile(project.root, SHA_PNG))).toEqual(PNG);
+    expect(readFileSync(evidenceFile(project.dataDir, SHA_PNG))).toEqual(PNG);
   });
 
   it('defaults to the single role and no caption, and ignores a blank caption', () => {
@@ -226,7 +226,7 @@ describe('attachEvidence to a type that places evidence modules', () => {
     const root = mkdtempSync(join(tmpdir(), 'otea-evidence-'));
     files = join(root, 'files');
     mkdirSync(files);
-    project = { root, identity: IDENTITY, ...memoryContext(evidencePreset) };
+    project = projectOf(root, memoryContext(evidencePreset));
     addCollection(project, { name: 'proof', preset: 'proof' });
     for (const type of ['bug', 'impr']) {
       createItem(project, { collection: 'proof', type, title: type, actor: claude }, at(T0));
@@ -261,7 +261,7 @@ describe('attachEvidence to a type that places evidence modules', () => {
     const name = code === 'evidence_not_accepted' ? 'clip.mp4' : 'shot.png';
     expect(() => attach(id, name, input)).toThrow(expect.objectContaining({ code }));
     expect(events(id)).not.toContain('evidence_added');
-    expect(() => readdirSync(evidenceDir(project.root))).toThrow();
+    expect(() => readdirSync(evidenceDir(project.dataDir))).toThrow();
   });
 
   it('shows each entry with the module that draws it, falling back for older evidence', () => {

@@ -34,6 +34,9 @@ export const AGENT_COMMANDS = [
 
 export const CLI_ONLY_COMMANDS = [
   'init',
+  'projects list',
+  'projects current',
+  'projects add',
   'connect',
   'collection add',
   'validate',

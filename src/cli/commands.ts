@@ -1,10 +1,11 @@
-import { join, resolve } from 'node:path';
+import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { type AgentsMdAction, connectAgent, writeAgentsMd } from '../app/agents.ts';
 import { addCollection, DEFAULT_PRESET, typeOfItem } from '../app/collections.ts';
 import { listEvents } from '../app/events.ts';
 import { attachEvidence } from '../app/evidence.ts';
 import { checkGate, type GateCheck } from '../app/gates.ts';
+import { listProjects, withRegistry } from '../app/home.ts';
 import {
   createItem,
   type ListItemsFilter,
@@ -16,7 +17,7 @@ import {
 } from '../app/items.ts';
 import { claimItem, heartbeatItem, releaseItem } from '../app/leases.ts';
 import { collectionPlaybook, hintFor, playbookIndex } from '../app/playbook.ts';
-import { initProject, openProject, oteaDir, type Project } from '../app/project.ts';
+import { addPathToProject, initProject, openProject, type Project } from '../app/project.ts';
 import { linkItems, unlinkItems } from '../app/relations.ts';
 import { relayDecision } from '../app/relay.ts';
 import { validateProject } from '../app/validate.ts';
@@ -74,18 +75,80 @@ const AGENTS_MD_TEXT: Readonly<Record<AgentsMdAction, (path: string) => string>>
 const init: Command = {
   name: 'init',
   summary:
-    'Create or reuse the .otea project at the repository root (refused when a project in a folder above covers it, unless --here); --agents-md also adds (or refreshes) a block in AGENTS.md telling agents to run "otea playbook"',
+    'Create or reuse the project at the repository root: in .otea there, or with --common in the Otea home; --join <project> links the repo to a registered project instead (refused when a project in a folder above covers it, unless --here); --agents-md also adds (or refreshes) a block in AGENTS.md telling agents to run "otea playbook"',
   args: [],
-  options: { 'agents-md': { flag: true }, here: { flag: true } },
-  execute: ({ cwd, flag }) => {
-    const { root, db, identity } = initProject(cwd, { here: flag('here') });
+  options: {
+    'agents-md': { flag: true },
+    here: { flag: true },
+    common: { flag: true },
+    join: { placeholder: 'project' },
+  },
+  execute: ({ cwd, flag, option }) => {
+    const target = option('join');
+    if (target !== undefined && (flag('common') || flag('here'))) {
+      throw new UsageError('--join links to an existing project; it takes no --common or --here');
+    }
+    const options = {
+      here: flag('here'),
+      common: flag('common'),
+      ...(target === undefined ? {} : { join: target }),
+    };
+    const { root, dataDir: path, storage, db, identity } = initProject(cwd, options);
     db.close();
-    const path = join(root, '.otea');
-    const data = { root, path, ...identity };
+    const data = { root, path, ...identity, storage };
     if (!flag('agents-md')) return { data, text: path };
     const agentsMd = writeAgentsMd(root);
     const text = `${path}\n${AGENTS_MD_TEXT[agentsMd.action](agentsMd.path)}`;
     return { data: { ...data, agentsMd }, text };
+  },
+};
+
+const projectsList: Command = {
+  name: 'projects list',
+  summary: 'List the registered projects (common storage) with the folders linked to each',
+  args: [],
+  options: {},
+  execute: () => {
+    const projects = withRegistry(process.env, listProjects) ?? [];
+    const text = projects
+      .map(({ id, name, storage, paths }) =>
+        [`${id}  ${name}  ${storage}`, ...paths.map(({ path, kind }) => `  ${path}  ${kind}`)].join(
+          '\n',
+        ),
+      )
+      .join('\n');
+    return { data: projects, text: text || 'No registered projects' };
+  },
+};
+
+const projectsCurrent: Command = {
+  name: 'projects current',
+  summary: 'Show the project this folder resolves to: id, name, storage, folder and data folder',
+  args: [],
+  options: {},
+  execute: ({ cwd }) => {
+    const data = withProject(cwd, ({ identity, storage, root, dataDir }) => ({
+      ...identity,
+      storage,
+      root,
+      dataDir,
+    }));
+    return {
+      data,
+      text: `${data.id}  ${data.name}  ${data.storage}\n${data.root}\n${data.dataDir}`,
+    };
+  },
+};
+
+const projectsAdd: Command = {
+  name: 'projects add',
+  summary:
+    'Link a folder (another repo, say) to a registered project, so commands run in it use that project',
+  args: ['path'],
+  options: { to: { required: true, placeholder: 'project' } },
+  execute: ({ cwd, required, args: [path = ''] }) => {
+    const linked = addPathToProject(resolve(cwd, path), required('to'));
+    return { data: linked, text: `Linked ${linked.path} to ${linked.projectId}` };
   },
 };
 
@@ -550,7 +613,7 @@ type Served = { url: string; signInUrl: string };
 async function serveUntil(signal: AbortSignal, cwd: string, port: number): Promise<Served> {
   const project = openProject(cwd);
   try {
-    const dir = oteaDir(project.root);
+    const dir = project.dataDir;
     const token = ensureUiToken(dir);
     const running = await listen(createServer(project, { token }), port);
     writeServeFile(dir, { port: running.port, pid: process.pid });
@@ -602,7 +665,7 @@ const open: Command = {
   args: [],
   options: { port: {} },
   execute: async ({ cwd, option, openUrl }) => {
-    const dir = withProject(cwd, (project) => oteaDir(project.root));
+    const dir = withProject(cwd, (project) => project.dataDir);
     const port = portToOpen(dir, option('port'));
     const token = readUiToken(dir);
     if (!token) throw notRunning('No Otea server has been started for this project');
@@ -697,6 +760,9 @@ const check: Command = {
 
 export const COMMANDS: readonly Command[] = [
   init,
+  projectsList,
+  projectsCurrent,
+  projectsAdd,
   connect,
   collectionAdd,
   create,
