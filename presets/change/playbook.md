@@ -78,7 +78,7 @@ When the human sends a repo task back to `revising`, read the reason in its time
 
 If what you learn changes the plan for that repo (it needs no change after all, it needs another approach, it must wait for another repo), take it back to the human instead of guessing: `otea move <id> proposed --reason "<what you found>"`.
 
-Merge a pull request only once its repo task is `approved`. Approving it closes the repo task; nothing is left to update on it.
+Merge a pull request only once its repo task is `approved`, and then merge it yourself: the human has already approved it, so do not wait for them or ask again. Approving it closes the repo task; nothing is left to update on it.
 
 ## 7. Finish the change
 

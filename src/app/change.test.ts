@@ -246,7 +246,7 @@ describe('change preset', () => {
       'otea update <id> --field pr=',
       'otea move <id> plan_review',
       'otea move <id> pr_review',
-      'Merge a pull request only once its repo task is `approved`',
+      'Merge a pull request only once its repo task is `approved`, and then merge it yourself',
       'You never approve your own work',
       'otea relay',
     ]) {
