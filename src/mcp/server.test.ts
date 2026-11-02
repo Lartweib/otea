@@ -108,6 +108,9 @@ describe('mcp server', () => {
       expect(await data('list', { turn: 'agent', unclaimed: true, collection: 'tasks' })).toEqual(
         await json('list', '--turn', 'agent', '--unclaimed', '--collection', 'tasks'),
       );
+      expect(await data('list', { field: ['priority=medium', 'title=Write docs'] })).toEqual(
+        await json('list', '--field', 'priority=medium', '--field', 'title=Write docs'),
+      );
     });
 
     it('shows an item as otea show --json does, relayable moves included', async () => {

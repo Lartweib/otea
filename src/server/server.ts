@@ -29,7 +29,20 @@ function isTurn(value: string): value is Turn {
   return (TURNS as readonly string[]).includes(value);
 }
 
-function itemsFilter(query: Record<string, string>): ListItemsFilter {
+// `field=key=value`, repeatable, keeps the items whose field holds exactly that value.
+function fieldsFilter(pairs: string[]): Record<string, string> {
+  const fields: Record<string, string> = {};
+  for (const pair of pairs) {
+    const separator = pair.indexOf('=');
+    if (separator < 1) throw new InvalidQuery(`field expects key=value, got "${pair}"`);
+    const key = pair.slice(0, separator);
+    if (key in fields) throw new InvalidQuery(`field "${key}" given twice`);
+    fields[key] = pair.slice(separator + 1);
+  }
+  return fields;
+}
+
+function itemsFilter(query: Record<string, string>, fields: string[] = []): ListItemsFilter {
   const { collection, state, type, turn, parent } = query;
   const filter: ListItemsFilter = {};
   if (collection !== undefined) filter.collection = collection;
@@ -40,6 +53,7 @@ function itemsFilter(query: Record<string, string>): ListItemsFilter {
     if (!isTurn(turn)) throw new InvalidQuery(`turn must be one of ${TURNS.join(', ')}`);
     filter.turn = turn;
   }
+  if (fields.length > 0) filter.fields = fieldsFilter(fields);
   return filter;
 }
 
@@ -48,7 +62,9 @@ function api(project: Project, feed: ChangeFeed, streams: LiveStreams, auth: Ses
     .get('/session', (c) => c.json({ canWrite: auth.canWrite(c) }))
     .get('/collections', (c) => c.json(listCollectionViews(project)))
     .get('/presets', (c) => c.json(listPresetViews(project)))
-    .get('/items', (c) => c.json(listItems(project, itemsFilter(c.req.query()))))
+    .get('/items', (c) =>
+      c.json(listItems(project, itemsFilter(c.req.query(), c.req.queries('field')))),
+    )
     .post('/items', async (c) => {
       assertWritable(c, auth);
       const request = await createRequest(c);

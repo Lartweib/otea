@@ -42,6 +42,7 @@ otea create --collection tasks --title "Fix the footer" --description "Wrong yea
 otea create --collection tasks --title "Dark mode?"           # also incomplete
 otea list --turn agent --unclaimed --json # waiting for agents and not held by another one
 otea wait --turn agent --unclaimed         # or block until there is one (see below)
+otea list --field priority=high            # items whose field holds that value (repeat to AND them)
 otea show TASKS-1                          # what to do next, fields, moves the agent can make or relay, lease, timeline
 otea claim TASKS-1 --as claude             # hold it for 15 minutes (--ttl 30m for another length)
 otea heartbeat TASKS-1 --as claude         # extend the lease on long work
