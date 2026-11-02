@@ -338,6 +338,17 @@ describe('items', () => {
         'TASKS-1',
       ]);
     });
+
+    it('filters by field values, every one of them, title included', () => {
+      updateItem(ctx, { id: 'TASKS-2', fields: { priority: 'high' }, actor: bot });
+
+      expect(ids(listItems(ctx, { fields: { priority: 'high' } }))).toEqual(['TASKS-2']);
+      expect(ids(listItems(ctx, { fields: { priority: 'medium', title: 'A' } }))).toEqual([
+        'TASKS-1',
+      ]);
+      expect(ids(listItems(ctx, { fields: { priority: 'high', title: 'A' } }))).toEqual([]);
+      expect(ids(listItems(ctx, { fields: { repo: 'web' } }))).toEqual([]);
+    });
   });
 
   describe('oldestWaiting', () => {
