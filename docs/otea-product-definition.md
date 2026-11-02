@@ -66,7 +66,7 @@ Different domains and loop shapes (linear, iterative), same structure.
 
 | Concept | Definition |
 |---|---|
-| **Project** | A repo/folder with a `.otea/` directory. Holds all data for that project. |
+| **Project** | A repo/folder with a `.otea/` directory. Holds all data for that project. It can sit in a product folder above several repos and serve all of them. |
 | **Collection** | A named set of items governed by one preset. A project can have N collections (e.g. `bugs`, `reviews`, `tasks`). Items can link across collections. |
 | **Item** | A unit of work (bug, review card, definition, task). A record in the project database; long text fields are Markdown. |
 | **Turn** | Who is expected to act next on an item: `human`, `agent` or `none` (terminal). Declared per state by the preset. |
@@ -210,6 +210,7 @@ Chosen at `otea init`, which asks explicitly and explains the implications of ea
 | **external** | `~/.otea/data/<project-id>` | none, not even a folder | agents depend on the user-level registry to find the data |
 
 - `.otea/` is resolved from the git common directory (`git rev-parse --git-common-dir`), so every worktree of a repo shares the same data. Parallel agents in worktrees are a primary use case.
+- **Discovery** (CLI, MCP server and `serve` alike): from that main repo root (or the folder itself outside git), walk up parent folders to the nearest one holding `.otea/otea.db`, stopping at the filesystem root. Matching the database, not `.otea/` alone, keeps the user-level `~/.otea` from passing for a project. So one project in a product folder (which need not be a repo) covers every repo below it, with their worktrees and subfolders. `OTEA_PROJECT=<path>` overrides discovery. `otea init` inside a repo already covered by a project above refuses unless `--here`, which creates a separate project at the repo; the nearest project wins.
 - `external` is meant for folders without git or users who want zero footprint; it is the only mode where the registry is not optional.
 - **Versioning is an export, not live data.** A binary database cannot be diffed or merged in git, so `otea export` writes a readable snapshot (items as Markdown, events as JSONL) that can be committed when a versioned history is wanted.
 

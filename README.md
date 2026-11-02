@@ -58,6 +58,10 @@ Agents claim an item before working it. A lease is atomic: while one agent holds
 
 `otea update` changes fields of an open item (a blank value clears an optional field) and records the old and new values in the timeline; items in a closed state (turn `none`) cannot be updated. Agents act through the CLI, so it only performs transitions whose authority is `agent`. Approving work (`review` -> `done` in the tasks preset) is `human-ui`: the CLI refuses it with exit code 7 (`forbidden`).
 
+### Projects
+
+`otea init` creates the project in `.otea/` at the repository root (or in the folder itself outside git). Every command finds it from any subfolder or git worktree of that repo: it starts at the main repo root and walks up parent folders to the nearest one holding `.otea/otea.db`. So one project can also live in a product folder above several repos (the folder need not be a repo): run `otea init` there, and commands from inside any of those repos use it. `otea init` inside a repo that such a project already covers refuses; `otea init --here` creates a separate project at the repo, which then wins for it. `OTEA_PROJECT=<path>` skips discovery and names the project folder directly. The MCP server and `otea serve` find the project the same way.
+
 ### Attaching evidence
 
 Agents attach files to an item as proof of their work: a GIF reproducing a bug, a before and after screenshot, a video, a diff, a log or test output.
