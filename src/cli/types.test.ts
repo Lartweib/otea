@@ -11,7 +11,7 @@ describe('item types', () => {
   beforeEach(async () => {
     repo = tempGitRepo();
     otea = cliAt(repo.dir);
-    await otea('init');
+    await otea('init', '--local');
     repo.write('.otea/presets/work/preset.yaml', MIXED_YAML);
     await otea('collection', 'add', 'work', '--preset', 'work');
     await otea('collection', 'add', 'tasks');

@@ -26,7 +26,7 @@ describe('open', () => {
     otea = cliAt(repo.dir, {}, interrupt.signal, async (url) => {
       opened.push(url);
     });
-    await otea('init');
+    await otea('init', '--local');
   });
 
   afterEach(async () => {
@@ -87,7 +87,7 @@ describe('open', () => {
 
   it('refuses a server that belongs to another project', async () => {
     const other = tempGitRepo();
-    await cliAt(other.dir)('init');
+    await cliAt(other.dir)('init', '--local');
     const { port } = await serve(other.dir);
     await serve();
 

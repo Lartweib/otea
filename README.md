@@ -65,23 +65,23 @@ Agents claim an item before working it. A lease is atomic: while one agent holds
 
 ### Projects
 
-`otea init` creates the project in `.otea/` at the repository root (or in the folder itself outside git). Every command finds it from any subfolder or git worktree of that repo: it starts at the main repo root and walks up parent folders to the nearest one holding `.otea/otea.db`. So one project can also live in a product folder above several repos (the folder need not be a repo): run `otea init` there, and commands from inside any of those repos use it. `otea init` inside a repo that such a project already covers refuses; `otea init --here` creates a separate project at the repo, which then wins for it. `OTEA_PROJECT=<path>` skips discovery and names the project folder directly (or a registered folder, or a project id). The MCP server and `otea serve` find the project the same way.
+`otea init` creates the project for the repository root (or the folder itself outside git) in common storage: its data goes to `$OTEA_HOME/data/<id>/` (`OTEA_HOME` defaults to `~/.otea`), the user-level registry links the root to it, and nothing is written into the repo. `otea init --local` keeps the data in `.otea/` at the root instead, excluded from git through `.git/info/exclude`. Every command finds the project from any subfolder or git worktree of that repo: the nearest registered folder containing the working directory or the main repo root, or else the nearest folder above the main repo root holding `.otea/otea.db`. So one project can also live in a product folder above several repos (the folder need not be a repo): run `otea init` there, and commands from inside any of those repos use it. `otea init` inside a repo that such a project already covers refuses; `otea init --here` creates a separate project at the repo, which then wins for it. `OTEA_PROJECT=<path>` skips discovery and names the project folder directly (or a registered folder, or a project id). The MCP server and `otea serve` find the project the same way.
 
 Each project has an identity stored in its database: a name (its folder's) and an id, the name as a slug plus six random base32 characters (`my-app-k3x7qa`). `otea init --json` prints both next to `root`, `path` (the data folder) and `storage`, and `GET /api/project` returns them. A database created before identities gets one the first time it is opened.
 
 ### Linking several repos to one project
 
-A product split across separate repos (not nested in one folder) can share one project in common storage, kept in the Otea home (`OTEA_HOME`, default `~/.otea`) instead of in any repo:
+A product split across separate repos (not nested in one folder) can share one project, since common storage keeps it in the Otea home (`OTEA_HOME`, default `~/.otea`) instead of in any repo:
 
 ```sh
-cd ~/code/api && otea init --common      # creates the project, prints its data folder
+cd ~/code/api && otea init               # creates the project, prints its data folder
 otea projects current                    # api-k3x7qa  api  common, then the root and the data folder
 cd ~/code/web && otea init --join api-k3x7qa   # or the project's name, when it is unique
 otea projects add ~/notes/api --to api-k3x7qa  # any other folder
 otea projects list                       # every registered project with its linked folders
 ```
 
-Commands, the MCP server and `otea serve` in any linked folder (and its subfolders and worktrees) then use that project: an item created from `api` is listed from `web`. Common storage writes nothing into the repo, not even `.otea/`. The user-level registry (`$OTEA_HOME/registry.db`) records which folders lead to which project: a folder belongs to one project only, a folder with its own `.otea/` project cannot be linked, and when both a linked folder and a local project contain the working directory, the nearer one wins. `otea init` with no option still creates a local project in `.otea/`.
+Commands, the MCP server and `otea serve` in any linked folder (and its subfolders and worktrees) then use that project: an item created from `api` is listed from `web`. Common storage writes nothing into the repo, not even `.otea/`. The user-level registry (`$OTEA_HOME/registry.db`) records which folders lead to which project: a folder belongs to one project only, a folder with its own `.otea/` project cannot be linked, and when both a linked folder and a local project contain the working directory, the nearer one wins. A local project (`otea init --local`) cannot be shared this way.
 
 ### Attaching evidence
 
@@ -94,7 +94,7 @@ otea attach BUGS-1 test-output.log --caption "12 tests pass" --as claude
 otea show BUGS-1                           # lists the evidence above the timeline
 ```
 
-- `otea attach <id> <file>` copies the file into `.otea/evidence/`, named by its sha256, so attaching the same content twice stores it once; `.otea` is excluded from git. It prints the entry: id, role, kind, file name, size and caption (`--json`: also `contentType`, `sha256`, `createdAt`, `actor` and `channel`). A relative path is resolved against the current directory.
+- `otea attach <id> <file>` copies the file into `evidence/` in the project's data folder (`.otea/evidence/` for a local project), named by its sha256, so attaching the same content twice stores it once; nothing lands in the repo's tracked files. It prints the entry: id, role, kind, file name, size and caption (`--json`: also `contentType`, `sha256`, `createdAt`, `actor` and `channel`). A relative path is resolved against the current directory.
 - `--role` is `before`, `after` or `single` (the default). There is no pair id: a viewer pairs the latest `before` with the latest `after`.
 - When the item's type places evidence modules in its layout (see the product definition, §9), the file goes to one of them, and the entry records which (`module`, its id):
   - A file no module of the type accepts is refused with exit 15 (`evidence_not_accepted`); the message lists what each module takes.
@@ -202,7 +202,7 @@ Every collection is governed by a preset: its fields, states, turns and transiti
 - [`bug-triage`](presets/bug-triage/playbook.md): an agent files a documented bug (steps, expected and actual, environment, severity), you triage it, the agent fixes the ones you accept and returns proof, and you verify the fix. It lists bugs in a grid by category (an enum: crash, visual, gameplay, physics, audio, performance, ui), severity and area. Area is free text, in the words the project uses; the grid filters and groups by it as written (lowercased, so `Farm` and `farm` are one), and a project that wants a fixed set of values can make it an enum in its own preset. `otea collection add bugs --preset bug-triage`
 - [`change`](presets/change/playbook.md): one piece of work across several repos. You create a `change`; the agent plans it as one `repo_task` child per repo (with its `repo` and `branch`), you approve each repo task's plan (`proposed` to `ready`), the agent implements it, records its pull request (`pr`) and hands it to `pr_review`, and you approve it (`approved`, which closes it), and then the agent merges it. The change goes to `verify` once every repo task is closed. A repo task's gates say whether its branch may be pushed (only while `implementing` or `revising`; it is frozen in review) and merged (only once `approved`): `otea show <id> --json` carries `"gates": {"push": true, "merge": false}`. Otea does not talk to any forge: the agent fills `repo`, `branch` and `pr` with `otea update`. `otea collection add changes --preset change`
 
-A project can add its own in `.otea/presets/<name>/preset.yaml` (with its `playbook.md`) and use it with `otea collection add <collection> --preset <name>`; project presets cannot reuse an official name. The format is described in §9 of the [product definition](docs/otea-product-definition.md#9-preset-format).
+A project can add its own in `presets/<name>/preset.yaml` in its data folder (`otea projects current` prints it; `.otea/presets/` for a local project) (with its `playbook.md`) and use it with `otea collection add <collection> --preset <name>`; project presets cannot reuse an official name. The format is described in §9 of the [product definition](docs/otea-product-definition.md#9-preset-format).
 
 A preset can hold several **item types** in one collection, for example bugs and improvements, each with its own fields, workflow and layout. Items then carry their type: `otea create --collection work --type bug --title "..."` (`--type` is required only when the preset has more than one type), `otea list --type impr`, and `list`, `show` and every `--json` output include it. A preset without `types` has a single type, `item`, so nothing changes for `tasks` and `bug-triage`. Each type may name an icon the web UI draws beside its items (`icon: bug`, or a top-level `icon` for a preset without types; `tasks` uses `checkbox` and `bug-triage` uses `bug`); an unknown name is a preset problem that suggests the close ones. Closed states say what closing means (`closes: done` or `closes: discarded`), and an agent can never close an item as `done`. `otea validate` checks types, layouts and closing kinds, and reports items whose type the preset no longer declares.
 
@@ -217,7 +217,7 @@ cd /path/to/your/project
 otea serve                  # Otea running at http://127.0.0.1:4400
 ```
 
-`otea serve` opens your browser already signed in to act on items (the session lives in an HTTP-only cookie; the token in `.otea/ui-token` is never printed). Pass `--no-open` to skip the browser, and run `otea open` from the project later to sign a browser in to the running server. A tab opened on the plain URL without signing in is read-only.
+`otea serve` opens your browser already signed in to act on items (the session lives in an HTTP-only cookie; the token in `ui-token` in the project's data folder is never printed). Pass `--no-open` to skip the browser, and run `otea open` from the project later to sign a browser in to the running server. A tab opened on the plain URL without signing in is read-only.
 
 In another terminal in the same project, create and move items and watch them update:
 

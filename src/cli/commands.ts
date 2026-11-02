@@ -83,22 +83,22 @@ const AGENTS_MD_TEXT: Readonly<Record<AgentsMdAction, (path: string) => string>>
 const init: Command = {
   name: 'init',
   summary:
-    'Create or reuse the project at the repository root: in .otea there, or with --common in the Otea home; --join <project> links the repo to a registered project instead (refused when a project in a folder above covers it, unless --here); --agents-md also adds (or refreshes) a block in AGENTS.md telling agents to run "otea playbook"',
+    'Create or reuse the project at the repository root: in the Otea home ($OTEA_HOME, default ~/.otea), or with --local in .otea at the root; --join <project> links the repo to a registered project instead (refused when a project in a folder above covers it, unless --here); --agents-md also adds (or refreshes) a block in AGENTS.md telling agents to run "otea playbook"',
   args: [],
   options: {
     'agents-md': { flag: true },
     here: { flag: true },
-    common: { flag: true },
+    local: { flag: true },
     join: { placeholder: 'project' },
   },
   execute: ({ cwd, flag, option }) => {
     const target = option('join');
-    if (target !== undefined && (flag('common') || flag('here'))) {
-      throw new UsageError('--join links to an existing project; it takes no --common or --here');
+    if (target !== undefined && (flag('local') || flag('here'))) {
+      throw new UsageError('--join links to an existing project; it takes no --local or --here');
     }
     const options = {
       here: flag('here'),
-      common: flag('common'),
+      local: flag('local'),
       ...(target === undefined ? {} : { join: target }),
     };
     const { root, dataDir: path, storage, db, identity } = initProject(cwd, options);

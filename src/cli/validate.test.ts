@@ -19,7 +19,7 @@ describe('validate', () => {
   beforeEach(async () => {
     repo = tempGitRepo();
     otea = cliAt(repo.dir);
-    await otea('init');
+    await otea('init', '--local');
     await otea('collection', 'add', 'tasks');
     await otea('create', '--collection', 'tasks', '--title', 'A', '--description', 'D');
   });

@@ -31,7 +31,7 @@ describe('commands', () => {
 
     beforeEach(async () => {
       product = realpathSync.native(mkdtempSync(join(tmpdir(), 'otea-product-')));
-      await cliAt(product)('init');
+      await cliAt(product)('init', '--local');
       api = join(product, 'api');
       mkdirSync(join(api, 'src'), { recursive: true });
       execFileSync('git', ['init', '--quiet'], { cwd: api, stdio: 'ignore' });
@@ -47,20 +47,20 @@ describe('commands', () => {
     });
 
     it('refuses init in the repo unless --here', async () => {
-      const refused = await otea('init');
+      const refused = await otea('init', '--local');
 
       expect(refused.code).toBe(5);
       expect(refused.err).toContain(`The Otea project at ${product} already covers`);
       expect(refused.err).toContain('--here');
 
-      const here = await json('init', '--here');
+      const here = await json('init', '--local', '--here');
       expect(here.root).toBe(api);
     });
   });
 
   describe('with a project', () => {
     beforeEach(async () => {
-      await otea('init');
+      await otea('init', '--local');
     });
 
     describe('collection add', () => {

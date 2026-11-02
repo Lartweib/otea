@@ -44,7 +44,7 @@ describe('project', () => {
   it('initializes .otea at the repo root and excludes it', () => {
     const repo = gitRepo();
 
-    const project = track(initProject(repo));
+    const project = track(initProject(repo, { local: true }));
 
     expect(project.root).toBe(repo);
     expect(project.db.prepare('PRAGMA user_version').get()?.user_version).toBe(8);
@@ -56,7 +56,7 @@ describe('project', () => {
     it('is created on init, named after the folder', () => {
       const repo = gitRepo();
 
-      const { identity } = track(initProject(repo));
+      const { identity } = track(initProject(repo, { local: true }));
 
       expect(identity).toEqual({
         id: expect.stringMatching(/^otea-project-[a-z0-9-]+-[a-z2-7]{6}$/),
@@ -66,10 +66,10 @@ describe('project', () => {
 
     it('stays the same on every later open', () => {
       const repo = gitRepo();
-      const { identity } = track(initProject(repo));
+      const { identity } = track(initProject(repo, { local: true }));
 
       expect(track(openProject(repo, ENV)).identity).toEqual(identity);
-      expect(track(initProject(repo)).identity).toEqual(identity);
+      expect(track(initProject(repo, { local: true })).identity).toEqual(identity);
     });
 
     it('is backfilled into a database from before identities', () => {
@@ -91,15 +91,15 @@ describe('project', () => {
     const nested = join(repo, 'src', 'deep');
     mkdirSync(nested, { recursive: true });
 
-    expect(track(initProject(nested)).root).toBe(repo);
+    expect(track(initProject(nested, { local: true })).root).toBe(repo);
   });
 
   it('is idempotent', () => {
     const repo = gitRepo();
-    initProject(repo).db.close();
+    initProject(repo, { local: true }).db.close();
     const before = exclude(repo);
 
-    track(initProject(repo));
+    track(initProject(repo, { local: true }));
 
     expect(exclude(repo)).toBe(before);
   });
@@ -109,7 +109,7 @@ describe('project', () => {
     commit(repo);
     const worktree = join(tempDir(), 'wt');
     git(repo, 'worktree', 'add', '--quiet', worktree);
-    track(initProject(repo));
+    track(initProject(repo, { local: true }));
 
     expect(track(openProject(worktree, ENV)).root).toBe(repo);
   });
@@ -117,7 +117,7 @@ describe('project', () => {
   it('uses the directory itself outside git', () => {
     const dir = tempDir();
 
-    expect(track(initProject(dir)).root).toBe(dir);
+    expect(track(initProject(dir, { local: true })).root).toBe(dir);
   });
 
   it('fails to open with not_found before init', () => {
@@ -134,7 +134,7 @@ describe('project', () => {
       mkdirSync(api);
       git(api, 'init', '--quiet');
       commit(api);
-      track(initProject(product));
+      track(initProject(product, { local: true }));
       return { product, api };
     }
 
@@ -156,7 +156,7 @@ describe('project', () => {
 
     it('gives way to a nearer project', () => {
       const { api } = productFolder();
-      track(initProject(api, { here: true }));
+      track(initProject(api, { here: true, local: true }));
 
       expect(track(openProject(join(api), ENV)).root).toBe(api);
     });
@@ -172,7 +172,7 @@ describe('project', () => {
     it('makes init inside a repo refuse without --here', () => {
       const { product, api } = productFolder();
 
-      expect(() => initProject(api)).toThrow(
+      expect(() => initProject(api, { local: true })).toThrow(
         expect.objectContaining({
           code: 'already_exists',
           message: expect.stringContaining(product),
@@ -184,30 +184,30 @@ describe('project', () => {
     it('lets init --here create a project at the repo', () => {
       const { api } = productFolder();
 
-      expect(track(initProject(api, { here: true })).root).toBe(api);
+      expect(track(initProject(api, { here: true, local: true })).root).toBe(api);
       expect(exclude(api).split(/\r?\n/)).toContain('.otea/');
     });
 
     it('reuses the project when init runs again in its folder', () => {
       const { product } = productFolder();
 
-      expect(track(initProject(product)).root).toBe(product);
+      expect(track(initProject(product, { local: true })).root).toBe(product);
     });
   });
 
   describe('OTEA_PROJECT', () => {
     it('overrides discovery', () => {
       const repo = gitRepo();
-      track(initProject(repo));
+      track(initProject(repo, { local: true }));
       const other = tempDir();
-      track(initProject(other));
+      track(initProject(other, { local: true }));
 
       expect(track(openProject(repo, { ...ENV, OTEA_PROJECT: other })).root).toBe(other);
     });
 
     it('fails with not_found when it names a folder without a project', () => {
       const repo = gitRepo();
-      track(initProject(repo));
+      track(initProject(repo, { local: true }));
       const empty = tempDir();
 
       expect(() => openProject(repo, { ...ENV, OTEA_PROJECT: empty })).toThrow(
@@ -226,7 +226,7 @@ describe('project', () => {
       const env = home();
       const repo = gitRepo();
 
-      const project = track(initProject(repo, { common: true }, env));
+      const project = track(initProject(repo, {}, env));
 
       expect(project).toMatchObject({ root: repo, storage: 'common' });
       expect(project.dataDir).toBe(join(env.OTEA_HOME, 'data', project.identity.id));
@@ -242,7 +242,7 @@ describe('project', () => {
       const env = home();
       const repo = gitRepo();
       commit(repo);
-      const { identity } = track(initProject(repo, { common: true }, env));
+      const { identity } = track(initProject(repo, {}, env));
       const src = join(repo, 'src');
       mkdirSync(src);
       const worktree = join(tempDir(), 'wt');
@@ -255,7 +255,7 @@ describe('project', () => {
     it('reuses the project when init runs again in the repo', () => {
       const env = home();
       const repo = gitRepo();
-      const { identity } = track(initProject(repo, { common: true }, env));
+      const { identity } = track(initProject(repo, {}, env));
 
       expect(track(initProject(repo, {}, env)).identity).toEqual(identity);
     });
@@ -265,7 +265,7 @@ describe('project', () => {
       const a = gitRepo();
       const b = gitRepo();
       const c = gitRepo();
-      const first = track(initProject(a, { common: true }, env));
+      const first = track(initProject(a, {}, env));
       addCollection(first, { name: 'tasks' });
 
       const joined = track(initProject(b, { join: first.identity.id }, env));
@@ -281,8 +281,8 @@ describe('project', () => {
       const env = home();
       const a = gitRepo();
       const b = gitRepo();
-      const first = track(initProject(a, { common: true }, env));
-      const second = track(initProject(b, { common: true }, env));
+      const first = track(initProject(a, {}, env));
+      const second = track(initProject(b, {}, env));
 
       expect(() => initProject(b, { join: first.identity.id }, env)).toThrow(
         expect.objectContaining({ code: 'already_exists' }),
@@ -299,8 +299,8 @@ describe('project', () => {
       const env = home();
       const a = gitRepo();
       const local = gitRepo();
-      const { identity } = track(initProject(a, { common: true }, env));
-      track(initProject(local, {}, env));
+      const { identity } = track(initProject(a, {}, env));
+      track(initProject(local, { local: true }, env));
 
       expect(() => initProject(local, { join: identity.id }, env)).toThrow(
         expect.objectContaining({ code: 'already_exists' }),
@@ -313,7 +313,7 @@ describe('project', () => {
     it('links any folder with addPathToProject', () => {
       const env = home();
       const repo = gitRepo();
-      const { identity } = track(initProject(repo, { common: true }, env));
+      const { identity } = track(initProject(repo, {}, env));
       const notes = tempDir();
 
       expect(addPathToProject(notes, identity.id, env)).toMatchObject({
@@ -329,7 +329,7 @@ describe('project', () => {
       const api = join(product, 'api');
       mkdirSync(api);
       git(api, 'init', '--quiet');
-      const { identity } = track(initProject(product, { common: true }, env));
+      const { identity } = track(initProject(product, {}, env));
 
       expect(track(openProject(api, env)).identity).toEqual(identity);
       expect(() => initProject(api, {}, env)).toThrow(
@@ -338,7 +338,7 @@ describe('project', () => {
           message: expect.stringContaining(product),
         }),
       );
-      expect(track(initProject(api, { here: true }, env)).storage).toBe('local');
+      expect(track(initProject(api, { here: true, local: true }, env)).storage).toBe('local');
       expect(track(openProject(api, env)).root).toBe(api);
     });
 
@@ -348,9 +348,9 @@ describe('project', () => {
       const api = join(product, 'api');
       mkdirSync(api);
       git(api, 'init', '--quiet');
-      track(initProject(product, {}, env));
+      track(initProject(product, { local: true }, env));
 
-      const nearer = track(initProject(api, { common: true, here: true }, env));
+      const nearer = track(initProject(api, { here: true }, env));
 
       expect(track(openProject(api, env)).identity).toEqual(nearer.identity);
       expect(track(openProject(product, env)).storage).toBe('local');
@@ -358,7 +358,7 @@ describe('project', () => {
 
     it('is named by id in OTEA_PROJECT', () => {
       const env = home();
-      const { identity } = track(initProject(gitRepo(), { common: true }, env));
+      const { identity } = track(initProject(gitRepo(), {}, env));
 
       expect(track(openProject(tempDir(), { ...env, OTEA_PROJECT: identity.id })).identity).toEqual(
         identity,
@@ -368,7 +368,7 @@ describe('project', () => {
     it('fails with not_found when its data is gone', () => {
       const env = home();
       const repo = gitRepo();
-      const project = initProject(repo, { common: true }, env);
+      const project = initProject(repo, {}, env);
       project.db.close();
       rmSync(project.dataDir, { recursive: true, force: true });
 

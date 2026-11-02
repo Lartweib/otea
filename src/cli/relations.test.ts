@@ -34,7 +34,7 @@ describe('relations', () => {
   beforeEach(async () => {
     repo = tempGitRepo();
     otea = cliAt(repo.dir, { OTEA_AGENT: 'claude' });
-    await otea('init');
+    await otea('init', '--local');
     await otea('collection', 'add', 'epics');
     await otea('collection', 'add', 'parts');
     await otea('create', '--collection', 'epics', '--title', 'Create wolf', '--description', 'D');

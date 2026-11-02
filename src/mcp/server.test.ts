@@ -37,7 +37,7 @@ describe('mcp server', () => {
   beforeEach(async () => {
     repo = tempGitRepo();
     otea = cliAt(repo.dir, { OTEA_AGENT: 'claude' });
-    await otea('init');
+    await otea('init', '--local');
     await otea('collection', 'add', 'tasks');
     await otea('create', '--collection', 'tasks', '--title', 'Docs', '--description', 'For v1');
     await otea('create', '--collection', 'tasks', '--title', 'Vague');

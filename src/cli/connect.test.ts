@@ -30,13 +30,13 @@ describe('setup for agents', () => {
 
   describe('init --agents-md', () => {
     it('never touches AGENTS.md without the flag', async () => {
-      await otea('init');
+      await otea('init', '--local');
 
       expect(existsSync(join(repo.dir, 'AGENTS.md'))).toBe(false);
     });
 
     it('creates AGENTS.md with the Otea block', async () => {
-      const { code, out } = await otea('init', '--agents-md');
+      const { code, out } = await otea('init', '--local', '--agents-md');
 
       expect(code).toBe(0);
       expect(read('AGENTS.md')).toBe(`${BLOCK}\n`);
@@ -48,7 +48,7 @@ describe('setup for agents', () => {
     it('appends the block to an existing AGENTS.md and keeps what it says', async () => {
       repo.write('AGENTS.md', '# Agents\n\nRun the tests.\n');
 
-      expect((await json('init', '--agents-md')).agentsMd).toEqual({
+      expect((await json('init', '--local', '--agents-md')).agentsMd).toEqual({
         path: join(repo.dir, 'AGENTS.md'),
         action: 'added',
       });
@@ -57,10 +57,10 @@ describe('setup for agents', () => {
 
     it('is idempotent: running it again changes nothing', async () => {
       repo.write('AGENTS.md', '# Agents\n');
-      await otea('init', '--agents-md');
+      await otea('init', '--local', '--agents-md');
       const once = read('AGENTS.md');
 
-      expect((await json('init', '--agents-md')).agentsMd.action).toBe('unchanged');
+      expect((await json('init', '--local', '--agents-md')).agentsMd.action).toBe('unchanged');
       expect(read('AGENTS.md')).toBe(once);
     });
 
@@ -70,14 +70,14 @@ describe('setup for agents', () => {
         '# Agents\n\n<!-- otea:begin -->\nold words\n<!-- otea:end -->\n\n## Style\n',
       );
 
-      expect((await json('init', '--agents-md')).agentsMd.action).toBe('updated');
+      expect((await json('init', '--local', '--agents-md')).agentsMd.action).toBe('updated');
       expect(read('AGENTS.md')).toBe(`# Agents\n\n${BLOCK}\n\n## Style\n`);
     });
   });
 
   describe('connect', () => {
     beforeEach(async () => {
-      await otea('init');
+      await otea('init', '--local');
     });
 
     const entry = (name: string) => ({
