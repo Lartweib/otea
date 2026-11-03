@@ -63,7 +63,7 @@ import { parseDuration } from '../core/lease.ts';
 import { describeRelation, RELATION_KINDS } from '../core/relations.ts';
 import { TURNS, type Turn } from '../core/workflow.ts';
 import { createMcpServer, serveStdio } from '../mcp/server.ts';
-import { formatCode, lanAddresses } from '../server/lan.ts';
+import { formatCode, lanAddresses, localName } from '../server/lan.ts';
 import { ALL_INTERFACES, DEFAULT_PORT, listen } from '../server/listen.ts';
 import { pairingUrl } from '../server/pairing.ts';
 import { createServer } from '../server/server.ts';
@@ -943,8 +943,14 @@ function portFrom(value: string | undefined): number {
   return port;
 }
 
-// With LAN access: the URLs a device on the network opens, and the first pairing code.
-type LanServed = { urls: string[]; pairingUrl: string | undefined; code: string | undefined };
+// With LAN access: the URLs a device on the network opens (the .local name first when it
+// resolves), the first pairing code, and the same pairing link by IP when the first is a name.
+type LanServed = {
+  urls: string[];
+  pairingUrl: string | undefined;
+  byAddress?: string;
+  code: string | undefined;
+};
 
 type Served = { url: string; signInUrl: string; lan?: LanServed };
 
@@ -959,7 +965,9 @@ async function serveUntil(
     const dir = project.dataDir;
     const token = ensureUiToken(dir);
     const addresses = lan ? lanAddresses() : [];
-    const server = createServer(project, lan ? { token, lan: { addresses } } : { token });
+    const name = lan ? await localName(addresses) : undefined;
+    const names = name ? [name] : [];
+    const server = createServer(project, lan ? { token, lan: { addresses, names } } : { token });
     const running = await listen(server, port, lan ? ALL_INTERFACES : undefined);
     writeServeFile(dir, { port: running.port, pid: process.pid });
     const stop = () => {
@@ -969,14 +977,20 @@ async function serveUntil(
     signal.addEventListener('abort', stop, { once: true });
     const served = { url: running.url, signInUrl: signInUrl(running.url, token) };
     if (!server.lan) return served;
-    const urls = addresses.map((address) => `http://${address}:${running.port}`);
+    const urls = [...names, ...addresses].map((host) => `http://${host}:${running.port}`);
     const code = server.lan.codes.issue();
     const first = urls[0];
+    const address = addresses[0];
+    const byAddress =
+      names.length > 0 && address !== undefined
+        ? { byAddress: pairingUrl(`http://${address}:${running.port}`, code) }
+        : {};
     return {
       ...served,
       lan: {
         urls,
         pairingUrl: first === undefined ? undefined : pairingUrl(first, code),
+        ...byAddress,
         code: first === undefined ? undefined : formatCode(code.code),
       },
     };
@@ -997,6 +1011,7 @@ function lanText(lan: LanServed): string {
   return [
     `LAN access on: ${lan.urls.join(', ')} (same network only; use Tailscale when away)`,
     `Pair a phone: scan this code, or open ${lan.pairingUrl} (pairing code ${lan.code}, 10 minutes, works once)`,
+    ...(lan.byAddress ? [`If the phone cannot open the .local name, open ${lan.byAddress}`] : []),
     renderUnicodeCompact(lan.pairingUrl, { ecc: 'M', border: 2 }),
     'A new code and the paired devices are in the UI, under Phone access; otea devices list and revoke them too',
   ].join('\n');

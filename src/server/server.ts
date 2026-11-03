@@ -78,8 +78,9 @@ export type ServerOptions = {
   pollIntervalMs?: number;
   uiDir?: string;
   token?: string;
-  // LAN access, off unless given: the addresses of this computer a paired device may reach it at.
-  lan?: { addresses: string[] };
+  // LAN access, off unless given: the addresses of this computer a paired device may reach it at,
+  // and the names (its mDNS `<hostname>.local`) that resolve to one of them.
+  lan?: { addresses: string[]; names?: string[] };
   now?: Clock;
 };
 
@@ -244,7 +245,14 @@ function isPairingPath(c: Context): boolean {
   const { method, path } = c.req;
   if (method === 'POST') return path === '/api/pair' || path === '/api/pair/peek';
   if (method !== 'GET' && method !== 'HEAD') return false;
-  return path === '/pair' || path.startsWith('/assets/') || /^\/otea-[a-z-]+\.svg$/.test(path);
+  // The home-screen manifest and icons too: a phone adds Otea to its home screen before it pairs.
+  return (
+    path === '/pair' ||
+    path === '/manifest.webmanifest' ||
+    path.startsWith('/assets/') ||
+    path.startsWith('/icons/') ||
+    /^\/otea-[a-z-]+\.svg$/.test(path)
+  );
 }
 
 function remoteAddress(c: Context): string | undefined {
@@ -262,7 +270,7 @@ export function createServer(project: Project, options: ServerOptions = {}): Ote
   const streams = liveStreams(feed, () => presenceSignature(project.db));
   const now = options.now ?? Date.now;
   const lan: Lan | undefined = options.lan && {
-    addresses: options.lan.addresses,
+    hosts: [...(options.lan.names ?? []), ...options.lan.addresses],
     codes: new PairingCodes(now),
     attempts: new AttemptLimiter(now),
   };
@@ -270,8 +278,9 @@ export function createServer(project: Project, options: ServerOptions = {}): Ote
   const app = new Hono<OteaEnv>();
   // Without LAN access the server listens on 127.0.0.1 only, and every request is this computer's.
   // With it, a request from this computer must still name localhost; one from the network must come
-  // from a private address and name one of this computer's addresses by IP (a DNS name is how a
-  // rebinding page gets in), and then carries a device token or reaches only the pairing screen.
+  // from a private address and name one of this computer's addresses or its own .local name (any
+  // other DNS name is how a rebinding page gets in), and then carries a device token or reaches only
+  // the pairing screen.
   const identify = (c: Context): Client => {
     const host = c.req.header('host');
     const remote = remoteAddress(c);
@@ -280,7 +289,7 @@ export function createServer(project: Project, options: ServerOptions = {}): Ote
         throw new ForbiddenHost(`Host "${host ?? ''}" is not allowed`);
       return { kind: 'local' };
     }
-    const named = lan.addresses.some((address) => host === `${address}:${port}`);
+    const named = lan.hosts.some((name) => host?.toLowerCase() === `${name}:${port}`);
     if (remote === undefined || !isPrivateAddress(remote) || !named) {
       throw new ForbiddenHost(`Host "${host ?? ''}" is not allowed`);
     }

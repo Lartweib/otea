@@ -5,6 +5,8 @@ import {
   formatCode,
   isLoopback,
   isPrivateAddress,
+  localName,
+  localNameOf,
   MAX_ATTEMPTS,
   PairingCodes,
   rankAddress,
@@ -98,5 +100,34 @@ describe('attempt limiter', () => {
     expect(limiter.allow('b')).toBe(true);
     now = 60_000;
     expect(limiter.allow('a')).toBe(true);
+  });
+});
+
+describe('the .local name', () => {
+  it('is the hostname as one DNS label', () => {
+    expect(localNameOf('Lartweib')).toBe('lartweib.local');
+    expect(localNameOf('Federicos-MacBook.local')).toBe('federicos-macbook.local');
+    expect(localNameOf('host.example.com')).toBeUndefined();
+    expect(localNameOf('-bad')).toBeUndefined();
+  });
+
+  it('is kept only when it resolves to an address LAN access answers on', async () => {
+    const resolve = async () => ['192.168.1.24'];
+
+    expect(await localName(['192.168.1.24'], { host: 'desk', resolve })).toBe('desk.local');
+    expect(await localName(['10.0.0.5'], { host: 'desk', resolve })).toBeUndefined();
+    expect(await localName([], { host: 'desk', resolve })).toBeUndefined();
+  });
+
+  it('is dropped when it does not resolve, or not in time', async () => {
+    const fails = async () => {
+      throw new Error('ENOTFOUND');
+    };
+    const never = () => new Promise<string[]>(() => {});
+
+    expect(await localName(['192.168.1.24'], { host: 'desk', resolve: fails })).toBeUndefined();
+    expect(
+      await localName(['192.168.1.24'], { host: 'desk', resolve: never, timeoutMs: 10 }),
+    ).toBeUndefined();
   });
 });
