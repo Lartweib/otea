@@ -10,7 +10,7 @@ Agents produce work faster than a human can follow it live. Otea is where work c
 
 - **Triage** many findings at once: filter, group, prioritize, discard.
 - **Review** results in depth: GIFs, video, diffs, logs, with concrete questions the agent reads back and acts on.
-- **Presets** shape each board and carry the agent playbook, so sharing a preset shares a way of working.
+- **Presets** shape each board and carry the agent playbook, so sharing a preset shares a way of working. **Blueprints** build a set of boards at once and say which links may join them.
 - **Local-first**: data stays with your project. No cloud, no accounts.
 - **Harness-neutral**: any agent with a shell (CLI) or MCP support can use it.
 - **Traceable**: every change is an append-only event, with who made it and through which channel.
@@ -53,7 +53,7 @@ otea move TASKS-2 todo                     # refused (exit 8) while a required f
 otea update TASKS-2 --description "Fails on CI only, see run 42"   # fill what was missing
 otea move TASKS-2 todo
 otea move TASKS-4 discarded --reason "Out of scope"   # an incomplete item can be closed with a reason
-otea validate                              # check presets, collections and items
+otea validate                              # check presets, blueprints, collections and items
 otea check --gate push --branch --repo     # may this branch be pushed? exit 0 yes, 1 no (fails open)
 otea hook install --git --claude           # in a repo: make that check a pre-push hook and a Claude Code hook
 otea help                                  # every command, global options and exit codes
@@ -92,7 +92,7 @@ When a repo moves, `otea projects relink <old> <new>` points its link at the new
 A project created in `.otea/` (with `otea init --local`, or before common storage was the default) stays there until you move it; Otea never migrates on its own. `otea migrate --to common`, run from the project:
 
 1. copies the database into `$OTEA_HOME/data/<id>/` with `VACUUM INTO` and checks the copy (`PRAGMA integrity_check`, and the same row count and last row id in every table);
-2. copies `evidence/` and `presets/`, registers the project (same id) and links its folder;
+2. copies `evidence/`, `presets/`, `blueprints/` and the blueprint copy, registers the project (same id) and links its folder;
 3. renames `.otea/` to `.otea.migrated-<date>-<time>/`, a backup Otea never deletes (excluded from git like `.otea/`);
 4. prints what it did and how to undo it: `otea projects forget <folder>`, rename the backup back to `.otea`, and delete the copied data folder once it is no longer needed.
 
@@ -251,6 +251,36 @@ types:
 - `GET /api/collections` and `/api/presets` carry `children` and `root` on each type of a preset with a hierarchy, and the web UI's **+ child** offers only the types the parent takes (and hides on a type that takes none); **New item** offers only the types that may stand alone.
 
 A type may have its own **playbook**, `playbook: ./epic.md`, beside the preset's, in the same folder. The hint of `otea show` takes the section for the state from the item's type's playbook first, then from the preset's. `otea playbook --collection <name>` prints the preset's playbook, then each type's own under `--- Type <type> ---`; its `--json` adds `types`, a list of `{type, playbook}` for the types that have one (empty when none do). The MCP `playbook` tool returns the same.
+
+### Blueprints
+
+A **blueprint** is a set of boards, each a collection name plus a preset, and the links allowed between them. It builds all of a project's boards at once and says how they work together:
+
+```yaml
+blueprint: product
+blueprint_version: 1
+playbook: ./playbook.md          # optional: the coordination playbook, in Markdown
+boards:
+  work: { preset: tasks }
+  bugs: { preset: bug-triage }
+connections:                     # <board>.<type> <kind> <board>.<type>
+  - bugs.item blocks work.item
+```
+
+A connection lets an item of one type in one board link to an item of one type in another, with one kind: `blocks`, `implements`, `relates` (either way) or `duplicates`. `parent` is never a connection; it stays inside a board.
+
+```sh
+otea init --blueprint product         # create the project and every board of the blueprint
+otea blueprint apply ./shared/studio  # or build them in an existing project (a name, or a path with a slash)
+otea blueprint status                 # compare the project's copy with its source
+otea blueprint update                 # bring the source's changes in, after confirmation (--yes skips it)
+```
+
+- Official blueprints live in [`blueprints/`](blueprints/) next to `presets/`: [`product`](blueprints/product/playbook.md) builds `work` (tasks) and `bugs` (bug-triage), where a bug can block a task. A project adds its own in `blueprints/<name>/blueprint.yaml` in its data folder (`.otea/blueprints/` for a local project), under names the official ones do not use.
+- Applying a blueprint creates each board as a collection; an existing collection of the same name and preset becomes its board, and one with another preset stops the apply before anything is created. A project has one blueprint.
+- The project keeps its **own copy** in `blueprint.yaml` in its data folder (with the playbook beside it as `blueprint.md`), plus where it came from and the hash of the source. It is a copy, not a live reference: editing the source changes nothing until `otea blueprint update`. `otea blueprint status` and `otea validate` list what the source changed (`+ board qa (preset tasks)`, `- bugs.item blocks work.item`, `~ playbook`). Update adds boards and connections, and removes or rebuilds a board only while it has no items: a board with items is kept and reported.
+- Once a project has a blueprint, a link between two of its boards that the blueprint does not declare fails with exit 16 (`link_not_in_blueprint`), and the message lists what is allowed between those boards. Links inside one board, `parent` links, and boards outside the blueprint are not restricted. Without a blueprint nothing changes.
+- `otea playbook` (without `--collection`) ends with the blueprint's coordination playbook, and its `--json` carries it as `blueprint`. `otea validate` checks blueprints: unknown presets, unknown types, `parent` used as a connection, and connections listed twice.
 
 ### See it live
 

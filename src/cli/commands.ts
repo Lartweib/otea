@@ -3,6 +3,15 @@ import type { DatabaseSync } from 'node:sqlite';
 import { fileURLToPath } from 'node:url';
 import { type AgentsMdAction, connectAgent, writeAgentsMd } from '../app/agents.ts';
 import {
+  type AppliedBlueprint,
+  applyBlueprint,
+  type BlueprintStatus,
+  blueprintFindings,
+  blueprintStatus,
+  coordinationPlaybook,
+  updateBlueprint,
+} from '../app/blueprints.ts';
+import {
   addCollection,
   DEFAULT_PRESET,
   getCollection,
@@ -106,33 +115,49 @@ const AGENTS_MD_TEXT: Readonly<Record<AgentsMdAction, (path: string) => string>>
   unchanged: (path) => `The Otea block in ${path} is up to date`,
 };
 
+function builtText({ blueprint, boards }: AppliedBlueprint): string {
+  const listed = boards.map(({ name, preset }) => `${name} (${preset})`).join(', ');
+  return `Built from blueprint ${blueprint.name} v${blueprint.version}: ${listed}`;
+}
+
 const init: Command = {
   name: 'init',
   summary:
-    'Create or reuse the project at the repository root: in the Otea home ($OTEA_HOME, default ~/.otea), or with --local in .otea at the root; --join <project> links the repo to a registered project instead (refused when a project in a folder above covers it, unless --here); --agents-md also adds (or refreshes) a block in AGENTS.md telling agents to run "otea playbook"',
+    'Create or reuse the project at the repository root: in the Otea home ($OTEA_HOME, default ~/.otea), or with --local in .otea at the root; --join <project> links the repo to a registered project instead (refused when a project in a folder above covers it, unless --here); --blueprint builds every board of a blueprint, as otea blueprint apply does; --agents-md also adds (or refreshes) a block in AGENTS.md telling agents to run "otea playbook"',
   args: [],
   options: {
     'agents-md': { flag: true },
     here: { flag: true },
     local: { flag: true },
     join: { placeholder: 'project' },
+    blueprint: { placeholder: 'name|path' },
   },
   execute: ({ cwd, flag, option }) => {
     const target = option('join');
-    if (target !== undefined && (flag('local') || flag('here'))) {
-      throw new UsageError('--join links to an existing project; it takes no --local or --here');
+    const blueprint = option('blueprint');
+    if (target !== undefined && (flag('local') || flag('here') || blueprint !== undefined)) {
+      throw new UsageError(
+        '--join links to an existing project; it takes no --local, --here or --blueprint',
+      );
     }
     const options = {
       here: flag('here'),
       local: flag('local'),
       ...(target === undefined ? {} : { join: target }),
     };
-    const { root, dataDir: path, storage, db, identity } = initProject(cwd, options);
-    db.close();
-    const data = { root, path, ...identity, storage };
-    if (!flag('agents-md')) return { data, text: path };
+    const project = initProject(cwd, options);
+    const { root, dataDir: path, storage, identity } = project;
+    let built: AppliedBlueprint | undefined;
+    try {
+      if (blueprint !== undefined) built = applyBlueprint(project, blueprint, cwd);
+    } finally {
+      project.db.close();
+    }
+    const data = { root, path, ...identity, storage, ...built };
+    const lines = [path, ...(built ? [builtText(built)] : [])];
+    if (!flag('agents-md')) return { data, text: lines.join('\n') };
     const agentsMd = writeAgentsMd(root);
-    const text = `${path}\n${AGENTS_MD_TEXT[agentsMd.action](agentsMd.path)}`;
+    const text = [...lines, AGENTS_MD_TEXT[agentsMd.action](agentsMd.path)].join('\n');
     return { data: { ...data, agentsMd }, text };
   },
 };
@@ -249,7 +274,7 @@ function migrationText(report: MigrationReport): string {
     status === 'migrated'
       ? [
           `Copied and verified the database into ${to} (${rows})`,
-          `Copied ${files} evidence and preset file${files === 1 ? '' : 's'}`,
+          `Copied ${files} evidence, preset and blueprint file${files === 1 ? '' : 's'}`,
           `Registered ${id} and linked ${root}`,
         ]
       : [`${id} was already copied to ${to} and registered`];
@@ -314,6 +339,69 @@ const collectionAdd: Command = {
       text: `Added collection "${name}" with preset ${preset} v${presetVersion} (ids ${prefix}-<n>)`,
     };
   },
+};
+
+const blueprintApply: Command = {
+  name: 'blueprint apply',
+  summary:
+    "Build every board of a blueprint (a name, or the path of a blueprint.yaml or its folder) in this project and keep a copy of it in the project's data folder; a collection of the same name and preset becomes its board",
+  args: ['blueprint'],
+  options: {},
+  execute: ({ cwd, args: [ref = ''] }) => {
+    const built = withProject(cwd, (project) => applyBlueprint(project, ref, cwd));
+    return { data: built, text: builtText(built) };
+  },
+};
+
+function statusText({ name, version, origin, path, upToDate, missing, changes }: BlueprintStatus) {
+  const from = origin === 'path' ? path : `${origin} blueprint`;
+  const head = `${name} v${version} (${from})`;
+  if (missing !== undefined) return `${head}: its source cannot be read: ${missing}`;
+  if (upToDate) return `${head}: up to date`;
+  return [`${head}: the source changed`, indent(changes.join('\n'))].join('\n');
+}
+
+const blueprintStatusCommand: Command = {
+  name: 'blueprint status',
+  summary:
+    "Compare the project's copy of its blueprint with its source and list what the source changed since it was copied",
+  args: [],
+  options: {},
+  execute: ({ cwd }) => {
+    const status = withProject(cwd, blueprintStatus);
+    return { data: status, text: statusText(status) };
+  },
+};
+
+const NOTHING_APPLIED = { applied: [], kept: [] };
+
+const blueprintUpdateCommand: Command = {
+  name: 'blueprint update',
+  summary:
+    'Bring what the source of the blueprint changed into the project, after confirmation (--yes skips it): adds boards and connections, and never deletes a board that has items, reporting it instead',
+  args: [],
+  options: { yes: { flag: true } },
+  execute: ({ cwd, flag, ask, print }) =>
+    withProjectWhile(cwd, async (project) => {
+      const status = blueprintStatus(project);
+      if (status.missing !== undefined) throw new OteaError('not_found', statusText(status));
+      if (status.upToDate) {
+        return { data: { ...status, ...NOTHING_APPLIED }, text: statusText(status) };
+      }
+      if (!flag('yes')) {
+        print(status, statusText(status));
+        const answer = await ask('Apply these changes? [y/N] ');
+        if (answer === undefined) {
+          throw new UsageError('Nobody to confirm the changes; pass --yes to apply them');
+        }
+        if (!/^y(es)?$/i.test(answer.trim())) {
+          return { data: { ...status, ...NOTHING_APPLIED }, text: 'Nothing applied' };
+        }
+      }
+      const updated = updateBlueprint(project);
+      const text = [...updated.applied, ...updated.kept].join('\n');
+      return { data: updated, text: text || 'Refreshed the copy of the blueprint' };
+    }),
 };
 
 function fieldsFrom({ option, options }: Input): FieldValues {
@@ -433,7 +521,7 @@ const show: Command = {
 const playbook: Command = {
   name: 'playbook',
   summary:
-    "Print the playbook an agent follows in a collection, its preset's then each type's own; without --collection, the project's collections and how to read each playbook",
+    "Print the playbook an agent follows in a collection, its preset's then each type's own; without --collection, the project's collections and how to read each playbook, then the coordination playbook of the project's blueprint when it has one",
   args: [],
   options: { collection: {} },
   execute: ({ cwd, option }) => {
@@ -451,7 +539,8 @@ const playbook: Command = {
         return { data: found, text };
       }
       const collections = playbookIndex(project);
-      const text =
+      const blueprint = coordinationPlaybook(project);
+      const index =
         collections.length === 0
           ? 'No collections yet; a human adds one with "otea collection add <name>".'
           : [
@@ -460,7 +549,13 @@ const playbook: Command = {
                 columns(collections.map(({ name, preset, command }) => [name, preset, command])),
               ),
             ].join('\n');
-      return { data: { collections }, text };
+      if (blueprint === undefined) return { data: { collections }, text: index };
+      const text = [
+        index,
+        `The boards work together under the blueprint "${blueprint.name}":`,
+        blueprint.playbook.trimEnd(),
+      ].join('\n\n');
+      return { data: { collections, blueprint }, text };
     });
   },
 };
@@ -670,11 +765,13 @@ const release: Command = {
 const validate: Command = {
   name: 'validate',
   summary:
-    'Check presets, collections and items without fixing anything; fails only on errors, not warnings',
+    'Check presets, blueprints, collections and items without fixing anything; fails only on errors, not warnings',
   args: [],
   options: {},
   execute: ({ cwd }) => {
-    const report = withProject(cwd, (project) => validateProject(project));
+    const report = withProject(cwd, (project) =>
+      validateProject(project, blueprintFindings(project)),
+    );
     const failure = report.errors > 0 ? ('validation_failed' as const) : undefined;
     return { data: report, text: formatReport(report), ...(failure ? { failure } : {}) };
   },
@@ -967,6 +1064,9 @@ export const COMMANDS: readonly Command[] = [
   migrateCommand,
   connect,
   collectionAdd,
+  blueprintApply,
+  blueprintStatusCommand,
+  blueprintUpdateCommand,
   create,
   list,
   show,
