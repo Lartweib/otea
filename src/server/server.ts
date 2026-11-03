@@ -12,6 +12,7 @@ import { serveEvidence } from './evidence.ts';
 import { DEFAULT_PORT, isAllowedHost } from './hosts.ts';
 import { mountAuth, type Session, session } from './session.ts';
 import { type LiveStreams, liveStreams } from './stream.ts';
+import { studioApi } from './studio.ts';
 import { BUILT_UI_DIR, mountUi } from './ui.ts';
 import {
   assertSignedIn,
@@ -101,6 +102,7 @@ function api(project: Project, feed: ChangeFeed, streams: LiveStreams, auth: Ses
       assertSignedIn(c, auth, 'open evidence files');
       return serveEvidence(c, project, c.req.param('id'));
     })
+    .route('/studio', studioApi(project, feed, auth))
     .get('/stream', (c) => streams.handle(c))
     .all('*', (c) => c.json(errorBody('not_found', `No route ${c.req.path}`), 404));
 }
