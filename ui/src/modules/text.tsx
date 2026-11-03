@@ -4,6 +4,18 @@ export function PlainText({ value }: ShowProps) {
   return <span className="body">{value}</span>;
 }
 
+// In the row only when the type places it there (a repo task's repo): the value as written, in ink,
+// with the field named for a screen reader. An empty one puts nothing.
+function RowText({ field, value }: ShowProps) {
+  if (value === '') return null;
+  return (
+    <span className="row-text" title={value}>
+      <span className="visually-hidden">{field.name}: </span>
+      {value}
+    </span>
+  );
+}
+
 export function TextInput({ id, value, disabled, required, describedBy, onChange }: EditProps) {
   return (
     <input
@@ -26,6 +38,7 @@ export const text: FieldModuleUi = {
   summary: 'module.text.summary',
   origin: 'official',
   Detail: PlainText,
+  Row: RowText,
   Edit: TextInput,
   samples: [
     { label: 'module.text.short', field: title, value: 'Flaky login test' },

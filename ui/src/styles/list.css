@@ -758,3 +758,14 @@
     animation: none;
   }
 }
+
+/* A text field the type places in the row (a repo task's repo): its value in ink, after a rule. */
+.row-text {
+  min-width: 0;
+  padding-left: 10px;
+  border-left: 1px solid var(--line);
+  overflow: hidden;
+  color: var(--ink);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}

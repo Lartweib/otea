@@ -1,7 +1,8 @@
 import { evidenceFileUrl } from '../api.ts';
+import { gateRows, waitingOnYou } from '../gates.ts';
 import { agoLabel, handoffOf, leadRelation, waitingChildren } from '../handoff.ts';
 import { t } from '../i18n/i18n.ts';
-import { AgentMark, Node, nodeLabel } from '../kit/index.ts';
+import { AgentMark, Icon, Node, nodeLabel } from '../kit/index.ts';
 import { moduleFor } from '../modules/registry.ts';
 import { openLabel } from '../relations.ts';
 import { hashFor } from '../selection.ts';
@@ -21,7 +22,8 @@ const THUMBS = 2;
 
 // One line under the title: who handed the item over, when and what they said, then what to look
 // at first: the evidence (two thumbnails and the count), the severity when the type has one, and
-// one relation; for a parent, its children's progress and the children waiting for you.
+// one relation (not the parent: the crumb above the title names it); for a parent, its children's
+// progress and the children waiting for you; and a gated action that waits for your move.
 export function HandoffLine({ item, type, canWrite, collectionOf }: HandoffLineProps) {
   const handoff = handoffOf(item.events);
   const severity = type?.fields.find(
@@ -29,7 +31,11 @@ export function HandoffLine({ item, type, canWrite, collectionOf }: HandoffLineP
   );
   const children = item.relations.filter(({ kind }) => kind === 'child');
   const waiting = waitingChildren(item.relations);
-  const relation = children.length > 0 ? undefined : leadRelation(item.relations);
+  const relation =
+    children.length > 0
+      ? undefined
+      : leadRelation(item.relations.filter(({ kind }) => kind !== 'parent'));
+  const gates = waitingOnYou(gateRows(type, item.state, item.gates), item.transitions);
   // The server hands files only to a signed-in browser.
   const thumbs = canWrite
     ? item.evidence.filter(({ kind }) => kind === 'image').slice(0, THUMBS)
@@ -81,6 +87,14 @@ export function HandoffLine({ item, type, canWrite, collectionOf }: HandoffLineP
         <a className="handoff-rel" href={hashFor(relation.item.id)}>
           {relation.item.id}
         </a>
+      </span>,
+    );
+  }
+  if (gates.length > 0) {
+    parts.push(
+      <span key="gates" className="handoff-gate">
+        <Icon name="lock" />
+        {gates.map((action) => t('gate.waits', { action })).join(' · ')}
       </span>,
     );
   }

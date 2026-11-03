@@ -22,6 +22,8 @@ export type TypeView = {
   layout: Layout;
   children?: string[];
   root?: boolean;
+  // The actions its workflow gates and the states that allow each, when it declares any.
+  gates?: Record<string, string[]>;
 };
 
 // `fields` are the fields of every type, each once, in the order the types declare them.
@@ -55,6 +57,9 @@ export function typeViews(types: readonly ItemType[]): TypeView[] {
     if (icon !== undefined) view.icon = icon;
     if (children !== undefined) view.children = children;
     if (root !== undefined) view.root = root;
+    if (workflow.gates !== undefined && Object.keys(workflow.gates).length > 0) {
+      view.gates = workflow.gates;
+    }
     return view;
   });
 }

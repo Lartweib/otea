@@ -1,7 +1,9 @@
+import { gateRows } from '../../gates.ts';
 import { presetText, t } from '../../i18n/i18n.ts';
-import { takesChildren, typeOf } from '../../item-types.ts';
+import { rowValues, takesChildren, typeOf } from '../../item-types.ts';
 import { childTally } from '../../relations.ts';
-import type { ItemView, LayoutEntry } from '../../types.ts';
+import type { Item, ItemView, LayoutEntry } from '../../types.ts';
+import { GateCell } from '../Gate.tsx';
 import type { CollectionOf } from '../ItemList.tsx';
 import { ChildBar } from './ChildBar.tsx';
 import { RelatedRow, relatedNodeKind } from './RelatedRow.tsx';
@@ -12,6 +14,10 @@ type ChildrenModuleProps = {
   canWrite: boolean;
   collectionOf: CollectionOf;
   onAddChild?: ((parent: ItemView) => void) | undefined;
+  // The board's items, to show each child's row values and gates.
+  itemOf?: ((id: string) => Item | undefined) | undefined;
+  // The ticked children, when several wait for you and can be moved together from the tray.
+  ticks?: { checked: ReadonlySet<string>; toggle: (id: string) => void } | undefined;
 };
 
 // A parent's children: a list, not a graph. The bar gives the shape of the work at a glance (one
@@ -24,6 +30,8 @@ export function ChildrenModule({
   canWrite,
   collectionOf,
   onAddChild,
+  itemOf,
+  ticks,
 }: ChildrenModuleProps) {
   const children = item.relations.filter(({ kind }) => kind === 'child');
   // A type the hierarchy gives no children offers no "+ child".
@@ -40,6 +48,8 @@ export function ChildrenModule({
   if (children.length === 0 && !add) return null;
   const kinds = children.map((child) => relatedNodeKind(child, collectionOf));
   const tally = childTally(kinds);
+  // Ticks show once two or more children wait for you: a plan approved per child, together.
+  const tickable = ticks && tally.yours >= 2;
   const headingId = `children-${item.id}`;
   const count = children.length;
   const label = entry.label === undefined ? undefined : presetText(entry.label);
@@ -72,9 +82,35 @@ export function ChildrenModule({
             </span>
           </p>
           <ul className="rel-list children-list">
-            {children.map((child) => (
-              <RelatedRow key={child.id} related={child} collectionOf={collectionOf} />
-            ))}
+            {children.map((child, index) => {
+              const type = typeOf(collectionOf(child.collection), child.type);
+              const full = itemOf?.(child.id);
+              const lead = full
+                ? rowValues(type, full.fields)
+                    .map(({ value }) => value)
+                    .filter((value) => value !== '')
+                    .join(' · ')
+                : '';
+              // A child still where its type starts (a repo task proposed) has not touched its gates.
+              const gates = child.state === type?.initial ? [] : gateRows(type, child.state);
+              return (
+                <RelatedRow
+                  key={child.id}
+                  related={child}
+                  collectionOf={collectionOf}
+                  lead={lead || undefined}
+                  trail={gates.length > 0 ? <GateCell rows={gates} /> : undefined}
+                  tick={
+                    tickable && kinds[index] === 'you'
+                      ? {
+                          checked: ticks.checked.has(child.id),
+                          onToggle: () => ticks.toggle(child.id),
+                        }
+                      : undefined
+                  }
+                />
+              );
+            })}
           </ul>
         </>
       ) : null}

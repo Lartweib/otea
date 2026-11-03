@@ -882,3 +882,180 @@ select.input {
   font-size: 12.5px;
   line-height: 1.4;
 }
+
+/* ---- the parent above the title, and the header slot's strip under it ---- */
+.detail-crumb {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-start;
+  max-width: 100%;
+  margin-bottom: -8px;
+  color: var(--mut);
+  font-size: 13.5px;
+  text-decoration: none;
+}
+
+.detail-crumb .t-id {
+  font: 400 12px var(--font-machine);
+}
+
+.detail-crumb-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.detail-crumb:hover .detail-crumb-title {
+  color: var(--ink);
+  text-decoration: underline;
+  text-decoration-color: var(--lane);
+  text-underline-offset: 3px;
+}
+
+.detail-crumb:focus-visible {
+  outline: 2px solid var(--you);
+  outline-offset: 2px;
+  border-radius: var(--r-s);
+}
+
+/* What the item is, read at a glance: each label beside its value, on the well. */
+.detail-ids {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 28px;
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: var(--r-m);
+  background: var(--well);
+}
+
+.detail-ids > div {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+}
+
+.detail-ids dt {
+  font: 500 11.5px var(--font-machine);
+  color: var(--mut);
+}
+
+.detail-ids dd {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+  font: 500 13px var(--font-machine);
+  color: var(--ink);
+}
+
+.detail-ids dd > * {
+  font: inherit;
+}
+
+.detail-none {
+  color: var(--mut);
+  font-weight: 400;
+}
+
+.detail-ext {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--you-ink);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in oklch, var(--you) 30%, transparent);
+  text-underline-offset: 3px;
+}
+
+.detail-ext .icon {
+  width: 12px;
+  height: 12px;
+}
+
+.detail-ext:hover {
+  text-decoration-color: currentColor;
+}
+
+/* ---- the gate: what otea check lets through now; an icon and words, never color alone ---- */
+.handoff-gate {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: 400 12px var(--font-machine);
+  color: var(--mut);
+}
+
+.handoff-gate .icon,
+.gate-row .icon,
+.gate-mark .icon {
+  width: 14px;
+  height: 14px;
+}
+
+.gate-block {
+  display: grid;
+  gap: 8px;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+.gate-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.gate-head h3 {
+  margin: 0;
+}
+
+.gate-rows {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.gate-row {
+  display: grid;
+  grid-template-columns: 16px auto minmax(0, 1fr);
+  align-items: center;
+  column-gap: 8px;
+  font-size: 13.5px;
+}
+
+.gate-row b {
+  font-weight: 600;
+}
+
+.gate-row .t-cap {
+  color: var(--mut);
+}
+
+.gate-row .icon,
+.gate-mark .icon {
+  color: var(--mut);
+}
+
+.gate-row[data-allowed] .icon,
+.gate-mark[data-allowed] .icon {
+  color: var(--plus);
+}
+
+/* The tray for ticked children docks to the detail pane's bottom edge, inside its gutters. */
+@media (min-width: 48rem) {
+  .workspace .bulk-host.detail-bulk-host {
+    grid-column: 4 / 5;
+  }
+
+  .workspace .bulk-host.detail-bulk-host .bulk-dock {
+    left: 40px;
+    margin-right: 40px;
+  }
+}
