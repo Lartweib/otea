@@ -78,7 +78,23 @@ describe('commands', () => {
           preset: 'tasks',
           presetVersion: 1,
           nextSeq: 1,
+          icon: 'checklist',
         });
+      });
+
+      it('gives the collection its own icon with --icon', async () => {
+        expect(await json('collection', 'add', 'roadmap', '--icon', 'map')).toMatchObject({
+          name: 'roadmap',
+          icon: 'map',
+        });
+      });
+
+      it('fails with invalid_icon for an unknown icon, naming the close ones, and adds nothing', async () => {
+        const { code, err } = await otea('collection', 'add', 'bugs', '--icon', 'bgu');
+
+        expect(code).toBe(6);
+        expect(err).toContain('Unknown icon "bgu" (did you mean bug?)');
+        expect((await otea('collection', 'add', 'bugs')).code).toBe(0);
       });
 
       it('fails with not_found for an unknown preset', async () => {
@@ -109,6 +125,43 @@ describe('commands', () => {
 
         expect(code).toBe(2);
         expect(err).toContain('Usage: otea collection add <name>');
+      });
+    });
+
+    describe('collection icon', () => {
+      beforeEach(async () => {
+        await otea('collection', 'add', 'tasks');
+      });
+
+      it("changes a collection's icon, and goes back to its preset's with default", async () => {
+        const changed = await otea('collection', 'icon', 'tasks', 'rocket');
+        expect(changed.out).toBe('Collection "tasks" shows icon rocket\n');
+        expect(await json('collection', 'icon', 'tasks', 'map')).toMatchObject({ icon: 'map' });
+
+        const reset = await otea('collection', 'icon', 'tasks', 'default');
+
+        expect(reset.out).toBe(`Collection "tasks" shows icon checklist (its preset's)\n`);
+      });
+
+      it('refuses an unknown icon and an unknown collection', async () => {
+        expect((await otea('collection', 'icon', 'tasks', 'rockte')).code).toBe(6);
+        expect((await otea('collection', 'icon', 'nope', 'rocket')).code).toBe(3);
+      });
+    });
+
+    describe('init --icon', () => {
+      it('gives the project an icon, also when init runs again', async () => {
+        expect(await json('init', '--local')).toMatchObject({ icon: null });
+
+        expect(await json('init', '--local', '--icon', 'rocket')).toMatchObject({ icon: 'rocket' });
+        expect(await json('init', '--local')).toMatchObject({ icon: 'rocket' });
+      });
+
+      it('refuses an unknown icon before touching anything', async () => {
+        const { code, err } = await otea('init', '--local', '--icon', 'rokcet');
+
+        expect(code).toBe(6);
+        expect(err).toContain('Unknown icon "rokcet" (did you mean rocket?)');
       });
     });
 

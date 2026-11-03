@@ -13,9 +13,11 @@ import {
 } from '../app/blueprints.ts';
 import {
   addCollection,
+  collectionIcon,
   DEFAULT_PRESET,
   getCollection,
   presetOf,
+  setCollectionIcon,
   typeOfItem,
 } from '../app/collections.ts';
 import { listEvents } from '../app/events.ts';
@@ -36,7 +38,15 @@ import { claimItem, heartbeatItem, releaseItem } from '../app/leases.ts';
 import { type MigrationReport, migrateToCommon } from '../app/migrate.ts';
 import { collectionPlaybook, hintFor, playbookIndex } from '../app/playbook.ts';
 import { type Harness, seeAgent } from '../app/presence.ts';
-import { addPathToProject, initProject, openProject, type Project } from '../app/project.ts';
+import {
+  addPathToProject,
+  initProject,
+  openProject,
+  type Project,
+  type ProjectView,
+  projectView,
+  setProjectIcon,
+} from '../app/project.ts';
 import { linkItems, unlinkItems } from '../app/relations.ts';
 import { relayDecision } from '../app/relay.ts';
 import { validateProject } from '../app/validate.ts';
@@ -44,6 +54,7 @@ import { watch } from '../app/watch.ts';
 import { OteaError } from '../core/errors.ts';
 import { EVIDENCE_ROLES, type EvidenceRole, MAX_EVIDENCE_MB } from '../core/evidence.ts';
 import type { FieldValues } from '../core/fields.ts';
+import { assertIconName } from '../core/icons.ts';
 import type { Actor } from '../core/item.ts';
 import { parseDuration } from '../core/lease.ts';
 import { describeRelation, RELATION_KINDS } from '../core/relations.ts';
@@ -145,7 +156,7 @@ function builtText({ blueprint, boards }: AppliedBlueprint): string {
 const init: Command = {
   name: 'init',
   summary:
-    'Create or reuse the project at the repository root: in the Otea home ($OTEA_HOME, default ~/.otea), or with --local in .otea at the root; --join <project> links the repo to a registered project instead (refused when a project in a folder above covers it, unless --here); --blueprint builds every board of a blueprint, as otea blueprint apply does; --agents-md also adds (or refreshes) a block in AGENTS.md telling agents to run "otea playbook"',
+    'Create or reuse the project at the repository root: in the Otea home ($OTEA_HOME, default ~/.otea), or with --local in .otea at the root; --join <project> links the repo to a registered project instead (refused when a project in a folder above covers it, unless --here); --blueprint builds every board of a blueprint, as otea blueprint apply does; --icon gives the project an icon (without one the UI draws a monogram of its name); --agents-md also adds (or refreshes) a block in AGENTS.md telling agents to run "otea playbook"',
   args: [],
   options: {
     'agents-md': { flag: true },
@@ -153,10 +164,13 @@ const init: Command = {
     local: { flag: true },
     join: { placeholder: 'project' },
     blueprint: { placeholder: 'name|path' },
+    icon: { placeholder: 'icon' },
   },
   execute: ({ cwd, flag, option }) => {
     const target = option('join');
     const blueprint = option('blueprint');
+    const icon = option('icon');
+    if (icon !== undefined) assertIconName(icon);
     if (target !== undefined && (flag('local') || flag('here') || blueprint !== undefined)) {
       throw new UsageError(
         '--join links to an existing project; it takes no --local, --here or --blueprint',
@@ -168,14 +182,16 @@ const init: Command = {
       ...(target === undefined ? {} : { join: target }),
     };
     const project = initProject(cwd, options);
-    const { root, dataDir: path, storage, identity } = project;
+    const { root, dataDir: path, storage } = project;
     let built: AppliedBlueprint | undefined;
+    let shown: ProjectView;
     try {
+      shown = icon === undefined ? projectView(project) : setProjectIcon(project, icon);
       if (blueprint !== undefined) built = applyBlueprint(project, blueprint, cwd);
     } finally {
       project.db.close();
     }
-    const data = { root, path, ...identity, storage, ...built };
+    const data = { root, path, ...shown, storage, ...built };
     const lines = [path, ...(built ? [builtText(built)] : [])];
     if (!flag('agents-md')) return { data, text: lines.join('\n') };
     const agentsMd = writeAgentsMd(root);
@@ -349,16 +365,41 @@ const connect: Command = {
 
 const collectionAdd: Command = {
   name: 'collection add',
-  summary: `Add a collection governed by a preset (default: ${DEFAULT_PRESET})`,
+  summary: `Add a collection governed by a preset (default: ${DEFAULT_PRESET}); --icon gives it its own icon instead of the preset's`,
   args: ['name'],
-  options: { preset: {} },
+  options: { preset: {}, icon: { placeholder: 'icon' } },
   execute: ({ cwd, option, args: [name = ''] }) => {
     const preset = option('preset') ?? DEFAULT_PRESET;
-    const collection = withProject(cwd, (project) => addCollection(project, { name, preset }));
+    const icon = option('icon');
+    const collection = withProject(cwd, (project) => {
+      const added = addCollection(project, { name, preset, icon });
+      return { ...added, icon: collectionIcon(project, added) };
+    });
     const { prefix, presetVersion } = collection;
     return {
       data: collection,
       text: `Added collection "${name}" with preset ${preset} v${presetVersion} (ids ${prefix}-<n>)`,
+    };
+  },
+};
+
+// `default` is no icon name, so it can stand for going back to the preset's icon.
+const DEFAULT_ICON = 'default';
+
+const collectionIconCommand: Command = {
+  name: 'collection icon',
+  summary: `Give a collection its own icon, or "${DEFAULT_ICON}" to show its preset's again`,
+  args: ['name', 'icon'],
+  options: {},
+  execute: ({ cwd, args: [name = '', icon = ''] }) => {
+    const collection = withProject(cwd, (project) => {
+      const changed = setCollectionIcon(project, name, icon === DEFAULT_ICON ? null : icon);
+      return { ...changed, icon: collectionIcon(project, changed) };
+    });
+    const own = icon === DEFAULT_ICON ? ` (its preset's)` : '';
+    return {
+      data: collection,
+      text: `Collection "${name}" shows icon ${collection.icon ?? 'none'}${own}`,
     };
   },
 };
@@ -1114,6 +1155,7 @@ export const COMMANDS: readonly Command[] = [
   migrateCommand,
   connect,
   collectionAdd,
+  collectionIconCommand,
   blueprintApply,
   blueprintStatusCommand,
   blueprintUpdateCommand,
