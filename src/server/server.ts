@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { briefFor } from '../app/brief.ts';
 import { listCollectionViews } from '../app/collections.ts';
 import { createItem, type ListItemsFilter, listItems, moveItem, showItem } from '../app/items.ts';
 import { listAgents, presenceSignature } from '../app/presence.ts';
@@ -17,6 +18,7 @@ import { BUILT_UI_DIR, mountUi } from './ui.ts';
 import {
   assertSignedIn,
   assertWritable,
+  briefRequest,
   createRequest,
   HUMAN_IN_UI,
   linkRequest,
@@ -98,6 +100,7 @@ function api(project: Project, feed: ChangeFeed, streams: LiveStreams, auth: Ses
       feed.notify();
       return c.json(relation);
     })
+    .post('/brief', async (c) => c.json(briefFor(project, await briefRequest(c))))
     .get('/evidence/:id/file', (c) => {
       assertSignedIn(c, auth, 'open evidence files');
       return serveEvidence(c, project, c.req.param('id'));
