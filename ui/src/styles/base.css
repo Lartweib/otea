@@ -59,8 +59,12 @@ code {
   outline-offset: 2px;
 }
 
+/* Pinned to the start of its containing block: left at its static position, a hidden label that sits
+   past the end of a clipped line (line two of a row) escapes that clip, since its containing block is
+   further out, and widens the page. On a phone the browser then lays the whole page out that wide. */
 .visually-hidden {
   position: absolute;
+  inset-inline-start: 0;
   width: 1px;
   height: 1px;
   overflow: hidden;
