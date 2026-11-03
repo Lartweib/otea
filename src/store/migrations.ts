@@ -128,6 +128,11 @@ const MIGRATIONS = [
   INSERT INTO agents (name, last_seen)
   SELECT actor_name, max(at) FROM events WHERE actor_kind = 'agent' GROUP BY actor_name;
   `,
+  // The icons given to a collection (over its preset's) and to the project; NULL when none was.
+  `
+  ALTER TABLE collections ADD COLUMN icon TEXT;
+  ALTER TABLE project ADD COLUMN icon TEXT;
+  `,
 ];
 
 function userVersion(db: DatabaseSync): number {

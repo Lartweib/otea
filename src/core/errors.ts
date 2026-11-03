@@ -4,6 +4,7 @@ export type ErrorCode =
   | 'already_exists'
   | 'invalid_name'
   | 'invalid_agent_name'
+  | 'invalid_icon'
   | 'invalid_id'
   | 'forbidden'
   | 'reason_required'

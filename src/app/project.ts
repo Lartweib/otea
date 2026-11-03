@@ -4,13 +4,16 @@ import { appendFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { basename, dirname, join, resolve } from 'node:path';
 import type { DatabaseSync } from 'node:sqlite';
 import { OteaError } from '../core/errors.ts';
+import { assertIconName } from '../core/icons.ts';
 import { PROJECT_ID_RANDOM_BYTES, projectId } from '../core/project-id.ts';
 import { openDatabase, transaction } from '../store/database.ts';
 import { migrate } from '../store/migrations.ts';
 import {
   insertProjectIdentity,
   type ProjectIdentity,
+  selectProjectIcon,
   selectProjectIdentity,
+  updateProjectIcon,
 } from '../store/queries.ts';
 import {
   type ProjectPath,
@@ -286,4 +289,17 @@ export function initProject(
     );
   }
   return options.local ? createLocal(location) : createCommon(location, env);
+}
+
+// The project as clients see it: its identity and the icon it was given, null when none was (the
+// UI then draws a monogram of its name).
+export type ProjectView = ProjectIdentity & { icon: string | null };
+
+export function projectView(project: Project): ProjectView {
+  return { ...project.identity, icon: selectProjectIcon(project.db) };
+}
+
+export function setProjectIcon(project: Project, icon: string | null): ProjectView {
+  updateProjectIcon(project.db, icon === null ? null : assertIconName(icon));
+  return projectView(project);
 }

@@ -34,14 +34,14 @@ describe('migrate', () => {
         'agents',
       ]),
     );
-    expect(userVersion(db)).toBe(9);
+    expect(userVersion(db)).toBe(10);
   });
 
   it('is idempotent', () => {
     migrate(db);
     migrate(db);
 
-    expect(userVersion(db)).toBe(9);
+    expect(userVersion(db)).toBe(10);
   });
 
   describe('from version 1', () => {
@@ -62,7 +62,14 @@ describe('migrate', () => {
 
     it('moves collections to the tasks preset version 1', () => {
       expect(db.prepare('SELECT * FROM collections').all()).toEqual([
-        { name: 'tasks', prefix: 'TASKS', next_seq: 3, preset: 'tasks', preset_version: 1 },
+        {
+          name: 'tasks',
+          prefix: 'TASKS',
+          next_seq: 3,
+          preset: 'tasks',
+          preset_version: 1,
+          icon: null,
+        },
       ]);
     });
 

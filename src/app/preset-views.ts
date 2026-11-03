@@ -29,6 +29,8 @@ export type PresetView = {
   name: string;
   version: number;
   origin: PresetOrigin;
+  // The default icon of its collections; null when it has none.
+  icon: string | null;
   fields: FieldView[];
   types: TypeView[];
   view: CollectionLayout;
@@ -66,10 +68,11 @@ function allFields(types: readonly ItemType[]): FieldView[] {
 // Every loaded preset (official, then project) and the collections governed by it.
 export function listPresetViews(ctx: Context): PresetView[] {
   const collections = listCollections(ctx.db);
-  return [...ctx.presets.presets.values()].map(({ name, version, origin, types, view }) => ({
+  return [...ctx.presets.presets.values()].map(({ name, version, origin, icon, types, view }) => ({
     name,
     version,
     origin,
+    icon: icon ?? null,
     fields: allFields(types),
     types: typeViews(types),
     view,

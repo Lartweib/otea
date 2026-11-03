@@ -1,3 +1,5 @@
+import { OteaError } from './errors.ts';
+
 // The names of the type icons a preset may give its types (`icon: bug`). The drawings live in the
 // UI (`ui/src/icons/`), keyed by these names, so the core checks a preset without carrying them.
 export const ICON_NAMES = [
@@ -170,12 +172,22 @@ export function closeIconNames(name: string, limit = 3): IconName[] {
   return closeNames(name, ICON_NAMES, limit);
 }
 
-export function iconProblem(at: string, name: string): string | undefined {
-  if (isIconName(name)) return undefined;
+function unknownIcon(name: string): string {
   const close = closeIconNames(name);
   const hint =
     close.length > 0
       ? `did you mean ${close.join(', ')}?`
       : `none of the ${ICON_NAMES.length} icons is close; see the icon list in the preset format`;
-  return `${at}: unknown icon "${name}" (${hint})`;
+  return `unknown icon "${name}" (${hint})`;
+}
+
+export function iconProblem(at: string, name: string): string | undefined {
+  return isIconName(name) ? undefined : `${at}: ${unknownIcon(name)}`;
+}
+
+// The icon a collection or project is given by name, refused with the close names when unknown.
+export function assertIconName(name: string): IconName {
+  if (isIconName(name)) return name;
+  const message = unknownIcon(name);
+  throw new OteaError('invalid_icon', `${message[0]?.toUpperCase()}${message.slice(1)}`);
 }

@@ -1,12 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { addCollection } from '../app/collections.ts';
+import { addCollection, setCollectionIcon } from '../app/collections.ts';
 import { createItem, moveItem } from '../app/items.ts';
 import { claimItem } from '../app/leases.ts';
 import { CLI_HARNESS, seeAgent } from '../app/presence.ts';
-import type { Project } from '../app/project.ts';
+import { type Project, setProjectIcon } from '../app/project.ts';
 import { REVIEWS } from '../app/testing.ts';
 import type { Actor } from '../core/item.ts';
 import { parsePreset } from '../core/preset.ts';
+import { insertProjectIdentity } from '../store/queries.ts';
 import { createServer, type OteaServer } from './server.ts';
 import { memoryProject, request } from './testing.ts';
 
@@ -53,7 +54,17 @@ describe('api', () => {
     const response = await get('/api/project');
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual(project.identity);
+    expect(await response.json()).toEqual({ ...project.identity, icon: null });
+  });
+
+  it('GET /api/project carries the icon the project was given', async () => {
+    insertProjectIdentity(project.db, project.identity);
+    setProjectIcon(project, 'rocket');
+
+    expect(await (await get('/api/project')).json()).toEqual({
+      ...project.identity,
+      icon: 'rocket',
+    });
   });
 
   describe('GET /api/agents', () => {
@@ -127,6 +138,39 @@ describe('api', () => {
     });
   });
 
+  describe('GET /api/collections icons', () => {
+    it("gives each collection its own icon, or else its preset's", async () => {
+      addCollection(project, { name: 'triage', preset: 'bug-triage' });
+      addCollection(project, { name: 'roadmap', preset: 'tasks', icon: 'map' });
+      setCollectionIcon(project, 'bugs', 'rocket');
+
+      const collections = (await (await get('/api/collections')).json()) as Array<{
+        name: string;
+        icon: string | null;
+      }>;
+
+      expect(collections.map(({ name, icon }) => [name, icon])).toEqual([
+        ['tasks', 'checklist'],
+        ['bugs', 'rocket'],
+        ['triage', 'bug'],
+        ['roadmap', 'map'],
+      ]);
+    });
+
+    it('gives no icon to a collection whose preset has none', async () => {
+      const reviews = memoryProject(REVIEWS);
+      addCollection(reviews, { name: 'reviews', preset: 'reviews' });
+      const withReviews = createServer(reviews);
+
+      const [collection] = (await (await request(withReviews, '/api/collections')).json()) as {
+        icon: string | null;
+      }[];
+
+      expect(collection?.icon).toBeNull();
+      withReviews.close();
+    });
+  });
+
   describe('GET /api/presets', () => {
     it('lists every loaded preset with its fields and collections, without a session', async () => {
       const response = await get('/api/presets');
@@ -150,6 +194,7 @@ describe('api', () => {
         name: 'tasks',
         version: 1,
         origin: 'official',
+        icon: 'checklist',
         fields: [
           { name: 'title', module: 'text', required: 'create' },
           { name: 'description', module: 'markdown', required: 'complete' },

@@ -47,7 +47,7 @@ describe('project', () => {
     const project = track(initProject(repo, { local: true }));
 
     expect(project.root).toBe(repo);
-    expect(project.db.prepare('PRAGMA user_version').get()?.user_version).toBe(9);
+    expect(project.db.prepare('PRAGMA user_version').get()?.user_version).toBe(10);
     expect(project.presets.presets.has('tasks')).toBe(true);
     expect(exclude(repo).split(/\r?\n/)).toContain('.otea/');
   });
@@ -82,7 +82,9 @@ describe('project', () => {
       const project = track(openProject(dir, ENV));
 
       expect(project.identity.name).toBe(basename(dir));
-      expect(project.db.prepare('SELECT * FROM project').all()).toEqual([project.identity]);
+      expect(project.db.prepare('SELECT * FROM project').all()).toEqual([
+        { ...project.identity, icon: null },
+      ]);
     });
   });
 

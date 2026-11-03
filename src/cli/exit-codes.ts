@@ -27,6 +27,7 @@ export const EXIT_CODES: Readonly<Record<'ok' | FailureCode, number>> = {
   already_exists: 5,
   invalid_name: 6,
   invalid_agent_name: 6,
+  invalid_icon: 6,
   invalid_id: 6,
   forbidden: 7,
   reason_required: 2,

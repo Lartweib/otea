@@ -11,6 +11,8 @@ export type CollectionRecord = {
   preset: string;
   presetVersion: number;
   nextSeq: number;
+  // The icon given to the collection itself, or null to show its preset's.
+  icon: string | null;
 };
 
 type CollectionRow = {
@@ -19,6 +21,7 @@ type CollectionRow = {
   preset: string;
   preset_version: number;
   next_seq: number;
+  icon: string | null;
 };
 
 function toCollection(row: CollectionRow): CollectionRecord {
@@ -28,19 +31,25 @@ function toCollection(row: CollectionRow): CollectionRecord {
     preset: row.preset,
     presetVersion: row.preset_version,
     nextSeq: row.next_seq,
+    icon: row.icon,
   };
 }
 
 export function insertCollection(db: DatabaseSync, collection: CollectionRecord): void {
   db.prepare(
-    'INSERT INTO collections (name, prefix, preset, preset_version, next_seq) VALUES (?, ?, ?, ?, ?)',
+    'INSERT INTO collections (name, prefix, preset, preset_version, next_seq, icon) VALUES (?, ?, ?, ?, ?, ?)',
   ).run(
     collection.name,
     collection.prefix,
     collection.preset,
     collection.presetVersion,
     collection.nextSeq,
+    collection.icon,
   );
+}
+
+export function updateCollectionIcon(db: DatabaseSync, name: string, icon: string | null): void {
+  db.prepare('UPDATE collections SET icon = ? WHERE name = ?').run(icon, name);
 }
 
 export function findCollection(db: DatabaseSync, name: string): CollectionRecord | undefined {
@@ -444,6 +453,15 @@ export function selectProjectIdentity(db: DatabaseSync): ProjectIdentity | undef
 export function insertProjectIdentity(db: DatabaseSync, identity: ProjectIdentity): void {
   const sql = 'INSERT INTO project (id, name) SELECT ?, ? WHERE NOT EXISTS (SELECT 1 FROM project)';
   db.prepare(sql).run(identity.id, identity.name);
+}
+
+export function selectProjectIcon(db: DatabaseSync): string | null {
+  const row = db.prepare('SELECT icon FROM project').get() as { icon: string | null } | undefined;
+  return row?.icon ?? null;
+}
+
+export function updateProjectIcon(db: DatabaseSync, icon: string | null): void {
+  db.prepare('UPDATE project SET icon = ?').run(icon);
 }
 
 // An agent's presence: the harness it last came through and when it was last seen.
