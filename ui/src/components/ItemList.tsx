@@ -208,7 +208,15 @@ function FoldChildren({
 
 // The type slot is always reserved: the type's icon, or a small filled square for a type without
 // one.
-function TypeSlot({ icon, label, small }: { icon?: string; label?: string; small: boolean }) {
+export function TypeSlot({
+  icon,
+  label,
+  small,
+}: {
+  icon?: string;
+  label?: string;
+  small: boolean;
+}) {
   if (icon !== undefined) return <TypeIcon name={icon} size={small ? 14 : 16} label={label} />;
   return label === undefined ? (
     <i className="row-mark" aria-hidden="true" />

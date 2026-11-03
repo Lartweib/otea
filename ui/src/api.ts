@@ -4,7 +4,15 @@ import { t } from './i18n/i18n.ts';
 import { type Agent, parseAgents } from './presence.ts';
 import type { LinkRequest } from './relations.ts';
 import { serverMessage, unreachable } from './remote.ts';
-import type { CollectionView, Item, ItemView, PresetView, ProjectView, Session } from './types.ts';
+import type {
+  CollectionView,
+  EvidenceRole,
+  Item,
+  ItemView,
+  PresetView,
+  ProjectView,
+  Session,
+} from './types.ts';
 
 async function get(path: string, signal: AbortSignal): Promise<Response> {
   const response = await fetch(path, { signal, headers: { accept: 'application/json' } });
@@ -69,11 +77,15 @@ export async function fetchPresets(signal: AbortSignal): Promise<PresetView[]> {
   return (await get('/api/presets', signal)).json();
 }
 
+// A form sets its own content type (with the boundary); JSON says it.
 async function post<T>(path: string, payload: unknown): Promise<T> {
+  const form = payload instanceof FormData;
   const response = await fetch(path, {
     method: 'POST',
-    headers: { accept: 'application/json', 'content-type': 'application/json' },
-    body: JSON.stringify(payload),
+    headers: form
+      ? { accept: 'application/json' }
+      : { accept: 'application/json', 'content-type': 'application/json' },
+    body: form ? payload : JSON.stringify(payload),
   }).catch(() => {
     throw new Error(unreachable());
   });
@@ -86,15 +98,26 @@ export async function moveItem(id: string, to: string, reason: string): Promise<
   await post(`/api/items/${encodeURIComponent(id)}/move`, reason === '' ? { to } : { to, reason });
 }
 
-// parent: the item the new one is created under, as its child.
+export type NewFile = { file: File; role: EvidenceRole };
+
+// parent: the item the new one is created under, as its child. files: attached as evidence in the
+// same write, sent as a form (the item's JSON in its "item" part, each file in a "file" part).
 export function createItem(
   collection: string,
   type: string,
   fields: Record<string, string>,
   parent?: string,
+  files: readonly NewFile[] = [],
 ): Promise<Item> {
   const payload = { collection, type, fields, ...(parent === undefined ? {} : { parent }) };
-  return post<Item>('/api/items', payload);
+  if (files.length === 0) return post<Item>('/api/items', payload);
+  const form = new FormData();
+  form.append(
+    'item',
+    JSON.stringify({ ...payload, evidence: files.map(({ role }) => ({ role })) }),
+  );
+  for (const { file } of files) form.append('file', file, file.name);
+  return post<Item>('/api/items', form);
 }
 
 export async function linkItems({ id, kind, other }: LinkRequest): Promise<void> {
