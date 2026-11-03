@@ -1,5 +1,5 @@
 preset: change
-preset_version: 1
+preset_version: 2
 playbook: ./playbook.md
 icon: layers
 fields:
@@ -34,15 +34,18 @@ types:
   change:
     label: Change
     icon: layers
+    # A change holds its repo tasks and nothing else.
+    children: [repo_task]
     fields:
       # The order across repos and what each one waits for.
       plan: { module: markdown }
     layout:
       body: [description, plan, { module: children }]
-  # One per repo the change touches, a child of the change.
+  # One per repo the change touches, a child of the change: it never stands alone.
   repo_task:
     label: Repo task
     icon: git-branch
+    root: false
     fields:
       # The repo, by the name the project knows it by (api, web, services/auth).
       repo: { module: text, required: create }
