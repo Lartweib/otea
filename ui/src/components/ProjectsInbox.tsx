@@ -6,6 +6,7 @@ import { TypeIcon } from '../icons/TypeIcon.tsx';
 import { NodeMark } from '../kit/index.ts';
 import { type Inbox, inboxOf, itemHref, projectHref, whereOf } from '../projects.ts';
 import type { ProjectOverview, WaitingItem } from '../types.ts';
+import { PlaceIcon } from './PlaceIcon.tsx';
 
 // Other projects write to their own databases, which this server's live feed does not watch: the
 // inbox reads them again on this beat, and whenever this project changes.
@@ -19,9 +20,6 @@ function RowNode() {
     </svg>
   );
 }
-
-const projectIcon = (project: ProjectOverview) =>
-  project.paths[0]?.kind === 'folder' ? 'stack' : 'git-branch';
 
 function Count({ n }: { n: number }) {
   if (n === 0) return <span className="pj-zero">·</span>;
@@ -42,20 +40,20 @@ function ProjectsRail({ projects, waiting }: { projects: ProjectOverview[]; wait
         <span className="t-label rail-label">{t('projects.label')}</span>
       </div>
       <a className="rail-entry" href="#/projects" aria-current="page">
-        <span className="pj-entry">
-          <TypeIcon name="inbox" size={14} />
-          <span className="rail-name">{t('projects.title')}</span>
+        <span className="rail-icon">
+          <PlaceIcon icon="inbox" name={t('projects.title')} />
         </span>
+        <span className="rail-name">{t('projects.title')}</span>
         <Count n={waiting} />
       </a>
       {projects.map((project) => {
         const href = projectHref(project);
         const body = (
           <>
-            <span className="pj-entry">
-              <TypeIcon name={projectIcon(project)} size={14} />
-              <span className="rail-name">{project.name}</span>
+            <span className="rail-icon">
+              <PlaceIcon icon={undefined} name={project.name} />
             </span>
+            <span className="rail-name">{project.name}</span>
             <Count n={project.waiting.length} />
           </>
         );
@@ -104,7 +102,7 @@ function ProjectHead({ project }: { project: ProjectOverview }) {
   return (
     <div className="pj-head">
       <span className="pj-head-icon">
-        <TypeIcon name={projectIcon(project)} size={14} />
+        <PlaceIcon icon={undefined} name={project.name} size={14} />
       </span>
       <span className="pj-head-name">{project.name}</span>
       <span className="pj-head-count">{project.waiting.length}</span>
