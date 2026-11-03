@@ -114,7 +114,34 @@ export type ItemView = Omit<ItemWithEvents, 'relations'> & {
   gates?: Record<string, boolean>;
 };
 
-export type Session = { canWrite: boolean };
+// canManageDevices: this computer's signed-in browser, the only one that pairs and revokes devices.
+export type Session = { canWrite: boolean; canManageDevices?: boolean };
+
+// A phone or tablet paired over the LAN; hint is the end of its token's hash.
+export type Device = {
+  id: string;
+  name: string;
+  pairedAt: string;
+  lastSeenAt: string | null;
+  hint: string;
+};
+
+// LAN access as the desk sees it: off unless otea serve --lan; the code while one is good.
+export type LanView = {
+  enabled: boolean;
+  urls: string[];
+  code: {
+    code: string;
+    expiresAt: string;
+    url: string;
+    qr: { size: number; cells: boolean[][] };
+  } | null;
+  devices: Device[];
+};
+
+export type PairingPeek = { project: string; expiresAt: string };
+
+export type Paired = { project: string; device: Device };
 
 // Module names have one source, the core preset format. Type-only: nothing from src/ is bundled.
 export type { FieldModule, FieldRequirement } from '../../src/core/preset.ts';

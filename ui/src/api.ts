@@ -9,6 +9,9 @@ import type {
   EvidenceRole,
   Item,
   ItemView,
+  LanView,
+  Paired,
+  PairingPeek,
   PresetView,
   ProjectView,
   Session,
@@ -16,6 +19,16 @@ import type {
 
 async function get(path: string, signal: AbortSignal): Promise<Response> {
   const response = await fetch(path, { signal, headers: { accept: 'application/json' } });
+  // A device on the LAN whose token was revoked (or never paired) goes back to the pairing screen.
+  if (response.status === 401) {
+    const body: unknown = await response
+      .clone()
+      .json()
+      .catch(() => undefined);
+    if ((body as { error?: { code?: unknown } } | undefined)?.error?.code === 'unpaired') {
+      window.location.assign('/pair');
+    }
+  }
   if (!response.ok && response.status !== 404) {
     throw new Error(t('error.getFailed', { path, status: response.status }));
   }
@@ -126,4 +139,59 @@ export async function linkItems({ id, kind, other }: LinkRequest): Promise<void>
 
 export async function unlinkItems({ id, kind, other }: LinkRequest): Promise<void> {
   await post(`/api/items/${encodeURIComponent(id)}/unlink`, { kind, other });
+}
+
+const lanQuery = (address: string | undefined) =>
+  address === undefined ? '' : `?address=${encodeURIComponent(address)}`;
+
+// LAN access and the paired devices, for this computer's signed-in browser; address picks the
+// network the QR code points at.
+export async function fetchLan(signal: AbortSignal, address?: string): Promise<LanView> {
+  return (await get(`/api/lan${lanQuery(address)}`, signal)).json();
+}
+
+export function newPairingCode(address?: string): Promise<LanView> {
+  return post<LanView>(`/api/lan/code${lanQuery(address)}`, {});
+}
+
+export async function revokeDevice(id: string): Promise<void> {
+  await post(`/api/devices/${encodeURIComponent(id)}/revoke`, {});
+}
+
+// A refused pairing keeps the server's code (invalid_code, code_expired, too_many_attempts…),
+// so the phone can word it in its own language.
+export class PairingRefused extends Error {
+  readonly code: string;
+
+  constructor(code: string, message: string) {
+    super(message);
+    this.code = code;
+  }
+}
+
+async function pairingCall<T>(path: string, payload: unknown): Promise<T> {
+  const response = await fetch(path, {
+    method: 'POST',
+    headers: { accept: 'application/json', 'content-type': 'application/json' },
+    body: JSON.stringify(payload),
+  }).catch(() => {
+    throw new PairingRefused('unreachable', unreachable());
+  });
+  const body: unknown = await response.json().catch(() => undefined);
+  if (response.ok) return body as T;
+  const error = (body as { error?: { code?: unknown; message?: unknown } } | undefined)?.error;
+  throw new PairingRefused(
+    typeof error?.code === 'string' ? error.code : 'unexpected',
+    typeof error?.message === 'string'
+      ? error.message
+      : t('error.requestFailed', { status: response.status }),
+  );
+}
+
+export function peekPairing(code: string): Promise<PairingPeek> {
+  return pairingCall('/api/pair/peek', { code });
+}
+
+export function pairDevice(code: string, name: string): Promise<Paired> {
+  return pairingCall('/api/pair', { code, name });
 }
