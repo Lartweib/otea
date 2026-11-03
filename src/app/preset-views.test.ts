@@ -23,6 +23,7 @@ describe('preset views', () => {
         name: 'tasks',
         version: 1,
         origin: 'official',
+        icon: 'checklist',
         fields: [
           { name: 'title', module: 'text', required: 'create' },
           { name: 'description', module: 'markdown', required: 'complete' },
@@ -39,6 +40,7 @@ describe('preset views', () => {
         name: 'reviews',
         version: 3,
         origin: 'project',
+        icon: null,
         fields: [{ name: 'title', module: 'text', required: 'create' }],
         collections: [],
       },

@@ -3,7 +3,7 @@ import { listCollectionViews } from '../app/collections.ts';
 import { createItem, type ListItemsFilter, listItems, moveItem, showItem } from '../app/items.ts';
 import { listAgents, presenceSignature } from '../app/presence.ts';
 import { listPresetViews } from '../app/preset-views.ts';
-import type { Project } from '../app/project.ts';
+import { type Project, projectView } from '../app/project.ts';
 import { linkItems, unlinkItems } from '../app/relations.ts';
 import { TURNS, type Turn } from '../core/workflow.ts';
 import { type ChangeFeed, createChangeFeed } from './changes.ts';
@@ -61,7 +61,7 @@ function itemsFilter(query: Record<string, string>, fields: string[] = []): List
 function api(project: Project, feed: ChangeFeed, streams: LiveStreams, auth: Session): Hono {
   return new Hono()
     .get('/session', (c) => c.json({ canWrite: auth.canWrite(c) }))
-    .get('/project', (c) => c.json(project.identity))
+    .get('/project', (c) => c.json(projectView(project)))
     .get('/collections', (c) => c.json(listCollectionViews(project)))
     .get('/presets', (c) => c.json(listPresetViews(project)))
     .get('/agents', (c) => c.json({ agents: listAgents(project.db) }))

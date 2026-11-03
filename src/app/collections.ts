@@ -1,5 +1,6 @@
 import type { DatabaseSync } from 'node:sqlite';
 import { OteaError } from '../core/errors.ts';
+import { assertIconName } from '../core/icons.ts';
 import { prefixFor } from '../core/item.ts';
 import { type CollectionLayout, DEFAULT_TYPE, type ItemType, typeOf } from '../core/preset.ts';
 import { transaction } from '../store/database.ts';
@@ -11,6 +12,7 @@ import {
   insertCollection,
   listCollections,
   renameItemType,
+  updateCollectionIcon,
 } from '../store/queries.ts';
 import type { Context } from './context.ts';
 import { type TypeView, typeViews } from './preset-views.ts';
@@ -20,7 +22,8 @@ export type Collection = CollectionRecord;
 
 export const DEFAULT_PRESET = 'tasks';
 
-export type AddCollectionInput = { name: string; preset?: string };
+// `icon` overrides the preset's icon for this collection.
+export type AddCollectionInput = { name: string; preset?: string; icon?: string | undefined };
 
 // Inserts a collection inside an open transaction, so several can be added at once.
 export function insertNewCollection(
@@ -28,12 +31,14 @@ export function insertNewCollection(
   input: AddCollectionInput,
 ): Collection {
   const preset = requirePreset(presets, input.preset ?? DEFAULT_PRESET);
+  const icon = input.icon === undefined ? null : assertIconName(input.icon);
   const collection = {
     name: input.name,
     prefix: prefixFor(input.name),
     preset: preset.name,
     presetVersion: preset.version,
     nextSeq: 1,
+    icon,
   };
   if (collectionTaken(db, collection.name, collection.prefix)) {
     throw new OteaError(
@@ -83,10 +88,27 @@ export function nameImplicitTypes(ctx: Context): number {
   );
 }
 
+// The icon a collection shows: its own, or else its preset's; null when neither has one.
+export function collectionIcon(ctx: Context, collection: Collection): string | null {
+  return collection.icon ?? presetOf(ctx, collection).icon ?? null;
+}
+
+// Gives a collection its own icon, or, with null, goes back to its preset's.
+export function setCollectionIcon(ctx: Context, name: string, icon: string | null): Collection {
+  const valid = icon === null ? null : assertIconName(icon);
+  return transaction(ctx.db, () => {
+    const collection = getCollection(ctx.db, name);
+    updateCollectionIcon(ctx.db, name, valid);
+    return { ...collection, icon: valid };
+  });
+}
+
+// `icon` is resolved: the collection's own or its preset's, so clients never resolve it.
 export type CollectionView = {
   name: string;
   prefix: string;
   preset: string;
+  icon: string | null;
   types: TypeView[];
   view: CollectionLayout;
 };
@@ -98,6 +120,7 @@ export function listCollectionViews(ctx: Context): CollectionView[] {
       name: collection.name,
       prefix: collection.prefix,
       preset: collection.preset,
+      icon: collectionIcon(ctx, collection),
       types: typeViews(types),
       view,
     };

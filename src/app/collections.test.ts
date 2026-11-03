@@ -21,6 +21,7 @@ describe('collections', () => {
       preset: 'tasks',
       presetVersion: 1,
       nextSeq: 1,
+      icon: null,
     });
     expect(getCollection(ctx.db, 'tasks')).toEqual(collection);
   });
