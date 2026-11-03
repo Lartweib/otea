@@ -3,6 +3,8 @@ import { fileURLToPath } from 'node:url';
 import { Client } from '@modelcontextprotocol/client';
 import { getDefaultEnvironment, StdioClientTransport } from '@modelcontextprotocol/client/stdio';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { listAgents } from '../app/presence.ts';
+import { openProject } from '../app/project.ts';
 import { type Cli, cliAt, tempGitRepo, until } from './testing.ts';
 
 const MAIN = fileURLToPath(new URL('./main.ts', import.meta.url));
@@ -42,6 +44,37 @@ describe('mcp', () => {
     expect(claimed.isError).toBeFalsy();
     expect(JSON.parse((claimed.content as { text: string }[])[0]?.text ?? '')).toMatchObject({
       lease: { holder: 'claude' },
+    });
+  });
+
+  it('notes the agent as seen through its client as soon as it connects', async () => {
+    const client = new Client({ name: 'claude-code', version: '2.1.0' });
+    const transport = new StdioClientTransport({
+      command: process.execPath,
+      args: [...ARGS, '--as', 'claude'],
+      cwd: repo.dir,
+      env: { ...getDefaultEnvironment(), OTEA_HOME: process.env.OTEA_HOME ?? '' },
+      stderr: 'pipe',
+    });
+    await client.connect(transport);
+    const agents = () => {
+      const project = openProject(repo.dir);
+      try {
+        return listAgents(project.db);
+      } finally {
+        project.db.close();
+      }
+    };
+
+    try {
+      await until(() => agents().some(({ name }) => name === 'claude'));
+    } finally {
+      await client.close();
+    }
+
+    expect(agents().find(({ name }) => name === 'claude')).toMatchObject({
+      harness: 'claude-code',
+      live: true,
     });
   });
 

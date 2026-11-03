@@ -1,4 +1,5 @@
 import { type ParseArgsOptionsConfig, parseArgs } from 'node:util';
+import { CLI_HARNESS } from '../app/presence.ts';
 import type { Actor } from '../core/item.ts';
 import { type Command, failureCode, type Input, UsageError, usageOf } from './command.ts';
 import { COMMANDS, findCommand } from './commands.ts';
@@ -102,6 +103,7 @@ function inputFor(command: Command, values: Values, args: string[], io: Io, json
     cwd: io.cwd,
     actor: actorFrom(values, io.env),
     channel: 'cli',
+    harness: CLI_HARNESS,
     signal: io.signal,
     openUrl: io.openUrl,
     warn: (message) =>

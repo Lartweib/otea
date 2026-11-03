@@ -1,5 +1,7 @@
 import { Client, InMemoryTransport } from '@modelcontextprotocol/client';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { listAgents } from '../app/presence.ts';
+import { openProject } from '../app/project.ts';
 import { COMMANDS } from '../cli/commands.ts';
 import { type Cli, cliAt, tempGitRepo } from '../cli/testing.ts';
 import type { Actor } from '../core/item.ts';
@@ -366,6 +368,58 @@ describe('mcp server', () => {
       expect(JSON.parse(reply.content[0]?.text ?? '')).toEqual({
         error: { code: 'usage', message: '--timeout must be at most 15m over MCP' },
       });
+    });
+  });
+
+  describe('presence', () => {
+    const agents = () => {
+      const project = openProject(repo.dir);
+      try {
+        return listAgents(project.db);
+      } finally {
+        project.db.close();
+      }
+    };
+
+    it('hands over the clientInfo of initialize once the client has introduced itself', async () => {
+      const greeted: unknown[] = [];
+      const actor: Actor = { kind: 'agent', name: 'codex' };
+      const server = createMcpServer(COMMANDS, {
+        cwd: repo.dir,
+        actor,
+        warn: () => {},
+        greeted: (harness) => greeted.push(harness),
+      });
+      const other = new Client({ name: 'codex-cli', version: '0.9.1' });
+      const [clientSide, serverSide] = InMemoryTransport.createLinkedPair();
+      await server.connect(serverSide);
+      await other.connect(clientSide);
+      await other.listTools();
+
+      expect(greeted).toEqual([{ name: 'codex-cli', version: '0.9.1' }]);
+      await other.close();
+    });
+
+    it('records the client as the harness of the agent on each tool call', async () => {
+      expect(agents()).toEqual([expect.objectContaining({ name: 'claude', harness: 'cli' })]);
+
+      await data('list');
+
+      expect(agents()).toEqual([
+        {
+          name: 'claude',
+          harness: 'test',
+          holding: [],
+          lastSeen: expect.any(String),
+          live: true,
+        },
+      ]);
+    });
+
+    it('lists what the agent holds once it claims', async () => {
+      await data('claim', { id: 'TASKS-1' });
+
+      expect(agents()[0]?.holding).toEqual(['TASKS-1']);
     });
   });
 });

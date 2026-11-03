@@ -1,3 +1,4 @@
+import type { Harness } from '../app/presence.ts';
 import type { AgentChannel } from '../core/authority.ts';
 import { OteaError } from '../core/errors.ts';
 import type { Actor } from '../core/item.ts';
@@ -20,6 +21,8 @@ export type Input = {
   actor: Actor;
   // How the agent reached the command, recorded on its writes: the CLI itself or the MCP server.
   channel: AgentChannel;
+  // What the agent came through, recorded with its presence: the MCP client, or the CLI itself.
+  harness?: Harness | undefined;
   signal: AbortSignal;
   openUrl: Opener;
   warn(message: string): void;

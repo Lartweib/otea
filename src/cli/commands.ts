@@ -35,6 +35,7 @@ import {
 import { claimItem, heartbeatItem, releaseItem } from '../app/leases.ts';
 import { type MigrationReport, migrateToCommon } from '../app/migrate.ts';
 import { collectionPlaybook, hintFor, playbookIndex } from '../app/playbook.ts';
+import { type Harness, seeAgent } from '../app/presence.ts';
 import { addPathToProject, initProject, openProject, type Project } from '../app/project.ts';
 import { linkItems, unlinkItems } from '../app/relations.ts';
 import { relayDecision } from '../app/relay.ts';
@@ -43,6 +44,7 @@ import { watch } from '../app/watch.ts';
 import { OteaError } from '../core/errors.ts';
 import { EVIDENCE_ROLES, type EvidenceRole, MAX_EVIDENCE_MB } from '../core/evidence.ts';
 import type { FieldValues } from '../core/fields.ts';
+import type { Actor } from '../core/item.ts';
 import { parseDuration } from '../core/lease.ts';
 import { describeRelation, RELATION_KINDS } from '../core/relations.ts';
 import { TURNS, type Turn } from '../core/workflow.ts';
@@ -106,6 +108,26 @@ async function withProjectWhile<T>(cwd: string, use: (project: Project) => Promi
   } finally {
     project.db.close();
   }
+}
+
+// Notes that the agent running the command was seen, so the UI can show who is at work.
+function seen(project: Project, { actor, channel, harness }: Input): void {
+  if (actor.kind === 'agent') seeAgent(project.db, { agent: actor.name, channel, harness });
+}
+
+// Opens the project for a command an agent runs, noting the agent as seen first.
+function withAgent<T>(input: Input, use: (project: Project) => T): T {
+  return withProject(input.cwd, (project) => {
+    seen(project, input);
+    return use(project);
+  });
+}
+
+async function withAgentWhile<T>(input: Input, use: (project: Project) => Promise<T>): Promise<T> {
+  return withProjectWhile(input.cwd, (project) => {
+    seen(project, input);
+    return use(project);
+  });
 }
 
 const AGENTS_MD_TEXT: Readonly<Record<AgentsMdAction, (path: string) => string>> = {
@@ -443,7 +465,7 @@ const create: Command = {
     const parent = input.option('parent');
     const fields = fieldsFrom(input);
     const { actor, channel } = input;
-    const item = withProject(input.cwd, (project) =>
+    const item = withAgent(input, (project) =>
       createItem(project, {
         collection,
         ...(type === undefined ? {} : { type }),
@@ -494,7 +516,7 @@ const list: Command = {
     unclaimed: { flag: true },
   },
   execute: (input) => {
-    return withProject(input.cwd, (project) => {
+    return withAgent(input, (project) => {
       const items = listItems(project, listFilter(input));
       return { data: items, text: formatItems(items, typesShown(project)) };
     });
@@ -507,9 +529,11 @@ const show: Command = {
     'Show an item, what to do with it now, its fields, the moves available to the agent and its events timeline',
   args: ['id'],
   options: {},
-  execute: ({ cwd, actor, channel, args: [id = ''] }) => {
+  execute: (input) => {
+    const [id = ''] = input.args;
+    const { actor, channel } = input;
     const performer = { actor, channel };
-    return withProject(cwd, (project) => {
+    return withAgent(input, (project) => {
       const shown = showItem(project, id, performer);
       const item = { ...shown, hint: hintFor(project, shown, actor.name) };
       const { layout } = typeOfItem(project, shown);
@@ -524,9 +548,9 @@ const playbook: Command = {
     "Print the playbook an agent follows in a collection, its preset's then each type's own; without --collection, the project's collections and how to read each playbook, then the coordination playbook of the project's blueprint when it has one",
   args: [],
   options: { collection: {} },
-  execute: ({ cwd, option }) => {
-    const name = option('collection');
-    return withProject(cwd, (project) => {
+  execute: (input) => {
+    const name = input.option('collection');
+    return withAgent(input, (project) => {
       if (name !== undefined) {
         const found = collectionPlaybook(project, name);
         const text = [
@@ -565,10 +589,12 @@ const move: Command = {
   summary: 'Move an item to another state its workflow allows the agent to reach',
   args: ['id', 'state'],
   options: { reason: {} },
-  execute: ({ cwd, actor, channel, option, args: [id = '', to = ''] }) => {
+  execute: (input) => {
+    const [id = '', to = ''] = input.args;
+    const { actor, channel, option } = input;
     const reason = option('reason');
-    const input = { id, to, actor, channel, ...(reason ? { reason } : {}) };
-    return withProject(cwd, (project) => itemResult(project, moveItem(project, input)));
+    const moving = { id, to, actor, channel, ...(reason ? { reason } : {}) };
+    return withAgent(input, (project) => itemResult(project, moveItem(project, moving)));
   },
 };
 
@@ -579,8 +605,10 @@ const link: Command = {
   summary: `Link an item to another, in this project, with a typed relation (${KINDS}): "<id> blocks <other>" reads as it says, "<id> parent <other>" makes <other> the parent of <id>`,
   args: ['id', 'kind', 'other'],
   options: {},
-  execute: ({ cwd, actor, channel, args: [id = '', kind = '', other = ''] }) => {
-    const relation = withProject(cwd, (project) =>
+  execute: (input) => {
+    const [id = '', kind = '', other = ''] = input.args;
+    const { actor, channel } = input;
+    const relation = withAgent(input, (project) =>
       linkItems(project, { id, kind, other, actor, channel }),
     );
     return { data: relation, text: describeRelation(relation) };
@@ -592,8 +620,10 @@ const unlink: Command = {
   summary: 'Remove a relation made with "otea link", named the same way',
   args: ['id', 'kind', 'other'],
   options: {},
-  execute: ({ cwd, actor, channel, args: [id = '', kind = '', other = ''] }) => {
-    const relation = withProject(cwd, (project) =>
+  execute: (input) => {
+    const [id = '', kind = '', other = ''] = input.args;
+    const { actor, channel } = input;
+    const relation = withAgent(input, (project) =>
       unlinkItems(project, { id, kind, other, actor, channel }),
     );
     return { data: relation, text: `Removed: ${describeRelation(relation)}` };
@@ -614,9 +644,7 @@ const relay: Command = {
     const via = input.actor.name;
     const { channel } = input;
     const relayed = { id, to, via, channel, quote, ...(reason ? { reason } : {}) };
-    return withProject(input.cwd, (project) =>
-      itemResult(project, relayDecision(project, relayed)),
-    );
+    return withAgent(input, (project) => itemResult(project, relayDecision(project, relayed)));
   },
 };
 
@@ -662,7 +690,7 @@ const events: Command = {
     if (follow && filter.limit !== undefined) {
       throw new UsageError('--limit cannot be combined with --follow');
     }
-    await withProjectWhile(input.cwd, async (project) => {
+    await withAgentWhile(input, async (project) => {
       let since = filter.since ?? 0;
       const printNew = () => {
         for (const event of listEvents(project, { ...filter, since })) {
@@ -715,7 +743,7 @@ const wait: Command = {
       ...(timeoutMs === undefined ? {} : { timeoutMs }),
       ...(filter.availableTo === undefined ? {} : { recheckMs: LEASE_RECHECK_MS }),
     };
-    const result = await withProjectWhile(input.cwd, async (project) => {
+    const result = await withAgentWhile(input, async (project) => {
       const waited = await watch(project.db, () => oldestWaiting(project, filter), options);
       return 'found' in waited ? itemResult(project, waited.found) : waited;
     });
@@ -733,10 +761,12 @@ const claim: Command = {
     'Hold an item on the agent turn so no other agent can write it (default --ttl 15m); claiming it again extends it',
   args: ['id'],
   options: TTL,
-  execute: ({ cwd, actor, option, args: [id = ''] }) => {
+  execute: (input) => {
+    const [id = ''] = input.args;
+    const { actor, option } = input;
     const ttl = ttlFrom(option('ttl'));
-    const input = { id, actor, ...(ttl === undefined ? {} : { ttlMs: ttl }) };
-    return withProject(cwd, (project) => itemResult(project, claimItem(project, input)));
+    const lease = { id, actor, ...(ttl === undefined ? {} : { ttlMs: ttl }) };
+    return withAgent(input, (project) => itemResult(project, claimItem(project, lease)));
   },
 };
 
@@ -745,10 +775,12 @@ const heartbeat: Command = {
   summary: 'Extend the lease you hold on an item (default --ttl 15m from now)',
   args: ['id'],
   options: TTL,
-  execute: ({ cwd, actor, option, args: [id = ''] }) => {
+  execute: (input) => {
+    const [id = ''] = input.args;
+    const { actor, option } = input;
     const ttl = ttlFrom(option('ttl'));
-    const input = { id, actor, ...(ttl === undefined ? {} : { ttlMs: ttl }) };
-    return withProject(cwd, (project) => itemResult(project, heartbeatItem(project, input)));
+    const lease = { id, actor, ...(ttl === undefined ? {} : { ttlMs: ttl }) };
+    return withAgent(input, (project) => itemResult(project, heartbeatItem(project, lease)));
   },
 };
 
@@ -757,8 +789,10 @@ const release: Command = {
   summary: 'Drop the lease you hold on an item; moving it off the agent turn releases it too',
   args: ['id'],
   options: {},
-  execute: ({ cwd, actor, args: [id = ''] }) => {
-    return withProject(cwd, (project) => itemResult(project, releaseItem(project, { id, actor })));
+  execute: (input) => {
+    const [id = ''] = input.args;
+    const { actor } = input;
+    return withAgent(input, (project) => itemResult(project, releaseItem(project, { id, actor })));
   },
 };
 
@@ -796,7 +830,7 @@ const update: Command = {
     }
     const { actor } = input;
     const changes = { id, fields, actor, ...(title === undefined ? {} : { title }) };
-    return withProject(input.cwd, (project) => itemResult(project, updateItem(project, changes)));
+    return withAgent(input, (project) => itemResult(project, updateItem(project, changes)));
   },
 };
 
@@ -809,11 +843,13 @@ const attach: Command = {
     module: { placeholder: 'id' },
     caption: { placeholder: 'text' },
   },
-  execute: ({ cwd, actor, channel, option, args: [id = '', file = ''] }) => {
+  execute: (input) => {
+    const [id = '', file = ''] = input.args;
+    const { cwd, actor, channel, option } = input;
     const role = option('role') as EvidenceRole | undefined;
     const module = option('module');
     const caption = option('caption');
-    const input = {
+    const evidenceInput = {
       id,
       path: resolve(cwd, file),
       actor,
@@ -822,7 +858,7 @@ const attach: Command = {
       ...(module === undefined ? {} : { module }),
       ...(caption === undefined ? {} : { caption }),
     };
-    const evidence = withProject(cwd, (project) => attachEvidence(project, input));
+    const evidence = withAgent(input, (project) => attachEvidence(project, evidenceInput));
     return { data: evidence, text: formatEvidence(evidence) };
   },
 };
@@ -914,6 +950,19 @@ const open: Command = {
 };
 
 // Stdout carries the protocol, so the command prints nothing itself.
+// The agent counts as seen as soon as its MCP client connects. Without a project yet there is
+// nowhere to note it, and every tool call will say so, so that is no warning.
+function greetedBy(cwd: string, actor: Actor, harness: Harness | undefined, warn: Input['warn']) {
+  try {
+    withProject(cwd, (project) =>
+      seeAgent(project.db, { agent: actor.name, channel: 'mcp', harness }),
+    );
+  } catch (error) {
+    if (error instanceof OteaError && error.code === 'not_found') return;
+    warn(`could not note ${actor.name} as seen: ${(error as Error).message}`);
+  }
+}
+
 const mcp: Command = {
   name: 'mcp',
   summary:
@@ -921,7 +970,8 @@ const mcp: Command = {
   args: [],
   options: {},
   execute: async ({ cwd, actor, signal, warn }) => {
-    await serveStdio(createMcpServer(COMMANDS, { cwd, actor, warn }), signal);
+    const greeted = (harness: Harness | undefined) => greetedBy(cwd, actor, harness, warn);
+    await serveStdio(createMcpServer(COMMANDS, { cwd, actor, warn, greeted }), signal);
     return undefined;
   },
 };
