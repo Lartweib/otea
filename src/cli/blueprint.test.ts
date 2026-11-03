@@ -16,7 +16,7 @@ boards:
   work: { preset: tasks }
   bugs: { preset: bug-triage }
 connections:
-  - bugs.item blocks work.item
+  - bugs.bug blocks work.task
 `;
 
 describe('blueprints', () => {
@@ -130,7 +130,7 @@ describe('blueprints', () => {
     });
 
     it('refuses an invalid blueprint with exit 9, listing its problems', async () => {
-      writeStudio(STUDIO.replace('bugs.item blocks', 'bugs.item parent'));
+      writeStudio(STUDIO.replace('bugs.bug blocks', 'bugs.bug parent'));
 
       const { code, error } = await errorOf('blueprint', 'apply', 'studio');
 
@@ -163,14 +163,20 @@ describe('blueprints', () => {
       expect(error).toEqual({
         code: 'link_not_in_blueprint',
         message:
-          'The blueprint "product" does not allow WORK-1 blocks BUGS-1 (work.item blocks bugs.item); between work and bugs it allows: bugs.item blocks work.item',
+          'The blueprint "product" does not allow WORK-1 blocks BUGS-1 (work.task blocks bugs.bug); between work and bugs it allows: bugs.bug blocks work.task',
       });
     });
 
     it('leaves links within a board, parents and boards outside the blueprint alone', async () => {
       expect((await otea('link', 'WORK-2', 'blocks', 'WORK-1')).code).toBe(0);
+      expect((await otea('link', 'WORK-2', 'parent', 'WORK-1')).code).toBe(0);
       expect((await otea('link', 'NOTES-1', 'relates', 'BUGS-1')).code).toBe(0);
-      expect((await otea('link', 'BUGS-1', 'parent', 'WORK-1')).code).toBe(0);
+    });
+
+    it('leaves a parent across boards to its own rule, not the blueprint', async () => {
+      expect((await errorOf('link', 'BUGS-1', 'parent', 'WORK-1')).error.code).toBe(
+        'parent_across_boards',
+      );
     });
   });
 
@@ -191,7 +197,7 @@ describe('blueprints', () => {
       writeStudio(
         STUDIO.replace('blueprint_version: 1', 'blueprint_version: 2').replace(
           'connections:',
-          '  art: { preset: tasks }\nconnections:\n  - art.item implements work.item',
+          '  art: { preset: tasks }\nconnections:\n  - art.task implements work.task',
         ),
         'Coordinate the studio, art included.\n',
       );
@@ -202,7 +208,7 @@ describe('blueprints', () => {
           'studio v1 (project blueprint): the source changed',
           '  version 1 -> 2',
           '  + board art (preset tasks)',
-          '  + art.item implements work.item',
+          '  + art.task implements work.task',
           '  ~ playbook',
         ].join('\n'),
       );
@@ -241,7 +247,7 @@ describe('blueprints', () => {
       await create('bugs', 'Crops vanish');
       writeStudio(
         STUDIO.replace('  bugs: { preset: bug-triage }\n', '').replace(
-          '  - bugs.item blocks work.item\n',
+          '  - bugs.bug blocks work.task\n',
           '',
         ),
       );
@@ -260,7 +266,7 @@ describe('blueprints', () => {
     it('removes a board that has no items', async () => {
       writeStudio(
         STUDIO.replace('  bugs: { preset: bug-triage }\n', '').replace(
-          '  - bugs.item blocks work.item\n',
+          '  - bugs.bug blocks work.task\n',
           '',
         ),
       );
@@ -313,7 +319,7 @@ describe('blueprints', () => {
     it('reports a project blueprint with unknown presets and types', async () => {
       await otea('init', '--local');
       writeStudio(
-        STUDIO.replace('preset: bug-triage', 'preset: bugz').replace('work.item', 'work.story'),
+        STUDIO.replace('preset: bug-triage', 'preset: bugz').replace('work.task', 'work.story'),
       );
 
       const result = await otea('validate');

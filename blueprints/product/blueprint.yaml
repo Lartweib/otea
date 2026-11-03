@@ -6,4 +6,4 @@ boards:
   work: { preset: tasks }
   bugs: { preset: bug-triage }
 connections:
-  - bugs.item blocks work.item
+  - bugs.bug blocks work.task

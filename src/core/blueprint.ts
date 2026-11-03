@@ -40,7 +40,7 @@ export type BlueprintReading =
 const NAME = /^[a-z0-9][a-z0-9-]*$/;
 const NAME_MESSAGE = 'must be lowercase letters, digits and dashes';
 
-// <board>.<type> <kind> <board>.<type>, as `otea link` reads: `bugs.item blocks work.item`.
+// <board>.<type> <kind> <board>.<type>, as `otea link` reads: `bugs.bug blocks work.task`.
 const CONNECTION =
   /^([a-z0-9][a-z0-9-]*)\.([a-z][a-z0-9_]*)\s+(\S+)\s+([a-z0-9][a-z0-9-]*)\.([a-z][a-z0-9_]*)$/;
 

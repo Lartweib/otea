@@ -20,9 +20,9 @@ boards:
   bugs: { preset: bug-triage }
   art: { preset: tasks }
 connections:
-  - bugs.item blocks work.item
-  - art.item implements work.item
-  - art.item relates bugs.item
+  - bugs.bug blocks work.task
+  - art.task implements work.task
+  - art.task relates bugs.bug
 `;
 
 const product = parseBlueprint(PRODUCT_YAML);
@@ -55,18 +55,18 @@ describe('readBlueprint', () => {
       connections: [
         {
           kind: 'blocks',
-          from: { board: 'bugs', type: 'item' },
-          to: { board: 'work', type: 'item' },
+          from: { board: 'bugs', type: 'bug' },
+          to: { board: 'work', type: 'task' },
         },
         {
           kind: 'implements',
-          from: { board: 'art', type: 'item' },
-          to: { board: 'work', type: 'item' },
+          from: { board: 'art', type: 'task' },
+          to: { board: 'work', type: 'task' },
         },
         {
           kind: 'relates',
-          from: { board: 'art', type: 'item' },
-          to: { board: 'bugs', type: 'item' },
+          from: { board: 'art', type: 'task' },
+          to: { board: 'bugs', type: 'bug' },
         },
       ],
     });
@@ -86,7 +86,7 @@ describe('readBlueprint', () => {
   });
 
   it('refuses parent as a connection: parent links stay inside one board', () => {
-    expect(problemsOf(withConnections('bugs.item parent work.item'))).toEqual([
+    expect(problemsOf(withConnections('bugs.bug parent work.task'))).toEqual([
       'connections[0]: parent links stay inside one board; connect boards with blocks, implements, relates or duplicates',
     ]);
   });
@@ -94,11 +94,7 @@ describe('readBlueprint', () => {
   it('reports a malformed connection, an unknown kind and an unknown board', () => {
     expect(
       problemsOf(
-        withConnections(
-          'bugs blocks work',
-          'bugs.item fixes work.item',
-          'qa.item blocks work.item',
-        ),
+        withConnections('bugs blocks work', 'bugs.bug fixes work.task', 'qa.task blocks work.task'),
       ),
     ).toEqual([
       'connections[0]: "bugs blocks work" does not read <board>.<type> <kind> <board>.<type>',
@@ -111,20 +107,20 @@ describe('readBlueprint', () => {
     expect(
       problemsOf(
         withConnections(
-          'bugs.item blocks work.item',
-          'bugs.item blocks work.item',
-          'bugs.item relates work.item',
-          'work.item relates bugs.item',
+          'bugs.bug blocks work.task',
+          'bugs.bug blocks work.task',
+          'bugs.bug relates work.task',
+          'work.task relates bugs.bug',
         ),
       ),
     ).toEqual([
-      'connections[1]: "bugs.item blocks work.item" is listed twice',
-      'connections[3]: "work.item relates bugs.item" is listed twice',
+      'connections[1]: "bugs.bug blocks work.task" is listed twice',
+      'connections[3]: "work.task relates bugs.bug" is listed twice',
     ]);
   });
 
   it('reports a connection from a board to itself, since links within a board are free', () => {
-    expect(problemsOf(withConnections('work.item blocks work.item'))).toEqual([
+    expect(problemsOf(withConnections('work.task blocks work.task'))).toEqual([
       'connections[0]: joins board work to itself; links within a board are always allowed',
     ]);
   });
@@ -158,7 +154,7 @@ describe('readBlueprint', () => {
 
 describe('blueprintTypeProblems', () => {
   const typesOf = (preset: string) =>
-    preset === 'tasks' || preset === 'bug-triage' ? ['item'] : `Preset "${preset}" not found`;
+    ({ tasks: ['task'], 'bug-triage': ['bug'] })[preset] ?? `Preset "${preset}" not found`;
 
   it('accepts boards whose presets exist and connections whose types they declare', () => {
     expect(blueprintTypeProblems(product, typesOf)).toEqual([]);
@@ -176,13 +172,17 @@ describe('blueprintTypeProblems', () => {
 
     expect(blueprintTypeProblems(blueprint, typesOf)).toEqual([
       'boards.bugs.preset: Preset "bugz" not found',
-      'connections[0]: board work (preset tasks) has no type "story" (types: item)',
+      'connections[0]: board work (preset tasks) has no type "story" (types: task)',
     ]);
   });
 });
 
 describe('assertInBlueprint', () => {
-  const at = (id: string, collection: string, type = 'item') => ({ id, collection, type });
+  const at = (id: string, collection: string, type = collection === 'bugs' ? 'bug' : 'task') => ({
+    id,
+    collection,
+    type,
+  });
   const refusal = (run: () => void) => {
     try {
       run();
@@ -210,7 +210,7 @@ describe('assertInBlueprint', () => {
     ).toEqual({
       code: 'link_not_in_blueprint',
       message:
-        'The blueprint "product" does not allow WORK-1 blocks BUGS-1 (work.item blocks bugs.item); between work and bugs it allows: bugs.item blocks work.item',
+        'The blueprint "product" does not allow WORK-1 blocks BUGS-1 (work.task blocks bugs.bug); between work and bugs it allows: bugs.bug blocks work.task',
     });
   });
 
@@ -224,7 +224,7 @@ describe('assertInBlueprint', () => {
     ).toEqual({
       code: 'link_not_in_blueprint',
       message:
-        'The blueprint "solo" does not allow A-1 duplicates B-1 (a.item duplicates b.item); it declares no link between a and b',
+        'The blueprint "solo" does not allow A-1 duplicates B-1 (a.task duplicates b.task); it declares no link between a and b',
     });
   });
 
@@ -255,8 +255,8 @@ boards:
   bugs: { preset: tasks }
   qa: { preset: tasks }
 connections:
-  - bugs.item blocks work.item
-  - qa.item blocks work.item
+  - bugs.bug blocks work.task
+  - qa.task blocks work.task
 `);
 
     const diff = diffBlueprints(product, source);
@@ -274,9 +274,9 @@ connections:
       '+ board qa (preset tasks)',
       '- board art (preset tasks)',
       '~ board bugs: preset bug-triage -> tasks',
-      '+ qa.item blocks work.item',
-      '- art.item implements work.item',
-      '- art.item relates bugs.item',
+      '+ qa.task blocks work.task',
+      '- art.task implements work.task',
+      '- art.task relates bugs.bug',
     ]);
   });
 
