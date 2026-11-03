@@ -89,7 +89,13 @@ describe('project presets', () => {
   afterEach(() => rmSync(root, { recursive: true, force: true }));
 
   it('loads only official presets when the project has none', () => {
-    expect([...loadPresets(root).presets.keys()]).toEqual(['bug-triage', 'change', 'tasks']);
+    expect([...loadPresets(root).presets.keys()]).toEqual([
+      'architecture',
+      'bug-triage',
+      'change',
+      'review',
+      'tasks',
+    ]);
   });
 
   it('loads a valid project preset next to the official ones', () => {

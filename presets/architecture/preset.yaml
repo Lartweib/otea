@@ -1,0 +1,45 @@
+preset: architecture
+preset_version: 1
+playbook: ./playbook.md
+icon: diagram
+fields:
+  title: { module: text, required: create }
+  # Why a decision is needed now: the forces, the constraints, what must not break.
+  context: { module: markdown }
+  # The options weighed, one `### A · Name` heading each: a line that sums it up, then `+ ` for what
+  # it gains and `- ` for what it costs. `(recommended)` after the name marks the agent's pick.
+  options: { module: markdown }
+  # The decision as it would be recorded, in a few lines.
+  decision: { module: markdown }
+  # What follows from it: what changes, what it costs later, when it would be replaced.
+  consequences: { module: markdown }
+  # The part of the system, in the project's words.
+  area: { module: text }
+# A decision record: an agent drafts it with its options and a diagram, the human accepts it as
+# written, sends it back with a question, or rejects it. An accepted record is closed for good: a
+# later decision replaces it with a `supersedes` link, it is never edited.
+workflow:
+  initial: drafting
+  states:
+    drafting: { turn: agent }
+    review: { turn: human }
+    revising: { turn: agent }
+    accepted: { turn: none, closes: done }
+    rejected: { turn: none, closes: discarded }
+  transitions:
+    - { from: [drafting, revising], to: review, by: agent }
+    - { from: review, to: accepted, by: human-ui }
+    - { from: review, to: revising, by: human, reason: required }
+    - { from: [drafting, review, revising], to: rejected, by: human, reason: required }
+types:
+  decision:
+    label: Decision
+    icon: diagram
+    layout:
+      evidence: [{ module: diagram }]
+      body: [context, { module: options }, decision, consequences]
+      side: [area, { module: relations }]
+      row: [area]
+view:
+  kind: list
+  columns: [id, title, area, state, who, age]

@@ -70,7 +70,7 @@ export type State = { name: string; turn: Turn; closes?: Closing };
 
 export type EvidenceRole = 'before' | 'after' | 'single';
 
-export type EvidenceKind = 'image' | 'video' | 'diff' | 'log' | 'file';
+export type EvidenceKind = 'image' | 'video' | 'diff' | 'log' | 'diagram' | 'file';
 
 // A file an agent attached as proof. Before/after carry no pair id: the latest of each pair up.
 export type Evidence = {

@@ -185,14 +185,20 @@ describe('api', () => {
 
       expect(response.status).toBe(200);
       const presets = (await response.json()) as Array<{ name: string; fields: unknown[] }>;
-      expect(presets.map(({ name }) => name)).toEqual(['bug-triage', 'change', 'tasks']);
-      expect(presets[0]?.fields).toContainEqual({
+      expect(presets.map(({ name }) => name)).toEqual([
+        'architecture',
+        'bug-triage',
+        'change',
+        'review',
+        'tasks',
+      ]);
+      expect(presets[1]?.fields).toContainEqual({
         name: 'severity',
         module: 'severity',
         required: 'complete',
         values: ['low', 'medium', 'high', 'critical'],
       });
-      expect(presets[2]).toMatchObject({
+      expect(presets[4]).toMatchObject({
         types: [
           expect.objectContaining({
             name: 'task',
@@ -202,7 +208,7 @@ describe('api', () => {
         ],
         view: { kind: 'list', groupBy: 'turn' },
       });
-      expect({ ...presets[2], types: undefined, view: undefined }).toEqual({
+      expect({ ...presets[4], types: undefined, view: undefined }).toEqual({
         types: undefined,
         view: undefined,
         name: 'tasks',
@@ -233,8 +239,10 @@ describe('api', () => {
       }>;
 
       expect(presets.map(({ name, origin }) => ({ name, origin }))).toEqual([
+        { name: 'architecture', origin: 'official' },
         { name: 'bug-triage', origin: 'official' },
         { name: 'change', origin: 'official' },
+        { name: 'review', origin: 'official' },
         { name: 'tasks', origin: 'official' },
         { name: 'reviews', origin: 'project' },
       ]);
