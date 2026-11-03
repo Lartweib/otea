@@ -1,16 +1,25 @@
 import { Hono } from 'hono';
+import { bodyLimit } from 'hono/body-limit';
 import { briefFor } from '../app/brief.ts';
 import { listCollectionViews } from '../app/collections.ts';
 import { listEvents } from '../app/events.ts';
+import { createItemWithEvidence } from '../app/intake.ts';
 import { createItem, type ListItemsFilter, listItems, moveItem, showItem } from '../app/items.ts';
 import { listAgents, presenceSignature } from '../app/presence.ts';
 import { listPresetViews } from '../app/preset-views.ts';
 import { type Project, projectView } from '../app/project.ts';
 import { linkItems, unlinkItems } from '../app/relations.ts';
+import { MAX_EVIDENCE_MB } from '../core/evidence.ts';
 import { TURNS, type Turn } from '../core/workflow.ts';
 import type { EventFilter } from '../store/queries.ts';
 import { type ChangeFeed, createChangeFeed } from './changes.ts';
-import { errorBody, ForbiddenHost, InvalidQuery, toErrorResponse } from './errors.ts';
+import {
+  errorBody,
+  ForbiddenHost,
+  InvalidQuery,
+  RejectedRequest,
+  toErrorResponse,
+} from './errors.ts';
 import { serveEvidence } from './evidence.ts';
 import { DEFAULT_PORT, isAllowedHost } from './hosts.ts';
 import { mountAuth, type Session, session } from './session.ts';
@@ -24,6 +33,8 @@ import {
   createRequest,
   HUMAN_IN_UI,
   linkRequest,
+  MAX_CREATE_BYTES,
+  MAX_INTAKE_FILES,
   moveRequest,
 } from './writes.ts';
 
@@ -91,6 +102,14 @@ function eventsFilter(query: Record<string, string>): EventFilter {
   };
 }
 
+function tooLarge(): never {
+  throw new RejectedRequest(
+    413,
+    'evidence_too_large',
+    `Send at most ${MAX_INTAKE_FILES} files of ${MAX_EVIDENCE_MB} MB each`,
+  );
+}
+
 function api(project: Project, feed: ChangeFeed, streams: LiveStreams, auth: Session): Hono {
   return new Hono()
     .get('/session', (c) => c.json({ canWrite: auth.canWrite(c) }))
@@ -101,10 +120,14 @@ function api(project: Project, feed: ChangeFeed, streams: LiveStreams, auth: Ses
     .get('/items', (c) =>
       c.json(listItems(project, itemsFilter(c.req.query(), c.req.queries('field')))),
     )
-    .post('/items', async (c) => {
-      assertWritable(c, auth);
-      const request = await createRequest(c);
-      const item = createItem(project, { ...request, ...HUMAN_IN_UI });
+    .post('/items', bodyLimit({ maxSize: MAX_CREATE_BYTES, onError: tooLarge }), async (c) => {
+      assertWritable(c, auth, true);
+      const { files, ...request } = await createRequest(c);
+      const input = { ...request, ...HUMAN_IN_UI };
+      const item =
+        files.length === 0
+          ? createItem(project, input)
+          : createItemWithEvidence(project, input, files);
       feed.notify();
       return c.json(item, 201);
     })

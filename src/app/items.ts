@@ -113,40 +113,46 @@ export type CreateItemInput = {
   channel?: Channel;
 };
 
-export function createItem(ctx: Context, input: CreateItemInput, now = systemClock): Item {
+// Writes the item, its created event and its parent link, inside the caller's transaction.
+export function insertNewItem(
+  ctx: Context,
+  input: CreateItemInput,
+  at: string,
+): { item: ItemRecord; created: Item } {
   const { db } = ctx;
-  return transaction(db, () => {
-    const collection = getCollection(db, input.collection);
-    const preset = presetOf(ctx, collection);
-    const type = typeFor(preset, input.type);
-    if (input.parent === undefined) assertStandsAlone(preset, type);
-    const { title, fields, state } = intake(type, { ...input.fields, title: input.title });
-    const seq = claimNextSeq(db, collection.name);
-    const at = now();
-    const item: ItemRecord = {
-      id: formatItemId(collection.prefix, seq),
-      collection: collection.name,
-      seq,
-      type: type.name,
-      title,
-      fields,
-      presetVersion: preset.version,
-      state,
-      createdAt: at,
-      updatedAt: at,
-      createdBy: input.actor,
-      lease: null,
-    };
-    insertItem(db, item);
-    const { channel } = input;
-    const data = channel === undefined ? { state } : { state, channel };
-    appendEvent(db, { itemId: item.id, type: 'created', actor: input.actor, at, data });
-    const created = present(item, type.workflow, at);
-    if (input.parent === undefined) return created;
-    const parent = { kind: 'parent' as const, from: item.id, to: input.parent };
-    addRelation(ctx, parent, { actor: input.actor, channel: channel ?? 'cli' }, at);
-    return { ...created, relations: refsOf([parent], item.id) };
-  });
+  const collection = getCollection(db, input.collection);
+  const preset = presetOf(ctx, collection);
+  const type = typeFor(preset, input.type);
+  if (input.parent === undefined) assertStandsAlone(preset, type);
+  const { title, fields, state } = intake(type, { ...input.fields, title: input.title });
+  const seq = claimNextSeq(db, collection.name);
+  const item: ItemRecord = {
+    id: formatItemId(collection.prefix, seq),
+    collection: collection.name,
+    seq,
+    type: type.name,
+    title,
+    fields,
+    presetVersion: preset.version,
+    state,
+    createdAt: at,
+    updatedAt: at,
+    createdBy: input.actor,
+    lease: null,
+  };
+  insertItem(db, item);
+  const { channel } = input;
+  const data = channel === undefined ? { state } : { state, channel };
+  appendEvent(db, { itemId: item.id, type: 'created', actor: input.actor, at, data });
+  const created = present(item, type.workflow, at);
+  if (input.parent === undefined) return { item, created };
+  const parent = { kind: 'parent' as const, from: item.id, to: input.parent };
+  addRelation(ctx, parent, { actor: input.actor, channel: channel ?? 'cli' }, at);
+  return { item, created: { ...created, relations: refsOf([parent], item.id) } };
+}
+
+export function createItem(ctx: Context, input: CreateItemInput, now = systemClock): Item {
+  return transaction(ctx.db, () => insertNewItem(ctx, input, now()).created);
 }
 
 // `availableTo` hides items whose active lease is held by anyone other than that actor; `parent`
