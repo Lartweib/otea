@@ -6,7 +6,8 @@ import type { Item, Move } from './types.ts';
 // Bulk moves: the tray under a selection offers only the moves every selected item can take now,
 // never one waiting for an item's open children (requires: children_closed), and says what keeps the
 // others out. moves: an item's moves as the API serves them to this browser, undefined while loading.
-export type Selected = { item: Item; moves: readonly Move[] | undefined };
+// blockers: how many items that block it are open, read with its moves.
+export type Selected = { item: Item; moves: readonly Move[] | undefined; blockers?: number };
 
 export type StateCount = { state: string; count: number };
 
@@ -95,9 +96,9 @@ export function bulkPlan(selected: readonly Selected[]): BulkPlan {
       hide(t('bulk.notFor', { who: whoOf(states, missing) }), move.to);
       continue;
     }
-    const blocked = selected.flatMap(({ item, moves }) => {
+    const blocked = selected.flatMap(({ item, moves, blockers }) => {
       const own = moves?.find(({ to }) => to === move.to);
-      const why = own ? moveBlock(own, item.children) : undefined;
+      const why = own ? moveBlock(own, { children: item.children, blockers }) : undefined;
       return why ? [{ id: item.id, why }] : [];
     });
     if (blocked.length > 0) hide(blockedWhy(blocked), move.to);

@@ -1,12 +1,13 @@
+import type { Waits } from './actions.ts';
 import { moveBlock, moveVariants } from './actions.ts';
-import type { ChildrenSummary, Move } from './types.ts';
+import type { Move } from './types.ts';
 
 // Swipe triage: one card per item on your turn. Right is the primary move, left sends the item back.
 
 export type Direction = 'right' | 'left';
 
 // forward: the primary move (the one that hands the turn on). back: the first other move that hands the
-// item to an agent. Either may be missing. blocked: moves that wait for open children, shown disabled
+// item to an agent. Either may be missing. blocked: moves that wait for open children or blockers, shown disabled
 // with why, never swiped.
 export type TriagePlan = {
   forward?: Move;
@@ -19,16 +20,13 @@ export type SwipeAction =
   | { kind: 'explain'; to: string }
   | { kind: 'none' };
 
-export function triagePlan(
-  moves: readonly Move[],
-  children?: ChildrenSummary | undefined,
-): TriagePlan {
+export function triagePlan(moves: readonly Move[], waits?: Waits): TriagePlan {
   const blocked = moves.flatMap((move) => {
-    const note = moveBlock(move, children);
+    const note = moveBlock(move, waits);
     return note === undefined ? [] : [{ move, note }];
   });
   const free = moves.filter((move) => !blocked.some((entry) => entry.move === move));
-  const forward = moves[moveVariants(moves, children).indexOf('primary')];
+  const forward = moves[moveVariants(moves, waits).indexOf('primary')];
   const back = free.find((move) => move !== forward && move.turn === 'agent');
   return {
     ...(forward ? { forward } : {}),

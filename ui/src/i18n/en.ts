@@ -217,6 +217,14 @@ export const en = {
     one: 'waits for {count} open child',
     other: 'waits for {count} open children',
   },
+  'move.waitsBlockers': {
+    one: 'waits for {count} open blocker',
+    other: 'waits for {count} open blockers',
+  },
+  'move.andBlockers': {
+    one: 'and {count} open blocker',
+    other: 'and {count} open blockers',
+  },
   'move.closesAs': 'closes the item as {as}',
   'move.closes': 'closes the item',
   'move.leaves': 'it leaves Waiting for you',

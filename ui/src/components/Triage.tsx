@@ -1,4 +1,5 @@
 import { type PointerEvent, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { waitsOf } from '../actions.ts';
 import { fetchItem, moveItem } from '../api.ts';
 import { agoLabel } from '../format.ts';
 import { useActiveLease } from '../hooks.ts';
@@ -452,7 +453,7 @@ function usePlans(ids: readonly string[], version: number): ReadonlyMap<string, 
       fetchItem(id, controller.signal).then(
         (view) => {
           if (!view) return;
-          const plan = triagePlan(view.transitions, view.children);
+          const plan = triagePlan(view.transitions, waitsOf(view));
           setPlans((known) => new Map(known).set(id, plan));
         },
         () => undefined,

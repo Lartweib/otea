@@ -241,6 +241,14 @@ export const es: Catalog = {
     one: 'espera a {count} hijo abierto',
     other: 'espera a {count} hijos abiertos',
   },
+  'move.waitsBlockers': {
+    one: 'espera a {count} bloqueante abierto',
+    other: 'espera a {count} bloqueantes abiertos',
+  },
+  'move.andBlockers': {
+    one: 'y {count} bloqueante abierto',
+    other: 'y {count} bloqueantes abiertos',
+  },
   'move.closesAs': 'cierra el elemento como {as}',
   'move.closes': 'cierra el elemento',
   'move.leaves': 'sale de Tu turno',

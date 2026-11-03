@@ -1,5 +1,5 @@
 import { type ReactNode, useLayoutEffect, useRef, useState } from 'react';
-import { turnAgent } from '../actions.ts';
+import { turnAgent, waitsOf } from '../actions.ts';
 import { DETAILS_ROWS, detailsCut } from '../detail-form.ts';
 import { leftovers } from '../evidence.ts';
 import { actorLabel, leaseLabel, momentLabel } from '../format.ts';
@@ -301,7 +301,7 @@ export function ItemDetail({
       key={`${item.id}:${item.state}`}
       id={item.id}
       moves={item.transitions}
-      openChildren={item.children}
+      waits={waitsOf(item)}
       turn={item.turn}
       agent={agent}
       receipt={receipt}
