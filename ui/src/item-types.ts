@@ -12,7 +12,21 @@ export type DetailBlock =
   | { kind: 'fields'; values: PlacedValue[] }
   | { kind: 'module'; entry: LayoutEntry }
   | { kind: 'relation'; entry: LayoutEntry }
+  | { kind: 'reserved'; entry: LayoutEntry }
   | { kind: 'evidence' };
+
+// Modules that draw from the item as a whole (its history, a field it reads by name) rather than
+// one field or one module's files. questions and score draw nothing yet.
+const RESERVED: readonly string[] = ['rounds', 'options'];
+
+export function isReservedModule(entry: LayoutEntry): boolean {
+  return RESERVED.includes(entry.module);
+}
+
+// A type that places rounds draws its evidence modules inside each round, not on their own.
+export function placesRounds(type: TypeView | undefined): boolean {
+  return !!type && type.layout.body.some(({ module }) => module === 'rounds');
+}
 
 export function isRelationModule(entry: LayoutEntry): boolean {
   return entry.module === 'relations' || entry.module === 'children';
@@ -139,6 +153,7 @@ function blocksOf(
   for (const entry of entries) {
     if (isEvidenceModule(entry)) blocks.push({ kind: 'module', entry });
     else if (isRelationModule(entry)) blocks.push({ kind: 'relation', entry });
+    else if (isReservedModule(entry)) blocks.push({ kind: 'reserved', entry });
     else add(placed(type, entry, values));
   }
   add(extra);
@@ -164,7 +179,7 @@ export function detailBlocks(
     primary: [
       ...blocksOf(
         type,
-        [...type.layout.evidence, ...type.layout.body],
+        [...(placesRounds(type) ? [] : type.layout.evidence), ...type.layout.body],
         values,
         undeclared(type, values),
       ),

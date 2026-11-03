@@ -31,6 +31,7 @@ import './styles/activity.css';
 import './styles/language.css';
 import './styles/pairing.css';
 import './styles/projects.css';
+import './styles/rounds.css';
 import { applyChoice, loadChoice } from './theme-dom.ts';
 
 applyChoice(loadChoice());
