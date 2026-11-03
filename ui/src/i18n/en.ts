@@ -123,6 +123,37 @@ export const en = {
 
   // The list pane
   'list.empty': 'No items yet. Create one with {command}.',
+
+  // The list when there is nothing (yet) to list
+  'emptyList.copy': 'copy',
+  'emptyList.copied': 'copied',
+  'emptyList.firstTitle': 'How should this project work?',
+  'emptyList.firstBody':
+    'Pick a preset for your first collection. It brings the states, whose turn each one is, and the playbook your agent reads.',
+  'emptyList.presetBugs': 'findings, fixes, evidence',
+  'emptyList.presetTasks': 'plain work, done or not',
+  'emptyList.presetChange': 'a change, planned and shipped',
+  'emptyList.firstMake': 'Create it from any terminal in the repo:',
+  'emptyList.firstLater': 'You can add more collections, with other presets, later.',
+  'emptyList.firstConnect': 'Then connect an agent:',
+  'emptyList.nothingIn': 'Nothing in {collection} yet',
+  'emptyList.agentsFile':
+    'Agents file what they find here, after reading {command}. You can add one yourself too.',
+  'emptyList.exampleTitle': 'What you found',
+  'emptyList.orAsk': 'or ask an agent to file what it finds',
+  'emptyList.zeroTitle': 'Nothing on your turn',
+  'emptyList.zeroBody': {
+    one: 'Agents are on {count} item. When one needs you, it lands on your lane.',
+    other: 'Agents are on {count} items. When one needs you, it lands on your lane.',
+  },
+  'emptyList.agentTitle': 'Connect your first agent',
+  'emptyList.agentBody':
+    'Otea is listening. An agent shows up the first time it calls, with nothing else to configure.',
+  'emptyList.agentStep1': 'Add Otea to your agent',
+  'emptyList.agentStep2': 'Ask it to look',
+  'emptyList.agentAsk': '“Check otea for anything on your turn and pick the top one.”',
+  'emptyList.agentStep3': 'Waiting for its first call',
+  'emptyList.agentWaits': 'The agent lane stays dashed until someone is on it.',
   'list.laneAgents': 'ag',
   'list.laneYou': 'you',
   'list.count': '{shown} of {total}',

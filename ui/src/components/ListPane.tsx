@@ -8,6 +8,7 @@ import {
   useState,
 } from 'react';
 import { allWork } from '../all-work.ts';
+import { emptyKind } from '../empty-states.ts';
 import {
   availableColumns,
   chosenColumns,
@@ -28,9 +29,17 @@ import { MOTION, reducedMotion } from '../motion.ts';
 import { type Folds, nestSections } from '../nesting.ts';
 import type { Remote } from '../remote.ts';
 import { groupItems, groupings, type Section } from '../sections.ts';
-import type { CollectionView, Item } from '../types.ts';
+import type { CollectionView, Item, PresetView } from '../types.ts';
 import type { ViewMode, ViewPrefs } from '../view-prefs.ts';
 import { BulkTray } from './BulkTray.tsx';
+import {
+  EmptyCollection,
+  FirstRoute,
+  FirstRun,
+  InboxZero,
+  NoAgent,
+  offeredPresets,
+} from './EmptyStates.tsx';
 import { FilterTokens, GridMenu, HeadControls, type OpenMenu } from './GridControls.tsx';
 import { type ColumnDrag, ItemGrid } from './ItemGrid.tsx';
 import { type ChildrenOf, type CollectionOf, ItemList, type Unfolding } from './ItemList.tsx';
@@ -132,6 +141,16 @@ type ListPaneProps = {
   gridWidth: number;
   // Where the bulk tray docks: the grid pane's own cell, over the scroller.
   bulkHost: HTMLElement | null;
+  // For the empty states: the project's collections (undefined while loading), the presets a first
+  // collection can follow, the agents that ever acted here (undefined while loading), and how to
+  // open intake in the collection listed.
+  collections: readonly string[] | undefined;
+  presets: readonly PresetView[];
+  // The preset the first run shows, chosen in the detail pane (or, on a phone, here).
+  firstPreset: string | undefined;
+  onFirstPreset: (preset: string) => void;
+  agents: readonly string[] | undefined;
+  onCreate: (() => void) | undefined;
 };
 
 // The list pane: its head (the lane names, the title, and for a collection its grouping, filters and
@@ -249,6 +268,54 @@ export function ListPane(props: ListPaneProps) {
 
   if (items.status === 'loading') return <Message>{t('common.loading')}</Message>;
   if (items.status === 'failed') return <Message muted={false}>{items.message}</Message>;
+  const nothing =
+    props.collections === undefined
+      ? undefined
+      : emptyKind({
+          collections: props.collections.length,
+          scoped,
+          collection: collectionName,
+          byTurn: group === 'turn',
+        });
+  // Until an agent has acted here its lane is drawn dashed, and the list says how to bring one.
+  const noAgent = props.agents !== undefined && props.agents.length === 0;
+  if (nothing === 'first-run') {
+    return (
+      <div className="list-view">
+        {phone ? (
+          <FirstRun
+            presets={props.presets}
+            chosen={props.firstPreset}
+            onChoose={props.onFirstPreset}
+            route
+          />
+        ) : (
+          <FirstRoute preset={offeredPresets(props.presets, props.firstPreset).preset} />
+        )}
+      </div>
+    );
+  }
+  if (nothing === 'empty-collection' || nothing === 'empty-project') {
+    const example = collectionName ?? props.collections?.[0] ?? '';
+    return (
+      <div className="list-view" data-agents={noAgent ? 'none' : undefined}>
+        <div className="list-head">
+          <span className="lane-names" aria-hidden="true">
+            <span>{t('list.laneAgents')}</span>
+            <span className="lane-names-you">{t('list.laneYou')}</span>
+          </span>
+          <h2 className="t-h">{collectionName ?? t('rail.all')}</h2>
+        </div>
+        <EmptyCollection
+          collection={collectionName}
+          example={example}
+          agents={!noAgent}
+          onCreate={props.onCreate}
+        />
+        {noAgent ? <NoAgent /> : null}
+      </div>
+    );
+  }
   if (items.value.length === 0) {
     return <Message>{tx('list.empty', { command: <code>otea create</code> })}</Message>;
   }
@@ -284,7 +351,12 @@ export function ListPane(props: ListPaneProps) {
       : t('list.count', { shown: shownItems.length, total: scoped.length });
   const sortColumn = sort ? columns.find(({ key }) => key === sort.key) : undefined;
   return (
-    <div className="list-view" ref={attach} data-narrow={width < 760 || undefined}>
+    <div
+      className="list-view"
+      ref={attach}
+      data-narrow={width < 760 || undefined}
+      data-agents={noAgent ? 'none' : undefined}
+    >
       {/* One row: the lane names over their lanes, the title over the row titles, the tools. */}
       <div className="list-head" data-view={view}>
         <span className="lane-names" aria-hidden="true">
@@ -325,6 +397,7 @@ export function ListPane(props: ListPaneProps) {
           onClearAll={() => onPrefs({ filters: {} })}
         />
       ) : null}
+      {nothing === 'inbox-zero' && !empty ? <InboxZero items={scoped} /> : null}
       {empty ? (
         <p className="list-empty t-small">
           {t('list.noMatch')}
@@ -390,6 +463,7 @@ export function ListPane(props: ListPaneProps) {
           ) : null}
         </div>
       )}
+      {noAgent && view === 'list' ? <NoAgent /> : null}
       {/* Kept while the list shows, so switching views lets the tray leave with its own motion. */}
       {prefs && !phone ? (
         <BulkTray

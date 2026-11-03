@@ -19,6 +19,7 @@ import './styles/grid.css';
 import './styles/detail.css';
 import './styles/evidence.css';
 import './styles/workspace.css';
+import './styles/empty.css';
 import './styles/modules.css';
 import './styles/relations.css';
 import './styles/phone.css';
