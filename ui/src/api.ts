@@ -1,3 +1,4 @@
+import type { FeedEvent } from './activity.ts';
 import type { WrittenBrief } from './brief.ts';
 import { t } from './i18n/i18n.ts';
 import { type Agent, parseAgents } from './presence.ts';
@@ -29,6 +30,15 @@ export function writeBrief(request: {
   success?: readonly string[];
 }): Promise<WrittenBrief> {
   return post<WrittenBrief>('/api/brief', request);
+}
+
+// The project's event log across items: the newest `latest` events, or those after the `since` cursor.
+export async function fetchEvents(
+  query: { latest: number } | { since: number },
+  signal: AbortSignal,
+): Promise<FeedEvent[]> {
+  const search = 'latest' in query ? `latest=${query.latest}` : `since=${query.since}`;
+  return (await get(`/api/events?${search}`, signal)).json();
 }
 
 // Served only to a signed-in browser, as a download unless it is an image, a video or plain text.
