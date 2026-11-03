@@ -27,7 +27,6 @@ export const es: Catalog = {
   'common.close': 'Cerrar',
   'common.failed': 'Falló',
   'common.noFields': 'Sin campos.',
-  'common.allItems': 'Todos los elementos',
   'common.items': 'Elementos',
   'common.more': '{count} más',
   'common.files': { one: '{count} archivo', other: '{count} archivos' },
@@ -70,7 +69,7 @@ export const es: Catalog = {
   // Barra de colecciones
   'rail.label': 'colecciones',
   'rail.aria': 'Colecciones',
-  'rail.all': 'Todos',
+  'rail.all': 'Todo el trabajo',
   'rail.hide': 'Ocultar colecciones',
   'rail.show': 'Mostrar colecciones',
   'rail.waiting': 'en tu turno',
@@ -98,6 +97,10 @@ export const es: Catalog = {
   'section.noValue': 'sin {group}',
   'section.empty': 'Nada por aquí.',
   'group.forYou': '· {count} para ti',
+  'group.yoursInside': {
+    one: '· {count} tuyo dentro',
+    other: '· {count} tuyos dentro',
+  },
   'group.turn': 'turno',
   'group.state': 'estado',
   'group.type': 'tipo',
@@ -115,6 +118,8 @@ export const es: Catalog = {
   'list.fold': { one: 'Plegar el hijo de {id}', other: 'Plegar los {count} hijos de {id}' },
   'list.children': { one: '{count} hijo', other: '{count} hijos' },
   'list.childOf': 'Hijo de {id}',
+  'list.relates': 'relacionados · {count}',
+  'list.alsoUnder': 'también bajo {id}',
   'list.progress': '{open}{of} abiertos',
   'list.progressOf': ' de {total}',
 
@@ -245,6 +250,7 @@ export const es: Catalog = {
   // El detalle
   'detail.brief': 'Resumen',
   'detail.structure': 'Estructura',
+  'detail.across': 'En otros tableros',
   'detail.details': 'Detalles',
   'detail.history': 'Historial',
   'detail.events': { one: '{count} evento', other: '{count} eventos' },

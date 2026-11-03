@@ -8,6 +8,8 @@ type CollectionRailProps = {
   openTotal: number;
   selected: string | undefined;
   onSelect: (collection: string | undefined) => void;
+  // All work leads the list only when the project has two collections or more.
+  allWork: boolean;
   // Folded to its strip: only the toggle stays.
   hidden: boolean;
   // Folds the sidebar to its strip or opens it, from its own header.
@@ -47,13 +49,15 @@ function Count({ yours, open }: { yours: number; open: number }) {
   );
 }
 
-// The collections of the project: choosing one filters the list. Counts are what waits for you / open.
+// The collections of the project: choosing one filters the list, All work (two collections or
+// more) lists them all as one tree. Counts are what waits for you / open.
 export function CollectionRail({
   entries,
   yoursTotal,
   openTotal,
   selected,
   onSelect,
+  allWork,
   hidden,
   onToggle,
 }: CollectionRailProps) {
@@ -66,15 +70,17 @@ export function CollectionRail({
         </span>
       </div>
       <div id="collection-list" className="rail-entries" inert={hidden}>
-        <button
-          type="button"
-          className="rail-entry"
-          aria-pressed={selected === undefined}
-          onClick={() => onSelect(undefined)}
-        >
-          <span>{t('rail.all')}</span>
-          <Count yours={yoursTotal} open={openTotal} />
-        </button>
+        {allWork ? (
+          <button
+            type="button"
+            className="rail-entry"
+            aria-pressed={selected === undefined}
+            onClick={() => onSelect(undefined)}
+          >
+            <span>{t('rail.all')}</span>
+            <Count yours={yoursTotal} open={openTotal} />
+          </button>
+        ) : null}
         {entries.map((entry) => (
           <button
             key={entry.name}

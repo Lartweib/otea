@@ -7,6 +7,7 @@ import {
   useRef,
   useState,
 } from 'react';
+import { allWork } from '../all-work.ts';
 import {
   availableColumns,
   chosenColumns,
@@ -110,6 +111,8 @@ type ListPaneProps = {
   folds: Folds;
   onToggleChildren: (id: string, settled: boolean) => void;
   childrenOf: ChildrenOf;
+  // All work: every collection's items as one tree of what hangs from what (all-work.ts).
+  allWork: boolean;
   selectedId: string | undefined;
   collection: CollectionView | undefined;
   collectionName: string | undefined;
@@ -159,9 +162,9 @@ export function ListPane(props: ListPaneProps) {
   const sections: Section[] = groupItems(shownItems, group, collection);
   const severityGroups =
     collection?.types[0]?.fields.find(({ name }) => name === group)?.module === 'severity';
-  const nested = nestSections(sections, props.folds, (id) =>
-    props.allItems.find((item) => item.id === id),
-  );
+  const nested = props.allWork
+    ? allWork(shownItems, props.folds)
+    : nestSections(sections, props.folds, (id) => props.allItems.find((item) => item.id === id));
   const ids = sections.flatMap((section) => section.items.map(({ id }) => id));
   const selection = useChecked(prefs ? ids : []);
   const tier = gridTier(width);
@@ -288,7 +291,7 @@ export function ListPane(props: ListPaneProps) {
           <span>{t('list.laneAgents')}</span>
           <span className="lane-names-you">{t('list.laneYou')}</span>
         </span>
-        <h2 className="t-h">{collectionName ?? t('common.allItems')}</h2>
+        <h2 className="t-h">{collectionName ?? t('rail.all')}</h2>
         {prefs ? (
           <>
             <span className="list-count t-cap">{count}</span>
@@ -347,6 +350,7 @@ export function ListPane(props: ListPaneProps) {
                 collectionOf={props.collectionOf}
                 scope={`${collectionName ?? ''}:${group}`}
                 severityGroups={severityGroups}
+                crossCollection={props.allWork}
                 {...(props.unfolding ? { unfolding: props.unfolding } : {})}
                 {...(props.onTriage && group === 'turn' ? { onTriage: props.onTriage } : {})}
               />

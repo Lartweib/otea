@@ -1,7 +1,7 @@
 import type { Item } from './types.ts';
 
 // What the empty detail pane says under its hint, for the items in view (a collection, or the whole
-// project under All items): how many wait for you and how many are with agents. A zero count is left
+// project under All work): how many wait for you and how many are with agents. A zero count is left
 // out, except yours: with nothing waiting it says so, the good news.
 export type Fact = { kind: 'yours' | 'agents'; count: number } | { kind: 'nothing' };
 

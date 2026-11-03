@@ -6,15 +6,18 @@ const LEVELS = ['low', 'medium', 'high', 'critical'];
 
 // A group's header in the list and in the grid: its name (after its bars, grouped by severity), how
 // many it holds, and, grouped by anything but turn, how many of them wait for you. The name and the
-// count travel between the two views.
+// count travel between the two views. yoursInside: in All work, the rows waiting for you that sit
+// under roots of another turn.
 export function GroupLabel({
   section,
   total,
   severity = false,
+  yoursInside = 0,
 }: {
   section: Section;
   total: number;
   severity?: boolean;
+  yoursInside?: number | undefined;
 }) {
   const level = LEVELS.indexOf(section.key) + 1;
   const yours =
@@ -34,6 +37,9 @@ export function GroupLabel({
       </span>
       {yours > 0 ? (
         <span className="group-yours">{t('group.forYou', { count: yours })}</span>
+      ) : null}
+      {yoursInside > 0 ? (
+        <span className="group-yours">{t('group.yoursInside', { count: yoursInside })}</span>
       ) : null}
     </>
   );

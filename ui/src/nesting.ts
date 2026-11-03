@@ -4,19 +4,33 @@ import type { Item } from './types.ts';
 // The parent a row points to when it is not nested under it (they sit in different groups).
 export type ParentRef = { id: string; title?: string };
 
+// How a row sits under the item it blocks or implements, in All work.
+export type WorkVia = 'blocked_by' | 'implemented_by';
+
 // How a row sits in the list: how deep under its parents; for a parent with children nested under
 // it, how many, whether they are folded, and whether every child is closed (settled), which folds
 // them unless the viewer unfolds them; for a row whose parent sits elsewhere, a reference to it.
+// All work adds how a row hangs from the one above it (via), where a repeated row first sits
+// (alsoUnder) and how many items it relates to.
 export type RowNesting = {
   depth: number;
   nested?: number;
   collapsed?: boolean;
   settled?: boolean;
   parent?: ParentRef;
+  via?: WorkVia;
+  alsoUnder?: string;
+  relates?: number;
 };
 
-// total: the items of the section's own turn, shown or folded under a collapsed parent.
-export type NestedSection = Section & { total: number };
+// total: the items of the section's own turn, shown or folded under a collapsed parent. keys: each
+// row's own key, in order, when an item can show twice (All work); the item's id otherwise.
+// yoursInside: rows waiting for you that sit under a root of another turn (All work).
+export type NestedSection = Section & {
+  total: number;
+  keys?: readonly string[];
+  yoursInside?: number;
+};
 
 export type Nesting = { sections: NestedSection[]; rows: ReadonlyMap<string, RowNesting> };
 

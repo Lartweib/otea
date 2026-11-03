@@ -227,7 +227,11 @@ export function App() {
   // pointing at items.
   const split = useSplit();
   const listPane = useHideTier();
-  const [collection, setCollection] = useState<string>();
+  const [chosen, setCollection] = useState<string>();
+  const names = collections.status === 'ready' ? collections.value.map((each) => each.name) : [];
+  // All work shows only with two collections or more; with one, that collection is the view.
+  const allWorkShown = names.length >= 2;
+  const collection = chosen ?? (names.length === 1 ? names[0] : undefined);
   const allItems = items.status === 'ready' ? items.value : [];
   // What waits for you anywhere, whatever collection is chosen: the brand, the favicon and the title.
   const attention = useAttention(allItems);
@@ -259,7 +263,6 @@ export function App() {
     setIntake({ openedOn: selectedId, parent: { id, title, type, collection: parent.collection } });
     if (phone) window.scrollTo({ top: 0 });
   };
-  const names = collections.status === 'ready' ? collections.value.map((each) => each.name) : [];
   const rail = railEntries(names, allItems);
   // On a phone the selected row unfolds into its detail, and the detail pane only holds intake.
   // A move made from the unfolded item folds it, and the row carries itself home.
@@ -365,6 +368,7 @@ export function App() {
             openTotal={rail.reduce((sum, entry) => sum + entry.open, 0)}
             selected={collection}
             onSelect={setCollection}
+            allWork={allWorkShown}
             hidden={!split.sidebar && !phone}
             onToggle={split.toggleSidebar}
           />
@@ -376,6 +380,7 @@ export function App() {
               folds={folds}
               onToggleChildren={toggleChildren}
               childrenOf={childrenIndex(allItems)}
+              allWork={allWorkShown && collection === undefined}
               selectedId={selectedId}
               collection={collectionView}
               collectionName={collection}
