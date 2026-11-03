@@ -40,10 +40,12 @@ function leaseLabel({ holder, expiresAt }: Lease): string {
   return `held by ${holder} until ${clockTime(expiresAt)}`;
 }
 
-// Items of a preset without types are all of the implicit type, so the text leaves it out.
-function typed(item: Item): boolean {
-  return item.type !== DEFAULT_TYPE;
-}
+// Whether the text names an item's type. Commands know whether its preset has several types; left
+// to itself, the text leaves out only the implicit type, which every item of a preset without types
+// has.
+export type Typed = (item: Item) => boolean;
+
+const notImplicit: Typed = (item) => item.type !== DEFAULT_TYPE;
 
 function itemRow(item: Item, withType: boolean): string[] {
   const lease = item.lease ? leaseLabel(item.lease) : '';
@@ -51,11 +53,11 @@ function itemRow(item: Item, withType: boolean): string[] {
   return [item.id, ...type, item.state, item.turn, item.title, lease];
 }
 
-export function formatItem(item: Item): string {
+export function formatItem(item: Item, typed: Typed = notImplicit): string {
   return columns([itemRow(item, typed(item))]);
 }
 
-export function formatItems(items: readonly Item[]): string {
+export function formatItems(items: readonly Item[], typed: Typed = notImplicit): string {
   if (items.length === 0) return 'No items.';
   const withType = items.some(typed);
   return columns(items.map((item) => itemRow(item, withType)));
@@ -221,7 +223,11 @@ function createdLine({ createdBy, createdAt, events }: ItemView): string {
 }
 
 // With the item type's layout, evidence is grouped by the module that draws it.
-export function formatItemWithEvents(item: ItemView & { hint?: string }, layout?: Layout): string {
+export function formatItemWithEvents(
+  item: ItemView & { hint?: string },
+  layout?: Layout,
+  typed: Typed = notImplicit,
+): string {
   return [
     `${item.id}  ${item.title}`,
     `state: ${item.state}  turn: ${item.turn}  ${typed(item) ? `type: ${item.type}  ` : ''}collection: ${item.collection}`,

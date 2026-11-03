@@ -30,6 +30,23 @@ export function typeOf(collection: CollectionView | undefined, name: string): Ty
   return collection?.types.find((type) => type.name === name);
 }
 
+// The types a new item may take: under a parent whose type lists its children, only those; with no
+// parent, only the types that may stand alone. A preset without a hierarchy offers every type.
+export function intakeTypes(collection: CollectionView, parent: TypeView | undefined): TypeView[] {
+  if (!parent) return collection.types.filter(({ root }) => root !== false);
+  const { children } = parent;
+  if (children === undefined) return collection.types;
+  return collection.types.filter(({ name }) => children.includes(name));
+}
+
+// Whether an item of the type may take children: always, unless the hierarchy gives it none.
+export function takesChildren(type: TypeView | undefined): boolean {
+  return type?.children === undefined || type.children.length > 0;
+}
+
+// The type of every item of a preset that declares no types (DEFAULT_TYPE in core).
+const IMPLICIT_TYPE = 'item';
+
 // A collection with a single type never marks it.
 export function showsTypes(collection: CollectionView | undefined): boolean {
   return (collection?.types.length ?? 0) > 1;
@@ -46,8 +63,10 @@ export function typeMark(collection: CollectionView | undefined, name: string): 
   const type = typeOf(collection, name);
   const label = presetText(type?.label ?? name);
   if (type?.icon) {
-    // A preset without types names its only type after itself (an epic, a bug-triage item).
-    const word = showsTypes(collection) ? label.toLowerCase() : (collection?.preset ?? name);
+    // A preset without types names its only type after itself (an epic, a notes item); one that
+    // names its only type says it (a bug).
+    const named = showsTypes(collection) || name !== IMPLICIT_TYPE;
+    const word = named ? label.toLowerCase() : (collection?.preset ?? name);
     return { kind: 'icon', icon: type.icon, word };
   }
   return showsTypes(collection) ? { kind: 'tag', name, label } : null;

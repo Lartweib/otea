@@ -66,6 +66,8 @@ describe('validateProject', () => {
 
   it('checks every item against its collection preset', () => {
     ctx.db.exec("UPDATE items SET state = 'archived' WHERE id = 'TASKS-1'");
+    // reviews declares no types: its items are of the implicit type.
+    ctx.db.exec("UPDATE items SET type = 'item'");
     ctx.db.exec("UPDATE collections SET preset = 'reviews', preset_version = 3");
 
     const report = validateProject(ctx);

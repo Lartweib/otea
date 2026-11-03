@@ -156,6 +156,22 @@ export function selectItems(db: DatabaseSync, filter: ItemFilter): ItemRecord[] 
   return (db.prepare(sql).all(params) as ItemRow[]).map(toItem);
 }
 
+export function hasItemsOfType(db: DatabaseSync, collection: string, type: string): boolean {
+  const sql = 'SELECT 1 FROM items WHERE collection = ? AND type = ? LIMIT 1';
+  return db.prepare(sql).get(collection, type) !== undefined;
+}
+
+// Gives the items of a type in a collection another type name; returns how many it renamed.
+export function renameItemType(
+  db: DatabaseSync,
+  collection: string,
+  from: string,
+  to: string,
+): number {
+  const sql = 'UPDATE items SET type = ? WHERE collection = ? AND type = ?';
+  return Number(db.prepare(sql).run(to, collection, from).changes);
+}
+
 export function updateItemState(db: DatabaseSync, id: string, state: string, at: string): void {
   db.prepare('UPDATE items SET state = ?, updated_at = ? WHERE id = ?').run(state, at, id);
 }

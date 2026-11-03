@@ -15,6 +15,7 @@ import {
   missingToComplete,
   revise,
 } from '../core/fields.ts';
+import { assertStandsAlone } from '../core/hierarchy.ts';
 import { type Actor, formatItemId } from '../core/item.ts';
 import { activeLease, assertMayWrite, type Lease } from '../core/lease.ts';
 import { type ItemType, typeFor, typeOf } from '../core/preset.ts';
@@ -101,7 +102,7 @@ export function workflowOf(ctx: Context, item: Pick<ItemRecord, 'collection' | '
 }
 
 // `type` may be left out when the collection's preset has a single type. `parent` creates the item
-// as a child of that item, in the same write.
+// as a child of that item, in the same write; a type that may not stand alone needs one.
 export type CreateItemInput = {
   collection: string;
   type?: string;
@@ -118,6 +119,7 @@ export function createItem(ctx: Context, input: CreateItemInput, now = systemClo
     const collection = getCollection(db, input.collection);
     const preset = presetOf(ctx, collection);
     const type = typeFor(preset, input.type);
+    if (input.parent === undefined) assertStandsAlone(preset, type);
     const { title, fields, state } = intake(type, { ...input.fields, title: input.title });
     const seq = claimNextSeq(db, collection.name);
     const at = now();

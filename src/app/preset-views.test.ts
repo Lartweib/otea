@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { hierarchyPreset, mixedPreset } from '../core/testing.ts';
 import { addCollection } from './collections.ts';
 import type { Context } from './context.ts';
-import { listPresetViews } from './preset-views.ts';
+import { listPresetViews, typeViews } from './preset-views.ts';
 import { memoryContext, REVIEWS } from './testing.ts';
 
 describe('preset views', () => {
@@ -42,12 +43,24 @@ describe('preset views', () => {
         collections: [],
       },
     ]);
-    expect(views[2]?.types.map(({ name, label }) => [name, label])).toEqual([['item', 'Item']]);
+    expect(views[2]?.types.map(({ name, label }) => [name, label])).toEqual([['task', 'Task']]);
     expect(views[2]?.view).toEqual({
       kind: 'list',
       groupBy: 'turn',
       columns: ['id', 'title', 'priority', 'state', 'who', 'age'],
     });
+  });
+
+  it('gives each type its children and whether it stands alone, in a preset with a hierarchy', () => {
+    const views = typeViews(hierarchyPreset.types);
+
+    expect(views.map(({ name, children, root }) => ({ name, children, root }))).toEqual([
+      { name: 'epic', children: ['story', 'bug'], root: true },
+      { name: 'story', children: ['bug'], root: false },
+      { name: 'bug', children: [], root: true },
+    ]);
+    expect(typeViews(mixedPreset.types)[0]).not.toHaveProperty('children');
+    expect(typeViews(mixedPreset.types)[0]).not.toHaveProperty('root');
   });
 
   it('names the collections that use each preset', () => {

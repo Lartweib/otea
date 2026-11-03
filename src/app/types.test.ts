@@ -43,10 +43,10 @@ describe('item types', () => {
       expect(idea({})).toMatchObject({ type: 'impr', state: 'draft', turn: 'agent' });
     });
 
-    it('gives an item of a preset without types the implicit type', () => {
+    it('gives an item of a preset with a single type that type', () => {
       const task = createItem(ctx, { collection: 'tasks', title: 'Docs', actor: ana });
 
-      expect(task.type).toBe('item');
+      expect(task.type).toBe('task');
     });
 
     it('needs a type when the preset has several, and a known one', () => {

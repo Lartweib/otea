@@ -1,4 +1,5 @@
 import { presetText, t } from '../../i18n/i18n.ts';
+import { takesChildren, typeOf } from '../../item-types.ts';
 import { childTally } from '../../relations.ts';
 import type { ItemView, LayoutEntry } from '../../types.ts';
 import type { CollectionOf } from '../ItemList.tsx';
@@ -15,7 +16,8 @@ type ChildrenModuleProps = {
 
 // A parent's children: a list, not a graph. The bar gives the shape of the work at a glance (one
 // segment per child, closed first, then yours, then the agents'), its legend counts them, and each
-// child follows with its node, id, icon, title and state. "+ child" opens the create form.
+// child follows with its node, id, icon, title and state. "+ child" opens the create form, which
+// offers only the types the parent's type takes.
 export function ChildrenModule({
   item,
   entry,
@@ -24,8 +26,10 @@ export function ChildrenModule({
   onAddChild,
 }: ChildrenModuleProps) {
   const children = item.relations.filter(({ kind }) => kind === 'child');
+  // A type the hierarchy gives no children offers no "+ child".
+  const takes = takesChildren(typeOf(collectionOf(item.collection), item.type));
   const add =
-    canWrite && onAddChild ? (
+    canWrite && onAddChild && takes ? (
       <button type="button" className="rel-add" onClick={() => onAddChild(item)}>
         <span className="rel-add-plus" aria-hidden="true">
           +

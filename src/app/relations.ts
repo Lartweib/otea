@@ -1,6 +1,7 @@
 import type { DatabaseSync } from 'node:sqlite';
 import type { Channel } from '../core/authority.ts';
 import { OteaError } from '../core/errors.ts';
+import { assertTakesChild } from '../core/hierarchy.ts';
 import type { Actor } from '../core/item.ts';
 import type { Lease } from '../core/lease.ts';
 import {
@@ -27,6 +28,7 @@ import {
   selectRelations,
   selectRelationsOf,
 } from '../store/queries.ts';
+import { typeOfItem } from './collections.ts';
 import type { Context } from './context.ts';
 import { type Item, present, requireItem, systemClock, workflowOf } from './items.ts';
 
@@ -77,7 +79,8 @@ function assertSameBoard(from: ItemRecord, to: ItemRecord): void {
 
 // Stores a relation inside an open transaction, once both items exist and the core rules hold. A
 // parent lives in its child's collection, and an open item cannot get a closed parent: a closed
-// parent stays with every child it closed with.
+// parent stays with every child it closed with. In a preset that declares a hierarchy, a parent
+// takes only the child types its type lists.
 export function addRelation(ctx: Context, given: Relation, who: Who, at: string): RelationRecord {
   const { db } = ctx;
   const relation = normalizeRelation(given);
@@ -86,6 +89,7 @@ export function addRelation(ctx: Context, given: Relation, who: Who, at: string)
   if (relation.kind === 'parent') assertSameBoard(from, to);
   assertCanRelate(selectRelations(db), relation);
   if (relation.kind === 'parent') {
+    assertTakesChild(to.id, typeOfItem(ctx, to), from.type);
     const parent = presented(ctx, to, at);
     if (parent.closes !== undefined && presented(ctx, from, at).closes === undefined) {
       throw new OteaError(

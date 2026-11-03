@@ -48,6 +48,8 @@ export const EXIT_CODES: Readonly<Record<'ok' | FailureCode, number>> = {
   invalid_relation: 2,
   self_relation: 16,
   parent_exists: 16,
+  parent_type: 16,
+  parent_required: 16,
   relation_cycle: 16,
   parent_across_boards: 16,
   children_open: 4,

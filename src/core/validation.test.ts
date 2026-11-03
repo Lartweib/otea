@@ -5,7 +5,7 @@ import { itemFindings, type StoredItem } from './validation.ts';
 
 const item = (overrides: Partial<StoredItem> = {}): StoredItem => ({
   id: 'TASKS-1',
-  type: 'item',
+  type: 'task',
   title: 'Ship it',
   state: 'todo',
   fields: { description: 'Why', priority: 'medium' },

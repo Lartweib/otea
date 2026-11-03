@@ -10,13 +10,13 @@ import {
   startMessage,
   startOf,
 } from '../intake.ts';
-import { intakeFields } from '../item-types.ts';
+import { intakeFields, intakeTypes, typeOf } from '../item-types.ts';
 import { Button, Icon } from '../kit/index.ts';
 import type { CollectionView, TypeView } from '../types.ts';
 import { FieldControl } from './FieldControl.tsx';
 
 // The item the new one is created under, as its child.
-export type IntakeParent = { id: string; title: string; collection: string };
+export type IntakeParent = { id: string; title: string; type: string; collection: string };
 
 type IntakeFormProps = {
   collections: CollectionView[];
@@ -26,9 +26,16 @@ type IntakeFormProps = {
   onCreated: (id: string) => void;
 };
 
-// The type a form starts with: the collection's first.
-function firstType(collection: CollectionView): TypeView | undefined {
-  return collection.types[0];
+// The type of the parent a "+ child" opened the form for, which limits the types offered.
+function parentType(
+  collections: CollectionView[],
+  parent: IntakeParent | undefined,
+): TypeView | undefined {
+  if (!parent) return undefined;
+  return typeOf(
+    collections.find(({ name }) => name === parent.collection),
+    parent.type,
+  );
 }
 
 function IntakeForm({
@@ -40,7 +47,10 @@ function IntakeForm({
 }: IntakeFormProps) {
   const [collection, setCollection] = useState(first);
   const [parent, setParent] = useState(initialParent);
-  const [type, setType] = useState(() => firstType(first));
+  const offered = (into: CollectionView, under = parent) =>
+    intakeTypes(into, parentType(collections, under));
+  const [type, setType] = useState(() => offered(first)[0]);
+  const types = offered(collection);
   const [values, setValues] = useState(() => (type ? initialValues(type) : {}));
   const [posting, setPosting] = useState(false);
   const [error, setError] = useState<string>();
@@ -56,11 +66,17 @@ function IntakeForm({
   const choose = (name: string) => {
     const next = collections.find((candidate) => candidate.name === name) ?? first;
     setCollection(next);
-    reset(firstType(next));
+    reset(offered(next)[0]);
   };
 
-  const chooseType = (name: string) =>
-    reset(collection.types.find((candidate) => candidate.name === name));
+  // Without the parent, the form offers only the types that stand alone.
+  const unparent = () => {
+    setParent(undefined);
+    const alone = offered(collection, undefined);
+    if (!alone.some(({ name }) => name === type?.name)) reset(alone[0]);
+  };
+
+  const chooseType = (name: string) => reset(types.find((candidate) => candidate.name === name));
 
   const change = (name: string, value: string) =>
     setValues((current: FormValues) => ({ ...current, [name]: value }));
@@ -98,7 +114,7 @@ function IntakeForm({
             icon
             aria-label={t('intake.unparent', { id: parent.id })}
             disabled={posting}
-            onClick={() => setParent(undefined)}
+            onClick={unparent}
           >
             <Icon name="close" />
           </Button>
@@ -124,7 +140,10 @@ function IntakeForm({
           </select>
         </div>
       ) : null}
-      {collection.types.length > 1 ? (
+      {parent && types.length === 0 ? (
+        <p className="t-small">{t('intake.noTypes', { id: parent.id })}</p>
+      ) : null}
+      {types.length > 1 ? (
         <div className="intake-field">
           <label className="t-label" htmlFor="intake-type">
             {t('intake.type')}
@@ -136,7 +155,7 @@ function IntakeForm({
             disabled={posting}
             onChange={(event) => chooseType(event.target.value)}
           >
-            {collection.types.map(({ name, label }) => (
+            {types.map(({ name, label }) => (
               <option key={name} value={name}>
                 {presetText(label)}
               </option>

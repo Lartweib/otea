@@ -37,6 +37,7 @@ describe('playbook', () => {
       collection: 'work',
       preset: 'tasks',
       playbook: TASKS_PLAYBOOK,
+      types: [],
     });
   });
 

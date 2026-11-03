@@ -388,6 +388,7 @@ export const en = {
   'intake.unparent': 'Do not make it a child of {id}',
   'intake.collection': 'Collection',
   'intake.type': 'Type',
+  'intake.noTypes': 'No type of this collection can be a child of {id}.',
   'intake.required': '(required)',
   'intake.create': 'Create',
   'intake.creating': 'Creating…',

@@ -141,6 +141,10 @@ export type TypeView = {
   states: State[];
   fields: FieldView[];
   layout: Layout;
+  // Set only in a preset that declares a hierarchy: the types it takes as children, and whether it
+  // may live with no parent.
+  children?: string[];
+  root?: boolean;
 };
 
 // How a collection lists its items: the list or the grid (a board is drawn as the list), its

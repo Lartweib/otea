@@ -40,10 +40,10 @@ describe('item types', () => {
     expect(unknown.err).toContain('Unknown type "epic" in preset work (types: bug, impr)');
   });
 
-  it('does not need --type for a preset without types', async () => {
+  it('does not need --type for a preset with a single type', async () => {
     const task = await json('create', '--collection', 'tasks', '--title', 'Docs');
 
-    expect(task.type).toBe('item');
+    expect(task.type).toBe('task');
   });
 
   describe('with an item of each type', () => {
