@@ -123,6 +123,7 @@ describe('run', () => {
         path: expect.any(String),
         id,
         name: basename(repo.dir),
+        icon: null,
         storage: 'common',
       });
     });
