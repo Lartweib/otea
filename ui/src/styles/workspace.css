@@ -363,3 +363,155 @@
     transition: none;
   }
 }
+
+/* ---- the detail pane while nothing is chosen (EmptyDetail.tsx) ---- */
+/* A quiet composition a little above the middle: a drawn arrow toward the list, one line, and what
+   waits there. The arrow is drawn in the lanes' stroke, in muted ink: none of this is yours. */
+.workspace .detail-panel:has(> .empty-detail) {
+  height: 100%;
+  padding-block: 0;
+}
+
+.empty-detail {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  padding-bottom: 10%;
+}
+
+.empty-guide {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  margin-left: -24px;
+}
+
+.empty-arrow {
+  flex: none;
+  width: 216px;
+  height: 112px;
+  margin-top: -6px;
+  overflow: visible;
+}
+
+.empty-arrow path {
+  fill: none;
+  stroke: var(--mut);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.empty-stroke {
+  stroke-dasharray: 100;
+}
+
+.empty-body {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.empty-hint {
+  max-width: 290px;
+  margin: 0;
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: -0.018em;
+  line-height: 1.3;
+  color: var(--ink);
+  text-wrap: balance;
+}
+
+.empty-guide .empty-hint {
+  margin-top: 58px;
+}
+
+.empty-facts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  margin: 18px 0 0;
+  font: 400 12.5px var(--font-machine);
+  color: var(--mut);
+}
+
+.empty-fact {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  white-space: nowrap;
+}
+
+.empty-fact[data-kind="yours"] {
+  color: var(--ink);
+}
+
+.empty-dot {
+  margin-right: 3px;
+  color: var(--lane);
+}
+
+.empty-create {
+  margin-top: 22px;
+}
+
+/* Narrow (the list dragged wide): the arrow stands above the line, smaller; at its narrowest only
+   the line remains. */
+@container detail (max-width: 420px) {
+  .empty-guide {
+    flex-direction: column;
+    gap: 4px;
+    margin-left: 0;
+  }
+  .empty-arrow {
+    width: 108px;
+    height: 56px;
+    margin-top: 0;
+  }
+  .empty-hint,
+  .empty-guide .empty-hint {
+    margin-top: 0;
+    font-size: 19px;
+  }
+}
+
+@container detail (max-width: 280px) {
+  .empty-arrow,
+  .empty-facts,
+  .empty-create {
+    display: none;
+  }
+}
+
+/* The entrance: the line steps toward the list and the arrow draws to it. Under reduced motion it
+   is simply there. */
+@media (prefers-reduced-motion: no-preference) {
+  .empty-detail[data-enter] .empty-hint {
+    animation: empty-step 520ms var(--m-ease) 60ms both;
+  }
+  .empty-detail[data-enter] .empty-stroke {
+    animation: empty-draw 520ms var(--m-ease) 160ms both;
+  }
+  .empty-detail[data-enter] .empty-head {
+    animation: ot-fade var(--m-base) var(--m-ease) 560ms both;
+  }
+  .empty-detail[data-enter] .empty-facts {
+    animation: ot-fade 320ms var(--m-ease) 300ms both;
+  }
+}
+
+@keyframes empty-step {
+  from {
+    opacity: 0;
+    transform: translateX(8px);
+  }
+}
+
+@keyframes empty-draw {
+  from {
+    stroke-dashoffset: 100;
+  }
+}

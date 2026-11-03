@@ -180,18 +180,27 @@ type NewItemFormProps = {
   connection: Connection;
   // Set by "+ child": the form starts in the parent's collection, any other can be chosen.
   parent?: IntakeParent | undefined;
+  // Set by an empty collection's "New item in": the form starts there.
+  collection?: string | undefined;
   onCancel: () => void;
   onCreated: (id: string) => void;
 };
 
-export function NewItemForm({ connection, parent, onCancel, onCreated }: NewItemFormProps) {
+export function NewItemForm({
+  connection,
+  parent,
+  collection,
+  onCancel,
+  onCreated,
+}: NewItemFormProps) {
   const collections = useRemote(fetchCollections, 0, connection);
   const body = () => {
     if (collections.status === 'loading') return <p className="t-small">{t('common.loading')}</p>;
     if (collections.status === 'failed')
       return <p className="action-error">{collections.message}</p>;
     const first =
-      collections.value.find(({ name }) => name === parent?.collection) ?? collections.value[0];
+      collections.value.find(({ name }) => name === (parent?.collection ?? collection)) ??
+      collections.value[0];
     if (!first) {
       return (
         <p className="t-small">
