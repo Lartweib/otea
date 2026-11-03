@@ -147,6 +147,7 @@ export const es: Catalog = {
   'languageNote.body':
     'Solo se traduce la interfaz. El contenido de los ítems y de sus campos, y lo que escriben los agentes, quedan tal como se escribieron.',
   'languageNote.where': 'Puedes cambiarlo cuando quieras en Preferencias, aquí abajo.',
+  'languageNote.wherePanel': 'Puedes cambiarlo cuando quieras en Preferencias, al pie del panel.',
   'languageNote.ok': 'Entendido',
 
   // El panel de detalle sin nada elegido
