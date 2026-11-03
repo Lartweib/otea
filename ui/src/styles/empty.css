@@ -1,0 +1,366 @@
+/* The list when there is nothing (yet) to list: first run, an empty collection, nothing on your
+   turn, no agent yet. The lanes are already drawn and waiting; the type follows the empty detail. */
+
+.empty-state {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr);
+  column-gap: 0;
+  max-width: 760px;
+  padding: 8px 16px 0 0;
+}
+
+.empty-copy-col {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+  padding-left: 58px;
+}
+
+.empty-copy-col > p {
+  max-width: 470px;
+  margin: 0;
+}
+
+.empty-title {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: -0.018em;
+  line-height: 1.3;
+  color: var(--ink);
+  text-wrap: balance;
+}
+
+/* ---- a command, with its copy ---- */
+.empty-code {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  max-width: 520px;
+  min-height: 40px;
+  padding: 4px 6px 4px 14px;
+  border-radius: var(--r-m);
+  background: var(--well);
+}
+
+.empty-code code {
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  font: 400 13px var(--font-machine);
+  color: var(--ink);
+  white-space: nowrap;
+  scrollbar-width: none;
+}
+
+.empty-copy-col > p code {
+  font: 400 12.5px var(--font-machine);
+}
+
+.empty-prompt {
+  color: var(--mut);
+}
+
+.empty-copy {
+  flex: none;
+}
+
+.empty-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  margin-top: 6px;
+}
+
+.empty-copy-col > p.empty-then {
+  margin-top: 18px;
+}
+
+/* ---- first run: the preset's route on the lanes ---- */
+.empty-first {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 20px;
+  padding-top: 20px;
+}
+
+/* Alone (a phone): the route beside the words. */
+.empty-first[data-route] {
+  grid-template-columns: 186px minmax(0, 1fr);
+}
+
+/* In the detail, beside the route on the list's lanes. */
+.detail-panel > .empty-first {
+  padding: 40px 0 0;
+}
+
+.empty-first .empty-copy-col {
+  padding-left: 0;
+}
+
+.empty-route .lane-names {
+  display: flex;
+  justify-content: space-between;
+  width: 56px;
+  padding: 0 8px 0 10px;
+  font: 500 11.5px var(--font-machine);
+  color: var(--mut);
+}
+
+.empty-route .lane-names-you {
+  color: var(--you);
+}
+
+.empty-route-body {
+  position: relative;
+  margin-top: 8px;
+}
+
+.empty-route-lanes {
+  position: absolute;
+  left: 0;
+  top: 0;
+  overflow: visible;
+}
+
+.empty-route-lanes .ln,
+.empty-route-lanes .lny {
+  opacity: 0.5;
+}
+
+.empty-route-path {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 1.3;
+  stroke-dasharray: 3 4;
+  opacity: 0.55;
+  animation: empty-route-in 520ms var(--m-ease) both;
+}
+
+.empty-route-names {
+  margin: 0;
+  padding: 0 0 0 66px;
+  list-style: none;
+}
+
+.empty-route-names li {
+  display: flex;
+  align-items: center;
+}
+
+.empty-presets {
+  display: grid;
+  gap: 6px;
+  width: 100%;
+  max-width: 470px;
+  margin: 8px 0 6px;
+}
+
+.empty-preset {
+  display: grid;
+  grid-template-columns: 16px 120px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  min-height: 48px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: var(--r-m);
+  background: none;
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background-color var(--m-fast) var(--m-ease),
+    box-shadow var(--m-base) var(--m-ease);
+}
+
+.empty-preset .mono {
+  font-size: 13px;
+}
+
+.empty-preset:hover {
+  background: var(--hov);
+}
+
+.empty-preset[aria-pressed="true"] {
+  background: var(--sf);
+  box-shadow:
+    0 0 0 1px var(--line),
+    0 8px 18px -12px var(--shadow);
+}
+
+.empty-preset:focus-visible {
+  outline: 2px solid var(--you);
+  outline-offset: 1px;
+}
+
+.empty-radio {
+  position: relative;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1.5px var(--mut);
+}
+
+.empty-radio::after {
+  content: "";
+  position: absolute;
+  inset: 4px;
+  border-radius: 50%;
+  background: var(--ink);
+  transform: scale(0);
+  transition: transform var(--m-slow) var(--m-ease);
+}
+
+.empty-preset[aria-pressed="true"] .empty-radio {
+  box-shadow: inset 0 0 0 1.5px var(--ink);
+}
+
+.empty-preset[aria-pressed="true"] .empty-radio::after {
+  transform: scale(1);
+}
+
+/* ---- an empty collection: the lanes run under rows still to come ---- */
+.empty-collection {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.empty-ghosts {
+  position: relative;
+  height: 168px;
+}
+
+.empty-ghost-lanes {
+  position: absolute;
+  left: 0;
+  top: 0;
+  mask-image: linear-gradient(#000 55%, transparent);
+}
+
+.empty-ghost {
+  position: absolute;
+  left: 58px;
+  right: 4px;
+  height: 48px;
+  border-radius: var(--r-m);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+.empty-ghost:nth-child(3) {
+  opacity: 0.7;
+}
+
+.empty-ghost:nth-child(4) {
+  opacity: 0.4;
+}
+
+.empty-ghost::after {
+  content: "";
+  position: absolute;
+  left: 24px;
+  top: 20px;
+  width: 40%;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--chip);
+  opacity: 0.6;
+}
+
+.empty-collection .empty-copy-col {
+  padding-top: 20px;
+}
+
+/* ---- nothing on your turn: said over the list, whose lanes run on ---- */
+.empty-zero {
+  display: grid;
+  gap: 6px;
+  max-width: 760px;
+  padding: 4px 16px 18px 114px;
+}
+
+.empty-zero p {
+  margin: 0;
+}
+
+/* ---- no agent yet: its lane waits, dashed ---- */
+.list-view[data-agents="none"] .row-lines g > .ln:first-child,
+.ln[data-waiting] {
+  stroke-dasharray: 3 5;
+}
+
+.empty-agent {
+  grid-template-columns: minmax(0, 1fr);
+  margin-top: 28px;
+}
+
+.empty-steps {
+  position: relative;
+  margin-top: 20px;
+}
+
+.empty-steps-lanes {
+  position: absolute;
+  left: 0;
+  top: 0;
+  overflow: visible;
+}
+
+.empty-step-dot {
+  fill: var(--you);
+}
+
+.empty-step-list {
+  margin: 0;
+  padding: 0 0 0 58px;
+  list-style: none;
+}
+
+.empty-step-list li {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+}
+
+@keyframes empty-route-in {
+  from {
+    opacity: 0;
+  }
+}
+
+/* Narrow (the detail dragged wide, a phone): the route stands above the words. */
+@media (max-width: 40rem) {
+  .empty-first[data-route] {
+    grid-template-columns: minmax(0, 1fr);
+    padding-right: 0;
+  }
+
+  .empty-preset {
+    grid-template-columns: 16px minmax(0, 1fr);
+    row-gap: 2px;
+    padding: 10px 14px;
+  }
+
+  .empty-preset .t-small {
+    grid-column: 2;
+  }
+
+  .empty-zero {
+    padding-left: 58px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .empty-route-path {
+    animation: none;
+  }
+
+  .empty-preset,
+  .empty-radio::after {
+    transition-duration: 1ms;
+  }
+}

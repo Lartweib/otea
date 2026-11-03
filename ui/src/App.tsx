@@ -11,6 +11,7 @@ import { applyAttention } from './attention-dom.ts';
 import { catalogEntries } from './catalog.ts';
 import { CollectionRail } from './components/CollectionRail.tsx';
 import { EmptyDetail } from './components/EmptyDetail.tsx';
+import { FirstRun } from './components/EmptyStates.tsx';
 import { ItemDetail } from './components/ItemDetail.tsx';
 import type { ChildrenOf, CollectionOf, Unfolding } from './components/ItemList.tsx';
 import { ListPane } from './components/ListPane.tsx';
@@ -201,12 +202,16 @@ export function App() {
   const collectionOf = collectionLookup(collections);
   const canWrite = session.status === 'ready' && session.value.canWrite;
   const [intake, setIntake] = useState<Intake>();
+  // No collection yet: the first run, its preset chosen in the detail and drawn on the list's lanes.
+  const [firstPreset, setFirstPreset] = useState<string>();
   // The split is a way of looking, not a place: it stays out of the hash, so links and history keep
   // pointing at items.
   const split = useSplit();
   const listPane = useHideTier();
   const [chosen, setCollection] = useState<string>();
   const names = collections.status === 'ready' ? collections.value.map((each) => each.name) : [];
+  const firstRun =
+    collections.status === 'ready' && names.length === 0 && presets.status === 'ready';
   // All work shows only with two collections or more; with one, that collection is the view.
   const allWorkShown = names.length >= 2;
   const collection = chosen ?? (names.length === 1 ? names[0] : undefined);
@@ -443,6 +448,12 @@ export function App() {
               listWidth={split.width}
               gridWidth={gridPane}
               bulkHost={bulkHost}
+              collections={collections.status === 'ready' ? names : undefined}
+              presets={presets.status === 'ready' ? presets.value : []}
+              firstPreset={firstPreset}
+              onFirstPreset={setFirstPreset}
+              agents={agents ? agents.map(({ name }) => name) : undefined}
+              onCreate={canWrite ? () => openIntake(collection) : undefined}
             />
           </div>
           {/* The grid pane's cell again, over the scroller: the bulk tray docks to its bottom edge. */}
@@ -494,11 +505,20 @@ export function App() {
                     itemOf={(id) => allItems.find((each) => each.id === id)}
                     trayHost={detailHost}
                   />
-                ) : detailOff || items.status !== 'ready' ? null : (
+                ) : detailOff || items.status !== 'ready' ? null : firstRun ? (
+                  <FirstRun
+                    presets={presets.value}
+                    chosen={firstPreset}
+                    onChoose={setFirstPreset}
+                    route={false}
+                  />
+                ) : (
                   <EmptyDetail
                     items={scoped}
                     collection={collection}
-                    onCreate={canWrite ? () => openIntake(collection) : undefined}
+                    onCreate={
+                      canWrite && names.length > 0 ? () => openIntake(collection) : undefined
+                    }
                   />
                 )}
               </div>
