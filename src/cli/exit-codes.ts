@@ -59,6 +59,7 @@ export const EXIT_CODES: Readonly<Record<'ok' | FailureCode, number>> = {
   in_use: 18,
   invalid_blueprint: 9,
   link_not_in_blueprint: 16,
+  invalid_draft: 9,
   // 128 + SIGINT, as shells report a command stopped by Ctrl+C.
   interrupted: 130,
 };
