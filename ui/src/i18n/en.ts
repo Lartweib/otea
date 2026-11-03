@@ -55,7 +55,7 @@ export const en = {
   'shell.noAgentsTitle': 'No agents connected.',
   'shell.howToConnect':
     'Add {mcp} to your agent’s MCP servers, or run any {otea} command with {as}.',
-  'shell.connectedRule': 'connected: MCP session open, or a write in the last 15 min',
+  'shell.connectedRule': 'connected: holds a lease, or was active in the last 5 min',
   'shell.openPanel': 'Open the project’s panel',
 
   // Preferences: what belongs to this browser
