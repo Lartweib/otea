@@ -664,12 +664,14 @@
 }
 
 /* moves */
+/* A move: from → to, then who and reason; it wraps under the move when the editor is narrow. */
 .st-mr {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  column-gap: 12px;
+  gap: 4px 12px;
   min-height: 44px;
+  padding: 4px 0;
   border-bottom: 1px solid var(--line);
 }
 .st-mrw.sel .st-mr {
@@ -679,6 +681,7 @@
   background: var(--sel);
 }
 .st-mf {
+  flex: 1 1 220px;
   display: flex;
   align-items: baseline;
   gap: 8px;
@@ -1433,6 +1436,20 @@ button.st-card[aria-pressed="true"] {
     margin-top: auto;
     padding: 14px 8px 0;
     border-top: 1px solid var(--line);
+  }
+}
+
+/* Beside the open sidebar and below 100rem, an open preset or blueprint takes the index's room too;
+   its crumb leads back to the start, which lists everything. */
+@media (min-width: 48rem) and (max-width: 99.99rem) {
+  .layout.studio.with-rail[data-sidebar="on"]:not([data-page="start"]) {
+    grid-template-columns: var(--rail-w) minmax(0, 1fr);
+  }
+  .layout.studio.with-rail[data-sidebar="on"]:not([data-page="start"]) > .st-index {
+    display: none;
+  }
+  .layout.studio.with-rail[data-sidebar="on"]:not([data-page="start"]) > .st-page {
+    grid-column: 2;
   }
 }
 
