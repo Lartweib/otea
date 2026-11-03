@@ -120,8 +120,13 @@ describe('module registry', () => {
     expect(row(priority, '')).toBe('');
   });
 
-  it('keeps text and markdown out of the row', () => {
-    expect(moduleFor('text').Row).toBeUndefined();
+  it('puts a text value in the row as written, and keeps markdown out', () => {
+    const repo = { name: 'repo', module: 'text' } as const;
+
+    expect(row(repo, 'services/auth')).toBe(
+      '<span class="row-text" title="services/auth"><span class="visually-hidden">repo: </span>services/auth</span>',
+    );
+    expect(row(repo, '')).toBe('');
     expect(moduleFor('markdown').Row).toBeUndefined();
   });
 });

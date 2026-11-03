@@ -65,6 +65,16 @@ describe('preset views', () => {
     expect(typeViews(mixedPreset.types)[0]).not.toHaveProperty('root');
   });
 
+  it('gives a type the states each of its gated actions is allowed in, only when it has gates', () => {
+    const change = listPresetViews(ctx).find(({ name }) => name === 'change');
+
+    expect(change?.types.map(({ name, gates }) => [name, gates])).toEqual([
+      ['change', undefined],
+      ['repo_task', { push: ['implementing', 'revising'], merge: ['approved'] }],
+    ]);
+    expect(typeViews(mixedPreset.types)[0]).not.toHaveProperty('gates');
+  });
+
   it('names the collections that use each preset', () => {
     addCollection(ctx, { name: 'tasks' });
     addCollection(ctx, { name: 'design', preset: 'reviews' });

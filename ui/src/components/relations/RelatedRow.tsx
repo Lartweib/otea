@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { t } from '../../i18n/i18n.ts';
 import { TypeIcon } from '../../icons/TypeIcon.tsx';
 import { typeOf } from '../../item-types.ts';
@@ -21,19 +22,49 @@ type RelatedRowProps = {
   // Removes the link; only for a browser that can write.
   onRemove?: (() => void) | undefined;
   removing?: boolean;
+  // A child's row-slot values (a repo task's repo), before its title.
+  lead?: string | undefined;
+  // What follows the state: a child's gates.
+  trail?: ReactNode;
+  // A tick to move it with others, outside the link.
+  tick?: { checked: boolean; onToggle: () => void } | undefined;
 };
 
 // One related item, compact: its node, id, type icon, title and state (with who holds it while an
 // agent works on it), linking to it.
-export function RelatedRow({ related, collectionOf, onRemove, removing = false }: RelatedRowProps) {
+export function RelatedRow({
+  related,
+  collectionOf,
+  onRemove,
+  removing = false,
+  lead,
+  trail,
+  tick,
+}: RelatedRowProps) {
   const kind = relatedNodeKind(related, collectionOf);
   const type = typeOf(collectionOf(related.collection), related.type);
   const lease = activeLease(related.lease, Date.now());
   return (
-    <li className="rel-row" data-kind={kind} data-removing={removing || undefined}>
-      <a className="rel-link" href={hashFor(related.id)}>
+    <li
+      className="rel-row"
+      data-kind={kind}
+      data-removing={removing || undefined}
+      data-ticked={tick?.checked || undefined}
+      data-tickable={tick ? true : undefined}
+    >
+      {tick ? (
+        <input
+          type="checkbox"
+          className="rel-tick"
+          checked={tick.checked}
+          onChange={tick.onToggle}
+          aria-label={t('children.tick', { id: related.id })}
+        />
+      ) : null}
+      <a className="rel-link" href={hashFor(related.id)} data-lead={lead ? true : undefined}>
         <Node kind={kind} label={nodeLabel(kind)} />
         <span className="rel-id">{related.id}</span>
+        {lead ? <span className="rel-lead">{lead}</span> : null}
         <span className="rel-title">
           <TypeIcon name={type?.icon} size={14} />
           <span>{related.title}</span>
@@ -41,6 +72,7 @@ export function RelatedRow({ related, collectionOf, onRemove, removing = false }
         <span className="rel-state">
           {lease ? `${related.state} · ${lease.holder}` : related.state}
         </span>
+        {trail}
       </a>
       {onRemove ? (
         <button

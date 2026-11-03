@@ -110,6 +110,8 @@ export type ItemView = Omit<ItemWithEvents, 'relations'> & {
   missing: string[];
   evidence: Evidence[];
   relations: RelatedItem[];
+  // Which gated actions (otea check) its state allows, when its workflow gates any.
+  gates?: Record<string, boolean>;
 };
 
 export type Session = { canWrite: boolean };
@@ -145,6 +147,8 @@ export type TypeView = {
   // may live with no parent.
   children?: string[];
   root?: boolean;
+  // The actions its workflow gates (push, merge) and the states that allow each, when it has any.
+  gates?: Record<string, string[]>;
 };
 
 // How a collection lists its items: the list or the grid (a board is drawn as the list), its

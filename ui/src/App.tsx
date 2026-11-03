@@ -55,6 +55,8 @@ type DetailPaneProps = {
   onMoved?: () => void;
   onAddChild?: (parent: ItemView) => void;
   onClose?: (() => void) | undefined;
+  itemOf?: ((id: string) => Item | undefined) | undefined;
+  trayHost?: HTMLElement | null | undefined;
 };
 
 function DetailPane({
@@ -66,6 +68,8 @@ function DetailPane({
   onMoved,
   onAddChild,
   onClose,
+  itemOf,
+  trayHost,
 }: DetailPaneProps) {
   if (item.status === 'failed') return <Message muted={false}>{item.message}</Message>;
   if (item.status === 'loading') return <Message>{t('common.loading')}</Message>;
@@ -78,6 +82,8 @@ function DetailPane({
       collectionOf={collectionOf}
       onAddChild={onAddChild}
       onClose={onClose}
+      itemOf={itemOf}
+      trayHost={trayHost}
       {...(layout ? { layout } : {})}
       {...(onMoved ? { onMoved } : {})}
     />
@@ -244,6 +250,7 @@ export function App() {
   const [prefs, setPrefs] = useViewPrefs(collectionView);
   const [morphing, setMorphing] = useState(false);
   const [bulkHost, setBulkHost] = useState<HTMLDivElement | null>(null);
+  const [detailHost, setDetailHost] = useState<HTMLDivElement | null>(null);
   const creating =
     canWrite && route.view === 'items' && intake !== undefined && intake.openedOn === selectedId;
   const closeIntake = () => setIntake(undefined);
@@ -419,6 +426,8 @@ export function App() {
               onReset={split.resetWidth}
             />
           )}
+          {/* The detail pane's cell again: the tray for ticked children docks to its bottom edge. */}
+          {phone ? null : <div className="bulk-host detail-bulk-host" ref={setDetailHost} />}
           {phone && !creating ? null : (
             <div className="detail-pane" data-pane="detail">
               <div className="detail-panel">
@@ -441,6 +450,8 @@ export function App() {
                     collectionOf={collectionOf}
                     onAddChild={addChild}
                     onClose={gridded ? closeDetail : undefined}
+                    itemOf={(id) => allItems.find((each) => each.id === id)}
+                    trayHost={detailHost}
                   />
                 ) : detailOff || items.status !== 'ready' ? null : (
                   <EmptyDetail

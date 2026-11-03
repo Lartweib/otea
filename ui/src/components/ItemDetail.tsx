@@ -3,9 +3,10 @@ import { turnAgent, waitsOf } from '../actions.ts';
 import { DETAILS_ROWS, detailsCut } from '../detail-form.ts';
 import { leftovers } from '../evidence.ts';
 import { actorLabel, leaseLabel, momentLabel } from '../format.ts';
+import { externalUrl, gateRows } from '../gates.ts';
 import { agoLabel } from '../handoff.ts';
 import { useActiveLease } from '../hooks.ts';
-import { type PlainKey, t, tx } from '../i18n/i18n.ts';
+import { type PlainKey, presetText, t, tx } from '../i18n/i18n.ts';
 import { TypeIcon } from '../icons/TypeIcon.tsx';
 import {
   type DetailBlock,
@@ -20,10 +21,13 @@ import { moduleFor } from '../modules/registry.ts';
 import { MOTION, reducedMotion } from '../motion.ts';
 import { itemNodeKind } from '../node-kind.ts';
 import { acrossGroups } from '../relations.ts';
-import type { CollectionView, ItemView, Turn } from '../types.ts';
+import { hashFor } from '../selection.ts';
+import type { CollectionView, Item, ItemView, Turn, TypeView } from '../types.ts';
+import { BulkTray } from './BulkTray.tsx';
 import { useDetailForm } from './detail-aside.ts';
 import { EvidenceList } from './EvidenceList.tsx';
 import { EvidenceModule } from './evidence/EvidenceModule.tsx';
+import { GateBlock } from './Gate.tsx';
 import { HandoffLine } from './HandoffLine.tsx';
 import { ItemActions } from './ItemActions.tsx';
 import type { CollectionOf } from './ItemList.tsx';
@@ -56,6 +60,48 @@ function FieldList({
           <Field key={field.name} label={label}>
             <Detail field={field} value={value} />
           </Field>
+        );
+      })}
+    </dl>
+  );
+}
+
+// The header slot under the title, as a strip of what the item is (a repo task's repo, branch and
+// pull request): each label over its value, a web address as an external link, an empty one said.
+function IdStrip({
+  type,
+  values,
+}: {
+  type: TypeView | undefined;
+  values: Readonly<Record<string, string>>;
+}) {
+  const entries = (type?.layout.header ?? []).flatMap((entry) => {
+    const field = type?.fields.find(({ name }) => name === entry.field);
+    return field ? [{ field, label: entry.label ?? field.name }] : [];
+  });
+  if (entries.length === 0) return null;
+  return (
+    <dl className="detail-ids">
+      {entries.map(({ field, label }) => {
+        const value = values[field.name] ?? '';
+        const url = externalUrl(value);
+        const { Detail } = moduleFor(field.module);
+        return (
+          <div key={field.name}>
+            <dt>{presetText(label)}</dt>
+            <dd>
+              {value === '' ? (
+                <span className="detail-none">{t('detail.noneYet')}</span>
+              ) : url ? (
+                <a className="detail-ext" href={url} target="_blank" rel="noreferrer noopener">
+                  {url.replace(/^https?:\/\//, '')}
+                  <Icon name="external" />
+                </a>
+              ) : (
+                <Detail field={field} value={value} />
+              )}
+            </dd>
+          </div>
         );
       })}
     </dl>
@@ -114,6 +160,10 @@ type ItemDetailProps = {
   onMoved?: (() => void) | undefined;
   // Beside a grid that takes the room back once nothing is open: closes the detail.
   onClose?: (() => void) | undefined;
+  // The items of the board, to read a child's fields and to move ticked children together.
+  itemOf?: ((id: string) => Item | undefined) | undefined;
+  // Where the tray for ticked children docks: the detail pane's bottom edge (App).
+  trayHost?: HTMLElement | null | undefined;
 };
 
 // The detail of another item comes in (the old one leaves at once): it rises 6px into place, or
@@ -149,6 +199,8 @@ export function ItemDetail({
   layout = 'pane',
   onMoved,
   onClose,
+  itemOf,
+  trayHost,
 }: ItemDetailProps) {
   const lease = useActiveLease(item.lease);
   const root = useContentIn(item.id, layout === 'pane');
@@ -158,9 +210,20 @@ export function ItemDetail({
   const [allDetails, setAllDetails] = useState<string | null>(null);
   // The last move made here, said under the moves once the item has taken it.
   const [landed, setLanded] = useState<{ id: string; to: string; at: string } | null>(null);
+  // The children ticked in Structure, moved together from the tray.
+  const [ticked, setTicked] = useState<ReadonlySet<string>>(new Set());
+  const toggleTick = (id: string) =>
+    setTicked((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   const type = typeOf(collection, item.type);
   const kind = itemNodeKind(item, type, lease !== null);
-  const { head, primary, side } = detailBlocks(type, item.fields);
+  const { primary, side } = detailBlocks(type, item.fields);
+  const parent = item.relations.find(({ kind }) => kind === 'parent');
+  const gates = gateRows(type, item.state, item.gates);
   const loose = leftovers(type, item.evidence);
   const block = (part: DetailBlock, index: number) => {
     if (part.kind === 'fields') {
@@ -189,6 +252,12 @@ export function ItemDetail({
           canWrite={canWrite}
           collectionOf={collectionOf}
           onAddChild={onAddChild}
+          itemOf={itemOf}
+          ticks={
+            canWrite && itemOf && layout === 'pane'
+              ? { checked: ticked, toggle: toggleTick }
+              : undefined
+          }
         />
       ) : (
         <RelationsModule
@@ -348,7 +417,19 @@ export function ItemDetail({
             ) : null}
           </div>
           <div className="detail-head-body">
+            {parent ? (
+              <a className="detail-crumb" href={hashFor(parent.id)}>
+                <span className="visually-hidden">{t('detail.parent')}</span>
+                <TypeIcon
+                  name={typeOf(collectionOf(parent.collection), parent.type)?.icon}
+                  size={14}
+                />
+                <span className="t-id">{parent.id}</span>
+                <span className="detail-crumb-title">{parent.title}</span>
+              </a>
+            ) : null}
             <h1 className="t-display">{item.title}</h1>
+            <IdStrip type={type} values={item.fields} />
             <HandoffLine item={item} type={type} canWrite={canWrite} collectionOf={collectionOf} />
             {actions}
           </div>
@@ -356,6 +437,8 @@ export function ItemDetail({
       )}
       {unfolded ? null : <i className="detail-line" aria-hidden="true" />}
       <div className="detail-main">
+        {/* Unfolded in its row, the header is the row: the strip leads the detail instead. */}
+        {unfolded ? <IdStrip type={type} values={item.fields} /> : null}
         {item.missing.length > 0 ? (
           <div className="missing well">
             <span className="t-label">{t('detail.missing')}</span>
@@ -373,12 +456,7 @@ export function ItemDetail({
           </Section>
         ) : null}
         <Section name="brief" label={t('detail.brief')}>
-          {head.length > 0 ? <FieldList values={head} className="fields fields-head" /> : null}
-          {briefParts.length > 0 || head.length > 0 ? (
-            briefParts
-          ) : (
-            <p className="t-small">{t('common.noFields')}</p>
-          )}
+          {briefParts.length > 0 ? briefParts : <p className="t-small">{t('common.noFields')}</p>}
         </Section>
         {structureParts.length > 0 ? (
           <Section name="structure" label={t('detail.structure')}>
@@ -404,6 +482,7 @@ export function ItemDetail({
             {cut.more > 0 ? t('common.more', { count: cut.more }) : t('detail.fewer')}
           </button>
         ) : null}
+        <GateBlock rows={gates} />
         {asideModules.map(block)}
       </Section>
       <Section
@@ -415,6 +494,16 @@ export function ItemDetail({
         <Timeline events={item.events} />
       </Section>
       {unfolded ? <div className="unfold-actions">{actions}</div> : null}
+      {itemOf && canWrite && layout === 'pane' ? (
+        <BulkTray
+          selected={[...ticked].flatMap((id) => itemOf(id) ?? [])}
+          canWrite={canWrite}
+          host={trayHost ?? null}
+          onKeep={(ids) => setTicked(new Set(ids))}
+          onClear={() => setTicked(new Set())}
+          away={false}
+        />
+      ) : null}
     </article>
   );
 }
