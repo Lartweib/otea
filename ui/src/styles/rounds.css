@@ -1,0 +1,465 @@
+/* The diagram, options and rounds modules of the architecture and review presets. */
+
+/* ---- diagram: nodes on the surface, strokes in ink, labels on wells; never your color ---- */
+.dg-module {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.dg-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+}
+
+.dg-file {
+  font: 500 12.5px var(--font-machine);
+}
+
+.dg-switch {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 999px;
+  background: var(--well);
+}
+
+.dg-switch:first-of-type {
+  margin-left: auto;
+}
+
+.dg-seg {
+  height: 26px;
+  padding: 0 11px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  font: 500 12px var(--font-machine);
+  color: var(--mut);
+  cursor: pointer;
+}
+
+.dg-seg[aria-pressed="true"] {
+  background: var(--sf);
+  box-shadow: 0 0 0 1px var(--line);
+  color: var(--ink);
+}
+
+.dg-body {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.dg-stage {
+  padding: 16px;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.dg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0 auto;
+  overflow: visible;
+}
+
+.dg-node rect,
+.dg-node path {
+  fill: var(--sf);
+  stroke: var(--ink);
+  stroke-width: 1.25;
+}
+
+.dg-node[data-added] rect,
+.dg-node[data-added] path {
+  stroke-dasharray: 4 3;
+}
+
+.dg-title {
+  font: 600 13px var(--font-human);
+  fill: var(--ink);
+  text-anchor: middle;
+}
+
+.dg-sub {
+  font: 400 11px var(--font-machine);
+  fill: var(--mut);
+  text-anchor: middle;
+}
+
+.dg-edge {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 1.25;
+}
+
+.dg-edge[data-dashed],
+.dg-edge[data-added] {
+  stroke-dasharray: 4 3;
+}
+
+.dg-head {
+  fill: var(--ink);
+}
+
+.dg-label rect {
+  fill: var(--well);
+}
+
+.dg-label text {
+  font: 400 11px var(--font-machine);
+  fill: var(--ink);
+  text-anchor: middle;
+}
+
+.dg-source {
+  margin: 0;
+  padding: 12px 0;
+  border-radius: var(--r-m);
+  background: var(--well);
+  overflow-x: auto;
+  font: 400 12.5px / 1.7 var(--font-machine);
+}
+
+.dg-line {
+  display: block;
+  padding: 0 14px;
+  white-space: pre;
+}
+
+.dg-line[data-added] {
+  background: color-mix(in oklch, var(--plus) 16%, transparent);
+}
+
+.dg-line[data-failed] {
+  background: color-mix(in oklch, var(--minus) 18%, transparent);
+}
+
+.dg-error {
+  margin: 0;
+  color: var(--minus);
+}
+
+.dg-changed {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+}
+
+.dg-key {
+  width: 18px;
+  height: 10px;
+  border: 1.25px dashed var(--ink);
+  border-radius: 3px;
+}
+
+/* ---- options ---- */
+.op-module {
+  display: grid;
+  gap: 12px;
+}
+
+.op-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 14px;
+}
+
+.op-list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.op-option {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: var(--r-m);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+.op-option[data-recommended] {
+  box-shadow: inset 0 0 0 1.5px var(--ink);
+}
+
+.op-option[data-out] {
+  opacity: 0.6;
+}
+
+.op-letter {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1px var(--off);
+  font: 600 12px var(--font-machine);
+}
+
+.op-option[data-chosen] .op-letter {
+  background: var(--ink);
+  box-shadow: none;
+  color: var(--bg);
+}
+
+.op-body {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.op-name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+}
+
+.op-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 1px 9px 1px 4px;
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 1px var(--off);
+  font: 500 11.5px var(--font-machine);
+  color: var(--mut);
+}
+
+.op-tag[data-on] {
+  padding-left: 9px;
+  color: var(--ink);
+}
+
+.op-summary {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--mut);
+}
+
+.op-trade {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 4px 24px;
+}
+
+.op-trade ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13.5px;
+  line-height: 1.6;
+}
+
+.op-gains li::before {
+  content: "+ ";
+  font-family: var(--font-machine);
+  color: var(--plus);
+}
+
+.op-costs li::before {
+  content: "− ";
+  font-family: var(--font-machine);
+  color: var(--minus);
+}
+
+/* ---- rounds ---- */
+.rd-module {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+
+.rd-head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.rd-scroll {
+  overflow-x: auto;
+  scrollbar-width: thin;
+  padding-bottom: 4px;
+}
+
+.rd-rail {
+  position: relative;
+  height: 108px;
+}
+
+.rd-rail svg {
+  display: block;
+  overflow: visible;
+}
+
+.rd-path {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 1.5;
+}
+
+.rd-past {
+  fill: var(--sf);
+  stroke: var(--you);
+  stroke-width: 1.5;
+}
+
+.rd-verdict {
+  fill: var(--ink);
+}
+
+.rd-lane {
+  position: absolute;
+  left: 0;
+  font: 500 11px var(--font-machine);
+  color: var(--mut);
+  background: var(--bg);
+  padding-right: 6px;
+}
+
+.rd-lane[data-lane="agent"] {
+  top: 10px;
+}
+
+.rd-lane[data-lane="you"] {
+  top: 46px;
+  color: var(--you-ink);
+}
+
+.rd-label {
+  position: absolute;
+  top: 70px;
+  display: grid;
+  justify-items: center;
+  translate: -50% 0;
+  white-space: nowrap;
+  font-size: 13px;
+}
+
+.rd-label b {
+  font-weight: 500;
+  color: var(--mut);
+}
+
+.rd-label[data-now] b {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.rd-current {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border-radius: var(--r-m);
+  background: var(--sf);
+  box-shadow: 0 0 0 1px var(--line);
+}
+
+.rd-current-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 12px;
+}
+
+.rd-current-head .t-h {
+  margin: 0;
+}
+
+.rd-note {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 14px;
+}
+
+.rd-who {
+  font-weight: 500;
+}
+
+.rd-note q,
+.rd-verdict-line q {
+  color: var(--ink);
+}
+
+.rd-media {
+  display: grid;
+  gap: 12px;
+}
+
+.rd-pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.rd-pair[data-single] {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.rd-side {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  min-width: 0;
+}
+
+.rd-verdict-line {
+  margin: 0;
+}
+
+.rd-verdict-line b {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.rd-none,
+.rd-loose {
+  margin: 0;
+}
+
+.rd-earlier summary {
+  cursor: pointer;
+}
+
+.rd-earlier ol {
+  display: grid;
+  gap: 14px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rd-earlier li {
+  display: grid;
+  gap: 6px;
+  padding-left: 14px;
+  border-left: 1.5px solid var(--line);
+}
+
+.rd-earlier-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+}
+
+@media (max-width: 47.99rem) {
+  .rd-pair {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

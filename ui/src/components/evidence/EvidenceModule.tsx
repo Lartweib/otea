@@ -4,6 +4,7 @@ import { t } from '../../i18n/i18n.ts';
 import { Button } from '../../kit/index.ts';
 import type { Evidence, LayoutEntry } from '../../types.ts';
 import { EvidenceList } from '../EvidenceList.tsx';
+import { DiagramView } from './DiagramView.tsx';
 import { ImageCompare, ImageGallery, ImageSingle } from './ImageViews.tsx';
 import { DiffView, LogView } from './TextViews.tsx';
 import { VideoFrames, VideoPlayer } from './VideoViews.tsx';
@@ -14,6 +15,7 @@ const DEFAULT_ACCEPTS: Readonly<Record<string, string>> = {
   recording: 'mp4, webm, mov',
   diff: 'diff, patch',
   log: 'log, txt',
+  diagram: 'mmd, mermaid',
 };
 
 function acceptsText(entry: LayoutEntry): string {
@@ -76,6 +78,7 @@ function OneOf({
 function Body({ entry, held, title }: { entry: LayoutEntry; held: Evidence[]; title: string }) {
   const { module, variant } = entry;
   if (module === 'images' && variant === 'compare') return <ImageCompare evidence={held} />;
+  if (module === 'diagram') return <DiagramView evidence={held} />;
   if (module === 'images' && variant === 'gallery') {
     return <ImageGallery evidence={held} label={title} />;
   }

@@ -32,6 +32,8 @@ import { GateBlock } from './Gate.tsx';
 import { HandoffLine } from './HandoffLine.tsx';
 import { ItemActions } from './ItemActions.tsx';
 import type { CollectionOf } from './ItemList.tsx';
+import { OptionsModule } from './OptionsModule.tsx';
+import { RoundsModule } from './RoundsModule.tsx';
 import { AcrossBoards } from './relations/AcrossBoards.tsx';
 import { ChildrenModule } from './relations/ChildrenModule.tsx';
 import { RelationsModule } from './relations/RelationsModule.tsx';
@@ -270,6 +272,16 @@ export function ItemDetail({
           withChildren={!placesChildren(type)}
         />
       );
+    }
+    if (part.kind === 'reserved') {
+      const key = `reserved:${part.entry.module}:${index}`;
+      if (part.entry.module === 'rounds' && type) {
+        return <RoundsModule key={key} item={item} type={type} entry={part.entry} />;
+      }
+      if (part.entry.module === 'options') {
+        return <OptionsModule key={key} item={item} entry={part.entry} />;
+      }
+      return null;
     }
     if (part.kind === 'module') {
       return (
