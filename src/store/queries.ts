@@ -53,6 +53,11 @@ export function listCollections(db: DatabaseSync): CollectionRecord[] {
   return rows.map(toCollection);
 }
 
+// Only a collection without items may go: nothing else refers to it.
+export function deleteCollection(db: DatabaseSync, name: string): void {
+  db.prepare('DELETE FROM collections WHERE name = ?').run(name);
+}
+
 export function collectionTaken(db: DatabaseSync, name: string, prefix: string): boolean {
   const sql = 'SELECT 1 FROM collections WHERE name = ? OR prefix = ?';
   return db.prepare(sql).get(name, prefix) !== undefined;

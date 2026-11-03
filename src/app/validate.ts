@@ -52,7 +52,8 @@ function parentAcrossBoards(ctx: Context): Finding[] {
   });
 }
 
-export function validateProject(ctx: Context): ValidationReport {
+// `extra` carries findings checked elsewhere, such as the project's blueprint.
+export function validateProject(ctx: Context, extra: readonly Finding[] = []): ValidationReport {
   const findings: Finding[] = [
     ...ctx.presets.problems.map(({ preset, message }) => ({
       severity: 'error' as const,
@@ -65,6 +66,7 @@ export function validateProject(ctx: Context): ValidationReport {
       message,
     })),
   ];
+  findings.push(...extra);
   for (const collection of listCollections(ctx.db)) {
     const preset = resolve(ctx, collection.preset);
     if (typeof preset === 'string') {

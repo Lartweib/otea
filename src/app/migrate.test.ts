@@ -79,6 +79,20 @@ describe('migrateToCommon', () => {
     expect(status).toBe('');
   });
 
+  it("carries the project's blueprint copy, its playbook and its own blueprints along", () => {
+    writeFileSync(join(repo, '.otea', 'blueprint.yaml'), 'blueprint: mine\n');
+    writeFileSync(join(repo, '.otea', 'blueprint.md'), 'Coordinate.\n');
+    mkdirSync(join(repo, '.otea', 'blueprints', 'mine'), { recursive: true });
+    writeFileSync(join(repo, '.otea', 'blueprints', 'mine', 'blueprint.yaml'), 'blueprint: mine\n');
+
+    const report = migrateToCommon(repo, env, NOW);
+
+    expect(report.files).toBe(5);
+    for (const path of ['blueprint.yaml', 'blueprint.md', 'blueprints/mine/blueprint.yaml']) {
+      expect(existsSync(join(report.to, path))).toBe(true);
+    }
+  });
+
   it('keeps the project identity', () => {
     const before = openProject(repo, env);
     const identity = before.identity;

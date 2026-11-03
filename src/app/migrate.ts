@@ -1,4 +1,4 @@
-import { cpSync, existsSync, mkdirSync, readdirSync, renameSync, rmSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, readdirSync, renameSync, rmSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
 import { OteaError } from '../core/errors.ts';
@@ -38,8 +38,8 @@ import {
 
 const BACKUP_PREFIX = '.otea.migrated-';
 
-// The folders copied next to the database; ui-token and serve.json are made again when served.
-const COPIED = ['evidence', 'presets'];
+// The folders and files copied next to the database; ui-token and serve.json are made again when served.
+const COPIED = ['evidence', 'presets', 'blueprints', 'blueprint.yaml', 'blueprint.md'];
 
 export type MigrationReport = {
   // migrated: moved now; finished: an earlier run had copied and registered it, this one moved the
@@ -66,6 +66,7 @@ function summaryOf(dataDir: string): TableSummary {
 
 function countFiles(dir: string): number {
   if (!existsSync(dir)) return 0;
+  if (!statSync(dir).isDirectory()) return 1;
   return readdirSync(dir, { withFileTypes: true, recursive: true }).filter((e) => e.isFile())
     .length;
 }
