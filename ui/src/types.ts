@@ -161,7 +161,14 @@ export type CollectionView = {
   preset: string;
   types: TypeView[];
   view: ViewSpec;
+  // The icon it shows (a name in the UI catalog), resolved by the server; null for none. Older
+  // servers leave it out (see collectionIcon).
+  icon?: string | null;
 };
+
+// The project this server serves. icon: the name of its icon, null for its monogram; older
+// servers leave it out.
+export type ProjectView = { id: string; name: string; icon?: string | null };
 
 export type PresetOrigin = 'official' | 'project';
 

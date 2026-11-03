@@ -1,7 +1,8 @@
 import { t } from './i18n/i18n.ts';
+import { type Agent, parseAgents } from './presence.ts';
 import type { LinkRequest } from './relations.ts';
 import { serverMessage, unreachable } from './remote.ts';
-import type { CollectionView, Item, ItemView, PresetView, Session } from './types.ts';
+import type { CollectionView, Item, ItemView, PresetView, ProjectView, Session } from './types.ts';
 
 async function get(path: string, signal: AbortSignal): Promise<Response> {
   const response = await fetch(path, { signal, headers: { accept: 'application/json' } });
@@ -31,6 +32,17 @@ export async function fetchSession(signal: AbortSignal): Promise<Session> {
 
 export async function fetchCollections(signal: AbortSignal): Promise<CollectionView[]> {
   return (await get('/api/collections', signal)).json();
+}
+
+export async function fetchProject(signal: AbortSignal): Promise<ProjectView> {
+  return (await get('/api/project', signal)).json();
+}
+
+// The agents seen in this project, or null when the server has no presence to tell (it answers
+// 404): the topbar then shows no agents pill at all.
+export async function fetchAgents(signal: AbortSignal): Promise<Agent[] | null> {
+  const response = await get('/api/agents', signal);
+  return response.status === 404 ? null : parseAgents(await response.json());
 }
 
 export async function fetchPresets(signal: AbortSignal): Promise<PresetView[]> {
