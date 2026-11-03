@@ -57,6 +57,42 @@ export const es: Catalog = {
   'theme.label': 'Tema: {choice}',
   'theme.switch': 'Tema: {choice}. Cambiar a {next}.',
 
+  // The topbar's three zones: the project, the mark and the agents connected to this project
+  'shell.projects': 'proyectos',
+  'shell.projectsTitle': 'Proyectos',
+  'shell.projectSwitch': '{project}, cambiar de proyecto',
+  'shell.projectOpen': 'abierto ahora',
+  'shell.newProject': 'proyecto nuevo: {command} en un repo',
+  'shell.agentsTitle': 'Agentes',
+  'shell.agents': { one: '{count} agente', other: '{count} agentes' },
+  'shell.noAgents': 'sin agentes',
+  'shell.offline': 'sin conexión',
+  'shell.agentsIn': 'agentes en {project}',
+  'shell.holding': { one: '{count} con reserva', other: '{count} con reserva' },
+  'shell.idleCount': { one: '{count} inactivo', other: '{count} inactivos' },
+  'shell.idle': 'inactivo · sin reserva',
+  'shell.cli': 'CLI',
+  'shell.noAgentsTitle': 'No hay agentes conectados.',
+  'shell.howToConnect':
+    'Agrega {mcp} a los servidores MCP de tu agente, o ejecuta cualquier comando de {otea} con {as}.',
+  'shell.connectedRule': 'conectado: una sesión MCP abierta, o una escritura en los últimos 15 min',
+  'shell.openPanel': 'Abrir el panel del proyecto',
+
+  // Preferences: what belongs to this browser
+  'prefs.title': 'Preferencias',
+  'prefs.scope': 'este navegador',
+  'prefs.theme': 'tema',
+  'prefs.system': 'Sistema',
+  'prefs.light': 'Claro',
+  'prefs.dark': 'Oscuro',
+  'prefs.language': 'idioma',
+  'prefs.auto': 'Auto · {code}',
+  'prefs.english': 'English',
+  'prefs.spanish': 'Español',
+  'prefs.onlyInterface': 'Solo se traduce la interfaz.',
+  'prefs.translated':
+    '{only} El contenido de los elementos, lo que escriben los agentes y los nombres de las plantillas quedan como se escribieron.',
+
   // El panel de detalle sin nada elegido
   'empty.pick': 'Elige un elemento para ver su detalle',
   'empty.waiting': { one: '{count} te espera', other: '{count} te esperan' },
@@ -73,6 +109,7 @@ export const es: Catalog = {
   'rail.hide': 'Ocultar colecciones',
   'rail.show': 'Mostrar colecciones',
   'rail.waiting': 'en tu turno',
+  'rail.project': 'proyecto',
 
   // De quién es el turno
   'turn.you': 'tú',

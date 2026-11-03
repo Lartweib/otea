@@ -131,6 +131,34 @@ export function setLanguage(next: Language): void {
   apply(next);
 }
 
+// What Preferences offers: a language of its own, or auto, which follows the browser.
+export type LanguageChoice = Language | 'auto';
+
+// The choice this browser made: the language it remembers, auto when it remembers none.
+export function languageChoice(): LanguageChoice {
+  const stored = readStored();
+  return isLanguage(stored) ? stored : 'auto';
+}
+
+// Applies a choice from Preferences. Auto forgets the remembered language and follows the browser.
+export function chooseLanguageSetting(choice: LanguageChoice): void {
+  if (choice !== 'auto') {
+    setLanguage(choice);
+    return;
+  }
+  try {
+    window.localStorage.removeItem(LANGUAGE_KEY);
+  } catch {
+    // Nothing was remembered, or nothing can be: the browser's language applies either way.
+  }
+  apply(chooseLanguage({ preferred: navigator.languages }));
+}
+
+// The language auto would pick in this browser.
+export function browserLanguage(): Language {
+  return chooseLanguage({ preferred: typeof navigator === 'undefined' ? [] : navigator.languages });
+}
+
 // Once, before the first render: `?lang=` is read and remembered, so the address can drop it.
 export function startLanguage(): void {
   const asked = new URLSearchParams(window.location.search).get('lang');
