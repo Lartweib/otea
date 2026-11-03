@@ -6,6 +6,7 @@ import {
   idFromHash,
   modulesHash,
   routeFromHash,
+  studioHash,
   TRIAGE_HASH,
 } from './selection.ts';
 
@@ -62,5 +63,28 @@ describe('selection', () => {
     expect(modulesHash()).toBe('#/modules');
     expect(modulesHash('my rating')).toBe('#/modules/my%20rating');
     expect(routeFromHash(modulesHash('a/b'))).toEqual({ view: 'modules', name: 'a/b' });
+  });
+
+  it.each([
+    ['#/studio', { kind: 'start' }],
+    ['#/studio/preset/my-tasks', { kind: 'preset', name: 'my-tasks' }],
+    ['#/studio/preset/', { kind: 'start' }],
+    ['#/studio/blueprint', { kind: 'blueprint', diagram: false }],
+    ['#/studio/blueprint/diagram', { kind: 'blueprint', diagram: true }],
+    ['#/studio/blueprints', { kind: 'blueprints' }],
+    ['#/studio/elsewhere', { kind: 'start' }],
+  ])('routes %j to the Studio page %j', (hash, page) => {
+    expect(routeFromHash(hash)).toEqual({ view: 'studio', page });
+  });
+
+  it('writes each Studio page as a hash it reads back', () => {
+    const pages = [
+      { kind: 'start' },
+      { kind: 'preset', name: 'bug-triage' },
+      { kind: 'blueprint', diagram: true },
+      { kind: 'blueprints' },
+    ] as const;
+    for (const page of pages)
+      expect(routeFromHash(studioHash(page))).toEqual({ view: 'studio', page });
   });
 });

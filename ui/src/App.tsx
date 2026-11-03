@@ -51,6 +51,7 @@ import { pillState } from './presence.ts';
 import type { Remote } from './remote.ts';
 import { groupByTurn } from './sections.ts';
 import { hashFor, ITEMS_HASH, TRIAGE_HASH } from './selection.ts';
+import { Studio } from './studio/Studio.tsx';
 import type { CollectionView, Item, ItemView, PresetView } from './types.ts';
 import { useAgents } from './use-agents.ts';
 import { inCollection, sidebarEntries } from './workspace.ts';
@@ -198,8 +199,10 @@ export function App() {
   const selectedId = route.view === 'items' ? route.id : undefined;
   const items = useRemote(fetchItems, version, connection);
   const session = useRemote(fetchSession, 0, connection);
-  const collections = useRemote(fetchCollections, 0, connection);
-  const presets = useRemote(fetchPresets, 0, connection);
+  // Studio writes presets and boards: what it changed is read again.
+  const [studioWrites, setStudioWrites] = useState(0);
+  const collections = useRemote(fetchCollections, studioWrites, connection);
+  const presets = useRemote(fetchPresets, studioWrites, connection);
   const collectionOf = collectionLookup(collections);
   const canWrite = session.status === 'ready' && session.value.canWrite;
   const [intake, setIntake] = useState<Intake>();
@@ -271,6 +274,7 @@ export function App() {
     allWork: allWorkShown,
     onCreate: create,
     modules: route.view === 'modules',
+    studio: route.view === 'studio',
   };
   const choose = (name: string | undefined) => {
     setCollection(name);
@@ -393,6 +397,18 @@ export function App() {
           presets={presets}
           rail={phone ? null : sidebarRail}
           sidebar={!folded}
+        />
+      ) : route.view === 'studio' ? (
+        <Studio
+          page={route.page}
+          connection={connection}
+          version={version}
+          canWrite={canWrite}
+          phone={phone}
+          items={allItems}
+          rail={phone ? null : sidebarRail}
+          sidebar={!folded}
+          onChanged={() => setStudioWrites((count) => count + 1)}
         />
       ) : route.view === 'triage' && canWrite ? (
         <main className="layout triage-layout">

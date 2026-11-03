@@ -1,14 +1,25 @@
-// Routes live in the hash: `#<item-id>` selects an item, `#/modules[/<name>]` opens the catalog and
-// `#/triage` the swipe triage and `#/brief/<id>,<id>` a brief for those items. Item ids never start with a slash, so they never collide.
+// Routes live in the hash: `#<item-id>` selects an item, `#/modules[/<name>]` opens the catalog,
+// `#/triage` the swipe triage, `#/brief/<id>,<id>` a brief for those items and `#/studio[/...]`
+// the Studio (see StudioPage). Item ids never start with a slash, so they never collide.
 export type Route =
   | { view: 'items'; id?: string }
   | { view: 'modules'; name?: string }
   | { view: 'triage' }
-  | { view: 'brief'; ids: string[] };
+  | { view: 'brief'; ids: string[] }
+  | { view: 'studio'; page: StudioPage };
+
+// Studio's pages: the start (the project's blueprint, or the blueprints to build it from), a
+// preset, the project's blueprint edited or drawn as its diagram.
+export type StudioPage =
+  | { kind: 'start' }
+  | { kind: 'preset'; name: string }
+  | { kind: 'blueprint'; diagram: boolean }
+  | { kind: 'blueprints' };
 
 const MODULES = '/modules';
 const TRIAGE = '/triage';
 const BRIEF = '/brief';
+const STUDIO = '/studio';
 
 // Swipe triage: what waits for you, one card at a time.
 export const TRIAGE_HASH = `#${TRIAGE}`;
@@ -47,9 +58,35 @@ export function routeFromHash(hash: string): Route {
       .filter((id): id is string => !!id);
     return { view: 'brief', ids };
   }
+  if (path === STUDIO || path.startsWith(`${STUDIO}/`)) {
+    return { view: 'studio', page: studioPage(path.slice(STUDIO.length + 1).split('/')) };
+  }
   if (path.startsWith('/')) return { view: 'items' };
   const id = idFromHash(hash);
   return id ? { view: 'items', id } : { view: 'items' };
+}
+
+function studioPage([kind, name]: string[]): StudioPage {
+  if (kind === 'preset' && name) {
+    const decoded = decode(name);
+    if (decoded) return { kind: 'preset', name: decoded };
+  }
+  if (kind === 'blueprint') return { kind: 'blueprint', diagram: name === 'diagram' };
+  if (kind === 'blueprints') return { kind: 'blueprints' };
+  return { kind: 'start' };
+}
+
+export function studioHash(page: StudioPage = { kind: 'start' }): string {
+  switch (page.kind) {
+    case 'preset':
+      return `#${STUDIO}/preset/${encodeURIComponent(page.name)}`;
+    case 'blueprint':
+      return `#${STUDIO}/blueprint${page.diagram ? '/diagram' : ''}`;
+    case 'blueprints':
+      return `#${STUDIO}/blueprints`;
+    default:
+      return `#${STUDIO}`;
+  }
 }
 
 export function modulesHash(name?: string): string {

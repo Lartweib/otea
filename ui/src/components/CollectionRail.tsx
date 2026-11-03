@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { t } from '../i18n/i18n.ts';
 import { Button, Icon } from '../kit/index.ts';
-import { modulesHash } from '../selection.ts';
+import { modulesHash, studioHash } from '../selection.ts';
 import type { RailEntry } from '../workspace.ts';
 import { PlaceIcon } from './PlaceIcon.tsx';
 
@@ -25,6 +25,8 @@ type CollectionRailProps = {
   onCreate?: ((collection: string | undefined) => void) | undefined;
   // The module catalog is open.
   modules?: boolean;
+  // Studio is open.
+  studio?: boolean;
   // Above the collections: the panel's own head on the phone.
   head?: ReactNode;
   // At the bottom: you and Preferences.
@@ -122,6 +124,7 @@ export function CollectionRail({
   onToggle,
   onCreate,
   modules = false,
+  studio = false,
   head,
   foot,
   variant = 'sidebar',
@@ -159,7 +162,7 @@ export function CollectionRail({
           <Row
             label={t('rail.all')}
             icon={<PlaceIcon icon="stack" name={t('rail.all')} />}
-            pressed={selected === undefined && !modules}
+            pressed={selected === undefined && !modules && !studio}
             onSelect={() => onSelect(undefined)}
             count={<Count yours={yoursTotal} open={openTotal} />}
             folded={folded}
@@ -170,7 +173,7 @@ export function CollectionRail({
             key={entry.name}
             label={entry.name}
             icon={<PlaceIcon icon={entry.icon} name={entry.name} badge={entry.badge} />}
-            pressed={selected === entry.name && !modules}
+            pressed={selected === entry.name && !modules && !studio}
             onSelect={() => onSelect(entry.name)}
             count={<Count yours={entry.yours} open={entry.open} />}
             add={onCreate ? () => onCreate(entry.name) : undefined}
@@ -194,6 +197,18 @@ export function CollectionRail({
             <PlaceIcon icon="shapes" name={t('app.modules')} />
           </span>
           <span className="rail-name">{t('app.modules')}</span>
+        </a>
+        <a
+          className={folded ? 'rail-entry tip' : 'rail-entry'}
+          data-tip={folded ? t('app.studio') : undefined}
+          aria-label={folded ? t('app.studio') : undefined}
+          href={studioHash()}
+          aria-current={studio ? 'page' : undefined}
+        >
+          <span className="rail-icon">
+            <PlaceIcon icon="ruler" name={t('app.studio')} />
+          </span>
+          <span className="rail-name">{t('app.studio')}</span>
         </a>
       </div>
       <div className="rail-foot">
