@@ -19,6 +19,7 @@ import {
   selectRegisteredProject,
   selectRegisteredProjects,
 } from '../store/registry.ts';
+import { readProjectBlueprint } from './blueprints.ts';
 import { nameImplicitTypes } from './collections.ts';
 import type { Context } from './context.ts';
 import {
@@ -36,7 +37,7 @@ import {
 import { loadPresets } from './presets.ts';
 
 // `root` is the folder the project was found from (where AGENTS.md and .mcp.json go); `dataDir`
-// holds its database, evidence and presets: `.otea/` in the root for a local project, a folder in
+// holds its database, evidence, presets and blueprint: `.otea/` in the root for a local project, a folder in
 // the Otea home for a common one.
 export type Project = Context & {
   root: string;
@@ -113,7 +114,13 @@ function open(found: Found, identity = () => newIdentity(found.root)): Project {
   migrate(db);
   const presets = loadPresets(found.dataDir);
   nameImplicitTypes({ db, presets });
-  return { ...found, db, presets, identity: ensureIdentity(db, identity) };
+  return {
+    ...found,
+    db,
+    presets,
+    blueprint: readProjectBlueprint(found.dataDir)?.blueprint,
+    identity: ensureIdentity(db, identity),
+  };
 }
 
 // A common project's data lives apart from its folders, so it can go missing on its own.

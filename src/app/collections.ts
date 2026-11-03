@@ -22,7 +22,11 @@ export const DEFAULT_PRESET = 'tasks';
 
 export type AddCollectionInput = { name: string; preset?: string };
 
-export function addCollection({ db, presets }: Context, input: AddCollectionInput): Collection {
+// Inserts a collection inside an open transaction, so several can be added at once.
+export function insertNewCollection(
+  { db, presets }: Context,
+  input: AddCollectionInput,
+): Collection {
   const preset = requirePreset(presets, input.preset ?? DEFAULT_PRESET);
   const collection = {
     name: input.name,
@@ -31,16 +35,18 @@ export function addCollection({ db, presets }: Context, input: AddCollectionInpu
     presetVersion: preset.version,
     nextSeq: 1,
   };
-  return transaction(db, () => {
-    if (collectionTaken(db, collection.name, collection.prefix)) {
-      throw new OteaError(
-        'already_exists',
-        `Name "${collection.name}" or prefix "${collection.prefix}" already in use`,
-      );
-    }
-    insertCollection(db, collection);
-    return collection;
-  });
+  if (collectionTaken(db, collection.name, collection.prefix)) {
+    throw new OteaError(
+      'already_exists',
+      `Name "${collection.name}" or prefix "${collection.prefix}" already in use`,
+    );
+  }
+  insertCollection(db, collection);
+  return collection;
+}
+
+export function addCollection(ctx: Context, input: AddCollectionInput): Collection {
+  return transaction(ctx.db, () => insertNewCollection(ctx, input));
 }
 
 export function getCollection(db: DatabaseSync, name: string): Collection {
