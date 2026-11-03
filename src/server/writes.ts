@@ -31,10 +31,10 @@ export function assertSignedIn(c: Context, auth: Session, purpose = 'act from th
   }
 }
 
-// Writes come signed in, from the UI's own origin, as JSON. Creating an item may also come as a
-// form, to carry the files it is filed with (withFiles); the origin check covers both.
-export function assertWritable(c: Context, auth: Session, withFiles = false): void {
-  assertSignedIn(c, auth);
+// A write comes from a page this server served, as JSON: no other site can forge one. Creating an
+// item may also come as a form, to carry the files it is filed with (withFiles); the origin check
+// covers both.
+export function assertSameOrigin(c: Context, withFiles = false): void {
   const origin = c.req.header('origin');
   if (origin !== `http://${c.req.header('host')}`) {
     throw new RejectedRequest(403, 'forbidden_origin', `Origin "${origin ?? ''}" is not allowed`);
@@ -43,6 +43,12 @@ export function assertWritable(c: Context, auth: Session, withFiles = false): vo
   if (media === JSON_TYPE || (withFiles && media === FORM_TYPE)) return;
   const expected = withFiles ? `${JSON_TYPE} or ${FORM_TYPE}` : JSON_TYPE;
   throw new RejectedRequest(415, 'unsupported_media_type', `Send the body as ${expected}`);
+}
+
+// Writes come signed in, from the UI's own origin (assertSameOrigin).
+export function assertWritable(c: Context, auth: Session, withFiles = false): void {
+  assertSignedIn(c, auth);
+  assertSameOrigin(c, withFiles);
 }
 
 export async function moveRequest(c: Context): Promise<MoveRequest> {
