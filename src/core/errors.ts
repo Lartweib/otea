@@ -32,7 +32,9 @@ export type ErrorCode =
   | 'blockers_open'
   | 'parent_across_boards'
   | 'different_repo'
-  | 'in_use';
+  | 'in_use'
+  | 'invalid_blueprint'
+  | 'link_not_in_blueprint';
 
 export class OteaError extends Error {
   readonly code: ErrorCode;
