@@ -55,6 +55,7 @@ import { type LiveStreams, liveStreams } from './stream.ts';
 import { studioApi } from './studio.ts';
 import { BUILT_UI_DIR, mountUi } from './ui.ts';
 import {
+  assertConfigurable,
   assertSameOrigin,
   assertSignedIn,
   assertWritable,
@@ -168,7 +169,11 @@ function api(
   const { auth, lan, port, env } = doors;
   return new Hono<OteaEnv>()
     .get('/session', (c) =>
-      c.json({ canWrite: auth.canWrite(c), canManageDevices: auth.canManageDevices(c) }),
+      c.json({
+        canWrite: auth.canWrite(c),
+        canManageDevices: auth.canManageDevices(c),
+        canConfigure: auth.canConfigure(c),
+      }),
     )
     .post('/pair/peek', async (c) => c.json(await peekPairing(c, project, lan)))
     .post('/pair', async (c) => {
@@ -197,17 +202,17 @@ function api(
     .get('/projects', (c) => c.json(projectOverviews(project, env)))
     .get('/project/settings', (c) => c.json(projectSettings(project, env)))
     .post('/project/paths', async (c) => {
-      assertWritable(c, auth);
+      assertConfigurable(c, auth);
       const { path } = await pathRequest(c);
       return c.json(addPath(project, path, env), 201);
     })
     .post('/project/paths/relink', async (c) => {
-      assertWritable(c, auth);
+      assertConfigurable(c, auth);
       const { from, to, force } = await relinkRequest(c);
       return c.json(relinkPath(project, from, to, force, env));
     })
     .post('/project/paths/forget', async (c) => {
-      assertWritable(c, auth);
+      assertConfigurable(c, auth);
       const { path } = await pathRequest(c);
       return c.json(forgetPath(project, path, env));
     })

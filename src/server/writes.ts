@@ -51,6 +51,20 @@ export function assertWritable(c: Context, auth: Session, withFiles = false): vo
   assertSameOrigin(c, withFiles);
 }
 
+// Changes to the project's setup (paths, presets, blueprint) come from this computer's signed-in
+// browser, from the UI's own origin: a paired device may act on items but not reconfigure the project.
+export function assertConfigurable(c: Context, auth: Session): void {
+  assertSignedIn(c, auth);
+  if (!auth.canConfigure(c)) {
+    throw new RejectedRequest(
+      403,
+      'forbidden',
+      'Only the browser on this computer, signed in with "otea open", changes the project setup',
+    );
+  }
+  assertSameOrigin(c);
+}
+
 export async function moveRequest(c: Context): Promise<MoveRequest> {
   const raw: unknown = await c.req.json().catch(() => undefined);
   const parsed = MoveBody.safeParse(raw);

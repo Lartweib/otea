@@ -59,13 +59,18 @@ describe('auth', () => {
 
   describe('GET /api/session', () => {
     it('cannot write without a cookie', async () => {
-      expect(await session()).toEqual({ canWrite: false, canManageDevices: false });
+      expect(await session()).toEqual({
+        canWrite: false,
+        canManageDevices: false,
+        canConfigure: false,
+      });
     });
 
     it('can write with the session cookie', async () => {
       expect(await session({ cookie: SESSION_COOKIE })).toEqual({
         canWrite: true,
         canManageDevices: true,
+        canConfigure: true,
       });
     });
 
@@ -73,6 +78,7 @@ describe('auth', () => {
       expect(await session({ cookie: 'otea_session_4400=wrong' })).toEqual({
         canWrite: false,
         canManageDevices: false,
+        canConfigure: false,
       });
     });
   });

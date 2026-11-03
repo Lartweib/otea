@@ -217,6 +217,7 @@ describe('LAN access', () => {
       expect(await (await call('/api/session', { cookie })).json()).toEqual({
         canWrite: true,
         canManageDevices: false,
+        canConfigure: false,
       });
       const moved = await call('/api/items/TASKS-1/move', {
         method: 'POST',
