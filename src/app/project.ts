@@ -17,6 +17,7 @@ import {
   type RegisteredProject,
   type Storage,
   selectRegisteredProject,
+  selectRegisteredProjects,
 } from '../store/registry.ts';
 import type { Context } from './context.ts';
 import {
@@ -188,7 +189,14 @@ export function openProject(cwd: string, env: Env = process.env): Project {
   const { root } = locate(cwd);
   const found = nearest(cwd, root, env);
   if (found === undefined) {
-    throw new OteaError('not_found', `No Otea project at ${root} or above it; run init first`);
+    const registered = withRegistry(env, (registry) => selectRegisteredProjects(registry).length);
+    const join = registered
+      ? '\nTo use an existing project instead, run otea init --join <id> (ids: otea projects list)'
+      : '';
+    throw new OteaError(
+      'not_found',
+      `No Otea project at ${root} or above it; run init first${join}`,
+    );
   }
   return openFound(found);
 }

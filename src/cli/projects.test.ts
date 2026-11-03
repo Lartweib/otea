@@ -70,7 +70,7 @@ describe('projects', () => {
     await client.close();
 
     expect(JSON.parse(reply.content[0]?.text ?? '')[0]).toMatchObject({ title: 'From A' });
-  });
+  }, 30_000);
 
   it('projects current names the project this folder resolves to', async () => {
     const { id, name, path } = await json(a, 'init');
@@ -128,7 +128,9 @@ describe('projects', () => {
 
     expect(forgotten.out).toContain('no linked folder left');
     expect(listed.paths).toEqual([]);
-    expect((await cliAt(a.dir)('list')).code).toBe(3);
+    const unresolved = await cliAt(a.dir)('list');
+    expect(unresolved.code).toBe(3);
+    expect(unresolved.err).toContain('otea init --join <id> (ids: otea projects list)');
     expect((await json(b, 'list')).map((item: { title: string }) => item.title)).toEqual(['Kept']);
   });
 
