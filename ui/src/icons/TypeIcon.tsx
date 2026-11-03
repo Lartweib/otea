@@ -9,7 +9,7 @@ export function iconDrawing(name: string | undefined): IconDrawing | undefined {
 
 type TypeIconProps = {
   name: string | undefined;
-  size?: 14 | 16 | 20;
+  size?: number;
   // The type's label, when the icon is the only mark of the type; decorative otherwise.
   label?: string | undefined;
 };
