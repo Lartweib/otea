@@ -254,12 +254,14 @@ export function App() {
   const folded = !phone && (!split.sidebar || !wide);
   const panel = useMenu();
   const rail = sidebarEntries(names, allItems, collectionOf);
-  const create = canWrite
-    ? (into: string | undefined) => {
-        panel.close();
-        openIntake(into);
-      }
-    : undefined;
+  // Intake needs a collection to file into: with none yet, the first run says how to add one.
+  const create =
+    canWrite && names.length > 0
+      ? (into: string | undefined) => {
+          panel.close();
+          openIntake(into);
+        }
+      : undefined;
   const railProps = {
     entries: rail,
     yoursTotal: rail.reduce((sum, entry) => sum + entry.yours, 0),
@@ -378,7 +380,7 @@ export function App() {
         collectionOf={collectionOf}
         panel={panelButton}
       />
-      {phone && canWrite && route.view === 'items' && !selectedId && !creating ? (
+      {phone && create && route.view === 'items' && !selectedId && !creating ? (
         <button type="button" className="new-fab" onClick={() => openIntake(collection)}>
           <Icon name="plus" />
           {t('app.newItem')}
