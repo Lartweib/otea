@@ -1,18 +1,26 @@
 import { type CSSProperties, type ReactNode, useCallback, useEffect, useState } from 'react';
-import { fetchCollections, fetchItem, fetchItems, fetchPresets, fetchSession } from './api.ts';
-import { type Attention, attentionFrame } from './attention.ts';
+import {
+  fetchCollections,
+  fetchItem,
+  fetchItems,
+  fetchPresets,
+  fetchProject,
+  fetchSession,
+} from './api.ts';
 import { applyAttention } from './attention-dom.ts';
 import { catalogEntries } from './catalog.ts';
 import { CollectionRail } from './components/CollectionRail.tsx';
-import { ConnectionBadge } from './components/ConnectionBadge.tsx';
 import { EmptyDetail } from './components/EmptyDetail.tsx';
 import { ItemDetail } from './components/ItemDetail.tsx';
 import type { ChildrenOf, CollectionOf, Unfolding } from './components/ItemList.tsx';
 import { ListPane } from './components/ListPane.tsx';
 import { CatalogOverview, ModuleIndex, ModulePanel } from './components/ModuleCatalog.tsx';
+import { useMenu } from './components/menu.ts';
 import { type IntakeParent, NewItemForm } from './components/NewItemForm.tsx';
+import { PreferencesButton } from './components/PreferencesButton.tsx';
+import { Sheet } from './components/Sheet.tsx';
 import { browserStorage, Divider, useSplit } from './components/Split.tsx';
-import { ThemeToggle } from './components/ThemeToggle.tsx';
+import { Brand, Topbar } from './components/Topbar.tsx';
 import { Triage } from './components/Triage.tsx';
 import { useDetailMotion, useViewPrefs } from './components/workspace-motion.ts';
 import {
@@ -20,6 +28,7 @@ import {
   useAttention,
   useHideTier,
   useLive,
+  useMediaQuery,
   usePhone,
   useRemote,
   useRoute,
@@ -36,11 +45,13 @@ import {
   toggleFold,
   writeCollapsed,
 } from './nesting.ts';
+import { pillState } from './presence.ts';
 import type { Remote } from './remote.ts';
 import { groupByTurn } from './sections.ts';
-import { hashFor, ITEMS_HASH, modulesHash, TRIAGE_HASH } from './selection.ts';
+import { hashFor, ITEMS_HASH, TRIAGE_HASH } from './selection.ts';
 import type { CollectionView, Item, ItemView, PresetView } from './types.ts';
-import { inCollection, railEntries } from './workspace.ts';
+import { useAgents } from './use-agents.ts';
+import { inCollection, sidebarEntries } from './workspace.ts';
 
 function Message({ children, muted = true }: { children: ReactNode; muted?: boolean }) {
   return <p className={muted ? 'pane-message t-small' : 'pane-message action-error'}>{children}</p>;
@@ -106,59 +117,20 @@ function collectionLookup(collections: Remote<CollectionView[]>): CollectionOf {
   return (name) => list.find((collection) => collection.name === name);
 }
 
-// The wordmark: its o is the node, drawn in 1/1000 em of Schibsted Grotesk 700 on the o's own
-// advance, so "tea" stays live text and starts where it would. A true circle on the o's centre
-// (305.5, −263.5): outer radius 273, a ring at the letters' weight (128) around a counter of 145
-// that holds your color while something is yours. The orbit runs outside the o while an agent
-// works, masked from where the t begins so it passes behind the word.
-function Brand({ attention }: { attention: Attention }) {
-  return (
-    <a
-      className="brand"
-      href={ITEMS_HASH}
-      aria-label={t('app.brand')}
-      data-attention={attentionFrame(attention)}
-    >
-      <span className="brand-word">
-        <svg className="brand-o" viewBox="0 -703 584.44 823" aria-hidden="true">
-          <mask
-            id="brand-orbit-mask"
-            maskUnits="userSpaceOnUse"
-            x="-600"
-            y="-1200"
-            width="1800"
-            height="1600"
-          >
-            <rect x="-600" y="-1200" width="1800" height="1600" fill="#fff" />
-            <rect x="564.44" y="-1200" width="900" height="1600" fill="#000" />
-          </mask>
-          <g mask="url(#brand-orbit-mask)">
-            <circle
-              className="brand-orbit"
-              cx="305.5"
-              cy="-263.5"
-              r="378"
-              strokeWidth="60"
-              pathLength={100}
-            />
-          </g>
-          <circle className="brand-fill" cx="305.5" cy="-263.5" r="209" />
-          <circle className="brand-ring" cx="305.5" cy="-263.5" r="209" strokeWidth="128" />
-        </svg>
-        tea
-      </span>
-    </a>
-  );
-}
+type CatalogProps = {
+  name: string | undefined;
+  presets: Remote<PresetView[]>;
+  rail: ReactNode;
+  sidebar: boolean;
+};
 
-type CatalogProps = { name: string | undefined; presets: Remote<PresetView[]> };
-
-// The module catalog: the index on the left, the chosen module (or an overview) on the right.
-function Catalog({ name, presets }: CatalogProps) {
+// The module catalog: the project's sidebar, the index, the chosen module (or an overview).
+function Catalog({ name, presets, rail, sidebar }: CatalogProps) {
   const entries = catalogEntries(MODULES, presets.status === 'ready' ? presets.value : []);
   const entry = entries.find((candidate) => candidate.name === name);
   return (
-    <main className="layout">
+    <main className="layout catalog with-rail" data-sidebar={sidebar ? 'on' : 'off'}>
+      {rail}
       <div className="list-pane">
         <ModuleIndex entries={entries} selected={name} />
       </div>
@@ -270,7 +242,79 @@ export function App() {
     setIntake({ openedOn: selectedId, parent: { id, title, type, collection: parent.collection } });
     if (phone) window.scrollTo({ top: 0 });
   };
-  const rail = railEntries(names, allItems);
+  const project = useRemote(fetchProject, 0, connection);
+  const agents = useAgents(version, connection);
+  const wide = useMediaQuery('(min-width: 64rem)');
+  // Between the phone and 64rem the sidebar stays folded to its rail: the list needs the room.
+  const folded = !phone && (!split.sidebar || !wide);
+  const panel = useMenu();
+  const rail = sidebarEntries(names, allItems, collectionOf);
+  const create = canWrite
+    ? (into: string | undefined) => {
+        panel.close();
+        openIntake(into);
+      }
+    : undefined;
+  const railProps = {
+    entries: rail,
+    yoursTotal: rail.reduce((sum, entry) => sum + entry.yours, 0),
+    openTotal: rail.reduce((sum, entry) => sum + entry.open, 0),
+    selected: collection,
+    allWork: allWorkShown,
+    onCreate: create,
+    modules: route.view === 'modules',
+  };
+  const choose = (name: string | undefined) => {
+    setCollection(name);
+    panel.close();
+    if (route.view !== 'items') window.location.hash = ITEMS_HASH;
+  };
+  const sidebarRail = (
+    <CollectionRail
+      {...railProps}
+      onSelect={choose}
+      folded={folded}
+      onToggle={wide ? split.toggleSidebar : undefined}
+      foot={phone ? null : <PreferencesButton folded={folded} />}
+    />
+  );
+  const panelButton = phone ? (
+    <span className="pill-anchor" ref={panel.ref}>
+      <Button
+        variant="quiet"
+        icon
+        className="panel-button"
+        aria-label={t('shell.openPanel')}
+        aria-expanded={panel.open}
+        onClick={panel.toggle}
+      >
+        <Icon name="sidebar" />
+      </Button>
+      <Sheet menu={panel} label={t('rail.aria')} side="left">
+        <CollectionRail
+          {...railProps}
+          onSelect={choose}
+          folded={false}
+          variant="panel"
+          head={
+            <div className="panel-head">
+              <Brand attention={attention} id="panel-brand" />
+              <Button
+                variant="quiet"
+                size="sm"
+                icon
+                aria-label={t('common.close')}
+                onClick={panel.close}
+              >
+                <Icon name="close" />
+              </Button>
+            </div>
+          }
+          foot={<PreferencesButton phone />}
+        />
+      </Sheet>
+    </span>
+  ) : null;
   // On a phone the selected row unfolds into its detail, and the detail pane only holds intake.
   // A move made from the unfolded item folds it, and the row carries itself home.
   const fold = () => {
@@ -317,34 +361,31 @@ export function App() {
   useDetailMotion(split.workspace, gridded, detailOff, split.grid.room - 9, split.grid.width);
   return (
     <div className="app">
-      <header className="topbar">
-        <Brand attention={attention} />
-        <div className="topbar-actions">
-          <ConnectionBadge connection={connection} />
-          <a
-            className="topbar-link"
-            href={modulesHash()}
-            aria-current={route.view === 'modules' ? 'page' : undefined}
-          >
-            <Icon name="modules" />
-            <span className="topbar-label">{t('app.modules')}</span>
-          </a>
-          <ThemeToggle />
-          {canWrite ? (
-            <Button
-              size="sm"
-              className="topbar-new"
-              aria-pressed={creating}
-              onClick={() => openIntake()}
-            >
-              <Icon name="plus" />
-              <span className="topbar-label">{t('app.newItem')}</span>
-            </Button>
-          ) : null}
-        </div>
-      </header>
+      <Topbar
+        attention={attention}
+        project={project.status === 'ready' ? project.value : undefined}
+        folded={folded}
+        phone={phone}
+        connection={connection}
+        agents={agents}
+        pill={pillState(connection, agents)}
+        items={allItems}
+        collectionOf={collectionOf}
+        panel={panelButton}
+      />
+      {phone && canWrite && route.view === 'items' && !selectedId && !creating ? (
+        <button type="button" className="new-fab" onClick={() => openIntake(collection)}>
+          <Icon name="plus" />
+          {t('app.newItem')}
+        </button>
+      ) : null}
       {route.view === 'modules' ? (
-        <Catalog name={route.name} presets={presets} />
+        <Catalog
+          name={route.name}
+          presets={presets}
+          rail={phone ? null : sidebarRail}
+          sidebar={!folded}
+        />
       ) : route.view === 'triage' && canWrite ? (
         <main className="layout triage-layout">
           <Triage
@@ -357,9 +398,9 @@ export function App() {
         </main>
       ) : (
         <main
-          className="layout workspace"
+          className="layout workspace with-rail"
           ref={split.attach}
-          data-sidebar={split.sidebar ? 'on' : 'off'}
+          data-sidebar={folded ? 'off' : 'on'}
           data-view={gridded ? 'grid' : 'list'}
           data-detail={detailOff ? 'off' : undefined}
           style={
@@ -369,16 +410,16 @@ export function App() {
             } as CSSProperties
           }
         >
-          <CollectionRail
-            entries={rail}
-            yoursTotal={rail.reduce((sum, entry) => sum + entry.yours, 0)}
-            openTotal={rail.reduce((sum, entry) => sum + entry.open, 0)}
-            selected={collection}
-            onSelect={setCollection}
-            allWork={allWorkShown}
-            hidden={!split.sidebar && !phone}
-            onToggle={split.toggleSidebar}
-          />
+          {phone ? (
+            <CollectionRail
+              {...railProps}
+              onSelect={setCollection}
+              folded={false}
+              onCreate={undefined}
+            />
+          ) : (
+            sidebarRail
+          )}
           <div className="list-pane" data-pane="list" ref={listPane}>
             <ListPane
               items={items}

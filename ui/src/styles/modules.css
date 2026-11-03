@@ -109,36 +109,11 @@
   max-width: 100%;
 }
 
-/* ---- topbar link to the catalog: quiet text ---- */
+/* ---- the mark, a link to the items ---- */
 .brand {
   color: var(--ink);
   text-decoration: none;
   border-radius: var(--r-s);
-}
-
-.topbar-link {
-  display: inline-flex;
-  align-items: center;
-  height: 28px;
-  padding: 0 10px;
-  border-radius: 999px;
-  color: var(--mut);
-  font-size: 12.5px;
-  font-weight: 500;
-  text-decoration: none;
-  transition:
-    background-color var(--m-fast) var(--m-ease),
-    color var(--m-fast) var(--m-ease);
-}
-
-.topbar-link:hover {
-  background: var(--hov);
-  color: var(--ink);
-}
-
-.topbar-link[aria-current="page"] {
-  color: var(--ink);
-  background: var(--chip);
 }
 
 .quiet-link {
@@ -322,7 +297,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .topbar-link,
   .mod-entry {
     transition-duration: 1ms;
   }

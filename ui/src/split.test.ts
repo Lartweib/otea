@@ -169,10 +169,10 @@ describe('the grid beside the detail', () => {
     expect(clampGridWidth(100, 774)).toBe(340);
   });
 
-  it('measures its room past the sidebar, or its folded strip, and the workspace gutter', () => {
+  it('measures its room past the sidebar, or its folded rail (always, below 64rem), and the gutter', () => {
     expect(gridRoom(1440, true, true)).toBe(1188);
     expect(gridRoom(1440, false, true)).toBe(1364);
-    expect(gridRoom(900, true, false)).toBe(892);
+    expect(gridRoom(900, true, false)).toBe(824);
   });
 
   it('remembers the grid width apart from the list width', () => {
