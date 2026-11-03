@@ -31,6 +31,7 @@ export const HTTP_STATUS: Readonly<Record<ErrorCode, ContentfulStatusCode>> = {
   relation_cycle: 409,
   children_open: 409,
   different_repo: 409,
+  in_use: 409,
 };
 
 export class InvalidQuery extends Error {}

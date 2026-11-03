@@ -17,6 +17,7 @@ import {
   updateItem,
 } from '../app/items.ts';
 import { claimItem, heartbeatItem, releaseItem } from '../app/leases.ts';
+import { type MigrationReport, migrateToCommon } from '../app/migrate.ts';
 import { collectionPlaybook, hintFor, playbookIndex } from '../app/playbook.ts';
 import { addPathToProject, initProject, openProject, type Project } from '../app/project.ts';
 import { linkItems, unlinkItems } from '../app/relations.ts';
@@ -203,6 +204,58 @@ const projectsForget: Command = {
         ? `${link.projectId} has no linked folder left; its data stays, link one with otea projects add`
         : `${link.projectId} keeps ${remaining} linked folder${remaining === 1 ? '' : 's'}`;
     return { data: forgotten, text: `Forgot ${link.path}\n${left}` };
+  },
+};
+
+function processAlive(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    return (error as NodeJS.ErrnoException).code === 'EPERM';
+  }
+}
+
+function migrationText(report: MigrationReport): string {
+  const { status, id, root, to, from, backup, tables, files, undo } = report;
+  if (status === 'already') return `${id} is already in common storage at ${to}; nothing to do`;
+  const rows = Object.entries(tables)
+    .map(([table, { rows }]) => `${table} ${rows}`)
+    .join(', ');
+  const lines =
+    status === 'migrated'
+      ? [
+          `Copied and verified the database into ${to} (${rows})`,
+          `Copied ${files} evidence and preset file${files === 1 ? '' : 's'}`,
+          `Registered ${id} and linked ${root}`,
+        ]
+      : [`${id} was already copied to ${to} and registered`];
+  return [
+    ...lines,
+    `Moved ${from} to ${backup} (a backup: Otea never deletes it)`,
+    'To undo:',
+    ...undo.map((step) => `  ${step}`),
+  ].join('\n');
+}
+
+const migrateCommand: Command = {
+  name: 'migrate',
+  summary:
+    'Move the local project (.otea/) into common storage in the Otea home, verified, keeping the old folder as a backup; refused while otea serve runs on it',
+  args: [],
+  options: { to: { required: true, choices: ['common'] } },
+  execute: ({ cwd, required }) => {
+    required('to');
+    const dir = withProject(cwd, (project) => project.dataDir);
+    const server = readServeFile(dir);
+    if (server && processAlive(server.pid)) {
+      throw new OteaError(
+        'in_use',
+        `otea serve (pid ${server.pid}, port ${server.port}) holds the project; stop it first`,
+      );
+    }
+    const report = migrateToCommon(cwd);
+    return { data: report, text: migrationText(report) };
   },
 };
 
@@ -885,6 +938,7 @@ export const COMMANDS: readonly Command[] = [
   projectsAdd,
   projectsRelink,
   projectsForget,
+  migrateCommand,
   connect,
   collectionAdd,
   create,
