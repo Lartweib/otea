@@ -95,7 +95,7 @@ describe('the Studio API', () => {
       const list = body as unknown as Array<Json>;
       expect(list.find(({ name }) => name === 'tasks')).toMatchObject({
         origin: 'official',
-        version: 1,
+        version: 2,
         problems: [],
       });
       expect(list.find(({ name }) => name === 'reviews')).toMatchObject({
