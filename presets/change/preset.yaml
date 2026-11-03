@@ -1,6 +1,7 @@
 preset: change
 preset_version: 1
 playbook: ./playbook.md
+icon: layers
 fields:
   title: { module: text, required: create }
   # What the change is and why; on a repo task, what it does in its repo.
