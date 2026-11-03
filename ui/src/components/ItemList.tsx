@@ -235,8 +235,8 @@ function ParentCrumb({ parent }: { parent: ParentRef }) {
   );
 }
 
-// How a row of All work hangs from the one above it (`blocked by`, `implemented by`), as a chip
-// before its title.
+// How a row of All work hangs from the one above it (`blocked by`, `implemented by`), as a tag
+// leading line two, so the title keeps line one.
 function ViaChip({ via }: { via: WorkVia }) {
   return <span className="row-via">{relationLabel(via)}</span>;
 }
@@ -367,7 +367,6 @@ function ItemRow({
         </span>
         <span className="row-t1">
           {parent ? <ParentCrumb parent={parent} /> : null}
-          {nesting?.via ? <ViaChip via={nesting.via} /> : null}
           <a
             className="ttl row-link"
             data-m={`${item.id}:t`}
@@ -385,6 +384,7 @@ function ItemRow({
           <i className="row-lead" aria-hidden="true" />
         </span>
         <span className="row-t2">
+          {nesting?.via ? <ViaChip via={nesting.via} /> : null}
           {crossCollection && label !== undefined ? (
             <span className="row-typeword">{label}</span>
           ) : null}

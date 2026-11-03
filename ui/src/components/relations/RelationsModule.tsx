@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { unlinkItems } from '../../api.ts';
 import { presetText, t } from '../../i18n/i18n.ts';
-import { groupRelations, unlinkRequestOf } from '../../relations.ts';
+import { groupRelations, structureRelations, unlinkRequestOf } from '../../relations.ts';
 import type { ItemView, LayoutEntry, RelatedItem } from '../../types.ts';
 import type { CollectionOf } from '../ItemList.tsx';
 import { LinkForm } from './LinkForm.tsx';
@@ -16,10 +16,30 @@ type RelationsModuleProps = {
   withChildren: boolean;
 };
 
-const keyOf = ({ kind, id }: RelatedItem) => `${kind}:${id}`;
+export const keyOf = ({ kind, id }: RelatedItem) => `${kind}:${id}`;
 
-// The item's links grouped by how they read from it, each kind in a narrow column beside its items.
-// A browser that can write adds one with "link" and removes one with the cross on its row.
+// Removes a link from the item: which one is on its way, and why the last one failed.
+export function useUnlink(id: string) {
+  const [removing, setRemoving] = useState<string>();
+  const [error, setError] = useState<string>();
+  const remove = (related: RelatedItem) => {
+    setRemoving(keyOf(related));
+    setError(undefined);
+    unlinkItems(unlinkRequestOf(id, related)).then(
+      () => setRemoving(undefined),
+      (failure: unknown) => {
+        setRemoving(undefined);
+        setError(failure instanceof Error ? failure.message : t('common.failed'));
+      },
+    );
+  };
+  return { removing, error, remove };
+}
+
+// The item's links grouped by how they read from it, each kind in a narrow column beside its items:
+// parent, children and links within its collection (Across boards lists the others). A browser that
+// can write adds one with "link" and removes one with the cross on its row; when every link it has
+// reads in Across boards, only "link" stays here.
 export function RelationsModule({
   item,
   entry,
@@ -28,28 +48,22 @@ export function RelationsModule({
   withChildren,
 }: RelationsModuleProps) {
   const [adding, setAdding] = useState(false);
-  const [removing, setRemoving] = useState<string>();
-  const [error, setError] = useState<string>();
-  const groups = groupRelations(item.relations, { withChildren });
+  const { removing, error, remove } = useUnlink(item.id);
+  const own = structureRelations(item.relations, item.collection);
+  const groups = groupRelations(own, { withChildren });
   if (groups.length === 0 && !canWrite) return null;
-  const remove = (related: RelatedItem) => {
-    setRemoving(keyOf(related));
-    setError(undefined);
-    unlinkItems(unlinkRequestOf(item.id, related)).then(
-      () => setRemoving(undefined),
-      (failure: unknown) => {
-        setRemoving(undefined);
-        setError(failure instanceof Error ? failure.message : t('common.failed'));
-      },
-    );
-  };
+  const elsewhere = groups.length === 0 && own.length < item.relations.length;
   const count = groups.reduce((sum, group) => sum + group.items.length, 0);
   const label = entry.label === undefined ? undefined : presetText(entry.label);
   const headingId = `relations-${item.id}`;
   return (
-    <section className="rel-module" aria-labelledby={headingId}>
+    <section
+      className="rel-module"
+      aria-labelledby={elsewhere ? undefined : headingId}
+      aria-label={elsewhere ? t('relations.link') : undefined}
+    >
       <header className="sub-head">
-        <h3 className="sub-title" id={headingId}>
+        <h3 className="sub-title" id={headingId} hidden={elsewhere}>
           {label === undefined
             ? count === 0
               ? t('relations.none')

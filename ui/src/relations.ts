@@ -61,12 +61,25 @@ export function groupRelations(
   });
 }
 
-// The item's relations to items of other collections, grouped by kind: the detail's Across boards.
+// Parent and children always read in Structure; any other link to another collection reads in
+// Across boards instead, so each relation shows once.
+const acrossOf = (relation: RelatedItem, collection: string) =>
+  relation.collection !== collection && relation.kind !== 'parent' && relation.kind !== 'child';
+
+// The item's links to items of other collections, grouped by kind: the detail's Across boards.
 export function acrossGroups(
   relations: readonly RelatedItem[],
   collection: string,
 ): RelationGroup[] {
-  return groupRelations(relations.filter((relation) => relation.collection !== collection));
+  return groupRelations(relations.filter((relation) => acrossOf(relation, collection)));
+}
+
+// The relations Structure lists: parent, children, and links within the item's collection.
+export function structureRelations(
+  relations: readonly RelatedItem[],
+  collection: string,
+): RelatedItem[] {
+  return relations.filter((relation) => !acrossOf(relation, collection));
 }
 
 // The body of a link or unlink: the stored kind, from the item it is stored from.

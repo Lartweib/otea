@@ -9,6 +9,7 @@ import {
   linkRequestOf,
   matchItems,
   openLabel,
+  structureRelations,
   unlinkRequestOf,
 } from './relations.ts';
 import type { Item, RelatedItem } from './types.ts';
@@ -27,7 +28,7 @@ const related = (kind: RelatedItem['kind'], id: string, extra: Partial<RelatedIt
   }) as RelatedItem;
 
 describe('acrossGroups', () => {
-  it('keeps the relations to other collections, grouped by kind, children included', () => {
+  it('keeps the links to other collections, grouped by kind, leaving parent and children to Structure', () => {
     const relations = [
       related('blocked_by', 'BUGS-7', { collection: 'bugs' }),
       related('parent', 'TRABAJO-1', { collection: 'trabajo' }),
@@ -42,7 +43,6 @@ describe('acrossGroups', () => {
         items.map(({ id }) => id),
       ]),
     ).toEqual([
-      ['child', ['ARTE-9']],
       ['blocked_by', ['BUGS-7']],
       ['implemented_by', ['ARTE-4']],
     ]);
@@ -50,6 +50,24 @@ describe('acrossGroups', () => {
 
   it('is empty when every relation stays in the collection', () => {
     expect(acrossGroups([related('relates', 'P-2')], 'parts')).toEqual([]);
+  });
+});
+
+describe('structureRelations', () => {
+  it('keeps parent, children and links within the collection, what Across boards does not list', () => {
+    const relations = [
+      related('blocked_by', 'BUGS-7', { collection: 'bugs' }),
+      related('parent', 'TRABAJO-1', { collection: 'trabajo' }),
+      related('child', 'ARTE-9', { collection: 'arte' }),
+      related('blocked_by', 'TRABAJO-2', { collection: 'trabajo' }),
+      related('relates', 'ARTE-1', { collection: 'arte' }),
+    ];
+
+    expect(structureRelations(relations, 'trabajo').map(({ id }) => id)).toEqual([
+      'TRABAJO-1',
+      'ARTE-9',
+      'TRABAJO-2',
+    ]);
   });
 });
 
