@@ -208,3 +208,44 @@ export type PresetView = {
   view: ViewSpec;
   collections: string[];
 };
+
+export type PathKind = 'folder' | 'repo';
+
+export type ProjectPath = { path: string; kind: PathKind; missing: boolean };
+
+// An item waiting for you in some project, with its type's icon there.
+export type WaitingItem = Item & { icon?: string };
+
+// A project on this machine, as the projects inbox reads it (GET /api/projects).
+export type ProjectOverview = {
+  id: string;
+  name: string;
+  storage: 'common' | 'local';
+  // The project this server serves.
+  current: boolean;
+  paths: ProjectPath[];
+  waiting: WaitingItem[];
+  withAgents: number;
+  open: number;
+  // The address of the otea serve that shows it, when that is another server.
+  served?: string;
+  unavailable?: string;
+};
+
+export type GateKind = 'hard' | 'soft';
+
+export type RepoSettings = { name: string; folder: string; gate: GateKind; items: number };
+
+export type ProjectSettings = {
+  id: string;
+  name: string;
+  storage: 'common' | 'local';
+  root: string;
+  dataDir: string;
+  registered: boolean;
+  database: { path: string; bytes: number };
+  evidence: { path: string; bytes: number; files: number };
+  items: number;
+  collections: Array<{ name: string; preset: string }>;
+  paths: Array<ProjectPath & { repos: RepoSettings[] }>;
+};

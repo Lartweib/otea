@@ -5,6 +5,7 @@ import {
   fetchItems,
   fetchPresets,
   fetchProject,
+  fetchProjects,
   fetchSession,
 } from './api.ts';
 import { applyAttention } from './attention-dom.ts';
@@ -23,6 +24,8 @@ import { CatalogOverview, ModuleIndex, ModulePanel } from './components/ModuleCa
 import { useMenu } from './components/menu.ts';
 import { type IntakeParent, NewItemForm } from './components/NewItemForm.tsx';
 import { PreferencesButton } from './components/PreferencesButton.tsx';
+import { ProjectSettings } from './components/ProjectSettings.tsx';
+import { ProjectsInbox } from './components/ProjectsInbox.tsx';
 import { Sheet } from './components/Sheet.tsx';
 import { browserStorage, Divider, useSplit } from './components/Split.tsx';
 import { Brand, Topbar } from './components/Topbar.tsx';
@@ -31,6 +34,7 @@ import { useDetailMotion, useViewPrefs } from './components/workspace-motion.ts'
 import {
   type Connection,
   useAttention,
+  useBeat,
   useHideTier,
   useLive,
   useMediaQuery,
@@ -257,6 +261,10 @@ export function App() {
     if (phone) window.scrollTo({ top: 0 });
   };
   const project = useRemote(fetchProject, 0, connection);
+  // Every project on this machine, for the switcher: read again as this project changes, and on a
+  // slow beat for the others, which this server's live feed does not watch.
+  const projectsBeat = useBeat(30_000);
+  const projects = useRemote(fetchProjects, version * 1000 + projectsBeat, connection);
   const agents = useAgents(version, presence, connection);
   const wide = useMediaQuery('(min-width: 64rem)');
   // Between the phone and 64rem the sidebar stays folded to its rail: the list needs the room.
@@ -286,6 +294,7 @@ export function App() {
     modules: route.view === 'modules',
     studio: route.view === 'studio',
     lan: canManageDevices ? route.view === 'lan' : undefined,
+    settings: route.view === 'settings',
   };
   const choose = (name: string | undefined) => {
     setCollection(name);
@@ -396,6 +405,7 @@ export function App() {
         collectionOf={collectionOf}
         panel={panelButton}
         onActivity={() => setActivity((open) => !open)}
+        projects={projects.status === 'ready' ? projects.value : undefined}
       />
       {phone && create && route.view === 'items' && !selectedId && !creating ? (
         <button type="button" className="new-fab" onClick={() => openIntake(collection)}>
@@ -403,7 +413,17 @@ export function App() {
           {t('app.newItem')}
         </button>
       ) : null}
-      {route.view === 'modules' ? (
+      {route.view === 'projects' ? (
+        <ProjectsInbox version={version} connection={connection} />
+      ) : route.view === 'settings' ? (
+        <ProjectSettings
+          version={version}
+          connection={connection}
+          canWrite={canWrite}
+          rail={phone ? null : sidebarRail}
+          sidebar={!folded}
+        />
+      ) : route.view === 'modules' ? (
         <Catalog
           name={route.name}
           presets={presets}

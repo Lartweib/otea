@@ -40,6 +40,9 @@ describe('selection', () => {
     ['#/elsewhere', { view: 'items' }],
     ['#/modules/%E0%A4%A', { view: 'modules' }],
     ['#/triage', { view: 'triage' }],
+    ['#/projects', { view: 'projects' }],
+    ['#/settings', { view: 'settings' }],
+    ['#/projects/x', { view: 'items' }],
     ['#/triagex', { view: 'items' }],
     ['#/lan', { view: 'lan' }],
   ])('routes %j to %j', (hash, route) => {

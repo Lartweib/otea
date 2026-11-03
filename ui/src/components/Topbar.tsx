@@ -6,8 +6,9 @@ import { t, tx } from '../i18n/i18n.ts';
 import { AgentMark, Icon, NodeMark } from '../kit/index.ts';
 import { itemNodeKind, type NodeKind } from '../node-kind.ts';
 import { type Agent, liveAgents, type PillState } from '../presence.ts';
-import { hashFor, ITEMS_HASH } from '../selection.ts';
-import type { CollectionView, Item, ProjectView } from '../types.ts';
+import { projectHref, waitingElsewhere, whereOf } from '../projects.ts';
+import { hashFor, ITEMS_HASH, PROJECTS_HASH, SETTINGS_HASH } from '../selection.ts';
+import type { CollectionView, Item, ProjectOverview, ProjectView } from '../types.ts';
 import { type Menu, useMenu } from './menu.ts';
 import { PlaceIcon } from './PlaceIcon.tsx';
 import { Sheet } from './Sheet.tsx';
@@ -121,32 +122,133 @@ function useWidth<T extends HTMLElement>(): [React.RefObject<T | null>, number] 
 
 // ---- the project pill ----
 
-function ProjectRows({ project }: { project: ProjectView }) {
+// What waits for you in a project, as the filled node of your lane and its count; nothing at zero.
+function Waiting({ count }: { count: number }) {
+  if (count === 0) return <span />;
+  return (
+    <span className="menu-waiting" title={t('rail.waiting')}>
+      <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
+        <circle cx="5" cy="5" r="4" />
+      </svg>
+      {count}
+    </span>
+  );
+}
+
+// Every project on this machine (GET /api/projects): All projects first, then each project with
+// where it lives and what waits for you there. The one served here carries the tick; another opens
+// in the server that shows it, or names the command that would.
+function ProjectRows({
+  project,
+  projects,
+}: {
+  project: ProjectView;
+  projects: readonly ProjectOverview[] | undefined;
+}) {
+  const listed: ProjectOverview[] = projects?.length
+    ? [...projects]
+    : [
+        {
+          id: project.id,
+          name: project.name,
+          storage: 'common',
+          current: true,
+          paths: [],
+          waiting: [],
+          withAgents: 0,
+          open: 0,
+        },
+      ];
+  const total = listed.reduce((sum, each) => sum + each.waiting.length, 0);
   return (
     <>
-      <div className="menu-head">
-        <span className="t-label">{t('shell.projects')}</span>
-        <span className="t-cap">1</span>
-      </div>
       <a
         className="menu-row project-row"
-        href={ITEMS_HASH}
-        aria-current="page"
-        style={{ '--i': 1 } as CSSProperties}
+        href={PROJECTS_HASH}
+        style={{ '--i': 0 } as CSSProperties}
       >
-        <span className="project-tile">
-          <PlaceIcon icon={project.icon ?? undefined} name={project.name} size={16} />
+        <span className="project-tile" data-all="true">
+          <PlaceIcon icon="inbox" name={t('rail.projects')} size={16} />
         </span>
         <span className="menu-text">
-          <span className="menu-name">{project.name}</span>
-          <span className="menu-line">{t('shell.projectOpen')}</span>
+          <span className="menu-name">{t('rail.projects')}</span>
+          <span className="menu-line">{t('shell.allProjectsLine')}</span>
         </span>
-        <Tick />
+        <Waiting count={total} />
       </a>
-      <div className="menu-foot" style={{ '--i': 2 } as CSSProperties}>
+      <div className="menu-head">
+        <span className="t-label">{t('shell.projects')}</span>
+        <span className="t-cap">{listed.length}</span>
+      </div>
+      {listed.map((each, index) => {
+        const href = each.current ? ITEMS_HASH : projectHref(each);
+        const icon = each.current ? (project.icon ?? undefined) : undefined;
+        const where = whereOf(each);
+        const missing = each.paths.some((path) => path.missing);
+        const line = each.current
+          ? t('shell.projectOpen')
+          : href
+            ? (where ?? '')
+            : t('shell.notServed');
+        const body = (
+          <>
+            <span className="project-tile">
+              <PlaceIcon icon={icon} name={each.name} size={16} />
+            </span>
+            <span className="menu-text">
+              <span className="menu-name">{each.name}</span>
+              <span className="menu-line">
+                {missing ? `${t('shell.pathMissing')} · ` : ''}
+                {line}
+              </span>
+            </span>
+            <span className="menu-end">
+              <Waiting count={each.waiting.length} />
+              {each.current ? <Tick /> : null}
+            </span>
+          </>
+        );
+        const style = { '--i': index + 1 } as CSSProperties;
+        return href ? (
+          <a
+            key={each.id}
+            className="menu-row project-row"
+            href={href}
+            aria-current={each.current ? 'page' : undefined}
+            style={style}
+          >
+            {body}
+          </a>
+        ) : (
+          <span key={each.id} className="menu-row project-row" data-off="true" style={style}>
+            {body}
+          </span>
+        );
+      })}
+      <div className="menu-foot" style={{ '--i': listed.length + 1 } as CSSProperties}>
+        <a className="menu-link" href={SETTINGS_HASH}>
+          {t('shell.settingsOf', { project: project.name })}
+        </a>
         <span className="t-cap">{tx('shell.newProject', { command: <code>otea init</code> })}</span>
       </div>
     </>
+  );
+}
+
+// The rest of your attention, outside the project you are in: a quiet line that opens the inbox
+// of every project. Gone while nothing waits elsewhere.
+function Elsewhere({ projects }: { projects: readonly ProjectOverview[] | undefined }) {
+  const { count, projects: where } = waitingElsewhere(projects ?? []);
+  if (count === 0) return null;
+  return (
+    <a className="topbar-elsewhere" href={PROJECTS_HASH}>
+      <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
+        <circle cx="5" cy="5" r="4" />
+      </svg>
+      <span>
+        {t('shell.elsewhere', { count, where: t('shell.otherProjects', { count: where }) })}
+      </span>
+    </a>
   );
 }
 
@@ -154,17 +256,19 @@ function ProjectRows({ project }: { project: ProjectView }) {
 // projects this browser can reach.
 function ProjectPill({
   project,
+  projects,
   folded,
   phone,
 }: {
   project: ProjectView | undefined;
+  projects: readonly ProjectOverview[] | undefined;
   folded: boolean;
   phone: boolean;
 }) {
   const menu = useMenu();
   const [pill, width] = useWidth<HTMLButtonElement>();
   if (!project) return <span className="project-pill-room" />;
-  const rows = <ProjectRows project={project} />;
+  const rows = <ProjectRows project={project} projects={projects} />;
   return (
     <span className="pill-anchor" ref={menu.ref}>
       <button
@@ -445,6 +549,8 @@ type TopbarProps = {
   panel?: ReactNode;
   // Opens the activity drawer, from the agents dropdown.
   onActivity?: () => void;
+  // Every project on this machine, for the switcher and the line beside it.
+  projects?: readonly ProjectOverview[] | undefined;
 };
 
 // Three zones: where you are (the project, over its collections), the mark (centre) and the agents
@@ -461,12 +567,14 @@ export function Topbar({
   collectionOf,
   panel,
   onActivity,
+  projects,
 }: TopbarProps) {
   return (
     <header className="topbar" data-folded={folded || undefined}>
       <div className="topbar-start">
         {panel}
-        <ProjectPill project={project} folded={folded} phone={phone} />
+        <ProjectPill project={project} projects={projects} folded={folded} phone={phone} />
+        {phone ? null : <Elsewhere projects={projects} />}
       </div>
       {phone ? null : (
         <div className="topbar-centre">
