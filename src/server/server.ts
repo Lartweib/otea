@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { listCollectionViews } from '../app/collections.ts';
 import { createItem, type ListItemsFilter, listItems, moveItem, showItem } from '../app/items.ts';
+import { listAgents, presenceSignature } from '../app/presence.ts';
 import { listPresetViews } from '../app/preset-views.ts';
 import type { Project } from '../app/project.ts';
 import { linkItems, unlinkItems } from '../app/relations.ts';
@@ -63,6 +64,7 @@ function api(project: Project, feed: ChangeFeed, streams: LiveStreams, auth: Ses
     .get('/project', (c) => c.json(project.identity))
     .get('/collections', (c) => c.json(listCollectionViews(project)))
     .get('/presets', (c) => c.json(listPresetViews(project)))
+    .get('/agents', (c) => c.json({ agents: listAgents(project.db) }))
     .get('/items', (c) =>
       c.json(listItems(project, itemsFilter(c.req.query(), c.req.queries('field')))),
     )
@@ -105,7 +107,7 @@ function api(project: Project, feed: ChangeFeed, streams: LiveStreams, auth: Ses
 
 export function createServer(project: Project, options: ServerOptions = {}): OteaServer {
   const feed = createChangeFeed(project.db, options.pollIntervalMs);
-  const streams = liveStreams(feed);
+  const streams = liveStreams(feed, () => presenceSignature(project.db));
   let port = DEFAULT_PORT;
   const app = new Hono();
   app.use(async (c, next) => {

@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { addCollection } from '../app/collections.ts';
 import { createItem, moveItem } from '../app/items.ts';
 import { claimItem } from '../app/leases.ts';
+import { CLI_HARNESS, seeAgent } from '../app/presence.ts';
 import type { Project } from '../app/project.ts';
 import { REVIEWS } from '../app/testing.ts';
 import type { Actor } from '../core/item.ts';
@@ -11,6 +12,8 @@ import { memoryProject, request } from './testing.ts';
 
 const ana: Actor = { kind: 'human', name: 'ana' };
 const bot: Actor = { kind: 'agent', name: 'claude' };
+
+const T0 = '2026-01-01T00:00:00.000Z';
 
 describe('api', () => {
   let project: Project;
@@ -51,6 +54,42 @@ describe('api', () => {
 
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual(project.identity);
+  });
+
+  describe('GET /api/agents', () => {
+    it('lists the agents seen, live first, with their harness and holds, without a session', async () => {
+      const recently = new Date(Date.now() - 60_000).toISOString();
+      seeAgent(project.db, { agent: 'codex', channel: 'cli', harness: CLI_HARNESS }, () => T0);
+      seeAgent(
+        project.db,
+        { agent: 'claude', channel: 'mcp', harness: { name: 'claude-code', version: '2.1.0' } },
+        () => recently,
+      );
+      claimItem(project, { id: 'TASKS-1', actor: bot });
+
+      const response = await get('/api/agents');
+
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({
+        agents: [
+          {
+            name: 'claude',
+            harness: 'claude-code',
+            holding: ['TASKS-1'],
+            lastSeen: recently,
+            live: true,
+          },
+          { name: 'codex', harness: 'cli', holding: [], lastSeen: T0, live: false },
+        ],
+      });
+    });
+
+    it('lists no one before an agent is seen', async () => {
+      const empty = createServer(memoryProject());
+
+      expect(await (await request(empty, '/api/agents')).json()).toEqual({ agents: [] });
+      empty.close();
+    });
   });
 
   describe('GET /api/collections', () => {

@@ -2,6 +2,7 @@ import type { DatabaseSync } from 'node:sqlite';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { addCollection } from '../app/collections.ts';
 import { createItem, moveItem } from '../app/items.ts';
+import { seeAgent } from '../app/presence.ts';
 import { catalogWith, projectOf } from '../app/testing.ts';
 import { migrate } from '../store/migrations.ts';
 import { createServer, type OteaServer } from './server.ts';
@@ -119,6 +120,16 @@ describe('GET /api/stream', () => {
 
     expect(response.status).toBe(201);
     expect(await readUntil(reader, 'event: change')).toContain('event: change');
+    await reader.cancel();
+  });
+
+  it('emits presence, besides change, when an agent is seen from another connection', async () => {
+    const { reader } = await connect();
+
+    seeAgent(other, { agent: 'claude', channel: 'mcp', harness: { name: 'claude-code' } });
+
+    const received = await readUntil(reader, 'event: presence');
+    expect(received).toContain('event: change');
     await reader.cancel();
   });
 
