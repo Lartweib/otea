@@ -1,18 +1,24 @@
 import type { Catalog } from './i18n.ts';
 
 // La interfaz en español: neutro, profesional, de tú. Los nombres que define una plantilla
-// (estados, campos, tipos) y los identificadores (roles, módulos, comandos) no se traducen.
+// (estados, campos, tipos) salen como los escribió, o con sus etiquetas en español si las trae;
+// los identificadores (roles, módulos, comandos) no se traducen.
 //
 // Glosario
-//   item          elemento
+//   item          ítem
 //   collection    colección
 //   preset        plantilla
 //   playbook      guía
-//   turn          turno (your turn: tu turno; Waiting for you: Tu turno)
+//   turn          turno (your turn: tu turno)
+//   Waiting for you  Te esperan (the group); With agents: Con agentes; Closed: Cerrados
+//   At your machine  En tu máquina
+//   brief         encargo
+//   Done          Listo (Done, with a note…: Listo, con una nota…)
+//   hard · soft   estricto · suave
 //   handoff       traspaso
 //   lease         reserva (held by X: en manos de X)
 //   evidence      evidencia
-//   need          necesidad
+//   need          solicitud
 //   gate          control
 //   move          acción (move to X: mover a X)
 //   triage        triaje
@@ -27,7 +33,7 @@ export const es: Catalog = {
   'common.close': 'Cerrar',
   'common.failed': 'Falló',
   'common.noFields': 'Sin campos.',
-  'common.items': 'Elementos',
+  'common.items': 'Ítems',
   'common.more': '{count} más',
   'common.files': { one: '{count} archivo', other: '{count} archivos' },
   'common.dragToResize': 'Arrastra para cambiar el tamaño · doble clic lo restablece',
@@ -43,11 +49,11 @@ export const es: Catalog = {
   'error.getFailed': 'GET {path} falló con {status}',
 
   // Barra superior
-  'app.brand': 'otea, todos los elementos',
+  'app.brand': 'otea, todos los ítems',
   'app.modules': 'Módulos',
   'app.studio': 'Studio',
-  'app.newItem': 'Nuevo elemento',
-  'app.notFound': 'No se encontró el elemento {id}.',
+  'app.newItem': 'Nuevo ítem',
+  'app.notFound': 'No se encontró el ítem {id}.',
   'app.noModule': 'No hay ningún módulo llamado {name}.',
   'connection.connecting': 'Conectando…',
   'connection.live': 'En vivo',
@@ -133,16 +139,16 @@ export const es: Catalog = {
   'prefs.spanish': 'Español',
   'prefs.onlyInterface': 'Solo se traduce la interfaz.',
   'prefs.translated':
-    '{only} El contenido de los elementos, lo que escriben los agentes y los nombres de las plantillas quedan como se escribieron.',
+    '{only} El contenido de los ítems, lo que escriben los agentes y los nombres de las plantillas quedan como se escribieron.',
 
   // El panel de detalle sin nada elegido
-  'empty.pick': 'Elige un elemento para ver su detalle',
+  'empty.pick': 'Elige un ítem para ver su detalle',
   'empty.waiting': { one: '{count} te espera', other: '{count} te esperan' },
   'empty.withAgents': { one: '{count} con un agente', other: '{count} con agentes' },
   'empty.nothingWaiting': 'Nada te espera',
-  'empty.noItems': 'Todavía no hay elementos',
-  'empty.noItemsIn': 'Todavía no hay elementos en {collection}',
-  'empty.newIn': 'Nuevo elemento en {collection}',
+  'empty.noItems': 'Todavía no hay ítems',
+  'empty.noItemsIn': 'Todavía no hay ítems en {collection}',
+  'empty.newIn': 'Nuevo ítem en {collection}',
 
   // Barra de colecciones
   'rail.label': 'colecciones',
@@ -150,7 +156,7 @@ export const es: Catalog = {
   'rail.all': 'Todo el trabajo',
   'rail.hide': 'Ocultar colecciones',
   'rail.show': 'Mostrar colecciones',
-  'rail.waiting': 'en tu turno',
+  'rail.waiting': 'te esperan',
   'rail.project': 'proyecto',
 
   // De quién es el turno
@@ -170,7 +176,7 @@ export const es: Catalog = {
   'actor.agent': 'agente',
 
   // Grupos de la lista y la tabla
-  'section.human': 'Tu turno',
+  'section.human': 'Te esperan',
   'section.agent': 'Con agentes',
   'section.none': 'Cerrados',
   'section.noValue': 'sin {group}',
@@ -185,7 +191,7 @@ export const es: Catalog = {
   'group.type': 'tipo',
 
   // Panel de la lista
-  'list.empty': 'Todavía no hay elementos. Crea uno con {command}.',
+  'list.empty': 'Todavía no hay ítems. Crea uno con {command}.',
 
   'emptyList.copy': 'copiar',
   'emptyList.copied': 'copiado',
@@ -255,7 +261,7 @@ export const es: Catalog = {
   'column.age': 'edad',
   'grid.noValue': 'Sin {column}',
   'grid.select': 'Seleccionar {id}',
-  'grid.selectAll': 'Seleccionar todos los elementos visibles',
+  'grid.selectAll': 'Seleccionar todos los ítems visibles',
   'grid.whoseTurn': 'De quién es el turno',
   'grid.nobody': 'nadie',
   'grid.width': 'Ancho de la columna {column}',
@@ -310,7 +316,7 @@ export const es: Catalog = {
   'bulk.hidden': 'ocultas · {why}',
   'bulk.hiddenMoves': '{moves}: {why}',
   'bulk.rule': {
-    one: 'las acciones que admite este elemento',
+    one: 'las acciones que admite este ítem',
     other: 'solo las acciones que admiten los {count}',
   },
   'bulk.readOnly': 'Solo lectura: ejecuta {command} para actuar desde este navegador.',
@@ -367,7 +373,7 @@ export const es: Catalog = {
   'bulk.progress': 'moviendo {done} de {total} a {state}',
   'bulk.oneAtATime': 'de uno en uno',
   'bulk.nothingMoved': 'No se movió nada',
-  'bulk.items': { one: '{count} elemento', other: '{count} elementos' },
+  'bulk.items': { one: '{count} ítem', other: '{count} ítems' },
   'bulk.landed': '{items} → {state}',
   'bulk.didNotMove': '{id} no se movió: {why}',
   'bulk.othersFailed': '{count} más tampoco',
@@ -390,14 +396,14 @@ export const es: Catalog = {
     one: 'y {count} bloqueante abierto',
     other: 'y {count} bloqueantes abiertos',
   },
-  'move.closesAs': 'cierra el elemento como {as}',
-  'move.closes': 'cierra el elemento',
-  'move.leaves': 'sale de Tu turno',
-  'move.comes': 'pasa a Tu turno',
+  'move.closesAs': 'cierra el ítem como {as}',
+  'move.closes': 'cierra el ítem',
+  'move.leaves': 'sale de Te esperan',
+  'move.comes': 'pasa a Te esperan',
   'move.asksReason': 'pide un motivo antes',
 
   // El detalle
-  'detail.brief': 'Resumen',
+  'detail.brief': 'Encargo',
   'detail.structure': 'Estructura',
   'detail.across': 'En otros tableros',
   'detail.details': 'Detalles',
@@ -431,7 +437,7 @@ export const es: Catalog = {
   'handoff.created': '{who} lo creó',
   'handoff.youMoved': 'lo moviste a {state}',
   'handoff.moved': '{who} lo movió a {state}',
-  'handoff.waiting': 'en tu turno:',
+  'handoff.waiting': 'te espera:',
 
   // Historial
   'event.created': 'Creado en {state}',
@@ -475,10 +481,10 @@ export const es: Catalog = {
   'said.implements': '{from} implementa {to}',
   'link.aria': 'Vincular {id}',
   'link.kind': 'Relación',
-  'link.search': 'Elemento que vincular, por id o título',
-  'link.placeholder': 'Id o título del elemento',
-  'link.matches': 'Elementos que coinciden',
-  'link.none': 'Ningún elemento coincide.',
+  'link.search': 'Ítem que vincular, por id o título',
+  'link.placeholder': 'Id o título del ítem',
+  'link.matches': 'Ítems que coinciden',
+  'link.none': 'Ningún ítem coincide.',
   'relations.count': { one: '{count} relación', other: '{count} relaciones' },
   'relations.none': 'Sin relaciones',
   'relations.labelled': '{count} {label}',
@@ -550,7 +556,7 @@ export const es: Catalog = {
   'triage.position': '{position} de {total}',
   'triage.decided': '{count} decididos',
   'triage.forLater': '{count} para después',
-  'triage.open': 'abrir el elemento',
+  'triage.open': 'abrir el ítem',
   'triage.later': 'Después',
   'triage.swipeLeft': 'desliza a la izquierda · {state}',
   'triage.swipeRight': 'desliza a la derecha · {state}',
@@ -572,7 +578,7 @@ export const es: Catalog = {
     other: 'Volver a mostrar los {count} pendientes',
   },
 
-  // Nuevo elemento
+  // Nuevo ítem
   'intake.newChild': 'Nuevo hijo',
   'intake.childOf': 'hijo de',
   'intake.unparent': 'No hacerlo hijo de {id}',
@@ -589,7 +595,7 @@ export const es: Catalog = {
 
   // Catálogo de módulos
   'catalog.title': 'Módulos de campo',
-  'catalog.back': 'Volver a los elementos',
+  'catalog.back': 'Volver a los ítems',
   'catalog.unknownHeading': 'Los nombran plantillas, pero no están en esta interfaz',
   'catalog.official': 'oficial',
   'catalog.local': 'local',
@@ -602,7 +608,7 @@ export const es: Catalog = {
   'catalog.fields': { one: '{count} campo', other: '{count} campos' },
   'catalog.inPreset': '{fields} en {preset}',
   'catalog.inPresets': '{fields} en {count} plantillas',
-  'catalog.sampleItem': 'Elemento de ejemplo',
+  'catalog.sampleItem': 'Ítem de ejemplo',
   'catalog.outOfRow': 'no aparece en la fila',
   'catalog.sample': 'Ejemplo: {label}',
   'catalog.row': 'fila',
@@ -627,7 +633,7 @@ export const es: Catalog = {
   'catalog.usedBy': 'Lo usan',
   'catalog.inYaml': 'En preset.yaml',
   'catalog.intro':
-    'Cada campo de una plantilla elige un módulo. El módulo decide cómo se ve el valor en una fila de la lista y en el detalle del elemento, y cómo se edita. Los módulos oficiales vienen con Otea; los módulos locales de {folder} se marcarán como no oficiales y se usan bajo tu responsabilidad.',
+    'Cada campo de una plantilla elige un módulo. El módulo decide cómo se ve el valor en una fila de la lista y en el detalle del ítem, y cómo se edita. Los módulos oficiales vienen con Otea; los módulos locales de {folder} se marcarán como no oficiales y se usan bajo tu responsabilidad.',
   'catalog.loaded': 'Plantillas cargadas',
   'module.unknown.summary': 'Módulo desconocido: se muestra como texto sin formato.',
   'module.text.summary': 'Una sola línea de texto sin formato, como un título.',

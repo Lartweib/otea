@@ -62,6 +62,6 @@ describe('EmptyDetail', () => {
       '1 te espera·1 con un agente',
     );
     expect(text(render([item('A', 'human'), item('B', 'human')]))).toContain('2 te esperan');
-    expect(text(render([]))).toContain('Todavía no hay elementos');
+    expect(text(render([]))).toContain('Todavía no hay ítems');
   });
 });

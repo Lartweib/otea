@@ -56,7 +56,7 @@ describe('t', () => {
     expect(t('common.files', { count: 1 })).toBe('1 file');
     expect(t('common.files', { count: 3 })).toBe('3 files');
     setLanguage('es');
-    expect(t('app.notFound', { id: 'BUG-1' })).toBe('No se encontró el elemento BUG-1.');
+    expect(t('app.notFound', { id: 'BUG-1' })).toBe('No se encontró el ítem BUG-1.');
     expect(t('common.files', { count: 1 })).toBe('1 archivo');
     expect(t('common.files', { count: 0 })).toBe('0 archivos');
     // Spanish has a `many` category for millions; without its own form, `other` says it.
@@ -144,7 +144,7 @@ describe('a component in Spanish', () => {
     setLanguage('es');
     const [waiting] = groupByTurn([item]);
     const group = waiting ? createElement(GroupLabel, { section: waiting, total: 1 }) : null;
-    expect(renderToStaticMarkup(group)).toContain('Tu turno');
+    expect(renderToStaticMarkup(group)).toContain('Te esperan');
 
     const moves: Move[] = [
       { to: 'verify', by: 'human', turn: 'agent' } as Move,
@@ -155,7 +155,7 @@ describe('a component in Spanish', () => {
     );
     expect(html).toContain('aria-label="Acciones"');
     expect(html).toContain('cerrar como');
-    expect(html).toContain('turno de claude · sale de Tu turno');
+    expect(html).toContain('turno de claude · sale de Te esperan');
     // State names come from the preset and stay as written.
     expect(html).toContain('verify');
     expect(html).toContain('wontfix');
