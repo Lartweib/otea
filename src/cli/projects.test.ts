@@ -101,8 +101,8 @@ describe('projects', () => {
     expect(listed.paths).toHaveLength(2);
     expect(listed.paths).toEqual(
       expect.arrayContaining([
-        { path: a.dir, kind: 'repo' },
-        { path: b.dir, kind: 'repo' },
+        { path: a.dir, kind: 'repo', missing: false },
+        { path: b.dir, kind: 'repo', missing: false },
       ]),
     );
     expect((await json(b, 'projects', 'current')).id).toBe(id);
@@ -113,5 +113,42 @@ describe('projects', () => {
 
     expect(code).toBe(2);
     expect(err).toContain('--join');
+  });
+
+  it('projects forget unlinks a folder and keeps the items for the next folder that joins', async () => {
+    const { id } = await json(a, 'init');
+    await json(a, 'collection', 'add', 'tasks');
+    await json(a, 'create', '--collection', 'tasks', '--title', 'Kept');
+
+    const forgotten = await cliAt(a.dir)('projects', 'forget', a.dir);
+    const listed = (await json(a, 'projects', 'list')).find(
+      (project: { id: string }) => project.id === id,
+    );
+    await json(b, 'init', '--join', id);
+
+    expect(forgotten.out).toContain('no linked folder left');
+    expect(listed.paths).toEqual([]);
+    expect((await cliAt(a.dir)('list')).code).toBe(3);
+    expect((await json(b, 'list')).map((item: { title: string }) => item.title)).toEqual(['Kept']);
+  });
+
+  it('projects relink warns when it cannot tell the repos apart', async () => {
+    const { id } = await json(a, 'init');
+
+    const relinked = await cliAt(a.dir)('projects', 'relink', a.dir, b.dir);
+
+    expect(relinked.code).toBe(0);
+    expect(relinked.err).toContain('Could not check');
+    expect((await json(b, 'projects', 'current')).id).toBe(id);
+  });
+
+  it('projects list marks a linked folder that is gone', async () => {
+    const { id } = await json(a, 'init');
+    await json(a, 'projects', 'add', b.dir, '--to', id);
+    b.remove();
+
+    const { out } = await cliAt(a.dir)('projects', 'list');
+
+    expect(out).toContain(`${b.dir}  repo  (missing)`);
   });
 });

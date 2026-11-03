@@ -26,7 +26,8 @@ export type ErrorCode =
   | 'self_relation'
   | 'parent_exists'
   | 'relation_cycle'
-  | 'children_open';
+  | 'children_open'
+  | 'different_repo';
 
 export class OteaError extends Error {
   readonly code: ErrorCode;
