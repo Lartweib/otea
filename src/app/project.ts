@@ -134,6 +134,11 @@ function openFound(found: Found): Project {
   return open(found);
 }
 
+// Opens a registered project's data, as seen from `root` (one of its folders).
+export function openRegistered(project: RegisteredProject, root: string): Project {
+  return openFound({ root, dataDir: project.dataDir, storage: project.storage });
+}
+
 export type Env = Readonly<Record<string, string | undefined>>;
 
 const local = (root: string): Found => ({ root, dataDir: oteaDir(root), storage: 'local' });

@@ -76,6 +76,16 @@ function gitHookNote(path: string): string {
   return 'core.hooksPath puts it outside .git: do not commit it, the hook names the path to Otea on this machine';
 }
 
+// Whether the repo at cwd has Otea's pre-push hook, which makes its gates hard; false outside a repo.
+export function hasOteaGitHook(cwd: string): boolean {
+  try {
+    const path = gitHookFile(cwd);
+    return existsSync(path) && readFileSync(path, 'utf8').includes(MARK);
+  } catch {
+    return false;
+  }
+}
+
 export function removeGitHook(cwd: string): HookChange {
   const path = gitHookFile(cwd);
   if (!existsSync(path)) return { path, action: 'absent' };

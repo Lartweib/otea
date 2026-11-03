@@ -206,3 +206,35 @@ export async function briefRequest(c: Context): Promise<BriefBodyRequest> {
     ...(success === undefined ? {} : { success }),
   };
 }
+
+const PathBody = z.object({ path: z.string().min(1) });
+
+export async function pathRequest(c: Context): Promise<{ path: string }> {
+  const raw: unknown = await c.req.json().catch(() => undefined);
+  const parsed = PathBody.safeParse(raw);
+  if (!parsed.success) throw new RejectedRequest(400, 'invalid_body', 'Expected {"path": string}');
+  return parsed.data;
+}
+
+const RelinkBody = z.object({
+  from: z.string().min(1),
+  to: z.string().min(1),
+  force: z.boolean().optional(),
+});
+
+// Moves a linked path to where its repo went; `force` relinks a folder that holds another repo.
+export type RelinkRequest = { from: string; to: string; force: boolean };
+
+export async function relinkRequest(c: Context): Promise<RelinkRequest> {
+  const raw: unknown = await c.req.json().catch(() => undefined);
+  const parsed = RelinkBody.safeParse(raw);
+  if (!parsed.success) {
+    throw new RejectedRequest(
+      400,
+      'invalid_body',
+      'Expected {"from": string, "to": string, "force"?: boolean}',
+    );
+  }
+  const { from, to, force = false } = parsed.data;
+  return { from, to, force };
+}
