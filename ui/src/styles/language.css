@@ -6,7 +6,8 @@
   position: fixed;
   left: 16px;
   right: 16px;
-  bottom: calc(16px + env(safe-area-inset-bottom));
+  /* Above the New item button (24px off the bottom, 48 tall): the note never covers a primary. */
+  bottom: calc(84px + env(safe-area-inset-bottom));
   z-index: 40;
 }
 .language-note-host[data-anchored] {
@@ -18,6 +19,7 @@
 .language-note {
   position: relative;
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 6px;
   justify-items: start;
   padding: 14px 16px;
@@ -62,4 +64,8 @@
   flex-wrap: wrap;
   gap: 12px;
   margin-top: 6px;
+}
+.language-note-actions .t-cap {
+  min-width: 0;
+  white-space: normal;
 }

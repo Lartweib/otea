@@ -12,7 +12,9 @@ import { Button } from '../kit/Button.tsx';
 // The note itself: which language Otea took from the browser, and that only the interface is
 // translated. It never covers a primary: it rests on the Preferences row at the sidebar's foot,
 // pointing at it, or on a phone (where Preferences sits in the panel) at the bottom of the screen.
-export function LanguageNoteView({ tag, onDismiss }: FirstRunNote & { onDismiss: () => void }) {
+type ViewProps = FirstRunNote & { onDismiss: () => void; anchored?: boolean };
+
+export function LanguageNoteView({ tag, onDismiss, anchored = false }: ViewProps) {
   return (
     <aside className="language-note raised" aria-label={t('languageNote.label')}>
       <p className="language-note-heading">
@@ -23,7 +25,9 @@ export function LanguageNoteView({ tag, onDismiss }: FirstRunNote & { onDismiss:
         <Button size="sm" onClick={onDismiss}>
           {t('languageNote.ok')}
         </Button>
-        <span className="t-cap">{t('languageNote.where')}</span>
+        <span className="t-cap">
+          {t(anchored ? 'languageNote.where' : 'languageNote.wherePanel')}
+        </span>
       </div>
     </aside>
   );
@@ -59,7 +63,7 @@ export function LanguageNote({ anchored = false }: { anchored?: boolean }) {
   if (!note) return null;
   return (
     <div className="language-note-host" data-anchored={anchored || undefined} ref={box}>
-      <LanguageNoteView tag={note.tag} onDismiss={dismiss} />
+      <LanguageNoteView tag={note.tag} onDismiss={dismiss} anchored={anchored} />
     </div>
   );
 }

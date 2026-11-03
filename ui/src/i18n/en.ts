@@ -120,6 +120,7 @@ export const en = {
   'languageNote.body':
     'Only the interface is translated. Item content, their fields and what agents write stay exactly as written.',
   'languageNote.where': 'Change it any time in Preferences, below.',
+  'languageNote.wherePanel': 'Change it any time in Preferences, at the foot of the panel.',
   'languageNote.ok': 'Got it',
 
   // The detail pane while nothing is chosen

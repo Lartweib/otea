@@ -20,6 +20,17 @@ describe('the first-run language note', () => {
     expect(html).toContain('aria-label="Idioma"');
   });
 
+  it('names Preferences where it is: just below on the sidebar, at the panel’s foot on a phone', () => {
+    setLanguage('es');
+    const view = (anchored: boolean) =>
+      renderToStaticMarkup(
+        createElement(LanguageNoteView, { tag: 'es-AR', onDismiss: () => {}, anchored }),
+      );
+
+    expect(view(true)).toContain('en Preferencias, aquí abajo.');
+    expect(view(false)).toContain('en Preferencias, al pie del panel.');
+  });
+
   it('draws nothing when no note is due', () => {
     expect(renderToStaticMarkup(createElement(LanguageNote))).toBe('');
   });
