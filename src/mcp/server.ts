@@ -54,6 +54,8 @@ export const CLI_ONLY_COMMANDS = [
   'hook remove',
   'serve',
   'open',
+  'devices list',
+  'devices revoke',
   'mcp',
 ];
 

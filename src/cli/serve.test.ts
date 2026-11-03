@@ -110,6 +110,7 @@ describe('serve', () => {
     const { out } = await otea('serve', '--port', '0', '--json');
 
     expect(JSON.parse(out).url).toMatch(/^http:\/\/127\.0\.0\.1:\d+$/);
+    expect(JSON.parse(out).lan).toBeUndefined();
   });
 
   it('fails with a clear error when the port is busy', async () => {
@@ -130,7 +131,7 @@ describe('serve', () => {
   });
 
   it('is listed in the help', async () => {
-    expect((await otea('help')).out).toContain('otea serve [--port <port>] [--no-open]');
+    expect((await otea('help')).out).toContain('otea serve [--port <port>] [--no-open] [--lan]');
   });
 });
 
