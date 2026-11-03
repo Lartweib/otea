@@ -103,6 +103,11 @@ export function deleteProjectPath(db: DatabaseSync, pathKey: string): void {
   db.prepare('DELETE FROM project_paths WHERE path_key = ?').run(pathKey);
 }
 
+export function deleteRegisteredProject(db: DatabaseSync, id: string): void {
+  db.prepare('DELETE FROM project_paths WHERE project_id = ?').run(id);
+  db.prepare('DELETE FROM projects WHERE id = ?').run(id);
+}
+
 export function selectProjectPaths(db: DatabaseSync): ProjectPath[] {
   const rows = db.prepare('SELECT * FROM project_paths ORDER BY path_key').all() as PathRow[];
   return rows.map((row) => ({

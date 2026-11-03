@@ -39,6 +39,7 @@ export const CLI_ONLY_COMMANDS = [
   'projects add',
   'projects relink',
   'projects forget',
+  'migrate',
   'connect',
   'collection add',
   'validate',

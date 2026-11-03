@@ -51,7 +51,7 @@ type Location = { root: string; gitCommonDir?: string };
 const OTEA_DIR = '.otea';
 const EXCLUDE_ENTRY = `${OTEA_DIR}/`;
 
-function gitCommonDir(cwd: string): string | undefined {
+export function gitCommonDir(cwd: string): string | undefined {
   try {
     const output = execFileSync('git', ['rev-parse', '--git-common-dir'], {
       cwd,
@@ -70,11 +70,11 @@ function locate(cwd: string): Location {
   return { root: dirname(commonDir), gitCommonDir: commonDir };
 }
 
-function oteaDir(root: string): string {
+export function oteaDir(root: string): string {
   return join(root, OTEA_DIR);
 }
 
-function databasePath(dataDir: string): string {
+export function databasePath(dataDir: string): string {
   return join(dataDir, 'otea.db');
 }
 
@@ -82,14 +82,14 @@ function hasLocalProject(dir: string): boolean {
   return existsSync(databasePath(oteaDir(dir)));
 }
 
-function excludeFromGit(gitCommonDir: string): void {
+export function excludeFromGit(gitCommonDir: string, entry = EXCLUDE_ENTRY): void {
   const infoDir = join(gitCommonDir, 'info');
   const excludePath = join(infoDir, 'exclude');
   const current = existsSync(excludePath) ? readFileSync(excludePath, 'utf8') : '';
-  if (current.split(/\r?\n/).some((line) => line.trim() === EXCLUDE_ENTRY)) return;
+  if (current.split(/\r?\n/).some((line) => line.trim() === entry)) return;
   mkdirSync(infoDir, { recursive: true });
   const separator = current === '' || current.endsWith('\n') ? '' : '\n';
-  appendFileSync(excludePath, `${separator}${EXCLUDE_ENTRY}\n`);
+  appendFileSync(excludePath, `${separator}${entry}\n`);
 }
 
 // Named after its folder.

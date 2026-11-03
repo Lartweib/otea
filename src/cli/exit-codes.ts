@@ -51,6 +51,7 @@ export const EXIT_CODES: Readonly<Record<'ok' | FailureCode, number>> = {
   relation_cycle: 16,
   children_open: 4,
   different_repo: 17,
+  in_use: 18,
   // 128 + SIGINT, as shells report a command stopped by Ctrl+C.
   interrupted: 130,
 };
