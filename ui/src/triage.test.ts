@@ -28,9 +28,10 @@ describe('triagePlan with open children', () => {
   } as Move;
   const rework = { to: 'building', by: 'human', reasonRequired: true, turn: 'agent' } as const;
   const children = { total: 3, open: 2, done: 1, discarded: 0 };
+  const waits = { children };
 
   it('never swipes a move that waits for children, and names it as blocked', () => {
-    expect(triagePlan([close, rework], children)).toEqual({
+    expect(triagePlan([close, rework], waits)).toEqual({
       back: rework,
       blocked: [{ move: close, note: 'waits for 2 open children' }],
     });
@@ -46,7 +47,7 @@ describe('triagePlan with open children', () => {
     } as Move;
     const approve = { to: 'approved', by: 'human', reasonRequired: false, turn: 'agent' } as const;
 
-    expect(triagePlan([review, approve, rework], children)).toEqual({
+    expect(triagePlan([review, approve, rework], waits)).toEqual({
       forward: approve,
       back: rework,
       blocked: [{ move: review, note: 'waits for 2 open children' }],
@@ -54,7 +55,7 @@ describe('triagePlan with open children', () => {
   });
 
   it('swipes it once every child is closed', () => {
-    expect(triagePlan([close, rework], { ...children, open: 0 })).toEqual({
+    expect(triagePlan([close, rework], { children: { ...children, open: 0 } })).toEqual({
       forward: close,
       back: rework,
     });

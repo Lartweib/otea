@@ -80,6 +80,17 @@ describe('bulkPlan', () => {
     expect(plan.hidden).toEqual([{ moves: ['done'], why: 'EPICS-1 waits for 2 open children' }]);
   });
 
+  it('keeps out a move that waits for open blockers of any selected item', () => {
+    const SHIP = move('shipped', { turn: 'none', closes: 'done', requires: ['blockers_closed'] });
+    const plan = bulkPlan([
+      { item: item('RELS-1', 'staging'), moves: [SHIP, BACK], blockers: 1 },
+      { item: item('RELS-2', 'staging'), moves: [SHIP, BACK], blockers: 0 },
+    ]);
+
+    expect(to(plan.moves)).toEqual(['fixing']);
+    expect(plan.hidden).toEqual([{ moves: ['shipped'], why: 'RELS-1 waits for 1 open blocker' }]);
+  });
+
   it('offers nothing while the moves of an item are still loading', () => {
     const plan = bulkPlan([
       { item: item('BUGS-1', 'reported'), moves: REPORTED },

@@ -9,7 +9,7 @@ import {
   useState,
 } from 'react';
 import { createPortal } from 'react-dom';
-import { moveVariants } from '../actions.ts';
+import { moveVariants, openBlockers } from '../actions.ts';
 import { fetchItem, moveItem } from '../api.ts';
 import {
   type BulkPlan,
@@ -26,8 +26,11 @@ import type { Item, Move } from '../types.ts';
 
 // The moves each selected item can take from where it stands, read from the API as the detail
 // reads them (so the browser's authority and the preset decide), keyed by the item's last change.
-function useMoves(items: readonly Item[]): ReadonlyMap<string, readonly Move[]> {
-  const [known, setKnown] = useState<ReadonlyMap<string, readonly Move[]>>(new Map());
+// Each comes with how many of its blockers are open, which the list does not carry.
+type Read = { moves: readonly Move[]; blockers: number };
+
+function useMoves(items: readonly Item[]): ReadonlyMap<string, Read> {
+  const [known, setKnown] = useState<ReadonlyMap<string, Read>>(new Map());
   const keys = items.map(({ id, updatedAt }) => `${id}@${updatedAt}`);
   const wanted = keys.join(' ');
   // biome-ignore lint/correctness/useExhaustiveDependencies: one read per selected item and change
@@ -37,7 +40,15 @@ function useMoves(items: readonly Item[]): ReadonlyMap<string, readonly Move[]> 
       if (known.has(key)) continue;
       const id = key.slice(0, key.lastIndexOf('@'));
       fetchItem(id, controller.signal).then(
-        (view) => setKnown((current) => new Map(current).set(key, view ? view.transitions : [])),
+        (view) =>
+          setKnown((current) =>
+            new Map(current).set(
+              key,
+              view
+                ? { moves: view.transitions, blockers: openBlockers(view.relations) }
+                : { moves: [], blockers: 0 },
+            ),
+          ),
         () => undefined,
       );
     }
@@ -302,7 +313,12 @@ export function BulkTray({ selected, canWrite, host, onKeep, onClear, away }: Bu
   const drawn = useRef<Partial<Record<Layer, ReactNode>>>({});
   const shown = useRef<Layer>('choosing');
 
-  const plan = bulkPlan(selected.map((item) => ({ item, moves: moves.get(item.id) })));
+  const plan = bulkPlan(
+    selected.map((item) => {
+      const read = moves.get(item.id);
+      return { item, moves: read?.moves, ...(read ? { blockers: read.blockers } : {}) };
+    }),
+  );
   const variants = moveVariants(plan.moves);
   const ordered = trayMoves(plan.moves, variants, plan.moves.length).shown;
   const closeAt = ordered.findIndex(({ variant }) => variant === 'quiet');

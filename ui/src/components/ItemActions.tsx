@@ -1,4 +1,5 @@
 import { type ReactNode, useReducer, useState } from 'react';
+import type { Waits } from '../actions.ts';
 import {
   canConfirm,
   IDLE,
@@ -11,17 +12,17 @@ import {
 import { moveItem } from '../api.ts';
 import { t } from '../i18n/i18n.ts';
 import { Button, type ButtonVariant } from '../kit/index.ts';
-import type { ChildrenSummary, Move, Turn } from '../types.ts';
+import type { Move, Turn } from '../types.ts';
 
 // onMoved: after a move lands, with its target (on a phone the unfolded item then folds and carries
-// itself home). openChildren: the item's children summary, so a move waiting for them is drawn
+// itself home). waits: the item's open children and blockers, so a move waiting for them is drawn
 // disabled. turn and agent: where the item stands and the agent a move would hand it to, for the
 // line that says what each move does. receipt: what the last move you made here did, said on that
 // line until another move is hovered. compact: the phone's bar of moves, without that line.
 type ItemActionsProps = {
   id: string;
   moves: Move[];
-  openChildren?: ChildrenSummary | undefined;
+  waits?: Waits | undefined;
   onMoved?: ((to: string) => void) | undefined;
   turn: Turn;
   agent?: string | undefined;
@@ -36,7 +37,7 @@ type ItemActionsProps = {
 export function ItemActions({
   id,
   moves,
-  openChildren: children,
+  waits,
   onMoved,
   turn,
   agent,
@@ -48,7 +49,7 @@ export function ItemActions({
   const busy = isBusy(state);
   const explaining =
     state.step === 'explaining' || (state.step === 'posting' && state.reason !== '');
-  const variants = moveVariants(moves, children);
+  const variants = moveVariants(moves, waits);
 
   const submit = (to: string, reason: string) => {
     dispatch({ type: 'submit', to, reason });
@@ -79,7 +80,7 @@ export function ItemActions({
   }
 
   const button = (move: Move, variant: ButtonVariant) => {
-    const blocked = moveBlock(move, children);
+    const blocked = moveBlock(move, waits);
     const noteId = `move-block-${id}-${move.to}`;
     const point = blocked
       ? {}
@@ -120,7 +121,7 @@ export function ItemActions({
       </Button>
     );
     if (!blocked) return element;
-    // Waiting for children: the move stays in view, disabled, with why next to it.
+    // Waiting for children or blockers: the move stays in view, disabled, with why next to it.
     return (
       <span key={move.to} className="move-blocked">
         {element}

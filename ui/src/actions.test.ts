@@ -8,10 +8,11 @@ import {
   moveSays,
   moveTone,
   moveVariants,
+  openBlockers,
   reduceAction,
   turnAgent,
 } from './actions.ts';
-import type { ItemEvent, Move } from './types.ts';
+import type { ItemEvent, Move, RelatedItem } from './types.ts';
 
 const explaining = (reason = ''): ActionState => ({ step: 'explaining', to: 'todo', reason });
 
@@ -130,7 +131,9 @@ describe('actions', () => {
 
     const waits = { ...done, requires: ['children_closed'] } as Move;
     const accept = { to: 'accepted', by: 'human', reasonRequired: false, turn: 'agent' } as const;
-    const open = (count: number) => ({ total: 4, open: count, done: 4 - count, discarded: 0 });
+    const open = (count: number) => ({
+      children: { total: 4, open: count, done: 4 - count, discarded: 0 },
+    });
 
     it('blocks a move that waits for children while some are open, and says how many', () => {
       expect(moveBlock(waits, open(3))).toBe('waits for 3 open children');
@@ -164,10 +167,43 @@ describe('actions', () => {
       expect(moveBlock(review, open(0))).toBeUndefined();
     });
 
-    it('leaves a move that waits only for blockers to the server', () => {
+    it('blocks a move that waits for blockers while some are open, and says how many', () => {
       const blocked = { ...done, requires: ['blockers_closed'] } as Move;
 
+      expect(moveBlock(blocked, { blockers: 2 })).toBe('waits for 2 open blockers');
+      expect(moveBlock(blocked, { blockers: 1 })).toBe('waits for 1 open blocker');
+      expect(moveBlock(blocked, { blockers: 0 })).toBeUndefined();
       expect(moveBlock(blocked, open(3))).toBeUndefined();
+      expect(moveVariants([blocked, accept], { blockers: 1 })).toEqual(['default', 'primary']);
+      expect(moveVariants([blocked, accept], { blockers: 0 })).toEqual(['primary', 'default']);
+    });
+
+    it('says both when a move waits for children and blockers', () => {
+      const both = { ...done, requires: ['children_closed', 'blockers_closed'] } as Move;
+
+      expect(moveBlock(both, { ...open(2), blockers: 1 })).toBe(
+        'waits for 2 open children and 1 open blocker',
+      );
+      expect(moveBlock(both, { ...open(0), blockers: 3 })).toBe('waits for 3 open blockers');
+    });
+
+    it('counts the open blockers among the relations', () => {
+      const rel = (kind: RelatedItem['kind'], closes?: 'done') =>
+        ({
+          kind,
+          id: 'X-1',
+          collection: 'x',
+          type: 'item',
+          title: 'x',
+          state: 's',
+          turn: 'human',
+          lease: null,
+          ...(closes ? { closes } : {}),
+        }) as RelatedItem;
+
+      expect(
+        openBlockers([rel('blocked_by'), rel('blocked_by', 'done'), rel('blocks'), rel('parent')]),
+      ).toBe(1);
     });
 
     it('makes the move that hands the turn on primary, discards quiet and the rest plain', () => {
