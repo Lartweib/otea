@@ -24,6 +24,7 @@ import './styles/modules.css';
 import './styles/relations.css';
 import './styles/phone.css';
 import './styles/triage.css';
+import './styles/brief.css';
 import { applyChoice, loadChoice } from './theme-dom.ts';
 
 applyChoice(loadChoice());

@@ -22,6 +22,7 @@ import {
 } from '../bulk.ts';
 import { listOf, t, tx } from '../i18n/i18n.ts';
 import { Button, Icon } from '../kit/index.ts';
+import { briefHash } from '../selection.ts';
 import type { Item, Move } from '../types.ts';
 
 // The moves each selected item can take from where it stands, read from the API as the detail
@@ -473,6 +474,16 @@ export function BulkTray({ selected, canWrite, host, onKeep, onClear, away }: Bu
   );
   const out = (
     <div className="bulk-zone bulk-out">
+      {/* A brief reads the selection and writes nothing, so it is there whoever looks. */}
+      <Button
+        variant="quiet"
+        className="bulk-brief"
+        onClick={() => {
+          window.location.hash = briefHash(selected.map(({ id }) => id));
+        }}
+      >
+        {t('brief.open')}
+      </Button>
       {keepOnly}
       <Button
         variant="quiet"
