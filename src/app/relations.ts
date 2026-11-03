@@ -1,5 +1,6 @@
 import type { DatabaseSync } from 'node:sqlite';
 import type { Channel } from '../core/authority.ts';
+import { assertInBlueprint } from '../core/blueprint.ts';
 import { OteaError } from '../core/errors.ts';
 import { assertTakesChild } from '../core/hierarchy.ts';
 import type { Actor } from '../core/item.ts';
@@ -88,6 +89,7 @@ export function addRelation(ctx: Context, given: Relation, who: Who, at: string)
   const to = requireItem(db, relation.to);
   if (relation.kind === 'parent') assertSameBoard(from, to);
   assertCanRelate(selectRelations(db), relation);
+  assertInBlueprint(ctx.blueprint, relation.kind, from, to);
   if (relation.kind === 'parent') {
     assertTakesChild(to.id, typeOfItem(ctx, to), from.type);
     const parent = presented(ctx, to, at);
