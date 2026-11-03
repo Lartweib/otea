@@ -9,7 +9,7 @@ import { createItemWithEvidence } from '../app/intake.ts';
 import { createItem, type ListItemsFilter, listItems, moveItem, showItem } from '../app/items.ts';
 import { listAgents, presenceSignature } from '../app/presence.ts';
 import { listPresetViews } from '../app/preset-views.ts';
-import { type Project, projectView } from '../app/project.ts';
+import { type Env, type Project, projectView } from '../app/project.ts';
 import { linkItems, unlinkItems } from '../app/relations.ts';
 import { MAX_EVIDENCE_MB } from '../core/evidence.ts';
 import { TURNS, type Turn } from '../core/workflow.ts';
@@ -41,6 +41,7 @@ import {
   peekPairing,
   revoke,
 } from './pairing.ts';
+import { addPath, forgetPath, projectOverviews, projectSettings, relinkPath } from './projects.ts';
 import {
   type Client,
   deviceCookie,
@@ -64,6 +65,8 @@ import {
   MAX_CREATE_BYTES,
   MAX_INTAKE_FILES,
   moveRequest,
+  pathRequest,
+  relinkRequest,
 } from './writes.ts';
 
 export type OteaServer = {
@@ -82,6 +85,8 @@ export type ServerOptions = {
   // and the names (its mDNS `<hostname>.local`) that resolve to one of them.
   lan?: { addresses: string[]; names?: string[] };
   now?: Clock;
+  // Where the registry of the other projects is found (OTEA_HOME).
+  env?: Env;
 };
 
 function isTurn(value: string): value is Turn {
@@ -152,7 +157,7 @@ function tooLarge(): never {
   );
 }
 
-type Doors = { auth: Session; lan: Lan | undefined; port: Port };
+type Doors = { auth: Session; lan: Lan | undefined; port: Port; env: Env };
 
 function api(
   project: Project,
@@ -160,7 +165,7 @@ function api(
   streams: LiveStreams,
   doors: Doors,
 ): Hono<OteaEnv> {
-  const { auth, lan, port } = doors;
+  const { auth, lan, port, env } = doors;
   return new Hono<OteaEnv>()
     .get('/session', (c) =>
       c.json({ canWrite: auth.canWrite(c), canManageDevices: auth.canManageDevices(c) }),
@@ -189,6 +194,23 @@ function api(
       return c.json(device);
     })
     .get('/project', (c) => c.json(projectView(project)))
+    .get('/projects', (c) => c.json(projectOverviews(project, env)))
+    .get('/project/settings', (c) => c.json(projectSettings(project, env)))
+    .post('/project/paths', async (c) => {
+      assertWritable(c, auth);
+      const { path } = await pathRequest(c);
+      return c.json(addPath(project, path, env), 201);
+    })
+    .post('/project/paths/relink', async (c) => {
+      assertWritable(c, auth);
+      const { from, to, force } = await relinkRequest(c);
+      return c.json(relinkPath(project, from, to, force, env));
+    })
+    .post('/project/paths/forget', async (c) => {
+      assertWritable(c, auth);
+      const { path } = await pathRequest(c);
+      return c.json(forgetPath(project, path, env));
+    })
     .get('/collections', (c) => c.json(listCollectionViews(project)))
     .get('/presets', (c) => c.json(listPresetViews(project)))
     .get('/agents', (c) => c.json({ agents: listAgents(project.db) }))
@@ -315,7 +337,12 @@ export function createServer(project: Project, options: ServerOptions = {}): Ote
   });
   const boundPort = () => port;
   mountAuth(app, options.token, boundPort);
-  const doors = { auth: session(options.token, boundPort), lan, port: boundPort };
+  const doors = {
+    auth: session(options.token, boundPort),
+    lan,
+    port: boundPort,
+    env: options.env ?? process.env,
+  };
   app.route('/api', api(project, feed, streams, doors));
   mountUi(app, options.uiDir ?? BUILT_UI_DIR);
   app.onError((error, c) => {
