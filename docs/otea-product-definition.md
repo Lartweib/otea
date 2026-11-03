@@ -373,6 +373,8 @@ The modules a layout may place, the slots each one may sit in and the config it 
 
 A person can still switch a collection between list and grid, and group, sort and filter it; the web UI keeps those choices per collection in the browser (see `DESIGN.md`, Grid), and the list honours the same grouping, sort and filters.
 
+`labels` (optional) gives the preset's own words in other languages, for the web UI: per language code, a word for each type, state and field, `labels: { es: { types: { bug: Error }, states: { reported: reportado, … }, fields: { title: título, … } } }`. It is all or nothing: a language labels every type, state and field of the preset (a preset without `types` may leave its only type unnamed), so a screen never mixes translated words with keys; a missing or unknown name is a preset problem (`labels.es.states: missing fixing; a language labels every type, state and field`). The keys stay what agents, the CLI, MCP, the API and the history use; only the web UI, when it is in that language, shows the labels, with the key a hover away. The official presets carry `es`.
+
 **Example: two types in one collection**
 
 ```yaml

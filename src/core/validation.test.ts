@@ -9,7 +9,7 @@ const item = (overrides: Partial<StoredItem> = {}): StoredItem => ({
   title: 'Ship it',
   state: 'todo',
   fields: { description: 'Why', priority: 'medium' },
-  presetVersion: 1,
+  presetVersion: tasksPreset.version,
   ...overrides,
 });
 
@@ -73,7 +73,7 @@ describe('itemFindings', () => {
   });
 
   it('warns about items written under an older preset version', () => {
-    const findings = itemFindings({ ...tasksPreset, version: 3 }, item());
+    const findings = itemFindings({ ...tasksPreset, version: 3 }, item({ presetVersion: 1 }));
 
     expect(findings).toEqual([
       {
