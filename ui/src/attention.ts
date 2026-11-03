@@ -1,4 +1,4 @@
-import { activeLease } from './lease.ts';
+import { activeLease } from './active-lease.ts';
 import type { Item } from './types.ts';
 
 // What the whole workspace asks of you right now, across every collection: how many items wait for

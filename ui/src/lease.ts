@@ -1,11 +1,9 @@
+import { activeLease } from './active-lease.ts';
 import { ageLabel, momentLabel, spanLabel } from './format.ts';
 import { t } from './i18n/i18n.ts';
 import type { Item, Lease } from './types.ts';
 
-// Same rule as the server: a lease stops counting the moment it expires, even if no write follows.
-export function activeLease(lease: Lease | null, now: number): Lease | null {
-  return lease && Date.parse(lease.expiresAt) > now ? lease : null;
-}
+export { activeLease };
 
 const MINUTE = 60_000;
 // A unit of the time left, in minutes, from the largest: 2d, 3h, 12m.
