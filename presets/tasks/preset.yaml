@@ -1,6 +1,8 @@
 preset: tasks
 preset_version: 1
 playbook: ./playbook.md
+# The icon of its collections; the task type keeps its own.
+icon: checklist
 fields:
   title: { module: text, required: create }
   description: { module: markdown, required: complete }

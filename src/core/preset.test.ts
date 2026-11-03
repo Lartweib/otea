@@ -602,6 +602,41 @@ describe('item types', () => {
     expect(parsePreset(stringify(minimal())).types[0]).not.toHaveProperty('icon');
   });
 
+  describe('the preset icon', () => {
+    it('is the top-level icon, next to types too', () => {
+      const raw = twoTypes();
+      raw.icon = 'diagram';
+      raw.types.bug.icon = 'bug';
+
+      const preset = parsePreset(stringify(raw));
+
+      expect(preset.icon).toBe('diagram');
+      expect(preset.types[0]?.icon).toBe('bug');
+    });
+
+    it('falls back to the icon of the first root type', () => {
+      const raw = twoTypes();
+      raw.types.impr.icon = 'lightbulb';
+      raw.types.bug.icon = 'bug';
+      raw.types.impr.children = ['bug'];
+      raw.types.bug.root = false;
+
+      expect(parsePreset(stringify(raw)).icon).toBe('lightbulb');
+    });
+
+    it('is the implicit type icon in a preset without types', () => {
+      const raw = minimal();
+      raw.icon = 'checkbox';
+
+      expect(parsePreset(stringify(raw)).icon).toBe('checkbox');
+    });
+
+    it('is absent when neither the preset nor its first root type has one', () => {
+      expect(parsePreset(stringify(twoTypes()))).not.toHaveProperty('icon');
+      expect(parsePreset(stringify(minimal()))).not.toHaveProperty('icon');
+    });
+  });
+
   it.each<[string, (raw: Raw) => void, string]>([
     [
       'a mistyped icon, with the close matches',
@@ -619,9 +654,9 @@ describe('item types', () => {
       'types.bug.icon: unknown icon "zzzzzz" (none of the 112 icons is close; see the icon list in the preset format)',
     ],
     [
-      'a preset icon next to types',
-      (raw) => (raw.icon = 'bug'),
-      'icon: declare the icon of each type under types.<type>.icon',
+      'a mistyped preset icon next to types',
+      (raw) => (raw.icon = 'bugg'),
+      'icon: unknown icon "bugg" (did you mean bug?)',
     ],
   ])('rejects %s', (_, change, problem) => {
     expect(typeProblems(change)).toContain(problem);

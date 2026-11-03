@@ -65,9 +65,12 @@ export const BUILT_IN_COLUMNS = ['id', 'title', 'state', 'type', 'who', 'age'] a
 // and age.
 export type CollectionLayout = { kind: ViewKind; groupBy: string; columns: string[] };
 
+// `icon` is the icon of the collections built from the preset (they may override it): the
+// preset's own top-level `icon`, or else the icon of its first root type, when that type has one.
 export type Preset = {
   name: string;
   version: number;
+  icon?: string;
   playbook?: string;
   fields: Record<string, FieldSpec>;
   workflow: Workflow;
@@ -145,8 +148,10 @@ const presetSchema = z.strictObject({
   fields: fieldsSchema,
   workflow: workflowSchema,
   types: z.record(z.string().regex(KEY, 'type names must be snake_case'), typeSchema).optional(),
-  // The layout and icon of the implicit type, in a preset without types.
+  // The layout of the implicit type, in a preset without types.
   layout: layoutSchema.optional(),
+  // The preset's icon, given to its collections; in a preset without types, also the implicit
+  // type's.
   icon: z.string().optional(),
   view: z
     .strictObject({
@@ -446,9 +451,7 @@ function readTypes(raw: RawPreset, fields: Record<string, FieldSpec>, workflow: 
   if (raw.layout !== undefined) {
     reading.problems.push('layout: declare the layout of each type under types.<type>.layout');
   }
-  if (raw.icon !== undefined) {
-    reading.problems.push('icon: declare the icon of each type under types.<type>.icon');
-  }
+  reading.problems.push(...iconProblems('icon', raw.icon));
   const hierarchy = declaresHierarchy(raw.types ?? {});
   reading.problems.push(...hierarchyProblems(raw.types ?? {}));
   for (const [name, type] of declared) {
@@ -604,6 +607,8 @@ export function readPreset(text: string): PresetReading {
     types: typed.types,
     view,
   };
+  const icon = raw.icon ?? typed.types.find(({ root }) => root !== false)?.icon;
+  if (icon !== undefined) preset.icon = icon;
   if (raw.playbook !== undefined) preset.playbook = raw.playbook;
   return { ok: true, preset, warnings: presetWarnings(raw) };
 }
