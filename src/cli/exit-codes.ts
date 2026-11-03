@@ -49,7 +49,9 @@ export const EXIT_CODES: Readonly<Record<'ok' | FailureCode, number>> = {
   self_relation: 16,
   parent_exists: 16,
   relation_cycle: 16,
+  parent_across_boards: 16,
   children_open: 4,
+  blockers_open: 4,
   different_repo: 17,
   in_use: 18,
   // 128 + SIGINT, as shells report a command stopped by Ctrl+C.

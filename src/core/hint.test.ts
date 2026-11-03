@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { type HintInput, nextStep, playbookSection } from './hint.ts';
 import { parsePreset } from './preset.ts';
 import { tasks } from './testing.ts';
-import type { Workflow } from './workflow.ts';
+import type { Requirement, Workflow } from './workflow.ts';
 
 const bugs = parsePreset(
   readFileSync(new URL('../../presets/bug-triage/preset.yaml', import.meta.url), 'utf8'),
@@ -14,7 +14,7 @@ const utc = (iso: string) => iso.slice(11, 16);
 const hint = (workflow: Workflow, input: Partial<HintInput> & { state: string }) =>
   nextStep(
     workflow,
-    { lease: null, missing: [], emptyRequired: [], openChildren: 0, ...input },
+    { lease: null, missing: [], emptyRequired: [], openChildren: 0, openBlockers: [], ...input },
     'claude',
     utc,
   );
@@ -77,7 +77,7 @@ describe('nextStep', () => {
     const gated: Workflow = {
       ...tasks,
       states: tasks.states.map((state) =>
-        state.name === 'review' ? { ...state, requires: 'children_closed' } : state,
+        state.name === 'review' ? { ...state, requires: ['children_closed' as const] } : state,
       ),
     };
 
@@ -86,6 +86,29 @@ describe('nextStep', () => {
     );
     expect(hint(gated, { state: 'in_progress', openChildren: 1 })).toContain(
       'once its 1 open child is closed.',
+    );
+  });
+
+  it('names the open blockers when the next state requires them closed, with the children', () => {
+    const gated = (...requires: Requirement[]): Workflow => ({
+      ...tasks,
+      states: tasks.states.map((state) =>
+        state.name === 'review' ? { ...state, requires } : state,
+      ),
+    });
+
+    expect(hint(gated('blockers_closed'), { state: 'in_progress', openBlockers: ['API-2'] })).toBe(
+      'Your turn: claim it, work it, then move it to review with evidence once its open blocker API-2 is closed.',
+    );
+    const both = gated('children_closed', 'blockers_closed');
+    expect(
+      hint(both, { state: 'in_progress', openChildren: 1, openBlockers: ['API-2', 'API-3'] }),
+    ).toContain('once its 1 open child and its open blockers API-2 and API-3 are closed.');
+    expect(hint(both, { state: 'in_progress', openBlockers: ['API-2'] })).toContain(
+      'once its open blocker API-2 is closed.',
+    );
+    expect(hint(gated('children_closed'), { state: 'in_progress', openBlockers: ['API-2'] })).toBe(
+      'Your turn: claim it, work it, then move it to review with evidence.',
     );
   });
 

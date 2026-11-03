@@ -124,26 +124,41 @@ otea show BUGS-1                           # lists the evidence above the timeli
 
 ### Relations between items
 
-Items link to each other, across collections of the project, with a typed relation: `parent`, `blocks`, `duplicates`, `implements` and `relates`.
+Items link to each other with a typed relation: `parent`, `blocks`, `duplicates`, `implements` and `relates`. A collection is one board: a tree of `parent` links lives inside it, and the other kinds link items across the collections of the project.
 
 ```sh
-otea create --collection epics --title "Create wolf" --description "A wolf for the forest"
-otea create --collection parts --title "Body" --description "Mesh and rig" --parent EPICS-1
-otea create --collection parts --title "Movement" --description "Walk, trot, run" --parent EPICS-1
-otea link PARTS-1 blocks PARTS-2            # body before movement
+otea create --collection tasks --title "Create wolf" --description "A wolf for the forest"
+otea create --collection tasks --title "Body" --description "Mesh and rig" --parent TASKS-1
+otea create --collection tasks --title "Movement" --description "Walk, trot, run" --parent TASKS-1
+otea link TASKS-2 blocks TASKS-3            # body before movement
 otea link BUGS-7 duplicates BUGS-3          # BUGS-7 is a copy of BUGS-3
-otea link PARTS-9 implements BUGS-3
-otea link PARTS-2 parent EPICS-4            # EPICS-4 becomes the parent of PARTS-2
-otea unlink PARTS-1 blocks PARTS-2
-otea list --parent EPICS-1                  # the children of EPICS-1
-otea show EPICS-1                           # children summary and relations by kind
+otea link TASKS-9 implements BUGS-3         # work on one board delivers an item of another
+otea link TASKS-3 parent TASKS-4            # TASKS-4 becomes the parent of TASKS-3
+otea link BUGS-3 parent TASKS-1             # refused, exit 16 (parent_across_boards)
+otea unlink TASKS-2 blocks TASKS-3
+otea list --parent TASKS-1                  # the children of TASKS-1
+otea show TASKS-1                           # children summary and relations by kind
+```
+
+What waits on another board says so with `blocks`, and a state that declares `requires: blockers_closed` waits for it. Here the `web` collection's preset holds its review until every child and every blocker is closed:
+
+```yaml
+# .otea/presets/web/preset.yaml, an excerpt
+review: { turn: human, requires: [children_closed, blockers_closed] }
+```
+
+```sh
+otea link API-4 blocks WEB-2                # the login page waits for the auth endpoint
+otea move WEB-2 review                      # exit 4 (blockers_open) while API-4 is open
+otea show WEB-2                             # "... once its open blocker API-4 is closed"
 ```
 
 - `otea link <id> <kind> <other>` reads as a sentence for `blocks`, `duplicates`, `implements` and `relates`; `<id> parent <other>` makes `<other>` the parent of `<id>`. `otea create --parent <id>` creates the item as a child in the same write. `otea unlink` takes the link named the same way (`relates` either way round).
-- Each pair is linked once per kind; an item has at most one parent; `parent` and `blocks` never loop. Refusals: a self link, a second parent or a cycle exit 16 (`self_relation`, `parent_exists`, `relation_cycle`, the cycle's path in the message); a missing item exits 3 (`not_found`); a repeated link exits 5 (`already_exists`); an unknown kind exits 2 (`invalid_relation`); an open child under a closed parent exits 4 (`item_closed`).
+- Each pair is linked once per kind; an item has at most one parent, in its own collection; `parent` and `blocks` never loop. Refusals: a self link, a second parent, a parent in another collection or a cycle exit 16 (`self_relation`, `parent_exists`, `parent_across_boards`, `relation_cycle`; the cycle's path, or for another collection's parent the `blocks` and `implements` links to use instead, in the message); a missing item exits 3 (`not_found`); a repeated link exits 5 (`already_exists`); an unknown kind exits 2 (`invalid_relation`); an open child under a closed parent exits 4 (`item_closed`). The CLI, the API and MCP refuse alike.
+- A `parent` across collections linked before the rule is kept and read as before. `otea validate` warns on each and names a way out: merge the two collections into one preset as types, or convert the link, to `blocks` when the parent's workflow waits for its children (then write `requires: blockers_closed` where it requires `children_closed`, so the wait is kept) and to `implements` otherwise. Nothing is migrated for you.
 - Linking changes neither item's fields nor state, so it is not bound by leases and works on closed items. Every link and unlink is recorded in both items' timelines (`relation_added`, `relation_removed`), with who did it and through which channel.
 - `otea show` prints, for a parent, `Children: n of m closed (d done, x discarded)`, then the relations grouped by kind with each other item's state and turn. `--json`, `otea list --json` and the API carry `relations` (and `children` for a parent) on the items that have them.
-- A preset can make any state wait for the children, a working one as well as a closed one: `review: { turn: human, requires: children_closed }` brings a parent back to the human only once every child is closed. Moving or relaying into it while a child is open fails with exit 4 (`children_open`), listing the open children. A parent never moves on its own. The former `close_requires` still works, and `otea validate` warns on it.
+- A preset can make any state wait for the children, a working one as well as a closed one: `review: { turn: human, requires: children_closed }` brings a parent back to the human only once every child is closed. Moving or relaying into it while a child is open fails with exit 4 (`children_open`), listing the open children. Its twin, `requires: blockers_closed`, waits for every item that `blocks` this one, in any collection, and fails with exit 4 (`blockers_open`), listing the open blockers. A state may require both, as a list: `requires: [children_closed, blockers_closed]`. Nothing ever moves an item for its children or its blockers, and `otea show`'s hint says what the next move still waits for. The moves in `--json`, the API and MCP carry `requires` as a list. The former `close_requires` still works, and `otea validate` warns on it.
 - The MCP server serves `link` and `unlink` as tools. In the web UI the relations show in the side of the detail and a parent's children in its body; a signed-in browser adds and removes links there (`POST /api/items/:id/link` and `/unlink`, `{kind, other}`, behind the same checks as moves) and creates children with **+ child**. In the list a parent shows how many children are still open, and children in the same section sit under their parent, foldable.
 
 ### Relaying a decision made in conversation

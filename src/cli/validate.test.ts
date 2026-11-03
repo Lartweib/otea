@@ -1,4 +1,7 @@
+import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { openDatabase } from '../store/database.ts';
+import { insertRelation } from '../store/queries.ts';
 import { type Cli, cliAt, type TempRepo, tempGitRepo } from './testing.ts';
 
 const NOTES = (version: number) => `
@@ -57,6 +60,30 @@ describe('validate', () => {
       'warning  preset notes  workflow.states.closed.close_requires: deprecated; write requires: children_closed',
     );
     expect(out).toContain('0 errors, 1 warning');
+  });
+
+  it('warns on a parent in another collection, linked before the rule, and keeps it', async () => {
+    await otea('collection', 'add', 'bugs');
+    await otea('create', '--collection', 'bugs', '--title', 'Clips', '--description', 'D');
+    const db = openDatabase(join(repo.dir, '.otea', 'otea.db'));
+    const actor = { kind: 'human', name: 'ana' } as const;
+    insertRelation(db, {
+      kind: 'parent',
+      from: 'BUGS-1',
+      to: 'TASKS-1',
+      createdAt: 't0',
+      actor,
+      channel: 'cli',
+    });
+    db.close();
+
+    const { code, out } = await otea('validate');
+
+    expect(code).toBe(0);
+    expect(out).toContain(
+      'warning  BUGS-1  parent TASKS-1 is in another collection (tasks); merge bugs and tasks into one preset as types, or convert the link to implements: otea unlink BUGS-1 parent TASKS-1, otea link BUGS-1 implements TASKS-1',
+    );
+    expect((await otea('show', 'BUGS-1')).out).toMatch(/parent\s+TASKS-1/);
   });
 
   it('reports a broken project preset and exits with validation_failed', async () => {

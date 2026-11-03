@@ -1,4 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { parsePreset } from '../core/preset.ts';
+import { insertRelation } from '../store/queries.ts';
 import { addCollection } from './collections.ts';
 import type { Context } from './context.ts';
 import { createItem } from './items.ts';
@@ -7,11 +9,25 @@ import { validateProject } from './validate.ts';
 
 const ana = { kind: 'human', name: 'ana' } as const;
 
+// An epic waits for its children before it closes.
+const EPICS = parsePreset(`
+preset: epics
+preset_version: 1
+fields:
+  title: { module: text, required: create }
+workflow:
+  initial: open
+  states:
+    open: { turn: agent }
+    done: { turn: none, closes: done, requires: children_closed }
+  transitions: [{ from: open, to: done, by: human }]
+`);
+
 describe('validateProject', () => {
   let ctx: Context;
 
   beforeEach(() => {
-    ctx = memoryContext(REVIEWS);
+    ctx = memoryContext(REVIEWS, EPICS);
     addCollection(ctx, { name: 'tasks' });
     createItem(ctx, { collection: 'tasks', title: 'A', fields: { description: 'D' }, actor: ana });
     createItem(ctx, { collection: 'tasks', title: 'B', actor: ana });
@@ -66,5 +82,60 @@ describe('validateProject', () => {
     });
     expect(report.errors).toBeGreaterThan(0);
     expect(report.warnings).toBeGreaterThan(0);
+  });
+
+  describe('a parent in another collection, stored before the rule', () => {
+    const storeParent = (from: string, to: string) =>
+      insertRelation(ctx.db, {
+        kind: 'parent',
+        from,
+        to,
+        createdAt: 't0',
+        actor: ana,
+        channel: 'cli',
+      });
+
+    beforeEach(() => {
+      addCollection(ctx, { name: 'epics', preset: 'epics' });
+      addCollection(ctx, { name: 'notes', preset: 'reviews' });
+      createItem(ctx, { collection: 'epics', title: 'Wolf', actor: ana });
+      createItem(ctx, { collection: 'notes', title: 'Lore', actor: ana });
+    });
+
+    it('warns and suggests blocks when the parent waits for its children', () => {
+      storeParent('TASKS-1', 'EPICS-1');
+
+      expect(validateProject(ctx)).toEqual({
+        errors: 0,
+        warnings: 1,
+        findings: [
+          {
+            severity: 'warning',
+            subject: 'TASKS-1',
+            message:
+              'parent EPICS-1 is in another collection (epics); merge tasks and epics into one preset as types, or convert the link to blocks, since EPICS-1 waits for its children: otea unlink TASKS-1 parent EPICS-1, otea link TASKS-1 blocks EPICS-1, and write requires: blockers_closed where its preset requires children_closed',
+          },
+        ],
+      });
+    });
+
+    it('suggests implements when the parent does not wait for its children', () => {
+      storeParent('EPICS-1', 'NOTES-1');
+
+      expect(validateProject(ctx).findings).toEqual([
+        {
+          severity: 'warning',
+          subject: 'EPICS-1',
+          message:
+            'parent NOTES-1 is in another collection (notes); merge epics and notes into one preset as types, or convert the link to implements: otea unlink EPICS-1 parent NOTES-1, otea link EPICS-1 implements NOTES-1',
+        },
+      ]);
+    });
+
+    it('says nothing of a parent in the same collection', () => {
+      storeParent('TASKS-2', 'TASKS-1');
+
+      expect(validateProject(ctx).findings).toEqual([]);
+    });
   });
 });

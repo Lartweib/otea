@@ -4,6 +4,7 @@ import { OteaError } from '../core/errors.ts';
 import type { Actor } from '../core/item.ts';
 import type { Lease } from '../core/lease.ts';
 import {
+  assertBlockersClosed,
   assertCanRelate,
   assertChildrenClosed,
   childrenSummary,
@@ -15,7 +16,7 @@ import {
   type RelationRef,
   viewOf,
 } from '../core/relations.ts';
-import { type Closing, requirementOf, type Turn, type Workflow } from '../core/workflow.ts';
+import { type Closing, requirementsOf, type Turn, type Workflow } from '../core/workflow.ts';
 import { transaction } from '../store/database.ts';
 import {
   appendEvent,
@@ -63,13 +64,26 @@ function recordRelation(db: DatabaseSync, type: string, relation: Relation, who:
   }
 }
 
-// Stores a relation inside an open transaction, once both items exist and the core rules hold. An
-// open item cannot get a closed parent: a closed parent stays with every child it closed with.
+// A collection is one board, and a tree of items lives inside it: a parent in another collection is
+// refused. What waits on another board says so with blocks; what delivers it, with implements.
+// Links stored before the rule are kept and read as they were.
+function assertSameBoard(from: ItemRecord, to: ItemRecord): void {
+  if (from.collection === to.collection) return;
+  throw new OteaError(
+    'parent_across_boards',
+    `${from.id} (${from.collection}) cannot be a child of ${to.id} (${to.collection}): a parent lives in the same collection; link ${from.id} blocks ${to.id} to make ${to.id} wait, or ${from.id} implements ${to.id}`,
+  );
+}
+
+// Stores a relation inside an open transaction, once both items exist and the core rules hold. A
+// parent lives in its child's collection, and an open item cannot get a closed parent: a closed
+// parent stays with every child it closed with.
 export function addRelation(ctx: Context, given: Relation, who: Who, at: string): RelationRecord {
   const { db } = ctx;
   const relation = normalizeRelation(given);
   const from = requireItem(db, relation.from);
   const to = requireItem(db, relation.to);
+  if (relation.kind === 'parent') assertSameBoard(from, to);
   assertCanRelate(selectRelations(db), relation);
   if (relation.kind === 'parent') {
     const parent = presented(ctx, to, at);
@@ -149,6 +163,13 @@ export function relatedItems(ctx: Context, id: string, at: string): RelatedItem[
   });
 }
 
+// The items that block one and are still open, from its relations as `otea show` reads them.
+export function openBlockers(related: readonly RelatedItem[]): string[] {
+  return related
+    .filter(({ kind, closes }) => kind === 'blocked_by' && closes === undefined)
+    .map(({ id }) => id);
+}
+
 export function childIds(relations: readonly Relation[], id: string): string[] {
   return relations.filter(({ kind, to }) => kind === 'parent' && to === id).map(({ from }) => from);
 }
@@ -159,8 +180,15 @@ export function childrenOf(ctx: Context, id: string, at: string): Item[] {
   );
 }
 
-// A move into a state that declares requires: children_closed waits for every child, whatever the
-// state's turn: every way in (a UI move, an agent move, a relay) passes through here.
+export function blockersOf(ctx: Context, id: string, at: string): Item[] {
+  return selectRelations(ctx.db, 'blocks')
+    .filter(({ to }) => to === id)
+    .map(({ from }) => presented(ctx, requireItem(ctx.db, from), at));
+}
+
+// A move into a state that declares requires: children_closed waits for every child, and one that
+// declares blockers_closed for everything that blocks the item, whatever the state's turn: every way
+// in (a UI move, an agent move, a relay) passes through here.
 export function assertMayEnter(
   ctx: Context,
   item: ItemRecord,
@@ -168,8 +196,13 @@ export function assertMayEnter(
   to: string,
   at: string,
 ): void {
-  if (requirementOf(workflow, to) !== 'children_closed') return;
-  assertChildrenClosed(item.id, to, childrenOf(ctx, item.id, at));
+  const requires = requirementsOf(workflow, to);
+  if (requires.includes('children_closed')) {
+    assertChildrenClosed(item.id, to, childrenOf(ctx, item.id, at));
+  }
+  if (requires.includes('blockers_closed')) {
+    assertBlockersClosed(item.id, to, blockersOf(ctx, item.id, at));
+  }
 }
 
 // Each item with its relations and, for a parent, its children summary, only when it has them.

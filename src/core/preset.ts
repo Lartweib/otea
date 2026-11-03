@@ -102,7 +102,10 @@ const workflowSchema = z.strictObject({
     z.strictObject({
       turn: z.enum(TURNS),
       closes: z.enum(CLOSINGS).optional(),
-      requires: z.enum(REQUIREMENTS).optional(),
+      // One requirement, or a list of them: requires: [children_closed, blockers_closed].
+      requires: z
+        .union([z.enum(REQUIREMENTS), z.array(z.enum(REQUIREMENTS)).nonempty()])
+        .optional(),
       // Deprecated: the former name of requires, read with the same meaning.
       close_requires: z.enum(REQUIREMENTS).optional(),
     }),
@@ -269,6 +272,13 @@ function stateProblems(at: string, workflow: RawWorkflow, transitions: Transitio
     if (requires !== undefined && close_requires !== undefined) {
       problems.push(`${where}: declares both requires and close_requires; keep requires`);
     }
+    if (Array.isArray(requires)) {
+      requires.forEach((requirement, index) => {
+        if (requires.indexOf(requirement) !== index) {
+          problems.push(`${where}.requires[${index}]: "${requirement}" is listed twice`);
+        }
+      });
+    }
   }
   return problems;
 }
@@ -344,7 +354,8 @@ function toWorkflow(name: string, raw: RawWorkflow): Workflow {
     const spec: State = { name: state, turn };
     if (closes !== undefined) spec.closes = closes;
     const requires = declared.requires ?? declared.close_requires;
-    if (requires !== undefined) spec.requires = requires;
+    if (typeof requires === 'string') spec.requires = [requires];
+    else if (requires !== undefined) spec.requires = [...requires];
     return spec;
   });
   const workflow: Workflow = { name, initial: raw.initial, states, transitions: expand(raw) };

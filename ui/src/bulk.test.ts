@@ -68,7 +68,7 @@ describe('bulkPlan', () => {
   });
 
   it('keeps out a move that waits for open children of any selected item', () => {
-    const DONE = move('done', { turn: 'none', closes: 'done', requires: 'children_closed' });
+    const DONE = move('done', { turn: 'none', closes: 'done', requires: ['children_closed'] });
     const open = { total: 3, open: 2, done: 1, discarded: 0 } as ChildrenSummary;
     const settled = { total: 2, open: 0, done: 2, discarded: 0 } as ChildrenSummary;
     const plan = bulkPlan([

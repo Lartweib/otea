@@ -1,15 +1,23 @@
 import type { Lease } from './lease.ts';
-import { type Transition, transitionsFrom, turnOf, type Workflow } from './workflow.ts';
+import {
+  requirementsOf,
+  type Transition,
+  transitionsFrom,
+  turnOf,
+  type Workflow,
+} from './workflow.ts';
 
 // What the next step is built from: where the item stands, who holds it, what it still lacks (its
 // fields, while incomplete, and its required evidence modules still empty), how many children are
-// open, and the playbook's own words for its state when the playbook has a section for it.
+// open, which items that block it are open, and the playbook's own words for its state when the
+// playbook has a section for it.
 export type HintInput = {
   state: string;
   lease: Lease | null;
   missing: string[];
   emptyRequired: string[];
   openChildren: number;
+  openBlockers: string[];
   section?: string;
 };
 
@@ -73,12 +81,27 @@ function handOver(workflow: Workflow, last: Transition, input: HintInput): strin
       ? ` with evidence in ${and(input.emptyRequired)}`
       : ' with evidence';
   const reason = !reasonRequired ? '' : evidence ? ' and a reason' : ' with a reason';
-  const waits =
-    workflow.states.find(({ name }) => name === to)?.requires === 'children_closed' &&
-    input.openChildren > 0;
-  const children =
-    input.openChildren === 1 ? '1 open child is' : `${input.openChildren} open children are`;
-  return `move it to ${to}${evidence}${reason}${waits ? ` once its ${children} closed` : ''}`;
+  return `move it to ${to}${evidence}${reason}${waitsFor(workflow, to, input)}`;
+}
+
+// What entering the state still waits for, of what it requires: its open children by count, its open
+// blockers by id, since they may sit in another collection.
+function waitsFor(workflow: Workflow, to: string, input: HintInput): string {
+  const requires = requirementsOf(workflow, to);
+  const { openChildren, openBlockers } = input;
+  const waits: string[] = [];
+  let count = 0;
+  if (requires.includes('children_closed') && openChildren > 0) {
+    waits.push(openChildren === 1 ? '1 open child' : `${openChildren} open children`);
+    count += openChildren;
+  }
+  if (requires.includes('blockers_closed') && openBlockers.length > 0) {
+    const blockers = openBlockers.length === 1 ? 'open blocker' : 'open blockers';
+    waits.push(`${blockers} ${and(openBlockers)}`);
+    count += openBlockers.length;
+  }
+  if (waits.length === 0) return '';
+  return ` once its ${waits.join(' and its ')} ${count === 1 ? 'is' : 'are'} closed`;
 }
 
 function agentStep(workflow: Workflow, input: HintInput, mine: boolean): string {

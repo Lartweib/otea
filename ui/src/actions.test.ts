@@ -11,7 +11,7 @@ import {
   reduceAction,
   turnAgent,
 } from './actions.ts';
-import type { ItemEvent } from './types.ts';
+import type { ItemEvent, Move } from './types.ts';
 
 const explaining = (reason = ''): ActionState => ({ step: 'explaining', to: 'todo', reason });
 
@@ -128,7 +128,7 @@ describe('actions', () => {
       closes: 'discarded',
     } as const;
 
-    const waits = { ...done, requires: 'children_closed' } as const;
+    const waits = { ...done, requires: ['children_closed'] } as Move;
     const accept = { to: 'accepted', by: 'human', reasonRequired: false, turn: 'agent' } as const;
     const open = (count: number) => ({ total: 4, open: count, done: 4 - count, discarded: 0 });
 
@@ -156,12 +156,18 @@ describe('actions', () => {
         by: 'agent',
         reasonRequired: false,
         turn: 'human',
-        requires: 'children_closed',
-      } as const;
+        requires: ['children_closed'],
+      } as Move;
 
       expect(moveBlock(review, open(4))).toBe('waits for 4 open children');
       expect(moveVariants([review, accept], open(4))).toEqual(['default', 'primary']);
       expect(moveBlock(review, open(0))).toBeUndefined();
+    });
+
+    it('leaves a move that waits only for blockers to the server', () => {
+      const blocked = { ...done, requires: ['blockers_closed'] } as Move;
+
+      expect(moveBlock(blocked, open(3))).toBeUndefined();
     });
 
     it('makes the move that hands the turn on primary, discards quiet and the rest plain', () => {

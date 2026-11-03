@@ -58,7 +58,7 @@ Split a task too big for one handoff into children, each one a task of its own t
 
 - Order them with `blocks` when one needs another first: `otea link <body> blocks <movement>`. A loop is refused (exit 16).
 - Link related work as you find it: `otea link <a> relates <b>`, `otea link <task> implements <bug>`. `otea unlink` removes a link named the same way.
-- A parent is never moved for you when its children finish: move it yourself when its own work is done. A project preset can make a state wait for every child (`requires: children_closed`), a closed one or a working one such as `review`; then the move is refused with exit 4 (`children_open`) until they are all closed. Keep working on the children instead of handing the parent over.
+- A parent is never moved for you when its children finish: move it yourself when its own work is done. A project preset can make a state wait for every child (`requires: children_closed`), a closed one or a working one such as `review`; then the move is refused with exit 4 (`children_open`) until they are all closed. Keep working on the children instead of handing the parent over. Likewise `requires: blockers_closed` waits for every item that blocks this one, in any collection (exit 4, `blockers_open`); `otea show` names the open blockers. A parent lives in its child's collection: linking one from another collection fails with exit 16 (`parent_across_boards`); use `blocks` to make it wait, or `implements`.
 
 ## 7. Review belongs to the human
 

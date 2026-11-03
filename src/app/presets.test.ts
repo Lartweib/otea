@@ -123,7 +123,7 @@ describe('project presets', () => {
 
     expect(catalog.problems).toEqual([]);
     expect(requirePreset(catalog, 'notes').workflow.states[1]).toMatchObject({
-      requires: 'children_closed',
+      requires: ['children_closed'],
     });
     expect(catalog.warnings).toEqual([
       expect.objectContaining({
