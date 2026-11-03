@@ -112,7 +112,15 @@ export const en = {
   'prefs.english': 'English',
   'prefs.spanish': 'Español',
   'prefs.onlyInterface': 'Only the interface is translated.',
-  'prefs.translated': '{only} Item content, what agents write and preset names stay as written.',
+  'prefs.translated': '{only} Item content, their fields and what agents write stay as written.',
+
+  // The note of the first run, when the browser picked a language other than English
+  'languageNote.label': 'Language',
+  'languageNote.heading': 'Otea is in English, as your browser asks ({tag}).',
+  'languageNote.body':
+    'Only the interface is translated. Item content, their fields and what agents write stay exactly as written.',
+  'languageNote.where': 'Change it any time in Preferences, below.',
+  'languageNote.ok': 'Got it',
 
   // The detail pane while nothing is chosen
   'empty.pick': 'Pick an item to see its detail',

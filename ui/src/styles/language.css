@@ -1,0 +1,65 @@
+/* ---- the first-run language note ----
+   Once per browser, when Otea took a language other than English from it. It rests on the
+   Preferences row at the sidebar's foot, where Preferences opens, with a tail pointing at you; on a
+   phone, where Preferences sits in the panel, it stands at the bottom of the screen. */
+.language-note-host {
+  position: fixed;
+  left: 16px;
+  right: 16px;
+  bottom: calc(16px + env(safe-area-inset-bottom));
+  z-index: 40;
+}
+.language-note-host[data-anchored] {
+  position: absolute;
+  left: 0;
+  right: auto;
+  bottom: 52px;
+}
+.language-note {
+  position: relative;
+  display: grid;
+  gap: 6px;
+  justify-items: start;
+  padding: 14px 16px;
+  border-radius: 12px;
+  box-shadow:
+    0 0 0 1px var(--line),
+    0 24px 48px -20px var(--shadow);
+}
+[data-anchored] > .language-note {
+  width: 330px;
+}
+/* The tail, over the buddy of the Preferences row. */
+[data-anchored] > .language-note::after {
+  content: "";
+  position: absolute;
+  left: 19px;
+  bottom: -6px;
+  width: 11px;
+  height: 11px;
+  background: var(--sf);
+  box-shadow: 1px 1px 0 0 var(--line);
+  transform: rotate(45deg);
+}
+.language-note p {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--mut);
+  text-wrap: pretty;
+}
+.language-note .language-note-heading {
+  color: var(--ink);
+  font-weight: 600;
+}
+.language-note code {
+  font: 400 12px var(--font-machine);
+  color: var(--ink);
+}
+.language-note-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 6px;
+}

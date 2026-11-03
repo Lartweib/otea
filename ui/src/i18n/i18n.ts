@@ -189,11 +189,66 @@ export function browserLanguage(): Language {
   return chooseLanguage({ preferred: typeof navigator === 'undefined' ? [] : navigator.languages });
 }
 
+// The first-run note, once: when the browser picked the language (nothing asked in the address,
+// nothing chosen before) and it is not English, the note says so, naming the tag the browser asked
+// for, and that only the interface is translated. Dismissed, it never comes back to this browser.
+export type FirstRunNote = { tag: string };
+
+export function firstRunNote({
+  asked,
+  stored,
+  preferred,
+  chosen,
+  seen = false,
+}: {
+  asked?: string | null | undefined;
+  stored?: string | null | undefined;
+  preferred?: readonly string[] | undefined;
+  chosen: Language;
+  seen?: boolean;
+}): FirstRunNote | undefined {
+  if (seen || chosen === 'en' || isLanguage(asked) || isLanguage(stored)) return undefined;
+  const tag = (preferred ?? []).find((each) => each.split('-')[0]?.toLowerCase() === chosen);
+  return tag === undefined ? undefined : { tag };
+}
+
+export const LANGUAGE_NOTE_KEY = 'otea.languageNote';
+
+let note: FirstRunNote | undefined;
+
+function noteSeen(): boolean {
+  try {
+    return window.localStorage.getItem(LANGUAGE_NOTE_KEY) !== null;
+  } catch {
+    return false;
+  }
+}
+
+// The note to show on this load, if any.
+export function languageNote(): FirstRunNote | undefined {
+  return note;
+}
+
+// Got it, or a click elsewhere: the note is remembered as seen in this browser.
+export function dismissLanguageNote(): void {
+  note = undefined;
+  try {
+    window.localStorage.setItem(LANGUAGE_NOTE_KEY, 'seen');
+  } catch {
+    // Dismissed for this tab; with site data blocked it may show again on the next load.
+  }
+}
+
 // Once, before the first render: `?lang=` is read and remembered, so the address can drop it.
 export function startLanguage(): void {
   const asked = new URLSearchParams(window.location.search).get('lang');
+  const stored = readStored();
+  const preferred = navigator.languages;
   if (isLanguage(asked)) store(asked);
-  apply(chooseLanguage({ asked, stored: readStored(), preferred: navigator.languages }));
+  const chosen = chooseLanguage({ asked, stored, preferred });
+  note = firstRunNote({ asked, stored, preferred, chosen, seen: noteSeen() });
+  wanted = chosen;
+  apply(chosen);
 }
 
 // The language on screen; a component that reads it renders again when it changes.
