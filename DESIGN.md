@@ -99,7 +99,16 @@ The items follow the live stream; a lease that runs out writes nothing, so `useA
 
 **Favicon.** Four static SVG files in `ui/public/` with their own 16px drawing (ring outer 7 at weight 3, counter 4, every edge on a whole pixel; working: node 5 at 2.14, orbit arc r 7.25 at 1.5, still at 1 o'clock). Each carries a `prefers-color-scheme` rule, so the ring is dark ink on a light tab strip and light ink on a dark one. `index.html` links the idle frame; the page swaps the link's href when the frame changes (`applyAttention`). A favicon swaps, it does not animate.
 
-**The desktop shell** reads the same state without an API of its own: the window's title and favicon are the state (Electron's `page-title-updated` and `page-favicon-updated`), for the taskbar icon, the tray and a notification when the count grows. `attentionOf` is pure and takes the items as `/api/items` returns them, so the main process can derive it the same way.
+**The desktop shell** (`desktop/`, Electron, its own package) shows the UI of `otea serve` in a window and the same state on the desktop's surfaces. Its main process derives the state itself, from `/api/items`, `/api/collections` and the live stream, with the page's own `attentionOf` (`ui/src/attention.ts`, pure: its lease rule lives in `ui/src/active-lease.ts`, so importing it pulls in no React), plus a timer at `nextLeaseExpiry`. Listening to the page's title and favicon would stop when the window is closed to the tray and could not say how many agents work, so the page's title and favicon stay for the browser and the window title. The desktop adds the number of agents holding an active lease and the three most recent items that are yours (`desktop/src/state.ts`, tested).
+
+| Surface | What it shows | Electron |
+| --- | --- | --- |
+| app icon | the hollow letter node on a light plate, static, never blue (`.ico` 16–256, each size hinted) | `BrowserWindow({ icon })` |
+| Windows taskbar | overlay: yours (the filled node) over working (ring and still orbit), none when idle; flash once when yours grows while unfocused | `setOverlayIcon`, `flashFrame` |
+| macOS Dock | badge with the count of yours ("99+" past 99, empty at zero); one informational bounce when it grows while inactive | `app.dock.setBadge`, `bounce` |
+| tray / menu bar | the living mark: ring, orbit turning (12 frames at 142ms, still under reduced motion), filled when yours; color on Windows (light or dark set by the taskbar's theme), template on macOS with the count as its title, still on a plate on Linux. Its menu: the state in words, the three recent yours, the collections with their counts, Open and Quit | `Tray` |
+
+Every drawing is code (`desktop/src/marks.ts`), rasterized by Chromium at start-up. Surfaces change at most twice a second and only when what they show changes; flash and bounce at most once per 30s. Closing the window hides it to the tray; Quit Otea quits, and stops the `otea serve` the shell started (one already running for the project is attached to and left running).
 
 ## Lanes
 
