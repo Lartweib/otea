@@ -35,7 +35,7 @@ export const en = {
 
   // Activity: the drawer of agent events over the inbox
   'activity.open': 'See activity',
-  'activity.openLine': 'each lease as it runs down, and what agents just did',
+  'activity.openLine': 'leases running down, the latest events',
   'activity.title': 'Activity',
   'activity.label': 'Agent activity',
   'activity.leases': 'Leases held now',

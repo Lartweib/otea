@@ -55,7 +55,7 @@ export const es: Catalog = {
 
   // Actividad: el panel de eventos de los agentes sobre la bandeja
   'activity.open': 'Ver actividad',
-  'activity.openLine': 'cada reserva mientras corre y lo que acaban de hacer los agentes',
+  'activity.openLine': 'reservas en curso, los últimos eventos',
   'activity.title': 'Actividad',
   'activity.label': 'Actividad de los agentes',
   'activity.leases': 'Reservas activas',
