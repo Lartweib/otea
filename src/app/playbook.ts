@@ -6,7 +6,7 @@ import { typeOf } from '../core/preset.ts';
 import { listCollections } from '../store/queries.ts';
 import { getCollection, presetOf } from './collections.ts';
 import type { ItemView } from './items.ts';
-import { type LoadedPreset, OFFICIAL_PRESETS_DIR } from './presets.ts';
+import { type LoadedPreset, OFFICIAL_PRESETS_DIR, projectPresetsDir } from './presets.ts';
 import type { Project } from './project.ts';
 
 // The playbook a collection's agents follow: its preset's, read from the preset's directory, or
@@ -17,7 +17,7 @@ export type PlaybookEntry = { name: string; preset: string; command: string };
 
 function presetDir(project: Project, preset: LoadedPreset): string {
   const base =
-    preset.origin === 'official' ? OFFICIAL_PRESETS_DIR : join(project.root, '.otea', 'presets');
+    preset.origin === 'official' ? OFFICIAL_PRESETS_DIR : projectPresetsDir(project.dataDir);
   return join(base, preset.name);
 }
 

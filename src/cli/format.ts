@@ -207,6 +207,13 @@ function movesLine(label: string, moves: ItemView['transitions']): string {
   return `Agent can ${label} to: ${targets.length > 0 ? targets.join(', ') : 'nothing'}`;
 }
 
+function gatesLine(gates: Record<string, boolean>): string {
+  const verdicts = Object.entries(gates).map(
+    ([action, allowed]) => `${action} ${allowed ? 'allowed' : 'blocked'}`,
+  );
+  return `Gates: ${verdicts.join(', ')}`;
+}
+
 function createdLine({ createdBy, createdAt, events }: ItemView): string {
   const channel = events.find(({ type }) => type === 'created')?.data.channel;
   const via = typeof channel === 'string' ? ` via ${channel}` : '';
@@ -228,6 +235,7 @@ export function formatItemWithEvents(item: ItemView & { hint?: string }, layout?
       : []),
     movesLine('move', item.transitions),
     movesLine('relay', item.relayable),
+    ...(item.gates ? [gatesLine(item.gates)] : []),
     '',
     ...relationLines(item),
     ...evidenceLines(item.evidence, layout),

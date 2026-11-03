@@ -53,7 +53,8 @@ describe('wait', () => {
     const waiting = startCli(repo.dir, 'wait', '--turn', 'human', '--collection', 'tasks');
     expect(await settled(waiting)).toBe(false);
 
-    await spawnCli(repo.dir, 'move', 'TASKS-2', 'in_progress');
+    // Only the move that reaches the turn needs another process; each one boots Node.
+    await otea('move', 'TASKS-2', 'in_progress');
     await spawnCli(repo.dir, 'move', 'TASKS-2', 'review');
 
     expect(await waiting.done).toBe(0);
@@ -82,12 +83,14 @@ describe('wait', () => {
     });
 
     it('returns an item once the lease on it expires, though nothing is written', async () => {
-      await otea('claim', 'TASKS-1', '--as', 'codex', '--ttl', '1s');
-      await otea('claim', 'TASKS-2', '--as', 'codex', '--ttl', '1s');
+      // TASKS-2 stays held, and TASKS-1 is claimed last with room for a slow start: a 1s lease
+      // could run out before the wait even begins, which a loaded machine did.
+      await otea('claim', 'TASKS-2', '--as', 'codex');
+      await otea('claim', 'TASKS-1', '--as', 'codex', '--ttl', '3s');
       const waiting = startCli(repo.dir, 'wait', '--turn', 'agent', '--unclaimed', '--as', 'x');
       expect(await settled(waiting)).toBe(false);
 
-      await until(() => waiting.out() !== '', 4000);
+      await until(() => waiting.out() !== '', 8000);
 
       expect(await waiting.done).toBe(0);
       expect(waiting.out()).toMatch(/^TASKS-1 {2}todo {2}agent {2}First\n$/);

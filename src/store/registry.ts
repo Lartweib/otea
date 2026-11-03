@@ -48,12 +48,21 @@ export function insertRegisteredProject(db: DatabaseSync, project: RegisteredPro
   );
 }
 
+function toProject(row: ProjectRow): RegisteredProject {
+  return { id: row.id, name: row.name, storage: row.storage, dataDir: row.data_dir };
+}
+
 export function selectRegisteredProject(
   db: DatabaseSync,
   id: string,
 ): RegisteredProject | undefined {
   const row = db.prepare('SELECT * FROM projects WHERE id = ?').get(id) as ProjectRow | undefined;
-  return row && { id: row.id, name: row.name, storage: row.storage, dataDir: row.data_dir };
+  return row && toProject(row);
+}
+
+export function selectRegisteredProjects(db: DatabaseSync): RegisteredProject[] {
+  const rows = db.prepare('SELECT * FROM projects ORDER BY name, id').all() as ProjectRow[];
+  return rows.map(toProject);
 }
 
 export function insertProjectPath(db: DatabaseSync, path: ProjectPath): void {

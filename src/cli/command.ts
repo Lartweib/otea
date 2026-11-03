@@ -9,6 +9,9 @@ export type OptionSpec = {
   choices?: readonly string[];
   multiple?: boolean;
   flag?: boolean;
+  // Takes a value, or none when the next word is an option or there is none (`--branch` alone):
+  // the command then reads an empty string and picks its default.
+  optionalValue?: boolean;
   placeholder?: string;
 };
 
@@ -23,6 +26,8 @@ export type Input = {
   // Asks the person at the terminal and resolves with their answer, or with nothing when there is
   // nobody to ask (no terminal, or the MCP server).
   ask(question: string): Promise<string | undefined>;
+  // Everything piped to the command, or an empty string when nothing is.
+  stdin(): Promise<string>;
   // Prints one record right away: a single JSON line under --json, the text otherwise.
   print(data: unknown, text: string): void;
   args: string[];
@@ -68,6 +73,7 @@ export function failureCode(error: unknown): FailureCode {
 function optionUsage(name: string, spec: OptionSpec): string {
   if (spec.flag) return `[--${name}]`;
   const value = spec.placeholder ?? spec.choices?.join('|') ?? name;
+  if (spec.optionalValue) return `[--${name} [<${value}>]]`;
   const flag = `--${name} <${value}>${spec.multiple ? '...' : ''}`;
   return spec.required ? flag : `[${flag}]`;
 }

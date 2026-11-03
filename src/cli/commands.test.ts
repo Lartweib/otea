@@ -359,6 +359,32 @@ describe('commands', () => {
           ]);
         });
 
+        it('says which gated actions the item allows, in text and --json', async () => {
+          await otea('collection', 'add', 'changes', '--preset', 'change');
+          await otea('create', '--collection', 'changes', '--type', 'change', '--title', 'Keys');
+          await otea(
+            'create',
+            '--collection',
+            'changes',
+            '--type',
+            'repo_task',
+            '--parent',
+            'CHANGES-1',
+            '--title',
+            'Keys in api',
+            '--field',
+            'repo=api',
+            '--field',
+            'branch=chg-1/keys',
+          );
+
+          expect((await otea('show', 'CHANGES-2')).out).toContain(
+            'Gates: push blocked, merge blocked',
+          );
+          expect((await json('show', 'CHANGES-2')).gates).toEqual({ push: false, merge: false });
+          expect((await otea('show', 'CHANGES-1')).out).not.toContain('Gates:');
+        });
+
         it('lists the moves available to the agent', async () => {
           await otea('create', '--collection', 'tasks', '--title', 'Vague');
 

@@ -7,11 +7,17 @@ export type FailureCode =
   | 'validation_failed'
   | 'not_running'
   | 'timeout'
-  | 'interrupted';
+  | 'interrupted'
+  | 'gate_refused'
+  | 'hook_refused';
 
 export const EXIT_CODES: Readonly<Record<'ok' | FailureCode, number>> = {
   ok: 0,
   unexpected: 1,
+  // otea check: the gate refuses the action, the exit code hooks stop on.
+  gate_refused: 1,
+  // otea check --claude-hook: the code that makes Claude Code block the tool call.
+  hook_refused: 2,
   usage: 2,
   not_found: 3,
   invalid_transition: 4,

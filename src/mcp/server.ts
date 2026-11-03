@@ -34,9 +34,15 @@ export const AGENT_COMMANDS = [
 
 export const CLI_ONLY_COMMANDS = [
   'init',
+  'projects list',
+  'projects current',
+  'projects add',
   'connect',
   'collection add',
   'validate',
+  'check',
+  'hook install',
+  'hook remove',
   'serve',
   'open',
   'mcp',
@@ -117,6 +123,7 @@ function inputFor(
     },
     warn: context.warn,
     ask: async () => undefined,
+    stdin: async () => '',
     print: (data) => records.push(data),
     args: command.args.map((name) => String(values[name] ?? '')),
     flag: (name) => values[name] === true,

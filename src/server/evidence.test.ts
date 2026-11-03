@@ -7,7 +7,7 @@ import { attachEvidence, evidenceFile } from '../app/evidence.ts';
 import type { ItemView } from '../app/items.ts';
 import { createItem } from '../app/items.ts';
 import type { Project } from '../app/project.ts';
-import { IDENTITY, memoryContext } from '../app/testing.ts';
+import { memoryContext, projectOf } from '../app/testing.ts';
 import type { Actor } from '../core/item.ts';
 import { createServer, type OteaServer } from './server.ts';
 import { LOCAL_HOST, SESSION_COOKIE, TOKEN } from './testing.ts';
@@ -36,11 +36,7 @@ describe('evidence api', () => {
   };
 
   beforeEach(() => {
-    project = {
-      root: mkdtempSync(join(tmpdir(), 'otea-evidence-api-')),
-      identity: IDENTITY,
-      ...memoryContext(),
-    };
+    project = projectOf(mkdtempSync(join(tmpdir(), 'otea-evidence-api-')), memoryContext());
     addCollection(project, { name: 'tasks' });
     const fields = { description: 'Details' };
     createItem(project, { collection: 'tasks', title: 'Crash', fields, actor: bot });
@@ -189,7 +185,7 @@ describe('evidence api', () => {
 
     it('answers 404 when the stored file is gone', async () => {
       const { sha256 } = attach('before.png', 'png');
-      rmSync(evidenceFile(project.root, sha256));
+      rmSync(evidenceFile(project.dataDir, sha256));
 
       expect((await get('/api/evidence/1/file')).status).toBe(404);
     });
