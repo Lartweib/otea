@@ -24,9 +24,9 @@ import {
 import { activeLease, leaseChars } from '../lease.ts';
 import { moduleFor } from '../modules/registry.ts';
 import { reducedMotion } from '../motion.ts';
-import type { NestedSection, ParentRef, RowNesting } from '../nesting.ts';
+import type { NestedSection, ParentRef, RowNesting, WorkVia } from '../nesting.ts';
 import { itemNodeKind, type NodeKind } from '../node-kind.ts';
-import { openLabel } from '../relations.ts';
+import { openLabel, relationLabel } from '../relations.ts';
 import { GRID, MAX_DEPTH, monoWidth, ROW } from '../row-grid.ts';
 import { hashFor } from '../selection.ts';
 import type { CollectionView, Item, Lease } from '../types.ts';
@@ -67,6 +67,8 @@ type ItemListProps = {
   onTriage?: () => void;
   // Grouped by a severity field: each group's header leads with its bars.
   severityGroups?: boolean;
+  // All work: rows from every collection, each saying its type and collection.
+  crossCollection?: boolean;
 };
 
 // Where a block sits in the list, for the piece of the lanes it draws.
@@ -77,6 +79,8 @@ type RowPlace = Place & { depth: number; node: number; pieces: BranchPiece[] };
 
 type ItemRowProps = {
   item: Item;
+  // The row's own key: the item's id, or another when the item shows twice (All work).
+  rowKey: string;
   selected: boolean;
   x: number;
   place: RowPlace;
@@ -85,6 +89,7 @@ type ItemRowProps = {
   // The node of each of its children, for a parent's progress bar.
   childKinds: NodeKind[];
   nesting?: RowNesting | undefined;
+  crossCollection?: boolean;
   onToggleChildren?: (() => void) | undefined;
   // Set on a phone: whether the row is unfolded, and what tapping it does instead of following its link.
   expanded?: boolean | undefined;
@@ -230,6 +235,12 @@ function ParentCrumb({ parent }: { parent: ParentRef }) {
   );
 }
 
+// How a row of All work hangs from the one above it (`blocked by`, `implemented by`), as a chip
+// before its title.
+function ViaChip({ via }: { via: WorkVia }) {
+  return <span className="row-via">{relationLabel(via)}</span>;
+}
+
 // Who holds an item, wherever a row shows it (the list and the grid): an agent's mark, or `you` on
 // your chip, never the name written out. The name is the tooltip, and what assistive tech reads.
 // m: the morph's key, which carries it between the two views.
@@ -283,6 +294,7 @@ function WhoWhen({ item, lease }: { item: Item; lease: Lease | null }) {
 
 function ItemRow({
   item,
+  rowKey,
   selected,
   x,
   place,
@@ -290,6 +302,7 @@ function ItemRow({
   collectionOf,
   childKinds,
   nesting,
+  crossCollection = false,
   onToggleChildren,
   expanded,
   onTap,
@@ -307,7 +320,7 @@ function ItemRow({
   const { priority, signals } = rowMarks(item, collection);
   return (
     <li
-      data-flip={item.id}
+      data-flip={rowKey}
       data-turn={item.turn}
       data-x={x}
       data-depth={depth}
@@ -354,6 +367,7 @@ function ItemRow({
         </span>
         <span className="row-t1">
           {parent ? <ParentCrumb parent={parent} /> : null}
+          {nesting?.via ? <ViaChip via={nesting.via} /> : null}
           <a
             className="ttl row-link"
             data-m={`${item.id}:t`}
@@ -371,14 +385,28 @@ function ItemRow({
           <i className="row-lead" aria-hidden="true" />
         </span>
         <span className="row-t2">
+          {crossCollection && label !== undefined ? (
+            <span className="row-typeword">{label}</span>
+          ) : null}
           <span className="row-id">
             <span data-m={`${item.id}:i`}>{item.id}</span>
           </span>
-          <span className="row-state" data-m={`${item.id}:s`}>
-            {item.state}
-          </span>
-          <Progress item={item} kinds={childKinds} />
-          {signals.length > 0 ? <span className="row-values">{signals}</span> : null}
+          {/* A repeated row (All work) is a reference: where the item first sits stands for the rest. */}
+          {nesting?.alsoUnder ? (
+            <span className="row-also">{t('list.alsoUnder', { id: nesting.alsoUnder })}</span>
+          ) : (
+            <>
+              {crossCollection ? <span className="row-collection">{item.collection}</span> : null}
+              <span className="row-state" data-m={`${item.id}:s`}>
+                {item.state}
+              </span>
+              <Progress item={item} kinds={childKinds} />
+              {nesting?.relates ? (
+                <span className="row-relates">{t('list.relates', { count: nesting.relates })}</span>
+              ) : null}
+              {signals.length > 0 ? <span className="row-values">{signals}</span> : null}
+            </>
+          )}
         </span>
         <span className="row-pri" data-empty={priority.length === 0 || undefined}>
           {priority}
@@ -390,8 +418,12 @@ function ItemRow({
   );
 }
 
-const depthOf = (nesting: ReadonlyMap<string, RowNesting> | undefined, id: string) =>
-  Math.min(nesting?.get(id)?.depth ?? 0, MAX_DEPTH);
+const depthOf = (nesting: ReadonlyMap<string, RowNesting> | undefined, key: string) =>
+  Math.min(nesting?.get(key)?.depth ?? 0, MAX_DEPTH);
+
+// Each row's key, in order: the item's id unless the section names its own (All work).
+const keysOf = (section: NestedSection): readonly string[] =>
+  section.keys ?? section.items.map(({ id }) => id);
 
 // Where every block of the list sits, the lanes laid out over all of them, and each row's piece of
 // the branch. panels: the height of each unfolded detail, which its row's block grows by.
@@ -416,10 +448,12 @@ function geometryOf(
     if (section.items.length === 0) empties.set(section.key, add({ height: EMPTY_H }));
     const tree: TreeRow[] = [];
     const placed: (Place & { depth: number; node: number })[] = [];
-    for (const item of section.items) {
-      const depth = depthOf(nesting, item.id);
+    const keys = keysOf(section);
+    section.items.forEach((item, at) => {
+      const key = keys[at] ?? item.id;
+      const depth = depthOf(nesting, key);
       const size = depth > 0 ? ROW.child : ROW.top;
-      const panel = panels.get(item.id) ?? 0;
+      const panel = panels.get(key) ?? 0;
       const height = size.height + panel;
       const place = add({
         height,
@@ -427,14 +461,14 @@ function geometryOf(
         node: size.node,
         ...(item.turn === 'none' && section.turn !== 'none' ? { between: true } : {}),
       });
-      const row = nesting?.get(item.id);
+      const row = nesting?.get(key);
       tree.push({ depth, height, node: size.node, opens: row?.collapsed === false, panel });
       placed.push({ ...place, depth, node: size.node });
-    }
+    });
     const pieces = branchPieces(tree);
-    section.items.forEach((item, at) => {
+    keys.forEach((key, at) => {
       const place = placed[at];
-      if (place) rows.set(item.id, { ...place, pieces: pieces[at] ?? [] });
+      if (place) rows.set(key, { ...place, pieces: pieces[at] ?? [] });
     });
   });
   return { lanes: layoutLanes(blocks), heads, empties, rows };
@@ -615,6 +649,7 @@ export function ItemList({
   unfolding,
   onTriage,
   severityGroups = false,
+  crossCollection = false,
 }: ItemListProps) {
   const list = useSelectedInView(selectedId, unfolding !== undefined);
   const { panel, panels, measured, folded, open } = useUnfolded(selectedId, sections);
@@ -652,7 +687,12 @@ export function ItemList({
           <section key={section.key} className="section" data-turn={section.turn}>
             <h2 className="section-title" data-flip={`head:${section.key}`}>
               <Lines lanes={lanes} place={heads.get(section.key) ?? NO_PLACE} />
-              <GroupLabel section={section} total={section.total} severity={severityGroups} />
+              <GroupLabel
+                section={section}
+                total={section.total}
+                severity={severityGroups}
+                yoursInside={section.yoursInside}
+              />
               {section.turn === 'human' && section.items.length > 0 && onTriage ? (
                 <TriageOpen onTriage={onTriage} />
               ) : null}
@@ -664,30 +704,34 @@ export function ItemList({
               </p>
             ) : (
               <ul className="rows">
-                {section.items.map((item) => {
+                {section.items.map((item, at) => {
+                  const key = keysOf(section)[at] ?? item.id;
                   const selected = item.id === selectedId;
-                  const shows = unfolding ? panel(item) : undefined;
-                  const rowNesting = nesting?.get(item.id);
+                  // A repeated row (All work) never unfolds: the detail opens on its first row.
+                  const shows = unfolding && key === item.id ? panel(item) : undefined;
+                  const rowNesting = nesting?.get(key);
                   // A selected row that changed hands sits folded in its new place: a tap opens it again.
                   const tap = shows === 'open' ? unfolding?.onFold : () => open(item);
                   return (
                     <ItemRow
-                      key={item.id}
+                      key={key}
                       item={item}
+                      rowKey={key}
                       x={laneX(item.turn)}
-                      place={rows.get(item.id) ?? NO_PLACE}
+                      place={rows.get(key) ?? NO_PLACE}
                       lanes={lanes}
                       selected={selected}
                       collectionOf={collectionOf}
                       childKinds={item.children ? kindsOf(item) : []}
                       nesting={rowNesting}
+                      crossCollection={crossCollection}
                       onToggleChildren={
                         onToggleChildren
-                          ? () => tree.toggle(item.id, rowNesting?.settled === true)
+                          ? () => tree.toggle(key, rowNesting?.settled === true)
                           : undefined
                       }
                       expanded={unfolding ? shows === 'open' : undefined}
-                      onTap={unfolding && selected ? tap : undefined}
+                      onTap={unfolding && selected && key === item.id ? tap : undefined}
                     >
                       {unfolding && shows ? (
                         <Unfold

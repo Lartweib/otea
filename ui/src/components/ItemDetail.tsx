@@ -19,6 +19,7 @@ import { AgentMark, Button, Icon, Node, nodeLabel, Pill, TypeTag } from '../kit/
 import { moduleFor } from '../modules/registry.ts';
 import { MOTION, reducedMotion } from '../motion.ts';
 import { itemNodeKind } from '../node-kind.ts';
+import { acrossGroups } from '../relations.ts';
 import type { CollectionView, ItemView, Turn } from '../types.ts';
 import { useDetailForm } from './detail-aside.ts';
 import { EvidenceList } from './EvidenceList.tsx';
@@ -26,6 +27,7 @@ import { EvidenceModule } from './evidence/EvidenceModule.tsx';
 import { HandoffLine } from './HandoffLine.tsx';
 import { ItemActions } from './ItemActions.tsx';
 import type { CollectionOf } from './ItemList.tsx';
+import { AcrossBoards } from './relations/AcrossBoards.tsx';
 import { ChildrenModule } from './relations/ChildrenModule.tsx';
 import { RelationsModule } from './relations/RelationsModule.tsx';
 import { Timeline } from './Timeline.tsx';
@@ -273,6 +275,7 @@ export function ItemDetail({
   const asideModules = aside.filter((part) => part.kind !== 'fields');
   const briefParts = brief.map(block).filter((part) => part !== null);
   const structureParts = structure.map(block).filter((part) => part !== null);
+  const across = acrossGroups(item.relations, item.collection);
   const standing = lease ? t('detail.onIt', { holder: lease.holder }) : t(TURN_LABEL[item.turn]);
   const unfolded = layout === 'unfold';
   const agent = turnAgent(item.events);
@@ -358,6 +361,11 @@ export function ItemDetail({
             <span className="t-label">{t('detail.missing')}</span>
             <span className="t-ui">{item.missing.join(', ')}</span>
           </div>
+        ) : null}
+        {across.length > 0 ? (
+          <Section name="across" label={t('detail.across')}>
+            <AcrossBoards groups={across} collectionOf={collectionOf} />
+          </Section>
         ) : null}
         <Section name="brief" label={t('detail.brief')}>
           {head.length > 0 ? <FieldList values={head} className="fields fields-head" /> : null}

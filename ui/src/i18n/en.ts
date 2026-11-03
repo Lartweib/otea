@@ -8,7 +8,6 @@ export const en = {
   'common.close': 'Close',
   'common.failed': 'Failed',
   'common.noFields': 'No fields.',
-  'common.allItems': 'All items',
   'common.items': 'Items',
   'common.more': '{count} more',
   'common.files': { one: '{count} file', other: '{count} files' },
@@ -50,7 +49,7 @@ export const en = {
   // Collections sidebar
   'rail.label': 'collections',
   'rail.aria': 'Collections',
-  'rail.all': 'All items',
+  'rail.all': 'All work',
   'rail.hide': 'Hide collections',
   'rail.show': 'Show collections',
   'rail.waiting': 'waiting for you',
@@ -78,6 +77,10 @@ export const en = {
   'section.noValue': 'no {group}',
   'section.empty': 'Nothing here.',
   'group.forYou': '· {count} for you',
+  'group.yoursInside': {
+    one: '· {count} of yours inside',
+    other: '· {count} of yours inside',
+  },
   'group.turn': 'turn',
   'group.state': 'state',
   'group.type': 'type',
@@ -95,6 +98,8 @@ export const en = {
   'list.fold': { one: 'Fold the child of {id}', other: 'Fold the {count} children of {id}' },
   'list.children': { one: '{count} child', other: '{count} children' },
   'list.childOf': 'Child of {id}',
+  'list.relates': 'relates · {count}',
+  'list.alsoUnder': 'also under {id}',
   'list.progress': '{open}{of} open',
   'list.progressOf': ' of {total}',
 
@@ -221,6 +226,7 @@ export const en = {
   // The detail
   'detail.brief': 'Brief',
   'detail.structure': 'Structure',
+  'detail.across': 'Across boards',
   'detail.details': 'Details',
   'detail.history': 'History',
   'detail.events': { one: '{count} event', other: '{count} events' },

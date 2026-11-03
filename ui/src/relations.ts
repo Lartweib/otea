@@ -61,6 +61,14 @@ export function groupRelations(
   });
 }
 
+// The item's relations to items of other collections, grouped by kind: the detail's Across boards.
+export function acrossGroups(
+  relations: readonly RelatedItem[],
+  collection: string,
+): RelationGroup[] {
+  return groupRelations(relations.filter((relation) => relation.collection !== collection));
+}
+
 // The body of a link or unlink: the stored kind, from the item it is stored from.
 export type LinkRequest = { id: string; kind: RelationKind; other: string };
 

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { NodeKind } from './node-kind.ts';
 import {
+  acrossGroups,
   childSegments,
   childTally,
   groupRelations,
@@ -24,6 +25,33 @@ const related = (kind: RelatedItem['kind'], id: string, extra: Partial<RelatedIt
     lease: null,
     ...extra,
   }) as RelatedItem;
+
+describe('acrossGroups', () => {
+  it('keeps the relations to other collections, grouped by kind, children included', () => {
+    const relations = [
+      related('blocked_by', 'BUGS-7', { collection: 'bugs' }),
+      related('parent', 'TRABAJO-1', { collection: 'trabajo' }),
+      related('implemented_by', 'ARTE-4', { collection: 'arte' }),
+      related('child', 'ARTE-9', { collection: 'arte' }),
+      related('blocked_by', 'TRABAJO-2', { collection: 'trabajo' }),
+    ];
+
+    expect(
+      acrossGroups(relations, 'trabajo').map(({ kind, items }) => [
+        kind,
+        items.map(({ id }) => id),
+      ]),
+    ).toEqual([
+      ['child', ['ARTE-9']],
+      ['blocked_by', ['BUGS-7']],
+      ['implemented_by', ['ARTE-4']],
+    ]);
+  });
+
+  it('is empty when every relation stays in the collection', () => {
+    expect(acrossGroups([related('relates', 'P-2')], 'parts')).toEqual([]);
+  });
+});
 
 describe('groupRelations', () => {
   it('groups by kind in a fixed order, with the labels people read', () => {

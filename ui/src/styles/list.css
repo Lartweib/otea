@@ -415,6 +415,35 @@
   overflow: hidden;
 }
 
+/* ---- All work: rows from every collection ---- */
+/* How a row hangs from the one above it, as a small tag before its title. */
+.row-via {
+  flex: none;
+  margin-right: 8px;
+  padding: 0 4px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-s);
+  font: 400 10.5px / 15px var(--font-machine);
+  color: var(--mut);
+  white-space: nowrap;
+}
+
+/* The type leads line two, then id · collection · state. */
+.row-typeword {
+  color: var(--ink);
+}
+
+.row-collection::after {
+  content: "·";
+  margin-left: 8px;
+}
+
+/* How many it relates to, behind a hairline. */
+.row-relates {
+  padding-left: 10px;
+  border-left: 1px solid var(--line);
+}
+
 /* ---- priority, who and when: fixed columns at the end of line one ---- */
 .row-pri {
   grid-column: 6;
