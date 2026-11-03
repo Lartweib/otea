@@ -25,3 +25,23 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run check
+
+  # The desktop shell is its own package. Only its types are checked here: the Electron binary is
+  # not downloaded, and its pure parts already run in the check job's tests.
+  desktop:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: desktop
+    env:
+      ELECTRON_SKIP_BINARY_DOWNLOAD: "1"
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: desktop/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
