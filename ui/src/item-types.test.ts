@@ -61,6 +61,7 @@ const work: CollectionView = {
   name: 'work',
   prefix: 'WORK',
   preset: 'work',
+  icon: null,
   types: [bug, impr],
   view: { kind: 'list', groupBy: 'turn', columns: ['id', 'title', 'state', 'who', 'age'] },
 };

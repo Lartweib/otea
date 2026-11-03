@@ -190,7 +190,7 @@ function childrenIndex(items: readonly Item[]): ChildrenOf {
 export function App() {
   // Every word on screen follows the language: a switch renders the whole app again.
   useLanguage();
-  const { connection, version } = useLive();
+  const { connection, version, presence } = useLive();
   const route = useRoute();
   const phone = usePhone();
   const selectedId = route.view === 'items' ? route.id : undefined;
@@ -243,7 +243,7 @@ export function App() {
     if (phone) window.scrollTo({ top: 0 });
   };
   const project = useRemote(fetchProject, 0, connection);
-  const agents = useAgents(version, connection);
+  const agents = useAgents(version, presence, connection);
   const wide = useMediaQuery('(min-width: 64rem)');
   // Between the phone and 64rem the sidebar stays folded to its rail: the list needs the room.
   const folded = !phone && (!split.sidebar || !wide);

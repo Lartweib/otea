@@ -8,11 +8,14 @@ import type { Item, Lease } from './types.ts';
 
 export type Connection = 'connecting' | 'live' | 'reconnecting';
 
-export type Live = { connection: Connection; version: number };
+// version: bumped on every change to the items; presence: on every change to who is connected
+// (a session seen, a harness named, a lease taken or given back).
+export type Live = { connection: Connection; version: number; presence: number };
 
 export function useLive(url = '/api/stream'): Live {
   const [connection, setConnection] = useState<Connection>('connecting');
   const [version, setVersion] = useState(0);
+  const [presence, setPresence] = useState(0);
   useEffect(() => {
     const source = new EventSource(url);
     const refresh = () => setVersion((current) => current + 1);
@@ -21,10 +24,11 @@ export function useLive(url = '/api/stream'): Live {
       refresh();
     });
     source.addEventListener('change', refresh);
+    source.addEventListener('presence', () => setPresence((current) => current + 1));
     source.addEventListener('error', () => setConnection('reconnecting'));
     return () => source.close();
   }, [url]);
-  return { connection, version };
+  return { connection, version, presence };
 }
 
 export function useRemote<T>(

@@ -140,18 +140,16 @@ export function languageChoice(): LanguageChoice {
   return isLanguage(stored) ? stored : 'auto';
 }
 
-// Applies a choice from Preferences. Auto forgets the remembered language and follows the browser.
+// Applies a choice from Preferences, through setLanguage. Auto then forgets the remembered language,
+// so the browser's applies from now on.
 export function chooseLanguageSetting(choice: LanguageChoice): void {
-  if (choice !== 'auto') {
-    setLanguage(choice);
-    return;
-  }
+  setLanguage(choice === 'auto' ? browserLanguage() : choice);
+  if (choice !== 'auto') return;
   try {
     window.localStorage.removeItem(LANGUAGE_KEY);
   } catch {
-    // Nothing was remembered, or nothing can be: the browser's language applies either way.
+    // Nothing can be remembered: the browser's language applies either way.
   }
-  apply(chooseLanguage({ preferred: navigator.languages }));
 }
 
 // The language auto would pick in this browser.
