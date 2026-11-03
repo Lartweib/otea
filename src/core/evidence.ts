@@ -3,7 +3,7 @@ export const EVIDENCE_ROLES = ['before', 'after', 'single'] as const;
 
 export type EvidenceRole = (typeof EVIDENCE_ROLES)[number];
 
-export type EvidenceKind = 'image' | 'video' | 'diff' | 'log' | 'file';
+export type EvidenceKind = 'image' | 'video' | 'diff' | 'log' | 'diagram' | 'file';
 
 export type EvidenceType = { kind: EvidenceKind; contentType: string };
 
@@ -26,6 +26,9 @@ const TYPES: Readonly<Record<string, EvidenceType>> = {
   patch: { kind: 'diff', contentType: 'text/x-diff' },
   log: { kind: 'log', contentType: 'text/plain' },
   txt: { kind: 'log', contentType: 'text/plain' },
+  // A Mermaid diagram is its source: text the diagram module draws, never a page the browser runs.
+  mmd: { kind: 'diagram', contentType: 'text/plain' },
+  mermaid: { kind: 'diagram', contentType: 'text/plain' },
   svg: { kind: 'file', contentType: 'image/svg+xml' },
 };
 

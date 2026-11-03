@@ -1,0 +1,39 @@
+preset: review
+preset_version: 1
+playbook: ./playbook.md
+icon: compare
+fields:
+  title: { module: text, required: create }
+  # What to make and what good looks like: the reference, the constraints, the length.
+  brief: { module: markdown }
+  # Where the piece is used, in the project's words (shop, overworld, battle).
+  target: { module: text }
+# A piece reviewed in rounds: an agent makes it, the human approves it or sends it back with
+# feedback, and the agent makes the next round. Rounds are not stored: round n ends with the agent's
+# nth move into review, and the human's next move is its verdict.
+workflow:
+  initial: queued
+  states:
+    queued: { turn: agent }
+    in_progress: { turn: agent }
+    review: { turn: human }
+    approved: { turn: none, closes: done }
+    dropped: { turn: none, closes: discarded }
+  transitions:
+    - { from: queued, to: in_progress, by: agent }
+    - { from: in_progress, to: review, by: agent, reason: required }
+    - { from: review, to: approved, by: human-ui }
+    - { from: review, to: in_progress, by: human, reason: required }
+    - { from: [queued, in_progress, review], to: dropped, by: human, reason: required }
+types:
+  piece:
+    label: Piece
+    icon: compare
+    layout:
+      evidence: [{ module: recording, id: recording }, { module: images, id: images }]
+      body: [{ module: rounds }, brief]
+      side: [target]
+      row: [target]
+view:
+  kind: list
+  columns: [id, title, target, state, who, age]
