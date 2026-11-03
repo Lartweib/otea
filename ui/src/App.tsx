@@ -5,6 +5,7 @@ import { applyAttention } from './attention-dom.ts';
 import { catalogEntries } from './catalog.ts';
 import { CollectionRail } from './components/CollectionRail.tsx';
 import { ConnectionBadge } from './components/ConnectionBadge.tsx';
+import { EmptyDetail } from './components/EmptyDetail.tsx';
 import { ItemDetail } from './components/ItemDetail.tsx';
 import type { ChildrenOf, CollectionOf, Unfolding } from './components/ItemList.tsx';
 import { ListPane } from './components/ListPane.tsx';
@@ -173,7 +174,12 @@ function Catalog({ name, presets }: CatalogProps) {
 }
 
 // parent: the item a "+ child" opened the form for; the form starts in its collection.
-type Intake = { openedOn: string | undefined; parent?: IntakeParent };
+// collection: the empty collection whose "New item in" opened it; the form starts there.
+type Intake = {
+  openedOn: string | undefined;
+  parent?: IntakeParent;
+  collection?: string | undefined;
+};
 
 // The parents this viewer folded (or, whose children are all closed, unfolded) in the list,
 // remembered in this browser.
@@ -241,10 +247,10 @@ export function App() {
     closeIntake();
     window.location.hash = hashFor(id);
   };
-  const openIntake = () => {
+  const openIntake = (into?: string) => {
     // From the catalog, intake opens next to the item list (nothing is selected there).
     if (route.view === 'modules') window.location.hash = ITEMS_HASH;
-    setIntake({ openedOn: selectedId });
+    setIntake({ openedOn: selectedId, collection: into });
     // On a phone intake opens above the list.
     if (phone) window.scrollTo({ top: 0 });
   };
@@ -315,7 +321,12 @@ export function App() {
           </a>
           <ThemeToggle />
           {canWrite ? (
-            <Button size="sm" className="topbar-new" aria-pressed={creating} onClick={openIntake}>
+            <Button
+              size="sm"
+              className="topbar-new"
+              aria-pressed={creating}
+              onClick={() => openIntake()}
+            >
               <Icon name="plus" />
               <span className="topbar-label">{t('app.newItem')}</span>
             </Button>
@@ -411,6 +422,7 @@ export function App() {
                     key={intake?.parent?.id ?? 'new'}
                     connection={connection}
                     parent={intake?.parent}
+                    collection={intake?.collection}
                     onCancel={closeIntake}
                     onCreated={showCreated}
                   />
@@ -425,8 +437,12 @@ export function App() {
                     onAddChild={addChild}
                     onClose={gridded ? closeDetail : undefined}
                   />
-                ) : detailOff ? null : (
-                  <Message>{t('app.selectItem')}</Message>
+                ) : detailOff || items.status !== 'ready' ? null : (
+                  <EmptyDetail
+                    items={scoped}
+                    collection={collection}
+                    onCreate={canWrite ? () => openIntake(collection) : undefined}
+                  />
                 )}
               </div>
             </div>

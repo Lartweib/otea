@@ -29,7 +29,6 @@ export const en = {
   'app.newItem': 'New item',
   'app.notFound': 'Item {id} not found.',
   'app.noModule': 'No module named {name}.',
-  'app.selectItem': 'Select an item to see its details.',
   'connection.connecting': 'Connecting…',
   'connection.live': 'Live',
   'connection.reconnecting': 'Reconnecting…',
@@ -38,6 +37,15 @@ export const en = {
   'theme.dark': 'dark',
   'theme.label': 'Theme: {choice}',
   'theme.switch': 'Theme: {choice}. Switch to {next}.',
+
+  // The detail pane while nothing is chosen
+  'empty.pick': 'Pick an item to see its detail',
+  'empty.waiting': { one: '{count} waiting for you', other: '{count} waiting for you' },
+  'empty.withAgents': { one: '{count} with an agent', other: '{count} with agents' },
+  'empty.nothingWaiting': 'Nothing waiting for you',
+  'empty.noItems': 'No items yet',
+  'empty.noItemsIn': 'No items in {collection} yet',
+  'empty.newIn': 'New item in {collection}',
 
   // Collections sidebar
   'rail.label': 'collections',

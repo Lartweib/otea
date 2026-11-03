@@ -49,7 +49,6 @@ export const es: Catalog = {
   'app.newItem': 'Nuevo elemento',
   'app.notFound': 'No se encontró el elemento {id}.',
   'app.noModule': 'No hay ningún módulo llamado {name}.',
-  'app.selectItem': 'Selecciona un elemento para ver sus detalles.',
   'connection.connecting': 'Conectando…',
   'connection.live': 'En vivo',
   'connection.reconnecting': 'Reconectando…',
@@ -58,6 +57,15 @@ export const es: Catalog = {
   'theme.dark': 'oscuro',
   'theme.label': 'Tema: {choice}',
   'theme.switch': 'Tema: {choice}. Cambiar a {next}.',
+
+  // El panel de detalle sin nada elegido
+  'empty.pick': 'Elige un elemento para ver su detalle',
+  'empty.waiting': { one: '{count} te espera', other: '{count} te esperan' },
+  'empty.withAgents': { one: '{count} con un agente', other: '{count} con agentes' },
+  'empty.nothingWaiting': 'Nada te espera',
+  'empty.noItems': 'Todavía no hay elementos',
+  'empty.noItemsIn': 'Todavía no hay elementos en {collection}',
+  'empty.newIn': 'Nuevo elemento en {collection}',
 
   // Barra de colecciones
   'rail.label': 'colecciones',
