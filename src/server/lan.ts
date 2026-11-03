@@ -1,5 +1,6 @@
 import { randomInt } from 'node:crypto';
-import { networkInterfaces } from 'node:os';
+import { lookup } from 'node:dns/promises';
+import { hostname, networkInterfaces } from 'node:os';
 import { sameToken } from './token.ts';
 
 // LAN access (otea serve --lan): the server listens on every interface, and a request that does not
@@ -63,6 +64,32 @@ export function lanAddresses(): string[] {
     )
     .sort((x, y) => x.rank - y.rank)
     .map(({ address }) => address);
+}
+
+// This computer's mDNS name, `<hostname>.local`, lower case; none for a hostname that is not one
+// DNS label (macOS already ends it in .local).
+export function localNameOf(host: string): string | undefined {
+  const label = host.toLowerCase().replace(/\.local$/, '');
+  return /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(label) ? `${label}.local` : undefined;
+}
+
+export type Resolve = (name: string) => Promise<string[]>;
+
+const resolveIPv4: Resolve = async (name) =>
+  (await lookup(name, { all: true, family: 4 })).map(({ address }) => address);
+
+// The .local name a phone can use instead of an IP that DHCP may change: kept only when it resolves
+// (here, through the system's mDNS) to one of the addresses LAN access answers on. Gives up quietly
+// after `timeoutMs`.
+export async function localName(
+  addresses: readonly string[],
+  { host = hostname(), resolve = resolveIPv4, timeoutMs = 1500 } = {},
+): Promise<string | undefined> {
+  const name = localNameOf(host);
+  if (!name || addresses.length === 0) return undefined;
+  const timeout = new Promise<string[]>((done) => setTimeout(() => done([]), timeoutMs).unref());
+  const resolved = await Promise.race([resolve(name).catch(() => []), timeout]);
+  return resolved.some((address) => addresses.includes(address)) ? name : undefined;
 }
 
 export const CODE_TTL_MS = 10 * 60 * 1000;

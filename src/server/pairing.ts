@@ -9,9 +9,10 @@ import { type AttemptLimiter, formatCode, type PairingCode, type PairingCodes } 
 import { clientOf, deviceCookie, type Port, type Session } from './session.ts';
 import { assertSameOrigin } from './writes.ts';
 
-// LAN access as the server runs it: the addresses it answers on and the pairing code it holds.
+// LAN access as the server runs it: the hosts a device may name (this computer's .local name when
+// it resolves, then its addresses), and the pairing code it holds.
 export type Lan = {
-  addresses: string[];
+  hosts: string[];
   codes: PairingCodes;
   attempts: AttemptLimiter;
 };
@@ -47,7 +48,7 @@ export function lanView(
 ): LanView {
   const devices = listDevices(project.db);
   if (!lan) return { enabled: false, urls: [], code: null, devices };
-  const urls = lan.addresses.map((address) => `http://${address}:${port}`);
+  const urls = lan.hosts.map((host) => `http://${host}:${port}`);
   const base = urls.find((url) => url === `http://${pick}:${port}`) ?? urls[0];
   const current = lan.codes.current();
   const code =
