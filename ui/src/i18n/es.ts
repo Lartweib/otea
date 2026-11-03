@@ -75,7 +75,7 @@ export const es: Catalog = {
   'shell.noAgentsTitle': 'No hay agentes conectados.',
   'shell.howToConnect':
     'Agrega {mcp} a los servidores MCP de tu agente, o ejecuta cualquier comando de {otea} con {as}.',
-  'shell.connectedRule': 'conectado: una sesión MCP abierta, o una escritura en los últimos 15 min',
+  'shell.connectedRule': 'conectado: tiene un lease, o tuvo actividad en los últimos 5 min',
   'shell.openPanel': 'Abrir el panel del proyecto',
 
   // Preferences: what belongs to this browser
