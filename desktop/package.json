@@ -1,0 +1,22 @@
+{
+  "name": "@otea/desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "The Otea desktop shell: the UI of otea serve in a window, its state on the taskbar, the Dock and the tray.",
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "main": "src/main.ts",
+  "engines": {
+    "node": ">=22.18"
+  },
+  "scripts": {
+    "start": "electron .",
+    "typecheck": "tsc --noEmit",
+    "test": "npm --prefix .. exec -- vitest run desktop"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.2",
+    "electron": "45.2.1",
+    "typescript": "7.0.2"
+  }
+}
