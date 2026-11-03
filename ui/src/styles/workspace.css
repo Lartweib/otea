@@ -15,48 +15,58 @@
   initial-value: 1320px;
 }
 
-/* ---- collections rail ---- */
+/* ---- the project's sidebar (CollectionRail.tsx): its collections, its own places, then you ---- */
 .rail {
   display: none;
   flex-direction: column;
   gap: 2px;
   min-width: 0;
-  padding: 4px 12px 24px 8px;
-  overflow: hidden;
+  padding: 4px 0 14px;
   white-space: nowrap;
 }
 
-/* The sidebar's own header: the button that folds it, then its label. */
+/* A section's header: its label, and the collections' "+" (New item). */
 .rail-head {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  height: 36px;
+  padding: 0 4px 0 12px;
+}
+
+.rail-project {
+  display: flex;
+  flex-direction: column;
   gap: 2px;
-  min-height: 36px;
-  padding: 2px 0 6px;
+  margin-top: 18px;
 }
 
-.rail-label {
-  padding: 8px 4px;
-}
-
-/* The entries are laid out as the rail's own children; the wrapper only goes inert when folded. */
 .rail-entries {
   display: contents;
 }
 
+/* One place: icon 18 · name · counts · the 24px "+" slot, on the grid the project pill shares. */
+.rail-row {
+  position: relative;
+}
+
 .rail-entry {
-  display: flex;
+  position: relative;
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  column-gap: 9px;
+  width: 100%;
   height: 36px;
-  padding: 0 12px;
+  padding: 0 39px 0 12px;
   border: 0;
   border-radius: 999px;
   background: transparent;
+  color: var(--ink);
   font-size: 14px;
   font-weight: 500;
   text-align: left;
+  text-decoration: none;
   cursor: pointer;
   transition:
     background-color var(--m-fast) var(--m-ease),
@@ -67,9 +77,27 @@
   background: var(--hov);
 }
 
-.rail-entry[aria-pressed="true"] {
+.rail-entry:focus-visible,
+.rail-add:focus-visible,
+.rail-new:focus-visible,
+.prefs-button:focus-visible {
+  outline: 2px solid var(--you);
+  outline-offset: 2px;
+}
+
+.rail-entry:is([aria-pressed="true"], [aria-current="page"]) {
   background: var(--sf);
   box-shadow: 0 0 0 1px var(--line);
+}
+
+.rail-icon {
+  display: grid;
+  place-items: center;
+  color: var(--mut);
+}
+
+.rail-entry:is([aria-pressed="true"], [aria-current="page"]) .rail-icon {
+  color: var(--ink);
 }
 
 .rail-name {
@@ -87,6 +115,82 @@
 .rail-yours {
   font: 600 11.5px var(--font-machine);
   color: var(--you-ink);
+}
+
+.rail-yours[data-zero] {
+  font-weight: 400;
+  color: var(--mut);
+}
+
+/* The "+" waits for the pointer (or the keyboard) and keeps its slot, so the counts never jump. */
+.rail-add,
+.rail-new {
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--mut);
+  cursor: pointer;
+  transition:
+    opacity var(--m-fast) var(--m-ease),
+    background-color var(--m-fast) var(--m-ease),
+    color var(--m-fast) var(--m-ease);
+}
+
+.rail-add {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 24px;
+  height: 24px;
+  color: var(--ink);
+  opacity: 0;
+}
+
+.rail-row:hover .rail-add,
+.rail-add:focus-visible {
+  opacity: 1;
+  background: var(--sf);
+  box-shadow: 0 0 0 1px var(--line);
+}
+
+.rail-new {
+  position: relative;
+  width: 26px;
+  height: 26px;
+}
+
+.rail-new:hover {
+  background: var(--hov);
+  color: var(--ink);
+}
+
+/* The letter that tells a collection from an earlier one with the same icon: only folded, where
+   the name is gone. */
+.place-icon {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+}
+
+.place-badge {
+  display: none;
+}
+
+/* You and Preferences, at the foot; the fold button beside them. */
+.rail-foot {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: auto;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.sidebar-toggle {
+  flex: none;
 }
 
 /* ---- list head: one row on one baseline. The lane names sit centred on their lanes (x=16 and
@@ -122,11 +226,6 @@
   margin-left: 58px;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.sidebar-toggle {
-  display: none;
-  flex: none;
 }
 
 /* ---- the divider: a hairline that thickens under the pointer, with a grip ---- */
@@ -193,7 +292,6 @@
 /* ---- from 48rem: list, divider, detail; from 64rem the collections sidebar before them ---- */
 @media (min-width: 48rem) {
   .workspace {
-    --rail-w: 0px;
     position: relative;
     /* The list keeps the width it was given (340-783px); the detail never gets under 440px. */
     grid-template-columns:
@@ -283,84 +381,175 @@
   }
 }
 
-@media (min-width: 64rem) {
-  /* The sidebar's track holds its 13.75rem and 24px of air before the lanes, so the first lane
-     sits 40px clear of the sidebar's edge. Folded, the track keeps a strip just wide enough for the
-     toggle (8 + 28 + 8) and the same 24px of air. */
-  .workspace {
+/* From 48rem the sidebar holds its place at the left of the workspace (and the catalog): 228px open,
+   with 16px of air before the lanes, or folded to a 68px rail of icons on the project pill's axis
+   (42). Below 64rem it is always folded: the list needs the room. */
+@media (min-width: 48rem) {
+  .with-rail {
     --rail-strip: 44px;
+    --rail-w: calc(var(--rail-strip) + 24px);
+    position: relative;
+  }
+
+  .with-rail[data-sidebar="on"] {
     --rail-w: calc(13.75rem + 24px);
   }
 
-  .workspace[data-sidebar="off"] {
-    --rail-w: calc(var(--rail-strip) + 24px);
-  }
-
-  /* The sidebar keeps its place: folding it, the label and the collections fade and clip out
-     towards the toggle, which never moves; the panes are played back (FLIP). */
-  .workspace .rail {
+  .with-rail .rail {
     position: absolute;
     left: 8px;
     top: 0;
     bottom: 0;
+    z-index: var(--z-sticky);
     display: flex;
-    width: 13.75rem;
-    overflow: visible;
+    width: 228px;
   }
 
-  .workspace .rail .sidebar-toggle {
+  .catalog.with-rail {
+    grid-template-columns: var(--rail-w) minmax(20rem, 28rem) minmax(0, 1fr);
+    padding-left: 8px;
+  }
+
+  .catalog.with-rail > .list-pane {
+    grid-column: 2;
+  }
+
+  .catalog.with-rail > .detail-pane {
+    grid-column: 3;
+  }
+
+  /* ---- folded: the rail of icons ---- */
+  .with-rail[data-sidebar="off"] .rail {
+    align-items: center;
+    width: 68px;
+    padding: 6px 0 14px;
+  }
+
+  .with-rail[data-sidebar="off"] :is(.rail-label, .rail-name, .rail-open) {
+    display: none;
+  }
+
+  .with-rail[data-sidebar="off"] .rail-head {
+    justify-content: center;
+    height: auto;
+    padding: 0 0 4px;
+  }
+
+  .with-rail[data-sidebar="off"] .rail-new {
+    width: 32px;
+    height: 32px;
+  }
+
+  .with-rail[data-sidebar="off"] .rail-project {
+    align-items: center;
+    margin-top: 6px;
+    padding-top: 8px;
+    border-top: 1px solid var(--line);
+  }
+
+  .with-rail[data-sidebar="off"] .rail-project .rail-head {
+    display: none;
+  }
+
+  .with-rail[data-sidebar="off"] .rail-entry {
     position: relative;
-    display: inline-flex;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1px;
+    width: 44px;
+    height: 48px;
+    padding: 0;
+    border-radius: var(--r-l);
   }
 
-  /* At the left edge of the screen, its tooltip opens to the right. */
-  .workspace .rail .sidebar-toggle::after {
+  .with-rail[data-sidebar="off"] .rail-icon .type-icon {
+    width: 17px;
+    height: 17px;
+  }
+
+  /* Folded, only what is yours is counted, in your color; nothing shows for none. */
+  .with-rail[data-sidebar="off"] .rail-yours {
+    font: 600 10.5px / 12px var(--font-machine);
+  }
+
+  .with-rail[data-sidebar="off"] .rail-yours[data-zero] {
+    display: none;
+  }
+
+  .with-rail[data-sidebar="off"] .place-badge {
+    position: absolute;
+    left: 10px;
+    top: 8px;
+    display: grid;
+    place-items: center;
+    min-width: 11px;
+    height: 11px;
+    padding: 0 1px;
+    border-radius: 3.5px;
+    background: var(--sf);
+    box-shadow:
+      0 0 0 1px var(--line),
+      0 0 0 2.5px var(--bg);
+    font: 600 8.5px / 1 var(--font-machine);
+    color: var(--ink);
+  }
+
+  .with-rail[data-sidebar="off"] .rail-entry:is(:hover, [aria-pressed="true"]) .place-badge {
+    box-shadow: 0 0 0 1px var(--line);
+  }
+
+  .with-rail[data-sidebar="off"] .rail-foot {
+    padding-top: 0;
+    border-top: 0;
+  }
+
+  .with-rail[data-sidebar="off"] .prefs-anchor {
+    flex: none;
+  }
+
+  .with-rail[data-sidebar="off"] .prefs-button {
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border-radius: var(--r-l);
+  }
+
+  /* At the left edge of the screen the rail's tooltips open to the right of their control. */
+  .with-rail .rail .tip::after {
+    top: 50%;
     right: auto;
-    left: 0;
+    left: calc(100% + 8px);
+    transform: translate(-4px, -50%);
   }
 
-  .workspace .rail :is(.rail-label, .rail-entry) {
-    clip-path: inset(0 0 0 0);
-    transition:
-      opacity var(--m-base) var(--m-ease),
-      clip-path var(--m-slow) var(--m-ease),
-      visibility 0s,
-      background-color var(--m-fast) var(--m-ease),
-      box-shadow var(--m-fast) var(--m-ease);
+  .with-rail .rail .tip:is(:hover, :focus-visible)::after {
+    transform: translate(0, -50%);
   }
 
-  .workspace[data-sidebar="off"] .rail {
-    pointer-events: none;
+  .with-rail[data-sidebar="on"] .rail-foot .sidebar-toggle.tip::after {
+    top: auto;
+    bottom: calc(100% + 8px);
+    left: auto;
+    right: 0;
+    transform: translateY(4px);
   }
 
-  .workspace[data-sidebar="off"] .rail .sidebar-toggle {
-    pointer-events: auto;
-  }
-
-  .workspace[data-sidebar="off"] .rail :is(.rail-label, .rail-entry) {
-    clip-path: inset(0 100% 0 0);
-    opacity: 0;
-    visibility: hidden;
-    transition:
-      opacity var(--m-base) var(--m-ease),
-      clip-path var(--m-slow) var(--m-ease),
-      visibility 0s var(--m-slow);
+  .with-rail[data-sidebar="on"] .rail-foot .sidebar-toggle.tip:is(:hover, :focus-visible)::after {
+    transform: none;
   }
 }
 
-/* Reduced motion: folding the sidebar is instant. */
+/* Reduced motion: nothing in the sidebar eases. */
 @media (prefers-reduced-motion: reduce) {
   .rail-entry,
+  .rail-add,
+  .rail-new,
   .divider::before,
   .divider i {
     transition-duration: 1ms;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) and (min-width: 64rem) {
-  .workspace .rail :is(.rail-label, .rail-entry),
-  .workspace[data-sidebar="off"] .rail :is(.rail-label, .rail-entry) {
-    transition: none;
   }
 }
 

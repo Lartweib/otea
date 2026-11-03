@@ -15,14 +15,31 @@
   background: var(--line);
 }
 
-/* ---- topbar ---- */
+/* ---- topbar: three zones. Where you are (the project pill, over its collections), the mark in the
+   centre, and the agents connected to this project. ---- */
 .topbar {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
-  justify-content: space-between;
   gap: 16px;
   height: 60px;
-  padding: 0 16px;
+  padding: 0 16px 0 8px;
+}
+
+.topbar-start,
+.topbar-end {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.topbar-end {
+  justify-content: flex-end;
+}
+
+.topbar-centre {
+  display: flex;
+  justify-content: center;
 }
 
 .brand {
@@ -85,34 +102,808 @@
   opacity: 1;
 }
 
-.topbar-actions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
+/* ---- the pills: a menu grows out of each ---- */
+.pill-anchor {
+  position: relative;
+  display: inline-flex;
+  min-width: 0;
 }
 
-.connection {
+.menu-chevron {
+  flex: none;
+  fill: none;
+  stroke: var(--mut);
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: rotate var(--m-base) var(--m-ease);
+}
+
+[aria-expanded="true"] > .menu-chevron {
+  rotate: 180deg;
+}
+
+/* The project pill heads the sidebar's column: it starts where the sidebar does, is as wide (228),
+   and shares its rows' grid, its icon over theirs and its chevron in the place of their "+". */
+.project-pill {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) 24px;
+  align-items: center;
+  column-gap: 9px;
+  width: 228px;
+  min-width: 0;
+  height: 36px;
+  padding: 0 6px 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--sf);
+  box-shadow: 0 0 0 1px var(--line);
+  color: var(--ink);
+  font: 600 13.5px var(--font-human);
+  letter-spacing: -0.006em;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background-color var(--m-fast) var(--m-ease),
+    box-shadow var(--m-fast) var(--m-ease);
+}
+
+.project-pill > .menu-chevron {
+  justify-self: center;
+}
+
+/* Folded, the pill keeps its name (it is what says where you are) and moves its icon onto the
+   rail's axis. */
+.project-pill[data-folded] {
+  grid-template-columns: 18px auto 24px;
+  width: auto;
+  max-width: 320px;
+  margin-left: 12px;
+  padding-left: 13px;
+}
+
+.project-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.project-pill:hover,
+.live-pill:hover:not(:disabled) {
+  background: var(--hov);
+}
+
+.project-pill[aria-expanded="true"],
+.live-pill[aria-expanded="true"] {
+  box-shadow: 0 0 0 1.5px var(--ink);
+}
+
+.project-pill:focus-visible,
+.live-pill:focus-visible,
+.panel-button:focus-visible {
+  outline: 2px solid var(--you);
+  outline-offset: 2px;
+}
+
+.project-pill-room {
+  height: 36px;
+}
+
+/* The agents pill: their node, with the list's orbit while any holds a lease, and how many are
+   connected. Quiet with none, and offline (it cannot count) while the stream is down. */
+.live-pill {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  margin-right: 4px;
+  height: 36px;
+  padding: 0 10px 0 11px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--sf);
+  box-shadow: 0 0 0 1px var(--line);
+  color: var(--ink);
+  font: 600 13.5px var(--font-human);
+  letter-spacing: -0.006em;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color var(--m-fast) var(--m-ease),
+    box-shadow var(--m-fast) var(--m-ease);
+}
+
+.live-pill[data-quiet] {
+  color: var(--mut);
+  font-weight: 500;
+}
+
+.live-pill:disabled {
+  padding-right: 13px;
+  cursor: default;
+}
+
+.agent-node {
+  display: block;
+  flex: none;
+  overflow: visible;
+}
+
+.pill-ring {
+  fill: none;
+  stroke: var(--mut);
+  stroke-width: 1.5;
+  stroke-dasharray: 2.2 1.9;
+}
+
+.pill-ring.off {
+  stroke: var(--warn);
+}
+
+/* ---- menus: raised, 420 wide, a header with totals and a quiet footer ---- */
+.menu {
+  position: absolute;
+  top: 44px;
+  z-index: 30;
+  width: 420px;
+  max-width: calc(100vw - 32px);
+  padding: 6px;
+  border-radius: var(--r-l);
+  box-shadow:
+    0 0 0 1px var(--line),
+    0 24px 48px -20px var(--shadow);
+  white-space: normal;
+  animation: menu-open-start 360ms var(--m-ease) both;
+}
+
+.menu[data-side="start"] {
+  left: 0;
+}
+
+.menu[data-side="end"] {
+  right: 0;
+  animation-name: menu-open-end;
+}
+
+.menu[data-phase="closing"] {
+  pointer-events: none;
+  animation: menu-close-start 220ms var(--e-move) both;
+}
+
+.menu[data-side="end"][data-phase="closing"] {
+  animation-name: menu-close-end;
+}
+
+/* Out of the pill: a strip its width, which widens to the menu's width and then drops. */
+@keyframes menu-open-start {
+  0% {
+    clip-path: inset(0 calc(100% - var(--from, 100%)) calc(100% - 38px) 0 round 12px);
+  }
+  30% {
+    clip-path: inset(0 12% calc(100% - 38px) 0 round 12px);
+  }
+  100% {
+    clip-path: inset(0 0 0 0 round 12px);
+  }
+}
+
+@keyframes menu-open-end {
+  0% {
+    clip-path: inset(0 0 calc(100% - 38px) calc(100% - var(--from, 100%)) round 12px);
+  }
+  30% {
+    clip-path: inset(0 0 calc(100% - 38px) 12% round 12px);
+  }
+  100% {
+    clip-path: inset(0 0 0 0 round 12px);
+  }
+}
+
+@keyframes menu-close-start {
+  to {
+    clip-path: inset(0 calc(100% - var(--from, 100%)) calc(100% - 38px) 0 round 12px);
+    opacity: 0;
+  }
+}
+
+@keyframes menu-close-end {
+  to {
+    clip-path: inset(0 0 calc(100% - 38px) calc(100% - var(--from, 100%)) round 12px);
+    opacity: 0;
+  }
+}
+
+/* The rows come in one by one, 20ms apart, once the menu has its width. */
+.menu > [style*="--i"] {
+  animation: menu-row 180ms var(--m-ease) both;
+  animation-delay: calc(100ms + var(--i) * 20ms);
+}
+
+@keyframes menu-row {
+  from {
+    opacity: 0;
+    translate: 0 -4px;
+  }
+}
+
+.menu-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 12px 10px 6px;
+}
+
+.menu-sum {
+  display: inline-flex;
+  gap: 6px;
+  margin-left: auto;
   font: 400 12px var(--font-machine);
   color: var(--mut);
 }
 
-.connection-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  box-shadow: inset 0 0 0 1.5px var(--mut);
-  transition:
-    background-color var(--m-base) var(--m-ease),
-    box-shadow var(--m-base) var(--m-ease);
+.menu-sum > [aria-hidden] {
+  color: var(--lane);
 }
 
-.connection[data-connection="live"] .connection-dot {
-  background: var(--ink);
+.menu-row {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) 20px;
+  align-items: center;
+  column-gap: 8px;
+  min-height: 52px;
+  padding: 6px 8px 6px 6px;
+  border-radius: var(--r-m);
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.menu-row[aria-current="page"] {
+  background: var(--sel);
+}
+
+.project-tile {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  background: var(--well);
+}
+
+.menu-text {
+  display: grid;
+  min-width: 0;
+}
+
+.menu-name {
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.menu-line {
+  font: 400 11.5px / 17px var(--font-machine);
+  color: var(--mut);
+}
+
+.menu-tick {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.menu-foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin-top: 6px;
+  padding: 10px 8px 4px;
+  border-top: 1px solid var(--line);
+}
+
+.menu-foot code,
+.agents-empty code {
+  font: 500 11.5px var(--font-machine);
+  color: var(--ink);
+}
+
+/* ---- the agents: one row each, their name, harness, what they hold and when they were seen ---- */
+.agent-row {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  align-items: start;
+  column-gap: 8px;
+  min-height: 56px;
+  padding: 8px 10px 8px 6px;
+  border-radius: var(--r-m);
+}
+
+.agent-row:hover {
+  background: var(--hov);
+}
+
+.agent-row > .agent-mark {
+  justify-self: center;
+  margin-top: 1px;
+}
+
+.agent-body {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.agent-line {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+  height: 20px;
+}
+
+.agent-name {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+}
+
+.agent-harness {
+  font: 400 11.5px var(--font-machine);
+  color: var(--mut);
+  white-space: nowrap;
+}
+
+.agent-harness.cli {
+  padding: 0 5px;
+  border-radius: var(--r-s);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+.agent-held {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 18px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.agent-held-id {
+  font: 500 12px var(--font-machine);
+  color: var(--mut);
+}
+
+.agent-held-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.agent-held:hover .agent-held-title {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.agent-idle {
+  font: 400 12px var(--font-machine);
+  color: var(--mut);
+}
+
+.agent-seen {
+  line-height: 20px;
+}
+
+.agents-empty {
+  display: grid;
+  gap: 4px;
+  padding: 10px 10px 12px;
+}
+
+.agents-empty p {
+  margin: 0;
+}
+
+.agents-empty-head {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* ---- you, and Preferences ---- */
+.buddy {
+  display: block;
+  flex: none;
+  overflow: visible;
+  fill: var(--ink);
+  transition: fill var(--m-fast) var(--m-ease);
+}
+
+.buddy.active {
+  fill: var(--you);
+}
+
+.prefs-anchor {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
+.prefs-button {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  height: 40px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink);
+  font: 500 14px var(--font-human);
+  letter-spacing: -0.01em;
+  cursor: pointer;
+  transition:
+    background-color var(--m-fast) var(--m-ease),
+    box-shadow var(--m-fast) var(--m-ease);
+}
+
+.prefs-button > .buddy {
+  margin-inline: 1.5px;
+}
+
+.prefs-button:hover {
+  background: var(--hov);
+}
+
+.prefs-button[aria-expanded="true"] {
+  background: var(--sf);
+  box-shadow: 0 0 0 1.5px var(--ink);
+}
+
+.prefs-name {
+  margin-right: auto;
+}
+
+.prefs-menu {
+  top: auto;
+  bottom: 52px;
+  left: 0;
+  padding: 6px 6px 8px;
+  animation: prefs-open 280ms var(--m-ease) both;
+}
+
+.prefs-menu[data-phase="closing"] {
+  animation: prefs-close 180ms var(--e-move) both;
+}
+
+@keyframes prefs-open {
+  from {
+    clip-path: inset(calc(100% - 40px) calc(100% - 220px) 0 0 round 12px);
+  }
+  to {
+    clip-path: inset(0 0 0 0 round 12px);
+  }
+}
+
+@keyframes prefs-close {
+  to {
+    clip-path: inset(calc(100% - 40px) calc(100% - 220px) 0 0 round 12px);
+    opacity: 0;
+  }
+}
+
+.prefs-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 10px 8px;
+  border-bottom: 1px solid var(--line);
+}
+
+.prefs-title {
+  display: grid;
+}
+
+.prefs-title b {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.prefs-group {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr);
+  column-gap: 12px;
+  align-items: start;
+  padding: 12px 10px;
+  border-bottom: 1px solid var(--line);
+}
+
+.prefs-group:last-child {
+  border-bottom: 0;
+}
+
+.prefs-label {
+  padding-top: 7px;
+}
+
+.prefs-body {
+  display: grid;
+  justify-items: start;
+  gap: 8px;
+  min-width: 0;
+}
+
+.prefs-note {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--mut);
+  text-wrap: pretty;
+}
+
+.prefs-note b {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+/* Every option in sight: a radio group drawn as a segmented pill. */
+.segmented {
+  display: inline-flex;
+  gap: 2px;
+  min-inline-size: 0;
+  margin: 0;
+  padding: 3px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--well);
+}
+
+.segmented > button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--mut);
+  font: 500 12.5px var(--font-human);
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color var(--m-fast) var(--m-ease),
+    color var(--m-fast) var(--m-ease);
+}
+
+.segmented > button:hover {
+  color: var(--ink);
+}
+
+.segmented > button:focus-visible {
+  outline: 2px solid var(--you);
+  outline-offset: 1px;
+}
+
+.segmented > button[aria-pressed="true"] {
+  background: var(--sf);
+  color: var(--ink);
+  box-shadow:
+    0 0 0 1px var(--line),
+    0 2px 6px -3px var(--shadow);
+}
+
+.segmented .icon {
+  width: 13px;
+  height: 13px;
+}
+
+/* ---- a project's monogram: a neutral tile, never round, never blue ---- */
+.monogram {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: var(--mono);
+  height: var(--mono);
+  border-radius: calc(var(--mono) * 0.28);
+  background: var(--well);
+  box-shadow: inset 0 0 0 1px var(--line);
+  color: var(--ink);
+  font: 600 calc(var(--mono) * 0.5) / 1 var(--font-human);
+  letter-spacing: -0.03em;
+}
+
+.project-tile .monogram {
   box-shadow: none;
+}
+
+/* ---- sheets: the phone's menus, over a scrim ---- */
+.sheet-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+}
+
+.sheet-scrim {
+  position: absolute;
+  inset: 0;
+  background: color-mix(in oklch, var(--ink) 22%, transparent);
+  animation: ot-fade var(--m-base) var(--m-ease) both;
+}
+
+.sheet {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  max-height: 88dvh;
+  padding: 8px 10px calc(20px + env(safe-area-inset-bottom));
+  overflow-y: auto;
+  border-radius: 20px 20px 0 0;
+  background: var(--sf);
+  box-shadow: 0 -18px 40px -20px var(--shadow);
+  white-space: normal;
+  animation: sheet-up var(--m-slow) var(--m-ease) both;
+}
+
+.sheet-layer[data-side="left"] > .sheet {
+  top: 0;
+  right: auto;
+  width: min(316px, 86vw);
+  max-height: none;
+  padding: 8px 12px calc(20px + env(safe-area-inset-bottom)) 8px;
+  border-radius: 0 20px 20px 0;
+  box-shadow: 18px 0 40px -20px var(--shadow);
+  animation-name: sheet-in;
+}
+
+.sheet-layer[data-phase="closing"] {
+  pointer-events: none;
+}
+
+.sheet-layer[data-phase="closing"] > .sheet-scrim {
+  animation: ot-fade var(--m-base) var(--m-ease) reverse both;
+}
+
+.sheet-layer[data-phase="closing"] > .sheet {
+  animation: sheet-up 200ms var(--e-move) reverse both;
+}
+
+.sheet-layer[data-side="left"][data-phase="closing"] > .sheet {
+  animation-name: sheet-in;
+}
+
+@keyframes sheet-up {
+  from {
+    translate: 0 100%;
+  }
+}
+
+@keyframes sheet-in {
+  from {
+    translate: -100% 0;
+  }
+}
+
+.sheet-grab {
+  flex: none;
+  align-self: center;
+  width: 36px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--lane);
+}
+
+.sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 4px 6px 8px;
+}
+
+.sheet-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.sheet .agent-row {
+  min-height: 60px;
+}
+
+.sheet .prefs-group {
+  grid-template-columns: minmax(0, 1fr);
+  row-gap: 8px;
+  padding: 12px 8px;
+}
+
+.sheet .prefs-label {
+  padding-top: 0;
+}
+
+.sheet .prefs-body {
+  justify-items: stretch;
+}
+
+.sheet .segmented {
+  display: flex;
+}
+
+.sheet .segmented > button {
+  flex: 1;
+  height: 36px;
+}
+
+/* ---- the phone: create in reach of the thumb ---- */
+.new-fab {
+  position: fixed;
+  right: 16px;
+  bottom: calc(24px + env(safe-area-inset-bottom));
+  z-index: 30;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 48px;
+  padding: 0 20px 0 16px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--sf);
+  font: 600 15px var(--font-human);
+  box-shadow: 0 14px 30px -12px var(--shadow);
+  cursor: pointer;
+}
+
+.new-fab:focus-visible {
+  outline: 2px solid var(--you);
+  outline-offset: 2px;
+}
+
+@media (min-width: 48rem) {
+  .new-fab {
+    display: none;
+  }
+}
+
+/* Under reduced motion nothing grows or slides: menus and sheets fade (fast). */
+@media (prefers-reduced-motion: reduce) {
+  .menu,
+  .menu[data-side="end"],
+  .prefs-menu,
+  .sheet,
+  .sheet-layer[data-side="left"] > .sheet {
+    animation: ot-fade var(--m-fast) linear both;
+  }
+
+  .menu[data-phase="closing"],
+  .prefs-menu[data-phase="closing"],
+  .sheet-layer[data-phase="closing"] > .sheet {
+    animation: ot-fade 90ms linear reverse both;
+  }
+
+  .menu > [style*="--i"] {
+    animation: none;
+  }
+
+  .menu-chevron,
+  .buddy,
+  .project-pill,
+  .live-pill,
+  .prefs-button,
+  .segmented > button {
+    transition-duration: 1ms;
+  }
 }
 
 /* ---- layout ---- */
@@ -138,10 +929,6 @@
     display: grid;
     grid-template-rows: auto minmax(0, 1fr);
     height: 100dvh;
-  }
-
-  .topbar {
-    padding: 0 24px;
   }
 
   .layout {
@@ -171,10 +958,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .connection-dot {
-    transition-duration: 1ms;
-  }
-
   /* No scale and no spin: the counter and the orbit crossfade, the orbit drawn still at 1 o'clock. */
   .brand-fill {
     transform: none;
