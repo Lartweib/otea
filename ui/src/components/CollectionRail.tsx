@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { t } from '../i18n/i18n.ts';
 import { Button, Icon } from '../kit/index.ts';
-import { modulesHash, studioHash } from '../selection.ts';
+import { LAN_HASH, modulesHash, studioHash } from '../selection.ts';
 import type { RailEntry } from '../workspace.ts';
 import { PlaceIcon } from './PlaceIcon.tsx';
 
@@ -27,6 +27,9 @@ type CollectionRailProps = {
   modules?: boolean;
   // Studio is open.
   studio?: boolean;
+  // Phone access (#/lan) is open; none hides the entry, for any browser but this computer's
+  // signed-in one.
+  lan?: boolean | undefined;
   // Above the collections: the panel's own head on the phone.
   head?: ReactNode;
   // At the bottom: you and Preferences.
@@ -125,6 +128,7 @@ export function CollectionRail({
   onCreate,
   modules = false,
   studio = false,
+  lan,
   head,
   foot,
   variant = 'sidebar',
@@ -210,6 +214,20 @@ export function CollectionRail({
           </span>
           <span className="rail-name">{t('app.studio')}</span>
         </a>
+        {lan === undefined ? null : (
+          <a
+            className={folded ? 'rail-entry tip' : 'rail-entry'}
+            data-tip={folded ? t('lan.link') : undefined}
+            aria-label={folded ? t('lan.link') : undefined}
+            href={LAN_HASH}
+            aria-current={lan ? 'page' : undefined}
+          >
+            <span className="rail-icon">
+              <PlaceIcon icon="mobile" name={t('lan.link')} />
+            </span>
+            <span className="rail-name">{t('lan.link')}</span>
+          </a>
+        )}
       </div>
       <div className="rail-foot">
         {foot}

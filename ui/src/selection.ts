@@ -1,12 +1,14 @@
 // Routes live in the hash: `#<item-id>` selects an item, `#/modules[/<name>]` opens the catalog,
-// `#/triage` the swipe triage, `#/brief/<id>,<id>` a brief for those items and `#/studio[/...]`
-// the Studio (see StudioPage). Item ids never start with a slash, so they never collide.
+// `#/triage` the swipe triage, `#/brief/<id>,<id>` a brief for those items, `#/studio[/...]` the
+// Studio (see StudioPage) and `#/lan` the phone pairing. Item ids never start with a slash, so they
+// never collide.
 export type Route =
   | { view: 'items'; id?: string }
   | { view: 'modules'; name?: string }
   | { view: 'triage' }
   | { view: 'brief'; ids: string[] }
-  | { view: 'studio'; page: StudioPage };
+  | { view: 'studio'; page: StudioPage }
+  | { view: 'lan' };
 
 // Studio's pages: the start (the project's blueprint, or the blueprints to build it from), a
 // preset, the project's blueprint edited or drawn as its diagram.
@@ -20,6 +22,10 @@ const MODULES = '/modules';
 const TRIAGE = '/triage';
 const BRIEF = '/brief';
 const STUDIO = '/studio';
+const LAN = '/lan';
+
+// LAN access: the pairing code for a phone and the paired devices.
+export const LAN_HASH = `#${LAN}`;
 
 // Swipe triage: what waits for you, one card at a time.
 export const TRIAGE_HASH = `#${TRIAGE}`;
@@ -61,6 +67,7 @@ export function routeFromHash(hash: string): Route {
   if (path === STUDIO || path.startsWith(`${STUDIO}/`)) {
     return { view: 'studio', page: studioPage(path.slice(STUDIO.length + 1).split('/')) };
   }
+  if (path === LAN) return { view: 'lan' };
   if (path.startsWith('/')) return { view: 'items' };
   const id = idFromHash(hash);
   return id ? { view: 'items', id } : { view: 'items' };

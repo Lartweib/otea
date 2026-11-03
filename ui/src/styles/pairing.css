@@ -1,0 +1,367 @@
+/* ---- the phone's pairing screen (/pair) ---- */
+.pair {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  padding: 28px 24px 0;
+  padding-top: max(28px, env(safe-area-inset-top));
+  background: var(--bg);
+  color: var(--ink);
+}
+
+.pair-route {
+  position: relative;
+  height: 156px;
+  flex: none;
+}
+.pair-lane {
+  position: absolute;
+  left: 0;
+  top: 0;
+  overflow: visible;
+}
+.pair-lane path {
+  fill: none;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+}
+.pair-lane-dash {
+  stroke: var(--lane);
+  stroke-dasharray: 3 5;
+}
+.pair-lane-draw {
+  stroke: var(--you);
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  transition: stroke-dashoffset 900ms var(--e-move);
+}
+.pair-route.pairing .pair-lane-draw,
+.pair-route.paired .pair-lane-draw {
+  stroke-dashoffset: 0;
+}
+.pair-lane-dot {
+  fill: var(--you);
+  opacity: 0;
+}
+.pair-route.pairing .pair-lane-dot {
+  animation: pair-run 1000ms var(--e-move) infinite;
+}
+@keyframes pair-run {
+  0% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(92px);
+  }
+}
+.pair-end {
+  position: absolute;
+  left: 0;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.pair-end > span {
+  display: flex;
+  flex-direction: column;
+}
+.pair-end .shape {
+  transition:
+    fill 420ms var(--m-ease) 600ms,
+    stroke 420ms var(--m-ease) 600ms;
+}
+.pair-icon {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 1.2;
+  stroke-linecap: round;
+  transition: stroke 420ms var(--m-ease) 600ms;
+}
+.pair-route.paired .pair-phone .pair-icon {
+  stroke: var(--on-you);
+}
+.pair-halo {
+  fill: none;
+  stroke: var(--you);
+  stroke-width: 1.4;
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.pair-route.paired .pair-halo {
+  animation: ot-ripple 760ms var(--m-ease) 600ms both;
+}
+
+.pair-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 20px;
+}
+.pair-body .t-display {
+  font-size: 28px;
+}
+.pair-fields {
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr);
+  align-items: baseline;
+  gap: 14px;
+  margin-top: 18px;
+}
+.pair-fields dd {
+  font-size: 14.5px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.pair-fields dd.mono,
+.pair-fields .mono {
+  font-size: 13px;
+}
+.pair-input {
+  width: 100%;
+  height: 44px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: var(--r-l);
+  background: var(--sf);
+  box-shadow: inset 0 0 0 1px var(--line);
+  color: var(--ink);
+  font: 500 15px var(--font-human);
+}
+.pair-input.mono {
+  font: 500 15px var(--font-machine);
+  letter-spacing: 0.06em;
+}
+.pair-input:focus-visible {
+  outline: 2px solid var(--you);
+  outline-offset: 0;
+}
+.pair-error {
+  margin-top: 10px;
+  font-size: 13.5px;
+}
+.pair-bar {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: auto -8px 0;
+  padding: 16px 8px max(32px, env(safe-area-inset-bottom));
+  background: linear-gradient(to bottom, transparent, var(--bg) 24px);
+}
+.pair-bar .btn {
+  height: 48px;
+  justify-content: center;
+  font-size: 15px;
+}
+
+@media (min-width: 48rem) {
+  .pair {
+    max-width: 420px;
+    margin: 0 auto;
+  }
+}
+
+/* ---- LAN access on the desk (#/lan), beside the sidebar as the catalog is ---- */
+.lan-page {
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 32px clamp(0px, 3vw, 40px) 48px;
+}
+@media (min-width: 48rem) {
+  .lan-layout.with-rail {
+    grid-template-columns: var(--rail-w) minmax(0, 1fr);
+    padding-left: 8px;
+  }
+  .lan-layout.with-rail > .lan-page {
+    grid-column: 2;
+  }
+}
+.lan-section {
+  max-width: 920px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.lan-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+}
+.lan-head p {
+  margin-top: 4px;
+}
+.lan-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 260px;
+  gap: 48px;
+  padding: 24px;
+}
+.lan-left {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+.lan-status {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+.lan-status .t-small {
+  color: var(--ink);
+}
+.lan-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--off);
+  transform: translateY(-1px);
+}
+.lan-dot.on {
+  background: var(--you);
+}
+.lan-devices-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 12px;
+}
+.lan-devices {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.lan-device {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 56px;
+  border-top: 1px solid var(--line);
+}
+.lan-device:last-child {
+  border-bottom: 1px solid var(--line);
+}
+.lan-device-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.lan-device-text .t-cap {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lan-panel.off .lan-devices {
+  opacity: 0.5;
+}
+.lan-empty {
+  padding: 8px 0;
+}
+.lan-away {
+  margin-top: auto;
+  padding-top: 8px;
+}
+.lan-right {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.lan-qr {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 260px;
+  height: 260px;
+  padding: 16px;
+  border-radius: var(--r-l);
+  background: var(--well);
+  transition: background-color 520ms var(--m-ease);
+}
+.lan-qr.on {
+  background: oklch(0.975 0.004 265);
+}
+.lan-qr svg {
+  width: 100%;
+  height: 100%;
+}
+/* The code is always dark on light, whatever the theme: that is what a camera reads. */
+.lan-qr-paper {
+  fill: oklch(0.975 0.004 265);
+}
+.lan-qr-ink {
+  fill: oklch(0.22 0.02 265);
+}
+.lan-qr-off {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 24px;
+  text-align: center;
+}
+.lan-qr-off .t-cap {
+  color: var(--ink);
+}
+.lan-code {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.lan-code > .mono {
+  font-size: 13px;
+}
+.lan-network {
+  height: 32px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: var(--r-m);
+  background: var(--sf);
+  box-shadow: inset 0 0 0 1px var(--line);
+  color: var(--ink);
+  font-size: 13px;
+}
+.lan-panel.off .lan-code {
+  opacity: 0.35;
+}
+
+@media (max-width: 48rem) {
+  .lan-panel {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 28px;
+    padding: 18px;
+  }
+  .lan-qr {
+    width: min(260px, 100%);
+    height: auto;
+    aspect-ratio: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pair-lane-draw,
+  .pair-end .shape,
+  .pair-icon,
+  .lan-qr {
+    transition-duration: 1ms;
+    transition-delay: 0ms;
+  }
+  .pair-route.pairing .pair-lane-dot,
+  .pair-route.paired .pair-halo {
+    animation: none;
+  }
+}

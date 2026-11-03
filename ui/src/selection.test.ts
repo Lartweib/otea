@@ -41,6 +41,7 @@ describe('selection', () => {
     ['#/modules/%E0%A4%A', { view: 'modules' }],
     ['#/triage', { view: 'triage' }],
     ['#/triagex', { view: 'items' }],
+    ['#/lan', { view: 'lan' }],
   ])('routes %j to %j', (hash, route) => {
     expect(routeFromHash(hash)).toEqual(route);
   });

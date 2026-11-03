@@ -17,6 +17,7 @@ import { FirstRun } from './components/EmptyStates.tsx';
 import { ItemDetail } from './components/ItemDetail.tsx';
 import type { ChildrenOf, CollectionOf, Unfolding } from './components/ItemList.tsx';
 import { LanguageNote } from './components/LanguageNote.tsx';
+import { LanPanel } from './components/LanPanel.tsx';
 import { ListPane } from './components/ListPane.tsx';
 import { CatalogOverview, ModuleIndex, ModulePanel } from './components/ModuleCatalog.tsx';
 import { useMenu } from './components/menu.ts';
@@ -207,6 +208,7 @@ export function App() {
   const presets = useRemote(fetchPresets, studioWrites, connection);
   const collectionOf = collectionLookup(collections);
   const canWrite = session.status === 'ready' && session.value.canWrite;
+  const canManageDevices = session.status === 'ready' && session.value.canManageDevices === true;
   const [intake, setIntake] = useState<Intake>();
   // No collection yet: the first run, its preset chosen in the detail and drawn on the list's lanes.
   const [firstPreset, setFirstPreset] = useState<string>();
@@ -283,6 +285,7 @@ export function App() {
     onCreate: create,
     modules: route.view === 'modules',
     studio: route.view === 'studio',
+    lan: canManageDevices ? route.view === 'lan' : undefined,
   };
   const choose = (name: string | undefined) => {
     setCollection(name);
@@ -418,6 +421,12 @@ export function App() {
           rail={phone ? null : sidebarRail}
           sidebar={!folded}
           onChanged={() => setStudioWrites((count) => count + 1)}
+        />
+      ) : route.view === 'lan' ? (
+        <LanPanel
+          canManage={canManageDevices}
+          rail={phone ? null : sidebarRail}
+          sidebar={!folded}
         />
       ) : route.view === 'triage' && canWrite ? (
         <main className="layout triage-layout">
