@@ -58,6 +58,15 @@ describe('listEvents', () => {
     expect(summary({ since: 1, limit: 1 })).toEqual(['2 REVIEWS-1 created']);
   });
 
+  it('keeps only the newest events with latest, still in commit order', () => {
+    expect(summary({ latest: 2 })).toEqual(['2 REVIEWS-1 created', '3 TASKS-1 transitioned']);
+    expect(summary({ latest: 5, collection: 'tasks' })).toEqual([
+      '1 TASKS-1 created',
+      '3 TASKS-1 transitioned',
+    ]);
+    expect(summary({ latest: 1, since: 3 })).toEqual([]);
+  });
+
   it('fails with not_found for an unknown item or collection', () => {
     expect(() => listEvents(ctx, { item: 'TASKS-9' })).toThrow(
       expect.objectContaining({ code: 'not_found' }),

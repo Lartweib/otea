@@ -1,12 +1,14 @@
 import { Hono } from 'hono';
 import { briefFor } from '../app/brief.ts';
 import { listCollectionViews } from '../app/collections.ts';
+import { listEvents } from '../app/events.ts';
 import { createItem, type ListItemsFilter, listItems, moveItem, showItem } from '../app/items.ts';
 import { listAgents, presenceSignature } from '../app/presence.ts';
 import { listPresetViews } from '../app/preset-views.ts';
 import { type Project, projectView } from '../app/project.ts';
 import { linkItems, unlinkItems } from '../app/relations.ts';
 import { TURNS, type Turn } from '../core/workflow.ts';
+import type { EventFilter } from '../store/queries.ts';
 import { type ChangeFeed, createChangeFeed } from './changes.ts';
 import { errorBody, ForbiddenHost, InvalidQuery, toErrorResponse } from './errors.ts';
 import { serveEvidence } from './evidence.ts';
@@ -61,6 +63,34 @@ function itemsFilter(query: Record<string, string>, fields: string[] = []): List
   return filter;
 }
 
+// A cursor (`since`, from 0) or a count (`limit`, `latest`, from 1), as a whole number.
+function wholeNumber(name: string, text: string | undefined, min: number): number | undefined {
+  if (text === undefined) return undefined;
+  const value = Number(text);
+  if (!/^[0-9]+$/.test(text) || !Number.isSafeInteger(value) || value < min) {
+    throw new InvalidQuery(`${name} must be a whole number of at least ${min}`);
+  }
+  return value;
+}
+
+// The same filter `otea events` reads, plus `latest`: the newest events, where a live feed starts.
+function eventsFilter(query: Record<string, string>): EventFilter {
+  const { item, collection } = query;
+  const since = wholeNumber('since', query.since, 0);
+  const limit = wholeNumber('limit', query.limit, 1);
+  const latest = wholeNumber('latest', query.latest, 1);
+  if (limit !== undefined && latest !== undefined) {
+    throw new InvalidQuery('limit and latest cannot be combined');
+  }
+  return {
+    ...(item === undefined ? {} : { item }),
+    ...(collection === undefined ? {} : { collection }),
+    ...(since === undefined ? {} : { since }),
+    ...(limit === undefined ? {} : { limit }),
+    ...(latest === undefined ? {} : { latest }),
+  };
+}
+
 function api(project: Project, feed: ChangeFeed, streams: LiveStreams, auth: Session): Hono {
   return new Hono()
     .get('/session', (c) => c.json({ canWrite: auth.canWrite(c) }))
@@ -106,6 +136,7 @@ function api(project: Project, feed: ChangeFeed, streams: LiveStreams, auth: Ses
       return serveEvidence(c, project, c.req.param('id'));
     })
     .route('/studio', studioApi(project, feed, auth))
+    .get('/events', (c) => c.json(listEvents(project, eventsFilter(c.req.query()))))
     .get('/stream', (c) => streams.handle(c))
     .all('*', (c) => c.json(errorBody('not_found', `No route ${c.req.path}`), 404));
 }

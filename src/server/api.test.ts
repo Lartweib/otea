@@ -406,6 +406,45 @@ types:
     });
   });
 
+  describe('GET /api/events', () => {
+    const summary = async (path: string) =>
+      ((await (await get(path)).json()) as Array<{ id: number; itemId: string; type: string }>).map(
+        ({ id, itemId, type }) => `${id} ${itemId} ${type}`,
+      );
+
+    it('lists the event log across items in commit order, without a session', async () => {
+      expect(await summary('/api/events')).toEqual([
+        '1 TASKS-1 created',
+        '2 BUGS-1 created',
+        '3 BUGS-1 transitioned',
+        '4 BUGS-1 transitioned',
+      ]);
+    });
+
+    it('reads after a cursor, by item or collection, and the newest with latest', async () => {
+      expect(await summary('/api/events?since=3')).toEqual(['4 BUGS-1 transitioned']);
+      expect(await summary('/api/events?collection=tasks')).toEqual(['1 TASKS-1 created']);
+      expect(await summary('/api/events?item=BUGS-1&limit=1')).toEqual(['2 BUGS-1 created']);
+      expect(await summary('/api/events?latest=2')).toEqual([
+        '3 BUGS-1 transitioned',
+        '4 BUGS-1 transitioned',
+      ]);
+    });
+
+    it('rejects a cursor or a count that is not a whole number with 400', async () => {
+      for (const query of ['since=-1', 'limit=0', 'latest=ten', 'limit=2&latest=2']) {
+        const response = await get(`/api/events?${query}`);
+
+        expect(response.status).toBe(400);
+        expect(await response.json()).toMatchObject({ error: { code: 'invalid_query' } });
+      }
+    });
+
+    it('returns 404 for an unknown collection', async () => {
+      expect((await get('/api/events?collection=nope')).status).toBe(404);
+    });
+  });
+
   it('returns a JSON 404 for an unknown api route', async () => {
     const response = await get('/api/nope');
 
