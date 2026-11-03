@@ -39,6 +39,7 @@ export const HTTP_STATUS: Readonly<Record<ErrorCode, ContentfulStatusCode>> = {
   in_use: 409,
   invalid_blueprint: 500,
   link_not_in_blueprint: 409,
+  invalid_draft: 422,
 };
 
 export class InvalidQuery extends Error {}

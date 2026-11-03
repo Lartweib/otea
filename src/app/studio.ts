@@ -1,0 +1,357 @@
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
+import { parse, parseDocument } from 'yaml';
+import { type Board, connectionText, type SourceOrigin } from '../core/blueprint.ts';
+import { OteaError } from '../core/errors.ts';
+import { readPreset } from '../core/preset.ts';
+import { listCollections, selectItems } from '../store/queries.ts';
+import {
+  type BlueprintStatus,
+  blueprintStatus,
+  coordinationPlaybook,
+  loadBlueprints,
+  readProjectBlueprint,
+} from './blueprints.ts';
+import {
+  loadPresets,
+  OFFICIAL_PRESETS_DIR,
+  type PresetOrigin,
+  projectPresetsDir,
+} from './presets.ts';
+import type { Project } from './project.ts';
+
+// What Studio reads and writes: a preset's files as they are on disk, so an edit keeps the comments
+// and the layout of the YAML. Official presets are read here and never written; a project preset is
+// written only after the core reads the result as a valid preset.
+
+const FILE = 'preset.yaml';
+const NAME = /^[a-z0-9][a-z0-9-]*$/;
+
+export type PresetUse = { name: string; items: number };
+
+// A preset's playbooks are keyed by the path the preset gives them (./playbook.md).
+export type PresetSource = {
+  name: string;
+  origin: PresetOrigin;
+  editable: boolean;
+  version: number | null;
+  yaml: string;
+  playbooks: Record<string, string>;
+  collections: PresetUse[];
+  problems: string[];
+  warnings: string[];
+};
+
+export type PresetSummary = {
+  name: string;
+  origin: PresetOrigin;
+  version: number | null;
+  collections: string[];
+  problems: string[];
+};
+
+export type PresetDraft = { yaml: string; playbooks?: Record<string, string> };
+
+function subdirectories(dir: string): string[] {
+  if (!existsSync(dir)) return [];
+  return readdirSync(dir, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name)
+    .sort();
+}
+
+type Located = { name: string; origin: PresetOrigin; dir: string };
+
+// Official names win: a project preset that reuses one never loads, so it is not found either.
+function locate(project: Project, name: string): Located {
+  if (subdirectories(OFFICIAL_PRESETS_DIR).includes(name)) {
+    return { name, origin: 'official', dir: join(OFFICIAL_PRESETS_DIR, name) };
+  }
+  const own = projectPresetsDir(project.dataDir);
+  if (NAME.test(name) && existsSync(join(own, name, FILE))) {
+    return { name, origin: 'project', dir: join(own, name) };
+  }
+  throw new OteaError('not_found', `Preset "${name}" not found`);
+}
+
+function inside(dir: string, path: string): string | undefined {
+  const at = resolve(dir, path);
+  const rel = relative(dir, at);
+  return rel === '' || rel.startsWith('..') || isAbsolute(rel) ? undefined : at;
+}
+
+// The playbooks a preset's YAML points to, read loosely so an invalid preset still lists them.
+function playbookPaths(yaml: string): string[] {
+  let raw: unknown;
+  try {
+    raw = parse(yaml);
+  } catch {
+    return [];
+  }
+  if (typeof raw !== 'object' || raw === null) return [];
+  const doc = raw as { playbook?: unknown; types?: unknown };
+  const paths = [doc.playbook];
+  if (typeof doc.types === 'object' && doc.types !== null) {
+    for (const type of Object.values(doc.types as Record<string, unknown>)) {
+      if (typeof type === 'object' && type !== null) {
+        paths.push((type as { playbook?: unknown }).playbook);
+      }
+    }
+  }
+  return [...new Set(paths.filter((path): path is string => typeof path === 'string'))];
+}
+
+function readPlaybooks(dir: string, yaml: string): Record<string, string> {
+  const playbooks: Record<string, string> = {};
+  for (const path of playbookPaths(yaml)) {
+    const at = inside(dir, path);
+    if (at !== undefined && existsSync(at)) playbooks[path] = readFileSync(at, 'utf8');
+  }
+  return playbooks;
+}
+
+function uses(project: Project, name: string): PresetUse[] {
+  return listCollections(project.db)
+    .filter(({ preset }) => preset === name)
+    .map((collection) => ({
+      name: collection.name,
+      items: selectItems(project.db, { collection: collection.name }).length,
+    }));
+}
+
+function sourceOf(project: Project, { name, origin, dir }: Located): PresetSource {
+  const yaml = readFileSync(join(dir, FILE), 'utf8');
+  const loaded = project.presets.presets.get(name);
+  const problems = project.presets.problems
+    .filter((problem) => problem.preset === name && problem.origin === origin)
+    .map(({ message }) => message);
+  const warnings = project.presets.warnings
+    .filter((warning) => warning.preset === name)
+    .map(({ message }) => message);
+  return {
+    name,
+    origin,
+    editable: origin === 'project',
+    version: loaded?.origin === origin ? loaded.version : null,
+    yaml,
+    playbooks: readPlaybooks(dir, yaml),
+    collections: uses(project, name),
+    problems,
+    warnings,
+  };
+}
+
+// Every preset Studio can open: the loaded ones, then those whose problems keep them from loading.
+export function listStudioPresets(project: Project): PresetSummary[] {
+  const collections = listCollections(project.db);
+  const usedBy = (name: string) =>
+    collections.filter(({ preset }) => preset === name).map(({ name }) => name);
+  const loaded = [...project.presets.presets.values()].map(({ name, origin, version }) => ({
+    name,
+    origin,
+    version,
+    collections: usedBy(name),
+    problems: [],
+  }));
+  const broken = new Map<string, PresetSummary>();
+  for (const { preset, origin, message } of project.presets.problems) {
+    if (project.presets.presets.get(preset)?.origin === origin) continue;
+    const summary = broken.get(preset) ?? {
+      name: preset,
+      origin,
+      version: null,
+      collections: usedBy(preset),
+      problems: [],
+    };
+    summary.problems.push(message);
+    broken.set(preset, summary);
+  }
+  return [...loaded, ...broken.values()];
+}
+
+export function readPresetSource(project: Project, name: string): PresetSource {
+  return sourceOf(project, locate(project, name));
+}
+
+function invalidDraft(name: string, problems: readonly string[]): OteaError {
+  return new OteaError('invalid_draft', `Preset "${name}" is invalid: ${problems.join('; ')}`);
+}
+
+function storedVersion(yaml: string): number {
+  try {
+    const version = (parse(yaml) as { preset_version?: unknown } | null)?.preset_version;
+    return typeof version === 'number' && Number.isInteger(version) && version > 0 ? version : 0;
+  } catch {
+    return 0;
+  }
+}
+
+function withVersion(yaml: string, version: number): string {
+  const doc = parseDocument(yaml);
+  if (doc.errors.length > 0) return yaml;
+  doc.set('preset_version', version);
+  return doc.toString();
+}
+
+function writeProjectPreset(dir: string, yaml: string, playbooks: Record<string, string>): void {
+  mkdirSync(dir, { recursive: true });
+  for (const [path, text] of Object.entries(playbooks)) {
+    const at = inside(dir, path) as string;
+    mkdirSync(dirname(at), { recursive: true });
+    writeFileSync(at, text);
+  }
+  writeFileSync(join(dir, FILE), yaml);
+}
+
+// The problems of a draft: the core's, its name, and its playbooks, which must stay in its folder and
+// exist once the draft is written.
+function draftProblems(name: string, dir: string, yaml: string, playbooks: Record<string, string>) {
+  const reading = readPreset(yaml);
+  if (!reading.ok) return reading.problems;
+  const problems: string[] = [];
+  const { preset } = reading;
+  if (preset.name !== name) {
+    problems.push(`preset: "${preset.name}" does not match its directory "${name}"`);
+  }
+  const referenced = playbookPaths(yaml);
+  for (const path of Object.keys(playbooks)) {
+    if (!referenced.includes(path)) problems.push(`playbook ${path}: the preset does not use it`);
+  }
+  const check = (at: string, path: string | undefined) => {
+    if (path === undefined) return;
+    const file = inside(dir, path);
+    if (file === undefined) problems.push(`${at}: ${path} is outside the preset's folder`);
+    else if (!(path in playbooks) && !existsSync(file))
+      problems.push(`${at}: ${path} does not exist`);
+  };
+  check('playbook', preset.playbook);
+  for (const type of preset.types) check(`types.${type.name}.playbook`, type.playbook);
+  return problems;
+}
+
+function reload(project: Project): void {
+  project.presets = loadPresets(project.dataDir);
+}
+
+// Writes a project preset's draft once the core reads it as valid. Any change raises its
+// preset_version by one, so items written under the old one are reported by otea validate.
+export function savePreset(project: Project, name: string, draft: PresetDraft): PresetSource {
+  const located = locate(project, name);
+  if (located.origin === 'official') {
+    throw new OteaError(
+      'forbidden',
+      `Preset "${name}" is official and read-only; duplicate it into the project to edit it`,
+    );
+  }
+  const playbooks = draft.playbooks ?? {};
+  const current = readFileSync(join(located.dir, FILE), 'utf8');
+  const stored = storedVersion(current);
+  const same = withVersion(draft.yaml, stored);
+  const problems = draftProblems(name, located.dir, same, playbooks);
+  if (problems.length > 0) throw invalidDraft(name, problems);
+  const before = readPlaybooks(located.dir, current);
+  const changed =
+    same !== current || Object.entries(playbooks).some(([path, text]) => before[path] !== text);
+  if (!changed) return sourceOf(project, located);
+  writeProjectPreset(located.dir, withVersion(same, stored + 1), playbooks);
+  reload(project);
+  return sourceOf(project, located);
+}
+
+// A blueprint as Studio lists it: its connections as `otea link` reads them, its playbook's text.
+export type BlueprintSummary = {
+  name: string;
+  version: number;
+  origin: SourceOrigin;
+  boards: Board[];
+  connections: string[];
+  playbook: string | null;
+};
+
+export type BlueprintListing = {
+  blueprints: BlueprintSummary[];
+  problems: Array<{ blueprint: string; origin: SourceOrigin; message: string }>;
+};
+
+export function listStudioBlueprints(project: Project): BlueprintListing {
+  const catalog = loadBlueprints(project.presets, project.dataDir);
+  return {
+    blueprints: [...catalog.blueprints.values()].map(
+      ({ name, version, origin, boards, connections, playbookText }) => ({
+        name,
+        version,
+        origin,
+        boards,
+        connections: connections.map(connectionText),
+        playbook: playbookText,
+      }),
+    ),
+    problems: catalog.problems.map(({ blueprint, origin, message }) => ({
+      blueprint,
+      origin,
+      message,
+    })),
+  };
+}
+
+// The project's copy, what its source changed since, and the boards' items: null without one.
+export type ProjectBlueprintView = {
+  name: string;
+  version: number;
+  boards: Array<Board & { items: number }>;
+  connections: string[];
+  playbook: string | null;
+  status: BlueprintStatus | { error: string };
+};
+
+export type ProjectBlueprintState = { blueprint: ProjectBlueprintView | null; problems: string[] };
+
+export function projectBlueprintState(project: Project): ProjectBlueprintState {
+  const reading = readProjectBlueprint(project.dataDir);
+  if (reading === undefined) return { blueprint: null, problems: [] };
+  const copy = reading.blueprint;
+  if (copy === undefined) return { blueprint: null, problems: reading.problems };
+  let status: ProjectBlueprintView['status'];
+  try {
+    status = blueprintStatus(project);
+  } catch (error) {
+    if (!(error instanceof OteaError)) throw error;
+    status = { error: error.message };
+  }
+  const playbook = coordinationPlaybook({ ...project, blueprint: copy })?.playbook ?? null;
+  return {
+    blueprint: {
+      name: copy.name,
+      version: copy.version,
+      boards: copy.boards.map((board) => ({
+        ...board,
+        items: selectItems(project.db, { collection: board.name }).length,
+      })),
+      connections: copy.connections.map(connectionText),
+      playbook,
+      status,
+    },
+    problems: [],
+  };
+}
+
+// Copies a preset, official or the project's, into the project under a new name, at version 1, with
+// its playbooks. The copy is the project's to edit.
+export function duplicatePreset(project: Project, name: string, as: string): PresetSource {
+  const from = locate(project, name);
+  if (!NAME.test(as)) {
+    throw new OteaError('invalid_name', `"${as}" must be lowercase letters, digits and dashes`);
+  }
+  const own = projectPresetsDir(project.dataDir);
+  if (subdirectories(OFFICIAL_PRESETS_DIR).includes(as) || existsSync(join(own, as))) {
+    throw new OteaError('already_exists', `A preset named "${as}" already exists`);
+  }
+  const text = readFileSync(join(from.dir, FILE), 'utf8');
+  const doc = parseDocument(text);
+  if (doc.errors.length > 0) throw invalidDraft(name, [`invalid YAML: ${doc.errors[0]?.message}`]);
+  doc.set('preset', as);
+  doc.set('preset_version', 1);
+  writeProjectPreset(join(own, as), doc.toString(), readPlaybooks(from.dir, text));
+  reload(project);
+  return sourceOf(project, { name: as, origin: 'project', dir: join(own, as) });
+}
