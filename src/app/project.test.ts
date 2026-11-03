@@ -123,7 +123,12 @@ describe('project', () => {
   it('fails to open with not_found before init', () => {
     const repo = gitRepo();
 
-    expect(() => openProject(repo, ENV)).toThrow(expect.objectContaining({ code: 'not_found' }));
+    expect(() => openProject(repo, { OTEA_HOME: tempDir() })).toThrow(
+      expect.objectContaining({
+        code: 'not_found',
+        message: expect.not.stringContaining('--join'),
+      }),
+    );
   });
 
   describe('a project in a folder above the repos', () => {
