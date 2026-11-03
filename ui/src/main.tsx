@@ -27,6 +27,7 @@ import './styles/triage.css';
 import './styles/brief.css';
 import './styles/studio.css';
 import './styles/activity.css';
+import './styles/language.css';
 import { applyChoice, loadChoice } from './theme-dom.ts';
 
 applyChoice(loadChoice());

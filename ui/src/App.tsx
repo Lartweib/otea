@@ -16,6 +16,7 @@ import { EmptyDetail } from './components/EmptyDetail.tsx';
 import { FirstRun } from './components/EmptyStates.tsx';
 import { ItemDetail } from './components/ItemDetail.tsx';
 import type { ChildrenOf, CollectionOf, Unfolding } from './components/ItemList.tsx';
+import { LanguageNote } from './components/LanguageNote.tsx';
 import { ListPane } from './components/ListPane.tsx';
 import { CatalogOverview, ModuleIndex, ModulePanel } from './components/ModuleCatalog.tsx';
 import { useMenu } from './components/menu.ts';
@@ -566,6 +567,8 @@ export function App() {
         connection={connection}
         phone={phone}
       />
+      {/* On a phone Preferences sits in the panel, out of sight: the note stands on its own there. */}
+      {phone ? <LanguageNote /> : null}
     </div>
   );
 }

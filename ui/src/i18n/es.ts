@@ -139,7 +139,15 @@ export const es: Catalog = {
   'prefs.spanish': 'Español',
   'prefs.onlyInterface': 'Solo se traduce la interfaz.',
   'prefs.translated':
-    '{only} El contenido de los ítems, lo que escriben los agentes y los nombres de las plantillas quedan como se escribieron.',
+    '{only} El contenido de los ítems y de sus campos, y lo que escriben los agentes, quedan como se escribieron.',
+
+  // La nota de la primera vez, cuando el navegador eligió un idioma que no es el inglés
+  'languageNote.label': 'Idioma',
+  'languageNote.heading': 'Otea está en español, como pide tu navegador ({tag}).',
+  'languageNote.body':
+    'Solo se traduce la interfaz. El contenido de los ítems y de sus campos, y lo que escriben los agentes, quedan tal como se escribieron.',
+  'languageNote.where': 'Puedes cambiarlo cuando quieras en Preferencias, aquí abajo.',
+  'languageNote.ok': 'Entendido',
 
   // El panel de detalle sin nada elegido
   'empty.pick': 'Elige un ítem para ver su detalle',
