@@ -115,6 +115,19 @@ const MIGRATIONS = [
     name TEXT NOT NULL
   );
   `,
+  // The agents seen at work: the harness they last came through (an MCP client's clientInfo, or
+  // `cli`) and when. Agents that wrote before presence was kept start from their last event.
+  `
+  CREATE TABLE agents (
+    name TEXT PRIMARY KEY,
+    harness TEXT,
+    harness_version TEXT,
+    last_seen TEXT NOT NULL
+  );
+
+  INSERT INTO agents (name, last_seen)
+  SELECT actor_name, max(at) FROM events WHERE actor_kind = 'agent' GROUP BY actor_name;
+  `,
 ];
 
 function userVersion(db: DatabaseSync): number {

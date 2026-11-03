@@ -31,16 +31,17 @@ describe('migrate', () => {
         'evidence',
         'relations',
         'project',
+        'agents',
       ]),
     );
-    expect(userVersion(db)).toBe(8);
+    expect(userVersion(db)).toBe(9);
   });
 
   it('is idempotent', () => {
     migrate(db);
     migrate(db);
 
-    expect(userVersion(db)).toBe(8);
+    expect(userVersion(db)).toBe(9);
   });
 
   describe('from version 1', () => {
@@ -180,6 +181,32 @@ describe('migrate', () => {
     it('records no module for existing evidence: readers fall back to the first that accepts it', () => {
       expect(db.prepare('SELECT id, module FROM evidence').all()).toEqual([
         { id: 1, module: null },
+      ]);
+    });
+  });
+
+  describe('from version 8', () => {
+    beforeEach(() => {
+      migrate(db, 8);
+      db.exec(`
+        INSERT INTO collections (name, prefix, preset, preset_version, next_seq)
+        VALUES ('tasks', 'TASKS', 'tasks', 1, 2);
+        INSERT INTO items (id, collection, seq, title, fields, preset_version, state, created_at,
+          updated_at, created_by_kind, created_by_name)
+        VALUES ('TASKS-1', 'tasks', 1, 'A', '{}', 1, 'todo', 't1', 't1', 'human', 'ana');
+        INSERT INTO events (item_id, type, actor_kind, actor_name, at, data)
+        VALUES ('TASKS-1', 'created', 'human', 'ana', 't1', '{}'),
+          ('TASKS-1', 'claimed', 'agent', 'claude', 't2', '{}'),
+          ('TASKS-1', 'moved', 'agent', 'claude', 't3', '{}'),
+          ('TASKS-1', 'moved', 'agent', 'codex', 't2', '{}');
+      `);
+      migrate(db);
+    });
+
+    it('starts the presence of agents that already wrote from their last event, never the human', () => {
+      expect(db.prepare('SELECT * FROM agents ORDER BY name').all()).toEqual([
+        { name: 'claude', harness: null, harness_version: null, last_seen: 't3' },
+        { name: 'codex', harness: null, harness_version: null, last_seen: 't2' },
       ]);
     });
   });

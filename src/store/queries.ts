@@ -445,3 +445,60 @@ export function insertProjectIdentity(db: DatabaseSync, identity: ProjectIdentit
   const sql = 'INSERT INTO project (id, name) SELECT ?, ? WHERE NOT EXISTS (SELECT 1 FROM project)';
   db.prepare(sql).run(identity.id, identity.name);
 }
+
+// An agent's presence: the harness it last came through and when it was last seen.
+export type AgentRecord = {
+  name: string;
+  harness: string | null;
+  harnessVersion: string | null;
+  lastSeen: string;
+};
+
+type AgentRow = {
+  name: string;
+  harness: string | null;
+  harness_version: string | null;
+  last_seen: string;
+};
+
+function toAgent(row: AgentRow): AgentRecord {
+  return {
+    name: row.name,
+    harness: row.harness,
+    harnessVersion: row.harness_version,
+    lastSeen: row.last_seen,
+  };
+}
+
+export function findAgent(db: DatabaseSync, name: string): AgentRecord | undefined {
+  const row = db.prepare('SELECT * FROM agents WHERE name = ?').get(name);
+  return row && toAgent(row as AgentRow);
+}
+
+export function selectAgents(db: DatabaseSync): AgentRecord[] {
+  const rows = db.prepare('SELECT * FROM agents ORDER BY name').all() as AgentRow[];
+  return rows.map(toAgent);
+}
+
+export function upsertAgent(db: DatabaseSync, agent: AgentRecord): void {
+  const sql = `INSERT INTO agents (name, harness, harness_version, last_seen)
+    VALUES (:name, :harness, :harnessVersion, :lastSeen)
+    ON CONFLICT (name) DO UPDATE SET harness = excluded.harness,
+      harness_version = excluded.harness_version, last_seen = excluded.last_seen`;
+  db.prepare(sql).run(agent);
+}
+
+// The items with a lease stored, live or expired, in creation order.
+export function selectLeases(db: DatabaseSync): { id: string; lease: Lease }[] {
+  const sql = `SELECT id, lease_holder, lease_expires_at FROM items
+    WHERE lease_holder IS NOT NULL AND lease_expires_at IS NOT NULL ORDER BY created_at, rowid`;
+  const rows = db.prepare(sql).all() as {
+    id: string;
+    lease_holder: string;
+    lease_expires_at: string;
+  }[];
+  return rows.map((row) => ({
+    id: row.id,
+    lease: { holder: row.lease_holder, expiresAt: row.lease_expires_at },
+  }));
+}
