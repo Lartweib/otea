@@ -998,7 +998,7 @@ function lanText(lan: LanServed): string {
     `LAN access on: ${lan.urls.join(', ')} (same network only; use Tailscale when away)`,
     `Pair a phone: scan this code, or open ${lan.pairingUrl} (pairing code ${lan.code}, 10 minutes, works once)`,
     renderUnicodeCompact(lan.pairingUrl, { ecc: 'M', border: 2 }),
-    'A new code and the paired devices are in the UI, under Pair a phone; otea devices list and revoke them too',
+    'A new code and the paired devices are in the UI, under Phone access; otea devices list and revoke them too',
   ].join('\n');
 }
 
