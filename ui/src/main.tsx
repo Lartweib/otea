@@ -32,6 +32,7 @@ import './styles/language.css';
 import './styles/pairing.css';
 import './styles/projects.css';
 import './styles/rounds.css';
+import './styles/compare.css';
 import { applyChoice, loadChoice } from './theme-dom.ts';
 
 applyChoice(loadChoice());
