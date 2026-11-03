@@ -1,15 +1,22 @@
 import type { ReactNode } from 'react';
+import { fetchPresets } from '../api.ts';
 import { type Connection, useRemote } from '../hooks.ts';
 import { t } from '../i18n/i18n.ts';
 import type { Remote } from '../remote.ts';
 import { type StudioPage, studioHash } from '../selection.ts';
 import type { Item } from '../types.ts';
-import { fetchStudioPresets, type PresetSummary } from './api.ts';
+import {
+  fetchProjectBlueprint,
+  fetchStudioPresets,
+  type PresetSummary,
+  type ProjectBlueprint,
+} from './api.ts';
+import { BlueprintPage, Picker } from './BlueprintPage.tsx';
 import { PresetEditor } from './PresetEditor.tsx';
 import { ProblemMark } from './parts.tsx';
 
 // Studio: where a project's ways of working are read and changed. Its own index on the left (the
-// presets the project can use), the page on the right.
+// project's blueprint and the presets it can use), the page on the right.
 
 type StudioProps = {
   page: StudioPage;
@@ -64,11 +71,78 @@ function PresetIndex({
   );
 }
 
-function Start({ presets }: { presets: Remote<PresetSummary[]> }) {
+type CatalogProps = {
+  connection: Connection;
+  version: number;
+  canWrite: boolean;
+  hasBlueprint: boolean;
+  onApplied: () => void;
+};
+
+// Every blueprint the project could be built from; applying one needs a project without one.
+function BlueprintCatalog({
+  connection,
+  version,
+  canWrite,
+  hasBlueprint,
+  onApplied,
+}: CatalogProps) {
+  const presets = useRemote(fetchPresets, version, connection);
+  if (presets.status !== 'ready') {
+    return (
+      <p className="t-small st-msg">
+        {presets.status === 'loading' ? t('common.loading') : presets.message}
+      </p>
+    );
+  }
+  return (
+    <Picker
+      connection={connection}
+      version={version}
+      presets={presets.value}
+      hasBlueprint={hasBlueprint}
+      canWrite={canWrite}
+      onApplied={onApplied}
+    />
+  );
+}
+
+type StartProps = { presets: Remote<PresetSummary[]>; blueprint: ProjectBlueprint | null };
+
+function Start({ presets, blueprint }: StartProps) {
   return (
     <div className="st-start">
       <h1 className="t-display">{t('studio.title')}</h1>
       <p className="t-body st-lede">{t('studio.lede')}</p>
+      <section className="st-sec">
+        <div className="st-sh">
+          <h2 className="t-h">{t('studio.index.blueprint')}</h2>
+          <span className="t-cap">{t('studio.blueprintNote')}</span>
+        </div>
+        {blueprint ? (
+          <a className="st-card raised" href={studioHash({ kind: 'blueprint', diagram: true })}>
+            <span className="st-card-h">
+              <b className="mono">{blueprint.name}</b>
+              <span className="t-cap">{`v${blueprint.version} · ${t('studio.blueprint.boardsCount', { count: blueprint.boards.length })}`}</span>
+              {'upToDate' in blueprint.status && !blueprint.status.upToDate ? (
+                <span className="t-cap st-li-origin">{t('studio.index.changed')}</span>
+              ) : null}
+            </span>
+            <span className="st-fs">
+              {blueprint.connections.map((text) => (
+                <code key={text} className="t-cap">
+                  {text}
+                </code>
+              ))}
+            </span>
+          </a>
+        ) : (
+          <a className="st-card raised" href={studioHash({ kind: 'blueprints' })}>
+            <b>{t('studio.index.noBlueprint')}</b>
+            <span className="t-small">{t('studio.start.pick')}</span>
+          </a>
+        )}
+      </section>
       <section className="st-sec">
         <div className="st-sh">
           <h2 className="t-h">{t('studio.index.presets')}</h2>
@@ -121,8 +195,31 @@ export function Studio({
   sidebar,
 }: StudioProps) {
   const presets = useRemote(fetchStudioPresets, version, connection);
+  const blueprint = useRemote(fetchProjectBlueprint, version, connection);
+  const copy = blueprint.status === 'ready' ? blueprint.value.blueprint : null;
   let content: ReactNode;
-  if (page.kind === 'preset') {
+  if (page.kind === 'blueprint') {
+    content = (
+      <BlueprintPage
+        diagram={page.diagram}
+        connection={connection}
+        version={version}
+        canWrite={canWrite}
+        phone={phone}
+        onChanged={onChanged}
+      />
+    );
+  } else if (page.kind === 'blueprints') {
+    content = (
+      <BlueprintCatalog
+        connection={connection}
+        version={version}
+        canWrite={canWrite && !phone}
+        hasBlueprint={copy !== null}
+        onApplied={onChanged}
+      />
+    );
+  } else if (page.kind === 'preset') {
     content = (
       <PresetEditor
         key={page.name}
@@ -135,7 +232,7 @@ export function Studio({
       />
     );
   } else {
-    content = <Start presets={presets} />;
+    content = <Start presets={presets} blueprint={copy} />;
   }
   return (
     <main
@@ -152,6 +249,31 @@ export function Studio({
         >
           {t('studio.title')}
         </a>
+        <span className="t-label">{t('studio.index.blueprint')}</span>
+        <ul className="st-list">
+          <li>
+            <a
+              href={
+                copy
+                  ? studioHash({ kind: 'blueprint', diagram: false })
+                  : studioHash({ kind: 'blueprints' })
+              }
+              aria-current={
+                page.kind === 'blueprint' || page.kind === 'blueprints' ? 'page' : undefined
+              }
+            >
+              <span className="st-li-name">{copy ? copy.name : t('studio.index.noBlueprint')}</span>
+              <span className="t-cap">
+                {copy
+                  ? `v${copy.version} · ${t('studio.blueprint.boardsCount', { count: copy.boards.length })}`
+                  : t('studio.index.pickOne')}
+              </span>
+              {copy && 'upToDate' in copy.status && !copy.status.upToDate ? (
+                <span className="t-cap st-li-origin">{t('studio.index.changed')}</span>
+              ) : null}
+            </a>
+          </li>
+        </ul>
         <span className="t-label">{t('studio.index.presets')}</span>
         <PresetIndex presets={presets} selected={page.kind === 'preset' ? page.name : undefined} />
       </nav>
