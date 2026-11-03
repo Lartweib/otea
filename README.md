@@ -264,7 +264,7 @@ boards:
   work: { preset: tasks }
   bugs: { preset: bug-triage }
 connections:                     # <board>.<type> <kind> <board>.<type>
-  - bugs.item blocks work.item
+  - bugs.bug blocks work.task
 ```
 
 A connection lets an item of one type in one board link to an item of one type in another, with one kind: `blocks`, `implements`, `relates` (either way) or `duplicates`. `parent` is never a connection; it stays inside a board.
@@ -278,7 +278,7 @@ otea blueprint update                 # bring the source's changes in, after con
 
 - Official blueprints live in [`blueprints/`](blueprints/) next to `presets/`: [`product`](blueprints/product/playbook.md) builds `work` (tasks) and `bugs` (bug-triage), where a bug can block a task. A project adds its own in `blueprints/<name>/blueprint.yaml` in its data folder (`.otea/blueprints/` for a local project), under names the official ones do not use.
 - Applying a blueprint creates each board as a collection; an existing collection of the same name and preset becomes its board, and one with another preset stops the apply before anything is created. A project has one blueprint.
-- The project keeps its **own copy** in `blueprint.yaml` in its data folder (with the playbook beside it as `blueprint.md`), plus where it came from and the hash of the source. It is a copy, not a live reference: editing the source changes nothing until `otea blueprint update`. `otea blueprint status` and `otea validate` list what the source changed (`+ board qa (preset tasks)`, `- bugs.item blocks work.item`, `~ playbook`). Update adds boards and connections, and removes or rebuilds a board only while it has no items: a board with items is kept and reported.
+- The project keeps its **own copy** in `blueprint.yaml` in its data folder (with the playbook beside it as `blueprint.md`), plus where it came from and the hash of the source. It is a copy, not a live reference: editing the source changes nothing until `otea blueprint update`. `otea blueprint status` and `otea validate` list what the source changed (`+ board qa (preset tasks)`, `- bugs.bug blocks work.task`, `~ playbook`). Update adds boards and connections, and removes or rebuilds a board only while it has no items: a board with items is kept and reported.
 - Once a project has a blueprint, a link between two of its boards that the blueprint does not declare fails with exit 16 (`link_not_in_blueprint`), and the message lists what is allowed between those boards. Links inside one board, `parent` links, and boards outside the blueprint are not restricted. Without a blueprint nothing changes.
 - `otea playbook` (without `--collection`) ends with the blueprint's coordination playbook, and its `--json` carries it as `blueprint`. `otea validate` checks blueprints: unknown presets, unknown types, `parent` used as a connection, and connections listed twice.
 

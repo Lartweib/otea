@@ -12,7 +12,7 @@ boards:
   work: { preset: tasks }
   bugs: { preset: bug-triage }
 connections:
-  - bugs.item blocks work.item
+  - bugs.bug blocks work.task
 `;
 
 describe('official blueprints', () => {
@@ -30,8 +30,8 @@ describe('official blueprints', () => {
       connections: [
         {
           kind: 'blocks',
-          from: { board: 'bugs', type: 'item' },
-          to: { board: 'work', type: 'item' },
+          from: { board: 'bugs', type: 'bug' },
+          to: { board: 'work', type: 'task' },
         },
       ],
     });
@@ -76,10 +76,10 @@ describe('project blueprints', () => {
   });
 
   it('reports unknown presets and types against the project presets', () => {
-    write('studio', { 'blueprint.yaml': STUDIO.replace('bugs.item', 'bugs.bug') });
+    write('studio', { 'blueprint.yaml': STUDIO.replace('bugs.bug', 'bugs.story') });
 
     expect(load().problems.map(({ message }) => message)).toEqual([
-      'connections[0]: board bugs (preset bug-triage) has no type "bug" (types: item)',
+      'connections[0]: board bugs (preset bug-triage) has no type "story" (types: bug)',
     ]);
   });
 });
