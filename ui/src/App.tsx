@@ -266,6 +266,11 @@ export function App() {
     canWrite && names.length > 0
       ? (into: string | undefined) => {
           panel.close();
+          // A collection's own + lists it, unless All work already shows it: the new row is carried
+          // onto its lane in view.
+          if (into !== undefined && collection !== undefined && into !== collection) {
+            setCollection(into);
+          }
           openIntake(into);
         }
       : undefined;
@@ -519,6 +524,7 @@ export function App() {
                   <NewItemForm
                     key={intake?.parent?.id ?? 'new'}
                     connection={connection}
+                    ids={allItems.map(({ id }) => id)}
                     parent={intake?.parent}
                     collection={intake?.collection}
                     onCancel={closeIntake}

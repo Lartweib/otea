@@ -21,7 +21,8 @@ export type IconName =
   | 'warn'
   | 'lock'
   | 'external'
-  | 'activity';
+  | 'activity'
+  | 'attach';
 
 const PATHS: Record<IconName, string> = {
   plus: 'M8 3.5 V12.5 M3.5 8 H12.5',
@@ -49,6 +50,7 @@ const PATHS: Record<IconName, string> = {
   external: 'M6 3.75 H12.25 V10 M12.25 3.75 L4 12',
   activity: 'M1.75 8.5 H4.5 L6.25 4 L9.5 12.25 L11.25 8.5 H14.25',
   warn: 'M8 1.75 A6.25 6.25 0 1 0 8 14.25 A6.25 6.25 0 1 0 8 1.75 M8 4.9 V8.6 M8 11 V11.1',
+  attach: 'M8 10.25 V2.75 M5 5.5 L8 2.5 L11 5.5 M2.75 9.75 V13 H13.25 V9.75',
 };
 
 // Thin, small and quiet: 16px, stroke 1.25, current color.
