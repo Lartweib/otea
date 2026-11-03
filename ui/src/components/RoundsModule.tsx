@@ -1,9 +1,12 @@
-import type { ReactNode } from 'react';
+import { type ReactNode, useState } from 'react';
+import { moveItem } from '../api.ts';
+import { feedbackOf, frameLabel, toggleMark, verdictMoves } from '../compare.ts';
 import { momentLabel } from '../format.ts';
 import { t } from '../i18n/i18n.ts';
-import { AgentMark, NodeMark } from '../kit/index.ts';
+import { AgentMark, Button, NodeMark } from '../kit/index.ts';
 import { type Round, roundFiles, roundsOf } from '../rounds.ts';
 import type { Evidence, ItemView, LayoutEntry, TypeView } from '../types.ts';
+import { CompareRounds } from './CompareRounds.tsx';
 import { ImageSingle } from './evidence/ImageViews.tsx';
 import { VideoPlayer } from './evidence/VideoViews.tsx';
 
@@ -209,11 +212,87 @@ function Earlier({ rounds }: { rounds: Round[] }): ReactNode {
   );
 }
 
-type RoundsModuleProps = { item: ItemView; type: TypeView; entry: LayoutEntry };
+type RoundsModuleProps = { item: ItemView; type: TypeView; entry: LayoutEntry; canWrite: boolean };
 
 // The item's rounds, read from its history: the path between the lanes, the latest round with its
 // note, its files beside the round before's, and its verdict; earlier rounds fold below.
-export function RoundsModule({ item, type, entry }: RoundsModuleProps) {
+// The verdict, given where the round is read: a note, the frames marked on the clock, then approve
+// or send back. Sending back needs feedback: the note, the marks, or both.
+function Verdict({
+  item,
+  round,
+  marks,
+  onUnmark,
+}: {
+  item: ItemView;
+  round: Round;
+  marks: number[];
+  onUnmark: (frame: number) => void;
+}) {
+  const [note, setNote] = useState('');
+  const [error, setError] = useState<string>();
+  const [busy, setBusy] = useState(false);
+  const { approve, sendBack } = verdictMoves(item.transitions);
+  const feedback = feedbackOf(note, marks, t('compare.marked'));
+  const move = (to: string, reason: string) => {
+    setBusy(true);
+    setError(undefined);
+    moveItem(item.id, to, reason).then(
+      () => setBusy(false),
+      (failure: unknown) => {
+        setBusy(false);
+        setError(failure instanceof Error ? failure.message : String(failure));
+      },
+    );
+  };
+  if (!approve && !sendBack) return null;
+  return (
+    <div className="rd-verdict-form">
+      <label className="t-label" htmlFor={`verdict-${item.id}`}>
+        {t('compare.noteLabel', { n: round.n + 1 })}
+      </label>
+      {marks.length > 0 ? (
+        <span className="rd-marks">
+          {marks.map((mark) => (
+            <button key={mark} type="button" className="rd-markchip" onClick={() => onUnmark(mark)}>
+              {frameLabel(mark)}
+              <span aria-hidden="true"> ×</span>
+            </button>
+          ))}
+        </span>
+      ) : null}
+      <textarea
+        id={`verdict-${item.id}`}
+        className="rd-note-input"
+        rows={2}
+        value={note}
+        placeholder={t('compare.notePlaceholder')}
+        onChange={(event) => setNote(event.target.value)}
+      />
+      {error ? <p className="action-error t-small">{error}</p> : null}
+      <div className="rd-verdict-actions">
+        {approve ? (
+          <Button variant="primary" disabled={busy} onClick={() => move(approve.to, note.trim())}>
+            {t('compare.approve', { n: round.n })}
+          </Button>
+        ) : null}
+        {sendBack ? (
+          <Button
+            disabled={busy || (sendBack.reasonRequired && feedback === '')}
+            onClick={() => move(sendBack.to, feedback)}
+          >
+            {marks.length > 0
+              ? t('compare.sendBackMarks', { count: marks.length })
+              : t('compare.sendBack')}
+          </Button>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+export function RoundsModule({ item, type, entry, canWrite }: RoundsModuleProps) {
+  const [marks, setMarks] = useState<number[]>([]);
   const rounds = roundsOf(item.events, item.evidence, type.states);
   const modules = type.layout.evidence.flatMap(({ id }) => (id === undefined ? [] : [id]));
   const title = entry.label ?? t('rounds.title');
@@ -245,8 +324,26 @@ export function RoundsModule({ item, type, entry }: RoundsModuleProps) {
           </span>
         </header>
         <Note round={latest} />
-        <Compare current={latest} previous={previous} modules={modules} />
-        <VerdictLine round={latest} />
+        {previous ? (
+          <CompareRounds
+            rounds={rounds}
+            modules={modules}
+            marks={marks}
+            onMark={(frame) => setMarks((current) => toggleMark(current, frame))}
+          />
+        ) : (
+          <Compare current={latest} previous={previous} modules={modules} />
+        )}
+        {canWrite && !latest.verdict && item.turn === 'human' ? (
+          <Verdict
+            item={item}
+            round={latest}
+            marks={marks}
+            onUnmark={(frame) => setMarks((current) => toggleMark(current, frame))}
+          />
+        ) : (
+          <VerdictLine round={latest} />
+        )}
       </article>
       <Earlier rounds={rounds.slice(0, -1)} />
     </section>

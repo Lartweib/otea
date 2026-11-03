@@ -276,7 +276,9 @@ export function ItemDetail({
     if (part.kind === 'reserved') {
       const key = `reserved:${part.entry.module}:${index}`;
       if (part.entry.module === 'rounds' && type) {
-        return <RoundsModule key={key} item={item} type={type} entry={part.entry} />;
+        return (
+          <RoundsModule key={key} item={item} type={type} entry={part.entry} canWrite={canWrite} />
+        );
       }
       if (part.entry.module === 'options') {
         return <OptionsModule key={key} item={item} entry={part.entry} />;
