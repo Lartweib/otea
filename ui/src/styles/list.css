@@ -405,6 +405,38 @@
   border-left: 1px solid var(--line);
 }
 
+/* When line two runs out of room it gives way from its end, one part at a time, each with an
+   ellipsis, never cut at the pane's edge: the relates count and a repeat's reference first, then a
+   parent's bar, then its count, and only then the collection and state. Shrink factors far apart
+   keep that order: flex shrinks every part at once, in proportion, and the smaller ones stay whole
+   until the larger ones are gone. The via tag and the id keep their width. */
+:is(.row-progress-count, .row-state, .row-typeword, .row-collection, .row-relates, .row-also) {
+  flex: 0 1e-7 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.row-t2 :is(.row-relates, .row-also) {
+  flex-shrink: 100;
+}
+
+.row-progress {
+  flex: 0 0.001 auto;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.row-progress .row-progress-count {
+  flex-shrink: 0.001;
+}
+
+.row-progress .child-bar[data-size="sm"] {
+  flex: 0 1000 44px;
+  min-width: 0;
+  overflow: hidden;
+}
+
 /* What field modules put in line two (an enum off its default): signals at the end, quiet. */
 .row-values {
   display: flex;
@@ -416,10 +448,9 @@
 }
 
 /* ---- All work: rows from every collection ---- */
-/* How a row hangs from the one above it, as a small tag before its title. */
+/* How a row hangs from the one above it, as a small tag leading line two. */
 .row-via {
   flex: none;
-  margin-right: 8px;
   padding: 0 4px;
   border: 1px solid var(--line);
   border-radius: var(--r-s);

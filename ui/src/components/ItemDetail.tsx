@@ -364,7 +364,12 @@ export function ItemDetail({
         ) : null}
         {across.length > 0 ? (
           <Section name="across" label={t('detail.across')}>
-            <AcrossBoards groups={across} collectionOf={collectionOf} />
+            <AcrossBoards
+              id={item.id}
+              groups={across}
+              canWrite={canWrite}
+              collectionOf={collectionOf}
+            />
           </Section>
         ) : null}
         <Section name="brief" label={t('detail.brief')}>

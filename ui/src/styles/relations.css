@@ -27,7 +27,8 @@
 /* Each kind in a narrow column beside its items. */
 .rel-group {
   display: grid;
-  grid-template-columns: 84px minmax(0, 1fr);
+  /* Wide enough for the longest kind in either language ("implementado por") on one line. */
+  grid-template-columns: 124px minmax(0, 1fr);
   gap: 0 12px;
 }
 
@@ -36,12 +37,11 @@
   padding-top: 11px;
   font: 400 12px var(--font-machine);
   color: var(--mut);
-  overflow-wrap: anywhere;
+  overflow-wrap: normal;
 }
 
 @media (max-width: 30rem) {
-  .rel-group,
-  .across-group {
+  .rel-group {
     grid-template-columns: minmax(0, 1fr);
   }
 
@@ -127,9 +127,12 @@
 }
 
 .rel-state {
+  min-width: 0;
+  overflow: hidden;
   font: 400 12px var(--font-machine);
   color: var(--mut);
   white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 /* Closed items recede, as closed rows of the list do; a discarded one is struck through. */
@@ -144,10 +147,6 @@
 }
 
 /* ---- Across boards: links to other collections, each item on two lines ---- */
-.across-group {
-  grid-template-columns: 120px minmax(0, 1fr);
-}
-
 .across-link {
   display: grid;
   grid-template-columns: 20px minmax(0, 1fr);
