@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 import {
   actorLabel,
   ageLabel,
@@ -18,6 +18,15 @@ const event = (type: string, data: Record<string, unknown>): ItemEvent => ({
   actor: { kind: 'agent', name: 'claude' },
   at: 't',
   data,
+});
+
+// The first Intl date format in a worker loads ICU's time zone data, which took over 5s on a
+// loaded Windows runner. Loading it here keeps that cost out of the tests' own time limit.
+beforeAll(() => {
+  for (const zone of [undefined, 'UTC', 'America/Argentina/Buenos_Aires']) {
+    formatTime('2026-01-01T00:00:00.000Z', zone);
+  }
+  momentLabel('2025-01-01T00:00:00.000Z', Date.parse('2026-01-01T00:00:00.000Z'), 'UTC');
 });
 
 describe('format', () => {
