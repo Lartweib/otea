@@ -5,8 +5,8 @@ import { sidebarEntries } from './workspace.ts';
 
 const type = (name: string, icon?: string) =>
   ({ name, ...(icon === undefined ? {} : { icon }) }) as TypeView;
-const collection = (name: string, types: TypeView[], icon?: string | null) =>
-  ({ name, types, ...(icon === undefined ? {} : { icon }) }) as CollectionView;
+const collection = (name: string, types: TypeView[], icon: string | null) =>
+  ({ name, types, icon }) as CollectionView;
 
 describe('monogramOf', () => {
   it('takes the initials of a name of two words', () => {
@@ -30,11 +30,7 @@ describe('collectionIcon', () => {
     expect(collectionIcon(collection('notes', [type('note', 'note')], null))).toBeUndefined();
   });
 
-  it('falls back to the first icon of its types on a server that does not send one', () => {
-    expect(collectionIcon(collection('work', [type('item'), type('task', 'checkbox')]))).toBe(
-      'checkbox',
-    );
-    expect(collectionIcon(collection('work', [type('item')]))).toBeUndefined();
+  it('draws nothing for a collection it does not know', () => {
     expect(collectionIcon(undefined)).toBeUndefined();
   });
 });

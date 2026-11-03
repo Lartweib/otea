@@ -274,9 +274,11 @@ function AgentRow({
       <span className="agent-body">
         <span className="agent-line">
           <span className="agent-name">{agent.name}</span>
-          <span className={agent.harness ? 'agent-harness' : 'agent-harness cli'}>
-            {agent.harness ?? t('shell.cli')}
-          </span>
+          {agent.harness === null ? null : agent.harness.toLowerCase() === 'cli' ? (
+            <span className="agent-harness cli">{t('shell.cli')}</span>
+          ) : (
+            <span className="agent-harness">{agent.harness}</span>
+          )}
         </span>
         {agent.holding.length > 0 ? (
           agent.holding.map((id) => <Held key={id} id={id} lookup={lookup} onOpen={onOpen} />)

@@ -12,17 +12,9 @@ export function monogramOf(name: string): string {
   return first.charAt(0).toUpperCase() + first.charAt(1).toLowerCase();
 }
 
-// The icon a collection shows. The server resolves it (`icon`); until every server does, a payload
-// without the field falls back to the first icon its preset's types give.
+// The icon a collection shows: the one the server resolved, none (its monogram) for null.
 export function collectionIcon(collection: CollectionView | undefined): string | undefined {
-  if (!collection) return undefined;
-  if (collection.icon !== undefined) return collection.icon ?? undefined;
-  return legacyTypeIcon(collection);
-}
-
-// The fallback for servers that do not send `icon` yet: drop it once they all do.
-function legacyTypeIcon(collection: CollectionView): string | undefined {
-  return collection.types.find((type) => type.icon !== undefined)?.icon;
+  return collection?.icon ?? undefined;
 }
 
 // When two collections share an icon, the second (and any later one) carries one small letter: the

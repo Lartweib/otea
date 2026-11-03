@@ -60,6 +60,7 @@ const bugs: CollectionView = {
   name: 'bugs',
   prefix: 'BUGS',
   preset: 'bug-triage',
+  icon: null,
   types: [
     {
       name: 'item',

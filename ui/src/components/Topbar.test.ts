@@ -26,7 +26,7 @@ const render = (
   return renderToStaticMarkup(
     createElement(Topbar, {
       attention,
-      project: { id: 'p', name: 'supervisor', ...(o.icon === undefined ? {} : { icon: o.icon }) },
+      project: { id: 'p', name: 'supervisor', icon: o.icon ?? null },
       folded: false,
       phone: o.phone ?? false,
       connection,
