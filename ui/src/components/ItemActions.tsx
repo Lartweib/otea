@@ -12,6 +12,7 @@ import {
 import { moveItem } from '../api.ts';
 import { t } from '../i18n/i18n.ts';
 import { Button, type ButtonVariant } from '../kit/index.ts';
+import { keyTitle, useStateWord } from '../preset-words.ts';
 import type { Move, Turn } from '../types.ts';
 
 // onMoved: after a move lands, with its target (on a phone the unfolded item then folds and carries
@@ -45,6 +46,7 @@ export function ItemActions({
   compact = false,
 }: ItemActionsProps) {
   const [state, dispatch] = useReducer(reduceAction, IDLE);
+  const word = useStateWord();
   const [pointed, setPointed] = useState<string | null>(null);
   const busy = isBusy(state);
   const explaining =
@@ -99,9 +101,10 @@ export function ItemActions({
         onPointerLeave={() => setPointed(null)}
         onBlur={() => setPointed(null)}
         {...point}
+        title={keyTitle(word(move.to), move.to)}
       >
         <span className="move-label">
-          {move.to}
+          {word(move.to)}
           {move.reasonRequired ? '…' : ''}
         </span>
         {variant === 'quiet' ? (
@@ -155,7 +158,7 @@ export function ItemActions({
         <p className="move-says t-cap">
           {said ? (
             <span key={said.to}>
-              <b>{said.to}</b> → {moveSays(said, { turn, agent })}
+              <b>{word(said.to)}</b> → {moveSays(said, { turn, agent })}
             </span>
           ) : (
             receipt
@@ -173,7 +176,7 @@ export function ItemActions({
           }}
         >
           <label className="t-label" htmlFor="reason">
-            {t('common.reasonFor', { state: state.to })}
+            {t('common.reasonFor', { state: word(state.to) })}
           </label>
           <textarea
             id="reason"

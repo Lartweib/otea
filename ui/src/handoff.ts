@@ -5,7 +5,8 @@ import type { ItemEvent, RelatedItem } from './types.ts';
 
 // The handoff line under the detail's title: who handed the item over, when and what they said,
 // read from its last move (or its creation, while nothing moved it). Only what the events hold:
-// a move says its target state, never a verb Otea would have to guess from a state's name.
+// a move says its target state, never a verb Otea would have to guess from a state's name. `word`
+// names the state as the screen shows it (a preset's label in the language on screen).
 export type Handoff = {
   who: string;
   // The agent whose mark goes with it; none for you.
@@ -16,11 +17,14 @@ export type Handoff = {
   note: string | null;
 };
 
-export function handoffOf(events: readonly ItemEvent[]): Handoff | null {
+export function handoffOf(
+  events: readonly ItemEvent[],
+  word: (state: string) => string = (state) => state,
+): Handoff | null {
   const last = events.findLast(({ type }) => type === 'transitioned' || type === 'created');
   if (!last) return null;
   const relay = relayOf(last);
-  const to = String(last.data.to);
+  const to = word(String(last.data.to));
   if (relay) {
     return {
       who: relay.via,

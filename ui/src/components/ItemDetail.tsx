@@ -20,6 +20,7 @@ import { AgentMark, Button, Icon, Node, nodeLabel, Pill, TypeTag } from '../kit/
 import { moduleFor } from '../modules/registry.ts';
 import { MOTION, reducedMotion } from '../motion.ts';
 import { itemNodeKind } from '../node-kind.ts';
+import { ItemTypeScope, keyTitle, stateWord } from '../preset-words.ts';
 import { acrossGroups } from '../relations.ts';
 import { hashFor } from '../selection.ts';
 import type { CollectionView, Item, ItemView, Turn, TypeView } from '../types.ts';
@@ -352,7 +353,7 @@ export function ItemDetail({
     landed && landed.id === item.id && landed.to === item.state ? (
       <span className="move-receipt">
         {tx('detail.receipt', {
-          state: <b>{landed.to}</b>,
+          state: <b>{stateWord(type, landed.to)}</b>,
           turn:
             item.turn === 'human'
               ? t('turn.yours')
@@ -383,127 +384,139 @@ export function ItemDetail({
   ) : (
     <p className="t-small">{tx('detail.readOnly', { command: <code>otea open</code> })}</p>
   );
+  const stateShown = stateWord(type, item.state);
   return (
-    <article
-      ref={root}
-      className="detail"
-      data-layout={layout}
-      data-form={form}
-      aria-label={unfolded ? item.title : undefined}
-    >
-      {unfolded ? null : (
-        <header className="detail-head">
-          <div className="detail-head-row">
-            <div className="detail-tags">
-              <Node kind={kind} label={nodeLabel(kind)} />
-              <span className="t-id">{item.id}</span>
-              <Pill tone="state" yours={item.turn === 'human'}>
-                {item.state}
-              </Pill>
-              <span className="t-cap">{standing}</span>
-            </div>
-            {onClose ? (
-              <Button
-                variant="quiet"
-                size="sm"
-                icon
-                className="detail-close"
-                aria-label={t('detail.close')}
-                title={t('common.close')}
-                onClick={onClose}
-              >
-                <Icon name="close" />
-              </Button>
-            ) : null}
-          </div>
-          <div className="detail-head-body">
-            {parent ? (
-              <a className="detail-crumb" href={hashFor(parent.id)}>
-                <span className="visually-hidden">{t('detail.parent')}</span>
-                <TypeIcon
-                  name={typeOf(collectionOf(parent.collection), parent.type)?.icon}
-                  size={14}
-                />
-                <span className="t-id">{parent.id}</span>
-                <span className="detail-crumb-title">{parent.title}</span>
-              </a>
-            ) : null}
-            <h1 className="t-display">{item.title}</h1>
-            <IdStrip type={type} values={item.fields} />
-            <HandoffLine item={item} type={type} canWrite={canWrite} collectionOf={collectionOf} />
-            {actions}
-          </div>
-        </header>
-      )}
-      {unfolded ? null : <i className="detail-line" aria-hidden="true" />}
-      <div className="detail-main">
-        {/* Unfolded in its row, the header is the row: the strip leads the detail instead. */}
-        {unfolded ? <IdStrip type={type} values={item.fields} /> : null}
-        {item.missing.length > 0 ? (
-          <div className="missing well">
-            <span className="t-label">{t('detail.missing')}</span>
-            <span className="t-ui">{item.missing.join(', ')}</span>
-          </div>
-        ) : null}
-        {across.length > 0 ? (
-          <Section name="across" label={t('detail.across')}>
-            <AcrossBoards
-              id={item.id}
-              groups={across}
-              canWrite={canWrite}
-              collectionOf={collectionOf}
-            />
-          </Section>
-        ) : null}
-        <Section name="brief" label={t('detail.brief')}>
-          {briefParts.length > 0 ? briefParts : <p className="t-small">{t('common.noFields')}</p>}
-        </Section>
-        {structureParts.length > 0 ? (
-          <Section name="structure" label={t('detail.structure')}>
-            {structureParts}
-          </Section>
-        ) : null}
-      </div>
-      <Section name="details" label={t('detail.details')} travel="details">
-        <dl className="fields fields-meta">
-          {detailRows.slice(0, cut.shown).map(({ label, value }) => (
-            <Field key={label} label={label}>
-              {value}
-            </Field>
-          ))}
-        </dl>
-        {form === 'aside' && detailRows.length > DETAILS_ROWS ? (
-          <button
-            type="button"
-            className="details-more t-cap"
-            aria-expanded={cut.more === 0}
-            onClick={() => setAllDetails(cut.more > 0 ? item.id : null)}
-          >
-            {cut.more > 0 ? t('common.more', { count: cut.more }) : t('detail.fewer')}
-          </button>
-        ) : null}
-        <GateBlock rows={gates} />
-        {asideModules.map(block)}
-      </Section>
-      <Section
-        name="history"
-        label={t('detail.history')}
-        travel="history"
-        count={t('detail.events', { count: item.events.length })}
+    <ItemTypeScope type={type}>
+      <article
+        ref={root}
+        className="detail"
+        data-layout={layout}
+        data-form={form}
+        aria-label={unfolded ? item.title : undefined}
       >
-        <Timeline events={item.events} />
-      </Section>
-      {unfolded ? <div className="unfold-actions">{actions}</div> : null}
-      {itemOf && canWrite && layout === 'pane' ? (
-        <BulkTray
-          selected={[...ticked].flatMap((id) => itemOf(id) ?? [])}
-          canWrite={canWrite}
-          host={trayHost ?? null}
-          onKeep={(ids) => setTicked(new Set(ids))}
-          onClear={() => setTicked(new Set())}
-          away={false}
-        />
-      ) : null}
-    </article>
+        {unfolded ? null : (
+          <header className="detail-head">
+            <div className="detail-head-row">
+              <div className="detail-tags">
+                <Node kind={kind} label={nodeLabel(kind)} />
+                <span className="t-id">{item.id}</span>
+                <Pill
+                  tone="state"
+                  yours={item.turn === 'human'}
+                  title={keyTitle(stateShown, item.state)}
+                >
+                  {stateShown}
+                </Pill>
+                <span className="t-cap">{standing}</span>
+              </div>
+              {onClose ? (
+                <Button
+                  variant="quiet"
+                  size="sm"
+                  icon
+                  className="detail-close"
+                  aria-label={t('detail.close')}
+                  title={t('common.close')}
+                  onClick={onClose}
+                >
+                  <Icon name="close" />
+                </Button>
+              ) : null}
+            </div>
+            <div className="detail-head-body">
+              {parent ? (
+                <a className="detail-crumb" href={hashFor(parent.id)}>
+                  <span className="visually-hidden">{t('detail.parent')}</span>
+                  <TypeIcon
+                    name={typeOf(collectionOf(parent.collection), parent.type)?.icon}
+                    size={14}
+                  />
+                  <span className="t-id">{parent.id}</span>
+                  <span className="detail-crumb-title">{parent.title}</span>
+                </a>
+              ) : null}
+              <h1 className="t-display">{item.title}</h1>
+              <IdStrip type={type} values={item.fields} />
+              <HandoffLine
+                item={item}
+                type={type}
+                canWrite={canWrite}
+                collectionOf={collectionOf}
+              />
+              {actions}
+            </div>
+          </header>
+        )}
+        {unfolded ? null : <i className="detail-line" aria-hidden="true" />}
+        <div className="detail-main">
+          {/* Unfolded in its row, the header is the row: the strip leads the detail instead. */}
+          {unfolded ? <IdStrip type={type} values={item.fields} /> : null}
+          {item.missing.length > 0 ? (
+            <div className="missing well">
+              <span className="t-label">{t('detail.missing')}</span>
+              <span className="t-ui">{item.missing.join(', ')}</span>
+            </div>
+          ) : null}
+          {across.length > 0 ? (
+            <Section name="across" label={t('detail.across')}>
+              <AcrossBoards
+                id={item.id}
+                groups={across}
+                canWrite={canWrite}
+                collectionOf={collectionOf}
+              />
+            </Section>
+          ) : null}
+          <Section name="brief" label={t('detail.brief')}>
+            {briefParts.length > 0 ? briefParts : <p className="t-small">{t('common.noFields')}</p>}
+          </Section>
+          {structureParts.length > 0 ? (
+            <Section name="structure" label={t('detail.structure')}>
+              {structureParts}
+            </Section>
+          ) : null}
+        </div>
+        <Section name="details" label={t('detail.details')} travel="details">
+          <dl className="fields fields-meta">
+            {detailRows.slice(0, cut.shown).map(({ label, value }) => (
+              <Field key={label} label={label}>
+                {value}
+              </Field>
+            ))}
+          </dl>
+          {form === 'aside' && detailRows.length > DETAILS_ROWS ? (
+            <button
+              type="button"
+              className="details-more t-cap"
+              aria-expanded={cut.more === 0}
+              onClick={() => setAllDetails(cut.more > 0 ? item.id : null)}
+            >
+              {cut.more > 0 ? t('common.more', { count: cut.more }) : t('detail.fewer')}
+            </button>
+          ) : null}
+          <GateBlock rows={gates} />
+          {asideModules.map(block)}
+        </Section>
+        <Section
+          name="history"
+          label={t('detail.history')}
+          travel="history"
+          count={t('detail.events', { count: item.events.length })}
+        >
+          <Timeline events={item.events} />
+        </Section>
+        {unfolded ? <div className="unfold-actions">{actions}</div> : null}
+        {itemOf && canWrite && layout === 'pane' ? (
+          <BulkTray
+            selected={[...ticked].flatMap((id) => itemOf(id) ?? [])}
+            canWrite={canWrite}
+            host={trayHost ?? null}
+            onKeep={(ids) => setTicked(new Set(ids))}
+            onClear={() => setTicked(new Set())}
+            away={false}
+          />
+        ) : null}
+      </article>
+    </ItemTypeScope>
   );
 }

@@ -5,7 +5,8 @@ import { en } from './en.ts';
 import { es } from './es.ts';
 
 // The interface's own words, in English and Spanish. Only the chrome: what a preset names (states,
-// fields, types, descriptions) is shown as written, through presetText. The CLI and the API stay in
+// fields, types, descriptions) is shown as written, or in the preset's own labels for the language
+// on screen (preset-words.ts). Item content is never translated. The CLI and the API stay in
 // English, so a server's error message is shown as it comes.
 
 export type Language = 'en' | 'es';
@@ -70,8 +71,8 @@ export function tx<K extends MessageKey>(key: K, ...[params]: Args<K, ReactNode>
   );
 }
 
-// Words a preset wrote (a state, a field's label, a type). They are shown as written; a preset may
-// one day give them in other languages (`labels: { es: ... }`), and this is where that would apply.
+// Words a preset wrote that its labels do not cover (a layout entry's label), shown as written, or
+// in the language on screen when given in it. Types, states and fields go through preset-words.ts.
 export function presetText(text: string, labels?: Readonly<Partial<Record<Language, string>>>) {
   return labels?.[current] ?? text;
 }
