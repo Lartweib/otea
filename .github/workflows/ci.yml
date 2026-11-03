@@ -42,6 +42,11 @@ jobs:
         with:
           node-version: 24
           cache: npm
-          cache-dependency-path: desktop/package-lock.json
+          cache-dependency-path: |
+            package-lock.json
+            desktop/package-lock.json
+      # The shell imports ui/src/attention.ts, whose types reach the core (zod, yaml).
+      - run: npm ci
+        working-directory: .
       - run: npm ci
       - run: npm run typecheck
