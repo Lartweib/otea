@@ -140,6 +140,40 @@ describe('change preset', () => {
     expect(() => propose({ repo: 'api' })).toThrow('missing required field "branch"');
   });
 
+  it('declares the hierarchy: repo tasks hang only under a change, never alone', () => {
+    const preset = requirePreset(ctx.presets, 'change');
+    const id = change();
+    const api = repoTask(id, 'api');
+    const loose = (parent?: string) =>
+      createItem(
+        ctx,
+        {
+          collection: 'changes',
+          type: 'repo_task',
+          title: 'Loose',
+          fields: { repo: 'web', branch: 'b' },
+          actor: claude,
+          ...(parent ? { parent } : {}),
+        },
+        at,
+      );
+
+    expect(preset.version).toBe(2);
+    expect(preset.types.map(({ name, children, root }) => [name, children, root])).toEqual([
+      ['change', ['repo_task'], true],
+      ['repo_task', [], false],
+    ]);
+    expect(() => loose()).toThrow(expect.objectContaining({ code: 'parent_required' }));
+    expect(() => loose(api)).toThrow(expect.objectContaining({ code: 'parent_type' }));
+    expect(() =>
+      createItem(
+        ctx,
+        { collection: 'changes', type: 'change', parent: id, title: 'Nested', actor: human },
+        at,
+      ),
+    ).toThrow(expect.objectContaining({ code: 'parent_type' }));
+  });
+
   it('finds the repo task of a change for one repo by its field', () => {
     const id = change();
     repoTask(id, 'api');
