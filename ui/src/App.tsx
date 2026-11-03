@@ -9,6 +9,7 @@ import {
 } from './api.ts';
 import { applyAttention } from './attention-dom.ts';
 import { catalogEntries } from './catalog.ts';
+import { ActivityDrawer } from './components/ActivityDrawer.tsx';
 import { BriefView } from './components/BriefView.tsx';
 import { CollectionRail } from './components/CollectionRail.tsx';
 import { EmptyDetail } from './components/EmptyDetail.tsx';
@@ -208,6 +209,7 @@ export function App() {
   const [intake, setIntake] = useState<Intake>();
   // No collection yet: the first run, its preset chosen in the detail and drawn on the list's lanes.
   const [firstPreset, setFirstPreset] = useState<string>();
+  const [activity, setActivity] = useState(false);
   // The split is a way of looking, not a place: it stays out of the hash, so links and history keep
   // pointing at items.
   const split = useSplit();
@@ -384,6 +386,7 @@ export function App() {
         items={allItems}
         collectionOf={collectionOf}
         panel={panelButton}
+        onActivity={() => setActivity((open) => !open)}
       />
       {phone && create && route.view === 'items' && !selectedId && !creating ? (
         <button type="button" className="new-fab" onClick={() => openIntake(collection)}>
@@ -554,6 +557,15 @@ export function App() {
           )}
         </main>
       )}
+      <ActivityDrawer
+        open={activity}
+        onClose={() => setActivity(false)}
+        items={allItems}
+        collections={collections.status === 'ready' ? collections.value : []}
+        version={version}
+        connection={connection}
+        phone={phone}
+      />
     </div>
   );
 }

@@ -3,7 +3,7 @@ import { type Attention, attentionFrame } from '../attention.ts';
 import { ageLabel } from '../format.ts';
 import type { Connection } from '../hooks.ts';
 import { t, tx } from '../i18n/i18n.ts';
-import { AgentMark, NodeMark } from '../kit/index.ts';
+import { AgentMark, Icon, NodeMark } from '../kit/index.ts';
 import { itemNodeKind, type NodeKind } from '../node-kind.ts';
 import { type Agent, liveAgents, type PillState } from '../presence.ts';
 import { hashFor, ITEMS_HASH } from '../selection.ts';
@@ -296,11 +296,14 @@ function AgentList({
   project,
   lookup,
   onOpen,
+  onActivity,
 }: {
   agents: Agent[];
   project: string;
   lookup: Lookup;
   onOpen: () => void;
+  // Opens the activity drawer: each lease draining and the feed of what agents did.
+  onActivity?: (() => void) | undefined;
 }) {
   const live = liveAgents(agents);
   const holding = live.filter((agent) => agent.holding.length > 0).length;
@@ -339,7 +342,24 @@ function AgentList({
           </p>
         </div>
       )}
-      <div className="menu-foot" style={{ '--i': live.length + 1 } as CSSProperties}>
+      {onActivity ? (
+        <button
+          type="button"
+          className="menu-row activity-row"
+          style={{ '--i': live.length + 1 } as CSSProperties}
+          onClick={() => {
+            onOpen();
+            onActivity();
+          }}
+        >
+          <Icon name="activity" />
+          <span className="menu-text">
+            <span className="menu-name">{t('activity.open')}</span>
+            <span className="menu-line">{t('activity.openLine')}</span>
+          </span>
+        </button>
+      ) : null}
+      <div className="menu-foot" style={{ '--i': live.length + 2 } as CSSProperties}>
         <span className="t-cap">{t('shell.connectedRule')}</span>
       </div>
     </>
@@ -353,6 +373,7 @@ function LivePill({
   project,
   lookup,
   phone,
+  onActivity,
 }: {
   state: PillState;
   connection: Connection;
@@ -360,6 +381,7 @@ function LivePill({
   project: string;
   lookup: Lookup;
   phone: boolean;
+  onActivity?: (() => void) | undefined;
 }) {
   const menu = useMenu();
   const [pill, width] = useWidth<HTMLButtonElement>();
@@ -368,7 +390,15 @@ function LivePill({
   const text = pillText(state, connection, phone);
   // While the stream is down the pill only says so: it cannot count, so it opens nothing.
   const opens = state.kind === 'agents';
-  const list = <AgentList agents={agents} project={project} lookup={lookup} onOpen={menu.close} />;
+  const list = (
+    <AgentList
+      agents={agents}
+      project={project}
+      lookup={lookup}
+      onOpen={menu.close}
+      onActivity={onActivity}
+    />
+  );
   return (
     <span className="pill-anchor" ref={menu.ref}>
       <button
@@ -413,6 +443,8 @@ type TopbarProps = {
   collectionOf: (name: string) => CollectionView | undefined;
   // The phone's panel button.
   panel?: ReactNode;
+  // Opens the activity drawer, from the agents dropdown.
+  onActivity?: () => void;
 };
 
 // Three zones: where you are (the project, over its collections), the mark (centre) and the agents
@@ -428,6 +460,7 @@ export function Topbar({
   items,
   collectionOf,
   panel,
+  onActivity,
 }: TopbarProps) {
   return (
     <header className="topbar" data-folded={folded || undefined}>
@@ -448,6 +481,7 @@ export function Topbar({
           project={project?.name ?? ''}
           lookup={{ items, collectionOf }}
           phone={phone}
+          onActivity={onActivity}
         />
       </div>
     </header>
