@@ -365,3 +365,27 @@
     animation: none;
   }
 }
+
+/* After pairing in the browser: how to add Otea to the home screen. */
+.pair-hint {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 22px 0 12px;
+  padding: 14px 16px;
+  border-radius: var(--r-l);
+}
+.pair-hint-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding-left: 18px;
+}
+.pair-hint-steps .t-small {
+  color: var(--ink);
+}
+.lan-fallback .mono {
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}

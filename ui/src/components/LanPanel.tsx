@@ -3,7 +3,7 @@ import { fetchLan, newPairingCode, revokeDevice } from '../api.ts';
 import { agoLabel, momentLabel } from '../format.ts';
 import { t, tx } from '../i18n/i18n.ts';
 import { Button } from '../kit/index.ts';
-import { hostOf, qrPath, timeLeft } from '../pairing.ts';
+import { hostnameOf, hostOf, ipFallback, isLocalName, qrPath, timeLeft } from '../pairing.ts';
 import type { Remote } from '../remote.ts';
 import type { Device, LanView } from '../types.ts';
 
@@ -152,6 +152,11 @@ export function LanPanel({ canManage, rail, sidebar = true }: LanPanelProps) {
   const lan = view.value;
   const shown = lan.code?.url ? new URL(lan.code.url).host : hostOf(lan.urls[0] ?? '');
   const codeLive = lan.code && Date.parse(lan.code.expiresAt) > now ? lan.code : null;
+  // The QR code points at this computer's .local name: the same link by IP, for a phone that cannot
+  // resolve it.
+  const shownName = hostnameOf(shown);
+  const fallback =
+    codeLive && isLocalName(shownName) ? ipFallback(lan.urls, codeLive.url) : undefined;
   return (
     <Page rail={rail} sidebar={sidebar}>
       <section className="lan-section" aria-labelledby="lan-title">
@@ -230,6 +235,14 @@ export function LanPanel({ canManage, rail, sidebar = true }: LanPanelProps) {
                   ? t('lan.code', { code: codeLive.code, left: timeLeft(codeLive.expiresAt, now) })
                   : t('lan.noCode')}
               </span>
+              {fallback ? (
+                <span className="t-small lan-fallback">
+                  {tx('lan.fallback', {
+                    name: <span className="mono">{shownName}</span>,
+                    url: <span className="mono">{fallback}</span>,
+                  })}
+                </span>
+              ) : null}
               <span className="t-small">{t('lan.codeNote')}</span>
               {lan.enabled ? (
                 <div>

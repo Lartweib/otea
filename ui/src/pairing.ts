@@ -54,3 +54,20 @@ export function qrPath(cells: readonly (readonly boolean[])[]): string {
 export function hostOf(url: string): string {
   return url.replace(/^https?:\/\//, '');
 }
+
+// The host without its port: "lartweib.local" from "lartweib.local:4485".
+export function hostnameOf(host: string): string {
+  return host.replace(/:\d+$/, '');
+}
+
+export function isLocalName(hostname: string): boolean {
+  return hostname.endsWith('.local');
+}
+
+// The pairing link by IP, for a phone that cannot resolve the .local name the QR code carries.
+export function ipFallback(urls: readonly string[], pairingUrl: string): string | undefined {
+  const byIp = urls.find((url) => /^http:\/\/\d+\.\d+\.\d+\.\d+:\d+$/.test(url));
+  if (!byIp) return undefined;
+  const { pathname, hash } = new URL(pairingUrl);
+  return `${byIp}${pathname}${hash}`;
+}

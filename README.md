@@ -328,6 +328,10 @@ otea devices revoke <id>    # its token stops working at once
 
 The terminal and **Phone access** in the sidebar's project section (`#/lan`, this computer's signed-in browser only) show a QR code for `http://<lan-ip>:<port>/pair#code=XXXX-XXXX`. The code lasts 10 minutes, works once, and is thrown away after 5 wrong tries; **New code** shows another. The phone trades it for its own device token (an HTTP-only cookie; only its SHA-256 is stored), and each device can be revoked from the same page. A request from the network must come from a private address (including Tailscale's 100.64.0.0/10), name one of this computer's IP addresses as its host (never a DNS name), and carry a device token; without one it reaches only the pairing screen. Pairing attempts are limited to 10 a minute per address. Traffic on the LAN is plain HTTP, so use it on a network you trust, and reach Otea through Tailscale when away instead of opening a port.
 
+When this computer's `<hostname>.local` resolves (mDNS) to one of those addresses, the QR code and the terminal use it first, so a home-screen shortcut survives a new DHCP address; the same link by IP is printed and shown beside it for phones that cannot resolve `.local`. The server answers that one name besides its IPs; any other host name is refused.
+
+After pairing, the phone suggests adding Otea to its home screen (a web app manifest and icons, served before pairing too; no service worker, which browsers refuse on plain HTTP). On iOS the home-screen app keeps its own storage, apart from Safari: it opens on the pairing screen and pairs once more, by typing a new code. On Android over plain HTTP, Chrome adds a shortcut rather than installing the app.
+
 Working on the UI itself: keep `otea serve` running and start `npm run dev:ui` in the Otea checkout for hot reload (it proxies `/api` to port 4400).
 
 ## License

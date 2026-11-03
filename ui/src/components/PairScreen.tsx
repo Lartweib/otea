@@ -1,5 +1,13 @@
 import { type FormEvent, useEffect, useState } from 'react';
 import { PairingRefused, pairDevice, peekPairing } from '../api.ts';
+import {
+  browserStore,
+  dismissHint,
+  hintDismissed,
+  isStandalone,
+  type Platform,
+  platformOf,
+} from '../home-screen.ts';
 import { type PlainKey, t, useLanguage } from '../i18n/i18n.ts';
 import { Button } from '../kit/index.ts';
 import { codeFromHash, deviceNameFrom, timeLeft } from '../pairing.ts';
@@ -79,6 +87,44 @@ function PairRoute({ phase, desk }: { phase: Phase['step']; desk: string }) {
   );
 }
 
+const STEPS: Readonly<Record<Platform, PlainKey[]>> = {
+  ios: ['home.ios', 'home.iosAfter'],
+  android: ['home.android', 'home.androidAfter'],
+  other: ['home.other'],
+};
+
+// Once paired in the browser: how to put Otea on the home screen, until dismissed. Inside the
+// home-screen app it never shows.
+function HomeScreenHint({ platform }: { platform: Platform }) {
+  const [shown, setShown] = useState(() => !hintDismissed(browserStore()));
+  if (!shown) return null;
+  return (
+    <aside className="pair-hint raised" aria-labelledby="pair-hint-title">
+      <h2 id="pair-hint-title" className="t-ui">
+        {t('home.title')}
+      </h2>
+      <ol className="pair-hint-steps">
+        {STEPS[platform].map((key) => (
+          <li key={key} className="t-small">
+            {t(key)}
+          </li>
+        ))}
+      </ol>
+      <div>
+        <Button
+          size="sm"
+          onClick={() => {
+            dismissHint(browserStore());
+            setShown(false);
+          }}
+        >
+          {t('home.dismiss')}
+        </Button>
+      </div>
+    </aside>
+  );
+}
+
 // What a phone on the LAN sees before it is paired (/pair): it trades the code from the QR code for
 // a device token of its own, which the server keeps in an HTTP-only cookie.
 export function PairScreen() {
@@ -87,8 +133,14 @@ export function PairScreen() {
   // The code the QR code opened the page with; without one the phone types it.
   const [scannedCode] = useState(() => codeFromHash(window.location.hash));
   const scanned = scannedCode !== '';
+  // Opened from the home screen: no QR code reaches it, and on iOS it has none of Safari's cookies.
+  const [standalone] = useState(() => isStandalone(window.matchMedia, navigator));
+  const [platform] = useState(() => platformOf(navigator.userAgent, navigator.maxTouchPoints));
   const [code, setCode] = useState(scannedCode);
-  const [name, setName] = useState(() => deviceNameFrom(navigator.userAgent));
+  const [name, setName] = useState(() => {
+    const named = deviceNameFrom(navigator.userAgent);
+    return standalone ? t('pair.appName', { system: named.split(' · ')[0] ?? named }) : named;
+  });
   const [peek, setPeek] = useState<PairingPeek | undefined>();
   const [error, setError] = useState<string | undefined>();
   const [phase, setPhase] = useState<Phase>({ step: 'ask' });
@@ -133,6 +185,7 @@ export function PairScreen() {
             <dt className="t-label">{t('pair.reach')}</dt>
             <dd>{t('pair.reachText')}</dd>
           </dl>
+          {standalone ? null : <HomeScreenHint platform={platform} />}
           <div className="pair-bar">
             <Button variant="primary" onClick={() => window.location.assign('/')}>
               {t('pair.open')}
@@ -142,9 +195,15 @@ export function PairScreen() {
       ) : (
         <form className="pair-body" aria-labelledby="pair-title" onSubmit={submit}>
           <h1 id="pair-title" className="t-display">
-            {project ? t('pair.title', { project }) : t('pair.titlePlain')}
+            {project
+              ? t('pair.title', { project })
+              : standalone
+                ? t('pair.titleApp')
+                : t('pair.titlePlain')}
           </h1>
-          <p className="t-small">{scanned ? t('pair.intro') : t('pair.introTyped')}</p>
+          <p className="t-small">
+            {scanned ? t('pair.intro') : standalone ? t('pair.introApp') : t('pair.introTyped')}
+          </p>
           <dl className="pair-fields">
             <dt className="t-label">
               <label htmlFor="pair-name">{t('pair.name')}</label>

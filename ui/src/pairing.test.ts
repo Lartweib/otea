@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { codeFromHash, deviceNameFrom, hostOf, qrPath, timeLeft } from './pairing.ts';
+import {
+  codeFromHash,
+  deviceNameFrom,
+  hostnameOf,
+  hostOf,
+  ipFallback,
+  isLocalName,
+  qrPath,
+  timeLeft,
+} from './pairing.ts';
 
 describe('pairing', () => {
   it('reads the code from the fragment the QR code opens', () => {
@@ -41,5 +50,23 @@ describe('pairing', () => {
 
   it('shows the host without the scheme', () => {
     expect(hostOf('http://192.168.1.24:4485')).toBe('192.168.1.24:4485');
+  });
+});
+
+describe('the .local name and its IP fallback', () => {
+  const urls = ['http://lartweib.local:4485', 'http://192.168.1.156:4485'];
+
+  it('tells a .local name from an address', () => {
+    expect(isLocalName(hostnameOf('lartweib.local:4485'))).toBe(true);
+    expect(isLocalName(hostnameOf('192.168.1.156:4485'))).toBe(false);
+  });
+
+  it('points the same pairing link at the first IP', () => {
+    expect(ipFallback(urls, 'http://lartweib.local:4485/pair#code=7Q4M-2K9X')).toBe(
+      'http://192.168.1.156:4485/pair#code=7Q4M-2K9X',
+    );
+    expect(ipFallback(['http://lartweib.local:4485'], 'http://lartweib.local:4485/pair')).toBe(
+      undefined,
+    );
   });
 });

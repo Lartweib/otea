@@ -989,6 +989,7 @@ export const es: Catalog = {
     'El código sirve una sola vez. El teléfono lo cambia por su propio token de dispositivo, que puedes revocar aquí.',
   'lan.newCode': 'Código nuevo',
   'lan.network': 'Red a la que apunta el código',
+  'lan.fallback': 'Si el teléfono no puede abrir {name}, usa {url}',
   'lan.signIn':
     'Inicia sesión en este navegador con {command} en este equipo para emparejar un teléfono.',
   'pair.title': 'Emparejar con {project}',
@@ -1018,6 +1019,18 @@ export const es: Catalog = {
   'pair.reach': 'alcance',
   'pair.reachText': 'Solo en la misma red. Fuera de casa, usa Tailscale.',
   'pair.open': 'Abrir Otea',
+  'pair.titleApp': 'Emparejar esta app',
+  'pair.appName': '{system} · pantalla de inicio',
+  'pair.introApp':
+    'Escribe el código que aparece en tu equipo, en Acceso desde el teléfono. Esta app de la pantalla de inicio guarda su propio token, aparte del navegador; si ya usaste el código allí, muestra uno nuevo.',
+  'home.title': 'Agrega Otea a tu pantalla de inicio',
+  'home.ios': 'Toca Compartir y luego Agregar a pantalla de inicio.',
+  'home.iosAfter':
+    'Abre Otea desde la pantalla de inicio y emparéjala otra vez con un código nuevo: la app guarda sus datos aparte de Safari.',
+  'home.android': 'Abre el menú del navegador (⋮) y luego Agregar a la pantalla principal.',
+  'home.androidAfter': 'Si la app pide un código, emparéjala otra vez con uno nuevo.',
+  'home.other': 'Usa el menú del navegador para agregar esta página a tu pantalla de inicio.',
+  'home.dismiss': 'Entendido',
   'pair.error.invalid_code':
     'Este código no es válido. Revísalo en el escritorio o muestra uno nuevo allí.',
   'pair.error.code_expired': 'Este código caducó. Muestra uno nuevo en el escritorio.',
