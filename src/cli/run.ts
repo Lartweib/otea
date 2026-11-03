@@ -85,7 +85,8 @@ function validate(command: Command, values: Values, args: string[]): void {
       throw new UsageError(`--${name} must be one of ${spec.choices.join(', ')}`);
     }
   }
-  if (args.length !== command.args.length) {
+  const rest = command.args.at(-1)?.endsWith('...') ?? false;
+  if (rest ? args.length < command.args.length : args.length !== command.args.length) {
     throw new UsageError(`"otea ${command.name}" expects ${command.args.length} argument(s)`);
   }
 }

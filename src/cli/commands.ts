@@ -11,6 +11,7 @@ import {
   coordinationPlaybook,
   updateBlueprint,
 } from '../app/blueprints.ts';
+import { briefFor } from '../app/brief.ts';
 import {
   addCollection,
   collectionIcon,
@@ -713,6 +714,29 @@ function eventFilter({ option }: Input): EventFilter {
   return filter;
 }
 
+const brief: Command = {
+  name: 'brief',
+  summary:
+    'Print a Markdown brief for the items given, in the order their blocks allow, with its limits (--constraint, repeatable) and success criteria (--success, repeatable), which replace the default lines',
+  args: ['ids...'],
+  options: {
+    constraint: { multiple: true, placeholder: 'text' },
+    success: { multiple: true, placeholder: 'text' },
+  },
+  execute: ({ cwd, args, options }) => {
+    const limits = options('constraint');
+    const success = options('success');
+    const written = withProject(cwd, (project) =>
+      briefFor(project, {
+        ids: args,
+        ...(limits.length > 0 ? { limits } : {}),
+        ...(success.length > 0 ? { success } : {}),
+      }),
+    );
+    return { data: written, text: written.markdown.trimEnd() };
+  },
+};
+
 const events: Command = {
   name: 'events',
   summary:
@@ -1163,6 +1187,7 @@ export const COMMANDS: readonly Command[] = [
   list,
   show,
   playbook,
+  brief,
   events,
   wait,
   claim,

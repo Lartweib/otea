@@ -91,3 +91,30 @@ export async function linkRequest(c: Context): Promise<LinkRequest> {
   }
   return parsed.data;
 }
+
+const BriefBody = z.object({
+  ids: z.array(z.string().min(1)).min(1),
+  limits: z.array(z.string()).optional(),
+  success: z.array(z.string()).optional(),
+});
+
+// The items a brief covers, in the order the person put them, and its limits and success lines.
+export type BriefBodyRequest = { ids: string[]; limits?: string[]; success?: string[] };
+
+export async function briefRequest(c: Context): Promise<BriefBodyRequest> {
+  const raw: unknown = await c.req.json().catch(() => undefined);
+  const parsed = BriefBody.safeParse(raw);
+  if (!parsed.success) {
+    throw new RejectedRequest(
+      400,
+      'invalid_body',
+      'Expected {"ids": string[], "limits"?: string[], "success"?: string[]}',
+    );
+  }
+  const { ids, limits, success } = parsed.data;
+  return {
+    ids,
+    ...(limits === undefined ? {} : { limits }),
+    ...(success === undefined ? {} : { success }),
+  };
+}
