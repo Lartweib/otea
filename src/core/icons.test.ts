@@ -3,7 +3,7 @@ import { closeIconNames, ICON_NAMES, iconProblem, isIconName } from './icons.ts'
 
 describe('icon names', () => {
   it('holds every icon of the catalog once', () => {
-    expect(ICON_NAMES).toHaveLength(96);
+    expect(ICON_NAMES).toHaveLength(112);
     expect(new Set(ICON_NAMES).size).toBe(ICON_NAMES.length);
     expect(ICON_NAMES.every((name) => /^[a-z]+(-[a-z]+)*$/.test(name))).toBe(true);
   });

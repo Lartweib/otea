@@ -15,6 +15,9 @@ export const ICON_NAMES = [
   'calendar',
   'clock',
   'hourglass',
+  'checklist',
+  'briefcase',
+  'chart',
   // code
   'bug',
   'git-branch',
@@ -33,6 +36,10 @@ export const ICON_NAMES = [
   'lock',
   'key',
   'cloud',
+  'browser',
+  'mobile',
+  'test-tube',
+  'gauge',
   // design and media
   'image',
   'film',
@@ -47,6 +54,10 @@ export const ICON_NAMES = [
   'eye',
   'frame',
   'sparkle',
+  'pen-nib',
+  'layout',
+  'type',
+  'cube',
   // docs and talk
   'book',
   'doc',
@@ -59,6 +70,8 @@ export const ICON_NAMES = [
   'quote',
   'link',
   'mail',
+  'diagram',
+  'compare',
   // game and creatures
   'paw',
   'feather',
@@ -103,6 +116,9 @@ export const ICON_NAMES = [
   'user',
   'users',
   'robot',
+  'cart',
+  'coins',
+  'building',
 ] as const;
 
 export type IconName = (typeof ICON_NAMES)[number];

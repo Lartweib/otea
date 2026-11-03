@@ -616,7 +616,7 @@ describe('item types', () => {
     [
       'an icon close to none',
       (raw) => (raw.types.bug.icon = 'zzzzzz'),
-      'types.bug.icon: unknown icon "zzzzzz" (none of the 96 icons is close; see the icon list in the preset format)',
+      'types.bug.icon: unknown icon "zzzzzz" (none of the 112 icons is close; see the icon list in the preset format)',
     ],
     [
       'a preset icon next to types',
