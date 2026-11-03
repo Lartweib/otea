@@ -9,6 +9,7 @@ import {
 } from './api.ts';
 import { applyAttention } from './attention-dom.ts';
 import { catalogEntries } from './catalog.ts';
+import { BriefView } from './components/BriefView.tsx';
 import { CollectionRail } from './components/CollectionRail.tsx';
 import { EmptyDetail } from './components/EmptyDetail.tsx';
 import { FirstRun } from './components/EmptyStates.tsx';
@@ -401,6 +402,15 @@ export function App() {
             collectionOf={collectionOf}
             version={version}
             onExit={leaveTriage}
+          />
+        </main>
+      ) : route.view === 'brief' ? (
+        <main className="brief-layout">
+          <BriefView
+            ids={route.ids}
+            items={allItems}
+            collections={collections.status === 'ready' ? collections.value : []}
+            version={version}
           />
         </main>
       ) : (

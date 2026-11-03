@@ -1,3 +1,4 @@
+import type { WrittenBrief } from './brief.ts';
 import { t } from './i18n/i18n.ts';
 import { type Agent, parseAgents } from './presence.ts';
 import type { LinkRequest } from './relations.ts';
@@ -19,6 +20,15 @@ export async function fetchItems(signal: AbortSignal): Promise<Item[]> {
 export async function fetchItem(id: string, signal: AbortSignal): Promise<ItemView | null> {
   const response = await get(`/api/items/${encodeURIComponent(id)}`, signal);
   return response.status === 404 ? null : response.json();
+}
+
+// A brief for the items, in the order given; limits and success left out take the brief's defaults.
+export function writeBrief(request: {
+  ids: readonly string[];
+  limits?: readonly string[];
+  success?: readonly string[];
+}): Promise<WrittenBrief> {
+  return post<WrittenBrief>('/api/brief', request);
 }
 
 // Served only to a signed-in browser, as a download unless it is an image, a video or plain text.

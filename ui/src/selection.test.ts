@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  briefHash,
   hashFor,
   ITEMS_HASH,
   idFromHash,
@@ -49,6 +50,12 @@ describe('selection', () => {
 
   it('writes swipe triage as a hash', () => {
     expect(routeFromHash(TRIAGE_HASH)).toEqual({ view: 'triage' });
+  });
+
+  it('writes a brief for its items as a hash, in their order', () => {
+    expect(briefHash(['WORK-2', 'BUGS-1'])).toBe('#/brief/WORK-2,BUGS-1');
+    expect(routeFromHash(briefHash(['A,1', 'B']))).toEqual({ view: 'brief', ids: ['A,1', 'B'] });
+    expect(routeFromHash('#/brief')).toEqual({ view: 'brief', ids: [] });
   });
 
   it('writes the catalog and one module as a hash', () => {
