@@ -143,3 +143,13 @@ export function useHideTier(): (element: HTMLElement | null) => (() => void) | u
 export function useReducedMotion(): boolean {
   return useMediaQuery('(prefers-reduced-motion: reduce)');
 }
+
+// A count that goes up every `ms`, to read again what no live feed reports (other projects).
+export function useBeat(ms: number): number {
+  const [beat, setBeat] = useState(0);
+  useEffect(() => {
+    const timer = setInterval(() => setBeat((current) => current + 1), ms);
+    return () => clearInterval(timer);
+  }, [ms]);
+  return beat;
+}

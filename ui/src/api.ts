@@ -13,6 +13,8 @@ import type {
   Paired,
   PairingPeek,
   PresetView,
+  ProjectOverview,
+  ProjectSettings,
   ProjectView,
   Session,
 } from './types.ts';
@@ -194,4 +196,24 @@ export function peekPairing(code: string): Promise<PairingPeek> {
 
 export function pairDevice(code: string, name: string): Promise<Paired> {
   return pairingCall('/api/pair', { code, name });
+}
+
+export async function fetchProjects(signal: AbortSignal): Promise<ProjectOverview[]> {
+  return (await get('/api/projects', signal)).json();
+}
+
+export async function fetchProjectSettings(signal: AbortSignal): Promise<ProjectSettings> {
+  return (await get('/api/project/settings', signal)).json();
+}
+
+export async function addProjectPath(path: string): Promise<void> {
+  await post('/api/project/paths', { path });
+}
+
+export async function relinkProjectPath(from: string, to: string, force: boolean): Promise<void> {
+  await post('/api/project/paths/relink', { from, to, force });
+}
+
+export async function forgetProjectPath(path: string): Promise<void> {
+  await post('/api/project/paths/forget', { path });
 }

@@ -32,6 +32,7 @@ import { groupItems, groupings, type Section } from '../sections.ts';
 import type { CollectionView, Item, PresetView } from '../types.ts';
 import type { ViewMode, ViewPrefs } from '../view-prefs.ts';
 import { BulkTray } from './BulkTray.tsx';
+import { EmptyProject } from './EmptyProject.tsx';
 import {
   EmptyCollection,
   FirstRoute,
@@ -295,7 +296,9 @@ export function ListPane(props: ListPaneProps) {
       </div>
     );
   }
-  if (nothing === 'empty-collection' || nothing === 'empty-project') {
+  // All work with nothing in any collection: the project's own empty screen, with its facts.
+  if (nothing === 'empty-project') return <EmptyProject />;
+  if (nothing === 'empty-collection') {
     const example = collectionName ?? props.collections?.[0] ?? '';
     return (
       <div className="list-view" data-agents={noAgent ? 'none' : undefined}>
