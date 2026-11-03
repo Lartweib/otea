@@ -65,9 +65,23 @@ Agents claim an item before working it. A lease is atomic: while one agent holds
 
 ### Projects
 
-`otea init` creates the project in `.otea/` at the repository root (or in the folder itself outside git). Every command finds it from any subfolder or git worktree of that repo: it starts at the main repo root and walks up parent folders to the nearest one holding `.otea/otea.db`. So one project can also live in a product folder above several repos (the folder need not be a repo): run `otea init` there, and commands from inside any of those repos use it. `otea init` inside a repo that such a project already covers refuses; `otea init --here` creates a separate project at the repo, which then wins for it. `OTEA_PROJECT=<path>` skips discovery and names the project folder directly. The MCP server and `otea serve` find the project the same way.
+`otea init` creates the project in `.otea/` at the repository root (or in the folder itself outside git). Every command finds it from any subfolder or git worktree of that repo: it starts at the main repo root and walks up parent folders to the nearest one holding `.otea/otea.db`. So one project can also live in a product folder above several repos (the folder need not be a repo): run `otea init` there, and commands from inside any of those repos use it. `otea init` inside a repo that such a project already covers refuses; `otea init --here` creates a separate project at the repo, which then wins for it. `OTEA_PROJECT=<path>` skips discovery and names the project folder directly (or a registered folder, or a project id). The MCP server and `otea serve` find the project the same way.
 
-Each project has an identity stored in its database: a name (its folder's) and an id, the name as a slug plus six random base32 characters (`my-app-k3x7qa`). `otea init --json` prints both next to `root` and `path`, and `GET /api/project` returns them. A database created before identities gets one the first time it is opened.
+Each project has an identity stored in its database: a name (its folder's) and an id, the name as a slug plus six random base32 characters (`my-app-k3x7qa`). `otea init --json` prints both next to `root`, `path` (the data folder) and `storage`, and `GET /api/project` returns them. A database created before identities gets one the first time it is opened.
+
+### Linking several repos to one project
+
+A product split across separate repos (not nested in one folder) can share one project in common storage, kept in the Otea home (`OTEA_HOME`, default `~/.otea`) instead of in any repo:
+
+```sh
+cd ~/code/api && otea init --common      # creates the project, prints its data folder
+otea projects current                    # api-k3x7qa  api  common, then the root and the data folder
+cd ~/code/web && otea init --join api-k3x7qa   # or the project's name, when it is unique
+otea projects add ~/notes/api --to api-k3x7qa  # any other folder
+otea projects list                       # every registered project with its linked folders
+```
+
+Commands, the MCP server and `otea serve` in any linked folder (and its subfolders and worktrees) then use that project: an item created from `api` is listed from `web`. Common storage writes nothing into the repo, not even `.otea/`. The user-level registry (`$OTEA_HOME/registry.db`) records which folders lead to which project: a folder belongs to one project only, a folder with its own `.otea/` project cannot be linked, and when both a linked folder and a local project contain the working directory, the nearer one wins. `otea init` with no option still creates a local project in `.otea/`.
 
 ### Attaching evidence
 

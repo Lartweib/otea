@@ -74,7 +74,7 @@ describe('project presets', () => {
   let root: string;
 
   const write = (name: string, files: Record<string, string>) => {
-    const dir = join(root, '.otea', 'presets', name);
+    const dir = join(root, 'presets', name);
     mkdirSync(dir, { recursive: true });
     for (const [file, content] of Object.entries(files)) writeFileSync(join(dir, file), content);
   };
@@ -165,7 +165,7 @@ describe('project presets', () => {
     expect(problemsOf(catalog, 'notes')).toContain('workflow.initial: unknown state "nope"');
     expect(catalog.problems[0]).toMatchObject({
       origin: 'project',
-      path: join(root, '.otea', 'presets', 'notes', 'preset.yaml'),
+      path: join(root, 'presets', 'notes', 'preset.yaml'),
     });
   });
 

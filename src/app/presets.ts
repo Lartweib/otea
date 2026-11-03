@@ -21,8 +21,8 @@ export type PresetCatalog = {
 
 type Loaded = { preset?: LoadedPreset; problems: PresetProblem[]; warnings?: PresetProblem[] };
 
-function projectPresetsDir(root: string): string {
-  return join(root, '.otea', 'presets');
+export function projectPresetsDir(dataDir: string): string {
+  return join(dataDir, 'presets');
 }
 
 function subdirectories(dir: string): string[] {
@@ -51,10 +51,7 @@ function loadOne(dir: string, name: string, origin: PresetOrigin): Loaded {
   return { preset: { ...preset, origin }, problems, warnings: reading.warnings.map(problem) };
 }
 
-export function loadPresets(
-  projectRoot?: string,
-  officialDir = OFFICIAL_PRESETS_DIR,
-): PresetCatalog {
+export function loadPresets(dataDir?: string, officialDir = OFFICIAL_PRESETS_DIR): PresetCatalog {
   const presets = new Map<string, LoadedPreset>();
   const problems: PresetProblem[] = [];
   const warnings: PresetProblem[] = [];
@@ -64,8 +61,8 @@ export function loadPresets(
     warnings.push(...warned);
   };
   for (const name of subdirectories(officialDir)) add(loadOne(officialDir, name, 'official'));
-  if (projectRoot === undefined) return { presets, problems, warnings };
-  const projectDir = projectPresetsDir(projectRoot);
+  if (dataDir === undefined) return { presets, problems, warnings };
+  const projectDir = projectPresetsDir(dataDir);
   for (const name of subdirectories(projectDir)) {
     if (presets.has(name)) {
       problems.push({

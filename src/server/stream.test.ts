@@ -2,7 +2,7 @@ import type { DatabaseSync } from 'node:sqlite';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { addCollection } from '../app/collections.ts';
 import { createItem, moveItem } from '../app/items.ts';
-import { catalogWith, IDENTITY } from '../app/testing.ts';
+import { catalogWith, projectOf } from '../app/testing.ts';
 import { migrate } from '../store/migrations.ts';
 import { createServer, type OteaServer } from './server.ts';
 import { LOCAL_HOST, request, SESSION_COOKIE, TOKEN, tempDatabase } from './testing.ts';
@@ -39,10 +39,10 @@ describe('GET /api/stream', () => {
     migrate(db);
     addCollection({ db, presets: catalogWith() }, { name: 'tasks' });
     other = temp.open();
-    server = createServer(
-      { root: '/tmp', identity: IDENTITY, db, presets: catalogWith() },
-      { pollIntervalMs: 10, token: TOKEN },
-    );
+    server = createServer(projectOf('/tmp', { db, presets: catalogWith() }), {
+      pollIntervalMs: 10,
+      token: TOKEN,
+    });
   });
 
   afterEach(() => {

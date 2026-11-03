@@ -110,6 +110,7 @@ describe('run', () => {
         path: oteaDir(),
         id: expect.stringMatching(/^otea-cli-[a-z0-9-]+-[a-z2-7]{6}$/),
         name: basename(repo.dir),
+        storage: 'local',
       });
     });
 

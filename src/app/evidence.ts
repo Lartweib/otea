@@ -23,16 +23,16 @@ import {
 } from '../store/queries.ts';
 import { typeOfItem } from './collections.ts';
 import { requireItem, systemClock } from './items.ts';
-import { oteaDir, type Project } from './project.ts';
+import type { Project } from './project.ts';
 
-// Files are stored once under .otea/evidence, named by their sha256, so attaching the same file
-// again, to any item, stores nothing new.
-export function evidenceDir(root: string): string {
-  return join(oteaDir(root), 'evidence');
+// Files are stored once under evidence/ in the project's data folder, named by their sha256, so
+// attaching the same file again, to any item, stores nothing new.
+export function evidenceDir(dataDir: string): string {
+  return join(dataDir, 'evidence');
 }
 
-export function evidenceFile(root: string, sha256: string): string {
-  return join(evidenceDir(root), sha256);
+export function evidenceFile(dataDir: string, sha256: string): string {
+  return join(evidenceDir(dataDir), sha256);
 }
 
 // `path` is absolute: the CLI and the MCP tool resolve it against their working directory. `module`
@@ -61,10 +61,10 @@ function readEvidence(path: string): Buffer {
 }
 
 // Written aside and renamed into place, so a reader never sees a partial file.
-function store(root: string, sha256: string, bytes: Buffer): void {
-  const target = evidenceFile(root, sha256);
+function store(dataDir: string, sha256: string, bytes: Buffer): void {
+  const target = evidenceFile(dataDir, sha256);
   if (existsSync(target)) return;
-  mkdirSync(evidenceDir(root), { recursive: true });
+  mkdirSync(evidenceDir(dataDir), { recursive: true });
   const partial = `${target}.${randomUUID()}.partial`;
   writeFileSync(partial, bytes);
   renameSync(partial, target);
@@ -102,7 +102,7 @@ export function attachEvidence(
       ...(input.module === undefined ? {} : { module: input.module }),
     };
     const { module, role } = placeEvidence(type.layout, { id: item.id, type: type.name }, request);
-    store(project.root, sha256, bytes);
+    store(project.dataDir, sha256, bytes);
     const entry = {
       itemId: item.id,
       role,
@@ -145,7 +145,7 @@ export function evidenceToServe(
   id: string,
 ): { evidence: EvidenceRecord; path: string } {
   const evidence = EVIDENCE_ID.test(id) ? findEvidence(project.db, Number(id)) : undefined;
-  const path = evidence && evidenceFile(project.root, evidence.sha256);
+  const path = evidence && evidenceFile(project.dataDir, evidence.sha256);
   if (!evidence || !path || !existsSync(path)) {
     throw new OteaError('not_found', `Evidence "${id}" not found`);
   }

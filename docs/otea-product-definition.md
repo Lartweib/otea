@@ -133,7 +133,7 @@ Enforced by the core regardless of preset or module.
 
 - **Data is per project**: one SQLite database plus evidence files, in one of two storage modes (below). Everything an agent needs is found from the project itself.
 - **The app is one per user**: a single local process serving the UI for every linked project. No web server per project.
-- **Project registry** (user-level, `registry.db` in the Otea home: `OTEA_HOME`, or `~/.otea` on every OS): the linked projects (id, name, storage mode, data folder) and the folders that lead to each, compared by a key (the real path with forward slashes, lowercased on Windows and macOS). A project can have several folders; the nearest linked folder at or above a path names its project. It is optional, and not yet used to find projects.
+- **Project registry** (user-level, `registry.db` in the Otea home: `OTEA_HOME`, or `~/.otea` on every OS): the linked projects (id, name, storage mode, data folder) and the folders that lead to each, compared by a key (the real path with forward slashes, lowercased on Windows and macOS). A project can have several folders; the nearest linked folder at or above a path names its project. It is optional except in `common` storage mode.
 - **Global attention inbox**: the home view aggregates "waiting for me" across all linked projects and collections.
 
 **The app is never required.** An agent in a project works through the CLI (or MCP) with the app closed and the project unlinked. The human opens the UI whenever they want to look.
@@ -207,12 +207,18 @@ Chosen at `otea init`, which asks explicitly and explains the implications of ea
 | Mode | Location | Footprint in the repo | Trade-off |
 |---|---|---|---|
 | **local** (default) | `.otea/` in the project, excluded through `.git/info/exclude` | none: no tracked file is touched, not even `.gitignore` | not shared with others |
-| **external** | `~/.otea/data/<project-id>` | none, not even a folder | agents depend on the user-level registry to find the data |
+| **common** (`init --common`) | `$OTEA_HOME/data/<project-id>/` (`otea.db`, `evidence/`, `presets/`) | none, not even a folder | agents depend on the user-level registry to find the data; several repos can share the project |
 
 - `.otea/` is resolved from the git common directory (`git rev-parse --git-common-dir`), so every worktree of a repo shares the same data. Parallel agents in worktrees are a primary use case.
-- **Discovery** (CLI, MCP server and `serve` alike): from that main repo root (or the folder itself outside git), walk up parent folders to the nearest one holding `.otea/otea.db`, stopping at the filesystem root. Matching the database, not `.otea/` alone, keeps the user-level `~/.otea` from passing for a project. So one project in a product folder (which need not be a repo) covers every repo below it, with their worktrees and subfolders. `OTEA_PROJECT=<path>` overrides discovery. `otea init` inside a repo already covered by a project above refuses unless `--here`, which creates a separate project at the repo; the nearest project wins.
+- **Discovery** (CLI, MCP server and `serve` alike, through one function), in order:
+  1. `OTEA_PROJECT`: a folder holding `.otea/otea.db`, a registered folder, or a registered project id.
+  2. The registry: the deepest registered folder containing the working directory or the main repo root.
+  3. The local walk-up: from that main repo root (or the folder itself outside git) up to the nearest folder holding `.otea/otea.db`, stopping at the filesystem root. Matching the database, not `.otea/` alone, keeps the user-level `~/.otea` from passing for a project.
+
+  Of 2 and 3 the nearest (deepest) folder wins; on a tie, the registered one. So one project in a product folder (which need not be a repo) covers every repo below it, with their worktrees and subfolders, and a project closer to the repo wins over it. `otea init` inside a folder already covered by a project above refuses unless `--here`, which creates a separate project at the repo.
+- **Several repos, one project**: `otea init --common` creates the project in common storage, registers it and links the repo root. `otea init --join <project>` (id, or a name no other project has) links another repo root to it, and `otea projects add <path> --to <project>` links any folder. A folder belongs to one project only, and a folder holding a local `.otea/` project cannot be linked. A project whose last folder is unlinked stays registered, but nothing resolves to it. `otea projects list` lists the registered projects with their folders; `otea projects current` shows the project the working directory resolves to.
 - **Identity**: every project database holds one `project` row, `id` and `name`, so a registry of projects can be rebuilt from the databases themselves. The name is the project folder's; the id is the name as a slug (lowercase ASCII and dashes, at most 32 characters) plus `-` and six random base32 characters (`my-app-k3x7qa`). It is written on `init`, and on the first open of a database created before identities.
-- `external` is meant for folders without git or users who want zero footprint; it is the only mode where the registry is not optional.
+- `common` is meant for products split across several repos, folders without git, or users who want zero footprint; it is the only mode where the registry is not optional. `local` stays the default for now.
 - **Versioning is an export, not live data.** A binary database cannot be diffed or merged in git, so `otea export` writes a readable snapshot (items as Markdown, events as JSONL) that can be committed when a versioned history is wanted.
 
 ### Why a database and not files
@@ -238,6 +244,14 @@ One write path: the CLI and the app use the same core and write to the same data
   ui-token                 browser session token (never committed, never printed)
   serve.json               port and pid of the running `otea serve`, removed on shutdown
   evidence/<collection>/<item-id>/...
+```
+
+In common storage the same files live in `$OTEA_HOME/data/<project-id>/` instead of `.otea/`, and the registry sits beside them:
+
+```
+$OTEA_HOME/                (default ~/.otea)
+  registry.db              registered projects and the folders linked to each
+  data/<project-id>/       a common project's data folder, laid out like .otea/ above
 ```
 
 ## 9. Preset format
@@ -512,7 +526,7 @@ External tools (orchestrators, queue runners, notification systems) rely only on
 
 1. Local and offline. No cloud dependency, no features tied to a single agent vendor.
 2. Harness-neutral agent access (§11).
-3. Project-scoped data (`.otea/`); the user-level registry is optional except in `external` storage mode.
+3. Project-scoped data (`.otea/`); the user-level registry is optional except in `common` storage mode.
 4. Stable versioned preset format + non-interactive `validate`.
 5. Machine-readable output (`--json`, exit codes).
 6. Idempotent `init`.
