@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { type CallToolResult, McpServer } from '@modelcontextprotocol/server';
 import { StdioServerTransport } from '@modelcontextprotocol/server/stdio';
 import { type ZodType, z } from 'zod';
+import type { Harness } from '../app/presence.ts';
 import {
   type Command,
   failureCode,
@@ -76,7 +77,14 @@ const VERSION: string = JSON.parse(
   readFileSync(new URL('../../package.json', import.meta.url), 'utf8'),
 ).version;
 
-export type McpContext = { cwd: string; actor: Actor; warn(message: string): void };
+// `greeted` hears the client's name once it has introduced itself, so the agent shows up as seen
+// before its first call.
+export type McpContext = {
+  cwd: string;
+  actor: Actor;
+  warn(message: string): void;
+  greeted?(harness: Harness | undefined): void;
+};
 
 type Values = Record<string, unknown>;
 
@@ -114,6 +122,7 @@ function inputFor(
   context: McpContext,
   signal: AbortSignal,
   records: unknown[],
+  harness: Harness | undefined,
 ): Input {
   const option = (name: string) => {
     const value = values[name];
@@ -123,6 +132,7 @@ function inputFor(
     cwd: context.cwd,
     actor: context.actor,
     channel: 'mcp',
+    harness,
     signal,
     openUrl: async () => {
       throw new Error('No browser to open over MCP');
@@ -157,11 +167,14 @@ async function callCommand(
   values: Values,
   context: McpContext,
   signal: AbortSignal,
+  harness: Harness | undefined,
 ): Promise<CallToolResult> {
   const records: unknown[] = [];
   try {
     const given = command.name === 'wait' ? waitValues(values) : values;
-    const output = await command.execute(inputFor(command, given, context, signal, records));
+    const output = await command.execute(
+      inputFor(command, given, context, signal, records, harness),
+    );
     return reply(JSON.stringify(output === undefined ? records : output.data), false);
   } catch (error) {
     const code = failureCode(error);
@@ -172,6 +185,12 @@ async function callCommand(
 
 export function createMcpServer(commands: readonly Command[], context: McpContext): McpServer {
   const server = new McpServer({ name: 'otea', version: VERSION });
+  // The client names itself in initialize: its clientInfo is the harness the agent works through.
+  const harness = (): Harness | undefined => {
+    const client = server.server.getClientVersion();
+    return client && { name: client.name, version: client.version };
+  };
+  server.server.oninitialized = () => context.greeted?.(harness());
   for (const name of AGENT_COMMANDS) {
     const command = commands.find((candidate) => candidate.name === name);
     if (!command) throw new Error(`No "otea ${name}" command to serve`);
@@ -183,7 +202,8 @@ export function createMcpServer(commands: readonly Command[], context: McpContex
         inputSchema: inputSchema(command),
         annotations: { readOnlyHint: READ_ONLY.has(name) },
       },
-      (values: Values, { mcpReq }) => callCommand(command, values, context, mcpReq.signal),
+      (values: Values, { mcpReq }) =>
+        callCommand(command, values, context, mcpReq.signal, harness()),
     );
   }
   return server;
