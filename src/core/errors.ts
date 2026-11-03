@@ -27,6 +27,8 @@ export type ErrorCode =
   | 'parent_exists'
   | 'relation_cycle'
   | 'children_open'
+  | 'blockers_open'
+  | 'parent_across_boards'
   | 'different_repo'
   | 'in_use';
 

@@ -29,7 +29,9 @@ export const HTTP_STATUS: Readonly<Record<ErrorCode, ContentfulStatusCode>> = {
   self_relation: 400,
   parent_exists: 409,
   relation_cycle: 409,
+  parent_across_boards: 409,
   children_open: 409,
+  blockers_open: 409,
   different_repo: 409,
   in_use: 409,
 };

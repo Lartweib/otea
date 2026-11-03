@@ -44,7 +44,7 @@ describe('availableMoves', () => {
       ...tasks,
       states: tasks.states.map((state) =>
         state.name === 'done' || state.name === 'todo'
-          ? { ...state, requires: 'children_closed' as const }
+          ? { ...state, requires: ['children_closed' as const] }
           : state,
       ),
     };
@@ -56,14 +56,14 @@ describe('availableMoves', () => {
         reasonRequired: false,
         turn: 'none',
         closes: 'done',
-        requires: 'children_closed',
+        requires: ['children_closed'],
       },
       {
         to: 'todo',
         by: 'human-ui',
         reasonRequired: true,
         turn: 'agent',
-        requires: 'children_closed',
+        requires: ['children_closed'],
       },
       { to: 'discarded', by: 'human', reasonRequired: true, turn: 'none', closes: 'discarded' },
     ]);

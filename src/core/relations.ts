@@ -198,6 +198,10 @@ export function childrenSummary(children: readonly { closes?: Closing }[]): Chil
 
 export type ChildState = { id: string; state: string; closes?: Closing };
 
+function listOpen(items: readonly ChildState[]): string {
+  return items.map((item) => `${item.id} (${item.state})`).join(', ');
+}
+
 // A state that declares `requires: children_closed` takes a parent only once none of its children
 // is open, whatever the state's turn. Nothing ever moves the parent for them.
 export function assertChildrenClosed(
@@ -207,9 +211,24 @@ export function assertChildrenClosed(
 ): void {
   const open = children.filter(({ closes }) => closes === undefined);
   if (open.length === 0) return;
-  const listed = open.map((child) => `${child.id} (${child.state})`).join(', ');
   throw new OteaError(
     'children_open',
-    `${id} cannot move to "${to}" while ${open.length} of its ${children.length} children are open: ${listed}`,
+    `${id} cannot move to "${to}" while ${open.length} of its ${children.length} children are open: ${listOpen(open)}`,
+  );
+}
+
+// The twin of children_closed: a state that declares `requires: blockers_closed` takes an item only
+// once nothing that blocks it is open, in its own collection or another. Nothing moves it for them.
+export function assertBlockersClosed(
+  id: string,
+  to: string,
+  blockers: readonly ChildState[],
+): void {
+  const open = blockers.filter(({ closes }) => closes === undefined);
+  if (open.length === 0) return;
+  const are = open.length === 1 ? 'is' : 'are';
+  throw new OteaError(
+    'blockers_open',
+    `${id} cannot move to "${to}" while ${open.length} of its ${blockers.length} blockers ${are} open: ${listOpen(open)}`,
   );
 }

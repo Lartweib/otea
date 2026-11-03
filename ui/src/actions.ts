@@ -26,10 +26,11 @@ export function moveTone({ by, reasonRequired }: Move): Tone {
 }
 
 // Why a move cannot be made yet: it enters a state that waits for every child
-// (requires: children_closed), closing or not, while some are open. The server refuses it too.
+// (requires: children_closed), closing or not, while some are open. The server refuses it too, and
+// alone answers for blockers_closed, whose blockers the list does not carry.
 export function moveBlock(move: Move, children: ChildrenSummary | undefined): string | undefined {
   const open = children?.open ?? 0;
-  if (move.requires !== 'children_closed' || open === 0) return undefined;
+  if (!move.requires?.includes('children_closed') || open === 0) return undefined;
   return t('move.waits', { count: open });
 }
 

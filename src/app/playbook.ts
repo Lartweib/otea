@@ -8,6 +8,7 @@ import { getCollection, presetOf } from './collections.ts';
 import type { ItemView } from './items.ts';
 import { type LoadedPreset, OFFICIAL_PRESETS_DIR, projectPresetsDir } from './presets.ts';
 import type { Project } from './project.ts';
+import { openBlockers } from './relations.ts';
 
 // The playbook a collection's agents follow: its preset's, read from the preset's directory, or
 // nothing when the preset ships none.
@@ -41,6 +42,7 @@ export function hintFor(project: Project, item: ItemView, me: string): string {
     missing: item.missing,
     emptyRequired,
     openChildren: item.children?.open ?? 0,
+    openBlockers: openBlockers(item.relations),
     ...(section === undefined ? {} : { section }),
   };
   return nextStep(workflow, input, me);

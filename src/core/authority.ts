@@ -6,7 +6,7 @@ import {
   type Closing,
   closesOf,
   type Requirement,
-  requirementOf,
+  requirementsOf,
   type Transition,
   type Turn,
   transitionsFrom,
@@ -56,15 +56,15 @@ export type Move = {
   reasonRequired: boolean;
   turn: Turn;
   closes?: Closing;
-  requires?: Requirement;
+  requires?: Requirement[];
 };
 
 function moveTo(workflow: Workflow, { to, by, reasonRequired }: Transition): Move {
   const move: Move = { to, by, reasonRequired, turn: turnOf(workflow, to) };
   const closes = closesOf(workflow, to);
   if (closes !== undefined) move.closes = closes;
-  const requires = requirementOf(workflow, to);
-  if (requires !== undefined) move.requires = requires;
+  const requires = requirementsOf(workflow, to);
+  if (requires.length > 0) move.requires = requires;
   return move;
 }
 

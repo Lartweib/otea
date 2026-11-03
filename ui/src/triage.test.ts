@@ -24,8 +24,8 @@ describe('triagePlan with open children', () => {
     reasonRequired: false,
     turn: 'none',
     closes: 'done',
-    requires: 'children_closed',
-  } as const;
+    requires: ['children_closed'],
+  } as Move;
   const rework = { to: 'building', by: 'human', reasonRequired: true, turn: 'agent' } as const;
   const children = { total: 3, open: 2, done: 1, discarded: 0 };
 
@@ -42,8 +42,8 @@ describe('triagePlan with open children', () => {
       by: 'human',
       reasonRequired: false,
       turn: 'human',
-      requires: 'children_closed',
-    } as const;
+      requires: ['children_closed'],
+    } as Move;
     const approve = { to: 'approved', by: 'human', reasonRequired: false, turn: 'agent' } as const;
 
     expect(triagePlan([review, approve, rework], children)).toEqual({

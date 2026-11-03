@@ -304,7 +304,7 @@ describe('requires', () => {
     raw.workflow.states.closed.requires = 'children_closed';
 
     expect(stateOf(raw, 'closed')).toEqual({
-      state: { name: 'closed', turn: 'none', closes: 'discarded', requires: 'children_closed' },
+      state: { name: 'closed', turn: 'none', closes: 'discarded', requires: ['children_closed'] },
       result: expect.objectContaining({ warnings: [] }),
     });
   });
@@ -316,8 +316,30 @@ describe('requires', () => {
     expect(stateOf(raw, 'open').state).toEqual({
       name: 'open',
       turn: 'agent',
-      requires: 'children_closed',
+      requires: ['children_closed'],
     });
+  });
+
+  it('records blockers_closed, alone or listed with children_closed', () => {
+    const raw = minimal();
+    raw.workflow.states.open.requires = 'blockers_closed';
+    raw.workflow.states.closed.requires = ['children_closed', 'blockers_closed'];
+
+    expect(stateOf(raw, 'open').state).toMatchObject({ requires: ['blockers_closed'] });
+    expect(stateOf(raw, 'closed').state).toMatchObject({
+      requires: ['children_closed', 'blockers_closed'],
+    });
+  });
+
+  it('rejects an empty list and a requirement listed twice', () => {
+    expect(problemsOf((raw) => (raw.workflow.states.open.requires = []))).toEqual([
+      expect.stringContaining('workflow.states.open.requires'),
+    ]);
+    expect(
+      problemsOf(
+        (raw) => (raw.workflow.states.open.requires = ['blockers_closed', 'blockers_closed']),
+      ),
+    ).toEqual(['workflow.states.open.requires[1]: "blockers_closed" is listed twice']);
   });
 
   it('reads the deprecated close_requires as requires, with a warning', () => {
@@ -326,7 +348,7 @@ describe('requires', () => {
 
     const { state, result } = stateOf(raw, 'closed');
 
-    expect(state).toMatchObject({ requires: 'children_closed' });
+    expect(state).toMatchObject({ requires: ['children_closed'] });
     expect(result).toMatchObject({
       warnings: [
         'workflow.states.closed.close_requires: deprecated; write requires: children_closed',

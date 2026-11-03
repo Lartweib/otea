@@ -234,6 +234,17 @@ describe('mcp server', () => {
       expect(reply.content[0]?.text).toBe(await cliError('link', 'TASKS-1', 'parent', 'TASKS-1'));
     });
 
+    it('refuses a parent in another collection, with the error of the CLI', async () => {
+      await otea('collection', 'add', 'bugs');
+      await otea('create', '--collection', 'bugs', '--title', 'Clips', '--description', 'D');
+
+      const reply = await call('link', { id: 'BUGS-1', kind: 'parent', other: 'TASKS-1' });
+
+      expect(reply.isError).toBe(true);
+      expect(reply.content[0]?.text).toContain('parent_across_boards');
+      expect(reply.content[0]?.text).toBe(await cliError('link', 'BUGS-1', 'parent', 'TASKS-1'));
+    });
+
     it('names the mcp channel when it refuses a move', async () => {
       await otea('move', 'TASKS-1', 'in_progress');
       await otea('move', 'TASKS-1', 'review');

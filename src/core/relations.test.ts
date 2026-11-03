@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { OteaError } from './errors.ts';
 import {
+  assertBlockersClosed,
   assertCanRelate,
   assertChildrenClosed,
   childrenSummary,
@@ -212,6 +213,27 @@ describe('assertChildrenClosed', () => {
     expect(codeOf(close)).toBe('children_open');
     expect(close).toThrow(
       'W-1 cannot move to "done" while 2 of its 3 children are open: P-3 (todo), P-4 (review)',
+    );
+  });
+});
+
+describe('assertBlockersClosed', () => {
+  it('lets an item in when every blocker is closed', () => {
+    const blockers = [{ id: 'API-2', state: 'done', closes: 'done' as const }];
+
+    expect(codeOf(() => assertBlockersClosed('WEB-1', 'review', blockers))).toBeUndefined();
+  });
+
+  it('refuses while a blocker is open, naming each open one with its state', () => {
+    const blockers = [
+      { id: 'API-2', state: 'done', closes: 'done' as const },
+      { id: 'API-3', state: 'in_progress' },
+    ];
+    const enter = () => assertBlockersClosed('WEB-1', 'review', blockers);
+
+    expect(codeOf(enter)).toBe('blockers_open');
+    expect(enter).toThrow(
+      'WEB-1 cannot move to "review" while 1 of its 2 blockers is open: API-3 (in_progress)',
     );
   });
 });

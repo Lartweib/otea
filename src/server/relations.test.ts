@@ -105,6 +105,21 @@ describe('relations over the API', () => {
       expect([cycle.status, await errorOf(cycle)]).toEqual([409, 'relation_cycle']);
     });
 
+    it('answers a parent in another collection with 409, linking nothing', async () => {
+      addCollection(project, { name: 'bugs' });
+      createItem(project, {
+        collection: 'bugs',
+        title: 'Clips',
+        fields: { description: 'D' },
+        actor: bot,
+      });
+
+      const across = await post('/api/items/BUGS-1/link', { kind: 'parent', other: 'TASKS-1' });
+
+      expect([across.status, await errorOf(across)]).toEqual([409, 'parent_across_boards']);
+      expect(listRelations(project)).toEqual([]);
+    });
+
     it('needs a signed-in browser from its own origin', async () => {
       const anonymous = await post(
         '/api/items/TASKS-2/link',
@@ -189,7 +204,9 @@ describe('relations over the API', () => {
       const shown = await (await request(server, '/api/items/CREATURES-1')).json();
       const moved = await post('/api/items/CREATURES-1/move', { to: 'review' });
 
-      expect(shown).toMatchObject({ transitions: [{ to: 'review', requires: 'children_closed' }] });
+      expect(shown).toMatchObject({
+        transitions: [{ to: 'review', requires: ['children_closed'] }],
+      });
       expect([moved.status, await errorOf(moved)]).toEqual([409, 'children_open']);
       expect(getItem(project, 'CREATURES-1').state).toBe('building');
     });
