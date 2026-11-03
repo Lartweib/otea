@@ -37,6 +37,41 @@ export const en = {
   'theme.label': 'Theme: {choice}',
   'theme.switch': 'Theme: {choice}. Switch to {next}.',
 
+  // The topbar's three zones: the project, the mark and the agents connected to this project
+  'shell.projects': 'projects',
+  'shell.projectsTitle': 'Projects',
+  'shell.projectSwitch': '{project}, switch project',
+  'shell.projectOpen': 'open now',
+  'shell.newProject': 'new project: {command} in a repo',
+  'shell.agentsTitle': 'Agents',
+  'shell.agents': { one: '{count} agent', other: '{count} agents' },
+  'shell.noAgents': 'no agents',
+  'shell.offline': 'offline',
+  'shell.agentsIn': 'agents in {project}',
+  'shell.holding': { one: '{count} holding', other: '{count} holding' },
+  'shell.idleCount': { one: '{count} idle', other: '{count} idle' },
+  'shell.idle': 'idle · no lease',
+  'shell.cli': 'CLI',
+  'shell.noAgentsTitle': 'No agents connected.',
+  'shell.howToConnect':
+    'Add {mcp} to your agent’s MCP servers, or run any {otea} command with {as}.',
+  'shell.connectedRule': 'connected: MCP session open, or a write in the last 15 min',
+  'shell.openPanel': 'Open the project’s panel',
+
+  // Preferences: what belongs to this browser
+  'prefs.title': 'Preferences',
+  'prefs.scope': 'this browser',
+  'prefs.theme': 'theme',
+  'prefs.system': 'System',
+  'prefs.light': 'Light',
+  'prefs.dark': 'Dark',
+  'prefs.language': 'language',
+  'prefs.auto': 'Auto · {code}',
+  'prefs.english': 'English',
+  'prefs.spanish': 'Español',
+  'prefs.onlyInterface': 'Only the interface is translated.',
+  'prefs.translated': '{only} Item content, what agents write and preset names stay as written.',
+
   // The detail pane while nothing is chosen
   'empty.pick': 'Pick an item to see its detail',
   'empty.waiting': { one: '{count} waiting for you', other: '{count} waiting for you' },
@@ -53,6 +88,7 @@ export const en = {
   'rail.hide': 'Hide collections',
   'rail.show': 'Show collections',
   'rail.waiting': 'waiting for you',
+  'rail.project': 'project',
 
   // Whose turn
   'turn.you': 'you',

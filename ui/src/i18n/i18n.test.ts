@@ -1,6 +1,6 @@
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { GroupLabel } from '../components/GroupLabel.tsx';
 import { ItemActions } from '../components/ItemActions.tsx';
 import { ageLabel, agoLabel, momentLabel } from '../format.ts';
@@ -9,7 +9,17 @@ import { groupByTurn } from '../sections.ts';
 import type { Item, Move } from '../types.ts';
 import { en } from './en.ts';
 import { es } from './es.ts';
-import { chooseLanguage, listOf, type Plural, setLanguage, t, tx } from './i18n.ts';
+import {
+  chooseLanguage,
+  chooseLanguageSetting,
+  language,
+  languageChoice,
+  listOf,
+  type Plural,
+  setLanguage,
+  t,
+  tx,
+} from './i18n.ts';
 
 afterEach(() => setLanguage('en'));
 
@@ -103,6 +113,27 @@ describe('chooseLanguage', () => {
     expect(chooseLanguage({ preferred: ['en-GB', 'es'] })).toBe('en');
     expect(chooseLanguage({ preferred: ['de'] })).toBe('en');
     expect(chooseLanguage({})).toBe('en');
+  });
+});
+
+describe('the language in Preferences', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('remembers a language, and auto forgets it and follows the browser', () => {
+    const stored = new Map<string, string>();
+    const localStorage = {
+      getItem: (key: string) => stored.get(key) ?? null,
+      setItem: (key: string, value: string) => stored.set(key, value),
+      removeItem: (key: string) => stored.delete(key),
+    };
+    vi.stubGlobal('window', { localStorage });
+    vi.stubGlobal('navigator', { languages: ['es-AR'] });
+
+    expect(languageChoice()).toBe('auto');
+    chooseLanguageSetting('en');
+    expect([languageChoice(), language()]).toEqual(['en', 'en']);
+    chooseLanguageSetting('auto');
+    expect([languageChoice(), language()]).toEqual(['auto', 'es']);
   });
 });
 
