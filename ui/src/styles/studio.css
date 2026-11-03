@@ -845,7 +845,7 @@
   font-size: 12px;
   overflow-wrap: anywhere;
 }
-.st-tp .st-tpb:hover code {
+.st-tpb:hover {
   text-decoration: underline;
 }
 .st-warns {
@@ -1017,6 +1017,319 @@
   gap: 8px;
 }
 
+/* ---- the blueprint: boards, links, who waits for whom ---- */
+.st-tabs {
+  display: inline-flex;
+  gap: 2px;
+  margin-left: 6px;
+  padding: 2px;
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.st-tabs a {
+  height: 26px;
+  padding: 0 12px;
+  border-radius: 999px;
+  color: var(--mut);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 26px;
+  text-decoration: none;
+}
+.st-tabs a[aria-current="page"] {
+  background: var(--sf);
+  box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--ink) 40%, var(--line));
+  color: var(--ink);
+}
+.st-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 24px;
+  border-bottom: 1px solid var(--line);
+  font-size: 13.5px;
+}
+.st-source {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 24px;
+  border-bottom: 1px solid var(--line);
+  background: color-mix(in oklch, var(--warn) 6%, transparent);
+}
+.st-source > .icon {
+  margin-top: 3px;
+  color: var(--warn);
+}
+.st-source-b {
+  display: grid;
+  flex: 1;
+  gap: 4px;
+  min-width: 0;
+  font-size: 13.5px;
+}
+.st-source-b ul {
+  display: grid;
+  gap: 2px;
+  padding: 0;
+  list-style: none;
+}
+.st-source-b li > code {
+  font-size: 12px;
+}
+.st-bws {
+  display: grid;
+  flex: 1;
+  grid-template-columns: minmax(0, 1fr);
+  min-height: 0;
+}
+.st-canvas {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  padding: 16px 20px 18px;
+  overflow-x: auto;
+  background-image: radial-gradient(var(--pat) 1px, transparent 1.3px);
+  background-size: 24px 24px;
+  scrollbar-width: thin;
+}
+.st-dia {
+  display: block;
+  flex: none;
+  height: auto;
+  margin: auto;
+  overflow: visible;
+}
+.st-box rect {
+  fill: var(--sf);
+  stroke: var(--line);
+}
+.st-bn {
+  font: 600 14px var(--font-human);
+  fill: var(--ink);
+}
+.st-bp {
+  font: 400 11px var(--font-machine);
+  fill: var(--mut);
+}
+.st-bl {
+  stroke: var(--line);
+}
+.st-bt {
+  font: 500 12.5px var(--font-machine);
+  fill: var(--ink);
+}
+.st-bw {
+  font: 400 11px var(--font-machine);
+  fill: var(--mut);
+}
+.st-port {
+  fill: var(--sf);
+  stroke: var(--mut);
+}
+.st-lk {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 1.4;
+}
+.st-lk-hit {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 12;
+}
+.st-link.relates .st-lk,
+.st-link.duplicates .st-lk {
+  stroke-dasharray: 4 3;
+  opacity: 0.75;
+}
+.st-link.implements .st-lk {
+  opacity: 0.8;
+}
+.st-mk {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 1.4;
+}
+.st-lk-pill {
+  fill: var(--sf);
+  stroke: var(--line);
+}
+.st-link.blocks .st-lk-pill {
+  fill: var(--ink);
+  stroke: var(--ink);
+}
+.st-lk-t {
+  font: 500 11px var(--font-machine);
+  fill: var(--mut);
+}
+.st-link.blocks .st-lk-t {
+  fill: var(--sf);
+}
+.st-link.on .st-lk {
+  stroke-width: 2.4;
+}
+.st-link.on .st-lk-pill {
+  stroke: var(--ink);
+  stroke-width: 1.5;
+}
+.st-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 18px;
+  margin-top: auto;
+}
+.st-insp {
+  min-width: 0;
+  padding: 16px 20px 24px;
+  border-top: 1px solid var(--line);
+}
+.st-insp-b {
+  display: grid;
+  gap: 18px;
+  align-content: start;
+}
+.st-links {
+  display: grid;
+  padding: 0;
+  list-style: none;
+}
+.st-links li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 36px;
+  border-bottom: 1px solid var(--line);
+}
+.st-links li > button:not(.btn) {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: var(--r-s);
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+.st-links li > button[aria-pressed="true"] {
+  background: var(--sel);
+}
+.st-links li code {
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.st-board-li {
+  display: grid;
+  gap: 0;
+  padding: 4px 8px;
+}
+.st-newlink,
+.st-newboard {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  border-radius: var(--r-m);
+  background: var(--well);
+}
+.st-newlink > .t-label,
+.st-newboard > .t-label,
+.st-newlink > p,
+.st-newboard > .t-cap {
+  flex-basis: 100%;
+}
+.st-end {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+select.st-input {
+  padding-right: 6px;
+}
+.st-md.short {
+  min-height: 9rem;
+}
+.st-linkd {
+  display: grid;
+  gap: 6px;
+  padding: 14px 16px;
+}
+.st-linkd .btn {
+  justify-self: start;
+}
+.st-bw-i {
+  display: inline-grid;
+  place-items: center;
+  width: 16px;
+  font-size: 13px;
+}
+.st-rg {
+  display: grid;
+  gap: 6px;
+}
+.st-ri {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 13.5px;
+}
+.st-ri > :last-child {
+  display: grid;
+  gap: 1px;
+}
+.st-ri b {
+  font-weight: 600;
+}
+.st-ri .icon,
+.st-ri .st-ok {
+  margin-top: 2px;
+}
+
+/* ---- picking a blueprint ---- */
+.st-pick {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+.st-pick-l {
+  display: grid;
+  gap: 8px;
+}
+button.st-card {
+  border: 0;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+button.st-card[aria-pressed="true"] {
+  box-shadow: 0 0 0 1.5px var(--ink);
+}
+.st-gets {
+  display: grid;
+  gap: 8px;
+  padding: 16px 18px;
+}
+.st-gets-b {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--line);
+}
+.st-gets-b > span:first-child {
+  display: grid;
+}
+.st-pick-a {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
 @media (min-width: 48rem) {
   .layout.studio {
     grid-template-columns: 200px minmax(0, 1fr);
@@ -1074,6 +1387,16 @@
   }
   .st-pb {
     grid-template-columns: 210px minmax(0, 1fr);
+  }
+  .st-bws {
+    grid-template-columns: minmax(0, 1fr) 360px;
+  }
+  .st-insp {
+    border-top: 0;
+    border-left: 1px solid var(--line);
+  }
+  .st-pick {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   }
 }
 
