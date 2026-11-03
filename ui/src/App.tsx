@@ -213,6 +213,8 @@ export function App() {
   const collectionOf = collectionLookup(collections);
   const canWrite = session.status === 'ready' && session.value.canWrite;
   const canManageDevices = session.status === 'ready' && session.value.canManageDevices === true;
+  // A paired device works on items; the project's setup changes only from this computer's browser.
+  const canConfigure = session.status === 'ready' && session.value.canConfigure === true;
   const [intake, setIntake] = useState<Intake>();
   // No collection yet: the first run, its preset chosen in the detail and drawn on the list's lanes.
   const [firstPreset, setFirstPreset] = useState<string>();
@@ -419,7 +421,7 @@ export function App() {
         <ProjectSettings
           version={version}
           connection={connection}
-          canWrite={canWrite}
+          canWrite={canConfigure}
           rail={phone ? null : sidebarRail}
           sidebar={!folded}
         />
@@ -435,7 +437,7 @@ export function App() {
           page={route.page}
           connection={connection}
           version={version}
-          canWrite={canWrite}
+          canWrite={canConfigure}
           phone={phone}
           items={allItems}
           rail={phone ? null : sidebarRail}

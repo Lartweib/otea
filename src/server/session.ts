@@ -36,6 +36,9 @@ export type Session = {
   canWrite(c: Context): boolean;
   // Shows the pairing code and pairs or revokes devices: this computer's signed-in browser only.
   canManageDevices(c: Context): boolean;
+  // Changes how the project is set up (its paths, presets and blueprint): this computer's
+  // signed-in browser only. A paired device works on items; it does not reconfigure the project.
+  canConfigure(c: Context): boolean;
 };
 
 export function session(token: string | undefined, port: Port): Session {
@@ -46,6 +49,7 @@ export function session(token: string | undefined, port: Port): Session {
   return {
     canWrite: (c) => clientOf(c).kind === 'device' || signedIn(c),
     canManageDevices: signedIn,
+    canConfigure: signedIn,
   };
 }
 
