@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, renameSync, rmSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, realpathSync, renameSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -111,7 +111,7 @@ describe('the projects api', () => {
   it('adds a path, relinks a moved one and forgets it, signed in', async () => {
     const added = repo();
     expect((await post('/api/project/paths', { path: added })).status).toBe(201);
-    const moved = join(mkdtempSync(join(tmpdir(), 'otea-moved-')), 'repo');
+    const moved = join(realpathSync.native(mkdtempSync(join(tmpdir(), 'otea-moved-'))), 'repo');
     renameSync(added, moved);
     repos.push({ dir: moved, remove: () => rmSync(moved, { recursive: true, force: true }) });
     let settings = await get<ProjectSettings>('/api/project/settings');
