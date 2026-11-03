@@ -23,6 +23,7 @@ import {
   addProjectPath,
   findProject,
   keyOf,
+  kindOf,
   type Link,
   linkAt,
   openRegistry,
@@ -199,8 +200,6 @@ function createLocal({ root, gitCommonDir }: Location): Project {
   if (gitCommonDir) excludeFromGit(gitCommonDir);
   return open(local(root));
 }
-
-const kindOf = (path: string) => (existsSync(join(path, '.git')) ? 'repo' : 'folder');
 
 // Common storage leaves no trace in the folder: the data goes to the Otea home and the registry
 // links the folder to it.

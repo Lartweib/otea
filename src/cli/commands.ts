@@ -1,11 +1,12 @@
 import { resolve } from 'node:path';
+import type { DatabaseSync } from 'node:sqlite';
 import { fileURLToPath } from 'node:url';
 import { type AgentsMdAction, connectAgent, writeAgentsMd } from '../app/agents.ts';
 import { addCollection, DEFAULT_PRESET, typeOfItem } from '../app/collections.ts';
 import { listEvents } from '../app/events.ts';
 import { attachEvidence } from '../app/evidence.ts';
 import { checkGate, type GateCheck } from '../app/gates.ts';
-import { listProjects, withRegistry } from '../app/home.ts';
+import { forgetProjectPath, listProjects, relinkProjectPath, withRegistry } from '../app/home.ts';
 import {
   createItem,
   type ListItemsFilter,
@@ -22,6 +23,7 @@ import { linkItems, unlinkItems } from '../app/relations.ts';
 import { relayDecision } from '../app/relay.ts';
 import { validateProject } from '../app/validate.ts';
 import { watch } from '../app/watch.ts';
+import { OteaError } from '../core/errors.ts';
 import { EVIDENCE_ROLES, type EvidenceRole, MAX_EVIDENCE_MB } from '../core/evidence.ts';
 import type { FieldValues } from '../core/fields.ts';
 import { parseDuration } from '../core/lease.ts';
@@ -120,9 +122,12 @@ const projectsList: Command = {
     const projects = withRegistry(process.env, listProjects) ?? [];
     const text = projects
       .map(({ id, name, storage, paths }) =>
-        [`${id}  ${name}  ${storage}`, ...paths.map(({ path, kind }) => `  ${path}  ${kind}`)].join(
-          '\n',
-        ),
+        [
+          `${id}  ${name}  ${storage}`,
+          ...paths.map(
+            ({ path, kind, missing }) => `  ${path}  ${kind}${missing ? '  (missing)' : ''}`,
+          ),
+        ].join('\n'),
       )
       .join('\n');
     return { data: projects, text: text || 'No registered projects' };
@@ -157,6 +162,47 @@ const projectsAdd: Command = {
   execute: ({ cwd, required, args: [path = ''] }) => {
     const linked = addPathToProject(resolve(cwd, path), required('to'));
     return { data: linked, text: `Linked ${linked.path} to ${linked.projectId}` };
+  },
+};
+
+function inRegistry<T>(use: (registry: DatabaseSync) => T): T {
+  const result = withRegistry(process.env, use);
+  if (result === undefined) throw new OteaError('not_found', 'No project is registered yet');
+  return result;
+}
+
+const projectsRelink: Command = {
+  name: 'projects relink',
+  summary:
+    'Point a linked folder at where its repo moved; refused unless the new folder has the same remote URL or root commit (--force links it anyway)',
+  args: ['old', 'new'],
+  options: { force: { flag: true } },
+  execute: ({ cwd, flag, warn, args: [from = '', to = ''] }) => {
+    const relinked = inRegistry((registry) =>
+      relinkProjectPath(registry, resolve(cwd, from), resolve(cwd, to), flag('force')),
+    );
+    if (relinked.match === 'unknown') {
+      warn(`Could not check that ${relinked.link.path} is the same repo (no remote URL or commit)`);
+    }
+    const text = `Relinked ${relinked.from} to ${relinked.link.path} (${relinked.link.projectId})`;
+    return { data: relinked, text };
+  },
+};
+
+const projectsForget: Command = {
+  name: 'projects forget',
+  summary:
+    'Unlink a folder from its project; the project and its items stay, and with no folder left nothing resolves to it',
+  args: ['path'],
+  options: {},
+  execute: ({ cwd, args: [path = ''] }) => {
+    const forgotten = inRegistry((registry) => forgetProjectPath(registry, resolve(cwd, path)));
+    const { link, remaining } = forgotten;
+    const left =
+      remaining === 0
+        ? `${link.projectId} has no linked folder left; its data stays, link one with otea projects add`
+        : `${link.projectId} keeps ${remaining} linked folder${remaining === 1 ? '' : 's'}`;
+    return { data: forgotten, text: `Forgot ${link.path}\n${left}` };
   },
 };
 
@@ -837,6 +883,8 @@ export const COMMANDS: readonly Command[] = [
   projectsList,
   projectsCurrent,
   projectsAdd,
+  projectsRelink,
+  projectsForget,
   connect,
   collectionAdd,
   create,
