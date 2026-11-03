@@ -150,3 +150,12 @@
   animation: none;
   mix-blend-mode: normal;
 }
+
+/* The language switch (setLanguage): the page crossfades into the new words on the base step.
+   Whatever reads the same in both languages is the same pixel in both snapshots, so it stays still.
+   Under reduced motion there is no view transition at all. */
+:root[data-language-switching]::view-transition-old(root),
+:root[data-language-switching]::view-transition-new(root) {
+  animation-duration: var(--m-base);
+  animation-timing-function: var(--m-ease);
+}

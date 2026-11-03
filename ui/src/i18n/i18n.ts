@@ -1,4 +1,6 @@
 import { createElement, Fragment, type ReactNode, useSyncExternalStore } from 'react';
+import { flushSync } from 'react-dom';
+import { reducedMotion } from '../motion.ts';
 import { en } from './en.ts';
 import { es } from './es.ts';
 
@@ -125,10 +127,40 @@ function apply(next: Language): void {
   for (const listener of listeners) listener();
 }
 
-// Switches the interface's language and remembers it in this browser.
+// The switch in flight, and the language the page should end on: a skipped switch's late update
+// applies the latest choice, never its own.
+let switching: ViewTransition | undefined;
+let wanted: Language = current;
+
+// Switches the interface's language and remembers it in this browser; any control calls it. The page
+// rewrites itself in place, scroll, selection and drafts kept: a 200 ms crossfade (a View
+// Transition over the page, so whatever reads the same in both languages stays still), or at once
+// under reduced motion and where the browser has no View Transitions.
 export function setLanguage(next: Language): void {
   store(next);
-  apply(next);
+  wanted = next;
+  if (next === current && !switching) return;
+  switching?.skipTransition();
+  if (
+    typeof document === 'undefined' ||
+    typeof document.startViewTransition !== 'function' ||
+    reducedMotion()
+  ) {
+    apply(next);
+    return;
+  }
+  const root = document.documentElement;
+  root.setAttribute('data-language-switching', '');
+  // React renders the new words inside the update, so the new snapshot holds them.
+  const transition = document.startViewTransition(() => flushSync(() => apply(wanted)));
+  switching = transition;
+  transition.finished
+    .catch(() => {})
+    .finally(() => {
+      if (switching !== transition) return;
+      switching = undefined;
+      root.removeAttribute('data-language-switching');
+    });
 }
 
 // What Preferences offers: a language of its own, or auto, which follows the browser.
