@@ -157,6 +157,15 @@ describe('project presets', () => {
     ]);
   });
 
+  it('reports a missing playbook of a type', () => {
+    const typed = `${NOTES}types:\n  note: { label: Note, playbook: ./note.md }\n`;
+    write('notes', { 'preset.yaml': typed });
+
+    expect(problemsOf(loadPresets(root), 'notes')).toEqual([
+      'types.note.playbook: ./note.md does not exist',
+    ]);
+  });
+
   it('reports every problem of an invalid preset', () => {
     write('notes', { 'preset.yaml': NOTES.replace('initial: open', 'initial: nope') });
 

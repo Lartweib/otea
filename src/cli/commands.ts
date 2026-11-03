@@ -2,13 +2,20 @@ import { resolve } from 'node:path';
 import type { DatabaseSync } from 'node:sqlite';
 import { fileURLToPath } from 'node:url';
 import { type AgentsMdAction, connectAgent, writeAgentsMd } from '../app/agents.ts';
-import { addCollection, DEFAULT_PRESET, typeOfItem } from '../app/collections.ts';
+import {
+  addCollection,
+  DEFAULT_PRESET,
+  getCollection,
+  presetOf,
+  typeOfItem,
+} from '../app/collections.ts';
 import { listEvents } from '../app/events.ts';
 import { attachEvidence } from '../app/evidence.ts';
 import { checkGate, type GateCheck } from '../app/gates.ts';
 import { forgetProjectPath, listProjects, relinkProjectPath, withRegistry } from '../app/home.ts';
 import {
   createItem,
+  type Item,
   type ListItemsFilter,
   listItems,
   moveItem,
@@ -57,6 +64,22 @@ import {
 } from './hooks.ts';
 import { probeSignIn } from './probe.ts';
 import { readServeFile, removeServeFile, writeServeFile } from './serve-file.ts';
+
+// The text names an item's type only when its collection's preset has several.
+function typesShown(project: Project): (item: { collection: string }) => boolean {
+  const several = new Map<string, boolean>();
+  return ({ collection }) => {
+    const known = several.get(collection);
+    if (known !== undefined) return known;
+    const shown = presetOf(project, getCollection(project.db, collection)).types.length > 1;
+    several.set(collection, shown);
+    return shown;
+  };
+}
+
+function itemResult(project: Project, item: Item): { data: Item; text: string } {
+  return { data: item, text: formatItem(item, typesShown(project)) };
+}
 
 function withProject<T>(cwd: string, use: (project: Project) => T): T {
   const project = openProject(cwd);
@@ -383,8 +406,10 @@ const list: Command = {
     unclaimed: { flag: true },
   },
   execute: (input) => {
-    const items = withProject(input.cwd, (project) => listItems(project, listFilter(input)));
-    return { data: items, text: formatItems(items) };
+    return withProject(input.cwd, (project) => {
+      const items = listItems(project, listFilter(input));
+      return { data: items, text: formatItems(items, typesShown(project)) };
+    });
   },
 };
 
@@ -396,19 +421,19 @@ const show: Command = {
   options: {},
   execute: ({ cwd, actor, channel, args: [id = ''] }) => {
     const performer = { actor, channel };
-    const { item, layout } = withProject(cwd, (project) => {
+    return withProject(cwd, (project) => {
       const shown = showItem(project, id, performer);
-      const hint = hintFor(project, shown, actor.name);
-      return { item: { ...shown, hint }, layout: typeOfItem(project, shown).layout };
+      const item = { ...shown, hint: hintFor(project, shown, actor.name) };
+      const { layout } = typeOfItem(project, shown);
+      return { data: item, text: formatItemWithEvents(item, layout, typesShown(project)) };
     });
-    return { data: item, text: formatItemWithEvents(item, layout) };
   },
 };
 
 const playbook: Command = {
   name: 'playbook',
   summary:
-    "Print the playbook an agent follows in a collection; without --collection, the project's collections and how to read each playbook",
+    "Print the playbook an agent follows in a collection, its preset's then each type's own; without --collection, the project's collections and how to read each playbook",
   args: [],
   options: { collection: {} },
   execute: ({ cwd, option }) => {
@@ -416,9 +441,13 @@ const playbook: Command = {
     return withProject(cwd, (project) => {
       if (name !== undefined) {
         const found = collectionPlaybook(project, name);
-        const text =
+        const text = [
           found.playbook?.trimEnd() ??
-          `The ${found.preset} preset of collection "${name}" has no playbook.`;
+            `The ${found.preset} preset of collection "${name}" has no playbook.`,
+          ...found.types.map(
+            ({ type, playbook }) => `--- Type ${type} ---\n\n${playbook.trimEnd()}`,
+          ),
+        ].join('\n\n');
         return { data: found, text };
       }
       const collections = playbookIndex(project);
@@ -444,8 +473,7 @@ const move: Command = {
   execute: ({ cwd, actor, channel, option, args: [id = '', to = ''] }) => {
     const reason = option('reason');
     const input = { id, to, actor, channel, ...(reason ? { reason } : {}) };
-    const item = withProject(cwd, (project) => moveItem(project, input));
-    return { data: item, text: formatItem(item) };
+    return withProject(cwd, (project) => itemResult(project, moveItem(project, input)));
   },
 };
 
@@ -491,8 +519,9 @@ const relay: Command = {
     const via = input.actor.name;
     const { channel } = input;
     const relayed = { id, to, via, channel, quote, ...(reason ? { reason } : {}) };
-    const item = withProject(input.cwd, (project) => relayDecision(project, relayed));
-    return { data: item, text: formatItem(item) };
+    return withProject(input.cwd, (project) =>
+      itemResult(project, relayDecision(project, relayed)),
+    );
   },
 };
 
@@ -591,10 +620,11 @@ const wait: Command = {
       ...(timeoutMs === undefined ? {} : { timeoutMs }),
       ...(filter.availableTo === undefined ? {} : { recheckMs: LEASE_RECHECK_MS }),
     };
-    const result = await withProjectWhile(input.cwd, async (project) =>
-      watch(project.db, () => oldestWaiting(project, filter), options),
-    );
-    if ('found' in result) return { data: result.found, text: formatItem(result.found) };
+    const result = await withProjectWhile(input.cwd, async (project) => {
+      const waited = await watch(project.db, () => oldestWaiting(project, filter), options);
+      return 'found' in waited ? itemResult(project, waited.found) : waited;
+    });
+    if ('data' in result) return result;
     if (result.stopped === 'timeout') {
       throw new CommandFailure('timeout', `No item reached the ${turn} turn within ${timeout}`);
     }
@@ -611,8 +641,7 @@ const claim: Command = {
   execute: ({ cwd, actor, option, args: [id = ''] }) => {
     const ttl = ttlFrom(option('ttl'));
     const input = { id, actor, ...(ttl === undefined ? {} : { ttlMs: ttl }) };
-    const item = withProject(cwd, (project) => claimItem(project, input));
-    return { data: item, text: formatItem(item) };
+    return withProject(cwd, (project) => itemResult(project, claimItem(project, input)));
   },
 };
 
@@ -624,8 +653,7 @@ const heartbeat: Command = {
   execute: ({ cwd, actor, option, args: [id = ''] }) => {
     const ttl = ttlFrom(option('ttl'));
     const input = { id, actor, ...(ttl === undefined ? {} : { ttlMs: ttl }) };
-    const item = withProject(cwd, (project) => heartbeatItem(project, input));
-    return { data: item, text: formatItem(item) };
+    return withProject(cwd, (project) => itemResult(project, heartbeatItem(project, input)));
   },
 };
 
@@ -635,8 +663,7 @@ const release: Command = {
   args: ['id'],
   options: {},
   execute: ({ cwd, actor, args: [id = ''] }) => {
-    const item = withProject(cwd, (project) => releaseItem(project, { id, actor }));
-    return { data: item, text: formatItem(item) };
+    return withProject(cwd, (project) => itemResult(project, releaseItem(project, { id, actor })));
   },
 };
 
@@ -672,8 +699,7 @@ const update: Command = {
     }
     const { actor } = input;
     const changes = { id, fields, actor, ...(title === undefined ? {} : { title }) };
-    const item = withProject(input.cwd, (project) => updateItem(project, changes));
-    return { data: item, text: formatItem(item) };
+    return withProject(input.cwd, (project) => itemResult(project, updateItem(project, changes)));
   },
 };
 

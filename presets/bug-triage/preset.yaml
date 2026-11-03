@@ -1,7 +1,6 @@
 preset: bug-triage
 preset_version: 2
 playbook: ./playbook.md
-icon: bug
 fields:
   title: { module: text, required: create }
   description: { module: markdown, required: complete }
@@ -46,6 +45,11 @@ workflow:
         by: human-ui,
         reason: required,
       }
+# The only type, named so items read as bugs.
+types:
+  bug:
+    label: Bug
+    icon: bug
 view:
   kind: grid
   columns: [id, title, category, severity, area, state, who, age]

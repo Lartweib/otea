@@ -68,8 +68,8 @@ describe('api', () => {
       });
       expect(collections[0]?.types).toEqual([
         expect.objectContaining({
-          name: 'item',
-          label: 'Item',
+          name: 'task',
+          label: 'Task',
           initial: 'todo',
           incomplete: 'incomplete',
           layout: expect.objectContaining({ body: expect.any(Array) }),
@@ -102,7 +102,7 @@ describe('api', () => {
         values: ['low', 'medium', 'high', 'critical'],
       });
       expect(presets[2]).toMatchObject({
-        types: [expect.objectContaining({ name: 'item', layout: expect.any(Object) })],
+        types: [expect.objectContaining({ name: 'task', layout: expect.any(Object) })],
         view: { kind: 'list', groupBy: 'turn' },
       });
       expect({ ...presets[2], types: undefined, view: undefined }).toEqual({
@@ -210,7 +210,7 @@ types:
       ['?state=review', ['BUGS-1']],
       ['?turn=human', ['BUGS-1']],
       ['?collection=tasks&turn=human', []],
-      ['?type=item', ['TASKS-1', 'BUGS-1']],
+      ['?type=task', ['TASKS-1', 'BUGS-1']],
       ['?type=bug', []],
       ['?field=priority=medium', ['TASKS-1', 'BUGS-1']],
       ['?field=priority=medium&field=title=Fix%20login', ['BUGS-1']],

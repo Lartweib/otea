@@ -1,5 +1,5 @@
 import { missingToComplete, valueProblem } from './fields.ts';
-import { DEFAULT_TYPE, type ItemType, type Preset } from './preset.ts';
+import type { ItemType, Preset } from './preset.ts';
 
 export type Severity = 'error' | 'warning';
 
@@ -56,8 +56,7 @@ export function itemFindings(preset: Preset, item: StoredItem): Finding[] {
   const found: Array<[Severity, string]> = [];
   const type = preset.types.find(({ name }) => name === item.type);
   if (type) {
-    const own =
-      preset.types.length === 1 && type.name === DEFAULT_TYPE ? '' : ` (type ${type.name})`;
+    const own = preset.types.length === 1 ? '' : ` (type ${type.name})`;
     found.push(...typeMessages(type, item, `preset ${preset.name}${own}`));
   } else {
     const names = preset.types.map(({ name }) => name).join(', ');

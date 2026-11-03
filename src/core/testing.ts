@@ -80,3 +80,34 @@ types:
 `;
 
 export const evidencePreset = parsePreset(EVIDENCE_YAML);
+
+// A hierarchy of three types: epics take stories and bugs, stories take bugs, a story never stands
+// alone, and the epic follows its own playbook beside the preset's.
+export const HIERARCHY_YAML = `
+preset: agile
+preset_version: 1
+playbook: ./playbook.md
+fields:
+  title: { module: text, required: create }
+workflow:
+  initial: open
+  states: { open: { turn: agent }, closed: { turn: none, closes: discarded } }
+  transitions: [{ from: open, to: closed, by: agent }]
+types:
+  epic:
+    label: Epic
+    children: [story, bug]
+    playbook: ./epic.md
+    layout:
+      body: [{ module: children }]
+  story:
+    label: Story
+    root: false
+    children: [bug]
+    layout:
+      body: [{ module: children }]
+  bug:
+    label: Bug
+`;
+
+export const hierarchyPreset = parsePreset(HIERARCHY_YAML);

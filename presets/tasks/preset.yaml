@@ -1,7 +1,6 @@
 preset: tasks
 preset_version: 1
 playbook: ./playbook.md
-icon: checkbox
 fields:
   title: { module: text, required: create }
   description: { module: markdown, required: complete }
@@ -24,3 +23,8 @@ workflow:
     - { from: review, to: todo, by: human-ui, reason: required }
     - { from: [incomplete, todo, in_progress, review], to: discarded, by: human, reason: required }
     - { from: incomplete, to: discarded, by: agent, reason: required }
+# The only type, named so items read as tasks.
+types:
+  task:
+    label: Task
+    icon: checkbox

@@ -9,7 +9,7 @@ import {
   typeFor,
   typeOf,
 } from './preset.ts';
-import { tasks } from './testing.ts';
+import { HIERARCHY_YAML, tasks } from './testing.ts';
 
 const TASKS_YAML = `
 preset: tasks
@@ -729,5 +729,92 @@ describe('typeOf and typeFor', () => {
         message: 'Preset notes has several types; give one of: bug, impr',
       }),
     );
+  });
+});
+
+describe('type hierarchy', () => {
+  it('reads no hierarchy when no type lists children: every type takes any child, and stands alone', () => {
+    const preset = parsePreset(stringify(twoTypes()));
+
+    expect(preset.types.map(({ children, root }) => ({ children, root }))).toEqual([
+      { children: undefined, root: undefined },
+      { children: undefined, root: undefined },
+    ]);
+  });
+
+  it('reads the children and root of each type once a type lists children', () => {
+    const preset = parsePreset(HIERARCHY_YAML);
+
+    expect(preset.types.map(({ name, children, root }) => ({ name, children, root }))).toEqual([
+      { name: 'epic', children: ['story', 'bug'], root: true },
+      { name: 'story', children: ['bug'], root: false },
+      { name: 'bug', children: [], root: true },
+    ]);
+  });
+
+  it('reports a child that is not a type of the preset', () => {
+    expect(
+      typeProblems((raw) => {
+        raw.types.bug.children = ['impr', 'epik'];
+      }),
+    ).toEqual(['types.bug.children[1]: unknown type "epik" (types: bug, impr)']);
+  });
+
+  it('reports a child listed twice', () => {
+    expect(
+      typeProblems((raw) => {
+        raw.types.bug.children = ['impr', 'impr'];
+      }),
+    ).toEqual(['types.bug.children[1]: "impr" is listed twice']);
+  });
+
+  it('reports a loop, a type under itself too', () => {
+    expect(
+      typeProblems((raw) => {
+        raw.types.bug.children = ['impr'];
+        raw.types.impr.children = ['bug'];
+      }),
+    ).toEqual(['types.bug.children: loop bug -> impr -> bug']);
+    expect(
+      typeProblems((raw) => {
+        raw.types.bug.children = ['bug'];
+      }),
+    ).toEqual(['types.bug.children: loop bug -> bug']);
+  });
+
+  it('reports a type that cannot stand alone and that no type takes as a child', () => {
+    expect(
+      typeProblems((raw) => {
+        raw.types.impr.root = false;
+      }),
+    ).toEqual(['types.impr.root: false, but no type lists impr in its children']);
+  });
+
+  it('takes children and root only under types', () => {
+    const problems = (change: (raw: Raw) => void) => {
+      const raw = minimal();
+      change(raw);
+      const result = readPreset(stringify(raw));
+      return result.ok ? [] : result.problems;
+    };
+
+    expect(
+      problems((raw) => {
+        raw.children = [];
+      }),
+    ).toEqual(['(root): Unrecognized key: "children"']);
+  });
+});
+
+describe('per-type playbook', () => {
+  it('reads the playbook of a type, apart from the preset one', () => {
+    const preset = parsePreset(HIERARCHY_YAML);
+
+    expect(preset.playbook).toBe('./playbook.md');
+    expect(preset.types.map(({ name, playbook }) => [name, playbook])).toEqual([
+      ['epic', './epic.md'],
+      ['story', undefined],
+      ['bug', undefined],
+    ]);
   });
 });

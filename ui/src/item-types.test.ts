@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest';
 import {
   detailBlocks,
   intakeFields,
+  intakeTypes,
   rowValues,
   showsTypes,
+  takesChildren,
   typeMark,
   typeOf,
 } from './item-types.ts';
@@ -84,14 +86,64 @@ describe('item types', () => {
       word: 'bug',
     });
     expect(typeMark(work, 'impr')).toEqual({ kind: 'tag', name: 'impr', label: 'Improvement' });
-    // A preset without types names its only type after itself.
+    // A preset that names its only type says its word; one without types, its own name.
     expect(typeMark({ ...work, preset: 'bug-triage', types: [iconic] }, 'bug')).toEqual({
       kind: 'icon',
       icon: 'bug',
-      word: 'bug-triage',
+      word: 'bug',
+    });
+    const implicit = { ...iconic, name: 'item', label: 'Item' };
+    expect(typeMark({ ...work, preset: 'notes', types: [implicit] }, 'item')).toEqual({
+      kind: 'icon',
+      icon: 'bug',
+      word: 'notes',
     });
     expect(typeMark({ ...work, types: [bug] }, 'bug')).toBeNull();
     expect(typeMark(undefined, 'bug')).toBeNull();
+  });
+
+  describe('hierarchy', () => {
+    const epic: TypeView = {
+      ...impr,
+      name: 'epic',
+      label: 'Epic',
+      children: ['story', 'bug'],
+      root: true,
+    };
+    const story: TypeView = {
+      ...impr,
+      name: 'story',
+      label: 'Story',
+      children: ['bug'],
+      root: false,
+    };
+    const leaf: TypeView = { ...bug, children: [], root: true };
+    const board: CollectionView = { ...work, name: 'board', types: [epic, story, leaf] };
+
+    it('offers under a parent only the types its type takes', () => {
+      expect(intakeTypes(board, epic).map(({ name }) => name)).toEqual(['story', 'bug']);
+      expect(intakeTypes(board, story).map(({ name }) => name)).toEqual(['bug']);
+      expect(intakeTypes(board, leaf)).toEqual([]);
+    });
+
+    it('offers without a parent only the types that stand alone', () => {
+      expect(intakeTypes(board, undefined).map(({ name }) => name)).toEqual(['epic', 'bug']);
+    });
+
+    it('offers every type of a preset without a hierarchy', () => {
+      expect(intakeTypes(work, bug)).toEqual([bug, impr]);
+      expect(intakeTypes(work, undefined)).toEqual([bug, impr]);
+    });
+
+    it('takes children unless the hierarchy gives the type none', () => {
+      expect([epic, story, leaf, bug, undefined].map(takesChildren)).toEqual([
+        true,
+        true,
+        false,
+        true,
+        true,
+      ]);
+    });
   });
 
   it('asks for the fields of the intake slot, in its order', () => {

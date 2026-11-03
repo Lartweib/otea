@@ -19,6 +19,7 @@ import {
   selectRegisteredProject,
   selectRegisteredProjects,
 } from '../store/registry.ts';
+import { nameImplicitTypes } from './collections.ts';
 import type { Context } from './context.ts';
 import {
   addProjectPath,
@@ -110,12 +111,9 @@ function ensureIdentity(db: DatabaseSync, identity: () => ProjectIdentity): Proj
 function open(found: Found, identity = () => newIdentity(found.root)): Project {
   const db = openDatabase(databasePath(found.dataDir));
   migrate(db);
-  return {
-    ...found,
-    db,
-    presets: loadPresets(found.dataDir),
-    identity: ensureIdentity(db, identity),
-  };
+  const presets = loadPresets(found.dataDir);
+  nameImplicitTypes({ db, presets });
+  return { ...found, db, presets, identity: ensureIdentity(db, identity) };
 }
 
 // A common project's data lives apart from its folders, so it can go missing on its own.

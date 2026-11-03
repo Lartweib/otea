@@ -34,7 +34,9 @@ export type FieldSpec = {
 export const DEFAULT_TYPE = 'item';
 
 // An item type: the preset's shared fields plus its own, its own workflow or the preset's, how its
-// items are laid out, and the icon drawn beside them (none when the preset gives it none).
+// items are laid out, the icon drawn beside them (none when the preset gives it none) and its own
+// playbook, read before the preset's. `children` and `root` are set only in a preset that declares a
+// hierarchy: the types that may hang under it with parent, and whether it may live with no parent.
 export type ItemType = {
   name: string;
   label: string;
@@ -42,6 +44,9 @@ export type ItemType = {
   fields: Record<string, FieldSpec>;
   workflow: Workflow;
   layout: Layout;
+  playbook?: string;
+  children?: string[];
+  root?: boolean;
 };
 
 // What field rules and workflows are checked against: a type, or a preset read as its only type.
@@ -128,6 +133,9 @@ const typeSchema = z.strictObject({
   fields: fieldsSchema.optional(),
   workflow: workflowSchema.optional(),
   layout: layoutSchema.optional(),
+  playbook: z.string().optional(),
+  children: z.array(z.string()).optional(),
+  root: z.boolean().optional(),
 });
 
 const presetSchema = z.strictObject({
@@ -153,6 +161,7 @@ type RawPreset = z.infer<typeof presetSchema>;
 type RawField = z.infer<typeof fieldSchema>;
 type RawFields = Record<string, RawField>;
 type RawWorkflow = z.infer<typeof workflowSchema>;
+type RawTypes = Record<string, z.infer<typeof typeSchema>>;
 
 function isModule(module: string): module is FieldModule {
   return (FIELD_MODULES as readonly string[]).includes(module);
@@ -366,6 +375,58 @@ function toWorkflow(name: string, raw: RawWorkflow): Workflow {
 
 type TypeReading = { types: ItemType[]; problems: string[] };
 
+// A preset declares a hierarchy once one of its types lists children.
+function declaresHierarchy(types: RawTypes): boolean {
+  return Object.values(types).some(({ children }) => children !== undefined);
+}
+
+function childProblems(types: RawTypes): string[] {
+  const names = Object.keys(types);
+  return Object.entries(types).flatMap(([name, { children = [] }]) =>
+    children.flatMap((child, index) => {
+      const at = `types.${name}.children[${index}]`;
+      if (!names.includes(child))
+        return [`${at}: unknown type "${child}" (types: ${names.join(', ')})`];
+      if (children.indexOf(child) !== index) return [`${at}: "${child}" is listed twice`];
+      return [];
+    }),
+  );
+}
+
+// Each loop once, from the first type it passes through in the order the preset declares them: a
+// walk from a type goes only through the types declared after it, back to where it started.
+function loopProblems(types: RawTypes): string[] {
+  const names = Object.keys(types);
+  const childrenOf = (name: string) =>
+    (types[name]?.children ?? []).filter((child) => names.includes(child));
+  const problems: string[] = [];
+  names.forEach((start, first) => {
+    const walk = (path: string[]) => {
+      for (const child of new Set(childrenOf(path.at(-1) ?? start))) {
+        if (child === start) {
+          problems.push(`types.${start}.children: loop ${[...path, start].join(' -> ')}`);
+        } else if (names.indexOf(child) > first && !path.includes(child)) {
+          walk([...path, child]);
+        }
+      }
+    };
+    walk([start]);
+  });
+  return problems;
+}
+
+// A type that may not stand alone needs a type to hang under.
+function rootProblems(types: RawTypes): string[] {
+  return Object.entries(types)
+    .filter(([, { root }]) => root === false)
+    .filter(([name]) => !Object.values(types).some(({ children }) => children?.includes(name)))
+    .map(([name]) => `types.${name}.root: false, but no type lists ${name} in its children`);
+}
+
+function hierarchyProblems(types: RawTypes): string[] {
+  return [...childProblems(types), ...loopProblems(types), ...rootProblems(types)];
+}
+
 function iconProblems(at: string, icon: string | undefined): string[] {
   const problem = icon === undefined ? undefined : iconProblem(at, icon);
   return problem ? [problem] : [];
@@ -388,6 +449,8 @@ function readTypes(raw: RawPreset, fields: Record<string, FieldSpec>, workflow: 
   if (raw.icon !== undefined) {
     reading.problems.push('icon: declare the icon of each type under types.<type>.icon');
   }
+  const hierarchy = declaresHierarchy(raw.types ?? {});
+  reading.problems.push(...hierarchyProblems(raw.types ?? {}));
   for (const [name, type] of declared) {
     const at = `types.${name}`;
     const own = type.fields ?? {};
@@ -417,6 +480,11 @@ function readTypes(raw: RawPreset, fields: Record<string, FieldSpec>, workflow: 
       layout,
     };
     if (type.icon !== undefined) read.icon = type.icon;
+    if (type.playbook !== undefined) read.playbook = type.playbook;
+    if (hierarchy) {
+      read.children = [...new Set(type.children ?? [])];
+      read.root = type.root ?? true;
+    }
     reading.types.push(read);
   }
   return reading;

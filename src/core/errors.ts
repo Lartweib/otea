@@ -25,6 +25,8 @@ export type ErrorCode =
   | 'invalid_relation'
   | 'self_relation'
   | 'parent_exists'
+  | 'parent_type'
+  | 'parent_required'
   | 'relation_cycle'
   | 'children_open'
   | 'blockers_open'

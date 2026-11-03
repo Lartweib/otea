@@ -44,8 +44,13 @@ function loadOne(dir: string, name: string, origin: PresetOrigin): Loaded {
   if (preset.name !== name) {
     problems.push(problem(`preset: "${preset.name}" does not match its directory "${name}"`));
   }
-  if (preset.playbook !== undefined && !existsSync(resolve(dir, name, preset.playbook))) {
+  const missing = (playbook: string | undefined) =>
+    playbook !== undefined && !existsSync(resolve(dir, name, playbook));
+  if (missing(preset.playbook)) {
     problems.push(problem(`playbook: ${preset.playbook} does not exist`));
+  }
+  for (const type of preset.types.filter(({ playbook }) => missing(playbook))) {
+    problems.push(problem(`types.${type.name}.playbook: ${type.playbook} does not exist`));
   }
   if (problems.length > 0) return { problems };
   return { preset: { ...preset, origin }, problems, warnings: reading.warnings.map(problem) };

@@ -89,9 +89,9 @@ describe('collections', () => {
     );
     expect(views[0]?.types).toEqual([
       {
-        name: 'item',
+        name: 'task',
         icon: 'checkbox',
-        label: 'Item',
+        label: 'Task',
         initial: 'todo',
         incomplete: 'incomplete',
         states: expect.arrayContaining([

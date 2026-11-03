@@ -412,6 +412,7 @@ export const es: Catalog = {
   'intake.unparent': 'No hacerlo hijo de {id}',
   'intake.collection': 'Colección',
   'intake.type': 'Tipo',
+  'intake.noTypes': 'Ningún tipo de esta colección puede ser hijo de {id}.',
   'intake.required': '(obligatorio)',
   'intake.create': 'Crear',
   'intake.creating': 'Creando…',

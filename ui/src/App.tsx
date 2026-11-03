@@ -255,8 +255,8 @@ export function App() {
     if (phone) window.scrollTo({ top: 0 });
   };
   const addChild = (parent: ItemView) => {
-    const { id, title } = parent;
-    setIntake({ openedOn: selectedId, parent: { id, title, collection: parent.collection } });
+    const { id, title, type } = parent;
+    setIntake({ openedOn: selectedId, parent: { id, title, type, collection: parent.collection } });
     if (phone) window.scrollTo({ top: 0 });
   };
   const names = collections.status === 'ready' ? collections.value.map((each) => each.name) : [];
