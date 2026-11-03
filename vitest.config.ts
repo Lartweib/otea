@@ -7,6 +7,8 @@ const SPAWNS_PROCESSES = [
   'src/cli/**/*.test.ts',
   'src/mcp/**/*.test.ts',
   'src/app/project.test.ts',
+  'src/app/home.test.ts',
+  'src/app/migrate.test.ts',
 ];
 
 export default defineConfig({
