@@ -1,4 +1,5 @@
 import { presetText, t } from './i18n/i18n.ts';
+import { fieldWord, stateWord } from './preset-words.ts';
 import type { FieldView, TypeView } from './types.ts';
 
 export type FormValues = Record<string, string>;
@@ -55,7 +56,10 @@ export function payloadOf(values: FormValues): FormValues {
   return Object.fromEntries(Object.entries(values).filter(([, value]) => !isBlank(value)));
 }
 
-export function startMessage({ state, incomplete, missing }: Start): string {
-  if (!incomplete) return t('intake.startsReady', { state });
-  return t('intake.startsIncomplete', { state, fields: missing.join(', ') });
+// The state and fields in the preset's words for the language on screen, when the type gives them.
+export function startMessage({ state, incomplete, missing }: Start, type?: TypeView): string {
+  const shown = stateWord(type, state);
+  if (!incomplete) return t('intake.startsReady', { state: shown });
+  const fields = missing.map((name) => fieldWord(type, name) ?? name);
+  return t('intake.startsIncomplete', { state: shown, fields: fields.join(', ') });
 }

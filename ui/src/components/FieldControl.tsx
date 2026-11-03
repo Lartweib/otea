@@ -9,10 +9,12 @@ type FieldControlProps = {
   value: string;
   disabled: boolean;
   onChange: (value: string) => void;
+  // The preset's label for the field in the language on screen; its name otherwise.
+  label?: string | undefined;
 };
 
 // A labelled field control, drawn by the field's module. Intake and the catalog preview share it.
-export function FieldControl({ id, field, value, disabled, onChange }: FieldControlProps) {
+export function FieldControl({ id, field, value, disabled, onChange, label }: FieldControlProps) {
   const hint = fieldHint(field);
   const hintId = hint ? `${id}-hint` : undefined;
   const required = field.required === 'create';
@@ -20,7 +22,9 @@ export function FieldControl({ id, field, value, disabled, onChange }: FieldCont
   return (
     <div className="intake-field">
       <label className="t-label" htmlFor={id}>
-        {fieldLabel(field.name)}
+        {label === undefined
+          ? fieldLabel(field.name)
+          : label.charAt(0).toUpperCase() + label.slice(1)}
         {required ? <span className="required"> {t('intake.required')}</span> : null}
       </label>
       <Edit

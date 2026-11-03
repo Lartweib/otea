@@ -1,5 +1,5 @@
 import type { Layout } from '../../src/core/modules.ts';
-import type { FieldRequirement } from '../../src/core/preset.ts';
+import type { FieldRequirement, Labels } from '../../src/core/preset.ts';
 import type { ChildrenSummary, RelationRef, RelationView } from '../../src/core/relations.ts';
 
 // Relation kinds and how they read from either item, from the core. Type-only.
@@ -149,6 +149,8 @@ export type TypeView = {
   root?: boolean;
   // The actions its workflow gates (push, merge) and the states that allow each, when it has any.
   gates?: Record<string, string[]>;
+  // Its words in the other languages its preset speaks, by language (see preset-words.ts).
+  labels?: Labels;
 };
 
 // How a collection lists its items: the list or the grid (a board is drawn as the list), its

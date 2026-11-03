@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { createItem, fetchCollections } from '../api.ts';
 import { type Connection, useRemote } from '../hooks.ts';
-import { presetText, t, tx } from '../i18n/i18n.ts';
+import { t, tx } from '../i18n/i18n.ts';
 import {
   canSubmit,
   type FormValues,
@@ -12,6 +12,7 @@ import {
 } from '../intake.ts';
 import { intakeFields, intakeTypes, typeOf } from '../item-types.ts';
 import { Button, Icon } from '../kit/index.ts';
+import { fieldWord, typeWord } from '../preset-words.ts';
 import type { CollectionView, TypeView } from '../types.ts';
 import { FieldControl } from './FieldControl.tsx';
 
@@ -155,9 +156,9 @@ function IntakeForm({
             disabled={posting}
             onChange={(event) => chooseType(event.target.value)}
           >
-            {types.map(({ name, label }) => (
-              <option key={name} value={name}>
-                {presetText(label)}
+            {types.map((each) => (
+              <option key={each.name} value={each.name}>
+                {typeWord(each, each.name)}
               </option>
             ))}
           </select>
@@ -171,11 +172,12 @@ function IntakeForm({
           value={values[field.name] ?? ''}
           disabled={posting}
           onChange={(value) => change(field.name, value)}
+          label={fieldWord(type, field.name)}
         />
       ))}
       {start ? (
         <p className="intake-start t-small" data-incomplete={start.incomplete}>
-          {startMessage(start)}
+          {startMessage(start, type)}
         </p>
       ) : null}
       <div className="action-buttons">

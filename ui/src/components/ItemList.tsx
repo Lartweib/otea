@@ -26,6 +26,7 @@ import { moduleFor } from '../modules/registry.ts';
 import { reducedMotion } from '../motion.ts';
 import type { NestedSection, ParentRef, RowNesting, WorkVia } from '../nesting.ts';
 import { itemNodeKind, type NodeKind } from '../node-kind.ts';
+import { keyTitle, stateWord, typeWord } from '../preset-words.ts';
 import { openLabel, relationLabel } from '../relations.ts';
 import { GRID, MAX_DEPTH, monoWidth, ROW } from '../row-grid.ts';
 import { hashFor } from '../selection.ts';
@@ -315,7 +316,8 @@ function ItemRow({
   const { depth, node } = place;
   const height = depth > 0 ? ROW.child.height : ROW.top.height;
   const folds = nesting?.nested !== undefined && onToggleChildren !== undefined;
-  const label = showsTypes(collection) ? (type?.label ?? item.type) : undefined;
+  const label = showsTypes(collection) ? typeWord(type, item.type) : undefined;
+  const state = stateWord(type, item.state);
   const parent = depth === 0 ? nesting?.parent : undefined;
   const { priority, signals } = rowMarks(item, collection);
   return (
@@ -397,8 +399,12 @@ function ItemRow({
           ) : (
             <>
               {crossCollection ? <span className="row-collection">{item.collection}</span> : null}
-              <span className="row-state" data-m={`${item.id}:s`}>
-                {item.state}
+              <span
+                className="row-state"
+                data-m={`${item.id}:s`}
+                title={keyTitle(state, item.state)}
+              >
+                {state}
               </span>
               <Progress item={item} kinds={childKinds} />
               {nesting?.relates ? (
