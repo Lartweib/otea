@@ -23,7 +23,7 @@ describe('official presets', () => {
     expect(catalog.problems).toEqual([]);
     expect(requirePreset(catalog, 'tasks')).toMatchObject({
       name: 'tasks',
-      version: 1,
+      version: 2,
       origin: 'official',
       workflow: tasks,
     });

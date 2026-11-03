@@ -85,7 +85,7 @@ describe('bug-triage preset', () => {
   it('lists bugs in a grid, with category as an enum and area as free text', () => {
     const preset = requirePreset(ctx.presets, 'bug-triage');
 
-    expect(preset.version).toBe(2);
+    expect(preset.version).toBe(3);
     expect(preset.fields.category).toEqual({
       module: 'enum',
       values: ['crash', 'visual', 'gameplay', 'physics', 'audio', 'performance', 'ui'],

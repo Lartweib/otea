@@ -68,7 +68,7 @@ describe('commands', () => {
         const { code, out } = await otea('collection', 'add', 'tasks');
 
         expect(code).toBe(0);
-        expect(out).toBe('Added collection "tasks" with preset tasks v1 (ids TASKS-<n>)\n');
+        expect(out).toBe('Added collection "tasks" with preset tasks v2 (ids TASKS-<n>)\n');
       });
 
       it('prints the collection with --json', async () => {
@@ -76,7 +76,7 @@ describe('commands', () => {
           name: 'bugs',
           prefix: 'BUGS',
           preset: 'tasks',
-          presetVersion: 1,
+          presetVersion: 2,
           nextSeq: 1,
           icon: 'checklist',
         });
@@ -198,7 +198,7 @@ describe('commands', () => {
           id: 'TASKS-1',
           title: 'First',
           fields: { description: 'Why', priority: 'high' },
-          presetVersion: 1,
+          presetVersion: 2,
           state: 'todo',
           turn: 'agent',
           createdBy: { kind: 'agent', name: 'agent' },

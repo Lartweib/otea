@@ -80,7 +80,7 @@ describe('validateProject', () => {
     expect(report.findings).toContainEqual({
       severity: 'warning',
       subject: 'TASKS-2',
-      message: 'written under preset reviews v1; the preset is now v3',
+      message: 'written under preset reviews v2; the preset is now v3',
     });
     expect(report.errors).toBeGreaterThan(0);
     expect(report.warnings).toBeGreaterThan(0);

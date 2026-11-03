@@ -1,5 +1,5 @@
 preset: tasks
-preset_version: 1
+preset_version: 2
 playbook: ./playbook.md
 # The icon of its collections; the task type keeps its own.
 icon: checklist
@@ -30,3 +30,16 @@ types:
   task:
     label: Task
     icon: checkbox
+
+# The preset's words in Spanish, for the web UI; agents and the CLI keep the keys.
+labels:
+  es:
+    types: { task: Tarea }
+    states:
+      incomplete: incompleta
+      todo: por hacer
+      in_progress: en curso
+      review: en revisión
+      done: hecha
+      discarded: descartada
+    fields: { title: título, description: descripción, priority: prioridad }

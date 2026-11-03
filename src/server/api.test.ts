@@ -133,6 +133,14 @@ describe('api', () => {
               default: 'medium',
             },
           ],
+          // The preset's words in Spanish ride along; the keys above stay as they are.
+          labels: {
+            es: expect.objectContaining({
+              label: 'Tarea',
+              states: expect.objectContaining({ in_progress: 'en curso' }),
+              fields: expect.objectContaining({ priority: 'prioridad' }),
+            }),
+          },
         }),
       ]);
     });
@@ -185,14 +193,20 @@ describe('api', () => {
         values: ['low', 'medium', 'high', 'critical'],
       });
       expect(presets[2]).toMatchObject({
-        types: [expect.objectContaining({ name: 'task', layout: expect.any(Object) })],
+        types: [
+          expect.objectContaining({
+            name: 'task',
+            layout: expect.any(Object),
+            labels: { es: expect.objectContaining({ label: 'Tarea' }) },
+          }),
+        ],
         view: { kind: 'list', groupBy: 'turn' },
       });
       expect({ ...presets[2], types: undefined, view: undefined }).toEqual({
         types: undefined,
         view: undefined,
         name: 'tasks',
-        version: 1,
+        version: 2,
         origin: 'official',
         icon: 'checklist',
         fields: [
@@ -392,7 +406,7 @@ types:
 
       expect(item).toMatchObject({
         fields: { description: 'For v1', priority: 'medium' },
-        presetVersion: 1,
+        presetVersion: 2,
       });
     });
 

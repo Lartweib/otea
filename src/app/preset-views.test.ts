@@ -21,7 +21,7 @@ describe('preset views', () => {
     expect(views.slice(2).map(({ types, view, ...rest }) => rest)).toEqual([
       {
         name: 'tasks',
-        version: 1,
+        version: 2,
         origin: 'official',
         icon: 'checklist',
         fields: [

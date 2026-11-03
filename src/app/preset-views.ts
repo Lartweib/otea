@@ -1,5 +1,5 @@
 import type { Layout } from '../core/modules.ts';
-import type { CollectionLayout, FieldSpec, ItemType } from '../core/preset.ts';
+import type { CollectionLayout, FieldSpec, ItemType, Labels } from '../core/preset.ts';
 import type { State } from '../core/workflow.ts';
 import { listCollections } from '../store/queries.ts';
 import type { Context } from './context.ts';
@@ -11,6 +11,7 @@ export type FieldView = FieldSpec & { name: string };
 // each is and how the closed ones close), its layout, and its icon when the preset gives it one.
 // In a preset that declares a hierarchy, `children` are the types it takes under it and `root`
 // whether it may live with no parent; elsewhere neither is set, and any type takes any child.
+// `labels` are the type's words in the other languages its preset speaks, for the web UI to show.
 export type TypeView = {
   name: string;
   label: string;
@@ -24,6 +25,7 @@ export type TypeView = {
   root?: boolean;
   // The actions its workflow gates and the states that allow each, when it declares any.
   gates?: Record<string, string[]>;
+  labels?: Labels;
 };
 
 // `fields` are the fields of every type, each once, in the order the types declare them.
@@ -44,7 +46,7 @@ export function fieldViews(fields: Record<string, FieldSpec>): FieldView[] {
 }
 
 export function typeViews(types: readonly ItemType[]): TypeView[] {
-  return types.map(({ name, label, icon, fields, workflow, layout, children, root }) => {
+  return types.map(({ name, label, icon, fields, workflow, layout, children, root, labels }) => {
     const view: TypeView = {
       name,
       label,
@@ -60,6 +62,7 @@ export function typeViews(types: readonly ItemType[]): TypeView[] {
     if (workflow.gates !== undefined && Object.keys(workflow.gates).length > 0) {
       view.gates = workflow.gates;
     }
+    if (labels !== undefined) view.labels = labels;
     return view;
   });
 }
