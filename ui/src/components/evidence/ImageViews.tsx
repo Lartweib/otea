@@ -5,8 +5,8 @@ import {
   useRef,
   useState,
 } from 'react';
-import { evidenceFileUrl } from '../../api.ts';
 import { comparePair, nudgeSplit, splitAt, stepIndex } from '../../evidence.ts';
+import { useFileUrl } from '../../evidence-files.ts';
 import { t } from '../../i18n/i18n.ts';
 import { Button, Icon } from '../../kit/index.ts';
 import type { Evidence } from '../../types.ts';
@@ -18,10 +18,11 @@ function altOf(evidence: Evidence): string {
 }
 
 export function ImageSingle({ evidence }: { evidence: Evidence }) {
+  const fileUrl = useFileUrl();
   return (
     <figure className="ev-figure">
       <div className="ev-stage well">
-        <img className="ev-img ev-set" src={evidenceFileUrl(evidence.id)} alt={altOf(evidence)} />
+        <img className="ev-img ev-set" src={fileUrl(evidence)} alt={altOf(evidence)} />
       </div>
       <figcaption>
         <FileMeta evidence={evidence} />
@@ -32,6 +33,7 @@ export function ImageSingle({ evidence }: { evidence: Evidence }) {
 
 // Every image, oldest first: one large, the rest as thumbnails. Left and right step through them.
 export function ImageGallery({ evidence, label }: { evidence: Evidence[]; label: string }) {
+  const fileUrl = useFileUrl();
   const [index, setIndex] = useState(0);
   const current = evidence[Math.min(index, evidence.length - 1)];
   if (!current) return null;
@@ -50,7 +52,7 @@ export function ImageGallery({ evidence, label }: { evidence: Evidence[]; label:
         <img
           key={current.id}
           className="ev-img ev-set"
-          src={evidenceFileUrl(current.id)}
+          src={fileUrl(current)}
           alt={altOf(current)}
         />
         {many ? (
@@ -91,7 +93,7 @@ export function ImageGallery({ evidence, label }: { evidence: Evidence[]; label:
                 aria-label={t('evidence.show', { file: entry.filename })}
                 onClick={() => setIndex(at)}
               >
-                <img src={evidenceFileUrl(entry.id)} alt="" loading="lazy" />
+                <img src={fileUrl(entry)} alt="" loading="lazy" />
               </button>
             </li>
           ))}
@@ -121,10 +123,11 @@ function Missing({ side }: { side: Side }) {
 }
 
 function Framed({ evidence, side }: { evidence: Evidence; side: Side }) {
+  const fileUrl = useFileUrl();
   return (
     <figure className="ev-frame">
       <div className="ev-stage well">
-        <img className="ev-img" src={evidenceFileUrl(evidence.id)} alt={sideAlt(side, evidence)} />
+        <img className="ev-img" src={fileUrl(evidence)} alt={sideAlt(side, evidence)} />
         <span className="ev-tag l">{sideLabel(side)}</span>
       </div>
       <figcaption>
@@ -137,6 +140,7 @@ function Framed({ evidence, side }: { evidence: Evidence; side: Side }) {
 // The latest before and after on one frame, a divider between them: drag it, or focus it and use the
 // arrow keys. Side by side shows them apart.
 export function ImageCompare({ evidence }: { evidence: Evidence[] }) {
+  const fileUrl = useFileUrl();
   const { before, after } = comparePair(evidence);
   const [mode, setMode] = useState<CompareMode>('slider');
   const [split, setSplit] = useState(50);
@@ -200,14 +204,14 @@ export function ImageCompare({ evidence }: { evidence: Evidence[] }) {
           >
             <img
               className="ev-img"
-              src={evidenceFileUrl(after.id)}
+              src={fileUrl(after)}
               alt={sideAlt('after', after)}
               onLoad={onLoad}
               draggable={false}
             />
             <img
               className="ev-img ev-cmp-before"
-              src={evidenceFileUrl(before.id)}
+              src={fileUrl(before)}
               alt={sideAlt('before', before)}
               style={{ clipPath: `inset(0 ${100 - split}% 0 0)` }}
               draggable={false}

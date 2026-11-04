@@ -1,4 +1,4 @@
-import { evidenceFileUrl } from '../api.ts';
+import { useFileUrl } from '../evidence-files.ts';
 import { Pill } from '../kit/index.ts';
 import type { Evidence } from '../types.ts';
 
@@ -7,10 +7,11 @@ type EvidenceListProps = { evidence: Evidence[]; canWrite: boolean };
 // The files attached as proof, oldest first. The server hands them only to a signed-in browser,
 // so a read-only one lists them without thumbnails or links.
 export function EvidenceList({ evidence, canWrite }: EvidenceListProps) {
+  const fileUrl = useFileUrl();
   return (
     <ul className="evidence">
       {evidence.map((entry) => {
-        const url = evidenceFileUrl(entry.id);
+        const url = fileUrl(entry);
         return (
           <li key={entry.id} className="evidence-entry">
             {canWrite && entry.kind === 'image' ? (

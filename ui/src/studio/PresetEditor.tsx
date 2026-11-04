@@ -1,60 +1,37 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Preset } from '../../../src/core/preset.ts';
+import { ItemDetail } from '../components/ItemDetail.tsx';
+import { EvidenceFiles } from '../evidence-files.ts';
 import type { Connection } from '../hooks.ts';
 import { useRemote } from '../hooks.ts';
-import { type PlainKey, t } from '../i18n/i18n.ts';
-import { Button, Icon, Pill } from '../kit/index.ts';
+import { t } from '../i18n/i18n.ts';
+import { TypeIcon } from '../icons/TypeIcon.tsx';
+import { Button, Icon, Node } from '../kit/index.ts';
+import { itemNodeKind } from '../node-kind.ts';
+import { stateWord } from '../preset-words.ts';
 import { studioHash } from '../selection.ts';
 import type { Item } from '../types.ts';
-import { duplicatePreset, fetchPresetSource, type PresetSource, savePreset } from './api.ts';
 import {
-  diffLines,
-  rawOf,
-  readDraft,
-  type Section,
-  sectionOf,
-  setIn,
-  workflowOf,
-} from './draft.ts';
-import { Lanes } from './Lanes.tsx';
-import { Chip, OkMark, ProblemMark, Seg } from './parts.tsx';
-import {
-  FieldsSection,
-  GatesSection,
-  LayoutSection,
-  MovesSection,
-  type SectionProps,
-  StatesSection,
-  TypesSection,
-  ViewsSection,
-} from './sections.tsx';
+  duplicatePreset,
+  fetchPresetSamples,
+  fetchPresetSource,
+  type PresetSamples,
+  type PresetSource,
+  sampleFileUrl,
+  savePreset,
+} from './api.ts';
+import { Canvas } from './Canvas.tsx';
+import type { Part } from './canvas.ts';
+import { diffLines, rawOf, readDraft } from './draft.ts';
+import { Inspector } from './Inspector.tsx';
+import { OkMark, ProblemMark } from './parts.tsx';
+import { type DraftPreview, draftPreview } from './preview.ts';
 
-// A preset in Studio: its outline, the section being edited and a live preview. A project preset
-// is edited as a draft, kept in this browser until it is saved; the core reads the draft on every
-// change, and save waits until it reads no problem. An official preset is only read: duplicate it
-// into the project to change it.
-
-const SECTIONS: readonly Section[] = [
-  'types',
-  'fields',
-  'layout',
-  'states',
-  'moves',
-  'gates',
-  'views',
-  'playbook',
-];
-
-const SECTION_LABEL: Record<Section, PlainKey> = {
-  types: 'studio.section.types',
-  fields: 'studio.section.fields',
-  layout: 'studio.section.layout',
-  states: 'studio.section.states',
-  moves: 'studio.section.moves',
-  gates: 'studio.section.gates',
-  views: 'studio.section.views',
-  playbook: 'studio.section.playbook',
-};
+// A preset in Studio is the item you are going to see: a sample item drawn from the draft with the
+// real views, the parts you click on, and an inspector that asks about the part in plain words. A
+// project preset is edited as a draft, kept in this browser until it is saved; the core reads the
+// draft on every change, and save waits until it reads no problem. An official preset is only
+// read: duplicate it into the project to change it.
 
 type Draft = { base: string; yaml: string; playbooks: Record<string, string> };
 
@@ -91,6 +68,7 @@ type PresetEditorProps = {
 export function PresetEditor(props: PresetEditorProps) {
   const [revision, setRevision] = useState(0);
   const source = useRemote(fetchPresetSource(props.name), revision, props.connection);
+  const samples = useRemote(fetchPresetSamples(props.name), revision, props.connection);
   if (source.status === 'loading') return <p className="t-small st-msg">{t('common.loading')}</p>;
   if (source.status === 'failed') return <p className="action-error st-msg">{source.message}</p>;
   return (
@@ -98,6 +76,7 @@ export function PresetEditor(props: PresetEditorProps) {
       key={`${source.value.name}-${source.value.yaml.length}-${source.value.version}`}
       {...props}
       source={source.value}
+      samples={samples.status === 'ready' ? samples.value : undefined}
       onSaved={() => {
         setRevision((current) => current + 1);
         props.onSaved();
@@ -119,26 +98,30 @@ function playbookFiles(
   return files;
 }
 
-type LoadedProps = PresetEditorProps & { source: PresetSource };
+type LoadedProps = PresetEditorProps & {
+  source: PresetSource;
+  samples: PresetSamples | undefined;
+};
 
-function Loaded({ source, canWrite, phone, items, onSaved }: LoadedProps) {
+function Loaded({ source, samples, canWrite, phone, items, onSaved }: LoadedProps) {
   const [draft, setDraft] = useState<Draft | undefined>(() =>
     storedDraft(source.name, source.yaml),
   );
-  const [section, setSection] = useState<Section>('fields');
-  const raw0 = rawOf(draft?.yaml ?? source.yaml);
-  const typeNames = Object.keys(raw0.types ?? {});
-  const [type, setType] = useState<string | undefined>(typeNames[0]);
-  const [preview, setPreview] = useState<'form' | 'lanes' | 'yaml'>('form');
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
+  const [selected, setSelected] = useState<Part>();
+  const [now] = useState(() => new Date().toISOString());
   const yaml = draft?.yaml ?? source.yaml;
   const playbooks = { ...source.playbooks, ...(draft?.playbooks ?? {}) };
   const raw = rawOf(yaml);
-  const reading = readDraft(yaml);
+  const reading = readDraft(yaml, playbooks);
   const lastGood = useRef<Preset | undefined>(undefined);
   if (reading.ok) lastGood.current = reading.preset;
+  const preset = lastGood.current;
+  const typeNames = preset?.types.map(({ name }) => name) ?? [];
+  const [type, setType] = useState<string | undefined>(typeNames[0]);
+  const shown = type !== undefined && typeNames.includes(type) ? type : typeNames[0];
   const files = playbookFiles(raw);
   const missing = files
     .filter(({ path }) => playbooks[path] === undefined)
@@ -151,28 +134,18 @@ function Loaded({ source, canWrite, phone, items, onSaved }: LoadedProps) {
       Object.entries(draft.playbooks).some(([path, text]) => source.playbooks[path] !== text));
   const next = (source.version ?? 0) + 1;
   useEffect(() => storeDraft(source.name, dirty ? draft : undefined), [source.name, draft, dirty]);
-  if (type !== undefined && !(type in (raw.types ?? {}))) setType(Object.keys(raw.types ?? {})[0]);
   const change = editable
     ? (text: string) =>
         setDraft({ base: source.yaml, yaml: text, playbooks: draft?.playbooks ?? {} })
     : undefined;
-  const setPlaybook = editable
-    ? (path: string, text: string) =>
-        setDraft({
-          base: source.yaml,
-          yaml,
-          playbooks: { ...(draft?.playbooks ?? {}), [path]: text },
-        })
-    : undefined;
-  const sectionProps: SectionProps = {
-    raw,
-    yaml,
-    change,
-    type,
-    problems,
-    preset: lastGood.current,
-  };
-  const counts = (key: Section) => problems.filter((problem) => sectionOf(problem) === key).length;
+  const collection = source.collections[0]?.name ?? source.name;
+  const preview = useMemo(
+    () =>
+      preset && samples
+        ? draftPreview(preset, { yaml: samples.yaml, files: samples.files }, { collection, now })
+        : undefined,
+    [preset, samples, collection, now],
+  );
   const save = async () => {
     setBusy(true);
     setError(undefined);
@@ -193,30 +166,39 @@ function Loaded({ source, canWrite, phone, items, onSaved }: LoadedProps) {
       setBusy(false);
     }
   };
-  const used = source.collections.map(({ name, items: count }) =>
-    t('studio.preset.usedBy', { name, count }),
-  );
+  const boards = source.collections.map(({ name }) => name);
+  const used = (field: string) =>
+    items.filter(
+      (item) =>
+        boards.includes(item.collection) &&
+        item.type === shown &&
+        (item.fields[field] ?? '') !== '',
+    ).length;
+  const notes = reading.ok ? reading.notes.filter(({ code }) => !code.startsWith('sample_')) : [];
   return (
-    <div className="st-preset">
+    <div className="st-preset st-studio">
       <header className="st-head">
         <div className="st-hl">
-          <a className="t-cap st-crumb" href={studioHash()}>
+          <a className="st-crumb mono" href={studioHash()}>
             {t('studio.crumbPreset')}
           </a>
           <h1 className="st-name">{source.name}</h1>
-          {source.origin === 'official' ? (
-            <Pill tone="state">{t('studio.preset.official')}</Pill>
-          ) : dirty ? (
-            <Pill tone="state">{t('studio.preset.draftOf', { version: next })}</Pill>
-          ) : (
-            <Pill tone="state">{t('studio.preset.saved', { version: source.version ?? '?' })}</Pill>
-          )}
-          <span className="t-cap st-used">
-            {used.length > 0 ? used.join(' · ') : t('studio.preset.unused')}
+          <span className="st-ver">
+            {source.origin === 'official'
+              ? t('studio.preset.official')
+              : dirty
+                ? t('studio.preset.draftOf', { version: next })
+                : t('studio.preset.saved', { version: source.version ?? '?' })}
           </span>
         </div>
         <div className="st-hr">
           <Verdict problems={problems.length} />
+          {notes.length > 0 ? (
+            <span className="st-offscreen">
+              <Icon name="warn" />
+              {t('studio.notOnScreen', { count: notes.length })}
+            </span>
+          ) : null}
           {source.origin === 'official' ? (
             canWrite && !phone ? (
               <Duplicate name={source.name} />
@@ -246,115 +228,68 @@ function Loaded({ source, canWrite, phone, items, onSaved }: LoadedProps) {
           ) : null}
         </div>
       </header>
-      {phone ? <p className="t-cap st-phone-note">{t('studio.phoneReadOnly')}</p> : null}
-      <div className="st-ws">
-        <nav className="st-out" aria-label={t('studio.outline')}>
-          {typeNames.length > 0 ? (
-            <>
-              <span className="t-label">{t('studio.types.title')}</span>
-              <fieldset className="st-types" aria-label={t('studio.types.title')}>
-                {typeNames.map((name) => (
-                  <button
-                    key={name}
-                    type="button"
-                    aria-pressed={name === type}
-                    onClick={() => setType(name)}
-                  >
-                    {name}
-                  </button>
-                ))}
-              </fieldset>
-            </>
-          ) : null}
-          <div className="st-ol">
-            {SECTIONS.map((key) => (
-              <button
-                key={key}
-                type="button"
-                aria-current={key === section ? 'true' : undefined}
-                onClick={() => setSection(key)}
-              >
-                <span>{t(SECTION_LABEL[key])}</span>
-                {counts(key) > 0 ? (
-                  <span className="st-count bad">
-                    <ProblemMark />
-                    {counts(key)}
-                  </span>
-                ) : (
-                  <span className="t-cap">{outlineCount(key, raw, type, files.length)}</span>
-                )}
-              </button>
-            ))}
-          </div>
-          <div className="st-saved-in">
-            <span className="t-label">{t('studio.preset.savedIn')}</span>
-            <code className="t-cap">
-              {source.origin === 'official'
-                ? `presets/${source.name}/`
-                : `.otea/presets/${source.name}/`}
-            </code>
-          </div>
-        </nav>
-        <section className="st-ed">
-          {section === 'types' ? <TypesSection {...sectionProps} /> : null}
-          {section === 'fields' ? <FieldsSection {...sectionProps} /> : null}
-          {section === 'layout' ? <LayoutSection {...sectionProps} /> : null}
-          {section === 'states' ? <StatesSection {...sectionProps} /> : null}
-          {section === 'moves' ? <MovesSection {...sectionProps} /> : null}
-          {section === 'gates' ? <GatesSection {...sectionProps} /> : null}
-          {section === 'views' ? <ViewsSection {...sectionProps} /> : null}
-          {section === 'playbook' ? (
-            <PlaybookSection
-              files={files}
-              playbooks={playbooks}
-              type={type}
-              yaml={yaml}
-              change={change}
-              setPlaybook={setPlaybook}
-              setDraftAll={
-                editable
-                  ? (text, path) =>
-                      setDraft({
-                        base: source.yaml,
-                        yaml: text,
-                        playbooks: { ...(draft?.playbooks ?? {}), [path]: '' },
-                      })
-                  : undefined
-              }
-            />
-          ) : null}
-          {problems.length > 0 ? (
-            <Tray problems={problems} onPick={(problem) => setSection(sectionOf(problem))} />
-          ) : null}
-          {source.warnings.length > 0 ? (
-            <ul className="st-warns">
-              {source.warnings.map((warning) => (
-                <li key={warning} className="t-cap">
-                  <Icon name="warn" />
-                  {warning}
-                </li>
+      <div className="st-bar">
+        {typeNames.length > 0 ? (
+          <div className="st-bar-group">
+            <span className="st-bar-k">{t('studio.bar.type')}</span>
+            <fieldset className="st-pills" aria-label={t('studio.bar.type')}>
+              {(preset?.types ?? []).map((each) => (
+                <button
+                  key={each.name}
+                  type="button"
+                  aria-pressed={each.name === shown}
+                  onClick={() => {
+                    setType(each.name);
+                    setSelected(undefined);
+                  }}
+                >
+                  {each.icon ? <TypeIcon name={each.icon} size={14} /> : null}
+                  {each.name}
+                </button>
               ))}
-            </ul>
-          ) : null}
-        </section>
-        <aside className="st-pv" aria-label={t('studio.preview.title')}>
-          <div className="st-pvh">
-            <span className="t-label">{t('studio.preview.title')}</span>
-            <Seg
-              label={t('studio.preview.title')}
-              options={[
-                { value: 'form', label: t('studio.preview.form') },
-                { value: 'lanes', label: t('studio.preview.lanes') },
-                { value: 'yaml', label: t('studio.preview.yaml') },
-              ]}
-              value={preview}
-              onChange={(value) => setPreview(value as typeof preview)}
-            />
+            </fieldset>
           </div>
-          {preview === 'form' ? <FormPreview preset={lastGood.current} type={type} /> : null}
-          {preview === 'lanes' ? <LanesPreview raw={raw} type={type} /> : null}
-          {preview === 'yaml' ? <YamlPreview before={source.yaml} after={yaml} /> : null}
-        </aside>
+        ) : null}
+        <div className="st-bar-group">
+          <span className="st-bar-k">{t('studio.bar.view')}</span>
+          <fieldset className="st-pills" aria-label={t('studio.bar.view')}>
+            <button type="button" aria-pressed="true">
+              {t('studio.view.detail')}
+            </button>
+          </fieldset>
+        </div>
+      </div>
+      <div className="st-cols">
+        {shown !== undefined && preview ? (
+          <DetailStudio
+            key={shown}
+            name={source.name}
+            preview={preview}
+            type={shown}
+            selected={selected}
+            onSelect={setSelected}
+          />
+        ) : (
+          <p className="t-small st-msg st-stage">
+            {preset ? t('common.loading') : t('studio.preview.invalid')}
+          </p>
+        )}
+        {selected && shown !== undefined ? (
+          <Inspector
+            raw={raw}
+            yaml={yaml}
+            preset={preset}
+            type={shown}
+            part={selected}
+            change={change}
+            used={used}
+            onSelect={setSelected}
+          />
+        ) : (
+          <aside className="st-insp" aria-label={t('studio.inspect.title')}>
+            <p className="st-ask-n">{t('studio.inspect.pick')}</p>
+          </aside>
+        )}
       </div>
       {confirming ? (
         <SaveConfirm
@@ -373,34 +308,115 @@ function Loaded({ source, canWrite, phone, items, onSaved }: LoadedProps) {
   );
 }
 
-function outlineCount(
-  key: Section,
-  raw: ReturnType<typeof rawOf>,
-  type: string | undefined,
-  playbooks: number,
-): string {
-  const workflow = workflowOf(raw, type);
-  switch (key) {
-    case 'types':
-      return String(Object.keys(raw.types ?? {}).length);
-    case 'fields':
-      return String(
-        Object.keys(raw.fields ?? {}).length +
-          Object.keys((type && raw.types?.[type]?.fields) ?? {}).length,
-      );
-    case 'states':
-      return String(Object.keys(workflow.states ?? {}).length);
-    case 'moves':
-      return String((workflow.transitions ?? []).length);
-    case 'gates':
-      return String(Object.keys(workflow.gates ?? {}).length);
-    case 'views':
-      return raw.view?.kind ?? 'list';
-    case 'playbook':
-      return String(playbooks);
-    default:
-      return '';
-  }
+type DetailStudioProps = {
+  name: string;
+  preview: DraftPreview;
+  type: string;
+  selected: Part | undefined;
+  onSelect: (part: Part | undefined) => void;
+};
+
+// The detail view: the sample items of the type as list rows on the left, the chosen one drawn by
+// the real item detail in the middle.
+function DetailStudio({ name, preview, type, selected, onSelect }: DetailStudioProps) {
+  const rows = preview.items.filter((item) => item.type === type);
+  const [chosen, setChosen] = useState(rows[0]?.id);
+  const id = rows.some((row) => row.id === chosen) ? chosen : rows[0]?.id;
+  const item = id === undefined ? undefined : preview.view(id);
+  const view = preview.collection.types.find((each) => each.name === type);
+  const moduleName = (part: Part) => view?.layout[part.slot][part.index]?.id;
+  return (
+    <>
+      <SampleList
+        rows={rows}
+        preview={preview}
+        chosen={id}
+        onChoose={setChosen}
+        collection={preview.collection.name}
+      />
+      <section className="st-stage">
+        {item ? (
+          <EvidenceFiles.Provider value={(evidence) => sampleFileUrl(name, evidence.filename)}>
+            <Canvas
+              type={type}
+              label={t('studio.canvas.aria', { id: item.id })}
+              selected={selected}
+              onSelect={onSelect}
+              nameOf={moduleName}
+            >
+              <ItemDetail
+                item={item}
+                canWrite
+                collection={preview.collection}
+                collectionOf={() => preview.collection}
+              />
+            </Canvas>
+          </EvidenceFiles.Provider>
+        ) : (
+          <p className="t-small st-msg">{t('studio.samples.noneOfType', { type })}</p>
+        )}
+      </section>
+    </>
+  );
+}
+
+type SampleListProps = {
+  rows: readonly Item[];
+  preview: DraftPreview;
+  chosen: string | undefined;
+  onChoose: (id: string) => void;
+  collection: string;
+};
+
+// The sample items as the list draws its rows: the node, the title, the id and the state, and the
+// severity when the type has one.
+function SampleList({ rows, preview, chosen, onChoose, collection }: SampleListProps) {
+  return (
+    <nav className="st-samples" aria-label={t('studio.samples.title')}>
+      <div className="st-samples-h">
+        <span>{t('studio.samples.title')}</span>
+        <span>{rows.length}</span>
+      </div>
+      <ul>
+        {rows.map((row) => {
+          const type = preview.collection.types.find(({ name }) => name === row.type);
+          const severity = type?.fields.find(({ module }) => module === 'severity');
+          const level = severity ? row.fields[severity.name] : undefined;
+          return (
+            <li key={row.id}>
+              <button
+                type="button"
+                className="st-sample"
+                aria-pressed={row.id === chosen}
+                onClick={() => onChoose(row.id)}
+              >
+                <Node kind={itemNodeKind(row, type, false)} label={stateWord(type, row.state)} />
+                <span className="st-sample-t">{row.title}</span>
+                <span className="st-sample-m">
+                  {`${row.id} · ${stateWord(type, row.state)}`}
+                  {level ? <SeverityBars level={level} /> : null}
+                </span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+      <p className="st-samples-n">{t('studio.samples.note', { collection })}</p>
+    </nav>
+  );
+}
+
+const LEVELS = ['low', 'medium', 'high', 'critical'];
+
+function SeverityBars({ level }: { level: string }) {
+  const at = LEVELS.indexOf(level) + 1;
+  return (
+    <span className="st-bars" data-level={at} role="img" aria-label={level}>
+      {LEVELS.map((name, index) => (
+        <i key={name} data-on={index < at || undefined} />
+      ))}
+    </span>
+  );
 }
 
 function Verdict({ problems }: { problems: number }) {
@@ -418,22 +434,6 @@ function Verdict({ problems }: { problems: number }) {
         <b>{t('studio.problems', { count: problems })}</b> · {t('studio.saveWaits')}
       </span>
     </span>
-  );
-}
-
-function Tray({ problems, onPick }: { problems: string[]; onPick: (problem: string) => void }) {
-  return (
-    <div className="st-tray" role="status">
-      <ProblemMark />
-      <div className="st-tp">
-        <b>{t('studio.problems', { count: problems.length })}</b>
-        {problems.map((problem) => (
-          <button key={problem} type="button" className="st-tpb" onClick={() => onPick(problem)}>
-            <code>{problem}</code>
-          </button>
-        ))}
-      </div>
-    </div>
   );
 }
 
@@ -470,229 +470,6 @@ function Duplicate({ name }: { name: string }) {
       </Button>
       {error ? <span className="action-error t-small">{error}</span> : null}
     </form>
-  );
-}
-
-// ---------------------------------------------------------------- playbook
-
-type PlaybookProps = {
-  files: Array<{ path: string; owner: string | undefined }>;
-  playbooks: Record<string, string>;
-  type: string | undefined;
-  yaml: string;
-  change: ((next: string) => void) | undefined;
-  setPlaybook: ((path: string, text: string) => void) | undefined;
-  setDraftAll: ((yaml: string, path: string) => void) | undefined;
-};
-
-function PlaybookSection({
-  files,
-  playbooks,
-  type,
-  yaml,
-  setPlaybook,
-  setDraftAll,
-}: PlaybookProps) {
-  const [chosen, setChosen] = useState(files[0]?.path);
-  const path = files.some((file) => file.path === chosen) ? chosen : files[0]?.path;
-  const text = path === undefined ? undefined : playbooks[path];
-  const parts = (text ?? '')
-    .split('\n')
-    .filter((line) => /^##\s/.test(line))
-    .map((line) => line.replace(/^##\s+/, ''));
-  const typeHasOwn = type !== undefined && files.some(({ owner }) => owner === type);
-  const presetHasOwn = files.some(({ owner }) => owner === undefined);
-  return (
-    <section className="st-sec">
-      <div className="st-sh">
-        <h2 className="t-h">{t('studio.section.playbook')}</h2>
-        <span className="t-cap">{t('studio.playbook.note')}</span>
-      </div>
-      <div className="st-pb">
-        <div className="st-pbl">
-          {files.map((file) => (
-            <button
-              key={file.path}
-              type="button"
-              aria-current={file.path === path ? 'true' : undefined}
-              onClick={() => setChosen(file.path)}
-            >
-              <span>{file.owner === undefined ? t('studio.playbook.everyType') : file.owner}</span>
-              <code className="t-cap">{file.path}</code>
-            </button>
-          ))}
-          {setDraftAll && !presetHasOwn ? (
-            <button
-              type="button"
-              className="btn sm quiet"
-              onClick={() =>
-                setDraftAll(setIn(yaml, ['playbook'], './playbook.md'), './playbook.md')
-              }
-            >
-              <Icon name="plus" />
-              {t('studio.playbook.addShared')}
-            </button>
-          ) : null}
-          {setDraftAll && type !== undefined && !typeHasOwn ? (
-            <button
-              type="button"
-              className="btn sm quiet"
-              onClick={() =>
-                setDraftAll(
-                  setIn(yaml, ['types', type, 'playbook'], `./playbook/${type}.md`),
-                  `./playbook/${type}.md`,
-                )
-              }
-            >
-              <Icon name="plus" />
-              {t('studio.playbook.addFor', { type })}
-            </button>
-          ) : null}
-          {parts.length > 0 ? (
-            <div className="st-parts">
-              <span className="t-label">{t('studio.playbook.parts')}</span>
-              {parts.map((part) => (
-                <span key={part} className="t-small">
-                  {part}
-                </span>
-              ))}
-            </div>
-          ) : null}
-        </div>
-        <div className="st-pbe">
-          {path === undefined ? (
-            <p className="t-small">{t('studio.playbook.none')}</p>
-          ) : (
-            <textarea
-              className="st-md"
-              value={text ?? ''}
-              readOnly={setPlaybook === undefined}
-              spellCheck={false}
-              aria-label={t('studio.playbook.edit', { path })}
-              onChange={(event) => setPlaybook?.(path, event.target.value)}
-            />
-          )}
-          <p className="t-cap">{t('studio.playbook.order')}</p>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-// ---------------------------------------------------------------- previews
-
-function FormPreview({ preset, type }: { preset: Preset | undefined; type: string | undefined }) {
-  const shape = preset?.types.find(({ name }) => name === type) ?? preset?.types[0];
-  if (!shape) return <p className="t-small">{t('studio.preview.invalid')}</p>;
-  const intake = shape.layout.intake.filter((entry) => entry.field !== undefined);
-  const row = shape.layout.row.filter((entry) => entry.field !== undefined);
-  return (
-    <div className="st-pvb">
-      <p className="t-cap">{t('studio.preview.formNote')}</p>
-      <div className="st-form">
-        <span className="t-label">
-          {t('studio.preview.newOf', { type: shape.label.toLowerCase() })}
-        </span>
-        {intake.map(({ field }) => {
-          const spec = shape.fields[field as string];
-          if (!spec) return null;
-          if (spec.module === 'enum' || spec.module === 'severity') {
-            return (
-              <div key={field} className="st-in choice">
-                <span className="t-cap">{field}</span>
-                <Seg
-                  label={field as string}
-                  options={(spec.values ?? []).map((value) => ({ value, label: value }))}
-                  value={spec.default}
-                />
-              </div>
-            );
-          }
-          return (
-            <div key={field} className={spec.module === 'markdown' ? 'st-in tall' : 'st-in'}>
-              <span className="t-cap">{field}</span>
-              <span className="st-rq">
-                {spec.required === 'create'
-                  ? t('studio.fields.toCreate')
-                  : spec.required === 'complete'
-                    ? t('studio.fields.toStart')
-                    : ''}
-              </span>
-            </div>
-          );
-        })}
-        <div className="st-fa">
-          <span className="btn primary sm" aria-hidden="true">
-            {t('studio.preview.create')}
-          </span>
-          {shape.workflow.incomplete ? (
-            <span className="t-cap">
-              {t('studio.preview.incomplete', { state: shape.workflow.incomplete })}
-            </span>
-          ) : null}
-        </div>
-      </div>
-      <span className="t-label">{t('studio.preview.inRow')}</span>
-      <div className="st-prow">
-        <b>{t('studio.preview.sampleTitle')}</b>
-        <span className="t-cap">
-          {[shape.workflow.initial, ...row.map(({ field }) => field as string)].join(' · ')}
-        </span>
-      </div>
-    </div>
-  );
-}
-
-function LanesPreview({ raw, type }: { raw: ReturnType<typeof rawOf>; type: string | undefined }) {
-  const workflow = workflowOf(raw, type);
-  const states = Object.entries(workflow.states ?? {}).map(([name, state]) => ({
-    name,
-    turn: state?.turn ?? 'agent',
-    closes: state?.closes,
-  }));
-  const moves = (workflow.transitions ?? []).flatMap((move) =>
-    [move.from ?? []].flat().map((from) => ({ from, to: move.to ?? '', by: move.by ?? '' })),
-  );
-  const humanUi = moves.filter(({ by }) => by === 'human-ui');
-  return (
-    <div className="st-pvb">
-      <p className="t-cap">{t('studio.preview.lanesNote')}</p>
-      <Lanes
-        states={states}
-        moves={moves}
-        initial={workflow.initial}
-        incomplete={workflow.incomplete}
-      />
-      {humanUi.length > 0 ? (
-        <div className="st-key">
-          <span className="t-label">{t('studio.moves.humanUi')}</span>
-          {humanUi.map(({ from, to }) => (
-            <Chip key={`${from}-${to}`}>{`${from} → ${to}`}</Chip>
-          ))}
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
-function YamlPreview({ before, after }: { before: string; after: string }) {
-  const lines = diffLines(before, after);
-  return (
-    <div className="st-pvb">
-      <p className="t-cap">
-        {before === after ? t('studio.preview.yamlSame') : t('studio.preview.yamlNote')}
-      </p>
-      <pre className="st-src">
-        {lines.map((line, index) => (
-          // biome-ignore lint/suspicious/noArrayIndexKey: lines are positional
-          <span key={index} className={line.kind}>
-            {line.kind === 'add' ? '+ ' : line.kind === 'del' ? '- ' : '  '}
-            {line.text}
-            {'\n'}
-          </span>
-        ))}
-      </pre>
-    </div>
   );
 }
 

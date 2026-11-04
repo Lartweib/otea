@@ -1,4 +1,4 @@
-import { evidenceFileUrl } from '../api.ts';
+import { useFileUrl } from '../evidence-files.ts';
 import { gateRows, waitingOnYou } from '../gates.ts';
 import { agoLabel, handoffOf, leadRelation, waitingChildren } from '../handoff.ts';
 import { t } from '../i18n/i18n.ts';
@@ -26,6 +26,7 @@ const THUMBS = 2;
 // one relation (not the parent: the crumb above the title names it); for a parent, its children's
 // progress and the children waiting for you; and a gated action that waits for your move.
 export function HandoffLine({ item, type, canWrite, collectionOf }: HandoffLineProps) {
+  const fileUrl = useFileUrl();
   const handoff = handoffOf(item.events, (state) => stateWord(type, state));
   const severity = type?.fields.find(
     (field) => field.module === 'severity' && (item.fields[field.name] ?? '') !== '',
@@ -46,7 +47,7 @@ export function HandoffLine({ item, type, canWrite, collectionOf }: HandoffLineP
     parts.push(
       <span key="evidence" className="handoff-files">
         {thumbs.map((entry) => (
-          <img key={entry.id} className="handoff-thumb" src={evidenceFileUrl(entry.id)} alt="" />
+          <img key={entry.id} className="handoff-thumb" src={fileUrl(entry)} alt="" />
         ))}
         <span className="t-cap">{t('common.files', { count: item.evidence.length })}</span>
       </span>,

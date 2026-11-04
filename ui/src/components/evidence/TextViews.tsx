@@ -1,6 +1,6 @@
 import { type CSSProperties, useEffect, useState } from 'react';
-import { evidenceFileUrl } from '../../api.ts';
 import { type DiffFile, type DiffLine, type LogLine, logView, parseDiff } from '../../evidence.ts';
+import { useFileUrl } from '../../evidence-files.ts';
 import { t } from '../../i18n/i18n.ts';
 import { Button } from '../../kit/index.ts';
 import type { Evidence } from '../../types.ts';
@@ -16,26 +16,28 @@ const MAX_TEXT_BYTES = 2 * 1024 * 1024;
 
 export type Text = { status: 'loading' } | { status: 'ready'; text: string } | { status: 'failed' };
 
-// An entry never changes, so its text is fetched once per page.
-const texts = new Map<number, string>();
+// An entry never changes, so its text is fetched once per page, by where it loads from.
+const texts = new Map<string, string>();
 
 export function useEvidenceText(evidence: Evidence): Text {
-  const { id, size } = evidence;
-  const cached = texts.get(id);
+  const fileUrl = useFileUrl();
+  const { size } = evidence;
+  const url = fileUrl(evidence);
+  const cached = texts.get(url);
   const [state, setState] = useState<Text>(
     cached === undefined ? { status: 'loading' } : { status: 'ready', text: cached },
   );
   useEffect(() => {
-    if (texts.has(id) || size > MAX_TEXT_BYTES) return;
+    if (texts.has(url) || size > MAX_TEXT_BYTES) return;
     const controller = new AbortController();
-    fetch(evidenceFileUrl(id), { signal: controller.signal })
+    fetch(url, { signal: controller.signal })
       .then((response) => {
         if (!response.ok) throw new Error(`GET failed with ${response.status}`);
         return response.text();
       })
       .then(
         (text) => {
-          texts.set(id, text);
+          texts.set(url, text);
           setState({ status: 'ready', text });
         },
         () => {
@@ -43,7 +45,7 @@ export function useEvidenceText(evidence: Evidence): Text {
         },
       );
     return () => controller.abort();
-  }, [id, size]);
+  }, [url, size]);
   return size > MAX_TEXT_BYTES ? { status: 'failed' } : state;
 }
 
