@@ -1,5 +1,5 @@
 import { type KeyboardEvent, useEffect, useState } from 'react';
-import { evidenceFileUrl } from '../../api.ts';
+import { useFileUrl } from '../../evidence-files.ts';
 import { language, t } from '../../i18n/i18n.ts';
 import { Button } from '../../kit/index.ts';
 import type { Evidence } from '../../types.ts';
@@ -8,13 +8,14 @@ import { FileMeta } from './FileMeta.tsx';
 
 // The browser's own player, with its controls. Nothing plays until asked.
 export function VideoPlayer({ evidence }: { evidence: Evidence }) {
+  const fileUrl = useFileUrl();
   return (
     <figure className="ev-figure">
       <div className="ev-stage ev-video well">
         {/* biome-ignore lint/a11y/useMediaCaption: agents attach screen recordings without captions. */}
         <video
           className="ev-media"
-          src={evidenceFileUrl(evidence.id)}
+          src={fileUrl(evidence)}
           controls
           preload="metadata"
           playsInline
@@ -117,7 +118,8 @@ function seconds(time: number): string {
 // The recording as a strip of frames to read at a glance; one is shown large. Left and right step
 // through them. A file the browser cannot read frames from plays in the player instead.
 export function VideoFrames({ evidence }: { evidence: Evidence }) {
-  const frames = useFrames(evidenceFileUrl(evidence.id));
+  const fileUrl = useFileUrl();
+  const frames = useFrames(fileUrl(evidence));
   const [index, setIndex] = useState(0);
   const [playing, setPlaying] = useState(false);
   if (frames.status === 'failed' || playing) {

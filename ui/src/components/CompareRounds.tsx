@@ -1,5 +1,4 @@
 import { type CSSProperties, useCallback, useEffect, useRef, useState } from 'react';
-import { evidenceFileUrl } from '../api.ts';
 import {
   COMPARE_MODES,
   type CompareMode,
@@ -12,6 +11,7 @@ import {
   swap,
   timeOf,
 } from '../compare.ts';
+import { useFileUrl } from '../evidence-files.ts';
 import { type PlainKey, t } from '../i18n/i18n.ts';
 import { Button } from '../kit/index.ts';
 import { type Round, roundFiles } from '../rounds.ts';
@@ -40,7 +40,8 @@ type LayerProps = {
 };
 
 function Layer({ entry, side, media, onSize, onDuration }: LayerProps) {
-  const src = evidenceFileUrl(entry.id);
+  const fileUrl = useFileUrl();
+  const src = fileUrl(entry);
   if (entry.kind === 'video') {
     return (
       // biome-ignore lint/a11y/useMediaCaption: agents attach recordings without captions.
