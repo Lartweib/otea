@@ -5,15 +5,11 @@ import { t } from '../i18n/i18n.ts';
 import type { Remote } from '../remote.ts';
 import { type StudioPage, studioHash } from '../selection.ts';
 import type { Item } from '../types.ts';
-import {
-  fetchProjectBlueprint,
-  fetchStudioPresets,
-  type PresetSummary,
-  type ProjectBlueprint,
-} from './api.ts';
+import type { PresetSummary, ProjectBlueprint } from './api.ts';
 import { BlueprintPage, Picker } from './BlueprintPage.tsx';
 import { PresetEditor } from './PresetEditor.tsx';
 import { ProblemMark } from './parts.tsx';
+import type { StudioIndex } from './use-studio-index.ts';
 
 // Studio: where a project's ways of working are read and changed. Its own index on the left (the
 // project's blueprint and the presets it can use), the page on the right.
@@ -27,6 +23,8 @@ type StudioProps = {
   items: readonly Item[];
   // Something Studio wrote changes what the rest of the app shows (presets, collections).
   onChanged: () => void;
+  // Its presets and the project's blueprint, read once for Studio and the sidebar's tree.
+  index: StudioIndex;
   // The app's sidebar, beside Studio's own index (none on a phone, where it is the panel).
   rail: ReactNode;
   sidebar: boolean;
@@ -191,11 +189,11 @@ export function Studio({
   phone,
   items,
   onChanged,
+  index,
   rail,
   sidebar,
 }: StudioProps) {
-  const presets = useRemote(fetchStudioPresets, version, connection);
-  const blueprint = useRemote(fetchProjectBlueprint, version, connection);
+  const { presets, blueprint } = index;
   const copy = blueprint.status === 'ready' ? blueprint.value.blueprint : null;
   let content: ReactNode;
   if (page.kind === 'blueprint') {

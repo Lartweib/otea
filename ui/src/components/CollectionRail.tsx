@@ -2,9 +2,10 @@ import type { ReactNode } from 'react';
 import { t } from '../i18n/i18n.ts';
 import { TypeIcon } from '../icons/TypeIcon.tsx';
 import { Button, Icon } from '../kit/index.ts';
-import { LAN_HASH, modulesHash, SETTINGS_HASH, studioHash } from '../selection.ts';
+import { SETTINGS_HASH, studioHash } from '../selection.ts';
 import type { RailEntry } from '../workspace.ts';
 import { PlaceIcon } from './PlaceIcon.tsx';
+import { type StudioTree, StudioTreeView } from './StudioTree.tsx';
 
 // A collection as the sidebar draws it: its counts, its icon, and the letter that tells it from an
 // earlier collection with the same icon.
@@ -24,13 +25,12 @@ type CollectionRailProps = {
   onToggle?: (() => void) | undefined;
   // Creates an item, in a collection or (none) in the one in view. None for a browser that only reads.
   onCreate?: ((collection: string | undefined) => void) | undefined;
-  // The module catalog is open.
+  // The module catalog is open: it lives under Studio.
   modules?: boolean;
   // Studio is open.
   studio?: boolean;
-  // Phone access (#/lan) is open; none hides the entry, for any browser but this computer's
-  // signed-in one.
-  lan?: boolean | undefined;
+  // What Studio holds, unfolded under its entry while Studio or the module catalog is open.
+  studioTree?: StudioTree | undefined;
   // The project's settings are open.
   settings?: boolean;
   // Above the collections: the panel's own head on the phone.
@@ -41,8 +41,8 @@ type CollectionRailProps = {
   variant?: 'sidebar' | 'panel';
 };
 
-// Folds the sidebar to its rail of icons, or opens it again. Open, it sits at the foot, beside
-// Preferences; folded, it leads the rail.
+// Folds the sidebar to its rail of icons, or opens it again. It leads the rail, in front of the
+// collections label, and keeps its place open or folded.
 function SidebarToggle({ shown, onToggle }: { shown: boolean; onToggle: () => void }) {
   const label = t(shown ? 'rail.hide' : 'rail.show');
   return (
@@ -131,13 +131,15 @@ export function CollectionRail({
   onCreate,
   modules = false,
   studio = false,
-  lan,
+  studioTree,
   settings = false,
   head,
   foot,
   variant = 'sidebar',
 }: CollectionRailProps) {
   const newIn = (name: string) => t('empty.newIn', { collection: name });
+  const inStudio = studio || modules;
+  const tree = inStudio && !folded ? studioTree : undefined;
   return (
     <nav
       id={variant === 'sidebar' ? 'collections' : undefined}
@@ -146,12 +148,8 @@ export function CollectionRail({
       aria-label={t('rail.aria')}
     >
       {head}
-      {folded && onToggle ? (
-        <div className="rail-top">
-          <SidebarToggle shown={false} onToggle={onToggle} />
-        </div>
-      ) : null}
       <div className="rail-head">
+        {onToggle ? <SidebarToggle shown={!folded} onToggle={onToggle} /> : null}
         <span className="t-label rail-label">{t('rail.label')}</span>
         {onCreate ? (
           <button
@@ -196,42 +194,22 @@ export function CollectionRail({
         </div>
         <a
           className={folded ? 'rail-entry tip' : 'rail-entry'}
-          data-tip={folded ? t('app.modules') : undefined}
-          aria-label={folded ? t('app.modules') : undefined}
-          href={modulesHash()}
-          aria-current={modules ? 'page' : undefined}
-        >
-          <span className="rail-icon">
-            <PlaceIcon icon="shapes" name={t('app.modules')} />
-          </span>
-          <span className="rail-name">{t('app.modules')}</span>
-        </a>
-        <a
-          className={folded ? 'rail-entry tip' : 'rail-entry'}
           data-tip={folded ? t('app.studio') : undefined}
           aria-label={folded ? t('app.studio') : undefined}
           href={studioHash()}
-          aria-current={studio ? 'page' : undefined}
+          aria-current={inStudio ? (tree?.current ? 'true' : 'page') : undefined}
         >
           <span className="rail-icon">
             <PlaceIcon icon="ruler" name={t('app.studio')} />
           </span>
           <span className="rail-name">{t('app.studio')}</span>
-        </a>
-        {lan === undefined ? null : (
-          <a
-            className={folded ? 'rail-entry tip' : 'rail-entry'}
-            data-tip={folded ? t('lan.link') : undefined}
-            aria-label={folded ? t('lan.link') : undefined}
-            href={LAN_HASH}
-            aria-current={lan ? 'page' : undefined}
-          >
-            <span className="rail-icon">
-              <PlaceIcon icon="mobile" name={t('lan.link')} />
+          {tree ? (
+            <span className="t-cap rail-meta">
+              {t('rail.presets', { count: tree.presets.length })}
             </span>
-            <span className="rail-name">{t('lan.link')}</span>
-          </a>
-        )}
+          ) : null}
+        </a>
+        {tree ? <StudioTreeView tree={tree} /> : null}
         <a
           className={folded ? 'rail-entry tip' : 'rail-entry'}
           data-tip={folded ? t('rail.settings') : undefined}
@@ -245,10 +223,7 @@ export function CollectionRail({
           <span className="rail-name">{t('rail.settings')}</span>
         </a>
       </div>
-      <div className="rail-foot">
-        {foot}
-        {!folded && onToggle ? <SidebarToggle shown onToggle={onToggle} /> : null}
-      </div>
+      <div className="rail-foot">{foot}</div>
     </nav>
   );
 }

@@ -9,6 +9,7 @@ import {
   tx,
 } from '../i18n/i18n.ts';
 import { Icon, type IconName } from '../kit/index.ts';
+import { LAN_HASH } from '../selection.ts';
 import type { ThemeChoice } from '../theme.ts';
 import { loadChoice, switchChoice } from '../theme-dom.ts';
 import { Buddy } from './Buddy.tsx';
@@ -59,9 +60,18 @@ const THEMES: readonly [ThemeChoice, IconName, PlainKey][] = [
   ['dark', 'moon', 'prefs.dark'],
 ];
 
+type PreferencesPanelProps = {
+  // The server this browser is talking to (its host and port), for the about group.
+  server?: string | undefined;
+  // Leads to the pairing page; none for any browser but this computer's signed-in one, which alone
+  // may pair a phone. It closes the menu on its way.
+  onPair?: (() => void) | undefined;
+};
+
 // What belongs to this browser, not to a project: the theme and the interface's language, with the
-// note that only the interface is translated.
-export function PreferencesPanel() {
+// note that only the interface is translated; the session (pairing a phone, where this browser may)
+// and the server it talks to.
+export function PreferencesPanel({ server, onPair }: PreferencesPanelProps) {
   const [theme, setTheme] = useState(loadChoice);
   const [lang, setLang] = useState<LanguageChoice>(languageChoice);
   return (
@@ -104,6 +114,22 @@ export function PreferencesPanel() {
           {tx('prefs.translated', { only: <b>{t('prefs.onlyInterface')}</b> })}
         </p>
       </Group>
+      {onPair ? (
+        <Group label={t('prefs.session')}>
+          <a className="prefs-link" href={LAN_HASH} onClick={onPair}>
+            <Icon name="link" />
+            {t('prefs.pair')}
+          </a>
+        </Group>
+      ) : null}
+      {server ? (
+        <Group label={t('prefs.about')}>
+          <dl className="prefs-facts">
+            <dt className="t-cap">{t('prefs.server')}</dt>
+            <dd className="mono">{server}</dd>
+          </dl>
+        </Group>
+      ) : null}
     </div>
   );
 }

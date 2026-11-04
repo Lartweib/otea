@@ -14,16 +14,32 @@ function Up() {
 }
 
 // The sidebar's foot: you and Preferences. It opens this browser's preferences, upwards; on a phone,
-// as a sheet. Folded, only you stay, with the name in a tooltip.
+// as a sheet. Folded, only you stay, with the name in a tooltip. onPair: this browser may pair a
+// phone (this computer's signed-in one); it runs as the menu closes on the way to the pairing page.
 export function PreferencesButton({
   folded = false,
   phone = false,
+  onPair,
 }: {
   folded?: boolean;
   phone?: boolean;
+  onPair?: (() => void) | undefined;
 }) {
   const menu = useMenu();
   const label = t('prefs.title');
+  const panel = (
+    <PreferencesPanel
+      server={window.location.host}
+      onPair={
+        onPair
+          ? () => {
+              menu.close();
+              onPair();
+            }
+          : undefined
+      }
+    />
+  );
   return (
     <div className="prefs-anchor" ref={menu.ref}>
       <button
@@ -47,7 +63,7 @@ export function PreferencesButton({
       {phone ? null : <LanguageNote anchored />}
       {menu.phase === 'closed' ? null : phone ? (
         <Sheet menu={menu} label={label} title={label}>
-          <PreferencesPanel />
+          {panel}
         </Sheet>
       ) : (
         <div
@@ -57,7 +73,7 @@ export function PreferencesButton({
           data-phase={menu.phase}
         >
           <PreferencesHead />
-          <PreferencesPanel />
+          {panel}
         </div>
       )}
     </div>
