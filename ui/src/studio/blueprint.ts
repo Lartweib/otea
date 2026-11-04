@@ -53,6 +53,57 @@ export function connectionText({ kind, from, to }: Connection): string {
   return `${from.board}.${from.type} ${kind} ${to.board}.${to.type}`;
 }
 
+// ---------------------------------------------------------------- editing the draft
+
+type End = { board: string; type: string };
+
+// A link changed in place, from its inspector: the draft with it, and the link's new text.
+export function changeLink(
+  draft: BlueprintDraft,
+  text: string,
+  next: { from: End; kind: string; to: End },
+): { draft: BlueprintDraft; text: string } {
+  const changed = `${next.from.board}.${next.from.type} ${next.kind} ${next.to.board}.${next.to.type}`;
+  return {
+    draft: {
+      ...draft,
+      connections: draft.connections.map((each) => (each.trim() === text ? changed : each)),
+    },
+    text: changed,
+  };
+}
+
+// What + link adds: a link from the first board's types to the second's, of the first kind not
+// there yet; none while there are fewer than two boards or every one is there.
+export function nextLink(
+  draft: BlueprintDraft,
+  shapes: ReadonlyMap<string, TypeShape[]>,
+): string | undefined {
+  const [a, b] = draft.boards;
+  if (!a || !b) return undefined;
+  const taken = new Set(draft.connections.map((text) => text.trim()));
+  for (const from of shapes.get(a.name) ?? []) {
+    for (const to of shapes.get(b.name) ?? []) {
+      for (const kind of KINDS) {
+        const text = `${a.name}.${from.name} ${kind} ${b.name}.${to.name}`;
+        if (!taken.has(text)) return text;
+      }
+    }
+  }
+  return undefined;
+}
+
+// A board taken out of the draft, with every link that touches it.
+export function withoutBoard(draft: BlueprintDraft, name: string): BlueprintDraft {
+  return {
+    ...draft,
+    boards: draft.boards.filter((board) => board.name !== name),
+    connections: draft.connections.filter(
+      (text) => !text.split(/\s+/).some((part) => part.startsWith(`${name}.`)),
+    ),
+  };
+}
+
 // ---------------------------------------------------------------- who waits for whom
 
 type StateView = { name: string; turn: string; closes?: string; requires?: string[] };

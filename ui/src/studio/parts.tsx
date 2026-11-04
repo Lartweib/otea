@@ -150,7 +150,7 @@ export function Ask({
   children,
 }: {
   question: string;
-  yamlKey: string;
+  yamlKey?: string;
   note?: ReactNode;
   children: ReactNode;
 }) {
@@ -158,7 +158,7 @@ export function Ask({
     <section className="st-ask">
       <div className="st-ask-h">
         <h3>{question}</h3>
-        <code>{yamlKey}</code>
+        {yamlKey ? <code>{yamlKey}</code> : null}
       </div>
       {children}
       {note ? <p className="st-ask-n">{note}</p> : null}
