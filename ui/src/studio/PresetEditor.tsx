@@ -32,9 +32,14 @@ import { diffLines, rawOf, readDraft, workflowOf } from './draft.ts';
 import { Inspector } from './Inspector.tsx';
 import { LaneInspector } from './LaneInspector.tsx';
 import { type LaneChoice, LanesEdit } from './LanesEdit.tsx';
-import { addField, addModule } from './layout-edit.ts';
+import { addField, addModule, shownIn } from './layout-edit.ts';
+import { Outline } from './Outline.tsx';
+import { PlaybookSection } from './Playbook.tsx';
 import { OkMark, ProblemMark } from './parts.tsx';
 import { type DraftPreview, draftPreview } from './preview.ts';
+import { GatesSection, LayoutSection, ViewsSection } from './sections.tsx';
+import { Tray } from './Tray.tsx';
+import { applyFix, type DraftText, noteKey, trayRows } from './tray.ts';
 
 // A preset in Studio is the item you are going to see: a sample item drawn from the draft with the
 // real views, the parts you click on, and an inspector that asks about the part in plain words. A
@@ -126,6 +131,10 @@ function Loaded({ source, samples, canWrite, phone, items, onSaved }: LoadedProp
   const [view, setView] = useState<View>('detail');
   const [chosen, setChosen] = useState<string>();
   const [lane, setLane] = useState<LaneChoice>();
+  const [trayOpen, setTrayOpen] = useState(false);
+  const [indexOpen, setIndexOpen] = useState(false);
+  const [page, setPage] = useState<Page>();
+  const [intended, setIntended] = useState<string[]>(() => storedIntended(source.name));
   const [now] = useState(() => new Date().toISOString());
   const yaml = draft?.yaml ?? source.yaml;
   const playbooks = { ...source.playbooks, ...(draft?.playbooks ?? {}) };
@@ -199,6 +208,51 @@ function Loaded({ source, samples, canWrite, phone, items, onSaved }: LoadedProp
     files: (module: string) => (evidence ?? []).filter((entry) => entry.module === module).length,
   };
   const notes = reading.ok ? reading.notes.filter(({ code }) => !code.startsWith('sample_')) : [];
+  const rows = trayRows(notes).filter(({ note }) => !intended.includes(noteKey(note)));
+  const setPlaybooks = (text: DraftText) =>
+    setDraft({
+      base: source.yaml,
+      yaml: text.yaml,
+      playbooks: Object.fromEntries(
+        Object.entries(text.playbooks).filter(([path, body]) => source.playbooks[path] !== body),
+      ),
+    });
+  const views = phone ? VIEWS.filter((each) => each !== 'phone') : VIEWS;
+  const open = (next: View) => {
+    setView(next);
+    setPage(undefined);
+    setSelected(undefined);
+  };
+  // Opens the place a note or an index entry is about: a field in the detail, a state on the lanes,
+  // a gate's page.
+  const show = (target: { field?: string; state?: string; gate?: string; type?: string }) => {
+    if (target.type && typeNames.includes(target.type)) setType(target.type);
+    const on = target.type ?? shown;
+    if (target.field !== undefined && on !== undefined) {
+      const slot = shownIn(preset, on, target.field)[0];
+      const index = slot
+        ? (preset?.types.find(({ name }) => name === on)?.layout[slot] ?? []).findIndex(
+            (entry) => entry.field === target.field,
+          )
+        : -1;
+      open('detail');
+      setSelected({ type: on, slot: slot ?? 'body', index, field: target.field });
+    } else if (target.state !== undefined) {
+      open('lanes');
+      setLane({ kind: 'state', name: target.state });
+    } else if (target.gate !== undefined) {
+      setPage('gates');
+    }
+    setTrayOpen(false);
+  };
+  const sectionProps = {
+    raw,
+    yaml,
+    change,
+    type: shown,
+    problems,
+    preset,
+  };
   return (
     <div className="st-preset st-studio">
       <header className="st-head">
@@ -218,9 +272,35 @@ function Loaded({ source, samples, canWrite, phone, items, onSaved }: LoadedProp
         <div className="st-hr">
           <Verdict problems={problems.length} />
           {notes.length > 0 ? (
-            <span className="st-offscreen">
-              <Icon name="warn" />
-              {t('studio.notOnScreen', { count: notes.length })}
+            <span className="st-offscreen-at">
+              <button
+                type="button"
+                className="st-offscreen"
+                aria-expanded={trayOpen}
+                onClick={() => setTrayOpen(!trayOpen)}
+              >
+                <Icon name="warn" />
+                {t('studio.notOnScreen', { count: rows.length })}
+                <Icon name="chevron" />
+              </button>
+              {trayOpen ? (
+                <Tray
+                  rows={rows}
+                  onShow={(note) => show(note.path)}
+                  onFix={
+                    change &&
+                    ((row, fix) => {
+                      if (fix.kind === 'intended') {
+                        const next = [...intended, noteKey(row.note)];
+                        setIntended(next);
+                        storeIntended(source.name, next);
+                        return;
+                      }
+                      setPlaybooks(applyFix({ yaml, playbooks }, preset, row.note, fix));
+                    })
+                  }
+                />
+              ) : null}
             </span>
           ) : null}
           {source.origin === 'official' ? (
@@ -252,6 +332,12 @@ function Loaded({ source, samples, canWrite, phone, items, onSaved }: LoadedProp
           ) : null}
         </div>
       </header>
+      {phone ? (
+        <p className="st-phone-strip">
+          <Icon name="eye" />
+          {t('studio.phone.readOnly')}
+        </p>
+      ) : null}
       <div className="st-bar">
         {typeNames.length > 0 ? (
           <div className="st-bar-group">
@@ -278,25 +364,83 @@ function Loaded({ source, samples, canWrite, phone, items, onSaved }: LoadedProp
         <div className="st-bar-group">
           <span className="st-bar-k">{t('studio.bar.view')}</span>
           <fieldset className="st-pills" aria-label={t('studio.bar.view')}>
-            {VIEWS.map((each) => (
+            {views.map((each) => (
               <button
                 key={each}
                 type="button"
                 data-view={each}
-                aria-pressed={each === view}
-                onClick={() => {
-                  setView(each);
-                  setSelected(undefined);
-                }}
+                aria-pressed={page === undefined && each === view}
+                onClick={() => open(each)}
               >
                 {t(VIEW_LABEL[each])}
               </button>
             ))}
           </fieldset>
         </div>
+        {phone ? null : (
+          <button
+            type="button"
+            className="st-bar-end st-ix-toggle"
+            aria-pressed={indexOpen}
+            onClick={() => setIndexOpen(!indexOpen)}
+          >
+            <Icon name="list" />
+            {t('studio.bar.index')}
+          </button>
+        )}
       </div>
-      <div className="st-cols" data-view={view}>
-        {view === 'lanes' && shown !== undefined ? (
+      <div
+        className="st-cols"
+        data-view={page ? 'page' : view}
+        data-index={indexOpen && !phone ? 'on' : undefined}
+        data-phone={phone ? 'on' : undefined}
+      >
+        {indexOpen && !phone && shown !== undefined ? (
+          <Outline
+            raw={raw}
+            preset={preset}
+            type={shown}
+            notes={notes}
+            playbooks={files.length}
+            current={selected?.field}
+            onHide={() => setIndexOpen(false)}
+            onPick={(pick) => {
+              if (pick.kind === 'field') show({ field: pick.name });
+              else if (pick.kind === 'states' || pick.kind === 'moves') open('lanes');
+              else setPage(pick.page);
+            }}
+          />
+        ) : null}
+        {page && shown !== undefined ? (
+          <section className="st-stage st-page-sec">
+            <button type="button" className="btn sm quiet" onClick={() => setPage(undefined)}>
+              <Icon name="left" />
+              {t('studio.page.back')}
+            </button>
+            {page === 'gates' ? <GatesSection {...sectionProps} /> : null}
+            {page === 'views' ? <ViewsSection {...sectionProps} /> : null}
+            {page === 'layout' ? <LayoutSection {...sectionProps} /> : null}
+            {page === 'playbook' ? (
+              <PlaybookSection
+                files={files}
+                playbooks={playbooks}
+                type={shown}
+                yaml={yaml}
+                change={change}
+                setPlaybook={
+                  change &&
+                  ((path, text) =>
+                    setPlaybooks({ yaml, playbooks: { ...playbooks, [path]: text } }))
+                }
+                setDraftAll={
+                  change &&
+                  ((text, path) =>
+                    setPlaybooks({ yaml: text, playbooks: { ...playbooks, [path]: '' } }))
+                }
+              />
+            ) : null}
+          </section>
+        ) : view === 'lanes' && shown !== undefined ? (
           <section className="st-stage">
             <LanesEdit
               raw={raw}
@@ -317,8 +461,9 @@ function Loaded({ source, samples, canWrite, phone, items, onSaved }: LoadedProp
             view={view}
             chosen={chosen}
             onChoose={setChosen}
-            selected={selected}
-            onSelect={setSelected}
+            selected={phone ? undefined : selected}
+            onSelect={phone ? () => {} : setSelected}
+            withSamples={!indexOpen && !phone}
             adding={
               change && {
                 taken: (field) =>
@@ -342,7 +487,7 @@ function Loaded({ source, samples, canWrite, phone, items, onSaved }: LoadedProp
             {preset ? t('common.loading') : t('studio.preview.invalid')}
           </p>
         )}
-        {view === 'lanes' && lane && shown !== undefined ? (
+        {phone ? null : view === 'lanes' && lane && shown !== undefined ? (
           <LaneInspector
             raw={raw}
             yaml={yaml}
@@ -375,6 +520,12 @@ function Loaded({ source, samples, canWrite, phone, items, onSaved }: LoadedProp
           </aside>
         )}
       </div>
+      {phone ? (
+        <div className="st-phone-card">
+          <b>{t('studio.phone.edit')}</b>
+          <p>{t('studio.phone.editNote')}</p>
+        </div>
+      ) : null}
       {confirming ? (
         <SaveConfirm
           source={source}
@@ -392,15 +543,38 @@ function Loaded({ source, samples, canWrite, phone, items, onSaved }: LoadedProp
   );
 }
 
-export type View = 'detail' | 'form' | 'row' | 'lanes';
+export type View = 'detail' | 'form' | 'row' | 'lanes' | 'phone';
 
-const VIEWS: readonly View[] = ['detail', 'form', 'row', 'lanes'];
+const VIEWS: readonly View[] = ['detail', 'form', 'row', 'lanes', 'phone'];
+
+// What no view draws opens from the index as a page of its own.
+type Page = 'gates' | 'views' | 'playbook' | 'layout';
+
+const intendedKey = (name: string) => `otea.studio.intended.${name}`;
+
+function storedIntended(name: string): string[] {
+  try {
+    const text = window.localStorage.getItem(intendedKey(name));
+    return text === null ? [] : (JSON.parse(text) as string[]);
+  } catch {
+    return [];
+  }
+}
+
+function storeIntended(name: string, keys: readonly string[]): void {
+  try {
+    window.localStorage.setItem(intendedKey(name), JSON.stringify(keys));
+  } catch {
+    // Kept for this tab only.
+  }
+}
 
 const VIEW_LABEL: Record<View, PlainKey> = {
   detail: 'studio.view.detail',
   form: 'studio.view.form',
   row: 'studio.view.row',
   lanes: 'studio.view.lanes',
+  phone: 'studio.view.phone',
 };
 
 type Adding = {
@@ -420,6 +594,8 @@ type StageProps = {
   onSelect: (part: Part | undefined) => void;
   // Undefined while the preset cannot be edited here: no + field here.
   adding: Adding | undefined;
+  // Off while the index takes the column, and on a phone.
+  withSamples: boolean;
 };
 
 // A field the sample leaves empty draws nothing; the chosen one shows that it has no value yet, so
@@ -443,6 +619,7 @@ function Stage({
   selected,
   onSelect,
   adding,
+  withSamples,
 }: StageProps) {
   const rows = preview.items.filter((item) => item.type === type);
   const id = rows.some((row) => row.id === chosen) ? chosen : rows[0]?.id;
@@ -507,6 +684,22 @@ function Stage({
         />
       </article>,
     );
+  } else if (view === 'phone') {
+    drawn = item ? (
+      <div className="st-phone-frame">
+        {canvas(
+          t('studio.canvas.aria', { id: item.id }),
+          <ItemDetail
+            item={item}
+            canWrite={false}
+            collection={preview.collection}
+            collectionOf={() => preview.collection}
+          />,
+        )}
+      </div>
+    ) : (
+      <p className="t-small st-msg">{t('studio.samples.noneOfType', { type })}</p>
+    );
   } else {
     drawn = item ? (
       canvas(
@@ -524,7 +717,7 @@ function Stage({
   }
   return (
     <>
-      {view === 'row' ? null : (
+      {view === 'row' || view === 'phone' || !withSamples ? null : (
         <SampleList
           rows={rows}
           preview={preview}
