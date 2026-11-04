@@ -77,9 +77,9 @@ function useFit(widest: number) {
   useLayoutEffect(() => {
     const element = box.current;
     if (!element || typeof ResizeObserver === 'undefined') return;
-    const fit = () => setWidth(Math.max(320, Math.min(widest, element.clientWidth)));
-    fit();
-    const observer = new ResizeObserver(fit);
+    const resize = () => setWidth(Math.max(320, Math.min(widest, element.clientWidth)));
+    resize();
+    const observer = new ResizeObserver(resize);
     observer.observe(element);
     return () => observer.disconnect();
   }, [widest]);

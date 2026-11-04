@@ -956,3 +956,258 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* ---- the not on screen tray ---- */
+.st-offscreen-at {
+  position: relative;
+}
+button.st-offscreen {
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+button.st-offscreen:hover,
+button.st-offscreen[aria-expanded="true"] {
+  background: var(--chip);
+}
+button.st-offscreen .icon:last-child {
+  width: 12px;
+  height: 12px;
+}
+.st-tray2 {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: -200px;
+  z-index: var(--z-tooltip);
+  width: min(560px, calc(100vw - 32px));
+  padding: 14px 18px 8px;
+  border-radius: var(--r-l);
+  background: var(--sf);
+  box-shadow:
+    0 0 0 1px var(--line),
+    0 18px 40px -16px var(--shadow);
+}
+.st-tray2-h {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 10px;
+  color: var(--mut);
+  font: 400 12px var(--font-machine);
+}
+.st-tray2 ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.st-tray2 li {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  gap: 8px;
+  padding: 12px 0;
+  border-top: 1px solid var(--line);
+}
+.st-tray2 li b {
+  font: 500 14px var(--font-human);
+}
+.st-tray2 li p {
+  margin: 4px 0 8px;
+  color: var(--mut);
+  font: 400 12px / 1.45 var(--font-machine);
+}
+.st-tray2-i {
+  display: inline-flex;
+  padding-top: 2px;
+  color: var(--mut);
+}
+.st-tray2-i i {
+  width: 7px;
+  height: 7px;
+  margin: 5px 0 0 4px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1.5px var(--mut);
+}
+.st-tray2-a {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.st-tray2-a .icon {
+  width: 14px;
+  height: 14px;
+}
+
+/* ---- the index ---- */
+.st-ix-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--ink);
+  font: 400 13px var(--font-human);
+  cursor: pointer;
+}
+.st-ix-toggle:hover {
+  background: var(--hov);
+}
+.st-ix-toggle[aria-pressed="true"] {
+  background: var(--ink);
+  color: var(--sf);
+}
+.st-cols[data-index] {
+  grid-template-columns: 240px minmax(0, 1fr) 344px;
+}
+.st-ix-hide {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 0;
+  background: none;
+  color: var(--mut);
+  font: inherit;
+  cursor: pointer;
+}
+.st-ix-list,
+.st-ix-sub {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.st-ix-sub {
+  margin: 2px 0 6px 12px;
+  padding-left: 10px;
+  border-left: 1px solid var(--line);
+}
+.st-ix-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  min-height: 34px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: var(--r-m);
+  background: none;
+  color: var(--ink);
+  font: 400 14px var(--font-human);
+  text-align: left;
+  cursor: pointer;
+}
+.st-ix-row > span:first-child {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.st-ix-row .icon {
+  width: 13px;
+  height: 13px;
+  color: var(--mut);
+}
+.st-ix-sub .st-ix-row {
+  min-height: 29px;
+  font-size: 13px;
+}
+.st-ix-row:hover,
+.st-ix-row[aria-current="true"],
+.st-ix-group[aria-expanded="true"] {
+  background: var(--hov);
+}
+.st-ix-row[aria-current="true"] {
+  background: var(--sel);
+}
+.st-ix-static {
+  cursor: default;
+}
+.st-ix-static:hover {
+  background: none;
+}
+.st-ix-n {
+  color: var(--mut);
+  font: 400 12px var(--font-machine);
+}
+.st-page-sec {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+}
+.st-page-sec > .st-sec {
+  width: 100%;
+}
+
+/* ---- the phone view, and Studio on a phone ---- */
+.st-phone-frame {
+  width: 390px;
+  max-width: 100%;
+  margin: 0 auto;
+  padding: 16px;
+  border-radius: 28px;
+  box-shadow: 0 0 0 1px var(--line);
+}
+.st-phone-strip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--line);
+  color: var(--mut);
+  font: 400 12.5px var(--font-machine);
+}
+.st-phone-card {
+  position: fixed;
+  right: 12px;
+  bottom: 12px;
+  left: 12px;
+  z-index: var(--z-sticky);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px;
+  border-radius: var(--r-l);
+  background: var(--sf);
+  box-shadow:
+    0 0 0 1px var(--line),
+    0 -12px 30px -18px var(--shadow);
+}
+.st-phone-card b {
+  font: 600 15px var(--font-human);
+}
+.st-phone-card p {
+  margin: 0;
+  color: var(--mut);
+  font: 400 13px / 1.5 var(--font-human);
+}
+@media (pointer: coarse) {
+  .st-ix-row,
+  .st-ix-toggle,
+  button.st-offscreen,
+  .st-tray2-a .btn {
+    min-height: 44px;
+  }
+}
+@media (max-width: 80rem) {
+  .st-cols[data-index] {
+    grid-template-columns: 220px minmax(0, 1fr);
+  }
+}
+@media (max-width: 48rem) {
+  .st-cols[data-index] {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .st-tray2 {
+    right: auto;
+    left: -120px;
+  }
+}
+
+.st-cols[data-phone] {
+  padding-bottom: 140px;
+}
