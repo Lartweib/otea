@@ -55,28 +55,48 @@ export function connectionText({ kind, from, to }: Connection): string {
 
 // ---------------------------------------------------------------- who waits for whom
 
-type StateView = { name: string; turn: string; requires?: string[] };
+type StateView = { name: string; turn: string; closes?: string; requires?: string[] };
+
+type WaitsOn = 'children' | 'blockers';
 
 export type TypeShape = {
   name: string;
   label: string;
   icon?: string;
-  waits: Array<{ state: string; on: 'children' | 'blockers' }>;
+  waits: Array<{ state: string; on: WaitsOn }>;
+  // Its states in order, each with what entering it waits for, when it waits.
+  states: Array<{ name: string; waits?: WaitsOn }>;
 };
 
-// A board's types, each with the states that wait (requires) and on what.
+const waitsOn = (requirement: string): WaitsOn =>
+  requirement === 'children_closed' ? 'children' : 'blockers';
+
+// A board's types, each with its states and the ones that wait (requires) and on what.
 export function shapesOf(preset: PresetView | undefined): TypeShape[] {
-  return (preset?.types ?? []).map((type) => ({
-    name: type.name,
-    label: type.label,
-    ...(type.icon === undefined ? {} : { icon: type.icon }),
-    waits: (type.states as StateView[]).flatMap((state) =>
-      (state.requires ?? []).map((requirement) => ({
-        state: state.name,
-        on: requirement === 'children_closed' ? ('children' as const) : ('blockers' as const),
-      })),
-    ),
-  }));
+  return (preset?.types ?? []).map((type) => {
+    const states = type.states as StateView[];
+    return {
+      name: type.name,
+      label: type.label,
+      ...(type.icon === undefined ? {} : { icon: type.icon }),
+      waits: states.flatMap((state) =>
+        (state.requires ?? []).map((requirement) => ({
+          state: state.name,
+          on: waitsOn(requirement),
+        })),
+      ),
+      // The incomplete state and the ones that discard are left out: no link is about them.
+      states: states.flatMap((state) => {
+        if (state.name === type.incomplete || state.closes === 'discarded') return [];
+        const first = state.requires?.[0];
+        // Blockers first: the wait a blocks link means.
+        const on = state.requires?.includes('blockers_closed')
+          ? 'blockers'
+          : first && waitsOn(first);
+        return [on ? { name: state.name, waits: on } : { name: state.name }];
+      }),
+    };
+  });
 }
 
 export type Reading =
@@ -142,6 +162,149 @@ export function blockLoops(connections: readonly Connection[]): string[][] {
     walk(start, [start]);
   }
   return loops;
+}
+
+// ---------------------------------------------------------------- the canvas of cards
+
+// Each board is a card: its head, a row per type (with its states, when they show), and a sample
+// row. These sizes are the card's CSS (studio.css, .st-bc), so a link meets its type's row.
+export const CARD_W = 212;
+export const COL_GAP = 132;
+export const ROW_GAP = 48;
+export const CARD_HEAD = 54;
+export const TYPE_ROW = 40;
+export const STATE_ROW = 20;
+export const WAIT_LINE = 16;
+export const SAMPLE_H = 60;
+const CARD_PAD = 8;
+const MARGIN = 28;
+
+export type CardMode = 'types' | 'states';
+
+export type Card = {
+  board: Board;
+  x: number;
+  y: number;
+  h: number;
+  // Each type's row: the middle of the row, from the card's top, where its ports sit.
+  rows: Array<{ type: TypeShape; y: number }>;
+};
+
+// How far right a board sits: one column past the boards that link to it, so a link reads left to
+// right. A board in a loop, or without links, stays in the first column it reaches.
+function columnsOf(boards: readonly Board[], connections: readonly Connection[]) {
+  const column = new Map(boards.map(({ name }) => [name, 0]));
+  for (let pass = 0; pass < boards.length; pass += 1) {
+    for (const { from, to } of connections) {
+      const next = (column.get(from.board) ?? 0) + 1;
+      if (from.board !== to.board && next < boards.length && next > (column.get(to.board) ?? 0))
+        column.set(to.board, next);
+    }
+  }
+  return column;
+}
+
+function cardHeight(shapes: readonly TypeShape[], mode: CardMode, sample: boolean) {
+  let y = CARD_HEAD;
+  const rows = shapes.map((type) => {
+    const at = { type, y: y + TYPE_ROW / 2 };
+    y += TYPE_ROW;
+    if (mode === 'states') {
+      for (const state of type.states) y += STATE_ROW + (state.waits ? WAIT_LINE : 0);
+    }
+    return at;
+  });
+  return { rows, h: y + (sample ? SAMPLE_H : 0) + CARD_PAD };
+}
+
+// The cards in columns, each column a stack. A card faces the cards that link to it: it starts at
+// the height of their ports, and moves down only to clear the card above it.
+export function layoutCards(
+  boards: readonly Board[],
+  connections: readonly Connection[],
+  shapes: ReadonlyMap<string, TypeShape[]>,
+  mode: CardMode,
+  hasSample: (board: string) => boolean,
+): Card[] {
+  const column = columnsOf(boards, connections);
+  const cards: Card[] = [];
+  const bottom = new Map<number, number>();
+  const ordered = [...boards].sort((a, b) => (column.get(a.name) ?? 0) - (column.get(b.name) ?? 0));
+  for (const board of ordered) {
+    const at = column.get(board.name) ?? 0;
+    const { rows, h } = cardHeight(shapes.get(board.name) ?? [], mode, hasSample(board.name));
+    const facing = connections.flatMap(({ from, to }) => {
+      if (to.board !== board.name) return [];
+      const source = cards.find((card) => card.board.name === from.board);
+      const row = source?.rows.find(({ type }) => type.name === from.type);
+      const own = rows.find(({ type }) => type.name === to.type);
+      return source && row && own ? [source.y + row.y - own.y] : [];
+    });
+    const wanted = facing.length > 0 ? Math.min(...facing) + 2 * STATE_ROW : MARGIN;
+    const y = Math.max(wanted, bottom.get(at) ?? MARGIN);
+    cards.push({ board, x: MARGIN + at * (CARD_W + COL_GAP), y, h, rows });
+    bottom.set(at, y + h + ROW_GAP);
+  }
+  return boards.flatMap((board) => cards.filter((card) => card.board === board));
+}
+
+export type CardLink = {
+  connection: Connection;
+  text: string;
+  d: string;
+  label: { x: number; y: number };
+  // The side of each card the link leaves and enters.
+  sides: { from: 'l' | 'r'; to: 'l' | 'r' };
+};
+
+// Each link from its source type's port to its target type's: the facing sides of two columns, or
+// out of the right side and back in when both cards share a column.
+export function cardLinks(cards: readonly Card[], connections: readonly Connection[]): CardLink[] {
+  const port = (end: { board: string; type: string }) => {
+    const card = cards.find(({ board }) => board.name === end.board);
+    const row = card?.rows.find(({ type }) => type.name === end.type);
+    return card && row ? { card, y: card.y + row.y } : undefined;
+  };
+  return connections.flatMap((connection): CardLink[] => {
+    const a = port(connection.from);
+    const b = port(connection.to);
+    if (!a || !b) return [];
+    const text = connectionText(connection);
+    if (a.card.x === b.card.x) {
+      const x = a.card.x + CARD_W;
+      const bend = x + 56;
+      return [
+        {
+          connection,
+          text,
+          d: `M${x} ${a.y} C${bend} ${a.y} ${bend} ${b.y} ${x} ${b.y}`,
+          label: { x: x + 42, y: (a.y + b.y) / 2 },
+          sides: { from: 'r', to: 'r' },
+        },
+      ];
+    }
+    const rightward = b.card.x > a.card.x;
+    const x1 = rightward ? a.card.x + CARD_W : a.card.x;
+    const x2 = rightward ? b.card.x : b.card.x + CARD_W;
+    const pull = Math.max(40, Math.abs(x2 - x1) / 2) * (rightward ? 1 : -1);
+    return [
+      {
+        connection,
+        text,
+        d: `M${x1} ${a.y} C${x1 + pull} ${a.y} ${x2 - pull} ${b.y} ${x2} ${b.y}`,
+        label: { x: (x1 + x2) / 2, y: (a.y + b.y) / 2 },
+        sides: rightward ? { from: 'r', to: 'l' } : { from: 'l', to: 'r' },
+      },
+    ];
+  });
+}
+
+// The canvas's size: every card, with room around them.
+export function canvasSize(cards: readonly Card[]): { width: number; height: number } {
+  return {
+    width: Math.max(...cards.map(({ x }) => x + CARD_W + MARGIN + 60), 320),
+    height: Math.max(...cards.map(({ y, h }) => y + h + MARGIN), 200),
+  };
 }
 
 // ---------------------------------------------------------------- the diagram's geometry
