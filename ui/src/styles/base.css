@@ -13,6 +13,8 @@ html {
 /* Dotted 24px ground. */
 body {
   margin: 0;
+  /* The page runs under a phone's notch (viewport-fit=cover) in landscape: the content does not. */
+  padding-inline: env(safe-area-inset-left) env(safe-area-inset-right);
   min-height: 100dvh;
   background-color: var(--bg);
   background-image: radial-gradient(var(--pat) 1px, transparent 1.3px);

@@ -8,8 +8,11 @@
 }
 
 .unfold-content {
-  /* Right of the lanes (x<=40); a branch stops at the row above the card (see branchPieces). */
-  padding: 2px 0 14px 60px;
+  /* The card takes the list's width, over the lanes: they pass under it and pick up below, and a
+     branch stops at the row above the card (see branchPieces). */
+  position: relative;
+  z-index: 1;
+  padding: 2px 12px 14px;
 }
 
 .detail[data-layout="unfold"] {
@@ -45,7 +48,7 @@
   bottom: 0;
   z-index: 2;
   margin: 0 -16px;
-  padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+  padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
   border-top: 1px solid var(--line);
   border-radius: 0 0 var(--r-l) var(--r-l);
   background: var(--sf);
@@ -67,23 +70,74 @@
   }
 }
 
-.unfold-actions .btn {
+/* One row: the lead move takes the width, the rest wait in a sheet under "more" (see barMoves). */
+.unfold-actions .move-bar {
+  flex-wrap: nowrap;
+  gap: 8px;
+}
+
+.unfold-actions .move-bar > :is(.btn, .move-blocked) {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.unfold-actions .btn,
+.move-sheet .btn {
   height: 44px;
   padding: 0 18px;
   font-size: 14px;
 }
 
-.unfold-actions .action-buttons {
-  gap: 8px;
+.unfold-actions .move-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-/* The bar keeps the moves in one run, closing ones last, without the "close as" rule. */
-.unfold-actions .move-close {
-  display: contents;
+.unfold-actions .move-bar > .move-more {
+  flex: none;
+  gap: 4px;
+  padding: 0 12px 0 16px;
 }
 
-.unfold-actions .move-row > .move-close::before {
-  content: none;
+/* The sheet opens upwards from the bar: the chevron says so. */
+.move-more .icon {
+  rotate: 180deg;
+}
+
+.unfold-actions .move-blocked {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* The other moves, one a line, each with what it does. */
+.move-sheet {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 4px 6px 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.move-sheet > li {
+  display: grid;
+  gap: 4px;
+  padding: 6px 0 8px;
+}
+
+.move-sheet .btn {
+  width: 100%;
+  justify-content: center;
+}
+
+.move-sheet .move-says {
+  min-height: 0;
+  padding: 0 4px;
+  text-align: center;
+  color: var(--mut);
 }
 
 /* The row draws its own pressed and selected state. */
@@ -125,7 +179,7 @@
     flex: 1;
     width: auto;
     max-width: none;
-    height: 40px;
+    height: 44px;
     margin: 0 4px 0 0;
     padding-left: 12px;
     grid-template-columns: 18px minmax(0, 1fr) 24px;
@@ -135,7 +189,8 @@
   .live-pill {
     flex: none;
     gap: 6px;
-    height: 40px;
+    min-width: 44px;
+    height: 44px;
     padding: 0 13px 0 11px;
   }
 
@@ -171,18 +226,27 @@
   }
 
   .rail[data-variant="panel"] .rail-add {
-    top: 5px;
-    right: 4px;
-    width: 36px;
-    height: 36px;
+    top: 1px;
+    right: 2px;
+    width: 44px;
+    height: 44px;
     opacity: 1;
     background: transparent;
+    box-shadow: none;
+  }
+
+  /* The ring stays 32px inside the 44px a thumb gets. */
+  .rail[data-variant="panel"] .rail-add::before {
+    content: "";
+    position: absolute;
+    inset: 6px;
+    border-radius: 50%;
     box-shadow: inset 0 0 0 1px var(--line);
   }
 
   .rail[data-variant="panel"] .rail-new {
-    width: 36px;
-    height: 36px;
+    width: 44px;
+    height: 44px;
   }
 
   .rail[data-variant="panel"] .prefs-button {
@@ -235,6 +299,49 @@
     color: inherit;
   }
 
+  /* The list runs to the screen's edges: the lanes keep the 16px the rail starts with, and the time
+     the 16px a row ends with. Its end clears the New item button. */
+  .workspace .list-view {
+    margin-inline: -16px;
+  }
+
+  .workspace .list-pane {
+    padding-bottom: calc(88px + env(safe-area-inset-bottom));
+  }
+
+  /* A phone's row is the narrowest tier (see hideTier), whatever its width: no priority, no who, a
+     parent keeps only its bar; and the time takes only the width it needs, at the row's end, so the
+     title gets the rest. */
+  .workspace .item-list .row {
+    --c-pri: 0px;
+    --c-who: 0px;
+    --c-when: auto;
+  }
+
+  .workspace .item-list :is(.row-pri, .row-chip, .row-who, .row-progress-count, .row-progress-of) {
+    display: none;
+  }
+
+  .workspace .item-list .row-when {
+    justify-self: end;
+    padding-left: 10px;
+  }
+
+  .workspace .item-list .row-when::before {
+    display: none;
+  }
+
+  /* A group's heading stays on its line: "1 of yours inside" gives way before the name wraps. */
+  .workspace .section-title {
+    white-space: nowrap;
+  }
+
+  .workspace .section-title > .group-yours {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
   /* Intake opens above the list, where the tap that opened it can see it. */
   .workspace .detail-pane {
     order: -1;
@@ -265,5 +372,138 @@
 
   .rel-link .rel-id {
     display: none;
+  }
+
+  /* A brief's row: the id over the title, so a long id never runs into it. brief.css comes after
+     this sheet: one class more wins (so do the two below, over pairing.css and compare.css). */
+  .brief-rows > .brief-row {
+    grid-template-columns: 20px minmax(0, 1fr) auto;
+    grid-template-areas:
+      "node id ctl"
+      "node tx ctl";
+    column-gap: 10px;
+    row-gap: 0;
+    padding-block: 8px;
+  }
+
+  .brief-row > .brief-node {
+    grid-area: node;
+    width: 20px;
+  }
+
+  .brief-row > .t-id {
+    grid-area: id;
+    justify-self: start;
+  }
+
+  .brief-row > .brief-tx {
+    grid-area: tx;
+  }
+
+  .brief-row > .brief-ctl {
+    position: relative;
+    z-index: 1;
+    grid-area: ctl;
+  }
+
+  /* The id is the row's link, stretched over all of it but the controls: a target a thumb finds. */
+  .brief-rows > .brief-row:has(> a.t-id) {
+    position: relative;
+  }
+
+  .brief-row > a.t-id::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: var(--r-m);
+  }
+
+  /* Pair a phone: the address goes under the lead instead of squeezing it. */
+  .lan-section > .lan-head {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+
+  /* Four ways to compare rounds, two by two. */
+  .cr-tools > .cr-seg {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    border-radius: 24px;
+  }
+}
+
+/* ---- touch: every target at least 44px under a finger (buttons get theirs in kit.css) ---- */
+@media (pointer: coarse) {
+  /* The fold chevron draws at 20px; its box takes 44 around it, over the row's link. */
+  .row-fold-button {
+    width: 44px;
+    height: 44px;
+    margin: -12px;
+  }
+
+  .row-fold-button::after {
+    content: none;
+  }
+
+  .rel-add {
+    justify-content: center;
+    min-width: 44px;
+    height: 44px;
+  }
+
+  /* triage.css comes after this sheet and sets its own 40px. */
+  .btn.triage-exit {
+    height: 44px;
+  }
+
+  .panel-head .brand {
+    display: inline-flex;
+    align-items: center;
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .rel-link {
+    min-height: 44px;
+  }
+
+  .rel-remove {
+    width: 44px;
+    height: 44px;
+    margin-left: 0;
+  }
+
+  a.evidence-name,
+  .prefs-link,
+  .agent-held,
+  .brief-back,
+  .pj-head-open,
+  .tcard-open {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .segmented > button,
+  .sheet .segmented > button,
+  .cr-segb,
+  .lan-network,
+  select.input,
+  input.input {
+    min-height: 44px;
+  }
+
+  /* compare.css comes after this sheet: one class more to win over its 26px. */
+  .cr-pin > .cr-pinb {
+    width: 44px;
+    height: 44px;
+  }
+
+  /* Under 16px iOS zooms the page into a field it focuses. */
+  .input {
+    font-size: 16px;
   }
 }
