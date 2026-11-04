@@ -1204,6 +1204,19 @@ export const en = {
   'studio.blueprint.holdsLine': 'Each open one keeps a {type} in {board} out of {state}.',
   'studio.blueprint.fedLine': 'A pointer: nobody waits on it.',
   'studio.blueprint.noLoops': 'No loops: no board waits on itself through another.',
+  'studio.blueprint.gate.nothingWhy':
+    'No state of its target requires blockers_closed, so no agent waits on it. otea validate says the same.',
+  'studio.blueprint.gate.nothingRow': '{link} waits for nothing',
+  'studio.blueprint.gate.saveFirst':
+    'Save the blueprint first: the fix changes the preset of a saved board.',
+  'studio.blueprint.gate.draftNote':
+    'This opens a draft of {preset} where {state} requires blockers_closed; save it there.',
+  'studio.blueprint.gate.copyNote':
+    '{preset} is official and read-only: this copies it into the project as {copy} v1, where a {type} enters {state} only once the {from}s that block it are closed, and {board} uses the copy.',
+  'studio.blueprint.gate.fix': 'make {state} wait for blockers',
+  'studio.blueprint.gate.nothing':
+    'no {type} state requires blockers closed. The link shows in both items, but no agent will wait on it.',
+  'studio.blueprint.gate.nothingTitle': 'Today this waits for nothing:',
   'studio.blueprint.savedIn': 'saved in blueprint.yaml',
   'studio.blueprint.copyFrom': 'from {name} v{version}',
   'studio.blueprint.copy': 'this project’s copy',

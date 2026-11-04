@@ -12,9 +12,11 @@ import {
   applyBlueprint,
   type BlueprintListing,
   type BlueprintSummary,
+  copyBoardPreset,
   editBlueprint,
   fetchBlueprints,
   fetchPresetSamples,
+  fetchPresetSource,
   fetchProjectBlueprint,
   type ProjectBlueprint,
   updateBlueprint,
@@ -32,6 +34,9 @@ import {
   shapesOf,
   type TypeShape,
 } from './blueprint.ts';
+import { BlueprintTray, Consequence } from './Consequence.tsx';
+import { type Fix, gateOf, nothingWaits, waitingDraft } from './gate.ts';
+import { storeDraft } from './PresetEditor.tsx';
 import { OkMark, ProblemMark, Seg } from './parts.tsx';
 import { boardSample } from './preview.ts';
 
@@ -161,6 +166,9 @@ function Editor({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
   const [applied, setApplied] = useState<string[]>();
+  const [trayOpen, setTrayOpen] = useState(false);
+  const [fixing, setFixing] = useState(false);
+  const [fixError, setFixError] = useState<string>();
   const read = readBlueprintDraft(blueprint.name, draft, presets);
   const loops = blockLoops(read.connections);
   const problems = [
@@ -216,6 +224,45 @@ function Editor({
     setPage('canvas');
   };
   const source = 'name' in blueprint.status ? blueprint.status : undefined;
+  const nothing = [...nothingWaits(blueprint.name, draft, read.connections, presets)];
+  // The fix edits the target board's preset as a draft in the preset's own Studio page, copying
+  // an official preset into the project first and pointing the board at the copy.
+  const fix = async (target: Fix) => {
+    setFixing(true);
+    setFixError(undefined);
+    try {
+      const preset = target.copy
+        ? (await copyBoardPreset(target.board, target.copy)).preset
+        : await fetchPresetSource(target.preset)(new AbortController().signal);
+      storeDraft(preset.name, {
+        base: preset.yaml,
+        yaml: waitingDraft(preset.yaml, target.type, target.state),
+        playbooks: {},
+      });
+      onChanged();
+      window.location.hash = studioHash({ kind: 'preset', name: preset.name });
+    } catch (caught) {
+      setFixError(caught instanceof Error ? caught.message : t('common.failed'));
+    } finally {
+      setFixing(false);
+    }
+  };
+  const consequence = (text: string) => {
+    const link = read.connections.find((each) => connectionText(each) === text);
+    if (!link) return null;
+    const gate = gateOf(link, blueprint.name, draft, presets);
+    const target = gate.kind === 'nothing' ? gate.fix : undefined;
+    return (
+      <Consequence
+        link={link}
+        gate={gate}
+        onFix={editable && !diagram && target ? () => fix(target) : undefined}
+        busy={fixing}
+        error={fixError}
+        saveFirst={dirty}
+      />
+    );
+  };
   return (
     <div className="st-preset st-studio st-bp">
       <header className="st-head">
@@ -246,6 +293,29 @@ function Editor({
         </div>
         <div className="st-hr">
           <Verdict problems={problems.length} />
+          {nothing.length > 0 ? (
+            <span className="st-offscreen-at">
+              <button
+                type="button"
+                className="st-offscreen"
+                aria-expanded={trayOpen}
+                onClick={() => setTrayOpen(!trayOpen)}
+              >
+                <Icon name="warn" />
+                {t('studio.notOnScreen', { count: nothing.length })}
+                <Icon name="chevron" />
+              </button>
+              {trayOpen ? (
+                <BlueprintTray
+                  links={nothing}
+                  onShow={(text) => {
+                    setTrayOpen(false);
+                    select({ kind: 'link', text });
+                  }}
+                />
+              ) : null}
+            </span>
+          ) : null}
           {editable && !diagram ? (
             <>
               <Button variant="quiet" size="sm" disabled={!dirty} onClick={() => setDraft(saved)}>
@@ -401,6 +471,7 @@ function Editor({
               selection={selection}
               onSelect={select}
               itemsOf={itemsOf}
+              consequence={consequence}
             />
           )}
         </div>

@@ -66,7 +66,13 @@ export type Move = {
   requires?: ('children_closed' | 'blockers_closed')[];
 };
 
-export type State = { name: string; turn: Turn; closes?: Closing };
+// requires: what entering the state waits for, as the preset declares it.
+export type State = {
+  name: string;
+  turn: Turn;
+  closes?: Closing;
+  requires?: Array<'blockers_closed' | 'children_closed'>;
+};
 
 export type EvidenceRole = 'before' | 'after' | 'single';
 

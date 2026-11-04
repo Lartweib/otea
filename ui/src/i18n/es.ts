@@ -1243,6 +1243,19 @@ export const es: Catalog = {
   'studio.blueprint.holdsLine': 'Cada uno abierto deja a un {type} de {board} fuera de {state}.',
   'studio.blueprint.fedLine': 'Una referencia: nadie la espera.',
   'studio.blueprint.noLoops': 'Sin ciclos: ningún tablero se espera a sí mismo a través de otro.',
+  'studio.blueprint.gate.nothingWhy':
+    'Ningún estado de su destino requiere blockers_closed, así que ningún agente lo espera. otea validate dice lo mismo.',
+  'studio.blueprint.gate.nothingRow': '{link} no espera nada',
+  'studio.blueprint.gate.saveFirst':
+    'Guarda primero el plano: el arreglo cambia la plantilla de un tablero guardado.',
+  'studio.blueprint.gate.draftNote':
+    'Esto abre un borrador de {preset} donde {state} requiere blockers_closed; guárdalo ahí.',
+  'studio.blueprint.gate.copyNote':
+    '{preset} es oficial y de solo lectura: esto la copia al proyecto como {copy} v1, donde un {type} entra en {state} solo cuando los {from} que lo bloquean están cerrados, y {board} pasa a usar la copia.',
+  'studio.blueprint.gate.fix': 'hacer que {state} espere a sus bloqueantes',
+  'studio.blueprint.gate.nothing':
+    'ningún estado de {type} pide bloqueantes cerrados. El vínculo se ve en los dos ítems, pero ningún agente lo esperará.',
+  'studio.blueprint.gate.nothingTitle': 'Hoy esto no espera nada:',
   'studio.blueprint.savedIn': 'guardada en blueprint.yaml',
   'studio.blueprint.copyFrom': 'de {name} v{version}',
   'studio.blueprint.copy': 'la copia de este proyecto',
