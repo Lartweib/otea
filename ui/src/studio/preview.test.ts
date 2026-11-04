@@ -1,8 +1,10 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { readPreset } from '../../../src/core/preset.ts';
+import { readSamples } from '../../../src/core/samples.ts';
+import { draftCollectionView } from '../../../src/core/views.ts';
 import type { CollectionView, Item, ItemView } from '../types.ts';
-import { draftPreview } from './preview.ts';
+import { boardSample, draftPreview } from './preview.ts';
 
 const NOW = '2026-11-04T12:00:00.000Z';
 
@@ -14,6 +16,23 @@ function bugTriage() {
   if (!reading.ok) throw new Error(reading.problems.join('; '));
   return reading.preset;
 }
+
+describe('boardSample', () => {
+  it('reads the first sample a board can draw, with its state in words and its node', () => {
+    const preset = bugTriage();
+    const { samples } = readSamples(file('samples.yaml'), preset, []);
+    const { types } = draftCollectionView(preset, { name: 'bugs' });
+
+    expect(boardSample(samples, types)).toEqual({
+      id: 'BUGS-1',
+      title: 'Wall-slide jump drops the buffered input',
+      type: 'bug',
+      state: 'reported',
+      node: 'you',
+    });
+    expect(boardSample(samples, [])).toBeUndefined();
+  });
+});
 
 describe('draftPreview', () => {
   const samples = {

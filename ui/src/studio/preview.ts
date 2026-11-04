@@ -6,7 +6,9 @@ import {
   sampleItem,
   sampleItemView,
 } from '../../../src/core/views.ts';
-import type { CollectionView, Item, ItemView } from '../types.ts';
+import { type NodeFacts, type NodeKind, nodeKind } from '../node-kind.ts';
+import { stateWord } from '../preset-words.ts';
+import type { CollectionView, Item, ItemView, TypeView } from '../types.ts';
 
 // Studio's preview: a draft preset drawn with its sample items, in the shapes the server sends for
 // stored ones, so the real detail, row, form and lanes draw them unchanged. The samples are read
@@ -21,6 +23,41 @@ export type DraftPreview = {
   items: Item[];
   view: (id: string) => ItemView | undefined;
 };
+
+// A board's sample row on the blueprint canvas: the first sample of a type the board has, read as
+// the list reads a row, with its node and its state in words.
+export type BoardSample = {
+  id: string;
+  title: string;
+  type: string;
+  state: string;
+  node: NodeKind;
+};
+
+export function boardSample(
+  samples: readonly Sample[],
+  types: readonly TypeView[],
+): BoardSample | undefined {
+  for (const sample of samples) {
+    const type = types.find(({ name }) => name === sample.type);
+    const state = type?.states.find(({ name }) => name === sample.state);
+    if (!type || !state) continue;
+    const facts: NodeFacts = {
+      turn: state.turn,
+      leased: false,
+      incomplete: state.name === type.incomplete,
+    };
+    if (state.closes !== undefined) facts.closes = state.closes;
+    return {
+      id: sample.id,
+      title: sample.title,
+      type: type.name,
+      state: stateWord(type, state.name),
+      node: nodeKind(facts),
+    };
+  }
+  return undefined;
+}
 
 export function draftPreview(
   draft: Preset,
