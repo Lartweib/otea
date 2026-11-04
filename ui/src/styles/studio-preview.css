@@ -111,7 +111,7 @@
   min-height: 0;
   flex: 1;
 }
-.st-cols:not([data-view="row"]) > .st-stage:first-child {
+.st-cols:not([data-view="row"], [data-view="lanes"]) > .st-stage:first-child {
   grid-column: 1 / 3;
 }
 
@@ -785,4 +785,174 @@
 .st-canvas-marks [data-slot="row"] .st-parttag {
   top: auto;
   bottom: -11px;
+}
+
+/* ---- the lanes view ---- */
+.st-cols[data-view="lanes"] {
+  grid-template-columns: minmax(0, 1fr) 344px;
+}
+.st-led {
+  position: relative;
+  margin: 0 auto;
+}
+.st-led-svg {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+}
+.st-led-lane {
+  fill: none;
+  stroke: color-mix(in oklch, var(--ink) 18%, var(--line));
+  stroke-width: 1;
+  stroke-dasharray: 2 4;
+}
+.st-led-lane.you {
+  stroke: color-mix(in oklch, var(--you) 40%, var(--line));
+}
+.st-led-move {
+  fill: none;
+  stroke: color-mix(in oklch, var(--ink) 45%, var(--line));
+  stroke-width: 1.25;
+}
+.st-led-move.firm {
+  stroke: color-mix(in oklch, var(--ink) 70%, var(--line));
+}
+.st-led-move.on {
+  stroke: var(--you);
+  stroke-width: 1.75;
+  stroke-dasharray: 4 3;
+}
+.st-led-h {
+  position: absolute;
+  top: 0;
+  color: var(--mut);
+  font: 400 12px var(--font-machine);
+  white-space: nowrap;
+  transform: translateX(-50%);
+}
+.st-led-h.you {
+  color: var(--you-ink);
+}
+.st-led-state,
+.st-led-label,
+.st-led-plus,
+.st-led-closed {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  white-space: nowrap;
+}
+.st-led-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 14px 0 8px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--sf);
+  box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--ink) 25%, var(--line));
+  color: var(--ink);
+  font: 500 13px var(--font-machine);
+  cursor: pointer;
+}
+.st-led-state .glyph {
+  width: 16px;
+  height: 16px;
+}
+.st-led-state:hover {
+  box-shadow: inset 0 0 0 1px var(--ink);
+}
+.st-led-state[aria-pressed="true"] {
+  box-shadow:
+    inset 0 0 0 1px var(--ink),
+    0 0 0 2px var(--you);
+}
+.st-led-state.closed {
+  color: var(--mut);
+}
+.st-led-label {
+  height: 20px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--sf);
+  box-shadow: inset 0 0 0 1px var(--line);
+  color: var(--mut);
+  font: 400 11px var(--font-machine);
+  cursor: pointer;
+}
+.st-led-label:hover {
+  color: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--ink);
+}
+.st-led-label[aria-pressed="true"] {
+  background: var(--you);
+  box-shadow: none;
+  color: var(--on-you);
+  font-weight: 500;
+}
+.st-led-closed {
+  left: 50%;
+  color: var(--mut);
+  font: 400 12px var(--font-machine);
+}
+.st-led-add {
+  position: absolute;
+  left: 0;
+  display: flex;
+  gap: 10px;
+}
+.st-led-plus {
+  position: static;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 26px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  box-shadow: inset 0 0 0 1px var(--line);
+  color: var(--mut);
+  font: 400 12px var(--font-machine);
+  transform: none;
+  cursor: pointer;
+}
+.st-led-plus .icon {
+  width: 11px;
+  height: 11px;
+}
+.st-led-plus:first-child {
+  border: 1px dashed color-mix(in oklch, var(--ink) 25%, var(--line));
+  box-shadow: none;
+}
+.st-led-plus:hover,
+.st-led-plus[aria-pressed="true"] {
+  color: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--ink);
+}
+.st-ways {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+.st-ways .st-val {
+  border: 0;
+  cursor: pointer;
+}
+.st-ways .st-val:hover {
+  box-shadow: inset 0 0 0 1px var(--ink);
+}
+@media (pointer: coarse) {
+  .st-led-state,
+  .st-led-label,
+  .st-led-plus {
+    min-height: 44px;
+  }
+}
+@media (max-width: 80rem) {
+  .st-cols[data-view="lanes"] {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
