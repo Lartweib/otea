@@ -3,8 +3,8 @@ import type { Connection as Link } from '../../../src/core/blueprint.ts';
 import type { Sample } from '../../../src/core/samples.ts';
 import { fetchCollections, fetchPresets } from '../api.ts';
 import { type Connection, useRemote } from '../hooks.ts';
-import { type PlainKey, t } from '../i18n/i18n.ts';
-import { Button, Icon, Pill } from '../kit/index.ts';
+import { t } from '../i18n/i18n.ts';
+import { Button, Icon } from '../kit/index.ts';
 import type { Remote } from '../remote.ts';
 import { studioHash } from '../selection.ts';
 import type { CollectionView, PresetView } from '../types.ts';
@@ -20,12 +20,12 @@ import {
   updateBlueprint,
 } from './api.ts';
 import { BlueprintCanvas, BoardList, type Selection } from './BlueprintCanvas.tsx';
+import { BlueprintInspector } from './BlueprintInspector.tsx';
 import {
   type BlueprintDraft,
   blockLoops,
   type CardMode,
   connectionText,
-  KINDS,
   type Reading,
   readBlueprintDraft,
   readingsFor,
@@ -156,9 +156,8 @@ function Editor({
   const [draft, setDraft] = useState<BlueprintDraft>(saved);
   const [selection, setSelection] = useState<Selection>();
   const [mode, setMode] = useState<CardMode>('types');
-  const selected = selection?.kind === 'link' ? selection.text : undefined;
-  const setSelected = (text: string | undefined) =>
-    setSelection(text === undefined ? undefined : { kind: 'link', text });
+  const [page, setPage] = useState<'canvas' | 'playbook'>('canvas');
+  const [adding, setAdding] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
   const [applied, setApplied] = useState<string[]>();
@@ -175,6 +174,7 @@ function Editor({
       shapesOf(presets.find(({ name }) => name === board.preset)),
     ]),
   );
+  const set = editable && !diagram ? setDraft : undefined;
   const save = async () => {
     setBusy(true);
     setError(undefined);
@@ -211,20 +211,25 @@ function Editor({
       return sample && prefix ? { ...sample, id: sample.id.replace(/^[^-]+/, prefix) } : sample;
     },
   };
+  const select = (next: Selection | undefined) => {
+    setSelection(next);
+    setPage('canvas');
+  };
+  const source = 'name' in blueprint.status ? blueprint.status : undefined;
   return (
-    <div className="st-preset">
+    <div className="st-preset st-studio st-bp">
       <header className="st-head">
         <div className="st-hl">
-          <a className="t-cap st-crumb" href={studioHash()}>
+          <a className="st-crumb mono" href={studioHash()}>
             {t('studio.crumbBlueprint')}
           </a>
           <h1 className="st-name">{blueprint.name}</h1>
-          <Pill tone="state">
+          <span className="st-ver">
             {dirty
-              ? t('studio.blueprint.draft')
-              : t('studio.blueprint.saved', { version: blueprint.version })}
-          </Pill>
-          <span className="st-tabs">
+              ? t('studio.preset.draftOf', { version: blueprint.version })
+              : t('studio.preset.saved', { version: blueprint.version })}
+          </span>
+          <fieldset className="st-pills" aria-label={t('studio.bar.view')}>
             <a
               href={studioHash({ kind: 'blueprint', diagram: false })}
               aria-current={diagram ? undefined : 'page'}
@@ -237,53 +242,33 @@ function Editor({
             >
               {t('studio.blueprint.diagram')}
             </a>
-          </span>
+          </fieldset>
         </div>
         <div className="st-hr">
-          {diagram ? (
-            <span className="st-vs">
-              <Icon name="list" />
-              <span>{t('studio.blueprint.drawnFrom')}</span>
-            </span>
-          ) : (
+          <Verdict problems={problems.length} />
+          {editable && !diagram ? (
             <>
-              <span className={problems.length === 0 ? 'st-vs ok' : 'st-vs bad'}>
-                {problems.length === 0 ? <OkMark /> : <ProblemMark />}
-                <span>
-                  <b>
-                    {problems.length === 0
-                      ? t('studio.valid')
-                      : t('studio.problems', { count: problems.length })}
-                  </b>
-                  {' · '}
-                  {problems.length === 0 ? t('studio.validNote') : t('studio.saveWaits')}
-                </span>
-              </span>
-              {editable ? (
-                <>
-                  <Button
-                    variant="quiet"
-                    size="sm"
-                    disabled={!dirty}
-                    onClick={() => setDraft(saved)}
-                  >
-                    {t('studio.discard')}
-                  </Button>
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    disabled={!dirty || problems.length > 0 || busy}
-                    onClick={save}
-                  >
-                    {t('studio.blueprint.save')}
-                  </Button>
-                </>
-              ) : null}
+              <Button variant="quiet" size="sm" disabled={!dirty} onClick={() => setDraft(saved)}>
+                {t('studio.discard')}
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                disabled={!dirty || problems.length > 0 || busy}
+                onClick={save}
+              >
+                {t('studio.blueprint.save', { version: blueprint.version })}
+              </Button>
             </>
-          )}
+          ) : null}
         </div>
       </header>
-      {phone ? <p className="t-cap st-phone-note">{t('studio.phoneReadOnly')}</p> : null}
+      {phone ? (
+        <p className="st-phone-strip">
+          <Icon name="eye" />
+          {t('studio.phone.readOnly')}
+        </p>
+      ) : null}
       <SourceStatus blueprint={blueprint} editable={editable} onChanged={onChanged} />
       {applied && applied.length > 0 ? (
         <p className="st-banner" role="status">
@@ -292,45 +277,148 @@ function Editor({
         </p>
       ) : null}
       {error ? <p className="action-error st-banner">{error}</p> : null}
-      <div className="st-bws">
-        <div className="st-bpw">
-          {phone ? (
-            <BoardList {...drawn} />
-          ) : (
-            <BlueprintCanvas
-              {...drawn}
-              mode={mode}
-              onMode={setMode}
-              selected={diagram ? undefined : selection}
-              onSelect={setSelection}
-              onAddBoard={undefined}
-            />
-          )}
+      {problems.length > 0 ? (
+        <div className="st-banner st-bp-problems" role="status">
+          <ProblemMark />
+          <span>
+            {problems.map((problem) => (
+              <code key={problem}>{problem}</code>
+            ))}
+          </span>
         </div>
-        <aside className="st-insp">
+      ) : null}
+      {phone ? (
+        <BoardList {...drawn} />
+      ) : (
+        <div className="st-bpg">
+          <nav className="st-bpx" aria-label={t('studio.index.blueprint')}>
+            <span className="st-insp-k">{t('studio.index.blueprint')}</span>
+            <ul className="st-ix-list">
+              {(
+                [
+                  ['boards', t('studio.blueprint.boards'), draft.boards.length],
+                  ['links', t('studio.blueprint.links'), draft.connections.length],
+                  ['playbook', t('studio.blueprint.playbookShort'), draft.playbook ? 1 : 0],
+                ] as const
+              ).map(([key, label, count]) => {
+                const current =
+                  key === 'playbook'
+                    ? page === 'playbook'
+                    : page === 'canvas' && (key === 'boards') === (selection?.kind === 'board');
+                return (
+                  <li key={key}>
+                    <button
+                      type="button"
+                      className="st-ix-row"
+                      aria-current={current || undefined}
+                      onClick={() => {
+                        if (key === 'playbook') setPage('playbook');
+                        else if (key === 'boards') {
+                          const first = draft.boards[0];
+                          select(first && { kind: 'board', name: first.name });
+                        } else select(undefined);
+                      }}
+                    >
+                      <span>{label}</span>
+                      <span className="st-ix-n">{count}</span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+            <p className="st-bpx-foot">
+              <span>{t('studio.blueprint.copy')}</span>
+              <span>
+                {t('studio.blueprint.copyFrom', {
+                  name: source?.name ?? blueprint.name,
+                  version: source?.version ?? blueprint.version,
+                })}
+              </span>
+              <span>{t('studio.blueprint.savedIn')}</span>
+            </p>
+          </nav>
+          <div className="st-bpw">
+            {page === 'playbook' ? (
+              <section className="st-sec st-bp-playbook">
+                <div className="st-sh">
+                  <h2 className="t-h">{t('studio.blueprint.playbook')}</h2>
+                  <span className="t-cap">{t('studio.blueprint.playbookNote')}</span>
+                </div>
+                <textarea
+                  className="st-md"
+                  value={draft.playbook ?? ''}
+                  readOnly={set === undefined}
+                  aria-label={t('studio.blueprint.playbook')}
+                  spellCheck={false}
+                  onChange={(event) =>
+                    set?.({
+                      ...draft,
+                      playbook: event.target.value === '' ? null : event.target.value,
+                    })
+                  }
+                />
+              </section>
+            ) : (
+              <BlueprintCanvas
+                {...drawn}
+                mode={mode}
+                onMode={setMode}
+                selected={diagram ? undefined : selection}
+                onSelect={select}
+                onAddBoard={set && (() => setAdding(!adding))}
+              />
+            )}
+            {adding && set ? (
+              <div className="st-bp-add raised">
+                <NewBoard
+                  presets={presets}
+                  taken={draft.boards.map(({ name }) => name)}
+                  onAdd={(board) => {
+                    set({ ...draft, boards: [...draft.boards, board] });
+                    setAdding(false);
+                    select({ kind: 'board', name: board.name });
+                  }}
+                />
+              </div>
+            ) : null}
+          </div>
           {diagram ? (
-            <ReadItAs
-              boards={draft.boards}
-              connections={read.connections}
-              shapes={shapes}
-              loops={loops}
-            />
+            <aside className="st-insp">
+              <ReadItAs
+                boards={draft.boards}
+                connections={read.connections}
+                shapes={shapes}
+                loops={loops}
+              />
+            </aside>
           ) : (
-            <Inspector
+            <BlueprintInspector
               draft={draft}
-              setDraft={editable ? setDraft : undefined}
-              presets={presets}
+              set={set}
               shapes={shapes}
-              connections={read.connections}
-              problems={problems}
-              selected={selected}
-              setSelected={setSelected}
+              presets={presets}
+              sampleOf={drawn.sampleOf}
+              selection={selection}
+              onSelect={select}
               itemsOf={itemsOf}
             />
           )}
-        </aside>
-      </div>
+        </div>
+      )}
     </div>
+  );
+}
+
+function Verdict({ problems }: { problems: number }) {
+  return (
+    <span className={problems === 0 ? 'st-vs ok' : 'st-vs bad'}>
+      {problems === 0 ? <OkMark /> : <ProblemMark />}
+      <span>
+        <b>{problems === 0 ? t('studio.valid') : t('studio.problems', { count: problems })}</b>
+        {' · '}
+        {problems === 0 ? t('studio.validNote') : t('studio.saveWaits')}
+      </span>
+    </span>
   );
 }
 
@@ -397,266 +485,7 @@ function SourceStatus({
   );
 }
 
-const MEANS: Record<string, PlainKey> = {
-  blocks: 'studio.blueprint.means.blocks',
-  implements: 'studio.blueprint.means.implements',
-  relates: 'studio.blueprint.means.relates',
-  duplicates: 'studio.blueprint.means.duplicates',
-};
-
-// ---------------------------------------------------------------- the inspector
-
-type InspectorProps = {
-  draft: BlueprintDraft;
-  setDraft: ((draft: BlueprintDraft) => void) | undefined;
-  presets: PresetView[];
-  shapes: ReadonlyMap<string, TypeShape[]>;
-  connections: Link[];
-  problems: string[];
-  selected: string | undefined;
-  setSelected: (connection: string | undefined) => void;
-  itemsOf: (board: string) => number;
-};
-
-function Inspector({
-  draft,
-  setDraft,
-  presets,
-  shapes,
-  connections,
-  problems,
-  selected,
-  setSelected,
-  itemsOf,
-}: InspectorProps) {
-  const boards = draft.boards.map(({ name }) => name);
-  const [from, setFrom] = useState({ board: boards[0] ?? '', type: '' });
-  const [to, setTo] = useState({ board: boards[1] ?? boards[0] ?? '', type: '' });
-  const [kind, setKind] = useState<string>('blocks');
-  const typesOf = (board: string) => (shapes.get(board) ?? []).map(({ name }) => name);
-  const fromType = from.type || typesOf(from.board)[0] || '';
-  const toType = to.type || typesOf(to.board)[0] || '';
-  const candidate = `${from.board}.${fromType} ${kind} ${to.board}.${toType}`;
-  const chosen = connections.find((connection) => connectionText(connection) === selected);
-  const set = setDraft;
-  return (
-    <div className="st-insp-b">
-      {chosen ? (
-        <LinkDetail
-          connection={chosen}
-          shapes={shapes}
-          onRemove={
-            set &&
-            (() => {
-              set({
-                ...draft,
-                connections: draft.connections.filter((text) => text.trim() !== selected),
-              });
-              setSelected(undefined);
-            })
-          }
-        />
-      ) : null}
-      <section className="st-sec">
-        <div className="st-sh">
-          <h2 className="t-h">{t('studio.blueprint.links')}</h2>
-          <span className="t-cap">{t('studio.blueprint.linksNote')}</span>
-        </div>
-        <ul className="st-links">
-          {draft.connections.map((text) => (
-            <li key={text}>
-              <button
-                type="button"
-                aria-pressed={selected === text.trim()}
-                onClick={() => setSelected(selected === text.trim() ? undefined : text.trim())}
-              >
-                <code>{text}</code>
-              </button>
-              {set ? (
-                <button
-                  type="button"
-                  className="btn sm quiet icon"
-                  aria-label={t('studio.blueprint.removeLink', { link: text })}
-                  onClick={() =>
-                    set({
-                      ...draft,
-                      connections: draft.connections.filter((each) => each !== text),
-                    })
-                  }
-                >
-                  <Icon name="close" />
-                </button>
-              ) : null}
-            </li>
-          ))}
-          {draft.connections.length === 0 ? (
-            <li className="t-small">{t('studio.blueprint.noLinks')}</li>
-          ) : null}
-        </ul>
-        {set && boards.length > 1 ? (
-          <div className="st-newlink">
-            <span className="t-label">{t('studio.blueprint.newLink')}</span>
-            <EndPicker
-              label={t('studio.blueprint.from')}
-              boards={boards}
-              end={{ board: from.board, type: fromType }}
-              typesOf={typesOf}
-              onChange={setFrom}
-            />
-            <Seg
-              mono
-              label={t('studio.blueprint.kind')}
-              options={[
-                ...KINDS.map((value) => ({ value, label: value })),
-                { value: 'parent', label: 'parent', struck: t('studio.blueprint.parentStruck') },
-              ]}
-              value={kind}
-              onChange={setKind}
-            />
-            <EndPicker
-              label={t('studio.blueprint.to')}
-              boards={boards.filter((board) => board !== from.board)}
-              end={{
-                board:
-                  to.board === from.board
-                    ? (boards.find((board) => board !== from.board) ?? '')
-                    : to.board,
-                type: to.board === from.board ? '' : toType,
-              }}
-              typesOf={typesOf}
-              onChange={setTo}
-            />
-            <p className="t-cap">{t(MEANS[kind] ?? 'studio.blueprint.means.relates')}</p>
-            <Button
-              size="sm"
-              disabled={draft.connections.includes(candidate) || to.board === from.board}
-              onClick={() => set({ ...draft, connections: [...draft.connections, candidate] })}
-            >
-              <Icon name="plus" />
-              {t('studio.blueprint.addLink')}
-            </Button>
-          </div>
-        ) : null}
-      </section>
-      <section className="st-sec">
-        <div className="st-sh">
-          <h2 className="t-h">{t('studio.blueprint.boards')}</h2>
-          <span className="t-cap">{t('studio.blueprint.boardsNote')}</span>
-        </div>
-        <ul className="st-links">
-          {draft.boards.map((board) => {
-            const items = itemsOf(board.name);
-            return (
-              <li key={board.name}>
-                <span className="st-board-li">
-                  <b className="mono">{board.name}</b>
-                  <span className="t-cap">{`${board.preset} · ${t('studio.blueprint.items', { count: items })}`}</span>
-                </span>
-                {set ? (
-                  <button
-                    type="button"
-                    className="btn sm quiet icon"
-                    disabled={items > 0}
-                    title={items > 0 ? t('studio.blueprint.keepsItems') : undefined}
-                    aria-label={t('studio.blueprint.removeBoard', { board: board.name })}
-                    onClick={() =>
-                      set({
-                        ...draft,
-                        boards: draft.boards.filter(({ name }) => name !== board.name),
-                        connections: draft.connections.filter(
-                          (text) =>
-                            !text.split(/\s+/).some((part) => part.startsWith(`${board.name}.`)),
-                        ),
-                      })
-                    }
-                  >
-                    <Icon name="close" />
-                  </button>
-                ) : null}
-              </li>
-            );
-          })}
-        </ul>
-        {set ? (
-          <NewBoard
-            presets={presets}
-            taken={boards}
-            onAdd={(board) => set({ ...draft, boards: [...draft.boards, board] })}
-          />
-        ) : null}
-      </section>
-      <section className="st-sec">
-        <div className="st-sh">
-          <h2 className="t-h">{t('studio.blueprint.playbook')}</h2>
-          <span className="t-cap">{t('studio.blueprint.playbookNote')}</span>
-        </div>
-        <textarea
-          className="st-md short"
-          value={draft.playbook ?? ''}
-          readOnly={set === undefined}
-          aria-label={t('studio.blueprint.playbook')}
-          spellCheck={false}
-          onChange={(event) =>
-            set?.({ ...draft, playbook: event.target.value === '' ? null : event.target.value })
-          }
-        />
-      </section>
-      {problems.length > 0 ? (
-        <div className="st-tray" role="status">
-          <ProblemMark />
-          <div className="st-tp">
-            <b>{t('studio.problems', { count: problems.length })}</b>
-            {problems.map((problem) => (
-              <code key={problem}>{problem}</code>
-            ))}
-          </div>
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
-function EndPicker({
-  label,
-  boards,
-  end,
-  typesOf,
-  onChange,
-}: {
-  label: string;
-  boards: string[];
-  end: { board: string; type: string };
-  typesOf: (board: string) => string[];
-  onChange: (end: { board: string; type: string }) => void;
-}) {
-  return (
-    <span className="st-end">
-      <span className="t-cap">{label}</span>
-      <select
-        className="st-input mono"
-        value={end.board}
-        aria-label={`${label}: ${t('studio.blueprint.board')}`}
-        onChange={(event) => onChange({ board: event.target.value, type: '' })}
-      >
-        {boards.map((board) => (
-          <option key={board}>{board}</option>
-        ))}
-      </select>
-      <span className="st-arw">.</span>
-      <select
-        className="st-input mono"
-        value={end.type}
-        aria-label={`${label}: ${t('studio.blueprint.type')}`}
-        onChange={(event) => onChange({ board: end.board, type: event.target.value })}
-      >
-        {typesOf(end.board).map((type) => (
-          <option key={type}>{type}</option>
-        ))}
-      </select>
-    </span>
-  );
-}
-
+// + board on the canvas: a name and the preset that builds it; save creates its collection.
 function NewBoard({
   presets,
   taken,
@@ -707,56 +536,6 @@ function NewBoard({
       <span className="t-cap">{t('studio.blueprint.newBoardNote')}</span>
     </form>
   );
-}
-
-function LinkDetail({
-  connection,
-  shapes,
-  onRemove,
-}: {
-  connection: Link;
-  shapes: ReadonlyMap<string, TypeShape[]>;
-  onRemove: (() => void) | undefined;
-}) {
-  const waits = shapes
-    .get(connection.to.board)
-    ?.find(({ name }) => name === connection.to.type)
-    ?.waits.find(({ on }) => on === 'blockers');
-  return (
-    <section className="st-linkd raised">
-      <span className="t-label">{t('studio.blueprint.link')}</span>
-      <code>{connectionText(connection)}</code>
-      <span className="t-label">{t('studio.blueprint.whatItDoes')}</span>
-      <p className="t-small">{describe(connection, waits?.state)}</p>
-      {connection.kind === 'blocks' ? (
-        <p className="st-note">
-          {waits ? <span className="st-bw-i">⧗</span> : <Icon name="warn" />}
-          <span>
-            {waits
-              ? t('studio.blueprint.waitsIn', { type: connection.to.type, state: waits.state })
-              : t('studio.blueprint.waitsNothing', { type: connection.to.type })}
-          </span>
-        </p>
-      ) : null}
-      {onRemove ? (
-        <Button variant="quiet" size="sm" onClick={onRemove}>
-          {t('studio.blueprint.removeThis')}
-        </Button>
-      ) : null}
-    </section>
-  );
-}
-
-function describe(connection: Link, state: string | undefined): string {
-  const params = {
-    from: `${connection.from.board}.${connection.from.type}`,
-    to: `${connection.to.board}.${connection.to.type}`,
-    state: state ?? '',
-  };
-  if (connection.kind === 'blocks') return t('studio.blueprint.doesBlocks', params);
-  if (connection.kind === 'implements') return t('studio.blueprint.doesImplements', params);
-  if (connection.kind === 'duplicates') return t('studio.blueprint.doesDuplicates', params);
-  return t('studio.blueprint.doesRelates', params);
 }
 
 // ---------------------------------------------------------------- read it as

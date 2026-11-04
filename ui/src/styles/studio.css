@@ -192,10 +192,6 @@
 .st-input.mono {
   font: 400 12.5px var(--font-machine);
 }
-.st-phone-note {
-  padding: 10px 20px;
-  border-bottom: 1px solid var(--line);
-}
 
 .st-ws {
   display: grid;
@@ -814,40 +810,6 @@
 }
 
 /* problems and warnings */
-.st-tray {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  padding: 12px 14px;
-  border-radius: var(--r-l);
-  background: var(--sf);
-  box-shadow:
-    0 0 0 1px var(--line),
-    0 14px 30px -18px var(--shadow);
-}
-.st-tray > .st-bad {
-  margin-top: 2px;
-}
-.st-tp {
-  display: grid;
-  gap: 4px;
-  min-width: 0;
-  font-size: 13.5px;
-}
-.st-tp b {
-  font-weight: 600;
-}
-.st-tp .st-tpb {
-  padding: 0;
-  border: 0;
-  background: none;
-  text-align: left;
-  cursor: pointer;
-}
-.st-tp code {
-  font-size: 12px;
-  overflow-wrap: anywhere;
-}
 .st-tpb:hover {
   text-decoration: underline;
 }
@@ -1079,12 +1041,6 @@
 }
 .st-source-b li > code {
   font-size: 12px;
-}
-.st-bws {
-  display: grid;
-  flex: 1;
-  grid-template-columns: minmax(0, 1fr);
-  min-height: 0;
 }
 .st-bpw {
   display: flex;
@@ -1413,41 +1369,6 @@ button.st-bc-h:hover {
   gap: 18px;
   align-content: start;
 }
-.st-links {
-  display: grid;
-  padding: 0;
-  list-style: none;
-}
-.st-links li {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  min-height: 36px;
-  border-bottom: 1px solid var(--line);
-}
-.st-links li > button:not(.btn) {
-  flex: 1;
-  min-width: 0;
-  padding: 6px 8px;
-  border: 0;
-  border-radius: var(--r-s);
-  background: none;
-  text-align: left;
-  cursor: pointer;
-}
-.st-links li > button[aria-pressed="true"] {
-  background: var(--sel);
-}
-.st-links li code {
-  font-size: 12px;
-  overflow-wrap: anywhere;
-}
-.st-board-li {
-  display: grid;
-  gap: 0;
-  padding: 4px 8px;
-}
 .st-newlink,
 .st-newboard {
   display: flex;
@@ -1474,14 +1395,6 @@ select.st-input {
 }
 .st-md.short {
   min-height: 9rem;
-}
-.st-linkd {
-  display: grid;
-  gap: 6px;
-  padding: 14px 16px;
-}
-.st-linkd .btn {
-  justify-self: start;
 }
 .st-bw-i {
   display: inline-grid;
@@ -1611,9 +1524,6 @@ button.st-card[aria-pressed="true"] {
   }
   .st-pb {
     grid-template-columns: 210px minmax(0, 1fr);
-  }
-  .st-bws {
-    grid-template-columns: minmax(0, 1fr) 360px;
   }
   .st-insp {
     border-top: 0;

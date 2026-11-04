@@ -5,13 +5,16 @@ import {
   CARD_W,
   COL_GAP,
   cardLinks,
+  changeLink,
   layoutCards,
+  nextLink,
   readBlueprintDraft,
   readingsFor,
   SAMPLE_H,
   STATE_ROW,
   shapesOf,
   WAIT_LINE,
+  withoutBoard,
 } from './blueprint.ts';
 
 const type = (name: string, states: Array<{ name: string; requires?: string[] }>): TypeView =>
@@ -132,6 +135,42 @@ describe('who waits for whom', () => {
     if (dropped) dropped.closes = 'discarded';
 
     expect(shapesOf(preset('triage', [bug]))[0]?.states).toEqual([{ name: 'open' }]);
+  });
+});
+
+describe('editing the draft on the canvas', () => {
+  const shapes = new Map(
+    BOARDS.map((board) => [
+      board.name,
+      shapesOf(PRESETS.find(({ name }) => name === board.preset)),
+    ]),
+  );
+  const draft = { boards: BOARDS, connections: ['bugs.bug blocks work.story'], playbook: null };
+
+  it('changes one end or the kind of a link in place, and gives its new text', () => {
+    const changed = changeLink(draft, 'bugs.bug blocks work.story', {
+      from: { board: 'bugs', type: 'bug' },
+      kind: 'implements',
+      to: { board: 'work', type: 'epic' },
+    });
+
+    expect(changed).toEqual({
+      draft: { ...draft, connections: ['bugs.bug implements work.epic'] },
+      text: 'bugs.bug implements work.epic',
+    });
+  });
+
+  it('adds a link between the first two boards that is not there yet', () => {
+    expect(nextLink(draft, shapes)).toBe('work.story blocks bugs.bug');
+    expect(nextLink({ ...draft, boards: BOARDS.slice(0, 1) }, shapes)).toBeUndefined();
+  });
+
+  it('removes a board with the links that touch it', () => {
+    expect(withoutBoard(draft, 'bugs')).toEqual({
+      ...draft,
+      boards: BOARDS.filter(({ name }) => name !== 'bugs'),
+      connections: [],
+    });
   });
 });
 
