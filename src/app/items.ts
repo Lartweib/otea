@@ -1,33 +1,14 @@
 import type { DatabaseSync } from 'node:sqlite';
-import {
-  authorizeMove,
-  availableMoves,
-  type Channel,
-  type Move,
-  type Performer,
-  relayableMoves,
-} from '../core/authority.ts';
+import { authorizeMove, type Channel, type Move, type Performer } from '../core/authority.ts';
 import { OteaError } from '../core/errors.ts';
-import {
-  assertCanLeave,
-  type FieldValues,
-  intake,
-  missingToComplete,
-  revise,
-} from '../core/fields.ts';
+import { assertCanLeave, type FieldValues, intake, revise } from '../core/fields.ts';
 import { assertStandsAlone } from '../core/hierarchy.ts';
 import { type Actor, formatItemId } from '../core/item.ts';
 import { activeLease, assertMayWrite, type Lease } from '../core/lease.ts';
 import { type ItemType, typeFor, typeOf } from '../core/preset.ts';
 import { type ChildrenSummary, childrenSummary, type RelationRef } from '../core/relations.ts';
-import {
-  type Closing,
-  closesOf,
-  gateVerdicts,
-  type Turn,
-  turnOf,
-  type Workflow,
-} from '../core/workflow.ts';
+import { itemMoves } from '../core/views.ts';
+import { type Closing, closesOf, type Turn, turnOf, type Workflow } from '../core/workflow.ts';
 import { transaction } from '../store/database.ts';
 import {
   appendEvent,
@@ -246,16 +227,14 @@ export function showItem(
   const item = getItem(ctx, id, () => at);
   const type = typeOfItem(ctx, item);
   const children = childrenOf(ctx, item.id, at);
-  const gates = gateVerdicts(type.workflow, item.state);
+  const { gates, ...moves } = itemMoves(type, item.state, item.fields, performer);
   return {
     ...item,
-    transitions: availableMoves(type.workflow, item.state, performer),
-    relayable: relayableMoves(type.workflow, item.state),
-    missing: missingToComplete(type, item.fields),
+    ...moves,
     evidence: presentEvidence(type.layout, selectEvidence(ctx.db, item.id)),
     relations: relatedItems(ctx, item.id, at),
     ...(children.length > 0 ? { children: childrenSummary(children) } : {}),
-    ...(Object.keys(gates).length > 0 ? { gates } : {}),
+    ...(gates === undefined ? {} : { gates }),
   };
 }
 
