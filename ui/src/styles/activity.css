@@ -1,0 +1,401 @@
+/* ---- activity: a drawer over the inbox, leases draining above a calm feed ---- */
+.activity {
+  position: fixed;
+  top: 68px;
+  right: 16px;
+  bottom: 16px;
+  z-index: var(--z-flight);
+  display: flex;
+  flex-direction: column;
+  width: min(500px, calc(100vw - 32px));
+  box-shadow:
+    0 0 0 1px var(--line),
+    0 30px 60px -30px var(--shadow),
+    0 8px 20px -14px var(--shadow);
+  transform: translateX(calc(100% + 32px));
+  visibility: hidden;
+  transition:
+    transform var(--travel) var(--e-move),
+    visibility 0s var(--travel);
+}
+
+.activity[data-open] {
+  transform: none;
+  visibility: visible;
+  transition: transform var(--travel) var(--e-move);
+}
+
+.activity > * {
+  transition:
+    opacity 300ms var(--m-ease),
+    transform 520ms var(--m-ease);
+}
+
+.activity:not([data-open]) > * {
+  opacity: 0;
+  transform: translateX(12px);
+}
+
+.activity[data-open] > :nth-child(2) {
+  transition-delay: 80ms;
+}
+
+.activity[data-open] > :nth-child(3) {
+  transition-delay: 140ms;
+}
+
+.activity[data-open] > :nth-child(4) {
+  transition-delay: 200ms;
+}
+
+.activity-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  padding: 20px 20px 14px 24px;
+}
+
+.activity-head > div:first-child {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.activity-head .t-cap {
+  white-space: nowrap;
+}
+
+.activity-head-end {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* ---- each lease an agent holds, and the agents the feed saw idle ---- */
+.activity-agents {
+  display: flex;
+  flex-direction: column;
+  max-height: 40%;
+  margin: 0;
+  padding: 0 12px 8px;
+  overflow-y: auto;
+  list-style: none;
+  scrollbar-width: thin;
+}
+
+.activity-agent {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+  gap: 14px;
+  align-items: center;
+  width: 100%;
+  padding: 12px;
+  border: 0;
+  border-radius: var(--r-m);
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  transition: background-color var(--m-base) var(--m-ease);
+}
+
+button.activity-agent {
+  cursor: pointer;
+}
+
+button.activity-agent:hover {
+  background: var(--hov);
+}
+
+.activity-dial {
+  display: block;
+  overflow: visible;
+}
+
+.activity-track {
+  fill: none;
+  stroke: var(--line);
+  stroke-width: 3;
+}
+
+.activity-agent[data-idle] .activity-track {
+  stroke-dasharray: 2 4;
+}
+
+.activity-arc {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 3;
+  stroke-linecap: round;
+  opacity: 0;
+  transform: rotate(-90deg);
+  transform-origin: center;
+  transform-box: fill-box;
+  transition:
+    stroke-dasharray 1000ms linear,
+    opacity 400ms;
+}
+
+.activity-arc[data-held] {
+  opacity: 1;
+}
+
+.activity-agent-m {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.activity-agent-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.activity-name {
+  font: 500 13px var(--font-machine);
+}
+
+.activity-left {
+  font: 500 15px var(--font-machine);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.activity-left small {
+  margin-left: 6px;
+  font: 400 11.5px var(--font-machine);
+  color: var(--mut);
+}
+
+.activity-left[data-idle] {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--mut);
+}
+
+.activity-item {
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.activity-item .t-id {
+  color: var(--ink);
+}
+
+.activity-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---- filters ---- */
+.activity-filters {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 24px 12px;
+  box-shadow: 0 -1px 0 var(--line);
+}
+
+.activity-pills {
+  display: flex;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.activity-pills .t-label {
+  margin-right: 4px;
+}
+
+.activity-n {
+  margin-left: 6px;
+  font: 400 11px var(--font-machine);
+  opacity: 0.7;
+}
+
+/* ---- the feed: two lanes, an agent's on the left and yours on the right ---- */
+.activity-feed {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  padding: 4px 16px 24px 8px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  mask-image: linear-gradient(to bottom, #000 82%, transparent);
+}
+
+.activity-feed ol {
+  position: relative;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* The two lanes, under the dots: an agent's, then yours. */
+.activity-feed ol::before,
+.activity-feed ol::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 14.75px;
+  width: 1.5px;
+  background: var(--lane);
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.activity-feed ol::after {
+  left: 38.75px;
+  background: var(--you);
+  opacity: 0.35;
+}
+
+.activity-ev {
+  display: grid;
+  grid-template-columns: 56px 66px minmax(0, 1fr);
+  align-items: center;
+  width: 100%;
+  height: 46px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-m);
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: 13.5px;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--m-base) var(--m-ease);
+}
+
+.activity-ev:hover {
+  background: var(--hov);
+}
+
+.activity-feed li[data-new] .activity-ev {
+  animation: activity-in 640ms var(--m-ease) 120ms backwards;
+}
+
+@keyframes activity-in {
+  from {
+    opacity: 0;
+    translate: 0 -10px;
+  }
+}
+
+.activity-dot {
+  position: relative;
+  justify-self: start;
+  width: 9px;
+  height: 9px;
+  margin-left: 11px;
+  border-radius: 50%;
+  background: var(--ink);
+}
+
+.activity-dot[data-lane="you"] {
+  margin-left: 35px;
+  background: var(--you);
+}
+
+.activity-dot[data-relayed] {
+  background: var(--sf);
+  box-shadow: inset 0 0 0 1.6px var(--you);
+}
+
+.activity-ev time b {
+  font-weight: 400;
+  opacity: 0.55;
+}
+
+.activity-msg {
+  min-width: 0;
+  padding-right: 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.activity-msg .t-id {
+  color: var(--ink);
+}
+
+.activity-who {
+  margin-right: 6px;
+  font: 400 12px var(--font-machine);
+  color: var(--mut);
+}
+
+.activity-empty {
+  margin: 14px 0 0 64px;
+}
+
+/* ---- phone: the drawer takes the screen under the topbar ---- */
+@media (max-width: 47.99rem) {
+  .activity {
+    top: 60px;
+    right: 8px;
+    bottom: 8px;
+    width: calc(100vw - 16px);
+  }
+
+  .activity-head {
+    flex-wrap: wrap;
+    padding: 16px 12px 12px 16px;
+  }
+
+  .activity-filters {
+    padding: 12px 16px 10px;
+  }
+
+  .activity-agents {
+    padding: 0 4px 8px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .activity,
+  .activity > *,
+  .activity-ev,
+  .activity-arc {
+    transition-duration: 1ms;
+    transition-delay: 0ms;
+  }
+
+  .activity-feed li[data-new] .activity-ev {
+    animation: none;
+  }
+}
+
+/* ---- the way in: the last row of the agents dropdown ---- */
+.activity-row {
+  width: 100%;
+  border: 0;
+  background: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--m-fast) var(--m-ease);
+}
+
+.activity-row:hover {
+  background: var(--hov);
+}
+
+.activity-row > .icon {
+  justify-self: center;
+}

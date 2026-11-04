@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { existsSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { stringify } from 'yaml';
 import {
   type Blueprint,
   type BlueprintDiff,
@@ -440,6 +441,86 @@ export function updateBlueprint(project: Project): BlueprintUpdate {
   const finalBoards = [...boards].map(([name, preset]) => ({ name, preset }));
   writeCopy(project, source, finalBoards, connections);
   return { name: source.name, version: source.version, applied, kept };
+}
+
+// What Studio sends to change the project's copy: its boards, its connections as `otea link` reads
+// them, and its coordination playbook (null for none).
+export type BlueprintEdit = { boards: Board[]; connections: string[]; playbook: string | null };
+
+export type EditedBlueprint = { blueprint: Blueprint; applied: string[] };
+
+function editedCopy(copy: Blueprint, edit: BlueprintEdit, presets: PresetCatalog): Blueprint {
+  const names = edit.boards.map(({ name }) => name);
+  const twice = names.filter((name, index) => names.indexOf(name) !== index);
+  const read = readBlueprint(
+    stringify({
+      blueprint: copy.name,
+      blueprint_version: copy.version,
+      boards: Object.fromEntries(edit.boards.map(({ name, preset }) => [name, { preset }])),
+      connections: edit.connections,
+    }),
+  );
+  const problems = [
+    ...twice.map((name) => `boards: ${name} is listed twice`),
+    ...(read.ok ? blueprintTypeProblems(read.blueprint, typesIn(presets)) : read.problems),
+  ];
+  if (!read.ok || problems.length > 0) {
+    throw new OteaError('invalid_draft', `The blueprint is invalid: ${problems.join('; ')}`);
+  }
+  const edited: Blueprint = { ...read.blueprint };
+  if (copy.source !== undefined) edited.source = copy.source;
+  return edited;
+}
+
+// Changes the project's copy of its blueprint, as Studio edits it: a new board builds its collection
+// (or takes one of the same name and preset), a board leaves or changes preset only while it has no
+// items, and the copy keeps its source, so otea blueprint status reports what differs from it.
+export function editBlueprint(project: Project, edit: BlueprintEdit): EditedBlueprint {
+  const copy = requireCopy(project);
+  const edited = editedCopy(copy, edit, project.presets);
+  const applied: string[] = [];
+  const { db } = project;
+  const named = (boards: Board[], name: string) => boards.find((board) => board.name === name);
+  transaction(db, () => {
+    for (const { name, preset } of copy.boards) {
+      const now = named(edited.boards, name);
+      if (now !== undefined && now.preset === preset) continue;
+      const count = itemCount(project, name);
+      if (count > 0) {
+        const what = now === undefined ? 'remove' : `change the preset of`;
+        throw new OteaError('in_use', `Cannot ${what} board ${name}: it has ${items(count)}`);
+      }
+      if (findCollection(db, name)) deleteCollection(db, name);
+      if (now === undefined) applied.push(`Removed board ${name} (it had no items)`);
+    }
+    for (const { name, preset } of edited.boards) {
+      const before = named(copy.boards, name);
+      if (before !== undefined && before.preset === preset) continue;
+      const collection = findCollection(db, name);
+      if (collection === undefined) {
+        insertNewCollection(project, { name, preset });
+        applied.push(
+          before === undefined
+            ? `Created board ${name} (preset ${preset})`
+            : `Rebuilt board ${name} with preset ${preset}`,
+        );
+      } else if (collection.preset === preset) {
+        applied.push(`Made collection ${name} a board`);
+      } else {
+        throw new OteaError('already_exists', conflict(name, collection.preset, preset));
+      }
+    }
+  });
+  const playbookPath = join(project.dataDir, COPY_PLAYBOOK);
+  if (edit.playbook === null) {
+    rmSync(playbookPath, { force: true });
+  } else {
+    writeFileSync(playbookPath, edit.playbook);
+    edited.playbook = `./${COPY_PLAYBOOK}`;
+  }
+  writeFileSync(projectBlueprintPath(project.dataDir), `${COPY_HEADER}${blueprintYaml(edited)}`);
+  project.blueprint = edited;
+  return { blueprint: edited, applied };
 }
 
 // The coordination playbook of the project's blueprint, when it has one.

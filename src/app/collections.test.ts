@@ -19,7 +19,7 @@ describe('collections', () => {
       name: 'tasks',
       prefix: 'TASKS',
       preset: 'tasks',
-      presetVersion: 1,
+      presetVersion: 2,
       nextSeq: 1,
       icon: null,
     });
@@ -93,6 +93,7 @@ describe('collections', () => {
         name: 'task',
         icon: 'checkbox',
         label: 'Task',
+        labels: { es: expect.objectContaining({ label: 'Tarea' }) },
         initial: 'todo',
         incomplete: 'incomplete',
         states: expect.arrayContaining([

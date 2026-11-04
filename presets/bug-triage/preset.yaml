@@ -1,5 +1,5 @@
 preset: bug-triage
-preset_version: 2
+preset_version: 3
 playbook: ./playbook.md
 icon: bug
 fields:
@@ -54,3 +54,29 @@ types:
 view:
   kind: grid
   columns: [id, title, category, severity, area, state, who, age]
+
+# The preset's words in Spanish, for the web UI; agents and the CLI keep the keys.
+labels:
+  es:
+    types: { bug: Error }
+    states:
+      incomplete: incompleto
+      reported: reportado
+      needs_info: falta información
+      accepted: aceptado
+      fixing: en arreglo
+      verify: a verificar
+      fixed: arreglado
+      rejected: rechazado
+      duplicate: duplicado
+      wont_fix: no se arreglará
+    fields:
+      title: título
+      description: descripción
+      steps: pasos
+      expected: lo esperado
+      actual: lo que pasa
+      environment: entorno
+      severity: gravedad
+      category: categoría
+      area: área

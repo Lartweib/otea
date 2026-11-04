@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, renameSync, statSync, writeFileSync } from 'node:fs';
 import { basename, join } from 'node:path';
-import type { Channel } from '../core/authority.ts';
+import type { Channel, Performer } from '../core/authority.ts';
 import { OteaError } from '../core/errors.ts';
 import {
   type EvidenceRole,
@@ -12,13 +12,14 @@ import {
 import type { Actor } from '../core/item.ts';
 import { activeLease, assertMayWrite } from '../core/lease.ts';
 import type { Layout } from '../core/modules.ts';
-import { holderOf, placeEvidence } from '../core/placement.ts';
+import { holderOf, type Placement, placeEvidence } from '../core/placement.ts';
 import { turnOf } from '../core/workflow.ts';
 import { transaction } from '../store/database.ts';
 import {
   appendEvent,
   type EvidenceRecord,
   findEvidence,
+  type ItemRecord,
   insertEvidence,
 } from '../store/queries.ts';
 import { typeOfItem } from './collections.ts';
@@ -70,65 +71,112 @@ function store(dataDir: string, sha256: string, bytes: Buffer): void {
   renameSync(partial, target);
 }
 
-// Evidence is append-only, like the event log. It obeys the rules of an update: another agent's
-// lease and a closed item refuse it. It goes to a module of the item's layout that accepts it, in a
-// role that module takes (see placeEvidence). A refusal stores nothing.
+// A file already read: its name (a base name, as attached) and its bytes. The CLI and the MCP tool
+// read it from a path (attachEvidence); the web UI sends it with a new item.
+export type EvidenceFile = {
+  filename: string;
+  bytes: Buffer;
+  role?: EvidenceRole;
+  module?: string;
+  caption?: string;
+};
+
+// Where a file will go, checked before anything is stored.
+export type PlacedFile = Omit<EvidenceFile, 'role' | 'module'> & Placement;
+
+// Evidence obeys the rules of an update: another agent's lease and a closed item refuse it. It goes
+// to a module of the item's layout that accepts it, in a role that module takes (see placeEvidence).
+export function placeFile(
+  project: Project,
+  item: ItemRecord,
+  file: EvidenceFile,
+  actor: Actor,
+  at: string,
+): PlacedFile {
+  if (file.bytes.length > MAX_EVIDENCE_BYTES) {
+    throw new OteaError(
+      'evidence_too_large',
+      `${file.filename} is over the ${MAX_EVIDENCE_MB} MB evidence limit`,
+    );
+  }
+  const type = typeOfItem(project, item);
+  assertMayWrite(item.id, activeLease(item.lease, at), actor);
+  if (turnOf(type.workflow, item.state) === 'none') {
+    throw new OteaError(
+      'item_closed',
+      `${item.id} is ${item.state} (turn none) and can no longer take evidence`,
+    );
+  }
+  const request = {
+    filename: file.filename,
+    ...(file.role === undefined ? {} : { role: file.role }),
+    ...(file.module === undefined ? {} : { module: file.module }),
+  };
+  const { filename, bytes, caption } = file;
+  const placement = placeEvidence(type.layout, { id: item.id, type: type.name }, request);
+  return { filename, bytes, ...(caption === undefined ? {} : { caption }), ...placement };
+}
+
+// Evidence is append-only, like the event log: the file is stored once, then its entry and its
+// evidence_added event are written, inside the caller's transaction.
+export function recordEvidence(
+  project: Project,
+  itemId: string,
+  file: PlacedFile,
+  { actor, channel }: Performer,
+  at: string,
+): EvidenceRecord {
+  const { filename, bytes, module, role } = file;
+  const sha256 = createHash('sha256').update(bytes).digest('hex');
+  const { kind, contentType } = evidenceTypeOf(filename);
+  const caption = file.caption?.trim() || null;
+  store(project.dataDir, sha256, bytes);
+  const entry = {
+    itemId,
+    role,
+    module,
+    kind,
+    filename,
+    contentType,
+    size: bytes.length,
+    sha256,
+    caption,
+    createdAt: at,
+    actor,
+    channel,
+  };
+  const id = insertEvidence(project.db, entry);
+  const data = {
+    evidenceId: id,
+    role,
+    ...(module === null ? {} : { module }),
+    kind,
+    filename,
+    ...(caption ? { caption } : {}),
+    channel,
+  };
+  appendEvent(project.db, { itemId, type: 'evidence_added', actor, at, data });
+  return { id, ...entry };
+}
+
+// Attaches the file at a path. A refusal stores nothing.
 export function attachEvidence(
   project: Project,
   input: AttachInput,
   now = systemClock,
 ): EvidenceRecord {
-  const bytes = readEvidence(input.path);
-  const sha256 = createHash('sha256').update(bytes).digest('hex');
-  const filename = basename(input.path);
-  const { kind, contentType } = evidenceTypeOf(filename);
-  const caption = input.caption?.trim() || null;
-  const { db } = project;
-  return transaction(db, () => {
-    const item = requireItem(db, input.id);
-    const type = typeOfItem(project, item);
+  const file: EvidenceFile = {
+    filename: basename(input.path),
+    bytes: readEvidence(input.path),
+    ...(input.role === undefined ? {} : { role: input.role }),
+    ...(input.module === undefined ? {} : { module: input.module }),
+    ...(input.caption === undefined ? {} : { caption: input.caption }),
+  };
+  return transaction(project.db, () => {
+    const item = requireItem(project.db, input.id);
     const at = now();
-    const { actor, channel } = input;
-    assertMayWrite(item.id, activeLease(item.lease, at), actor);
-    if (turnOf(type.workflow, item.state) === 'none') {
-      throw new OteaError(
-        'item_closed',
-        `${item.id} is ${item.state} (turn none) and can no longer take evidence`,
-      );
-    }
-    const request = {
-      filename,
-      ...(input.role === undefined ? {} : { role: input.role }),
-      ...(input.module === undefined ? {} : { module: input.module }),
-    };
-    const { module, role } = placeEvidence(type.layout, { id: item.id, type: type.name }, request);
-    store(project.dataDir, sha256, bytes);
-    const entry = {
-      itemId: item.id,
-      role,
-      module,
-      kind,
-      filename,
-      contentType,
-      size: bytes.length,
-      sha256,
-      caption,
-      createdAt: at,
-      actor,
-      channel,
-    };
-    const id = insertEvidence(db, entry);
-    const data = {
-      evidenceId: id,
-      role,
-      ...(module === null ? {} : { module }),
-      kind,
-      filename,
-      ...(caption ? { caption } : {}),
-      channel,
-    };
-    appendEvent(db, { itemId: item.id, type: 'evidence_added', actor, at, data });
-    return { id, ...entry };
+    const placed = placeFile(project, item, file, input.actor, at);
+    return recordEvidence(project, item.id, placed, input, at);
   });
 }
 

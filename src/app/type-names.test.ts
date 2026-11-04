@@ -18,7 +18,7 @@ function stored(ctx: Context, collection: string, id: string) {
     type: 'item',
     title: 'Old',
     fields: { description: 'Before' },
-    presetVersion: 1,
+    presetVersion: 2,
     state: 'todo',
     createdAt: '2026-01-01T00:00:00.000Z',
     updatedAt: '2026-01-01T00:00:00.000Z',

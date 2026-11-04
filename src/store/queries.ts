@@ -269,20 +269,31 @@ export function selectEvents(db: DatabaseSync, itemId: string): EventRecord[] {
   return (db.prepare(sql).all(itemId) as EventRow[]).map(toEvent);
 }
 
-export type EventFilter = { item?: string; collection?: string; since?: number; limit?: number };
+// limit caps the oldest events after the cursor; latest keeps the newest ones instead (where a feed
+// that starts now begins reading). Either way they come in commit order.
+export type EventFilter = {
+  item?: string;
+  collection?: string;
+  since?: number;
+  limit?: number;
+  latest?: number;
+};
 
 // Ids follow commit order (writers are serialized by BEGIN IMMEDIATE), so the last id read is a
 // cursor: nothing committed later can land below it.
 export function selectEventsAfter(db: DatabaseSync, filter: EventFilter): EventRecord[] {
-  const sql = `SELECT events.* FROM events JOIN items ON items.id = events.item_id
+  const matching = `SELECT events.* FROM events JOIN items ON items.id = events.item_id
     WHERE events.id > :since AND (:item IS NULL OR events.item_id = :item)
-      AND (:collection IS NULL OR items.collection = :collection)
-    ORDER BY events.id LIMIT :limit`;
+      AND (:collection IS NULL OR items.collection = :collection)`;
+  const sql =
+    filter.latest === undefined
+      ? `${matching} ORDER BY events.id LIMIT :limit`
+      : `SELECT * FROM (${matching} ORDER BY events.id DESC LIMIT :limit) ORDER BY id`;
   const params = {
     since: filter.since ?? 0,
     item: filter.item ?? null,
     collection: filter.collection ?? null,
-    limit: filter.limit ?? -1,
+    limit: filter.latest ?? filter.limit ?? -1,
   };
   return (db.prepare(sql).all(params) as EventRow[]).map(toEvent);
 }

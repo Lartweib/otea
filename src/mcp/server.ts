@@ -35,6 +35,7 @@ export const AGENT_COMMANDS = [
 
 export const CLI_ONLY_COMMANDS = [
   'init',
+  'brief',
   'projects list',
   'projects current',
   'projects add',
@@ -53,6 +54,8 @@ export const CLI_ONLY_COMMANDS = [
   'hook remove',
   'serve',
   'open',
+  'devices list',
+  'devices revoke',
   'mcp',
 ];
 

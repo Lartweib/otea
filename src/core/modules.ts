@@ -9,7 +9,7 @@ export const SEVERITY_SCALE = ['low', 'medium', 'high', 'critical'] as const;
 
 export type FieldModule = (typeof FIELD_MODULES)[number];
 
-export const EVIDENCE_MODULES = ['images', 'recording', 'diff', 'log'] as const;
+export const EVIDENCE_MODULES = ['images', 'recording', 'diff', 'log', 'diagram'] as const;
 
 export type EvidenceModule = (typeof EVIDENCE_MODULES)[number];
 
@@ -20,7 +20,7 @@ export const RELATION_MODULES = ['relations', 'children'] as const;
 export type RelationModule = (typeof RELATION_MODULES)[number];
 
 // Reserved modules validate in a layout today; their components come later and draw nothing yet.
-export const RESERVED_MODULES = ['questions', 'rounds', 'score', 'options', 'diagram'] as const;
+export const RESERVED_MODULES = ['questions', 'rounds', 'score', 'options'] as const;
 
 export type ReservedModule = (typeof RESERVED_MODULES)[number];
 
@@ -127,7 +127,7 @@ export const MODULE_REGISTRY: Readonly<Record<ModuleKind, ModuleSpec>> = {
   rounds: reserved('body', 'phone'),
   score: reserved('header', 'side', 'row'),
   options: reserved('body', 'phone'),
-  diagram: reserved('evidence', 'body'),
+  diagram: evidence(['diagram']),
 };
 
 function isModule(name: string): name is ModuleKind {
@@ -165,7 +165,7 @@ type Reading = { entry?: LayoutEntry; problems: string[] };
 
 // What an `accepts` entry names: an evidence kind (`image`) or an extension (`png`, `.png`).
 function acceptedKind(accept: string): EvidenceKind | undefined {
-  const known: readonly string[] = ['image', 'video', 'diff', 'log'];
+  const known: readonly string[] = ['image', 'video', 'diff', 'log', 'diagram'];
   if (known.includes(accept)) return accept as EvidenceKind;
   const { kind } = evidenceTypeOf(`file.${accept}`);
   return kind === 'file' ? undefined : kind;

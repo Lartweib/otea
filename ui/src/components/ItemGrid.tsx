@@ -26,9 +26,10 @@ import { typeOf } from '../item-types.ts';
 import { Icon, NodeMark, Pill, Severity, type SeverityLevel } from '../kit/index.ts';
 import { type Block, type LaneLayout, laneX, layoutLanes } from '../lanes.ts';
 import { itemNodeKind } from '../node-kind.ts';
+import { keyTitle, stateWord } from '../preset-words.ts';
 import type { Section } from '../sections.ts';
 import { hashFor } from '../selection.ts';
-import type { CollectionView, Item } from '../types.ts';
+import type { CollectionView, Item, TypeView } from '../types.ts';
 import { Carry } from './Carry.tsx';
 import { GroupLabel } from './GroupLabel.tsx';
 import { Holder, Lines, When } from './ItemList.tsx';
@@ -52,7 +53,9 @@ function Check() {
   );
 }
 
-function Cell({ item, column, compact }: { item: Item; column: GridColumn; compact: boolean }) {
+type CellProps = { item: Item; type: TypeView | undefined; column: GridColumn; compact: boolean };
+
+function Cell({ item, type, column, compact }: CellProps) {
   const text = cellText(item, column);
   const lease = useActiveLease(item.lease);
   switch (column.kind) {
@@ -72,8 +75,8 @@ function Cell({ item, column, compact }: { item: Item; column: GridColumn; compa
     case 'state':
       // A row waiting for you says so with its node; the state pill stays untinted.
       return (
-        <Pill tone="state" size="sm">
-          <span data-m={`${item.id}:s`}>{text}</span>
+        <Pill tone="state" size="sm" title={keyTitle(stateWord(type, text), text)}>
+          <span data-m={`${item.id}:s`}>{stateWord(type, text)}</span>
         </Pill>
       );
     case 'who': {
@@ -119,7 +122,8 @@ type RowProps = {
 
 function GridRow({ item, collection, shown, place, lanes, selected, checked, onCheck }: RowProps) {
   const lease = useActiveLease(item.lease);
-  const kind = itemNodeKind(item, typeOf(collection, item.type), lease !== null);
+  const type = typeOf(collection, item.type);
+  const kind = itemNodeKind(item, type, lease !== null);
   const x = laneX(item.turn);
   const { height, node } = GRID_ROW;
   return (
@@ -169,7 +173,7 @@ function GridRow({ item, collection, shown, place, lanes, selected, checked, onC
           className={`gc gc-${column.kind}`}
           data-air={index > titleAt(shown) || undefined}
         >
-          <Cell item={item} column={column} compact={compact} />
+          <Cell item={item} type={type} column={column} compact={compact} />
         </td>
       ))}
     </tr>

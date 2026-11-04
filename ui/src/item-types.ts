@@ -1,5 +1,6 @@
 import { isEvidenceModule } from './evidence.ts';
 import { presetText } from './i18n/i18n.ts';
+import { fieldWord, typeWord } from './preset-words.ts';
 import type { CollectionView, FieldView, LayoutEntry, LayoutSlot, TypeView } from './types.ts';
 
 // A value with the field that shapes it and the label its layout entry gives it.
@@ -11,7 +12,21 @@ export type DetailBlock =
   | { kind: 'fields'; values: PlacedValue[] }
   | { kind: 'module'; entry: LayoutEntry }
   | { kind: 'relation'; entry: LayoutEntry }
+  | { kind: 'reserved'; entry: LayoutEntry }
   | { kind: 'evidence' };
+
+// Modules that draw from the item as a whole (its history, a field it reads by name) rather than
+// one field or one module's files. questions and score draw nothing yet.
+const RESERVED: readonly string[] = ['rounds', 'options'];
+
+export function isReservedModule(entry: LayoutEntry): boolean {
+  return RESERVED.includes(entry.module);
+}
+
+// A type that places rounds draws its evidence modules inside each round, not on their own.
+export function placesRounds(type: TypeView | undefined): boolean {
+  return !!type && type.layout.body.some(({ module }) => module === 'rounds');
+}
 
 export function isRelationModule(entry: LayoutEntry): boolean {
   return entry.module === 'relations' || entry.module === 'children';
@@ -61,7 +76,7 @@ export type TypeMark =
 
 export function typeMark(collection: CollectionView | undefined, name: string): TypeMark {
   const type = typeOf(collection, name);
-  const label = presetText(type?.label ?? name);
+  const label = typeWord(type, name);
   if (type?.icon) {
     // A preset without types names its only type after itself (an epic, a notes item); one that
     // names its only type says it (a bug).
@@ -92,7 +107,8 @@ function placed(
   const value = name === undefined ? undefined : values[name];
   const field = name === undefined ? undefined : fieldOf(type, name);
   if (!field || value === undefined) return [];
-  return [{ field, value, label: presetText(label ?? field.name) }];
+  // The preset's label for the field in the language on screen wins: a screen never mixes the two.
+  return [{ field, value, label: fieldWord(type, field.name) ?? presetText(label ?? field.name) }];
 }
 
 function slotValues(
@@ -137,6 +153,7 @@ function blocksOf(
   for (const entry of entries) {
     if (isEvidenceModule(entry)) blocks.push({ kind: 'module', entry });
     else if (isRelationModule(entry)) blocks.push({ kind: 'relation', entry });
+    else if (isReservedModule(entry)) blocks.push({ kind: 'reserved', entry });
     else add(placed(type, entry, values));
   }
   add(extra);
@@ -162,7 +179,7 @@ export function detailBlocks(
     primary: [
       ...blocksOf(
         type,
-        [...type.layout.evidence, ...type.layout.body],
+        [...(placesRounds(type) ? [] : type.layout.evidence), ...type.layout.body],
         values,
         undeclared(type, values),
       ),

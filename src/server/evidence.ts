@@ -6,12 +6,14 @@ import type { Project } from '../app/project.ts';
 import type { EvidenceRecord } from '../store/queries.ts';
 
 // Evidence is whatever an agent attached, served from the app's own origin, so nothing in it may
-// run there. Images and videos (the kinds exclude SVG) are shown inline with their type; diffs and
+// run there. Images and videos (the kinds exclude SVG) are shown inline with their type; diffs, diagrams and
 // logs as plain text; anything else only as a download. nosniff keeps the browser to the declared
 // type, and the sandbox policy denies scripts and the origin to a file opened on its own.
 function presentation({ kind, contentType }: EvidenceRecord): { type: string; inline: boolean } {
   if (kind === 'image' || kind === 'video') return { type: contentType, inline: true };
-  if (kind === 'diff' || kind === 'log') return { type: 'text/plain; charset=utf-8', inline: true };
+  if (kind === 'diff' || kind === 'log' || kind === 'diagram') {
+    return { type: 'text/plain; charset=utf-8', inline: true };
+  }
   return { type: contentType, inline: false };
 }
 

@@ -1,9 +1,12 @@
 import { createElement, Fragment, type ReactNode, useSyncExternalStore } from 'react';
+import { flushSync } from 'react-dom';
+import { reducedMotion } from '../motion.ts';
 import { en } from './en.ts';
 import { es } from './es.ts';
 
 // The interface's own words, in English and Spanish. Only the chrome: what a preset names (states,
-// fields, types, descriptions) is shown as written, through presetText. The CLI and the API stay in
+// fields, types, descriptions) is shown as written, or in the preset's own labels for the language
+// on screen (preset-words.ts). Item content is never translated. The CLI and the API stay in
 // English, so a server's error message is shown as it comes.
 
 export type Language = 'en' | 'es';
@@ -68,8 +71,8 @@ export function tx<K extends MessageKey>(key: K, ...[params]: Args<K, ReactNode>
   );
 }
 
-// Words a preset wrote (a state, a field's label, a type). They are shown as written; a preset may
-// one day give them in other languages (`labels: { es: ... }`), and this is where that would apply.
+// Words a preset wrote that its labels do not cover (a layout entry's label), shown as written, or
+// in the language on screen when given in it. Types, states and fields go through preset-words.ts.
 export function presetText(text: string, labels?: Readonly<Partial<Record<Language, string>>>) {
   return labels?.[current] ?? text;
 }
@@ -125,10 +128,40 @@ function apply(next: Language): void {
   for (const listener of listeners) listener();
 }
 
-// Switches the interface's language and remembers it in this browser.
+// The switch in flight, and the language the page should end on: a skipped switch's late update
+// applies the latest choice, never its own.
+let switching: ViewTransition | undefined;
+let wanted: Language = current;
+
+// Switches the interface's language and remembers it in this browser; any control calls it. The page
+// rewrites itself in place, scroll, selection and drafts kept: a 200 ms crossfade (a View
+// Transition over the page, so whatever reads the same in both languages stays still), or at once
+// under reduced motion and where the browser has no View Transitions.
 export function setLanguage(next: Language): void {
   store(next);
-  apply(next);
+  wanted = next;
+  if (next === current && !switching) return;
+  switching?.skipTransition();
+  if (
+    typeof document === 'undefined' ||
+    typeof document.startViewTransition !== 'function' ||
+    reducedMotion()
+  ) {
+    apply(next);
+    return;
+  }
+  const root = document.documentElement;
+  root.setAttribute('data-language-switching', '');
+  // React renders the new words inside the update, so the new snapshot holds them.
+  const transition = document.startViewTransition(() => flushSync(() => apply(wanted)));
+  switching = transition;
+  transition.finished
+    .catch(() => {})
+    .finally(() => {
+      if (switching !== transition) return;
+      switching = undefined;
+      root.removeAttribute('data-language-switching');
+    });
 }
 
 // What Preferences offers: a language of its own, or auto, which follows the browser.
@@ -157,11 +190,66 @@ export function browserLanguage(): Language {
   return chooseLanguage({ preferred: typeof navigator === 'undefined' ? [] : navigator.languages });
 }
 
+// The first-run note, once: when the browser picked the language (nothing asked in the address,
+// nothing chosen before) and it is not English, the note says so, naming the tag the browser asked
+// for, and that only the interface is translated. Dismissed, it never comes back to this browser.
+export type FirstRunNote = { tag: string };
+
+export function firstRunNote({
+  asked,
+  stored,
+  preferred,
+  chosen,
+  seen = false,
+}: {
+  asked?: string | null | undefined;
+  stored?: string | null | undefined;
+  preferred?: readonly string[] | undefined;
+  chosen: Language;
+  seen?: boolean;
+}): FirstRunNote | undefined {
+  if (seen || chosen === 'en' || isLanguage(asked) || isLanguage(stored)) return undefined;
+  const tag = (preferred ?? []).find((each) => each.split('-')[0]?.toLowerCase() === chosen);
+  return tag === undefined ? undefined : { tag };
+}
+
+export const LANGUAGE_NOTE_KEY = 'otea.languageNote';
+
+let note: FirstRunNote | undefined;
+
+function noteSeen(): boolean {
+  try {
+    return window.localStorage.getItem(LANGUAGE_NOTE_KEY) !== null;
+  } catch {
+    return false;
+  }
+}
+
+// The note to show on this load, if any.
+export function languageNote(): FirstRunNote | undefined {
+  return note;
+}
+
+// Got it, or a click elsewhere: the note is remembered as seen in this browser.
+export function dismissLanguageNote(): void {
+  note = undefined;
+  try {
+    window.localStorage.setItem(LANGUAGE_NOTE_KEY, 'seen');
+  } catch {
+    // Dismissed for this tab; with site data blocked it may show again on the next load.
+  }
+}
+
 // Once, before the first render: `?lang=` is read and remembered, so the address can drop it.
 export function startLanguage(): void {
   const asked = new URLSearchParams(window.location.search).get('lang');
+  const stored = readStored();
+  const preferred = navigator.languages;
   if (isLanguage(asked)) store(asked);
-  apply(chooseLanguage({ asked, stored: readStored(), preferred: navigator.languages }));
+  const chosen = chooseLanguage({ asked, stored, preferred });
+  note = firstRunNote({ asked, stored, preferred, chosen, seen: noteSeen() });
+  wanted = chosen;
+  apply(chosen);
 }
 
 // The language on screen; a component that reads it renders again when it changes.

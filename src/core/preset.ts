@@ -9,6 +9,7 @@ import {
   readLayout,
   SEVERITY_SCALE,
 } from './modules.ts';
+import { type Labels, labelProblems, labelsSchema, typeLabels } from './preset-labels.ts';
 import {
   AUTHORITIES,
   CLOSINGS,
@@ -20,6 +21,7 @@ import {
 } from './workflow.ts';
 
 export { FIELD_MODULES, type FieldModule, SEVERITY_SCALE } from './modules.ts';
+export type { Labels, TypeLabels } from './preset-labels.ts';
 
 export type FieldRequirement = 'create' | 'complete';
 
@@ -37,6 +39,7 @@ export const DEFAULT_TYPE = 'item';
 // items are laid out, the icon drawn beside them (none when the preset gives it none) and its own
 // playbook, read before the preset's. `children` and `root` are set only in a preset that declares a
 // hierarchy: the types that may hang under it with parent, and whether it may live with no parent.
+// `labels`, its words in the other languages its preset speaks, only when the preset gives them.
 export type ItemType = {
   name: string;
   label: string;
@@ -47,6 +50,7 @@ export type ItemType = {
   playbook?: string;
   children?: string[];
   root?: boolean;
+  labels?: Labels;
 };
 
 // What field rules and workflows are checked against: a type, or a preset read as its only type.
@@ -160,6 +164,7 @@ const presetSchema = z.strictObject({
       columns: z.array(z.string()).nonempty().optional(),
     })
     .optional(),
+  labels: labelsSchema.optional(),
 });
 
 type RawPreset = z.infer<typeof presetSchema>;
@@ -590,6 +595,10 @@ export function readPreset(text: string): PresetReading {
       ? implicitType(raw, fields, workflow)
       : readTypes(raw, fields, workflow);
   const { view, problems: viewProblems } = readView(raw, typed.types);
+  for (const type of typed.types) {
+    const labels = typeLabels(raw.labels, type);
+    if (labels) type.labels = labels;
+  }
   const problems = [
     ...titleProblems(raw.fields.title),
     ...fieldsProblems('fields', raw.fields),
@@ -597,6 +606,7 @@ export function readPreset(text: string): PresetReading {
     ...incompleteProblems('workflow', raw.workflow, raw.fields),
     ...typed.problems,
     ...viewProblems,
+    ...labelProblems(raw.labels, typed.types, raw.types === undefined),
   ];
   if (problems.length > 0) return { ok: false, problems: [...new Set(problems)] };
   const preset: Preset = {

@@ -1,5 +1,6 @@
 import { t } from '../i18n/i18n.ts';
 import { Buddy } from './Buddy.tsx';
+import { LanguageNote } from './LanguageNote.tsx';
 import { useMenu } from './menu.ts';
 import { PreferencesHead, PreferencesPanel } from './Preferences.tsx';
 import { Sheet } from './Sheet.tsx';
@@ -42,6 +43,8 @@ export function PreferencesButton({
           </>
         )}
       </button>
+      {/* The first-run language note rests on this row, pointing at it (on a phone it stands alone). */}
+      {phone ? null : <LanguageNote anchored />}
       {menu.phase === 'closed' ? null : phone ? (
         <Sheet menu={menu} label={label} title={label}>
           <PreferencesPanel />

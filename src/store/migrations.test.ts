@@ -32,16 +32,17 @@ describe('migrate', () => {
         'relations',
         'project',
         'agents',
+        'devices',
       ]),
     );
-    expect(userVersion(db)).toBe(10);
+    expect(userVersion(db)).toBe(11);
   });
 
   it('is idempotent', () => {
     migrate(db);
     migrate(db);
 
-    expect(userVersion(db)).toBe(10);
+    expect(userVersion(db)).toBe(11);
   });
 
   describe('from version 1', () => {

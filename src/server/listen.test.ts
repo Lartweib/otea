@@ -1,7 +1,8 @@
 import { connect, createServer as createNetServer, type Server } from 'node:net';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { Project } from '../app/project.ts';
-import { DEFAULT_PORT, isUnsafePort, type Listening, listen } from './listen.ts';
+import { lanAddresses } from './lan.ts';
+import { ALL_INTERFACES, DEFAULT_PORT, isUnsafePort, type Listening, listen } from './listen.ts';
 import { createServer } from './server.ts';
 import { memoryProject } from './testing.ts';
 
@@ -62,6 +63,24 @@ describe('listen', () => {
     listening = await listen(createServer(project), 0);
 
     expect(listening.url).toMatch(/^http:\/\/127\.0\.0\.1:\d+$/);
+    expect((await fetch(`${listening.url}/api/items`)).status).toBe(200);
+  });
+
+  const lan = lanAddresses()[0];
+
+  it.skipIf(lan === undefined)('does not answer on the LAN unless asked to', async () => {
+    listening = await listen(createServer(project, { lan: { addresses: [lan ?? ''] } }), 0);
+
+    await expect(fetch(`http://${lan}:${listening.port}/pair`)).rejects.toThrow();
+  });
+
+  it.skipIf(lan === undefined)('with LAN access, refuses an unpaired device', async () => {
+    const server = createServer(project, { lan: { addresses: [lan ?? ''] } });
+    listening = await listen(server, 0, ALL_INTERFACES);
+    const response = await fetch(`http://${lan}:${listening.port}/api/items`);
+
+    expect(response.status).toBe(401);
+    expect(await response.json()).toMatchObject({ error: { code: 'unpaired' } });
     expect((await fetch(`${listening.url}/api/items`)).status).toBe(200);
   });
 

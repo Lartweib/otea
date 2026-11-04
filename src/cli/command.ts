@@ -45,6 +45,7 @@ export type Output = { data: unknown; text: string; failure?: FailureCode };
 export type Command = {
   name: string;
   summary: string;
+  // A last name ending in `...` (`ids...`) takes that argument and every one after it, at least one.
   args: readonly string[];
   options: Readonly<Record<string, OptionSpec>>;
   // Resolves with nothing when the command printed its output itself, record by record.

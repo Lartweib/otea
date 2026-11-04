@@ -1,5 +1,6 @@
 import { normalText, textValues } from './grid.ts';
 import { type PlainKey, t } from './i18n/i18n.ts';
+import { stateWordIn, typeWord } from './preset-words.ts';
 import type { CollectionView, Item, Turn } from './types.ts';
 
 // A group of the list or the grid. Grouped by turn, a section holds one turn (and stays even when
@@ -94,8 +95,10 @@ export function groupItems(
   const values = [...declared.filter((value) => value !== ''), ...new Set(stale), ''];
   const labelOf = (key: string) => {
     if (key === '') return t('section.noValue', { group: groupingLabel(by) });
+    if (by === 'state') return stateWordIn(collection.types, key);
     if (by !== 'type') return key;
-    return collection.types.find(({ name }) => name === key)?.label ?? key;
+    const type = collection.types.find(({ name }) => name === key);
+    return type ? typeWord(type, key) : key;
   };
   return values.flatMap((key) => {
     const own = items.filter((item) => of(item) === key);

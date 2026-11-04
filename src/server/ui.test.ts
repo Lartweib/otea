@@ -41,6 +41,12 @@ describe('ui', () => {
       expect(await response.text()).toContain('<title>Otea</title>');
     });
 
+    it('has the page checked on every load, but not the assets', async () => {
+      expect((await get('/')).headers.get('cache-control')).toBe('no-cache');
+      expect((await get('/pair')).headers.get('cache-control')).toBe('no-cache');
+      expect((await get('/assets/app.js')).headers.get('cache-control')).toBeNull();
+    });
+
     it('serves assets with their content type', async () => {
       const response = await get('/assets/app.js');
 

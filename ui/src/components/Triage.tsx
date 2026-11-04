@@ -11,6 +11,7 @@ import { moduleFor } from '../modules/registry.ts';
 import { valuesOf } from '../modules/values.ts';
 import { MOTION, reducedMotion } from '../motion.ts';
 import { itemNodeKind } from '../node-kind.ts';
+import { fieldWord, keyTitle, stateWord, typeWord } from '../preset-words.ts';
 import { openLabel, relationLabel } from '../relations.ts';
 import { hashFor } from '../selection.ts';
 import {
@@ -66,16 +67,18 @@ function settle(card: HTMLElement) {
 function CardTags({ item, collectionOf }: { item: Item; collectionOf: CollectionOf }) {
   const lease = useActiveLease(item.lease);
   const collection = collectionOf(item.collection);
-  const kind = itemNodeKind(item, typeOf(collection, item.type), lease !== null);
+  const type = typeOf(collection, item.type);
+  const kind = itemNodeKind(item, type, lease !== null);
+  const state = stateWord(type, item.state);
   return (
     <div className="detail-tags">
       <Node kind={kind} label={nodeLabel(kind)} />
       {showsTypes(collection) ? (
-        <TypeTag name={item.type} label={typeOf(collection, item.type)?.label ?? item.type} />
+        <TypeTag name={item.type} label={typeWord(type, item.type)} />
       ) : null}
       <span className="t-id">{item.id}</span>
-      <Pill tone="state" yours={item.turn === 'human'}>
-        {item.state}
+      <Pill tone="state" yours={item.turn === 'human'} title={keyTitle(state, item.state)}>
+        {state}
       </Pill>
       <span className="t-cap">{item.collection}</span>
     </div>
@@ -115,7 +118,8 @@ function NextCard({ item, collectionOf }: { item: Item; collectionOf: Collection
 
 // What the card says about the item: the description as plain text, then the other fields.
 function CardBody({ item, collectionOf }: { item: Item; collectionOf: CollectionOf }) {
-  const values = valuesOf(typeOf(collectionOf(item.collection), item.type)?.fields, item.fields);
+  const type = typeOf(collectionOf(item.collection), item.type);
+  const values = valuesOf(type?.fields, item.fields);
   const lead = values.find(({ field }) => field.name === LEAD);
   const rest = values.filter((value) => value !== lead);
   const Lead = lead ? moduleFor(lead.field.module).Detail : undefined;
@@ -135,7 +139,7 @@ function CardBody({ item, collectionOf }: { item: Item; collectionOf: Collection
             const { Detail } = moduleFor(field.module);
             return (
               <div key={field.name} className="tcard-field">
-                <dt>{field.name}</dt>
+                <dt>{fieldWord(type, field.name) ?? field.name}</dt>
                 <dd>
                   <Detail field={field} value={value} />
                 </dd>
@@ -189,6 +193,8 @@ function TriageCard({ item, collectionOf, plan, onLeave, behind, next }: CardPro
   const drag = useRef<Drag | null>(null);
   const [state, setState] = useState<CardStep>({ step: 'idle' });
   const ready = plan !== undefined && state.step === 'idle';
+  const type = typeOf(collectionOf(item.collection), item.type);
+  const word = (name: string) => stateWord(type, name);
 
   // The card rises from where the next card waited (it is that card, brought forward): a
   // transform only, so nothing behind it shows through. Reduced motion: it crossfades.
@@ -354,7 +360,7 @@ function TriageCard({ item, collectionOf, plan, onLeave, behind, next }: CardPro
               }}
             >
               <label className="t-label" htmlFor="triage-reason">
-                {t('common.reasonFor', { state: state.move.to })}
+                {t('common.reasonFor', { state: word(state.move.to) })}
               </label>
               <textarea
                 id="triage-reason"
@@ -392,11 +398,11 @@ function TriageCard({ item, collectionOf, plan, onLeave, behind, next }: CardPro
           {back ? (
             <Button
               disabled={!ready}
-              aria-label={t('common.moveTo', { state: back.to })}
+              aria-label={t('common.moveTo', { state: word(back.to) })}
               onClick={() => act('left')}
             >
               <Icon name="left" />
-              {back.to}
+              {word(back.to)}
             </Button>
           ) : null}
           <Button variant="quiet" disabled={busy} onClick={() => commit('skip', undefined)}>
@@ -406,10 +412,10 @@ function TriageCard({ item, collectionOf, plan, onLeave, behind, next }: CardPro
             <Button
               variant={explaining ? 'default' : 'primary'}
               disabled={!ready}
-              aria-label={t('common.moveTo', { state: forward.to })}
+              aria-label={t('common.moveTo', { state: word(forward.to) })}
               onClick={() => act('right')}
             >
-              {forward.to}
+              {word(forward.to)}
               <Icon name="right" />
             </Button>
           ) : null}
@@ -419,7 +425,7 @@ function TriageCard({ item, collectionOf, plan, onLeave, behind, next }: CardPro
             {plan.blocked.map(({ move, note }) => (
               <span key={move.to} className="move-blocked">
                 <Button size="sm" disabled aria-describedby={`triage-block-${move.to}`}>
-                  {move.to}
+                  {word(move.to)}
                 </Button>
                 <span className="move-block-note t-cap" id={`triage-block-${move.to}`}>
                   {note}
@@ -430,8 +436,8 @@ function TriageCard({ item, collectionOf, plan, onLeave, behind, next }: CardPro
         ) : null}
         <p className="t-cap triage-hint" aria-hidden="true">
           {[
-            back ? t('triage.swipeLeft', { state: back.to }) : '',
-            forward ? t('triage.swipeRight', { state: forward.to }) : '',
+            back ? t('triage.swipeLeft', { state: word(back.to) }) : '',
+            forward ? t('triage.swipeRight', { state: word(forward.to) }) : '',
           ]
             .filter(Boolean)
             .join('   ')}

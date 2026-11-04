@@ -133,6 +133,17 @@ const MIGRATIONS = [
   ALTER TABLE collections ADD COLUMN icon TEXT;
   ALTER TABLE project ADD COLUMN icon TEXT;
   `,
+  // Devices paired over the LAN (otea serve --lan). Only the SHA-256 of each device token is kept,
+  // so the database never holds a token that opens the UI.
+  `
+  CREATE TABLE devices (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    token_hash TEXT NOT NULL UNIQUE,
+    paired_at TEXT NOT NULL,
+    last_seen_at TEXT
+  );
+  `,
 ];
 
 function userVersion(db: DatabaseSync): number {

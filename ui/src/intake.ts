@@ -1,5 +1,7 @@
 import { presetText, t } from './i18n/i18n.ts';
-import type { FieldView, TypeView } from './types.ts';
+import { type NodeKind, nodeKind } from './node-kind.ts';
+import { fieldWord, stateWord } from './preset-words.ts';
+import type { FieldView, Turn, TypeView } from './types.ts';
 
 export type FormValues = Record<string, string>;
 
@@ -55,7 +57,59 @@ export function payloadOf(values: FormValues): FormValues {
   return Object.fromEntries(Object.entries(values).filter(([, value]) => !isBlank(value)));
 }
 
-export function startMessage({ state, incomplete, missing }: Start): string {
-  if (!incomplete) return t('intake.startsReady', { state });
-  return t('intake.startsIncomplete', { state, fields: missing.join(', ') });
+// The state and fields in the preset's words for the language on screen, when the type gives them.
+export function startMessage({ state, incomplete, missing }: Start, type?: TypeView): string {
+  const shown = stateWord(type, state);
+  if (!incomplete) return t('intake.startsReady', { state: shown });
+  const fields = missing.map((name) => fieldWord(type, name) ?? name);
+  return t('intake.startsIncomplete', { state: shown, fields: fields.join(', ') });
+}
+
+// Where the item lands once created, as the row the form draws while you type: the state it starts
+// in and whose turn that is. Until every field required to create it is filled it is a draft.
+export type Landing = {
+  state: string;
+  turn: Turn;
+  kind: NodeKind;
+  ready: boolean;
+  missing: string[];
+};
+
+export function landingOf(type: TypeView, values: FormValues): Landing {
+  const start = startOf(type, values);
+  const state = type.states.find(({ name }) => name === start.state);
+  const turn = state?.turn ?? 'agent';
+  const missing = missingToCreate(type, values);
+  const ready = missing.length === 0;
+  const facts = { turn, leased: false, incomplete: start.incomplete };
+  const kind = ready
+    ? nodeKind(state?.closes === undefined ? facts : { ...facts, closes: state.closes })
+    : 'incomplete';
+  return { state: start.state, turn, kind, ready, missing };
+}
+
+// In the preset's words for the language on screen, when the type gives them.
+export function landingNote(
+  { state: name, turn, ready, missing }: Landing,
+  type?: TypeView,
+): string {
+  if (!ready) {
+    const fields = missing.map((field) => fieldWord(type, field) ?? fieldLabel(field));
+    return t('intake.draft', { fields: fields.join(', ') });
+  }
+  const state = stateWord(type, name);
+  if (turn === 'human') return t('intake.landsOnYou', { state });
+  if (turn === 'agent') return t('intake.landsOnAgent', { state });
+  return t('intake.landsIn', { state });
+}
+
+// The id the item will most likely get: the next number in its collection. The server numbers it.
+export function nextId(prefix: string, ids: readonly string[]): string {
+  const head = `${prefix}-`;
+  const last = ids
+    .filter((id) => id.startsWith(head))
+    .map((id) => Number(id.slice(head.length)))
+    .filter(Number.isInteger)
+    .reduce((max, seq) => Math.max(max, seq), 0);
+  return `${head}${last + 1}`;
 }

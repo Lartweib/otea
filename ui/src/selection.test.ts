@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
+  briefHash,
   hashFor,
   ITEMS_HASH,
   idFromHash,
   modulesHash,
   routeFromHash,
+  studioHash,
   TRIAGE_HASH,
 } from './selection.ts';
 
@@ -38,7 +40,11 @@ describe('selection', () => {
     ['#/elsewhere', { view: 'items' }],
     ['#/modules/%E0%A4%A', { view: 'modules' }],
     ['#/triage', { view: 'triage' }],
+    ['#/projects', { view: 'projects' }],
+    ['#/settings', { view: 'settings' }],
+    ['#/projects/x', { view: 'items' }],
     ['#/triagex', { view: 'items' }],
+    ['#/lan', { view: 'lan' }],
   ])('routes %j to %j', (hash, route) => {
     expect(routeFromHash(hash)).toEqual(route);
   });
@@ -51,9 +57,38 @@ describe('selection', () => {
     expect(routeFromHash(TRIAGE_HASH)).toEqual({ view: 'triage' });
   });
 
+  it('writes a brief for its items as a hash, in their order', () => {
+    expect(briefHash(['WORK-2', 'BUGS-1'])).toBe('#/brief/WORK-2,BUGS-1');
+    expect(routeFromHash(briefHash(['A,1', 'B']))).toEqual({ view: 'brief', ids: ['A,1', 'B'] });
+    expect(routeFromHash('#/brief')).toEqual({ view: 'brief', ids: [] });
+  });
+
   it('writes the catalog and one module as a hash', () => {
     expect(modulesHash()).toBe('#/modules');
     expect(modulesHash('my rating')).toBe('#/modules/my%20rating');
     expect(routeFromHash(modulesHash('a/b'))).toEqual({ view: 'modules', name: 'a/b' });
+  });
+
+  it.each([
+    ['#/studio', { kind: 'start' }],
+    ['#/studio/preset/my-tasks', { kind: 'preset', name: 'my-tasks' }],
+    ['#/studio/preset/', { kind: 'start' }],
+    ['#/studio/blueprint', { kind: 'blueprint', diagram: false }],
+    ['#/studio/blueprint/diagram', { kind: 'blueprint', diagram: true }],
+    ['#/studio/blueprints', { kind: 'blueprints' }],
+    ['#/studio/elsewhere', { kind: 'start' }],
+  ])('routes %j to the Studio page %j', (hash, page) => {
+    expect(routeFromHash(hash)).toEqual({ view: 'studio', page });
+  });
+
+  it('writes each Studio page as a hash it reads back', () => {
+    const pages = [
+      { kind: 'start' },
+      { kind: 'preset', name: 'bug-triage' },
+      { kind: 'blueprint', diagram: true },
+      { kind: 'blueprints' },
+    ] as const;
+    for (const page of pages)
+      expect(routeFromHash(studioHash(page))).toEqual({ view: 'studio', page });
   });
 });

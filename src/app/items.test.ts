@@ -53,7 +53,7 @@ describe('items', () => {
         type: 'task',
         title: 'First',
         fields: { description: 'Details', priority: 'medium' },
-        presetVersion: 1,
+        presetVersion: 2,
         state: 'todo',
         turn: 'agent',
         createdAt: '2026-01-01T00:00:00.000Z',

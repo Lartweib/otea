@@ -35,7 +35,8 @@ export type ErrorCode =
   | 'different_repo'
   | 'in_use'
   | 'invalid_blueprint'
-  | 'link_not_in_blueprint';
+  | 'link_not_in_blueprint'
+  | 'invalid_draft';
 
 export class OteaError extends Error {
   readonly code: ErrorCode;

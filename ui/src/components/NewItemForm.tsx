@@ -1,19 +1,26 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createItem, fetchCollections } from '../api.ts';
 import { type Connection, useRemote } from '../hooks.ts';
-import { presetText, t, tx } from '../i18n/i18n.ts';
+import { t, tx } from '../i18n/i18n.ts';
 import {
   canSubmit,
   type FormValues,
   initialValues,
+  landingOf,
+  nextId,
   payloadOf,
   startMessage,
   startOf,
 } from '../intake.ts';
-import { intakeFields, intakeTypes, typeOf } from '../item-types.ts';
+import { type FileDraft, firstRole, rolesFor, tooLarge, withFiles } from '../intake-files.ts';
+import { intakeFields, intakeTypes, showsTypes, typeOf } from '../item-types.ts';
 import { Button, Icon } from '../kit/index.ts';
-import type { CollectionView, TypeView } from '../types.ts';
+import { fieldWord, typeWord } from '../preset-words.ts';
+import type { CollectionView, EvidenceRole, TypeView } from '../types.ts';
 import { FieldControl } from './FieldControl.tsx';
+import { IntakeFiles } from './IntakeFiles.tsx';
+import { carryToList } from './intake-flight.ts';
+import { LandsAs } from './LandsAs.tsx';
 
 // The item the new one is created under, as its child.
 export type IntakeParent = { id: string; title: string; type: string; collection: string };
@@ -21,6 +28,8 @@ export type IntakeParent = { id: string; title: string; type: string; collection
 type IntakeFormProps = {
   collections: CollectionView[];
   first: CollectionView;
+  // Every item's id, for the id the new one will likely get.
+  ids: readonly string[];
   parent: IntakeParent | undefined;
   onCancel: () => void;
   onCreated: (id: string) => void;
@@ -38,9 +47,16 @@ function parentType(
   );
 }
 
+let drafted = 0;
+const draftKey = () => {
+  drafted += 1;
+  return `file-${drafted}`;
+};
+
 function IntakeForm({
   collections,
   first,
+  ids,
   parent: initialParent,
   onCancel,
   onCreated,
@@ -52,16 +68,39 @@ function IntakeForm({
   const [type, setType] = useState(() => offered(first)[0]);
   const types = offered(collection);
   const [values, setValues] = useState(() => (type ? initialValues(type) : {}));
+  const [files, setFiles] = useState<FileDraft[]>([]);
   const [posting, setPosting] = useState(false);
+  // The id the server gave, kept on the row while it is carried to the list.
+  const [created, setCreated] = useState<string>();
   const [error, setError] = useState<string>();
+  const strip = useRef<HTMLDivElement>(null);
+  const flight = useRef<AbortController | undefined>(undefined);
+  useEffect(() => () => flight.current?.abort(), []);
   const start = type ? startOf(type, values) : undefined;
-  const ready = type !== undefined && canSubmit(type, values);
+  const landing = type ? landingOf(type, values) : undefined;
+  const roles = type ? rolesFor(type) : [];
+  const ready =
+    type !== undefined && canSubmit(type, values) && !files.some(({ file }) => tooLarge(file));
 
+  // Another type keeps the files, in a role it takes.
   const reset = (next: TypeView | undefined) => {
     setType(next);
     setValues(next ? initialValues(next) : {});
     setError(undefined);
+    const offered = next ? rolesFor(next) : [];
+    setFiles((current) =>
+      current.map((draft) =>
+        offered.includes(draft.role) ? draft : { ...draft, role: firstRole(offered) },
+      ),
+    );
   };
+
+  const addFiles = (picked: File[]) =>
+    setFiles((current) => withFiles(current, picked, firstRole(roles), draftKey));
+  const setRole = (key: string, role: EvidenceRole) =>
+    setFiles((current) => current.map((draft) => (draft.key === key ? { ...draft, role } : draft)));
+  const removeFile = (key: string) =>
+    setFiles((current) => current.filter((draft) => draft.key !== key));
 
   const choose = (name: string) => {
     const next = collections.find((candidate) => candidate.name === name) ?? first;
@@ -85,8 +124,15 @@ function IntakeForm({
     if (!ready || posting) return;
     setPosting(true);
     setError(undefined);
-    createItem(collection.name, type.name, payloadOf(values), parent?.id).then(
-      (item) => onCreated(item.id),
+    createItem(collection.name, type.name, payloadOf(values), parent?.id, files).then(
+      async (item) => {
+        setCreated(item.id);
+        // The row the form drew is carried onto its lane in the list, then the item opens.
+        const abort = new AbortController();
+        flight.current = abort;
+        if (strip.current) await carryToList(strip.current, item.id, abort.signal);
+        if (!abort.signal.aborted) onCreated(item.id);
+      },
       (failure: unknown) => {
         setPosting(false);
         setError(failure instanceof Error ? failure.message : t('common.failed'));
@@ -102,7 +148,23 @@ function IntakeForm({
         event.preventDefault();
         submit();
       }}
+      onPaste={(event) => {
+        const pasted = [...event.clipboardData.files];
+        if (pasted.length === 0 || posting) return;
+        event.preventDefault();
+        addFiles(pasted);
+      }}
     >
+      {type && landing ? (
+        <LandsAs
+          type={type}
+          landing={landing}
+          id={created ?? nextId(collection.prefix, ids)}
+          title={(values.title ?? '').trim()}
+          typeLabel={showsTypes(collection) ? typeWord(type, type.name) : undefined}
+          strip={strip}
+        />
+      ) : null}
       {parent ? (
         <div className="intake-parent well">
           <span className="t-label">{t('intake.childOf')}</span>
@@ -155,9 +217,9 @@ function IntakeForm({
             disabled={posting}
             onChange={(event) => chooseType(event.target.value)}
           >
-            {types.map(({ name, label }) => (
-              <option key={name} value={name}>
-                {presetText(label)}
+            {types.map((each) => (
+              <option key={each.name} value={each.name}>
+                {typeWord(each, each.name)}
               </option>
             ))}
           </select>
@@ -171,11 +233,22 @@ function IntakeForm({
           value={values[field.name] ?? ''}
           disabled={posting}
           onChange={(value) => change(field.name, value)}
+          label={fieldWord(type, field.name)}
         />
       ))}
+      {type ? (
+        <IntakeFiles
+          drafts={files}
+          roles={roles}
+          disabled={posting}
+          onAdd={addFiles}
+          onRole={setRole}
+          onRemove={removeFile}
+        />
+      ) : null}
       {start ? (
         <p className="intake-start t-small" data-incomplete={start.incomplete}>
-          {startMessage(start)}
+          {startMessage(start, type)}
         </p>
       ) : null}
       <div className="action-buttons">
@@ -197,6 +270,7 @@ function IntakeForm({
 
 type NewItemFormProps = {
   connection: Connection;
+  ids: readonly string[];
   // Set by "+ child": the form starts in the parent's collection, any other can be chosen.
   parent?: IntakeParent | undefined;
   // Set by an empty collection's "New item in": the form starts there.
@@ -207,6 +281,7 @@ type NewItemFormProps = {
 
 export function NewItemForm({
   connection,
+  ids,
   parent,
   collection,
   onCancel,
@@ -231,6 +306,7 @@ export function NewItemForm({
       <IntakeForm
         collections={collections.value}
         first={first}
+        ids={ids}
         parent={parent}
         onCancel={onCancel}
         onCreated={onCreated}

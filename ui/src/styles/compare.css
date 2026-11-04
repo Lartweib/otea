@@ -1,0 +1,297 @@
+/* Two rounds on one clock, and the verdict given where the round is read. */
+
+.cr {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.cr-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+}
+
+.cr-seg,
+.cr-pins {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.cr-seg {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 999px;
+  background: var(--well);
+}
+
+.cr-segb,
+.cr-pinb {
+  border: 0;
+  background: transparent;
+  color: var(--mut);
+  cursor: pointer;
+}
+
+.cr-segb {
+  height: 30px;
+  padding: 0 14px;
+  border-radius: 999px;
+  font: 500 13px var(--font-human);
+}
+
+.cr-segb[aria-pressed="true"] {
+  background: var(--sf);
+  box-shadow: 0 0 0 1px var(--line);
+  color: var(--ink);
+}
+
+.cr-mix {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cr-mix input {
+  accent-color: var(--ink);
+}
+
+.cr-swap {
+  margin-left: auto;
+}
+
+.cr-pins {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+}
+
+.cr-pin {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.cr-pinb {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1px var(--off);
+  font: 600 11.5px var(--font-machine);
+}
+
+.cr-pinb[aria-pressed="true"] {
+  background: var(--ink);
+  box-shadow: none;
+  color: var(--bg);
+}
+
+.cr-stage {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.cr-layer {
+  position: relative;
+  aspect-ratio: var(--ratio, 16 / 9);
+  overflow: hidden;
+  border-radius: var(--r-m);
+  background: var(--well);
+}
+
+.cr-media {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* Laid over each other, both layers take the one frame; B is wiped, faded or differenced. */
+.cr-stage:not([data-mode="side"]) {
+  grid-template-columns: minmax(0, 1fr);
+  width: 100%;
+  max-width: 720px;
+}
+
+.cr-stage:not([data-mode="side"]) .cr-layer {
+  grid-area: 1 / 1;
+}
+
+.cr-stage[data-mode="slider"] .cr-layer[data-role="b"] {
+  clip-path: inset(0 0 0 var(--slide));
+}
+
+.cr-stage[data-mode="onion"] .cr-layer[data-role="b"] {
+  opacity: var(--mix);
+}
+
+.cr-stage[data-mode="difference"] .cr-layer[data-role="b"] {
+  background: transparent;
+  mix-blend-mode: difference;
+}
+
+.cr-tag {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 2;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: var(--sf);
+  box-shadow: 0 0 0 1px var(--line);
+  font: 500 11.5px var(--font-machine);
+}
+
+.cr-stage:not([data-mode="side"]) .cr-tag[data-side="b"] {
+  right: 10px;
+  left: auto;
+}
+
+.cr-stage[data-mode="difference"] .cr-layer .cr-tag {
+  display: none;
+}
+
+.cr-legend {
+  top: auto;
+  bottom: 10px;
+}
+
+.cr-handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: var(--slide);
+  z-index: 2;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--sf);
+  box-shadow: 0 0 0 1px var(--ink);
+  pointer-events: none;
+}
+
+.cr-wipe {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: ew-resize;
+}
+
+.cr-clock {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+.cr-play {
+  fill: var(--ink);
+  stroke: var(--ink);
+  stroke-width: 1.4;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.cr-time {
+  display: grid;
+  line-height: 1.3;
+}
+
+.cr-time .t-id {
+  color: var(--ink);
+}
+
+.cr-track {
+  position: relative;
+  display: flex;
+  flex: 1 1 220px;
+  align-items: center;
+  min-width: 160px;
+}
+
+.cr-track input {
+  width: 100%;
+  accent-color: var(--ink);
+}
+
+.cr-mark {
+  position: absolute;
+  top: -6px;
+  width: 7px;
+  height: 7px;
+  margin-left: -3.5px;
+  border-radius: 50%;
+  background: var(--you);
+  pointer-events: none;
+}
+
+/* ---- the verdict, in place ---- */
+.rd-verdict-form {
+  display: grid;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.rd-marks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.rd-markchip {
+  height: 24px;
+  padding: 0 9px;
+  border: 0;
+  border-radius: 999px;
+  background: color-mix(in oklch, var(--you) 14%, var(--sf));
+  font: 500 11.5px var(--font-machine);
+  color: var(--you-ink);
+  cursor: pointer;
+}
+
+.rd-note-input {
+  width: 100%;
+  min-height: 56px;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: var(--r-m);
+  background: var(--bg);
+  box-shadow: inset 0 0 0 1px var(--off);
+  font: 400 14px / 1.5 var(--font-human);
+  color: var(--ink);
+  resize: vertical;
+}
+
+.rd-note-input:focus {
+  outline: none;
+  box-shadow: inset 0 0 0 1.5px var(--ink);
+}
+
+.rd-verdict-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+@media (max-width: 47.99rem) {
+  .cr-stage[data-mode="side"] {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .cr-swap {
+    margin-left: 0;
+  }
+}

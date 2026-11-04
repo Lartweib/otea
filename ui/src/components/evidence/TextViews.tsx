@@ -14,12 +14,12 @@ function digits(largest: number): CSSProperties {
 // Text larger than this is not drawn here: it opens on its own.
 const MAX_TEXT_BYTES = 2 * 1024 * 1024;
 
-type Text = { status: 'loading' } | { status: 'ready'; text: string } | { status: 'failed' };
+export type Text = { status: 'loading' } | { status: 'ready'; text: string } | { status: 'failed' };
 
 // An entry never changes, so its text is fetched once per page.
 const texts = new Map<number, string>();
 
-function useEvidenceText(evidence: Evidence): Text {
+export function useEvidenceText(evidence: Evidence): Text {
   const { id, size } = evidence;
   const cached = texts.get(id);
   const [state, setState] = useState<Text>(
@@ -47,7 +47,7 @@ function useEvidenceText(evidence: Evidence): Text {
   return size > MAX_TEXT_BYTES ? { status: 'failed' } : state;
 }
 
-function TextState({ state, evidence }: { state: Text; evidence: Evidence }) {
+export function TextState({ state, evidence }: { state: Text; evidence: Evidence }) {
   const message =
     state.status === 'loading'
       ? t('evidence.loading')

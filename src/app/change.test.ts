@@ -158,7 +158,7 @@ describe('change preset', () => {
         at,
       );
 
-    expect(preset.version).toBe(2);
+    expect(preset.version).toBe(3);
     expect(preset.types.map(({ name, children, root }) => [name, children, root])).toEqual([
       ['change', ['repo_task'], true],
       ['repo_task', [], false],

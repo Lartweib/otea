@@ -5,6 +5,7 @@ import { typeOf } from '../../item-types.ts';
 import { Icon, Node, nodeLabel } from '../../kit/index.ts';
 import { activeLease } from '../../lease.ts';
 import { itemNodeKind, type NodeKind } from '../../node-kind.ts';
+import { stateWord } from '../../preset-words.ts';
 import { hashFor } from '../../selection.ts';
 import type { CollectionView, RelatedItem } from '../../types.ts';
 import type { CollectionOf } from '../ItemList.tsx';
@@ -70,7 +71,9 @@ export function RelatedRow({
           <span>{related.title}</span>
         </span>
         <span className="rel-state">
-          {lease ? `${related.state} · ${lease.holder}` : related.state}
+          {lease
+            ? `${stateWord(type, related.state)} · ${lease.holder}`
+            : stateWord(type, related.state)}
         </span>
         {trail}
       </a>

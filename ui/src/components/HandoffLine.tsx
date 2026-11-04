@@ -4,6 +4,7 @@ import { agoLabel, handoffOf, leadRelation, waitingChildren } from '../handoff.t
 import { t } from '../i18n/i18n.ts';
 import { AgentMark, Icon, Node, nodeLabel } from '../kit/index.ts';
 import { moduleFor } from '../modules/registry.ts';
+import { stateWord } from '../preset-words.ts';
 import { openLabel } from '../relations.ts';
 import { hashFor } from '../selection.ts';
 import type { ItemView, TypeView } from '../types.ts';
@@ -25,7 +26,7 @@ const THUMBS = 2;
 // one relation (not the parent: the crumb above the title names it); for a parent, its children's
 // progress and the children waiting for you; and a gated action that waits for your move.
 export function HandoffLine({ item, type, canWrite, collectionOf }: HandoffLineProps) {
-  const handoff = handoffOf(item.events);
+  const handoff = handoffOf(item.events, (state) => stateWord(type, state));
   const severity = type?.fields.find(
     (field) => field.module === 'severity' && (item.fields[field.name] ?? '') !== '',
   );

@@ -12,7 +12,7 @@ const entries = (names: string[]): SidebarEntry[] =>
 const render = (
   list: SidebarEntry[],
   allWork: boolean,
-  o: { folded?: boolean; onCreate?: () => void } = {},
+  o: { folded?: boolean; onCreate?: () => void; lan?: boolean } = {},
 ) =>
   renderToStaticMarkup(
     createElement(CollectionRail, {
@@ -24,10 +24,20 @@ const render = (
       allWork,
       folded: o.folded ?? false,
       onCreate: o.onCreate,
+      lan: o.lan,
     }),
   );
 
 describe('CollectionRail', () => {
+  it('shows Phone access in the project section only when it is given', () => {
+    const shown = render(entries(['trabajo']), false, { lan: true });
+
+    expect(shown).toContain('href="#/lan"');
+    expect(shown).toContain('aria-current="page"');
+    expect(shown.indexOf('Modules')).toBeLessThan(shown.indexOf('Phone access'));
+    expect(render(entries(['trabajo']), false)).not.toContain('Phone access');
+  });
+
   it('leads with All work when the project has several collections', () => {
     const html = render(entries(['trabajo', 'bugs']), true);
 

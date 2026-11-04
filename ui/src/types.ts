@@ -1,5 +1,5 @@
 import type { Layout } from '../../src/core/modules.ts';
-import type { FieldRequirement } from '../../src/core/preset.ts';
+import type { FieldRequirement, Labels } from '../../src/core/preset.ts';
 import type { ChildrenSummary, RelationRef, RelationView } from '../../src/core/relations.ts';
 
 // Relation kinds and how they read from either item, from the core. Type-only.
@@ -70,7 +70,7 @@ export type State = { name: string; turn: Turn; closes?: Closing };
 
 export type EvidenceRole = 'before' | 'after' | 'single';
 
-export type EvidenceKind = 'image' | 'video' | 'diff' | 'log' | 'file';
+export type EvidenceKind = 'image' | 'video' | 'diff' | 'log' | 'diagram' | 'file';
 
 // A file an agent attached as proof. Before/after carry no pair id: the latest of each pair up.
 export type Evidence = {
@@ -114,7 +114,35 @@ export type ItemView = Omit<ItemWithEvents, 'relations'> & {
   gates?: Record<string, boolean>;
 };
 
-export type Session = { canWrite: boolean };
+// canManageDevices: this computer's signed-in browser, the only one that pairs and revokes devices.
+// canConfigure: the same browser; it alone changes the project's paths, presets and blueprint.
+export type Session = { canWrite: boolean; canManageDevices?: boolean; canConfigure?: boolean };
+
+// A phone or tablet paired over the LAN; hint is the end of its token's hash.
+export type Device = {
+  id: string;
+  name: string;
+  pairedAt: string;
+  lastSeenAt: string | null;
+  hint: string;
+};
+
+// LAN access as the desk sees it: off unless otea serve --lan; the code while one is good.
+export type LanView = {
+  enabled: boolean;
+  urls: string[];
+  code: {
+    code: string;
+    expiresAt: string;
+    url: string;
+    qr: { size: number; cells: boolean[][] };
+  } | null;
+  devices: Device[];
+};
+
+export type PairingPeek = { project: string; expiresAt: string };
+
+export type Paired = { project: string; device: Device };
 
 // Module names have one source, the core preset format. Type-only: nothing from src/ is bundled.
 export type { FieldModule, FieldRequirement } from '../../src/core/preset.ts';
@@ -149,6 +177,8 @@ export type TypeView = {
   root?: boolean;
   // The actions its workflow gates (push, merge) and the states that allow each, when it has any.
   gates?: Record<string, string[]>;
+  // Its words in the other languages its preset speaks, by language (see preset-words.ts).
+  labels?: Labels;
 };
 
 // How a collection lists its items: the list or the grid (a board is drawn as the list), its
@@ -178,4 +208,45 @@ export type PresetView = {
   types: TypeView[];
   view: ViewSpec;
   collections: string[];
+};
+
+export type PathKind = 'folder' | 'repo';
+
+export type ProjectPath = { path: string; kind: PathKind; missing: boolean };
+
+// An item waiting for you in some project, with its type's icon there.
+export type WaitingItem = Item & { icon?: string };
+
+// A project on this machine, as the projects inbox reads it (GET /api/projects).
+export type ProjectOverview = {
+  id: string;
+  name: string;
+  storage: 'common' | 'local';
+  // The project this server serves.
+  current: boolean;
+  paths: ProjectPath[];
+  waiting: WaitingItem[];
+  withAgents: number;
+  open: number;
+  // The address of the otea serve that shows it, when that is another server.
+  served?: string;
+  unavailable?: string;
+};
+
+export type GateKind = 'hard' | 'soft';
+
+export type RepoSettings = { name: string; folder: string; gate: GateKind; items: number };
+
+export type ProjectSettings = {
+  id: string;
+  name: string;
+  storage: 'common' | 'local';
+  root: string;
+  dataDir: string;
+  registered: boolean;
+  database: { path: string; bytes: number };
+  evidence: { path: string; bytes: number; files: number };
+  items: number;
+  collections: Array<{ name: string; preset: string }>;
+  paths: Array<ProjectPath & { repos: RepoSettings[] }>;
 };

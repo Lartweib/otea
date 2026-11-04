@@ -5,19 +5,27 @@ import {
   fetchItems,
   fetchPresets,
   fetchProject,
+  fetchProjects,
   fetchSession,
 } from './api.ts';
 import { applyAttention } from './attention-dom.ts';
 import { catalogEntries } from './catalog.ts';
+import { ActivityDrawer } from './components/ActivityDrawer.tsx';
+import { BriefView } from './components/BriefView.tsx';
 import { CollectionRail } from './components/CollectionRail.tsx';
 import { EmptyDetail } from './components/EmptyDetail.tsx';
+import { FirstRun } from './components/EmptyStates.tsx';
 import { ItemDetail } from './components/ItemDetail.tsx';
 import type { ChildrenOf, CollectionOf, Unfolding } from './components/ItemList.tsx';
+import { LanguageNote } from './components/LanguageNote.tsx';
+import { LanPanel } from './components/LanPanel.tsx';
 import { ListPane } from './components/ListPane.tsx';
 import { CatalogOverview, ModuleIndex, ModulePanel } from './components/ModuleCatalog.tsx';
 import { useMenu } from './components/menu.ts';
 import { type IntakeParent, NewItemForm } from './components/NewItemForm.tsx';
 import { PreferencesButton } from './components/PreferencesButton.tsx';
+import { ProjectSettings } from './components/ProjectSettings.tsx';
+import { ProjectsInbox } from './components/ProjectsInbox.tsx';
 import { Sheet } from './components/Sheet.tsx';
 import { browserStorage, Divider, useSplit } from './components/Split.tsx';
 import { Brand, Topbar } from './components/Topbar.tsx';
@@ -26,6 +34,7 @@ import { useDetailMotion, useViewPrefs } from './components/workspace-motion.ts'
 import {
   type Connection,
   useAttention,
+  useBeat,
   useHideTier,
   useLive,
   useMediaQuery,
@@ -49,6 +58,7 @@ import { pillState } from './presence.ts';
 import type { Remote } from './remote.ts';
 import { groupByTurn } from './sections.ts';
 import { hashFor, ITEMS_HASH, TRIAGE_HASH } from './selection.ts';
+import { Studio } from './studio/Studio.tsx';
 import type { CollectionView, Item, ItemView, PresetView } from './types.ts';
 import { useAgents } from './use-agents.ts';
 import { inCollection, sidebarEntries } from './workspace.ts';
@@ -196,17 +206,27 @@ export function App() {
   const selectedId = route.view === 'items' ? route.id : undefined;
   const items = useRemote(fetchItems, version, connection);
   const session = useRemote(fetchSession, 0, connection);
-  const collections = useRemote(fetchCollections, 0, connection);
-  const presets = useRemote(fetchPresets, 0, connection);
+  // Studio writes presets and boards: what it changed is read again.
+  const [studioWrites, setStudioWrites] = useState(0);
+  const collections = useRemote(fetchCollections, studioWrites, connection);
+  const presets = useRemote(fetchPresets, studioWrites, connection);
   const collectionOf = collectionLookup(collections);
   const canWrite = session.status === 'ready' && session.value.canWrite;
+  const canManageDevices = session.status === 'ready' && session.value.canManageDevices === true;
+  // A paired device works on items; the project's setup changes only from this computer's browser.
+  const canConfigure = session.status === 'ready' && session.value.canConfigure === true;
   const [intake, setIntake] = useState<Intake>();
+  // No collection yet: the first run, its preset chosen in the detail and drawn on the list's lanes.
+  const [firstPreset, setFirstPreset] = useState<string>();
+  const [activity, setActivity] = useState(false);
   // The split is a way of looking, not a place: it stays out of the hash, so links and history keep
   // pointing at items.
   const split = useSplit();
   const listPane = useHideTier();
   const [chosen, setCollection] = useState<string>();
   const names = collections.status === 'ready' ? collections.value.map((each) => each.name) : [];
+  const firstRun =
+    collections.status === 'ready' && names.length === 0 && presets.status === 'ready';
   // All work shows only with two collections or more; with one, that collection is the view.
   const allWorkShown = names.length >= 2;
   const collection = chosen ?? (names.length === 1 ? names[0] : undefined);
@@ -243,18 +263,29 @@ export function App() {
     if (phone) window.scrollTo({ top: 0 });
   };
   const project = useRemote(fetchProject, 0, connection);
+  // Every project on this machine, for the switcher: read again as this project changes, and on a
+  // slow beat for the others, which this server's live feed does not watch.
+  const projectsBeat = useBeat(30_000);
+  const projects = useRemote(fetchProjects, version * 1000 + projectsBeat, connection);
   const agents = useAgents(version, presence, connection);
   const wide = useMediaQuery('(min-width: 64rem)');
   // Between the phone and 64rem the sidebar stays folded to its rail: the list needs the room.
   const folded = !phone && (!split.sidebar || !wide);
   const panel = useMenu();
   const rail = sidebarEntries(names, allItems, collectionOf);
-  const create = canWrite
-    ? (into: string | undefined) => {
-        panel.close();
-        openIntake(into);
-      }
-    : undefined;
+  // Intake needs a collection to file into: with none yet, the first run says how to add one.
+  const create =
+    canWrite && names.length > 0
+      ? (into: string | undefined) => {
+          panel.close();
+          // A collection's own + lists it, unless All work already shows it: the new row is carried
+          // onto its lane in view.
+          if (into !== undefined && collection !== undefined && into !== collection) {
+            setCollection(into);
+          }
+          openIntake(into);
+        }
+      : undefined;
   const railProps = {
     entries: rail,
     yoursTotal: rail.reduce((sum, entry) => sum + entry.yours, 0),
@@ -263,6 +294,9 @@ export function App() {
     allWork: allWorkShown,
     onCreate: create,
     modules: route.view === 'modules',
+    studio: route.view === 'studio',
+    lan: canManageDevices ? route.view === 'lan' : undefined,
+    settings: route.view === 'settings',
   };
   const choose = (name: string | undefined) => {
     setCollection(name);
@@ -372,17 +406,47 @@ export function App() {
         items={allItems}
         collectionOf={collectionOf}
         panel={panelButton}
+        onActivity={() => setActivity((open) => !open)}
+        projects={projects.status === 'ready' ? projects.value : undefined}
       />
-      {phone && canWrite && route.view === 'items' && !selectedId && !creating ? (
+      {phone && create && route.view === 'items' && !selectedId && !creating ? (
         <button type="button" className="new-fab" onClick={() => openIntake(collection)}>
           <Icon name="plus" />
           {t('app.newItem')}
         </button>
       ) : null}
-      {route.view === 'modules' ? (
+      {route.view === 'projects' ? (
+        <ProjectsInbox version={version} connection={connection} />
+      ) : route.view === 'settings' ? (
+        <ProjectSettings
+          version={version}
+          connection={connection}
+          canWrite={canConfigure}
+          rail={phone ? null : sidebarRail}
+          sidebar={!folded}
+        />
+      ) : route.view === 'modules' ? (
         <Catalog
           name={route.name}
           presets={presets}
+          rail={phone ? null : sidebarRail}
+          sidebar={!folded}
+        />
+      ) : route.view === 'studio' ? (
+        <Studio
+          page={route.page}
+          connection={connection}
+          version={version}
+          canWrite={canConfigure}
+          phone={phone}
+          items={allItems}
+          rail={phone ? null : sidebarRail}
+          sidebar={!folded}
+          onChanged={() => setStudioWrites((count) => count + 1)}
+        />
+      ) : route.view === 'lan' ? (
+        <LanPanel
+          canManage={canManageDevices}
           rail={phone ? null : sidebarRail}
           sidebar={!folded}
         />
@@ -394,6 +458,15 @@ export function App() {
             collectionOf={collectionOf}
             version={version}
             onExit={leaveTriage}
+          />
+        </main>
+      ) : route.view === 'brief' ? (
+        <main className="brief-layout">
+          <BriefView
+            ids={route.ids}
+            items={allItems}
+            collections={collections.status === 'ready' ? collections.value : []}
+            version={version}
           />
         </main>
       ) : (
@@ -443,6 +516,12 @@ export function App() {
               listWidth={split.width}
               gridWidth={gridPane}
               bulkHost={bulkHost}
+              collections={collections.status === 'ready' ? names : undefined}
+              presets={presets.status === 'ready' ? presets.value : []}
+              firstPreset={firstPreset}
+              onFirstPreset={setFirstPreset}
+              agents={agents ? agents.map(({ name }) => name) : undefined}
+              onCreate={canWrite ? () => openIntake(collection) : undefined}
             />
           </div>
           {/* The grid pane's cell again, over the scroller: the bulk tray docks to its bottom edge. */}
@@ -476,6 +555,7 @@ export function App() {
                   <NewItemForm
                     key={intake?.parent?.id ?? 'new'}
                     connection={connection}
+                    ids={allItems.map(({ id }) => id)}
                     parent={intake?.parent}
                     collection={intake?.collection}
                     onCancel={closeIntake}
@@ -494,11 +574,20 @@ export function App() {
                     itemOf={(id) => allItems.find((each) => each.id === id)}
                     trayHost={detailHost}
                   />
-                ) : detailOff || items.status !== 'ready' ? null : (
+                ) : detailOff || items.status !== 'ready' ? null : firstRun ? (
+                  <FirstRun
+                    presets={presets.value}
+                    chosen={firstPreset}
+                    onChoose={setFirstPreset}
+                    route={false}
+                  />
+                ) : (
                   <EmptyDetail
                     items={scoped}
                     collection={collection}
-                    onCreate={canWrite ? () => openIntake(collection) : undefined}
+                    onCreate={
+                      canWrite && names.length > 0 ? () => openIntake(collection) : undefined
+                    }
                   />
                 )}
               </div>
@@ -506,6 +595,17 @@ export function App() {
           )}
         </main>
       )}
+      <ActivityDrawer
+        open={activity}
+        onClose={() => setActivity(false)}
+        items={allItems}
+        collections={collections.status === 'ready' ? collections.value : []}
+        version={version}
+        connection={connection}
+        phone={phone}
+      />
+      {/* On a phone Preferences sits in the panel, out of sight: the note stands on its own there. */}
+      {phone ? <LanguageNote /> : null}
     </div>
   );
 }

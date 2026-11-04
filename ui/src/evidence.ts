@@ -5,7 +5,7 @@ import type { Evidence, LayoutEntry, LayoutSlot, TypeView } from './types.ts';
 // what a module placed only there holds goes to the plain list with the other leftovers.
 const DRAWN: readonly LayoutSlot[] = ['evidence', 'body', 'side'];
 
-const EVIDENCE_MODULES: readonly string[] = ['images', 'recording', 'diff', 'log'];
+const EVIDENCE_MODULES: readonly string[] = ['images', 'recording', 'diff', 'log', 'diagram'];
 
 export function isEvidenceModule(entry: LayoutEntry): boolean {
   return EVIDENCE_MODULES.includes(entry.module) && entry.id !== undefined;
@@ -59,6 +59,7 @@ function wording({ module, variant }: LayoutEntry): Wording {
   if (module === 'images') return say('evidence.image', 'evidence.imageEmpty');
   if (module === 'recording') return say('evidence.recording', 'evidence.recordingEmpty');
   if (module === 'diff') return say('evidence.diff', 'evidence.diffEmpty');
+  if (module === 'diagram') return say('evidence.diagram', 'evidence.diagramEmpty');
   return say('evidence.log', 'evidence.logEmpty');
 }
 

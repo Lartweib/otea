@@ -1,6 +1,7 @@
 import { resolve } from 'node:path';
 import type { DatabaseSync } from 'node:sqlite';
 import { fileURLToPath } from 'node:url';
+import { renderUnicodeCompact } from 'uqr';
 import { type AgentsMdAction, connectAgent, writeAgentsMd } from '../app/agents.ts';
 import {
   type AppliedBlueprint,
@@ -11,6 +12,7 @@ import {
   coordinationPlaybook,
   updateBlueprint,
 } from '../app/blueprints.ts';
+import { briefFor } from '../app/brief.ts';
 import {
   addCollection,
   collectionIcon,
@@ -20,6 +22,7 @@ import {
   setCollectionIcon,
   typeOfItem,
 } from '../app/collections.ts';
+import { listDevices, revokeDevice } from '../app/devices.ts';
 import { listEvents } from '../app/events.ts';
 import { attachEvidence } from '../app/evidence.ts';
 import { checkGate, type GateCheck } from '../app/gates.ts';
@@ -60,7 +63,9 @@ import { parseDuration } from '../core/lease.ts';
 import { describeRelation, RELATION_KINDS } from '../core/relations.ts';
 import { TURNS, type Turn } from '../core/workflow.ts';
 import { createMcpServer, serveStdio } from '../mcp/server.ts';
-import { DEFAULT_PORT, listen } from '../server/listen.ts';
+import { formatCode, lanAddresses, localName } from '../server/lan.ts';
+import { ALL_INTERFACES, DEFAULT_PORT, listen } from '../server/listen.ts';
+import { pairingUrl } from '../server/pairing.ts';
 import { createServer } from '../server/server.ts';
 import { ensureUiToken, readUiToken } from '../server/token.ts';
 import type { EventFilter } from '../store/queries.ts';
@@ -713,6 +718,29 @@ function eventFilter({ option }: Input): EventFilter {
   return filter;
 }
 
+const brief: Command = {
+  name: 'brief',
+  summary:
+    'Print a Markdown brief for the items given, in the order their blocks allow, with its limits (--constraint, repeatable) and success criteria (--success, repeatable), which replace the default lines',
+  args: ['ids...'],
+  options: {
+    constraint: { multiple: true, placeholder: 'text' },
+    success: { multiple: true, placeholder: 'text' },
+  },
+  execute: ({ cwd, args, options }) => {
+    const limits = options('constraint');
+    const success = options('success');
+    const written = withProject(cwd, (project) =>
+      briefFor(project, {
+        ids: args,
+        ...(limits.length > 0 ? { limits } : {}),
+        ...(success.length > 0 ? { success } : {}),
+      }),
+    );
+    return { data: written, text: written.markdown.trimEnd() };
+  },
+};
+
 const events: Command = {
   name: 'events',
   summary:
@@ -915,21 +943,57 @@ function portFrom(value: string | undefined): number {
   return port;
 }
 
-type Served = { url: string; signInUrl: string };
+// With LAN access: the URLs a device on the network opens (the .local name first when it
+// resolves), the first pairing code, and the same pairing link by IP when the first is a name.
+type LanServed = {
+  urls: string[];
+  pairingUrl: string | undefined;
+  byAddress?: string;
+  code: string | undefined;
+};
 
-async function serveUntil(signal: AbortSignal, cwd: string, port: number): Promise<Served> {
+type Served = { url: string; signInUrl: string; lan?: LanServed };
+
+async function serveUntil(
+  signal: AbortSignal,
+  cwd: string,
+  port: number,
+  lan: boolean,
+): Promise<Served> {
   const project = openProject(cwd);
   try {
     const dir = project.dataDir;
     const token = ensureUiToken(dir);
-    const running = await listen(createServer(project, { token }), port);
+    const addresses = lan ? lanAddresses() : [];
+    const name = lan ? await localName(addresses) : undefined;
+    const names = name ? [name] : [];
+    const server = createServer(project, lan ? { token, lan: { addresses, names } } : { token });
+    const running = await listen(server, port, lan ? ALL_INTERFACES : undefined);
     writeServeFile(dir, { port: running.port, pid: process.pid });
     const stop = () => {
       removeServeFile(dir, process.pid);
       return running.close().finally(() => project.db.close());
     };
     signal.addEventListener('abort', stop, { once: true });
-    return { url: running.url, signInUrl: signInUrl(running.url, token) };
+    const served = { url: running.url, signInUrl: signInUrl(running.url, token) };
+    if (!server.lan) return served;
+    const urls = [...names, ...addresses].map((host) => `http://${host}:${running.port}`);
+    const code = server.lan.codes.issue();
+    const first = urls[0];
+    const address = addresses[0];
+    const byAddress =
+      names.length > 0 && address !== undefined
+        ? { byAddress: pairingUrl(`http://${address}:${running.port}`, code) }
+        : {};
+    return {
+      ...served,
+      lan: {
+        urls,
+        pairingUrl: first === undefined ? undefined : pairingUrl(first, code),
+        ...byAddress,
+        code: first === undefined ? undefined : formatCode(code.code),
+      },
+    };
   } catch (error) {
     project.db.close();
     throw error;
@@ -940,20 +1004,64 @@ function signInUrl(url: string, token: string): string {
   return `${url}/auth?token=${encodeURIComponent(token)}`;
 }
 
+function lanText(lan: LanServed): string {
+  if (lan.pairingUrl === undefined) {
+    return 'LAN access is on, but this computer has no private network address a phone could reach';
+  }
+  return [
+    `LAN access on: ${lan.urls.join(', ')} (same network only; use Tailscale when away)`,
+    `Pair a phone: scan this code, or open ${lan.pairingUrl} (pairing code ${lan.code}, 10 minutes, works once)`,
+    ...(lan.byAddress ? [`If the phone cannot open the .local name, open ${lan.byAddress}`] : []),
+    renderUnicodeCompact(lan.pairingUrl, { ecc: 'M', border: 2 }),
+    'A new code and the paired devices are in the UI, under Phone access; otea devices list and revoke them too',
+  ].join('\n');
+}
+
 const serve: Command = {
   name: 'serve',
-  summary: `Serve the live UI on 127.0.0.1 (default port ${DEFAULT_PORT}) until Ctrl+C and sign this browser in`,
+  summary: `Serve the live UI on 127.0.0.1 (default port ${DEFAULT_PORT}) until Ctrl+C and sign this browser in; --lan also lets phones on the same network pair and open it`,
   args: [],
-  options: { port: {}, 'no-open': { flag: true } },
+  options: { port: {}, 'no-open': { flag: true }, lan: { flag: true } },
   execute: async ({ cwd, option, flag, signal, openUrl, warn }) => {
-    const { url, signInUrl } = await serveUntil(signal, cwd, portFrom(option('port')));
+    const served = await serveUntil(signal, cwd, portFrom(option('port')), flag('lan'));
+    const { url, signInUrl, lan } = served;
     if (!flag('no-open')) {
       await openUrl(signInUrl).catch((error: unknown) => {
         const reason = error instanceof Error ? error.message : String(error);
         warn(`Could not open a browser (${reason}); run "otea open" to try again`);
       });
     }
-    return { data: { url }, text: `Otea running at ${url}` };
+    const running = `Otea running at ${url}`;
+    if (!lan) return { data: { url }, text: running };
+    return { data: { url, lan }, text: `${running}\n${lanText(lan)}` };
+  },
+};
+
+const devicesList: Command = {
+  name: 'devices list',
+  summary: 'List the devices paired over the LAN (otea serve --lan), with when each was last seen',
+  args: [],
+  options: {},
+  execute: ({ cwd }) => {
+    const devices = withProject(cwd, (project) => listDevices(project.db));
+    const text = devices
+      .map(
+        ({ id, name, pairedAt, lastSeenAt, hint }) =>
+          `${id}  ${name}  paired ${pairedAt}  last seen ${lastSeenAt ?? 'never'}  token ··${hint}`,
+      )
+      .join('\n');
+    return { data: devices, text: text || 'No paired devices' };
+  },
+};
+
+const devicesRevoke: Command = {
+  name: 'devices revoke',
+  summary: 'Revoke a paired device: its token stops working at once, even while otea serve runs',
+  args: ['id'],
+  options: {},
+  execute: ({ cwd, args: [id = ''] }) => {
+    const device = withProject(cwd, (project) => revokeDevice(project.db, id));
+    return { data: device, text: `Revoked ${device.id} (${device.name})` };
   },
 };
 
@@ -1163,6 +1271,7 @@ export const COMMANDS: readonly Command[] = [
   list,
   show,
   playbook,
+  brief,
   events,
   wait,
   claim,
@@ -1180,6 +1289,8 @@ export const COMMANDS: readonly Command[] = [
   hookRemove,
   serve,
   open,
+  devicesList,
+  devicesRevoke,
   mcp,
 ];
 

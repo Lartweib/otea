@@ -133,6 +133,14 @@ describe('api', () => {
               default: 'medium',
             },
           ],
+          // The preset's words in Spanish ride along; the keys above stay as they are.
+          labels: {
+            es: expect.objectContaining({
+              label: 'Tarea',
+              states: expect.objectContaining({ in_progress: 'en curso' }),
+              fields: expect.objectContaining({ priority: 'prioridad' }),
+            }),
+          },
         }),
       ]);
     });
@@ -177,22 +185,34 @@ describe('api', () => {
 
       expect(response.status).toBe(200);
       const presets = (await response.json()) as Array<{ name: string; fields: unknown[] }>;
-      expect(presets.map(({ name }) => name)).toEqual(['bug-triage', 'change', 'tasks']);
-      expect(presets[0]?.fields).toContainEqual({
+      expect(presets.map(({ name }) => name)).toEqual([
+        'architecture',
+        'bug-triage',
+        'change',
+        'review',
+        'tasks',
+      ]);
+      expect(presets[1]?.fields).toContainEqual({
         name: 'severity',
         module: 'severity',
         required: 'complete',
         values: ['low', 'medium', 'high', 'critical'],
       });
-      expect(presets[2]).toMatchObject({
-        types: [expect.objectContaining({ name: 'task', layout: expect.any(Object) })],
+      expect(presets[4]).toMatchObject({
+        types: [
+          expect.objectContaining({
+            name: 'task',
+            layout: expect.any(Object),
+            labels: { es: expect.objectContaining({ label: 'Tarea' }) },
+          }),
+        ],
         view: { kind: 'list', groupBy: 'turn' },
       });
-      expect({ ...presets[2], types: undefined, view: undefined }).toEqual({
+      expect({ ...presets[4], types: undefined, view: undefined }).toEqual({
         types: undefined,
         view: undefined,
         name: 'tasks',
-        version: 1,
+        version: 2,
         origin: 'official',
         icon: 'checklist',
         fields: [
@@ -219,8 +239,10 @@ describe('api', () => {
       }>;
 
       expect(presets.map(({ name, origin }) => ({ name, origin }))).toEqual([
+        { name: 'architecture', origin: 'official' },
         { name: 'bug-triage', origin: 'official' },
         { name: 'change', origin: 'official' },
+        { name: 'review', origin: 'official' },
         { name: 'tasks', origin: 'official' },
         { name: 'reviews', origin: 'project' },
       ]);
@@ -392,7 +414,7 @@ types:
 
       expect(item).toMatchObject({
         fields: { description: 'For v1', priority: 'medium' },
-        presetVersion: 1,
+        presetVersion: 2,
       });
     });
 
@@ -403,6 +425,45 @@ types:
       expect(await response.json()).toEqual({
         error: { code: 'not_found', message: 'Item "TASKS-9" not found' },
       });
+    });
+  });
+
+  describe('GET /api/events', () => {
+    const summary = async (path: string) =>
+      ((await (await get(path)).json()) as Array<{ id: number; itemId: string; type: string }>).map(
+        ({ id, itemId, type }) => `${id} ${itemId} ${type}`,
+      );
+
+    it('lists the event log across items in commit order, without a session', async () => {
+      expect(await summary('/api/events')).toEqual([
+        '1 TASKS-1 created',
+        '2 BUGS-1 created',
+        '3 BUGS-1 transitioned',
+        '4 BUGS-1 transitioned',
+      ]);
+    });
+
+    it('reads after a cursor, by item or collection, and the newest with latest', async () => {
+      expect(await summary('/api/events?since=3')).toEqual(['4 BUGS-1 transitioned']);
+      expect(await summary('/api/events?collection=tasks')).toEqual(['1 TASKS-1 created']);
+      expect(await summary('/api/events?item=BUGS-1&limit=1')).toEqual(['2 BUGS-1 created']);
+      expect(await summary('/api/events?latest=2')).toEqual([
+        '3 BUGS-1 transitioned',
+        '4 BUGS-1 transitioned',
+      ]);
+    });
+
+    it('rejects a cursor or a count that is not a whole number with 400', async () => {
+      for (const query of ['since=-1', 'limit=0', 'latest=ten', 'limit=2&latest=2']) {
+        const response = await get(`/api/events?${query}`);
+
+        expect(response.status).toBe(400);
+        expect(await response.json()).toMatchObject({ error: { code: 'invalid_query' } });
+      }
+    });
+
+    it('returns 404 for an unknown collection', async () => {
+      expect((await get('/api/events?collection=nope')).status).toBe(404);
     });
   });
 

@@ -316,6 +316,22 @@ On a phone the selected item unfolds in place under its row, with its moves at t
 
 **Agents at work.** Otea notes each agent it sees: every agent command, from the CLI or the MCP server, records when that agent was last seen (to within 30 seconds, so a busy agent does not write on every call), and the harness it came through: the `clientInfo` name the MCP client sends in `initialize` (`claude-code`, say), or `cli` for an agent only seen at the command line. An MCP server notes its agent as soon as the client connects. `GET /api/agents` returns `{"agents":[{"name","harness","holding","lastSeen","live"}]}`: `harness` is `null` when unknown (agents that wrote before presence was kept start from their last event), `holding` lists the ids of the items the agent holds a live lease on, `lastSeen` is an ISO time, and `live` is true when the agent was seen in the last 5 minutes or holds a lease. Live agents come first, then the most recently seen; the human is never listed. Besides `change`, `GET /api/stream` sends a `presence` event when an agent is seen anew, changes harness or takes or drops a lease; time running out (the 5 minutes, a lease expiring) sends nothing, so the UI reads `lastSeen` and the leases for that.
 
+### A phone on the same network
+
+`otea serve` answers this computer only (127.0.0.1). `otea serve --lan` also listens on the local network so a phone can pair once and then open the UI:
+
+```sh
+otea serve --lan            # prints the LAN address, a pairing code and its QR code
+otea devices list           # the paired devices, with when each was last seen
+otea devices revoke <id>    # its token stops working at once
+```
+
+The terminal and **Phone access** in the sidebar's project section (`#/lan`, this computer's signed-in browser only) show a QR code for `http://<lan-ip>:<port>/pair#code=XXXX-XXXX`. The code lasts 10 minutes, works once, and is thrown away after 5 wrong tries; **New code** shows another. The phone trades it for its own device token (an HTTP-only cookie; only its SHA-256 is stored), and each device can be revoked from the same page. A request from the network must come from a private address (including Tailscale's 100.64.0.0/10), name one of this computer's IP addresses as its host (never a DNS name), and carry a device token; without one it reaches only the pairing screen. Pairing attempts are limited to 10 a minute per address. Traffic on the LAN is plain HTTP, so use it on a network you trust, and reach Otea through Tailscale when away instead of opening a port.
+
+When this computer's `<hostname>.local` resolves (mDNS) to one of those addresses, the QR code and the terminal use it first, so a home-screen shortcut survives a new DHCP address; the same link by IP is printed and shown beside it for phones that cannot resolve `.local`. The server answers that one name besides its IPs; any other host name is refused.
+
+After pairing, the phone suggests adding Otea to its home screen (a web app manifest and icons, served before pairing too; no service worker, which browsers refuse on plain HTTP). On iOS the home-screen app keeps its own storage, apart from Safari: it opens on the pairing screen and pairs once more, by typing a new code. On Android over plain HTTP, Chrome adds a shortcut rather than installing the app.
+
 Working on the UI itself: keep `otea serve` running and start `npm run dev:ui` in the Otea checkout for hot reload (it proxies `/api` to port 4400).
 
 ## License

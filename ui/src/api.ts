@@ -1,11 +1,36 @@
+import type { FeedEvent } from './activity.ts';
+import type { WrittenBrief } from './brief.ts';
 import { t } from './i18n/i18n.ts';
 import { type Agent, parseAgents } from './presence.ts';
 import type { LinkRequest } from './relations.ts';
 import { serverMessage, unreachable } from './remote.ts';
-import type { CollectionView, Item, ItemView, PresetView, ProjectView, Session } from './types.ts';
+import type {
+  CollectionView,
+  EvidenceRole,
+  Item,
+  ItemView,
+  LanView,
+  Paired,
+  PairingPeek,
+  PresetView,
+  ProjectOverview,
+  ProjectSettings,
+  ProjectView,
+  Session,
+} from './types.ts';
 
 async function get(path: string, signal: AbortSignal): Promise<Response> {
   const response = await fetch(path, { signal, headers: { accept: 'application/json' } });
+  // A device on the LAN whose token was revoked (or never paired) goes back to the pairing screen.
+  if (response.status === 401) {
+    const body: unknown = await response
+      .clone()
+      .json()
+      .catch(() => undefined);
+    if ((body as { error?: { code?: unknown } } | undefined)?.error?.code === 'unpaired') {
+      window.location.assign('/pair');
+    }
+  }
   if (!response.ok && response.status !== 404) {
     throw new Error(t('error.getFailed', { path, status: response.status }));
   }
@@ -19,6 +44,24 @@ export async function fetchItems(signal: AbortSignal): Promise<Item[]> {
 export async function fetchItem(id: string, signal: AbortSignal): Promise<ItemView | null> {
   const response = await get(`/api/items/${encodeURIComponent(id)}`, signal);
   return response.status === 404 ? null : response.json();
+}
+
+// A brief for the items, in the order given; limits and success left out take the brief's defaults.
+export function writeBrief(request: {
+  ids: readonly string[];
+  limits?: readonly string[];
+  success?: readonly string[];
+}): Promise<WrittenBrief> {
+  return post<WrittenBrief>('/api/brief', request);
+}
+
+// The project's event log across items: the newest `latest` events, or those after the `since` cursor.
+export async function fetchEvents(
+  query: { latest: number } | { since: number },
+  signal: AbortSignal,
+): Promise<FeedEvent[]> {
+  const search = 'latest' in query ? `latest=${query.latest}` : `since=${query.since}`;
+  return (await get(`/api/events?${search}`, signal)).json();
 }
 
 // Served only to a signed-in browser, as a download unless it is an image, a video or plain text.
@@ -49,11 +92,15 @@ export async function fetchPresets(signal: AbortSignal): Promise<PresetView[]> {
   return (await get('/api/presets', signal)).json();
 }
 
+// A form sets its own content type (with the boundary); JSON says it.
 async function post<T>(path: string, payload: unknown): Promise<T> {
+  const form = payload instanceof FormData;
   const response = await fetch(path, {
     method: 'POST',
-    headers: { accept: 'application/json', 'content-type': 'application/json' },
-    body: JSON.stringify(payload),
+    headers: form
+      ? { accept: 'application/json' }
+      : { accept: 'application/json', 'content-type': 'application/json' },
+    body: form ? payload : JSON.stringify(payload),
   }).catch(() => {
     throw new Error(unreachable());
   });
@@ -66,15 +113,26 @@ export async function moveItem(id: string, to: string, reason: string): Promise<
   await post(`/api/items/${encodeURIComponent(id)}/move`, reason === '' ? { to } : { to, reason });
 }
 
-// parent: the item the new one is created under, as its child.
+export type NewFile = { file: File; role: EvidenceRole };
+
+// parent: the item the new one is created under, as its child. files: attached as evidence in the
+// same write, sent as a form (the item's JSON in its "item" part, each file in a "file" part).
 export function createItem(
   collection: string,
   type: string,
   fields: Record<string, string>,
   parent?: string,
+  files: readonly NewFile[] = [],
 ): Promise<Item> {
   const payload = { collection, type, fields, ...(parent === undefined ? {} : { parent }) };
-  return post<Item>('/api/items', payload);
+  if (files.length === 0) return post<Item>('/api/items', payload);
+  const form = new FormData();
+  form.append(
+    'item',
+    JSON.stringify({ ...payload, evidence: files.map(({ role }) => ({ role })) }),
+  );
+  for (const { file } of files) form.append('file', file, file.name);
+  return post<Item>('/api/items', form);
 }
 
 export async function linkItems({ id, kind, other }: LinkRequest): Promise<void> {
@@ -83,4 +141,79 @@ export async function linkItems({ id, kind, other }: LinkRequest): Promise<void>
 
 export async function unlinkItems({ id, kind, other }: LinkRequest): Promise<void> {
   await post(`/api/items/${encodeURIComponent(id)}/unlink`, { kind, other });
+}
+
+const lanQuery = (address: string | undefined) =>
+  address === undefined ? '' : `?address=${encodeURIComponent(address)}`;
+
+// LAN access and the paired devices, for this computer's signed-in browser; address picks the
+// network the QR code points at.
+export async function fetchLan(signal: AbortSignal, address?: string): Promise<LanView> {
+  return (await get(`/api/lan${lanQuery(address)}`, signal)).json();
+}
+
+export function newPairingCode(address?: string): Promise<LanView> {
+  return post<LanView>(`/api/lan/code${lanQuery(address)}`, {});
+}
+
+export async function revokeDevice(id: string): Promise<void> {
+  await post(`/api/devices/${encodeURIComponent(id)}/revoke`, {});
+}
+
+// A refused pairing keeps the server's code (invalid_code, code_expired, too_many_attempts…),
+// so the phone can word it in its own language.
+export class PairingRefused extends Error {
+  readonly code: string;
+
+  constructor(code: string, message: string) {
+    super(message);
+    this.code = code;
+  }
+}
+
+async function pairingCall<T>(path: string, payload: unknown): Promise<T> {
+  const response = await fetch(path, {
+    method: 'POST',
+    headers: { accept: 'application/json', 'content-type': 'application/json' },
+    body: JSON.stringify(payload),
+  }).catch(() => {
+    throw new PairingRefused('unreachable', unreachable());
+  });
+  const body: unknown = await response.json().catch(() => undefined);
+  if (response.ok) return body as T;
+  const error = (body as { error?: { code?: unknown; message?: unknown } } | undefined)?.error;
+  throw new PairingRefused(
+    typeof error?.code === 'string' ? error.code : 'unexpected',
+    typeof error?.message === 'string'
+      ? error.message
+      : t('error.requestFailed', { status: response.status }),
+  );
+}
+
+export function peekPairing(code: string): Promise<PairingPeek> {
+  return pairingCall('/api/pair/peek', { code });
+}
+
+export function pairDevice(code: string, name: string): Promise<Paired> {
+  return pairingCall('/api/pair', { code, name });
+}
+
+export async function fetchProjects(signal: AbortSignal): Promise<ProjectOverview[]> {
+  return (await get('/api/projects', signal)).json();
+}
+
+export async function fetchProjectSettings(signal: AbortSignal): Promise<ProjectSettings> {
+  return (await get('/api/project/settings', signal)).json();
+}
+
+export async function addProjectPath(path: string): Promise<void> {
+  await post('/api/project/paths', { path });
+}
+
+export async function relinkProjectPath(from: string, to: string, force: boolean): Promise<void> {
+  await post('/api/project/paths/relink', { from, to, force });
+}
+
+export async function forgetProjectPath(path: string): Promise<void> {
+  await post('/api/project/paths/forget', { path });
 }

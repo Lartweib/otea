@@ -7,6 +7,8 @@ import type { OteaServer } from './server.ts';
 export { DEFAULT_PORT } from './hosts.ts';
 
 const HOST = '127.0.0.1';
+// Every IPv4 interface, for LAN access only (otea serve --lan).
+export const ALL_INTERFACES = '0.0.0.0';
 
 // Ports above 1024 that browsers (and fetch) refuse to connect to, per the Fetch spec's bad-port list.
 const UNSAFE_PORTS = new Set([
@@ -35,14 +37,18 @@ function stop(http: Server, server: OteaServer): Promise<void> {
   });
 }
 
-export function listen(server: OteaServer, port = DEFAULT_PORT): Promise<Listening> {
+export function listen(
+  server: OteaServer,
+  port = DEFAULT_PORT,
+  bindTo: typeof HOST | typeof ALL_INTERFACES = HOST,
+): Promise<Listening> {
   const http = createAdaptorServer({ fetch: server.app.fetch }) as Server;
   return new Promise((resolve, reject) => {
     http.once('error', (error: NodeJS.ErrnoException) => {
       server.close();
       reject(error.code === 'EADDRINUSE' ? new PortInUseError(port) : error);
     });
-    const bind = () => http.listen(port, HOST, onListening);
+    const bind = () => http.listen(port, bindTo, onListening);
     const onListening = () => {
       const { port: bound } = http.address() as AddressInfo;
       // A random port the browser would refuse: ask the system for another one.

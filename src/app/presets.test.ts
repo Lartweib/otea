@@ -23,7 +23,7 @@ describe('official presets', () => {
     expect(catalog.problems).toEqual([]);
     expect(requirePreset(catalog, 'tasks')).toMatchObject({
       name: 'tasks',
-      version: 1,
+      version: 2,
       origin: 'official',
       workflow: tasks,
     });
@@ -89,7 +89,13 @@ describe('project presets', () => {
   afterEach(() => rmSync(root, { recursive: true, force: true }));
 
   it('loads only official presets when the project has none', () => {
-    expect([...loadPresets(root).presets.keys()]).toEqual(['bug-triage', 'change', 'tasks']);
+    expect([...loadPresets(root).presets.keys()]).toEqual([
+      'architecture',
+      'bug-triage',
+      'change',
+      'review',
+      'tasks',
+    ]);
   });
 
   it('loads a valid project preset next to the official ones', () => {
