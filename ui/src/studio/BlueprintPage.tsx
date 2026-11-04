@@ -1,30 +1,31 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import type { Connection as Link } from '../../../src/core/blueprint.ts';
-import { fetchPresets } from '../api.ts';
+import type { Sample } from '../../../src/core/samples.ts';
+import { fetchCollections, fetchPresets } from '../api.ts';
 import { type Connection, useRemote } from '../hooks.ts';
 import { type PlainKey, t } from '../i18n/i18n.ts';
 import { Button, Icon, Pill } from '../kit/index.ts';
 import type { Remote } from '../remote.ts';
 import { studioHash } from '../selection.ts';
-import type { PresetView } from '../types.ts';
+import type { CollectionView, PresetView } from '../types.ts';
 import {
   applyBlueprint,
   type BlueprintListing,
   type BlueprintSummary,
   editBlueprint,
   fetchBlueprints,
+  fetchPresetSamples,
   fetchProjectBlueprint,
   type ProjectBlueprint,
   updateBlueprint,
 } from './api.ts';
+import { BlueprintCanvas, BoardList, type Selection } from './BlueprintCanvas.tsx';
 import {
   type BlueprintDraft,
-  BOX_W,
   blockLoops,
+  type CardMode,
   connectionText,
   KINDS,
-  layoutBoxes,
-  linkPaths,
   type Reading,
   readBlueprintDraft,
   readingsFor,
@@ -32,6 +33,7 @@ import {
   type TypeShape,
 } from './blueprint.ts';
 import { OkMark, ProblemMark, Seg } from './parts.tsx';
+import { boardSample } from './preview.ts';
 
 // The project's blueprint in Studio: its boards and the links allowed between them, edited as the
 // project's own copy, or drawn as the diagram of who waits for whom. A project without one picks a
@@ -57,6 +59,19 @@ export function BlueprintPage({
   const [revision, setRevision] = useState(0);
   const state = useRemote(fetchProjectBlueprint, version + revision, connection);
   const presets = useRemote(fetchPresets, version + revision, connection);
+  const collections = useRemote(fetchCollections, version + revision, connection);
+  // Each preset's samples, read once per set of presets: they are files, not items.
+  const names = [
+    ...new Set(
+      state.status === 'ready'
+        ? (state.value.blueprint?.boards ?? []).map(({ preset }) => preset)
+        : [],
+    ),
+  ]
+    .sort()
+    .join(',');
+  const loadSamples = useMemo(() => samplesOf(names), [names]);
+  const samples = useRemote(loadSamples, revision, connection);
   const changed = () => {
     setRevision((count) => count + 1);
     onChanged();
@@ -86,6 +101,8 @@ export function BlueprintPage({
       key={`${blueprint.name}-${blueprint.connections.join('|')}-${blueprint.boards.map(({ name, preset }) => `${name}:${preset}`).join('|')}-${blueprint.playbook ?? ''}`}
       blueprint={blueprint}
       presets={presets.value}
+      samples={samples.status === 'ready' ? samples.value : new Map()}
+      icons={collections.status === 'ready' ? collections.value : []}
       diagram={diagram}
       editable={canWrite && !phone}
       phone={phone}
@@ -94,25 +111,54 @@ export function BlueprintPage({
   );
 }
 
+// The samples of each preset named, by preset; a preset whose samples cannot be read has none.
+const samplesOf = (names: string) => (signal: AbortSignal) =>
+  Promise.all(
+    names
+      .split(',')
+      .filter(Boolean)
+      .map((name) =>
+        fetchPresetSamples(name)(signal).then(
+          ({ samples }) => [name, samples] as const,
+          () => [name, []] as const,
+        ),
+      ),
+  ).then((entries) => new Map<string, readonly Sample[]>(entries));
+
 // ---------------------------------------------------------------- the editor
 
 type EditorProps = {
   blueprint: ProjectBlueprint;
   presets: PresetView[];
+  samples: ReadonlyMap<string, readonly Sample[]>;
+  icons: readonly CollectionView[];
   diagram: boolean;
   editable: boolean;
   phone: boolean;
   onChanged: () => void;
 };
 
-function Editor({ blueprint, presets, diagram, editable, phone, onChanged }: EditorProps) {
+function Editor({
+  blueprint,
+  presets,
+  samples,
+  icons,
+  diagram,
+  editable,
+  phone,
+  onChanged,
+}: EditorProps) {
   const saved: BlueprintDraft = {
     boards: blueprint.boards.map(({ name, preset }) => ({ name, preset })),
     connections: blueprint.connections,
     playbook: blueprint.playbook,
   };
   const [draft, setDraft] = useState<BlueprintDraft>(saved);
-  const [selected, setSelected] = useState<string>();
+  const [selection, setSelection] = useState<Selection>();
+  const [mode, setMode] = useState<CardMode>('types');
+  const selected = selection?.kind === 'link' ? selection.text : undefined;
+  const setSelected = (text: string | undefined) =>
+    setSelection(text === undefined ? undefined : { kind: 'link', text });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
   const [applied, setApplied] = useState<string[]>();
@@ -144,6 +190,27 @@ function Editor({ blueprint, presets, diagram, editable, phone, onChanged }: Edi
   };
   const itemsOf = (board: string) =>
     blueprint.boards.find(({ name }) => name === board)?.items ?? 0;
+  const presetOf = (board: string) => {
+    const name = draft.boards.find((each) => each.name === board)?.preset;
+    return presets.find((each) => each.name === name);
+  };
+  const drawn = {
+    boards: draft.boards,
+    connections: read.connections,
+    shapes,
+    presets,
+    // A board not saved yet has no collection: its preset's first type icon stands in.
+    iconOf: (board: string) =>
+      icons.find(({ name }) => name === board)?.icon ??
+      presetOf(board)?.types.find(({ icon }) => icon)?.icon,
+    sampleOf: (board: string) => {
+      const preset = presetOf(board);
+      const sample = preset && boardSample(samples.get(preset.name) ?? [], preset.types);
+      // With the board's own prefix, as an item there would read.
+      const prefix = icons.find(({ name }) => name === board)?.prefix;
+      return sample && prefix ? { ...sample, id: sample.id.replace(/^[^-]+/, prefix) } : sample;
+    },
+  };
   return (
     <div className="st-preset">
       <header className="st-head">
@@ -226,15 +293,19 @@ function Editor({ blueprint, presets, diagram, editable, phone, onChanged }: Edi
       ) : null}
       {error ? <p className="action-error st-banner">{error}</p> : null}
       <div className="st-bws">
-        <div className="st-canvas">
-          <Diagram
-            boards={draft.boards}
-            connections={read.connections}
-            shapes={shapes}
-            presets={presets}
-            selected={diagram ? undefined : selected}
-          />
-          <Legend />
+        <div className="st-bpw">
+          {phone ? (
+            <BoardList {...drawn} />
+          ) : (
+            <BlueprintCanvas
+              {...drawn}
+              mode={mode}
+              onMode={setMode}
+              selected={diagram ? undefined : selection}
+              onSelect={setSelection}
+              onAddBoard={undefined}
+            />
+          )}
         </div>
         <aside className="st-insp">
           {diagram ? (
@@ -326,143 +397,12 @@ function SourceStatus({
   );
 }
 
-// ---------------------------------------------------------------- the diagram
-
-type DiagramProps = {
-  boards: BlueprintDraft['boards'];
-  connections: Link[];
-  shapes: ReadonlyMap<string, TypeShape[]>;
-  presets: PresetView[];
-  selected?: string | undefined;
-};
-
 const MEANS: Record<string, PlainKey> = {
   blocks: 'studio.blueprint.means.blocks',
   implements: 'studio.blueprint.means.implements',
   relates: 'studio.blueprint.means.relates',
   duplicates: 'studio.blueprint.means.duplicates',
 };
-
-const ARROW: Record<string, string> = {
-  blocks: 'url(#st-bar)',
-  implements: 'url(#st-head)',
-  duplicates: 'url(#st-head)',
-};
-
-function Diagram({ boards, connections, shapes, presets, selected }: DiagramProps) {
-  const boxes = layoutBoxes(boards, connections, shapes);
-  const links = linkPaths(boxes, connections);
-  const width = Math.max(...boxes.map(({ x }) => x + BOX_W + 24), 300);
-  const height = Math.max(...boxes.map(({ y, h }) => y + h + 30), 200);
-  const versionOf = (preset: string) => presets.find(({ name }) => name === preset)?.version;
-  return (
-    <svg
-      className="st-dia"
-      // Drawn at its size, and scaled down to fit a narrower canvas.
-      style={{ width: `min(100%, ${width}px)` }}
-      viewBox={`0 0 ${width} ${height}`}
-      role="img"
-      aria-label={t('studio.blueprint.diagramAria')}
-    >
-      <defs>
-        <marker
-          id="st-bar"
-          viewBox="0 0 6 12"
-          refX="5"
-          refY="6"
-          markerWidth="6"
-          markerHeight="12"
-          orient="auto"
-        >
-          <path d="M5 0 V12" className="st-mk" />
-        </marker>
-        <marker
-          id="st-head"
-          viewBox="0 0 10 10"
-          refX="9"
-          refY="5"
-          markerWidth="8"
-          markerHeight="8"
-          orient="auto"
-        >
-          <path d="M1 1 L9 5 L1 9" className="st-mk" />
-        </marker>
-      </defs>
-      {boxes.map((box) => (
-        <g key={box.board.name} className="st-box">
-          <rect x={box.x} y={box.y} width={BOX_W} height={box.h} rx={10} />
-          <text className="st-bn" x={box.x + 14} y={box.y + 22}>
-            {box.board.name}
-          </text>
-          <text className="st-bp" x={box.x + 14} y={box.y + 38}>
-            {`${box.board.preset}${versionOf(box.board.preset) ? ` v${versionOf(box.board.preset)}` : ''}`}
-          </text>
-          <text className="st-bp" x={box.x + BOX_W - 14} y={box.y + 22} textAnchor="end">
-            {t('studio.blueprint.types', { count: box.rows.length })}
-          </text>
-          {box.rows.map(({ type, y }) => (
-            <g key={type.name}>
-              <line
-                className="st-bl"
-                x1={box.x}
-                x2={box.x + BOX_W}
-                y1={box.y + y - 17}
-                y2={box.y + y - 17}
-              />
-              <circle className="st-port" cx={box.x} cy={box.y + y} r={3.5} />
-              <circle className="st-port" cx={box.x + BOX_W} cy={box.y + y} r={3.5} />
-              <text className="st-bt" x={box.x + 16} y={box.y + y + 4}>
-                {type.name}
-              </text>
-              {type.waits.map((wait, index) => (
-                <text
-                  key={`${wait.state}-${wait.on}`}
-                  className="st-bw"
-                  x={box.x + 30}
-                  y={box.y + y + 26 + index * 22}
-                >
-                  {`⧗ ${wait.state} · ${wait.on === 'children' ? t('studio.states.children') : t('studio.states.blockers')}`}
-                </text>
-              ))}
-            </g>
-          ))}
-        </g>
-      ))}
-      {links.map(({ connection, d, label }) => {
-        const text = connectionText(connection);
-        const on = selected === text;
-        return (
-          <g key={text} className={`st-link ${connection.kind}${on ? ' on' : ''}`}>
-            <path className="st-lk-hit" d={d} />
-            <path className="st-lk" d={d} markerEnd={ARROW[connection.kind]} />
-            <rect
-              className="st-lk-pill"
-              x={label.x - 38}
-              y={label.y - 10}
-              width={76}
-              height={20}
-              rx={10}
-            />
-            <text className="st-lk-t" x={label.x} y={label.y + 4} textAnchor="middle">
-              {connection.kind}
-            </text>
-          </g>
-        );
-      })}
-    </svg>
-  );
-}
-
-function Legend() {
-  return (
-    <p className="st-legend t-cap">
-      <span>⊣ {t('studio.blueprint.legendBlocks')}</span>
-      <span>→ {t('studio.blueprint.legendImplements')}</span>
-      <span>┄ {t('studio.blueprint.legendRelates')}</span>
-      <span>⧗ {t('studio.blueprint.legendWaits')}</span>
-    </p>
-  );
-}
 
 // ---------------------------------------------------------------- the inspector
 

@@ -1086,101 +1086,322 @@
   grid-template-columns: minmax(0, 1fr);
   min-height: 0;
 }
-.st-canvas {
+.st-bpw {
   display: flex;
   flex-direction: column;
-  gap: 8px;
   min-width: 0;
-  padding: 16px 20px 18px;
-  overflow-x: auto;
+  overflow: auto;
   background-image: radial-gradient(var(--pat) 1px, transparent 1.3px);
   background-size: 24px 24px;
   scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
 }
-.st-dia {
-  display: block;
-  flex: none;
-  height: auto;
-  margin: auto;
-  overflow: visible;
+
+/* ---- the blueprint canvas: a card per board, the links between their types ----
+   The card's sizes are the geometry's (ui/src/studio/blueprint.ts): head 54, type row 40, state
+   row 20 (36 when it waits), sample 60, width 212. */
+.st-bpc-at {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
 }
-.st-box rect {
-  fill: var(--sf);
-  stroke: var(--line);
-}
-.st-bn {
-  font: 600 14px var(--font-human);
-  fill: var(--ink);
-}
-.st-bp {
-  font: 400 11px var(--font-machine);
-  fill: var(--mut);
-}
-.st-bl {
-  stroke: var(--line);
-}
-.st-bt {
-  font: 500 12.5px var(--font-machine);
-  fill: var(--ink);
-}
-.st-bw {
-  font: 400 11px var(--font-machine);
-  fill: var(--mut);
-}
-.st-port {
-  fill: var(--sf);
-  stroke: var(--mut);
-}
-.st-lk {
-  fill: none;
-  stroke: var(--ink);
-  stroke-width: 1.4;
-}
-.st-lk-hit {
-  fill: none;
-  stroke: transparent;
-  stroke-width: 12;
-}
-.st-link.relates .st-lk,
-.st-link.duplicates .st-lk {
-  stroke-dasharray: 4 3;
-  opacity: 0.75;
-}
-.st-link.implements .st-lk {
-  opacity: 0.8;
-}
-.st-mk {
-  fill: none;
-  stroke: var(--ink);
-  stroke-width: 1.4;
-}
-.st-lk-pill {
-  fill: var(--sf);
-  stroke: var(--line);
-}
-.st-link.blocks .st-lk-pill {
-  fill: var(--ink);
-  stroke: var(--ink);
-}
-.st-lk-t {
-  font: 500 11px var(--font-machine);
-  fill: var(--mut);
-}
-.st-link.blocks .st-lk-t {
-  fill: var(--sf);
-}
-.st-link.on .st-lk {
-  stroke-width: 2.4;
-}
-.st-link.on .st-lk-pill {
-  stroke: var(--ink);
-  stroke-width: 1.5;
-}
-.st-legend {
+.st-bpc-bar {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px 18px;
-  margin-top: auto;
+  align-items: center;
+  gap: 8px 14px;
+  padding: 16px 20px 0 24px;
+}
+.st-bpc-n {
+  max-width: 260px;
+  color: var(--mut);
+  font: 400 11.5px / 1.35 var(--font-machine);
+}
+.st-bpc-add {
+  margin-left: auto;
+  height: 30px;
+  padding: 0 12px;
+  background: var(--sf);
+  color: var(--ink);
+  font: 400 13px var(--font-human);
+}
+.st-bpc-add .icon {
+  width: 14px;
+  height: 14px;
+}
+.st-bpc {
+  position: relative;
+  flex: none;
+  margin: 8px auto 0;
+}
+.st-bpc-svg {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+.st-bpc-lk {
+  fill: none;
+  stroke: var(--mut);
+  stroke-width: 1.3;
+}
+.st-bpc-mk {
+  fill: none;
+  stroke: var(--mut);
+  stroke-width: 1.6;
+}
+.st-bpc-link[data-kind="relates"] .st-bpc-lk,
+.st-bpc-link[data-kind="duplicates"] .st-bpc-lk {
+  stroke-dasharray: 5 4;
+}
+.st-bpc-link[data-on] .st-bpc-lk {
+  stroke: var(--ink);
+  stroke-width: 2;
+}
+.st-bpc-link[data-on] .st-bpc-mk {
+  stroke: var(--ink);
+  stroke-width: 2.2;
+}
+.st-bpc-pill {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 9px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--sf);
+  box-shadow: inset 0 0 0 1px var(--line);
+  color: var(--ink);
+  font: 500 11.5px var(--font-machine);
+  white-space: nowrap;
+}
+.st-bpc .st-bpc-pill {
+  position: absolute;
+  z-index: 1;
+  transform: translate(-50%, -50%);
+  cursor: pointer;
+}
+.st-bpc .st-bpc-pill:hover {
+  box-shadow: inset 0 0 0 1px var(--mut);
+}
+.st-bpc .st-bpc-pill[aria-pressed="true"] {
+  background: var(--ink);
+  box-shadow: none;
+  color: var(--sf);
+}
+.st-bc {
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--r-l);
+  background: var(--sf);
+  box-shadow:
+    0 0 0 1px var(--line),
+    0 8px 20px -16px var(--shadow);
+}
+.st-bpc .st-bc {
+  position: absolute;
+}
+.st-bc[aria-current="true"] {
+  box-shadow:
+    0 0 0 1.5px var(--ink),
+    0 8px 20px -16px var(--shadow);
+}
+.st-bc-h {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  flex: none;
+  height: 54px;
+  padding: 0 14px 0 12px;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: none;
+  color: var(--ink);
+  text-align: left;
+}
+button.st-bc-h {
+  border-radius: var(--r-l) var(--r-l) 0 0;
+  cursor: pointer;
+}
+button.st-bc-h:hover {
+  background: var(--hov);
+}
+.st-bc-i {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--r-m);
+  background: var(--chip);
+}
+.st-bc-n {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.st-bc-n b {
+  overflow: hidden;
+  font: 600 14px / 1.2 var(--font-human);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.st-bc-n .mono,
+.st-bc-c {
+  color: var(--mut);
+  font: 400 11px / 1.3 var(--font-machine);
+  white-space: nowrap;
+}
+.st-bc-c {
+  font-size: 11.5px;
+}
+.st-bc-t {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 14px;
+  font-size: 13px;
+}
+.st-bc-t[data-on] {
+  background: var(--sel);
+}
+.st-bc-t .type-icon {
+  color: var(--mut);
+}
+.st-port {
+  position: absolute;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--sf);
+  box-shadow: inset 0 0 0 1.3px var(--mut);
+  transform: translateY(-50%);
+}
+.st-port.l {
+  left: -4px;
+}
+.st-port.r {
+  right: -4px;
+}
+.st-port[data-on] {
+  background: var(--ink);
+  box-shadow: none;
+}
+.st-bc-states {
+  margin: 0;
+  padding: 0 14px 0 36px;
+  list-style: none;
+}
+.st-bc-states li {
+  display: grid;
+  grid-template-columns: 12px minmax(0, 1fr);
+  align-items: center;
+  column-gap: 6px;
+  height: 20px;
+  color: var(--mut);
+  font: 400 11.5px var(--font-machine);
+}
+.st-bc-states li[data-waits] {
+  height: 36px;
+  align-content: center;
+  color: var(--you-ink);
+}
+.st-bc-states li > i {
+  justify-self: center;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--line);
+}
+.st-bc-wi {
+  display: inline-grid;
+  place-items: center;
+  width: 12px;
+  font-size: 11px;
+}
+.st-bc-w {
+  grid-column: 2;
+  color: var(--mut);
+  font-size: 11px;
+}
+.st-bc-x {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  align-items: center;
+  column-gap: 8px;
+  height: 48px;
+  margin: 6px 8px 0;
+  padding: 0 10px;
+  border-radius: var(--r-m);
+  background: var(--sf);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.st-bc-x .glyph {
+  grid-row: 1 / 3;
+}
+.st-bc-xt {
+  overflow: hidden;
+  font: 500 12.5px / 1.25 var(--font-human);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.st-bc-xm {
+  color: var(--mut);
+  font: 400 11px / 1.25 var(--font-machine);
+}
+.st-bpc-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 22px;
+  margin: auto 0 0;
+  padding: 18px 24px 16px;
+  color: var(--mut);
+  font: 400 12.5px var(--font-human);
+}
+.st-bpc-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.st-bpc-legend path {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 1.4;
+}
+
+/* On a phone: the cards stacked at full size, then the links as text. */
+.st-bpl {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+}
+.st-bpl .st-bc-x {
+  margin-bottom: 8px;
+}
+.st-bpl-links {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.st-bpl-links li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: var(--r-m);
+  background: var(--sf);
+  box-shadow: inset 0 0 0 1px var(--line);
+  font-size: 13px;
 }
 .st-insp {
   min-width: 0;
