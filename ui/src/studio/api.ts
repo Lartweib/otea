@@ -132,6 +132,12 @@ export const savePreset = (
     ...(samples === undefined ? {} : { samples }),
   });
 
+// A blank project preset; and deleting one that no collection uses. Official ones stay.
+export const createPreset = (name: string) => post<PresetSource>('/api/studio/presets', { name });
+
+export const deletePreset = (name: string) =>
+  post<{ deleted: string }>(`${preset(name)}/delete`, {});
+
 export const duplicatePreset = (name: string, as: string) =>
   post<PresetSource>(`${preset(name)}/duplicate`, { as });
 

@@ -1,4 +1,12 @@
-import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import {
+  cpSync,
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { basename, dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { parse, parseDocument } from 'yaml';
 import {
@@ -407,24 +415,79 @@ function copySamples(from: string, to: string): void {
   }
 }
 
+// A new project preset's name: free, and never an official one's.
+function assertFreeName(project: Project, name: string): string {
+  if (!NAME.test(name)) {
+    throw new OteaError('invalid_name', `"${name}" must be lowercase letters, digits and dashes`);
+  }
+  const own = projectPresetsDir(project.dataDir);
+  if (subdirectories(OFFICIAL_PRESETS_DIR).includes(name) || existsSync(join(own, name))) {
+    throw new OteaError('already_exists', `A preset named "${name}" already exists`);
+  }
+  return join(own, name);
+}
+
+// What a blank preset starts as: a title, and a workflow where an agent works an item and a human
+// approves it or sends it back. It loads with no notes.
+function blankPreset(name: string): string {
+  return `preset: ${name}
+preset_version: 1
+fields:
+  title: { module: text, required: create }
+workflow:
+  initial: open
+  states:
+    open: { turn: agent }
+    review: { turn: human }
+    done: { turn: none, closes: done }
+    discarded: { turn: none, closes: discarded }
+  transitions:
+    - { from: open, to: review, by: agent }
+    - { from: review, to: done, by: human }
+    - { from: review, to: open, by: human, reason: required }
+    - { from: [open, review], to: discarded, by: human, reason: required }
+`;
+}
+
+// Creates a blank project preset, for Studio to build on.
+export function createPreset(project: Project, name: string): PresetSource {
+  const dir = assertFreeName(project, name);
+  writeProjectPreset(dir, blankPreset(name), {});
+  reload(project);
+  return sourceOf(project, { name, origin: 'project', dir });
+}
+
+// Deletes a project preset with its playbooks and samples, once no collection uses it. Official
+// presets are read-only.
+export function deletePreset(project: Project, name: string): { deleted: string } {
+  const located = locate(project, name);
+  if (located.origin === 'official') {
+    throw new OteaError('forbidden', `Preset "${name}" is official and read-only`);
+  }
+  const used = uses(project, name).map((use) => use.name);
+  if (used.length > 0) {
+    throw new OteaError(
+      'in_use',
+      `Cannot delete preset "${name}": collection${used.length === 1 ? '' : 's'} ${used.join(', ')} use${used.length === 1 ? 's' : ''} it`,
+    );
+  }
+  rmSync(located.dir, { recursive: true, force: true });
+  reload(project);
+  return { deleted: name };
+}
+
 // Copies a preset, official or the project's, into the project under a new name, at version 1, with
 // its playbooks and its samples. The copy is the project's to edit.
 export function duplicatePreset(project: Project, name: string, as: string): PresetSource {
   const from = locate(project, name);
-  if (!NAME.test(as)) {
-    throw new OteaError('invalid_name', `"${as}" must be lowercase letters, digits and dashes`);
-  }
-  const own = projectPresetsDir(project.dataDir);
-  if (subdirectories(OFFICIAL_PRESETS_DIR).includes(as) || existsSync(join(own, as))) {
-    throw new OteaError('already_exists', `A preset named "${as}" already exists`);
-  }
+  const to = assertFreeName(project, as);
   const text = readFileSync(join(from.dir, FILE), 'utf8');
   const doc = parseDocument(text);
   if (doc.errors.length > 0) throw invalidDraft(name, [`invalid YAML: ${doc.errors[0]?.message}`]);
   doc.set('preset', as);
   doc.set('preset_version', 1);
-  writeProjectPreset(join(own, as), doc.toString(), readPlaybooks(from.dir, text));
-  copySamples(from.dir, join(own, as));
+  writeProjectPreset(to, doc.toString(), readPlaybooks(from.dir, text));
+  copySamples(from.dir, to);
   reload(project);
-  return sourceOf(project, { name: as, origin: 'project', dir: join(own, as) });
+  return sourceOf(project, { name: as, origin: 'project', dir: to });
 }
