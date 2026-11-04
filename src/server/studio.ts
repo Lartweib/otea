@@ -4,6 +4,8 @@ import { z } from 'zod';
 import { applyBlueprint, editBlueprint, updateBlueprint } from '../app/blueprints.ts';
 import type { Project } from '../app/project.ts';
 import {
+  createPreset,
+  deletePreset,
   duplicatePreset,
   listStudioBlueprints,
   listStudioPresets,
@@ -31,6 +33,8 @@ const PresetDraftBody = z.strictObject({
 });
 
 const DuplicateBody = z.strictObject({ as: z.string().min(1) });
+
+const CreateBody = z.strictObject({ name: z.string().min(1) });
 
 const BlueprintEditBody = z.strictObject({
   boards: z.array(z.strictObject({ name: z.string().min(1), preset: z.string().min(1) })),
@@ -65,6 +69,13 @@ function serveSample(c: Context, project: Project): Response {
 export function studioApi(project: Project, feed: ChangeFeed, auth: Session): Hono {
   return new Hono()
     .get('/presets', (c) => c.json(listStudioPresets(project)))
+    .post('/presets', async (c) => {
+      assertConfigurable(c, auth);
+      const { name } = await body(c, CreateBody, '{"name": string}');
+      const created = createPreset(project, name);
+      feed.notify();
+      return c.json(created, 201);
+    })
     .get('/presets/:name', (c) => c.json(readPresetSource(project, c.req.param('name'))))
     .get('/presets/:name/samples', (c) => c.json(readPresetSamples(project, c.req.param('name'))))
     .get('/presets/:name/samples/:file', (c) => serveSample(c, project))
@@ -82,6 +93,12 @@ export function studioApi(project: Project, feed: ChangeFeed, auth: Session): Ho
       });
       feed.notify();
       return c.json(saved);
+    })
+    .post('/presets/:name/delete', (c) => {
+      assertConfigurable(c, auth);
+      const deleted = deletePreset(project, c.req.param('name'));
+      feed.notify();
+      return c.json(deleted);
     })
     .post('/presets/:name/duplicate', async (c) => {
       assertConfigurable(c, auth);

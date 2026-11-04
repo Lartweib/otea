@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { addCollection } from '../app/collections.ts';
 import { createItem } from '../app/items.ts';
 import { loadPresets } from '../app/presets.ts';
 import type { Project } from '../app/project.ts';
@@ -214,6 +215,62 @@ describe('the Studio API', () => {
       expect(unsigned.status).toBe(401);
       expect(foreign.status).toBe(403);
       expect(existsSync(join(dataDir(), 'presets', 'copy'))).toBe(false);
+    });
+  });
+
+  describe('creating and deleting presets', () => {
+    it('creates a blank project preset that loads with no notes', async () => {
+      const { status, body } = await post('/studio/presets', { name: 'notes' });
+
+      expect(status).toBe(201);
+      expect(body).toMatchObject({
+        name: 'notes',
+        origin: 'project',
+        editable: true,
+        version: 1,
+        problems: [],
+        notes: [],
+      });
+      expect(readFileSync(join(dataDir(), 'presets', 'notes', 'preset.yaml'), 'utf8')).toContain(
+        'preset: notes',
+      );
+      expect(project.presets.presets.get('notes')?.origin).toBe('project');
+    });
+
+    it('refuses a blank preset under a name taken, official, or malformed', async () => {
+      expect((await post('/studio/presets', { name: 'reviews' })).status).toBe(409);
+      expect((await post('/studio/presets', { name: 'tasks' })).status).toBe(409);
+      expect((await post('/studio/presets', { name: '../up' })).status).toBe(400);
+    });
+
+    it('deletes a project preset that no collection uses, files and all', async () => {
+      const { status, body } = await post('/studio/presets/reviews/delete', {});
+
+      expect(status).toBe(200);
+      expect(body).toEqual({ deleted: 'reviews' });
+      expect(existsSync(join(dataDir(), 'presets', 'reviews'))).toBe(false);
+      expect(project.presets.presets.has('reviews')).toBe(false);
+    });
+
+    it('keeps a preset a collection uses, and every official one', async () => {
+      addCollection(project, { name: 'art', preset: 'reviews' });
+
+      const used = await post('/studio/presets/reviews/delete', {});
+      const official = await post('/studio/presets/tasks/delete', {});
+
+      expect(used.status).toBe(409);
+      expect(codeOf(used.body)).toBe('in_use');
+      expect(official.status).toBe(403);
+      expect(existsSync(reviewsFile())).toBe(true);
+    });
+
+    it('takes both only from the signed-in browser on this computer', async () => {
+      const created = await post('/studio/presets', { name: 'notes' }, { cookie: '' });
+      const deleted = await post('/studio/presets/reviews/delete', {}, { cookie: '' });
+
+      expect(created.status).toBe(401);
+      expect(deleted.status).toBe(401);
+      expect(existsSync(reviewsFile())).toBe(true);
     });
   });
 
