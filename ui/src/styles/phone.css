@@ -133,6 +133,19 @@
   justify-content: center;
 }
 
+/* Every move in the sheet is a button. One that closes the item keeps the quieter look it has on the
+   desktop, after "close as": no fill and muted ink, inside the same outline. */
+.move-sheet .btn.move.quiet {
+  border-color: var(--line);
+  background: transparent;
+  color: var(--mut);
+}
+
+.move-sheet .move-blocked {
+  display: grid;
+  gap: 4px;
+}
+
 .move-sheet .move-says {
   min-height: 0;
   padding: 0 4px;
@@ -329,6 +342,42 @@
 
   .workspace .item-list .row-when::before {
     display: none;
+  }
+
+  /* Line two keeps id · collection · state and ends between two of them, never inside one: the
+     parts wrap instead of shrinking, onto a second line the row never shows. The signals (field
+     chips, a parent's bar, relates) and the type word (the icon says it) stay off it. Each dot
+     leads the part after it, so a part that goes takes its dot along. */
+  .workspace .item-list .row-t2 {
+    flex-wrap: wrap;
+    align-content: flex-start;
+    row-gap: 0;
+    height: 18px;
+  }
+
+  .workspace .item-list .row[data-depth] .row-t2 {
+    height: 16px;
+  }
+
+  .workspace .item-list .row-t2 > * {
+    flex-shrink: 0;
+    max-width: 100%;
+  }
+
+  .workspace
+    .item-list
+    .row-t2
+    :is(.row-values, .row-progress, .row-relates, .row-also, .row-typeword) {
+    display: none;
+  }
+
+  .workspace .item-list .row-t2 :is(.row-id, .row-collection)::after {
+    content: none;
+  }
+
+  .workspace .item-list .row-t2 :is(.row-collection, .row-state)::before {
+    content: "·";
+    margin-right: 8px;
   }
 
   /* A group's heading stays on its line: "1 of yours inside" gives way before the name wraps. */
