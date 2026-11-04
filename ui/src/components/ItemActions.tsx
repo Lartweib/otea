@@ -1,6 +1,7 @@
 import { type ReactNode, useReducer, useState } from 'react';
 import type { Waits } from '../actions.ts';
 import {
+  barMoves,
   canConfirm,
   IDLE,
   isBusy,
@@ -11,15 +12,18 @@ import {
 } from '../actions.ts';
 import { moveItem } from '../api.ts';
 import { t } from '../i18n/i18n.ts';
-import { Button, type ButtonVariant } from '../kit/index.ts';
+import { Button, type ButtonVariant, Icon } from '../kit/index.ts';
 import { keyTitle, useStateWord } from '../preset-words.ts';
 import type { Move, Turn } from '../types.ts';
+import { useMenu } from './menu.ts';
+import { Sheet } from './Sheet.tsx';
 
 // onMoved: after a move lands, with its target (on a phone the unfolded item then folds and carries
 // itself home). waits: the item's open children and blockers, so a move waiting for them is drawn
 // disabled. turn and agent: where the item stands and the agent a move would hand it to, for the
 // line that says what each move does. receipt: what the last move you made here did, said on that
-// line until another move is hovered. compact: the phone's bar of moves, without that line.
+// line until another move is hovered. compact: the phone's bar of moves, one row without that line:
+// the lead move, and the rest in a sheet under "more", each with what it does (see barMoves).
 type ItemActionsProps = {
   id: string;
   moves: Move[];
@@ -48,6 +52,7 @@ export function ItemActions({
   const [state, dispatch] = useReducer(reduceAction, IDLE);
   const word = useStateWord();
   const [pointed, setPointed] = useState<string | null>(null);
+  const more = useMenu();
   const busy = isBusy(state);
   const explaining =
     state.step === 'explaining' || (state.step === 'posting' && state.reason !== '');
@@ -81,7 +86,8 @@ export function ItemActions({
     );
   }
 
-  const button = (move: Move, variant: ButtonVariant) => {
+  // then: what else a press does first (a move chosen in the sheet closes it).
+  const button = (move: Move, variant: ButtonVariant, then?: () => void) => {
     const blocked = moveBlock(move, waits);
     const noteId = `move-block-${id}-${move.to}`;
     const point = blocked
@@ -97,7 +103,10 @@ export function ItemActions({
         aria-pressed={state.step === 'explaining' && state.to === move.to}
         aria-describedby={blocked ? noteId : undefined}
         disabled={busy || blocked !== undefined}
-        onClick={() => choose(move)}
+        onClick={() => {
+          then?.();
+          choose(move);
+        }}
         onPointerLeave={() => setPointed(null)}
         onBlur={() => setPointed(null)}
         {...point}
@@ -143,17 +152,49 @@ export function ItemActions({
   const chosen = state.step === 'choosing' ? undefined : state.to;
   const said =
     moves.find((move) => move.to === (pointed ?? chosen)) ?? (receipt ? undefined : primary);
+  const split = barMoves(moves, waits);
+  const at = (index: number) => placed[index] as (typeof placed)[number];
   return (
     <section className="actions moves" aria-label={t('move.aria')} data-step={state.step}>
-      <div className="action-buttons move-row">
-        {opening.map(({ move, variant }) => button(move, variant))}
-        {closing.length > 0 ? (
-          <span className="move-close">
-            {compact ? null : <span className="move-close-label t-cap">{t('common.closeAs')}</span>}
-            {closing.map(({ move, variant }) => button(move, variant))}
-          </span>
-        ) : null}
-      </div>
+      {compact ? (
+        <div className="action-buttons move-row move-bar">
+          {split.bar.map((index) => button(at(index).move, at(index).variant))}
+          {split.more.length > 0 ? (
+            <Button
+              className="move-more"
+              aria-haspopup="dialog"
+              aria-expanded={more.open}
+              disabled={busy}
+              onClick={more.toggle}
+            >
+              {t('move.more', { count: split.more.length })}
+              <Icon name="chevron" />
+            </Button>
+          ) : null}
+        </div>
+      ) : (
+        <div className="action-buttons move-row">
+          {opening.map(({ move, variant }) => button(move, variant))}
+          {closing.length > 0 ? (
+            <span className="move-close">
+              <span className="move-close-label t-cap">{t('common.closeAs')}</span>
+              {closing.map(({ move, variant }) => button(move, variant))}
+            </span>
+          ) : null}
+        </div>
+      )}
+      {compact && split.more.length > 0 ? (
+        <Sheet menu={more} label={t('move.moreTitle')} title={t('move.moreTitle')}>
+          <ul className="move-sheet">
+            {split.more.map((index) => (
+              <li key={at(index).move.to}>
+                {button(at(index).move, at(index).variant, more.close)}
+                <span className="move-says t-cap">{moveSays(at(index).move, { turn, agent })}</span>
+              </li>
+            ))}
+          </ul>
+        </Sheet>
+      ) : null}
       {compact ? null : (
         <p className="move-says t-cap">
           {said ? (

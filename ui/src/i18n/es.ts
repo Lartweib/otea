@@ -408,6 +408,8 @@ export const es: Catalog = {
   // Acciones
   'move.aria': 'Acciones',
   'move.none': 'No hay acciones desde este estado.',
+  'move.more': { one: '{count} más', other: '{count} más' },
+  'move.moreTitle': 'Más acciones',
   'move.waits': {
     one: 'espera a {count} hijo abierto',
     other: 'espera a {count} hijos abiertos',

@@ -75,6 +75,24 @@ export function moveVariants(moves: readonly Move[], waits?: Waits): ButtonVaria
   });
 }
 
+// The phone's bar of moves holds one row: up to two moves stay on it; past two, only the lead one
+// does (the primary, else the first open move that can be made, else the first open move, else the
+// first) and the rest wait under "more", in the bar's order: open moves, then the closing ones.
+// Indices into moves.
+export function barMoves(moves: readonly Move[], waits?: Waits): { bar: number[]; more: number[] } {
+  const all = moves.map((_, index) => index);
+  if (moves.length <= 2) return { bar: all, more: [] };
+  const variants = moveVariants(moves, waits);
+  const open = all.filter((index) => variants[index] !== 'quiet');
+  const lead =
+    all.find((index) => variants[index] === 'primary') ??
+    open.find((index) => moveBlock(moves[index] as Move, waits) === undefined) ??
+    open[0] ??
+    0;
+  const rest = [...open, ...all.filter((index) => variants[index] === 'quiet')];
+  return { bar: [lead], more: rest.filter((index) => index !== lead) };
+}
+
 // The agent a move would hand the item to: the last one that acted on it (or relayed your words).
 export function turnAgent(events: readonly ItemEvent[]): string | undefined {
   for (const event of [...events].reverse()) {
