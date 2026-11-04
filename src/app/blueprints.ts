@@ -8,6 +8,7 @@ import {
   type BlueprintDiff,
   type Board,
   blueprintTypeProblems,
+  blueprintWarnings,
   blueprintYaml,
   type Connection,
   connectionText,
@@ -16,6 +17,7 @@ import {
   readBlueprint,
   type SourceOrigin,
   type TypesOf,
+  type WorkflowOf,
 } from '../core/blueprint.ts';
 import { OteaError } from '../core/errors.ts';
 import type { Finding } from '../core/validation.ts';
@@ -84,6 +86,16 @@ function typesIn(presets: PresetCatalog): TypesOf {
       if (error instanceof OteaError) return error.message;
       throw error;
     }
+  };
+}
+
+// The workflow of a type on one of the blueprint's boards, for its warnings.
+export function workflowsIn(presets: PresetCatalog, blueprint: Blueprint): WorkflowOf {
+  return (board, type) => {
+    const preset = presets.presets.get(
+      blueprint.boards.find(({ name }) => name === board)?.preset ?? '',
+    );
+    return preset?.types.find(({ name }) => name === type)?.workflow;
   };
 }
 
@@ -555,6 +567,9 @@ export function blueprintFindings(project: Project): Finding[] {
   const subject = `project blueprint ${blueprint.name}`;
   for (const message of blueprintTypeProblems(blueprint, typesIn(project.presets))) {
     findings.push({ severity: 'error', subject, message });
+  }
+  for (const message of blueprintWarnings(blueprint, workflowsIn(project.presets, blueprint))) {
+    findings.push({ severity: 'warning', subject, message });
   }
   const { missing, changes } = compare(project);
   if (missing !== undefined) {

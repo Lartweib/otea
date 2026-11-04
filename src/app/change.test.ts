@@ -109,7 +109,13 @@ describe('change preset', () => {
       'age',
     ]);
     expect(ctx.presets.problems).toEqual([]);
-    expect(ctx.presets.warnings).toEqual([]);
+    // Approving a change takes the web UI, by design: Studio notes it, otea validate does not.
+    const warnings = ctx.presets.warnings.filter(
+      ({ preset, level }) => preset === 'change' && level === 'warning',
+    );
+    expect(warnings.map(({ code, at }) => ({ code, at }))).toEqual([
+      { code: 'state_stuck_in_chat', at: { section: 'states', state: 'verify' } },
+    ]);
     expect(validateProject(ctx)).toEqual({ errors: 0, warnings: 0, findings: [] });
   });
 

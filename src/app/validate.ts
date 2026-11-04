@@ -52,6 +52,19 @@ function parentAcrossBoards(ctx: Context): Finding[] {
   });
 }
 
+// The preset notes otea validate prints: the warnings of the project's own presets. An official
+// preset is read-only, so its notes (an approval only the web UI may give, say) are by design, and
+// Studio shows them; info notes only say what a preset does, and stay in Studio too.
+function presetWarnings(ctx: Context): Finding[] {
+  return ctx.presets.warnings
+    .filter(({ origin, level = 'warning' }) => origin === 'project' && level === 'warning')
+    .map(({ preset, message }) => ({
+      severity: 'warning' as const,
+      subject: `preset ${preset}`,
+      message,
+    }));
+}
+
 // `extra` carries findings checked elsewhere, such as the project's blueprint.
 export function validateProject(ctx: Context, extra: readonly Finding[] = []): ValidationReport {
   const findings: Finding[] = [
@@ -60,11 +73,7 @@ export function validateProject(ctx: Context, extra: readonly Finding[] = []): V
       subject: `preset ${preset}`,
       message,
     })),
-    ...ctx.presets.warnings.map(({ preset, message }) => ({
-      severity: 'warning' as const,
-      subject: `preset ${preset}`,
-      message,
-    })),
+    ...presetWarnings(ctx),
   ];
   findings.push(...extra);
   for (const collection of listCollections(ctx.db)) {

@@ -2,8 +2,10 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { loadBlueprints } from './blueprints.ts';
+import { applyBlueprint, blueprintFindings, loadBlueprints } from './blueprints.ts';
 import { loadPresets } from './presets.ts';
+import { listStudioBlueprints } from './studio.ts';
+import { memoryContext, projectOf } from './testing.ts';
 
 const STUDIO = `
 blueprint: studio
@@ -81,5 +83,38 @@ describe('project blueprints', () => {
     expect(load().problems.map(({ message }) => message)).toEqual([
       'connections[0]: board bugs (preset bug-triage) has no type "story" (types: bug)',
     ]);
+  });
+});
+
+describe('blueprint warnings', () => {
+  let root: string;
+
+  beforeEach(() => {
+    root = mkdtempSync(join(tmpdir(), 'otea-blueprints-'));
+  });
+
+  afterEach(() => rmSync(root, { recursive: true, force: true }));
+
+  const WAITS_FOR_NOTHING =
+    'connections[0]: bugs.bug blocks work.task waits for nothing: no state of task (board work) requires blockers_closed, so no task waits for the bug that blocks it';
+
+  it('reports a blocks link that waits for nothing, as a warning of the project blueprint', () => {
+    const project = projectOf(root, memoryContext());
+    mkdirSync(project.dataDir, { recursive: true });
+    applyBlueprint(project, 'product', root);
+
+    expect(blueprintFindings(project)).toEqual([
+      { severity: 'warning', subject: 'project blueprint product', message: WAITS_FOR_NOTHING },
+    ]);
+    project.db.close();
+  });
+
+  it('lists the same warning beside each blueprint Studio offers', () => {
+    const project = projectOf(root, memoryContext());
+
+    const product = listStudioBlueprints(project).blueprints.find(({ name }) => name === 'product');
+
+    expect(product?.warnings).toEqual([WAITS_FOR_NOTHING]);
+    project.db.close();
   });
 });

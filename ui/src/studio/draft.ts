@@ -49,8 +49,12 @@ export function rawOf(yaml: string): RawPreset {
   }
 }
 
-export function readDraft(yaml: string): PresetReading {
-  return readPreset(yaml);
+// With the draft's playbooks, the reading also checks that each gate is called, as otea validate does.
+export function readDraft(
+  yaml: string,
+  playbooks?: Readonly<Record<string, string>>,
+): PresetReading {
+  return readPreset(yaml, playbooks === undefined ? {} : { playbooks });
 }
 
 // Small values (a field, a state, a move) are written in flow style, as the official presets do.

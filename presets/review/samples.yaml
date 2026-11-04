@@ -1,0 +1,27 @@
+# An example piece in review, for Studio to draw this preset with. It never enters a collection.
+samples:
+  - type: piece
+    id: ART-1
+    title: Shop keeper idle animation
+    state: review
+    fields:
+      brief: A four-second loop; she polishes the counter and glances at the door. Pixel art, 32x32.
+      target: shop
+    history:
+      - {
+          actor: agent,
+          name: claude-a,
+          event: transitioned,
+          from: queued,
+          to: in_progress,
+          ago: 1d,
+        }
+      - {
+          actor: agent,
+          name: claude-a,
+          event: transitioned,
+          from: in_progress,
+          to: review,
+          reason: Round one,
+          ago: 2h,
+        }

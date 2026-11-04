@@ -1,0 +1,62 @@
+# An example change and its repo tasks, for Studio to draw this preset with. They never enter a
+# collection.
+samples:
+  - type: change
+    id: CHANGES-1
+    title: Sign in with a passkey
+    state: executing
+    fields:
+      description: Let players sign in with a passkey beside the password, on the web and the API.
+      plan: |-
+        1. api: register and verify passkeys.
+        2. web: the sign-in button, once the api is merged.
+    relations:
+      - { kind: child, id: CHANGES-2, title: Passkey endpoints, type: repo_task, state: pr_review }
+      - { kind: child, id: CHANGES-3, title: Passkey sign-in button, type: repo_task, state: ready }
+    history:
+      - { actor: agent, name: claude-a, event: created, ago: 2d }
+      - { actor: human, name: you, event: transitioned, from: plan_review, to: executing, ago: 1d }
+  - type: repo_task
+    id: CHANGES-2
+    title: Passkey endpoints
+    state: pr_review
+    fields:
+      description: Register and verify passkeys with WebAuthn.
+      repo: api
+      branch: feat/passkeys
+      pr: "#482"
+    relations:
+      - {
+          kind: parent,
+          id: CHANGES-1,
+          title: Sign in with a passkey,
+          type: change,
+          state: executing,
+        }
+    history:
+      - {
+          actor: agent,
+          name: claude-a,
+          event: transitioned,
+          from: implementing,
+          to: pr_review,
+          ago: 2h,
+        }
+  - type: repo_task
+    id: CHANGES-3
+    title: Passkey sign-in button
+    state: ready
+    fields:
+      description: The button on the sign-in page, behind the api's endpoints.
+      repo: web
+      branch: feat/passkey-button
+    relations:
+      - {
+          kind: parent,
+          id: CHANGES-1,
+          title: Sign in with a passkey,
+          type: change,
+          state: executing,
+        }
+    history:
+      - { actor: human, name: you, event: transitioned, from: proposed, to: ready, ago: 1d }

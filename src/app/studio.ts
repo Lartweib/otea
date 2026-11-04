@@ -1,9 +1,22 @@
-import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
+import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { basename, dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { parse, parseDocument } from 'yaml';
-import { type Board, connectionText, type SourceOrigin } from '../core/blueprint.ts';
+import {
+  type Board,
+  blueprintWarnings,
+  connectionText,
+  type SourceOrigin,
+} from '../core/blueprint.ts';
 import { OteaError } from '../core/errors.ts';
-import { readPreset } from '../core/preset.ts';
+import { evidenceTypeOf } from '../core/evidence.ts';
+import { type PresetNote, readPreset } from '../core/preset.ts';
+import {
+  readSamples,
+  SAMPLE_FILE,
+  SAMPLES_DIR,
+  SAMPLES_FILE,
+  type Sample,
+} from '../core/samples.ts';
 import { listCollections, selectItems } from '../store/queries.ts';
 import {
   type BlueprintStatus,
@@ -11,12 +24,15 @@ import {
   coordinationPlaybook,
   loadBlueprints,
   readProjectBlueprint,
+  workflowsIn,
 } from './blueprints.ts';
 import {
   loadPresets,
   OFFICIAL_PRESETS_DIR,
   type PresetOrigin,
   projectPresetsDir,
+  sampleFiles,
+  samplesText,
 } from './presets.ts';
 import type { Project } from './project.ts';
 
@@ -29,7 +45,11 @@ const NAME = /^[a-z0-9][a-z0-9-]*$/;
 
 export type PresetUse = { name: string; items: number };
 
-// A preset's playbooks are keyed by the path the preset gives them (./playbook.md).
+// A note on a preset as Studio shows it: the core's, with the file of the preset it is in.
+export type StudioNote = PresetNote & { file: string };
+
+// A preset's playbooks are keyed by the path the preset gives them (./playbook.md). `warnings` are
+// the messages of its warning-level notes; `notes` are all of them, info ones too, with their paths.
 export type PresetSource = {
   name: string;
   origin: PresetOrigin;
@@ -40,6 +60,7 @@ export type PresetSource = {
   collections: PresetUse[];
   problems: string[];
   warnings: string[];
+  notes: StudioNote[];
 };
 
 export type PresetSummary = {
@@ -50,7 +71,8 @@ export type PresetSummary = {
   problems: string[];
 };
 
-export type PresetDraft = { yaml: string; playbooks?: Record<string, string> };
+// `samples` is the text of samples.yaml, written with the preset when given.
+export type PresetDraft = { yaml: string; playbooks?: Record<string, string>; samples?: string };
 
 function subdirectories(dir: string): string[] {
   if (!existsSync(dir)) return [];
@@ -125,9 +147,14 @@ function sourceOf(project: Project, { name, origin, dir }: Located): PresetSourc
   const problems = project.presets.problems
     .filter((problem) => problem.preset === name && problem.origin === origin)
     .map(({ message }) => message);
-  const warnings = project.presets.warnings
-    .filter((warning) => warning.preset === name)
-    .map(({ message }) => message);
+  const notes = project.presets.warnings
+    .filter((warning) => warning.preset === name && warning.origin === origin)
+    .flatMap(({ code, level = 'warning', message, at, path }): StudioNote[] =>
+      code === undefined || at === undefined
+        ? []
+        : [{ code, level, message, path: at, file: basename(path) }],
+    );
+  const warnings = notes.filter(({ level }) => level === 'warning').map(({ message }) => message);
   return {
     name,
     origin,
@@ -138,6 +165,7 @@ function sourceOf(project: Project, { name, origin, dir }: Located): PresetSourc
     collections: uses(project, name),
     problems,
     warnings,
+    notes,
   };
 }
 
@@ -171,6 +199,39 @@ export function listStudioPresets(project: Project): PresetSummary[] {
 
 export function readPresetSource(project: Project, name: string): PresetSource {
   return sourceOf(project, locate(project, name));
+}
+
+// A preset's samples as Studio draws them: samples.yaml as written, the files of its samples
+// folder, and the samples read against the preset as it loaded, with what does not fit.
+export type PresetSamples = {
+  yaml: string | null;
+  files: string[];
+  samples: Sample[];
+  notes: PresetNote[];
+};
+
+export function readPresetSamples(project: Project, name: string): PresetSamples {
+  const { origin, dir } = locate(project, name);
+  const yaml = samplesText(dir);
+  const files = sampleFiles(dir);
+  const loaded = project.presets.presets.get(name);
+  const reading =
+    loaded?.origin === origin ? readSamples(yaml, loaded, files) : { samples: [], notes: [] };
+  return { yaml: yaml ?? null, files, ...reading };
+}
+
+// A file of a preset's samples folder: where it is and what it holds. Only a plain file name in
+// that folder is ever served.
+export function sampleAsset(
+  project: Project,
+  name: string,
+  file: string,
+): { path: string; contentType: string } {
+  const { dir } = locate(project, name);
+  if (!SAMPLE_FILE.test(file) || !sampleFiles(dir).includes(file)) {
+    throw new OteaError('not_found', `Preset "${name}" has no sample file "${file}"`);
+  }
+  return { path: join(dir, SAMPLES_DIR, file), contentType: evidenceTypeOf(file).contentType };
 }
 
 function invalidDraft(name: string, problems: readonly string[]): OteaError {
@@ -252,9 +313,11 @@ export function savePreset(project: Project, name: string, draft: PresetDraft): 
   const before = readPlaybooks(located.dir, current);
   const changed =
     same !== current || Object.entries(playbooks).some(([path, text]) => before[path] !== text);
-  if (!changed) return sourceOf(project, located);
-  writeProjectPreset(located.dir, withVersion(same, stored + 1), playbooks);
-  reload(project);
+  // Samples never reach an item, so changing them alone leaves the version as it is.
+  const samples = draft.samples !== undefined && draft.samples !== samplesText(located.dir);
+  if (samples) writeFileSync(join(located.dir, SAMPLES_FILE), draft.samples as string);
+  if (changed) writeProjectPreset(located.dir, withVersion(same, stored + 1), playbooks);
+  if (changed || samples) reload(project);
   return sourceOf(project, located);
 }
 
@@ -266,6 +329,8 @@ export type BlueprintSummary = {
   boards: Board[];
   connections: string[];
   playbook: string | null;
+  // What otea validate would warn about it once applied: a blocks link that waits for nothing.
+  warnings: string[];
 };
 
 export type BlueprintListing = {
@@ -276,16 +341,15 @@ export type BlueprintListing = {
 export function listStudioBlueprints(project: Project): BlueprintListing {
   const catalog = loadBlueprints(project.presets, project.dataDir);
   return {
-    blueprints: [...catalog.blueprints.values()].map(
-      ({ name, version, origin, boards, connections, playbookText }) => ({
-        name,
-        version,
-        origin,
-        boards,
-        connections: connections.map(connectionText),
-        playbook: playbookText,
-      }),
-    ),
+    blueprints: [...catalog.blueprints.values()].map((blueprint) => ({
+      name: blueprint.name,
+      version: blueprint.version,
+      origin: blueprint.origin,
+      boards: blueprint.boards,
+      connections: blueprint.connections.map(connectionText),
+      playbook: blueprint.playbookText,
+      warnings: blueprintWarnings(blueprint, workflowsIn(project.presets, blueprint)),
+    })),
     problems: catalog.problems.map(({ blueprint, origin, message }) => ({
       blueprint,
       origin,
@@ -335,8 +399,16 @@ export function projectBlueprintState(project: Project): ProjectBlueprintState {
   };
 }
 
+function copySamples(from: string, to: string): void {
+  const yaml = samplesText(from);
+  if (yaml !== undefined) writeFileSync(join(to, SAMPLES_FILE), yaml);
+  if (sampleFiles(from).length > 0) {
+    cpSync(join(from, SAMPLES_DIR), join(to, SAMPLES_DIR), { recursive: true });
+  }
+}
+
 // Copies a preset, official or the project's, into the project under a new name, at version 1, with
-// its playbooks. The copy is the project's to edit.
+// its playbooks and its samples. The copy is the project's to edit.
 export function duplicatePreset(project: Project, name: string, as: string): PresetSource {
   const from = locate(project, name);
   if (!NAME.test(as)) {
@@ -352,6 +424,7 @@ export function duplicatePreset(project: Project, name: string, as: string): Pre
   doc.set('preset', as);
   doc.set('preset_version', 1);
   writeProjectPreset(join(own, as), doc.toString(), readPlaybooks(from.dir, text));
+  copySamples(from.dir, join(own, as));
   reload(project);
   return sourceOf(project, { name: as, origin: 'project', dir: join(own, as) });
 }

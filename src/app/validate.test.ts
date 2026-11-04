@@ -39,6 +39,38 @@ describe('validateProject', () => {
     expect(validateProject(ctx)).toEqual({ errors: 0, warnings: 0, findings: [] });
   });
 
+  it("reports a project preset's warnings, but neither its info notes nor an official preset's notes", () => {
+    const note = (origin: 'official' | 'project', level: 'warning' | 'info', message: string) => ({
+      preset: origin === 'project' ? 'reviews' : 'tasks',
+      origin,
+      path: 'preset.yaml',
+      code: 'field_unplaced' as const,
+      level,
+      at: { section: 'fields' as const, field: 'x' },
+      message,
+    });
+    ctx.presets = {
+      ...ctx.presets,
+      warnings: [
+        note('project', 'warning', 'fields.x: placed in no layout slot'),
+        note('project', 'info', 'types.a.fields.x: only a has it'),
+        note('official', 'warning', 'workflow.states.review: turn human'),
+      ],
+    };
+
+    expect(validateProject(ctx)).toEqual({
+      errors: 0,
+      warnings: 1,
+      findings: [
+        {
+          severity: 'warning',
+          subject: 'preset reviews',
+          message: 'fields.x: placed in no layout slot',
+        },
+      ],
+    });
+  });
+
   it('reports preset problems as errors', () => {
     const problem = {
       preset: 'notes',

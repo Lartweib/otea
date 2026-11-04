@@ -10,6 +10,7 @@ import {
   SEVERITY_SCALE,
 } from './modules.ts';
 import { type Labels, labelProblems, labelsSchema, typeLabels } from './preset-labels.ts';
+import { type PresetNote, presetNotes } from './preset-notes.ts';
 import {
   AUTHORITIES,
   CLOSINGS,
@@ -22,6 +23,7 @@ import {
 
 export { FIELD_MODULES, type FieldModule, SEVERITY_SCALE } from './modules.ts';
 export type { Labels, TypeLabels } from './preset-labels.ts';
+export type { PresetNote, PresetNoteCode, PresetPath, PresetSection } from './preset-notes.ts';
 
 export type FieldRequirement = 'create' | 'complete';
 
@@ -82,10 +84,15 @@ export type Preset = {
   view: CollectionLayout;
 };
 
-// A preset that reads may still carry warnings: what it should change, never what stops it loading.
+// A preset that reads may still carry notes: what it should look at, never what stops it loading.
+// `notes` carry a code and a path to the part they are about; `warnings` are the messages of the
+// warning-level ones, as they always read.
 export type PresetReading =
-  | { ok: true; preset: Preset; warnings: string[] }
+  | { ok: true; preset: Preset; warnings: string[]; notes: PresetNote[] }
   | { ok: false; problems: string[] };
+
+// `playbooks`, the texts of the preset's playbooks by path, let the reading check its gates.
+export type ReadOptions = { playbooks?: Readonly<Record<string, string>> };
 
 const NAME = /^[a-z0-9][a-z0-9-]*$/;
 const KEY = /^[a-z][a-z0-9_]*$/;
@@ -303,18 +310,20 @@ function stateProblems(at: string, workflow: RawWorkflow, transitions: Transitio
 }
 
 // close_requires still reads, as requires, but each use is reported until it is renamed.
-function workflowWarnings(at: string, workflow: RawWorkflow): string[] {
+function workflowWarnings(at: string, workflow: RawWorkflow, type?: string): PresetNote[] {
   return Object.entries(workflow.states)
     .filter(([, state]) => state.close_requires !== undefined && state.requires === undefined)
-    .map(
-      ([name, state]) =>
-        `${at}.states.${name}.close_requires: deprecated; write requires: ${state.close_requires}`,
-    );
+    .map(([name, state]) => ({
+      code: 'deprecated_key',
+      level: 'warning',
+      message: `${at}.states.${name}.close_requires: deprecated; write requires: ${state.close_requires}`,
+      path: { section: 'states', ...(type ? { type } : {}), state: name },
+    }));
 }
 
-function presetWarnings(raw: RawPreset): string[] {
+function presetWarnings(raw: RawPreset): PresetNote[] {
   const typed = Object.entries(raw.types ?? {}).flatMap(([name, { workflow }]) =>
-    workflow ? workflowWarnings(`types.${name}.workflow`, workflow) : [],
+    workflow ? workflowWarnings(`types.${name}.workflow`, workflow, name) : [],
   );
   return [...workflowWarnings('workflow', raw.workflow), ...typed];
 }
@@ -577,7 +586,7 @@ function parseYaml(text: string): { ok: true; value: unknown } | { ok: false; pr
   }
 }
 
-export function readPreset(text: string): PresetReading {
+export function readPreset(text: string, options: ReadOptions = {}): PresetReading {
   const yaml = parseYaml(text);
   if (!yaml.ok) return { ok: false, problems: [yaml.problem] };
   const result = presetSchema.safeParse(yaml.value);
@@ -620,7 +629,9 @@ export function readPreset(text: string): PresetReading {
   const icon = raw.icon ?? typed.types.find(({ root }) => root !== false)?.icon;
   if (icon !== undefined) preset.icon = icon;
   if (raw.playbook !== undefined) preset.playbook = raw.playbook;
-  return { ok: true, preset, warnings: presetWarnings(raw) };
+  const notes = [...presetWarnings(raw), ...presetNotes(preset, options.playbooks)];
+  const warnings = notes.filter(({ level }) => level === 'warning').map(({ message }) => message);
+  return { ok: true, preset, warnings, notes };
 }
 
 export function parsePreset(text: string): Preset {

@@ -1,0 +1,72 @@
+# Example bugs Studio draws this preset with: the detail, the row, the form and the lanes. They
+# never enter a collection. Evidence files live in samples/ beside this file.
+samples:
+  - type: bug
+    id: BUGS-1
+    title: Wall-slide jump drops the buffered input
+    state: reported
+    fields:
+      description: >-
+        When the player slides down a wall and presses jump in the last frames before the floor,
+        the jump is lost.
+      steps: Slide down the left wall in 1-2, then press jump in the last frames before the floor.
+      expected: A wall-jump to the right.
+      actual: Lands and stands still; the jump is lost.
+      environment: Windows 11, build 0.8.3, gamepad
+      severity: high
+      category: gameplay
+      area: movement
+    evidence:
+      - { file: wall-slide-before.png, role: before, caption: The press lands on the floor frame }
+      - { file: wall-slide-after.png, role: after, caption: The same press wall-jumps }
+    relations:
+      - {
+          kind: blocks,
+          id: WORK-2,
+          title: Coyote time on moving platforms,
+          type: task,
+          state: todo,
+        }
+    history:
+      - { actor: agent, name: claude-a, event: created, ago: 2m }
+  - type: bug
+    id: BUGS-2
+    title: Save slot overwritten without asking
+    state: fixing
+    fields:
+      description: Saving to a used slot replaces it with no confirmation.
+      steps: Open the pause menu, pick Save, choose slot 2 when it already holds a game.
+      expected: A prompt asks before overwriting.
+      actual: The old save is gone at once.
+      severity: critical
+      category: ui
+      area: saves
+    history:
+      - { actor: agent, name: claude-b, event: created, ago: 3h }
+      - { actor: human, name: you, event: transitioned, from: reported, to: accepted, ago: 2h }
+      - { actor: agent, name: claude-b, event: transitioned, from: accepted, to: fixing, ago: 1h }
+  - type: bug
+    id: BUGS-3
+    title: Footstep sound doubles on stairs
+    state: incomplete
+    fields:
+      description: Each step on a staircase plays two footstep sounds.
+      category: audio
+      area: audio
+    history:
+      - { actor: agent, name: claude-a, event: created, ago: 1d }
+  - type: bug
+    id: BUGS-4
+    title: Pause menu ignores the back button
+    state: fixed
+    fields:
+      description: The gamepad's back button does not close the pause menu.
+      steps: Open the pause menu with a gamepad and press back.
+      expected: The menu closes.
+      actual: Nothing happens.
+      severity: low
+      category: ui
+      area: menus
+    history:
+      - { actor: agent, name: claude-a, event: created, ago: 2d }
+      - { actor: human, name: you, event: transitioned, from: verify, to: fixed, ago: 1d }
