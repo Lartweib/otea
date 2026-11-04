@@ -25,13 +25,25 @@
   white-space: nowrap;
 }
 
-/* A section's header: its label, and the collections' "+" (New item). */
+/* A section's header: its label, and the collections' "+" (New item). The collections' header leads
+   with the fold toggle, on the folded rail's axis (34px in), so it stays put as the sidebar folds. */
 .rail-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   height: 36px;
   padding: 0 4px 0 12px;
+}
+
+.rail-head > .sidebar-toggle {
+  position: relative;
+  flex: none;
+  margin-left: 8px;
+}
+
+.rail-head > .sidebar-toggle + .rail-label {
+  margin-right: auto;
+  margin-left: 6px;
 }
 
 .rail-project {
@@ -85,7 +97,7 @@
   outline-offset: 2px;
 }
 
-.rail-entry:is([aria-pressed="true"], [aria-current="page"]) {
+.rail-entry:is([aria-pressed="true"], [aria-current]) {
   background: var(--sf);
   box-shadow: 0 0 0 1px var(--line);
 }
@@ -96,7 +108,7 @@
   color: var(--mut);
 }
 
-.rail-entry:is([aria-pressed="true"], [aria-current="page"]) .rail-icon {
+.rail-entry:is([aria-pressed="true"], [aria-current]) .rail-icon {
   color: var(--ink);
 }
 
@@ -104,6 +116,84 @@
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* Studio's count of presets, while its tree is unfolded. */
+.rail-meta {
+  font-size: 11.5px;
+}
+
+/* ---- the tree under Studio (StudioTree.tsx): its blueprint, its presets, the modules ---- */
+.rail-tree {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1px;
+  margin: 2px 0 8px 14px;
+  padding-left: 4px;
+  border-left: 1px solid var(--line);
+}
+
+.rail-tree-label {
+  padding: 8px 8px 2px;
+  font-size: 11px;
+}
+
+/* name · official · and, pushed right, version and collections: the name and the meta both give
+   way (to an ellipsis) when the row is short of room. */
+.rail-leaf {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-height: 28px;
+  padding: 6px 7px;
+  border-radius: var(--r-m);
+  color: var(--ink);
+  font: 500 12.5px var(--font-machine);
+  text-decoration: none;
+  transition: background-color var(--m-fast) var(--m-ease);
+}
+
+.rail-leaf:hover {
+  background: var(--hov);
+}
+
+.rail-leaf:focus-visible {
+  outline: 2px solid var(--you);
+  outline-offset: 2px;
+}
+
+.rail-leaf[aria-current="page"] {
+  background: var(--sf);
+  box-shadow: 0 0 0 1px var(--line);
+}
+
+.rail-leaf-name {
+  flex: 0 1 auto;
+  min-width: 4ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rail-leaf-tag,
+.rail-leaf-meta {
+  font: 400 11px var(--font-machine);
+  color: var(--mut);
+}
+
+.rail-leaf-tag {
+  flex: none;
+}
+
+.rail-leaf-meta {
+  flex: 0 1 auto;
+  min-width: 2ch;
+  margin-left: auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rail-leaf-modules {
+  margin-top: 6px;
 }
 
 .rail-count {
@@ -179,7 +269,7 @@
   display: none;
 }
 
-/* You and Preferences, at the foot; the fold button beside them. */
+/* You and Preferences, at the foot. */
 .rail-foot {
   display: flex;
   align-items: center;
@@ -187,10 +277,6 @@
   margin-top: auto;
   padding-top: 12px;
   border-top: 1px solid var(--line);
-}
-
-.sidebar-toggle {
-  flex: none;
 }
 
 /* ---- list head: one row on one baseline. The lane names sit centred on their lanes (x=16 and
@@ -422,7 +508,7 @@
   .with-rail[data-sidebar="off"] .rail {
     align-items: center;
     width: 68px;
-    padding: 6px 0 14px;
+    padding: 8px 0 14px;
   }
 
   .with-rail[data-sidebar="off"] :is(.rail-label, .rail-name, .rail-open) {
@@ -430,9 +516,15 @@
   }
 
   .with-rail[data-sidebar="off"] .rail-head {
+    flex-direction: column;
     justify-content: center;
+    gap: 4px;
     height: auto;
     padding: 0 0 4px;
+  }
+
+  .with-rail[data-sidebar="off"] .rail-head > .sidebar-toggle {
+    margin-left: 0;
   }
 
   .with-rail[data-sidebar="off"] .rail-new {
@@ -527,18 +619,6 @@
 
   .with-rail .rail .tip:is(:hover, :focus-visible)::after {
     transform: translate(0, -50%);
-  }
-
-  .with-rail[data-sidebar="on"] .rail-foot .sidebar-toggle.tip::after {
-    top: auto;
-    bottom: calc(100% + 8px);
-    left: auto;
-    right: 0;
-    transform: translateY(4px);
-  }
-
-  .with-rail[data-sidebar="on"] .rail-foot .sidebar-toggle.tip:is(:hover, :focus-visible)::after {
-    transform: none;
   }
 }
 

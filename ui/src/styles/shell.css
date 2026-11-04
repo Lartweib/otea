@@ -653,6 +653,56 @@
   color: var(--ink);
 }
 
+/* The session's one action: plain text with its icon, a link and not a button (it changes nothing
+   until the pairing page). */
+.prefs-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 30px;
+  margin-left: -8px;
+  padding: 0 8px;
+  border-radius: var(--r-m);
+  color: var(--ink);
+  font-size: 13px;
+  text-decoration: none;
+  transition: background-color var(--m-fast) var(--m-ease);
+}
+
+.prefs-link .icon {
+  color: var(--mut);
+}
+
+.prefs-link:hover {
+  background: var(--hov);
+}
+
+.prefs-link:focus-visible {
+  outline: 2px solid var(--you);
+  outline-offset: 2px;
+}
+
+/* About: what this browser is talking to, as label and value. */
+.prefs-facts {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: 14px;
+  row-gap: 2px;
+  margin: 0;
+  padding-top: 6px;
+}
+
+.prefs-facts dt {
+  margin: 0;
+}
+
+.prefs-facts dd {
+  margin: 0;
+  overflow: hidden;
+  font-size: 12.5px;
+  text-overflow: ellipsis;
+}
+
 /* Every option in sight: a radio group drawn as a segmented pill. */
 .segmented {
   display: inline-flex;

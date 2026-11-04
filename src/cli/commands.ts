@@ -1013,7 +1013,7 @@ function lanText(lan: LanServed): string {
     `Pair a phone: scan this code, or open ${lan.pairingUrl} (pairing code ${lan.code}, 10 minutes, works once)`,
     ...(lan.byAddress ? [`If the phone cannot open the .local name, open ${lan.byAddress}`] : []),
     renderUnicodeCompact(lan.pairingUrl, { ecc: 'M', border: 2 }),
-    'A new code and the paired devices are in the UI, under Phone access; otea devices list and revoke them too',
+    'A new code and the paired devices are in the UI, in Preferences under Pair a phone; otea devices list and revoke them too',
   ].join('\n');
 }
 
