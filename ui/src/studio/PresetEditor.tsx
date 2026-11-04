@@ -47,7 +47,7 @@ import { applyFix, type DraftText, noteKey, trayRows } from './tray.ts';
 // draft on every change, and save waits until it reads no problem. An official preset is only
 // read: duplicate it into the project to change it.
 
-type Draft = { base: string; yaml: string; playbooks: Record<string, string> };
+export type Draft = { base: string; yaml: string; playbooks: Record<string, string> };
 
 const draftKey = (name: string) => `otea.studio.draft.${name}`;
 
@@ -61,7 +61,8 @@ function storedDraft(name: string, base: string): Draft | undefined {
   }
 }
 
-function storeDraft(name: string, draft: Draft | undefined): void {
+// Also how the blueprint's gate fix opens a draft of the preset it changes.
+export function storeDraft(name: string, draft: Draft | undefined): void {
   try {
     if (draft === undefined) window.localStorage.removeItem(draftKey(name));
     else window.localStorage.setItem(draftKey(name), JSON.stringify(draft));
