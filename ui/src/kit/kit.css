@@ -306,19 +306,16 @@
   transition-delay: 350ms;
 }
 
-/* Comfortable touch targets on phones and tablets. */
+/* Touch targets of at least 44px on phones and tablets; a small button keeps its smaller type. */
 @media (pointer: coarse) {
-  .btn {
-    height: 40px;
-  }
+  .btn,
   .btn.sm {
-    height: 36px;
+    min-width: 44px;
+    height: 44px;
   }
-  .btn.icon {
-    width: 40px;
-  }
+  .btn.icon,
   .btn.icon.sm {
-    width: 36px;
+    width: 44px;
   }
 }
 
