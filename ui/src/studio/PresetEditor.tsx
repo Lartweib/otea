@@ -1,16 +1,22 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
+import type { FieldModule, ModuleKind } from '../../../src/core/modules.ts';
 import type { Preset } from '../../../src/core/preset.ts';
 import { ItemDetail } from '../components/ItemDetail.tsx';
+import { ItemList } from '../components/ItemList.tsx';
+import { IntakeForm } from '../components/NewItemForm.tsx';
 import { EvidenceFiles } from '../evidence-files.ts';
 import type { Connection } from '../hooks.ts';
 import { useRemote } from '../hooks.ts';
-import { t } from '../i18n/i18n.ts';
+import { type PlainKey, t } from '../i18n/i18n.ts';
 import { TypeIcon } from '../icons/TypeIcon.tsx';
 import { Button, Icon, Node } from '../kit/index.ts';
+import { nestSections } from '../nesting.ts';
 import { itemNodeKind } from '../node-kind.ts';
 import { stateWord } from '../preset-words.ts';
+import { groupItems } from '../sections.ts';
 import { studioHash } from '../selection.ts';
-import type { Item } from '../types.ts';
+import type { Item, ItemView, LayoutSlot } from '../types.ts';
+import { AddHere, type Gap } from './AddPart.tsx';
 import {
   duplicatePreset,
   fetchPresetSamples,
@@ -21,9 +27,10 @@ import {
   savePreset,
 } from './api.ts';
 import { Canvas } from './Canvas.tsx';
-import type { Part } from './canvas.ts';
+import type { Part, Placed } from './canvas.ts';
 import { diffLines, rawOf, readDraft } from './draft.ts';
 import { Inspector } from './Inspector.tsx';
+import { addField, addModule } from './layout-edit.ts';
 import { OkMark, ProblemMark } from './parts.tsx';
 import { type DraftPreview, draftPreview } from './preview.ts';
 
@@ -114,6 +121,8 @@ function Loaded({ source, samples, canWrite, phone, items, onSaved }: LoadedProp
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
   const [selected, setSelected] = useState<Part>();
+  const [view, setView] = useState<View>('detail');
+  const [chosen, setChosen] = useState<string>();
   const [now] = useState(() => new Date().toISOString());
   const yaml = draft?.yaml ?? source.yaml;
   const playbooks = { ...source.playbooks, ...(draft?.playbooks ?? {}) };
@@ -177,6 +186,15 @@ function Loaded({ source, samples, canWrite, phone, items, onSaved }: LoadedProp
         item.type === shown &&
         (item.fields[field] ?? '') !== '',
     ).length;
+  const drawn =
+    preview?.items.find(
+      (row) => row.type === shown && (chosen === undefined || row.id === chosen),
+    ) ?? preview?.items.find((row) => row.type === shown);
+  const evidence = drawn ? preview?.view(drawn.id)?.evidence : undefined;
+  const sample = drawn && {
+    id: drawn.id,
+    files: (module: string) => (evidence ?? []).filter((entry) => entry.module === module).length,
+  };
   const notes = reading.ok ? reading.notes.filter(({ code }) => !code.startsWith('sample_')) : [];
   return (
     <div className="st-preset st-studio">
@@ -256,21 +274,52 @@ function Loaded({ source, samples, canWrite, phone, items, onSaved }: LoadedProp
         <div className="st-bar-group">
           <span className="st-bar-k">{t('studio.bar.view')}</span>
           <fieldset className="st-pills" aria-label={t('studio.bar.view')}>
-            <button type="button" aria-pressed="true">
-              {t('studio.view.detail')}
-            </button>
+            {VIEWS.map((each) => (
+              <button
+                key={each}
+                type="button"
+                data-view={each}
+                aria-pressed={each === view}
+                onClick={() => {
+                  setView(each);
+                  setSelected(undefined);
+                }}
+              >
+                {t(VIEW_LABEL[each])}
+              </button>
+            ))}
           </fieldset>
         </div>
       </div>
-      <div className="st-cols">
+      <div className="st-cols" data-view={view}>
         {shown !== undefined && preview ? (
-          <DetailStudio
+          <Stage
             key={shown}
             name={source.name}
             preview={preview}
             type={shown}
+            view={view}
+            chosen={chosen}
+            onChoose={setChosen}
             selected={selected}
             onSelect={setSelected}
+            adding={
+              change && {
+                taken: (field) =>
+                  raw.fields?.[field] !== undefined ||
+                  Object.values(raw.types ?? {}).some(
+                    (spec) => spec?.fields?.[field] !== undefined,
+                  ),
+                onField: (gap, field, module) => {
+                  change(addField(yaml, preset, shown, gap.slot, gap.index, field, module));
+                  setSelected({ type: shown, slot: gap.slot, index: gap.index, field });
+                },
+                onModule: (gap, module) => {
+                  change(addModule(yaml, preset, shown, gap.slot, gap.index, module));
+                  setSelected({ type: shown, slot: gap.slot, index: gap.index });
+                },
+              }
+            }
           />
         ) : (
           <p className="t-small st-msg st-stage">
@@ -287,6 +336,7 @@ function Loaded({ source, samples, canWrite, phone, items, onSaved }: LoadedProp
             change={change}
             used={used}
             onSelect={setSelected}
+            sample={sample}
           />
         ) : (
           <aside className="st-insp" aria-label={t('studio.inspect.title')}>
@@ -311,54 +361,147 @@ function Loaded({ source, samples, canWrite, phone, items, onSaved }: LoadedProp
   );
 }
 
-type DetailStudioProps = {
+export type View = 'detail' | 'form' | 'row';
+
+const VIEWS: readonly View[] = ['detail', 'form', 'row'];
+
+const VIEW_LABEL: Record<View, PlainKey> = {
+  detail: 'studio.view.detail',
+  form: 'studio.view.form',
+  row: 'studio.view.row',
+};
+
+type Adding = {
+  taken: (field: string) => boolean;
+  onField: (gap: Gap, field: string, module: FieldModule) => void;
+  onModule: (gap: Gap, module: ModuleKind) => void;
+};
+
+type StageProps = {
   name: string;
   preview: DraftPreview;
   type: string;
+  view: View;
+  chosen: string | undefined;
+  onChoose: (id: string) => void;
   selected: Part | undefined;
   onSelect: (part: Part | undefined) => void;
+  // Undefined while the preset cannot be edited here: no + field here.
+  adding: Adding | undefined;
 };
 
-// The detail view: the sample items of the type as list rows on the left, the chosen one drawn by
-// the real item detail in the middle.
-function DetailStudio({ name, preview, type, selected, onSelect }: DetailStudioProps) {
+// A field the sample leaves empty draws nothing; the chosen one shows that it has no value yet, so
+// a field just added is seen where it went.
+function withChosen(item: ItemView | undefined, field: string | undefined): ItemView | undefined {
+  if (!item || field === undefined || (item.fields[field] ?? '') !== '') return item;
+  return { ...item, fields: { ...item.fields, [field]: t('studio.canvas.noValue') } };
+}
+
+const NO_FOLDS = { collapsed: new Set<string>(), expanded: new Set<string>() };
+
+// The view being edited, drawn with the real components: the sample items as list rows on the
+// left (but in the row view, where the rows are the preview), and the chosen one in the middle.
+function Stage({
+  name,
+  preview,
+  type,
+  view,
+  chosen,
+  onChoose,
+  selected,
+  onSelect,
+  adding,
+}: StageProps) {
   const rows = preview.items.filter((item) => item.type === type);
-  const [chosen, setChosen] = useState(rows[0]?.id);
   const id = rows.some((row) => row.id === chosen) ? chosen : rows[0]?.id;
-  const item = id === undefined ? undefined : preview.view(id);
-  const view = preview.collection.types.find((each) => each.name === type);
-  const moduleName = (part: Part) => view?.layout[part.slot][part.index]?.id;
+  const item = withChosen(id === undefined ? undefined : preview.view(id), selected?.field);
+  const shape = preview.collection.types.find((each) => each.name === type);
+  const entryAt = (slot: LayoutSlot, index: number) => shape?.layout[slot][index];
+  const moduleName = (part: Part) => entryAt(part.slot, part.index)?.id;
+  const nameAt = (slot: LayoutSlot, index: number) => {
+    const entry = entryAt(slot, index);
+    return entry?.field ?? entry?.id ?? entry?.module;
+  };
+  const marks = adding
+    ? (placed: readonly Placed[], slot: LayoutSlot | undefined) => (
+        <AddHere placed={placed} slots={[slot, selected?.slot]} nameAt={nameAt} {...adding} />
+      )
+    : undefined;
+  const canvas = (label: string, drawn: ReactNode) => (
+    <EvidenceFiles.Provider value={(evidence) => sampleFileUrl(name, evidence.filename)}>
+      <Canvas
+        type={type}
+        label={label}
+        selected={selected}
+        onSelect={onSelect}
+        nameOf={moduleName}
+        marks={marks}
+      >
+        {drawn}
+      </Canvas>
+    </EvidenceFiles.Provider>
+  );
+  let drawn: ReactNode;
+  if (view === 'row') {
+    const nesting = nestSections(groupItems(rows, 'turn', preview.collection), NO_FOLDS);
+    const order = (shape?.layout.row ?? []).map((entry) => entry.field ?? entry.module);
+    drawn = (
+      <>
+        {canvas(
+          t('studio.canvas.rows'),
+          <ItemList
+            sections={nesting.sections}
+            nesting={nesting.rows}
+            selectedId={undefined}
+            collectionOf={() => preview.collection}
+            scope={`studio:${type}`}
+          />,
+        )}
+        <p className="st-stage-n">{t('studio.row.note', { order: order.join(' · ') })}</p>
+      </>
+    );
+  } else if (view === 'form') {
+    drawn = canvas(
+      t('studio.canvas.form'),
+      <article className="detail st-form-card">
+        <IntakeForm
+          key={type}
+          collections={[{ ...preview.collection, types: shape ? [shape] : [] }]}
+          first={{ ...preview.collection, types: shape ? [shape] : [] }}
+          ids={[]}
+          parent={undefined}
+          onCancel={() => {}}
+          onCreated={() => {}}
+        />
+      </article>,
+    );
+  } else {
+    drawn = item ? (
+      canvas(
+        t('studio.canvas.aria', { id: item.id }),
+        <ItemDetail
+          item={item}
+          canWrite
+          collection={preview.collection}
+          collectionOf={() => preview.collection}
+        />,
+      )
+    ) : (
+      <p className="t-small st-msg">{t('studio.samples.noneOfType', { type })}</p>
+    );
+  }
   return (
     <>
-      <SampleList
-        rows={rows}
-        preview={preview}
-        chosen={id}
-        onChoose={setChosen}
-        collection={preview.collection.name}
-      />
-      <section className="st-stage">
-        {item ? (
-          <EvidenceFiles.Provider value={(evidence) => sampleFileUrl(name, evidence.filename)}>
-            <Canvas
-              type={type}
-              label={t('studio.canvas.aria', { id: item.id })}
-              selected={selected}
-              onSelect={onSelect}
-              nameOf={moduleName}
-            >
-              <ItemDetail
-                item={item}
-                canWrite
-                collection={preview.collection}
-                collectionOf={() => preview.collection}
-              />
-            </Canvas>
-          </EvidenceFiles.Provider>
-        ) : (
-          <p className="t-small st-msg">{t('studio.samples.noneOfType', { type })}</p>
-        )}
-      </section>
+      {view === 'row' ? null : (
+        <SampleList
+          rows={rows}
+          preview={preview}
+          chosen={id}
+          onChoose={onChoose}
+          collection={preview.collection.name}
+        />
+      )}
+      <section className="st-stage">{drawn}</section>
     </>
   );
 }

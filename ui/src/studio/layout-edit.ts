@@ -1,4 +1,12 @@
-import { LAYOUT_SLOTS, type LayoutEntry, MODULE_REGISTRY } from '../../../src/core/modules.ts';
+import { evidenceTypeOf } from '../../../src/core/evidence.ts';
+import {
+  FIELD_MODULES,
+  type FieldModule,
+  LAYOUT_SLOTS,
+  type LayoutEntry,
+  MODULE_REGISTRY,
+  type ModuleKind,
+} from '../../../src/core/modules.ts';
 import type { Preset } from '../../../src/core/preset.ts';
 import { t } from '../i18n/i18n.ts';
 import type { LayoutSlot } from '../types.ts';
@@ -227,6 +235,98 @@ export function renameField(
     );
   if (raw.view?.group_by === from) next = setIn(next, ['view', 'group_by'], to);
   return next;
+}
+
+// What + field here offers in a slot: the field modules when the slot takes fields, then every
+// other module, struck where the slot does not take it.
+export type ModuleOffer = { module: ModuleKind; struck?: string };
+
+// An evidence module starts as images; its inspector turns it into another kind of file.
+const OTHER_MODULES: readonly ModuleKind[] = ['relations', 'children', 'images', 'rounds'];
+
+export function slotOffer(slot: LayoutSlot): { fields: FieldModule[]; modules: ModuleOffer[] } {
+  return {
+    fields: FIELD_MODULES.filter((module) => MODULE_REGISTRY[module].slots.includes(slot)),
+    modules: OTHER_MODULES.map((module) =>
+      MODULE_REGISTRY[module].slots.includes(slot)
+        ? { module }
+        : {
+            module,
+            struck: t('studio.add.notHere', {
+              slots: MODULE_REGISTRY[module].slots.join(', '),
+            }),
+          },
+    ),
+  };
+}
+
+// A new field, shared by every type, placed at the index of the slot. A preset that speaks another
+// language names it there too, as its name until someone words it.
+export function addField(
+  yaml: string,
+  preset: Preset | undefined,
+  type: string,
+  slot: LayoutSlot,
+  index: number,
+  name: string,
+  module: FieldModule,
+): string {
+  const spec: Record<string, unknown> = { module };
+  if (module === 'enum') spec.values = ['one', 'two'];
+  let next = setIn(yaml, ['fields', name], spec);
+  for (const language of Object.keys(labelsOf(rawOf(yaml))))
+    next = setIn(next, ['labels', language, 'fields', name], name);
+  return insertInSlot(next, preset, type, slot, index, name);
+}
+
+export function addModule(
+  yaml: string,
+  preset: Preset | undefined,
+  type: string,
+  slot: LayoutSlot,
+  index: number,
+  module: ModuleKind,
+): string {
+  const entry = MODULE_REGISTRY[module].family === 'evidence' ? { module, id: module } : { module };
+  return insertInSlot(yaml, preset, type, slot, index, entry);
+}
+
+// Replaces the entry at an index of a slot, as the inspector of a module changes it.
+export function setEntry(
+  yaml: string,
+  preset: Preset | undefined,
+  type: string,
+  slot: LayoutSlot,
+  index: number,
+  entry: LayoutEntry,
+): string {
+  const entries = slotOf(preset, type, slot).map(written);
+  if (index < 0 || index >= entries.length) return yaml;
+  entries[index] = written(entry);
+  return writeSlot(yaml, type, slot, entries);
+}
+
+const EXTENSIONS = [
+  'png',
+  'jpg',
+  'jpeg',
+  'webp',
+  'gif',
+  'mp4',
+  'webm',
+  'mov',
+  'diff',
+  'patch',
+  'log',
+  'txt',
+  'mmd',
+  'mermaid',
+];
+
+// The file extensions an evidence module may accept.
+export function extensionsOf(module: string): string[] {
+  const kinds = MODULE_REGISTRY[module as ModuleKind]?.accepts ?? [];
+  return EXTENSIONS.filter((extension) => kinds.includes(evidenceTypeOf(`f.${extension}`).kind));
 }
 
 export { LAYOUT_SLOTS };

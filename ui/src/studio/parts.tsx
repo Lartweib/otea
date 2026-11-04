@@ -141,3 +141,27 @@ export function NameForm({
     </form>
   );
 }
+
+// One question of the inspector: its words, the key it writes and a note under its control.
+export function Ask({
+  question,
+  yamlKey,
+  note,
+  children,
+}: {
+  question: string;
+  yamlKey: string;
+  note?: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <section className="st-ask">
+      <div className="st-ask-h">
+        <h3>{question}</h3>
+        <code>{yamlKey}</code>
+      </div>
+      {children}
+      {note ? <p className="st-ask-n">{note}</p> : null}
+    </section>
+  );
+}

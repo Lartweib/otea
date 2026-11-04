@@ -53,7 +53,7 @@ const draftKey = () => {
   return `file-${drafted}`;
 };
 
-function IntakeForm({
+export function IntakeForm({
   collections,
   first,
   ids,

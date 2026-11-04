@@ -40,11 +40,14 @@ function grow(box: Box, rect: Box): void {
   box.width = right - box.left;
 }
 
+const meets = (a: Box, b: Box) => a.top <= b.top + b.height + 4 && b.top <= a.top + a.height + 4;
+
 // One box for each part, around every element that carries it (a field's label and its value).
+// The same part drawn again further down (in every row of a list) keeps a box of its own.
 export function merged(placed: readonly Placed[]): Placed[] {
   const parts: Placed[] = [];
   for (const { part, rect } of placed) {
-    const known = parts.find((each) => samePart(each.part, part));
+    const known = parts.find((each) => samePart(each.part, part) && meets(each.rect, rect));
     if (known) grow(known.rect, rect);
     else parts.push({ part, rect: { ...rect } });
   }
@@ -62,7 +65,11 @@ export function slotBoxes(placed: readonly Placed[]): Array<{ slot: LayoutSlot; 
   return [...boxes].map(([slot, rect]) => ({ slot, rect }));
 }
 
-const takesFields = (slot: LayoutSlot) => MODULE_REGISTRY.text.slots.includes(slot);
+// The slots that stack their parts and take fields: + field here goes between them. The header and
+// the row line their parts up, and are added to from the inspector.
+const STACKED: readonly LayoutSlot[] = ['body', 'side', 'intake', 'phone'];
+const takesFields = (slot: LayoutSlot) =>
+  STACKED.includes(slot) && MODULE_REGISTRY.text.slots.includes(slot);
 
 // Where + field here sits: after each part of a slot that takes fields, half way to the next one,
 // with the index a new field would take there.
@@ -75,14 +82,15 @@ export function gapsOf(
     bySlot.set(each.part.slot, [...(bySlot.get(each.part.slot) ?? []), each]);
   }
   return [...bySlot].flatMap(([slot, parts]) => {
-    const sorted = [...parts].sort((a, b) => a.part.index - b.part.index);
+    // Down the page: a part the view draws elsewhere (a module in its own section) keeps its index.
+    const sorted = [...parts].sort((a, b) => a.rect.top - b.rect.top);
     return sorted.map(({ part, rect }, at) => {
       const next = sorted[at + 1];
       const bottom = rect.top + rect.height;
       return {
         slot,
         index: part.index + 1,
-        top: next ? Math.round((bottom + next.rect.top) / 2) : bottom,
+        top: next && next.rect.top >= bottom ? Math.round((bottom + next.rect.top) / 2) : bottom,
       };
     });
   });

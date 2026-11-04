@@ -1,4 +1,4 @@
-import { type ReactNode, useState } from 'react';
+import { useState } from 'react';
 import { FIELD_MODULES, type Preset, SEVERITY_SCALE } from '../../../src/core/preset.ts';
 import { type PlainKey, t, tx } from '../i18n/i18n.ts';
 import { Icon } from '../kit/index.ts';
@@ -17,7 +17,8 @@ import {
   shownIn,
   slotChoices,
 } from './layout-edit.ts';
-import { NameForm, Seg } from './parts.tsx';
+import { ModuleInspector } from './ModuleInspector.tsx';
+import { Ask, NameForm, Seg } from './parts.tsx';
 
 // The inspector beside the preview: the part that was clicked, asked about in plain words, each
 // question with the YAML key it writes in small mono beside it. Only valid choices are offered; what
@@ -35,31 +36,9 @@ export type InspectorProps = {
   // How many saved items fill a field in, by field.
   used: (field: string) => number;
   onSelect: (part: Part | undefined) => void;
+  // The drawn sample: its id, and how many of its files a module holds.
+  sample?: { id: string; files: (module: string) => number } | undefined;
 };
-
-// One question of the inspector: its words, the key it writes and a note under its control.
-export function Ask({
-  question,
-  yamlKey,
-  note,
-  children,
-}: {
-  question: string;
-  yamlKey: string;
-  note?: ReactNode;
-  children: ReactNode;
-}) {
-  return (
-    <section className="st-ask">
-      <div className="st-ask-h">
-        <h3>{question}</h3>
-        <code>{yamlKey}</code>
-      </div>
-      {children}
-      {note ? <p className="st-ask-n">{note}</p> : null}
-    </section>
-  );
-}
 
 const MODULE_NOTE: Record<string, PlainKey> = {
   text: 'studio.inspect.module.text',
@@ -92,10 +71,17 @@ function wordsOf(raw: RawPreset): Words {
 }
 
 export function Inspector(props: InspectorProps) {
+  const { part, preset, type } = props;
+  const entry =
+    part.index < 0
+      ? undefined
+      : preset?.types.find(({ name }) => name === type)?.layout[part.slot][part.index];
   return (
     <aside className="st-insp" aria-label={t('studio.inspect.title')}>
       {props.part.field !== undefined ? (
         <FieldInspector {...props} field={props.part.field} />
+      ) : entry ? (
+        <ModuleInspector {...props} entry={entry} />
       ) : (
         <SlotInspector {...props} />
       )}
@@ -313,6 +299,9 @@ function FieldInspector({
           })}
         </span>
       </Ask>
+      {part.slot === 'row' || part.slot === 'header' ? (
+        <SlotOrder {...{ raw, yaml, preset, type, part, change, onSelect }} />
+      ) : null}
       {words ? (
         <Ask
           question={t('studio.inspect.inSpanish')}
@@ -442,5 +431,61 @@ function SlotInspector({ raw, yaml, preset, type, part, change, onSelect }: Insp
         {entries.length === 0 ? <p className="st-ask-n">{t('studio.inspect.empty')}</p> : null}
       </Ask>
     </>
+  );
+}
+
+// The order of a slot that lines its parts up (the row, the header): the chosen part moves along it.
+function SlotOrder({
+  raw,
+  yaml,
+  preset,
+  type,
+  part,
+  change,
+  onSelect,
+}: Pick<InspectorProps, 'raw' | 'yaml' | 'preset' | 'type' | 'part' | 'change' | 'onSelect'>) {
+  const entries = preset?.types.find(({ name }) => name === type)?.layout[part.slot] ?? [];
+  const move = (to: number) => {
+    change?.(moveInSlot(yaml, preset, type, part.slot, part.index, to));
+    onSelect({ ...part, index: to });
+  };
+  return (
+    <Ask
+      question={t('studio.inspect.order', { slot: part.slot })}
+      yamlKey={`${layoutPath(raw, type).slice(-1)[0]}.${part.slot}`}
+      note={part.slot === 'row' ? t('studio.inspect.rowClips') : undefined}
+    >
+      <span className="st-vals">
+        {entries.map((entry, index) => (
+          <span
+            // biome-ignore lint/suspicious/noArrayIndexKey: entries are positional
+            key={index}
+            className={`st-val${index === part.index ? ' st-val-on' : ''}`}
+          >
+            {entry.field ?? entry.id ?? entry.module}
+          </span>
+        ))}
+      </span>
+      {change ? (
+        <span className="st-vals">
+          <button
+            type="button"
+            className="btn sm"
+            disabled={part.index <= 0}
+            onClick={() => move(part.index - 1)}
+          >
+            {t('studio.inspect.earlier')}
+          </button>
+          <button
+            type="button"
+            className="btn sm"
+            disabled={part.index >= entries.length - 1}
+            onClick={() => move(part.index + 1)}
+          >
+            {t('studio.inspect.later')}
+          </button>
+        </span>
+      ) : null}
+    </Ask>
   );
 }
