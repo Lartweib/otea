@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   assertInBlueprint,
   type Blueprint,
+  blocksWaitingForNothing,
   blueprintTypeProblems,
   blueprintWarnings,
   blueprintYaml,
@@ -307,5 +308,12 @@ describe('blueprintWarnings', () => {
 
   it('says nothing about a board whose preset cannot be read: its problems say it', () => {
     expect(blueprintWarnings(product, () => undefined)).toEqual([]);
+  });
+
+  it('names the links that wait for nothing, for Studio to draw beside them', () => {
+    expect(blocksWaitingForNothing(product, () => tasks)).toEqual([
+      { index: 0, connection: product.connections[0] },
+    ]);
+    expect(blocksWaitingForNothing(product, () => waiting)).toEqual([]);
   });
 });

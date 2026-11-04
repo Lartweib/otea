@@ -31,6 +31,7 @@ import {
   blueprintStatus,
   coordinationPlaybook,
   loadBlueprints,
+  pointBoardAt,
   readProjectBlueprint,
   workflowsIn,
 } from './blueprints.ts';
@@ -490,4 +491,23 @@ export function duplicatePreset(project: Project, name: string, as: string): Pre
   copySamples(from.dir, to);
   reload(project);
   return sourceOf(project, { name: as, origin: 'project', dir: to });
+}
+
+// A board's preset copied into the project under a new name, and the board pointed at the copy:
+// what Studio does before it changes an official preset a board uses, which is only read where it
+// is. The copy starts at version 1 with the same types and states, so the board's items stay.
+export function copyBoardPreset(
+  project: Project,
+  board: string,
+  as: string,
+): { board: string; preset: PresetSource } {
+  const from = readProjectBlueprint(project.dataDir)?.blueprint?.boards.find(
+    ({ name }) => name === board,
+  );
+  if (from === undefined) {
+    throw new OteaError('not_found', `The project blueprint has no board ${board}`);
+  }
+  const copy = duplicatePreset(project, from.preset, as);
+  pointBoardAt(project, board, copy.name);
+  return { board, preset: readPresetSource(project, copy.name) };
 }

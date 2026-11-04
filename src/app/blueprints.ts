@@ -22,7 +22,12 @@ import {
 import { OteaError } from '../core/errors.ts';
 import type { Finding } from '../core/validation.ts';
 import { transaction } from '../store/database.ts';
-import { deleteCollection, findCollection, selectItems } from '../store/queries.ts';
+import {
+  deleteCollection,
+  findCollection,
+  selectItems,
+  setCollectionPreset,
+} from '../store/queries.ts';
 import { insertNewCollection } from './collections.ts';
 import type { Context } from './context.ts';
 import { type PresetCatalog, requirePreset } from './presets.ts';
@@ -533,6 +538,47 @@ export function editBlueprint(project: Project, edit: BlueprintEdit): EditedBlue
   writeFileSync(projectBlueprintPath(project.dataDir), `${COPY_HEADER}${blueprintYaml(edited)}`);
   project.blueprint = edited;
   return { blueprint: edited, applied };
+}
+
+// The types of a preset and the states of each, to tell whether items read the same under another.
+function shapeOf(presets: PresetCatalog, name: string): string {
+  const preset = requirePreset(presets, name);
+  return JSON.stringify(
+    preset.types.map((type) => [type.name, type.workflow.states.map((state) => state.name)]),
+  );
+}
+
+// Points a board at another preset, items and all, when it has the same types and states: a copy of
+// its preset, so the board can change where the official one cannot be edited. The project's copy
+// of the blueprint keeps its source, so otea blueprint status reports the board as changed.
+export function pointBoardAt(project: Project, board: string, preset: string): Blueprint {
+  const copy = requireCopy(project);
+  const at = copy.boards.find(({ name }) => name === board);
+  if (at === undefined) {
+    throw new OteaError('not_found', `The blueprint "${copy.name}" has no board ${board}`);
+  }
+  const target = requirePreset(project.presets, preset);
+  const count = itemCount(project, board);
+  if (count > 0 && shapeOf(project.presets, at.preset) !== shapeOf(project.presets, preset)) {
+    throw new OteaError(
+      'in_use',
+      `Cannot point board ${board} at preset ${preset}: it has ${items(count)}, and ${preset} has other types or states than ${at.preset}`,
+    );
+  }
+  const edited: Blueprint = {
+    ...copy,
+    boards: copy.boards.map((each) => (each.name === board ? { name: board, preset } : each)),
+  };
+  transaction(project.db, () => {
+    if (findCollection(project.db, board) === undefined) {
+      insertNewCollection(project, { name: board, preset });
+    } else {
+      setCollectionPreset(project.db, board, preset, target.version);
+    }
+  });
+  writeFileSync(projectBlueprintPath(project.dataDir), `${COPY_HEADER}${blueprintYaml(edited)}`);
+  project.blueprint = edited;
+  return edited;
 }
 
 // The coordination playbook of the project's blueprint, when it has one.
