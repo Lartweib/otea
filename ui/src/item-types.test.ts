@@ -2,9 +2,11 @@ import { describe, expect, it } from 'vitest';
 import {
   detailBlocks,
   intakeFields,
+  intakeSlots,
   intakeTypes,
   rowValues,
   showsTypes,
+  slotData,
   takesChildren,
   typeMark,
   typeOf,
@@ -56,6 +58,14 @@ const impr: TypeView = {
   fields: [title, area, pitch],
   layout: { ...EMPTY, body: [entry(pitch)], intake: [entry(title), entry(pitch)] },
 };
+
+// Where the layout of a type places something: its slot, and its index there.
+const at = (type: string, slot: string, index: number, field?: string) => ({
+  type,
+  slot,
+  index,
+  ...(field === undefined ? {} : { field }),
+});
 
 const work: CollectionView = {
   name: 'work',
@@ -151,9 +161,31 @@ describe('item types', () => {
     expect(intakeFields(bug)).toEqual([title, severity]);
   });
 
+  it('places each intake field at its index in the slot', () => {
+    expect(intakeSlots(bug)).toEqual([
+      { field: title, at: at('bug', 'intake', 0, 'title') },
+      { field: severity, at: at('bug', 'intake', 1, 'severity') },
+    ]);
+  });
+
+  it('turns a place into the data attributes a rendered part carries', () => {
+    expect(slotData(at('bug', 'body', 2, 'area') as never)).toEqual({
+      'data-type': 'bug',
+      'data-slot': 'body',
+      'data-index': '2',
+      'data-field': 'area',
+    });
+    expect(slotData(at('bug', 'evidence', 0) as never)).toEqual({
+      'data-type': 'bug',
+      'data-slot': 'evidence',
+      'data-index': '0',
+    });
+    expect(slotData(undefined)).toEqual({});
+  });
+
   it('puts the values of the row slot in the row', () => {
     expect(rowValues(bug, { area: 'Login', severity: 'high' })).toEqual([
-      { field: severity, value: 'high', label: 'severity' },
+      { field: severity, value: 'high', label: 'severity', at: at('bug', 'row', 0, 'severity') },
     ]);
   });
 
@@ -167,21 +199,48 @@ describe('item types', () => {
     it('lays out the head, the primary column in slot order and the side', () => {
       const blocks = detailBlocks(bug, { area: 'Login', severity: 'high' });
 
-      expect(blocks.head).toEqual([{ field: severity, value: 'high', label: 'severity' }]);
+      expect(blocks.head).toEqual([
+        {
+          field: severity,
+          value: 'high',
+          label: 'severity',
+          at: at('bug', 'header', 0, 'severity'),
+        },
+      ]);
       expect(blocks.primary).toEqual([
-        { kind: 'module', entry: shots },
-        { kind: 'fields', values: [{ field: area, value: 'Login', label: 'Where' }] },
+        { kind: 'module', entry: shots, at: at('bug', 'evidence', 0) },
+        {
+          kind: 'fields',
+          values: [
+            { field: area, value: 'Login', label: 'Where', at: at('bug', 'body', 0, 'area') },
+          ],
+        },
         { kind: 'evidence' },
       ]);
       expect(blocks.side).toEqual([
-        { kind: 'fields', values: [{ field: severity, value: 'high', label: 'severity' }] },
-        { kind: 'module', entry: recording },
+        {
+          kind: 'fields',
+          values: [
+            {
+              field: severity,
+              value: 'high',
+              label: 'severity',
+              at: at('bug', 'side', 0, 'severity'),
+            },
+          ],
+        },
+        { kind: 'module', entry: recording, at: at('bug', 'side', 1) },
       ]);
     });
 
     it('keeps the plain evidence list after the fields', () => {
       expect(detailBlocks(impr, { pitch: 'Cache it' }).primary).toEqual([
-        { kind: 'fields', values: [{ field: pitch, value: 'Cache it', label: 'pitch' }] },
+        {
+          kind: 'fields',
+          values: [
+            { field: pitch, value: 'Cache it', label: 'pitch', at: at('impr', 'body', 0, 'pitch') },
+          ],
+        },
         { kind: 'evidence' },
       ]);
     });
@@ -209,11 +268,22 @@ describe('item types', () => {
       const blocks = detailBlocks(parts, { pitch: 'Wolf' });
 
       expect(blocks.primary).toEqual([
-        { kind: 'fields', values: [{ field: pitch, value: 'Wolf', label: 'pitch' }] },
-        { kind: 'relation', entry: { module: 'children', label: 'Parts' } },
+        {
+          kind: 'fields',
+          values: [
+            { field: pitch, value: 'Wolf', label: 'pitch', at: at('impr', 'body', 0, 'pitch') },
+          ],
+        },
+        {
+          kind: 'relation',
+          entry: { module: 'children', label: 'Parts' },
+          at: at('impr', 'body', 1),
+        },
         { kind: 'evidence' },
       ]);
-      expect(blocks.side).toEqual([{ kind: 'relation', entry: { module: 'relations' } }]);
+      expect(blocks.side).toEqual([
+        { kind: 'relation', entry: { module: 'relations' }, at: at('impr', 'side', 0) },
+      ]);
     });
 
     it('shows every value in the body and the relations aside while the type is unknown', () => {

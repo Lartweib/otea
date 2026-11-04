@@ -438,6 +438,11 @@
 }
 
 /* What field modules put in line two (an enum off its default): signals at the end, quiet. */
+/* A wrapper that only carries a part's place in the layout (data-slot, data-index): no box. */
+.slot-part {
+  display: contents;
+}
+
 .row-values {
   display: flex;
   flex: 0 1 auto;
