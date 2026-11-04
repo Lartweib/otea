@@ -3,17 +3,51 @@ import { presetText } from './i18n/i18n.ts';
 import { fieldWord, typeWord } from './preset-words.ts';
 import type { CollectionView, FieldView, LayoutEntry, LayoutSlot, TypeView } from './types.ts';
 
-// A value with the field that shapes it and the label its layout entry gives it.
-export type PlacedValue = { field: FieldView; value: string; label: string };
+// Where a type's layout places a part: its slot and its index there, and the field it draws. Studio
+// reads it off the rendered part (slotData) to open what was clicked in the preset.
+export type SlotPath = { type: string; slot: LayoutSlot; index: number; field?: string };
+
+// A value with the field that shapes it, the label its layout entry gives it, and where the layout
+// places it (none for a value whose field the type does not declare).
+export type PlacedValue = { field: FieldView; value: string; label: string; at?: SlotPath };
 
 // A column of an item detail: runs of field values, the evidence and relation modules where the
-// layout places them, and the plain evidence list (the files no drawn module holds).
+// layout places them, and the plain evidence list (the files no drawn module holds). Runs merge the
+// values of neighbouring entries, so each value keeps its own place.
 export type DetailBlock =
   | { kind: 'fields'; values: PlacedValue[] }
-  | { kind: 'module'; entry: LayoutEntry }
-  | { kind: 'relation'; entry: LayoutEntry }
-  | { kind: 'reserved'; entry: LayoutEntry }
+  | { kind: 'module'; entry: LayoutEntry; at?: SlotPath }
+  | { kind: 'relation'; entry: LayoutEntry; at?: SlotPath }
+  | { kind: 'reserved'; entry: LayoutEntry; at?: SlotPath }
   | { kind: 'evidence' };
+
+// The data attributes a rendered part carries for its place: data-type, data-slot, data-index and,
+// for a field, data-field. Nothing for a part the layout does not place.
+export function slotData(at: SlotPath | undefined): Record<string, string> {
+  if (!at) return {};
+  return {
+    'data-type': at.type,
+    'data-slot': at.slot,
+    'data-index': String(at.index),
+    ...(at.field === undefined ? {} : { 'data-field': at.field }),
+  };
+}
+
+function pathOf(type: TypeView, slot: LayoutSlot, index: number, entry: LayoutEntry): SlotPath {
+  return {
+    type: type.name,
+    slot,
+    index,
+    ...(entry.field === undefined ? {} : { field: entry.field }),
+  };
+}
+
+// The entries of the type's slots, in order, each with its place.
+function placedEntries(type: TypeView, slots: readonly LayoutSlot[]) {
+  return slots.flatMap((slot) =>
+    type.layout[slot].map((entry, index) => ({ entry, at: pathOf(type, slot, index, entry) })),
+  );
+}
 
 // Modules that draw from the item as a whole (its history, a field it reads by name) rather than
 // one field or one module's files. questions and score draw nothing yet.
@@ -91,16 +125,21 @@ function fieldOf(type: TypeView, name: string): FieldView | undefined {
   return type.fields.find((field) => field.name === name);
 }
 
-export function intakeFields(type: TypeView): FieldView[] {
-  return type.layout.intake.flatMap(({ field }) => {
-    const found = field === undefined ? undefined : fieldOf(type, field);
-    return found ? [found] : [];
+// The fields the create form asks for, in the intake slot's order, each with its place.
+export function intakeSlots(type: TypeView): { field: FieldView; at: SlotPath }[] {
+  return placedEntries(type, ['intake']).flatMap(({ entry, at }) => {
+    const found = entry.field === undefined ? undefined : fieldOf(type, entry.field);
+    return found ? [{ field: found, at }] : [];
   });
+}
+
+export function intakeFields(type: TypeView): FieldView[] {
+  return intakeSlots(type).map(({ field }) => field);
 }
 
 function placed(
   type: TypeView,
-  entry: LayoutEntry,
+  { entry, at }: { entry: LayoutEntry; at: SlotPath },
   values: Readonly<Record<string, string>>,
 ): PlacedValue[] {
   const { field: name, label } = entry;
@@ -108,7 +147,8 @@ function placed(
   const field = name === undefined ? undefined : fieldOf(type, name);
   if (!field || value === undefined) return [];
   // The preset's label for the field in the language on screen wins: a screen never mixes the two.
-  return [{ field, value, label: fieldWord(type, field.name) ?? presetText(label ?? field.name) }];
+  const word = fieldWord(type, field.name) ?? presetText(label ?? field.name);
+  return [{ field, value, label: word, at }];
 }
 
 function slotValues(
@@ -116,7 +156,7 @@ function slotValues(
   slot: LayoutSlot,
   values: Readonly<Record<string, string>>,
 ): PlacedValue[] {
-  return type.layout[slot].flatMap((entry) => placed(type, entry, values));
+  return placedEntries(type, [slot]).flatMap((entry) => placed(type, entry, values));
 }
 
 // Values whose field the type does not declare (or every value, while the type is unknown) show as
@@ -139,7 +179,7 @@ export function rowValues(
 
 function blocksOf(
   type: TypeView,
-  entries: readonly LayoutEntry[],
+  entries: readonly { entry: LayoutEntry; at: SlotPath }[],
   values: Readonly<Record<string, string>>,
   extra: PlacedValue[] = [],
 ): DetailBlock[] {
@@ -150,11 +190,12 @@ function blocksOf(
     if (last?.kind === 'fields') last.values.push(...found);
     else blocks.push({ kind: 'fields', values: found });
   };
-  for (const entry of entries) {
-    if (isEvidenceModule(entry)) blocks.push({ kind: 'module', entry });
-    else if (isRelationModule(entry)) blocks.push({ kind: 'relation', entry });
-    else if (isReservedModule(entry)) blocks.push({ kind: 'reserved', entry });
-    else add(placed(type, entry, values));
+  for (const placedEntry of entries) {
+    const { entry, at } = placedEntry;
+    if (isEvidenceModule(entry)) blocks.push({ kind: 'module', entry, at });
+    else if (isRelationModule(entry)) blocks.push({ kind: 'relation', entry, at });
+    else if (isReservedModule(entry)) blocks.push({ kind: 'reserved', entry, at });
+    else add(placed(type, placedEntry, values));
   }
   add(extra);
   return blocks;
@@ -179,12 +220,12 @@ export function detailBlocks(
     primary: [
       ...blocksOf(
         type,
-        [...(placesRounds(type) ? [] : type.layout.evidence), ...type.layout.body],
+        placedEntries(type, placesRounds(type) ? ['body'] : ['evidence', 'body']),
         values,
         undeclared(type, values),
       ),
       { kind: 'evidence' },
     ],
-    side: blocksOf(type, type.layout.side, values),
+    side: blocksOf(type, placedEntries(type, ['side']), values),
   };
 }

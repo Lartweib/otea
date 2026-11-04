@@ -10,7 +10,7 @@ import {
 import { useActiveLease, useTimeCell } from '../hooks.ts';
 import { t, tx } from '../i18n/i18n.ts';
 import { TypeIcon } from '../icons/TypeIcon.tsx';
-import { rowValues, showsTypes, typeOf } from '../item-types.ts';
+import { rowValues, showsTypes, slotData, typeOf } from '../item-types.ts';
 import { AgentMark, Button, Icon, NodeMark } from '../kit/index.ts';
 import {
   type Block,
@@ -146,10 +146,15 @@ function rowMarks(item: Item, collection: CollectionView | undefined) {
   const type = typeOf(collection, item.type);
   const priority: ReactNode[] = [];
   const signals: ReactNode[] = [];
-  for (const { field, value } of rowValues(type, item.fields)) {
+  for (const { field, value, at } of rowValues(type, item.fields)) {
     const { Row, rowColumn } = moduleFor(field.module);
     if (!Row) continue;
-    const mark = <Row key={field.name} field={field} value={value} />;
+    // A box-less wrapper carries the mark's place in the row slot, for Studio.
+    const mark = (
+      <span key={field.name} className="slot-part" {...slotData(at)}>
+        <Row field={field} value={value} />
+      </span>
+    );
     if (rowColumn === 'priority') priority.push(mark);
     else signals.push(mark);
   }

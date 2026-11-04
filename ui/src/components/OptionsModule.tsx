@@ -13,7 +13,15 @@ function agentOf(item: ItemView): string | undefined {
 // The options a decision weighed, side by side: a letter, a name, a line, then what each gains and
 // costs. The agent's pick carries its mark and a ring; once the decision is accepted it carries the
 // check and the others step back.
-export function OptionsModule({ item, entry }: { item: ItemView; entry: LayoutEntry }) {
+export function OptionsModule({
+  item,
+  entry,
+  slot,
+}: {
+  item: ItemView;
+  entry: LayoutEntry;
+  slot?: Readonly<Record<string, string>>;
+}) {
   const text = item.fields[FIELD] ?? '';
   if (text.trim() === '') return null;
   const options = parseOptions(text);
@@ -21,7 +29,7 @@ export function OptionsModule({ item, entry }: { item: ItemView; entry: LayoutEn
   if (options.length === 0) {
     const { Detail } = moduleFor('markdown');
     return (
-      <section className="op-module" aria-label={title}>
+      <section className="op-module" aria-label={title} {...slot}>
         <h2 className="t-label">{title}</h2>
         <Detail field={{ name: FIELD, module: 'markdown' }} value={text} />
       </section>
@@ -30,7 +38,7 @@ export function OptionsModule({ item, entry }: { item: ItemView; entry: LayoutEn
   const accepted = item.closes === 'done';
   const agent = agentOf(item);
   return (
-    <section className="op-module" aria-label={title}>
+    <section className="op-module" aria-label={title} {...slot}>
       <div className="op-head">
         <h2 className="t-label">{t('options.count', { count: options.length })}</h2>
         {agent ? <span className="t-cap">{t('options.writtenBy', { agent })}</span> : null}

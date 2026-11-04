@@ -212,7 +212,14 @@ function Earlier({ rounds }: { rounds: Round[] }): ReactNode {
   );
 }
 
-type RoundsModuleProps = { item: ItemView; type: TypeView; entry: LayoutEntry; canWrite: boolean };
+type RoundsModuleProps = {
+  item: ItemView;
+  type: TypeView;
+  entry: LayoutEntry;
+  canWrite: boolean;
+  // The data attributes of its place in the layout (slotData), for Studio to find it.
+  slot?: Readonly<Record<string, string>>;
+};
 
 // The item's rounds, read from its history: the path between the lanes, the latest round with its
 // note, its files beside the round before's, and its verdict; earlier rounds fold below.
@@ -291,7 +298,7 @@ function Verdict({
   );
 }
 
-export function RoundsModule({ item, type, entry, canWrite }: RoundsModuleProps) {
+export function RoundsModule({ item, type, entry, canWrite, slot }: RoundsModuleProps) {
   const [marks, setMarks] = useState<number[]>([]);
   const rounds = roundsOf(item.events, item.evidence, type.states);
   const modules = type.layout.evidence.flatMap(({ id }) => (id === undefined ? [] : [id]));
@@ -299,7 +306,7 @@ export function RoundsModule({ item, type, entry, canWrite }: RoundsModuleProps)
   const latest = rounds.at(-1);
   if (!latest) {
     return (
-      <section className="rd-module" aria-label={title}>
+      <section className="rd-module" aria-label={title} {...slot}>
         <h2 className="t-label">{title}</h2>
         <p className="t-small rd-none">{t('rounds.none')}</p>
       </section>
@@ -308,7 +315,7 @@ export function RoundsModule({ item, type, entry, canWrite }: RoundsModuleProps)
   const previous = rounds.at(-2);
   const closed = latest.verdict?.kind === 'closed';
   return (
-    <section className="rd-module" aria-label={title}>
+    <section className="rd-module" aria-label={title} {...slot}>
       <div className="rd-head">
         <h2 className="t-label">{title}</h2>
         <span className="t-cap">{t('rounds.count', { count: rounds.length })}</span>

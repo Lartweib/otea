@@ -97,11 +97,17 @@ function Body({ entry, held, title }: { entry: LayoutEntry; held: Evidence[]; ti
   );
 }
 
-type EvidenceModuleProps = { entry: LayoutEntry; evidence: readonly Evidence[]; canWrite: boolean };
+type EvidenceModuleProps = {
+  entry: LayoutEntry;
+  evidence: readonly Evidence[];
+  canWrite: boolean;
+  // The data attributes of its place in the layout (slotData), for Studio to find it.
+  slot?: Readonly<Record<string, string>>;
+};
 
 // One evidence module of the item's layout, where the layout places it. Files are served only to a
 // signed-in browser, so a read-only one lists their names.
-export function EvidenceModule({ entry, evidence, canWrite }: EvidenceModuleProps) {
+export function EvidenceModule({ entry, evidence, canWrite, slot }: EvidenceModuleProps) {
   const held = evidenceOf(evidence, entry);
   const title = moduleTitle(entry);
   const headingId = `evidence-${entry.id}`;
@@ -111,6 +117,7 @@ export function EvidenceModule({ entry, evidence, canWrite }: EvidenceModuleProp
       aria-labelledby={headingId}
       data-module={entry.module}
       data-variant={entry.variant}
+      {...slot}
     >
       <header className="ev-head">
         <h2 className="t-label" id={headingId}>

@@ -13,6 +13,7 @@ import {
   detailBlocks,
   type PlacedValue,
   placesChildren,
+  slotData,
   typeMark,
   typeOf,
 } from '../item-types.ts';
@@ -39,11 +40,20 @@ import { ChildrenModule } from './relations/ChildrenModule.tsx';
 import { RelationsModule } from './relations/RelationsModule.tsx';
 import { Timeline } from './Timeline.tsx';
 
-function Field({ label, children }: { label: string; children: ReactNode }) {
+// `slot`: the data attributes of the field's place in the layout, on its label and its value.
+function Field({
+  label,
+  children,
+  slot,
+}: {
+  label: string;
+  children: ReactNode;
+  slot?: Readonly<Record<string, string>>;
+}) {
   return (
     <>
-      <dt>{label}</dt>
-      <dd>{children}</dd>
+      <dt {...slot}>{label}</dt>
+      <dd {...slot}>{children}</dd>
     </>
   );
 }
@@ -57,10 +67,10 @@ function FieldList({
 }) {
   return (
     <dl className={className}>
-      {values.map(({ field, value, label }) => {
+      {values.map(({ field, value, label, at }) => {
         const { Detail } = moduleFor(field.module);
         return (
-          <Field key={field.name} label={label}>
+          <Field key={field.name} label={label} slot={slotData(at)}>
             <Detail field={field} value={value} />
           </Field>
         );
@@ -78,19 +88,21 @@ function IdStrip({
   type: TypeView | undefined;
   values: Readonly<Record<string, string>>;
 }) {
-  const entries = (type?.layout.header ?? []).flatMap((entry) => {
+  const entries = (type?.layout.header ?? []).flatMap((entry, index) => {
     const field = type?.fields.find(({ name }) => name === entry.field);
-    return field ? [{ field, label: entry.label ?? field.name }] : [];
+    if (!type || !field) return [];
+    const at = { type: type.name, slot: 'header' as const, index, field: field.name };
+    return [{ field, label: entry.label ?? field.name, at }];
   });
   if (entries.length === 0) return null;
   return (
     <dl className="detail-ids">
-      {entries.map(({ field, label }) => {
+      {entries.map(({ field, label, at }) => {
         const value = values[field.name] ?? '';
         const url = externalUrl(value);
         const { Detail } = moduleFor(field.module);
         return (
-          <div key={field.name}>
+          <div key={field.name} {...slotData(at)}>
             <dt>{presetText(label)}</dt>
             <dd>
               {value === '' ? (
@@ -237,7 +249,7 @@ export function ItemDetail({
       return (
         <div key={`fields:${index}`} className="detail-fields">
           {lead && Lead ? (
-            <div className="detail-lead">
+            <div className="detail-lead" {...slotData(lead.at)}>
               <Lead field={lead.field} value={lead.value} />
             </div>
           ) : null}
@@ -250,6 +262,7 @@ export function ItemDetail({
       return part.entry.module === 'children' ? (
         <ChildrenModule
           key={key}
+          slot={slotData(part.at)}
           item={item}
           entry={part.entry}
           canWrite={canWrite}
@@ -265,6 +278,7 @@ export function ItemDetail({
       ) : (
         <RelationsModule
           key={key}
+          slot={slotData(part.at)}
           item={item}
           entry={part.entry}
           canWrite={canWrite}
@@ -277,11 +291,18 @@ export function ItemDetail({
       const key = `reserved:${part.entry.module}:${index}`;
       if (part.entry.module === 'rounds' && type) {
         return (
-          <RoundsModule key={key} item={item} type={type} entry={part.entry} canWrite={canWrite} />
+          <RoundsModule
+            key={key}
+            slot={slotData(part.at)}
+            item={item}
+            type={type}
+            entry={part.entry}
+            canWrite={canWrite}
+          />
         );
       }
       if (part.entry.module === 'options') {
-        return <OptionsModule key={key} item={item} entry={part.entry} />;
+        return <OptionsModule key={key} slot={slotData(part.at)} item={item} entry={part.entry} />;
       }
       return null;
     }
@@ -289,6 +310,7 @@ export function ItemDetail({
       return (
         <EvidenceModule
           key={`module:${part.entry.id}`}
+          slot={slotData(part.at)}
           entry={part.entry}
           evidence={item.evidence}
           canWrite={canWrite}
@@ -315,7 +337,7 @@ export function ItemDetail({
   // follow them.
   const aside = side.filter((part) => part.kind !== 'relation');
   const mark = typeMark(collection, item.type);
-  const detailRows: { label: string; value: ReactNode }[] = [
+  const detailRows: { label: string; value: ReactNode; slot?: Record<string, string> }[] = [
     ...(mark
       ? [
           {
@@ -334,9 +356,9 @@ export function ItemDetail({
       : []),
     ...aside.flatMap((part) =>
       part.kind === 'fields'
-        ? part.values.map(({ field, value, label }) => {
+        ? part.values.map(({ field, value, label, at }) => {
             const { Detail } = moduleFor(field.module);
-            return { label, value: <Detail field={field} value={value} /> };
+            return { label, value: <Detail field={field} value={value} />, slot: slotData(at) };
           })
         : [],
     ),
@@ -492,8 +514,8 @@ export function ItemDetail({
         </div>
         <Section name="details" label={t('detail.details')} travel="details">
           <dl className="fields fields-meta">
-            {detailRows.slice(0, cut.shown).map(({ label, value }) => (
-              <Field key={label} label={label}>
+            {detailRows.slice(0, cut.shown).map(({ label, value, slot }) => (
+              <Field key={label} label={label} {...(slot ? { slot } : {})}>
                 {value}
               </Field>
             ))}

@@ -18,6 +18,8 @@ type ChildrenModuleProps = {
   itemOf?: ((id: string) => Item | undefined) | undefined;
   // The ticked children, when several wait for you and can be moved together from the tray.
   ticks?: { checked: ReadonlySet<string>; toggle: (id: string) => void } | undefined;
+  // The data attributes of its place in the layout (slotData), for Studio to find it.
+  slot?: Readonly<Record<string, string>>;
 };
 
 // A parent's children: a list, not a graph. The bar gives the shape of the work at a glance (one
@@ -32,6 +34,7 @@ export function ChildrenModule({
   onAddChild,
   itemOf,
   ticks,
+  slot,
 }: ChildrenModuleProps) {
   const children = item.relations.filter(({ kind }) => kind === 'child');
   // A type the hierarchy gives no children offers no "+ child".
@@ -54,7 +57,7 @@ export function ChildrenModule({
   const count = children.length;
   const label = entry.label === undefined ? undefined : presetText(entry.label);
   return (
-    <section className="children-module" aria-labelledby={headingId}>
+    <section className="children-module" aria-labelledby={headingId} {...slot}>
       <header className="sub-head">
         <h3 className="sub-title" id={headingId}>
           {label === undefined

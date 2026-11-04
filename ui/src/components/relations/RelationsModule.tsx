@@ -14,6 +14,8 @@ type RelationsModuleProps = {
   collectionOf: CollectionOf;
   // False when a children module of the same layout lists the children.
   withChildren: boolean;
+  // The data attributes of its place in the layout (slotData), for Studio to find it.
+  slot?: Readonly<Record<string, string>>;
 };
 
 export const keyOf = ({ kind, id }: RelatedItem) => `${kind}:${id}`;
@@ -46,6 +48,7 @@ export function RelationsModule({
   canWrite,
   collectionOf,
   withChildren,
+  slot,
 }: RelationsModuleProps) {
   const [adding, setAdding] = useState(false);
   const { removing, error, remove } = useUnlink(item.id);
@@ -61,6 +64,7 @@ export function RelationsModule({
       className="rel-module"
       aria-labelledby={elsewhere ? undefined : headingId}
       aria-label={elsewhere ? t('relations.link') : undefined}
+      {...slot}
     >
       <header className="sub-head">
         <h3 className="sub-title" id={headingId} hidden={elsewhere}>

@@ -11,16 +11,26 @@ type FieldControlProps = {
   onChange: (value: string) => void;
   // The preset's label for the field in the language on screen; its name otherwise.
   label?: string | undefined;
+  // The data attributes of its place in the layout (slotData), for Studio to find it.
+  slot?: Readonly<Record<string, string>>;
 };
 
 // A labelled field control, drawn by the field's module. Intake and the catalog preview share it.
-export function FieldControl({ id, field, value, disabled, onChange, label }: FieldControlProps) {
+export function FieldControl({
+  id,
+  field,
+  value,
+  disabled,
+  onChange,
+  label,
+  slot,
+}: FieldControlProps) {
   const hint = fieldHint(field);
   const hintId = hint ? `${id}-hint` : undefined;
   const required = field.required === 'create';
   const { Edit } = moduleFor(field.module);
   return (
-    <div className="intake-field">
+    <div className="intake-field" {...slot}>
       <label className="t-label" htmlFor={id}>
         {label === undefined
           ? fieldLabel(field.name)

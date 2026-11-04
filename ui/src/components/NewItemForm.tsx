@@ -13,7 +13,7 @@ import {
   startOf,
 } from '../intake.ts';
 import { type FileDraft, firstRole, rolesFor, tooLarge, withFiles } from '../intake-files.ts';
-import { intakeFields, intakeTypes, showsTypes, typeOf } from '../item-types.ts';
+import { intakeSlots, intakeTypes, showsTypes, slotData, typeOf } from '../item-types.ts';
 import { Button, Icon } from '../kit/index.ts';
 import { fieldWord, typeWord } from '../preset-words.ts';
 import type { CollectionView, EvidenceRole, TypeView } from '../types.ts';
@@ -225,9 +225,10 @@ function IntakeForm({
           </select>
         </div>
       ) : null}
-      {(type ? intakeFields(type) : []).map((field) => (
+      {(type ? intakeSlots(type) : []).map(({ field, at }) => (
         <FieldControl
           key={`${collection.name}:${type?.name}:${field.name}`}
+          slot={slotData(at)}
           id={`intake-${field.name}`}
           field={field}
           value={values[field.name] ?? ''}
