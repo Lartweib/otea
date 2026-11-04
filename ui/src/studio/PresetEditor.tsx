@@ -28,8 +28,10 @@ import {
 } from './api.ts';
 import { Canvas } from './Canvas.tsx';
 import type { Part, Placed } from './canvas.ts';
-import { diffLines, rawOf, readDraft } from './draft.ts';
+import { diffLines, rawOf, readDraft, workflowOf } from './draft.ts';
 import { Inspector } from './Inspector.tsx';
+import { LaneInspector } from './LaneInspector.tsx';
+import { type LaneChoice, LanesEdit } from './LanesEdit.tsx';
 import { addField, addModule } from './layout-edit.ts';
 import { OkMark, ProblemMark } from './parts.tsx';
 import { type DraftPreview, draftPreview } from './preview.ts';
@@ -123,6 +125,7 @@ function Loaded({ source, samples, canWrite, phone, items, onSaved }: LoadedProp
   const [selected, setSelected] = useState<Part>();
   const [view, setView] = useState<View>('detail');
   const [chosen, setChosen] = useState<string>();
+  const [lane, setLane] = useState<LaneChoice>();
   const [now] = useState(() => new Date().toISOString());
   const yaml = draft?.yaml ?? source.yaml;
   const playbooks = { ...source.playbooks, ...(draft?.playbooks ?? {}) };
@@ -262,6 +265,7 @@ function Loaded({ source, samples, canWrite, phone, items, onSaved }: LoadedProp
                   onClick={() => {
                     setType(each.name);
                     setSelected(undefined);
+                    setLane(undefined);
                   }}
                 >
                   {each.icon ? <TypeIcon name={each.icon} size={14} /> : null}
@@ -292,7 +296,19 @@ function Loaded({ source, samples, canWrite, phone, items, onSaved }: LoadedProp
         </div>
       </div>
       <div className="st-cols" data-view={view}>
-        {shown !== undefined && preview ? (
+        {view === 'lanes' && shown !== undefined ? (
+          <section className="st-stage">
+            <LanesEdit
+              raw={raw}
+              type={shown}
+              incomplete={workflowOf(raw, shown).incomplete}
+              width={620}
+              choice={lane}
+              onChoose={setLane}
+              editable={change !== undefined}
+            />
+          </section>
+        ) : shown !== undefined && preview ? (
           <Stage
             key={shown}
             name={source.name}
@@ -326,7 +342,22 @@ function Loaded({ source, samples, canWrite, phone, items, onSaved }: LoadedProp
             {preset ? t('common.loading') : t('studio.preview.invalid')}
           </p>
         )}
-        {selected && shown !== undefined ? (
+        {view === 'lanes' && lane && shown !== undefined ? (
+          <LaneInspector
+            raw={raw}
+            yaml={yaml}
+            type={shown}
+            choice={lane}
+            change={change}
+            onChoose={setLane}
+            sitting={(state) =>
+              items.filter(
+                (item) =>
+                  boards.includes(item.collection) && item.type === shown && item.state === state,
+              ).length
+            }
+          />
+        ) : view !== 'lanes' && selected && shown !== undefined ? (
           <Inspector
             raw={raw}
             yaml={yaml}
@@ -361,14 +392,15 @@ function Loaded({ source, samples, canWrite, phone, items, onSaved }: LoadedProp
   );
 }
 
-export type View = 'detail' | 'form' | 'row';
+export type View = 'detail' | 'form' | 'row' | 'lanes';
 
-const VIEWS: readonly View[] = ['detail', 'form', 'row'];
+const VIEWS: readonly View[] = ['detail', 'form', 'row', 'lanes'];
 
 const VIEW_LABEL: Record<View, PlainKey> = {
   detail: 'studio.view.detail',
   form: 'studio.view.form',
   row: 'studio.view.row',
+  lanes: 'studio.view.lanes',
 };
 
 type Adding = {
