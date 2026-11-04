@@ -28,6 +28,7 @@ import { ProjectSettings } from './components/ProjectSettings.tsx';
 import { ProjectsInbox } from './components/ProjectsInbox.tsx';
 import { Sheet } from './components/Sheet.tsx';
 import { browserStorage, Divider, useSplit } from './components/Split.tsx';
+import { studioTreeOf } from './components/StudioTree.tsx';
 import { Brand, Topbar } from './components/Topbar.tsx';
 import { Triage } from './components/Triage.tsx';
 import { useDetailMotion, useViewPrefs } from './components/workspace-motion.ts';
@@ -59,6 +60,7 @@ import type { Remote } from './remote.ts';
 import { groupByTurn } from './sections.ts';
 import { hashFor, ITEMS_HASH, TRIAGE_HASH } from './selection.ts';
 import { Studio } from './studio/Studio.tsx';
+import { useStudioIndex } from './studio/use-studio-index.ts';
 import type { CollectionView, Item, ItemView, PresetView } from './types.ts';
 import { useAgents } from './use-agents.ts';
 import { inCollection, sidebarEntries } from './workspace.ts';
@@ -273,6 +275,20 @@ export function App() {
   const folded = !phone && (!split.sidebar || !wide);
   const panel = useMenu();
   const rail = sidebarEntries(names, allItems, collectionOf);
+  // Studio's presets and blueprint, for Studio and for the tree the sidebar unfolds under it (on the
+  // module catalog too, which lives under Studio).
+  const inStudio = route.view === 'studio' || route.view === 'modules';
+  const studioIndex = useStudioIndex(inStudio, version + studioWrites, connection);
+  const studioTree =
+    inStudio && studioIndex.presets.status === 'ready'
+      ? studioTreeOf({
+          presets: studioIndex.presets.value,
+          blueprint:
+            studioIndex.blueprint.status === 'ready' ? studioIndex.blueprint.value.blueprint : null,
+          modules: catalogEntries(MODULES, presets.status === 'ready' ? presets.value : []).length,
+          route,
+        })
+      : undefined;
   // Intake needs a collection to file into: with none yet, the first run says how to add one.
   const create =
     canWrite && names.length > 0
@@ -295,9 +311,12 @@ export function App() {
     onCreate: create,
     modules: route.view === 'modules',
     studio: route.view === 'studio',
-    lan: canManageDevices ? route.view === 'lan' : undefined,
+    studioTree,
     settings: route.view === 'settings',
   };
+  // Pairing a phone, from Preferences: this computer's signed-in browser only. The panel closes on
+  // the way to the pairing page.
+  const pair = canManageDevices ? panel.close : undefined;
   const choose = (name: string | undefined) => {
     setCollection(name);
     panel.close();
@@ -309,7 +328,7 @@ export function App() {
       onSelect={choose}
       folded={folded}
       onToggle={wide ? split.toggleSidebar : undefined}
-      foot={phone ? null : <PreferencesButton folded={folded} />}
+      foot={phone ? null : <PreferencesButton folded={folded} onPair={pair} />}
     />
   );
   const panelButton = phone ? (
@@ -344,7 +363,7 @@ export function App() {
               </Button>
             </div>
           }
-          foot={<PreferencesButton phone />}
+          foot={<PreferencesButton phone onPair={pair} />}
         />
       </Sheet>
     </span>
@@ -443,6 +462,7 @@ export function App() {
           rail={phone ? null : sidebarRail}
           sidebar={!folded}
           onChanged={() => setStudioWrites((count) => count + 1)}
+          index={studioIndex}
         />
       ) : route.view === 'lan' ? (
         <LanPanel

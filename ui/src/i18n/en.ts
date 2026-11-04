@@ -122,6 +122,10 @@ export const en = {
   'prefs.spanish': 'Español',
   'prefs.onlyInterface': 'Only the interface is translated.',
   'prefs.translated': '{only} Item content, their fields and what agents write stay as written.',
+  'prefs.session': 'session',
+  'prefs.pair': 'Pair a phone…',
+  'prefs.about': 'about',
+  'prefs.server': 'server',
 
   // The note of the first run, when the browser picked a language other than English
   'languageNote.label': 'Language',
@@ -149,6 +153,8 @@ export const en = {
   'rail.show': 'Show collections',
   'rail.waiting': 'waiting for you',
   'rail.project': 'project',
+  'rail.presets': { one: '{count} preset', other: '{count} presets' },
+  'rail.official': 'official',
 
   // Whose turn
   'turn.you': 'you',
@@ -1007,8 +1013,7 @@ export const en = {
   'studio.picker.hasOne':
     'This project already has a blueprint: edit its copy, or update it from its source.',
   // Pairing a phone over the LAN: the desk's panel and the phone's pairing screen
-  'lan.link': 'Phone access',
-  'lan.title': 'LAN access',
+  'lan.title': 'Pair a phone',
   'lan.lead':
     'Off by default. When it is on, a phone on the same network can open Otea after pairing once.',
   'lan.on': 'On. Listening on {address}; only paired devices get past the door.',
@@ -1041,7 +1046,7 @@ export const en = {
   'pair.titlePlain': 'Pair this phone',
   'pair.intro':
     'You scanned the code on the desk. This phone gets its own device token; you can revoke it from the desk at any time.',
-  'pair.introTyped': 'Type the pairing code shown on the desk, under Phone access.',
+  'pair.introTyped': 'Type the pairing code shown on the desk, in Preferences, under Pair a phone.',
   'pair.desk': 'the desk',
   'pair.phone': 'this phone',
   'pair.notPaired': 'not paired yet',
@@ -1066,7 +1071,7 @@ export const en = {
   'pair.titleApp': 'Pair this app',
   'pair.appName': '{system} · home screen',
   'pair.introApp':
-    'Enter the code shown on your computer, under Phone access. This home-screen app keeps its own token, apart from the browser; if you already used the code there, show a new one.',
+    'Enter the code shown on your computer, in Preferences, under Pair a phone. This home-screen app keeps its own token, apart from the browser; if you already used the code there, show a new one.',
   'home.title': 'Add Otea to your home screen',
   'home.ios': 'Tap Share, then Add to Home Screen.',
   'home.iosAfter':

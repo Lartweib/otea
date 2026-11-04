@@ -149,6 +149,10 @@ export const es: Catalog = {
   'prefs.onlyInterface': 'Solo se traduce la interfaz.',
   'prefs.translated':
     '{only} El contenido de los ítems y de sus campos, y lo que escriben los agentes, quedan como se escribieron.',
+  'prefs.session': 'sesión',
+  'prefs.pair': 'Emparejar un teléfono…',
+  'prefs.about': 'acerca de',
+  'prefs.server': 'servidor',
 
   // La nota de la primera vez, cuando el navegador eligió un idioma que no es el inglés
   'languageNote.label': 'Idioma',
@@ -176,6 +180,8 @@ export const es: Catalog = {
   'rail.show': 'Mostrar colecciones',
   'rail.waiting': 'te esperan',
   'rail.project': 'proyecto',
+  'rail.presets': { one: '{count} preset', other: '{count} presets' },
+  'rail.official': 'oficial',
 
   // De quién es el turno
   'turn.you': 'tú',
@@ -1042,8 +1048,7 @@ export const es: Catalog = {
     'Este proyecto ya tiene un plano: edita su copia o actualízala desde su origen.',
 
   // Emparejar un teléfono por la red local: el panel del escritorio y la pantalla del teléfono
-  'lan.link': 'Acceso desde el teléfono',
-  'lan.title': 'Acceso por la red local',
+  'lan.title': 'Emparejar un teléfono',
   'lan.lead':
     'Desactivado de forma predeterminada. Cuando está activado, un teléfono en la misma red puede abrir Otea tras emparejarse una vez.',
   'lan.on': 'Activado. Escucha en {address}; solo pasan los dispositivos emparejados.',
@@ -1078,7 +1083,7 @@ export const es: Catalog = {
   'pair.intro':
     'Escaneaste el código del escritorio. Este teléfono recibe su propio token de dispositivo; puedes revocarlo desde el escritorio cuando quieras.',
   'pair.introTyped':
-    'Escribe el código de emparejamiento que aparece en el escritorio, en Acceso desde el teléfono.',
+    'Escribe el código de emparejamiento que aparece en el escritorio, en Preferencias, en Emparejar un teléfono.',
   'pair.desk': 'el escritorio',
   'pair.phone': 'este teléfono',
   'pair.notPaired': 'todavía sin emparejar',
@@ -1103,7 +1108,7 @@ export const es: Catalog = {
   'pair.titleApp': 'Emparejar esta app',
   'pair.appName': '{system} · pantalla de inicio',
   'pair.introApp':
-    'Escribe el código que aparece en tu equipo, en Acceso desde el teléfono. Esta app de la pantalla de inicio guarda su propio token, aparte del navegador; si ya usaste el código allí, muestra uno nuevo.',
+    'Escribe el código que aparece en tu equipo, en Preferencias, en Emparejar un teléfono. Esta app de la pantalla de inicio guarda su propio token, aparte del navegador; si ya usaste el código allí, muestra uno nuevo.',
   'home.title': 'Agrega Otea a tu pantalla de inicio',
   'home.ios': 'Toca Compartir y luego Agregar a pantalla de inicio.',
   'home.iosAfter':
