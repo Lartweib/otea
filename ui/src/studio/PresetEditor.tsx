@@ -67,8 +67,11 @@ type PresetEditorProps = {
 
 export function PresetEditor(props: PresetEditorProps) {
   const [revision, setRevision] = useState(0);
-  const source = useRemote(fetchPresetSource(props.name), revision, props.connection);
-  const samples = useRemote(fetchPresetSamples(props.name), revision, props.connection);
+  // The loaders keep their identity: useRemote loads again whenever its loader changes.
+  const loadSource = useMemo(() => fetchPresetSource(props.name), [props.name]);
+  const loadSamples = useMemo(() => fetchPresetSamples(props.name), [props.name]);
+  const source = useRemote(loadSource, revision, props.connection);
+  const samples = useRemote(loadSamples, revision, props.connection);
   if (source.status === 'loading') return <p className="t-small st-msg">{t('common.loading')}</p>;
   if (source.status === 'failed') return <p className="action-error st-msg">{source.message}</p>;
   return (
