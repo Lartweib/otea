@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { applyBlueprint, editBlueprint, updateBlueprint } from '../app/blueprints.ts';
 import type { Project } from '../app/project.ts';
 import {
+  copyBoardPreset,
   createPreset,
   deletePreset,
   duplicatePreset,
@@ -43,6 +44,9 @@ const BlueprintEditBody = z.strictObject({
 });
 
 const ApplyBody = z.strictObject({ name: z.string().regex(NAME) });
+
+// The name of the project copy of a board's preset, made before a change to an official one.
+const CopyPresetBody = z.strictObject({ as: z.string().regex(NAME) });
 
 async function body<T>(c: Context, schema: z.ZodType<T>, expected: string): Promise<T> {
   const raw: unknown = await c.req.json().catch(() => undefined);
@@ -127,6 +131,13 @@ export function studioApi(project: Project, feed: ChangeFeed, auth: Session): Ho
       const applied = applyBlueprint(project, name, project.root);
       feed.notify();
       return c.json(applied, 201);
+    })
+    .post('/blueprint/boards/:board/copy-preset', async (c) => {
+      assertConfigurable(c, auth);
+      const { as } = await body(c, CopyPresetBody, '{"as": string}');
+      const copied = copyBoardPreset(project, c.req.param('board'), as);
+      feed.notify();
+      return c.json(copied, 201);
     })
     .post('/blueprint/update', async (c) => {
       assertConfigurable(c, auth);

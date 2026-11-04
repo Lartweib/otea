@@ -52,6 +52,22 @@ export function updateCollectionIcon(db: DatabaseSync, name: string, icon: strin
   db.prepare('UPDATE collections SET icon = ? WHERE name = ?').run(icon, name);
 }
 
+// A collection moves to another preset of the same types and states: its items are read under the
+// new one from now on, as written under its current version.
+export function setCollectionPreset(
+  db: DatabaseSync,
+  name: string,
+  preset: string,
+  version: number,
+): void {
+  db.prepare('UPDATE collections SET preset = ?, preset_version = ? WHERE name = ?').run(
+    preset,
+    version,
+    name,
+  );
+  db.prepare('UPDATE items SET preset_version = ? WHERE collection = ?').run(version, name);
+}
+
 export function findCollection(db: DatabaseSync, name: string): CollectionRecord | undefined {
   const row = db.prepare('SELECT * FROM collections WHERE name = ?').get(name);
   return row && toCollection(row as CollectionRow);

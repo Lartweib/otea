@@ -210,22 +210,31 @@ export function blueprintTypeProblems(blueprint: Blueprint, typesOf: TypesOf): s
   return problems;
 }
 
-// The workflow of a type on a board, or undefined when its preset cannot be read.
-export type WorkflowOf = (board: string, type: string) => Workflow | undefined;
+// The workflow of a type on a board, or undefined when its preset cannot be read. Only its states
+// are read.
+export type WorkflowOf = (board: string, type: string) => Pick<Workflow, 'states'> | undefined;
 
-// What a blueprint should look at: a blocks link whose target type has no state requiring
-// blockers_closed waits for nothing. The link shows on both items, but nothing ever waits on it.
-export function blueprintWarnings(blueprint: Blueprint, workflowOf: WorkflowOf): string[] {
+// The blocks links whose target type has no state requiring blockers_closed, with their place in
+// the list: they wait for nothing. The link shows on both items, but nothing ever waits on it.
+export function blocksWaitingForNothing(
+  blueprint: Blueprint,
+  workflowOf: WorkflowOf,
+): Array<{ index: number; connection: Connection }> {
   return blueprint.connections.flatMap((connection, index) => {
     if (connection.kind !== 'blocks') return [];
-    const { from, to } = connection;
-    const workflow = workflowOf(to.board, to.type);
+    const workflow = workflowOf(connection.to.board, connection.to.type);
     if (workflow === undefined) return [];
     const waits = workflow.states.some(({ requires }) => requires?.includes('blockers_closed'));
-    if (waits) return [];
-    return [
-      `connections[${index}]: ${connectionText(connection)} waits for nothing: no state of ${to.type} (board ${to.board}) requires blockers_closed, so no ${to.type} waits for the ${from.type} that blocks it`,
-    ];
+    return waits ? [] : [{ index, connection }];
+  });
+}
+
+// What a blueprint should look at, as otea validate words it: each blocks link that waits for
+// nothing.
+export function blueprintWarnings(blueprint: Blueprint, workflowOf: WorkflowOf): string[] {
+  return blocksWaitingForNothing(blueprint, workflowOf).map(({ index, connection }) => {
+    const { from, to } = connection;
+    return `connections[${index}]: ${connectionText(connection)} waits for nothing: no state of ${to.type} (board ${to.board}) requires blockers_closed, so no ${to.type} waits for the ${from.type} that blocks it`;
   });
 }
 

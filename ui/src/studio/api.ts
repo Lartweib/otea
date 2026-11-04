@@ -153,5 +153,12 @@ export const editBlueprint = (edit: BlueprintEdit) =>
 export const applyBlueprint = (name: string) =>
   post<{ boards: Array<Board & { action: string }> }>('/api/studio/blueprint/apply', { name });
 
+// The board's preset copied into the project, and the board pointed at the copy.
+export const copyBoardPreset = (board: string, as: string) =>
+  post<{ board: string; preset: PresetSource }>(
+    `/api/studio/blueprint/boards/${encodeURIComponent(board)}/copy-preset`,
+    { as },
+  );
+
 export const updateBlueprint = () =>
   post<{ applied: string[]; kept: string[] }>('/api/studio/blueprint/update', {});

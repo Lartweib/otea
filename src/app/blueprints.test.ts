@@ -1,10 +1,12 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { applyBlueprint, blueprintFindings, loadBlueprints } from './blueprints.ts';
+import { findCollection, selectItems } from '../store/queries.ts';
+import { applyBlueprint, blueprintFindings, loadBlueprints, pointBoardAt } from './blueprints.ts';
+import { createItem } from './items.ts';
 import { loadPresets } from './presets.ts';
-import { listStudioBlueprints } from './studio.ts';
+import { copyBoardPreset, listStudioBlueprints } from './studio.ts';
 import { memoryContext, projectOf } from './testing.ts';
 
 const STUDIO = `
@@ -115,6 +117,79 @@ describe('blueprint warnings', () => {
     const product = listStudioBlueprints(project).blueprints.find(({ name }) => name === 'product');
 
     expect(product?.warnings).toEqual([WAITS_FOR_NOTHING]);
+    project.db.close();
+  });
+});
+
+describe("copying a board's preset into the project", () => {
+  let root: string;
+
+  beforeEach(() => {
+    root = mkdtempSync(join(tmpdir(), 'otea-blueprints-'));
+  });
+
+  afterEach(() => rmSync(root, { recursive: true, force: true }));
+
+  const built = () => {
+    const project = projectOf(root, memoryContext());
+    mkdirSync(project.dataDir, { recursive: true });
+    applyBlueprint(project, 'product', root);
+    createItem(project, {
+      collection: 'work',
+      title: 'Coyote time on moving platforms',
+      fields: {},
+      actor: { kind: 'human', name: 'human' },
+      channel: 'ui',
+    });
+    return project;
+  };
+
+  it('copies the official preset at v1 and points the board at it, items and all', () => {
+    const project = built();
+
+    const copied = copyBoardPreset(project, 'work', 'game-tasks');
+
+    expect(copied).toMatchObject({
+      board: 'work',
+      preset: { name: 'game-tasks', origin: 'project', editable: true, version: 1 },
+    });
+    expect(project.blueprint?.boards).toEqual([
+      { name: 'work', preset: 'game-tasks' },
+      { name: 'bugs', preset: 'bug-triage' },
+    ]);
+    expect(readFileSync(join(project.dataDir, 'blueprint.yaml'), 'utf8')).toContain(
+      'preset: game-tasks',
+    );
+    expect(findCollection(project.db, 'work')).toMatchObject({
+      preset: 'game-tasks',
+      presetVersion: 1,
+    });
+    expect(selectItems(project.db, { collection: 'work' })).toEqual([
+      expect.objectContaining({ title: 'Coyote time on moving platforms', presetVersion: 1 }),
+    ]);
+    project.db.close();
+  });
+
+  it('refuses a board the blueprint does not list, or a name already taken', () => {
+    const project = built();
+
+    expect(() => copyBoardPreset(project, 'art', 'game-tasks')).toThrow(
+      expect.objectContaining({ code: 'not_found' }),
+    );
+    expect(() => copyBoardPreset(project, 'work', 'bug-triage')).toThrow(
+      expect.objectContaining({ code: 'already_exists' }),
+    );
+    expect(project.blueprint?.boards[0]).toEqual({ name: 'work', preset: 'tasks' });
+    project.db.close();
+  });
+
+  it('never points a board with items at a preset whose types or states differ', () => {
+    const project = built();
+
+    expect(() => pointBoardAt(project, 'work', 'bug-triage')).toThrow(
+      expect.objectContaining({ code: 'in_use' }),
+    );
+    expect(findCollection(project.db, 'work')?.preset).toBe('tasks');
     project.db.close();
   });
 });

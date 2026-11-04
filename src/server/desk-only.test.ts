@@ -29,6 +29,7 @@ const DESK_ONLY: Array<{ path: string; body: (repo: string) => unknown }> = [
   },
   { path: '/api/studio/blueprint/apply', body: () => ({ name: 'product' }) },
   { path: '/api/studio/blueprint/update', body: () => ({}) },
+  { path: '/api/studio/blueprint/boards/work/copy-preset', body: () => ({ as: 'game-tasks' }) },
 ];
 
 describe('desk-only routes, with LAN access on', () => {

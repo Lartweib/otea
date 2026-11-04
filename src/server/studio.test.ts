@@ -465,6 +465,40 @@ describe('the Studio API', () => {
       expect(listCollections(project.db).map(({ name }) => name)).toEqual(['work', 'bugs']);
     });
 
+    it("copies a board's preset into the project and points the board at the copy", async () => {
+      await apply();
+
+      const { status, body } = await post('/studio/blueprint/boards/work/copy-preset', {
+        as: 'game-tasks',
+      });
+
+      expect(status).toBe(201);
+      expect(body).toMatchObject({
+        board: 'work',
+        preset: {
+          name: 'game-tasks',
+          origin: 'project',
+          version: 1,
+          collections: [{ name: 'work' }],
+        },
+      });
+      expect(await state()).toMatchObject({
+        blueprint: { boards: [{ name: 'work', preset: 'game-tasks' }, { name: 'bugs' }] },
+      });
+    });
+
+    it('takes a board copy only from a signed-in browser on its own origin', async () => {
+      await apply();
+      const path = '/studio/blueprint/boards/work/copy-preset';
+
+      expect((await post(path, { as: 'game-tasks' }, { cookie: '' })).status).toBe(401);
+      expect(
+        (await post(path, { as: 'game-tasks' }, { origin: 'http://evil.example' })).status,
+      ).toBe(403);
+      expect((await post(path, { as: '../up' })).status).toBe(400);
+      expect(existsSync(join(dataDir(), 'presets', 'game-tasks'))).toBe(false);
+    });
+
     it('updates the copy from its source', async () => {
       await apply();
       await post('/studio/blueprint', {
