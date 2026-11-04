@@ -253,6 +253,38 @@ types:
 - `otea validate` reports a child that is not a type of the preset or is listed twice, a loop (`epic -> story -> epic`, or a type under itself), and a `root: false` type that no type lists in its `children`.
 - `GET /api/collections` and `/api/presets` carry `children` and `root` on each type of a preset with a hierarchy, and the web UI's **+ child** offers only the types the parent takes (and hides on a type that takes none); **New item** offers only the types that may stand alone.
 
+**Notes on a preset.** A preset can be valid and still leave things in the dark. Loading it also notes, without stopping it:
+
+| Code | Level | What it means |
+| --- | --- | --- |
+| `field_unplaced` | warning | a field no layout slot (header, body, side, row, intake, phone) places, so nobody sees it; the title never counts |
+| `state_stuck_in_chat` | warning | a human-turn state that a decision relayed from chat cannot move forward: every exit is `human-ui`, or its `human` exits only go back (to a state no farther from the start) or to a `discarded` close |
+| `gate_unchecked` | warning | a gate no playbook of the preset runs `otea check --gate <name>` for; Otea records no gate checks, so the playbook is the only sign it is used |
+| `field_single_type` | info | a field only one type of several has |
+| `deprecated_key` | warning | `close_requires`, the former name of `requires` |
+| `sample_*` | warning | a sample that does not fit the preset (below) |
+
+`otea validate` prints the warnings of the project's own presets, as warnings that never fail it; an official preset is read-only, so its notes (each official approval is given only in the web UI, by design) and every info note stay in Studio. Studio's `GET /api/studio/presets/<name>` carries them all as `notes`, each with its `code`, `level`, `message` (which starts with its place in the YAML, as problems do), `file` and a structured `path`, such as `{"section": "fields", "type": "bug", "field": "build_hash"}`, for the editor to open the part it is about. A blueprint is noted too: a `blocks` connection whose target type has no state that `requires: blockers_closed` waits for nothing, and `otea validate` warns about it in the project's blueprint (the official `product` blueprint's `bugs.bug blocks work.task` is one, since no `tasks` state waits for blockers).
+
+**Sample items.** A preset may carry a few example items in `samples.yaml`, beside `preset.yaml`, for Studio to draw the real detail, row, form and lanes from a draft. They never enter a collection or the database. Evidence files live in a `samples/` folder beside it:
+
+```yaml
+samples:
+  - type: bug                     # optional when the preset has one type
+    id: BUGS-1                    # the id it shows; any text
+    title: Wall-slide jump drops the buffered input
+    state: reported
+    fields: { steps: ..., severity: high }
+    evidence:                     # role: before, after or single (the default); module and caption optional
+      - { file: wall-slide-before.png, role: before }
+    relations:                    # the other item, described: kind as read from this one
+      - { kind: blocks, id: WORK-2, title: Coyote time on moving platforms, type: task, state: todo }
+    history:                      # actor human or agent; ago: 5m, 3h, 2d
+      - { actor: agent, name: claude-a, event: created, ago: 2m }
+```
+
+Samples are read strictly against the preset, and what does not fit is a note, never a problem: a sample with an unknown key or type is left out (`sample_invalid`, `sample_unknown_type`), a state the workflow lacks is drawn as its initial state (`sample_unknown_state`), a value of an unknown field shows as plain text (`sample_unknown_field`), one its field does not allow is noted (`sample_invalid_value`), and evidence whose file `samples/` lacks is dropped (`sample_missing_file`). Every official preset ships samples. `GET /api/studio/presets/<name>/samples` returns `{yaml, files, samples, notes}`, `GET /api/studio/presets/<name>/samples/<file>` serves a file of the folder, and `POST /api/studio/presets/<name>` takes `samples` (the text of `samples.yaml`) beside `yaml` and `playbooks`; changing only the samples leaves `preset_version` as it is. Duplicating a preset copies its samples and their files.
+
 A type may have its own **playbook**, `playbook: ./epic.md`, beside the preset's, in the same folder. The hint of `otea show` takes the section for the state from the item's type's playbook first, then from the preset's. `otea playbook --collection <name>` prints the preset's playbook, then each type's own under `--- Type <type> ---`; its `--json` adds `types`, a list of `{type, playbook}` for the types that have one (empty when none do). The MCP `playbook` tool returns the same.
 
 ### Blueprints

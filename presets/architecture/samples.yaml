@@ -1,0 +1,23 @@
+# An example decision record, for Studio to draw this preset with. It never enters a collection.
+samples:
+  - type: decision
+    id: ADR-1
+    title: Store save games in SQLite
+    state: review
+    fields:
+      context: Saves are JSON files today; a crash mid-write corrupts them, and cloud sync needs diffs.
+      options: |-
+        ### A · SQLite (recommended)
+        One file, atomic writes.
+        + crash-safe
+        - a native dependency
+
+        ### B · JSON with a write-ahead copy
+        Keep the format, write to a temp file first.
+        + no new dependency
+        - sync still moves whole files
+      decision: Save games live in one SQLite file per profile.
+      consequences: The loader migrates old JSON saves once; the format is versioned from now on.
+      area: saves
+    history:
+      - { actor: agent, name: claude-a, event: transitioned, from: drafting, to: review, ago: 1h }

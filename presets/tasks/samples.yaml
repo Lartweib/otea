@@ -1,0 +1,46 @@
+# Example tasks Studio draws this preset with. They never enter a collection.
+samples:
+  - type: task
+    id: WORK-1
+    title: Add a settings screen for audio volume
+    state: in_progress
+    fields:
+      description: Music and effects get their own sliders; the values persist between sessions.
+      priority: medium
+    history:
+      - { actor: human, name: you, event: created, ago: 1d }
+      - { actor: agent, name: claude-a, event: claimed, ago: 3h }
+      - { actor: agent, name: claude-a, event: transitioned, from: todo, to: in_progress, ago: 3h }
+  - type: task
+    id: WORK-2
+    title: Coyote time on moving platforms
+    state: todo
+    fields:
+      description: Keep the jump window a few frames after leaving a moving platform's edge.
+      priority: high
+    relations:
+      - {
+          kind: blocked_by,
+          id: BUGS-1,
+          title: Wall-slide jump drops the buffered input,
+          type: bug,
+          state: reported,
+        }
+    history:
+      - { actor: human, name: you, event: created, ago: 2h }
+  - type: task
+    id: WORK-3
+    title: Write the release notes for 0.9
+    state: review
+    fields:
+      description: What changed since 0.8, for players, in a page.
+      priority: low
+    history:
+      - {
+          actor: agent,
+          name: claude-b,
+          event: transitioned,
+          from: in_progress,
+          to: review,
+          ago: 20m,
+        }

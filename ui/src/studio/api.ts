@@ -1,3 +1,5 @@
+import type { PresetNote } from '../../../src/core/preset.ts';
+import type { Sample } from '../../../src/core/samples.ts';
 import { t } from '../i18n/i18n.ts';
 import { serverMessage, unreachable } from '../remote.ts';
 
@@ -23,6 +25,17 @@ export type PresetSource = {
   collections: Array<{ name: string; items: number }>;
   problems: string[];
   warnings: string[];
+  // Every note on the preset, info ones too, with the part it is about and its file.
+  notes: Array<PresetNote & { file: string }>;
+};
+
+// A preset's samples (src/core/samples.ts): samples.yaml as written, its samples folder's files,
+// and the samples read against the preset as it loaded.
+export type PresetSamples = {
+  yaml: string | null;
+  files: string[];
+  samples: Sample[];
+  notes: PresetNote[];
 };
 
 export type Board = { name: string; preset: string };
@@ -34,6 +47,7 @@ export type BlueprintSummary = {
   boards: Board[];
   connections: string[];
   playbook: string | null;
+  warnings: string[];
 };
 
 export type BlueprintListing = {
@@ -99,8 +113,24 @@ export const fetchStudioPresets = (signal: AbortSignal) =>
 export const fetchPresetSource = (name: string) => (signal: AbortSignal) =>
   get<PresetSource>(preset(name), signal);
 
-export const savePreset = (name: string, yaml: string, playbooks: Record<string, string>) =>
-  post<PresetSource>(preset(name), { yaml, playbooks });
+export const fetchPresetSamples = (name: string) => (signal: AbortSignal) =>
+  get<PresetSamples>(`${preset(name)}/samples`, signal);
+
+// Where the preview loads a sample's file from.
+export const sampleFileUrl = (name: string, file: string) =>
+  `${preset(name)}/samples/${encodeURIComponent(file)}`;
+
+export const savePreset = (
+  name: string,
+  yaml: string,
+  playbooks: Record<string, string>,
+  samples?: string,
+) =>
+  post<PresetSource>(preset(name), {
+    yaml,
+    playbooks,
+    ...(samples === undefined ? {} : { samples }),
+  });
 
 export const duplicatePreset = (name: string, as: string) =>
   post<PresetSource>(`${preset(name)}/duplicate`, { as });

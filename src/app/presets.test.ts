@@ -29,6 +29,13 @@ describe('official presets', () => {
     });
   });
 
+  it('ship samples that fit them, each evidence file in its samples folder', () => {
+    const catalog = loadPresets();
+    const notes = catalog.warnings.filter(({ code }) => code?.startsWith('sample_'));
+
+    expect(notes).toEqual([]);
+  });
+
   it('ship a playbook that starts by listing the agent turn', () => {
     const playbook = readFileSync(join(OFFICIAL_PRESETS_DIR, 'tasks', 'playbook.md'), 'utf8');
 
@@ -78,6 +85,10 @@ describe('project presets', () => {
     mkdirSync(dir, { recursive: true });
     for (const [file, content] of Object.entries(files)) writeFileSync(join(dir, file), content);
   };
+
+  // The notes of the project's presets, without the official ones'.
+  const own = (catalog: PresetCatalog) =>
+    catalog.warnings.filter(({ origin }) => origin === 'project');
 
   const problemsOf = (catalog: PresetCatalog, preset: string) =>
     catalog.problems.filter((problem) => problem.preset === preset).map(({ message }) => message);
@@ -131,7 +142,7 @@ describe('project presets', () => {
     expect(requirePreset(catalog, 'notes').workflow.states[1]).toMatchObject({
       requires: ['children_closed'],
     });
-    expect(catalog.warnings).toEqual([
+    expect(own(catalog)).toEqual([
       expect.objectContaining({
         preset: 'notes',
         origin: 'project',
@@ -196,5 +207,55 @@ describe('project presets', () => {
     expect(() => requirePreset(loadPresets(root), 'nope')).toThrow(
       expect.objectContaining({ code: 'not_found', message: 'Preset "nope" not found' }),
     );
+  });
+  describe('notes', () => {
+    const GATED = NOTES.replace(
+      'transitions: [{ from: open, to: closed, by: agent }]',
+      'transitions: [{ from: open, to: closed, by: agent }]\n  gates: { ship: [open] }',
+    ).replace('preset_version: 2', 'preset_version: 2\nplaybook: ./playbook.md');
+
+    it('carries each note with its code, level and path', () => {
+      write('notes', { 'preset.yaml': GATED, 'playbook.md': 'Work the notes.' });
+
+      expect(own(loadPresets(root))).toEqual([
+        {
+          preset: 'notes',
+          origin: 'project',
+          path: join(root, 'presets', 'notes', 'preset.yaml'),
+          code: 'gate_unchecked',
+          level: 'warning',
+          at: { section: 'gates', gate: 'ship' },
+          message: expect.stringContaining('workflow.gates.ship: no playbook'),
+        },
+      ]);
+    });
+
+    it('reads the playbooks to find the gates they check', () => {
+      write('notes', { 'preset.yaml': GATED, 'playbook.md': 'Run otea check --gate ship.' });
+
+      expect(own(loadPresets(root))).toEqual([]);
+    });
+
+    it('notes what its samples get wrong, against the samples file', () => {
+      const samples = 'samples:\n  - { id: N-1, title: A note, state: nowhere }\n';
+      write('notes', { 'preset.yaml': NOTES, 'samples.yaml': samples });
+
+      expect(own(loadPresets(root))).toEqual([
+        expect.objectContaining({
+          preset: 'notes',
+          path: join(root, 'presets', 'notes', 'samples.yaml'),
+          code: 'sample_unknown_state',
+          at: { section: 'samples', index: 0, type: 'item', state: 'nowhere' },
+        }),
+      ]);
+    });
+
+    it('never stops a preset loading over its samples', () => {
+      write('notes', { 'preset.yaml': NOTES, 'samples.yaml': 'samples: [' });
+
+      const catalog = loadPresets(root);
+      expect(catalog.problems).toEqual([]);
+      expect(catalog.presets.has('notes')).toBe(true);
+    });
   });
 });

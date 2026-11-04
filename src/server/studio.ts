@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { type Context, Hono } from 'hono';
 import { z } from 'zod';
 import { applyBlueprint, editBlueprint, updateBlueprint } from '../app/blueprints.ts';
@@ -7,7 +8,9 @@ import {
   listStudioBlueprints,
   listStudioPresets,
   projectBlueprintState,
+  readPresetSamples,
   readPresetSource,
+  sampleAsset,
   savePreset,
 } from '../app/studio.ts';
 import type { ChangeFeed } from './changes.ts';
@@ -24,6 +27,7 @@ const NAME = /^[a-z0-9][a-z0-9-]*$/;
 const PresetDraftBody = z.strictObject({
   yaml: z.string(),
   playbooks: z.record(z.string(), z.string()).optional(),
+  samples: z.string().optional(),
 });
 
 const DuplicateBody = z.strictObject({ as: z.string().min(1) });
@@ -43,20 +47,38 @@ async function body<T>(c: Context, schema: z.ZodType<T>, expected: string): Prom
   return parsed.data;
 }
 
+// A sample's file, for the preview to draw; never cached, since a save may replace it.
+function serveSample(c: Context, project: Project): Response {
+  const { path, contentType } = sampleAsset(
+    project,
+    c.req.param('name') ?? '',
+    c.req.param('file') ?? '',
+  );
+  return c.body(readFileSync(path), 200, {
+    'content-type': contentType,
+    'x-content-type-options': 'nosniff',
+    'content-security-policy': 'sandbox',
+    'cache-control': 'no-cache',
+  });
+}
+
 export function studioApi(project: Project, feed: ChangeFeed, auth: Session): Hono {
   return new Hono()
     .get('/presets', (c) => c.json(listStudioPresets(project)))
     .get('/presets/:name', (c) => c.json(readPresetSource(project, c.req.param('name'))))
+    .get('/presets/:name/samples', (c) => c.json(readPresetSamples(project, c.req.param('name'))))
+    .get('/presets/:name/samples/:file', (c) => serveSample(c, project))
     .post('/presets/:name', async (c) => {
       assertConfigurable(c, auth);
       const draft = await body(
         c,
         PresetDraftBody,
-        '{"yaml": string, "playbooks"?: {[path]: string}}',
+        '{"yaml": string, "playbooks"?: {[path]: string}, "samples"?: string}',
       );
       const saved = savePreset(project, c.req.param('name'), {
         yaml: draft.yaml,
         ...(draft.playbooks === undefined ? {} : { playbooks: draft.playbooks }),
+        ...(draft.samples === undefined ? {} : { samples: draft.samples }),
       });
       feed.notify();
       return c.json(saved);

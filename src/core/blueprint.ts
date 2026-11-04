@@ -2,6 +2,7 @@ import { parse, stringify } from 'yaml';
 import { z } from 'zod';
 import { OteaError } from './errors.ts';
 import { describeRelation, type RelationKind } from './relations.ts';
+import type { Workflow } from './workflow.ts';
 
 // A blueprint is a set of boards, each a collection built from a preset, plus the links allowed
 // between them: a connection lets an item of one type in one board link, with one kind, to an item
@@ -207,6 +208,25 @@ export function blueprintTypeProblems(blueprint: Blueprint, typesOf: TypesOf): s
     }
   });
   return problems;
+}
+
+// The workflow of a type on a board, or undefined when its preset cannot be read.
+export type WorkflowOf = (board: string, type: string) => Workflow | undefined;
+
+// What a blueprint should look at: a blocks link whose target type has no state requiring
+// blockers_closed waits for nothing. The link shows on both items, but nothing ever waits on it.
+export function blueprintWarnings(blueprint: Blueprint, workflowOf: WorkflowOf): string[] {
+  return blueprint.connections.flatMap((connection, index) => {
+    if (connection.kind !== 'blocks') return [];
+    const { from, to } = connection;
+    const workflow = workflowOf(to.board, to.type);
+    if (workflow === undefined) return [];
+    const waits = workflow.states.some(({ requires }) => requires?.includes('blockers_closed'));
+    if (waits) return [];
+    return [
+      `connections[${index}]: ${connectionText(connection)} waits for nothing: no state of ${to.type} (board ${to.board}) requires blockers_closed, so no ${to.type} waits for the ${from.type} that blocks it`,
+    ];
+  });
 }
 
 // Where an item sits: its id, its collection (a board, when the blueprint lists it) and its type.

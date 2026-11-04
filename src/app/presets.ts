@@ -2,7 +2,9 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { OteaError } from '../core/errors.ts';
-import { type Preset, readPreset } from '../core/preset.ts';
+import { type Preset, type PresetNote, type PresetPath, readPreset } from '../core/preset.ts';
+import { gateNotes } from '../core/preset-notes.ts';
+import { readSamples, SAMPLES_DIR, SAMPLES_FILE } from '../core/samples.ts';
 
 export const OFFICIAL_PRESETS_DIR = fileURLToPath(new URL('../../presets/', import.meta.url));
 
@@ -10,9 +12,20 @@ export type PresetOrigin = 'official' | 'project';
 
 export type LoadedPreset = Preset & { origin: PresetOrigin };
 
-export type PresetProblem = { preset: string; origin: PresetOrigin; path: string; message: string };
+// `path` is the file the problem is in. A note (a warning or an info note) also carries its code,
+// level and `at`, its place in the preset.
+export type PresetProblem = {
+  preset: string;
+  origin: PresetOrigin;
+  path: string;
+  message: string;
+  code?: PresetNote['code'];
+  level?: PresetNote['level'];
+  at?: PresetPath;
+};
 
-// Problems keep a preset from loading; warnings, such as a deprecated key, do not.
+// Problems keep a preset from loading; notes, such as a deprecated key, a field no slot places or a
+// sample that does not fit, do not. `warnings` holds every note, info ones too.
 export type PresetCatalog = {
   presets: ReadonlyMap<string, LoadedPreset>;
   problems: readonly PresetProblem[];
@@ -31,6 +44,42 @@ function subdirectories(dir: string): string[] {
     .filter((entry) => entry.isDirectory())
     .map((entry) => entry.name)
     .sort();
+}
+
+// The texts of the playbooks the preset points to, by path, for the gate check.
+function playbookTexts(dir: string, preset: Preset): Record<string, string> {
+  const paths = [preset.playbook, ...preset.types.map(({ playbook }) => playbook)];
+  return Object.fromEntries(
+    [...new Set(paths)]
+      .filter((path): path is string => path !== undefined)
+      .map((path) => [path, readFileSync(resolve(dir, path), 'utf8')]),
+  );
+}
+
+// The files of a preset's samples folder.
+export function sampleFiles(dir: string): string[] {
+  const folder = join(dir, SAMPLES_DIR);
+  if (!existsSync(folder)) return [];
+  return readdirSync(folder, { withFileTypes: true })
+    .filter((entry) => entry.isFile())
+    .map((entry) => entry.name)
+    .sort();
+}
+
+// A preset's samples.yaml, or undefined without one.
+export function samplesText(dir: string): string | undefined {
+  const path = join(dir, SAMPLES_FILE);
+  return existsSync(path) ? readFileSync(path, 'utf8') : undefined;
+}
+
+function notesOf(dir: string, preset: Preset, notes: PresetNote[]): Array<[string, PresetNote]> {
+  const samples = readSamples(samplesText(dir), preset, sampleFiles(dir));
+  return [
+    ...[...notes, ...gateNotes(preset, playbookTexts(dir, preset))].map(
+      (note): [string, PresetNote] => [join(dir, 'preset.yaml'), note],
+    ),
+    ...samples.notes.map((note): [string, PresetNote] => [join(dir, SAMPLES_FILE), note]),
+  ];
 }
 
 function loadOne(dir: string, name: string, origin: PresetOrigin): Loaded {
@@ -53,7 +102,18 @@ function loadOne(dir: string, name: string, origin: PresetOrigin): Loaded {
     problems.push(problem(`types.${type.name}.playbook: ${type.playbook} does not exist`));
   }
   if (problems.length > 0) return { problems };
-  return { preset: { ...preset, origin }, problems, warnings: reading.warnings.map(problem) };
+  const warnings = notesOf(join(dir, name), preset, reading.notes).map(
+    ([file, { code, level, message, path: at }]) => ({
+      preset: name,
+      origin,
+      path: file,
+      code,
+      level,
+      at,
+      message,
+    }),
+  );
+  return { preset: { ...preset, origin }, problems, warnings };
 }
 
 export function loadPresets(dataDir?: string, officialDir = OFFICIAL_PRESETS_DIR): PresetCatalog {

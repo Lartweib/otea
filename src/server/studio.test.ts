@@ -217,6 +217,95 @@ describe('the Studio API', () => {
     });
   });
 
+  describe('samples', () => {
+    const SAMPLES = 'samples:\n  - { id: REV-1, title: Round one, state: open }\n';
+    const samplesFile = () => join(dataDir(), 'presets', 'reviews', 'samples.yaml');
+    const raw = (path: string) =>
+      server.app.request(`/api${path}`, { headers: { host: LOCAL_HOST } });
+
+    it("reads an official preset's samples, each read against the preset", async () => {
+      const { status, body } = await get('/studio/presets/bug-triage/samples');
+
+      expect(status).toBe(200);
+      expect(body.notes).toEqual([]);
+      expect(body.yaml).toContain('Wall-slide jump drops the buffered input');
+      expect(body.files).toEqual(expect.arrayContaining(['wall-slide-before.png']));
+      const samples = body.samples as Array<Json>;
+      expect(
+        samples.find(({ title }) => title === 'Wall-slide jump drops the buffered input'),
+      ).toMatchObject({
+        type: 'bug',
+        fields: { severity: 'high' },
+        evidence: [
+          expect.objectContaining({ file: 'wall-slide-before.png', role: 'before' }),
+          expect.objectContaining({ file: 'wall-slide-after.png', role: 'after' }),
+        ],
+      });
+    });
+
+    it('reads no samples from a preset without them', async () => {
+      expect((await get('/studio/presets/reviews/samples')).body).toEqual({
+        yaml: null,
+        files: [],
+        samples: [],
+        notes: [],
+      });
+    });
+
+    it('serves a sample file as what it is, and nothing outside the samples folder', async () => {
+      const image = await raw('/studio/presets/bug-triage/samples/wall-slide-before.png');
+      const bytes = new Uint8Array(await image.arrayBuffer());
+
+      expect(image.status).toBe(200);
+      expect(image.headers.get('content-type')).toBe('image/png');
+      expect(image.headers.get('x-content-type-options')).toBe('nosniff');
+      expect([...bytes.slice(1, 4)].map((byte) => String.fromCharCode(byte)).join('')).toBe('PNG');
+      expect((await raw('/studio/presets/bug-triage/samples/nope.png')).status).toBe(404);
+      expect((await raw('/studio/presets/bug-triage/samples/..%2Fpreset.yaml')).status).toBe(404);
+    });
+
+    it('saves samples with the preset, without raising its version, and notes what misfits', async () => {
+      const samples = `${SAMPLES}  - { id: REV-2, title: Round two, state: nowhere }\n`;
+
+      const { status, body } = await post('/studio/presets/reviews', { yaml: REVIEWS, samples });
+
+      expect(status).toBe(200);
+      expect(body).toMatchObject({ version: 2 });
+      expect(readFileSync(samplesFile(), 'utf8')).toBe(samples);
+      expect(body.notes).toEqual([
+        // A review opens in the human's turn, and from chat it can only be thrown away.
+        expect.objectContaining({ code: 'state_stuck_in_chat', file: 'preset.yaml' }),
+        expect.objectContaining({
+          file: 'samples.yaml',
+          code: 'sample_unknown_state',
+          path: { section: 'samples', index: 1, type: 'item', state: 'nowhere' },
+        }),
+      ]);
+      const read = (await get('/studio/presets/reviews/samples')).body;
+      expect((read.samples as Json[]).map(({ id }) => id)).toEqual(['REV-1', 'REV-2']);
+    });
+
+    it('duplicates a preset with its samples and their files', async () => {
+      await post('/studio/presets/bug-triage/duplicate', { as: 'game-bugs' });
+
+      const dir = join(dataDir(), 'presets', 'game-bugs');
+      expect(existsSync(join(dir, 'samples.yaml'))).toBe(true);
+      expect(existsSync(join(dir, 'samples', 'wall-slide-before.png'))).toBe(true);
+      expect((await get('/studio/presets/game-bugs/samples')).body.notes).toEqual([]);
+    });
+
+    it('takes samples only from a signed-in browser', async () => {
+      const { status } = await post(
+        '/studio/presets/reviews',
+        { yaml: REVIEWS, samples: SAMPLES },
+        { cookie: '' },
+      );
+
+      expect(status).toBe(401);
+      expect(existsSync(samplesFile())).toBe(false);
+    });
+  });
+
   describe('blueprints', () => {
     const state = async () => (await get('/studio/blueprint')).body;
     const apply = () => post('/studio/blueprint/apply', { name: 'product' });

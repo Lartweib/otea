@@ -3,6 +3,7 @@ import {
   assertInBlueprint,
   type Blueprint,
   blueprintTypeProblems,
+  blueprintWarnings,
   blueprintYaml,
   describeDiff,
   diffBlueprints,
@@ -10,6 +11,7 @@ import {
   readBlueprint,
 } from './blueprint.ts';
 import { OteaError } from './errors.ts';
+import { tasks } from './testing.ts';
 
 const PRODUCT_YAML = `
 blueprint: product
@@ -282,5 +284,28 @@ connections:
 
   it('finds nothing between a blueprint and itself', () => {
     expect(describeDiff(diffBlueprints(product, product))).toEqual([]);
+  });
+});
+
+describe('blueprintWarnings', () => {
+  const waiting = {
+    ...tasks,
+    states: tasks.states.map((state) =>
+      state.name === 'in_progress' ? { ...state, requires: ['blockers_closed' as const] } : state,
+    ),
+  };
+
+  it('warns about a blocks link whose target type waits for nothing', () => {
+    expect(blueprintWarnings(product, () => tasks)).toEqual([
+      'connections[0]: bugs.bug blocks work.task waits for nothing: no state of task (board work) requires blockers_closed, so no task waits for the bug that blocks it',
+    ]);
+  });
+
+  it('says nothing once a state of the target type requires blockers_closed', () => {
+    expect(blueprintWarnings(product, () => waiting)).toEqual([]);
+  });
+
+  it('says nothing about a board whose preset cannot be read: its problems say it', () => {
+    expect(blueprintWarnings(product, () => undefined)).toEqual([]);
   });
 });
