@@ -378,6 +378,8 @@ export const en = {
   // Moves
   'move.aria': 'Actions',
   'move.none': 'No moves from this state.',
+  'move.more': { one: '{count} more', other: '{count} more' },
+  'move.moreTitle': 'More moves',
   'move.waits': {
     one: 'waits for {count} open child',
     other: 'waits for {count} open children',

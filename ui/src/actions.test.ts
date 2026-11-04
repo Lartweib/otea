@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   type ActionState,
+  barMoves,
   canConfirm,
   IDLE,
   isBusy,
@@ -151,6 +152,39 @@ describe('actions', () => {
       ]);
       expect(moveVariants([waits, back], open(2))).toEqual(['default', 'default']);
       expect(moveVariants([waits, accept], open(0))).toEqual(['primary', 'default']);
+    });
+
+    describe('barMoves', () => {
+      const info = { to: 'needs_info', by: 'human', reasonRequired: true, turn: 'agent' } as const;
+      const dup = {
+        to: 'duplicate',
+        by: 'human',
+        reasonRequired: true,
+        turn: 'none',
+        closes: 'discarded',
+      } as const;
+
+      it('keeps every move on the bar when there are two at most', () => {
+        expect(barMoves([accept, discard])).toEqual({ bar: [0, 1], more: [] });
+        expect(barMoves([back])).toEqual({ bar: [0], more: [] });
+        expect(barMoves([])).toEqual({ bar: [], more: [] });
+      });
+
+      it('keeps the primary on the bar and the rest under more, closing moves last', () => {
+        expect(barMoves([info, discard, accept, dup])).toEqual({ bar: [2], more: [0, 1, 3] });
+      });
+
+      it('keeps the first open move on the bar when there is no primary', () => {
+        expect(barMoves([discard, waits, back, info], open(2))).toEqual({
+          bar: [2],
+          more: [1, 3, 0],
+        });
+      });
+
+      it('falls back to a blocked move, then to a closing one, when nothing else can lead', () => {
+        expect(barMoves([discard, dup, waits], open(1))).toEqual({ bar: [2], more: [0, 1] });
+        expect(barMoves([discard, dup, discard])).toEqual({ bar: [0], more: [1, 2] });
+      });
     });
 
     it('blocks a move into a working state that waits for children the same way', () => {
