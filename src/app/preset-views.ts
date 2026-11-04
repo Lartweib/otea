@@ -1,32 +1,12 @@
-import type { Layout } from '../core/modules.ts';
-import type { CollectionLayout, FieldSpec, ItemType, Labels } from '../core/preset.ts';
-import type { State } from '../core/workflow.ts';
+import type { CollectionLayout, FieldSpec, ItemType } from '../core/preset.ts';
+import { type FieldView, type TypeView, typeViews } from '../core/views.ts';
 import { listCollections } from '../store/queries.ts';
 import type { Context } from './context.ts';
 import type { PresetOrigin } from './presets.ts';
 
-export type FieldView = FieldSpec & { name: string };
-
-// A type as clients see it: its fields in order, where its items start, its states (whose turn
-// each is and how the closed ones close), its layout, and its icon when the preset gives it one.
-// In a preset that declares a hierarchy, `children` are the types it takes under it and `root`
-// whether it may live with no parent; elsewhere neither is set, and any type takes any child.
-// `labels` are the type's words in the other languages its preset speaks, for the web UI to show.
-export type TypeView = {
-  name: string;
-  label: string;
-  icon?: string;
-  initial: string;
-  incomplete?: string;
-  states: State[];
-  fields: FieldView[];
-  layout: Layout;
-  children?: string[];
-  root?: boolean;
-  // The actions its workflow gates and the states that allow each, when it declares any.
-  gates?: Record<string, string[]>;
-  labels?: Labels;
-};
+// Types and fields as clients see them are built in the core, so Studio's preview builds them from
+// a draft with the same code.
+export { type FieldView, fieldViews, type TypeView, typeViews } from '../core/views.ts';
 
 // `fields` are the fields of every type, each once, in the order the types declare them.
 export type PresetView = {
@@ -40,32 +20,6 @@ export type PresetView = {
   view: CollectionLayout;
   collections: string[];
 };
-
-export function fieldViews(fields: Record<string, FieldSpec>): FieldView[] {
-  return Object.entries(fields).map(([name, spec]) => ({ name, ...spec }));
-}
-
-export function typeViews(types: readonly ItemType[]): TypeView[] {
-  return types.map(({ name, label, icon, fields, workflow, layout, children, root, labels }) => {
-    const view: TypeView = {
-      name,
-      label,
-      initial: workflow.initial,
-      states: workflow.states,
-      fields: fieldViews(fields),
-      layout,
-    };
-    if (workflow.incomplete !== undefined) view.incomplete = workflow.incomplete;
-    if (icon !== undefined) view.icon = icon;
-    if (children !== undefined) view.children = children;
-    if (root !== undefined) view.root = root;
-    if (workflow.gates !== undefined && Object.keys(workflow.gates).length > 0) {
-      view.gates = workflow.gates;
-    }
-    if (labels !== undefined) view.labels = labels;
-    return view;
-  });
-}
 
 function allFields(types: readonly ItemType[]): FieldView[] {
   const fields = Object.fromEntries(types.flatMap((type) => Object.entries(type.fields)).reverse());

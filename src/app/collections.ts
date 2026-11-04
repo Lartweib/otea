@@ -2,7 +2,8 @@ import type { DatabaseSync } from 'node:sqlite';
 import { OteaError } from '../core/errors.ts';
 import { assertIconName } from '../core/icons.ts';
 import { prefixFor } from '../core/item.ts';
-import { type CollectionLayout, DEFAULT_TYPE, type ItemType, typeOf } from '../core/preset.ts';
+import { DEFAULT_TYPE, type ItemType, typeOf } from '../core/preset.ts';
+import { type CollectionView, typeViews } from '../core/views.ts';
 import { transaction } from '../store/database.ts';
 import {
   type CollectionRecord,
@@ -15,7 +16,6 @@ import {
   updateCollectionIcon,
 } from '../store/queries.ts';
 import type { Context } from './context.ts';
-import { type TypeView, typeViews } from './preset-views.ts';
 import { type LoadedPreset, requirePreset } from './presets.ts';
 
 export type Collection = CollectionRecord;
@@ -104,14 +104,7 @@ export function setCollectionIcon(ctx: Context, name: string, icon: string | nul
 }
 
 // `icon` is resolved: the collection's own or its preset's, so clients never resolve it.
-export type CollectionView = {
-  name: string;
-  prefix: string;
-  preset: string;
-  icon: string | null;
-  types: TypeView[];
-  view: CollectionLayout;
-};
+export type { CollectionView } from '../core/views.ts';
 
 export function listCollectionViews(ctx: Context): CollectionView[] {
   return listCollections(ctx.db).map((collection) => {
