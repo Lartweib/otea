@@ -1,15 +1,20 @@
 import { describe, expect, it } from 'vitest';
 import { rawOf, readDraft } from './draft.ts';
 import {
+  addField,
+  addModule,
+  extensionsOf,
   fieldPath,
   layoutPath,
   moveInSlot,
   removeField,
   renameField,
+  setEntry,
   setShownIn,
   sharedBy,
   shownIn,
   slotChoices,
+  slotOffer,
 } from './layout-edit.ts';
 
 const PRESET = `preset: game-bugs
@@ -146,5 +151,55 @@ describe('renaming and removing a field', () => {
     expect(slotIn(next, 'row')).toEqual(['severity', 'zone']);
     expect(next).toContain('zone: área');
     expect(readDraft(next).ok).toBe(true);
+  });
+});
+
+describe('adding a part where + field here sits', () => {
+  it('adds a shared field with its words and places it at the index in the slot', () => {
+    const next = addField(PRESET, read(PRESET), 'bug', 'body', 1, 'platform', 'enum');
+    expect(rawOf(next).fields?.platform).toEqual({ module: 'enum', values: ['one', 'two'] });
+    expect(slotIn(next, 'body')).toEqual(['description', 'platform']);
+    expect(next).toContain('platform: platform');
+    expect(readDraft(next).ok).toBe(true);
+  });
+
+  it('adds a module entry, such as an evidence module, at the index', () => {
+    const next = addModule(PRESET, read(PRESET), 'bug', 'body', 0, 'images');
+    expect(slotIn(next, 'body')).toEqual([{ module: 'images', id: 'images' }, 'description']);
+    expect(readDraft(next).ok).toBe(true);
+  });
+
+  it('offers the field modules and the modules a slot takes, striking the others', () => {
+    const offer = slotOffer('side');
+    expect(offer.fields).toEqual(['text', 'markdown', 'enum', 'severity']);
+    expect(offer.modules.find(({ module }) => module === 'relations')?.struck).toBeUndefined();
+    expect(offer.modules.find(({ module }) => module === 'rounds')?.struck).toBeTruthy();
+    expect(slotOffer('evidence').fields).toEqual([]);
+  });
+});
+
+describe('editing a module entry', () => {
+  const WITH = PRESET.replace(
+    '      body: [description]',
+    '      evidence: [{ module: images, id: screenshots, variant: compare }]\n      body: [description]',
+  );
+
+  it('sets what the entry accepts, keeping the rest of it', () => {
+    const next = setEntry(WITH, read(WITH), 'bug', 'evidence', 0, {
+      module: 'images',
+      id: 'screenshots',
+      variant: 'compare',
+      accepts: ['png'],
+      required: true,
+    });
+    expect(slotIn(next, 'evidence')).toEqual([
+      { module: 'images', id: 'screenshots', variant: 'compare', accepts: ['png'], required: true },
+    ]);
+    expect(readDraft(next).ok).toBe(true);
+  });
+
+  it('lists the extensions a module takes', () => {
+    expect(extensionsOf('images')).toEqual(['png', 'jpg', 'jpeg', 'webp', 'gif']);
+    expect(extensionsOf('diff')).toEqual(['diff', 'patch']);
   });
 });

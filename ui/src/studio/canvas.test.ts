@@ -61,6 +61,16 @@ describe('the boxes the preview draws over its parts', () => {
     ).toEqual([{ part: steps, rect: rect(100, 20, 60, 310) }]);
   });
 
+  it('keeps the same part drawn in two rows apart', () => {
+    const area = { type: 'bug', slot: 'row', index: 2, field: 'area' } as const;
+    expect(
+      merged([
+        { part: area, rect: rect(100, 200, 18, 60) },
+        { part: area, rect: rect(160, 200, 18, 60) },
+      ]),
+    ).toHaveLength(2);
+  });
+
   it('draws one box around every part of a slot', () => {
     const boxes = slotBoxes([
       {
@@ -82,7 +92,7 @@ describe('the boxes the preview draws over its parts', () => {
     ]);
   });
 
-  it('places a gap after each part of a slot that takes fields, for + field here', () => {
+  it('places a gap after each part of a slot that stacks fields, for + field here', () => {
     const gaps = gapsOf([
       {
         part: { type: 'bug', slot: 'body', index: 0, field: 'description' },
@@ -93,6 +103,10 @@ describe('the boxes the preview draws over its parts', () => {
         rect: rect(150, 20, 30, 300),
       },
       { part: { type: 'bug', slot: 'evidence', index: 0 }, rect: rect(200, 20, 30, 300) },
+      {
+        part: { type: 'bug', slot: 'header', index: 0, field: 'severity' },
+        rect: rect(40, 20, 20, 60),
+      },
     ]);
     expect(gaps).toEqual([
       { slot: 'body', index: 1, top: 145 },

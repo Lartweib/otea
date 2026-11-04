@@ -111,7 +111,7 @@
   min-height: 0;
   flex: 1;
 }
-.st-cols > .st-stage:first-child {
+.st-cols:not([data-view="row"]) > .st-stage:first-child {
   grid-column: 1 / 3;
 }
 
@@ -522,10 +522,267 @@
   padding-right: 4px;
 }
 .st-ask .st-seg {
-  flex-wrap: nowrap;
   max-width: 100%;
 }
 .st-ask .st-seg button {
   padding: 0 9px;
   font-size: 12px;
+}
+
+/* ---- + field here, and its picker ---- */
+.st-gap {
+  position: absolute;
+  display: flex;
+  justify-content: center;
+  height: 0;
+}
+.st-gap-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  height: 18px;
+  margin-top: -9px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--sf);
+  box-shadow: inset 0 0 0 1px var(--line);
+  color: color-mix(in oklch, var(--mut) 70%, transparent);
+  font: 400 11px var(--font-machine);
+  pointer-events: auto;
+  cursor: pointer;
+}
+.st-gap-btn .icon {
+  width: 10px;
+  height: 10px;
+}
+.st-gap-btn:hover,
+.st-gap-btn[aria-expanded="true"] {
+  color: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--ink);
+  font-weight: 500;
+}
+.st-pick {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  z-index: var(--z-tooltip);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 256px;
+  padding: 12px;
+  border-radius: var(--r-l);
+  background: var(--sf);
+  box-shadow:
+    0 0 0 1px var(--line),
+    0 12px 32px -12px var(--shadow);
+  transform: translateX(-50%);
+  pointer-events: auto;
+}
+.st-pick > * {
+  align-self: stretch;
+}
+.st-pick-h {
+  display: flex;
+  justify-content: space-between;
+  color: var(--mut);
+  font: 400 11.5px var(--font-machine);
+}
+.st-pick-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.st-pick-name input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font: 500 13px var(--font-machine);
+  outline: none;
+}
+.st-pick-name span {
+  color: var(--mut);
+  font: 400 11px var(--font-machine);
+}
+.st-pick-name:focus-within {
+  box-shadow: inset 0 0 0 1.5px var(--you);
+}
+.st-pick-hint {
+  margin: 0;
+  color: var(--warn);
+  font: 400 11.5px var(--font-human);
+}
+.st-pick-k {
+  padding: 6px 4px 0;
+  border-top: 1px solid var(--line);
+  color: var(--mut);
+  font: 400 11.5px var(--font-machine);
+}
+.st-pick-list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.st-pick-list button {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  width: 100%;
+  padding: 5px 8px;
+  border: 0;
+  border-radius: var(--r-m);
+  background: none;
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+}
+.st-pick-list button:hover:not(:disabled) {
+  background: var(--hov);
+}
+.st-pick-list button:disabled {
+  cursor: not-allowed;
+}
+.st-pick-list button:disabled:not(.struck) b {
+  color: var(--mut);
+}
+.st-pick-list b {
+  font: 600 12.5px var(--font-machine);
+}
+.st-pick-list span {
+  grid-column: 1;
+  color: var(--mut);
+  font: 400 11.5px var(--font-human);
+}
+.st-pick-list em {
+  grid-row: 1 / 3;
+  grid-column: 2;
+  align-self: center;
+  color: var(--mut);
+  font: 400 11px var(--font-machine);
+  font-style: normal;
+}
+.st-pick-list .struck b {
+  color: var(--mut);
+  text-decoration: line-through;
+}
+
+/* ---- the module inspector ---- */
+.st-insp-name-n {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+.st-insp-lede {
+  padding: 4px 0 18px;
+  border-bottom: 1px solid var(--line);
+}
+.st-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font: 400 13px var(--font-human);
+  cursor: pointer;
+}
+.st-switch input {
+  appearance: none;
+  position: relative;
+  width: 26px;
+  height: 15px;
+  margin: 0;
+  border-radius: 999px;
+  background: var(--off);
+  cursor: pointer;
+  transition: background var(--m-fast) var(--m-ease);
+}
+.st-switch input::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: var(--sf);
+  transition: transform var(--m-fast) var(--m-ease);
+}
+.st-switch input:checked {
+  background: var(--ink);
+}
+.st-switch input:checked::after {
+  transform: translateX(11px);
+}
+.st-attach {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 20px;
+  padding: 12px 14px;
+  border-radius: var(--r-m);
+  background: var(--well);
+  font: 400 13px / 1.45 var(--font-human);
+}
+.st-attach b {
+  font-weight: 600;
+}
+.st-attach p {
+  margin: 0;
+}
+.st-attach code {
+  font: 500 11.5px / 1.45 var(--font-machine);
+  overflow-wrap: anywhere;
+}
+.st-attach-n {
+  color: var(--mut);
+  font: 400 11.5px / 1.45 var(--font-machine);
+}
+
+/* ---- the form and row views ---- */
+.st-cols[data-view="row"] {
+  grid-template-columns: minmax(0, 1fr);
+}
+@media (min-width: 80.0625rem) {
+  .st-cols[data-view="row"] {
+    grid-template-columns: minmax(0, 1fr) 344px;
+  }
+}
+.st-cols[data-view="row"] .st-canvas {
+  max-width: 720px;
+}
+.st-form-card {
+  padding: 18px 20px;
+  border-radius: var(--r-l);
+  box-shadow: 0 0 0 1px var(--line);
+}
+.st-stage-n {
+  max-width: 640px;
+  margin: 16px 0 0;
+  color: var(--mut);
+  font: 400 12px / 1.5 var(--font-machine);
+}
+@media (pointer: coarse) {
+  .st-gap-btn {
+    height: 28px;
+    margin-top: -14px;
+  }
+  .st-pick-list button {
+    min-height: 44px;
+  }
+}
+
+.st-ask .st-val.st-val-on {
+  background: var(--you);
+  color: var(--on-you);
+}
+
+/* A row's marks are small and sit under the title: their names hang below them. */
+.st-canvas-marks [data-slot="row"] .st-parttag {
+  top: auto;
+  bottom: -11px;
 }
