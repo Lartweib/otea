@@ -1,7 +1,7 @@
 import type { PointerEvent } from 'react';
 import { t } from '../i18n/i18n.ts';
-import { Icon } from '../kit/index.ts';
 import type { IconName } from '../kit/Icon.tsx';
+import { Icon } from '../kit/index.ts';
 import { Grip, Plus } from './glyphs.tsx';
 
 export type HiddenField = { id: string; name: string; typeLabel: string };
