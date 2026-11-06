@@ -251,3 +251,23 @@ describe('the preview note', () => {
     );
   });
 });
+
+describe('Spanish notes and change lines', () => {
+  // A name can be masculine or feminine (área, campo), so no line agrees an adjective with it.
+  it('say what was done with a verb, so the gender of the name does not matter', () => {
+    setLanguage('es');
+    expect(t('cz.moved', { name: 'área' })).toBe('Se movió área');
+    expect(t('customize.boxMoved', { name: 'Detalles' })).toBe('Se movió la caja Detalles');
+    expect(t('customize.hiddenFrom', { name: 'área' })).toBe('Se ocultó área en esta vista');
+    expect(t('customize.m.ch.removedBlock', { name: 'Imágenes' })).toBe(
+      'Se quitó Imágenes del detalle',
+    );
+    expect(t('customize.m.ch.hidden', { name: 'área' })).toBe('Se ocultó área en el detalle');
+    expect(t('customize.m.ch.needNo', { name: 'área' })).toBe('Ya no se exige área');
+    expect(t('customize.m.ch.needCreate', { name: 'área' })).toBe('Ahora se exige área para crear');
+    expect(t('customize.m.ch.needComplete', { name: 'área' })).toBe(
+      'Ahora se exige área para empezar a trabajar',
+    );
+    expect(t('cz.fixed', { name: 'El título' })).toBe('Siempre va acá: El título no se mueve.');
+  });
+});
