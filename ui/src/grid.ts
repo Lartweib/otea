@@ -1,5 +1,6 @@
 import { type PlainKey, t } from './i18n/i18n.ts';
 import { leaseChars } from './lease.ts';
+import { fieldLabel } from './intake.ts';
 import { fieldWord } from './preset-words.ts';
 import { monoWidth } from './row-grid.ts';
 import type { CollectionView, FieldView, Item } from './types.ts';
@@ -82,7 +83,7 @@ function columnOf(collection: CollectionView, key: string): GridColumn | undefin
   if (!field || !kind) return undefined;
   const values = kind === 'severity' ? [...(field.values ?? [])].reverse() : field.values;
   // A field's header is its preset's label in the language on screen, or its name.
-  const word = collection.types.map((type) => fieldWord(type, key)).find(Boolean) ?? key;
+  const word = collection.types.map((type) => fieldWord(type, key)).find(Boolean) ?? fieldLabel(key);
   return { key, kind, label: word, field, ...(kind !== 'text' && values ? { values } : {}) };
 }
 
