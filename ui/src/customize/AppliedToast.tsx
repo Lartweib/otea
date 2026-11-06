@@ -20,7 +20,7 @@ export function AppliedToast({ onUndone }: { onUndone: () => void }) {
           dismiss();
         }}
       >
-        {t('customize.undo')}
+        {t('cz.undo')}
       </button>
     </div>
   );

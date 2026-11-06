@@ -197,7 +197,12 @@ export function FieldMenu(p: FieldMenuProps) {
             <Up />
             {t('customize.up')}
           </button>
-          <button type="button" className="btn sm quiet" disabled={p.downDisabled} onClick={p.onDown}>
+          <button
+            type="button"
+            className="btn sm quiet"
+            disabled={p.downDisabled}
+            onClick={p.onDown}
+          >
             <Down />
             {t('customize.down')}
           </button>
