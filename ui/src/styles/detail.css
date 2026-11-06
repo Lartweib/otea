@@ -205,6 +205,12 @@
   row-gap: 10px;
 }
 
+/* A detail unfolded in its row is a phone: the pair stacks. */
+.detail[data-layout="unfold"] .detail-pair {
+  grid-template-columns: minmax(0, 1fr);
+  row-gap: 36px;
+}
+
 /* The main column: stacked, the sections in order, Details and History after it. The line that
    closes the band shows only in the aside form. */
 .detail-line {
