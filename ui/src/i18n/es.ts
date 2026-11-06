@@ -460,7 +460,7 @@ export const es: Catalog = {
   'cz.redo': 'Rehacer',
   'cz.discard': 'Descartar',
   'cz.apply': 'Aplicar a {board}',
-  'cz.hint': 'Arrastrá un campo para moverlo · Tocalo para cambiarlo',
+  'cz.hint': 'Arrastrá un campo para moverlo. Tocalo para cambiarlo.',
   'cz.showing': 'Mostrando {id}',
   'cz.computer': 'Computadora',
   'cz.phone': 'Teléfono',

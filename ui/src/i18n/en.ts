@@ -433,7 +433,7 @@ export const en = {
   'cz.redo': 'Redo',
   'cz.discard': 'Discard',
   'cz.apply': 'Apply to {board}',
-  'cz.hint': 'Drag a field to move it · Click it to change it',
+  'cz.hint': 'Drag a field to move it. Click it to change it.',
   'cz.showing': 'Showing {id}',
   'cz.computer': 'Computer',
   'cz.phone': 'Phone',
