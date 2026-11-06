@@ -48,6 +48,7 @@ import {
   addField,
   BLOCKS,
   blockOf,
+  blockSays,
   boxRows,
   changed,
   changesOf,
@@ -63,7 +64,7 @@ import {
   hide,
   homeOf,
   homeWord,
-  KIND_WORD,
+  kindWord,
   move,
   moveBox,
   patchThing,
@@ -91,7 +92,8 @@ import type { FieldKind } from './types.ts';
 type View = 'detail' | 'form' | 'row';
 const NO_FOLDS = { collapsed: new Set<string>(), expanded: new Set<string>() };
 const FIXED = new Set(['title']);
-const blockSays = (thing: Thing) => t(`customize.block.${blockOf(thing) ?? 'images'}.says`);
+const saysOf = (thing: Thing) =>
+  blockSays(BLOCKS.find((each) => each.module === blockOf(thing))?.module ?? 'images');
 
 type Rect = { top: number; left: number; width: number; height: number };
 // A box as drawn: the section, its content and its name, in the canvas's coordinates.
@@ -940,7 +942,7 @@ function Builder({
         name={thing.name}
         onName={(name) => change(patchThing(now, id, { name }))}
         onClose={closeMenu}
-        says={blockSays(thing)}
+        says={saysOf(thing)}
         kind={field ? (thing.kind as FieldKind) : 'short'}
         onKind={(kind) => {
           const room = roomZone ? refusal(kind, roomZone) : undefined;
@@ -1302,14 +1304,14 @@ function Builder({
             hidden={hidden.map((thing) => ({
               id: thing.id,
               name: thing.name,
-              typeLabel: KIND_WORD[thing.kind],
+              typeLabel: kindWord(thing.kind),
             }))}
             blocks={blocks.map((thing) => {
               const at = homeOf(doc, thing.id);
               return {
                 id: thing.id,
                 name: thing.name,
-                says: blockSays(thing),
+                says: saysOf(thing),
                 icon: BLOCKS.find(({ module }) => module === blockOf(thing))?.icon ?? 'attach',
                 ...(at ? { usedIn: homeWord(doc, at) } : {}),
               };
@@ -1318,7 +1320,7 @@ function Builder({
             {...(drag ? { grabbing: drag.id } : {})}
             boxes={view === 'detail'}
             onNewBox={() => {
-              const made = addBox(doc, 'New box');
+              const made = addBox(doc, t('customize.m.newBox'));
               change(made.doc);
               setSelected(undefined);
               setBoxMenu(undefined);
