@@ -1,14 +1,22 @@
 import type { ChangeKind } from './types.ts';
 
 const svg = (size: number, d: string) => (
-  <svg className="icon" width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden="true">
+  <svg
+    className="icon"
+    width={size}
+    height={size}
+    viewBox={`0 0 ${size} ${size}`}
+    aria-hidden="true"
+  >
     <path d={d} />
   </svg>
 );
 
 export const Grip = () => (
   <svg className="cz-grip" width="10" height="16" viewBox="0 0 10 16" aria-hidden="true">
-    {[3, 8, 13].flatMap((y) => [3, 7].map((x) => <circle key={`${x}${y}`} cx={x} cy={y} r="1.3" />))}
+    {[3, 8, 13].flatMap((y) =>
+      [3, 7].map((x) => <circle key={`${x}${y}`} cx={x} cy={y} r="1.3" />),
+    )}
   </svg>
 );
 export const Down = () => svg(12, 'M6 2.5 V9.5 M3 6.5 L6 9.5 L9 6.5');

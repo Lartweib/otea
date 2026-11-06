@@ -27,7 +27,7 @@ import { storeDraft, storedDraft } from '../studio/PresetEditor.tsx';
 import { draftPreview } from '../studio/preview.ts';
 import type { Item, ItemView } from '../types.ts';
 import { announce } from './applied.ts';
-import { FieldMenu } from './FieldMenu.tsx';
+import { BuilderMenu } from './BuilderMenu.tsx';
 import {
   addField,
   changed,
@@ -80,13 +80,13 @@ export function CustomizePage({
   if (!wide)
     return (
       <main className="cz-page cz-msg">
-        <p>{t('customize.desktopOnly')}</p>
+        <p>{t('cz.desktopOnly')}</p>
       </main>
     );
   if (blueprint.status !== 'ready')
     return (
       <main className="cz-page cz-msg">
-        <p>{t('customize.loading')}</p>
+        <p>{t('cz.loading')}</p>
       </main>
     );
   const boards = blueprint.value.blueprint?.boards ?? [];
@@ -100,7 +100,7 @@ export function CustomizePage({
   if (!board || !presetName)
     return (
       <main className="cz-page cz-msg">
-        <p>{t('customize.noItem')}</p>
+        <p>{t('cz.noItem')}</p>
       </main>
     );
   return (
@@ -133,7 +133,7 @@ function Loader(props: {
   if (source.status !== 'ready' || samples.status !== 'ready')
     return (
       <main className="cz-page cz-msg">
-        <p>{t('customize.loading')}</p>
+        <p>{t('cz.loading')}</p>
       </main>
     );
   return <Builder {...props} source={source.value} samples={samples.value} />;
@@ -327,7 +327,7 @@ function Builder({
       if (JSON.stringify(result.doc) === JSON.stringify(h.doc)) return;
       apply((cur) => commit(cur, result.doc));
       const name = h.doc.things[id]?.name ?? id;
-      say(t('customize.moved', { name }), () => apply(undo));
+      say(t('cz.moved', { name }), () => apply(undo));
       setSettled(id);
       setTimeout(() => setSettled(undefined), 1400);
     };
@@ -341,7 +341,7 @@ function Builder({
   if (!hist || !doc || !preset || !preview)
     return (
       <main className="cz-page cz-msg">
-        <p>{t('customize.failed')}</p>
+        <p>{t('cz.failed')}</p>
       </main>
     );
 
@@ -398,7 +398,7 @@ function Builder({
                 <button
                   type="button"
                   className="cz-grip"
-                  aria-label={t('customize.grip', { name: thing.name })}
+                  aria-label={t('cz.grip', { name: thing.name })}
                   onPointerDown={(event) => startDrag(id, event)}
                   onClick={() => setSelected(part)}
                 >
@@ -416,7 +416,7 @@ function Builder({
           />
         ) : null}
         {selected && selectedThing && selectedId ? (
-          <FieldMenu
+          <BuilderMenu
             thing={selectedThing}
             was={hist.base.things[selectedId]}
             doc={doc}
@@ -446,11 +446,11 @@ function Builder({
     const id = idAt(part);
     if (id && FIXED.has(id)) {
       setSelected(undefined);
-      return say(t('customize.fixed', { name: doc.things[id]?.name ?? id }));
+      return say(t('cz.fixed', { name: doc.things[id]?.name ?? id }));
     }
     if (part.index < 0 || !id) {
       setSelected(undefined);
-      return say(t('customize.fixed', { name: part.slot }));
+      return say(t('cz.fixed', { name: part.slot }));
     }
     setSelected(part);
   };
@@ -467,7 +467,7 @@ function Builder({
   if (view === 'row') {
     const nesting = nestSections(groupItems(rows, 'turn', preview.collection), NO_FOLDS);
     drawn = canvas(
-      t('customize.row'),
+      t('cz.row'),
       <ItemList
         sections={nesting.sections}
         nesting={nesting.rows}
@@ -478,7 +478,7 @@ function Builder({
     );
   } else if (view === 'form') {
     drawn = canvas(
-      t('customize.form'),
+      t('cz.form'),
       <article className="detail st-form-card">
         <IntakeForm
           key={type + yaml.length}
@@ -493,7 +493,7 @@ function Builder({
     );
   } else if (item) {
     const detail = canvas(
-      t('customize.showing', { id: item.id }),
+      t('cz.showing', { id: item.id }),
       <ItemDetail
         item={item}
         canWrite={false}
@@ -502,7 +502,7 @@ function Builder({
       />,
     );
     drawn = device === 'phone' ? <div className="st-phone-frame">{detail}</div> : detail;
-  } else drawn = <p className="t-small">{t('customize.noItem')}</p>;
+  } else drawn = <p className="t-small">{t('cz.noItem')}</p>;
 
   const discard = () => {
     storeDraft(presetName, undefined);
@@ -519,10 +519,10 @@ function Builder({
     try {
       const done = await customizeBoard(board, yaml);
       storeDraft(presetName, undefined);
-      announce(t('customize.applied', { board }), () => revertBoard(board, done.previous));
+      announce(t('cz.applied', { board }), () => revertBoard(board, done.previous));
       window.location.hash = itemId ? hashFor(itemId) : '#/';
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : t('customize.failed'));
+      setError(caught instanceof Error ? caught.message : t('cz.failed'));
     } finally {
       setBusy(false);
     }
@@ -538,7 +538,7 @@ function Builder({
       <button
         type="button"
         className="cz-grip"
-        aria-label={t('customize.grip', { name: thing.name })}
+        aria-label={t('cz.grip', { name: thing.name })}
         onPointerDown={(event) => startDrag(thing.id, event)}
       >
         <span aria-hidden="true">⋮⋮</span>
@@ -552,10 +552,10 @@ function Builder({
       <header className="cz-bar">
         {previewing ? null : (
           <Button variant="quiet" onClick={back}>
-            {t('customize.back', { id: idLabel })}
+            {t('cz.back', { id: idLabel })}
           </Button>
         )}
-        <p className="cz-title">{t('customize.title', { type: typeWord, board })}</p>
+        <p className="cz-title">{t('cz.title', { type: typeWord, board })}</p>
         <div className="cz-seg">
           {(['detail', 'form', 'row'] as const).map((each) => (
             <button
@@ -564,22 +564,22 @@ function Builder({
               aria-pressed={view === each}
               onClick={() => setView(each)}
             >
-              {t(`customize.${each}`)}
+              {t(`cz.${each}`)}
             </button>
           ))}
         </div>
         <span className="cz-grow" />
         <Button variant="quiet" disabled={hist.past.length === 0} onClick={() => apply(undo)}>
-          {t('customize.undo')}
+          {t('cz.undo')}
         </Button>
         <Button variant="quiet" disabled={hist.future.length === 0} onClick={() => apply(redo)}>
-          {t('customize.redo')}
+          {t('cz.redo')}
         </Button>
         <Button variant="quiet" disabled={!dirty} onClick={discard}>
-          {t('customize.discard')}
+          {t('cz.discard')}
         </Button>
         <Button variant="primary" disabled={!dirty} onClick={() => setApplying(true)}>
-          {t('customize.apply', { board })}
+          {t('cz.apply', { board })}
         </Button>
       </header>
       <div className="cz-body">
@@ -597,30 +597,30 @@ function Builder({
                 const made = addField(doc, newName, 'short');
                 change(made.doc);
                 setNewName('');
-                say(t('customize.moved', { name: newName.trim() }), () => apply(undo));
+                say(t('cz.moved', { name: newName.trim() }), () => apply(undo));
               }}
             >
               <label>
-                <span>{t('customize.newField')}</span>
+                <span>{t('cz.newField')}</span>
                 <input
                   value={newName}
-                  placeholder={t('customize.fieldName')}
+                  placeholder={t('cz.fieldName')}
                   onChange={(e) => setNewName(e.target.value)}
                 />
               </label>
               <Button size="sm" type="submit" disabled={!keyOf(newName) || !newName.trim()}>
-                {t('customize.add')}
+                {t('cz.add')}
               </Button>
             </form>
-            <h2>{t('customize.hidden')}</h2>
+            <h2>{t('cz.hidden')}</h2>
             {hiddenThings.length === 0 ? (
-              <p className="cz-none">{t('customize.noHidden')}</p>
+              <p className="cz-none">{t('cz.noHidden')}</p>
             ) : (
               <ul>{hiddenThings.map(tile)}</ul>
             )}
             {hiddenFiles.length === 0 ? null : (
               <>
-                <h2>{t('customize.files')}</h2>
+                <h2>{t('cz.files')}</h2>
                 <ul>{hiddenFiles.map(tile)}</ul>
               </>
             )}
@@ -630,12 +630,12 @@ function Builder({
           <div className="cz-canvas" ref={wrap} data-view={view}>
             {drawn}
           </div>
-          {hint && !previewing ? <p className="cz-hint">{t('customize.hint')}</p> : null}
+          {hint && !previewing ? <p className="cz-hint">{t('cz.hint')}</p> : null}
         </div>
         <div className="cz-right">
           {rows.length > 0 && view === 'detail' ? (
             <label className="cz-showing">
-              <span>{t('customize.showing', { id: '' })}</span>
+              <span>{t('cz.showing', { id: '' })}</span>
               <select value={shownId} onChange={(event) => setChosen(event.target.value)}>
                 {rows.map((row) => (
                   <option key={row.id} value={row.id}>
@@ -653,7 +653,7 @@ function Builder({
                 aria-pressed={device === each}
                 onClick={() => setDevice(each)}
               >
-                {t(`customize.${each}`)}
+                {t(`cz.${each}`)}
               </button>
             ))}
           </div>
@@ -665,9 +665,9 @@ function Builder({
               setSelected(undefined);
             }}
           >
-            {t('customize.preview')}
+            {t('cz.preview')}
           </Button>
-          {previewing ? <p className="cz-none">{t('customize.previewNote')}</p> : null}
+          {previewing ? <p className="cz-none">{t('cz.previewNote')}</p> : null}
         </div>
       </div>
       {drag ? (
@@ -691,7 +691,7 @@ function Builder({
                 setToast(undefined);
               }}
             >
-              {t('customize.undo')}
+              {t('cz.undo')}
             </button>
           ) : null}
         </div>
@@ -740,9 +740,9 @@ function ApplyDialog(props: {
         className="cz-dialog"
         role="dialog"
         aria-modal="true"
-        aria-label={t('customize.applyTitle', { board: props.board })}
+        aria-label={t('cz.applyTitle', { board: props.board })}
       >
-        <h2>{t('customize.applyTitle', { board: props.board })}</h2>
+        <h2>{t('cz.applyTitle', { board: props.board })}</h2>
         <ul className="cz-changes">
           {props.changes.map((change) => (
             <li key={change.text} data-kind={change.kind}>
@@ -751,15 +751,13 @@ function ApplyDialog(props: {
           ))}
         </ul>
         <p className="cz-reach">
-          {t('customize.reach', { type: props.typeWord, board: props.board, count: props.count })}
+          {t('cz.reach', { type: props.typeWord, board: props.board, count: props.count })}
         </p>
         {props.official ? (
-          <p className="cz-reach">
-            {t('customize.first', { preset: props.preset, board: props.board })}
-          </p>
+          <p className="cz-reach">{t('cz.first', { preset: props.preset, board: props.board })}</p>
         ) : null}
         <details>
-          <summary>{t('customize.seeFile')}</summary>
+          <summary>{t('cz.seeFile')}</summary>
           <pre>
             {props.file.map((line) => `${line.kind === 'add' ? '+' : '-'} ${line.text}`).join('\n')}
           </pre>
@@ -771,10 +769,10 @@ function ApplyDialog(props: {
         ) : null}
         <div className="cz-actions">
           <Button variant="quiet" onClick={props.onCancel}>
-            {t('customize.cancel')}
+            {t('cz.cancel')}
           </Button>
           <Button variant="primary" disabled={props.busy} onClick={props.onApply}>
-            {t('customize.apply', { board: props.board })}
+            {t('cz.apply', { board: props.board })}
           </Button>
         </div>
       </div>
