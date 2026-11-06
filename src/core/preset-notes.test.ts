@@ -54,7 +54,7 @@ describe('preset notes', () => {
   it('warns about a field that no layout slot of a type places, by its path', () => {
     expect(read(BUGS_YAML).notes).toContainEqual({
       code: 'field_unplaced',
-      level: 'warning',
+      level: 'info',
       message:
         'fields.build_hash: placed in no layout slot of bug (header, body, side, row, intake, phone), so nobody sees it',
       path: { section: 'fields', type: 'bug', field: 'build_hash' },

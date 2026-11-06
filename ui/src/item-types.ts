@@ -1,5 +1,6 @@
 import { isEvidenceModule } from './evidence.ts';
 import { presetText } from './i18n/i18n.ts';
+import { fieldLabel } from './intake.ts';
 import { fieldWord, typeWord } from './preset-words.ts';
 import type { CollectionView, FieldView, LayoutEntry, LayoutSlot, TypeView } from './types.ts';
 
@@ -147,7 +148,7 @@ function placed(
   const field = name === undefined ? undefined : fieldOf(type, name);
   if (!field || value === undefined) return [];
   // The preset's label for the field in the language on screen wins: a screen never mixes the two.
-  const word = fieldWord(type, field.name) ?? presetText(label ?? field.name);
+  const word = fieldWord(type, field.name) ?? (label ? presetText(label) : fieldLabel(field.name));
   return [{ field, value, label: word, at }];
 }
 

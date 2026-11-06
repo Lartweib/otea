@@ -185,7 +185,7 @@ describe('item types', () => {
 
   it('puts the values of the row slot in the row', () => {
     expect(rowValues(bug, { area: 'Login', severity: 'high' })).toEqual([
-      { field: severity, value: 'high', label: 'severity', at: at('bug', 'row', 0, 'severity') },
+      { field: severity, value: 'high', label: 'Severity', at: at('bug', 'row', 0, 'severity') },
     ]);
   });
 
@@ -203,7 +203,7 @@ describe('item types', () => {
         {
           field: severity,
           value: 'high',
-          label: 'severity',
+          label: 'Severity',
           at: at('bug', 'header', 0, 'severity'),
         },
       ]);
@@ -224,7 +224,7 @@ describe('item types', () => {
             {
               field: severity,
               value: 'high',
-              label: 'severity',
+              label: 'Severity',
               at: at('bug', 'side', 0, 'severity'),
             },
           ],
@@ -238,7 +238,7 @@ describe('item types', () => {
         {
           kind: 'fields',
           values: [
-            { field: pitch, value: 'Cache it', label: 'pitch', at: at('impr', 'body', 0, 'pitch') },
+            { field: pitch, value: 'Cache it', label: 'Pitch', at: at('impr', 'body', 0, 'pitch') },
           ],
         },
         { kind: 'evidence' },
@@ -271,7 +271,7 @@ describe('item types', () => {
         {
           kind: 'fields',
           values: [
-            { field: pitch, value: 'Wolf', label: 'pitch', at: at('impr', 'body', 0, 'pitch') },
+            { field: pitch, value: 'Wolf', label: 'Pitch', at: at('impr', 'body', 0, 'pitch') },
           ],
         },
         {

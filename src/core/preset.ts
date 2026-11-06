@@ -32,6 +32,8 @@ export type FieldSpec = {
   required?: FieldRequirement;
   values?: string[];
   default?: string;
+  // The name people read for the field; absent, one is derived from its key.
+  label?: string;
 };
 
 // The type of a preset that declares no `types`: every item of it.
@@ -102,6 +104,7 @@ const fieldSchema = z.strictObject({
   required: z.enum(['create', 'complete']).optional(),
   values: z.array(z.string()).nonempty().optional(),
   default: z.string().optional(),
+  label: z.string().trim().min(1).optional(),
 });
 
 const fieldsSchema = z.record(z.string().regex(KEY, 'field names must be snake_case'), fieldSchema);
@@ -369,6 +372,7 @@ function toField(field: RawField): FieldSpec {
   const values = valuesOf(field);
   if (values) spec.values = [...values];
   if (field.default !== undefined) spec.default = field.default;
+  if (field.label !== undefined) spec.label = field.label;
   return spec;
 }
 

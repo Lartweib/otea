@@ -107,3 +107,21 @@ export function assertCanLeave(
     `Cannot move from "${from}" to "${to}" while fields required to complete are missing: ${missing.join(', ')}`,
   );
 }
+
+// A field key from a name someone typed ("Found in build" gives found_in_build), unique among the
+// keys already taken: a clash gets _2, _3, and so on.
+export function fieldKeyFor(name: string, taken: Iterable<string>): string {
+  const used = new Set(taken);
+  const base =
+    name
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '_')
+      .replace(/^_+|_+$/g, '')
+      .replace(/^[0-9]+/, '') || 'field';
+  if (!used.has(base)) return base;
+  let n = 2;
+  while (used.has(`${base}_${n}`)) n++;
+  return `${base}_${n}`;
+}
