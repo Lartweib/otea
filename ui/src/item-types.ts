@@ -181,6 +181,12 @@ export function intakeFields(type: TypeView): FieldView[] {
   return intakeSlots(type).map(({ field }) => field);
 }
 
+// The preset's label for the field in the language on screen wins: a screen never mixes the two.
+// Then the layout's own label, then the field's name as a person reads it.
+export function entryLabel(type: TypeView, field: string, label: string | undefined): string {
+  return fieldWord(type, field) ?? (label ? presetText(label) : fieldLabel(field));
+}
+
 function placed(
   type: TypeView,
   { entry, at }: { entry: LayoutEntry; at: SlotPath },
@@ -190,9 +196,7 @@ function placed(
   const value = name === undefined ? undefined : values[name];
   const field = name === undefined ? undefined : fieldOf(type, name);
   if (!field || value === undefined) return [];
-  // The preset's label for the field in the language on screen wins: a screen never mixes the two.
-  const word = fieldWord(type, field.name) ?? (label ? presetText(label) : fieldLabel(field.name));
-  return [{ field, value, label: word, at }];
+  return [{ field, value, label: entryLabel(type, field.name, label), at }];
 }
 
 function slotValues(
