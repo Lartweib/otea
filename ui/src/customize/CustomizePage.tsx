@@ -666,6 +666,8 @@ function Builder({
           const box = doc.sections[at];
           if (!box) return null;
           const { rect, label } = each;
+          const pair = boxRows(doc.sections).find((row) => row.includes(at));
+          const leads = pair?.length === 2 && pair[0] === at;
           const lifted = boxing?.index === at;
           const hot = boxing?.beside === at;
           return (
@@ -685,6 +687,7 @@ function Builder({
                 <button
                   type="button"
                   className="cz-boxgrip"
+                  style={{ top: label.top + label.height / 2 - (rect.top - 10) - 12 }}
                   aria-label={t('cz.grip', { name: box.title })}
                   onPointerDown={(event) => startBoxDrag(at, event)}
                   onClick={() => {
@@ -733,7 +736,7 @@ function Builder({
                   }}
                 />
               )}
-              {boxing && !lifted ? (
+              {boxing && !lifted && (!pair || pair.length === 1 || pair.includes(boxing.index)) ? (
                 <div
                   className="cz-beside"
                   data-hot={hot ? '' : undefined}
@@ -1163,7 +1166,7 @@ function Builder({
               setSelected(undefined);
               setBoxMenu(undefined);
               setRenaming(made.index);
-              say(t('customize.boxAdded', { name: 'New box' }), () => apply(undo));
+              say(t('customize.boxAdded'), () => apply(undo));
             }}
             onGrab={startDrag}
             onActivate={place}

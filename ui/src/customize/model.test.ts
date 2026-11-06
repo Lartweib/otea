@@ -228,6 +228,21 @@ describe('boxes', () => {
     expect(back.zones.side).toEqual(['severity']);
   });
 
+  it('migrates a preset that declares no layout at all', () => {
+    const bare = YAML.replace(/ {4}layout:\n[\s\S]*$/, '');
+    const reading = readPreset(bare);
+    if (!reading.ok) throw new Error(reading.problems.join());
+    const base = docOf(reading.preset, 'bug');
+    expect(base.boxed).toBe(false);
+    const { doc } = addBox(base, 'Testing notes');
+    const out = yamlOf(bare, reading.preset, 'bug', base, doc);
+    const again = readPreset(out);
+    if (!again.ok) throw new Error(again.problems.join());
+    const back = docOf(again.preset, 'bug');
+    expect(titles(back)).toContain('Testing notes');
+    expect(back.sections[0]?.entries).toEqual(base.sections[0]?.entries);
+  });
+
   it('migrates when a relation is placed elsewhere', () => {
     const base = docOf(readLinked(), 'bug');
     const { doc } = move(base, 'relations', { zone: 'section', section: 0, index: 0 });

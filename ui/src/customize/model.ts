@@ -537,8 +537,14 @@ export function yamlOf(
   const migrating = doc.boxed && !base.boxed;
   if (doc.boxed) {
     if (migrating) {
-      next = setIn(next, at('body'), undefined);
-      next = setIn(next, at('evidence'), undefined);
+      // A preset with no layout of its own has no body or evidence to remove.
+      const raw = rawOf(next);
+      const own = layoutPath(raw, type).reduce<unknown>(
+        (node, key) => (node as Record<string, unknown> | undefined)?.[String(key)],
+        raw,
+      ) as Record<string, unknown> | undefined;
+      for (const slot of ['body', 'evidence'])
+        if (own && slot in own) next = setIn(next, at(slot), undefined);
     }
     if (migrating || differ(base.sections, doc.sections)) {
       const sections = doc.sections.map((box) => ({
