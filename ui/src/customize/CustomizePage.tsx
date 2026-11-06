@@ -1,4 +1,13 @@
-import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  type ReactNode,
+  type RefObject,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import type { Preset } from '../../../src/core/preset.ts';
 import { ItemDetail } from '../components/ItemDetail.tsx';
 import { ItemList } from '../components/ItemList.tsx';
@@ -22,12 +31,14 @@ import {
 } from '../studio/api.ts';
 import { Canvas } from '../studio/Canvas.tsx';
 import { type Part, type Placed, slotBoxes } from '../studio/canvas.ts';
-import { diffLines, readDraft } from '../studio/draft.ts';
+import { readDraft } from '../studio/draft.ts';
 import { storeDraft, storedDraft } from '../studio/PresetEditor.tsx';
 import { draftPreview } from '../studio/preview.ts';
 import type { Item, ItemView } from '../types.ts';
+import { ApplyDialog } from './ApplyDialog.tsx';
 import { announce } from './applied.ts';
-import { BuilderMenu } from './BuilderMenu.tsx';
+import { FieldMenu } from './FieldMenu.tsx';
+import { LeftPanel } from './LeftPanel.tsx';
 import {
   addField,
   changed,
@@ -35,12 +46,16 @@ import {
   commit,
   type Doc,
   type Drop,
+  deleteField,
   docOf,
   type History,
-  keyOf,
+  homeOf,
+  KIND_WORD,
   move,
+  patchThing,
   redo,
   refusal,
+  setAlso,
   start,
   type Thing,
   undo,
@@ -50,6 +65,9 @@ import {
   type Zone,
   zoneWord,
 } from './model.ts';
+import { NewField } from './NewField.tsx';
+import { addOption, removeOption } from './options.ts';
+import type { FieldKind } from './types.ts';
 
 type View = 'detail' | 'form' | 'row';
 const NO_FOLDS = { collapsed: new Set<string>(), expanded: new Set<string>() };
@@ -178,11 +196,13 @@ function Builder({
   const [settled, setSettled] = useState<string>();
   const [toast, setToast] = useState<{ text: string; undo?: () => void }>();
   const [applying, setApplying] = useState(false);
+  const [showFile, setShowFile] = useState(false);
+  const [deletingId, setDeletingId] = useState<string>();
+  const [adding, setAdding] = useState<{ left: number; top: number }>();
+  const [newKind, setNewKind] = useState<FieldKind>('short');
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string>();
   const [newName, setNewName] = useState('');
   const wrap = useRef<HTMLDivElement>(null);
-  const panel = useRef<HTMLElement>(null);
   const stage = useRef<HTMLDivElement>(null);
   const placedRef = useRef<readonly Placed[]>([]);
   const histRef = useRef(hist);
@@ -242,7 +262,7 @@ function Builder({
     const thing = histRef.current?.doc.things[id];
     if (!thing) return none;
     const at = document.elementFromPoint(clientX, clientY);
-    if (panel.current && at && panel.current.contains(at))
+    if (at?.closest('[data-zone="panel"]'))
       return { over: { zone: 'panel', index: 0 }, why: undefined, line: undefined };
     const root = wrap.current?.querySelector('.st-canvas')?.getBoundingClientRect();
     if (!root) return none;
@@ -339,6 +359,12 @@ function Builder({
   };
 
   const change = (next: Doc) => apply((h) => commit(h, next));
+  const closeMenu = useCallback(() => {
+    setSelected(undefined);
+    setDeletingId(undefined);
+  }, []);
+  const closeAdd = useCallback(() => setAdding(undefined), []);
+  const keepEditing = useCallback(() => setApplying(false), []);
 
   if (!hist || !doc || !preset || !preview)
     return (
@@ -418,23 +444,101 @@ function Builder({
           />
         ) : null}
         {selected && selectedThing && selectedId ? (
-          <BuilderMenu
-            thing={selectedThing}
-            was={hist.base.things[selectedId]}
-            doc={doc}
-            anchor={
+          <MenuSlot
+            stage={stage}
+            top={
               placed.find(
                 ({ part }) => part.slot === selected.slot && part.index === selected.index,
-              )?.rect
+              )?.rect.top ?? 0
             }
-            onClose={() => setSelected(undefined)}
-            onChange={change}
-            used={used(selectedId)}
-          />
+          >
+            {menu(selectedId, selectedThing, selected)}
+          </MenuSlot>
         ) : null}
       </>
     );
   };
+
+  function menu(id: string, thing: Thing, part: Part): ReactNode {
+    const now = doc as Doc;
+    const field = thing.kind !== 'files' && thing.kind !== 'link';
+    const home = homeOf(now, id);
+    const list = home ? now.zones[home] : [];
+    const at = list.indexOf(id);
+    const go = (zone: Zone | 'panel', index: number, follow: Part | undefined) => {
+      const result = move(now, id, { zone, index });
+      if (result.refused) return say(result.refused);
+      change(result.doc);
+      setSelected(follow);
+    };
+    const also = (zone: 'row' | 'intake') => {
+      const on = !now.zones[zone].includes(id);
+      const why = on ? refusal(thing.kind, zone) : undefined;
+      if (why) return say(why);
+      change(setAlso(now, id, zone, on));
+    };
+    const was = hist?.base.things[id];
+    const count = used(id);
+    const options = thing.options ?? [];
+    const setOptions = (next: readonly string[]) =>
+      change(patchThing(now, id, { options: [...next] }));
+    return (
+      <FieldMenu
+        variant={field ? 'field' : 'block'}
+        name={thing.name}
+        onName={(name) => change(patchThing(now, id, { name }))}
+        onClose={closeMenu}
+        says={t(`customize.says.${thing.kind === 'link' ? 'link' : 'files'}`)}
+        kind={field ? (thing.kind as FieldKind) : 'short'}
+        onKind={(kind) => {
+          const room = home ? refusal(kind, home) : undefined;
+          const narrow = now.zones.row.includes(id) ? refusal(kind, 'row') : undefined;
+          const why = room ?? narrow;
+          if (why) return say(why);
+          change(
+            patchThing(now, id, {
+              kind,
+              ...(kind === 'choice' && options.length === 0 ? { options: ['one', 'two'] } : {}),
+            }),
+          );
+        }}
+        typeMayNotFit={was !== undefined && was.kind !== thing.kind && count > 0}
+        options={options}
+        onAddOption={(label) => setOptions(addOption(options, label))}
+        onRemoveOption={(label) => {
+          if (options.length > 1) setOptions(removeOption(options, label));
+        }}
+        need={thing.need}
+        onNeed={(need) => change(patchThing(now, id, { need }))}
+        inForm={now.zones.intake.includes(id)}
+        inRow={now.zones.row.includes(id)}
+        onToggleForm={() => also('intake')}
+        onToggleRow={() => also('row')}
+        zones={(['header', 'body', 'side'] as const).map((zone) => {
+          const why = refusal(thing.kind, zone);
+          return { id: zone, label: zoneWord(zone), ...(why ? { title: why } : {}) };
+        })}
+        {...(home ? { zone: home } : {})}
+        onZone={(zone) => {
+          if (zone !== home) go(zone as Zone, 0, { ...part, slot: zone as Zone, index: 0 });
+        }}
+        onUp={() => home && go(home, at - 1, { ...part, index: at - 1 })}
+        onDown={() => home && go(home, at + 1, { ...part, index: at + 1 })}
+        upDisabled={!home || at <= 0}
+        downDisabled={!home || at >= list.length - 1}
+        onHide={() => go('panel', 0, undefined)}
+        canDelete={field}
+        usedBy={count}
+        confirmingDelete={deletingId === id}
+        onAskDelete={() => setDeletingId(id)}
+        onKeepField={() => setDeletingId(undefined)}
+        onDelete={() => {
+          change(deleteField(now, id));
+          closeMenu();
+        }}
+      />
+    );
+  }
 
   function used(id: string): number {
     return samples.samples.filter(
@@ -516,38 +620,49 @@ function Builder({
     else window.location.hash = itemId ? hashFor(itemId) : '#/';
   };
   const submit = async () => {
+    if (busy) return;
     setBusy(true);
-    setError(undefined);
     try {
       const done = await customizeBoard(board, yaml);
       storeDraft(presetName, undefined);
       announce(t('cz.applied', { board }), () => revertBoard(board, done.previous));
       window.location.hash = itemId ? hashFor(itemId) : '#/';
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : t('cz.failed'));
+      say(caught instanceof Error ? caught.message : t('cz.failed'));
     } finally {
       setBusy(false);
     }
   };
-  const hiddenThings = unplaced(doc).filter(
-    (thing) => thing.kind !== 'files' && thing.kind !== 'link',
-  );
-  const hiddenFiles = unplaced(doc).filter(
+  const hidden = unplaced(doc).filter((thing) => thing.kind !== 'files' && thing.kind !== 'link');
+  const blocks = Object.values(doc.things).filter(
     (thing) => thing.kind === 'files' || thing.kind === 'link',
   );
-  const tile = (thing: Thing) => (
-    <li key={thing.id} className="cz-chip" data-lifted={drag?.id === thing.id ? '' : undefined}>
-      <button
-        type="button"
-        className="cz-grip"
-        aria-label={t('cz.grip', { name: thing.name })}
-        onPointerDown={(event) => startDrag(thing.id, event)}
-      >
-        <span aria-hidden="true">⋮⋮</span>
-      </button>
-      {thing.name}
-    </li>
-  );
+  const addZone: Zone = view === 'form' ? 'intake' : view === 'row' ? 'row' : 'body';
+  const landing = (kind: Thing['kind']): Zone => (refusal(kind, addZone) ? 'body' : addZone);
+  const submitNew = () => {
+    const name = newName.trim();
+    if (!name) return;
+    const zone = landing(newKind);
+    const made = addField(doc, name, newKind, zone);
+    change(made.doc);
+    setAdding(undefined);
+    setNewName('');
+    setNewKind('short');
+    say(t('customize.newFieldMade', { name }), () => apply(undo));
+    if (zone === 'body')
+      setSelected({ type, slot: 'body', index: made.doc.zones.body.length - 1, field: made.id });
+  };
+  const place = (id: string) => {
+    const thing = doc.things[id];
+    if (!thing) return;
+    const zone = landing(thing.kind);
+    const result = move(doc, id, { zone, index: doc.zones[zone].length });
+    if (result.refused) return say(result.refused);
+    change(result.doc);
+    say(t('cz.moved', { name: thing.name }), () => apply(undo));
+  };
+  const placedNow = drag ? doc.things[drag.id] && homeOf(doc, drag.id) !== undefined : false;
+  const dropToHide = drag?.over?.zone === 'panel' && placedNow;
 
   return (
     <main className="cz-page" data-previewing={previewing ? '' : undefined}>
@@ -586,47 +701,34 @@ function Builder({
       </header>
       <div className="cz-body">
         {previewing ? null : (
-          <aside
-            className="cz-panel"
-            ref={panel}
-            data-drop={drag?.over?.zone === 'panel' ? '' : undefined}
-          >
-            <form
-              className="cz-new"
-              onSubmit={(event) => {
-                event.preventDefault();
-                if (!newName.trim()) return;
-                const made = addField(doc, newName, 'short');
-                change(made.doc);
-                setNewName('');
-                say(t('cz.moved', { name: newName.trim() }), () => apply(undo));
-              }}
-            >
-              <label>
-                <span>{t('cz.newField')}</span>
-                <input
-                  value={newName}
-                  placeholder={t('cz.fieldName')}
-                  onChange={(e) => setNewName(e.target.value)}
-                />
-              </label>
-              <Button size="sm" type="submit" disabled={!keyOf(newName) || !newName.trim()}>
-                {t('cz.add')}
-              </Button>
-            </form>
-            <h2>{t('cz.hidden')}</h2>
-            {hiddenThings.length === 0 ? (
-              <p className="cz-none">{t('cz.noHidden')}</p>
-            ) : (
-              <ul>{hiddenThings.map(tile)}</ul>
-            )}
-            {hiddenFiles.length === 0 ? null : (
-              <>
-                <h2>{t('cz.files')}</h2>
-                <ul>{hiddenFiles.map(tile)}</ul>
-              </>
-            )}
-          </aside>
+          <LeftPanel
+            hidden={hidden.map((thing) => ({
+              id: thing.id,
+              name: thing.name,
+              typeLabel: KIND_WORD[thing.kind],
+            }))}
+            blocks={blocks.map((thing) => {
+              const at = homeOf(doc, thing.id);
+              return {
+                id: thing.id,
+                name: thing.name,
+                says: t(`customize.says.${thing.kind === 'link' ? 'link' : 'files'}`),
+                kind: thing.kind === 'link' ? ('link' as const) : ('files' as const),
+                ...(at ? { usedIn: zoneWord(at) } : {}),
+              };
+            })}
+            dropToHide={!!dropToHide}
+            {...(drag ? { grabbing: drag.id } : {})}
+            onGrab={startDrag}
+            onActivate={place}
+            onNewField={() => {
+              const rect = document.querySelector('[data-zone="panel"]')?.getBoundingClientRect();
+              setSelected(undefined);
+              setAdding(
+                adding ? undefined : { left: (rect?.right ?? 232) + 8, top: (rect?.top ?? 0) + 56 },
+              );
+            }}
+          />
         )}
         <div className="cz-stage" ref={stage}>
           <div className="cz-canvas" ref={wrap} data-view={view}>
@@ -698,86 +800,85 @@ function Builder({
           ) : null}
         </div>
       ) : null}
+      {adding ? (
+        <NewField
+          name={newName}
+          onName={setNewName}
+          kind={newKind}
+          onKind={setNewKind}
+          place={zoneWord(landing(newKind))}
+          onSubmit={submitNew}
+          onCancel={closeAdd}
+          style={{ position: 'fixed', left: adding.left, top: adding.top, width: 320, zIndex: 60 }}
+        />
+      ) : null}
       {applying ? (
         <ApplyDialog
-          board={board}
-          typeWord={typeWord}
-          count={count}
-          preset={presetName}
-          official={source.origin === 'official'}
+          target={board}
           changes={changes}
-          file={diffLines(source.yaml, yaml).filter((line) => line.kind !== 'same')}
-          busy={busy}
-          error={error}
-          onCancel={() => setApplying(false)}
+          itemCount={count}
+          first={source.origin === 'official'}
+          yaml={yaml}
+          showFile={showFile}
+          onToggleFile={() => setShowFile((on) => !on)}
           onApply={submit}
+          onKeepEditing={keepEditing}
         />
       ) : null}
     </main>
   );
 }
 
-function ApplyDialog(props: {
-  board: string;
-  typeWord: string;
-  count: number;
-  preset: string;
-  official: boolean;
-  changes: ReturnType<typeof changesOf>;
-  file: ReturnType<typeof diffLines>;
-  busy: boolean;
-  error: string | undefined;
-  onCancel: () => void;
-  onApply: () => void;
+// The field's menu sits in the canvas's reserved right column, level with its field, and stays
+// inside the part of the canvas that is on screen.
+function MenuSlot({
+  stage,
+  top,
+  children,
+}: {
+  stage: RefObject<HTMLDivElement | null>;
+  top: number;
+  children: ReactNode;
 }) {
-  const glyph = { new: '+', move: '↔', hidden: '–', gone: '×', other: '•' } as const;
+  const ref = useRef<HTMLDivElement>(null);
+  const [box, setBox] = useState({ left: 0, top, max: 0 });
+  const place = useCallback(() => {
+    const node = ref.current;
+    const canvas = node?.closest('.st-canvas');
+    const view = stage.current;
+    if (!node || !canvas || !view) return;
+    const c = canvas.getBoundingClientRect();
+    const s = view.getBoundingClientRect();
+    const low = Math.max(s.top, 0) - c.top + 8;
+    const high = Math.min(s.bottom, window.innerHeight) - c.top - 8;
+    const max = Math.max(160, high - low);
+    const height = Math.min(node.scrollHeight, max);
+    const next = {
+      left: canvas.clientWidth + 16,
+      top: Math.round(Math.max(low, Math.min(top - 8, high - height))),
+      max,
+    };
+    setBox((was) =>
+      was.left === next.left && was.top === next.top && was.max === next.max ? was : next,
+    );
+  }, [stage, top]);
+  useLayoutEffect(place);
   useEffect(() => {
-    const onKey = (event: KeyboardEvent) => event.key === 'Escape' && props.onCancel();
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [props.onCancel]);
+    const view = stage.current;
+    view?.addEventListener('scroll', place);
+    window.addEventListener('resize', place);
+    return () => {
+      view?.removeEventListener('scroll', place);
+      window.removeEventListener('resize', place);
+    };
+  }, [stage, place]);
   return (
-    <div className="cz-scrim">
-      <div
-        className="cz-dialog"
-        role="dialog"
-        aria-modal="true"
-        aria-label={t('cz.applyTitle', { board: props.board })}
-      >
-        <h2>{t('cz.applyTitle', { board: props.board })}</h2>
-        <ul className="cz-changes">
-          {props.changes.map((change) => (
-            <li key={change.text} data-kind={change.kind}>
-              <span aria-hidden="true">{glyph[change.kind]}</span> {change.text}
-            </li>
-          ))}
-        </ul>
-        <p className="cz-reach">
-          {t('cz.reach', { type: props.typeWord, board: props.board, count: props.count })}
-        </p>
-        {props.official ? (
-          <p className="cz-reach">{t('cz.first', { preset: props.preset, board: props.board })}</p>
-        ) : null}
-        <details>
-          <summary>{t('cz.seeFile')}</summary>
-          <pre>
-            {props.file.map((line) => `${line.kind === 'add' ? '+' : '-'} ${line.text}`).join('\n')}
-          </pre>
-        </details>
-        {props.error ? (
-          <p className="cz-error" role="alert">
-            {props.error}
-          </p>
-        ) : null}
-        <div className="cz-actions">
-          <Button variant="quiet" onClick={props.onCancel}>
-            {t('cz.cancel')}
-          </Button>
-          <Button variant="primary" disabled={props.busy} onClick={props.onApply}>
-            {t('cz.apply', { board: props.board })}
-          </Button>
-        </div>
-      </div>
+    <div
+      ref={ref}
+      className="cz-menuslot"
+      style={{ left: box.left, top: box.top, maxHeight: box.max || undefined }}
+    >
+      {children}
     </div>
   );
 }
