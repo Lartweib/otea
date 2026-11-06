@@ -12,6 +12,8 @@ type ChildrenModuleProps = {
   item: ItemView;
   entry: LayoutEntry;
   canWrite: boolean;
+  // Draw the empty row and "+ child" even where the type takes none (the Customize view's canvas).
+  placeholder?: boolean | undefined;
   collectionOf: CollectionOf;
   onAddChild?: ((parent: ItemView) => void) | undefined;
   // The board's items, to show each child's row values and gates.
@@ -30,6 +32,7 @@ export function ChildrenModule({
   item,
   entry,
   canWrite,
+  placeholder = false,
   collectionOf,
   onAddChild,
   itemOf,
@@ -40,8 +43,8 @@ export function ChildrenModule({
   // A type the hierarchy gives no children offers no "+ child".
   const takes = takesChildren(typeOf(collectionOf(item.collection), item.type));
   const add =
-    canWrite && onAddChild && takes ? (
-      <button type="button" className="rel-add" onClick={() => onAddChild(item)}>
+    canWrite && ((onAddChild && takes) || placeholder) ? (
+      <button type="button" className="rel-add" onClick={() => onAddChild?.(item)}>
         <span className="rel-add-plus" aria-hidden="true">
           +
         </span>

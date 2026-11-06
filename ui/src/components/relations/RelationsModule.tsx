@@ -11,6 +11,8 @@ type RelationsModuleProps = {
   item: ItemView;
   entry: LayoutEntry;
   canWrite: boolean;
+  // Say "No relations" even when every link reads in Across boards (the Customize view's canvas).
+  placeholder?: boolean | undefined;
   collectionOf: CollectionOf;
   // False when a children module of the same layout lists the children.
   withChildren: boolean;
@@ -46,6 +48,7 @@ export function RelationsModule({
   item,
   entry,
   canWrite,
+  placeholder = false,
   collectionOf,
   withChildren,
   slot,
@@ -55,7 +58,7 @@ export function RelationsModule({
   const own = structureRelations(item.relations, item.collection);
   const groups = groupRelations(own, { withChildren });
   if (groups.length === 0 && !canWrite) return null;
-  const elsewhere = groups.length === 0 && own.length < item.relations.length;
+  const elsewhere = groups.length === 0 && own.length < item.relations.length && !placeholder;
   const count = groups.reduce((sum, group) => sum + group.items.length, 0);
   const label = entry.label === undefined ? undefined : presetText(entry.label);
   const headingId = `relations-${item.id}`;
