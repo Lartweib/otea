@@ -340,3 +340,15 @@
 .cz-beside[data-hot] {
   background: color-mix(in oklch, var(--you) 14%, transparent);
 }
+
+.cz-zonetag {
+  position: absolute;
+  left: 10px;
+  top: -10px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--sf);
+  box-shadow: 0 0 0 1px var(--line);
+  font-size: 0.75rem;
+  color: var(--mut);
+}

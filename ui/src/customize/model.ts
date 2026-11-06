@@ -277,6 +277,24 @@ export const unplaced = (doc: Doc): Thing[] =>
       !doc.sections.some((box) => box.entries.includes(thing.id)),
   );
 
+// A view of the type the builder shows: the detail, the List row or the New item form.
+export type Facet = 'detail' | 'row' | 'intake';
+
+export const shown = (doc: Doc, id: string, facet: Facet): boolean =>
+  facet === 'detail' ? homeOf(doc, id) !== undefined : doc.zones[facet].includes(id);
+
+// Takes a thing out of the view being edited and out of no other.
+export function hide(doc: Doc, id: string, facet: Facet): { doc: Doc; refused?: string } {
+  const thing = doc.things[id];
+  if (!thing) return { doc };
+  if (facet === 'intake' && thing.need === 'create')
+    return { doc, refused: `${thing.name} is needed to create, so the form must ask for it` };
+  const next = clone(doc);
+  if (facet === 'detail') leaveDetail(next, id);
+  else drop(next.zones[facet], id);
+  return { doc: next };
+}
+
 // ---- boxes
 // The rows the boxes draw in: two consecutive half boxes share one, the first of them leading.
 export function boxRows(sections: readonly Section[]): number[][] {

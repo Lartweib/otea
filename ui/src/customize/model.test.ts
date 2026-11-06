@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { readPreset } from '../../../src/core/preset.ts';
 import {
@@ -7,6 +8,7 @@ import {
   commit,
   docOf,
   dropBeside,
+  hide,
   keyOf,
   move,
   moveBox,
@@ -15,6 +17,7 @@ import {
   removeBox,
   renameBox,
   setBeside,
+  shown,
   start,
   undo,
   unplaced,
@@ -275,6 +278,34 @@ describe('boxes', () => {
     const back = docOf(again.preset, 'bug');
     expect(titles(back)).toContain('Testing notes');
     expect(back.sections[0]?.entries).toEqual(base.sections[0]?.entries);
+  });
+
+  it('hides a field from one view only, and says what it is still in', () => {
+    const base = docOf(readBoxed(), 'bug');
+    const detail = hide(base, 'description', 'detail');
+    expect(detail.doc.sections[0]?.entries).toEqual(['environment']);
+    expect(detail.doc.zones.intake).toContain('description');
+    expect(shown(detail.doc, 'description', 'detail')).toBe(false);
+    expect(shown(detail.doc, 'description', 'intake')).toBe(true);
+    const row = hide(base, 'severity', 'row');
+    expect(row.doc.zones.row).toEqual([]);
+    expect(row.doc.zones.side).toEqual(['severity']);
+    expect(hide(base, 'title', 'intake').refused).toMatch(/needed to create/);
+  });
+
+  it('writes the bug-triage preset back with a new field and a new box', () => {
+    const source = readFileSync('presets/bug-triage/preset.yaml', 'utf8');
+    const reading = readPreset(source);
+    if (!reading.ok) throw new Error(reading.problems.join());
+    const base = docOf(reading.preset, 'bug');
+    const field = addField(base, 'Due date', 'short');
+    const { doc } = addBox(field.doc, 'Testing notes');
+    const out = yamlOf(source, reading.preset, 'bug', base, doc);
+    const again = readPreset(out);
+    if (!again.ok) throw new Error(again.problems.join());
+    const back = docOf(again.preset, 'bug');
+    expect(back.things.due_date?.name).toBe('Due date');
+    expect(back.sections[0]?.entries).toContain('due_date');
   });
 
   it('migrates when a relation is placed elsewhere', () => {
