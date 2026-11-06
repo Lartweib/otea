@@ -92,6 +92,23 @@ export type DetailSection = {
   blocks: DetailBlock[];
 };
 
+// The sections as rows: two consecutive half sections share a row, every other section has its own.
+export function sectionsInRows(sections: readonly DetailSection[]): DetailSection[][] {
+  const rows: DetailSection[][] = [];
+  let open: DetailSection[] | undefined;
+  for (const section of sections) {
+    if (section.width === 'half' && open && open.length === 1) {
+      open.push(section);
+      open = undefined;
+      continue;
+    }
+    const row = [section];
+    rows.push(row);
+    open = section.width === 'half' ? row : undefined;
+  }
+  return rows;
+}
+
 // `sections` is set when the type's layout declares them; `primary` then holds only what no section
 // draws (undeclared values, the plain evidence list).
 export type DetailBlocks = {

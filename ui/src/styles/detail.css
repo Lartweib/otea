@@ -181,6 +181,25 @@
   }
 }
 
+/* Two half sections side by side, each with its name above its content; stacked when narrow. */
+.detail-pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 24px;
+}
+
+.detail-section-half {
+  grid-template-columns: minmax(0, 1fr);
+  row-gap: 10px;
+}
+
+@container detail (max-width: 34rem) {
+  .detail-pair {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: 36px;
+  }
+}
+
 .detail[data-layout="unfold"] .detail-section {
   grid-template-columns: minmax(0, 1fr);
   row-gap: 10px;
