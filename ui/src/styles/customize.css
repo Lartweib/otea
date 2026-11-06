@@ -59,50 +59,11 @@
 .cz-page[data-previewing] .cz-body {
   grid-template-columns: 1fr 240px;
 }
-.cz-panel {
-  padding: 16px;
-  overflow: auto;
-  border-right: 1px solid var(--line);
-  background: var(--sf);
-}
-.cz-panel[data-drop] {
-  background: color-mix(in oklch, var(--you) 7%, var(--sf));
-  box-shadow: inset 0 0 0 2px var(--you);
-}
-.cz-panel h2 {
-  margin: 20px 0 8px;
-  font-size: 0.6875rem;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--mut);
-  font-weight: 600;
-}
-.cz-panel ul {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  gap: 6px;
-}
 .cz-none {
   font-size: 0.8125rem;
   color: var(--mut);
   margin: 0;
 }
-.cz-new {
-  display: grid;
-  gap: 8px;
-}
-.cz-new label {
-  display: grid;
-  gap: 4px;
-  font-size: 0.8125rem;
-  font-weight: 600;
-}
-.cz-new input,
-.cz-menu input,
-.cz-menu select,
-.cz-menu textarea,
 .cz-right select {
   font: inherit;
   font-weight: 400;
@@ -113,26 +74,17 @@
   color: var(--ink);
   min-width: 0;
 }
-.cz-chip {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 7px 10px;
-  font-size: 0.875rem;
-  background: var(--well);
-  border-radius: var(--r-m);
-}
-.cz-chip[data-lifted] {
-  opacity: 0.4;
-}
 .cz-stage {
   overflow: auto;
   position: relative;
   padding: 24px 32px 64px;
 }
 .cz-canvas {
-  max-width: 920px;
+  box-sizing: border-box;
+  max-width: 880px;
   margin: 0 auto;
+  /* the right column stays free for a field's menu, so the detail never moves when one opens */
+  padding-right: 292px;
 }
 .cz-canvas .st-slottag,
 .cz-canvas .st-slotbox,
@@ -196,10 +148,6 @@
   color: var(--mut);
   border-radius: var(--r-s);
 }
-.cz-chip .cz-grip {
-  position: static;
-  translate: none;
-}
 .cz-grip:hover {
   background: var(--hov);
   color: var(--ink);
@@ -254,63 +202,6 @@
   color: var(--bg);
   border-radius: 999px;
 }
-.cz-menu {
-  position: absolute;
-  pointer-events: auto;
-  z-index: var(--z-tooltip);
-  width: 252px;
-  padding: 14px;
-  display: grid;
-  gap: 10px;
-  background: var(--sf);
-  border-radius: var(--r-l);
-  box-shadow:
-    0 12px 32px -12px var(--shadow),
-    0 0 0 1px var(--line);
-}
-.cz-menu label,
-.cz-menu fieldset {
-  display: grid;
-  gap: 4px;
-  font-size: 0.8125rem;
-  font-weight: 600;
-  border: 0;
-  padding: 0;
-  margin: 0;
-}
-.cz-menu .cz-check {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-weight: 400;
-}
-.cz-x {
-  all: unset;
-  cursor: pointer;
-  position: absolute;
-  top: 6px;
-  right: 10px;
-  font-size: 1.125rem;
-  color: var(--mut);
-}
-.cz-moveto {
-  display: flex;
-  align-items: end;
-  gap: 6px;
-}
-.cz-moveto label {
-  flex: 1;
-}
-.cz-danger {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-.cz-warn {
-  margin: 0;
-  font-size: 0.8125rem;
-  color: var(--warn);
-}
 .cz-toast {
   position: fixed;
   left: 50%;
@@ -332,66 +223,18 @@
   font-weight: 600;
   text-decoration: underline;
 }
-.cz-scrim {
-  position: fixed;
-  inset: 0;
-  z-index: var(--z-flight);
-  display: grid;
-  place-items: center;
-  background: oklch(0.2 0.02 265 / 0.4);
-}
-.cz-dialog {
-  width: min(520px, 92vw);
-  max-height: 86vh;
-  overflow: auto;
-  padding: 24px;
-  background: var(--sf);
-  border-radius: var(--r-l);
-  box-shadow: 0 24px 60px -20px var(--shadow);
-}
-.cz-dialog h2 {
-  margin: 0 0 12px;
-  font-size: 1.125rem;
-}
-.cz-changes {
-  list-style: none;
-  margin: 0 0 12px;
-  padding: 0;
-  display: grid;
-  gap: 6px;
-  font-size: 0.9375rem;
-}
-.cz-changes li[data-kind="gone"] {
-  color: var(--minus);
-}
-.cz-changes li[data-kind="new"] span {
-  color: var(--plus);
-}
-.cz-reach {
-  margin: 6px 0;
-  font-size: 0.875rem;
-  color: var(--mut);
-}
-.cz-dialog pre {
-  font-family: var(--font-machine);
-  font-size: 0.75rem;
-  overflow: auto;
-  background: var(--well);
-  padding: 10px;
-  border-radius: var(--r-s);
-}
-.cz-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  margin-top: 16px;
-}
-.cz-error {
-  color: var(--warn);
-  font-size: 0.875rem;
-}
 @media (prefers-reduced-motion: reduce) {
   .cz-tile {
     transition: none;
   }
+}
+
+.cz-menuslot {
+  position: absolute;
+  z-index: var(--z-tooltip);
+  width: 260px;
+  overflow: auto;
+  pointer-events: auto;
+  border-radius: 14px;
+  scrollbar-width: thin;
 }
