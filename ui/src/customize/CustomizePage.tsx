@@ -16,7 +16,7 @@ import { IntakeForm } from '../components/NewItemForm.tsx';
 import { EvidenceFiles } from '../evidence-files.ts';
 import { type Connection, useMediaQuery, useRemote } from '../hooks.ts';
 import { t } from '../i18n/i18n.ts';
-import { Button } from '../kit/index.ts';
+import { Button, Icon } from '../kit/index.ts';
 import { nestSections } from '../nesting.ts';
 import { groupItems } from '../sections.ts';
 import { type CustomizeTarget, customizeHash, hashFor, studioHash } from '../selection.ts';
@@ -42,6 +42,7 @@ import { applyOf, boardsText, type Scope, saves, scopeOf, titleOf } from './scop
 import { announce } from './applied.ts';
 import { BoxMenu } from './BoxMenu.tsx';
 import { FieldMenu } from './FieldMenu.tsx';
+import { Grip, Redo, Undo } from './glyphs.tsx';
 import { LeftPanel } from './LeftPanel.tsx';
 import {
   addBox,
@@ -247,6 +248,9 @@ function Builder({
   const [device, setDevice] = useState<'computer' | 'phone'>('computer');
   const [previewing, setPreviewing] = useState(false);
   const [hint, setHint] = useState(true);
+  const hintEl = useRef<HTMLParagraphElement>(null);
+  // The hint sits in the toast's spot; it steps aside whenever it would lie over something to grab.
+  const [hintAway, setHintAway] = useState(false);
   const [selected, setSelected] = useState<Part>();
   const [chosen, setChosen] = useState<string | undefined>(itemId);
   const [drag, setDrag] = useState<DragState>();
@@ -295,16 +299,18 @@ function Builder({
     storeDraft(presetName, dirty ? { base: source.yaml, yaml, playbooks: {} } : undefined);
   }, [presetName, dirty, source.yaml, yaml]);
 
+  // The samples were made "just now", so their ages read as a few minutes, not as months.
+  const sampleNow = useMemo(() => new Date(Date.now() - 2 * 60_000).toISOString(), []);
   const preview = useMemo(
     () =>
       preset
         ? draftPreview(
             preset,
             { yaml: samples.yaml, files: samples.files },
-            { collection: board, now: '2026-01-01T00:00:00.000Z' },
+            { collection: board, now: sampleNow },
           )
         : undefined,
-    [preset, samples.yaml, samples.files, board],
+    [preset, samples.yaml, samples.files, board, sampleNow],
   );
   const rows = preview?.items.filter((item) => item.type === type) ?? [];
   const shownId = rows.some((row) => row.id === chosen) ? chosen : rows[0]?.id;
@@ -316,6 +322,33 @@ function Builder({
     toastTimer.current = setTimeout(() => setToast(undefined), 6000);
   }, []);
   useEffect(() => () => clearTimeout(toastTimer.current), []);
+  // The hint never lies over a row, a grip or a box name: it fades while any of them is under it.
+  const checkHint = useCallback(() => {
+    const note = hintEl.current;
+    if (!note) return;
+    const at = note.getBoundingClientRect();
+    const over = [
+      ...document.querySelectorAll(
+        '.cz-fgrip, .cz-boxgrip, .cz-boxname, .cz-tile:not([data-fixed])',
+      ),
+    ].some((each) => {
+      const r = each.getBoundingClientRect();
+      return (
+        r.right > at.left && r.left < at.right && r.bottom > at.top - 8 && r.top < at.bottom + 8
+      );
+    });
+    setHintAway((was) => (was === over ? was : over));
+  }, []);
+  useEffect(() => {
+    checkHint();
+    const view = stage.current;
+    view?.addEventListener('scroll', checkHint);
+    window.addEventListener('resize', checkHint);
+    return () => {
+      view?.removeEventListener('scroll', checkHint);
+      window.removeEventListener('resize', checkHint);
+    };
+  });
 
   const apply = (next: (h: History) => History) => {
     setHint(false);
@@ -705,28 +738,46 @@ function Builder({
           if (!id || !thing) return null;
           const fixed = FIXED.has(id);
           return (
+            // biome-ignore lint/a11y/noStaticElementInteractions lint/a11y/useKeyWithClickEvents: the whole tile takes the pointer; the grip inside it is the keyboard way to the same moves
             <div
               key={`${part.slot}:${part.section ?? ''}:${part.index}`}
               className="cz-tile"
               data-fixed={fixed ? '' : undefined}
+              data-slot={part.slot}
+              data-boxed={part.section !== undefined ? '' : undefined}
+              data-chosen={selected && samePart(part, selected) ? '' : undefined}
+              onPointerDown={
+                fixed
+                  ? undefined
+                  : (event) => {
+                      if (event.target === event.currentTarget) startDrag(id, event);
+                    }
+              }
+              onClick={
+                fixed
+                  ? undefined
+                  : (event) => {
+                      if (event.target === event.currentTarget) setSelected(part);
+                    }
+              }
               data-lifted={drag?.id === id ? '' : undefined}
               data-settled={settled === id ? '' : undefined}
               style={{
                 top: rect.top - 4,
-                left: rect.left - 6,
-                width: rect.width + 12,
+                left: rect.left - (part.slot === 'row' ? 6 : 26),
+                width: rect.width + (part.slot === 'row' ? 12 : 34),
                 height: rect.height + 8,
               }}
             >
               {fixed ? null : (
                 <button
                   type="button"
-                  className="cz-grip"
+                  className="cz-fgrip"
                   aria-label={t('cz.grip', { name: thing.name })}
                   onPointerDown={(event) => startDrag(id, event)}
                   onClick={() => setSelected(part)}
                 >
-                  <span aria-hidden="true">⋮⋮</span>
+                  <Grip />
                 </button>
               )}
             </div>
@@ -765,7 +816,7 @@ function Builder({
                     setBoxMenu(boxMenu === at ? undefined : at);
                   }}
                 >
-                  <span aria-hidden="true">⋮⋮</span>
+                  <Grip />
                 </button>
               </div>
               {renaming === at ? (
@@ -1105,7 +1156,8 @@ function Builder({
       <ShowEmpty.Provider value={item.type}>
         <ItemDetail
           item={item}
-          canWrite={false}
+          canWrite
+          placeholders
           collection={preview.collection}
           collectionOf={() => preview.collection}
         />
@@ -1214,6 +1266,8 @@ function Builder({
     change(result.doc);
     say(t('cz.moved', { name: thing.name }), () => apply(undo));
   };
+  // "Customizing Bug view" in ink, what it reaches after it in the quiet color.
+  const [heading = '', ...rest] = titleOf(scope, typeWord, presetName, board).split(' · ');
   const placedNow = drag ? doc.things[drag.id] && shown(doc, drag.id, facet) : false;
   const dropToHide = drag?.over?.zone === 'panel' && placedNow;
 
@@ -1221,11 +1275,15 @@ function Builder({
     <main className="cz-page" data-previewing={previewing ? '' : undefined}>
       <header className="cz-bar">
         {previewing ? null : (
-          <Button variant="quiet" onClick={back}>
+          <Button variant="quiet" className="cz-back" onClick={back}>
+            <Icon name="left" />
             {scope.template ? t('cz.backStudio') : t('cz.back', { id: idLabel })}
           </Button>
         )}
-        <p className="cz-title">{titleOf(scope, typeWord, presetName, board)}</p>
+        <p className="cz-title">
+          <b>{heading}</b>
+          {rest.length > 0 ? ` · ${rest.join(' · ')}` : ''}
+        </p>
         <div className="cz-seg">
           {(['detail', 'form', 'row'] as const).map((each) => (
             <button
@@ -1239,16 +1297,26 @@ function Builder({
           ))}
         </div>
         <span className="cz-grow" />
+        {dirty && changes.length > 0 ? (
+          <span className="cz-status">{t('cz.status', { count: changes.length })}</span>
+        ) : null}
         <Button variant="quiet" disabled={hist.past.length === 0} onClick={() => apply(undo)}>
+          <Undo />
           {t('cz.undo')}
         </Button>
         <Button variant="quiet" disabled={hist.future.length === 0} onClick={() => apply(redo)}>
+          <Redo />
           {t('cz.redo')}
         </Button>
         <Button variant="quiet" disabled={!dirty} onClick={discard}>
           {t('cz.discard')}
         </Button>
-        <Button variant="primary" disabled={!dirty} onClick={() => setApplying(true)}>
+        <Button
+          variant="primary"
+          className="cz-apply"
+          disabled={!dirty}
+          onClick={() => setApplying(true)}
+        >
           {applyOf(scope)}
         </Button>
       </header>
@@ -1293,49 +1361,61 @@ function Builder({
           />
         )}
         <div className="cz-stage" ref={stage}>
-          <div className="cz-canvas" ref={wrap} data-view={view}>
-            {drawn}
-          </div>
-          {hint && !previewing ? <p className="cz-hint">{t('cz.hint')}</p> : null}
-        </div>
-        <div className="cz-right">
-          {rows.length > 0 && view === 'detail' ? (
-            <label className="cz-showing">
-              <span>{t('cz.showing', { id: '' })}</span>
-              <select value={shownId} onChange={(event) => setChosen(event.target.value)}>
-                {rows.map((row) => (
-                  <option key={row.id} value={row.id}>
-                    {row.id}
-                  </option>
+          <div className="cz-sheet">
+            <div className="cz-canvas" ref={wrap} data-view={view}>
+              {drawn}
+            </div>
+            <div className="cz-float">
+              {rows.length > 0 && view === 'detail' ? (
+                <label className="cz-showing">
+                  <span>{t('cz.showing', { id: '' }).trim()}</span>
+                  <select
+                    aria-label={t('cz.showing', { id: '' }).trim()}
+                    value={shownId}
+                    onChange={(event) => setChosen(event.target.value)}
+                  >
+                    {rows.map((row) => (
+                      <option key={row.id} value={row.id}>
+                        {row.id}
+                      </option>
+                    ))}
+                  </select>
+                  <Icon name="chevron" />
+                </label>
+              ) : null}
+              <div className="cz-seg cz-dev">
+                {(['computer', 'phone'] as const).map((each) => (
+                  <button
+                    key={each}
+                    type="button"
+                    aria-pressed={device === each}
+                    onClick={() => setDevice(each)}
+                  >
+                    {t(`cz.${each}`)}
+                  </button>
                 ))}
-              </select>
-            </label>
-          ) : null}
-          <div className="cz-seg">
-            {(['computer', 'phone'] as const).map((each) => (
+              </div>
               <button
-                key={each}
                 type="button"
-                aria-pressed={device === each}
-                onClick={() => setDevice(each)}
+                className="cz-pv"
+                aria-pressed={previewing}
+                onClick={() => {
+                  setPreviewing(!previewing);
+                  setSelected(undefined);
+                }}
               >
-                {t(`cz.${each}`)}
+                {t('cz.preview')}
               </button>
-            ))}
+              {previewing ? <p className="cz-none">{t('cz.previewNote')}</p> : null}
+            </div>
           </div>
-          <Button
-            variant="quiet"
-            aria-pressed={previewing}
-            onClick={() => {
-              setPreviewing(!previewing);
-              setSelected(undefined);
-            }}
-          >
-            {t('cz.preview')}
-          </Button>
-          {previewing ? <p className="cz-none">{t('cz.previewNote')}</p> : null}
         </div>
       </div>
+      {hint && !previewing ? (
+        <p className="cz-hint" ref={hintEl} data-away={hintAway ? '' : undefined}>
+          {t('cz.hint')}
+        </p>
+      ) : null}
       {boxing ? (
         <div className="cz-ghost" style={{ left: boxing.x + 12, top: boxing.y + 12 }}>
           {doc.sections[boxing.index]?.title}
@@ -1418,7 +1498,7 @@ function MenuSlot({
     if (!node || !canvas || !view) return;
     const c = canvas.getBoundingClientRect();
     const s = view.getBoundingClientRect();
-    const low = Math.max(s.top, 0) - c.top + 8;
+    const low = Math.max(s.top, 0) - c.top + 56;
     const high = Math.min(s.bottom, window.innerHeight) - c.top - 8;
     const max = Math.max(160, high - low);
     const height = Math.min(node.scrollHeight, max);
