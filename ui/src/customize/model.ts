@@ -7,9 +7,8 @@ import { fieldPath, layoutPath, removeField } from '../studio/layout-edit.ts';
 // The builder's document: the type's layout as the person sees it, zones of things. Pure: the page
 // draws it, drag and menus change it, and `yamlOf` writes it back through the Studio's YAML edits.
 
-export const ZONES = ['header', 'body', 'side', 'row', 'intake'] as const;
+export const ZONES = ['header', 'side', 'row', 'intake'] as const;
 export type Zone = (typeof ZONES)[number];
-const DETAIL = ['header', 'body', 'side'] as const;
 
 export type Kind = 'short' | 'long' | 'choice' | 'level' | 'files' | 'link';
 export type Need = 'no' | 'complete' | 'create';
@@ -24,7 +23,19 @@ export type Thing = {
   options?: string[];
 };
 
-export type Doc = { things: Record<string, Thing>; zones: Record<Zone, string[]> };
+// A box of the detail's main column: a titled run of things. Two consecutive half boxes sit side by
+// side.
+export type Section = { id: string; title: string; width: 'full' | 'half'; entries: string[] };
+
+// `boxed` is whether the file must be written with sections. It starts true only for a preset that
+// already has them, and any change to the boxes themselves sets it. Until then Brief and Structure
+// are only how the person sees body, evidence, side and relations, and the file keeps its shape.
+export type Doc = {
+  things: Record<string, Thing>;
+  zones: Record<Zone, string[]>;
+  sections: Section[];
+  boxed: boolean;
+};
 
 const MODULE_KIND: Record<string, Kind> = {
   text: 'short',
@@ -67,9 +78,16 @@ const written = (entry: LayoutEntry): unknown =>
     ? entry.field
     : Object.fromEntries(Object.entries(entry).filter(([, value]) => value !== undefined));
 
+const isLink = (entry: LayoutEntry) => entry.module === 'relations' || entry.module === 'children';
+
 export function docOf(preset: Preset, type: string): Doc {
   const shape = preset.types.find(({ name }) => name === type);
-  const doc: Doc = { things: {}, zones: { header: [], body: [], side: [], row: [], intake: [] } };
+  const doc: Doc = {
+    things: {},
+    zones: { header: [], side: [], row: [], intake: [] },
+    sections: [],
+    boxed: false,
+  };
   if (!shape) return doc;
   for (const [id, spec] of Object.entries(shape.fields)) {
     doc.things[id] = {
@@ -80,76 +98,132 @@ export function docOf(preset: Preset, type: string): Doc {
       ...(spec.values ? { options: [...spec.values] } : {}),
     };
   }
-  for (const zone of ZONES) {
-    for (const entry of shape.layout[zone]) {
+  const refs = (entries: readonly LayoutEntry[]): string[] =>
+    entries.flatMap((entry) => {
       const ref = refOf(entry);
       if (entry.field === undefined && !doc.things[ref]) {
-        const link = entry.module === 'relations' || entry.module === 'children';
         doc.things[ref] = {
           id: ref,
           name: fieldLabel(ref),
-          kind: link ? 'link' : 'files',
+          kind: isLink(entry) ? 'link' : 'files',
           need: 'no',
           entry: written(entry),
         };
       }
-      if (doc.things[ref]) doc.zones[zone].push(ref);
-    }
+      return doc.things[ref] ? [ref] : [];
+    });
+  const { layout } = shape;
+  doc.zones.header = refs(layout.header);
+  doc.zones.row = refs(layout.row);
+  doc.zones.intake = refs(layout.intake);
+  if (layout.sections) {
+    doc.boxed = true;
+    doc.sections = layout.sections.map((section, at) => ({
+      id: `s${at}`,
+      title: section.title,
+      width: section.width ?? 'full',
+      entries: refs(section.entries),
+    }));
+    doc.zones.side = refs(layout.side);
+    return doc;
   }
+  // No sections: Brief is the evidence and the body, Structure the relations of the body and the
+  // side. The file keeps its own shape until a box changes.
+  const brief = [...refs(layout.evidence), ...refs(layout.body.filter((e) => !isLink(e)))];
+  const structure = refs([...layout.body, ...layout.side].filter(isLink));
+  doc.zones.side = refs(layout.side.filter((e) => !isLink(e)));
+  doc.sections = [{ id: 'brief', title: 'Brief', width: 'full', entries: brief }];
+  if (structure.length > 0)
+    doc.sections.push({ id: 'structure', title: 'Structure', width: 'full', entries: structure });
   return doc;
 }
 
-export const homeOf = (doc: Doc, id: string): Zone | undefined =>
-  DETAIL.find((zone) => doc.zones[zone].includes(id));
+export type Home = { zone: 'header' | 'side' } | { section: number };
 
-const WORD: Record<Zone, string> = {
+export function homeOf(doc: Doc, id: string): Home | undefined {
+  for (const zone of ['header', 'side'] as const)
+    if (doc.zones[zone].includes(id)) return { zone };
+  const section = doc.sections.findIndex((box) => box.entries.includes(id));
+  return section >= 0 ? { section } : undefined;
+}
+
+const homeKey = (doc: Doc, home: Home | undefined): string =>
+  !home ? '' : 'zone' in home ? home.zone : (doc.sections[home.section]?.id ?? '');
+
+export function homeWord(doc: Doc, home: Home): string {
+  return 'zone' in home ? zoneWord(home.zone) : (doc.sections[home.section]?.title ?? 'a box');
+}
+
+const WORD: Record<Zone | 'section', string> = {
   header: 'Under the title',
-  body: 'Brief',
+  section: 'a box',
   side: 'Details',
   row: 'the List row',
   intake: 'the New item form',
 };
-export const zoneWord = (zone: Zone) => WORD[zone];
+export const zoneWord = (zone: Zone | 'section') => WORD[zone];
 
-// Why a thing cannot land in a zone, or nothing when it can: small values go anywhere, long text
-// and files need room.
-export function refusal(kind: Kind, zone: Zone | 'panel'): string | undefined {
-  if (zone === 'panel') return undefined;
+// Why a thing cannot land in a zone, or nothing when it can: small values go anywhere, long text,
+// files and links need a box.
+export function refusal(kind: Kind, zone: Zone | 'section' | 'panel'): string | undefined {
+  if (zone === 'panel' || zone === 'section') return undefined;
   if (zone === 'intake')
     return kind === 'files' || kind === 'link' ? 'The form only asks for fields' : undefined;
   if (zone === 'row') {
     if (kind === 'long') return 'Long text does not fit in a row';
     return kind === 'files' || kind === 'link' ? 'A row only shows small values' : undefined;
   }
-  if (kind === 'files') return zone === 'body' ? undefined : 'Files need room: they go in Brief';
-  if (kind === 'long' && zone !== 'body') return 'Long text needs room: it goes in Brief';
+  if (kind === 'files') return 'Files need room: they go in a box';
+  if (kind === 'link') return 'Links to other items go in a box';
+  if (kind === 'long') return 'Long text needs room: it goes in a box';
   return undefined;
 }
 
-export type Drop = { zone: Zone | 'panel'; index: number };
+// Where to put a thing: a zone, a box (by its position) or back on the panel.
+export type Drop = { zone: Zone | 'section' | 'panel'; index: number; section?: number };
 
 function drop(list: string[], id: string) {
   const at = list.indexOf(id);
   if (at >= 0) list.splice(at, 1);
 }
 
+const leaveDetail = (doc: Doc, id: string) => {
+  drop(doc.zones.header, id);
+  drop(doc.zones.side, id);
+  for (const box of doc.sections) drop(box.entries, id);
+};
+
 // Moves a thing to a place, or hides it on the panel. Within the detail it leaves its other places
-// (the form, the row) alone.
+// (the form, the row) alone. `index` is where it lands once it has left its old place.
 export function move(doc: Doc, id: string, to: Drop): { doc: Doc; refused?: string } {
   const thing = doc.things[id];
   if (!thing) return { doc };
   const why = refusal(thing.kind, to.zone);
   if (why) return { doc, refused: why };
   const next = clone(doc);
-  if (to.zone === 'panel') {
-    for (const zone of DETAIL) drop(next.zones[zone], id);
-    return { doc: next };
+  const box = to.zone === 'section' ? next.sections[to.section ?? 0] : undefined;
+  if (to.zone === 'section' && !box) return { doc };
+  const was = homeOf(doc, id);
+  if (to.zone === 'panel' || to.zone === 'section' || to.zone === 'header' || to.zone === 'side')
+    leaveDetail(next, id);
+  else drop(next.zones[to.zone], id);
+  if (to.zone !== 'panel') {
+    const list = box ? box.entries : next.zones[to.zone as Zone];
+    list.splice(Math.max(0, Math.min(to.index, list.length)), 0, id);
   }
-  if (to.zone === 'header' || to.zone === 'body' || to.zone === 'side') {
-    for (const zone of DETAIL) drop(next.zones[zone], id);
-  } else drop(next.zones[to.zone], id);
-  const list = next.zones[to.zone];
-  list.splice(Math.max(0, Math.min(to.index, list.length)), 0, id);
+  if (!next.boxed) {
+    const deep = (at: number | undefined) => at !== undefined && at >= 1;
+    const kinds = (next.sections[0]?.entries ?? []).map((each) => next.things[each]?.kind);
+    // The file keeps evidence apart from the body, so files after a field need sections.
+    const interleaved = kinds.findIndex((k) => k !== 'files') >= 0 && kinds.lastIndexOf('files') > kinds.findIndex((k) => k !== 'files');
+    if (
+      thing.kind === 'link' ||
+      deep(was && 'section' in was ? was.section : undefined) ||
+      deep(to.zone === 'section' ? (to.section ?? 0) : undefined) ||
+      interleaved
+    )
+      next.boxed = true;
+  }
   return { doc: next };
 }
 
@@ -172,7 +246,8 @@ export function addField(
   doc: Doc,
   name: string,
   kind: Kind,
-  zone: Zone = 'body',
+  zone: Zone | 'section' = 'section',
+  section = 0,
 ): { doc: Doc; id: string } {
   const next = clone(doc);
   const base = keyOf(name);
@@ -180,21 +255,121 @@ export function addField(
   let n = 2;
   while (next.things[id]) id = `${base}_${n++}`;
   next.things[id] = { id, name: name.trim(), kind, need: 'no' };
-  next.zones[zone].push(id);
+  const list = zone === 'section' ? next.sections[section]?.entries : next.zones[zone];
+  list?.push(id);
   return { doc: next, id };
 }
 
 export function deleteField(doc: Doc, id: string): Doc {
   const next = clone(doc);
   delete next.things[id];
-  for (const zone of ZONES) drop(next.zones[zone], id);
+  leaveDetail(next, id);
+  drop(next.zones.row, id);
+  drop(next.zones.intake, id);
   return next;
 }
 
 export const unplaced = (doc: Doc): Thing[] =>
   Object.values(doc.things).filter(
-    (thing) => !ZONES.some((zone) => doc.zones[zone].includes(thing.id)),
+    (thing) =>
+      !ZONES.some((zone) => doc.zones[zone].includes(thing.id)) &&
+      !doc.sections.some((box) => box.entries.includes(thing.id)),
   );
+
+// ---- boxes
+// The rows the boxes draw in: two consecutive half boxes share one, the first of them leading.
+export function boxRows(sections: readonly Section[]): number[][] {
+  const rows: number[][] = [];
+  let open: number[] | undefined;
+  sections.forEach((box, at) => {
+    if (box.width === 'half' && open && open.length === 1) {
+      open.push(at);
+      open = undefined;
+      return;
+    }
+    const row = [at];
+    rows.push(row);
+    open = box.width === 'half' ? row : undefined;
+  });
+  return rows;
+}
+
+// A half box with nothing beside it takes the whole width.
+function heal(sections: Section[]) {
+  for (const row of boxRows(sections)) {
+    const only = row.length === 1 ? sections[row[0] as number] : undefined;
+    if (only?.width === 'half') only.width = 'full';
+  }
+}
+
+const boxedClone = (doc: Doc): Doc => ({ ...clone(doc), boxed: true });
+
+export function addBox(doc: Doc, title: string): { doc: Doc; index: number } {
+  const next = boxedClone(doc);
+  let n = next.sections.length + 1;
+  while (next.sections.some((box) => box.id === `b${n}`)) n += 1;
+  next.sections.push({ id: `b${n}`, title: title.trim() || 'New box', width: 'full', entries: [] });
+  return { doc: next, index: next.sections.length - 1 };
+}
+
+export function renameBox(doc: Doc, index: number, title: string): Doc {
+  const box = doc.sections[index];
+  if (!box || !title.trim() || title.trim() === box.title) return doc;
+  const next = boxedClone(doc);
+  (next.sections[index] as Section).title = title.trim();
+  return next;
+}
+
+// `to` is where the box lands once it has left its place. It takes the whole width.
+export function moveBox(doc: Doc, from: number, to: number): Doc {
+  if (from === to || !doc.sections[from]) return doc;
+  const next = boxedClone(doc);
+  const [box] = next.sections.splice(from, 1) as [Section];
+  box.width = 'full';
+  heal(next.sections);
+  next.sections.splice(Math.max(0, Math.min(to, next.sections.length)), 0, box);
+  heal(next.sections);
+  return next;
+}
+
+export function removeBox(doc: Doc, index: number): Doc {
+  if (!doc.sections[index]) return doc;
+  const next = boxedClone(doc);
+  next.sections.splice(index, 1);
+  heal(next.sections);
+  return next;
+}
+
+// Lifts a box out of where it is and sets it down right after `target`, both half width.
+export function dropBeside(doc: Doc, from: number, target: number): { doc: Doc; refused?: string } {
+  if (from === target || !doc.sections[from] || !doc.sections[target]) return { doc };
+  const next = boxedClone(doc);
+  const [box] = next.sections.splice(from, 1) as [Section];
+  const other = next.sections[target > from ? target - 1 : target] as Section;
+  heal(next.sections);
+  const row = boxRows(next.sections).find((each) => each.includes(next.sections.indexOf(other)));
+  if (!row || row.length > 1)
+    return { doc, refused: `${other.title} already has a box beside it` };
+  box.width = 'half';
+  other.width = 'half';
+  next.sections.splice(next.sections.indexOf(other) + 1, 0, box);
+  return { doc: next };
+}
+
+// Beside the previous box, or on a row of its own again.
+export function setBeside(doc: Doc, index: number, on: boolean): { doc: Doc; refused?: string } {
+  const box = doc.sections[index];
+  if (!box) return { doc };
+  if (!on) {
+    if (box.width === 'full') return { doc };
+    const next = boxedClone(doc);
+    (next.sections[index] as Section).width = 'full';
+    heal(next.sections);
+    return { doc: next };
+  }
+  if (index === 0) return { doc, refused: 'The first box has nothing before it to sit beside' };
+  return dropBeside(doc, index, index - 1);
+}
 
 // ---- undo and redo
 export type History = { doc: Doc; base: Doc; past: Doc[]; future: Doc[] };
@@ -237,10 +412,11 @@ export function changesOf(base: Doc, doc: Doc): Change[] {
     if (!now) continue;
     const from = was ? homeOf(base, id) : undefined;
     const to = homeOf(doc, id);
-    if (!was) say(`New field ${now.name}${to ? ` in ${zoneWord(to)}` : ''}`, 'new');
-    else if (from !== to) {
-      if (from && to) say(`${now.name} moved from ${zoneWord(from)} to ${zoneWord(to)}`, 'move');
-      else if (to) say(`${now.name} now shows in ${zoneWord(to)}`, 'new');
+    const there = to ? homeWord(doc, to) : undefined;
+    if (!was) say(`New field ${now.name}${there ? ` in ${there}` : ''}`, 'new');
+    else if (homeKey(base, from) !== homeKey(doc, to)) {
+      if (from && to) say(`${now.name} moved from ${homeWord(base, from)} to ${there}`, 'move');
+      else if (to) say(`${now.name} now shows in ${there}`, 'new');
       else say(`${now.name} hidden from the detail`, 'hidden');
     }
     if (was && was.name !== now.name) say(`${was.name} is now called ${now.name}`);
@@ -257,6 +433,42 @@ export function changesOf(base: Doc, doc: Doc): Change[] {
   }
   const common = (a: string[], b: string[]) => a.filter((x) => b.includes(x));
   const shuffled = (a: string[], b: string[]) => common(a, b).join() !== common(b, a).join();
+  for (const box of doc.sections) {
+    const old = base.sections.find(({ id }) => id === box.id);
+    if (!old) say(`New box ${box.title}`, 'new');
+    else {
+      if (old.title !== box.title) say(`Box ${old.title} is now called ${box.title}`);
+      if (shuffled(old.entries, box.entries)) say(`Order changed in ${box.title}`, 'move');
+    }
+  }
+  for (const old of base.sections)
+    if (!doc.sections.some(({ id }) => id === old.id)) say(`Box ${old.title} removed`, 'gone');
+  const same = (a: Section[], b: Section[]) =>
+    shuffled(
+      a.map(({ id }) => id),
+      b.map(({ id }) => id),
+    );
+  if (same(base.sections, doc.sections)) say('Boxes in a new order', 'move');
+  const pairs = (d: Doc) =>
+    boxRows(d.sections)
+      .filter((row) => row.length === 2)
+      .map((row) => row.map((at) => d.sections[at]?.id).join('+'));
+  const paired = pairs(base);
+  for (const row of boxRows(doc.sections)) {
+    if (row.length !== 2) continue;
+    const [a, b] = row.map((at) => doc.sections[at]) as [Section, Section];
+    if (!paired.includes(`${a.id}+${b.id}`)) say(`${a.title} and ${b.title} now sit side by side`, 'move');
+  }
+  for (const row of boxRows(base.sections)) {
+    if (row.length !== 2) continue;
+    const [a, b] = row.map((at) => base.sections[at]) as [Section, Section];
+    if (!pairs(doc).includes(`${a.id}+${b.id}`)) {
+      for (const each of [a, b]) {
+        const now = doc.sections.find(({ id }) => id === each.id);
+        if (now?.width === 'full') say(`${now.title} takes the whole width again`, 'move');
+      }
+    }
+  }
   for (const zone of ZONES) {
     if (shuffled(base.zones[zone], doc.zones[zone]))
       say(`Order changed in ${zoneWord(zone)}`, 'move');
@@ -277,6 +489,18 @@ export function changesOf(base: Doc, doc: Doc): Change[] {
 }
 
 // ---- back to the file
+const entryOf = (doc: Doc, id: string): unknown => doc.things[id]?.entry ?? id;
+
+// A relation the file keeps in a slot of its own while the boxes are only a view of it goes back
+// where it was.
+function withLinks(original: readonly LayoutEntry[], entries: unknown[]): unknown[] {
+  const result = [...entries];
+  original.forEach((entry, at) => {
+    if (isLink(entry)) result.splice(Math.min(at, result.length), 0, written(entry));
+  });
+  return result;
+}
+
 export function yamlOf(
   yaml: string,
   preset: Preset | undefined,
@@ -306,10 +530,49 @@ export function yamlOf(
     else delete spec.label;
     next = setIn(next, at, spec);
   }
+  const layout = preset?.types.find(({ name }) => name === type)?.layout;
+  const at = (slot: string) => [...layoutPath(rawOf(next), type), slot];
+  const differ = (a: unknown, b: unknown) => JSON.stringify(a) !== JSON.stringify(b);
+  const migrating = doc.boxed && !base.boxed;
+  if (doc.boxed) {
+    if (migrating) {
+      next = setIn(next, at('body'), undefined);
+      next = setIn(next, at('evidence'), undefined);
+    }
+    if (migrating || differ(base.sections, doc.sections)) {
+      const sections = doc.sections.map((box) => ({
+        title: box.title,
+        ...(box.width === 'half' ? { width: 'half' } : {}),
+        entries: box.entries.map((id) => entryOf(doc, id)),
+      }));
+      next = setIn(next, at('sections'), sections);
+    }
+  } else {
+    // Only fields moved within Brief: the file keeps its body and evidence.
+    const ids = (d: Doc, files: boolean) =>
+      (d.sections[0]?.entries ?? []).filter((id) => (d.things[id]?.kind === 'files') === files);
+    if (differ(ids(base, false), ids(doc, false)))
+      next = setIn(
+        next,
+        at('body'),
+        withLinks(
+          layout?.body ?? [],
+          ids(doc, false).map((id) => entryOf(doc, id)),
+        ),
+      );
+    if (differ(ids(base, true), ids(doc, true)))
+      next = setIn(
+        next,
+        at('evidence'),
+        ids(doc, true).map((id) => entryOf(doc, id)),
+      );
+  }
   for (const zone of ZONES) {
-    if (JSON.stringify(base.zones[zone]) === JSON.stringify(doc.zones[zone])) continue;
-    const entries = doc.zones[zone].map((id) => doc.things[id]?.entry ?? id);
-    next = setIn(next, [...layoutPath(rawOf(next), type), zone], entries);
+    const sideHadLinks = zone === 'side' && migrating && (layout?.side ?? []).some(isLink);
+    if (!differ(base.zones[zone], doc.zones[zone]) && !sideHadLinks) continue;
+    const entries = doc.zones[zone].map((id) => entryOf(doc, id));
+    const kept = zone === 'side' && !doc.boxed ? withLinks(layout?.side ?? [], entries) : entries;
+    next = setIn(next, at(zone), kept);
   }
   return next;
 }
