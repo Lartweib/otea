@@ -29,8 +29,8 @@ export function ApplyDialog(p: ApplyDialogProps) {
       <div ref={ref} className="cz-dlg" role="dialog" aria-label={title} tabIndex={-1}>
         <h2>{title}</h2>
         <ul className="cz-chg">
-          {p.changes.map((c, i) => (
-            <li key={`${i}-${c.text}`} data-kind={c.kind}>
+          {p.changes.map((c) => (
+            <li key={c.text} data-kind={c.kind}>
               <span className="cz-chgi">
                 <ChangeGlyph kind={c.kind} />
               </span>
