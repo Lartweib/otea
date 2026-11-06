@@ -303,6 +303,15 @@ layout:
 
 The sidebar reaches it under Studio: while Studio or the catalog is open, the Studio entry counts its presets and unfolds a tree of the blueprint (version, boards), the presets (version, the collections using each, *official* for the read-only ones) and the modules count, each row leading to its page (`StudioTree.tsx`). `#/modules` opens the catalog in the two panes: the index of modules on the left, and on the right an overview of the loaded presets and which module each field picks. `#/modules/<name>` shows one module: its origin, a live preview of every sample in the row, the detail and the edit control (the edit control drives that sample's row and detail, locally; nothing is saved), the preset fields that use it (from `GET /api/presets`) and its `preset.yaml` snippet. Modules that presets name but the UI does not know are listed apart, as "unknown module · renders as plain text". Routes are parsed by `routeFromHash` in `ui/src/selection.ts`; item ids never start with a slash, so `#<item-id>` keeps working.
 
+## Customize view
+
+The builder a person opens from an item's detail (Customize view, on a computer only) to shape a type's layout without touching the file. It draws the real view for one sample item of the type and changes the preset's layout through the Studio's YAML edits (`ui/src/customize/`).
+
+- **Parts.** Detail, New item form and List row, each a zone of things: Under the title, Brief, Details, the form, the row. A left panel lists what is not in this view, with New field, New box and Files and links. Clicking a part opens its menu: name, type, whether it is needed, Also in (the other zones it shows in), Move to, Up and Down, Hide from this view, Delete field.
+- **Tiles and grips.** What moves is a field's tile and its grip (Move {name}); fixed parts (Details, History) say they are fixed and never move. Drag a tile into a zone, or to the panel to hide it: hiding keeps the field and its values. Moving within the detail leaves its place in the form and the row alone.
+- **Zones and refusals.** A zone that cannot take the dragged thing says why and lights no drop: long text and files need room, so they go only in Brief; the form asks only for fields; a row shows only small values.
+- **Preview.** Draws the view with empty fields left out, as they appear once they have a value; selecting is off while it is on. Computer and Phone switch the width.
+- **Apply and revert.** Nothing is written until Apply to {board}, which says how many items it reaches. The first change copies the official preset into the project and the board uses the copy. Undo and Redo walk the changes made here; Discard drops them. After Apply a note stays in the app with an undo that puts the board's previous preset back.
 ## Relations
 
 Relation modules (`ui/src/components/relations/`, logic in `ui/src/relations.ts` and `ui/src/nesting.ts`, tested) draw an item's links with the list's own marks.
