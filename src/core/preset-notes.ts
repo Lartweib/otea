@@ -50,7 +50,13 @@ const FIELD_SLOTS: readonly LayoutSlot[] = ['header', 'body', 'side', 'row', 'in
 function unplacedNotes(preset: Preset): PresetNote[] {
   const shared = preset.types.length > 1;
   return preset.types.flatMap((type) => {
-    const placed = new Set(FIELD_SLOTS.flatMap((slot) => type.layout[slot].map((e) => e.field)));
+    const sectioned = (type.layout.sections ?? []).flatMap(({ entries }) =>
+      entries.map((e) => e.field),
+    );
+    const placed = new Set([
+      ...FIELD_SLOTS.flatMap((slot) => type.layout[slot].map((e) => e.field)),
+      ...sectioned,
+    ]);
     return Object.keys(type.fields)
       .filter((field) => field !== 'title' && !placed.has(field))
       .map((field) => {
