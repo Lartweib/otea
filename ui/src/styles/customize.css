@@ -20,6 +20,19 @@
 .cz-msg {
   align-items: center;
   justify-content: center;
+  gap: 16px;
+  padding: 0 16px;
+  text-align: center;
+}
+.cz-msg p {
+  margin: 0;
+}
+.cz-leave {
+  gap: 7px;
+  min-height: 44px;
+  padding: 0 16px;
+  color: var(--ink);
+  text-decoration: none;
 }
 
 /* the one bar */

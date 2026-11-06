@@ -1,4 +1,5 @@
 import { t } from '../i18n/i18n.ts';
+import { type CustomizeTarget, hashFor, ITEMS_HASH } from '../selection.ts';
 
 // What an Apply reaches. Opened from an item, it is that item's board. Opened from a template, it
 // is every board that uses the template, or, with none, a save of the template itself.
@@ -35,4 +36,12 @@ export function titleOf(scope: Scope, type: string, template: string, board: str
 
 export function applyOf(scope: Scope): string {
   return saves(scope) ? t('cz.saveTemplate') : t('cz.apply', { board: boardsText(scope) });
+}
+
+// Where the page that is only for a computer sends a phone: the item it was opened from, or, from a
+// template, the board.
+export function leaveOf(target: CustomizeTarget): { hash: string; label: string } {
+  return target.kind === 'item'
+    ? { hash: hashFor(target.id), label: t('cz.back', { id: target.id }) }
+    : { hash: ITEMS_HASH, label: t('cz.backBoard') };
 }

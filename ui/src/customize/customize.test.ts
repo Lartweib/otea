@@ -9,7 +9,7 @@ import { FieldMenu, type FieldMenuProps } from './FieldMenu.tsx';
 import { LeftPanel } from './LeftPanel.tsx';
 import { NewField } from './NewField.tsx';
 import { addOption, removeOption } from './options.ts';
-import { applyOf, saves, scopeOf, titleOf } from './scope.ts';
+import { applyOf, leaveOf, saves, scopeOf, titleOf } from './scope.ts';
 
 afterEach(() => setLanguage('en'));
 const noop = () => {};
@@ -218,5 +218,24 @@ describe('what an Apply reaches', () => {
     const item = scopeOf({ kind: 'item', board: 'bugs' });
     expect(applyOf(item)).toBe('Apply to bugs');
     expect(titleOf(item, 'Bug', 'bug-triage', 'bugs')).toBe('Customizing Bug view · bugs board');
+  });
+});
+
+describe('the way out on a phone', () => {
+  it('goes back to the item it was opened from, or to the board for a template', () => {
+    expect(leaveOf({ kind: 'item', id: 'BUGS-7' })).toEqual({
+      hash: '#BUGS-7',
+      label: 'Back to BUGS-7',
+    });
+    expect(leaveOf({ kind: 'preset', name: 'bug-triage' })).toEqual({
+      hash: '#/',
+      label: 'Back to the board',
+    });
+  });
+
+  it('says it in Spanish', () => {
+    setLanguage('es');
+    expect(leaveOf({ kind: 'item', id: 'BUGS-7' }).label).toBe('Volver a BUGS-7');
+    expect(leaveOf({ kind: 'preset', name: 'x' }).label).toBe('Volver al tablero');
   });
 });

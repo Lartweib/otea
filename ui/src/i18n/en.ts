@@ -449,6 +449,7 @@ export const en = {
   'cz.saveTemplate': 'Save template',
   'cz.undone': 'Back as it was',
   'cz.backStudio': 'Back to Studio',
+  'cz.backBoard': 'Back to the board',
   'cz.saved': 'Template saved as {name}',
   'cz.noItem': 'There is no sample item of this type to draw.',
   'cz.loading': 'Loading',
