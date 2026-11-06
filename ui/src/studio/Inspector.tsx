@@ -3,7 +3,7 @@ import { FIELD_MODULES, type Preset, SEVERITY_SCALE } from '../../../src/core/pr
 import { type PlainKey, t, tx } from '../i18n/i18n.ts';
 import { Icon } from '../kit/index.ts';
 import type { LayoutSlot } from '../types.ts';
-import type { Part } from './canvas.ts';
+import { entryOfPart, type Part } from './canvas.ts';
 import { type RawField, type RawPreset, setIn, workflowOf } from './draft.ts';
 import {
   fieldPath,
@@ -72,10 +72,18 @@ function wordsOf(raw: RawPreset): Words {
 
 export function Inspector(props: InspectorProps) {
   const { part, preset, type } = props;
-  const entry =
-    part.index < 0
-      ? undefined
-      : preset?.types.find(({ name }) => name === type)?.layout[part.slot][part.index];
+  const shape = preset?.types.find(({ name }) => name === type);
+  const entry = shape ? entryOfPart(shape.layout, part) : undefined;
+  // A section's entries are edited in Customize view; here they are only read, so no edit lands on
+  // the body entry that happens to share their index.
+  if (part.section !== undefined) {
+    return (
+      <aside className="st-insp" aria-label={t('studio.inspect.title')}>
+        <h2 className="st-insp-name">{part.field ?? entry?.id ?? entry?.module ?? part.slot}</h2>
+        <p className="st-ask-n">{t('studio.inspect.inSection')}</p>
+      </aside>
+    );
+  }
   return (
     <aside className="st-insp" aria-label={t('studio.inspect.title')}>
       {props.part.field !== undefined ? (

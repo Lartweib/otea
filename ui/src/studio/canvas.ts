@@ -1,11 +1,11 @@
 import { LAYOUT_SLOTS, MODULE_REGISTRY } from '../../../src/core/modules.ts';
-import type { LayoutSlot } from '../types.ts';
+import type { LayoutEntry, LayoutSlot } from '../types.ts';
 
 // The preview's parts, read off the real views: every part a layout places carries data-type,
 // data-slot, data-index and, for a field, data-field (item-types.ts). Studio outlines, selects and
 // edits what those name; it never draws a preview of its own.
 
-export type Part = { type: string; slot: LayoutSlot; index: number; field?: string };
+export type Part = { type: string; slot: LayoutSlot; index: number; field?: string; section?: number };
 
 export function partFrom(get: (name: string) => string | null): Part | undefined {
   const type = get('data-type');
@@ -14,7 +14,29 @@ export function partFrom(get: (name: string) => string | null): Part | undefined
   if (type === null || slot === null || !Number.isInteger(index)) return undefined;
   if (!(LAYOUT_SLOTS as readonly string[]).includes(slot)) return undefined;
   const field = get('data-field');
-  return { type, slot: slot as LayoutSlot, index, ...(field === null ? {} : { field }) };
+  const at = get('data-section');
+  const section = at === null ? NaN : Number(at);
+  return {
+    type,
+    slot: slot as LayoutSlot,
+    index,
+    ...(field === null ? {} : { field }),
+    ...(Number.isInteger(section) && section >= 0 ? { section } : {}),
+  };
+}
+
+// The entry a part names. A section's entries are not the body slot's: index counts within the section.
+export function entryOfPart(
+  layout: { sections?: readonly { entries: readonly LayoutEntry[] }[] } & Record<
+    LayoutSlot,
+    readonly LayoutEntry[]
+  >,
+  part: Part,
+): LayoutEntry | undefined {
+  if (part.index < 0) return undefined;
+  return part.section === undefined
+    ? layout[part.slot][part.index]
+    : layout.sections?.[part.section]?.entries[part.index];
 }
 
 export function partLabel(part: Part, module?: string): string {
@@ -26,7 +48,8 @@ export const samePart = (a: Part | undefined, b: Part | undefined) =>
   b !== undefined &&
   a.type === b.type &&
   a.slot === b.slot &&
-  a.index === b.index;
+  a.index === b.index &&
+  a.section === b.section;
 
 export type Box = { top: number; left: number; height: number; width: number };
 export type Placed = { part: Part; rect: Box };

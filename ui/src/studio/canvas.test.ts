@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { gapsOf, merged, partFrom, partLabel, samePart, slotBoxes } from './canvas.ts';
+import { entryOfPart, gapsOf, merged, partFrom, partLabel, samePart, slotBoxes } from './canvas.ts';
 
 const attrs = (values: Record<string, string>) => (name: string) => values[name] ?? null;
 
@@ -112,5 +112,36 @@ describe('the boxes the preview draws over its parts', () => {
       { slot: 'body', index: 1, top: 145 },
       { slot: 'body', index: 2, top: 180 },
     ]);
+  });
+});
+
+describe('a part inside a section', () => {
+  const inSection = attrs({
+    'data-type': 'bug',
+    'data-slot': 'body',
+    'data-index': '1',
+    'data-section': '2',
+  });
+
+  it('keeps the section it sits in', () => {
+    expect(partFrom(inSection)).toEqual({ type: 'bug', slot: 'body', index: 1, section: 2 });
+  });
+
+  it('is not the body entry that shares its index', () => {
+    const body = partFrom(attrs({ 'data-type': 'bug', 'data-slot': 'body', 'data-index': '1' }));
+    expect(samePart(partFrom(inSection), body)).toBe(false);
+    expect(samePart(partFrom(inSection), partFrom(inSection))).toBe(true);
+  });
+
+  it('resolves to the section entry, never the body one', () => {
+    const layout = {
+      body: [{ id: 'a' }, { id: 'body-1' }],
+      sections: [{ entries: [] }, { entries: [] }, { entries: [{ id: 's0' }, { id: 's1' }] }],
+    };
+    expect(entryOfPart(layout as never, partFrom(inSection)!)).toEqual({ id: 's1' });
+    expect(entryOfPart(layout as never, { type: 'bug', slot: 'body', index: 1 })).toEqual({
+      id: 'body-1',
+    });
+    expect(entryOfPart(layout as never, { ...partFrom(inSection)!, section: 9 })).toBeUndefined();
   });
 });
