@@ -92,7 +92,7 @@ async function get<T>(path: string, signal: AbortSignal): Promise<T> {
   return response.json() as Promise<T>;
 }
 
-async function post<T>(path: string, payload: unknown): Promise<T> {
+export async function post<T>(path: string, payload: unknown): Promise<T> {
   const response = await fetch(path, {
     method: 'POST',
     headers: { accept: 'application/json', 'content-type': 'application/json' },
@@ -162,3 +162,13 @@ export const copyBoardPreset = (board: string, as: string) =>
 
 export const updateBlueprint = () =>
   post<{ applied: string[]; kept: string[] }>('/api/studio/blueprint/update', {});
+
+// The board's view changed: its preset copied from the official one on first use, then the new YAML.
+export const customizeBoard = (board: string, yaml: string) =>
+  post<{ preset: string; version: number; previous: string }>(
+    `/api/studio/boards/${encodeURIComponent(board)}/customize`,
+    { yaml },
+  );
+
+export const revertBoard = (board: string, previous: string) =>
+  post<unknown>(`/api/studio/boards/${encodeURIComponent(board)}/revert`, { previous });

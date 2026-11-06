@@ -2,13 +2,13 @@ import type { ReactNode } from 'react';
 import { fetchPresets } from '../api.ts';
 import { type Connection, useRemote } from '../hooks.ts';
 import { t } from '../i18n/i18n.ts';
+import { Icon } from '../kit/index.ts';
 import type { Remote } from '../remote.ts';
 import { type StudioPage, studioHash } from '../selection.ts';
 import type { Item } from '../types.ts';
 import type { PresetSummary, ProjectBlueprint } from './api.ts';
 import { BlueprintPage, Picker } from './BlueprintPage.tsx';
 import { PresetEditor } from './PresetEditor.tsx';
-import { Icon } from '../kit/index.ts';
 import { ProblemMark } from './parts.tsx';
 import type { StudioIndex } from './use-studio-index.ts';
 
@@ -267,7 +267,9 @@ export function Studio({
       />
     );
   } else {
-    content = <Start presets={presets} blueprint={copy} items={items} canCustomize={canWrite && !phone} />;
+    content = (
+      <Start presets={presets} blueprint={copy} items={items} canCustomize={canWrite && !phone} />
+    );
   }
   return (
     <main
@@ -277,42 +279,43 @@ export function Studio({
     >
       {rail}
       {page.kind === 'start' ? null : (
-      <nav className="st-index" aria-label={t('studio.title')}>
-        <a
-          className="st-index-h"
-          href={studioHash()}
-          aria-current={page.kind === 'start' ? 'page' : undefined}
-        >
-          {t('studio.title')}
-        </a>
-        <span className="t-label">{t('studio.index.blueprint')}</span>
-        <ul className="st-list">
-          <li>
-            <a
-              href={
-                copy
-                  ? studioHash({ kind: 'blueprint', diagram: false })
-                  : studioHash({ kind: 'blueprints' })
-              }
-              aria-current={
-                page.kind === 'blueprint' || page.kind === 'blueprints' ? 'page' : undefined
-              }
-            >
-              <span className="st-li-name">{copy ? copy.name : t('studio.index.noBlueprint')}</span>
-              <span className="t-cap">
-                {copy
-                  ? `v${copy.version} · ${t('studio.blueprint.boardsCount', { count: copy.boards.length })}`
-                  : t('studio.index.pickOne')}
-              </span>
-              {copy && 'upToDate' in copy.status && !copy.status.upToDate ? (
-                <span className="t-cap st-li-origin">{t('studio.index.changed')}</span>
-              ) : null}
-            </a>
-          </li>
-        </ul>
-        <span className="t-label">{t('studio.index.presets')}</span>
-        <PresetIndex presets={presets} selected={page.kind === 'preset' ? page.name : undefined} />
-      </nav>
+        <nav className="st-index" aria-label={t('studio.title')}>
+          <a className="st-index-h" href={studioHash()}>
+            {t('studio.title')}
+          </a>
+          <span className="t-label">{t('studio.index.blueprint')}</span>
+          <ul className="st-list">
+            <li>
+              <a
+                href={
+                  copy
+                    ? studioHash({ kind: 'blueprint', diagram: false })
+                    : studioHash({ kind: 'blueprints' })
+                }
+                aria-current={
+                  page.kind === 'blueprint' || page.kind === 'blueprints' ? 'page' : undefined
+                }
+              >
+                <span className="st-li-name">
+                  {copy ? copy.name : t('studio.index.noBlueprint')}
+                </span>
+                <span className="t-cap">
+                  {copy
+                    ? `v${copy.version} · ${t('studio.blueprint.boardsCount', { count: copy.boards.length })}`
+                    : t('studio.index.pickOne')}
+                </span>
+                {copy && 'upToDate' in copy.status && !copy.status.upToDate ? (
+                  <span className="t-cap st-li-origin">{t('studio.index.changed')}</span>
+                ) : null}
+              </a>
+            </li>
+          </ul>
+          <span className="t-label">{t('studio.index.presets')}</span>
+          <PresetIndex
+            presets={presets}
+            selected={page.kind === 'preset' ? page.name : undefined}
+          />
+        </nav>
       )}
       <div className="st-page">{content}</div>
     </main>

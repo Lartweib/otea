@@ -51,7 +51,7 @@ export type Draft = { base: string; yaml: string; playbooks: Record<string, stri
 
 const draftKey = (name: string) => `otea.studio.draft.${name}`;
 
-function storedDraft(name: string, base: string): Draft | undefined {
+export function storedDraft(name: string, base: string): Draft | undefined {
   try {
     const text = window.localStorage.getItem(draftKey(name));
     const draft = text === null ? undefined : (JSON.parse(text) as Draft);
