@@ -98,6 +98,40 @@ it('writes moves and new fields back to the file', () => {
   expect(keyOf('Versión útil')).toBe('version_util');
 });
 
+describe('a preset that speaks another language', () => {
+  const SPOKEN = `${YAML}labels:
+  es:
+    types: { bug: Error }
+    states: { open: abierto, done: hecho }
+    fields: { title: título, description: descripción, environment: entorno, severity: gravedad }
+`;
+  const spoken = () => {
+    const reading = readPreset(SPOKEN);
+    if (!reading.ok) throw new Error(reading.problems.join());
+    return reading.preset;
+  };
+
+  it('labels a new field in every language with the typed name, and keeps the file valid', () => {
+    const preset = spoken();
+    const base = docOf(preset, 'bug');
+    const { doc } = addField(base, 'Due date', 'short');
+    const out = yamlOf(SPOKEN, preset, 'bug', base, doc);
+    expect(out).toContain('due_date: Due date');
+    expect(readPreset(out).ok).toBe(true);
+  });
+
+  it('renames only the visible name', () => {
+    const preset = spoken();
+    const base = docOf(preset, 'bug');
+    const thing = base.things.environment;
+    if (!thing) throw new Error('no environment');
+    const doc = { ...base, things: { ...base.things, environment: { ...thing, name: 'Where' } } };
+    const out = yamlOf(SPOKEN, preset, 'bug', base, doc);
+    expect(out).toContain('entorno');
+    expect(out).not.toContain('environment: Where');
+  });
+});
+
 const BOXED = YAML.replace(
   /layout:\n[\s\S]*$/,
   `layout:
