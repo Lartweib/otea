@@ -10,6 +10,7 @@ import {
   useState,
 } from 'react';
 import type { Preset } from '../../../src/core/preset.ts';
+import { evidenceFileUrl, fetchItem } from '../api.ts';
 import { ItemDetail, ShowEmpty } from '../components/ItemDetail.tsx';
 import { ItemList } from '../components/ItemList.tsx';
 import { IntakeForm } from '../components/NewItemForm.tsx';
@@ -36,7 +37,7 @@ import { type Part, type Placed, samePart, slotBoxes } from '../studio/canvas.ts
 import { readDraft } from '../studio/draft.ts';
 import { storeDraft, storedDraft } from '../studio/PresetEditor.tsx';
 import { draftPreview } from '../studio/preview.ts';
-import type { Item, ItemView } from '../types.ts';
+import type { Evidence, Item, ItemView } from '../types.ts';
 import { ApplyDialog } from './ApplyDialog.tsx';
 import { announce } from './applied.ts';
 import { BoxMenu } from './BoxMenu.tsx';
@@ -87,6 +88,7 @@ import {
 import { NewField } from './NewField.tsx';
 import { addOption, removeOption } from './options.ts';
 import { applyOf, boardsText, leaveOf, type Scope, saves, scopeOf, titleOf } from './scope.ts';
+import { optionsOf, pick, rowsOf, wordOf } from './showing.ts';
 import type { FieldKind } from './types.ts';
 
 type View = 'detail' | 'form' | 'row';
@@ -181,6 +183,7 @@ export function CustomizePage({
       board={board}
       type={item?.type}
       itemId={item?.id}
+      boardItems={items.filter((each) => each.collection === board)}
       count={items.filter((each) => reach.includes(each.collection)).length}
       scope={scope}
       onApplied={onApplied}
@@ -203,6 +206,7 @@ function Loader(props: {
   board: string;
   type: string | undefined;
   itemId: string | undefined;
+  boardItems: readonly Item[];
   count: number;
   scope: Scope;
   onApplied: () => void;
@@ -228,20 +232,26 @@ function Builder({
   board,
   type: typeHint,
   itemId,
+  boardItems,
   count,
   presetName,
   scope,
   onApplied,
+  version,
+  connection,
 }: {
   source: PresetSource;
   samples: PresetSamples;
   board: string;
   type: string | undefined;
   itemId: string | undefined;
+  boardItems: readonly Item[];
   count: number;
   presetName: string;
   scope: Scope;
   onApplied: () => void;
+  version: number;
+  connection: Connection;
 }) {
   const base = readDraft(source.yaml, source.playbooks);
   const basePreset = base.ok ? base.preset : undefined;
@@ -318,9 +328,22 @@ function Builder({
         : undefined,
     [preset, samples.yaml, samples.files, board, sampleNow],
   );
-  const rows = preview?.items.filter((item) => item.type === type) ?? [];
-  const shownId = rows.some((row) => row.id === chosen) ? chosen : rows[0]?.id;
-  const item: ItemView | undefined = shownId === undefined ? undefined : preview?.view(shownId);
+  // The board's real items come first, then the examples; opened from an item, the canvas starts
+  // on it, with its own values, evidence and history, and from a template on an example.
+  const realRows = boardItems.filter((each) => each.type === type);
+  const examples = preview?.items.filter((each) => each.type === type) ?? [];
+  const options = optionsOf(realRows, examples);
+  const current = pick(options, chosen);
+  const realId = current?.kind === 'real' ? current.id : undefined;
+  const loadReal = useCallback(
+    (signal: AbortSignal) => (realId ? fetchItem(realId, signal) : Promise.resolve(null)),
+    [realId],
+  );
+  const real = useRemote(loadReal, version, connection);
+  const realView = real.status === 'ready' && real.value?.id === realId ? real.value : null;
+  const item: ItemView | undefined =
+    current?.kind === 'example' ? preview?.view(current.id) : (realView ?? undefined);
+  const rows = current?.kind === 'real' ? rowsOf(realRows, current.id) : examples;
 
   const say = useCallback((text: string, undoIt?: () => void) => {
     clearTimeout(toastTimer.current);
@@ -666,7 +689,7 @@ function Builder({
     );
 
   const typeWord = preset.types.find(({ name }) => name === type)?.label ?? type;
-  const idLabel = itemId ?? shownId ?? '';
+  const idLabel = itemId ?? '';
   const selectedId = selected ? idAt(selected) : undefined;
   const selectedThing = selectedId ? doc.things[selectedId] : undefined;
   const changes = changesOf(hist.base, doc);
@@ -1092,8 +1115,13 @@ function Builder({
     setSelected(part);
   };
 
+  // An example's files live beside its preset; a real item's come from the server as they do on its page.
+  const fileUrl = (evidence: Pick<Evidence, 'id' | 'filename'>) =>
+    current?.kind === 'real'
+      ? evidenceFileUrl(evidence.id)
+      : sampleFileUrl(presetName, evidence.filename);
   const canvas = (label: string, drawn: ReactNode) => (
-    <EvidenceFiles.Provider value={(evidence) => sampleFileUrl(presetName, evidence.filename)}>
+    <EvidenceFiles.Provider value={fileUrl}>
       <Canvas type={type} label={label} selected={undefined} onSelect={onSelect} marks={marks}>
         {drawn}
       </Canvas>
@@ -1130,7 +1158,7 @@ function Builder({
     );
   } else if (item) {
     const detail = canvas(
-      t('cz.showing', { id: item.id }),
+      t('cz.showing', { id: current ? wordOf(current) : item.id }),
       <ShowEmpty.Provider value={item.type}>
         <ItemDetail
           item={item}
@@ -1142,7 +1170,8 @@ function Builder({
       </ShowEmpty.Provider>,
     );
     drawn = device === 'phone' ? <div className="st-phone-frame">{detail}</div> : detail;
-  } else drawn = <p className="t-small">{t('cz.noItem')}</p>;
+  } else if (current?.kind === 'real') drawn = <p className="t-small">{t('cz.loading')}</p>;
+  else drawn = <p className="t-small">{t('cz.noItem')}</p>;
 
   const discard = () => {
     const before = hist;
@@ -1370,17 +1399,17 @@ function Builder({
               {drawn}
             </div>
             <div className="cz-float">
-              {rows.length > 0 && view === 'detail' ? (
+              {options.length > 0 && view === 'detail' ? (
                 <label className="cz-showing">
                   <span>{t('cz.showing', { id: '' }).trim()}</span>
                   <select
                     aria-label={t('cz.showing', { id: '' }).trim()}
-                    value={shownId}
+                    value={current?.key}
                     onChange={(event) => setChosen(event.target.value)}
                   >
-                    {rows.map((row) => (
-                      <option key={row.id} value={row.id}>
-                        {row.id}
+                    {options.map((option) => (
+                      <option key={option.key} value={option.key}>
+                        {wordOf(option)}
                       </option>
                     ))}
                   </select>

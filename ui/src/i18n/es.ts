@@ -463,6 +463,7 @@ export const es: Catalog = {
   'cz.apply': 'Aplicar a {board}',
   'cz.hint': 'Arrastra un campo para moverlo. Haz clic en él para cambiarlo.',
   'cz.showing': 'Mostrando {id}',
+  'cz.example': 'Ejemplo: {name}',
   'cz.computer': 'Computadora',
   'cz.phone': 'Teléfono',
   'cz.preview': 'Vista previa',
