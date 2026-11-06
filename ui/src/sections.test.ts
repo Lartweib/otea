@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { leftovers } from './evidence.ts';
 import { rolesFor } from './intake-files.ts';
-import { detailBlocks, placesChildren, slotData } from './item-types.ts';
+import { detailBlocks, placesChildren, sectionsInRows, slotData } from './item-types.ts';
 import type { Evidence, Layout, TypeView } from './types.ts';
 
 const EMPTY: Layout = {
@@ -72,6 +72,12 @@ describe('detail sections', () => {
 
   it('leaves a layout without sections unchanged', () => {
     expect(detailBlocks({ ...type, layout: EMPTY }, {}).sections).toBeUndefined();
+  });
+
+  it('pairs two consecutive half sections into a row, and no more than two', () => {
+    const s = (index: number, width: 'full' | 'half') => ({ index, title: '', width, blocks: [] });
+    const rows = sectionsInRows([s(0, 'half'), s(1, 'half'), s(2, 'half'), s(3, 'full')]);
+    expect(rows.map((row) => row.map(({ index }) => index))).toEqual([[0, 1], [2], [3]]);
   });
 
   it('knows a section places children', () => {
