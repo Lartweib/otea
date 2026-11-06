@@ -440,6 +440,7 @@ export function ItemDetail({
       half={section.width === 'half'}
     >
       {section.blocks.map(block).filter((part) => part !== null)}
+      {section.index === sections?.[0]?.index ? briefParts : null}
     </Section>
   );
   const sectionRows = sectionsInRows(sections ?? []).map((row) =>
@@ -585,7 +586,9 @@ export function ItemDetail({
           {sections ? (
             <>
               {sectionRows}
-              {briefParts.length > 0 ? <div className="detail-rest">{briefParts}</div> : null}
+              {sectionRows.length === 0 && briefParts.length > 0 ? (
+                <div className="detail-rest">{briefParts}</div>
+              ) : null}
             </>
           ) : (
             <Section name="brief" label={t('detail.brief')}>
