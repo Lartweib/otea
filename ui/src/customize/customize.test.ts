@@ -1,7 +1,7 @@
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, describe, expect, it } from 'vitest';
-import { setLanguage } from '../i18n/i18n.ts';
+import { setLanguage, t } from '../i18n/i18n.ts';
 import { ApplyDialog } from './ApplyDialog.tsx';
 import { BoxMenu } from './BoxMenu.tsx';
 import { shouldDismiss } from './dismiss.ts';
@@ -237,5 +237,17 @@ describe('the way out on a phone', () => {
     setLanguage('es');
     expect(leaveOf({ kind: 'item', id: 'BUGS-7' }).label).toBe('Volver a BUGS-7');
     expect(leaveOf({ kind: 'preset', name: 'x' }).label).toBe('Volver al tablero');
+  });
+});
+
+describe('the preview note', () => {
+  it('says empty fields are marked here and hidden on a real item until they have a value', () => {
+    expect(t('cz.previewNote', { type: 'bug' })).toBe(
+      'Empty fields are marked here. On a real bug they stay hidden until they have a value.',
+    );
+    setLanguage('es');
+    expect(t('cz.previewNote', { type: 'error' })).toBe(
+      'Los campos vacíos se marcan aquí. En un ítem real de tipo error quedan ocultos hasta que tienen un valor.',
+    );
   });
 });

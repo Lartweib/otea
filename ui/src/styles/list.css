@@ -443,6 +443,13 @@
   display: contents;
 }
 
+.row-none {
+  color: var(--mut);
+  font-size: 12px;
+  white-space: nowrap;
+  opacity: 0.75;
+}
+
 .row-values {
   display: flex;
   flex: 0 1 auto;

@@ -11,9 +11,10 @@ import {
 } from 'react';
 import type { Preset } from '../../../src/core/preset.ts';
 import { evidenceFileUrl, fetchItem } from '../api.ts';
-import { ItemDetail, ShowEmpty } from '../components/ItemDetail.tsx';
+import { ItemDetail } from '../components/ItemDetail.tsx';
 import { ItemList } from '../components/ItemList.tsx';
 import { IntakeForm } from '../components/NewItemForm.tsx';
+import { ShowEmpty } from '../components/show-empty.ts';
 import { EvidenceFiles } from '../evidence-files.ts';
 import { type Connection, useMediaQuery, useRemote } from '../hooks.ts';
 import { t } from '../i18n/i18n.ts';
@@ -89,6 +90,7 @@ import { NewField } from './NewField.tsx';
 import { addOption, removeOption } from './options.ts';
 import { applyOf, boardsText, leaveOf, type Scope, saves, scopeOf, titleOf } from './scope.ts';
 import { optionsOf, pick, rowsOf, wordOf } from './showing.ts';
+import { tileKeys } from './tiles.ts';
 import type { FieldKind } from './types.ts';
 
 type View = 'detail' | 'form' | 'row';
@@ -698,6 +700,7 @@ function Builder({
     placedRef.current = placed;
     if (previewing) return null;
     const validFor = drag ? doc.things[drag.id] : undefined;
+    const keys = tileKeys(placed.map(({ part }) => part));
     return (
       <>
         {validFor
@@ -732,7 +735,7 @@ function Builder({
               </div>
             ))
           : null}
-        {placed.map(({ part, rect }) => {
+        {placed.map(({ part, rect }, at) => {
           if (part.index < 0) return null;
           const id = idAt(part);
           const thing = id ? doc.things[id] : undefined;
@@ -741,7 +744,7 @@ function Builder({
           return (
             // biome-ignore lint/a11y/noStaticElementInteractions lint/a11y/useKeyWithClickEvents: the whole tile takes the pointer; the grip inside it is the keyboard way to the same moves
             <div
-              key={`${part.slot}:${part.section ?? ''}:${part.index}`}
+              key={keys[at]}
               className="cz-tile"
               data-fixed={fixed ? '' : undefined}
               data-slot={part.slot}
@@ -1133,13 +1136,15 @@ function Builder({
     const nesting = nestSections(groupItems(rows, 'turn', preview.collection), NO_FOLDS);
     drawn = canvas(
       t('cz.row'),
-      <ItemList
-        sections={nesting.sections}
-        nesting={nesting.rows}
-        selectedId={undefined}
-        collectionOf={() => preview.collection}
-        scope={`customize:${type}`}
-      />,
+      <ShowEmpty.Provider value={type}>
+        <ItemList
+          sections={nesting.sections}
+          nesting={nesting.rows}
+          selectedId={undefined}
+          collectionOf={() => preview.collection}
+          scope={`customize:${type}`}
+        />
+      </ShowEmpty.Provider>,
     );
   } else if (view === 'form') {
     drawn = canvas(
@@ -1439,7 +1444,9 @@ function Builder({
               >
                 {t('cz.preview')}
               </button>
-              {previewing ? <p className="cz-none">{t('cz.previewNote')}</p> : null}
+              {previewing ? (
+                <p className="cz-none">{t('cz.previewNote', { type: typeWord.toLowerCase() })}</p>
+              ) : null}
               {hint && !previewing && !selected && boxMenu === undefined && !drag ? (
                 <p className="cz-hint">{t('cz.hint')}</p>
               ) : null}
