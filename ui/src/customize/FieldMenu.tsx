@@ -76,6 +76,7 @@ export function FieldMenu(p: FieldMenuProps) {
           type="text"
           aria-label={t('customize.name')}
           value={p.name}
+          readOnly={!field}
           onChange={(e) => p.onName(e.target.value)}
         />
         <button
