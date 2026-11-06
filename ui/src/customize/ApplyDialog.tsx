@@ -13,6 +13,8 @@ export type ApplyDialogProps = {
   itemCount: number;
   // First time: the collection gets its own copy of the template.
   first?: boolean;
+  // A template no board uses: the change is saved in the template, not applied to a board.
+  save?: boolean;
   yaml: string;
   showFile: boolean;
   onToggleFile: () => void;
@@ -23,7 +25,9 @@ export type ApplyDialogProps = {
 export function ApplyDialog(p: ApplyDialogProps) {
   const ref = useRef<HTMLDivElement>(null);
   useDismiss(ref, p.onKeepEditing);
-  const title = t('customize.applyTitle', { target: p.target });
+  const title = p.save
+    ? t('customize.saveTitle')
+    : t('customize.applyTitle', { target: p.target });
   return (
     <div className="cz-scrim">
       <div ref={ref} className="cz-dlg" role="dialog" aria-label={title} tabIndex={-1}>
@@ -38,12 +42,20 @@ export function ApplyDialog(p: ApplyDialogProps) {
             </li>
           ))}
         </ul>
-        <p className="cz-who">
-          <b>{t('customize.everyItem', { target: p.target })}</b> ·{' '}
-          {t('customize.itemCount', { count: p.itemCount })}
-        </p>
-        <p className="cz-mp">{t('customize.reach')}</p>
-        {p.first ? <p className="cz-mp">{t('customize.firstCopy', { target: p.target })}</p> : null}
+        {p.save ? (
+          <p className="cz-mp">{t(p.first ? 'customize.saveCopy' : 'customize.saveOwn')}</p>
+        ) : (
+          <>
+            <p className="cz-who">
+              <b>{t('customize.everyItem', { target: p.target })}</b> ·{' '}
+              {t('customize.itemCount', { count: p.itemCount })}
+            </p>
+            <p className="cz-mp">{t('customize.reach')}</p>
+            {p.first ? (
+              <p className="cz-mp">{t('customize.firstCopy', { target: p.target })}</p>
+            ) : null}
+          </>
+        )}
         <button
           type="button"
           className="cz-seef"
@@ -56,7 +68,7 @@ export function ApplyDialog(p: ApplyDialogProps) {
         {p.showFile ? <pre className="cz-yaml">{p.yaml}</pre> : null}
         <div className="cz-dlga">
           <button type="button" className="btn primary" onClick={p.onApply}>
-            {t('customize.apply', { target: p.target })}
+            {p.save ? t('cz.saveTemplate') : t('customize.apply', { target: p.target })}
           </button>
           <button type="button" className="btn quiet" onClick={p.onKeepEditing}>
             {t('customize.keepEditing')}

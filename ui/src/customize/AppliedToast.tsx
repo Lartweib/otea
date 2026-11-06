@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { t } from '../i18n/i18n.ts';
-import { dismiss, useApplied } from './applied.ts';
+import { announce, dismiss, useApplied } from './applied.ts';
 
 export function AppliedToast({ onUndone }: { onUndone: () => void }) {
   const applied = useApplied();
@@ -13,15 +13,22 @@ export function AppliedToast({ onUndone }: { onUndone: () => void }) {
   return (
     <div className="cz-toast cz-toast-app" role="status">
       {applied.text}
-      <button
-        type="button"
-        onClick={() => {
-          applied.undo().then(onUndone, () => undefined);
-          dismiss();
-        }}
-      >
-        {t('cz.undo')}
-      </button>
+      {applied.undo ? (
+        <button
+          type="button"
+          onClick={() => {
+            applied.undo?.().then(
+              () => {
+                onUndone();
+                announce(t('cz.undone'));
+              },
+              () => announce(t('cz.failed')),
+            );
+          }}
+        >
+          {t('cz.undo')}
+        </button>
+      ) : null}
     </div>
   );
 }
