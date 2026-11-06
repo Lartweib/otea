@@ -7,6 +7,7 @@ import {
   copyBoardPreset,
   createPreset,
   customizeBoard,
+  customizePreset,
   deletePreset,
   duplicatePreset,
   listStudioBlueprints,
@@ -159,6 +160,13 @@ export function studioApi(project: Project, feed: ChangeFeed, auth: Session): Ho
       const board = boardParam(c);
       const { yaml } = await body(c, CustomizeBody, '{"yaml": string}');
       const customized = customizeBoard(project, board, yaml);
+      feed.notify();
+      return c.json(customized);
+    })
+    .post('/presets/:name/customize', async (c) => {
+      assertConfigurable(c, auth);
+      const { yaml } = await body(c, CustomizeBody, '{"yaml": string}');
+      const customized = customizePreset(project, c.req.param('name'), yaml);
       feed.notify();
       return c.json(customized);
     })
