@@ -161,6 +161,7 @@ export type FieldView = {
   required?: FieldRequirement;
   values?: string[];
   default?: string;
+  label?: string;
 };
 
 // Where a type's layout places modules, from the core preset format. Type-only.

@@ -27,7 +27,7 @@ export function typeWord(type: TypeView | undefined, fallback: string): string {
 
 // A field's label in the language on screen, or undefined when the preset gives none in it.
 export function fieldWord(type: TypeView | undefined, field: string): string | undefined {
-  return wordsOf(type)?.fields[field];
+  return wordsOf(type)?.fields[field] ?? type?.fields.find((f) => f.name === field)?.label;
 }
 
 // The key as a tooltip, when what is shown is its label.
