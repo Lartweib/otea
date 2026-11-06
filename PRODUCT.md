@@ -11,6 +11,8 @@ Developers who delegate work to AI coding agents (Claude Code and similar) and n
 - **Triage** (breadth): scan many findings at once, filter, group, prioritize, discard, decide what gets worked on.
 - **Review** (depth): inspect one result with its evidence (GIF, video, diff, log), answer concrete questions, approve or send it back.
 
+A second person is not technical: someone who looks after a board and shapes how its items look by dragging fields where they should go, without reading config files. Studio's Customize view is for them.
+
 ## Product Purpose
 
 Otea is the asynchronous handoff surface between a human and their AI agents. Agents leave findings, deliverables and evidence; the human leaves decisions and feedback; both can always see where each thing stands and whose turn it is. It is local-first, open source, and shaped by presets that carry both the board and the agent's playbook.
