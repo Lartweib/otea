@@ -1,4 +1,4 @@
-import { isEvidenceModule } from './evidence.ts';
+import { evidenceEntries } from './evidence.ts';
 import type { EvidenceRole, LayoutEntry, LayoutSlot, TypeView } from './types.ts';
 
 // The files a new item is filed with: the server's limits (src/core/evidence.ts, src/server/writes.ts).
@@ -14,7 +14,7 @@ export type FileDraft = { key: string; file: File; role: EvidenceRole };
 // The roles a file of this type can take: a type with no evidence module takes any; a compare takes
 // a before and an after, every other module single files. One role offered is no choice at all.
 export function rolesFor(type: TypeView): EvidenceRole[] {
-  const modules = SLOTS.flatMap((slot) => type.layout[slot].filter(isEvidenceModule));
+  const modules = evidenceEntries(type, SLOTS);
   if (modules.length === 0) return ['single', 'before', 'after'];
   const isCompare = ({ module, variant }: LayoutEntry) =>
     module === 'images' && variant === 'compare';

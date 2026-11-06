@@ -1,174 +1,86 @@
 import { describe, expect, it } from 'vitest';
-import { groupByTurn, groupItems, groupings } from './sections.ts';
-import type { CollectionView, Item, Turn } from './types.ts';
+import { leftovers } from './evidence.ts';
+import { rolesFor } from './intake-files.ts';
+import { detailBlocks, placesChildren, slotData } from './item-types.ts';
+import type { Evidence, Layout, TypeView } from './types.ts';
 
-const item = (id: string, turn: Turn): Item => ({
-  id,
-  collection: 'tasks',
-  type: 'item',
-  title: id,
-  fields: {},
-  presetVersion: 1,
-  state: 'todo',
-  turn,
-  createdAt: 't',
-  updatedAt: 't',
-  createdBy: { kind: 'agent', name: 'a' },
-  lease: null,
-});
-
-describe('groupByTurn', () => {
-  it('splits items into human, agent and closed sections in that order', () => {
-    const sections = groupByTurn([item('A', 'agent'), item('B', 'human'), item('C', 'none')]);
-
-    expect(sections.map(({ turn, title }) => [turn, title])).toEqual([
-      ['human', 'Waiting for you'],
-      ['agent', 'With agents'],
-      ['none', 'Closed'],
-    ]);
-  });
-
-  it('keeps the given order inside each section', () => {
-    const [, agent] = groupByTurn([item('A', 'agent'), item('B', 'human'), item('C', 'agent')]);
-
-    expect(agent?.items.map(({ id }) => id)).toEqual(['A', 'C']);
-  });
-
-  it('sinks the most recently closed item to the top of the closed section', () => {
-    const closed = (id: string, updatedAt: string) => ({ ...item(id, 'none'), updatedAt });
-    const [, , done] = groupByTurn([
-      closed('A', '2026-01-01T10:00:00Z'),
-      closed('B', '2026-01-03T10:00:00Z'),
-      closed('C', '2026-01-02T10:00:00Z'),
-    ]);
-
-    expect(done?.items.map(({ id }) => id)).toEqual(['B', 'C', 'A']);
-  });
-
-  it('keeps empty sections', () => {
-    expect(groupByTurn([]).map(({ items }) => items)).toEqual([[], [], []]);
-  });
-});
-
-const typed = (id: string, turn: Turn, state: string, fields: Record<string, string> = {}) => ({
-  ...item(id, turn),
-  state,
-  fields,
-});
-
-const bugs: CollectionView = {
-  name: 'bugs',
-  prefix: 'BUGS',
-  preset: 'bug-triage',
-  icon: null,
-  types: [
-    {
-      name: 'item',
-      label: 'Item',
-      initial: 'reported',
-      states: [
-        { name: 'reported', turn: 'human' },
-        { name: 'fixing', turn: 'agent' },
-        { name: 'fixed', turn: 'none', closes: 'done' },
-      ],
-      fields: [
-        { name: 'title', module: 'text' },
-        { name: 'area', module: 'text' },
-        { name: 'severity', module: 'severity', values: ['low', 'medium', 'high', 'critical'] },
-        { name: 'category', module: 'enum', values: ['crash', 'visual'] },
-        { name: 'steps', module: 'markdown' },
-      ],
-      layout: { header: [], evidence: [], body: [], side: [], row: [], phone: [], intake: [] },
-    },
-  ],
-  view: { kind: 'grid', groupBy: 'turn', columns: ['id', 'title'] },
+const EMPTY: Layout = {
+  header: [],
+  evidence: [],
+  body: [],
+  side: [],
+  row: [],
+  phone: [],
+  intake: [],
 };
 
-describe('groupItems', () => {
-  const items = [
-    typed('A', 'agent', 'fixing', { severity: 'low', category: 'visual' }),
-    typed('B', 'human', 'reported', { severity: 'critical' }),
-    typed('C', 'none', 'fixed', { severity: 'low', category: 'crash' }),
-  ];
-  const keys = (by: string) =>
-    groupItems(items, by, bugs).map(({ key, title, turn, items }) => [
-      key,
-      title,
-      turn ?? '-',
-      items.map(({ id }) => id).join(''),
-    ]);
+const type: TypeView = {
+  name: 'bug',
+  label: 'Bug',
+  initial: 'open',
+  states: [],
+  fields: [
+    { name: 'title', module: 'text', required: 'create' },
+    { name: 'steps', module: 'markdown' },
+    { name: 'expected', module: 'text' },
+  ],
+  layout: {
+    ...EMPTY,
+    sections: [
+      {
+        title: 'Brief',
+        entries: [
+          { module: 'markdown', field: 'steps' },
+          { module: 'images', id: 'shots', variant: 'compare' },
+        ],
+      },
+      { title: 'Testing notes', width: 'half', entries: [{ module: 'text', field: 'expected' }] },
+      { title: 'Structure', entries: [{ module: 'children' }] },
+    ],
+  },
+};
 
-  it('groups by turn as groupByTurn does, keyed by the turn', () => {
-    expect(keys('turn')).toEqual([
-      ['human', 'Waiting for you', 'human', 'B'],
-      ['agent', 'With agents', 'agent', 'A'],
-      ['none', 'Closed', 'none', 'C'],
-    ]);
-  });
+describe('detail sections', () => {
+  const blocks = detailBlocks(type, { steps: 'Open it', expected: 'Works' });
 
-  it('groups by state in workflow order and by severity from the worst, skipping empty groups', () => {
-    expect(keys('state')).toEqual([
-      ['reported', 'reported', '-', 'B'],
-      ['fixing', 'fixing', '-', 'A'],
-      ['fixed', 'fixed', '-', 'C'],
-    ]);
-    expect(keys('severity')).toEqual([
-      ['critical', 'critical', '-', 'B'],
-      ['low', 'low', '-', 'AC'],
-    ]);
-  });
-
-  it('puts the items without a value last, in a group of their own', () => {
-    expect(keys('category')).toEqual([
-      ['crash', 'crash', '-', 'C'],
-      ['visual', 'visual', '-', 'A'],
-      ['', 'no category', '-', 'B'],
+  it('draws the sections in order with their title and width', () => {
+    expect(blocks.sections?.map(({ title, width }) => [title, width])).toEqual([
+      ['Brief', 'full'],
+      ['Testing notes', 'half'],
+      ['Structure', 'full'],
     ]);
   });
 
-  it('keeps a value the preset no longer lists in a group of its own, before the empty one', () => {
-    const stale = [...items, typed('D', 'human', 'reported', { category: 'audio' })];
-    const groups = groupItems(stale, 'category', bugs).map(({ key }) => key);
-
-    expect(groups).toEqual(['crash', 'visual', 'audio', '']);
+  it('keeps the kind of each block and stamps its place with the section', () => {
+    const [brief, notes, structure] = blocks.sections ?? [];
+    expect(brief?.blocks.map(({ kind }) => kind)).toEqual(['fields', 'module']);
+    expect(structure?.blocks.map(({ kind }) => kind)).toEqual(['relation']);
+    const first = notes?.blocks[0];
+    const at = first && 'values' in first ? first.values[0]?.at : undefined;
+    expect(slotData(at)).toEqual({
+      'data-type': 'bug',
+      'data-slot': 'body',
+      'data-index': '0',
+      'data-field': 'expected',
+      'data-section': '1',
+    });
   });
 
-  it('falls back to turn for a grouping the collection does not offer', () => {
-    expect(keys('title')).toEqual(keys('turn'));
-    expect(keys('steps')).toEqual(keys('turn'));
+  it('leaves the primary column to the plain evidence list', () => {
+    expect(blocks.primary).toEqual([{ kind: 'evidence' }]);
   });
 
-  it('groups by free text on its values as the items spell them: trimmed, lowercase, A to Z, none last', () => {
-    const spelled = [
-      typed('A', 'human', 'reported', { area: 'Farm' }),
-      typed('B', 'agent', 'fixing', { area: ' farm ' }),
-      typed('C', 'human', 'reported', { area: 'UI' }),
-      typed('D', 'human', 'reported', { area: '  ' }),
-      typed('E', 'none', 'fixed', { area: 'forest   Biome' }),
-      typed('F', 'human', 'reported'),
-    ];
-
-    expect(
-      groupItems(spelled, 'area', bugs).map(({ key, title, items }) => [
-        key,
-        title,
-        items.map(({ id }) => id).join(''),
-      ]),
-    ).toEqual([
-      ['farm', 'farm', 'AB'],
-      ['forest biome', 'forest biome', 'E'],
-      ['ui', 'ui', 'C'],
-      ['', 'no area', 'DF'],
-    ]);
+  it('leaves a layout without sections unchanged', () => {
+    expect(detailBlocks({ ...type, layout: EMPTY }, {}).sections).toBeUndefined();
   });
 
-  it('offers turn, state, the type with several types, and the one-line fields but the title', () => {
-    expect(groupings(bugs)).toEqual(['turn', 'state', 'area', 'severity', 'category']);
-    const [only] = bugs.types;
-    if (!only) throw new Error('no type');
-    const two = { ...bugs, types: [only, { ...only, name: 'impr' }] };
-    expect(groupings(two)).toEqual(['turn', 'state', 'type', 'area', 'severity', 'category']);
-    const lacking = { ...bugs, types: [only, { ...only, name: 'impr', fields: [] }] };
-    expect(groupings(lacking)).toEqual(['turn', 'state', 'type']);
+  it('knows a section places children', () => {
+    expect(placesChildren(type)).toBe(true);
+  });
+
+  it('counts section evidence modules as drawn and as roles to attach', () => {
+    const file = (module: string | null) => ({ id: 1, module }) as unknown as Evidence;
+    expect(leftovers(type, [file('shots'), file(null)])).toHaveLength(1);
+    expect(rolesFor(type)).toEqual(['before', 'after']);
   });
 });
