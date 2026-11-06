@@ -9,12 +9,13 @@ const EVIDENCE_SLOTS: readonly LayoutSlot[] = ['evidence', 'body', 'side', 'phon
 export type EvidenceModuleEntry = LayoutEntry & { id: string };
 
 export function evidenceModules(layout: Layout): EvidenceModuleEntry[] {
-  return EVIDENCE_SLOTS.flatMap((slot) =>
-    layout[slot].filter(
-      (entry): entry is EvidenceModuleEntry =>
-        MODULE_REGISTRY[entry.module].family === 'evidence' && entry.id !== undefined,
-    ),
-  );
+  const isModule = (entry: LayoutEntry): entry is EvidenceModuleEntry =>
+    MODULE_REGISTRY[entry.module].family === 'evidence' && entry.id !== undefined;
+  const sectioned = (layout.sections ?? []).flatMap(({ entries }) => entries.filter(isModule));
+  return EVIDENCE_SLOTS.flatMap((slot) => [
+    ...layout[slot].filter(isModule),
+    ...(slot === 'body' ? sectioned : []),
+  ]);
 }
 
 function extensionOf(filename: string): string {
