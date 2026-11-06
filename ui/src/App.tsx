@@ -424,6 +424,7 @@ export function App() {
         items={allItems}
         version={version}
         connection={connection}
+        onApplied={() => setStudioWrites((count) => count + 1)}
       />
     );
   }

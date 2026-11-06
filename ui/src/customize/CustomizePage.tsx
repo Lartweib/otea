@@ -19,9 +19,10 @@ import { t } from '../i18n/i18n.ts';
 import { Button } from '../kit/index.ts';
 import { nestSections } from '../nesting.ts';
 import { groupItems } from '../sections.ts';
-import { type CustomizeTarget, hashFor } from '../selection.ts';
+import { type CustomizeTarget, customizeHash, hashFor, studioHash } from '../selection.ts';
 import {
   customizeBoard,
+  customizeTemplate,
   fetchPresetSamples,
   fetchPresetSource,
   fetchStudioPresets,
@@ -37,6 +38,7 @@ import { storeDraft, storedDraft } from '../studio/PresetEditor.tsx';
 import { draftPreview } from '../studio/preview.ts';
 import type { Item, ItemView } from '../types.ts';
 import { ApplyDialog } from './ApplyDialog.tsx';
+import { applyOf, boardsText, type Scope, saves, scopeOf, titleOf } from './scope.ts';
 import { announce } from './applied.ts';
 import { BoxMenu } from './BoxMenu.tsx';
 import { FieldMenu } from './FieldMenu.tsx';
@@ -115,11 +117,14 @@ export function CustomizePage({
   items,
   version,
   connection,
+  onApplied,
 }: {
   target: CustomizeTarget;
   items: readonly Item[];
   version: number;
   connection: Connection;
+  // The view changed on the server: the app reads its collections and presets again.
+  onApplied: () => void;
 }) {
   const wide = useMediaQuery('(min-width: 900px)');
   const blueprint = useRemote(fetchStudioPresets, version, connection);
@@ -151,6 +156,14 @@ export function CustomizePage({
         <p>{t('cz.noItem')}</p>
       </main>
     );
+  const scope =
+    target.kind === 'item'
+      ? scopeOf({ kind: 'item', board })
+      : scopeOf({
+          kind: 'preset',
+          users: boards.filter(({ preset }) => preset === target.name).map(({ name }) => name),
+        });
+  const reach = scope.boards.length > 0 ? scope.boards : [board];
   return (
     <Loader
       key={presetName}
@@ -158,7 +171,9 @@ export function CustomizePage({
       board={board}
       type={item?.type}
       itemId={item?.id}
-      count={items.filter((each) => each.collection === board).length}
+      count={items.filter((each) => reach.includes(each.collection)).length}
+      scope={scope}
+      onApplied={onApplied}
       version={version}
       connection={connection}
     />
@@ -179,6 +194,8 @@ function Loader(props: {
   type: string | undefined;
   itemId: string | undefined;
   count: number;
+  scope: Scope;
+  onApplied: () => void;
   version: number;
   connection: Connection;
 }) {
@@ -203,6 +220,8 @@ function Builder({
   itemId,
   count,
   presetName,
+  scope,
+  onApplied,
 }: {
   source: PresetSource;
   samples: PresetSamples;
@@ -211,6 +230,8 @@ function Builder({
   itemId: string | undefined;
   count: number;
   presetName: string;
+  scope: Scope;
+  onApplied: () => void;
 }) {
   const base = readDraft(source.yaml, source.playbooks);
   const basePreset = base.ok ? base.preset : undefined;
@@ -1101,20 +1122,45 @@ function Builder({
     setBoxMenu(undefined);
     say(t('customize.discarded'), () => setHist(before));
   };
+  // Back goes to the item itself, open, not to whatever the history happens to hold.
   const back = () => {
-    if (window.history.length > 1) window.history.back();
-    else window.location.hash = itemId ? hashFor(itemId) : '#/';
+    window.location.replace(
+      itemId ? hashFor(itemId) : scope.template ? studioHash({ kind: 'preset', name: presetName }) : '#/',
+    );
   };
   const submit = async () => {
     if (busy) return;
     setBusy(true);
     try {
+      if (scope.template) {
+        const done = await customizeTemplate(presetName, yaml);
+        storeDraft(presetName, undefined);
+        onApplied();
+        if (saves(scope)) {
+          announce(t('cz.saved', { name: done.preset }));
+          window.location.hash =
+            source.origin === 'official'
+              ? customizeHash({ kind: 'preset', name: done.preset })
+              : studioHash({ kind: 'preset', name: done.preset });
+        } else {
+          // A project template is saved once for all its boards; an official one is copied per board.
+          const undone = done.boards.filter(
+            ({ preset, previous }, at) => preset !== previous.preset || at === 0,
+          );
+          announce(t('cz.applied', { board: boardsText(scope) }), async () => {
+            for (const each of undone) await revertBoard(each.board, each.previous);
+          });
+          window.location.hash = studioHash({ kind: 'preset', name: presetName });
+        }
+        return;
+      }
       const done = await customizeBoard(board, yaml);
       storeDraft(presetName, undefined);
+      onApplied();
       announce(t('cz.applied', { board }), () => revertBoard(board, done.previous));
       window.location.hash = itemId ? hashFor(itemId) : '#/';
-    } catch (caught) {
-      say(caught instanceof Error ? caught.message : t('cz.failed'));
+    } catch {
+      say(t('cz.failed'));
     } finally {
       setBusy(false);
     }
@@ -1176,10 +1222,10 @@ function Builder({
       <header className="cz-bar">
         {previewing ? null : (
           <Button variant="quiet" onClick={back}>
-            {t('cz.back', { id: idLabel })}
+            {scope.template ? t('cz.backStudio') : t('cz.back', { id: idLabel })}
           </Button>
         )}
-        <p className="cz-title">{t('cz.title', { type: typeWord, board })}</p>
+        <p className="cz-title">{titleOf(scope, typeWord, presetName, board)}</p>
         <div className="cz-seg">
           {(['detail', 'form', 'row'] as const).map((each) => (
             <button
@@ -1203,7 +1249,7 @@ function Builder({
           {t('cz.discard')}
         </Button>
         <Button variant="primary" disabled={!dirty} onClick={() => setApplying(true)}>
-          {t('cz.apply', { board })}
+          {applyOf(scope)}
         </Button>
       </header>
       <div className="cz-body">
@@ -1336,7 +1382,8 @@ function Builder({
       ) : null}
       {applying ? (
         <ApplyDialog
-          target={board}
+          target={boardsText(scope)}
+          save={saves(scope)}
           changes={changes}
           itemCount={count}
           first={source.origin === 'official'}
