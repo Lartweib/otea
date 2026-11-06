@@ -48,11 +48,28 @@
   opacity: 0.45;
   cursor: default;
 }
+.cz-bar > * {
+  flex: none;
+}
+/* What gives way first when the bar is full: the title, then the back link. Apply never does. */
 .cz-back {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 24%;
   gap: 7px;
   color: var(--ink);
 }
+.cz-ellip {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .cz-title {
+  flex: 0 4 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   margin: 0 20px 0 10px;
   font-size: 13.5px;
   white-space: nowrap;
@@ -62,8 +79,9 @@
   font-weight: 600;
   color: var(--ink);
 }
-.cz-grow {
-  flex: 1;
+.cz-bar > .cz-grow {
+  flex: 1 1 0;
+  min-width: 0;
 }
 .cz-status {
   margin-right: 10px;
@@ -71,7 +89,28 @@
   color: var(--ink);
   white-space: nowrap;
 }
-.cz-apply {
+.cz-status-long {
+  display: none;
+}
+@media (min-width: 1600px) {
+  .cz-status-long {
+    display: inline;
+  }
+  .cz-status-short {
+    display: none;
+  }
+}
+/* Where the bar is tight, Undo and Redo are their arrows alone (their names stay on the buttons). */
+@media (max-width: 1499px) {
+  .cz-hist span {
+    display: none;
+  }
+  .cz-bar .btn.cz-hist {
+    padding: 0 8px;
+  }
+}
+.cz-bar > .cz-apply {
+  max-width: 280px;
   margin-left: 8px;
   padding: 0 14px;
 }

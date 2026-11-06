@@ -429,6 +429,7 @@ export const en = {
     one: '{count} change, not applied yet',
     other: '{count} changes, not applied yet',
   },
+  'cz.statusShort': { one: '{count} change', other: '{count} changes' },
   'cz.undo': 'Undo',
   'cz.redo': 'Redo',
   'cz.discard': 'Discard',

@@ -1255,7 +1255,9 @@ function Builder({
         {previewing ? null : (
           <Button variant="quiet" className="cz-back" onClick={back}>
             <Icon name="left" />
-            {scope.template ? t('cz.backStudio') : t('cz.back', { id: idLabel })}
+            <span className="cz-ellip">
+              {scope.template ? t('cz.backStudio') : t('cz.back', { id: idLabel })}
+            </span>
           </Button>
         )}
         <p className="cz-title">
@@ -1276,15 +1278,34 @@ function Builder({
         </div>
         <span className="cz-grow" />
         {dirty && changes.length > 0 ? (
-          <span className="cz-status">{t('cz.status', { count: changes.length })}</span>
+          <span className="cz-status" title={t('cz.status', { count: changes.length })}>
+            <span className="cz-status-long">{t('cz.status', { count: changes.length })}</span>
+            <span className="cz-status-short">
+              {t('cz.statusShort', { count: changes.length })}
+            </span>
+          </span>
         ) : null}
-        <Button variant="quiet" disabled={hist.past.length === 0} onClick={() => apply(undo)}>
+        <Button
+          variant="quiet"
+          className="cz-hist"
+          aria-label={t('cz.undo')}
+          title={t('cz.undo')}
+          disabled={hist.past.length === 0}
+          onClick={() => apply(undo)}
+        >
           <Undo />
-          {t('cz.undo')}
+          <span>{t('cz.undo')}</span>
         </Button>
-        <Button variant="quiet" disabled={hist.future.length === 0} onClick={() => apply(redo)}>
+        <Button
+          variant="quiet"
+          className="cz-hist"
+          aria-label={t('cz.redo')}
+          title={t('cz.redo')}
+          disabled={hist.future.length === 0}
+          onClick={() => apply(redo)}
+        >
           <Redo />
-          {t('cz.redo')}
+          <span>{t('cz.redo')}</span>
         </Button>
         <Button variant="quiet" disabled={!dirty} onClick={discard}>
           {t('cz.discard')}
@@ -1293,9 +1314,10 @@ function Builder({
           variant="primary"
           className="cz-apply"
           disabled={!dirty}
+          title={applyOf(scope)}
           onClick={() => setApplying(true)}
         >
-          {applyOf(scope)}
+          <span className="cz-ellip">{applyOf(scope)}</span>
         </Button>
       </header>
       <div className="cz-body">
