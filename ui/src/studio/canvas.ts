@@ -5,7 +5,13 @@ import type { LayoutEntry, LayoutSlot } from '../types.ts';
 // data-slot, data-index and, for a field, data-field (item-types.ts). Studio outlines, selects and
 // edits what those name; it never draws a preview of its own.
 
-export type Part = { type: string; slot: LayoutSlot; index: number; field?: string; section?: number };
+export type Part = {
+  type: string;
+  slot: LayoutSlot;
+  index: number;
+  field?: string;
+  section?: number;
+};
 
 export function partFrom(get: (name: string) => string | null): Part | undefined {
   const type = get('data-type');
