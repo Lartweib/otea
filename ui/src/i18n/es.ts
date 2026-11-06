@@ -1025,6 +1025,7 @@ export const es: Catalog = {
   'studio.canvas.aria': 'Vista previa de {id}: haz clic en una parte para cambiarla',
   'studio.canvas.slot': 'El slot {slot}',
   'studio.inspect.title': 'Inspector',
+  'studio.inspect.inSection': 'Esto está en una sección. Editalo en Personalizar vista.',
   'studio.inspect.pick':
     'Haz clic en una parte de la vista previa para cambiarla. Cada slot se dibuja como una caja punteada fina con su nombre.',
   'studio.inspect.field': 'campo',

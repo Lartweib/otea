@@ -27,7 +27,7 @@ import {
   savePreset,
 } from './api.ts';
 import { Canvas } from './Canvas.tsx';
-import type { Part, Placed } from './canvas.ts';
+import { entryOfPart, type Part, type Placed } from './canvas.ts';
 import { diffLines, rawOf, readDraft, workflowOf } from './draft.ts';
 import { Inspector } from './Inspector.tsx';
 import { LaneInspector } from './LaneInspector.tsx';
@@ -636,7 +636,7 @@ function Stage({
   const item = withChosen(id === undefined ? undefined : preview.view(id), selected?.field);
   const shape = preview.collection.types.find((each) => each.name === type);
   const entryAt = (slot: LayoutSlot, index: number) => shape?.layout[slot][index];
-  const moduleName = (part: Part) => entryAt(part.slot, part.index)?.id;
+  const moduleName = (part: Part) => (shape ? entryOfPart(shape.layout, part)?.id : undefined);
   const nameAt = (slot: LayoutSlot, index: number) => {
     const entry = entryAt(slot, index);
     return entry?.field ?? entry?.id ?? entry?.module;
