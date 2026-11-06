@@ -277,6 +277,24 @@ Rules:
 - Markdown renders with `micromark`, safe by default: raw HTML is shown as text and links with a dangerous protocol lose their href. Never enable its dangerous options. Headings use the human font at 15-17px, lists hang from muted markers, code and code blocks are Spline Sans Mono on `--well`, links are `--you-ink`.
 - A row stays calm: an enum at its default puts nothing in the row. Severity is the exception, since a list of bugs is read by it: its bars always show, and only `critical` (level 4) is drawn in `--warn`.
 
+### Sections
+
+A type's layout may declare `sections` in place of `body` and `evidence`, which then must be empty:
+
+```yaml
+layout:
+  sections:
+    - { title: Brief, entries: [description, steps, { module: images, id: screenshots }] }
+    - { title: Testing notes, width: half, entries: [expected] }
+    - { title: Structure, entries: [{ module: relations }, { module: children }] }
+```
+
+- A section has a `title`, `entries` (the same forms as a slot entry) and an optional `width`, `full` (default) or `half`. Unknown keys, duplicate fields, duplicate relation modules and duplicate evidence ids are refused. Entries obey the `body` module rules, so they may also be `relations` and `children`.
+- Without `sections` nothing changes. `header`, `side`, `row` and `intake` keep their meaning.
+- The detail draws the sections in order, each with its title in the section style (the name in the margin above a hairline). Two consecutive `half` sections sit side by side, the title above the content, and stack on a phone or in a pane narrower than 34rem. Relation modules draw where a section places them; Details and History stay fixed. Parts carry `data-section="<index>"` beside `data-type`, `data-slot` (`body`), `data-index` (the entry's index in the section) and `data-field`.
+- Evidence modules in sections count everywhere evidence modules do: `otea attach --module`, the create form's files, and the plain list of leftovers. A field placed only in a section is not reported as unplaced.
+- Studio edits them with `ensureSections` (turns body, evidence and relations into Brief and Structure), `addSection`, `renameSection`, `moveSection`, `setSectionWidth`, `removeSection` (its entries become unplaced) and `moveEntry` (between any sections and the slots header, side, row and intake, refusing with a reason what the module rules do not allow) in `ui/src/studio/layout-edit.ts`.
+
 ### Catalog
 
 The sidebar reaches it under Studio: while Studio or the catalog is open, the Studio entry counts its presets and unfolds a tree of the blueprint (version, boards), the presets (version, the collections using each, *official* for the read-only ones) and the modules count, each row leading to its page (`StudioTree.tsx`). `#/modules` opens the catalog in the two panes: the index of modules on the left, and on the right an overview of the loaded presets and which module each field picks. `#/modules/<name>` shows one module: its origin, a live preview of every sample in the row, the detail and the edit control (the edit control drives that sample's row and detail, locally; nothing is saved), the preset fields that use it (from `GET /api/presets`) and its `preset.yaml` snippet. Modules that presets name but the UI does not know are listed apart, as "unknown module · renders as plain text". Routes are parsed by `routeFromHash` in `ui/src/selection.ts`; item ids never start with a slash, so `#<item-id>` keeps working.
