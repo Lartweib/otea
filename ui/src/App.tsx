@@ -80,6 +80,7 @@ type DetailPaneProps = {
   onClose?: (() => void) | undefined;
   itemOf?: ((id: string) => Item | undefined) | undefined;
   trayHost?: HTMLElement | null | undefined;
+  canCustomize?: boolean;
 };
 
 function DetailPane({
@@ -93,6 +94,7 @@ function DetailPane({
   onClose,
   itemOf,
   trayHost,
+  canCustomize,
 }: DetailPaneProps) {
   if (item.status === 'failed') return <Message muted={false}>{item.message}</Message>;
   if (item.status === 'loading') return <Message>{t('common.loading')}</Message>;
@@ -107,6 +109,7 @@ function DetailPane({
       onClose={onClose}
       itemOf={itemOf}
       trayHost={trayHost}
+      canCustomize={canCustomize === true}
       {...(layout ? { layout } : {})}
       {...(onMoved ? { onMoved } : {})}
     />
@@ -593,6 +596,7 @@ export function App() {
                     onClose={gridded ? closeDetail : undefined}
                     itemOf={(id) => allItems.find((each) => each.id === id)}
                     trayHost={detailHost}
+                    canCustomize={canConfigure && !phone}
                   />
                 ) : detailOff || items.status !== 'ready' ? null : firstRun ? (
                   <FirstRun

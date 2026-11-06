@@ -24,6 +24,13 @@
   gap: 10px;
   min-height: 22px;
 }
+.detail-customize {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  text-decoration: none;
+}
 
 /* The type, Details' first row: its icon and word. */
 .detail-type {
