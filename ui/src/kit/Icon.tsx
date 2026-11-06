@@ -24,7 +24,8 @@ export type IconName =
   | 'activity'
   | 'attach'
   | 'check'
-  | 'eye';
+  | 'eye'
+  | 'sliders';
 
 const PATHS: Record<IconName, string> = {
   plus: 'M8 3.5 V12.5 M3.5 8 H12.5',
@@ -54,6 +55,7 @@ const PATHS: Record<IconName, string> = {
   warn: 'M8 1.75 A6.25 6.25 0 1 0 8 14.25 A6.25 6.25 0 1 0 8 1.75 M8 4.9 V8.6 M8 11 V11.1',
   attach: 'M8 10.25 V2.75 M5 5.5 L8 2.5 L11 5.5 M2.75 9.75 V13 H13.25 V9.75',
   check: 'M3.5 8.5 L6.5 11.25 L12.5 4.75',
+  sliders: 'M2.75 5 H6.5 M11.5 5 H13.25 M9 3 V7 M2.75 11 H4.5 M9.5 11 H13.25 M7 9 V13',
   eye: 'M1.75 8 C3.5 4.5 12.5 4.5 14.25 8 C12.5 11.5 3.5 11.5 1.75 8 Z M8 6.5 A1.5 1.5 0 1 0 8 9.5 A1.5 1.5 0 1 0 8 6.5',
 };
 

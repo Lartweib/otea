@@ -418,6 +418,7 @@ export const en = {
   'detail.readOnly': 'Read-only. Run {command} to act from this browser.',
   'detail.receipt': '{state} · now {turn} · {ago}',
   'detail.close': 'Close the detail',
+  'detail.customize': 'Customize view',
   'detail.parent': 'Parent',
   'detail.noneYet': 'none yet',
   'gate.title': 'Gate',
