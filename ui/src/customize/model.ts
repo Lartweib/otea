@@ -1,6 +1,6 @@
 import type { LayoutEntry } from '../../../src/core/modules.ts';
 import type { Preset } from '../../../src/core/preset.ts';
-import { t } from '../i18n/i18n.ts';
+import { language, t } from '../i18n/i18n.ts';
 import { fieldLabel } from '../intake.ts';
 import type { IconName } from '../kit/Icon.tsx';
 import { type RawPreset, rawOf, setIn } from '../studio/draft.ts';
@@ -119,7 +119,7 @@ function readDoc(preset: Preset, type: string): Doc {
   for (const [id, spec] of Object.entries(shape.fields)) {
     doc.things[id] = {
       id,
-      name: fieldLabel(id),
+      name: shape.labels?.[language()]?.fields[id] ?? fieldLabel(id),
       kind: MODULE_KIND[spec.module] ?? 'short',
       need: spec.required ?? 'no',
       ...(spec.values ? { options: [...spec.values] } : {}),
@@ -619,7 +619,10 @@ export function yamlOf(
     if (thing.kind === 'choice')
       spec.values = thing.options ?? (spec.values as string[] | undefined) ?? ['one', 'two'];
     else delete spec.values;
-    if (thing.name !== fieldLabel(id)) spec.label = thing.name;
+    // A name the person did not change stays as the file has it, in whichever language it is shown.
+    if (was && was.name === thing.name) {
+      // untouched
+    } else if (thing.name !== fieldLabel(id)) spec.label = thing.name;
     else delete spec.label;
     next = setIn(next, at, spec);
     if (!was) {

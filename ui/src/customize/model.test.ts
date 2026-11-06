@@ -199,7 +199,7 @@ describe('boxes', () => {
     const removed = removeBox(sorted, 1);
     expect(unplaced(removed).map((t) => t.id)).toEqual(['environment']);
     const said = changesOf(base, sorted).map((c) => c.text);
-    expect(said).toContain('New box Testing notes');
+    expect(said).toContain('New box: Testing notes');
     expect(said).toContain('Box Brief is now called The bug');
     expect(said).toContain('Boxes in a new order');
   });

@@ -1486,7 +1486,7 @@ export const en = {
   'customize.m.ch.needNo': '{name} is no longer needed',
   'customize.m.ch.needCreate': '{name} is now needed to create',
   'customize.m.ch.needComplete': '{name} is now needed to start work',
-  'customize.m.ch.newBox': 'New box {name}',
+  'customize.m.ch.newBox': 'New box: {name}',
   'customize.m.ch.boxRenamed': 'Box {was} is now called {name}',
   'customize.m.ch.order': 'Order changed in {place}',
   'customize.m.ch.boxRemoved': 'Box {name} removed',
