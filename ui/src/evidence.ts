@@ -11,10 +11,14 @@ export function isEvidenceModule(entry: LayoutEntry): boolean {
   return EVIDENCE_MODULES.includes(entry.module) && entry.id !== undefined;
 }
 
+// The evidence modules a type places in the slots given and in its sections.
+export function evidenceEntries(type: TypeView, slots: readonly LayoutSlot[]): LayoutEntry[] {
+  const sectioned = (type.layout.sections ?? []).flatMap(({ entries }) => entries);
+  return [...slots.flatMap((slot) => type.layout[slot]), ...sectioned].filter(isEvidenceModule);
+}
+
 function drawnModules(type: TypeView): string[] {
-  return DRAWN.flatMap((slot) => type.layout[slot].filter(isEvidenceModule)).flatMap(({ id }) =>
-    id === undefined ? [] : [id],
-  );
+  return evidenceEntries(type, DRAWN).flatMap(({ id }) => (id === undefined ? [] : [id]));
 }
 
 // The server says which module holds each entry (the one it went to, or for older evidence the first
