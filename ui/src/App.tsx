@@ -28,6 +28,7 @@ import { ProjectSettings } from './components/ProjectSettings.tsx';
 import { ProjectsInbox } from './components/ProjectsInbox.tsx';
 import { Sheet } from './components/Sheet.tsx';
 import { browserStorage, Divider, useSplit } from './components/Split.tsx';
+import { CustomizePage } from './customize/CustomizePage.tsx';
 import { studioTreeOf } from './components/StudioTree.tsx';
 import { Brand, Topbar } from './components/Topbar.tsx';
 import { Triage } from './components/Triage.tsx';
@@ -467,6 +468,8 @@ export function App() {
           onChanged={() => setStudioWrites((count) => count + 1)}
           index={studioIndex}
         />
+      ) : route.view === 'customize' ? (
+        <CustomizePage target={route.target} />
       ) : route.view === 'lan' ? (
         <LanPanel
           canManage={canManageDevices}
