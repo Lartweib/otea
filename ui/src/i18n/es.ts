@@ -1580,5 +1580,6 @@ export const es: Catalog = {
   'customize.keepEditing': 'Seguir editando',
   'customize.saveTitle': 'Guardar plantilla',
   'customize.saveCopy': 'La plantilla oficial se queda como está. Recibes una copia para editar.',
-  'customize.saveOwn': 'Ningún tablero usa esta plantilla todavía. El cambio se guarda en la plantilla.',
+  'customize.saveOwn':
+    'Ningún tablero usa esta plantilla todavía. El cambio se guarda en la plantilla.',
 };

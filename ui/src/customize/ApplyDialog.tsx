@@ -25,9 +25,7 @@ export type ApplyDialogProps = {
 export function ApplyDialog(p: ApplyDialogProps) {
   const ref = useRef<HTMLDivElement>(null);
   useDismiss(ref, p.onKeepEditing);
-  const title = p.save
-    ? t('customize.saveTitle')
-    : t('customize.applyTitle', { target: p.target });
+  const title = p.save ? t('customize.saveTitle') : t('customize.applyTitle', { target: p.target });
   return (
     <div className="cz-scrim">
       <div ref={ref} className="cz-dlg" role="dialog" aria-label={title} tabIndex={-1}>
