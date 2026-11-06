@@ -210,6 +210,9 @@ type ItemDetailProps = {
   trayHost?: HTMLElement | null | undefined;
   // The viewer may reshape this view (Studio's writes, not on a phone): shows Customize view.
   canCustomize?: boolean | undefined;
+  // The Customize view's canvas: Structure draws its empty rows ("No children", "No relations")
+  // even where the item has none to show.
+  placeholders?: boolean | undefined;
 };
 
 // The detail of another item comes in (the old one leaves at once): it rises 6px into place, or
@@ -248,6 +251,7 @@ export function ItemDetail({
   itemOf,
   trayHost,
   canCustomize = false,
+  placeholders = false,
 }: ItemDetailProps) {
   const lease = useActiveLease(item.lease);
   const root = useContentIn(item.id, layout === 'pane');
@@ -303,6 +307,7 @@ export function ItemDetail({
           item={item}
           entry={part.entry}
           canWrite={canWrite}
+          placeholder={placeholders}
           collectionOf={collectionOf}
           onAddChild={onAddChild}
           itemOf={itemOf}
@@ -319,6 +324,7 @@ export function ItemDetail({
           item={item}
           entry={part.entry}
           canWrite={canWrite}
+          placeholder={placeholders}
           collectionOf={collectionOf}
           withChildren={!placesChildren(type)}
         />
