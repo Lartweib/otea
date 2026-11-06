@@ -54,7 +54,13 @@ export type LayoutEntry = {
   label?: string;
 };
 
-export type Layout = Record<LayoutSlot, LayoutEntry[]>;
+// A titled run of the detail's main column. Two consecutive half sections sit side by side.
+export type SectionWidth = 'full' | 'half';
+
+export type LayoutSection = { title: string; width?: SectionWidth; entries: LayoutEntry[] };
+
+// `sections`, when declared, replaces the body and evidence slots, which are then empty.
+export type Layout = Record<LayoutSlot, LayoutEntry[]> & { sections?: LayoutSection[] };
 
 // `accepts` is the evidence an evidence module draws: a list of file kinds or extensions.
 export type ModuleSpec = {
@@ -296,6 +302,85 @@ function intakeProblems(
     .map(([name]) => `${at}.intake: missing field "${name}", required to create`);
 }
 
+const SECTION_KEYS = ['title', 'width', 'entries'];
+
+function readSection(
+  value: unknown,
+  fields: Record<string, FieldSpec>,
+  at: string,
+  ids: Ids,
+  seen: Set<string>,
+): { section?: LayoutSection; problems: string[] } {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return { problems: [`${at}: must be a map with a title and entries`] };
+  }
+  const raw = value as Record<string, unknown>;
+  const problems = Object.keys(raw)
+    .filter((key) => !SECTION_KEYS.includes(key))
+    .map((key) => `${at}: unknown key "${key}" (keys: ${SECTION_KEYS.join(', ')})`);
+  const { title, width, entries: list } = raw;
+  if (typeof title !== 'string' || title.trim() === '') {
+    problems.push(`${at}.title: must be a non-empty text`);
+  }
+  if (width !== undefined && width !== 'full' && width !== 'half') {
+    problems.push(`${at}.width: must be full or half`);
+  }
+  if (!Array.isArray(list)) {
+    problems.push(`${at}.entries: must be a list`);
+    return { problems };
+  }
+  const entries: LayoutEntry[] = [];
+  list.forEach((item: unknown, index) => {
+    const where = `${at}.entries[${index}]`;
+    const { entry, problems: found } = readEntry(item, fields, where);
+    problems.push(...found);
+    if (!entry) return;
+    const { slots } = MODULE_REGISTRY[entry.module];
+    if (!slots.includes('body')) {
+      problems.push(
+        `${where}: the ${entry.module} module cannot sit in a section (slots: ${slots.join(', ')})`,
+      );
+    }
+    const place = `${at}.entries[${index}]`;
+    problems.push(...idProblems(entry, ids, where, place));
+    const key = entry.field !== undefined ? `field:${entry.field}` : `module:${entry.module}`;
+    const unique = entry.field !== undefined || MODULE_REGISTRY[entry.module].family !== 'evidence';
+    if (unique && seen.has(key)) {
+      problems.push(
+        entry.field !== undefined
+          ? `${where}: field "${entry.field}" is already in the sections`
+          : `${where}: the ${entry.module} module is already in the sections`,
+      );
+    }
+    seen.add(key);
+    entries.push(entry);
+  });
+  const section: LayoutSection = {
+    title: typeof title === 'string' ? title : '',
+    ...(width === 'full' || width === 'half' ? { width } : {}),
+    entries,
+  };
+  return { section, problems };
+}
+
+function readSections(
+  raw: unknown,
+  fields: Record<string, FieldSpec>,
+  at: string,
+  ids: Ids,
+): { sections?: LayoutSection[]; problems: string[] } {
+  if (!Array.isArray(raw)) return { problems: [`${at}.sections: must be a list`] };
+  const seen = new Set<string>();
+  const sections: LayoutSection[] = [];
+  const problems: string[] = [];
+  raw.forEach((value: unknown, index) => {
+    const read = readSection(value, fields, `${at}.sections[${index}]`, ids, seen);
+    problems.push(...read.problems);
+    if (read.section) sections.push(read.section);
+  });
+  return { sections, problems };
+}
+
 // Reads a type's `layout`: every slot it declares, in order, and the default for the slots it leaves
 // out. `at` is the layout's path in the preset, for the problems found.
 export function readLayout(
@@ -310,7 +395,23 @@ export function readLayout(
   }
   const problems: string[] = [];
   const ids: Ids = new Map();
+  if ('sections' in raw) {
+    layout.body = [];
+    layout.evidence = [];
+    const read = readSections(raw.sections, fields, at, ids);
+    if (read.sections) layout.sections = read.sections;
+    problems.push(...read.problems);
+  }
   for (const [slot, value] of Object.entries(raw)) {
+    if (slot === 'sections') continue;
+    if ('sections' in raw && (slot === 'body' || slot === 'evidence')) {
+      if (!Array.isArray(value) || value.length > 0) {
+        problems.push(
+          `${at}.${slot}: must be empty when sections are declared; place its entries in a section`,
+        );
+      }
+      continue;
+    }
     if (!(LAYOUT_SLOTS as readonly string[]).includes(slot)) {
       problems.push(`${at}.${slot}: unknown slot (slots: ${LAYOUT_SLOTS.join(', ')})`);
       continue;

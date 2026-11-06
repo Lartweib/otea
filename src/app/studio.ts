@@ -511,3 +511,80 @@ export function copyBoardPreset(
   pointBoardAt(project, board, copy.name);
   return { board, preset: readPresetSource(project, copy.name) };
 }
+
+// What a customization replaced, so it can be put back: the preset the board used and its YAML.
+export type Previous = { preset: string; yaml: string };
+
+export type Customized = { preset: string; version: number; previous: Previous };
+
+function boardPreset(project: Project, board: string): string {
+  const found = readProjectBlueprint(project.dataDir)?.blueprint?.boards.find(
+    ({ name }) => name === board,
+  );
+  if (found === undefined) {
+    throw new OteaError('not_found', `The project blueprint has no board ${board}`);
+  }
+  return found.preset;
+}
+
+function named(yaml: string, name: string): string {
+  const doc = parseDocument(yaml);
+  if (doc.errors.length > 0) return yaml;
+  doc.set('preset', name);
+  return doc.toString();
+}
+
+function freeCopyName(project: Project, base: string): string {
+  const taken = (name: string) => {
+    try {
+      locate(project, name);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+  let name = base;
+  for (let n = 2; taken(name); n++) name = `${base}-${n}`;
+  return name;
+}
+
+// Saves a view change for a board. An official preset is only read, so the first change copies it
+// into the project as <board>-<preset> and points the board there; a project preset gets the YAML
+// as its next version. A draft the core refuses changes nothing.
+export function customizeBoard(project: Project, board: string, yaml: string): Customized {
+  const used = boardPreset(project, board);
+  const from = locate(project, used);
+  const previous = { preset: used, yaml: readFileSync(join(from.dir, FILE), 'utf8') };
+  if (from.origin === 'project') {
+    const saved = savePreset(project, used, { yaml: named(yaml, used) });
+    return { preset: used, version: saved.version ?? 0, previous };
+  }
+  const copy = freeCopyName(project, `${board}-${used}`);
+  duplicatePreset(project, used, copy);
+  try {
+    const saved = savePreset(project, copy, { yaml: named(yaml, copy) });
+    pointBoardAt(project, board, copy);
+    return { preset: copy, version: saved.version ?? 0, previous };
+  } catch (error) {
+    deletePreset(project, copy);
+    throw error;
+  }
+}
+
+// Puts back what customizeBoard returned: a project preset's earlier YAML, or the official preset
+// a board used before its copy, which is removed once nothing uses it.
+export function revertBoard(project: Project, board: string, previous: Previous): Customized {
+  const current = boardPreset(project, board);
+  const target = locate(project, previous.preset);
+  if (target.origin === 'project') {
+    const saved = savePreset(project, previous.preset, {
+      yaml: named(previous.yaml, previous.preset),
+    });
+    return { preset: previous.preset, version: saved.version ?? 0, previous };
+  }
+  if (current !== previous.preset) {
+    pointBoardAt(project, board, previous.preset);
+    if (current.startsWith(`${board}-${previous.preset}`)) deletePreset(project, current);
+  }
+  return { preset: previous.preset, version: 0, previous };
+}

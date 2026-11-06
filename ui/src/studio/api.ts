@@ -160,6 +160,20 @@ export const copyBoardPreset = (board: string, as: string) =>
     { as },
   );
 
+export type CustomizedPreset = {
+  preset: string;
+  version: number;
+  previous: { preset: string; yaml: string };
+};
+
+// A view change saved for a board: an official preset is copied first, a project one gets a new
+// version. `previous` is what revertBoard takes to undo it.
+export const customizeBoard = (board: string, yaml: string) =>
+  post<CustomizedPreset>(`/api/studio/boards/${encodeURIComponent(board)}/customize`, { yaml });
+
+export const revertBoard = (board: string, previous: CustomizedPreset['previous']) =>
+  post<CustomizedPreset>(`/api/studio/boards/${encodeURIComponent(board)}/revert`, { previous });
+
 export const updateBlueprint = () =>
   post<{ applied: string[]; kept: string[] }>('/api/studio/blueprint/update', {});
 

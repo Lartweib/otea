@@ -10,9 +10,11 @@ import { type PlainKey, presetText, t, tx } from '../i18n/i18n.ts';
 import { TypeIcon } from '../icons/TypeIcon.tsx';
 import {
   type DetailBlock,
+  type DetailSection,
   detailBlocks,
   type PlacedValue,
   placesChildren,
+  sectionsInRows,
   slotData,
   typeMark,
   typeOf,
@@ -133,16 +135,25 @@ function Section({
   children,
   travel,
   count,
+  section,
+  half,
 }: {
   name: string;
   label: string;
   children: ReactNode;
   travel?: string;
   count?: string;
+  section?: number;
+  half?: boolean;
 }) {
   const id = `detail-${name}`;
   return (
-    <section className="detail-section" aria-labelledby={id} data-travel={travel}>
+    <section
+      className={half ? 'detail-section detail-section-half' : 'detail-section'}
+      aria-labelledby={id}
+      data-travel={travel}
+      data-section={section}
+    >
       <h2 className="detail-section-label" id={id}>
         <span>{label}</span>
         {count ? <span className="t-cap detail-section-count">{count}</span> : null}
@@ -239,7 +250,7 @@ export function ItemDetail({
     });
   const type = typeOf(collection, item.type);
   const kind = itemNodeKind(item, type, lease !== null);
-  const { primary, side } = detailBlocks(type, item.fields);
+  const { primary, side, sections } = detailBlocks(type, item.fields);
   const parent = item.relations.find(({ kind }) => kind === 'parent');
   const gates = gateRows(type, item.state, item.gates);
   const loose = leftovers(type, item.evidence);
@@ -335,7 +346,14 @@ export function ItemDetail({
   // Relation modules make the Structure, wherever the layout places them; the rest of the side
   // goes with the details.
   const brief = primary.filter((part) => part.kind !== 'relation');
-  const structure = [...primary, ...side].filter((part) => part.kind === 'relation');
+  // With sections, relations draw where a section places them; the side's go to Structure only when
+  // no section places one.
+  const sectionRelations = (sections ?? []).some(({ blocks }) =>
+    blocks.some((part) => part.kind === 'relation'),
+  );
+  const structure = [...primary, ...side].filter(
+    (part) => part.kind === 'relation' && !sectionRelations,
+  );
   // Details: the side slot's values and where the item lives, one row each; the side's modules
   // follow them.
   const aside = side.filter((part) => part.kind !== 'relation');
@@ -384,6 +402,27 @@ export function ItemDetail({
   const asideModules = aside.filter((part) => part.kind !== 'fields');
   const briefParts = brief.map(block).filter((part) => part !== null);
   const structureParts = structure.map(block).filter((part) => part !== null);
+  // Sections in order; two consecutive half sections share a row.
+  const drawSection = (section: DetailSection) => (
+    <Section
+      key={`section:${section.index}`}
+      name={`section-${section.index}`}
+      label={section.title}
+      section={section.index}
+      half={section.width === 'half'}
+    >
+      {section.blocks.map(block).filter((part) => part !== null)}
+    </Section>
+  );
+  const sectionRows = sectionsInRows(sections ?? []).map((row) =>
+    row.length === 2 ? (
+      <div key={`pair:${row[0]?.index}`} className="detail-pair">
+        {row.map(drawSection)}
+      </div>
+    ) : (
+      row.map(drawSection)
+    ),
+  );
   const across = acrossGroups(item.relations, item.collection);
   const standing = lease ? t('detail.onIt', { holder: lease.holder }) : t(TURN_LABEL[item.turn]);
   const unfolded = layout === 'unfold';
@@ -515,9 +554,20 @@ export function ItemDetail({
               />
             </Section>
           ) : null}
-          <Section name="brief" label={t('detail.brief')}>
-            {briefParts.length > 0 ? briefParts : <p className="t-small">{t('common.noFields')}</p>}
-          </Section>
+          {sections ? (
+            <>
+              {sectionRows}
+              {briefParts.length > 0 ? <div className="detail-rest">{briefParts}</div> : null}
+            </>
+          ) : (
+            <Section name="brief" label={t('detail.brief')}>
+              {briefParts.length > 0 ? (
+                briefParts
+              ) : (
+                <p className="t-small">{t('common.noFields')}</p>
+              )}
+            </Section>
+          )}
           {structureParts.length > 0 ? (
             <Section name="structure" label={t('detail.structure')}>
               {structureParts}

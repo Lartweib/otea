@@ -499,6 +499,71 @@ describe('the Studio API', () => {
       expect(existsSync(join(dataDir(), 'presets', 'game-tasks'))).toBe(false);
     });
 
+    describe('customize and revert', () => {
+      const tasksYaml = async () =>
+        ((await get('/studio/presets/tasks')).body.yaml as string) ?? '';
+      const labelled = (yaml: string) =>
+        yaml.replace(/(\n {2}title: \{[^}]*)\}/, '$1, label: Name }');
+
+      it("copies an official preset on the first customization, then saves the copy's versions", async () => {
+        await apply();
+        const yaml = labelled(await tasksYaml());
+        expect(yaml).toContain('label: Name');
+
+        const first = await post('/studio/boards/work/customize', { yaml });
+
+        expect(first.status).toBe(200);
+        expect(first.body).toMatchObject({
+          preset: 'work-tasks',
+          previous: { preset: 'tasks', yaml: await tasksYaml() },
+        });
+        expect(await state()).toMatchObject({
+          blueprint: { boards: [{ name: 'work', preset: 'work-tasks' }, { name: 'bugs' }] },
+        });
+
+        const second = await post('/studio/boards/work/customize', {
+          yaml: yaml.replace('label: Name', 'label: Heading'),
+        });
+        expect(second.body).toMatchObject({ preset: 'work-tasks' });
+        expect(second.body.version).toBe((first.body.version as number) + 1);
+        expect((second.body.previous as { preset: string }).preset).toBe('work-tasks');
+      });
+
+      it('puts back what customize returned', async () => {
+        await apply();
+        const original = await tasksYaml();
+        const { body } = await post('/studio/boards/work/customize', {
+          yaml: labelled(original),
+        });
+
+        const reverted = await post('/studio/boards/work/revert', { previous: body.previous });
+
+        expect(reverted.status).toBe(200);
+        expect(await state()).toMatchObject({
+          blueprint: { boards: [{ name: 'work', preset: 'tasks' }, { name: 'bugs' }] },
+        });
+        expect(existsSync(join(dataDir(), 'presets', 'work-tasks'))).toBe(false);
+      });
+
+      it('takes them only from a signed-in browser on its own origin, with a valid body', async () => {
+        await apply();
+        const yaml = await tasksYaml();
+        for (const [path, payload] of [
+          ['/studio/boards/work/customize', { yaml }],
+          ['/studio/boards/work/revert', { previous: { preset: 'tasks', yaml } }],
+        ] as const) {
+          expect((await post(path, payload, { cookie: '' })).status).toBe(401);
+          expect((await post(path, payload, { origin: 'http://evil.example' })).status).toBe(403);
+        }
+        expect((await post('/studio/boards/Bad_Name/customize', { yaml })).status).toBe(400);
+        expect((await post('/studio/boards/work/customize', {})).status).toBe(400);
+        expect((await post('/studio/boards/work/customize', { yaml: 'preset: nope' })).status).toBe(
+          422,
+        );
+        expect(existsSync(join(dataDir(), 'presets', 'work-tasks'))).toBe(false);
+      });
+    });
+
     it('updates the copy from its source', async () => {
       await apply();
       await post('/studio/blueprint', {

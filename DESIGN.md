@@ -253,6 +253,10 @@ The history in the detail (`ui/src/components/Timeline.tsx`) is the item's past,
 
 Every preset field names a module (`text`, `markdown`, `enum`, `severity`). The UI draws each value through a registry in [`ui/src/modules/`](ui/src/modules/): one file per module plus `registry.ts`, so no component switches on module names. The names come from the core preset format (`FIELD_MODULES` in `src/core/preset.ts`, imported type-only), and the registry is keyed by them, so a module added to the format fails the UI typecheck until it is drawn.
 
+A field may carry `label`, the name people read (`found_in_build` with `label: Found in build`). Detail, form and grid draw the label, then a name derived from the key ("Found in build"); a language's `labels` still win. `fieldKeyFor` (`src/core/fields.ts`) derives a unique key from a typed name. A field no slot places is only an `info` note: hiding it from a view is a choice.
+
+Studio saves a view change per board with `POST /api/studio/boards/:board/customize { yaml }`: an official preset is first copied into the project as `<board>-<preset>` (uniquely named) and the board pointed at it, a project preset gets the YAML as its next version. It returns `{ preset, version, previous: { preset, yaml } }`, and `POST /api/studio/boards/:board/revert { previous }` puts that back. Both are desk-only.
+
 A module (`FieldModuleUi` in `ui/src/modules/contract.ts`) declares:
 
 | Part | Use |
@@ -276,6 +280,24 @@ Rules:
 - A module name the UI does not know (a newer server, a local module) shows and edits as plain text. It never crashes the UI.
 - Markdown renders with `micromark`, safe by default: raw HTML is shown as text and links with a dangerous protocol lose their href. Never enable its dangerous options. Headings use the human font at 15-17px, lists hang from muted markers, code and code blocks are Spline Sans Mono on `--well`, links are `--you-ink`.
 - A row stays calm: an enum at its default puts nothing in the row. Severity is the exception, since a list of bugs is read by it: its bars always show, and only `critical` (level 4) is drawn in `--warn`.
+
+### Sections
+
+A type's layout may declare `sections` in place of `body` and `evidence`, which then must be empty:
+
+```yaml
+layout:
+  sections:
+    - { title: Brief, entries: [description, steps, { module: images, id: screenshots }] }
+    - { title: Testing notes, width: half, entries: [expected] }
+    - { title: Structure, entries: [{ module: relations }, { module: children }] }
+```
+
+- A section has a `title`, `entries` (the same forms as a slot entry) and an optional `width`, `full` (default) or `half`. Unknown keys, duplicate fields, duplicate relation modules and duplicate evidence ids are refused. Entries obey the `body` module rules, so they may also be `relations` and `children`.
+- Without `sections` nothing changes. `header`, `side`, `row` and `intake` keep their meaning.
+- The detail draws the sections in order, each with its title in the section style (the name in the margin above a hairline). Two consecutive `half` sections sit side by side, the title above the content, and stack on a phone or in a pane narrower than 34rem. Relation modules draw where a section places them; Details and History stay fixed. Parts carry `data-section="<index>"` beside `data-type`, `data-slot` (`body`), `data-index` (the entry's index in the section) and `data-field`.
+- Evidence modules in sections count everywhere evidence modules do: `otea attach --module`, the create form's files, and the plain list of leftovers. A field placed only in a section is not reported as unplaced.
+- Studio edits them with `ensureSections` (turns body, evidence and relations into Brief and Structure), `addSection`, `renameSection`, `moveSection`, `setSectionWidth`, `removeSection` (its entries become unplaced) and `moveEntry` (between any sections and the slots header, side, row and intake, refusing with a reason what the module rules do not allow) in `ui/src/studio/layout-edit.ts`.
 
 ### Catalog
 
