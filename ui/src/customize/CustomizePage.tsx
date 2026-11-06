@@ -251,9 +251,6 @@ function Builder({
   const [device, setDevice] = useState<'computer' | 'phone'>('computer');
   const [previewing, setPreviewing] = useState(false);
   const [hint, setHint] = useState(true);
-  const hintEl = useRef<HTMLParagraphElement>(null);
-  // The hint sits in the toast's spot; it steps aside whenever it would lie over something to grab.
-  const [hintAway, setHintAway] = useState(false);
   const [selected, setSelected] = useState<Part>();
   const [chosen, setChosen] = useState<string | undefined>(itemId);
   const [drag, setDrag] = useState<DragState>();
@@ -325,34 +322,6 @@ function Builder({
     toastTimer.current = setTimeout(() => setToast(undefined), 6000);
   }, []);
   useEffect(() => () => clearTimeout(toastTimer.current), []);
-  // The hint never lies over a row, a grip or a box name: it fades while any of them is under it.
-  const checkHint = useCallback(() => {
-    const note = hintEl.current;
-    if (!note) return;
-    const at = note.getBoundingClientRect();
-    const over = [
-      ...document.querySelectorAll(
-        '.cz-fgrip, .cz-boxgrip, .cz-boxname, .cz-tile:not([data-fixed])',
-      ),
-    ].some((each) => {
-      const r = each.getBoundingClientRect();
-      return (
-        r.right > at.left && r.left < at.right && r.bottom > at.top - 8 && r.top < at.bottom + 8
-      );
-    });
-    setHintAway((was) => (was === over ? was : over));
-  }, []);
-  useEffect(() => {
-    checkHint();
-    const view = stage.current;
-    view?.addEventListener('scroll', checkHint);
-    window.addEventListener('resize', checkHint);
-    return () => {
-      view?.removeEventListener('scroll', checkHint);
-      window.removeEventListener('resize', checkHint);
-    };
-  });
-
   const apply = (next: (h: History) => History) => {
     setHint(false);
     setHist((h) => (h ? next(h) : h));
@@ -1414,15 +1383,13 @@ function Builder({
                 {t('cz.preview')}
               </button>
               {previewing ? <p className="cz-none">{t('cz.previewNote')}</p> : null}
+              {hint && !previewing && !selected && boxMenu === undefined && !drag ? (
+                <p className="cz-hint">{t('cz.hint')}</p>
+              ) : null}
             </div>
           </div>
         </div>
       </div>
-      {hint && !previewing ? (
-        <p className="cz-hint" ref={hintEl} data-away={hintAway ? '' : undefined}>
-          {t('cz.hint')}
-        </p>
-      ) : null}
       {boxing ? (
         <div className="cz-ghost" style={{ left: boxing.x + 12, top: boxing.y + 12 }}>
           {doc.sections[boxing.index]?.title}

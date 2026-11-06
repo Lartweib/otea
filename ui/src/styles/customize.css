@@ -413,29 +413,13 @@
   font-size: 0.75rem;
 }
 .cz-hint {
-  position: fixed;
-  z-index: var(--z-flight);
-  left: 50%;
-  bottom: 22px;
-  translate: -50% 0;
-  display: flex;
-  align-items: center;
-  height: 38px;
-  margin: 0;
-  padding: 0 16px;
-  border-radius: 999px;
-  background: var(--sf);
-  box-shadow:
-    inset 0 0 0 1px var(--line),
-    0 10px 28px -16px var(--shadow);
+  flex-basis: 100%;
+  margin: 8px 0 0;
+  text-align: right;
   color: var(--mut);
-  font-size: 13.5px;
-  white-space: nowrap;
+  font-size: 13px;
+  line-height: 1.4;
   pointer-events: none;
-  transition: opacity var(--m-base) var(--m-ease);
-}
-.cz-hint[data-away] {
-  opacity: 0;
 }
 .cz-toast {
   position: fixed;
