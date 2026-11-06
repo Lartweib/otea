@@ -1,6 +1,7 @@
 import type { PointerEvent } from 'react';
 import { t } from '../i18n/i18n.ts';
 import { Icon } from '../kit/index.ts';
+import type { IconName } from '../kit/Icon.tsx';
 import { Grip, Plus } from './glyphs.tsx';
 
 export type HiddenField = { id: string; name: string; typeLabel: string };
@@ -8,7 +9,7 @@ export type BlockRow = {
   id: string;
   name: string;
   says: string;
-  kind: 'files' | 'link';
+  icon: IconName;
   // Where it already is (e.g. "Structure"); a block can be in one place only.
   usedIn?: string;
 };
@@ -95,7 +96,7 @@ export function LeftPanel(props: LeftPanelProps) {
               >
                 {used ? <span className="cz-gsp" /> : <Grip />}
                 <span className="cz-li">
-                  <Icon name={b.kind === 'files' ? 'attach' : 'link'} />
+                  <Icon name={b.icon} />
                 </span>
                 <span className="cz-ln2">
                   <b>{b.name}</b>

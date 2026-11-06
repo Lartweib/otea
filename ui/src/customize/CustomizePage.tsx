@@ -46,6 +46,8 @@ import { LeftPanel } from './LeftPanel.tsx';
 import {
   addBox,
   addField,
+  BLOCKS,
+  blockOf,
   boxRows,
   changed,
   changesOf,
@@ -89,6 +91,7 @@ import type { FieldKind } from './types.ts';
 type View = 'detail' | 'form' | 'row';
 const NO_FOLDS = { collapsed: new Set<string>(), expanded: new Set<string>() };
 const FIXED = new Set(['title']);
+const blockSays = (thing: Thing) => t(`customize.block.${blockOf(thing) ?? 'images'}.says`);
 
 type Rect = { top: number; left: number; width: number; height: number };
 // A box as drawn: the section, its content and its name, in the canvas's coordinates.
@@ -968,7 +971,7 @@ function Builder({
         name={thing.name}
         onName={(name) => change(patchThing(now, id, { name }))}
         onClose={closeMenu}
-        says={t(`customize.says.${thing.kind === 'link' ? 'link' : 'files'}`)}
+        says={blockSays(thing)}
         kind={field ? (thing.kind as FieldKind) : 'short'}
         onKind={(kind) => {
           const room = roomZone ? refusal(kind, roomZone) : undefined;
@@ -1229,8 +1232,8 @@ function Builder({
       !FIXED.has(thing.id) &&
       !shown(doc, thing.id, facet),
   );
-  const blocks = Object.values(doc.things).filter(
-    (thing) => thing.kind === 'files' || thing.kind === 'link',
+  const blocks = BLOCKS.flatMap(({ module }) =>
+    Object.values(doc.things).filter((thing) => blockOf(thing) === module),
   );
   const addZone: Zone | 'section' = view === 'form' ? 'intake' : view === 'row' ? 'row' : 'section';
   const landing = (kind: Thing['kind']): Zone | 'section' =>
@@ -1337,8 +1340,8 @@ function Builder({
               return {
                 id: thing.id,
                 name: thing.name,
-                says: t(`customize.says.${thing.kind === 'link' ? 'link' : 'files'}`),
-                kind: thing.kind === 'link' ? ('link' as const) : ('files' as const),
+                says: blockSays(thing),
+                icon: BLOCKS.find(({ module }) => module === blockOf(thing))?.icon ?? 'attach',
                 ...(at ? { usedIn: homeWord(doc, at) } : {}),
               };
             })}
