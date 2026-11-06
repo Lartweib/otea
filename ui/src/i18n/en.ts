@@ -440,7 +440,8 @@ export const en = {
   'cz.computer': 'Computer',
   'cz.phone': 'Phone',
   'cz.preview': 'Preview',
-  'cz.previewNote': 'Empty fields appear once they have a value.',
+  'cz.previewNote':
+    'Empty fields are marked here. On a real {type} they stay hidden until they have a value.',
   'cz.fixed': '{name} is fixed: it always sits here.',
   'cz.grip': 'Move {name}',
   'cz.moved': '{name} moved',

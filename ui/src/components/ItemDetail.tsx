@@ -1,11 +1,4 @@
-import {
-  createContext,
-  type ReactNode,
-  useContext,
-  useLayoutEffect,
-  useRef,
-  useState,
-} from 'react';
+import { type ReactNode, useContext, useLayoutEffect, useRef, useState } from 'react';
 import { turnAgent, waitsOf } from '../actions.ts';
 import { DETAILS_ROWS, detailsCut } from '../detail-form.ts';
 import { leftovers } from '../evidence.ts';
@@ -16,6 +9,7 @@ import { useActiveLease } from '../hooks.ts';
 import { type PlainKey, t, tx } from '../i18n/i18n.ts';
 import { TypeIcon } from '../icons/TypeIcon.tsx';
 import {
+  blankValues,
   type DetailBlock,
   type DetailSection,
   detailBlocks,
@@ -48,10 +42,8 @@ import { RoundsModule } from './RoundsModule.tsx';
 import { AcrossBoards } from './relations/AcrossBoards.tsx';
 import { ChildrenModule } from './relations/ChildrenModule.tsx';
 import { RelationsModule } from './relations/RelationsModule.tsx';
+import { ShowEmpty } from './show-empty.ts';
 import { Timeline } from './Timeline.tsx';
-
-// The builder draws every placed field, an empty one saying so: the word it gives the item (its type).
-export const ShowEmpty = createContext<string | undefined>(undefined);
 
 // A field's value as the detail draws it; where the builder asks for them, an empty one says so.
 function Shown({ field, value }: { field: PlacedValue['field']; value: string }) {
@@ -275,9 +267,7 @@ export function ItemDetail({
   const kind = itemNodeKind(item, type, lease !== null);
   const emptyWord = useContext(ShowEmpty);
   const shownFields =
-    emptyWord === undefined || !type
-      ? item.fields
-      : { ...Object.fromEntries(type.fields.map((each) => [each.name, ''])), ...item.fields };
+    emptyWord === undefined || !type ? item.fields : { ...blankValues(type), ...item.fields };
   const { primary, side, sections } = detailBlocks(type, shownFields);
   const parent = item.relations.find(({ kind }) => kind === 'parent');
   const gates = gateRows(type, item.state, item.gates);

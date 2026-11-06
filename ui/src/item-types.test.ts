@@ -191,6 +191,13 @@ describe('item types', () => {
     ]);
   });
 
+  it('can also name a placed field that has no value yet, for the builder', () => {
+    expect(rowValues(bug, { area: 'Login' })).toEqual([]);
+    expect(rowValues(bug, { area: 'Login' }, true)).toEqual([
+      { field: severity, value: '', label: 'Severity', at: at('bug', 'row', 0, 'severity') },
+    ]);
+  });
+
   it('puts every value in the row while the type is unknown', () => {
     expect(rowValues(undefined, { area: 'Login' })).toEqual([
       { field: { name: 'area', module: 'text' }, value: 'Login', label: 'area' },
