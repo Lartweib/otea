@@ -1551,7 +1551,7 @@ export const es: Catalog = {
   'customize.besideTarget': 'Junto a {name}',
   'customize.boxMoved': '{name} movida',
   'customize.boxRemoved': 'Caja {name} quitada',
-  'customize.boxAdded': 'Caja nueva {name}',
+  'customize.boxAdded': 'Caja nueva agregada',
   'customize.boxName': 'Nombre de la caja',
   'customize.fullWidth': 'Ancho completo',
   'customize.removeBox': 'Quitar caja',

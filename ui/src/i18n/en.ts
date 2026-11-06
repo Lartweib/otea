@@ -1511,7 +1511,7 @@ export const en = {
   'customize.besideTarget': 'Beside {name}',
   'customize.boxMoved': '{name} moved',
   'customize.boxRemoved': 'Box {name} removed',
-  'customize.boxAdded': 'New box {name}',
+  'customize.boxAdded': 'New box added',
   'customize.boxName': 'Name of the box',
   'customize.fullWidth': 'Full width',
   'customize.removeBox': 'Remove box',
