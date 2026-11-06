@@ -418,14 +418,18 @@ export function App() {
   };
   useDetailMotion(split.workspace, gridded, detailOff, split.grid.room - 9, split.grid.width);
   if (route.view === 'customize') {
+    // A template saved from here lands on this page again: the note shows on the page you land on.
     return (
-      <CustomizePage
-        target={route.target}
-        items={allItems}
-        version={version}
-        connection={connection}
-        onApplied={() => setStudioWrites((count) => count + 1)}
-      />
+      <>
+        <CustomizePage
+          target={route.target}
+          items={allItems}
+          version={version}
+          connection={connection}
+          onApplied={() => setStudioWrites((count) => count + 1)}
+        />
+        <AppliedToast onUndone={() => setStudioWrites((count) => count + 1)} />
+      </>
     );
   }
   return (
