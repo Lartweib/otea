@@ -545,6 +545,24 @@ describe('the Studio API', () => {
         expect(existsSync(join(dataDir(), 'presets', 'work-tasks'))).toBe(false);
       });
 
+      it("saves a template's view for the boards that use it, or as a copy when none does", async () => {
+        await apply();
+        const yaml = labelled(await tasksYaml());
+
+        const used = await post('/studio/presets/tasks/customize', { yaml });
+        expect(used.status).toBe(200);
+        expect(used.body).toMatchObject({ boards: [{ board: 'work', preset: 'work-tasks' }] });
+
+        const unused = await post('/studio/presets/review/customize', {
+          yaml: (await get('/studio/presets/bug-triage')).body.yaml,
+        });
+        expect(unused.status).toBe(200);
+        expect(unused.body).toMatchObject({ boards: [], preset: 'review-copy' });
+        expect(
+          (await post('/studio/presets/tasks/customize', { yaml }, { cookie: '' })).status,
+        ).toBe(401);
+      });
+
       it('takes them only from a signed-in browser on its own origin, with a valid body', async () => {
         await apply();
         const yaml = await tasksYaml();
