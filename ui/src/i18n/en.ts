@@ -436,6 +436,7 @@ export const en = {
   'cz.apply': 'Apply to {board}',
   'cz.hint': 'Drag a field to move it. Click it to change it.',
   'cz.showing': 'Showing {id}',
+  'cz.example': 'Example: {name}',
   'cz.computer': 'Computer',
   'cz.phone': 'Phone',
   'cz.preview': 'Preview',
