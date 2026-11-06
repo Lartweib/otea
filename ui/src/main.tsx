@@ -28,7 +28,7 @@ import './styles/triage.css';
 import './styles/brief.css';
 import './styles/studio.css';
 import './styles/studio-preview.css';
-import './styles/customize.css';
+import './styles/customize-panels.css';
 import './styles/activity.css';
 import './styles/language.css';
 import './styles/pairing.css';
