@@ -467,7 +467,8 @@ export const es: Catalog = {
   'cz.computer': 'Computadora',
   'cz.phone': 'Teléfono',
   'cz.preview': 'Vista previa',
-  'cz.previewNote': 'Los campos vacíos aparecen cuando tienen un valor.',
+  'cz.previewNote':
+    'Los campos vacíos se marcan aquí. En un ítem real de tipo {type} quedan ocultos hasta que tienen un valor.',
   'cz.fixed': '{name} es fijo: siempre va acá.',
   'cz.grip': 'Mover {name}',
   'cz.moved': '{name} movido',

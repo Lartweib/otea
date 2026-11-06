@@ -218,11 +218,21 @@ function undeclared(
     .map(([name, value]) => ({ field: { name, module: 'text' }, value, label: name }));
 }
 
+// Every field of the type, empty: what a builder lays under an item's own values to draw the fields
+// it has none for.
+export function blankValues(type: TypeView): Record<string, string> {
+  return Object.fromEntries(type.fields.map(({ name }) => [name, '']));
+}
+
+// withEmpty: also the placed fields the item has no value for, as empty ones (the builder draws
+// them, a real row does not).
 export function rowValues(
   type: TypeView | undefined,
   values: Readonly<Record<string, string>>,
+  withEmpty = false,
 ): PlacedValue[] {
-  return type ? slotValues(type, 'row', values) : undeclared(type, values);
+  if (!type) return undeclared(type, values);
+  return slotValues(type, 'row', withEmpty ? { ...blankValues(type), ...values } : values);
 }
 
 function blocksOf(

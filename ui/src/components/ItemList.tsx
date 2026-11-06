@@ -2,6 +2,7 @@ import {
   type CSSProperties,
   type ReactNode,
   type RefObject,
+  useContext,
   useEffect,
   useLayoutEffect,
   useRef,
@@ -35,6 +36,7 @@ import { afterFold, panelOf, reopen, select, type UnfoldState } from '../unfold.
 import { Carry } from './Carry.tsx';
 import { GroupLabel } from './GroupLabel.tsx';
 import { ChildBar } from './relations/ChildBar.tsx';
+import { ShowEmpty } from './show-empty.ts';
 import { measureTree, runTree, type Tree, type TreeRun } from './tree-draw.ts';
 import { Unfold } from './Unfold.tsx';
 
@@ -142,12 +144,23 @@ export function Lines({
 
 // What each field module of the type's row slot puts in the row, by column: priority has its own,
 // everything else is a signal at the end of line two. Most modules put nothing.
-function rowMarks(item: Item, collection: CollectionView | undefined) {
+function rowMarks(item: Item, collection: CollectionView | undefined, withEmpty: boolean) {
   const type = typeOf(collection, item.type);
   const priority: ReactNode[] = [];
   const signals: ReactNode[] = [];
-  for (const { field, value, at } of rowValues(type, item.fields)) {
+  for (const { field, value, label, at } of rowValues(type, item.fields, withEmpty)) {
     const { Row, rowColumn } = moduleFor(field.module);
+    // The builder names a placed field that has no value, so a new one is not an empty row. A
+    // field whose module puts nothing in a row never does, so it is not named there.
+    if (withEmpty && value === '') {
+      if (Row)
+        signals.push(
+          <span key={field.name} className="slot-part" {...slotData(at)}>
+            <span className="row-none">{label}</span>
+          </span>,
+        );
+      continue;
+    }
     if (!Row) continue;
     // A box-less wrapper carries the mark's place in the row slot, for Studio.
     const mark = (
@@ -332,7 +345,8 @@ function ItemRow({
   const label = showsTypes(collection) ? typeWord(type, item.type) : undefined;
   const state = stateWord(type, item.state);
   const parent = depth === 0 ? nesting?.parent : undefined;
-  const { priority, signals } = rowMarks(item, collection);
+  const withEmpty = useContext(ShowEmpty) !== undefined;
+  const { priority, signals } = rowMarks(item, collection, withEmpty);
   return (
     <li
       data-flip={rowKey}
