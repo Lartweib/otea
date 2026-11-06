@@ -38,7 +38,6 @@ import { storeDraft, storedDraft } from '../studio/PresetEditor.tsx';
 import { draftPreview } from '../studio/preview.ts';
 import type { Item, ItemView } from '../types.ts';
 import { ApplyDialog } from './ApplyDialog.tsx';
-import { applyOf, boardsText, type Scope, saves, scopeOf, titleOf } from './scope.ts';
 import { announce } from './applied.ts';
 import { BoxMenu } from './BoxMenu.tsx';
 import { FieldMenu } from './FieldMenu.tsx';
@@ -84,6 +83,7 @@ import {
 } from './model.ts';
 import { NewField } from './NewField.tsx';
 import { addOption, removeOption } from './options.ts';
+import { applyOf, boardsText, type Scope, saves, scopeOf, titleOf } from './scope.ts';
 import type { FieldKind } from './types.ts';
 
 type View = 'detail' | 'form' | 'row';
@@ -1177,7 +1177,11 @@ function Builder({
   // Back goes to the item itself, open, not to whatever the history happens to hold.
   const back = () => {
     window.location.replace(
-      itemId ? hashFor(itemId) : scope.template ? studioHash({ kind: 'preset', name: presetName }) : '#/',
+      itemId
+        ? hashFor(itemId)
+        : scope.template
+          ? studioHash({ kind: 'preset', name: presetName })
+          : '#/',
     );
   };
   const submit = async () => {
