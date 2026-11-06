@@ -7,7 +7,7 @@ let current: Applied | undefined;
 const listeners = new Set<() => void>();
 
 export function announce(text: string, undo?: () => Promise<unknown>): void {
-  current = { text, undo, at: Date.now() };
+  current = { text, ...(undo ? { undo } : {}), at: Date.now() };
   for (const listener of listeners) listener();
 }
 
