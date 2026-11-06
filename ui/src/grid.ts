@@ -501,7 +501,9 @@ export type FilterChoice = { value: string; label: string; count: number; on: bo
 
 // How a filter value reads in a menu or a token: the empty one is "No <field>", the field in lower case ("No area").
 export const valueLabel = (column: GridColumn, value: string) =>
-  value === '' ? t('grid.noValue', { column: column.label.replace(/^./, (c) => c.toLowerCase()) }) : value;
+  value === ''
+    ? t('grid.noValue', { column: column.label.replace(/^./, (c) => c.toLowerCase()) })
+    : value;
 
 // A column's values (a text column's from the items) with how many items each would show beside
 // the other filters; a value with nothing left to show drops out, unless it is chosen.
