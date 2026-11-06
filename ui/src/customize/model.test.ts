@@ -315,6 +315,24 @@ describe('boxes', () => {
   });
 });
 
+describe('hiding a field from one view', () => {
+  it('lists it as not in that view while the others still show it, and brings it back', () => {
+    const base = docOf(read(), 'bug');
+    // severity sits in the detail, the row; description in the detail and the form
+    const detail = move(base, 'severity', { zone: 'panel', index: 0 }).doc;
+    expect(shown(detail, 'severity', 'detail')).toBe(false);
+    expect(shown(detail, 'severity', 'row')).toBe(true);
+    const form = hide(base, 'description', 'intake').doc;
+    expect(shown(form, 'description', 'intake')).toBe(false);
+    expect(shown(form, 'description', 'detail')).toBe(true);
+    const back = move(detail, 'severity', { zone: 'side', index: 0 }).doc;
+    expect(shown(back, 'severity', 'detail')).toBe(true);
+    const row = hide(base, 'severity', 'row').doc;
+    expect(shown(row, 'severity', 'row')).toBe(false);
+    expect(shown(row, 'severity', 'detail')).toBe(true);
+  });
+});
+
 describe('blocks to add', () => {
   const ids = (doc: ReturnType<typeof docOf>) =>
     Object.values(doc.things)
