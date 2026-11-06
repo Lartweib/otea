@@ -1,4 +1,11 @@
-import { type ReactNode, useLayoutEffect, useRef, useState } from 'react';
+import {
+  createContext,
+  type ReactNode,
+  useContext,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
 import { turnAgent, waitsOf } from '../actions.ts';
 import { DETAILS_ROWS, detailsCut } from '../detail-form.ts';
 import { leftovers } from '../evidence.ts';
@@ -42,7 +49,19 @@ import { ChildrenModule } from './relations/ChildrenModule.tsx';
 import { RelationsModule } from './relations/RelationsModule.tsx';
 import { Timeline } from './Timeline.tsx';
 
-// `slot`: the data attributes of the field's place in the layout, on its label and its value.
+// The builder draws every placed field, an empty one saying so: the word it gives the item (its type).
+export const ShowEmpty = createContext<string | undefined>(undefined);
+
+// A field's value as the detail draws it; where the builder asks for them, an empty one says so.
+function Shown({ field, value }: { field: PlacedValue['field']; value: string }) {
+  const word = useContext(ShowEmpty);
+  const { Detail } = moduleFor(field.module);
+  if (value === '' && word !== undefined)
+    return <span className="detail-none">{t('detail.emptyOn', { type: word })}</span>;
+  return <Detail field={field} value={value} />;
+}
+
+// : the data attributes of the field's place in the layout, on its label and its value.
 function Field({
   label,
   children,
@@ -70,10 +89,9 @@ function FieldList({
   return (
     <dl className={className}>
       {values.map(({ field, value, label, at }) => {
-        const { Detail } = moduleFor(field.module);
         return (
           <Field key={field.name} label={label} slot={slotData(at)}>
-            <Detail field={field} value={value} />
+            <Shown field={field} value={value} />
           </Field>
         );
       })}
@@ -250,7 +268,12 @@ export function ItemDetail({
     });
   const type = typeOf(collection, item.type);
   const kind = itemNodeKind(item, type, lease !== null);
-  const { primary, side, sections } = detailBlocks(type, item.fields);
+  const emptyWord = useContext(ShowEmpty);
+  const shownFields =
+    emptyWord === undefined || !type
+      ? item.fields
+      : { ...Object.fromEntries(type.fields.map((each) => [each.name, ''])), ...item.fields };
+  const { primary, side, sections } = detailBlocks(type, shownFields);
   const parent = item.relations.find(({ kind }) => kind === 'parent');
   const gates = gateRows(type, item.state, item.gates);
   const loose = leftovers(type, item.evidence);
@@ -259,12 +282,12 @@ export function ItemDetail({
       // The description leads the brief as plain text, without a label; the other fields follow it.
       const lead = part.values.find(({ field }) => field.name === LEAD);
       const rest = part.values.filter((value) => value !== lead);
-      const Lead = lead ? moduleFor(lead.field.module).Detail : undefined;
+
       return (
         <div key={`fields:${index}`} className="detail-fields">
-          {lead && Lead ? (
+          {lead ? (
             <div className="detail-lead" {...slotData(lead.at)}>
-              <Lead field={lead.field} value={lead.value} />
+              <Shown field={lead.field} value={lead.value} />
             </div>
           ) : null}
           {rest.length > 0 ? <FieldList values={rest} /> : null}
@@ -378,8 +401,7 @@ export function ItemDetail({
     ...aside.flatMap((part) =>
       part.kind === 'fields'
         ? part.values.map(({ field, value, label, at }) => {
-            const { Detail } = moduleFor(field.module);
-            return { label, value: <Detail field={field} value={value} />, slot: slotData(at) };
+            return { label, value: <Shown field={field} value={value} />, slot: slotData(at) };
           })
         : [],
     ),

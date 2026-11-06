@@ -10,7 +10,7 @@ import {
   useState,
 } from 'react';
 import type { Preset } from '../../../src/core/preset.ts';
-import { ItemDetail } from '../components/ItemDetail.tsx';
+import { ItemDetail, ShowEmpty } from '../components/ItemDetail.tsx';
 import { ItemList } from '../components/ItemList.tsx';
 import { IntakeForm } from '../components/NewItemForm.tsx';
 import { EvidenceFiles } from '../evidence-files.ts';
@@ -53,8 +53,10 @@ import {
   deleteField,
   docOf,
   dropBeside,
+  type Facet,
   type History,
   type Home,
+  hide,
   homeOf,
   homeWord,
   KIND_WORD,
@@ -67,6 +69,7 @@ import {
   renameBox,
   setAlso,
   setBeside,
+  shown,
   start,
   type Thing,
   undo,
@@ -162,6 +165,14 @@ export function CustomizePage({
   );
 }
 
+// The click a drag ends with must not select what it lands on. It only comes when the pointer is
+// let go over where it went down, so the guard also goes away on its own.
+function swallowClick() {
+  const stop = (event: Event) => event.stopPropagation();
+  window.addEventListener('click', stop, { capture: true, once: true });
+  setTimeout(() => window.removeEventListener('click', stop, true), 0);
+}
+
 function Loader(props: {
   presetName: string;
   board: string;
@@ -229,6 +240,9 @@ function Builder({
   const [newName, setNewName] = useState('');
   const [boxRects, setBoxRects] = useState<BoxRect[]>([]);
   const [fixeds, setFixeds] = useState<Fixed[]>([]);
+  const [zoneRects, setZoneRects] = useState<{ header?: Rect; side?: Rect }>({});
+  const zonesRef = useRef(zoneRects);
+  zonesRef.current = zoneRects;
   const [boxing, setBoxing] = useState<Boxing>();
   const [renaming, setRenaming] = useState<number>();
   const [boxMenu, setBoxMenu] = useState<number>();
@@ -317,6 +331,7 @@ function Builder({
     if (!root) {
       setBoxRects((was) => (was.length === 0 ? was : []));
       setFixeds((was) => (was.length === 0 ? was : []));
+      setZoneRects((was) => (Object.keys(was).length === 0 ? was : {}));
       return;
     }
     const origin = root.getBoundingClientRect();
@@ -334,6 +349,7 @@ function Builder({
     const sections = [...root.querySelectorAll('.st-canvas-view section.detail-section')];
     const boxes: BoxRect[] = [];
     const fixed: Fixed[] = [];
+    const zones: { header?: Rect; side?: Rect } = {};
     for (const section of sections) {
       const at = section.getAttribute('data-section');
       const label = section.querySelector('.detail-section-label');
@@ -343,8 +359,22 @@ function Builder({
           body: rectOf(section.querySelector('.detail-section-body')),
           label: rectOf(label?.querySelector('span') ?? label),
         };
-      } else if (label) fixed.push({ name: label.textContent?.trim() ?? '', rect: rectOf(label) });
+      } else if (section.querySelector('.timeline')) {
+        fixed.push({ name: t('customize.fixedHistory'), rect: rectOf(section) });
+      } else if (label) {
+        fixed.push({ name: label.textContent?.trim() ?? '', rect: rectOf(label) });
+        if (section.querySelector('.fields-meta')) zones.side = rectOf(section);
+      }
     }
+    const head = root.querySelector('.st-canvas-view .detail-head');
+    if (head) {
+      zones.header = rectOf(head);
+      const title = head.querySelector('h1');
+      if (title) fixed.push({ name: t('customize.fixedTitle'), rect: rectOf(title) });
+      const state = head.querySelector('.detail-head-row');
+      if (state) fixed.push({ name: t('customize.fixedState'), rect: rectOf(state) });
+    }
+    setZoneRects((was) => (JSON.stringify(was) === JSON.stringify(zones) ? was : zones));
     const dense = boxes.filter(Boolean);
     setBoxRects((was) => (JSON.stringify(was) === JSON.stringify(dense) ? was : dense));
     setFixeds((was) => (JSON.stringify(was) === JSON.stringify(fixed) ? was : fixed));
@@ -363,6 +393,8 @@ function Builder({
       element.removeEventListener('load', load, true);
     };
   }, []);
+
+  const facet: Facet = view === 'form' ? 'intake' : view === 'row' ? 'row' : 'detail';
 
   // ---- dragging
   const dropAt = (
@@ -398,12 +430,16 @@ function Builder({
     const loose = placed.filter(
       ({ part }) => part.section === undefined && (ZONES as readonly string[]).includes(part.slot),
     );
+    const inSlot = (slot: string) =>
+      loose.filter(({ part }) => part.slot === slot && part.index >= 0);
+    // Under the title and Details are drawn as a whole even with nothing in them.
+    for (const zone of ['header', 'side'] as const) {
+      const rect = zonesRef.current[zone];
+      if (rect) spots.push({ zone, rect, parts: inSlot(zone) });
+    }
     for (const { slot, rect } of slotBoxes(loose))
-      spots.push({
-        zone: slot as Zone,
-        rect,
-        parts: loose.filter(({ part }) => part.slot === slot && part.index >= 0),
-      });
+      if (slot === 'row' || slot === 'intake')
+        spots.push({ zone: slot, rect, parts: inSlot(slot) });
     const area = (r: Rect) => r.width * r.height;
     const spot = spots
       .filter(
@@ -428,7 +464,9 @@ function Builder({
       ? anchor.rect.top - 3
       : prev
         ? prev.rect.top + prev.rect.height + 3
-        : frame.top;
+        : spot.zone === 'header'
+          ? frame.top + frame.height - 4
+          : frame.top;
     const rect = (anchor ?? prev ?? { rect: frame }).rect;
     return {
       over: {
@@ -473,7 +511,7 @@ function Builder({
       clearInterval(scroller);
       setDrag(undefined);
       if (!moved || e.type === 'pointercancel') return;
-      window.addEventListener('click', (c) => c.stopPropagation(), { capture: true, once: true });
+      swallowClick();
       const h = histRef.current;
       if (!h || !last?.over) return;
       if (last.why) {
@@ -481,15 +519,21 @@ function Builder({
         return;
       }
       const over = last.over;
-      let index = over.index;
-      if (over.zone !== 'panel') {
-        const list =
-          over.zone === 'section'
-            ? (h.doc.sections[over.section ?? 0]?.entries ?? [])
-            : h.doc.zones[over.zone];
-        const from = list.indexOf(id);
-        if (from >= 0 && from < index) index -= 1;
+      if (over.zone === 'panel') {
+        const hid = hide(h.doc, id, facet);
+        if (hid.refused) return say(hid.refused);
+        if (JSON.stringify(hid.doc) === JSON.stringify(h.doc)) return;
+        apply((cur) => commit(cur, hid.doc));
+        say(t('customize.hiddenFrom', { name: h.doc.things[id]?.name ?? id }), () => apply(undo));
+        return;
       }
+      let index = over.index;
+      const list =
+        over.zone === 'section'
+          ? (h.doc.sections[over.section ?? 0]?.entries ?? [])
+          : h.doc.zones[over.zone];
+      const from = list.indexOf(id);
+      if (from >= 0 && from < index) index -= 1;
       const result = move(h.doc, id, { ...over, index });
       if (result.refused) return say(result.refused);
       if (JSON.stringify(result.doc) === JSON.stringify(h.doc)) return;
@@ -550,7 +594,7 @@ function Builder({
       window.removeEventListener('pointercancel', finish);
       setBoxing(undefined);
       if (!moved || e.type === 'pointercancel') return;
-      window.addEventListener('click', (c) => c.stopPropagation(), { capture: true, once: true });
+      swallowClick();
       const h = histRef.current;
       if (!h || !last) return;
       const name = h.doc.sections[index]?.title ?? '';
@@ -608,11 +652,12 @@ function Builder({
                 zone: 'section' as const,
                 rect,
               })),
+              ...(['header', 'side'] as const).flatMap((zone) => {
+                const rect = zoneRects[zone];
+                return rect ? [{ key: zone, zone, rect }] : [];
+              }),
               ...slotBoxes(
-                placed.filter(
-                  ({ part }) =>
-                    part.section === undefined && (ZONES as readonly string[]).includes(part.slot),
-                ),
+                placed.filter(({ part }) => part.slot === 'row' || part.slot === 'intake'),
               ).map(({ slot, rect }) => ({ key: slot, zone: slot as Zone, rect })),
             ].map(({ key, zone, rect }) => (
               <div
@@ -625,7 +670,11 @@ function Builder({
                   width: rect.width + 16,
                   height: rect.height + 16,
                 }}
-              />
+              >
+                {zone === 'header' || zone === 'side' ? (
+                  <span className="cz-zonetag">{zoneWord(zone)}</span>
+                ) : null}
+              </div>
             ))
           : null}
         {placed.map(({ part, rect }) => {
@@ -893,7 +942,13 @@ function Builder({
         onDown={() => homeId && into(homeId, at + 1)}
         upDisabled={!home || at <= 0}
         downDisabled={!home || at >= list.length - 1}
-        onHide={() => go({ zone: 'panel', index: 0 })}
+        onHide={() => {
+          const hid = hide(now, id, facet);
+          if (hid.refused) return say(hid.refused);
+          change(hid.doc);
+          setSelected(undefined);
+          say(t('customize.hiddenFrom', { name: thing.name }), () => apply(undo));
+        }}
         canDelete={field}
         usedBy={count}
         confirmingDelete={deletingId === id}
@@ -1026,20 +1081,25 @@ function Builder({
   } else if (item) {
     const detail = canvas(
       t('cz.showing', { id: item.id }),
-      <ItemDetail
-        item={item}
-        canWrite={false}
-        collection={preview.collection}
-        collectionOf={() => preview.collection}
-      />,
+      <ShowEmpty.Provider value={item.type}>
+        <ItemDetail
+          item={item}
+          canWrite={false}
+          collection={preview.collection}
+          collectionOf={() => preview.collection}
+        />
+      </ShowEmpty.Provider>,
     );
     drawn = device === 'phone' ? <div className="st-phone-frame">{detail}</div> : detail;
   } else drawn = <p className="t-small">{t('cz.noItem')}</p>;
 
   const discard = () => {
+    const before = hist;
     storeDraft(presetName, undefined);
     setHist(start(hist.base));
     setSelected(undefined);
+    setBoxMenu(undefined);
+    say(t('customize.discarded'), () => setHist(before));
   };
   const back = () => {
     if (window.history.length > 1) window.history.back();
@@ -1059,7 +1119,14 @@ function Builder({
       setBusy(false);
     }
   };
-  const hidden = unplaced(doc).filter((thing) => thing.kind !== 'files' && thing.kind !== 'link');
+  // What the view being edited does not show, even where another view still does.
+  const hidden = Object.values(doc.things).filter(
+    (thing) =>
+      thing.kind !== 'files' &&
+      thing.kind !== 'link' &&
+      !FIXED.has(thing.id) &&
+      !shown(doc, thing.id, facet),
+  );
   const blocks = Object.values(doc.things).filter(
     (thing) => thing.kind === 'files' || thing.kind === 'link',
   );
@@ -1101,7 +1168,7 @@ function Builder({
     change(result.doc);
     say(t('cz.moved', { name: thing.name }), () => apply(undo));
   };
-  const placedNow = drag ? doc.things[drag.id] && homeOf(doc, drag.id) !== undefined : false;
+  const placedNow = drag ? doc.things[drag.id] && shown(doc, drag.id, facet) : false;
   const dropToHide = drag?.over?.zone === 'panel' && placedNow;
 
   return (
@@ -1241,6 +1308,7 @@ function Builder({
       {toast ? (
         <div className="cz-toast" role="status">
           {toast.text}
+          {toast.undo ? <span aria-hidden="true">·</span> : null}
           {toast.undo ? (
             <button
               type="button"
