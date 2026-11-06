@@ -476,22 +476,36 @@
   pointer-events: none;
 }
 .cz-toast {
-  position: fixed;
-  left: 50%;
-  bottom: 22px;
-  translate: -50% 0;
   z-index: var(--z-flight);
   display: flex;
-  gap: 14px;
+  gap: 12px;
   align-items: center;
-  height: 38px;
-  padding: 0 8px 0 16px;
+  justify-content: space-between;
+  box-sizing: border-box;
+  min-height: 38px;
+  padding: 6px 8px 6px 16px;
   background: var(--ink);
   color: var(--sf);
-  border-radius: 999px;
+  border-radius: 14px;
   box-shadow: 0 14px 34px -14px var(--shadow);
   font-size: 13.5px;
-  white-space: nowrap;
+  line-height: 1.35;
+}
+/* in the builder it sits in the free column to the right of the page, under its switches, so it
+   never covers what was just placed */
+.cz-float .cz-toast {
+  flex-basis: 100%;
+  margin-top: 10px;
+}
+.cz-float .cz-toast > span {
+  display: none;
+}
+/* once applied, on the page it lands on: a corner of the screen, clear of the item */
+.cz-toast-app {
+  position: fixed;
+  right: 22px;
+  bottom: 22px;
+  max-width: min(380px, calc(100vw - 44px));
 }
 .cz-toast button {
   all: unset;
