@@ -86,7 +86,7 @@ import {
 } from './model.ts';
 import { NewField } from './NewField.tsx';
 import { addOption, removeOption } from './options.ts';
-import { applyOf, boardsText, type Scope, saves, scopeOf, titleOf } from './scope.ts';
+import { applyOf, boardsText, leaveOf, type Scope, saves, scopeOf, titleOf } from './scope.ts';
 import type { FieldKind } from './types.ts';
 
 type View = 'detail' | 'form' | 'row';
@@ -138,6 +138,10 @@ export function CustomizePage({
     return (
       <main className="cz-page cz-msg">
         <p>{t('cz.desktopOnly')}</p>
+        <a className="btn quiet cz-leave" href={leaveOf(target).hash}>
+          <Icon name="left" />
+          {leaveOf(target).label}
+        </a>
       </main>
     );
   if (blueprint.status !== 'ready')
