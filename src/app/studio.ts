@@ -25,7 +25,12 @@ import {
   SAMPLES_FILE,
   type Sample,
 } from '../core/samples.ts';
-import { findCollection, listCollections, selectItems, setCollectionPreset } from '../store/queries.ts';
+import {
+  findCollection,
+  listCollections,
+  selectItems,
+  setCollectionPreset,
+} from '../store/queries.ts';
 import {
   type BlueprintStatus,
   blueprintStatus,
