@@ -431,7 +431,17 @@ export function ItemDetail({
   const asideModules = aside.filter((part) => part.kind !== 'fields');
   const briefParts = brief.map(block).filter((part) => part !== null);
   const structureParts = structure.map(block).filter((part) => part !== null);
-  // Sections in order; two consecutive half sections share a row.
+  // Sections in order; two consecutive half sections share a row. A section with nothing to show
+  // is left out, except in the builder, which draws it so it can be filled.
+  const partsOf = new Map(
+    (sections ?? []).map((section) => [
+      section.index,
+      [
+        ...section.blocks.map(block).filter((part) => part !== null),
+        ...(section.index === sections?.[0]?.index ? briefParts : []),
+      ],
+    ]),
+  );
   const drawSection = (section: DetailSection) => (
     <Section
       key={`section:${section.index}`}
@@ -440,11 +450,13 @@ export function ItemDetail({
       section={section.index}
       half={section.width === 'half'}
     >
-      {section.blocks.map(block).filter((part) => part !== null)}
-      {section.index === sections?.[0]?.index ? briefParts : null}
+      {partsOf.get(section.index)}
     </Section>
   );
-  const sectionRows = sectionsInRows(sections ?? []).map((row) =>
+  const drawn = (sections ?? []).filter(
+    ({ index }) => placeholders || (partsOf.get(index)?.length ?? 0) > 0,
+  );
+  const sectionRows = sectionsInRows(drawn).map((row) =>
     row.length === 2 ? (
       <div key={`pair:${row[0]?.index}`} className="detail-pair">
         {row.map(drawSection)}
@@ -591,7 +603,7 @@ export function ItemDetail({
                 <div className="detail-rest">{briefParts}</div>
               ) : null}
             </>
-          ) : (
+          ) : briefParts.length > 0 || placeholders ? (
             <Section name="brief" label={t('detail.brief')}>
               {briefParts.length > 0 ? (
                 briefParts
@@ -599,7 +611,7 @@ export function ItemDetail({
                 <p className="t-small">{t('common.noFields')}</p>
               )}
             </Section>
-          )}
+          ) : null}
           {structureParts.length > 0 ? (
             <Section name="structure" label={t('detail.structure')}>
               {structureParts}
