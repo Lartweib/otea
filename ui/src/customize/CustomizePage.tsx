@@ -14,7 +14,7 @@ import {
   customizeBoard,
   fetchPresetSamples,
   fetchPresetSource,
-  fetchProjectBlueprint,
+  fetchStudioPresets,
   type PresetSamples,
   type PresetSource,
   revertBoard,
@@ -76,7 +76,7 @@ export function CustomizePage({
   connection: Connection;
 }) {
   const wide = useMediaQuery('(min-width: 900px)');
-  const blueprint = useRemote(fetchProjectBlueprint, version, connection);
+  const blueprint = useRemote(fetchStudioPresets, version, connection);
   if (!wide)
     return (
       <main className="cz-page cz-msg">
@@ -89,7 +89,9 @@ export function CustomizePage({
         <p>{t('cz.loading')}</p>
       </main>
     );
-  const boards = blueprint.value.blueprint?.boards ?? [];
+  const boards = blueprint.value.flatMap((summary) =>
+    summary.collections.map((name) => ({ name, preset: summary.name })),
+  );
   const item = target.kind === 'item' ? items.find(({ id }) => id === target.id) : undefined;
   const board =
     target.kind === 'item'
