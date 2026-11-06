@@ -530,6 +530,12 @@ export function yamlOf(
     if (thing.name !== fieldLabel(id)) spec.label = thing.name;
     else delete spec.label;
     next = setIn(next, at, spec);
+    if (!was) {
+      // A language that labels the preset labels every field: the new one starts with its typed name.
+      const labels = (rawOf(next) as { labels?: Record<string, { fields?: object }> }).labels ?? {};
+      for (const language of Object.keys(labels))
+        next = setIn(next, ['labels', language, 'fields', id], thing.name);
+    }
   }
   const layout = preset?.types.find(({ name }) => name === type)?.layout;
   const at = (slot: string) => [...layoutPath(rawOf(next), type), slot];
