@@ -1,207 +1,252 @@
-import { useEffect, useRef, useState } from 'react';
+import { type CSSProperties, useId, useRef, useState } from 'react';
 import { t } from '../i18n/i18n.ts';
-import { Button } from '../kit/index.ts';
-import type { Box } from '../studio/canvas.ts';
-import {
-  type Doc,
-  deleteField,
-  homeOf,
-  KIND_WORD,
-  type Kind,
-  move,
-  type Need,
-  patchThing,
-  refusal,
-  setAlso,
-  type Thing,
-  type Zone,
-  zoneWord,
-} from './model.ts';
+import { useDismiss } from './dismiss.ts';
+import { Cross, Down, Tick, Up } from './glyphs.tsx';
+import { addOption } from './options.ts';
+import { FIELD_KINDS, type FieldKind, NEEDS, type Need } from './types.ts';
 
-const KINDS: Kind[] = ['short', 'long', 'choice', 'level'];
-const NEEDS: Need[] = ['no', 'complete', 'create'];
-const PLACES: Zone[] = ['header', 'body', 'side'];
+export type ZoneChoice = { id: string; label: string; title?: string };
 
-// The menu beside a field: everything about it in one place. Closes on Esc, a click outside and X.
-export function FieldMenu({
-  thing,
-  was,
-  doc,
-  anchor,
-  used,
-  onClose,
-  onChange,
-}: {
-  thing: Thing;
-  was: Thing | undefined;
-  doc: Doc;
-  anchor: Box | undefined;
-  used: number;
+export type FieldMenuProps = {
+  // A field has a type, options and a need; a block (files, links) only a name and a place.
+  variant?: 'field' | 'block';
+  name: string;
+  onName: (name: string) => void;
   onClose: () => void;
-  onChange: (doc: Doc) => void;
-}) {
+  style?: CSSProperties;
+  // Block: what it shows.
+  says?: string;
+  kind?: FieldKind;
+  onKind?: (kind: FieldKind) => void;
+  // True when the new type may not fit values already saved.
+  typeMayNotFit?: boolean;
+  options?: readonly string[];
+  onAddOption?: (label: string) => void;
+  onRemoveOption?: (label: string) => void;
+  need?: Need;
+  onNeed?: (need: Need) => void;
+  inForm?: boolean;
+  inRow?: boolean;
+  onToggleForm?: () => void;
+  onToggleRow?: () => void;
+  zones?: readonly ZoneChoice[];
+  zone?: string;
+  onZone?: (id: string) => void;
+  onUp: () => void;
+  onDown: () => void;
+  upDisabled?: boolean;
+  downDisabled?: boolean;
+  onHide: () => void;
+  hideLabel?: string;
+  canDelete?: boolean;
+  // How many items hold a value in this field.
+  usedBy?: number;
+  confirmingDelete?: boolean;
+  onAskDelete?: () => void;
+  onKeepField?: () => void;
+  onDelete?: () => void;
+};
+
+export function FieldMenu(p: FieldMenuProps) {
   const ref = useRef<HTMLDivElement>(null);
-  const [deleting, setDeleting] = useState(false);
-  useEffect(() => {
-    ref.current?.querySelector('input')?.focus();
-    const key = (event: KeyboardEvent) => event.key === 'Escape' && onClose();
-    const down = (event: PointerEvent) => {
-      const target = event.target;
-      if (ref.current && target instanceof Node && !ref.current.contains(target)) {
-        if (!(target instanceof Element && target.closest('.cz-grip'))) onClose();
-      }
-    };
-    window.addEventListener('keydown', key);
-    window.addEventListener('pointerdown', down);
-    return () => {
-      window.removeEventListener('keydown', key);
-      window.removeEventListener('pointerdown', down);
-    };
-  }, [onClose]);
-  const home = homeOf(doc, thing.id);
-  const list = home ? doc.zones[home] : [];
-  const at = list.indexOf(thing.id);
-  const go = (zone: Zone | 'panel', index: number) => {
-    const result = move(doc, thing.id, { zone, index });
-    if (!result.refused) onChange(result.doc);
+  const [draft, setDraft] = useState('');
+  const id = useId();
+  useDismiss(ref, p.onClose);
+  const field = (p.variant ?? 'field') === 'field';
+  const used = p.usedBy ?? 0;
+  const addOpt = () => {
+    const label = draft.trim();
+    if (!label) return;
+    if (addOption(p.options ?? [], label).length > (p.options ?? []).length) p.onAddOption?.(label);
+    setDraft('');
   };
-  const editable = thing.kind !== 'files' && thing.kind !== 'link';
-  const top = anchor ? Math.max(0, anchor.top - 8) : 0;
-  const left = anchor ? anchor.left + anchor.width + 20 : 0;
+
   return (
-    <div className="cz-menu" ref={ref} role="dialog" aria-label={thing.name} style={{ top, left }}>
-      <button type="button" className="cz-x" aria-label={t('customize.close')} onClick={onClose}>
-        ×
-      </button>
-      {editable ? (
+    <div
+      ref={ref}
+      className="cz-menu"
+      role="dialog"
+      aria-label={t('customize.name')}
+      tabIndex={-1}
+      style={p.style}
+    >
+      <div className="cz-mh">
+        <input
+          className="cz-in"
+          type="text"
+          aria-label={t('customize.name')}
+          value={p.name}
+          onChange={(e) => p.onName(e.target.value)}
+        />
+        <button
+          type="button"
+          className="btn sm quiet cz-mx"
+          aria-label={t('customize.close')}
+          onClick={p.onClose}
+        >
+          <Cross />
+        </button>
+      </div>
+      {!field && p.says ? <p className="cz-mp">{p.says}</p> : null}
+      {field ? (
         <>
-          <label>
-            <span>{t('customize.name')}</span>
-            <input
-              value={thing.name}
-              onChange={(e) => onChange(patchThing(doc, thing.id, { name: e.target.value }))}
-            />
-          </label>
-          <label>
-            <span>{t('customize.type')}</span>
-            <select
-              value={thing.kind}
-              onChange={(e) =>
-                onChange(patchThing(doc, thing.id, { kind: e.target.value as Kind }))
-              }
-            >
-              {KINDS.map((kind) => (
-                <option key={kind} value={kind}>
-                  {KIND_WORD[kind]}
-                </option>
+          <div className="cz-mq">
+            <span className="cz-ml">{t('customize.type')}</span>
+            <div className="cz-sg wrap">
+              {FIELD_KINDS.map((k) => (
+                <button
+                  key={k}
+                  type="button"
+                  className={p.kind === k ? 'on' : ''}
+                  aria-pressed={p.kind === k}
+                  onClick={() => p.onKind?.(k)}
+                >
+                  {t(`customize.kind.${k}`)}
+                </button>
               ))}
-            </select>
-          </label>
-          {was && was.kind !== thing.kind && used > 0 ? (
-            <p className="cz-warn">{t('customize.typeWarn')}</p>
-          ) : null}
-          {thing.kind === 'choice' ? (
-            <label>
-              <span>Options</span>
-              <textarea
-                rows={3}
-                value={(thing.options ?? []).join('\n')}
-                onChange={(e) =>
-                  onChange(
-                    patchThing(doc, thing.id, {
-                      options: e.target.value
-                        .split('\n')
-                        .map((line) => line.trim())
-                        .filter(Boolean),
-                    }),
-                  )
-                }
+            </div>
+            {p.typeMayNotFit && p.kind ? (
+              <p className="cz-mp cz-warn" role="status">
+                {t('customize.typeWarning', { kind: t(`customize.kind.${p.kind}`) })}
+              </p>
+            ) : null}
+          </div>
+          {p.kind === 'choice' ? (
+            <div className="cz-mq">
+              <span className="cz-ml">{t('customize.options')}</span>
+              <ul className="cz-opts">
+                {(p.options ?? []).map((o) => (
+                  <li key={o}>
+                    <button
+                      type="button"
+                      className="cz-opt"
+                      aria-label={t('customize.removeOption', { label: o })}
+                      onClick={() => p.onRemoveOption?.(o)}
+                    >
+                      {o} ×
+                    </button>
+                  </li>
+                ))}
+              </ul>
+              <input
+                className="cz-in cz-optin"
+                type="text"
+                placeholder={t('customize.addOption')}
+                aria-label={t('customize.addOption')}
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    addOpt();
+                  }
+                }}
               />
-            </label>
+            </div>
           ) : null}
-          <label>
-            <span>{t('customize.needed')}</span>
-            <select
-              value={thing.need}
-              onChange={(e) =>
-                onChange(patchThing(doc, thing.id, { need: e.target.value as Need }))
-              }
-            >
-              {NEEDS.map((need) => (
-                <option key={need} value={need}>
-                  {t(`customize.need.${need}`)}
-                </option>
+          <div className="cz-mq">
+            <span className="cz-ml">{t('customize.needed')}</span>
+            <div className="cz-sg wrap">
+              {NEEDS.map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  className={p.need === n ? 'on' : ''}
+                  aria-pressed={p.need === n}
+                  onClick={() => p.onNeed?.(n)}
+                >
+                  {t(`customize.need.${n}`)}
+                </button>
               ))}
-            </select>
-          </label>
-          <fieldset>
-            <legend>{t('customize.alsoIn')}</legend>
-            {(['intake', 'row'] as const).map((zone) => {
-              const refused = refusal(thing.kind, zone);
-              return (
-                <label key={zone} className="cz-check" title={refused}>
-                  <input
-                    type="checkbox"
-                    checked={doc.zones[zone].includes(thing.id)}
-                    disabled={refused !== undefined}
-                    onChange={(e) => onChange(setAlso(doc, thing.id, zone, e.target.checked))}
-                  />
-                  {zoneWord(zone)}
-                </label>
-              );
-            })}
-          </fieldset>
+            </div>
+            {p.need ? <p className="cz-mp">{t(`customize.need.${p.need}.says`)}</p> : null}
+          </div>
+          <div className="cz-mq" role="group" aria-labelledby={`${id}-also`}>
+            <span className="cz-ml" id={`${id}-also`}>
+              {t('customize.alsoIn')}
+            </span>
+            <div className="cz-chks">
+              <Check checked={!!p.inForm} onToggle={p.onToggleForm} label={t('customize.inForm')} />
+              <Check checked={!!p.inRow} onToggle={p.onToggleRow} label={t('customize.inRow')} />
+            </div>
+          </div>
         </>
       ) : null}
-      <div className="cz-moveto">
-        <label>
-          <span>{t('customize.moveTo')}</span>
-          <select value={home ?? ''} onChange={(e) => go(e.target.value as Zone, 0)}>
-            {PLACES.map((zone) => (
-              <option key={zone} value={zone} disabled={refusal(thing.kind, zone) !== undefined}>
-                {zoneWord(zone)}
-              </option>
-            ))}
-          </select>
-        </label>
-        <Button size="sm" disabled={!home || at <= 0} onClick={() => home && go(home, at - 1)}>
-          {t('customize.up')}
-        </Button>
-        <Button
-          size="sm"
-          disabled={!home || at >= list.length - 1}
-          onClick={() => home && go(home, at + 1)}
-        >
-          {t('customize.down')}
-        </Button>
-      </div>
-      <div className="cz-danger">
-        <Button size="sm" onClick={() => go('panel', 0)}>
-          {t('customize.hide')}
-        </Button>
-        {editable ? (
-          deleting ? (
-            <>
-              <p className="cz-warn">
-                {t('customize.deleteNote', { name: thing.name, type: 'type' })}
-              </p>
-              <Button
-                size="sm"
-                onClick={() => {
-                  onChange(deleteField(doc, thing.id));
-                  onClose();
-                }}
-              >
-                {t('customize.delete')}
-              </Button>
-            </>
-          ) : (
-            <Button size="sm" variant="quiet" onClick={() => setDeleting(true)}>
-              {t('customize.delete')}
-            </Button>
-          )
+      <div className="cz-mq">
+        {p.zones && p.zones.length > 0 ? (
+          <>
+            <span className="cz-ml">{t('customize.moveTo')}</span>
+            <div className="cz-sg wrap">
+              {p.zones.map((z) => (
+                <button
+                  key={z.id}
+                  type="button"
+                  className={p.zone === z.id ? 'on' : ''}
+                  title={z.title}
+                  aria-pressed={p.zone === z.id}
+                  onClick={() => p.onZone?.(z.id)}
+                >
+                  {z.label}
+                </button>
+              ))}
+            </div>
+          </>
         ) : null}
+        <div className="cz-mud">
+          <button type="button" className="btn sm quiet" disabled={p.upDisabled} onClick={p.onUp}>
+            <Up />
+            {t('customize.up')}
+          </button>
+          <button type="button" className="btn sm quiet" disabled={p.downDisabled} onClick={p.onDown}>
+            <Down />
+            {t('customize.down')}
+          </button>
+        </div>
+      </div>
+      <div className="cz-mfoot">
+        {p.confirmingDelete ? (
+          <div className="cz-mdel" role="alertdialog" aria-label={t('customize.deleteTitle')}>
+            <b>{t('customize.deleteTitle')}</b>
+            <span>
+              {used > 0 ? t('customize.deleteKeeps', { count: used }) : t('customize.deleteNone')}
+            </span>
+            <div className="cz-mdela">
+              <button type="button" className="btn sm" onClick={p.onDelete}>
+                {t('customize.deleteField')}
+              </button>
+              <button type="button" className="btn sm quiet" onClick={p.onKeepField}>
+                {t('customize.keepIt')}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <button type="button" className="btn sm quiet" onClick={p.onHide}>
+              {p.hideLabel ?? t('customize.hide')}
+            </button>
+            {p.canDelete ? (
+              <div className="cz-mdl">
+                <button type="button" className="btn sm quiet" onClick={p.onAskDelete}>
+                  {t('customize.deleteField')}
+                </button>
+                <span className="cz-muse">{t('customize.usedBy', { count: used })}</span>
+              </div>
+            ) : null}
+          </>
+        )}
       </div>
     </div>
+  );
+}
+
+function Check(props: { checked: boolean; onToggle?: (() => void) | undefined; label: string }) {
+  return (
+    <label className="cz-chk">
+      <input type="checkbox" checked={props.checked} onChange={props.onToggle} />
+      <i>
+        <Tick />
+      </i>
+      {props.label}
+    </label>
   );
 }
