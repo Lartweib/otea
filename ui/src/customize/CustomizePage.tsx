@@ -94,6 +94,8 @@ import { tileKeys } from './tiles.ts';
 import type { FieldKind } from './types.ts';
 
 type View = 'detail' | 'form' | 'row';
+const TOAST_SHORT = 6000;
+const TOAST_LONG = 12_000;
 const NO_FOLDS = { collapsed: new Set<string>(), expanded: new Set<string>() };
 const FIXED = new Set(['title']);
 const saysOf = (thing: Thing) =>
@@ -347,14 +349,18 @@ function Builder({
     current?.kind === 'example' ? preview?.view(current.id) : (realView ?? undefined);
   const rows = current?.kind === 'real' ? rowsOf(realRows, current.id) : examples;
 
-  const say = useCallback((text: string, undoIt?: () => void) => {
+  // A note stays a few seconds; one that offers to take back something big (a discard) stays longer.
+  // The next change replaces it.
+  const say = useCallback((text: string, undoIt?: () => void, hold = false) => {
     clearTimeout(toastTimer.current);
     setToast(undoIt ? { text, undo: undoIt } : { text });
-    toastTimer.current = setTimeout(() => setToast(undefined), 6000);
+    toastTimer.current = setTimeout(() => setToast(undefined), hold ? TOAST_LONG : TOAST_SHORT);
   }, []);
   useEffect(() => () => clearTimeout(toastTimer.current), []);
   const apply = (next: (h: History) => History) => {
     setHint(false);
+    clearTimeout(toastTimer.current);
+    setToast(undefined);
     setHist((h) => (h ? next(h) : h));
   };
   const doc = hist?.doc;
@@ -1184,7 +1190,7 @@ function Builder({
     setHist(start(hist.base));
     setSelected(undefined);
     setBoxMenu(undefined);
-    say(t('customize.discarded'), () => setHist(before));
+    say(t('customize.discarded'), () => setHist(before), true);
   };
   // Back goes to the item itself, open, not to whatever the history happens to hold.
   const back = () => {
@@ -1450,6 +1456,23 @@ function Builder({
               {hint && !previewing && !selected && boxMenu === undefined && !drag ? (
                 <p className="cz-hint">{t('cz.hint')}</p>
               ) : null}
+              {toast ? (
+                <div className="cz-toast" role="status">
+                  {toast.text}
+                  {toast.undo ? <span aria-hidden="true">·</span> : null}
+                  {toast.undo ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        toast.undo?.();
+                        setToast(undefined);
+                      }}
+                    >
+                      {t('cz.undo')}
+                    </button>
+                  ) : null}
+                </div>
+              ) : null}
             </div>
           </div>
         </div>
@@ -1467,23 +1490,6 @@ function Builder({
         >
           {doc.things[drag.id]?.name}
           {drag.why ? <small>{drag.why}</small> : null}
-        </div>
-      ) : null}
-      {toast ? (
-        <div className="cz-toast" role="status">
-          {toast.text}
-          {toast.undo ? <span aria-hidden="true">·</span> : null}
-          {toast.undo ? (
-            <button
-              type="button"
-              onClick={() => {
-                toast.undo?.();
-                setToast(undefined);
-              }}
-            >
-              {t('cz.undo')}
-            </button>
-          ) : null}
         </div>
       ) : null}
       {adding ? (
