@@ -141,8 +141,7 @@ export function docOf(preset: Preset, type: string): Doc {
 export type Home = { zone: 'header' | 'side' } | { section: number };
 
 export function homeOf(doc: Doc, id: string): Home | undefined {
-  for (const zone of ['header', 'side'] as const)
-    if (doc.zones[zone].includes(id)) return { zone };
+  for (const zone of ['header', 'side'] as const) if (doc.zones[zone].includes(id)) return { zone };
   const section = doc.sections.findIndex((box) => box.entries.includes(id));
   return section >= 0 ? { section } : undefined;
 }
@@ -215,7 +214,9 @@ export function move(doc: Doc, id: string, to: Drop): { doc: Doc; refused?: stri
     const deep = (at: number | undefined) => at !== undefined && at >= 1;
     const kinds = (next.sections[0]?.entries ?? []).map((each) => next.things[each]?.kind);
     // The file keeps evidence apart from the body, so files after a field need sections.
-    const interleaved = kinds.findIndex((k) => k !== 'files') >= 0 && kinds.lastIndexOf('files') > kinds.findIndex((k) => k !== 'files');
+    const interleaved =
+      kinds.findIndex((k) => k !== 'files') >= 0 &&
+      kinds.lastIndexOf('files') > kinds.findIndex((k) => k !== 'files');
     if (
       thing.kind === 'link' ||
       deep(was && 'section' in was ? was.section : undefined) ||
@@ -348,8 +349,7 @@ export function dropBeside(doc: Doc, from: number, target: number): { doc: Doc; 
   const other = next.sections[target > from ? target - 1 : target] as Section;
   heal(next.sections);
   const row = boxRows(next.sections).find((each) => each.includes(next.sections.indexOf(other)));
-  if (!row || row.length > 1)
-    return { doc, refused: `${other.title} already has a box beside it` };
+  if (!row || row.length > 1) return { doc, refused: `${other.title} already has a box beside it` };
   box.width = 'half';
   other.width = 'half';
   next.sections.splice(next.sections.indexOf(other) + 1, 0, box);
@@ -457,7 +457,8 @@ export function changesOf(base: Doc, doc: Doc): Change[] {
   for (const row of boxRows(doc.sections)) {
     if (row.length !== 2) continue;
     const [a, b] = row.map((at) => doc.sections[at]) as [Section, Section];
-    if (!paired.includes(`${a.id}+${b.id}`)) say(`${a.title} and ${b.title} now sit side by side`, 'move');
+    if (!paired.includes(`${a.id}+${b.id}`))
+      say(`${a.title} and ${b.title} now sit side by side`, 'move');
   }
   for (const row of boxRows(base.sections)) {
     if (row.length !== 2) continue;
