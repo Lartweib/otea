@@ -476,7 +476,7 @@ describe('free text values', () => {
     expect(filterChoices(items, column('area'), { category: ['crash'] }, columns)).toEqual([
       { value: 'farm', label: 'farm', count: 1, on: false },
       { value: 'ui', label: 'ui', count: 1, on: false },
-      { value: '', label: 'No area', count: 1, on: false },
+      { value: '', label: 'No Area', count: 1, on: false },
     ]);
   });
 

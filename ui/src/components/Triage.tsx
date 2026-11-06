@@ -11,6 +11,7 @@ import { moduleFor } from '../modules/registry.ts';
 import { valuesOf } from '../modules/values.ts';
 import { MOTION, reducedMotion } from '../motion.ts';
 import { itemNodeKind } from '../node-kind.ts';
+import { fieldLabel } from '../intake.ts';
 import { fieldWord, keyTitle, stateWord, typeWord } from '../preset-words.ts';
 import { openLabel, relationLabel } from '../relations.ts';
 import { hashFor } from '../selection.ts';
@@ -139,7 +140,7 @@ function CardBody({ item, collectionOf }: { item: Item; collectionOf: Collection
             const { Detail } = moduleFor(field.module);
             return (
               <div key={field.name} className="tcard-field">
-                <dt>{fieldWord(type, field.name) ?? field.name}</dt>
+                <dt>{fieldWord(type, field.name) ?? fieldLabel(field.name)}</dt>
                 <dd>
                   <Detail field={field} value={value} />
                 </dd>

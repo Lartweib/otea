@@ -28,6 +28,7 @@ import { ProjectSettings } from './components/ProjectSettings.tsx';
 import { ProjectsInbox } from './components/ProjectsInbox.tsx';
 import { Sheet } from './components/Sheet.tsx';
 import { browserStorage, Divider, useSplit } from './components/Split.tsx';
+import { CustomizePage } from './customize/CustomizePage.tsx';
 import { studioTreeOf } from './components/StudioTree.tsx';
 import { Brand, Topbar } from './components/Topbar.tsx';
 import { Triage } from './components/Triage.tsx';
@@ -80,6 +81,7 @@ type DetailPaneProps = {
   onClose?: (() => void) | undefined;
   itemOf?: ((id: string) => Item | undefined) | undefined;
   trayHost?: HTMLElement | null | undefined;
+  canCustomize?: boolean;
 };
 
 function DetailPane({
@@ -93,6 +95,7 @@ function DetailPane({
   onClose,
   itemOf,
   trayHost,
+  canCustomize,
 }: DetailPaneProps) {
   if (item.status === 'failed') return <Message muted={false}>{item.message}</Message>;
   if (item.status === 'loading') return <Message>{t('common.loading')}</Message>;
@@ -107,6 +110,7 @@ function DetailPane({
       onClose={onClose}
       itemOf={itemOf}
       trayHost={trayHost}
+      canCustomize={canCustomize === true}
       {...(layout ? { layout } : {})}
       {...(onMoved ? { onMoved } : {})}
     />
@@ -464,6 +468,8 @@ export function App() {
           onChanged={() => setStudioWrites((count) => count + 1)}
           index={studioIndex}
         />
+      ) : route.view === 'customize' ? (
+        <CustomizePage target={route.target} />
       ) : route.view === 'lan' ? (
         <LanPanel
           canManage={canManageDevices}
@@ -593,6 +599,7 @@ export function App() {
                     onClose={gridded ? closeDetail : undefined}
                     itemOf={(id) => allItems.find((each) => each.id === id)}
                     trayHost={detailHost}
+                    canCustomize={canConfigure && !phone}
                   />
                 ) : detailOff || items.status !== 'ready' ? null : firstRun ? (
                   <FirstRun

@@ -58,7 +58,7 @@ function unplacedNotes(preset: Preset): PresetNote[] {
         const of = shared ? ` of ${type.name}` : '';
         return {
           code: 'field_unplaced' as const,
-          level: 'warning' as const,
+          level: 'info' as const,
           message: `${at}.${field}: placed in no layout slot${of} (${FIELD_SLOTS.join(', ')}), so nobody sees it`,
           path: { section: 'fields' as const, type: type.name, field },
         };
