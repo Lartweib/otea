@@ -476,6 +476,7 @@ export const es: Catalog = {
   'cz.saveTemplate': 'Guardar plantilla',
   'cz.undone': 'Todo volvió a como estaba',
   'cz.backStudio': 'Volver a Studio',
+  'cz.backBoard': 'Volver al tablero',
   'cz.saved': 'Plantilla guardada como {name}',
   'cz.noItem': 'No hay un ítem de muestra de este tipo para dibujar.',
   'cz.loading': 'Cargando',
