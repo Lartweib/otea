@@ -120,6 +120,7 @@
 .st-row-use {
   color: var(--mut);
 }
+.st-customize,
 .st-row-go {
   display: inline-flex;
   align-items: center;

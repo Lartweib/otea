@@ -271,6 +271,15 @@ function Loaded({ source, samples, canWrite, phone, items, onSaved }: LoadedProp
           </span>
         </div>
         <div className="st-hr">
+          {canWrite && !phone ? (
+            <a
+              className="btn sm quiet st-customize"
+              href={`#/customize/preset/${encodeURIComponent(source.name)}`}
+            >
+              <Icon name="sliders" />
+              {t('studio.start.customize')}
+            </a>
+          ) : null}
           <Verdict problems={problems.length} />
           {notes.length > 0 ? (
             <span className="st-offscreen-at">
