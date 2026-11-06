@@ -19,6 +19,16 @@ export const Grip = () => (
     )}
   </svg>
 );
+export const Undo = () => (
+  <svg className="icon" width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
+    <path d="M4.5 2.5 L2 5 L4.5 7.5 M2 5 H8 A3.5 3.5 0 0 1 8 12 H5" />
+  </svg>
+);
+export const Redo = () => (
+  <svg className="icon" width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
+    <path d="M9.5 2.5 L12 5 L9.5 7.5 M12 5 H6 A3.5 3.5 0 0 0 6 12 H9" />
+  </svg>
+);
 export const Down = () => svg(12, 'M6 2.5 V9.5 M3 6.5 L6 9.5 L9 6.5');
 export const Up = () => svg(12, 'M6 9.5 V2.5 M3 5.5 L6 2.5 L9 5.5');
 export const Chevron = () => svg(12, 'M2.75 4.5 L6 7.75 L9.25 4.5');
