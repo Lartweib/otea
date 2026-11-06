@@ -51,14 +51,7 @@ const KIND_MODULE: Record<string, string> = {
   choice: 'enum',
   level: 'severity',
 };
-export const KIND_WORD: Record<Kind, string> = {
-  short: 'Short text',
-  long: 'Long text',
-  choice: 'Choice',
-  level: 'Level',
-  files: 'Files',
-  link: 'Links',
-};
+export const kindWord = (kind: Kind): string => t(`customize.kind.${kind}`);
 
 const clone = <T>(value: T): T => JSON.parse(JSON.stringify(value));
 
@@ -84,7 +77,15 @@ const isLink = (entry: LayoutEntry) => entry.module === 'relations' || entry.mod
 
 // The modules a person can put in a box, in the order the panel offers them. Each is created with
 // its own id the first time it is placed, and is offered again once it is hidden.
-export const BLOCKS: readonly { module: string; icon: IconName }[] = [
+export type BlockModule =
+  | 'images'
+  | 'recording'
+  | 'diff'
+  | 'log'
+  | 'diagram'
+  | 'relations'
+  | 'children';
+export const BLOCKS: readonly { module: BlockModule; icon: IconName }[] = [
   { module: 'images', icon: 'image' },
   { module: 'recording', icon: 'video' },
   { module: 'diff', icon: 'code' },
@@ -99,8 +100,12 @@ export const blockOf = (thing: Thing | undefined): string | undefined =>
     ? (thing.entry as { module?: string } | undefined)?.module
     : undefined;
 
-const blockName = (module: string): string | undefined =>
-  BLOCKS.some((each) => each.module === module) ? t(`customize.block.${module}`) : undefined;
+export const blockSays = (module: BlockModule): string => t(`customize.block.${module}.says`);
+
+const blockName = (module: string): string | undefined => {
+  const block = BLOCKS.find((each) => each.module === module);
+  return block ? t(`customize.block.${block.module}`) : undefined;
+};
 
 function readDoc(preset: Preset, type: string): Doc {
   const shape = preset.types.find(({ name }) => name === type);
@@ -154,9 +159,14 @@ function readDoc(preset: Preset, type: string): Doc {
   const brief = [...refs(layout.evidence), ...refs(layout.body.filter((e) => !isLink(e)))];
   const structure = refs([...layout.body, ...layout.side].filter(isLink));
   doc.zones.side = refs(layout.side.filter((e) => !isLink(e)));
-  doc.sections = [{ id: 'brief', title: 'Brief', width: 'full', entries: brief }];
+  doc.sections = [{ id: 'brief', title: t('detail.brief'), width: 'full', entries: brief }];
   if (structure.length > 0)
-    doc.sections.push({ id: 'structure', title: 'Structure', width: 'full', entries: structure });
+    doc.sections.push({
+      id: 'structure',
+      title: t('detail.structure'),
+      width: 'full',
+      entries: structure,
+    });
   return doc;
 }
 
@@ -167,7 +177,7 @@ export function docOf(preset: Preset, type: string): Doc {
   const present = new Set(Object.values(doc.things).map((thing) => blockOf(thing)));
   for (const { module } of BLOCKS) {
     if (present.has(module)) continue;
-    let id = module;
+    let id: string = module;
     for (let n = 2; doc.things[id]; n += 1) id = `${module}-${n}`;
     const link = module === 'relations' || module === 'children';
     doc.things[id] = {
@@ -193,31 +203,26 @@ const homeKey = (doc: Doc, home: Home | undefined): string =>
   !home ? '' : 'zone' in home ? home.zone : (doc.sections[home.section]?.id ?? '');
 
 export function homeWord(doc: Doc, home: Home): string {
-  return 'zone' in home ? zoneWord(home.zone) : (doc.sections[home.section]?.title ?? 'a box');
+  return 'zone' in home
+    ? zoneWord(home.zone)
+    : (doc.sections[home.section]?.title ?? t('customize.m.aBox'));
 }
 
-const WORD: Record<Zone | 'section', string> = {
-  header: 'Under the title',
-  section: 'a box',
-  side: 'Details',
-  row: 'the List row',
-  intake: 'the New item form',
-};
-export const zoneWord = (zone: Zone | 'section') => WORD[zone];
+export const zoneWord = (zone: Zone | 'section'): string => t(`customize.m.zone.${zone}`);
 
 // Why a thing cannot land in a zone, or nothing when it can: small values go anywhere, long text,
 // files and links need a box.
 export function refusal(kind: Kind, zone: Zone | 'section' | 'panel'): string | undefined {
   if (zone === 'panel' || zone === 'section') return undefined;
   if (zone === 'intake')
-    return kind === 'files' || kind === 'link' ? 'The form only asks for fields' : undefined;
+    return kind === 'files' || kind === 'link' ? t('customize.m.formFieldsOnly') : undefined;
   if (zone === 'row') {
-    if (kind === 'long') return 'Long text does not fit in a row';
-    return kind === 'files' || kind === 'link' ? 'A row only shows small values' : undefined;
+    if (kind === 'long') return t('customize.m.rowNoLong');
+    return kind === 'files' || kind === 'link' ? t('customize.m.rowSmallOnly') : undefined;
   }
-  if (kind === 'files') return 'Files need room: they go in a box';
-  if (kind === 'link') return 'Links to other items go in a box';
-  if (kind === 'long') return 'Long text needs room: it goes in a box';
+  if (kind === 'files') return t('customize.m.filesNeedBox');
+  if (kind === 'link') return t('customize.m.linksNeedBox');
+  if (kind === 'long') return t('customize.m.longNeedsBox');
   return undefined;
 }
 
@@ -332,7 +337,7 @@ export function hide(doc: Doc, id: string, facet: Facet): { doc: Doc; refused?: 
   const thing = doc.things[id];
   if (!thing) return { doc };
   if (facet === 'intake' && thing.need === 'create')
-    return { doc, refused: `${thing.name} is needed to create, so the form must ask for it` };
+    return { doc, refused: t('customize.m.formMustAsk', { name: thing.name }) };
   const next = clone(doc);
   if (facet === 'detail') leaveDetail(next, id);
   else drop(next.zones[facet], id);
@@ -371,7 +376,12 @@ export function addBox(doc: Doc, title: string): { doc: Doc; index: number } {
   const next = boxedClone(doc);
   let n = next.sections.length + 1;
   while (next.sections.some((box) => box.id === `b${n}`)) n += 1;
-  next.sections.push({ id: `b${n}`, title: title.trim() || 'New box', width: 'full', entries: [] });
+  next.sections.push({
+    id: `b${n}`,
+    title: title.trim() || t('customize.m.newBox'),
+    width: 'full',
+    entries: [],
+  });
   return { doc: next, index: next.sections.length - 1 };
 }
 
@@ -411,7 +421,8 @@ export function dropBeside(doc: Doc, from: number, target: number): { doc: Doc; 
   const other = next.sections[target > from ? target - 1 : target] as Section;
   heal(next.sections);
   const row = boxRows(next.sections).find((each) => each.includes(next.sections.indexOf(other)));
-  if (!row || row.length > 1) return { doc, refused: `${other.title} already has a box beside it` };
+  if (!row || row.length > 1)
+    return { doc, refused: t('customize.m.boxHasBeside', { name: other.title }) };
   box.width = 'half';
   other.width = 'half';
   next.sections.splice(next.sections.indexOf(other) + 1, 0, box);
@@ -429,7 +440,7 @@ export function setBeside(doc: Doc, index: number, on: boolean): { doc: Doc; ref
     heal(next.sections);
     return { doc: next };
   }
-  if (index === 0) return { doc, refused: 'The first box has nothing before it to sit beside' };
+  if (index === 0) return { doc, refused: t('customize.m.firstBoxAlone') };
   return dropBeside(doc, index, index - 1);
 }
 
@@ -466,7 +477,9 @@ export function changesOf(base: Doc, doc: Doc): Change[] {
     if (!now && was) {
       const module = was.kind === 'files' || was.kind === 'link';
       say(
-        module ? `${was.name} removed from the detail` : `Field ${was.name} deleted`,
+        module
+          ? t('customize.m.ch.removedBlock', { name: was.name })
+          : t('customize.m.ch.fieldDeleted', { name: was.name }),
         module ? 'hidden' : 'gone',
       );
       continue;
@@ -475,42 +488,63 @@ export function changesOf(base: Doc, doc: Doc): Change[] {
     const from = was ? homeOf(base, id) : undefined;
     const to = homeOf(doc, id);
     const there = to ? homeWord(doc, to) : undefined;
-    if (!was) say(`New field ${now.name}${there ? ` in ${there}` : ''}`, 'new');
+    if (!was)
+      say(
+        there
+          ? t('customize.m.ch.newFieldIn', { name: now.name, place: there })
+          : t('customize.m.ch.newField', { name: now.name }),
+        'new',
+      );
     else if (homeKey(base, from) !== homeKey(doc, to)) {
-      if (from && to) say(`${now.name} moved from ${homeWord(base, from)} to ${there}`, 'move');
-      else if (to) say(`${now.name} now shows in ${there}`, 'new');
-      else say(`${now.name} hidden from the detail`, 'hidden');
+      if (from && to)
+        say(
+          t('customize.m.ch.moved', {
+            name: now.name,
+            from: homeWord(base, from),
+            to: there as string,
+          }),
+          'move',
+        );
+      else if (to)
+        say(t('customize.m.ch.nowShows', { name: now.name, place: there as string }), 'new');
+      else say(t('customize.m.ch.hidden', { name: now.name }), 'hidden');
     }
-    if (was && was.name !== now.name) say(`${was.name} is now called ${now.name}`);
+    if (was && was.name !== now.name)
+      say(t('customize.m.ch.renamed', { was: was.name, name: now.name }));
     if (was && JSON.stringify(was.options ?? null) !== JSON.stringify(now.options ?? null))
-      say(`${now.name} options changed`);
+      say(t('customize.m.ch.options', { name: now.name }));
     if (was && was.kind !== now.kind)
-      say(`${now.name} is now a ${KIND_WORD[now.kind]}. Check its saved values: some may not fit.`);
+      say(t('customize.m.ch.kind', { name: now.name, kind: kindWord(now.kind) }));
     if (was && was.need !== now.need)
       say(
         now.need === 'no'
-          ? `${now.name} is no longer needed`
-          : `${now.name} is now needed ${now.need === 'create' ? 'to create' : 'to start work'}`,
+          ? t('customize.m.ch.needNo', { name: now.name })
+          : t(now.need === 'create' ? 'customize.m.ch.needCreate' : 'customize.m.ch.needComplete', {
+              name: now.name,
+            }),
       );
   }
   const common = (a: string[], b: string[]) => a.filter((x) => b.includes(x));
   const shuffled = (a: string[], b: string[]) => common(a, b).join() !== common(b, a).join();
   for (const box of doc.sections) {
     const old = base.sections.find(({ id }) => id === box.id);
-    if (!old) say(`New box ${box.title}`, 'new');
+    if (!old) say(t('customize.m.ch.newBox', { name: box.title }), 'new');
     else {
-      if (old.title !== box.title) say(`Box ${old.title} is now called ${box.title}`);
-      if (shuffled(old.entries, box.entries)) say(`Order changed in ${box.title}`, 'move');
+      if (old.title !== box.title)
+        say(t('customize.m.ch.boxRenamed', { was: old.title, name: box.title }));
+      if (shuffled(old.entries, box.entries))
+        say(t('customize.m.ch.order', { place: box.title }), 'move');
     }
   }
   for (const old of base.sections)
-    if (!doc.sections.some(({ id }) => id === old.id)) say(`Box ${old.title} removed`, 'gone');
+    if (!doc.sections.some(({ id }) => id === old.id))
+      say(t('customize.m.ch.boxRemoved', { name: old.title }), 'gone');
   const same = (a: Section[], b: Section[]) =>
     shuffled(
       a.map(({ id }) => id),
       b.map(({ id }) => id),
     );
-  if (same(base.sections, doc.sections)) say('Boxes in a new order', 'move');
+  if (same(base.sections, doc.sections)) say(t('customize.m.ch.boxesOrder'), 'move');
   const pairs = (d: Doc) =>
     boxRows(d.sections)
       .filter((row) => row.length === 2)
@@ -520,7 +554,7 @@ export function changesOf(base: Doc, doc: Doc): Change[] {
     if (row.length !== 2) continue;
     const [a, b] = row.map((at) => doc.sections[at]) as [Section, Section];
     if (!paired.includes(`${a.id}+${b.id}`))
-      say(`${a.title} and ${b.title} now sit side by side`, 'move');
+      say(t('customize.m.ch.beside', { a: a.title, b: b.title }), 'move');
   }
   for (const row of boxRows(base.sections)) {
     if (row.length !== 2) continue;
@@ -528,25 +562,21 @@ export function changesOf(base: Doc, doc: Doc): Change[] {
     if (!pairs(doc).includes(`${a.id}+${b.id}`)) {
       for (const each of [a, b]) {
         const now = doc.sections.find(({ id }) => id === each.id);
-        if (now?.width === 'full') say(`${now.title} takes the whole width again`, 'move');
+        if (now?.width === 'full') say(t('customize.m.ch.fullWidth', { name: now.title }), 'move');
       }
     }
   }
   for (const zone of ZONES) {
     if (shuffled(base.zones[zone], doc.zones[zone]))
-      say(`Order changed in ${zoneWord(zone)}`, 'move');
+      say(t('customize.m.ch.order', { place: zoneWord(zone) }), 'move');
   }
   for (const zone of ['intake', 'row'] as const) {
-    const [more, less] =
-      zone === 'intake'
-        ? ['New item form now asks for', 'New item form no longer asks for']
-        : ['List row now shows', 'List row no longer shows'];
     for (const id of doc.zones[zone])
       if (!base.zones[zone].includes(id) && doc.things[id])
-        say(`${more} ${doc.things[id].name}`, 'new');
+        say(t(`customize.m.ch.${zone}More`, { name: doc.things[id].name }), 'new');
     for (const id of base.zones[zone])
       if (!doc.zones[zone].includes(id) && base.things[id])
-        say(`${less} ${base.things[id].name}`, 'hidden');
+        say(t(`customize.m.ch.${zone}Less`, { name: base.things[id].name }), 'hidden');
   }
   return out;
 }
