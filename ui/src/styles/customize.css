@@ -654,3 +654,8 @@
   font-size: 0.75rem;
   color: var(--mut);
 }
+
+/* Under the title the real item already draws a band, so a tile would be a second, shorter one. */
+.cz-tile[data-slot="header"] {
+  background: transparent;
+}
