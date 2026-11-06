@@ -247,7 +247,7 @@ export function ItemDetail({
   placeholders = false,
 }: ItemDetailProps) {
   const lease = useActiveLease(item.lease);
-  const root = useContentIn(item.id, layout === 'pane');
+  const root = useContentIn(item.id, (layout === 'pane') && !placeholders);
   // On a wide pane Details moves into the band and History beside the main column.
   const form = useDetailForm(root, layout === 'pane');
   // Which item's long Details is shown whole in the band.
