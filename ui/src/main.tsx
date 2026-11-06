@@ -28,11 +28,8 @@ import './styles/triage.css';
 import './styles/brief.css';
 import './styles/studio.css';
 import './styles/studio-preview.css';
-<<<<<<< HEAD
 import './styles/customize.css';
-=======
 import './styles/customize-panels.css';
->>>>>>> origin/feat/customize-panels
 import './styles/activity.css';
 import './styles/language.css';
 import './styles/pairing.css';

@@ -176,13 +176,3 @@ export const revertBoard = (board: string, previous: CustomizedPreset['previous'
 
 export const updateBlueprint = () =>
   post<{ applied: string[]; kept: string[] }>('/api/studio/blueprint/update', {});
-
-// The board's view changed: its preset copied from the official one on first use, then the new YAML.
-export const customizeBoard = (board: string, yaml: string) =>
-  post<{ preset: string; version: number; previous: string }>(
-    `/api/studio/boards/${encodeURIComponent(board)}/customize`,
-    { yaml },
-  );
-
-export const revertBoard = (board: string, previous: string) =>
-  post<unknown>(`/api/studio/boards/${encodeURIComponent(board)}/revert`, { previous });

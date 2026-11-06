@@ -147,7 +147,13 @@ describe('NewField, BoxMenu, ApplyDialog', () => {
         onRemove: noop,
       }),
     );
-    for (const s of ['Move up', 'Move down', 'Beside the previous box', 'Full width', 'Nothing is deleted'])
+    for (const s of [
+      'Move up',
+      'Move down',
+      'Beside the previous box',
+      'Full width',
+      'Nothing is deleted',
+    ])
       expect(html).toContain(s);
   });
   it('ApplyDialog lists changes, reach, the first-time line and the collapsed file', () => {
@@ -172,6 +178,8 @@ describe('NewField, BoxMenu, ApplyDialog', () => {
     expect(html).toContain('Keep editing');
     expect(html).toContain('aria-expanded="false"');
     expect(html).not.toContain('a: 1');
-    expect(renderToStaticMarkup(createElement(ApplyDialog, { ...props, showFile: true }))).toContain('a: 1');
+    expect(
+      renderToStaticMarkup(createElement(ApplyDialog, { ...props, showFile: true })),
+    ).toContain('a: 1');
   });
 });
