@@ -994,6 +994,7 @@ export const en = {
   'studio.canvas.aria': 'Preview of {id}: click a part to change it',
   'studio.canvas.slot': 'The {slot} slot',
   'studio.inspect.title': 'Inspector',
+  'studio.inspect.inSection': 'This sits in a section. Edit it in Customize view.',
   'studio.inspect.pick':
     'Click a part of the preview to change it. Each slot is drawn as a fine dashed box with its name.',
   'studio.inspect.field': 'field',
