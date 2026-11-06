@@ -5,7 +5,14 @@ import type { CollectionView, FieldView, LayoutEntry, LayoutSlot, TypeView } fro
 
 // Where a type's layout places a part: its slot and its index there, and the field it draws. Studio
 // reads it off the rendered part (slotData) to open what was clicked in the preset.
-export type SlotPath = { type: string; slot: LayoutSlot; index: number; field?: string };
+export type SlotPath = {
+  type: string;
+  slot: LayoutSlot;
+  index: number;
+  field?: string;
+  // Set for an entry of a section: its index there is `index`, its slot is body.
+  section?: number;
+};
 
 // A value with the field that shapes it, the label its layout entry gives it, and where the layout
 // places it (none for a value whose field the type does not declare).
@@ -30,6 +37,7 @@ export function slotData(at: SlotPath | undefined): Record<string, string> {
     'data-slot': at.slot,
     'data-index': String(at.index),
     ...(at.field === undefined ? {} : { 'data-field': at.field }),
+    ...(at.section === undefined ? {} : { 'data-section': String(at.section) }),
   };
 }
 
@@ -69,10 +77,28 @@ export function isRelationModule(entry: LayoutEntry): boolean {
 // Whether the type's detail draws a children module, which then owns the children of a parent.
 export function placesChildren(type: TypeView | undefined): boolean {
   if (!type) return false;
-  return [...type.layout.body, ...type.layout.side].some(({ module }) => module === 'children');
+  const sectioned = (type.layout.sections ?? []).flatMap(({ entries }) => entries);
+  return [...type.layout.body, ...sectioned, ...type.layout.side].some(
+    ({ module }) => module === 'children',
+  );
 }
 
-export type DetailBlocks = { head: PlacedValue[]; primary: DetailBlock[]; side: DetailBlock[] };
+// A section of the detail, drawn in order under its title.
+export type DetailSection = {
+  index: number;
+  title: string;
+  width: 'full' | 'half';
+  blocks: DetailBlock[];
+};
+
+// `sections` is set when the type's layout declares them; `primary` then holds only what no section
+// draws (undeclared values, the plain evidence list).
+export type DetailBlocks = {
+  head: PlacedValue[];
+  primary: DetailBlock[];
+  side: DetailBlock[];
+  sections?: DetailSection[];
+};
 
 // The type an item is of; undefined while its collection loads or when its preset lost the type.
 export function typeOf(collection: CollectionView | undefined, name: string): TypeView | undefined {
@@ -214,6 +240,30 @@ export function detailBlocks(
     const primary: DetailBlock[] = all.length > 0 ? [{ kind: 'fields', values: all }] : [];
     const relations: DetailBlock = { kind: 'relation', entry: { module: 'relations' } };
     return { head: [], primary: [...primary, { kind: 'evidence' }], side: [relations] };
+  }
+  if (type.layout.sections) {
+    const rest = undeclared(type, values);
+    return {
+      head: slotValues(type, 'header', values),
+      primary: [
+        ...(rest.length > 0 ? [{ kind: 'fields' as const, values: rest }] : []),
+        { kind: 'evidence' },
+      ],
+      side: blocksOf(type, placedEntries(type, ['side']), values),
+      sections: type.layout.sections.map(({ title, width, entries }, section) => ({
+        index: section,
+        title,
+        width: width ?? 'full',
+        blocks: blocksOf(
+          type,
+          entries.map((entry, index) => ({
+            entry,
+            at: { ...pathOf(type, 'body', index, entry), section },
+          })),
+          values,
+        ),
+      })),
+    };
   }
   return {
     head: slotValues(type, 'header', values),
