@@ -456,6 +456,7 @@ export const es: Catalog = {
   'cz.form': 'Formulario nuevo',
   'cz.row': 'Fila de la lista',
   'cz.status': { one: '{count} cambio, sin aplicar', other: '{count} cambios, sin aplicar' },
+  'cz.statusShort': { one: '{count} cambio', other: '{count} cambios' },
   'cz.undo': 'Deshacer',
   'cz.redo': 'Rehacer',
   'cz.discard': 'Descartar',
