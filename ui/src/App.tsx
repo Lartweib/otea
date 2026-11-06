@@ -28,11 +28,12 @@ import { ProjectSettings } from './components/ProjectSettings.tsx';
 import { ProjectsInbox } from './components/ProjectsInbox.tsx';
 import { Sheet } from './components/Sheet.tsx';
 import { browserStorage, Divider, useSplit } from './components/Split.tsx';
-import { CustomizePage } from './customize/CustomizePage.tsx';
 import { studioTreeOf } from './components/StudioTree.tsx';
 import { Brand, Topbar } from './components/Topbar.tsx';
 import { Triage } from './components/Triage.tsx';
 import { useDetailMotion, useViewPrefs } from './components/workspace-motion.ts';
+import { AppliedToast } from './customize/AppliedToast.tsx';
+import { CustomizePage } from './customize/CustomizePage.tsx';
 import {
   type Connection,
   useAttention,
@@ -416,8 +417,19 @@ export function App() {
     window.location.hash = ITEMS_HASH;
   };
   useDetailMotion(split.workspace, gridded, detailOff, split.grid.room - 9, split.grid.width);
+  if (route.view === 'customize') {
+    return (
+      <CustomizePage
+        target={route.target}
+        items={allItems}
+        version={version}
+        connection={connection}
+      />
+    );
+  }
   return (
     <div className="app">
+      <AppliedToast onUndone={() => setStudioWrites((count) => count + 1)} />
       <Topbar
         attention={attention}
         project={project.status === 'ready' ? project.value : undefined}
@@ -468,8 +480,6 @@ export function App() {
           onChanged={() => setStudioWrites((count) => count + 1)}
           index={studioIndex}
         />
-      ) : route.view === 'customize' ? (
-        <CustomizePage target={route.target} />
       ) : route.view === 'lan' ? (
         <LanPanel
           canManage={canManageDevices}

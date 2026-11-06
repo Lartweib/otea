@@ -267,7 +267,8 @@ export function changesOf(base: Doc, doc: Doc): Change[] {
         ? ['New item form now asks for', 'New item form no longer asks for']
         : ['List row now shows', 'List row no longer shows'];
     for (const id of doc.zones[zone])
-      if (!base.zones[zone].includes(id) && doc.things[id]) say(`${more} ${doc.things[id].name}`, 'new');
+      if (!base.zones[zone].includes(id) && doc.things[id])
+        say(`${more} ${doc.things[id].name}`, 'new');
     for (const id of base.zones[zone])
       if (!doc.zones[zone].includes(id) && base.things[id])
         say(`${less} ${base.things[id].name}`, 'hidden');

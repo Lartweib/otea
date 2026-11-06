@@ -87,7 +87,8 @@ export function routeFromHash(hash: string): Route {
     const preset = rest.startsWith('preset/') ? decode(rest.slice('preset/'.length)) : undefined;
     const id = decode(rest);
     if (preset) return { view: 'customize', target: { kind: 'preset', name: preset } };
-    if (id && !rest.startsWith('preset/')) return { view: 'customize', target: { kind: 'item', id } };
+    if (id && !rest.startsWith('preset/'))
+      return { view: 'customize', target: { kind: 'item', id } };
   }
   if (path === LAN) return { view: 'lan' };
   if (path === PROJECTS) return { view: 'projects' };
