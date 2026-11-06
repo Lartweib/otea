@@ -1,6 +1,8 @@
 import type { LayoutEntry } from '../../../src/core/modules.ts';
 import type { Preset } from '../../../src/core/preset.ts';
+import { t } from '../i18n/i18n.ts';
 import { fieldLabel } from '../intake.ts';
+import type { IconName } from '../kit/Icon.tsx';
 import { type RawPreset, rawOf, setIn } from '../studio/draft.ts';
 import { fieldPath, layoutPath, removeField } from '../studio/layout-edit.ts';
 
@@ -80,7 +82,27 @@ const written = (entry: LayoutEntry): unknown =>
 
 const isLink = (entry: LayoutEntry) => entry.module === 'relations' || entry.module === 'children';
 
-export function docOf(preset: Preset, type: string): Doc {
+// The modules a person can put in a box, in the order the panel offers them. Each is created with
+// its own id the first time it is placed, and is offered again once it is hidden.
+export const BLOCKS: readonly { module: string; icon: IconName }[] = [
+  { module: 'images', icon: 'image' },
+  { module: 'recording', icon: 'video' },
+  { module: 'diff', icon: 'code' },
+  { module: 'log', icon: 'log' },
+  { module: 'diagram', icon: 'diagram' },
+  { module: 'relations', icon: 'link' },
+  { module: 'children', icon: 'branch' },
+];
+
+export const blockOf = (thing: Thing | undefined): string | undefined =>
+  thing && (thing.kind === 'files' || thing.kind === 'link')
+    ? (thing.entry as { module?: string } | undefined)?.module
+    : undefined;
+
+const blockName = (module: string): string | undefined =>
+  BLOCKS.some((each) => each.module === module) ? t(`customize.block.${module}`) : undefined;
+
+function readDoc(preset: Preset, type: string): Doc {
   const shape = preset.types.find(({ name }) => name === type);
   const doc: Doc = {
     things: {},
@@ -104,7 +126,7 @@ export function docOf(preset: Preset, type: string): Doc {
       if (entry.field === undefined && !doc.things[ref]) {
         doc.things[ref] = {
           id: ref,
-          name: fieldLabel(ref),
+          name: blockName(entry.module) ?? fieldLabel(ref),
           kind: isLink(entry) ? 'link' : 'files',
           need: 'no',
           entry: written(entry),
@@ -135,6 +157,27 @@ export function docOf(preset: Preset, type: string): Doc {
   doc.sections = [{ id: 'brief', title: 'Brief', width: 'full', entries: brief }];
   if (structure.length > 0)
     doc.sections.push({ id: 'structure', title: 'Structure', width: 'full', entries: structure });
+  return doc;
+}
+
+// The type's layout, plus every block it does not use yet, unplaced and ready to be dragged in.
+export function docOf(preset: Preset, type: string): Doc {
+  const doc = readDoc(preset, type);
+  if (!preset.types.some(({ name }) => name === type)) return doc;
+  const present = new Set(Object.values(doc.things).map((thing) => blockOf(thing)));
+  for (const { module } of BLOCKS) {
+    if (present.has(module)) continue;
+    let id = module;
+    for (let n = 2; doc.things[id]; n += 1) id = `${module}-${n}`;
+    const link = module === 'relations' || module === 'children';
+    doc.things[id] = {
+      id,
+      name: blockName(module) ?? id,
+      kind: link ? 'link' : 'files',
+      need: 'no',
+      entry: link ? { module } : { module, id },
+    };
+  }
   return doc;
 }
 
@@ -273,6 +316,7 @@ export function deleteField(doc: Doc, id: string): Doc {
 export const unplaced = (doc: Doc): Thing[] =>
   Object.values(doc.things).filter(
     (thing) =>
+      blockOf(thing) === undefined &&
       !ZONES.some((zone) => doc.zones[zone].includes(thing.id)) &&
       !doc.sections.some((box) => box.entries.includes(thing.id)),
   );

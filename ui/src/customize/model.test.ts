@@ -314,3 +314,56 @@ describe('boxes', () => {
     expect(doc.boxed).toBe(true);
   });
 });
+
+describe('blocks to add', () => {
+  const ids = (doc: ReturnType<typeof docOf>) =>
+    Object.values(doc.things)
+      .filter((thing) => thing.entry !== undefined)
+      .map((thing) => thing.id);
+
+  it('offers every block the type does not use yet, unplaced and named', () => {
+    const doc = docOf(read(), 'bug');
+    expect(ids(doc)).toEqual([
+      'images',
+      'recording',
+      'diff',
+      'log',
+      'diagram',
+      'relations',
+      'children',
+    ]);
+    expect(doc.things.recording?.name).toBe('Video');
+    expect(doc.things.diff?.name).toBe('Code changes');
+    expect(doc.things.relations?.name).toBe('Related items');
+    expect(doc.things.children?.name).toBe('Sub-items');
+    expect(unplaced(doc)).toEqual([]);
+  });
+
+  it('does not offer a second one of a block the layout already has', () => {
+    const doc = docOf(readBoxed(), 'bug');
+    expect(ids(doc).filter((id) => id.startsWith('relations'))).toEqual(['relations']);
+  });
+
+  it('writes a placed block as a real module with its own id, valid in the file', () => {
+    const preset = read();
+    const base = docOf(preset, 'bug');
+    const { doc } = move(base, 'images', { zone: 'section', section: 0, index: 0 });
+    const out = yamlOf(YAML, preset, 'bug', base, doc);
+    expect(out).toContain('module: images');
+    const again = readPreset(out);
+    if (!again.ok) throw new Error(again.problems.join());
+    expect(docOf(again.preset, 'bug').sections[0]?.entries).toContain('images');
+    const diff = move(base, 'diff', { zone: 'section', section: 0, index: 2 }).doc;
+    expect(readPreset(yamlOf(YAML, preset, 'bug', base, diff)).ok).toBe(true);
+    const sub = move(base, 'children', { zone: 'section', section: 0, index: 2 }).doc;
+    expect(readPreset(yamlOf(YAML, preset, 'bug', base, sub)).ok).toBe(true);
+  });
+
+  it('offers a hidden block again', () => {
+    const base = docOf(read(), 'bug');
+    const placed = move(base, 'log', { zone: 'section', section: 0, index: 0 }).doc;
+    expect(shown(placed, 'log', 'detail')).toBe(true);
+    const hidden = move(placed, 'log', { zone: 'panel', index: 0 }).doc;
+    expect(shown(hidden, 'log', 'detail')).toBe(false);
+  });
+});
