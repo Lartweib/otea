@@ -329,4 +329,214 @@ export function extensionsOf(module: string): string[] {
   return EXTENSIONS.filter((extension) => kinds.includes(evidenceTypeOf(`f.${extension}`).kind));
 }
 
+// ---- sections: the detail's main column as titled runs of entries ----
+
+type Raw = Record<string, unknown>;
+
+export type SectionWidth = 'full' | 'half';
+
+// Where an entry sits: a section, or one of the slots that keep their meaning beside sections.
+export type EntryPlace = { section: number } | { slot: 'header' | 'side' | 'row' | 'intake' };
+
+export type EntryEdit = { ok: true; yaml: string } | { ok: false; reason: string };
+
+const refuse = (reason: string): EntryEdit => ({ ok: false, reason });
+
+const isRelation = (module: ModuleKind) => MODULE_REGISTRY[module].family === 'relation';
+
+function rawLayout(yaml: string, type: string): Raw {
+  const raw = rawOf(yaml);
+  let node: unknown = raw;
+  for (const key of layoutPath(raw, type)) node = (node as Raw | undefined)?.[String(key)];
+  return typeof node === 'object' && node !== null ? (node as Raw) : {};
+}
+
+function rawSections(yaml: string, type: string): Raw[] | undefined {
+  const sections = rawLayout(yaml, type).sections;
+  return Array.isArray(sections) ? (sections as Raw[]) : undefined;
+}
+
+function writeSections(yaml: string, type: string, sections: Raw[]): string {
+  return setIn(yaml, [...layoutPath(rawOf(yaml), type), 'sections'], sections);
+}
+
+const entriesOf = (section: Raw | undefined): unknown[] =>
+  Array.isArray(section?.entries) ? (section.entries as unknown[]) : [];
+
+// Turns a layout that places body, evidence and relations into sections: Brief holds the evidence
+// and the body's own entries, Structure the relation modules of the body and the side. The body and
+// evidence slots are removed, the side keeps what is not a relation. A layout that already has
+// sections is returned as it is.
+export function ensureSections(yaml: string, preset: Preset | undefined, type: string): string {
+  if (rawSections(yaml, type)) return yaml;
+  const placed = (slot: LayoutSlot) => slotOf(preset, type, slot);
+  const body = [...placed('evidence'), ...placed('body')];
+  const side = placed('side');
+  const brief = body.filter((e) => !isRelation(e.module));
+  const structure = [...body, ...side].filter((e) => isRelation(e.module));
+  const sections: Raw[] = [
+    { title: 'Brief', entries: brief.map(written) },
+    ...(structure.length > 0 ? [{ title: 'Structure', entries: structure.map(written) }] : []),
+  ];
+  const path = layoutPath(rawOf(yaml), type);
+  const kept = side.filter((e) => !isRelation(e.module)).map(written);
+  let next = setIn(yaml, [...path, 'side'], kept);
+  next = setIn(next, [...path, 'body'], undefined);
+  next = setIn(next, [...path, 'evidence'], undefined);
+  return writeSections(next, type, sections);
+}
+
+function withSections(
+  yaml: string,
+  preset: Preset | undefined,
+  type: string,
+  change: (sections: Raw[]) => Raw[],
+): string {
+  const ready = ensureSections(yaml, preset, type);
+  return writeSections(ready, type, change([...(rawSections(ready, type) ?? [])]));
+}
+
+export function addSection(
+  yaml: string,
+  preset: Preset | undefined,
+  type: string,
+  title: string,
+): string {
+  return withSections(yaml, preset, type, (sections) => [...sections, { title, entries: [] }]);
+}
+
+export function renameSection(
+  yaml: string,
+  preset: Preset | undefined,
+  type: string,
+  index: number,
+  title: string,
+): string {
+  return withSections(yaml, preset, type, (sections) =>
+    sections.map((section, at) => (at === index ? { ...section, title } : section)),
+  );
+}
+
+export function moveSection(
+  yaml: string,
+  preset: Preset | undefined,
+  type: string,
+  from: number,
+  to: number,
+): string {
+  return withSections(yaml, preset, type, (sections) => {
+    if (from === to || from < 0 || from >= sections.length) return sections;
+    const [moved] = sections.splice(from, 1);
+    if (moved) sections.splice(Math.max(0, Math.min(to, sections.length)), 0, moved);
+    return sections;
+  });
+}
+
+// `full` is the default, so it is written by leaving the width out.
+export function setSectionWidth(
+  yaml: string,
+  preset: Preset | undefined,
+  type: string,
+  index: number,
+  width: SectionWidth,
+): string {
+  return withSections(yaml, preset, type, (sections) =>
+    sections.map((section, at) => {
+      if (at !== index) return section;
+      const { title, entries } = section;
+      return width === 'half' ? { title, width, entries } : { title, entries };
+    }),
+  );
+}
+
+// Its entries become unplaced: the fields stay declared, the modules go.
+export function removeSection(
+  yaml: string,
+  preset: Preset | undefined,
+  type: string,
+  index: number,
+): string {
+  return withSections(yaml, preset, type, (sections) => sections.filter((_, at) => at !== index));
+}
+
+const fieldNameOf = (entry: unknown): string | undefined =>
+  typeof entry === 'string' ? entry : ((entry as Raw | null)?.field as string | undefined);
+
+function sameEntry(a: unknown, b: unknown): boolean {
+  const field = fieldNameOf(a);
+  if (field !== undefined) return field === fieldNameOf(b);
+  const x = a as Raw;
+  const y = b as Raw;
+  return x.module === y?.module && x.id === y?.id;
+}
+
+type Spot = EntryPlace & { index: number };
+
+// Moves the entry at `from` to the index `to` of another place (or of the same), between any
+// sections and the slots header, side, row and intake. Refuses, with the reason, what the module
+// rules or the layout do not allow.
+export function moveEntry(
+  yaml: string,
+  preset: Preset | undefined,
+  type: string,
+  from: Spot,
+  to: Spot,
+): EntryEdit {
+  const ready = ensureSections(yaml, preset, type);
+  const sections = (rawSections(ready, type) ?? []).map((s) => ({
+    ...s,
+    entries: [...entriesOf(s)],
+  }));
+  const layout = rawLayout(ready, type);
+  const touched = new Set<string>();
+  const listOf = (place: EntryPlace): unknown[] | undefined => {
+    if ('section' in place) return sections[place.section]?.entries;
+    if (touched.has(place.slot)) return layout[place.slot] as unknown[];
+    touched.add(place.slot);
+    const raw = layout[place.slot];
+    const list = Array.isArray(raw) ? [...raw] : slotOf(preset, type, place.slot).map(written);
+    layout[place.slot] = list;
+    return list;
+  };
+  const source = listOf(from);
+  const target = listOf(to);
+  const entry = source?.[from.index];
+  if (!source || !target || entry === undefined) return refuse('There is no entry there to move.');
+  const fields = typeIn(preset, type)?.fields ?? {};
+  const name = fieldNameOf(entry);
+  const module = (typeof entry === 'string' ? fields[entry]?.module : (entry as Raw).module) as
+    | ModuleKind
+    | undefined;
+  const spec = module ? MODULE_REGISTRY[module] : undefined;
+  if (!spec || !module) return refuse('Its module is unknown.');
+  const slot = 'section' in to ? 'body' : to.slot;
+  if (!spec.slots.includes(slot)) {
+    const here = 'section' in to ? 'a section' : to.slot;
+    return refuse(
+      `The ${module} module cannot sit in ${here} (it goes in ${spec.slots.join(', ')}).`,
+    );
+  }
+  const sameList = source === target;
+  source.splice(from.index, 1);
+  const scope = 'section' in to ? sections.flatMap(entriesOf) : target;
+  const taken = scope.some((other) => sameEntry(entry, other));
+  if (!sameList && taken && name !== undefined) {
+    return refuse(`Field "${name}" is already in ${'section' in to ? 'the sections' : to.slot}.`);
+  }
+  if (!sameList && taken && isRelation(module)) {
+    return refuse(`The ${module} module is already there.`);
+  }
+  const leavesIntake =
+    'slot' in from && from.slot === 'intake' && !('slot' in to && to.slot === 'intake');
+  if (leavesIntake && name !== undefined && fields[name]?.required === 'create') {
+    return refuse(`Field "${name}" is required to create, so the create form must ask for it.`);
+  }
+  const at = sameList && from.index < to.index ? to.index - 1 : to.index;
+  target.splice(Math.max(0, Math.min(at, target.length)), 0, entry);
+  let next = writeSections(ready, type, sections);
+  for (const key of touched)
+    next = setIn(next, [...layoutPath(rawOf(next), type), key], layout[key]);
+  return { ok: true, yaml: next };
+}
+
 export { LAYOUT_SLOTS };
