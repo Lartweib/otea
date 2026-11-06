@@ -25,7 +25,12 @@ import {
   SAMPLES_FILE,
   type Sample,
 } from '../core/samples.ts';
-import { listCollections, selectItems } from '../store/queries.ts';
+import {
+  findCollection,
+  listCollections,
+  selectItems,
+  setCollectionPreset,
+} from '../store/queries.ts';
 import {
   type BlueprintStatus,
   blueprintStatus,
@@ -40,6 +45,7 @@ import {
   OFFICIAL_PRESETS_DIR,
   type PresetOrigin,
   projectPresetsDir,
+  requirePreset,
   sampleFiles,
   samplesText,
 } from './presets.ts';
@@ -510,4 +516,131 @@ export function copyBoardPreset(
   const copy = duplicatePreset(project, from.preset, as);
   pointBoardAt(project, board, copy.name);
   return { board, preset: readPresetSource(project, copy.name) };
+}
+
+// What a customization replaced, so it can be put back: the preset the board used and its YAML.
+export type Previous = { preset: string; yaml: string };
+
+export type Customized = { preset: string; version: number; previous: Previous };
+
+function boardPreset(project: Project, board: string): string {
+  const found =
+    readProjectBlueprint(project.dataDir)?.blueprint?.boards.find(({ name }) => name === board)
+      ?.preset ?? findCollection(project.db, board)?.preset;
+  if (found === undefined) throw new OteaError('not_found', `There is no board ${board}`);
+  return found;
+}
+
+// Points a board at another preset of the same shape: through the blueprint copy when the project
+// has one, so the copy stays consistent, else on the collection itself.
+function repoint(project: Project, board: string, preset: string): void {
+  const listed = readProjectBlueprint(project.dataDir)?.blueprint?.boards.some(
+    ({ name }) => name === board,
+  );
+  if (listed) {
+    pointBoardAt(project, board, preset);
+    return;
+  }
+  setCollectionPreset(project.db, board, preset, requirePreset(project.presets, preset).version);
+}
+
+function named(yaml: string, name: string): string {
+  const doc = parseDocument(yaml);
+  if (doc.errors.length > 0) return yaml;
+  doc.set('preset', name);
+  return doc.toString();
+}
+
+function freeCopyName(project: Project, base: string): string {
+  const taken = (name: string) => {
+    try {
+      locate(project, name);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+  let name = base;
+  for (let n = 2; taken(name); n++) name = `${base}-${n}`;
+  return name;
+}
+
+// Saves a view change for a board. An official preset is only read, so the first change copies it
+// into the project as <board>-<preset> and points the board there; a project preset gets the YAML
+// as its next version. A draft the core refuses changes nothing.
+export function customizeBoard(project: Project, board: string, yaml: string): Customized {
+  const used = boardPreset(project, board);
+  const from = locate(project, used);
+  const previous = { preset: used, yaml: readFileSync(join(from.dir, FILE), 'utf8') };
+  if (from.origin === 'project') {
+    const saved = savePreset(project, used, { yaml: named(yaml, used) });
+    return { preset: used, version: saved.version ?? 0, previous };
+  }
+  const copy = freeCopyName(project, `${board}-${used}`);
+  duplicatePreset(project, used, copy);
+  try {
+    const saved = savePreset(project, copy, { yaml: named(yaml, copy) });
+    repoint(project, board, copy);
+    return { preset: copy, version: saved.version ?? 0, previous };
+  } catch (error) {
+    deletePreset(project, copy);
+    throw error;
+  }
+}
+
+// Puts back what customizeBoard returned: a project preset's earlier YAML, or the official preset
+// a board used before its copy, which is removed once nothing uses it.
+export function revertBoard(project: Project, board: string, previous: Previous): Customized {
+  const current = boardPreset(project, board);
+  const target = locate(project, previous.preset);
+  if (target.origin === 'project') {
+    const saved = savePreset(project, previous.preset, {
+      yaml: named(previous.yaml, previous.preset),
+    });
+    return { preset: previous.preset, version: saved.version ?? 0, previous };
+  }
+  if (current !== previous.preset) {
+    repoint(project, board, previous.preset);
+    if (current.startsWith(`${board}-${previous.preset}`)) deletePreset(project, current);
+  }
+  return { preset: previous.preset, version: 0, previous };
+}
+
+export type PresetCustomized = {
+  // The preset the view now lives in: the template itself, or its project copy.
+  preset: string;
+  version: number;
+  // The boards it was applied to, each with what it replaced.
+  boards: ({ board: string } & Customized)[];
+  // What a template save replaced, when no board uses it.
+  previous: Previous | null;
+};
+
+// Saves a view change made on a template. Boards using it get it (an official template is copied
+// per board); with no board, a project template takes it as its next version and an official one
+// is saved as a project copy.
+export function customizePreset(project: Project, name: string, yaml: string): PresetCustomized {
+  const used = uses(project, name).map((use) => use.name);
+  const from = locate(project, name);
+  if (used.length > 0 && from.origin === 'official') {
+    const boards = used.map((board) => ({ board, ...customizeBoard(project, board, yaml) }));
+    const first = boards[0] as (typeof boards)[number];
+    return { preset: first.preset, version: first.version, boards, previous: null };
+  }
+  const previous = { preset: name, yaml: readFileSync(join(from.dir, FILE), 'utf8') };
+  if (from.origin === 'project') {
+    const saved = savePreset(project, name, { yaml: named(yaml, name) });
+    const version = saved.version ?? 0;
+    const boards = used.map((board) => ({ board, preset: name, version, previous }));
+    return { preset: name, version, boards, previous };
+  }
+  const copy = freeCopyName(project, `${name}-copy`);
+  duplicatePreset(project, name, copy);
+  try {
+    const saved = savePreset(project, copy, { yaml: named(yaml, copy) });
+    return { preset: copy, version: saved.version ?? 0, boards: [], previous };
+  } catch (error) {
+    deletePreset(project, copy);
+    throw error;
+  }
 }

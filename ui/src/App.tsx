@@ -32,6 +32,8 @@ import { studioTreeOf } from './components/StudioTree.tsx';
 import { Brand, Topbar } from './components/Topbar.tsx';
 import { Triage } from './components/Triage.tsx';
 import { useDetailMotion, useViewPrefs } from './components/workspace-motion.ts';
+import { AppliedToast } from './customize/AppliedToast.tsx';
+import { CustomizePage } from './customize/CustomizePage.tsx';
 import {
   type Connection,
   useAttention,
@@ -80,6 +82,7 @@ type DetailPaneProps = {
   onClose?: (() => void) | undefined;
   itemOf?: ((id: string) => Item | undefined) | undefined;
   trayHost?: HTMLElement | null | undefined;
+  canCustomize?: boolean;
 };
 
 function DetailPane({
@@ -93,6 +96,7 @@ function DetailPane({
   onClose,
   itemOf,
   trayHost,
+  canCustomize,
 }: DetailPaneProps) {
   if (item.status === 'failed') return <Message muted={false}>{item.message}</Message>;
   if (item.status === 'loading') return <Message>{t('common.loading')}</Message>;
@@ -107,6 +111,7 @@ function DetailPane({
       onClose={onClose}
       itemOf={itemOf}
       trayHost={trayHost}
+      canCustomize={canCustomize === true}
       {...(layout ? { layout } : {})}
       {...(onMoved ? { onMoved } : {})}
     />
@@ -412,8 +417,24 @@ export function App() {
     window.location.hash = ITEMS_HASH;
   };
   useDetailMotion(split.workspace, gridded, detailOff, split.grid.room - 9, split.grid.width);
+  if (route.view === 'customize') {
+    // A template saved from here lands on this page again: the note shows on the page you land on.
+    return (
+      <>
+        <CustomizePage
+          target={route.target}
+          items={allItems}
+          version={version}
+          connection={connection}
+          onApplied={() => setStudioWrites((count) => count + 1)}
+        />
+        <AppliedToast onUndone={() => setStudioWrites((count) => count + 1)} />
+      </>
+    );
+  }
   return (
     <div className="app">
+      <AppliedToast onUndone={() => setStudioWrites((count) => count + 1)} />
       <Topbar
         attention={attention}
         project={project.status === 'ready' ? project.value : undefined}
@@ -593,6 +614,7 @@ export function App() {
                     onClose={gridded ? closeDetail : undefined}
                     itemOf={(id) => allItems.find((each) => each.id === id)}
                     trayHost={detailHost}
+                    canCustomize={canConfigure && !phone}
                   />
                 ) : detailOff || items.status !== 'ready' ? null : firstRun ? (
                   <FirstRun

@@ -1,4 +1,4 @@
-import { type ReactNode, useLayoutEffect, useRef, useState } from 'react';
+import { type ReactNode, useContext, useLayoutEffect, useRef, useState } from 'react';
 import { turnAgent, waitsOf } from '../actions.ts';
 import { DETAILS_ROWS, detailsCut } from '../detail-form.ts';
 import { leftovers } from '../evidence.ts';
@@ -6,13 +6,17 @@ import { actorLabel, leaseLabel, momentLabel } from '../format.ts';
 import { externalUrl, gateRows } from '../gates.ts';
 import { agoLabel } from '../handoff.ts';
 import { useActiveLease } from '../hooks.ts';
-import { type PlainKey, presetText, t, tx } from '../i18n/i18n.ts';
+import { type PlainKey, t, tx } from '../i18n/i18n.ts';
 import { TypeIcon } from '../icons/TypeIcon.tsx';
 import {
+  blankValues,
   type DetailBlock,
+  type DetailSection,
   detailBlocks,
+  entryLabel,
   type PlacedValue,
   placesChildren,
+  sectionsInRows,
   slotData,
   typeMark,
   typeOf,
@@ -38,9 +42,19 @@ import { RoundsModule } from './RoundsModule.tsx';
 import { AcrossBoards } from './relations/AcrossBoards.tsx';
 import { ChildrenModule } from './relations/ChildrenModule.tsx';
 import { RelationsModule } from './relations/RelationsModule.tsx';
+import { ShowEmpty } from './show-empty.ts';
 import { Timeline } from './Timeline.tsx';
 
-// `slot`: the data attributes of the field's place in the layout, on its label and its value.
+// A field's value as the detail draws it; where the builder asks for them, an empty one says so.
+function Shown({ field, value }: { field: PlacedValue['field']; value: string }) {
+  const word = useContext(ShowEmpty);
+  const { Detail } = moduleFor(field.module);
+  if (value === '' && word !== undefined)
+    return <span className="detail-none">{t('detail.emptyOn', { type: word })}</span>;
+  return <Detail field={field} value={value} />;
+}
+
+// : the data attributes of the field's place in the layout, on its label and its value.
 function Field({
   label,
   children,
@@ -68,10 +82,9 @@ function FieldList({
   return (
     <dl className={className}>
       {values.map(({ field, value, label, at }) => {
-        const { Detail } = moduleFor(field.module);
         return (
           <Field key={field.name} label={label} slot={slotData(at)}>
-            <Detail field={field} value={value} />
+            <Shown field={field} value={value} />
           </Field>
         );
       })}
@@ -92,7 +105,7 @@ function IdStrip({
     const field = type?.fields.find(({ name }) => name === entry.field);
     if (!type || !field) return [];
     const at = { type: type.name, slot: 'header' as const, index, field: field.name };
-    return [{ field, label: entry.label ?? field.name, at }];
+    return [{ field, label: entryLabel(type, field.name, entry.label), at }];
   });
   if (entries.length === 0) return null;
   return (
@@ -103,7 +116,7 @@ function IdStrip({
         const { Detail } = moduleFor(field.module);
         return (
           <div key={field.name} {...slotData(at)}>
-            <dt>{presetText(label)}</dt>
+            <dt>{label}</dt>
             <dd>
               {value === '' ? (
                 <span className="detail-none">{t('detail.noneYet')}</span>
@@ -133,16 +146,25 @@ function Section({
   children,
   travel,
   count,
+  section,
+  half,
 }: {
   name: string;
   label: string;
   children: ReactNode;
   travel?: string;
   count?: string;
+  section?: number;
+  half?: boolean;
 }) {
   const id = `detail-${name}`;
   return (
-    <section className="detail-section" aria-labelledby={id} data-travel={travel}>
+    <section
+      className={half ? 'detail-section detail-section-half' : 'detail-section'}
+      aria-labelledby={id}
+      data-travel={travel}
+      data-section={section}
+    >
       <h2 className="detail-section-label" id={id}>
         <span>{label}</span>
         {count ? <span className="t-cap detail-section-count">{count}</span> : null}
@@ -179,6 +201,11 @@ type ItemDetailProps = {
   itemOf?: ((id: string) => Item | undefined) | undefined;
   // Where the tray for ticked children docks: the detail pane's bottom edge (App).
   trayHost?: HTMLElement | null | undefined;
+  // The viewer may reshape this view (Studio's writes, not on a phone): shows Customize view.
+  canCustomize?: boolean | undefined;
+  // The Customize view's canvas: Structure draws its empty rows ("No children", "No relations")
+  // even where the item has none to show.
+  placeholders?: boolean | undefined;
 };
 
 // The detail of another item comes in (the old one leaves at once): it rises 6px into place, or
@@ -216,9 +243,11 @@ export function ItemDetail({
   onClose,
   itemOf,
   trayHost,
+  canCustomize = false,
+  placeholders = false,
 }: ItemDetailProps) {
   const lease = useActiveLease(item.lease);
-  const root = useContentIn(item.id, layout === 'pane');
+  const root = useContentIn(item.id, layout === 'pane' && !placeholders);
   // On a wide pane Details moves into the band and History beside the main column.
   const form = useDetailForm(root, layout === 'pane');
   // Which item's long Details is shown whole in the band.
@@ -236,7 +265,10 @@ export function ItemDetail({
     });
   const type = typeOf(collection, item.type);
   const kind = itemNodeKind(item, type, lease !== null);
-  const { primary, side } = detailBlocks(type, item.fields);
+  const emptyWord = useContext(ShowEmpty);
+  const shownFields =
+    emptyWord === undefined || !type ? item.fields : { ...blankValues(type), ...item.fields };
+  const { primary, side, sections } = detailBlocks(type, shownFields);
   const parent = item.relations.find(({ kind }) => kind === 'parent');
   const gates = gateRows(type, item.state, item.gates);
   const loose = leftovers(type, item.evidence);
@@ -245,12 +277,12 @@ export function ItemDetail({
       // The description leads the brief as plain text, without a label; the other fields follow it.
       const lead = part.values.find(({ field }) => field.name === LEAD);
       const rest = part.values.filter((value) => value !== lead);
-      const Lead = lead ? moduleFor(lead.field.module).Detail : undefined;
+
       return (
         <div key={`fields:${index}`} className="detail-fields">
-          {lead && Lead ? (
+          {lead ? (
             <div className="detail-lead" {...slotData(lead.at)}>
-              <Lead field={lead.field} value={lead.value} />
+              <Shown field={lead.field} value={lead.value} />
             </div>
           ) : null}
           {rest.length > 0 ? <FieldList values={rest} /> : null}
@@ -266,6 +298,7 @@ export function ItemDetail({
           item={item}
           entry={part.entry}
           canWrite={canWrite}
+          placeholder={placeholders}
           collectionOf={collectionOf}
           onAddChild={onAddChild}
           itemOf={itemOf}
@@ -282,6 +315,7 @@ export function ItemDetail({
           item={item}
           entry={part.entry}
           canWrite={canWrite}
+          placeholder={placeholders}
           collectionOf={collectionOf}
           withChildren={!placesChildren(type)}
         />
@@ -332,7 +366,14 @@ export function ItemDetail({
   // Relation modules make the Structure, wherever the layout places them; the rest of the side
   // goes with the details.
   const brief = primary.filter((part) => part.kind !== 'relation');
-  const structure = [...primary, ...side].filter((part) => part.kind === 'relation');
+  // With sections, relations draw where a section places them; the side's go to Structure only when
+  // no section places one.
+  const sectionRelations = (sections ?? []).some(({ blocks }) =>
+    blocks.some((part) => part.kind === 'relation'),
+  );
+  const structure = [...primary, ...side].filter(
+    (part) => part.kind === 'relation' && !sectionRelations,
+  );
   // Details: the side slot's values and where the item lives, one row each; the side's modules
   // follow them.
   const aside = side.filter((part) => part.kind !== 'relation');
@@ -357,8 +398,7 @@ export function ItemDetail({
     ...aside.flatMap((part) =>
       part.kind === 'fields'
         ? part.values.map(({ field, value, label, at }) => {
-            const { Detail } = moduleFor(field.module);
-            return { label, value: <Detail field={field} value={value} />, slot: slotData(at) };
+            return { label, value: <Shown field={field} value={value} />, slot: slotData(at) };
           })
         : [],
     ),
@@ -381,6 +421,40 @@ export function ItemDetail({
   const asideModules = aside.filter((part) => part.kind !== 'fields');
   const briefParts = brief.map(block).filter((part) => part !== null);
   const structureParts = structure.map(block).filter((part) => part !== null);
+  // Sections in order; two consecutive half sections share a row. A section with nothing to show
+  // is left out, except in the builder, which draws it so it can be filled.
+  const partsOf = new Map(
+    (sections ?? []).map((section) => [
+      section.index,
+      [
+        ...section.blocks.map(block).filter((part) => part !== null),
+        ...(section.index === sections?.[0]?.index ? briefParts : []),
+      ],
+    ]),
+  );
+  const drawSection = (section: DetailSection) => (
+    <Section
+      key={`section:${section.index}`}
+      name={`section-${section.index}`}
+      label={section.title}
+      section={section.index}
+      half={section.width === 'half'}
+    >
+      {partsOf.get(section.index)}
+    </Section>
+  );
+  const drawn = (sections ?? []).filter(
+    ({ index }) => placeholders || (partsOf.get(index)?.length ?? 0) > 0,
+  );
+  const sectionRows = sectionsInRows(drawn).map((row) =>
+    row.length === 2 ? (
+      <div key={`pair:${row[0]?.index}`} className="detail-pair">
+        {row.map(drawSection)}
+      </div>
+    ) : (
+      row.map(drawSection)
+    ),
+  );
   const across = acrossGroups(item.relations, item.collection);
   const standing = lease ? t('detail.onIt', { holder: lease.holder }) : t(TURN_LABEL[item.turn]);
   const unfolded = layout === 'unfold';
@@ -445,6 +519,15 @@ export function ItemDetail({
                 </Pill>
                 <span className="t-cap">{standing}</span>
               </div>
+              {canCustomize ? (
+                <a
+                  className="btn sm quiet detail-customize"
+                  href={`#/customize/${encodeURIComponent(item.id)}`}
+                >
+                  <Icon name="sliders" />
+                  {t('detail.customize')}
+                </a>
+              ) : null}
               {onClose ? (
                 <Button
                   variant="quiet"
@@ -503,9 +586,22 @@ export function ItemDetail({
               />
             </Section>
           ) : null}
-          <Section name="brief" label={t('detail.brief')}>
-            {briefParts.length > 0 ? briefParts : <p className="t-small">{t('common.noFields')}</p>}
-          </Section>
+          {sections ? (
+            <>
+              {sectionRows}
+              {sectionRows.length === 0 && briefParts.length > 0 ? (
+                <div className="detail-rest">{briefParts}</div>
+              ) : null}
+            </>
+          ) : briefParts.length > 0 || placeholders ? (
+            <Section name="brief" label={t('detail.brief')}>
+              {briefParts.length > 0 ? (
+                briefParts
+              ) : (
+                <p className="t-small">{t('common.noFields')}</p>
+              )}
+            </Section>
+          ) : null}
           {structureParts.length > 0 ? (
             <Section name="structure" label={t('detail.structure')}>
               {structureParts}

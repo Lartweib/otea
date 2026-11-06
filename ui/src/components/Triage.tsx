@@ -4,6 +4,7 @@ import { fetchItem, moveItem } from '../api.ts';
 import { agoLabel } from '../format.ts';
 import { useActiveLease } from '../hooks.ts';
 import { t } from '../i18n/i18n.ts';
+import { fieldLabel } from '../intake.ts';
 import { showsTypes, typeOf } from '../item-types.ts';
 import { keyTargetOf } from '../keys.ts';
 import { Button, Icon, Node, nodeLabel, Pill, TypeTag } from '../kit/index.ts';
@@ -139,7 +140,7 @@ function CardBody({ item, collectionOf }: { item: Item; collectionOf: Collection
             const { Detail } = moduleFor(field.module);
             return (
               <div key={field.name} className="tcard-field">
-                <dt>{fieldWord(type, field.name) ?? field.name}</dt>
+                <dt>{fieldWord(type, field.name) ?? fieldLabel(field.name)}</dt>
                 <dd>
                   <Detail field={field} value={value} />
                 </dd>

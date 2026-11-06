@@ -6,6 +6,8 @@ import type { Project } from '../app/project.ts';
 import {
   copyBoardPreset,
   createPreset,
+  customizeBoard,
+  customizePreset,
   deletePreset,
   duplicatePreset,
   listStudioBlueprints,
@@ -13,6 +15,7 @@ import {
   projectBlueprintState,
   readPresetSamples,
   readPresetSource,
+  revertBoard,
   sampleAsset,
   savePreset,
 } from '../app/studio.ts';
@@ -47,6 +50,19 @@ const ApplyBody = z.strictObject({ name: z.string().regex(NAME) });
 
 // The name of the project copy of a board's preset, made before a change to an official one.
 const CopyPresetBody = z.strictObject({ as: z.string().regex(NAME) });
+
+const CustomizeBody = z.strictObject({ yaml: z.string() });
+
+const RevertBody = z.strictObject({
+  previous: z.strictObject({ preset: z.string().regex(NAME), yaml: z.string() }),
+});
+
+function boardParam(c: Context): string {
+  const board = c.req.param('board') ?? '';
+  if (!NAME.test(board))
+    throw new RejectedRequest(400, 'invalid_name', `"${board}" is not a board`);
+  return board;
+}
 
 async function body<T>(c: Context, schema: z.ZodType<T>, expected: string): Promise<T> {
   const raw: unknown = await c.req.json().catch(() => undefined);
@@ -138,6 +154,29 @@ export function studioApi(project: Project, feed: ChangeFeed, auth: Session): Ho
       const copied = copyBoardPreset(project, c.req.param('board'), as);
       feed.notify();
       return c.json(copied, 201);
+    })
+    .post('/boards/:board/customize', async (c) => {
+      assertConfigurable(c, auth);
+      const board = boardParam(c);
+      const { yaml } = await body(c, CustomizeBody, '{"yaml": string}');
+      const customized = customizeBoard(project, board, yaml);
+      feed.notify();
+      return c.json(customized);
+    })
+    .post('/presets/:name/customize', async (c) => {
+      assertConfigurable(c, auth);
+      const { yaml } = await body(c, CustomizeBody, '{"yaml": string}');
+      const customized = customizePreset(project, c.req.param('name'), yaml);
+      feed.notify();
+      return c.json(customized);
+    })
+    .post('/boards/:board/revert', async (c) => {
+      assertConfigurable(c, auth);
+      const board = boardParam(c);
+      const { previous } = await body(c, RevertBody, '{"previous": {"preset", "yaml"}}');
+      const reverted = revertBoard(project, board, previous);
+      feed.notify();
+      return c.json(reverted);
     })
     .post('/blueprint/update', async (c) => {
       assertConfigurable(c, auth);

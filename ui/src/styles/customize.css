@@ -1,0 +1,661 @@
+/* ---- the Customize view builder: the real view in the middle, soft tiles over what can move ---- */
+.cz-page {
+  --cz-left: clamp(248px, 19vw, 272px);
+  --cz-stage: 720px;
+  --cz-col: 330px;
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-human);
+}
+@media (max-width: 1360px) {
+  .cz-page {
+    --cz-stage: 640px;
+    --cz-col: 320px;
+  }
+}
+.cz-msg {
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 0 16px;
+  text-align: center;
+}
+.cz-msg p {
+  margin: 0;
+}
+.cz-leave {
+  gap: 7px;
+  min-height: 44px;
+  padding: 0 16px;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+/* the one bar */
+.cz-bar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: 56px;
+  box-sizing: border-box;
+  padding: 0 16px 0 10px;
+  background: var(--sf);
+  border-bottom: 1px solid var(--line);
+}
+.cz-bar .btn {
+  height: 32px;
+  gap: 5px;
+  padding: 0 10px;
+  font-size: 13px;
+}
+.cz-bar .btn.quiet:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.cz-bar .btn.primary:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.cz-bar > * {
+  flex: none;
+}
+/* What gives way first when the bar is full: the title, then the back link. Apply never does. */
+.cz-back {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 24%;
+  gap: 7px;
+  color: var(--ink);
+}
+.cz-ellip {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cz-title {
+  flex: 0 4 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin: 0 20px 0 10px;
+  font-size: 13.5px;
+  white-space: nowrap;
+  color: var(--mut);
+}
+.cz-title b {
+  font-weight: 600;
+  color: var(--ink);
+}
+.cz-bar > .cz-grow {
+  flex: 1 1 0;
+  min-width: 0;
+}
+.cz-status {
+  margin-right: 10px;
+  font-size: 13px;
+  color: var(--ink);
+  white-space: nowrap;
+}
+.cz-status-long {
+  display: none;
+}
+@media (min-width: 1600px) {
+  .cz-status-long {
+    display: inline;
+  }
+  .cz-status-short {
+    display: none;
+  }
+}
+/* Where the bar is tight, Undo and Redo are their arrows alone (their names stay on the buttons). */
+@media (max-width: 1499px) {
+  .cz-hist span {
+    display: none;
+  }
+  .cz-bar .btn.cz-hist {
+    padding: 0 8px;
+  }
+}
+.cz-bar > .cz-apply {
+  max-width: 280px;
+  margin-left: 8px;
+  padding: 0 14px;
+}
+
+/* switches: one pill, the chosen one lifted */
+.cz-seg {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 1px var(--line);
+  background: var(--bg);
+}
+.cz-seg button {
+  all: unset;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 999px;
+  font: 500 12.5px var(--font-human);
+  color: var(--mut);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.cz-seg button:hover {
+  color: var(--ink);
+}
+.cz-seg button[aria-pressed="true"] {
+  background: var(--sf);
+  box-shadow: 0 0 0 1px var(--lane);
+  color: var(--ink);
+}
+.cz-seg button:focus-visible {
+  outline: 2px solid var(--you);
+  outline-offset: 2px;
+}
+.cz-bar .cz-seg button {
+  height: 28px;
+  padding: 0 13px;
+  font-size: 13px;
+}
+.cz-bar .cz-seg {
+  margin-left: 0;
+}
+
+/* the body: the panel, and the canvas with its reserved column */
+.cz-body {
+  flex: 1;
+  display: grid;
+  grid-template-columns: var(--cz-left) minmax(0, 1fr);
+  min-height: 0;
+}
+.cz-page[data-previewing] .cz-body {
+  grid-template-columns: minmax(0, 1fr);
+}
+.cz-none {
+  margin: 0;
+  flex-basis: 100%;
+  text-align: right;
+  font-size: 12.5px;
+  color: var(--mut);
+}
+.cz-stage {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  overflow-x: clip;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
+}
+/* the detail at its own width, left in the sheet; the column to its right stays free for a menu */
+.cz-sheet {
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: minmax(0, var(--cz-stage)) var(--cz-col);
+  column-gap: 16px;
+  justify-content: center;
+  padding: 32px 12px 96px 30px;
+}
+.cz-canvas {
+  min-width: 0;
+}
+.cz-canvas .st-canvas {
+  max-width: none;
+}
+.cz-canvas .st-slottag,
+.cz-canvas .st-slotbox,
+.cz-canvas .st-hoverbox,
+.cz-canvas .st-selbox {
+  display: none;
+}
+.cz-canvas .st-canvas-view {
+  cursor: default;
+}
+.cz-canvas .st-canvas-view [data-slot] {
+  cursor: default;
+}
+.cz-float {
+  position: sticky;
+  z-index: 6;
+  top: 12px;
+  align-self: start;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 2px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+.cz-float > * {
+  flex: none;
+}
+.cz-showing,
+.cz-pv {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 30px;
+  padding: 0 4px 0 9px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--bg);
+  box-shadow: inset 0 0 0 1px var(--line);
+  font: 500 12px var(--font-human);
+  color: var(--ink);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.cz-showing:hover,
+.cz-pv:hover {
+  background: var(--hov);
+}
+.cz-showing {
+  position: relative;
+}
+.cz-showing select {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  padding: 0;
+  min-width: 0;
+  max-width: 168px;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  outline: 0;
+}
+.cz-showing select option {
+  background: var(--sf);
+  color: var(--ink);
+}
+.cz-showing:focus-within,
+.cz-pv:focus-visible {
+  outline: 2px solid var(--you);
+  outline-offset: 2px;
+}
+.cz-showing .icon {
+  width: 14px;
+  height: 14px;
+  pointer-events: none;
+}
+.cz-pv {
+  padding: 0 9px;
+}
+.cz-pv[aria-pressed="true"] {
+  background: var(--ink);
+  color: var(--sf);
+  box-shadow: none;
+}
+.cz-dev button {
+  padding: 0 6px;
+  font-size: 12px;
+}
+.cz-canvas .detail-section[data-section] {
+  border-top: 0;
+}
+.cz-canvas .detail-head .shape.s-you {
+  fill: var(--mut);
+  stroke: var(--mut);
+}
+.cz-bar .cz-dev button {
+  height: 26px;
+}
+
+/* in the builder the head is quiet: one primary on screen, the Apply. Its moves only explain. */
+.cz-canvas .detail-head .btn.move,
+.cz-canvas .detail-head .btn.move.primary {
+  background: transparent;
+  border-color: var(--line);
+  color: var(--mut);
+  cursor: default;
+}
+.cz-canvas .detail-head .btn.move.quiet {
+  border-color: transparent;
+}
+.cz-canvas .detail-head .btn.move:hover:not(:disabled) {
+  background: var(--hov);
+  color: var(--ink);
+}
+.cz-canvas .detail-head .move-trace {
+  display: none;
+}
+.cz-canvas .detail-head .pill {
+  background: none;
+  box-shadow: inset 0 0 0 1px var(--line);
+  color: var(--mut);
+}
+.cz-canvas .detail-head .t-display {
+  color: color-mix(in oklch, var(--ink) 80%, var(--bg));
+}
+.cz-canvas .detail-head .handoff-thumb {
+  opacity: 0.8;
+}
+
+/* movable things: a soft tile with a muted grip inside it; fixed things stay plain and quiet */
+.cz-tile {
+  position: absolute;
+  box-sizing: border-box;
+  border-radius: 8px;
+  pointer-events: auto;
+  cursor: grab;
+  touch-action: none;
+  background: color-mix(in oklch, var(--ink) 4%, transparent);
+  transition:
+    background var(--m-fast) var(--m-ease),
+    opacity var(--m-fast) var(--m-ease);
+}
+.cz-tile:hover {
+  background: color-mix(in oklch, var(--ink) 8%, transparent);
+}
+/* inside a box the tile gives up its fill at rest: box and tile together would read as a card
+   inside a card. The grip stays; the fill comes back under the pointer. */
+.cz-tile[data-boxed] {
+  background: transparent;
+}
+.cz-tile[data-boxed]:hover {
+  background: color-mix(in oklch, var(--ink) 6%, transparent);
+}
+.cz-tile[data-fixed] {
+  background: none;
+  pointer-events: none;
+  cursor: default;
+}
+.cz-tile[data-lifted] {
+  opacity: 0.3;
+  background: transparent;
+}
+.cz-tile[data-settled] {
+  background: color-mix(in oklch, var(--you) 12%, transparent);
+}
+.cz-tile[data-chosen] {
+  background: color-mix(in oklch, var(--you) 8%, transparent);
+  box-shadow: inset 0 0 0 1.5px var(--you);
+}
+.cz-fgrip {
+  all: unset;
+  position: absolute;
+  left: 6px;
+  top: 5px;
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 22px;
+  border-radius: 5px;
+  color: color-mix(in oklch, var(--mut) 70%, transparent);
+  cursor: grab;
+  touch-action: none;
+  transition: color var(--m-fast) var(--m-ease);
+}
+.cz-fgrip .cz-grip,
+.cz-boxgrip .cz-grip {
+  fill: currentColor;
+}
+.cz-tile:hover > .cz-fgrip,
+.cz-tile[data-chosen] > .cz-fgrip,
+.cz-fgrip:hover {
+  color: var(--mut);
+}
+/* a chip in the list row has no room for a grip beside its text: the grip shows under the pointer */
+.cz-tile[data-slot="row"] > .cz-fgrip {
+  left: 50%;
+  translate: -50% 0;
+  top: -9px;
+  height: 14px;
+  width: 20px;
+  border-radius: 999px;
+  background: var(--sf);
+  box-shadow: inset 0 0 0 1px var(--line);
+  opacity: 0;
+}
+.cz-tile[data-slot="row"]:hover > .cz-fgrip,
+.cz-tile[data-slot="row"] > .cz-fgrip:focus-visible,
+.cz-tile[data-slot="row"][data-chosen] > .cz-fgrip {
+  opacity: 1;
+}
+.cz-fgrip:focus-visible {
+  color: var(--ink);
+  outline: 2px solid var(--you);
+  outline-offset: 1px;
+}
+
+.cz-zone {
+  position: absolute;
+  border-radius: var(--r-m);
+  border: 1.5px dashed color-mix(in oklch, var(--you) 55%, transparent);
+}
+.cz-zone[data-ok="no"] {
+  border-color: var(--line);
+  opacity: 0.6;
+}
+.cz-line {
+  position: absolute;
+  height: 2px;
+  margin-top: -1px;
+  background: var(--you);
+  border-radius: 1px;
+}
+.cz-line[data-bad] {
+  background: var(--warn);
+}
+.cz-ghost {
+  position: fixed;
+  z-index: var(--z-flight);
+  pointer-events: none;
+  padding: 7px 12px;
+  font-size: 0.875rem;
+  background: var(--sf);
+  border-radius: var(--r-m);
+  box-shadow:
+    0 8px 24px -8px var(--shadow),
+    0 0 0 1px var(--you);
+}
+.cz-ghost small {
+  display: block;
+  color: var(--warn);
+  font-size: 0.75rem;
+}
+.cz-hint {
+  flex-basis: 100%;
+  margin: 8px 0 0;
+  text-align: right;
+  color: var(--mut);
+  font-size: 13px;
+  line-height: 1.4;
+  pointer-events: none;
+}
+.cz-toast {
+  z-index: var(--z-flight);
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  box-sizing: border-box;
+  min-height: 38px;
+  padding: 6px 8px 6px 16px;
+  background: var(--ink);
+  color: var(--sf);
+  border-radius: 14px;
+  box-shadow: 0 14px 34px -14px var(--shadow);
+  font-size: 13.5px;
+  line-height: 1.35;
+}
+/* in the builder it sits in the free column to the right of the page, under its switches, so it
+   never covers what was just placed */
+.cz-float .cz-toast {
+  flex-basis: 100%;
+  margin-top: 10px;
+}
+.cz-float .cz-toast > span {
+  display: none;
+}
+/* once applied, on the page it lands on: a corner of the screen, clear of the item */
+.cz-toast-app {
+  position: fixed;
+  right: 22px;
+  bottom: 22px;
+  max-width: min(380px, calc(100vw - 44px));
+}
+.cz-toast button {
+  all: unset;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  height: 26px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: color-mix(in oklch, var(--sf) 18%, transparent);
+  font-weight: 600;
+  cursor: pointer;
+}
+.cz-toast button:hover {
+  background: color-mix(in oklch, var(--sf) 28%, transparent);
+}
+.cz-toast button:focus-visible {
+  outline: 2px solid var(--sf);
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .cz-tile {
+    transition: none;
+  }
+}
+
+.cz-menuslot {
+  position: absolute;
+  z-index: var(--z-tooltip);
+  width: var(--cz-col);
+  box-sizing: border-box;
+  overflow: auto;
+  pointer-events: auto;
+  border-radius: 14px;
+  scrollbar-width: thin;
+}
+
+/* boxes: every section is a box with a hairline, its grip and its name always in view */
+.cz-box {
+  position: absolute;
+  box-sizing: border-box;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  pointer-events: none;
+  transition: border-color var(--m-fast) var(--m-ease);
+}
+.cz-box[data-open] {
+  border-color: var(--bdr);
+}
+.cz-box[data-lifted] {
+  opacity: 0.35;
+}
+.cz-box[data-hot] {
+  border-color: var(--you);
+}
+.cz-boxgrip {
+  all: unset;
+  pointer-events: auto;
+  cursor: grab;
+  touch-action: none;
+  position: absolute;
+  left: 4px;
+  top: 8px;
+  width: 16px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  color: color-mix(in oklch, var(--mut) 70%, transparent);
+  border-radius: 5px;
+}
+.cz-box:hover .cz-boxgrip,
+.cz-boxgrip:hover {
+  color: var(--mut);
+}
+.cz-boxgrip:focus-visible,
+.cz-boxname:focus-visible,
+.cz-fixedlabel:focus-visible {
+  outline: 2px solid var(--you);
+}
+.cz-boxname,
+.cz-fixedlabel {
+  all: unset;
+  position: absolute;
+  box-sizing: border-box;
+  pointer-events: auto;
+  border-radius: 6px;
+}
+.cz-boxname {
+  cursor: grab;
+  touch-action: none;
+}
+.cz-boxname:hover {
+  background: color-mix(in oklch, var(--ink) 6%, transparent);
+}
+.cz-fixedlabel {
+  cursor: default;
+}
+.cz-boxinput {
+  position: absolute;
+  box-sizing: border-box;
+  height: 30px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--sf);
+  box-shadow: inset 0 0 0 1.5px var(--you);
+  font: inherit;
+  font-weight: 600;
+  color: var(--ink);
+  outline: 0;
+  pointer-events: auto;
+  z-index: 2;
+}
+.cz-beside {
+  position: absolute;
+  box-sizing: border-box;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  border: 1.5px dashed var(--you);
+  background: color-mix(in oklch, var(--you) 6%, transparent);
+  pointer-events: none;
+  z-index: 3;
+}
+.cz-beside span {
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--you);
+  color: var(--on-you);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.cz-beside[data-hot] {
+  background: color-mix(in oklch, var(--you) 14%, transparent);
+}
+
+.cz-zonetag {
+  position: absolute;
+  left: 10px;
+  top: -10px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--sf);
+  box-shadow: 0 0 0 1px var(--line);
+  font-size: 0.75rem;
+  color: var(--mut);
+}
+
+/* Under the title the real item already draws a band, so a tile would be a second, shorter one. */
+.cz-tile[data-slot="header"] {
+  background: transparent;
+}

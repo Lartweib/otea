@@ -1,4 +1,5 @@
 import { type PlainKey, t } from './i18n/i18n.ts';
+import { fieldLabel } from './intake.ts';
 import { leaseChars } from './lease.ts';
 import { fieldWord } from './preset-words.ts';
 import { monoWidth } from './row-grid.ts';
@@ -82,7 +83,8 @@ function columnOf(collection: CollectionView, key: string): GridColumn | undefin
   if (!field || !kind) return undefined;
   const values = kind === 'severity' ? [...(field.values ?? [])].reverse() : field.values;
   // A field's header is its preset's label in the language on screen, or its name.
-  const word = collection.types.map((type) => fieldWord(type, key)).find(Boolean) ?? key;
+  const word =
+    collection.types.map((type) => fieldWord(type, key)).find(Boolean) ?? fieldLabel(key);
   return { key, kind, label: word, field, ...(kind !== 'text' && values ? { values } : {}) };
 }
 
@@ -497,9 +499,11 @@ export function filterItems(
 
 export type FilterChoice = { value: string; label: string; count: number; on: boolean };
 
-// How a filter value reads in a menu or a token: the empty one is "No <field>".
+// How a filter value reads in a menu or a token: the empty one is "No <field>", the field in lower case ("No area").
 export const valueLabel = (column: GridColumn, value: string) =>
-  value === '' ? t('grid.noValue', { column: column.label }) : value;
+  value === ''
+    ? t('grid.noValue', { column: column.label.replace(/^./, (c) => c.toLowerCase()) })
+    : value;
 
 // A column's values (a text column's from the items) with how many items each would show beside
 // the other filters; a value with nothing left to show drops out, unless it is chosen.

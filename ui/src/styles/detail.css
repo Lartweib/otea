@@ -24,6 +24,13 @@
   gap: 10px;
   min-height: 22px;
 }
+.detail-customize {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  text-decoration: none;
+}
 
 /* The type, Details' first row: its icon and word. */
 .detail-type {
@@ -174,9 +181,38 @@
   }
 }
 
+/* Two half sections side by side, each with its name above its content; stacked when narrow. */
+.detail-pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 48px;
+  align-items: start;
+}
+
+/* The taller box does not stretch the other's rows: its content starts right under its name. */
+.detail-section-half {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto;
+  align-content: start;
+  row-gap: 10px;
+}
+
+@container detail (max-width: 34rem) {
+  .detail-pair {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: 36px;
+  }
+}
+
 .detail[data-layout="unfold"] .detail-section {
   grid-template-columns: minmax(0, 1fr);
   row-gap: 10px;
+}
+
+/* A detail unfolded in its row is a phone: the pair stacks. */
+.detail[data-layout="unfold"] .detail-pair {
+  grid-template-columns: minmax(0, 1fr);
+  row-gap: 36px;
 }
 
 /* The main column: stacked, the sections in order, Details and History after it. The line that

@@ -27,7 +27,7 @@ import {
   savePreset,
 } from './api.ts';
 import { Canvas } from './Canvas.tsx';
-import type { Part, Placed } from './canvas.ts';
+import { entryOfPart, type Part, type Placed } from './canvas.ts';
 import { diffLines, rawOf, readDraft, workflowOf } from './draft.ts';
 import { Inspector } from './Inspector.tsx';
 import { LaneInspector } from './LaneInspector.tsx';
@@ -51,7 +51,7 @@ export type Draft = { base: string; yaml: string; playbooks: Record<string, stri
 
 const draftKey = (name: string) => `otea.studio.draft.${name}`;
 
-function storedDraft(name: string, base: string): Draft | undefined {
+export function storedDraft(name: string, base: string): Draft | undefined {
   try {
     const text = window.localStorage.getItem(draftKey(name));
     const draft = text === null ? undefined : (JSON.parse(text) as Draft);
@@ -271,6 +271,15 @@ function Loaded({ source, samples, canWrite, phone, items, onSaved }: LoadedProp
           </span>
         </div>
         <div className="st-hr">
+          {canWrite && !phone ? (
+            <a
+              className="btn sm quiet st-customize"
+              href={`#/customize/preset/${encodeURIComponent(source.name)}`}
+            >
+              <Icon name="sliders" />
+              {t('studio.start.customize')}
+            </a>
+          ) : null}
           <Verdict problems={problems.length} />
           {notes.length > 0 ? (
             <span className="st-offscreen-at">
@@ -627,7 +636,7 @@ function Stage({
   const item = withChosen(id === undefined ? undefined : preview.view(id), selected?.field);
   const shape = preview.collection.types.find((each) => each.name === type);
   const entryAt = (slot: LayoutSlot, index: number) => shape?.layout[slot][index];
-  const moduleName = (part: Part) => entryAt(part.slot, part.index)?.id;
+  const moduleName = (part: Part) => (shape ? entryOfPart(shape.layout, part)?.id : undefined);
   const nameAt = (slot: LayoutSlot, index: number) => {
     const entry = entryAt(slot, index);
     return entry?.field ?? entry?.id ?? entry?.module;

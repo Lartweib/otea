@@ -10,7 +10,8 @@ export type Route =
   | { view: 'studio'; page: StudioPage }
   | { view: 'lan' }
   | { view: 'projects' }
-  | { view: 'settings' };
+  | { view: 'settings' }
+  | { view: 'customize'; target: CustomizeTarget };
 
 // Studio's pages: the start (the project's blueprint, or the blueprints to build it from), a
 // preset, the project's blueprint edited or drawn as its diagram.
@@ -20,6 +21,10 @@ export type StudioPage =
   | { kind: 'blueprint'; diagram: boolean }
   | { kind: 'blueprints' };
 
+// What the Customize view builder shapes: an item's view of its board, or a board template.
+export type CustomizeTarget = { kind: 'item'; id: string } | { kind: 'preset'; name: string };
+
+const CUSTOMIZE = '/customize';
 const MODULES = '/modules';
 const TRIAGE = '/triage';
 const BRIEF = '/brief';
@@ -77,6 +82,14 @@ export function routeFromHash(hash: string): Route {
   if (path === STUDIO || path.startsWith(`${STUDIO}/`)) {
     return { view: 'studio', page: studioPage(path.slice(STUDIO.length + 1).split('/')) };
   }
+  if (path.startsWith(`${CUSTOMIZE}/`)) {
+    const rest = path.slice(CUSTOMIZE.length + 1);
+    const preset = rest.startsWith('preset/') ? decode(rest.slice('preset/'.length)) : undefined;
+    const id = decode(rest);
+    if (preset) return { view: 'customize', target: { kind: 'preset', name: preset } };
+    if (id && !rest.startsWith('preset/'))
+      return { view: 'customize', target: { kind: 'item', id } };
+  }
   if (path === LAN) return { view: 'lan' };
   if (path === PROJECTS) return { view: 'projects' };
   if (path === SETTINGS) return { view: 'settings' };
@@ -106,6 +119,12 @@ export function studioHash(page: StudioPage = { kind: 'start' }): string {
     default:
       return `#${STUDIO}`;
   }
+}
+
+export function customizeHash(target: CustomizeTarget): string {
+  return target.kind === 'preset'
+    ? `#${CUSTOMIZE}/preset/${encodeURIComponent(target.name)}`
+    : `#${CUSTOMIZE}/${encodeURIComponent(target.id)}`;
 }
 
 export function modulesHash(name?: string): string {

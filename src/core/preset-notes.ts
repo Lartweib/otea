@@ -50,7 +50,13 @@ const FIELD_SLOTS: readonly LayoutSlot[] = ['header', 'body', 'side', 'row', 'in
 function unplacedNotes(preset: Preset): PresetNote[] {
   const shared = preset.types.length > 1;
   return preset.types.flatMap((type) => {
-    const placed = new Set(FIELD_SLOTS.flatMap((slot) => type.layout[slot].map((e) => e.field)));
+    const sectioned = (type.layout.sections ?? []).flatMap(({ entries }) =>
+      entries.map((e) => e.field),
+    );
+    const placed = new Set([
+      ...FIELD_SLOTS.flatMap((slot) => type.layout[slot].map((e) => e.field)),
+      ...sectioned,
+    ]);
     return Object.keys(type.fields)
       .filter((field) => field !== 'title' && !placed.has(field))
       .map((field) => {
@@ -58,7 +64,7 @@ function unplacedNotes(preset: Preset): PresetNote[] {
         const of = shared ? ` of ${type.name}` : '';
         return {
           code: 'field_unplaced' as const,
-          level: 'warning' as const,
+          level: 'info' as const,
           message: `${at}.${field}: placed in no layout slot${of} (${FIELD_SLOTS.join(', ')}), so nobody sees it`,
           path: { section: 'fields' as const, type: type.name, field },
         };

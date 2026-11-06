@@ -92,7 +92,7 @@ async function get<T>(path: string, signal: AbortSignal): Promise<T> {
   return response.json() as Promise<T>;
 }
 
-async function post<T>(path: string, payload: unknown): Promise<T> {
+export async function post<T>(path: string, payload: unknown): Promise<T> {
   const response = await fetch(path, {
     method: 'POST',
     headers: { accept: 'application/json', 'content-type': 'application/json' },
@@ -159,6 +159,30 @@ export const copyBoardPreset = (board: string, as: string) =>
     `/api/studio/blueprint/boards/${encodeURIComponent(board)}/copy-preset`,
     { as },
   );
+
+export type CustomizedPreset = {
+  preset: string;
+  version: number;
+  previous: { preset: string; yaml: string };
+};
+
+// A view change saved for a board: an official preset is copied first, a project one gets a new
+// version. `previous` is what revertBoard takes to undo it.
+export const customizeBoard = (board: string, yaml: string) =>
+  post<CustomizedPreset>(`/api/studio/boards/${encodeURIComponent(board)}/customize`, { yaml });
+
+export const revertBoard = (board: string, previous: CustomizedPreset['previous']) =>
+  post<CustomizedPreset>(`/api/studio/boards/${encodeURIComponent(board)}/revert`, { previous });
+
+export type CustomizedTemplate = CustomizedPreset & {
+  boards: ({ board: string } & CustomizedPreset)[];
+  previous: CustomizedPreset['previous'] | null;
+};
+
+// A view change made on a template: the boards that use it get it, and with none it is saved as
+// the template, or as a project copy of an official one.
+export const customizeTemplate = (name: string, yaml: string) =>
+  post<CustomizedTemplate>(`/api/studio/presets/${encodeURIComponent(name)}/customize`, { yaml });
 
 export const updateBlueprint = () =>
   post<{ applied: string[]; kept: string[] }>('/api/studio/blueprint/update', {});

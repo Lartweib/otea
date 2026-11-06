@@ -253,6 +253,10 @@ The history in the detail (`ui/src/components/Timeline.tsx`) is the item's past,
 
 Every preset field names a module (`text`, `markdown`, `enum`, `severity`). The UI draws each value through a registry in [`ui/src/modules/`](ui/src/modules/): one file per module plus `registry.ts`, so no component switches on module names. The names come from the core preset format (`FIELD_MODULES` in `src/core/preset.ts`, imported type-only), and the registry is keyed by them, so a module added to the format fails the UI typecheck until it is drawn.
 
+A field may carry `label`, the name people read (`found_in_build` with `label: Found in build`). Detail, form and grid draw the label, then a name derived from the key ("Found in build"); a language's `labels` still win. `fieldKeyFor` (`src/core/fields.ts`) derives a unique key from a typed name. A field no slot places is only an `info` note: hiding it from a view is a choice.
+
+Studio saves a view change per board with `POST /api/studio/boards/:board/customize { yaml }`: an official preset is first copied into the project as `<board>-<preset>` (uniquely named) and the board pointed at it, a project preset gets the YAML as its next version. It returns `{ preset, version, previous: { preset, yaml } }`, and `POST /api/studio/boards/:board/revert { previous }` puts that back. Both are desk-only.
+
 A module (`FieldModuleUi` in `ui/src/modules/contract.ts`) declares:
 
 | Part | Use |
@@ -277,10 +281,37 @@ Rules:
 - Markdown renders with `micromark`, safe by default: raw HTML is shown as text and links with a dangerous protocol lose their href. Never enable its dangerous options. Headings use the human font at 15-17px, lists hang from muted markers, code and code blocks are Spline Sans Mono on `--well`, links are `--you-ink`.
 - A row stays calm: an enum at its default puts nothing in the row. Severity is the exception, since a list of bugs is read by it: its bars always show, and only `critical` (level 4) is drawn in `--warn`.
 
+### Sections
+
+A type's layout may declare `sections` in place of `body` and `evidence`, which then must be empty:
+
+```yaml
+layout:
+  sections:
+    - { title: Brief, entries: [description, steps, { module: images, id: screenshots }] }
+    - { title: Testing notes, width: half, entries: [expected] }
+    - { title: Structure, entries: [{ module: relations }, { module: children }] }
+```
+
+- A section has a `title`, `entries` (the same forms as a slot entry) and an optional `width`, `full` (default) or `half`. Unknown keys, duplicate fields, duplicate relation modules and duplicate evidence ids are refused. Entries obey the `body` module rules, so they may also be `relations` and `children`.
+- Without `sections` nothing changes. `header`, `side`, `row` and `intake` keep their meaning.
+- The detail draws the sections in order, each with its title in the section style (the name in the margin above a hairline). Two consecutive `half` sections sit side by side, the title above the content, and stack on a phone or in a pane narrower than 34rem. Relation modules draw where a section places them; Details and History stay fixed. Parts carry `data-section="<index>"` beside `data-type`, `data-slot` (`body`), `data-index` (the entry's index in the section) and `data-field`.
+- Evidence modules in sections count everywhere evidence modules do: `otea attach --module`, the create form's files, and the plain list of leftovers. A field placed only in a section is not reported as unplaced.
+- Studio edits them with `ensureSections` (turns body, evidence and relations into Brief and Structure), `addSection`, `renameSection`, `moveSection`, `setSectionWidth`, `removeSection` (its entries become unplaced) and `moveEntry` (between any sections and the slots header, side, row and intake, refusing with a reason what the module rules do not allow) in `ui/src/studio/layout-edit.ts`.
+
 ### Catalog
 
 The sidebar reaches it under Studio: while Studio or the catalog is open, the Studio entry counts its presets and unfolds a tree of the blueprint (version, boards), the presets (version, the collections using each, *official* for the read-only ones) and the modules count, each row leading to its page (`StudioTree.tsx`). `#/modules` opens the catalog in the two panes: the index of modules on the left, and on the right an overview of the loaded presets and which module each field picks. `#/modules/<name>` shows one module: its origin, a live preview of every sample in the row, the detail and the edit control (the edit control drives that sample's row and detail, locally; nothing is saved), the preset fields that use it (from `GET /api/presets`) and its `preset.yaml` snippet. Modules that presets name but the UI does not know are listed apart, as "unknown module · renders as plain text". Routes are parsed by `routeFromHash` in `ui/src/selection.ts`; item ids never start with a slash, so `#<item-id>` keeps working.
 
+## Customize view
+
+The builder a person opens from an item's detail (Customize view, on a computer only) to shape a type's layout without touching the file. It draws the real view for one sample item of the type and changes the preset's layout through the Studio's YAML edits (`ui/src/customize/`).
+
+- **Parts.** Detail, New item form and List row, each a zone of things: Under the title, Brief, Details, the form, the row. A left panel lists what is not in this view, with New field, New box and Files and links. Clicking a part opens its menu: name, type, whether it is needed, Also in (the other zones it shows in), Move to, Up and Down, Hide from this view, Delete field.
+- **Tiles and grips.** What moves is a field's tile and its grip (Move {name}); fixed parts (Details, History) say they are fixed and never move. Drag a tile into a zone, or to the panel to hide it: hiding keeps the field and its values. Moving within the detail leaves its place in the form and the row alone.
+- **Zones and refusals.** A zone that cannot take the dragged thing says why and lights no drop: long text and files need room, so they go only in Brief; the form asks only for fields; a row shows only small values.
+- **Preview.** Draws the view with empty fields left out, as they appear once they have a value; selecting is off while it is on. Computer and Phone switch the width.
+- **Apply and revert.** Nothing is written until Apply to {board}, which says how many items it reaches. The first change copies the official preset into the project and the board uses the copy. Undo and Redo walk the changes made here; Discard drops them. After Apply a note stays in the app with an undo that puts the board's previous preset back.
 ## Relations
 
 Relation modules (`ui/src/components/relations/`, logic in `ui/src/relations.ts` and `ui/src/nesting.ts`, tested) draw an item's links with the list's own marks.

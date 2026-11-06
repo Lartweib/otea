@@ -1,6 +1,8 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
+import { setLanguage } from './i18n/i18n.ts';
 import {
   detailBlocks,
+  entryLabel,
   intakeFields,
   intakeSlots,
   intakeTypes,
@@ -185,7 +187,14 @@ describe('item types', () => {
 
   it('puts the values of the row slot in the row', () => {
     expect(rowValues(bug, { area: 'Login', severity: 'high' })).toEqual([
-      { field: severity, value: 'high', label: 'severity', at: at('bug', 'row', 0, 'severity') },
+      { field: severity, value: 'high', label: 'Severity', at: at('bug', 'row', 0, 'severity') },
+    ]);
+  });
+
+  it('can also name a placed field that has no value yet, for the builder', () => {
+    expect(rowValues(bug, { area: 'Login' })).toEqual([]);
+    expect(rowValues(bug, { area: 'Login' }, true)).toEqual([
+      { field: severity, value: '', label: 'Severity', at: at('bug', 'row', 0, 'severity') },
     ]);
   });
 
@@ -203,7 +212,7 @@ describe('item types', () => {
         {
           field: severity,
           value: 'high',
-          label: 'severity',
+          label: 'Severity',
           at: at('bug', 'header', 0, 'severity'),
         },
       ]);
@@ -224,7 +233,7 @@ describe('item types', () => {
             {
               field: severity,
               value: 'high',
-              label: 'severity',
+              label: 'Severity',
               at: at('bug', 'side', 0, 'severity'),
             },
           ],
@@ -238,7 +247,7 @@ describe('item types', () => {
         {
           kind: 'fields',
           values: [
-            { field: pitch, value: 'Cache it', label: 'pitch', at: at('impr', 'body', 0, 'pitch') },
+            { field: pitch, value: 'Cache it', label: 'Pitch', at: at('impr', 'body', 0, 'pitch') },
           ],
         },
         { kind: 'evidence' },
@@ -271,7 +280,7 @@ describe('item types', () => {
         {
           kind: 'fields',
           values: [
-            { field: pitch, value: 'Wolf', label: 'pitch', at: at('impr', 'body', 0, 'pitch') },
+            { field: pitch, value: 'Wolf', label: 'Pitch', at: at('impr', 'body', 0, 'pitch') },
           ],
         },
         {
@@ -299,5 +308,24 @@ describe('item types', () => {
         side: [{ kind: 'relation', entry: { module: 'relations' } }],
       });
     });
+  });
+});
+
+describe('a field’s label', () => {
+  afterEach(() => setLanguage('en'));
+  const labelled: TypeView = {
+    ...bug,
+    labels: { es: { states: {}, fields: { severity: 'gravedad' } } },
+  } as TypeView;
+
+  it('is the layout’s own label, or the field’s name as a person reads it', () => {
+    expect(entryLabel(bug, 'area', 'Where')).toBe('Where');
+    expect(entryLabel(bug, 'severity', undefined)).toBe('Severity');
+  });
+
+  it('is the preset’s word in the language on screen, wherever the field is placed', () => {
+    setLanguage('es');
+    expect(entryLabel(labelled, 'severity', undefined)).toBe('gravedad');
+    expect(entryLabel(labelled, 'area', undefined)).toBe('Area');
   });
 });

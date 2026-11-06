@@ -1144,6 +1144,7 @@ button.st-offscreen .icon:last-child {
 
 /* ---- the phone view, and Studio on a phone ---- */
 .st-phone-frame {
+  container: detail / inline-size;
   width: 390px;
   max-width: 100%;
   margin: 0 auto;
