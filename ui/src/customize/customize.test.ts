@@ -9,6 +9,7 @@ import { FieldMenu, type FieldMenuProps } from './FieldMenu.tsx';
 import { LeftPanel } from './LeftPanel.tsx';
 import { NewField } from './NewField.tsx';
 import { addOption, removeOption } from './options.ts';
+import { applyOf, saves, scopeOf, titleOf } from './scope.ts';
 
 afterEach(() => setLanguage('en'));
 const noop = () => {};
@@ -181,5 +182,41 @@ describe('NewField, BoxMenu, ApplyDialog', () => {
     expect(
       renderToStaticMarkup(createElement(ApplyDialog, { ...props, showFile: true })),
     ).toContain('a: 1');
+  });
+  it('ApplyDialog saves a template nobody uses, and says an official one is copied', () => {
+    const html = renderToStaticMarkup(
+      createElement(ApplyDialog, {
+        target: '',
+        changes: [],
+        itemCount: 0,
+        first: true,
+        save: true,
+        yaml: '',
+        showFile: false,
+        onToggleFile: noop,
+        onApply: noop,
+        onKeepEditing: noop,
+      }),
+    );
+    expect(html).toContain('Save template');
+    expect(html).toContain('You get a copy of it to edit');
+    expect(html).not.toContain('Every item in');
+    expect(html).not.toContain('Apply to');
+  });
+});
+
+describe('what an Apply reaches', () => {
+  it('names every board of a template, and saves it when none uses it', () => {
+    const used = scopeOf({ kind: 'preset', users: ['bugs', 'crashes'] });
+    expect(applyOf(used)).toBe('Apply to bugs, crashes');
+    expect(titleOf(used, 'Bug', 'bug-triage', 'bugs')).toBe(
+      'Customizing Bug view · Bug triage template',
+    );
+    const unused = scopeOf({ kind: 'preset', users: [] });
+    expect(saves(unused)).toBe(true);
+    expect(applyOf(unused)).toBe('Save template');
+    const item = scopeOf({ kind: 'item', board: 'bugs' });
+    expect(applyOf(item)).toBe('Apply to bugs');
+    expect(titleOf(item, 'Bug', 'bug-triage', 'bugs')).toBe('Customizing Bug view · bugs board');
   });
 });

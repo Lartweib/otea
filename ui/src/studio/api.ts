@@ -174,5 +174,15 @@ export const customizeBoard = (board: string, yaml: string) =>
 export const revertBoard = (board: string, previous: CustomizedPreset['previous']) =>
   post<CustomizedPreset>(`/api/studio/boards/${encodeURIComponent(board)}/revert`, { previous });
 
+export type CustomizedTemplate = CustomizedPreset & {
+  boards: ({ board: string } & CustomizedPreset)[];
+  previous: CustomizedPreset['previous'] | null;
+};
+
+// A view change made on a template: the boards that use it get it, and with none it is saved as
+// the template, or as a project copy of an official one.
+export const customizeTemplate = (name: string, yaml: string) =>
+  post<CustomizedTemplate>(`/api/studio/presets/${encodeURIComponent(name)}/customize`, { yaml });
+
 export const updateBlueprint = () =>
   post<{ applied: string[]; kept: string[] }>('/api/studio/blueprint/update', {});
