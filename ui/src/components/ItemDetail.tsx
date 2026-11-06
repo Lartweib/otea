@@ -13,12 +13,13 @@ import { actorLabel, leaseLabel, momentLabel } from '../format.ts';
 import { externalUrl, gateRows } from '../gates.ts';
 import { agoLabel } from '../handoff.ts';
 import { useActiveLease } from '../hooks.ts';
-import { type PlainKey, presetText, t, tx } from '../i18n/i18n.ts';
+import { type PlainKey, t, tx } from '../i18n/i18n.ts';
 import { TypeIcon } from '../icons/TypeIcon.tsx';
 import {
   type DetailBlock,
   type DetailSection,
   detailBlocks,
+  entryLabel,
   type PlacedValue,
   placesChildren,
   sectionsInRows,
@@ -112,7 +113,7 @@ function IdStrip({
     const field = type?.fields.find(({ name }) => name === entry.field);
     if (!type || !field) return [];
     const at = { type: type.name, slot: 'header' as const, index, field: field.name };
-    return [{ field, label: entry.label ?? field.name, at }];
+    return [{ field, label: entryLabel(type, field.name, entry.label), at }];
   });
   if (entries.length === 0) return null;
   return (
@@ -123,7 +124,7 @@ function IdStrip({
         const { Detail } = moduleFor(field.module);
         return (
           <div key={field.name} {...slotData(at)}>
-            <dt>{presetText(label)}</dt>
+            <dt>{label}</dt>
             <dd>
               {value === '' ? (
                 <span className="detail-none">{t('detail.noneYet')}</span>

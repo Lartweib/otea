@@ -1,6 +1,8 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
+import { setLanguage } from './i18n/i18n.ts';
 import {
   detailBlocks,
+  entryLabel,
   intakeFields,
   intakeSlots,
   intakeTypes,
@@ -299,5 +301,24 @@ describe('item types', () => {
         side: [{ kind: 'relation', entry: { module: 'relations' } }],
       });
     });
+  });
+});
+
+describe('a field’s label', () => {
+  afterEach(() => setLanguage('en'));
+  const labelled: TypeView = {
+    ...bug,
+    labels: { es: { states: {}, fields: { severity: 'gravedad' } } },
+  } as TypeView;
+
+  it('is the layout’s own label, or the field’s name as a person reads it', () => {
+    expect(entryLabel(bug, 'area', 'Where')).toBe('Where');
+    expect(entryLabel(bug, 'severity', undefined)).toBe('Severity');
+  });
+
+  it('is the preset’s word in the language on screen, wherever the field is placed', () => {
+    setLanguage('es');
+    expect(entryLabel(labelled, 'severity', undefined)).toBe('gravedad');
+    expect(entryLabel(labelled, 'area', undefined)).toBe('Area');
   });
 });
