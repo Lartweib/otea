@@ -179,6 +179,8 @@ type ItemDetailProps = {
   itemOf?: ((id: string) => Item | undefined) | undefined;
   // Where the tray for ticked children docks: the detail pane's bottom edge (App).
   trayHost?: HTMLElement | null | undefined;
+  // The viewer may reshape this view (Studio's writes, not on a phone): shows Customize view.
+  canCustomize?: boolean | undefined;
 };
 
 // The detail of another item comes in (the old one leaves at once): it rises 6px into place, or
@@ -216,6 +218,7 @@ export function ItemDetail({
   onClose,
   itemOf,
   trayHost,
+  canCustomize = false,
 }: ItemDetailProps) {
   const lease = useActiveLease(item.lease);
   const root = useContentIn(item.id, layout === 'pane');
@@ -445,6 +448,15 @@ export function ItemDetail({
                 </Pill>
                 <span className="t-cap">{standing}</span>
               </div>
+              {canCustomize ? (
+                <a
+                  className="btn sm quiet detail-customize"
+                  href={`#/customize/${encodeURIComponent(item.id)}`}
+                >
+                  <Icon name="sliders" />
+                  {t('detail.customize')}
+                </a>
+              ) : null}
               {onClose ? (
                 <Button
                   variant="quiet"
