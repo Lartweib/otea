@@ -161,6 +161,7 @@ export function FieldMenu(p: FieldMenuProps) {
             </div>
             {p.need ? <p className="cz-mp">{t(`customize.need.${p.need}.says`)}</p> : null}
           </div>
+          {/* biome-ignore lint/a11y/useSemanticElements: a labelled row of checkboxes */}{' '}
           <div className="cz-mq" role="group" aria-labelledby={`${id}-also`}>
             <span className="cz-ml" id={`${id}-also`}>
               {t('customize.alsoIn')}
