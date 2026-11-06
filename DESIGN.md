@@ -253,6 +253,10 @@ The history in the detail (`ui/src/components/Timeline.tsx`) is the item's past,
 
 Every preset field names a module (`text`, `markdown`, `enum`, `severity`). The UI draws each value through a registry in [`ui/src/modules/`](ui/src/modules/): one file per module plus `registry.ts`, so no component switches on module names. The names come from the core preset format (`FIELD_MODULES` in `src/core/preset.ts`, imported type-only), and the registry is keyed by them, so a module added to the format fails the UI typecheck until it is drawn.
 
+A field may carry `label`, the name people read (`found_in_build` with `label: Found in build`). Detail, form and grid draw the label, then a name derived from the key ("Found in build"); a language's `labels` still win. `fieldKeyFor` (`src/core/fields.ts`) derives a unique key from a typed name. A field no slot places is only an `info` note: hiding it from a view is a choice.
+
+Studio saves a view change per board with `POST /api/studio/boards/:board/customize { yaml }`: an official preset is first copied into the project as `<board>-<preset>` (uniquely named) and the board pointed at it, a project preset gets the YAML as its next version. It returns `{ preset, version, previous: { preset, yaml } }`, and `POST /api/studio/boards/:board/revert { previous }` puts that back. Both are desk-only.
+
 A module (`FieldModuleUi` in `ui/src/modules/contract.ts`) declares:
 
 | Part | Use |
