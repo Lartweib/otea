@@ -256,9 +256,13 @@ export function Acts({ item, type, facts, look, plan, mode, word, notesOpen, onN
               {t('sheet.qa.send')}
             </Button>
             <span className="closeas">{t('sheet.qa.goesOn', { agent: agent ?? '—' })}</span>
-            {plan.primary ? btn(plan.primary, 'text') : null}
-            {closeAs}
           </div>
+          {plan.primary || closeAs ? (
+            <div className="actions more">
+              {plan.primary ? btn(plan.primary, 'text') : null}
+              {closeAs}
+            </div>
+          ) : null}
         </div>
       </section>
     );

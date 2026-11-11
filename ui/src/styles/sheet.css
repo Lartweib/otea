@@ -386,7 +386,7 @@
 }
 .d-sec,
 .note,
-.evidence,
+section.evidence,
 .qa {
   display: grid;
   grid-template-columns: 96px minmax(0, 1fr);
@@ -978,4 +978,15 @@
   :root:not([data-motion="full"]) .route .orb {
     animation: none;
   }
+}
+/* Answering in place: the other moves wait quietly under the answer. */
+.qa .actions.more {
+  margin: 4px 0 0 -8px;
+  gap: 4px;
+}
+.qa .actions.more .vr:first-child {
+  display: none;
+}
+.actions > .vr:first-child {
+  display: none;
 }

@@ -1,6 +1,5 @@
 import { type ReactNode, useLayoutEffect, useRef, useState } from 'react';
 import { whenText } from '../../derive/when.ts';
-import { momentLabel } from '../../format.ts';
 import { externalUrl, gateRows } from '../../gates.ts';
 import { t } from '../../i18n/i18n.ts';
 import { TypeIcon } from '../../icons/TypeIcon.tsx';
@@ -88,9 +87,14 @@ export function detailCells(o: {
       '—'
     ),
   };
-  const { head, side } = detailBlocks(type, item.fields);
+  const { head, side, primary, sections } = detailBlocks(type, item.fields);
+  // One-line fields read here; the prose ones are the body's.
+  const short = [...primary, ...(sections ?? []).flatMap((x) => x.blocks)].flatMap((b) =>
+    b.kind === 'fields' ? b.values.filter((v) => v.field.module !== 'markdown') : [],
+  );
   const fields: Cell[] = [
     ...head,
+    ...short,
     ...side.flatMap((b) => (b.kind === 'fields' ? b.values : [])),
   ].map((p) => ({ label: p.label, value: <Value placed={p} />, slot: slotData(p.at) }));
   const parent = item.relations.find((r) => r.kind === 'parent');
@@ -115,7 +119,7 @@ export function detailCells(o: {
       label: t('sheet.d.createdBy'),
       value: created.kind === 'human' ? t('sheet.d.youLower') : created.name,
     },
-    { label: t('sheet.d.updated'), value: momentLabel(item.updatedAt, now) },
+    { label: t('sheet.d.updated'), value: whenText({ ...item, turn: 'none' }, now).text },
     ...(parent
       ? [
           {

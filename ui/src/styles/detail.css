@@ -240,7 +240,7 @@
   gap: 10px;
 }
 
-.actions {
+.detail .actions {
   display: grid;
   gap: 12px;
 }
@@ -472,7 +472,7 @@
   gap: 8px;
 }
 
-.evidence {
+ul.evidence {
   display: grid;
   gap: 12px;
   padding: 0;
