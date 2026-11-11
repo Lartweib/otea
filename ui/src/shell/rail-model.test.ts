@@ -12,7 +12,7 @@ describe('the rail’s current row', () => {
     expect(railKey({ view: 'lan' })).toBe('toca');
     expect(railKey({ view: 'atasco' })).toBe('atasco');
     expect(railKey({ view: 'board', board: 'Errores', item: 'ERR-1' })).toBe('board:Errores');
-    expect(railKey({ view: 'studio', page: { kind: 'start' } })).toBe('studio');
+    expect(railKey({ view: 'studio', page: { kind: 'boards' } })).toBe('studio');
     expect(railKey({ view: 'modules' })).toBe('studio');
     expect(railKey({ view: 'settings' })).toBe('settings');
   });

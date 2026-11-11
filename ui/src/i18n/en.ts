@@ -1,10 +1,10 @@
 import { board } from './en/board.ts';
 import { boardStudio } from './en/board-studio.ts';
+import { catalog } from './en/catalog.ts';
 import { common } from './en/common.ts';
 import { detail } from './en/detail.ts';
 import { phone } from './en/phone.ts';
 import { shell } from './en/shell.ts';
-import { studio } from './en/studio.ts';
 import { studioEditor } from './en/studio-editor.ts';
 import { studioHome } from './en/studio-home.ts';
 import { studioPreview } from './en/studio-preview.ts';
@@ -20,7 +20,7 @@ export const en = {
   ...board,
   ...detail,
   ...surfaces,
-  ...studio,
+  ...catalog,
   ...boardStudio,
   ...studioHome,
   ...studioEditor,

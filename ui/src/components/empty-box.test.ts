@@ -3,7 +3,7 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { readPreset } from '../../../src/core/preset.ts';
-import { draftPreview } from '../studio/preview.ts';
+import { draftPreview } from './draft-preview.ts';
 import type { CollectionView, ItemView } from '../types.ts';
 import { ItemDetail } from './ItemDetail.tsx';
 

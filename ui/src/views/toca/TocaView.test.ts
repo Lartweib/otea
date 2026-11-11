@@ -193,6 +193,7 @@ describe('the view host', () => {
     expect(viewKeyOf({ view: 'toca', item: 'A' })).toBe('toca');
     expect(viewKeyOf({ view: 'lan' })).toBe('toca');
     expect(viewKeyOf({ view: 'board', board: 'Errores' })).toBe('board:Errores');
-    expect(viewKeyOf({ view: 'studio', page: { kind: 'start' } })).toBe('studio');
+    expect(viewKeyOf({ view: 'studio', page: { kind: 'boards' } })).toBe('studio');
+    expect(viewKeyOf({ view: 'studio', page: { kind: 'board', board: 'b1' } })).toBe('studio:b1');
   });
 });

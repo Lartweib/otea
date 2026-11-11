@@ -14,7 +14,6 @@ import { reduced } from '../motion/reduced.ts';
 import { studioHash, type ViewRoute } from '../selection.ts';
 import { PrefsButton } from './Preferences.tsx';
 import { type BoardIcon, boardEntries, foldClip, type RailKey, railKey } from './rail-model.ts';
-import { StudioFold } from './StudioFold.tsx';
 import { useMedia } from './use-media.ts';
 
 // The rail (SPEC §7.2, mock:159-198, 1420-1458, 4038-4069): the head (fold, vistas, + Nuevo ítem),
@@ -277,7 +276,7 @@ export function Rail() {
               className="add"
               data-tip={t('nav.newBoard')}
               onClick={() => {
-                window.location.hash = studioHash({ kind: 'blueprint', diagram: false });
+                window.location.hash = studioHash();
               }}
             >
               <span className="ic">
@@ -296,7 +295,6 @@ export function Rail() {
             label={t('nav.studio')}
             to={studioHash()}
           />
-          <StudioFold open={key === 'studio' && !folded} />
           {canConfigure ? (
             <Row
               k="settings"

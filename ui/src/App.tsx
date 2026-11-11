@@ -14,8 +14,6 @@ import { CatalogOverview, ModuleIndex, ModulePanel } from './components/ModuleCa
 import { ProjectSettings } from './components/ProjectSettings.tsx';
 import { ProjectsInbox } from './components/ProjectsInbox.tsx';
 import { Triage } from './components/Triage.tsx';
-import { AppliedToast } from './customize/AppliedToast.tsx';
-import { CustomizePage } from './customize/CustomizePage.tsx';
 import { useAttention, useRoute } from './hooks.ts';
 import { t, useLanguage } from './i18n/i18n.ts';
 import { Dialog } from './kit/pop/Dialog.tsx';
@@ -29,20 +27,19 @@ import { SheetButton } from './phone/SheetButton.tsx';
 import type { Route } from './selection.ts';
 import { Rail } from './shell/Rail.tsx';
 import { Topbar } from './shell/Topbar.tsx';
-import { Studio } from './studio/Studio.tsx';
-import { useStudioIndex } from './studio/use-studio-index.ts';
 import { BoardView } from './views/board/BoardView.tsx';
 import { DetailHost } from './views/detail/DetailHost.tsx';
 import { TocaView } from './views/toca/TocaView.tsx';
 
 // The app (SPEC §11): AppProvider › the lanes' gradients, the toasts, the tooltip, then .app with
 // the topbar, the rail and .main, where the view host shows the route's view, the detail sits
-// beside it and the activity drawer slides over it. Customize keeps its own page.
+// beside it and the activity drawer slides over it.
 
 // The view's identity: a new key is a new view (the old one leaves, the new one draws in).
 export function viewKeyOf(route: Route): string {
   if (route.view === 'board') return `board:${route.board}`;
   if (route.view === 'lan') return 'toca';
+  if (route.view === 'studio' && route.page.kind === 'board') return `studio:${route.page.board}`;
   return route.view;
 }
 
@@ -73,8 +70,6 @@ function Catalog({ name }: { name: string | undefined }) {
 
 function View({ route }: { route: Route }): ReactNode {
   const app = useApp();
-  const inStudio = route.view === 'studio' || route.view === 'modules';
-  const index = useStudioIndex(inStudio, app.version + app.studioWrites, app.connection);
   switch (route.view) {
     case 'toca':
     case 'lan':
@@ -96,28 +91,11 @@ function View({ route }: { route: Route }): ReactNode {
         />
       );
     case 'studio':
-      if (route.page.kind === 'boards' || route.page.kind === 'board')
-        return <BoardStudio page={route.page} canWrite={app.session.canConfigure} />;
-      return (
-        <Studio
-          page={route.page}
-          connection={app.connection}
-          version={app.version}
-          canWrite={app.session.canConfigure}
-          phone={app.phone}
-          items={app.all}
-          rail={null}
-          sidebar={false}
-          onChanged={app.studioChanged}
-          index={index}
-        />
-      );
+      return <BoardStudio page={route.page} canWrite={app.session.canConfigure} />;
     case 'modules':
       return <Catalog name={route.name} />;
     case 'brief':
       return <BriefView ids={route.ids} items={app.all} version={app.version} />;
-    case 'customize':
-      return null;
   }
 }
 
@@ -127,26 +105,10 @@ function Shell() {
   const { yours, working } = useAttention(app.all);
   useEffect(() => applyAttention({ yours, working }), [yours, working]);
   const route = app.route;
-  if (route.view === 'customize') {
-    // A template saved from here lands on this page again: the note shows on the page you land on.
-    return (
-      <>
-        <CustomizePage
-          target={route.target}
-          items={app.all}
-          version={app.version}
-          connection={app.connection}
-          onApplied={app.studioChanged}
-        />
-        <AppliedToast onUndone={app.studioChanged} />
-      </>
-    );
-  }
   return (
     <>
       <LaneDefs />
       <div className="app" data-folded={ws.folded ? '' : undefined}>
-        <AppliedToast onUndone={app.studioChanged} />
         <Topbar />
         <Rail />
         <main className="main">

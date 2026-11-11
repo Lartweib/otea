@@ -235,7 +235,6 @@ export const detail = {
   'sheet.close': 'Close',
   'sheet.back': 'Back',
   'sheet.yourTurn': 'your turn',
-  'sheet.customize': 'Customize view',
   'sheet.typeBoard': '{type} · {board}',
   'sheet.stand.handed': '{agent} hands it to you.',
   'sheet.stand.handedRound': '{agent} hands it to you in round {round}.',

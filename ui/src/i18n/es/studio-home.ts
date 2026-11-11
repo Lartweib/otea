@@ -5,4 +5,5 @@ import type { Catalog } from '../i18n.ts';
 export const studioHome = {
   'bs.home.title': 'Studio',
   'bs.home.soon': 'Aquí se está montando el nuevo Studio.',
+  'bs.home.editBoard': 'Editar tablero',
 } satisfies Partial<Catalog>;

@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from 'react';
 import { waitsOf } from '../../actions.ts';
 import { typeOfItem, useApp } from '../../app/context.tsx';
+import { boardOfCollection, boardsOf, useBoards } from '../../board-studio/home/boards-store.ts';
 import { t, tx } from '../../i18n/i18n.ts';
 import { TypeIcon } from '../../icons/TypeIcon.tsx';
 import { GhostButton, Icon, StepPill, Swap } from '../../kit/index.ts';
@@ -8,6 +9,7 @@ import { laneOf } from '../../lanes/geometry.ts';
 import { lookOf } from '../../lanes/looks.ts';
 import { NodeGlyph } from '../../lanes/NodeGlyph.tsx';
 import { ItemTypeScope, stateWord, typeWord } from '../../preset-words.ts';
+import { studioHash } from '../../selection.ts';
 import type { ItemView } from '../../types.ts';
 import { Acts, actsModeOf } from './Acts.tsx';
 import { Body, bodySections } from './Body.tsx';
@@ -58,6 +60,8 @@ const dipWhen = (iso: string, now: number): string => {
 
 export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheetProps) {
   const app = useApp();
+  // The board this item is on, when Studio shapes it: Editar tablero opens its editor.
+  const board = boardOfCollection(boardsOf(useBoards(app.version)), item.collection);
   const type = typeOfItem(item, app.collectionOf);
   const word = (s: string) => stateWord(type, s);
   const now = app.now;
@@ -143,10 +147,10 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
             </span>
           </Swap>
           <div className="bar-r">
-            {app.session.canConfigure && !app.phone ? (
-              <a className="ghost-btn cz" href={`#/customize/${encodeURIComponent(item.id)}`}>
+            {app.session.canConfigure && !app.phone && board ? (
+              <a className="ghost-btn cz" href={studioHash({ kind: 'board', board: board.id })}>
                 <Icon name="sliders" />
-                <span className="wl">{t('sheet.customize')}</span>
+                <span className="wl">{t('bs.home.editBoard')}</span>
               </a>
             ) : null}
             <GhostButton
