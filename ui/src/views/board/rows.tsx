@@ -98,11 +98,11 @@ function Progress({ item, kids }: { item: Item; kids: readonly Item[] }) {
     <i key={i} className={cls} />
   ));
   return (
-    <>
+    <span className="mpt">
       <span className="sep">·</span>
       <span className="prog">{bars}</span>
       <span className="po">{t('boardView.kidsOpen', { open: c.open, total: c.total })}</span>
-    </>
+    </span>
   );
 }
 
@@ -166,27 +166,29 @@ export function listaBlocks(entries: readonly Entry[], ctx: RowCtx): LaneBlock[]
               <span className="id" data-s={`${it.id}:id`}>
                 {it.id}
               </span>
-              <span className="sep">·</span>
-              <span className={it.turn === 'human' ? 'stp you' : 'stp'}>{word}</span>
+              <span className="mpt">
+                <span className="sep">·</span>
+                <span className={it.turn === 'human' ? 'stp you' : 'stp'}>{word}</span>
+              </span>
               {e.kids > 0 ? <Progress item={it} kids={kids.get(it.id) ?? []} /> : null}
               {stuck && it.expiredLease ? (
-                <>
+                <span className="mpt">
                   <span className="sep">·</span>
                   <span className="warn">
                     {t('boardView.quiet', { time: since(it.expiredLease.expiresAt, ctx.now) })}
                   </span>
-                </>
+                </span>
               ) : round > 1 ? (
-                <>
+                <span className="mpt">
                   <span className="sep">·</span>
                   <span className="round">{t('boardView.round', { n: round })}</span>
-                </>
+                </span>
               ) : null}
               {signal ? (
-                <>
+                <span className="mpt">
                   <span className="sep">·</span>
                   <span>{signal}</span>
-                </>
+                </span>
               ) : null}
             </div>
           </div>

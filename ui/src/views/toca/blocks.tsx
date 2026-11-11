@@ -191,7 +191,7 @@ function TocaRow({
             {it.collection} › {stateWord(type, it.state)}
           </span>
           {stuck ? (
-            <>
+            <span className="mpt">
               <span className="sep">·</span>
               <span className="warn">
                 {t('toca.quiet', {
@@ -199,12 +199,12 @@ function TocaRow({
                   time: spanText(app.now - Date.parse(it.expiredLease?.expiresAt ?? '')),
                 })}
               </span>
-            </>
+            </span>
           ) : round >= 2 ? (
-            <>
+            <span className="mpt">
               <span className="sep">·</span>
               <span className="round">{t('toca.round', { n: round })}</span>
-            </>
+            </span>
           ) : null}
         </div>
       </div>

@@ -36,13 +36,15 @@ export function previewBlock({ id, title, state, landing, field, level }: LandsA
           </div>
           <div className="m">
             <span className="id">{id}</span>
-            <span className="sep">·</span>
-            <span className={lane === 'you' ? 'stp you' : 'stp'}>{state}</span>
+            <span className="mpt">
+              <span className="sep">·</span>
+              <span className={lane === 'you' ? 'stp you' : 'stp'}>{state}</span>
+            </span>
             {field ? (
-              <>
+              <span className="mpt">
                 <span className="sep">·</span>
                 <span>{field}</span>
-              </>
+              </span>
             ) : null}
           </div>
         </div>

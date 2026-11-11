@@ -132,10 +132,14 @@ export function elsewhereBlocks(project: ProjectOverview): LaneBlock[] {
           </div>
           <div className="m" data-leaf="">
             <span className="id">{it.id}</span>
-            <span className="sep">·</span>
-            <span className="stp you">{it.state}</span>
-            <span className="sep">·</span>
-            <span>{served ? t('projects.inTab') : t('projects.noServer')}</span>
+            <span className="mpt">
+              <span className="sep">·</span>
+              <span className="stp you">{it.state}</span>
+            </span>
+            <span className="mpt">
+              <span className="sep">·</span>
+              <span>{served ? t('projects.inTab') : t('projects.noServer')}</span>
+            </span>
           </div>
         </div>
       ),

@@ -126,7 +126,9 @@ describe('Te toca', () => {
       expiredLease: { holder: 'Kiln', expiresAt: ago(12) },
     });
     const out = html(rows(tocaBlocks(app([stuck]), true))[0]);
-    expect(out).toContain('<span class="warn">Kiln callado · 12 min</span>');
+    expect(out).toContain(
+      '<span class="mpt"><span class="sep">·</span><span class="warn">Kiln callado · 12 min</span></span>',
+    );
     expect(out).toContain(
       '<div class="a warn" data-leaf="">Retomar o reasignar<small>lo tiene <b>Kiln</b></small></div>',
     );
