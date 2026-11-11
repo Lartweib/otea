@@ -149,3 +149,18 @@ export function ledeOf({
     ? t('intake.ledeChild', { board, parent, lands })
     : t('intake.lede', { board, lands });
 }
+
+// The form as compact as the mock (mock:676-683): the title, the description, the choices (enum and
+// severity chips) and whatever creating needs stay in view; the other fields, long and optional,
+// fold behind one "more fields" control.
+export function intakeParts<S extends { field: Pick<FieldView, 'name' | 'module' | 'required'> }>(
+  slots: readonly S[],
+): { shown: S[]; more: S[] } {
+  const stays = ({ field }: S) =>
+    field.name === 'title' ||
+    field.name === 'description' ||
+    field.module === 'enum' ||
+    field.module === 'severity' ||
+    field.required === 'create';
+  return { shown: slots.filter(stays), more: slots.filter((s) => !stays(s)) };
+}

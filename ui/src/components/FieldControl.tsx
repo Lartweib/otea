@@ -16,6 +16,10 @@ type FieldControlProps = {
   placeholder?: string | undefined;
   // The data attributes of its place in the layout (slotData), for Studio to find it.
   slot?: Readonly<Record<string, string>>;
+  // A value as people read it (the preset's words); as written otherwise.
+  word?: (value: string) => string;
+  // The form says once that an agent completes what is left empty: false leaves the field's out.
+  hinted?: boolean;
 };
 
 // A field of the new-item form (mock:676-683): a 112 px caps label, then the control. A choice
@@ -30,8 +34,10 @@ export function FieldControl({
   label,
   placeholder,
   slot,
+  word = (v) => v,
+  hinted = true,
 }: FieldControlProps) {
-  const hint = fieldHint(field);
+  const hint = hinted ? fieldHint(field) : undefined;
   const hintId = hint ? `${id}-hint` : undefined;
   const required = field.required === 'create';
   const name =
@@ -55,7 +61,7 @@ export function FieldControl({
             // A chip pressed again clears an optional field.
             onClick={() => onChange(value === v && !required ? '' : v)}
           >
-            {v}
+            {word(v)}
           </ChipButton>
         ))}
       </fieldset>

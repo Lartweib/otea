@@ -6,6 +6,7 @@ import {
   canSubmit,
   type FormValues,
   initialValues,
+  intakeParts,
   landingOf,
   ledeOf,
   nextId,
@@ -16,7 +17,7 @@ import {
 import { type FileDraft, firstRole, rolesFor, tooLarge, withFiles } from '../intake-files.ts';
 import { intakeSlots, intakeTypes, slotData, typeOf } from '../item-types.ts';
 import { Button, ChipButton, GhostButton, Icon, Swap } from '../kit/index.ts';
-import { fieldWord, stateWord, typeWord } from '../preset-words.ts';
+import { fieldWord, stateWord, typeWord, valueWord } from '../preset-words.ts';
 import type { CollectionView, EvidenceRole, TypeView } from '../types.ts';
 import { FieldControl } from './FieldControl.tsx';
 import { IntakeFiles } from './IntakeFiles.tsx';
@@ -85,6 +86,7 @@ export function IntakeForm({
   const types = offered(collection);
   const [values, setValues] = useState(() => (type ? initialValues(type) : {}));
   const [files, setFiles] = useState<FileDraft[]>([]);
+  const [moreOpen, setMoreOpen] = useState(false);
   const [posting, setPosting] = useState(false);
   const [created, setCreated] = useState<string>();
   const [error, setError] = useState<string>();
@@ -163,6 +165,28 @@ export function IntakeForm({
   };
 
   const slots = type ? intakeSlots(type) : [];
+  const parts = intakeParts(slots);
+  // Said once, under the fields, instead of under each one.
+  const agentFills = slots.some(({ field }) => field.required === 'complete');
+  const control = ({ field, at }: (typeof slots)[number]) => {
+    const own = OWN_WORDS[field.name];
+    return (
+      <div key={`${collection.name}:${type?.name}:${field.name}`} data-c="" className="fwrap">
+        <FieldControl
+          slot={slotData(at)}
+          id={`intake-${field.name}`}
+          field={field}
+          value={values[field.name] ?? ''}
+          disabled={posting}
+          onChange={(value) => change(field.name, value)}
+          label={own ? t(own.label) : fieldWord(type, field.name)}
+          placeholder={own ? t(own.ph) : undefined}
+          word={(v) => valueWord(type, field.name, v)}
+          hinted={false}
+        />
+      </div>
+    );
+  };
   const step = type && landing ? stateWord(type, landing.state) : '';
   const lede =
     type && landing ? ledeOf({ board: collection.name, parent: parent?.id, landing, step }) : '';
@@ -247,34 +271,27 @@ export function IntakeForm({
           </fieldset>
         </div>
       ) : null}
-      {slots.map(({ field, at }) => {
-        const own = OWN_WORDS[field.name];
-        return (
-          <div key={`${collection.name}:${type?.name}:${field.name}`} data-c="" className="fwrap">
-            <FieldControl
-              slot={slotData(at)}
-              id={`intake-${field.name}`}
-              field={field}
-              value={values[field.name] ?? ''}
-              disabled={posting}
-              onChange={(value) => change(field.name, value)}
-              label={own ? t(own.label) : fieldWord(type, field.name)}
-              placeholder={own ? t(own.ph) : undefined}
-            />
+      {parts.shown.map(control)}
+      {parts.more.length > 0 ? (
+        <div className="ffield fmore" data-c="">
+          <span className="flab" />
+          <div className="fctl">
+            <button
+              type="button"
+              className="ghost-btn"
+              aria-expanded={moreOpen}
+              onClick={() => setMoreOpen((o) => !o)}
+            >
+              {moreOpen ? t('intake.fewer') : t('intake.more', { count: parts.more.length })}
+            </button>
           </div>
-        );
-      })}
-      {type ? (
-        <div data-c="" className="fwrap">
-          <IntakeFiles
-            drafts={files}
-            roles={roles}
-            disabled={posting}
-            onAdd={addFiles}
-            onRole={setRole}
-            onRemove={removeFile}
-          />
         </div>
+      ) : null}
+      {moreOpen ? parts.more.map(control) : null}
+      {agentFills ? (
+        <p className="fnote" data-c="">
+          {t('intake.agentFills')}
+        </p>
       ) : null}
       {type && landing ? (
         <LandsAs
@@ -286,6 +303,18 @@ export function IntakeForm({
           field={tagField ? values[tagField.name] : undefined}
           level={level > 0 ? level : undefined}
         />
+      ) : null}
+      {type ? (
+        <div data-c="" className="fwrap">
+          <IntakeFiles
+            drafts={files}
+            roles={roles}
+            disabled={posting}
+            onAdd={addFiles}
+            onRole={setRole}
+            onRemove={removeFile}
+          />
+        </div>
       ) : null}
       {start?.incomplete ? <p className="fnote">{startMessage(start, type)}</p> : null}
       <div className="fbtns" data-c="">
