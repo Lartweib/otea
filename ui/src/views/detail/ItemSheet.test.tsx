@@ -1,4 +1,3 @@
-import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, describe, expect, it } from 'vitest';
 import { type App, AppTestProvider } from '../../app/context.tsx';
@@ -80,17 +79,16 @@ const app = {
 
 const render = () =>
   renderToStaticMarkup(
-    createElement(AppTestProvider, {
-      value: app,
-      children: createElement(ItemSheet, {
-        item,
-        full: false,
-        nav: { prev: false, next: true },
-        onNav: () => undefined,
-        onFull: () => undefined,
-        onClose: () => undefined,
-      }),
-    }),
+    <AppTestProvider value={app}>
+      <ItemSheet
+        item={item}
+        full={false}
+        nav={{ prev: false, next: true }}
+        onNav={() => undefined}
+        onFull={() => undefined}
+        onClose={() => undefined}
+      />
+    </AppTestProvider>,
   );
 
 describe('the item sheet', () => {
