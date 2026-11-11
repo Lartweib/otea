@@ -1,6 +1,5 @@
 import { type PlainKey, t } from './i18n/i18n.ts';
 import { fieldLabel } from './intake.ts';
-import { leaseChars } from './lease.ts';
 import { fieldWord } from './preset-words.ts';
 import { monoWidth } from './row-grid.ts';
 import type { CollectionView, FieldView, Item } from './types.ts';
@@ -184,6 +183,16 @@ export function shownColumns(columns: readonly GridColumn[], tier: GridTier): Sh
 const widthFor = (texts: readonly string[], min: number) =>
   Math.min(160, Math.max(min, Math.max(...texts.map((text) => text.length)) * 7 + 40));
 
+// The longest age a row says: the time left on a lease, expired, or days ago.
+function ageChars(): number {
+  const said = [
+    t('when.left', { time: t('when.hoursMinutes', { hours: 23, minutes: 59 }) }),
+    t('when.expired'),
+    t('when.days', { count: 30 }),
+  ];
+  return Math.max(...said.map((text) => text.length));
+}
+
 // A column's automatic width.
 export function columnWidth(column: GridColumn, compact: boolean): number {
   switch (column.kind) {
@@ -195,11 +204,11 @@ export function columnWidth(column: GridColumn, compact: boolean): number {
     case 'severity':
       return compact ? 52 : 112;
     case 'who':
-      // The agent's mark or your chip, never the name.
-      return 44;
+      // The agent's mark or your chip, never the name; its head reads whole.
+      return 52;
     case 'age':
-      // An age, or the time left on a lease: `12m left`, eight mono characters in English.
-      return Math.max(60, monoWidth(leaseChars()) + 2);
+      // An age, or the time left on a lease (`23 h 59 left`), and the cell's 12 px on the right.
+      return Math.max(60, monoWidth(ageChars()) + 14);
     case 'text':
       return 160;
     case 'state':
@@ -300,6 +309,8 @@ const spare = (room: number, shown: readonly ShownColumn[]) =>
 
 export type GridFit = { shown: ShownColumn[]; dropped: string[] };
 
+const LAST_TO_GO: readonly ColumnKind[] = ['severity', 'type', 'state', 'who'];
+
 // The tiers decide first; a column takes the width the viewer gave it. Before the title goes under
 // 240 the widened columns give back towards automatic, in proportion (the widths kept are not
 // rewritten: a wider room gets them back); then the fields leave in the tiers' order.
@@ -333,6 +344,12 @@ export function fitColumns(columns: readonly GridColumn[], room: number, widths:
     const victim = shown.findLast(({ column }) => drops(column));
     if (!victim) break;
     shown = shown.filter((entry) => entry !== victim);
+  }
+  // The table stays a table beside an open item: before the title goes under 240, severity, the
+  // type, the step and who step out too, in that order (id, title and age always stay).
+  for (const kind of LAST_TO_GO) {
+    if (spare(room, shown) >= TITLE_MIN) break;
+    shown = shown.filter(({ column }) => column.kind !== kind);
   }
   return {
     shown,

@@ -78,6 +78,7 @@ function settle(keep: HTMLElement) {
     e.style.visibility = '';
     if (!e.matches('.nd')) e.style.transform = '';
   }
+  for (const g of $$<SVGGElement>('svg.ink > .glow, svg.ink > .branch', keep)) g.style.opacity = '';
   for (const p of $$<SVGPathElement>('.lines .ln', keep)) {
     p.style.strokeDashoffset = '';
     p.style.strokeDasharray = '';
@@ -92,6 +93,8 @@ export function morph(
   from: BoardMode,
   to: BoardMode,
   onFinish: (side: 0 | 1) => void,
+  // A's width as it stood in flow, measured before it turned absolute.
+  aWidth = A.offsetWidth,
 ): MorphJob {
   const job: MorphJob = {
     from,
@@ -101,7 +104,7 @@ export function morph(
     reverse: () => undefined,
     finishNow: () => undefined,
   };
-  A.style.width = `${A.offsetWidth}px`;
+  A.style.width = `${aWidth}px`;
   let ov: HTMLElement | null = null;
   let raf = 0;
   const finishTo = (side: 0 | 1) => {
@@ -276,6 +279,8 @@ export function morph(
     p.style.strokeDasharray = '1';
   }
   const keepLanes = !aCard && !bCard; // Lista ⇄ Tabla: the lanes stay, only the rows resolve
+  const bGlow = $$<SVGGElement>('svg.ink > .glow', B);
+  const bBranch = $$<SVGGElement>('svg.ink > .branch', B);
   const bCols = bCard
     ? $$('.col', B).map((c, ci) => ({
         c,
@@ -368,6 +373,11 @@ export function morph(
     // The ink head.
     head = inkHead({ fwd, t, h0: st.head0, rev: st.rev });
     for (const l of bLanes) l.style.strokeDashoffset = keepLanes ? '0' : String(1 - head);
+    // The new lanes' light and branches come in behind the ink, as they do when a list draws in.
+    if (!keepLanes) {
+      for (const g of bGlow) g.style.opacity = String(clamp((head - 0.55) / 0.45));
+      for (const g of bBranch) g.style.opacity = String(clamp((head - 0.65) / 0.35));
+    }
     for (const { e, y } of bBlocks) {
       const r = clamp((head * HB - y + 8) / 56);
       e.style.opacity = String(r * r * (3 - 2 * r));

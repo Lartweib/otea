@@ -204,12 +204,14 @@ describe('the grid width tiers', () => {
     expect(long && columnWidth(long, false)).toBe(107);
     expect(columnWidth(column('severity'), false)).toBe(112);
     expect(columnWidth(column('severity'), true)).toBe(52);
-    expect(columnWidth(column('who'), false)).toBe(44);
-    expect(columnWidth(column('age'), false)).toBe(60);
+    expect(columnWidth(column('who'), false)).toBe(52);
+    // The longest age: the time left on a lease, '23 h 59 left', and its 12 px of padding.
+    expect(columnWidth(column('age'), false)).toBe(101);
     expect(columnWidth(column('category'), false)).toBe(117);
     expect(columnWidth(column('area'), false)).toBe(160);
     const { shown } = fitColumns(gridColumns(bugs), 640, {});
-    expect(gridTemplate(shown, 640).tracks).toBe('28px 72px minmax(0, 1fr) 52px 110px 44px 60px');
+    // At 640 the title keeps its 240: severity and the step step out.
+    expect(gridTemplate(shown, 640).tracks).toBe('28px 72px minmax(0, 1fr) 52px 101px');
   });
 });
 
@@ -227,30 +229,30 @@ describe('the spare width', () => {
       return [title, air];
     };
 
-    expect(at(1179)).toEqual([404, 0]);
-    expect(at(1659)).toEqual([668, 36]);
-    expect(at(2299)).toEqual([882, 107]);
-    expect(at(1320)).toEqual([545, 0]);
-    expect(at(3179)).toEqual([1636, 128]);
+    expect(at(1179)).toEqual([355, 0]);
+    expect(at(1659)).toEqual([655, 30]);
+    expect(at(2299)).toEqual([869, 101]);
+    expect(at(1320)).toEqual([496, 0]);
+    expect(at(3179)).toEqual([1587, 128]);
   });
 
   it('puts the air before every column after the title, so the table fills its room', () => {
     const { tracks } = layout(1659);
 
-    expect(tracks).toBe('28px 72px minmax(0, 1fr) 153px 148px 196px 146px 80px 96px');
+    expect(tracks).toBe('28px 72px minmax(0, 1fr) 147px 142px 190px 140px 82px 131px');
     const px = tracks
       .replace('minmax(0, 1fr)', '0')
       .split(' ')
       .map((track) => Number.parseInt(track, 10) || 0);
     // The lanes' 60 px of padding on the left and 12 on the right.
-    expect(px.reduce((sum, track) => sum + track, 0) + 668 + 72).toBe(1659);
+    expect(px.reduce((sum, track) => sum + track, 0) + 655 + 72).toBe(1659);
   });
 
   it('keeps the air it is given (a drag holds it still), the title taking the difference', () => {
     const { shown } = fitColumns(gridColumns(bugs), 2299, { state: 150 });
 
-    expect(gridTemplate(shown, 2299, 107)).toMatchObject({ air: 107, title: 842 });
-    expect(gridTemplate(shown, 2299)).toMatchObject({ air: 102, title: 872 });
+    expect(gridTemplate(shown, 2299, 107)).toMatchObject({ air: 107, title: 793 });
+    expect(gridTemplate(shown, 2299)).toMatchObject({ air: 97, title: 853 });
   });
 });
 
@@ -272,12 +274,12 @@ describe('column widths', () => {
   });
 
   it('takes a width the viewer gave, from the title, within the column limits', () => {
-    expect(layout(1179, { state: 150 }).title).toBe(364);
+    expect(layout(1179, { state: 150 }).title).toBe(315);
     expect(widths(1179, { category: 10, area: 300, id: 300, who: 90 })).toMatchObject({
       id: 72,
       category: 64,
       area: 300,
-      who: 44,
+      who: 52,
     });
     expect(widths(2299, { area: 900 }).area).toBe(480);
   });
@@ -291,7 +293,7 @@ describe('column widths', () => {
     const { title, shown } = layout(1179, { area: 480, category: 300 });
 
     expect(title).toBe(240);
-    expect(widths(1179, { area: 480, category: 300 })).toMatchObject({ area: 264, category: 177 });
+    expect(widths(1179, { area: 480, category: 300 })).toMatchObject({ area: 233, category: 159 });
     expect(shown).toHaveLength(8);
   });
 
@@ -299,9 +301,16 @@ describe('column widths', () => {
     const more = chosenColumns(bugs, [...bugs.view.columns, 'environment', 'type']);
 
     expect(layout(1179, {}, more).dropped).toEqual(['environment']);
-    expect(layout(2299, {}, more)).toMatchObject({ dropped: [], title: 804, air: 61 });
-    // At 760 the title would get 205: category steps out too.
+    expect(layout(2299, {}, more)).toMatchObject({ dropped: [], title: 795, air: 56 });
+    // At 760 the title would get 156: category steps out too.
     expect(layout(760).dropped).toEqual(['category', 'area']);
+  });
+
+  it('beside an open item, keeps the title its 240: severity, the step and who step out too', () => {
+    const narrow = layout(600);
+    expect(narrow.dropped).toEqual(['category', 'severity', 'area', 'state']);
+    expect(narrow.title).toBeGreaterThanOrEqual(240);
+    expect(layout(560).dropped).toEqual(['category', 'severity', 'area', 'state', 'who']);
   });
 
   it('moves an edge by the keys: 16px, 64 with Shift, Home and End to the limits', () => {
