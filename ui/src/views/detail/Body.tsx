@@ -128,7 +128,7 @@ export function bodySections(o: {
   const fieldSecs = (block: DetailBlock, i: number, label?: string): Sec[] => {
     if (block.kind === 'fields')
       return block.values
-        .filter((v) => v.value !== '')
+        .filter((v) => v.value !== '' && v.field.module === 'markdown')
         .map((v) => {
           const { Detail } = moduleFor(v.field.module);
           const k = `f:${v.field.name}`;

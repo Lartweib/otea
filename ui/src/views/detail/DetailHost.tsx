@@ -235,6 +235,8 @@ export function DetailHost() {
   const finish = () => {
     st.phase = null;
     st.pen?.stop();
+    // The pen lives on the link of this sheet: the next sheet draws a new one.
+    st.pen = null;
     st.frame?.cancel();
     st.inner?.cancel();
     st.frame = st.inner = null;
