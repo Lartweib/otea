@@ -120,6 +120,11 @@ describe('a board', () => {
       kid('ERR-11', { state: 'fixing', turn: 'agent' }),
     ]);
     expect(html).toContain('<span class="prog"><i class="you"></i><i class="ag"></i></span>');
+    // Each part after the id keeps its dot with it, so a wrapped line never ends on one.
+    expect(html).toContain('<span class="mpt"><span class="sep">·</span><span class="prog">');
+    expect(html).toContain(
+      '<span class="mpt"><span class="sep">·</span><span class="stp you">A verificar</span></span>',
+    );
     expect(html).toContain('2 de 2 abiertos');
     expect(html).toMatch(
       /data-k="ERR-9".*class="row child" data-k="ERR-10".*class="row child" data-k="ERR-11"/,
