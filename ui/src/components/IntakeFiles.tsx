@@ -64,98 +64,98 @@ export function IntakeFiles({
       ? t('intake.dropMore')
       : t('intake.drop');
   return (
-    <div className="intake-field intake-files">
-      <span className="intake-label">
-        <span className="t-label" id="intake-files-label">
-          {t('intake.evidence')}
-        </span>
-        <span className="t-cap">{t('intake.optional')}</span>
+    <div className="ffield intake-files">
+      <span className="flab" id="intake-files-label">
+        {t('intake.evidence')}
+        <small>{t('intake.optional')}</small>
       </span>
-      <button
-        type="button"
-        className="intake-drop"
-        data-over={over || undefined}
-        data-slim={drafts.length > 0 || undefined}
-        aria-describedby="intake-files-limits"
-        disabled={disabled || full}
-        onClick={() => picker.current?.click()}
-        onDragOver={(event) => {
-          if (disabled || full) return;
-          event.preventDefault();
-          setOver(true);
-        }}
-        onDragLeave={() => setOver(false)}
-        onDrop={(event) => {
-          event.preventDefault();
-          setOver(false);
-          if (!disabled) onAdd([...event.dataTransfer.files]);
-        }}
-      >
-        <Icon name="attach" />
-        <span>{drop}</span>
-        <span className="t-cap intake-limits" id="intake-files-limits">
-          {t('intake.limits', { count: MAX_FILES, mb: MAX_FILE_MB })}
-        </span>
-      </button>
-      <input
-        ref={picker}
-        type="file"
-        multiple
-        hidden
-        aria-labelledby="intake-files-label"
-        onChange={(event) => {
-          onAdd([...(event.target.files ?? [])]);
-          event.target.value = '';
-        }}
-      />
-      {drafts.length > 0 ? (
-        <ul className="intake-file-list">
-          {drafts.map(({ key, file, role }) => {
-            const large = tooLarge(file);
-            return (
-              <li key={key} className="intake-file" data-error={large || undefined}>
-                <Thumb file={file} />
-                <span className="intake-file-name">
-                  <span className="mono">{file.name}</span>
-                  <span className="t-cap">
-                    {large ? t('intake.tooLarge', { mb: MAX_FILE_MB }) : sizeLabel(file.size)}
+      <div className="fctl">
+        <button
+          type="button"
+          className="intake-drop"
+          data-over={over || undefined}
+          data-slim={drafts.length > 0 || undefined}
+          aria-describedby="intake-files-limits"
+          disabled={disabled || full}
+          onClick={() => picker.current?.click()}
+          onDragOver={(event) => {
+            if (disabled || full) return;
+            event.preventDefault();
+            setOver(true);
+          }}
+          onDragLeave={() => setOver(false)}
+          onDrop={(event) => {
+            event.preventDefault();
+            setOver(false);
+            if (!disabled) onAdd([...event.dataTransfer.files]);
+          }}
+        >
+          <Icon name="attach" />
+          <span>{drop}</span>
+          <span className="intake-limits" id="intake-files-limits">
+            {t('intake.limits', { count: MAX_FILES, mb: MAX_FILE_MB })}
+          </span>
+        </button>
+        <input
+          ref={picker}
+          type="file"
+          multiple
+          hidden
+          aria-labelledby="intake-files-label"
+          onChange={(event) => {
+            onAdd([...(event.target.files ?? [])]);
+            event.target.value = '';
+          }}
+        />
+        {drafts.length > 0 ? (
+          <ul className="intake-file-list">
+            {drafts.map(({ key, file, role }) => {
+              const large = tooLarge(file);
+              return (
+                <li key={key} className="intake-file" data-error={large || undefined}>
+                  <Thumb file={file} />
+                  <span className="intake-file-name">
+                    <span className="mono">{file.name}</span>
+                    <span className="t-cap">
+                      {large ? t('intake.tooLarge', { mb: MAX_FILE_MB }) : sizeLabel(file.size)}
+                    </span>
                   </span>
-                </span>
-                {roles.length > 1 ? (
-                  <fieldset className="intake-roles" disabled={disabled}>
-                    <legend className="visually-hidden">
-                      {t('intake.roleOf', { name: file.name })}
-                    </legend>
-                    {roles.map((each) => (
-                      <button
-                        key={each}
-                        type="button"
-                        className="intake-role"
-                        aria-pressed={each === role}
-                        onClick={() => onRole(key, each)}
-                      >
-                        {t(ROLE_LABEL[each])}
-                      </button>
-                    ))}
-                  </fieldset>
-                ) : (
-                  <span />
-                )}
-                <Button
-                  variant="quiet"
-                  size="sm"
-                  icon
-                  aria-label={t('intake.removeFile', { name: file.name })}
-                  disabled={disabled}
-                  onClick={() => onRemove(key)}
-                >
-                  <Icon name="close" />
-                </Button>
-              </li>
-            );
-          })}
-        </ul>
-      ) : null}
+                  {roles.length > 1 ? (
+                    <fieldset className="intake-roles" disabled={disabled}>
+                      <legend className="visually-hidden">
+                        {t('intake.roleOf', { name: file.name })}
+                      </legend>
+                      {roles.map((each) => (
+                        <button
+                          key={each}
+                          type="button"
+                          className="intake-role"
+                          aria-pressed={each === role}
+                          onClick={() => onRole(key, each)}
+                        >
+                          {t(ROLE_LABEL[each])}
+                        </button>
+                      ))}
+                    </fieldset>
+                  ) : (
+                    <span />
+                  )}
+                  <Button
+                    variant="quiet"
+                    size="sm"
+                    icon
+                    aria-label={t('intake.removeFile', { name: file.name })}
+                    disabled={disabled}
+                    onClick={() => onRemove(key)}
+                  >
+                    <Icon name="close" />
+                  </Button>
+                </li>
+              );
+            })}
+          </ul>
+        ) : null}
+      </div>
     </div>
   );
 }

@@ -1,4 +1,6 @@
 import { presetText, t } from './i18n/i18n.ts';
+import type { Lane } from './lanes/geometry.ts';
+import type { Look } from './lanes/looks.ts';
 import { type NodeKind, nodeKind } from './node-kind.ts';
 import { fieldWord, stateWord } from './preset-words.ts';
 import type { FieldView, Turn, TypeView } from './types.ts';
@@ -112,4 +114,38 @@ export function nextId(prefix: string, ids: readonly string[]): string {
     .filter(Number.isInteger)
     .reduce((max, seq) => Math.max(max, seq), 0);
   return `${head}${last + 1}`;
+}
+
+// The row the form draws under "llega como" (mock:3912-3915): on the lane of the turn it starts
+// on, yours when it is your turn, queued for an agent, closed on the trunk.
+export function landingLook({ turn, kind }: Pick<Landing, 'turn' | 'kind'>): {
+  lane: Lane;
+  look: Look;
+} {
+  if (turn === 'human') return { lane: 'you', look: 'yours' };
+  if (turn === 'agent') return { lane: 'ag', look: 'queued' };
+  return { lane: 'none', look: kind === 'discarded' ? 'dropped' : 'done' };
+}
+
+// The form's lede (mock:3904): "En Errores, como hijo de ERR-1. Llega a un agente, en Encontrado."
+export function ledeOf({
+  board,
+  parent,
+  landing,
+  step,
+}: {
+  board: string;
+  parent?: string | undefined;
+  landing: Pick<Landing, 'turn'>;
+  step: string;
+}): string {
+  const lands =
+    landing.turn === 'human'
+      ? t('intake.ledeYou', { step })
+      : landing.turn === 'agent'
+        ? t('intake.ledeAgent', { step })
+        : t('intake.ledeClosed', { step });
+  return parent
+    ? t('intake.ledeChild', { board, parent, lands })
+    : t('intake.lede', { board, lands });
 }

@@ -1,1 +1,304 @@
-/* Nuevo ítem. The surfaces slice owns this file (SPEC §11). */
+/* Nuevo ítem (SPEC §10.5, mock:672-688): in the sheet beside the list, a page on the phone. */
+.nform {
+  max-width: 50rem;
+}
+/* the bar, as the detail's (mock:511-518), scoped so the form stands on its own */
+.nform .sheet-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 40px;
+  margin-bottom: 18px;
+}
+.nform .crumb {
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  font-size: 12.5px;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+.nform .bar-r {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.nform h1 {
+  font: 430 34px / 1.06 var(--serif);
+  font-variation-settings: "opsz" 48;
+  letter-spacing: -0.02em;
+  margin: 6px 0;
+}
+.nform .lede {
+  font: 400 italic 16px / 1.4 var(--serif);
+  color: var(--ink-2);
+  margin-bottom: 22px;
+}
+.nform .lede code {
+  font: 400 12.5px / 1 var(--mono);
+  font-style: normal;
+  color: var(--ink);
+}
+.intake {
+  display: block;
+}
+.ffield {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr);
+  column-gap: 20px;
+  padding: 14px 0;
+  border-top: 1px solid var(--rule);
+  align-items: start;
+}
+.ffield > label,
+.ffield > .flab {
+  font: 600 10px / 1.3 var(--sans);
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  padding-top: 9px;
+}
+.ffield > .flab small {
+  display: block;
+  font: 400 10.5px / 1.3 var(--mono);
+  letter-spacing: 0;
+  text-transform: none;
+  margin-top: 3px;
+}
+.ffield .required {
+  font: 400 10.5px / 1 var(--mono);
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ink-3);
+}
+.ffield .fctl {
+  min-width: 0;
+}
+.ffield input[type="text"],
+.ffield select,
+.ffield .input {
+  width: 100%;
+  height: 38px;
+  padding: 0 12px;
+  border-radius: 7px;
+  border: 1px solid var(--rule-2);
+  background: var(--sheet);
+  font: 400 17px / 1 var(--serif);
+  color: var(--ink);
+  transition: border-color 240ms var(--o-drift);
+}
+.ffield textarea {
+  display: block;
+  width: 100%;
+  min-height: 86px;
+  resize: vertical;
+  padding: 10px 12px;
+  border-radius: 7px;
+  border: 1px solid var(--rule-2);
+  background: var(--sheet);
+  font: 400 16px / 1.45 var(--serif);
+  color: var(--ink);
+  transition: border-color 240ms var(--o-drift);
+}
+.ffield input::placeholder,
+.ffield textarea::placeholder {
+  font-style: italic;
+  color: var(--ink-3);
+}
+.ffield input:focus,
+.ffield textarea:focus,
+.ffield select:focus {
+  outline: none;
+  border-color: var(--you);
+}
+.ffield .chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 3px 0 0;
+  margin: 0;
+  border: 0;
+  min-width: 0;
+}
+.ffield .chips .chipb {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.ffield .chips .chipb .id {
+  font: 400 11.5px / 1 var(--mono);
+  color: var(--ink-3);
+}
+.ffield .chips .chipb svg.ic {
+  width: 12px;
+  height: 12px;
+  color: var(--ink-3);
+}
+.ffield .fhint {
+  font: 400 italic 13.5px / 1.4 var(--serif);
+  color: var(--ink-3);
+  margin-top: 6px;
+}
+.fwrap + .fwrap .ffield,
+.ffield + .fwrap .ffield {
+  border-top: 1px solid var(--rule);
+}
+.fnote {
+  font: 400 11.5px / 1.45 var(--mono);
+  color: var(--ink-3);
+  margin: 8px 0 0;
+}
+
+/* files (today's drop, paste, pick), in the form's grammar */
+.intake-drop {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+  width: 100%;
+  min-height: 52px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px dashed var(--rule-2);
+  color: var(--ink-2);
+  font-size: 13.5px;
+  text-align: left;
+  transition:
+    border-color 240ms var(--o-drift),
+    background-color 240ms var(--o-drift),
+    color var(--t-hover) var(--ease);
+}
+.intake-drop[data-slim] {
+  min-height: 38px;
+  padding: 6px 12px;
+}
+.intake-drop:hover:not(:disabled),
+.intake-drop[data-over] {
+  border-color: var(--ink-3);
+  background: var(--hov);
+  color: var(--ink);
+}
+.intake-drop:disabled {
+  color: var(--ink-3);
+  cursor: default;
+}
+.intake-limits {
+  font: 400 11px / 1 var(--mono);
+  color: var(--ink-3);
+  margin-left: auto;
+}
+.intake-file-list {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+}
+.intake-file {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) auto auto;
+  gap: 10px;
+  align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--rule);
+}
+.intake-file[data-error] .intake-file-name .t-cap {
+  color: var(--warn);
+}
+.intake-thumb {
+  width: 36px;
+  height: 28px;
+  border-radius: 4px;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  background: var(--well);
+  font: 400 10px / 1 var(--mono);
+  color: var(--ink-3);
+}
+.intake-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.intake-file-name {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  font-size: 13px;
+}
+.intake-file-name .mono {
+  font: 400 12px / 1.2 var(--mono);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.intake-file-name .t-cap {
+  font: 400 11px / 1 var(--mono);
+  color: var(--ink-3);
+}
+.intake-roles {
+  display: flex;
+  gap: 4px;
+  border: 0;
+  padding: 0;
+  margin: 0;
+}
+.intake-role {
+  height: 24px;
+  padding: 0 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  color: var(--ink-3);
+  box-shadow: inset 0 0 0 1px var(--rule);
+  transition:
+    box-shadow 240ms var(--o-drift),
+    color var(--t-hover) var(--ease);
+}
+.intake-role[aria-pressed="true"] {
+  color: var(--ink);
+  box-shadow: inset 0 0 0 1.5px var(--ink);
+}
+
+/* llega como: one row on the lanes, drawn as you type */
+.landsas {
+  margin: 18px 0 8px;
+}
+.landsas .ll {
+  font: 400 11.5px / 1 var(--mono);
+  color: var(--ink-3);
+  margin-bottom: 8px;
+}
+.landsas .lanes {
+  padding-bottom: 6px;
+  border-radius: 8px;
+}
+.landsas .row .tt.untitled {
+  color: var(--ink-3);
+  font-style: italic;
+}
+.fbtns {
+  display: flex;
+  gap: 10px;
+  margin-top: 18px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.fbtns .hint {
+  font: 400 italic 14px / 1.3 var(--serif);
+  color: var(--ink-3);
+}
+.nform .action-error {
+  margin-top: 12px;
+}
+
+@media (max-width: 720px) {
+  .ffield {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: 8px;
+  }
+  .ffield > label,
+  .ffield > .flab {
+    padding-top: 0;
+  }
+}
