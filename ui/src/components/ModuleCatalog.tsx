@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { type CatalogEntry, type CatalogOrigin, type ModuleUse, usageSummary } from '../catalog.ts';
 import { type PlainKey, t, tx } from '../i18n/i18n.ts';
-import { Node, Pill } from '../kit/index.ts';
+import { Pill } from '../kit/index.ts';
+import { NodeGlyph } from '../lanes/NodeGlyph.tsx';
 import type { FieldModuleUi, Sample } from '../modules/contract.ts';
 import { moduleFor } from '../modules/registry.ts';
 import type { Remote } from '../remote.ts';
@@ -43,8 +44,8 @@ function IndexEntry({ entry, selected }: { entry: CatalogEntry; selected: boolea
           <span className="mod-entry-name">{entry.name}</span>
           <OriginPill origin={entry.origin} />
         </span>
-        <span className="t-small">{summaryOf(entry)}</span>
-        <span className="t-cap">{note ? t(note) : usageSummary(entry.uses)}</span>
+        <span className="st-small">{summaryOf(entry)}</span>
+        <span className="st-cap">{note ? t(note) : usageSummary(entry.uses)}</span>
       </a>
     </li>
   );
@@ -57,10 +58,10 @@ export function ModuleIndex({ entries, selected }: IndexProps) {
   return (
     <nav className="mod-index" aria-label={t('catalog.title')}>
       <div className="mod-index-head">
-        <a className="t-h mod-index-title" href={modulesHash()}>
+        <a className="st-h mod-index-title" href={modulesHash()}>
           {t('catalog.title')}
         </a>
-        <a className="quiet-link t-small" href={ITEMS_HASH}>
+        <a className="quiet-link st-small" href={ITEMS_HASH}>
           {t('catalog.back')}
         </a>
       </div>
@@ -71,7 +72,7 @@ export function ModuleIndex({ entries, selected }: IndexProps) {
       </ul>
       {unknown.length > 0 ? (
         <>
-          <h2 className="t-label mod-index-sub">{t('catalog.unknownHeading')}</h2>
+          <h2 className="st-label mod-index-sub">{t('catalog.unknownHeading')}</h2>
           <ul className="mod-entries">
             {unknown.map((entry) => (
               <IndexEntry key={entry.name} entry={entry} selected={entry.name === selected} />
@@ -97,12 +98,12 @@ function RowPreview({
   const isTitle = sample.field.name === 'title';
   return (
     <span className="sample-row">
-      <Node kind="queued" />
+      <NodeGlyph look="queued" size={16} />
       <span className="sample-row-title">
         {isTitle && value !== '' ? value : t('catalog.sampleItem')}
       </span>
       {Row ? <Row field={sample.field} value={value} /> : null}
-      {Row || isTitle ? null : <span className="t-small">{t('catalog.outOfRow')}</span>}
+      {Row || isTitle ? null : <span className="st-small">{t('catalog.outOfRow')}</span>}
     </span>
   );
 }
@@ -121,7 +122,7 @@ function SamplePreview({
   const { Detail } = module;
   return (
     <section className="sample" aria-label={t('catalog.sample', { label: t(sample.label) })}>
-      <h3 className="t-label sample-label">{t(sample.label)}</h3>
+      <h3 className="st-label sample-label">{t(sample.label)}</h3>
       <dl className="fields sample-views">
         <dt>{t('catalog.row')}</dt>
         <dd>
@@ -130,7 +131,7 @@ function SamplePreview({
         <dt>{t('catalog.detail')}</dt>
         <dd>
           {value.trim() === '' ? (
-            <span className="t-small">{t('catalog.emptyDetail')}</span>
+            <span className="st-small">{t('catalog.emptyDetail')}</span>
           ) : (
             <Detail field={sample.field} value={value} />
           )}
@@ -159,9 +160,10 @@ function fieldFacts({ field }: ModuleUse): string[] {
 }
 
 function Uses({ uses, presets }: { uses: ModuleUse[]; presets: Remote<PresetView[]> }) {
-  if (presets.status === 'loading') return <p className="t-small">{t('catalog.loadingPresets')}</p>;
-  if (presets.status === 'failed') return <p className="action-error">{presets.message}</p>;
-  if (uses.length === 0) return <p className="t-small">{t('catalog.noUses')}</p>;
+  if (presets.status === 'loading')
+    return <p className="st-small">{t('catalog.loadingPresets')}</p>;
+  if (presets.status === 'failed') return <p className="st-error">{presets.message}</p>;
+  if (uses.length === 0) return <p className="st-small">{t('catalog.noUses')}</p>;
   return (
     <ul className="mod-uses">
       {uses.map((use) => (
@@ -170,14 +172,14 @@ function Uses({ uses, presets }: { uses: ModuleUse[]; presets: Remote<PresetView
             <code className="mod-use-field">
               {use.preset}.{use.field.name}
             </code>
-            <span className="t-cap">
+            <span className="st-cap">
               {t('catalog.presetOrigin', { origin: use.origin, version: use.version })}
             </span>
           </span>
           {fieldFacts(use).length > 0 ? (
-            <span className="t-small">{fieldFacts(use).join(' · ')}</span>
+            <span className="st-small">{fieldFacts(use).join(' · ')}</span>
           ) : null}
-          <span className="t-small">
+          <span className="st-small">
             {use.collections.length > 0
               ? t('catalog.inCollections', { collections: use.collections.join(', ') })
               : t('catalog.noCollectionUsesPreset')}
@@ -200,21 +202,21 @@ export function ModulePanel({ entry, presets }: PanelProps) {
       <header className="detail-head">
         <div className="detail-tags">
           <OriginPill origin={entry.origin} />
-          <span className="t-cap">{t('catalog.fieldModule')}</span>
+          <span className="st-cap">{t('catalog.fieldModule')}</span>
         </div>
-        <h1 className="t-display mod-name" id="mod-title">
+        <h1 className="st-display mod-name" id="mod-title">
           {entry.name}
         </h1>
-        <p className="t-body">{summaryOf(entry)}</p>
-        {note ? <p className="mod-note t-small">{t(note)}</p> : null}
+        <p className="st-body">{summaryOf(entry)}</p>
+        {note ? <p className="mod-note st-small">{t(note)}</p> : null}
       </header>
       {known ? (
         <section className="mod-section" aria-labelledby="mod-preview">
           <div className="mod-section-head">
-            <h2 className="t-h" id="mod-preview">
+            <h2 className="st-h" id="mod-preview">
               {t('catalog.preview')}
             </h2>
-            <p className="t-small">{t('catalog.previewNote')}</p>
+            <p className="st-small">{t('catalog.previewNote')}</p>
           </div>
           {module.samples.map((sample, index) => (
             <SamplePreview
@@ -226,17 +228,17 @@ export function ModulePanel({ entry, presets }: PanelProps) {
           ))}
         </section>
       ) : (
-        <p className="t-body">{tx('catalog.plainUntil', { name: <code>{entry.name}</code> })}</p>
+        <p className="st-body">{tx('catalog.plainUntil', { name: <code>{entry.name}</code> })}</p>
       )}
       <section className="mod-section" aria-labelledby="mod-uses">
-        <h2 className="t-h" id="mod-uses">
+        <h2 className="st-h" id="mod-uses">
           {t('catalog.usedBy')}
         </h2>
         <Uses uses={entry.uses} presets={presets} />
       </section>
       {known ? (
         <section className="mod-section" aria-labelledby="mod-yaml">
-          <h2 className="t-h" id="mod-yaml">
+          <h2 className="st-h" id="mod-yaml">
             {t('catalog.inYaml')}
           </h2>
           <pre className="mod-yaml well">
@@ -249,27 +251,28 @@ export function ModulePanel({ entry, presets }: PanelProps) {
 }
 
 function PresetList({ presets }: { presets: Remote<PresetView[]> }) {
-  if (presets.status === 'loading') return <p className="t-small">{t('catalog.loadingPresets')}</p>;
-  if (presets.status === 'failed') return <p className="action-error">{presets.message}</p>;
+  if (presets.status === 'loading')
+    return <p className="st-small">{t('catalog.loadingPresets')}</p>;
+  if (presets.status === 'failed') return <p className="st-error">{presets.message}</p>;
   return (
     <ul className="mod-uses">
       {presets.value.map((preset) => (
         <li key={preset.name} className="mod-use">
           <span className="mod-use-head">
             <code className="mod-use-field">{preset.name}</code>
-            <span className="t-cap">
+            <span className="st-cap">
               {t('catalog.presetOrigin', { origin: preset.origin, version: preset.version })}
             </span>
           </span>
           <span className="mod-use-modules">
             {preset.fields.map((field) => (
               <a key={field.name} className="mod-chip" href={modulesHash(field.module)}>
-                <span className="t-cap">{field.name}</span>
+                <span className="st-cap">{field.name}</span>
                 <Pill size="sm">{field.module}</Pill>
               </a>
             ))}
           </span>
-          <span className="t-small">
+          <span className="st-small">
             {preset.collections.length > 0
               ? t('catalog.inCollections', { collections: preset.collections.join(', ') })
               : t('catalog.noCollectionUsesIt')}
@@ -285,13 +288,13 @@ export function CatalogOverview({ presets }: { presets: Remote<PresetView[]> }) 
   return (
     <article className="detail mod" aria-labelledby="mod-title">
       <header className="detail-head">
-        <h1 className="t-display" id="mod-title">
+        <h1 className="st-display" id="mod-title">
           {t('catalog.title')}
         </h1>
-        <p className="t-body">{tx('catalog.intro', { folder: <code>.otea/modules/</code> })}</p>
+        <p className="st-body">{tx('catalog.intro', { folder: <code>.otea/modules/</code> })}</p>
       </header>
       <section className="mod-section" aria-labelledby="mod-presets">
-        <h2 className="t-h" id="mod-presets">
+        <h2 className="st-h" id="mod-presets">
           {t('catalog.loaded')}
         </h2>
         <PresetList presets={presets} />

@@ -7,9 +7,9 @@
   inset: 0;
   display: flex;
   flex-direction: column;
-  background: var(--bg);
+  background: var(--ground);
   color: var(--ink);
-  font-family: var(--font-human);
+  font-family: var(--sans);
 }
 @media (max-width: 1360px) {
   .cz-page {
@@ -44,8 +44,8 @@
   height: 56px;
   box-sizing: border-box;
   padding: 0 16px 0 10px;
-  background: var(--sf);
-  border-bottom: 1px solid var(--line);
+  background: var(--sheet);
+  border-bottom: 1px solid var(--rule);
 }
 .cz-bar .btn {
   height: 32px;
@@ -86,7 +86,7 @@
   margin: 0 20px 0 10px;
   font-size: 13.5px;
   white-space: nowrap;
-  color: var(--mut);
+  color: var(--ink-2);
 }
 .cz-title b {
   font-weight: 600;
@@ -134,8 +134,8 @@
   gap: 2px;
   padding: 2px;
   border-radius: 999px;
-  box-shadow: inset 0 0 0 1px var(--line);
-  background: var(--bg);
+  box-shadow: inset 0 0 0 1px var(--rule);
+  background: var(--ground);
 }
 .cz-seg button {
   all: unset;
@@ -145,8 +145,8 @@
   height: 26px;
   padding: 0 10px;
   border-radius: 999px;
-  font: 500 12.5px var(--font-human);
-  color: var(--mut);
+  font: 500 12.5px var(--sans);
+  color: var(--ink-2);
   white-space: nowrap;
   cursor: pointer;
 }
@@ -154,7 +154,7 @@
   color: var(--ink);
 }
 .cz-seg button[aria-pressed="true"] {
-  background: var(--sf);
+  background: var(--sheet);
   box-shadow: 0 0 0 1px var(--lane);
   color: var(--ink);
 }
@@ -186,7 +186,7 @@
   flex-basis: 100%;
   text-align: right;
   font-size: 12.5px;
-  color: var(--mut);
+  color: var(--ink-2);
 }
 .cz-stage {
   position: relative;
@@ -195,7 +195,7 @@
   overflow-x: clip;
   overflow-y: auto;
   scrollbar-width: thin;
-  scrollbar-color: var(--line) transparent;
+  scrollbar-color: var(--rule) transparent;
 }
 /* the detail at its own width, left in the sheet; the column to its right stays free for a menu */
 .cz-sheet {
@@ -249,9 +249,9 @@
   padding: 0 4px 0 9px;
   border: 0;
   border-radius: 999px;
-  background: var(--bg);
-  box-shadow: inset 0 0 0 1px var(--line);
-  font: 500 12px var(--font-human);
+  background: var(--ground);
+  box-shadow: inset 0 0 0 1px var(--rule);
+  font: 500 12px var(--sans);
   color: var(--ink);
   white-space: nowrap;
   cursor: pointer;
@@ -277,7 +277,7 @@
   outline: 0;
 }
 .cz-showing select option {
-  background: var(--sf);
+  background: var(--sheet);
   color: var(--ink);
 }
 .cz-showing:focus-within,
@@ -295,7 +295,7 @@
 }
 .cz-pv[aria-pressed="true"] {
   background: var(--ink);
-  color: var(--sf);
+  color: var(--sheet);
   box-shadow: none;
 }
 .cz-dev button {
@@ -306,8 +306,8 @@
   border-top: 0;
 }
 .cz-canvas .detail-head .shape.s-you {
-  fill: var(--mut);
-  stroke: var(--mut);
+  fill: var(--ink-2);
+  stroke: var(--ink-2);
 }
 .cz-bar .cz-dev button {
   height: 26px;
@@ -317,8 +317,8 @@
 .cz-canvas .detail-head .btn.move,
 .cz-canvas .detail-head .btn.move.primary {
   background: transparent;
-  border-color: var(--line);
-  color: var(--mut);
+  border-color: var(--rule);
+  color: var(--ink-2);
   cursor: default;
 }
 .cz-canvas .detail-head .btn.move.quiet {
@@ -333,11 +333,11 @@
 }
 .cz-canvas .detail-head .pill {
   background: none;
-  box-shadow: inset 0 0 0 1px var(--line);
-  color: var(--mut);
+  box-shadow: inset 0 0 0 1px var(--rule);
+  color: var(--ink-2);
 }
-.cz-canvas .detail-head .t-display {
-  color: color-mix(in oklch, var(--ink) 80%, var(--bg));
+.cz-canvas .detail-head .st-display {
+  color: color-mix(in oklch, var(--ink) 80%, var(--ground));
 }
 .cz-canvas .detail-head .handoff-thumb {
   opacity: 0.8;
@@ -353,8 +353,8 @@
   touch-action: none;
   background: color-mix(in oklch, var(--ink) 4%, transparent);
   transition:
-    background var(--m-fast) var(--m-ease),
-    opacity var(--m-fast) var(--m-ease);
+    background var(--t-hover) var(--ease),
+    opacity var(--t-hover) var(--ease);
 }
 .cz-tile:hover {
   background: color-mix(in oklch, var(--ink) 8%, transparent);
@@ -393,10 +393,10 @@
   width: 16px;
   height: 22px;
   border-radius: 5px;
-  color: color-mix(in oklch, var(--mut) 70%, transparent);
+  color: color-mix(in oklch, var(--ink-2) 70%, transparent);
   cursor: grab;
   touch-action: none;
-  transition: color var(--m-fast) var(--m-ease);
+  transition: color var(--t-hover) var(--ease);
 }
 .cz-fgrip .cz-grip,
 .cz-boxgrip .cz-grip {
@@ -405,7 +405,7 @@
 .cz-tile:hover > .cz-fgrip,
 .cz-tile[data-chosen] > .cz-fgrip,
 .cz-fgrip:hover {
-  color: var(--mut);
+  color: var(--ink-2);
 }
 /* a chip in the list row has no room for a grip beside its text: the grip shows under the pointer */
 .cz-tile[data-slot="row"] > .cz-fgrip {
@@ -415,8 +415,8 @@
   height: 14px;
   width: 20px;
   border-radius: 999px;
-  background: var(--sf);
-  box-shadow: inset 0 0 0 1px var(--line);
+  background: var(--sheet);
+  box-shadow: inset 0 0 0 1px var(--rule);
   opacity: 0;
 }
 .cz-tile[data-slot="row"]:hover > .cz-fgrip,
@@ -432,11 +432,11 @@
 
 .cz-zone {
   position: absolute;
-  border-radius: var(--r-m);
+  border-radius: 7px;
   border: 1.5px dashed color-mix(in oklch, var(--you) 55%, transparent);
 }
 .cz-zone[data-ok="no"] {
-  border-color: var(--line);
+  border-color: var(--rule);
   opacity: 0.6;
 }
 .cz-line {
@@ -455,8 +455,8 @@
   pointer-events: none;
   padding: 7px 12px;
   font-size: 0.875rem;
-  background: var(--sf);
-  border-radius: var(--r-m);
+  background: var(--sheet);
+  border-radius: 7px;
   box-shadow:
     0 8px 24px -8px var(--shadow),
     0 0 0 1px var(--you);
@@ -470,7 +470,7 @@
   flex-basis: 100%;
   margin: 8px 0 0;
   text-align: right;
-  color: var(--mut);
+  color: var(--ink-2);
   font-size: 13px;
   line-height: 1.4;
   pointer-events: none;
@@ -485,7 +485,7 @@
   min-height: 38px;
   padding: 6px 8px 6px 16px;
   background: var(--ink);
-  color: var(--sf);
+  color: var(--sheet);
   border-radius: 14px;
   box-shadow: 0 14px 34px -14px var(--shadow);
   font-size: 13.5px;
@@ -515,15 +515,15 @@
   height: 26px;
   padding: 0 12px;
   border-radius: 999px;
-  background: color-mix(in oklch, var(--sf) 18%, transparent);
+  background: color-mix(in oklch, var(--sheet) 18%, transparent);
   font-weight: 600;
   cursor: pointer;
 }
 .cz-toast button:hover {
-  background: color-mix(in oklch, var(--sf) 28%, transparent);
+  background: color-mix(in oklch, var(--sheet) 28%, transparent);
 }
 .cz-toast button:focus-visible {
-  outline: 2px solid var(--sf);
+  outline: 2px solid var(--sheet);
   outline-offset: 2px;
 }
 @media (prefers-reduced-motion: reduce) {
@@ -548,9 +548,9 @@
   position: absolute;
   box-sizing: border-box;
   border-radius: 12px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--rule);
   pointer-events: none;
-  transition: border-color var(--m-fast) var(--m-ease);
+  transition: border-color var(--t-hover) var(--ease);
 }
 .cz-box[data-open] {
   border-color: var(--bdr);
@@ -573,12 +573,12 @@
   height: 24px;
   display: grid;
   place-items: center;
-  color: color-mix(in oklch, var(--mut) 70%, transparent);
+  color: color-mix(in oklch, var(--ink-2) 70%, transparent);
   border-radius: 5px;
 }
 .cz-box:hover .cz-boxgrip,
 .cz-boxgrip:hover {
-  color: var(--mut);
+  color: var(--ink-2);
 }
 .cz-boxgrip:focus-visible,
 .cz-boxname:focus-visible,
@@ -610,7 +610,7 @@
   padding: 0 8px;
   border: 0;
   border-radius: 6px;
-  background: var(--sf);
+  background: var(--sheet);
   box-shadow: inset 0 0 0 1.5px var(--you);
   font: inherit;
   font-weight: 600;
@@ -649,10 +649,10 @@
   top: -10px;
   padding: 1px 8px;
   border-radius: 999px;
-  background: var(--sf);
-  box-shadow: 0 0 0 1px var(--line);
+  background: var(--sheet);
+  box-shadow: 0 0 0 1px var(--rule);
   font-size: 0.75rem;
-  color: var(--mut);
+  color: var(--ink-2);
 }
 
 /* Under the title the real item already draws a band, so a tile would be a second, shorter one. */

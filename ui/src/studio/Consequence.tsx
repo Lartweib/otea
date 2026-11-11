@@ -67,7 +67,7 @@ export function Consequence({ link, gate, onFix, busy, error, saveFirst }: Conse
             </p>
           </>
         ) : null}
-        {error ? <p className="action-error t-small">{error}</p> : null}
+        {error ? <p className="st-error st-small">{error}</p> : null}
       </div>
     </div>
   );

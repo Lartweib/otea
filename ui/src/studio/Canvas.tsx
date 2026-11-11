@@ -185,7 +185,7 @@ export function Canvas({ children, type, selected, onSelect, nameOf, marks, labe
         ))}
         {hoveredBox && hovered ? (
           <div
-            className="st-hoverbox"
+            className="sst-hoverbox"
             data-slot={hovered.slot}
             style={style(grow(hoveredBox, RING))}
           >

@@ -7,8 +7,8 @@ import {
   SEVERITY_SCALE,
 } from '../../../src/core/preset.ts';
 import { t } from '../i18n/i18n.ts';
-import { Icon, Node } from '../kit/index.ts';
-import type { NodeKind } from '../node-kind.ts';
+import { Icon } from '../kit/index.ts';
+import { NodeGlyph } from '../lanes/NodeGlyph.tsx';
 import {
   asList,
   type Path,
@@ -22,6 +22,7 @@ import {
   workflowOf,
   workflowPath,
 } from './draft.ts';
+import { stateLook } from './looks.ts';
 import { Check, Chip, NameForm, ProblemMark, Seg } from './parts.tsx';
 
 // The editor's sections, one per part of a preset. Each draws the draft's raw YAML data and edits
@@ -52,8 +53,8 @@ function Head({
 }) {
   return (
     <div className="st-sh">
-      <h2 className="t-h">{title}</h2>
-      {note ? <span className="t-cap">{note}</span> : null}
+      <h2 className="st-h">{title}</h2>
+      {note ? <span className="st-cap">{note}</span> : null}
       {children ? <span className="st-sha">{children}</span> : null}
     </div>
   );
@@ -115,7 +116,7 @@ function FieldRow({ name, field, path, open, onToggle, props }: FieldRowProps) {
       </button>
       {open ? (
         <div className="st-fx">
-          {title ? <p className="t-small">{t('studio.fields.titleLocked')}</p> : null}
+          {title ? <p className="st-small">{t('studio.fields.titleLocked')}</p> : null}
           <dl className="st-kv">
             <dt>{t('studio.fields.module')}</dt>
             <dd>
@@ -198,7 +199,7 @@ function FieldRow({ name, field, path, open, onToggle, props }: FieldRowProps) {
                       })
                     }
                   />
-                  <span className="t-cap">{t('studio.fields.defaultNote')}</span>
+                  <span className="st-cap">{t('studio.fields.defaultNote')}</span>
                 </dd>
               </>
             ) : null}
@@ -223,12 +224,12 @@ function FieldRow({ name, field, path, open, onToggle, props }: FieldRowProps) {
             <dd>
               <span className="st-vals">
                 {placed.length === 0 ? (
-                  <span className="t-cap">{t('studio.fields.nowhere')}</span>
+                  <span className="st-cap">{t('studio.fields.nowhere')}</span>
                 ) : (
                   placed.map((slot) => <Chip key={slot}>{slot}</Chip>)
                 )}
               </span>
-              <span className="t-cap">{t('studio.fields.placedNote')}</span>
+              <span className="st-cap">{t('studio.fields.placedNote')}</span>
             </dd>
           </dl>
           {set ? (
@@ -280,7 +281,7 @@ function FieldTable({
         />
       ))}
       {Object.keys(fields).length === 0 ? (
-        <p className="t-small st-empty">{t('common.noFields')}</p>
+        <p className="st-small st-empty">{t('common.noFields')}</p>
       ) : null}
     </div>
   );
@@ -340,7 +341,7 @@ export function LayoutSection({ preset, type }: SectionProps) {
             <div key={slot} className="st-ly">
               <span className="st-lyk">{slot}</span>
               <span className="st-lyv">
-                {shape.layout[slot].length === 0 ? <span className="t-cap">—</span> : null}
+                {shape.layout[slot].length === 0 ? <span className="st-cap">—</span> : null}
                 {shape.layout[slot].map((entry, index) => (
                   <Chip
                     key={`${entry.module}-${entry.field ?? index}`}
@@ -354,9 +355,9 @@ export function LayoutSection({ preset, type }: SectionProps) {
           ))}
         </div>
       ) : (
-        <p className="t-small">{t('studio.layout.invalid')}</p>
+        <p className="st-small">{t('studio.layout.invalid')}</p>
       )}
-      <p className="t-cap">{t('studio.layout.ringed')}</p>
+      <p className="st-cap">{t('studio.layout.ringed')}</p>
     </section>
   );
 }
@@ -369,21 +370,11 @@ const TURNS = [
   { value: 'none', label: 'studio.states.closed' },
 ] as const;
 
-function nodeKind(
-  turn: string | undefined,
-  closes: string | undefined,
-  incomplete: boolean,
-): NodeKind {
-  if (turn === 'none') return closes === 'done' ? 'done' : 'discarded';
-  if (turn === 'human') return 'you';
-  return incomplete ? 'incomplete' : 'queued';
-}
-
 function WorkflowNote({ raw, type }: { raw: RawPreset; type: string | undefined }) {
   const own = type !== undefined && raw.types?.[type]?.workflow !== undefined;
   if (type === undefined) return null;
   return (
-    <p className="t-cap st-wfn">
+    <p className="st-cap st-wfn">
       {own ? t('studio.workflow.own', { type }) : t('studio.workflow.shared', { type })}
     </p>
   );
@@ -415,7 +406,7 @@ export function StatesSection(props: SectionProps) {
       </Head>
       <WorkflowNote raw={raw} type={type} />
       <div className="st-starts">
-        <span className="t-cap">{t('studio.states.startsIn')}</span>
+        <span className="st-cap">{t('studio.states.startsIn')}</span>
         <Seg
           mono
           label={t('studio.states.initial')}
@@ -425,7 +416,7 @@ export function StatesSection(props: SectionProps) {
         />
       </div>
       <div className="st-starts">
-        <span className="t-cap">{t('studio.states.incompleteIn')}</span>
+        <span className="st-cap">{t('studio.states.incompleteIn')}</span>
         <Seg
           mono
           label={t('studio.states.incomplete')}
@@ -456,7 +447,13 @@ export function StatesSection(props: SectionProps) {
             <div key={name} className={found.length > 0 ? 'st-srw bad' : 'st-srw'}>
               <div className="st-sr">
                 <span className="st-sn">
-                  <Node kind={nodeKind(state?.turn, state?.closes, name === workflow.incomplete)} />
+                  <NodeGlyph
+                    look={stateLook(
+                      { turn: state?.turn ?? 'agent', closes: state?.closes },
+                      name === workflow.incomplete,
+                    )}
+                    size={16}
+                  />
                   {renaming === name && change ? (
                     <form
                       onSubmit={(event) => {
@@ -482,7 +479,7 @@ export function StatesSection(props: SectionProps) {
                     <b>{name}</b>
                   )}
                   {name === workflow.initial ? (
-                    <span className="t-cap">{t('studio.states.initialTag')}</span>
+                    <span className="st-cap">{t('studio.states.initialTag')}</span>
                   ) : null}
                 </span>
                 <Seg
@@ -501,7 +498,7 @@ export function StatesSection(props: SectionProps) {
                 />
                 {state?.turn === 'none' ? (
                   <span className="st-closes">
-                    <span className="t-cap">{t('studio.states.closes')}</span>
+                    <span className="st-cap">{t('studio.states.closes')}</span>
                     <Seg
                       mono
                       label={t('studio.states.closes')}
@@ -694,7 +691,7 @@ export function MovesSection(props: SectionProps) {
                           </Check>
                         ))}
                       </span>
-                      <span className="t-cap">{t('studio.moves.closedNoStart')}</span>
+                      <span className="st-cap">{t('studio.moves.closedNoStart')}</span>
                     </dd>
                     <dt>{t('studio.moves.to')}</dt>
                     <dd>
@@ -760,7 +757,7 @@ export function GatesSection(props: SectionProps) {
       </Head>
       <WorkflowNote raw={raw} type={type} />
       {gates.length === 0 ? (
-        <p className="t-small">{t('studio.gates.none')}</p>
+        <p className="st-small">{t('studio.gates.none')}</p>
       ) : (
         <div
           className="st-gm"
@@ -785,7 +782,7 @@ export function GatesSection(props: SectionProps) {
           ))}
         </div>
       )}
-      <p className="t-cap">{t('studio.gates.read')}</p>
+      <p className="st-cap">{t('studio.gates.read')}</p>
     </section>
   );
 }
@@ -887,7 +884,7 @@ export function ViewsSection(props: SectionProps) {
             onChange={set && ((kind) => set('kind', kind === 'list' ? undefined : kind))}
           />
           {view.kind === 'board' ? (
-            <span className="t-cap">{t('studio.views.boardNote')}</span>
+            <span className="st-cap">{t('studio.views.boardNote')}</span>
           ) : null}
         </dd>
         <dt>{t('studio.views.groupBy')}</dt>
@@ -922,7 +919,7 @@ export function ViewsSection(props: SectionProps) {
               </Check>
             ))}
           </span>
-          <span className="t-cap">
+          <span className="st-cap">
             {view.columns ? t('studio.views.ownColumns') : t('studio.views.defaultColumns')}
           </span>
         </dd>
@@ -960,7 +957,7 @@ export function TypesSection(props: SectionProps) {
           />
         ) : null}
       </Head>
-      {types.length === 0 ? <p className="t-small">{t('studio.types.none')}</p> : null}
+      {types.length === 0 ? <p className="st-small">{t('studio.types.none')}</p> : null}
       <div className="st-ft">
         <div className="st-tr hd" aria-hidden="true">
           <span>{t('studio.types.type')}</span>
@@ -997,16 +994,16 @@ export function TypesSection(props: SectionProps) {
                     children.length > 0 ? (
                       children.map((child) => <Chip key={child}>{child}</Chip>)
                     ) : (
-                      <span className="t-cap">{t('studio.types.holdsNothing')}</span>
+                      <span className="st-cap">{t('studio.types.holdsNothing')}</span>
                     )
                   ) : (
-                    <span className="t-cap">{t('studio.types.anyChild')}</span>
+                    <span className="st-cap">{t('studio.types.anyChild')}</span>
                   )}
                 </span>
-                <span className="t-cap">
+                <span className="st-cap">
                   {type?.root === false ? t('studio.types.onlyChild') : t('studio.types.yes')}
                 </span>
-                <span className="t-cap">{type?.playbook ?? t('studio.types.sharedOnly')}</span>
+                <span className="st-cap">{type?.playbook ?? t('studio.types.sharedOnly')}</span>
                 <span className="st-chev" data-open={selected}>
                   <Icon name="chevron" />
                 </span>
@@ -1051,7 +1048,7 @@ export function TypesSection(props: SectionProps) {
                           </Check>
                         ))}
                       </span>
-                      <span className="t-cap">{t('studio.types.onlyThese')}</span>
+                      <span className="st-cap">{t('studio.types.onlyThese')}</span>
                     </dd>
                     {hierarchy ? (
                       <>
@@ -1073,7 +1070,7 @@ export function TypesSection(props: SectionProps) {
                     ) : null}
                     <dt>{t('studio.types.workflow')}</dt>
                     <dd>
-                      <span className="t-cap">
+                      <span className="st-cap">
                         {type?.workflow
                           ? t('studio.types.ownWorkflow')
                           : t('studio.types.sharedWorkflow')}
@@ -1115,7 +1112,7 @@ export function TypesSection(props: SectionProps) {
                 <Chip tone="current">{root}</Chip>
                 <span className="st-arw">→</span>
                 {(raw.types?.[root]?.children ?? []).length === 0 ? (
-                  <span className="t-cap">{t('studio.types.holdsNothing')}</span>
+                  <span className="st-cap">{t('studio.types.holdsNothing')}</span>
                 ) : (
                   (raw.types?.[root]?.children ?? []).map((child) => (
                     <Chip key={child}>{child}</Chip>

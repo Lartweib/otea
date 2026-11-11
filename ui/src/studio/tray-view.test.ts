@@ -49,7 +49,7 @@ describe('the index', () => {
         onHide: () => {},
       }),
     );
-    expect(html).toContain('<span class="mono">steps</span><span class="st-ix-n">body</span>');
+    expect(html).toContain('<span class="st-mono">steps</span><span class="st-ix-n">body</span>');
     expect(html).toContain('aria-current="true"');
     expect(html).toMatch(/States<svg/);
   });
