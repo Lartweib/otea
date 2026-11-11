@@ -785,22 +785,25 @@
   inset: 0;
   overflow: visible;
 }
+/* the two lanes, drawn as the list draws them: the agents' in --lane, yours in --you */
 .st-led-lane {
   fill: none;
-  stroke: color-mix(in oklch, var(--ink) 18%, var(--rule));
+  stroke: var(--lane);
   stroke-width: 1;
-  stroke-dasharray: 2 4;
+  opacity: 0.7;
 }
 .st-led-lane.you {
-  stroke: color-mix(in oklch, var(--you) 40%, var(--rule));
+  stroke: var(--you);
+  opacity: 0.55;
 }
 .st-led-move {
   fill: none;
-  stroke: color-mix(in oklch, var(--ink) 45%, var(--rule));
-  stroke-width: 1.25;
+  stroke: var(--ink-3);
+  stroke-width: 1;
 }
 .st-led-move.firm {
-  stroke: color-mix(in oklch, var(--ink) 70%, var(--rule));
+  stroke: var(--ink-2);
+  stroke-width: 1.25;
 }
 .st-led-move.on {
   stroke: var(--you);
@@ -810,8 +813,8 @@
 .st-led-h {
   position: absolute;
   top: 0;
-  color: var(--ink-2);
-  font: 400 12px var(--mono);
+  color: var(--ink-3);
+  font: 400 11.5px / 1 var(--mono);
   white-space: nowrap;
   transform: translateX(-50%);
 }
@@ -849,8 +852,8 @@
 }
 .st-led-state[aria-pressed="true"] {
   box-shadow:
-    inset 0 0 0 1px var(--ink),
-    0 0 0 2px var(--you);
+    inset 0 0 0 1.5px var(--you),
+    0 0 0 4px var(--you-wash);
 }
 .st-led-state.closed {
   color: var(--ink-2);
