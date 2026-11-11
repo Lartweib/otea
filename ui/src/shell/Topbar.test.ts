@@ -35,6 +35,10 @@ const topbar = (o: Parameters<typeof testApp>[0] = {}) =>
   renderIn(testApp(o), createElement(Topbar));
 
 describe('the topbar', () => {
+  it('has no panel button: on the phone the sheet opens from the bottom', () => {
+    expect(topbar()).not.toContain('navbtn');
+  });
+
   it('puts the project on the left, the mark in the centre and the agents on the right', () => {
     const html = topbar({ agents: [agent('Scout'), agent('Quill')] });
     expect(html.indexOf('class="pill"')).toBeLessThan(html.indexOf('brand'));

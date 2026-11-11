@@ -3,9 +3,7 @@
    It loads last, so it wins over everyone's sheet at the same specificity. */
 
 /* ───────── outside the phone, its parts stay away (mock:147, 862) ───────── */
-.navbtn {
-  display: none;
-}
+.sheetbtn,
 .fab {
   display: none;
 }
@@ -53,7 +51,9 @@
 }
 /* The rail's rows, at a thumb's size; where you are wears the rail's selection pill. */
 .nsheet .nav > .nrow {
-  height: 44px;
+  height: auto;
+  min-height: 44px;
+  padding-block: 10px;
   font-size: 15px;
   -webkit-tap-highlight-color: transparent;
 }
@@ -68,6 +68,12 @@
 }
 .nsheet .nrow .pair {
   font-size: 12.5px;
+}
+/* A long board name wraps; it is never cut. */
+.nsheet .nav .lb {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.3;
 }
 /* A sheet with a head (today's menus): the title and its close. */
 .nsheet-head {
@@ -107,16 +113,6 @@
   .tb-mid {
     display: none;
   }
-  .navbtn {
-    display: inline-grid;
-    place-items: center;
-    width: 44px;
-    height: 44px;
-    border-radius: 10px;
-    color: var(--ink-2);
-    flex: none;
-    margin-left: -10px;
-  }
   .pill {
     width: auto;
     flex: 1;
@@ -155,11 +151,12 @@
   .lanes {
     --pl: 60px;
   }
+  /* The heading sits on the page's gutter, the topbar's edge; the lanes keep their indent below. */
   .head,
   .bhead,
   .tools,
   .ftoks {
-    padding-left: 60px;
+    padding-left: 0;
   }
   .display {
     font-size: 42px;
@@ -263,22 +260,6 @@
   .toast {
     bottom: 76px;
   }
-  .fab {
-    display: inline-flex;
-    position: fixed;
-    right: max(16px, env(safe-area-inset-right, 0px));
-    bottom: 14px;
-    z-index: 35;
-    height: 48px;
-    padding: 0 18px;
-    border-radius: 999px;
-    background: var(--ink);
-    color: var(--ground);
-    font: 600 14px / 1 var(--sans);
-    align-items: center;
-    gap: 8px;
-    box-shadow: 0 12px 28px -14px var(--shadow);
-  }
   .drawer {
     position: fixed;
     z-index: 45;
@@ -309,15 +290,50 @@
   .app {
     padding-top: env(safe-area-inset-top, 0px);
   }
-  .panel,
-  .board,
-  .tri {
+  /* Every page ends clear of the two buttons at the bottom. */
+  .view > * {
     padding-bottom: calc(90px + env(safe-area-inset-bottom, 0px));
   }
+
+  /* The two buttons under the thumb: the sheet on the left, Nuevo ítem's + on the right. Twins in
+     size and place; the + wears the ink, the sheet the paper. */
+  .sheetbtn,
   .fab {
+    display: inline-grid;
+    place-items: center;
+    position: fixed;
     bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+    z-index: 35;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
     -webkit-tap-highlight-color: transparent;
-    transition: background-color 120ms var(--ease);
+    transition:
+      background-color 120ms var(--ease),
+      color 120ms var(--ease);
+  }
+  .sheetbtn .ic,
+  .fab .ic {
+    width: 20px;
+    height: 20px;
+  }
+  .sheetbtn {
+    left: max(16px, env(safe-area-inset-left, 0px));
+    background: var(--sheet);
+    color: var(--ink-2);
+    border: 1px solid var(--rule);
+    box-shadow: 0 12px 28px -16px var(--shadow);
+  }
+  .sheetbtn:active,
+  .sheetbtn[aria-expanded="true"] {
+    background: var(--hov);
+    color: var(--ink);
+  }
+  .fab {
+    right: max(16px, env(safe-area-inset-right, 0px));
+    background: var(--ink);
+    color: var(--ground);
+    box-shadow: 0 12px 28px -14px var(--shadow);
   }
   .fab:active {
     background: var(--ink-2);
@@ -326,18 +342,7 @@
     bottom: calc(76px + env(safe-area-inset-bottom, 0px));
   }
 
-  /* The topbar: the panel button answers a press; the project pill takes what is left. */
-  .navbtn {
-    -webkit-tap-highlight-color: transparent;
-    transition:
-      background-color 120ms var(--ease),
-      color 120ms var(--ease);
-  }
-  .navbtn:active,
-  .navbtn[aria-expanded="true"] {
-    background: var(--hov);
-    color: var(--ink);
-  }
+  /* The topbar: the project pill takes what the agents pill leaves. */
   .pill .nm {
     min-width: 0;
     overflow: hidden;
@@ -447,6 +452,94 @@
   .headline,
   .tcard h2 {
     overflow-wrap: anywhere;
+  }
+
+  /* A child on the item page: its title wraps beside the node and the mark, its id and step on a
+     line under it, never cut. */
+  .krow {
+    grid-template-columns: 22px minmax(0, 1fr) auto;
+    row-gap: 3px;
+    height: auto;
+    min-height: 44px;
+    padding-block: 9px;
+  }
+  .krow svg.cn {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  .krow .kt {
+    grid-column: 2;
+    grid-row: 1;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .krow > :last-child {
+    grid-column: 3;
+    grid-row: 1;
+  }
+  .krow .id {
+    grid-column: 2;
+    grid-row: 2;
+    white-space: nowrap;
+  }
+  .krow .ks {
+    grid-column: 3;
+    grid-row: 2;
+    justify-self: end;
+  }
+
+  /* A row never clips. The title wraps beside the age; the meta line runs under both, the whole
+     width, and wraps between its parts. A wrapped line starts on a part's dot: the meta reaches
+     14 px (a dot and its gap) left of the title and clips that strip, so the dot is never seen and
+     the line starts under the title. */
+  .row .lift {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-auto-flow: row;
+  }
+  .row .main-c {
+    display: contents;
+  }
+  .row .t {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  .row .age {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .row .who {
+    display: none;
+  }
+  .row .m {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    flex-wrap: wrap;
+    row-gap: 2px;
+    white-space: normal;
+    overflow: visible;
+    margin-left: -14px;
+    clip-path: inset(-4px -4px -4px 14px);
+  }
+  .row.child .m {
+    clip-path: inset(-4px -4px -4px 36px);
+  }
+  .row .m > :first-child {
+    margin-left: 14px;
+  }
+  .row .m .sep {
+    width: 7px;
+    text-align: center;
+    flex: none;
+  }
+  .row .m > *,
+  .row .m .mpt > * {
+    min-width: 0;
+  }
+  .row .m .id,
+  .row .m .stp,
+  .row .m .prog,
+  .row .m .po {
+    white-space: nowrap;
   }
   pre,
   .ev-log,

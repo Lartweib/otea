@@ -3,19 +3,23 @@ import { STAGGER } from '../motion/time.ts';
 
 // A bottom sheet's gesture (mock:3588-3594): the scrim fades in while the sheet rises from below
 // its edge, the grab draws from its centre, and the rows resolve one after another. Closing is the
-// same parts mirrored (Choreo), the rows leaving first and the scrim last.
+// same parts mirrored (Choreo), the rows leaving first and the scrim last. Opened from a button
+// (grow), it also grows out of that button as it rises: the sheet's transform-origin is put there.
 export function sheetParts(o: {
   scrim: Element | null | undefined;
   sheet: Element | null | undefined;
   grab: Element | null | undefined;
   items: readonly Element[];
+  grow?: boolean;
 }): Part[] {
+  const g = o.grow ? ' scale(0.92)' : '';
+  const g1 = o.grow ? ' scale(1)' : '';
   return [
     part(o.scrim, { opacity: 0 }, { opacity: 1 }, 360, 'drift', 0),
     part(
       o.sheet,
-      { transform: 'translateY(calc(100% + 2px))' },
-      { transform: 'translateY(0px)' },
+      { transform: `translateY(calc(100% + 2px))${g}` },
+      { transform: `translateY(0px)${g1}` },
       560,
       'settle',
       0,

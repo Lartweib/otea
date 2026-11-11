@@ -24,6 +24,7 @@ import { LaneDefs } from './lanes/LaneDefs.tsx';
 import { MODULES } from './modules/registry.ts';
 import { Fab } from './phone/Fab.tsx';
 import { NavSheet } from './phone/NavSheet.tsx';
+import { SheetButton } from './phone/SheetButton.tsx';
 import type { Route } from './selection.ts';
 import { Rail } from './shell/Rail.tsx';
 import { Topbar } from './shell/Topbar.tsx';
@@ -162,8 +163,9 @@ function Shell() {
         <LanPanel canManage={app.session.canManageDevices} />
       </Dialog>
       <ConnectDialog />
-      <NavSheet />
+      <SheetButton />
       <Fab />
+      <NavSheet />
       <LanguageNote />
       <ToastHost />
       <Tooltip />

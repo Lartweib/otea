@@ -1,8 +1,8 @@
 import { useSyncExternalStore } from 'react';
 import { shellUi } from '../shell/shell-ui.ts';
 
-// Whether the phone's nav sheet is open. The state is the shell's `nav` flag: the topbar's panel
-// button (`.navbtn`) toggles it, the sheet reads and closes it here.
+// Whether the phone's nav sheet is open. The state is the shell's `nav` flag: the sheet button at
+// the bottom left (`.sheetbtn`) toggles it, the sheet reads and closes it here.
 export type NavSheetStore = {
   get(): boolean;
   open(): void;

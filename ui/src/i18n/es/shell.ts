@@ -34,7 +34,6 @@ export const shell = {
   'shell.connect': 'Conectar un agente',
   'shell.connectLine': 'otea mcp --as <nombre>',
   'shell.connectedRule': 'conectado: tiene una reserva, o tuvo actividad en los últimos 5 min',
-  'shell.openPanel': 'Abrir el panel del proyecto',
 
   // Preferencias: lo que es de este navegador
   'prefs.title': 'Preferencias',

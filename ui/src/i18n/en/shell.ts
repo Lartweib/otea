@@ -32,7 +32,6 @@ export const shell = {
   'shell.connect': 'Connect an agent',
   'shell.connectLine': 'otea mcp --as <name>',
   'shell.connectedRule': 'connected: holds a lease, or was active in the last 5 min',
-  'shell.openPanel': 'Open the project’s panel',
 
   // Preferences: what belongs to this browser
   'prefs.title': 'Preferences',

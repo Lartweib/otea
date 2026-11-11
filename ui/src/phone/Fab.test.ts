@@ -35,16 +35,16 @@ describe('fabFor', () => {
 });
 
 describe('FabButton', () => {
-  it('is the ink pill: a plus and the words', () => {
+  it('is the round +: the plus only, named for a screen reader', () => {
     const html = renderToStaticMarkup(createElement(FabButton, { onPress: () => {} }));
-    expect(html).toMatch(/^<button type="button" class="fab"/);
+    expect(html).toMatch(/^<button type="button" class="fab" aria-label="New item"/);
     expect(html).toContain('<svg');
-    expect(html).toContain('New item');
+    expect(html.replace(/<[^>]+>/g, '')).toBe('');
   });
 
   it('speaks Spanish', () => {
     setLanguage('es');
     const html = renderToStaticMarkup(createElement(FabButton, { onPress: () => {} }));
-    expect(html).toContain('Nuevo ítem');
+    expect(html).toContain('aria-label="Nuevo ítem"');
   });
 });

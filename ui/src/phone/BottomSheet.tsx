@@ -33,6 +33,8 @@ type BottomSheetProps = {
   onClosed?: () => void;
   // A head with the title and a close button; without it the sheet is only its content.
   title?: ReactNode;
+  // The button it was opened from: the sheet grows out of it as it rises.
+  from?: () => Element | null;
   className?: string;
   children: ReactNode;
 };
@@ -52,6 +54,7 @@ export function BottomSheet({
   onClose,
   onClosed,
   title,
+  from,
   className,
   children,
 }: BottomSheetProps) {
@@ -94,12 +97,17 @@ export function BottomSheet({
       }
       if (!choreo.current) {
         focusBack.current = document.activeElement as HTMLElement | null;
+        const b = from?.()?.getBoundingClientRect();
+        const grow = !!b && b.width > 0;
+        el.style.transformOrigin =
+          b && grow ? `${b.left + b.width / 2 - el.getBoundingClientRect().left}px 100%` : '';
         choreo.current = new Choreo(
           sheetParts({
             scrim: scrim.current,
             sheet: el,
             grab: el.querySelector('.grab'),
             items: [...el.querySelectorAll('[data-i]')],
+            grow,
           }),
         );
         el.focus({ preventScroll: true });
