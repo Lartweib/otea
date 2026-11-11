@@ -122,7 +122,7 @@ describe('the kit', () => {
       Pop,
       { open: true, onClose: () => undefined, label: 'Agrupar', className: 'gmenu' },
       createElement(MenuLabel, null, 'agrupar por'),
-      createElement(MenuItem, { on: true, small: '4', children: 'paso' }),
+      createElement(MenuItem, { on: true, small: '4' } as never, 'paso'),
     );
     expect(pop).toBe(
       '<div class="pop e-top gmenu" role="menu" aria-label="Agrupar"><i class="pline"><i class="glint"></i></i><div class="psurf"><div class="pin"><div class="plabel" data-i=""><span>agrupar por</span></div><button type="button" class="mi on" role="menuitem" data-i=""><span>paso</span><small>4</small></button></div></div></div>',

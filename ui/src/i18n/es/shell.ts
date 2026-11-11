@@ -79,4 +79,18 @@ export const shell = {
 
   'rail.projects': 'Todos los proyectos',
   'rail.settings': 'Configuración del proyecto',
+
+  // El shell de la base: el riel y la barra
+  'nav.toca': 'Te toca',
+  'nav.atasco': 'Atasco',
+  'nav.views': 'vistas',
+  'nav.boards': 'tableros',
+  'nav.newBoard': 'Nuevo tablero',
+  'nav.newItem': 'Nuevo ítem',
+  'nav.newItemIn': 'Nuevo ítem en {board}',
+  'nav.prefs': 'Preferencias',
+  'nav.hide': 'Ocultar el panel',
+  'nav.show': 'Mostrar el panel',
+  'nav.working': { one: '{count} trabajando', other: '{count} trabajando' },
+  'nav.home': 'otea, Te toca',
 } satisfies Partial<Catalog>;

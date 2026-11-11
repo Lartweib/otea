@@ -109,12 +109,12 @@ describe('module registry', () => {
   });
 
   it('shows an enum value as a pill in the detail', () => {
-    expect(detail(priority, 'high')).toBe('<span class="pill">high</span>');
+    expect(detail(priority, 'high')).toBe('<span class="enum">high</span>');
   });
 
   it('marks an enum in the row only when it departs from its default', () => {
     expect(row(priority, 'high')).toBe(
-      '<span class="pill sm"><span class="visually-hidden">priority: </span>high</span>',
+      '<span class="enum"><span class="visually-hidden">priority: </span>high</span>',
     );
     expect(row(priority, 'medium')).toBe('');
     expect(row(priority, '')).toBe('');
@@ -139,12 +139,13 @@ describe('severity module', () => {
   });
 
   it('draws critical, level 4, in the warning hue on every bar', () => {
-    expect(bars(row(severity, 'critical'))).toEqual(['hot', 'hot', 'hot', 'hot']);
+    expect(bars(row(severity, 'critical'))).toEqual(['on', 'on', 'on', 'on']);
+    expect(row(severity, 'critical')).toContain('class="svb s4"');
     expect(row(severity, 'critical')).toContain('aria-label="Severity 4 of 4"');
   });
 
   it('marks the row whatever the level, and nothing while it is empty or off the scale', () => {
-    expect(row(severity, 'low')).toContain('class="sev"');
+    expect(row(severity, 'low')).toContain('class="svb s1"');
     expect(row(severity, '')).toBe('');
     expect(row(severity, 'blocker')).toBe('');
   });

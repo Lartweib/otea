@@ -1,1 +1,248 @@
-/* The rail. The shell slice owns this file (SPEC §11). */
+/* The rail (mock:159-197). The shell slice owns this file (SPEC §11); the foundation's stub starts it
+   with the mock's rail. */
+
+/* rail */
+.rail {
+  grid-column: 1;
+  grid-row: 2;
+  width: 228px;
+  display: flex;
+  flex-direction: column;
+  padding: 12px 0 14px;
+  min-height: 0;
+  position: relative;
+  z-index: 6;
+  clip-path: inset(-8px -8px -8px -8px);
+}
+.app[data-folded] .rail {
+  clip-path: inset(-8px 184px -8px -8px);
+}
+.rhead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  padding: 0 2px 0 4px;
+  margin-bottom: 4px;
+}
+.rhead .lbl {
+  font: 400 11.5px / 1 var(--mono);
+  color: var(--ink-3);
+  flex: 1;
+}
+.ibtn {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  color: var(--ink-2);
+  transition:
+    background-color 120ms var(--ease),
+    color 120ms var(--ease);
+  flex: none;
+}
+.ibtn:hover {
+  background: var(--hov);
+  color: var(--ink);
+}
+.nav {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.rsel {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 36px;
+  border-radius: 8px;
+  background: var(--sel);
+  pointer-events: none;
+  z-index: 0;
+}
+.nav > button,
+.nav > .nrow {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) auto;
+  column-gap: 10px;
+  align-items: center;
+  height: 36px;
+  padding: 0 10px 0 12px;
+  border-radius: 8px;
+  color: var(--ink-2);
+  font-size: 14px;
+  font-weight: 500;
+  width: 100%;
+  transition:
+    background-color 120ms var(--ease),
+    color 120ms var(--ease);
+}
+.nav > button:hover,
+.nav > .nrow:hover {
+  background: color-mix(in oklch, var(--hov) 70%, transparent);
+}
+.nav > button.on,
+.nav > .nrow.on {
+  color: var(--ink);
+}
+.nav .lb {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: opacity 360ms var(--o-drift);
+}
+.nav .add {
+  color: var(--ink-3);
+  font-weight: 400;
+}
+.nav .ic {
+  color: var(--ink-3);
+}
+.nav .on .ic {
+  color: var(--ink);
+}
+.nrow {
+  cursor: pointer;
+}
+.nrow .plus {
+  position: absolute;
+  right: 6px;
+  top: 6px;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  display: grid;
+  place-items: center;
+  color: var(--ink-3);
+  opacity: 0;
+  transition:
+    opacity 240ms var(--o-drift),
+    background-color 120ms var(--ease);
+  background: var(--sheet);
+  box-shadow: 0 0 0 1px var(--rule);
+}
+.nrow:hover .plus,
+.nrow:focus-within .plus {
+  opacity: 1;
+}
+.nrow .plus:hover {
+  color: var(--ink);
+}
+.nrow:hover .pair {
+  opacity: 0;
+}
+.pair {
+  font: 400 12px / 1 var(--mono);
+  color: var(--ink-3);
+  white-space: nowrap;
+  transition: opacity 240ms var(--o-drift);
+}
+.pair .y {
+  color: var(--you-ink);
+  font-weight: 500;
+}
+.n {
+  font: 400 12px / 1 var(--mono);
+  color: var(--ink-3);
+  display: inline-block;
+  position: relative;
+  clip-path: inset(-3px -4px);
+  vertical-align: baseline;
+}
+.n .nv {
+  display: inline-block;
+}
+.n.warn,
+.pair .warn {
+  color: var(--warn) !important;
+}
+.n.you {
+  color: var(--you-ink);
+}
+.badge {
+  position: absolute;
+  left: 24px;
+  top: 5px;
+  min-width: 15px;
+  height: 15px;
+  padding: 0 3px;
+  border-radius: 8px;
+  background: var(--you);
+  color: var(--on-you);
+  font: 500 9.5px / 15px var(--mono);
+  text-align: center;
+  opacity: 0;
+  transition: opacity 360ms var(--o-drift);
+  pointer-events: none;
+}
+.badge.warn {
+  background: var(--warn);
+}
+.app[data-folded] .badge.has {
+  opacity: 1;
+}
+.app[data-folded] .nav .lb,
+.app[data-folded] .rail .pair,
+.app[data-folded] .rhead .lbl,
+.app[data-folded] .rail-label,
+.app[data-folded] .prefs-btn .lb,
+.app[data-folded] .prefs-btn .chev {
+  opacity: 0;
+}
+.rail-label {
+  margin: 22px 12px 6px;
+  font: 400 11.5px / 1 var(--mono);
+  color: var(--ink-3);
+  transition: opacity 360ms var(--o-drift);
+  white-space: nowrap;
+}
+.rail-foot {
+  margin-top: auto;
+  padding-top: 12px;
+  border-top: 1px solid var(--rule);
+  position: relative;
+}
+.prefs-btn {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) 14px;
+  align-items: center;
+  column-gap: 9px;
+  width: 100%;
+  height: 40px;
+  padding: 0 12px 0 12px;
+  border-radius: 999px;
+  font: 500 14px / 1 var(--sans);
+  letter-spacing: -0.01em;
+  color: var(--ink-2);
+  transition:
+    background-color 120ms var(--ease),
+    box-shadow 240ms var(--o-drift),
+    color 120ms var(--ease);
+}
+.prefs-btn:hover {
+  background: var(--hov);
+  color: var(--ink);
+}
+.prefs-btn[aria-expanded="true"] {
+  background: var(--sheet);
+  box-shadow: 0 0 0 1.5px var(--ink);
+  color: var(--ink);
+}
+.prefs-btn .lb {
+  transition: opacity 360ms var(--o-drift);
+  white-space: nowrap;
+}
+.buddy {
+  width: 16px;
+  height: 16px;
+  fill: var(--ink);
+  transition: fill 240ms var(--o-drift);
+}
+.prefs-btn[aria-expanded="true"] .buddy {
+  fill: var(--you);
+}

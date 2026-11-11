@@ -331,4 +331,11 @@ export const surfaces = {
   'emptyProject.store': 'store',
   'emptyProject.collections': 'collections',
   'emptyProject.example': 'Write the first task',
+
+  // Connect an agent
+  'connect.title': 'Connect an agent',
+  'connect.body':
+    'Your agent talks to Otea over MCP. Add this to its configuration and it shows up here when it takes its first lease.',
+  'connect.command': 'otea mcp --as <name>',
+  'connect.done': 'Done',
 } as const;

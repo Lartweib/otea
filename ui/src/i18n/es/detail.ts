@@ -222,4 +222,8 @@ export const detail = {
   'evidence.readingFrames': 'leyendo fotogramas…',
   'evidence.frameAt': 'Fotograma en {time}',
   'evidence.seconds': '{seconds} s',
+
+  // La hoja de la base
+  'sheet.label': 'Detalle del ítem',
+  'sheet.divider': 'Cambiar el ancho de la lista',
 } satisfies Partial<Catalog>;

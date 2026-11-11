@@ -1,153 +1,56 @@
-import { type CSSProperties, type ReactNode, useCallback, useEffect, useState } from 'react';
-import {
-  fetchCollections,
-  fetchItem,
-  fetchItems,
-  fetchPresets,
-  fetchProject,
-  fetchProjects,
-  fetchSession,
-} from './api.ts';
+import { type ReactNode, useEffect } from 'react';
+import { AppProvider, useApp } from './app/context.tsx';
+import { ViewHost } from './app/ViewHost.tsx';
+import { useWorkspace } from './app/workspace.ts';
 import { applyAttention } from './attention-dom.ts';
 import { catalogEntries } from './catalog.ts';
 import { ActivityDrawer } from './components/ActivityDrawer.tsx';
 import { BriefView } from './components/BriefView.tsx';
-import { CollectionRail } from './components/CollectionRail.tsx';
-import { EmptyDetail } from './components/EmptyDetail.tsx';
-import { FirstRun } from './components/EmptyStates.tsx';
-import { ItemDetail } from './components/ItemDetail.tsx';
-import type { ChildrenOf, CollectionOf, Unfolding } from './components/ItemList.tsx';
+import { ConnectDialog } from './components/ConnectDialog.tsx';
 import { LanguageNote } from './components/LanguageNote.tsx';
 import { LanPanel } from './components/LanPanel.tsx';
-import { ListPane } from './components/ListPane.tsx';
 import { CatalogOverview, ModuleIndex, ModulePanel } from './components/ModuleCatalog.tsx';
-import { useMenu } from './components/menu.ts';
-import { type IntakeParent, NewItemForm } from './components/NewItemForm.tsx';
-import { PreferencesButton } from './components/PreferencesButton.tsx';
 import { ProjectSettings } from './components/ProjectSettings.tsx';
 import { ProjectsInbox } from './components/ProjectsInbox.tsx';
-import { Sheet } from './components/Sheet.tsx';
-import { browserStorage, Divider, useSplit } from './components/Split.tsx';
-import { studioTreeOf } from './components/StudioTree.tsx';
-import { Brand, Topbar } from './components/Topbar.tsx';
 import { Triage } from './components/Triage.tsx';
-import { useDetailMotion, useViewPrefs } from './components/workspace-motion.ts';
 import { AppliedToast } from './customize/AppliedToast.tsx';
 import { CustomizePage } from './customize/CustomizePage.tsx';
-import {
-  type Connection,
-  useAttention,
-  useBeat,
-  useHideTier,
-  useLive,
-  useMediaQuery,
-  usePhone,
-  useRemote,
-  useRoute,
-} from './hooks.ts';
+import { useAttention, useRoute } from './hooks.ts';
 import { t, useLanguage } from './i18n/i18n.ts';
-import { Button, Icon } from './kit/index.ts';
+import { Dialog } from './kit/pop/Dialog.tsx';
+import { ToastHost } from './kit/pop/toast.tsx';
+import { Tooltip } from './kit/Tooltip.tsx';
+import { LaneDefs } from './lanes/LaneDefs.tsx';
 import { MODULES } from './modules/registry.ts';
-import {
-  COLLAPSED_KEY,
-  EXPANDED_KEY,
-  type Folds,
-  parentOf,
-  readCollapsed,
-  toggleFold,
-  writeCollapsed,
-} from './nesting.ts';
-import { pillState } from './presence.ts';
-import type { Remote } from './remote.ts';
-import { groupByTurn } from './sections.ts';
-import { hashFor, ITEMS_HASH, TRIAGE_HASH } from './selection.ts';
+import { Fab } from './phone/Fab.tsx';
+import { NavSheet } from './phone/NavSheet.tsx';
+import type { Route } from './selection.ts';
+import { Rail } from './shell/Rail.tsx';
+import { Topbar } from './shell/Topbar.tsx';
 import { Studio } from './studio/Studio.tsx';
 import { useStudioIndex } from './studio/use-studio-index.ts';
-import type { CollectionView, Item, ItemView, PresetView } from './types.ts';
-import { useAgents } from './use-agents.ts';
-import { inCollection, sidebarEntries } from './workspace.ts';
+import { BoardView } from './views/board/BoardView.tsx';
+import { DetailHost } from './views/detail/DetailHost.tsx';
+import { TocaView } from './views/toca/TocaView.tsx';
 
-function Message({ children, muted = true }: { children: ReactNode; muted?: boolean }) {
-  return <p className={muted ? 'pane-message t-small' : 'pane-message action-error'}>{children}</p>;
+// The app (SPEC §11): AppProvider › the lanes' gradients, the toasts, the tooltip, then .app with
+// the topbar, the rail and .main, where the view host shows the route's view, the detail sits
+// beside it and the activity drawer slides over it. Customize keeps its own page.
+
+// The view's identity: a new key is a new view (the old one leaves, the new one draws in).
+export function viewKeyOf(route: Route): string {
+  if (route.view === 'board') return `board:${route.board}`;
+  if (route.view === 'lan') return 'toca';
+  return route.view;
 }
 
-type DetailPaneProps = {
-  id: string;
-  item: Remote<ItemView | null>;
-  canWrite: boolean;
-  collectionOf: CollectionOf;
-  layout?: 'pane' | 'unfold';
-  onMoved?: () => void;
-  onAddChild?: (parent: ItemView) => void;
-  onClose?: (() => void) | undefined;
-  itemOf?: ((id: string) => Item | undefined) | undefined;
-  trayHost?: HTMLElement | null | undefined;
-  canCustomize?: boolean;
-};
-
-function DetailPane({
-  id,
-  item,
-  canWrite,
-  collectionOf,
-  layout,
-  onMoved,
-  onAddChild,
-  onClose,
-  itemOf,
-  trayHost,
-  canCustomize,
-}: DetailPaneProps) {
-  if (item.status === 'failed') return <Message muted={false}>{item.message}</Message>;
-  if (item.status === 'loading') return <Message>{t('common.loading')}</Message>;
-  if (!item.value) return <Message>{t('app.notFound', { id })}</Message>;
-  return (
-    <ItemDetail
-      item={item.value}
-      canWrite={canWrite}
-      collection={collectionOf(item.value.collection)}
-      collectionOf={collectionOf}
-      onAddChild={onAddChild}
-      onClose={onClose}
-      itemOf={itemOf}
-      trayHost={trayHost}
-      canCustomize={canCustomize === true}
-      {...(layout ? { layout } : {})}
-      {...(onMoved ? { onMoved } : {})}
-    />
-  );
-}
-
-type SelectedItemProps = Omit<DetailPaneProps, 'item'> & {
-  version: number;
-  connection: Connection;
-};
-
-function SelectedItem({ id, version, connection, ...rest }: SelectedItemProps) {
-  const load = useCallback((signal: AbortSignal) => fetchItem(id, signal), [id]);
-  return <DetailPane id={id} item={useRemote(load, version, connection)} {...rest} />;
-}
-
-// A collection's preset decides its fields and which state means "incomplete".
-function collectionLookup(collections: Remote<CollectionView[]>): CollectionOf {
-  const list = collections.status === 'ready' ? collections.value : [];
-  return (name) => list.find((collection) => collection.name === name);
-}
-
-type CatalogProps = {
-  name: string | undefined;
-  presets: Remote<PresetView[]>;
-  rail: ReactNode;
-  sidebar: boolean;
-};
-
-// The module catalog: the project's sidebar, the index, the chosen module (or an overview).
-function Catalog({ name, presets, rail, sidebar }: CatalogProps) {
-  const entries = catalogEntries(MODULES, presets.status === 'ready' ? presets.value : []);
+function Catalog({ name }: { name: string | undefined }) {
+  const app = useApp();
+  const presets = app.presetsRemote;
+  const entries = catalogEntries(MODULES, app.presets);
   const entry = entries.find((candidate) => candidate.name === name);
   return (
-    <main className="layout catalog with-rail" data-sidebar={sidebar ? 'on' : 'off'}>
-      {rail}
+    <main className="layout catalog">
       <div className="list-pane">
         <ModuleIndex entries={entries} selected={name} />
       </div>
@@ -157,10 +60,8 @@ function Catalog({ name, presets, rail, sidebar }: CatalogProps) {
             <CatalogOverview presets={presets} />
           ) : entry ? (
             <ModulePanel key={entry.name} entry={entry} presets={presets} />
-          ) : presets.status === 'loading' ? (
-            <Message>{t('common.loading')}</Message>
           ) : (
-            <Message>{t('app.noModule', { name })}</Message>
+            <p className="pane-message t-small">{t('app.noModule', { name })}</p>
           )}
         </div>
       </div>
@@ -168,486 +69,147 @@ function Catalog({ name, presets, rail, sidebar }: CatalogProps) {
   );
 }
 
-// parent: the item a "+ child" opened the form for; the form starts in its collection.
-// collection: the empty collection whose "New item in" opened it; the form starts there.
-type Intake = {
-  openedOn: string | undefined;
-  parent?: IntakeParent;
-  collection?: string | undefined;
-};
-
-// The parents this viewer folded (or, whose children are all closed, unfolded) in the list,
-// remembered in this browser.
-function useFolds(): [Folds, (id: string, settled: boolean) => void] {
-  const [folds, setFolds] = useState<Folds>(() => ({
-    collapsed: readCollapsed(browserStorage()),
-    expanded: readCollapsed(browserStorage(), EXPANDED_KEY),
-  }));
-  const toggle = useCallback((id: string, settled: boolean) => {
-    setFolds((current) => {
-      const next = toggleFold(current, id, settled);
-      writeCollapsed(browserStorage(), next.collapsed, COLLAPSED_KEY);
-      writeCollapsed(browserStorage(), next.expanded, EXPANDED_KEY);
-      return next;
-    });
-  }, []);
-  return [folds, toggle];
-}
-
-// Each item's children, from every item listed (any collection).
-function childrenIndex(items: readonly Item[]): ChildrenOf {
-  const index = new Map<string, Item[]>();
-  for (const item of items) {
-    const parent = parentOf(item);
-    if (parent !== undefined) index.set(parent, [...(index.get(parent) ?? []), item]);
-  }
-  return (id) => index.get(id) ?? [];
-}
-
-export function App() {
-  // Every word on screen follows the language: a switch renders the whole app again.
-  useLanguage();
-  const { connection, version, presence } = useLive();
-  const route = useRoute();
-  const phone = usePhone();
-  const selectedId = route.view === 'items' ? route.id : undefined;
-  const items = useRemote(fetchItems, version, connection);
-  const session = useRemote(fetchSession, 0, connection);
-  // Studio writes presets and boards: what it changed is read again.
-  const [studioWrites, setStudioWrites] = useState(0);
-  const collections = useRemote(fetchCollections, studioWrites, connection);
-  const presets = useRemote(fetchPresets, studioWrites, connection);
-  const collectionOf = collectionLookup(collections);
-  const canWrite = session.status === 'ready' && session.value.canWrite;
-  const canManageDevices = session.status === 'ready' && session.value.canManageDevices === true;
-  // A paired device works on items; the project's setup changes only from this computer's browser.
-  const canConfigure = session.status === 'ready' && session.value.canConfigure === true;
-  const [intake, setIntake] = useState<Intake>();
-  // No collection yet: the first run, its preset chosen in the detail and drawn on the list's lanes.
-  const [firstPreset, setFirstPreset] = useState<string>();
-  const [activity, setActivity] = useState(false);
-  // The split is a way of looking, not a place: it stays out of the hash, so links and history keep
-  // pointing at items.
-  const split = useSplit();
-  const listPane = useHideTier();
-  const [chosen, setCollection] = useState<string>();
-  const names = collections.status === 'ready' ? collections.value.map((each) => each.name) : [];
-  const firstRun =
-    collections.status === 'ready' && names.length === 0 && presets.status === 'ready';
-  // All work shows only with two collections or more; with one, that collection is the view.
-  const allWorkShown = names.length >= 2;
-  const collection = chosen ?? (names.length === 1 ? names[0] : undefined);
-  const allItems = items.status === 'ready' ? items.value : [];
-  // What waits for you anywhere, whatever collection is chosen: the brand, the favicon and the title.
-  const attention = useAttention(allItems);
-  const { yours, working } = attention;
-  useEffect(() => applyAttention({ yours, working }), [yours, working]);
-  const [folds, toggleChildren] = useFolds();
-  const scoped = inCollection(allItems, collection);
-  const grouped = groupByTurn(scoped);
-  const collectionView = collection === undefined ? undefined : collectionOf(collection);
-  const [prefs, setPrefs] = useViewPrefs(collectionView);
-  const [morphing, setMorphing] = useState(false);
-  const [bulkHost, setBulkHost] = useState<HTMLDivElement | null>(null);
-  const [detailHost, setDetailHost] = useState<HTMLDivElement | null>(null);
-  const creating =
-    canWrite && route.view === 'items' && intake !== undefined && intake.openedOn === selectedId;
-  const closeIntake = () => setIntake(undefined);
-  const showCreated = (id: string) => {
-    closeIntake();
-    window.location.hash = hashFor(id);
-  };
-  const openIntake = (into?: string) => {
-    // From the catalog, intake opens next to the item list (nothing is selected there).
-    if (route.view === 'modules') window.location.hash = ITEMS_HASH;
-    setIntake({ openedOn: selectedId, collection: into });
-    // On a phone intake opens above the list.
-    if (phone) window.scrollTo({ top: 0 });
-  };
-  const addChild = (parent: ItemView) => {
-    const { id, title, type } = parent;
-    setIntake({ openedOn: selectedId, parent: { id, title, type, collection: parent.collection } });
-    if (phone) window.scrollTo({ top: 0 });
-  };
-  const project = useRemote(fetchProject, 0, connection);
-  // Every project on this machine, for the switcher: read again as this project changes, and on a
-  // slow beat for the others, which this server's live feed does not watch.
-  const projectsBeat = useBeat(30_000);
-  const projects = useRemote(fetchProjects, version * 1000 + projectsBeat, connection);
-  const agents = useAgents(version, presence, connection);
-  const wide = useMediaQuery('(min-width: 64rem)');
-  // Between the phone and 64rem the sidebar stays folded to its rail: the list needs the room.
-  const folded = !phone && (!split.sidebar || !wide);
-  const panel = useMenu();
-  const rail = sidebarEntries(names, allItems, collectionOf);
-  // Studio's presets and blueprint, for Studio and for the tree the sidebar unfolds under it (on the
-  // module catalog too, which lives under Studio).
+function View({ route }: { route: Route }): ReactNode {
+  const app = useApp();
   const inStudio = route.view === 'studio' || route.view === 'modules';
-  const studioIndex = useStudioIndex(inStudio, version + studioWrites, connection);
-  const studioTree =
-    inStudio && studioIndex.presets.status === 'ready'
-      ? studioTreeOf({
-          presets: studioIndex.presets.value,
-          blueprint:
-            studioIndex.blueprint.status === 'ready' ? studioIndex.blueprint.value.blueprint : null,
-          modules: catalogEntries(MODULES, presets.status === 'ready' ? presets.value : []).length,
-          route,
-        })
-      : undefined;
-  // Intake needs a collection to file into: with none yet, the first run says how to add one.
-  const create =
-    canWrite && names.length > 0
-      ? (into: string | undefined) => {
-          panel.close();
-          // A collection's own + lists it, unless All work already shows it: the new row is carried
-          // onto its lane in view.
-          if (into !== undefined && collection !== undefined && into !== collection) {
-            setCollection(into);
-          }
-          openIntake(into);
-        }
-      : undefined;
-  const railProps = {
-    entries: rail,
-    yoursTotal: rail.reduce((sum, entry) => sum + entry.yours, 0),
-    openTotal: rail.reduce((sum, entry) => sum + entry.open, 0),
-    selected: collection,
-    allWork: allWorkShown,
-    onCreate: create,
-    modules: route.view === 'modules',
-    studio: route.view === 'studio',
-    studioTree,
-    settings: route.view === 'settings',
-  };
-  // Pairing a phone, from Preferences: this computer's signed-in browser only. The panel closes on
-  // the way to the pairing page.
-  const pair = canManageDevices ? panel.close : undefined;
-  const choose = (name: string | undefined) => {
-    setCollection(name);
-    panel.close();
-    if (route.view !== 'items') window.location.hash = ITEMS_HASH;
-  };
-  const sidebarRail = (
-    <CollectionRail
-      {...railProps}
-      onSelect={choose}
-      folded={folded}
-      onToggle={wide ? split.toggleSidebar : undefined}
-      foot={phone ? null : <PreferencesButton folded={folded} onPair={pair} />}
-    />
-  );
-  const panelButton = phone ? (
-    <span className="pill-anchor" ref={panel.ref}>
-      <Button
-        variant="quiet"
-        icon
-        className="panel-button"
-        aria-label={t('shell.openPanel')}
-        aria-expanded={panel.open}
-        onClick={panel.toggle}
-      >
-        <Icon name="sidebar" />
-      </Button>
-      <Sheet menu={panel} label={t('rail.aria')} side="left">
-        <CollectionRail
-          {...railProps}
-          onSelect={choose}
-          folded={false}
-          variant="panel"
-          head={
-            <div className="panel-head">
-              <Brand attention={attention} id="panel-brand" />
-              <Button
-                variant="quiet"
-                size="sm"
-                icon
-                aria-label={t('common.close')}
-                onClick={panel.close}
-              >
-                <Icon name="close" />
-              </Button>
-            </div>
-          }
-          foot={<PreferencesButton phone onPair={pair} />}
+  const index = useStudioIndex(inStudio, app.version + app.studioWrites, app.connection);
+  switch (route.view) {
+    case 'toca':
+    case 'lan':
+      return <TocaView />;
+    case 'atasco':
+      return <TocaView atasco />;
+    case 'board':
+      return <BoardView board={route.board} />;
+    case 'triage':
+      return app.session.canWrite ? (
+        <main className="layout triage-layout">
+          <Triage
+            waiting={app.all.filter((it) => it.turn === 'human')}
+            loading={app.items.status === 'loading'}
+            collectionOf={app.collectionOf}
+            version={app.version}
+            onExit={() => app.go({ view: 'toca' })}
+          />
+        </main>
+      ) : (
+        <TocaView />
+      );
+    case 'projects':
+      return <ProjectsInbox version={app.version} connection={app.connection} />;
+    case 'settings':
+      return (
+        <ProjectSettings
+          version={app.version}
+          connection={app.connection}
+          canWrite={app.session.canConfigure}
+          rail={null}
+          sidebar={false}
         />
-      </Sheet>
-    </span>
-  ) : null;
-  // On a phone the selected row unfolds into its detail, and the detail pane only holds intake.
-  // A move made from the unfolded item folds it, and the row carries itself home.
-  const fold = () => {
-    window.location.hash = ITEMS_HASH;
-  };
-  const unfolding: Unfolding | undefined =
-    phone && !creating
-      ? {
-          detail: (id) => (
-            <SelectedItem
-              key={id}
-              id={id}
-              version={version}
-              connection={connection}
-              canWrite={canWrite}
-              collectionOf={collectionOf}
-              layout="unfold"
-              onMoved={fold}
-              onAddChild={addChild}
-            />
-          ),
-          onFold: fold,
-        }
-      : undefined;
-  const openTriage = canWrite
-    ? () => {
-        window.location.hash = TRIAGE_HASH;
-      }
-    : undefined;
-  const leaveTriage = () => {
-    window.location.hash = ITEMS_HASH;
-  };
-  // Triage takes everything that waits for you, folded under a parent or not.
-  const waiting = grouped.find((section) => section.turn === 'human')?.items ?? [];
-  // A collection seen as a grid takes the grid's room (and keeps it while the views morph). While
-  // nothing is open the grid takes all of it, with no divider and no empty detail beside it.
-  const gridded = !phone && prefs !== undefined && (prefs.mode === 'grid' || morphing);
-  const detailOff = gridded && !selectedId && !creating;
-  // The grid pane's width once the workspace is the grid's.
-  const gridPane = !selectedId && !creating ? split.grid.room - 9 : split.grid.width;
-  const closeDetail = () => {
-    window.location.hash = ITEMS_HASH;
-  };
-  useDetailMotion(split.workspace, gridded, detailOff, split.grid.room - 9, split.grid.width);
+      );
+    case 'studio':
+      return (
+        <Studio
+          page={route.page}
+          connection={app.connection}
+          version={app.version}
+          canWrite={app.session.canConfigure}
+          phone={app.phone}
+          items={app.all}
+          rail={null}
+          sidebar={false}
+          onChanged={app.studioChanged}
+          index={index}
+        />
+      );
+    case 'modules':
+      return <Catalog name={route.name} />;
+    case 'brief':
+      return (
+        <main className="brief-layout">
+          <BriefView
+            ids={route.ids}
+            items={app.all}
+            collections={app.collections}
+            version={app.version}
+          />
+        </main>
+      );
+    case 'customize':
+      return null;
+  }
+}
+
+function Shell() {
+  const app = useApp();
+  const ws = useWorkspace();
+  const { yours, working } = useAttention(app.all);
+  useEffect(() => applyAttention({ yours, working }), [yours, working]);
+  const route = app.route;
   if (route.view === 'customize') {
     // A template saved from here lands on this page again: the note shows on the page you land on.
     return (
       <>
         <CustomizePage
           target={route.target}
-          items={allItems}
-          version={version}
-          connection={connection}
-          onApplied={() => setStudioWrites((count) => count + 1)}
+          items={app.all}
+          version={app.version}
+          connection={app.connection}
+          onApplied={app.studioChanged}
         />
-        <AppliedToast onUndone={() => setStudioWrites((count) => count + 1)} />
+        <AppliedToast onUndone={app.studioChanged} />
       </>
     );
   }
   return (
-    <div className="app">
-      <AppliedToast onUndone={() => setStudioWrites((count) => count + 1)} />
-      <Topbar
-        attention={attention}
-        project={project.status === 'ready' ? project.value : undefined}
-        folded={folded}
-        phone={phone}
-        connection={connection}
-        agents={agents}
-        pill={pillState(connection, agents)}
-        items={allItems}
-        collectionOf={collectionOf}
-        panel={panelButton}
-        onActivity={() => setActivity((open) => !open)}
-        projects={projects.status === 'ready' ? projects.value : undefined}
-      />
-      {phone && create && route.view === 'items' && !selectedId && !creating ? (
-        <button type="button" className="new-fab" onClick={() => openIntake(collection)}>
-          <Icon name="plus" />
-          {t('app.newItem')}
-        </button>
-      ) : null}
-      {route.view === 'projects' ? (
-        <ProjectsInbox version={version} connection={connection} />
-      ) : route.view === 'settings' ? (
-        <ProjectSettings
-          version={version}
-          connection={connection}
-          canWrite={canConfigure}
-          rail={phone ? null : sidebarRail}
-          sidebar={!folded}
-        />
-      ) : route.view === 'modules' ? (
-        <Catalog
-          name={route.name}
-          presets={presets}
-          rail={phone ? null : sidebarRail}
-          sidebar={!folded}
-        />
-      ) : route.view === 'studio' ? (
-        <Studio
-          page={route.page}
-          connection={connection}
-          version={version}
-          canWrite={canConfigure}
-          phone={phone}
-          items={allItems}
-          rail={phone ? null : sidebarRail}
-          sidebar={!folded}
-          onChanged={() => setStudioWrites((count) => count + 1)}
-          index={studioIndex}
-        />
-      ) : route.view === 'lan' ? (
-        <LanPanel
-          canManage={canManageDevices}
-          rail={phone ? null : sidebarRail}
-          sidebar={!folded}
-        />
-      ) : route.view === 'triage' && canWrite ? (
-        <main className="layout triage-layout">
-          <Triage
-            waiting={waiting}
-            loading={items.status === 'loading'}
-            collectionOf={collectionOf}
-            version={version}
-            onExit={leaveTriage}
+    <>
+      <LaneDefs />
+      <div className="app" data-folded={ws.folded ? '' : undefined}>
+        <AppliedToast onUndone={app.studioChanged} />
+        <Topbar />
+        <Rail />
+        <main className="main">
+          <ViewHost viewKey={viewKeyOf(route)} kind={route.view === 'lan' ? 'toca' : route.view}>
+            <View route={route} />
+          </ViewHost>
+          <DetailHost />
+          <ActivityDrawer
+            open={ws.activity}
+            onClose={app.closeActivity}
+            items={app.all}
+            collections={app.collections}
+            version={app.version}
+            connection={app.connection}
+            phone={app.phone}
           />
+          <div className="fxl" />
         </main>
-      ) : route.view === 'brief' ? (
-        <main className="brief-layout">
-          <BriefView
-            ids={route.ids}
-            items={allItems}
-            collections={collections.status === 'ready' ? collections.value : []}
-            version={version}
-          />
-        </main>
-      ) : (
-        <main
-          className="layout workspace with-rail"
-          ref={split.attach}
-          data-sidebar={folded ? 'off' : 'on'}
-          data-view={gridded ? 'grid' : 'list'}
-          data-detail={detailOff ? 'off' : undefined}
-          style={
-            {
-              ...split.style,
-              '--grid-w': `${detailOff ? split.grid.room - 9 : split.grid.width}px`,
-            } as CSSProperties
-          }
-        >
-          {phone ? (
-            <CollectionRail
-              {...railProps}
-              onSelect={setCollection}
-              folded={false}
-              onCreate={undefined}
-            />
-          ) : (
-            sidebarRail
-          )}
-          <div className="list-pane" data-pane="list" ref={listPane}>
-            <ListPane
-              items={items}
-              scoped={scoped}
-              allItems={allItems}
-              folds={folds}
-              onToggleChildren={toggleChildren}
-              childrenOf={childrenIndex(allItems)}
-              allWork={allWorkShown && collection === undefined}
-              selectedId={selectedId}
-              collection={collectionView}
-              collectionName={collection}
-              collectionOf={collectionOf}
-              unfolding={unfolding}
-              onTriage={openTriage}
-              canWrite={canWrite}
-              phone={phone}
-              prefs={prefs}
-              onPrefs={setPrefs}
-              onMorphing={setMorphing}
-              listWidth={split.width}
-              gridWidth={gridPane}
-              bulkHost={bulkHost}
-              collections={collections.status === 'ready' ? names : undefined}
-              presets={presets.status === 'ready' ? presets.value : []}
-              firstPreset={firstPreset}
-              onFirstPreset={setFirstPreset}
-              agents={agents ? agents.map(({ name }) => name) : undefined}
-              onCreate={canWrite ? () => openIntake(collection) : undefined}
-            />
-          </div>
-          {/* The grid pane's cell again, over the scroller: the bulk tray docks to its bottom edge. */}
-          {phone ? null : <div className="bulk-host" ref={setBulkHost} />}
-          {phone ? null : gridded ? (
-            <Divider
-              key="grid"
-              range="grid"
-              workspace={split.workspace}
-              width={split.grid.width}
-              home={split.grid.home}
-              onCommit={split.grid.commit}
-              onReset={split.grid.reset}
-            />
-          ) : (
-            <Divider
-              key="list"
-              workspace={split.workspace}
-              width={split.width}
-              home={split.home}
-              onCommit={split.commitWidth}
-              onReset={split.resetWidth}
-            />
-          )}
-          {/* The detail pane's cell again: the tray for ticked children docks to its bottom edge. */}
-          {phone ? null : <div className="bulk-host detail-bulk-host" ref={setDetailHost} />}
-          {phone && !creating ? null : (
-            <div className="detail-pane" data-pane="detail">
-              <div className="detail-panel">
-                {creating ? (
-                  <NewItemForm
-                    key={intake?.parent?.id ?? 'new'}
-                    connection={connection}
-                    ids={allItems.map(({ id }) => id)}
-                    parent={intake?.parent}
-                    collection={intake?.collection}
-                    onCancel={closeIntake}
-                    onCreated={showCreated}
-                  />
-                ) : selectedId ? (
-                  <SelectedItem
-                    key={selectedId}
-                    id={selectedId}
-                    version={version}
-                    connection={connection}
-                    canWrite={canWrite}
-                    collectionOf={collectionOf}
-                    onAddChild={addChild}
-                    onClose={gridded ? closeDetail : undefined}
-                    itemOf={(id) => allItems.find((each) => each.id === id)}
-                    trayHost={detailHost}
-                    canCustomize={canConfigure && !phone}
-                  />
-                ) : detailOff || items.status !== 'ready' ? null : firstRun ? (
-                  <FirstRun
-                    presets={presets.value}
-                    chosen={firstPreset}
-                    onChoose={setFirstPreset}
-                    route={false}
-                  />
-                ) : (
-                  <EmptyDetail
-                    items={scoped}
-                    collection={collection}
-                    onCreate={
-                      canWrite && names.length > 0 ? () => openIntake(collection) : undefined
-                    }
-                  />
-                )}
-              </div>
-            </div>
-          )}
-        </main>
-      )}
-      <ActivityDrawer
-        open={activity}
-        onClose={() => setActivity(false)}
-        items={allItems}
-        collections={collections.status === 'ready' ? collections.value : []}
-        version={version}
-        connection={connection}
-        phone={phone}
-      />
-      {/* On a phone Preferences sits in the panel, out of sight: the note stands on its own there. */}
-      {phone ? <LanguageNote /> : null}
-    </div>
+      </div>
+      <Dialog
+        open={route.view === 'lan'}
+        label={t('lan.title')}
+        onClose={() => app.go({ view: 'toca' })}
+      >
+        <LanPanel canManage={app.session.canManageDevices} rail={null} sidebar={false} />
+      </Dialog>
+      <ConnectDialog />
+      <NavSheet />
+      <Fab />
+      <LanguageNote />
+      <ToastHost />
+      <Tooltip />
+      <div id="layer" className="layer" />
+    </>
+  );
+}
+
+export function App() {
+  // Every word on screen follows the language: a switch renders the whole app again.
+  useLanguage();
+  useRoute();
+  return (
+    <AppProvider>
+      <Shell />
+    </AppProvider>
   );
 }

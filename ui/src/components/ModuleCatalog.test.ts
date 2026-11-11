@@ -29,7 +29,7 @@ describe('module catalog view', () => {
   it('marks a local module unofficial, at your own risk', () => {
     const html = panel({ name: 'diagram', origin: 'local', uses: [] });
 
-    expect(html).toContain('<span class="pill">local</span>');
+    expect(html).toContain('<span class="enum">local</span>');
     expect(html).toContain('unofficial · at your own risk');
   });
 
@@ -58,7 +58,7 @@ describe('module catalog view', () => {
     const html = panel({ name: 'severity', origin: 'official', uses: [] });
 
     expect(html).toContain('Sample: critical, in the warning hue');
-    expect(html).toContain('<i class="hot"></i>');
+    expect(html).toContain('class="svb s4"');
     expect(html).toContain('module: severity');
   });
 });

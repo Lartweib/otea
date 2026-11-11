@@ -123,4 +123,8 @@ export const board = {
   'bulk.movedTo': '{items} moved to {state}.',
   'bulk.cleared': 'the selection is cleared · this receipt closes in 6 s',
   'bulk.dismiss': 'dismiss',
+
+  // A board (the stub Lista)
+  'boardView.kicker': 'Board',
+  'boardView.empty': 'No items in {board} yet.',
 } as const;

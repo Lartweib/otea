@@ -223,4 +223,8 @@ export const detail = {
   'evidence.readingFrames': 'reading frames…',
   'evidence.frameAt': 'Frame at {time}',
   'evidence.seconds': '{seconds} s',
+
+  // The stub sheet
+  'sheet.label': 'Item detail',
+  'sheet.divider': 'Change the list’s width',
 } as const;
