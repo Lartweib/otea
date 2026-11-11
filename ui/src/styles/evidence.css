@@ -19,7 +19,7 @@
   display: grid;
   gap: 4px;
   padding: 18px 16px;
-  border-radius: var(--r-m);
+  border-radius: 7px;
 }
 
 .ev-empty[data-required="true"] {
@@ -45,7 +45,7 @@
   min-width: 0;
   min-height: 120px;
   overflow: hidden;
-  border-radius: var(--r-m);
+  border-radius: 7px;
 }
 
 .ev-img {
@@ -57,7 +57,7 @@
 
 /* Set down: a newly shown image arrives from just below. */
 .ev-set {
-  animation: ev-set var(--m-base) var(--m-ease) both;
+  animation: ev-set 240ms var(--ease) both;
 }
 
 @keyframes ev-set {
@@ -75,8 +75,8 @@
   height: 22px;
   padding: 0 8px;
   border-radius: 999px;
-  background: color-mix(in oklch, var(--sf) 88%, transparent);
-  font: 400 11.5px var(--font-machine);
+  background: color-mix(in oklch, var(--sheet) 88%, transparent);
+  font: 400 11.5px var(--mono);
   color: var(--ink);
   pointer-events: none;
 }
@@ -99,8 +99,8 @@
 }
 
 .ev-file {
-  font: 400 12px var(--font-machine);
-  color: var(--mut);
+  font: 400 12px var(--mono);
+  color: var(--ink-2);
   overflow-wrap: anywhere;
   text-decoration: none;
 }
@@ -130,12 +130,12 @@
 
 .ev-pick {
   max-width: 100%;
-  font-family: var(--font-machine);
+  font-family: var(--mono);
   font-weight: 400;
 }
 
 .ev-latest {
-  font: 400 11px var(--font-machine);
+  font: 400 11px var(--mono);
   opacity: 0.7;
 }
 
@@ -152,7 +152,7 @@
   aspect-ratio: 16 / 10;
   max-height: min(70vh, 560px);
   overflow: hidden;
-  border-radius: var(--r-m);
+  border-radius: 7px;
   cursor: ew-resize;
   user-select: none;
   /* A vertical swipe still scrolls the page on a phone; a sideways one moves the divider. */
@@ -196,11 +196,11 @@
   margin: -16px 0 0 -16px;
   border-radius: 50%;
   background: var(--ink);
-  color: var(--sf);
+  color: var(--sheet);
   box-shadow: 0 6px 16px -6px var(--shadow);
   transition:
-    transform var(--m-slow) var(--m-ease),
-    box-shadow var(--m-slow) var(--m-ease);
+    transform 360ms var(--ease),
+    box-shadow 360ms var(--ease);
 }
 
 .ev-knob .icon {
@@ -237,7 +237,7 @@
   display: grid;
   place-items: center;
   min-height: 160px;
-  border-radius: var(--r-m);
+  border-radius: 7px;
   background: transparent;
   outline: 1.5px dashed var(--lane);
   outline-offset: -1.5px;
@@ -262,7 +262,7 @@
   top: 50%;
   translate: 0 -50%;
   border-color: transparent;
-  background: color-mix(in oklch, var(--sf) 88%, transparent);
+  background: color-mix(in oklch, var(--sheet) 88%, transparent);
 }
 
 .ev-nav.l {
@@ -283,7 +283,7 @@
   overflow-x: auto;
   list-style: none;
   scrollbar-width: thin;
-  scrollbar-color: var(--line) transparent;
+  scrollbar-color: var(--rule) transparent;
 }
 
 .ev-strip li {
@@ -300,12 +300,12 @@
   padding: 0;
   overflow: hidden;
   border: 0;
-  border-radius: var(--r-s);
+  border-radius: 4px;
   cursor: pointer;
-  box-shadow: 0 0 0 1px var(--line);
+  box-shadow: 0 0 0 1px var(--rule);
   transition:
-    box-shadow var(--m-fast),
-    transform var(--m-fast) var(--m-ease);
+    box-shadow 120ms,
+    transform 120ms var(--ease);
 }
 
 .ev-thumb img {
@@ -367,9 +367,9 @@
 .ev-diff-file {
   min-width: 0;
   overflow: hidden;
-  border-radius: var(--r-m);
+  border-radius: 7px;
   background: var(--well);
-  box-shadow: 0 0 0 1px var(--line);
+  box-shadow: 0 0 0 1px var(--rule);
 }
 
 .ev-diff-head {
@@ -378,8 +378,8 @@
   justify-content: space-between;
   gap: 12px;
   padding: 8px 12px;
-  background: var(--sf);
-  font: 400 12.5px var(--font-machine);
+  background: var(--sheet);
+  font: 400 12.5px var(--mono);
   cursor: pointer;
   list-style: none;
 }
@@ -389,7 +389,7 @@
 }
 
 .ev-diff-file[open] > .ev-diff-head {
-  box-shadow: 0 1px 0 var(--line);
+  box-shadow: 0 1px 0 var(--rule);
 }
 
 .ev-path {
@@ -404,9 +404,9 @@
   height: 0;
   margin-right: 8px;
   border-block: 4px solid transparent;
-  border-left: 5px solid var(--mut);
+  border-left: 5px solid var(--ink-2);
   vertical-align: 1px;
-  transition: transform var(--m-fast) var(--m-ease);
+  transition: transform 120ms var(--ease);
 }
 
 .ev-diff-file[open] .ev-path::before {
@@ -423,12 +423,12 @@
   min-width: 0;
   padding: 8px 0;
   overflow-x: auto;
-  border-radius: var(--r-m);
+  border-radius: 7px;
   background: var(--well);
-  font: 400 12.5px / 1.7 var(--font-machine);
+  font: 400 12.5px / 1.7 var(--mono);
   color: var(--ink);
   scrollbar-width: thin;
-  scrollbar-color: var(--line) transparent;
+  scrollbar-color: var(--rule) transparent;
 }
 
 .ev-diff-file .ev-code {
@@ -457,12 +457,12 @@
 
 .ev-line[data-kind="ctx"],
 .ev-line[data-kind="note"] {
-  color: var(--mut);
+  color: var(--ink-2);
 }
 
 .ev-line[data-kind="hunk"] {
-  --tint: color-mix(in oklch, var(--mut) 10%, transparent);
-  color: var(--mut);
+  --tint: color-mix(in oklch, var(--ink-2) 10%, transparent);
+  color: var(--ink-2);
 }
 
 /* The line numbers stay put while a long line scrolls sideways. */
@@ -482,7 +482,7 @@
   font-variant-numeric: tabular-nums;
   padding: 0 6px 0 10px;
   text-align: right;
-  color: var(--mut);
+  color: var(--ink-2);
   opacity: 0.75;
 }
 
@@ -524,10 +524,10 @@
   margin: 4px 0;
   padding: 6px 14px;
   border: 0;
-  border-block: 1px dashed var(--line);
+  border-block: 1px dashed var(--rule);
   background: transparent;
   font: inherit;
-  color: var(--mut);
+  color: var(--ink-2);
   text-align: left;
   cursor: pointer;
 }
@@ -545,12 +545,12 @@
   display: grid;
   place-items: center;
   min-height: 80px;
-  border-radius: var(--r-m);
+  border-radius: 7px;
 }
 
 @media (prefers-reduced-motion: reduce) {
   .ev-set {
-    animation: ot-fade var(--m-fast) both;
+    animation: ot-fade 120ms both;
   }
 
   .ev-knob,
@@ -562,4 +562,54 @@
   .ev-cmp[data-dragging="true"] .ev-knob {
     transform: none;
   }
+}
+
+/* ---- in the item's sheet (SPEC §10.3, mock:575-580): figures on the figure ground, captions in
+   italic serif led by a caps kicker ---- */
+.sheet .figs {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+  max-width: 1040px;
+}
+.sheet .figs.one {
+  grid-template-columns: minmax(0, 520px);
+}
+.sheet figure {
+  margin: 0;
+  min-width: 0;
+}
+.sheet .figs img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 4px;
+  background: var(--fig);
+}
+.sheet figcaption {
+  margin-top: 8px;
+  font: 400 italic 13.5px / 1.35 var(--serif);
+  color: var(--ink-2);
+}
+.sheet figcaption b {
+  font: 600 10px / 1 var(--sans);
+  font-style: normal;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--ink);
+  margin-right: 6px;
+}
+.sheet .ev-stage {
+  background: var(--fig);
+  border-radius: 4px;
+}
+.sheet .ev-head .t-label {
+  font: 600 10px / 1 var(--sans);
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+.sheet .ev-empty {
+  font: 400 italic 15px / 1.4 var(--serif);
+  color: var(--ink-3);
 }
