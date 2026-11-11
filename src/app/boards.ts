@@ -38,6 +38,7 @@ import {
   listVersions,
   maxVersion,
   renameCollection,
+  retireBoard,
   setBoardCollection,
   setLiveVersion,
   upsertDraft,
@@ -282,12 +283,17 @@ export function saveDraft(
 }
 
 // Discards the draft; a board that was never published goes with it.
-export function discardDraft(ctx: Context, id: string): { deleted: boolean } {
+export function discardDraft(
+  ctx: Context,
+  id: string,
+  now: Clock = systemClock,
+): { deleted: boolean } {
   return transaction(ctx.db, () => {
     const row = requireRow(ctx, id);
     deleteDraft(ctx.db, id);
-    if (row.liveVersion === null && maxVersion(ctx.db, id) === 0) {
-      deleteBoard(ctx.db, id);
+    if (row.liveVersion === null) {
+      if (maxVersion(ctx.db, id) === 0) deleteBoard(ctx.db, id);
+      else retireBoard(ctx.db, id, now());
       return { deleted: true };
     }
     return { deleted: false };

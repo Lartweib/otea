@@ -14,6 +14,7 @@ import {
   listVersions,
   maxVersion,
   renameCollection,
+  retireBoard,
   setBoardCollection,
   setLiveVersion,
   upsertDraft,
@@ -116,6 +117,13 @@ describe('board storage', () => {
     expect(findDraft(db, 'b1')).toBeUndefined();
     deleteBoard(db, 'b1');
     expect(findBoard(db, 'b1')).toBeUndefined();
+  });
+
+  it('retires a board it cannot delete from every listing', () => {
+    insertBoard(db, { id: 'b2', createdAt: 't0', builtin: false });
+    retireBoard(db, 'b2', 't1');
+    expect(listBoards(db)).toEqual([]);
+    expect(findBoard(db, 'b2')?.id).toBe('b2');
   });
 
   it('renames a collection and everything that points at it in one go', () => {
