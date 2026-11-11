@@ -56,7 +56,6 @@ import {
   session,
 } from './session.ts';
 import { type LiveStreams, liveStreams } from './stream.ts';
-import { studioApi } from './studio.ts';
 import { BUILT_UI_DIR, mountUi } from './ui.ts';
 import {
   assertConfigurable,
@@ -302,7 +301,6 @@ function api(
         assertSignedIn(c, auth, 'open evidence files');
         return serveEvidence(c, project, c.req.param('id'));
       })
-      .route('/studio', studioApi(project, feed, auth))
       .route('/', boardsApi(project, feed, auth))
       .get('/events', (c) => c.json(listEvents(project, eventsFilter(c.req.query()))))
       .get('/stream', (c) => streams.handle(c))
