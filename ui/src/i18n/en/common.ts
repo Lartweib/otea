@@ -99,4 +99,7 @@ export const common = {
   // The lanes' names over a list
   'lanes.agents': 'ag',
   'lanes.you': 'you',
+  // Marks and toasts (kit)
+  'mark.you': 'you',
+  'toast.undo': 'Undo',
 } as const;

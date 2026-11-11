@@ -1,0 +1,295 @@
+/* Pops, menus, toasts, scrims and dialogs (SPEC §6.8, mock:690-742), verbatim. */
+
+/* ───────── pops: menus, toasts, dialogs ───────── */
+.layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 50;
+}
+.layer > * {
+  pointer-events: auto;
+}
+.pop {
+  position: fixed;
+  z-index: 60;
+  min-width: 200px;
+}
+.pop .pline {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--ink-3);
+  z-index: 2;
+  overflow: hidden;
+}
+.pop .pline .glint {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 70px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--you), transparent);
+  opacity: 0;
+}
+.pop.e-top .pline {
+  top: 0;
+}
+.pop.e-bottom .pline {
+  bottom: 0;
+}
+.psurf {
+  background: var(--sheet);
+  border: 1px solid var(--rule);
+  border-top: 0;
+  border-radius: 0 0 10px 10px;
+  padding: 6px;
+  box-shadow: 0 18px 36px -22px var(--shadow);
+}
+.pop.e-bottom .psurf {
+  border-top: 1px solid var(--rule);
+  border-bottom: 0;
+  border-radius: 10px 10px 0 0;
+  box-shadow: 0 -12px 32px -22px var(--shadow);
+}
+.pin {
+  position: relative;
+}
+.mi {
+  display: flex;
+  width: 100%;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 13.5px;
+  color: var(--ink-2);
+  transition:
+    background-color 240ms var(--o-drift),
+    color 120ms var(--ease);
+  text-align: left;
+}
+.mi:hover {
+  background: var(--hov);
+  color: var(--ink);
+}
+.mi.on {
+  color: var(--ink);
+  background: var(--well);
+  font-weight: 500;
+}
+.mi small {
+  font: 400 11px / 1 var(--mono);
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+.mi .ckm {
+  width: 14px;
+  display: inline-grid;
+  place-items: center;
+  color: var(--you-ink);
+}
+.mi.check {
+  justify-content: flex-start;
+  align-items: center;
+  gap: 10px;
+}
+.mi.check .lbx {
+  flex: 1;
+}
+.mi:disabled {
+  color: var(--ink-3);
+  cursor: default;
+  background: none;
+}
+.mi .sw2 {
+  position: relative;
+  display: inline-grid;
+}
+.mi .sw2 > * {
+  grid-area: 1 / 1;
+}
+.plabel {
+  font: 400 11.5px / 1 var(--mono);
+  color: var(--ink-3);
+  padding: 9px 10px 7px;
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+.prule {
+  height: 1px;
+  background: var(--rule);
+  margin: 6px 4px;
+}
+.pnote {
+  font: 400 11.5px / 1.45 var(--mono);
+  color: var(--ink-3);
+  padding: 6px 10px 6px;
+}
+.toast {
+  left: 50%;
+  bottom: 22px;
+  width: min(520px, calc(100vw - 32px));
+  margin-left: calc(min(520px, calc(100vw - 32px)) / -2);
+}
+.toast .pline {
+  transform-origin: 50% 0;
+}
+.toast .psurf {
+  padding: 0;
+}
+.toast .pin {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 11px 12px 11px 16px;
+}
+.toast .msgs {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  min-height: 21px;
+}
+.toast .tmsg {
+  font: 400 15px / 1.4 var(--serif);
+  color: var(--ink);
+  min-width: 0;
+}
+.toast .tmsg.out {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+}
+.toast .tmsg .id {
+  margin-right: 6px;
+}
+.toast .tnode {
+  position: absolute;
+  left: 0;
+  top: -6px;
+  width: 12px;
+  height: 12px;
+  pointer-events: none;
+  z-index: 3;
+  opacity: 0;
+}
+.scrim {
+  position: fixed;
+  inset: 0;
+  background: var(--scrim);
+  z-index: 55;
+}
+.dialog {
+  left: 50%;
+  top: 20vh;
+  width: min(440px, calc(100vw - 32px));
+  margin-left: calc(min(440px, calc(100vw - 32px)) / -2);
+}
+.dialog .pline {
+  transform-origin: 50% 0;
+}
+.dialog .psurf {
+  padding: 0;
+}
+.dialog .pin {
+  padding: 18px 20px 16px;
+}
+.dialog h4 {
+  font: 450 22px / 1.15 var(--serif);
+  margin-bottom: 6px;
+}
+.dialog p {
+  font: 400 italic 15px / 1.45 var(--serif);
+  color: var(--ink-2);
+}
+.dialog code {
+  font: 400 12.5px / 1.5 var(--mono);
+  color: var(--ink);
+  background: var(--well);
+  padding: 6px 8px;
+  border-radius: 6px;
+  display: block;
+  margin-top: 10px;
+}
+.dialog input {
+  display: block;
+  width: 100%;
+  margin-top: 12px;
+  height: 36px;
+  padding: 0 11px;
+  border-radius: 7px;
+  border: 1px solid var(--rule-2);
+  background: var(--sheet);
+  font: 400 16px / 1 var(--serif);
+  transition:
+    border-color 240ms var(--o-drift),
+    box-shadow 240ms var(--o-drift);
+}
+.dialog input:focus {
+  outline: none;
+  border-color: var(--you);
+}
+.dialog input.bad {
+  border-color: var(--warn);
+  box-shadow: 0 0 0 1px var(--warn);
+}
+.dialog .dhint {
+  font: 400 italic 13.5px / 1.4 var(--serif);
+  color: var(--warn);
+  margin-top: 6px;
+  min-height: 19px;
+}
+.dialog .dbtns {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+  justify-content: flex-end;
+}
+.dialog dl {
+  display: grid;
+  grid-template-columns: 110px minmax(0, 1fr);
+  gap: 8px 12px;
+  margin-top: 14px;
+  font-size: 13.5px;
+}
+.dialog dt {
+  font: 400 11.5px / 1.5 var(--mono);
+  color: var(--ink-3);
+}
+.dialog dd {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.qr {
+  display: block;
+  width: 132px;
+  height: 132px;
+  margin: 14px 0 6px;
+  border-radius: 8px;
+  background: var(--sheet);
+  padding: 8px;
+  box-shadow: inset 0 0 0 1px var(--rule);
+}
+.devs {
+  margin-top: 12px;
+  border-top: 1px solid var(--rule);
+}
+.devs > div {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--rule);
+  font-size: 13.5px;
+}
+.devs small {
+  font: 400 11px / 1 var(--mono);
+  color: var(--ink-3);
+  display: block;
+  margin-top: 3px;
+}

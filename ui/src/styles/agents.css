@@ -1,0 +1,101 @@
+/* The agents column of Te toca. Starts with the mock's (mock:318-336). The lists slice owns this file (SPEC §11). */
+
+.agents {
+  padding-top: 6px;
+  padding-bottom: 40px;
+}
+.agents h3 {
+  font: 450 21px / 1.1 var(--serif);
+  font-variation-settings: "opsz" 24;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--rule);
+}
+.agents h3 .n {
+  font-size: 12px;
+}
+.agent {
+  padding: 15px 0 13px;
+  border-bottom: 1px solid var(--rule);
+  position: relative;
+}
+.agent .who {
+  font-weight: 600;
+  font-size: 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+.agent .who .sw {
+  position: relative;
+  display: inline-block;
+  text-align: right;
+}
+.agent .who .sw > span {
+  font: 400 11.5px / 1 var(--mono);
+  color: var(--ink-3);
+  white-space: nowrap;
+  display: inline-block;
+}
+.agent .who .sw > span.warn-t {
+  color: var(--warn);
+}
+.agent .who .sw > span.you-t {
+  color: var(--you-ink);
+}
+.agent .doing {
+  font: 400 15px / 1.35 var(--serif);
+  color: var(--ink);
+  margin-top: 3px;
+  text-wrap: balance;
+}
+.agent .doing i {
+  color: var(--ink-2);
+}
+.agent .meta {
+  font-size: 12.5px;
+  color: var(--ink-3);
+  margin-top: 4px;
+}
+.agent .meta .id {
+  font-size: 11px;
+}
+.trace {
+  display: block;
+  margin-top: 10px;
+  overflow: visible;
+  width: 100%;
+  height: 24px;
+}
+.axis {
+  display: flex;
+  justify-content: space-between;
+  font: 400 10.5px / 1 var(--mono);
+  color: var(--ink-3);
+  padding: 9px 0 0;
+}
+.connect {
+  display: block;
+  margin-top: 16px;
+  font-size: 13px;
+  color: var(--ink-2);
+  font-weight: 500;
+}
+.connect:hover {
+  color: var(--ink);
+}
+.colophon {
+  margin-top: 30px;
+  font: 400 italic 14px / 1.5 var(--serif);
+  color: var(--ink-3);
+}
+.colophon b {
+  font-style: normal;
+  font-family: var(--mono);
+  font-weight: 400;
+  font-size: 12px;
+  color: var(--ink-2);
+}
