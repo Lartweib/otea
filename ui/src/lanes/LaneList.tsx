@@ -173,6 +173,9 @@ function Block({
 
 let firstDrawIn = true;
 
+// How long after a list mounts a change of its blocks lands without a handoff.
+const SETTLING = 900;
+
 export function LaneList({
   list,
   blocks,
@@ -191,6 +194,8 @@ export function LaneList({
     snap: null,
   });
   const universeRef = useRef(universe);
+  // While the list first draws in, the data still arriving (the feed, the agents) lands in place.
+  const born = useRef(0);
   universeRef.current = universe;
   const [ghosts, setGhosts] = useState<ReadonlyMap<string, Ghost>>(new Map());
 
@@ -246,7 +251,9 @@ export function LaneList({
     const list = el.current;
     if (!list) return;
     const prev = last.current;
-    const changed = prev.snap !== null && prev.sig !== sig;
+    if (!born.current) born.current = performance.now();
+    const settled = performance.now() - born.current > SETTLING;
+    const changed = settled && prev.snap !== null && prev.sig !== sig;
     if (changed && prev.snap) {
       const A = prev.snap;
       const ghosted = new Map(leaving);
@@ -267,7 +274,11 @@ export function LaneList({
         redraw();
         if (el.current) last.current.snap = snap(el.current, universeRef.current);
       });
-    } else redraw();
+    } else {
+      // No handoff: what left goes at once (render again without its ghost).
+      if (leaving.size) setGhosts(new Map());
+      redraw();
+    }
     last.current = { blocks, sig, snap: snap(list, universeRef.current) };
   });
 

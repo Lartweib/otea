@@ -43,7 +43,7 @@ export type LoadedData = {
 const ready = <T>(r: Remote<T>): T | undefined => (r.status === 'ready' ? r.value : undefined);
 
 // The project's latest events, then the ones after the last on every change.
-export function useFeed(version: number, connection: Connection): FeedEvent[] {
+export function useFeed(version: number): FeedEvent[] {
   const [feed, setFeed] = useState<{ events: FeedEvent[]; loaded: boolean }>({
     events: [],
     loaded: false,
@@ -52,7 +52,6 @@ export function useFeed(version: number, connection: Connection): FeedEvent[] {
   current.current = feed;
   // biome-ignore lint/correctness/useExhaustiveDependencies: a new version means the log grew
   useEffect(() => {
-    if (connection !== 'live') return;
     const controller = new AbortController();
     const { loaded, events } = current.current;
     const query = loaded ? { since: events.at(-1)?.id ?? 0 } : { latest: FEED_SIZE };
@@ -61,7 +60,7 @@ export function useFeed(version: number, connection: Connection): FeedEvent[] {
       () => undefined,
     );
     return () => controller.abort();
-  }, [version, connection]);
+  }, [version]);
   return feed.events;
 }
 
@@ -78,7 +77,7 @@ export function useAppData(): LoadedData {
   // Other projects are not on this server's stream: read again as this one changes, and on the beat.
   const projects = useRemote(fetchProjects, version * 1000 + beat, connection);
   const agents = useAgents(version, presence, connection);
-  const feed = useFeed(version, connection);
+  const feed = useFeed(version);
   const studioChanged = useCallback(() => setStudioWrites((n) => n + 1), []);
   const s = ready(session);
   const data: LoadedData = {
