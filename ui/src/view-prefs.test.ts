@@ -45,7 +45,7 @@ const memory = (entries: Record<string, string> = {}) => {
 describe('readViewPrefs', () => {
   it('starts from the preset: its view kind and grouping, no sort and no filters', () => {
     expect(readViewPrefs(memory(), bugs)).toEqual({
-      mode: 'grid',
+      mode: 'tabla',
       group: 'severity',
       sort: null,
       filters: {},
@@ -53,23 +53,41 @@ describe('readViewPrefs', () => {
       widths: {},
     });
     const list = { ...bugs, view: { ...bugs.view, kind: 'board' as const, groupBy: 'steps' } };
-    expect(readViewPrefs(undefined, list)).toMatchObject({ mode: 'list', group: 'turn' });
+    expect(readViewPrefs(undefined, list)).toMatchObject({ mode: 'pasos', group: 'state' });
+    const plain = { ...bugs, view: { ...bugs.view, kind: 'list' as const, groupBy: 'turn' } };
+    expect(readViewPrefs(undefined, plain)).toMatchObject({ mode: 'lista', group: 'state' });
   });
 
   it('reads what this browser chose for the collection', () => {
     const storage = memory({
-      'otea.view.bugs': 'list',
+      'otea.view.bugs': 'lista',
       'otea.group.bugs': 'category',
       'otea.sort.bugs': '{"key":"severity","dir":"desc"}',
       'otea.filters.bugs': '{"category":["crash"],"state":["reported"]}',
     });
 
     expect(readViewPrefs(storage, bugs)).toMatchObject({
-      mode: 'list',
+      mode: 'lista',
       group: 'category',
       sort: { key: 'severity', dir: 'desc' },
       filters: { category: ['crash'], state: ['reported'] },
     });
+  });
+
+  it('keeps the board groupings and filters: step, turn, who, no grouping', () => {
+    const storage = memory({
+      'otea.view.bugs': 'pasos',
+      'otea.group.bugs': 'who',
+      'otea.filters.bugs': '{"state":["__closed"],"turn":["human"],"who":["kiln"]}',
+      'otea.sort.bugs': '{"key":"who","dir":"asc"}',
+    });
+    expect(readViewPrefs(storage, bugs)).toMatchObject({
+      mode: 'pasos',
+      group: 'who',
+      filters: { state: ['__closed'], turn: ['human'], who: ['kiln'] },
+      sort: { key: 'who', dir: 'asc' },
+    });
+    expect(readViewPrefs(memory({ 'otea.group.bugs': 'none' }), bugs).group).toBe('none');
   });
 
   it('reads free text filters and groups, as their normalized values', () => {
@@ -118,7 +136,7 @@ describe('readViewPrefs', () => {
     });
 
     expect(readViewPrefs(storage, bugs)).toMatchObject({
-      mode: 'grid',
+      mode: 'tabla',
       group: 'severity',
       sort: null,
       filters: { category: ['visual'] },
@@ -137,8 +155,8 @@ describe('readViewPrefs', () => {
       },
     };
 
-    expect(readViewPrefs(broken, bugs)).toMatchObject({ mode: 'grid', group: 'severity' });
-    expect(() => writeViewPrefs(broken, 'bugs', { mode: 'list' })).not.toThrow();
+    expect(readViewPrefs(broken, bugs)).toMatchObject({ mode: 'tabla', group: 'severity' });
+    expect(() => writeViewPrefs(broken, 'bugs', { mode: 'lista' })).not.toThrow();
   });
 });
 
@@ -146,7 +164,7 @@ describe('writeViewPrefs', () => {
   it('keeps each choice under the collection, only those given', () => {
     const storage = memory();
     writeViewPrefs(storage, 'bugs', {
-      mode: 'list',
+      mode: 'lista',
       sort: { key: 'age', dir: 'asc' },
       filters: { category: ['crash'] },
     });
@@ -154,7 +172,7 @@ describe('writeViewPrefs', () => {
     writeViewPrefs(storage, 'bugs', { columns: ['id', 'title', 'state'], widths: { state: 150 } });
 
     expect(Object.fromEntries(storage.data)).toEqual({
-      'otea.view.bugs': 'list',
+      'otea.view.bugs': 'lista',
       'otea.group.bugs': 'turn',
       'otea.sort.bugs': 'null',
       'otea.filters.bugs': '{"category":["crash"]}',

@@ -7,16 +7,17 @@ import {
   type Sort,
   type Widths,
 } from './grid.ts';
-import { groupings } from './sections.ts';
 import type { CollectionView } from './types.ts';
+import { defaultGroup, defaultMode, filterKeys, groupOptions } from './views/board/model.ts';
 
-// How this browser looks at a collection: list or grid, its grouping, its sort and its filters, and
+// How this browser looks at a board: Pasos, Lista or Tabla, its grouping, its sort and its filters, and
 // the grid's columns and the widths given to them. They belong to the collection, not to the view:
 // switching keeps them, and the list honours the grouping, sort and filters too. Each is kept per
 // collection in localStorage (`otea.view.<collection>`, `otea.group.…`, `otea.sort.…`,
 // `otea.filters.…`, `otea.columns.…`, `otea.widths.…`); a browser that refuses storage follows
 // the preset.
-export type ViewMode = 'list' | 'grid';
+export type ViewMode = 'pasos' | 'lista' | 'tabla';
+const MODES: readonly string[] = ['pasos', 'lista', 'tabla'];
 
 // columns: the keys shown, in their place (grid.ts chosenColumns); widths: only the columns sized.
 export type ViewPrefs = {
@@ -70,7 +71,7 @@ export function readViewPrefs(
 ): ViewPrefs {
   const name = collection.name;
   const available = availableColumns(collection);
-  const offered = groupings(collection);
+  const offered = groupOptions(collection).map(({ key }) => key);
   const stored = {
     mode: read(storage, keyOf('mode', name)),
     group: read(storage, keyOf('group', name)),
@@ -87,28 +88,30 @@ export function readViewPrefs(
       : undefined,
   );
   const mode: ViewMode =
-    stored.mode === 'list' || stored.mode === 'grid'
-      ? stored.mode
-      : collection.view.kind === 'grid'
-        ? 'grid'
-        : 'list';
-  const preset = offered.includes(collection.view.groupBy) ? collection.view.groupBy : 'turn';
+    stored.mode !== null && MODES.includes(stored.mode)
+      ? (stored.mode as ViewMode)
+      : defaultMode(collection);
+  const preset = defaultGroup(collection);
   const group = stored.group !== null && offered.includes(stored.group) ? stored.group : preset;
   const sorted = stored.sort;
   const sort: Sort =
     isRecord(sorted) &&
-    columns.some(({ key }) => key === sorted.key) &&
+    (sorted.key === 'who' || columns.some(({ key }) => key === sorted.key)) &&
     (sorted.dir === 'asc' || sorted.dir === 'desc')
       ? { key: String(sorted.key), dir: sorted.dir }
       : null;
   // A filter stays on a hidden column (its token says so); a text field keeps any string.
   const filters: Record<string, string[]> = {};
+  const keys = new Set([
+    ...filterKeys(collection).map(({ key }) => key),
+    ...available.filter(filterable).map(({ key }) => key),
+  ]);
   if (isRecord(stored.filters)) {
-    for (const column of available.filter(filterable)) {
-      const chosen = stored.filters[column.key];
+    for (const key of keys) {
+      const chosen = stored.filters[key];
       if (!Array.isArray(chosen)) continue;
       const values = chosen.filter((value): value is string => typeof value === 'string');
-      if (values.length > 0) filters[column.key] = values;
+      if (values.length > 0) filters[key] = values;
     }
   }
   const widths = isRecord(stored.widths)
