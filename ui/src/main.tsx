@@ -9,6 +9,7 @@ import { App } from './App.tsx';
 import { PairScreen } from './components/PairScreen.tsx';
 import { startLanguage } from './i18n/i18n.ts';
 import './styles/tokens.css';
+import './styles/tokens-legacy.css';
 import './styles/base.css';
 import './kit/kit.css';
 import './icons/icons.css';

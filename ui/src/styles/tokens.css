@@ -1,162 +1,154 @@
-/* Lanes tokens. Light is never white, dark is never black; neutrals carry a trace of the accent hue. */
+/* Otea next: the Editorial look (SPEC §1, mock:7-103). Light is the default; dark follows the
+   system unless the person chose light, and always applies under data-theme="dark". The curves are
+   the motion system's (motion/curves.ts writes the same strings: a test keeps them equal). */
 
 :root {
-  color-scheme: light;
-  --you: #3b5bff;
-  --bg: oklch(0.95 0.006 265);
-  --sf: oklch(0.973 0.004 265);
-  --well: oklch(0.925 0.008 265);
-  --hov: oklch(0.945 0.007 265);
-  --sel: oklch(0.932 0.013 265);
-  --ink: oklch(0.24 0.02 265);
-  --mut: oklch(0.46 0.016 265);
-  --lane: oklch(0.8 0.012 265);
-  --line: oklch(0.89 0.007 265);
-  --chip: oklch(0.915 0.008 265);
-  --off: oklch(0.86 0.008 265);
-  --closed: oklch(0.58 0.012 265);
-  --pat: oklch(0.87 0.01 265);
-  --warn: oklch(0.6 0.19 28);
-  --plus: oklch(0.52 0.12 155);
-  --minus: oklch(0.55 0.15 25);
-  --shadow: oklch(0.24 0.02 265 / 0.16);
-  --on-you: oklch(0.99 0.005 265);
-  /* Text set in your color: deepened on light, lifted on dark, to stay above 4.5:1 on every surface. */
-  --you-ink: color-mix(in oklch, var(--you) 78%, oklch(0.24 0.02 265));
-  /* Agent marks: five quiet hues, away from your blue and from --warn's red. Each only tints
-     --chip, so one set works in both themes and never competes with the turn colors. */
-  --agent-0: oklch(0.72 0.12 75);
-  --agent-1: oklch(0.7 0.11 145);
-  --agent-2: oklch(0.7 0.09 200);
-  --agent-3: oklch(0.68 0.11 310);
-  --agent-4: oklch(0.7 0.1 350);
-  /* The bulk tray docked under a grid selection: light is the surface with a firmer edge (ink 16%
-     into the hairline) and a soft upward shadow; dark lifts it over the page with a top highlight
-     and a neutral glow (ink, never your blue). */
-  --tray: var(--sf);
-  --tray-btn: var(--sf);
-  --tray-btn-edge: var(--line);
-  --tray-sh:
-    0 0 0 1px color-mix(in oklch, var(--ink) 16%, var(--line)), 0 -18px 36px -22px var(--shadow);
-  /* Capped and centred over a wide grid, the tray stands free: the same edge and shadow, plus a
-     softer one that reaches its sides. */
-  --tray-sh-tab:
-    0 0 0 1px color-mix(in oklch, var(--ink) 16%, var(--line)), 0 -18px 36px -22px var(--shadow),
-    0 -4px 24px -10px var(--shadow);
+  --serif: "Newsreader Variable", "Newsreader", "Iowan Old Style", Georgia, serif;
+  --sans: "Schibsted Grotesk Variable", "Schibsted Grotesk", "Helvetica Neue", Arial, sans-serif;
+  --mono: "DM Mono", ui-monospace, Consolas, monospace;
+  --ease: cubic-bezier(0.25, 1, 0.5, 1);
+  /* biome-ignore format: one line per curve, character for character the string motion/curves.ts writes */
+  --o-settle: linear(0, 0.0004 0.3545%, 0.0035 1.0747%, 0.0122 2.056%, 0.0287 3.2578%, 0.0545 4.6557%, 0.0901 6.2327%, 0.135 7.9761%, 0.1882 9.8759%, 0.248 11.924%, 0.3125 14.1135%, 0.3797 16.4385%, 0.4474 18.894%, 0.5139 21.4755%, 0.5777 24.179%, 0.6375 27.001%, 0.6926 29.9382%, 0.7423 32.9877%, 0.7865 36.1468%, 0.8251 39.413%, 0.8583 42.784%, 0.8865 46.2578%, 0.9102 49.8322%, 0.9297 53.5055%, 0.9457 57.2759%, 0.9586 61.1417%, 0.969 65.1015%, 0.9771 69.1538%, 0.9835 73.2971%, 0.9884 77.5301%, 0.9922 81.8517%, 0.995 86.2606%, 0.9972 90.7557%, 0.9988 95.3358%, 1);
+  /* biome-ignore format: one line per curve, character for character the string motion/curves.ts writes */
+  --o-glide: linear(0, 0.0125 0.3545%, 0.0377 1.0747%, 0.072 2.056%, 0.1136 3.2578%, 0.1612 4.6557%, 0.2134 6.2327%, 0.2692 7.9761%, 0.3273 9.8759%, 0.3864 11.924%, 0.4456 14.1135%, 0.5036 16.4385%, 0.5597 18.894%, 0.613 21.4755%, 0.6629 24.179%, 0.7091 27.001%, 0.7512 29.9382%, 0.7892 32.9877%, 0.823 36.1468%, 0.8527 39.413%, 0.8786 42.784%, 0.9009 46.2578%, 0.9199 49.8322%, 0.936 53.5055%, 0.9494 57.2759%, 0.9605 61.1417%, 0.9696 65.1015%, 0.977 69.1538%, 0.983 73.2971%, 0.9877 77.5301%, 0.9915 81.8517%, 0.9945 86.2606%, 0.9968 90.7557%, 0.9986 95.3358%, 1);
+  /* biome-ignore format: one line per curve, character for character the string motion/curves.ts writes */
+  --o-drift: linear(0, 0.0064 0.3545%, 0.0198 1.0747%, 0.0385 2.056%, 0.0621 3.2578%, 0.0904 4.6557%, 0.1229 6.2327%, 0.1595 7.9761%, 0.1995 9.8759%, 0.2426 11.924%, 0.288 14.1135%, 0.3352 16.4385%, 0.3834 18.894%, 0.4322 21.4755%, 0.4807 24.179%, 0.5284 27.001%, 0.5749 29.9382%, 0.6196 32.9877%, 0.6621 36.1468%, 0.7022 39.413%, 0.7397 42.784%, 0.7744 46.2578%, 0.8063 49.8322%, 0.8352 53.5055%, 0.8614 57.2759%, 0.8849 61.1417%, 0.9057 65.1015%, 0.9242 69.1538%, 0.9403 73.2971%, 0.9544 77.5301%, 0.9666 81.8517%, 0.977 86.2606%, 0.986 90.7557%, 0.9936 95.3358%, 1);
+  /* biome-ignore format: one line per curve, character for character the string motion/curves.ts writes */
+  --o-ink: linear(0, 0.0029 0.3545%, 0.0093 1.0747%, 0.0184 2.056%, 0.0306 3.2578%, 0.0461 4.6557%, 0.0651 6.2327%, 0.0878 7.9761%, 0.1141 9.8759%, 0.1438 11.924%, 0.1765 14.1135%, 0.2112 16.4385%, 0.2478 18.894%, 0.2862 21.4755%, 0.3264 24.179%, 0.3686 27.001%, 0.4126 29.9382%, 0.4581 32.9877%, 0.5051 36.1468%, 0.5539 39.413%, 0.6039 42.784%, 0.6557 46.2578%, 0.709 49.8322%, 0.7638 53.5055%, 0.8167 57.2759%, 0.8622 61.1417%, 0.9001 65.1015%, 0.931 69.1538%, 0.9553 73.2971%, 0.9733 77.5301%, 0.986 81.8517%, 0.9939 86.2606%, 0.9981 90.7557%, 0.9998 95.3358%, 1);
+  --listw: 520px;
+  --rail-w: 244px;
 
-  --font-human: 'Schibsted Grotesk Variable', 'Schibsted Grotesk', 'Helvetica Neue', Arial, sans-serif;
-  --font-machine: 'DM Mono', ui-monospace, Consolas, monospace;
+  /* the fixed steps of the motion system (motion/time.ts T) */
+  --t-hover: 120ms;
+  --t-fade: 240ms;
+  --t-small: 360ms;
+  --t-surface: 440ms;
+  --t-pane: 600ms;
 
-  /* Motion: one system, three durations and one easing (mirrored by MOTION in motion.ts).
-     fast: hover, press, the selection band; base: the chevron, content coming in, fades; slow:
-     anything that moves layout. Ease-out-quart: it answers at once and settles without overshoot. */
-  --m-fast: 120ms;
-  --m-base: 200ms;
-  --m-slow: 280ms;
-  --m-ease: cubic-bezier(0.25, 1, 0.5, 1);
-  /* The turn change keeps its own clock: lift, carry, set down. */
-  --travel: 680ms;
-  --e-move: cubic-bezier(0.65, 0, 0.35, 1);
-
-  /* Stacking, by what a layer is for: raised above its neighbours, stuck to an edge, a tooltip,
-     something in flight across the page (above everything while it moves). */
+  /* stacking, by what a layer is for */
   --z-raised: 1;
   --z-sticky: 2;
   --z-tooltip: 5;
   --z-flight: 20;
 
-  --r-s: 4px;
-  --r-m: 8px;
-  --r-l: 12px;
-  --row-h: 56px;
+  --ground: oklch(0.979 0.004 265);
+  --sheet: oklch(0.994 0.0015 265);
+  --dot: oklch(0.875 0.007 265);
+  --well: oklch(0.955 0.006 265);
+  --hov: oklch(0.958 0.008 266);
+  --sel: oklch(0.945 0.016 266);
+  --ink: oklch(0.215 0.022 266);
+  --ink-2: oklch(0.43 0.016 266);
+  --ink-3: oklch(0.585 0.012 266);
+  --rule: oklch(0.905 0.006 266);
+  --rule-2: oklch(0.83 0.008 266);
+  --lane: oklch(0.6 0.012 266);
+  --you: oklch(0.475 0.225 266);
+  --you-ink: oklch(0.43 0.2 266);
+  --you-wash: oklch(0.475 0.225 266 / 0.075);
+  --tint: oklch(0.475 0.225 266 / 0.11);
+  --on-you: oklch(0.99 0.005 266);
+  --warn: oklch(0.565 0.185 33);
+  --closed: oklch(0.69 0.008 266);
+  --fig: oklch(0.962 0.005 266);
+  --fig-line: oklch(0.8 0.01 266);
+  --shadow: oklch(0.3 0.04 266 / 0.24);
+  --scrim: oklch(0.25 0.02 266 / 0.2);
+  --mk-l: 0.93;
+  --mk-c: 0.035;
+  --mk-tl: 0.42;
+  --mk-tc: 0.09;
+  --glow-rest: 0.2;
+  --glow-peak: 0.55;
+  --glow-node: 0.26;
+  --gl-a: 0.95;
+  --gl-ag: 0.5;
+  --lane-lit: oklch(0.3 0.03 262);
+  --glow-lit: 0.2;
+  /* diff evidence (kept from today: the mock has none) */
+  --plus: oklch(0.52 0.12 155);
+  --minus: oklch(0.55 0.15 25);
+  color-scheme: light;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    color-scheme: dark;
-    --bg: oklch(0.215 0.014 265);
-    --sf: oklch(0.243 0.015 265);
-    --well: oklch(0.195 0.013 265);
-    --hov: oklch(0.262 0.016 265);
-    --sel: oklch(0.285 0.022 265);
-    --ink: oklch(0.93 0.008 265);
-    --mut: oklch(0.74 0.014 265);
-    --lane: oklch(0.42 0.018 265);
-    --line: oklch(0.31 0.015 265);
-    --chip: oklch(0.31 0.016 265);
-    --off: oklch(0.36 0.014 265);
-    --closed: oklch(0.62 0.012 265);
-    --pat: oklch(0.3 0.015 265);
-    --warn: oklch(0.72 0.16 30);
+    --ground: oklch(0.2 0.013 266);
+    --sheet: oklch(0.228 0.014 266);
+    --dot: oklch(0.3 0.013 266);
+    --well: oklch(0.25 0.014 266);
+    --hov: oklch(0.236 0.016 266);
+    --sel: oklch(0.262 0.03 266);
+    --ink: oklch(0.945 0.006 266);
+    --ink-2: oklch(0.77 0.012 266);
+    --ink-3: oklch(0.6 0.013 266);
+    --rule: oklch(0.29 0.013 266);
+    --rule-2: oklch(0.37 0.014 266);
+    --lane: oklch(0.56 0.014 266);
+    --you: oklch(0.69 0.165 268);
+    --you-ink: oklch(0.78 0.12 268);
+    --you-wash: oklch(0.69 0.165 268 / 0.12);
+    --tint: oklch(0.69 0.165 268 / 0.14);
+    --on-you: oklch(0.17 0.03 266);
+    --warn: oklch(0.71 0.15 36);
+    --closed: oklch(0.52 0.012 266);
+    --fig: oklch(0.205 0.013 266);
+    --fig-line: oklch(0.42 0.015 266);
+    --shadow: oklch(0.06 0.01 266 / 0.7);
+    --scrim: oklch(0.1 0.01 266 / 0.5);
+    --mk-l: 0.31;
+    --mk-c: 0.04;
+    --mk-tl: 0.86;
+    --mk-tc: 0.07;
+    --glow-rest: 0.24;
+    --glow-peak: 0.7;
+    --glow-node: 0.3;
+    --gl-a: 1;
+    --gl-ag: 1;
+    --lane-lit: oklch(0.9 0.025 235);
+    --glow-lit: 0.55;
     --plus: oklch(0.76 0.12 155);
     --minus: oklch(0.74 0.13 25);
-    --shadow: oklch(0.08 0.01 265 / 0.55);
-    --you-ink: color-mix(in oklch, var(--you) 55%, oklch(0.97 0.01 265));
-    --tray: oklch(0.305 0.017 265);
-    --tray-btn: oklch(0.355 0.018 265);
-    --tray-btn-edge: oklch(0.93 0.008 265 / 0.12);
-    --tray-sh:
-      inset 0 1px 0 oklch(0.93 0.008 265 / 0.14), 0 0 0 1px oklch(0.93 0.008 265 / 0.07),
-      0 -14px 36px -16px oklch(0.93 0.008 265 / 0.09);
-    --tray-sh-tab:
-      inset 0 1px 0 oklch(0.93 0.008 265 / 0.14), 0 0 0 1px oklch(0.93 0.008 265 / 0.1),
-      0 -14px 36px -16px oklch(0.93 0.008 265 / 0.09), 0 -2px 24px -8px oklch(0.93 0.008 265 / 0.08);
+    color-scheme: dark;
   }
 }
 
 :root[data-theme="dark"] {
-  color-scheme: dark;
-  --bg: oklch(0.215 0.014 265);
-  --sf: oklch(0.243 0.015 265);
-  --well: oklch(0.195 0.013 265);
-  --hov: oklch(0.262 0.016 265);
-  --sel: oklch(0.285 0.022 265);
-  --ink: oklch(0.93 0.008 265);
-  --mut: oklch(0.74 0.014 265);
-  --lane: oklch(0.42 0.018 265);
-  --line: oklch(0.31 0.015 265);
-  --chip: oklch(0.31 0.016 265);
-  --off: oklch(0.36 0.014 265);
-  --closed: oklch(0.62 0.012 265);
-  --pat: oklch(0.3 0.015 265);
-  --warn: oklch(0.72 0.16 30);
+  --ground: oklch(0.2 0.013 266);
+  --sheet: oklch(0.228 0.014 266);
+  --dot: oklch(0.3 0.013 266);
+  --well: oklch(0.25 0.014 266);
+  --hov: oklch(0.236 0.016 266);
+  --sel: oklch(0.262 0.03 266);
+  --ink: oklch(0.945 0.006 266);
+  --ink-2: oklch(0.77 0.012 266);
+  --ink-3: oklch(0.6 0.013 266);
+  --rule: oklch(0.29 0.013 266);
+  --rule-2: oklch(0.37 0.014 266);
+  --lane: oklch(0.56 0.014 266);
+  --you: oklch(0.69 0.165 268);
+  --you-ink: oklch(0.78 0.12 268);
+  --you-wash: oklch(0.69 0.165 268 / 0.12);
+  --tint: oklch(0.69 0.165 268 / 0.14);
+  --on-you: oklch(0.17 0.03 266);
+  --warn: oklch(0.71 0.15 36);
+  --closed: oklch(0.52 0.012 266);
+  --fig: oklch(0.205 0.013 266);
+  --fig-line: oklch(0.42 0.015 266);
+  --shadow: oklch(0.06 0.01 266 / 0.7);
+  --scrim: oklch(0.1 0.01 266 / 0.5);
+  --mk-l: 0.31;
+  --mk-c: 0.04;
+  --mk-tl: 0.86;
+  --mk-tc: 0.07;
+  --glow-rest: 0.24;
+  --glow-peak: 0.7;
+  --glow-node: 0.3;
+  --gl-a: 1;
+  --gl-ag: 1;
+  --lane-lit: oklch(0.9 0.025 235);
+  --glow-lit: 0.55;
   --plus: oklch(0.76 0.12 155);
   --minus: oklch(0.74 0.13 25);
-  --shadow: oklch(0.08 0.01 265 / 0.55);
-  --you-ink: color-mix(in oklch, var(--you) 55%, oklch(0.97 0.01 265));
-  --tray: oklch(0.305 0.017 265);
-  --tray-btn: oklch(0.355 0.018 265);
-  --tray-btn-edge: oklch(0.93 0.008 265 / 0.12);
-  --tray-sh:
-    inset 0 1px 0 oklch(0.93 0.008 265 / 0.14), 0 0 0 1px oklch(0.93 0.008 265 / 0.07),
-    0 -14px 36px -16px oklch(0.93 0.008 265 / 0.09);
-  --tray-sh-tab:
-    inset 0 1px 0 oklch(0.93 0.008 265 / 0.14), 0 0 0 1px oklch(0.93 0.008 265 / 0.1),
-    0 -14px 36px -16px oklch(0.93 0.008 265 / 0.09), 0 -2px 24px -8px oklch(0.93 0.008 265 / 0.08);
-}
-
-/* The theme switch (switchChoice in theme-dom.ts): the new snapshot opens as a circle over the old
-   one, which holds still, so no crossfade. Nothing tweens its colours, inside the new snapshot or,
-   under reduced motion (no view transition: the theme swaps at once), on the page itself. */
-:root[data-theme-switching] *,
-:root[data-theme-switching] *::before,
-:root[data-theme-switching] *::after {
-  /* biome-ignore lint/complexity/noImportantStyles: it must win over every component's transition */
-  transition: none !important;
-}
-
-:root[data-theme-switching]::view-transition-old(root),
-:root[data-theme-switching]::view-transition-new(root) {
-  animation: none;
-  mix-blend-mode: normal;
-}
-
-/* The language switch (setLanguage): the page crossfades into the new words on the base step.
-   Whatever reads the same in both languages is the same pixel in both snapshots, so it stays still.
-   Under reduced motion there is no view transition at all. */
-:root[data-language-switching]::view-transition-group(root),
-:root[data-language-switching]::view-transition-old(root),
-:root[data-language-switching]::view-transition-new(root) {
-  animation-duration: var(--m-base);
-  animation-timing-function: var(--m-ease);
+  color-scheme: dark;
 }
