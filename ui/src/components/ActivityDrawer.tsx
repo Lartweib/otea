@@ -1,57 +1,34 @@
-import { type ReactNode, useEffect, useRef, useState } from 'react';
+import { type ReactNode, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import {
   ACTIVITY_KINDS,
   type ActivityKind,
-  clockLeft,
-  FEED_SIZE,
-  type FeedEvent,
+  arcDash,
+  clockOf,
   type FeedLine,
   feedLines,
-  type HeldLease,
-  heldLeases,
-  idleAgents,
+  type LeaseRow,
+  leaseLeft,
+  leaseRows,
   leftShare,
-  mergeFeed,
   shownLines,
   turnLookup,
 } from '../activity.ts';
-import { fetchEvents } from '../api.ts';
-import { agoLabel, momentLabel, relationSentence } from '../format.ts';
+import { typeOfItem, useApp } from '../app/context.tsx';
+import { relationSentence } from '../format.ts';
 import type { Connection } from '../hooks.ts';
 import { t, tx } from '../i18n/i18n.ts';
-import { Button, Icon, NodeMark } from '../kit/index.ts';
-import { hashFor } from '../selection.ts';
+import { useEscape } from '../kit/escape.ts';
+import { AgentMark, Icon, IconButton, Swap } from '../kit/index.ts';
+import { Choreo, part } from '../motion/choreo.ts';
+import { stateWord } from '../preset-words.ts';
 import type { CollectionView, Item } from '../types.ts';
 
-// The log as the drawer holds it: the newest events, read once it opens and then after the last one
-// on each change. Events past `seenUpTo` arrived while it was open and come in with a short fade.
-type Feed = { events: FeedEvent[]; loaded: boolean; seenUpTo: number };
+// Actividad (SPEC §10.4, mock:804-827, 3538-3579): a 500 px drawer from the right of .main. It
+// slides in (translateX 100% → 0, 600 settle) while its parts resolve at 120 + 34·min(i, 5); the
+// close is the same gesture mirrored. Reservas activas: each lease's arc draining in real time,
+// the time left; Últimos eventos: kind and agent chips over the feed, which swaps in place.
 
-function useFeed(open: boolean, version: number): Feed {
-  const [feed, setFeed] = useState<Feed>({ events: [], loaded: false, seenUpTo: 0 });
-  const current = useRef(feed);
-  current.current = feed;
-  // biome-ignore lint/correctness/useExhaustiveDependencies: a new version means the log grew
-  useEffect(() => {
-    if (!open) return;
-    const controller = new AbortController();
-    const { loaded, events } = current.current;
-    const query = loaded ? { since: events.at(-1)?.id ?? 0 } : { latest: FEED_SIZE };
-    fetchEvents(query, controller.signal).then(
-      (arrived) =>
-        setFeed((was) => {
-          const merged = mergeFeed(was.events, arrived);
-          const seenUpTo = was.loaded ? was.seenUpTo : (merged.at(-1)?.id ?? 0);
-          return { events: merged, loaded: true, seenUpTo };
-        }),
-      () => undefined,
-    );
-    return () => controller.abort();
-  }, [open, version]);
-  return feed;
-}
-
-// The drawer counts down to the second while it is open.
+// The drawer counts down while it is open.
 function useClock(open: boolean): number {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
@@ -63,259 +40,262 @@ function useClock(open: boolean): number {
   return now;
 }
 
-const DIAL_R = 21;
-const AROUND = 2 * Math.PI * DIAL_R;
-
-// The time a lease has left, as an arc that drains around the agent's node.
-function Dial({ share, held }: { share: number; held: boolean }) {
+// The lease's arc (mock:3541-3544): a 12 px ring on the rule, the share left in ink (warn when it
+// ran out), from the top.
+export function LeaseArc({ share, expired }: { share: number; expired: boolean }) {
   return (
-    <svg className="activity-dial" width="52" height="52" viewBox="0 0 52 52" aria-hidden="true">
-      <circle className="activity-track" cx="26" cy="26" r={DIAL_R} />
+    <svg width="30" height="30" viewBox="-15 -15 30 30" aria-hidden="true">
+      <circle r="12" fill="none" stroke="var(--rule)" strokeWidth="2" />
       <circle
-        className="activity-arc"
-        data-held={held || undefined}
-        cx="26"
-        cy="26"
-        r={DIAL_R}
-        style={{ strokeDasharray: `${(share * AROUND).toFixed(2)} ${AROUND.toFixed(2)}` }}
+        className="arc"
+        r="12"
+        fill="none"
+        stroke={expired ? 'var(--warn)' : 'var(--ink-2)'}
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeDasharray={arcDash(expired ? 0 : share)}
+        transform="rotate(-90)"
       />
-      <NodeMark kind={held ? 'working' : 'queued'} cx={26} cy={26} r={5.5} />
     </svg>
   );
 }
 
-const clockTime = (iso: string) =>
-  new Intl.DateTimeFormat('en-GB', {
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hourCycle: 'h23',
-  }).format(new Date(iso));
-
-function LeaseRow({ lease, now, onPick }: { lease: HeldLease; now: number; onPick: () => void }) {
-  const left = Date.parse(lease.expiresAt) - now;
-  const claimed = lease.claimedAt
-    ? t('activity.claimedAt', { time: momentLabel(lease.claimedAt, now) })
-    : undefined;
-  const renewal = lease.renewedAt
-    ? t('activity.renewed', { ago: agoLabel(lease.renewedAt, now) })
-    : t('activity.noRenewal');
+function Lease({ row, now, onOpen }: { row: LeaseRow; now: number; onOpen: () => void }) {
+  const left = leaseLeft(row, now);
   return (
-    <li>
-      <button type="button" className="activity-agent" onClick={onPick}>
-        <Dial share={leftShare(lease, now)} held />
-        <span className="activity-agent-m">
-          <span className="activity-agent-top">
-            <span className="activity-name">{lease.holder}</span>
-            <span className="activity-left">
-              {clockLeft(lease.expiresAt, now)}
-              <small>{left < 120_000 ? t('activity.soon') : t('activity.left')}</small>
-            </span>
-          </span>
-          <span className="activity-item">
-            <span className="t-id">{lease.item.id}</span>
-            <span className="activity-title">{lease.item.title}</span>
-          </span>
-          <span className="t-cap">{claimed ? `${claimed} · ${renewal}` : renewal}</span>
-        </span>
-      </button>
-    </li>
-  );
-}
-
-function IdleRow({ name, last, now }: { name: string; last: FeedLine; now: number }) {
-  return (
-    <li>
-      <div className="activity-agent" data-idle="">
-        <Dial share={0} held={false} />
-        <span className="activity-agent-m">
-          <span className="activity-agent-top">
-            <span className="activity-name">{name}</span>
-            <span className="activity-left" data-idle="">
-              {t('activity.idle')}
-            </span>
-          </span>
-          <span className="activity-item">
-            <span className="activity-title">{phraseOf(last)}</span>
-          </span>
-          <span className="t-cap">
-            {t('activity.lastAct', { ago: agoLabel(last.event.at, now) })}
-          </span>
-        </span>
+    <div className="lease" data-i="">
+      <LeaseArc share={leftShare(row, now)} expired={row.expired} />
+      <div className="lt">
+        <b>{row.holder}</b>{' '}
+        <button type="button" className="id" onClick={onOpen}>
+          {row.item.id}
+        </button>
+        <div>{row.item.title}</div>
       </div>
-    </li>
+      <div className={left.warn ? 'lr warn' : 'lr'}>
+        {left.main}
+        <small>{t(`activity.${left.sub}`)}</small>
+      </div>
+    </div>
   );
 }
 
-// The sentence of a feed line, its item id set as an id.
-function phraseOf({ phrase, event }: FeedLine): ReactNode {
-  const id = <span className="t-id">{event.itemId}</span>;
+// The sentence of a feed line, the item's id as a button that opens it.
+function sentence(line: FeedLine, id: ReactNode, state: (s: string) => string): ReactNode {
+  const { phrase } = line;
+  const you = line.agent === null;
   switch (phrase.key) {
     case 'activity.claimed':
       return tx(phrase.key, { id, time: phrase.time });
     case 'activity.claimedOver':
       return tx(phrase.key, { id, previous: phrase.previous });
+    case 'activity.released':
+      return tx(phrase.key, { id });
     case 'activity.handed':
+      return tx(phrase.key, { id, state: state(phrase.state) });
     case 'activity.moved':
     case 'activity.created':
-      return tx(phrase.key, { id, state: phrase.state });
+      return tx(you ? `${phrase.key}You` : phrase.key, { id, state: state(phrase.state) });
     case 'activity.attached':
-      return tx(phrase.key, { id, file: phrase.file });
+      return tx(you ? 'activity.attachedYou' : phrase.key, { id, file: phrase.file });
+    case 'activity.edited':
+      return tx(you ? 'activity.editedYou' : phrase.key, { id });
     case 'activity.linked':
     case 'activity.unlinked':
-      return tx(phrase.key, { relation: relationSentence(phrase.kind, phrase.from, phrase.to) });
+      return tx(you ? `${phrase.key}You` : phrase.key, {
+        relation: relationSentence(phrase.kind, phrase.from, phrase.to),
+      });
     case 'activity.other':
       return tx(phrase.key, { id, type: phrase.type });
-    default:
-      return tx(phrase.key, { id });
   }
 }
 
 type ActivityDrawerProps = {
   open: boolean;
   onClose: () => void;
-  items: readonly Item[];
-  collections: readonly CollectionView[];
-  version: number;
-  connection: Connection;
-  // On a phone the drawer covers the list: picking an item closes it.
-  phone: boolean;
+  // Kept for the app's call; the drawer reads the app's data.
+  items?: readonly Item[];
+  collections?: readonly CollectionView[];
+  version?: number;
+  connection?: Connection;
+  phone?: boolean;
 };
 
-// A drawer over the inbox: each lease an agent holds, draining in real time, then a calm feed of
-// what just happened, newest first, an agent's acts on the left lane and yours on the right.
-export function ActivityDrawer({
-  open,
-  onClose,
-  items,
-  collections,
-  version,
-  connection,
-  phone,
-}: ActivityDrawerProps) {
-  const feed = useFeed(open, version);
+export function ActivityDrawer({ open, onClose }: ActivityDrawerProps) {
+  const app = useApp();
+  const [mounted, setMounted] = useState(open);
+  if (open && !mounted) setMounted(true);
+  const el = useRef<HTMLElement>(null);
+  const ch = useRef<Choreo | null>(null);
   const now = useClock(open);
   const [kind, setKind] = useState<ActivityKind>('all');
   const [agent, setAgent] = useState<string | null>(null);
-  const lines = feedLines(feed.events, turnLookup(items, collections));
-  const held = heldLeases(items, feed.events, now);
-  const idle = idleAgents(lines, held);
-  const agents = [
-    ...new Set([...held.map((lease) => lease.holder), ...idle.map((x) => x.name)]),
-  ].sort((a, b) => a.localeCompare(b));
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: runs on open, close and mount
+  useLayoutEffect(() => {
+    const node = el.current;
+    if (!node) return;
+    if (open) {
+      if (!ch.current) {
+        const items = [...node.querySelectorAll('[data-i]')].slice(0, 10);
+        ch.current = new Choreo([
+          part(
+            node,
+            { transform: 'translateX(calc(100% + 44px))' },
+            { transform: 'translateX(0%)' },
+            600,
+            'settle',
+            0,
+          ),
+          ...items.flatMap((x, i) => {
+            const d = 120 + 34 * Math.min(i, 5);
+            return [
+              part(x, { opacity: 0 }, { opacity: 1 }, 340, 'drift', d),
+              part(
+                x,
+                { transform: 'translateY(4px)' },
+                { transform: 'translateY(0px)' },
+                380,
+                'glide',
+                d,
+              ),
+            ];
+          }),
+          part(node, { opacity: 0 }, { opacity: 1 }, 1, 'drift', 0, { ronly: true }),
+        ]);
+      }
+      ch.current.go(1);
+    } else if (ch.current) {
+      const c = ch.current;
+      c.go(0).then((latest) => {
+        if (latest && c.dir === 0) {
+          ch.current = null;
+          setMounted(false);
+        }
+      });
+    }
+  }, [open, mounted]);
+
+  useEscape(open, 'drawer', onClose);
+
+  if (!mounted) return null;
+  const lines = feedLines(app.feed, turnLookup(app.all, app.collections));
+  const leases = leaseRows(app.all, app.feed, now);
+  const agents = [...new Set(lines.flatMap((l) => (l.agent ? [l.agent] : [])))].sort((a, b) =>
+    a.localeCompare(b),
+  );
   const shown = shownLines(lines, kind, agent);
-  const pick = (id: string) => () => {
-    window.location.hash = hashFor(id);
-    if (phone) onClose();
+  const byId = new Map(app.all.map((it) => [it.id, it]));
+  const stateOf = (itemId: string) => (s: string) => {
+    const it = byId.get(itemId);
+    return it ? stateWord(typeOfItem(it, app.collectionOf), s) : s;
   };
-  const clock = clockTime(new Date(now).toISOString());
-  const busy = new Set(held.map((lease) => lease.holder)).size;
+  const openItem = (id: string) => {
+    app.openItem(id);
+    if (app.phone) onClose();
+  };
+  const live = app.connection === 'live';
   return (
-    <aside
-      className="activity raised"
-      data-open={open || undefined}
-      aria-label={t('activity.label')}
-      aria-hidden={!open || undefined}
-      inert={!open}
-      id="activity-drawer"
-    >
-      <header className="activity-head">
-        <div>
-          <h2 className="t-h">{t('activity.title')}</h2>
-          <span className="t-cap">
-            {t(connection === 'live' ? 'activity.live' : 'activity.offline', { time: clock })}
-          </span>
-        </div>
-        <div className="activity-head-end">
-          <span className="t-cap">{`${t('activity.holding', { count: busy })} · ${t('activity.idleCount', { count: idle.length })}`}</span>
-          <Button size="sm" variant="quiet" onClick={onClose}>
-            <Icon name="close" />
-            {t('common.close')}
-          </Button>
-        </div>
-      </header>
-      {held.length + idle.length > 0 ? (
-        <ul className="activity-agents" aria-label={t('activity.leases')}>
-          {held.map((lease) => (
-            <LeaseRow
-              key={`${lease.holder} ${lease.item.id}`}
-              lease={lease}
+    <aside ref={el} className="drawer" aria-label={t('activity.label')}>
+      <div className="dhd">
+        <h3>{t('activity.title')}</h3>
+        <small>{t(live ? 'activity.live' : 'activity.offline', { time: clockOf(now) })}</small>
+        <IconButton aria-label={t('activity.close')} onClick={onClose}>
+          <Icon name="x" />
+        </IconButton>
+      </div>
+      <div className="dbody">
+        <h4 data-i="">
+          {t('activity.leases')} <small>{leases.length}</small>
+        </h4>
+        {leases.length === 0 ? (
+          <p className="none" data-i="">
+            {t('activity.noLeases')}
+          </p>
+        ) : (
+          leases.map((row) => (
+            <Lease
+              key={`${row.holder} ${row.item.id}`}
+              row={row}
               now={now}
-              onPick={pick(lease.item.id)}
+              onOpen={() => openItem(row.item.id)}
             />
-          ))}
-          {idle.map(({ name, last }) => (
-            <IdleRow key={name} name={name} last={last} now={now} />
-          ))}
-        </ul>
-      ) : null}
-      <div className="activity-filters">
-        <fieldset className="activity-pills" aria-label={t('activity.kinds')}>
-          {ACTIVITY_KINDS.map((each) => (
-            <Button key={each} size="sm" aria-pressed={kind === each} onClick={() => setKind(each)}>
-              {t(`activity.kind.${each}`)}
-              <span className="activity-n">{shownLines(lines, each, agent).length}</span>
-            </Button>
+          ))
+        )}
+        <h4 data-i="">{t('activity.feed')}</h4>
+        <fieldset className="fchips" data-i="" aria-label={t('activity.kinds')}>
+          {ACTIVITY_KINDS.map((k) => (
+            <button
+              key={k}
+              type="button"
+              className={kind === k ? 'on' : undefined}
+              aria-pressed={kind === k}
+              onClick={() => setKind(k)}
+            >
+              {t(`activity.kind.${k}`)}
+            </button>
           ))}
         </fieldset>
         {agents.length > 0 ? (
-          <fieldset className="activity-pills" aria-label={t('activity.from')}>
-            <span className="t-label">{t('activity.from')}</span>
-            {agents.map((name) => (
-              <Button
-                key={name}
-                size="sm"
-                aria-pressed={agent === name}
-                onClick={() => setAgent((was) => (was === name ? null : name))}
+          <fieldset className="fchips" data-i="" aria-label={t('activity.from')}>
+            <button
+              type="button"
+              className={agent === null ? 'on' : undefined}
+              aria-pressed={agent === null}
+              onClick={() => setAgent(null)}
+            >
+              {t('activity.everyone')}
+            </button>
+            {agents.map((a) => (
+              <button
+                key={a}
+                type="button"
+                className={agent === a ? 'on' : undefined}
+                aria-pressed={agent === a}
+                onClick={() => setAgent(a)}
               >
-                {name}
-              </Button>
+                {a}
+              </button>
             ))}
           </fieldset>
         ) : null}
-      </div>
-      <div className="activity-feed">
-        {!feed.loaded ? (
-          <p className="activity-empty t-small">{t('activity.loading')}</p>
-        ) : lines.length === 0 ? (
-          <p className="activity-empty t-small">{t('activity.quiet')}</p>
-        ) : shown.length === 0 ? (
-          <p className="activity-empty t-small">{t('activity.empty')}</p>
-        ) : (
-          <ol aria-label={t('activity.feed')}>
-            {shown.map((line) => {
-              const time = clockTime(line.event.at);
-              return (
-                <li
-                  key={line.event.id}
-                  data-new={line.event.id > feed.seenUpTo || undefined}
-                  data-yours={line.kind === 'handoff' || undefined}
-                >
-                  <button type="button" className="activity-ev" onClick={pick(line.event.itemId)}>
-                    <span
-                      className="activity-dot"
-                      data-lane={line.lane}
-                      data-relayed={line.relayed || undefined}
-                      aria-hidden="true"
-                    />
-                    <time
-                      className="t-cap"
-                      dateTime={line.event.at}
-                      title={momentLabel(line.event.at, now)}
+        <div data-i="">
+          <Swap k={`${kind}|${agent ?? ''}`} as="div" className="feedw">
+            {lines.length === 0 ? (
+              <p className="none">{t('activity.quiet')}</p>
+            ) : shown.length === 0 ? (
+              <p className="none">{t('activity.empty')}</p>
+            ) : (
+              <ol className="feed" aria-label={t('activity.feed')}>
+                {shown.slice(0, 80).map((line) => {
+                  const id = (
+                    <button
+                      type="button"
+                      className="id"
+                      onClick={() => openItem(line.event.itemId)}
                     >
-                      {time.slice(0, 5)}
-                      <b>{time.slice(5)}</b>
-                    </time>
-                    <span className="activity-msg">
-                      <span className="activity-who">{line.agent ?? t('activity.you')}</span>
-                      {phraseOf(line)}
-                    </span>
-                  </button>
-                </li>
-              );
-            })}
-          </ol>
-        )}
+                      {line.event.itemId}
+                    </button>
+                  );
+                  return (
+                    <li key={line.event.id}>
+                      <span className="tm">{clockOf(Date.parse(line.event.at))}</span>
+                      {line.agent ? (
+                        <AgentMark name={line.agent} decorative />
+                      ) : (
+                        <AgentMark you decorative />
+                      )}
+                      <span className="tx">
+                        {line.agent ? <>{line.agent} </> : null}
+                        {sentence(line, id, stateOf(line.event.itemId))}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ol>
+            )}
+          </Swap>
+        </div>
       </div>
     </aside>
   );

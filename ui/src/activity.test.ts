@@ -1,10 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import {
+  arcDash,
   clockLeft,
+  clockOf,
   type FeedEvent,
   feedLines,
   heldLeases,
   idleAgents,
+  leaseLeft,
+  leaseRows,
   leftShare,
   mergeFeed,
   shownLines,
@@ -65,7 +69,7 @@ describe('feedLines', () => {
       ['other', 'you', null, { key: 'activity.moved', state: 'done' }],
       ['handoff', 'you', 'claude-a', { key: 'activity.handed', state: 'review' }],
       ['evidence', 'agent', 'claude-a', { key: 'activity.attached', file: 'after.png' }],
-      ['lease', 'agent', 'claude-a', { key: 'activity.claimed', time: '15m' }],
+      ['lease', 'agent', 'claude-a', { key: 'activity.claimed', time: '15 min' }],
     ]);
   });
 
@@ -157,10 +161,58 @@ describe('lease dial', () => {
     expect(clockLeft(iso(-1), T)).toBe('0:00');
   });
 
-  it('says a lease length in its largest whole unit', () => {
-    expect(spanOf(15 * 60_000)).toBe('15m');
-    expect(spanOf(2 * 3_600_000)).toBe('2h');
-    expect(spanOf(45_000)).toBe('45s');
+  it('says a lease length the way a row says a span', () => {
+    expect(spanOf(15 * 60_000)).toBe('15 min');
+    expect(spanOf(2 * 3_600_000)).toBe('2 h');
+    expect(spanOf(102 * 60_000)).toBe('1 h 42');
+    expect(spanOf(45_000)).toBe('1 min');
+  });
+
+  it('draws the arc as the share of a 12 px circle', () => {
+    expect(arcDash(1)).toBe('75.4 75.4');
+    expect(arcDash(0.5)).toBe('37.7 75.4');
+    expect(arcDash(-1)).toBe('0.0 75.4');
+  });
+});
+
+describe('leaseRows', () => {
+  const stuck = (id: string, holder: string, at: number): Item => ({
+    ...item(id, null),
+    expiredLease: { holder, expiresAt: iso(at) },
+  });
+
+  it('lists the leases held now and the ones that ran out, the expired first, then the soonest', () => {
+    const items = [
+      item('WORK-1', { holder: 'mender', expiresAt: iso(102) }),
+      item('WORK-2', { holder: 'scout', expiresAt: iso(12) }),
+      stuck('WORK-3', 'kiln', -12),
+      { ...stuck('WORK-4', 'quill', -30), turn: 'human' as const },
+    ];
+    const rows = leaseRows(items, [], T);
+    expect(rows.map((r) => [r.holder, r.item.id, r.expired])).toEqual([
+      ['kiln', 'WORK-3', true],
+      ['scout', 'WORK-2', false],
+      ['mender', 'WORK-1', false],
+    ]);
+  });
+
+  it('says the time left, "expires soon" under twenty minutes, and "expired" in warn', () => {
+    const items = [
+      item('WORK-1', { holder: 'mender', expiresAt: iso(102) }),
+      item('WORK-2', { holder: 'scout', expiresAt: iso(12) }),
+      stuck('WORK-3', 'kiln', -12),
+    ];
+    const [kiln, scout, mender] = leaseRows(items, [], T);
+    if (!kiln || !scout || !mender) throw new Error('three rows');
+    expect(leaseLeft(mender, T)).toEqual({ main: '1 h 42', sub: 'left', warn: false });
+    expect(leaseLeft(scout, T)).toEqual({ main: '12 min', sub: 'soon', warn: false });
+    expect(leaseLeft(kiln, T)).toEqual({ main: 'expired', sub: 'unrenewed', warn: true });
+  });
+});
+
+describe('clockOf', () => {
+  it('says the hour and minutes, two digits each', () => {
+    expect(clockOf(new Date(2026, 10, 3, 9, 5).getTime())).toBe('09:05');
   });
 });
 

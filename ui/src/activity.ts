@@ -1,4 +1,5 @@
 import { relayOf } from './format.ts';
+import { t } from './i18n/i18n.ts';
 import { activeLease } from './lease.ts';
 import type { CollectionView, Item, ItemEvent, Turn } from './types.ts';
 
@@ -52,12 +53,30 @@ export type Phrase =
 
 const MINUTE = 60_000;
 
-// A lease's length as the feed says it: 15m, 2h, 90s.
+// A span of minutes as a row writes it: 1 h 42, 2 h (the minutes go under ten), 9 min.
+function spanText(minutes: number): string {
+  if (minutes < 60) return t('when.minutes', { minutes });
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  return rest >= 10 ? t('when.hoursMinutes', { hours, minutes: rest }) : t('when.hours', { hours });
+}
+
+// A lease's length as the feed says it: 15 min, 2 h, 1 h 42 (never under a minute).
 export function spanOf(ms: number): string {
-  if (!(ms > 0)) return '0s';
-  if (ms < MINUTE) return `${Math.round(ms / 1000)}s`;
-  const minutes = Math.round(ms / MINUTE);
-  return minutes % 60 === 0 ? `${minutes / 60}h` : `${minutes}m`;
+  return spanText(Math.max(1, Math.round(Math.max(ms, 0) / MINUTE)));
+}
+
+// The hour as the drawer's head and feed say it: 09:05.
+export function clockOf(at: number): string {
+  const d = new Date(at);
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
+// The lease's arc (mock:3541-3544): the share left of a 12 px circle, as a stroke-dasharray.
+const ARC = 2 * Math.PI * 12;
+export function arcDash(share: number): string {
+  const f = Math.max(0, Math.min(1, share));
+  return `${(ARC * f).toFixed(1)} ${ARC.toFixed(1)}`;
 }
 
 function phraseOf(event: FeedEvent, turnOf: TurnOf): Pick<FeedLine, 'kind' | 'phrase'> {
@@ -175,6 +194,38 @@ export function heldLeases(
       ];
     })
     .sort((a, b) => a.holder.localeCompare(b.holder) || a.item.id.localeCompare(b.item.id));
+}
+
+// A row of the drawer's Reservas activas: a lease held now, or one that ran out with nobody taking
+// the item again (Atasco). The expired first, then the one that runs out soonest.
+export type LeaseRow = HeldLease & { expired: boolean };
+
+export function leaseRows(
+  items: readonly Item[],
+  events: readonly FeedEvent[],
+  now: number,
+): LeaseRow[] {
+  const held = heldLeases(items, events, now).map((lease) => ({ ...lease, expired: false }));
+  const ran = items.flatMap((item): LeaseRow[] => {
+    if (item.turn !== 'agent' || !item.expiredLease || activeLease(item.lease, now)) return [];
+    const { holder, expiresAt } = item.expiredLease;
+    return [{ holder, item, expiresAt, ttlMs: DEFAULT_TTL_MS, expired: true }];
+  });
+  const at = (row: LeaseRow) => Date.parse(row.expiresAt);
+  return [...ran.sort((a, b) => at(a) - at(b)), ...held.sort((a, b) => at(a) - at(b))];
+}
+
+// What the row says on its right (mock:3551): the time left, "expires soon" under twenty
+// minutes; "expired" in warn, not renewed.
+export const SOON_MS = 20 * MINUTE;
+export function leaseLeft(
+  row: Pick<LeaseRow, 'expiresAt' | 'expired'>,
+  now: number,
+): { main: string; sub: 'left' | 'soon' | 'unrenewed'; warn: boolean } {
+  const left = Date.parse(row.expiresAt) - now;
+  if (row.expired || left <= 0) return { main: t('when.expired'), sub: 'unrenewed', warn: true };
+  const minutes = Math.max(1, Math.ceil(left / MINUTE));
+  return { main: spanText(minutes), sub: left < SOON_MS ? 'soon' : 'left', warn: false };
 }
 
 export function idleAgents(lines: readonly FeedLine[], held: readonly HeldLease[]): IdleAgent[] {
