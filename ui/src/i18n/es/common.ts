@@ -89,4 +89,14 @@ export const common = {
   'move.leaves': 'sale de Te esperan',
   'move.comes': 'pasa a Te esperan',
   'move.asksReason': 'pide un motivo antes',
+
+  // Cuándo, como lo dice una fila
+  'when.left': 'quedan {time}',
+  'when.hoursMinutes': '{hours} h {minutes}',
+  'when.hours': '{hours} h',
+  'when.minutes': '{minutes} min',
+  'when.expired': 'vencida',
+  'when.now': 'ahora',
+  'when.yesterday': 'ayer',
+  'when.days': { one: '{count} día', other: '{count} días' },
 } satisfies Partial<Catalog>;
