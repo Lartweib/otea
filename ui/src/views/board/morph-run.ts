@@ -2,12 +2,14 @@ import { C, clamp, F, lerp } from '../../motion/curves.ts';
 import { reduced } from '../../motion/reduced.ts';
 import { Tt } from '../../motion/time.ts';
 import type { BoardMode } from './model.ts';
+import { blurOf, copyOf, landedOn, moveOf } from './morph-clone.ts';
 import {
   aFade,
   colFade,
   edgeFrame,
   inkHead,
   morphDelay,
+  morphEnds,
   near,
   plateOpacity,
   titleFrame,
@@ -59,7 +61,11 @@ type Piece = {
   cardR?: R;
   bandR?: R;
   plate?: HTMLElement;
+  // The side it has landed on and handed back to, if it has.
+  landed?: 0 | 1 | null;
 };
+
+const KEYS = ['t', 'id', 'node', 'edge', 'who', 'when'] as const;
 
 const $$ = <E extends Element = HTMLElement>(sel: string, root: ParentNode) => [
   ...root.querySelectorAll<E>(sel),
@@ -71,12 +77,17 @@ function settle(keep: HTMLElement) {
   keep.style.width = '';
   keep.style.opacity = '';
   keep.style.filter = '';
+  keep.style.visibility = '';
   for (const e of $$<HTMLElement | SVGElement>('[style]', keep)) {
     if (e.closest('svg') && !(e instanceof SVGSVGElement)) continue;
     e.style.opacity = '';
     e.style.filter = '';
     e.style.visibility = '';
     if (!e.matches('.nd')) e.style.transform = '';
+    if (e.matches('.card')) {
+      e.style.backgroundColor = '';
+      e.style.borderColor = '';
+    }
   }
   for (const g of $$<SVGGElement>('svg.ink > .glow, svg.ink > .branch', keep)) g.style.opacity = '';
   for (const p of $$<SVGPathElement>('.lines .ln', keep)) {
@@ -106,15 +117,20 @@ export function morph(
   };
   A.style.width = `${aWidth}px`;
   let ov: HTMLElement | null = null;
+  let under: HTMLElement | null = null;
   let raf = 0;
   const finishTo = (side: 0 | 1) => {
     if (job.done) return;
     job.done = true;
     cancelAnimationFrame(raf);
     ov?.remove();
+    under?.remove();
+    // The cards take their own sheet back in the frame the plates go, with no fade of their own.
+    stage.classList.add('settling');
     stage.classList.remove('morphing');
     settle(side === 1 ? B : A);
     onFinish(side);
+    requestAnimationFrame(() => stage.classList.remove('settling'));
   };
 
   if (reduced()) {
@@ -129,10 +145,29 @@ export function morph(
     return job;
   }
 
+  // The cards' sheets, read before the morph clears them.
+  const sheet = new Map<
+    string,
+    { backgroundColor: string; borderColor: string; borderRadius: string }
+  >();
+  for (const c of $$('.card', from === 'pasos' ? A : to === 'pasos' ? B : stage)) {
+    const cs = getComputedStyle(c);
+    sheet.set(c.dataset.k ?? '', {
+      backgroundColor: cs.backgroundColor,
+      borderColor: cs.borderTopColor,
+      borderRadius: cs.borderTopLeftRadius,
+    });
+  }
   const lay = document.createElement('div');
   lay.className = 'ov';
   stage.appendChild(lay);
   ov = lay;
+  // The plates go under the views, so a card's own lines show on the plate that stands for its
+  // sheet; the travelling copies go over them.
+  const low = document.createElement('div');
+  low.className = 'ov under';
+  stage.prepend(low);
+  under = low;
   stage.classList.add('morphing');
   const view = stage.closest<HTMLElement>('.view') ?? stage;
   const sr = stage.getBoundingClientRect();
@@ -149,27 +184,8 @@ export function morph(
   const ids = $$('[data-s$=":t"]', B)
     .filter((e) => !e.closest('.ghost'))
     .map((e) => (e.dataset.s ?? '').replace(/:t$/, ''));
-  const cloneAt = (src: HTMLElement, r: R, extra = '') => {
-    const c = src.cloneNode(true) as HTMLElement;
-    const cs = getComputedStyle(src);
-    c.style.font = cs.font;
-    c.style.color = cs.color;
-    c.style.letterSpacing = cs.letterSpacing;
-    c.style.fontVariationSettings = cs.fontVariationSettings;
-    c.style.lineHeight = cs.lineHeight;
-    Object.assign(c.style, {
-      left: `${r.x}px`,
-      top: `${r.y}px`,
-      width: `${r.w}px`,
-      visibility: 'visible',
-      whiteSpace: 'nowrap',
-    });
-    c.removeAttribute('data-s');
-    for (const k of c.querySelectorAll('[data-s]')) k.removeAttribute('data-s');
-    if (extra) c.style.cssText += extra;
-    lay.appendChild(c);
-    return c;
-  };
+  const cloneAt = (src: HTMLElement, r: R, extra = '') =>
+    copyOf(src, r, lay, { wrap: true, extra });
 
   // Cards travel column by column: their delay from where they stand in Pasos.
   const order = new Map<string, number>();
@@ -192,7 +208,7 @@ export function morph(
     const rA = rel(tA);
     const rB = rel(tB);
     if (!isNear(rA) && !isNear(rB)) {
-      for (const k of ['t', 'id', 'node', 'edge', 'who', 'when']) show(q(A, id, k), q(B, id, k));
+      for (const k of KEYS) show(q(A, id, k), q(B, id, k));
       return;
     }
     const P: Piece = {
@@ -200,14 +216,13 @@ export function morph(
       from: 0,
       T: Tt.morph(Math.hypot(rA.x - rB.x, rA.y - rB.y)),
       d: order.get(id) ?? morphDelay({ idx }),
-      tA: cloneAt(tA, rA, aCard || bCard ? 'white-space:normal' : ''),
-      tB: cloneAt(tB, rB, bCard ? 'white-space:normal' : ''),
+      tA: cloneAt(tA, rA),
+      tB: cloneAt(tB, rB),
       rA,
       rB,
       fA: parseFloat(getComputedStyle(tA).fontSize),
       fB: parseFloat(getComputedStyle(tB).fontSize),
     };
-    if (!aCard) P.tA.style.whiteSpace = 'nowrap';
     const iA = q(A, id, 'id');
     const iB = q(B, id, 'id');
     if (iA && iB) {
@@ -221,7 +236,7 @@ export function morph(
       if (xa && xb && isNear(rel(xb))) {
         const ra = rel(xa);
         const rb = rel(xb);
-        P[k] = { ra, rb, ca: cloneAt(xa, ra, 'width:auto'), cb: cloneAt(xb, rb, 'width:auto') };
+        P[k] = { ra, rb, ca: cloneAt(xa, ra), cb: cloneAt(xb, rb) };
       }
     }
     const nA = q(A, id, 'node') ?? q(A, id, 'edge');
@@ -235,12 +250,9 @@ export function morph(
       P.nd = cloneAt(src, rel(src), 'width:24px;overflow:visible');
       P.nd.style.transformOrigin = '50% 50%';
       if (P.aEdge || P.bEdge) {
-        const card = (P.aEdge ? A : B).querySelector<HTMLElement>(
-          `.card[data-k="${CSS.escape(id)}"]`,
-        );
-        const h = card?.dataset.h;
-        const e = document.createElement('div');
-        e.style.cssText = `width:1.5px;border-radius:1px;background:${h === 'you' ? 'var(--you)' : h === 'none' ? 'var(--closed)' : 'var(--lane)'}`;
+        // The card's own edge: its colour, its dashes when it waits, its glow when it is yours.
+        const src = P.aEdge ? nA : nB;
+        const e = copyOf(src, rel(src), lay);
         lay.prepend(e);
         P.edge = e;
       }
@@ -253,7 +265,13 @@ export function morph(
         P.bandR = rel(band);
         const plate = document.createElement('div');
         plate.className = 'plate';
-        lay.prepend(plate);
+        const look = sheet.get(id);
+        if (look) {
+          plate.style.backgroundColor = look.backgroundColor;
+          plate.style.borderColor = look.borderColor;
+          plate.style.borderRadius = look.borderRadius;
+        }
+        low.appendChild(plate);
         P.plate = plate;
       }
     }
@@ -300,10 +318,46 @@ export function morph(
     head0: 0,
     aOp0: 1,
     rev: false,
+    resting: false,
     bOp: new Map<Element, number>(),
   };
   let head = 0;
   let aOp = 1;
+
+  // A piece that lands is handed back: its copies go and its real pieces show, on a card its
+  // sheet too, so the last frame is the destination's own; turned back, the copies return.
+  const hand = (P: Piece, side: 0 | 1 | null) => {
+    if (side === (P.landed ?? null)) return;
+    P.landed = side;
+    const on = side !== null;
+    for (const c of [
+      P.tA,
+      P.tB,
+      P.idc,
+      P.who?.ca,
+      P.who?.cb,
+      P.when?.ca,
+      P.when?.cb,
+      P.nd,
+      P.edge,
+      P.plate,
+    ]) {
+      if (c) c.style.display = on ? 'none' : '';
+    }
+    for (const root of [A, B]) {
+      const mine = on && root === (side === 1 ? B : A);
+      for (const k of KEYS) {
+        const e = q(root, P.id, k);
+        if (e) e.style.visibility = mine ? 'visible' : '';
+      }
+      const card = root.querySelector<HTMLElement>(`.card[data-k="${CSS.escape(P.id)}"]`);
+      const look = sheet.get(P.id);
+      if (card && look) {
+        card.style.backgroundColor = mine ? look.backgroundColor : '';
+        card.style.borderColor = mine ? look.borderColor : '';
+      }
+    }
+  };
 
   const frame = (now: number) => {
     const t = now - st.t0;
@@ -313,18 +367,19 @@ export function morph(
       const span = P.T * (st.rev ? clamp(Math.abs(job.target - P.from), 0.45, 1) : 1);
       const raw = clamp((t - (st.rev ? 0 : P.d)) / span);
       if (raw < 1) all = false;
+      hand(P, landedOn(raw, job.target));
       const u = lerp(P.from, job.target, F.settle(raw));
       P.u = u;
       const x = lerp(P.rA.x, P.rB.x, u);
       const y = lerp(P.rA.y, P.rB.y, u);
       const tf = titleFrame(u);
-      P.tA.style.transform = `translate(${x - P.rA.x}px, ${y - P.rA.y}px) scale(${lerp(1, P.fB / P.fA, u)})`;
-      P.tB.style.transform = `translate(${x - P.rB.x}px, ${y - P.rB.y}px) scale(${lerp(P.fA / P.fB, 1, u)})`;
+      P.tA.style.transform = moveOf(x - P.rA.x, y - P.rA.y, lerp(1, P.fB / P.fA, u));
+      P.tB.style.transform = moveOf(x - P.rB.x, y - P.rB.y, lerp(P.fA / P.fB, 1, u));
       P.tA.style.opacity = String(tf.a);
       P.tB.style.opacity = String(tf.b);
-      P.tA.style.filter = P.tB.style.filter = `blur(${tf.blur}px)`;
+      P.tA.style.filter = P.tB.style.filter = blurOf(tf.blur);
       if (P.idc && P.iA && P.iB) {
-        P.idc.style.transform = `translate(${(P.iA.x - P.iB.x) * (1 - u)}px, ${(P.iA.y - P.iB.y) * (1 - u)}px)`;
+        P.idc.style.transform = moveOf((P.iA.x - P.iB.x) * (1 - u), (P.iA.y - P.iB.y) * (1 - u));
       }
       for (const k of ['who', 'when'] as const) {
         const W = P[k];
@@ -332,8 +387,8 @@ export function morph(
         const wx = lerp(W.ra.x, W.rb.x, u);
         const wy = lerp(W.ra.y, W.rb.y, u);
         const wf = whoFrame(u);
-        W.ca.style.transform = `translate(${wx - W.ra.x}px, ${wy - W.ra.y}px)`;
-        W.cb.style.transform = `translate(${wx - W.rb.x}px, ${wy - W.rb.y}px)`;
+        W.ca.style.transform = moveOf(wx - W.ra.x, wy - W.ra.y);
+        W.cb.style.transform = moveOf(wx - W.rb.x, wy - W.rb.y);
         W.ca.style.opacity = String(wf.a);
         W.cb.style.opacity = String(wf.b);
       }
@@ -363,10 +418,14 @@ export function morph(
               opacity: String(ef.edge),
             });
           }
-          P.nd.style.transform = `translate(${(1 - ef.eu) * (eR.x - nR.x - nR.w / 2)}px, ${(1 - ef.eu) * (eR.y + eR.h / 2 - nR.y - nR.h / 2)}px) scale(${ef.scale})`;
+          P.nd.style.transform = moveOf(
+            (1 - ef.eu) * (eR.x - nR.x - nR.w / 2),
+            (1 - ef.eu) * (eR.y + eR.h / 2 - nR.y - nR.h / 2),
+            ef.scale,
+          );
           P.nd.style.opacity = String(ef.node);
         } else {
-          P.nd.style.transform = `translate(${(P.nA.x - P.nB.x) * (1 - u)}px, ${(P.nA.y - P.nB.y) * (1 - u)}px)`;
+          P.nd.style.transform = moveOf((P.nA.x - P.nB.x) * (1 - u), (P.nA.y - P.nB.y) * (1 - u));
         }
       }
     }
@@ -381,26 +440,33 @@ export function morph(
     for (const { e, y } of bBlocks) {
       const r = clamp((head * HB - y + 8) / 56);
       e.style.opacity = String(r * r * (3 - 2 * r));
-      e.style.transform = `translateX(${-4 * (1 - r)}px)`;
-      e.style.filter = `blur(${(1 - r).toFixed(2)}px)`;
+      e.style.transform = moveOf(-4 * (1 - r), 0);
+      e.style.filter = blurOf(1 - r);
     }
     for (const col of bCols) {
       const o0 = st.bOp.get(col.c) ?? (fwd ? 0 : 1);
       const f = colFade({ fwd, t, ci: col.ci, o0, rev: st.rev });
       col.o = f.o;
-      if (f.rule !== undefined && col.rule) col.rule.style.transform = `scaleX(${f.rule})`;
+      if (f.rule !== undefined && col.rule) {
+        col.rule.style.transform = f.rule >= 1 ? '' : `scaleX(${f.rule})`;
+      }
       for (const e of col.bits) {
         e.style.opacity = String(f.o);
-        e.style.filter = `blur(${(1 - f.o).toFixed(2)}px)`;
+        e.style.filter = blurOf(1 - f.o);
       }
     }
     aOp = aFade({ fwd, t, a0: st.aOp0 });
     A.style.opacity = String(aOp);
-    A.style.filter = `blur(${(1 - aOp).toFixed(2)}px)`;
-    const end =
+    A.style.filter = blurOf(1 - aOp);
+    // Gone, it is out of the paint: a faded view still lifts what it overlaps onto layers that
+    // draw their text otherwise.
+    A.style.display = aOp < 0.001 ? 'none' : '';
+    const resting =
       all &&
       (fwd ? head >= 0.999 && t > 520 : head <= 0.001 && t > 300) &&
       (bCard && fwd ? t > 300 + 60 * bCols.length + 380 : true);
+    const end = morphEnds(st.resting, resting);
+    st.resting = resting;
     if (end) {
       finishTo(job.target);
       return;
@@ -416,6 +482,7 @@ export function morph(
     st.head0 = head;
     st.aOp0 = aOp;
     st.rev = true;
+    st.resting = false;
     for (const col of bCols) st.bOp.set(col.c, col.o);
     job.target = job.target === 1 ? 0 : 1;
     st.t0 = performance.now();
