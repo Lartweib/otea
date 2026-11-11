@@ -1,5 +1,5 @@
-import { laneX } from './lanes.ts';
-import { type NodeKind, nodeKind } from './node-kind.ts';
+import { laneOf, X } from './lanes/geometry.ts';
+import type { Look } from './lanes/looks.ts';
 import type { Item, PresetView } from './types.ts';
 
 // What the list says when there is nothing (yet) to list. Each state is a doorway: it says what fills
@@ -59,8 +59,8 @@ export function playbookCommand(collection: string): string {
 
 export const CONNECT_COMMAND = 'otea connect --as claude-a';
 
-// One stop of a preset's route: a state, on the lane of its turn, drawn as its node.
-export type Stop = { name: string; x: number; kind: NodeKind };
+// One stop of a preset's route: a state, on the lane of its turn, drawn as its look.
+export type Stop = { name: string; x: number; look: Look };
 
 export type Route = { stops: Stop[]; height: number; path: string };
 
@@ -70,12 +70,17 @@ export function routeOf(preset: PresetView, step: number): Route {
   const type = preset.types[0];
   const states = type?.states ?? [];
   const stops = states.map(({ name, turn, closes }): Stop => {
-    const facts = { turn, leased: false, incomplete: name === type?.incomplete };
-    return {
-      name,
-      x: laneX(turn),
-      kind: nodeKind(closes === undefined ? facts : { ...facts, closes }),
-    };
+    const look: Look =
+      turn === 'human'
+        ? 'yours'
+        : turn === 'none'
+          ? closes === 'discarded'
+            ? 'dropped'
+            : 'done'
+          : name === type?.incomplete
+            ? 'waiting'
+            : 'queued';
+    return { name, x: X[laneOf(turn)], look };
   });
   const y = (index: number) => index * step + step / 2;
   const path = stops

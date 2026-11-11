@@ -1,4 +1,4 @@
-import { createElement, type ReactNode } from 'react';
+import { createElement, type FunctionComponent, type ReactNode } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { FeedEvent } from '../activity.ts';
@@ -59,7 +59,7 @@ function fakeApp(o: Partial<App> = {}): App {
     version: 1,
     now: NOW,
     session: { canWrite: true, canConfigure: true, canManageDevices: true },
-    project: { id: 'hollowmere', name: 'Hollowmere' } as App['project'],
+    project: { id: 'hollowmere', name: 'Hollowmere' } as NonNullable<App['project']>,
     items: { status: 'ready', value: items },
     all: items,
     collections: [errores],
@@ -87,8 +87,11 @@ function fakeApp(o: Partial<App> = {}): App {
   };
 }
 
+// The provider takes its children as createElement passes them.
+const Provider = AppTestProvider as unknown as FunctionComponent<{ value: App }>;
+
 const render = (node: ReactNode, app = fakeApp()) =>
-  renderToStaticMarkup(createElement(AppTestProvider, { value: app }, node));
+  renderToStaticMarkup(createElement(Provider, { value: app }, node));
 
 describe('Triaje', () => {
   it('heads the pass with its position and counts, the review waiting longest on top', () => {

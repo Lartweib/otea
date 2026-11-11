@@ -7,13 +7,19 @@ import {
   routeOf,
 } from '../empty-states.ts';
 import { type PlainKey, t, tx } from '../i18n/i18n.ts';
-import { Button, Icon, NodeMark } from '../kit/index.ts';
-import { LANE } from '../lanes.ts';
+import { Button, ChipButton, Icon } from '../kit/index.ts';
+import { X } from '../lanes/geometry.ts';
+import { lookGlyph } from '../lanes/looks.ts';
 import type { Item, PresetView } from '../types.ts';
+import { CopyGlyph } from './CopyCommand.tsx';
+
+// The list when there is nothing (yet) to list, in the empty-big grammar (mock:251-254): the lanes
+// already drawn and waiting at the left, an italic serif paragraph, the commands in mono wells, the
+// ways out as kit buttons. The first run draws its preset's route on the lanes.
 
 const COPIED_MS = 1600;
 
-// A command to run in the repo, with a button that copies it.
+// A command to run in the repo, in a mono well, with a button that copies it.
 export function CommandLine({ command }: { command: string }) {
   const [copied, setCopied] = useState(false);
   const timer = useRef<number | undefined>(undefined);
@@ -26,63 +32,67 @@ export function CommandLine({ command }: { command: string }) {
     });
   };
   return (
-    <div className="empty-code">
-      <code>
-        <span className="empty-prompt" aria-hidden="true">
-          ${' '}
-        </span>
-        {command}
-      </code>
-      <Button size="sm" variant="quiet" className="empty-copy" onClick={copy}>
-        {copied ? <Icon name="done" /> : null}
-        {t(copied ? 'emptyList.copied' : 'emptyList.copy')}
-      </Button>
-    </div>
+    <span className="pj-cmd empty-cmd">
+      <span className="pj-prompt" aria-hidden="true">
+        $
+      </span>
+      <code>{command}</code>
+      <button
+        type="button"
+        className="pj-copy"
+        data-tip={t(copied ? 'emptyList.copied' : 'emptyList.copy')}
+        aria-label={t('emptyList.copy')}
+        onClick={copy}
+      >
+        {copied ? <Icon name="check" /> : <CopyGlyph />}
+      </button>
+    </span>
   );
 }
 
-// The two lanes, drawn and waiting: the agent's dashed while no agent has ever acted here.
+// The two lanes, drawn and waiting: the agents' dashed while no agent has ever acted here.
 function Lanes({ height, agents = true }: { height: number; agents?: boolean }) {
   return (
     <>
       <path
-        className="ln"
-        data-waiting={agents ? undefined : ''}
-        d={`M${LANE.agent} 0 V${height}`}
+        className="eln"
+        d={`M${X.ag} 0 V${height}`}
+        strokeDasharray={agents ? undefined : '3 4'}
       />
-      <path className="lny" d={`M${LANE.you} 0 V${height}`} />
+      <path className="elny" d={`M${X.you} 0 V${height}`} />
     </>
   );
 }
 
-const STEP = 30;
+const STEP = 34;
 
 // A preset's route down the lanes: each state on the lane of its turn, the line an item travels.
 function Route({ preset }: { preset: PresetView }) {
   const route = routeOf(preset, STEP);
   return (
     <div className="empty-route" aria-hidden="true">
-      <span className="lane-names">
-        <span>{t('list.laneAgents')}</span>
-        <span className="lane-names-you">{t('list.laneYou')}</span>
+      <span className="lane-head">
+        <span>{t('lanes.agents')}</span>
+        <span className="you">{t('lanes.you')}</span>
       </span>
       <div className="empty-route-body" style={{ height: route.height }}>
         <svg className="empty-route-lanes" width={56} height={route.height} aria-hidden="true">
           <Lanes height={route.height} />
           <path className="empty-route-path" d={route.path} />
           {route.stops.map((stop, index) => (
-            <NodeMark
+            <g
               key={stop.name}
-              kind={stop.kind}
-              cx={stop.x}
-              cy={index * STEP + STEP / 2}
-              r={5}
+              transform={`translate(${stop.x} ${index * STEP + STEP / 2})`}
+              // biome-ignore lint/security/noDangerouslySetInnerHtml: the lanes' fixed glyph markup
+              dangerouslySetInnerHTML={{
+                __html: `<circle class="ko" r="6"/>${lookGlyph(stop.look)}`,
+              }}
             />
           ))}
         </svg>
         <ol className="empty-route-names">
           {route.stops.map((stop) => (
-            <li key={stop.name} className="t-cap" style={{ height: STEP }}>
+            <li key={stop.name} style={{ height: STEP }}>
               {stop.name}
             </li>
           ))}
@@ -111,7 +121,7 @@ export function offeredPresets(presets: readonly PresetView[], chosen: string | 
 // The list beside the first run: the chosen preset's route, on the lanes items will travel.
 export function FirstRoute({ preset }: { preset: PresetView | undefined }) {
   return (
-    <section className="empty-state empty-first" data-route-only="">
+    <section className="empty-big empty-first" data-route-only="">
       {preset ? <Route key={preset.name} preset={preset} /> : null}
     </section>
   );
@@ -125,48 +135,40 @@ type FirstRunProps = {
   route: boolean;
 };
 
-// No collection yet: pick a preset and it previews itself on the lanes; the command makes it.
+// No board yet: pick a preset and it previews itself on the lanes; the command makes it.
 export function FirstRun({ presets, chosen, onChoose, route }: FirstRunProps) {
   const { offered, preset } = offeredPresets(presets, chosen);
-  const setChosen = onChoose;
   return (
     <section
-      className="empty-state empty-first"
+      className="empty-big empty-first"
       data-route={route ? '' : undefined}
       aria-labelledby="empty-first-title"
     >
       {route && preset ? <Route key={preset.name} preset={preset} /> : null}
-      <div className="empty-copy-col">
+      <div className="empty-copy">
         <h2 className="empty-title" id="empty-first-title">
           {t('emptyList.firstTitle')}
         </h2>
-        <p className="t-small">{t('emptyList.firstBody')}</p>
-        <div className="empty-presets">
+        <p>{t('emptyList.firstBody')}</p>
+        <fieldset className="chips empty-presets" aria-labelledby="empty-first-title">
           {offered.map(({ name }) => {
             const note = PRESET_NOTE[name];
             return (
-              <button
-                key={name}
-                type="button"
-                className="empty-preset"
-                aria-pressed={name === preset?.name}
-                onClick={() => setChosen(name)}
-              >
-                <span className="empty-radio" aria-hidden="true" />
+              <ChipButton key={name} on={name === preset?.name} onClick={() => onChoose(name)}>
                 <span className="mono">{name}</span>
-                {note ? <span className="t-small">{t(note)}</span> : null}
-              </button>
+                {note ? <small>{t(note)}</small> : null}
+              </ChipButton>
             );
           })}
-        </div>
+        </fieldset>
         {preset ? (
           <>
-            <p className="t-small">{t('emptyList.firstMake')}</p>
+            <p className="empty-step">{t('emptyList.firstMake')}</p>
             <CommandLine command={addCommand(preset.name)} />
-            <p className="t-small">{t('emptyList.firstLater')}</p>
+            <p className="empty-note">{t('emptyList.firstLater')}</p>
           </>
         ) : null}
-        <p className="t-small empty-then">{t('emptyList.firstConnect')}</p>
+        <p className="empty-step">{t('emptyList.firstConnect')}</p>
         <CommandLine command={CONNECT_COMMAND} />
       </div>
     </section>
@@ -177,43 +179,40 @@ const GHOSTS = [0, 1, 2];
 const GHOST_H = 56;
 
 type EmptyCollectionProps = {
-  // The collection listed, or undefined under All work (the first collection is shown how).
+  // The board listed, or undefined under all work (the first board is shown how).
   collection: string | undefined;
   example: string;
   agents: boolean;
   onCreate: (() => void) | undefined;
 };
 
-// A collection with nothing in it: the lanes run under rows still to come, and it says how the first
-// one arrives (an agent files it; you can too).
+// A board with nothing in it: the lanes run under rows still to come, and it says how the first one
+// arrives (an agent files it; you can too).
 export function EmptyCollection({ collection, example, agents, onCreate }: EmptyCollectionProps) {
   const height = GHOSTS.length * GHOST_H;
   return (
-    <section className="empty-state empty-collection" aria-labelledby="empty-collection-title">
+    <section className="empty-big empty-collection" aria-labelledby="empty-collection-title">
       <div className="empty-ghosts" aria-hidden="true">
         <svg width={56} height={height} className="empty-ghost-lanes" aria-hidden="true">
           <Lanes height={height} agents={agents} />
         </svg>
         {GHOSTS.map((index) => (
-          <span key={index} className="empty-ghost" style={{ top: index * GHOST_H + 4 }} />
+          <span key={index} className="empty-ghost" style={{ top: index * GHOST_H + 8 }} />
         ))}
       </div>
-      <div className="empty-copy-col">
+      <div className="empty-copy">
         <h2 className="empty-title" id="empty-collection-title">
           {collection === undefined ? t('empty.noItems') : t('emptyList.nothingIn', { collection })}
         </h2>
-        <p className="t-small">
-          {tx('emptyList.agentsFile', { command: <code>{playbookCommand(example)}</code> })}
-        </p>
+        <p>{tx('emptyList.agentsFile', { command: <code>{playbookCommand(example)}</code> })}</p>
         <CommandLine command={createCommand(example, t('emptyList.exampleTitle'))} />
-        <div className="empty-actions">
+        <div className="acts2">
           {onCreate ? (
-            <Button onClick={onCreate}>
-              <Icon name="plus" />
+            <Button variant="primary" onClick={onCreate}>
               {t('app.newItem')}
             </Button>
           ) : null}
-          <span className="t-small">{t('emptyList.orAsk')}</span>
+          <span className="empty-note">{t('emptyList.orAsk')}</span>
         </div>
       </div>
     </section>
@@ -224,9 +223,9 @@ export function EmptyCollection({ collection, example, agents, onCreate }: Empty
 export function InboxZero({ items }: { items: readonly Pick<Item, 'turn'>[] }) {
   const working = items.filter(({ turn }) => turn === 'agent').length;
   return (
-    <section className="empty-zero" aria-live="polite">
+    <section className="empty-big empty-zero" aria-live="polite">
       <h2 className="empty-title">{t('emptyList.zeroTitle')}</h2>
-      <p className="t-small">{t('emptyList.zeroBody', { count: working })}</p>
+      <p>{t('emptyList.zeroBody', { count: working })}</p>
     </section>
   );
 }
@@ -246,41 +245,32 @@ export function NoAgent() {
     { you: false, title: t('emptyList.agentStep3'), body: t('emptyList.agentWaits') },
   ];
   return (
-    <section className="empty-state empty-agent" aria-labelledby="empty-agent-title">
-      <div className="empty-copy-col empty-agent-head">
+    <section className="empty-big empty-agent" aria-labelledby="empty-agent-title">
+      <div className="empty-copy">
         <h2 className="empty-title" id="empty-agent-title">
           {t('emptyList.agentTitle')}
         </h2>
-        <p className="t-small">{t('emptyList.agentBody')}</p>
+        <p>{t('emptyList.agentBody')}</p>
       </div>
       <div className="empty-steps">
         <svg className="empty-steps-lanes" width={56} height={height} aria-hidden="true">
           <Lanes height={height} agents={false} />
-          {steps.map(({ you, title }, index) =>
-            you ? (
-              <circle
-                key={title}
-                className="empty-step-dot"
-                cx={LANE.you}
-                cy={index * STEP_H + 12}
-                r={4.5}
-              />
-            ) : (
-              <NodeMark
-                key={title}
-                kind="incomplete"
-                cx={LANE.agent}
-                cy={index * STEP_H + 12}
-                r={5}
-              />
-            ),
-          )}
+          {steps.map(({ you, title }, index) => (
+            <g
+              key={title}
+              transform={`translate(${you ? X.you : X.ag} ${index * STEP_H + 12})`}
+              // biome-ignore lint/security/noDangerouslySetInnerHtml: the lanes' fixed glyph markup
+              dangerouslySetInnerHTML={{
+                __html: `<circle class="ko" r="6"/>${lookGlyph(you ? 'yours' : 'waiting')}`,
+              }}
+            />
+          ))}
         </svg>
         <ol className="empty-step-list">
           {steps.map(({ title, body }) => (
             <li key={title} style={{ minHeight: STEP_H }}>
-              <span className="t-ui">{title}</span>
-              {typeof body === 'string' ? <span className="t-small">{body}</span> : body}
+              <span className="empty-step-title">{title}</span>
+              {typeof body === 'string' ? <span className="empty-note">{body}</span> : body}
             </li>
           ))}
         </ol>
