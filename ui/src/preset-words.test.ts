@@ -3,7 +3,15 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, describe, expect, it } from 'vitest';
 import { ItemActions } from './components/ItemActions.tsx';
 import { setLanguage } from './i18n/i18n.ts';
-import { fieldWord, ItemTypeScope, keyTitle, stateWord, typeWord } from './preset-words.ts';
+import {
+  fieldWord,
+  ItemTypeScope,
+  keyTitle,
+  stateWord,
+  typeWord,
+  valueWord,
+  valueWordIn,
+} from './preset-words.ts';
 import type { Move, TypeView } from './types.ts';
 
 const repoTask = {
@@ -18,6 +26,7 @@ const repoTask = {
       label: 'Tarea de repo',
       states: { pr_review: 'revisión de PR' },
       fields: { branch: 'rama' },
+      values: { severity: { high: 'alta' } },
     },
   },
 } as unknown as TypeView;
@@ -37,6 +46,14 @@ describe('preset words', () => {
     expect(stateWord(repoTask, 'pr_review')).toBe('revisión de PR');
     expect(typeWord(repoTask, 'repo_task')).toBe('Tarea de repo');
     expect(fieldWord(repoTask, 'branch')).toBe('rama');
+  });
+
+  it("say a field's value in the language on screen, or as written", () => {
+    expect(valueWord(repoTask, 'severity', 'high')).toBe('high');
+    setLanguage('es');
+    expect(valueWord(repoTask, 'severity', 'high')).toBe('alta');
+    expect(valueWord(repoTask, 'severity', 'low')).toBe('low');
+    expect(valueWordIn([repoTask], 'severity', 'high')).toBe('alta');
   });
 
   it('fall back to the key for a type without labels, or while the type is unknown', () => {

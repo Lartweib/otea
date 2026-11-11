@@ -5,7 +5,7 @@ import { availableColumns, normalText, sortItems, textValues } from '../../grid.
 import { t } from '../../i18n/i18n.ts';
 import { fieldLabel } from '../../intake.ts';
 import { type Folds, parentOf } from '../../nesting.ts';
-import { fieldWord, stateWordIn } from '../../preset-words.ts';
+import { fieldWord, stateWordIn, typeWord, valueWordIn } from '../../preset-words.ts';
 import type { CollectionView, FieldView, Item, TypeView } from '../../types.ts';
 
 // A board's model (SPEC §10.1, mock:1503-1638): its Pasos columns and steps strip, the groupings,
@@ -195,9 +195,11 @@ export function valueText(key: string, value: string, ctx: BoardCtx): string {
   }
   if (key === 'type') {
     const type = collection.types.find((ty) => ty.name === value);
-    return type?.label ?? value;
+    return typeWord(type, value);
   }
-  return value === '' ? t('section.noValue', { group: lower(fieldName(collection, key)) }) : value;
+  return value === ''
+    ? t('section.noValue', { group: lower(fieldName(collection, key)) })
+    : valueWordIn(collection.types, key, value);
 }
 
 // Every value a key can take, in the order the menus list them.

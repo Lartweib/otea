@@ -8,7 +8,7 @@ import { AgentMark, Checkbox, EnumChip, SeverityBars, StepPill } from '../../kit
 import { laneOf } from '../../lanes/geometry.ts';
 import type { LaneBlock } from '../../lanes/LaneList.tsx';
 import { lookOf } from '../../lanes/looks.ts';
-import { stateWordIn } from '../../preset-words.ts';
+import { stateWordIn, typeWord, valueWordIn } from '../../preset-words.ts';
 import type { CollectionView, Item } from '../../types.ts';
 import { type Entry, roundOf, severityOf, signalOf } from './model.ts';
 import { cellClass } from './table.ts';
@@ -211,6 +211,7 @@ function Cell({ column, item, ctx }: { column: GridColumn; item: Item; ctx: RowC
   const cls = `c ${cellClass(column.key)}`;
   const after = column.kind !== 'id' && column.kind !== 'title';
   const pad = after ? { paddingLeft: 'var(--gap)' } : undefined;
+  const word = (v: string) => valueWordIn(ctx.collection.types, column.key, v);
   switch (column.kind) {
     case 'id':
       return (
@@ -234,7 +235,7 @@ function Cell({ column, item, ctx }: { column: GridColumn; item: Item; ctx: RowC
       const type = ctx.collection.types.find((ty) => ty.name === item.type);
       return (
         <span className={cls} style={pad} data-leaf="">
-          <EnumChip>{type?.label ?? item.type}</EnumChip>
+          <EnumChip>{typeWord(type, item.type)}</EnumChip>
         </span>
       );
     }
@@ -245,8 +246,8 @@ function Cell({ column, item, ctx }: { column: GridColumn; item: Item; ctx: RowC
         <span className={cls} style={pad} data-leaf="">
           {sev === null ? null : (
             <span className="svw">
-              <SeverityBars level={sev} {...(v ? { label: v } : {})} />
-              <span className="sw">{v}</span>
+              <SeverityBars level={sev} {...(v ? { label: word(v) } : {})} />
+              <span className="sw">{v ? word(v) : ''}</span>
             </span>
           )}
         </span>
@@ -256,7 +257,7 @@ function Cell({ column, item, ctx }: { column: GridColumn; item: Item; ctx: RowC
       const v = item.fields[column.key];
       return (
         <span className={cls} style={pad} data-leaf="">
-          {v ? <EnumChip>{v}</EnumChip> : null}
+          {v ? <EnumChip>{word(v)}</EnumChip> : null}
         </span>
       );
     }
