@@ -64,7 +64,16 @@ export function findBoardOfCollection(db: DatabaseSync, collection: string): Boa
 }
 
 export function listBoards(db: DatabaseSync): BoardRow[] {
-  return db.prepare('SELECT * FROM boards ORDER BY created_at, id').all().map(toBoard);
+  return db
+    .prepare('SELECT * FROM boards WHERE retired_at IS NULL ORDER BY created_at, id')
+    .all()
+    .map(toBoard);
+}
+
+// A board that was published once and undone keeps its versions (they are append-only): discarding
+// it retires it from every listing instead of deleting it.
+export function retireBoard(db: DatabaseSync, id: string, at: string): void {
+  db.prepare('UPDATE boards SET retired_at = ? WHERE id = ?').run(at, id);
 }
 
 export function deleteBoard(db: DatabaseSync, id: string): void {

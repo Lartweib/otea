@@ -153,7 +153,9 @@ const MIGRATIONS = [
     collection TEXT UNIQUE REFERENCES collections (name) ON UPDATE CASCADE,
     live_version INTEGER,
     builtin INTEGER NOT NULL DEFAULT 0,
-    created_at TEXT NOT NULL
+    created_at TEXT NOT NULL,
+    -- Set when a board that is not live is discarded but keeps versions it cannot lose.
+    retired_at TEXT
   );
 
   CREATE TABLE board_versions (

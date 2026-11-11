@@ -16,6 +16,7 @@ import { undoMove } from '../app/undo.ts';
 import { MAX_EVIDENCE_MB } from '../core/evidence.ts';
 import { TURNS, type Turn } from '../core/workflow.ts';
 import type { EventFilter } from '../store/queries.ts';
+import { boardsApi } from './boards.ts';
 import { type ChangeFeed, createChangeFeed } from './changes.ts';
 import {
   errorBody,
@@ -295,6 +296,7 @@ function api(
         return serveEvidence(c, project, c.req.param('id'));
       })
       .route('/studio', studioApi(project, feed, auth))
+      .route('/', boardsApi(project, feed, auth))
       .get('/events', (c) => c.json(listEvents(project, eventsFilter(c.req.query()))))
       .get('/stream', (c) => streams.handle(c))
       .all('*', (c) => c.json(errorBody('not_found', `No route ${c.req.path}`), 404))
