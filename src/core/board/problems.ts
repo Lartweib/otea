@@ -19,6 +19,7 @@ import {
 
 export type ProblemCode =
   | 'board_unnamed'
+  | 'board_name_taken'
   | 'no_steps'
   | 'step_unnamed'
   | 'part_unnamed'
@@ -48,6 +49,8 @@ export type Problem = {
 export type ProblemContext = {
   // The project's agents and whether each is connected now.
   agents: readonly { name: string; connected: boolean }[];
+  // The names of the project's other boards (live or draft), compared without case.
+  takenNames?: readonly string[];
 };
 
 // Words Otea already uses for its own things, in both languages, compared without case.
@@ -85,6 +88,8 @@ export function problemsOf(def: BoardDefinition, context: ProblemContext): Probl
   };
 
   if (key(def.name) === '') add('error', 'board_unnamed', { kind: 'about' });
+  else if ((context.takenNames ?? []).some((name) => key(name) === key(def.name)))
+    add('error', 'board_name_taken', { kind: 'about' }, { name: def.name.trim() });
   if (def.steps.length === 0) add('error', 'no_steps', { kind: 'form' });
 
   for (const step of def.steps) {

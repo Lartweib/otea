@@ -155,11 +155,7 @@ export function whenHolds(def: BoardDefinition, facts: ItemFacts, part: string, 
 
 type MissingPart = { ref: string; part: Part; reason: Missing['reason']; fresh: boolean };
 
-function missingOf(
-  def: BoardDefinition,
-  step: Step,
-  facts: ItemFacts,
-): MissingPart[] {
+function missingOf(def: BoardDefinition, step: Step, facts: ItemFacts): MissingPart[] {
   return step.hand.flatMap((hand): MissingPart[] => {
     const part = partOf(def, hand.ref);
     if (!part || hand.req === 'no') return [];

@@ -144,6 +144,42 @@ const MIGRATIONS = [
     last_seen_at TEXT
   );
   `,
+  // Boards with versions (Studio): a hidden id under each board, its published versions as whole
+  // JSON definitions (append-only), the live one and at most one draft. A board's items live in
+  // `collection` once it is first published; a rename renames the collection and cascades here.
+  `
+  CREATE TABLE boards (
+    id TEXT PRIMARY KEY,
+    collection TEXT UNIQUE REFERENCES collections (name) ON UPDATE CASCADE,
+    live_version INTEGER,
+    builtin INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL
+  );
+
+  CREATE TABLE board_versions (
+    board_id TEXT NOT NULL REFERENCES boards (id),
+    version INTEGER NOT NULL,
+    definition TEXT NOT NULL,
+    published_at TEXT NOT NULL,
+    published_by TEXT NOT NULL,
+    PRIMARY KEY (board_id, version)
+  );
+
+  CREATE TRIGGER board_versions_no_update BEFORE UPDATE ON board_versions
+  BEGIN SELECT RAISE(ABORT, 'board versions are append-only'); END;
+
+  CREATE TRIGGER board_versions_no_delete BEFORE DELETE ON board_versions
+  BEGIN SELECT RAISE(ABORT, 'board versions are append-only'); END;
+
+  CREATE TABLE board_drafts (
+    board_id TEXT PRIMARY KEY REFERENCES boards (id) ON DELETE CASCADE,
+    definition TEXT NOT NULL,
+    base_version INTEGER,
+    updated_at TEXT NOT NULL,
+    request_item TEXT REFERENCES items (id),
+    agent_note TEXT
+  );
+  `,
 ];
 
 function userVersion(db: DatabaseSync): number {
