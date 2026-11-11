@@ -53,7 +53,7 @@ types:
     icon: bug
 view:
   kind: grid
-  columns: [id, title, category, severity, area, state, who, age]
+  columns: [id, title, state, severity, category, area, who, age]
 
 # The preset's words in English and Spanish, for the web UI; agents and the CLI keep the keys.
 labels:

@@ -310,6 +310,7 @@ const spare = (room: number, shown: readonly ShownColumn[]) =>
 export type GridFit = { shown: ShownColumn[]; dropped: string[] };
 
 const LAST_TO_GO: readonly ColumnKind[] = ['severity', 'type', 'state', 'who'];
+const WHO_TITLE_MIN = 160;
 
 // Columns leave until the title has its 240: the fields from the last, then (the table stays a
 // table beside an open item) severity, the type, the step and who; id, title and age always stay.
@@ -321,7 +322,8 @@ function squeeze(room: number, columns: readonly ShownColumn[]): ShownColumn[] {
     shown = shown.filter((entry) => entry !== victim);
   }
   for (const kind of LAST_TO_GO) {
-    if (spare(room, shown) >= TITLE_MIN) break;
+    // Who is a mark 52 px wide: it stays while the title keeps 160 (mock:1660, beside an item).
+    if (spare(room, shown) >= (kind === 'who' ? WHO_TITLE_MIN : TITLE_MIN)) break;
     shown = shown.filter(({ column }) => column.kind !== kind);
   }
   return shown;
