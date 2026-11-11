@@ -11,11 +11,13 @@ import { t } from '../../i18n/i18n.ts';
 import { Choreo, part } from '../../motion/choreo.ts';
 import { C } from '../../motion/curves.ts';
 import { reduced } from '../../motion/reduced.ts';
+import { GLINT, glint } from './glint.ts';
 import { layerEl } from './Pop.tsx';
 
 // Toasts (mock:3423-3469, MOTION §3.3): one surface at the foot of the page. A second message
-// replaces the first in place (the old one up, the new from below, a glint along the line) and
-// restarts the dwell. 12 s, paused while hovered or focused. Deshacer closes it and undoes at once.
+// replaces the first in place (the old one up, the new from below) and restarts the dwell; a
+// glint runs along the line on both, the opening and the replace. 12 s, paused while hovered or
+// focused. Deshacer closes it and undoes at once.
 
 export type ToastOptions = { msg: ReactNode; id?: string; undo?: () => void; node?: boolean };
 
@@ -159,6 +161,7 @@ export function ToastHost() {
         part(node, { opacity: 0 }, { opacity: 1 }, 1, 'drift', 0, { ronly: true }),
       ]);
       choreo.current.go(1);
+      glint(node, GLINT.open);
     } else if (choreo.current.dir === 0) choreo.current.go(1);
     if (replaced.current) {
       replaced.current = false;
@@ -188,16 +191,7 @@ export function ToastHost() {
           ],
           { duration: 380, delay: 90, easing: C.glide, fill: 'backwards' },
         );
-        const W = node.offsetWidth;
-        node.querySelector('.glint')?.animate(
-          [
-            { transform: 'translateX(-70px)', opacity: 0 },
-            { opacity: 1, offset: 0.25 },
-            { opacity: 1, offset: 0.7 },
-            { transform: `translateX(${W}px)`, opacity: 0 },
-          ],
-          { duration: 720, easing: C.drift },
-        );
+        glint(node, GLINT.replace);
       }
       clearTimeout(sweep.current);
       sweep.current = window.setTimeout(() => setMsgs((was) => was.filter((m) => !m.out)), 400);
