@@ -2,6 +2,7 @@ import { type ReactNode, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Choreo, part } from '../../motion/choreo.ts';
 import { useEscape } from '../escape.ts';
+import { focusFirst, onDialogTab } from './focus.ts';
 import { layerEl } from './Pop.tsx';
 
 // A dialog (mock:3471-3495, MOTION §3.4): the scrim, then the line, then the surface riding up 6 px,
@@ -82,6 +83,7 @@ export function Dialog({ open, label, onClose, className, children }: DialogProp
           }),
           part(node, { opacity: 0 }, { opacity: 1 }, 1, 'drift', 0, { ronly: true }),
         ]);
+        focusFirst(node);
       }
       choreo.current.go(1);
     } else if (choreo.current) {
@@ -110,6 +112,7 @@ export function Dialog({ open, label, onClose, className, children }: DialogProp
         role="dialog"
         aria-modal="true"
         aria-label={label}
+        onKeyDown={(e) => onDialogTab(e.currentTarget, e.nativeEvent)}
       >
         <i className="pline">
           <i className="glint" />
