@@ -244,8 +244,8 @@ export function DetailHost() {
   const close = () => {
     st.phase = 'closing';
     const sheet = sheetRef.current;
+    undrawRoute(sheet?.querySelector('.route-wrap') ?? null, phone);
     if (!phone) {
-      undrawRoute(sheet?.querySelector('.route-wrap') ?? null);
       st.pen?.to(0, 120);
       narrowList(false, kindRef.current, 340);
     }
@@ -259,12 +259,12 @@ export function DetailHost() {
 
   const reopen = () => {
     st.phase = 'open';
+    const wrap = sheetRef.current?.querySelector('.route-wrap');
+    for (const l of wrap?.querySelectorAll('svg *') ?? [])
+      for (const a of l.getAnimations()) a.cancel();
+    drawRoute(wrap ?? null, 0);
     if (!phone) {
       narrowList(true, kindRef.current);
-      const wrap = sheetRef.current?.querySelector('.route-wrap');
-      for (const l of wrap?.querySelectorAll('.rl') ?? [])
-        for (const a of l.getAnimations()) a.cancel();
-      drawRoute(wrap ?? null, 0);
       const p = pen();
       if (p) {
         p.id = target === INTAKE ? null : target;
