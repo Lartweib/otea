@@ -125,6 +125,25 @@ describe('POST /api/items/:id/move', () => {
     expect(await errorOf(response)).toBe('missing_fields');
   });
 
+  it('takes back your approval within the toast, though the workflow has no move back', async () => {
+    await move('TASKS-1', { to: 'done' });
+    const response = await Promise.resolve(
+      server.app.request('/api/items/TASKS-1/undo', {
+        method: 'POST',
+        body: JSON.stringify({ from: 'review' }),
+        headers: {
+          host: LOCAL_HOST,
+          origin: ORIGIN,
+          cookie: SESSION_COOKIE,
+          'content-type': 'application/json',
+        },
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(getItem(project, 'TASKS-1').state).toBe('review');
+  });
+
   it('returns 404 for an unknown item', async () => {
     const response = await move('TASKS-9', { to: 'done' });
 

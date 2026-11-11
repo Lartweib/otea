@@ -1,7 +1,8 @@
 import { type ReactNode, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { openBlockers } from '../../actions.ts';
-import { fetchItem } from '../../api.ts';
+import { fetchItem, undoMove } from '../../api.ts';
 import { useApp } from '../../app/context.tsx';
+import { Q } from '../../app/queue.ts';
 import { bulkPlan, type Selected } from '../../bulk.ts';
 import { t } from '../../i18n/i18n.ts';
 import { Button } from '../../kit/Button.tsx';
@@ -18,7 +19,7 @@ import { Choreo, part } from '../../motion/choreo.ts';
 import { reduced } from '../../motion/reduced.ts';
 import { stateWordIn } from '../../preset-words.ts';
 import type { CollectionView, Item, Move } from '../../types.ts';
-import { type TrayButton, trayButtons, trayStates, undoable } from './tray.ts';
+import { type TrayButton, trayButtons, trayStates } from './tray.ts';
 
 // The tray (SPEC §10.1, mock:478-494, 3738-3844): docked at the foot of the table while rows are
 // ticked. A line leads, the surface unrolls; the count rolls; only the moves every ticked item can
@@ -116,6 +117,9 @@ export function Tray({
 }) {
   const app = useApp();
   const [phase, setPhase] = useState<Phase>({ kind: 'idle' });
+  // The receipt's 6 s; a new run or leaving clears it, so it never cuts a later run.
+  const idleTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  useEffect(() => () => clearTimeout(idleTimer.current), []);
   const busy = phase.kind === 'run' || phase.kind === 'receipt';
   const want = items.length > 0 || busy;
   const [present, setPresent] = useState(want);
@@ -184,9 +188,15 @@ export function Tray({
 
   if (!present) return null;
 
+  const failed = (id: string, e: unknown) =>
+    toast({
+      msg: t('boardView.tray.failed', { id, why: e instanceof Error ? e.message : String(e) }),
+    });
+
   const run = async (b: TrayButton, why: string) => {
     const order = items.map((it) => ({ id: it.id, from: it.state }));
     const state = word(b.move.to);
+    clearTimeout(idleTimer.current);
     setPhase({ kind: 'run', state, total: order.length, done: 0 });
     const moved: { id: string; from: string; to: string }[] = [];
     for (let i = 0; i < order.length; i++) {
@@ -195,39 +205,34 @@ export function Tray({
       try {
         await app.move(o.id, b.move.to, why || undefined);
         moved.push({ ...o, to: b.move.to });
+        onUntick(o.id);
         await handedOff();
       } catch (e) {
-        toast({
-          msg: t('boardView.tray.failed', {
-            id: o.id,
-            why: e instanceof Error ? e.message : String(e),
-          }),
-        });
+        failed(o.id, e);
       }
-      onUntick(o.id);
       setPhase({ kind: 'run', state, total: order.length, done: i + 1 });
     }
     const count = moved.length;
     setPhase({ kind: 'receipt', text: t('boardView.tray.receipt', { count, state }) });
-    const typeOf = () => collection.types[0];
-    const back = undoable(
-      moved,
-      (id) =>
-        collection.types.find((ty) => ty.name === items.find((x) => x.id === id)?.type) ?? typeOf(),
-    );
     toast({
       msg: t('boardView.tray.toast', { count, state }),
-      ...(back
+      ...(count > 0
         ? {
             undo: () => {
               (async () => {
-                for (const m of moved) await app.move(m.id, m.from);
+                for (const m of moved) {
+                  try {
+                    await Q.run(() => undoMove(m.id, m.from));
+                  } catch (e) {
+                    failed(m.id, e);
+                  }
+                }
               })();
             },
           }
         : {}),
     });
-    setTimeout(() => setPhase({ kind: 'idle' }), reduced() ? 1200 : 6000);
+    idleTimer.current = setTimeout(() => setPhase({ kind: 'idle' }), reduced() ? 1200 : 6000);
   };
 
   const press = (b: TrayButton) => {

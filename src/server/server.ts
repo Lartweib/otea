@@ -11,6 +11,7 @@ import { listAgents, presenceSignature } from '../app/presence.ts';
 import { listPresetViews } from '../app/preset-views.ts';
 import { type Env, type Project, projectView } from '../app/project.ts';
 import { linkItems, unlinkItems } from '../app/relations.ts';
+import { undoMove } from '../app/undo.ts';
 import { MAX_EVIDENCE_MB } from '../core/evidence.ts';
 import { TURNS, type Turn } from '../core/workflow.ts';
 import type { EventFilter } from '../store/queries.ts';
@@ -68,6 +69,7 @@ import {
   moveRequest,
   pathRequest,
   relinkRequest,
+  undoRequest,
 } from './writes.ts';
 
 export type OteaServer = {
@@ -238,6 +240,13 @@ function api(
       assertWritable(c, auth);
       const request = await moveRequest(c);
       const item = moveItem(project, { id: c.req.param('id'), ...request, ...HUMAN_IN_UI });
+      feed.notify();
+      return c.json(item);
+    })
+    .post('/items/:id/undo', async (c) => {
+      assertWritable(c, auth);
+      const { from } = await undoRequest(c);
+      const item = undoMove(project, { id: c.req.param('id'), from, ...HUMAN_IN_UI });
       feed.notify();
       return c.json(item);
     })
