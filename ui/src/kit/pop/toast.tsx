@@ -53,6 +53,9 @@ export function ToastHost() {
   const [mounted, setMounted] = useState(false);
   const el = useRef<HTMLDivElement>(null);
   const choreo = useRef<Choreo | null>(null);
+  // Sweeps the outgoing message; cleared when the host goes.
+  const sweep = useRef<number | undefined>(undefined);
+  useEffect(() => () => clearTimeout(sweep.current), []);
   const seen = useRef(seenAtMount());
   const dwell = useRef({ left: DWELL, t0: 0, timer: 0 });
   const replaced = useRef(false);
@@ -196,7 +199,8 @@ export function ToastHost() {
           { duration: 720, easing: C.drift },
         );
       }
-      window.setTimeout(() => setMsgs((was) => was.filter((m) => !m.out)), 400);
+      clearTimeout(sweep.current);
+      sweep.current = window.setTimeout(() => setMsgs((was) => was.filter((m) => !m.out)), 400);
     }
     if (pendingNode.current && !R) {
       pendingNode.current = false;

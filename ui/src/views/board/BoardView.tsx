@@ -1,4 +1,12 @@
-import { type ReactNode, useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { flushSync } from 'react-dom';
 import { useApp } from '../../app/context.tsx';
 import { workspace } from '../../app/workspace.ts';
@@ -208,25 +216,22 @@ function Board({ board }: { board: string }) {
   };
 
   // ---- ticks ----
+  // The range is read before the update: an updater runs twice in StrictMode and must stay pure.
   const onTick = (id: string, shift: boolean) => {
+    let range: string[] | null = null;
+    if (shift && lastTick.current) {
+      const order = [
+        ...(stage.current?.querySelectorAll<HTMLElement>('.tabla:not(.mghost) .trow:not(.ghost)') ??
+          []),
+      ].map((r) => r.dataset.k ?? '');
+      const a = order.indexOf(lastTick.current);
+      const b = order.indexOf(id);
+      if (a >= 0 && b >= 0) range = order.slice(Math.min(a, b), Math.max(a, b) + 1);
+    }
+    lastTick.current = id;
     setTicked((cur) => {
-      const has = cur.includes(id);
-      if (shift && lastTick.current) {
-        const order = [
-          ...(stage.current?.querySelectorAll<HTMLElement>(
-            '.tabla:not(.mghost) .trow:not(.ghost)',
-          ) ?? []),
-        ].map((r) => r.dataset.k ?? '');
-        const a = order.indexOf(lastTick.current);
-        const b = order.indexOf(id);
-        if (a >= 0 && b >= 0) {
-          const range = order.slice(Math.min(a, b), Math.max(a, b) + 1);
-          lastTick.current = id;
-          return [...cur, ...range.filter((k) => !cur.includes(k))];
-        }
-      }
-      lastTick.current = id;
-      return has ? cur.filter((k) => k !== id) : [...cur, id];
+      if (range) return [...cur, ...range.filter((k) => !cur.includes(k))];
+      return cur.includes(id) ? cur.filter((k) => k !== id) : [...cur, id];
     });
   };
 
@@ -339,14 +344,27 @@ function Board({ board }: { board: string }) {
     if (selected) penFade(false);
     job.current = morph(el, A, B, p.from, p.to, onDone(p.from), p.w || undefined);
   });
+  // A morph still running when the board goes ends with it, and touches nothing after; it reads
+  // the open item as it is when it ends, not as it was when it began.
+  const alive = useRef(true);
+  const selectedNow = useRef(selected);
+  selectedNow.current = selected;
+  useEffect(() => {
+    alive.current = true;
+    return () => {
+      alive.current = false;
+      job.current?.finishNow();
+    };
+  }, []);
   // The morph ended on one side: the other goes, and the mode is that side's.
   const onDone = (from: BoardMode) => (side: 0 | 1) => {
+    if (!alive.current) return;
     flushSync(() => {
       setMorphing(null);
       if (side === 0) setMode(from);
     });
     if (viewRef.current) redrawLists(viewRef.current);
-    if (selected) {
+    if (selectedNow.current) {
       penFade(true);
       moveSplit();
     }
