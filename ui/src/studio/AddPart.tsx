@@ -5,6 +5,7 @@ import { Icon } from '../kit/index.ts';
 import type { LayoutSlot } from '../types.ts';
 import { gapsOf, type Placed } from './canvas.ts';
 import { slotOffer } from './layout-edit.ts';
+import { Unroll } from './Unroll.tsx';
 
 // + field here: between the parts of a slot, where a new field or module goes. Its picker names the
 // field and offers only what the slot takes; the rest is struck, with where it may go.
@@ -78,7 +79,11 @@ export function AddHere({ placed, slots, nameAt, taken, onField, onModule }: Add
                 <Icon name="plus" />
                 {t('studio.add.here')}
               </button>
-              {on ? (
+              <Unroll
+                open={on}
+                label={t('studio.add.title', { slot: gap.slot })}
+                className="st-addpick"
+              >
                 <Picker
                   gap={gap}
                   after={nameAt(gap.slot, gap.index - 1)}
@@ -92,7 +97,7 @@ export function AddHere({ placed, slots, nameAt, taken, onField, onModule }: Add
                     setOpen(undefined);
                   }}
                 />
-              ) : null}
+              </Unroll>
             </div>
           );
         })}
@@ -121,14 +126,14 @@ function Picker({ gap, after, taken, onField, onModule }: PickerProps) {
           ? undefined
           : t('studio.snakeHint');
   return (
-    <div className="st-pick" role="dialog" aria-label={t('studio.add.title', { slot: gap.slot })}>
-      <div className="st-pick-h">
+    <div className="st-addpick-in">
+      <div className="st-pick-h" data-i="">
         <span>{t('studio.add.title', { slot: gap.slot })}</span>
         <span>{after ? t('studio.add.after', { name: after }) : t('studio.add.first')}</span>
       </div>
       {offer.fields.length > 0 ? (
         <>
-          <label className="st-pick-name">
+          <label className="st-pick-name" data-i="">
             <input
               value={name}
               placeholder={t('studio.add.namePlaceholder')}
@@ -143,7 +148,7 @@ function Picker({ gap, after, taken, onField, onModule }: PickerProps) {
           {hint ? <p className="st-pick-hint">{hint}</p> : null}
           <ul className="st-pick-list">
             {offer.fields.map((module) => (
-              <li key={module}>
+              <li key={module} data-i="">
                 <button
                   type="button"
                   disabled={!valid}
@@ -161,7 +166,7 @@ function Picker({ gap, after, taken, onField, onModule }: PickerProps) {
       ) : null}
       <ul className="st-pick-list">
         {offer.modules.map(({ module, struck }) => (
-          <li key={module}>
+          <li key={module} data-i="">
             <button
               type="button"
               className={struck ? 'struck' : undefined}

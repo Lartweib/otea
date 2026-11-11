@@ -9,7 +9,7 @@ import type { Connection } from '../hooks.ts';
 import { useRemote } from '../hooks.ts';
 import { type PlainKey, t } from '../i18n/i18n.ts';
 import { TypeIcon } from '../icons/TypeIcon.tsx';
-import { Button, Icon, Seg } from '../kit/index.ts';
+import { Button, Dialog, Icon, Seg } from '../kit/index.ts';
 import { NodeGlyph } from '../lanes/NodeGlyph.tsx';
 import { nestSections } from '../nesting.ts';
 import { stateWord } from '../preset-words.ts';
@@ -39,7 +39,7 @@ import { PlaybookSection } from './Playbook.tsx';
 import { OkMark, ProblemMark } from './parts.tsx';
 import { type DraftPreview, draftPreview } from './preview.ts';
 import { GatesSection, LayoutSection, ViewsSection } from './sections.tsx';
-import { Tray } from './Tray.tsx';
+import { Tray, TrayAt } from './Tray.tsx';
 import { applyFix, type DraftText, noteKey, trayRows } from './tray.ts';
 
 // A preset in Studio is the item you are going to see: a sample item drawn from the draft with the
@@ -283,36 +283,29 @@ function Loaded({ source, samples, canWrite, phone, items, onSaved }: LoadedProp
           ) : null}
           <Verdict problems={problems.length} />
           {notes.length > 0 ? (
-            <span className="st-offscreen-at">
-              <button
-                type="button"
-                className="st-offscreen"
-                aria-expanded={trayOpen}
-                onClick={() => setTrayOpen(!trayOpen)}
-              >
-                <Icon name="warn" />
-                {t('studio.notOnScreen', { count: rows.length })}
-                <Icon name="chevron" />
-              </button>
-              {trayOpen ? (
-                <Tray
-                  rows={rows}
-                  onShow={(note) => show(note.path)}
-                  onFix={
-                    change &&
-                    ((row, fix) => {
-                      if (fix.kind === 'intended') {
-                        const next = [...intended, noteKey(row.note)];
-                        setIntended(next);
-                        storeIntended(source.name, next);
-                        return;
-                      }
-                      setPlaybooks(applyFix({ yaml, playbooks }, preset, row.note, fix));
-                    })
-                  }
-                />
-              ) : null}
-            </span>
+            <TrayAt
+              open={trayOpen}
+              onToggle={() => setTrayOpen(!trayOpen)}
+              onClose={() => setTrayOpen(false)}
+              label={t('studio.notOnScreen', { count: rows.length })}
+            >
+              <Tray
+                rows={rows}
+                onShow={(note) => show(note.path)}
+                onFix={
+                  change &&
+                  ((row, fix) => {
+                    if (fix.kind === 'intended') {
+                      const next = [...intended, noteKey(row.note)];
+                      setIntended(next);
+                      storeIntended(source.name, next);
+                      return;
+                    }
+                    setPlaybooks(applyFix({ yaml, playbooks }, preset, row.note, fix));
+                  })
+                }
+              />
+            </TrayAt>
           ) : null}
           {source.origin === 'official' ? (
             canWrite && !phone ? (
@@ -528,19 +521,18 @@ function Loaded({ source, samples, canWrite, phone, items, onSaved }: LoadedProp
           <p>{t('studio.phone.editNote')}</p>
         </div>
       ) : null}
-      {confirming ? (
-        <SaveConfirm
-          source={source}
-          yaml={yaml}
-          preset={reading.ok ? reading.preset : undefined}
-          items={items}
-          version={next}
-          busy={busy}
-          error={error}
-          onSave={save}
-          onBack={() => setConfirming(false)}
-        />
-      ) : null}
+      <SaveConfirm
+        open={confirming}
+        source={source}
+        yaml={yaml}
+        preset={reading.ok ? reading.preset : undefined}
+        items={items}
+        version={next}
+        busy={busy}
+        error={error}
+        onSave={save}
+        onBack={() => setConfirming(false)}
+      />
     </div>
   );
 }
@@ -853,6 +845,7 @@ function Duplicate({ name }: { name: string }) {
 }
 
 type SaveConfirmProps = {
+  open: boolean;
   source: PresetSource;
   yaml: string;
   preset: Preset | undefined;
@@ -866,6 +859,7 @@ type SaveConfirmProps = {
 
 // Before writing: the YAML that changes, and the items left in a state or type the draft removes.
 function SaveConfirm({
+  open,
   source,
   yaml,
   preset,
@@ -884,51 +878,49 @@ function SaveConfirm({
   });
   const changed = diffLines(source.yaml, yaml).filter((line) => line.kind !== 'same');
   return (
-    <div
-      className="st-confirm"
-      role="dialog"
-      aria-modal="true"
-      aria-label={t('studio.preset.save', { version })}
+    <Dialog
+      open={open}
+      label={t('studio.preset.save', { version })}
+      onClose={onBack}
+      className="st-confirmd"
     >
-      <div className="st-confirm-card st-raised">
-        <h2 className="st-h">{t('studio.preset.save', { version })}</h2>
-        <pre className="st-src">
-          {changed.map((line, index) => (
-            // biome-ignore lint/suspicious/noArrayIndexKey: lines are positional
-            <span key={index} className={line.kind}>
-              {line.kind === 'add' ? '+ ' : '- '}
-              {line.text}
-              {'\n'}
-            </span>
-          ))}
-        </pre>
-        {stranded.length > 0 ? (
-          <p className="st-note">
-            <Icon name="warn" />
-            <span>
-              {t('studio.preset.stranded', {
-                count: stranded.length,
-                ids: stranded
-                  .slice(0, 4)
-                  .map(({ id }) => id)
-                  .join(', '),
-              })}
-            </span>
-          </p>
-        ) : null}
-        <p className="st-cap">
-          {t('studio.preset.writes', { path: `.otea/presets/${source.name}/preset.yaml`, version })}
+      <h4 data-i="">{t('studio.preset.save', { version })}</h4>
+      <pre className="st-src" data-i="">
+        {changed.map((line, index) => (
+          // biome-ignore lint/suspicious/noArrayIndexKey: lines are positional
+          <span key={index} className={line.kind}>
+            {line.kind === 'add' ? '+ ' : '- '}
+            {line.text}
+            {'\n'}
+          </span>
+        ))}
+      </pre>
+      {stranded.length > 0 ? (
+        <p className="st-note" data-i="">
+          <Icon name="warn" />
+          <span>
+            {t('studio.preset.stranded', {
+              count: stranded.length,
+              ids: stranded
+                .slice(0, 4)
+                .map(({ id }) => id)
+                .join(', '),
+            })}
+          </span>
         </p>
-        {error ? <p className="st-error st-small">{error}</p> : null}
-        <div className="st-confirm-actions">
-          <Button variant="primary" onClick={onSave} disabled={busy}>
-            {t('studio.preset.save', { version })}
-          </Button>
-          <Button variant="quiet" onClick={onBack}>
-            {t('studio.back')}
-          </Button>
-        </div>
+      ) : null}
+      <p className="st-cap" data-i="">
+        {t('studio.preset.writes', { path: `.otea/presets/${source.name}/preset.yaml`, version })}
+      </p>
+      {error ? <p className="st-error">{error}</p> : null}
+      <div className="dbtns" data-i="">
+        <Button variant="quiet" onClick={onBack}>
+          {t('studio.back')}
+        </Button>
+        <Button variant="primary" onClick={onSave} disabled={busy}>
+          {t('studio.preset.save', { version })}
+        </Button>
       </div>
-    </div>
+    </Dialog>
   );
 }
