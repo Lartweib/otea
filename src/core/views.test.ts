@@ -40,10 +40,10 @@ describe('typeViews', () => {
   it('gives each type every move of its workflow, in the order the preset declares them', () => {
     const [bug] = typeViews(official('bug-triage').preset.types);
     expect(bug?.transitions.slice(0, 4)).toEqual([
-      { from: 'incomplete', to: 'reported' },
-      { from: 'reported', to: 'accepted' },
-      { from: 'reported', to: 'needs_info' },
-      { from: 'needs_info', to: 'reported' },
+      { from: 'incomplete', to: 'reported', by: 'agent', reasonRequired: false },
+      { from: 'reported', to: 'accepted', by: 'human', reasonRequired: false },
+      { from: 'reported', to: 'needs_info', by: 'human', reasonRequired: true },
+      { from: 'needs_info', to: 'reported', by: 'agent', reasonRequired: false },
     ]);
   });
 });
