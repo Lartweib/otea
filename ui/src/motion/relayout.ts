@@ -20,6 +20,10 @@ const maskOf = (el: HTMLElement, v: string) => {
 const tails = new WeakMap<HTMLElement, Tail[]>();
 const timers = new WeakMap<HTMLElement, number>();
 
+// What the relayout carries: every leaf, and the lanes' ink, which moves with the rows it hangs on
+// (on a wide screen the centred panel travels far to the left when an item opens).
+export const RELAYOUT_LEAVES = '[data-leaf], .lanes > svg.ink';
+
 const visible = (v: HTMLElement, sel: string) =>
   [...v.querySelectorAll<HTMLElement>(sel)].filter((e) => !e.closest('.mghost'));
 
@@ -40,7 +44,7 @@ export function relayoutList(
   for (const t of titles) maskOf(t, '');
   if (!reduced()) GLOW_HOLD.on = true;
   const moved = flipLeaves(
-    visible(view, '[data-leaf]').filter((e) => !e.closest('.ghost')),
+    visible(view, RELAYOUT_LEAVES).filter((e) => !e.closest('.ghost')),
     () => {
       mutate();
       redrawLists(view);

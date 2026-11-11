@@ -9,6 +9,11 @@
   min-height: 100%;
   max-width: 1480px;
 }
+/* on a wide screen the panel keeps its reading width and sits in the middle of the main pane; beside
+   an open item it compacts on the left again (the list's FLIP carries it there) */
+.view:not(.narrow) .panel {
+  margin-inline: auto;
+}
 .head {
   padding-left: 72px;
   margin-bottom: 18px;
