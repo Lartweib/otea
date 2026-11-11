@@ -1,558 +1,513 @@
-/* Below 48rem: one column. A compact topbar, collections as pills, and items that unfold in place. */
+/* The phone (SPEC §10.7). Below 720 px this sheet lays out every slice's screens, by the mock's class
+   names (they are the interface): mock:894-943 verbatim first, then what the rest needs at 390 px.
+   It loads last, so it wins over everyone's sheet at the same specificity. */
 
-/* ---- unfold: the selected row opens into its detail, the lanes keep running beside it ---- */
-.unfold {
-  /* clip, not hidden: the moves at the bottom stay sticky to the screen. */
-  overflow: clip;
-  overflow-clip-margin: 4px;
+/* ───────── outside the phone, its parts stay away (mock:147, 862) ───────── */
+.navbtn {
+  display: none;
+}
+.fab {
+  display: none;
 }
 
-.unfold-content {
-  /* The card takes the list's width, over the lanes: they pass under it and pick up below, and a
-     branch stops at the row above the card (see branchPieces). */
-  position: relative;
-  z-index: 1;
-  padding: 2px 12px 14px;
-}
-
-.detail[data-layout="unfold"] {
-  view-timeline: --unfold-detail block;
-  gap: 28px;
-  max-width: none;
-  padding: 16px 16px 0;
-  border-radius: var(--r-l);
-  background: var(--sf);
-  box-shadow:
-    0 0 0 1px var(--line),
-    0 18px 32px -24px var(--shadow);
-}
-
-/* The row is the header: the first section needs no hairline over it. */
-/* The detail's columns are one column here, with the same spacing. */
-.detail[data-layout="unfold"] .detail-main {
-  gap: 28px;
-}
-
-.detail[data-layout="unfold"] > .detail-main > .detail-section:first-of-type {
-  padding-top: 0;
-  border-top: 0;
-}
-
-.detail[data-layout="unfold"] .input {
-  background-color: var(--bg);
-}
-
-/* The moves wait at the bottom of the screen while the detail is on it, in reach of a thumb. */
-.unfold-actions {
-  position: sticky;
+/* ───────── the nav sheet and every bottom sheet (mock:858-861) ───────── */
+.nsheet {
+  position: fixed;
+  left: 0;
+  right: 0;
   bottom: 0;
-  z-index: 2;
-  margin: 0 -16px;
-  padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
-  border-top: 1px solid var(--line);
-  border-radius: 0 0 var(--r-l) var(--r-l);
-  background: var(--sf);
+  z-index: 60;
+  background: var(--sheet);
+  border-radius: 16px 16px 0 0;
+  border-top: 1px solid var(--rule);
+  padding: 10px max(16px, env(safe-area-inset-left, 0px))
+    calc(18px + env(safe-area-inset-bottom, 0px));
+  box-shadow: 0 -18px 40px -20px var(--shadow);
+  max-height: 88dvh;
+  overflow: auto;
+  touch-action: none;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
 }
-
-/* While only the top of the detail is on screen, the moves are pushed up against it: their line would
-   sit right under the row, dividing nothing. It draws once the detail has come far enough in. */
-@supports (animation-timeline: view()) {
-  .unfold-actions {
-    animation: unfold-actions-line linear both;
-    animation-timeline: --unfold-detail;
-    animation-range: entry 72px entry 120px;
-  }
+.nsheet:focus {
+  outline: none;
 }
-
-@keyframes unfold-actions-line {
-  from {
-    border-top-color: transparent;
-  }
+.nsheet .grab {
+  width: 36px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--rule-2);
+  margin: 0 auto 12px;
 }
-
-/* One row: the lead move takes the width, the rest wait in a sheet under "more" (see barMoves). */
-.unfold-actions .move-bar {
-  flex-wrap: nowrap;
-  gap: 8px;
+.nsheet .rail-label {
+  margin: 16px 12px 6px;
+  font: 400 11.5px / 1 var(--mono);
+  color: var(--ink-3);
 }
-
-.unfold-actions .move-bar > :is(.btn, .move-blocked) {
-  flex: 1 1 0;
-  min-width: 0;
+.nsheet .foot {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--rule);
 }
-
-.unfold-actions .btn,
-.move-sheet .btn {
+/* The rail's rows, at a thumb's size; where you are wears the rail's selection pill. */
+.nsheet .nav > .nrow {
   height: 44px;
-  padding: 0 18px;
-  font-size: 14px;
-}
-
-.unfold-actions .move-label {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.unfold-actions .move-bar > .move-more {
-  flex: none;
-  gap: 4px;
-  padding: 0 12px 0 16px;
-}
-
-/* The sheet opens upwards from the bar: the chevron says so. */
-.move-more .icon {
-  rotate: 180deg;
-}
-
-.unfold-actions .move-blocked {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-/* The other moves, one a line, each with what it does. */
-.move-sheet {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin: 0;
-  padding: 4px 6px 0;
-  overflow-y: auto;
-  list-style: none;
-}
-
-.move-sheet > li {
-  display: grid;
-  gap: 4px;
-  padding: 6px 0 8px;
-}
-
-.move-sheet .btn {
-  width: 100%;
-  justify-content: center;
-}
-
-/* Every move in the sheet is a button. One that closes the item keeps the quieter look it has on the
-   desktop, after "close as": no fill and muted ink, inside the same outline. */
-.move-sheet .btn.move.quiet {
-  border-color: var(--line);
-  background: transparent;
-  color: var(--mut);
-}
-
-.move-sheet .move-blocked {
-  display: grid;
-  gap: 4px;
-}
-
-.move-sheet .move-says {
-  min-height: 0;
-  padding: 0 4px;
-  text-align: center;
-  color: var(--mut);
-}
-
-/* The row draws its own pressed and selected state. */
-.row {
+  font-size: 15px;
   -webkit-tap-highlight-color: transparent;
 }
-
-.row[data-expanded]::before {
+.nsheet .nav > .nrow.on {
   background: var(--sel);
 }
+.nsheet .nav > .nrow:active {
+  background: var(--hov);
+}
+.nsheet .nav > .nrow.on:active {
+  background: var(--sel);
+}
+.nsheet .nrow .pair {
+  font-size: 12.5px;
+}
+/* A sheet with a head (today's menus): the title and its close. */
+.nsheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 44px;
+  margin: -4px 0 6px;
+  padding-left: 12px;
+}
+.nsheet-title {
+  font: 450 19px / 1.2 var(--serif);
+  font-variation-settings: "opsz" 24;
+  color: var(--ink);
+}
+.nsheet-head .ibtn {
+  width: 44px;
+  height: 44px;
+}
 
-@media (max-width: 47.99rem) {
-  /* ---- topbar: the panel, the project (all the width left) and the agents, by number ---- */
+/* ───────── phone (mock:894-942, verbatim) ───────── */
+@media (max-width: 720px) {
+  .app {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: 56px minmax(0, 1fr);
+  }
   .topbar {
     display: flex;
-    gap: 4px;
+    gap: 8px;
     height: 56px;
-    padding: 0 12px 0 4px;
   }
-
-  .topbar-start {
+  .tb-start {
     flex: 1;
-    gap: 4px;
+    gap: 6px;
   }
-
-  .topbar-start > .pill-anchor:last-child {
-    flex: 1;
+  .tb-mid {
+    display: none;
   }
-
-  .panel-button.btn.icon {
-    flex: none;
+  .navbtn {
+    display: inline-grid;
+    place-items: center;
     width: 44px;
     height: 44px;
-    color: var(--ink);
+    border-radius: 10px;
+    color: var(--ink-2);
+    flex: none;
+    margin-left: -10px;
   }
-
-  .project-pill,
-  .project-pill[data-folded] {
-    flex: 1;
+  .pill {
     width: auto;
-    max-width: none;
+    flex: 1;
+    min-width: 0;
     height: 44px;
-    margin: 0 4px 0 0;
-    padding-left: 12px;
-    grid-template-columns: 18px minmax(0, 1fr) 24px;
     font-size: 14px;
   }
-
-  .live-pill {
-    flex: none;
-    gap: 6px;
-    min-width: 44px;
-    height: 44px;
-    padding: 0 13px 0 11px;
-  }
-
-  /* The panel: the sidebar as a sheet from the left, with the mark at its head. */
-  .panel-head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    height: 52px;
-    margin-bottom: 6px;
-    padding: 0 0 0 12px;
-  }
-
-  .panel-head .brand {
-    font-size: 18px;
-  }
-
-  .rail[data-variant="panel"] {
-    display: flex;
-    flex: 1;
-  }
-
-  .rail[data-variant="panel"] .rail-entry {
-    grid-template-columns: 20px minmax(0, 1fr) auto;
-    column-gap: 10px;
-    height: 46px;
-    padding: 0 50px 0 12px;
-    font-size: 15px;
-  }
-
-  .rail[data-variant="panel"] .rail-entry[aria-pressed="true"] {
-    background: var(--bg);
-  }
-
-  .rail[data-variant="panel"] .rail-add {
-    top: 1px;
-    right: 2px;
-    width: 44px;
-    height: 44px;
-    opacity: 1;
-    background: transparent;
-    box-shadow: none;
-  }
-
-  /* The ring stays 32px inside the 44px a thumb gets. */
-  .rail[data-variant="panel"] .rail-add::before {
-    content: "";
-    position: absolute;
-    inset: 6px;
-    border-radius: 50%;
-    box-shadow: inset 0 0 0 1px var(--line);
-  }
-
-  .rail[data-variant="panel"] .rail-new {
-    width: 44px;
-    height: 44px;
-  }
-
-  .rail[data-variant="panel"] .prefs-button {
-    height: 46px;
-  }
-
-  /* The phone's menus open upwards over their sheet, never past it. */
-  .sheet .prefs-menu {
+  .elsewhere {
     display: none;
   }
-
-  /* ---- collections: a row of pills that scrolls sideways ---- */
-  .workspace .rail[data-variant="sidebar"] {
-    display: flex;
-    flex-direction: row;
-    gap: 8px;
-    margin: 0 -16px;
-    padding: 4px 16px 12px;
+  .apill {
+    height: 44px;
+    padding: 0 12px;
+  }
+  .apill .wl,
+  .apill .chev {
+    display: none;
+  }
+  .rail {
+    display: none;
+  }
+  .main {
+    grid-column: 1;
+    margin: 0 calc(-1 * max(16px, env(safe-area-inset-right, 0px))) 0
+      calc(-1 * max(16px, env(safe-area-inset-left, 0px)));
+    border-left: 0;
+  }
+  .view {
+    padding: 0 max(16px, env(safe-area-inset-right, 0px)) 0
+      max(16px, env(safe-area-inset-left, 0px));
+  }
+  .panel {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 22px 0 90px 0;
+  }
+  .lanes {
+    --pl: 60px;
+  }
+  .head,
+  .bhead,
+  .tools,
+  .ftoks {
+    padding-left: 60px;
+  }
+  .display {
+    font-size: 42px;
+  }
+  .dek {
+    font-size: 16.5px;
+  }
+  .row .lift {
+    column-gap: 10px;
+  }
+  .row .a,
+  .row .sev {
+    display: none;
+  }
+  .row .age {
+    width: auto;
+    min-width: 48px;
+  }
+  .row .t {
+    font-size: 16.5px;
+  }
+  .row .m .bd {
+    display: none;
+  }
+  .sec h2 {
+    font-size: 19px;
+  }
+  .sec .gloss {
+    display: none;
+  }
+  .agents {
+    padding: 30px 0 30px 60px;
+  }
+  .board {
+    padding: 22px 0 90px 0;
+  }
+  .bhead {
+    grid-template-columns: 1fr;
+  }
+  .bhead .steps {
+    display: none;
+  }
+  .tools {
+    gap: 12px;
+  }
+  .tools .count,
+  .tools .newb,
+  .switch .wl,
+  .tool .wl,
+  .switch [data-mode="tabla"] {
+    display: none;
+  }
+  .cols {
+    grid-auto-columns: 232px;
+    margin-right: calc(-1 * max(16px, env(safe-area-inset-right, 0px)));
+    padding-right: 16px;
+  }
+  .sheet {
+    position: fixed;
+    inset: 0;
+    left: 0;
+    z-index: 40;
+  }
+  .fab {
+    z-index: 35;
+  }
+  .sheet-in {
+    padding: 12px max(16px, env(safe-area-inset-right, 0px)) 100px
+      max(16px, env(safe-area-inset-left, 0px));
+  }
+  .divider,
+  .link,
+  .ampliar,
+  .bar-r .vr,
+  .bar-r [data-nav] {
+    /* biome-ignore lint/complexity/noImportantStyles: verbatim from the mock, over the desktop bar */
+    display: none !important;
+  }
+  .headline {
+    font-size: 29px;
+  }
+  .d-sec,
+  .note,
+  .evidence,
+  .qa,
+  .notes .nsurf,
+  .ffield {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: 8px;
+  }
+  .figs,
+  .figs.one {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .route-wrap {
     overflow-x: auto;
-    overscroll-behavior-x: contain;
+    overflow-y: hidden;
+    height: 112px;
     scrollbar-width: none;
   }
-
-  .rail[data-variant="sidebar"] :is(.rail-head, .rail-project, .rail-foot, .rail-icon, .rail-add) {
-    display: none;
+  .toast {
+    bottom: 76px;
   }
-
-  .rail[data-variant="sidebar"] .rail-row {
-    display: contents;
-  }
-
-  .rail[data-variant="sidebar"] .rail-entry {
-    display: flex;
-    flex: none;
-    gap: 8px;
-    width: auto;
-    height: 44px;
-    padding: 0 16px;
-    background: var(--sf);
-    box-shadow: 0 0 0 1px var(--line);
-  }
-
-  .rail[data-variant="sidebar"] .rail-entry[aria-pressed="true"] {
+  .fab {
+    display: inline-flex;
+    position: fixed;
+    right: max(16px, env(safe-area-inset-right, 0px));
+    bottom: 14px;
+    z-index: 35;
+    height: 48px;
+    padding: 0 18px;
+    border-radius: 999px;
     background: var(--ink);
-    box-shadow: none;
-    color: var(--sf);
+    color: var(--ground);
+    font: 600 14px / 1 var(--sans);
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 12px 28px -14px var(--shadow);
+  }
+  .drawer {
+    position: fixed;
+    z-index: 45;
+    width: 100%;
+  }
+  .tri {
+    padding: 22px 0 90px;
+  }
+  .tri .thd,
+  .tri .tstack {
+    padding-left: 0;
+    margin-left: 0;
+  }
+  .tcard {
+    padding: 18px 16px;
+  }
+  .tcard h2 {
+    font-size: 25px;
+  }
+  .inbox .prow2 {
+    padding-left: 60px;
+  }
+}
+
+/* ───────── phone: what the rest needs at 390 px ───────── */
+@media (max-width: 720px) {
+  /* Safe areas: the page runs under the notch and the home bar (viewport-fit=cover). */
+  .app {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+  .panel,
+  .board,
+  .tri {
+    padding-bottom: calc(90px + env(safe-area-inset-bottom, 0px));
+  }
+  .fab {
+    bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+    -webkit-tap-highlight-color: transparent;
+    transition: background-color 120ms var(--ease);
+  }
+  .fab:active {
+    background: var(--ink-2);
+  }
+  .toast {
+    bottom: calc(76px + env(safe-area-inset-bottom, 0px));
   }
 
-  .rail[data-variant="sidebar"] .rail-entry[aria-pressed="true"] :is(.rail-yours, .t-cap) {
-    color: inherit;
+  /* The topbar: the panel button answers a press; the project pill takes what is left. */
+  .navbtn {
+    -webkit-tap-highlight-color: transparent;
+    transition:
+      background-color 120ms var(--ease),
+      color 120ms var(--ease);
   }
-
-  /* The list runs to the screen's edges: the lanes keep the 16px the rail starts with, and the time
-     the 16px a row ends with. Its end clears the New item button. */
-  .workspace .list-view {
-    margin-inline: -16px;
+  .navbtn:active,
+  .navbtn[aria-expanded="true"] {
+    background: var(--hov);
+    color: var(--ink);
   }
-
-  .workspace .list-pane {
-    padding-bottom: calc(88px + env(safe-area-inset-bottom));
-  }
-
-  /* A phone's row is the narrowest tier (see hideTier), whatever its width: no priority, no who, a
-     parent keeps only its bar; and the time takes only the width it needs, at the row's end, so the
-     title gets the rest. */
-  .workspace .item-list .row {
-    --c-pri: 0px;
-    --c-who: 0px;
-    --c-when: auto;
-  }
-
-  .workspace .item-list :is(.row-pri, .row-chip, .row-who, .row-progress-count, .row-progress-of) {
-    display: none;
-  }
-
-  .workspace .item-list .row-when {
-    justify-self: end;
-    padding-left: 10px;
-  }
-
-  .workspace .item-list .row-when::before {
-    display: none;
-  }
-
-  /* Line two keeps id · collection · state and ends between two of them, never inside one: the
-     parts wrap instead of shrinking, onto a second line the row never shows. The signals (field
-     chips, a parent's bar, relates) and the type word (the icon says it) stay off it. Each dot
-     leads the part after it, so a part that goes takes its dot along. */
-  .workspace .item-list .row-t2 {
-    flex-wrap: wrap;
-    align-content: flex-start;
-    row-gap: 0;
-    height: 18px;
-  }
-
-  .workspace .item-list .row[data-depth] .row-t2 {
-    height: 16px;
-  }
-
-  .workspace .item-list .row-t2 > * {
-    flex-shrink: 0;
-    max-width: 100%;
-  }
-
-  .workspace
-    .item-list
-    .row-t2
-    :is(.row-values, .row-progress, .row-relates, .row-also, .row-typeword) {
-    display: none;
-  }
-
-  .workspace .item-list .row-t2 :is(.row-id, .row-collection)::after {
-    content: none;
-  }
-
-  .workspace .item-list .row-t2 :is(.row-collection, .row-state)::before {
-    content: "·";
-    margin-right: 8px;
-  }
-
-  /* A group's heading stays on its line: "1 of yours inside" gives way before the name wraps. */
-  .workspace .section-title {
-    white-space: nowrap;
-  }
-
-  .workspace .section-title > .group-yours {
+  .pill .nm {
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .apill {
+    flex: none;
   }
 
-  /* Intake opens above the list, where the tap that opened it can see it. */
-  .workspace .detail-pane {
-    order: -1;
+  /* The item and the new item are pages: they start under the notch. */
+  .sheet-in {
+    padding-top: calc(12px + env(safe-area-inset-top, 0px));
+    padding-bottom: calc(100px + env(safe-area-inset-bottom, 0px));
+  }
+  .sheet {
+    overscroll-behavior: contain;
   }
 
-  .list-head {
-    padding-bottom: 6px;
+  /* Pasos: the columns run past the edge and come to rest on one. */
+  .cols {
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x proximity;
+    scroll-padding-left: 60px;
+    scrollbar-width: none;
+  }
+  .cols > * {
+    scroll-snap-align: start;
   }
 
-  .section-title .btn.triage-open {
-    height: 44px;
-    margin: 0 -8px -10px auto;
-  }
-}
-
-/* The quiet way into swipe triage, at the end of the "Waiting for you" heading. */
-.triage-open {
-  margin-left: auto;
-  margin-bottom: -6px;
-}
-
-/* ---- narrow: what a phone keeps on a line (rows follow the list's width, see list.css) ---- */
-@media (max-width: 30rem) {
-  /* Children and relations drop the id: node, icon, title and state. */
-  .rel-link {
-    grid-template-columns: 20px minmax(0, 1fr) auto;
+  /* The route runs sideways under the finger, not the page. */
+  .route-wrap {
+    overscroll-behavior-x: contain;
   }
 
-  .rel-link .rel-id {
-    display: none;
+  /* The drawer takes the screen: its head clears the notch, its edges keep the page's 16 px. */
+  .drawer {
+    top: 0;
+    border-left: 0;
+    box-shadow: none;
+  }
+  .drawer .dhd {
+    padding: calc(18px + env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px))
+      12px max(16px, env(safe-area-inset-left, 0px));
+  }
+  .drawer .dbody {
+    padding: 4px max(16px, env(safe-area-inset-right, 0px))
+      calc(40px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
   }
 
-  /* A brief's row: the id over the title, so a long id never runs into it. brief.css comes after
-     this sheet: one class more wins (so do the two below, over pairing.css and compare.css). */
-  .brief-rows > .brief-row {
-    grid-template-columns: 20px minmax(0, 1fr) auto;
-    grid-template-areas:
-      "node id ctl"
-      "node tx ctl";
-    column-gap: 10px;
-    row-gap: 0;
-    padding-block: 8px;
+  /* Triage: one card the width of the screen, swiped sideways (the page still scrolls). */
+  .tcard {
+    touch-action: pan-y;
+  }
+  .tcard .tc-acts {
+    gap: 8px;
   }
 
-  .brief-row > .brief-node {
-    grid-area: node;
-    width: 20px;
+  /* Pops stay inside the screen; Preferences rises pinned to the bottom (mock:4342-4346). */
+  .pop {
+    max-width: calc(100vw - 24px);
+  }
+  /* The pop places itself by its anchor in the rail, which the phone hides: these win over that. */
+  .pop.prefs {
+    /* biome-ignore lint/complexity/noImportantStyles: over the pop's inline placement */
+    left: 12px !important;
+    /* biome-ignore lint/complexity/noImportantStyles: over the pop's inline placement */
+    right: 12px !important;
+    /* biome-ignore lint/complexity/noImportantStyles: over the pop's inline placement */
+    top: auto !important;
+    /* biome-ignore lint/complexity/noImportantStyles: over the pop's inline placement */
+    bottom: calc(12px + env(safe-area-inset-bottom, 0px)) !important;
+    /* biome-ignore lint/complexity/noImportantStyles: over the pop's inline placement */
+    width: auto !important;
+    /* biome-ignore lint/complexity/noImportantStyles: over the pop's inline placement */
+    margin-left: 0 !important;
+  }
+  .prefs .pgroup {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: 8px;
+  }
+  .prefs .seg2 {
+    width: 100%;
+  }
+  .dialog {
+    top: max(12vh, calc(16px + env(safe-area-inset-top, 0px)));
   }
 
-  .brief-row > .t-id {
-    grid-area: id;
-    justify-self: start;
-  }
-
-  .brief-row > .brief-tx {
-    grid-area: tx;
-  }
-
-  .brief-row > .brief-ctl {
-    position: relative;
-    z-index: 1;
-    grid-area: ctl;
-  }
-
-  /* The id is the row's link, stretched over all of it but the controls: a target a thumb finds. */
-  .brief-rows > .brief-row:has(> a.t-id) {
-    position: relative;
-  }
-
-  .brief-row > a.t-id::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    border-radius: var(--r-m);
-  }
-
-  /* Pair a phone: the address goes under the lead instead of squeezing it. */
-  .lan-section > .lan-head {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 6px;
-  }
-
-  /* Four ways to compare rounds, two by two. */
-  .cr-tools > .cr-seg {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    border-radius: 24px;
-  }
-}
-
-/* ---- touch: every target at least 44px under a finger (buttons get theirs in kit.css) ---- */
-@media (pointer: coarse) {
-  /* The fold chevron draws at 20px; its box takes 44 around it, over the row's link. */
-  .row-fold-button {
-    width: 44px;
-    height: 44px;
-    margin: -12px;
-  }
-
-  .row-fold-button::after {
-    content: none;
-  }
-
-  .rel-add {
-    justify-content: center;
-    min-width: 44px;
-    height: 44px;
-  }
-
-  /* triage.css comes after this sheet and sets its own 40px. */
-  .btn.triage-exit {
-    height: 44px;
-  }
-
-  .panel-head .brand {
-    display: inline-flex;
-    align-items: center;
-    min-width: 44px;
-    min-height: 44px;
-  }
-
-  .rel-link {
-    min-height: 44px;
-  }
-
-  .rel-remove {
-    width: 44px;
-    height: 44px;
-    margin-left: 0;
-  }
-
-  a.evidence-name,
-  .prefs-link,
-  .agent-held,
-  .brief-back,
-  .pj-head-open,
-  .tcard-open {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 44px;
-    min-height: 44px;
-  }
-
-  .segmented > button,
-  .sheet .segmented > button,
-  .cr-segb,
-  .lan-network,
-  select.input,
-  input.input {
-    min-height: 44px;
-  }
-
-  /* compare.css comes after this sheet: one class more to win over its 26px. */
-  .cr-pin > .cr-pinb {
-    width: 44px;
-    height: 44px;
-  }
-
-  /* Under 16px iOS zooms the page into a field it focuses. */
+  /* Under 16 px a phone zooms the page into the field it focuses: the mock's 15 and 15.5 px fields
+     (mock:491, 587, 623) write at 16 here. */
+  textarea,
+  .sheet textarea,
+  .tcard textarea,
+  .lwell input,
+  .tray .tnote input,
   .input {
     font-size: 16px;
+  }
+
+  /* Nothing scrolls the page sideways: long words break, wide things scroll in their own box. */
+  .view,
+  .sheet,
+  .drawer .dbody {
+    overflow-x: hidden;
+  }
+  .row .t,
+  .headline,
+  .tcard h2 {
+    overflow-wrap: anywhere;
+  }
+  pre,
+  .ev-log,
+  .ev-diff {
+    max-width: 100%;
+    overflow-x: auto;
+  }
+}
+
+/* ───────── a finger: every control answers 44 px around it ───────── */
+/* The control keeps its drawn size; an invisible ::after reaches out to 44 px each way it is short. */
+@media (max-width: 720px) and (pointer: coarse) {
+  :is(
+    .ibtn,
+    .ghost-btn,
+    .fold,
+    .ftok button,
+    .ftoks .clr,
+    .tool,
+    .switch button,
+    .sact,
+    .chipb,
+    .opt,
+    .seg2 > button,
+    .btn,
+    .tri .thd .back,
+    .elsewhere,
+    .mi
+  ) {
+    position: relative;
+  }
+  :is(
+    .ibtn,
+    .ghost-btn,
+    .fold,
+    .ftok button,
+    .ftoks .clr,
+    .tool,
+    .switch button,
+    .sact,
+    .chipb,
+    .opt,
+    .seg2 > button,
+    .btn,
+    .tri .thd .back,
+    .elsewhere,
+    .mi
+  )::after {
+    content: "";
+    position: absolute;
+    top: min(0px, calc((100% - 44px) / 2));
+    bottom: min(0px, calc((100% - 44px) / 2));
+    left: min(0px, calc((100% - 44px) / 2));
+    right: min(0px, calc((100% - 44px) / 2));
+  }
+  .ibtn,
+  .row,
+  .card,
+  .nrow,
+  .tool,
+  .switch button,
+  .ghost-btn,
+  .btn {
+    -webkit-tap-highlight-color: transparent;
   }
 }
