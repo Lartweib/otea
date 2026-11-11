@@ -1181,8 +1181,8 @@ function Builder({
       </ShowEmpty.Provider>,
     );
     drawn = device === 'phone' ? <div className="st-phone-frame">{detail}</div> : detail;
-  } else if (current?.kind === 'real') drawn = <p className="t-small">{t('cz.loading')}</p>;
-  else drawn = <p className="t-small">{t('cz.noItem')}</p>;
+  } else if (current?.kind === 'real') drawn = <p className="st-small">{t('cz.loading')}</p>;
+  else drawn = <p className="st-small">{t('cz.noItem')}</p>;
 
   const discard = () => {
     const before = hist;

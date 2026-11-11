@@ -10,18 +10,18 @@
   padding: 10px 20px 10px 24px;
 }
 .st-studio .st-crumb {
-  font: 400 13px var(--font-machine);
+  font: 400 13px var(--mono);
 }
 .st-studio .st-name {
   margin: 0;
-  font: 600 17px var(--font-machine);
+  font: 600 17px var(--mono);
 }
 .st-ver {
   padding: 2px 8px;
   border-radius: 999px;
-  box-shadow: inset 0 0 0 1px var(--line);
-  color: var(--mut);
-  font: 400 11.5px var(--font-machine);
+  box-shadow: inset 0 0 0 1px var(--rule);
+  color: var(--ink-2);
+  font: 400 11.5px var(--mono);
   white-space: nowrap;
 }
 .st-vs b {
@@ -34,13 +34,13 @@
   height: 30px;
   padding: 0 12px;
   border-radius: 999px;
-  box-shadow: inset 0 0 0 1px var(--line);
+  box-shadow: inset 0 0 0 1px var(--rule);
   color: var(--ink);
-  font: 500 13px var(--font-human);
+  font: 500 13px var(--sans);
   white-space: nowrap;
 }
 .st-offscreen .icon {
-  color: var(--mut);
+  color: var(--ink-2);
 }
 
 /* ---- the bar: type and view ---- */
@@ -51,7 +51,7 @@
   gap: 8px 28px;
   min-height: 52px;
   padding: 8px 20px 8px 24px;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--rule);
 }
 .st-bar-group {
   display: flex;
@@ -63,8 +63,8 @@
   margin-left: auto;
 }
 .st-bar-k {
-  color: var(--mut);
-  font: 400 12px var(--font-machine);
+  color: var(--ink-2);
+  font: 400 12px var(--mono);
 }
 .st-pills {
   display: inline-flex;
@@ -74,7 +74,7 @@
   padding: 2px;
   border: 0;
   border-radius: 999px;
-  box-shadow: inset 0 0 0 1px var(--line);
+  box-shadow: inset 0 0 0 1px var(--rule);
   min-width: 0;
 }
 .st-pills button {
@@ -86,8 +86,8 @@
   border: 0;
   border-radius: 999px;
   background: none;
-  color: var(--mut);
-  font: 400 12.5px var(--font-machine);
+  color: var(--ink-2);
+  font: 400 12.5px var(--mono);
   white-space: nowrap;
   cursor: pointer;
 }
@@ -95,13 +95,13 @@
   color: var(--ink);
 }
 .st-pills button[aria-pressed="true"] {
-  background: var(--sf);
-  box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--ink) 35%, var(--line));
+  background: var(--sheet);
+  box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--ink) 35%, var(--rule));
   color: var(--ink);
   font-weight: 500;
 }
 .st-bar .st-pills button[data-view] {
-  font: 400 13px var(--font-human);
+  font: 400 13px var(--sans);
 }
 
 /* ---- the columns ---- */
@@ -121,14 +121,14 @@
   flex-direction: column;
   min-width: 0;
   padding: 16px 12px 16px;
-  border-right: 1px solid var(--line);
+  border-right: 1px solid var(--rule);
 }
 .st-samples-h {
   display: flex;
   justify-content: space-between;
   padding: 4px 8px 10px;
-  color: var(--mut);
-  font: 400 12px var(--font-machine);
+  color: var(--ink-2);
+  font: 400 12px var(--mono);
 }
 .st-samples ul {
   display: flex;
@@ -146,7 +146,7 @@
   width: 100%;
   padding: 8px 8px;
   border: 0;
-  border-radius: var(--r-m);
+  border-radius: 7px;
   background: none;
   color: var(--ink);
   text-align: left;
@@ -163,7 +163,7 @@
 }
 .st-sample-t {
   overflow: hidden;
-  font: 500 14px var(--font-human);
+  font: 500 14px var(--sans);
   white-space: nowrap;
   text-overflow: ellipsis;
 }
@@ -172,8 +172,8 @@
   grid-column: 2;
   align-items: center;
   gap: 6px;
-  color: var(--mut);
-  font: 400 12px var(--font-machine);
+  color: var(--ink-2);
+  font: 400 12px var(--mono);
   white-space: nowrap;
 }
 .st-bars {
@@ -185,7 +185,7 @@
 .st-bars i {
   width: 2.5px;
   border-radius: 1px;
-  background: var(--off);
+  background: var(--rule-2);
 }
 .st-bars i:nth-child(1) {
   height: 4px;
@@ -208,9 +208,9 @@
 .st-samples-n {
   margin: auto 0 0;
   padding: 14px 8px 0;
-  border-top: 1px solid var(--line);
-  color: var(--mut);
-  font: 400 12px / 1.5 var(--font-machine);
+  border-top: 1px solid var(--rule);
+  color: var(--ink-2);
+  font: 400 12px / 1.5 var(--mono);
 }
 
 /* ---- the canvas ---- */
@@ -219,7 +219,7 @@
   overflow: auto;
   padding: 24px 32px 40px 44px;
   scrollbar-width: thin;
-  scrollbar-color: var(--line) transparent;
+  scrollbar-color: var(--rule) transparent;
 }
 .st-canvas {
   position: relative;
@@ -244,8 +244,8 @@
 }
 .st-slotbox {
   position: absolute;
-  border: 1px dashed color-mix(in oklch, var(--ink) 22%, var(--line));
-  border-radius: var(--r-l);
+  border: 1px dashed color-mix(in oklch, var(--ink) 22%, var(--rule));
+  border-radius: 10px;
 }
 .st-slottag {
   position: absolute;
@@ -255,10 +255,10 @@
   padding: 0 7px;
   border: 0;
   border-radius: 999px;
-  background: var(--sf);
-  box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--ink) 22%, var(--line));
-  color: var(--mut);
-  font: 400 11px / 18px var(--font-machine);
+  background: var(--sheet);
+  box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--ink) 22%, var(--rule));
+  color: var(--ink-2);
+  font: 400 11px / 18px var(--mono);
   pointer-events: auto;
   cursor: pointer;
 }
@@ -270,7 +270,7 @@
 .st-hoverbox,
 .st-selbox {
   position: absolute;
-  border-radius: var(--r-m);
+  border-radius: 7px;
 }
 .st-hoverbox {
   border: 1.5px dashed var(--ink);
@@ -286,8 +286,8 @@
   padding: 0 7px;
   border-radius: 999px;
   background: var(--ink);
-  color: var(--sf);
-  font: 500 11px / 18px var(--font-machine);
+  color: var(--sheet);
+  font: 500 11px / 18px var(--mono);
   white-space: nowrap;
 }
 .st-selbox .st-parttag {
@@ -302,9 +302,9 @@
   min-width: 0;
   overflow-y: auto;
   padding: 20px 22px 18px;
-  border-left: 1px solid var(--line);
+  border-left: 1px solid var(--rule);
   scrollbar-width: thin;
-  scrollbar-color: var(--line) transparent;
+  scrollbar-color: var(--rule) transparent;
 }
 .st-insp-h {
   display: flex;
@@ -312,19 +312,19 @@
   gap: 12px;
 }
 .st-insp-k {
-  color: var(--mut);
-  font: 400 12px var(--font-machine);
+  color: var(--ink-2);
+  font: 400 12px var(--mono);
 }
 .st-insp-name {
   margin: 18px 0 0;
   padding-bottom: 18px;
-  border-bottom: 1px solid var(--line);
-  font: 600 17px var(--font-machine);
+  border-bottom: 1px solid var(--rule);
+  font: 600 17px var(--mono);
 }
 .st-insp > .st-nameform {
   margin: 14px 0 0;
   padding-bottom: 14px;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--rule);
 }
 .st-ask {
   display: flex;
@@ -342,16 +342,16 @@
 }
 .st-ask-h h3 {
   margin: 0;
-  font: 600 14px var(--font-human);
+  font: 600 14px var(--sans);
 }
 .st-ask-h code {
-  color: var(--mut);
-  font: 400 11px var(--font-machine);
+  color: var(--ink-2);
+  font: 400 11px var(--mono);
 }
 .st-ask-n {
   margin: 0;
-  color: var(--mut);
-  font: 400 13px / 1.5 var(--font-human);
+  color: var(--ink-2);
+  font: 400 13px / 1.5 var(--sans);
 }
 .st-ask-n b {
   color: var(--ink);
@@ -364,7 +364,7 @@
 .st-ask .st-input {
   width: 100%;
   height: 34px;
-  font: 400 13px var(--font-machine);
+  font: 400 13px var(--mono);
 }
 .st-tog {
   display: inline-flex;
@@ -375,14 +375,14 @@
   border: 0;
   border-radius: 999px;
   background: none;
-  box-shadow: inset 0 0 0 1px var(--line);
-  color: var(--mut);
-  font: 400 12px var(--font-machine);
+  box-shadow: inset 0 0 0 1px var(--rule);
+  color: var(--ink-2);
+  font: 400 12px var(--mono);
   white-space: nowrap;
   cursor: pointer;
 }
 .st-tog.on {
-  background: var(--chip);
+  background: var(--well);
   box-shadow: none;
   color: var(--ink);
   font-weight: 500;
@@ -393,7 +393,7 @@
 }
 .st-tog.struck {
   text-decoration: line-through;
-  color: color-mix(in oklch, var(--mut) 60%, transparent);
+  color: color-mix(in oklch, var(--ink-2) 60%, transparent);
   cursor: not-allowed;
 }
 .st-tog:disabled:not(.struck) {
@@ -406,7 +406,7 @@
   gap: 4px;
   margin-top: auto;
   padding-top: 18px;
-  border-top: 1px solid var(--line);
+  border-top: 1px solid var(--rule);
 }
 .st-insp > .st-ask:last-of-type {
   padding-bottom: 20px;
@@ -427,7 +427,7 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  border-radius: var(--r-m);
+  border-radius: 7px;
 }
 .st-slot-list li[aria-current="true"] {
   background: var(--sel);
@@ -443,12 +443,12 @@
   border: 0;
   background: none;
   color: var(--ink);
-  font: 500 13px var(--font-machine);
+  font: 500 13px var(--mono);
   text-align: left;
   cursor: pointer;
 }
 .st-slot-name code {
-  color: var(--mut);
+  color: var(--ink-2);
   font-size: 11px;
 }
 .st-slot-acts {
@@ -481,7 +481,7 @@
   }
   .st-cols > .st-insp {
     grid-column: 1 / -1;
-    border-top: 1px solid var(--line);
+    border-top: 1px solid var(--rule);
     border-left: 0;
   }
 }
@@ -491,7 +491,7 @@
   }
   .st-samples {
     border-right: 0;
-    border-bottom: 1px solid var(--line);
+    border-bottom: 1px solid var(--rule);
   }
   .st-stage {
     padding: 20px 16px 28px;
@@ -514,7 +514,7 @@
 
 .st-ask .st-val {
   padding: 0 8px 0 10px;
-  background: var(--chip);
+  background: var(--well);
   box-shadow: none;
   font-weight: 500;
 }
@@ -545,10 +545,10 @@
   padding: 0 8px;
   border: 0;
   border-radius: 999px;
-  background: var(--sf);
-  box-shadow: inset 0 0 0 1px var(--line);
-  color: color-mix(in oklch, var(--mut) 70%, transparent);
-  font: 400 11px var(--font-machine);
+  background: var(--sheet);
+  box-shadow: inset 0 0 0 1px var(--rule);
+  color: color-mix(in oklch, var(--ink-2) 70%, transparent);
+  font: 400 11px var(--mono);
   pointer-events: auto;
   cursor: pointer;
 }
@@ -572,10 +572,10 @@
   gap: 6px;
   width: 256px;
   padding: 12px;
-  border-radius: var(--r-l);
-  background: var(--sf);
+  border-radius: 10px;
+  background: var(--sheet);
   box-shadow:
-    0 0 0 1px var(--line),
+    0 0 0 1px var(--rule),
     0 12px 32px -12px var(--shadow);
   transform: translateX(-50%);
   pointer-events: auto;
@@ -586,8 +586,8 @@
 .st-pick-h {
   display: flex;
   justify-content: space-between;
-  color: var(--mut);
-  font: 400 11.5px var(--font-machine);
+  color: var(--ink-2);
+  font: 400 11.5px var(--mono);
 }
 .st-pick-name {
   display: flex;
@@ -596,7 +596,7 @@
   height: 34px;
   padding: 0 12px;
   border-radius: 999px;
-  box-shadow: inset 0 0 0 1px var(--line);
+  box-shadow: inset 0 0 0 1px var(--rule);
 }
 .st-pick-name input {
   flex: 1;
@@ -604,12 +604,12 @@
   border: 0;
   background: none;
   color: var(--ink);
-  font: 500 13px var(--font-machine);
+  font: 500 13px var(--mono);
   outline: none;
 }
 .st-pick-name span {
-  color: var(--mut);
-  font: 400 11px var(--font-machine);
+  color: var(--ink-2);
+  font: 400 11px var(--mono);
 }
 .st-pick-name:focus-within {
   box-shadow: inset 0 0 0 1.5px var(--you);
@@ -617,13 +617,13 @@
 .st-pick-hint {
   margin: 0;
   color: var(--warn);
-  font: 400 11.5px var(--font-human);
+  font: 400 11.5px var(--sans);
 }
 .st-pick-k {
   padding: 6px 4px 0;
-  border-top: 1px solid var(--line);
-  color: var(--mut);
-  font: 400 11.5px var(--font-machine);
+  border-top: 1px solid var(--rule);
+  color: var(--ink-2);
+  font: 400 11.5px var(--mono);
 }
 .st-pick-list {
   display: flex;
@@ -638,7 +638,7 @@
   width: 100%;
   padding: 5px 8px;
   border: 0;
-  border-radius: var(--r-m);
+  border-radius: 7px;
   background: none;
   color: var(--ink);
   text-align: left;
@@ -651,26 +651,26 @@
   cursor: not-allowed;
 }
 .st-pick-list button:disabled:not(.struck) b {
-  color: var(--mut);
+  color: var(--ink-2);
 }
 .st-pick-list b {
-  font: 600 12.5px var(--font-machine);
+  font: 600 12.5px var(--mono);
 }
 .st-pick-list span {
   grid-column: 1;
-  color: var(--mut);
-  font: 400 11.5px var(--font-human);
+  color: var(--ink-2);
+  font: 400 11.5px var(--sans);
 }
 .st-pick-list em {
   grid-row: 1 / 3;
   grid-column: 2;
   align-self: center;
-  color: var(--mut);
-  font: 400 11px var(--font-machine);
+  color: var(--ink-2);
+  font: 400 11px var(--mono);
   font-style: normal;
 }
 .st-pick-list .struck b {
-  color: var(--mut);
+  color: var(--ink-2);
   text-decoration: line-through;
 }
 
@@ -681,13 +681,13 @@
 }
 .st-insp-lede {
   padding: 4px 0 18px;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--rule);
 }
 .st-switch {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  font: 400 13px var(--font-human);
+  font: 400 13px var(--sans);
   cursor: pointer;
 }
 .st-switch input {
@@ -697,9 +697,9 @@
   height: 15px;
   margin: 0;
   border-radius: 999px;
-  background: var(--off);
+  background: var(--rule-2);
   cursor: pointer;
-  transition: background var(--m-fast) var(--m-ease);
+  transition: background var(--t-hover) var(--ease);
 }
 .st-switch input::after {
   content: "";
@@ -709,8 +709,8 @@
   width: 11px;
   height: 11px;
   border-radius: 50%;
-  background: var(--sf);
-  transition: transform var(--m-fast) var(--m-ease);
+  background: var(--sheet);
+  transition: transform var(--t-hover) var(--ease);
 }
 .st-switch input:checked {
   background: var(--ink);
@@ -724,9 +724,9 @@
   gap: 6px;
   margin-top: 20px;
   padding: 12px 14px;
-  border-radius: var(--r-m);
+  border-radius: 7px;
   background: var(--well);
-  font: 400 13px / 1.45 var(--font-human);
+  font: 400 13px / 1.45 var(--sans);
 }
 .st-attach b {
   font-weight: 600;
@@ -735,12 +735,12 @@
   margin: 0;
 }
 .st-attach code {
-  font: 500 11.5px / 1.45 var(--font-machine);
+  font: 500 11.5px / 1.45 var(--mono);
   overflow-wrap: anywhere;
 }
 .st-attach-n {
-  color: var(--mut);
-  font: 400 11.5px / 1.45 var(--font-machine);
+  color: var(--ink-2);
+  font: 400 11.5px / 1.45 var(--mono);
 }
 
 /* ---- the form and row views ---- */
@@ -757,14 +757,14 @@
 }
 .st-form-card {
   padding: 18px 20px;
-  border-radius: var(--r-l);
-  box-shadow: 0 0 0 1px var(--line);
+  border-radius: 10px;
+  box-shadow: 0 0 0 1px var(--rule);
 }
 .st-stage-n {
   max-width: 640px;
   margin: 16px 0 0;
-  color: var(--mut);
-  font: 400 12px / 1.5 var(--font-machine);
+  color: var(--ink-2);
+  font: 400 12px / 1.5 var(--mono);
 }
 @media (pointer: coarse) {
   .st-gap-btn {
@@ -802,20 +802,20 @@
 }
 .st-led-lane {
   fill: none;
-  stroke: color-mix(in oklch, var(--ink) 18%, var(--line));
+  stroke: color-mix(in oklch, var(--ink) 18%, var(--rule));
   stroke-width: 1;
   stroke-dasharray: 2 4;
 }
 .st-led-lane.you {
-  stroke: color-mix(in oklch, var(--you) 40%, var(--line));
+  stroke: color-mix(in oklch, var(--you) 40%, var(--rule));
 }
 .st-led-move {
   fill: none;
-  stroke: color-mix(in oklch, var(--ink) 45%, var(--line));
+  stroke: color-mix(in oklch, var(--ink) 45%, var(--rule));
   stroke-width: 1.25;
 }
 .st-led-move.firm {
-  stroke: color-mix(in oklch, var(--ink) 70%, var(--line));
+  stroke: color-mix(in oklch, var(--ink) 70%, var(--rule));
 }
 .st-led-move.on {
   stroke: var(--you);
@@ -825,8 +825,8 @@
 .st-led-h {
   position: absolute;
   top: 0;
-  color: var(--mut);
-  font: 400 12px var(--font-machine);
+  color: var(--ink-2);
+  font: 400 12px var(--mono);
   white-space: nowrap;
   transform: translateX(-50%);
 }
@@ -849,10 +849,10 @@
   padding: 0 14px 0 8px;
   border: 0;
   border-radius: 999px;
-  background: var(--sf);
-  box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--ink) 25%, var(--line));
+  background: var(--sheet);
+  box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--ink) 25%, var(--rule));
   color: var(--ink);
-  font: 500 13px var(--font-machine);
+  font: 500 13px var(--mono);
   cursor: pointer;
 }
 .st-led-state .glyph {
@@ -868,17 +868,17 @@
     0 0 0 2px var(--you);
 }
 .st-led-state.closed {
-  color: var(--mut);
+  color: var(--ink-2);
 }
 .st-led-label {
   height: 20px;
   padding: 0 8px;
   border: 0;
   border-radius: 999px;
-  background: var(--sf);
-  box-shadow: inset 0 0 0 1px var(--line);
-  color: var(--mut);
-  font: 400 11px var(--font-machine);
+  background: var(--sheet);
+  box-shadow: inset 0 0 0 1px var(--rule);
+  color: var(--ink-2);
+  font: 400 11px var(--mono);
   cursor: pointer;
 }
 .st-led-label:hover {
@@ -893,8 +893,8 @@
 }
 .st-led-closed {
   left: 50%;
-  color: var(--mut);
-  font: 400 12px var(--font-machine);
+  color: var(--ink-2);
+  font: 400 12px var(--mono);
 }
 .st-led-add {
   position: absolute;
@@ -912,9 +912,9 @@
   border: 0;
   border-radius: 999px;
   background: none;
-  box-shadow: inset 0 0 0 1px var(--line);
-  color: var(--mut);
-  font: 400 12px var(--font-machine);
+  box-shadow: inset 0 0 0 1px var(--rule);
+  color: var(--ink-2);
+  font: 400 12px var(--mono);
   transform: none;
   cursor: pointer;
 }
@@ -923,7 +923,7 @@
   height: 11px;
 }
 .st-led-plus:first-child {
-  border: 1px dashed color-mix(in oklch, var(--ink) 25%, var(--line));
+  border: 1px dashed color-mix(in oklch, var(--ink) 25%, var(--rule));
   box-shadow: none;
 }
 .st-led-plus:hover,
@@ -968,7 +968,7 @@ button.st-offscreen {
 }
 button.st-offscreen:hover,
 button.st-offscreen[aria-expanded="true"] {
-  background: var(--chip);
+  background: var(--well);
 }
 button.st-offscreen .icon:last-child {
   width: 12px;
@@ -981,10 +981,10 @@ button.st-offscreen .icon:last-child {
   z-index: var(--z-tooltip);
   width: min(560px, calc(100vw - 32px));
   padding: 14px 18px 8px;
-  border-radius: var(--r-l);
-  background: var(--sf);
+  border-radius: 10px;
+  background: var(--sheet);
   box-shadow:
-    0 0 0 1px var(--line),
+    0 0 0 1px var(--rule),
     0 18px 40px -16px var(--shadow);
 }
 .st-tray2-h {
@@ -992,8 +992,8 @@ button.st-offscreen .icon:last-child {
   justify-content: space-between;
   gap: 12px;
   padding-bottom: 10px;
-  color: var(--mut);
-  font: 400 12px var(--font-machine);
+  color: var(--ink-2);
+  font: 400 12px var(--mono);
 }
 .st-tray2 ul {
   margin: 0;
@@ -1005,27 +1005,27 @@ button.st-offscreen .icon:last-child {
   grid-template-columns: 22px minmax(0, 1fr);
   gap: 8px;
   padding: 12px 0;
-  border-top: 1px solid var(--line);
+  border-top: 1px solid var(--rule);
 }
 .st-tray2 li b {
-  font: 500 14px var(--font-human);
+  font: 500 14px var(--sans);
 }
 .st-tray2 li p {
   margin: 4px 0 8px;
-  color: var(--mut);
-  font: 400 12px / 1.45 var(--font-machine);
+  color: var(--ink-2);
+  font: 400 12px / 1.45 var(--mono);
 }
 .st-tray2-i {
   display: inline-flex;
   padding-top: 2px;
-  color: var(--mut);
+  color: var(--ink-2);
 }
 .st-tray2-i i {
   width: 7px;
   height: 7px;
   margin: 5px 0 0 4px;
   border-radius: 50%;
-  box-shadow: inset 0 0 0 1.5px var(--mut);
+  box-shadow: inset 0 0 0 1.5px var(--ink-2);
 }
 .st-tray2-a {
   display: flex;
@@ -1048,7 +1048,7 @@ button.st-offscreen .icon:last-child {
   border-radius: 999px;
   background: none;
   color: var(--ink);
-  font: 400 13px var(--font-human);
+  font: 400 13px var(--sans);
   cursor: pointer;
 }
 .st-ix-toggle:hover {
@@ -1056,7 +1056,7 @@ button.st-offscreen .icon:last-child {
 }
 .st-ix-toggle[aria-pressed="true"] {
   background: var(--ink);
-  color: var(--sf);
+  color: var(--sheet);
 }
 .st-cols[data-index] {
   grid-template-columns: 240px minmax(0, 1fr) 344px;
@@ -1067,7 +1067,7 @@ button.st-offscreen .icon:last-child {
   gap: 4px;
   border: 0;
   background: none;
-  color: var(--mut);
+  color: var(--ink-2);
   font: inherit;
   cursor: pointer;
 }
@@ -1082,7 +1082,7 @@ button.st-offscreen .icon:last-child {
 .st-ix-sub {
   margin: 2px 0 6px 12px;
   padding-left: 10px;
-  border-left: 1px solid var(--line);
+  border-left: 1px solid var(--rule);
 }
 .st-ix-row {
   display: flex;
@@ -1093,10 +1093,10 @@ button.st-offscreen .icon:last-child {
   min-height: 34px;
   padding: 0 10px;
   border: 0;
-  border-radius: var(--r-m);
+  border-radius: 7px;
   background: none;
   color: var(--ink);
-  font: 400 14px var(--font-human);
+  font: 400 14px var(--sans);
   text-align: left;
   cursor: pointer;
 }
@@ -1108,7 +1108,7 @@ button.st-offscreen .icon:last-child {
 .st-ix-row .icon {
   width: 13px;
   height: 13px;
-  color: var(--mut);
+  color: var(--ink-2);
 }
 .st-ix-sub .st-ix-row {
   min-height: 29px;
@@ -1129,8 +1129,8 @@ button.st-offscreen .icon:last-child {
   background: none;
 }
 .st-ix-n {
-  color: var(--mut);
-  font: 400 12px var(--font-machine);
+  color: var(--ink-2);
+  font: 400 12px var(--mono);
 }
 .st-page-sec {
   display: flex;
@@ -1150,7 +1150,7 @@ button.st-offscreen .icon:last-child {
   margin: 0 auto;
   padding: 16px;
   border-radius: 28px;
-  box-shadow: 0 0 0 1px var(--line);
+  box-shadow: 0 0 0 1px var(--rule);
 }
 .st-phone-strip {
   display: flex;
@@ -1158,9 +1158,9 @@ button.st-offscreen .icon:last-child {
   gap: 8px;
   margin: 0;
   padding: 10px 16px;
-  border-bottom: 1px solid var(--line);
-  color: var(--mut);
-  font: 400 12.5px var(--font-machine);
+  border-bottom: 1px solid var(--rule);
+  color: var(--ink-2);
+  font: 400 12.5px var(--mono);
 }
 .st-phone-card {
   position: fixed;
@@ -1172,19 +1172,19 @@ button.st-offscreen .icon:last-child {
   flex-direction: column;
   gap: 6px;
   padding: 16px;
-  border-radius: var(--r-l);
-  background: var(--sf);
+  border-radius: 10px;
+  background: var(--sheet);
   box-shadow:
-    0 0 0 1px var(--line),
+    0 0 0 1px var(--rule),
     0 -12px 30px -18px var(--shadow);
 }
 .st-phone-card b {
-  font: 600 15px var(--font-human);
+  font: 600 15px var(--sans);
 }
 .st-phone-card p {
   margin: 0;
-  color: var(--mut);
-  font: 400 13px / 1.5 var(--font-human);
+  color: var(--ink-2);
+  font: 400 13px / 1.5 var(--sans);
 }
 @media (pointer: coarse) {
   .st-ix-row,
@@ -1220,16 +1220,16 @@ button.st-offscreen .icon:last-child {
   height: 28px;
   padding: 0 14px;
   border-radius: 999px;
-  color: var(--mut);
-  font: 400 13px var(--font-human);
+  color: var(--ink-2);
+  font: 400 13px var(--sans);
   text-decoration: none;
 }
 .st-head .st-pills a:hover {
   color: var(--ink);
 }
 .st-head .st-pills a[aria-current="page"] {
-  background: var(--sf);
-  box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--ink) 35%, var(--line));
+  background: var(--sheet);
+  box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--ink) 35%, var(--rule));
   color: var(--ink);
   font-weight: 500;
 }
@@ -1245,7 +1245,7 @@ button.st-offscreen .icon:last-child {
   gap: 8px;
   min-width: 0;
   padding: 20px 12px 16px;
-  border-right: 1px solid var(--line);
+  border-right: 1px solid var(--rule);
 }
 .st-bpx > .st-insp-k {
   padding: 0 10px;
@@ -1256,9 +1256,9 @@ button.st-offscreen .icon:last-child {
   gap: 4px;
   margin: auto 0 0;
   padding: 14px 10px 0;
-  border-top: 1px solid var(--line);
-  color: var(--mut);
-  font: 400 11.5px / 1.4 var(--font-machine);
+  border-top: 1px solid var(--rule);
+  color: var(--ink-2);
+  font: 400 11.5px / 1.4 var(--mono);
 }
 .st-bpx-foot span:first-child {
   color: var(--ink);
@@ -1272,10 +1272,10 @@ button.st-offscreen .icon:last-child {
   right: 20px;
   z-index: var(--z-tooltip);
   width: min(300px, calc(100% - 40px));
-  border-radius: var(--r-l);
-  background: var(--sf);
+  border-radius: 10px;
+  background: var(--sheet);
   box-shadow:
-    0 0 0 1px var(--line),
+    0 0 0 1px var(--rule),
     0 18px 40px -16px var(--shadow);
 }
 .st-bp-add .st-newboard {
@@ -1320,12 +1320,12 @@ button.st-offscreen .icon:last-child {
   gap: 4px;
 }
 .st-bpi .st-ask-n code {
-  font: 400 12px var(--font-machine);
+  font: 400 12px var(--mono);
 }
 .st-bpi-links {
   margin-top: auto;
   padding-top: 18px;
-  border-top: 1px solid var(--line);
+  border-top: 1px solid var(--rule);
 }
 .st-bpi > .st-bpi-links:first-child {
   margin-top: 0;
@@ -1354,7 +1354,7 @@ button.st-offscreen .icon:last-child {
   min-height: 34px;
   padding: 4px 10px;
   border: 0;
-  border-radius: var(--r-m);
+  border-radius: 7px;
   background: none;
   color: var(--ink);
   text-align: left;
@@ -1367,7 +1367,7 @@ button.st-offscreen .icon:last-child {
   background: var(--sel);
 }
 .st-bpi-list code {
-  font: 400 12.5px var(--font-machine);
+  font: 400 12.5px var(--mono);
 }
 .st-bpi-list .st-bpc-pill {
   height: 20px;
@@ -1402,19 +1402,19 @@ button.st-offscreen .icon:last-child {
   align-items: flex-start;
   gap: 8px;
   margin: 16px 0 0;
-  color: var(--mut);
-  font: 400 13px / 1.5 var(--font-human);
+  color: var(--ink-2);
+  font: 400 13px / 1.5 var(--sans);
 }
 .st-gate.warn {
   padding: 12px 14px;
-  border-radius: var(--r-l);
-  box-shadow: inset 0 0 0 1px var(--line);
+  border-radius: 10px;
+  box-shadow: inset 0 0 0 1px var(--rule);
   color: var(--ink);
 }
 .st-gate.warn > .icon {
   flex: none;
   margin-top: 3px;
-  color: var(--mut);
+  color: var(--ink-2);
 }
 .st-gate p {
   margin: 0;
@@ -1423,6 +1423,6 @@ button.st-offscreen .icon:last-child {
   margin: 10px 0 8px;
 }
 .st-gate-n {
-  color: var(--mut);
-  font: 400 11.5px / 1.45 var(--font-machine);
+  color: var(--ink-2);
+  font: 400 11.5px / 1.45 var(--mono);
 }

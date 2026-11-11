@@ -9,9 +9,9 @@ import type { Connection } from '../hooks.ts';
 import { useRemote } from '../hooks.ts';
 import { type PlainKey, t } from '../i18n/i18n.ts';
 import { TypeIcon } from '../icons/TypeIcon.tsx';
-import { Button, Icon, Node } from '../kit/index.ts';
+import { Button, Icon } from '../kit/index.ts';
+import { NodeGlyph } from '../lanes/NodeGlyph.tsx';
 import { nestSections } from '../nesting.ts';
-import { itemNodeKind } from '../node-kind.ts';
 import { stateWord } from '../preset-words.ts';
 import { groupItems } from '../sections.ts';
 import { studioHash } from '../selection.ts';
@@ -33,6 +33,7 @@ import { Inspector } from './Inspector.tsx';
 import { LaneInspector } from './LaneInspector.tsx';
 import { type LaneChoice, LanesEdit } from './LanesEdit.tsx';
 import { addField, addModule, shownIn } from './layout-edit.ts';
+import { stateLook } from './looks.ts';
 import { Outline } from './Outline.tsx';
 import { PlaybookSection } from './Playbook.tsx';
 import { OkMark, ProblemMark } from './parts.tsx';
@@ -87,8 +88,8 @@ export function PresetEditor(props: PresetEditorProps) {
   const loadSamples = useMemo(() => fetchPresetSamples(props.name), [props.name]);
   const source = useRemote(loadSource, revision, props.connection);
   const samples = useRemote(loadSamples, revision, props.connection);
-  if (source.status === 'loading') return <p className="t-small st-msg">{t('common.loading')}</p>;
-  if (source.status === 'failed') return <p className="action-error st-msg">{source.message}</p>;
+  if (source.status === 'loading') return <p className="st-small st-msg">{t('common.loading')}</p>;
+  if (source.status === 'failed') return <p className="st-error st-msg">{source.message}</p>;
   return (
     <Loaded
       key={`${source.value.name}-${source.value.yaml.length}-${source.value.version}`}
@@ -256,9 +257,9 @@ function Loaded({ source, samples, canWrite, phone, items, onSaved }: LoadedProp
   };
   return (
     <div className="st-preset st-studio">
-      <header className="st-head">
-        <div className="st-hl">
-          <a className="st-crumb mono" href={studioHash()}>
+      <header className="sst-head">
+        <div className="sst-hl">
+          <a className="st-crumb st-mono" href={studioHash()}>
             {t('studio.crumbPreset')}
           </a>
           <h1 className="st-name">{source.name}</h1>
@@ -270,7 +271,7 @@ function Loaded({ source, samples, canWrite, phone, items, onSaved }: LoadedProp
                 : t('studio.preset.saved', { version: source.version ?? '?' })}
           </span>
         </div>
-        <div className="st-hr">
+        <div className="sst-hr">
           {canWrite && !phone ? (
             <a
               className="btn sm quiet st-customize"
@@ -493,7 +494,7 @@ function Loaded({ source, samples, canWrite, phone, items, onSaved }: LoadedProp
             }
           />
         ) : (
-          <p className="t-small st-msg st-stage">
+          <p className="st-small st-msg st-stage">
             {preset ? t('common.loading') : t('studio.preview.invalid')}
           </p>
         )}
@@ -708,7 +709,7 @@ function Stage({
         )}
       </div>
     ) : (
-      <p className="t-small st-msg">{t('studio.samples.noneOfType', { type })}</p>
+      <p className="st-small st-msg">{t('studio.samples.noneOfType', { type })}</p>
     );
   } else {
     drawn = item ? (
@@ -722,7 +723,7 @@ function Stage({
         />,
       )
     ) : (
-      <p className="t-small st-msg">{t('studio.samples.noneOfType', { type })}</p>
+      <p className="st-small st-msg">{t('studio.samples.noneOfType', { type })}</p>
     );
   }
   return (
@@ -771,7 +772,13 @@ function SampleList({ rows, preview, chosen, onChoose, collection }: SampleListP
                 aria-pressed={row.id === chosen}
                 onClick={() => onChoose(row.id)}
               >
-                <Node kind={itemNodeKind(row, type, false)} label={stateWord(type, row.state)} />
+                <NodeGlyph
+                  look={stateLook(
+                    type?.states.find(({ name }) => name === row.state) ?? { turn: row.turn },
+                    row.state === type?.incomplete,
+                  )}
+                  size={16}
+                />
                 <span className="st-sample-t">{row.title}</span>
                 <span className="st-sample-m">
                   {`${row.id} · ${stateWord(type, row.state)}`}
@@ -840,7 +847,7 @@ function Duplicate({ name }: { name: string }) {
       }}
     >
       <input
-        className="st-input mono"
+        className="st-input st-mono"
         value={as}
         onChange={(event) => setAs(event.target.value)}
         aria-label={t('studio.preset.copyName')}
@@ -849,7 +856,7 @@ function Duplicate({ name }: { name: string }) {
       <Button variant="primary" size="sm" type="submit" disabled={busy || as.trim() === ''}>
         {t('studio.preset.duplicate')}
       </Button>
-      {error ? <span className="action-error t-small">{error}</span> : null}
+      {error ? <span className="st-error st-small">{error}</span> : null}
     </form>
   );
 }
@@ -892,8 +899,8 @@ function SaveConfirm({
       aria-modal="true"
       aria-label={t('studio.preset.save', { version })}
     >
-      <div className="st-confirm-card raised">
-        <h2 className="t-h">{t('studio.preset.save', { version })}</h2>
+      <div className="st-confirm-card st-raised">
+        <h2 className="st-h">{t('studio.preset.save', { version })}</h2>
         <pre className="st-src">
           {changed.map((line, index) => (
             // biome-ignore lint/suspicious/noArrayIndexKey: lines are positional
@@ -918,10 +925,10 @@ function SaveConfirm({
             </span>
           </p>
         ) : null}
-        <p className="t-cap">
+        <p className="st-cap">
           {t('studio.preset.writes', { path: `.otea/presets/${source.name}/preset.yaml`, version })}
         </p>
-        {error ? <p className="action-error t-small">{error}</p> : null}
+        {error ? <p className="st-error st-small">{error}</p> : null}
         <div className="st-confirm-actions">
           <Button variant="primary" onClick={onSave} disabled={busy}>
             {t('studio.preset.save', { version })}

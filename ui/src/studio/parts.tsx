@@ -20,7 +20,7 @@ type SegProps = {
 
 export function Seg({ options, value, onChange, label, mono = false }: SegProps) {
   return (
-    <fieldset className={mono ? 'st-seg mono' : 'st-seg'} aria-label={label}>
+    <fieldset className={mono ? 'st-seg st-mono' : 'st-seg'} aria-label={label}>
       {options.map((option) => {
         const on = option.value === value;
         return (

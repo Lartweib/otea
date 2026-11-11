@@ -203,7 +203,7 @@ function EndPicker({
   return (
     <span className="st-end">
       <select
-        className="st-input mono"
+        className="st-input st-mono"
         value={end.board}
         disabled={onChange === undefined}
         aria-label={`${label}: ${t('studio.blueprint.board')}`}
@@ -222,7 +222,7 @@ function EndPicker({
       <span className="st-end-t">
         {icon ? <TypeIcon name={icon} size={13} /> : null}
         <select
-          className="st-input mono"
+          className="st-input st-mono"
           value={end.type}
           disabled={onChange === undefined}
           aria-label={`${label}: ${t('studio.blueprint.type')}`}
@@ -330,7 +330,7 @@ function BoardInspector({
         note={items > 0 ? t('studio.blueprint.presetKept') : undefined}
       >
         <select
-          className="st-input mono"
+          className="st-input st-mono"
           value={board.preset}
           disabled={set === undefined || items > 0}
           aria-label={t('studio.blueprint.preset')}
@@ -350,7 +350,7 @@ function BoardInspector({
       </Ask>
       <Ask question={t('studio.blueprint.whatLives')}>
         <p className="st-ask-n">
-          <b className="mono">{version ? `${board.preset} v${version}` : board.preset}</b>
+          <b className="st-mono">{version ? `${board.preset} v${version}` : board.preset}</b>
           {` · ${t('studio.blueprint.types', { count: types.length })} · ${t('studio.blueprint.items', { count: items })}`}
         </p>
       </Ask>

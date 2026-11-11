@@ -6,9 +6,10 @@ import {
   sampleItem,
   sampleItemView,
 } from '../../../src/core/views.ts';
-import { type NodeFacts, type NodeKind, nodeKind } from '../node-kind.ts';
+import type { Look } from '../lanes/looks.ts';
 import { stateWord } from '../preset-words.ts';
 import type { CollectionView, Item, ItemView, TypeView } from '../types.ts';
+import { stateLook } from './looks.ts';
 
 // Studio's preview: a draft preset drawn with its sample items, in the shapes the server sends for
 // stored ones, so the real detail, row, form and lanes draw them unchanged. The samples are read
@@ -31,7 +32,7 @@ export type BoardSample = {
   title: string;
   type: string;
   state: string;
-  node: NodeKind;
+  node: Look;
 };
 
 export function boardSample(
@@ -42,18 +43,12 @@ export function boardSample(
     const type = types.find(({ name }) => name === sample.type);
     const state = type?.states.find(({ name }) => name === sample.state);
     if (!type || !state) continue;
-    const facts: NodeFacts = {
-      turn: state.turn,
-      leased: false,
-      incomplete: state.name === type.incomplete,
-    };
-    if (state.closes !== undefined) facts.closes = state.closes;
     return {
       id: sample.id,
       title: sample.title,
       type: type.name,
       state: stateWord(type, state.name),
-      node: nodeKind(facts),
+      node: stateLook(state, state.name === type.incomplete),
     };
   }
   return undefined;

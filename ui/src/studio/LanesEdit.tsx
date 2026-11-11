@@ -1,9 +1,10 @@
 import { useLayoutEffect, useRef, useState } from 'react';
 import { type PlainKey, t } from '../i18n/i18n.ts';
-import { Icon, Node } from '../kit/index.ts';
-import type { NodeKind } from '../node-kind.ts';
+import { Icon } from '../kit/index.ts';
+import { NodeGlyph } from '../lanes/NodeGlyph.tsx';
 import type { RawPreset } from './draft.ts';
 import { laneLayout, type PlacedMove, type PlacedState } from './lanes-edit.ts';
+import { stateLook } from './looks.ts';
 
 // The workflow on the lanes, as the list draws it: the agent's lane on the left, yours on the right,
 // the closed states below. Every state and every move is a button that opens it in the inspector;
@@ -26,12 +27,6 @@ export const byWord = (by: string | undefined) =>
 
 export function moveWord(by: string | undefined, reason: boolean): string {
   return reason ? `${byWord(by)} · ${t('studio.lanes.reason')}` : byWord(by);
-}
-
-function kindOf(state: PlacedState, incomplete: string | undefined): NodeKind {
-  if (state.turn === 'none') return state.closes === 'done' ? 'done' : 'discarded';
-  if (state.turn === 'human') return 'you';
-  return state.name === incomplete ? 'incomplete' : 'queued';
 }
 
 type LanesEditProps = {
@@ -172,7 +167,7 @@ export function LanesEdit({
             style={{ left: `${state.x}px`, top: `${state.y}px` }}
             onClick={() => onChoose({ kind: 'state', name: state.name })}
           >
-            <Node kind={kindOf(state, incomplete)} label={state.name} />
+            <NodeGlyph look={stateLook(state, state.name === incomplete)} size={16} />
             <span>{state.name}</span>
           </button>
         ))}

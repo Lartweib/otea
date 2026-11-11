@@ -1,7 +1,8 @@
 import type { Connection } from '../../../src/core/blueprint.ts';
 import { t } from '../i18n/i18n.ts';
 import { TypeIcon } from '../icons/TypeIcon.tsx';
-import { Icon, Node } from '../kit/index.ts';
+import { Icon } from '../kit/index.ts';
+import { NodeGlyph } from '../lanes/NodeGlyph.tsx';
 import type { PresetView } from '../types.ts';
 import type { Board } from './api.ts';
 import {
@@ -218,7 +219,7 @@ function BoardCard(props: CardProps) {
             <div className="st-bc-t" data-on={lit.has(end) || undefined}>
               <i className="st-port l" data-on={linked.has(`${end}:l`) || undefined} />
               {type.icon ? <TypeIcon name={type.icon} size={14} /> : null}
-              <span className="mono">{type.name}</span>
+              <span className="st-mono">{type.name}</span>
               <i className="st-port r" data-on={linked.has(`${end}:r`) || undefined} />
             </div>
             {mode === 'states' ? <States type={type} /> : null}
@@ -248,7 +249,7 @@ function CardHead({
       <span className="st-bc-i">{icon ? <TypeIcon name={icon} size={15} /> : null}</span>
       <span className="st-bc-n">
         <b>{board.name}</b>
-        <span className="mono">{version ? `${board.preset} v${version}` : board.preset}</span>
+        <span className="st-mono">{version ? `${board.preset} v${version}` : board.preset}</span>
       </span>
       <span className="st-bc-c">{t('studio.blueprint.types', { count: types })}</span>
     </>
@@ -268,7 +269,7 @@ function States({ type }: { type: TypeShape }) {
       {type.states.map((state) => (
         <li key={state.name} data-waits={state.waits}>
           {state.waits ? <span className="st-bc-wi">⧗</span> : <i />}
-          <span className="mono">{state.name}</span>
+          <span className="st-mono">{state.name}</span>
           {state.waits ? (
             <span className="st-bc-w">
               {state.waits === 'blockers'
@@ -285,9 +286,9 @@ function States({ type }: { type: TypeShape }) {
 function SampleRow({ sample }: { sample: BoardSample }) {
   return (
     <div className="st-bc-x">
-      <Node kind={sample.node} label={sample.state} />
+      <NodeGlyph look={sample.node} size={16} />
       <span className="st-bc-xt">{sample.title}</span>
-      <span className="st-bc-xm mono">{`${sample.id} · ${sample.state}`}</span>
+      <span className="st-bc-xm st-mono">{`${sample.id} · ${sample.state}`}</span>
     </div>
   );
 }
@@ -343,7 +344,7 @@ export function BoardList({ boards, connections, shapes, presets, iconOf, sample
             {types.map((type) => (
               <div key={type.name} className="st-bc-t">
                 {type.icon ? <TypeIcon name={type.icon} size={14} /> : null}
-                <span className="mono">{type.name}</span>
+                <span className="st-mono">{type.name}</span>
               </div>
             ))}
             {sample ? <SampleRow sample={sample} /> : null}

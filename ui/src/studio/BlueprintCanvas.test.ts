@@ -40,7 +40,7 @@ const SAMPLE: BoardSample = {
   title: 'Wall-slide jump drops the buffered input',
   type: 'bug',
   state: 'reported',
-  node: 'you',
+  node: 'yours',
 };
 
 const props = {

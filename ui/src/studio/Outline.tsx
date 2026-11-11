@@ -100,7 +100,7 @@ export function Outline({
                     aria-current={field === current ? 'true' : undefined}
                     onClick={() => onPick({ kind: 'field', name: field })}
                   >
-                    <span className="mono">{field}</span>
+                    <span className="st-mono">{field}</span>
                     <span className="st-ix-n">{placeOf(field)}</span>
                   </button>
                 </li>

@@ -40,7 +40,7 @@ function PresetIndex({
 }) {
   if (presets.status !== 'ready')
     return (
-      <p className="t-small">
+      <p className="st-small">
         {presets.status === 'loading' ? t('common.loading') : presets.message}
       </p>
     );
@@ -56,12 +56,12 @@ function PresetIndex({
               {preset.problems.length > 0 ? <ProblemMark /> : null}
               {preset.name}
             </span>
-            <span className="t-cap">
+            <span className="st-cap">
               {preset.version === null ? t('studio.index.invalid') : `v${preset.version}`}
               {preset.collections.length > 0 ? ` · ${preset.collections.join(', ')}` : ''}
             </span>
             {preset.origin === 'project' ? (
-              <span className="t-cap st-li-origin">{t('studio.index.project')}</span>
+              <span className="st-cap st-li-origin">{t('studio.index.project')}</span>
             ) : null}
           </a>
         </li>
@@ -89,7 +89,7 @@ function BlueprintCatalog({
   const presets = useRemote(fetchPresets, version, connection);
   if (presets.status !== 'ready') {
     return (
-      <p className="t-small st-msg">
+      <p className="st-small st-msg">
         {presets.status === 'loading' ? t('common.loading') : presets.message}
       </p>
     );
@@ -132,11 +132,11 @@ function TemplateRow({
           {preset.problems.length > 0 ? <ProblemMark /> : null}
           {preset.name}
         </b>
-        <span className="t-cap">
+        <span className="st-cap">
           {preset.origin === 'official' ? t('studio.start.official') : t('studio.index.project')}
         </span>
       </a>
-      <span className="t-small st-row-use">
+      <span className="st-small st-row-use">
         {preset.problems.length > 0
           ? preset.problems[0]
           : preset.collections.length > 0
@@ -162,11 +162,11 @@ function TemplateRow({
 function Start({ presets, blueprint, items, canCustomize }: StartProps) {
   return (
     <div className="st-start">
-      <h1 className="t-display">{t('studio.title')}</h1>
-      <p className="t-body st-lede">{t('studio.lede')}</p>
+      <h1 className="st-display">{t('studio.title')}</h1>
+      <p className="st-body st-lede">{t('studio.lede')}</p>
       <section className="st-sec">
         <div className="st-sh">
-          <h2 className="t-h">{t('studio.start.boardTemplates')}</h2>
+          <h2 className="st-h">{t('studio.start.boardTemplates')}</h2>
         </div>
         {presets.status === 'ready' ? (
           <ul className="st-rows">
@@ -180,37 +180,37 @@ function Start({ presets, blueprint, items, canCustomize }: StartProps) {
             ))}
           </ul>
         ) : (
-          <p className="t-small">
+          <p className="st-small">
             {presets.status === 'loading' ? t('common.loading') : presets.message}
           </p>
         )}
       </section>
       <section className="st-sec">
         <div className="st-sh">
-          <h2 className="t-h">{t('studio.start.projectTemplates')}</h2>
-          <span className="t-cap">{t('studio.blueprintNote')}</span>
+          <h2 className="st-h">{t('studio.start.projectTemplates')}</h2>
+          <span className="st-cap">{t('studio.blueprintNote')}</span>
         </div>
         {blueprint ? (
-          <a className="st-card raised" href={studioHash({ kind: 'blueprint', diagram: true })}>
+          <a className="st-card st-raised" href={studioHash({ kind: 'blueprint', diagram: true })}>
             <span className="st-card-h">
-              <b className="mono">{blueprint.name}</b>
-              <span className="t-cap">{`v${blueprint.version} · ${t('studio.blueprint.boardsCount', { count: blueprint.boards.length })}`}</span>
+              <b className="st-mono">{blueprint.name}</b>
+              <span className="st-cap">{`v${blueprint.version} · ${t('studio.blueprint.boardsCount', { count: blueprint.boards.length })}`}</span>
               {'upToDate' in blueprint.status && !blueprint.status.upToDate ? (
-                <span className="t-cap st-li-origin">{t('studio.index.changed')}</span>
+                <span className="st-cap st-li-origin">{t('studio.index.changed')}</span>
               ) : null}
             </span>
             <span className="st-fs">
               {blueprint.connections.map((text) => (
-                <code key={text} className="t-cap">
+                <code key={text} className="st-cap">
                   {text}
                 </code>
               ))}
             </span>
           </a>
         ) : (
-          <a className="st-card raised" href={studioHash({ kind: 'blueprints' })}>
+          <a className="st-card st-raised" href={studioHash({ kind: 'blueprints' })}>
             <b>{t('studio.index.noBlueprint')}</b>
-            <span className="t-small">{t('studio.start.pick')}</span>
+            <span className="st-small">{t('studio.start.pick')}</span>
           </a>
         )}
       </section>
@@ -283,7 +283,7 @@ export function Studio({
           <a className="st-index-h" href={studioHash()}>
             {t('studio.title')}
           </a>
-          <span className="t-label">{t('studio.index.blueprint')}</span>
+          <span className="st-label">{t('studio.index.blueprint')}</span>
           <ul className="st-list">
             <li>
               <a
@@ -299,18 +299,18 @@ export function Studio({
                 <span className="st-li-name">
                   {copy ? copy.name : t('studio.index.noBlueprint')}
                 </span>
-                <span className="t-cap">
+                <span className="st-cap">
                   {copy
                     ? `v${copy.version} · ${t('studio.blueprint.boardsCount', { count: copy.boards.length })}`
                     : t('studio.index.pickOne')}
                 </span>
                 {copy && 'upToDate' in copy.status && !copy.status.upToDate ? (
-                  <span className="t-cap st-li-origin">{t('studio.index.changed')}</span>
+                  <span className="st-cap st-li-origin">{t('studio.index.changed')}</span>
                 ) : null}
               </a>
             </li>
           </ul>
-          <span className="t-label">{t('studio.index.presets')}</span>
+          <span className="st-label">{t('studio.index.presets')}</span>
           <PresetIndex
             presets={presets}
             selected={page.kind === 'preset' ? page.name : undefined}

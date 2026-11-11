@@ -82,14 +82,14 @@ export function BlueprintPage({
     onChanged();
   };
   if (state.status === 'loading' || presets.status === 'loading')
-    return <p className="t-small st-msg">{t('common.loading')}</p>;
-  if (state.status === 'failed') return <p className="action-error st-msg">{state.message}</p>;
-  if (presets.status === 'failed') return <p className="action-error st-msg">{presets.message}</p>;
+    return <p className="st-small st-msg">{t('common.loading')}</p>;
+  if (state.status === 'failed') return <p className="st-error st-msg">{state.message}</p>;
+  if (presets.status === 'failed') return <p className="st-error st-msg">{presets.message}</p>;
   const { blueprint, problems } = state.value;
   if (blueprint === null) {
     return (
       <>
-        {problems.length > 0 ? <p className="action-error st-msg">{problems.join('; ')}</p> : null}
+        {problems.length > 0 ? <p className="st-error st-msg">{problems.join('; ')}</p> : null}
         <Picker
           connection={connection}
           version={version}
@@ -265,9 +265,9 @@ function Editor({
   };
   return (
     <div className="st-preset st-studio st-bp">
-      <header className="st-head">
-        <div className="st-hl">
-          <a className="st-crumb mono" href={studioHash()}>
+      <header className="sst-head">
+        <div className="sst-hl">
+          <a className="st-crumb st-mono" href={studioHash()}>
             {t('studio.crumbBlueprint')}
           </a>
           <h1 className="st-name">{blueprint.name}</h1>
@@ -291,7 +291,7 @@ function Editor({
             </a>
           </fieldset>
         </div>
-        <div className="st-hr">
+        <div className="sst-hr">
           <Verdict problems={problems.length} />
           {nothing.length > 0 ? (
             <span className="st-offscreen-at">
@@ -346,7 +346,7 @@ function Editor({
           <span>{applied.join(' · ')}</span>
         </p>
       ) : null}
-      {error ? <p className="action-error st-banner">{error}</p> : null}
+      {error ? <p className="st-error st-banner">{error}</p> : null}
       {problems.length > 0 ? (
         <div className="st-banner st-bp-problems" role="status">
           <ProblemMark />
@@ -411,8 +411,8 @@ function Editor({
             {page === 'playbook' ? (
               <section className="st-sec st-bp-playbook">
                 <div className="st-sh">
-                  <h2 className="t-h">{t('studio.blueprint.playbook')}</h2>
-                  <span className="t-cap">{t('studio.blueprint.playbookNote')}</span>
+                  <h2 className="st-h">{t('studio.blueprint.playbook')}</h2>
+                  <span className="st-cap">{t('studio.blueprint.playbookNote')}</span>
                 </div>
                 <textarea
                   className="st-md"
@@ -439,7 +439,7 @@ function Editor({
               />
             )}
             {adding && set ? (
-              <div className="st-bp-add raised">
+              <div className="st-bp-add st-raised">
                 <NewBoard
                   presets={presets}
                   taken={draft.boards.map(({ name }) => name)}
@@ -515,7 +515,7 @@ function SourceStatus({
       </div>
     );
   }
-  if ('error' in status) return <p className="st-banner t-small">{status.error}</p>;
+  if ('error' in status) return <p className="st-banner st-small">{status.error}</p>;
   if (status.upToDate) return null;
   return (
     <div className="st-source">
@@ -526,7 +526,7 @@ function SourceStatus({
             ? t('studio.blueprint.sourceMissing')
             : t('studio.blueprint.sourceChanged', { name: status.name })}
         </b>
-        {status.missing ? <span className="t-small">{status.missing}</span> : null}
+        {status.missing ? <span className="st-small">{status.missing}</span> : null}
         <ul>
           {status.changes.map((change) => (
             <li key={change}>
@@ -534,8 +534,8 @@ function SourceStatus({
             </li>
           ))}
         </ul>
-        <span className="t-cap">{t('studio.blueprint.sourceNote')}</span>
-        {error ? <span className="action-error t-small">{error}</span> : null}
+        <span className="st-cap">{t('studio.blueprint.sourceNote')}</span>
+        {error ? <span className="st-error st-small">{error}</span> : null}
       </div>
       {editable && !status.missing ? (
         <Button
@@ -579,9 +579,9 @@ function NewBoard({
         setName('');
       }}
     >
-      <span className="t-label">{t('studio.blueprint.newBoard')}</span>
+      <span className="st-label">{t('studio.blueprint.newBoard')}</span>
       <input
-        className="st-input mono"
+        className="st-input st-mono"
         value={name}
         placeholder={t('studio.fields.name')}
         aria-label={t('studio.blueprint.boardName')}
@@ -589,7 +589,7 @@ function NewBoard({
         spellCheck={false}
       />
       <select
-        className="st-input mono"
+        className="st-input st-mono"
         value={preset}
         aria-label={t('studio.blueprint.preset')}
         onChange={(event) => setPreset(event.target.value)}
@@ -604,7 +604,7 @@ function NewBoard({
         <Icon name="plus" />
         {t('studio.blueprint.addBoard')}
       </Button>
-      <span className="t-cap">{t('studio.blueprint.newBoardNote')}</span>
+      <span className="st-cap">{t('studio.blueprint.newBoardNote')}</span>
     </form>
   );
 }
@@ -631,7 +631,7 @@ function ReadItAs({
   const holds = group(['holds']);
   return (
     <div className="st-insp-b">
-      <span className="t-label">{t('studio.blueprint.readAs')}</span>
+      <span className="st-label">{t('studio.blueprint.readAs')}</span>
       <Seg
         mono
         label={t('studio.blueprint.readAs')}
@@ -639,7 +639,7 @@ function ReadItAs({
         value={board}
         onChange={setBoard}
       />
-      <h2 className="t-h">{t('studio.blueprint.agentIn', { board })}</h2>
+      <h2 className="st-h">{t('studio.blueprint.agentIn', { board })}</h2>
       <ReadGroup title={t('studio.blueprint.waitsFor')} readings={waits} board={board} />
       <ReadGroup title={t('studio.blueprint.fedBy')} readings={fed} board={board} />
       <ReadGroup title={t('studio.blueprint.holdsUp')} readings={holds} board={board} />
@@ -668,7 +668,7 @@ function ReadGroup({
 }) {
   return (
     <div className="st-rg">
-      <span className="t-label">{title}</span>
+      <span className="st-label">{title}</span>
       {readings.length === 0 ? (
         <p className="st-ri">
           <OkMark />
@@ -692,7 +692,7 @@ function ReadLine({ reading, board }: { reading: Reading; board: string }) {
         <span className="st-bw-i">⧗</span>
         <span>
           <b>{t('studio.blueprint.ownChildren')}</b>
-          <span className="t-small">
+          <span className="st-small">
             {t('studio.blueprint.childrenLine', { type: reading.type, state: reading.state })}
           </span>
         </span>
@@ -714,7 +714,7 @@ function ReadLine({ reading, board }: { reading: Reading; board: string }) {
       )}
       <span>
         <b>{`${other.board} · ${connectionText(connection)}`}</b>
-        <span className="t-small">
+        <span className="st-small">
           {reading.kind === 'waits' && reading.state
             ? t('studio.blueprint.waitsLine', {
                 type: connection.to.type,
@@ -762,7 +762,7 @@ export function Picker({
   const [error, setError] = useState<string>();
   if (listing.status !== 'ready')
     return (
-      <p className="t-small st-msg">
+      <p className="st-small st-msg">
         {listing.status === 'loading' ? t('common.loading') : listing.message}
       </p>
     );
@@ -770,30 +770,30 @@ export function Picker({
   const picked = blueprints.find(({ name }) => name === chosen) ?? blueprints[0];
   return (
     <div className="st-start">
-      <h1 className="t-display">
+      <h1 className="st-display">
         {hasBlueprint ? t('studio.picker.otherTitle') : t('studio.picker.title')}
       </h1>
-      <p className="t-body st-lede">{t('studio.picker.lede')}</p>
+      <p className="st-body st-lede">{t('studio.picker.lede')}</p>
       <div className="st-pick">
         <div className="st-pick-l">
-          <span className="t-label">{t('studio.picker.blueprints')}</span>
+          <span className="st-label">{t('studio.picker.blueprints')}</span>
           {blueprints.map((blueprint) => (
             <button
               key={blueprint.name}
               type="button"
-              className="st-card raised"
+              className="st-card st-raised"
               aria-pressed={blueprint === picked}
               onClick={() => setChosen(blueprint.name)}
             >
               <span className="st-card-h">
-                <b className="mono">{blueprint.name}</b>
-                <span className="t-cap">
+                <b className="st-mono">{blueprint.name}</b>
+                <span className="st-cap">
                   {`${t('studio.blueprint.boardsCount', { count: blueprint.boards.length })} · ${t(
                     'studio.picker.links',
                     { count: blueprint.connections.length },
                   )}`}
                 </span>
-                <span className="t-cap st-li-origin">
+                <span className="st-cap st-li-origin">
                   {blueprint.origin === 'official'
                     ? t('studio.picker.official')
                     : t('studio.index.project')}
@@ -838,7 +838,7 @@ export function Picker({
           >
             {t('studio.picker.create', { count: picked.boards.length })}
           </Button>
-          <span className="t-cap">
+          <span className="st-cap">
             {t('studio.picker.presetsAsAre', {
               presets: picked.boards
                 .map(
@@ -848,10 +848,10 @@ export function Picker({
                 .join(', '),
             })}
           </span>
-          {error ? <span className="action-error t-small">{error}</span> : null}
+          {error ? <span className="st-error st-small">{error}</span> : null}
         </div>
       ) : hasBlueprint ? (
-        <p className="t-cap">{t('studio.picker.hasOne')}</p>
+        <p className="st-cap">{t('studio.picker.hasOne')}</p>
       ) : null}
     </div>
   );
@@ -865,10 +865,10 @@ function PickPreview({
   presets: PresetView[];
 }) {
   return (
-    <section className="st-gets raised">
+    <section className="st-gets st-raised">
       <span className="st-card-h">
-        <span className="t-label">{t('studio.picker.gets')}</span>
-        <span className="t-cap st-li-origin">{`${blueprint.name} v${blueprint.version}`}</span>
+        <span className="st-label">{t('studio.picker.gets')}</span>
+        <span className="st-cap st-li-origin">{`${blueprint.name} v${blueprint.version}`}</span>
       </span>
       {blueprint.boards.map((board) => {
         const preset = presets.find(({ name }) => name === board.preset);
@@ -876,26 +876,26 @@ function PickPreview({
           <div key={board.name} className="st-gets-b">
             <span>
               <b>{board.name}</b>
-              <span className="t-cap">{t('studio.picker.boardOf', { preset: board.preset })}</span>
+              <span className="st-cap">{t('studio.picker.boardOf', { preset: board.preset })}</span>
             </span>
-            <span className="t-cap">
+            <span className="st-cap">
               {(preset?.types ?? []).map(({ name }) => name).join(' · ')}
             </span>
           </div>
         );
       })}
-      <span className="t-label">{t('studio.picker.between')}</span>
+      <span className="st-label">{t('studio.picker.between')}</span>
       {blueprint.connections.length === 0 ? (
-        <span className="t-small">{t('studio.blueprint.noLinks')}</span>
+        <span className="st-small">{t('studio.blueprint.noLinks')}</span>
       ) : null}
       {blueprint.connections.map((text) => (
-        <code key={text} className="t-small">
+        <code key={text} className="st-small">
           {text}
         </code>
       ))}
-      <span className="t-label">{t('studio.picker.and')}</span>
-      {blueprint.playbook ? <span className="t-small">{t('studio.picker.playbook')}</span> : null}
-      <span className="t-small">{t('studio.picker.copy')}</span>
+      <span className="st-label">{t('studio.picker.and')}</span>
+      {blueprint.playbook ? <span className="st-small">{t('studio.picker.playbook')}</span> : null}
+      <span className="st-small">{t('studio.picker.copy')}</span>
     </section>
   );
 }

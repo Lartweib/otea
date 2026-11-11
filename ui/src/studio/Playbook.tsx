@@ -36,8 +36,8 @@ export function PlaybookSection({
   return (
     <section className="st-sec">
       <div className="st-sh">
-        <h2 className="t-h">{t('studio.section.playbook')}</h2>
-        <span className="t-cap">{t('studio.playbook.note')}</span>
+        <h2 className="st-h">{t('studio.section.playbook')}</h2>
+        <span className="st-cap">{t('studio.playbook.note')}</span>
       </div>
       <div className="st-pb">
         <div className="st-pbl">
@@ -49,7 +49,7 @@ export function PlaybookSection({
               onClick={() => setChosen(file.path)}
             >
               <span>{file.owner === undefined ? t('studio.playbook.everyType') : file.owner}</span>
-              <code className="t-cap">{file.path}</code>
+              <code className="st-cap">{file.path}</code>
             </button>
           ))}
           {setDraftAll && !presetHasOwn ? (
@@ -81,9 +81,9 @@ export function PlaybookSection({
           ) : null}
           {parts.length > 0 ? (
             <div className="st-parts">
-              <span className="t-label">{t('studio.playbook.parts')}</span>
+              <span className="st-label">{t('studio.playbook.parts')}</span>
               {parts.map((part) => (
-                <span key={part} className="t-small">
+                <span key={part} className="st-small">
                   {part}
                 </span>
               ))}
@@ -92,7 +92,7 @@ export function PlaybookSection({
         </div>
         <div className="st-pbe">
           {path === undefined ? (
-            <p className="t-small">{t('studio.playbook.none')}</p>
+            <p className="st-small">{t('studio.playbook.none')}</p>
           ) : (
             <textarea
               className="st-md"
@@ -103,7 +103,7 @@ export function PlaybookSection({
               onChange={(event) => setPlaybook?.(path, event.target.value)}
             />
           )}
-          <p className="t-cap">{t('studio.playbook.order')}</p>
+          <p className="st-cap">{t('studio.playbook.order')}</p>
         </div>
       </div>
     </section>
