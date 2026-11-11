@@ -33,16 +33,19 @@ describe('migrate', () => {
         'project',
         'agents',
         'devices',
+        'boards',
+        'board_versions',
+        'board_drafts',
       ]),
     );
-    expect(userVersion(db)).toBe(11);
+    expect(userVersion(db)).toBe(12);
   });
 
   it('is idempotent', () => {
     migrate(db);
     migrate(db);
 
-    expect(userVersion(db)).toBe(11);
+    expect(userVersion(db)).toBe(12);
   });
 
   describe('from version 1', () => {

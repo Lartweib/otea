@@ -23,6 +23,7 @@ import {
   selectRegisteredProjects,
 } from '../store/registry.ts';
 import { readProjectBlueprint } from './blueprints.ts';
+import { syncBoardPresets } from './boards.ts';
 import { nameImplicitTypes } from './collections.ts';
 import type { Context } from './context.ts';
 import {
@@ -117,13 +118,16 @@ function open(found: Found, identity = () => newIdentity(found.root)): Project {
   migrate(db);
   const presets = loadPresets(found.dataDir);
   nameImplicitTypes({ db, presets });
-  return {
+  const project: Project = {
     ...found,
     db,
     presets,
     blueprint: readProjectBlueprint(found.dataDir)?.blueprint,
     identity: ensureIdentity(db, identity),
   };
+  // Published boards join the catalog as compiled presets (app/boards.ts).
+  syncBoardPresets(project);
+  return project;
 }
 
 // A common project's data lives apart from its folders, so it can go missing on its own.

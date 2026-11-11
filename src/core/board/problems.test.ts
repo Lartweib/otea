@@ -124,6 +124,17 @@ describe('problemsOf', () => {
     expect(codes(def)).toEqual(['error:part_missing', 'error:cap_invalid']);
   });
 
+  it('blocks a name another board of the project already has, whatever its case', () => {
+    expect(problemsOf(creatures(), { agents, takenNames: ['criaturas'] })).toEqual([
+      {
+        level: 'error',
+        code: 'board_name_taken',
+        params: { name: 'Criaturas' },
+        at: { kind: 'about' },
+      },
+    ]);
+  });
+
   it('says whether anything blocks publishing', () => {
     expect(blocking(problemsOf(creatures(), { agents: [] }))).toBe(false);
     expect(blocking(problemsOf({ ...creatures(), steps: [] }, { agents }))).toBe(true);

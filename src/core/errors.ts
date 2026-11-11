@@ -38,7 +38,10 @@ export type ErrorCode =
   | 'in_use'
   | 'invalid_blueprint'
   | 'link_not_in_blueprint'
-  | 'invalid_draft';
+  | 'invalid_draft'
+  | 'invalid_board'
+  | 'board_conflict'
+  | 'not_publishable';
 
 export class OteaError extends Error {
   readonly code: ErrorCode;
