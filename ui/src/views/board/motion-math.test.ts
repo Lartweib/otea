@@ -8,6 +8,7 @@ import {
   edgeFrame,
   inkHead,
   morphDelay,
+  morphEnds,
   near,
   plateOpacity,
   revealAt,
@@ -125,5 +126,18 @@ describe('the morph (mock:2441-2573)', () => {
     expect(near({ y: 100, h: 20 }, 1000, vr)).toBe(false);
     expect(near({ y: -900, h: 20 }, 1000, vr)).toBe(true);
     expect(near({ y: -1090, h: 20 }, 1000, vr)).toBe(false);
+  });
+});
+
+describe('the morph ends a frame after its last piece lands', () => {
+  // The frame a piece lands draws it as the real piece; the morph lets that frame show before it
+  // goes, so its last frame is the destination and nothing moves when it ends.
+  it('does not end in the frame everything first comes to rest', () => {
+    expect(morphEnds(false, true)).toBe(false);
+  });
+
+  it('ends in the next one, if it is still at rest', () => {
+    expect(morphEnds(true, true)).toBe(true);
+    expect(morphEnds(true, false)).toBe(false);
   });
 });

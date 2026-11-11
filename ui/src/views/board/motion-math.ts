@@ -107,6 +107,12 @@ export function colFade(o: { fwd: boolean; t: number; ci: number; o0: number; re
   return o.rev ? { o: op } : { o: op, rule: F.ink(clamp((o.t - d) / 420)) };
 }
 
+// The morph ends a frame after everything is at rest: the frame it comes to rest shows the
+// destination's own pieces, and the end removes nothing that was still being drawn.
+export function morphEnds(restingBefore: boolean, restingNow: boolean): boolean {
+  return restingBefore && restingNow;
+}
+
 // Only what is within the viewport and 160 px around it travels.
 export function near(
   r: { y: number; h: number },

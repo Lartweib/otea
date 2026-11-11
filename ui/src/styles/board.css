@@ -206,6 +206,9 @@
   margin: 0;
   transform-origin: 0 0;
 }
+.ov.under {
+  z-index: 0;
+}
 .ov .plate {
   border: 1px solid var(--rule);
   border-radius: 6px;
@@ -217,6 +220,12 @@
 .morphing .card {
   background: transparent;
   border-color: transparent;
+  /* a card that lands takes its sheet back in that frame, not over a fade */
+  transition: none;
+}
+/* the frame the morph ends: what it handed back is already in place, nothing fades in after */
+.board .stage.settling * {
+  transition: none;
 }
 .lista .lanes {
   max-width: 1040px;
