@@ -18,6 +18,7 @@ import {
 import { OteaError } from '../core/errors.ts';
 import { evidenceTypeOf } from '../core/evidence.ts';
 import { type PresetNote, readPreset } from '../core/preset.ts';
+import { slugify } from '../core/project-id.ts';
 import {
   readSamples,
   SAMPLE_FILE,
@@ -576,7 +577,7 @@ export function customizeBoard(project: Project, board: string, yaml: string): C
     const saved = savePreset(project, used, { yaml: named(yaml, used) });
     return { preset: used, version: saved.version ?? 0, previous };
   }
-  const copy = freeCopyName(project, `${board}-${used}`);
+  const copy = freeCopyName(project, `${slugify(board)}-${used}`);
   duplicatePreset(project, used, copy);
   try {
     const saved = savePreset(project, copy, { yaml: named(yaml, copy) });

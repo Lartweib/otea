@@ -41,6 +41,17 @@ describe('customizing a board', () => {
     project.db.close();
   });
 
+  it('names the copy by a lowercase form of a board named with capitals or accents', () => {
+    const project = bare();
+    insertNewCollection(project, { name: 'Tareas Ñandú', preset: 'tasks' });
+
+    const done = customizeBoard(project, 'Tareas Ñandú', yamlOf(project, 'tasks'));
+
+    expect(done.preset).toBe('tareas-nandu-tasks');
+    expect(findCollection(project.db, 'Tareas Ñandú')?.preset).toBe('tareas-nandu-tasks');
+    project.db.close();
+  });
+
   it('refuses a board that is not a collection', () => {
     const project = bare();
     expect(() => customizeBoard(project, 'nope', yamlOf(project))).toThrow(
