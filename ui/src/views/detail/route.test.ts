@@ -3,6 +3,7 @@ import { officialType } from '../../derive/fixtures.ts';
 import {
   dipsOf,
   futureD,
+  labelsShown,
   laneD,
   type RouteStep,
   routeGeom,
@@ -99,5 +100,37 @@ describe('the dips under your lane (mock:2645-2654)', () => {
 
   it('skips a dip off the path', () => {
     expect(dipsOf(g, [{ at: -1, label: 'x' }])).toEqual([]);
+  });
+});
+
+describe('the step names over the route', () => {
+  const words = ['REPORTADO', 'ACEPTADO', 'EN ARREGLO', 'A VERIFICAR', 'ARREGLADO'];
+
+  it('shows every name when they fit', () => {
+    expect(labelsShown([44, 300, 560, 820, 1080], words, 3, 7.9)).toEqual([
+      true,
+      true,
+      true,
+      true,
+      true,
+    ]);
+  });
+
+  it('gives way when two would touch, keeping the current step, then the ends', () => {
+    // A 440 px wide route beside a narrow sheet: A VERIFICAR (current) and ARREGLADO collide.
+    expect(labelsShown([44, 140, 236, 332, 409], words, 3, 6.6)).toEqual([
+      true,
+      true,
+      true,
+      true,
+      false,
+    ]);
+    expect(labelsShown([44, 140, 236, 332, 409], words, 1, 6.6)).toEqual([
+      true,
+      true,
+      true,
+      false,
+      true,
+    ]);
   });
 });
