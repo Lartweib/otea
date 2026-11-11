@@ -12,6 +12,19 @@ const rowSel = (key: string) => `:scope > .row[data-k="${CSS.escape(key)}"]:not(
 const titleOf = (row: HTMLElement) =>
   row.querySelector<HTMLElement>('.tt') ?? row.querySelector<HTMLElement>('.t') ?? row;
 
+// The horizontal translation in a computed transform: a row sliding in (the draw-in, the view
+// morph's resolve) is measured where it stands, not where it is passing.
+export function shiftOf(transform: string): number {
+  const m = /^matrix(3d)?\((.*)\)$/.exec(transform.trim());
+  if (!m) return 0;
+  const v = (m[2] ?? '').split(',').map(Number);
+  return (m[1] ? v[12] : v[4]) ?? 0;
+}
+
+// A row's title's left edge, as it stands in the layout.
+const titleLeft = (row: HTMLElement) =>
+  titleOf(row).getBoundingClientRect().left - shiftOf(getComputedStyle(row).transform);
+
 // The child rows listed right under a parent row.
 export function childRows(parent: HTMLElement): HTMLElement[] {
   const out: HTMLElement[] = [];
@@ -33,13 +46,12 @@ export function treeGeom(list: HTMLElement, parentKey: string): TreeGeom | null 
   const kids = childRows(P);
   if (!kids.length) return null;
   const lr = list.getBoundingClientRect();
-  const pt = titleOf(P).getBoundingClientRect();
-  const bx = Math.round(pt.left - lr.left + 6) + 0.5;
+  const bx = Math.round(titleLeft(P) - lr.left + 6) + 0.5;
   const y0 = P.offsetTop + nodeOff(P) + 10;
   const ks = kids.map((c) => ({
     el: c,
     cy: c.offsetTop + nodeOff(c),
-    end: Math.round(titleOf(c).getBoundingClientRect().left - lr.left - 6),
+    end: Math.round(titleLeft(c) - lr.left - 6),
     top: c.offsetTop,
     h: c.offsetHeight,
   }));
