@@ -32,7 +32,7 @@ describe('the restyled stylesheets', () => {
     it(`${name} names its families by token`, () => {
       const families = [...css(name).matchAll(/font(?:-family)?\s*:[^;]*;/g)].map(([rule]) => rule);
       const named = families.filter((rule) =>
-        /['"]|\b(Georgia|Arial|serif|monospace)\b/.test(rule),
+        /['"]|\b(Georgia|Arial|serif|monospace)\b/.test(rule.replace(/var\(--[\w-]+\)/g, '')),
       );
       expect(named).toEqual([]);
     });
