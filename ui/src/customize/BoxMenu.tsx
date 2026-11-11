@@ -26,7 +26,7 @@ export function BoxMenu(p: BoxMenuProps) {
   useDismiss(ref, p.onClose);
   return (
     <div ref={ref} className="cz-menu" tabIndex={-1} style={p.style}>
-      <div className="cz-mh">
+      <div className="cz-mh" data-i="">
         <input
           className="cz-in"
           type="text"
@@ -43,7 +43,7 @@ export function BoxMenu(p: BoxMenuProps) {
           <Cross />
         </button>
       </div>
-      <div className="cz-mud">
+      <div className="cz-mud" data-i="">
         <button type="button" className="btn sm quiet" disabled={p.upDisabled} onClick={p.onUp}>
           <Up />
           {t('customize.moveUp')}
@@ -53,7 +53,7 @@ export function BoxMenu(p: BoxMenuProps) {
           {t('customize.moveDown')}
         </button>
       </div>
-      <div className="cz-sg wrap">
+      <div className="cz-sg wrap" data-i="">
         <button
           type="button"
           className={p.beside ? 'on' : ''}
@@ -73,7 +73,7 @@ export function BoxMenu(p: BoxMenuProps) {
         </button>
       </div>
       {p.canRemove ? (
-        <div className="cz-mfoot">
+        <div className="cz-mfoot" data-i="">
           <button type="button" className="btn sm quiet" onClick={p.onRemove}>
             {t('customize.removeBox')}
           </button>

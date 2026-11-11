@@ -1571,6 +1571,8 @@ function MenuSlot({
   const kept = useRef(wanted ?? 0);
   if (wanted !== undefined) kept.current = wanted;
   const top = kept.current;
+  const named = useRef(label);
+  if (open) named.current = label;
   const [box, setBox] = useState({ left: 0, top, max: 0 });
   const place = useCallback(() => {
     const node = ref.current;
@@ -1609,7 +1611,7 @@ function MenuSlot({
       data-open={open ? '' : undefined}
       style={{ left: box.left, top: box.top, maxHeight: box.max || undefined }}
     >
-      <Unroll open={open} label={label} className="cz-menuu">
+      <Unroll open={open} label={named.current} className="cz-menuu">
         {children}
       </Unroll>
     </div>
