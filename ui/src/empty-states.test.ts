@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { addCommand, createCommand, emptyKind, firstName, routeOf } from './empty-states.ts';
-import { LANE } from './lanes.ts';
+import { X } from './lanes/geometry.ts';
 import type { Layout, PresetView, Turn } from './types.ts';
 
 const LAYOUT: Layout = {
@@ -74,10 +74,10 @@ describe('empty states', () => {
 
     expect(route.height).toBe(90);
     expect(route.stops).toEqual([
-      { name: 'incomplete', x: LANE.agent, kind: 'incomplete' },
-      { name: 'review', x: LANE.you, kind: 'you' },
-      { name: 'done', x: LANE.trunk, kind: 'done' },
+      { name: 'incomplete', x: X.ag, look: 'waiting' },
+      { name: 'review', x: X.you, look: 'yours' },
+      { name: 'done', x: X.none, look: 'done' },
     ]);
-    expect(route.path.startsWith(`M${LANE.agent} 15 C`)).toBe(true);
+    expect(route.path.startsWith(`M${X.ag} 15 C`)).toBe(true);
   });
 });

@@ -2,10 +2,10 @@ import { useEffect, useRef, useState } from 'react';
 import { writeBrief } from '../api.ts';
 import { briefFileName, reorder, toggleIn, type WrittenBrief } from '../brief.ts';
 import { listOf, t } from '../i18n/i18n.ts';
-import { Button, Icon, NodeMark } from '../kit/index.ts';
-import { activeLease } from '../lease.ts';
+import { Button, Icon, Seg } from '../kit/index.ts';
+import { type Look, lookOf } from '../lanes/looks.ts';
+import { NodeGlyph } from '../lanes/NodeGlyph.tsx';
 import { renderMarkdown } from '../markdown.ts';
-import { itemNodeKind } from '../node-kind.ts';
 import { briefHash, hashFor, ITEMS_HASH } from '../selection.ts';
 import type { CollectionView, Item } from '../types.ts';
 
@@ -78,7 +78,7 @@ function exportFile(markdown: string, ids: readonly string[]): void {
 
 // Page 06: the items of a brief in their order on the left, with the limits and success lines; the
 // brief itself beside them as a document (or its Markdown), to copy or export. Nothing is sent.
-export function BriefView({ ids, items, collections, version }: BriefViewProps) {
+export function BriefView({ ids, items, version }: BriefViewProps) {
   // Taken out of the brief, kept below the line so they can come back.
   const [left, setLeft] = useState<string[]>([]);
   const [limits, setLimits] = useState<string>();
@@ -129,13 +129,9 @@ export function BriefView({ ids, items, collections, version }: BriefViewProps) 
       () => undefined,
     );
   };
-  const kindOf = (id: string) => {
+  const lookFor = (id: string): Look => {
     const item = byId.get(id);
-    if (!item) return 'queued';
-    const type = collections
-      .find((each) => each.name === item.collection)
-      ?.types.find((each) => each.name === item.type);
-    return itemNodeKind(item, type, activeLease(item.lease, Date.now()) !== null);
+    return item ? lookOf(item, Date.now()) : 'queued';
   };
   const boards = [
     ...new Set(ids.map((id) => byId.get(id)?.collection).filter((name) => name !== undefined)),
@@ -164,20 +160,22 @@ export function BriefView({ ids, items, collections, version }: BriefViewProps) 
 
   return (
     <div className="brief">
-      <header className="brief-head">
-        <a className="quiet-link t-small brief-back" href={ITEMS_HASH}>
+      <header className="head brief-head" data-enter="head">
+        <a className="back" href={ITEMS_HASH}>
+          <span aria-hidden="true">← </span>
           {t('brief.back')}
         </a>
-        <span className="t-label">{t('brief.label')}</span>
-        <h1 className="t-display">{t('brief.title')}</h1>
-        <span className="t-small">
+        <div className="kicker">
+          <b>{t('brief.title')}</b> &nbsp;·&nbsp;{' '}
           {t('brief.head', { count: ids.length, boards: listOf(boards) })}
-        </span>
+        </div>
+        <h1 className="display">{t('brief.title')}</h1>
+        <p className="dek">{t('brief.editNote')}</p>
       </header>
       <div className="brief-main">
         <div className="brief-left">
-          <div className="brief-sub">
-            <h2 className="t-h">{t('brief.in')}</h2>
+          <div className="brief-sub sec">
+            <h2>{t('brief.in')}</h2>
             <span className="t-cap">{t('brief.inNote')}</span>
           </div>
           <ol className="brief-rows">
@@ -187,15 +185,7 @@ export function BriefView({ ids, items, collections, version }: BriefViewProps) 
                 className="brief-row"
                 data-held={held?.id === entry.id || undefined}
               >
-                <svg
-                  className="brief-node"
-                  width="28"
-                  height="28"
-                  viewBox="0 0 28 28"
-                  aria-hidden="true"
-                >
-                  <NodeMark kind={kindOf(entry.id)} cx={14} cy={14} />
-                </svg>
+                <NodeGlyph look={lookFor(entry.id)} size={16} className="cn brief-node" />
                 <a className="t-id" href={hashFor(entry.id)}>
                   {entry.id}
                 </a>
@@ -249,15 +239,7 @@ export function BriefView({ ids, items, collections, version }: BriefViewProps) 
               <ol className="brief-rows" data-out="">
                 {outIds.map((id) => (
                   <li key={id} className="brief-row">
-                    <svg
-                      className="brief-node"
-                      width="28"
-                      height="28"
-                      viewBox="0 0 28 28"
-                      aria-hidden="true"
-                    >
-                      <NodeMark kind={kindOf(id)} cx={14} cy={14} />
-                    </svg>
+                    <NodeGlyph look={lookFor(id)} size={16} className="cn brief-node" />
                     <span className="t-id">{id}</span>
                     <span className="brief-tx">
                       <span className="brief-ttl">{byId.get(id)?.title ?? id}</span>
@@ -290,29 +272,18 @@ export function BriefView({ ids, items, collections, version }: BriefViewProps) 
               />
             </label>
           </div>
-          <span className="t-small">{t('brief.editNote')}</span>
         </div>
-        <section className="brief-doc raised" aria-label={t('brief.title')}>
+        <section className="brief-doc" aria-label={t('brief.title')}>
           <div className="brief-bar">
-            {/* biome-ignore lint/a11y/useSemanticElements: a pair of toggle buttons, labelled as one control */}
-            <span className="view-switch" role="group" aria-label={t('brief.view')}>
-              <button
-                type="button"
-                className="view-switch-b"
-                aria-pressed={view === 'document'}
-                onClick={() => setView('document')}
-              >
-                {t('brief.document')}
-              </button>
-              <button
-                type="button"
-                className="view-switch-b"
-                aria-pressed={view === 'markdown'}
-                onClick={() => setView('markdown')}
-              >
-                {t('brief.markdown')}
-              </button>
-            </span>
+            <Seg
+              value={view}
+              label={t('brief.view')}
+              options={[
+                { value: 'document', label: t('brief.document') },
+                { value: 'markdown', label: t('brief.markdown') },
+              ]}
+              onChange={(v) => setView(v)}
+            />
             <span className="brief-acts">
               <Button size="sm" variant="quiet" disabled={!brief} onClick={copy}>
                 {copied ? t('brief.copied') : t('brief.copy')}

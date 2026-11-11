@@ -12,8 +12,8 @@ export function EmptyProject() {
   return (
     <div className="pj-empty-project">
       <svg className="pj-empty-lanes" width="56" height="100%" aria-hidden="true">
-        <line className="ln" x1="16" y1="0" x2="16" y2="100%" />
-        <line className="lny" x1="40" y1="0" x2="40" y2="100%" />
+        <line className="ln" x1="16.5" y1="0" x2="16.5" y2="100%" />
+        <line className="lny" x1="40.5" y1="0" x2="40.5" y2="100%" />
       </svg>
       <div className="pj-empty-body">
         <h2 className="pj-empty-title">{t('emptyProject.title', { name })}</h2>
@@ -21,7 +21,7 @@ export function EmptyProject() {
         <CopyCommand
           command={`otea create --collection ${first} --title "${t('emptyProject.example')}"`}
         />
-        <p className="t-cap pj-empty-agents">
+        <p className="pj-empty-agents">
           {tx('emptyProject.agents', { command: <code>otea playbook</code> })}
         </p>
         <dl className="pj-facts">

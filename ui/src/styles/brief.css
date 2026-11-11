@@ -1,273 +1,269 @@
-/* ---- brief: the items in their order beside the document they write ---- */
+/* Encargo (#/brief/…): the items picked, in the order their blocks allow, beside the brief they write. */
 .brief-layout {
-  min-height: 0;
-  overflow-y: auto;
+  display: block;
+  min-height: 100%;
 }
-
 .brief {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-  padding: 12px 16px 48px;
+  padding: 32px 40px 80px;
+  max-width: 1480px;
 }
-
-.brief-blank {
-  align-items: flex-start;
-  gap: 8px;
-  padding-top: 48px;
-}
-
 .brief-head {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+  padding-left: 72px;
+  margin-bottom: 26px;
 }
-
-.brief-head .t-display {
-  font-size: 32px;
+.brief-head .back {
+  display: inline-block;
+  font: 500 12.5px / 1 var(--sans);
+  color: var(--ink-2);
+  padding: 7px 9px;
+  border-radius: 6px;
+  margin: 0 0 10px -9px;
+  text-decoration: none;
+  transition:
+    background-color 240ms var(--o-drift),
+    color var(--t-hover) var(--ease);
 }
-
+.brief-head .back:hover {
+  background: var(--well);
+  color: var(--ink);
+}
+.brief-head .kicker {
+  margin-bottom: 14px;
+}
+.brief-head .display {
+  margin-bottom: 10px;
+}
 .brief-main {
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 32px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 48px;
   align-items: start;
 }
-
-@media (min-width: 64rem) {
-  .brief {
-    padding: 12px 32px 48px;
-  }
-
-  .brief-main {
-    grid-template-columns: minmax(0, 600px) minmax(0, 1fr);
-  }
-}
-
 .brief-left {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
   min-width: 0;
+  padding-left: 72px;
 }
-
-.brief-sub {
+.brief-sub.sec {
   display: flex;
-  flex-wrap: wrap;
   align-items: baseline;
-  justify-content: space-between;
-  gap: 16px;
-  padding-left: 40px;
+  gap: 10px;
+  margin: 0 0 6px;
 }
-
+.brief-sub.sec h2 {
+  font: 430 21px / 1.15 var(--serif);
+  font-variation-settings: "opsz" 24;
+  letter-spacing: -0.01em;
+}
+.brief-sub .t-cap,
+.brief-line .t-cap {
+  font: 400 italic 14px / 1.3 var(--serif);
+  color: var(--ink-3);
+}
 .brief-rows {
-  margin: 0;
-  padding: 0;
   list-style: none;
+  margin: 0 0 18px;
+  padding: 0;
+  border-top: 1px solid var(--rule);
 }
-
 .brief-row {
   display: grid;
-  grid-template-columns: 28px 74px minmax(0, 1fr) auto;
-  gap: 12px;
+  grid-template-columns: 22px 86px minmax(0, 1fr) auto;
+  gap: 10px;
   align-items: center;
-  min-height: 64px;
-  padding: 0 4px;
-  border-radius: 8px;
-  transition: background-color var(--t-fade) var(--ease);
+  padding: 10px 0;
+  border-bottom: 1px solid var(--rule);
+  transition: background-color 240ms var(--o-drift);
 }
-
-.brief-row:hover {
-  background: var(--hov);
-}
-
-.brief-rows[data-out] .brief-row {
-  color: var(--ink-2);
-}
-
 .brief-row[data-held] {
-  animation: brief-held 1800ms var(--ease);
+  background: var(--sel);
 }
-
-@keyframes brief-held {
-  0%,
-  60% {
-    background: var(--sel);
-  }
+.brief-rows[data-out] .brief-row {
+  opacity: 0.72;
 }
-
 .brief-node {
-  display: block;
-  overflow: visible;
+  justify-self: center;
 }
-
-.brief-row a.t-id {
-  color: var(--ink);
+.brief-row .t-id {
+  font: 400 11.5px / 1 var(--mono);
+  color: var(--ink-3);
   text-decoration: none;
 }
-
 .brief-row a.t-id:hover {
-  text-decoration: underline;
-  text-underline-offset: 2px;
+  color: var(--ink);
 }
-
 .brief-tx {
   display: flex;
   flex-direction: column;
+  gap: 3px;
   min-width: 0;
-  line-height: 1.35;
 }
-
 .brief-ttl {
+  font: 430 16.5px / 1.25 var(--serif);
+  color: var(--ink);
   overflow: hidden;
-  font-size: 14.5px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-
 .brief-after {
-  overflow: hidden;
-  font: 400 11.5px var(--mono);
-  color: var(--ink-2);
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font: 400 11.5px / 1.3 var(--mono);
+  color: var(--ink-3);
 }
-
-.brief-after[data-warn],
-.brief-row[data-held] .brief-after {
+.brief-after[data-warn] {
   color: var(--warn);
 }
-
 .brief-ctl {
-  display: flex;
-  justify-content: flex-end;
-  gap: 2px;
+  display: inline-flex;
+  gap: 4px;
 }
-
-.brief-down .icon {
+.brief-down svg {
   transform: rotate(180deg);
 }
-
 .brief-line {
   display: flex;
-  flex-wrap: wrap;
   align-items: baseline;
   gap: 10px;
-  padding: 12px 0 0 40px;
+  margin: 18px 0 6px;
 }
-
+.brief-line .t-label {
+  font: 600 10px / 1.3 var(--sans);
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
 .brief-ed {
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
   margin-top: 8px;
 }
-
-@media (min-width: 40rem) {
-  .brief-ed {
-    grid-template-columns: 1fr 1fr;
-  }
-}
-
 .brief-ed label {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
-
-.brief-ed textarea {
-  min-height: 168px;
-  font-size: 14px;
-  resize: vertical;
+.brief-ed .t-label {
+  font: 600 10px / 1.3 var(--sans);
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--ink-3);
 }
-
-/* ---- the document ---- */
+.brief-ed textarea {
+  min-height: 150px;
+  resize: vertical;
+  padding: 10px 12px;
+  border-radius: 7px;
+  border: 1px solid var(--rule-2);
+  background: var(--sheet);
+  font: 400 15px / 1.5 var(--serif);
+  color: var(--ink);
+  transition: border-color 240ms var(--o-drift);
+}
+.brief-ed textarea:focus {
+  outline: none;
+  border-color: var(--you);
+}
 .brief-doc {
+  min-width: 0;
+  background: var(--sheet);
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  box-shadow: 0 24px 48px -36px var(--shadow);
+  position: sticky;
+  top: 24px;
+  max-height: calc(100vh - 140px);
   display: flex;
   flex-direction: column;
-  min-width: 0;
 }
-
-@media (min-width: 64rem) {
-  .brief-doc {
-    position: sticky;
-    top: 12px;
-    max-height: calc(100dvh - 96px);
-  }
-}
-
 .brief-bar {
   display: flex;
-  flex: none;
-  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 10px 16px;
-  min-height: 64px;
-  padding: 12px 20px 12px 24px;
+  gap: 12px;
+  padding: 12px 16px;
   border-bottom: 1px solid var(--rule);
 }
-
-.brief-bar .view-switch {
-  margin-left: 0;
-}
-
 .brief-acts {
-  display: flex;
-  align-items: center;
+  display: inline-flex;
   gap: 8px;
 }
-
 .brief-body {
-  flex: 1;
-  min-height: 0;
-  padding: 30px 40px 40px;
-  overflow-y: auto;
-  overscroll-behavior: contain;
+  overflow: auto;
+  padding: 22px 28px 32px;
   scrollbar-width: thin;
 }
-
-.brief-md h1 {
-  font-size: 28px;
+.brief-body .t-small {
+  font: 400 italic 15px / 1.4 var(--serif);
+  color: var(--ink-3);
 }
-
+.brief-md {
+  font: 400 15.5px / 1.55 var(--serif);
+  color: var(--ink);
+  max-width: 72ch;
+}
+.brief-md h1 {
+  font: 430 30px / 1.1 var(--serif);
+  letter-spacing: -0.015em;
+  margin: 0 0 10px;
+}
+.brief-md h2 {
+  font: 450 19px / 1.2 var(--serif);
+  margin: 22px 0 8px;
+}
 .brief-md h3 {
-  margin-top: 22px;
-  padding-top: 12px;
+  font: 450 16.5px / 1.25 var(--serif);
+  margin: 18px 0 6px;
+  padding-top: 14px;
   border-top: 1px solid var(--rule);
 }
-
+.brief-md p,
+.brief-md ul,
+.brief-md ol {
+  margin: 0 0 10px;
+}
+.brief-md ul,
+.brief-md ol {
+  padding-left: 20px;
+}
+.brief-md code {
+  font: 400 12.5px / 1.4 var(--mono);
+  background: var(--well);
+  padding: 1px 4px;
+  border-radius: 4px;
+}
 .brief-src {
-  margin: 0;
-  font: 400 12.5px / 1.75 var(--mono);
+  font: 400 12.5px / 1.55 var(--mono);
   color: var(--ink);
   white-space: pre-wrap;
-  word-break: break-word;
+  margin: 0;
+}
+.brief-blank {
+  padding: 40px 0 0 112px;
+}
+.brief-blank .t-small {
+  font: 400 italic 17px / 1.4 var(--serif);
+  color: var(--ink-2);
+  margin-bottom: 12px;
 }
 
-@media (max-width: 47.99rem) {
-  .brief-body {
-    padding: 20px 18px 28px;
+@media (max-width: 1100px) {
+  .brief-main {
+    grid-template-columns: minmax(0, 1fr);
   }
-
-  .brief-row {
-    grid-template-columns: 28px 64px minmax(0, 1fr) auto;
-    gap: 8px;
+  .brief-doc {
+    position: static;
+    max-height: none;
   }
-
-  .brief-sub,
-  .brief-line {
+}
+@media (max-width: 720px) {
+  .brief {
+    padding: 20px 16px 60px;
+  }
+  .brief-head,
+  .brief-left,
+  .brief-blank {
     padding-left: 0;
   }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .brief-row[data-held] {
-    animation: none;
+  .brief-ed {
+    grid-template-columns: minmax(0, 1fr);
   }
-}
-
-.brief-back {
-  align-self: flex-start;
-  margin-bottom: 4px;
 }
