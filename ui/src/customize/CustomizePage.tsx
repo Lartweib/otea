@@ -87,7 +87,6 @@ import {
   start,
   type Thing,
   undo,
-  unplaced,
   yamlOf,
   ZONES,
   type Zone,

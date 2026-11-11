@@ -16,6 +16,7 @@ import { reduced } from '../../motion/reduced.ts';
 import type { Folds } from '../../nesting.ts';
 import type { CollectionView, Item } from '../../types.ts';
 import type { ViewPrefs } from '../../view-prefs.ts';
+import { moveSplit } from '../detail/DetailHost.tsx';
 import { universeOf } from '../toca/TocaView.tsx';
 import { ColumnMenu, ColumnsMenu, FilterMenu, GroupMenu, ShowOnlyMenu } from './menus.tsx';
 import {
@@ -37,7 +38,6 @@ import {
 import { type MorphJob, morph, penFade } from './morph-run.ts';
 import { Pasos } from './Pasos.tsx';
 import { listaBlocks, type RowCtx, tablaBlocks } from './rows.tsx';
-import { moveSplit } from './split.ts';
 import { relayoutTable, Tabla } from './Tabla.tsx';
 import { Tray } from './Tray.tsx';
 import { headLabel } from './table.ts';

@@ -175,18 +175,7 @@ code {
   );
 }
 
-/* Today's switches (theme-dom.ts, i18n.ts), until the shell slice moves them to the classes above. */
-:root[data-theme-switching] *,
-:root[data-theme-switching] *::before,
-:root[data-theme-switching] *::after {
-  /* biome-ignore lint/complexity/noImportantStyles: it must win over every component's transition */
-  transition: none !important;
-}
-:root[data-theme-switching]::view-transition-old(root),
-:root[data-theme-switching]::view-transition-new(root) {
-  animation: none;
-  mix-blend-mode: normal;
-}
+/* The language switch (i18n.ts). */
 :root[data-language-switching]::view-transition-group(root),
 :root[data-language-switching]::view-transition-old(root),
 :root[data-language-switching]::view-transition-new(root) {

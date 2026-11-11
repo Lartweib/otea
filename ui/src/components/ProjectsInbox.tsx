@@ -2,7 +2,6 @@ import type { ReactNode } from 'react';
 import { typeOfItem, useApp } from '../app/context.tsx';
 import { agentOf, type TocaSection, tocaSection } from '../derive/toca.ts';
 import { whenText } from '../derive/when.ts';
-import type { Connection } from '../hooks.ts';
 import { listOf, t, tx } from '../i18n/i18n.ts';
 import { LaneHead } from '../lanes/LaneHead.tsx';
 import { type LaneBlock, LaneList } from '../lanes/LaneList.tsx';
@@ -145,9 +144,7 @@ export function elsewhereBlocks(project: ProjectOverview): LaneBlock[] {
   return blocks;
 }
 
-type ProjectsInboxProps = { version?: number; connection?: Connection };
-
-export function ProjectsInbox(_props: ProjectsInboxProps) {
+export function ProjectsInbox() {
   const app = useApp();
   const name = app.project?.name ?? '';
   const projects = app.projects ?? [];

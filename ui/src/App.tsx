@@ -82,29 +82,15 @@ function View({ route }: { route: Route }): ReactNode {
     case 'board':
       return <BoardView board={route.board} />;
     case 'triage':
-      return app.session.canWrite ? (
-        <main className="layout triage-layout">
-          <Triage
-            waiting={app.all.filter((it) => it.turn === 'human')}
-            loading={app.items.status === 'loading'}
-            collectionOf={app.collectionOf}
-            version={app.version}
-            onExit={() => app.go({ view: 'toca' })}
-          />
-        </main>
-      ) : (
-        <TocaView />
-      );
+      return app.session.canWrite ? <Triage /> : <TocaView />;
     case 'projects':
-      return <ProjectsInbox version={app.version} connection={app.connection} />;
+      return <ProjectsInbox />;
     case 'settings':
       return (
         <ProjectSettings
           version={app.version}
           connection={app.connection}
           canWrite={app.session.canConfigure}
-          rail={null}
-          sidebar={false}
         />
       );
     case 'studio':
@@ -125,16 +111,7 @@ function View({ route }: { route: Route }): ReactNode {
     case 'modules':
       return <Catalog name={route.name} />;
     case 'brief':
-      return (
-        <main className="brief-layout">
-          <BriefView
-            ids={route.ids}
-            items={app.all}
-            collections={app.collections}
-            version={app.version}
-          />
-        </main>
-      );
+      return <BriefView ids={route.ids} items={app.all} version={app.version} />;
     case 'customize':
       return null;
   }
@@ -173,15 +150,7 @@ function Shell() {
             <View route={route} />
           </ViewHost>
           <DetailHost />
-          <ActivityDrawer
-            open={ws.activity}
-            onClose={app.closeActivity}
-            items={app.all}
-            collections={app.collections}
-            version={app.version}
-            connection={app.connection}
-            phone={app.phone}
-          />
+          <ActivityDrawer open={ws.activity} onClose={app.closeActivity} />
           <div className="fxl" />
         </main>
       </div>
@@ -190,7 +159,7 @@ function Shell() {
         label={t('lan.title')}
         onClose={() => app.go({ view: 'toca' })}
       >
-        <LanPanel canManage={app.session.canManageDevices} rail={null} sidebar={false} />
+        <LanPanel canManage={app.session.canManageDevices} />
       </Dialog>
       <ConnectDialog />
       <NavSheet />

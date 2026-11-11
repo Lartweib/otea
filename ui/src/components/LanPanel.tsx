@@ -1,4 +1,4 @@
-import { type ReactNode, useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { fetchLan, newPairingCode, revokeDevice } from '../api.ts';
 import { useApp } from '../app/context.tsx';
 import { agoLabel, momentLabel } from '../format.ts';
@@ -77,12 +77,7 @@ function DeviceRow({
   );
 }
 
-type LanPanelProps = {
-  canManage: boolean;
-  // Kept for the app's call (the panel was a page once).
-  rail?: ReactNode;
-  sidebar?: boolean;
-};
+type LanPanelProps = { canManage: boolean };
 
 export function LanPanel({ canManage }: LanPanelProps) {
   const app = useApp();

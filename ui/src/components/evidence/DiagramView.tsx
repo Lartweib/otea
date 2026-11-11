@@ -11,7 +11,6 @@ import {
 } from '../../diagram.ts';
 import { momentLabel } from '../../format.ts';
 import { t } from '../../i18n/i18n.ts';
-import { Button } from '../../kit/index.ts';
 import type { Evidence } from '../../types.ts';
 import { TextState, useEvidenceText } from './TextViews.tsx';
 

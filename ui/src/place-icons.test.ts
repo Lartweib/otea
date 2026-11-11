@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { collectionIcon, iconBadges, monogramOf } from './place-icons.ts';
-import type { CollectionView, Item, TypeView } from './types.ts';
-import { sidebarEntries } from './workspace.ts';
+import type { CollectionView, TypeView } from './types.ts';
 
 const type = (name: string, icon?: string) =>
   ({ name, ...(icon === undefined ? {} : { icon }) }) as TypeView;
@@ -53,20 +52,5 @@ describe('iconBadges', () => {
       { name: 'delta', icon: undefined },
     ]);
     expect([...badges]).toEqual([['Beta', 'b']]);
-  });
-});
-
-describe('sidebarEntries', () => {
-  it('lists the collections with their counts, icons and badges', () => {
-    const items = [{ id: 'BUGS-1', collection: 'bugs', turn: 'human' } as Item];
-    const views = [
-      collection('bugs', [type('bug')], 'bug'),
-      collection('bugs-mobile', [type('bug')], 'bug'),
-    ];
-    const lookup = (name: string) => views.find((view) => view.name === name);
-    expect(sidebarEntries(['bugs', 'bugs-mobile'], items, lookup)).toEqual([
-      { name: 'bugs', yours: 1, open: 1, icon: 'bug' },
-      { name: 'bugs-mobile', yours: 0, open: 0, icon: 'bug', badge: 'm' },
-    ]);
   });
 });
