@@ -1,4 +1,6 @@
-/* Triaje (SPEC §10.4, mock:829-847): one card at a time over the next one. */
+/* Triaje (SPEC §10.4, mock:829-847): one card at a time over the next one. The top card follows the
+   pointer; its pull (--p, 0 to 1, on the card) brings up the stamp of the move a release would make
+   and lights its leading edge; the stack's --rise (0 to 1) brings the card under it toward its place. */
 .tri {
   padding: 34px 40px 60px;
   max-width: 980px;
@@ -32,9 +34,28 @@
   color: var(--ink-3);
 }
 .tri .tstack {
+  --rise: 0;
   position: relative;
   margin: 26px 0 0 72px;
   min-height: 420px;
+}
+/* The card after the next one: only an edge, two steps down the stack. */
+.tri .tstack::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: var(--h, 360px);
+  border: 1px solid var(--rule);
+  border-radius: 12px;
+  background: var(--sheet);
+  opacity: 0;
+  transform: translateY(calc(28px - 14px * var(--rise))) scale(calc(0.95 + 0.025 * var(--rise)));
+  pointer-events: none;
+}
+.tri .tstack[data-behind="2"]::before {
+  opacity: calc(0.3 + 0.25 * var(--rise));
 }
 .tri-loading {
   font: 400 italic 15px / 1.4 var(--serif);
@@ -51,12 +72,150 @@
   border-radius: 12px;
   padding: 22px 26px;
   box-shadow: 0 24px 48px -36px var(--shadow);
+  /* Vertical motion still scrolls the page; sideways motion drags the card. */
   touch-action: pan-y;
+  transition: box-shadow 360ms var(--o-drift);
+}
+.tcard[data-ready] {
+  cursor: grab;
+}
+/* Held: lifted off the stack, its shadow longer. */
+.tcard[data-held] {
+  cursor: grabbing;
+  user-select: none;
+  box-shadow:
+    0 34px 60px -34px var(--shadow),
+    0 2px 6px -3px var(--shadow);
+  transition-duration: 160ms;
 }
 .tcard.under {
-  transform: translateY(14px) scale(0.975);
-  opacity: 0.55;
+  transform: translateY(calc(14px - 14px * var(--rise))) scale(calc(0.975 + 0.025 * var(--rise)));
+  opacity: calc(0.55 + 0.45 * var(--rise));
   pointer-events: none;
+}
+/* What the next card says comes up only as it rises: at rest it is a clean sheet under the top
+   one, whatever its length. */
+.tcard.under > :not(.tstamp) {
+  opacity: clamp(0, calc(var(--rise) * 1.6 - 0.35), 1);
+}
+.tcard img {
+  -webkit-user-drag: none;
+  user-select: none;
+}
+
+/* The leading edge lights with the pull: the lane the item goes to, blue for you approving, ink
+   for the agent it goes back to. */
+.tcard::after {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+}
+.tcard[data-lean="right"]::after {
+  opacity: var(--p, 0);
+  background: linear-gradient(to left, var(--you-wash), transparent 42%);
+  box-shadow: inset -2.5px 0 0 var(--you);
+}
+.tcard[data-lean="left"]::after {
+  opacity: var(--p, 0);
+  background: linear-gradient(
+    to right,
+    color-mix(in oklch, var(--ink) 6%, transparent),
+    transparent 42%
+  );
+  box-shadow: inset 2.5px 0 0 var(--lane);
+}
+
+/* The stamp: the move a release would make, on the corner the card pulls away from; it comes up
+   with the pull and sets (fills) once a release would make the move. */
+.tstamp {
+  position: absolute;
+  /* Riding the card's top edge: it never hides what the card says. */
+  top: -14px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 12px 7px 9px;
+  border: 1.5px solid;
+  border-radius: 8px;
+  background: var(--sheet);
+  box-shadow: 0 8px 18px -12px var(--shadow);
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition:
+    background-color 200ms var(--o-drift),
+    color 200ms var(--o-drift),
+    border-color 200ms var(--o-drift);
+}
+.tstamp b {
+  font: 500 italic 21px / 1 var(--serif);
+  letter-spacing: -0.01em;
+}
+.tstamp .to {
+  font: 400 11px / 1 var(--mono);
+  opacity: 0.8;
+  transform: translateY(1px);
+}
+.tstamp svg {
+  flex: none;
+}
+.tstamp[data-side="right"] {
+  --stamp-bg: var(--you);
+  left: 20px;
+  color: var(--you-ink);
+  border-color: var(--you);
+  transform-origin: left center;
+  transform: rotate(-6deg) scale(calc(0.84 + 0.16 * var(--p, 0)));
+}
+.tstamp[data-side="left"] {
+  --stamp-bg: var(--ink);
+  right: 20px;
+  color: var(--ink);
+  border-color: var(--ink-2);
+  transform-origin: right center;
+  transform: rotate(6deg) scale(calc(0.84 + 0.16 * var(--p, 0)));
+}
+.tcard[data-lean="right"] .tstamp[data-side="right"],
+.tcard[data-lean="left"] .tstamp[data-side="left"] {
+  opacity: min(1, calc(var(--p, 0) * 1.6));
+}
+.tcard[data-armed][data-lean="right"] .tstamp[data-side="right"] {
+  background: var(--stamp-bg);
+  color: var(--on-you);
+  animation: tstamp-set 380ms var(--o-settle);
+}
+.tcard[data-armed][data-lean="left"] .tstamp[data-side="left"] {
+  background: var(--stamp-bg);
+  border-color: var(--stamp-bg);
+  color: var(--sheet);
+  animation: tstamp-set 380ms var(--o-settle);
+}
+/* On a set stamp the node is drawn in the stamp's own colours. */
+.tcard[data-armed] .tstamp[data-side="right"] svg {
+  --you: currentColor;
+  --closed: currentColor;
+  --ink-2: currentColor;
+  --sheet: var(--stamp-bg);
+}
+.tcard[data-armed] .tstamp[data-side="left"] svg {
+  --ink-2: currentColor;
+  --closed: currentColor;
+  --sheet: var(--stamp-bg);
+}
+@keyframes tstamp-set {
+  0% {
+    scale: 1;
+  }
+  35% {
+    scale: 1.09;
+  }
+  100% {
+    scale: 1;
+  }
 }
 .tcard .tc-k {
   display: flex;
@@ -140,6 +299,9 @@
   color: var(--ink-3);
   margin-top: 10px;
 }
+.tcard .tc-hint {
+  margin-top: 14px;
+}
 .tri-notes {
   margin-top: 14px;
 }
@@ -168,18 +330,6 @@
   display: flex;
   gap: 10px;
   margin-top: 10px;
-}
-
-/* the pull of a swipe tints the card toward its side (phone) */
-.tcard[data-lean="right"] {
-  box-shadow:
-    0 24px 48px -36px var(--shadow),
-    0 0 0 calc(var(--p, 0) * 1.5px) var(--you);
-}
-.tcard[data-lean="left"] {
-  box-shadow:
-    0 24px 48px -36px var(--shadow),
-    0 0 0 calc(var(--p, 0) * 1.5px) var(--ink-2);
 }
 
 .tdone {
@@ -215,4 +365,13 @@
   .tcard h2 {
     font-size: 26px;
   }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root:not([data-motion="full"]) .tcard[data-armed] .tstamp[data-side] {
+    animation: none;
+  }
+}
+:root[data-motion="reduced"] .tcard[data-armed] .tstamp[data-side] {
+  animation: none;
 }
