@@ -153,9 +153,6 @@
   cursor: default;
   background: var(--sheet);
 }
-.navbtn {
-  display: none;
-}
 
 /* the mark: otea, its o a node */
 .tb-mid {

@@ -14,7 +14,7 @@ import { navSheet, useNavSheet } from './nav.ts';
 
 // The phone's nav sheet (SPEC §10.7, mock:3581-3616): the rail as a sheet from below. Te toca,
 // Atasco, the boards with their open counts, Nuevo tablero, and Preferencias at its foot. The
-// topbar's panel button (`.navbtn`) opens it.
+// sheet button at the bottom left (`.sheetbtn`) opens it, and it rises out of that button.
 
 // Where you are, as the sheet marks it: Te toca, Atasco or a board.
 export function navOn(route: Route): string | null {
@@ -143,13 +143,6 @@ export function NavSheet() {
     if (!phone) navSheet.close();
   }, [phone]);
 
-  useEffect(() => {
-    for (const b of document.querySelectorAll('.navbtn')) {
-      b.setAttribute('aria-haspopup', 'dialog');
-      b.setAttribute('aria-expanded', String(open));
-    }
-  }, [open]);
-
   // Going somewhere else (the back button, a link) puts it away.
   // biome-ignore lint/correctness/useExhaustiveDependencies: closes on a change of place
   useEffect(() => navSheet.close(), [view]);
@@ -163,6 +156,7 @@ export function NavSheet() {
     <BottomSheet
       open={open}
       label={t('phone.nav')}
+      from={() => document.querySelector('.sheetbtn')}
       onClose={navSheet.close}
       onClosed={() => {
         const fn = after.current;

@@ -71,4 +71,14 @@ describe('sheetParts (mock:3588-3594)', () => {
   it('leaves a missing part for the Choreo to skip', () => {
     expect(sheetParts({ scrim: null, sheet: el('s'), grab: null, items: [] })).toHaveLength(4);
   });
+
+  it('rises from a button: the sheet grows out of where it was pressed as it comes up', () => {
+    const grown = sheetParts({ scrim: null, sheet: el('s'), grab: null, items: [], grow: true });
+    expect(nth(grown, 1)).toMatchObject({
+      from: { transform: 'translateY(calc(100% + 2px)) scale(0.92)' },
+      to: { transform: 'translateY(0px) scale(1)' },
+      T: 560,
+      curve: 'settle',
+    });
+  });
 });

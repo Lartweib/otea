@@ -12,7 +12,6 @@ import { Pop } from '../kit/pop/Pop.tsx';
 import { lookOf } from '../lanes/looks.ts';
 import { NodeGlyph } from '../lanes/NodeGlyph.tsx';
 import { monogramOf } from '../place-icons.ts';
-import { shellUi } from './shell-ui.ts';
 import {
   type AgentRow,
   agentCounts,
@@ -451,14 +450,6 @@ export function Topbar() {
   return (
     <header className="topbar">
       <div className="tb-start">
-        <button
-          type="button"
-          className="navbtn"
-          aria-label={t('shell.openPanel')}
-          onClick={() => shellUi.set({ nav: !shellUi.get().nav })}
-        >
-          <Icon name="side" />
-        </button>
         <ProjectPill />
         <Elsewhere />
       </div>
