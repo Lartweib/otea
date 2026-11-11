@@ -13,8 +13,8 @@ const props = (route: Route, o: Partial<NavBodyProps> = {}): NavBodyProps => ({
   toca: 6,
   atasco: 1,
   boards: [
-    { name: 'Errores', icon: boardIcon('bug'), open: 5 },
-    { name: 'Tareas', icon: boardIcon(null), open: 6 },
+    { name: 'Errores', icon: boardIcon('bug'), yours: 2, open: 5 },
+    { name: 'Tareas', icon: boardIcon(null), yours: 0, open: 6, letter: 'T' },
   ],
   onGo: () => {},
   onNewBoard: () => {},
@@ -44,9 +44,11 @@ describe('NavBody (mock:3584-3586)', () => {
     }
     expect(html).toContain('class="n you"');
     expect(html).toContain('class="n warn"');
+    // Yours / open, as the rail says it, and the letter the rail puts on a repeated icon.
     expect(html).toMatch(
-      /Errores<\/span><span class="pair"><span class="n"><span class="nv" data-v="5"/,
+      /Errores<\/span><span class="pair"><span class="n you"><span class="nv" data-v="2".*?\/ <span class="n"><span class="nv" data-v="5"/,
     );
+    expect(html).toContain('<i class="ltr">T</i>');
   });
 
   it('marks where you are', () => {
@@ -84,11 +86,14 @@ describe('the boards on the nav sheet', () => {
     const rail = render(
       props(
         { view: 'toca' },
-        { boards: [{ name: 'Tareas', icon: boardIcon('checklist'), open: 2 }] },
+        { boards: [{ name: 'Tareas', icon: boardIcon('checklist'), yours: 0, open: 2 }] },
       ),
     );
     const plain = render(
-      props({ view: 'toca' }, { boards: [{ name: 'Tareas', icon: boardIcon(null), open: 2 }] }),
+      props(
+        { view: 'toca' },
+        { boards: [{ name: 'Tareas', icon: boardIcon(null), yours: 0, open: 2 }] },
+      ),
     );
     expect(boardIcon('checklist').kind).toBe('type');
     expect(rail).not.toBe(plain);
