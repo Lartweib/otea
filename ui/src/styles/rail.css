@@ -1,7 +1,7 @@
-/* The rail (mock:159-197). The shell slice owns this file (SPEC §11); the foundation's stub starts it
-   with the mock's rail. */
+/* The rail (SPEC §7.2, mock:159-197, 4038-4069): the head, the views, the boards, the project's
+   Studio and settings, one sliding selection pill, Preferences at the foot, and the fold to a strip
+   of icons. The kit draws the icon buttons, the counts and the buddy. */
 
-/* rail */
 .rail {
   grid-column: 1;
   grid-row: 2;
@@ -24,27 +24,29 @@
   height: 34px;
   padding: 0 2px 0 4px;
   margin-bottom: 4px;
+  flex: none;
 }
 .rhead .lbl {
   font: 400 11.5px / 1 var(--mono);
   color: var(--ink-3);
   flex: 1;
+  white-space: nowrap;
+  transition: opacity 360ms var(--o-drift);
 }
-.ibtn {
-  display: inline-grid;
-  place-items: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  color: var(--ink-2);
-  transition:
-    background-color 120ms var(--ease),
-    color 120ms var(--ease);
-  flex: none;
+.rhead .ibtn:disabled {
+  cursor: default;
+  color: var(--ink-3);
+  background: none;
 }
-.ibtn:hover {
-  background: var(--hov);
-  color: var(--ink);
+
+/* the lists scroll inside the rail when a project has many boards; the pill scrolls with them */
+.navs {
+  position: relative;
+  flex: 0 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-width: none;
 }
 .nav {
   position: relative;
@@ -62,6 +64,7 @@
   background: var(--sel);
   pointer-events: none;
   z-index: 0;
+  opacity: 0;
 }
 .nav > button,
 .nav > .nrow {
@@ -78,6 +81,7 @@
   font-size: 14px;
   font-weight: 500;
   width: 100%;
+  text-align: left;
   transition:
     background-color 120ms var(--ease),
     color 120ms var(--ease);
@@ -90,6 +94,10 @@
 .nav > .nrow.on {
   color: var(--ink);
 }
+/* the pill under the row in view already says it: no hover wash on top of it */
+.nav > .nrow.on:hover {
+  background: transparent;
+}
 .nav .lb {
   white-space: nowrap;
   overflow: hidden;
@@ -100,11 +108,42 @@
   color: var(--ink-3);
   font-weight: 400;
 }
-.nav .ic {
-  color: var(--ink-3);
+.nav .add:hover {
+  color: var(--ink-2);
 }
-.nav .on .ic {
+.nav .ic {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  color: var(--ink-3);
+  transition: color 120ms var(--ease);
+}
+.nav .ic svg.ic,
+.nav .ic .type-icon {
+  width: 16px;
+  height: 16px;
+}
+/* the type catalog draws on 24: 2 there is the mock's 1.35 on 16 */
+.nav .ic .type-icon {
+  stroke-width: 2;
+}
+.nav .on .ic,
+.nav > .nrow:hover .ic {
   color: var(--ink);
+}
+/* a board that repeats an earlier board's icon carries one small letter */
+.nav .ic .ltr {
+  position: absolute;
+  right: -5px;
+  bottom: -4px;
+  font: 500 8.5px / 1 var(--mono);
+  font-style: normal;
+  color: var(--ink-2);
+  background: var(--ground);
+  padding: 1px 1px 0;
+  border-radius: 3px;
 }
 .nrow {
   cursor: pointer;
@@ -122,9 +161,14 @@
   opacity: 0;
   transition:
     opacity 240ms var(--o-drift),
-    background-color 120ms var(--ease);
+    background-color 120ms var(--ease),
+    color 120ms var(--ease);
   background: var(--sheet);
   box-shadow: 0 0 0 1px var(--rule);
+}
+.nrow .plus .ic {
+  width: 14px;
+  height: 14px;
 }
 .nrow:hover .plus,
 .nrow:focus-within .plus {
@@ -133,7 +177,8 @@
 .nrow .plus:hover {
   color: var(--ink);
 }
-.nrow:hover .pair {
+.nrow:hover .pair,
+.nrow:focus-within .pair {
   opacity: 0;
 }
 .pair {
@@ -146,23 +191,12 @@
   color: var(--you-ink);
   font-weight: 500;
 }
-.n {
-  font: 400 12px / 1 var(--mono);
-  color: var(--ink-3);
-  display: inline-block;
-  position: relative;
-  clip-path: inset(-3px -4px);
-  vertical-align: baseline;
-}
-.n .nv {
-  display: inline-block;
+.pair .n.you {
+  font-weight: 500;
 }
 .n.warn,
 .pair .warn {
-  color: var(--warn) !important;
-}
-.n.you {
-  color: var(--you-ink);
+  color: var(--warn);
 }
 .badge {
   position: absolute;
@@ -175,6 +209,7 @@
   background: var(--you);
   color: var(--on-you);
   font: 500 9.5px / 15px var(--mono);
+  font-style: normal;
   text-align: center;
   opacity: 0;
   transition: opacity 360ms var(--o-drift);
@@ -194,6 +229,10 @@
 .app[data-folded] .prefs-btn .chev {
   opacity: 0;
 }
+/* folded, the strip is all there is: no + slides in over a row */
+.app[data-folded] .nrow .plus {
+  visibility: hidden;
+}
 .rail-label {
   margin: 22px 12px 6px;
   font: 400 11.5px / 1 var(--mono);
@@ -201,11 +240,102 @@
   transition: opacity 360ms var(--o-drift);
   white-space: nowrap;
 }
+
+/* ---- Studio's tree, unfolded under Studio while Studio is open ---- */
+.rail-fold {
+  display: grid;
+  grid-template-rows: 1fr;
+  position: relative;
+  z-index: 1;
+}
+.rail-fold-in {
+  min-height: 0;
+  overflow: hidden;
+}
+.rail-tree {
+  position: relative;
+  display: grid;
+  margin: 2px 0 6px 21px;
+  padding: 2px 0 2px 12px;
+}
+/* a hairline from Studio's icon down the tree, as a branch would */
+.rail-tree::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 8px;
+  width: 1px;
+  background: var(--rule-2);
+}
+.rail-tree-label {
+  margin: 10px 0 4px;
+  font: 400 11px / 1 var(--mono);
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+.rail-tree-label:first-child {
+  margin-top: 6px;
+}
+.rail-leaf {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: "name tag" "meta meta";
+  column-gap: 8px;
+  align-items: baseline;
+  padding: 6px 8px;
+  border-radius: 7px;
+  color: var(--ink-2);
+  text-decoration: none;
+  transition:
+    background-color 120ms var(--ease),
+    color 120ms var(--ease);
+}
+.rail-leaf:hover {
+  background: color-mix(in oklch, var(--hov) 70%, transparent);
+  color: var(--ink);
+}
+.rail-leaf[aria-current="page"] {
+  background: var(--sel);
+  color: var(--ink);
+}
+.rail-leaf-name {
+  grid-area: name;
+  font: 500 13px / 1.3 var(--sans);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.rail-leaf-tag {
+  grid-area: tag;
+  font: 400 10.5px / 1 var(--mono);
+  color: var(--ink-3);
+  padding: 2px 4px;
+  border-radius: 3px;
+  box-shadow: inset 0 0 0 1px var(--rule-2);
+}
+.rail-leaf-meta {
+  grid-area: meta;
+  font: 400 11px / 1.4 var(--mono);
+  color: var(--ink-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.rail-leaf-modules {
+  grid-template-areas: "name tag";
+}
+.rail-leaf-modules .rail-leaf-meta {
+  grid-area: tag;
+}
+
+/* ---- the foot: you and Preferences ---- */
 .rail-foot {
   margin-top: auto;
   padding-top: 12px;
   border-top: 1px solid var(--rule);
   position: relative;
+  flex: none;
 }
 .prefs-btn {
   display: grid;
@@ -214,11 +344,12 @@
   column-gap: 9px;
   width: 100%;
   height: 40px;
-  padding: 0 12px 0 12px;
+  padding: 0 12px;
   border-radius: 999px;
   font: 500 14px / 1 var(--sans);
   letter-spacing: -0.01em;
   color: var(--ink-2);
+  text-align: left;
   transition:
     background-color 120ms var(--ease),
     box-shadow 240ms var(--o-drift),
@@ -233,16 +364,17 @@
   box-shadow: 0 0 0 1.5px var(--ink);
   color: var(--ink);
 }
+.prefs-btn .buddy {
+  justify-self: center;
+}
 .prefs-btn .lb {
   transition: opacity 360ms var(--o-drift);
   white-space: nowrap;
 }
-.buddy {
-  width: 16px;
-  height: 16px;
-  fill: var(--ink);
-  transition: fill 240ms var(--o-drift);
+.app[data-folded] .prefs-btn {
+  box-shadow: none;
+  background: none;
 }
-.prefs-btn[aria-expanded="true"] .buddy {
+.app[data-folded] .prefs-btn[aria-expanded="true"] .buddy {
   fill: var(--you);
 }

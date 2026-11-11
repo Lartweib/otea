@@ -2,7 +2,7 @@ import { t } from '../i18n/i18n.ts';
 import { modulesHash, type Route, studioHash } from '../selection.ts';
 import type { PresetSummary, ProjectBlueprint } from '../studio/api.ts';
 
-// What Studio holds, as the sidebar unfolds it under Studio while Studio (or the module catalog,
+// What Studio holds, as the rail unfolds it under Studio while Studio (or the module catalog,
 // which lives under it) is open: the project's blueprint, the presets it can use and the modules.
 export type StudioTree = {
   blueprint: { name: string; version: number; boards: number } | null;
@@ -57,7 +57,7 @@ export function StudioTreeView({ tree }: { tree: StudioTree }) {
   const { blueprint, presets, modules, current } = tree;
   return (
     <div className="rail-tree">
-      <span className="t-cap rail-tree-label">{t('studio.index.blueprint')}</span>
+      <span className="rail-tree-label">{t('studio.index.blueprint')}</span>
       <a
         className="rail-leaf"
         href={
@@ -78,7 +78,7 @@ export function StudioTreeView({ tree }: { tree: StudioTree }) {
       </a>
       {presets.length > 0 ? (
         <>
-          <span className="t-cap rail-tree-label">{t('studio.index.presets')}</span>
+          <span className="rail-tree-label">{t('studio.index.presets')}</span>
           {presets.map((preset) => (
             <a
               key={preset.name}
