@@ -422,7 +422,7 @@ export function signalOf(item: Item, collection: CollectionView): string | null 
   for (const f of oneLineFields(collection)) {
     if (f.module !== 'enum') continue;
     const v = item.fields[f.name];
-    if (v && v !== f.default) return v;
+    if (v && v !== f.default) return valueWordIn(collection.types, f.name, v);
   }
   return null;
 }

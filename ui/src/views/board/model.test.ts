@@ -405,7 +405,7 @@ describe('what a board row says', () => {
   it('shows the first enum field that is off its default', () => {
     const t = tareas.types[0];
     expect(signalOf(item({ id: 'A', fields: { priority: 'medium' } }), tareas)).toBeNull();
-    expect(signalOf(item({ id: 'A', fields: { priority: 'high' } }), tareas)).toBe('high');
+    expect(signalOf(item({ id: 'A', fields: { priority: 'high' } }), tareas)).toBe('High');
     expect(t).toBeDefined();
     expect(signalOf(item({ id: 'B', fields: { category: 'crash' } }), errores)).toBe('crash');
   });

@@ -1,4 +1,4 @@
-import { t } from '../i18n/i18n.ts';
+import { language, t } from '../i18n/i18n.ts';
 import { modulesHash, type Route, studioHash } from '../selection.ts';
 import type { PresetSummary, ProjectBlueprint } from '../studio/api.ts';
 
@@ -6,7 +6,14 @@ import type { PresetSummary, ProjectBlueprint } from '../studio/api.ts';
 // which lives under it) is open: the project's blueprint, the presets it can use and the modules.
 export type StudioTree = {
   blueprint: { name: string; version: number; boards: number } | null;
-  presets: { name: string; version: number | null; collections: string[]; official: boolean }[];
+  presets: {
+    name: string;
+    // What it is called in the language on screen.
+    label: string;
+    version: number | null;
+    collections: string[];
+    official: boolean;
+  }[];
   modules: number;
   // The row for the page in view; none on Studio's start.
   current?:
@@ -38,8 +45,9 @@ export function studioTreeOf({ presets, blueprint, modules, route }: TreeSource)
     blueprint: blueprint
       ? { name: blueprint.name, version: blueprint.version, boards: blueprint.boards.length }
       : null,
-    presets: presets.map(({ name, version, collections, origin }) => ({
+    presets: presets.map(({ name, version, collections, origin, names }) => ({
       name,
+      label: names?.[language()] ?? name,
       version,
       collections,
       official: origin === 'official',
@@ -86,7 +94,7 @@ export function StudioTreeView({ tree }: { tree: StudioTree }) {
               href={studioHash({ kind: 'preset', name: preset.name })}
               aria-current={here(current?.kind === 'preset' && current.name === preset.name)}
             >
-              <span className="rail-leaf-name">{preset.name}</span>
+              <span className="rail-leaf-name">{preset.label}</span>
               {preset.official ? <span className="rail-leaf-tag">{t('rail.official')}</span> : null}
               <span className="rail-leaf-meta">
                 {[

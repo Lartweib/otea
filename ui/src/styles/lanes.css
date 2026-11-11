@@ -358,8 +358,10 @@
   white-space: nowrap;
   width: 108px;
 }
+/* Beside an item the age keeps its whole words ("quedan 1 h 42"); the title gives way instead. */
 .view.narrow .row .age {
-  width: 64px;
+  width: auto;
+  min-width: 64px;
 }
 .row .age.warn {
   color: var(--warn);
