@@ -8,6 +8,7 @@ import { holderOf } from './placement.ts';
 import type { CollectionLayout, FieldSpec, ItemType, Labels, Preset } from './preset.ts';
 import { type ChildrenSummary, childrenSummary, type RelationView } from './relations.ts';
 import type { Sample, SampleEvent } from './samples.ts';
+import type { Transition } from './workflow.ts';
 import { type Closing, gateVerdicts, type State, type Turn, type Workflow } from './workflow.ts';
 
 // The views clients draw, built from a preset alone: the server builds them from the presets it
@@ -28,7 +29,7 @@ export type TypeView = {
   incomplete?: string;
   states: State[];
   // Every move of its workflow, in the order the preset declares them: what its main path reads.
-  transitions: { from: string; to: string }[];
+  transitions: Transition[];
   fields: FieldView[];
   layout: Layout;
   children?: string[];
@@ -49,7 +50,7 @@ export function typeViews(types: readonly ItemType[]): TypeView[] {
       label,
       initial: workflow.initial,
       states: workflow.states,
-      transitions: workflow.transitions.map(({ from, to }) => ({ from, to })),
+      transitions: workflow.transitions,
       fields: fieldViews(fields),
       layout,
     };
