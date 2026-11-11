@@ -70,11 +70,7 @@ The rules every gesture follows:
 
 Every data change in a list is one gesture (`lanes/handoff.ts`): a row that changes lane or section is **carried**, the rows between **make room**, new rows **enter**, gone rows **leave**, a look that changes in place is **restyled**, and counts roll when the carried row is half-way. In Te toca closed work sinks into the trunk and work an agent hands you comes out of its lane.
 
-Two styles, a preference (Traspaso):
-
-- **Plegar** (default): the row folds into a line of light at its node's height, the line is absorbed into the node, a small fibre-optic pulse (6 px bright core, tight glow, a 46 px trail in its live colour) travels along the lane changing colour (you blue, agents ink, stuck red, closed grey), and the destination row unfolds from a line that grows out of the node; the pulse blooms as it lands and the new look grows out of it. Fold 420 ms, travel as above, unfold 460 ms.
-- **Deslizar**: the row lifts in a bell, a raised plate, while its node shrinks into the pulse and grows out of it at the destination.
-
+A carried row always folds (**Plegar**): the row folds into a line of light at its node's height, the line is absorbed into the node, a small fibre-optic pulse (6 px bright core, tight glow, a 46 px trail in its live colour) travels along the lane changing colour (you blue, agents ink, stuck red, closed grey), and the destination row unfolds from a line that grows out of the node; the pulse blooms as it lands and the new look grows out of it. Fold 420 ms, travel as above, unfold 460 ms.
 ## Layout
 
 A 60 px topbar (project pill and menu, the centred mark, the agents pill into Actividad) over the rail (244 px, folding to a 60 px strip) and the main pane. Views scroll inside the main pane. An open item sits **beside** the list: the list takes a third of the room (520-783 px, remembered per kind when dragged), the divider is 9 px, the sheet takes all the rest, and from a 1240 px sheet the detail becomes two columns. The phone (up to 720 px) is one column: the item is a page, the rail a sheet from below.

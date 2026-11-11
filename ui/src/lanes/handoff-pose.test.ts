@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import { F } from '../motion/curves.ts';
 import {
   type CarryGeom,
-  deslizarPose,
   FOLD,
   handoffClock,
   plegarPose,
@@ -29,12 +28,11 @@ const g = (o: Partial<CarryGeom> = {}): CarryGeom => ({
 });
 
 describe('the clock', () => {
-  it('travels on the longest carry, folds and unfolds around it in Plegar', () => {
-    expect(handoffClock([], 'plegar')).toEqual({ T: 480, FA: 0, Cc: 0, total: 480 });
-    const c = handoffClock([100, -400], 'plegar');
+  it('travels on the longest carry, folds and unfolds around it ', () => {
+    expect(handoffClock([])).toEqual({ T: 480, FA: 0, Cc: 0, total: 480 });
+    const c = handoffClock([100, -400]);
     expect(c.T).toBeCloseTo(480 + 28 * 20);
     expect(c).toMatchObject({ FA: FOLD, Cc: UNFOLD, total: FOLD + c.T + UNFOLD });
-    expect(handoffClock([100], 'deslizar')).toMatchObject({ FA: 0, Cc: 0, T: 760, total: 760 });
     expect(FOLD).toBe(420);
     expect(UNFOLD).toBe(460);
   });
@@ -125,46 +123,5 @@ describe('Plegar', () => {
     expect(f.lift.opacity).toBe(0);
     expect(f.line.o).toBe(0);
     expect(f.pulse.o).toBe(1);
-  });
-});
-
-describe('Deslizar', () => {
-  const T = 600;
-  it('starts at the starting pose: the row where it was, its node whole', () => {
-    const f = deslizarPose(0, T, g());
-    expect(f.y).toBe(-200);
-    expect(f.plate).toBe(0);
-    expect(f.nodeOpacity).toBe(1);
-    expect(f.pulse.o).toBe(0);
-  });
-
-  it('lifts in a bell on a raised plate, the node gone into the pulse', () => {
-    const f = deslizarPose(T * 0.25, T, g());
-    const p = F.settle(0.25);
-    expect(f.plate).toBeCloseTo(Math.sin(Math.PI * p));
-    expect(f.y).toBeCloseTo(-200 * (1 - p) - 5 * Math.sin(Math.PI * p));
-    expect(f.nodeOpacity).toBe(0);
-    expect(f.pulse.o).toBe(1);
-    expect(f.trail).toBeGreaterThan(30);
-  });
-
-  it('lands: the pulse blooms and the node grows out of it', () => {
-    const f = deslizarPose(T, T, g());
-    expect(f.y).toBeCloseTo(0);
-    expect(f.nodeOpacity).toBe(1);
-    expect(f.nodeScale).toBe(1);
-    expect(f.pulse.o).toBe(0);
-    expect(f.mix).toBe(1);
-    expect(f.mark).toBe(true);
-    expect(f.breath).toBe(true);
-  });
-
-  it('fades the row in from a virtual start and out into a virtual end', () => {
-    const arrive = g({ preVirtual: true, arrive: true, dy0: 0 });
-    expect(deslizarPose(0, T, arrive).lift.opacity).toBe(0);
-    expect(deslizarPose(T, T, arrive).lift.opacity).toBe(1);
-    const sink = g({ postVirtual: true });
-    expect(deslizarPose(0, T, sink).lift.opacity).toBe(1);
-    expect(deslizarPose(T, T, sink).lift.opacity).toBe(0);
   });
 });

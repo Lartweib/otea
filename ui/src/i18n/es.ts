@@ -41,7 +41,6 @@ import type { Catalog } from './i18n.ts';
 //   Questions for you Preguntas para ti
 //   Reviews           Revisiones
 //   Your own steps    Tus propios pasos
-//   Fold / Slide      Plegar / Deslizar
 //   Expand / Reduce   Ampliar / Reducir
 //   Undo              Deshacer
 export const es: Catalog = {

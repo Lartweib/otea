@@ -14,7 +14,6 @@ import { anchorAbove } from '../kit/pop/anchors.ts';
 import { Pop } from '../kit/pop/Pop.tsx';
 import { Seg } from '../kit/Seg.tsx';
 import { Swap } from '../kit/Swap.tsx';
-import { type HandoffStyle, handoffStyle, setHandoffStyle } from '../lanes/handoff.ts';
 import { type MotionPref, motionPref, setMotionPref } from '../motion/reduced.ts';
 import type { ThemeChoice } from '../theme.ts';
 import { loadChoice, switchChoice } from '../theme-dom.ts';
@@ -25,9 +24,9 @@ import { useMedia } from './use-media.ts';
 // Preferences (SPEC §7.3, mock:778-794, 3395-3421): what belongs to this browser. A Pop on the
 // bottom edge, 420 wide, rising from the button at the rail's foot (its line leads from the
 // button's centre), left aligned with the rail; on a phone the same pop pinned 12 px from the
-// sides and the bottom. Theme (the feathered circle), motion (with its note that swaps in place)
-// and the handoff's style, language (only the interface is translated), the session (pairing a
-// phone, where this browser may) and the server.
+// sides and the bottom. Theme (the feathered circle), motion (with its note that swaps in place),
+// language (only the interface is translated), the session (pairing a phone, where this browser
+// may) and the server. The handoff is not a choice: it always folds (Plegar).
 
 function Group({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -64,7 +63,6 @@ export function PrefsBody({ server, onPair }: PrefsBodyProps) {
   const systemReduced = useMedia(REDUCE);
   const [theme, setTheme] = useState<ThemeChoice>(loadChoice);
   const [motion, setMotion] = useState<MotionPref>(motionPref);
-  const [handoff, setHandoff] = useState<HandoffStyle>(handoffStyle);
   const [lang, setLang] = useState<LanguageChoice>(languageChoice);
   return (
     <>
@@ -115,21 +113,6 @@ export function PrefsBody({ server, onPair }: PrefsBodyProps) {
         >
           <MotionNoteText pref={motion} systemReduced={systemReduced} />
         </Swap>
-      </Group>
-      <Group label={t('prefs.handoff')}>
-        <Seg<HandoffStyle>
-          well
-          label={t('prefs.handoff')}
-          value={handoff}
-          options={[
-            { value: 'plegar', label: t('prefs.fold') },
-            { value: 'deslizar', label: t('prefs.slide') },
-          ]}
-          onChange={(next) => {
-            setHandoffStyle(next);
-            setHandoff(next);
-          }}
-        />
       </Group>
       <Group label={t('prefs.language')}>
         <Seg<LanguageChoice>
