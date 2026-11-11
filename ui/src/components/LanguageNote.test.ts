@@ -15,12 +15,12 @@ describe('the first-run language note', () => {
 
     expect(html).toContain('Otea está en español, como pide tu navegador (<code>es-AR</code>).');
     expect(html).toContain('Solo se traduce la interfaz.');
-    expect(html).toContain('lo que escriben los agentes, quedan tal como se escribieron');
+    expect(html).toContain('lo que escriben los agentes se quedan tal como están');
     expect(html).toContain('>Entendido</button>');
     expect(html).toContain('aria-label="Idioma"');
   });
 
-  it('names Preferences where it is: just below on the sidebar, at the panel’s foot on a phone', () => {
+  it('names Preferences where it is: just below on the rail, at the panel’s foot on a phone', () => {
     setLanguage('es');
     const view = (anchored: boolean) =>
       renderToStaticMarkup(

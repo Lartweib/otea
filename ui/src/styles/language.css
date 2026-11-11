@@ -1,20 +1,15 @@
-/* ---- the first-run language note ----
-   Once per browser, when Otea took a language other than English from it. It rests on the
-   Preferences row at the sidebar's foot, where Preferences opens, with a tail pointing at you; on a
-   phone, where Preferences sits in the panel, it stands at the bottom of the screen. */
+/* The first-run language note: once per browser, when Otea took a language other than English from
+   it. It rests on the Preferences button at the rail's foot, its tail on you, rising from it like a
+   pop; on a phone (Preferences sits in the nav sheet) it stands at the bottom of the screen. */
 .language-note-host {
   position: fixed;
-  left: 16px;
-  right: 16px;
-  /* Above the New item button (24px off the bottom, 48 tall): the note never covers a primary. */
-  bottom: calc(84px + env(safe-area-inset-bottom));
-  z-index: 40;
+  left: 12px;
+  right: 12px;
+  bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+  z-index: 45;
 }
 .language-note-host[data-anchored] {
-  position: absolute;
-  left: 0;
   right: auto;
-  bottom: 52px;
 }
 .language-note {
   position: relative;
@@ -22,41 +17,53 @@
   grid-template-columns: minmax(0, 1fr);
   gap: 6px;
   justify-items: start;
-  padding: 14px 16px;
-  border-radius: 12px;
-  box-shadow:
-    0 0 0 1px var(--line),
-    0 24px 48px -20px var(--shadow);
+  padding: 14px 16px 12px;
+  border: 1px solid var(--rule);
+  border-bottom: 0;
+  border-radius: 10px 10px 0 0;
+  background: var(--sheet);
+  box-shadow: 0 -12px 32px -22px var(--shadow);
 }
 [data-anchored] > .language-note {
   width: 330px;
 }
-/* The tail, over the buddy of the Preferences row. */
+/* the line it rises from, as a pop's */
+.language-note .ln-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: var(--ink-3);
+  transform-origin: 26px 0;
+}
+/* the tail, over you on the Preferences button */
 [data-anchored] > .language-note::after {
   content: "";
   position: absolute;
-  left: 19px;
+  left: 18px;
   bottom: -6px;
-  width: 11px;
-  height: 11px;
-  background: var(--sf);
-  box-shadow: 1px 1px 0 0 var(--line);
+  width: 10px;
+  height: 10px;
+  background: var(--sheet);
+  box-shadow: 1px 1px 0 0 var(--ink-3);
   transform: rotate(45deg);
 }
 .language-note p {
   margin: 0;
-  font-size: 13.5px;
+  font-size: 13px;
   line-height: 1.5;
-  color: var(--mut);
+  color: var(--ink-2);
   text-wrap: pretty;
 }
 .language-note .language-note-heading {
+  font: 450 16px / 1.3 var(--serif);
+  font-variation-settings: "opsz" 18;
   color: var(--ink);
-  font-weight: 600;
 }
 .language-note code {
-  font: 400 12px var(--font-machine);
-  color: var(--ink);
+  font: 400 12px var(--mono);
+  color: var(--ink-2);
 }
 .language-note-actions {
   display: flex;
@@ -65,7 +72,8 @@
   gap: 12px;
   margin-top: 6px;
 }
-.language-note-actions .t-cap {
+.language-note-actions .ln-where {
   min-width: 0;
-  white-space: normal;
+  font: 400 11.5px / 1.4 var(--mono);
+  color: var(--ink-3);
 }

@@ -1,5 +1,3 @@
-import { type PlainKey, t } from './i18n/i18n.ts';
-
 export type ThemeChoice = 'system' | 'light' | 'dark';
 
 export type Theme = 'light' | 'dark';
@@ -12,10 +10,6 @@ export type ThemeStorage = {
 export const THEME_KEY = 'otea.theme';
 
 const ORDER: readonly ThemeChoice[] = ['system', 'light', 'dark'];
-
-export function nextChoice(choice: ThemeChoice): ThemeChoice {
-  return ORDER[(ORDER.indexOf(choice) + 1) % ORDER.length] ?? 'system';
-}
 
 export function parseChoice(raw: string | null): ThemeChoice {
   return ORDER.find((choice) => choice === raw) ?? 'system';
@@ -31,31 +25,20 @@ export function shownChanges(from: ThemeChoice, to: ThemeChoice, prefersDark: bo
   return resolveTheme(from, prefersDark) !== resolveTheme(to, prefersDark);
 }
 
-// How a switch shows: the new theme opens as a circle when the theme on screen changes, the browser
-// has View Transitions and motion is welcome; otherwise it swaps at once. Reduced motion never
-// crossfades: halfway between light and dark is a washed-out grey.
+// How a switch shows (mock:4074-4095): when the theme on screen changes, the new one grows as a
+// circle from the pressed button, its edge feathered by a mask (a hard clip where masks cannot do
+// it); without View Transitions the colours crossfade; under reduced motion, or when nothing on
+// screen changes, it swaps at once (halfway between light and dark is a washed-out grey).
+export type SwitchMotion = 'mask' | 'clip' | 'fade' | 'instant';
+
 export function switchMotion(
   from: ThemeChoice,
   to: ThemeChoice,
-  env: { prefersDark: boolean; reduced: boolean; transitions: boolean },
-): 'reveal' | 'instant' {
-  const reveal = env.transitions && !env.reduced && shownChanges(from, to, env.prefersDark);
-  return reveal ? 'reveal' : 'instant';
-}
-
-const CHOICE: Readonly<Record<ThemeChoice, PlainKey>> = {
-  system: 'theme.system',
-  light: 'theme.light',
-  dark: 'theme.dark',
-};
-
-export function themeLabel(choice: ThemeChoice): string {
-  return t('theme.label', { choice: t(CHOICE[choice]) });
-}
-
-// What the toggle says to assistive tech: the theme on screen, and the next one.
-export function themeSwitchLabel(choice: ThemeChoice, next: ThemeChoice): string {
-  return t('theme.switch', { choice: t(CHOICE[choice]), next: t(CHOICE[next]) });
+  env: { prefersDark: boolean; reduced: boolean; transitions: boolean; mask: boolean },
+): SwitchMotion {
+  if (env.reduced || !shownChanges(from, to, env.prefersDark)) return 'instant';
+  if (!env.transitions) return 'fade';
+  return env.mask ? 'mask' : 'clip';
 }
 
 // Storage can be missing or throw (private windows, blocked site data): the theme then just follows the system.

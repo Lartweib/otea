@@ -1,13 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
-  nextChoice,
   parseChoice,
   readChoice,
   resolveTheme,
   shownChanges,
   switchMotion,
   THEME_KEY,
-  themeLabel,
   writeChoice,
 } from './theme.ts';
 
@@ -30,14 +28,6 @@ const broken = {
     throw new Error('blocked');
   },
 };
-
-describe('nextChoice', () => {
-  it('cycles system, light, dark and back to system', () => {
-    expect(nextChoice('system')).toBe('light');
-    expect(nextChoice('light')).toBe('dark');
-    expect(nextChoice('dark')).toBe('system');
-  });
-});
 
 describe('parseChoice', () => {
   it('accepts the three known choices', () => {
@@ -62,14 +52,6 @@ describe('resolveTheme', () => {
   it('ignores the system preference for an explicit choice', () => {
     expect(resolveTheme('light', true)).toBe('light');
     expect(resolveTheme('dark', false)).toBe('dark');
-  });
-});
-
-describe('themeLabel', () => {
-  it('names the current choice', () => {
-    expect(themeLabel('system')).toBe('Theme: system');
-    expect(themeLabel('light')).toBe('Theme: light');
-    expect(themeLabel('dark')).toBe('Theme: dark');
   });
 });
 
@@ -117,18 +99,22 @@ describe('shownChanges', () => {
 });
 
 describe('switchMotion', () => {
-  const env = { prefersDark: false, reduced: false, transitions: true };
+  const env = { prefersDark: false, reduced: false, transitions: true, mask: true };
 
-  it('reveals the new theme as a circle when the theme on screen changes', () => {
-    expect(switchMotion('light', 'dark', env)).toBe('reveal');
+  it('grows the new theme as a circle with a feathered edge when the theme on screen changes', () => {
+    expect(switchMotion('light', 'dark', env)).toBe('mask');
   });
 
-  it('swaps at once under reduced motion: no transition, so nothing passes through grey', () => {
+  it('grows a hard-edged circle where a mask cannot feather it', () => {
+    expect(switchMotion('light', 'dark', { ...env, mask: false })).toBe('clip');
+  });
+
+  it('crossfades the colours without View Transitions', () => {
+    expect(switchMotion('light', 'dark', { ...env, transitions: false })).toBe('fade');
+  });
+
+  it('swaps at once under reduced motion, or when the screen does not change', () => {
     expect(switchMotion('light', 'dark', { ...env, reduced: true })).toBe('instant');
-  });
-
-  it('swaps at once without View Transitions, or when the screen does not change', () => {
-    expect(switchMotion('light', 'dark', { ...env, transitions: false })).toBe('instant');
     expect(switchMotion('system', 'light', env)).toBe('instant');
   });
 });

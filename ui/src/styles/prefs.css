@@ -1,1 +1,118 @@
-/* Preferences. The shell slice owns this file (SPEC §11). */
+/* Preferences (SPEC §7.3, mock:778-794): a pop on its bottom edge, rising from the button at the
+   rail's foot. The kit draws the segmented switches and the pop's frame. */
+
+.prefs {
+  width: 420px;
+  max-width: calc(100vw - 32px);
+}
+.prefs .psurf {
+  padding: 6px 6px 8px;
+}
+.phead {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  column-gap: 10px;
+  align-items: center;
+  padding: 10px;
+  border-bottom: 1px solid var(--rule);
+}
+.phead .buddy {
+  width: 20px;
+  height: 20px;
+  fill: var(--you);
+}
+.phead b {
+  font: 600 14px / 1.2 var(--sans);
+  display: block;
+}
+.phead small {
+  font: 400 11.5px / 1.2 var(--mono);
+  color: var(--ink-3);
+}
+.pgroup {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr);
+  column-gap: 12px;
+  padding: 12px 10px;
+  border-bottom: 1px solid var(--rule);
+}
+.pgroup:last-child {
+  border-bottom: 0;
+}
+.pgroup > .gl {
+  font: 400 11.5px / 1 var(--mono);
+  color: var(--ink-3);
+  padding-top: 9px;
+}
+.pgroup > .gb {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  justify-items: start;
+}
+.pgroup .gnote {
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--ink-3);
+  position: relative;
+  text-wrap: pretty;
+}
+.pgroup .gnote b {
+  color: var(--ink);
+  font-weight: 600;
+}
+.plink {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 13.5px;
+  color: var(--ink);
+  padding: 6px 0;
+}
+.plink .ic {
+  color: var(--ink-2);
+}
+.plink:hover {
+  text-decoration: underline;
+  text-decoration-color: var(--rule-2);
+  text-underline-offset: 3px;
+}
+.about {
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+  padding-top: 6px;
+}
+.about dt {
+  font: 400 11.5px / 1 var(--mono);
+  color: var(--ink-3);
+}
+.about dd {
+  margin: 0;
+  font: 400 12.5px / 1 var(--mono);
+}
+
+/* a phone: the same pop pinned to the screen's foot, its groups stacked (mock:4342-4346) */
+@media (max-width: 720px) {
+  .prefs {
+    max-width: none;
+  }
+  .pgroup {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: 8px;
+  }
+  .pgroup > .gl {
+    padding-top: 0;
+  }
+  .pgroup .seg2 {
+    width: 100%;
+  }
+  .pgroup .seg2 > button {
+    flex: 1;
+    justify-content: center;
+    height: 36px;
+  }
+  .pgroup .seg2 .knob {
+    height: 36px;
+  }
+}
