@@ -11,6 +11,7 @@ import { listAgents, presenceSignature } from '../app/presence.ts';
 import { listPresetViews } from '../app/preset-views.ts';
 import { type Env, type Project, projectView } from '../app/project.ts';
 import { linkItems, unlinkItems } from '../app/relations.ts';
+import { reassignItem, restartItem, undoRelease } from '../app/restart.ts';
 import { undoMove } from '../app/undo.ts';
 import { MAX_EVIDENCE_MB } from '../core/evidence.ts';
 import { TURNS, type Turn } from '../core/workflow.ts';
@@ -68,6 +69,7 @@ import {
   MAX_INTAKE_FILES,
   moveRequest,
   pathRequest,
+  reassignRequest,
   relinkRequest,
   undoRequest,
 } from './writes.ts';
@@ -169,110 +171,134 @@ function api(
   doors: Doors,
 ): Hono<OteaEnv> {
   const { auth, lan, port, env } = doors;
-  return new Hono<OteaEnv>()
-    .get('/session', (c) =>
-      c.json({
-        canWrite: auth.canWrite(c),
-        canManageDevices: auth.canManageDevices(c),
-        canConfigure: auth.canConfigure(c),
-      }),
-    )
-    .post('/pair/peek', async (c) => c.json(await peekPairing(c, project, lan)))
-    .post('/pair', async (c) => {
-      const paired = await pair(c, project, lan, port);
-      feed.notify();
-      return c.json(paired, 201);
-    })
-    .get('/lan', (c) => {
-      assertCanManageDevices(c, auth);
-      return c.json(lanView(project, lan, port(), c.req.query('address')));
-    })
-    .post('/lan/code', (c) => {
-      assertCanManageDevices(c, auth);
-      assertSameOrigin(c);
-      assertLanOn(lan).codes.issue();
-      return c.json(lanView(project, lan, port(), c.req.query('address')), 201);
-    })
-    .post('/devices/:id/revoke', (c) => {
-      assertCanManageDevices(c, auth);
-      assertSameOrigin(c);
-      const device = revoke(project, c.req.param('id'));
-      feed.notify();
-      return c.json(device);
-    })
-    .get('/project', (c) => c.json(projectView(project)))
-    .get('/projects', (c) => c.json(projectOverviews(project, env)))
-    .get('/project/settings', (c) => c.json(projectSettings(project, env)))
-    .post('/project/paths', async (c) => {
-      assertConfigurable(c, auth);
-      const { path } = await pathRequest(c);
-      return c.json(addPath(project, path, env), 201);
-    })
-    .post('/project/paths/relink', async (c) => {
-      assertConfigurable(c, auth);
-      const { from, to, force } = await relinkRequest(c);
-      return c.json(relinkPath(project, from, to, force, env));
-    })
-    .post('/project/paths/forget', async (c) => {
-      assertConfigurable(c, auth);
-      const { path } = await pathRequest(c);
-      return c.json(forgetPath(project, path, env));
-    })
-    .get('/collections', (c) => c.json(listCollectionViews(project)))
-    .get('/presets', (c) => c.json(listPresetViews(project)))
-    .get('/agents', (c) => c.json({ agents: listAgents(project.db) }))
-    .get('/items', (c) =>
-      c.json(listItems(project, itemsFilter(c.req.query(), c.req.queries('field')))),
-    )
-    .post('/items', bodyLimit({ maxSize: MAX_CREATE_BYTES, onError: tooLarge }), async (c) => {
-      assertWritable(c, auth, true);
-      const { files, ...request } = await createRequest(c);
-      const input = { ...request, ...HUMAN_IN_UI };
-      const item =
-        files.length === 0
-          ? createItem(project, input)
-          : createItemWithEvidence(project, input, files);
-      feed.notify();
-      return c.json(item, 201);
-    })
-    .get('/items/:id', (c) => c.json(showItem(project, c.req.param('id'), HUMAN_IN_UI)))
-    .post('/items/:id/move', async (c) => {
-      assertWritable(c, auth);
-      const request = await moveRequest(c);
-      const item = moveItem(project, { id: c.req.param('id'), ...request, ...HUMAN_IN_UI });
-      feed.notify();
-      return c.json(item);
-    })
-    .post('/items/:id/undo', async (c) => {
-      assertWritable(c, auth);
-      const { from } = await undoRequest(c);
-      const item = undoMove(project, { id: c.req.param('id'), from, ...HUMAN_IN_UI });
-      feed.notify();
-      return c.json(item);
-    })
-    .post('/items/:id/link', async (c) => {
-      assertWritable(c, auth);
-      const request = await linkRequest(c);
-      const relation = linkItems(project, { id: c.req.param('id'), ...request, ...HUMAN_IN_UI });
-      feed.notify();
-      return c.json(relation, 201);
-    })
-    .post('/items/:id/unlink', async (c) => {
-      assertWritable(c, auth);
-      const request = await linkRequest(c);
-      const relation = unlinkItems(project, { id: c.req.param('id'), ...request, ...HUMAN_IN_UI });
-      feed.notify();
-      return c.json(relation);
-    })
-    .post('/brief', async (c) => c.json(briefFor(project, await briefRequest(c))))
-    .get('/evidence/:id/file', (c) => {
-      assertSignedIn(c, auth, 'open evidence files');
-      return serveEvidence(c, project, c.req.param('id'));
-    })
-    .route('/studio', studioApi(project, feed, auth))
-    .get('/events', (c) => c.json(listEvents(project, eventsFilter(c.req.query()))))
-    .get('/stream', (c) => streams.handle(c))
-    .all('*', (c) => c.json(errorBody('not_found', `No route ${c.req.path}`), 404));
+  return (
+    new Hono<OteaEnv>()
+      .get('/session', (c) =>
+        c.json({
+          canWrite: auth.canWrite(c),
+          canManageDevices: auth.canManageDevices(c),
+          canConfigure: auth.canConfigure(c),
+        }),
+      )
+      .post('/pair/peek', async (c) => c.json(await peekPairing(c, project, lan)))
+      .post('/pair', async (c) => {
+        const paired = await pair(c, project, lan, port);
+        feed.notify();
+        return c.json(paired, 201);
+      })
+      .get('/lan', (c) => {
+        assertCanManageDevices(c, auth);
+        return c.json(lanView(project, lan, port(), c.req.query('address')));
+      })
+      .post('/lan/code', (c) => {
+        assertCanManageDevices(c, auth);
+        assertSameOrigin(c);
+        assertLanOn(lan).codes.issue();
+        return c.json(lanView(project, lan, port(), c.req.query('address')), 201);
+      })
+      .post('/devices/:id/revoke', (c) => {
+        assertCanManageDevices(c, auth);
+        assertSameOrigin(c);
+        const device = revoke(project, c.req.param('id'));
+        feed.notify();
+        return c.json(device);
+      })
+      .get('/project', (c) => c.json(projectView(project)))
+      .get('/projects', (c) => c.json(projectOverviews(project, env)))
+      .get('/project/settings', (c) => c.json(projectSettings(project, env)))
+      .post('/project/paths', async (c) => {
+        assertConfigurable(c, auth);
+        const { path } = await pathRequest(c);
+        return c.json(addPath(project, path, env), 201);
+      })
+      .post('/project/paths/relink', async (c) => {
+        assertConfigurable(c, auth);
+        const { from, to, force } = await relinkRequest(c);
+        return c.json(relinkPath(project, from, to, force, env));
+      })
+      .post('/project/paths/forget', async (c) => {
+        assertConfigurable(c, auth);
+        const { path } = await pathRequest(c);
+        return c.json(forgetPath(project, path, env));
+      })
+      .get('/collections', (c) => c.json(listCollectionViews(project)))
+      .get('/presets', (c) => c.json(listPresetViews(project)))
+      .get('/agents', (c) => c.json({ agents: listAgents(project.db) }))
+      .get('/items', (c) =>
+        c.json(listItems(project, itemsFilter(c.req.query(), c.req.queries('field')))),
+      )
+      .post('/items', bodyLimit({ maxSize: MAX_CREATE_BYTES, onError: tooLarge }), async (c) => {
+        assertWritable(c, auth, true);
+        const { files, ...request } = await createRequest(c);
+        const input = { ...request, ...HUMAN_IN_UI };
+        const item =
+          files.length === 0
+            ? createItem(project, input)
+            : createItemWithEvidence(project, input, files);
+        feed.notify();
+        return c.json(item, 201);
+      })
+      .get('/items/:id', (c) => c.json(showItem(project, c.req.param('id'), HUMAN_IN_UI)))
+      .post('/items/:id/move', async (c) => {
+        assertWritable(c, auth);
+        const request = await moveRequest(c);
+        const item = moveItem(project, { id: c.req.param('id'), ...request, ...HUMAN_IN_UI });
+        feed.notify();
+        return c.json(item);
+      })
+      .post('/items/:id/undo', async (c) => {
+        assertWritable(c, auth);
+        const undo = await undoRequest(c);
+        const id = c.req.param('id');
+        const item =
+          'from' in undo
+            ? undoMove(project, { id, from: undo.from, ...HUMAN_IN_UI })
+            : undoRelease(project, { id, ...HUMAN_IN_UI });
+        feed.notify();
+        return c.json(item);
+      })
+      // A stuck item: back in the queue of its step (Retomar), or left for an agent (Reasignar).
+      .post('/items/:id/restart', (c) => {
+        assertWritable(c, auth);
+        const item = restartItem(project, { id: c.req.param('id'), ...HUMAN_IN_UI });
+        feed.notify();
+        return c.json(item);
+      })
+      .post('/items/:id/reassign', async (c) => {
+        assertWritable(c, auth);
+        const { agent } = await reassignRequest(c);
+        const item = reassignItem(project, { id: c.req.param('id'), agent, ...HUMAN_IN_UI });
+        feed.notify();
+        return c.json(item);
+      })
+      .post('/items/:id/link', async (c) => {
+        assertWritable(c, auth);
+        const request = await linkRequest(c);
+        const relation = linkItems(project, { id: c.req.param('id'), ...request, ...HUMAN_IN_UI });
+        feed.notify();
+        return c.json(relation, 201);
+      })
+      .post('/items/:id/unlink', async (c) => {
+        assertWritable(c, auth);
+        const request = await linkRequest(c);
+        const relation = unlinkItems(project, {
+          id: c.req.param('id'),
+          ...request,
+          ...HUMAN_IN_UI,
+        });
+        feed.notify();
+        return c.json(relation);
+      })
+      .post('/brief', async (c) => c.json(briefFor(project, await briefRequest(c))))
+      .get('/evidence/:id/file', (c) => {
+        assertSignedIn(c, auth, 'open evidence files');
+        return serveEvidence(c, project, c.req.param('id'));
+      })
+      .route('/studio', studioApi(project, feed, auth))
+      .get('/events', (c) => c.json(listEvents(project, eventsFilter(c.req.query()))))
+      .get('/stream', (c) => streams.handle(c))
+      .all('*', (c) => c.json(errorBody('not_found', `No route ${c.req.path}`), 404))
+  );
 }
 
 // What an unpaired device on the LAN may reach: the pairing screen, the files it loads, and the
