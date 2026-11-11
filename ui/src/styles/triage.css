@@ -1,9 +1,4 @@
 /* Triaje (SPEC §10.4, mock:829-847): one card at a time over the next one. */
-.layout.triage-layout {
-  display: block;
-  padding: 0;
-  min-height: 0;
-}
 .tri {
   padding: 34px 40px 60px;
   max-width: 980px;

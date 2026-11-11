@@ -335,8 +335,6 @@ type ProjectSettingsProps = {
   version: number;
   connection: Connection;
   canWrite: boolean;
-  rail?: ReactNode;
-  sidebar?: boolean;
 };
 
 // One project's settings: its name, the paths and repos that lead to it, and where its data lives.

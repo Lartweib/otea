@@ -15,13 +15,11 @@ import {
 } from '../activity.ts';
 import { typeOfItem, useApp } from '../app/context.tsx';
 import { relationSentence } from '../format.ts';
-import type { Connection } from '../hooks.ts';
 import { t, tx } from '../i18n/i18n.ts';
 import { useEscape } from '../kit/escape.ts';
 import { AgentMark, Icon, IconButton, Swap } from '../kit/index.ts';
 import { Choreo, part } from '../motion/choreo.ts';
 import { stateWord } from '../preset-words.ts';
-import type { CollectionView, Item } from '../types.ts';
 
 // Actividad (SPEC §10.4, mock:804-827, 3538-3579): a 500 px drawer from the right of .main. It
 // slides in (translateX 100% → 0, 600 settle) while its parts resolve at 120 + 34·min(i, 5); the
@@ -110,16 +108,7 @@ function sentence(line: FeedLine, id: ReactNode, state: (s: string) => string): 
   }
 }
 
-type ActivityDrawerProps = {
-  open: boolean;
-  onClose: () => void;
-  // Kept for the app's call; the drawer reads the app's data.
-  items?: readonly Item[];
-  collections?: readonly CollectionView[];
-  version?: number;
-  connection?: Connection;
-  phone?: boolean;
-};
+type ActivityDrawerProps = { open: boolean; onClose: () => void };
 
 export function ActivityDrawer({ open, onClose }: ActivityDrawerProps) {
   const app = useApp();

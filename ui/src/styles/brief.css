@@ -1,8 +1,4 @@
 /* Encargo (#/brief/…): the items picked, in the order their blocks allow, beside the brief they write. */
-.brief-layout {
-  display: block;
-  min-height: 100%;
-}
 .brief {
   padding: 32px 40px 80px;
   max-width: 1480px;

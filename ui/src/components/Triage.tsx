@@ -35,22 +35,12 @@ import {
   triSync,
 } from '../triage.ts';
 import type { Evidence, Item, ItemView } from '../types.ts';
-import type { CollectionOf } from './ItemList.tsx';
 import { arriveUnder, DECIDE_MS, flyOut, riseUnder, settleBack } from './triage-flight.ts';
 
 // Triaje (#/triage, SPEC §10.4, mock:829-847, 3995-4036): the reviews, one card at a time over the
 // next one. Aprobar flies the card right, Devolver… opens notes in the card and flies it left with
 // them, Después drops it to the end of the pass; the card under it rises into its place. "Todo al
 // día." once every card is decided. On the phone a swipe right approves, a swipe left sends back.
-
-type TriageProps = {
-  // Kept for the app's call; the pass reads the reviews itself.
-  waiting?: Item[];
-  loading?: boolean;
-  collectionOf?: CollectionOf;
-  version?: number;
-  onExit?: () => void;
-};
 
 // The views of the card on top and of the one under it (their moves and evidence), read ahead, so
 // a card rises ready. Read again when the live stream says something changed.
@@ -366,7 +356,7 @@ function TriCard({
   );
 }
 
-export function Triage(_props: TriageProps) {
+export function Triage() {
   const app = useApp();
   const ctx = {
     now: app.now,

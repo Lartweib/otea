@@ -7,13 +7,12 @@ import { type Look, lookOf } from '../lanes/looks.ts';
 import { NodeGlyph } from '../lanes/NodeGlyph.tsx';
 import { renderMarkdown } from '../markdown.ts';
 import { briefHash, hashFor, ITEMS_HASH } from '../selection.ts';
-import type { CollectionView, Item } from '../types.ts';
+import type { Item } from '../types.ts';
 
 type BriefViewProps = {
   // The items in the order the person put them, from the address.
   ids: readonly string[];
   items: readonly Item[];
-  collections: readonly CollectionView[];
   // A new version means an item changed: the brief is written again from the project.
   version: number;
 };
