@@ -107,7 +107,9 @@ export function dipsOf(g: RouteGeom, dips: readonly DipSpec[]): Dip[] {
     if (dp.at < 0 || dp.at >= g.n) continue;
     const k = (count.get(dp.at) ?? 0) + 1;
     count.set(dp.at, k);
-    const x = (g.xs[dp.at] ?? 0) - 50 - (k - 1) * 40;
+    // Before its step; the first step has no room before it, so after.
+    const off = 50 + (k - 1) * 40;
+    const x = (g.xs[dp.at] ?? 0) + (dp.at === 0 ? off : -off);
     const y = RY.you;
     out.push({
       x,

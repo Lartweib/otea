@@ -48,6 +48,25 @@ const twoRounds = [
 ];
 
 describe('what the sheet reads from the item', () => {
+  it('counts a send-back from a step no agent handed over yet, at the step it left', () => {
+    const events = [
+      ev('created', { kind: 'agent', name: 'Scout' }, { state: 'reported' }, 900),
+      ev('transitioned', you, { from: 'reported', to: 'needs_info', reason: 'Qué versión' }, 5),
+    ];
+    const f = factsOf(view({ events, state: 'needs_info', turn: 'agent' }), bug, NOW);
+    expect(f.sentBack).toEqual([{ n: 1, at: ago(5), state: 'reported' }]);
+  });
+
+  it('does not count an answer to a question as a send-back', () => {
+    const events = [
+      ...twoRounds.slice(0, 3),
+      ev('transitioned', mender, { from: 'fixing', to: 'verify', reason: '¿Las borro?' }, 20),
+      ev('transitioned', you, { from: 'verify', to: 'fixing', reason: 'Sí.' }, 5),
+    ];
+    const f = factsOf(view({ events, state: 'fixing', turn: 'agent' }), bug, NOW);
+    expect(f.sentBack).toEqual([]);
+  });
+
   it('reads the agent that handed it, its note, the round and your notes', () => {
     const f = factsOf(view({ events: twoRounds }), bug, NOW);
     expect(f.handed).toEqual({ agent: 'Mender', reason: 'Ya cruzan.', at: ago(14) });
