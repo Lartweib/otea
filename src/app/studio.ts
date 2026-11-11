@@ -85,6 +85,8 @@ export type PresetSummary = {
   version: number | null;
   collections: string[];
   problems: string[];
+  // Its own name in the languages it speaks, when it gives one.
+  names?: Record<string, string>;
 };
 
 // `samples` is the text of samples.yaml, written with the preset when given.
@@ -190,13 +192,16 @@ export function listStudioPresets(project: Project): PresetSummary[] {
   const collections = listCollections(project.db);
   const usedBy = (name: string) =>
     collections.filter(({ preset }) => preset === name).map(({ name }) => name);
-  const loaded = [...project.presets.presets.values()].map(({ name, origin, version }) => ({
-    name,
-    origin,
-    version,
-    collections: usedBy(name),
-    problems: [],
-  }));
+  const loaded = [...project.presets.presets.values()].map(
+    ({ name, origin, version, names }): PresetSummary => ({
+      name,
+      origin,
+      version,
+      collections: usedBy(name),
+      problems: [],
+      ...(names ? { names } : {}),
+    }),
+  );
   const broken = new Map<string, PresetSummary>();
   for (const { preset, origin, message } of project.presets.problems) {
     if (project.presets.presets.get(preset)?.origin === origin) continue;

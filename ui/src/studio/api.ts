@@ -13,6 +13,7 @@ export type PresetSummary = {
   version: number | null;
   collections: string[];
   problems: string[];
+  names?: Record<string, string>;
 };
 
 export type PresetSource = {

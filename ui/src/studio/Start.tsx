@@ -52,7 +52,7 @@ function TemplateRow({
       <a className="st-trow-main" href={studioHash({ kind: 'preset', name: preset.name })}>
         <span className="st-trow-t">
           {preset.problems.length > 0 ? <ProblemMark /> : null}
-          {view?.names?.[language()] ?? preset.name}
+          {preset.names?.[language()] ?? view?.names?.[language()] ?? preset.name}
         </span>
         <span className="st-trow-m">
           <span className="id">

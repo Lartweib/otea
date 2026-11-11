@@ -17,7 +17,10 @@ const blueprint = {
 describe('studioTreeOf', () => {
   it('reads the blueprint, the presets and the modules from what Studio loads', () => {
     const tree = studioTreeOf({
-      presets: [preset('tasks', 'official', ['work']), preset('game-bugs', 'project')],
+      presets: [
+        { ...preset('tasks', 'official', ['work']), names: { en: 'Tasks', es: 'Tareas' } },
+        preset('game-bugs', 'project'),
+      ],
       blueprint,
       modules: 15,
       route: { view: 'studio', page: { kind: 'start' } },
@@ -25,8 +28,8 @@ describe('studioTreeOf', () => {
 
     expect(tree.blueprint).toEqual({ name: 'game-studio', version: 1, boards: 2 });
     expect(tree.presets).toEqual([
-      { name: 'tasks', version: 2, collections: ['work'], official: true },
-      { name: 'game-bugs', version: 2, collections: [], official: false },
+      { name: 'tasks', label: 'Tasks', version: 2, collections: ['work'], official: true },
+      { name: 'game-bugs', label: 'game-bugs', version: 2, collections: [], official: false },
     ]);
     expect(tree.modules).toBe(15);
     expect(tree.current).toBeUndefined();
