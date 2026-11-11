@@ -180,7 +180,7 @@ export function Route({ id, steps, words, ci, lane, look, dips, phone = false }:
     g.xs,
     steps.map((s, i) => (words[i] ?? s.name).toLocaleUpperCase()),
     g.ci,
-    small ? 6.6 : 7.9,
+    small ? 7.4 : 7.9,
   );
   const future = futureD(g);
   return (
