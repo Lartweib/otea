@@ -3,7 +3,8 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, describe, expect, it } from 'vitest';
 import { setLanguage } from '../i18n/i18n.ts';
 import type { Route } from '../selection.ts';
-import { boardIcon, NavBody, type NavBodyProps, navOn } from './NavSheet.tsx';
+import { boardIcon } from '../shell/rail-model.ts';
+import { NavBody, type NavBodyProps, navOn } from './NavSheet.tsx';
 
 afterEach(() => setLanguage('en'));
 
@@ -12,8 +13,8 @@ const props = (route: Route, o: Partial<NavBodyProps> = {}): NavBodyProps => ({
   toca: 6,
   atasco: 1,
   boards: [
-    { name: 'Errores', icon: 'bug', open: 5 },
-    { name: 'Tareas', icon: null, open: 6 },
+    { name: 'Errores', icon: boardIcon('bug'), open: 5 },
+    { name: 'Tareas', icon: boardIcon(null), open: 6 },
   ],
   onGo: () => {},
   onNewBoard: () => {},
@@ -78,10 +79,18 @@ describe('navOn', () => {
   });
 });
 
-describe('boardIcon', () => {
-  it("uses the board's icon when the mock's set has it, else the board", () => {
-    expect(boardIcon('bug')).toBe('bug');
-    expect(boardIcon('nonsense')).toBe('board');
-    expect(boardIcon(null)).toBe('board');
+describe('the boards on the nav sheet', () => {
+  it('draws each board with the icon the rail gives it, a type icon too', () => {
+    const rail = render(
+      props(
+        { view: 'toca' },
+        { boards: [{ name: 'Tareas', icon: boardIcon('checklist'), open: 2 }] },
+      ),
+    );
+    const plain = render(
+      props({ view: 'toca' }, { boards: [{ name: 'Tareas', icon: boardIcon(null), open: 2 }] }),
+    );
+    expect(boardIcon('checklist').kind).toBe('type');
+    expect(rail).not.toBe(plain);
   });
 });

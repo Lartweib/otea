@@ -25,7 +25,7 @@ import { useMedia } from './use-media.ts';
 
 const NARROW = '(max-width: 1023px)';
 
-function RowIcon({ icon }: { icon: BoardIcon }) {
+export function RowIcon({ icon }: { icon: BoardIcon }) {
   return icon.kind === 'mock' ? <Icon name={icon.name} /> : <TypeIcon name={icon.name} size={16} />;
 }
 
