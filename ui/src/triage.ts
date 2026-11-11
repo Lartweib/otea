@@ -1,8 +1,12 @@
 import type { Waits } from './actions.ts';
 import { moveBlock, moveVariants } from './actions.ts';
-import type { Move } from './types.ts';
+import type { FeedEvent } from './activity.ts';
+import { handedNote, type TocaContext, tocaSection } from './derive/toca.ts';
+import type { Item, Move } from './types.ts';
 
-// Swipe triage: one card per item on your turn. Right is the primary move, left sends the item back.
+// Triaje (SPEC §10.4, mock:3995-4036): the reviews, one card at a time. Aprobar is the primary move,
+// Devolver… sends the item back to an agent with notes, Después leaves it for the end of the pass.
+// On the phone a swipe right approves and a swipe left sends back.
 
 export type Direction = 'right' | 'left';
 
@@ -79,25 +83,73 @@ export function dragProgress(dx: number, width: number): number {
   return Math.min(1, Math.abs(dx) / swipeThreshold(width));
 }
 
-// The cards still to show: what waits for you, in list order, minus what was decided or skipped here.
-export function queueOf(waiting: readonly string[], seen: ReadonlySet<string>): string[] {
-  return waiting.filter((id) => !seen.has(id));
+// The reviews a pass goes through: what an agent handed you to review (Te toca's Revisiones), the
+// one waiting longest first.
+export function triageQueue(items: readonly Item[], ctx: TocaContext): string[] {
+  return items
+    .filter((it) => tocaSection(it, ctx) === 'revisiones')
+    .sort((a, b) => Date.parse(a.updatedAt) - Date.parse(b.updatedAt))
+    .map((it) => it.id);
 }
 
-// A box on screen (getBoundingClientRect).
-export type Box = { left: number; top: number; width: number; height: number };
+// A pass: the cards in the order met, the one on top, and how many were decided.
+export type TriState = { q: string[]; i: number; decided: number };
+export type TriKind = 'approve' | 'send' | 'later';
 
-// How a decided card lands in its tray entry: moved onto the slot's corner and scaled to its width,
-// its overflow cut from the bottom so what is left has the slot's height. dx and dy move the card's
-// top-left corner; cut is in the card's own (unscaled) pixels.
-export type Landing = { dx: number; dy: number; scale: number; cut: number };
+export const triStart = (ids: readonly string[]): TriState => ({ q: [...ids], i: 0, decided: 0 });
+export const triCurrent = (s: TriState): string | undefined => s.q[s.i];
+export const triNext = (s: TriState): string | undefined => s.q[s.i + 1];
 
-export function landingOf(card: Box, slot: Box): Landing {
-  const scale = card.width > 0 ? slot.width / card.width : 1;
+// The reviews changed under the pass: a new one joins the end, one still to come that left the
+// reviews (somebody moved it) drops out. What was already decided stays, for the count.
+export function triSync(s: TriState, waiting: readonly string[]): TriState {
+  const now = new Set(waiting);
+  const kept = s.q.filter((id, at) => at < s.i || now.has(id));
+  const added = waiting.filter((id) => !s.q.includes(id));
+  if (kept.length === s.q.length && added.length === 0) return s;
+  return { ...s, q: [...kept, ...added] };
+}
+
+export function triDecide(s: TriState, kind: TriKind): TriState {
+  if (kind !== 'later') return { ...s, i: s.i + 1, decided: s.decided + 1 };
+  const q = [...s.q];
+  const [current] = q.splice(s.i, 1);
+  if (current !== undefined) q.push(current);
+  return { ...s, q };
+}
+
+// The round the item is in: one more for every time you sent it back with notes.
+export function roundOf(id: string, feed: readonly FeedEvent[]): number {
+  return (
+    1 +
+    feed.filter(
+      (e) =>
+        e.itemId === id &&
+        e.type === 'transitioned' &&
+        e.actor.kind === 'human' &&
+        typeof e.data.reason === 'string' &&
+        e.data.reason.trim() !== '',
+    ).length
+  );
+}
+
+// What a card says under its title: who hands it to you, in which round, and what it said.
+export function cardWords(
+  item: Item,
+  feed: readonly FeedEvent[],
+): { agent: string | null; say: string; round: number } {
+  const note = handedNote(item, feed);
   return {
-    dx: slot.left - card.left,
-    dy: slot.top - card.top,
-    scale,
-    cut: Math.max(0, card.height - slot.height / scale),
+    agent: note?.agent ?? null,
+    say: note?.reason.trim() ?? '',
+    round: roundOf(item.id, feed),
   };
+}
+
+// Where a decided card flies (mock:4033): an approval to the right, a send-back to the left, both
+// tilted; a card left for later drops behind.
+export function exitPose(kind: TriKind): string {
+  if (kind === 'later') return 'translateY(24px) scale(0.97)';
+  const dx = kind === 'approve' ? 1 : -1;
+  return `translateX(${dx * 120}px) rotate(${dx * 2}deg)`;
 }

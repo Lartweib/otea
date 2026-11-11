@@ -1,155 +1,180 @@
-import { type PointerEvent, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { waitsOf } from '../actions.ts';
-import { fetchItem, moveItem } from '../api.ts';
-import { agoLabel } from '../format.ts';
-import { useActiveLease } from '../hooks.ts';
-import { t } from '../i18n/i18n.ts';
-import { fieldLabel } from '../intake.ts';
-import { showsTypes, typeOf } from '../item-types.ts';
-import { keyTargetOf } from '../keys.ts';
-import { Button, Icon, Node, nodeLabel, Pill, TypeTag } from '../kit/index.ts';
-import { moduleFor } from '../modules/registry.ts';
-import { valuesOf } from '../modules/values.ts';
-import { MOTION, reducedMotion } from '../motion.ts';
-import { itemNodeKind } from '../node-kind.ts';
-import { fieldWord, keyTitle, stateWord, typeWord } from '../preset-words.ts';
-import { openLabel, relationLabel } from '../relations.ts';
-import { hashFor } from '../selection.ts';
 import {
-  type Direction,
+  type PointerEvent,
+  type ReactNode,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
+import { waitsOf } from '../actions.ts';
+import { evidenceFileUrl, fetchItem } from '../api.ts';
+import { typeOfItem, useApp } from '../app/context.tsx';
+import { t, tx } from '../i18n/i18n.ts';
+import { useEscape } from '../kit/escape.ts';
+import { Button, Count, StepPill } from '../kit/index.ts';
+import { toast } from '../kit/pop/toast.tsx';
+import { NodeGlyph } from '../lanes/NodeGlyph.tsx';
+import { anim } from '../motion/anim.ts';
+import { Choreo, part } from '../motion/choreo.ts';
+import { reduced } from '../motion/reduced.ts';
+import { stateWord } from '../preset-words.ts';
+import {
+  cardWords,
   dragIntent,
   dragProgress,
-  queueOf,
   releaseDirection,
-  swipeAction,
   type TriagePlan,
+  type TriKind,
+  type TriState,
   triagePlan,
+  triageQueue,
+  triCurrent,
+  triDecide,
+  triNext,
+  triStart,
+  triSync,
 } from '../triage.ts';
-import type { Item, Move, Turn } from '../types.ts';
+import type { Evidence, Item, ItemView } from '../types.ts';
 import type { CollectionOf } from './ItemList.tsx';
-import { type Exit, type Flight, leaveStage } from './triage-flight.ts';
+import { arriveUnder, DECIDE_MS, flyOut, riseUnder, settleBack } from './triage-flight.ts';
 
-// What happened to a card: moved to a state (handing the turn to `turn`), or skipped (to is
-// undefined).
-type Decision = { id: string; title: string; to?: string; turn?: Turn };
+// Triaje (#/triage, SPEC §10.4, mock:829-847, 3995-4036): the reviews, one card at a time over the
+// next one. Aprobar flies the card right, Devolver… opens notes in the card and flies it left with
+// them, Después drops it to the end of the pass; the card under it rises into its place. "Todo al
+// día." once every card is decided. On the phone a swipe right approves, a swipe left sends back.
 
 type TriageProps = {
-  // What waits for you, in list order.
-  waiting: Item[];
-  // The list is still loading: nothing is said about an empty turn yet.
+  // Kept for the app's call; the pass reads the reviews itself.
+  waiting?: Item[];
   loading?: boolean;
-  collectionOf: CollectionOf;
-  version: number;
-  onExit: () => void;
+  collectionOf?: CollectionOf;
+  version?: number;
+  onExit?: () => void;
 };
 
-// A card that moves (leaves, settles back, comes up) moves layout: the slow token.
-const SLIDE = { duration: MOTION.slow, easing: MOTION.ease };
-
-// The field that leads a card as plain text, as it leads the detail.
-const LEAD = 'description';
-
-// The pull of a drag, 0 to 1, read by the card's stamps and the cards behind it.
-function pull(card: HTMLElement, progress: number, lean?: Direction) {
-  card.parentElement?.style.setProperty('--p', String(progress));
-  if (lean) card.dataset.lean = lean;
-  else delete card.dataset.lean;
+// The views of the card on top and of the one under it (their moves and evidence), read ahead, so
+// a card rises ready. Read again when the live stream says something changed.
+function useViews(ids: readonly string[], version: number): ReadonlyMap<string, ItemView> {
+  const [views, setViews] = useState<ReadonlyMap<string, ItemView>>(new Map());
+  const key = ids.join(' ');
+  // biome-ignore lint/correctness/useExhaustiveDependencies: version asks for a fresh read
+  useEffect(() => {
+    const controller = new AbortController();
+    for (const id of key.split(' ').filter(Boolean)) {
+      fetchItem(id, controller.signal).then(
+        (view) => {
+          if (view) setViews((known) => new Map(known).set(id, view));
+        },
+        () => undefined,
+      );
+    }
+    return () => controller.abort();
+  }, [key, version]);
+  return views;
 }
 
-function settle(card: HTMLElement) {
-  const from = card.style.transform || 'none';
-  card.style.transform = '';
-  pull(card, 0);
-  if (reducedMotion() || from === 'none') return;
-  card.animate([{ transform: from }, { transform: 'none' }], SLIDE);
-}
-
-// The marks an item's card starts with: where it stands, its id, state and collection.
-function CardTags({ item, collectionOf }: { item: Item; collectionOf: CollectionOf }) {
-  const lease = useActiveLease(item.lease);
-  const collection = collectionOf(item.collection);
-  const type = typeOf(collection, item.type);
-  const kind = itemNodeKind(item, type, lease !== null);
-  const state = stateWord(type, item.state);
+// Images side by side, before then after, each captioned under a caps kicker (mock:2576-2611).
+function Figures({ evidence }: { evidence: readonly Evidence[] }) {
+  const rank = { before: 0, after: 1, single: 2 } as const;
+  const shown = evidence
+    .filter((e) => e.contentType.startsWith('image/'))
+    .sort((a, b) => rank[a.role] - rank[b.role])
+    .slice(0, 2);
+  if (shown.length === 0) return null;
   return (
-    <div className="detail-tags">
-      <Node kind={kind} label={nodeLabel(kind)} />
-      {showsTypes(collection) ? (
-        <TypeTag name={item.type} label={typeWord(type, item.type)} />
-      ) : null}
-      <span className="t-id">{item.id}</span>
-      <Pill tone="state" yours={item.turn === 'human'} title={keyTitle(state, item.state)}>
-        {state}
-      </Pill>
-      <span className="t-cap">{item.collection}</span>
+    <div className="figs">
+      {shown.map((e) => (
+        <figure key={e.id}>
+          <img src={evidenceFileUrl(e.id)} alt={e.caption ?? e.filename} loading="lazy" />
+          <figcaption>
+            {e.role === 'single' ? null : (
+              <b className="fk">{t(e.role === 'before' ? 'evidence.before' : 'evidence.after')}</b>
+            )}
+            {e.caption ?? e.filename}
+          </figcaption>
+        </figure>
+      ))}
     </div>
   );
 }
 
-// Where the item stands, at the foot of the card: who holds it, its children, what it is tied to,
-// how long ago it changed.
-function CardStanding({ item }: { item: Item }) {
-  const lease = useActiveLease(item.lease);
-  const ago = agoLabel(item.updatedAt, Date.now());
-  const facts = [
-    lease ? t('lease.heldBy', { holder: lease.holder }) : null,
-    item.children ? t('triage.children', { open: openLabel(item.children) }) : null,
-    ...(item.relations ?? [])
-      .filter(({ kind }) => kind !== 'parent')
-      .map(({ kind, id }) => `${relationLabel(kind)} ${id}`),
-    ago === '' ? null : t('triage.updated', { ago }),
-  ].filter((fact): fact is string => fact !== null);
-  return <p className="tcard-standing t-cap">{facts.join(' · ')}</p>;
-}
-
-// The card waiting behind the top one, already complete: when the top one leaves, this is what is
-// seen rising, never an empty frame. Hidden from assistive tech and the keyboard until its turn.
-function NextCard({ item, collectionOf }: { item: Item; collectionOf: CollectionOf }) {
+// The notes that go back with Devolver…: unrolled from under the moves, the same gesture mirrored
+// to close (mock:4023-4024).
+function Notes({
+  open,
+  onSend,
+  onCancel,
+}: {
+  open: boolean;
+  onSend: (reason: string) => void;
+  onCancel: () => void;
+}) {
+  const [mounted, setMounted] = useState(open);
+  const [text, setText] = useState('');
+  const el = useRef<HTMLDivElement>(null);
+  const ch = useRef<Choreo | null>(null);
+  if (open && !mounted) setMounted(true);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: runs on open, close and mount
+  useLayoutEffect(() => {
+    const node = el.current;
+    if (!node) return;
+    if (open) {
+      ch.current ??= new Choreo([
+        part(
+          node,
+          { clipPath: 'inset(0px 0px 100% 0px)' },
+          { clipPath: 'inset(0px 0px 0px 0px)' },
+          440,
+          'settle',
+          0,
+        ),
+        part(node, { opacity: 0 }, { opacity: 1 }, 300, 'drift', 0),
+        part(
+          node,
+          { transform: 'translateY(-6px)' },
+          { transform: 'translateY(0px)' },
+          440,
+          'settle',
+          0,
+        ),
+      ]);
+      ch.current.go(1);
+      node.querySelector('textarea')?.focus({ preventScroll: true });
+    } else if (ch.current) {
+      const c = ch.current;
+      c.go(0).then((latest) => {
+        if (latest && c.dir === 0) {
+          ch.current = null;
+          setMounted(false);
+        }
+      });
+    }
+  }, [open, mounted]);
+  useEscape(open, 'notes', onCancel);
+  if (!mounted) return null;
   return (
-    <div className="tcard raised tcard-next" aria-hidden="true" inert>
-      <div className="tcard-head">
-        <CardTags item={item} collectionOf={collectionOf} />
+    <div className="tri-notes" ref={el}>
+      <textarea
+        rows={2}
+        value={text}
+        placeholder={t('triage.notesPlaceholder')}
+        aria-label={t('triage.notes')}
+        onChange={(e) => setText(e.target.value)}
+      />
+      <div className="nbtns">
+        <Button
+          variant="primary"
+          size="sm"
+          disabled={text.trim() === ''}
+          onClick={() => onSend(text.trim())}
+        >
+          {t('triage.send')}
+        </Button>
+        <Button variant="quiet" size="sm" onClick={onCancel}>
+          {t('common.cancel')}
+        </Button>
       </div>
-      <p className="tcard-title">{item.title}</p>
-      <CardBody item={item} collectionOf={collectionOf} />
-      <CardStanding item={item} />
     </div>
-  );
-}
-
-// What the card says about the item: the description as plain text, then the other fields.
-function CardBody({ item, collectionOf }: { item: Item; collectionOf: CollectionOf }) {
-  const type = typeOf(collectionOf(item.collection), item.type);
-  const values = valuesOf(type?.fields, item.fields);
-  const lead = values.find(({ field }) => field.name === LEAD);
-  const rest = values.filter((value) => value !== lead);
-  const Lead = lead ? moduleFor(lead.field.module).Detail : undefined;
-  if (!lead && rest.length === 0) {
-    return <p className="t-small tcard-empty">{t('common.noFields')}</p>;
-  }
-  return (
-    <>
-      {lead && Lead ? (
-        <div className="tcard-lead">
-          <Lead field={lead.field} value={lead.value} />
-        </div>
-      ) : null}
-      {rest.length > 0 ? (
-        <dl className="tcard-fields">
-          {rest.map(({ field, value }) => {
-            const { Detail } = moduleFor(field.module);
-            return (
-              <div key={field.name} className="tcard-field">
-                <dt>{fieldWord(type, field.name) ?? fieldLabel(field.name)}</dt>
-                <dd>
-                  <Detail field={field} value={value} />
-                </dd>
-              </div>
-            );
-          })}
-        </dl>
-      ) : null}
-    </>
   );
 }
 
@@ -163,591 +188,373 @@ type Drag = {
   live: boolean;
 };
 
-type CardStep =
-  | { step: 'idle'; error?: string }
-  | { step: 'explaining'; move: Move; reason: string; error?: string }
-  | { step: 'posting' };
-
-// A card on its way out: what was decided, the move being posted, and how to bring the card back
-// if the move fails. The mode flies it to where it goes (see triage-flight.ts).
-type Leaving = {
-  element: HTMLElement;
-  exit: Exit;
-  decision: Decision;
-  moved: Promise<unknown>;
-  restore: (message: string) => void;
-};
-
 type CardProps = {
   item: Item;
-  collectionOf: CollectionOf;
-  plan: TriagePlan | undefined;
-  // The mode holds on to the card's item from the first move until it has left.
-  onLeave: (leaving: Leaving) => void;
-  // How many cards wait behind this one (drawn as a stack, at most two), and the first of them.
-  behind: number;
-  next: Item | undefined;
+  under: boolean;
+  view: ItemView | undefined;
+  words: ReturnType<typeof cardWords>;
+  state: string;
+  phone: boolean;
+  register: (id: string, el: HTMLElement | null) => void;
+  onDecide: (kind: TriKind, reason?: string) => void;
+  onOpen: () => void;
 };
 
-function TriageCard({ item, collectionOf, plan, onLeave, behind, next }: CardProps) {
-  const card = useRef<HTMLElement>(null);
+function standfirst({ agent, round }: ReturnType<typeof cardWords>): ReactNode {
+  if (!agent) return t('triage.yours');
+  const who = <b>{agent}</b>;
+  return round > 1
+    ? tx('triage.handsRound', { agent: who, round })
+    : tx('triage.hands', { agent: who });
+}
+
+function TriCard({
+  item,
+  under,
+  view,
+  words,
+  state,
+  phone,
+  register,
+  onDecide,
+  onOpen,
+}: CardProps) {
+  const [notes, setNotes] = useState(false);
+  const card = useRef<HTMLElement | null>(null);
   const drag = useRef<Drag | null>(null);
-  const [state, setState] = useState<CardStep>({ step: 'idle' });
-  const ready = plan !== undefined && state.step === 'idle';
-  const type = typeOf(collectionOf(item.collection), item.type);
-  const word = (name: string) => stateWord(type, name);
+  const plan: TriagePlan | undefined = view
+    ? triagePlan(view.transitions, waitsOf(view))
+    : undefined;
+  const forward = plan?.forward;
+  const back = plan?.back;
+  // The card under the top one waits complete (inert, never pale): it is the same card, brought forward.
+  const ready = !!plan;
 
-  // The card rises from where the next card waited (it is that card, brought forward): a
-  // transform only, so nothing behind it shows through. Reduced motion: it crossfades.
-  useLayoutEffect(() => {
-    const element = card.current;
-    if (!element) return;
-    if (reducedMotion()) {
-      element.animate([{ opacity: 0 }, { opacity: 1 }], { duration: MOTION.fast });
-      return;
-    }
-    element.animate([{ transform: 'translateY(10px) scale(0.97)' }, { transform: 'none' }], SLIDE);
-  }, []);
-
-  const commit = (exit: Exit, move: Move | undefined, reason = '') => {
-    const element = card.current;
-    if (!element || state.step === 'posting') return;
-    setState({ step: 'posting' });
-    onLeave({
-      element,
-      exit,
-      decision:
-        move === undefined
-          ? { id: item.id, title: item.title }
-          : { id: item.id, title: item.title, to: move.to, turn: move.turn },
-      moved: move === undefined ? Promise.resolve() : moveItem(item.id, move.to, reason),
-      restore: (message) => {
-        settle(element);
-        setState(
-          reason === '' || move === undefined
-            ? { step: 'idle', error: message }
-            : { step: 'explaining', move, reason, error: message },
-        );
-      },
-    });
+  const approve = () => {
+    if (!forward) return;
+    if (forward.reasonRequired) setNotes(true);
+    else onDecide('approve');
+  };
+  const sendBack = () => {
+    if (!back) return;
+    if (back.reasonRequired) setNotes(true);
+    else onDecide('send');
   };
 
-  const act = (direction: Direction) => {
-    if (!plan) return;
-    const action = swipeAction(direction, plan);
-    const move = direction === 'right' ? plan.forward : plan.back;
-    const element = card.current;
-    if (action.kind === 'move' && move) commit(direction, move);
-    else {
-      if (element) settle(element);
-      if (action.kind === 'explain' && move) setState({ step: 'explaining', move, reason: '' });
-    }
-  };
-
+  // The phone's swipes, from today's triage.ts: right approves, left sends back.
   const place = (dx: number) => {
-    const element = card.current;
-    if (!element) return;
-    // It tilts with the pull, never past a slight 3°.
+    const el = card.current;
+    if (!el) return;
     const tilt = Math.max(-3, Math.min(3, dx * 0.01));
-    element.style.transform = reducedMotion() ? '' : `translateX(${dx}px) rotate(${tilt}deg)`;
-    pull(element, dragProgress(dx, element.offsetWidth), dx > 0 ? 'right' : 'left');
+    el.style.transform = `translateX(${dx}px) rotate(${tilt}deg)`;
+    el.parentElement?.style.setProperty('--p', String(dragProgress(dx, el.offsetWidth)));
+    el.dataset.lean = dx > 0 ? 'right' : 'left';
   };
-
-  const onPointerDown = (event: PointerEvent<HTMLElement>) => {
-    if (!ready || event.button !== 0) return;
-    const target = event.target as HTMLElement;
-    if (target.closest('button, a, input, textarea, select, [contenteditable="true"]')) return;
+  const onPointerDown = (e: PointerEvent<HTMLElement>) => {
+    if (!phone || !ready || notes || e.button !== 0) return;
+    if ((e.target as HTMLElement).closest('button, a, input, textarea')) return;
     drag.current = {
-      pointer: event.pointerId,
-      x: event.clientX,
-      y: event.clientY,
+      pointer: e.pointerId,
+      x: e.clientX,
+      y: e.clientY,
       dx: 0,
-      t: event.timeStamp,
+      t: e.timeStamp,
       vx: 0,
       live: false,
     };
   };
-
-  const onPointerMove = (event: PointerEvent<HTMLElement>) => {
-    const current = drag.current;
-    if (!current || event.pointerId !== current.pointer) return;
-    const dx = event.clientX - current.x;
-    if (!current.live) {
-      const intent = dragIntent(dx, event.clientY - current.y);
+  const onPointerMove = (e: PointerEvent<HTMLElement>) => {
+    const d = drag.current;
+    if (!d || e.pointerId !== d.pointer) return;
+    const dx = e.clientX - d.x;
+    if (!d.live) {
+      const intent = dragIntent(dx, e.clientY - d.y);
       if (intent === 'pending') return;
       if (intent === 'scroll') {
         drag.current = null;
         return;
       }
-      current.live = true;
-      event.currentTarget.setPointerCapture(event.pointerId);
-      event.currentTarget.dataset.dragging = 'true';
+      d.live = true;
+      e.currentTarget.setPointerCapture(e.pointerId);
     }
-    const dt = event.timeStamp - current.t;
-    if (dt > 0) current.vx = (dx - current.dx) / dt;
-    current.dx = dx;
-    current.t = event.timeStamp;
+    const dt = e.timeStamp - d.t;
+    if (dt > 0) d.vx = (dx - d.dx) / dt;
+    d.dx = dx;
+    d.t = e.timeStamp;
     place(dx);
   };
-
-  const onPointerUp = (event: PointerEvent<HTMLElement>) => {
-    const current = drag.current;
+  const onPointerUp = (e: PointerEvent<HTMLElement>) => {
+    const d = drag.current;
     drag.current = null;
-    if (!current?.live || event.pointerId !== current.pointer) return;
-    delete event.currentTarget.dataset.dragging;
-    // A pause before letting go is not a flick.
-    const vx = event.timeStamp - current.t > 120 ? 0 : current.vx;
-    const direction = releaseDirection({
-      dx: current.dx,
-      vx,
-      width: event.currentTarget.offsetWidth,
-    });
-    if (direction) act(direction);
-    else settle(event.currentTarget);
+    if (!d?.live || e.pointerId !== d.pointer) return;
+    const el = e.currentTarget;
+    delete el.dataset.lean;
+    const vx = e.timeStamp - d.t > 120 ? 0 : d.vx;
+    const side = releaseDirection({ dx: d.dx, vx, width: el.offsetWidth });
+    const move = side === 'right' ? forward : side === 'left' ? back : undefined;
+    if (move && !move.reasonRequired) onDecide(side === 'right' ? 'approve' : 'send');
+    else {
+      settleBack(el);
+      if (move) setNotes(true);
+    }
   };
-
-  const onPointerCancel = (event: PointerEvent<HTMLElement>) => {
+  const onPointerCancel = (e: PointerEvent<HTMLElement>) => {
     if (!drag.current) return;
     drag.current = null;
-    delete event.currentTarget.dataset.dragging;
-    settle(event.currentTarget);
+    settleBack(e.currentTarget);
   };
 
-  const forward = plan?.forward;
-  const back = plan?.back;
-  const busy = state.step === 'posting';
-  const explaining = state.step === 'explaining';
+  const blocked = plan?.blocked?.[0];
   return (
-    <>
-      <div className="triage-stack" data-behind={Math.min(2, behind)}>
-        {next ? <NextCard item={next} collectionOf={collectionOf} /> : null}
-        <article
-          ref={card}
-          className="tcard raised"
-          aria-labelledby="tcard-title"
-          onPointerDown={onPointerDown}
-          onPointerMove={onPointerMove}
-          onPointerUp={onPointerUp}
-          onPointerCancel={onPointerCancel}
-        >
-          {forward ? (
-            <span className="stamp" data-side="right" aria-hidden="true">
-              {forward.to}
-            </span>
-          ) : null}
-          {back ? (
-            <span className="stamp" data-side="left" aria-hidden="true">
-              {back.to}
-            </span>
-          ) : null}
-          <div className="tcard-head">
-            <CardTags item={item} collectionOf={collectionOf} />
-            <a className="tcard-open t-cap" href={hashFor(item.id)}>
-              {t('triage.open')}
-            </a>
-          </div>
-          <h2 className="tcard-title" id="tcard-title">
-            {item.title}
-          </h2>
-          <CardBody item={item} collectionOf={collectionOf} />
-          <CardStanding item={item} />
-          {state.step === 'explaining' ? (
-            <form
-              className="reason"
-              onSubmit={(event) => {
-                event.preventDefault();
-                const reason = state.reason.trim();
-                if (reason !== '') commit('left', state.move, reason);
-              }}
-            >
-              <label className="t-label" htmlFor="triage-reason">
-                {t('common.reasonFor', { state: word(state.move.to) })}
-              </label>
-              <textarea
-                id="triage-reason"
-                className="input"
-                // biome-ignore lint/a11y/noAutofocus: the form opens because a reason was just asked for
-                autoFocus
-                value={state.reason}
-                onChange={(event) => setState({ ...state, reason: event.target.value })}
-                onKeyDown={(event) => {
-                  if (event.key === 'Escape') {
-                    event.stopPropagation();
-                    setState({ step: 'idle' });
-                  }
-                }}
-              />
-              <div className="action-buttons">
-                <Button type="submit" variant="primary" disabled={state.reason.trim() === ''}>
-                  {t('common.confirm')}
-                </Button>
-                <Button variant="quiet" onClick={() => setState({ step: 'idle' })}>
-                  {t('common.cancel')}
-                </Button>
-              </div>
-            </form>
-          ) : null}
-          {state.step !== 'posting' && state.error ? (
-            <p className="action-error" role="alert">
-              {state.error}
-            </p>
-          ) : null}
-        </article>
+    <article
+      ref={(el) => {
+        card.current = el;
+        register(item.id, el);
+      }}
+      className={under ? 'tcard under' : 'tcard'}
+      data-tk={item.id}
+      aria-hidden={under || undefined}
+      inert={under}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onPointerCancel={onPointerCancel}
+    >
+      <div className="tc-k">
+        <NodeGlyph look="yours" size={14} />
+        <span className="id">{item.id}</span>
+        <StepPill tone="you">{state}</StepPill>
+        <span>{item.collection}</span>
       </div>
-      <div className="triage-bar">
-        <div className="triage-buttons">
-          {back ? (
-            <Button
-              disabled={!ready}
-              aria-label={t('common.moveTo', { state: word(back.to) })}
-              onClick={() => act('left')}
-            >
-              <Icon name="left" />
-              {word(back.to)}
-            </Button>
-          ) : null}
-          <Button variant="quiet" disabled={busy} onClick={() => commit('skip', undefined)}>
-            {t('triage.later')}
-          </Button>
-          {forward ? (
-            <Button
-              variant={explaining ? 'default' : 'primary'}
-              disabled={!ready}
-              aria-label={t('common.moveTo', { state: word(forward.to) })}
-              onClick={() => act('right')}
-            >
-              {word(forward.to)}
-              <Icon name="right" />
-            </Button>
-          ) : null}
-        </div>
-        {plan?.blocked ? (
-          <div className="triage-blocked">
-            {plan.blocked.map(({ move, note }) => (
-              <span key={move.to} className="move-blocked">
-                <Button size="sm" disabled aria-describedby={`triage-block-${move.to}`}>
-                  {word(move.to)}
-                </Button>
-                <span className="move-block-note t-cap" id={`triage-block-${move.to}`}>
-                  {note}
-                </span>
-              </span>
-            ))}
-          </div>
-        ) : null}
-        <p className="t-cap triage-hint" aria-hidden="true">
-          {[
-            back ? t('triage.swipeLeft', { state: word(back.to) }) : '',
-            forward ? t('triage.swipeRight', { state: word(forward.to) }) : '',
-          ]
-            .filter(Boolean)
-            .join('   ')}
-        </p>
-      </div>
-    </>
-  );
-}
-
-// The moves of the card on top and of the one behind it, read from the server ahead of time, so a
-// card rises with its moves ready. Read again whenever the live stream says something changed.
-function usePlans(ids: readonly string[], version: number): ReadonlyMap<string, TriagePlan> {
-  const [plans, setPlans] = useState<ReadonlyMap<string, TriagePlan>>(new Map());
-  const key = ids.join(' ');
-  // biome-ignore lint/correctness/useExhaustiveDependencies: version asks for a fresh read
-  useEffect(() => {
-    const controller = new AbortController();
-    for (const id of key.split(' ').filter(Boolean)) {
-      fetchItem(id, controller.signal).then(
-        (view) => {
-          if (!view) return;
-          const plan = triagePlan(view.transitions, waitsOf(view));
-          setPlans((known) => new Map(known).set(id, plan));
-        },
-        () => undefined,
-      );
-    }
-    return () => controller.abort();
-  }, [key, version]);
-  return plans;
-}
-
-// What this pass decided, on one side of the stage: handed back to agents, or settled otherwise.
-// landing: the id of a decision whose card is still flying here; its entry is laid out (so the card
-// can land on it) but unseen until the card hands over to it.
-function Tray({
-  label,
-  decisions,
-  empty,
-  landing,
-}: {
-  label: string;
-  decisions: Decision[];
-  empty: string;
-  landing?: string | undefined;
-}) {
-  return (
-    <aside className="triage-tray" aria-label={label}>
-      <span className="t-label">{label}</span>
-      {decisions.length === 0 ? (
-        <p className="triage-tray-empty t-small">{empty}</p>
-      ) : (
-        <ul>
-          {[...decisions].reverse().map((decision) => (
-            <li
-              key={decision.id}
-              className="triage-tray-row"
-              data-landing={decision.id === landing ? decision.id : undefined}
-            >
-              <span className="t-id">{decision.id}</span>
-              <span className="triage-tray-title">{decision.title}</span>
-              <span className="t-cap">{t('triage.movedTo', { state: decision.to ?? '' })}</span>
-            </li>
-          ))}
-        </ul>
-      )}
-    </aside>
-  );
-}
-
-// Where the pass stands: one mark per card, decided, skipped, current or still to come.
-function Progress({ ids, log, current }: { ids: string[]; log: Decision[]; current?: string }) {
-  const outcome = new Map(log.map((decision) => [decision.id, decision]));
-  return (
-    <div className="triage-strip" aria-hidden="true">
-      {ids.map((id) => {
-        const decision = outcome.get(id);
-        const mark =
-          id === current
-            ? 'current'
-            : decision === undefined
-              ? 'waiting'
-              : decision.to === undefined
-                ? 'skipped'
-                : 'decided';
-        return <i key={id} data-mark={mark} />;
-      })}
-    </div>
-  );
-}
-
-// The stage once nothing is left: what was decided, and the ways out.
-function End({
-  log,
-  nothing,
-  onExit,
-  onAgain,
-}: {
-  log: Decision[];
-  nothing: boolean;
-  onExit: () => void;
-  onAgain: () => void;
-}) {
-  const moved = log.filter((decision) => decision.to !== undefined).length;
-  const skipped = log.length - moved;
-  return (
-    <div className="triage-end">
-      <h2 className="t-h">{t(nothing ? 'triage.nothing' : 'triage.caughtUp')}</h2>
-      <p className="t-small">
-        {nothing
-          ? t('triage.nothingBody')
-          : t('triage.doneBody', {
-              tally: [
-                t('triage.decided', { count: moved }),
-                ...(skipped > 0 ? [t('triage.forLater', { count: skipped })] : []),
-              ].join(' · '),
-            })}
-      </p>
-      <div className="action-buttons">
-        <Button variant="primary" onClick={onExit}>
-          {t('triage.backToList')}
+      <h2>{item.title}</h2>
+      <p className="sf">{standfirst(words)}</p>
+      {words.say ? <p className="say">{words.say}</p> : null}
+      {view ? <Figures evidence={view.evidence} /> : null}
+      <div className="tc-acts">
+        <Button variant="primary" disabled={!ready || !forward} onClick={approve}>
+          {t('triage.approve')}
         </Button>
-        {skipped > 0 ? (
-          <Button variant="quiet" onClick={onAgain}>
-            {t('triage.again', { count: skipped })}
+        {!plan || back ? (
+          <Button
+            variant="quiet"
+            disabled={!ready || !back}
+            onClick={sendBack}
+            aria-expanded={notes}
+          >
+            {t('triage.sendBack')}
           </Button>
         ) : null}
+        <Button variant="text" onClick={() => onDecide('later')}>
+          {t('triage.later')}
+        </Button>
+        <span className="sp" />
+        <Button variant="text" onClick={onOpen}>
+          {t('triage.open')}
+        </Button>
+      </div>
+      {blocked ? <p className="tc-wait">{blocked.note}</p> : null}
+      {phone ? <p className="tc-hint">{t('triage.swipeHint')}</p> : null}
+      <Notes
+        open={notes}
+        onCancel={() => setNotes(false)}
+        onSend={(reason) => {
+          setNotes(false);
+          onDecide('send', reason);
+        }}
+      />
+    </article>
+  );
+}
+
+export function Triage(_props: TriageProps) {
+  const app = useApp();
+  const ctx = {
+    now: app.now,
+    feed: app.feed,
+    types: (it: Item) => typeOfItem(it, app.collectionOf),
+  };
+  const loading = app.items.status === 'loading';
+  const waiting = loading ? [] : triageQueue(app.all, ctx);
+  const [pass, setPass] = useState<TriState | null>(null);
+  if (!pass && !loading) setPass(triStart(waiting));
+  // The cards met in this pass, kept so a decided card still renders while it flies.
+  const known = useRef(new Map<string, Item>());
+  for (const it of app.all) known.current.set(it.id, it);
+  const els = useRef(new Map<string, HTMLElement>());
+  // A decided card keeps what it showed while it flies, whatever the data says meanwhile.
+  type Shown = {
+    item: Item;
+    view: ItemView | undefined;
+    words: ReturnType<typeof cardWords>;
+    state: string;
+  };
+  const frozen = useRef(new Map<string, Shown>());
+  const flying = useRef(false);
+  const settled = useRef(false);
+  const stack = useRef<HTMLDivElement>(null);
+
+  const s = pass ?? triStart([]);
+  const cur = triCurrent(s);
+  const next = triNext(s);
+  const nextShown = next !== cur ? next : undefined;
+  const views = useViews(
+    [cur, nextShown].filter((id): id is string => !!id),
+    app.version,
+  );
+
+  // New reviews join the pass, reviews moved elsewhere drop out (never mid-flight).
+  const waitKey = waiting.join(' ');
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the reviews, by their ids
+  useEffect(() => {
+    if (!flying.current) setPass((was) => (was ? triSync(was, waiting) : was));
+  }, [waitKey]);
+
+  // The stack is as tall as its top card; the card that rose is let go of its flight; the card
+  // that came to wait under it resolves.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: after every change of the pass
+  useLayoutEffect(() => {
+    const top = cur ? els.current.get(cur) : undefined;
+    if (top) {
+      for (const a of top.getAnimations()) a.cancel();
+      top.style.pointerEvents = '';
+      if (stack.current) stack.current.style.minHeight = `${top.offsetHeight + 40}px`;
+    }
+    const under = nextShown ? els.current.get(nextShown) : undefined;
+    if (under && settled.current && !under.getAnimations().length) arriveUnder(under);
+    settled.current = true;
+  }, [cur, nextShown, pass]);
+
+  // The reviews as they are when the flight lands (the decided one may still be listed).
+  const live = useRef(waiting);
+  live.current = waiting;
+  const triageQueueNow = () => live.current;
+
+  function shownOf(id: string): Shown | undefined {
+    const it = known.current.get(id);
+    if (!it) return undefined;
+    const type = typeOfItem(it, app.collectionOf);
+    return {
+      item: it,
+      view: views.get(id),
+      words: cardWords(it, app.feed),
+      state: stateWord(type, it.state),
+    };
+  }
+
+  const decide = (kind: TriKind, reason = '') => {
+    if (!cur || flying.current) return;
+    const id = cur;
+    const it = known.current.get(id);
+    const view = views.get(id);
+    const plan = view ? triagePlan(view.transitions, waitsOf(view)) : undefined;
+    const move = kind === 'approve' ? plan?.forward : kind === 'send' ? plan?.back : undefined;
+    if (kind !== 'later' && !move) return;
+    flying.current = true;
+    const shown = shownOf(id);
+    if (shown) frozen.current.set(id, shown);
+    const card = els.current.get(id);
+    if (card) flyOut(card, kind);
+    riseUnder(nextShown ? els.current.get(nextShown) : undefined);
+    if (move && it) {
+      const type = typeOfItem(it, app.collectionOf);
+      const state = stateWord(type, move.to);
+      const msg =
+        kind === 'approve'
+          ? t('triage.toastApprove', { title: it.title, state })
+          : t('triage.toastSend', { title: it.title, state });
+      app.move(id, move.to, reason, msg).catch((error: unknown) => {
+        toast({ msg: error instanceof Error ? error.message : t('common.failed'), id });
+        setPass((was) => (was ? { ...was, q: [...was.q, id], decided: was.decided - 1 } : was));
+      });
+    }
+    window.setTimeout(() => {
+      flying.current = false;
+      frozen.current.delete(id);
+      setPass((was) => (was ? triSync(triDecide(was, kind), triageQueueNow()) : was));
+    }, DECIDE_MS);
+  };
+
+  const at = s.i + 1;
+  const n = s.q.length;
+  const card = (id: string, under: boolean) => {
+    const shown = frozen.current.get(id) ?? shownOf(id);
+    if (!shown) return null;
+    return (
+      <TriCard
+        key={id}
+        item={shown.item}
+        under={under}
+        view={shown.view}
+        words={shown.words}
+        state={shown.state}
+        phone={app.phone}
+        register={(key, el) => {
+          if (el) els.current.set(key, el);
+          else els.current.delete(key);
+        }}
+        onDecide={decide}
+        onOpen={() => app.openItem(id)}
+      />
+    );
+  };
+  return (
+    <div className="tri">
+      <div className="thd" data-enter="head">
+        <button type="button" className="back" onClick={() => app.go({ view: 'toca' })}>
+          <span aria-hidden="true">← </span>
+          {t('triage.back')}
+        </button>
+        <h1 className="display">{t('triage.title')}</h1>
+        {pass ? (
+          <span className="tpos">
+            {cur ? (
+              <>
+                {tx('triage.pos', { at: <Count value={at} />, n })}
+                {' · '}
+              </>
+            ) : null}
+            {t('triage.decided', { count: s.decided })}
+          </span>
+        ) : null}
+      </div>
+      <div className="tstack" ref={stack} data-enter="fade">
+        {loading ? (
+          <p className="tri-loading">{t('common.loading')}</p>
+        ) : cur ? (
+          <>
+            {nextShown ? card(nextShown, true) : null}
+            {card(cur, false)}
+          </>
+        ) : (
+          <Done decided={s.decided} onBack={() => app.go({ view: 'toca' })} />
+        )}
       </div>
     </div>
   );
 }
 
-// Triage: what waits for you, one card at a time, as a mode of its own. The card fills the stage;
-// right is the primary move, left sends it back, Later leaves it for later, Esc leaves.
-// What was decided settles in the trays beside the stage: back with agents, or decided otherwise.
-export function Triage({ waiting, loading = false, collectionOf, version, onExit }: TriageProps) {
-  const [seen, setSeen] = useState<ReadonlySet<string>>(new Set());
-  const [log, setLog] = useState<Decision[]>([]);
-  // The card in play: kept while it leaves, even once the list no longer has it waiting.
-  const [held, setHeld] = useState<Item>();
-  // Every card of this pass, in the order met: what was decided, then what still waits.
-  const [met, setMet] = useState<string[]>([]);
-  const root = useRef<HTMLElement>(null);
-  // The card leaving now, and its flight.
-  const [leaving, setLeaving] = useState<Leaving>();
-  const flight = useRef<Flight | undefined>(undefined);
-  const queue = queueOf(
-    waiting.map((item) => item.id),
-    seen,
-  );
-  const top = held ?? waiting.find((item) => item.id === queue[0]);
-  const remaining = held && !queue.includes(held.id) ? queue.length + 1 : queue.length;
-  const nextId = queue.find((id) => id !== top?.id);
-  const next = waiting.find((item) => item.id === nextId);
-  const plans = usePlans(
-    [top?.id, next?.id].filter((id): id is string => id !== undefined),
-    version,
-  );
-  const ids = [...new Set([...met, ...log.map(({ id }) => id), ...queue])];
-  if (ids.length !== met.length || ids.some((id, at) => met[at] !== id)) setMet(ids);
-  const decide = (decision: Decision) => {
-    setSeen((current) => new Set(current).add(decision.id));
-    setLog((current) => [...current, decision]);
-    setHeld(undefined);
-  };
-  const again = () => {
-    const skipped = new Set(
-      log.filter((decision) => decision.to === undefined).map(({ id }) => id),
-    );
-    setSeen((current) => new Set([...current].filter((id) => !skipped.has(id))));
-    setLog((current) => current.filter((decision) => decision.to !== undefined));
-  };
-
-  // The mode comes in rising a little (base); reduced motion crossfades.
+function Done({ decided, onBack }: { decided: number; onBack: () => void }) {
+  const el = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
-    root.current?.animate(
-      reducedMotion()
+    if (decided > 0 && el.current) {
+      const kf = reduced()
         ? [{ opacity: 0 }, { opacity: 1 }]
         : [
             { opacity: 0, transform: 'translateY(8px)' },
             { opacity: 1, transform: 'none' },
-          ],
-      reducedMotion() ? { duration: MOTION.fast } : { duration: MOTION.base, easing: MOTION.ease },
-    );
-  }, []);
-
-  // A card leaves once its tray has laid out the entry it lands on: the flight and the move run
-  // together, and the decision is kept when both are done. A move that fails brings the card back.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: each leaving card flies once
-  useLayoutEffect(() => {
-    if (!leaving) return;
-    const { element, exit, decision, moved, restore } = leaving;
-    const slot =
-      decision.to === undefined
-        ? null
-        : (root.current?.querySelector<HTMLElement>(
-            `[data-landing="${CSS.escape(decision.id)}"]`,
-          ) ?? null);
-    const side = decision.turn === 'agent' ? 'left' : 'right';
-    const current = leaveStage(element, exit === 'skip' ? 'skip' : side, slot);
-    flight.current = current;
-    Promise.all([current.done, moved]).then(
-      () => {
-        flight.current = undefined;
-        setLeaving(undefined);
-        decide(decision);
-      },
-      (error: unknown) => {
-        current.cancel();
-        flight.current = undefined;
-        setLeaving(undefined);
-        setHeld(undefined);
-        restore(error instanceof Error ? error.message : t('common.failed'));
-      },
-    );
-  }, [leaving]);
-
-  useEffect(() => () => flight.current?.cancel(), []);
-
-  // Esc leaves triage (a reason being written takes its own Esc first).
-  useEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape' || keyTargetOf(event.target) !== 'body') return;
-      event.preventDefault();
-      onExit();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onExit]);
-
-  const decided = log.filter((decision) => decision.to !== undefined);
-  // The entry a flying card lands on is in its tray from the start of the flight.
-  const landing = leaving?.decision.to !== undefined ? leaving.decision : undefined;
-  const trayed = landing ? [...decided, landing] : decided;
-  const backed = trayed.filter((decision) => decision.turn === 'agent');
-  const settled = trayed.filter((decision) => decision.turn !== 'agent');
-  // A pass is on once there is something to triage (or something was): the trays show then.
-  const pass = !loading && (waiting.length > 0 || log.length > 0);
-  const position = log.length + 1;
-  const total = log.length + remaining;
+          ];
+      anim(el.current, kf, reduced() ? 160 : 480, reduced() ? 'drift' : 'glide', 0, 'backwards');
+    }
+  }, [decided]);
   return (
-    <section className="triage" aria-label={t('triage.title')} ref={root}>
-      <header className="triage-head">
-        <Button variant="quiet" className="triage-exit" onClick={onExit}>
-          <Icon name="left" />
-          {t('triage.list')}
+    <div className="tdone" ref={el}>
+      <h2>{t('triage.done')}</h2>
+      <p>{decided > 0 ? t('triage.doneBody', { count: decided }) : t('triage.nothingBody')}</p>
+      <div className="acts2">
+        <Button variant="quiet" onClick={onBack}>
+          {t('triage.backTo')}
         </Button>
-        <div className="triage-heading">
-          <h1 className="t-display triage-title">
-            {loading
-              ? t('triage.title')
-              : top
-                ? t('triage.left', { count: remaining })
-                : waiting.length === 0 && log.length === 0
-                  ? t('triage.title')
-                  : t('triage.caughtUp')}
-          </h1>
-          {pass ? (
-            <span className="t-cap">
-              {t('triage.decided', { count: decided.length })} ·{' '}
-              {t('triage.forLater', { count: log.length - decided.length })}
-            </span>
-          ) : null}
-        </div>
-        <span className="t-cap triage-count">
-          {top ? t('triage.position', { position, total }) : ''}
-        </span>
-      </header>
-      <div className="triage-body">
-        {pass ? (
-          <Tray
-            label={t('triage.backTray')}
-            decisions={backed}
-            empty={t('triage.backEmpty')}
-            landing={landing?.id}
-          />
-        ) : null}
-        <div className="triage-main">
-          {loading ? (
-            <p className="t-small triage-loading">{t('common.loading')}</p>
-          ) : top ? (
-            <TriageCard
-              key={top.id}
-              item={top}
-              collectionOf={collectionOf}
-              plan={plans.get(top.id)}
-              onLeave={(card) => {
-                setHeld(top);
-                setLeaving(card);
-              }}
-              behind={remaining - 1}
-              next={next}
-            />
-          ) : (
-            <End log={log} nothing={log.length === 0} onExit={onExit} onAgain={again} />
-          )}
-          {ids.length > 1 ? (
-            <Progress ids={ids} log={log} {...(top ? { current: top.id } : {})} />
-          ) : null}
-        </div>
-        {pass ? (
-          <Tray
-            label={t('triage.decidedTray')}
-            decisions={settled}
-            empty={t('triage.decidedEmpty')}
-            landing={landing?.id}
-          />
-        ) : null}
       </div>
-    </section>
+    </div>
   );
 }

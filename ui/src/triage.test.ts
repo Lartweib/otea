@@ -1,13 +1,21 @@
 import { describe, expect, it } from 'vitest';
+import { agent, ago, item, moved, NOW, officialType, you } from './derive/fixtures.ts';
 import {
+  cardWords,
   dragIntent,
   dragProgress,
-  landingOf,
-  queueOf,
+  exitPose,
   releaseDirection,
+  roundOf,
   swipeAction,
   swipeThreshold,
   triagePlan,
+  triageQueue,
+  triCurrent,
+  triDecide,
+  triNext,
+  triStart,
+  triSync,
 } from './triage.ts';
 import type { Move } from './types.ts';
 
@@ -165,33 +173,118 @@ describe('dragProgress', () => {
   });
 });
 
-describe('queueOf', () => {
-  it('lists what waits for you, minus what you already decided or skipped here', () => {
-    expect(queueOf(['A', 'B', 'C'], new Set(['B']))).toEqual(['A', 'C']);
+describe('the pass (triStart, triSync, triDecide)', () => {
+  it('starts on the first card, nothing decided', () => {
+    const s = triStart(['A', 'B', 'C']);
+    expect(triCurrent(s)).toBe('A');
+    expect(triNext(s)).toBe('B');
+    expect(s.decided).toBe(0);
   });
 
-  it('keeps the order of the list', () => {
-    expect(queueOf(['C', 'A'], new Set())).toEqual(['C', 'A']);
+  it('approving or sending back moves on and counts a decision', () => {
+    const s = triDecide(triDecide(triStart(['A', 'B', 'C']), 'approve'), 'send');
+    expect(triCurrent(s)).toBe('C');
+    expect(s.decided).toBe(2);
+  });
+
+  it('Later sends the card to the end of the pass without deciding it', () => {
+    const s = triDecide(triStart(['A', 'B', 'C']), 'later');
+    expect(s.q).toEqual(['B', 'C', 'A']);
+    expect(triCurrent(s)).toBe('B');
+    expect(s.decided).toBe(0);
+  });
+
+  it('Later on the last card shows it again', () => {
+    const s = triDecide(triStart(['A']), 'later');
+    expect(triCurrent(s)).toBe('A');
+  });
+
+  it('ends once every card was decided', () => {
+    const s = triDecide(triDecide(triStart(['A', 'B']), 'approve'), 'approve');
+    expect(triCurrent(s)).toBeUndefined();
+    expect(triNext(s)).toBeUndefined();
+  });
+
+  it('a new review joins the end of the pass', () => {
+    const s = triSync(triStart(['A', 'B']), ['A', 'B', 'C']);
+    expect(s.q).toEqual(['A', 'B', 'C']);
+  });
+
+  it('a card still to come that left the reviews (moved elsewhere) drops out', () => {
+    const s = triSync(triDecide(triStart(['A', 'B', 'C']), 'approve'), ['C']);
+    expect(s.q).toEqual(['A', 'C']);
+    expect(triCurrent(s)).toBe('C');
+  });
+
+  it('keeps the same pass when nothing changed', () => {
+    const s = triStart(['A', 'B']);
+    expect(triSync(s, ['B', 'A'])).toBe(s);
   });
 });
 
-describe('landingOf', () => {
-  const card = { left: 580, top: 133, width: 760, height: 416 };
-  const slot = { left: 1380, top: 180, width: 285, height: 76 };
+describe('triageQueue', () => {
+  const bug = officialType('bug-triage');
+  const ctx = (feed = [] as ReturnType<typeof moved>[]) => ({ now: NOW, feed, types: () => bug });
 
-  it('moves the card onto the slot and scales it to the slot width', () => {
-    const landing = landingOf(card, slot);
-    expect(landing.dx).toBe(800);
-    expect(landing.dy).toBe(47);
-    expect(landing.scale).toBeCloseTo(285 / 760);
+  it('lists the reviews, the one waiting longest first', () => {
+    const items = [
+      item({ id: 'B', state: 'verify', updatedAt: ago(10) }),
+      item({ id: 'A', state: 'verify', updatedAt: ago(90) }),
+      item({ id: 'X', state: 'fixing', turn: 'agent' }),
+    ];
+    expect(triageQueue(items, ctx())).toEqual(['A', 'B']);
   });
 
-  it('cuts the card so that, scaled, it has the slot height', () => {
-    const { scale, cut } = landingOf(card, slot);
-    expect((card.height - cut) * scale).toBeCloseTo(slot.height);
+  it('leaves out questions and your own steps', () => {
+    const items = [
+      item({ id: 'Q', state: 'reported' }),
+      item({ id: 'O', state: 'reported', createdBy: { kind: 'human', name: 'you' } }),
+      item({ id: 'R', state: 'verify' }),
+    ];
+    const feed = [moved('Q', 'reported', agent('scout'), { reason: '¿Lo dejamos?' })];
+    expect(triageQueue(items, ctx(feed))).toEqual(['R']);
+  });
+});
+
+describe('roundOf', () => {
+  it('is the first round until you send the item back with notes', () => {
+    expect(roundOf('A', [])).toBe(1);
   });
 
-  it('never cuts below nothing, for a slot taller than the scaled card', () => {
-    expect(landingOf(card, { ...slot, height: 400 }).cut).toBe(0);
+  it('adds a round for every time you sent it back with notes', () => {
+    const feed = [
+      moved('A', 'fixing', you, { reason: 'falta el anclaje' }),
+      moved('A', 'verify', agent('mender')),
+      moved('A', 'fixing', you, { reason: 'otra vez' }),
+      moved('B', 'fixing', you, { reason: 'no es este' }),
+      moved('A', 'verify', you),
+    ];
+    expect(roundOf('A', feed)).toBe(3);
+  });
+});
+
+describe('cardWords', () => {
+  it('names the agent that hands it to you, its words and the round', () => {
+    const it0 = item({ id: 'A', state: 'verify' });
+    const feed = [
+      moved('A', 'fixing', you, { reason: 'falta' }),
+      moved('A', 'verify', agent('mender'), { reason: 'Ya cruzan.' }),
+    ];
+    expect(cardWords(it0, feed)).toEqual({ agent: 'mender', say: 'Ya cruzan.', round: 2 });
+  });
+
+  it('has no agent when nobody handed it over', () => {
+    expect(cardWords(item({ id: 'A' }), [])).toEqual({ agent: null, say: '', round: 1 });
+  });
+});
+
+describe('exitPose', () => {
+  it('flies an approval to the right and a send-back to the left, tilted', () => {
+    expect(exitPose('approve')).toBe('translateX(120px) rotate(2deg)');
+    expect(exitPose('send')).toBe('translateX(-120px) rotate(-2deg)');
+  });
+
+  it('drops a card left for later', () => {
+    expect(exitPose('later')).toBe('translateY(24px) scale(0.97)');
   });
 });
