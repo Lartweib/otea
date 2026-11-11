@@ -449,6 +449,27 @@ export function runHandoff(
   const lines = svg ? [...svg.querySelectorAll<SVGPathElement>('.lines .ln')] : [];
   let breathed = false;
 
+  // The light of agent and stuck nodes lies where the rows land (drawn once), and rides with the
+  // rows that make room; a carried row's light comes in as it lands.
+  const lit: { g: SVGGElement; y: number; dy: number; carried: boolean }[] = [];
+  if (svg) {
+    drawLight(svg, pB, { keepHalos: true });
+    const roomDy = new Map(plan.rooms.map((r) => [r.k, r.dy]));
+    const carriedKeys = new Set(carried.map((c) => c.k));
+    const ags = [...svg.querySelectorAll<SVGGElement>('.glow .ags > g')];
+    const warms = [...svg.querySelectorAll<SVGGElement>('.glow .warms > g')];
+    for (const [k, b] of B.m) {
+      if (!b.row) continue;
+      const g =
+        b.look === 'stuck'
+          ? warms.shift()
+          : b.lane === 'ag' && b.look === 'working' && !pB.atasco
+            ? ags.shift()
+            : undefined;
+      if (g) lit.push({ g, y: b.ny ?? 0, dy: roomDy.get(k) ?? 0, carried: carriedKeys.has(k) });
+    }
+  }
+
   const frame = (t: number) => {
     const { p, pr } = progressAt(t, FA, T);
     for (const r of plan.rooms) r.el.style.transform = `translateY(${r.dy * (1 - pr)}px)`;
@@ -467,7 +488,11 @@ export function runHandoff(
       lyou?.setAttribute('d', paths.you);
       ltr?.setAttribute('d', paths.trunk);
       ltr?.setAttribute('stroke', paths.trunkStroke);
-      drawLight(svg, pB, { keepHalos: true });
+      for (const l of lit) {
+        if (l.carried) l.g.style.opacity = sstep(clamp((t - FA - T * 0.9) / 240)).toFixed(3);
+        else if (l.dy)
+          l.g.setAttribute('transform', `translate(16.5 ${(l.y + l.dy * (1 - pr)).toFixed(1)})`);
+      }
     }
     for (const c of flying) {
       const f: Pose = fold ? plegarPose(t, T, c.g) : deslizarPose(t, T, c.g);
