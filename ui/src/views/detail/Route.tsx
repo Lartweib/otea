@@ -11,6 +11,7 @@ import {
   type DipSpec,
   dipsOf,
   futureD,
+  labelsShown,
   laneD,
   type RouteGeom,
   type RouteStep,
@@ -174,6 +175,12 @@ export function Route({ id, steps, words, ci, lane, look, dips, phone = false }:
 
   if (!g) return <div className="route-wrap" data-c ref={wrap} />;
   const small = W < 600;
+  const named = labelsShown(
+    g.xs,
+    steps.map((s, i) => (words[i] ?? s.name).toLocaleUpperCase()),
+    g.ci,
+    small ? 6.6 : 7.9,
+  );
   const future = futureD(g);
   return (
     <div className="route-wrap" data-c ref={wrap}>
@@ -188,18 +195,20 @@ export function Route({ id, steps, words, ci, lane, look, dips, phone = false }:
       >
         <g className="rfx" />
         <g className={small ? 'rlab small' : 'rlab'}>
-          {steps.map((s, i) => (
-            <text
-              key={s.name}
-              x={g.xs[i]}
-              y={9}
-              textAnchor={i === g.n - 1 && g.n > 1 ? 'end' : i === 0 ? 'start' : 'middle'}
-              className={i === g.ci && lane === 'you' ? 'cur' : undefined}
-              dx={i === 0 ? -((g.xs[0] ?? 44) - 24) : undefined}
-            >
-              {(words[i] ?? s.name).toLocaleUpperCase()}
-            </text>
-          ))}
+          {steps.map((s, i) =>
+            !named[i] ? null : (
+              <text
+                key={s.name}
+                x={g.xs[i]}
+                y={9}
+                textAnchor={i === g.n - 1 && g.n > 1 ? 'end' : i === 0 ? 'start' : 'middle'}
+                className={i === g.ci && lane === 'you' ? 'cur' : undefined}
+                dx={i === 0 ? -((g.xs[0] ?? 44) - 24) : undefined}
+              >
+                {(words[i] ?? s.name).toLocaleUpperCase()}
+              </text>
+            ),
+          )}
         </g>
         <g className="rnames">
           <text x={0} y={36.5}>

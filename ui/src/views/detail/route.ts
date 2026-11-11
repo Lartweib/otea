@@ -117,3 +117,35 @@ export function dipsOf(g: RouteGeom, dips: readonly DipSpec[]): Dip[] {
   }
   return out;
 }
+
+// Which step names show over the route: where two would touch, one gives way. The current step
+// keeps its name, then the first and the last, then the rest in order. charW is a capital's width.
+export function labelsShown(
+  xs: readonly number[],
+  words: readonly string[],
+  ci: number,
+  charW: number,
+): boolean[] {
+  const n = xs.length;
+  const last = n - 1;
+  const span = (i: number): [number, number] => {
+    const w = (words[i] ?? '').length * charW;
+    const x = xs[i] ?? 0;
+    if (i === 0) return [24, 24 + w];
+    if (i === last) return [x - w, x];
+    return [x - w / 2, x + w / 2];
+  };
+  const order = [ci, 0, last, ...xs.map((_, i) => i)].filter(
+    (i, k, all) => i >= 0 && i < n && all.indexOf(i) === k,
+  );
+  const kept: Array<[number, number]> = [];
+  const shown = xs.map(() => false);
+  for (const i of order) {
+    const [a, b] = span(i);
+    if (kept.every(([c, d]) => a >= d + 4 || b <= c - 4)) {
+      kept.push([a, b]);
+      shown[i] = true;
+    }
+  }
+  return shown;
+}
