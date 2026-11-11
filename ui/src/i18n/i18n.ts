@@ -52,8 +52,9 @@ function form(message: string | Plural, count: unknown): string {
   return message[rule] ?? message.other;
 }
 
+// A key computed at run time (a preset's own dek) may name no message: it reads as the key.
 function pieces(key: MessageKey, params: Readonly<Record<string, unknown>>): unknown[] {
-  return form(CATALOGS[current][key], params.count)
+  return form(CATALOGS[current][key] ?? key, params.count)
     .split(/\{(\w+)\}/)
     .map((piece, index) => (index % 2 === 0 ? piece : (params[piece] ?? `{${piece}}`)));
 }
