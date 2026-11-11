@@ -1,4 +1,4 @@
-/* Te toca and Atasco. The foundation's stub starts it with the mock's panel and head (mock:313-317, 338-343). The lists slice owns this file (SPEC §11). */
+/* Te toca and Atasco (mock:313-317, 338-350): the panel, the head and its narrow forms beside the detail. */
 
 /* ───────── Te toca ───────── */
 .panel {
@@ -41,4 +41,9 @@
 }
 .view.narrow .agents {
   display: none;
+}
+/* beside the detail the age column narrows to 64 px, but a lease's time left ("quedan 1 h 42") keeps its words */
+.view.narrow .panel .row .age {
+  width: auto;
+  min-width: 64px;
 }
