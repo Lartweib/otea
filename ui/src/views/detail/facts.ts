@@ -1,4 +1,5 @@
 import { turnAgent } from '../../actions.ts';
+import { mainPath } from '../../derive/path.ts';
 import { relayOf } from '../../format.ts';
 import type { MessageKey } from '../../i18n/i18n.ts';
 import type { Look } from '../../lanes/looks.ts';
@@ -34,6 +35,32 @@ const isYourMove = (e: ItemEvent) =>
 
 const asks = (reason: string) => reason.trim().endsWith('?');
 
+// Your send-backs: a move of yours from a step on your turn back to an agent's (not forward along
+// the main path), other than an answer to the question the agent just asked; each at the step it
+// left, in the round it ended.
+function sentBackOf(events: readonly ItemEvent[], type: TypeView | undefined): Facts['sentBack'] {
+  const turn = new Map((type?.states ?? []).map((s) => [s.name, s.turn]));
+  const path = type ? mainPath(type) : [];
+  const forward = (from: string, to: string) =>
+    path.includes(from) && path.indexOf(to) > path.indexOf(from);
+  const out: Facts['sentBack'] = [];
+  let handed = 0;
+  let before: ItemEvent | undefined;
+  for (const e of events) {
+    if (e.type !== 'transitioned') continue;
+    const from = String(e.data.from);
+    const to = String(e.data.to);
+    if (isAgentMove(e)) {
+      if (turn.get(to) === 'human') handed++;
+    } else if (turn.get(from) === 'human' && turn.get(to) === 'agent' && !forward(from, to)) {
+      const answers = !!before && isAgentMove(before) && asks(reasonOf(before));
+      if (!answers) out.push({ n: Math.max(1, handed), at: e.at, state: from });
+    }
+    before = e;
+  }
+  return out;
+}
+
 export function factsOf(item: ItemView, type: TypeView | undefined, _now: number): Facts {
   const events = [...item.events].sort((a, b) => a.id - b.id);
   const last = events.findLast((e) => e.type === 'transitioned' && e.data.to === item.state);
@@ -42,9 +69,7 @@ export function factsOf(item: ItemView, type: TypeView | undefined, _now: number
       ? { agent: last.actor.name, reason: reasonOf(last), at: last.at }
       : null;
   const rounds = roundsOf(events, item.evidence, type?.states ?? []);
-  const sentBack = rounds.flatMap((r) =>
-    r.verdict?.kind === 'sent-back' ? [{ n: r.n, at: r.verdict.at, state: r.to }] : [],
-  );
+  const sentBack = sentBackOf(events, type);
   const yours = events.filter((e) => isYourMove(e) && reasonOf(e) !== '');
   const lastBack = [...sentBack].reverse()[0];
   const mineEvent = lastBack

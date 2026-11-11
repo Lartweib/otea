@@ -98,6 +98,11 @@ describe('the dips under your lane (mock:2645-2654)', () => {
     expect(dips.map((d) => d.label)).toEqual(['round 1 · sent back on Monday', undefined]);
   });
 
+  it('dips after the first step, which has no room before it', () => {
+    const [dip] = dipsOf(g, [{ at: 0, label: 'x' }]);
+    expect(dip?.x).toBe((g.xs[0] ?? 0) + 50);
+  });
+
   it('skips a dip off the path', () => {
     expect(dipsOf(g, [{ at: -1, label: 'x' }])).toEqual([]);
   });
