@@ -12,6 +12,7 @@ import { Choreo, type Part, part } from '../../motion/choreo.ts';
 import { clamp } from '../../motion/curves.ts';
 import { useEscape } from '../escape.ts';
 import { type Place, placer } from './anchors.ts';
+import { focusFirst, onMenuKey } from './focus.ts';
 
 // A pop: the line leads from the trigger, the surface unrolls riding its edge, the items resolve
 // (mock:3258-3291, MOTION §3.1). It stays mounted while it closes, the same gesture mirrored, and
@@ -126,6 +127,8 @@ export function Pop({
           } else line.style.transformOrigin = '50% 0';
         }
         choreo.current = new Choreo(popParts(node, edge));
+        // Portalled to the end of the document: it takes focus, or Tab would skip it.
+        if (role !== 'status') focusFirst(node);
       }
       if (openPop && openPop.id !== me.current) openPop.close();
       openPop = { id: me.current, close: () => closeRef.current() };
@@ -141,6 +144,15 @@ export function Pop({
       });
     }
   }, [open, mounted]);
+
+  // A menu moves by its arrows, Home and End.
+  useEffect(() => {
+    const node = el.current;
+    if (!mounted || role !== 'menu' || !node) return;
+    const key = (event: KeyboardEvent) => onMenuKey(node, event);
+    node.addEventListener('keydown', key);
+    return () => node.removeEventListener('keydown', key);
+  }, [mounted, role]);
 
   // A press outside closes it.
   useEffect(() => {
