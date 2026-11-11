@@ -1,6 +1,7 @@
-/* The item's sheet, divider and pen. The foundation's stub starts it with the mock's (mock:496-509). The detail slice owns this file (SPEC §11). */
+/* The item's sheet, divider, pen and content (SPEC §10.2-10.3; mock:496-670, 864-869). The detail
+   slice owns this file. The kit's .btn, .ghost-btn and .seg2 come from kit.css. */
 
-/* ───────── sheet (item) ───────── */
+/* ───────── the frame ───────── */
 .sheet {
   position: absolute;
   top: 0;
@@ -92,7 +93,889 @@
   height: 100%;
 }
 
+/* ───────── the content ───────── */
 .sheet-in {
   padding: 14px 40px 80px;
   position: relative;
+}
+.d-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: "bar" "head" "details" "main" "history";
+}
+.sheet-bar {
+  grid-area: bar;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 40px;
+  margin-bottom: 18px;
+  flex-wrap: wrap;
+  row-gap: 6px;
+}
+.crumb {
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  font-size: 12.5px;
+  color: var(--ink-3);
+  white-space: nowrap;
+  overflow: hidden;
+  min-width: 0;
+}
+/* The crumb swaps in place: its words sit in the Swap's inner span, laid out as the crumb. */
+.crumb > .swin,
+.crumb > span[aria-hidden="true"] {
+  display: flex !important;
+  gap: 9px;
+  align-items: center;
+  min-width: 0;
+  overflow: hidden;
+}
+.crumb svg.cn {
+  flex: none;
+  overflow: visible;
+}
+.crumb .swin > *,
+.crumb > span[aria-hidden="true"] > * {
+  flex-shrink: 0;
+}
+.crumb .turn {
+  font: 400 12px / 1 var(--mono);
+  color: var(--you-ink);
+}
+.crumb .ttag {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  font: 400 11.5px / 1 var(--mono);
+  color: var(--ink-3);
+  flex-shrink: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.bar-r {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex: none;
+}
+.bar-r .ghost-btn .swp {
+  display: inline-grid;
+}
+.bar-r .ghost-btn .swp > * {
+  grid-area: 1 / 1;
+}
+.bar-r .vr {
+  width: 1px;
+  height: 16px;
+  background: var(--rule);
+  margin: 0 6px;
+}
+.d-head {
+  grid-area: head;
+  min-width: 0;
+}
+.headline {
+  font: 430 38px / 1.06 var(--serif);
+  font-variation-settings: "opsz" 60;
+  letter-spacing: -0.022em;
+  text-wrap: balance;
+  max-width: 30em;
+  margin: 0;
+}
+.standfirst {
+  margin: 12px 0 0;
+  font: 400 italic 17px / 1.4 var(--serif);
+  color: var(--ink-2);
+  max-width: 72ch;
+  position: relative;
+}
+.standfirst b {
+  font-style: normal;
+  font-weight: 500;
+  color: var(--ink);
+}
+
+/* ───────── details ───────── */
+.d-details {
+  grid-area: details;
+  min-width: 0;
+}
+.dlist {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  margin: 22px 0 0;
+  border-top: 1px solid var(--rule);
+  border-bottom: 1px solid var(--rule);
+  padding: 2px 0;
+}
+.dlist > div {
+  padding: 10px 16px 11px 0;
+  min-width: 0;
+}
+.dlist dt {
+  font: 600 10px / 1 var(--sans);
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin-bottom: 7px;
+  white-space: nowrap;
+}
+.dlist dd {
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 500;
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dlist dd.you {
+  color: var(--you-ink);
+}
+.dlist dd .id {
+  font-size: 11px;
+}
+.dlist dd .warn {
+  color: var(--warn);
+}
+.dlist dd a {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: var(--rule-2);
+  text-underline-offset: 3px;
+}
+.dlist dd .md {
+  font: inherit;
+}
+.dlist dd .md > * {
+  margin: 0;
+}
+.dlist .more-t {
+  display: none;
+}
+.dlab {
+  display: none;
+}
+.d-line {
+  display: none;
+  grid-area: line;
+}
+
+/* ───────── the route ───────── */
+.route-wrap {
+  position: relative;
+  margin: 20px 0 4px;
+  height: 104px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+.route-wrap svg {
+  position: absolute;
+  left: 0;
+  top: 0;
+  overflow: visible;
+}
+.route .rlab text {
+  font: 600 10px / 1 var(--sans);
+  letter-spacing: 1.1px;
+  fill: var(--ink-3);
+}
+.route .rlab.small text {
+  font-size: 9px;
+  letter-spacing: 0.5px;
+}
+.route .rlab text.cur {
+  fill: var(--you-ink);
+}
+.route .rnames text {
+  font: 400 10.5px / 1 var(--mono);
+  fill: var(--ink-3);
+}
+.route .rnames text.you {
+  fill: var(--you-ink);
+}
+.route .dips text {
+  font: italic 400 12.5px / 1 var(--serif);
+  fill: var(--ink-3);
+}
+.route .orb {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: spin 2.2s linear infinite;
+}
+
+/* ───────── moves ───────── */
+.acts {
+  position: relative;
+}
+.actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin: 18px 0 6px;
+  flex-wrap: wrap;
+}
+.actions .vr {
+  width: 1px;
+  height: 20px;
+  background: var(--rule);
+  margin: 0 2px;
+}
+.actions .closeas {
+  font: 400 12px / 1 var(--mono);
+  color: var(--ink-3);
+}
+.movesays {
+  font: 400 12px / 1.4 var(--mono);
+  color: var(--ink-3);
+  margin: 0 0 22px;
+  min-height: 17px;
+  position: relative;
+}
+.movesays b {
+  font-weight: 500;
+  color: var(--ink-2);
+}
+.receipt {
+  margin: 18px 0 22px;
+  font: 400 italic 16px / 1.4 var(--serif);
+  color: var(--ink-2);
+  max-width: 72ch;
+}
+.receipt b {
+  font-style: normal;
+  font-weight: 500;
+  color: var(--ink);
+}
+.receipt code,
+.toast code {
+  font: 400 12.5px / 1 var(--mono);
+  font-style: normal;
+}
+.acts .receipt + .actions {
+  margin-top: -10px;
+  margin-bottom: 22px;
+}
+.waitkids {
+  margin: 18px 0 22px;
+  padding: 12px 14px;
+  border: 1px dashed var(--rule-2);
+  border-radius: 8px;
+  font: 400 italic 15px / 1.4 var(--serif);
+  color: var(--ink-2);
+  max-width: 72ch;
+}
+.waitkids + .actions {
+  margin-top: -10px;
+  margin-bottom: 22px;
+}
+
+/* ───────── the body ───────── */
+.d-main {
+  grid-area: main;
+  min-width: 0;
+}
+.d-sec,
+.note,
+.evidence,
+.qa {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  column-gap: 20px;
+}
+.d-main > section,
+.d-hist > section {
+  padding-top: 18px;
+  border-top: 1px solid var(--rule);
+  margin-top: 22px;
+}
+.d-main > section:first-child {
+  margin-top: 0;
+}
+.sheet .margin-label {
+  font: 600 10px / 1.3 var(--sans);
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  padding-top: 5px;
+}
+.sheet .margin-label span {
+  display: block;
+  font: 400 11px / 1.5 var(--mono);
+  letter-spacing: 0;
+  text-transform: none;
+  margin-top: 4px;
+}
+.note blockquote {
+  margin: 0;
+  font: 400 17px / 1.5 var(--serif);
+  font-variation-settings: "opsz" 18;
+  color: var(--ink);
+  max-width: 72ch;
+  text-wrap: pretty;
+  white-space: pre-line;
+}
+.note blockquote code {
+  font: 400 13px / 1 var(--mono);
+  color: var(--ink-2);
+}
+.note.mine blockquote {
+  font-style: italic;
+  color: var(--ink-2);
+}
+/* The type's own fields, read as prose in the body. */
+.d-sec.field .md {
+  font: 400 17px / 1.5 var(--serif);
+  font-variation-settings: "opsz" 18;
+  color: var(--ink);
+  max-width: 72ch;
+  text-wrap: pretty;
+}
+.d-sec.field .md code {
+  font: 400 13px / 1 var(--mono);
+  color: var(--ink-2);
+}
+.d-sec.field .md li + li {
+  margin-top: 2px;
+}
+.d-sec.field .md > :first-child {
+  margin-top: 0;
+}
+.d-sec.field .md > :last-child {
+  margin-bottom: 0;
+}
+.d-sec.field .d-body {
+  font: 400 15px / 1.45 var(--serif);
+}
+.d-body {
+  min-width: 0;
+}
+.evs {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+  max-width: 1040px;
+}
+.noev {
+  margin: 0;
+  font: 400 italic 15px / 1.4 var(--serif);
+  color: var(--ink-3);
+  padding-top: 3px;
+}
+.qa .q {
+  margin: 0;
+  font: 400 19px / 1.45 var(--serif);
+  font-variation-settings: "opsz" 24;
+  color: var(--ink);
+  max-width: 60ch;
+  text-wrap: pretty;
+}
+.acts .qa {
+  margin: 18px 0 22px;
+}
+.opts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+.opt {
+  height: 32px;
+  padding: 0 13px;
+  border-radius: 7px;
+  border: 1px solid var(--rule-2);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink);
+  background: var(--sheet);
+  transition:
+    border-color 120ms var(--ease),
+    color 120ms var(--ease),
+    background-color 240ms var(--o-drift);
+}
+.opt:hover {
+  border-color: var(--ink-3);
+}
+.opt.on {
+  border-color: var(--you);
+  color: var(--you-ink);
+  background: var(--you-wash);
+}
+.free {
+  display: block;
+  margin-top: 14px;
+  font: 600 10px / 1.3 var(--sans);
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.sheet textarea {
+  display: block;
+  width: 100%;
+  max-width: 72ch;
+  margin-top: 7px;
+  min-height: 66px;
+  resize: vertical;
+  padding: 9px 11px;
+  border-radius: 7px;
+  border: 1px solid var(--rule-2);
+  background: var(--sheet);
+  font: 400 15.5px / 1.45 var(--serif);
+  color: var(--ink);
+  text-transform: none;
+  letter-spacing: 0;
+  transition: border-color 120ms var(--ease);
+}
+.sheet textarea:focus {
+  outline: none;
+  border-color: var(--you);
+}
+.sheet textarea::placeholder,
+.sheet input::placeholder {
+  color: var(--ink-3);
+  font-style: italic;
+}
+.qa .actions {
+  margin: 14px 0 6px;
+}
+.notes {
+  position: relative;
+  margin: 0 0 22px;
+}
+.notes .nline {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 1px;
+  background: var(--ink-3);
+}
+.notes .nsurf {
+  padding: 16px 0 6px;
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  column-gap: 20px;
+}
+.notes .nbtns {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+/* structure: children and links */
+.kidsbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.kidsbar .kc,
+.rels .rh .kc {
+  font: 450 17px / 1.2 var(--serif);
+}
+.kidsbar .prog i {
+  width: 18px;
+  height: 4px;
+}
+.kidsbar .po {
+  font: 400 11.5px / 1 var(--mono);
+  color: var(--ink-3);
+}
+.kidsbar .sp,
+.rels .rh .sp {
+  flex: 1;
+}
+.addbtn {
+  font: 500 12.5px / 1 var(--sans);
+  color: var(--ink-2);
+  padding: 6px 8px;
+  border-radius: 6px;
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  transition:
+    background-color 120ms var(--ease),
+    color 120ms var(--ease);
+}
+.addbtn:hover {
+  background: var(--well);
+  color: var(--ink);
+}
+.krows {
+  margin-top: 10px;
+  border-top: 1px solid var(--rule);
+}
+.krow {
+  display: grid;
+  grid-template-columns: 22px 64px minmax(0, 1fr) auto auto;
+  gap: 10px;
+  align-items: center;
+  height: 40px;
+  border-bottom: 1px solid var(--rule);
+  cursor: pointer;
+  padding: 0 6px 0 2px;
+  transition: background-color 120ms var(--ease);
+}
+.krow:hover {
+  background: var(--hov);
+}
+.krow svg.cn {
+  justify-self: center;
+}
+.krow .kt {
+  font: 430 15.5px / 1.2 var(--serif);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.krow .ks {
+  font: 400 11.5px / 1 var(--mono);
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+.rels {
+  margin-top: 18px;
+}
+.rels .rh {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+.rgroup {
+  margin-top: 8px;
+}
+.rgroup .rk {
+  font: 400 11.5px / 1 var(--mono);
+  color: var(--ink-3);
+  margin: 10px 0 6px;
+}
+.rchips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.rchip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 30px;
+  padding: 0 4px 0 10px;
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 1px var(--rule-2);
+  background: var(--sheet);
+  font-size: 13px;
+  color: var(--ink);
+  max-width: 100%;
+  overflow: hidden;
+}
+.rchip .go {
+  display: inline-flex;
+  gap: 7px;
+  align-items: baseline;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.rchip .go:hover {
+  text-decoration: underline;
+  text-decoration-color: var(--rule-2);
+  text-underline-offset: 3px;
+}
+.rchip .x {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: var(--ink-3);
+  flex: none;
+}
+.rchip .x:hover {
+  background: var(--hov);
+  color: var(--ink);
+}
+.rchip .x svg {
+  width: 13px;
+  height: 13px;
+}
+.lwell {
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 10px;
+  background: var(--well);
+  display: grid;
+  gap: 10px;
+  max-width: 640px;
+}
+.lwell .lrow {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.lwell input {
+  flex: 1;
+  min-width: 160px;
+  height: 34px;
+  padding: 0 11px;
+  border-radius: 7px;
+  border: 1px solid var(--rule-2);
+  background: var(--sheet);
+  font: 400 15px / 1 var(--serif);
+}
+.lwell input:focus {
+  outline: none;
+  border-color: var(--you);
+}
+.lres {
+  display: grid;
+  gap: 2px;
+  max-height: 220px;
+  overflow: auto;
+}
+.lres button {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: baseline;
+  padding: 8px 9px;
+  border-radius: 6px;
+  text-align: left;
+  font-size: 13.5px;
+}
+.lres button > span:nth-child(2) {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.lres button:hover {
+  background: var(--sheet);
+}
+.lres button small {
+  font: 400 11px / 1 var(--mono);
+  color: var(--ink-3);
+}
+.lres .none {
+  margin: 0;
+  font: 400 italic 14px / 1.4 var(--serif);
+  color: var(--ink-3);
+  padding: 6px 9px;
+}
+
+/* history */
+.d-hist {
+  grid-area: history;
+  min-width: 0;
+}
+.tl {
+  position: relative;
+  list-style: none;
+  padding-left: 0;
+  margin: 0;
+}
+.tl::before {
+  content: "";
+  position: absolute;
+  left: 4.5px;
+  top: 8px;
+  bottom: 8px;
+  width: 1px;
+  background: var(--rule-2);
+}
+.tl li {
+  position: relative;
+  display: grid;
+  grid-template-columns: 22px 64px minmax(0, 1fr);
+  align-items: baseline;
+  padding: 6px 0;
+}
+.tl li .dt {
+  position: relative;
+  top: 1px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--ink);
+  box-shadow: 0 0 0 3px var(--sheet);
+}
+.tl li.you .dt {
+  background: var(--you);
+}
+.tl li.relay .dt {
+  background: var(--sheet);
+  box-shadow:
+    inset 0 0 0 1.4px var(--ink),
+    0 0 0 3px var(--sheet);
+}
+.tl li .tm {
+  font: 400 11.5px / 1.4 var(--mono);
+  color: var(--ink-3);
+}
+.tl li .tx {
+  font-size: 13.5px;
+  color: var(--ink);
+  line-height: 1.4;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.tl li .tx q {
+  display: block;
+  font: 400 italic 14px / 1.4 var(--serif);
+  color: var(--ink-2);
+  margin-top: 3px;
+  quotes: "«" "»";
+}
+.tl li .tx small {
+  display: block;
+  font: 400 12px / 1.4 var(--sans);
+  color: var(--ink-3);
+  margin-top: 2px;
+}
+
+/* the aside form: from a 1240 px sheet the detail grows a second column */
+@container detail (min-width: 1240px) {
+  .d-grid {
+    --aside: clamp(340px, calc(340px + (100cqw - 1240px) / 4), 440px);
+    grid-template-columns: minmax(0, 1fr) calc(var(--aside) + 24px);
+    column-gap: 24px;
+    grid-template-areas: "bar bar" "head details" "line line" "main history";
+    align-items: start;
+  }
+  .d-details {
+    align-self: stretch;
+    padding-left: 24px;
+    border-left: 1px solid var(--rule);
+    padding-top: 4px;
+  }
+  .dlab {
+    display: block;
+    font: 450 15px / 1 var(--serif);
+    color: var(--ink);
+    margin: 0 0 10px;
+    height: 22px;
+    padding-top: 4px;
+  }
+  .dlist {
+    grid-template-columns: minmax(0, 1fr);
+    margin-top: 0;
+    border: 0;
+    padding: 0;
+  }
+  .dlist > div {
+    display: grid;
+    grid-template-columns: 112px minmax(0, 1fr);
+    align-items: baseline;
+    padding: 5px 0;
+  }
+  .dlist dt {
+    font: 400 11.5px / 1.4 var(--mono);
+    letter-spacing: 0;
+    text-transform: none;
+    margin: 0;
+  }
+  .dlist > div.cut {
+    display: none;
+  }
+  .dlist.all > div.cut {
+    display: grid;
+  }
+  .dlist .more-t {
+    display: block;
+    grid-column: 1 / -1;
+    justify-self: start;
+    margin-top: 4px;
+    font: 400 11.5px / 1 var(--mono);
+    color: var(--ink-3);
+    text-decoration: underline;
+    text-decoration-color: var(--rule-2);
+    text-underline-offset: 3px;
+    padding: 4px 0;
+  }
+  .d-line {
+    display: block;
+    height: 1px;
+    background: var(--rule);
+    margin: 28px 0;
+  }
+  .d-hist {
+    position: sticky;
+    top: 16px;
+    padding-left: 24px;
+    border-left: 1px solid var(--rule);
+    max-height: calc(100vh - 120px);
+    overflow: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+  }
+  .d-hist > section {
+    display: block;
+    border-top: 0;
+    margin-top: 0;
+    padding-top: 0;
+  }
+  .d-hist .margin-label {
+    font: 450 15px / 1 var(--serif);
+    letter-spacing: 0;
+    text-transform: none;
+    color: var(--ink);
+    margin-bottom: 12px;
+    padding: 0;
+  }
+  .d-hist .margin-label span {
+    display: inline;
+    margin-left: 8px;
+    font: 400 11.5px / 1 var(--mono);
+    color: var(--ink-3);
+  }
+  .d-hist .tl li {
+    grid-template-columns: 22px minmax(0, 1fr);
+  }
+  .d-hist .tl li .tm {
+    grid-column: 2;
+  }
+  .d-hist .tl li .tx {
+    grid-column: 2;
+  }
+  .d-main > section:first-child {
+    border-top: 0;
+    padding-top: 0;
+  }
+}
+
+/* a narrow detail keeps its bar on one line */
+@container detail (max-width: 720px) {
+  .crumb .ttag,
+  .crumb .turn {
+    display: none;
+  }
+  .bar-r [data-nav] .wl,
+  .bar-r .ampliar .wl,
+  .bar-r .cz .wl {
+    display: none;
+  }
+}
+@container detail (max-width: 560px) {
+  .actions .closeas,
+  .actions .vr {
+    display: none;
+  }
+}
+
+/* reduced motion: the orbit rests */
+:root[data-motion="reduced"] .route .orb {
+  animation: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  :root:not([data-motion="full"]) .route .orb {
+    animation: none;
+  }
 }
