@@ -51,7 +51,7 @@ const ctx = (collection = errores, feed: FeedEvent[] = []): BoardCtx => ({
 });
 
 const child = (id: string, parent: string, o: Partial<Item> = {}) =>
-  item({ id, relations: [{ kind: 'parent', id: parent }] as Item['relations'], ...o });
+  item({ id, relations: [{ kind: 'parent', id: parent }] as NonNullable<Item['relations']>, ...o });
 
 beforeEach(() => setLanguage('en'));
 

@@ -158,6 +158,7 @@ export const board = {
   'boardView.who.done': 'hecho',
   'boardView.who.dropped': 'descartado',
   'boardView.who.nobody': 'nadie',
+  'boardView.who.quiet': 'callado',
   'boardView.whoGroup.you': 'Tú',
   'boardView.whoGroup.nobody': 'Nadie',
   'boardView.tools.group': 'Agrupar',

@@ -152,6 +152,7 @@ export const board = {
   'boardView.who.done': 'done',
   'boardView.who.dropped': 'discarded',
   'boardView.who.nobody': 'nobody',
+  'boardView.who.quiet': 'quiet',
   'boardView.whoGroup.you': 'You',
   'boardView.whoGroup.nobody': 'Nobody',
   'boardView.tools.group': 'Group',

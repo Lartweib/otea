@@ -1,6 +1,6 @@
-/* A board: head, tools, Lista. The foundation's stub starts it with the mock's board head (mock:353-359). The boards slice owns this file (SPEC §11). */
+/* A board: head, tools, filter tokens and the stage the three views morph on (SPEC §10.1,
+   mock:353-397). The boards slice owns this file (SPEC §11). */
 
-/* ───────── board ───────── */
 .board {
   padding: 40px 40px 40px 40px;
   min-height: 100%;
@@ -28,4 +28,238 @@
   align-items: center;
   gap: 10px;
   padding-bottom: 8px;
+}
+.steps span {
+  font-size: 12.5px;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+.steps span .n {
+  font: 400 11.5px / 1 var(--mono);
+  color: var(--ink-2);
+  margin-left: 3px;
+}
+.steps span.you,
+.steps span.you .n {
+  color: var(--you-ink);
+}
+.steps i {
+  width: 22px;
+  height: 1px;
+  background: var(--rule-2);
+}
+.tools {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 0 0 0 72px;
+  height: 40px;
+  border-bottom: 1px solid var(--rule);
+  position: relative;
+  transform-origin: 0 0;
+}
+.switch {
+  display: flex;
+  gap: 20px;
+  height: 100%;
+  position: relative;
+}
+.switch button {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-weight: 500;
+  font-size: 13.5px;
+  color: var(--ink-3);
+  transition: color 240ms var(--o-drift);
+}
+.switch button svg {
+  width: 14px;
+  height: 14px;
+}
+.switch button.on {
+  color: var(--ink);
+}
+.switch .uline {
+  position: absolute;
+  left: 0;
+  bottom: -1px;
+  height: 1.5px;
+  background: var(--ink);
+  width: 1px;
+  transform-origin: 0 0;
+}
+.tool {
+  font-size: 13px;
+  color: var(--ink-3);
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  height: 30px;
+  padding: 0 6px;
+  border-radius: 6px;
+  white-space: nowrap;
+  transition:
+    color 120ms var(--ease),
+    background-color 120ms var(--ease),
+    opacity 240ms var(--o-drift);
+}
+.tool[hidden] {
+  display: none;
+}
+.tool b {
+  color: var(--ink);
+  font-weight: 500;
+}
+.tool:hover {
+  color: var(--ink-2);
+  background: var(--hov);
+}
+.tool .chev {
+  stroke: currentColor;
+}
+.tools .spacer {
+  flex: 1;
+}
+.tools .count {
+  font: 400 11.5px / 1 var(--mono);
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+.tools .count .sorted {
+  color: var(--ink-2);
+  margin-left: 8px;
+}
+.tools .newb {
+  margin-left: 4px;
+}
+.ftoks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  padding: 10px 0 0 72px;
+}
+.ftoks:empty {
+  padding-top: 0;
+}
+.ftok {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 4px 0 10px;
+  border-radius: 999px;
+  background: var(--well);
+  box-shadow: inset 0 0 0 1px var(--rule);
+  font-size: 12.5px;
+  color: var(--ink);
+}
+.ftok .k {
+  font: 400 11.5px / 1 var(--mono);
+  color: var(--ink-3);
+}
+.ftok button {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: var(--ink-3);
+}
+.ftok button svg {
+  width: 12px;
+  height: 12px;
+}
+.ftok button:hover {
+  background: var(--hov);
+  color: var(--ink);
+}
+.ftoks .clr {
+  font-size: 12.5px;
+  color: var(--ink-3);
+  text-decoration: underline;
+  text-decoration-color: var(--rule-2);
+  text-underline-offset: 3px;
+  padding: 0 6px;
+}
+
+/* the stage: the morph lays both views out, the old one absolute */
+.stage {
+  position: relative;
+}
+.stage > .mghost {
+  position: absolute;
+  left: 0;
+  top: 0;
+  pointer-events: none;
+}
+.ov {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 6;
+  overflow: visible;
+}
+.ov > * {
+  position: absolute;
+  margin: 0;
+  transform-origin: 0 0;
+}
+.ov .plate {
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  background: var(--sheet);
+}
+.morphing [data-s] {
+  visibility: hidden;
+}
+.morphing .card {
+  background: transparent;
+  border-color: transparent;
+}
+.lista .lanes {
+  max-width: 1040px;
+}
+/* a folded parent's children stay in the list, out of the lanes */
+.lanes > .row.folded {
+  display: none;
+}
+.nomatch {
+  padding: 28px 0 10px 60px;
+  font: 400 italic 16px / 1.4 var(--serif);
+  color: var(--ink-3);
+}
+.nomatch button {
+  font: 500 13px / 1 var(--sans);
+  font-style: normal;
+  color: var(--ink-2);
+  text-decoration: underline;
+  text-decoration-color: var(--rule-2);
+  text-underline-offset: 3px;
+  margin-left: 8px;
+}
+.lanes > .empty .btn.text {
+  margin: 0 0 0 4px;
+}
+
+/* beside the detail */
+.view.narrow .board {
+  padding-right: 22px;
+}
+.view.narrow .tools .count {
+  display: none;
+}
+.view.narrow .tools {
+  gap: 10px;
+}
+.view.narrow .switch {
+  gap: 14px;
+}
+.view.narrow .switch .wl,
+.view.narrow .tool .wl {
+  display: none;
+}
+.view.narrow .bhead {
+  padding-left: 72px;
 }
