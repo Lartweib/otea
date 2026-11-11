@@ -63,6 +63,11 @@ describe('t', () => {
     expect(t('common.files', { count: 1_000_000 })).toBe('1000000 archivos');
   });
 
+  it('gives back a key it does not know, as a lookup by a computed key expects', () => {
+    const lookup = t as (key: string) => string;
+    expect(lookup('boardView.dek.bk3j9x2q')).toBe('boardView.dek.bk3j9x2q');
+  });
+
   it('checks keys and params at compile time', () => {
     // Never called: the typecheck is the test.
     const wrong = () => [
