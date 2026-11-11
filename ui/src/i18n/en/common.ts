@@ -86,4 +86,14 @@ export const common = {
   'move.leaves': 'it leaves Waiting for you',
   'move.comes': 'it comes to Waiting for you',
   'move.asksReason': 'asks a reason first',
+
+  // When, as a row says it (derive/when.ts): the lease left, or how long it has been where it is
+  'when.left': '{time} left',
+  'when.hoursMinutes': '{hours} h {minutes}',
+  'when.hours': '{hours} h',
+  'when.minutes': '{minutes} min',
+  'when.expired': 'expired',
+  'when.now': 'now',
+  'when.yesterday': 'yesterday',
+  'when.days': { one: '{count} day', other: '{count} days' },
 } as const;
