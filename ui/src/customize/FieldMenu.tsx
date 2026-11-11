@@ -63,7 +63,7 @@ export function FieldMenu(p: FieldMenuProps) {
 
   return (
     <div ref={ref} className="cz-menu" tabIndex={-1} style={p.style}>
-      <div className="cz-mh">
+      <div className="cz-mh" data-i="">
         <input
           className="cz-in"
           type="text"
@@ -81,12 +81,16 @@ export function FieldMenu(p: FieldMenuProps) {
           <Cross />
         </button>
       </div>
-      {!field && p.says ? <p className="cz-mp">{p.says}</p> : null}
+      {!field && p.says ? (
+        <p className="cz-mp" data-i="">
+          {p.says}
+        </p>
+      ) : null}
       {field ? (
         <>
-          <div className="cz-mq">
+          <div className="cz-mq" data-i="">
             <span className="cz-ml">{t('customize.type')}</span>
-            <div className="cz-sg wrap">
+            <div className="cz-sg wrap" data-i="">
               {FIELD_KINDS.map((k) => (
                 <button
                   key={k}
@@ -106,7 +110,7 @@ export function FieldMenu(p: FieldMenuProps) {
             ) : null}
           </div>
           {p.kind === 'choice' ? (
-            <div className="cz-mq">
+            <div className="cz-mq" data-i="">
               <span className="cz-ml">{t('customize.options')}</span>
               <ul className="cz-opts">
                 {(p.options ?? []).map((o) => (
@@ -138,9 +142,9 @@ export function FieldMenu(p: FieldMenuProps) {
               />
             </div>
           ) : null}
-          <div className="cz-mq">
+          <div className="cz-mq" data-i="">
             <span className="cz-ml">{t('customize.needed')}</span>
-            <div className="cz-sg wrap">
+            <div className="cz-sg wrap" data-i="">
               {NEEDS.map((n) => (
                 <button
                   key={n}
@@ -156,7 +160,7 @@ export function FieldMenu(p: FieldMenuProps) {
             {p.need ? <p className="cz-mp">{t(`customize.need.${p.need}.says`)}</p> : null}
           </div>
           {/* biome-ignore lint/a11y/useSemanticElements: a labelled row of checkboxes */}{' '}
-          <div className="cz-mq" role="group" aria-labelledby={`${id}-also`}>
+          <div className="cz-mq" data-i="" role="group" aria-labelledby={`${id}-also`}>
             <span className="cz-ml" id={`${id}-also`}>
               {t('customize.alsoIn')}
             </span>
@@ -167,11 +171,11 @@ export function FieldMenu(p: FieldMenuProps) {
           </div>
         </>
       ) : null}
-      <div className="cz-mq">
+      <div className="cz-mq" data-i="">
         {p.zones && p.zones.length > 0 ? (
           <>
             <span className="cz-ml">{t('customize.moveTo')}</span>
-            <div className="cz-sg wrap">
+            <div className="cz-sg wrap" data-i="">
               {p.zones.map((z) => (
                 <button
                   key={z.id}
@@ -187,7 +191,7 @@ export function FieldMenu(p: FieldMenuProps) {
             </div>
           </>
         ) : null}
-        <div className="cz-mud">
+        <div className="cz-mud" data-i="">
           <button type="button" className="btn sm quiet" disabled={p.upDisabled} onClick={p.onUp}>
             <Up />
             {t('customize.up')}
@@ -203,7 +207,7 @@ export function FieldMenu(p: FieldMenuProps) {
           </button>
         </div>
       </div>
-      <div className="cz-mfoot">
+      <div className="cz-mfoot" data-i="">
         {p.confirmingDelete ? (
           <div className="cz-mdel" role="alertdialog" aria-label={t('customize.deleteTitle')}>
             <b>{t('customize.deleteTitle')}</b>

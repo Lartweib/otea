@@ -57,7 +57,7 @@ export function NewField(p: NewFieldProps) {
           if (e.key === 'Enter' && p.name.trim()) p.onSubmit();
         }}
       />
-      <div className="cz-ats">
+      <div className="cz-ats" data-i="">
         {FIELD_KINDS.map((k) => (
           <button
             key={k}
@@ -73,7 +73,7 @@ export function NewField(p: NewFieldProps) {
           </button>
         ))}
       </div>
-      <div className="cz-adda">
+      <div className="cz-adda" data-i="">
         <button
           type="button"
           className="btn sm primary"
