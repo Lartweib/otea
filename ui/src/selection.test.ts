@@ -75,8 +75,8 @@ describe('selection', () => {
     [{ view: 'lan' }, '#/lan'],
     [{ view: 'modules', name: 'enum' }, '#/modules/enum'],
     [{ view: 'brief', ids: ['A', 'B'] }, '#/brief/A,B'],
-    [{ view: 'studio', page: { kind: 'blueprint', diagram: false } }, '#/studio/blueprint'],
-    [{ view: 'customize', target: { kind: 'item', id: 'A-1' } }, '#/customize/A-1'],
+    [{ view: 'studio', page: { kind: 'boards' } }, '#/studio'],
+    [{ view: 'studio', page: { kind: 'board', board: 'bk3j9x2q' } }, '#/studio/board/bk3j9x2q'],
   ] as [Route, string][])('writes %j as %j, and reads it back', (route, hash) => {
     expect(hashOf(route)).toBe(hash);
     expect(routeFromHash(hash)).toEqual(route);
@@ -111,30 +111,26 @@ describe('selection', () => {
   });
 
   it.each([
-    ['#/studio', { kind: 'start' }],
-    ['#/studio/preset/my-tasks', { kind: 'preset', name: 'my-tasks' }],
-    ['#/studio/preset/', { kind: 'start' }],
-    ['#/studio/blueprint', { kind: 'blueprint', diagram: false }],
-    ['#/studio/blueprint/diagram', { kind: 'blueprint', diagram: true }],
-    ['#/studio/blueprints', { kind: 'blueprints' }],
+    ['#/studio', { kind: 'boards' }],
     ['#/studio/boards', { kind: 'boards' }],
     ['#/studio/board/bk3j9x2q', { kind: 'board', board: 'bk3j9x2q' }],
-    ['#/studio/board/', { kind: 'start' }],
-    ['#/studio/elsewhere', { kind: 'start' }],
+    ['#/studio/board/', { kind: 'boards' }],
+    ['#/studio/preset/my-tasks', { kind: 'boards' }],
+    ['#/studio/blueprint', { kind: 'boards' }],
+    ['#/studio/elsewhere', { kind: 'boards' }],
   ])('routes %j to the Studio page %j', (hash, page) => {
     expect(routeFromHash(hash)).toEqual({ view: 'studio', page });
   });
 
   it('writes each Studio page as a hash it reads back', () => {
-    const pages = [
-      { kind: 'start' },
-      { kind: 'preset', name: 'bug-triage' },
-      { kind: 'blueprint', diagram: true },
-      { kind: 'blueprints' },
-      { kind: 'boards' },
-      { kind: 'board', board: 'bk3j9x2q' },
-    ] as const;
+    const pages = [{ kind: 'boards' }, { kind: 'board', board: 'bk3j9x2q' }] as const;
     for (const page of pages)
       expect(routeFromHash(studioHash(page))).toEqual({ view: 'studio', page });
+    expect(studioHash()).toBe('#/studio');
+  });
+
+  it('reads the old Customize pages as Te toca', () => {
+    expect(routeFromHash('#/customize/A-1')).toEqual({ view: 'toca' });
+    expect(routeFromHash('#/customize/preset/tasks')).toEqual({ view: 'toca' });
   });
 });

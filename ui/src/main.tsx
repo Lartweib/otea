@@ -45,8 +45,6 @@ import './styles/brief.css';
 import './styles/empty.css';
 import './styles/studio.css';
 import './styles/studio-preview.css';
-import './styles/customize.css';
-import './styles/customize-panels.css';
 import './styles/phone.css';
 import { applyChoice, loadChoice } from './theme-dom.ts';
 

@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { board as enBoard } from './en/board.ts';
 import { boardStudio as enBoardStudio } from './en/board-studio.ts';
+import { catalog as enCatalog } from './en/catalog.ts';
 import { common as enCommon } from './en/common.ts';
 import { detail as enDetail } from './en/detail.ts';
 import { phone as enPhone } from './en/phone.ts';
 import { shell as enShell } from './en/shell.ts';
-import { studio as enStudio } from './en/studio.ts';
 import { studioEditor as enStudioEditor } from './en/studio-editor.ts';
 import { studioHome as enStudioHome } from './en/studio-home.ts';
 import { studioPreview as enStudioPreview } from './en/studio-preview.ts';
@@ -14,11 +14,11 @@ import { toca as enToca } from './en/toca.ts';
 import { en } from './en.ts';
 import { board as esBoard } from './es/board.ts';
 import { boardStudio as esBoardStudio } from './es/board-studio.ts';
+import { catalog as esCatalog } from './es/catalog.ts';
 import { common as esCommon } from './es/common.ts';
 import { detail as esDetail } from './es/detail.ts';
 import { phone as esPhone } from './es/phone.ts';
 import { shell as esShell } from './es/shell.ts';
-import { studio as esStudio } from './es/studio.ts';
 import { studioEditor as esStudioEditor } from './es/studio-editor.ts';
 import { studioHome as esStudioHome } from './es/studio-home.ts';
 import { studioPreview as esStudioPreview } from './es/studio-preview.ts';
@@ -35,7 +35,7 @@ const AREAS = {
   board: [enBoard, esBoard],
   detail: [enDetail, esDetail],
   surfaces: [enSurfaces, esSurfaces],
-  studio: [enStudio, esStudio],
+  catalog: [enCatalog, esCatalog],
   phone: [enPhone, esPhone],
   studioPreview: [enStudioPreview, esStudioPreview],
   studioEditor: [enStudioEditor, esStudioEditor],

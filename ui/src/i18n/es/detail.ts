@@ -234,7 +234,6 @@ export const detail = {
   'sheet.close': 'Cerrar',
   'sheet.back': 'Volver',
   'sheet.yourTurn': 'tu turno',
-  'sheet.customize': 'Personalizar vista',
   'sheet.typeBoard': '{type} · {board}',
   'sheet.stand.handed': '{agent} te lo entrega.',
   'sheet.stand.handedRound': '{agent} te lo entrega en la ronda {round}.',

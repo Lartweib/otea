@@ -3,4 +3,5 @@
 export const studioHome = {
   'bs.home.title': 'Studio',
   'bs.home.soon': 'The new Studio is being built here.',
+  'bs.home.editBoard': 'Edit board',
 } as const;

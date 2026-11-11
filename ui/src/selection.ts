@@ -1,6 +1,6 @@
 // Routes live in the hash (SPEC §6.2): `#/` Te toca, `#/atasco`, `#/b/<board>` a board, `#/triage`,
 // `#/projects`, `#/settings`, `#/lan` (the pairing dialog over Te toca), `#/studio[/...]` (see
-// StudioPage), `#/modules[/<name>]`, `#/brief/<id>,<id>` and `#/customize/...`. An open item appends
+// StudioPage), `#/modules[/<name>]` and `#/brief/<id>,<id>`. An open item appends
 // `/i/<id>` to Te toca, Atasco and a board (`#/b/Errores/i/ERR-214`; `#/i/ERR-214` on Te toca). A
 // bare `#<id>`, the CLI's deep link, opens the item on Te toca. Item ids never start with a slash.
 export type ViewRoute =
@@ -13,27 +13,14 @@ export type ViewRoute =
   | { view: 'lan' }
   | { view: 'studio'; page: StudioPage }
   | { view: 'modules'; name?: string }
-  | { view: 'brief'; ids: string[] }
-  | { view: 'customize'; target: CustomizeTarget };
+  | { view: 'brief'; ids: string[] };
 
 export type Route = ViewRoute & { item?: string };
 
-// Studio's pages: the start (the project's blueprint, or the blueprints to build it from), a
-// preset, the project's blueprint edited or drawn as its diagram.
-export type StudioPage =
-  | { kind: 'start' }
-  | { kind: 'preset'; name: string }
-  | { kind: 'blueprint'; diagram: boolean }
-  | { kind: 'blueprints' }
-  | BoardStudioPage;
+// Studio's pages (ui/src/board-studio): its home (`#/studio`), and a board's editor by the
+// board's hidden id (`#/studio/board/<id>`).
+export type StudioPage = { kind: 'boards' } | { kind: 'board'; board: string };
 
-// The board Studio (ui/src/board-studio): its home, and a board's editor by the board's hidden id.
-export type BoardStudioPage = { kind: 'boards' } | { kind: 'board'; board: string };
-
-// What the Customize view builder shapes: an item's view of its board, or a board template.
-export type CustomizeTarget = { kind: 'item'; id: string } | { kind: 'preset'; name: string };
-
-const CUSTOMIZE = '/customize';
 const MODULES = '/modules';
 const TRIAGE = '/triage';
 const BRIEF = '/brief';
@@ -90,14 +77,6 @@ export function routeFromHash(hash: string): Route {
   }
   if (path === STUDIO || path.startsWith(`${STUDIO}/`)) {
     return { view: 'studio', page: studioPage(path.slice(STUDIO.length + 1).split('/')) };
-  }
-  if (path.startsWith(`${CUSTOMIZE}/`)) {
-    const rest = path.slice(CUSTOMIZE.length + 1);
-    const preset = rest.startsWith('preset/') ? decode(rest.slice('preset/'.length)) : undefined;
-    const id = decode(rest);
-    if (preset) return { view: 'customize', target: { kind: 'preset', name: preset } };
-    if (id && !rest.startsWith('preset/'))
-      return { view: 'customize', target: { kind: 'item', id } };
   }
   if (path === LAN) return { view: 'lan' };
   if (path === PROJECTS) return { view: 'projects' };
@@ -159,47 +138,19 @@ export function hashOf(route: Route): string {
       return modulesHash(route.name);
     case 'brief':
       return briefHash(route.ids);
-    case 'customize':
-      return customizeHash(route.target);
   }
 }
 
+// Any other Studio path is its home.
 function studioPage([kind, name]: string[]): StudioPage {
-  if (kind === 'preset' && name) {
-    const decoded = decode(name);
-    if (decoded) return { kind: 'preset', name: decoded };
-  }
-  if (kind === 'blueprint') return { kind: 'blueprint', diagram: name === 'diagram' };
-  if (kind === 'blueprints') return { kind: 'blueprints' };
-  if (kind === 'boards') return { kind: 'boards' };
-  if (kind === 'board' && name) {
-    const decoded = decode(name);
-    if (decoded) return { kind: 'board', board: decoded };
-  }
-  return { kind: 'start' };
+  const board = kind === 'board' && name ? decode(name) : undefined;
+  return board ? { kind: 'board', board } : { kind: 'boards' };
 }
 
-export function studioHash(page: StudioPage = { kind: 'start' }): string {
-  switch (page.kind) {
-    case 'preset':
-      return `#${STUDIO}/preset/${encodeURIComponent(page.name)}`;
-    case 'blueprint':
-      return `#${STUDIO}/blueprint${page.diagram ? '/diagram' : ''}`;
-    case 'blueprints':
-      return `#${STUDIO}/blueprints`;
-    case 'boards':
-      return `#${STUDIO}/boards`;
-    case 'board':
-      return `#${STUDIO}/board/${encodeURIComponent(page.board)}`;
-    default:
-      return `#${STUDIO}`;
-  }
-}
-
-export function customizeHash(target: CustomizeTarget): string {
-  return target.kind === 'preset'
-    ? `#${CUSTOMIZE}/preset/${encodeURIComponent(target.name)}`
-    : `#${CUSTOMIZE}/${encodeURIComponent(target.id)}`;
+export function studioHash(page: StudioPage = { kind: 'boards' }): string {
+  return page.kind === 'board'
+    ? `#${STUDIO}/board/${encodeURIComponent(page.board)}`
+    : `#${STUDIO}`;
 }
 
 export function modulesHash(name?: string): string {

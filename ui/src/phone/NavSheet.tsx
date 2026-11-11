@@ -175,7 +175,7 @@ export function NavSheet() {
         }}
         onNewBoard={() =>
           then(() => {
-            window.location.hash = studioHash({ kind: 'blueprint', diagram: false });
+            window.location.hash = studioHash();
           })
         }
         // Preferences are the shell's: its button sits in the rail, which the phone hides. The
