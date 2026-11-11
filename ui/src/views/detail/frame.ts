@@ -70,6 +70,14 @@ export function toastOf(kind: MoveKind | 'answer' | 'close', title: string, stat
   }
 }
 
+// The toast after Retomar (back in the queue of its step) or Reasignar (left for an agent).
+export function stuckToastOf(o: { title: string; state: string; agent?: string }): string {
+  const title = shortTitle(o.title);
+  return o.agent
+    ? t('sheet.toast.reassigned', { title, agent: o.agent })
+    : t('sheet.toast.restarted', { title, state: o.state });
+}
+
 // What the sheet shows: the new item form while it is open, and after Crear until the place asks
 // for the created item, so the form swaps into it rather than closing first (mock:3990-3991).
 export function intakeTarget(

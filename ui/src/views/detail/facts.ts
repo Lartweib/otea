@@ -1,5 +1,6 @@
 import { turnAgent } from '../../actions.ts';
 import { mainPath } from '../../derive/path.ts';
+import { leftFor } from '../../derive/toca.ts';
 import { relayOf } from '../../format.ts';
 import type { MessageKey } from '../../i18n/i18n.ts';
 import type { Look } from '../../lanes/looks.ts';
@@ -14,6 +15,9 @@ export type Handed = { agent: string; reason: string; at: string };
 export type Facts = {
   // The agent that has it, or had it last.
   agent: string | null;
+  // You took the stuck item in hand (Retomar or Reasignar) and no agent has claimed it since: agent
+  // is whom you left it for, or none.
+  left: boolean;
   handed: Handed | null;
   round: number;
   question: boolean;
@@ -100,10 +104,14 @@ export function factsOf(item: ItemView, type: TypeView | undefined, _now: number
     item.state === type.initial &&
     !handed &&
     !(moved && events.findLast((e) => e.type === 'transitioned')?.actor.kind === 'agent');
+  const left = leftFor(events);
   const agent =
-    item.lease?.holder ?? item.expiredLease?.holder ?? handed?.agent ?? turnAgent(events) ?? null;
+    item.lease?.holder ??
+    item.expiredLease?.holder ??
+    (left === undefined ? (handed?.agent ?? turnAgent(events) ?? null) : left);
   return {
     agent,
+    left: left !== undefined,
     handed,
     round: Math.max(1, rounds.length),
     question,

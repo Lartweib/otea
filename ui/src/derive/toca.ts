@@ -49,11 +49,28 @@ export function handedNote(item: Item, feed: readonly FeedEvent[]): HandedNote |
   return { agent: last.actor.name, reason, at: last.at };
 }
 
-// Who has the item: the lease holder, else the one whose lease ran out, else the last agent that
-// acted on it.
+type LeaseEvent = Pick<FeedEvent, 'type' | 'actor' | 'data'>;
+
+// After you took a stuck item in hand, of its events: the agent you left it for (Reasignar), or
+// null when you put it back in the queue of its step (Retomar: any agent may take it). Undefined
+// when you did neither, or an agent has claimed it or moved it since.
+export function leftFor(events: readonly LeaseEvent[]): string | null | undefined {
+  const last = events.findLast(
+    (e) => e.type === 'claimed' || e.type === 'released' || e.type === 'transitioned',
+  );
+  if (last?.type !== 'released' || last.actor.kind !== 'human') return undefined;
+  if (last.data.cause === 'reassign' && typeof last.data.next === 'string') return last.data.next;
+  return last.data.cause === 'restart' ? null : undefined;
+}
+
+// Who has the item: the lease holder, else the one whose lease ran out, else the agent you left it
+// for (Reasignar) or none (Retomar: any agent may take it) until an agent takes it or it moves,
+// else the last agent that acted on it.
 export function agentOf(item: Item, feed: readonly FeedEvent[]): string | null {
   if (item.lease) return item.lease.holder;
   if (item.expiredLease) return item.expiredLease.holder;
+  const left = leftFor(feed.filter((e) => e.itemId === item.id));
+  if (left !== undefined) return left;
   const last = feed.findLast((event) => event.itemId === item.id && event.actor.kind === 'agent');
   return last ? last.actor.name : null;
 }

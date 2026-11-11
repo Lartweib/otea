@@ -3,14 +3,14 @@ import { useApp } from '../../app/context.tsx';
 import { mainPath } from '../../derive/path.ts';
 import { whenText } from '../../derive/when.ts';
 import { t, tx } from '../../i18n/i18n.ts';
-import { Button, MenuItem, MenuLabel, MenuNote, Pop, Swap, toast } from '../../kit/index.ts';
+import { Button, MenuItem, MenuLabel, MenuNote, Pop, Swap } from '../../kit/index.ts';
 import type { Look } from '../../lanes/looks.ts';
 import { C } from '../../motion/curves.ts';
 import { reduced } from '../../motion/reduced.ts';
 import { parseOptions } from '../../options.ts';
 import type { ItemView, TypeView } from '../../types.ts';
 import type { Facts } from './facts.ts';
-import { toastOf } from './frame.ts';
+import { stuckToastOf, toastOf } from './frame.ts';
 import { type MoveChoice, type MovePlan, moveSaysOf } from './moves.ts';
 
 // The moves and what stands in for them (SPEC §10.3, mock:2689-2702): the moves with the line that
@@ -135,11 +135,6 @@ function SaysLine({ text }: { text: { verb: string; state: string; tail: string 
       )}
     </Swap>
   );
-}
-
-function copy(text: string): void {
-  void navigator.clipboard?.writeText(text).catch(() => undefined);
-  toast({ msg: tx('sheet.stuck.copied', { command: <code>{text}</code> }) });
 }
 
 export function Acts({ item, type, facts, look, plan, mode, word, notesOpen, onNotes }: ActsProps) {
@@ -268,8 +263,9 @@ export function Acts({ item, type, facts, look, plan, mode, word, notesOpen, onN
     );
   } else if (mode === 'stuck') {
     const who = agent ?? '—';
+    const state = word(item.state);
     const lines = {
-      resume: { verb: t('sheet.stuck.resume'), tail: t('sheet.says.resume', { agent: who }) },
+      resume: { verb: t('sheet.stuck.resume'), tail: t('sheet.says.resume', { state }) },
       reassign: {
         verb: t('sheet.stuck.reassign').replace('…', ''),
         tail: t('sheet.says.reassign'),
@@ -284,7 +280,7 @@ export function Acts({ item, type, facts, look, plan, mode, word, notesOpen, onN
             variant="primary"
             onMouseEnter={() => setStuckSays('resume')}
             onFocus={() => setStuckSays('resume')}
-            onClick={() => copy(`otea claim ${item.id} --as ${who}`)}
+            onClick={() => void app.restart(item.id, stuckToastOf({ title: item.title, state }))}
           >
             {t('sheet.stuck.resume')}
           </Button>
@@ -325,7 +321,14 @@ export function Acts({ item, type, facts, look, plan, mode, word, notesOpen, onN
                       ? 'sheet.stuck.free'
                       : 'sheet.stuck.quiet',
                 )}
-                onPick={() => copy(`otea claim ${item.id} --as ${a.name}`)}
+                onPick={() => {
+                  setReassign(null);
+                  void app.reassign(
+                    item.id,
+                    a.name,
+                    stuckToastOf({ title: item.title, state, agent: a.name }),
+                  );
+                }}
               >
                 {a.name}
               </MenuItem>

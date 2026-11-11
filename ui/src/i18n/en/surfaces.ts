@@ -312,6 +312,8 @@ export const surfaces = {
   'activity.createdYou': 'You created {id} in {state}',
   'activity.attachedYou': 'You added {file} to {id}',
   'activity.editedYou': 'You edited {id}',
+  'activity.restartedYou': 'You put {id} back in the queue',
+  'activity.reassignedYou': 'You left {id} for {agent}',
   'activity.linkedYou': 'You linked: {relation}',
   'activity.unlinkedYou': 'You unlinked: {relation}',
   'triage.title': 'Triage',

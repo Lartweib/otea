@@ -314,6 +314,8 @@ export const surfaces = {
   'activity.createdYou': 'Creaste {id} en {state}',
   'activity.attachedYou': 'Añadiste {file} a {id}',
   'activity.editedYou': 'Editaste {id}',
+  'activity.restartedYou': 'Pusiste {id} otra vez en la cola',
+  'activity.reassignedYou': 'Le dejaste {id} a {agent}',
   'activity.linkedYou': 'Vinculaste: {relation}',
   'activity.unlinkedYou': 'Desvinculaste: {relation}',
   'triage.title': 'Triaje',

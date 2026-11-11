@@ -89,6 +89,10 @@ function sentence(line: FeedLine, id: ReactNode, state: (s: string) => string): 
       return tx(phrase.key, { id, previous: phrase.previous });
     case 'activity.released':
       return tx(phrase.key, { id });
+    case 'activity.restarted':
+      return tx('activity.restartedYou', { id });
+    case 'activity.reassigned':
+      return tx('activity.reassignedYou', { id, agent: phrase.agent });
     case 'activity.handed':
       return tx(phrase.key, { id, state: state(phrase.state) });
     case 'activity.moved':

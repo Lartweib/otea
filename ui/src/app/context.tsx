@@ -1,6 +1,14 @@
 import { createContext, type ReactNode, useCallback, useContext, useMemo, useRef } from 'react';
 import type { FeedEvent } from '../activity.ts';
-import { linkItems, moveItem, undoMove, unlinkItems } from '../api.ts';
+import {
+  linkItems,
+  moveItem,
+  reassignItem,
+  restartItem,
+  undoMove,
+  undoRelease,
+  unlinkItems,
+} from '../api.ts';
 import type { IntakeParent } from '../components/NewItemForm.tsx';
 import { type Connection, usePhone, useRoute } from '../hooks.ts';
 import { toast } from '../kit/pop/toast.tsx';
@@ -58,6 +66,11 @@ export type AppActions = {
   // A Q-ordered move. With a toast message, the toast offers Deshacer: the server takes the move
   // back while the toast is up, whatever the workflow allows.
   move(id: string, to: string, reason?: string, toast?: string): Promise<void>;
+  // A stuck item: back in the queue of its step (restart), or left for an agent (reassign). Both
+  // run as any change does (the lists' handoff), then the toast offers Deshacer: the lease that
+  // ran out comes back while the toast is up.
+  restart(id: string, toast: string): Promise<void>;
+  reassign(id: string, agent: string, toast: string): Promise<void>;
   link(id: string, kind: RelationView, other: string): Promise<void>;
   unlink(id: string, relation: RelatedItem): Promise<void>;
   newItem(o?: { board?: string; parent?: IntakeParent }): void;
@@ -142,6 +155,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
           id,
           ...(back ? { undo: () => void Q.run(() => undoMove(id, back)) } : {}),
         });
+      },
+      async restart(id, message) {
+        await Q.run(() => restartItem(id));
+        await landed();
+        toast({ msg: message, id, undo: () => void Q.run(() => undoRelease(id)) });
+      },
+      async reassign(id, agent, message) {
+        await Q.run(() => reassignItem(id, agent));
+        await landed();
+        toast({ msg: message, id, undo: () => void Q.run(() => undoRelease(id)) });
       },
       async link(id, kind, other) {
         await Q.run(() => linkItems(linkRequestOf(id, kind, other)));

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { setLanguage } from '../../i18n/i18n.ts';
 import {
   dividerBounds,
   dividerKey,
@@ -6,6 +7,7 @@ import {
   moreOf,
   penPath,
   shortTitle,
+  stuckToastOf,
   toastOf,
 } from './frame.ts';
 
@@ -57,6 +59,23 @@ describe('the toast after a move, and its Undo', () => {
       'You sent “X” back to fixing, with your notes.',
     );
     expect(toastOf('discard', 'X', 'rejected')).toBe('You discarded “X”: rejected.');
+  });
+
+  it('says where a stuck item went: back in the queue of its step, or left for an agent', () => {
+    expect(stuckToastOf({ title: 'Los pasos suenan dos veces', state: 'fixing' })).toBe(
+      'You put “Los pasos suenan dos veces” back in the queue of fixing.',
+    );
+    expect(stuckToastOf({ title: 'X', state: 'fixing', agent: 'quill' })).toBe(
+      'You left “X” for quill.',
+    );
+    setLanguage('es');
+    expect(stuckToastOf({ title: 'X', state: 'En arreglo' })).toBe(
+      'Pusiste «X» otra vez en la cola de En arreglo.',
+    );
+    expect(stuckToastOf({ title: 'X', state: 'En arreglo', agent: 'quill' })).toBe(
+      'Le dejaste «X» a quill.',
+    );
+    setLanguage('en');
   });
 
   it('cuts a long title', () => {

@@ -94,7 +94,12 @@ export function historyOf(
             : t('sheet.h.claimed'),
       };
     }
-    if (e.type === 'released') return { ...base, text: t('sheet.h.released') };
+    if (e.type === 'released') {
+      if (human && e.data.cause === 'restart') return { ...base, text: t('sheet.h.restarted') };
+      if (human && e.data.cause === 'reassign')
+        return { ...base, text: t('sheet.h.reassigned', { agent: String(e.data.next) }) };
+      return { ...base, text: t('sheet.h.released') };
+    }
     if (e.type === 'evidence_added') {
       const caption = typeof e.data.caption === 'string' ? { quote: e.data.caption } : {};
       return {
