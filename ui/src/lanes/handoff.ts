@@ -102,12 +102,17 @@ function restyleInPlace(
   post: End,
   svg: SVGSVGElement | null,
   list: HTMLElement,
+  temps: Element[],
 ): void {
   const nd = el.querySelector('.nd');
-  const own = nd?.querySelector('.lk');
+  const own = nd?.querySelector('.lk:not(.tmp)');
   if (!nd || !own || !pre.look) return;
+  // The old glyph, dying: marked so a handoff that comes next never takes it for the row's own,
+  // and tracked so finishing the flight removes it.
   const other = svgEl(lookGlyph(pre.look));
+  other.classList.add('tmp');
   nd.insertBefore(other, own);
+  temps.push(other);
   other
     .animate([{ opacity: 1 }, { opacity: 0 }], { duration: 280, easing: C.drift, fill: 'forwards' })
     .finished.then(
@@ -219,6 +224,7 @@ export function runHandoff(
   let ended = false;
   let flight: Drive | null = null;
   let flying: Flying[] = [];
+  let roomsAt = 0;
   const halos = svg?.querySelector<SVGGElement>('.glow .halos') ?? null;
 
   const finish = (interrupted: boolean) => {
@@ -253,6 +259,12 @@ export function runHandoff(
       }
     }
     for (const r of plan.rooms) r.el.style.transform = '';
+    // The light ends where it lies: drawLight caches its markup and would not rewrite it.
+    for (const l of lit) {
+      l.g.style.opacity = '';
+      if (l.at === null) l.g.removeAttribute('transform');
+      else l.g.setAttribute('transform', l.at);
+    }
     if (flights.get(list) === flight_) flights.delete(list);
     apply();
     if (halos && flying.length) {
@@ -269,6 +281,9 @@ export function runHandoff(
       const m = new Map<HTMLElement, { dy: number; folded: boolean }>();
       for (const c of flying)
         if (!c.gone && c.shown) m.set(c.el, { dy: c.shown.y, folded: c.shown.folded });
+      // Rows making room are still short of where they go: a new flight starts them from there.
+      for (const r of plan.rooms)
+        if (!m.has(r.el)) m.set(r.el, { dy: r.dy * (1 - roomsAt), folded: false });
       return m;
     },
     finish,
@@ -342,7 +357,7 @@ export function runHandoff(
       pulse: document.createElement('div'),
     };
     if (nd && preLook !== postLook) {
-      const own = nd.querySelector<SVGElement>('.lk');
+      const own = nd.querySelector<SVGElement>('.lk:not(.tmp)');
       if (own) {
         const isOld = c.curLook === preLook;
         const other = svgEl(lookGlyph(isOld ? postLook : preLook));
@@ -416,7 +431,7 @@ export function runHandoff(
     return f;
   });
 
-  for (const r of plan.restyles) restyleInPlace(r.el, r.pre, r.post, svg, list);
+  for (const r of plan.restyles) restyleInPlace(r.el, r.pre, r.post, svg, list, temps);
   for (const e of plan.enters) {
     e.el.animate(
       [
@@ -451,7 +466,7 @@ export function runHandoff(
 
   // The light of agent and stuck nodes lies where the rows land (drawn once), and rides with the
   // rows that make room; a carried row's light comes in as it lands.
-  const lit: { g: SVGGElement; y: number; dy: number; carried: boolean }[] = [];
+  const lit: { g: SVGGElement; y: number; dy: number; carried: boolean; at: string | null }[] = [];
   if (svg) {
     drawLight(svg, pB, { keepHalos: true });
     const roomDy = new Map(plan.rooms.map((r) => [r.k, r.dy]));
@@ -466,12 +481,20 @@ export function runHandoff(
           : b.lane === 'ag' && b.look === 'working' && !pB.atasco
             ? ags.shift()
             : undefined;
-      if (g) lit.push({ g, y: b.ny ?? 0, dy: roomDy.get(k) ?? 0, carried: carriedKeys.has(k) });
+      if (g)
+        lit.push({
+          g,
+          y: b.ny ?? 0,
+          dy: roomDy.get(k) ?? 0,
+          carried: carriedKeys.has(k),
+          at: g.getAttribute('transform'),
+        });
     }
   }
 
   const frame = (t: number) => {
     const { p, pr } = progressAt(t, FA, T);
+    roomsAt = pr;
     for (const r of plan.rooms) r.el.style.transform = `translateY(${r.dy * (1 - pr)}px)`;
     const H = Math.max(pA.H, pB.H);
     if (svg) {

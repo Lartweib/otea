@@ -109,8 +109,11 @@ export function relayoutList(
   }
   tails.set(view, mine);
   setTimeout(() => {
+    // A later relayout's tail on the same title keeps its mask.
+    const later = (tails.get(view) ?? []).filter((x) => !mine.includes(x));
     for (const g of mine) {
-      if (!view.classList.contains('narrow') && g._of) maskOf(g._of, '');
+      const kept = later.some((x) => x._of === g._of);
+      if (!view.classList.contains('narrow') && g._of && !kept) maskOf(g._of, '');
       g.remove();
     }
     tails.set(

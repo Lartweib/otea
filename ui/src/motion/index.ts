@@ -28,5 +28,4 @@ export {
 export { relayoutList } from './relayout.ts';
 export { rollSplit, rollTo } from './roll.ts';
 export { spring } from './spring.ts';
-export { type SwapOptions, swapIn, swapOut, swapText } from './swap.ts';
 export { STAGGER, staggerAt, T, Tt } from './time.ts';

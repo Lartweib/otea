@@ -1,7 +1,8 @@
 import { type ReactNode, useLayoutEffect, useRef, useState } from 'react';
-import { retract } from '../lanes/draw-in.ts';
+import { drawIn, retract } from '../lanes/draw-in.ts';
 import { C } from '../motion/curves.ts';
 import { reduced } from '../motion/reduced.ts';
+import { revive } from './view-revive.ts';
 import { useWorkspace } from './workspace.ts';
 
 // The view host (SPEC §6.6, mock:2361-2393): the view for the route, keyed by its identity. On a
@@ -82,7 +83,10 @@ export function ViewHost({ viewKey, kind, children }: ViewHostProps) {
       return;
     }
     const view = els.current.get(viewKey);
-    if (view) enter(view);
+    if (!view) return;
+    // Back before its leave finished: its lanes, retracted, draw in again.
+    if (revive(view)) for (const list of view.querySelectorAll<HTMLElement>('.lanes')) drawIn(list);
+    enter(view);
   }, [viewKey]);
 
   useLayoutEffect(() => {
