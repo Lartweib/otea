@@ -99,4 +99,7 @@ export const common = {
   'when.now': 'ahora',
   'when.yesterday': 'ayer',
   'when.days': { one: '{count} día', other: '{count} días' },
+  // Los nombres de los carriles
+  'lanes.agents': 'ag',
+  'lanes.you': 'tú',
 } satisfies Partial<Catalog>;

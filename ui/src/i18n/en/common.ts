@@ -96,4 +96,7 @@ export const common = {
   'when.now': 'now',
   'when.yesterday': 'yesterday',
   'when.days': { one: '{count} day', other: '{count} days' },
+  // The lanes' names over a list
+  'lanes.agents': 'ag',
+  'lanes.you': 'you',
 } as const;
