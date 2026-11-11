@@ -276,11 +276,9 @@ export const detail = {
   'sheet.receipt.hasAny': 'An agent has it.',
   'sheet.receipt.lease': 'Its lease: {time}.',
   'sheet.receipt.back': 'It comes back to your review when it’s done.',
-  'sheet.receipt.queued': 'Waiting for {agent}. It comes back to you when it’s done.',
-  'sheet.receipt.queuedAny': 'Waiting for an agent. It comes back to you when it’s done.',
-  'sheet.receipt.done': 'Done. You closed it; the work was {agent}’s.',
-  'sheet.receipt.doneYou': 'Done. You closed it.',
-  'sheet.receipt.dropped': 'Discarded. It no longer shows in Your turn.',
+  'sheet.receipt.queued': 'It comes back to you when it’s done.',
+  'sheet.receipt.done': 'You closed it.',
+  'sheet.receipt.dropped': 'It no longer shows in Your turn.',
   'sheet.waitkids': {
     one: 'Waiting for its child: {closed} of {count} closed. When it closes, it moves to {state}.',
     other:
