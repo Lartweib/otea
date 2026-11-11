@@ -311,6 +311,22 @@ export type GridFit = { shown: ShownColumn[]; dropped: string[] };
 
 const LAST_TO_GO: readonly ColumnKind[] = ['severity', 'type', 'state', 'who'];
 
+// Columns leave until the title has its 240: the fields from the last, then (the table stays a
+// table beside an open item) severity, the type, the step and who; id, title and age always stay.
+function squeeze(room: number, columns: readonly ShownColumn[]): ShownColumn[] {
+  let shown = [...columns];
+  while (spare(room, shown) < TITLE_MIN) {
+    const victim = shown.findLast(({ column }) => drops(column));
+    if (!victim) break;
+    shown = shown.filter((entry) => entry !== victim);
+  }
+  for (const kind of LAST_TO_GO) {
+    if (spare(room, shown) >= TITLE_MIN) break;
+    shown = shown.filter(({ column }) => column.kind !== kind);
+  }
+  return shown;
+}
+
 // The tiers decide first; a column takes the width the viewer gave it. Before the title goes under
 // 240 the widened columns give back towards automatic, in proportion (the widths kept are not
 // rewritten: a wider room gets them back); then the fields leave in the tiers' order.
@@ -322,7 +338,11 @@ export function fitColumns(columns: readonly GridColumn[], room: number, widths:
     const compact = shown.column.kind === 'severity' && width < SEVERITY_FULL;
     return { ...shown, width, compact };
   };
-  let shown = shownColumns(columns, tier === 5 ? 4 : tier).map(sized);
+  // What the room lets go at automatic widths stays gone: a column the viewer widens takes the
+  // title's room, never brings a dropped one back or pushes another out.
+  const auto = shownColumns(columns, tier === 5 ? 4 : tier);
+  const fits = squeeze(room, auto);
+  let shown = auto.filter((entry) => fits.includes(entry)).map(sized);
   const short = TITLE_MIN - spare(room, shown);
   if (short > 0) {
     const excess = (entry: ShownColumn) =>
@@ -340,17 +360,7 @@ export function fitColumns(columns: readonly GridColumn[], room: number, widths:
       });
     }
   }
-  while (spare(room, shown) < TITLE_MIN) {
-    const victim = shown.findLast(({ column }) => drops(column));
-    if (!victim) break;
-    shown = shown.filter((entry) => entry !== victim);
-  }
-  // The table stays a table beside an open item: before the title goes under 240, severity, the
-  // type, the step and who step out too, in that order (id, title and age always stay).
-  for (const kind of LAST_TO_GO) {
-    if (spare(room, shown) >= TITLE_MIN) break;
-    shown = shown.filter(({ column }) => column.kind !== kind);
-  }
+  shown = squeeze(room, shown);
   return {
     shown,
     dropped: columns
