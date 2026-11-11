@@ -72,10 +72,65 @@ const PATHS: Record<IconName, string> = {
   eye: 'M1.75 8 C3.5 4.5 12.5 4.5 14.25 8 C12.5 11.5 3.5 11.5 1.75 8 Z M8 6.5 A1.5 1.5 0 1 0 8 9.5 A1.5 1.5 0 1 0 8 6.5',
 };
 
-// Thin, small and quiet: 16px, stroke 1.25, current color.
-export function Icon({ name }: { name: IconName }) {
+// The mock's icon set (mock:1346-1371), drawn at 16 px with stroke 1.35 (svg.ic). Where a name is
+// in both sets, the mock's drawing wins.
+export const IC = {
+  toca: '<path d="M2.5 9.5h3l1 2h3l1-2h3"/><path d="M2.5 9.5l1.5-5a1 1 0 0 1 1-.7h6a1 1 0 0 1 1 .7l1.5 5v3a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1z"/>',
+  atasco: '<circle cx="8" cy="8" r="5.5"/><path d="M5.5 8h5"/>',
+  bug: '<path d="M5.6 5.4a2.4 2.4 0 0 1 4.8 0"/><path d="M4.6 6.8h6.8v2.9a3.4 3.4 0 0 1-6.8 0z"/><path d="M8 6.8v6.3M2.6 9h2M11.4 9h2M3.2 12.6l1.7-1.1M12.8 12.6l-1.7-1.1M3.2 5.4l1.6 1.1M12.8 5.4l-1.6 1.1"/>',
+  paw: '<circle cx="4.6" cy="6.2" r="1.2"/><circle cx="7" cy="3.9" r="1.2"/><circle cx="10" cy="4.1" r="1.2"/><circle cx="12" cy="6.6" r="1.2"/><path d="M5.3 11.6c0-2.1 1.4-3.8 3-3.8s3 1.7 3 3.8c0 1.2-1.3 1.7-3 1.7s-3-.5-3-1.7z"/>',
+  book: '<path d="M2.8 3.6h3.6A1.6 1.6 0 0 1 8 5.2v8a1.6 1.6 0 0 0-1.6-1.6H2.8zM13.2 3.6H9.6A1.6 1.6 0 0 0 8 5.2v8a1.6 1.6 0 0 1 1.6-1.6h3.6z"/>',
+  board: '<rect x="2.5" y="3" width="11" height="10" rx="1.6"/><path d="M6 3v10"/>',
+  plus: '<path d="M8 3.2v9.6M3.2 8h9.6"/>',
+  side: '<rect x="2.3" y="3" width="11.4" height="10" rx="1.6"/><path d="M6.2 3v10"/>',
+  lista: '<path d="M5.8 4.5h7.7M5.8 8h7.7M5.8 11.5h7.7M2.6 4.5h.01M2.6 8h.01M2.6 11.5h.01"/>',
+  tabla:
+    '<rect x="2.3" y="3" width="11.4" height="10" rx="1.6"/><path d="M2.3 6.6h11.4M6.4 6.6V13"/>',
+  pasos:
+    '<rect x="2.4" y="3" width="3" height="10" rx="1"/><rect x="6.5" y="3" width="3" height="7" rx="1"/><rect x="10.6" y="3" width="3" height="4.6" rx="1"/>',
+  act: '<path d="M1.8 8.3h2.6l1.6-4.2 3 8.2 1.6-4h3.6"/>',
+  link: '<path d="M7 9.2a2.6 2.6 0 0 0 3.7 0l2-2a2.6 2.6 0 0 0-3.7-3.7l-.6.6"/><path d="M9 6.8a2.6 2.6 0 0 0-3.7 0l-2 2a2.6 2.6 0 0 0 3.7 3.7l.6-.6"/>',
+  sys: '<rect x="2" y="3" width="12" height="8" rx="1.3"/><path d="M6 13.5h4M8 11v2.5"/>',
+  sun: '<circle cx="8" cy="8" r="2.6"/><path d="M8 1.8v1.4M8 12.8v1.4M1.8 8h1.4M12.8 8h1.4M3.6 3.6l1 1M11.4 11.4l1 1M3.6 12.4l1-1M11.4 4.6l1-1"/>',
+  moon: '<path d="M12.6 9.6A5 5 0 0 1 6.4 3.4a5 5 0 1 0 6.2 6.2z"/>',
+  x: '<path d="M4.5 4.5l7 7M11.5 4.5l-7 7"/>',
+  check: '<path d="M3.5 8.5l3 3 6-7"/>',
+  inbox:
+    '<path d="M2.5 9.5h3l1 2h3l1-2h3"/><path d="M2.5 9.5l1.5-5a1 1 0 0 1 1-.7h6a1 1 0 0 1 1 .7l1.5 5v3a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1z"/>',
+  triage: '<rect x="3" y="5" width="10" height="8" rx="1.4"/><path d="M4.6 3h6.8"/>',
+  group: '<path d="M2.5 4.5h11M4.5 8h9M6.5 11.5h7"/>',
+  filter: '<path d="M2.5 3.5h11l-4.2 5v4l-2.6 1.2V8.5z"/>',
+  amp: '<path d="M9.5 2.5h4v4M13.5 2.5l-4.5 4.5M6.5 13.5h-4v-4M2.5 13.5 7 9"/>',
+  red: '<path d="M13.5 6.5h-4v-4M9.5 6.5l4.5-4.5M2.5 9.5h4v4M6.5 9.5 2 14"/>',
+} as const;
+
+export type MockIconName = keyof typeof IC;
+
+const isMock = (name: string): name is MockIconName => name in IC;
+
+// Thin, small and quiet: 16px, current colour. The mock's set on svg.ic, today's on .icon too.
+export function Icon({ name, className }: { name: IconName | MockIconName; className?: string }) {
+  if (isMock(name)) {
+    return (
+      <svg
+        className={className ? `ic icon ${className}` : 'ic icon'}
+        width="16"
+        height="16"
+        viewBox="0 0 16 16"
+        aria-hidden="true"
+        // biome-ignore lint/security/noDangerouslySetInnerHtml: the fixed icon markup above
+        dangerouslySetInnerHTML={{ __html: IC[name] }}
+      />
+    );
+  }
   return (
-    <svg className="icon" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
+    <svg
+      className={className ? `ic icon ${className}` : 'ic icon'}
+      width="16"
+      height="16"
+      viewBox="0 0 16 16"
+      aria-hidden="true"
+    >
       <path d={PATHS[name]} />
     </svg>
   );

@@ -1,0 +1,498 @@
+/* The lanes and their rows (SPEC §4.3, §4.4; mock:219-299, 310-311 and 344-351), verbatim. The
+   agent marks and severity bars (mock:300-308) are the kit's. */
+
+/* ───────── lanes ───────── */
+.lanes {
+  position: relative;
+  isolation: isolate;
+  padding-bottom: 44px;
+  --pl: 72px;
+  container: list / inline-size;
+}
+.lanes > svg.ink {
+  position: absolute;
+  left: 0;
+  top: 0;
+  pointer-events: none;
+  overflow: visible;
+  z-index: 0;
+}
+.lanes > [data-k] {
+  position: relative;
+  z-index: 1;
+}
+.lanes > .ghost {
+  position: absolute;
+  left: 0;
+  pointer-events: none;
+  margin: 0;
+}
+.comet {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0;
+  background: radial-gradient(closest-side, var(--cc), transparent);
+}
+/* the light lives on the nodes that matter: yours (blue) and stuck (red); a slow breath, offset node to node */
+.glow .gl {
+  opacity: var(--gl-a);
+  animation: gbreath 5.6s ease-in-out infinite;
+}
+.glow .ags .gl,
+.glow .warms .gl {
+  --gl-a: var(--gl-ag);
+}
+.glow .warms .gl {
+  --gl-a: 1;
+}
+.glow .ags .gl,
+.glow .warms .gl {
+  animation-name: gtail;
+}
+@keyframes gtail {
+  0%,
+  100% {
+    opacity: calc(var(--gl-a) * 0.88);
+  }
+  50% {
+    opacity: var(--gl-a);
+  }
+}
+.glow .halos .gl {
+  animation-name: gtail;
+  --gl-a: 1;
+}
+@keyframes gbreath {
+  0%,
+  100% {
+    opacity: calc(var(--gl-a) * 0.6);
+  }
+  50% {
+    opacity: var(--gl-a);
+  }
+}
+/* the fold handoff: the row folds into a line of light at its node's height, the pulse absorbs it, and the line unfolds at the new place */
+.fline {
+  --c: var(--you);
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 1.5px;
+  width: 0;
+  border-radius: 1px;
+  pointer-events: none;
+  z-index: 2;
+  opacity: 0;
+  background: linear-gradient(
+    90deg,
+    color-mix(in oklch, var(--c) 70%, white),
+    var(--c) 40%,
+    color-mix(in oklch, var(--c) 30%, transparent)
+  );
+  box-shadow: 0 0 6px 1px color-mix(in oklch, var(--c) 50%, transparent);
+}
+/* the handoff: the dot lights up into a sphere, travels, and takes its new colour on the way */
+.sphere {
+  --c: var(--you);
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 2;
+  opacity: 0;
+  background: radial-gradient(
+    circle,
+    color-mix(in oklch, var(--c) 30%, white) 0 35%,
+    var(--c) 100%
+  );
+  box-shadow:
+    0 0 2px 1px color-mix(in oklch, var(--c) 80%, white),
+    0 0 7px 2px var(--c),
+    0 0 15px 4px color-mix(in oklch, var(--c) 32%, transparent);
+}
+:root[data-motion="reduced"] .glow .gl {
+  animation: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  :root:not([data-motion="full"]) .glow .gl {
+    animation: none;
+  }
+}
+.lane-head {
+  display: block;
+  width: 56px;
+  font: 400 10.5px / 1 var(--mono);
+  color: var(--ink-3);
+  position: relative;
+  height: 14px;
+  transform-origin: 0 0;
+}
+.lane-head span {
+  position: absolute;
+  transform: translateX(-50%);
+}
+.lane-head .ag {
+  left: 16.5px;
+}
+.lane-head .you {
+  left: 40.5px;
+  color: var(--you-ink);
+}
+
+.sec {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 18px 0 6px var(--pl);
+}
+.sec h2 {
+  font: 450 21px / 1.1 var(--serif);
+  font-variation-settings: "opsz" 24;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  transform-origin: 0 100%;
+}
+.sec .gloss {
+  font: 400 italic 14px / 1 var(--serif);
+  color: var(--ink-3);
+  margin-left: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+.sec .rl {
+  flex: 1;
+  height: 1px;
+  background: var(--rule);
+  align-self: center;
+  margin-left: 6px;
+  min-width: 12px;
+  transform-origin: 0 0;
+}
+.sec .sact {
+  font: 500 12.5px / 1 var(--sans);
+  color: var(--ink-2);
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  padding: 6px 8px;
+  border-radius: 6px;
+  white-space: nowrap;
+  transition:
+    background-color 120ms var(--ease),
+    color 120ms var(--ease);
+  align-self: center;
+}
+.sec .sact:hover {
+  background: var(--well);
+  color: var(--ink);
+}
+.empty {
+  padding: 4px 0 10px var(--pl);
+  font: 400 italic 15px / 1.4 var(--serif);
+  color: var(--ink-3);
+}
+.empty .btn {
+  margin-top: 12px;
+  font-style: normal;
+}
+.empty-big {
+  padding: 18px 0 30px var(--pl);
+  max-width: 640px;
+}
+.empty-big p {
+  font: 400 italic 17px / 1.45 var(--serif);
+  color: var(--ink-2);
+}
+.empty-big .acts2 {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+  flex-wrap: wrap;
+}
+
+.row {
+  --pt: 8px;
+  --lh: 23px;
+  cursor: pointer;
+}
+.row .lift {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-auto-flow: column;
+  grid-auto-columns: auto;
+  column-gap: 20px;
+  padding: var(--pt) 0 9px var(--pl);
+}
+.row .band {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  right: -12px;
+  left: calc(var(--pl) - 14px);
+  border-radius: 7px;
+  background-color: transparent;
+  transition: background-color 240ms var(--o-glide);
+  transform-origin: 0 0;
+}
+.row:hover .band {
+  background-color: var(--hov);
+}
+.row.sel .band {
+  background-color: var(--sel);
+}
+.row .nd {
+  position: absolute;
+  left: calc(var(--x) - 12px);
+  top: calc(var(--pt) + var(--lh) / 2 - 12px);
+  overflow: visible;
+  z-index: 1;
+}
+.nd .ko {
+  fill: var(--ground);
+}
+.nd .orb,
+.rnode .orb,
+.am .orb {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: spin 2.2s linear infinite;
+}
+.main-c {
+  position: relative;
+  min-width: 0;
+}
+.row .t {
+  position: relative;
+  font: 430 17.5px / var(--lh) var(--serif);
+  font-variation-settings: "opsz" 18;
+  letter-spacing: -0.004em;
+  color: var(--ink);
+  transform-origin: 0 0;
+}
+.tt {
+  background: linear-gradient(var(--rule-2), var(--rule-2)) 0 58% / 0% 1px no-repeat;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+.row.dropped .tt,
+.card[data-look="dropped"] .tt {
+  background-size: 100% 1px;
+}
+.row .m {
+  margin-top: 3px;
+  font-size: 12.5px;
+  color: var(--ink-3);
+  display: flex;
+  gap: 7px;
+  align-items: baseline;
+  white-space: nowrap;
+  overflow: hidden;
+  transform-origin: 0 0;
+}
+.id {
+  font: 400 11.5px / 1 var(--mono);
+  color: var(--ink-3);
+  letter-spacing: 0.01em;
+}
+.m .sep {
+  color: var(--rule-2);
+}
+.m .warn,
+.warn-t {
+  color: var(--warn);
+}
+.m .round {
+  font-style: italic;
+  font-family: var(--serif);
+  font-size: 13.5px;
+  color: var(--ink-2);
+}
+.m .stp {
+  font: 400 12px / 1 var(--mono);
+  color: var(--ink-3);
+}
+.m .stp.you {
+  color: var(--you-ink);
+}
+.row .a {
+  font-size: 13px;
+  color: var(--ink);
+  font-weight: 500;
+  padding-top: 3px;
+  width: 196px;
+}
+.row .a small {
+  display: block;
+  font-size: 12.5px;
+  font-weight: 400;
+  color: var(--ink-3);
+  margin-top: 3px;
+}
+.row .a small b {
+  font-weight: 500;
+  color: var(--ink-2);
+}
+.row .a.warn {
+  color: var(--warn);
+}
+.row .age {
+  font: 400 11.5px / 1 var(--mono);
+  color: var(--ink-3);
+  text-align: right;
+  padding-top: 7px;
+  white-space: nowrap;
+  width: 108px;
+}
+.view.narrow .row .age {
+  width: 64px;
+}
+.row .age.warn {
+  color: var(--warn);
+}
+.row.closed .t {
+  color: var(--ink-3);
+}
+.row .sev,
+.row .who {
+  padding-top: 6px;
+}
+.row .who {
+  width: 30px;
+  display: flex;
+  justify-content: center;
+}
+.row .sev {
+  width: 36px;
+  display: flex;
+  justify-content: flex-end;
+}
+.fold {
+  font: 400 11px / 1 var(--mono);
+  color: var(--ink-3);
+  margin-left: 10px;
+  padding: 2px 4px;
+  border-radius: 4px;
+  vertical-align: 2px;
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  transition:
+    background-color 120ms var(--ease),
+    color 120ms var(--ease);
+}
+.fold:hover {
+  color: var(--ink);
+  background: var(--well);
+}
+.fold .fg {
+  width: 8px;
+  height: 8px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.3;
+  stroke-linecap: round;
+  transition: rotate 420ms var(--o-settle);
+}
+.fold[aria-expanded="false"] .fg {
+  rotate: -90deg;
+}
+.fold .sg {
+  display: inline-block;
+  min-width: 0.6em;
+  text-align: center;
+  position: relative;
+  clip-path: inset(-2px -2px);
+}
+.row.child {
+  --pt: 6px;
+  --lh: 21px;
+}
+.row.child .t {
+  padding-left: 22px;
+  font-size: 16px;
+}
+.row.child .m {
+  padding-left: 22px;
+}
+.prog {
+  display: inline-flex;
+  gap: 2px;
+  align-items: center;
+  vertical-align: 1px;
+}
+.prog i {
+  width: 9px;
+  height: 3px;
+  border-radius: 1px;
+  background: var(--rule-2);
+}
+.prog i.you {
+  background: var(--you);
+}
+.prog i.ag {
+  background: var(--ink-3);
+}
+.prog i.done {
+  background: var(--closed);
+  opacity: 0.5;
+}
+
+@container list (max-width: 599px) {
+  .row .sev {
+    display: none;
+  }
+}
+@container list (max-width: 479px) {
+  .row .who {
+    display: none;
+  }
+  .row .prog + .po {
+    display: none;
+  }
+}
+
+/* the narrow list, beside the detail */
+.view.narrow .row .a {
+  display: none;
+}
+.view.narrow .row .t {
+  font-size: 16px;
+  --lh: 21px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: clip;
+  -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 24px), transparent);
+  mask-image: linear-gradient(90deg, #000 calc(100% - 24px), transparent);
+}
+.view.narrow .row .t.short {
+  -webkit-mask-image: none;
+  mask-image: none;
+}
+.view.narrow .row {
+  --lh: 21px;
+}
+.view.narrow .row .m {
+  font-size: 12px;
+}
+.view.narrow .sec h2 {
+  font-size: 18px;
+}
+.view.narrow .sec .gloss {
+  display: none;
+}
+.tailg {
+  pointer-events: none;
+  z-index: 2;
+}

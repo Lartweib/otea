@@ -1,16 +1,17 @@
-import { t } from '../i18n/i18n.ts';
+import { SeverityBars } from './Marks.tsx';
 
 export type SeverityLevel = 0 | 1 | 2 | 3 | 4;
 
-const BARS = [1, 2, 3, 4] as const;
-
-// Four signal bars. Level 4 uses the warning hue, never your accent.
+// Today's severity (level 1..4 bars lit, 0 none), drawn as the mock's bars.
 export function Severity({ level }: { level: SeverityLevel }) {
-  return (
-    <span className="sev" role="img" aria-label={t('severity.bars', { level })}>
-      {BARS.map((bar) => (
-        <i key={bar} className={bar > level ? undefined : level === 4 ? 'hot' : 'on'} />
-      ))}
+  return level === 0 ? (
+    <span className="svb s0" role="img" aria-hidden="true">
+      <i />
+      <i />
+      <i />
+      <i />
     </span>
+  ) : (
+    <SeverityBars level={level - 1} />
   );
 }

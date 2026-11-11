@@ -1,69 +1,66 @@
-/* Ground, type and surfaces. */
+/* Ground, type and the rules every page shares (SPEC §1, mock:105-115, 213-217, 878-886). */
 
-*,
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
 *::before,
 *::after {
   box-sizing: border-box;
 }
-
-html {
-  background-color: var(--bg);
+html,
+body,
+#root {
+  height: 100%;
 }
-
-/* Dotted 24px ground. */
 body {
-  margin: 0;
-  /* The page runs under a phone's notch (viewport-fit=cover) in landscape: the content does not. */
-  padding-inline: env(safe-area-inset-left) env(safe-area-inset-right);
-  min-height: 100dvh;
-  background-color: var(--bg);
-  background-image: radial-gradient(var(--pat) 1px, transparent 1.3px);
-  background-size: 24px 24px;
+  background: var(--ground);
   color: var(--ink);
-  font-family: var(--font-human);
-  font-size: 15px;
-  line-height: 1.5;
+  font: 400 13.5px / 1.45 var(--sans);
   -webkit-font-smoothing: antialiased;
-  transition:
-    background-color var(--m-base) var(--m-ease),
-    color var(--m-base) var(--m-ease);
 }
-
+/* The app scrolls inside its views; a page of its own (Customize, pairing) scrolls the body. */
+body:has(#root > .app) {
+  overflow: hidden;
+}
 button,
 input,
-select,
-textarea {
+textarea,
+select {
   font: inherit;
   color: inherit;
 }
-
-h1,
-h2,
-p,
-ul,
-ol,
-dl,
-dd {
-  margin: 0;
+button {
+  background: none;
+  border: 0;
+  cursor: pointer;
+  text-align: inherit;
 }
-
-code,
-.mono {
-  font-family: var(--font-machine);
-}
-
-code {
-  font-size: 0.9em;
-}
-
 :focus-visible {
   outline: 2px solid var(--you);
   outline-offset: 2px;
+  border-radius: 4px;
+}
+[hidden] {
+  /* biome-ignore lint/complexity/noImportantStyles: hidden must win over any display */
+  display: none !important;
+}
+svg.ic {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.35;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  flex: none;
+}
+code {
+  font-family: var(--mono);
 }
 
-/* Pinned to the start of its containing block: left at its static position, a hidden label that sits
-   past the end of a clipped line (line two of a row) escapes that clip, since its containing block is
-   further out, and widens the page. On a phone the browser then lays the whole page out that wide. */
+/* Pinned to the start of its containing block, so a hidden label never widens the page. */
 .visually-hidden {
   position: absolute;
   inset-inline-start: 0;
@@ -74,92 +71,201 @@ code {
   white-space: nowrap;
 }
 
-/* ---- type ---- */
-.t-display {
-  font-size: 28px;
-  font-weight: 700;
-  letter-spacing: -0.025em;
-  line-height: 1.15;
-  text-wrap: balance;
+/* ---- type (SPEC §1) ---- */
+.kicker {
+  font: 600 10.5px / 1 var(--sans);
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--ink-3);
 }
-.t-h {
-  font-size: 17px;
+.kicker b {
+  color: var(--ink-2);
   font-weight: 600;
-  letter-spacing: -0.012em;
-  line-height: 1.3;
 }
-.t-body {
-  font-size: 15px;
-  line-height: 1.6;
+.display {
+  font: 420 56px / 0.98 var(--serif);
+  font-variation-settings: "opsz" 72;
+  letter-spacing: -0.028em;
+  color: var(--ink);
+  transform-origin: 0 0;
+}
+.dek {
+  font: 400 italic 18px / 1.4 var(--serif);
+  font-variation-settings: "opsz" 18;
+  color: var(--ink-2);
+  max-width: 40em;
   text-wrap: pretty;
 }
-.t-ui {
-  font-size: 14px;
-  font-weight: 500;
+.dek em {
+  font-style: normal;
+  color: var(--ink);
 }
-.t-small {
-  font-size: 13px;
-  line-height: 1.45;
-  color: var(--mut);
+.id {
+  font: 400 11.5px / 1 var(--mono);
+  color: var(--ink-3);
+  letter-spacing: 0.01em;
 }
-.t-id {
-  font: 400 12.5px var(--font-machine);
-  color: var(--mut);
+.n {
+  font: 400 12px / 1 var(--mono);
+  color: var(--ink-3);
+  display: inline-block;
+  position: relative;
+  clip-path: inset(-3px -4px);
+  vertical-align: baseline;
 }
-.t-cap {
-  font: 400 12px var(--font-machine);
-  color: var(--mut);
+.n .nv {
+  display: inline-block;
 }
-.t-label {
-  font: 500 11.5px var(--font-machine);
-  color: var(--mut);
+.n.you {
+  color: var(--you-ink);
+}
+.n.warn {
+  color: var(--warn);
+}
+.margin-label {
+  font: 600 10px / 1.3 var(--sans);
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.margin-label span {
+  font: 400 11px / 1.5 var(--mono);
+  letter-spacing: 0;
+  text-transform: none;
+}
+.warn-t {
+  color: var(--warn);
 }
 
-/* ---- surfaces ---- */
-.raised {
-  background: var(--sf);
-  border-radius: var(--r-m);
-  box-shadow: 0 0 0 1px var(--line);
+/* ---- the theme switch: the new theme opens as a circle with a feathered edge (mock:112-114, 878-880) ---- */
+:root.theme-switching *,
+:root.theme-switching *::before,
+:root.theme-switching *::after {
+  /* biome-ignore lint/complexity/noImportantStyles: nothing tweens its colours inside the switch */
+  transition: none !important;
 }
-.well {
-  background: var(--well);
-  border-radius: var(--r-s);
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+:root.theme-fade * {
+  /* biome-ignore lint/complexity/noImportantStyles: the fallback crossfade wins over every component */
+  transition:
+    background-color 240ms var(--o-drift),
+    color 240ms var(--o-drift),
+    border-color 240ms var(--o-drift),
+    fill 240ms var(--o-drift),
+    stroke 240ms var(--o-drift) !important;
+}
+@property --r {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+:root.vt-mask::view-transition-new(root) {
+  -webkit-mask-image: radial-gradient(
+    circle at var(--vx) var(--vy),
+    #000 calc(var(--r) - 48px),
+    transparent var(--r)
+  );
+  mask-image: radial-gradient(
+    circle at var(--vx) var(--vy),
+    #000 calc(var(--r) - 48px),
+    transparent var(--r)
+  );
 }
 
-/* Under reduced motion nothing travels: what comes in crossfades (fast). */
-@keyframes ot-fade {
-  from {
-    opacity: 0;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  body {
-    transition-duration: 1ms;
-  }
-}
-/* The theme switch (switchChoice in theme-dom.ts): the new snapshot opens as a circle over the old
-   one, which holds still, so no crossfade. Nothing tweens its colours, inside the new snapshot or,
-   under reduced motion (no view transition: the theme swaps at once), on the page itself. */
+/* Today's switches (theme-dom.ts, i18n.ts), until the shell slice moves them to the classes above. */
 :root[data-theme-switching] *,
 :root[data-theme-switching] *::before,
 :root[data-theme-switching] *::after {
   /* biome-ignore lint/complexity/noImportantStyles: it must win over every component's transition */
   transition: none !important;
 }
-
 :root[data-theme-switching]::view-transition-old(root),
 :root[data-theme-switching]::view-transition-new(root) {
   animation: none;
   mix-blend-mode: normal;
 }
-
-/* The language switch (setLanguage): the page crossfades into the new words on the base step.
-   Whatever reads the same in both languages is the same pixel in both snapshots, so it stays still.
-   Under reduced motion there is no view transition at all. */
 :root[data-language-switching]::view-transition-group(root),
 :root[data-language-switching]::view-transition-old(root),
 :root[data-language-switching]::view-transition-new(root) {
-  animation-duration: var(--m-base);
-  animation-timing-function: var(--m-ease);
+  animation-duration: 200ms;
+  animation-timing-function: var(--ease);
+}
+
+/* ---- reduced motion: perpetual motion rests (mock:237-238, 882-886) ---- */
+:root[data-motion="reduced"] .brand-spin,
+:root[data-motion="reduced"] .orb,
+:root[data-motion="reduced"] .spin,
+:root[data-motion="reduced"] .glow .gl {
+  animation: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  :root:not([data-motion="full"]) .brand-spin,
+  :root:not([data-motion="full"]) .orb,
+  :root:not([data-motion="full"]) .spin,
+  :root:not([data-motion="full"]) .glow .gl {
+    animation: none;
+  }
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ---- today's type and surfaces, for the components not restyled yet (SPEC §13 deletes them) ---- */
+.mono {
+  font-family: var(--mono);
+}
+.t-display {
+  font: 420 30px / 1.1 var(--serif);
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+.t-h {
+  font: 450 19px / 1.25 var(--serif);
+  letter-spacing: -0.01em;
+}
+.t-body {
+  font-size: 14.5px;
+  line-height: 1.6;
+  text-wrap: pretty;
+}
+.t-ui {
+  font-size: 13.5px;
+  font-weight: 500;
+}
+.t-small {
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ink-2);
+}
+.t-id {
+  font: 400 11.5px var(--mono);
+  color: var(--ink-3);
+}
+.t-cap {
+  font: 400 11.5px var(--mono);
+  color: var(--ink-3);
+}
+.t-label {
+  font: 500 11px var(--mono);
+  color: var(--ink-3);
+}
+.raised {
+  background: var(--sheet);
+  border-radius: 8px;
+  box-shadow: 0 0 0 1px var(--rule);
+}
+.well {
+  background: var(--well);
+  border-radius: 4px;
+}
+@keyframes ot-fade {
+  from {
+    opacity: 0;
+  }
 }

@@ -1,0 +1,44 @@
+/* Te toca and Atasco. The foundation's stub starts it with the mock's panel and head (mock:313-317, 338-343). The lists slice owns this file (SPEC §11). */
+
+/* ───────── Te toca ───────── */
+.panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 260px;
+  column-gap: 72px;
+  padding: 32px 56px 0 40px;
+  min-height: 100%;
+  max-width: 1480px;
+}
+.head {
+  padding-left: 72px;
+  margin-bottom: 18px;
+}
+.head .kicker {
+  margin-bottom: 14px;
+}
+.head .display {
+  margin-bottom: 10px;
+}
+.view.chead .panel,
+.view.chead .board {
+  padding-top: 26px;
+  padding-left: 14px;
+}
+.view.chead .head .kicker,
+.view.chead .head .dek,
+.view.chead .bhead .steps {
+  display: none;
+}
+.view.chead .display {
+  font-size: 36px;
+}
+.view.chead .head {
+  margin-bottom: 12px;
+}
+.view.narrow .panel {
+  grid-template-columns: minmax(0, 1fr);
+  padding-right: 22px;
+}
+.view.narrow .agents {
+  display: none;
+}

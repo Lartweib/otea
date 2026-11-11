@@ -102,4 +102,7 @@ export const common = {
   // Los nombres de los carriles
   'lanes.agents': 'ag',
   'lanes.you': 'tú',
+  // Marcas y avisos (kit)
+  'mark.you': 'tú',
+  'toast.undo': 'Deshacer',
 } satisfies Partial<Catalog>;

@@ -6,23 +6,18 @@ type PillProps = {
   tone?: PillTone;
   // A state pill in your color: the state is waiting for you.
   yours?: boolean;
-  // Small, to sit in a list row.
+  // Small, to sit in a list row (the mock's pills have one size).
   size?: 'md' | 'sm';
   // The key, when the pill shows a preset's label for it.
   title?: string | undefined;
   children: ReactNode;
 };
 
-// Mono tag. `ask` marks an open question for you; `state` names a workflow state.
-export function Pill({ tone = 'default', yours = false, size = 'md', title, children }: PillProps) {
-  const classes = [
-    'pill',
-    tone === 'default' ? '' : tone,
-    tone === 'state' && yours ? 'you' : '',
-    size === 'sm' ? 'sm' : '',
-  ]
-    .filter(Boolean)
-    .join(' ');
+// Today's pill, drawn as the mock's: a state is a .stp-pill (tinted when yours, and an open
+// question for you is tinted too), anything else an .enum on a well.
+export function Pill({ tone = 'default', yours = false, title, children }: PillProps) {
+  const classes =
+    tone === 'default' ? 'enum' : tone === 'ask' || yours ? 'stp-pill you' : 'stp-pill';
   return (
     <span className={classes} title={title}>
       {children}

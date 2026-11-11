@@ -1,0 +1,31 @@
+/* A board: head, tools, Lista. The foundation's stub starts it with the mock's board head (mock:353-359). The boards slice owns this file (SPEC §11). */
+
+/* ───────── board ───────── */
+.board {
+  padding: 40px 40px 40px 40px;
+  min-height: 100%;
+  position: relative;
+}
+.board .bhead,
+.board .ftoks {
+  max-width: 1040px;
+}
+.bhead {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: end;
+  margin-bottom: 20px;
+  padding-left: 72px;
+}
+.bhead .kicker {
+  margin-bottom: 14px;
+}
+.bhead .display {
+  margin-bottom: 10px;
+}
+.steps {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 8px;
+}

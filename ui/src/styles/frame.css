@@ -1,0 +1,78 @@
+/* The app frame (SPEC §6.1, mock:118-125, 200-211, 691-692): the topbar over the rail and the main
+   pane, the dotted ground, the views that scroll inside it, the FLIP layer and the overlay layer.
+   The topbar and the rail place themselves here only; the shell slice styles them. */
+
+.app {
+  display: grid;
+  grid-template-columns: var(--rail-w) minmax(0, 1fr);
+  grid-template-rows: 60px minmax(0, 1fr);
+  height: 100%;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  background: var(--ground);
+}
+.app[data-folded] {
+  --rail-w: 60px;
+}
+
+.app > .topbar {
+  grid-column: 1 / -1;
+  grid-row: 1;
+}
+.app > .rail {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.main {
+  grid-column: 2;
+  grid-row: 2;
+  position: relative;
+  overflow: hidden;
+  min-width: 0;
+  border-left: 1px solid var(--rule);
+  background-color: var(--ground);
+  background-image: radial-gradient(circle at 1px 1px, var(--dot) 0.9px, transparent 1.15px);
+  background-size: 22px 22px;
+  background-position: -1px -1px;
+}
+.view {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  z-index: 0;
+  scrollbar-width: thin;
+  scrollbar-color: var(--rule-2) transparent;
+}
+.view.narrow {
+  width: var(--listw);
+}
+.view.leaving {
+  pointer-events: none;
+  z-index: 1;
+}
+.fxl {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+.fxl > * {
+  position: absolute;
+  margin: 0;
+}
+
+/* Pops, toasts, dialogs and the phone's nav sheet live over everything. */
+.layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 50;
+}
+.layer > * {
+  pointer-events: auto;
+}
