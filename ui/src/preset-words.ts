@@ -30,6 +30,16 @@ export function fieldWord(type: TypeView | undefined, field: string): string | u
   return wordsOf(type)?.fields[field] ?? type?.fields.find((f) => f.name === field)?.label;
 }
 
+// A field's value in words in the language on screen, or as written.
+export function valueWord(type: TypeView | undefined, field: string, value: string): string {
+  return wordsOf(type)?.values?.[field]?.[value] ?? value;
+}
+
+// A value named across a collection's types: the first word for it.
+export function valueWordIn(types: readonly TypeView[], field: string, value: string): string {
+  return types.map((type) => wordsOf(type)?.values?.[field]?.[value]).find(Boolean) ?? value;
+}
+
 // The key as a tooltip, when what is shown is its label.
 export function keyTitle(shown: string, key: string): string | undefined {
   return shown === key ? undefined : key;
@@ -47,6 +57,12 @@ export function ItemTypeScope({
   children?: ReactNode;
 }) {
   return createElement(ItemTypeContext.Provider, { value: type }, children);
+}
+
+// A value's word for the item in scope.
+export function useValueWord(): (field: string, value: string) => string {
+  const type = useContext(ItemTypeContext);
+  return (field, value) => valueWord(type, field, value);
 }
 
 // A state's word for the item in scope.

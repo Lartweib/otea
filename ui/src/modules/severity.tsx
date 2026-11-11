@@ -1,4 +1,5 @@
 import { Severity, type SeverityLevel } from '../kit/index.ts';
+import { useValueWord } from '../preset-words.ts';
 import type { FieldView } from '../types.ts';
 import type { FieldModuleUi, ShowProps } from './contract.ts';
 import { Select } from './enum.tsx';
@@ -18,12 +19,13 @@ function RowValue(props: ShowProps) {
 }
 
 function Value(props: ShowProps) {
+  const word = useValueWord();
   const level = levelOf(props);
   if (level === 0) return <PlainText {...props} />;
   return (
     <span className="sev-value">
       <Severity level={level} />
-      <span className="body">{props.value}</span>
+      <span className="body">{word(props.field.name, props.value)}</span>
     </span>
   );
 }

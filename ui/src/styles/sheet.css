@@ -990,3 +990,10 @@ section.evidence,
 .actions > .vr:first-child {
   display: none;
 }
+
+/* A severity in Detalles: its bars, a space, its word (mock: "▂▄▆ alta"). */
+.sev-value {
+  display: inline-flex;
+  gap: 7px;
+  align-items: center;
+}

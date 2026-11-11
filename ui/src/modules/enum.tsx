@@ -1,22 +1,26 @@
 import { Pill } from '../kit/index.ts';
+import { useValueWord } from '../preset-words.ts';
 import type { EditProps, FieldModuleUi, ShowProps } from './contract.ts';
 
-function Value({ value }: ShowProps) {
-  return <Pill>{value}</Pill>;
+function Value({ field, value }: ShowProps) {
+  const word = useValueWord();
+  return <Pill>{word(field.name, value)}</Pill>;
 }
 
 // Quiet by default: a row marks only a value that departs from the field's default.
 function RowValue({ field, value }: ShowProps) {
+  const word = useValueWord();
   if (value === '' || value === field.default) return null;
   return (
     <Pill size="sm">
       <span className="visually-hidden">{field.name}: </span>
-      {value}
+      {word(field.name, value)}
     </Pill>
   );
 }
 
 export function Select({ id, field, value, disabled, required, describedBy, onChange }: EditProps) {
+  const word = useValueWord();
   return (
     <select
       id={id}
@@ -30,7 +34,7 @@ export function Select({ id, field, value, disabled, required, describedBy, onCh
       {field.default === undefined ? <option value="">—</option> : null}
       {(field.values ?? []).map((option) => (
         <option key={option} value={option}>
-          {option}
+          {word(field.name, option)}
         </option>
       ))}
     </select>
