@@ -97,6 +97,15 @@ function describeEvent(event: Event): string {
   return `${describeAction(event)}${relayNote(event.data)}`;
 }
 
+// Why a lease ended: its holder let it go, a move handed it off, or the person put a stuck item
+// back in the queue of its step or left it for another agent (from Atasco, in the UI).
+function releaseCause(data: Event['data']): string {
+  if (data.cause === 'handoff') return 'handed off';
+  if (data.cause === 'restart') return 'back in the queue';
+  if (data.cause === 'reassign') return `left for ${String(data.next)}`;
+  return 'released';
+}
+
 function describeAction({ type, data }: Event): string {
   if (type === 'created') return String(data.state);
   if (type === 'transitioned') {
@@ -109,9 +118,7 @@ function describeAction({ type, data }: Event): string {
       data.previous === undefined ? '' : `, taken over from ${String(data.previous)}`;
     return `${String(data.holder)} until ${String(data.expiresAt)}${previous}`;
   }
-  if (type === 'released') {
-    return `${String(data.holder)} (${data.cause === 'handoff' ? 'handed off' : 'released'})`;
-  }
+  if (type === 'released') return `${String(data.holder)} (${releaseCause(data)})`;
   if (type === 'relation_added' || type === 'relation_removed') {
     return describeRelation(data as Relation);
   }

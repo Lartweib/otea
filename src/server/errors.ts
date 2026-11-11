@@ -5,6 +5,7 @@ export const HTTP_STATUS: Readonly<Record<ErrorCode, ContentfulStatusCode>> = {
   not_found: 404,
   invalid_transition: 409,
   not_undoable: 409,
+  not_stuck: 409,
   already_exists: 409,
   invalid_name: 400,
   invalid_agent_name: 400,
