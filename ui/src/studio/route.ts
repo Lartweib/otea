@@ -83,7 +83,8 @@ export function namedSteps(
   const n = xs.length;
   const last = n - 1;
   const span = (i: number): [number, number] => {
-    const w = (labels[i] ?? '').length * 6.2;
+    // 8.5 px semibold capitals with 0.09em tracking.
+    const w = (labels[i] ?? '').length * 7;
     const x = xs[i] ?? 0;
     if (i === 0) return [LANE_X, LANE_X + w];
     if (i === last) return [x + 4 - w, x + 4];

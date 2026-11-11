@@ -89,28 +89,53 @@ view:
   kind: grid
   columns: [id, title, type, repo, branch, pr, state, who, age]
 
-# The preset's words in Spanish, for the web UI; agents and the CLI keep the keys.
+# The preset's words in English and Spanish, for the web UI; agents and the CLI keep the keys.
 labels:
+  en:
+    name: Change
+    types: { change: Change, repo_task: Repo task }
+    states:
+      analysing: Analysing
+      plan_review: Plan review
+      executing: Executing
+      verify: To verify
+      done: Done
+      discarded: Discarded
+      proposed: Proposed
+      ready: Ready
+      implementing: Implementing
+      pr_review: PR review
+      revising: Revising
+      approved: Approved
+      dropped: Dropped
+    fields:
+      title: Title
+      description: Description
+      plan: Plan
+      repo: Repo
+      branch: Branch
+      pr: PR
   es:
+    name: Cambios
     types: { change: Cambio, repo_task: Tarea de repo }
     states:
-      analysing: en análisis
-      plan_review: revisión del plan
-      executing: en ejecución
-      verify: a verificar
-      done: hecho
-      discarded: descartado
-      proposed: propuesto
-      ready: listo para empezar
-      implementing: en implementación
-      pr_review: revisión de PR
-      revising: a corregir
-      approved: aprobado
-      dropped: descartado
+      analysing: En análisis
+      plan_review: Revisión del plan
+      executing: En ejecución
+      verify: A verificar
+      done: Hecho
+      discarded: Descartado
+      proposed: Propuesto
+      ready: Listo para empezar
+      implementing: En implementación
+      pr_review: Revisión de PR
+      revising: A corregir
+      approved: Aprobado
+      dropped: Descartado
     fields:
-      title: título
-      description: descripción
-      plan: plan
-      repo: repo
-      branch: rama
+      title: Título
+      description: Descripción
+      plan: Plan
+      repo: Repo
+      branch: Rama
       pr: PR

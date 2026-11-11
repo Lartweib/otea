@@ -62,8 +62,8 @@ describe('a board', () => {
     expect(html).toContain('Hollowmere');
     expect(html).toContain('<h1 class="display" data-leaf="">Errores</h1>');
     expect(html).toContain('Los errores, del primer aviso al arreglo.');
-    expect(html).toMatch(/class="steps".*reportado.*aceptado.*en arreglo.*a verificar.*Hecho/);
-    expect(html).toMatch(/<span class="you">a verificar <span class="n sn">/);
+    expect(html).toMatch(/class="steps".*Reportado.*Aceptado.*En arreglo.*A verificar.*Hecho/);
+    expect(html).toMatch(/<span class="you">A verificar <span class="n sn">/);
   });
 
   it('offers Pasos, Lista and Tabla, the count and Nuevo ítem; no Tabla on the phone', () => {
@@ -79,17 +79,17 @@ describe('a board', () => {
     const html = render('list');
     expect(html).toContain('data-list="board"');
     expect(html).toMatch(
-      /<h2[^>]*>en arreglo<\/h2>.*ERR-2.*<h2[^>]*>a verificar<\/h2>.*ERR-1.*<h2[^>]*>Hecho<\/h2>.*ERR-3/,
+      /<h2[^>]*>En arreglo<\/h2>.*ERR-2.*<h2[^>]*>A verificar<\/h2>.*ERR-1.*<h2[^>]*>Hecho<\/h2>.*ERR-3/,
     );
     expect(html).toMatch(/data-k="ERR-1" data-h="you" data-look="yours"/);
-    expect(html).toContain('<span class="stp you">a verificar</span>');
+    expect(html).toContain('<span class="stp you">A verificar</span>');
     expect(html).toContain('class="svb s3"');
   });
 
   it('lays Pasos out in columns with cards, the closed work in Hecho', () => {
     const html = render('board');
     expect(html).toContain('class="cols"');
-    expect(html).toMatch(/<h3>en arreglo<\/h3>.*data-k="ERR-2"/);
+    expect(html).toMatch(/<h3>En arreglo<\/h3>.*data-k="ERR-2"/);
     expect(html).toMatch(/<h3>Hecho<\/h3>.*data-k="ERR-3".*<i>descartado<\/i>/);
     expect(html).toContain('data-s="ERR-1:edge"');
   });

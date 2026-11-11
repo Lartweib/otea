@@ -217,6 +217,8 @@ export type PresetView = {
   types: TypeView[];
   view: ViewSpec;
   collections: string[];
+  // Its own name in the languages it speaks, when it gives one.
+  names?: Record<string, string>;
 };
 
 export type PathKind = 'folder' | 'repo';

@@ -54,7 +54,7 @@ describe('the heads and cells', () => {
       id: 'id',
       title: 'ítem',
       state: 'paso',
-      severity: 'gravedad',
+      severity: 'severidad',
       who: 'quién',
       age: 'edad',
     });

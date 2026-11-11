@@ -134,13 +134,13 @@ describe('api', () => {
             },
           ],
           // The preset's words in Spanish ride along; the keys above stay as they are.
-          labels: {
+          labels: expect.objectContaining({
             es: expect.objectContaining({
               label: 'Tarea',
-              states: expect.objectContaining({ in_progress: 'en curso' }),
-              fields: expect.objectContaining({ priority: 'prioridad' }),
+              states: expect.objectContaining({ in_progress: 'En curso' }),
+              fields: expect.objectContaining({ priority: 'Prioridad' }),
             }),
-          },
+          }),
         }),
       ]);
     });
@@ -203,7 +203,7 @@ describe('api', () => {
           expect.objectContaining({
             name: 'task',
             layout: expect.any(Object),
-            labels: { es: expect.objectContaining({ label: 'Tarea' }) },
+            labels: expect.objectContaining({ es: expect.objectContaining({ label: 'Tarea' }) }),
           }),
         ],
         view: { kind: 'list', groupBy: 'turn' },
@@ -212,6 +212,7 @@ describe('api', () => {
         types: undefined,
         view: undefined,
         name: 'tasks',
+        names: { en: 'Tasks', es: 'Tareas' },
         version: 2,
         origin: 'official',
         icon: 'checklist',

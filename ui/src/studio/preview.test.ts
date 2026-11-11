@@ -27,7 +27,7 @@ describe('boardSample', () => {
       id: 'BUGS-1',
       title: 'Wall-slide jump drops the buffered input',
       type: 'bug',
-      state: 'reported',
+      state: 'Reported',
       node: 'yours',
     });
     expect(boardSample(samples, [])).toBeUndefined();

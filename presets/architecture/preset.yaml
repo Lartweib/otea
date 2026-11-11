@@ -43,3 +43,38 @@ types:
 view:
   kind: list
   columns: [id, title, area, state, who, age]
+
+# The preset's words in English and Spanish, for the web UI; agents and the CLI keep the keys.
+labels:
+  en:
+    name: Architecture
+    types: { decision: Decision }
+    states:
+      drafting: Drafting
+      review: In review
+      revising: Revising
+      accepted: Accepted
+      rejected: Rejected
+    fields:
+      title: Title
+      context: Context
+      options: Options
+      decision: Decision
+      consequences: Consequences
+      area: Area
+  es:
+    name: Arquitectura
+    types: { decision: Decisión }
+    states:
+      drafting: En redacción
+      review: En revisión
+      revising: A corregir
+      accepted: Aceptada
+      rejected: Rechazada
+    fields:
+      title: Título
+      context: Contexto
+      options: Opciones
+      decision: Decisión
+      consequences: Consecuencias
+      area: Área

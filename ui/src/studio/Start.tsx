@@ -1,4 +1,4 @@
-import { t } from '../i18n/i18n.ts';
+import { language, t } from '../i18n/i18n.ts';
 import { Count, Icon } from '../kit/index.ts';
 import type { Remote } from '../remote.ts';
 import { customizeHash, studioHash } from '../selection.ts';
@@ -52,7 +52,7 @@ function TemplateRow({
       <a className="st-trow-main" href={studioHash({ kind: 'preset', name: preset.name })}>
         <span className="st-trow-t">
           {preset.problems.length > 0 ? <ProblemMark /> : null}
-          {preset.name}
+          {view?.names?.[language()] ?? preset.name}
         </span>
         <span className="st-trow-m">
           <span className="id">

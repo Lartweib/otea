@@ -9,7 +9,13 @@ import {
   readLayout,
   SEVERITY_SCALE,
 } from './modules.ts';
-import { type Labels, labelProblems, labelsSchema, typeLabels } from './preset-labels.ts';
+import {
+  type Labels,
+  labelProblems,
+  labelsSchema,
+  presetNames,
+  typeLabels,
+} from './preset-labels.ts';
 import { type PresetNote, presetNotes } from './preset-notes.ts';
 import {
   AUTHORITIES,
@@ -84,6 +90,8 @@ export type Preset = {
   workflow: Workflow;
   types: ItemType[];
   view: CollectionLayout;
+  // Its own name in the languages it speaks, for Studio.
+  names?: Record<string, string>;
 };
 
 // A preset that reads may still carry notes: what it should look at, never what stops it loading.
@@ -633,6 +641,8 @@ export function readPreset(text: string, options: ReadOptions = {}): PresetReadi
   const icon = raw.icon ?? typed.types.find(({ root }) => root !== false)?.icon;
   if (icon !== undefined) preset.icon = icon;
   if (raw.playbook !== undefined) preset.playbook = raw.playbook;
+  const names = presetNames(raw.labels);
+  if (names) preset.names = names;
   const notes = [...presetWarnings(raw), ...presetNotes(preset, options.playbooks)];
   const warnings = notes.filter(({ level }) => level === 'warning').map(({ message }) => message);
   return { ok: true, preset, warnings, notes };
