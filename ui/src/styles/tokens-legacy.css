@@ -1,0 +1,45 @@
+/* Today's token names, mapped onto the Editorial tokens, so the code nobody has restyled yet keeps
+   working (SPEC §1). Restyled code never uses a name from this file; it is deleted once nothing
+   does (SPEC §13). */
+
+:root {
+  --bg: var(--ground);
+  --sf: var(--sheet);
+  --mut: var(--ink-2);
+  --line: var(--rule);
+  --chip: var(--well);
+  --off: var(--rule-2);
+  --pat: var(--dot);
+  --font-human: var(--sans);
+  --font-machine: var(--mono);
+
+  /* Agent marks of today: five quiet hues that only tint --chip. */
+  --agent-0: oklch(0.72 0.12 75);
+  --agent-1: oklch(0.7 0.11 145);
+  --agent-2: oklch(0.7 0.09 200);
+  --agent-3: oklch(0.68 0.11 310);
+  --agent-4: oklch(0.7 0.1 350);
+
+  /* Today's motion tokens (motion.ts MOTION and TIMING). */
+  --m-fast: 120ms;
+  --m-base: 200ms;
+  --m-slow: 280ms;
+  --m-ease: cubic-bezier(0.25, 1, 0.5, 1);
+  --travel: 680ms;
+  --e-move: cubic-bezier(0.65, 0, 0.35, 1);
+
+  --r-s: 4px;
+  --r-m: 8px;
+  --r-l: 12px;
+  --row-h: 56px;
+
+  /* The bulk tray of today's grid. */
+  --tray: var(--sf);
+  --tray-btn: var(--sf);
+  --tray-btn-edge: var(--line);
+  --tray-sh:
+    0 0 0 1px color-mix(in oklch, var(--ink) 16%, var(--line)), 0 -18px 36px -22px var(--shadow);
+  --tray-sh-tab:
+    0 0 0 1px color-mix(in oklch, var(--ink) 16%, var(--line)), 0 -18px 36px -22px var(--shadow),
+    0 -4px 24px -10px var(--shadow);
+}

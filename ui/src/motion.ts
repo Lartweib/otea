@@ -1,3 +1,4 @@
+import { reduced } from './motion/reduced.ts';
 import type { Turn } from './types.ts';
 
 // Lift, carry, set down. The list is measured before and after every change (FLIP): a row that changed
@@ -108,5 +109,5 @@ export function revealRadius(x: number, y: number, width: number, height: number
   return Math.hypot(Math.max(x, width - x), Math.max(y, height - y));
 }
 
-export const reducedMotion = (): boolean =>
-  typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+// Reduced motion as the Motion preference reads it (the system's, unless this browser chose).
+export const reducedMotion = (): boolean => reduced();
