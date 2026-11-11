@@ -27,6 +27,8 @@ export type TypeView = {
   initial: string;
   incomplete?: string;
   states: State[];
+  // Every move of its workflow, in the order the preset declares them: what its main path reads.
+  transitions: { from: string; to: string }[];
   fields: FieldView[];
   layout: Layout;
   children?: string[];
@@ -47,6 +49,7 @@ export function typeViews(types: readonly ItemType[]): TypeView[] {
       label,
       initial: workflow.initial,
       states: workflow.states,
+      transitions: workflow.transitions.map(({ from, to }) => ({ from, to })),
       fields: fieldViews(fields),
       layout,
     };

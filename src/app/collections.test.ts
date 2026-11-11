@@ -100,6 +100,10 @@ describe('collections', () => {
           { name: 'review', turn: 'human' },
           { name: 'done', turn: 'none', closes: 'done' },
         ]),
+        transitions: expect.arrayContaining([
+          { from: 'todo', to: 'in_progress' },
+          { from: 'in_progress', to: 'review' },
+        ]),
         fields: [
           { name: 'title', module: 'text', required: 'create' },
           { name: 'description', module: 'markdown', required: 'complete' },
