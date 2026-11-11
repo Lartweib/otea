@@ -4,10 +4,10 @@ import {
   cardWords,
   dragIntent,
   dragProgress,
-  keyDecision,
   releaseDirection,
   resist,
   roundOf,
+  stampShift,
   swipeAction,
   swipeThreshold,
   throwFade,
@@ -338,13 +338,29 @@ describe('throwFade', () => {
   });
 });
 
-describe('keyDecision', () => {
-  it('approves on the right arrow, sends back on the left, leaves for later on the down arrow', () => {
-    expect(keyDecision('ArrowRight')).toBe('approve');
-    expect(keyDecision('ArrowLeft')).toBe('send');
-    expect(keyDecision('ArrowDown')).toBe('later');
-    expect(keyDecision('ArrowUp')).toBeUndefined();
-    expect(keyDecision('Enter')).toBeUndefined();
+describe('stampShift', () => {
+  // A phone: 390 wide, the card 16 to 374, the stamp 150 wide.
+  const view = 390;
+  const card = { left: 16, width: 358 };
+
+  it('leaves the stamp where it is while it is on the screen', () => {
+    expect(stampShift('right', { at: 20, width: 150 }, card, 100, view)).toBe(0);
+    expect(stampShift('left', { at: 188, width: 150 }, card, -100, view)).toBe(0);
+  });
+
+  it('keeps the approve stamp on the screen as the card is pulled off to the right', () => {
+    // 16 + 20 + 200 + 150 = 386, past 390 - 10 by 6.
+    expect(stampShift('right', { at: 20, width: 150 }, card, 200, view)).toBe(-6);
+  });
+
+  it('keeps the send-back stamp on the screen as the card is pulled off to the left', () => {
+    // 16 + 188 - 200 = 4, short of 10 by 6.
+    expect(stampShift('left', { at: 188, width: 150 }, card, -200, view)).toBe(6);
+  });
+
+  it('never moves the stamp off its card', () => {
+    expect(stampShift('right', { at: 20, width: 150 }, card, 340, view)).toBe(-14);
+    expect(stampShift('left', { at: 188, width: 150 }, card, -340, view)).toBe(14);
   });
 });
 

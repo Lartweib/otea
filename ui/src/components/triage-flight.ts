@@ -3,18 +3,29 @@ import { clamp, F, lerp } from '../motion/curves.ts';
 import { drive } from '../motion/drive.ts';
 import { reduced } from '../motion/reduced.ts';
 import { spring } from '../motion/spring.ts';
-import { type Direction, dragProgress, LATER_POSE, throwFade, throwTo, tiltOf } from '../triage.ts';
+import {
+  type Direction,
+  dragProgress,
+  LATER_POSE,
+  stampShift,
+  throwFade,
+  throwTo,
+  tiltOf,
+} from '../triage.ts';
 
 // How a card moves on the stack. Every frame is a pure function of where the card is:
 // - held: it follows the pointer, tilting with the pull; its stamp and its leading edge come up with
-//   the pull (--p on the card, 0 to 1), the card under it rises a little toward its place (--rise on
-//   the stack) and, past the threshold, the stamp sets (data-armed);
+//   the pull (--p, 0 to 1), the card under it rises a little toward its place (--rise on the stack)
+//   and, past the threshold, the stamp sets (data-armed);
 // - let go past the threshold (or decided by a button): it is thrown on its way, keeping the speed
 //   it was let go at, and lets go of its opacity before it lands, while the card under it rises
 //   into its place (560, settle, from wherever the pull had brought it);
 // - let go short of it: it springs home with the same speed, the card under it sinks back;
 // - taken back (Deshacer, a failed move): the throw mirrored, back from the side it left by;
 // - under reduced motion: crossfades in place.
+// While it moves sideways the card is drawn by its face: a copy fixed over where it rests, above
+// everything (--z-flight), so it flies over the view's edge instead of being cut by it. The card
+// itself waits unseen in the stack (it keeps the pointer) and is seen again once the face lands.
 
 export type Flight = { done: Promise<void>; cancel: () => void };
 
@@ -31,20 +42,81 @@ function setRise(stack: HTMLElement | null, rise: number): void {
   stack?.style.setProperty('--rise', rise.toFixed(4));
 }
 
+const faces = new WeakMap<HTMLElement, HTMLElement>();
+
+// The card's face: its copy in the flight layer, fixed over where the card rests (the stack's
+// corner), made on first need. Never under reduced motion, where the card does not move sideways
+// and is its own face.
+function faceOf(card: HTMLElement): HTMLElement {
+  const had = faces.get(card);
+  if (had) return had;
+  if (reduced()) return card;
+  const box = stackOf(card)?.getBoundingClientRect();
+  const left = box?.left ?? 0;
+  const face = card.cloneNode(true) as HTMLElement;
+  for (const el of face.querySelectorAll('[id]')) el.removeAttribute('id');
+  face.setAttribute('aria-hidden', 'true');
+  face.inert = true;
+  face.classList.add('tflight');
+  face.dataset.left = String(left);
+  face.style.left = `${left}px`;
+  face.style.top = `${box?.top ?? 0}px`;
+  face.style.width = `${card.offsetWidth}px`;
+  face.style.height = `${card.offsetHeight}px`;
+  document.body.append(face);
+  card.style.visibility = 'hidden';
+  faces.set(card, face);
+  return face;
+}
+
+// The face is gone and the card is seen again where it rests.
+function land(card: HTMLElement): void {
+  faces.get(card)?.remove();
+  faces.delete(card);
+  card.style.visibility = '';
+}
+
+// A card leaving the page mid-gesture takes its face with it.
+export const dropFace = (card: HTMLElement): void => land(card);
+
+// The stamp of the side the card leans to stays on the screen as the card is pulled off it.
+function keepStamp(face: HTMLElement, side: Direction | undefined, x: number): void {
+  for (const stamp of face.querySelectorAll<HTMLElement>('.tstamp')) {
+    const shift =
+      side && stamp.dataset.side === side
+        ? stampShift(
+            side,
+            { at: stamp.offsetLeft, width: stamp.offsetWidth },
+            { left: Number(face.dataset.left ?? 0), width: face.offsetWidth },
+            x,
+            window.innerWidth,
+          )
+        : 0;
+    stamp.style.setProperty('--shift', `${shift.toFixed(1)}px`);
+  }
+}
+
+function pose(face: HTMLElement, x: number, tilt = tiltOf(x)): void {
+  face.style.transform = `translateX(${x.toFixed(2)}px) rotate(${tilt.toFixed(3)}deg)`;
+}
+
 // The card where the pointer has it, and what that pull says.
 export function hold(card: HTMLElement, x: number): void {
   const p = dragProgress(x, card.offsetWidth);
   card.dataset.x = x.toFixed(2);
+  const face = faceOf(card);
+  const side: Direction | undefined = x > 0.5 ? 'right' : x < -0.5 ? 'left' : undefined;
   // Under reduced motion the card stays put: the stamp and the edge alone say where it would go.
-  card.style.transform = reduced()
-    ? ''
-    : `translateX(${x.toFixed(2)}px) rotate(${tiltOf(x).toFixed(3)}deg)`;
-  card.style.setProperty('--p', p.toFixed(4));
-  if (x > 0.5) card.dataset.lean = 'right';
-  else if (x < -0.5) card.dataset.lean = 'left';
-  else delete card.dataset.lean;
-  if (p >= 1) card.dataset.armed = '';
-  else delete card.dataset.armed;
+  if (face === card) face.style.transform = '';
+  else {
+    pose(face, x);
+    keepStamp(face, side, x);
+  }
+  face.style.setProperty('--p', p.toFixed(4));
+  if (side) face.dataset.lean = side;
+  else delete face.dataset.lean;
+  if (p >= 1) face.dataset.armed = '';
+  else delete face.dataset.armed;
   setRise(stackOf(card), p * PULL_RISE);
 }
 
@@ -53,10 +125,11 @@ export const heldAt = (card: HTMLElement): number => Number(card.dataset.x ?? 0)
 
 // Lifted off the stack as the drag starts.
 export function lift(card: HTMLElement): void {
-  card.dataset.held = '';
+  faceOf(card).dataset.held = '';
 }
 
 function rest(card: HTMLElement): void {
+  land(card);
   card.style.transform = '';
   card.style.opacity = '';
   card.style.filter = '';
@@ -105,30 +178,38 @@ function riseWith(stack: HTMLElement | null, from: number, k: number): void {
 export function throwOut(card: HTMLElement, side: Direction, x = 0, v = 0): Flight {
   const stack = stackOf(card);
   card.style.pointerEvents = 'none';
-  delete card.dataset.held;
   if (reduced()) {
     setRise(stack, 1);
     return faded(anim(card, [{ opacity: 1 }, { opacity: 0 }], 160, 'drift', 0, 'forwards'));
   }
+  const face = faceOf(card);
+  delete face.dataset.held;
   const to = throwTo(side, x);
   // A button press starts still; a fling carries its speed (never against its way).
   const v0 = side === 'right' ? Math.max(0, v) : Math.min(0, v);
   const at = spring(x, to, v0, THROW);
   const rise0 = riseOf(stack);
-  const p0 = Number(card.style.getPropertyValue('--p') || 0);
-  card.dataset.lean = side;
-  return flight(THROW, (k, t) => {
+  const p0 = Number(face.style.getPropertyValue('--p') || 0);
+  face.dataset.lean = side;
+  const thrown = flight(THROW, (k, t) => {
     const now = at(t).x;
     const fade = throwFade(k);
     card.dataset.x = now.toFixed(2);
-    card.style.transform = `translateX(${now.toFixed(2)}px) rotate(${(tiltOf(now) * 1.3).toFixed(3)}deg)`;
-    card.style.opacity = fade.toFixed(4);
-    card.style.filter = `blur(${((1 - fade) * 1.5).toFixed(2)}px)`;
+    pose(face, now, tiltOf(now) * 1.3);
+    keepStamp(face, side, now);
+    face.style.opacity = fade.toFixed(4);
+    face.style.filter = `blur(${((1 - fade) * 1.5).toFixed(2)}px)`;
     // The stamp is already set when the card leaves by a button: the decision reads all the way.
-    card.style.setProperty('--p', Math.max(p0, F.settle(clamp(k * 3))).toFixed(4));
-    card.dataset.armed = '';
+    face.style.setProperty('--p', Math.max(p0, F.settle(clamp(k * 3))).toFixed(4));
+    face.dataset.armed = '';
     riseWith(stack, rise0, k);
   });
+  // Landed, the face goes; the card stays unseen until the pass lets it go.
+  void thrown.done.then(() => {
+    face.remove();
+    if (faces.get(card) === face) faces.delete(card);
+  });
+  return thrown;
 }
 
 // Left for later: it drops behind as the card under it rises.
@@ -139,11 +220,10 @@ export function dropLater(card: HTMLElement): Flight {
     setRise(stack, 1);
     return faded(anim(card, [{ opacity: 1 }, { opacity: 0 }], 160, 'drift', 0, 'forwards'));
   }
-  const from = card.style.transform || 'none';
   anim(
     card,
     [
-      { transform: from, opacity: 1, filter: 'blur(0px)' },
+      { transform: 'none', opacity: 1, filter: 'blur(0px)' },
       { transform: LATER_POSE, opacity: 0, filter: 'blur(1px)' },
     ],
     520,
@@ -158,7 +238,8 @@ export function dropLater(card: HTMLElement): Flight {
 // Let go short of the threshold: home, keeping the speed it was let go at.
 export function springHome(card: HTMLElement, x: number, v = 0): Flight {
   const stack = stackOf(card);
-  delete card.dataset.held;
+  const face = faces.get(card);
+  if (face) delete face.dataset.held;
   if (reduced() || Math.abs(x) < 0.5) {
     rest(card);
     setRise(stack, 0);
@@ -185,6 +266,7 @@ export function returnIn(card: HTMLElement, side: Direction): Flight {
   }
   const from = throwTo(side, 0);
   const at = spring(from, 0, 0, THROW);
+  const face = faceOf(card);
   return flight(THROW, (k, t) => {
     if (k >= 1) {
       rest(card);
@@ -194,9 +276,9 @@ export function returnIn(card: HTMLElement, side: Direction): Flight {
     const now = at(t).x;
     // It is seen as it comes in, whole well before it lands.
     const fade = F.drift(clamp(k * 2.4));
-    card.style.transform = `translateX(${now.toFixed(2)}px) rotate(${(tiltOf(now) * 1.3).toFixed(3)}deg)`;
-    card.style.opacity = fade.toFixed(4);
-    card.style.filter = `blur(${((1 - fade) * 1.5).toFixed(2)}px)`;
+    pose(face, now, tiltOf(now) * 1.3);
+    face.style.opacity = fade.toFixed(4);
+    face.style.filter = `blur(${((1 - fade) * 1.5).toFixed(2)}px)`;
     setRise(stack, 1 - F.settle(k));
   });
 }

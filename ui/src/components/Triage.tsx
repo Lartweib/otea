@@ -10,7 +10,6 @@ import { waitsOf } from '../actions.ts';
 import { evidenceFileUrl, fetchItem } from '../api.ts';
 import { typeOfItem, useApp } from '../app/context.tsx';
 import { t, tx } from '../i18n/i18n.ts';
-import { keyTargetOf } from '../keys.ts';
 import { useEscape } from '../kit/escape.ts';
 import { Button, Count, StepPill } from '../kit/index.ts';
 import { toast } from '../kit/pop/toast.tsx';
@@ -24,7 +23,6 @@ import {
   cardWords,
   type Direction,
   dragIntent,
-  keyDecision,
   releaseDirection,
   resist,
   type TriagePlan,
@@ -42,6 +40,7 @@ import {
 import type { Evidence, Item, ItemView, Move } from '../types.ts';
 import {
   arriveUnder,
+  dropFace,
   dropLater,
   type Flight,
   heldAt,
@@ -56,7 +55,7 @@ import {
 // Triaje (#/triage, SPEC §10.4, mock:829-847, 3995-4036): the reviews, one card at a time over the
 // next one. The card follows the pointer or the finger, stamped with the move a release would make;
 // let go past the threshold it is thrown that way (right approves, left sends back), short of it it
-// springs home. The buttons and the arrow keys do the same: Aprobar throws it right, Devolver…
+// springs home. The buttons do the same without a drag: Aprobar throws it right, Devolver…
 // opens notes in the card and throws it left with them, Después drops it to the end of the pass;
 // the card under it rises into its place. Deshacer (the toast's) brings a card back from its side.
 // "Todo al día." once every card is decided.
@@ -353,28 +352,13 @@ function TriCard({
     drag.current = null;
     if (d.live) home.current = springHome(e.currentTarget, heldAt(e.currentTarget), 0);
   };
-  useEffect(() => () => home.current?.cancel(), []);
-
-  // The arrows decide as the drag does (a move that needs a reason opens the notes); never while
-  // something is typed into, a dialog is up, or the notes are open.
-  const keys = useRef({ approve, sendBack, later: () => onDecide('later') });
-  keys.current = { approve, sendBack, later: () => onDecide('later') };
   useEffect(() => {
-    if (under || !ready || notes) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
-      if (keyTargetOf(e.target) !== 'body') return;
-      if (document.querySelector('[aria-modal="true"]')) return;
-      const kind = keyDecision(e.key);
-      if (!kind) return;
-      e.preventDefault();
-      if (kind === 'approve') keys.current.approve();
-      else if (kind === 'send') keys.current.sendBack();
-      else keys.current.later();
+    const el = card.current;
+    return () => {
+      home.current?.cancel();
+      if (el) dropFace(el);
     };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [under, ready, notes]);
+  }, []);
 
   const blocked = plan?.blocked?.[0];
   return (
@@ -406,12 +390,7 @@ function TriCard({
       {words.say ? <p className="say">{words.say}</p> : null}
       {view ? <Figures evidence={view.evidence} /> : null}
       <div className="tc-acts">
-        <Button
-          variant="primary"
-          disabled={!ready || !forward}
-          onClick={approve}
-          aria-keyshortcuts="ArrowRight"
-        >
+        <Button variant="primary" disabled={!ready || !forward} onClick={approve}>
           {t('triage.approve')}
         </Button>
         {!plan || back ? (
@@ -420,12 +399,11 @@ function TriCard({
             disabled={!ready || !back}
             onClick={sendBack}
             aria-expanded={notes}
-            aria-keyshortcuts="ArrowLeft"
           >
             {t('triage.sendBack')}
           </Button>
         ) : null}
-        <Button variant="text" onClick={() => onDecide('later')} aria-keyshortcuts="ArrowDown">
+        <Button variant="text" onClick={() => onDecide('later')}>
           {t('triage.later')}
         </Button>
         <span className="sp" />
@@ -600,6 +578,8 @@ export function Triage() {
       flight.current = null;
       frozen.current.delete(id);
       const back = failed.current.delete(id);
+      // A card that comes back at once is the same card on top: it is shown again from its side.
+      if (back) settled.current = '';
       setPass((was) => {
         if (!was) return was;
         const after = triSync(triDecide(was, kind), live.current);

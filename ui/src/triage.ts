@@ -199,10 +199,22 @@ export const throwFade = (k: number): number => 1 - sstep(clamp((k - 0.2) / 0.65
 // A card left for later drops behind (mock:4033).
 export const LATER_POSE = 'translateY(24px) scale(0.97)';
 
-// The keys of a pass: the arrows decide as the drag does, the down arrow leaves it for later.
-export function keyDecision(key: string): TriKind | undefined {
-  if (key === 'ArrowRight') return 'approve';
-  if (key === 'ArrowLeft') return 'send';
-  if (key === 'ArrowDown') return 'later';
-  return undefined;
+// How far a stamp shifts along its card to stay on the screen while the card is pulled off it
+// (at: the stamp's left within the card; card.left: where the card rests), never off its card.
+const EDGE = 10;
+const INSET = 6;
+export function stampShift(
+  side: Direction,
+  stamp: { at: number; width: number },
+  card: { left: number; width: number },
+  x: number,
+  view: number,
+): number {
+  const left = card.left + stamp.at + x;
+  if (side === 'right') {
+    const over = left + stamp.width - (view - EDGE);
+    return over > 0 ? Math.max(-over, INSET - stamp.at) : 0;
+  }
+  const under = EDGE - left;
+  return under > 0 ? Math.min(under, card.width - INSET - stamp.at - stamp.width) : 0;
 }
