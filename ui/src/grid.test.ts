@@ -209,9 +209,7 @@ describe('the grid width tiers', () => {
     expect(columnWidth(column('category'), false)).toBe(117);
     expect(columnWidth(column('area'), false)).toBe(160);
     const { shown } = fitColumns(gridColumns(bugs), 640, {});
-    expect(gridTemplate(shown, 640).tracks).toBe(
-      '56px 28px 72px minmax(0, 1fr) 52px 110px 44px 60px',
-    );
+    expect(gridTemplate(shown, 640).tracks).toBe('28px 72px minmax(0, 1fr) 52px 110px 44px 60px');
   });
 });
 
@@ -239,12 +237,13 @@ describe('the spare width', () => {
   it('puts the air before every column after the title, so the table fills its room', () => {
     const { tracks } = layout(1659);
 
-    expect(tracks).toBe('56px 28px 72px minmax(0, 1fr) 153px 148px 196px 146px 80px 96px');
+    expect(tracks).toBe('28px 72px minmax(0, 1fr) 153px 148px 196px 146px 80px 96px');
     const px = tracks
       .replace('minmax(0, 1fr)', '0')
       .split(' ')
       .map((track) => Number.parseInt(track, 10) || 0);
-    expect(px.reduce((sum, track) => sum + track, 0) + 668 + 16).toBe(1659);
+    // The lanes' 60 px of padding on the left and 12 on the right.
+    expect(px.reduce((sum, track) => sum + track, 0) + 668 + 72).toBe(1659);
   });
 
   it('keeps the air it is given (a drag holds it still), the title taking the difference', () => {

@@ -292,7 +292,7 @@ export function keptWidths(columns: readonly GridColumn[], widths: Widths): Reco
 
 // ---- fitting the room: what shows, and how wide ----
 
-// 100 = the turn node 56 + the select box 28 + the row's 16 on the right.
+// 100 = the lanes' 60 (the rows' padding) + the select box 28 + 12 on the right.
 const CHROME = 100;
 
 const spare = (room: number, shown: readonly ShownColumn[]) =>
@@ -352,7 +352,7 @@ const AIR_MAX = 128;
 
 export type GridTemplate = { tracks: string; title: number; air: number };
 
-// The table's tracks (--cols): the turn node and the select box, then each column, its width and,
+// The table's tracks (--cols): the select box (the lanes sit in its padding), then each column, its width and,
 // after the title, the air (padding-left: var(--air) inside its track). The title flexes in what
 // is left, which is `title`. air: given while a column is dragged, so only the title moves.
 export function gridTemplate(
@@ -371,7 +371,7 @@ export function gridTemplate(
   const tracks = shown.map(({ column, width }, index) =>
     column.kind === 'title' ? 'minmax(0, 1fr)' : `${width + (at >= 0 && index > at ? air : 0)}px`,
   );
-  return { tracks: ['56px', '28px', ...tracks].join(' '), title: rest - after * air, air };
+  return { tracks: ['28px', ...tracks].join(' '), title: rest - after * air, air };
 }
 
 // ---- values ----
