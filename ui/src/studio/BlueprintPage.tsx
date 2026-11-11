@@ -265,8 +265,8 @@ function Editor({
   };
   return (
     <div className="st-preset st-studio st-bp">
-      <header className="sst-head">
-        <div className="sst-hl">
+      <header className="st-head">
+        <div className="st-hl">
           <a className="st-crumb st-mono" href={studioHash()}>
             {t('studio.crumbBlueprint')}
           </a>
@@ -291,7 +291,7 @@ function Editor({
             </a>
           </fieldset>
         </div>
-        <div className="sst-hr">
+        <div className="st-hr">
           <Verdict problems={problems.length} />
           {nothing.length > 0 ? (
             <span className="st-offscreen-at">

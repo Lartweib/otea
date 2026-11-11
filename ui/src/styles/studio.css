@@ -49,37 +49,54 @@
   color: var(--warn);
 }
 
+/* ---- the frame: Studio is a view inside .main, on the dotted ground. Its own index stands beside
+   the page only where .main is wide; elsewhere the rail and the crumbs lead around. ---- */
 .layout.studio {
-  align-content: start;
+  display: flex;
+  gap: 0;
+  min-height: 100%;
+  padding: 0;
+  container: studio / inline-size;
+}
+.layout.studio > .st-index {
+  display: none;
+}
+.st-page {
+  flex: 1;
+  min-width: 0;
+}
+.st-msg {
+  padding: 32px 40px;
+  font: 400 italic 15px / 1.4 var(--serif);
+  color: var(--ink-3);
+}
+@container studio (min-width: 1500px) {
+  .layout.studio > .st-index {
+    display: flex;
+  }
 }
 
 .st-index {
-  display: flex;
+  flex: none;
   flex-direction: column;
-  gap: 6px;
+  gap: 2px;
+  width: 232px;
   min-width: 0;
+  padding: 26px 14px 24px 20px;
+  border-right: 1px solid var(--rule);
 }
-
 .st-index-h {
-  display: flex;
-  align-items: center;
-  height: 36px;
-  padding: 0 12px;
-  border-radius: 7px;
+  display: block;
+  padding: 0 10px 14px;
+  font: 450 21px / 1.1 var(--serif);
+  font-variation-settings: "opsz" 24;
+  letter-spacing: -0.01em;
   color: var(--ink);
-  font-size: 15px;
-  font-weight: 600;
   text-decoration: none;
 }
-.st-index-h[aria-current="page"],
-.st-list a[aria-current="page"] {
-  background: var(--sheet);
-  box-shadow: 0 0 0 1px var(--rule);
-}
 .st-index > .st-label {
-  padding: 10px 12px 2px;
+  padding: 14px 10px 6px;
 }
-
 .st-list {
   display: grid;
   gap: 2px;
@@ -89,14 +106,22 @@
 .st-list a {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  gap: 0 8px;
-  padding: 7px 12px;
-  border-radius: 7px;
-  color: var(--ink);
+  gap: 3px 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  color: var(--ink-2);
   text-decoration: none;
+  transition:
+    background-color var(--t-fade) var(--o-drift),
+    color var(--t-hover) var(--ease);
 }
 .st-list a:hover {
   background: var(--hov);
+  color: var(--ink);
+}
+.st-list a[aria-current="page"] {
+  background: var(--sel);
+  color: var(--ink);
 }
 .st-li-name {
   display: inline-flex;
@@ -104,7 +129,7 @@
   gap: 6px;
   min-width: 0;
   overflow: hidden;
-  font: 500 13px var(--mono);
+  font: 500 13.5px / 1.25 var(--sans);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -119,76 +144,191 @@
   grid-row: 1;
 }
 
-.st-page {
-  min-width: 0;
-}
-.st-msg {
-  padding: 24px;
-}
-
-/* ---- start ---- */
+/* ---- start: the head of every view, then the templates as rows with their routes ---- */
 .st-start {
-  display: grid;
-  gap: 18px;
-  max-width: 60rem;
-  padding: 24px 8px;
+  --pl: 0px;
+  max-width: 1180px;
+  padding: 32px 56px 72px 40px;
 }
-.st-lede {
-  max-width: 44rem;
-  color: var(--ink-2);
+.st-shead .kicker {
+  margin-bottom: 14px;
 }
-.st-rows {
-  display: grid;
+.st-shead .dek {
+  margin-top: 14px;
+}
+.st-tpls {
+  margin-top: 30px;
+}
+.st-sec-h {
+  padding: 0 0 6px;
+}
+.st-trows {
+  margin: 0;
   padding: 0;
   list-style: none;
 }
-.st-row {
+.st-trow,
+.st-bprow {
+  position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) 320px 132px;
   align-items: center;
-  gap: 4px 16px;
-  padding: 10px 12px;
-  border-bottom: 1px solid var(--rule);
-}
-.st-row:hover {
-  background: var(--hov);
-}
-.st-row-main {
-  display: grid;
-  gap: 2px;
-  min-width: 0;
+  column-gap: 28px;
+  margin: 0 -12px;
+  padding: 14px 12px 15px;
+  border-radius: 7px;
   color: var(--ink);
   text-decoration: none;
+  transition: background-color var(--t-fade) var(--o-drift);
 }
-.st-row-name {
-  display: inline-flex;
-  align-items: center;
+.st-trow + .st-trow::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 12px;
+  right: 12px;
+  height: 1px;
+  background: var(--rule);
+}
+.st-trow:hover,
+.st-bprow:hover {
+  background: var(--hov);
+}
+.st-trow:hover + .st-trow::before,
+.st-trow:hover::before {
+  opacity: 0;
+}
+.st-trow-main {
+  display: grid;
   gap: 6px;
-}
-.st-row-use {
-  color: var(--ink-2);
-}
-.st-customize,
-.st-row-go {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
+  min-width: 0;
+  color: inherit;
   text-decoration: none;
 }
-@media (max-width: 47.99rem) {
-  .st-row {
+.st-trow-main::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 7px;
+}
+.st-trow-t {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  font: 430 19px / 1.15 var(--serif);
+  font-variation-settings: "opsz" 18;
+  letter-spacing: -0.008em;
+  color: var(--ink);
+}
+.st-trow-m {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 7px;
+  font-size: 12.5px;
+  color: var(--ink-3);
+}
+.st-trow-m .sep {
+  color: var(--rule-2);
+}
+.st-trow-m .warn {
+  color: var(--warn);
+}
+.st-trow-route {
+  position: relative;
+  pointer-events: none;
+}
+.st-trow-go {
+  position: relative;
+  z-index: 1;
+  justify-self: end;
+  text-decoration: none;
+}
+.st-bprow {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+.st-bprow .st-trow-main,
+.st-bprow > .st-trow-t,
+.st-bprow > .st-trow-m {
+  grid-column: 1;
+}
+.st-bprow-links {
+  display: flex;
+  flex-wrap: wrap;
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  gap: 6px;
+}
+.st-bprow-links code {
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: var(--well);
+  font: 400 11.5px / 1.2 var(--mono);
+  color: var(--ink-2);
+}
+.st-nobp {
+  padding: 6px 0 0;
+}
+@container studio (max-width: 900px) {
+  .st-start {
+    padding: 28px 24px 56px;
+  }
+  .st-trow {
     grid-template-columns: minmax(0, 1fr) auto;
   }
-  .st-row-use {
-    grid-column: 1 / -1;
-    grid-row: 2;
+  .st-trow-route {
+    display: none;
   }
 }
-.st-cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
-  gap: 10px;
+
+/* the template's way of working, on the lanes laid flat */
+.st-route {
+  display: block;
+  overflow: visible;
 }
+.st-rlab text {
+  font: 600 8.5px / 1 var(--sans);
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  fill: var(--ink-3);
+}
+.st-rlab text.you {
+  fill: var(--you-ink);
+}
+.st-rlh {
+  font: 400 10px / 1 var(--mono);
+  fill: var(--ink-3);
+}
+.st-rlh.you {
+  fill: var(--you-ink);
+}
+.st-rl {
+  fill: none;
+  stroke-width: 1;
+}
+.st-rl.ag {
+  stroke: var(--lane);
+  opacity: 0.55;
+}
+.st-rl.you {
+  stroke: var(--you);
+  opacity: 0.4;
+}
+.st-rl.none {
+  stroke: var(--closed);
+  opacity: 0.6;
+}
+.st-rw {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 1.25;
+  stroke-linejoin: round;
+}
+.st-trow:hover .st-rstop circle[fill="var(--ground)"] {
+  fill: var(--hov);
+}
+
 .st-card {
   display: grid;
   gap: 6px;
@@ -198,7 +338,7 @@
   transition: box-shadow var(--t-hover) var(--ease);
 }
 .st-card:hover {
-  box-shadow: 0 0 0 1px color-mix(in oklch, var(--ink) 30%, var(--rule));
+  box-shadow: 0 0 0 1px var(--rule-2);
 }
 .st-card-h {
   display: flex;
@@ -210,13 +350,12 @@
 }
 
 /* ---- a preset: header, outline, editor, preview ---- */
+/* The page is a working surface: its head and bar on the sheet, hairlines between its parts, and
+   the canvas left on the dotted ground so the preview reads as a page laid on the desk. */
 .st-preset {
   display: flex;
   flex-direction: column;
   min-height: 100%;
-  border-radius: 10px;
-  background: var(--sheet);
-  box-shadow: 0 0 0 1px var(--rule);
 }
 .st-head {
   display: flex;
@@ -224,9 +363,10 @@
   align-items: center;
   justify-content: space-between;
   gap: 10px 24px;
-  min-height: 60px;
-  padding: 10px 20px 10px 24px;
+  min-height: 64px;
+  padding: 12px 24px 12px 28px;
   border-bottom: 1px solid var(--rule);
+  background: var(--sheet);
 }
 .st-hl,
 .st-hr {
@@ -237,19 +377,19 @@
   min-width: 0;
 }
 .st-crumb {
-  color: var(--ink-2);
+  font: 400 11.5px / 1 var(--mono);
+  color: var(--ink-3);
   text-decoration: none;
   white-space: nowrap;
+  transition: color var(--t-hover) var(--ease);
 }
 .st-crumb:hover {
   color: var(--ink);
 }
 .st-name {
-  font: 600 17px var(--mono);
-  letter-spacing: -0.01em;
-}
-.st-used {
-  white-space: nowrap;
+  font: 430 26px / 1.05 var(--serif);
+  font-variation-settings: "opsz" 36;
+  letter-spacing: -0.018em;
 }
 .st-vs {
   display: inline-flex;
@@ -277,111 +417,16 @@
   gap: 8px;
 }
 .st-input {
-  height: 28px;
+  height: 30px;
   padding: 0 10px;
-  border: 1px solid var(--rule);
-  border-radius: 999px;
-  background: var(--ground);
-  font-size: 13px;
+  border: 1px solid var(--rule-2);
+  border-radius: 7px;
+  background: var(--sheet);
+  color: var(--ink);
+  font: 400 13px / 1 var(--sans);
 }
 .st-input.st-mono {
   font: 400 12.5px var(--mono);
-}
-
-.st-ws {
-  display: grid;
-  flex: 1;
-  grid-template-columns: minmax(0, 1fr);
-  min-height: 0;
-}
-.st-out {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  min-width: 0;
-  padding: 14px 14px 18px;
-  border-bottom: 1px solid var(--rule);
-}
-.st-out > .st-label {
-  padding: 0 8px;
-}
-.st-types {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  margin: 0 0 8px;
-  padding: 0;
-  border: 0;
-}
-.st-types button,
-.st-ol button {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  min-height: 32px;
-  padding: 0 10px;
-  border: 0;
-  border-radius: 7px;
-  background: none;
-  font-size: 14px;
-  text-align: left;
-  cursor: pointer;
-}
-.st-types button {
-  font: 500 13px var(--mono);
-}
-.st-types button:hover,
-.st-ol button:hover {
-  background: var(--hov);
-}
-.st-types button[aria-pressed="true"],
-.st-ol button[aria-current="true"] {
-  background: var(--ground);
-  box-shadow: 0 0 0 1px var(--rule);
-}
-.st-ol {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 2px;
-}
-.st-count {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font: 500 12px var(--mono);
-  color: var(--ink);
-}
-.st-saved-in {
-  display: none;
-}
-
-.st-ed {
-  display: flex;
-  flex-direction: column;
-  gap: 28px;
-  min-width: 0;
-  padding: 20px 20px 28px;
-}
-.st-pv {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  min-width: 0;
-  padding: 16px 20px 24px;
-  border-top: 1px solid var(--rule);
-  background: color-mix(in oklch, var(--ground) 45%, transparent);
-}
-.st-pvh {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-.st-pvb {
-  display: grid;
-  gap: 14px;
-  min-width: 0;
 }
 
 /* ---- sections ---- */
@@ -903,85 +948,6 @@
   font: 400 12.5px / 1.6 var(--mono);
   resize: vertical;
 }
-
-/* problems and warnings */
-.st-tpb:hover {
-  text-decoration: underline;
-}
-.st-warns {
-  display: grid;
-  gap: 4px;
-  padding: 0;
-  list-style: none;
-}
-.st-warns li {
-  display: flex;
-  gap: 6px;
-}
-
-/* previews */
-.st-form {
-  display: grid;
-  gap: 10px;
-  padding: 16px;
-  border-radius: 10px;
-  background: var(--sheet);
-  box-shadow:
-    0 0 0 1px var(--rule),
-    0 16px 34px -24px var(--shadow);
-}
-.st-in {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-height: 36px;
-  padding: 0 14px;
-  border-radius: 999px;
-  background: var(--ground);
-  box-shadow: inset 0 0 0 1px var(--rule);
-}
-.st-in.tall {
-  align-items: flex-start;
-  min-height: 70px;
-  padding-top: 9px;
-  border-radius: 14px;
-}
-.st-in.choice {
-  flex-wrap: wrap;
-  padding: 6px 12px;
-  border-radius: 14px;
-  background: none;
-}
-.st-rq {
-  margin-left: auto;
-  font: 400 11px var(--mono);
-  color: var(--ink-2);
-}
-.st-fa {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px;
-  padding-top: 4px;
-}
-.st-prow {
-  display: grid;
-  gap: 1px;
-  padding: 10px 14px;
-  border-radius: 7px;
-  background: var(--sheet);
-  box-shadow: 0 0 0 1px var(--rule);
-}
-.st-prow b {
-  font-size: 14.5px;
-  font-weight: 600;
-}
-.st-key {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-}
 .st-src {
   margin: 0;
   max-height: 32rem;
@@ -1003,52 +969,6 @@
   margin: 0 -14px;
   padding: 0 14px;
   background: color-mix(in oklch, var(--minus) 12%, transparent);
-}
-
-/* the lanes */
-.st-lanes {
-  display: block;
-  max-width: 100%;
-  height: auto;
-  overflow: visible;
-}
-.st-ln {
-  fill: none;
-  stroke: var(--lane);
-  stroke-width: 1.5;
-}
-.st-ln.you {
-  stroke: color-mix(in oklch, var(--you) 45%, var(--lane));
-}
-.st-lm {
-  fill: none;
-  stroke: var(--ink);
-  stroke-width: 1.2;
-  opacity: 0.5;
-}
-.st-lm.firm {
-  stroke-width: 1.6;
-  opacity: 1;
-}
-.st-lm.back {
-  stroke-dasharray: 3 3;
-}
-.st-ml {
-  font: 500 12px var(--mono);
-  fill: var(--ink);
-}
-.st-ml.you,
-.st-lh.you {
-  fill: var(--you-ink);
-}
-.st-lh {
-  font: 500 11px var(--mono);
-  fill: var(--ink-2);
-}
-.st-focus {
-  fill: none;
-  stroke: var(--ink);
-  stroke-dasharray: 2 2;
 }
 
 /* save */
@@ -1075,31 +995,6 @@
 .st-confirm-actions {
   display: flex;
   gap: 8px;
-}
-
-/* ---- the blueprint: boards, links, who waits for whom ---- */
-.st-tabs {
-  display: inline-flex;
-  gap: 2px;
-  margin-left: 6px;
-  padding: 2px;
-  border-radius: 999px;
-  box-shadow: inset 0 0 0 1px var(--rule);
-}
-.st-tabs a {
-  height: 26px;
-  padding: 0 12px;
-  border-radius: 999px;
-  color: var(--ink-2);
-  font-size: 13px;
-  font-weight: 500;
-  line-height: 26px;
-  text-decoration: none;
-}
-.st-tabs a[aria-current="page"] {
-  background: var(--sheet);
-  box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--ink) 40%, var(--rule));
-  color: var(--ink);
 }
 .st-banner {
   display: flex;
@@ -1468,7 +1363,6 @@ button.st-bc-h:hover {
   gap: 18px;
   align-content: start;
 }
-.st-newlink,
 .st-newboard {
   display: flex;
   flex-wrap: wrap;
@@ -1478,9 +1372,7 @@ button.st-bc-h:hover {
   border-radius: 7px;
   background: var(--well);
 }
-.st-newlink > .st-label,
 .st-newboard > .st-label,
-.st-newlink > p,
 .st-newboard > .st-cap {
   flex-basis: 100%;
 }
@@ -1566,67 +1458,18 @@ button.st-card[aria-pressed="true"] {
   gap: 12px;
 }
 
-@media (min-width: 48rem) {
-  .layout.studio {
-    grid-template-columns: 200px minmax(0, 1fr);
-    align-content: stretch;
-  }
-  /* Beside the app's sidebar, which stands in its own column. */
-  .layout.studio.with-rail {
-    grid-template-columns: var(--rail-w) 190px minmax(0, 1fr);
-    padding-left: 8px;
-  }
-  .st-index,
-  .st-page {
-    overflow-y: auto;
-    scrollbar-width: thin;
-    scrollbar-color: var(--rule) transparent;
-  }
-  .st-index {
-    padding: 4px 0 24px;
-  }
-  .st-page {
-    padding-bottom: 8px;
-  }
-  .layout.studio.with-rail[data-page="start"] {
-    grid-template-columns: var(--rail-w) minmax(0, 1fr);
-  }
-  .layout.studio.with-rail[data-page="start"] > .st-page {
-    grid-column: 2;
-  }
-  .layout.studio.with-rail > .st-index {
-    grid-column: 2;
-  }
-  .layout.studio.with-rail > .st-page {
-    grid-column: 3;
-  }
+/* The preset and blueprint pages hold still: their head and bar stay, and each column scrolls. */
+.layout.studio:is([data-page="preset"], [data-page="blueprint"]) {
+  height: 100%;
+  min-height: 0;
 }
-
-/* From 64rem the preview sits beside the editor, the outline a strip above both; from 100rem the
-   outline stands on the left, as the preset file reads. */
-@media (min-width: 64rem) {
-  .st-ws {
-    grid-template-columns: minmax(0, 1fr) 360px;
-    grid-template-rows: auto minmax(0, 1fr);
-  }
-  .st-out {
-    grid-column: 1 / -1;
-    flex-direction: row;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 6px 14px;
-    padding: 10px 16px;
-  }
-  .st-out > .st-label {
-    padding: 0;
-  }
-  .st-types {
-    margin: 0;
-  }
-  .st-pv {
-    border-top: 0;
-    border-left: 1px solid var(--rule);
-  }
+.layout.studio > .st-index,
+.layout.studio:is([data-page="preset"], [data-page="blueprint"]) > .st-page {
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--rule-2) transparent;
+}
+@container studio (min-width: 860px) {
   .st-pb {
     grid-template-columns: 210px minmax(0, 1fr);
   }
@@ -1636,56 +1479,6 @@ button.st-card[aria-pressed="true"] {
   }
   .st-pick {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  }
-}
-
-@media (min-width: 100rem) {
-  .st-ws {
-    grid-template-columns: 210px minmax(0, 1fr) 420px;
-    grid-template-rows: minmax(0, 1fr);
-  }
-  .st-out {
-    grid-column: auto;
-    flex-direction: column;
-    flex-wrap: nowrap;
-    align-items: stretch;
-    gap: 6px;
-    padding: 14px 14px 18px;
-    border-right: 1px solid var(--rule);
-    border-bottom: 0;
-  }
-  .st-out > .st-label {
-    padding: 0 8px;
-  }
-  .st-types {
-    margin: 0 0 8px;
-  }
-  .st-ol {
-    flex-direction: column;
-    flex-wrap: nowrap;
-    padding-left: 8px;
-    border-left: 1px solid var(--rule);
-  }
-  .st-saved-in {
-    display: grid;
-    gap: 4px;
-    margin-top: auto;
-    padding: 14px 8px 0;
-    border-top: 1px solid var(--rule);
-  }
-}
-
-/* Beside the open sidebar and below 100rem, an open preset or blueprint takes the index's room too;
-   its crumb leads back to the start, which lists everything. */
-@media (min-width: 48rem) and (max-width: 99.99rem) {
-  .layout.studio.with-rail[data-sidebar="on"]:not([data-page="start"]) {
-    grid-template-columns: var(--rail-w) minmax(0, 1fr);
-  }
-  .layout.studio.with-rail[data-sidebar="on"]:not([data-page="start"]) > .st-index {
-    display: none;
-  }
-  .layout.studio.with-rail[data-sidebar="on"]:not([data-page="start"]) > .st-page {
-    grid-column: 2;
   }
 }
 
@@ -1733,9 +1526,6 @@ button.st-card[aria-pressed="true"] {
   .st-head {
     padding: 12px 16px;
   }
-  .st-ed {
-    padding: 16px;
-  }
   .st-index {
     padding-top: 4px;
   }
@@ -1743,4 +1533,17 @@ button.st-card[aria-pressed="true"] {
   .layout.studio:not([data-page="start"]) .st-index {
     display: none;
   }
+}
+
+/* Links drawn as buttons keep the button's face. */
+.st-page a.btn,
+.cz-page a.btn {
+  text-decoration: none;
+}
+.st-input {
+  transition: border-color var(--t-hover) var(--ease);
+}
+.st-input:focus {
+  outline: none;
+  border-color: var(--you);
 }

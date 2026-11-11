@@ -98,10 +98,10 @@ export const studio = {
   // Studio: presets and the project's blueprint
   'studio.title': 'Studio',
   'studio.lede':
-    'How this project works: the presets its boards are built from, and the blueprint that joins the boards.',
+    'How this project works: the templates its boards are built from, and the blueprint that ties them together.',
   'studio.presetsNote': 'a way of working: types, states, moves, fields and a playbook',
-  'studio.outline': 'Preset outline',
-  'studio.index.presets': 'presets',
+  'studio.outline': 'Template outline',
+  'studio.index.presets': 'templates',
   'studio.index.project': 'project',
   'studio.index.invalid': 'does not load',
   'studio.start.usedBy': 'Used by {names}',
@@ -112,7 +112,13 @@ export const studio = {
   'studio.start.itemsCount': { one: '{count} item', other: '{count} items' },
   'studio.start.notUsed': 'Not used by any board yet',
   'studio.start.customize': 'Customize',
-  'studio.crumbPreset': 'Studio / preset /',
+  'studio.start.kicker': 'how it works',
+  'studio.start.boardGloss': 'each board is built from one',
+  'studio.start.noBlueprint':
+    'No blueprint yet. Pick one to build several boards at once, linked, with a playbook for the agents.',
+  'studio.start.pickBlueprint': 'Pick a blueprint',
+  'studio.start.route': 'How it works: {steps}',
+  'studio.crumbPreset': 'Studio / template /',
   'studio.discard': 'discard draft',
   'studio.back': 'back',
   'studio.rename': 'rename',

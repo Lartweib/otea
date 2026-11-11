@@ -9,7 +9,7 @@ import type { Connection } from '../hooks.ts';
 import { useRemote } from '../hooks.ts';
 import { type PlainKey, t } from '../i18n/i18n.ts';
 import { TypeIcon } from '../icons/TypeIcon.tsx';
-import { Button, Icon } from '../kit/index.ts';
+import { Button, Icon, Seg } from '../kit/index.ts';
 import { NodeGlyph } from '../lanes/NodeGlyph.tsx';
 import { nestSections } from '../nesting.ts';
 import { stateWord } from '../preset-words.ts';
@@ -257,8 +257,8 @@ function Loaded({ source, samples, canWrite, phone, items, onSaved }: LoadedProp
   };
   return (
     <div className="st-preset st-studio">
-      <header className="sst-head">
-        <div className="sst-hl">
+      <header className="st-head">
+        <div className="st-hl">
           <a className="st-crumb st-mono" href={studioHash()}>
             {t('studio.crumbPreset')}
           </a>
@@ -271,7 +271,7 @@ function Loaded({ source, samples, canWrite, phone, items, onSaved }: LoadedProp
                 : t('studio.preset.saved', { version: source.version ?? '?' })}
           </span>
         </div>
-        <div className="sst-hr">
+        <div className="st-hr">
           {canWrite && !phone ? (
             <a
               className="btn sm quiet st-customize"
@@ -353,40 +353,31 @@ function Loaded({ source, samples, canWrite, phone, items, onSaved }: LoadedProp
         {typeNames.length > 0 ? (
           <div className="st-bar-group">
             <span className="st-bar-k">{t('studio.bar.type')}</span>
-            <fieldset className="st-pills" aria-label={t('studio.bar.type')}>
-              {(preset?.types ?? []).map((each) => (
-                <button
-                  key={each.name}
-                  type="button"
-                  aria-pressed={each.name === shown}
-                  onClick={() => {
-                    setType(each.name);
-                    setSelected(undefined);
-                    setLane(undefined);
-                  }}
-                >
-                  {each.icon ? <TypeIcon name={each.icon} size={14} /> : null}
-                  {each.name}
-                </button>
-              ))}
-            </fieldset>
+            <Seg
+              label={t('studio.bar.type')}
+              value={shown ?? ''}
+              options={(preset?.types ?? []).map((each) => ({
+                value: each.name,
+                label: each.name,
+                ...(each.icon ? { icon: <TypeIcon name={each.icon} size={14} /> } : {}),
+              }))}
+              onChange={(name) => {
+                setType(name);
+                setSelected(undefined);
+                setLane(undefined);
+              }}
+            />
           </div>
         ) : null}
         <div className="st-bar-group">
           <span className="st-bar-k">{t('studio.bar.view')}</span>
-          <fieldset className="st-pills" aria-label={t('studio.bar.view')}>
-            {views.map((each) => (
-              <button
-                key={each}
-                type="button"
-                data-view={each}
-                aria-pressed={page === undefined && each === view}
-                onClick={() => open(each)}
-              >
-                {t(VIEW_LABEL[each])}
-              </button>
-            ))}
-          </fieldset>
+          <Seg
+            label={t('studio.bar.view')}
+            className={page === undefined ? '' : 'st-seg-none'}
+            value={page === undefined ? view : ''}
+            options={views.map((each) => ({ value: each, label: t(VIEW_LABEL[each]) }))}
+            onChange={(each) => open(each as View)}
+          />
         </div>
         {phone ? null : (
           <button

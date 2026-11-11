@@ -1,8 +1,8 @@
 import type { ReactNode } from 'react';
 import { fetchPresets } from '../api.ts';
+import { useApp } from '../app/context.tsx';
 import { type Connection, useRemote } from '../hooks.ts';
 import { t } from '../i18n/i18n.ts';
-import { Icon } from '../kit/index.ts';
 import type { Remote } from '../remote.ts';
 import { type StudioPage, studioHash } from '../selection.ts';
 import type { Item } from '../types.ts';
@@ -10,6 +10,7 @@ import type { PresetSummary, ProjectBlueprint } from './api.ts';
 import { BlueprintPage, Picker } from './BlueprintPage.tsx';
 import { PresetEditor } from './PresetEditor.tsx';
 import { ProblemMark } from './parts.tsx';
+import { Start } from './Start.tsx';
 import type { StudioIndex } from './use-studio-index.ts';
 
 // Studio: where a project's ways of working are read and changed. Its own index on the left (the
@@ -106,118 +107,6 @@ function BlueprintCatalog({
   );
 }
 
-type StartProps = {
-  presets: Remote<PresetSummary[]>;
-  blueprint: ProjectBlueprint | null;
-  items: readonly Item[];
-  // Customize writes through Studio: not on a phone, not for a viewer who cannot configure.
-  canCustomize: boolean;
-};
-
-// One template: its name, where it comes from, who uses it, and the way into the builder.
-function TemplateRow({
-  preset,
-  items,
-  canCustomize,
-}: {
-  preset: PresetSummary;
-  items: readonly Item[];
-  canCustomize: boolean;
-}) {
-  const count = items.filter((item) => preset.collections.includes(item.collection)).length;
-  return (
-    <li className="st-row">
-      <a className="st-row-main" href={studioHash({ kind: 'preset', name: preset.name })}>
-        <b className="st-row-name">
-          {preset.problems.length > 0 ? <ProblemMark /> : null}
-          {preset.name}
-        </b>
-        <span className="st-cap">
-          {preset.origin === 'official' ? t('studio.start.official') : t('studio.index.project')}
-        </span>
-      </a>
-      <span className="st-small st-row-use">
-        {preset.problems.length > 0
-          ? preset.problems[0]
-          : preset.collections.length > 0
-            ? t('studio.start.usedByBoards', {
-                names: preset.collections.join(', '),
-                items: t('studio.start.itemsCount', { count }),
-              })
-            : t('studio.start.notUsed')}
-      </span>
-      {canCustomize ? (
-        <a
-          className="btn sm quiet st-row-go"
-          href={`#/customize/preset/${encodeURIComponent(preset.name)}`}
-        >
-          <Icon name="sliders" />
-          {t('studio.start.customize')}
-        </a>
-      ) : null}
-    </li>
-  );
-}
-
-function Start({ presets, blueprint, items, canCustomize }: StartProps) {
-  return (
-    <div className="st-start">
-      <h1 className="st-display">{t('studio.title')}</h1>
-      <p className="st-body st-lede">{t('studio.lede')}</p>
-      <section className="st-sec">
-        <div className="st-sh">
-          <h2 className="st-h">{t('studio.start.boardTemplates')}</h2>
-        </div>
-        {presets.status === 'ready' ? (
-          <ul className="st-rows">
-            {presets.value.map((preset) => (
-              <TemplateRow
-                key={`${preset.origin}-${preset.name}`}
-                preset={preset}
-                items={items}
-                canCustomize={canCustomize}
-              />
-            ))}
-          </ul>
-        ) : (
-          <p className="st-small">
-            {presets.status === 'loading' ? t('common.loading') : presets.message}
-          </p>
-        )}
-      </section>
-      <section className="st-sec">
-        <div className="st-sh">
-          <h2 className="st-h">{t('studio.start.projectTemplates')}</h2>
-          <span className="st-cap">{t('studio.blueprintNote')}</span>
-        </div>
-        {blueprint ? (
-          <a className="st-card st-raised" href={studioHash({ kind: 'blueprint', diagram: true })}>
-            <span className="st-card-h">
-              <b className="st-mono">{blueprint.name}</b>
-              <span className="st-cap">{`v${blueprint.version} · ${t('studio.blueprint.boardsCount', { count: blueprint.boards.length })}`}</span>
-              {'upToDate' in blueprint.status && !blueprint.status.upToDate ? (
-                <span className="st-cap st-li-origin">{t('studio.index.changed')}</span>
-              ) : null}
-            </span>
-            <span className="st-fs">
-              {blueprint.connections.map((text) => (
-                <code key={text} className="st-cap">
-                  {text}
-                </code>
-              ))}
-            </span>
-          </a>
-        ) : (
-          <a className="st-card st-raised" href={studioHash({ kind: 'blueprints' })}>
-            <b>{t('studio.index.noBlueprint')}</b>
-            <span className="st-small">{t('studio.start.pick')}</span>
-          </a>
-        )}
-      </section>
-    </div>
-  );
-}
-
 export function Studio({
   page,
   connection,
@@ -230,6 +119,7 @@ export function Studio({
   rail,
   sidebar,
 }: StudioProps) {
+  const app = useApp();
   const { presets, blueprint } = index;
   const copy = blueprint.status === 'ready' ? blueprint.value.blueprint : null;
   let content: ReactNode;
@@ -268,7 +158,14 @@ export function Studio({
     );
   } else {
     content = (
-      <Start presets={presets} blueprint={copy} items={items} canCustomize={canWrite && !phone} />
+      <Start
+        project={app.project?.name}
+        presets={presets}
+        views={app.presets}
+        blueprint={copy}
+        items={items}
+        canCustomize={canWrite && !phone}
+      />
     );
   }
   return (
