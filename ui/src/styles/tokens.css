@@ -44,8 +44,8 @@
     0 0 0 1px color-mix(in oklch, var(--ink) 16%, var(--line)), 0 -18px 36px -22px var(--shadow),
     0 -4px 24px -10px var(--shadow);
 
-  --font-human: "Schibsted Grotesk", system-ui, sans-serif;
-  --font-machine: "Spline Sans Mono", ui-monospace, monospace;
+  --font-human: 'Schibsted Grotesk Variable', 'Schibsted Grotesk', 'Helvetica Neue', Arial, sans-serif;
+  --font-machine: 'DM Mono', ui-monospace, Consolas, monospace;
 
   /* Motion: one system, three durations and one easing (mirrored by MOTION in motion.ts).
      fast: hover, press, the selection band; base: the chevron, content coming in, fades; slow:
