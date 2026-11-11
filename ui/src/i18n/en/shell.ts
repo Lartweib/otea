@@ -77,4 +77,18 @@ export const shell = {
   // Every project on this machine: the inbox at #/projects, and the rail's way there
   'rail.projects': 'All projects',
   'rail.settings': 'Project settings',
+
+  // The stub shell: rail and topbar words
+  'nav.toca': 'Your turn',
+  'nav.atasco': 'Stuck',
+  'nav.views': 'views',
+  'nav.boards': 'boards',
+  'nav.newBoard': 'New board',
+  'nav.newItem': 'New item',
+  'nav.newItemIn': 'New item in {board}',
+  'nav.prefs': 'Preferences',
+  'nav.hide': 'Hide the panel',
+  'nav.show': 'Show the panel',
+  'nav.working': { one: '{count} working', other: '{count} working' },
+  'nav.home': 'otea, Your turn',
 } as const;

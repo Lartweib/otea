@@ -129,4 +129,8 @@ export const board = {
   'bulk.movedTo': '{items} se movieron a {state}.',
   'bulk.cleared': 'la selección se vació · este aviso se cierra en 6 s',
   'bulk.dismiss': 'cerrar',
+
+  // Un tablero (la Lista de la base)
+  'boardView.kicker': 'Tablero',
+  'boardView.empty': 'Todavía no hay ítems en {board}.',
 } satisfies Partial<Catalog>;

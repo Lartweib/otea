@@ -151,12 +151,11 @@ code {
 }
 :root.theme-fade * {
   /* biome-ignore lint/complexity/noImportantStyles: the fallback crossfade wins over every component */
-  transition:
-    background-color 240ms var(--o-drift),
-    color 240ms var(--o-drift),
-    border-color 240ms var(--o-drift),
-    fill 240ms var(--o-drift),
-    stroke 240ms var(--o-drift) !important;
+  transition-property: background-color, color, border-color, fill, stroke !important;
+  /* biome-ignore lint/complexity/noImportantStyles: the fallback crossfade wins over every component */
+  transition-duration: 240ms !important;
+  /* biome-ignore lint/complexity/noImportantStyles: the fallback crossfade wins over every component */
+  transition-timing-function: var(--o-drift) !important;
 }
 @property --r {
   syntax: "<length>";

@@ -333,4 +333,11 @@ export const surfaces = {
   'emptyProject.store': 'almacén',
   'emptyProject.collections': 'colecciones',
   'emptyProject.example': 'Escribir la primera tarea',
+
+  // Conectar un agente
+  'connect.title': 'Conectar un agente',
+  'connect.body':
+    'Tu agente habla con Otea por MCP. Añade esto a su configuración y aparecerá aquí cuando tome su primera reserva.',
+  'connect.command': 'otea mcp --as <nombre>',
+  'connect.done': 'Hecho',
 } satisfies Partial<Catalog>;

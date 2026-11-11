@@ -117,9 +117,11 @@ export function useMediaQuery(query: string): boolean {
   return useSyncExternalStore(subscribe, () => window.matchMedia(query).matches);
 }
 
-// Below 48rem the workspace is one column, and an item unfolds where it sits in the list.
+// The phone: up to 720 px wide (SPEC §10.7, mock:893).
+export const PHONE_QUERY = '(max-width: 720px)';
+
 export function usePhone(): boolean {
-  return !useMediaQuery('(min-width: 48rem)');
+  return useMediaQuery(PHONE_QUERY);
 }
 
 // Marks an element (the list pane) with the hide tier its width puts it in (data-tier, see

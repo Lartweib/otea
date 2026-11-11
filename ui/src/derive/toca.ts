@@ -44,7 +44,7 @@ export function handedNote(item: Item, feed: readonly FeedEvent[]): HandedNote |
     (event) =>
       event.itemId === item.id && event.type === 'transitioned' && event.data.to === item.state,
   );
-  if (!last || last.actor.kind !== 'agent' || typeof last.data.via === 'string') return null;
+  if (last?.actor.kind !== 'agent' || typeof last.data.via === 'string') return null;
   const reason = typeof last.data.reason === 'string' ? last.data.reason : '';
   return { agent: last.actor.name, reason, at: last.at };
 }
