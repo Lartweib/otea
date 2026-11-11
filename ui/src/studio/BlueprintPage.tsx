@@ -764,10 +764,15 @@ export function Picker({
   const picked = blueprints.find(({ name }) => name === chosen) ?? blueprints[0];
   return (
     <div className="st-start">
-      <h1 className="st-display">
-        {hasBlueprint ? t('studio.picker.otherTitle') : t('studio.picker.title')}
-      </h1>
-      <p className="st-body st-lede">{t('studio.picker.lede')}</p>
+      <header className="st-shead" data-enter="head">
+        <p className="kicker">
+          <b>{t('studio.title')}</b> · {t('studio.picker.kicker')}
+        </p>
+        <h1 className="display st-pick-title">
+          {hasBlueprint ? t('studio.picker.otherTitle') : t('studio.picker.title')}
+        </h1>
+        <p className="dek">{t('studio.picker.lede')}</p>
+      </header>
       <div className="st-pick">
         <div className="st-pick-l">
           <span className="st-label">{t('studio.picker.blueprints')}</span>

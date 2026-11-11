@@ -44,8 +44,8 @@ function IndexEntry({ entry, selected }: { entry: CatalogEntry; selected: boolea
           <span className="mod-entry-name">{entry.name}</span>
           <OriginPill origin={entry.origin} />
         </span>
-        <span className="st-small">{summaryOf(entry)}</span>
-        <span className="st-cap">{note ? t(note) : usageSummary(entry.uses)}</span>
+        <span className="mod-entry-says">{summaryOf(entry)}</span>
+        <span className="mod-entry-use">{note ? t(note) : usageSummary(entry.uses)}</span>
       </a>
     </li>
   );
@@ -58,10 +58,10 @@ export function ModuleIndex({ entries, selected }: IndexProps) {
   return (
     <nav className="mod-index" aria-label={t('catalog.title')}>
       <div className="mod-index-head">
-        <a className="st-h mod-index-title" href={modulesHash()}>
+        <a className="mod-index-title" href={modulesHash()}>
           {t('catalog.title')}
         </a>
-        <a className="quiet-link st-small" href={ITEMS_HASH}>
+        <a className="mod-back" href={ITEMS_HASH}>
           {t('catalog.back')}
         </a>
       </div>
@@ -72,7 +72,7 @@ export function ModuleIndex({ entries, selected }: IndexProps) {
       </ul>
       {unknown.length > 0 ? (
         <>
-          <h2 className="st-label mod-index-sub">{t('catalog.unknownHeading')}</h2>
+          <h2 className="mod-index-sub">{t('catalog.unknownHeading')}</h2>
           <ul className="mod-entries">
             {unknown.map((entry) => (
               <IndexEntry key={entry.name} entry={entry} selected={entry.name === selected} />
@@ -122,8 +122,8 @@ function SamplePreview({
   const { Detail } = module;
   return (
     <section className="sample" aria-label={t('catalog.sample', { label: t(sample.label) })}>
-      <h3 className="st-label sample-label">{t(sample.label)}</h3>
-      <dl className="fields sample-views">
+      <h3 className="sample-label">{t(sample.label)}</h3>
+      <dl className="sample-views">
         <dt>{t('catalog.row')}</dt>
         <dd>
           <RowPreview module={module} sample={sample} value={value} />
@@ -198,50 +198,49 @@ export function ModulePanel({ entry, presets }: PanelProps) {
   const module = moduleFor(entry.name);
   const note = ORIGIN_NOTE[entry.origin];
   return (
-    <article className="detail mod" aria-labelledby="mod-title">
-      <header className="detail-head">
-        <div className="detail-tags">
-          <OriginPill origin={entry.origin} />
-          <span className="st-cap">{t('catalog.fieldModule')}</span>
-        </div>
-        <h1 className="st-display mod-name" id="mod-title">
+    <article className="mod-sheet" aria-labelledby="mod-title">
+      <header className="mod-head" data-c="">
+        <p className="kicker">
+          <b>{t('catalog.fieldModule')}</b> · <OriginPill origin={entry.origin} />
+        </p>
+        <h1 className="mod-name" id="mod-title">
           {entry.name}
         </h1>
-        <p className="st-body">{summaryOf(entry)}</p>
-        {note ? <p className="mod-note st-small">{t(note)}</p> : null}
+        <p className="dek">{summaryOf(entry)}</p>
+        {note ? <p className="mod-note">{t(note)}</p> : null}
       </header>
       {known ? (
-        <section className="mod-section" aria-labelledby="mod-preview">
-          <div className="mod-section-head">
-            <h2 className="st-h" id="mod-preview">
-              {t('catalog.preview')}
-            </h2>
-            <p className="st-small">{t('catalog.previewNote')}</p>
+        <section className="mod-sec" aria-labelledby="mod-preview">
+          <h2 className="margin-label" id="mod-preview">
+            {t('catalog.preview')}
+            <span>{t('catalog.previewNote')}</span>
+          </h2>
+          <div className="mod-samples">
+            {module.samples.map((sample, index) => (
+              <SamplePreview
+                key={sample.label}
+                module={module}
+                sample={sample}
+                id={`sample-${entry.name}-${index}`}
+              />
+            ))}
           </div>
-          {module.samples.map((sample, index) => (
-            <SamplePreview
-              key={sample.label}
-              module={module}
-              sample={sample}
-              id={`sample-${entry.name}-${index}`}
-            />
-          ))}
         </section>
       ) : (
-        <p className="st-body">{tx('catalog.plainUntil', { name: <code>{entry.name}</code> })}</p>
+        <p className="mod-plain">{tx('catalog.plainUntil', { name: <code>{entry.name}</code> })}</p>
       )}
-      <section className="mod-section" aria-labelledby="mod-uses">
-        <h2 className="st-h" id="mod-uses">
+      <section className="mod-sec" aria-labelledby="mod-uses">
+        <h2 className="margin-label" id="mod-uses">
           {t('catalog.usedBy')}
         </h2>
         <Uses uses={entry.uses} presets={presets} />
       </section>
       {known ? (
-        <section className="mod-section" aria-labelledby="mod-yaml">
-          <h2 className="st-h" id="mod-yaml">
+        <section className="mod-sec" aria-labelledby="mod-yaml">
+          <h2 className="margin-label" id="mod-yaml">
             {t('catalog.inYaml')}
           </h2>
-          <pre className="mod-yaml well">
+          <pre className="mod-yaml">
             <code>{module.yaml}</code>
           </pre>
         </section>
@@ -286,15 +285,18 @@ function PresetList({ presets }: { presets: Remote<PresetView[]> }) {
 // The right pane with no module chosen: what modules are, and which presets pick which.
 export function CatalogOverview({ presets }: { presets: Remote<PresetView[]> }) {
   return (
-    <article className="detail mod" aria-labelledby="mod-title">
-      <header className="detail-head">
-        <h1 className="st-display" id="mod-title">
+    <article className="mod-sheet" aria-labelledby="mod-title">
+      <header className="mod-head" data-c="">
+        <p className="kicker">
+          <b>{t('catalog.kicker')}</b> · {t('catalog.kickerNote')}
+        </p>
+        <h1 className="mod-name" id="mod-title">
           {t('catalog.title')}
         </h1>
-        <p className="st-body">{tx('catalog.intro', { folder: <code>.otea/modules/</code> })}</p>
+        <p className="dek">{tx('catalog.intro', { folder: <code>.otea/modules/</code> })}</p>
       </header>
-      <section className="mod-section" aria-labelledby="mod-presets">
-        <h2 className="st-h" id="mod-presets">
+      <section className="mod-sec" aria-labelledby="mod-presets">
+        <h2 className="margin-label" id="mod-presets">
           {t('catalog.loaded')}
         </h2>
         <PresetList presets={presets} />

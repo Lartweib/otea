@@ -62,3 +62,26 @@ describe('module catalog view', () => {
     expect(html).toContain('module: severity');
   });
 });
+
+describe('the catalog in the Editorial grammar', () => {
+  it('opens a module like the detail opens an item: a kicker, its name, a dek', () => {
+    const html = panel({ name: 'severity', origin: 'official', uses: [] });
+    expect(html).toContain('<article class="mod-sheet" aria-labelledby="mod-title">');
+    expect(html).toMatch(/<p class="kicker"><b>field module<\/b> · /);
+    expect(html).toContain('<h1 class="mod-name" id="mod-title">severity</h1>');
+    expect(html).toMatch(/<p class="dek">/);
+  });
+
+  it('names each section in the margin, over a hairline', () => {
+    const html = panel({ name: 'severity', origin: 'official', uses: [] });
+    expect(html).toMatch(
+      /<section class="mod-sec" aria-labelledby="mod-preview"><h2 class="margin-label" id="mod-preview">Preview/,
+    );
+    expect(html).toContain('<h2 class="margin-label" id="mod-uses">Used by</h2>');
+  });
+
+  it('draws a sample row on its lane, its title in the row’s serif', () => {
+    const html = panel({ name: 'severity', origin: 'official', uses: [] });
+    expect(html).toContain('<span class="sample-row"><svg class="cn"');
+  });
+});
