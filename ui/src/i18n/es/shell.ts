@@ -1,14 +1,9 @@
 import type { Catalog } from '../i18n.ts';
 
-// El área shell del catálogo en español.
+// El área shell del catálogo en español: la barra de arriba, sus menús, el riel, Preferencias y la
+// nota de idioma de la primera vez. Las palabras son las del mock.
 export const shell = {
-  'theme.system': 'sistema',
-  'theme.light': 'claro',
-  'theme.dark': 'oscuro',
-  'theme.label': 'Tema: {choice}',
-  'theme.switch': 'Tema: {choice}. Cambiar a {next}.',
-
-  // The topbar's three zones: the project, the mark and the agents connected to this project
+  // La barra: el proyecto, la marca y los agentes conectados a este proyecto
   'shell.projects': 'proyectos',
   'shell.projectsTitle': 'Proyectos',
   'shell.projectSwitch': '{project}, cambiar de proyecto',
@@ -18,40 +13,56 @@ export const shell = {
   'shell.notServed': 'sin servidor · otea serve allí lo abre',
   'shell.pathMissing': 'falta una ruta',
   'shell.settingsOf': 'configuración de {project}',
-  'shell.otherProjects': { one: '{count} proyecto más', other: '{count} proyectos más' },
+  'shell.otherProjects': { one: '{count} proyecto', other: '{count} proyectos' },
   'shell.elsewhere': {
     one: '{count} más te espera en {where}',
     other: '{count} más te esperan en {where}',
   },
   'shell.agentsTitle': 'Agentes',
-  'shell.agents': { one: '{count} agente', other: '{count} agentes' },
-  'shell.noAgents': 'sin agentes',
+  'shell.agentsWord': { one: 'agente', other: 'agentes' },
+  'shell.workingWord': 'trabajando',
   'shell.offline': 'sin conexión',
   'shell.agentsIn': 'agentes en {project}',
   'shell.holding': { one: '{count} con reserva', other: '{count} con reserva' },
   'shell.idleCount': { one: '{count} inactivo', other: '{count} inactivos' },
   'shell.idle': 'inactivo · sin reserva',
+  'shell.quiet': 'callado · su reserva venció',
+  'shell.noAgents': 'Todavía no hay agentes conectados.',
   'shell.cli': 'CLI',
-  'shell.noAgentsTitle': 'No hay agentes conectados.',
-  'shell.howToConnect':
-    'Agrega {mcp} a los servidores MCP de tu agente, o ejecuta cualquier comando de {otea} con {as}.',
-  'shell.connectedRule': 'conectado: tiene un lease, o tuvo actividad en los últimos 5 min',
+  'shell.activity': 'Ver actividad',
+  'shell.activityLine': 'reservas en curso, los últimos eventos',
+  'shell.connect': 'Conectar un agente',
+  'shell.connectLine': 'otea mcp --as <nombre>',
+  'shell.connectedRule': 'conectado: tiene una reserva, o tuvo actividad en los últimos 5 min',
   'shell.openPanel': 'Abrir el panel del proyecto',
 
-  // Preferences: what belongs to this browser
+  // Preferencias: lo que es de este navegador
   'prefs.title': 'Preferencias',
   'prefs.scope': 'este navegador',
   'prefs.theme': 'tema',
   'prefs.system': 'Sistema',
   'prefs.light': 'Claro',
   'prefs.dark': 'Oscuro',
+  'prefs.motion': 'movimiento',
+  'prefs.motionFull': 'Completo',
+  'prefs.motionReduced': 'Reducido',
+  'prefs.motionNoteSystem': 'Sigue al sistema: ahora {state}.',
+  'prefs.nowFull': 'completo',
+  'prefs.nowReduced': 'reducido',
+  'prefs.fullLabel': 'Completo:',
+  'prefs.fullNote': '{label} líneas, carriles y paneles se mueven.',
+  'prefs.reducedLabel': 'Reducido:',
+  'prefs.reducedNote': '{label} todo pasa a fundidos breves en su sitio.',
+  'prefs.handoff': 'traspaso',
+  'prefs.fold': 'Plegar',
+  'prefs.slide': 'Deslizar',
   'prefs.language': 'idioma',
   'prefs.auto': 'Auto · {code}',
   'prefs.english': 'English',
   'prefs.spanish': 'Español',
   'prefs.onlyInterface': 'Solo se traduce la interfaz.',
   'prefs.translated':
-    '{only} El contenido de los ítems y de sus campos, y lo que escriben los agentes, quedan como se escribieron.',
+    '{only} El contenido de los ítems, sus campos y lo que escriben los agentes se quedan como están.',
   'prefs.session': 'sesión',
   'prefs.pair': 'Emparejar un teléfono…',
   'prefs.about': 'acerca de',
@@ -61,26 +72,18 @@ export const shell = {
   'languageNote.label': 'Idioma',
   'languageNote.heading': 'Otea está en español, como pide tu navegador ({tag}).',
   'languageNote.body':
-    'Solo se traduce la interfaz. El contenido de los ítems y de sus campos, y lo que escriben los agentes, quedan tal como se escribieron.',
+    'Solo se traduce la interfaz. El contenido de los ítems, sus campos y lo que escriben los agentes se quedan tal como están.',
   'languageNote.where': 'Puedes cambiarlo cuando quieras en Preferencias, aquí abajo.',
   'languageNote.wherePanel': 'Puedes cambiarlo cuando quieras en Preferencias, al pie del panel.',
   'languageNote.ok': 'Entendido',
 
-  // Barra de colecciones
-  'rail.label': 'colecciones',
-  'rail.aria': 'Colecciones',
+  // Palabras que otras áreas todavía leen
   'rail.all': 'Todo el trabajo',
-  'rail.hide': 'Ocultar colecciones',
-  'rail.show': 'Mostrar colecciones',
   'rail.waiting': 'te esperan',
-  'rail.project': 'proyecto',
-  'rail.presets': { one: '{count} preset', other: '{count} presets' },
   'rail.official': 'oficial',
-
   'rail.projects': 'Todos los proyectos',
-  'rail.settings': 'Configuración del proyecto',
 
-  // El shell de la base: el riel y la barra
+  // El riel
   'nav.toca': 'Te toca',
   'nav.atasco': 'Atasco',
   'nav.views': 'vistas',
@@ -88,6 +91,9 @@ export const shell = {
   'nav.newBoard': 'Nuevo tablero',
   'nav.newItem': 'Nuevo ítem',
   'nav.newItemIn': 'Nuevo ítem en {board}',
+  'nav.project': 'proyecto',
+  'nav.studio': 'Studio',
+  'nav.settings': 'Configuración',
   'nav.prefs': 'Preferencias',
   'nav.hide': 'Ocultar el panel',
   'nav.show': 'Mostrar el panel',
