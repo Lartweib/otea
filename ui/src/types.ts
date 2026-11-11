@@ -176,6 +176,8 @@ export type TypeView = {
   initial: string;
   incomplete?: string;
   states: State[];
+  // Every move of its workflow, in declared order (the main path reads it); absent from an older server.
+  transitions?: { from: string; to: string }[];
   fields: FieldView[];
   layout: Layout;
   // Set only in a preset that declares a hierarchy: the types it takes as children, and whether it
