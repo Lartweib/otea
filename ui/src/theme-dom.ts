@@ -1,4 +1,6 @@
-import { reducedMotion, revealRadius, TIMING } from './motion.ts';
+import { C } from './motion/curves.ts';
+import { reduced } from './motion/reduced.ts';
+import { revealRadius } from './motion.ts';
 import {
   readChoice,
   switchMotion,
@@ -32,53 +34,72 @@ export function saveChoice(choice: ThemeChoice): void {
   applyChoice(choice);
 }
 
-// The switch in flight, and the choice the page should end on: a late update callback of a skipped
-// switch applies the latest choice, never its own.
-let running: ViewTransition | undefined;
-let wanted: ThemeChoice = 'system';
+// A switch in flight: one at a time, as in the mock (a press while the circle grows is ignored).
+let running = false;
 
-// The new theme opens as a circle from the toggle's centre until it covers the window, on the turn
-// change's clock. It runs only when the theme on screen changes; without View Transitions, and
-// under reduced motion, the theme changes at once (switchMotion).
-export function switchChoice(from: ThemeChoice, next: ThemeChoice, origin?: Element): void {
-  wanted = next;
-  running?.skipTransition();
-  const motion = switchMotion(from, next, {
-    prefersDark: window.matchMedia('(prefers-color-scheme: dark)').matches,
-    reduced: reducedMotion(),
-    transitions: typeof document.startViewTransition === 'function',
-  });
+// The theme circle (mock:4074-4095, SPEC §7.3): the new theme grows from the pressed button's
+// centre until it covers the window, 820 ms on settle, its edge feathered over 48 px by a mask
+// driven through @property --r (a hard clip-path circle where masks cannot feather). Without View
+// Transitions the colours crossfade 240 ms; under reduced motion, or when nothing on screen
+// changes, the theme swaps at once. Returns false when a switch is still running and this one was
+// not taken.
+export function switchChoice(from: ThemeChoice, next: ThemeChoice, origin?: Element): boolean {
+  if (running) return false;
   const root = document.documentElement;
-  // Nothing tweens its colours: inside the new snapshot, or on the page itself when it swaps at once.
-  root.setAttribute('data-theme-switching', '');
-  if (motion === 'instant') {
+  const mode = switchMotion(from, next, {
+    prefersDark: window.matchMedia('(prefers-color-scheme: dark)').matches,
+    reduced: reduced() || !origin,
+    transitions: typeof document.startViewTransition === 'function',
+    mask: CSS.supports('mask-image', 'radial-gradient(circle, #000, transparent)'),
+  });
+  if (mode === 'instant') {
+    // Nothing tweens its colours for two frames: the new theme is drawn whole, then they come back.
+    root.classList.add('theme-switching');
     saveChoice(next);
-    // Two frames: the new colours are drawn with transitions off, then they come back.
     requestAnimationFrame(() =>
       requestAnimationFrame(() => {
-        if (!running) root.removeAttribute('data-theme-switching');
+        if (!running) root.classList.remove('theme-switching');
       }),
     );
-    return;
+    return true;
   }
-  const transition = document.startViewTransition(() => saveChoice(wanted));
-  running = transition;
-  transition.ready
+  if (mode === 'fade') {
+    root.classList.add('theme-fade');
+    saveChoice(next);
+    window.setTimeout(() => root.classList.remove('theme-fade'), 300);
+    return true;
+  }
+  const box = origin?.getBoundingClientRect();
+  const x = box ? box.left + box.width / 2 : window.innerWidth / 2;
+  const y = box ? box.top + box.height / 2 : 0;
+  const r = revealRadius(x, y, window.innerWidth, window.innerHeight);
+  running = true;
+  root.classList.add('theme-switching');
+  root.style.setProperty('--vx', `${x}px`);
+  root.style.setProperty('--vy', `${y}px`);
+  if (mode === 'mask') root.classList.add('vt-mask');
+  const vt = document.startViewTransition(() => saveChoice(next));
+  vt.ready
     .then(() => {
-      const box = origin?.getBoundingClientRect();
-      const x = box ? box.left + box.width / 2 : window.innerWidth / 2;
-      const y = box ? box.top + box.height / 2 : 0;
-      const r = revealRadius(x, y, window.innerWidth, window.innerHeight);
-      root.animate(
-        { clipPath: [`circle(0 at ${x}px ${y}px)`, `circle(${r}px at ${x}px ${y}px)`] },
-        { ...TIMING.travel, pseudoElement: '::view-transition-new(root)' },
-      );
+      const timing = {
+        duration: 820,
+        easing: C.settle,
+        pseudoElement: '::view-transition-new(root)',
+      };
+      if (mode === 'mask') root.animate({ '--r': ['0px', `${r + 48}px`] }, timing);
+      else {
+        root.animate(
+          { clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${r}px at ${x}px ${y}px)`] },
+          timing,
+        );
+      }
     })
     .catch(() => {});
-  transition.finished
+  vt.finished
     .catch(() => {})
     .finally(() => {
-      if (running === transition) running = undefined;
-      if (!running) root.removeAttribute('data-theme-switching');
+      running = false;
+      root.classList.remove('theme-switching', 'vt-mask');
     });
+  return true;
 }
