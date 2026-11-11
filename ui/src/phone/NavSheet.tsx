@@ -1,13 +1,13 @@
 import { type ReactNode, useEffect, useRef } from 'react';
 import { useApp } from '../app/context.tsx';
-import { boardCounts, stuckCount, tocaCount } from '../derive/toca.ts';
+import { stuckCount, tocaCount } from '../derive/toca.ts';
 import { t } from '../i18n/i18n.ts';
 import { Count } from '../kit/Count.tsx';
 import { Icon } from '../kit/Icon.tsx';
 import { Buddy } from '../kit/Marks.tsx';
 import { type Route, studioHash, type ViewRoute } from '../selection.ts';
 import { RowIcon } from '../shell/Rail.tsx';
-import { type BoardIcon, boardIcon } from '../shell/rail-model.ts';
+import { type BoardEntry, boardEntries } from '../shell/rail-model.ts';
 import { shellUi } from '../shell/shell-ui.ts';
 import { BottomSheet } from './BottomSheet.tsx';
 import { navSheet, useNavSheet } from './nav.ts';
@@ -35,7 +35,7 @@ export type NavBodyProps = {
   route: Route;
   toca: number;
   atasco: number;
-  boards: { name: string; icon: BoardIcon; open: number }[];
+  boards: BoardEntry[];
   onGo: (to: ViewRoute) => void;
   onNewBoard: () => void;
   onPrefs: () => void;
@@ -99,9 +99,18 @@ export function NavBody({ route, toca, atasco, boards, onGo, onNewBoard, onPrefs
             key={b.name}
             i={i++}
             on={on === `board:${b.name}`}
-            icon={<RowIcon icon={b.icon} />}
+            icon={
+              <>
+                <RowIcon icon={b.icon} />
+                {b.letter ? <i className="ltr">{b.letter}</i> : null}
+              </>
+            }
             label={b.name}
-            pair={<Count value={b.open} hold />}
+            pair={
+              <>
+                <Count value={b.yours} tone="you" hold /> / <Count value={b.open} hold />
+              </>
+            }
             onPress={() => onGo({ view: 'board', board: b.name })}
           />
         ))}
@@ -165,11 +174,7 @@ export function NavSheet() {
         route={app.route}
         toca={tocaCount(app.all, { now: app.now })}
         atasco={stuckCount(app.all, { now: app.now })}
-        boards={app.collections.map((c) => ({
-          name: c.name,
-          icon: boardIcon(c.icon),
-          open: boardCounts(app.all, c.name).open,
-        }))}
+        boards={boardEntries(app.collections, app.all)}
         onGo={(to) => {
           navSheet.close();
           app.go(to);
