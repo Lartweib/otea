@@ -31,6 +31,10 @@ export function toast(o: ToastOptions): void {
   for (const fn of listeners) fn();
 }
 
+// The last toast sent so far. A host that mounts later (back from Customize, which has none)
+// starts past it, so it shows only what is sent from then on.
+export const seenAtMount = (): number => latest?.seq ?? 0;
+
 const subscribe = (fn: () => void) => {
   listeners.add(fn);
   return () => listeners.delete(fn);
@@ -49,7 +53,7 @@ export function ToastHost() {
   const [mounted, setMounted] = useState(false);
   const el = useRef<HTMLDivElement>(null);
   const choreo = useRef<Choreo | null>(null);
-  const seen = useRef(0);
+  const seen = useRef(seenAtMount());
   const dwell = useRef({ left: DWELL, t0: 0, timer: 0 });
   const replaced = useRef(false);
   const pendingNode = useRef(false);
