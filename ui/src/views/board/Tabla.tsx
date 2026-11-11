@@ -7,6 +7,7 @@ import {
   useState,
 } from 'react';
 import {
+  edgeKeyWidth,
   filterable,
   type GridColumn,
   nextSort,
@@ -206,6 +207,19 @@ export function Tabla(p: TablaProps) {
                   width={layout.widths[c.key] ?? 0}
                   onDown={(e) => startResize(c, e)}
                   onReset={() => resetWidth(c)}
+                  onKey={(key, shift) => {
+                    const w0 = layout.widths[c.key] ?? 0;
+                    const next = edgeKeyWidth(
+                      key,
+                      shift,
+                      w0,
+                      widthLimits(c, w0, layout.title),
+                      'start',
+                    );
+                    if (next === undefined) return false;
+                    p.onWidths({ ...p.widths, [c.key]: next }, false);
+                    return true;
+                  }}
                 />
               ) : null}
               <button
@@ -251,6 +265,8 @@ function Edge(p: {
   width: number;
   onDown: (e: PointerEvent<HTMLSpanElement>) => void;
   onReset: () => void;
+  // The separator's own keys: the arrows 16 px (64 with Shift), Home and End.
+  onKey: (key: string, shift: boolean) => boolean;
 }) {
   return (
     // biome-ignore lint/a11y/useSemanticElements: a column's edge, a separator as the divider is
@@ -264,6 +280,9 @@ function Edge(p: {
       style={{ left: 'calc(var(--gap) - 12px)' }}
       onPointerDown={p.onDown}
       onDoubleClick={p.onReset}
+      onKeyDown={(e) => {
+        if (p.onKey(e.key, e.shiftKey)) e.preventDefault();
+      }}
     />
   );
 }
