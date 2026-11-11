@@ -21,7 +21,7 @@ export function CopyCommand({ command, small = false }: { command: string; small
       <code>{command}</code>
       <button
         type="button"
-        className="pj-copy tip"
+        className="pj-copy"
         data-tip={copied ? t('settings.copied') : t('settings.copyCommand')}
         aria-label={t('settings.copyCommand')}
         onClick={copy}
