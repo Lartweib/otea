@@ -96,10 +96,10 @@ describe('the Pasos columns', () => {
     setLanguage('es');
     const cols = pasosColumns(errores, []);
     expect(cols.map((c) => c.label)).toEqual([
-      'reportado',
-      'aceptado',
-      'en arreglo',
-      'a verificar',
+      'Reportado',
+      'Aceptado',
+      'En arreglo',
+      'A verificar',
       'Hecho',
     ]);
   });

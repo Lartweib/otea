@@ -60,13 +60,14 @@ describe('the names over a route', () => {
     expect(namedSteps([30, 110, 190], ['to do', 'doing', 'done'])).toEqual([true, true, true]);
   });
 
+  // Measured as the spaced capitals they are drawn in: EN ARREGLO gives way to A VERIFICAR.
   it('keeps the ends, yours and then the rest, dropping a name that would touch a kept one', () => {
     const xs = [30, 100, 170, 240, 310];
     const labels = ['reportado', 'aceptado', 'en arreglo', 'a verificar', 'arreglado'];
     expect(namedSteps(xs, labels, [false, false, false, true, false])).toEqual([
       true,
       false,
-      true,
+      false,
       true,
       false,
     ]);

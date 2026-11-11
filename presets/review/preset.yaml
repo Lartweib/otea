@@ -37,3 +37,26 @@ types:
 view:
   kind: list
   columns: [id, title, target, state, who, age]
+
+# The preset's words in English and Spanish, for the web UI; agents and the CLI keep the keys.
+labels:
+  en:
+    name: Review
+    types: { piece: Piece }
+    states:
+      queued: Queued
+      in_progress: In progress
+      review: In review
+      approved: Approved
+      dropped: Dropped
+    fields: { title: Title, brief: Brief, target: Target }
+  es:
+    name: Revisiones
+    types: { piece: Pieza }
+    states:
+      queued: En cola
+      in_progress: En curso
+      review: En revisión
+      approved: Aprobado
+      dropped: Descartado
+    fields: { title: Título, brief: Encargo, target: Objetivo }

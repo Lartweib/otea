@@ -129,16 +129,45 @@ describe('preset labels', () => {
     });
   });
 
-  it.each(['tasks', 'change', 'bug-triage'])('the official %s preset speaks Spanish', (name) => {
-    const text = readFileSync(
-      new URL(`../../presets/${name}/preset.yaml`, import.meta.url),
-      'utf8',
-    );
-    const preset = parsePreset(text);
+  it('gives a field its values in words, and the preset its name', () => {
+    const raw = mixed();
+    raw.labels.es.name = 'Errores';
+    raw.labels.es.values = { severity: { high: 'alta' } };
+    const preset = parsePreset(stringify(raw));
+    const [bug, impr] = preset.types;
 
-    for (const type of preset.types) {
-      expect(type.labels?.es?.label, type.name).toBeTruthy();
-      expect(Object.keys(type.labels?.es?.states ?? {})).toHaveLength(type.workflow.states.length);
-    }
+    expect(preset.names).toEqual({ es: 'Errores' });
+    expect(bug?.labels?.es?.values).toEqual({ severity: { high: 'alta' } });
+    expect(impr?.labels?.es?.values).toBeUndefined();
   });
+
+  it('rejects values of an unknown field', () => {
+    expect(problemsOf((raw) => (raw.labels.es.values = { owner: { me: 'yo' } }))).toEqual([
+      'labels.es.values.owner: unknown field "owner"',
+    ]);
+  });
+
+  const official = ['tasks', 'change', 'bug-triage', 'review', 'architecture'];
+  it.each(official.flatMap((name) => ['es', 'en'].map((lang) => [name, lang])))(
+    'the official %s preset speaks %s, with a name and capitalised steps',
+    (name, lang) => {
+      const text = readFileSync(
+        new URL(`../../presets/${name}/preset.yaml`, import.meta.url),
+        'utf8',
+      );
+      const preset = parsePreset(text);
+
+      expect(preset.names?.[lang]).toBeTruthy();
+      for (const type of preset.types) {
+        const words = type.labels?.[lang];
+        expect(words?.label, type.name).toBeTruthy();
+        expect(Object.keys(words?.states ?? {})).toHaveLength(type.workflow.states.length);
+        for (const word of Object.values(words?.states ?? {}))
+          expect(word[0], word).toBe(word[0]?.toLocaleUpperCase());
+        for (const [field, spec] of Object.entries(type.fields))
+          for (const value of spec.values ?? [])
+            expect(words?.values?.[field]?.[value], `${field}.${value}`).toBeTruthy();
+      }
+    },
+  );
 });

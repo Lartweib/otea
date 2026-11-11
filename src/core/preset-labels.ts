@@ -9,6 +9,8 @@ export type TypeLabels = {
   label?: string;
   states: Record<string, string>;
   fields: Record<string, string>;
+  // The words for a field's values, by field then value; a value left out reads as written.
+  values?: Record<string, Record<string, string>>;
 };
 
 // By language code (es, pt): a type's labels in each language its preset speaks.
@@ -22,6 +24,9 @@ export const labelsSchema = z.record(
     types: words.optional(),
     states: words.optional(),
     fields: words.optional(),
+    // The preset's own name in the language, for Studio.
+    name: z.string().trim().min(1, 'a label cannot be empty').optional(),
+    values: z.record(z.string(), words).optional(),
   }),
 );
 
@@ -50,8 +55,11 @@ export function labelProblems(
   types: readonly Labelled[],
   implicit: boolean,
 ): string[] {
-  return Object.entries(raw ?? {}).flatMap(([language, given]) =>
-    (['types', 'states', 'fields'] as const).flatMap((kind) => {
+  return Object.entries(raw ?? {}).flatMap(([language, given]) => [
+    ...Object.keys(given.values ?? {})
+      .filter((name) => !namesOf(types, 'fields').includes(name))
+      .map((name) => `labels.${language}.values.${name}: unknown field "${name}"`),
+    ...(['types', 'states', 'fields'] as const).flatMap((kind) => {
       const at = `labels.${language}.${kind}`;
       const known = namesOf(types, kind);
       const labelled = Object.keys(given[kind] ?? {});
@@ -66,7 +74,15 @@ export function labelProblems(
         `${at}: missing ${missing.join(', ')}; a language labels every type, state and field`,
       ];
     }),
+  ]);
+}
+
+// The preset's name in each language that gives one, or undefined.
+export function presetNames(raw: RawLabels | undefined): Record<string, string> | undefined {
+  const names = Object.entries(raw ?? {}).flatMap(([language, given]) =>
+    given.name ? [[language, given.name] as const] : [],
   );
+  return names.length === 0 ? undefined : Object.fromEntries(names);
 }
 
 function pick(words: Record<string, string> | undefined, names: readonly string[]) {
@@ -86,6 +102,10 @@ export function typeLabels(raw: RawLabels | undefined, type: Labelled): Labels |
         ),
         fields: pick(given.fields, Object.keys(type.fields)),
       };
+      const values = Object.fromEntries(
+        Object.entries(given.values ?? {}).filter(([field]) => field in type.fields),
+      );
+      if (Object.keys(values).length > 0) labels.values = values;
       const label = given.types?.[type.name];
       return [language, label === undefined ? labels : { label, ...labels }];
     }),

@@ -55,28 +55,73 @@ view:
   kind: grid
   columns: [id, title, category, severity, area, state, who, age]
 
-# The preset's words in Spanish, for the web UI; agents and the CLI keep the keys.
+# The preset's words in English and Spanish, for the web UI; agents and the CLI keep the keys.
 labels:
+  en:
+    name: Bug triage
+    types: { bug: Bug }
+    states:
+      incomplete: Incomplete
+      reported: Reported
+      needs_info: Needs info
+      accepted: Accepted
+      fixing: Fixing
+      verify: To verify
+      fixed: Fixed
+      rejected: Rejected
+      duplicate: Duplicate
+      wont_fix: Won't fix
+    fields:
+      title: Title
+      description: Description
+      steps: Steps
+      expected: Expected
+      actual: Actual
+      environment: Environment
+      severity: Severity
+      category: Category
+      area: Area
+    values:
+      severity: { low: low, medium: medium, high: high, critical: critical }
+      category:
+        crash: crash
+        visual: visual
+        gameplay: gameplay
+        physics: physics
+        audio: audio
+        performance: performance
+        ui: UI
   es:
+    name: Errores
     types: { bug: Error }
     states:
-      incomplete: incompleto
-      reported: reportado
-      needs_info: falta información
-      accepted: aceptado
-      fixing: en arreglo
-      verify: a verificar
-      fixed: arreglado
-      rejected: rechazado
-      duplicate: duplicado
-      wont_fix: no se arreglará
+      incomplete: Incompleto
+      reported: Reportado
+      needs_info: Falta información
+      accepted: Aceptado
+      fixing: En arreglo
+      verify: A verificar
+      fixed: Arreglado
+      rejected: Rechazado
+      duplicate: Duplicado
+      wont_fix: No se arreglará
     fields:
-      title: título
-      description: descripción
-      steps: pasos
-      expected: lo esperado
-      actual: lo que pasa
-      environment: entorno
-      severity: gravedad
-      category: categoría
-      area: área
+      title: Título
+      description: Descripción
+      steps: Pasos
+      expected: Lo esperado
+      actual: Lo que pasa
+      environment: Entorno
+      severity: Severidad
+      category: Categoría
+      area: Área
+    values:
+      severity: { low: baja, medium: media, high: alta, critical: crítica }
+      category:
+        crash: cierre
+        visual: visual
+        gameplay: jugabilidad
+        physics: física
+        audio: audio
+        performance: rendimiento
+        ui: interfaz

@@ -93,7 +93,7 @@ describe('collections', () => {
         name: 'task',
         icon: 'checkbox',
         label: 'Task',
-        labels: { es: expect.objectContaining({ label: 'Tarea' }) },
+        labels: expect.objectContaining({ es: expect.objectContaining({ label: 'Tarea' }) }),
         initial: 'todo',
         incomplete: 'incomplete',
         states: expect.arrayContaining([

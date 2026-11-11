@@ -38,7 +38,7 @@ describe('the inspector of a field', () => {
     expect(html).toContain('Needed</h3><code>required: complete</code>');
     expect(html).toContain('the bug stays <b>incomplete</b> until someone sets it');
     expect(html).toContain('In Spanish</h3><code>labels.es.fields.severity</code>');
-    expect(html).toContain('value="gravedad"');
+    expect(html).toContain('value="Severidad"');
     expect(html).toContain('3 saved items use it');
   });
 

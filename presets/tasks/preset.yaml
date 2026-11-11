@@ -31,15 +31,31 @@ types:
     label: Task
     icon: checkbox
 
-# The preset's words in Spanish, for the web UI; agents and the CLI keep the keys.
+# The preset's words in English and Spanish, for the web UI; agents and the CLI keep the keys.
 labels:
+  en:
+    name: Tasks
+    types: { task: Task }
+    states:
+      incomplete: Incomplete
+      todo: To do
+      in_progress: In progress
+      review: In review
+      done: Done
+      discarded: Discarded
+    fields: { title: Title, description: Description, priority: Priority }
+    values:
+      priority: { low: Low, medium: Medium, high: High }
   es:
+    name: Tareas
     types: { task: Tarea }
     states:
-      incomplete: incompleta
-      todo: por hacer
-      in_progress: en curso
-      review: en revisión
-      done: hecha
-      discarded: descartada
-    fields: { title: título, description: descripción, priority: prioridad }
+      incomplete: Incompleta
+      todo: Por hacer
+      in_progress: En curso
+      review: En revisión
+      done: Hecho
+      discarded: Descartado
+    fields: { title: Título, description: Descripción, priority: Prioridad }
+    values:
+      priority: { low: baja, medium: media, high: alta }

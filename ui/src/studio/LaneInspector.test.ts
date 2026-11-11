@@ -55,7 +55,7 @@ describe('the inspector of a move', () => {
     );
     expect(html).toContain('Why agent is off');
     expect(html).toContain('Waits for</h3><code>states.fixed.requires</code>');
-    expect(html).toContain('value="arreglado"');
+    expect(html).toContain('value="Arreglado"');
   });
 });
 

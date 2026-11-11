@@ -42,6 +42,7 @@ describe('preset views', () => {
           },
         ],
         collections: [],
+        names: { en: 'Tasks', es: 'Tareas' },
       },
       {
         name: 'reviews',
@@ -80,6 +81,12 @@ describe('preset views', () => {
       ['repo_task', { push: ['implementing', 'revising'], merge: ['approved'] }],
     ]);
     expect(typeViews(mixedPreset.types)[0]).not.toHaveProperty('gates');
+  });
+
+  it('gives each preset its own name in the languages it speaks', () => {
+    const bug = listPresetViews(ctx).find(({ name }) => name === 'bug-triage');
+
+    expect(bug?.names).toEqual({ en: 'Bug triage', es: 'Errores' });
   });
 
   it('names the collections that use each preset', () => {
