@@ -104,6 +104,29 @@ describe('a board', () => {
     expect(html).toMatch(/class="row trow[^"]*" data-k="ERR-1"/);
   });
 
+  it('nests children under their parent, its progress coloured by whose turn each is', () => {
+    const parent = item({
+      id: 'ERR-9',
+      title: 'El puente de cuerda',
+      state: 'accepted',
+      turn: 'agent',
+      children: { total: 2, open: 2, done: 0, discarded: 0 },
+    });
+    const kid = (id: string, o: Partial<Item>) =>
+      item({ id, relations: [{ kind: 'parent', id: 'ERR-9' }], ...o });
+    const html = render('list', [
+      parent,
+      kid('ERR-10', { state: 'verify' }),
+      kid('ERR-11', { state: 'fixing', turn: 'agent' }),
+    ]);
+    expect(html).toContain('<span class="prog"><i class="you"></i><i class="ag"></i></span>');
+    expect(html).toContain('2 de 2 abiertos');
+    expect(html).toMatch(
+      /data-k="ERR-9".*class="row child" data-k="ERR-10".*class="row child" data-k="ERR-11"/,
+    );
+    expect(html).toContain('aria-expanded="true"');
+  });
+
   it('shows the empty board with Nuevo ítem en Errores and Conectar un agente', () => {
     const html = render('list', []);
     expect(html).toContain('Todavía no hay ítems en Errores.');
