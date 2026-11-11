@@ -4,6 +4,7 @@ import type { TypeView } from '../../types.ts';
 import {
   dividerBounds,
   dividerKey,
+  intakeTarget,
   moreOf,
   penPath,
   shortTitle,
@@ -80,5 +81,19 @@ describe('the toast after a move, and its Undo', () => {
     const bug = officialType('bug-triage');
     // verify → fixed: nothing leads back from a closed state
     expect(undoable(bug, 'verify', 'fixed')).toBe(false);
+  });
+});
+
+describe('the sheet after Crear (mock:3990)', () => {
+  it('shows the form until the created item is the one the place asks for, so the sheet swaps', () => {
+    expect(intakeTarget(true, null, null)).toBe('intake');
+    expect(intakeTarget(false, null, 'ERR-9')).toBe('intake');
+    expect(intakeTarget(false, 'ERR-1', 'ERR-9')).toBe('intake');
+    expect(intakeTarget(false, 'ERR-9', 'ERR-9')).toBe('ERR-9');
+  });
+
+  it('follows the place otherwise', () => {
+    expect(intakeTarget(false, 'ERR-1', null)).toBe('ERR-1');
+    expect(intakeTarget(false, null, null)).toBeNull();
   });
 });
