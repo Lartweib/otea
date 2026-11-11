@@ -5,6 +5,7 @@ import type { IntakeParent } from '../components/NewItemForm.tsx';
 import { type Connection, usePhone, useRoute } from '../hooks.ts';
 import { toast } from '../kit/pop/toast.tsx';
 import { rowOf } from '../lanes/dom.ts';
+import { landed } from '../motion/bus.ts';
 import type { Agent } from '../presence.ts';
 import { linkRequestOf, unlinkRequestOf } from '../relations.ts';
 import type { Remote } from '../remote.ts';
@@ -133,6 +134,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const before = ref.current.data.all.find((each) => each.id === id);
         await Q.run(() => moveItem(id, to, reason));
         if (message === undefined) return;
+        // Line, then surface, then content: the toast comes once the item has landed.
+        await landed();
         const back = before?.state;
         toast({
           msg: message,

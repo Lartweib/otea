@@ -34,3 +34,22 @@ export const motionBus = {
     return () => idleListeners.delete(fn);
   },
 };
+
+// A move has landed: the handoff carrying it is half-way (its pulse blooms, its counts roll). With
+// no handoff in flight or starting within `wait` ms (the row is not on screen), it resolves then.
+export function landed(wait = 700): Promise<void> {
+  return new Promise((resolve) => {
+    const offHalf = motionBus.onHalf(() => finish());
+    const timer = setTimeout(() => {
+      if (!motionBus.inFlight()) finish();
+    }, wait);
+    // A handoff that never reaches half (cut short) still ends.
+    const offIdle = motionBus.onIdle(() => finish());
+    function finish() {
+      offHalf();
+      offIdle();
+      clearTimeout(timer);
+      resolve();
+    }
+  });
+}

@@ -334,6 +334,22 @@
   font: 400 12px / 1 var(--mono);
   color: var(--ink-3);
 }
+/* The close-as moves read as buttons, quieter than Devolver…: a dashed edge that turns solid. */
+.actions .closeas ~ .btn.text {
+  height: 30px;
+  padding: 0 10px;
+  border: 1px dashed var(--rule-2);
+  border-radius: 7px;
+  transition:
+    border-color 160ms var(--o-drift),
+    color 160ms var(--o-drift),
+    background-color 160ms var(--o-drift);
+}
+.actions .closeas ~ .btn.text:hover:not(:disabled) {
+  border-style: solid;
+  border-color: var(--ink-3);
+  background-color: var(--hov);
+}
 .movesays {
   font: 400 12px / 1.4 var(--mono);
   color: var(--ink-3);
