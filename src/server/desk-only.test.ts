@@ -1,11 +1,10 @@
-import { existsSync, mkdtempSync, readFileSync, realpathSync, renameSync, rmSync } from 'node:fs';
+import { mkdtempSync, realpathSync, renameSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { addCollection } from '../app/collections.ts';
 import { pairDevice } from '../app/devices.ts';
 import { initProject, type Project } from '../app/project.ts';
-import { duplicatePreset } from '../app/studio.ts';
 import { tempGitRepo } from '../cli/testing.ts';
 import { listCollections } from '../store/queries.ts';
 import type { ProjectSettings } from './projects.ts';
@@ -16,20 +15,12 @@ const DESK = '192.168.1.24';
 const LAN_HOST = `${DESK}:4400`;
 const PHONE = '192.168.1.50';
 
-// The routes that change how the project is set up: its paths, presets and blueprint.
+// The routes that change how the project is set up: its paths and its boards.
 const DESK_ONLY: Array<{ path: string; body: (repo: string) => unknown }> = [
   { path: '/api/project/paths', body: (repo) => ({ path: repo }) },
   { path: '/api/project/paths/relink', body: (repo) => ({ from: repo, to: repo }) },
   { path: '/api/project/paths/forget', body: (repo) => ({ path: repo }) },
-  { path: '/api/studio/presets/mine', body: () => ({ yaml: 'preset: mine\n' }) },
-  { path: '/api/studio/presets/tasks/duplicate', body: () => ({ as: 'my-tasks' }) },
-  {
-    path: '/api/studio/blueprint',
-    body: () => ({ boards: [{ name: 'art', preset: 'tasks' }], connections: [], playbook: null }),
-  },
-  { path: '/api/studio/blueprint/apply', body: () => ({ name: 'product' }) },
-  { path: '/api/studio/blueprint/update', body: () => ({}) },
-  { path: '/api/studio/blueprint/boards/work/copy-preset', body: () => ({ as: 'game-tasks' }) },
+  { path: '/api/boards', body: () => ({ name: 'Criaturas', lang: 'es' }) },
 ];
 
 describe('desk-only routes, with LAN access on', () => {
@@ -71,11 +62,19 @@ describe('desk-only routes, with LAN access on', () => {
     return (await response.json()) as ProjectSettings;
   };
 
+  const boards = async () => {
+    const response = await server.app.request(
+      '/api/boards',
+      { headers: { host: LOCAL_HOST } },
+      { incoming: { socket: { remoteAddress: '127.0.0.1' } } },
+    );
+    return ((await response.json()) as { boards: Array<{ name: string }> }).boards;
+  };
+
   beforeEach(() => {
     home = mkdtempSync(join(tmpdir(), 'otea-desk-home-'));
     const env = { OTEA_HOME: home };
     project = initProject(repo(), {}, env);
-    duplicatePreset(project, 'tasks', 'mine');
     phoneCookie = `otea_device_4400=${pairDevice(project.db, 'Pixel · Chrome').token}`;
     server = createServer(project, { token: TOKEN, lan: { addresses: [DESK] }, env });
   });
@@ -96,13 +95,10 @@ describe('desk-only routes, with LAN access on', () => {
 
   it('changes nothing for a paired device', async () => {
     const before = await settings();
-    const mine = join(project.dataDir, 'presets', 'mine', 'preset.yaml');
-    const preset = readFileSync(mine, 'utf8');
     for (const { path, body } of DESK_ONLY) await post(path, body(repo()), 'phone');
 
     expect(await settings()).toEqual(before);
-    expect(readFileSync(mine, 'utf8')).toBe(preset);
-    expect(existsSync(join(project.dataDir, 'presets', 'my-tasks'))).toBe(false);
+    expect((await boards()).map(({ name }) => name)).toEqual(['Pedidos']);
     expect(listCollections(project.db).map(({ name }) => name)).toEqual(['Pedidos']);
   });
 
@@ -122,30 +118,9 @@ describe('desk-only routes, with LAN access on', () => {
     expect((await post('/api/project/paths/forget', { path: moved }, 'desk')).status).toBe(200);
   });
 
-  it('lets the desk duplicate and save a preset, and apply, edit and update a blueprint', async () => {
-    const copy = await post('/api/studio/presets/tasks/duplicate', { as: 'my-tasks' }, 'desk');
-    expect(copy.status).toBe(201);
-    const source = await server.app.request(
-      '/api/studio/presets/my-tasks',
-      { headers: { host: LOCAL_HOST } },
-      { incoming: { socket: { remoteAddress: '127.0.0.1' } } },
-    );
-    const { yaml } = (await source.json()) as { yaml: string };
-    expect((await post('/api/studio/presets/my-tasks', { yaml }, 'desk')).status).toBe(200);
-
-    expect((await post('/api/studio/blueprint/apply', { name: 'product' }, 'desk')).status).toBe(
-      201,
-    );
-    const edit = {
-      boards: [
-        { name: 'work', preset: 'tasks' },
-        { name: 'bugs', preset: 'bug-triage' },
-      ],
-      connections: [],
-      playbook: null,
-    };
-    expect((await post('/api/studio/blueprint', edit, 'desk')).status).toBe(200);
-    expect((await post('/api/studio/blueprint/update', {}, 'desk')).status).toBe(200);
+  it('lets the desk create a board', async () => {
+    expect((await post('/api/boards', { name: 'Criaturas', lang: 'es' }, 'desk')).status).toBe(201);
+    expect((await boards()).map(({ name }) => name).sort()).toEqual(['Criaturas', 'Pedidos']);
   });
 
   it('still lets a paired device work on items', async () => {
