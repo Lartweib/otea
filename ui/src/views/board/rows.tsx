@@ -79,15 +79,24 @@ export function FoldButton({
   );
 }
 
-// Children's progress: one bar each, and how many are open.
-function Progress({ item }: { item: Item }) {
+// Children's progress: one bar each, in the colour of whose turn it is (yours, an agent's, closed),
+// and how many are open. kids: the children listed under it; the summary counts the rest.
+function Progress({ item, kids }: { item: Item; kids: readonly Item[] }) {
   const c = item.children;
   if (!c || c.total === 0) return null;
-  const bars: ReactNode[] = [];
-  for (let i = 0; i < c.total; i++) {
-    const cls = i < c.done + c.discarded ? 'done' : 'ag';
-    bars.push(<i key={i} className={cls} />);
-  }
+  const turns: string[] = kids.map((k) =>
+    k.turn === 'human' ? 'you' : k.turn === 'none' ? 'done' : 'ag',
+  );
+  const closedLeft = Math.max(0, c.done + c.discarded - turns.filter((x) => x === 'done').length);
+  const openLeft = Math.max(0, c.total - turns.length - closedLeft);
+  for (let i = 0; i < openLeft; i++) turns.push('ag');
+  for (let i = 0; i < closedLeft; i++) turns.push('done');
+  const order = { you: 0, ag: 1, done: 2 } as Record<string, number>;
+  turns.sort((x, y) => (order[x] ?? 1) - (order[y] ?? 1));
+  const bars: ReactNode[] = turns.map((cls, i) => (
+    // biome-ignore lint/suspicious/noArrayIndexKey: bars only differ by colour, in a fixed order
+    <i key={i} className={cls} />
+  ));
   return (
     <>
       <span className="sep">·</span>
@@ -116,7 +125,20 @@ function groupBlock(e: Extract<Entry, { kind: 'group' }>): LaneBlock {
 
 // ---- Lista ----
 
+// The children listed under each parent, from the entries.
+function kidsUnder(entries: readonly Entry[]): Map<string, Item[]> {
+  const out = new Map<string, Item[]>();
+  let parent: string | null = null;
+  for (const e of entries) {
+    if (e.kind !== 'row') continue;
+    if (!e.child) parent = e.item.id;
+    else if (parent) out.set(parent, [...(out.get(parent) ?? []), e.item]);
+  }
+  return out;
+}
+
 export function listaBlocks(entries: readonly Entry[], ctx: RowCtx): LaneBlock[] {
+  const kids = kidsUnder(entries);
   return entries.map((e): LaneBlock => {
     if (e.kind === 'group') return groupBlock(e);
     const it = e.item;
@@ -146,7 +168,7 @@ export function listaBlocks(entries: readonly Entry[], ctx: RowCtx): LaneBlock[]
               </span>
               <span className="sep">·</span>
               <span className={it.turn === 'human' ? 'stp you' : 'stp'}>{word}</span>
-              {e.kids > 0 ? <Progress item={it} /> : null}
+              {e.kids > 0 ? <Progress item={it} kids={kids.get(it.id) ?? []} /> : null}
               {stuck && it.expiredLease ? (
                 <>
                   <span className="sep">·</span>
