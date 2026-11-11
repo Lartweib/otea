@@ -103,6 +103,7 @@ function useSelPill(navs: React.RefObject<HTMLDivElement | null>, key: RailKey) 
     const shown = sel.style.opacity === '1';
     sel.style.opacity = '1';
     sliding.current?.cancel();
+    sliding.current = null;
     if (!animate || !shown || reduced()) {
       sel.style.transform = `translateY(${target()}px)`;
       return;
@@ -112,10 +113,12 @@ function useSelPill(navs: React.RefObject<HTMLDivElement | null>, key: RailKey) 
       if (k >= 1) sliding.current = null;
     });
   };
+  // A new row in view: the pill slides there. Any other commit: it keeps its place under the row,
+  // unless it is on its way (its slide follows the row by itself).
   useLayoutEffect(() => {
     const moved = lastKey.current !== undefined && lastKey.current !== key;
     lastKey.current = key;
-    place(moved);
+    if (moved || !sliding.current) place(moved);
   });
   useEffect(() => {
     const box = navs.current;
