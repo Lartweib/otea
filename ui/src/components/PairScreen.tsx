@@ -171,7 +171,7 @@ export function PairScreen() {
   const desk = window.location.host;
   const project = phase.step === 'paired' ? phase.paired.project : peek?.project;
   return (
-    <main className="pair">
+    <main className="pair-screen">
       <PairRoute phase={phase.step} desk={desk} />
       {phase.step === 'paired' ? (
         <section className="pair-body" aria-labelledby="pair-title">
