@@ -44,14 +44,7 @@ export function NewField(p: NewFieldProps) {
   const ref = useRef<HTMLDivElement>(null);
   useDismiss(ref, p.onCancel);
   return (
-    <div
-      ref={ref}
-      className="cz-add"
-      role="dialog"
-      aria-label={t('customize.newFieldTitle')}
-      tabIndex={-1}
-      style={p.style}
-    >
+    <div ref={ref} className="cz-add" tabIndex={-1} style={p.style}>
       <span className="cz-ml">{t('customize.newFieldTitle')}</span>
       <input
         className="cz-in"

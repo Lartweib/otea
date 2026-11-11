@@ -15,7 +15,7 @@ type UnrollProps = {
   edge?: 'top' | 'bottom';
   // The trigger whose centre the line leads from; the line grows from the middle without one.
   from?: HTMLElement | null | undefined;
-  role?: 'dialog' | 'menu';
+  role?: 'dialog' | 'menu' | 'status';
   className?: string;
   style?: CSSProperties;
   children?: ReactNode;

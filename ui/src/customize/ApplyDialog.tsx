@@ -1,12 +1,12 @@
-import { useRef } from 'react';
 import { t } from '../i18n/i18n.ts';
-import { useDismiss } from './dismiss.ts';
+import { Button, Dialog } from '../kit/index.ts';
 import { ChangeGlyph, Chevron } from './glyphs.tsx';
 import type { ChangeKind } from './types.ts';
 
 export type Change = { kind: ChangeKind; text: string };
 
 export type ApplyDialogProps = {
+  open: boolean;
   // The collection being shaped, e.g. "bugs".
   target: string;
   changes: readonly Change[];
@@ -22,57 +22,59 @@ export type ApplyDialogProps = {
   onKeepEditing: () => void;
 };
 
+// What Apply does, before it does it: the changes, who they reach, and the file it writes. A kit
+// Dialog (mock:3471-3495): the scrim, the line, the surface, then its items; Escape, the scrim and
+// Keep editing close it, the same gesture mirrored.
 export function ApplyDialog(p: ApplyDialogProps) {
-  const ref = useRef<HTMLDivElement>(null);
-  useDismiss(ref, p.onKeepEditing);
   const title = p.save ? t('customize.saveTitle') : t('customize.applyTitle', { target: p.target });
   return (
-    <div className="cz-scrim">
-      <div ref={ref} className="cz-dlg" role="dialog" aria-label={title} tabIndex={-1}>
-        <h2>{title}</h2>
-        <ul className="cz-chg">
-          {p.changes.map((c) => (
-            <li key={c.text} data-kind={c.kind}>
-              <span className="cz-chgi">
-                <ChangeGlyph kind={c.kind} />
-              </span>
-              <span>{c.text}</span>
-            </li>
-          ))}
-        </ul>
-        {p.save ? (
-          <p className="cz-mp">{t(p.first ? 'customize.saveCopy' : 'customize.saveOwn')}</p>
-        ) : (
-          <>
-            <p className="cz-who">
-              <b>{t('customize.everyItem', { target: p.target })}</b> ·{' '}
-              {t('customize.itemCount', { count: p.itemCount })}
-            </p>
-            <p className="cz-mp">{t('customize.reach')}</p>
-            {p.first ? (
-              <p className="cz-mp">{t('customize.firstCopy', { target: p.target })}</p>
-            ) : null}
-          </>
-        )}
-        <button
-          type="button"
-          className="cz-seef"
-          aria-expanded={p.showFile}
-          onClick={p.onToggleFile}
-        >
-          <Chevron />
-          {t('customize.seeFile')}
-        </button>
-        {p.showFile ? <pre className="cz-yaml">{p.yaml}</pre> : null}
-        <div className="cz-dlga">
-          <button type="button" className="btn primary" onClick={p.onApply}>
-            {p.save ? t('cz.saveTemplate') : t('customize.apply', { target: p.target })}
-          </button>
-          <button type="button" className="btn quiet" onClick={p.onKeepEditing}>
-            {t('customize.keepEditing')}
-          </button>
+    <Dialog open={p.open} label={title} onClose={p.onKeepEditing} className="cz-applyd">
+      <h4 data-i="">{title}</h4>
+      <ul className="cz-chg" data-i="">
+        {p.changes.map((c) => (
+          <li key={c.text} data-kind={c.kind}>
+            <span className="cz-chgi">
+              <ChangeGlyph kind={c.kind} />
+            </span>
+            <span>{c.text}</span>
+          </li>
+        ))}
+      </ul>
+      {p.save ? (
+        <p className="cz-mp" data-i="">
+          {t(p.first ? 'customize.saveCopy' : 'customize.saveOwn')}
+        </p>
+      ) : (
+        <div data-i="">
+          <p className="cz-who">
+            <b>{t('customize.everyItem', { target: p.target })}</b> ·{' '}
+            {t('customize.itemCount', { count: p.itemCount })}
+          </p>
+          <p className="cz-mp">{t('customize.reach')}</p>
+          {p.first ? (
+            <p className="cz-mp">{t('customize.firstCopy', { target: p.target })}</p>
+          ) : null}
         </div>
+      )}
+      <button
+        type="button"
+        className="cz-seef"
+        aria-expanded={p.showFile}
+        onClick={p.onToggleFile}
+        data-i=""
+      >
+        <Chevron />
+        {t('customize.seeFile')}
+      </button>
+      {p.showFile ? <pre className="cz-yaml">{p.yaml}</pre> : null}
+      <div className="dbtns" data-i="">
+        <Button variant="quiet" onClick={p.onKeepEditing}>
+          {t('customize.keepEditing')}
+        </Button>
+        <Button variant="primary" onClick={p.onApply}>
+          {p.save ? t('cz.saveTemplate') : t('customize.apply', { target: p.target })}
+        </Button>
       </div>
-    </div>
+    </Dialog>
   );
 }

@@ -18,7 +18,7 @@ import { ShowEmpty } from '../components/show-empty.ts';
 import { EvidenceFiles } from '../evidence-files.ts';
 import { type Connection, useMediaQuery, useRemote } from '../hooks.ts';
 import { t } from '../i18n/i18n.ts';
-import { Button, Icon } from '../kit/index.ts';
+import { Button, Icon, Seg } from '../kit/index.ts';
 import { nestSections } from '../nesting.ts';
 import { groupItems } from '../sections.ts';
 import { type CustomizeTarget, customizeHash, hashFor, studioHash } from '../selection.ts';
@@ -38,9 +38,16 @@ import { type Part, type Placed, samePart, slotBoxes } from '../studio/canvas.ts
 import { readDraft } from '../studio/draft.ts';
 import { storeDraft, storedDraft } from '../studio/PresetEditor.tsx';
 import { draftPreview } from '../studio/preview.ts';
+import { Unroll } from '../studio/Unroll.tsx';
 import type { Evidence, Item, ItemView } from '../types.ts';
 import { ApplyDialog } from './ApplyDialog.tsx';
-import { announce } from './applied.ts';
+import {
+  announce,
+  appliedToast,
+  claimApplied,
+  dismiss as dismissApplied,
+  useApplied,
+} from './applied.ts';
 import { BoxMenu } from './BoxMenu.tsx';
 import { FieldMenu } from './FieldMenu.tsx';
 import { Grip, Redo, Undo } from './glyphs.tsx';
@@ -87,6 +94,7 @@ import {
   zoneWord,
 } from './model.ts';
 import { NewField } from './NewField.tsx';
+import { Note, type NoteShown } from './Note.tsx';
 import { addOption, removeOption } from './options.ts';
 import { applyOf, boardsText, leaveOf, type Scope, saves, scopeOf, titleOf } from './scope.ts';
 import { optionsOf, pick, rowsOf, wordOf } from './showing.ts';
@@ -139,6 +147,8 @@ export function CustomizePage({
   onApplied: () => void;
 }) {
   const wide = useMediaQuery('(min-width: 900px)');
+  // This page shows the applied note itself, in the builder's note column.
+  useEffect(() => claimApplied(), []);
   const blueprint = useRemote(fetchStudioPresets, version, connection);
   if (!wide)
     return (
@@ -275,11 +285,16 @@ function Builder({
   const [chosen, setChosen] = useState<string | undefined>(itemId);
   const [drag, setDrag] = useState<DragState>();
   const [settled, setSettled] = useState<string>();
-  const [toast, setToast] = useState<{ text: string; undo?: () => void }>();
+  const [note, setNote] = useState<NoteShown>();
+  const noteSeq = useRef(0);
   const [applying, setApplying] = useState(false);
   const [showFile, setShowFile] = useState(false);
   const [deletingId, setDeletingId] = useState<string>();
   const [adding, setAdding] = useState<{ left: number; top: number }>();
+  // Where the new field's panel stands, kept while it rolls back up.
+  const addAtRef = useRef({ left: 0, top: 0 });
+  if (adding) addAtRef.current = adding;
+  const addAt = addAtRef.current;
   const [newKind, setNewKind] = useState<FieldKind>('short');
   const [busy, setBusy] = useState(false);
   const [newName, setNewName] = useState('');
@@ -301,7 +316,7 @@ function Builder({
   const histRef = useRef(hist);
   histRef.current = hist;
   const lastGood = useRef<Preset | undefined>(basePreset);
-  const toastTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const noteTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   const yaml =
     hist && basePreset ? yamlOf(source.yaml, basePreset, type, hist.base, hist.doc) : source.yaml;
@@ -352,15 +367,35 @@ function Builder({
   // A note stays a few seconds; one that offers to take back something big (a discard) stays longer.
   // The next change replaces it.
   const say = useCallback((text: string, undoIt?: () => void, hold = false) => {
-    clearTimeout(toastTimer.current);
-    setToast(undoIt ? { text, undo: undoIt } : { text });
-    toastTimer.current = setTimeout(() => setToast(undefined), hold ? TOAST_LONG : TOAST_SHORT);
+    clearTimeout(noteTimer.current);
+    noteSeq.current += 1;
+    setNote({
+      text,
+      seq: noteSeq.current,
+      ...(undoIt
+        ? {
+            undo: () => {
+              clearTimeout(noteTimer.current);
+              setNote(undefined);
+              undoIt();
+            },
+          }
+        : {}),
+    });
+    noteTimer.current = setTimeout(() => setNote(undefined), hold ? TOAST_LONG : TOAST_SHORT);
   }, []);
-  useEffect(() => () => clearTimeout(toastTimer.current), []);
+  useEffect(() => () => clearTimeout(noteTimer.current), []);
+  // A view applied from here lands on this page again: its note shows in this column.
+  const applied = useApplied();
+  useEffect(() => {
+    if (!applied) return;
+    say(applied.text, appliedToast(applied, onApplied).undo, true);
+    dismissApplied();
+  }, [applied, say, onApplied]);
   const apply = (next: (h: History) => History) => {
     setHint(false);
-    clearTimeout(toastTimer.current);
-    setToast(undefined);
+    clearTimeout(noteTimer.current);
+    setNote(undefined);
     setHist((h) => (h ? next(h) : h));
   };
   const doc = hist?.doc;
@@ -702,6 +737,9 @@ function Builder({
   const selectedThing = selectedId ? doc.things[selectedId] : undefined;
   const changes = changesOf(hist.base, doc);
 
+  const boxOpen =
+    boxMenu !== undefined && boxRects[boxMenu] !== undefined && doc.sections[boxMenu] !== undefined;
+  const fieldOpen = !!(selected && selectedThing && selectedId);
   const marks = (placed: readonly Placed[]): ReactNode => {
     placedRef.current = placed;
     if (previewing) return null;
@@ -911,11 +949,14 @@ function Builder({
             style={{ top: boxing.line.top, left: boxing.line.left, width: boxing.line.width }}
           />
         ) : null}
-        {boxMenu !== undefined && boxRects[boxMenu] && doc.sections[boxMenu] ? (
-          <MenuSlot stage={stage} top={boxRects[boxMenu].rect.top}>
-            {boxPanel(boxMenu)}
-          </MenuSlot>
-        ) : null}
+        <MenuSlot
+          stage={stage}
+          open={boxOpen}
+          label={t('customize.box')}
+          top={boxOpen && boxMenu !== undefined ? (boxRects[boxMenu]?.rect.top ?? 0) : undefined}
+        >
+          {boxOpen && boxMenu !== undefined ? boxPanel(boxMenu) : null}
+        </MenuSlot>
         {drag?.line ? (
           <div
             className="cz-line"
@@ -923,14 +964,18 @@ function Builder({
             style={{ top: drag.line.top, left: drag.line.left, width: drag.line.width }}
           />
         ) : null}
-        {selected && selectedThing && selectedId ? (
-          <MenuSlot
-            stage={stage}
-            top={placed.find(({ part }) => samePart(part, selected))?.rect.top ?? 0}
-          >
-            {menu(selectedId, selectedThing)}
-          </MenuSlot>
-        ) : null}
+        <MenuSlot
+          stage={stage}
+          open={fieldOpen}
+          label={selectedThing?.name ?? ''}
+          top={
+            selected && fieldOpen
+              ? (placed.find(({ part }) => samePart(part, selected))?.rect.top ?? 0)
+              : undefined
+          }
+        >
+          {fieldOpen && selectedThing && selectedId ? menu(selectedId, selectedThing) : null}
+        </MenuSlot>
       </>
     );
   };
@@ -1308,18 +1353,16 @@ function Builder({
           <b>{heading}</b>
           {rest.length > 0 ? ` · ${rest.join(' · ')}` : ''}
         </p>
-        <div className="cz-seg">
-          {(['detail', 'form', 'row'] as const).map((each) => (
-            <button
-              key={each}
-              type="button"
-              aria-pressed={view === each}
-              onClick={() => setView(each)}
-            >
-              {t(`cz.${each}`)}
-            </button>
-          ))}
-        </div>
+        <Seg
+          className="cz-seg"
+          label={t('cz.viewLabel')}
+          value={view}
+          options={(['detail', 'form', 'row'] as const).map((each) => ({
+            value: each,
+            label: t(`cz.${each}`),
+          }))}
+          onChange={setView}
+        />
         <span className="cz-grow" />
         {dirty && changes.length > 0 ? (
           <span className="cz-status" title={t('cz.status', { count: changes.length })}>
@@ -1427,18 +1470,16 @@ function Builder({
                   <Icon name="chevron" />
                 </label>
               ) : null}
-              <div className="cz-seg cz-dev">
-                {(['computer', 'phone'] as const).map((each) => (
-                  <button
-                    key={each}
-                    type="button"
-                    aria-pressed={device === each}
-                    onClick={() => setDevice(each)}
-                  >
-                    {t(`cz.${each}`)}
-                  </button>
-                ))}
-              </div>
+              <Seg
+                className="cz-dev"
+                label={t('cz.deviceLabel')}
+                value={device}
+                options={(['computer', 'phone'] as const).map((each) => ({
+                  value: each,
+                  label: t(`cz.${each}`),
+                }))}
+                onChange={setDevice}
+              />
               <button
                 type="button"
                 className="cz-pv"
@@ -1456,23 +1497,7 @@ function Builder({
               {hint && !previewing && !selected && boxMenu === undefined && !drag ? (
                 <p className="cz-hint">{t('cz.hint')}</p>
               ) : null}
-              {toast ? (
-                <div className="cz-toast" role="status">
-                  {toast.text}
-                  {toast.undo ? <span aria-hidden="true">·</span> : null}
-                  {toast.undo ? (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        toast.undo?.();
-                        setToast(undefined);
-                      }}
-                    >
-                      {t('cz.undo')}
-                    </button>
-                  ) : null}
-                </div>
-              ) : null}
+              <Note note={note} />
             </div>
           </div>
         </div>
@@ -1492,7 +1517,12 @@ function Builder({
           {drag.why ? <small>{drag.why}</small> : null}
         </div>
       ) : null}
-      {adding ? (
+      <Unroll
+        open={adding !== undefined}
+        label={t('customize.newFieldTitle')}
+        className="cz-newu"
+        style={{ position: 'fixed', left: addAt.left, top: addAt.top, width: 320, zIndex: 60 }}
+      >
         <NewField
           name={newName}
           onName={setNewName}
@@ -1501,39 +1531,46 @@ function Builder({
           place={placeWord(landing(newKind))}
           onSubmit={submitNew}
           onCancel={closeAdd}
-          style={{ position: 'fixed', left: adding.left, top: adding.top, width: 320, zIndex: 60 }}
         />
-      ) : null}
-      {applying ? (
-        <ApplyDialog
-          target={boardsText(scope)}
-          save={saves(scope)}
-          changes={changes}
-          itemCount={count}
-          first={source.origin === 'official'}
-          yaml={yaml}
-          showFile={showFile}
-          onToggleFile={() => setShowFile((on) => !on)}
-          onApply={submit}
-          onKeepEditing={keepEditing}
-        />
-      ) : null}
+      </Unroll>
+      <ApplyDialog
+        open={applying}
+        target={boardsText(scope)}
+        save={saves(scope)}
+        changes={changes}
+        itemCount={count}
+        first={source.origin === 'official'}
+        yaml={yaml}
+        showFile={showFile}
+        onToggleFile={() => setShowFile((on) => !on)}
+        onApply={submit}
+        onKeepEditing={keepEditing}
+      />
     </main>
   );
 }
 
 // The field's menu sits in the canvas's reserved right column, level with its field, and stays
 // inside the part of the canvas that is on screen.
+// It unrolls in the pop's grammar and rolls back up mirrored, holding its place while it closes.
 function MenuSlot({
   stage,
-  top,
+  open,
+  label,
+  top: wanted,
   children,
 }: {
   stage: RefObject<HTMLDivElement | null>;
-  top: number;
+  open: boolean;
+  label: string;
+  // Where its field or box is; undefined while it is closed.
+  top: number | undefined;
   children: ReactNode;
 }) {
   const ref = useRef<HTMLDivElement>(null);
+  const kept = useRef(wanted ?? 0);
+  if (wanted !== undefined) kept.current = wanted;
+  const top = kept.current;
   const [box, setBox] = useState({ left: 0, top, max: 0 });
   const place = useCallback(() => {
     const node = ref.current;
@@ -1569,9 +1606,12 @@ function MenuSlot({
     <div
       ref={ref}
       className="cz-menuslot"
+      data-open={open ? '' : undefined}
       style={{ left: box.left, top: box.top, maxHeight: box.max || undefined }}
     >
-      {children}
+      <Unroll open={open} label={label} className="cz-menuu">
+        {children}
+      </Unroll>
     </div>
   );
 }

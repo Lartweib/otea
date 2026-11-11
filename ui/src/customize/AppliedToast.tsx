@@ -1,56 +1,15 @@
 import { useEffect } from 'react';
-import { t } from '../i18n/i18n.ts';
-import { announce, dismiss, useApplied } from './applied.ts';
+import { toast } from '../kit/index.ts';
+import { appliedToast, dismiss, isClaimed, useApplied } from './applied.ts';
 
-const APPLIED_MS = 12_000;
-
+// The applied note on the page it lands on: the app's toast (mock:3423-3469), with Deshacer when
+// the change can be taken back. A Customize page that claims it shows it in its own note instead.
 export function AppliedToast({ onUndone }: { onUndone: () => void }) {
   const applied = useApplied();
-  // It stays a while, or until the next thing the person does.
   useEffect(() => {
-    if (!applied) return;
-    const timer = setTimeout(dismiss, APPLIED_MS);
-    const next = (event: Event) => {
-      if (
-        !(
-          event.target instanceof Node &&
-          document.querySelector('.cz-toast-app')?.contains(event.target)
-        )
-      )
-        dismiss();
-    };
-    // Not for the click that brought the note: the page it lands on is already drawn.
-    const arm = setTimeout(() => {
-      document.addEventListener('pointerdown', next);
-      document.addEventListener('keydown', next);
-    }, 400);
-    return () => {
-      clearTimeout(timer);
-      clearTimeout(arm);
-      document.removeEventListener('pointerdown', next);
-      document.removeEventListener('keydown', next);
-    };
-  }, [applied]);
-  if (!applied) return null;
-  return (
-    <div className="cz-toast cz-toast-app" role="status">
-      {applied.text}
-      {applied.undo ? (
-        <button
-          type="button"
-          onClick={() => {
-            applied.undo?.().then(
-              () => {
-                onUndone();
-                announce(t('cz.undone'));
-              },
-              () => announce(t('cz.failed')),
-            );
-          }}
-        >
-          {t('cz.undo')}
-        </button>
-      ) : null}
-    </div>
-  );
+    if (!applied || isClaimed()) return;
+    toast(appliedToast(applied, onUndone));
+    dismiss();
+  }, [applied, onUndone]);
+  return null;
 }
