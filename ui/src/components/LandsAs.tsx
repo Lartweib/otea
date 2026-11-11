@@ -1,75 +1,65 @@
-import type { CSSProperties, Ref } from 'react';
+import type { Ref } from 'react';
 import { t } from '../i18n/i18n.ts';
-import { type Landing, landingNote } from '../intake.ts';
-import { NodeMark } from '../kit/index.ts';
-import { LANE, laneX } from '../lanes.ts';
-import { GRID, ROW } from '../row-grid.ts';
-import type { TypeView } from '../types.ts';
-import { TypeSlot } from './ItemList.tsx';
+import { type Landing, landingLook } from '../intake.ts';
+import { AgentMark, SeverityBars } from '../kit/Marks.tsx';
+import { LaneHead } from '../lanes/LaneHead.tsx';
+import { type LaneBlock, LaneList } from '../lanes/LaneList.tsx';
 
 type LandsAsProps = {
-  type: TypeView;
-  landing: Landing;
+  // The id it will most likely get, the title as typed, the state word it starts in.
   id: string;
   title: string;
-  // Shown with its type's label, as the list shows types when its collection has several.
-  typeLabel: string | undefined;
-  strip: Ref<HTMLDivElement>;
+  state: string;
+  landing: Pick<Landing, 'turn' | 'kind'>;
+  // The first one-line field chosen (a category), and the severity level 1-4 when it has one.
+  field?: string | undefined;
+  level?: number | undefined;
+  list?: Ref<HTMLDivElement>;
 };
 
-// The row the new item will be, drawn as you type, on the lane it lands on: the list's own row, its
-// node on the lane of the state it starts in (a dashed draft until it can be created).
-export function LandsAs({ type, landing, id, title, typeLabel, strip }: LandsAsProps) {
-  const height = ROW.top.height;
-  const node = height / 2;
-  const x = laneX(landing.turn);
-  return (
-    <div className="lands-as">
-      <div className="lands-as-head">
-        <span className="t-label">{t('intake.landsAs')}</span>
-        <span className="t-cap" aria-live="polite">
-          {landingNote(landing, type)}
-        </span>
-      </div>
-      <div className="lands-strip" ref={strip} data-ready={landing.ready || undefined}>
-        <div
-          className="row"
-          data-kind={landing.kind}
-          style={{ '--ind': '0px' } as CSSProperties}
-          aria-hidden="true"
-        >
-          <svg
-            className="row-node"
-            width={GRID.rail}
-            height={height}
-            viewBox={`0 0 ${GRID.rail} ${height}`}
-            aria-hidden="true"
-          >
-            <path className="ln" d={`M${LANE.agent} 0 V${height}`} />
-            <path className="lny" d={`M${LANE.you} 0 V${height}`} />
-            <g className="lands-node" style={{ '--x': `${x}px` } as CSSProperties}>
-              <NodeMark kind={landing.kind} cx={0} cy={node} r={6} />
-            </g>
-          </svg>
-          <span className="row-fold" />
-          <span className="row-type">
-            <TypeSlot
-              small={false}
-              {...(type.icon !== undefined ? { icon: type.icon } : {})}
-              {...(typeLabel !== undefined ? { label: typeLabel } : {})}
-            />
-          </span>
-          <span className="row-t1">
-            <span className="ttl" data-empty={title === '' || undefined}>
-              {title === '' ? t('intake.untitled') : title}
-            </span>
-          </span>
-          <span className="row-t2">
-            <span className="row-id">{id}</span>
-            <span className="row-state">{landing.state}</span>
-          </span>
+// "llega como" (mock:3909, 3912-3928): the row the new item will be, drawn as you type, on the lane
+// of the turn it starts on, as the board lists it: title, id · state · a field, severity, who, now.
+export function previewBlock({ id, title, state, landing, field, level }: LandsAsProps): LaneBlock {
+  const { lane, look } = landingLook(landing);
+  return {
+    kind: 'row',
+    key: 'pv',
+    lane,
+    look,
+    sec: 'pv',
+    inert: true,
+    content: (
+      <>
+        <div className="main-c">
+          <div className="t" data-title="">
+            <span className={title ? 'tt' : 'tt untitled'}>{title || t('intake.untitled')}</span>
+          </div>
+          <div className="m">
+            <span className="id">{id}</span>
+            <span className="sep">·</span>
+            <span className={lane === 'you' ? 'stp you' : 'stp'}>{state}</span>
+            {field ? (
+              <>
+                <span className="sep">·</span>
+                <span>{field}</span>
+              </>
+            ) : null}
+          </div>
         </div>
-      </div>
+        <span className="sev">{level ? <SeverityBars level={level - 1} /> : null}</span>
+        <span className="who">{lane === 'you' ? <AgentMark you decorative /> : null}</span>
+        <span className="age">{t('when.now')}</span>
+      </>
+    ),
+  };
+}
+
+export function LandsAs(props: LandsAsProps) {
+  return (
+    <div className="landsas" data-c="" ref={props.list}>
+      <div className="ll">{t('intake.landsAs')}</div>
+      <LaneHead />
+      <LaneList list="preview" blocks={[previewBlock(props)]} drawInOnMount={{ delay: 240 }} />
     </div>
   );
 }

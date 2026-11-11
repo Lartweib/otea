@@ -1,101 +1,66 @@
-import { reducedMotion, TIMING } from '../motion.ts';
+import { breathe } from '../lanes/breathe.ts';
+import { nodeOff, rowOf } from '../lanes/dom.ts';
+import { type Lane, X } from '../lanes/geometry.ts';
+import { laneColor } from '../lanes/looks.ts';
+import { anim } from '../motion/anim.ts';
+import { reduced } from '../motion/reduced.ts';
+import { Tt } from '../motion/time.ts';
 
-// Create lifts the row the form drew as you typed and sets it down on its lane in the list (the turn
-// change's family: lift, carry, set down, on its 680ms clock). The new row is there all along under
-// the copy, unseen, and takes over as the copy lands. Without the row in view (another collection is
-// listed, a phone, reduced motion) there is no flight.
+// Created (SPEC §10.5, mock:3978-3991): the new row flies from where the form drew it (the preview
+// row under "llega como") to its place in the list, Tt.travel on settle, with a breath on its lane.
+// The row is caught the moment the list commits it (a MutationObserver runs before the paint), so
+// its first frame is already at the preview: it is never seen at its place first.
 
 const WAIT_MS = 1500;
-const LIFT = 1.025;
-const HOP = 18;
-const HAND_OVER = 0.82;
 
-function rowOf(id: string): HTMLElement | null {
-  const key = CSS.escape(id);
-  return document.querySelector<HTMLElement>(
-    `.item-list li[data-flip="${key}"] > .row, tr[data-flip="${key}"]`,
-  );
-}
-
-// The new row, once the live list has it.
-function rowAppears(id: string, signal: AbortSignal): Promise<HTMLElement | null> {
+// The row of the new item, as soon as the current view's list has it; null when it does not come
+// (another board is listed: the item opens there instead).
+export function rowArrives(id: string, timeout = WAIT_MS): Promise<HTMLElement | null> {
+  const now = rowOf(id);
+  if (now) return Promise.resolve(now);
+  const main = document.querySelector('.main') ?? document.body;
   return new Promise((resolve) => {
-    const until = performance.now() + WAIT_MS;
-    const look = () => {
-      if (signal.aborted) return resolve(null);
-      const row = rowOf(id);
-      if (row) return resolve(row);
-      if (performance.now() > until) return resolve(null);
-      requestAnimationFrame(look);
+    const done = (row: HTMLElement | null) => {
+      observer.disconnect();
+      window.clearTimeout(timer);
+      resolve(row);
     };
-    look();
+    const observer = new MutationObserver(() => {
+      const row = rowOf(id);
+      if (row) done(row);
+    });
+    observer.observe(main, { childList: true, subtree: true });
+    const timer = window.setTimeout(() => done(null), timeout);
   });
 }
 
-function inView(box: DOMRect): boolean {
-  return box.bottom > 0 && box.top < window.innerHeight && box.width > 0;
-}
-
-function copyOf(strip: HTMLElement, box: DOMRect): HTMLElement {
-  const copy = strip.cloneNode(true) as HTMLElement;
-  for (const element of copy.querySelectorAll('[id]')) element.removeAttribute('id');
-  copy.setAttribute('aria-hidden', 'true');
-  copy.classList.add('lands-flight');
-  Object.assign(copy.style, {
-    left: `${box.left}px`,
-    top: `${box.top}px`,
-    width: `${box.width}px`,
-    height: `${box.height}px`,
-  });
-  document.body.append(copy);
-  return copy;
-}
-
-export async function carryToList(strip: HTMLElement, id: string, signal: AbortSignal) {
-  if (reducedMotion()) return;
-  const row = await rowAppears(id, signal);
-  const from = strip.getBoundingClientRect();
-  if (!row || signal.aborted) return;
+// Flies the row from the preview's rect; resolves with the row once the flight has started.
+export async function landNewRow(id: string, from: DOMRect | null): Promise<HTMLElement | null> {
+  const row = await rowArrives(id);
+  if (!row || !from || reduced()) return row;
   const to = row.getBoundingClientRect();
-  if (!inView(to) || !inView(from)) return;
-  const copy = copyOf(strip, from);
-  strip.dataset.vacant = '';
-  const dx = to.left - from.left;
-  const dy = to.top - from.top + (to.height - from.height) / 2;
-  // The copy takes the row's width as it travels (its text is never stretched).
-  const w0 = `${from.width}px`;
-  const w1 = `${to.width}px`;
-  const mid = `${from.width + (to.width - from.width) * 0.45}px`;
-  const { duration, easing } = TIMING.travel;
-  const flight = copy.animate(
-    [
-      { transform: 'translate(0, 0) scale(1)', width: w0, opacity: 1 },
-      { offset: 0.12, transform: `translate(0, -2px) scale(${LIFT})`, width: w0, opacity: 1 },
-      {
-        offset: 0.45,
-        transform: `translate(${dx * 0.45}px, ${dy * 0.22 - HOP}px) scale(${LIFT})`,
-        width: mid,
-        opacity: 1,
-      },
-      {
-        offset: HAND_OVER,
-        transform: `translate(${dx}px, ${dy}px) scale(1)`,
-        width: w1,
-        opacity: 1,
-      },
-      { transform: `translate(${dx}px, ${dy}px) scale(1)`, width: w1, opacity: 0 },
-    ],
-    { duration, easing, fill: 'forwards' },
+  if (to.bottom < 0 || to.top > window.innerHeight) return row;
+  const dx = from.left - to.left;
+  const dy = from.top - to.top;
+  row.style.zIndex = '3';
+  anim(
+    row,
+    [{ transform: `translate(${dx}px, ${dy}px)` }, { transform: 'none' }],
+    Tt.travel(dy),
+    'settle',
+    0,
+    'none',
+  ).finished.then(
+    () => {
+      row.style.zIndex = '';
+    },
+    () => {
+      row.style.zIndex = '';
+    },
   );
-  const entry = row.animate([{ opacity: 0 }, { opacity: 0, offset: HAND_OVER }, { opacity: 1 }], {
-    duration,
-  });
-  const stop = () => {
-    flight.cancel();
-    entry.cancel();
-  };
-  signal.addEventListener('abort', stop, { once: true });
-  await flight.finished.catch(() => undefined);
-  signal.removeEventListener('abort', stop);
-  copy.remove();
+  const list = row.closest<HTMLElement>('.lanes');
+  const svg = list?.querySelector<SVGSVGElement>(':scope > svg.ink') ?? null;
+  const lane = (row.dataset.h as Lane | undefined) ?? 'ag';
+  if (list) breathe(svg, X[lane], row.offsetTop + nodeOff(row), laneColor(lane), list.offsetHeight);
+  return row;
 }

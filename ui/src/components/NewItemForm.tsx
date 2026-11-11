@@ -1,26 +1,33 @@
 import { useEffect, useRef, useState } from 'react';
-import { createItem, fetchCollections } from '../api.ts';
-import { type Connection, useRemote } from '../hooks.ts';
+import { createItem } from '../api.ts';
+import { useApp } from '../app/context.tsx';
+import type { Connection } from '../hooks.ts';
 import { t, tx } from '../i18n/i18n.ts';
 import {
   canSubmit,
   type FormValues,
   initialValues,
   landingOf,
+  ledeOf,
   nextId,
   payloadOf,
   startMessage,
   startOf,
 } from '../intake.ts';
 import { type FileDraft, firstRole, rolesFor, tooLarge, withFiles } from '../intake-files.ts';
-import { intakeSlots, intakeTypes, showsTypes, slotData, typeOf } from '../item-types.ts';
-import { Button, Icon } from '../kit/index.ts';
-import { fieldWord, typeWord } from '../preset-words.ts';
+import { intakeSlots, intakeTypes, slotData, typeOf } from '../item-types.ts';
+import { Button, ChipButton, GhostButton, Icon, Swap } from '../kit/index.ts';
+import { fieldWord, stateWord, typeWord } from '../preset-words.ts';
 import type { CollectionView, EvidenceRole, TypeView } from '../types.ts';
 import { FieldControl } from './FieldControl.tsx';
 import { IntakeFiles } from './IntakeFiles.tsx';
-import { carryToList } from './intake-flight.ts';
+import { landNewRow } from './intake-flight.ts';
 import { LandsAs } from './LandsAs.tsx';
+
+// Nuevo ítem (SPEC §10.5, mock:672-688, 3899-3993): the board as chips, the type when there are
+// several, the title and what is going on, each intake field (a few values as chips), files; under
+// "llega como" the row it will be, drawn on its lane as you type. Crear flies that row to its place
+// in the list, with a breath on its lane, and the item opens.
 
 // The item the new one is created under, as its child.
 export type IntakeParent = { id: string; title: string; type: string; collection: string };
@@ -32,7 +39,8 @@ type IntakeFormProps = {
   ids: readonly string[];
   parent: IntakeParent | undefined;
   onCancel: () => void;
-  onCreated: (id: string) => void;
+  // from: where the preview row was, so the new row can fly from it.
+  onCreated: (id: string, from: DOMRect | null) => void;
 };
 
 // The type of the parent a "+ child" opened the form for, which limits the types offered.
@@ -53,6 +61,15 @@ const draftKey = () => {
   return `file-${drafted}`;
 };
 
+// The words the mock gives the two fields every type starts with.
+const OWN_WORDS: Record<
+  string,
+  { label: 'intake.titleField' | 'intake.descField'; ph: 'intake.titlePh' | 'intake.descPh' }
+> = {
+  title: { label: 'intake.titleField', ph: 'intake.titlePh' },
+  description: { label: 'intake.descField', ph: 'intake.descPh' },
+};
+
 export function IntakeForm({
   collections,
   first,
@@ -70,12 +87,16 @@ export function IntakeForm({
   const [values, setValues] = useState(() => (type ? initialValues(type) : {}));
   const [files, setFiles] = useState<FileDraft[]>([]);
   const [posting, setPosting] = useState(false);
-  // The id the server gave, kept on the row while it is carried to the list.
   const [created, setCreated] = useState<string>();
   const [error, setError] = useState<string>();
-  const strip = useRef<HTMLDivElement>(null);
-  const flight = useRef<AbortController | undefined>(undefined);
-  useEffect(() => () => flight.current?.abort(), []);
+  const preview = useRef<HTMLDivElement>(null);
+  const alive = useRef(true);
+  useEffect(
+    () => () => {
+      alive.current = false;
+    },
+    [],
+  );
   const start = type ? startOf(type, values) : undefined;
   const landing = type ? landingOf(type, values) : undefined;
   const roles = type ? rolesFor(type) : [];
@@ -85,12 +106,17 @@ export function IntakeForm({
   // Another type keeps the files, in a role it takes.
   const reset = (next: TypeView | undefined) => {
     setType(next);
-    setValues(next ? initialValues(next) : {});
+    setValues((was) => {
+      const fresh = next ? initialValues(next) : {};
+      // What you typed as the title and description stays.
+      for (const k of ['title', 'description']) if (k in fresh && was[k]) fresh[k] = was[k];
+      return fresh;
+    });
     setError(undefined);
-    const offered = next ? rolesFor(next) : [];
+    const roles = next ? rolesFor(next) : [];
     setFiles((current) =>
       current.map((draft) =>
-        offered.includes(draft.role) ? draft : { ...draft, role: firstRole(offered) },
+        roles.includes(draft.role) ? draft : { ...draft, role: firstRole(roles) },
       ),
     );
   };
@@ -115,8 +141,6 @@ export function IntakeForm({
     if (!alone.some(({ name }) => name === type?.name)) reset(alone[0]);
   };
 
-  const chooseType = (name: string) => reset(types.find((candidate) => candidate.name === name));
-
   const change = (name: string, value: string) =>
     setValues((current: FormValues) => ({ ...current, [name]: value }));
 
@@ -124,14 +148,13 @@ export function IntakeForm({
     if (!ready || posting) return;
     setPosting(true);
     setError(undefined);
+    const row = preview.current?.querySelector('.row');
     createItem(collection.name, type.name, payloadOf(values), parent?.id, files).then(
       async (item) => {
         setCreated(item.id);
-        // The row the form drew is carried onto its lane in the list, then the item opens.
-        const abort = new AbortController();
-        flight.current = abort;
-        if (strip.current) await carryToList(strip.current, item.id, abort.signal);
-        if (!abort.signal.aborted) onCreated(item.id);
+        const from = row?.getBoundingClientRect() ?? null;
+        await landNewRow(item.id, from);
+        if (alive.current) onCreated(item.id, from);
       },
       (failure: unknown) => {
         setPosting(false);
@@ -139,6 +162,18 @@ export function IntakeForm({
       },
     );
   };
+
+  const slots = type ? intakeSlots(type) : [];
+  const step = type && landing ? stateWord(type, landing.state) : '';
+  const lede =
+    type && landing ? ledeOf({ board: collection.name, parent: parent?.id, landing, step }) : '';
+  // The row shows the first one-line choice made (a category) and the severity.
+  const sevField = slots.find(({ field }) => field.module === 'severity')?.field;
+  const level = sevField ? (sevField.values ?? []).indexOf(values[sevField.name] ?? '') + 1 : 0;
+  const tagField = slots.find(
+    ({ field }) =>
+      field.module === 'enum' && values[field.name] && values[field.name] !== field.default,
+  )?.field;
 
   return (
     <form
@@ -155,110 +190,113 @@ export function IntakeForm({
         addFiles(pasted);
       }}
     >
-      {type && landing ? (
-        <LandsAs
-          type={type}
-          landing={landing}
-          id={created ?? nextId(collection.prefix, ids)}
-          title={(values.title ?? '').trim()}
-          typeLabel={showsTypes(collection) ? typeWord(type, type.name) : undefined}
-          strip={strip}
-        />
-      ) : null}
+      <Swap k={lede} as="p" className="lede" dy={3}>
+        <span data-c="">{lede}</span>
+      </Swap>
       {parent ? (
-        <div className="intake-parent well">
-          <span className="t-label">{t('intake.childOf')}</span>
-          <span className="rel-id">{parent.id}</span>
-          <span className="intake-parent-title">{parent.title}</span>
-          <Button
-            variant="quiet"
-            size="sm"
-            icon
-            aria-label={t('intake.unparent', { id: parent.id })}
-            disabled={posting}
-            onClick={unparent}
-          >
-            <Icon name="close" />
-          </Button>
+        <div className="ffield" data-c="">
+          <span className="flab">{t('intake.childOf')}</span>
+          <div className="chips">
+            <ChipButton
+              on
+              disabled={posting}
+              onClick={unparent}
+              aria-label={t('intake.unparent', { id: parent.id })}
+            >
+              <span className="id">{parent.id}</span> {parent.title}
+              <Icon name="x" />
+            </ChipButton>
+          </div>
         </div>
       ) : null}
-      {collections.length > 1 ? (
-        <div className="intake-field">
-          <label className="t-label" htmlFor="intake-collection">
-            {t('intake.collection')}
-          </label>
-          <select
-            id="intake-collection"
-            className="input"
-            value={collection.name}
-            disabled={posting}
-            onChange={(event) => choose(event.target.value)}
-          >
-            {collections.map(({ name }) => (
-              <option key={name} value={name}>
-                {name}
-              </option>
-            ))}
-          </select>
-        </div>
-      ) : null}
+      <div className="ffield" data-c="">
+        <span className="flab" id="intake-board">
+          {t('intake.board')}
+        </span>
+        <fieldset className="chips" aria-labelledby="intake-board">
+          {collections.map(({ name }) => (
+            <ChipButton
+              key={name}
+              on={name === collection.name}
+              disabled={posting}
+              onClick={() => choose(name)}
+            >
+              {name}
+            </ChipButton>
+          ))}
+        </fieldset>
+      </div>
       {parent && types.length === 0 ? (
-        <p className="t-small">{t('intake.noTypes', { id: parent.id })}</p>
+        <p className="fnote">{t('intake.noTypes', { id: parent.id })}</p>
       ) : null}
       {types.length > 1 ? (
-        <div className="intake-field">
-          <label className="t-label" htmlFor="intake-type">
+        <div className="ffield" data-c="">
+          <span className="flab" id="intake-type">
             {t('intake.type')}
-          </label>
-          <select
-            id="intake-type"
-            className="input"
-            value={type?.name}
-            disabled={posting}
-            onChange={(event) => chooseType(event.target.value)}
-          >
+          </span>
+          <fieldset className="chips" aria-labelledby="intake-type">
             {types.map((each) => (
-              <option key={each.name} value={each.name}>
+              <ChipButton
+                key={each.name}
+                on={each.name === type?.name}
+                disabled={posting}
+                onClick={() => reset(each)}
+              >
                 {typeWord(each, each.name)}
-              </option>
+              </ChipButton>
             ))}
-          </select>
+          </fieldset>
         </div>
       ) : null}
-      {(type ? intakeSlots(type) : []).map(({ field, at }) => (
-        <FieldControl
-          key={`${collection.name}:${type?.name}:${field.name}`}
-          slot={slotData(at)}
-          id={`intake-${field.name}`}
-          field={field}
-          value={values[field.name] ?? ''}
-          disabled={posting}
-          onChange={(value) => change(field.name, value)}
-          label={fieldWord(type, field.name)}
-        />
-      ))}
+      {slots.map(({ field, at }) => {
+        const own = OWN_WORDS[field.name];
+        return (
+          <div key={`${collection.name}:${type?.name}:${field.name}`} data-c="" className="fwrap">
+            <FieldControl
+              slot={slotData(at)}
+              id={`intake-${field.name}`}
+              field={field}
+              value={values[field.name] ?? ''}
+              disabled={posting}
+              onChange={(value) => change(field.name, value)}
+              label={own ? t(own.label) : fieldWord(type, field.name)}
+              placeholder={own ? t(own.ph) : undefined}
+            />
+          </div>
+        );
+      })}
       {type ? (
-        <IntakeFiles
-          drafts={files}
-          roles={roles}
-          disabled={posting}
-          onAdd={addFiles}
-          onRole={setRole}
-          onRemove={removeFile}
+        <div data-c="" className="fwrap">
+          <IntakeFiles
+            drafts={files}
+            roles={roles}
+            disabled={posting}
+            onAdd={addFiles}
+            onRole={setRole}
+            onRemove={removeFile}
+          />
+        </div>
+      ) : null}
+      {type && landing ? (
+        <LandsAs
+          list={preview}
+          id={created ?? nextId(collection.prefix, ids)}
+          title={(values.title ?? '').trim()}
+          state={step}
+          landing={landing}
+          field={tagField ? values[tagField.name] : undefined}
+          level={level > 0 ? level : undefined}
         />
       ) : null}
-      {start ? (
-        <p className="intake-start t-small" data-incomplete={start.incomplete}>
-          {startMessage(start, type)}
-        </p>
-      ) : null}
-      <div className="action-buttons">
+      {start?.incomplete ? <p className="fnote">{startMessage(start, type)}</p> : null}
+      <div className="fbtns" data-c="">
         <Button type="submit" variant="primary" disabled={!ready || posting}>
           {t(posting ? 'intake.creating' : 'intake.create')}
         </Button>
         <Button variant="quiet" disabled={posting} onClick={onCancel}>
           {t('common.cancel')}
         </Button>
+        <span className="hint">{t('intake.hint', { board: collection.name })}</span>
       </div>
       {error ? (
         <p className="action-error" role="alert">
@@ -270,56 +308,51 @@ export function IntakeForm({
 }
 
 type NewItemFormProps = {
-  connection: Connection;
-  ids: readonly string[];
-  // Set by "+ child": the form starts in the parent's collection, any other can be chosen.
+  // The board it starts in (an empty board's "Nuevo ítem en…", a rail "+"); else the first one.
+  board?: string | undefined;
+  // Set by "+ hijo": the form starts in the parent's board.
   parent?: IntakeParent | undefined;
-  // Set by an empty collection's "New item in": the form starts there.
-  collection?: string | undefined;
   onCancel: () => void;
-  onCreated: (id: string) => void;
+  onCreated: (id: string, from: DOMRect | null) => void;
+  // Today's DetailHost stub still passes these; the form reads the app's data instead.
+  collection?: string | undefined;
+  connection?: Connection;
+  ids?: readonly string[];
 };
 
-export function NewItemForm({
-  connection,
-  ids,
-  parent,
-  collection,
-  onCancel,
-  onCreated,
-}: NewItemFormProps) {
-  const collections = useRemote(fetchCollections, 0, connection);
-  const body = () => {
-    if (collections.status === 'loading') return <p className="t-small">{t('common.loading')}</p>;
-    if (collections.status === 'failed')
-      return <p className="action-error">{collections.message}</p>;
-    const first =
-      collections.value.find(({ name }) => name === (parent?.collection ?? collection)) ??
-      collections.value[0];
-    if (!first) {
-      return (
-        <p className="t-small">
+export function NewItemForm({ board, parent, collection, onCancel, onCreated }: NewItemFormProps) {
+  const app = useApp();
+  const collections = app.collections;
+  const wanted = parent?.collection ?? board ?? collection;
+  const first = collections.find(({ name }) => name === wanted) ?? collections[0];
+  return (
+    <div className="nform">
+      <div className="sheet-bar" data-c="">
+        <div className="crumb">
+          <Icon name="plus" />
+          <span>{t('app.newItem')}</span>
+        </div>
+        <div className="bar-r">
+          <GhostButton onClick={onCancel}>{t('common.close')}</GhostButton>
+        </div>
+      </div>
+      <h1 data-c="">{t('app.newItem')}</h1>
+      {first ? (
+        <IntakeForm
+          collections={collections}
+          first={first}
+          ids={app.all.map((each) => each.id)}
+          parent={parent}
+          onCancel={onCancel}
+          onCreated={onCreated}
+        />
+      ) : app.items.status === 'loading' ? (
+        <p className="lede">{t('common.loading')}</p>
+      ) : (
+        <p className="lede">
           {tx('intake.noCollections', { command: <code>otea collection add &lt;name&gt;</code> })}
         </p>
-      );
-    }
-    return (
-      <IntakeForm
-        collections={collections.value}
-        first={first}
-        ids={ids}
-        parent={parent}
-        onCancel={onCancel}
-        onCreated={onCreated}
-      />
-    );
-  };
-  return (
-    <article className="detail">
-      <header className="detail-head">
-        <h1 className="t-display">{t(parent ? 'intake.newChild' : 'app.newItem')}</h1>
-      </header>
-      {body()}
-    </article>
+      )}
+    </div>
   );
 }
