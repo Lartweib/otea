@@ -1,16 +1,9 @@
-import {
-  type ComponentType,
-  useEffect,
-  useLayoutEffect,
-  useReducer,
-  useRef,
-  useState,
-} from 'react';
+import { useEffect, useLayoutEffect, useReducer, useRef, useState } from 'react';
 import { fetchItem } from '../../api.ts';
 import { useApp } from '../../app/context.tsx';
 import { listWidth, storedWidth, WIDTH_KEYS } from '../../app/widths.ts';
 import { useWorkspace, workspace } from '../../app/workspace.ts';
-import { type IntakeParent, NewItemForm } from '../../components/NewItemForm.tsx';
+import { NewItemForm } from '../../components/NewItemForm.tsx';
 import { t } from '../../i18n/i18n.ts';
 import { useEscape } from '../../kit/escape.ts';
 import { curView, listOrder, redrawLists, rowOf } from '../../lanes/dom.ts';
@@ -22,7 +15,7 @@ import { reduced } from '../../motion/reduced.ts';
 import { relayoutList } from '../../motion/relayout.ts';
 import { Tt } from '../../motion/time.ts';
 import type { ItemView } from '../../types.ts';
-import { dividerBounds, dividerKey } from './frame.ts';
+import { dividerBounds, dividerKey, intakeTarget } from './frame.ts';
 import { ItemSheet } from './ItemSheet.tsx';
 import { Pen } from './pen.ts';
 import { drawRoute, undrawRoute } from './Route.tsx';
@@ -163,25 +156,23 @@ export function moveSplit(): void {
   host?.moveSplit();
 }
 
-// The intake form, as SPEC §10.5 contracts it; until the surfaces slice lands it, today's props too.
-type IntakeProps = {
-  board?: string;
-  parent?: IntakeParent;
-  collection?: string;
-  connection: ReturnType<typeof useApp>['connection'];
-  ids: readonly string[];
-  onCancel(): void;
-  onCreated(id: string, from?: DOMRect | null): void;
-};
-const Intake = NewItemForm as unknown as ComponentType<IntakeProps>;
-
 export function DetailHost() {
   const app = useApp();
   const ws = useWorkspace();
   const phone = app.phone;
   const want = app.route.item ?? null;
   const item = useItemView(want, app.version);
-  const target = ws.intake ? INTAKE : want;
+  // After Crear: the created id, until the place opens it (or anything else).
+  const [created, setCreated] = useState<string | null>(null);
+  const placed = intakeTarget(!!ws.intake, want, created);
+  const target = placed === 'intake' ? INTAKE : placed;
+  const lastIntake = useRef(ws.intake);
+  if (ws.intake) lastIntake.current = ws.intake;
+  // The place moved on (to the created item, or anywhere): the sheet follows it again.
+  const wantAtCreate = useRef(want);
+  useEffect(() => {
+    if (created && want !== wantAtCreate.current) setCreated(null);
+  }, [created, want]);
   const ready = target === INTAKE || (target != null && item !== undefined);
   const [shown, setShown] = useState<string | null>(null);
   const sheetRef = useRef<HTMLElement>(null);
@@ -696,7 +687,7 @@ export function DetailHost() {
     const k = o[i + dir];
     if (k) app.openItem(k);
   };
-  const intake = ws.intake;
+  const intake = ws.intake ?? lastIntake.current;
   return (
     <>
       {/* biome-ignore lint/a11y/useSemanticElements: a separator that holds its grip and takes the keys */}
@@ -756,16 +747,15 @@ export function DetailHost() {
           {shown === INTAKE && intake ? (
             <div className="d-grid">
               <div data-c>
-                <Intake
+                <NewItemForm
                   key={intake.parent?.id ?? intake.board ?? 'new'}
-                  connection={app.connection}
-                  ids={app.all.map((each) => each.id)}
-                  {...(intake.board ? { board: intake.board, collection: intake.board } : {})}
+                  {...(intake.board ? { board: intake.board } : {})}
                   {...(intake.parent ? { parent: intake.parent } : {})}
                   onCancel={() => workspace.set({ intake: null })}
-                  onCreated={(created) => {
-                    workspace.set({ intake: null });
-                    app.openItem(created);
+                  onCreated={(id) => {
+                    wantAtCreate.current = want;
+                    setCreated(id);
+                    app.openItem(id);
                   }}
                 />
               </div>

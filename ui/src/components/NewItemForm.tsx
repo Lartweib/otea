@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { createItem } from '../api.ts';
 import { useApp } from '../app/context.tsx';
-import type { Connection } from '../hooks.ts';
 import { t, tx } from '../i18n/i18n.ts';
 import {
   canSubmit,
@@ -314,16 +313,12 @@ type NewItemFormProps = {
   parent?: IntakeParent | undefined;
   onCancel: () => void;
   onCreated: (id: string, from: DOMRect | null) => void;
-  // Today's DetailHost stub still passes these; the form reads the app's data instead.
-  collection?: string | undefined;
-  connection?: Connection;
-  ids?: readonly string[];
 };
 
-export function NewItemForm({ board, parent, collection, onCancel, onCreated }: NewItemFormProps) {
+export function NewItemForm({ board, parent, onCancel, onCreated }: NewItemFormProps) {
   const app = useApp();
   const collections = app.collections;
-  const wanted = parent?.collection ?? board ?? collection;
+  const wanted = parent?.collection ?? board;
   const first = collections.find(({ name }) => name === wanted) ?? collections[0];
   return (
     <div className="nform">

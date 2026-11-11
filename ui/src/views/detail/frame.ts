@@ -75,3 +75,15 @@ export function toastOf(kind: MoveKind | 'answer' | 'close', title: string, stat
 // Undo only when the new state has a move of yours straight back to the old one, with no reason.
 export const undoable = (type: TypeView | undefined, from: string, to: string): boolean =>
   inverseMove(type, from, to);
+
+// What the sheet shows: the new item form while it is open, and after Crear until the place asks
+// for the created item, so the form swaps into it rather than closing first (mock:3990-3991).
+export function intakeTarget(
+  intakeOpen: boolean,
+  want: string | null,
+  created: string | null,
+): 'intake' | string | null {
+  if (intakeOpen) return 'intake';
+  if (created && want !== created) return 'intake';
+  return want;
+}
