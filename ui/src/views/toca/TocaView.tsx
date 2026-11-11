@@ -1,4 +1,8 @@
+import { useState } from 'react';
 import { typeOfItem, useApp } from '../../app/context.tsx';
+import { EmptyProject } from '../../components/EmptyProject.tsx';
+import { FirstRun } from '../../components/EmptyStates.tsx';
+import { emptyKind } from '../../empty-states.ts';
 import { t } from '../../i18n/i18n.ts';
 import { Swap } from '../../kit/Swap.tsx';
 import { LaneHead } from '../../lanes/LaneHead.tsx';
@@ -22,6 +26,17 @@ export function TocaView({ atasco = false }: { atasco?: boolean }) {
   const stateOf = stateLookup(ctx);
   const turnOf = (id: string, state: string) => stateOf(id, state)?.turn;
   const open = (id: string) => (app.route.item === id ? app.closeItem() : app.openItem(id));
+  const [firstPreset, setFirstPreset] = useState<string>();
+  // No board yet: the first run offers one. Boards but no item anywhere: the project's own page.
+  const nothing =
+    app.items.status === 'ready' && !atasco
+      ? emptyKind({
+          collections: app.collections.length,
+          scoped: app.all,
+          collection: undefined,
+          byTurn: false,
+        })
+      : undefined;
 
   let dekKey: string;
   let dek: React.ReactNode;
@@ -69,15 +84,23 @@ export function TocaView({ atasco = false }: { atasco?: boolean }) {
             </Swap>
           </div>
         </header>
-        <LaneHead />
-        <LaneList
-          list={atasco ? 'atasco' : 'toca'}
-          blocks={tocaBlocks(app, atasco, { onTriage: () => app.go({ view: 'triage' }) })}
-          universe={universeOf(app.all, app.now)}
-          sink
-          drawInOnMount
-          onRow={open}
-        />
+        {nothing === 'first-run' ? (
+          <FirstRun presets={app.presets} chosen={firstPreset} onChoose={setFirstPreset} route />
+        ) : nothing === 'empty-project' ? (
+          <EmptyProject />
+        ) : (
+          <>
+            <LaneHead />
+            <LaneList
+              list={atasco ? 'atasco' : 'toca'}
+              blocks={tocaBlocks(app, atasco, { onTriage: () => app.go({ view: 'triage' }) })}
+              universe={universeOf(app.all, app.now)}
+              sink
+              drawInOnMount
+              onRow={open}
+            />
+          </>
+        )}
       </section>
       <AgentsColumn
         agents={app.agents}
