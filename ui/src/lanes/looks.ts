@@ -38,7 +38,8 @@ export function lookGlyph(look: Look, ground: 'ground' | 'sheet' = 'ground'): st
 export const laneColor = (lane: Lane): string =>
   lane === 'you' ? 'var(--you)' : lane === 'none' ? 'var(--closed)' : 'var(--lane)';
 
-// The colour a node's light takes (the handoff's pulse): stuck red, yours blue, closed grey, else ink.
+// The colour a node's light takes (the handoff's pulse): stuck red, yours blue, closed grey, else the
+// agents' light (--pulse-ag: ink in dark, where it reads white; a cool tint in light, never a dark dot).
 export const lookColor = (lane: Lane, look: Look): string =>
   look === 'stuck'
     ? 'var(--warn)'
@@ -46,4 +47,4 @@ export const lookColor = (lane: Lane, look: Look): string =>
       ? 'var(--you)'
       : lane === 'none' || look === 'done' || look === 'dropped'
         ? 'var(--closed)'
-        : 'var(--ink)';
+        : 'var(--pulse-ag)';

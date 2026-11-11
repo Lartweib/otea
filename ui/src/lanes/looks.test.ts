@@ -43,6 +43,6 @@ describe('how a node looks', () => {
     expect(lookColor('you', 'yours')).toBe('var(--you)');
     expect(lookColor('none', 'done')).toBe('var(--closed)');
     expect(lookColor('ag', 'dropped')).toBe('var(--closed)');
-    expect(lookColor('ag', 'working')).toBe('var(--ink)');
+    expect(lookColor('ag', 'working')).toBe('var(--pulse-ag)');
   });
 });

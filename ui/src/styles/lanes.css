@@ -68,6 +68,20 @@
   animation-name: gtail;
   --gl-a: 1;
 }
+/* the halos take the theme's light: in dark --halo is --you at full strength; in light a softer,
+   airier blue at a fraction of it, so the node glows instead of bruising the paper */
+.glow .gl circle {
+  fill: var(--halo);
+}
+.glow .gl circle:nth-of-type(1) {
+  opacity: calc(0.3 * var(--halo-k));
+}
+.glow .gl circle:nth-of-type(2) {
+  opacity: calc(0.5 * var(--halo-k));
+}
+.glow .warms circle {
+  fill: var(--warn-lit);
+}
 @keyframes gbreath {
   0%,
   100% {
