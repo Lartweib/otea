@@ -1,12 +1,7 @@
-// The shell area of the English catalog.
+// The shell area of the English catalog: the topbar, its menus, the rail, Preferences and the
+// first-run language note.
 export const shell = {
-  'theme.system': 'system',
-  'theme.light': 'light',
-  'theme.dark': 'dark',
-  'theme.label': 'Theme: {choice}',
-  'theme.switch': 'Theme: {choice}. Switch to {next}.',
-
-  // The topbar's three zones: the project, the mark and the agents connected to this project
+  // The topbar: the project, the mark and the agents connected to this project
   'shell.projects': 'projects',
   'shell.projectsTitle': 'Projects',
   'shell.projectSwitch': '{project}, switch project',
@@ -22,17 +17,20 @@ export const shell = {
     other: '{count} more waiting in {where}',
   },
   'shell.agentsTitle': 'Agents',
-  'shell.agents': { one: '{count} agent', other: '{count} agents' },
-  'shell.noAgents': 'no agents',
+  'shell.agentsWord': { one: 'agent', other: 'agents' },
+  'shell.workingWord': 'working',
   'shell.offline': 'offline',
   'shell.agentsIn': 'agents in {project}',
-  'shell.holding': { one: '{count} holding', other: '{count} holding' },
+  'shell.holding': { one: '{count} holding a lease', other: '{count} holding a lease' },
   'shell.idleCount': { one: '{count} idle', other: '{count} idle' },
   'shell.idle': 'idle · no lease',
+  'shell.quiet': 'quiet · its lease ran out',
+  'shell.noAgents': 'No agent connected yet.',
   'shell.cli': 'CLI',
-  'shell.noAgentsTitle': 'No agents connected.',
-  'shell.howToConnect':
-    'Add {mcp} to your agent’s MCP servers, or run any {otea} command with {as}.',
+  'shell.activity': 'See activity',
+  'shell.activityLine': 'leases running down, the latest events',
+  'shell.connect': 'Connect an agent',
+  'shell.connectLine': 'otea mcp --as <name>',
   'shell.connectedRule': 'connected: holds a lease, or was active in the last 5 min',
   'shell.openPanel': 'Open the project’s panel',
 
@@ -43,12 +41,25 @@ export const shell = {
   'prefs.system': 'System',
   'prefs.light': 'Light',
   'prefs.dark': 'Dark',
+  'prefs.motion': 'motion',
+  'prefs.motionFull': 'Full',
+  'prefs.motionReduced': 'Reduced',
+  'prefs.motionNoteSystem': 'Follows the system: now {state}.',
+  'prefs.nowFull': 'full',
+  'prefs.nowReduced': 'reduced',
+  'prefs.fullLabel': 'Full:',
+  'prefs.fullNote': '{label} lines, lanes and panels move.',
+  'prefs.reducedLabel': 'Reduced:',
+  'prefs.reducedNote': '{label} everything turns into short crossfades in place.',
+  'prefs.handoff': 'handoff',
+  'prefs.fold': 'Fold',
+  'prefs.slide': 'Slide',
   'prefs.language': 'language',
   'prefs.auto': 'Auto · {code}',
   'prefs.english': 'English',
   'prefs.spanish': 'Español',
   'prefs.onlyInterface': 'Only the interface is translated.',
-  'prefs.translated': '{only} Item content, their fields and what agents write stay as written.',
+  'prefs.translated': '{only} Item content, their fields and what agents write stay as they are.',
   'prefs.session': 'session',
   'prefs.pair': 'Pair a phone…',
   'prefs.about': 'about',
@@ -63,22 +74,13 @@ export const shell = {
   'languageNote.wherePanel': 'Change it any time in Preferences, at the foot of the panel.',
   'languageNote.ok': 'Got it',
 
-  // Collections sidebar
-  'rail.label': 'collections',
-  'rail.aria': 'Collections',
+  // Words other areas still read
   'rail.all': 'All work',
-  'rail.hide': 'Hide collections',
-  'rail.show': 'Show collections',
   'rail.waiting': 'waiting for you',
-  'rail.project': 'project',
-  'rail.presets': { one: '{count} preset', other: '{count} presets' },
   'rail.official': 'official',
-
-  // Every project on this machine: the inbox at #/projects, and the rail's way there
   'rail.projects': 'All projects',
-  'rail.settings': 'Project settings',
 
-  // The stub shell: rail and topbar words
+  // The rail
   'nav.toca': 'Your turn',
   'nav.atasco': 'Stuck',
   'nav.views': 'views',
@@ -86,6 +88,9 @@ export const shell = {
   'nav.newBoard': 'New board',
   'nav.newItem': 'New item',
   'nav.newItemIn': 'New item in {board}',
+  'nav.project': 'project',
+  'nav.studio': 'Studio',
+  'nav.settings': 'Settings',
   'nav.prefs': 'Preferences',
   'nav.hide': 'Hide the panel',
   'nav.show': 'Show the panel',

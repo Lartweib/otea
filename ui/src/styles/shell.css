@@ -1,6 +1,7 @@
-/* The shell: the topbar (mock:127-157). The shell slice owns this file (SPEC §11); the foundation's
-   stub starts it with the mock's topbar, and keeps the helpers today's pages still use. */
+/* The shell: the topbar and its two menus (SPEC §7.1, mock:127-157, 744-776). The kit draws the
+   chevron, the tiles, the marks and the pops' frame (kit.css, pops.css); this file places them. */
 
+/* helpers today's pages still use */
 .pane-message {
   padding: 16px 0;
 }
@@ -72,37 +73,14 @@
   text-overflow: ellipsis;
   text-align: left;
 }
-.chev {
-  width: 12px;
-  height: 12px;
-  fill: none;
-  stroke: var(--ink-3);
-  stroke-width: 1.4;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  justify-self: center;
-  transition: rotate 420ms var(--o-settle);
-}
-[aria-expanded="true"] > .chev {
-  rotate: 180deg;
-}
+/* a tile holds a monogram or an icon, centred */
 .tile {
-  width: 18px;
-  height: 18px;
-  border-radius: 5px;
-  background: var(--well);
-  box-shadow: inset 0 0 0 1px var(--rule);
-  font: 600 8.5px / 18px var(--sans);
-  text-align: center;
-  color: var(--ink-2);
-  letter-spacing: 0;
+  display: inline-grid;
+  place-items: center;
 }
-.tile.lg {
-  width: 28px;
-  height: 28px;
-  border-radius: 7px;
-  font-size: 11px;
-  line-height: 28px;
+.tile .type-icon {
+  stroke-width: 2;
+  color: var(--ink-2);
 }
 .elsewhere {
   display: inline-flex;
@@ -140,10 +118,12 @@
   box-shadow: 0 0 0 1px var(--rule);
   font: 600 13.5px / 1 var(--sans);
   letter-spacing: -0.006em;
+  color: var(--ink);
   white-space: nowrap;
   transition:
     box-shadow 240ms var(--o-drift),
-    background-color 120ms var(--ease);
+    background-color 120ms var(--ease),
+    color 120ms var(--ease);
 }
 .apill:hover {
   background: var(--hov);
@@ -155,15 +135,33 @@
   font: 400 12px / 1 var(--mono);
   color: var(--ink-3);
 }
+.apill .amw {
+  display: inline-grid;
+  place-items: center;
+}
 .apill svg.am {
   width: 16px;
   height: 16px;
   overflow: visible;
 }
+/* nobody connected, or the stream down: quiet; offline it opens nothing */
+.apill[data-quiet] {
+  color: var(--ink-2);
+  font-weight: 500;
+}
+.apill:disabled {
+  cursor: default;
+  background: var(--sheet);
+}
 .navbtn {
   display: none;
 }
 
+/* the mark: otea, its o a node */
+.tb-mid {
+  display: flex;
+  justify-content: center;
+}
 .brand {
   display: inline-flex;
   align-items: center;
@@ -218,9 +216,215 @@
   stroke-dasharray: 25 75;
   opacity: 1;
 }
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
+
+/* ---- the project menu (mock:745-759) ---- */
+.pmenu {
+  width: 420px;
+  max-width: calc(100vw - 32px);
+}
+.prow {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) auto 18px;
+  column-gap: 12px;
+  align-items: center;
+  width: 100%;
+  min-height: 52px;
+  padding: 6px 8px 6px 6px;
+  border-radius: 8px;
+  text-align: left;
+  color: var(--ink);
+  text-decoration: none;
+  transition: background-color 240ms var(--o-drift);
+}
+.prow:hover {
+  background: var(--hov);
+}
+.prow.cur {
+  background: var(--sel);
+}
+.prow.inert {
+  cursor: default;
+}
+.prow.inert:hover {
+  background: none;
+}
+.prow .pn {
+  font: 600 14px / 1.2 var(--sans);
+  display: block;
+}
+.prow.inert .pn {
+  color: var(--ink-2);
+}
+.prow > span:nth-child(2) {
+  min-width: 0;
+}
+.prow .tile.lg .ic {
+  width: 15px;
+  height: 15px;
+  color: var(--ink-2);
+}
+.prow .pl {
+  display: block;
+  font: 400 11.5px / 1.4 var(--mono);
+  color: var(--ink-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.prow .pw {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: 500 12px / 1 var(--mono);
+  color: var(--you-ink);
+}
+.prow .tick {
+  display: inline-grid;
+  place-items: center;
+  color: var(--ink);
+}
+.pfoot {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  flex-wrap: wrap;
+  padding: 10px 8px 4px;
+  margin-top: 4px;
+  border-top: 1px solid var(--rule);
+  font-size: 12.5px;
+  color: var(--ink-3);
+}
+.pfoot button {
+  font-weight: 500;
+  color: var(--ink);
+  text-decoration: underline;
+  text-decoration-color: var(--rule-2);
+  text-underline-offset: 3px;
+}
+.pfoot code {
+  font: 400 12px / 1 var(--mono);
+  color: var(--ink-2);
+}
+
+/* ---- the agents menu (mock:760-776) ---- */
+.amenu {
+  width: 400px;
+  max-width: calc(100vw - 32px);
+}
+.arow {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  column-gap: 10px;
+  align-items: start;
+  width: 100%;
+  padding: 9px 10px 9px 6px;
+  border-radius: 8px;
+  min-height: 56px;
+}
+.arow > .mk {
+  margin-top: 1px;
+}
+.arow .ab {
+  min-width: 0;
+}
+.arow .an {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font: 600 14px / 1.3 var(--sans);
+}
+.arow .htag {
+  font: 400 10.5px / 1 var(--mono);
+  color: var(--ink-3);
+  padding: 2px 4px;
+  border-radius: 3px;
+  box-shadow: inset 0 0 0 1px var(--rule-2);
+}
+.arow .held {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  width: 100%;
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--ink-2);
+  text-align: left;
+  min-width: 0;
+}
+.arow .held .id {
+  font-size: 11.5px;
+  white-space: nowrap;
+  flex: none;
+}
+.arow .held .cn {
+  flex: none;
+  overflow: visible;
+}
+.arow .held span.tx {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+.arow button.held:hover .tx {
+  color: var(--ink);
+  text-decoration: underline;
+  text-decoration-color: var(--rule-2);
+  text-underline-offset: 3px;
+}
+.arow .seen {
+  font: 400 11.5px / 1.3 var(--mono);
+  color: var(--ink-3);
+  white-space: nowrap;
+  padding-top: 2px;
+}
+.arow .idle {
+  font: 400 12px / 1.3 var(--mono);
+  color: var(--ink-3);
+  margin-top: 4px;
+}
+.arow .idle.warn {
+  color: var(--warn);
+}
+.mrow {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  column-gap: 10px;
+  align-items: center;
+  width: 100%;
+  padding: 9px 10px 9px 6px;
+  border-radius: 8px;
+  text-align: left;
+  color: var(--ink);
+  transition: background-color 240ms var(--o-drift);
+}
+.mrow:hover {
+  background: var(--hov);
+}
+.mrow b {
+  font: 600 14px / 1.3 var(--sans);
+  display: block;
+}
+.mrow small {
+  font: 400 11.5px / 1.3 var(--mono);
+  color: var(--ink-3);
+  display: block;
+}
+.mrow > .ic {
+  display: grid;
+  place-items: center;
+  color: var(--ink-2);
+}
+.pnote.afoot {
+  border-top: 1px solid var(--rule);
+  margin-top: 4px;
+  padding-top: 10px;
+}
+
+/* narrower desktops keep the bar to the pills and the mark (mock:888-891) */
+@media (max-width: 1100px) and (min-width: 721px) {
+  .tb-start .elsewhere {
+    display: none;
   }
 }
 
