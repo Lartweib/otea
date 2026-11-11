@@ -1,4 +1,4 @@
-/* The agents column of Te toca. Starts with the mock's (mock:318-336). The lists slice owns this file (SPEC §11). */
+/* The agents column of Te toca (mock:318-336): who works, what each agent does, its last two hours. */
 
 .agents {
   padding-top: 6px;
@@ -15,6 +15,15 @@
 }
 .agents h3 .n {
   font-size: 12px;
+}
+.agents h3 .n.wk {
+  margin-left: -6px;
+}
+.agents-none {
+  padding: 15px 0 13px;
+  border-bottom: 1px solid var(--rule);
+  font: 400 italic 15px / 1.4 var(--serif);
+  color: var(--ink-3);
 }
 .agent {
   padding: 15px 0 13px;
@@ -33,17 +42,14 @@
   position: relative;
   display: inline-block;
   text-align: right;
-}
-.agent .who .sw > span {
   font: 400 11.5px / 1 var(--mono);
   color: var(--ink-3);
   white-space: nowrap;
-  display: inline-block;
 }
-.agent .who .sw > span.warn-t {
+.agent .who .sw .warn-t {
   color: var(--warn);
 }
-.agent .who .sw > span.you-t {
+.agent .who .sw .you-t {
   color: var(--you-ink);
 }
 .agent .doing {
@@ -92,10 +98,7 @@
   font: 400 italic 14px / 1.5 var(--serif);
   color: var(--ink-3);
 }
-.colophon b {
+.colophon .n {
   font-style: normal;
-  font-family: var(--mono);
-  font-weight: 400;
-  font-size: 12px;
   color: var(--ink-2);
 }
