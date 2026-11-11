@@ -794,6 +794,8 @@ section.evidence,
 }
 .tl {
   position: relative;
+  display: grid;
+  grid-template-columns: 22px minmax(64px, max-content) minmax(0, 1fr);
   list-style: none;
   padding-left: 0;
   margin: 0;
@@ -810,7 +812,8 @@ section.evidence,
 .tl li {
   position: relative;
   display: grid;
-  grid-template-columns: 22px 64px minmax(0, 1fr);
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
   align-items: baseline;
   padding: 6px 0;
 }
@@ -833,6 +836,8 @@ section.evidence,
     0 0 0 3px var(--sheet);
 }
 .tl li .tm {
+  padding-right: 12px;
+  white-space: nowrap;
   font: 400 11.5px / 1.4 var(--mono);
   color: var(--ink-3);
 }
