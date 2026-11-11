@@ -119,8 +119,6 @@ export function boardsApi(project: Project, feed: ChangeFeed, auth: Session): Ho
         assertConfigurable(c, auth);
         return notYet('Merging an agent draft');
       })
-      // "Lo que lee el agente": next's answer and the refusal, from the draft (server slice).
-      .get('/boards/:id/draft/next-preview', () => notYet('The agent preview'))
       .post('/boards/:id/publish/plan', (c) => c.json(publishPlan(project, id(c))))
       .post('/boards/:id/publish', async (c) => {
         assertConfigurable(c, auth);
