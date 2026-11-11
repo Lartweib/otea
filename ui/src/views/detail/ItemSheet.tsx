@@ -70,7 +70,7 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
   const ci = type ? routeIndex(type, item.state, facts.visited) : 0;
   const stand = standOf({
     look,
-    agent: facts.handed?.agent ?? facts.agent,
+    agent: facts.left ? facts.agent : (facts.handed?.agent ?? facts.agent),
     round: facts.round,
     question: facts.question,
     own: facts.own,

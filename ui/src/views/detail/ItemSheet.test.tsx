@@ -77,11 +77,11 @@ const app = {
   phone: false,
 } as unknown as App;
 
-const render = () =>
+const render = (shown: ItemView = item) =>
   renderToStaticMarkup(
     <AppTestProvider value={app}>
       <ItemSheet
-        item={item}
+        item={shown}
         full={false}
         nav={{ prev: false, next: true }}
         onNav={() => undefined}
@@ -132,6 +132,23 @@ describe('the item sheet', () => {
     expect(html).toContain('El último se queda.');
     expect(html).toContain('6 eventos');
     expect(html.indexOf('Lo entregó otra vez')).toBeLessThan(html.indexOf('Lo creó en'));
+  });
+
+  it('waits for the agent you left a stuck item for, or for any agent once back in the queue', () => {
+    setLanguage('es');
+    const kiln = { kind: 'agent', name: 'kiln' } as const;
+    const stuck = (data: Record<string, unknown>): ItemView => ({
+      ...item,
+      state: 'fixing',
+      turn: 'agent',
+      events: [
+        ev('transitioned', kiln, { from: 'accepted', to: 'fixing' }, 60),
+        ev('claimed', kiln, { holder: 'kiln' }, 59),
+        ev('released', you, { holder: 'kiln', ...data }, 1),
+      ],
+    });
+    expect(render(stuck({ cause: 'reassign', next: 'quill' }))).toContain('Espera a <b>quill</b>.');
+    expect(render(stuck({ cause: 'restart' }))).toContain('Espera a un agente.');
   });
 
   it('disables Previous at the start of the list', () => {

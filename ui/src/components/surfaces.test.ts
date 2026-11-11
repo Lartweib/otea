@@ -75,6 +75,8 @@ function fakeApp(o: Partial<App> = {}): App {
     openItem: noop,
     closeItem: noop,
     move: async () => undefined,
+    restart: async () => undefined,
+    reassign: async () => undefined,
     link: async () => undefined,
     unlink: async () => undefined,
     newItem: noop,

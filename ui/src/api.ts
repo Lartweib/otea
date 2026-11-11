@@ -121,6 +121,20 @@ export async function undoMove(id: string, from: string): Promise<void> {
   await post(`/api/items/${encodeURIComponent(id)}/undo`, { from });
 }
 
+// A stuck item (Atasco): back in the queue of its step for any agent (Retomar), or left for the
+// agent picked (Reasignar); Deshacer gives the lease that ran out back, while the toast is up.
+export async function restartItem(id: string): Promise<void> {
+  await post(`/api/items/${encodeURIComponent(id)}/restart`, {});
+}
+
+export async function reassignItem(id: string, agent: string): Promise<void> {
+  await post(`/api/items/${encodeURIComponent(id)}/reassign`, { agent });
+}
+
+export async function undoRelease(id: string): Promise<void> {
+  await post(`/api/items/${encodeURIComponent(id)}/undo`, { release: true });
+}
+
 export type NewFile = { file: File; role: EvidenceRole };
 
 // parent: the item the new one is created under, as its child. files: attached as evidence in the

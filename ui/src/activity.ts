@@ -43,6 +43,8 @@ export type Phrase =
   | { key: 'activity.claimed'; time: string }
   | { key: 'activity.claimedOver'; previous: string }
   | { key: 'activity.released' }
+  | { key: 'activity.restarted' }
+  | { key: 'activity.reassigned'; agent: string }
   | { key: 'activity.handed'; state: string }
   | { key: 'activity.moved'; state: string }
   | { key: 'activity.created'; state: string }
@@ -89,7 +91,14 @@ function phraseOf(event: FeedEvent, turnOf: TurnOf): Pick<FeedLine, 'kind' | 'ph
     const time = spanOf(Date.parse(text(data.expiresAt)) - Date.parse(at));
     return { kind: 'lease', phrase: { key: 'activity.claimed', time } };
   }
-  if (type === 'released') return { kind: 'lease', phrase: { key: 'activity.released' } };
+  if (type === 'released') {
+    // A stuck item you took in hand: back in the queue of its step, or left for an agent.
+    if (event.actor.kind === 'human' && data.cause === 'restart')
+      return { kind: 'lease', phrase: { key: 'activity.restarted' } };
+    if (event.actor.kind === 'human' && data.cause === 'reassign')
+      return { kind: 'lease', phrase: { key: 'activity.reassigned', agent: text(data.next) } };
+    return { kind: 'lease', phrase: { key: 'activity.released' } };
+  }
   if (type === 'transitioned') {
     const state = text(data.to);
     const handed = event.actor.kind === 'agent' && turnOf(event.itemId, state) === 'human';

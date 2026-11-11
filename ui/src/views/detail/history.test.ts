@@ -73,3 +73,25 @@ describe('the history, newest first, in words', () => {
     expect(lines.at(-1)?.when).toMatch(/^today|yesterday/);
   });
 });
+
+describe('the history of a stuck item you took in hand', () => {
+  const kiln = { kind: 'agent', name: 'kiln' } as const;
+  const lines = historyOf(
+    [
+      ev('claimed', kiln, { holder: 'kiln' }, 60),
+      ev('released', you, { holder: 'kiln', cause: 'restart' }, 5),
+      ev('released', you, { holder: 'kiln', cause: 'reassign', next: 'quill' }, 3),
+    ],
+    bug,
+    word,
+    NOW,
+  );
+
+  it('says you put it back in the queue, or whom you left it for', () => {
+    expect(lines.map((l) => [l.text, l.who, l.dot])).toEqual([
+      ['You left it for quill', 'you', 'you'],
+      ['You put it back in the queue', 'you', 'you'],
+      ['Took the lease', 'kiln', 'agent'],
+    ]);
+  });
+});

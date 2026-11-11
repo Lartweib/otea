@@ -153,3 +153,28 @@ describe('the standfirst (mock:2670-2678)', () => {
     expect(standOf({ ...base, look: 'dropped' }).key).toBe('sheet.stand.dropped');
   });
 });
+
+describe('who a stuck item waits for once you took it in hand', () => {
+  const kiln = { kind: 'agent', name: 'kiln' } as const;
+  const before = [
+    ev('transitioned', kiln, { from: 'accepted', to: 'fixing' }, 60),
+    ev('claimed', kiln, { holder: 'kiln' }, 59),
+  ];
+  const stuck = (events: ItemEvent[]) =>
+    factsOf(view({ state: 'fixing', turn: 'agent', events }), bug, NOW).agent;
+
+  it('waits for the agent you left it for', () => {
+    expect(
+      stuck([
+        ...before,
+        ev('released', you, { holder: 'kiln', cause: 'reassign', next: 'quill' }, 1),
+      ]),
+    ).toBe('quill');
+  });
+
+  it('waits for any agent once you put it back in the queue', () => {
+    expect(
+      stuck([...before, ev('released', you, { holder: 'kiln', cause: 'restart' }, 1)]),
+    ).toBeNull();
+  });
+});

@@ -73,6 +73,21 @@ describe('feedLines', () => {
     ]);
   });
 
+  it('says a stuck item you put back in the queue, or left for an agent, in your lane', () => {
+    const lines = feedLines(
+      [
+        ev('WORK-1', 'released', you, 1, { holder: 'kiln', cause: 'restart' }),
+        ev('WORK-2', 'released', you, 2, { holder: 'kiln', cause: 'reassign', next: 'quill' }),
+      ],
+      turnOf,
+    );
+
+    expect(lines.map(({ kind, lane, agent, phrase }) => [kind, lane, agent, phrase])).toEqual([
+      ['lease', 'you', null, { key: 'activity.reassigned', agent: 'quill' }],
+      ['lease', 'you', null, { key: 'activity.restarted' }],
+    ]);
+  });
+
   it('keeps a relayed decision in your lane, named after the agent that relayed it', () => {
     const relayed = ev('WORK-1', 'transitioned', you, 1, { to: 'done', via: 'claude-b' });
 
