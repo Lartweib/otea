@@ -5,7 +5,7 @@
   flex-direction: column;
   padding: 28px 24px 0;
   padding-top: max(28px, env(safe-area-inset-top));
-  background: var(--bg);
+  background: var(--ground);
   color: var(--ink);
 }
 
@@ -33,7 +33,7 @@
   stroke: var(--you);
   stroke-dasharray: 1;
   stroke-dashoffset: 1;
-  transition: stroke-dashoffset 900ms var(--e-move);
+  transition: stroke-dashoffset 900ms var(--o-settle);
 }
 .pair-route.pairing .pair-lane-draw,
 .pair-route.paired .pair-lane-draw {
@@ -44,7 +44,7 @@
   opacity: 0;
 }
 .pair-route.pairing .pair-lane-dot {
-  animation: pair-run 1000ms var(--e-move) infinite;
+  animation: pair-run 1000ms var(--o-settle) infinite;
 }
 @keyframes pair-run {
   0% {
@@ -72,15 +72,15 @@
 }
 .pair-end .shape {
   transition:
-    fill 420ms var(--m-ease) 600ms,
-    stroke 420ms var(--m-ease) 600ms;
+    fill 420ms var(--ease) 600ms,
+    stroke 420ms var(--ease) 600ms;
 }
 .pair-icon {
   fill: none;
   stroke: var(--ink);
   stroke-width: 1.2;
   stroke-linecap: round;
-  transition: stroke 420ms var(--m-ease) 600ms;
+  transition: stroke 420ms var(--ease) 600ms;
 }
 .pair-route.paired .pair-phone .pair-icon {
   stroke: var(--on-you);
@@ -94,7 +94,7 @@
   transform-origin: center;
 }
 .pair-route.paired .pair-halo {
-  animation: ot-ripple 760ms var(--m-ease) 600ms both;
+  animation: ot-ripple 760ms var(--ease) 600ms both;
 }
 
 .pair-body {
@@ -128,14 +128,14 @@
   height: 44px;
   padding: 0 14px;
   border: 0;
-  border-radius: var(--r-l);
-  background: var(--sf);
-  box-shadow: inset 0 0 0 1px var(--line);
+  border-radius: 12px;
+  background: var(--sheet);
+  box-shadow: inset 0 0 0 1px var(--rule);
   color: var(--ink);
-  font: 500 15px var(--font-human);
+  font: 500 15px var(--sans);
 }
 .pair-input.mono {
-  font: 500 15px var(--font-machine);
+  font: 500 15px var(--mono);
   letter-spacing: 0.06em;
 }
 .pair-input:focus-visible {
@@ -154,7 +154,7 @@
   gap: 6px;
   margin: auto -8px 0;
   padding: 16px 8px max(32px, env(safe-area-inset-bottom));
-  background: linear-gradient(to bottom, transparent, var(--bg) 24px);
+  background: linear-gradient(to bottom, transparent, var(--ground) 24px);
 }
 .pair-bar .btn {
   height: 48px;
@@ -169,223 +169,122 @@
   }
 }
 
-/* ---- LAN access on the desk (#/lan), beside the sidebar as the catalog is ---- */
-.lan-page {
-  min-width: 0;
-  min-height: 0;
-  overflow-y: auto;
-  padding: 32px clamp(0px, 3vw, 40px) 48px;
-}
-@media (min-width: 48rem) {
-  .lan-layout.with-rail {
-    grid-template-columns: var(--rail-w) minmax(0, 1fr);
-    padding-left: 8px;
-  }
-  .lan-layout.with-rail > .lan-page {
-    grid-column: 2;
-  }
-}
-.lan-section {
-  max-width: 920px;
-  margin: 0 auto;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-.lan-head {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 24px;
-}
-.lan-head p {
-  margin-top: 4px;
-}
-.lan-panel {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 260px;
-  gap: 48px;
-  padding: 24px;
-}
-.lan-left {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  min-width: 0;
-}
-.lan-status {
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-}
-.lan-status .t-small {
-  color: var(--ink);
-}
-.lan-dot {
-  flex: none;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--off);
-  transform: translateY(-1px);
-}
-.lan-dot.on {
-  background: var(--you);
-}
-.lan-devices-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
-  padding-top: 12px;
-}
-.lan-devices {
-  list-style: none;
-  padding: 0;
+/* ---- Emparejar un teléfono (#/lan): a dialog over Te toca (mock:736-742) ---- */
+.dialog code.inl {
+  display: inline;
+  padding: 1px 5px;
   margin: 0;
+  font-style: normal;
 }
-.lan-device {
+.qrw {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  align-items: flex-start;
   gap: 16px;
-  min-height: 56px;
-  border-top: 1px solid var(--line);
-}
-.lan-device:last-child {
-  border-bottom: 1px solid var(--line);
-}
-.lan-device-text {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-.lan-device-text .t-cap {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.lan-panel.off .lan-devices {
-  opacity: 0.5;
-}
-.lan-empty {
-  padding: 8px 0;
-}
-.lan-away {
-  margin-top: auto;
-  padding-top: 8px;
-}
-.lan-right {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-.lan-qr {
-  position: relative;
-  display: grid;
-  place-items: center;
-  width: 260px;
-  height: 260px;
-  padding: 16px;
-  border-radius: var(--r-l);
-  background: var(--well);
-  transition: background-color 520ms var(--m-ease);
-}
-.lan-qr.on {
-  background: oklch(0.975 0.004 265);
-}
-.lan-qr svg {
-  width: 100%;
-  height: 100%;
+  margin: 14px 0 6px;
 }
 /* The code is always dark on light, whatever the theme: that is what a camera reads. */
-.lan-qr-paper {
-  fill: oklch(0.975 0.004 265);
+.qr {
+  display: block;
+  flex: none;
+  width: 132px;
+  height: 132px;
+  border-radius: 8px;
+  background: oklch(0.99 0.002 266);
+  padding: 8px;
+  box-shadow: inset 0 0 0 1px var(--rule);
 }
-.lan-qr-ink {
-  fill: oklch(0.22 0.02 265);
+.qr .qr-ink {
+  fill: oklch(0.2 0.02 266);
 }
-.lan-qr-off {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  padding: 24px;
+.qr.off {
+  display: grid;
+  place-items: center;
+  background: var(--sheet);
+  box-shadow: inset 0 0 0 1px var(--rule-2);
+  border: 0;
+  outline: 1px dashed var(--rule-2);
+  outline-offset: -1px;
+  font: 400 italic 13px / 1.3 var(--serif);
+  color: var(--ink-3);
   text-align: center;
 }
-.lan-qr-off .t-cap {
-  color: var(--ink);
-}
-.lan-code {
+.qrside {
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
   gap: 6px;
+  min-width: 0;
+  padding-top: 4px;
 }
-.lan-code > .mono {
-  font-size: 13px;
-}
-.lan-network {
-  height: 32px;
-  padding: 0 8px;
-  border: 0;
-  border-radius: var(--r-m);
-  background: var(--sf);
-  box-shadow: inset 0 0 0 1px var(--line);
+.lan-addr,
+.lan-net {
+  font: 400 12.5px / 1.4 var(--mono);
   color: var(--ink);
-  font-size: 13px;
-}
-.lan-panel.off .lan-code {
-  opacity: 0.35;
-}
-
-@media (max-width: 48rem) {
-  .lan-panel {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 28px;
-    padding: 18px;
-  }
-  .lan-qr {
-    width: min(260px, 100%);
-    height: auto;
-    aspect-ratio: 1;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .pair-lane-draw,
-  .pair-end .shape,
-  .pair-icon,
-  .lan-qr {
-    transition-duration: 1ms;
-    transition-delay: 0ms;
-  }
-  .pair-route.pairing .pair-lane-dot,
-  .pair-route.paired .pair-halo {
-    animation: none;
-  }
-}
-
-/* After pairing in the browser: how to add Otea to the home screen. */
-.pair-hint {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin: 22px 0 12px;
-  padding: 14px 16px;
-  border-radius: var(--r-l);
-}
-.pair-hint-steps {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin: 0;
-  padding-left: 18px;
-}
-.pair-hint-steps .t-small {
-  color: var(--ink);
-}
-.lan-fallback .mono {
-  font-size: 12px;
   overflow-wrap: anywhere;
+}
+.lan-net {
+  height: 28px;
+  padding: 0 6px;
+  border-radius: 6px;
+  border: 1px solid var(--rule-2);
+  background: var(--sheet);
+}
+.lan-code,
+.lan-fall {
+  font: 400 11.5px / 1.45 var(--mono);
+  color: var(--ink-3);
+}
+.lan-fall b {
+  font-weight: 400;
+  color: var(--ink-2);
+}
+.qrside .btn {
+  margin-top: 4px;
+}
+.devs {
+  margin-top: 12px;
+  border-top: 1px solid var(--rule);
+}
+.devs > div {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--rule);
+  font-size: 13.5px;
+}
+.devs small {
+  font: 400 11px / 1.3 var(--mono);
+  color: var(--ink-3);
+  display: block;
+  margin-top: 3px;
+}
+.dialog .devs-none {
+  font-size: 14px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--rule);
+  color: var(--ink-3);
+}
+.dialog .lan-away {
+  font: 400 11.5px / 1.45 var(--mono);
+  font-style: normal;
+  color: var(--ink-3);
+  margin-top: 12px;
+}
+
+/* ---- Conectar un agente: the command, with a copy button ---- */
+.ccode {
+  position: relative;
+  margin-top: 10px;
+}
+.dialog .ccode code {
+  margin-top: 0;
+  padding-right: 40px;
+}
+.ccode .pj-copy {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
 }

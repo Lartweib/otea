@@ -42,7 +42,7 @@
   max-width: 520px;
   min-height: 40px;
   padding: 4px 6px 4px 14px;
-  border-radius: var(--r-m);
+  border-radius: 8px;
   background: var(--well);
 }
 
@@ -50,18 +50,18 @@
   flex: 1;
   min-width: 0;
   overflow-x: auto;
-  font: 400 13px var(--font-machine);
+  font: 400 13px var(--mono);
   color: var(--ink);
   white-space: nowrap;
   scrollbar-width: none;
 }
 
 .empty-copy-col > p code {
-  font: 400 12.5px var(--font-machine);
+  font: 400 12.5px var(--mono);
 }
 
 .empty-prompt {
-  color: var(--mut);
+  color: var(--ink-2);
 }
 
 .empty-copy {
@@ -106,8 +106,8 @@
   justify-content: space-between;
   width: 56px;
   padding: 0 8px 0 10px;
-  font: 500 11.5px var(--font-machine);
-  color: var(--mut);
+  font: 500 11.5px var(--mono);
+  color: var(--ink-2);
 }
 
 .empty-route .lane-names-you {
@@ -137,7 +137,7 @@
   stroke-width: 1.3;
   stroke-dasharray: 3 4;
   opacity: 0.55;
-  animation: empty-route-in 520ms var(--m-ease) both;
+  animation: empty-route-in 520ms var(--ease) both;
 }
 
 .empty-route-names {
@@ -167,14 +167,14 @@
   min-height: 48px;
   padding: 0 14px;
   border: 0;
-  border-radius: var(--r-m);
+  border-radius: 8px;
   background: none;
   color: var(--ink);
   text-align: left;
   cursor: pointer;
   transition:
-    background-color var(--m-fast) var(--m-ease),
-    box-shadow var(--m-base) var(--m-ease);
+    background-color var(--t-hover) var(--ease),
+    box-shadow var(--t-fade) var(--ease);
 }
 
 .empty-preset .mono {
@@ -186,9 +186,9 @@
 }
 
 .empty-preset[aria-pressed="true"] {
-  background: var(--sf);
+  background: var(--sheet);
   box-shadow:
-    0 0 0 1px var(--line),
+    0 0 0 1px var(--rule),
     0 8px 18px -12px var(--shadow);
 }
 
@@ -202,7 +202,7 @@
   width: 16px;
   height: 16px;
   border-radius: 50%;
-  box-shadow: inset 0 0 0 1.5px var(--mut);
+  box-shadow: inset 0 0 0 1.5px var(--ink-2);
 }
 
 .empty-radio::after {
@@ -212,7 +212,7 @@
   border-radius: 50%;
   background: var(--ink);
   transform: scale(0);
-  transition: transform var(--m-slow) var(--m-ease);
+  transition: transform var(--t-small) var(--ease);
 }
 
 .empty-preset[aria-pressed="true"] .empty-radio {
@@ -245,8 +245,8 @@
   left: 58px;
   right: 4px;
   height: 48px;
-  border-radius: var(--r-m);
-  box-shadow: inset 0 0 0 1px var(--line);
+  border-radius: 8px;
+  box-shadow: inset 0 0 0 1px var(--rule);
 }
 
 .empty-ghost:nth-child(3) {
@@ -265,7 +265,7 @@
   width: 40%;
   height: 8px;
   border-radius: 4px;
-  background: var(--chip);
+  background: var(--well);
   opacity: 0.6;
 }
 

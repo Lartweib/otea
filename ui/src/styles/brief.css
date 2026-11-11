@@ -73,8 +73,8 @@
   align-items: center;
   min-height: 64px;
   padding: 0 4px;
-  border-radius: var(--r-m);
-  transition: background-color var(--m-base) var(--m-ease);
+  border-radius: 8px;
+  transition: background-color var(--t-fade) var(--ease);
 }
 
 .brief-row:hover {
@@ -82,11 +82,11 @@
 }
 
 .brief-rows[data-out] .brief-row {
-  color: var(--mut);
+  color: var(--ink-2);
 }
 
 .brief-row[data-held] {
-  animation: brief-held 1800ms var(--m-ease);
+  animation: brief-held 1800ms var(--ease);
 }
 
 @keyframes brief-held {
@@ -127,8 +127,8 @@
 
 .brief-after {
   overflow: hidden;
-  font: 400 11.5px var(--font-machine);
-  color: var(--mut);
+  font: 400 11.5px var(--mono);
+  color: var(--ink-2);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -205,7 +205,7 @@
   gap: 10px 16px;
   min-height: 64px;
   padding: 12px 20px 12px 24px;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--rule);
 }
 
 .brief-bar .view-switch {
@@ -234,12 +234,12 @@
 .brief-md h3 {
   margin-top: 22px;
   padding-top: 12px;
-  border-top: 1px solid var(--line);
+  border-top: 1px solid var(--rule);
 }
 
 .brief-src {
   margin: 0;
-  font: 400 12.5px / 1.75 var(--font-machine);
+  font: 400 12.5px / 1.75 var(--mono);
   color: var(--ink);
   white-space: pre-wrap;
   word-break: break-word;

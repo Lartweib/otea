@@ -20,7 +20,7 @@ function Section({ name, sub, children }: { name: string; sub?: string; children
     <section className="pj-sec">
       <div className="pj-sec-label">
         <h2>{name}</h2>
-        {sub ? <span className="t-cap">{sub}</span> : null}
+        {sub ? <span className="margin-label">{sub}</span> : null}
       </div>
       <div className="pj-sec-body">{children}</div>
     </section>
@@ -341,20 +341,13 @@ type ProjectSettingsProps = {
 
 // One project's settings: its name, the paths and repos that lead to it, and where its data lives.
 // Nothing here touches the disk but the registry: relink and forget change which folders lead here.
-export function ProjectSettings({
-  version,
-  connection,
-  canWrite,
-  rail,
-  sidebar = true,
-}: ProjectSettingsProps) {
+export function ProjectSettings({ version, connection, canWrite }: ProjectSettingsProps) {
   const [changes, setChanges] = useState(0);
   const settings = useRemote(fetchProjectSettings, version * 1000 + changes, connection);
   const changed = () => setChanges((count) => count + 1);
   if (settings.status !== 'ready') {
     return (
-      <main className="layout pj-settings-layout with-rail" data-sidebar={sidebar ? 'on' : 'off'}>
-        {rail}
+      <div className="page pj-settings">
         <p
           className={
             settings.status === 'failed' ? 'pane-message action-error' : 'pane-message t-small'
@@ -362,23 +355,22 @@ export function ProjectSettings({
         >
           {settings.status === 'failed' ? settings.message : t('common.loading')}
         </p>
-      </main>
+      </div>
     );
   }
   const value = settings.value;
   const repos = value.paths.reduce((sum, path) => sum + path.repos.length, 0);
   const pathsSub = `${t('settings.pathCount', { count: value.paths.length })} · ${t('settings.repoCount', { count: repos })}`;
   return (
-    <main className="layout pj-settings-layout with-rail" data-sidebar={sidebar ? 'on' : 'off'}>
-      {rail}
-      <div className="pj-settings">
-        <header className="pj-settings-head">
-          <span className="t-cap pj-crumb">
-            <TypeIcon name="gear" size={14} />
-            {t('settings.crumb', { name: value.name })}
-          </span>
-          <h1 className="t-display">{t('settings.title')}</h1>
-        </header>
+    <div className="page pj-settings">
+      <header className="head" data-enter="head">
+        <div className="kicker">
+          <b>{t('settings.kicker')}</b> &nbsp;·&nbsp; {value.name}
+        </div>
+        <h1 className="display">{t('settings.display')}</h1>
+        <p className="dek">{t('settings.dek', { name: value.name })}</p>
+      </header>
+      <div className="pj-body" data-enter="fade">
         <Section name={t('settings.name')}>
           <div className="pj-name">
             <span className="pj-name-icon">
@@ -432,7 +424,7 @@ export function ProjectSettings({
           <Storage settings={value} />
         </Section>
       </div>
-    </main>
+    </div>
   );
 }
 
