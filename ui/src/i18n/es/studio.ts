@@ -11,6 +11,8 @@ export const studio = {
   'cz.status': { one: '{count} cambio, sin aplicar', other: '{count} cambios, sin aplicar' },
   'cz.statusShort': { one: '{count} cambio', other: '{count} cambios' },
   'cz.undo': 'Deshacer',
+  'cz.viewLabel': 'La vista que diseñas',
+  'cz.deviceLabel': 'Dibujada para',
   'cz.redo': 'Rehacer',
   'cz.discard': 'Descartar',
   'cz.apply': 'Aplicar a {board}',

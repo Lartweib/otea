@@ -1,12 +1,24 @@
-/* The Customize view panels. Colors come from the tokens, so light and dark follow the theme. */
+/* The Customize view panels, in the Editorial grammar: the left panel on the sheet with mono heads,
+   the menus and the new field unrolled in the pop's grammar (Unroll.tsx), the Apply dialog on the
+   kit's Dialog. Colors come from the tokens, so light and dark follow the theme. */
 
+.cz-page svg.icon,
+.cz-applyd svg.icon {
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* a two-way switch inside a menu: the kit's segmented look, without a knob to slide */
 .cz-sg {
   display: inline-flex;
   gap: 2px;
-  padding: 2px;
+  padding: 3px;
   border-radius: 999px;
-  box-shadow: inset 0 0 0 1px var(--rule);
-  background: var(--ground);
+  background: var(--well);
 }
 .cz-sg.wrap {
   flex-wrap: wrap;
@@ -17,25 +29,31 @@
   display: inline-flex;
   align-items: center;
   height: 26px;
-  padding: 0 9px;
+  padding: 0 10px;
   border: 0;
   border-radius: 999px;
   background: none;
-  font: 500 12.5px var(--sans);
-  color: var(--ink-2);
+  font: 500 12.5px / 1 var(--sans);
+  color: var(--ink-3);
   white-space: nowrap;
   cursor: pointer;
+  transition:
+    color var(--t-fade) var(--o-drift),
+    background-color var(--t-fade) var(--o-drift),
+    box-shadow var(--t-fade) var(--o-drift);
 }
 .cz-sg button:hover:not(:disabled) {
   color: var(--ink);
 }
 .cz-sg button.on {
   background: var(--sheet);
-  box-shadow: 0 0 0 1px var(--lane);
+  box-shadow:
+    0 0 0 1px var(--rule-2),
+    0 2px 6px -3px var(--shadow);
   color: var(--ink);
 }
 .cz-sg button:disabled {
-  opacity: 0.5;
+  color: var(--rule-2);
   cursor: default;
 }
 .cz-sg button:focus-visible,
@@ -48,27 +66,39 @@
   outline-offset: 2px;
 }
 
-/* Left panel */
+/* ---- the left panel: what can come into the view, and what is not in it ---- */
 .cz-left {
   display: flex;
   flex-direction: column;
-  gap: 22px;
+  gap: 26px;
   min-height: 0;
   overflow: auto;
-  padding: 18px 16px 24px;
+  padding: 18px 14px 28px 18px;
   background: var(--sheet);
   border-right: 1px solid var(--rule);
   scrollbar-width: thin;
-  transition: background-color var(--t-fade) var(--ease);
+  scrollbar-color: var(--rule-2) transparent;
+  transition:
+    background-color var(--t-fade) var(--o-drift),
+    box-shadow var(--t-fade) var(--o-drift);
 }
 .cz-left.hot {
-  background: var(--sel);
-  box-shadow: inset 0 0 0 1.5px var(--you);
+  background: color-mix(in oklch, var(--you-wash) 70%, var(--sheet));
+  box-shadow: inset -1px 0 0 var(--you);
 }
 .cz-lnew {
   display: flex;
-  gap: 6px;
+  gap: 8px;
   flex-wrap: wrap;
+}
+.cz-lnew .btn {
+  border-color: var(--rule-2);
+  background: var(--sheet);
+  color: var(--ink);
+  font-weight: 500;
+}
+.cz-lnew .btn:hover {
+  border-color: var(--ink-3);
 }
 .cz-lg {
   display: flex;
@@ -76,36 +106,40 @@
   gap: 2px;
 }
 .cz-lg h3 {
-  margin: 0 0 6px;
-  padding: 0 6px;
-  font-size: 13px;
-  font-weight: 600;
+  margin: 0 0 8px;
+  padding: 0 6px 8px;
+  border-bottom: 1px solid var(--rule);
+  font: 600 10px / 1.3 var(--sans);
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--ink-3);
 }
 .cz-lr {
   display: grid;
   grid-template-columns: 10px minmax(0, 1fr);
-  column-gap: 8px;
+  column-gap: 10px;
   align-items: center;
   width: 100%;
   min-height: 36px;
-  padding: 6px;
+  padding: 7px 8px 7px 6px;
   border: 0;
-  border-radius: 8px;
+  border-radius: 7px;
   background: none;
   color: var(--ink);
   text-align: left;
   cursor: grab;
   font: inherit;
+  transition: background-color var(--t-fade) var(--o-drift);
 }
 .cz-lr:hover {
   background: var(--hov);
 }
 .cz-grip {
-  fill: color-mix(in oklch, var(--ink-2) 62%, transparent);
-  transition: fill var(--t-hover);
+  fill: var(--rule-2);
+  transition: fill var(--t-hover) var(--ease);
 }
 .cz-lr:hover .cz-grip {
-  fill: var(--ink-2);
+  fill: var(--ink-3);
 }
 .cz-lr.origin {
   opacity: 0.32;
@@ -118,21 +152,20 @@
   min-width: 0;
 }
 .cz-ln b {
-  font-size: 14px;
-  font-weight: 500;
-  white-space: nowrap;
   overflow: hidden;
+  font: 500 13.5px / 1.3 var(--sans);
+  white-space: nowrap;
   text-overflow: ellipsis;
 }
 .cz-ln span {
-  font-size: 12.5px;
-  color: var(--ink-2);
+  font: 400 11.5px / 1 var(--mono);
+  color: var(--ink-3);
   white-space: nowrap;
 }
 .cz-lr.block {
   grid-template-columns: 10px 18px minmax(0, 1fr);
   align-items: start;
-  padding: 7px 6px;
+  padding: 8px 8px 9px 6px;
 }
 .cz-li {
   display: grid;
@@ -142,30 +175,25 @@
 }
 .cz-ln2 {
   display: grid;
-  gap: 1px;
+  gap: 2px;
   min-width: 0;
 }
 .cz-ln2 b {
-  font-size: 14px;
-  font-weight: 500;
-  line-height: 20px;
+  font: 500 13.5px / 20px var(--sans);
 }
 .cz-ln2 > span {
-  font-size: 12.5px;
-  line-height: 1.35;
-  color: var(--ink-2);
+  font: 400 italic 13.5px / 1.35 var(--serif);
+  color: var(--ink-3);
 }
 .cz-ln2 em {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  font-style: normal;
-  font-size: 12.5px;
-  line-height: 1.35;
-  color: var(--ink-2);
+  gap: 5px;
+  font: 400 11.5px / 1.35 var(--mono);
+  color: var(--ink-3);
 }
 .cz-ln2 em .icon {
-  color: var(--plus);
+  color: var(--you-ink);
 }
 .cz-lr.used {
   cursor: default;
@@ -173,43 +201,40 @@
 .cz-lr.used:hover {
   background: none;
 }
+.cz-lr.used .cz-ln2 b {
+  color: var(--ink-2);
+}
 .cz-gsp {
   width: 10px;
 }
 .cz-lempty {
   margin: 0;
   padding: 2px 6px;
-  font-size: 13px;
-  line-height: 1.45;
-  color: var(--ink-2);
+  font: 400 italic 14px / 1.45 var(--serif);
+  color: var(--ink-3);
 }
 .cz-lhide {
-  margin: 0 0 6px;
-  padding: 9px 12px;
-  border-radius: 10px;
-  background: var(--ink);
-  color: var(--sheet);
-  font-size: 13px;
-  line-height: 1.4;
+  margin: 0 0 8px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--sheet);
+  box-shadow: inset 0 0 0 1px var(--you);
+  color: var(--you-ink);
+  font: 400 italic 14px / 1.4 var(--serif);
 }
 
-/* Menus and the new-field popover */
+/* ---- the menus and the new field: content of an unrolled panel ---- */
+.cz-menuslot .pop.st-unroll,
+.cz-newu {
+  width: 100%;
+}
 .cz-menu,
 .cz-add {
   box-sizing: border-box;
   display: grid;
-  gap: 13px;
-  padding: 14px 16px 12px;
-  border-radius: 14px;
-  background: var(--sheet);
-  box-shadow:
-    0 0 0 1px var(--lane),
-    0 22px 48px -18px var(--shadow);
+  gap: 14px;
+  padding: 10px 10px 8px;
   outline: 0;
-}
-.cz-add {
-  gap: 12px;
-  padding: 14px 16px;
 }
 .cz-mh {
   display: flex;
@@ -219,22 +244,23 @@
 .cz-in {
   box-sizing: border-box;
   width: 100%;
-  height: 36px;
-  padding: 0 13px;
-  border: 0;
-  border-radius: 999px;
-  background: var(--ground);
-  box-shadow: inset 0 0 0 1px var(--lane);
-  font: 500 14.5px var(--sans);
+  height: 38px;
+  padding: 0 12px;
+  border: 1px solid var(--rule-2);
+  border-radius: 7px;
+  background: var(--sheet);
+  font: 430 17px / 1 var(--serif);
+  font-variation-settings: "opsz" 18;
   color: var(--ink);
   outline: 0;
+  transition: border-color var(--t-hover) var(--ease);
 }
 .cz-in:focus {
-  box-shadow: inset 0 0 0 1.5px var(--you);
+  border-color: var(--you);
 }
 .cz-in::placeholder {
-  color: var(--ink-2);
-  font-weight: 400;
+  color: var(--ink-3);
+  font-style: italic;
 }
 .cz-mx {
   flex: none;
@@ -244,16 +270,17 @@
 }
 .cz-mq {
   display: grid;
-  gap: 7px;
+  gap: 8px;
 }
 .cz-ml {
-  font-size: 13px;
-  font-weight: 600;
+  font: 600 10px / 1.3 var(--sans);
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--ink-3);
 }
 .cz-mp {
   margin: 0;
-  font-size: 13px;
-  line-height: 1.45;
+  font: 400 italic 14px / 1.45 var(--serif);
   color: var(--ink-2);
   text-wrap: pretty;
 }
@@ -270,13 +297,14 @@
 }
 .cz-opt {
   height: 26px;
-  padding: 0 9px;
+  padding: 0 10px;
   border: 0;
-  border-radius: 999px;
+  border-radius: 6px;
   background: var(--well);
-  font: 500 12px var(--mono);
+  font: 400 12px / 1 var(--mono);
   color: var(--ink);
   cursor: pointer;
+  transition: background-color var(--t-hover) var(--ease);
 }
 .cz-opt:hover {
   background: var(--hov);
@@ -292,10 +320,10 @@
 .cz-chk {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
+  gap: 8px;
   position: relative;
-  height: 26px;
-  font: 500 13px var(--sans);
+  height: 28px;
+  font: 500 13px / 1 var(--sans);
   color: var(--ink);
   cursor: pointer;
 }
@@ -314,12 +342,16 @@
   width: 16px;
   height: 16px;
   border-radius: 4px;
-  box-shadow: inset 0 0 0 1.5px var(--lane);
-  background: var(--ground);
+  box-shadow: inset 0 0 0 1.25px var(--rule-2);
+  background: var(--sheet);
   color: transparent;
+  transition:
+    background-color var(--t-fade) var(--o-drift),
+    box-shadow var(--t-fade) var(--o-drift),
+    color var(--t-fade) var(--o-drift);
 }
 .cz-chk:hover i {
-  box-shadow: inset 0 0 0 1.5px var(--ink-2);
+  box-shadow: inset 0 0 0 1.25px var(--ink-3);
 }
 .cz-chk input:checked + i {
   background: var(--ink);
@@ -331,18 +363,34 @@
   gap: 2px;
   margin-left: -6px;
 }
+.cz-mud .btn,
+.cz-mfoot > .btn,
+.cz-mdela .btn,
+.cz-adda .btn {
+  border-color: transparent;
+  background: none;
+  color: var(--ink-2);
+}
+.cz-mud .btn:hover:not(:disabled),
+.cz-mfoot > .btn:hover,
+.cz-mdela .btn:hover {
+  background: var(--well);
+  color: var(--ink);
+}
 .cz-mfoot {
   display: grid;
-  gap: 0;
-  margin: 0 -6px;
-  padding-top: 6px;
+  gap: 2px;
+  margin: 0 -10px;
+  padding: 8px 4px 0;
   border-top: 1px solid var(--rule);
 }
 .cz-mfoot > .btn {
   justify-self: start;
 }
 .cz-mfoot > .cz-mp {
-  padding: 2px 6px;
+  padding: 2px 10px;
+  font-size: 13.5px;
+  color: var(--ink-3);
 }
 .cz-mdl {
   display: flex;
@@ -350,19 +398,20 @@
   gap: 6px;
 }
 .cz-muse {
-  font-size: 12.5px;
-  color: var(--ink-2);
+  font: 400 11.5px / 1 var(--mono);
+  color: var(--ink-3);
   white-space: nowrap;
 }
 .cz-mdel {
   display: grid;
   gap: 6px;
   padding: 4px 6px;
-  font-size: 13px;
-  line-height: 1.45;
+  font: 400 italic 14px / 1.45 var(--serif);
 }
 .cz-mdel b {
-  font-weight: 600;
+  font-style: normal;
+  font-weight: 500;
+  color: var(--warn);
 }
 .cz-mdel > span {
   color: var(--ink-2);
@@ -371,11 +420,12 @@
   display: flex;
   gap: 4px;
   margin: 4px 0 2px -2px;
+  font-style: normal;
 }
 
 .cz-ats {
   display: grid;
-  gap: 4px;
+  gap: 2px;
 }
 .cz-at {
   display: grid;
@@ -385,23 +435,25 @@
   min-height: 42px;
   padding: 6px 10px;
   border: 0;
-  border-radius: 10px;
+  border-radius: 7px;
   background: none;
   text-align: left;
   color: var(--ink);
   cursor: pointer;
   font: inherit;
+  transition:
+    background-color var(--t-fade) var(--o-drift),
+    box-shadow var(--t-fade) var(--o-drift);
 }
 .cz-at:hover {
   background: var(--hov);
 }
 .cz-at.on {
   background: var(--sel);
-  box-shadow: inset 0 0 0 1px var(--lane);
+  box-shadow: inset 0 0 0 1px var(--rule-2);
 }
 .cz-at b {
-  font-size: 13.5px;
-  font-weight: 500;
+  font: 500 13px / 1.2 var(--sans);
 }
 .cz-atp {
   display: flex;
@@ -439,91 +491,85 @@
   gap: 4px;
 }
 
-/* Apply dialog */
-.cz-scrim {
-  position: fixed;
-  z-index: 50;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  padding: 32px;
-  background: color-mix(in oklch, var(--ink) 26%, transparent);
+/* ---- the Apply dialog: the kit's Dialog, its changes as a list of what moves ---- */
+.dialog.cz-applyd {
+  width: min(520px, calc(100vw - 32px));
+  margin-left: calc(min(520px, calc(100vw - 32px)) / -2);
+  top: 16vh;
 }
-:root[data-theme="dark"] .cz-scrim {
-  background: oklch(0.1 0.01 265 / 0.55);
-}
-.cz-dlg {
-  box-sizing: border-box;
-  width: min(560px, 100%);
-  max-height: 100%;
-  overflow: auto;
+.cz-applyd .pin {
   display: grid;
   gap: 14px;
-  padding: 22px 24px 20px;
-  border-radius: 16px;
-  background: var(--sheet);
-  box-shadow:
-    0 0 0 1px var(--lane),
-    0 30px 70px -24px var(--shadow);
-  outline: 0;
+  max-height: 68vh;
+  overflow: auto;
 }
-.cz-dlg h2 {
+.cz-applyd h4 {
   margin: 0;
-  font-size: 19px;
-  font-weight: 600;
-  letter-spacing: -0.012em;
 }
 .cz-chg {
   display: grid;
-  gap: 8px;
+  gap: 0;
   margin: 0;
   padding: 0;
   list-style: none;
+  border-top: 1px solid var(--rule);
 }
 .cz-chg li {
   display: grid;
   grid-template-columns: 18px minmax(0, 1fr);
-  column-gap: 8px;
-  font-size: 14.5px;
-  line-height: 1.45;
+  column-gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--rule);
+  font: 400 15px / 1.4 var(--serif);
+  font-variation-settings: "opsz" 18;
+  color: var(--ink);
 }
 .cz-chgi {
   display: grid;
   place-items: center;
   height: 21px;
-  color: var(--ink-2);
+  color: var(--ink-3);
+}
+.cz-chg li[data-kind="new"] .cz-chgi {
+  color: var(--you-ink);
 }
 .cz-who {
-  margin: 4px 0 0;
-  font-size: 14px;
+  margin: 0 0 4px;
+  font: 400 13.5px / 1.4 var(--sans);
   color: var(--ink-2);
 }
 .cz-who b {
   font-weight: 600;
   color: var(--ink);
 }
+.cz-applyd p.cz-mp {
+  font-size: 15px;
+}
 .cz-seef {
   justify-self: start;
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  height: 26px;
-  padding: 0 8px 0 5px;
-  margin-left: -5px;
+  gap: 6px;
+  height: 28px;
+  padding: 0 9px 0 6px;
+  margin-left: -6px;
   border: 0;
-  border-radius: 999px;
+  border-radius: 6px;
   background: none;
-  font: 500 13px var(--sans);
-  color: var(--ink-2);
+  font: 400 11.5px / 1 var(--mono);
+  color: var(--ink-3);
   cursor: pointer;
+  transition:
+    background-color var(--t-hover) var(--ease),
+    color var(--t-hover) var(--ease);
 }
 .cz-seef:hover {
-  background: var(--hov);
+  background: var(--well);
   color: var(--ink);
 }
 .cz-seef .icon {
   transform: rotate(-90deg);
-  transition: transform var(--t-fade) var(--ease);
+  transition: transform var(--t-small) var(--o-settle);
 }
 .cz-seef[aria-expanded="true"] .icon {
   transform: none;
@@ -533,16 +579,12 @@
   max-height: 300px;
   overflow: auto;
   padding: 12px 14px;
-  border-radius: 10px;
+  border-radius: 8px;
   background: var(--well);
   font: 400 12px / 1.6 var(--mono);
   white-space: pre-wrap;
   color: var(--ink);
-}
-.cz-dlga {
-  display: flex;
-  gap: 6px;
-  margin-top: 4px;
+  scrollbar-width: thin;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -551,4 +593,7 @@
   .cz-seef .icon {
     transition: none;
   }
+}
+.cz-lnew .btn.sm {
+  padding: 0 10px;
 }

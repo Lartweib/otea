@@ -159,6 +159,7 @@ describe('NewField, BoxMenu, ApplyDialog', () => {
   });
   it('ApplyDialog lists changes, reach, the first-time line and the collapsed file', () => {
     const props = {
+      open: true,
       target: 'bugs',
       changes: [
         { kind: 'move' as const, text: 'Build moved to Brief' },
@@ -173,6 +174,9 @@ describe('NewField, BoxMenu, ApplyDialog', () => {
       onKeepEditing: noop,
     };
     const html = renderToStaticMarkup(createElement(ApplyDialog, props));
+    expect(html).toContain('class="pop e-top dialog cz-applyd" role="dialog" aria-modal="true"');
+    expect(html).toMatch(/<h4 data-i="">Apply to bugs/);
+    expect(html).toMatch(/<div class="dbtns" data-i="">/);
     expect(html).toContain('Every item in bugs');
     expect(html).toContain('4 items');
     expect(html).toContain('bugs gets its own copy');
@@ -186,6 +190,7 @@ describe('NewField, BoxMenu, ApplyDialog', () => {
   it('ApplyDialog saves a template nobody uses, and says an official one is copied', () => {
     const html = renderToStaticMarkup(
       createElement(ApplyDialog, {
+        open: true,
         target: '',
         changes: [],
         itemCount: 0,

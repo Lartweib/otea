@@ -62,14 +62,7 @@ export function FieldMenu(p: FieldMenuProps) {
   };
 
   return (
-    <div
-      ref={ref}
-      className="cz-menu"
-      role="dialog"
-      aria-label={t('customize.name')}
-      tabIndex={-1}
-      style={p.style}
-    >
+    <div ref={ref} className="cz-menu" tabIndex={-1} style={p.style}>
       <div className="cz-mh">
         <input
           className="cz-in"
