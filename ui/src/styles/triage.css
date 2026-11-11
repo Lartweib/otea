@@ -76,6 +76,17 @@
   touch-action: pan-y;
   transition: box-shadow 360ms var(--o-drift);
 }
+/* The card's face while it moves sideways: fixed above everything, so it flies over the view's
+   edge instead of being cut by it (triage-flight.ts). */
+.tcard.tflight {
+  position: fixed;
+  right: auto;
+  bottom: auto;
+  margin: 0;
+  z-index: var(--z-flight);
+  pointer-events: none;
+  will-change: transform, opacity;
+}
 .tcard[data-ready] {
   cursor: grab;
 }
@@ -169,7 +180,7 @@
   color: var(--you-ink);
   border-color: var(--you);
   transform-origin: left center;
-  transform: rotate(-6deg) scale(calc(0.84 + 0.16 * var(--p, 0)));
+  transform: translateX(var(--shift, 0px)) rotate(-6deg) scale(calc(0.84 + 0.16 * var(--p, 0)));
 }
 .tstamp[data-side="left"] {
   --stamp-bg: var(--ink);
@@ -177,7 +188,7 @@
   color: var(--ink);
   border-color: var(--ink-2);
   transform-origin: right center;
-  transform: rotate(6deg) scale(calc(0.84 + 0.16 * var(--p, 0)));
+  transform: translateX(var(--shift, 0px)) rotate(6deg) scale(calc(0.84 + 0.16 * var(--p, 0)));
 }
 .tcard[data-lean="right"] .tstamp[data-side="right"],
 .tcard[data-lean="left"] .tstamp[data-side="left"] {
@@ -350,6 +361,20 @@
 }
 
 @media (max-width: 720px) {
+  /* On the phone the stamp stacks its step under the word, narrow enough to stay on the part of
+     the card still on the screen. */
+  .tstamp {
+    display: grid;
+    grid-template-columns: auto auto;
+    column-gap: 6px;
+    row-gap: 3px;
+    justify-items: start;
+    padding: 6px 11px 7px 9px;
+  }
+  .tstamp .to {
+    grid-column: 1 / -1;
+    transform: none;
+  }
   .tri {
     padding: 20px 16px 40px;
   }
