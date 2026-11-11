@@ -228,6 +228,8 @@
 }
 .row .lift {
   position: relative;
+  /* The band paints under the row's content, never over its meta (severity, mark, age). */
+  isolation: isolate;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   grid-auto-flow: column;
@@ -237,6 +239,7 @@
 }
 .row .band {
   position: absolute;
+  z-index: -1;
   top: 3px;
   bottom: 3px;
   right: -12px;

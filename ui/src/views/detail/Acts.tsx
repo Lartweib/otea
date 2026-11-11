@@ -352,15 +352,10 @@ export function Acts({ item, type, facts, look, plan, mode, word, notesOpen, onN
   } else {
     const holder = item.lease?.holder ?? agent;
     let text: ReactNode;
+    // The standfirst already says who has it or did it: the receipt adds only what is new.
     if (look === 'dropped') text = t('sheet.receipt.dropped');
-    else if (look === 'done')
-      text = holder
-        ? tx('sheet.receipt.done', { agent: <b>{holder}</b> })
-        : t('sheet.receipt.doneYou');
-    else if (look === 'queued')
-      text = holder
-        ? tx('sheet.receipt.queued', { agent: <b>{holder}</b> })
-        : t('sheet.receipt.queuedAny');
+    else if (look === 'done') text = t('sheet.receipt.done');
+    else if (look === 'queued') text = t('sheet.receipt.queued');
     else {
       const left = whenText(item, app.now);
       text = (

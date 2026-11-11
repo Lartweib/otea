@@ -275,11 +275,9 @@ export const detail = {
   'sheet.receipt.hasAny': 'Lo tiene un agente.',
   'sheet.receipt.lease': 'Su reserva: {time}.',
   'sheet.receipt.back': 'Vuelve a tu revisión cuando termine.',
-  'sheet.receipt.queued': 'Espera a {agent}. Vuelve a ti cuando termine.',
-  'sheet.receipt.queuedAny': 'Espera a un agente. Vuelve a ti cuando termine.',
-  'sheet.receipt.done': 'Hecho. Lo cerraste tú; el trabajo fue de {agent}.',
-  'sheet.receipt.doneYou': 'Hecho. Lo cerraste tú.',
-  'sheet.receipt.dropped': 'Descartado. Ya no aparece en Te toca.',
+  'sheet.receipt.queued': 'Vuelve a ti cuando termine.',
+  'sheet.receipt.done': 'Lo cerraste tú.',
+  'sheet.receipt.dropped': 'Ya no aparece en Te toca.',
   'sheet.waitkids': {
     one: 'Espera a su hijo: {closed} de {count} cerrado. Cuando se cierre, pasa a {state}.',
     other:
