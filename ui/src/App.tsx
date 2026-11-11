@@ -3,6 +3,7 @@ import { AppProvider, useApp } from './app/context.tsx';
 import { ViewHost } from './app/ViewHost.tsx';
 import { useWorkspace } from './app/workspace.ts';
 import { applyAttention } from './attention-dom.ts';
+import { BoardStudio } from './board-studio/BoardStudio.tsx';
 import { catalogEntries } from './catalog.ts';
 import { ActivityDrawer } from './components/ActivityDrawer.tsx';
 import { BriefView } from './components/BriefView.tsx';
@@ -95,6 +96,8 @@ function View({ route }: { route: Route }): ReactNode {
         />
       );
     case 'studio':
+      if (route.page.kind === 'boards' || route.page.kind === 'board')
+        return <BoardStudio page={route.page} canWrite={app.session.canConfigure} />;
       return (
         <Studio
           page={route.page}

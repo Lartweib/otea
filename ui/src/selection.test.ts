@@ -117,6 +117,9 @@ describe('selection', () => {
     ['#/studio/blueprint', { kind: 'blueprint', diagram: false }],
     ['#/studio/blueprint/diagram', { kind: 'blueprint', diagram: true }],
     ['#/studio/blueprints', { kind: 'blueprints' }],
+    ['#/studio/boards', { kind: 'boards' }],
+    ['#/studio/board/bk3j9x2q', { kind: 'board', board: 'bk3j9x2q' }],
+    ['#/studio/board/', { kind: 'start' }],
     ['#/studio/elsewhere', { kind: 'start' }],
   ])('routes %j to the Studio page %j', (hash, page) => {
     expect(routeFromHash(hash)).toEqual({ view: 'studio', page });
@@ -128,6 +131,8 @@ describe('selection', () => {
       { kind: 'preset', name: 'bug-triage' },
       { kind: 'blueprint', diagram: true },
       { kind: 'blueprints' },
+      { kind: 'boards' },
+      { kind: 'board', board: 'bk3j9x2q' },
     ] as const;
     for (const page of pages)
       expect(routeFromHash(studioHash(page))).toEqual({ view: 'studio', page });

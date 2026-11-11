@@ -24,7 +24,11 @@ export type StudioPage =
   | { kind: 'start' }
   | { kind: 'preset'; name: string }
   | { kind: 'blueprint'; diagram: boolean }
-  | { kind: 'blueprints' };
+  | { kind: 'blueprints' }
+  | BoardStudioPage;
+
+// The board Studio (ui/src/board-studio): its home, and a board's editor by the board's hidden id.
+export type BoardStudioPage = { kind: 'boards' } | { kind: 'board'; board: string };
 
 // What the Customize view builder shapes: an item's view of its board, or a board template.
 export type CustomizeTarget = { kind: 'item'; id: string } | { kind: 'preset'; name: string };
@@ -167,6 +171,11 @@ function studioPage([kind, name]: string[]): StudioPage {
   }
   if (kind === 'blueprint') return { kind: 'blueprint', diagram: name === 'diagram' };
   if (kind === 'blueprints') return { kind: 'blueprints' };
+  if (kind === 'boards') return { kind: 'boards' };
+  if (kind === 'board' && name) {
+    const decoded = decode(name);
+    if (decoded) return { kind: 'board', board: decoded };
+  }
   return { kind: 'start' };
 }
 
@@ -178,6 +187,10 @@ export function studioHash(page: StudioPage = { kind: 'start' }): string {
       return `#${STUDIO}/blueprint${page.diagram ? '/diagram' : ''}`;
     case 'blueprints':
       return `#${STUDIO}/blueprints`;
+    case 'boards':
+      return `#${STUDIO}/boards`;
+    case 'board':
+      return `#${STUDIO}/board/${encodeURIComponent(page.board)}`;
     default:
       return `#${STUDIO}`;
   }
