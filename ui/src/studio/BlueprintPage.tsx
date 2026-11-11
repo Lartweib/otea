@@ -39,6 +39,7 @@ import { type Fix, gateOf, nothingWaits, waitingDraft } from './gate.ts';
 import { storeDraft } from './PresetEditor.tsx';
 import { OkMark, ProblemMark, Seg } from './parts.tsx';
 import { boardSample } from './preview.ts';
+import { TrayAt } from './Tray.tsx';
 
 // The project's blueprint in Studio: its boards and the links allowed between them, edited as the
 // project's own copy, or drawn as the diagram of who waits for whom. A project without one picks a
@@ -294,27 +295,20 @@ function Editor({
         <div className="st-hr">
           <Verdict problems={problems.length} />
           {nothing.length > 0 ? (
-            <span className="st-offscreen-at">
-              <button
-                type="button"
-                className="st-offscreen"
-                aria-expanded={trayOpen}
-                onClick={() => setTrayOpen(!trayOpen)}
-              >
-                <Icon name="warn" />
-                {t('studio.notOnScreen', { count: nothing.length })}
-                <Icon name="chevron" />
-              </button>
-              {trayOpen ? (
-                <BlueprintTray
-                  links={nothing}
-                  onShow={(text) => {
-                    setTrayOpen(false);
-                    select({ kind: 'link', text });
-                  }}
-                />
-              ) : null}
-            </span>
+            <TrayAt
+              open={trayOpen}
+              onToggle={() => setTrayOpen(!trayOpen)}
+              onClose={() => setTrayOpen(false)}
+              label={t('studio.notOnScreen', { count: nothing.length })}
+            >
+              <BlueprintTray
+                links={nothing}
+                onShow={(text) => {
+                  setTrayOpen(false);
+                  select({ kind: 'link', text });
+                }}
+              />
+            </TrayAt>
           ) : null}
           {editable && !diagram ? (
             <>

@@ -83,18 +83,14 @@ export function BlueprintTray({
   onShow: (link: string) => void;
 }) {
   return (
-    <div
-      className="st-tray2"
-      role="dialog"
-      aria-label={t('studio.tray.title', { count: links.length })}
-    >
-      <div className="st-tray2-h">
+    <div className="st-tray2">
+      <div className="st-tray2-h" data-i="">
         <span>{t('studio.tray.title', { count: links.length })}</span>
         <span>{t('studio.tray.still')}</span>
       </div>
       <ul>
         {links.map((link) => (
-          <li key={link} data-level="warning">
+          <li key={link} data-level="warning" data-i="">
             <span className="st-tray2-i" aria-hidden="true">
               <Icon name="warn" />
             </span>

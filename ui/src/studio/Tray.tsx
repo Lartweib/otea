@@ -1,7 +1,9 @@
+import { type ReactNode, useEffect, useRef } from 'react';
 import type { PresetNote } from '../../../src/core/preset.ts';
 import { t } from '../i18n/i18n.ts';
-import { Icon } from '../kit/index.ts';
+import { Icon, useEscape } from '../kit/index.ts';
 import type { Fix, TrayRow } from './tray.ts';
+import { Unroll } from './Unroll.tsx';
 
 // The not on screen tray, opened from the header: what the preview cannot show, each with a fix of
 // one click or a show me that opens the place. Save still works either way.
@@ -65,19 +67,15 @@ type TrayProps = {
 
 export function Tray({ rows, onFix, onShow }: TrayProps) {
   return (
-    <div
-      className="st-tray2"
-      role="dialog"
-      aria-label={t('studio.tray.title', { count: rows.length })}
-    >
-      <div className="st-tray2-h">
+    <div className="st-tray2">
+      <div className="st-tray2-h" data-i="">
         <span>{t('studio.tray.title', { count: rows.length })}</span>
         <span>{t('studio.tray.still')}</span>
       </div>
       {rows.length === 0 ? <p className="st-ask-n">{t('studio.tray.none')}</p> : null}
       <ul>
         {rows.map((row) => (
-          <li key={`${row.note.code}-${row.note.message}`} data-level={row.note.level}>
+          <li key={`${row.note.code}-${row.note.message}`} data-level={row.note.level} data-i="">
             <span className="st-tray2-i" aria-hidden="true">
               {row.note.level === 'warning' ? <Icon name="warn" /> : <i />}
             </span>
@@ -106,5 +104,53 @@ export function Tray({ rows, onFix, onShow }: TrayProps) {
         ))}
       </ul>
     </div>
+  );
+}
+
+type TrayAtProps = {
+  open: boolean;
+  onToggle: () => void;
+  onClose: () => void;
+  // The button's words: how many notes are not on screen.
+  label: string;
+  children: ReactNode;
+};
+
+// The not on screen button and its tray, which unrolls under it and closes on Escape or a press
+// outside, the same gesture mirrored.
+export function TrayAt({ open, onToggle, onClose, label, children }: TrayAtProps) {
+  const button = useRef<HTMLButtonElement>(null);
+  const box = useRef<HTMLSpanElement>(null);
+  const close = useRef(onClose);
+  close.current = onClose;
+  useEscape(open, 'pop', () => {
+    close.current();
+    button.current?.focus({ preventScroll: true });
+  });
+  useEffect(() => {
+    if (!open) return;
+    const down = (event: PointerEvent) => {
+      if (!(event.target instanceof Node && box.current?.contains(event.target))) close.current();
+    };
+    document.addEventListener('pointerdown', down, true);
+    return () => document.removeEventListener('pointerdown', down, true);
+  }, [open]);
+  return (
+    <span className="st-offscreen-at" ref={box}>
+      <button
+        ref={button}
+        type="button"
+        className="st-offscreen"
+        aria-expanded={open}
+        onClick={onToggle}
+      >
+        <Icon name="warn" />
+        {label}
+        <Icon name="chevron" />
+      </button>
+      <Unroll open={open} label={label} from={button.current} className="st-trayu">
+        {children}
+      </Unroll>
+    </span>
   );
 }

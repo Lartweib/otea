@@ -551,25 +551,21 @@
   box-shadow: inset 0 0 0 1px var(--ink);
   font-weight: 500;
 }
-.st-pick {
+.pop.st-unroll.st-addpick {
   position: absolute;
   top: 14px;
-  left: 50%;
-  z-index: var(--z-tooltip);
+  left: calc(50% - 140px);
+  z-index: 30;
+  width: 280px;
+  pointer-events: auto;
+}
+.st-addpick-in {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  width: 256px;
-  padding: 12px;
-  border-radius: 10px;
-  background: var(--sheet);
-  box-shadow:
-    0 0 0 1px var(--rule),
-    0 12px 32px -12px var(--shadow);
-  transform: translateX(-50%);
-  pointer-events: auto;
+  padding: 6px;
 }
-.st-pick > * {
+.st-addpick-in > * {
   align-self: stretch;
 }
 .st-pick-h {
@@ -963,18 +959,21 @@ button.st-offscreen .icon:last-child {
   width: 12px;
   height: 12px;
 }
-.st-tray2 {
+/* Panels that unroll where they stand wear the pop's grammar (Unroll.tsx). */
+.pop.st-unroll {
+  position: relative;
+  z-index: auto;
+  min-width: 0;
+}
+.pop.st-unroll.st-trayu {
   position: absolute;
-  top: calc(100% + 8px);
+  top: calc(100% + 6px);
   right: -200px;
-  z-index: var(--z-tooltip);
+  z-index: 30;
   width: min(560px, calc(100vw - 32px));
-  padding: 14px 18px 8px;
-  border-radius: 10px;
-  background: var(--sheet);
-  box-shadow:
-    0 0 0 1px var(--rule),
-    0 18px 40px -16px var(--shadow);
+}
+.st-tray2 {
+  padding: 8px 12px 4px;
 }
 .st-tray2-h {
   display: flex;
