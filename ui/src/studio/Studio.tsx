@@ -6,7 +6,7 @@ import { t } from '../i18n/i18n.ts';
 import type { Remote } from '../remote.ts';
 import { type StudioPage, studioHash } from '../selection.ts';
 import type { Item } from '../types.ts';
-import type { PresetSummary, ProjectBlueprint } from './api.ts';
+import type { PresetSummary } from './api.ts';
 import { BlueprintPage, Picker } from './BlueprintPage.tsx';
 import { PresetEditor } from './PresetEditor.tsx';
 import { ProblemMark } from './parts.tsx';
