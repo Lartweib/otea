@@ -130,7 +130,8 @@ export function Route({ id, steps, words, ci, lane, look, dips, phone = false }:
   useLayoutEffect(() => {
     const el = wrap.current;
     if (!el) return;
-    const min = phone ? 560 : 420;
+    // The phone fits the route to its width (the names give way); the desk keeps 420 at least.
+    const min = phone ? 0 : 420;
     const measure = () => setW(Math.max(min, el.clientWidth));
     measure();
     const ro = new ResizeObserver(measure);
@@ -355,15 +356,35 @@ export function drawRoute(wrap: Element | null, delay = 160): void {
   });
 }
 
-// On close the route undraws with the same ink (mock:2985).
-export function undrawRoute(wrap: Element | null): void {
+// On close the route undraws with the same ink (mock:2985). `mirror` (the phone, where the page
+// is the whole gesture) plays drawRoute backwards with the same parts and length: the node goes,
+// the names and stops fade, the lines and dips wipe back last drawn first.
+export function undrawRoute(wrap: Element | null, mirror = false): void {
   if (!wrap || reduced()) return;
-  for (const l of wrap.querySelectorAll<SVGPathElement>('.rl')) {
+  const lines = [...wrap.querySelectorAll<SVGPathElement>(mirror ? '.rl, .dip' : '.rl')];
+  const lead = mirror ? 160 : 0;
+  lines.forEach((l, i) => {
     l.style.strokeDasharray = '1';
     l.animate([{ strokeDashoffset: 0 }, { strokeDashoffset: 1 }], {
       duration: 640,
+      delay: mirror ? 40 * (lines.length - 1 - i) : 0,
       easing: C.ink,
       fill: 'forwards',
     });
-  }
+  });
+  if (!mirror) return;
+  wrap.querySelector('.rnode')?.animate([{ opacity: 1 }, { opacity: 0 }], {
+    duration: 300,
+    easing: C.drift,
+    fill: 'forwards',
+  });
+  for (const e of wrap.querySelectorAll(
+    '.future, .stops, .rlab, .rnames, .dips text, .dips circle',
+  ))
+    e.animate([{ opacity: 1 }, { opacity: 0 }], {
+      duration: 420,
+      delay: lead - 120,
+      easing: C.drift,
+      fill: 'forwards',
+    });
 }
