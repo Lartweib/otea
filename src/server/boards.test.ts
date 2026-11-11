@@ -111,7 +111,6 @@ describe('the boards API', () => {
     for (const [method, path] of [
       ['POST', `/boards/agent-draft`],
       ['POST', `/boards/${id}/draft/merge`],
-      ['GET', `/boards/${id}/draft/next-preview?step=s1&phase=doing`],
     ] as const) {
       const { status, body } = await call(method, path, method === 'POST' ? {} : undefined);
       expect(status).toBe(501);

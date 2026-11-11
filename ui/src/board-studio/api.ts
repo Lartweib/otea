@@ -107,6 +107,7 @@ export function restoreBoard(id: string, version: number | null): Promise<BoardR
 }
 
 // The routes below answer 501 until the server slice builds them; their shapes are the contract.
+// (Lo que lee el agente needs no route: the preview runs core/board/next.ts on the draft.)
 
 export type AgentDraftRequest = { name: string; need: string; agent: string | null; lang: Lang };
 
@@ -119,18 +120,4 @@ export function requestAgentDraft(
 
 export function mergeAgentDraft(id: string, evidence: number): Promise<BoardRecord> {
   return call('POST', `${board(id)}/draft/merge`, { evidence });
-}
-
-export type AgentPreview = { next: string; refusal: string | null };
-
-// "Lo que lee el agente": next's answer at a step and phase of the draft, and the refusal of an
-// empty handoff.
-export function fetchAgentPreview(
-  id: string,
-  step: string,
-  phase: 'doing' | 'review',
-  signal?: AbortSignal,
-): Promise<AgentPreview> {
-  const query = `step=${encodeURIComponent(step)}&phase=${phase}`;
-  return call('GET', `${board(id)}/draft/next-preview?${query}`, undefined, signal);
 }

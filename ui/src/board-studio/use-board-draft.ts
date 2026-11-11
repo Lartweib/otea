@@ -33,6 +33,10 @@ export type ReadyDraft = {
   canRedo: boolean;
   selection: Selection;
   select: (selection: Selection) => void;
+  // «¿Por qué está aquí?»: selects what made a box appear and asks the editor to bring its card
+  // into view and flash the row; `revealed` counts the requests, so the same one twice still shows.
+  reveal: (selection: Selection) => void;
+  revealed: number;
   mutate: (change: (def: BoardDefinition) => void, burst?: string) => void;
   endBurst: () => void;
   undo: () => void;
@@ -70,6 +74,7 @@ export function useBoardDraft(id: string, options: DraftOptions): BoardDraft {
   const [save, setSave] = useState<SaveStatus>({ kind: 'saved' });
   const [selection, setSelection] = useState<Selection>({ kind: 'form' });
   const [attempt, setAttempt] = useState(0);
+  const [revealed, setRevealed] = useState(0);
   const base = useRef<number | null>(null);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: a new attempt loads the board again
@@ -154,6 +159,11 @@ export function useBoardDraft(id: string, options: DraftOptions): BoardDraft {
     canRedo: canRedo(state),
     selection,
     select: setSelection,
+    reveal: (next: Selection) => {
+      setSelection(next);
+      setRevealed((n) => n + 1);
+    },
+    revealed,
     mutate,
     endBurst: () => setState((current) => (current ? endBurst(current) : current)),
     undo: () => step(undo),
