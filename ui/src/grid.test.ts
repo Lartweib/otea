@@ -284,6 +284,12 @@ describe('column widths', () => {
     expect(widths(2299, { area: 900 }).area).toBe(480);
   });
 
+  it('lets a column the room already let go stay gone while another widens into its place', () => {
+    expect(layout(1000).dropped).toEqual(['area']);
+    expect(layout(1000, { state: 154 }).dropped).toEqual(['area']);
+    expect(widths(1000, { state: 154 }).state).toBe(154);
+  });
+
   it('draws severity as bars alone under 112', () => {
     expect(widths(1179, { severity: 80 }).severity).toBe('80*');
     expect(widths(1179, { severity: 112 }).severity).toBe(112);
