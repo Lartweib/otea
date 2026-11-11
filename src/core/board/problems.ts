@@ -3,6 +3,7 @@ import {
   type BoardDefinition,
   DONE,
   isAgent,
+  isEvidence,
   partOf,
   SAME,
   type Selection,
@@ -36,7 +37,7 @@ export type ProblemCode =
 
 export type ProblemLevel = 'error' | 'warning';
 
-// `uses` (duplicate_name) lists what shares the name: title, part or step, in board order.
+// `uses` (duplicate_name) lists what shares the name: title, field, evidence or step, in board order.
 export type ProblemParams = Record<string, string | number | string[]>;
 
 export type Problem = {
@@ -115,7 +116,8 @@ export function problemsOf(def: BoardDefinition, context: ProblemContext): Probl
       add('error', 'duplicate_name', at, { name: seen.name, uses: seen.uses });
   };
   claim(def.title, 'title', { kind: 'form' });
-  for (const part of parts) claim(part.name, 'part', partAt(part.id));
+  for (const part of parts)
+    claim(part.name, isEvidence(part) ? 'evidence' : 'field', partAt(part.id));
   for (const step of def.steps) claim(step.name, 'step', { kind: 'step', id: step.id });
 
   for (const step of def.steps) {

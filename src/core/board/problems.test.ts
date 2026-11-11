@@ -29,7 +29,7 @@ describe('problemsOf', () => {
       {
         level: 'error',
         code: 'duplicate_name',
-        params: { name: 'Arte conceptual', uses: ['part', 'step'] },
+        params: { name: 'Arte conceptual', uses: ['evidence', 'step'] },
         at: { kind: 'step', id: 'sanimate' },
       },
     ]);

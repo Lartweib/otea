@@ -1,9 +1,13 @@
 import { board } from './es/board.ts';
+import { boardStudio } from './es/board-studio.ts';
 import { common } from './es/common.ts';
 import { detail } from './es/detail.ts';
 import { phone } from './es/phone.ts';
 import { shell } from './es/shell.ts';
 import { studio } from './es/studio.ts';
+import { studioEditor } from './es/studio-editor.ts';
+import { studioHome } from './es/studio-home.ts';
+import { studioPreview } from './es/studio-preview.ts';
 import { surfaces } from './es/surfaces.ts';
 import { toca } from './es/toca.ts';
 import type { Catalog } from './i18n.ts';
@@ -51,5 +55,9 @@ export const es: Catalog = {
   ...detail,
   ...surfaces,
   ...studio,
+  ...boardStudio,
+  ...studioHome,
+  ...studioEditor,
+  ...studioPreview,
   ...phone,
 };
