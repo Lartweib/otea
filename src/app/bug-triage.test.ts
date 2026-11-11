@@ -94,7 +94,7 @@ describe('bug-triage preset', () => {
     expect(preset.view).toEqual({
       kind: 'grid',
       groupBy: 'turn',
-      columns: ['id', 'title', 'category', 'severity', 'area', 'state', 'who', 'age'],
+      columns: ['id', 'title', 'state', 'severity', 'category', 'area', 'who', 'age'],
     });
   });
 

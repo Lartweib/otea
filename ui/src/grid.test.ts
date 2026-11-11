@@ -213,6 +213,11 @@ describe('the grid width tiers', () => {
     // At 640 the title keeps its 240: severity and the step step out.
     expect(gridTemplate(shown, 640).tracks).toBe('28px 72px minmax(0, 1fr) 52px 101px');
   });
+
+  it('keeps who beside an open item, as the mock does, while the title keeps 160', () => {
+    const { shown } = fitColumns(gridColumns(bugs), 520, {});
+    expect(shown.map(({ column }) => column.kind)).toEqual(['id', 'title', 'who', 'age']);
+  });
 });
 
 // The grid's width beside the 244px sidebar: 1440 → 1179, 1920 → 1659, 2560 → 2299 (an item
@@ -312,11 +317,12 @@ describe('column widths', () => {
     expect(layout(760).dropped).toEqual(['category', 'area']);
   });
 
-  it('beside an open item, keeps the title its 240: severity, the step and who step out too', () => {
+  it('beside an open item, keeps the title its 240: severity and the step step out, who stays', () => {
     const narrow = layout(600);
     expect(narrow.dropped).toEqual(['category', 'severity', 'area', 'state']);
     expect(narrow.title).toBeGreaterThanOrEqual(240);
-    expect(layout(560).dropped).toEqual(['category', 'severity', 'area', 'state', 'who']);
+    expect(layout(560).dropped).toEqual(['category', 'severity', 'area', 'state']);
+    expect(layout(400).dropped).toEqual(['category', 'severity', 'area', 'state', 'who']);
   });
 
   it('moves an edge by the keys: 16px, 64 with Shift, Home and End to the limits', () => {
