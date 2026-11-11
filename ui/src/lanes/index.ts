@@ -33,14 +33,11 @@ export {
 } from './geometry.ts';
 export {
   type BlockSnap,
-  type HandoffStyle,
-  handoffStyle,
   listParams,
   liteState,
   measureRows,
   runHandoff,
   type Snap,
-  setHandoffStyle,
   snap,
   type Universe,
   virtSink,

@@ -21,27 +21,20 @@ describe('Preferences', () => {
     );
   });
 
-  it('groups theme, motion, handoff, language, session and about, in that order', () => {
+  it('groups theme, motion, language, session and about, in that order: the handoff is not a choice', () => {
     const labels = [...body().matchAll(/<span class="gl">([^<]+)<\/span>/g)].map((m) => m[1]);
-    expect(labels).toEqual(['tema', 'movimiento', 'traspaso', 'idioma', 'sesión', 'acerca de']);
+    expect(labels).toEqual(['tema', 'movimiento', 'idioma', 'sesión', 'acerca de']);
   });
 
   it('offers each choice as a segmented switch, the current one checked', () => {
     const html = body();
     expect(html).toMatch(/role="radio" aria-checked="true" class="on">.*Sistema/);
-    for (const word of [
-      'Claro',
-      'Oscuro',
-      'Completo',
-      'Reducido',
-      'Plegar',
-      'Deslizar',
-      'English',
-      'Español',
-    ]) {
+    for (const word of ['Claro', 'Oscuro', 'Completo', 'Reducido', 'English', 'Español']) {
       expect(html).toContain(word);
     }
     expect(html).toContain('Auto · ');
+    expect(html).not.toContain('Plegar');
+    expect(html).not.toContain('Deslizar');
   });
 
   it('says what the motion choice does and that only the interface is translated', () => {

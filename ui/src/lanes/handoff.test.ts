@@ -1,13 +1,6 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { laneParams } from './geometry.ts';
-import {
-  type BlockSnap,
-  handoffStyle,
-  liteState,
-  type Snap,
-  setHandoffStyle,
-  virtSink,
-} from './handoff.ts';
+import { type BlockSnap, liteState, type Snap, virtSink } from './handoff.ts';
 
 const ov = laneParams([], 400, 600);
 
@@ -62,28 +55,5 @@ describe('the virtual ends of a list that sinks', () => {
       B: { h: 'none', look: 'dropped', closed: true },
     });
     expect(liteState(undefined)).toEqual({});
-  });
-});
-
-describe('the handoff preference', () => {
-  let stored: Record<string, string>;
-  beforeEach(() => {
-    stored = {};
-    vi.stubGlobal('localStorage', {
-      getItem: (k: string) => stored[k] ?? null,
-      setItem: (k: string, v: string) => {
-        stored[k] = v;
-      },
-    });
-  });
-  afterEach(() => vi.unstubAllGlobals());
-
-  it('folds by default and keeps the choice of this browser', () => {
-    expect(handoffStyle()).toBe('plegar');
-    setHandoffStyle('deslizar');
-    expect(stored['otea.handoff']).toBe('deslizar');
-    expect(handoffStyle()).toBe('deslizar');
-    stored['otea.handoff'] = 'saltar';
-    expect(handoffStyle()).toBe('plegar');
   });
 });

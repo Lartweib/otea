@@ -5,24 +5,15 @@ import { reduced } from '../motion/reduced.ts';
 import { breathe } from './breathe.ts';
 import { type Lane, lanePaths, X } from './geometry.ts';
 import { type Carry, type End, planHandoff } from './handoff-plan.ts';
-import {
-  type CarryGeom,
-  deslizarPose,
-  handoffClock,
-  type Pose,
-  plegarPose,
-  progressAt,
-} from './handoff-pose.ts';
+import { type CarryGeom, handoffClock, type Pose, plegarPose, progressAt } from './handoff-pose.ts';
 import { type BlockSnap, type Snap, snap, type Universe } from './handoff-snap.ts';
-import { handoffStyle } from './handoff-style.ts';
 import { drawLight } from './light.ts';
 import { type Look, laneColor, lookColor, lookGlyph } from './looks.ts';
 
 // The handoff (SPEC §5, port of transition() and restyleInPlace(), mock:2072-2266): every data
 // change in a list runs through runHandoff. A row that changes lane or section is carried (Plegar:
 // it folds into a line of light at its node, travels as a fibre-optic pulse that takes its new
-// colour on the way, and unfolds out of a line that grows from the node; Deslizar: it lifts on a
-// plate and slides); the others make room; new blocks enter; gone ones leave; a look change in
+// colour on the way, and unfolds out of a line that grows from the node); the others make room; new blocks enter; gone ones leave; a look change in
 // place is restyled. Counts hold and roll at the half (motionBus).
 
 export {
@@ -37,7 +28,6 @@ export {
   type VirtualSnap,
   virtSink,
 } from './handoff-snap.ts';
-export { type HandoffStyle, handoffStyle, setHandoffStyle } from './handoff-style.ts';
 
 const NS = 'http://www.w3.org/2000/svg';
 
@@ -157,7 +147,6 @@ function restyleInPlace(
 type Flying = Carry & {
   g: CarryGeom;
   lift: HTMLElement | null;
-  band: HTMLElement | null;
   nd: HTMLElement | null;
   oldLk?: SVGElement;
   newLk?: SVGElement;
@@ -242,15 +231,7 @@ export function runHandoff(
         c.lift.style.opacity = '';
         c.lift.style.clipPath = '';
       }
-      if (c.band) {
-        c.band.style.backgroundColor = '';
-        c.band.style.boxShadow = '';
-        c.band.style.transition = '';
-      }
-      if (c.nd) {
-        c.nd.style.transform = '';
-        c.nd.style.opacity = '';
-      }
+      if (c.nd) c.nd.style.transform = '';
       if (c.oldLk) c.oldLk.style.opacity = '';
       if (c.newLk) c.newLk.style.opacity = '';
       if (c.mark) {
@@ -312,19 +293,13 @@ export function runHandoff(
     return done;
   }
 
-  const style = handoffStyle();
-  const { T, FA, total } = handoffClock(
-    carried.map((c) => c.post.top - c.pre.top),
-    style,
-  );
-  const fold = FA > 0;
+  const { T, FA, total } = handoffClock(carried.map((c) => c.post.top - c.pre.top));
 
   // Each carried row: its old look beside the new one, the pulse, the fold line, the trail, the
   // ghost ring where it left its lane, and its title's colour and strike.
   flying = carried.map((c) => {
     c.el.style.zIndex = '3';
     const lift = c.el.querySelector<HTMLElement>('.lift');
-    const band = c.el.querySelector<HTMLElement>('.band');
     const nd = c.el.querySelector<HTMLElement>('.nd');
     const preLane: Lane = c.pre.lane ?? 'ag';
     const postLane: Lane = c.post.lane ?? 'ag';
@@ -334,7 +309,6 @@ export function runHandoff(
     const f: Flying = {
       ...c,
       lift,
-      band,
       nd,
       g: {
         dy0: c.pre.top - c.ct,
@@ -349,7 +323,7 @@ export function runHandoff(
         preVirtual: !!c.pre.virtual,
         postVirtual: !!c.post.virtual,
         arrive: !!c.pre.arrive,
-        ...(fold && was?.folded ? { folded: true } : {}),
+        ...(was?.folded ? { folded: true } : {}),
       },
       cA: lookColor(preLane, preLook),
       cB: lookColor(postLane, postLook),
@@ -374,12 +348,10 @@ export function runHandoff(
     f.pulse.className = 'sphere';
     list.appendChild(f.pulse);
     temps.push(f.pulse);
-    if (fold) {
-      f.line = document.createElement('div');
-      f.line.className = 'fline';
-      list.appendChild(f.line);
-      temps.push(f.line);
-    }
+    f.line = document.createElement('div');
+    f.line.className = 'fline';
+    list.appendChild(f.line);
+    temps.push(f.line);
     if (fx) {
       const gid = `trg${++gradSeq}`;
       f.grad = svgEl(
@@ -518,31 +490,15 @@ export function runHandoff(
       }
     }
     for (const c of flying) {
-      const f: Pose = fold ? plegarPose(t, T, c.g) : deslizarPose(t, T, c.g);
-      c.shown = { y: f.y, folded: fold && f.lift.opacity === 0 };
+      const f: Pose = plegarPose(t, T, c.g);
+      c.shown = { y: f.y, folded: f.lift.opacity === 0 };
       c.el.style.transform = `translateY(${f.y}px)`;
       if (c.lift) {
-        if (fold) {
-          const [top, bottom] = f.lift.clip ?? [0, 0];
-          c.lift.style.opacity = String(f.lift.opacity);
-          c.lift.style.clipPath = `inset(${top.toFixed(1)}px -40px ${bottom.toFixed(1)}px -40px)`;
-        } else if (c.g.preVirtual || c.g.postVirtual) {
-          c.lift.style.opacity = f.lift.opacity.toFixed(3);
-        }
+        const [top, bottom] = f.lift.clip;
+        c.lift.style.opacity = String(f.lift.opacity);
+        c.lift.style.clipPath = `inset(${top.toFixed(1)}px -40px ${bottom.toFixed(1)}px -40px)`;
       }
-      if (!fold && c.band && !c.g.arrive) {
-        const b = f.plate;
-        c.band.style.backgroundColor = `color-mix(in oklch, var(--sheet) ${(sstep(clamp(b / 0.25)) * 100).toFixed(1)}%, transparent)`;
-        c.band.style.boxShadow = `0 ${(12 * b).toFixed(1)}px ${(26 * b).toFixed(1)}px -${(13 * b).toFixed(1)}px color-mix(in oklch, var(--shadow) ${(b * 100).toFixed(0)}%, transparent), 0 0 0 1px color-mix(in oklch, var(--rule) ${(b * 100).toFixed(0)}%, transparent)`;
-        c.band.style.transition = 'none';
-      }
-      if (c.nd) {
-        c.nd.style.transform =
-          !fold && f.nodeScale !== 1
-            ? `translateX(${f.nodeDx}px) scale(${f.nodeScale.toFixed(3)})`
-            : `translateX(${f.nodeDx}px)`;
-        if (!fold) c.nd.style.opacity = f.nodeOpacity.toFixed(3);
-      }
+      if (c.nd) c.nd.style.transform = `translateX(${f.nodeDx}px)`;
       if (c.oldLk && c.newLk) {
         c.oldLk.style.opacity = String(1 - f.newLook);
         c.newLk.style.opacity = String(f.newLook);

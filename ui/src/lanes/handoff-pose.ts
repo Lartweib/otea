@@ -1,6 +1,5 @@
 import { clamp, F, lerp, sstep } from '../motion/curves.ts';
 import { Tt } from '../motion/time.ts';
-import type { HandoffStyle } from './handoff-style.ts';
 
 // Every frame of the handoff as a pure function of its time (port of the frame body of
 // transition(), mock:2152-2251). The engine writes what these return; nothing here touches the DOM.
@@ -11,11 +10,11 @@ export const UNFOLD = 460;
 
 export type Clock = { T: number; FA: number; Cc: number; total: number };
 
-// The travel takes the time of the longest carry (480 with nothing carried); Plegar adds the fold
+// The travel takes the time of the longest carry (480 with nothing carried); a carry adds the fold
 // before it and the unfold after.
-export function handoffClock(dys: readonly number[], style: HandoffStyle): Clock {
+export function handoffClock(dys: readonly number[]): Clock {
   const T = dys.length ? Math.max(...dys.map((d) => Tt.travel(d))) : 480;
-  const fold = dys.length > 0 && style === 'plegar';
+  const fold = dys.length > 0;
   const FA = fold ? FOLD : 0;
   const Cc = fold ? UNFOLD : 0;
   return { T, FA, Cc, total: FA + T + Cc };
@@ -31,7 +30,7 @@ export function progressAt(t: number, FA: number, T: number) {
 // A carried row's geometry: dy0/dy1 its offsets from its layout top at the start and the end, xa/xb
 // its node's lane x at both ends, xc the x it is drawn at, h the lift's height, w the row's width,
 // off its node's y inside the row, ct its layout top. folded: a handoff that took it over found it
-// already folded (Plegar).
+// already folded.
 export type CarryGeom = {
   dy0: number;
   dy1: number;
@@ -51,18 +50,16 @@ export type CarryGeom = {
 export type Pose = {
   // The row's translateY.
   y: number;
-  // The lift: its opacity, and its clip from the top and the bottom (Plegar).
-  lift: { opacity: number; clip?: [number, number] };
-  // The node's translateX from where it is drawn, its scale and opacity (Deslizar).
+  // The lift: its opacity, and its clip from the top and the bottom.
+  lift: { opacity: number; clip: [number, number] };
+  // The node's translateX from where it is drawn.
   nodeDx: number;
-  nodeScale: number;
-  nodeOpacity: number;
   // How much of the new look shows over the old one, and whether its check or slash draws now.
   newLook: number;
   mark: boolean;
   // The pulse's colour, from the old look's (0) to the new one's (1).
   mix: number;
-  // The fold line (Plegar): its left, top, width and opacity.
+  // The fold line: its left, top, width and opacity.
   line: { x: number; y: number; w: number; o: number };
   // The pulse: its translate, scale and opacity.
   pulse: { x: number; y: number; s: number; o: number };
@@ -70,8 +67,6 @@ export type Pose = {
   trail: number;
   nx: number;
   ny: number;
-  // The raised plate under a row in flight (Deslizar).
-  plate: number;
   // Time for the breath on the destination lane.
   breath: boolean;
 };
@@ -112,8 +107,6 @@ export function plegarPose(t: number, T: number, g: CarryGeom): Pose {
       clip: [g.off * k, Math.max(0, g.h - g.off) * k],
     },
     nodeDx: nx - g.xc,
-    nodeScale: 1,
-    nodeOpacity: 1,
     newLook: inC ? 1 : 0,
     mark: un > 0.4,
     mix: inA ? 0 : inC ? 1 : mx,
@@ -122,40 +115,6 @@ export function plegarPose(t: number, T: number, g: CarryGeom): Pose {
     trail: inA || inC ? 0 : 46 * Math.sin(Math.PI * p),
     nx,
     ny,
-    plate: 0,
     breath: t > FA + T * 0.92,
-  };
-}
-
-export function deslizarPose(t: number, T: number, g: CarryGeom): Pose {
-  const { s, p } = progressAt(t, 0, T);
-  const b = Math.sin(Math.PI * p);
-  const y = lerp(g.dy0, g.dy1, p) - 5 * b;
-  let opacity = 1;
-  if (g.preVirtual && !g.arrive) opacity = sstep(clamp(p / 0.45));
-  if (g.arrive) opacity = sstep(clamp((p - 0.05) / 0.4));
-  if (g.postVirtual) opacity = 1 - sstep(clamp((p - 0.55) / 0.45));
-  const nx = nodeX(p, g);
-  const ny = g.ct + g.off + y;
-  const mx = sstep(clamp((p - 0.3) / 0.4));
-  const land = sstep(clamp((p - 0.8) / 0.2));
-  const lit = sstep(clamp(p / 0.08));
-  const show = Math.max(1 - sstep(clamp(p / 0.06)), sstep(clamp((p - 0.82) / 0.18)));
-  return {
-    y,
-    lift: { opacity },
-    nodeDx: nx - g.xc,
-    nodeScale: p > 0.5 ? 0.55 + 0.45 * show : 1,
-    nodeOpacity: show,
-    newLook: mx,
-    mark: p > 0.75,
-    mix: mx,
-    line: { x: nx, y: ny - 0.75, w: 0, o: 0 },
-    pulse: { x: nx - 3, y: ny - 3, s: 1 + 1.8 * land, o: lit * (1 - land) },
-    trail: 46 * b * (1 - land),
-    nx,
-    ny,
-    plate: g.arrive ? 0 : b,
-    breath: s > 0.8,
   };
 }
