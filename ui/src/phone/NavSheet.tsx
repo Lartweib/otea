@@ -3,9 +3,11 @@ import { useApp } from '../app/context.tsx';
 import { boardCounts, stuckCount, tocaCount } from '../derive/toca.ts';
 import { t } from '../i18n/i18n.ts';
 import { Count } from '../kit/Count.tsx';
-import { IC, Icon, type MockIconName } from '../kit/Icon.tsx';
+import { Icon } from '../kit/Icon.tsx';
 import { Buddy } from '../kit/Marks.tsx';
 import { type Route, studioHash, type ViewRoute } from '../selection.ts';
+import { RowIcon } from '../shell/Rail.tsx';
+import { type BoardIcon, boardIcon } from '../shell/rail-model.ts';
 import { shellUi } from '../shell/shell-ui.ts';
 import { BottomSheet } from './BottomSheet.tsx';
 import { navSheet, useNavSheet } from './nav.ts';
@@ -29,15 +31,11 @@ export function navOn(route: Route): string | null {
   }
 }
 
-export function boardIcon(icon: string | null | undefined): MockIconName {
-  return icon && icon in IC ? (icon as MockIconName) : 'board';
-}
-
 export type NavBodyProps = {
   route: Route;
   toca: number;
   atasco: number;
-  boards: { name: string; icon: string | null; open: number }[];
+  boards: { name: string; icon: BoardIcon; open: number }[];
   onGo: (to: ViewRoute) => void;
   onNewBoard: () => void;
   onPrefs: () => void;
@@ -101,7 +99,7 @@ export function NavBody({ route, toca, atasco, boards, onGo, onNewBoard, onPrefs
             key={b.name}
             i={i++}
             on={on === `board:${b.name}`}
-            icon={<Icon name={boardIcon(b.icon)} />}
+            icon={<RowIcon icon={b.icon} />}
             label={b.name}
             pair={<Count value={b.open} hold />}
             onPress={() => onGo({ view: 'board', board: b.name })}
@@ -169,7 +167,7 @@ export function NavSheet() {
         atasco={stuckCount(app.all, { now: app.now })}
         boards={app.collections.map((c) => ({
           name: c.name,
-          icon: c.icon,
+          icon: boardIcon(c.icon),
           open: boardCounts(app.all, c.name).open,
         }))}
         onGo={(to) => {
