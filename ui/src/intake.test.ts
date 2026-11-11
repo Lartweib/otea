@@ -4,6 +4,7 @@ import {
   fieldHint,
   fieldLabel,
   initialValues,
+  intakeParts,
   missingToCreate,
   payloadOf,
   startMessage,
@@ -114,5 +115,26 @@ describe('intake', () => {
     expect(
       startMessage({ state: 'incomplete', incomplete: true, missing: ['description', 'scope'] }),
     ).toBe('Starts in incomplete: an agent will complete description, scope first.');
+  });
+});
+
+describe('the new item form, as compact as the mock', () => {
+  const f = (name: string, module: string, required?: 'create' | 'complete') =>
+    ({ field: { name, module, ...(required ? { required } : {}) }, at: name }) as never;
+
+  it('shows the title, the description and the choices, and folds the long fields', () => {
+    const slots = [
+      f('title', 'text', 'create'),
+      f('description', 'markdown', 'complete'),
+      f('steps', 'markdown', 'complete'),
+      f('severity', 'severity', 'complete'),
+      f('category', 'enum'),
+      f('area', 'text'),
+      f('repo', 'text', 'create'),
+    ];
+    const { shown, more } = intakeParts(slots);
+    const names = (xs: { field: { name: string } }[]) => xs.map((x) => x.field.name);
+    expect(names(shown)).toEqual(['title', 'description', 'severity', 'category', 'repo']);
+    expect(names(more)).toEqual(['steps', 'area']);
   });
 });
