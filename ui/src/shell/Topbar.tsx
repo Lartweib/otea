@@ -455,7 +455,7 @@ export function Topbar() {
           type="button"
           className="navbtn"
           aria-label={t('shell.openPanel')}
-          onClick={() => shellUi.set({ nav: true })}
+          onClick={() => shellUi.set({ nav: !shellUi.get().nav })}
         >
           <Icon name="side" />
         </button>

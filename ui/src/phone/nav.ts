@@ -1,8 +1,8 @@
 import { useSyncExternalStore } from 'react';
+import { shellUi } from '../shell/shell-ui.ts';
 
-// Whether the phone's nav sheet is open. The topbar's panel button (`.navbtn`, the shell's markup)
-// opens it: NavSheet listens for presses on that class, so the shell needs no import from here
-// (it may still call navSheet.open()).
+// Whether the phone's nav sheet is open. The state is the shell's `nav` flag: the topbar's panel
+// button (`.navbtn`) toggles it, the sheet reads and closes it here.
 export type NavSheetStore = {
   get(): boolean;
   open(): void;
@@ -31,7 +31,13 @@ export function makeNavSheet(): NavSheetStore {
   };
 }
 
-export const navSheet: NavSheetStore = makeNavSheet();
+export const navSheet: NavSheetStore = {
+  get: () => shellUi.get().nav,
+  open: () => shellUi.set({ nav: true }),
+  close: () => shellUi.set({ nav: false }),
+  toggle: () => shellUi.set({ nav: !shellUi.get().nav }),
+  subscribe: (fn) => shellUi.subscribe(fn),
+};
 
 export function useNavSheet(): boolean {
   return useSyncExternalStore(navSheet.subscribe, navSheet.get, navSheet.get);

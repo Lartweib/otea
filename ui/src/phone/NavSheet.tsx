@@ -6,6 +6,7 @@ import { Count } from '../kit/Count.tsx';
 import { IC, Icon, type MockIconName } from '../kit/Icon.tsx';
 import { Buddy } from '../kit/Marks.tsx';
 import { type Route, studioHash, type ViewRoute } from '../selection.ts';
+import { shellUi } from '../shell/shell-ui.ts';
 import { BottomSheet } from './BottomSheet.tsx';
 import { navSheet, useNavSheet } from './nav.ts';
 
@@ -130,20 +131,9 @@ export function NavSheet() {
   const phone = app.phone;
   const view = navOn(app.route) ?? app.route.view;
 
-  // The topbar's panel button, by its class: the shell draws it, this opens what it opens.
+  // Off the phone there is no sheet to keep open.
   useEffect(() => {
-    if (!phone) {
-      navSheet.close();
-      return;
-    }
-    const onClick = (e: MouseEvent) => {
-      const b = (e.target as Element | null)?.closest?.('.navbtn');
-      if (!b) return;
-      e.preventDefault();
-      navSheet.toggle();
-    };
-    document.addEventListener('click', onClick);
-    return () => document.removeEventListener('click', onClick);
+    if (!phone) navSheet.close();
   }, [phone]);
 
   useEffect(() => {
@@ -193,7 +183,7 @@ export function NavSheet() {
         }
         // Preferences are the shell's: its button sits in the rail, which the phone hides. The
         // pop is pinned to the bottom on the phone (phone.css), wherever its anchor is.
-        onPrefs={() => then(() => document.querySelector<HTMLElement>('.prefs-btn')?.click())}
+        onPrefs={() => then(() => shellUi.set({ prefs: true }))}
       />
     </BottomSheet>
   );
