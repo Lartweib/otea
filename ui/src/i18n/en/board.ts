@@ -207,6 +207,8 @@ export const board = {
     other: 'only the moves all {count} can take',
   },
   'boardView.tray.capHidden': 'hidden: {moves}, they do not apply to all',
+  'boardView.tray.andMore': 'and {count} more',
+  'boardView.tray.and': ' and ',
   'boardView.tray.none': 'no move is common to the whole selection',
   'boardView.tray.reading': 'reading the moves…',
   'boardView.tray.keepOnly': 'keep only',

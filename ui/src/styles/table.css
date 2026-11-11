@@ -165,10 +165,22 @@
   font-size: 11.5px;
 }
 .trow .tcell {
+  display: flex;
+  align-items: center;
   font: 430 15.5px / 40px var(--serif);
   font-variation-settings: "opsz" 18;
   color: var(--ink);
   letter-spacing: -0.003em;
+}
+/* the title gives way before its fold button does */
+.trow .tcell .tt {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.trow .tcell .fold {
+  flex: none;
 }
 .trow.closed .tcell {
   color: var(--ink-3);

@@ -114,7 +114,7 @@ function Board({ board }: { board: string }) {
   const [noRoom, setNoRoom] = useState<string[]>([]);
   const [morphing, setMorphing] = useState<{ from: BoardMode; to: BoardMode } | null>(null);
   const job = useRef<MorphJob | null>(null);
-  const pending = useRef<{ from: BoardMode; to: BoardMode } | null>(null);
+  const pending = useRef<{ from: BoardMode; to: BoardMode; w: number } | null>(null);
   const stage = useRef<HTMLDivElement>(null);
   const viewRef = useRef<HTMLDivElement>(null);
   const born = useRef(true);
@@ -319,7 +319,8 @@ function Board({ board }: { board: string }) {
     if (cur === next) return;
     setMenu(null);
     if (cur === 'tabla') setTicked([]);
-    pending.current = { from: cur, to: next };
+    const was = stage.current?.querySelector<HTMLElement>(`:scope > [data-mode="${cur}"]`);
+    pending.current = { from: cur, to: next, w: was?.offsetWidth ?? 0 };
     setMorphing({ from: cur, to: next });
     setMode(next);
     if (selected) moveSplit();
@@ -336,18 +337,20 @@ function Board({ board }: { board: string }) {
       return;
     }
     if (selected) penFade(false);
-    job.current = morph(el, A, B, p.from, p.to, (side) => {
-      flushSync(() => {
-        setMorphing(null);
-        if (side === 0) setMode(p.from);
-      });
-      if (viewRef.current) redrawLists(viewRef.current);
-      if (selected) {
-        penFade(true);
-        moveSplit();
-      }
-    });
+    job.current = morph(el, A, B, p.from, p.to, onDone(p.from), p.w || undefined);
   });
+  // The morph ended on one side: the other goes, and the mode is that side's.
+  const onDone = (from: BoardMode) => (side: 0 | 1) => {
+    flushSync(() => {
+      setMorphing(null);
+      if (side === 0) setMode(from);
+    });
+    if (viewRef.current) redrawLists(viewRef.current);
+    if (selected) {
+      penFade(true);
+      moveSplit();
+    }
+  };
 
   const modeEl = (m: BoardMode, ghost: boolean): ReactNode => {
     const drawIn = born.current;

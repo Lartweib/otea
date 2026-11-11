@@ -46,8 +46,9 @@ const render = (kind: ViewSpec['kind'], all: Item[] = seed, phone = false) => {
     project: { id: 'p', name: 'Hollowmere', icon: null },
     phone,
   } as unknown as App;
+  const props = { value } as Parameters<typeof AppTestProvider>[0];
   return renderToStaticMarkup(
-    createElement(AppTestProvider, { value }, createElement(BoardView, { board: 'Errores' })),
+    createElement(AppTestProvider, props, createElement(BoardView, { board: 'Errores' })),
   );
 };
 

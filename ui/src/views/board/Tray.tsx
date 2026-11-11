@@ -13,6 +13,7 @@ import { MenuItem, MenuLabel } from '../../kit/pop/Menu.tsx';
 import { Pop } from '../../kit/pop/Pop.tsx';
 import { toast } from '../../kit/pop/toast.tsx';
 import { Swap } from '../../kit/Swap.tsx';
+import { motionBus } from '../../motion/bus.ts';
 import { Choreo, part } from '../../motion/choreo.ts';
 import { reduced } from '../../motion/reduced.ts';
 import { stateWordIn } from '../../preset-words.ts';
@@ -56,6 +57,48 @@ function useMoves(items: readonly Item[]): Moves {
     return () => ctl.abort();
   }, [key]);
   return got;
+}
+
+// A move lands through the handoff: the next one waits until the list has carried this one (the
+// data arrives, the handoff begins and ends), or gives up after a while.
+function handedOff(): Promise<void> {
+  return new Promise((resolve) => {
+    const t0 = performance.now();
+    let off = () => undefined as unknown;
+    const done = () => {
+      off();
+      resolve();
+    };
+    const look = () => {
+      if (motionBus.inFlight()) {
+        off = motionBus.onIdle(done);
+        return;
+      }
+      if (performance.now() - t0 > 1600) done();
+      else requestAnimationFrame(look);
+    };
+    look();
+  });
+}
+
+// The moves some ticked items could take but not all, named as the buttons are: two, and how many
+// more.
+function hiddenSaid(
+  selected: readonly Selected[],
+  hidden: readonly { moves: string[] }[],
+  word: (s: string) => string,
+): string {
+  const tos = new Set(hidden.flatMap((h) => h.moves));
+  const union: Move[] = [];
+  for (const { moves } of selected) {
+    for (const m of moves ?? [])
+      if (tos.has(m.to) && !union.some((u) => u.to === m.to)) union.push(m);
+  }
+  const labels = [...new Set(trayButtons(union, word).map((b) => b.label))];
+  const rest = labels.length - 2;
+  return rest > 0
+    ? `${labels.slice(0, 2).join(', ')} ${t('boardView.tray.andMore', { count: rest })}`
+    : labels.join(t('boardView.tray.and'));
 }
 
 export function Tray({
@@ -152,6 +195,7 @@ export function Tray({
       try {
         await app.move(o.id, b.move.to, why || undefined);
         moved.push({ ...o, to: b.move.to });
+        await handedOff();
       } catch (e) {
         toast({
           msg: t('boardView.tray.failed', {
@@ -278,13 +322,6 @@ export function Tray({
                   {t('boardView.tray.keepOnly')} ▾
                 </button>
               ) : null}
-              <Button
-                variant="text"
-                size="sm"
-                onClick={() => app.go({ view: 'brief', ids: items.map((it) => it.id) })}
-              >
-                {t('boardView.tray.brief')}
-              </Button>
             </div>
           )}
           <div className="tcap">
@@ -294,22 +331,33 @@ export function Tray({
                 ? t('boardView.tray.cap', { count })
                 : t('boardView.tray.none')}
             {!plan.loading && plan.hidden.length
-              ? ` · ${t('boardView.tray.capHidden', {
-                  moves: [...new Set(plan.hidden.flatMap((h) => h.moves))].map(word).join(', '),
-                })}`
+              ? ` · ${t('boardView.tray.capHidden', { moves: hiddenSaid(selected, plan.hidden, word) })}`
               : ''}
           </div>
         </div>
-        <Button variant="text" size="sm" className="tclear" onClick={onClear}>
-          <Icon name="x" />
-          {t('boardView.tray.clear')}
-        </Button>
+        <div className="tend">
+          <Button
+            variant="text"
+            size="sm"
+            onClick={() => app.go({ view: 'brief', ids: items.map((it) => it.id) })}
+          >
+            {t('boardView.tray.brief')}
+          </Button>
+          <Button variant="text" size="sm" className="tclear" onClick={onClear}>
+            <Icon name="x" />
+            {t('boardView.tray.clear')}
+          </Button>
+        </div>
       </div>
     );
   }
 
   return (
-    <section className="tray" ref={el} aria-label={t('boardView.tray.aria')}>
+    <section
+      className={phase.kind === 'receipt' ? 'tray lifted' : 'tray'}
+      ref={el}
+      aria-label={t('boardView.tray.aria')}
+    >
       <i className="tline" />
       <div className="tsurf">
         <Swap k={k} as="div" className="tswap">

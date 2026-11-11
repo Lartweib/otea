@@ -213,6 +213,8 @@ export const board = {
     other: 'solo las acciones que pueden tomar los {count}',
   },
   'boardView.tray.capHidden': 'ocultas: {moves}, no aplican a todos',
+  'boardView.tray.andMore': 'y {count} más',
+  'boardView.tray.and': ' y ',
   'boardView.tray.none': 'ninguna acción es común a toda la selección',
   'boardView.tray.reading': 'leyendo las acciones…',
   'boardView.tray.keepOnly': 'dejar solo',

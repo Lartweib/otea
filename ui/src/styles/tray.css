@@ -4,9 +4,14 @@
 .tray {
   position: sticky;
   bottom: 14px;
+  transition: bottom 440ms var(--o-settle);
   z-index: 8;
   margin: 18px 0 0 60px;
   max-width: 980px;
+}
+/* while the toast below says what moved, the receipt rises clear of it */
+.tray.lifted {
+  bottom: 88px;
 }
 .tray .tline {
   position: absolute;
@@ -115,4 +120,10 @@
 .tray .tclear svg {
   width: 12px;
   height: 12px;
+}
+.tray .tend {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
 }
