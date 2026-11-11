@@ -18,6 +18,7 @@ import type {
   ProjectView,
   Session,
 } from './types.ts';
+import { dropUndone } from './undone.ts';
 
 async function get(path: string, signal: AbortSignal): Promise<Response> {
   const response = await fetch(path, { signal, headers: { accept: 'application/json' } });
@@ -43,7 +44,9 @@ export async function fetchItems(signal: AbortSignal): Promise<Item[]> {
 
 export async function fetchItem(id: string, signal: AbortSignal): Promise<ItemView | null> {
   const response = await get(`/api/items/${encodeURIComponent(id)}`, signal);
-  return response.status === 404 ? null : response.json();
+  if (response.status === 404) return null;
+  const item = (await response.json()) as ItemView;
+  return { ...item, events: dropUndone(item.events) };
 }
 
 // A brief for the items, in the order given; limits and success left out take the brief's defaults.
@@ -111,6 +114,11 @@ async function post<T>(path: string, payload: unknown): Promise<T> {
 
 export async function moveItem(id: string, to: string, reason: string): Promise<void> {
   await post(`/api/items/${encodeURIComponent(id)}/move`, reason === '' ? { to } : { to, reason });
+}
+
+// Takes back your last move, while its toast is up: the item returns to `from`, the state it left.
+export async function undoMove(id: string, from: string): Promise<void> {
+  await post(`/api/items/${encodeURIComponent(id)}/undo`, { from });
 }
 
 export type NewFile = { file: File; role: EvidenceRole };

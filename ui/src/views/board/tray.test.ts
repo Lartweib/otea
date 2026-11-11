@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { item } from '../../derive/fixtures.ts';
 import { setLanguage } from '../../i18n/i18n.ts';
 import type { Move } from '../../types.ts';
-import { trayButtons, trayStates, undoable } from './tray.ts';
+import { trayButtons, trayStates } from './tray.ts';
 
 const move = (to: string, extra: Partial<Move> = {}): Move => ({
   to,
@@ -51,20 +51,5 @@ describe('the tray count line', () => {
       item({ id: 'C', state: 'verify' }),
     ];
     expect(trayStates(its, word)).toBe('2 en verify · 1 en reported');
-  });
-});
-
-describe('Deshacer after a run', () => {
-  it('is offered when every moved item has a move of yours straight back', () => {
-    const type = {
-      transitions: [
-        { from: 'verify', to: 'fixed', by: 'human' as const, reasonRequired: false },
-        { from: 'fixed', to: 'verify', by: 'human' as const, reasonRequired: false },
-        { from: 'verify', to: 'fixing', by: 'human' as const, reasonRequired: true },
-      ],
-    };
-    expect(undoable([{ from: 'verify', to: 'fixed' }], () => type)).toBe(true);
-    expect(undoable([{ from: 'verify', to: 'fixing' }], () => type)).toBe(false);
-    expect(undoable([], () => type)).toBe(false);
   });
 });

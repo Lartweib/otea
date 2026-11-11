@@ -21,6 +21,7 @@ export const EXIT_CODES: Readonly<Record<'ok' | FailureCode, number>> = {
   usage: 2,
   not_found: 3,
   invalid_transition: 4,
+  not_undoable: 4,
   item_closed: 4,
   not_claimable: 4,
   not_relayable: 4,

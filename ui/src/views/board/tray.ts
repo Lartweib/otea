@@ -1,7 +1,6 @@
 import { moveVariants } from '../../actions.ts';
-import { inverseMove } from '../../app/context.tsx';
 import { t } from '../../i18n/i18n.ts';
-import type { Item, Move, TypeView } from '../../types.ts';
+import type { Item, Move } from '../../types.ts';
 
 // The tray under ticked rows (SPEC §10.1, mock:3738-3844, today's bulk.ts): what its buttons say
 // and in what order, what its count line says, and whether a run can be undone.
@@ -61,15 +60,4 @@ export function trayStates(items: readonly Item[], word: (state: string) => stri
   return [...by]
     .map(([state, count]) => t('boardView.tray.inState', { count, state: word(state) }))
     .join(' · ');
-}
-
-// A run is undone only when every item it moved has a move of yours straight back.
-export function undoable(
-  moved: readonly { id?: string; from: string; to: string }[],
-  typeOf: (id: string | undefined) => Pick<TypeView, 'transitions'> | undefined,
-): boolean {
-  return (
-    moved.length > 0 &&
-    moved.every(({ id, from, to }) => inverseMove(typeOf(id) as TypeView | undefined, from, to))
-  );
 }

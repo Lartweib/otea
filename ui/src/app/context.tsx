@@ -1,6 +1,6 @@
 import { createContext, type ReactNode, useCallback, useContext, useMemo, useRef } from 'react';
 import type { FeedEvent } from '../activity.ts';
-import { linkItems, moveItem, unlinkItems } from '../api.ts';
+import { linkItems, moveItem, undoMove, unlinkItems } from '../api.ts';
 import type { IntakeParent } from '../components/NewItemForm.tsx';
 import { type Connection, usePhone, useRoute } from '../hooks.ts';
 import { toast } from '../kit/pop/toast.tsx';
@@ -54,8 +54,8 @@ export type AppActions = {
   // Opens an item in the current view when its row is there, else on its board.
   openItem(id: string): void;
   closeItem(): void;
-  // A Q-ordered move. With a toast message, the toast offers Deshacer when the new state has a
-  // move of yours straight back.
+  // A Q-ordered move. With a toast message, the toast offers Deshacer: the server takes the move
+  // back while the toast is up, whatever the workflow allows.
   move(id: string, to: string, reason?: string, toast?: string): Promise<void>;
   link(id: string, kind: RelationView, other: string): Promise<void>;
   unlink(id: string, relation: RelatedItem): Promise<void>;
@@ -80,13 +80,6 @@ export function typeOfItem(
 ): TypeView | undefined {
   const types = collectionOf(item.collection)?.types ?? [];
   return types.find((t) => t.name === item.type) ?? types[0];
-}
-
-// The move of yours straight back from `to` to `from`, when the type has one without a reason.
-export function inverseMove(type: TypeView | undefined, from: string, to: string): boolean {
-  return !!type?.transitions?.some(
-    (m) => m.from === to && m.to === from && m.by !== 'agent' && !m.reasonRequired,
-  );
 }
 
 // The route that opens an item: the current list's when the item's row is in it, else its board.
@@ -140,12 +133,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const before = ref.current.data.all.find((each) => each.id === id);
         await Q.run(() => moveItem(id, to, reason));
         if (message === undefined) return;
-        const type = before ? typeOfItem(before, collectionOf) : undefined;
-        const back = before && inverseMove(type, before.state, to) ? before.state : undefined;
+        const back = before?.state;
         toast({
           msg: message,
           id,
-          ...(back ? { undo: () => void Q.run(() => moveItem(id, back, '')) } : {}),
+          ...(back ? { undo: () => void Q.run(() => undoMove(id, back)) } : {}),
         });
       },
       async link(id, kind, other) {
@@ -163,7 +155,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       closeConnect: () => workspace.set({ connect: false }),
       studioChanged: () => ref.current.data.studioChanged(),
     }),
-    [collectionOf],
+    [],
   );
 
   const value: App = {

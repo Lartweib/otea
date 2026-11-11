@@ -1,6 +1,4 @@
 import { describe, expect, it } from 'vitest';
-import { officialType } from '../../derive/fixtures.ts';
-import type { TypeView } from '../../types.ts';
 import {
   dividerBounds,
   dividerKey,
@@ -9,7 +7,6 @@ import {
   penPath,
   shortTitle,
   toastOf,
-  undoable,
 } from './frame.ts';
 
 describe('the divider (mock:3220-3255)', () => {
@@ -64,23 +61,6 @@ describe('the toast after a move, and its Undo', () => {
 
   it('cuts a long title', () => {
     expect(shortTitle('a'.repeat(60))).toBe(`${'a'.repeat(44)}…`);
-  });
-
-  it('offers Undo only when the new state has a move of yours straight back, with no reason', () => {
-    const type = {
-      ...officialType('tasks'),
-      transitions: [
-        { from: 'todo', to: 'doing', by: 'human', reasonRequired: false },
-        { from: 'doing', to: 'todo', by: 'human', reasonRequired: false },
-        { from: 'doing', to: 'review', by: 'agent', reasonRequired: false },
-        { from: 'review', to: 'doing', by: 'human', reasonRequired: true },
-      ],
-    } as TypeView;
-    expect(undoable(type, 'todo', 'doing')).toBe(true);
-    expect(undoable(type, 'doing', 'review')).toBe(false);
-    const bug = officialType('bug-triage');
-    // verify → fixed: nothing leads back from a closed state
-    expect(undoable(bug, 'verify', 'fixed')).toBe(false);
   });
 });
 

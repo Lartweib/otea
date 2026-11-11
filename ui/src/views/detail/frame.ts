@@ -1,7 +1,5 @@
-import { inverseMove } from '../../app/context.tsx';
 import { t } from '../../i18n/i18n.ts';
 import { clamp } from '../../motion/curves.ts';
-import type { TypeView } from '../../types.ts';
 import type { MoveKind } from './moves.ts';
 
 // The detail's frame, pure: the divider's bounds and keys, the pen's path, the details' cut, the
@@ -71,10 +69,6 @@ export function toastOf(kind: MoveKind | 'answer' | 'close', title: string, stat
       return t('sheet.toast.moved', p);
   }
 }
-
-// Undo only when the new state has a move of yours straight back to the old one, with no reason.
-export const undoable = (type: TypeView | undefined, from: string, to: string): boolean =>
-  inverseMove(type, from, to);
 
 // What the sheet shows: the new item form while it is open, and after Crear until the place asks
 // for the created item, so the form swaps into it rather than closing first (mock:3990-3991).

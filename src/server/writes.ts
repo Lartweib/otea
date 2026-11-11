@@ -18,6 +18,8 @@ const MoveBody = z.object({ to: z.string().min(1), reason: z.string().optional()
 
 export type MoveRequest = { to: string; reason?: string };
 
+const UndoBody = z.object({ from: z.string().min(1) });
+
 const JSON_TYPE = 'application/json';
 const FORM_TYPE = 'multipart/form-data';
 
@@ -251,4 +253,12 @@ export async function relinkRequest(c: Context): Promise<RelinkRequest> {
   }
   const { from, to, force = false } = parsed.data;
   return { from, to, force };
+}
+
+// Takes back the person's last move: the state it left, as the client saw it.
+export async function undoRequest(c: Context): Promise<{ from: string }> {
+  const raw: unknown = await c.req.json().catch(() => undefined);
+  const parsed = UndoBody.safeParse(raw);
+  if (!parsed.success) throw new RejectedRequest(400, 'invalid_body', 'Expected {"from": string}');
+  return { from: parsed.data.from };
 }
