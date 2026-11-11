@@ -19,7 +19,6 @@
 .phead .buddy {
   width: 20px;
   height: 20px;
-  fill: var(--you);
 }
 .phead b {
   font: 600 14px / 1.2 var(--sans);
