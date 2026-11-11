@@ -41,6 +41,8 @@ export const studio = {
 
   // The module catalog
   'catalog.title': 'Field modules',
+  'catalog.kicker': 'Studio',
+  'catalog.kickerNote': 'the parts a detail is built from',
   'catalog.back': 'Back to items',
   'catalog.unknownHeading': 'Named by presets, not in this UI',
   'catalog.official': 'official',
@@ -119,6 +121,7 @@ export const studio = {
   'studio.start.noBlueprint':
     'No blueprint yet. Pick one to build several boards at once, linked, with a playbook for the agents.',
   'studio.start.pickBlueprint': 'Pick a blueprint',
+  'studio.picker.kicker': 'project templates',
   'studio.start.route': 'How it works: {steps}',
   'studio.crumbPreset': 'Studio / template /',
   'studio.discard': 'discard draft',

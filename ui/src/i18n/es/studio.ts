@@ -40,6 +40,8 @@ export const studio = {
 
   // Catálogo de módulos
   'catalog.title': 'Módulos de campo',
+  'catalog.kicker': 'Studio',
+  'catalog.kickerNote': 'las piezas con que se arma un detalle',
   'catalog.back': 'Volver a los ítems',
   'catalog.unknownHeading': 'Los nombran plantillas, pero no están en esta interfaz',
   'catalog.official': 'oficial',
@@ -121,6 +123,7 @@ export const studio = {
   'studio.start.noBlueprint':
     'Todavía no hay plano. Elige uno para crear varios tableros a la vez, vinculados, con un playbook para los agentes.',
   'studio.start.pickBlueprint': 'Elegir un plano',
+  'studio.picker.kicker': 'plantillas de proyecto',
   'studio.start.route': 'Su forma de trabajar: {steps}',
   'studio.crumbPreset': 'Studio / plantilla /',
   'studio.discard': 'descartar borrador',
@@ -365,7 +368,7 @@ export const studio = {
   'studio.preset.saved': 'v{version} · guardado',
   'studio.preset.save': 'guardar v{version}',
   'studio.preset.usedBy': { one: '{name} · {count} ítem', other: '{name} · {count} ítems' },
-  'studio.preset.unused': 'ninguna colección lo usa',
+  'studio.preset.unused': 'ningún tablero la usa',
   'studio.preset.savedIn': 'guardado en',
   'studio.preset.copyName': 'Nombre de la copia',
   'studio.preset.duplicate': 'duplicar para editar',
@@ -470,9 +473,9 @@ export const studio = {
   'studio.views.notOneLine': 'Es {module}; solo agrupan los campos de una línea',
   'studio.views.columns': 'columnas',
   'studio.views.titleAlways': 'title siempre se lista',
-  'studio.views.ownColumns': 'las columnas propias del preset',
+  'studio.views.ownColumns': 'las columnas propias de la plantilla',
   'studio.views.defaultColumns':
-    'las columnas por defecto; un cambio las vuelve propias del preset',
+    'las columnas por defecto; un cambio las vuelve propias de la plantilla',
   'studio.types.title': 'tipos',
   'studio.types.note': 'qué clases de ítems tiene un tablero y cuáles pueden contener a cuáles',
   'studio.types.add': 'Nombre del tipo nuevo',
@@ -486,7 +489,7 @@ export const studio = {
   'studio.types.holdsNothing': 'no contiene nada',
   'studio.types.anyChild': 'cualquier tipo',
   'studio.types.sharedOnly': 'solo el compartido',
-  'studio.types.onlyThese': 'solo los tipos de este preset: parent queda dentro de un tablero',
+  'studio.types.onlyThese': 'solo los tipos de esta plantilla: parent queda dentro de un tablero',
   'studio.types.workflow': 'workflow',
   'studio.types.ownWorkflow': 'el suyo',
   'studio.types.sharedWorkflow': 'el compartido',
@@ -566,7 +569,7 @@ export const studio = {
   'studio.blueprint.keepsItems': 'Un tablero con ítems nunca se quita',
   'studio.blueprint.newBoard': 'tablero nuevo',
   'studio.blueprint.boardName': 'Nombre del tablero',
-  'studio.blueprint.preset': 'Preset',
+  'studio.blueprint.preset': 'Plantilla',
   'studio.blueprint.addBoard': 'tablero',
   'studio.blueprint.newBoardNote': 'guardar crea su colección',
   'studio.blueprint.playbook': 'Playbook de coordinación',
@@ -623,7 +626,7 @@ export const studio = {
   'studio.picker.title': 'Empieza este proyecto desde un plano',
   'studio.picker.otherTitle': 'Planos',
   'studio.picker.lede':
-    'Un plano crea varios tableros a la vez, cada uno con su preset, con los vínculos permitidos entre ellos. El proyecto guarda su propia copia.',
+    'Un plano crea varios tableros a la vez, cada uno con su plantilla, con los vínculos permitidos entre ellos. El proyecto guarda su propia copia.',
   'studio.picker.blueprints': 'planos',
   'studio.picker.links': { one: '{count} vínculo', other: '{count} vínculos' },
   'studio.picker.official': 'oficial',
@@ -634,7 +637,7 @@ export const studio = {
   'studio.picker.playbook': 'un playbook de coordinación para los agentes',
   'studio.picker.copy': '.otea/blueprint.yaml, la copia de este proyecto',
   'studio.picker.create': { one: 'Crear {count} tablero', other: 'Crear {count} tableros' },
-  'studio.picker.presetsAsAre': 'los presets se usan tal como están: {presets}',
+  'studio.picker.presetsAsAre': 'las plantillas se usan tal como están: {presets}',
   'studio.picker.hasOne':
     'Este proyecto ya tiene un plano: edita su copia o actualízala desde su origen.',
   'customize.m.aBox': 'una caja',

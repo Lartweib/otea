@@ -1,7 +1,7 @@
 import type { Connection } from '../../../src/core/blueprint.ts';
 import { t } from '../i18n/i18n.ts';
 import { TypeIcon } from '../icons/TypeIcon.tsx';
-import { Icon } from '../kit/index.ts';
+import { Icon, Seg } from '../kit/index.ts';
 import { NodeGlyph } from '../lanes/NodeGlyph.tsx';
 import type { PresetView } from '../types.ts';
 import type { Board } from './api.ts';
@@ -70,20 +70,18 @@ export function BlueprintCanvas(props: CanvasProps) {
   return (
     <div className="st-bpc-at">
       <div className="st-bpc-bar">
-        <fieldset className="st-pills" aria-label={t('studio.blueprint.canvas.show')}>
-          {(['types', 'states'] as const).map((each) => (
-            <button
-              key={each}
-              type="button"
-              aria-pressed={mode === each}
-              onClick={() => onMode(each)}
-            >
-              {each === 'types'
+        <Seg
+          label={t('studio.blueprint.canvas.show')}
+          value={mode}
+          options={(['types', 'states'] as const).map((each) => ({
+            value: each,
+            label:
+              each === 'types'
                 ? t('studio.blueprint.canvas.types')
-                : t('studio.blueprint.canvas.states')}
-            </button>
-          ))}
-        </fieldset>
+                : t('studio.blueprint.canvas.states'),
+          }))}
+          onChange={onMode}
+        />
         <span className="st-bpc-n">{t('studio.blueprint.canvas.drawn')}</span>
         {onAddBoard ? (
           <button type="button" className="st-tog st-bpc-add" onClick={onAddBoard}>
