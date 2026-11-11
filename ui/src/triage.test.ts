@@ -4,16 +4,21 @@ import {
   cardWords,
   dragIntent,
   dragProgress,
-  exitPose,
+  keyDecision,
   releaseDirection,
+  resist,
   roundOf,
   swipeAction,
   swipeThreshold,
+  throwFade,
+  throwTo,
+  tiltOf,
   triagePlan,
   triageQueue,
   triCurrent,
   triDecide,
   triNext,
+  triReturn,
   triStart,
   triSync,
 } from './triage.ts';
@@ -278,13 +283,101 @@ describe('cardWords', () => {
   });
 });
 
-describe('exitPose', () => {
-  it('flies an approval to the right and a send-back to the left, tilted', () => {
-    expect(exitPose('approve')).toBe('translateX(120px) rotate(2deg)');
-    expect(exitPose('send')).toBe('translateX(-120px) rotate(-2deg)');
+describe('tiltOf', () => {
+  it('tilts the card with the pull, never past a slight 3 degrees', () => {
+    expect(tiltOf(0)).toBe(0);
+    expect(tiltOf(100)).toBe(1);
+    expect(tiltOf(-150)).toBe(-1.5);
+    expect(tiltOf(900)).toBe(3);
+    expect(tiltOf(-900)).toBe(-3);
+  });
+});
+
+describe('resist', () => {
+  it('follows the pointer toward a side that has a move', () => {
+    expect(resist(120, true)).toBe(120);
+    expect(resist(-80, true)).toBe(-80);
   });
 
-  it('drops a card left for later', () => {
-    expect(exitPose('later')).toBe('translateY(24px) scale(0.97)');
+  it('gives only a little toward a side with no move, like a rubber band', () => {
+    expect(resist(50, false)).toBe(10);
+    expect(resist(-50, false)).toBe(-10);
+    expect(resist(600, false)).toBe(28);
+    expect(resist(-600, false)).toBe(-28);
+  });
+});
+
+describe('throwTo', () => {
+  it('throws the card on past where it was let go, to its side', () => {
+    expect(throwTo('right', 160)).toBe(300);
+    expect(throwTo('left', -130)).toBe(-270);
+  });
+
+  it('throws a card decided by a button (not dragged) a fixed way', () => {
+    expect(throwTo('right', 0)).toBe(220);
+    expect(throwTo('left', 0)).toBe(-220);
+  });
+});
+
+describe('throwFade', () => {
+  it('keeps the card whole while it leaves, then lets it go before it lands', () => {
+    expect(throwFade(0)).toBe(1);
+    expect(throwFade(0.2)).toBe(1);
+    expect(throwFade(0.5)).toBeGreaterThan(0);
+    expect(throwFade(0.5)).toBeLessThan(1);
+    expect(throwFade(0.85)).toBe(0);
+    expect(throwFade(1)).toBe(0);
+  });
+
+  it('never comes back once fading', () => {
+    let last = 1;
+    for (let k = 0; k <= 1; k += 0.05) {
+      expect(throwFade(k)).toBeLessThanOrEqual(last);
+      last = throwFade(k);
+    }
+  });
+});
+
+describe('keyDecision', () => {
+  it('approves on the right arrow, sends back on the left, leaves for later on the down arrow', () => {
+    expect(keyDecision('ArrowRight')).toBe('approve');
+    expect(keyDecision('ArrowLeft')).toBe('send');
+    expect(keyDecision('ArrowDown')).toBe('later');
+    expect(keyDecision('ArrowUp')).toBeUndefined();
+    expect(keyDecision('Enter')).toBeUndefined();
+  });
+});
+
+describe('triReturn and a decision taken back', () => {
+  it('brings a decided card back on top, undecided', () => {
+    const s = triDecide(triDecide(triStart(['A', 'B', 'C']), 'approve'), 'send');
+    const r = triReturn(s, 'A');
+    expect(r.q).toEqual(['B', 'A', 'C']);
+    expect(triCurrent(r)).toBe('A');
+    expect(r.decided).toBe(1);
+  });
+
+  it('leaves the pass as it is for a card not decided', () => {
+    const s = triDecide(triStart(['A', 'B']), 'approve');
+    expect(triReturn(s, 'B')).toBe(s);
+    expect(triReturn(s, 'Z')).toBe(s);
+  });
+
+  it('a decided card that left the reviews and comes back (Deshacer) returns on top', () => {
+    const decided = triDecide(triStart(['A', 'B', 'C']), 'approve');
+    const left = triSync(decided, ['B', 'C']);
+    expect(left.gone).toEqual(['A']);
+    expect(triCurrent(left)).toBe('B');
+    const back = triSync(left, ['A', 'B', 'C']);
+    expect(triCurrent(back)).toBe('A');
+    expect(back.decided).toBe(0);
+    expect(back.gone).toEqual([]);
+  });
+
+  it('a decided card still listed while its move lands is not brought back', () => {
+    const decided = triDecide(triStart(['A', 'B']), 'approve');
+    const s = triSync(decided, ['A', 'B']);
+    expect(triCurrent(s)).toBe('B');
+    expect(s.decided).toBe(1);
   });
 });

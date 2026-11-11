@@ -2,11 +2,13 @@ import type { Waits } from './actions.ts';
 import { moveBlock, moveVariants } from './actions.ts';
 import type { FeedEvent } from './activity.ts';
 import { handedNote, type TocaContext, tocaSection } from './derive/toca.ts';
+import { clamp, sstep } from './motion/curves.ts';
 import type { Item, Move } from './types.ts';
 
 // Triaje (SPEC §10.4, mock:3995-4036): the reviews, one card at a time. Aprobar is the primary move,
 // Devolver… sends the item back to an agent with notes, Después leaves it for the end of the pass.
-// On the phone a swipe right approves and a swipe left sends back.
+// The card follows the pointer or the finger: let go past the threshold to the right it approves,
+// to the left it sends back; short of it, it springs home. The buttons do the same without a drag.
 
 export type Direction = 'right' | 'left';
 
@@ -92,22 +94,52 @@ export function triageQueue(items: readonly Item[], ctx: TocaContext): string[] 
     .map((it) => it.id);
 }
 
-// A pass: the cards in the order met, the one on top, and how many were decided.
-export type TriState = { q: string[]; i: number; decided: number };
+// A pass: the cards in the order met, the one on top, and how many were decided. gone: the decided
+// cards seen leaving the reviews; one that comes back (Deshacer, or a failed move) returns on top.
+export type TriState = { q: string[]; i: number; decided: number; gone: string[] };
 export type TriKind = 'approve' | 'send' | 'later';
 
-export const triStart = (ids: readonly string[]): TriState => ({ q: [...ids], i: 0, decided: 0 });
+export const triStart = (ids: readonly string[]): TriState => ({
+  q: [...ids],
+  i: 0,
+  decided: 0,
+  gone: [],
+});
 export const triCurrent = (s: TriState): string | undefined => s.q[s.i];
 export const triNext = (s: TriState): string | undefined => s.q[s.i + 1];
 
+// A decided card back on top of the pass, undecided again.
+export function triReturn(s: TriState, id: string): TriState {
+  const at = s.q.indexOf(id);
+  if (at < 0 || at >= s.i) return s;
+  const q = s.q.filter((each) => each !== id);
+  q.splice(s.i - 1, 0, id);
+  return { ...s, q, i: s.i - 1, decided: s.decided - 1, gone: s.gone.filter((g) => g !== id) };
+}
+
 // The reviews changed under the pass: a new one joins the end, one still to come that left the
-// reviews (somebody moved it) drops out. What was already decided stays, for the count.
+// reviews (somebody moved it) drops out. What was already decided stays, for the count; a decided
+// card seen gone that is a review again (its move taken back) returns on top. A decided card still
+// listed while its move lands is not one: it never left.
 export function triSync(s: TriState, waiting: readonly string[]): TriState {
   const now = new Set(waiting);
+  const decided = s.q.slice(0, s.i);
+  const gone = [
+    ...s.gone.filter((id) => !now.has(id)),
+    ...decided.filter((id) => !now.has(id) && !s.gone.includes(id)),
+  ];
+  const back = s.gone.filter((id) => now.has(id));
   const kept = s.q.filter((id, at) => at < s.i || now.has(id));
   const added = waiting.filter((id) => !s.q.includes(id));
-  if (kept.length === s.q.length && added.length === 0) return s;
-  return { ...s, q: [...kept, ...added] };
+  const same =
+    kept.length === s.q.length &&
+    added.length === 0 &&
+    back.length === 0 &&
+    gone.length === s.gone.length;
+  if (same) return s;
+  let next: TriState = { ...s, q: [...kept, ...added], gone: [...gone, ...back] };
+  for (const id of back) next = triReturn(next, id);
+  return next;
 }
 
 export function triDecide(s: TriState, kind: TriKind): TriState {
@@ -146,10 +178,31 @@ export function cardWords(
   };
 }
 
-// Where a decided card flies (mock:4033): an approval to the right, a send-back to the left, both
-// tilted; a card left for later drops behind.
-export function exitPose(kind: TriKind): string {
-  if (kind === 'later') return 'translateY(24px) scale(0.97)';
-  const dx = kind === 'approve' ? 1 : -1;
-  return `translateX(${dx * 120}px) rotate(${dx * 2}deg)`;
+// The drag's pose. The card tilts with the pull, never past a slight 3 degrees.
+export const tiltOf = (dx: number): number => clamp(dx * 0.01, -3, 3);
+
+// Toward a side with no move the card gives only a little, like a rubber band.
+export function resist(dx: number, open: boolean): number {
+  return open ? dx : Math.sign(dx) * Math.min(28, Math.abs(dx) * 0.2);
+}
+
+// Where a decided card is thrown: on past where it was let go (it keeps going the way it went),
+// a fixed way for a card decided by a button.
+export function throwTo(side: Direction, dx: number): number {
+  const d = Math.max(220, Math.abs(dx) + 140);
+  return side === 'right' ? d : -d;
+}
+
+// A thrown card stays whole as it leaves, then lets go well before it lands.
+export const throwFade = (k: number): number => 1 - sstep(clamp((k - 0.2) / 0.65));
+
+// A card left for later drops behind (mock:4033).
+export const LATER_POSE = 'translateY(24px) scale(0.97)';
+
+// The keys of a pass: the arrows decide as the drag does, the down arrow leaves it for later.
+export function keyDecision(key: string): TriKind | undefined {
+  if (key === 'ArrowRight') return 'approve';
+  if (key === 'ArrowLeft') return 'send';
+  if (key === 'ArrowDown') return 'later';
+  return undefined;
 }
