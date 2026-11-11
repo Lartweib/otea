@@ -91,7 +91,7 @@
 .ffield textarea {
   display: block;
   width: 100%;
-  min-height: 86px;
+  min-height: 64px;
   resize: vertical;
   padding: 10px 12px;
   border-radius: 7px;
@@ -100,6 +100,9 @@
   font: 400 16px / 1.45 var(--serif);
   color: var(--ink);
   transition: border-color 240ms var(--o-drift);
+}
+.ffield textarea#intake-description {
+  min-height: 86px;
 }
 .ffield input::placeholder,
 .ffield textarea::placeholder {
@@ -139,10 +142,6 @@
   font: 400 italic 13.5px / 1.4 var(--serif);
   color: var(--ink-3);
   margin-top: 6px;
-}
-.fwrap + .fwrap .ffield,
-.ffield + .fwrap .ffield {
-  border-top: 1px solid var(--rule);
 }
 .fnote {
   font: 400 11.5px / 1.45 var(--mono);
