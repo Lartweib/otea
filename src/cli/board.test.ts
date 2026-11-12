@@ -169,5 +169,7 @@ describe('board add', () => {
     const row = out.split('\n').find((line) => line.includes('WORK-2')) ?? '';
     expect(row).not.toContain(` ${state} `);
     expect(row).toMatch(/WORK-2\s+(Completar|Hacerlo)/);
+    // A list carries bare relation refs: it still lists.
+    expect((await otea('list')).code).toBe(0);
   });
 });
