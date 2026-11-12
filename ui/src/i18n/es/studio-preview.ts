@@ -388,6 +388,55 @@ export const studioPreview = {
   'bs.preview.publish.toast.undoneFirst': '{name} vuelve a ser un borrador.',
   'bs.preview.publish.toast.undone': 'Vuelves a v{v}; tus cambios siguen en el borrador.',
 
+  'bs.preview.publish.waitingParts': {
+    one: '1 ítem en {step} tiene {parts} sin terminar: no podrá entregarse hasta que terminen.',
+    other:
+      '{count} ítems en {step} tienen {parts} sin terminar: no podrán entregarse hasta que terminen.',
+  },
+  'bs.preview.publish.waitingItsParts': {
+    one: '1 ítem en {step} tiene partes sin terminar: no podrá entregarse hasta que terminen.',
+    other:
+      '{count} ítems en {step} tienen partes sin terminar: no podrán entregarse hasta que terminen.',
+  },
+  'bs.preview.publish.waitingBlockers': {
+    one: '1 ítem en {step} tiene algo sin terminar que lo frena: no podrá entregarse hasta que termine.',
+    other:
+      '{count} ítems en {step} tienen algo sin terminar que los frena: no podrán entregarse hasta que termine.',
+  },
+  'bs.preview.publish.frozen': {
+    one: '1 ítem en Revisión de {step}: desde ahora su rama queda congelada.',
+    other: '{count} ítems en Revisión de {step}: desde ahora su rama queda congelada.',
+  },
+  'bs.preview.publish.numbers':
+    'cero|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|once|doce|trece',
+  'bs.preview.publish.setupLeft': {
+    one: 'Queda {n} cosa sin marcar en «Qué falta configurar». Puedes publicar igual: se queda como está.',
+    other:
+      'Quedan {n} cosas sin marcar en «Qué falta configurar». Puedes publicar igual: se quedan como están.',
+  },
+  'bs.preview.publish.splitUnpublished': '{name} todavía no está publicado.',
+  'bs.preview.publish.pair.title': 'Publicar los dos tableros',
+  'bs.preview.publish.pair.titleChanges': 'Publicar los cambios de {name}',
+  'bs.preview.publish.pair.lede':
+    '{a} y {b} van juntos: cada {item} se divide en {child}. Se publican a la vez y se deshacen a la vez.',
+  'bs.preview.publish.pair.onlyOne': 'Solo {name} tiene cambios; {other} sigue como está.',
+  'bs.preview.publish.pair.onlyOneAt':
+    'Solo {name} tiene cambios; {other} sigue como está, en v{v}.',
+  'bs.preview.publish.pair.headFirst': 'se pone en marcha',
+  'bs.preview.publish.pair.firstStep': 'Los agentes podrán tomar ítems en {step}.',
+  'bs.preview.publish.pair.items': 'Qué pasa con sus ítems',
+  'bs.preview.publish.pair.noneMove': 'Ningún ítem se mueve.',
+  'bs.preview.publish.pair.nextCall': 'Los agentes reciben la versión nueva en su próxima llamada.',
+  'bs.preview.publish.pair.publish': 'Publicar los dos',
+  'bs.preview.publish.pair.see': 'Ver {name}',
+  'bs.preview.publish.pair.bothFirst':
+    '{a} y {b} ya están en marcha. Cada {item} se divide en {child}.',
+  'bs.preview.publish.pair.undoneFirst': '{a} y {b} vuelven a ser borradores.',
+  'bs.preview.publish.pair.both':
+    'Publicados: {a} v{va} y {b} v{vb}. Los agentes los reciben en su próxima llamada.',
+  'bs.preview.publish.pair.undone':
+    'Vuelven las versiones de antes; tus cambios siguen en los borradores.',
+
   'bs.preview.discard.label': 'Descartar',
   'bs.preview.discard.title': '¿Descartar el borrador?',
   'bs.preview.discard.live':
@@ -396,4 +445,14 @@ export const studioPreview = {
   'bs.preview.discard.discard': 'Descartar',
   'bs.preview.discard.toast': 'Descartaste el borrador de {name}.',
   'bs.preview.discard.undone': 'El borrador de {name} vuelve.',
+
+  'bs.preview.discard.pairTitle': '¿Descartar los dos borradores?',
+  'bs.preview.discard.oneTitle': '¿Descartar el borrador de {name}?',
+  'bs.preview.discard.liveOf': '{name} vuelve a v{v}, la versión con la que trabajan los agentes.',
+  'bs.preview.discard.lost': 'Se pierden tus cambios.',
+  'bs.preview.discard.untouched': '{name} no tiene cambios: no se toca.',
+  'bs.preview.discard.only': 'Solo {name}',
+  'bs.preview.discard.both': 'Descartar los dos',
+  'bs.preview.discard.toastBoth': 'Descartaste los borradores de {names}.',
+  'bs.preview.discard.undoneBoth': 'Vuelven los borradores de {names}.',
 } satisfies Partial<Catalog>;
