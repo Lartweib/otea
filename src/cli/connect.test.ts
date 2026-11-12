@@ -10,7 +10,7 @@ const BLOCK = [
   '<!-- otea:begin -->',
   '## Otea',
   '',
-  'This project hands work between humans and agents through Otea. Before you pick up an item, run `otea playbook` (or call the `playbook` tool of the Otea MCP server) and follow the playbook of the collection you work in. `otea show <id>` says what to do next with each item.',
+  'This project hands work between humans and agents through Otea. Run `otea next` (or call the `next` tool of the Otea MCP server) to get the item to take and what its step asks, and `otea board <name>` (the `board` tool) to read the instructions of a board. Hand off with `otea handoff <id>`; `otea show <id>` says what to do next with each item.',
   '<!-- otea:end -->',
 ].join('\n');
 

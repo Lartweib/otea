@@ -27,7 +27,7 @@ describe('events', () => {
     await otea('collection', 'add', 'bugs');
     await otea('create', '--collection', 'tasks', '--title', 'First', '--description', 'D');
     await otea('create', '--collection', 'bugs', '--title', 'Crash', '--description', 'D');
-    await otea('move', 'TASKS-1', 'in_progress');
+    await otea('move', 'TASKS-1', 'todo__review');
   });
 
   afterEach(() => repo.remove());
@@ -40,7 +40,7 @@ describe('events', () => {
     expect(first).toMatch(new RegExp(`^1  TASKS-1  ${AT}  agent:agent  created  todo$`));
     expect(second).toMatch(new RegExp(`^2  BUGS-1  ${AT}  agent:agent  created  todo$`));
     expect(third).toMatch(
-      /^3 {2}TASKS-1 {2}\S+ {2}agent:agent {2}transitioned {2}todo -> in_progress$/,
+      /^3 {2}TASKS-1 {2}\S+ {2}agent:agent {2}transitioned {2}todo -> todo__review$/,
     );
     expect(rest).toEqual([]);
   });
@@ -92,15 +92,15 @@ describe('events', () => {
       const follow = startCli(repo.dir, 'events', '--follow', '--since', '2', '--json');
       await until(() => lines(follow.out()).length === 1);
 
-      await spawnCli(repo.dir, 'move', 'TASKS-1', 'review');
+      await spawnCli(repo.dir, 'relay', 'TASKS-1', 'todo', '--quote', 'Again', '--reason', 'Again');
       await until(() => lines(follow.out()).length === 2);
       const code = await follow.stop();
 
       const events = lines(follow.out()).map((line) => JSON.parse(line));
       expect(code).toBe(0);
       expect(events.map(({ id, data }) => `${id} ${data.from} -> ${data.to}`)).toEqual([
-        '3 todo -> in_progress',
-        '4 in_progress -> review',
+        '3 todo -> todo__review',
+        '4 todo__review -> todo',
       ]);
     });
 
@@ -108,12 +108,12 @@ describe('events', () => {
       const follow = startCli(repo.dir, 'events', '--follow', '--collection', 'bugs');
       await until(() => lines(follow.out()).length === 1);
 
-      await otea('move', 'TASKS-1', 'review');
-      await otea('move', 'BUGS-1', 'in_progress');
+      await otea('relay', 'TASKS-1', 'todo', '--quote', 'Again', '--reason', 'Again');
+      await otea('move', 'BUGS-1', 'todo__review');
       await until(() => lines(follow.out()).length === 2);
       await follow.stop();
 
-      expect(lines(follow.out())[1]).toMatch(/^5 {2}BUGS-1 .* todo -> in_progress$/);
+      expect(lines(follow.out())[1]).toMatch(/^5 {2}BUGS-1 .* todo -> todo__review$/);
     });
   });
 });

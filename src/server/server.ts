@@ -1,6 +1,7 @@
 import { type Context, Hono } from 'hono';
 import { bodyLimit } from 'hono/body-limit';
 import { getCookie } from 'hono/cookie';
+import { syncBoardPresets } from '../app/boards.ts';
 import { briefFor } from '../app/brief.ts';
 import { listCollectionViews } from '../app/collections.ts';
 import { deviceByToken, touchDevice } from '../app/devices.ts';
@@ -174,6 +175,12 @@ function api(
   const { auth, lan, port, env } = doors;
   return (
     new Hono<OteaEnv>()
+      // A board published from another process (the CLI, another server) joins the catalog before
+      // anything reads items; it costs one query when nothing was published.
+      .use(async (_c, next) => {
+        syncBoardPresets(project);
+        await next();
+      })
       .get('/session', (c) =>
         c.json({
           canWrite: auth.canWrite(c),

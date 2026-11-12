@@ -86,7 +86,13 @@ function validate(command: Command, values: Values, args: string[]): void {
     }
   }
   const rest = command.args.at(-1)?.endsWith('...') ?? false;
-  if (rest ? args.length < command.args.length : args.length !== command.args.length) {
+  // A last name ending in `?` (`name?`) is an argument that may be left out.
+  const optional = command.args.at(-1)?.endsWith('?') ?? false;
+  const fewest = optional ? command.args.length - 1 : command.args.length;
+  const fits = rest
+    ? args.length >= command.args.length
+    : args.length >= fewest && args.length <= command.args.length;
+  if (!fits) {
     throw new UsageError(`"otea ${command.name}" expects ${command.args.length} argument(s)`);
   }
 }

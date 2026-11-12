@@ -69,8 +69,7 @@ describe('leases', () => {
     });
 
     it('fails with not_claimable (exit 4) when the turn is not the agent', async () => {
-      await otea('move', 'TASKS-1', 'in_progress');
-      await otea('move', 'TASKS-1', 'review');
+      await otea('handoff', 'TASKS-1');
 
       const { code, err } = await otea('claim', 'TASKS-1');
 
@@ -143,22 +142,21 @@ describe('leases', () => {
     });
 
     it('refuses moves and updates by another agent with exit 12', async () => {
-      expect((await otea('move', 'TASKS-1', 'in_progress', '--as', 'codex')).code).toBe(12);
+      expect((await otea('move', 'TASKS-1', 'todo__review', '--as', 'codex')).code).toBe(12);
+      expect((await otea('handoff', 'TASKS-1', '--as', 'codex')).code).toBe(12);
       expect((await otea('update', 'TASKS-1', '--title', 'X', '--as', 'codex')).code).toBe(12);
       expect((await json('show', 'TASKS-1')).state).toBe('todo');
     });
 
     it('stays writable for the holder', async () => {
       expect((await otea('update', 'TASKS-1', '--title', 'Mine', '--as', 'claude')).code).toBe(0);
-      expect((await otea('move', 'TASKS-1', 'in_progress', '--as', 'claude')).code).toBe(0);
+      expect((await otea('handoff', 'TASKS-1', '--as', 'claude')).code).toBe(0);
     });
 
     it('is released when the holder moves it to review', async () => {
-      await otea('move', 'TASKS-1', 'in_progress', '--as', 'claude');
+      const { out } = await otea('move', 'TASKS-1', 'todo__review', '--as', 'claude');
 
-      const { out } = await otea('move', 'TASKS-1', 'review', '--as', 'claude');
-
-      expect(out).toBe('TASKS-1  review  human  First\n');
+      expect(out).toBe('TASKS-1  todo__review  human  First\n');
       expect((await otea('show', 'TASKS-1')).out).toMatch(/released +claude \(handed off\)$/m);
     });
 

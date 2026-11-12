@@ -6,6 +6,7 @@ import { transaction } from '../store/database.ts';
 import { appendEvent, clearLease, type ItemRecord, takeLease } from '../store/queries.ts';
 import type { Context } from './context.ts';
 import { type Item, present, requireItem, systemClock, workflowOf } from './items.ts';
+import { assertMayClaim } from './next.ts';
 
 export type LeaseInput = { id: string; actor: Actor; ttlMs?: number };
 
@@ -29,6 +30,7 @@ export function claimItem(ctx: Context, input: LeaseInput, now = systemClock): I
         `${item.id} is in ${item.state} (turn ${turn}); only items on the agent turn can be claimed`,
       );
     }
+    assertMayClaim(ctx, item, input.actor.name);
     const at = now();
     const current = activeLease(item.lease, at);
     const { actor } = input;

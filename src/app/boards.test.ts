@@ -3,6 +3,7 @@ import { stateOf } from '../core/board/engine.ts';
 import { sequenceIds } from '../core/board/ids.ts';
 import type { BoardDefinition } from '../core/board/model.ts';
 import { creatures } from '../core/board/testing.ts';
+import { parsePreset } from '../core/preset.ts';
 import { findCollection } from '../store/queries.ts';
 import {
   createBoard,
@@ -347,5 +348,36 @@ describe('migrateCollections', () => {
     expect(getItem(ctx, review.id).state).toBe(stateOf({ step: 'todo', phase: 'review' }));
     expect(getItem(ctx, review.id).fields.description).toBe('y');
     expect(migrateCollections(ctx, 'es', now)).toBe(0);
+  });
+
+  it('leaves a collection on its preset when its states wait for closed children', () => {
+    const epic = parsePreset(`
+preset: epic
+preset_version: 1
+fields:
+  title: { module: text, required: create }
+workflow:
+  initial: building
+  states:
+    building: { turn: agent }
+    review: { turn: human, requires: children_closed }
+    done: { turn: none, closes: done }
+  transitions:
+    - { from: building, to: review, by: agent }
+    - { from: review, to: done, by: human }
+`);
+    const ctx = memoryContext(epic);
+    addCollection(ctx, { name: 'Epics', preset: 'epic' });
+
+    expect(migrateCollections(ctx, 'es', now)).toBe(0);
+  });
+
+  it('leaves a collection whose preset has several item types on its preset', () => {
+    const ctx = memoryContext();
+    addCollection(ctx, { name: 'Cambios', preset: 'change' });
+
+    expect(migrateCollections(ctx, 'es', now)).toBe(0);
+    expect(listBoardSummaries(ctx)).toEqual([]);
+    expect(findCollection(ctx.db, 'Cambios')?.preset).toBe('change');
   });
 });

@@ -161,7 +161,15 @@ describe('relations', () => {
   describe('list --parent and show', () => {
     beforeEach(async () => {
       await otea('create', '--collection', 'parts', '--title', 'Fur');
-      await otea('move', 'PARTS-4', 'discarded', '--reason', 'Reused the fox fur');
+      await otea(
+        'relay',
+        'PARTS-4',
+        'dropped',
+        '--quote',
+        'Drop it',
+        '--reason',
+        'Reused the fox fur',
+      );
       await otea('link', 'PARTS-3', 'parent', 'PARTS-1');
       await otea('link', 'PARTS-4', 'parent', 'PARTS-1');
       await otea('link', 'PARTS-2', 'blocks', 'PARTS-3');
@@ -169,7 +177,7 @@ describe('relations', () => {
 
     it('lists the children of a parent, with their relations in JSON', async () => {
       expect((await otea('list', '--parent', 'PARTS-1')).out).toBe(
-        'PARTS-3  todo       agent  Movement\nPARTS-4  discarded  none   Fur\n',
+        'PARTS-3  todo     agent  Movement\nPARTS-4  dropped  none   Fur\n',
       );
       const [epic] = await json('list', '--collection', 'parts');
       expect(epic.children).toEqual({ total: 2, open: 1, done: 0, discarded: 1 });
@@ -184,8 +192,8 @@ describe('relations', () => {
           'Children: 1 of 2 closed (0 done, 1 discarded)',
           'Relations:',
           '  children',
-          '    PARTS-3  todo       agent  Movement',
-          '    PARTS-4  discarded  none   Fur',
+          '    PARTS-3  todo     agent  Movement',
+          '    PARTS-4  dropped  none   Fur',
         ].join('\n'),
       );
       expect(child).toContain(
@@ -262,7 +270,6 @@ describe('relations', () => {
       repo.write('.otea/presets/web/preset.yaml', WEB);
       await otea('collection', 'add', 'web', '--preset', 'web');
       await otea('create', '--collection', 'web', '--title', 'Login page');
-      // Without a description the blocker stays incomplete, where an agent may discard it.
       await otea('create', '--collection', 'bugs', '--title', 'Login loops');
       await otea('link', 'BUGS-2', 'blocks', 'WEB-1');
     });
@@ -271,7 +278,7 @@ describe('relations', () => {
       const result = await otea('move', 'WEB-1', 'review');
 
       expect(result.code).toBe(4);
-      expect(result.err).toContain('1 of its 1 blockers is open: BUGS-2 (incomplete)');
+      expect(result.err).toContain('1 of its 1 blockers is open: BUGS-2 (todo)');
       expect(await errorOf('move', 'WEB-1', 'review')).toEqual({
         code: 4,
         error: 'blockers_open',
@@ -283,7 +290,7 @@ describe('relations', () => {
         'move it to review with evidence once its open blocker BUGS-2 is closed',
       );
 
-      await otea('move', 'BUGS-2', 'discarded', '--reason', 'Not a bug');
+      await otea('relay', 'BUGS-2', 'dropped', '--quote', 'Drop it', '--reason', 'Not a bug');
 
       expect(await otea('move', 'WEB-1', 'review')).toMatchObject({ code: 0 });
     });

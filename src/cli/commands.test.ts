@@ -140,7 +140,7 @@ describe('commands', () => {
 
         const reset = await otea('collection', 'icon', 'tasks', 'default');
 
-        expect(reset.out).toBe(`Collection "tasks" shows icon checklist (its preset's)\n`);
+        expect(reset.out).toBe(`Collection "tasks" shows icon checkbox (its preset's)\n`);
       });
 
       it('refuses an unknown icon and an unknown collection', async () => {
@@ -198,7 +198,7 @@ describe('commands', () => {
           id: 'TASKS-1',
           title: 'First',
           fields: { description: 'Why', priority: 'high' },
-          presetVersion: 2,
+          presetVersion: 1,
           state: 'todo',
           turn: 'agent',
           createdBy: { kind: 'agent', name: 'agent' },
@@ -209,16 +209,16 @@ describe('commands', () => {
         await otea('create', '--collection', 'tasks', '--title', 'X');
 
         expect((await json('show', 'TASKS-1')).events[0].data).toEqual({
-          state: 'incomplete',
+          state: 'todo',
           channel: 'cli',
         });
         expect((await otea('show', 'TASKS-1')).out).toContain('created by agent:agent via cli at ');
       });
 
-      it('creates an item without its description as incomplete', async () => {
+      it('creates an item on the first step of its board, with only the fields given', async () => {
         const item = await json('create', '--collection', 'tasks', '--title', 'Vague');
 
-        expect(item).toMatchObject({ state: 'incomplete', fields: { priority: 'medium' } });
+        expect(item).toMatchObject({ state: 'todo', fields: {} });
       });
 
       it('accepts every field through repeated --field', async () => {
@@ -326,15 +326,16 @@ describe('commands', () => {
           '--description',
           'Steps',
         );
-        await otea('move', 'BUGS-1', 'in_progress');
-        await otea('move', 'BUGS-1', 'review');
+        await otea('update', 'TASKS-1', '--field', 'priority=medium');
+        await otea('update', 'BUGS-1', '--field', 'priority=medium');
+        await otea('handoff', 'BUGS-1');
       });
 
       describe('list', () => {
         it('prints aligned columns: id, state, turn, title', async () => {
           expect(await otea('list')).toMatchObject({
             code: 0,
-            out: 'TASKS-1  todo    agent  Write docs\nBUGS-1   review  human  Fix login\n',
+            out: 'TASKS-1  todo          agent  Write docs\nBUGS-1   todo__review  human  Fix login\n',
           });
         });
 
@@ -396,18 +397,18 @@ describe('commands', () => {
           const events = lines.slice(lines.indexOf('Events:') + 1).filter(Boolean);
 
           expect(events).toHaveLength(3);
-          expect(events[1]).toMatch(/transitioned {2}todo -> in_progress$/);
-          expect(events[2]).toMatch(/transitioned {2}in_progress -> review$/);
+          expect(events[1]).toMatch(/updated +priority: \(none\) -> "medium"$/);
+          expect(events[2]).toMatch(/transitioned {2}todo -> todo__review$/);
         });
 
         it('prints the item with events with --json', async () => {
           const item = await json('show', 'BUGS-1');
 
-          expect(item).toMatchObject({ id: 'BUGS-1', state: 'review', turn: 'human' });
+          expect(item).toMatchObject({ id: 'BUGS-1', state: 'todo__review', turn: 'human' });
           expect(item.transitions).toEqual([]);
           expect(item.events.map((event: { type: string }) => event.type)).toEqual([
             'created',
-            'transitioned',
+            'updated',
             'transitioned',
           ]);
         });
@@ -439,37 +440,20 @@ describe('commands', () => {
         });
 
         it('lists the moves available to the agent', async () => {
-          await otea('create', '--collection', 'tasks', '--title', 'Vague');
-
-          expect((await otea('show', 'TASKS-1')).out).toContain('Agent can move to: in_progress');
+          expect((await otea('show', 'TASKS-1')).out).toContain('Agent can move to: todo__review');
           expect((await otea('show', 'BUGS-1')).out).toContain('Agent can move to: nothing');
-          expect((await otea('show', 'TASKS-2')).out).toContain(
-            'Agent can move to: todo, discarded (reason required)',
-          );
-          expect((await json('show', 'TASKS-2')).transitions).toEqual([
-            { to: 'todo', by: 'agent', reasonRequired: false, turn: 'agent' },
-            {
-              to: 'discarded',
-              by: 'agent',
-              reasonRequired: true,
-              turn: 'none',
-              closes: 'discarded',
-            },
+          expect((await json('show', 'TASKS-1')).transitions).toEqual([
+            { to: 'todo__review', by: 'agent', reasonRequired: false, turn: 'human' },
           ]);
         });
 
         it('lists the human decisions the agent may relay', async () => {
           expect((await otea('show', 'BUGS-1')).out).toContain(
-            'Agent can move to: nothing\nAgent can relay to: discarded (reason required)',
+            'Agent can move to: nothing\nAgent can relay to: todo (reason required), dropped (reason required)',
           );
           expect((await json('show', 'BUGS-1')).relayable).toEqual([
-            {
-              to: 'discarded',
-              by: 'human',
-              reasonRequired: true,
-              turn: 'none',
-              closes: 'discarded',
-            },
+            { to: 'todo', by: 'human', reasonRequired: true, turn: 'agent' },
+            { to: 'dropped', by: 'human', reasonRequired: true, turn: 'none', closes: 'discarded' },
           ]);
         });
 
@@ -483,16 +467,10 @@ describe('commands', () => {
           await otea('create', '--collection', 'tasks', '--title', 'Vague');
         });
 
-        it('is shown with the fields it still needs', async () => {
-          expect((await otea('show', 'TASKS-2')).out).toContain('Missing to complete: description');
-          expect((await json('show', 'TASKS-2')).missing).toEqual(['description']);
-          expect((await otea('show', 'TASKS-1')).out).not.toContain('Missing to complete');
-        });
-
         it('prints the updated item as a list row', async () => {
           expect(await otea('update', 'TASKS-2', '--title', 'Clear')).toMatchObject({
             code: 0,
-            out: 'TASKS-2  incomplete  agent  Clear\n',
+            out: 'TASKS-2  todo  agent  Clear\n',
           });
         });
 
@@ -508,11 +486,12 @@ describe('commands', () => {
 
           expect(item.fields).toEqual({ description: 'Steps', priority: 'high' });
           expect((await otea('show', 'TASKS-2')).out).toMatch(
-            /updated {2}description: \(none\) -> "Steps"; priority: "medium" -> "high"$/m,
+            /updated {2}description: \(none\) -> "Steps"; priority: \(none\) -> "high"$/m,
           );
         });
 
         it('clears an optional field with a blank value', async () => {
+          await otea('update', 'TASKS-2', '--field', 'priority=low');
           expect((await json('update', 'TASKS-2', '--field', 'priority=')).fields).toEqual({});
         });
 
@@ -523,17 +502,8 @@ describe('commands', () => {
           expect(err).toContain('field "title" is required and cannot be cleared');
         });
 
-        it('lets the agent move it to todo only after the description is filled', async () => {
-          const early = await otea('move', 'TASKS-2', 'todo');
-
-          expect(early.code).toBe(8);
-          expect(early.err).toContain('missing: description');
-          await otea('update', 'TASKS-2', '--description', 'Steps');
-          expect((await otea('move', 'TASKS-2', 'todo')).code).toBe(0);
-        });
-
         it('rejects updating a closed item', async () => {
-          await otea('move', 'TASKS-2', 'discarded', '--reason', 'Duplicate');
+          await otea('relay', 'TASKS-2', 'dropped', '--quote', 'drop it', '--reason', 'Duplicate');
 
           const { code, err } = await otea('update', 'TASKS-2', '--description', 'Late');
 
@@ -553,16 +523,16 @@ describe('commands', () => {
 
       describe('move', () => {
         it('prints the moved item as a list row', async () => {
-          expect(await otea('move', 'TASKS-1', 'in_progress')).toMatchObject({
+          expect(await otea('move', 'TASKS-1', 'todo__review')).toMatchObject({
             code: 0,
-            out: 'TASKS-1  in_progress  agent  Write docs\n',
+            out: 'TASKS-1  todo__review  human  Write docs\n',
           });
         });
 
         it('records the acting agent', async () => {
-          await otea('move', 'TASKS-1', 'in_progress', '--as', 'codex');
+          await otea('move', 'TASKS-1', 'todo__review', '--as', 'codex');
 
-          expect((await json('show', 'TASKS-1')).events[1].actor).toEqual({
+          expect((await json('show', 'TASKS-1')).events[2].actor).toEqual({
             kind: 'agent',
             name: 'codex',
           });
@@ -583,34 +553,31 @@ describe('commands', () => {
 
           expect(code).toBe(7);
           expect(err).toContain('requires human-ui authority');
-          expect((await json('show', 'BUGS-1')).state).toBe('review');
+          expect((await json('show', 'BUGS-1')).state).toBe('todo__review');
         });
 
         it('records an optional --reason and shows it in the timeline', async () => {
-          await otea('move', 'TASKS-1', 'in_progress', '--reason', 'Picked up');
+          await otea('move', 'TASKS-1', 'todo__review', '--reason', 'Ready');
 
-          expect((await json('show', 'TASKS-1')).events[1].data).toEqual({
+          expect((await json('show', 'TASKS-1')).events[2].data).toEqual({
             from: 'todo',
-            to: 'in_progress',
-            reason: 'Picked up',
+            to: 'todo__review',
+            reason: 'Ready',
             channel: 'cli',
           });
           expect((await otea('show', 'TASKS-1')).out).toMatch(
-            /transitioned {2}todo -> in_progress \(Picked up\)$/m,
+            /transitioned {2}todo -> todo__review \(Ready\)$/m,
           );
         });
 
         it('requires a reason when the transition does, with the usage', async () => {
-          await otea('create', '--collection', 'tasks', '--title', 'Vague');
-
-          const { code, err } = await otea('move', 'TASKS-2', 'discarded');
+          const { code, err } = await otea('relay', 'BUGS-1', 'todo', '--quote', 'redo');
 
           expect(code).toBe(2);
-          expect(err).toContain('Moving from "incomplete" to "discarded" requires a reason');
-          expect(err).toContain('Usage: otea move <id> <state> [--reason <reason>]');
-          expect((await otea('move', 'TASKS-2', 'discarded', '--reason', 'Duplicate')).code).toBe(
-            0,
-          );
+          expect(err).toContain('Moving from "todo__review" to "todo" requires a reason');
+          expect(
+            (await otea('relay', 'BUGS-1', 'todo', '--quote', 'redo', '--reason', 'Redo')).code,
+          ).toBe(0);
         });
 
         it('requires the target state', async () => {

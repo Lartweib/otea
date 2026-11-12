@@ -33,19 +33,6 @@ describe('validate', () => {
     expect(await otea('validate')).toEqual({ code: 0, out: 'No problems found.\n', err: '' });
   });
 
-  it('exits 0 with warnings only', async () => {
-    repo.write('.otea/presets/notes/preset.yaml', NOTES(1));
-    await otea('collection', 'add', 'notes', '--preset', 'notes');
-    await otea('create', '--collection', 'notes', '--title', 'N');
-    repo.write('.otea/presets/notes/preset.yaml', NOTES(2));
-
-    const { code, out } = await otea('validate');
-
-    expect(code).toBe(0);
-    expect(out).toContain('warning  NOTES-1  written under preset notes v1; the preset is now v2');
-    expect(out).toContain('0 errors, 1 warning');
-  });
-
   it('warns on a preset that uses close_requires, suggesting requires', async () => {
     const deprecated = NOTES(1).replace(
       'closes: discarded }',

@@ -124,7 +124,7 @@ describe('nextStep', () => {
     };
 
     expect(hint(stuck, { state: 'open' })).toBe(
-      'Your turn: claim it and work it; no move of yours leaves open (see otea playbook).',
+      'Your turn: claim it and work it; no move of yours leaves open (see otea board).',
     );
   });
 

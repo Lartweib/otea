@@ -31,6 +31,7 @@ import {
 import { getCollection, presetOf, typeOfItem } from './collections.ts';
 import type { Context } from './context.ts';
 import { presentEvidence } from './evidence.ts';
+import { assertMoveHandsOff } from './next.ts';
 import {
   addRelation,
   assertMayEnter,
@@ -327,6 +328,7 @@ export function moveItem(ctx: Context, input: MoveItemInput, now = systemClock):
     assertMayWrite(item.id, lease, actor);
     authorizeMove(workflow, item.state, to, { actor, channel }, reason);
     assertCanLeave(type, item.state, to, item.fields);
+    assertMoveHandsOff(ctx, item, to);
     assertMayEnter(ctx, item, workflow, to, at);
     const data = { ...(reason ? { reason } : {}), channel };
     return landMove(db, workflow, item, { to, actor, at, lease }, data);

@@ -26,6 +26,7 @@ import { listDevices, revokeDevice } from '../app/devices.ts';
 import { listEvents } from '../app/events.ts';
 import { attachEvidence } from '../app/evidence.ts';
 import { checkGate, type GateCheck } from '../app/gates.ts';
+import { boardGuide, type Guide, guideIndex, hintFor } from '../app/guide.ts';
 import { forgetProjectPath, listProjects, relinkProjectPath, withRegistry } from '../app/home.ts';
 import {
   createItem,
@@ -39,7 +40,14 @@ import {
 } from '../app/items.ts';
 import { claimItem, heartbeatItem, releaseItem } from '../app/leases.ts';
 import { type MigrationReport, migrateToCommon } from '../app/migrate.ts';
-import { collectionPlaybook, hintFor, playbookIndex } from '../app/playbook.ts';
+import {
+  approveItem,
+  type BoardMoveInput,
+  type BoardMoveResult,
+  handoffItem,
+  nextFor,
+  sendBackItem,
+} from '../app/next.ts';
 import { type Harness, seeAgent } from '../app/presence.ts';
 import {
   addPathToProject,
@@ -161,7 +169,7 @@ function builtText({ blueprint, boards }: AppliedBlueprint): string {
 const init: Command = {
   name: 'init',
   summary:
-    'Create or reuse the project at the repository root: in the Otea home ($OTEA_HOME, default ~/.otea), or with --local in .otea at the root; --join <project> links the repo to a registered project instead (refused when a project in a folder above covers it, unless --here); --blueprint builds every board of a blueprint, as otea blueprint apply does; --icon gives the project an icon (without one the UI draws a monogram of its name); --agents-md also adds (or refreshes) a block in AGENTS.md telling agents to run "otea playbook"',
+    'Create or reuse the project at the repository root: in the Otea home ($OTEA_HOME, default ~/.otea), or with --local in .otea at the root; --join <project> links the repo to a registered project instead (refused when a project in a folder above covers it, unless --here); --blueprint builds every board of a blueprint, as otea blueprint apply does; --icon gives the project an icon (without one the UI draws a monogram of its name); --agents-md also adds (or refreshes) a block in AGENTS.md telling agents to run "otea next" and "otea board"',
   args: [],
   options: {
     'agents-md': { flag: true },
@@ -588,35 +596,43 @@ const show: Command = {
   },
 };
 
-const playbook: Command = {
-  name: 'playbook',
+function guideText(guide: Guide): string {
+  if (guide.kind === 'board') return guide.text;
+  return [
+    guide.playbook?.trimEnd() ??
+      `The ${guide.preset} preset of collection "${guide.collection}" has no playbook.`,
+    ...guide.types.map(({ type, playbook }) => `--- Type ${type} ---\n\n${playbook.trimEnd()}`),
+  ].join('\n\n');
+}
+
+const board: Command = {
+  name: 'board',
   summary:
-    "Print the playbook an agent follows in a collection, its preset's then each type's own; without --collection, the project's collections and how to read each playbook, then the coordination playbook of the project's blueprint when it has one",
-  args: [],
-  options: { collection: {} },
+    "Print what agents read about a board before acting: its own words for them and each step's instructions (a collection still on a preset prints its playbook); without a name, the project's boards and how to read each, then the coordination playbook of the project's blueprint when it has one",
+  args: ['name?'],
+  options: {},
   execute: (input) => {
-    const name = input.option('collection');
+    const [name = ''] = input.args;
     return withAgent(input, (project) => {
-      if (name !== undefined) {
-        const found = collectionPlaybook(project, name);
-        const text = [
-          found.playbook?.trimEnd() ??
-            `The ${found.preset} preset of collection "${name}" has no playbook.`,
-          ...found.types.map(
-            ({ type, playbook }) => `--- Type ${type} ---\n\n${playbook.trimEnd()}`,
-          ),
-        ].join('\n\n');
-        return { data: found, text };
+      if (name !== '') {
+        const guide = boardGuide(project, name);
+        return { data: guide, text: guideText(guide) };
       }
-      const collections = playbookIndex(project);
+      const collections = guideIndex(project);
       const blueprint = coordinationPlaybook(project);
       const index =
         collections.length === 0
-          ? 'No collections yet; a human adds one with "otea collection add <name>".'
+          ? 'No boards yet; a human makes one in Studio or with "otea board add <name>".'
           : [
-              'Each collection follows the playbook of its preset. Read the one you work in before acting:',
+              'Read the board you work in before acting:',
               indent(
-                columns(collections.map(({ name, preset, command }) => [name, preset, command])),
+                columns(
+                  collections.map(({ name: each, board: id, preset, command }) => [
+                    each,
+                    id === null ? `preset ${preset}` : 'board',
+                    command,
+                  ]),
+                ),
               ),
             ].join('\n');
       if (blueprint === undefined) return { data: { collections }, text: index };
@@ -641,6 +657,77 @@ const move: Command = {
     const reason = option('reason');
     const moving = { id, to, actor, channel, ...(reason ? { reason } : {}) };
     return withAgent(input, (project) => itemResult(project, moveItem(project, moving)));
+  },
+};
+
+const next: Command = {
+  name: 'next',
+  summary:
+    'Say which item to take now on the published boards (or in --collection), oldest first, and what its step asks: what it starts with, the instructions, the handoff and where it goes next; when there is none, what to do meanwhile',
+  args: [],
+  options: { collection: {} },
+  execute: (input) => {
+    const collection = input.option('collection');
+    return withAgent(input, (project) => {
+      const answer = nextFor(
+        project,
+        input.actor.name,
+        collection === undefined ? {} : { collection },
+      );
+      return { data: answer, text: answer.text };
+    });
+  },
+};
+
+// A move on a board: the engine checks it, the item lands where it says, and the agent reads where
+// it stands now.
+function boardMove(
+  input: Input,
+  run: (project: Project, move: BoardMoveInput) => BoardMoveResult,
+): Output {
+  const [id = ''] = input.args;
+  const { actor, channel, option } = input;
+  const way = option('way');
+  const reason = option('reason');
+  const move = {
+    id,
+    actor,
+    channel,
+    ...(way === undefined ? {} : { way }),
+    ...(reason ? { reason } : {}),
+  };
+  return withAgent(input, (project) => {
+    const { item, text } = run(project, move);
+    return { data: { item, text }, text };
+  });
+}
+
+const handoffCommand: Command = {
+  name: 'handoff',
+  summary:
+    'Hand off the step you did on an item: refused, saying what is missing, until its handoff is complete; then to its review, or along --way (a step name or Done) with --reason when the step has several',
+  args: ['id'],
+  options: { way: { placeholder: 'step' }, reason: {} },
+  execute: (input) => boardMove(input, handoffItem),
+};
+
+const approveCommand: Command = {
+  name: 'approve',
+  summary: 'Approve the step you review on an item, along --way when it has several ways out',
+  args: ['id'],
+  options: { way: { placeholder: 'step' } },
+  execute: (input) => boardMove(input, approveItem),
+};
+
+const sendBack: Command = {
+  name: 'send-back',
+  summary:
+    'Send the step you review on an item back for another round, saying what to change with --reason',
+  args: ['id'],
+  options: { reason: { required: true } },
+  execute: (input) => {
+    input.required('reason');
+    return boardMove(input, sendBackItem);
   },
 };
 
@@ -1270,7 +1357,7 @@ export const COMMANDS: readonly Command[] = [
   create,
   list,
   show,
-  playbook,
+  board,
   brief,
   events,
   wait,
@@ -1281,6 +1368,10 @@ export const COMMANDS: readonly Command[] = [
   attach,
   link,
   unlink,
+  next,
+  handoffCommand,
+  approveCommand,
+  sendBack,
   move,
   relay,
   validate,

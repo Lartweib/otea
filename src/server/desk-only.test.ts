@@ -103,7 +103,7 @@ describe('desk-only routes, with LAN access on', () => {
     expect(await settings()).toEqual(before);
     expect(readFileSync(mine, 'utf8')).toBe(preset);
     expect(existsSync(join(project.dataDir, 'presets', 'my-tasks'))).toBe(false);
-    expect(listCollections(project.db)).toEqual([]);
+    expect(listCollections(project.db).map(({ name }) => name)).toEqual(['Pedidos']);
   });
 
   it('lets the desk add, relink and forget a path', async () => {

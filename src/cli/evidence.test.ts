@@ -144,7 +144,7 @@ describe('attach', () => {
 
     it('refuses a closed item with item_closed (exit 4)', async () => {
       await otea('create', '--collection', 'tasks', '--title', 'Vague');
-      await otea('move', 'TASKS-2', 'discarded', '--reason', 'Too vague');
+      await otea('relay', 'TASKS-2', 'dropped', '--quote', 'Drop it', '--reason', 'Too vague');
 
       const { code, err } = await otea('attach', 'TASKS-2', 'test.log', '--json');
 
