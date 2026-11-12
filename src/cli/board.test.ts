@@ -156,4 +156,18 @@ describe('board add', () => {
     expect((await otea('board', 'add', 'recados')).code).toBe(5);
     expect((await otea('board', 'add', 'Otro', '--template', 'nope')).code).toBe(3);
   });
+
+  it('names a related item’s step on its own board in otea show', async () => {
+    await otea('collection', 'add', 'work');
+    await otea('create', '--collection', 'work', '--title', 'A');
+    await otea('create', '--collection', 'work', '--title', 'B');
+    await otea('link', 'WORK-1', 'blocks', 'WORK-2');
+    const project = openProject(repo.dir);
+    const state = getItem(project, 'WORK-2').state;
+    project.db.close();
+    const { out } = await otea('show', 'WORK-1');
+    const row = out.split('\n').find((line) => line.includes('WORK-2')) ?? '';
+    expect(row).not.toContain(` ${state} `);
+    expect(row).toMatch(/WORK-2\s+(Completar|Hacerlo)/);
+  });
 });

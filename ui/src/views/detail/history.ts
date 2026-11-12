@@ -36,7 +36,13 @@ export function historyOf(
   const states = new Map((type?.states ?? []).map((s) => [s.name, s]));
   const sorted = [...events].sort((a, b) => a.id - b.id);
   let handed = 0;
-  const lines = sorted.map((e): HistoryLine => {
+  // Before Otea read the item onto its board, its states were a preset's: their names are not
+  // the board's words, so those lines say what happened without them.
+  const reading = sorted.findLastIndex(
+    (e) => e.type === 'transitioned' && e.data.reason === 'migrate',
+  );
+  const before = (i: number, state: unknown) => i < reading && !states.has(String(state));
+  const lines = sorted.map((e, i): HistoryLine => {
     const relay = relayOf(e);
     const human = e.actor.kind === 'human';
     const who = human || relay ? t('sheet.d.youLower') : e.actor.name;
@@ -47,6 +53,18 @@ export function historyOf(
       dot: (relay ? 'relay' : human ? 'you' : 'agent') as HistoryLine['dot'],
     };
     const reason = reasonOf(e);
+    if (e.type === 'created' && before(i, e.data.state)) {
+      return { ...base, text: t(human ? 'sheet.h.createdYouBefore' : 'sheet.h.createdBefore') };
+    }
+    if (
+      e.type === 'transitioned' &&
+      !relay &&
+      e.data.reason !== 'migrate' &&
+      before(i, e.data.to)
+    ) {
+      const q = reason ? { quote: reason } : {};
+      return { ...base, text: t(human ? 'sheet.h.movedYouBefore' : 'sheet.h.movedBefore'), ...q };
+    }
     if (e.type === 'created') {
       const state = word(String(e.data.state));
       return { ...base, text: t(human ? 'sheet.h.createdYou' : 'sheet.h.created', { state }) };

@@ -120,7 +120,20 @@ function itemResult(project: Project, item: Item): { data: Item; text: string } 
 
 // An item on a board as its reader says it: its step by name, its fields and choices by name, its
 // moves and events by step names. Hidden ids stay in --json, as the keys a program reads.
-function readable<T extends Item>(project: Project, item: T): T {
+function readable<T extends Item>(project: Project, raw: T): T {
+  // Each related item's step by name, on its own board.
+  const related = (raw as unknown as Partial<ItemView>).relations;
+  const item = (
+    related
+      ? {
+          ...raw,
+          relations: related.map((r) => {
+            const on = liveBoardOf(project, r.collection);
+            return on ? { ...r, state: stateName(on.def, r.state) } : r;
+          }),
+        }
+      : raw
+  ) as T;
   const board = liveBoardOf(project, item.collection);
   if (!board) return item;
   const { def } = board;
