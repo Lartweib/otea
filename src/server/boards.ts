@@ -4,6 +4,7 @@ import { mergeAgentDraft, requestAgentDraft } from '../app/agent-draft.ts';
 import {
   boardProblems,
   createBoard,
+  createBoardSet,
   discardDraft,
   getBoardRecord,
   listBoardSummaries,
@@ -33,6 +34,12 @@ const CreateBody = z.strictObject({
   item: z.string().optional(),
   template: z.string().optional(),
   lang,
+});
+
+const SetBody = z.strictObject({
+  set: z.string(),
+  lang,
+  boards: z.array(z.strictObject({ name: z.string().optional(), item: z.string().optional() })),
 });
 
 const DraftBody = z.strictObject({
@@ -91,6 +98,18 @@ export function boardsApi(project: Project, feed: ChangeFeed, auth: Session): Ho
         });
         feed.notify();
         return c.json(record, 201);
+      })
+      // A template that makes several boards: every one of them, as drafts, or none.
+      .post('/boards/set', async (c) => {
+        assertConfigurable(c, auth);
+        const input = await body(
+          c,
+          SetBody,
+          '{"set": string, "lang": "en" | "es", "boards": [{"name"?: string, "item"?: string}]}',
+        );
+        const records = createBoardSet(project, input);
+        feed.notify();
+        return c.json({ records }, 201);
       })
       // "Que lo esboce un agente": creates the Pedido and a waiting board (server slice).
       .post('/boards/agent-draft', async (c) => {

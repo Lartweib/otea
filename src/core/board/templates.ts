@@ -27,11 +27,10 @@ import {
 // ids: nothing stays linked to the template. Instructions mention parts and steps as `@{key}`,
 // which a copy turns into `@[id]`.
 
-export type Lang = 'en' | 'es';
+import { EMPTY, type Lang, TITLE_NAME, type Words, w } from './template-words.ts';
+import { COVERAGE_TEMPLATES, TEMPLATE_SETS } from './templates-coverage.ts';
 
-export const LANGS: readonly Lang[] = ['en', 'es'];
-
-type Words = Readonly<Record<Lang, string>>;
+export { LANGS, type Lang, TITLE_NAME } from './template-words.ts';
 
 // `options` may carry their own keys (`optionKeys`, in order), which a copy that keeps keys (a
 // preset's reading) takes as choice ids. `initial` is a level key, yes or no, or an option's key or
@@ -92,11 +91,8 @@ export type Template = {
   layout?: Readonly<Record<string, Zone>>;
 };
 
-const w = (en: string, es: string): Words => ({ en, es });
-const EMPTY = w('', '');
-
-export const TITLE_NAME: Words = w('Title', 'Título');
-
+// Every single-board template: the five of the first Studio, then the ones that say what the old
+// presets did, then the boards that only come in a set (hidden).
 export const TEMPLATES: readonly Template[] = [
   {
     key: 'bugs',
@@ -554,6 +550,7 @@ export const TEMPLATES: readonly Template[] = [
       es: ['¿Qué motor de físicas aguanta 200 lobos?', '¿Cuánto pesa una partida guardada?'],
     },
   },
+  ...COVERAGE_TEMPLATES,
 ];
 
 export function requireTemplate(key: string): Template {
@@ -690,13 +687,64 @@ export function instantiate(
   };
 }
 
-// A template as the home lists it: its words and a copy to draw its small route from.
+// A template that makes several boards: `boards` are single-board template keys, in order;
+// `split` joins two of them with "se divide en" (by position).
+export type TemplateSet = {
+  key: string;
+  icon: string;
+  name: Words;
+  description: Words;
+  boards: readonly string[];
+  split?: { parent: number; child: number; always: boolean };
+};
+
+export { TEMPLATE_SETS };
+
+export function requireSet(key: string): TemplateSet {
+  const set = TEMPLATE_SETS.find((candidate) => candidate.key === key);
+  if (!set) throw new Error(`No template set "${key}"`);
+  return set;
+}
+
+export function isSetKey(key: string): boolean {
+  return TEMPLATE_SETS.some((set) => set.key === key);
+}
+
+// Copies every board of a set. `boards` gives each one its hidden board id (what a split names)
+// and the names the person typed; the parent of a split divides into its child by that id.
+export function instantiateSet(
+  set: TemplateSet,
+  lang: Lang,
+  boards: readonly { id: string; name?: string; item?: string }[],
+  ids: IdSource = newId,
+): BoardDefinition[] {
+  const defs = set.boards.map((key, index) => {
+    const { name, item } = boards[index] ?? {};
+    return instantiate(
+      requireTemplate(key),
+      lang,
+      { ...(name ? { name } : {}), ...(item ? { item } : {}) },
+      ids,
+    );
+  });
+  const split = set.split;
+  const parent = split ? defs[split.parent] : undefined;
+  const child = split ? boards[split.child] : undefined;
+  if (split && parent && child) parent.split = { board: child.id, always: split.always };
+  for (const def of defs) def.template = set.key;
+  return defs;
+}
+
+// A template as the home lists it: its words and a copy to draw its small route from; a set also
+// carries every board it makes (`boards`), each with its own copy, and how they join.
 export type TemplateView = {
   key: string;
   icon: string;
   name: string;
   description: string;
   definition: BoardDefinition;
+  boards?: { name: string; item: string; definition: BoardDefinition }[];
+  split?: { parent: number; child: number; always: boolean };
 };
 
 export function templateView(template: Template, lang: Lang): TemplateView {
@@ -707,6 +755,35 @@ export function templateView(template: Template, lang: Lang): TemplateView {
     description: template.description[lang],
     definition: instantiate(template, lang, {}),
   };
+}
+
+export function setView(set: TemplateSet, lang: Lang): TemplateView {
+  const placeholders = set.boards.map((_, index) => ({ id: `bset${index}` }));
+  const defs = instantiateSet(set, lang, placeholders);
+  const [first] = defs;
+  if (!first) throw new Error(`Template set "${set.key}" has no boards`);
+  return {
+    key: set.key,
+    icon: set.icon,
+    name: set.name[lang],
+    description: set.description[lang],
+    definition: first,
+    boards: defs.map((definition) => ({
+      name: definition.name,
+      item: definition.item,
+      definition,
+    })),
+    ...(set.split ? { split: set.split } : {}),
+  };
+}
+
+// What Studio's home offers, in order: every template that is not only part of a set, then the
+// sets.
+export function listedTemplates(lang: Lang): TemplateView[] {
+  return [
+    ...TEMPLATES.filter(({ hidden }) => !hidden).map((template) => templateView(template, lang)),
+    ...TEMPLATE_SETS.map((set) => setView(set, lang)),
+  ];
 }
 
 const BLANK = {

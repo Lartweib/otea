@@ -80,6 +80,17 @@ export function createBoard(input: {
   return call('POST', '/api/boards', input);
 }
 
+// A template that makes several boards (TemplateView.boards): every board as a draft, in the
+// set's order, the split joining them already.
+export async function createBoardSet(input: {
+  set: string;
+  lang: Lang;
+  boards: { name?: string; item?: string }[];
+}): Promise<BoardRecord[]> {
+  const { records } = await call<{ records: BoardRecord[] }>('POST', '/api/boards/set', input);
+  return records;
+}
+
 // `draftStamp`: the draft's updatedAt the editor last saw (null: none); the server refuses the
 // write when the draft changed since, instead of overwriting what arrived.
 export function saveDraft(

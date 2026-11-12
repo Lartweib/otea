@@ -53,8 +53,38 @@ describe('the boards API', () => {
       'blog',
       'tasks',
       'research',
+      'triage',
+      'review',
+      'decisions',
+      'repos',
+      'product',
     ]);
     expect(templates[3]?.name).toBe('Tareas simples');
+    const repos = templates.find(({ key }) => key === 'repos');
+    expect((repos?.boards as Json[]).map(({ name }) => name)).toEqual([
+      'Cambios',
+      'Tareas de repo',
+    ]);
+  });
+
+  it('creates every board of a template set as drafts, joined by the split', async () => {
+    const { status, body } = await call('POST', '/boards/set', {
+      set: 'repos',
+      lang: 'es',
+      boards: [{ name: 'Cambios' }, {}],
+    });
+    expect(status).toBe(201);
+    const records = body.records as Json[];
+    expect(records).toHaveLength(2);
+    const [parent, child] = records as [Json, Json];
+    const def = (parent.draft as { definition: BoardDefinition }).definition;
+    expect(def.split).toEqual({ board: child.id, always: true });
+    const read = await call('GET', `/boards/${String(parent.id)}`);
+    expect(read.body.problems).toEqual([]);
+    const again = await call('POST', '/boards/set', { set: 'repos', lang: 'es', boards: [] });
+    expect(again.status).toBe(409);
+    const missing = await call('POST', '/boards/set', { set: 'nope', lang: 'es', boards: [] });
+    expect(missing.status).toBe(404);
   });
 
   it('creates a board with any name, saves its draft, plans and publishes it, and undoes that', async () => {
