@@ -1,4 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
+import { isClosed, positionOf } from '../../../../src/core/board/engine.ts';
+import { SAME, stepById } from '../../../../src/core/board/model.ts';
 import { waitsOf } from '../../actions.ts';
 import { typeOfItem, useApp } from '../../app/context.tsx';
 import { boardOfCollection, boardsOf, useBoards } from '../../board-studio/home/boards-store.ts';
@@ -8,13 +10,31 @@ import { GhostButton, Icon, StepPill, Swap } from '../../kit/index.ts';
 import { laneOf } from '../../lanes/geometry.ts';
 import { lookOf } from '../../lanes/looks.ts';
 import { NodeGlyph } from '../../lanes/NodeGlyph.tsx';
-import { ItemTypeScope, stateWord, typeWord } from '../../preset-words.ts';
+import { ItemTypeScope, stateWord, stateWordIn, typeWord } from '../../preset-words.ts';
 import { studioHash } from '../../selection.ts';
-import type { ItemView } from '../../types.ts';
+import type { ItemView, RelatedItem } from '../../types.ts';
 import { useStudioBoard } from '../board/studio-board.tsx';
 import { Acts, actsModeOf } from './Acts.tsx';
+import {
+  BranchLine,
+  type DropChoice,
+  DropDialog,
+  LinksSection,
+  PartOfLine,
+  PartsSection,
+  RoundNotes,
+  WaitChecklist,
+} from './BoardSections.tsx';
 import { Body, bodySections } from './Body.tsx';
-import { boardItemOf } from './board-item.ts';
+import {
+  approvalRefusal,
+  boardItemOf,
+  branchStrip,
+  type ItemBoardBlock,
+  linksOf,
+  roundNotes,
+  waitRows,
+} from './board-item.ts';
 import { Details, detailCells } from './Details.tsx';
 import { factsOf, standOf } from './facts.ts';
 import { toastOf } from './frame.ts';
@@ -63,7 +83,8 @@ const dipWhen = (iso: string, now: number): string => {
 export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheetProps) {
   const app = useApp();
   // The board this item is on, when Studio shapes it: Editar tablero opens its editor.
-  const board = boardOfCollection(boardsOf(useBoards(app.version)), item.collection);
+  const summaries = boardsOf(useBoards(app.version));
+  const board = boardOfCollection(summaries, item.collection);
   const type = typeOfItem(item, app.collectionOf);
   const word = (s: string) => stateWord(type, s);
   const now = app.now;
@@ -89,7 +110,69 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
     return { ...read, round, agent: holder, left: false };
   }, [item, type, now, onBoard]);
   const lane = onBoard?.route.lane ?? laneOf(item.turn);
-  const plan = planMoves(item.transitions, { own: facts.own, word, waits: waitsOf(item) });
+  const planned = planMoves(item.transitions, { own: facts.own, word, waits: waitsOf(item) });
+
+  // ---- what a Studio board adds: parts, links, waits, branch, rounds, motives (board-item.ts) ----
+  const block = (item as ItemView & { board?: ItemBoardBlock }).board;
+  const nameOf = (r: RelatedItem) => {
+    const types = app.collectionOf(r.collection)?.types ?? [];
+    const step = r.closes === 'done' ? t('bs.done') : stateWordIn(types, r.state);
+    return { board: r.collection, step };
+  };
+  const links = live ? linksOf({ relations: item.relations, board: block }, nameOf) : null;
+  const position = positionOf(item.state);
+  const stepId = isClosed(position) ? null : position.step;
+  const waits = live && links && stepId ? waitRows(live, stepId, links) : [];
+  const strip = live ? branchStrip(live, item.state, item.fields) : null;
+  const split = live?.split;
+  const childSummary =
+    split && split.board !== SAME ? summaries.find((b) => b.id === split.board) : undefined;
+  const childCollection = split
+    ? split.board === SAME
+      ? item.collection
+      : (childSummary?.collection ?? null)
+    : null;
+  const childItem = split
+    ? split.board === SAME
+      ? (live?.item ?? '')
+      : (childSummary?.item ?? '')
+    : '';
+  const partsName =
+    split && split.board !== SAME
+      ? (links?.partsBoard ?? childSummary?.name ?? t('bi.parts.title'))
+      : t('bi.parts.title');
+  const roundsStep = live && stepId ? stepById(live, stepId) : undefined;
+  const rounds = live && roundsStep ? roundNotes(live, roundsStep.id, item.events, block) : null;
+  const plan = live
+    ? {
+        ...planned,
+        quiet: planned.quiet.map((c) => {
+          const to = positionOf(c.move.to);
+          if (c.kind !== 'sendback' || isClosed(to) || to.step === stepId) return c;
+          return {
+            ...c,
+            label: t('bi.backTo', { step: stepById(live, to.step)?.name ?? to.step }),
+          };
+        }),
+      }
+    : planned;
+  const motives = plan.close.some((c) => c.move.to.startsWith('dropped__'));
+  const dropChoices: DropChoice[] = plan.close
+    .filter((c) => !motives || c.move.to !== 'dropped')
+    .map((c) => ({ to: c.move.to, name: word(c.move.to) }));
+  const [dropping, setDropping] = useState(false);
+  const drop = (choice: DropChoice, reason: string) => {
+    setDropping(false);
+    void app
+      .move(
+        item.id,
+        choice.to,
+        reason,
+        t('bi.drop.done', { title: item.title, motive: choice.name }),
+      )
+      .catch(() => undefined);
+  };
+  const refuse = (c: MoveChoice) => (c.kind === 'approve' ? approvalRefusal(item.id, waits) : null);
   const mode = actsModeOf({ look, canWrite: app.session.canWrite, question: facts.question, plan });
   const steps = onBoard ? onBoard.route.steps : type ? routeSteps(type) : [];
   const ci = onBoard ? onBoard.route.ci : type ? routeIndex(type, item.state, facts.visited) : 0;
@@ -140,7 +223,64 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
   };
 
   const cells = detailCells({ item, type, facts, own: facts.own && look === 'yours', now });
-  const sections = bodySections({ item, type, facts, canWrite: app.session.canWrite, now });
+  const canWrite = app.session.canWrite;
+  const boardSections =
+    live && links
+      ? [
+          ...(split && childCollection
+            ? [
+                {
+                  key: 'bi:parts',
+                  node: (
+                    <PartsSection
+                      item={item}
+                      links={links}
+                      boardName={partsName}
+                      childItem={childItem}
+                      childCollection={childCollection}
+                      canWrite={canWrite}
+                      now={now}
+                    />
+                  ),
+                },
+              ]
+            : []),
+          {
+            key: 'bi:links',
+            node: (
+              <LinksSection
+                item={item}
+                links={links}
+                canWrite={canWrite}
+                now={now}
+                boardOf={(x) => x.collection}
+              />
+            ),
+          },
+        ]
+      : [];
+  const hasNotes = !!rounds && (rounds.length > 1 || (rounds[0]?.notes.length ?? 0) > 0);
+  const sections = bodySections({
+    item,
+    type,
+    facts,
+    canWrite,
+    now,
+    board: live
+      ? {
+          options: new Set(
+            Object.values(live.parts)
+              .filter((p) => p.show === 'options')
+              .map((p) => p.id),
+          ),
+          rounds:
+            rounds && roundsStep && (hasNotes || roundsStep.reviewer !== 'none') ? (
+              <RoundNotes rounds={rounds} step={roundsStep.name} />
+            ) : null,
+          sections: boardSections,
+        }
+      : undefined,
+  });
   const lines = historyOf(item.events, type, word, now);
   const stateShown = word(item.state);
   const yours = item.turn === 'human';
@@ -206,6 +346,7 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
           <h1 className="headline" data-c>
             {item.title}
           </h1>
+          {links ? <PartOfLine parent={links.parent} /> : null}
           <div data-c>
             <Swap
               k={`${stand.key}:${stand.agent ?? ''}:${stand.round ?? ''}:${stand.time ?? ''}`}
@@ -228,7 +369,10 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
               phone={app.phone}
             />
           ) : null}
+          {live ? <WaitChecklist rows={waits} child={partsName} now={now} /> : null}
           <Acts
+            onDrop={live && dropChoices.length ? () => setDropping(true) : undefined}
+            refuse={live ? refuse : undefined}
             item={item}
             type={type}
             facts={facts}
@@ -254,7 +398,17 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
               />
             ) : null}
           </div>
+          <BranchLine strip={strip} />
         </div>
+        {live ? (
+          <DropDialog
+            open={dropping}
+            item={item}
+            choices={dropChoices}
+            onClose={() => setDropping(false)}
+            onDrop={drop}
+          />
+        ) : null}
         <Details cells={cells} k={`${item.state}:${item.updatedAt}`} />
         <div className="d-line" />
         <Body id={item.id} sections={sections} />

@@ -1,7 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { creatures } from '../../../../src/core/board/testing.ts';
-import type { ItemEvent } from '../../types.ts';
-import { boardItemOf } from './board-item.ts';
+import { cambios, creatures, errores, tareasDeRepo } from '../../../../src/core/board/testing.ts';
+import { setLanguage } from '../../i18n/i18n.ts';
+import type { ItemEvent, RelatedItem } from '../../types.ts';
+import {
+  approvalRefusal,
+  boardItemOf,
+  branchStrip,
+  linksOf,
+  partsCount,
+  roundNotes,
+  waitRows,
+} from './board-item.ts';
 
 const words = { done: 'Hecho', dip: (n: number) => `ronda ${n}` };
 const agent = (name: string) => ({ kind: 'agent' as const, name });
@@ -70,5 +79,180 @@ describe('boardItemOf: the item page reads a published board through the step en
   it('draws a closed item at Hecho, and leaves a state the board does not know to the preset', () => {
     expect(boardItemOf(creatures(), item('done', [created('sconcept')]), words)?.route.ci).toBe(4);
     expect(boardItemOf(creatures(), item('fixing', [created('fixing')]), words)).toBeNull();
+  });
+});
+
+// ---- what the item page reads of a board item (PLAN §9.1): parts, links, waits, branch, rounds ----
+
+const rel = (
+  kind: RelatedItem['kind'],
+  rid: string,
+  o: Partial<RelatedItem> = {},
+): RelatedItem => ({
+  kind,
+  id: rid,
+  collection: 'Tareas de repo',
+  type: 'item',
+  title: rid,
+  state: 'simpl',
+  turn: 'agent',
+  lease: null,
+  ...o,
+});
+const names = (r: RelatedItem) => ({
+  board: r.collection,
+  ...(r.closes ? {} : { step: `@${r.state}` }),
+});
+
+describe('linksOf: an item’s parts and what holds it back, across boards', () => {
+  it('reads them from the item’s relations when the server sends no board block', () => {
+    const links = linksOf(
+      {
+        relations: [
+          rel('child', 'RT-4'),
+          rel('child', 'RT-5', { closes: 'done', state: 'done', turn: 'none' }),
+          rel('blocked_by', 'ERR-2', { collection: 'Errores', state: 'striage' }),
+          rel('blocks', 'TAR-3', { collection: 'Tareas' }),
+          rel('parent', 'CAM-1', { collection: 'Cambios', state: 'sexec' }),
+        ],
+      },
+      names,
+    );
+    expect(links.parts.map((p) => `${p.id}:${p.closed}:${p.step ?? ''}`)).toEqual([
+      'RT-4:false:@simpl',
+      'RT-5:true:',
+    ]);
+    expect(links.blockers.map((p) => `${p.id}@${p.board}`)).toEqual(['ERR-2@Errores']);
+    expect(links.blocking.map((p) => p.id)).toEqual(['TAR-3']);
+    expect(links.parent?.id).toBe('CAM-1');
+    expect(partsCount(links.parts)).toEqual({ total: 2, open: 1, ended: 1 });
+  });
+
+  it('takes the board block’s lists when the server sends them, keeping titles from relations', () => {
+    const links = linksOf(
+      {
+        relations: [rel('child', 'RT-4', { title: 'API' })],
+        board: {
+          parts: [{ id: 'RT-4', board: 'Tareas de repo', step: 'Implementar', closed: false }],
+          partsBoard: 'Tareas de repo',
+          blockers: [],
+          blocking: [],
+          notes: [],
+          gates: null,
+          branch: null,
+        },
+      },
+      names,
+    );
+    expect(links.parts).toMatchObject([{ id: 'RT-4', step: 'Implementar', title: 'API' }]);
+    expect(links.partsBoard).toBe('Tareas de repo');
+  });
+});
+
+describe('waitRows: what a step waits for', () => {
+  it('lists the open parts and blockers of a step that waits for them', () => {
+    const links = linksOf(
+      { relations: [rel('child', 'B-2'), rel('blocked_by', 'T-1', { collection: 'Tareas' })] },
+      names,
+    );
+    const rows = waitRows(errores(), 'sfix', links);
+    expect(rows.map((r) => `${r.kind}:${r.open.map((x) => x.id).join(',')}/${r.total}`)).toEqual([
+      'parts:B-2/1',
+      'blockers:T-1/1',
+    ]);
+    expect(waitRows(errores(), 'striage', links)).toEqual([]);
+  });
+});
+
+describe('branchStrip: the protected branch where the item stands', () => {
+  const def = tareasDeRepo();
+  const fields = { fbranch: 'feat/nube', frepo: 'api' };
+
+  it('may be pushed while a push step is done, is frozen in its review, merged at Hecho', () => {
+    expect(branchStrip(def, 'simpl', fields)).toEqual({
+      tone: 'ok',
+      key: 'push',
+      value: 'feat/nube',
+      repo: 'api',
+      step: 'Implementar',
+    });
+    expect(branchStrip(def, 'simpl__review', fields)?.key).toBe('frozen');
+    expect(branchStrip(def, 'done', fields)?.key).toBe('merge');
+    expect(branchStrip(def, 'dropped', fields)?.key).toBe('closed');
+    expect(branchStrip(def, 'sprop', fields)).toMatchObject({
+      tone: 'off',
+      key: 'noPush',
+      step: 'Propuesta',
+    });
+  });
+
+  it('is nothing on a board without a protected branch, or before the branch is named', () => {
+    expect(branchStrip(creatures(), 'sconcept', fields)).toBeNull();
+    expect(branchStrip(def, 'simpl', {})).toBeNull();
+  });
+});
+
+const said = (e: ItemEvent, reason: string): ItemEvent => ({ ...e, data: { ...e.data, reason } });
+
+describe('roundNotes: each round of the step with its notes', () => {
+  const by = agent('mender');
+  it('keeps the handoff note and the person’s send-back reason, round by round', () => {
+    const events: ItemEvent[] = [
+      created('sfix'),
+      said(moved('sfix', 'sfix__review', by, '2026-01-02T00:00:00Z'), 'Probé el muelle.'),
+      said(moved('sfix__review', 'sfix', you, '2026-01-03T00:00:00Z'), 'Sigue cayendo.'),
+    ];
+    expect(roundNotes(errores(), 'sfix', events)).toEqual([
+      {
+        round: 1,
+        notes: [
+          { kind: 'handoff', text: 'Probé el muelle.', by: 'mender', at: '2026-01-02T00:00:00Z' },
+        ],
+      },
+      {
+        round: 2,
+        notes: [{ kind: 'back', text: 'Sigue cayendo.', by: 'tú', at: '2026-01-03T00:00:00Z' }],
+      },
+    ]);
+  });
+
+  it('starts the next round of Completar with the question Devolver brought', () => {
+    const events: ItemEvent[] = [
+      created('striage'),
+      said(moved('striage', 'sfill', you, '2026-01-02T00:00:00Z'), '¿En qué versión?'),
+    ];
+    expect(roundNotes(errores(), 'sfill', events).at(-1)).toEqual({
+      round: 2,
+      notes: [{ kind: 'back', text: '¿En qué versión?', by: 'tú', at: '2026-01-02T00:00:00Z' }],
+    });
+  });
+
+  it('is one round with nothing to say on a first round', () => {
+    expect(roundNotes(errores(), 'sfix', [created('sfix')])).toEqual([{ round: 1, notes: [] }]);
+  });
+});
+
+describe('approvalRefusal: Aprobar refused in words when a wait no longer holds', () => {
+  it('names the open parts, or what holds it back', () => {
+    setLanguage('es');
+    const stepOf: Record<string, string> = { simpl: 'Implementar', sprop: 'Propuesta' };
+    const links = linksOf(
+      {
+        relations: [
+          rel('child', 'RT-4', { state: 'simpl' }),
+          rel('child', 'RT-5', { state: 'sprop' }),
+          rel('blocked_by', 'ERR-2', { collection: 'Errores', state: 'striage' }),
+        ],
+      },
+      (r) => ({ board: r.collection, step: stepOf[r.state] ?? 'Triar' }),
+    );
+    expect(approvalRefusal('CAM-1', waitRows(cambios(), 'sexec', links))).toBe(
+      'No se aprobó CAM-1: RT-4 (Implementar) y RT-5 (Propuesta) siguen sin terminar.',
+    );
+    expect(approvalRefusal('ERR-1', waitRows(errores(), 'sfix', { ...links, parts: [] }))).toBe(
+      'No se aprobó ERR-1: ERR-2 (Errores, Triar) lo frena y sigue sin terminar.',
+    );
+    expect(approvalRefusal('ERR-1', [])).toBeNull();
+    setLanguage('en');
   });
 });

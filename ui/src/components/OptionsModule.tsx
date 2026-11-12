@@ -17,12 +17,15 @@ export function OptionsModule({
   item,
   entry,
   slot,
+  field = FIELD,
 }: {
   item: ItemView;
   entry: LayoutEntry;
   slot?: Readonly<Record<string, string>>;
+  // The long text to read (a Studio board's field shown as options); `options` by default.
+  field?: string;
 }) {
-  const text = item.fields[FIELD] ?? '';
+  const text = item.fields[field] ?? '';
   if (text.trim() === '') return null;
   const options = parseOptions(text);
   const title = entry.label ?? t('options.title');
@@ -31,7 +34,7 @@ export function OptionsModule({
     return (
       <section className="op-module" aria-label={title} {...slot}>
         <h2 className="t-label">{title}</h2>
-        <Detail field={{ name: FIELD, module: 'markdown' }} value={text} />
+        <Detail field={{ name: field, module: 'markdown' }} value={text} />
       </section>
     );
   }

@@ -20,7 +20,7 @@ import { Structure } from './Structure.tsx';
 // evidence, the structure. When the item changes, sections are diffed by key: unchanged ones stay,
 // added ones unroll, removed ones collapse (mock:3165-3178).
 
-type Sec = { key: string; node: ReactNode };
+export type Sec = { key: string; node: ReactNode };
 
 const agoOf = (item: ItemView, at: string, now: number) =>
   t('sheet.ago', { time: whenText({ ...item, updatedAt: at, turn: 'none' }, now).text });
@@ -79,8 +79,13 @@ export function bodySections(o: {
   facts: Facts;
   canWrite: boolean;
   now: number;
+  // On a Studio board: the long texts it shows as options side by side, the notes of each round
+  // (drawn where its layout puts Rondas, else after the fields), and its own sections (Partes,
+  // Enlaces) in place of Structure.
+  board?: { options: ReadonlySet<string>; rounds: ReactNode; sections: Sec[] } | undefined;
 }): Sec[] {
-  const { item, type, facts, canWrite, now } = o;
+  const { item, type, facts, canWrite, now, board } = o;
+  let roundsDrawn = false;
   const out: Sec[] = [];
   const agent = facts.handed?.agent ?? facts.agent ?? '';
   if (facts.handed?.reason && !facts.question)
@@ -132,6 +137,24 @@ export function bodySections(o: {
         .map((v) => {
           const { Detail } = moduleFor(v.field.module);
           const k = `f:${v.field.name}`;
+          if (board?.options.has(v.field.name))
+            return {
+              key: k,
+              node: (
+                <Plain
+                  k={k}
+                  label={label && block.values.length === 1 ? label : v.label}
+                  className="d-sec mod"
+                >
+                  <OptionsModule
+                    slot={slotData(v.at)}
+                    item={item}
+                    entry={{ module: 'options', label: v.label }}
+                    field={v.field.name}
+                  />
+                </Plain>
+              ),
+            };
           return {
             key: k,
             node: (
@@ -149,12 +172,14 @@ export function bodySections(o: {
         });
     if (block.kind === 'reserved' && type) {
       const k = `r:${block.entry.module}:${i}`;
-      if (block.entry.module === 'rounds')
+      if (block.entry.module === 'rounds') {
+        roundsDrawn = true;
         return [
           {
             key: k,
             node: (
               <Plain k={k} label={label ?? t('rounds.title')} className="d-sec mod">
+                {board?.rounds}
                 <RoundsModule
                   slot={slotData(block.at)}
                   item={item}
@@ -166,6 +191,7 @@ export function bodySections(o: {
             ),
           },
         ];
+      }
       if (block.entry.module === 'options')
         return [
           {
@@ -207,6 +233,15 @@ export function bodySections(o: {
     s.blocks.forEach((b, i) => {
       out.push(...fieldSecs(b, 100 * (s.index + 1) + i, s.title));
     });
+  if (board?.rounds && !roundsDrawn)
+    out.push({
+      key: 'r:notes',
+      node: (
+        <Plain k="r:notes" label={t('bi.rounds.title')} className="d-sec mod">
+          {board.rounds}
+        </Plain>
+      ),
+    });
   const count = item.evidence.length;
   out.push({
     key: 'evidence',
@@ -224,7 +259,8 @@ export function bodySections(o: {
       </section>
     ),
   });
-  out.push({ key: 'structure', node: <Structure item={item} /> });
+  if (board) out.push(...board.sections);
+  else out.push({ key: 'structure', node: <Structure item={item} /> });
   return out;
 }
 

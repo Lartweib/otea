@@ -48,6 +48,10 @@ type ActsProps = {
   word: (state: string) => string;
   notesOpen: MoveChoice | null;
   onNotes: (choice: MoveChoice, button: HTMLButtonElement) => void;
+  // On a Studio board: one "Descartar…" opens the motives dialog instead of a button per state,
+  // and a move the board refuses (Aprobar while a wait no longer holds) says why instead.
+  onDrop?: (() => void) | undefined;
+  refuse?: ((choice: MoveChoice) => string | null) | undefined;
 };
 
 // Both blocks present while one leaves and the other arrives; the height glides 440 settle, and the
@@ -137,7 +141,19 @@ function SaysLine({ text }: { text: { verb: string; state: string; tail: string 
   );
 }
 
-export function Acts({ item, type, facts, look, plan, mode, word, notesOpen, onNotes }: ActsProps) {
+export function Acts({
+  item,
+  type,
+  facts,
+  look,
+  plan,
+  mode,
+  word,
+  notesOpen,
+  onNotes,
+  onDrop,
+  refuse,
+}: ActsProps) {
   const app = useApp();
   const [pointed, setPointed] = useState<MoveChoice | null>(null);
   const [reassign, setReassign] = useState<HTMLButtonElement | null>(null);
@@ -152,7 +168,14 @@ export function Acts({ item, type, facts, look, plan, mode, word, notesOpen, onN
     const kind = c.move.closes === 'done' && c.kind !== 'own' ? 'close' : c.kind;
     void app.move(item.id, c.move.to, reason, toastOf(kind, item.title, word(c.move.to)));
   };
+  const [refused, setRefused] = useState<{ k: string; text: string } | null>(null);
+  const refusedNow = refused?.k === `${item.id}:${item.state}` ? refused.text : '';
   const choose = (c: MoveChoice, button: HTMLButtonElement) => {
+    const no = refuse?.(c);
+    if (no) {
+      setRefused({ k: `${item.id}:${item.state}`, text: no });
+      return;
+    }
     if (c.move.reasonRequired) onNotes(c, button);
     else make(c);
   };
@@ -173,14 +196,20 @@ export function Acts({ item, type, facts, look, plan, mode, word, notesOpen, onN
       {c.label}
     </Button>
   );
-  const closeAs =
-    plan.close.length > 0 ? (
-      <>
-        <span className="vr" />
-        <span className="closeas">{t('sheet.move.closeAs')}</span>
-        {plan.close.map((c) => btn(c, 'text'))}
-      </>
-    ) : null;
+  const closeAs = onDrop ? (
+    <>
+      <span className="vr" />
+      <Button variant="text" onClick={onDrop}>
+        {t('bi.drop.open')}
+      </Button>
+    </>
+  ) : plan.close.length > 0 ? (
+    <>
+      <span className="vr" />
+      <span className="closeas">{t('sheet.move.closeAs')}</span>
+      {plan.close.map((c) => btn(c, 'text'))}
+    </>
+  ) : null;
 
   let body: ReactNode = null;
   if (mode === 'read') {
@@ -195,6 +224,11 @@ export function Acts({ item, type, facts, look, plan, mode, word, notesOpen, onN
           {closeAs}
         </div>
         <SaysLine text={says(pointed ?? first)} />
+        {refusedNow ? (
+          <p className="said warn" role="alert">
+            {refusedNow}
+          </p>
+        ) : null}
       </>
     );
   } else if (mode === 'qa') {
