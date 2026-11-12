@@ -186,6 +186,7 @@ export function bodySections(o: {
                   type={type}
                   entry={block.entry}
                   canWrite={canWrite}
+                  quiet={!!board?.rounds}
                 />
               </Plain>
             ),

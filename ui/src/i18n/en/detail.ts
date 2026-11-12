@@ -415,6 +415,8 @@ export const detail = {
   'bi.rounds.none': 'no note',
   'bi.rounds.back': 'sent back by {by}',
   'bi.rounds.handoff': 'handed off by {by}',
+  'bi.rounds.backYou': 'you sent it back',
+  'bi.rounds.handoffYou': 'you handed it off',
   'bi.backTo': 'Send back to {step}',
   'bi.drop.open': 'Discard…',
   'bi.drop.title': 'Discard {id}',

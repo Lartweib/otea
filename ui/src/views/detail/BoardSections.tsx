@@ -21,6 +21,7 @@ import {
   type LinkedView,
   partsCount,
   type Round,
+  type RoundNote,
   type WaitRow,
 } from './board-item.ts';
 
@@ -355,6 +356,14 @@ export function LinksSection({
   );
 }
 
+// Who wrote a round's note: you, or the agent by name.
+const bylineOf = (n: RoundNote): string => {
+  if (n.person) return n.kind === 'back' ? t('bi.rounds.backYou') : t('bi.rounds.handoffYou');
+  return n.kind === 'back'
+    ? t('bi.rounds.back', { by: n.by })
+    : t('bi.rounds.handoff', { by: n.by });
+};
+
 // Rondas: each round of the step with its notes, the current one marked; a first round says so.
 export function RoundNotes({ rounds, step }: { rounds: readonly Round[]; step: string }) {
   const last = rounds.length;
@@ -376,11 +385,7 @@ export function RoundNotes({ rounds, step }: { rounds: readonly Round[]; step: s
               r.notes.map((n) => (
                 <p key={`${n.at}:${n.kind}`}>
                   {n.text}
-                  <small>
-                    {n.kind === 'back'
-                      ? t('bi.rounds.back', { by: n.by })
-                      : t('bi.rounds.handoff', { by: n.by })}
-                  </small>
+                  <small>{bylineOf(n)}</small>
                 </p>
               ))
             ) : (
