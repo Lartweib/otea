@@ -1,4 +1,5 @@
-import type { BoardSummary } from '../api.ts';
+import type { BoardSummary, TemplateView } from '../api.ts';
+import { madeWithOf, pairOf } from '../pair.ts';
 
 // What Studio's home decides without drawing (home-model.test.ts).
 
@@ -59,4 +60,43 @@ export function freshlyLive(
   return after
     .filter((b) => isLive(b) && !was.has(b.id) && b.collection)
     .map((b) => b.collection as string);
+}
+
+// A row of Tus tableros: one board (with the boards a set made with it that stay apart), or a
+// joined pair drawn once, at the place of whichever of its two boards comes first.
+export type HomeRow =
+  | { kind: 'one'; board: BoardSummary; madeWith: string[] }
+  | { kind: 'pair'; parent: BoardSummary; child: BoardSummary; always: boolean };
+
+export function homeRows(boards: readonly BoardSummary[]): HomeRow[] {
+  const rows: HomeRow[] = [];
+  const drawn = new Set<string>();
+  for (const board of boards) {
+    if (drawn.has(board.id)) continue;
+    const pair = pairOf(boards, board.id);
+    const parent = pair && boards.find((b) => b.id === pair.parent);
+    const child = pair && boards.find((b) => b.id === pair.child);
+    if (pair && parent && child) {
+      drawn.add(parent.id).add(child.id);
+      rows.push({ kind: 'pair', parent, child, always: pair.always });
+      continue;
+    }
+    drawn.add(board.id);
+    rows.push({ kind: 'one', board, madeWith: madeWithOf(boards, board.id).map((b) => b.name) });
+  }
+  return rows;
+}
+
+// The small map over the list: every board that divides into another board.
+export type HomeJoin = { parent: BoardSummary; child: BoardSummary; always: boolean };
+
+export function joinsMap(boards: readonly BoardSummary[]): HomeJoin[] {
+  return homeRows(boards).flatMap((row) =>
+    row.kind === 'pair' ? [{ parent: row.parent, child: row.child, always: row.always }] : [],
+  );
+}
+
+// The boards a template makes when it makes more than one (Cambios en varios repos, Producto).
+export function setBoards(template: TemplateView): NonNullable<TemplateView['boards']> | null {
+  return template.boards && template.boards.length > 1 ? template.boards : null;
 }

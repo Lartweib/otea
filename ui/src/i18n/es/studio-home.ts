@@ -43,9 +43,21 @@ export const studioHome = {
     'Le cuentas qué necesitas y te entrega un borrador. Lo revisas aquí antes de publicar nada.',
   'bs.home.agentDraftKey': 'se crea un pedido',
   'bs.home.templates': 'Plantillas',
-  'bs.home.templatesGloss': 'tableros hechos para un trabajo; al usarlas se copian',
+  'bs.home.templatesGloss':
+    'tableros hechos para un trabajo; al usarlas se copian, y algunas crean dos tableros unidos',
   'bs.home.editBoard': 'Editar tablero',
   'bs.home.routeOf': 'Los pasos de {board}: {steps}',
+  // Tableros que trabajan juntos.
+  'bs.home.splitsInto': 'se divide en',
+  'bs.home.madeWith': 'creado junto a {names}',
+  'bs.home.viewOf': 'Ver {board}',
+  'bs.home.toConfigure': { one: '1 por configurar', other: '{count} por configurar' },
+  'bs.home.joins': 'Cómo se unen',
+  'bs.home.joinsGloss': 'toca un nombre para editarlo',
+  'bs.home.joinAlways': 'cada {child} siempre pertenece a su {parent}',
+  'bs.home.joinMaybe': 'cada {child} también puede ir sin {parent}',
+  'bs.home.makes': { one: 'crea un tablero', other: 'crea {count} tableros' },
+  'bs.home.and': 'y',
 
   // El diálogo de tablero nuevo.
   'bs.new.title': 'Nuevo tablero',
@@ -64,6 +76,18 @@ export const studioHome = {
   'bs.new.empty': 'Ponle un nombre al tablero.',
   'bs.new.taken': 'Ya hay un tablero que se llama así. Elige otro nombre.',
   'bs.new.created': 'Borrador de {name}. Nadie lo ve hasta que lo publiques.',
+  'bs.new.boards': { one: '· 1 tablero', other: '· {count} tableros' },
+  'bs.new.firstBoard': 'Primer tablero',
+  'bs.new.secondBoard': 'Segundo tablero',
+  'bs.new.boardOf': '{label} · cada ítem: {item}',
+  'bs.new.splitHint':
+    'Cada {item} se divide en {child}. Puedes cambiar los nombres ahora o después.',
+  'bs.new.linkHint': 'Se enlazan libremente: un ítem de {second} puede frenar uno de {first}.',
+  'bs.new.createAll': 'Crear los dos borradores',
+  'bs.new.emptyEach': 'Ponle un nombre a cada tablero.',
+  'bs.new.createdPair':
+    'Borradores de {first} y {second}, unidos: los editas aquí mismo, los pruebas y los publicas juntos.',
+  'bs.new.createdSet': 'Borradores de {first} y {second}. Nadie los ve hasta que los publiques.',
 
   // El diálogo de esbozo por un agente.
   'bs.ask.title': 'Que lo esboce un agente',
