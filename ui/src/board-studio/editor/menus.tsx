@@ -1,5 +1,5 @@
 import { type ReactNode, useState } from 'react';
-import { waysOf } from '../../../../src/core/board/engine.ts';
+import { backWaysOf, waysOf } from '../../../../src/core/board/engine.ts';
 import type { BoardDefinition } from '../../../../src/core/board/model.ts';
 import {
   DONE,
@@ -13,7 +13,7 @@ import {
 } from '../../../../src/core/board/model.ts';
 import { t } from '../../i18n/i18n.ts';
 import { AgentMark } from '../../kit/Marks.tsx';
-import { MenuItem, MenuLabel, MenuNote } from '../../kit/pop/Menu.tsx';
+import { MenuItem, MenuLabel, MenuNote, MenuRule } from '../../kit/pop/Menu.tsx';
 import { Pop, type PopEdge } from '../../kit/pop/Pop.tsx';
 import type { Agents } from './context.ts';
 import { Chev } from './glyphs.tsx';
@@ -208,7 +208,8 @@ export function WhoMenu({
   );
 }
 
-// Another way out: a later step or Hecho, not yet a way.
+// Another way out: a later step or Hecho, not yet a way; and, when adding, an earlier step to take
+// it back to ("o regresarlo a…", or "o devolverlo a…" on your own step).
 export function WayMenu({
   def,
   step,
@@ -225,28 +226,49 @@ export function WayMenu({
   anchor: HTMLElement | null;
   open: boolean;
   onClose: () => void;
-  onPick: (target: Target) => void;
+  onPick: (target: Target, back: boolean) => void;
   targetName: (t: Target) => string;
 }) {
   const ways = waysOf(def, step.id);
+  const backs = backWaysOf(def, step.id);
   const index = def.steps.findIndex((s) => s.id === step.id);
   const later = [...def.steps.slice(index + 1).map((s) => s.id), DONE].filter(
     (target) => !ways.includes(target) || target === replace,
   );
+  const earlier = replace
+    ? []
+    : def.steps.slice(0, Math.max(0, index)).filter((s) => !backs.includes(s.id));
+  const you = step.doer === 'you';
   return (
     <EdPop open={open} anchor={anchor} onClose={onClose} label={t('bs.editor.ways.menu')}>
-      <MenuLabel>{t('bs.editor.ways.menu')}</MenuLabel>
+      {later.length ? <MenuLabel>{t('bs.editor.ways.menu')}</MenuLabel> : null}
       {later.map((target) => (
         <MenuItem
           key={target}
           on={target === replace}
           className="se-mi"
-          onPick={() => onPick(target)}
+          onPick={() => onPick(target, false)}
         >
           <span className="se-lbx">
             {targetName(target)}
             <span className="se-gl2">
               {target === DONE ? t('bs.editor.ways.to_done') : t('bs.editor.ways.to_step')}
+            </span>
+          </span>
+        </MenuItem>
+      ))}
+      {earlier.length && later.length ? <MenuRule /> : null}
+      {earlier.length ? (
+        <MenuLabel>
+          {t(you ? 'bs.editor.back_way.menu_you' : 'bs.editor.back_way.menu_agent')}
+        </MenuLabel>
+      ) : null}
+      {earlier.map((s) => (
+        <MenuItem key={s.id} className="se-mi" onPick={() => onPick(s.id, true)}>
+          <span className="se-lbx">
+            ↩ {s.name.trim() || t('bs.editor.route.unnamed')}
+            <span className="se-gl2">
+              {t(you ? 'bs.editor.back_way.gloss_you' : 'bs.editor.back_way.gloss_agent')}
             </span>
           </span>
         </MenuItem>

@@ -21,6 +21,8 @@ export type SetupItem = {
   ref: string;
   // Where it is set: the step, or the card that holds the field.
   sel: Selection;
+  // The field row that says it (the branch, for its push and its repository); null for a step.
+  row: string | null;
 };
 
 export type PairDefs = { parent: BoardDefinition; child: BoardDefinition };
@@ -59,11 +61,20 @@ export function setupItems(defs: PairDefs): SetupItem[] {
         what: 'doer',
         ref: step.id,
         sel: { kind: 'step', id: step.id },
+        row: null,
       });
   const branch = guardedBranch(defs.child);
   if (branch) {
     const sel = placeOf(defs.child, branch.id);
-    out.push({ k: `push:child:${branch.id}`, role: 'child', what: 'push', ref: branch.id, sel });
+    const row = branch.id;
+    out.push({
+      k: `push:child:${branch.id}`,
+      role: 'child',
+      what: 'push',
+      ref: branch.id,
+      sel,
+      row,
+    });
     const repo = branch.guard.repo;
     if (repo)
       out.push({
@@ -71,7 +82,8 @@ export function setupItems(defs: PairDefs): SetupItem[] {
         role: 'child',
         what: 'repo',
         ref: repo,
-        sel: placeOf(defs.child, repo),
+        sel,
+        row,
       });
   }
   return out;

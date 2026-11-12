@@ -49,6 +49,10 @@ const G = {
   diagram:
     '<rect x="2" y="2.5" width="5" height="4" rx="1"/><rect x="9" y="9.5" width="5" height="4" rx="1"/><path d="M4.5 6.5v5h4.5"/>',
   file: '<path d="M4 2.5h5l3 3v8H4z"/><path d="M9 2.5v3h3"/>',
+  note: '<path d="M3.5 2.5h6l3 3v8h-9z"/><path d="M5.5 8h5M5.5 10.5h3.5"/>',
+  wait: '<path d="M4.5 2.5h7M4.5 13.5h7"/><path d="M5.3 2.5c0 3.2 5.4 3 5.4 5.5s-5.4 2.3-5.4 5.5M10.7 2.5c0 3.2-5.4 3-5.4 5.5s5.4 2.3 5.4 5.5"/>',
+  parts:
+    '<rect x="2.5" y="2.5" width="5" height="5" rx="1.2"/><rect x="8.5" y="8.5" width="5" height="5" rx="1.2"/><rect x="8.5" y="2.5" width="5" height="5" rx="1.2"/><path d="M5 7.5V11h3.5"/>',
 } as const;
 
 export type GlyphName = keyof typeof G;

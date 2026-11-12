@@ -1,9 +1,12 @@
 import type { ReactNode } from 'react';
-import { partOf } from '../../../../src/core/board/model.ts';
+import { backWaysOf } from '../../../../src/core/board/engine.ts';
+import { partOf, type Selection } from '../../../../src/core/board/model.ts';
 import { listOf, t } from '../../i18n/i18n.ts';
 import { AgentMark } from '../../kit/Marks.tsx';
 import { type LaneBlock, LaneList } from '../../lanes/LaneList.tsx';
-import { reviewsText } from '../words.ts';
+import type { PairRole } from '../pair.ts';
+import type { ReadyDraft } from '../use-board-draft.ts';
+import { reviewsText, targetName } from '../words.ts';
 import { cardKey, cardOf, useEditor } from './context.ts';
 import { addStep } from './edits.ts';
 import { Glyph } from './glyphs.tsx';
@@ -11,18 +14,22 @@ import { vrouteRows } from './route-geometry.ts';
 import { whoWord } from './who.ts';
 
 // The route under 760 px (mock vrouteHtml): the same two lanes, one row per stop, «Añadir un paso»
-// just before Hecho.
-export function VRoute() {
-  const { draft, setOpenRow } = useEditor();
+// just before Hecho. In a joined pair, `board` and `role` say which of the two it draws.
+export function VRoute({ board, role }: { board?: ReadyDraft; role?: PairRole } = {}) {
+  const { draft: shown, setOpenRow, pair } = useEditor();
+  const draft = board ?? shown;
+  const active = !pair || role === undefined || pair.role === role;
   const def = draft.def;
-  const selKey = cardKey(cardOf(def, draft.selection));
+  const selKey = active ? cardKey(cardOf(def, draft.selection)) : '';
   const rows = vrouteRows(def);
 
   const select = (key: string) => {
     setOpenRow(null);
     draft.endBurst();
-    if (key === 'form' || key === 'done') draft.select({ kind: key });
-    else draft.select({ kind: 'step', id: key });
+    const sel: Selection =
+      key === 'form' || key === 'done' ? { kind: key } : { kind: 'step', id: key };
+    if (pair && role !== undefined && pair.role !== role) pair.switchTo(role, sel);
+    else draft.select(sel);
     window.requestAnimationFrame(() =>
       document.querySelector('.se-card')?.scrollIntoView({ block: 'start', behavior: 'smooth' }),
     );
@@ -82,6 +89,18 @@ export function VRoute() {
           <span className={step.reviewer === 'you' ? 'stp you' : undefined}>
             {reviewsText(step.reviewer)}
           </span>
+          {step.waits.length ? (
+            <>
+              <span className="sep">·</span>
+              <span>{t('bs.editor.vroute.waits')}</span>
+            </>
+          ) : null}
+          {backWaysOf(def, step.id).length ? (
+            <>
+              <span className="sep">·</span>
+              <span>↩ {listOf(backWaysOf(def, step.id).map((b) => targetName(def, b)))}</span>
+            </>
+          ) : null}
         </>
       );
     }
@@ -101,6 +120,7 @@ export function VRoute() {
     });
   }
 
+  if (board) return <LaneList list="preview" blocks={blocks} onRow={select} />;
   return (
     <div className="se-vroute">
       <LaneList list="preview" blocks={blocks} onRow={select} />

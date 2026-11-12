@@ -1,13 +1,39 @@
 import { createContext, useContext } from 'react';
 import type { BoardDefinition, Selection } from '../../../../src/core/board/model.ts';
+import type { Problem } from '../../../../src/core/board/problems.ts';
+import type { BoardSummary } from '../api.ts';
+import type { PairIds, PairRole } from '../pair.ts';
 import type { ReadyDraft } from '../use-board-draft.ts';
+import type { SetupRow } from './setup.ts';
 
 // What every part of the editor shares: the draft (edited only through `mutate`), the project's
-// agents, which handoff row is open, and the dialogs the bar and the cards open.
+// agents and boards, which handoff row is open, the dialogs the bar and the cards open and, when
+// the board is joined to another one, the pair it is edited with.
 
 export type Agents = readonly { name: string; connected: boolean }[];
 
 export type Dialogs = { practice: () => void; publish: () => void; discard: () => void };
+
+// «Qué falta configurar», as the head and the cards show it.
+export type SetupView = {
+  rows: SetupRow[];
+  errors: { role: PairRole; problem: Problem }[];
+  ok: (k: string) => void;
+  go: (k: string) => void;
+  goError: (index: number) => void;
+  hidden: boolean;
+  hide: () => void;
+};
+
+// A joined pair, edited in one workspace: both drafts, the one on screen, and how to switch.
+export type PairView = {
+  ids: PairIds;
+  role: PairRole;
+  drafts: Readonly<Record<PairRole, ReadyDraft>>;
+  // Switches board in place and selects a stop of it (or the one it had).
+  switchTo: (role: PairRole, sel?: Selection) => void;
+  setup: SetupView | null;
+};
 
 export type Editor = {
   draft: ReadyDraft;
@@ -15,6 +41,13 @@ export type Editor = {
   openRow: string | null;
   setOpenRow: (ref: string | null) => void;
   dialogs: Dialogs;
+  // The project's boards, as the home lists them (the draft, or else the live definition).
+  boards: readonly BoardSummary[];
+  pair?: PairView;
+  // A board a template set made with this one, that stays apart (Producto): the bar opens it.
+  twin?: BoardSummary;
+  // Whether any repository of the project has Otea's guard on its pushes; unknown while loading.
+  guardInstalled?: boolean | undefined;
 };
 
 export const EditorContext = createContext<Editor | null>(null);
