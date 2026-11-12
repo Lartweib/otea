@@ -26,7 +26,7 @@ describe('board moves over MCP', () => {
   beforeEach(async () => {
     repo = tempGitRepo();
     otea = cliAt(repo.dir);
-    await otea('init', '--local');
+    await otea('init', '--local', '--template', 'none');
     const project = openProject(repo.dir);
     try {
       publishAs(project, errores(), 'berr');

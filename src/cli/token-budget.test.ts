@@ -111,7 +111,7 @@ describe('token budget', () => {
     repo.write('shots/before.png', 'x'.repeat(2048));
     repo.write('test.log', 'PASS 12 tests\n');
     otea = cliAt(repo.dir, { OTEA_AGENT: 'claude' });
-    await ok('init');
+    await ok('init', '--template', 'none');
     await ok('collection', 'add', 'bugs', '--preset', 'bug-triage');
     const actor: Actor = { kind: 'agent', name: 'claude' };
     const server = createMcpServer(COMMANDS, { cwd: repo.dir, actor, warn: () => {} });

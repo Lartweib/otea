@@ -23,7 +23,7 @@ describe('board moves from the CLI', () => {
     repo = tempGitRepo();
     otea = cliAt(repo.dir);
     mender = cliAt(repo.dir, { OTEA_AGENT: 'mender' });
-    await otea('init', '--local');
+    await otea('init', '--local', '--template', 'none');
     const project = openProject(repo.dir);
     try {
       publishAs(project, errores(), 'berr');
@@ -124,7 +124,7 @@ describe('a relayed drop', () => {
     const repo = tempGitRepo();
     try {
       const otea = cliAt(repo.dir);
-      await otea('init', '--local');
+      await otea('init', '--local', '--template', 'none');
       const project = openProject(repo.dir);
       try {
         publishAs(project, errores(), 'berr');
@@ -160,7 +160,7 @@ describe('otea create on a board', () => {
     const repo = tempGitRepo();
     try {
       const otea = cliAt(repo.dir);
-      await otea('init', '--local');
+      await otea('init', '--local', '--template', 'none');
       const project = openProject(repo.dir);
       try {
         publishAs(project, errores(), 'berr');

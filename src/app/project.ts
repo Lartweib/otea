@@ -22,12 +22,10 @@ import {
   selectRegisteredProject,
   selectRegisteredProjects,
 } from '../store/registry.ts';
-import { readProjectBlueprint } from './blueprints.ts';
 import { migrateProjectBoards } from './board-migration.ts';
 import { ensureRequestsBoard, syncBoardPresets } from './boards.ts';
 import { nameImplicitTypes } from './collections.ts';
 import type { Context } from './context.ts';
-import { playbookText } from './guide.ts';
 import {
   addProjectPath,
   findProject,
@@ -128,7 +126,6 @@ function open(found: Found, identity = () => newIdentity(found.root)): Project {
     ...found,
     db,
     presets,
-    blueprint: readProjectBlueprint(found.dataDir)?.blueprint,
     identity: ensureIdentity(db, identity),
   };
   // Published boards join the catalog as compiled presets (app/boards.ts); a collection still on a

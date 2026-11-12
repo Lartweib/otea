@@ -59,8 +59,6 @@ export const EXIT_CODES: Readonly<Record<'ok' | FailureCode, number>> = {
   blockers_open: 4,
   different_repo: 17,
   in_use: 18,
-  invalid_blueprint: 9,
-  link_not_in_blueprint: 16,
   invalid_draft: 9,
   invalid_board: 9,
   not_publishable: 9,

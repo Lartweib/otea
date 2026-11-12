@@ -41,7 +41,7 @@ describe('setup for agents', () => {
       expect(code).toBe(0);
       expect(read('AGENTS.md')).toBe(`${BLOCK}\n`);
       expect(out).toBe(
-        `${join(repo.dir, '.otea')}\nAdded the Otea block to ${join(repo.dir, 'AGENTS.md')}\n`,
+        `${join(repo.dir, '.otea')}\nMade the boards Tareas, Errores\nAdded the Otea block to ${join(repo.dir, 'AGENTS.md')}\n`,
       );
     });
 

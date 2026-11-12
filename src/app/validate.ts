@@ -65,7 +65,7 @@ function presetWarnings(ctx: Context): Finding[] {
     }));
 }
 
-// `extra` carries findings checked elsewhere, such as the project's blueprint.
+// `extra` carries findings checked elsewhere.
 export function validateProject(ctx: Context, extra: readonly Finding[] = []): ValidationReport {
   const findings: Finding[] = [
     ...ctx.presets.problems.map(({ preset, message }) => ({

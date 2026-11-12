@@ -36,8 +36,6 @@ export type ErrorCode =
   | 'parent_across_boards'
   | 'different_repo'
   | 'in_use'
-  | 'invalid_blueprint'
-  | 'link_not_in_blueprint'
   | 'invalid_draft'
   | 'invalid_board'
   | 'board_conflict'
