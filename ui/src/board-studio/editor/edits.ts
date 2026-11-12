@@ -18,9 +18,12 @@ import {
   stepById,
   stepDefaults,
   stepIndex,
+  MOTIVE,
   type Target,
   TITLE,
   usedRefs,
+  WAITS,
+  type Wait,
   type When,
 } from '../../../../src/core/board/model.ts';
 import { defaultZone } from '../../../../src/core/board/templates.ts';
@@ -58,18 +61,45 @@ function stepOf(def: BoardDefinition, id: string): Step | undefined {
   return stepById(def, id);
 }
 
-// After steps move or go: ways only lead later (or to Done), send-backs only land here or earlier,
-// and nothing points at a step that is gone.
-function tidyRoutes(def: BoardDefinition): void {
+// Which way each step's ways lead (later or Done: forward; earlier: back), to keep after a move.
+type Directions = Map<string, Map<string, 'forward' | 'back'>>;
+
+function directionsOf(def: BoardDefinition): Directions {
+  return new Map(
+    def.steps.map((s, index) => [
+      s.id,
+      new Map(
+        s.ways.map((way) => [
+          way,
+          way === DONE || stepIndex(def, way) > index ? ('forward' as const) : ('back' as const),
+        ]),
+      ),
+    ]),
+  );
+}
+
+// After steps move or go: a way leads later (or to Done) or back to an earlier step ("o regresarlo
+// a…"), never to the step itself; a move never turns a way back into one forward, or the other way
+// round; send-backs only land here or earlier; and nothing points at a step that is gone. The
+// protected branch is pushed only during steps that still exist.
+function tidyRoutes(def: BoardDefinition, before?: Directions): void {
   def.steps.forEach((s, index) => {
-    s.ways = s.ways.filter(
-      (way, at, all) => all.indexOf(way) === at && (way === DONE || stepIndex(def, way) > index),
-    );
+    const was = before?.get(s.id);
+    s.ways = s.ways.filter((way, at, all) => {
+      if (all.indexOf(way) !== at) return false;
+      if (way === DONE) return true;
+      const to = stepIndex(def, way);
+      if (to < 0 || to === index) return false;
+      const now = to > index ? 'forward' : 'back';
+      return !was?.has(way) || was.get(way) === now;
+    });
     if (s.back !== SAME) {
       const back = stepIndex(def, s.back);
       if (back < 0 || back >= index) s.back = SAME;
     }
   });
+  for (const part of Object.values(def.parts))
+    if (part.guard) part.guard.push = part.guard.push.filter((id) => stepIndex(def, id) >= 0);
 }
 
 // ---- steps ----
@@ -100,9 +130,11 @@ export function moveStep(def: BoardDefinition, id: string, dir: -1 | 1): void {
   const from = stepIndex(def, id);
   const to = from + dir;
   if (from < 0 || to < 0 || to >= def.steps.length) return;
+  const before = directionsOf(def);
   const [step] = def.steps.splice(from, 1);
   if (step) def.steps.splice(to, 0, step);
-  tidyRoutes(def);
+  tidyRoutes(def, before);
+  sortGuards(def);
 }
 
 // The step goes; its parts stay in `parts`, so Deshacer and reuse still find them.
@@ -236,6 +268,8 @@ export function setChoices(
     return kept ? { id: kept.id, name } : { id: make('c'), name };
   });
   const live = new Set(part.options.map((c) => c.id));
+  if (part.initial !== undefined && part.kind !== 'level' && part.kind !== 'yesno')
+    if (!live.has(part.initial)) delete part.initial;
   for (const s of def.steps)
     for (const h of s.hand)
       if (h.when?.part === ref && !live.has(h.when.value)) h.when = { part: ref, value: '' };
@@ -300,6 +334,30 @@ export function addWay(def: BoardDefinition, stepId: string, target: Target): vo
   tidyRoutes(def);
 }
 
+// "o regresarlo a…" (or "o devolverlo a…" on your own step): an earlier step the doer may take the
+// item back to, saying why. Stored among the ways; the engine tells them apart by position.
+const isEarlier = (def: BoardDefinition, stepId: string, target: string) => {
+  const at = stepIndex(def, target);
+  return target !== DONE && at >= 0 && at < stepIndex(def, stepId);
+};
+
+export function addBackWay(def: BoardDefinition, stepId: string, target: string): void {
+  if (!isEarlier(def, stepId, target)) return;
+  addWay(def, stepId, target);
+}
+
+export function replaceBackWay(def: BoardDefinition, stepId: string, old: string, next: string) {
+  const step = stepOf(def, stepId);
+  if (!step || !isEarlier(def, stepId, next)) return;
+  step.ways = step.ways.map((w) => (w === old ? next : w));
+  tidyRoutes(def);
+}
+
+export function removeBackWay(def: BoardDefinition, stepId: string, target: string): void {
+  removeWay(def, stepId, target);
+}
+
+
 export function replaceWay(def: BoardDefinition, stepId: string, old: Target, next: Target) {
   const step = stepOf(def, stepId);
   if (step) step.ways = step.ways.map((w) => (w === old ? next : w));
@@ -316,7 +374,157 @@ export function setBack(def: BoardDefinition, stepId: string, back: string): voi
   if (step) step.back = back;
 }
 
+// ---- the handoff note, waits, skip on creation, the doer dropping it ----
+
+// "Nota de la entrega": once per step. Its row shows while it is required or says what goes there.
+export function addNote(def: BoardDefinition, stepId: string, hint: string): void {
+  const step = stepOf(def, stepId);
+  if (step) step.note = { req: 'always', hint };
+}
+
+// Optional keeps the row: with nothing said about it yet, it takes `fallback` as what goes there.
+export function setNoteReq(
+  def: BoardDefinition,
+  stepId: string,
+  req: 'always' | 'no',
+  fallback: string,
+): void {
+  const step = stepOf(def, stepId);
+  if (!step) return;
+  step.note = { req, hint: req === 'no' && !step.note.hint.trim() ? fallback : step.note.hint };
+}
+
+export function setNoteHint(def: BoardDefinition, stepId: string, hint: string): void {
+  const step = stepOf(def, stepId);
+  if (step) step.note = { ...step.note, hint };
+}
+
+export function removeNote(def: BoardDefinition, stepId: string): void {
+  const step = stepOf(def, stepId);
+  if (step) step.note = { req: 'no', hint: '' };
+}
+
+// Whether a step has the note row ("Nota de la entrega").
+export function hasNote(step: Step): boolean {
+  return step.note.req === 'always' || step.note.hint.trim() !== '';
+}
+
+export function addWait(def: BoardDefinition, stepId: string, wait: Wait): void {
+  const step = stepOf(def, stepId);
+  if (!step || step.waits.includes(wait)) return;
+  step.waits = WAITS.filter((w) => w === wait || step.waits.includes(w));
+}
+
+export function removeWait(def: BoardDefinition, stepId: string, wait: Wait): void {
+  const step = stepOf(def, stepId);
+  if (step) step.waits = step.waits.filter((w) => w !== wait);
+}
+
+export function setSkip(def: BoardDefinition, stepId: string, on: boolean): void {
+  const step = stepOf(def, stepId);
+  if (step) step.skipWhenReady = on;
+}
+
+export function setDoerMayDrop(def: BoardDefinition, stepId: string, on: boolean): void {
+  const step = stepOf(def, stepId);
+  if (step) step.doerMayDrop = on;
+}
+
+// ---- field settings: where it starts, a protected branch ----
+
+export function setInitial(def: BoardDefinition, ref: string, value: string | undefined): void {
+  const part = def.parts[ref];
+  if (!part) return;
+  if (value === undefined || value === '') delete part.initial;
+  else part.initial = value;
+}
+
+function sortGuards(def: BoardDefinition): void {
+  for (const part of Object.values(def.parts))
+    if (part.guard) part.guard.push.sort((a, b) => stepIndex(def, a) - stepIndex(def, b));
+}
+
+// "Otea protege esta rama": on a branch field only, pushed during `push` (step ids).
+export function setGuard(def: BoardDefinition, ref: string, on: boolean, push: string[] = []) {
+  const part = def.parts[ref];
+  if (!part || part.kind !== 'branch') return;
+  if (!on) {
+    delete part.guard;
+    return;
+  }
+  part.guard = { push: push.filter((id) => stepIndex(def, id) >= 0) };
+  sortGuards(def);
+}
+
+export function toggleGuardPush(def: BoardDefinition, ref: string, stepId: string): void {
+  const guard = def.parts[ref]?.guard;
+  if (!guard || stepIndex(def, stepId) < 0) return;
+  guard.push = guard.push.includes(stepId)
+    ? guard.push.filter((id) => id !== stepId)
+    : [...guard.push, stepId];
+  sortGuards(def);
+}
+
+export function setGuardRepo(def: BoardDefinition, ref: string, repo: string | undefined): void {
+  const guard = def.parts[ref]?.guard;
+  if (!guard) return;
+  if (repo === undefined || repo === '') delete guard.repo;
+  else guard.repo = repo;
+}
+
+// ---- discarding: who, and with which motive ----
+
+export function setDropBy(def: BoardDefinition, by: 'page' | 'anyone'): void {
+  def.drop = { ...def.drop, by };
+}
+
+// A motive's id is the closed state it names (dropped__<id>): its name in lowercase letters,
+// digits and underscores, or a fresh id when the name has none.
+function motiveId(def: BoardDefinition, name: string, make: IdSource): string {
+  const slug = name
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+  const base = /^[a-z]/.test(slug) ? slug : slug ? `m_${slug}` : make('c');
+  const taken = new Set(def.drop.motives.map((m) => m.id));
+  if (!taken.has(base)) return base;
+  for (let n = 2; ; n++) if (!taken.has(`${base}_${n}`)) return `${base}_${n}`;
+}
+
+export function addMotive(def: BoardDefinition, name: string, make: IdSource = ids): void {
+  const clean = name.trim();
+  if (!clean || def.drop.motives.some((m) => key(m.name) === key(clean))) return;
+  def.drop = {
+    ...def.drop,
+    motives: [...def.drop.motives, { id: motiveId(def, clean, make), name: clean }],
+  };
+}
+
+export function removeMotive(def: BoardDefinition, id: string): void {
+  def.drop = { ...def.drop, motives: def.drop.motives.filter((m) => m.id !== id) };
+  if (def.list.group === MOTIVE && def.drop.motives.length === 0) def.list = { as: def.list.as };
+}
+
+// ---- what each item divides into ----
+
+// "Cada X se divide en…": another board (always part of one, by default), this same board, or
+// nothing. A step that waited for its parts keeps waiting (and says so as a problem).
+export function setSplit(def: BoardDefinition, board: string | undefined): void {
+  if (board === undefined || board === '') {
+    delete def.split;
+    return;
+  }
+  def.split = { board, always: board !== SAME };
+}
+
+export function setSplitAlways(def: BoardDefinition, always: boolean): void {
+  if (def.split && def.split.board !== SAME) def.split = { ...def.split, always };
+}
+
 // ---- instructions ----
+
 
 export type InstructionAt =
   | { step: string; key: keyof StepInstructions }
