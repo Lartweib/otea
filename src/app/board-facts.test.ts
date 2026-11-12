@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { cambios, errores, tareasDeRepo } from '../core/board/testing.ts';
 import { updateItemState } from '../store/queries.ts';
+import { listBoardSummaries, publishBoard, publishPlan, saveDraft } from './boards.ts';
 import type { Context } from './context.ts';
 import { createItem, getItem, showItem } from './items.ts';
 import { itemNextText, itemOnBoard } from './next.ts';
@@ -114,5 +115,24 @@ describe('the facts an item on a board carries', () => {
       gates: { push: { allowed: true, why: 'doing' }, merge: { allowed: false, why: 'not_done' } },
       branch: { value: 'feat/a', repo: 'api' },
     });
+  });
+});
+
+describe('the publish plan of a board whose items have parts', () => {
+  it('counts the open parts of each item, for the step that starts waiting for them', () => {
+    const ctx = memoryContext();
+    const { change } = changes(ctx);
+    updateItemState(ctx.db, change.id, 'sexec', now());
+    const board = listBoardSummaries(ctx).find(({ name }) => name === 'Cambios');
+    if (!board) throw new Error('no board');
+    const live = cambios();
+    live.steps = live.steps.map((step) => ({ ...step, waits: [] }));
+    saveDraft(ctx, board.id, { definition: live, baseVersion: 1 }, now);
+    publishBoard(ctx, board.id, { moves: {}, by: you }, now);
+    saveDraft(ctx, board.id, { definition: cambios(), baseVersion: 2 }, now);
+
+    expect(publishPlan(ctx, board.id).effects.waiting).toEqual([
+      { step: 'sexec', name: 'Ejecutar', wait: 'parts', items: [change.id] },
+    ]);
   });
 });

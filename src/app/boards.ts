@@ -7,6 +7,7 @@ import {
   type Change,
   changePlan,
   type ItemEffects,
+  type ItemState,
   itemEffects,
   itemMoves,
 } from '../core/board/plan.ts';
@@ -60,6 +61,7 @@ import {
 } from '../store/queries.ts';
 import type { Context } from './context.ts';
 import { type Clock, systemClock } from './items.ts';
+import { linksOf } from './next.ts';
 import type { LoadedPreset, PresetCatalog } from './presets.ts';
 
 // Boards with versions, as Studio makes them: a draft per board, published as a new version in one
@@ -367,9 +369,16 @@ function requireDraft(ctx: Context, id: string): NonNullable<BoardRecord['draft'
   return draft;
 }
 
-function itemStates(ctx: Context, collection: string | null) {
+// Where each item of the board stands, with how many of its parts and its blockers are open (what
+// a step that starts waiting for them would hold).
+function itemStates(ctx: Context, collection: string | null): ItemState[] {
   if (collection === null) return [];
-  return selectItems(ctx.db, { collection }).map(({ id, state }) => ({ id, state }));
+  return selectItems(ctx.db, { collection }).map(({ id, state }) => {
+    const { parts, blockers } = linksOf(ctx, id);
+    const open = (linked: readonly { closed: boolean }[]) =>
+      linked.filter(({ closed }) => !closed).length;
+    return { id, state, openParts: open(parts), openBlockers: open(blockers) };
+  });
 }
 
 export function publishPlan(ctx: Context, id: string): PublishPlan {
