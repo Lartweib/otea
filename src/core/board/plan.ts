@@ -1,18 +1,28 @@
-import { isClosed, positionOf, stateOf } from './engine.ts';
+import { backWaysOf, isClosed, positionOf, stateOf } from './engine.ts';
 import {
   type BoardDefinition,
   type Cap,
   DONE,
   type Doer,
+  DROPPED,
+  type Drop,
+  defaultWay,
+  guardedBranch,
   isAgent,
   isEvidence,
+  type ListView,
+  MOTIVE,
+  type PartKind,
   partOf,
   type Requirement,
   type Reviewer,
   SAME,
+  STEP,
   stepById,
+  stepIndex,
   type Target,
   usedRefs,
+  type Wait,
 } from './model.ts';
 
 // What publishing a draft changes, for the Publicar dialog: the changes in order (the UI words each
@@ -48,13 +58,47 @@ export type Change =
   | { kind: 'form'; names: string[] }
   | { kind: 'layout' }
   | { kind: 'board_instructions' }
-  | { kind: 'cap'; cap: Cap };
+  | { kind: 'cap'; cap: Cap }
+  // The first step is skipped (or no longer) for items created with everything: `to` is where
+  // they start then.
+  | { kind: 'skip'; step: string; name: string; to: string; on: boolean }
+  // The doer may (or no longer) take the item back to `to` (`you`: the person's own step, Devolver).
+  | { kind: 'way_back'; step: string; name: string; to: string; you: boolean; on: boolean }
+  | { kind: 'note'; step: string; name: string; on: boolean }
+  // `board`: the name of the board the parts are on, when it waits for them.
+  | { kind: 'waits'; step: string; name: string; waits: Wait[]; board?: string }
+  | { kind: 'doer_drop'; step: string; name: string; on: boolean }
+  // The protected branch: the names of the steps it is pushed in; `push: null` when unprotected.
+  | { kind: 'guard'; part: string; partName: string; push: string[] | null }
+  // A start value: the raw value (a level key, yes or no, a choice id) and, for a choice, its name.
+  | {
+      kind: 'initial';
+      part: string;
+      partName: string;
+      partKind: PartKind;
+      value: string | null;
+      valueName?: string;
+    }
+  // What each item divides into: a board's name (this board's own for parts of the same kind), or
+  // null when it divides into nothing.
+  | { kind: 'split'; board: string | null; always: boolean }
+  | { kind: 'motives'; names: string[] }
+  | { kind: 'drop_by'; by: Drop['by'] }
+  // `group`: a field's name, STEP or MOTIVE.
+  | { kind: 'list'; as: ListView['as']; group?: string };
+
+// How changePlan names the other boards a split leads to.
+export type PlanContext = { boardName?: (id: string) => string | undefined };
 
 const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
 
 const whoKey = (who: Doer | Reviewer) => (isAgent(who) ? `agent:${who.agent}` : who);
 
-export function changePlan(live: BoardDefinition | null, draft: BoardDefinition): Change[] {
+export function changePlan(
+  live: BoardDefinition | null,
+  draft: BoardDefinition,
+  context: PlanContext = {},
+): Change[] {
   if (!live) return [{ kind: 'created', board: draft.name, steps: draft.steps.map((s) => s.name) }];
   const out: Change[] = [];
   if (live.name !== draft.name)
@@ -92,11 +136,15 @@ export function changePlan(live: BoardDefinition | null, draft: BoardDefinition)
     }
     if (!same(old.instructions, step.instructions))
       out.push({ kind: 'step_instructions', step: id, name });
-    if (!same(old.ways, step.ways)) out.push({ kind: 'step_ways', step: id, name });
+    if (!same(forward(live, old.id), forward(draft, step.id)))
+      out.push({ kind: 'step_ways', step: id, name });
     if (old.back !== step.back) {
       const to = step.back === SAME ? name : (stepById(draft, step.back)?.name ?? name);
       out.push({ kind: 'step_back', step: id, name, to });
     }
+  }
+  for (const step of draft.steps) {
+    if (stepById(live, step.id)) out.push(...laterStepChanges(live, draft, step.id, context));
   }
   for (const old of live.steps) {
     if (!draft.steps.some(({ id }) => id === old.id))
@@ -124,10 +172,132 @@ export function changePlan(live: BoardDefinition | null, draft: BoardDefinition)
   if (live.about !== draft.about || live.idle !== draft.idle)
     out.push({ kind: 'board_instructions' });
   if (!same(live.cap, draft.cap)) out.push({ kind: 'cap', cap: draft.cap });
+  out.push(...laterBoardChanges(live, draft, context));
   return out;
 }
 
-export type ItemState = { id: string; state: string };
+function laterBoardChanges(
+  live: BoardDefinition,
+  draft: BoardDefinition,
+  context: PlanContext,
+): Change[] {
+  const out: Change[] = [];
+  const used = usedRefs(draft);
+  for (const part of Object.values(draft.parts)) {
+    if (!used.has(part.id)) continue;
+    const old = live.parts[part.id];
+    const pushNames = (def: BoardDefinition, guard: typeof part.guard) =>
+      guard ? guard.push.flatMap((s) => stepById(def, s)?.name ?? []) : null;
+    const [was, now] = [pushNames(live, old?.guard), pushNames(draft, part.guard)];
+    if (!same(was, now) || !same(old?.guard?.repo, part.guard?.repo))
+      out.push({ kind: 'guard', part: part.id, partName: part.name, push: now });
+    if ((old?.initial ?? null) !== (part.initial ?? null)) {
+      const choice = part.options.find(({ id }) => id === part.initial);
+      out.push({
+        kind: 'initial',
+        part: part.id,
+        partName: part.name,
+        partKind: part.kind,
+        value: part.initial ?? null,
+        ...(choice ? { valueName: choice.name } : {}),
+      });
+    }
+  }
+  if (!same(live.split, draft.split))
+    out.push({
+      kind: 'split',
+      board: splitName(draft, context),
+      always: draft.split?.always ?? false,
+    });
+  const motiveNames = (def: BoardDefinition) => def.drop.motives.map(({ name }) => name);
+  if (!same(motiveNames(live), motiveNames(draft)))
+    out.push({ kind: 'motives', names: motiveNames(draft) });
+  if (live.drop.by !== draft.drop.by) out.push({ kind: 'drop_by', by: draft.drop.by });
+  if (!same(live.list, draft.list)) {
+    const group = draft.list.group;
+    const named =
+      group === undefined || group === STEP || group === MOTIVE
+        ? group
+        : (partOf(draft, group)?.name ?? group);
+    out.push({ kind: 'list', as: draft.list.as, ...(named === undefined ? {} : { group: named }) });
+  }
+  return out;
+}
+
+// The forward alternatives of a step, which step_ways reports (ways back are their own change).
+function forward(def: BoardDefinition, stepId: string): string[] {
+  const index = stepIndex(def, stepId);
+  return (stepById(def, stepId)?.ways ?? []).filter(
+    (way) => way === DONE || stepIndex(def, way) > index,
+  );
+}
+
+// The name of the board a definition's items divide into, or null.
+function splitName(def: BoardDefinition, context: PlanContext): string | null {
+  const split = def.split;
+  if (split === undefined) return null;
+  if (split.board === SAME) return def.name;
+  return context.boardName?.(split.board) ?? split.board;
+}
+
+function laterStepChanges(
+  live: BoardDefinition,
+  draft: BoardDefinition,
+  id: string,
+  context: PlanContext,
+): Change[] {
+  const out: Change[] = [];
+  const old = stepById(live, id);
+  const step = stepById(draft, id);
+  if (!old || !step) return out;
+  const { name } = step;
+  const skips = (def: BoardDefinition, s: typeof step) =>
+    def.steps[0]?.id === s.id && s.skipWhenReady && s.reviewer === 'none';
+  if (skips(live, old) !== skips(draft, step)) {
+    const to = defaultWay(draft, id);
+    out.push({
+      kind: 'skip',
+      step: id,
+      name,
+      to: stepById(draft, to)?.name ?? to,
+      on: skips(draft, step),
+    });
+  }
+  const before = backWaysOf(live, id);
+  const after = backWaysOf(draft, id);
+  const you = step.doer === 'you';
+  for (const to of after.filter((target) => !before.includes(target)))
+    out.push({
+      kind: 'way_back',
+      step: id,
+      name,
+      to: stepById(draft, to)?.name ?? to,
+      you,
+      on: true,
+    });
+  for (const to of before.filter((target) => !after.includes(target)))
+    out.push({
+      kind: 'way_back',
+      step: id,
+      name,
+      to: stepById(live, to)?.name ?? to,
+      you,
+      on: false,
+    });
+  if (old.note.req !== step.note.req)
+    out.push({ kind: 'note', step: id, name, on: step.note.req === 'always' });
+  if (!same(old.waits, step.waits)) {
+    const board = step.waits.includes('parts') ? splitName(draft, context) : null;
+    out.push({ kind: 'waits', step: id, name, waits: step.waits, ...(board ? { board } : {}) });
+  }
+  if (old.doerMayDrop !== step.doerMayDrop)
+    out.push({ kind: 'doer_drop', step: id, name, on: step.doerMayDrop });
+  return out;
+}
+
+// `openParts` and `openBlockers`: how many of the item's parts are open, and how many open items
+// block it (for the effects of a new wait); left out, none.
+export type ItemState = { id: string; state: string; openParts?: number; openBlockers?: number };
 
 export type ItemEffects = {
   // Items in steps the draft removes: where they go needs a choice; `suggested` is the next step
@@ -137,6 +307,11 @@ export type ItemEffects = {
   needs: { step: string; name: string; items: string[]; parts: string[] }[];
   // Items waiting in a review the draft no longer has: they go back to work in the same step.
   reopened: { step: string; name: string; items: string[] }[];
+  // Items being worked on in a step that now waits, whose parts or blockers are still open: they
+  // cannot be handed off until those finish.
+  waiting: { step: string; name: string; wait: Wait; items: string[] }[];
+  // Items in the review of a step the protected branch is now pushed in: their branch is frozen.
+  frozen: { step: string; name: string; items: string[] }[];
 };
 
 function suggestion(live: BoardDefinition, draft: BoardDefinition, stepId: string): Target {
@@ -159,10 +334,31 @@ export function itemEffects(
   draft: BoardDefinition,
   items: readonly ItemState[],
 ): ItemEffects {
-  const out: ItemEffects = { moves: [], needs: [], reopened: [] };
-  const open = items
-    .map((item) => ({ ...item, at: positionOf(item.state) }))
-    .flatMap(({ id, at }) => (isClosed(at) ? [] : [{ id, step: at.step, phase: at.phase }]));
+  const out: ItemEffects = { moves: [], needs: [], reopened: [], waiting: [], frozen: [] };
+  const open = items.flatMap((item) => {
+    const at = positionOf(item.state);
+    return isClosed(at) ? [] : [{ ...item, step: at.step, phase: at.phase }];
+  });
+  const wasPushed = new Set(guardedBranch(live)?.guard.push ?? []);
+  for (const stepId of guardedBranch(draft)?.guard.push ?? []) {
+    const step = stepById(draft, stepId);
+    if (!step || wasPushed.has(stepId)) continue;
+    const here = open.filter((item) => item.step === stepId && item.phase !== 'doing');
+    if (here.length > 0)
+      out.frozen.push({ step: stepId, name: step.name, items: here.map(({ id }) => id) });
+  }
+  for (const step of draft.steps) {
+    const old = stepById(live, step.id);
+    for (const wait of step.waits) {
+      if (old?.waits.includes(wait)) continue;
+      const count = (item: ItemState) => (wait === 'parts' ? item.openParts : item.openBlockers);
+      const held = open.filter(
+        (item) => item.step === step.id && item.phase === 'doing' && (count(item) ?? 0) > 0,
+      );
+      if (held.length > 0)
+        out.waiting.push({ step: step.id, name: step.name, wait, items: held.map(({ id }) => id) });
+    }
+  }
   for (const old of live.steps) {
     const here = open.filter(({ step }) => step === old.id);
     const step = draft.steps.find(({ id }) => id === old.id);
@@ -206,9 +402,15 @@ export function itemMoves(
   moves: Readonly<Record<string, Target>>,
 ): { ok: true; moves: ItemMove[] } | { ok: false; step: string } {
   const out: ItemMove[] = [];
+  const motives = new Set(draft.drop.motives.map(({ id }) => id));
   for (const item of items) {
     const at = positionOf(item.state);
-    if (isClosed(at)) continue;
+    // A discard whose motive the draft no longer has reads as plain Descartado.
+    if (isClosed(at)) {
+      if (at.motive !== undefined && !motives.has(at.motive))
+        out.push({ id: item.id, from: item.state, to: DROPPED });
+      continue;
+    }
     const kept = draft.steps.some(({ id }) => id === at.step);
     if (!kept) {
       if (!live.steps.some(({ id }) => id === at.step)) continue;

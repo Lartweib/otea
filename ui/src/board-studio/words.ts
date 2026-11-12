@@ -8,7 +8,7 @@ import type {
 import { DONE, isAgent, stepById } from '../../../src/core/board/model.ts';
 import type { Change } from '../../../src/core/board/plan.ts';
 import type { Problem } from '../../../src/core/board/problems.ts';
-import { listOf, type PlainKey, t } from '../i18n/i18n.ts';
+import { listOf, listOr, type PlainKey, t } from '../i18n/i18n.ts';
 
 // The board Studio's sentences: problems, publish changes, who does and reviews a step, and the
 // kinds of parts, in the language on screen. The core says what (codes and params); this says it.
@@ -126,7 +126,60 @@ export function problemText(problem: Problem): string {
       return t('bs.problem.self_review', { step: str(p.step) as string });
     case 'agent_closes':
       return t('bs.problem.agent_closes', { step: str(p.step) as string });
+    case 'wait_no_split':
+      return t('bs.problem.wait_no_split', {
+        step: str(p.step) as string,
+        board: str(p.board) as string,
+      });
+    case 'skip_invalid':
+      return t('bs.problem.skip_invalid', { step: str(p.step) as string });
+    case 'split_cycle':
+      return t('bs.problem.split_cycle', {
+        board: str(p.board) as string,
+        other: str(p.other) as string,
+      });
+    case 'split_unknown':
+      return t('bs.problem.split_unknown', { board: str(p.board) as string });
+    case 'guard_no_push':
+      return t('bs.problem.guard_no_push', { part: str(p.part) as string });
+    case 'initial_invalid':
+      return t('bs.problem.initial_invalid', { part: str(p.part) as string });
+    case 'motive_agent_drop':
+      return t('bs.problem.motive_agent_drop', { step: str(p.step) as string });
   }
+}
+
+const LEVEL_WORDS: Readonly<Record<string, PlainKey>> = {
+  low: 'bs.level.low',
+  medium: 'bs.level.medium',
+  high: 'bs.level.high',
+  critical: 'bs.level.critical',
+  yes: 'bs.yes',
+  no: 'bs.no',
+};
+
+// A start value as people read it: a choice by its name, a level or yes-or-no in words.
+export function initialName(value: string, name?: string): string {
+  if (name !== undefined) return name;
+  const key = LEVEL_WORDS[value];
+  return key ? t(key) : value;
+}
+
+function waitsText(name: string, waits: readonly string[], board?: string): string {
+  const parts = waits.includes('parts');
+  const blockers = waits.includes('blockers');
+  if (parts && blockers)
+    return t('bs.change.waits_both', { name, board: board ?? t('bs.change.waits_parts_any') });
+  if (parts)
+    return t('bs.change.waits_parts', { name, board: board ?? t('bs.change.waits_parts_any') });
+  if (blockers) return t('bs.change.waits_blockers', { name });
+  return t('bs.change.waits_none', { name });
+}
+
+function groupName(group: string | undefined): string | undefined {
+  if (group === 'step') return t('bs.change.group_step');
+  if (group === 'motive') return t('bs.change.group_motive');
+  return group;
 }
 
 function reqText(req: 'always' | 'when' | 'no', fresh: boolean): string {
@@ -199,5 +252,50 @@ export function changeText(change: Change): string {
       return t('bs.change.board_instructions');
     case 'cap':
       return change.cap.on ? t('bs.change.cap_on', { n: change.cap.n }) : t('bs.change.cap_off');
+    case 'skip':
+      return change.on
+        ? t('bs.change.skip_on', { to: change.to })
+        : t('bs.change.skip_off', { name: change.name });
+    case 'way_back':
+      if (!change.on) return t('bs.change.way_back_off', { name: change.name, to: change.to });
+      return t(change.you ? 'bs.change.give_back_on' : 'bs.change.way_back_on', {
+        name: change.name,
+        to: change.to,
+      });
+    case 'note':
+      return t(change.on ? 'bs.change.note_on' : 'bs.change.note_off', { name: change.name });
+    case 'waits':
+      return waitsText(change.name, change.waits, change.board);
+    case 'doer_drop':
+      return t(change.on ? 'bs.change.doer_drop_on' : 'bs.change.doer_drop_off', {
+        name: change.name,
+      });
+    case 'guard':
+      return change.push === null
+        ? t('bs.change.guard_off', { part: change.partName })
+        : t('bs.change.guard_on', { part: change.partName, steps: listOr(change.push) });
+    case 'initial':
+      return change.value === null
+        ? t('bs.change.initial_off', { part: change.partName })
+        : t('bs.change.initial_on', {
+            part: change.partName,
+            value: initialName(change.value, change.valueName),
+          });
+    case 'split':
+      if (change.board === null) return t('bs.change.split_off');
+      return t(change.always ? 'bs.change.split_always' : 'bs.change.split_on', {
+        board: change.board,
+      });
+    case 'motives':
+      return change.names.length === 0
+        ? t('bs.change.motives_off')
+        : t('bs.change.motives_on', { names: listOr(change.names) });
+    case 'drop_by':
+      return t(change.by === 'page' ? 'bs.change.drop_by_page' : 'bs.change.drop_by_anyone');
+    case 'list': {
+      const group = groupName(change.group);
+      const as = t(change.as === 'table' ? 'bs.change.list_table' : 'bs.change.list_list');
+      return group ? t('bs.change.list_grouped', { as, group }) : t('bs.change.list', { as });
+    }
   }
 }

@@ -4,8 +4,10 @@ import {
   DONE,
   DROPPED,
   defaultWay,
+  guardedBranch,
   isAgent,
   isEvidence,
+  motiveById,
   type Part,
   partOf,
   type Reviewer,
@@ -28,19 +30,28 @@ export type Phase = 'doing' | 'review' | 'yours';
 
 export type Closed = typeof DONE | typeof DROPPED;
 
-export type Position = { step: string; phase: Phase } | { closed: Closed };
+// A discard on a board with motives names one (`motive`, a motive id).
+export type Position = { step: string; phase: Phase } | { closed: Closed; motive?: string };
 
 const SUFFIX: Readonly<Record<Phase, string>> = { doing: '', review: '__review', yours: '__yours' };
 
+const MOTIVE_PREFIX = `${DROPPED}__`;
+
 // The workflow state a position compiles to: the step id while doing, `<id>__review` and
-// `<id>__yours` for the reviews, and `done` and `dropped` when closed.
+// `<id>__yours` for the reviews, `done` and `dropped` when closed, and `dropped__<motive>` for a
+// discard with a motive.
 export function stateOf(position: Position): string {
-  if ('closed' in position) return position.closed;
+  if ('closed' in position) {
+    if (position.closed === DROPPED && position.motive) return MOTIVE_PREFIX + position.motive;
+    return position.closed;
+  }
   return position.step + SUFFIX[position.phase];
 }
 
 export function positionOf(state: string): Position {
   if (state === DONE || state === DROPPED) return { closed: state };
+  if (state.startsWith(MOTIVE_PREFIX))
+    return { closed: DROPPED, motive: state.slice(MOTIVE_PREFIX.length) };
   for (const phase of ['review', 'yours'] as const) {
     if (state.endsWith(SUFFIX[phase]))
       return { step: state.slice(0, -SUFFIX[phase].length), phase };
@@ -64,6 +75,17 @@ export function waysOf(def: BoardDefinition, stepId: string): Target[] {
   if (!step) return [];
   const later = (target: Target) => target === DONE || stepIndex(def, target) > index;
   return [...new Set([defaultWay(def, stepId), ...step.ways.filter(later)])];
+}
+
+// The earlier steps the doer may take the item back to ("o regresarlo a…"), in row order.
+export function backWaysOf(def: BoardDefinition, stepId: string): string[] {
+  const index = stepIndex(def, stepId);
+  const step = def.steps[index];
+  if (!step) return [];
+  return def.steps
+    .slice(0, index)
+    .map(({ id }) => id)
+    .filter((id) => step.ways.includes(id));
 }
 
 // Who reviews the step's work: its reviewer, except that nobody reviews their own work, so an
@@ -96,22 +118,39 @@ export function mayTake(def: BoardDefinition, stepId: string, agent: string): bo
   return doer !== undefined && isAgent(doer) && doer.agent === agent;
 }
 
+// Another item an item waits for: one of its parts, or one that blocks it. `board` and `step` are
+// names as people read them (`step`: where it stands while open).
+export type Linked = { id: string; board: string; step?: string; closed: boolean };
+
 // What the engine reads of an item to check a handoff: its field values by part id, its evidence
 // by part (the evidence module id it was attached to) and when, and when the step's current round
-// began (a fresh part counts only from then on).
+// began (a fresh part counts only from then on). `note` is the note the handoff carries; `parts`
+// and `blockers` are what its waits read (none when left out).
 export type ItemFacts = {
   fields: Readonly<Record<string, unknown>>;
   evidence: readonly { part: string; at: string }[];
   roundStartedAt?: string;
+  note?: string;
+  parts?: readonly Linked[];
+  blockers?: readonly Linked[];
 };
 
+// The refs of what a handoff lacks besides parts: the note, and each wait.
+export const NOTE_REF = 'note';
+export const WAIT_PARTS = 'wait:parts';
+export const WAIT_BLOCKERS = 'wait:blockers';
+
 // `missing`: nothing there; `not_new`: there, but from an earlier round; `unchecked`: a checklist
-// with boxes still open.
+// with boxes still open; `open`: a wait whose items are not finished (`open`, of `total`). The note
+// carries its `hint` ("Qué va aquí").
 export type Missing = {
   ref: string;
   name: string;
-  reason: 'missing' | 'not_new' | 'unchecked';
+  reason: 'missing' | 'not_new' | 'unchecked' | 'open';
   fresh: boolean;
+  hint?: string;
+  open?: Linked[];
+  total?: number;
 };
 
 export type HandoffCheck = { ok: boolean; missing: Missing[] };
@@ -182,26 +221,79 @@ function missingOf(def: BoardDefinition, step: Step, facts: ItemFacts): MissingP
   });
 }
 
-// What the step's handoff still lacks, in the order the step lists it.
+// The waits of a step that still hold the item: its open parts, then what open blocks it.
+export function openWaits(step: Step, facts: ItemFacts): Missing[] {
+  const out: Missing[] = [];
+  if (step.waits.includes('parts')) {
+    const parts = facts.parts ?? [];
+    const open = parts.filter(({ closed }) => !closed);
+    if (open.length > 0)
+      out.push({
+        ref: WAIT_PARTS,
+        name: open[0]?.board ?? '',
+        reason: 'open',
+        fresh: false,
+        open,
+        total: parts.length,
+      });
+  }
+  if (step.waits.includes('blockers')) {
+    const open = (facts.blockers ?? []).filter(({ closed }) => !closed);
+    if (open.length > 0)
+      out.push({ ref: WAIT_BLOCKERS, name: '', reason: 'open', fresh: false, open });
+  }
+  return out;
+}
+
+// What the step's handoff still lacks: the parts in the order the step lists them, then the note,
+// then what it waits for.
 export function handoffCheck(def: BoardDefinition, stepId: string, facts: ItemFacts): HandoffCheck {
   const step = stepById(def, stepId);
   if (!step) return { ok: false, missing: [] };
-  const missing = missingOf(def, step, facts).map(({ ref, part, reason, fresh }) => ({
+  const missing: Missing[] = missingOf(def, step, facts).map(({ ref, part, reason, fresh }) => ({
     ref,
     name: part.name,
     reason,
     fresh,
   }));
+  if (step.note.req === 'always' && !facts.note?.trim())
+    missing.push({
+      ref: NOTE_REF,
+      name: NOTE_REF,
+      reason: 'missing',
+      fresh: true,
+      hint: step.note.hint,
+    });
+  missing.push(...openWaits(step, facts));
   return { ok: missing.length === 0, missing };
+}
+
+// How a refused handoff is answered: missing parts or the note lead (missing_fields); otherwise
+// the open parts (children_open), else what blocks it (blockers_open).
+export function refusalCode(
+  missing: readonly Missing[],
+): 'missing_fields' | 'children_open' | 'blockers_open' {
+  if (missing.some(({ reason }) => reason !== 'open')) return 'missing_fields';
+  return missing.some(({ ref }) => ref === WAIT_PARTS) ? 'children_open' : 'blockers_open';
 }
 
 export type Performer = { kind: 'agent' | 'human'; name: string };
 
 export type MoveRefusal =
   | { ok: false; code: 'missing'; missing: Missing[] }
-  | { ok: false; code: 'not_doing' | 'not_review' | 'not_yours' | 'bad_way' | 'unknown_step' };
+  | {
+      ok: false;
+      code:
+        | 'not_doing'
+        | 'not_review'
+        | 'not_yours'
+        | 'bad_way'
+        | 'unknown_step'
+        | 'reason_required';
+    };
 
-export type MoveResult = { ok: true; to: Position } | MoveRefusal;
+// `back`: the doer took the item back to an earlier step, for that step's next round.
+export type MoveResult = { ok: true; to: Position; back?: true } | MoveRefusal;
 
 function mayDo(step: Step, by: Performer): boolean {
   if (step.doer === 'you') return by.kind === 'human';
@@ -211,17 +303,22 @@ function mayDo(step: Step, by: Performer): boolean {
 
 // A handoff from the doing phase: refused while something required is missing; otherwise to the
 // review (yours when the reviewer did the work), or, with no reviewer, along the way picked (the
-// default when none is).
+// default when none is). A way back to an earlier step needs a reason and nothing else: giving up
+// has nothing to hand, and nobody reviews it.
 export function handoff(
   def: BoardDefinition,
   position: Position,
   facts: ItemFacts,
-  options: { by: Performer; way?: Target },
+  options: { by: Performer; way?: Target; reason?: string },
 ): MoveResult {
   if (isClosed(position) || position.phase !== 'doing') return { ok: false, code: 'not_doing' };
   const step = stepById(def, position.step);
   if (!step) return { ok: false, code: 'unknown_step' };
   if (!mayDo(step, options.by)) return { ok: false, code: 'not_yours' };
+  if (options.way !== undefined && backWaysOf(def, step.id).includes(options.way)) {
+    if (!options.reason?.trim()) return { ok: false, code: 'reason_required' };
+    return { ok: true, to: { step: options.way, phase: 'doing' }, back: true };
+  }
   const ways = waysOf(def, step.id);
   if (options.way !== undefined && !ways.includes(options.way))
     return { ok: false, code: 'bad_way' };
@@ -237,12 +334,21 @@ export function handoff(
   return { ok: true, to: { step: step.id, phase } };
 }
 
-// An approval from a review: along the way picked, or the default.
-export function approve(def: BoardDefinition, position: Position, way?: Target): MoveResult {
+// An approval from a review: along the way picked, or the default. With the item's facts, what the
+// step waits for is checked again: a part reopened during the review stops the approval.
+export function approve(
+  def: BoardDefinition,
+  position: Position,
+  way?: Target,
+  facts?: ItemFacts,
+): MoveResult {
   if (isClosed(position) || position.phase === 'doing') return { ok: false, code: 'not_review' };
   const ways = waysOf(def, position.step);
   if (ways.length === 0) return { ok: false, code: 'unknown_step' };
   if (way !== undefined && !ways.includes(way)) return { ok: false, code: 'bad_way' };
+  const step = stepById(def, position.step);
+  const waits = step && facts ? openWaits(step, facts) : [];
+  if (waits.length > 0) return { ok: false, code: 'missing', missing: waits };
   return { ok: true, to: positionAt(way ?? ways[0] ?? DONE) };
 }
 
@@ -259,6 +365,85 @@ export function sendBack(def: BoardDefinition, position: Position): MoveResult {
   if (isClosed(position) || position.phase === 'doing') return { ok: false, code: 'not_review' };
   if (!stepById(def, position.step)) return { ok: false, code: 'unknown_step' };
   return { ok: true, to: { step: backTarget(def, position.step), phase: 'doing' } };
+}
+
+// Where a new item starts: the first step, or the step after it when the first is skipped for an
+// item created with everything its Entrega asks for (only a first step nobody reviews). Only at
+// creation: a send-back into that step never skips it.
+export function initialPosition(
+  def: BoardDefinition,
+  facts: ItemFacts,
+): { position: Position; skipped: boolean } {
+  const first = def.steps[0];
+  if (!first) return { position: { closed: DONE }, skipped: false };
+  const start: Position = { step: first.id, phase: 'doing' };
+  if (!first.skipWhenReady || first.reviewer !== 'none') return { position: start, skipped: false };
+  if (missingOf(def, first, facts).length > 0) return { position: start, skipped: false };
+  return { position: positionAt(defaultWay(def, first.id)), skipped: true };
+}
+
+// Who asks for a discard: the person on the item's page, the person through an agent (a relay), or
+// an agent on its own, doing a step that lets it.
+export type DropVia = 'page' | 'relay' | 'agent';
+
+export type DropResult =
+  | { ok: true; to: Position }
+  | {
+      ok: false;
+      code: 'not_open' | 'reason_required' | 'motive_required' | 'not_droppable' | 'not_relayable';
+    };
+
+// A discard (Descartar): always with a reason, and with one of the board's motives when it has any.
+// An agent drops only while doing a step that lets its doer drop; a relay only on a board where the
+// person may discard through an agent.
+export function drop(
+  def: BoardDefinition,
+  position: Position,
+  options: { by: Performer; via: DropVia; reason?: string; motive?: string },
+): DropResult {
+  if (isClosed(position)) return { ok: false, code: 'not_open' };
+  if (options.via === 'agent') {
+    const step = stepById(def, position.step);
+    const may =
+      step !== undefined &&
+      step.doerMayDrop &&
+      step.doer !== 'you' &&
+      position.phase === 'doing' &&
+      mayDo(step, { kind: 'agent', name: options.by.name });
+    if (!may) return { ok: false, code: 'not_droppable' };
+  }
+  if (options.via === 'relay' && def.drop.by === 'page')
+    return { ok: false, code: 'not_relayable' };
+  if (!options.reason?.trim()) return { ok: false, code: 'reason_required' };
+  if (def.drop.motives.length === 0) return { ok: true, to: { closed: DROPPED } };
+  if (!options.motive || !motiveById(def, options.motive))
+    return { ok: false, code: 'motive_required' };
+  return { ok: true, to: { closed: DROPPED, motive: options.motive } };
+}
+
+export type GateAction = 'push' | 'merge';
+
+// Why a gate answers as it does: `doing` (a push step being done), `review` (frozen while it is
+// reviewed), `not_push_step`, `closed`, `done` (merge at Hecho), `not_done`, or `unguarded` (the
+// board protects no branch, so it gates nothing).
+export type GateAnswer = {
+  allowed: boolean;
+  why: 'doing' | 'review' | 'not_push_step' | 'closed' | 'done' | 'not_done' | 'unguarded';
+};
+
+// Whether the item's protected branch may take the action where the item stands: a push only while
+// one of the guard's steps is being done (never during its review), a merge only once it is Hecho.
+export function gateAt(def: BoardDefinition, position: Position, action: GateAction): GateAnswer {
+  const branch = guardedBranch(def);
+  if (!branch) return { allowed: true, why: 'unguarded' };
+  if (action === 'merge') {
+    const done = isClosed(position) && position.closed === DONE;
+    return done ? { allowed: true, why: 'done' } : { allowed: false, why: 'not_done' };
+  }
+  if (isClosed(position)) return { allowed: false, why: 'closed' };
+  if (!branch.guard.push.includes(position.step)) return { allowed: false, why: 'not_push_step' };
+  if (position.phase !== 'doing') return { allowed: false, why: 'review' };
+  return { allowed: true, why: 'doing' };
 }
 
 // `quiet`: a move the board made itself (a publish or a restore placing the item), not one of the
@@ -296,8 +481,11 @@ export function roundsOf(
     const source = positionOf(from);
     if (!isClosed(source) && source.step === target.step && source.phase === 'doing') continue;
     enter(target.step, at);
-    if (!isClosed(source) && source.phase !== 'doing') {
-      if (stepIndex(def, target.step) <= stepIndex(def, source.step))
+    // A send-back from a review (to this step or an earlier one), or the doer taking it back.
+    if (!isClosed(source)) {
+      const from = stepIndex(def, source.step);
+      const to = stepIndex(def, target.step);
+      if (source.phase !== 'doing' ? to <= from : to < from)
         out.dips.push({ from: source.step, to: target.step, at });
     }
   }

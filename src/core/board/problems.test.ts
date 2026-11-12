@@ -76,13 +76,15 @@ describe('problemsOf', () => {
     expect(codes(def)).toEqual([]);
   });
 
-  it('blocks a way that goes backwards and a send-back that goes forwards', () => {
+  it('blocks a way to the step itself or to no step, and a send-back that goes forwards', () => {
     const def = creatures();
     const [concept, animate] = def.steps;
     if (!concept || !animate) throw new Error('fixture');
     animate.ways = ['sconcept'];
+    expect(codes(def)).toEqual([]);
+    animate.ways = ['sanimate', 'sgone'];
     concept.back = 'spolish';
-    expect(codes(def)).toEqual(['error:way_invalid', 'error:back_invalid']);
+    expect(codes(def)).toEqual(['error:way_invalid', 'error:way_invalid', 'error:back_invalid']);
   });
 
   it('warns about an agent that is not connected yet', () => {

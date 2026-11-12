@@ -5,6 +5,7 @@ import { stateOf } from './engine.ts';
 import {
   BOARD_SCHEMA,
   type BoardDefinition,
+  boardDefaults,
   DONE,
   DROPPED,
   type EvidenceKind,
@@ -12,6 +13,7 @@ import {
   type Part,
   SAME,
   type Step,
+  stepDefaults,
   type Zone,
 } from './model.ts';
 import { defaultZone, type Lang, TITLE_NAME } from './templates.ts';
@@ -210,6 +212,7 @@ export function boardFromPreset(
       ways: [],
       back: SAME,
       instructions: { take: '', before: '', review: '' },
+      ...stepDefaults(),
     };
     steps.push(step);
     stepOfState.set(state.name, step);
@@ -279,6 +282,7 @@ export function boardFromPreset(
 
   return {
     definition: {
+      ...boardDefaults(),
       schema: BOARD_SCHEMA,
       name: options.name,
       item: words?.label ?? type.label,

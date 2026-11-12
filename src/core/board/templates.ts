@@ -2,15 +2,24 @@ import { type IdSource, newId } from './ids.ts';
 import {
   BOARD_SCHEMA,
   type BoardDefinition,
+  boardDefaults,
   DONE,
   type Doer,
+  type Drop,
   EVIDENCE_SHOWS,
   isEvidenceKind,
+  LEVELS,
+  type ListView,
+  MOTIVE,
   type PartKind,
   type Requirement,
   type Reviewer,
+  ROUNDS,
   SAME,
+  STEP,
   type Step,
+  stepDefaults,
+  type Wait,
   type Zone,
 } from './model.ts';
 
@@ -24,15 +33,23 @@ export const LANGS: readonly Lang[] = ['en', 'es'];
 
 type Words = Readonly<Record<Lang, string>>;
 
+// `options` may carry their own keys (`optionKeys`, in order), which a copy that keeps keys (a
+// preset's reading) takes as choice ids. `initial` is a level key, yes or no, or an option's key or
+// position (`0`, `1`…). `guard` names step keys and the repository field's key.
 type TemplatePart = {
   key: string;
   kind: PartKind;
   name: Words;
   hint: Words;
   options?: readonly Words[];
+  optionKeys?: readonly string[];
   show?: string;
+  initial?: string;
+  guard?: { push: readonly string[]; repo?: string };
 };
 
+// `ways` holds later steps (or DONE) and earlier ones, which the doer may take the item back to.
+// `back` is where a send-back lands (an earlier step's key), the step itself when left out.
 type TemplateStep = {
   key: string;
   name: Words;
@@ -40,10 +57,19 @@ type TemplateStep = {
   reviewer: Reviewer;
   hand: readonly (readonly [key: string, req: Requirement, fresh?: boolean])[];
   ways?: readonly string[];
+  back?: string;
   take?: Words;
   before?: Words;
+  review?: Words;
+  note?: Words;
+  waits?: readonly Wait[];
+  skip?: boolean;
+  drop?: boolean;
 };
 
+// `hidden`: one board of a set, or a preset's reading; never listed on its own. `layout` places a
+// part (by key), the rounds or the parts; the rest go to their kind's default zone. `row` lists
+// part keys; `list.group` a part key, STEP or MOTIVE.
 export type Template = {
   key: string;
   icon: string;
@@ -58,6 +84,12 @@ export type Template = {
   steps: readonly TemplateStep[];
   anytime: readonly string[];
   samples: Readonly<Record<Lang, readonly string[]>>;
+  hidden?: boolean;
+  motives?: readonly (readonly [key: string, name: Words])[];
+  dropBy?: Drop['by'];
+  list?: { as: ListView['as']; group?: string };
+  row?: readonly string[];
+  layout?: Readonly<Record<string, Zone>>;
 };
 
 const w = (en: string, es: string): Words => ({ en, es });
@@ -536,31 +568,59 @@ export function defaultZone(kind: PartKind): Zone {
   return isEvidenceKind(kind) || kind === 'long' || kind === 'check' ? 'main' : 'side';
 }
 
+// `keep`: the template's keys become the ids (a preset's reading keeps the keys its items' data is
+// stored under); otherwise every id is fresh, so nothing stays linked to the template.
 export function instantiate(
   template: Template,
   lang: Lang,
   names: { name?: string; item?: string },
   ids: IdSource = newId,
+  options: { keep?: boolean } = {},
 ): BoardDefinition {
+  const keep = options.keep === true;
   const refs = new Map<string, string>();
+  const choices = new Map<string, string[]>();
   const parts: BoardDefinition['parts'] = {};
   for (const part of template.parts) {
-    const id = ids(isEvidenceKind(part.kind) ? 'e' : 'f');
+    const id = keep ? part.key : ids(isEvidenceKind(part.kind) ? 'e' : 'f');
     refs.set(part.key, id);
     const show = part.show ?? EVIDENCE_SHOWS[part.kind as keyof typeof EVIDENCE_SHOWS]?.[0];
+    const options = (part.options ?? []).map((option, index) => ({
+      id: keep ? (part.optionKeys?.[index] ?? `v${index + 1}`) : ids('c'),
+      name: option[lang],
+    }));
+    choices.set(
+      part.key,
+      options.map((choice) => choice.id),
+    );
     parts[id] = {
       id,
       name: part.name[lang],
       kind: part.kind,
       hint: part.hint[lang],
-      options: (part.options ?? []).map((option) => ({ id: ids('c'), name: option[lang] })),
+      options,
       ...(show === undefined ? {} : { show }),
     };
   }
-  for (const step of template.steps) refs.set(step.key, ids('s'));
+  for (const step of template.steps) refs.set(step.key, keep ? step.key : ids('s'));
   const ref = (key: string) => refs.get(key) ?? key;
+  for (const part of template.parts) {
+    const made = parts[ref(part.key)];
+    if (!made) continue;
+    if (part.initial !== undefined) {
+      const options = choices.get(part.key) ?? [];
+      const at = part.optionKeys?.indexOf(part.initial) ?? -1;
+      const position = /^\d+$/.test(part.initial) ? Number(part.initial) : at;
+      made.initial = part.kind === 'choice' ? (options[position] ?? part.initial) : part.initial;
+    }
+    if (part.guard)
+      made.guard = {
+        push: part.guard.push.map(ref),
+        ...(part.guard.repo === undefined ? {} : { repo: ref(part.guard.repo) }),
+      };
+  }
   const words = (text: Words | undefined) =>
-    (text?.[lang] ?? '').replace(/@\{([a-z]+)\}/g, (_, key: string) => `@[${ref(key)}]`);
+    (text?.[lang] ?? '').replace(/@\{([a-z_]+)\}/g, (_, key: string) => `@[${ref(key)}]`);
   const steps: Step[] = template.steps.map((step) => ({
     id: ref(step.key),
     name: step.name[lang],
@@ -568,15 +628,49 @@ export function instantiate(
     reviewer: step.reviewer,
     hand: step.hand.map(([key, req, fresh]) => ({ ref: ref(key), req, fresh: fresh ?? false })),
     ways: (step.ways ?? []).map((way) => (way === DONE ? DONE : ref(way))),
-    back: SAME,
-    instructions: { take: words(step.take), before: words(step.before), review: '' },
+    back: step.back === undefined ? SAME : ref(step.back),
+    instructions: {
+      take: words(step.take),
+      before: words(step.before),
+      review: words(step.review),
+    },
+    ...stepDefaults(),
+    note: step.note ? { req: 'always', hint: step.note[lang] } : { req: 'no', hint: '' },
+    waits: [...(step.waits ?? [])],
+    skipWhenReady: step.skip === true,
+    doerMayDrop: step.drop === true,
   }));
-  const layout = Object.fromEntries(Object.values(parts).map((p) => [p.id, defaultZone(p.kind)]));
-  const row = Object.values(parts)
-    .filter(({ kind }) => kind === 'level' || kind === 'choice')
-    .slice(0, 2)
-    .map(({ id }) => id);
+  const layout: Record<string, Zone> = Object.fromEntries(
+    Object.values(parts).map((p) => [p.id, defaultZone(p.kind)]),
+  );
+  // A board where someone reviews shows the rounds in the main column, first.
+  const reviewed = steps.some(({ reviewer }) => reviewer !== 'none');
+  const placed: Record<string, Zone> = reviewed ? { [ROUNDS]: 'main' } : {};
+  for (const [key, zone] of Object.entries(template.layout ?? {})) placed[ref(key)] = zone;
+  const ordered = {
+    ...placed,
+    ...Object.fromEntries(Object.entries(layout).filter(([id]) => !(id in placed))),
+  };
+  const row = template.row
+    ? template.row.map(ref)
+    : Object.values(parts)
+        .filter(({ kind }) => kind === 'level' || kind === 'choice')
+        .slice(0, 2)
+        .map(({ id }) => id);
+  const group = template.list?.group;
+  const motives = (template.motives ?? []).map(([key, name]) => ({
+    id: keep ? key : ids('c'),
+    name: name[lang],
+  }));
   return {
+    ...boardDefaults(),
+    drop: { by: template.dropBy ?? 'anyone', motives },
+    list: {
+      as: template.list?.as ?? 'list',
+      ...(group === undefined
+        ? {}
+        : { group: group === STEP || group === MOTIVE ? group : ref(group) }),
+    },
     schema: BOARD_SCHEMA,
     name: names.name?.trim() || template.board[lang],
     item: names.item?.trim() || template.item[lang],
@@ -586,7 +680,7 @@ export function instantiate(
     form: template.form.map(([key, required]) => ({ ref: ref(key), required })),
     steps,
     anytime: template.anytime.map(ref),
-    layout,
+    layout: ordered,
     row,
     about: words(template.about),
     idle: words(template.idle),
@@ -627,6 +721,7 @@ export function blankBoard(
   ids: IdSource = newId,
 ): BoardDefinition {
   return {
+    ...boardDefaults(),
     schema: BOARD_SCHEMA,
     name: names.name.trim(),
     item: names.item?.trim() || BLANK.item[lang],
@@ -644,10 +739,11 @@ export function blankBoard(
         ways: [],
         back: SAME,
         instructions: { take: '', before: '', review: '' },
+        ...stepDefaults(),
       },
     ],
     anytime: [],
-    layout: {},
+    layout: { [ROUNDS]: 'main' },
     row: [],
     about: '',
     idle: '',

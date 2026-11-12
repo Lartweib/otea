@@ -16,7 +16,7 @@ export const boardStudio = {
   'bs.problem.when_unreadable':
     '{part} in {step} is required only when…, but reads nothing the item already carries. Pick a choice, level or yes-or-no field asked for before it.',
   'bs.problem.way_invalid':
-    'A way out of {step} goes back. Ways only lead to a later step or to Done.',
+    'A way out of {step} leads to the step itself or to a step that no longer exists. Pick another step or Done.',
   'bs.problem.back_invalid':
     'A send-back in {step} lands on a later step. It can only return to this step or an earlier one.',
   'bs.problem.cap_invalid': 'The cap has to be at least 1.',
@@ -24,6 +24,17 @@ export const boardStudio = {
   'bs.problem.self_review': 'In {step} you do it and review it: the same as nobody reviewing it.',
   'bs.problem.agent_closes':
     'Only you call something done: in {step} an agent would close it. Review it yourself before Done.',
+  'bs.problem.wait_no_split': '{step} waits for its parts, but {board} divides into nothing.',
+  'bs.problem.skip_invalid':
+    '“Starts straight at…” only works on the first step, and only when nobody reviews it. Take it off {step}.',
+  'bs.problem.split_cycle':
+    '{board} divides into {other} and {other} into {board}: an item would end up part of itself.',
+  'bs.problem.split_unknown':
+    'Each item of {board} divides into a board that no longer exists. Pick another in About the board.',
+  'bs.problem.guard_no_push': '“{part}” is protected but cannot be pushed in any step.',
+  'bs.problem.initial_invalid': '{part} starts with a value it no longer has. Pick another.',
+  'bs.problem.motive_agent_drop':
+    'With discard motives, an agent that drops in {step} has to pick one.',
   'bs.use.title': 'the title',
   'bs.use.field': 'a field',
   'bs.use.evidence': 'a piece of evidence',
@@ -59,6 +70,39 @@ export const boardStudio = {
   'bs.change.board_instructions': 'The board’s instructions change.',
   'bs.change.cap_on': 'Cap: agents add items only while fewer than {n} wait for you.',
   'bs.change.cap_off': 'No cap.',
+  'bs.change.skip_on': 'If it already has everything when created, it starts at {to}.',
+  'bs.change.skip_off': 'Every new item starts at {name}, even when it already has everything.',
+  'bs.change.way_back_on': '{name}: whoever does it can take it back to {to}, saying why.',
+  'bs.change.give_back_on': '{name} can give it back to {to}, with a note.',
+  'bs.change.way_back_off': '{name} can no longer go back to {to}.',
+  'bs.change.note_on': '{name} asks for a note with every handoff.',
+  'bs.change.note_off': '{name} no longer asks for a note.',
+  'bs.change.waits_parts': '{name} is not handed off while any {board} are unfinished.',
+  'bs.change.waits_parts_any': 'parts',
+  'bs.change.waits_blockers': '{name} is not handed off while anything unfinished holds it back.',
+  'bs.change.waits_both':
+    '{name} is not handed off while any {board} are unfinished, nor while anything unfinished holds it back.',
+  'bs.change.waits_none': '{name} no longer waits for anything to be handed off.',
+  'bs.change.doer_drop_on': 'In {name}, whoever does it can also drop it, saying why.',
+  'bs.change.doer_drop_off': 'In {name}, whoever does it can no longer drop it.',
+  'bs.change.guard_on':
+    'Otea protects the {part}: it is pushed only while {steps} is being done, and merged once it is Done.',
+  'bs.change.guard_off': 'Otea no longer protects the {part}.',
+  'bs.change.initial_on': 'Every new item starts with {part}: {value}.',
+  'bs.change.initial_off': '{part} no longer has a start value.',
+  'bs.change.split_on': 'Each item divides into {board}.',
+  'bs.change.split_always': 'Each item divides into {board}, and each part always belongs to one.',
+  'bs.change.split_off': 'Items no longer divide into anything.',
+  'bs.change.motives_on': 'Dropping names a motive: {names}.',
+  'bs.change.motives_off': 'Dropping no longer names a motive.',
+  'bs.change.drop_by_page': 'You drop items, from the page only.',
+  'bs.change.drop_by_anyone': 'You drop items, from the page or by asking an agent.',
+  'bs.change.list': 'The list shows as a {as}.',
+  'bs.change.list_grouped': 'The list shows as a {as}, grouped by {group}.',
+  'bs.change.list_list': 'List',
+  'bs.change.list_table': 'Table',
+  'bs.change.group_step': 'Step',
+  'bs.change.group_motive': 'Motive',
   'bs.req.always': 'required',
   'bs.req.always_fresh': 'required and new each round',
   'bs.req.when': 'required only sometimes',

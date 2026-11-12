@@ -17,7 +17,7 @@ export const boardStudio = {
   'bs.problem.when_unreadable':
     '{part} en {step} es obligatorio solo cuando…, pero no lee nada que el ítem ya traiga. Elige un campo de opción, nivel o sí o no que se pida antes.',
   'bs.problem.way_invalid':
-    'Un camino de {step} vuelve atrás. Los caminos solo van a un paso posterior o a Hecho.',
+    'Un camino de {step} lleva al mismo paso o a un paso que ya no existe. Elige otro paso o Hecho.',
   'bs.problem.back_invalid':
     'Si lo devuelves en {step}, vuelve a un paso posterior. Solo puede volver a este paso o a uno anterior.',
   'bs.problem.cap_invalid': 'El tope tiene que ser al menos 1.',
@@ -26,6 +26,17 @@ export const boardStudio = {
   'bs.problem.self_review': 'En {step} lo haces y lo revisas tú: es lo mismo que nadie lo revise.',
   'bs.problem.agent_closes':
     'Solo tú das algo por hecho: en {step} lo cerraría un agente. Revísalo tú antes de Hecho.',
+  'bs.problem.wait_no_split': '{step} espera a sus partes, pero {board} no se divide en nada.',
+  'bs.problem.skip_invalid':
+    '«Empieza directamente en…» solo vale en el primer paso, y solo si nadie lo revisa. Quítalo de {step}.',
+  'bs.problem.split_cycle':
+    '{board} se divide en {other} y {other} en {board}: un ítem acabaría siendo parte de sí mismo.',
+  'bs.problem.split_unknown':
+    'Cada ítem de {board} se divide en un tablero que ya no existe. Elige otro en Sobre el tablero.',
+  'bs.problem.guard_no_push': '«{part}» está protegida pero no se puede subir en ningún paso.',
+  'bs.problem.initial_invalid': '{part} empieza en un valor que ya no tiene. Elige otro.',
+  'bs.problem.motive_agent_drop':
+    'Con motivos de descarte, un agente que descarta en {step} tiene que elegir uno.',
   'bs.use.title': 'el título',
   'bs.use.field': 'un campo',
   'bs.use.evidence': 'una evidencia',
@@ -60,6 +71,39 @@ export const boardStudio = {
   'bs.change.board_instructions': 'Cambian las instrucciones del tablero.',
   'bs.change.cap_on': 'Tope: los agentes añaden ítems solo mientras menos de {n} esperan por ti.',
   'bs.change.cap_off': 'Sin tope.',
+  'bs.change.skip_on': 'Si al crearlo ya trae todo, empieza en {to}.',
+  'bs.change.skip_off': 'Cada ítem nuevo empieza en {name}, aunque ya traiga todo.',
+  'bs.change.way_back_on': '{name}: quien lo hace puede regresarlo a {to} diciendo por qué.',
+  'bs.change.give_back_on': '{name} puede devolverlo a {to}, con una nota.',
+  'bs.change.way_back_off': 'Desde {name} ya no se puede regresar a {to}.',
+  'bs.change.note_on': '{name} pide una nota en cada entrega.',
+  'bs.change.note_off': '{name} ya no pide una nota al entregar.',
+  'bs.change.waits_parts': '{name} no se entrega mientras haya {board} sin terminar.',
+  'bs.change.waits_parts_any': 'partes',
+  'bs.change.waits_blockers': '{name} no se entrega mientras lo frene algo sin terminar.',
+  'bs.change.waits_both':
+    '{name} no se entrega mientras haya {board} sin terminar, ni mientras lo frene algo sin terminar.',
+  'bs.change.waits_none': '{name} ya no espera nada para entregarse.',
+  'bs.change.doer_drop_on': 'En {name}, quien lo hace también puede descartarlo, diciendo por qué.',
+  'bs.change.doer_drop_off': 'En {name}, quien lo hace ya no puede descartarlo.',
+  'bs.change.guard_on':
+    'Otea protege la {part}: se sube solo mientras se hace {steps}, y se fusiona cuando está Hecho.',
+  'bs.change.guard_off': 'Otea ya no protege la {part}.',
+  'bs.change.initial_on': 'Cada ítem nuevo empieza con {part}: {value}.',
+  'bs.change.initial_off': '{part} ya no tiene valor de inicio.',
+  'bs.change.split_on': 'Cada ítem se divide en {board}.',
+  'bs.change.split_always': 'Cada ítem se divide en {board}, y cada parte siempre pertenece a uno.',
+  'bs.change.split_off': 'Los ítems ya no se dividen en nada.',
+  'bs.change.motives_on': 'Al descartar se elige un motivo: {names}.',
+  'bs.change.motives_off': 'Al descartar ya no se elige un motivo.',
+  'bs.change.drop_by_page': 'Descartar lo haces tú, solo desde la página.',
+  'bs.change.drop_by_anyone': 'Descartar lo haces tú, desde la página o pidiéndoselo a un agente.',
+  'bs.change.list': 'La lista se ve como {as}.',
+  'bs.change.list_grouped': 'La lista se ve como {as}, agrupada por {group}.',
+  'bs.change.list_list': 'Lista',
+  'bs.change.list_table': 'Tabla',
+  'bs.change.group_step': 'Paso',
+  'bs.change.group_motive': 'Motivo',
   'bs.req.always': 'obligatorio',
   'bs.req.always_fresh': 'obligatorio y nuevo en cada ronda',
   'bs.req.when': 'obligatorio solo a veces',

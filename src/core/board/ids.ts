@@ -53,6 +53,10 @@ export function freshIds(def: BoardDefinition, ids: IdSource = newId): BoardDefi
   }
   out.parts = parts;
   for (const step of out.steps) map.set(step.id, ids('s'));
+  out.drop = {
+    ...out.drop,
+    motives: out.drop.motives.map((motive) => ({ ...motive, id: ids('c') })),
+  };
   const ref = (old: string) => (old === TITLE ? TITLE : (map.get(old) ?? old));
   const target = (old: string) => (old === DONE || old === SAME ? old : ref(old));
   for (const step of out.steps) {
@@ -74,6 +78,16 @@ export function freshIds(def: BoardDefinition, ids: IdSource = newId): BoardDefi
       review: rewriteMentions(step.instructions.review, map),
     };
   }
+  for (const part of Object.values(out.parts)) {
+    if (part.initial !== undefined)
+      part.initial = choiceMaps.get(part.id)?.get(part.initial) ?? part.initial;
+    if (part.guard)
+      part.guard = {
+        push: part.guard.push.map(ref),
+        ...(part.guard.repo === undefined ? {} : { repo: ref(part.guard.repo) }),
+      };
+  }
+  if (out.list.group !== undefined) out.list = { ...out.list, group: ref(out.list.group) };
   out.form = out.form.map((entry) => ({ ...entry, ref: ref(entry.ref) }));
   out.anytime = out.anytime.map(ref);
   out.row = out.row.map(ref);
