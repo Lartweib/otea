@@ -232,3 +232,12 @@
 .tabla .sec h2 {
   font-size: 18px;
 }
+
+/* an ended item says only its motive, or "—", under Turno */
+.tabla .who .endt {
+  font: 400 12.5px / 1 var(--sans);
+  color: var(--ink-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

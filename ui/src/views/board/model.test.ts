@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { compileBoard } from '../../../../src/core/board/compile.ts';
-import { creatures } from '../../../../src/core/board/testing.ts';
+import { creatures, errores as erroresBoard } from '../../../../src/core/board/testing.ts';
 import { typeViews } from '../../../../src/core/views.ts';
 import type { FeedEvent } from '../../activity.ts';
 import { agent, ago, inMinutes, item, moved, NOW, officialType } from '../../derive/fixtures.ts';
@@ -19,12 +19,14 @@ import {
   groupBoard,
   groupOptions,
   holds,
+  motivesOf,
   pasosCards,
   pasosColumns,
   roundOf,
   signalOf,
   sortBoard,
   stepsStrip,
+  valueText,
 } from './model.ts';
 
 const bug = officialType('bug-triage');
@@ -442,5 +444,78 @@ describe('what a board row says', () => {
     expect(signalOf(item({ id: 'A', fields: { priority: 'high' } }), tareas)).toBe('High');
     expect(t).toBeDefined();
     expect(signalOf(item({ id: 'B', fields: { category: 'crash' } }), errores)).toBe('crash');
+  });
+});
+
+// A board with discard motives (Rechazado, Duplicado): each is a closed state dropped__<id>, its
+// label the motive's name. The board groups and filters by motive, and plain "dropped" holds the
+// discards from before the motives.
+describe('the motives a board discards with', () => {
+  const preset = compileBoard('berr', 1, erroresBoard());
+  const [type] = typeViews(preset.types);
+  const bugs: CollectionView = {
+    name: 'Errores',
+    prefix: 'ERR',
+    preset: 'berr',
+    icon: null,
+    types: [type as unknown as CollectionView['types'][number]],
+    view: { kind: 'grid', groupBy: 'state', columns: ['id', 'title', 'state', 'who'] },
+  };
+  const c = ctx(bugs);
+  const items = [
+    item({ id: 'E-1', collection: 'Errores', state: 'sfill', turn: 'agent' }),
+    item({
+      id: 'E-2',
+      collection: 'Errores',
+      state: 'dropped__duplicate',
+      turn: 'none',
+      closes: 'discarded',
+    }),
+    item({
+      id: 'E-3',
+      collection: 'Errores',
+      state: 'dropped__rejected',
+      turn: 'none',
+      closes: 'discarded',
+    }),
+    item({ id: 'E-4', collection: 'Errores', state: 'dropped', turn: 'none', closes: 'discarded' }),
+    item({ id: 'E-5', collection: 'Errores', state: 'done', turn: 'none', closes: 'done' }),
+  ];
+
+  it('are read from the board’s closed states, in its order, by their names', () => {
+    expect(motivesOf(bugs)).toEqual([
+      { id: 'rejected', name: 'Rechazado' },
+      { id: 'duplicate', name: 'Duplicado' },
+    ]);
+    expect(motivesOf(errores)).toEqual([]);
+  });
+
+  it('are what an item holds: its motive, plain dropped, or nothing while it is open or done', () => {
+    expect(items.map((it) => holds(it, 'motive', c))).toEqual([
+      '',
+      'duplicate',
+      'rejected',
+      'dropped',
+      '',
+    ]);
+  });
+
+  it('group the board in the board’s order, by name', () => {
+    const groups = groupBoard(items, 'motive', c);
+    expect(groups.map((g) => [g.title, g.items.map((it) => it.id)])).toEqual([
+      ['Rechazado', ['E-3']],
+      ['Duplicado', ['E-2']],
+      ['No motive', ['E-4']],
+      ['—', ['E-1', 'E-5']],
+    ]);
+  });
+
+  it('are a grouping and a filter only on a board that has them', () => {
+    expect(groupOptions(bugs).some((o) => o.key === 'motive')).toBe(true);
+    expect(filterKeys(bugs).some((o) => o.key === 'motive')).toBe(true);
+    expect(groupOptions(errores).some((o) => o.key === 'motive')).toBe(false);
+    const only = applyFilters(items, { motive: ['duplicate'] }, c);
+    expect(only.map((it) => it.id)).toEqual(['E-2']);
+    expect(valueText('motive', 'duplicate', c)).toBe('Duplicado');
   });
 });
