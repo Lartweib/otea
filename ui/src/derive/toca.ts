@@ -1,6 +1,7 @@
 import { positionOf } from '../../../src/core/board/engine.ts';
 import { activeLease } from '../active-lease.ts';
 import type { FeedEvent } from '../activity.ts';
+import { onPublishedBoard } from '../board-studio/home/boards-store.ts';
 import type { Item, TypeView } from '../types.ts';
 
 // The sections of Te toca (SPEC §6.7). Otea has no "question" or "own step" in its data, so they are
@@ -70,11 +71,18 @@ export function leftFor(events: readonly LeaseEvent[]): string | null | undefine
 // Who has the item: the lease holder, else the one whose lease ran out, else the agent you left it
 // for (Reasignar) or none (Retomar: any agent may take it) until an agent takes it or it moves,
 // else the last agent that acted on it.
-export function agentOf(item: Item, feed: readonly FeedEvent[]): string | null {
+// On a published board, an agent's step nobody holds waits for whichever agent takes it, as the
+// item page says: the last agent that acted on it is not its doer.
+export function agentOf(
+  item: Item,
+  feed: readonly FeedEvent[],
+  onBoard: (collection: string) => boolean = onPublishedBoard,
+): string | null {
   if (item.lease) return item.lease.holder;
   if (item.expiredLease) return item.expiredLease.holder;
   const left = leftFor(feed.filter((e) => e.itemId === item.id));
   if (left !== undefined) return left;
+  if (item.turn === 'agent' && onBoard(item.collection)) return null;
   const last = feed.findLast((event) => event.itemId === item.id && event.actor.kind === 'agent');
   return last ? last.actor.name : null;
 }
