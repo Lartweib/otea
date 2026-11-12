@@ -58,6 +58,22 @@ describe('boardItemOf: the item page reads a published board through the step en
     ).toBe('scout');
   });
 
+  it('counts the round from a migration as the engine does: its question opens the next round', () => {
+    const otea = { kind: 'human' as const, name: 'otea' };
+    const reading = (data: Record<string, unknown>): ItemEvent => ({
+      ...moved('needs_info', 'sconcept', otea, '2026-01-03T00:00:00Z'),
+      data: { from: 'needs_info', to: 'sconcept', reason: 'migrate', ...data },
+    });
+    const before = [
+      created('reported'),
+      moved('reported', 'needs_info', you, '2026-01-02T00:00:00Z'),
+    ];
+    const asked = [...before, reading({ note: '¿Qué versión?' })];
+    expect(boardItemOf(creatures(), item('sconcept', asked), words)?.round).toBe(2);
+    const plain = [...before, reading({})];
+    expect(boardItemOf(creatures(), item('sconcept', plain), words)?.round).toBe(1);
+  });
+
   it('counts the round per step and draws the send-back where it came from', () => {
     const events = [
       created('sconcept'),
@@ -297,9 +313,38 @@ describe('roundNotes: each round of the step with its notes', () => {
         ],
       },
     ]);
+    // A reading without a question starts the step afresh, as the engine reads it.
     expect(roundNotes(errores(), 'sfill', [created('sfill'), migrate({})])).toEqual([
       { round: 1, notes: [] },
-      { round: 2, notes: [] },
+    ]);
+  });
+
+  it('starts at the migration as the engine does: the preset states before it open no round', () => {
+    const otea = { kind: 'human' as const, name: 'otea' };
+    const at = '2026-01-03T00:00:00Z';
+    const events: ItemEvent[] = [
+      created('reported'),
+      said(moved('reported', 'needs_info', you, '2026-01-02T00:00:00Z'), '¿Qué versión?'),
+      {
+        ...moved('needs_info', 'sfill', otea, at),
+        data: { from: 'needs_info', to: 'sfill', reason: 'migrate', note: '¿Qué versión?' },
+      },
+    ];
+    const block = {
+      parts: [],
+      partsBoard: null,
+      blockers: [],
+      blocking: [],
+      notes: [{ step: 'sfill', round: 2, note: '¿Qué versión?', at, by: 'fede' }],
+      gates: null,
+      branch: null,
+    };
+    expect(roundNotes(errores(), 'sfill', events, block)).toEqual([
+      { round: 1, notes: [] },
+      {
+        round: 2,
+        notes: [{ kind: 'back', text: '¿Qué versión?', by: '', person: true, at }],
+      },
     ]);
   });
 
