@@ -36,6 +36,8 @@ export function todayCounts(feed: readonly FeedEvent[], ctx: TodayContext): Toda
   const out: Today = { handed: 0, approved: 0, sent: 0 };
   for (const e of feed) {
     if (e.type !== 'transitioned' || Date.parse(e.at) < from) continue;
+    // Otea reading an item onto its board is nobody's approval or send-back.
+    if (e.data.reason === 'migrate') continue;
     const to = stateOf(e.itemId, String(e.data.to));
     if (!to) continue;
     // A relayed move is the person's words, carried by an agent.
