@@ -28,6 +28,20 @@ describe('problemText', () => {
     );
   });
 
+  it('counts uses of one kind instead of repeating them', () => {
+    const def = creatures();
+    def.steps[1] = { ...(def.steps[1] ?? step('x', 'x')), name: 'Concepto' };
+    const problem = problemsOf(def, {
+      agents: [
+        { name: 'kiln', connected: true },
+        { name: 'scout', connected: true },
+      ],
+    }).find(({ code }) => code === 'duplicate_name');
+    if (!problem) throw new Error('fixture');
+    setLanguage('es');
+    expect(problemText(problem)).toMatch(/^«Concepto» se usa para 2 pasos\./);
+  });
+
   it('words an offline agent as the warning it is', () => {
     const [problem] = problemsOf(creatures(), { agents: [{ name: 'kiln', connected: true }] });
     if (!problem) throw new Error('fixture');
