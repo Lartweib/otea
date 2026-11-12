@@ -731,7 +731,10 @@ export function instantiateSet(
   const parent = split ? defs[split.parent] : undefined;
   const child = split ? boards[split.child] : undefined;
   if (split && parent && child) parent.split = { board: child.id, always: split.always };
-  for (const def of defs) def.template = set.key;
+  defs.forEach((def, index) => {
+    def.template = set.key;
+    def.madeWith = boards.filter((_, other) => other !== index).map(({ id }) => id);
+  });
   return defs;
 }
 
