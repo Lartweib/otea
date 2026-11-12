@@ -22,6 +22,7 @@ const WHAT: Record<FieldModule | ModuleKind, PlainKey> = {
   diff: 'studio.add.diff',
   log: 'studio.add.log',
   diagram: 'studio.add.diagram',
+  files: 'studio.add.log',
   rounds: 'studio.add.rounds',
   options: 'studio.add.options',
   questions: 'studio.add.rounds',

@@ -9,7 +9,8 @@ export const SEVERITY_SCALE = ['low', 'medium', 'high', 'critical'] as const;
 
 export type FieldModule = (typeof FIELD_MODULES)[number];
 
-export const EVIDENCE_MODULES = ['images', 'recording', 'diff', 'log', 'diagram'] as const;
+// `files` takes what no other module draws (audio, and any other file), offered for download.
+export const EVIDENCE_MODULES = ['images', 'recording', 'diff', 'log', 'diagram', 'files'] as const;
 
 export type EvidenceModule = (typeof EVIDENCE_MODULES)[number];
 
@@ -134,6 +135,7 @@ export const MODULE_REGISTRY: Readonly<Record<ModuleKind, ModuleSpec>> = {
   score: reserved('header', 'side', 'row'),
   options: reserved('body', 'phone'),
   diagram: evidence(['diagram']),
+  files: evidence(['audio', 'file']),
 };
 
 function isModule(name: string): name is ModuleKind {
@@ -171,7 +173,7 @@ type Reading = { entry?: LayoutEntry; problems: string[] };
 
 // What an `accepts` entry names: an evidence kind (`image`) or an extension (`png`, `.png`).
 function acceptedKind(accept: string): EvidenceKind | undefined {
-  const known: readonly string[] = ['image', 'video', 'diff', 'log', 'diagram'];
+  const known: readonly string[] = ['image', 'video', 'audio', 'diff', 'log', 'diagram', 'file'];
   if (known.includes(accept)) return accept as EvidenceKind;
   const { kind } = evidenceTypeOf(`file.${accept}`);
   return kind === 'file' ? undefined : kind;

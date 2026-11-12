@@ -76,7 +76,7 @@ export type State = {
 
 export type EvidenceRole = 'before' | 'after' | 'single';
 
-export type EvidenceKind = 'image' | 'video' | 'diff' | 'log' | 'diagram' | 'file';
+export type EvidenceKind = 'image' | 'video' | 'audio' | 'diff' | 'log' | 'diagram' | 'file';
 
 // A file an agent attached as proof. Before/after carry no pair id: the latest of each pair up.
 export type Evidence = {

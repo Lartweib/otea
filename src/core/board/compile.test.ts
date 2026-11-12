@@ -95,6 +95,22 @@ describe('compileBoard', () => {
     ]);
   });
 
+  it('draws audio and other files with the files module, so agents can attach them', () => {
+    const def = creatures();
+    def.parts.evoice = { id: 'evoice', name: 'Voz', kind: 'audio', hint: '', options: [] };
+    def.parts.efile = { id: 'efile', name: 'Proyecto', kind: 'file', hint: '', options: [] };
+    def.steps[0]?.hand.push(
+      { ref: 'evoice', req: 'no', fresh: false },
+      { ref: 'efile', req: 'no', fresh: false },
+    );
+    def.layout.efile = 'side';
+
+    const layout = compileBoard('bcria', 1, def).types[0]?.layout;
+
+    expect(layout?.body).toContainEqual({ module: 'files', id: 'evoice', label: 'Voz' });
+    expect(layout?.side).toContainEqual({ module: 'files', id: 'efile', label: 'Proyecto' });
+  });
+
   it('compiles every template and a blank board', () => {
     for (const template of TEMPLATES) {
       for (const lang of ['en', 'es'] as const) {
