@@ -111,3 +111,12 @@ describe('who handed an item over, and who has it', () => {
     expect(agentOf(item({ id: 'Q' }), feed)).toBeNull();
   });
 });
+
+describe('agentOf on a board', () => {
+  it('names no agent for an agent’s step nobody holds, whoever acted on it last', () => {
+    const feed = [moved('A', 'sfill', agent('kiln'), { reason: 'Falta la versión.' })];
+    const waiting = item({ id: 'A', turn: 'agent', state: 'sfill' });
+    expect(agentOf(waiting, feed, () => true)).toBeNull();
+    expect(agentOf(waiting, feed, () => false)).toBe('kiln');
+  });
+});
