@@ -844,7 +844,15 @@ export function act(
     ...run.log.filter(({ id, entry }) => id !== before.id || kept.has(entry)),
     ...after.log.filter((entry) => !known.has(entry)).map((entry) => ({ id: after.id, entry })),
   ];
-  const items = run.items.map((item, i) => (i === k ? { ...after, parts: item.parts } : item));
+  // A part that moves makes the parent's refusal about its parts or their reopening stale.
+  const stale = (said: PracticeSaid | null | undefined) =>
+    said?.kind === 'waited' || said?.kind === 'approvalRefused';
+  const moved = k !== 0 && JSON.stringify(after.position) !== JSON.stringify(before.position);
+  const items = run.items.map((item, i) => {
+    if (i === k) return { ...after, parts: item.parts };
+    if (i === 0 && moved && stale(item.said)) return { ...item, said: null };
+    return item;
+  });
   return { ...run, items, log };
 }
 

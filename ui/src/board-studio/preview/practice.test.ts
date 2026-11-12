@@ -322,6 +322,14 @@ describe('practice: a pair', () => {
     expect(r.log.at(-1)).toEqual({ id: 'CAM-1', entry: { kind: 'done', id: 'CAM-1' } });
   });
 
+  it('drops the parent’s refusal once a part moves, so it never reads stale', () => {
+    let r = addPart(atExecute(run()));
+    r = act(r, (s, child) => handOff(s, withChild(child)));
+    expect(focused(r).said).toMatchObject({ kind: 'waited' });
+    r = quickStep(r, 1);
+    expect(r.items[0]?.said).toBeNull();
+  });
+
   it('plays a part in full from its focus', () => {
     let r = focusOn(addPart(run()), 1);
     r = act(r, (s) => handOff(fillPart(s, 'fwhat')));
