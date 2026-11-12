@@ -133,7 +133,7 @@ describe('restorePair', () => {
       const def = getBoardRecord(ctx, id).live?.definition;
       return Object.fromEntries((def?.form ?? []).map(({ ref }) => [ref, 'api']));
     };
-    createItem(ctx, {
+    const change = createItem(ctx, {
       collection: 'Cambios',
       title: 'Nube',
       fields: formOf(ids.parent),
@@ -143,8 +143,10 @@ describe('restorePair', () => {
     const child = getBoardRecord(ctx, ids.child).live?.definition;
     const idOf = (name: string) =>
       Object.values(child?.parts ?? {}).find((part) => part.name === name)?.id ?? name;
+    // A Tarea de repo is always part of a Cambio.
     createItem(ctx, {
       collection: 'Tareas de repo',
+      parent: change.id,
       title: 'API',
       fields: {
         ...formOf(ids.child),
