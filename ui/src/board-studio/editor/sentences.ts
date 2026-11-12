@@ -114,7 +114,6 @@ const agentWord = (step: Step) =>
   step.doer === 'any' ? t('bs.editor.an_agent') : isAgent(step.doer) ? step.doer.agent : '';
 
 export function stepConseq(
-  def: BoardDefinition,
   step: Step,
   agents: readonly { name: string; connected: boolean }[],
 ): Sentence[] {
