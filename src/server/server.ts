@@ -7,7 +7,14 @@ import { listCollectionViews } from '../app/collections.ts';
 import { deviceByToken, touchDevice } from '../app/devices.ts';
 import { listEvents } from '../app/events.ts';
 import { createItemWithEvidence } from '../app/intake.ts';
-import { createItem, type ListItemsFilter, listItems, moveItem, showItem } from '../app/items.ts';
+import {
+  createItem,
+  type ListItemsFilter,
+  listItems,
+  moveItem,
+  showItem,
+  updateItem,
+} from '../app/items.ts';
 import { listAgents, presenceSignature } from '../app/presence.ts';
 import { listPresetViews } from '../app/preset-views.ts';
 import { type Env, type Project, projectView } from '../app/project.ts';
@@ -73,6 +80,7 @@ import {
   reassignRequest,
   relinkRequest,
   undoRequest,
+  updateRequest,
 } from './writes.ts';
 
 export type OteaServer = {
@@ -250,6 +258,17 @@ function api(
         assertWritable(c, auth);
         const request = await moveRequest(c);
         const item = moveItem(project, { id: c.req.param('id'), ...request, ...HUMAN_IN_UI });
+        feed.notify();
+        return c.json(item);
+      })
+      .post('/items/:id/update', async (c) => {
+        assertWritable(c, auth);
+        const { fields } = await updateRequest(c);
+        const item = updateItem(project, {
+          id: c.req.param('id'),
+          fields,
+          actor: HUMAN_IN_UI.actor,
+        });
         feed.notify();
         return c.json(item);
       })

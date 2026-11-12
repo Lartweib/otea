@@ -11,6 +11,7 @@ import {
   initialPosition,
   isClosed,
   type Linked,
+  type Missing,
   type MoveResult,
   mayTake,
   type Position,
@@ -261,6 +262,8 @@ export type BoardBlock = {
   notes: RoundNote[];
   gates: { push: GateAnswer; merge: GateAnswer } | null;
   branch: { value: string; repo?: string } | null;
+  // While its step is being done: what the handoff still lacks, as the engine checks it.
+  missing: Missing[];
 };
 
 function filled(value: unknown): value is string {
@@ -283,6 +286,10 @@ export function boardBlockOf(ctx: Context, item: ItemRecord): BoardBlock | undef
     notes: on.notes,
     gates: guarded ? { push: gate('push'), merge: gate('merge') } : null,
     branch: filled(value) ? { value, ...(filled(repo) ? { repo } : {}) } : null,
+    missing:
+      isClosed(on.position) || on.position.phase !== 'doing'
+        ? []
+        : handoffCheck(board.def, on.position.step, on.facts).missing,
   };
 }
 

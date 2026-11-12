@@ -82,6 +82,18 @@ export async function moveRequest(c: Context): Promise<MoveRequest> {
   return reason === undefined ? { to } : { to, reason };
 }
 
+const UpdateBody = z.object({ fields: z.record(z.string(), z.string()) });
+
+// The fields the person fills on the item page (its own step's "Rellenar").
+export async function updateRequest(c: Context): Promise<{ fields: Record<string, string> }> {
+  const raw: unknown = await c.req.json().catch(() => undefined);
+  const parsed = UpdateBody.safeParse(raw);
+  if (!parsed.success) {
+    throw new RejectedRequest(400, 'invalid_body', 'Expected {"fields": {[key]: string}}');
+  }
+  return { fields: parsed.data.fields };
+}
+
 const CreateBody = z.object({
   collection: z.string().min(1),
   type: z.string().min(1).optional(),
