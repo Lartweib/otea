@@ -234,7 +234,9 @@ export function compileBoard(id: string, version: number, def: BoardDefinition):
     evidence: [],
     body: [...evidenceEntries(top), ...zone('main')],
     side: [...zone('side'), { module: 'relations' }],
+    // A column of a part nothing uses any more has no field to read.
     row: def.row.flatMap((ref) => {
+      if (!used.has(ref)) return [];
       const part = partOf(def, ref);
       const entry = part && ref !== TITLE ? entryOf(part) : undefined;
       return entry?.field ? [entry] : [];
