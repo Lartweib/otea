@@ -34,7 +34,7 @@ const part = z.strictObject({
 
 const hand = z.strictObject({
   ref: id,
-  req: z.enum(['always', 'when', 'no']),
+  req: z.enum(['always', 'when', 'no'], { error: 'must be "always", "when" or "no"' }),
   when: z.strictObject({ part: id, value: z.string() }).optional(),
   fresh: z.boolean(),
 });
@@ -42,8 +42,12 @@ const hand = z.strictObject({
 const step = z.strictObject({
   id,
   name: z.string(),
-  doer: z.union([z.enum(['you', 'any']), agent]),
-  reviewer: z.union([z.enum(['none', 'you']), agent]),
+  doer: z.union([z.enum(['you', 'any']), agent], {
+    error: 'who does the step: "you", "any" or {"agent": "<name>"}',
+  }),
+  reviewer: z.union([z.enum(['none', 'you']), agent], {
+    error: 'who reviews the step: "none", "you" or {"agent": "<name>"}',
+  }),
   hand: z.array(hand),
   ways: z.array(id),
   back: id,
