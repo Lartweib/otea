@@ -332,6 +332,8 @@ export const studioPreview = {
   'bs.preview.try.log.blocked': 'Otea rechazó la entrega: {id} lo frena.',
   'bs.preview.try.log.withNote': ', con la nota «{note}»',
   'bs.preview.try.log.quickHandedYou': 'Entregaste {step} de {id}.',
+  'bs.preview.try.log.quickHandedYouAll': 'Entregaste {step} de {id}, con todo lo que pide.',
+  'bs.preview.try.log.quickHandedAll': '{who} entregó {step} de {id}, con todo lo que pide.',
   'bs.preview.try.log.quickHanded': '{who} entregó {step} de {id}.',
   'bs.preview.try.log.quickApprovedYou': 'Aprobaste {step} de {id} → {to}.',
   'bs.preview.try.log.quickApproved': '{who} aprobó {step} de {id} → {to}.',
