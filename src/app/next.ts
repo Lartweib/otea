@@ -1,6 +1,8 @@
 import type { Channel } from '../core/authority.ts';
 import {
   approve,
+  type DropVia,
+  drop,
   type GateAnswer,
   gateAt,
   handoff,
@@ -13,6 +15,7 @@ import {
   type Position,
   positionOf,
   type Rounds,
+  refusalCode,
   roundsOf,
   sendBack,
   stateOf,
@@ -22,15 +25,28 @@ import {
 import {
   type BoardDefinition,
   DONE,
+  DROPPED,
   guardedBranch,
   isAgent,
   type Reviewer,
   SAME,
   type Step,
   stepById,
+  stepIndex,
   type Target,
 } from '../core/board/model.ts';
-import { handedText, idleText, nextText, refusalText, wayByName } from '../core/board/next.ts';
+import {
+  approvalRefusalText,
+  droppedText,
+  dropRefusalText,
+  handedText,
+  idleText,
+  NOT_TAKEN_BACK,
+  nextText,
+  refusalText,
+  takenBackText,
+  wayByName,
+} from '../core/board/next.ts';
 import { evidenceByName, readFieldInput, stateByName, stateName } from '../core/board/reading.ts';
 import { readDefinition } from '../core/board/schema.ts';
 import { OteaError } from '../core/errors.ts';
@@ -367,9 +383,11 @@ export type BoardMoveInput = {
   id: string;
   actor: Actor;
   channel: Channel;
-  // The way picked, by its name (`Animar`, `Done`) or its step id.
+  // The way picked, by its name (`Animar`, `Done`, an earlier step to take it back to) or its id.
   way?: string;
   reason?: string;
+  // The note of the handoff ("Nota de la entrega"), kept with the round.
+  note?: string;
 };
 
 export type BoardMoveResult = { item: Item; text: string };
@@ -413,7 +431,8 @@ function refuse(
   result: Exclude<MoveResult, { ok: true }>,
 ): never {
   if (result.code === 'missing')
-    throw new OteaError('missing_fields', refusalText(item.id, result.missing));
+    throw new OteaError(refusalCode(result.missing), refusalText(item.id, result.missing));
+  if (result.code === 'reason_required') throw new OteaError('reason_required', NOT_TAKEN_BACK);
   if (result.code === 'bad_way')
     throw new OteaError('invalid_transition', `${item.id} cannot go that way from here`);
   if (result.code === 'not_yours') {
@@ -429,6 +448,12 @@ function refuse(
     'invalid_transition',
     `${item.id} ${PHASE_WORDS[result.code] ?? result.code}`,
   );
+}
+
+// An approval whose waits no longer hold (a part reopened, a blocker added during the review).
+function refuseApproval(item: ItemRecord, result: Exclude<MoveResult, { ok: true }>): never {
+  if (result.code !== 'missing') throw new Error('not an approval refusal');
+  throw new OteaError(refusalCode(result.missing), approvalRefusalText(item.id, result.missing));
 }
 
 // Whether the performer reviews the item now: the step's agent reviewer, or the person for their
@@ -454,24 +479,25 @@ function land(
   to: Position,
   input: BoardMoveInput,
   at: string,
-): BoardMoveResult {
+): Item {
   const lease = activeLease(item.lease, at);
   const data = {
     ...(input.reason ? { reason: input.reason } : {}),
+    ...(input.note?.trim() ? { note: input.note } : {}),
     channel: input.channel,
   };
-  const moved = landMove(
+  return landMove(
     ctx.db,
     workflowOf(ctx, item),
     item,
     { to: stateOf(to), actor: input.actor, at, lease },
     data,
   );
-  return { item: moved, text: handedText(board.def, item.id, to) };
 }
 
 // A handoff from the doing phase: refused, in the agent's words, while something required is
-// missing; otherwise to the review, or along the way picked.
+// missing (its parts, the note, what it waits for); otherwise to the review, or along the way
+// picked. A way back to an earlier step takes only a reason, and starts that step's next round.
 export function handoffItem(
   ctx: Context,
   input: BoardMoveInput,
@@ -485,16 +511,24 @@ export function handoffItem(
     const on = itemOnBoard(ctx, item, board.def);
     const way = wayOf(board.def, on.position, item.id, input.way);
     const by = { kind: input.actor.kind, name: input.actor.name };
-    const result = handoff(board.def, on.position, on.facts, {
+    const facts = input.note === undefined ? on.facts : { ...on.facts, note: input.note };
+    const result = handoff(board.def, on.position, facts, {
       by,
       ...(way === undefined ? {} : { way }),
+      ...(input.reason === undefined ? {} : { reason: input.reason }),
     });
     if (!result.ok) refuse(board.def, item, result);
-    return land(ctx, item, board, result.to, input, at);
+    const moved = land(ctx, item, board, result.to, input, at);
+    if (result.back && !isClosed(result.to)) {
+      const round = itemOnBoard(ctx, requireItem(ctx.db, item.id), board.def).round;
+      return { item: moved, text: takenBackText(board.def, item.id, result.to.step, round) };
+    }
+    return { item: moved, text: handedText(board.def, item.id, result.to) };
   });
 }
 
-// An approval from a review, along the way picked or the default.
+// An approval from a review, along the way picked or the default; what the step waits for is
+// checked again.
 export function approveItem(
   ctx: Context,
   input: BoardMoveInput,
@@ -507,9 +541,14 @@ export function approveItem(
     const position = positionOf(item.state);
     assertReviewer(board.def, item, input.actor);
     const way = wayOf(board.def, position, item.id, input.way);
-    const result = approve(board.def, position, way);
-    if (!result.ok) refuse(board.def, item, result);
-    return land(ctx, item, board, result.to, input, at);
+    const facts = itemOnBoard(ctx, item, board.def).facts;
+    const result = approve(board.def, position, way, facts);
+    if (!result.ok) {
+      if (result.code === 'missing') refuseApproval(item, result);
+      refuse(board.def, item, result);
+    }
+    const moved = land(ctx, item, board, result.to, input, at);
+    return { item: moved, text: handedText(board.def, item.id, result.to) };
   });
 }
 
@@ -533,25 +572,106 @@ export function sendBackItem(
     assertReviewer(board.def, item, input.actor);
     const result = sendBack(board.def, position);
     if (!result.ok) refuse(board.def, item, result);
-    return land(ctx, item, board, result.to, input, at);
+    const moved = land(ctx, item, board, result.to, input, at);
+    return { item: moved, text: handedText(board.def, item.id, result.to) };
   });
 }
 
+export type DropInput = {
+  id: string;
+  actor: Actor;
+  channel: Channel;
+  reason?: string;
+  // One of the board's motives, by its name (any case) or its id.
+  motive?: string;
+  // Who asks: the person on the page, the person through an agent (a relay), or an agent on its
+  // own. Read from the actor when left out.
+  via?: DropVia;
+};
+
+const DROP_CODES = {
+  not_open: 'item_closed',
+  reason_required: 'reason_required',
+  motive_required: 'reason_required',
+  not_droppable: 'forbidden',
+  not_relayable: 'not_relayable',
+} as const;
+
+// The motive a reader names (`--as "Duplicado"`, or its id); undefined when it names none.
+export function motiveByName(def: BoardDefinition, name?: string): string | undefined {
+  if (name === undefined) return undefined;
+  const wanted = name.trim().toLocaleLowerCase();
+  return def.drop.motives.find(
+    ({ id, name: said }) => id === name.trim() || said.trim().toLocaleLowerCase() === wanted,
+  )?.id;
+}
+
+function dropTarget(board: LiveBoard, item: ItemRecord, input: Omit<DropInput, 'id'>): Position {
+  const via: DropVia = input.via ?? (input.actor.kind === 'agent' ? 'agent' : 'page');
+  const motive = motiveByName(board.def, input.motive);
+  const result = drop(board.def, positionOf(item.state), {
+    by: { kind: input.actor.kind, name: input.actor.name },
+    via,
+    ...(input.reason === undefined ? {} : { reason: input.reason }),
+    ...(motive === undefined ? {} : { motive }),
+  });
+  if (!result.ok)
+    throw new OteaError(DROP_CODES[result.code], dropRefusalText(board.def, item.id, result.code));
+  return result.to;
+}
+
+// A discard (otea drop): always with a reason, with one of the board's motives when it has any; an
+// agent drops only while doing a step that lets it, a relay only where the person may discard
+// through an agent.
+export function dropItem(ctx: Context, input: DropInput, now = systemClock): BoardMoveResult {
+  return transaction(ctx.db, () => {
+    const item = requireItem(ctx.db, input.id);
+    const board = requireBoard(ctx, item);
+    const at = now();
+    if (input.actor.kind === 'agent' && input.via !== 'relay')
+      assertMayWrite(item.id, activeLease(item.lease, at), input.actor);
+    const to = dropTarget(board, item, input);
+    const moved = land(ctx, item, board, to, input, at);
+    return { item: moved, text: droppedText(board.def, item.id, to) };
+  });
+}
+
+// Whether a move into `target` from a review approves it: on to a later step or to Hecho.
+function approves(def: BoardDefinition, from: Position, target: Position): boolean {
+  if (isClosed(from) || from.phase === 'doing') return false;
+  if (isClosed(target)) return target.closed === DONE;
+  return target.phase === 'doing' && stepIndex(def, target.step) > stepIndex(def, from.step);
+}
+
+type MoveWords = { reason?: string; note?: string };
+
 // An agent's move along the compiled workflow is one of the engine's moves, checked as the engine
 // checks it: from a doing phase, the handoff this agent would make (into its review, yours when
-// the agent reviews the step itself, or along a way); from a review, an approval or a send-back
-// by the step's reviewer. So otea move cannot walk around who may act.
+// the agent reviews the step itself, along a way, or back to an earlier step) or its own drop;
+// from a review, an approval or a send-back by the step's reviewer. So otea move cannot walk
+// around who may act.
 function assertAgentMove(
   ctx: Context,
   board: LiveBoard,
   item: ItemRecord,
   to: string,
   actor: Actor,
+  words: MoveWords,
 ) {
   const on = itemOnBoard(ctx, item, board.def);
   const target = positionOf(to);
   const position = on.position;
   if (isClosed(position)) return;
+  if (isClosed(target) && target.closed === DROPPED) {
+    const motive = (target as { motive?: string }).motive;
+    dropTarget(board, item, {
+      actor,
+      channel: 'cli',
+      ...(words.reason === undefined ? {} : { reason: words.reason }),
+      ...(motive === undefined ? {} : { motive }),
+    });
+    return;
+  }
   if (position.phase === 'doing') {
     const way = isClosed(target)
       ? target.closed === DONE
@@ -560,10 +680,17 @@ function assertAgentMove(
       : target.step === position.step
         ? undefined
         : target.step;
-    const result = handoff(board.def, position, on.facts, {
-      by: { kind: 'agent', name: actor.name },
-      ...(way === undefined ? {} : { way }),
-    });
+    const note = words.note ?? words.reason;
+    const result = handoff(
+      board.def,
+      position,
+      note === undefined ? on.facts : { ...on.facts, note },
+      {
+        by: { kind: 'agent', name: actor.name },
+        ...(way === undefined ? {} : { way }),
+        ...(words.reason === undefined ? {} : { reason: words.reason }),
+      },
+    );
     if (!result.ok) refuse(board.def, item, result);
     if (stateOf(result.to) === to) return;
     const step = stepById(board.def, position.step);
@@ -580,34 +707,81 @@ function assertAgentMove(
     );
   }
   assertReviewer(board.def, item, actor);
+  if (approves(board.def, position, target)) {
+    const result = approve(board.def, position, undefined, on.facts);
+    if (!result.ok && result.code === 'missing') refuseApproval(item, result);
+  }
 }
 
-// A move along the compiled workflow that hands work off (into the step's review, or out of a
-// step nobody reviews) passes the same check a handoff does, so otea move cannot walk around it.
+// A move along the compiled workflow is checked as the engine checks it, whoever makes it: a
+// handoff (into the step's review, or out of a step nobody reviews) needs what the step asks, its
+// note included (the move's note, or its reason), and what it waits for; an approval re-checks the
+// waits; a discard goes through drop(). Returns the note the move carries, to keep with its round.
 export function assertMoveHandsOff(
   ctx: Context,
   item: ItemRecord,
   to: string,
   actor?: Actor,
-): void {
+  words: MoveWords = {},
+): string | undefined {
   const board = liveBoardOf(ctx, item.collection);
-  if (!board) return;
-  if (actor?.kind === 'agent') {
-    assertAgentMove(ctx, board, item, to, actor);
-    return;
-  }
+  if (!board) return undefined;
   const from = positionOf(item.state);
-  if (isClosed(from) || from.phase !== 'doing') return;
+  const step = isClosed(from) ? undefined : stepById(board.def, from.step);
+  const note = noteFor(board.def, step, from, positionOf(to), words);
+  if (actor?.kind === 'agent') {
+    assertAgentMove(ctx, board, item, to, actor, words);
+    return note;
+  }
   const target = positionOf(to);
-  const step = stepById(board.def, from.step);
-  if (!step) return;
+  if (isClosed(from) || !step) return note;
+  if (isClosed(target) && target.closed === DROPPED) {
+    const motive = (target as { motive?: string }).motive;
+    dropTarget(board, item, {
+      actor: actor ?? { kind: 'human', name: 'you' },
+      channel: 'ui',
+      via: 'page',
+      ...(words.reason === undefined ? {} : { reason: words.reason }),
+      ...(motive === undefined ? {} : { motive }),
+    });
+    return note;
+  }
+  const on = itemOnBoard(ctx, item, board.def);
+  if (from.phase !== 'doing') {
+    if (!approves(board.def, from, target)) return note;
+    const result = approve(board.def, from, undefined, on.facts);
+    if (!result.ok && result.code === 'missing') refuseApproval(item, result);
+    return note;
+  }
   const intoReview = !isClosed(target) && target.phase !== 'doing' && target.step === step.id;
   const along =
     step.reviewer === 'none' &&
-    (isClosed(target) ? target.closed === DONE : target.step !== step.id);
-  if (!intoReview && !along) return;
-  const check = handoffCheck(board.def, step.id, itemOnBoard(ctx, item, board.def).facts);
-  if (!check.ok) throw new OteaError('missing_fields', refusalText(item.id, check.missing));
+    (isClosed(target)
+      ? target.closed === DONE
+      : stepIndex(board.def, target.step) > stepIndex(board.def, step.id));
+  if (!intoReview && !along) return note;
+  const facts = note === undefined ? on.facts : { ...on.facts, note };
+  const check = handoffCheck(board.def, step.id, facts);
+  if (!check.ok)
+    throw new OteaError(refusalCode(check.missing), refusalText(item.id, check.missing));
+  return note;
+}
+
+// The note a move hands off with: the one given, or, on a step that asks for a note, its reason;
+// none for a discard or a way back (their reason is theirs).
+function noteFor(
+  def: BoardDefinition,
+  step: Step | undefined,
+  from: Position,
+  to: Position,
+  words: MoveWords,
+): string | undefined {
+  if (!step || isClosed(from) || from.phase !== 'doing') return undefined;
+  if (isClosed(to) ? to.closed !== DONE : stepIndex(def, to.step) < stepIndex(def, step.id))
+    return undefined;
+  if (words.note?.trim()) return words.note;
+  if (step.note.req !== 'always') return undefined;
+  return words.reason?.trim() ? words.reason : undefined;
 }
 
 // Fields a reader typed by name on a board (`--field Tamaño=Una`) as the item stores them; on a

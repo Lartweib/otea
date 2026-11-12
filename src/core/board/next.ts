@@ -71,7 +71,8 @@ export function targetName(def: BoardDefinition, target: Target): string {
 // the step has no such way.
 export function wayByName(def: BoardDefinition, stepId: string, name: string): Target | undefined {
   const wanted = name.trim().toLocaleLowerCase();
-  return waysOf(def, stepId).find((target) => {
+  // Forward ways first, then the ways back to earlier steps (`--way "Triar"`).
+  return [...waysOf(def, stepId), ...backWaysOf(def, stepId)].find((target) => {
     if (target === DONE) return ['done', 'hecho', DONE_NAME.toLowerCase()].includes(wanted);
     return target === name || targetName(def, target).trim().toLocaleLowerCase() === wanted;
   });

@@ -296,6 +296,9 @@ export type MoveItemInput = {
   actor: Actor;
   channel: Channel;
   reason?: string;
+  // On a board: the note of a handoff, kept with the round (a step that asks for one reads the
+  // reason when no note is given).
+  note?: string;
 };
 
 // Lands an authorized move: the new state, its transitioned event and, when the item leaves the agent
@@ -339,11 +342,14 @@ export function moveItem(ctx: Context, input: MoveItemInput, now = systemClock):
     const lease = activeLease(item.lease, at);
     assertMayWrite(item.id, lease, actor);
     // On a board, the step engine says first, in the board's words, why a move is not this actor's.
-    assertMoveHandsOff(ctx, item, to, actor);
+    const note = assertMoveHandsOff(ctx, item, to, actor, {
+      ...(reason === undefined ? {} : { reason }),
+      ...(input.note === undefined ? {} : { note: input.note }),
+    });
     authorizeMove(workflow, item.state, to, { actor, channel }, reason);
     assertCanLeave(type, item.state, to, item.fields);
     assertMayEnter(ctx, item, workflow, to, at);
-    const data = { ...(reason ? { reason } : {}), channel };
+    const data = { ...(reason ? { reason } : {}), ...(note ? { note } : {}), channel };
     return landMove(db, workflow, item, { to, actor, at, lease }, data);
   });
 }

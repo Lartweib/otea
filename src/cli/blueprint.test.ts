@@ -155,15 +155,8 @@ describe('blueprints', () => {
       expect(result).toMatchObject({ code: 0, out: 'BUGS-1 blocks WORK-1\n' });
     });
 
-    it('refuses an undeclared link between two boards with exit 16, listing what is allowed', async () => {
-      const { code, error } = await errorOf('link', 'WORK-1', 'blocks', 'BUGS-1');
-
-      expect(code).toBe(16);
-      expect(error).toEqual({
-        code: 'link_not_in_blueprint',
-        message:
-          'The blueprint "product" does not allow WORK-1 blocks BUGS-1 (work.task blocks bugs.bug); between work and bugs it allows: bugs.bug blocks work.task',
-      });
+    it('lets any link but a parent join two boards: the blueprint no longer refuses one', async () => {
+      expect((await otea('link', 'WORK-1', 'blocks', 'BUGS-1')).code).toBe(0);
     });
 
     it('leaves links within a board, parents and boards outside the blueprint alone', async () => {

@@ -154,12 +154,17 @@ describe('move by an agent', () => {
   it.each([
     ['done', []],
     ['todo', ['--reason', 'Redo']],
-    ['dropped', ['--reason', 'Drop']],
   ])('refuses %s from the person’s review with forbidden', async (to, extra) => {
     const { code, err } = await otea('move', 'TASKS-1', to, ...extra);
 
     expect(code).toBe(7);
     // On a board, the step engine says whose review it is.
     expect(err).toContain('Not your turn: the person reviews En curso on TASKS-1');
+  });
+  it('refuses dropped as otea drop does: only the person drops items here', async () => {
+    const { code, err } = await otea('move', 'TASKS-1', 'dropped', '--reason', 'Drop');
+
+    expect(code).toBe(7);
+    expect(err).toContain('Not dropped TASKS-1: only the person drops items here.');
   });
 });
