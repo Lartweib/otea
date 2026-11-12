@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
+import { isClosed, positionOf } from '../../../src/core/board/engine.ts';
 import { createItem } from '../api.ts';
 import { useApp } from '../app/context.tsx';
+import { boardOfCollection, boardsOf, useBoards } from '../board-studio/home/boards-store.ts';
 import { t, tx } from '../i18n/i18n.ts';
 import {
   canSubmit,
@@ -16,9 +18,10 @@ import {
 } from '../intake.ts';
 import { type FileDraft, firstRole, rolesFor, tooLarge, withFiles } from '../intake-files.ts';
 import { intakeSlots, intakeTypes, slotData, typeOf } from '../item-types.ts';
-import { Button, ChipButton, GhostButton, Icon, Swap } from '../kit/index.ts';
+import { Button, ChipButton, GhostButton, Icon, Swap, toast } from '../kit/index.ts';
 import { fieldWord, stateWord, typeWord, valueWord } from '../preset-words.ts';
 import type { CollectionView, EvidenceRole, TypeView } from '../types.ts';
+import { useStudioBoard } from '../views/board/studio-board.tsx';
 import { FieldControl } from './FieldControl.tsx';
 import { IntakeFiles } from './IntakeFiles.tsx';
 import { landNewRow } from './intake-flight.ts';
@@ -101,8 +104,24 @@ export function IntakeForm({
   const start = type ? startOf(type, values) : undefined;
   const landing = type ? landingOf(type, values) : undefined;
   const roles = type ? rolesFor(type) : [];
+  // On a Studio board that is part of another ("Cada Cambio se divide en Tareas de repo"): the
+  // parent is "Parte de", and a split that says always needs one before Crear.
+  const app = useApp();
+  const summaries = boardsOf(useBoards(app.version));
+  const here = boardOfCollection(summaries, collection.name);
+  const parentBoard = here
+    ? summaries.find((b) => b.id !== here.id && b.definition.split?.board === here.id)
+    : undefined;
+  const needsParent = !!parentBoard?.definition.split?.always && !!parentBoard.collection;
+  const parentChoices = needsParent
+    ? app.all.filter((x) => x.collection === parentBoard?.collection && !x.closes).slice(0, 12)
+    : [];
+  const live = useStudioBoard(collection.name)?.live;
   const ready =
-    type !== undefined && canSubmit(type, values) && !files.some(({ file }) => tooLarge(file));
+    type !== undefined &&
+    canSubmit(type, values) &&
+    !files.some(({ file }) => tooLarge(file)) &&
+    !(needsParent && !parent);
 
   // Another type keeps the files, in a role it takes.
   const reset = (next: TypeView | undefined) => {
@@ -153,6 +172,11 @@ export function IntakeForm({
     createItem(collection.name, type.name, payloadOf(values), parent?.id, files).then(
       async (item) => {
         setCreated(item.id);
+        // A first step nobody reviews that it already had everything for: it starts at the next.
+        const [first, second] = live?.steps ?? [];
+        const at = positionOf(item.state);
+        if (first?.skipWhenReady && second && !isClosed(at) && at.step === second.id)
+          toast({ msg: t('bi.create.skipped', { step: second.name, first: first.name }) });
         const from = row?.getBoundingClientRect() ?? null;
         await landNewRow(item.id, from);
         if (alive.current) onCreated(item.id, from);
@@ -218,7 +242,7 @@ export function IntakeForm({
       </Swap>
       {parent ? (
         <div className="ffield" data-c="">
-          <span className="flab">{t('intake.childOf')}</span>
+          <span className="flab">{here ? t('bi.partOf') : t('intake.childOf')}</span>
           <div className="chips">
             <ChipButton
               on
@@ -230,6 +254,33 @@ export function IntakeForm({
               <Icon name="x" />
             </ChipButton>
           </div>
+        </div>
+      ) : null}
+      {needsParent && !parent ? (
+        <div className="ffield" data-c="">
+          <span className="flab" id="intake-partof">
+            {t('bi.partOf')}
+          </span>
+          {parentChoices.length ? (
+            <fieldset className="chips" aria-labelledby="intake-partof">
+              {parentChoices.map((x) => (
+                <ChipButton
+                  key={x.id}
+                  disabled={posting}
+                  onClick={() =>
+                    setParent({ id: x.id, title: x.title, type: x.type, collection: x.collection })
+                  }
+                >
+                  <span className="id">{x.id}</span> {x.title}
+                </ChipButton>
+              ))}
+            </fieldset>
+          ) : null}
+          <p className="fnote">
+            {parentChoices.length
+              ? t('bi.create.pickParent', { item: parentBoard?.item ?? '' })
+              : t('bi.create.noParent', { board: parentBoard?.name ?? '' })}
+          </p>
         </div>
       ) : null}
       <div className="ffield" data-c="">

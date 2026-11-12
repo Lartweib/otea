@@ -30,6 +30,7 @@ import './styles/table.css';
 import './styles/tray.css';
 import './styles/sheet.css';
 import './styles/detail.css';
+import './styles/board-item.css';
 import './styles/route.css';
 import './styles/evidence.css';
 import './styles/relations.css';
