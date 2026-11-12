@@ -46,6 +46,7 @@ import {
 import { type MorphJob, morph, penFade } from './morph-run.ts';
 import { Pasos } from './Pasos.tsx';
 import { listaBlocks, type RowCtx, tablaBlocks } from './rows.tsx';
+import { BoardActs, type StudioBoard, Teach, useStudioBoard } from './studio-board.tsx';
 import { relayoutTable, Tabla } from './Tabla.tsx';
 import { Tray } from './Tray.tsx';
 import { headLabel } from './table.ts';
@@ -128,6 +129,7 @@ function Board({ board }: { board: string }) {
   const born = useRef(true);
   const [stageW, setStageW] = useState(0);
 
+  const studio = useStudioBoard(board);
   const mode: BoardMode = app.phone && prefs.mode === 'tabla' ? 'lista' : prefs.mode;
   const items = useMemo(() => app.all.filter((it) => it.collection === board), [app.all, board]);
   const ctx: BoardCtx = { collection: col, now: app.now, feed: app.feed };
@@ -257,7 +259,9 @@ function Board({ board }: { board: string }) {
           kind: 'empty',
           key: 'empty:all',
           big: true,
-          content: (
+          content: studio ? (
+            <Teach board={board} studio={studio} />
+          ) : (
             <>
               <p>{t('boardView.empty', { board })}</p>
               <div className="acts2">
@@ -446,7 +450,8 @@ function Board({ board }: { board: string }) {
 
   return (
     <div className="board" ref={viewRef}>
-      <Head board={board} items={items} />
+      <Head board={board} items={items} studio={studio} />
+      {studio ? <BoardActs studio={studio} canWrite={app.session.canWrite} /> : null}
       <Tools
         col={col}
         mode={mode}
@@ -507,18 +512,28 @@ function withFold(shown: Folds, target: Folds, id: string): Folds {
 
 // ---- the head ----
 
-function Head({ board, items }: { board: string; items: readonly Item[] }) {
+function Head({
+  board,
+  items,
+  studio,
+}: {
+  board: string;
+  items: readonly Item[];
+  studio: StudioBoard | null;
+}) {
   const app = useApp();
   // biome-ignore lint/style/noNonNullAssertion: Board renders with its collection
   const col = app.collectionOf(board)!;
   const steps = stepsStrip(col, items);
+  // A Studio board's dek is its About; an older collection's, its preset's line.
   const dekKey = `boardView.dek.${col.preset}`;
-  const dek = (t as (k: string) => string)(dekKey);
+  const dek = studio ? studio.live.about.trim() : (t as (k: string) => string)(dekKey);
   return (
     <header className="bhead" data-enter="head">
       <div>
         <div className="kicker" data-leaf="">
           <b>{t('boardView.kicker')}</b> &nbsp;·&nbsp; {app.project?.name ?? ''}
+          {studio ? <> &nbsp;·&nbsp; {t('bs.board.version', { version: studio.version })}</> : null}
         </div>
         <h1 className="display" data-leaf="">
           {board}

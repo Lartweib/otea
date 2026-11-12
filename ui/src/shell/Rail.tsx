@@ -2,6 +2,9 @@ import { type ReactNode, useEffect, useLayoutEffect, useRef } from 'react';
 import { flushSync } from 'react-dom';
 import { useApp } from '../app/context.tsx';
 import { useWorkspace, workspace } from '../app/workspace.ts';
+import type { BoardSummary } from '../board-studio/api.ts';
+import { useBoards } from '../board-studio/home/boards-store.ts';
+import { freshlyLive } from '../board-studio/home/home-model.ts';
 import { openNewBoard } from '../board-studio/home/studio-dialogs.ts';
 import { stuckCount, tocaCount } from '../derive/toca.ts';
 import { t } from '../i18n/i18n.ts';
@@ -133,6 +136,43 @@ function useSelPill(navs: React.RefObject<HTMLDivElement | null>, key: RailKey) 
   useEffect(() => () => sliding.current?.cancel(), []);
 }
 
+// A board published while you are here comes into the rail once it is listed (the mock's
+// publish()): it resolves from a little above, 420 glide after 120; reduced motion fades it in.
+function useBoardEntrance(navs: React.RefObject<HTMLDivElement | null>, version: number) {
+  const state = useBoards(version);
+  const before = useRef<BoardSummary[] | null>(null);
+  const pending = useRef(new Set<string>());
+  const flush = () => {
+    for (const name of [...pending.current]) {
+      const row = navs.current?.querySelector<HTMLElement>(
+        `.nrow[data-k="board:${CSS.escape(name)}"]`,
+      );
+      if (!row) continue;
+      pending.current.delete(name);
+      const R = reduced();
+      row.animate(
+        R
+          ? [{ opacity: 0 }, { opacity: 1 }]
+          : [
+              { opacity: 0, transform: 'translateY(-4px)', filter: 'blur(1px)' },
+              { opacity: 1, transform: 'none', filter: 'blur(0px)' },
+            ],
+        R
+          ? { duration: 160, easing: C.drift }
+          : { duration: 420, delay: 120, easing: C.glide, fill: 'backwards' },
+      );
+    }
+  };
+  // biome-ignore lint/correctness/useExhaustiveDependencies: on each new list of boards
+  useEffect(() => {
+    if (state.status !== 'ready') return;
+    for (const name of freshlyLive(before.current, state.boards)) pending.current.add(name);
+    before.current = state.boards;
+    flush();
+  }, [state]);
+  useLayoutEffect(flush);
+}
+
 export function Rail() {
   const app = useApp();
   const ws = useWorkspace();
@@ -148,6 +188,7 @@ export function Rail() {
   const foldLabel = folded ? t('nav.show') : t('nav.hide');
 
   useSelPill(navs, key);
+  useBoardEntrance(navs, app.version);
 
   // Below 1024 px the rail is always folded: the frame reads .app[data-folded], so it says so too.
   useLayoutEffect(() => {
