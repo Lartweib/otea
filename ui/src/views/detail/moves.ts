@@ -8,7 +8,14 @@ import type { Move } from '../../types.ts';
 
 export type MoveKind = 'approve' | 'own' | 'sendback' | 'move' | 'discard';
 
-export type MoveChoice = { move: Move; kind: MoveKind; label: string; blocked?: string };
+// `deliver`: on a board, your own step's primary hands it off (Entregar) rather than closing it.
+export type MoveChoice = {
+  move: Move;
+  kind: MoveKind;
+  label: string;
+  blocked?: string;
+  deliver?: boolean;
+};
 
 export type MovePlan = { primary: MoveChoice | null; quiet: MoveChoice[]; close: MoveChoice[] };
 

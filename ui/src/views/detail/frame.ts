@@ -50,13 +50,19 @@ export const shortTitle = (title: string): string =>
   title.length > 45 ? `${title.slice(0, 44).trimEnd()}…` : title;
 
 // The toast a move leaves: what you did and where the item goes.
-export function toastOf(kind: MoveKind | 'answer' | 'close', title: string, state: string): string {
+export function toastOf(
+  kind: MoveKind | 'answer' | 'close' | 'deliver',
+  title: string,
+  state: string,
+): string {
   const p = { title: shortTitle(title), state };
   switch (kind) {
     case 'approve':
       return t('sheet.toast.approved', p);
     case 'own':
       return t('sheet.toast.done', p);
+    case 'deliver':
+      return t('bi.toast.delivered', p);
     case 'sendback':
       return t('sheet.toast.sentBack', p);
     case 'answer':

@@ -21,6 +21,8 @@ export type Closing = 'done' | 'discarded';
 
 export type Item = {
   id: string;
+  // On a published board: the round of the step it is on, as the engine counts it.
+  round?: number;
   collection: string;
   // The item type: "item" in a collection whose preset declares no types.
   type: string;

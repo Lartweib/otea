@@ -56,6 +56,9 @@ export function detailCells(o: {
   facts: Facts;
   own: boolean;
   now: number;
+  // On a board: who reviews the step it is on (the step engine's word), and no preset gate rows
+  // (the branch strip says them).
+  board?: { reviewer: 'you' | 'none' | string } | undefined;
 }): (Cell & { key: string })[] {
   const { item, type, facts, now } = o;
   const you = t('sheet.d.you');
@@ -99,10 +102,24 @@ export function detailCells(o: {
   ].map((p) => ({ label: p.label, value: <Value placed={p} />, slot: slotData(p.at) }));
   const parent = item.relations.find((r) => r.kind === 'parent');
   const created = item.createdBy;
-  const gates = gateRows(type, item.state, item.gates);
+  const gates = o.board ? [] : gateRows(type, item.state, item.gates);
+  const reviewer: Cell =
+    !o.board || o.board.reviewer === 'you'
+      ? { label: t('sheet.d.reviewer'), value: you, cls: 'you' }
+      : o.board.reviewer === 'none'
+        ? { label: t('sheet.d.reviewer'), value: t('sheet.d.nobody') }
+        : {
+            label: t('sheet.d.reviewer'),
+            value: (
+              <>
+                <AgentMark name={o.board.reviewer} decorative />
+                {o.board.reviewer}
+              </>
+            ),
+          };
   return keyed([
     doer,
-    { label: t('sheet.d.reviewer'), value: you, cls: 'you' },
+    reviewer,
     lease,
     {
       label: t('sheet.d.type'),

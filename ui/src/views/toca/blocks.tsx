@@ -59,6 +59,7 @@ export function roundOf(
   feed: readonly FeedEvent[],
   type: TypeView | undefined,
 ): number {
+  if (item.round !== undefined) return item.round;
   if (!type) return 0;
   const rounds = roundsOf(
     feed.filter((e) => e.itemId === item.id),

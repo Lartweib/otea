@@ -160,6 +160,7 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
       ? {
           ...planned.primary,
           label: t('bi.move.deliver'),
+          deliver: true,
           move: {
             ...planned.primary.move,
             reasonRequired:
@@ -248,14 +249,23 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
   const send = (text: string) => {
     if (!notes) return;
     const c = notes.choice;
-    const kind = c.move.closes === 'done' ? 'close' : c.kind;
+    const kind = c.deliver ? 'deliver' : c.move.closes === 'done' ? 'close' : c.kind;
     setNotes({ ...notes, open: false });
     app
       .move(item.id, c.move.to, text, toastOf(kind, item.title, word(c.move.to)))
       .catch(() => toast({ msg: t('sheet.refused'), id: item.id }));
   };
 
-  const cells = detailCells({ item, type, facts, own: facts.own && look === 'yours', now });
+  const reviewerOf = (r: NonNullable<typeof roundsStep>['reviewer']) =>
+    typeof r === 'string' ? r : r.agent;
+  const cells = detailCells({
+    item,
+    type,
+    facts,
+    own: facts.own && look === 'yours',
+    now,
+    board: live ? { reviewer: roundsStep ? reviewerOf(roundsStep.reviewer) : 'none' } : undefined,
+  });
   const canWrite = app.session.canWrite;
   const boardSections =
     live && links
