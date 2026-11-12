@@ -30,6 +30,14 @@ describe('pageTiles', () => {
   });
 });
 
+describe('pageTiles row', () => {
+  it('leaves out a column whose part nothing uses any more', () => {
+    const def = creatures();
+    def.form = def.form.filter(({ ref }) => ref !== 'fbiome');
+    expect(refs(pageTiles(def, 'sanimate').row)).toEqual([]);
+  });
+});
+
 describe('moveTile', () => {
   it('moves a box to a zone, at the end or before another, keeping the key order as the tile order', () => {
     const def = creatures();

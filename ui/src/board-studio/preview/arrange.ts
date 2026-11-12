@@ -4,6 +4,7 @@ import {
   partOf,
   stepById,
   TITLE,
+  usedRefs,
   type Zone,
 } from '../../../../src/core/board/model.ts';
 import { defaultZone } from '../../../../src/core/board/templates.ts';
@@ -59,8 +60,9 @@ export function pageTiles(def: BoardDefinition, stepId: string): Record<Place, T
   const out: Record<Place, Tile[]> = { top: [], main: [], side: [], row: [], hidden: [] };
   for (const tile of [...listed].sort((a, b) => rank(a.ref) - rank(b.ref)))
     out[zoneOf(def, tile.ref)].push(tile);
+  const used = usedRefs(def);
   for (const ref of def.row) {
-    if (!partOf(def, ref)) continue;
+    if (!partOf(def, ref) || !used.has(ref)) continue;
     const at = listed.find((tile) => tile.ref === ref);
     out.row.push({
       ref,
