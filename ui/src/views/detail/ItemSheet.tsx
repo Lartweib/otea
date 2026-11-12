@@ -33,6 +33,7 @@ import {
   type ItemBoardBlock,
   linksOf,
   roundNotes,
+  sheetLook,
   waitRows,
 } from './board-item.ts';
 import { Details, detailCells } from './Details.tsx';
@@ -88,9 +89,9 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
   const type = typeOfItem(item, app.collectionOf);
   const word = (s: string) => stateWord(type, s);
   const now = app.now;
-  const look = lookOf(item, now);
   // On a published board the step engine says whose turn it is, the step's round and the route.
   const live = useStudioBoard(item.collection)?.live;
+  const look = sheetLook(lookOf(item, now), live !== undefined);
   const onBoard = useMemo(
     () =>
       live
