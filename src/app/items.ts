@@ -31,7 +31,13 @@ import {
 import { getCollection, presetOf, typeOfItem } from './collections.ts';
 import type { Context } from './context.ts';
 import { presentEvidence } from './evidence.ts';
-import { assertMoveHandsOff, boardFieldInput, boardState } from './next.ts';
+import {
+  assertMoveHandsOff,
+  type BoardBlock,
+  boardBlockOf,
+  boardFieldInput,
+  boardState,
+} from './next.ts';
 import {
   addRelation,
   assertMayEnter,
@@ -217,6 +223,8 @@ export type ItemView = ItemWithEvents & {
   evidence: EvidenceRecord[];
   relations: RelatedItem[];
   gates?: Record<string, boolean>;
+  // On a published board: its parts, blockers, round notes, branch and gates (PLAN §9.1).
+  board?: BoardBlock;
 };
 
 export function showItem(
@@ -230,6 +238,7 @@ export function showItem(
   const type = typeOfItem(ctx, item);
   const children = childrenOf(ctx, item.id, at);
   const { gates, ...moves } = itemMoves(type, item.state, item.fields, performer);
+  const board = boardBlockOf(ctx, item);
   return {
     ...item,
     ...moves,
@@ -237,6 +246,7 @@ export function showItem(
     relations: relatedItems(ctx, item.id, at),
     ...(children.length > 0 ? { children: childrenSummary(children) } : {}),
     ...(gates === undefined ? {} : { gates }),
+    ...(board === undefined ? {} : { board }),
   };
 }
 

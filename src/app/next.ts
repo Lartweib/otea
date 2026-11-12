@@ -1,10 +1,13 @@
 import type { Channel } from '../core/authority.ts';
 import {
   approve,
+  type GateAnswer,
+  gateAt,
   handoff,
   handoffCheck,
   type ItemFacts,
   isClosed,
+  type Linked,
   type MoveResult,
   mayTake,
   type Position,
@@ -19,8 +22,10 @@ import {
 import {
   type BoardDefinition,
   DONE,
+  guardedBranch,
   isAgent,
   type Reviewer,
+  SAME,
   type Step,
   stepById,
   type Target,
@@ -31,6 +36,7 @@ import { readDefinition } from '../core/board/schema.ts';
 import { OteaError } from '../core/errors.ts';
 import type { Actor } from '../core/item.ts';
 import { activeLease, assertMayWrite } from '../core/lease.ts';
+import { closesOf } from '../core/workflow.ts';
 import { findBoardOfCollection, findVersion, listBoards } from '../store/boards.ts';
 import { transaction } from '../store/database.ts';
 import {
@@ -38,6 +44,7 @@ import {
   selectEvents,
   selectEvidence,
   selectItems,
+  selectRelationsOf,
   selectStateEntries,
 } from '../store/queries.ts';
 import type { Context } from './context.ts';
@@ -74,49 +81,188 @@ function liveBoards(ctx: Context): LiveBoard[] {
 // reading of a preset collection as a board.
 const BOARD_MOVES = new Set(['publish', 'restore', 'migrate']);
 
+// A round's note as the history holds it: the step it was handed off from, how many moves came
+// before it (its round is the step's round then), when and by whom.
+type RawNote = { step: string; before: number; note: string; at: string; by: string };
+
+function noteOf(data: Record<string, unknown>): string | undefined {
+  return typeof data.note === 'string' && data.note.trim() !== '' ? data.note : undefined;
+}
+
 // The item's moves as the engine replays them. A collection read from a preset starts its history
 // at that reading: the states before it belong to the preset's workflow, not to the board's steps.
+// A reading that carries a note (Falta información read as Completar) starts that step's next
+// round, with the person's question as its note.
 function transitionsOf(
   ctx: Context,
   id: string,
-): { initial?: string; createdAt?: string; moves: Transition[] } {
+): { initial?: string; createdAt?: string; moves: Transition[]; notes: RawNote[] } {
   const events = selectEvents(ctx.db, id);
   const created = events.find(({ type }) => type === 'created');
   const moved = events.filter(({ type }) => type === 'transitioned');
   const migrated = moved.findLastIndex(({ data }) => data.reason === 'migrate');
-  const moves = moved.slice(migrated + 1).map(({ data, at }) => ({
-    from: String(data.from),
-    to: String(data.to),
-    at,
-    ...(BOARD_MOVES.has(String(data.reason)) ? { quiet: true } : {}),
-  }));
+  const moves: Transition[] = [];
+  const notes: RawNote[] = [];
   const reading = moved[migrated];
-  if (reading) return { initial: String(reading.data.to), createdAt: reading.at, moves };
+  const asked = reading ? noteOf(reading.data) : undefined;
+  if (reading && asked !== undefined) {
+    const to = positionOf(String(reading.data.to));
+    if (!isClosed(to)) {
+      moves.push({
+        from: stateOf({ step: to.step, phase: 'review' }),
+        to: to.step,
+        at: reading.at,
+      });
+      const by = moved
+        .slice(0, migrated)
+        .findLast(({ data }) => String(data.to) === String(reading.data.from))?.actor.name;
+      notes.push({
+        step: to.step,
+        before: 1,
+        note: asked,
+        at: reading.at,
+        by: by ?? reading.actor.name,
+      });
+    }
+  }
+  for (const { data, at, actor } of moved.slice(migrated + 1)) {
+    const note = noteOf(data);
+    const from = positionOf(String(data.from));
+    if (note !== undefined && !isClosed(from))
+      notes.push({ step: from.step, before: moves.length, note, at, by: actor.name });
+    moves.push({
+      from: String(data.from),
+      to: String(data.to),
+      at,
+      ...(BOARD_MOVES.has(String(data.reason)) ? { quiet: true } : {}),
+    });
+  }
+  if (reading) return { initial: String(reading.data.to), createdAt: reading.at, moves, notes };
   const state = created?.data.state;
-  return typeof state === 'string' ? { initial: state, moves } : { moves };
+  return typeof state === 'string' ? { initial: state, moves, notes } : { moves, notes };
 }
 
-export type ItemOnBoard = { position: Position; facts: ItemFacts; rounds: Rounds; round: number };
+// The live board with this id, when it is published on a collection.
+export function liveBoardById(ctx: Context, id: string): LiveBoard | undefined {
+  const row = listBoards(ctx.db).find((board) => board.id === id);
+  return row?.collection == null ? undefined : liveBoardOf(ctx, row.collection);
+}
 
-// The item as the engine reads it: its fields (title included), its evidence by part and when, and
-// the rounds of each step, read from its moves.
+// The board an item's parts are on: the one its board divides into (itself for SAME).
+export function partsBoardOf(ctx: Context, board: LiveBoard): LiveBoard | undefined {
+  const split = board.def.split;
+  if (!split) return undefined;
+  return split.board === SAME ? board : liveBoardById(ctx, split.board);
+}
+
+// Another item as a wait reads it: its board and, while open, its step, by name.
+function linkedOf(ctx: Context, id: string): Linked {
+  const item = requireItem(ctx.db, id);
+  const board = liveBoardOf(ctx, item.collection);
+  if (!board) {
+    const closed = closesOf(workflowOf(ctx, item), item.state) !== undefined;
+    return { id, board: item.collection, ...(closed ? {} : { step: item.state }), closed };
+  }
+  const position = positionOf(item.state);
+  if (isClosed(position)) return { id, board: board.def.name, closed: true };
+  const step = stepById(board.def, position.step)?.name ?? position.step;
+  return { id, board: board.def.name, step, closed: false };
+}
+
+export type Links = { parts: Linked[]; blockers: Linked[]; blocking: Linked[] };
+
+// An item's parts (its children, on any board), what blocks it and what it blocks, oldest first.
+export function linksOf(ctx: Context, id: string): Links {
+  const relations = selectRelationsOf(ctx.db, id);
+  const into = (kind: string) =>
+    relations.filter((r) => r.kind === kind && r.to === id).map(({ from }) => linkedOf(ctx, from));
+  return {
+    parts: into('parent'),
+    blockers: into('blocks'),
+    blocking: relations
+      .filter((r) => r.kind === 'blocks' && r.from === id)
+      .map(({ to }) => linkedOf(ctx, to)),
+  };
+}
+
+export type RoundNote = { step: string; round: number; note: string; at: string; by: string };
+
+export type ItemOnBoard = {
+  position: Position;
+  facts: ItemFacts;
+  rounds: Rounds;
+  round: number;
+  notes: RoundNote[];
+  links: Links;
+};
+
+// The item as the engine reads it: its fields (title included), its evidence by part and when, the
+// rounds of each step, read from its moves, its parts and what blocks it, and the note of each
+// round handed off.
 export function itemOnBoard(ctx: Context, item: ItemRecord, def: BoardDefinition): ItemOnBoard {
   const position = positionOf(item.state);
-  const { initial, createdAt, moves } = transitionsOf(ctx, item.id);
-  const first = def.steps[0]?.id ?? item.state;
-  const rounds = roundsOf(def, initial ?? first, createdAt ?? item.createdAt, moves);
+  const { initial, createdAt, moves, notes } = transitionsOf(ctx, item.id);
+  const start = initial ?? def.steps[0]?.id ?? item.state;
+  const since = createdAt ?? item.createdAt;
+  const rounds = roundsOf(def, start, since, moves);
   const evidence = selectEvidence(ctx.db, item.id).flatMap((entry) =>
     entry.module === null ? [] : [{ part: entry.module, at: entry.createdAt }],
   );
   const step = isClosed(position) ? undefined : position.step;
   const startedAt = step === undefined ? undefined : rounds.startedAt[step];
+  const links = linksOf(ctx, item.id);
   const facts: ItemFacts = {
     fields: { ...item.fields, title: item.title },
     evidence,
     ...(startedAt === undefined ? {} : { roundStartedAt: startedAt }),
+    parts: links.parts,
+    blockers: links.blockers,
   };
   const round = step === undefined ? 0 : (rounds.rounds[step] ?? 1);
-  return { position, facts, rounds, round };
+  const said = notes.map(({ step: id, before, note, at, by }) => ({
+    step: stepById(def, id)?.name ?? id,
+    round: roundsOf(def, start, since, moves.slice(0, before)).rounds[id] ?? 1,
+    note,
+    at,
+    by,
+  }));
+  return { position, facts, rounds, round, notes: said, links };
+}
+
+// What an item's page reads of it on a board (PLAN §9.1): its parts and the board they are on,
+// what blocks it and what it blocks, each round's note, and, on a board that protects a branch,
+// the branch and what its gates allow now.
+export type BoardBlock = {
+  parts: Linked[];
+  partsBoard: string | null;
+  blockers: Linked[];
+  blocking: Linked[];
+  notes: RoundNote[];
+  gates: { push: GateAnswer; merge: GateAnswer } | null;
+  branch: { value: string; repo?: string } | null;
+};
+
+function filled(value: unknown): value is string {
+  return typeof value === 'string' && value.trim() !== '';
+}
+
+export function boardBlockOf(ctx: Context, item: ItemRecord): BoardBlock | undefined {
+  const board = liveBoardOf(ctx, item.collection);
+  if (!board) return undefined;
+  const on = itemOnBoard(ctx, item, board.def);
+  const guarded = guardedBranch(board.def);
+  const value = guarded ? item.fields[guarded.id] : undefined;
+  const repo = guarded?.guard.repo === undefined ? undefined : item.fields[guarded.guard.repo];
+  const gate = (action: 'push' | 'merge') => gateAt(board.def, on.position, action);
+  return {
+    parts: on.links.parts,
+    partsBoard: partsBoardOf(ctx, board)?.def.name ?? null,
+    blockers: on.links.blockers,
+    blocking: on.links.blocking,
+    notes: on.notes,
+    gates: guarded ? { push: gate('push'), merge: gate('merge') } : null,
+    branch: filled(value) ? { value, ...(filled(repo) ? { repo } : {}) } : null,
+  };
 }
 
 // `next`'s text for one item, as the agent `me` reads it; undefined off a board.
@@ -133,6 +279,8 @@ function textFor(ctx: Context, item: ItemRecord, def: BoardDefinition, me?: stri
   const missing = isClosed(on.position)
     ? []
     : handoffCheck(def, on.position.step, on.facts).missing;
+  const board = liveBoardOf(ctx, item.collection);
+  const child = board ? partsBoardOf(ctx, board) : undefined;
   return nextText(def, {
     id: item.id,
     title: item.title,
@@ -141,6 +289,9 @@ function textFor(ctx: Context, item: ItemRecord, def: BoardDefinition, me?: stri
     fields: item.fields,
     evidence: counts,
     missing,
+    parts: on.links.parts,
+    blockers: on.links.blockers,
+    ...(child === undefined ? {} : { child: child.def }),
     ...(me === undefined ? {} : { me }),
   });
 }
