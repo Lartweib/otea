@@ -89,6 +89,7 @@ export const definitionSchema = z.strictObject({
   samples: z.array(z.string()),
   template: z.string().optional(),
   split: z.strictObject({ board: id, always: z.boolean() }).optional(),
+  madeWith: z.array(id).optional(),
   drop: z
     .strictObject({
       by: z.enum(['page', 'anyone'], { error: 'must be "page" or "anyone"' }),

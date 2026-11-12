@@ -206,6 +206,9 @@ export type BoardDefinition = {
   split?: Split;
   drop: Drop;
   list: ListView;
+  // The other boards a template set made with this one (their hidden ids): Producto's two boards
+  // open each other ("Abrir Errores"), and Studio's home says they were made together.
+  madeWith?: string[];
 };
 
 // A board's settings that every new board starts with.

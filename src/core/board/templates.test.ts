@@ -62,6 +62,8 @@ describe('templates', () => {
     expect(changes?.split).toEqual({ board: 'brt', always: true });
     expect(tasks?.name).toBe('Tareas de repo');
     expect(tasks?.split).toBeUndefined();
+    expect(changes?.madeWith).toEqual(['brt']);
+    expect(tasks?.madeWith).toEqual(['bcam']);
     const view = listedTemplates('es').find(({ key }) => key === 'repos');
     expect(view?.boards?.map(({ name, item }) => `${name}/${item}`)).toEqual([
       'Cambios/Cambio',
