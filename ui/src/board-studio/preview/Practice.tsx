@@ -124,12 +124,23 @@ function logLine(run: PracticeRun, id: string, entry: PracticeLog): ReactNode {
       const note = entry.note ? t('bs.preview.try.log.withNote', { note: qt(entry.note) }) : '';
       if (entry.quick && entry.id)
         return entry.by === 'you'
-          ? t('bs.preview.try.log.quickHandedYou', { step: entry.step, id: entry.id })
-          : t('bs.preview.try.log.quickHanded', {
-              who: agent(entry.who),
-              step: entry.step,
-              id: entry.id,
-            });
+          ? t(
+              entry.filled
+                ? 'bs.preview.try.log.quickHandedYouAll'
+                : 'bs.preview.try.log.quickHandedYou',
+              {
+                step: entry.step,
+                id: entry.id,
+              },
+            )
+          : t(
+              entry.filled ? 'bs.preview.try.log.quickHandedAll' : 'bs.preview.try.log.quickHanded',
+              {
+                who: agent(entry.who),
+                step: entry.step,
+                id: entry.id,
+              },
+            );
       return `${
         entry.by === 'you'
           ? t('bs.preview.try.log.handedYou', { step: entry.step, n: entry.round })

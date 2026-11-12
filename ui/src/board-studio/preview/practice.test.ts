@@ -306,6 +306,7 @@ describe('practice: a pair', () => {
         you: true,
       });
       r = quickStep(r, k); // Propuesta → Implementar
+      expect(r.log.at(-1)?.entry).toMatchObject({ kind: 'handed', quick: true, filled: true });
       r = quickStep(r, k); // Implementar handed off
       r = quickStep(r, k); // approved → Hecho
     }

@@ -76,6 +76,8 @@ export type PracticeLog =
       note?: string;
       id?: string;
       quick?: boolean;
+      // A quick handoff of a step that asks for something: it was filled for the practice.
+      filled?: boolean;
     }
   | { kind: 'approved'; by: Actor; who: string | null; step: string; to: Target; id?: string }
   | { kind: 'approvalRefused'; open: Linked[] }
@@ -538,6 +540,9 @@ export function handOff(
       round: view.round,
       ...(note ? { note } : {}),
       ...(options.quick ? { id: s.id, quick: true } : {}),
+      ...(options.quick && (step.note.req === 'always' || step.hand.some(({ req }) => req !== 'no'))
+        ? { filled: true }
+        : {}),
     },
   ]);
   return { ...next, lastNote: note };

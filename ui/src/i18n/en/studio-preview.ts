@@ -333,6 +333,10 @@ export const studioPreview = {
   'bs.preview.try.log.blocked': 'Otea refused the handoff: {id} holds it back.',
   'bs.preview.try.log.withNote': ', with the note “{note}”',
   'bs.preview.try.log.quickHandedYou': 'You handed off {step} of {id}.',
+  'bs.preview.try.log.quickHandedYouAll':
+    'You handed off {step} of {id}, with everything it asks for.',
+  'bs.preview.try.log.quickHandedAll':
+    '{who} handed off {step} of {id}, with everything it asks for.',
   'bs.preview.try.log.quickHanded': '{who} handed off {step} of {id}.',
   'bs.preview.try.log.quickApprovedYou': 'You approved {step} of {id} → {to}.',
   'bs.preview.try.log.quickApproved': '{who} approved {step} of {id} → {to}.',
