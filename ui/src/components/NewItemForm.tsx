@@ -213,7 +213,9 @@ export function IntakeForm({
   };
   const step = type && landing ? stateWord(type, landing.state) : '';
   const lede =
-    type && landing ? ledeOf({ board: collection.name, parent: parent?.id, landing, step }) : '';
+    type && landing
+      ? ledeOf({ board: collection.name, parent: parent?.id, part: !!here, landing, step })
+      : '';
   // The row shows the first one-line choice made (a category) and the severity.
   const sevField = slots.find(({ field }) => field.module === 'severity')?.field;
   const level = sevField ? (sevField.values ?? []).indexOf(values[sevField.name] ?? '') + 1 : 0;
@@ -398,7 +400,8 @@ type NewItemFormProps = {
 export function NewItemForm({ board, parent, onCancel, onCreated }: NewItemFormProps) {
   const app = useApp();
   const collections = app.collections;
-  const wanted = parent?.collection ?? board;
+  // A part's Crear names the board it lands on (Tareas de repo), not its parent's.
+  const wanted = board ?? parent?.collection;
   const first = collections.find(({ name }) => name === wanted) ?? collections[0];
   return (
     <div className="nform">

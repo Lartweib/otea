@@ -82,5 +82,8 @@ describe('the lede', () => {
     expect(
       ledeOf({ board: 'Errores', parent: 'ERR-1', landing: agentSide, step: 'Incomplete' }),
     ).toBe('In Errores, as a child of ERR-1. It goes to an agent, in Incomplete.');
+    expect(
+      ledeOf({ board: 'Repo tasks', parent: 'CHG-1', part: true, landing, step: 'Proposal' }),
+    ).toBe('In Repo tasks, part of CHG-1. It comes to you, in Proposal.');
   });
 });
