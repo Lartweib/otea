@@ -196,26 +196,38 @@ export function submitAgentDraft(
 
 type Words = {
   step: string;
+  gone: string;
   evidence: string;
   field: string;
   instructions: string;
   changed: string;
+  item: string;
+  about: string;
+  idle: string;
 };
 
 const NOTE_WORDS: Readonly<Record<Lang, Words>> = {
   en: {
     step: '+ step',
+    gone: '− step',
     evidence: '+ evidence',
     field: '+ field',
     instructions: 'instructions in',
     changed: 'changes in',
+    item: 'item:',
+    about: 'About this board',
+    idle: 'When there is nothing to do',
   },
   es: {
     step: '+ paso',
+    gone: '− paso',
     evidence: '+ evidencia',
     field: '+ campo',
     instructions: 'instrucciones en',
     changed: 'cambios en',
+    item: 'ítem:',
+    about: 'Sobre este tablero',
+    idle: 'Cuando no hay nada que hacer',
   },
 };
 
@@ -226,53 +238,40 @@ function langOf(def: BoardDefinition): Lang {
 
 const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
 
-// Merges by id: the agent's parts and steps replace the draft's with the same id and new ones are
-// added; the steps take the agent's order when it kept every step, else the new ones go last.
+// The agent's board is what it was asked for, whole: its steps (in its order) replace the draft's,
+// so a step it left out is gone; its item, form, instructions and texts are taken as they are.
+// Only the name stays the person's. Parts are kept from both, so a step put back finds its own.
+// The note says what changed, removals included.
 export function mergeDefinitions(
   draft: BoardDefinition,
   agent: BoardDefinition,
 ): { definition: BoardDefinition; note: string[] } {
   const words = NOTE_WORDS[langOf(draft)];
-  const out = clone(draft);
-  const note: string[] = [];
-  const added: Part[] = [];
-  for (const part of Object.values(agent.parts)) {
-    if (!out.parts[part.id]) added.push(part);
-    out.parts[part.id] = part;
-    const zone = agent.layout[part.id];
-    if (zone && !out.layout[part.id]) out.layout[part.id] = zone;
-  }
-  for (const entry of agent.form) {
-    if (!out.form.some(({ ref }) => ref === entry.ref) && added.some(({ id }) => id === entry.ref))
-      out.form.push(entry);
-  }
-  const byId = new Map(out.steps.map((step) => [step.id, step]));
-  const changes: string[] = [];
-  const fresh: Step[] = [];
-  for (const step of agent.steps) {
-    const before = byId.get(step.id);
-    if (!before) fresh.push(step);
-    else if (!same(before, step)) {
-      const onlyInstructions = same(
-        { ...before, instructions: null },
-        { ...step, instructions: null },
-      );
-      changes.push(`${onlyInstructions ? words.instructions : words.changed} ${step.name}`);
-    }
-    byId.set(step.id, step);
-  }
-  const keptAll = out.steps.every(({ id }) => agent.steps.some((step) => step.id === id));
-  out.steps = keptAll
-    ? [
-        ...agent.steps.map((step) => byId.get(step.id) ?? step),
-        ...out.steps.filter(({ id }) => !agent.steps.some((step) => step.id === id)),
-      ]
-    : [...out.steps.map((step) => byId.get(step.id) ?? step), ...fresh];
-  note.push(...fresh.map((step) => `${words.step} ${step.name}`));
-  note.push(
+  const out: BoardDefinition = {
+    ...clone(agent),
+    name: draft.name,
+    parts: { ...clone(draft.parts), ...clone(agent.parts) },
+    layout: { ...draft.layout, ...agent.layout },
+  };
+  const added: Part[] = Object.values(agent.parts).filter((part) => !draft.parts[part.id]);
+  const before = new Map(draft.steps.map((step) => [step.id, step]));
+  const fresh = agent.steps.filter(({ id }) => !before.has(id));
+  const gone = draft.steps.filter(({ id }) => !agent.steps.some((step) => step.id === id));
+  const changes = agent.steps.flatMap((step) => {
+    const was = before.get(step.id);
+    if (!was || same(was, step)) return [];
+    const onlyInstructions = same({ ...was, instructions: null }, { ...step, instructions: null });
+    return [`${onlyInstructions ? words.instructions : words.changed} ${step.name}`];
+  });
+  const note = [
+    ...fresh.map((step) => `${words.step} ${step.name}`),
+    ...gone.map((step) => `${words.gone} ${step.name}`),
     ...added.map((part) => `${isEvidence(part) ? words.evidence : words.field} ${part.name}`),
-  );
-  note.push(...changes);
+    ...changes,
+    ...(agent.item !== draft.item ? [`${words.item} ${agent.item}`] : []),
+    ...(agent.about !== draft.about ? [`${words.changed} ${words.about}`] : []),
+    ...(agent.idle !== draft.idle ? [`${words.changed} ${words.idle}`] : []),
+  ];
   return { definition: out, note };
 }
 
