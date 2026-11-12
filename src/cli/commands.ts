@@ -665,7 +665,7 @@ const boardDraft: Command = {
       const { actor, channel } = input;
       const submitted = submitAgentDraft(project, { id, text, actor, channel });
       const lines = [
-        `Handed in the board draft on ${id} (evidence ${submitted.evidence.id}); the person merges it in Studio.`,
+        `Handed in the board draft on ${id} (evidence ${submitted.evidence.id}); it is in Studio now, for the person to try and publish.`,
         ...(submitted.problems.length === 0
           ? []
           : ['Still to fix, for it to be published:', ...submitted.problems.map((p) => `  ${p}`)]),
