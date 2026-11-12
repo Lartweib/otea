@@ -123,7 +123,7 @@ export type ItemView = Omit<ItemWithEvents, 'relations'> & {
 };
 
 // canManageDevices: this computer's signed-in browser, the only one that pairs and revokes devices.
-// canConfigure: the same browser; it alone changes the project's paths, presets and blueprint.
+// canConfigure: the same browser; it alone changes the project's paths, presets and boards.
 export type Session = { canWrite: boolean; canManageDevices?: boolean; canConfigure?: boolean };
 
 // A phone or tablet paired over the LAN; hint is the end of its token's hash.

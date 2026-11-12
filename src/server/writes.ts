@@ -58,7 +58,7 @@ export function assertWritable(c: Context, auth: Session, withFiles = false): vo
   assertSameOrigin(c, withFiles);
 }
 
-// Changes to the project's setup (paths, presets, blueprint) come from this computer's signed-in
+// Changes to the project's setup (paths, presets, boards) come from this computer's signed-in
 // browser, from the UI's own origin: a paired device may act on items but not reconfigure the project.
 export function assertConfigurable(c: Context, auth: Session): void {
   assertSignedIn(c, auth);
