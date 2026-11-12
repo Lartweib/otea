@@ -538,12 +538,15 @@ const EVIDENCE_KIND: Readonly<Record<string, Part['kind']>> = {
 // A collection on a preset Otea never shipped reads as a board of one step, Hacerlo (any agent,
 // you review), with every field its items carry at any time and every evidence module they hold
 // as optional evidence; open items go there, closed ones to Hecho or Descartado by their state.
+// `branch`: the field a preset's git gates matched on, kept as the protected branch (pushed while
+// the step is done, merged at Hecho), its repository read from `repo` when the items carry one.
 export function genericBoard(
   name: string,
   lang: Lang,
   fields: readonly string[],
   evidence: readonly { id: string; module: string }[],
   ids: IdSource = newId,
+  branch?: { field: string; repo?: string },
 ): BoardDefinition {
   const parts: BoardDefinition['parts'] = {};
   const humanize = (key: string) => {
@@ -566,6 +569,17 @@ export function genericBoard(
   }
   const evidenceIds = evidence.map(({ id }) => id).filter((id) => parts[id]);
   const step = ids('s');
+  if (branch) {
+    const repo = branch.repo !== undefined && parts[branch.repo] ? branch.repo : undefined;
+    parts[branch.field] = {
+      id: branch.field,
+      name: humanize(branch.field),
+      kind: 'branch',
+      hint: '',
+      options: [],
+      guard: { push: [step], ...(repo === undefined ? {} : { repo }) },
+    };
+  }
   return {
     ...boardDefaults(),
     schema: 2,

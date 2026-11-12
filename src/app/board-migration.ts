@@ -164,7 +164,21 @@ function readOne(
     blocked.has(collection.name) ? waitingForBlockers(def) : def;
   const items = selectItems(ctx.db, { collection: collection.name });
   if (!reading) {
-    const fields = [...new Set(items.flatMap((item) => Object.keys(item.fields)))];
+    // Without its preset, Otea cannot tell its closed states from its open ones: it waits for it.
+    const preset = ctx.presets.presets.get(collection.preset);
+    if (!preset) return false;
+    const gates = preset.workflow.gates ?? {};
+    const declared = (key: string) => key in preset.fields;
+    const fields = [
+      ...new Set([
+        ...items.flatMap((item) => Object.keys(item.fields)),
+        ...['branch', 'repo'].filter(declared),
+      ]),
+    ];
+    const gated = (gates.push !== undefined || gates.merge !== undefined) && declared('branch');
+    const branch = gated
+      ? { field: 'branch', ...(declared('repo') ? { repo: 'repo' } : {}) }
+      : undefined;
     const evidence = [
       ...new Map(
         items
@@ -172,11 +186,10 @@ function readOne(
           .flatMap(({ module }) => (module ? [[module, { id: module, module }] as const] : [])),
       ).values(),
     ];
-    const def = checked(waits(genericBoard(collection.name, lang, fields, evidence, ids)));
+    const def = checked(waits(genericBoard(collection.name, lang, fields, evidence, ids, branch)));
     if (!def) return false;
-    const preset = ctx.presets.presets.get(collection.preset);
     const closes = (state: string) =>
-      preset?.workflow.states.find(({ name }) => name === state)?.closes;
+      preset.workflow.states.find(({ name }) => name === state)?.closes;
     const id = ids('b');
     insertBoard(ctx.db, { id, createdAt: at, builtin: false });
     publish(ctx, id, 1, def, at);
@@ -303,8 +316,8 @@ export function migrateBoards(
 }
 
 // The boards a project's old blueprint (`.otea/blueprint.yaml`) said other boards' items block:
-// `<board>.<type> blocks <board>.<type>`. Unreadable or missing reads as none.
-export function blockedByBlueprint(dataDir: string): Set<string> {
+// `<board>.<type> blocks <board>.<type>`. Missing reads as none; unreadable as undefined.
+export function blockedByBlueprint(dataDir: string): Set<string> | undefined {
   const path = join(dataDir, 'blueprint.yaml');
   if (!existsSync(path)) return new Set();
   try {
@@ -321,15 +334,22 @@ export function blockedByBlueprint(dataDir: string): Set<string> {
       }),
     );
   } catch {
-    return new Set();
+    return undefined;
   }
 }
 
 // Reads every collection as boards (a blueprint's blocks become waits), then forgets the
-// blueprint: boards link freely, and "se divide en" is the only join they declare.
+// blueprint: boards link freely, and "se divide en" is the only join they declare. The blueprint
+// stays while a collection is left unread (it is read on a later open) or it cannot be read.
 export function migrateProjectBoards(ctx: Context & { dataDir: string }, lang: Lang): number {
   const path = join(ctx.dataDir, 'blueprint.yaml');
-  const count = migrateBoards(ctx, lang, systemClock, newId, blockedByBlueprint(ctx.dataDir));
-  if (existsSync(path)) rmSync(path, { force: true });
+  const blocked = blockedByBlueprint(ctx.dataDir);
+  const count = migrateBoards(ctx, lang, systemClock, newId, blocked ?? new Set());
+  const unread = pending(ctx).map(({ collection }) => collection.name);
+  if (unread.length > 0) {
+    process.emitWarning(`Otea could not read ${unread.join(', ')} as boards yet`, 'OteaMigration');
+  }
+  if (existsSync(path) && blocked !== undefined && unread.length === 0)
+    rmSync(path, { force: true });
   return count;
 }

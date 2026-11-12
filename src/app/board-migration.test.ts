@@ -1,14 +1,18 @@
+import { existsSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { sequenceIds } from '../core/board/ids.ts';
 import { parsePreset } from '../core/preset.ts';
 import { selectEvents } from '../store/queries.ts';
-import { migrateBoards } from './board-migration.ts';
+import { migrateBoards, migrateProjectBoards } from './board-migration.ts';
 import { getBoardRecord, listBoardSummaries } from './boards.ts';
 import { addCollection } from './collections.ts';
 import type { Context } from './context.ts';
+import { checkGate } from './gates.ts';
 import { createItem, getItem, moveItem } from './items.ts';
 import { addRelation } from './relations.ts';
-import { memoryContext } from './testing.ts';
+import { catalogWith, memoryContext } from './testing.ts';
 
 const you = { kind: 'human' as const, name: 'fede' };
 const kiln = { kind: 'agent' as const, name: 'kiln' };
@@ -148,5 +152,77 @@ workflow:
     );
     expect(migrateBoards(ctx, 'es', now, sequenceIds())).toBe(2);
     expect(getItem(ctx, task.id).collection).toBe('Tareas');
+  });
+  it('keeps the git gates of a preset Otea never shipped as a guard on its branch', () => {
+    const ships = parsePreset(`
+preset: ships
+preset_version: 1
+fields:
+  title: { module: text, required: create }
+  branch: { module: text }
+  repo: { module: text }
+workflow:
+  initial: building
+  states:
+    building: { turn: agent }
+    checking: { turn: human }
+    shipped: { turn: none, closes: done }
+  transitions: [{ from: building, to: checking, by: agent }, { from: checking, to: shipped, by: human }]
+  gates:
+    push: [building]
+    merge: [shipped]
+`);
+    const ctx = memoryContext(ships);
+    addCollection(ctx, { name: 'Barcos', preset: 'ships' });
+    const open = item(ctx, 'Barcos', 'Casco', { fields: { branch: 'feat/x', repo: 'api' } });
+    expect(migrateBoards(ctx, 'es', now, sequenceIds())).toBe(1);
+    const merge = checkGate(ctx, 'merge', { branch: 'feat/x' });
+    expect(merge.items.map(({ id }) => id)).toEqual([open.id]);
+    expect(merge.allowed).toBe(false);
+    expect(checkGate(ctx, 'push', { branch: 'feat/x', repo: 'api' }).allowed).toBe(true);
+  });
+
+  it('leaves a collection whose preset did not load on it, closed items closed', () => {
+    const recipes = parsePreset(`
+preset: recipes
+preset_version: 1
+fields:
+  title: { module: text, required: create }
+workflow:
+  initial: cooking
+  states:
+    cooking: { turn: agent }
+    served: { turn: none, closes: done }
+  transitions: [{ from: cooking, to: served, by: human }]
+`);
+    const loaded = memoryContext(recipes);
+    addCollection(loaded, { name: 'Recetas', preset: 'recipes' });
+    const done = item(loaded, 'Recetas', 'Pan', { fields: {} });
+    moveItem(loaded, { id: done.id, to: 'served', actor: you, channel: 'ui' });
+    const ctx = { ...loaded, presets: catalogWith() };
+    expect(migrateBoards(ctx, 'es', now, sequenceIds())).toBe(0);
+    expect(loaded.db.prepare('SELECT state FROM items WHERE id = ?').get(done.id)).toEqual({
+      state: 'served',
+    });
+  });
+
+  it('keeps the blueprint while a collection it names is still unread', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'otea-bp-'));
+    const path = join(dir, 'blueprint.yaml');
+    writeFileSync(path, 'connections:\n  - "Errores.bug blocks Recetas.item"\n');
+    const ctx = memoryContext();
+    addCollection(ctx, { name: 'Recetas', preset: 'tasks' });
+    // A preset that is gone keeps its collection unread.
+    ctx.db.prepare("UPDATE collections SET preset = 'gone' WHERE name = 'Recetas'").run();
+    migrateProjectBoards({ ...ctx, dataDir: dir }, 'es');
+    expect(existsSync(path)).toBe(true);
+  });
+
+  it('keeps a blueprint it cannot read', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'otea-bp-'));
+    const path = join(dir, 'blueprint.yaml');
+    writeFileSync(path, 'connections: [unclosed\n');
+    migrateProjectBoards({ ...memoryContext(), dataDir: dir }, 'es');
+    expect(existsSync(path)).toBe(true);
   });
 });
