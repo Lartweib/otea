@@ -1,5 +1,15 @@
 import { z } from 'zod';
-import { BOARD_SCHEMA, type BoardDefinition, EVIDENCE_KINDS, FIELD_KINDS, ZONES } from './model.ts';
+import {
+  BOARD_SCHEMA,
+  type BoardDefinition,
+  DONE,
+  DROPPED,
+  EVIDENCE_KINDS,
+  FIELD_KINDS,
+  SAME,
+  TITLE,
+  ZONES,
+} from './model.ts';
 
 // The shape of a board definition as it travels (PUT draft) and as it is stored (a version or a
 // draft row): checked whole, so a malformed document never reaches the engine. Problems a person
@@ -78,7 +88,36 @@ export function parseDefinition(raw: unknown): DefinitionReading {
     .filter(([key, value]) => key !== value.id)
     .map(([key, value]) => `parts.${key}: the part says its id is ${value.id}`);
   if (misfiled.length > 0) return { ok: false, problems: misfiled };
+  const clashes = idClashes(definition);
+  if (clashes.length > 0) return { ok: false, problems: clashes };
   return { ok: true, definition };
+}
+
+// Ids the engine gives a meaning of its own: where a way or a send-back leads, the title, and the
+// suffixes of a step's review states.
+const RESERVED = new Set([DONE, DROPPED, SAME, TITLE]);
+const REVIEW_SUFFIX = /__(review|yours)$/;
+
+// Ids a step or a part cannot take, though they have the shape of one: a reserved word, a state
+// suffix, or a step id another step already has. The editor never makes them; a hand-written or an
+// agent's board.json can.
+function idClashes(definition: BoardDefinition): string[] {
+  const problems: string[] = [];
+  const seen = new Set<string>();
+  definition.steps.forEach(({ id }, index) => {
+    const at = `steps.${index}.id`;
+    if (RESERVED.has(id)) problems.push(`${at}: ${id} is a word the board keeps for itself`);
+    else if (REVIEW_SUFFIX.test(id))
+      problems.push(`${at}: a step id cannot end in __review or __yours`);
+    else if (seen.has(id)) problems.push(`${at}: another step already has the id ${id}`);
+    else if (id in definition.parts)
+      problems.push(`${at}: a field or evidence already has the id ${id}`);
+    seen.add(id);
+  });
+  for (const id of Object.keys(definition.parts)) {
+    if (RESERVED.has(id)) problems.push(`parts.${id}: ${id} is a word the board keeps for itself`);
+  }
+  return problems;
 }
 
 // Reads a stored definition, which was checked when written: a failure here is a corrupt row.
