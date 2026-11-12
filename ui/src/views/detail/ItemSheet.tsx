@@ -11,8 +11,10 @@ import { NodeGlyph } from '../../lanes/NodeGlyph.tsx';
 import { ItemTypeScope, stateWord, typeWord } from '../../preset-words.ts';
 import { studioHash } from '../../selection.ts';
 import type { ItemView } from '../../types.ts';
+import { useStudioBoard } from '../board/studio-board.tsx';
 import { Acts, actsModeOf } from './Acts.tsx';
 import { Body, bodySections } from './Body.tsx';
+import { boardItemOf } from './board-item.ts';
 import { Details, detailCells } from './Details.tsx';
 import { factsOf, standOf } from './facts.ts';
 import { toastOf } from './frame.ts';
@@ -66,12 +68,31 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
   const word = (s: string) => stateWord(type, s);
   const now = app.now;
   const look = lookOf(item, now);
-  const lane = laneOf(item.turn);
-  const facts = useMemo(() => factsOf(item, type, now), [item, type, now]);
+  // On a published board the step engine says whose turn it is, the step's round and the route.
+  const live = useStudioBoard(item.collection)?.live;
+  const onBoard = useMemo(
+    () =>
+      live
+        ? boardItemOf(live, item, {
+            done: t('bs.done'),
+            dip: (n, at) => t('sheet.dip', { n, when: at ? dipWhen(at, now) : '' }),
+          })
+        : null,
+    [live, item, now],
+  );
+  const facts = useMemo(() => {
+    const read = factsOf(item, type, now);
+    if (!onBoard) return read;
+    const round = onBoard.round > 0 ? onBoard.round : read.round;
+    if (item.turn !== 'agent') return { ...read, round };
+    const holder = item.lease?.holder ?? item.expiredLease?.holder ?? onBoard.agent;
+    return { ...read, round, agent: holder, left: false };
+  }, [item, type, now, onBoard]);
+  const lane = onBoard?.route.lane ?? laneOf(item.turn);
   const plan = planMoves(item.transitions, { own: facts.own, word, waits: waitsOf(item) });
   const mode = actsModeOf({ look, canWrite: app.session.canWrite, question: facts.question, plan });
-  const steps = type ? routeSteps(type) : [];
-  const ci = type ? routeIndex(type, item.state, facts.visited) : 0;
+  const steps = onBoard ? onBoard.route.steps : type ? routeSteps(type) : [];
+  const ci = onBoard ? onBoard.route.ci : type ? routeIndex(type, item.state, facts.visited) : 0;
   const stand = standOf({
     look,
     agent: facts.left ? facts.agent : (facts.handed?.agent ?? facts.agent),
@@ -89,7 +110,7 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
     } as never,
   );
   const pathIndex = (state: string) => (type ? routeIndex(type, state, facts.visited) : -1);
-  const dips = facts.sentBack.map((r) => ({
+  const presetDips = facts.sentBack.map((r) => ({
     at: pathIndex(r.state),
     label: t('sheet.dip', { n: r.n, when: dipWhen(r.at, now) }),
   }));
@@ -199,11 +220,11 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
             <Route
               id={item.id}
               steps={steps}
-              words={steps.map((s) => word(s.name))}
+              words={onBoard ? onBoard.route.words : steps.map((s) => word(s.name))}
               ci={ci}
               lane={lane}
               look={look}
-              dips={dips}
+              dips={onBoard ? onBoard.route.dips : presetDips}
               phone={app.phone}
             />
           ) : null}

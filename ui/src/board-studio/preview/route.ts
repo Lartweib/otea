@@ -22,7 +22,8 @@ export type DefinitionRoute = {
   dips: DipSpec[];
 };
 
-export type RouteWords = { done: string; dip: (round: number) => string };
+// dip: the label of a send-back, its round and, when known, when it happened.
+export type RouteWords = { done: string; dip: (round: number, at?: string) => string };
 
 const laneOfWho = (who: Doer | Reviewer): Lane => (who === 'you' ? 'you' : 'ag');
 
@@ -31,7 +32,7 @@ const visitOf = (stepId: string) => `${stepId}:review`;
 export function definitionRoute(
   def: BoardDefinition,
   at: RouteAt,
-  dips: readonly { from: string }[],
+  dips: readonly { from: string; at?: string }[],
   words: RouteWords,
 ): DefinitionRoute {
   const steps: RouteStep[] = [];
@@ -72,12 +73,12 @@ export function definitionRoute(
 
   const sent = new Map<string, number>();
   const dipped: DipSpec[] = [];
-  for (const { from } of dips) {
+  for (const { from, at: when } of dips) {
     const at = reviewAt(from);
     if (at < 0) continue;
     const n = (sent.get(from) ?? 0) + 1;
     sent.set(from, n);
-    dipped.push({ at, label: words.dip(n) });
+    dipped.push({ at, label: words.dip(n, when) });
   }
   return { steps, words: shown, ci, lane, dips: dipped };
 }
