@@ -108,6 +108,18 @@ export const studioPreview = {
     'You do this step. {next} never gives it to an agent, and its tools cannot hand it off for you.',
   'bs.preview.agent.ifEmpty': 'If it hands off with nothing',
   'bs.preview.agent.ifApproved': 'If it approves',
+  'bs.preview.agent.ifPartsOpen': 'If {label} are not finished',
+  'bs.preview.agent.ifReopened': 'If a part reopens while you review it',
+  'bs.preview.agent.ifBlocked': 'If something holds it back',
+  'bs.preview.agent.ifTakenBack': 'If it takes it back to {step}',
+  'bs.preview.agent.ifDrops': 'If it drops it',
+  'bs.preview.agent.ifTriesToDrop': 'If it tries to drop it',
+  'bs.preview.agent.ifBranch': 'If it pushes or merges the branch',
+  'bs.preview.agent.onCreate': 'When it is created',
+  'bs.preview.agent.ifNoParent': 'If it is created without its {item}',
+  'bs.preview.agent.ifOtherPart': 'If it links something else as a part',
+  'bs.preview.agent.yoursBack':
+    'When you give it back to {steps}, the agent of that step reads your note as its next round’s note.',
   'bs.preview.agent.exact': 'the exact answer',
   'bs.preview.agent.english':
     'Agents read English; names and instructions go exactly as you wrote them.',
