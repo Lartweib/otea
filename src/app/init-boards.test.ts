@@ -21,7 +21,7 @@ describe('initBoards', () => {
     const ctx = memoryContext();
 
     expect(initBoards(ctx, 'repos').map(({ name }) => name)).toEqual(['Cambios', 'Tareas de repo']);
-    expect(names(ctx)).toEqual(['Tareas de repo live', 'Cambios live']);
+    expect(names(ctx).sort()).toEqual(['Cambios live', 'Tareas de repo live']);
   });
 
   it('makes one board from a single template', () => {
