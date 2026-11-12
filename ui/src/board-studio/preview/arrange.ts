@@ -1,7 +1,13 @@
 import { startsWith } from '../../../../src/core/board/engine.ts';
 import {
   type BoardDefinition,
+  INITIAL_KINDS,
+  type ListView,
+  MOTIVE,
+  PARTS,
   partOf,
+  ROUNDS,
+  STEP,
   stepById,
   TITLE,
   usedRefs,
@@ -21,7 +27,9 @@ export type Origin =
   | { kind: 'form' }
   | { kind: 'step'; step: string }
   | { kind: 'anytime' }
-  | { kind: 'column' };
+  | { kind: 'column' }
+  // Rondas (the rounds of the review) and Partes (the item's parts): places, not parts.
+  | { kind: 'place' };
 
 export type Tile = {
   ref: string;
@@ -32,9 +40,21 @@ export type Tile = {
   column?: boolean;
 };
 
+// The places Acomodar shows besides the parts: Rondas on a board whose steps are reviewed, Partes
+// on a board that divides.
+export function placesOf(def: BoardDefinition): string[] {
+  const out: string[] = [];
+  if (def.steps.some(({ reviewer }) => reviewer !== 'none')) out.push(ROUNDS);
+  if (def.split) out.push(PARTS);
+  return out;
+}
+
+export const isPlace = (ref: string): boolean => ref === ROUNDS || ref === PARTS;
+
 export function zoneOf(def: BoardDefinition, ref: string): Zone {
   const set = def.layout[ref];
   if (set) return set;
+  if (isPlace(ref)) return 'main';
   const part = partOf(def, ref);
   return part ? defaultZone(part.kind) : 'side';
 }
@@ -51,6 +71,7 @@ export function pageTiles(def: BoardDefinition, stepId: string): Record<Place, T
   for (const { ref } of stepById(def, stepId)?.hand ?? [])
     add(ref, { kind: 'step', step: stepId }, true);
   for (const ref of def.anytime) add(ref, { kind: 'anytime' });
+  for (const ref of placesOf(def)) listed.push({ ref, origin: { kind: 'place' }, now: false });
 
   const order = Object.keys(def.layout);
   const rank = (ref: string) => {
@@ -102,4 +123,25 @@ export function moveTile(
   const at = before === undefined ? -1 : entries.findIndex(([key]) => key === before);
   entries.splice(at < 0 ? entries.length : at, 0, [ref, to]);
   def.layout = Object.fromEntries(entries);
+}
+
+// "Agrupar por…": Paso, every choice, level or yes-or-no field the board uses, and Motivo when it
+// has motives.
+export function groupOptions(def: BoardDefinition): string[] {
+  const used = usedRefs(def);
+  const fields = Object.values(def.parts)
+    .filter((part) => INITIAL_KINDS.includes(part.kind as never) && used.has(part.id))
+    .map(({ id }) => id);
+  return [STEP, ...fields, ...(def.drop.motives.length > 0 ? [MOTIVE] : [])];
+}
+
+// "La lista se ve como Lista / Tabla" (mutating, for draft.mutate).
+export function setListAs(def: BoardDefinition, as: ListView['as']): void {
+  def.list = { ...def.list, as };
+}
+
+// "Agrupar por…" (nothing: no group).
+export function setListGroup(def: BoardDefinition, group: string | undefined): void {
+  const { group: _, ...rest } = def.list;
+  def.list = group === undefined ? rest : { ...rest, group };
 }
