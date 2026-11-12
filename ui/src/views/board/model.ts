@@ -154,6 +154,15 @@ export function motivesOf(collection: CollectionView): Motive[] {
   );
 }
 
+// Tabla's Turno column holds an ended item's motive: as wide as the longest one, never cut.
+export function motiveColumns<C extends { key: string; chars?: number }>(
+  columns: readonly C[],
+  collection: CollectionView,
+): C[] {
+  const longest = Math.max(0, ...motivesOf(collection).map((m) => m.name.length));
+  return columns.map((c) => (c.key === 'who' && longest > 0 ? { ...c, chars: longest } : c));
+}
+
 // The motive an item was discarded with, plain `dropped` for a discard without one, '' otherwise.
 export function motiveOfItem(item: Item): string {
   if (item.closes !== 'discarded') return '';

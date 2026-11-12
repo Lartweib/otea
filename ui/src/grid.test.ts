@@ -205,6 +205,8 @@ describe('the grid width tiers', () => {
     expect(columnWidth(column('severity'), false)).toBe(112);
     expect(columnWidth(column('severity'), true)).toBe(52);
     expect(columnWidth(column('who'), false)).toBe(52);
+    // A board that discards with motives says the longest one there ("No se arreglará", 15).
+    expect(columnWidth({ ...column('who'), chars: 15 }, false)).toBe(116);
     // The longest age: the time left on a lease, '23 h 59 left', and its 12 px of padding.
     expect(columnWidth(column('age'), false)).toBe(101);
     expect(columnWidth(column('category'), false)).toBe(117);

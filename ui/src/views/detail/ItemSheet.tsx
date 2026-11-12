@@ -274,9 +274,10 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
               .map((p) => p.id),
           ),
           rounds:
-            rounds && roundsStep && (hasNotes || roundsStep.reviewer !== 'none') ? (
-              <RoundNotes rounds={rounds} step={roundsStep.name} />
-            ) : null,
+            rounds && roundsStep ? <RoundNotes rounds={rounds} step={roundsStep.name} /> : null,
+          // Where the board's layout places no Rondas, they come after the fields only when
+          // there is something to say or a review to say it to.
+          roundsAfter: !!roundsStep && (hasNotes || roundsStep.reviewer !== 'none'),
           sections: boardSections,
         }
       : undefined,

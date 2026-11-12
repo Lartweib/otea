@@ -416,7 +416,12 @@ export function DropDialog({
   onDrop: (choice: DropChoice, reason: string) => void;
 }) {
   return (
-    <Dialog open={open} label={t('bi.drop.title', { id: item.id })} onClose={onClose}>
+    <Dialog
+      open={open}
+      label={t('bi.drop.title', { id: item.id })}
+      onClose={onClose}
+      className="bi-dlg"
+    >
       <DropForm
         key={String(open)}
         item={item}

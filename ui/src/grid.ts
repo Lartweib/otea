@@ -21,7 +21,8 @@ export type GridColumn = {
   label: string;
   field?: FieldView;
   values?: string[];
-  // The id column: how many characters its ids take (the prefix, a dash and three digits).
+  // The id column: how many characters its ids take (the prefix, a dash and three digits); the who
+  // column: the longest discard motive it says for an ended item.
   chars?: number;
 };
 
@@ -204,8 +205,9 @@ export function columnWidth(column: GridColumn, compact: boolean): number {
     case 'severity':
       return compact ? 52 : 112;
     case 'who':
-      // The agent's mark or your chip, never the name; its head reads whole.
-      return 52;
+      // The agent's mark or your chip, never the name; its head reads whole. On a board that
+      // discards with motives, the longest motive (sans 12.5 is about 6.8px a character).
+      return Math.max(52, Math.round((column.chars ?? 0) * 6.8 + 14));
     case 'age':
       // An age, or the time left on a lease (`23 h 59 left`), and the cell's 12 px on the right.
       return Math.max(60, monoWidth(ageChars()) + 14);

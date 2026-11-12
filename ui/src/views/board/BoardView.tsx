@@ -38,6 +38,7 @@ import {
   groupOptions,
   isFolded,
   MODES,
+  motiveColumns,
   pasosCards,
   pasosColumns,
   stepsStrip,
@@ -142,7 +143,10 @@ function Board({ board }: { board: string }) {
   const ctx: BoardCtx = { collection: col, now: app.now, feed: app.feed };
   const universe = useMemo(() => universeOf(app.all, app.now), [app.all, app.now]);
   const available = useMemo(() => availableColumns(col), [col]);
-  const columns = useMemo(() => chosenColumns(col, prefs.columns), [col, prefs.columns]);
+  const columns = useMemo(
+    () => motiveColumns(chosenColumns(col, prefs.columns), col),
+    [col, prefs.columns],
+  );
   const selected = app.route.item;
 
   // The detail reads what the view lists to size itself.
