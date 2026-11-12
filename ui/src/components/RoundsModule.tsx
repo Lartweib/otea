@@ -219,6 +219,8 @@ type RoundsModuleProps = {
   canWrite: boolean;
   // The data attributes of its place in the layout (slotData), for Studio to find it.
   slot?: Readonly<Record<string, string>>;
+  // A Studio board draws its round notes above: no "no rounds yet" under them.
+  quiet?: boolean;
 };
 
 // The item's rounds, read from its history: the path between the lanes, the latest round with its
@@ -298,13 +300,14 @@ function Verdict({
   );
 }
 
-export function RoundsModule({ item, type, entry, canWrite, slot }: RoundsModuleProps) {
+export function RoundsModule({ item, type, entry, canWrite, slot, quiet }: RoundsModuleProps) {
   const [marks, setMarks] = useState<number[]>([]);
   const rounds = roundsOf(item.events, item.evidence, type.states);
   const modules = type.layout.evidence.flatMap(({ id }) => (id === undefined ? [] : [id]));
   const title = entry.label ?? t('rounds.title');
   const latest = rounds.at(-1);
   if (!latest) {
+    if (quiet) return null;
     return (
       <section className="rd-module" aria-label={title} {...slot}>
         <h2 className="t-label">{title}</h2>

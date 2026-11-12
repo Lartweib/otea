@@ -200,11 +200,23 @@ export function branchStrip(
 // Each round of a step with its notes (Rondas): the handoff's note ("Nota de la entrega", which
 // the compiled board keeps as the handoff's reason) closes a round; the person's send-back reason,
 // a way back into the step ("Devolver a Completar") or a migration's question opens the next.
-export type RoundNote = { kind: 'handoff' | 'back'; text: string; by: string; at: string };
+// `person`: the person wrote it (a send-back, a Devolver, the question a migration carried); `by`
+// is empty when nobody can be named (a migration).
+export type RoundNote = {
+  kind: 'handoff' | 'back';
+  text: string;
+  by: string;
+  person: boolean;
+  at: string;
+};
 export type Round = { round: number; notes: RoundNote[] };
 
+const MIGRATE = 'migrate';
+
+// What a move said: its note, else its reason; a migration's reason is a marker, not words.
 const textOf = (data: Record<string, unknown>): string => {
-  const said = typeof data.note === 'string' ? data.note : data.reason;
+  const said =
+    typeof data.note === 'string' ? data.note : data.reason === MIGRATE ? '' : data.reason;
   return typeof said === 'string' ? said.trim() : '';
 };
 
@@ -226,17 +238,21 @@ export function roundNotes(
     const source = positionOf(from);
     const target = positionOf(to);
     const text = textOf(e.data);
+    const migrated = e.data.reason === MIGRATE;
     const note = (kind: RoundNote['kind']): RoundNote => ({
       kind,
       text,
-      by: e.actor.name,
+      by: migrated ? '' : e.actor.name,
+      person: e.actor.kind === 'human',
       at: e.at,
     });
     const intoStep = !isClosed(target) && target.step === stepId && target.phase === 'doing';
     const fromStep = !isClosed(source) && source.step === stepId;
     const fromLater = !isClosed(source) && indexOf(source.step) > index;
     const sentBack = intoStep && fromStep && source.phase !== 'doing';
-    const wayBack = intoStep && !fromStep && (fromLater || text !== '');
+    // Back from a later step, or a migration that brought the person's question with it; moving
+    // on, forward, with a word opens no round.
+    const wayBack = intoStep && !fromStep && (fromLater || (migrated && text !== ''));
     if (sentBack || wayBack) {
       rounds.push({ round: rounds.length + 1, notes: text ? [note('back')] : [] });
     } else if (fromStep && source.phase === 'doing' && text && !block) {
@@ -251,6 +267,7 @@ export function roundNotes(
         kind: 'handoff',
         text: n.note.trim(),
         by: n.by,
+        person: false,
         at: n.at,
       });
     }

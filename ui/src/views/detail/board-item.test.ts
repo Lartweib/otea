@@ -206,12 +206,26 @@ describe('roundNotes: each round of the step with its notes', () => {
       {
         round: 1,
         notes: [
-          { kind: 'handoff', text: 'Probé el muelle.', by: 'mender', at: '2026-01-02T00:00:00Z' },
+          {
+            kind: 'handoff',
+            text: 'Probé el muelle.',
+            by: 'mender',
+            person: false,
+            at: '2026-01-02T00:00:00Z',
+          },
         ],
       },
       {
         round: 2,
-        notes: [{ kind: 'back', text: 'Sigue cayendo.', by: 'tú', at: '2026-01-03T00:00:00Z' }],
+        notes: [
+          {
+            kind: 'back',
+            text: 'Sigue cayendo.',
+            by: 'tú',
+            person: true,
+            at: '2026-01-03T00:00:00Z',
+          },
+        ],
       },
     ]);
   });
@@ -223,8 +237,47 @@ describe('roundNotes: each round of the step with its notes', () => {
     ];
     expect(roundNotes(errores(), 'sfill', events).at(-1)).toEqual({
       round: 2,
-      notes: [{ kind: 'back', text: '¿En qué versión?', by: 'tú', at: '2026-01-02T00:00:00Z' }],
+      notes: [
+        {
+          kind: 'back',
+          text: '¿En qué versión?',
+          by: 'tú',
+          person: true,
+          at: '2026-01-02T00:00:00Z',
+        },
+      ],
     });
+  });
+
+  it('opens no round when the person moves it on, forward, with a word', () => {
+    const events: ItemEvent[] = [
+      created('sfill'),
+      said(moved('sfill', 'striage', agent('kiln'), '2026-01-02T00:00:00Z'), 'Completo.'),
+      said(moved('striage', 'sfix', you, '2026-01-03T00:00:00Z'), 'Adelante.'),
+    ];
+    expect(roundNotes(errores(), 'sfix', events)).toEqual([{ round: 1, notes: [] }]);
+  });
+
+  it('reads the question a migration carried as the next round’s note, never the word migrate', () => {
+    const otea = { kind: 'human' as const, name: 'otea' };
+    const migrate = (data: Record<string, unknown>): ItemEvent => ({
+      ...moved('needs_info', 'sfill', otea, '2026-01-03T00:00:00Z'),
+      data: { from: 'needs_info', to: 'sfill', reason: 'migrate', ...data },
+    });
+    expect(
+      roundNotes(errores(), 'sfill', [created('sfill'), migrate({ note: '¿Qué versión?' })]),
+    ).toEqual([
+      { round: 1, notes: [] },
+      {
+        round: 2,
+        notes: [
+          { kind: 'back', text: '¿Qué versión?', by: '', person: true, at: '2026-01-03T00:00:00Z' },
+        ],
+      },
+    ]);
+    expect(roundNotes(errores(), 'sfill', [created('sfill'), migrate({})])).toEqual([
+      { round: 1, notes: [] },
+    ]);
   });
 
   it('is one round with nothing to say on a first round', () => {
