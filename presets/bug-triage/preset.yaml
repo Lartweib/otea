@@ -118,7 +118,7 @@ labels:
     values:
       severity: { low: baja, medium: media, high: alta, critical: crítica }
       category:
-        crash: cierre
+        crash: cierre inesperado
         visual: visual
         gameplay: jugabilidad
         physics: física

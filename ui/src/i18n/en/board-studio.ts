@@ -28,6 +28,9 @@ export const boardStudio = {
   'bs.use.field': 'a field',
   'bs.use.evidence': 'a piece of evidence',
   'bs.use.step': 'a step',
+  'bs.use.fields': '{n} fields',
+  'bs.use.evidences': '{n} pieces of evidence',
+  'bs.use.steps': '{n} steps',
 
   // Changes a publish makes (core/board/plan.ts).
   'bs.change.created': {

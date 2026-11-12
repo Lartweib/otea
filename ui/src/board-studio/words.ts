@@ -74,6 +74,12 @@ const USES: Readonly<Record<string, PlainKey>> = {
   step: 'bs.use.step',
 };
 
+const MANY_USES: Readonly<Record<string, PlainKey>> = {
+  field: 'bs.use.fields',
+  evidence: 'bs.use.evidences',
+  step: 'bs.use.steps',
+};
+
 export function problemText(problem: Problem): string {
   const p = problem.params;
   switch (problem.code) {
@@ -88,7 +94,12 @@ export function problemText(problem: Problem): string {
     case 'part_unnamed':
       return t('bs.problem.part_unnamed');
     case 'duplicate_name': {
-      const uses = (str(p.uses) as string[]).map((use) => t(USES[use] ?? 'bs.use.field'));
+      // Two steps with one name read «para dos pasos», never «un paso y un paso».
+      const counts = new Map<string, number>();
+      for (const use of str(p.uses) as string[]) counts.set(use, (counts.get(use) ?? 0) + 1);
+      const uses = [...counts].map(([use, n]) =>
+        n > 1 ? t(MANY_USES[use] ?? 'bs.use.fields', { n }) : t(USES[use] ?? 'bs.use.field'),
+      );
       return t('bs.problem.duplicate_name', { name: str(p.name) as string, uses: listOf(uses) });
     }
     case 'part_missing':

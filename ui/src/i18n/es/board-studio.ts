@@ -30,6 +30,9 @@ export const boardStudio = {
   'bs.use.field': 'un campo',
   'bs.use.evidence': 'una evidencia',
   'bs.use.step': 'un paso',
+  'bs.use.fields': '{n} campos',
+  'bs.use.evidences': '{n} evidencias',
+  'bs.use.steps': '{n} pasos',
 
   'bs.change.created': {
     one: '{board} se crea con un paso: {steps}.',
