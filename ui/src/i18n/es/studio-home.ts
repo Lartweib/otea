@@ -56,6 +56,8 @@ export const studioHome = {
   'bs.home.joinsGloss': 'toca un nombre para editarlo',
   'bs.home.joinAlways': 'cada {child} siempre pertenece a su {parent}',
   'bs.home.joinMaybe': 'cada {child} también puede ir sin {parent}',
+  'bs.home.mayBlock': 'puede frenar a',
+  'bs.home.blocksToday': 'hoy {blocker} frena {blocked}',
   'bs.home.makes': { one: 'crea un tablero', other: 'crea {count} tableros' },
   'bs.home.and': 'y',
 

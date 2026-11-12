@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
+import type { Item } from '../../types.ts';
 import type { BoardSummary } from '../api.ts';
 import {
   arrivedDrafts,
+  blockJoins,
   freeName,
   freshlyLive,
   homeRows,
@@ -176,6 +178,28 @@ describe('the joins map', () => {
     expect(joinsMap(boards).map((j) => `${j.parent.name}>${j.child.name}:${j.always}`)).toEqual([
       'Cambios>Tareas de repo:true',
     ]);
+  });
+
+  it('adds, from today’s links, a board whose open items hold back another board’s', () => {
+    const boards = [
+      summary({ id: 'er', name: 'Errores', collection: 'Errores', definition: def() }),
+      summary({ id: 'ta', name: 'Tareas', collection: 'Tareas', definition: def() }),
+    ];
+    const open = (id: string, collection: string, relations: Item['relations'] = []) =>
+      ({ id, collection, relations }) as Item;
+    const items = [
+      open('ERR-214', 'Errores', [{ kind: 'blocks', id: 'TAR-3' }]),
+      open('ERR-215', 'Errores', [{ kind: 'blocks', id: 'TAR-4' }]),
+      open('ERR-216', 'Errores', [{ kind: 'blocks', id: 'ERR-1' }]),
+      open('TAR-3', 'Tareas'),
+      open('TAR-4', 'Tareas'),
+      open('ERR-1', 'Errores'),
+      { ...open('ERR-9', 'Errores', [{ kind: 'blocks', id: 'TAR-3' }]), closes: 'done' } as Item,
+    ];
+    expect(blockJoins(boards, items)).toEqual([
+      { from: boards[0], to: boards[1], blocker: 'ERR-214', blocked: 'TAR-3' },
+    ]);
+    expect(blockJoins(boards, [])).toEqual([]);
   });
 
   it('is empty when no board divides into another', () => {

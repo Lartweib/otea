@@ -54,6 +54,8 @@ export const studioHome = {
   'bs.home.joinsGloss': 'tap a name to edit it',
   'bs.home.joinAlways': 'each {child} always belongs to its {parent}',
   'bs.home.joinMaybe': 'each {child} may also go without a {parent}',
+  'bs.home.mayBlock': 'can hold back',
+  'bs.home.blocksToday': 'today {blocker} holds back {blocked}',
   'bs.home.makes': { one: 'makes one board', other: 'makes {count} boards' },
   'bs.home.and': 'and',
 
