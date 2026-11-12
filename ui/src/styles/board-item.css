@@ -355,3 +355,9 @@ button.pmain:hover {
   color: var(--ink-3);
   font-style: italic;
 }
+
+/* A Studio board's long text shown as options: side by side while there is room for two. */
+.op-list.side {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+  gap: 8px;
+}
