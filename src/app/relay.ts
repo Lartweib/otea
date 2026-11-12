@@ -7,7 +7,7 @@ import { transaction } from '../store/database.ts';
 import { typeOfItem } from './collections.ts';
 import type { Context } from './context.ts';
 import { type Item, landMove, requireItem, systemClock } from './items.ts';
-import { boardState } from './next.ts';
+import { assertMoveHandsOff, boardState } from './next.ts';
 import { assertMayEnter } from './relations.ts';
 
 // The human a relayed decision belongs to: the same actor the web UI records.
@@ -41,12 +41,24 @@ export function relayDecision(ctx: Context, input: RelayInput, now = systemClock
     const { workflow } = type;
     const { reason, via, channel } = input;
     const to = boardState(ctx, item.collection, input.to);
+    // On a board the engine says first: a discard the person makes only on the page, an approval
+    // whose parts were reopened.
+    const note = assertMoveHandsOff(ctx, item, to, RELAYED_HUMAN, {
+      ...(reason === undefined ? {} : { reason }),
+      via: 'relay',
+    });
     authorizeRelay(workflow, item.state, to, reason);
     assertCanLeave(type, item.state, to, item.fields);
     const at = now();
     assertMayEnter(ctx, item, workflow, to, at);
     const move = { to, actor: RELAYED_HUMAN, at, lease: activeLease(item.lease, at) };
-    const data = { ...(reason ? { reason } : {}), channel, quote, source: 'conversation' };
+    const data = {
+      ...(reason ? { reason } : {}),
+      ...(note ? { note } : {}),
+      channel,
+      quote,
+      source: 'conversation',
+    };
     return landMove(db, workflow, item, move, data, { via });
   });
 }
