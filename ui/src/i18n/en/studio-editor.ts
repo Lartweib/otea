@@ -192,6 +192,10 @@ export const studioEditor = {
   'bs.editor.toast.from_form': 'the form',
   'bs.editor.toast.from_any': 'any time',
   'bs.editor.toast.step_removed': 'You removed the step {step}.',
+  'bs.editor.toast.step_removed_items': {
+    one: 'You removed the step {step}. When you publish, I will ask where its item goes.',
+    other: 'You removed the step {step}. When you publish, I will ask where its {count} items go.',
+  },
   'bs.editor.newstep': 'New step',
 
   // The part picker.

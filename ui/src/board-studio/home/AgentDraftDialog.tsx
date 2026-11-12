@@ -41,7 +41,8 @@ function AgentDraftForm({ onClose }: { onClose: () => void }) {
   const [problem, setProblem] = useState('');
   const [posting, setPosting] = useState(false);
   const nameRef = useRef<HTMLInputElement>(null);
-  const agents = (app.agents ?? []).filter((a) => a.live).map((a) => a.name);
+  // The same agents the editor's step menus offer: every agent Otea has seen.
+  const agents = (app.agents ?? []).map((a) => a.name);
 
   const submit = () => {
     if (posting) return;
