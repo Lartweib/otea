@@ -240,7 +240,18 @@ function readOne(
     const note = route.note ? askedReason(ctx, item.id, item.state) : undefined;
     move(ctx, item, to, route.state, at, note);
   }
+  for (const name of names.slice(1)) numberAfterMoved(ctx, name);
   return true;
+}
+
+// Moved items keep their number; the board they moved to numbers its new items after the highest.
+function numberAfterMoved(ctx: Context, collection: string): void {
+  ctx.db
+    .prepare(
+      `UPDATE collections SET next_seq = MAX(next_seq,
+         (SELECT COALESCE(MAX(seq), 0) + 1 FROM items WHERE collection = ?)) WHERE name = ?`,
+    )
+    .run(collection, collection);
 }
 
 // Puts an item on its board: its collection, the one item type, and its state, with a migrate
