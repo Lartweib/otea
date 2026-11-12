@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import type { BoardSummary } from '../api.ts';
-import { arrivedDrafts, freeName, freshlyLive, nameIssue, statusOf } from './home-model.ts';
+import {
+  arrivedDrafts,
+  freeName,
+  freshlyLive,
+  homeRows,
+  joinsMap,
+  nameIssue,
+  setBoards,
+  statusOf,
+} from './home-model.ts';
 
 // What Studio's home decides without drawing: a board's status in words, a free name for a copy,
 // the checks of a new board's name, the drafts an agent just delivered, and the boards the rail
@@ -107,5 +116,90 @@ describe('boards published since the last read', () => {
 
   it('are none on the first read', () => {
     expect(freshlyLive(null, [summary({ status: 'live' })])).toEqual([]);
+  });
+});
+
+// Boards that work together: a split pair is one row (at the parent's place), the boards a set
+// made together without a split name each other, and the joins map lists every split.
+const def = (over: Record<string, unknown> = {}) =>
+  ({ name: 'x', item: 'x', steps: [], ...over }) as unknown as BoardSummary['definition'];
+
+describe('the rows of your boards', () => {
+  const boards = [
+    summary({ id: 'tasks', name: 'Tareas', definition: def({ madeWith: ['bugs'] }) }),
+    summary({ id: 'rt', name: 'Tareas de repo', definition: def({ madeWith: ['ch'] }) }),
+    summary({
+      id: 'ch',
+      name: 'Cambios',
+      definition: def({ split: { board: 'rt', always: true }, madeWith: ['rt'] }),
+    }),
+    summary({ id: 'bugs', name: 'Errores', definition: def({ madeWith: ['tasks'] }) }),
+    summary({ id: 'solo', name: 'Notas', definition: def() }),
+  ];
+
+  it('draws a joined pair once, where the first of its two boards stands', () => {
+    const rows = homeRows(boards);
+    expect(
+      rows.map((r) => (r.kind === 'pair' ? `${r.parent.id}>${r.child.id}` : r.board.id)),
+    ).toEqual(['tasks', 'ch>rt', 'bugs', 'solo']);
+  });
+
+  it('names the boards made together that stay apart', () => {
+    const rows = homeRows(boards);
+    const tasks = rows[0];
+    expect(tasks?.kind === 'one' ? tasks.madeWith : null).toEqual(['Errores']);
+    const solo = rows[3];
+    expect(solo?.kind === 'one' ? solo.madeWith : null).toEqual([]);
+  });
+
+  it('says whether each part always belongs to its parent', () => {
+    const pair = homeRows(boards)[1];
+    expect(pair?.kind === 'pair' ? pair.always : null).toBe(true);
+  });
+});
+
+describe('the joins map', () => {
+  it('lists every board that divides into another, and nothing else', () => {
+    const boards = [
+      summary({
+        id: 'ch',
+        name: 'Cambios',
+        definition: def({ split: { board: 'rt', always: true } }),
+      }),
+      summary({ id: 'rt', name: 'Tareas de repo', definition: def() }),
+      summary({
+        id: 'self',
+        name: 'Ideas',
+        definition: def({ split: { board: 'same', always: false } }),
+      }),
+    ];
+    expect(joinsMap(boards).map((j) => `${j.parent.name}>${j.child.name}:${j.always}`)).toEqual([
+      'Cambios>Tareas de repo:true',
+    ]);
+  });
+
+  it('is empty when no board divides into another', () => {
+    expect(joinsMap([summary({ definition: def() })])).toEqual([]);
+  });
+});
+
+describe('a template that makes several boards', () => {
+  const view = (over: Record<string, unknown>) =>
+    ({ key: 'k', icon: 'board', name: 'n', description: 'd', definition: def(), ...over }) as never;
+
+  it('lists each board it makes with what each item is called', () => {
+    const boards = [
+      { name: 'Cambios', item: 'Cambio', definition: def() },
+      { name: 'Tareas de repo', item: 'Tarea de repo', definition: def() },
+    ];
+    expect(setBoards(view({ boards }))?.map((b) => `${b.name}/${b.item}`)).toEqual([
+      'Cambios/Cambio',
+      'Tareas de repo/Tarea de repo',
+    ]);
+  });
+
+  it('is no set when it makes one board', () => {
+    expect(setBoards(view({}))).toBeNull();
+    expect(setBoards(view({ boards: [{ name: 'a', item: 'b', definition: def() }] }))).toBeNull();
   });
 });

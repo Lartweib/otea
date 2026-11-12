@@ -41,9 +41,21 @@ export const studioHome = {
     'Tell it what you need and it delivers a draft. You review it here before anything is published.',
   'bs.home.agentDraftKey': 'a request is created',
   'bs.home.templates': 'Templates',
-  'bs.home.templatesGloss': 'boards made for one kind of work; using one copies it',
+  'bs.home.templatesGloss':
+    'boards made for one kind of work; using one copies it, and some make two joined boards',
   'bs.home.editBoard': 'Edit board',
   'bs.home.routeOf': 'The steps of {board}: {steps}',
+  // Boards that work together.
+  'bs.home.splitsInto': 'divides into',
+  'bs.home.madeWith': 'made together with {names}',
+  'bs.home.viewOf': 'View {board}',
+  'bs.home.toConfigure': { one: '1 to set up', other: '{count} to set up' },
+  'bs.home.joins': 'How they join',
+  'bs.home.joinsGloss': 'tap a name to edit it',
+  'bs.home.joinAlways': 'each {child} always belongs to its {parent}',
+  'bs.home.joinMaybe': 'each {child} may also go without a {parent}',
+  'bs.home.makes': { one: 'makes one board', other: 'makes {count} boards' },
+  'bs.home.and': 'and',
 
   // The new board dialog.
   'bs.new.title': 'New board',
@@ -61,6 +73,17 @@ export const studioHome = {
   'bs.new.empty': 'Give the board a name.',
   'bs.new.taken': 'There is already a board with that name. Pick another one.',
   'bs.new.created': 'Draft of {name}. Nobody sees it until you publish it.',
+  'bs.new.boards': { one: '· 1 board', other: '· {count} boards' },
+  'bs.new.firstBoard': 'First board',
+  'bs.new.secondBoard': 'Second board',
+  'bs.new.boardOf': '{label} · each item: {item}',
+  'bs.new.splitHint': 'Each {item} divides into {child}. You can change the names now or later.',
+  'bs.new.linkHint': 'They link freely: an item of {second} can hold back one of {first}.',
+  'bs.new.createAll': 'Create the two drafts',
+  'bs.new.emptyEach': 'Give each board a name.',
+  'bs.new.createdPair':
+    'Drafts of {first} and {second}, joined: you edit them right here, try them and publish them together.',
+  'bs.new.createdSet': 'Drafts of {first} and {second}. Nobody sees them until you publish them.',
 
   // The agent draft dialog.
   'bs.ask.title': 'Have an agent draft it',

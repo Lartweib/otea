@@ -398,3 +398,155 @@
     margin-left: 0;
   }
 }
+
+/* ───────── boards that work together (mock 35-cover.css, 36-pair.css) ───────── */
+/* the joins map over the list */
+.jmap {
+  margin: 2px 0 16px;
+  padding: 12px 14px 14px;
+  border-radius: 12px;
+  background: var(--sheet);
+  box-shadow: inset 0 0 0 1px var(--rule);
+  display: grid;
+  gap: 10px;
+}
+.jmap .jl {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+}
+.jmap .jl .gloss {
+  font: 400 italic 13px / 1.2 var(--serif);
+  color: var(--ink-3);
+}
+.jrow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  row-gap: 6px;
+}
+.jnode {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 30px;
+  padding: 0 12px 0 10px;
+  border-radius: 999px;
+  background: var(--ground);
+  box-shadow: inset 0 0 0 1px var(--rule-2);
+  font: 500 13px / 1 var(--sans);
+  color: var(--ink);
+  white-space: nowrap;
+  transition: box-shadow 240ms var(--o-drift);
+}
+.jnode:hover {
+  box-shadow: inset 0 0 0 1px var(--ink-3);
+}
+.jnode svg {
+  width: 14px;
+  height: 14px;
+  color: var(--ink-3);
+}
+.jlink {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 1 190px;
+  min-width: 120px;
+}
+.jlink i {
+  flex: 1;
+  height: 1px;
+  background: var(--ink-3);
+  min-width: 10px;
+}
+.jlink em {
+  font: 400 italic 13px / 1 var(--serif);
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+.jlink b {
+  width: 0;
+  height: 0;
+  border-left: 5px solid var(--ink-3);
+  border-top: 3.5px solid transparent;
+  border-bottom: 3.5px solid transparent;
+  margin-left: -6px;
+}
+.jnote {
+  font: 400 11.5px / 1.3 var(--mono);
+  color: var(--ink-3);
+}
+
+/* a joined pair is one row; a set's template row shows every route */
+.minis,
+.pairmini {
+  display: grid;
+  gap: 0;
+  align-content: center;
+}
+.pairmini .pmj {
+  display: block;
+  height: 4px;
+}
+.pairrow .bname .jw {
+  font: 400 italic 16px / 1 var(--serif);
+  color: var(--ink-3);
+  letter-spacing: 0;
+}
+.pairrow .bmeta + .bmeta {
+  margin-top: 3px;
+}
+.pairrow .bmeta .bm1 {
+  color: var(--ink-2);
+}
+.pairrow .bacts {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.brow .bmeta .gl3 {
+  font: 400 italic 13px / 1 var(--serif);
+  color: var(--ink-3);
+  margin-left: 2px;
+}
+.setrow .bname .tag.you {
+  background: var(--you-wash);
+  color: var(--you-ink);
+  align-self: center;
+}
+
+/* a template that makes several boards: each board named in the dialog */
+.mboards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 10px;
+}
+.mboards .mb {
+  display: grid;
+  gap: 6px;
+  align-content: start;
+}
+.mboards .flab {
+  margin-top: 4px;
+}
+
+@media (max-width: 900px) {
+  .brow .minis,
+  .brow .pairmini {
+    display: none;
+  }
+}
+@media (max-width: 760px) {
+  .pairrow .bacts .hn2 {
+    display: none;
+  }
+  .mboards {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .jlink {
+    flex-basis: 110px;
+    min-width: 90px;
+  }
+}
