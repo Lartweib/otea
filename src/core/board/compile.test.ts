@@ -120,6 +120,13 @@ describe('compileBoard', () => {
     expect(() => compileBoard('bx', 1, blankBoard('es', { name: 'X' }))).not.toThrow();
   });
 
+  it('leaves out a list column whose part nothing uses any more', () => {
+    const def = creatures();
+    def.form = def.form.filter(({ ref }) => ref !== 'fbiome');
+    const layout = compileBoard('bx', 1, def).types.item?.layout;
+    expect(layout?.row ?? []).toEqual([]);
+  });
+
   it('refuses a board without steps, which cannot be published', () => {
     expect(() => compileBoard('bx', 1, { ...creatures(), steps: [] })).toThrow(/no steps/);
   });
