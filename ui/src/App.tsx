@@ -4,6 +4,7 @@ import { ViewHost } from './app/ViewHost.tsx';
 import { useWorkspace } from './app/workspace.ts';
 import { applyAttention } from './attention-dom.ts';
 import { BoardStudio } from './board-studio/BoardStudio.tsx';
+import { StudioDialogs } from './board-studio/home/StudioDialogs.tsx';
 import { catalogEntries } from './catalog.ts';
 import { ActivityDrawer } from './components/ActivityDrawer.tsx';
 import { BriefView } from './components/BriefView.tsx';
@@ -128,6 +129,7 @@ function Shell() {
         <LanPanel canManage={app.session.canManageDevices} />
       </Dialog>
       <ConnectDialog />
+      <StudioDialogs />
       <SheetButton />
       <Fab />
       <NavSheet />

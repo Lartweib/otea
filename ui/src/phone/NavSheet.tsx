@@ -1,11 +1,12 @@
 import { type ReactNode, useEffect, useRef } from 'react';
 import { useApp } from '../app/context.tsx';
+import { openNewBoard } from '../board-studio/home/studio-dialogs.ts';
 import { stuckCount, tocaCount } from '../derive/toca.ts';
 import { t } from '../i18n/i18n.ts';
 import { Count } from '../kit/Count.tsx';
 import { Icon } from '../kit/Icon.tsx';
 import { Buddy } from '../kit/Marks.tsx';
-import { type Route, studioHash, type ViewRoute } from '../selection.ts';
+import type { Route, ViewRoute } from '../selection.ts';
 import { RowIcon } from '../shell/Rail.tsx';
 import { type BoardEntry, boardEntries } from '../shell/rail-model.ts';
 import { shellUi } from '../shell/shell-ui.ts';
@@ -173,11 +174,7 @@ export function NavSheet() {
           navSheet.close();
           app.go(to);
         }}
-        onNewBoard={() =>
-          then(() => {
-            window.location.hash = studioHash();
-          })
-        }
+        onNewBoard={() => then(() => openNewBoard())}
         // Preferences are the shell's: its button sits in the rail, which the phone hides. The
         // pop is pinned to the bottom on the phone (phone.css), wherever its anchor is.
         onPrefs={() => then(() => shellUi.set({ prefs: true }))}

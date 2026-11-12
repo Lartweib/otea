@@ -164,6 +164,11 @@
   right: 0;
   top: 0;
 }
+.toast .tbtns {
+  display: flex;
+  gap: 6px;
+  flex: none;
+}
 .toast .tmsg .id {
   margin-right: 6px;
 }

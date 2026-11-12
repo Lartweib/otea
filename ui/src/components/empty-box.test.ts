@@ -3,8 +3,8 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { readPreset } from '../../../src/core/preset.ts';
-import { draftPreview } from './draft-preview.ts';
 import type { CollectionView, ItemView } from '../types.ts';
+import { draftPreview } from './draft-preview.ts';
 import { ItemDetail } from './ItemDetail.tsx';
 
 // A box with nothing to show is not drawn on an item's page. The builder still draws it, so it can
