@@ -1402,6 +1402,9 @@ function gateFields(
 }
 
 function gateText({ gate, allowed, items }: GateCheck): string {
+  // On a board, the step engine's words for each item.
+  const said = items.filter((item) => allowed || !item.allowed).flatMap(({ text }) => text ?? []);
+  if (said.length > 0) return said.join('\n');
   if (allowed) {
     const states = items.map(({ id, state }) => `${id} is ${state}`);
     return `${gate} allowed: ${states.join(', ')}`;

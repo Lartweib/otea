@@ -3,6 +3,7 @@ import { basename, join, relative } from 'node:path';
 import type { DatabaseSync } from 'node:sqlite';
 import { listCollectionViews, typeOfItem } from '../app/collections.ts';
 import { evidenceDir } from '../app/evidence.ts';
+import { repoOfItem } from '../app/gates.ts';
 import {
   forgetProjectPath,
   keyOf,
@@ -14,6 +15,7 @@ import {
   withRegistry,
 } from '../app/home.ts';
 import { type Item, listItems } from '../app/items.ts';
+import { liveBoards } from '../app/next.ts';
 import {
   addPathToProject,
   databasePath,
@@ -172,22 +174,23 @@ function sizeOf(path: string): { bytes: number; files: number } {
   );
 }
 
-function repoOf(path: string, parent: string, items: readonly Item[]): RepoSettings {
+// `repos`: the repository each item's branch is in (a board's guard reads it from a field).
+function repoOf(path: string, parent: string, repos: readonly unknown[]): RepoSettings {
   const name = basename(path);
   return {
     name,
     folder: relative(parent, path).replaceAll('\\', '/') || '.',
     gate: hasOteaGitHook(path) ? 'hard' : 'soft',
-    items: items.filter((item) => item.fields.repo === name).length,
+    items: repos.filter((repo) => repo === name).length,
   };
 }
 
-function pathSettings(path: OverviewPath, items: readonly Item[]): PathSettings {
+function pathSettings(path: OverviewPath, itemRepos: readonly unknown[]): PathSettings {
   if (path.missing) return { ...path, repos: [] };
   const repos =
     path.kind === 'repo'
-      ? [repoOf(path.path, path.path, items)]
-      : reposInside(path.path).map((repo) => repoOf(repo, path.path, items));
+      ? [repoOf(path.path, path.path, itemRepos)]
+      : reposInside(path.path).map((repo) => repoOf(repo, path.path, itemRepos));
   return { ...path, repos };
 }
 
@@ -202,6 +205,8 @@ export function projectSettings(project: Project, env: Env = process.env): Proje
     { path: root, kind: kindOf(root), missing: false },
   ];
   const items = listItems(project);
+  const boards = liveBoards(project);
+  const repos = items.map((item) => repoOfItem(project, item, boards));
   const database = databasePath(dataDir);
   const evidence = evidenceDir(dataDir);
   return {
@@ -214,7 +219,7 @@ export function projectSettings(project: Project, env: Env = process.env): Proje
     evidence: { path: evidence, ...sizeOf(evidence) },
     items: items.length,
     collections: listCollectionViews(project).map(({ name, preset }) => ({ name, preset })),
-    paths: [...paths].sort(byPlace).map((path) => pathSettings(path, items)),
+    paths: [...paths].sort(byPlace).map((path) => pathSettings(path, repos)),
   };
 }
 
