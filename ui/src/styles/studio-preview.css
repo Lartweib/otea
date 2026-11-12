@@ -2205,13 +2205,6 @@ button.st-offscreen .icon:last-child {
   border-color: var(--you);
 }
 
-.bsp-harness {
-  display: flex;
-  gap: 8px;
-  padding: 10px 14px;
-  border-top: 1px dashed var(--warn);
-}
-
 @media (min-width: 1241px) {
   .bsp {
     position: sticky;

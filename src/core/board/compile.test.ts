@@ -123,7 +123,7 @@ describe('compileBoard', () => {
   it('leaves out a list column whose part nothing uses any more', () => {
     const def = creatures();
     def.form = def.form.filter(({ ref }) => ref !== 'fbiome');
-    const layout = compileBoard('bx', 1, def).types.item?.layout;
+    const layout = compileBoard('bx', 1, def).types[0]?.layout;
     expect(layout?.row ?? []).toEqual([]);
   });
 

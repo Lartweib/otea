@@ -9,7 +9,6 @@ import type { ReadyDraft } from '../use-board-draft.ts';
 import { AgentPreview } from './AgentPreview.tsx';
 import { BoardPreview } from './BoardPreview.tsx';
 import { PracticeDialog } from './dialogs.tsx';
-import { Harness } from './Harness.tsx';
 import { ItemPreview } from './ItemPreview.tsx';
 import { DonePreview, FormPreview } from './PagePreviews.tsx';
 
@@ -139,7 +138,6 @@ export function PreviewPane({ draft }: PreviewPaneProps) {
       </div>
       {foot}
       <PracticeDialog draft={draft} open={practice} onClose={() => setPractice(false)} />
-      <Harness draft={draft} />
     </section>
   );
 }
