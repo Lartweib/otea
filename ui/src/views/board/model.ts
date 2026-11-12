@@ -130,6 +130,43 @@ export function defaultGroup(collection: CollectionView): string {
 
 export type GroupOption = { key: string; label: string };
 
+// ---- the motives a board discards with ----
+
+// A Studio board with discard motives compiles each motive to a closed state `dropped__<id>`,
+// labelled with the motive's name; plain `dropped` keeps the discards from before the motives.
+const MOTIVE_PREFIX = 'dropped__';
+export const MOTIVE_KEY = 'motive';
+export const NO_MOTIVE = 'dropped';
+
+export type Motive = { id: string; name: string };
+
+export function motivesOf(collection: CollectionView): Motive[] {
+  const [first] = collection.types;
+  return (first?.states ?? []).flatMap((state) =>
+    state.name.startsWith(MOTIVE_PREFIX) && state.closes === 'discarded'
+      ? [
+          {
+            id: state.name.slice(MOTIVE_PREFIX.length),
+            name: stateWordIn(collection.types, state.name),
+          },
+        ]
+      : [],
+  );
+}
+
+// The motive an item was discarded with, plain `dropped` for a discard without one, '' otherwise.
+export function motiveOfItem(item: Item): string {
+  if (item.closes !== 'discarded') return '';
+  return item.state.startsWith(MOTIVE_PREFIX) ? item.state.slice(MOTIVE_PREFIX.length) : NO_MOTIVE;
+}
+
+// What an ended item says under Turno: its motive's name, or "—".
+export function endedTurnText(item: Item, collection: CollectionView): string {
+  const motive = motiveOfItem(item);
+  if (!motive || motive === NO_MOTIVE) return '—';
+  return motivesOf(collection).find((m) => m.id === motive)?.name ?? '—';
+}
+
 const ONE_LINE = ['enum', 'severity', 'text'];
 
 // The one-line fields every type of the board has, in the order the first declares them.
@@ -159,6 +196,9 @@ export function groupOptions(collection: CollectionView): GroupOption[] {
       key: f.name,
       label: lower(fieldName(collection, f.name)),
     })),
+    ...(motivesOf(collection).length
+      ? [{ key: MOTIVE_KEY, label: t('boardView.group.motive') }]
+      : []),
     { key: 'none', label: t('boardView.group.none') },
   ];
 }
@@ -177,6 +217,7 @@ export function holds(item: Item, key: string, ctx: BoardCtx): string {
   if (key === 'state') return columnKeyOf(item);
   if (key === 'turn') return item.turn;
   if (key === 'type') return item.type;
+  if (key === MOTIVE_KEY) return motiveOfItem(item);
   if (key === 'who') {
     if (item.turn === 'human') return 'you';
     if (item.turn === 'none') return item.closes === 'discarded' ? 'dropped' : 'done';
@@ -209,6 +250,11 @@ export function valueText(key: string, value: string, ctx: BoardCtx): string {
     const type = collection.types.find((ty) => ty.name === value);
     return typeWord(type, value);
   }
+  if (key === MOTIVE_KEY) {
+    if (value === '') return '—';
+    if (value === NO_MOTIVE) return t('boardView.motive.none');
+    return motivesOf(collection).find((m) => m.id === value)?.name ?? value;
+  }
   return value === ''
     ? t('section.noValue', { group: lower(fieldName(collection, key)) })
     : valueWordIn(collection.types, key, value);
@@ -220,6 +266,7 @@ function orderOf(key: string, items: readonly Item[], ctx: BoardCtx): string[] {
   if (key === 'state') return pasosColumns(collection, items).map((c) => c.key);
   if (key === 'turn') return ['human', 'agent', 'none'];
   if (key === 'type') return collection.types.map((ty) => ty.name);
+  if (key === MOTIVE_KEY) return [...motivesOf(collection).map((m) => m.id), NO_MOTIVE, ''];
   if (key === 'who') {
     const agents = [...new Set(items.map((it) => holds(it, 'who', ctx)))]
       .filter((v) => !['you', 'done', 'dropped', ''].includes(v))
@@ -330,7 +377,7 @@ export function groupBoard(
       return key || t('boardView.whoGroup.nobody');
     }
     const text = valueText(by, key, ctx);
-    return by === 'state' ? text : text.replace(/^./, (c) => c.toUpperCase());
+    return by === 'state' || by === MOTIVE_KEY ? text : text.replace(/^./, (c) => c.toUpperCase());
   };
   return order.flatMap((key) => {
     const own = sorted.filter((it) => of(it) === key);

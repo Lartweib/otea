@@ -10,7 +10,7 @@ import type { LaneBlock } from '../../lanes/LaneList.tsx';
 import { lookOf } from '../../lanes/looks.ts';
 import { stateWordIn, typeWord, valueWordIn } from '../../preset-words.ts';
 import type { CollectionView, Item } from '../../types.ts';
-import { type Entry, roundOf, severityOf, signalOf } from './model.ts';
+import { type Entry, endedTurnText, motiveOfItem, roundOf, severityOf, signalOf } from './model.ts';
 import { cellClass } from './table.ts';
 
 // The rows of Lista (board rows on the lanes, mock:1725-1733) and Tabla (40 px rows whose cells
@@ -228,7 +228,10 @@ function Cell({ column, item, ctx }: { column: GridColumn; item: Item; ctx: RowC
       return (
         <span className={cls} style={pad} data-leaf="">
           <StepPill {...(tone ? { tone } : {})}>
-            {stateWordIn(ctx.collection.types, item.state)}
+            {/* A discard reads by its motive under Turno; its step is Descartado. */}
+            {motiveOfItem(item)
+              ? t('boardView.dropped')
+              : stateWordIn(ctx.collection.types, item.state)}
           </StepPill>
         </span>
       );
@@ -272,7 +275,11 @@ function Cell({ column, item, ctx }: { column: GridColumn; item: Item; ctx: RowC
     case 'who':
       return (
         <span className={`${cls} who`} style={pad} data-leaf="" data-s={`${item.id}:who`}>
-          <Who item={item} feed={ctx.feed} />
+          {item.turn === 'none' ? (
+            <span className="endt">{endedTurnText(item, ctx.collection)}</span>
+          ) : (
+            <Who item={item} feed={ctx.feed} />
+          )}
         </span>
       );
     case 'age': {
