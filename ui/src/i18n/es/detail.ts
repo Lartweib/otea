@@ -429,4 +429,5 @@ export const detail = {
   'bi.create.pickParent': 'Elige de qué {item} es parte.',
   'bi.create.noParent': 'Todavía no hay nada abierto en {board} de lo que pueda ser parte.',
   'bi.create.skipped': 'Creado en {step}: ya traía todo lo que pide {first}.',
+  'bi.create.lede': 'En {board}, parte de {parent}. {lands}',
 } satisfies Partial<Catalog>;

@@ -131,11 +131,14 @@ export function landingLook({ turn, kind }: Pick<Landing, 'turn' | 'kind'>): {
 export function ledeOf({
   board,
   parent,
+  part = false,
   landing,
   step,
 }: {
   board: string;
   parent?: string | undefined;
+  // On a Studio board the parent is the item it is part of ("parte de"), never "a child".
+  part?: boolean;
   landing: Pick<Landing, 'turn'>;
   step: string;
 }): string {
@@ -145,6 +148,7 @@ export function ledeOf({
       : landing.turn === 'agent'
         ? t('intake.ledeAgent', { step })
         : t('intake.ledeClosed', { step });
+  if (parent && part) return t('bi.create.lede', { board, parent, lands });
   return parent
     ? t('intake.ledeChild', { board, parent, lands })
     : t('intake.lede', { board, lands });

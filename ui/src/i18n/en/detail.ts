@@ -431,4 +431,5 @@ export const detail = {
   'bi.create.pickParent': 'Pick which {item} it is part of.',
   'bi.create.noParent': 'There is nothing open on {board} to make it part of yet.',
   'bi.create.skipped': 'Created in {step}: it already had everything {first} asks for.',
+  'bi.create.lede': 'In {board}, part of {parent}. {lands}',
 } as const;
