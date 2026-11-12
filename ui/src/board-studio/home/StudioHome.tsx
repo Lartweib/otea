@@ -12,7 +12,9 @@ import { boardIcon } from '../../shell/rail-model.ts';
 import type { BoardSummary, TemplateView } from '../api.ts';
 import { loadBoards, useBoards } from './boards-store.ts';
 import {
+  type BlockJoin,
   type BoardStatusView,
+  blockJoins,
   type HomeJoin,
   homeRows,
   joinsMap,
@@ -54,7 +56,7 @@ export function StudioHome({ canWrite }: StudioHomeProps) {
       </header>
 
       <Sec title={t('bs.home.yours')} count={boards.status === 'ready' ? own.length : undefined} />
-      <JoinsMap joins={joinsMap(own)} />
+      <JoinsMap joins={joinsMap(own)} blocks={blockJoins(own, app.all)} />
       <div className="brows">
         {boards.status === 'loading' ? (
           <p className="sh-note" data-e="in">
@@ -237,8 +239,8 @@ const isLive = (board: BoardSummary) => board.status === 'live' || board.status 
 
 // The small map over the list when a board divides into another: "Cambios → se divide en →
 // Tareas de repo"; each name opens its editor.
-function JoinsMap({ joins }: { joins: HomeJoin[] }) {
-  if (!joins.length) return null;
+function JoinsMap({ joins, blocks }: { joins: HomeJoin[]; blocks: BlockJoin[] }) {
+  if (!joins.length && !blocks.length) return null;
   const node = (board: BoardSummary) => (
     <button type="button" className="jnode" onClick={() => go(editorOf(board.id))}>
       <RowIcon icon={boardIcon(board.icon)} />
@@ -266,6 +268,21 @@ function JoinsMap({ joins }: { joins: HomeJoin[] }) {
               child: j.child.item,
               parent: j.parent.item,
             })}
+          </span>
+        </div>
+      ))}
+      {blocks.map((j) => (
+        <div className="jrow" key={`${j.from.id}>${j.to.id}`}>
+          {node(j.from)}
+          <span className="jlink blocks">
+            <i />
+            <em>{t('bs.home.mayBlock')}</em>
+            <i />
+            <b />
+          </span>
+          {node(j.to)}
+          <span className="jnote">
+            {t('bs.home.blocksToday', { blocker: j.blocker, blocked: j.blocked })}
           </span>
         </div>
       ))}

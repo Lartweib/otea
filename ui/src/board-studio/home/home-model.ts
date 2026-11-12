@@ -1,3 +1,4 @@
+import type { Item } from '../../types.ts';
 import type { BoardSummary, TemplateView } from '../api.ts';
 import { madeWithOf, pairOf } from '../pair.ts';
 
@@ -94,6 +95,30 @@ export function joinsMap(boards: readonly BoardSummary[]): HomeJoin[] {
   return homeRows(boards).flatMap((row) =>
     row.kind === 'pair' ? [{ parent: row.parent, child: row.child, always: row.always }] : [],
   );
+}
+
+// The links of today the map adds under the splits: a board whose open item holds back an open
+// item of another board ("Errores puede frenar a Tareas · hoy ERR-214 frena TAR-3"), once per pair
+// of boards. Links are free between boards; this only shows where they run.
+export type BlockJoin = { from: BoardSummary; to: BoardSummary; blocker: string; blocked: string };
+
+export function blockJoins(boards: readonly BoardSummary[], items: readonly Item[]): BlockJoin[] {
+  const open = new Map(items.filter((it) => !it.closes).map((it) => [it.id, it]));
+  const boardOf = (item: Item) => boards.find((b) => b.collection === item.collection);
+  const out: BlockJoin[] = [];
+  const seen = new Set<string>();
+  for (const item of open.values()) {
+    for (const rel of item.relations ?? []) {
+      if (rel.kind !== 'blocks') continue;
+      const other = open.get(rel.id);
+      const from = boardOf(item);
+      const to = other && boardOf(other);
+      if (!from || !to || !other || from.id === to.id || seen.has(`${from.id}>${to.id}`)) continue;
+      seen.add(`${from.id}>${to.id}`);
+      out.push({ from, to, blocker: item.id, blocked: other.id });
+    }
+  }
+  return out;
 }
 
 // The boards a template makes when it makes more than one (Cambios en varios repos, Producto).
