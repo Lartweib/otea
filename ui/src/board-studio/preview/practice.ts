@@ -33,10 +33,10 @@ import { itemPrefix, sampleRaw, sampleTitle } from './samples.ts';
 
 export type PracticeLog =
   | { kind: 'created'; id: string; step: string; again?: boolean }
-  // `who`: the agent, or null for you.
-  | { kind: 'refused'; who: string | null; missing: string[] }
-  | { kind: 'handed'; who: string | null; step: string; round: number }
-  | { kind: 'approved'; who: string | null; step: string; to: Target }
+  // `by`: you or an agent; `who`: the agent's name, null for you or for any agent.
+  | { kind: 'refused'; by: Actor; who: string | null; missing: string[] }
+  | { kind: 'handed'; by: Actor; who: string | null; step: string; round: number }
+  | { kind: 'approved'; by: Actor; who: string | null; step: string; to: Target }
   | { kind: 'sentBack'; step: string; note: string; to: string; round: number }
   | { kind: 'again'; who: string; step: string }
   | { kind: 'done'; id: string };
