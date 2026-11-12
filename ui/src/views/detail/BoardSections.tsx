@@ -470,19 +470,16 @@ function DropForm({
           <span className="flab">{t('bi.drop.motive')}</span>
           <div className="radios" role="radiogroup" aria-label={t('bi.drop.motive')}>
             {choices.map((c) => (
-              <button
+              <ChipButton
                 key={c.to}
-                type="button"
-                className={picked?.to === c.to ? 'chipb on' : 'chipb'}
-                role="radio"
-                aria-checked={picked?.to === c.to}
+                on={picked?.to === c.to}
                 onClick={() => {
                   setPicked(c);
                   setHint('');
                 }}
               >
                 {c.name}
-              </button>
+              </ChipButton>
             ))}
           </div>
         </div>

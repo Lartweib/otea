@@ -153,6 +153,7 @@ export function bodySections(o: {
                     item={item}
                     entry={{ module: 'options', label: v.label }}
                     field={v.field.name}
+                    sideBySide
                   />
                 </Plain>
               ),

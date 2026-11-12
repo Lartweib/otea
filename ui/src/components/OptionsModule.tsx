@@ -18,12 +18,15 @@ export function OptionsModule({
   entry,
   slot,
   field = FIELD,
+  sideBySide = false,
 }: {
   item: ItemView;
   entry: LayoutEntry;
   slot?: Readonly<Record<string, string>>;
   // The long text to read (a Studio board's field shown as options); `options` by default.
   field?: string;
+  // A Studio board's long text shown as options: the options in columns, as the mock draws them.
+  sideBySide?: boolean;
 }) {
   const text = item.fields[field] ?? '';
   if (text.trim() === '') return null;
@@ -46,7 +49,7 @@ export function OptionsModule({
         <h2 className="t-label">{t('options.count', { count: options.length })}</h2>
         {agent ? <span className="t-cap">{t('options.writtenBy', { agent })}</span> : null}
       </div>
-      <ol className="op-list">
+      <ol className={sideBySide ? 'op-list side' : 'op-list'}>
         {options.map((option) => {
           const chosen = accepted && option.recommended;
           return (
