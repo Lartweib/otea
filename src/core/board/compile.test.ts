@@ -67,7 +67,7 @@ describe('compileBoard', () => {
       label: 'Bioma',
     });
     const labels = preset.types[0]?.labels;
-    expect(labels?.es?.states.sconcept__review).toBe('Concepto · revisión');
+    expect(labels?.es?.states.sconcept__review).toBe('Concepto');
     expect(labels?.en?.states.done).toBe('Done');
     expect(labels?.es?.states.dropped).toBe('Descartado');
     expect(labels?.es?.values?.fbiome).toEqual({ cswamp: 'Pantano', cwood: 'Bosque' });

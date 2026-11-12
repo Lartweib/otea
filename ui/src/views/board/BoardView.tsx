@@ -46,7 +46,14 @@ import {
 import { type MorphJob, morph, penFade } from './morph-run.ts';
 import { Pasos } from './Pasos.tsx';
 import { listaBlocks, type RowCtx, tablaBlocks } from './rows.tsx';
-import { BoardActs, type StudioBoard, Teach, useStudioBoard } from './studio-board.tsx';
+import {
+  BoardActs,
+  emptyStepBlocks,
+  type StudioBoard,
+  StudioDek,
+  Teach,
+  useStudioBoard,
+} from './studio-board.tsx';
 import { relayoutTable, Tabla } from './Tabla.tsx';
 import { Tray } from './Tray.tsx';
 import { headLabel } from './table.ts';
@@ -275,6 +282,7 @@ function Board({ board }: { board: string }) {
             </>
           ),
         },
+        ...(studio ? emptyStepBlocks(studio) : []),
       ]
     : !shown
       ? [
@@ -538,17 +546,22 @@ function Head({
         <h1 className="display" data-leaf="">
           {board}
         </h1>
-        {dek && dek !== dekKey ? (
+        {studio ? (
+          <StudioDek studio={studio} />
+        ) : dek && dek !== dekKey ? (
           <p className="dek" data-leaf="">
             {dek}
           </p>
         ) : null}
       </div>
-      <div className="steps" data-leaf="">
-        {steps.map((s, i) => (
-          <StepWord key={s.key} first={i === 0} you={s.you} label={s.label} count={s.count} />
-        ))}
-      </div>
+      {/* A Studio board's steps are its list's sections, as the mock draws it: no strip. */}
+      {studio ? null : (
+        <div className="steps" data-leaf="">
+          {steps.map((s, i) => (
+            <StepWord key={s.key} first={i === 0} you={s.you} label={s.label} count={s.count} />
+          ))}
+        </div>
+      )}
     </header>
   );
 }

@@ -74,7 +74,7 @@ const USES: Readonly<Record<string, PlainKey>> = {
   step: 'bs.use.step',
 };
 
-const MANY_USES: Readonly<Record<string, PlainKey>> = {
+const MANY_USES: Readonly<Record<string, 'bs.use.fields' | 'bs.use.evidences' | 'bs.use.steps'>> = {
   field: 'bs.use.fields',
   evidence: 'bs.use.evidences',
   step: 'bs.use.steps',

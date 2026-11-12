@@ -31,12 +31,12 @@ export type PasosColumn = { key: string; label: string; closed: boolean };
 // One column per open state, in the order the types declare them; an off-path state only while it
 // holds something; then one closed column for everything done or thrown away.
 export function pasosColumns(collection: CollectionView, items: readonly Item[]): PasosColumn[] {
-  const held = new Set(items.filter((it) => it.turn !== 'none').map((it) => it.state));
+  const held = new Set(items.filter((it) => it.turn !== 'none').map((it) => stepKeyOf(it.state)));
   const onPath = new Set(collection.types.flatMap((type) => mainPath(type)));
   const keys: string[] = [];
   for (const type of collection.types) {
     for (const state of type.states) {
-      if (state.turn === 'none' || keys.includes(state.name)) continue;
+      if (state.turn === 'none' || keys.includes(state.name) || isReviewPhase(state.name)) continue;
       if (onPath.has(state.name) || held.has(state.name)) keys.push(state.name);
     }
   }
@@ -48,8 +48,20 @@ export function pasosColumns(collection: CollectionView, items: readonly Item[])
   ];
 }
 
+// A board made in Studio compiles a step's reviews to `<step>__review` and `<step>__yours`: they
+// are the step's, counted and listed with it, never a step of their own.
+const REVIEW_PHASE = /__(review|yours)$/;
+
+function isReviewPhase(state: string): boolean {
+  return REVIEW_PHASE.test(state);
+}
+
+export function stepKeyOf(state: string): string {
+  return state.replace(REVIEW_PHASE, '');
+}
+
 export function columnKeyOf(item: Item, _columns?: readonly PasosColumn[]): string {
-  return item.turn === 'none' ? CLOSED_COL : item.state;
+  return item.turn === 'none' ? CLOSED_COL : stepKeyOf(item.state);
 }
 
 export type Step = { key: string; label: string; count: number; you: boolean };
