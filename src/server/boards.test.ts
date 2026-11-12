@@ -205,15 +205,18 @@ describe('an agent drafting a board', () => {
       expect(handed.code, handed.err).toBe(0);
       const { evidence } = JSON.parse(handed.out) as { evidence: { id: number } };
 
-      const merged = await call('POST', `/boards/${boardId}/draft/merge`, {
-        evidence: evidence.id,
-      });
-
-      expect(merged.status).toBe(200);
-      expect((merged.body.draft as Json).agentNote).toEqual([
+      // Handing it in merges it: the home sees it arrive, the editor opens it with the note.
+      expect(await status()).toMatchObject({ status: 'draft' });
+      const record = (await call('GET', `/boards/${boardId}`)).body.record as Json;
+      expect((record.draft as Json).agentNote).toEqual([
         '+ paso Concepto',
         '+ evidencia Arte conceptual',
       ]);
+      // The person can merge the same file again by id.
+      const merged = await call('POST', `/boards/${boardId}/draft/merge`, {
+        evidence: evidence.id,
+      });
+      expect(merged.status).toBe(200);
       expect(await status()).toMatchObject({ status: 'draft' });
     } finally {
       server.close();

@@ -110,7 +110,7 @@ describe('an agent drafting a board', () => {
     expect(showItem(ctx, item, { actor: kiln, channel: 'cli' }).evidence).toEqual([]);
   });
 
-  it('attaches the draft to the Pedido, merges it by id and leaves the waiting status with a note', () => {
+  it('attaches the draft to the Pedido and merges it into the board at once, leaving the waiting status with a note', () => {
     const ctx = project();
     const { board, item } = requestAgentDraft(
       ctx,
@@ -128,7 +128,8 @@ describe('an agent drafting a board', () => {
 
     expect(submitted.evidence).toMatchObject({ module: 'files', filename: 'board.json' });
     expect(submitted.problems).toEqual([]);
-    const merged = mergeAgentDraft(ctx, board.id, submitted.evidence.id, now);
+    // Handing it in is the agent's handoff of the draft: Studio's home sees it arrive.
+    const merged = getBoardRecord(ctx, board.id);
 
     expect(merged.draft?.agentNote).toEqual([
       '+ paso Concepto',
@@ -140,6 +141,12 @@ describe('an agent drafting a board', () => {
       draft.steps[0]?.id,
     ]);
     expect(listBoardSummaries(ctx).find(({ id }) => id === board.id)?.status).toBe('draft');
+    // Merging the same file again by id changes nothing the agent added.
+    const again = mergeAgentDraft(ctx, board.id, submitted.evidence.id, now);
+    expect(again.draft?.definition.steps.map(({ id }) => id)).toEqual([
+      'sconcept',
+      draft.steps[0]?.id,
+    ]);
   });
 
   it('refuses to merge evidence that is not a board draft of the board', () => {

@@ -163,7 +163,9 @@ export type SubmitInput = { id: string; text: string; actor: Actor; channel: Cha
 export type Submitted = { board: string; evidence: EvidenceRecord; problems: string[] };
 
 // The agent hands in its draft: it must read as a board; then it is kept on the Pedido as
-// board.json, and what is still wrong with it (problems the person sees in Studio) comes back.
+// board.json and merged by id into the board's draft at once (handing it in is the agent's
+// handoff of the draft: Studio's home sees it arrive and opens it with what the agent added), and
+// what is still wrong with it (problems the person sees in Studio) comes back.
 export function submitAgentDraft(
   project: Project,
   input: SubmitInput,
@@ -188,6 +190,7 @@ export function submitAgentDraft(
     const placed = { ...placeFile(project, item, file, input.actor, at), module: DRAFT_MODULE };
     return recordEvidence(project, item.id, placed, input, at);
   });
+  mergeAgentDraft(project, board.id, evidence.id, now);
   return { board: board.id, evidence, problems };
 }
 

@@ -108,7 +108,8 @@ export function restoreBoard(id: string, version: number | null): Promise<BoardR
   return call('POST', `${board(id)}/restore`, { version });
 }
 
-// The routes below answer 501 until the server slice builds them; their shapes are the contract.
+// An agent's draft: handing it in (otea board draft --file) merges it into the board's draft, so the
+// home sees it arrive; merge-by-id stays for merging a handed-in file again.
 // (Lo que lee el agente needs no route: the preview runs core/board/next.ts on the draft.)
 
 export type AgentDraftRequest = { name: string; need: string; agent: string | null; lang: Lang };
