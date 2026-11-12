@@ -20,7 +20,6 @@ export const detail = {
   'detail.readOnly': 'Read-only. Run {command} to act from this browser.',
   'detail.receipt': '{state} · now {turn} · {ago}',
   'detail.close': 'Close the detail',
-  'detail.customize': 'Customize view',
   'detail.parent': 'Parent',
   'detail.noneYet': 'none yet',
   'detail.emptyOn': 'empty on this {type}',

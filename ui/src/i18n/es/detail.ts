@@ -22,7 +22,6 @@ export const detail = {
   'detail.readOnly': 'Solo lectura. Ejecuta {command} para actuar desde este navegador.',
   'detail.receipt': '{state} · ahora es {turn} · {ago}',
   'detail.close': 'Cerrar el detalle',
-  'detail.customize': 'Personalizar vista',
   'detail.parent': 'Padre',
   'detail.noneYet': 'todavía no',
   'detail.emptyOn': 'vacío en este {type}',

@@ -41,7 +41,7 @@ export function toast(o: ToastOptions): void {
   for (const fn of listeners) fn();
 }
 
-// The last toast sent so far. A host that mounts later (back from Customize, which has none)
+// The last toast sent so far. A host that mounts later (after a page without one)
 // starts past it, so it shows only what is sent from then on.
 export const seenAtMount = (): number => latest?.seq ?? 0;
 
