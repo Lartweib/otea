@@ -62,4 +62,14 @@ describe('parseDefinition', () => {
     });
     expect(result.ok).toBe(false);
   });
+
+  it('words what a step doer or reviewer must be', () => {
+    const def = creatures();
+    const [first] = def.steps;
+    const result = parseDefinition({ ...def, steps: [{ ...first, doer: 'kiln' }] });
+    expect(result).toEqual({
+      ok: false,
+      problems: ['steps.0.doer: who does the step: "you", "any" or {"agent": "<name>"}'],
+    });
+  });
 });
