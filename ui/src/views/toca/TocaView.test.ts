@@ -148,6 +148,11 @@ describe('a row’s call to act', () => {
     });
     const own = item({ id: 'O', state: 'reported', createdBy: you });
     expect(rowCall(own, 'propios', ctx()).sub).toEqual({ key: 'toca.sub.thenAgent' });
+    // On a board, whoever acted last is not who takes the next step.
+    const handed = [moved('O', 'reported', agent('kiln'), { reason: 'Completo.' })];
+    expect(rowCall(own, 'propios', { ...ctx(handed), onBoard: () => true }).sub).toEqual({
+      key: 'toca.sub.thenAgent',
+    });
     const working = item({
       id: 'W',
       turn: 'agent',

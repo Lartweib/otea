@@ -119,7 +119,8 @@ export function rowCall(item: Item, sec: TocaSection, ctx: TocaContext): RowCall
       const next = path[path.indexOf(item.state) + 1];
       const turn = type?.states.find((s) => s.name === next)?.turn;
       if (turn === 'none') return { act: t('toca.act.propios'), sub: sub('toca.sub.thenClose') };
-      const who = agentOf(item, feed);
+      // On a board the next step's agent is whichever takes it, not the last one that acted.
+      const who = ctx.onBoard?.(item) ? null : agentOf(item, feed);
       return {
         act: t('toca.act.propios'),
         sub: who ? sub('toca.sub.then', who) : sub('toca.sub.thenAgent'),
