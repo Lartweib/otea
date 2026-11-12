@@ -38,9 +38,13 @@ const CreateBody = z.strictObject({
 const DraftBody = z.strictObject({
   definition: z.unknown(),
   baseVersion: z.number().int().positive().nullable(),
+  draftStamp: z.string().nullable().optional(),
 });
 
-const PublishBody = z.strictObject({ moves: z.record(z.string(), z.string()) });
+const PublishBody = z.strictObject({
+  moves: z.record(z.string(), z.string()),
+  draftStamp: z.string().nullable().optional(),
+});
 
 const RestoreBody = z.strictObject({ version: z.number().int().positive().nullable() });
 
@@ -116,6 +120,7 @@ export function boardsApi(project: Project, feed: ChangeFeed, auth: Session): Ho
         const saved = saveDraft(project, id(c), {
           definition: input.definition,
           baseVersion: input.baseVersion,
+          ...(input.draftStamp === undefined ? {} : { draftStamp: input.draftStamp }),
         });
         feed.notify();
         return c.json(saved);
@@ -137,8 +142,16 @@ export function boardsApi(project: Project, feed: ChangeFeed, auth: Session): Ho
       .post('/boards/:id/publish/plan', (c) => c.json(publishPlan(project, id(c))))
       .post('/boards/:id/publish', async (c) => {
         assertConfigurable(c, auth);
-        const { moves } = await body(c, PublishBody, '{"moves": {[stepId]: stepId | "done"}}');
-        const result = publishBoard(project, id(c), { moves, by: HUMAN });
+        const { moves, draftStamp } = await body(
+          c,
+          PublishBody,
+          '{"moves": {[stepId]: stepId | "done"}, "draftStamp"?: string | null}',
+        );
+        const result = publishBoard(project, id(c), {
+          moves,
+          by: HUMAN,
+          ...(draftStamp === undefined ? {} : { draftStamp }),
+        });
         feed.notify();
         return c.json(result);
       })

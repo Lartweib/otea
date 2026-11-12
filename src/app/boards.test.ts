@@ -122,6 +122,41 @@ describe('saveDraft', () => {
     ).toThrow(expect.objectContaining({ code: 'board_conflict' }));
   });
 
+  it('refuses a write over a draft that changed since the writer read it, in words', () => {
+    const ctx = memoryContext();
+    const record = createBoard(ctx, { name: 'Criaturas', lang: 'es' }, now, sequenceIds());
+    const seen = record.draft?.updatedAt ?? null;
+    // An agent's draft arrives meanwhile.
+    saveDraft(
+      ctx,
+      record.id,
+      { definition: { ...creatures(), item: 'Bestia' }, baseVersion: null },
+      now,
+    );
+
+    expect(() =>
+      saveDraft(
+        ctx,
+        record.id,
+        { definition: creatures(), baseVersion: null, draftStamp: seen },
+        now,
+      ),
+    ).toThrow(expect.objectContaining({ code: 'board_conflict' }));
+    expect(draftOf(ctx, record.id).item).toBe('Bestia');
+    expect(() =>
+      publishBoard(ctx, record.id, { moves: {}, by: you, draftStamp: seen }, now),
+    ).toThrow(expect.objectContaining({ code: 'board_conflict' }));
+    const fresh = getBoardRecord(ctx, record.id).draft?.updatedAt ?? null;
+    expect(
+      saveDraft(
+        ctx,
+        record.id,
+        { definition: creatures(), baseVersion: null, draftStamp: fresh },
+        now,
+      ).record.draft?.definition.item,
+    ).toBe('Criatura');
+  });
+
   it('finds the name another board already has', () => {
     const ctx = memoryContext();
     createBoard(ctx, { name: 'Bugs', lang: 'es' }, now);

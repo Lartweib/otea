@@ -37,6 +37,16 @@ function Chip() {
 function SaveState() {
   const { draft } = useEditor();
   const save = draft.save;
+  if (save.kind === 'failed' && save.code === 'board_conflict')
+    return (
+      <span className="se-save failed" role="alert">
+        <Glyph name="warn" />
+        <span>{t('bs.editor.save.conflict')}</span>
+        <button type="button" className="btn text sm" onClick={draft.reload}>
+          {t('bs.editor.reload')}
+        </button>
+      </span>
+    );
   if (save.kind === 'failed')
     return (
       <span className="se-save failed" role="alert">

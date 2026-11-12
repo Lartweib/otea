@@ -70,7 +70,7 @@ export type SaveStatus =
   | { kind: 'saved' }
   | { kind: 'pending' }
   | { kind: 'saving' }
-  | { kind: 'failed'; message: string };
+  | { kind: 'failed'; message: string; code?: string };
 
 export type Saver = {
   queue: (def: BoardDefinition) => void;
@@ -105,7 +105,12 @@ export function createSaver(options: {
       .catch((error: unknown) => {
         failed = def;
         const message = error instanceof Error ? error.message : String(error);
-        options.onStatus({ kind: 'failed', message });
+        const code = (error as { code?: unknown } | null)?.code;
+        options.onStatus({
+          kind: 'failed',
+          message,
+          ...(typeof code === 'string' ? { code } : {}),
+        });
       })
       .finally(() => {
         running = null;

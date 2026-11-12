@@ -4,6 +4,8 @@ export const studioEditor = {
   'bs.editor.loading': 'Opening the board…',
   'bs.editor.failed': 'The board did not open: {reason}',
   'bs.editor.retry': 'Try again',
+  'bs.editor.missing': 'This board does not exist any more, or the link is wrong.',
+  'bs.editor.reload': 'Reload',
 
   // The head.
   'bs.editor.kicker.studio': 'Studio',
@@ -266,6 +268,8 @@ export const studioEditor = {
   'bs.editor.chip.live': 'Published · v{v}',
   'bs.editor.save.saving': 'Saving…',
   'bs.editor.save.failed': 'Could not save: {reason}',
+  'bs.editor.save.conflict':
+    'The draft changed while you had it open: an agent handed in its board, or another window saved it. Reload to see it; your last edits here were not saved.',
   'bs.editor.undo': 'Undo',
   'bs.editor.redo': 'Redo',
   'bs.editor.discard': 'Discard',

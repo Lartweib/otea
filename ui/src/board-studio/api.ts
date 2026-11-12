@@ -80,12 +80,16 @@ export function createBoard(input: {
   return call('POST', '/api/boards', input);
 }
 
+// `draftStamp`: the draft's updatedAt the editor last saw (null: none); the server refuses the
+// write when the draft changed since, instead of overwriting what arrived.
 export function saveDraft(
   id: string,
   definition: BoardDefinition,
   baseVersion: number | null,
+  draftStamp?: string | null,
 ): Promise<{ record: BoardRecord; problems: Problem[] }> {
-  return call('PUT', `${board(id)}/draft`, { definition, baseVersion });
+  const stamp = draftStamp === undefined ? {} : { draftStamp };
+  return call('PUT', `${board(id)}/draft`, { definition, baseVersion, ...stamp });
 }
 
 export function discardDraft(id: string): Promise<{ deleted: boolean }> {
@@ -99,8 +103,10 @@ export function fetchPublishPlan(id: string): Promise<PublishPlan> {
 export function publishBoard(
   id: string,
   moves: Readonly<Record<string, Target>>,
+  draftStamp?: string | null,
 ): Promise<PublishResult> {
-  return call('POST', `${board(id)}/publish`, { moves });
+  const stamp = draftStamp === undefined ? {} : { draftStamp };
+  return call('POST', `${board(id)}/publish`, { moves, ...stamp });
 }
 
 // Undo publish: `version` is the one live before (null undoes a first publish).

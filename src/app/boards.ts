@@ -253,7 +253,24 @@ export function insertNewBoard(
   }
 }
 
-export type SaveDraftInput = { definition: unknown; baseVersion: number | null };
+// `draftStamp`: the draft's updatedAt as the writer last read it (null: it read no draft). When
+// given, a draft written since (an agent's arriving, another tab) refuses the write instead of
+// being lost under it.
+export type SaveDraftInput = {
+  definition: unknown;
+  baseVersion: number | null;
+  draftStamp?: string | null;
+};
+
+function assertDraftUnchanged(ctx: Context, id: string, stamp: string | null | undefined): void {
+  if (stamp === undefined) return;
+  const current = findDraft(ctx.db, id)?.updatedAt ?? null;
+  if (current !== stamp)
+    throw new OteaError(
+      'board_conflict',
+      'The draft changed since you opened it (an agent handed in its board, or another window saved it): reload to see it',
+    );
+}
 
 // Writes the whole draft. `baseVersion` is the live version the editor started from: when another
 // publish happened since, the write is refused, so nobody publishes over changes they never saw.
@@ -277,6 +294,7 @@ export function saveDraft(
         'board_conflict',
         `The board changed since this draft started: it is at version ${row.liveVersion ?? 'none'} now`,
       );
+    assertDraftUnchanged(ctx, id, input.draftStamp);
     const previous = findDraft(ctx.db, id);
     upsertDraft(ctx.db, {
       boardId: id,
@@ -359,7 +377,12 @@ function prefixOf(ctx: Context, item: string, name: string): string {
   }
 }
 
-export type PublishInput = { moves: Readonly<Record<string, Target>>; by: Actor };
+// `draftStamp`: the draft the plan was shown for; a draft changed since refuses the publish.
+export type PublishInput = {
+  moves: Readonly<Record<string, Target>>;
+  by: Actor;
+  draftStamp?: string | null;
+};
 
 export type PublishResult = {
   version: number;
@@ -426,6 +449,7 @@ export function publishBoard(
   const result = transaction(ctx.db, () => {
     const row = requireRow(ctx, id);
     const record = recordOf(ctx, row);
+    assertDraftUnchanged(ctx, id, input.draftStamp);
     const draft = requireDraft(ctx, id).definition;
     const problems = boardProblems(ctx, id, draft);
     if (blocking(problems)) {
