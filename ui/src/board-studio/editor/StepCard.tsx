@@ -1,6 +1,7 @@
 import { type ReactNode, useState } from 'react';
 import { waysOf } from '../../../../src/core/board/engine.ts';
 import { DONE, isAgent, type Step, stepIndex } from '../../../../src/core/board/model.ts';
+import { useApp } from '../../app/context.tsx';
 import { t, tx } from '../../i18n/i18n.ts';
 import { toast } from '../../kit/pop/toast.tsx';
 import { problemText, targetName } from '../words.ts';
@@ -54,6 +55,7 @@ export function Section({
 
 export function StepCard({ step }: { step: Step }) {
   const { draft, agents, dialogs, setOpenRow } = useEditor();
+  const app = useApp();
   const def = draft.def;
   const i = stepIndex(def, step.id);
   const n = def.steps.length;
@@ -76,13 +78,26 @@ export function StepCard({ step }: { step: Step }) {
 
   const remove = () => {
     const name = step.name;
+    // The live board's open items in the step (its reviews included) need a destination.
+    const collection = draft.record.collection;
+    const items = app.items.status === 'ready' ? app.items.value : [];
+    const here = draft.record.live
+      ? items.filter(
+          (it) =>
+            it.collection === collection &&
+            it.turn !== 'none' &&
+            it.state.replace(/__(review|yours)$/, '') === step.id,
+        ).length
+      : 0;
     const next = def.steps[i + 1] ?? def.steps[i - 1];
     setOpenRow(null);
     draft.endBurst();
     draft.mutate((d) => removeStep(d, step.id));
     draft.select(next ? { kind: 'step', id: next.id } : { kind: 'form' });
     toast({
-      msg: tx('bs.editor.toast.step_removed', { step: <b>{name}</b> }),
+      msg: here
+        ? tx('bs.editor.toast.step_removed_items', { step: <b>{name}</b>, count: here })
+        : tx('bs.editor.toast.step_removed', { step: <b>{name}</b> }),
       undo: () => {
         draft.undo();
         draft.select({ kind: 'step', id: step.id });

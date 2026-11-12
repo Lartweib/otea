@@ -1,4 +1,4 @@
-import { type ReactNode, useLayoutEffect, useRef, useState } from 'react';
+import { type ReactNode, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { Phase } from '../../../../src/core/board/engine.ts';
 import type { Selection } from '../../../../src/core/board/model.ts';
 import { t } from '../../i18n/i18n.ts';
@@ -53,6 +53,15 @@ export function PreviewPane({ draft }: PreviewPaneProps) {
   const canArrange =
     tab === 'see' && step !== undefined && page !== 'form' && page !== 'done' && page !== 'board';
   const showArrange = canArrange && arranging;
+  // Escape leaves Acomodar, as Listo does.
+  useEffect(() => {
+    if (!showArrange) return;
+    const leave = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setArranging(false);
+    };
+    window.addEventListener('keydown', leave);
+    return () => window.removeEventListener('keydown', leave);
+  }, [showArrange]);
 
   // The body cross-fades when what it shows changes (a tab, a stop).
   const body = useRef<HTMLDivElement>(null);
@@ -112,7 +121,8 @@ export function PreviewPane({ draft }: PreviewPaneProps) {
       <i className="cline" />
       <div className="bsp-head">
         <Seg<Tab>
-          value={tab}
+          // «Sobre el tablero» shows the sample board: the tab says so.
+          value={tab === 'see' && page === 'board' ? 'board' : tab}
           label={t('bs.preview.label')}
           onChange={(value) => setTab(value)}
           options={[

@@ -9,6 +9,8 @@ import {
   partOf,
   type Requirement,
   type Reviewer,
+  SAME,
+  stepById,
   type Target,
   usedRefs,
 } from './model.ts';
@@ -36,7 +38,9 @@ export type Change =
       fresh: boolean;
     }
   | { kind: 'hand_removed'; step: string; name: string; part: string; partName: string }
-  | { kind: 'step_instructions' | 'step_ways' | 'step_back'; step: string; name: string }
+  | { kind: 'step_instructions' | 'step_ways'; step: string; name: string }
+  // `to`: the name of the step a send-back now lands on (the step itself for the same one).
+  | { kind: 'step_back'; step: string; name: string; to: string }
   | { kind: 'step_removed'; step: string; name: string }
   | { kind: 'steps_reordered' }
   | { kind: 'part_renamed'; part: string; from: string; to: string }
@@ -89,7 +93,10 @@ export function changePlan(live: BoardDefinition | null, draft: BoardDefinition)
     if (!same(old.instructions, step.instructions))
       out.push({ kind: 'step_instructions', step: id, name });
     if (!same(old.ways, step.ways)) out.push({ kind: 'step_ways', step: id, name });
-    if (old.back !== step.back) out.push({ kind: 'step_back', step: id, name });
+    if (old.back !== step.back) {
+      const to = step.back === SAME ? name : (stepById(draft, step.back)?.name ?? name);
+      out.push({ kind: 'step_back', step: id, name, to });
+    }
   }
   for (const old of live.steps) {
     if (!draft.steps.some(({ id }) => id === old.id))

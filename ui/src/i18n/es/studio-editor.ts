@@ -191,6 +191,10 @@ export const studioEditor = {
   'bs.editor.toast.from_form': 'el formulario',
   'bs.editor.toast.from_any': 'cualquier momento',
   'bs.editor.toast.step_removed': 'Quitaste el paso {step}.',
+  'bs.editor.toast.step_removed_items': {
+    one: 'Quitaste el paso {step}. Al publicar te preguntaré a dónde va su ítem.',
+    other: 'Quitaste el paso {step}. Al publicar te preguntaré a dónde van sus {count} ítems.',
+  },
   'bs.editor.newstep': 'Paso nuevo',
 
   'bs.editor.pick.label': 'Añadir',

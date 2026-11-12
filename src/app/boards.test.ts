@@ -228,7 +228,7 @@ describe('publishBoard', () => {
         from: 1,
         to: 2,
         changes: [
-          { kind: 'step_back', step: 'sanimate', name: 'Animar' },
+          { kind: 'step_back', step: 'sanimate', name: 'Animar', to: 'Animar' },
           { kind: 'step_removed', step: 'sconcept', name: 'Concepto' },
         ],
         effects: expect.objectContaining({

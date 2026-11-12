@@ -173,14 +173,14 @@ export function changeText(change: Change): string {
         part: change.partName,
         req: reqText(change.req, change.fresh),
       });
+    case 'step_back':
+      return t('bs.change.step_back', { name: change.name, to: change.to });
     case 'hand_removed':
       return t('bs.change.hand_removed', { name: change.name, part: change.partName });
     case 'step_instructions':
       return t('bs.change.step_instructions', { name: change.name });
     case 'step_ways':
       return t('bs.change.step_ways', { name: change.name });
-    case 'step_back':
-      return t('bs.change.step_back', { name: change.name });
     case 'step_removed':
       return t('bs.change.step_removed', { name: change.name });
     case 'steps_reordered':

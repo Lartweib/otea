@@ -48,7 +48,7 @@ export const boardStudio = {
   'bs.change.hand_removed': '{name} no longer hands off {part}.',
   'bs.change.step_instructions': 'New instructions in {name}.',
   'bs.change.step_ways': 'New ways out of {name}.',
-  'bs.change.step_back': 'Where {name} goes when you send it back changes.',
+  'bs.change.step_back': 'When you send {name} back, it now goes to {to}.',
   'bs.change.step_removed': 'The step {name} is removed.',
   'bs.change.steps_reordered': 'The steps change order.',
   'bs.change.part_renamed': '{from} is now called {to}.',
