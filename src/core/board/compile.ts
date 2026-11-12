@@ -139,7 +139,19 @@ function phasesOf(step: Step): Phase[] {
   return [doing, review, yours];
 }
 
-type RawTransition = { from: string; to: string; by: 'agent' | 'human'; reason?: 'required' };
+type RawTransition = {
+  from: string;
+  to: string;
+  by: 'agent' | 'human' | 'human-ui';
+  reason?: 'required';
+};
+
+// Only the person says Hecho, and only on the item page: an agent cannot relay it.
+function closingByYou(transition: RawTransition): RawTransition {
+  return transition.by === 'human' && transition.to === DONE
+    ? { ...transition, by: 'human-ui' }
+    : transition;
+}
 
 function transitionsOf(def: BoardDefinition): RawTransition[] {
   const out: RawTransition[] = [];
@@ -165,7 +177,7 @@ function transitionsOf(def: BoardDefinition): RawTransition[] {
       out.push({ from: yours, to: back, by: 'human', reason: 'required' });
     }
   }
-  return out;
+  return out.map(closingByYou);
 }
 
 function zoneOf(def: BoardDefinition, part: Part): Zone {
