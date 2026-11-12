@@ -155,17 +155,17 @@ describe('relations', () => {
           'Children: 1 of 2 closed (0 done, 1 discarded)',
           'Relations:',
           '  children',
-          '    PARTS-3  todo     agent  Movement',
-          '    PARTS-4  dropped  none   Fur',
+          '    PARTS-3  Hacerlo  agent  Movement',
+          '    PARTS-4  Dropped  none   Fur',
         ].join('\n'),
       );
       expect(child).toContain(
         [
           'Relations:',
           '  parent',
-          '    PARTS-1  todo  agent  Create wolf',
+          '    PARTS-1  Hacerlo  agent  Create wolf',
           '  blocked by',
-          '    PARTS-2  todo  agent  Body',
+          '    PARTS-2  Hacerlo  agent  Body',
         ].join('\n'),
       );
       expect((await json('show', 'PARTS-3')).relations).toMatchObject([
