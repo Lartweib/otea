@@ -1403,3 +1403,861 @@ button.st-offscreen .icon:last-child {
 .seg2.st-seg-none .knob {
   opacity: 0;
 }
+
+/* ═════════ The board Studio's preview pane and the bar's dialogs (board-studio/preview). Lo que
+   ves draws the item page in its own grammar (crumb, headline, standfirst, route, moves); Acomodar
+   turns its boxes into tiles in five zones; Lo que lee el agente is the text next answers; El
+   tablero is the list on the lanes. Everything here is under .bsp or .bsp-dialog. ═════════ */
+
+.bsp {
+  --ground: var(--sheet);
+  position: relative;
+  background: var(--sheet);
+  border-radius: 12px;
+  box-shadow:
+    inset 0 0 0 1px var(--rule),
+    0 22px 44px -36px var(--shadow);
+  min-width: 0;
+}
+.bsp > .cline {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 1px;
+  background: var(--ink-3);
+  border-radius: 1px;
+  z-index: 2;
+  transform-origin: 50% 0;
+  opacity: 0;
+}
+.bsp-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--rule);
+}
+.bsp-head .sp,
+.bsp-foot .sp {
+  flex: 1;
+}
+.bsp-head .btn.on {
+  box-shadow: inset 0 0 0 1.5px var(--ink);
+}
+.bsp-body {
+  position: relative;
+  padding: 18px 22px 26px;
+  min-height: 420px;
+}
+.bsp-foot {
+  padding: 10px 16px 14px;
+  border-top: 1px solid var(--rule);
+  font: 400 italic 13.5px / 1.4 var(--serif);
+  color: var(--ink-3);
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.bsp-foot .btn {
+  font-style: normal;
+}
+.bsp-play {
+  width: 13px;
+  height: 13px;
+}
+.bsp-emptyx {
+  padding: 12px 0 2px;
+  font: 400 italic 15px / 1.5 var(--serif);
+  color: var(--ink-3);
+  max-width: 62ch;
+}
+.bsp-emptyx b {
+  font: 500 13px / 1 var(--mono);
+  color: var(--ink-2);
+}
+
+/* ───────── Lo que ves: the item page ───────── */
+.bsp-ip .bsp-crumb {
+  margin: 0;
+}
+.bsp-ip .bsp-crumb .turn.other {
+  color: var(--ink-3);
+}
+.bsp-ip .bsp-headline {
+  margin-top: 12px;
+  font-size: 30px;
+  line-height: 1.08;
+  letter-spacing: -0.02em;
+}
+.bsp-ip .bsp-stand {
+  margin-top: 8px;
+  font-size: 16px;
+}
+.bsp-route .route-wrap {
+  margin: 14px 0 2px;
+}
+.bsp-phase {
+  margin: 12px 0 4px;
+}
+.bsp-hcheck {
+  margin-top: 14px;
+  display: grid;
+  gap: 2px;
+  max-width: 64ch;
+}
+.bsp-hc {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) auto;
+  gap: 9px;
+  align-items: baseline;
+  font-size: 13.5px;
+  padding: 3px 4px;
+  margin: 0 -4px;
+  border-radius: 6px;
+  text-align: left;
+  color: var(--ink);
+  transition: background-color 240ms var(--o-glide);
+}
+.bsp-hc:hover {
+  background: var(--hov);
+}
+.bsp-hc .bx,
+.bsp-prac .tk .bx {
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  box-shadow: inset 0 0 0 1.25px var(--ink-3);
+  display: grid;
+  place-items: center;
+  transform: translateY(2px);
+}
+.bsp-hc.ok .bx,
+.bsp-prac .tk.ok .bx {
+  background: var(--ink);
+  box-shadow: none;
+  color: var(--sheet);
+}
+.bsp-tick {
+  width: 11px;
+  height: 11px;
+}
+.bsp-hc.miss {
+  color: var(--ink-2);
+}
+.bsp-hc small {
+  font: 400 11px / 1 var(--mono);
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+.bsp-hc.miss.req small {
+  color: var(--warn);
+}
+.bsp-actions {
+  margin: 16px 0 6px;
+}
+.bsp-tag {
+  font: 400 11px / 1 var(--mono);
+  color: var(--ink-3);
+}
+.bsp-waitline {
+  display: block;
+  margin: 16px 0 6px -4px;
+  padding: 2px 4px;
+  border-radius: 6px;
+  text-align: left;
+  font: 400 italic 15px / 1.45 var(--serif);
+  color: var(--ink-2);
+  transition: background-color 240ms var(--o-glide);
+}
+.bsp-waitline:hover {
+  background: var(--hov);
+}
+
+/* the zones: Arriba across, Principal and Al lado side by side; the list row and Oculto only while
+   arranging */
+.bsp-zones {
+  margin-top: 18px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 200px;
+  gap: 0 22px;
+  align-items: start;
+}
+.bsp-zone {
+  position: relative;
+  min-height: 0;
+  border-radius: 10px;
+  transition:
+    box-shadow 240ms var(--o-drift),
+    background-color 240ms var(--o-drift),
+    padding 240ms var(--o-glide);
+}
+.bsp-zone[data-zone="top"],
+.bsp-zone[data-zone="row"],
+.bsp-zone[data-zone="hidden"] {
+  grid-column: 1 / -1;
+}
+.bsp-zone[data-zone="row"],
+.bsp-zone[data-zone="hidden"] {
+  display: none;
+}
+.bsp-zone > .zl {
+  display: none;
+  font: 400 11px / 1 var(--mono);
+  color: var(--ink-3);
+  padding: 0 0 8px;
+}
+.bsp-zone > .zempty {
+  display: none;
+  font: 400 italic 13.5px / 1.3 var(--serif);
+  color: var(--ink-3);
+  padding: 6px 2px;
+}
+.bsp-ip.arr .bsp-zones {
+  gap: 12px 22px;
+}
+.bsp-ip.arr .bsp-zone {
+  box-shadow: inset 0 0 0 1px var(--rule-2);
+  padding: 10px 12px 12px;
+  background: color-mix(in oklch, var(--well) 50%, transparent);
+}
+.bsp-ip.arr .bsp-zone > .zl {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+.bsp-ip.arr .bsp-zone[data-zone="row"],
+.bsp-ip.arr .bsp-zone[data-zone="hidden"] {
+  display: block;
+}
+.bsp-ip.arr .bsp-zone > .zempty {
+  display: block;
+}
+.bsp-ip.arr .bsp-zone.over {
+  box-shadow: inset 0 0 0 1.5px var(--you);
+  background: var(--you-wash);
+}
+.bsp-blk {
+  position: relative;
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 10px 0 12px;
+  border-top: 1px solid var(--rule);
+  color: var(--ink);
+}
+.bsp-zone > .bsp-blk:first-of-type {
+  border-top: 0;
+  padding-top: 2px;
+}
+.bsp-blk.why {
+  cursor: help;
+  transition: background-color 240ms var(--o-glide);
+}
+.bsp-blk.why:hover {
+  background: var(--hov);
+  border-radius: 6px;
+}
+.bsp-bl {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 7px;
+}
+.bsp-bl .margin-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.bsp-bl .from {
+  font: 400 11px / 1 var(--mono);
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+.bsp-grip {
+  width: 22px;
+  height: 22px;
+  border-radius: 5px;
+  display: inline-grid;
+  place-items: center;
+  color: var(--ink-3);
+  cursor: grab;
+  flex: none;
+  align-self: center;
+}
+.bsp-grip svg {
+  width: 14px;
+  height: 14px;
+}
+.bsp-grip:hover,
+.bsp-grip[aria-expanded="true"] {
+  background: var(--well);
+  color: var(--ink);
+}
+.bsp-ip.arr .bsp-blk {
+  padding: 8px 8px 10px;
+  margin-top: 6px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--sheet);
+  box-shadow: inset 0 0 0 1px var(--rule);
+  cursor: grab;
+}
+.bsp-ip.arr .bsp-zone[data-zone="row"] .bsp-blk .bsp-bl,
+.bsp-ip.arr .bsp-zone[data-zone="hidden"] .bsp-blk .bsp-bl {
+  margin-bottom: 0;
+}
+.bsp-blk.dragging {
+  opacity: 0.35;
+}
+.bsp-zone[data-zone="side"] .bsp-val {
+  font: 500 13.5px / 1.4 var(--sans);
+}
+
+/* sample values */
+.bsp-val {
+  font: 400 15px / 1.5 var(--serif);
+  color: var(--ink);
+  margin: 0;
+}
+.bsp-val.mono {
+  font: 400 12.5px / 1.4 var(--mono);
+}
+.bsp-val.empty {
+  font-style: italic;
+  color: var(--ink-3);
+}
+.bsp-level {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.bsp-chipv {
+  display: inline-flex;
+  height: 24px;
+  align-items: center;
+  padding: 0 9px;
+  border-radius: 999px;
+  background: var(--well);
+  font: 500 12.5px / 1 var(--sans);
+}
+.bsp-ckl {
+  display: grid;
+  gap: 4px;
+  font: 400 14px / 1.3 var(--sans);
+}
+.bsp-ckl span {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.bsp-ckl i {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  box-shadow: inset 0 0 0 1.2px var(--ink-3);
+}
+.bsp-ckl i.on {
+  background: var(--ink-2);
+  box-shadow: none;
+}
+.bsp-fig {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 6px;
+}
+.bsp-figs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+.bsp-figs figure {
+  margin: 0;
+}
+.bsp-figs.two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.bsp-figs.one {
+  grid-template-columns: minmax(0, 1fr);
+  max-width: 320px;
+}
+.bsp-cap {
+  font: 400 italic 12.5px / 1.3 var(--serif);
+  color: var(--ink-3);
+  margin-top: 5px;
+}
+.bsp-code {
+  font: 400 12px / 1.6 var(--mono);
+  border-radius: 6px;
+  background: var(--fig);
+  padding: 8px 10px;
+  overflow: hidden;
+  white-space: pre;
+}
+.bsp-code .p {
+  color: var(--plus);
+}
+.bsp-code .m {
+  color: var(--minus);
+}
+.bsp-file {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  padding: 6px 10px;
+  border-radius: 7px;
+  background: var(--fig);
+  font: 400 12.5px / 1 var(--mono);
+}
+
+/* the row the item makes in the list */
+.bsp-rowpv {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px dashed var(--rule-2);
+}
+.bsp-rowpv .ll {
+  font: 400 11px / 1 var(--mono);
+  color: var(--ink-3);
+  margin: 0 0 4px;
+}
+.bsp-rowpv .lanes {
+  padding-bottom: 6px;
+}
+.bsp .row.inert {
+  cursor: default;
+}
+.bsp .row:hover .band {
+  background-color: transparent;
+}
+.bsp-cols {
+  display: inline-flex;
+  gap: 12px;
+  align-items: center;
+  font: 400 13px / 1 var(--sans);
+  color: var(--ink-2);
+  white-space: nowrap;
+  align-self: center;
+}
+
+/* the creation form */
+.bsp-nform {
+  display: grid;
+  margin-top: 8px;
+}
+.bsp-ffield {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr);
+  column-gap: 16px;
+  padding: 12px 4px;
+  margin: 0 -4px;
+  border-top: 1px solid var(--rule);
+  align-items: start;
+  text-align: left;
+  cursor: help;
+  transition: background-color 240ms var(--o-glide);
+}
+.bsp-ffield:hover {
+  background: var(--hov);
+}
+.bsp-ffield .flab {
+  font: 600 10px / 1.3 var(--sans);
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  padding-top: 10px;
+}
+.bsp-ffield .fin {
+  min-width: 0;
+  pointer-events: none;
+}
+.bsp-ffield textarea,
+.bsp-ffield .bsp-tx {
+  display: block;
+  width: 100%;
+  min-height: 34px;
+  padding: 7px 10px;
+  border-radius: 7px;
+  border: 1px solid var(--rule-2);
+  background: var(--sheet);
+  font: 400 15px / 1.35 var(--serif);
+  color: var(--ink);
+  resize: none;
+}
+.bsp-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-top: 3px;
+}
+
+/* ───────── Lo que lee el agente ───────── */
+.bsp-axl {
+  font: 450 15px / 1.2 var(--serif);
+  margin: 18px 0 8px;
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  flex-wrap: wrap;
+}
+.bsp-axl:first-child {
+  margin-top: 0;
+}
+.bsp-axl small {
+  font: 400 italic 13px / 1.2 var(--serif);
+  color: var(--ink-3);
+}
+.bsp-agentx,
+.bsp-refuse {
+  margin: 0;
+  font: 400 12.5px / 1.65 var(--mono);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  border-radius: 8px;
+  padding: 14px 16px;
+}
+.bsp-agentx {
+  color: var(--ink);
+  background: var(--fig);
+}
+.bsp-agentx .h {
+  color: var(--ink-3);
+}
+.bsp-agentx .k {
+  font-weight: 500;
+}
+.bsp-agentx .miss {
+  color: var(--warn);
+}
+.bsp-refuse {
+  color: var(--warn);
+  background: color-mix(in oklch, var(--warn) 7%, var(--sheet));
+  box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--warn) 30%, transparent);
+}
+.bsp-note {
+  margin-top: 14px;
+  font: 400 italic 13px / 1.4 var(--serif);
+  color: var(--ink-3);
+}
+
+/* ───────── El tablero ───────── */
+.bsp-board .lanes {
+  padding-bottom: 12px;
+}
+.bsp-board .sec {
+  padding-top: 14px;
+}
+.bsp-board .sec h2 {
+  font-size: 18px;
+}
+
+/* ───────── the dialogs ───────── */
+.bsp-dialog.wide {
+  width: min(600px, calc(100vw - 32px));
+  margin-left: calc(min(600px, calc(100vw - 32px)) / -2);
+  top: 12vh;
+}
+.bsp-dialog.xwide {
+  width: min(860px, calc(100vw - 32px));
+  margin-left: calc(min(860px, calc(100vw - 32px)) / -2);
+  top: 6vh;
+}
+.bsp-dialog .pin {
+  max-height: 86vh;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+.bsp-dialog .lede {
+  font: 400 italic 15px / 1.45 var(--serif);
+  color: var(--ink-2);
+}
+.bsp-dialog .lede b {
+  font-style: normal;
+  font-weight: 500;
+  color: var(--ink);
+}
+.bsp-dialog .lede.plain {
+  font-style: normal;
+  color: var(--ink);
+  margin-top: 4px;
+}
+.bsp-dialog select {
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid var(--rule-2);
+  background: var(--sheet);
+  font: 500 13px / 1 var(--sans);
+  padding: 0 6px;
+  color: var(--ink);
+  margin-left: 4px;
+}
+.bsp-chg {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+.bsp-chg li {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr);
+  gap: 8px;
+  font: 400 15px / 1.45 var(--serif);
+}
+.bsp-chg li::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ink-3);
+  margin-top: 0.55em;
+  justify-self: center;
+}
+.bsp-chg li.add::before {
+  background: var(--you);
+}
+.bsp-chg li.err {
+  color: var(--warn);
+}
+.bsp-chg li.err::before {
+  background: var(--warn);
+}
+.bsp-chg li.err button {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.bsp-chg.warns li {
+  color: var(--ink-2);
+}
+.bsp-effects {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: var(--well);
+}
+.bsp-effects .margin-label {
+  display: block;
+  margin-bottom: 4px;
+}
+.bsp-fhint {
+  margin-top: 12px;
+  font: 400 italic 14px / 1.45 var(--serif);
+  color: var(--ink-3);
+}
+.bsp-dwarn {
+  margin-top: 10px;
+  font: 400 italic 14px / 1.4 var(--serif);
+  color: var(--warn);
+}
+.bsp-dwarn:empty {
+  display: none;
+}
+.bsp-dialog .btn.warn {
+  color: var(--warn);
+}
+.bsp-tlink {
+  font: 500 13px / 1 var(--sans);
+  color: var(--you-ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  white-space: nowrap;
+}
+
+/* Probar */
+.bsp-prac .banner {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: var(--you-wash);
+  color: var(--you-ink);
+  font: 500 12.5px / 1.3 var(--sans);
+}
+.bsp-prac .banner i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--you);
+  flex: none;
+}
+.bsp-prac h4 {
+  margin-top: 14px;
+}
+.bsp-prac h4 .id {
+  font: 400 11.5px / 1 var(--mono);
+  color: var(--ink-3);
+  margin-left: 4px;
+}
+.bsp-prac .who {
+  margin-top: 14px;
+  font: 400 italic 16px / 1.45 var(--serif);
+  color: var(--ink-2);
+}
+.bsp-prac .who b {
+  font-style: normal;
+  font-weight: 500;
+  color: var(--ink);
+}
+.bsp-tasks {
+  margin-top: 12px;
+  display: grid;
+  gap: 6px;
+}
+.bsp-prac .tk {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 7px 10px;
+  border-radius: 8px;
+  box-shadow: inset 0 0 0 1px var(--rule);
+}
+.bsp-prac .tk.ok {
+  box-shadow: none;
+  background: var(--well);
+}
+.bsp-prac .tk .bx {
+  transform: none;
+}
+.bsp-prac .tk .tn {
+  font-size: 13.5px;
+}
+.bsp-prac .tk .tn small {
+  display: block;
+  font: 400 11px / 1.3 var(--mono);
+  color: var(--ink-3);
+  margin-top: 2px;
+}
+.bsp-radios {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+.bsp-pacts {
+  display: flex;
+  gap: 10px;
+  margin-top: 14px;
+  flex-wrap: wrap;
+}
+.bsp-prac .said {
+  margin-top: 10px;
+  min-height: 22px;
+  font: 400 italic 15px / 1.45 var(--serif);
+  color: var(--ink-2);
+}
+.bsp-prac .said p {
+  margin: 0;
+  color: inherit;
+}
+.bsp-prac .said.warn {
+  color: var(--warn);
+}
+.bsp-prac .log {
+  margin: 14px 0 0;
+  padding: 10px 0 0;
+  border-top: 1px solid var(--rule);
+  list-style: none;
+  display: grid;
+  gap: 4px;
+  max-height: 150px;
+  overflow: auto;
+}
+.bsp-prac .log li {
+  display: grid;
+  grid-template-columns: 14px minmax(0, 1fr);
+  gap: 8px;
+  align-items: baseline;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.bsp-prac .log li i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ink-3);
+  transform: translateY(-1px);
+}
+.bsp-prac .log li.you i {
+  background: var(--you);
+}
+.bsp-prac textarea.bsp-note-in {
+  display: block;
+  width: 100%;
+  margin-top: 10px;
+  min-height: 58px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--rule-2);
+  background: var(--sheet);
+  font: 400 15px / 1.4 var(--serif);
+  color: var(--ink);
+}
+.bsp-prac textarea.bsp-note-in:focus {
+  outline: none;
+  border-color: var(--you);
+}
+
+.bsp-harness {
+  display: flex;
+  gap: 8px;
+  padding: 10px 14px;
+  border-top: 1px dashed var(--warn);
+}
+
+@media (min-width: 1241px) {
+  .bsp {
+    position: sticky;
+    top: 78px;
+    max-height: calc(100vh - 150px);
+    overflow-y: auto;
+    scrollbar-width: thin;
+  }
+  .bsp .bsp-head {
+    position: sticky;
+    top: 0;
+    z-index: 3;
+    background: var(--sheet);
+    border-radius: 12px 12px 0 0;
+  }
+}
+@media (max-width: 900px) {
+  .bsp-zones {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 760px) {
+  .bsp-body {
+    padding: 14px 14px 20px;
+  }
+  .bsp-ip .bsp-headline {
+    font-size: 25px;
+  }
+  .bsp-ffield {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .bsp-ffield .flab {
+    padding-top: 0;
+    margin-bottom: 6px;
+  }
+  .bsp-dialog.wide,
+  .bsp-dialog.xwide {
+    top: 4vh;
+  }
+}
+/* The row preview's lanes are laid flat, as the list draws them above its trunk. */
+.bsp-rowpv .lanes > svg.ink .lines {
+  display: none;
+}
+.bsp-rowpv .lanes {
+  background:
+    linear-gradient(var(--lane), var(--lane)) 16px 0 / 1px 100% no-repeat,
+    linear-gradient(var(--you), var(--you)) 40px 0 / 1px 100% no-repeat;
+}
