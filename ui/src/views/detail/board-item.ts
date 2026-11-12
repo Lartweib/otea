@@ -5,6 +5,7 @@ import {
   type Linked,
   positionOf,
   roundsOf,
+  stateOf,
   type Transition,
   turnAt,
 } from '../../../../src/core/board/engine.ts';
@@ -29,6 +30,8 @@ import type { ItemEvent, RelatedItem } from '../../types.ts';
 
 export type BoardItem = { agent: string | null; round: number; route: DefinitionRoute };
 
+const MIGRATE = 'migrate';
+
 type ItemLike = { state: string; createdAt: string; events: readonly ItemEvent[] };
 
 const transitionsOf = (events: readonly ItemEvent[]): Transition[] =>
@@ -37,6 +40,33 @@ const transitionsOf = (events: readonly ItemEvent[]): Transition[] =>
       ? [{ from: e.data.from, to: e.data.to, at: e.at }]
       : [],
   );
+
+// The item's history as the engine replays it (app/next.ts): a board read from a preset starts at
+// that reading, and the question the reading carried opens the step's next round.
+function historyOf(
+  item: ItemLike,
+  fallback: string,
+): { initial: string; createdAt: string; moves: Transition[] } {
+  const events = item.events;
+  const at = events.findLastIndex((e) => e.type === 'transitioned' && e.data.reason === MIGRATE);
+  const reading = events[at];
+  if (!reading || typeof reading.data.to !== 'string') {
+    const created = events.find((e) => e.type === 'created')?.data.state;
+    const initial = typeof created === 'string' ? created : fallback;
+    return { initial, createdAt: item.createdAt, moves: transitionsOf(events) };
+  }
+  const to = positionOf(reading.data.to);
+  const asked = typeof reading.data.note === 'string' && reading.data.note.trim() !== '';
+  const reopen: Transition[] =
+    asked && !isClosed(to)
+      ? [{ from: stateOf({ step: to.step, phase: 'review' }), to: to.step, at: reading.at }]
+      : [];
+  return {
+    initial: reading.data.to,
+    createdAt: reading.at,
+    moves: [...reopen, ...transitionsOf(events.slice(at + 1))],
+  };
+}
 
 // Null when the item's state is not one of the board's (a collection still on a preset, or a
 // dropped item, which the route has no stop for).
@@ -47,9 +77,8 @@ export function boardItemOf(
 ): BoardItem | null {
   const position = positionOf(item.state);
   if (isClosed(position) ? position.closed !== DONE : !stepById(def, position.step)) return null;
-  const created = item.events.find((e) => e.type === 'created')?.data.state;
-  const initial = typeof created === 'string' ? created : (def.steps[0]?.id ?? item.state);
-  const rounds = roundsOf(def, initial, item.createdAt, transitionsOf(item.events));
+  const history = historyOf(item, def.steps[0]?.id ?? item.state);
+  const rounds = roundsOf(def, history.initial, history.createdAt, history.moves);
   const turn = turnAt(def, position);
   const agent = turn.who === 'agent' ? (turn.agent ?? null) : null;
   const round = isClosed(position) ? 0 : (rounds.rounds[position.step] ?? 1);
@@ -211,8 +240,6 @@ export type RoundNote = {
 };
 export type Round = { round: number; notes: RoundNote[] };
 
-const MIGRATE = 'migrate';
-
 // What a move said: its note, else its reason; a migration's reason is a marker, not words.
 const textOf = (data: Record<string, unknown>): string => {
   const said =
@@ -232,7 +259,13 @@ export function roundNotes(
   const rounds: Round[] = [];
   const add = (n: number, note: RoundNote) => rounds[n - 1]?.notes.push(note);
   const indexOf = (step: string) => def.steps.findIndex((s) => s.id === step);
-  for (const e of events) {
+  // Like the engine, a board read from a preset starts the item's history at that reading: the
+  // preset's states before it are not the board's steps.
+  const reading = events.findLastIndex(
+    (e) => e.type === 'transitioned' && e.data.reason === MIGRATE,
+  );
+  const readAt = reading < 0 ? undefined : events[reading]?.at;
+  for (const e of reading < 0 ? events : events.slice(reading)) {
     if (e.type === 'created' && typeof e.data.state === 'string') {
       const at = positionOf(e.data.state);
       if (!isClosed(at) && at.step === stepId) rounds.push({ round: 1, notes: [] });
@@ -258,7 +291,12 @@ export function roundNotes(
     // Its words are the round's note when it came back (from its review or a later step) or a
     // migration brought the person's question; moving on, forward, with a word says nothing here.
     const back = sentBack || fromLater || migrated;
-    if (intoStep && !(fromStep && source.phase === 'doing')) {
+    if (migrated) {
+      // The reading is the step's first round; the question it carried opens the next one.
+      if (!intoStep) continue;
+      rounds.push({ round: 1, notes: [] });
+      if (text) rounds.push({ round: 2, notes: [note('back')] });
+    } else if (intoStep && !(fromStep && source.phase === 'doing')) {
       rounds.push({ round: rounds.length + 1, notes: back && text ? [note('back')] : [] });
     } else if (fromStep && source.phase === 'doing' && text && !block) {
       add(rounds.length, note('handoff'));
@@ -269,6 +307,8 @@ export function roundNotes(
     for (const n of block.notes) {
       if (n.step !== stepId && n.step !== stepName) continue;
       if (!n.note.trim()) continue;
+      // The question a reading carried is already the next round's note.
+      if (n.at === readAt) continue;
       add(Math.min(Math.max(n.round, 1), rounds.length), {
         kind: 'handoff',
         text: n.note.trim(),
