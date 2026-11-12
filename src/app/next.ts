@@ -26,7 +26,7 @@ import {
   type Target,
 } from '../core/board/model.ts';
 import { handedText, idleText, nextText, refusalText, wayByName } from '../core/board/next.ts';
-import { evidenceByName, readFieldInput, stateByName } from '../core/board/reading.ts';
+import { evidenceByName, readFieldInput, stateByName, stateName } from '../core/board/reading.ts';
 import { readDefinition } from '../core/board/schema.ts';
 import { OteaError } from '../core/errors.ts';
 import type { Actor } from '../core/item.ts';
@@ -417,11 +417,16 @@ function assertAgentMove(
     if (stateOf(result.to) === to) return;
     const step = stepById(board.def, position.step);
     const into = result.to;
-    const where =
-      !isClosed(into) && into.phase === 'yours'
-        ? `your work on ${step?.name ?? position.step} goes to the person's review, not yours`
-        : `a handoff from ${step?.name ?? position.step} goes to ${stateOf(into)}`;
-    throw new OteaError('forbidden', `Not your move: ${where}; use otea handoff ${item.id}`);
+    const name = step?.name ?? position.step;
+    if (!isClosed(into) && into.phase === 'yours')
+      throw new OteaError(
+        'forbidden',
+        `Not your move: your work on ${name} goes to the person's review, not yours; use otea handoff ${item.id}`,
+      );
+    throw new OteaError(
+      'invalid_transition',
+      `${item.id} cannot go to ${stateName(board.def, to)}: a handoff from ${name} goes to ${stateName(board.def, stateOf(into))}; use otea handoff ${item.id}`,
+    );
   }
   assertReviewer(board.def, item, actor);
 }
