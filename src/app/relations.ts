@@ -1,7 +1,7 @@
 import type { DatabaseSync } from 'node:sqlite';
 import type { Channel } from '../core/authority.ts';
 import { partRule } from '../core/board/joins.ts';
-import { parentTypeText } from '../core/board/next.ts';
+import { parentTypeText, partsAtHomeText } from '../core/board/next.ts';
 import { OteaError } from '../core/errors.ts';
 import { assertTakesChild } from '../core/hierarchy.ts';
 import type { Actor } from '../core/item.ts';
@@ -87,6 +87,11 @@ function assertMayBePart(ctx: Context, from: ItemRecord, to: ItemRecord): void {
     throw new OteaError(
       'parent_type',
       parentTypeText(parent.def, into.def, from.id, child?.def.name ?? from.collection),
+    );
+  if (parent && child)
+    throw new OteaError(
+      'parent_across_boards',
+      partsAtHomeText(parent.def, to.id, from.id, child.def.name),
     );
   throw new OteaError(
     'parent_across_boards',

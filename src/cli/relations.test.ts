@@ -71,7 +71,7 @@ describe('relations', () => {
       const result = await otea('link', 'PARTS-2', 'parent', 'BUGS-1');
 
       expect(result.code).toBe(16);
-      expect(result.err).toContain('link PARTS-2 blocks BUGS-1 to make BUGS-1 wait');
+      expect(result.err).toContain('Link PARTS-2 blocks BUGS-1 to make BUGS-1 wait');
       expect(await errorOf('link', 'PARTS-2', 'parent', 'BUGS-1')).toEqual({
         code: 16,
         error: 'parent_across_boards',
