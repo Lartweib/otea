@@ -39,8 +39,6 @@ export const HTTP_STATUS: Readonly<Record<ErrorCode, ContentfulStatusCode>> = {
   blockers_open: 409,
   different_repo: 409,
   in_use: 409,
-  invalid_blueprint: 500,
-  link_not_in_blueprint: 409,
   invalid_draft: 422,
   invalid_board: 422,
   board_conflict: 409,

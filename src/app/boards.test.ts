@@ -10,7 +10,6 @@ import {
   discardDraft,
   getBoardRecord,
   listBoardSummaries,
-  migrateCollections,
   publishBoard,
   publishPlan,
   restoreBoard,
@@ -449,118 +448,5 @@ describe('syncBoardPresets', () => {
     expect(other.presets.presets.has(record.id)).toBe(false);
     syncBoardPresets(other);
     expect(other.presets.presets.has(record.id)).toBe(true);
-  });
-});
-
-describe('migrateCollections', () => {
-  it('reads a collection on a preset as a published board, its items where they were', () => {
-    const ctx = memoryContext();
-    addCollection(ctx, { name: 'Tareas', preset: 'tasks' });
-    const todo = createItem(ctx, {
-      collection: 'Tareas',
-      title: 'A',
-      fields: { description: 'x' },
-      actor: you,
-      channel: 'ui',
-    });
-    const review = createItem(ctx, {
-      collection: 'Tareas',
-      title: 'B',
-      fields: { description: 'y' },
-      actor: you,
-      channel: 'ui',
-    });
-    moveItem(ctx, { id: review.id, to: 'in_progress', actor: kiln, channel: 'cli' });
-    moveItem(ctx, { id: review.id, to: 'review', actor: kiln, channel: 'cli' });
-    expect(migrateCollections(ctx, 'es', now)).toBe(1);
-    const [board] = listBoardSummaries(ctx);
-    expect(board).toEqual(
-      expect.objectContaining({ name: 'Tareas', item: 'Tarea', status: 'live', liveVersion: 1 }),
-    );
-    expect(getItem(ctx, todo.id).state).toBe('todo');
-    expect(getItem(ctx, review.id).state).toBe(stateOf({ step: 'todo', phase: 'review' }));
-    expect(getItem(ctx, review.id).fields.description).toBe('y');
-    expect(migrateCollections(ctx, 'es', now)).toBe(0);
-  });
-
-  it('gives enum values that are not ids an id, rewrites the items, and the project still opens', () => {
-    const prio = parsePreset(`
-preset: prio
-preset_version: 1
-fields:
-  title: { module: text, required: create }
-  prio: { module: enum, values: [P1, P2] }
-workflow:
-  initial: todo
-  states:
-    todo: { turn: agent }
-    check: { turn: human }
-    done: { turn: none, closes: done }
-  transitions:
-    - { from: todo, to: check, by: agent }
-    - { from: check, to: done, by: human }
-`);
-    const ctx = memoryContext(prio);
-    addCollection(ctx, { name: 'Prio', preset: 'prio' });
-    const item = createItem(ctx, {
-      collection: 'Prio',
-      title: 'A',
-      fields: { prio: 'P2' },
-      actor: you,
-      channel: 'ui',
-    });
-    moveItem(ctx, { id: item.id, to: 'check', actor: kiln, channel: 'cli' });
-
-    expect(migrateCollections(ctx, 'en', now)).toBe(1);
-    expect(getItem(ctx, item.id).fields.prio).toBe('p2');
-    expect(getItem(ctx, item.id).state).toBe('todo__review');
-    expect(listBoardSummaries(ctx)[0]?.definition.parts.prio?.options[1]).toEqual({
-      id: 'p2',
-      name: 'P2',
-    });
-    expect(showItem(ctx, item.id, { actor: you, channel: 'ui' }).events.at(-1)).toEqual(
-      expect.objectContaining({
-        type: 'transitioned',
-        data: expect.objectContaining({ from: 'check', to: 'todo__review', reason: 'migrate' }),
-      }),
-    );
-  });
-
-  it('carries the preset playbook as the board text', () => {
-    const ctx = memoryContext();
-    addCollection(ctx, { name: 'Tareas', preset: 'tasks' });
-    migrateCollections(ctx, 'es', now, undefined, () => '# Playbook\n\nRead me.');
-    expect(listBoardSummaries(ctx)[0]?.definition.about).toBe('# Playbook\n\nRead me.');
-  });
-
-  it('leaves a collection on its preset when its states wait for closed children', () => {
-    const epic = parsePreset(`
-preset: epic
-preset_version: 1
-fields:
-  title: { module: text, required: create }
-workflow:
-  initial: building
-  states:
-    building: { turn: agent }
-    review: { turn: human, requires: children_closed }
-    done: { turn: none, closes: done }
-  transitions:
-    - { from: building, to: review, by: agent }
-    - { from: review, to: done, by: human }
-`);
-    const ctx = memoryContext(epic);
-    addCollection(ctx, { name: 'Epics', preset: 'epic' });
-
-    expect(migrateCollections(ctx, 'es', now)).toBe(0);
-  });
-
-  it('leaves a collection whose preset has several item types on its preset', () => {
-    const ctx = memoryContext();
-    addCollection(ctx, { name: 'Cambios', preset: 'change' });
-
-    expect(migrateCollections(ctx, 'es', now)).toBe(0);
-    expect(listBoardSummaries(ctx)).toEqual([]);
-    expect(findCollection(ctx.db, 'Cambios')?.preset).toBe('change');
   });
 });

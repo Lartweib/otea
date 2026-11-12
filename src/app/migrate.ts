@@ -39,7 +39,7 @@ import {
 const BACKUP_PREFIX = '.otea.migrated-';
 
 // The folders and files copied next to the database; ui-token and serve.json are made again when served.
-const COPIED = ['evidence', 'presets', 'blueprints', 'blueprint.yaml', 'blueprint.md'];
+const COPIED = ['evidence', 'presets'];
 
 export type MigrationReport = {
   // migrated: moved now; finished: an earlier run had copied and registered it, this one moved the

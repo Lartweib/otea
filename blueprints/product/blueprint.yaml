@@ -1,9 +1,0 @@
-blueprint: product
-blueprint_version: 1
-playbook: ./playbook.md
-# The work board plans and builds; the bugs board triages what breaks. A bug can hold work back.
-boards:
-  work: { preset: tasks }
-  bugs: { preset: bug-triage }
-connections:
-  - bugs.bug blocks work.task

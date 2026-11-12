@@ -103,15 +103,24 @@ describe('run', () => {
       const { code, out } = await otea('init', '--local');
 
       expect(code).toBe(0);
-      expect(out.trim()).toBe(oteaDir());
+      expect(out).toBe(`${oteaDir()}\nMade the boards Tareas, Errores\n`);
       expect(existsSync(join(oteaDir(), 'otea.db'))).toBe(true);
     });
 
-    it('is idempotent', async () => {
+    it('is idempotent, making its first boards once', async () => {
       const first = await otea('init');
+      const [path] = first.out.split('\n');
 
-      expect(await otea('init')).toMatchObject({ code: 0, out: first.out });
-      expect(await otea('init', '--local')).toMatchObject({ code: 0, out: first.out });
+      expect(first.out).toBe(`${path}\nMade the boards Tareas, Errores\n`);
+      expect(await otea('init')).toMatchObject({ code: 0, out: `${path}\n` });
+      expect(await otea('init', '--local')).toMatchObject({ code: 0, out: `${path}\n` });
+    });
+
+    it('makes the boards of a template set with --template', async () => {
+      const { code, out } = await otea('init', '--local', '--template', 'repos');
+
+      expect(code).toBe(0);
+      expect(out).toBe(`${oteaDir()}\nMade the boards Cambios, Tareas de repo\n`);
     });
 
     it('prints root, path, storage and the project identity with --json', async () => {
@@ -125,13 +134,17 @@ describe('run', () => {
         name: basename(repo.dir),
         icon: null,
         storage: 'common',
+        boards: [
+          { id: expect.any(String), name: 'Tareas' },
+          { id: expect.any(String), name: 'Errores' },
+        ],
       });
     });
 
     it('keeps the identity when init runs again', async () => {
-      const first = JSON.parse((await otea('init', '--json')).out);
+      const { boards: _made, ...first } = JSON.parse((await otea('init', '--json')).out);
 
-      expect(JSON.parse((await otea('init', '--json')).out)).toEqual(first);
+      expect(JSON.parse((await otea('init', '--json')).out)).toEqual({ ...first, boards: [] });
     });
   });
 });

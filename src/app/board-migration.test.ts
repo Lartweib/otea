@@ -3,7 +3,7 @@ import { sequenceIds } from '../core/board/ids.ts';
 import { parsePreset } from '../core/preset.ts';
 import { selectEvents } from '../store/queries.ts';
 import { migrateBoards } from './board-migration.ts';
-import { getBoardRecord, listBoardSummaries, migrateCollections } from './boards.ts';
+import { getBoardRecord, listBoardSummaries } from './boards.ts';
 import { addCollection } from './collections.ts';
 import type { Context } from './context.ts';
 import { createItem, getItem, moveItem } from './items.ts';
@@ -94,31 +94,6 @@ describe('migrateBoards', () => {
       push: ['implementing'],
       repo: 'repo',
     });
-  });
-
-  it('reads again a board an earlier reading made, in place, as its next version', () => {
-    const ctx = memoryContext();
-    addCollection(ctx, { name: 'Tareas', preset: 'tasks' });
-    const one = item(ctx, 'Tareas', 'A');
-    moveItem(ctx, { id: one.id, to: 'in_progress', actor: kiln, channel: 'cli' });
-    moveItem(ctx, { id: one.id, to: 'review', actor: kiln, channel: 'cli' });
-    expect(migrateCollections(ctx, 'es', now)).toBe(1);
-    const before = boardOf(ctx, 'Tareas');
-    expect(migrateBoards(ctx, 'es', now, sequenceIds())).toBe(1);
-    const after = boardOf(ctx, 'Tareas');
-    expect(after.id).toBe(before.id);
-    expect(after.live?.version).toBe(2);
-    expect(after.live?.definition.steps.map(({ name }) => name)).toEqual(['Completar', 'Hacerlo']);
-    expect(getItem(ctx, one.id).state).toBe('todo__review');
-    expect(migrateBoards(ctx, 'es', now, sequenceIds())).toBe(0);
-  });
-
-  it('leaves a board the person published alone', () => {
-    const ctx = memoryContext();
-    addCollection(ctx, { name: 'Tareas', preset: 'tasks' });
-    migrateCollections(ctx, 'es', now);
-    migrateBoards(ctx, 'es', now, sequenceIds());
-    expect(migrateBoards(ctx, 'es', now, sequenceIds())).toBe(0);
   });
 
   it('reads a collection on a preset Otea never shipped as one step that keeps its fields', () => {

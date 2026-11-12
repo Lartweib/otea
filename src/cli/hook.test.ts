@@ -129,7 +129,7 @@ describe('hook', () => {
   describe('otea check --claude-hook', () => {
     beforeEach(async () => {
       execFileSync('git', ['checkout', '--quiet', '-b', 'chg-1/keys'], { cwd: repo.dir });
-      await otea('init');
+      await otea('init', '--template', 'none');
       await otea('collection', 'add', 'changes', '--preset', 'change');
       await otea('create', '--collection', 'changes', '--title', 'Keys');
       await otea(
