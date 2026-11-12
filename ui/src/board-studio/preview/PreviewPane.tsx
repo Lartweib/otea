@@ -105,6 +105,7 @@ export function PreviewPane({ draft: given, pair }: PreviewPaneProps) {
         phase={phase}
         onPhase={setPhase}
         arranging={showArrange}
+        context={context}
       />
     );
   else content = <p className="bsp-emptyx">{t('bs.preview.noSteps')}</p>;

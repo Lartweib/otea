@@ -18,12 +18,23 @@ import { reduced } from '../../motion/reduced.ts';
 import { Route } from '../../views/detail/Route.tsx';
 import type { ReadyDraft } from '../use-board-draft.ts';
 import { targetName } from '../words.ts';
-import { moveTile, type Origin, PLACES, type Place, pageTiles, type Tile } from './arrange.ts';
+import type { AgentContext } from './agent.ts';
+import {
+  isPlace,
+  moveTile,
+  type Origin,
+  PLACES,
+  type Place,
+  pageTiles,
+  type Tile,
+} from './arrange.ts';
 import { GripMenu, placeName } from './GripMenu.tsx';
+import { BranchStrip, ListSentence, PlaceValue, placeLabel, placeOrigin } from './ItemExtras.tsx';
 import { PartValue } from './PartValue.tsx';
+import { partsLabel, sampleBlocker, sampleParts } from './practice.ts';
 import { definitionRoute } from './route.ts';
 import { sampleRowBlock } from './SampleRow.tsx';
-import { type SampleItem, sampleId, sampleTitle } from './samples.ts';
+import { itemPrefix, type SampleItem, sampleId, sampleTitle } from './samples.ts';
 import { arrangeToast } from './toasts.tsx';
 
 // Lo que ves: the item page at the selected step, in the item page's own grammar (its crumb,
@@ -58,6 +69,7 @@ function originText(def: BoardDefinition, origin: Origin): string {
   if (origin.kind === 'form') return t('bs.preview.from.form');
   if (origin.kind === 'anytime') return t('bs.preview.from.anytime');
   if (origin.kind === 'column') return t('bs.preview.from.column');
+  if (origin.kind === 'place') return '';
   return stepById(def, origin.step)?.name ?? '';
 }
 
@@ -70,12 +82,15 @@ export function ItemPreview({
   phase,
   onPhase,
   arranging,
+  context = {},
 }: {
   draft: ReadyDraft;
   stepId: string;
   phase: Phase;
   onPhase: (phase: Phase) => void;
   arranging: boolean;
+  // A pair's other board: the board this one divides into, or the one it is part of.
+  context?: AgentContext;
 }) {
   const { def } = draft;
   const step = stepById(def, stepId);
@@ -96,6 +111,7 @@ export function ItemPreview({
     dip: (n) => t('bs.preview.dip', { n }),
   });
   const ways = waysOf(def, step.id);
+  const noted = step.note.req === 'always' || step.note.hint.trim() !== '';
   const reveal = (selection: Selection) => () => {
     if (!arranging) draft.reveal(selection);
   };
@@ -183,8 +199,44 @@ export function ItemPreview({
           />
         </div>
       ) : null}
-      {step.hand.length > 0 ? (
+      {context.parent ? (
+        <p className="bsp-relln">
+          {tx('bs.preview.partOf', {
+            item: (
+              <span className="lnk">
+                {`${itemPrefix(context.parent.def.item)}-3 · ${sampleTitle(context.parent.def)}`}
+              </span>
+            ),
+            board: <span className="pvtag">{context.parent.def.name}</span>,
+          })}
+        </p>
+      ) : null}
+      {step.hand.length > 0 || noted || step.waits.length > 0 ? (
         <div className="bsp-hcheck">
+          {noted ? (
+            <button
+              type="button"
+              className={[
+                'bsp-hc',
+                at !== 'doing' ? 'ok' : 'miss',
+                step.note.req === 'always' ? 'req' : '',
+              ].join(' ')}
+              onClick={reveal({ kind: 'step', id: step.id })}
+              title={t('bs.preview.why')}
+            >
+              <span className="bx" aria-hidden="true">
+                {at !== 'doing' ? <Tick /> : null}
+              </span>
+              <span>{t('bs.preview.check.note')}</span>
+              <small>
+                {at !== 'doing'
+                  ? t('bs.preview.check.written')
+                  : step.note.req === 'always'
+                    ? t('bs.preview.check.missing')
+                    : t('bs.preview.check.optional')}
+              </small>
+            </button>
+          ) : null}
           {step.hand.map((hand) => {
             const part = partOf(def, hand.ref);
             if (!part) return null;
@@ -214,10 +266,54 @@ export function ItemPreview({
               </button>
             );
           })}
+          {step.waits.map((wait) => {
+            const ok = at !== 'doing';
+            const linked =
+              wait === 'parts' ? sampleParts(def, context.child) : [sampleBlocker(def)];
+            const open = linked.filter(({ closed }) => !closed);
+            const name =
+              wait === 'parts'
+                ? t('bs.preview.check.parts', {
+                    label: partsLabel(def, context.child) ?? t('bs.preview.check.itsParts'),
+                  })
+                : t('bs.preview.check.blockers');
+            const word = ok
+              ? t('bs.preview.check.ready')
+              : wait === 'parts'
+                ? t('bs.preview.check.partsOpen', { n: open.length, total: linked.length })
+                : t('bs.preview.check.blocked', { count: open.length });
+            return (
+              <button
+                type="button"
+                key={`wait:${wait}`}
+                className={['bsp-hc', ok ? 'ok' : 'miss', 'req'].join(' ')}
+                onClick={reveal({ kind: 'step', id: step.id })}
+                title={t('bs.preview.why')}
+              >
+                <span className="bx" aria-hidden="true">
+                  {ok ? <Tick /> : null}
+                </span>
+                <span>
+                  {name}
+                  {ok ? null : (
+                    <span className="lks">
+                      {open.map((link) => (
+                        <span key={link.id} className="lk2">
+                          {`${link.id} · ${link.step ?? ''}`}
+                        </span>
+                      ))}
+                    </span>
+                  )}
+                </span>
+                <small>{word}</small>
+              </button>
+            );
+          })}
         </div>
       ) : null}
       <Moves draft={draft} step={step} at={at} ways={ways} doer={Doer} reviewer={reviewer} />
-      <Zones draft={draft} step={step} at={at} arranging={arranging} />
+      <BranchStrip def={def} step={step} at={at} />
+      <Zones draft={draft} step={step} at={at} arranging={arranging} child={context.child} />
       <div className="bsp-rowpv">
         <p className="ll">{t('bs.preview.listRow')}</p>
         <LaneList
@@ -328,11 +424,13 @@ function Zones({
   step,
   at,
   arranging,
+  child,
 }: {
   draft: ReadyDraft;
   step: Step;
   at: Phase;
   arranging: boolean;
+  child?: BoardDefinition | undefined;
 }) {
   const { def } = draft;
   const tiles = pageTiles(def, step.id);
@@ -384,7 +482,7 @@ function Zones({
     to: Place | 'unrow',
     options: { before?: string; fromRow?: boolean; from: Place },
   ) => {
-    const name = partOf(def, ref)?.name ?? '';
+    const name = isPlace(ref) ? placeLabel(ref) : (partOf(def, ref)?.name ?? '');
     before.current = { rects: rectsNow(), moved: ref, from: `${ref}|${options.from}` };
     draft.mutate((d) =>
       moveTile(d, ref, to, options.before, { fromRow: options.fromRow ?? false }),
@@ -410,17 +508,30 @@ function Zones({
 
   const tile = (item: Tile, place: Place) => {
     const part = partOf(def, item.ref);
-    if (!part) return null;
+    const placed = isPlace(item.ref);
+    if (!part && !placed) return null;
     const empty = item.now && at === 'doing';
+    const name = part ? part.name : placeLabel(item.ref);
     const body =
-      place === 'row' || place === 'hidden' ? null : <PartValue part={part} empty={empty} />;
+      place === 'row' || place === 'hidden' ? null : part ? (
+        <PartValue part={part} empty={empty} />
+      ) : (
+        <PlaceValue
+          def={def}
+          place={item.ref}
+          child={child}
+          allDone={at !== 'doing' && step.waits.includes('parts')}
+        />
+      );
     const label = (
       <div className="bsp-bl">
-        <span className="margin-label">{part.name}</span>
-        <span className="from">{originText(def, item.origin)}</span>
+        <span className="margin-label">{name}</span>
+        <span className="from">
+          {placed ? placeOrigin(item.ref) : originText(def, item.origin)}
+        </span>
         {arranging ? (
           <GripMenu
-            name={part.name}
+            name={name}
             current={place}
             inRow={def.row.includes(item.ref)}
             onPick={(to) =>
@@ -442,7 +553,15 @@ function Zones({
           data-ref={item.ref}
           data-place={place}
           title={t('bs.preview.why')}
-          onClick={() => draft.reveal(whereRef(def, item.ref, step.id))}
+          onClick={() =>
+            draft.reveal(
+              placed
+                ? item.ref === 'parts'
+                  ? { kind: 'about' }
+                  : { kind: 'step', id: step.id }
+                : whereRef(def, item.ref, step.id),
+            )
+          }
         >
           {label}
           {body}
@@ -503,6 +622,7 @@ function Zones({
         <span>{placeName(place)}</span>
         <span>{t(`bs.preview.zone.${place}.gloss` as 'bs.preview.zone.top.gloss')}</span>
       </span>
+      {place === 'row' && arranging ? <ListSentence draft={draft} /> : null}
       {tiles[place].map((item) => tile(item, place))}
       <span className="zempty">{t('bs.preview.dropHere')}</span>
     </div>

@@ -57,6 +57,21 @@ export function PartValue({ part, empty = false }: { part: Part; empty?: boolean
   switch (part.kind) {
     case 'text':
     case 'long':
+      // A long text shown as options side by side (show: options): each "### A · Name" its column.
+      if (part.show === 'options')
+        return (
+          <div className="bsp-optcols">
+            <div>
+              <b>{t('bs.preview.value.optionA')}</b>
+              <p>{t('bs.preview.value.optionAText')}</p>
+            </div>
+            <div>
+              <b>{t('bs.preview.value.optionB')}</b>
+              <p>{t('bs.preview.value.optionBText')}</p>
+            </div>
+          </div>
+        );
+      return <p className="bsp-val">{sampleValue(part, seed)}</p>;
     case 'date':
     case 'yesno':
       return <p className="bsp-val">{sampleValue(part, seed)}</p>;
