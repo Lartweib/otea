@@ -120,7 +120,9 @@ describe('the item sheet', () => {
     expect(html).toContain('cerrar como');
     expect(html).toContain('Aprobar <b>→ ');
     expect(html).toContain('tu turno');
-    expect(html).toContain('Personalizar vista');
+    // Editar tablero shows only for a board Studio shapes; this one is not among the boards read.
+    expect(html).not.toContain('Editar tablero');
+    expect(html).not.toContain('#/customize');
   });
 
   it('reads the agent and your notes in the body, and the history newest first', () => {
