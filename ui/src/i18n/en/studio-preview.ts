@@ -387,6 +387,54 @@ export const studioPreview = {
   'bs.preview.publish.toast.undoneFirst': '{name} is a draft again.',
   'bs.preview.publish.toast.undone': 'Back to v{v}; your changes stay in the draft.',
 
+  'bs.preview.publish.waitingParts': {
+    one: '1 item in {step} has {parts} unfinished: it cannot be handed off until they finish.',
+    other:
+      '{count} items in {step} have {parts} unfinished: they cannot be handed off until they finish.',
+  },
+  'bs.preview.publish.waitingItsParts': {
+    one: '1 item in {step} has its parts unfinished: it cannot be handed off until they finish.',
+    other:
+      '{count} items in {step} have their parts unfinished: they cannot be handed off until they finish.',
+  },
+  'bs.preview.publish.waitingBlockers': {
+    one: '1 item in {step} has something unfinished holding it back: it cannot be handed off until that finishes.',
+    other:
+      '{count} items in {step} have something unfinished holding them back: they cannot be handed off until that finishes.',
+  },
+  'bs.preview.publish.frozen': {
+    one: '1 item in the review of {step}: from now on its branch is frozen.',
+    other: '{count} items in the review of {step}: from now on their branch is frozen.',
+  },
+  'bs.preview.publish.numbers':
+    'zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen',
+  'bs.preview.publish.setupLeft': {
+    one: '{n} thing is left unmarked in “What is left to set up”. You can publish anyway: it stays as it is.',
+    other:
+      '{n} things are left unmarked in “What is left to set up”. You can publish anyway: they stay as they are.',
+  },
+  'bs.preview.publish.splitUnpublished': '{name} is not published yet.',
+  'bs.preview.publish.pair.title': 'Publish both boards',
+  'bs.preview.publish.pair.titleChanges': 'Publish the changes of {name}',
+  'bs.preview.publish.pair.lede':
+    '{a} and {b} go together: each {item} divides into {child}. They are published together and undone together.',
+  'bs.preview.publish.pair.onlyOne': 'Only {name} has changes; {other} stays as it is.',
+  'bs.preview.publish.pair.onlyOneAt': 'Only {name} has changes; {other} stays as it is, at v{v}.',
+  'bs.preview.publish.pair.headFirst': 'goes live',
+  'bs.preview.publish.pair.firstStep': 'Agents will be able to take items in {step}.',
+  'bs.preview.publish.pair.items': 'What happens to its items',
+  'bs.preview.publish.pair.noneMove': 'No item moves.',
+  'bs.preview.publish.pair.nextCall': 'Agents get the new version on their next call.',
+  'bs.preview.publish.pair.publish': 'Publish both',
+  'bs.preview.publish.pair.see': 'See {name}',
+  'bs.preview.publish.pair.bothFirst':
+    '{a} and {b} are now running. Each {item} divides into {child}.',
+  'bs.preview.publish.pair.undoneFirst': '{a} and {b} are drafts again.',
+  'bs.preview.publish.pair.both':
+    'Published: {a} v{va} and {b} v{vb}. Agents get them on their next call.',
+  'bs.preview.publish.pair.undone':
+    'The versions before are back; your changes stay in the drafts.',
+
   'bs.preview.discard.label': 'Discard',
   'bs.preview.discard.title': 'Discard the draft?',
   'bs.preview.discard.live':
@@ -395,4 +443,14 @@ export const studioPreview = {
   'bs.preview.discard.discard': 'Discard',
   'bs.preview.discard.toast': 'You discarded the draft of {name}.',
   'bs.preview.discard.undone': 'The draft of {name} is back.',
+
+  'bs.preview.discard.pairTitle': 'Discard both drafts?',
+  'bs.preview.discard.oneTitle': 'Discard the draft of {name}?',
+  'bs.preview.discard.liveOf': '{name} goes back to v{v}, the version agents work with.',
+  'bs.preview.discard.lost': 'Your changes are lost.',
+  'bs.preview.discard.untouched': '{name} has no changes: it is left alone.',
+  'bs.preview.discard.only': 'Only {name}',
+  'bs.preview.discard.both': 'Discard both',
+  'bs.preview.discard.toastBoth': 'You discarded the drafts of {names}.',
+  'bs.preview.discard.undoneBoth': 'The drafts of {names} are back.',
 } as const;

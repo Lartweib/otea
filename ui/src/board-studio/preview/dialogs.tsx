@@ -1,21 +1,26 @@
 import { useEffect, useState } from 'react';
-import { DONE, type Target } from '../../../../src/core/board/model.ts';
+import { SAME, type Target } from '../../../../src/core/board/model.ts';
 import type { Change } from '../../../../src/core/board/plan.ts';
-import { language, listOf, t, tx } from '../../i18n/i18n.ts';
+import { language, t, tx } from '../../i18n/i18n.ts';
 import { Dialog } from '../../kit/pop/Dialog.tsx';
 import {
   type BoardRecord,
   createBoard,
   discardDraft,
+  fetchBoard,
   fetchPublishPlan,
   type PublishPlan,
   publishBoard,
+  publishPair,
   restoreBoard,
+  restorePair,
   saveDraft,
 } from '../api.ts';
 import type { PairWorkspace } from '../pair.ts';
 import type { ReadyDraft } from '../use-board-draft.ts';
 import { changeText, problemText } from '../words.ts';
+import { Effects, PairDiscardDialog, PairPublishDialog } from './PairDialogs.tsx';
+import { effectLines, pairToast, setupLeftText } from './publish.ts';
 import { failedText, plainToast } from './toasts.tsx';
 
 export { PracticeDialog } from './Practice.tsx';
@@ -36,9 +41,21 @@ export type PublishDialogProps = {
   onClose: () => void;
   // The record after publishing, or after Deshacer restored the previous version.
   onPublished: (record: BoardRecord) => void;
+  // A joined pair (pair.ts): one plan grouped by board, published and undone as one.
+  pair?: PairWorkspace;
+  // What is left unmarked in the editor's setup checklist, when it shows.
+  setupLeft?: number;
 };
 
+export function PublishDialog({ pair, ...props }: PublishDialogProps) {
+  if (pair) return <PairPublishDialog pair={pair} {...props} />;
+  return <SinglePublishDialog {...props} />;
+}
+
 const ADDS = new Set<Change['kind']>(['created', 'step_added', 'hand_added', 'part_added']);
+
+// The board a split names, when it is another board: its name, and whether it is live yet.
+type SplitBoard = { id: string; name: string; live: boolean };
 
 type Plan =
   | { status: 'saving' }
@@ -46,8 +63,15 @@ type Plan =
   | { status: 'failed'; message: string }
   | { status: 'ready'; plan: PublishPlan };
 
-export function PublishDialog({ draft, open, onClose, onPublished }: PublishDialogProps) {
+function SinglePublishDialog({
+  draft,
+  open,
+  onClose,
+  onPublished,
+  setupLeft = 0,
+}: Omit<PublishDialogProps, 'pair'>) {
   const [plan, setPlan] = useState<Plan>({ status: 'loading' });
+  const [split, setSplit] = useState<SplitBoard | null>(null);
   const [moves, setMoves] = useState<Record<string, Target>>({});
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -67,6 +91,15 @@ export function PublishDialog({ draft, open, onClose, onPublished }: PublishDial
     }
     let live = true;
     setPlan({ status: 'loading' });
+    const other = draft.def.split?.board;
+    setSplit(null);
+    if (other && other !== SAME && other !== id)
+      fetchBoard(other)
+        .then(({ record }) => {
+          const def = record.draft?.definition ?? record.live?.definition;
+          if (live && def) setSplit({ id: other, name: def.name, live: record.live !== null });
+        })
+        .catch(() => undefined);
     fetchPublishPlan(id)
       .then((next) => {
         if (!live) return;
@@ -131,6 +164,44 @@ export function PublishDialog({ draft, open, onClose, onPublished }: PublishDial
     }
   };
 
+  // "Tareas de repo todavía no está publicado. [Publicar los dos]": the split's board goes live with
+  // this one, the child first, and one Deshacer puts both back.
+  const publishBoth = async () => {
+    if (!ready || !split) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const result = await publishPair({
+        parent: id,
+        child: split.id,
+        moves: { parent: moves, child: {} },
+        draftStamps: { parent: draft.record.draft?.updatedAt ?? null },
+      });
+      setBusy(false);
+      onClose();
+      if (result.parent) onPublished(result.parent.record);
+      const words = pairToast(
+        [
+          { name, from: ready.from, version: result.parent?.version ?? ready.to },
+          { name: split.name, from: null, version: result.child?.version ?? 1 },
+        ],
+        def.item,
+        { rich: true },
+      );
+      plainToast(words.done, () => {
+        restorePair({ parent: id, child: split.id, versions: { parent: ready.from, child: null } })
+          .then((back) => {
+            if (back.parent) onPublished(back.parent);
+            plainToast(words.undone);
+          })
+          .catch((e: unknown) => plainToast(failedText(message(e))));
+      });
+    } catch (e) {
+      setBusy(false);
+      setError(message(e));
+    }
+  };
+
   let content = null;
   if (plan.status === 'saving' || plan.status === 'loading')
     content = (
@@ -156,7 +227,10 @@ export function PublishDialog({ draft, open, onClose, onPublished }: PublishDial
     );
   else if (ready) {
     const effects = ready.effects;
-    const hasEffects = effects.moves.length + effects.needs.length + effects.reopened.length > 0;
+    const lines = effectLines(effects, split?.name ?? null, { rich: true });
+    const hasEffects =
+      effects.moves.length + effects.needs.length + effects.reopened.length + lines.length > 0;
+    const unpublished = split && !split.live ? split : null;
     content = (
       <>
         <p className="lede" data-i="">
@@ -211,45 +285,13 @@ export function PublishDialog({ draft, open, onClose, onPublished }: PublishDial
           <div className="bsp-effects" data-i="">
             <span className="margin-label">{t('bs.preview.publish.items')}</span>
             {isNew ? <p className="lede plain">{t('bs.preview.publish.noItemsYet')}</p> : null}
-            {effects.moves.map((m) => (
-              <p className="lede plain" key={m.step}>
-                {tx('bs.preview.publish.moves', {
-                  count: m.items.length,
-                  step: <b>{m.name}</b>,
-                  select: (
-                    <select
-                      aria-label={t('bs.preview.publish.moveTo', { step: m.name })}
-                      value={moves[m.step] ?? m.suggested}
-                      onChange={(e) => setMoves({ ...moves, [m.step]: e.target.value })}
-                    >
-                      {def.steps.map((step) => (
-                        <option key={step.id} value={step.id}>
-                          {step.name}
-                        </option>
-                      ))}
-                      <option value={DONE}>{t('bs.done')}</option>
-                    </select>
-                  ),
-                })}
-              </p>
-            ))}
-            {effects.needs.map((need) => (
-              <p className="lede plain" key={`n:${need.step}`}>
-                {tx('bs.preview.publish.needs', {
-                  count: need.items.length,
-                  step: <b>{need.name}</b>,
-                  parts: <b>{listOf(need.parts)}</b>,
-                })}
-              </p>
-            ))}
-            {effects.reopened.map((back) => (
-              <p className="lede plain" key={`r:${back.step}`}>
-                {tx('bs.preview.publish.reopened', {
-                  count: back.items.length,
-                  step: <b>{back.name}</b>,
-                })}
-              </p>
-            ))}
+            <Effects
+              draft={draft}
+              plan={ready}
+              moves={moves}
+              onMove={(step, to) => setMoves({ ...moves, [step]: to })}
+              lines={lines}
+            />
           </div>
         ) : (
           <p className="bsp-fhint" data-i="">
@@ -265,6 +307,26 @@ export function PublishDialog({ draft, open, onClose, onPublished }: PublishDial
             ))}
           </ul>
         ) : null}
+        {setupLeft > 0 ? (
+          <p className="bsp-fhint" data-i="">
+            {setupLeftText(setupLeft)}
+          </p>
+        ) : null}
+        {unpublished ? (
+          <p className="bsp-fhint bsp-splitln" data-i="">
+            <span>
+              {tx('bs.preview.publish.splitUnpublished', { name: <b>{unpublished.name}</b> })}
+            </span>
+            <button
+              type="button"
+              className="btn text sm"
+              disabled={errors.length > 0 || busy}
+              onClick={() => void publishBoth()}
+            >
+              {t('bs.preview.publish.pair.publish')}
+            </button>
+          </p>
+        ) : null}
         <p className="bsp-dwarn" aria-live="polite">
           {error ? failedText(error) : ''}
         </p>
@@ -274,7 +336,7 @@ export function PublishDialog({ draft, open, onClose, onPublished }: PublishDial
           </button>
           <button
             type="button"
-            className="btn primary"
+            className={unpublished ? 'btn quiet' : 'btn primary'}
             disabled={errors.length > 0 || busy}
             onClick={() => void publish()}
           >
@@ -307,9 +369,21 @@ export type DiscardDialogProps = {
   onClose: () => void;
   // `deleted`: the board was never published and is gone; the editor goes back to the home.
   onDiscarded: (result: { deleted: boolean }) => void;
+  // A joined pair: asks about both drafts, or the one with changes.
+  pair?: PairWorkspace;
 };
 
-export function DiscardDialog({ draft, open, onClose, onDiscarded }: DiscardDialogProps) {
+export function DiscardDialog({ pair, ...props }: DiscardDialogProps) {
+  if (pair) return <PairDiscardDialog pair={pair} {...props} />;
+  return <SingleDiscardDialog {...props} />;
+}
+
+function SingleDiscardDialog({
+  draft,
+  open,
+  onClose,
+  onDiscarded,
+}: Omit<DiscardDialogProps, 'pair'>) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
