@@ -2429,3 +2429,377 @@ button.st-offscreen .icon:last-child {
     linear-gradient(var(--lane), var(--lane)) 16px 0 / 1px 100% no-repeat,
     linear-gradient(var(--you), var(--you)) 40px 0 / 1px 100% no-repeat;
 }
+
+/* Lo que ves for the new capabilities: the line to the parent, the waits in the checklist, the
+   branch strip, Rondas, Partes, options side by side, and Acomodar's list sentence. */
+.bsp-relln {
+  margin-top: 8px;
+  font: 400 italic 15px / 1.45 var(--serif);
+  color: var(--ink-2);
+}
+.bsp-relln .pvtag {
+  font: 400 11px / 1 var(--mono);
+  font-style: normal;
+  color: var(--ink-3);
+  margin-left: 4px;
+}
+.bsp-relln .lnk {
+  color: var(--you-ink);
+  font-style: normal;
+  font-weight: 500;
+}
+.bsp-hc > span:nth-child(2) {
+  min-width: 0;
+}
+.bsp-hc .lks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 5px;
+}
+.bsp-hc .lk2 {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 7px;
+  border-radius: 5px;
+  background: var(--well);
+  font: 400 11.5px / 1 var(--mono);
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+.bsp-bstrip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 12px 0 2px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: var(--well);
+  font: 400 13px / 1.3 var(--sans);
+  color: var(--ink-2);
+  max-width: 64ch;
+}
+.bsp-bstrip .ic {
+  width: 14px;
+  height: 14px;
+  color: var(--ink-3);
+}
+.bsp-bstrip .mono {
+  font-family: var(--mono);
+  font-size: 0.92em;
+  color: var(--ink);
+}
+.bsp-bstrip .pvtag {
+  font: 400 11px / 1 var(--mono);
+  color: var(--ink-3);
+}
+.bsp-bstrip .sep {
+  color: var(--ink-3);
+}
+.bsp-bstrip.frozen {
+  background: var(--you-wash);
+  color: var(--you-ink);
+}
+.bsp-bstrip.frozen .ic {
+  color: var(--you);
+}
+.bsp-bstrip.off {
+  background: none;
+  box-shadow: inset 0 0 0 1px var(--rule);
+}
+.bsp-optcols,
+.bsp-rounds {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.bsp-optcols > div {
+  padding: 10px 12px 12px;
+  border-radius: 8px;
+  box-shadow: inset 0 0 0 1px var(--rule);
+}
+.bsp-optcols b {
+  display: block;
+  font: 450 15px / 1.25 var(--serif);
+}
+.bsp-optcols p {
+  margin-top: 4px;
+  font: 400 italic 13.5px / 1.4 var(--serif);
+  color: var(--ink-2);
+}
+.bsp-rounds .rd {
+  padding: 9px 12px 11px;
+  border-radius: 8px;
+  background: var(--well);
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: 8px;
+  align-items: baseline;
+}
+.bsp-rounds .rd.on {
+  background: var(--you-wash);
+  box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--you) 45%, transparent);
+}
+.bsp-rounds .rk {
+  font: 600 10px / 1.3 var(--sans);
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.bsp-rounds .rd.on .rk {
+  color: var(--you-ink);
+}
+.bsp-rounds .rs {
+  font: 400 italic 12.5px / 1.3 var(--serif);
+  color: var(--ink-3);
+}
+.bsp-rounds p {
+  grid-column: 1 / -1;
+  margin-top: 5px;
+  font: 400 14.5px / 1.4 var(--serif);
+}
+.bsp-plist {
+  display: grid;
+}
+.bsp-plist .prow {
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid var(--rule);
+}
+.bsp-plist .prow:first-child {
+  border-top: 1px solid var(--rule);
+}
+.bsp-plist .pmain {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 16px auto minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 9px 6px 9px 2px;
+}
+.bsp-plist .pid {
+  font: 400 12px / 1 var(--mono);
+  color: var(--ink-3);
+}
+.bsp-plist .pt2 {
+  font: 430 16px / 1.25 var(--serif);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.bsp-plist .pst {
+  font: 400 11.5px / 1 var(--mono);
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+.bsp-zsent {
+  font: 400 15px / 1.75 var(--serif);
+  margin: 0 0 8px;
+}
+.bsp-blank {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 5px 0 6px;
+  margin: 0 1px;
+  border-radius: 6px;
+  font: 600 13.5px / 1.5 var(--sans);
+  color: var(--ink);
+  background: var(--well);
+  box-shadow: inset 0 -1.5px 0 var(--ink-3);
+  vertical-align: 1px;
+  transition:
+    background-color 240ms var(--o-drift),
+    box-shadow 240ms var(--o-drift);
+}
+.bsp-blank:hover {
+  background: var(--sel);
+}
+.bsp-blank[aria-expanded="true"] {
+  box-shadow: inset 0 -1.5px 0 var(--you);
+  background: var(--you-wash);
+}
+.bsp-chev {
+  width: 11px;
+  height: 11px;
+  color: var(--ink-3);
+}
+
+/* El tablero as a Tabla: a fixed node column; columns drop by the table's own width (F15). */
+.bsp-tbl {
+  display: grid;
+  margin-top: 4px;
+  container-type: inline-size;
+}
+@container (max-width: 640px) {
+  .bsp-tbl .tr .c-more {
+    display: none;
+  }
+}
+@container (max-width: 440px) {
+  .bsp-tbl .tr .c-x,
+  .bsp-tbl .tr .c-s {
+    display: none;
+  }
+}
+.bsp-tbl .tr {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 6px;
+  border-bottom: 1px solid var(--rule);
+  min-width: 0;
+}
+.bsp-tbl .tr > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.bsp-tbl .tr .tt {
+  flex: 2.8 1 0;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.bsp-tbl .tr .tt > .cn {
+  flex: none;
+  display: grid;
+}
+.bsp-tbl .tr .tx2 {
+  min-width: 0;
+  overflow: hidden;
+}
+.bsp-tbl .tr .tx2 b {
+  display: block;
+  font: 430 16px / 1.3 var(--serif);
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.bsp-tbl .tr .tx2 small {
+  display: block;
+  font: 400 11px / 1.3 var(--mono);
+  color: var(--ink-3);
+}
+.bsp-tbl .tr .c-s {
+  flex: 1 1 0;
+}
+.bsp-tbl .tr .c-x {
+  flex: 0.7 1 0;
+}
+.bsp-tbl .tr .c-t {
+  flex: 1.1 1 0;
+  font-size: 12.5px;
+}
+.bsp-tbl .tr .c-t.you {
+  color: var(--you-ink);
+}
+.bsp-tbl .tr.th {
+  padding-top: 2px;
+  padding-bottom: 8px;
+}
+.bsp-tbl .tr.th > span {
+  font: 600 10px / 1.3 var(--sans);
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.bsp-tbl .tr.closed .tx2 b {
+  color: var(--ink-3);
+}
+.bsp-tbl .tg {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  padding: 18px 0 6px;
+}
+.bsp-tbl .tg h3 {
+  font: 450 17px / 1.1 var(--serif);
+  white-space: nowrap;
+}
+.bsp-tbl .tg .rl {
+  flex: 1;
+  height: 1px;
+  background: var(--rule);
+  align-self: center;
+}
+.bsp-tbl .tg .cnt {
+  font: 400 11px / 1 var(--mono);
+  color: var(--ink-3);
+}
+
+/* Publicar for a joined pair: the plan grouped by board. */
+.bsp-pgroup {
+  margin-top: 16px;
+}
+.bsp-pgroup .pgh {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.bsp-pgroup .pgn {
+  display: inline-flex;
+  gap: 7px;
+  align-items: center;
+  font: 600 10.5px / 1 var(--sans);
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--ink);
+  white-space: nowrap;
+}
+.bsp-pgroup .gloss {
+  font: 400 italic 13.5px / 1 var(--serif);
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+.bsp-pgroup .rl {
+  flex: 1;
+  height: 1px;
+  background: var(--rule);
+}
+.bsp-pgroup .bsp-chg {
+  margin-top: 8px;
+}
+.bsp-pgroup .bsp-fhint {
+  margin-top: 6px;
+}
+.bsp-chg .eb {
+  font-weight: 500;
+  color: var(--ink);
+}
+.bsp-chg li.err .eb {
+  color: var(--warn);
+}
+.bsp-splitln {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 760px) {
+  .bsp-tbl .tr .c-more,
+  .bsp-tbl .tr .c-s {
+    display: none;
+  }
+  .bsp-optcols,
+  .bsp-rounds {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .bsp-plist .pmain {
+    grid-template-columns: 16px auto minmax(0, 1fr);
+  }
+  .bsp-plist .pmain .pst {
+    grid-column: 2 / -1;
+  }
+  .bsp-pgroup .gloss {
+    white-space: normal;
+  }
+}
