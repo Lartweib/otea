@@ -11,6 +11,7 @@ import {
   INITIAL_KINDS,
   isAgent,
   isEvidenceKind,
+  LEVELS,
   MOTIVE,
   PARTS,
   type Part,
@@ -72,12 +73,20 @@ const WORDS: Readonly<Record<Lang, Record<string, string>>> = {
     dropped: 'Dropped',
     yes: 'Yes',
     no: 'No',
+    low: 'low',
+    medium: 'medium',
+    high: 'high',
+    critical: 'critical',
   },
   es: {
     done: 'Hecho',
     dropped: 'Descartado',
     yes: 'Sí',
     no: 'No',
+    low: 'baja',
+    medium: 'media',
+    high: 'alta',
+    critical: 'crítica',
   },
 };
 
@@ -345,12 +354,15 @@ export function compileBoard(id: string, version: number, def: BoardDefinition):
         ),
         values: Object.fromEntries(
           ordered
-            .filter((part) => fields[part.id]?.module === 'enum')
+            .filter((part) => fields[part.id]?.module === 'enum' || part.kind === 'level')
+            .filter((part) => fields[part.id] !== undefined)
             .map((part) => [
               part.id,
               part.kind === 'yesno'
                 ? { yes: WORDS[lang].yes, no: WORDS[lang].no }
-                : Object.fromEntries(part.options.map((choice) => [choice.id, choice.name])),
+                : part.kind === 'level'
+                  ? Object.fromEntries(LEVELS.map((level) => [level, WORDS[lang][level] ?? level]))
+                  : Object.fromEntries(part.options.map((choice) => [choice.id, choice.name])),
             ]),
         ),
       },
