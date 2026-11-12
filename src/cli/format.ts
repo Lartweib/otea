@@ -242,7 +242,11 @@ export function formatItemWithEvents(
     createdLine(item),
     // On a board the hint is next's whole answer, indented under its heading.
     ...(item.hint
-      ? [item.hint.includes('\n') ? `Next:\n${indent(item.hint)}` : `Next: ${item.hint}`]
+      ? [
+          item.hint.includes('\n')
+            ? `Next:\n${indent(item.hint).replace(/^ +$/gm, '')}`
+            : `Next: ${item.hint}`,
+        ]
       : []),
     ...fieldLines(item.fields),
     '',
