@@ -232,7 +232,8 @@ describe('roundNotes: each round of the step with its notes', () => {
 
   it('starts the next round of Completar with the question Devolver brought', () => {
     const events: ItemEvent[] = [
-      created('striage'),
+      created('sfill'),
+      said(moved('sfill', 'striage', agent('kiln'), '2026-01-01T12:00:00Z'), 'Completo.'),
       said(moved('striage', 'sfill', you, '2026-01-02T00:00:00Z'), '¿En qué versión?'),
     ];
     expect(roundNotes(errores(), 'sfill', events).at(-1)).toEqual({
@@ -247,6 +248,27 @@ describe('roundNotes: each round of the step with its notes', () => {
         },
       ],
     });
+  });
+
+  it('counts rounds as the engine does: an item that skipped Completar starts it at round 1', () => {
+    const events: ItemEvent[] = [
+      created('striage'),
+      said(moved('striage', 'sfill', you, '2026-01-02T00:00:00Z'), '¿En qué versión?'),
+    ];
+    expect(roundNotes(errores(), 'sfill', events)).toEqual([
+      {
+        round: 1,
+        notes: [
+          {
+            kind: 'back',
+            text: '¿En qué versión?',
+            by: 'tú',
+            person: true,
+            at: '2026-01-02T00:00:00Z',
+          },
+        ],
+      },
+    ]);
   });
 
   it('opens no round when the person moves it on, forward, with a word', () => {
@@ -277,6 +299,7 @@ describe('roundNotes: each round of the step with its notes', () => {
     ]);
     expect(roundNotes(errores(), 'sfill', [created('sfill'), migrate({})])).toEqual([
       { round: 1, notes: [] },
+      { round: 2, notes: [] },
     ]);
   });
 
