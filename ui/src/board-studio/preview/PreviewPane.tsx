@@ -5,8 +5,10 @@ import { t } from '../../i18n/i18n.ts';
 import { Seg } from '../../kit/Seg.tsx';
 import { C } from '../../motion/curves.ts';
 import { reduced } from '../../motion/reduced.ts';
+import { draftOf, type PairWorkspace } from '../pair.ts';
 import type { ReadyDraft } from '../use-board-draft.ts';
 import { AgentPreview } from './AgentPreview.tsx';
+import type { AgentContext } from './agent.ts';
 import { BoardPreview } from './BoardPreview.tsx';
 import { PracticeDialog } from './dialogs.tsx';
 import { ItemPreview } from './ItemPreview.tsx';
@@ -15,7 +17,9 @@ import { DonePreview, FormPreview } from './PagePreviews.tsx';
 // The editor's preview pane: Lo que ves (the item page at the selected step, with Acomodar), Lo
 // que lee el agente (next's exact text) and El tablero (the list with sample items). It reads the
 // draft and changes it only through Acomodar (draft.mutate); a click on any box reveals its card.
-export type PreviewPaneProps = { draft: ReadyDraft };
+// : a joined pair's workspace; the previews follow its selected board (WORKSPACE row 6) and
+// Probar walks both boards.
+export type PreviewPaneProps = { draft: ReadyDraft; pair?: PairWorkspace };
 
 type Tab = 'see' | 'agent' | 'board';
 
@@ -41,7 +45,13 @@ function PlayIcon() {
   );
 }
 
-export function PreviewPane({ draft }: PreviewPaneProps) {
+export function PreviewPane({ draft: given, pair }: PreviewPaneProps) {
+  const draft = pair ? draftOf(pair) : given;
+  const context: AgentContext = !pair
+    ? {}
+    : pair.active === 'parent'
+      ? { child: pair.child.def }
+      : { parent: { def: pair.parent.def, always: pair.ids.always } };
   const [tab, setTab] = useState<Tab>('see');
   const [phase, setPhase] = useState<Phase>('review');
   const [arranging, setArranging] = useState(false);
@@ -82,7 +92,8 @@ export function PreviewPane({ draft }: PreviewPaneProps) {
   }, [shown]);
 
   let content: ReactNode;
-  if (tab === 'agent') content = <AgentPreview draft={draft} stepId={stepId} phase={phase} />;
+  if (tab === 'agent')
+    content = <AgentPreview draft={draft} stepId={stepId} phase={phase} context={context} />;
   else if (page === 'board') content = <BoardPreview draft={draft} />;
   else if (page === 'form') content = <FormPreview draft={draft} />;
   else if (page === 'done') content = <DonePreview draft={draft} />;
@@ -148,7 +159,12 @@ export function PreviewPane({ draft }: PreviewPaneProps) {
         {content}
       </div>
       {foot}
-      <PracticeDialog draft={draft} open={practice} onClose={() => setPractice(false)} />
+      <PracticeDialog
+        draft={draft}
+        {...(pair ? { pair } : {})}
+        open={practice}
+        onClose={() => setPractice(false)}
+      />
     </section>
   );
 }

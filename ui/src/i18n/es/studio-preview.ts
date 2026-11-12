@@ -110,6 +110,18 @@ export const studioPreview = {
     'Este paso lo haces tú. {next} nunca se lo da a un agente, y sus herramientas no pueden entregarlo por ti.',
   'bs.preview.agent.ifEmpty': 'Si entrega sin nada',
   'bs.preview.agent.ifApproved': 'Si lo aprueba',
+  'bs.preview.agent.ifPartsOpen': 'Si {label} no terminaron',
+  'bs.preview.agent.ifReopened': 'Si una parte se reabre mientras lo revisas',
+  'bs.preview.agent.ifBlocked': 'Si algo lo frena',
+  'bs.preview.agent.ifTakenBack': 'Si lo regresa a {step}',
+  'bs.preview.agent.ifDrops': 'Si lo descarta',
+  'bs.preview.agent.ifTriesToDrop': 'Si intenta descartarlo',
+  'bs.preview.agent.ifBranch': 'Si sube o fusiona la rama',
+  'bs.preview.agent.onCreate': 'Al crearlo',
+  'bs.preview.agent.ifNoParent': 'Si se crea sin su {item}',
+  'bs.preview.agent.ifOtherPart': 'Si enlaza otra cosa como parte',
+  'bs.preview.agent.yoursBack':
+    'Cuando lo devuelves a {steps}, el agente de ese paso lee tu nota como la nota de su ronda siguiente.',
   'bs.preview.agent.exact': 'la respuesta exacta',
   'bs.preview.agent.english':
     'Los agentes leen en inglés; los nombres y las instrucciones van tal como los escribiste.',
