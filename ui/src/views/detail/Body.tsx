@@ -82,7 +82,9 @@ export function bodySections(o: {
   // On a Studio board: the long texts it shows as options side by side, the notes of each round
   // (drawn where its layout puts Rondas, else after the fields), and its own sections (Partes,
   // Enlaces) in place of Structure.
-  board?: { options: ReadonlySet<string>; rounds: ReactNode; sections: Sec[] } | undefined;
+  board?:
+    | { options: ReadonlySet<string>; rounds: ReactNode; roundsAfter: boolean; sections: Sec[] }
+    | undefined;
 }): Sec[] {
   const { item, type, facts, canWrite, now, board } = o;
   let roundsDrawn = false;
@@ -186,7 +188,7 @@ export function bodySections(o: {
                   type={type}
                   entry={block.entry}
                   canWrite={canWrite}
-                  quiet={!!board?.rounds}
+                  quiet={!!board}
                 />
               </Plain>
             ),
@@ -234,7 +236,7 @@ export function bodySections(o: {
     s.blocks.forEach((b, i) => {
       out.push(...fieldSecs(b, 100 * (s.index + 1) + i, s.title));
     });
-  if (board?.rounds && !roundsDrawn)
+  if (board?.rounds && board.roundsAfter && !roundsDrawn)
     out.push({
       key: 'r:notes',
       node: (

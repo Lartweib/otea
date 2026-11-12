@@ -19,6 +19,7 @@ import {
   groupBoard,
   groupOptions,
   holds,
+  motiveColumns,
   motivesOf,
   pasosCards,
   pasosColumns,
@@ -508,6 +509,13 @@ describe('the motives a board discards with', () => {
       ['No motive', ['E-4']],
       ['—', ['E-1', 'E-5']],
     ]);
+  });
+
+  it('widen the Turno column to the longest motive, on a board that has them', () => {
+    const who = { key: 'who', kind: 'who' as const, label: 'who' };
+    const id = { key: 'id', kind: 'id' as const, label: 'id', chars: 7 };
+    expect(motiveColumns([id, who], bugs)).toEqual([id, { ...who, chars: 'Rechazado'.length }]);
+    expect(motiveColumns([id, who], errores)).toEqual([id, who]);
   });
 
   it('are a grouping and a filter only on a board that has them', () => {
