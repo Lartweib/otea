@@ -516,14 +516,18 @@ export function handoffItem(
     const on = itemOnBoard(ctx, item, board.def);
     const way = wayOf(board.def, on.position, item.id, input.way);
     const by = { kind: input.actor.kind, name: input.actor.name };
-    const facts = input.note === undefined ? on.facts : { ...on.facts, note: input.note };
+    // A step that asks for a note reads the reason when no note is given, as a move does.
+    const step = isClosed(on.position) ? undefined : stepById(board.def, on.position.step);
+    const asked = way === undefined && step?.note.req === 'always' && !input.note?.trim();
+    const note = asked && input.reason?.trim() ? input.reason : input.note;
+    const facts = note === undefined ? on.facts : { ...on.facts, note };
     const result = handoff(board.def, on.position, facts, {
       by,
       ...(way === undefined ? {} : { way }),
       ...(input.reason === undefined ? {} : { reason: input.reason }),
     });
     if (!result.ok) refuse(board.def, item, result);
-    const moved = land(ctx, item, board, result.to, input, at);
+    const moved = land(ctx, item, board, result.to, { ...input, ...(note ? { note } : {}) }, at);
     if (result.back && !isClosed(result.to)) {
       const round = itemOnBoard(ctx, requireItem(ctx.db, item.id), board.def).round;
       return { item: moved, text: takenBackText(board.def, item.id, result.to.step, round) };
