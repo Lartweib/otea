@@ -1,0 +1,526 @@
+/* The editor's coverage sentences and the joined workspace (editor slice; mock 35-cover.css and
+   36-pair.css): two boards in one editor, their tabs, stacked routes and "Qué falta configurar". */
+
+/* ---- small pieces of the coverage sentences ---- */
+.se-nw {
+  white-space: nowrap;
+}
+.se-mono {
+  font-family: var(--mono);
+  font-size: 0.92em;
+}
+.se-sent.se-sent-sm {
+  margin-top: 4px;
+  font-size: 16.5px;
+  line-height: 1.7;
+}
+.se-sent.se-ro {
+  margin-top: 14px;
+  color: var(--ink-2);
+  font-size: 15.5px;
+  line-height: 1.6;
+}
+.se-sent.se-ro .btn {
+  display: inline;
+  height: auto;
+  padding: 0 2px;
+  color: var(--you-ink);
+  font-style: normal;
+}
+.se-lnk {
+  color: var(--you-ink);
+  font-style: normal;
+  font-weight: 500;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in oklch, var(--you) 40%, transparent);
+  text-underline-offset: 3px;
+  transition: text-decoration-color 240ms var(--o-drift);
+}
+.se-lnk:hover {
+  text-decoration-color: var(--you);
+}
+span.se-lnk {
+  text-decoration: none;
+}
+.se-skipline {
+  margin-top: 14px;
+}
+.se-capline.se-sw1 {
+  flex-wrap: nowrap;
+  align-items: flex-start;
+}
+.se-capline.se-sw1 > .se-sw {
+  margin-top: 4px;
+}
+.se-capline.se-sw1 > span {
+  flex: 1 1 0;
+  min-width: 0;
+}
+.se-capline + .se-conseq {
+  margin-top: 4px;
+}
+.se-conseqs > .se-conseq + .se-conseq {
+  margin-top: 6px;
+}
+.se-motives {
+  margin-top: 14px;
+}
+.se-motives > .se-flab {
+  display: block;
+  margin-bottom: 6px;
+}
+.se-mark {
+  pointer-events: none;
+}
+.se-bar .se-twin svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* ---- the bar: a tab per board, each with its own state ---- */
+.se-ptabs {
+  flex: 0 1 auto;
+  min-width: 0;
+  padding: 3px;
+}
+.se-ptabs > button {
+  gap: 8px;
+  height: 30px;
+  padding: 0 12px;
+}
+.se-ptabs .knob {
+  height: 30px;
+}
+.se-tn {
+  font: 500 13px / 1 var(--sans);
+}
+.se-ts {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--ink-3);
+  font: 400 11px / 1 var(--mono);
+}
+.se-ts i {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--closed);
+}
+.se-ts.you {
+  color: var(--you-ink);
+}
+.se-ts.you i {
+  background: var(--you);
+}
+
+/* ---- the summary of the pair: parent, the join, child; the selected board in full ink ---- */
+.se-head .se-dek.se-pairdek {
+  max-width: 64em;
+  font-size: 17px;
+}
+.se-dkp,
+.se-dkj {
+  display: block;
+}
+.se-dkp {
+  cursor: pointer;
+  transition: opacity 240ms var(--o-drift);
+}
+.se-dkp:not(.on) {
+  opacity: 0.55;
+}
+.se-dkp:not(.on):hover {
+  opacity: 0.85;
+}
+.se-dkj {
+  position: relative;
+  margin: 4px 0;
+  padding: 2px 0 2px 20px;
+  color: var(--ink-3);
+  font-size: 16px;
+}
+.se-dkj i {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  left: 6px;
+  width: 1px;
+  background: var(--ink-3);
+}
+.se-dkj i::after {
+  content: "";
+  position: absolute;
+  bottom: -1px;
+  left: -3px;
+  width: 7px;
+  height: 7px;
+  border-right: 1px solid var(--ink-3);
+  border-bottom: 1px solid var(--ink-3);
+  transform: translateY(-2px) rotate(45deg);
+}
+
+/* ---- the canvas: two routes, stacked ---- */
+.se-pairroutes {
+  position: relative;
+  padding-bottom: 2px;
+}
+.se-rblock {
+  position: relative;
+}
+.se-rblock + .se-rblock {
+  margin-top: 26px;
+}
+.se-rroute {
+  transition: opacity 240ms var(--o-drift);
+}
+.se-rblock:not(.on) .se-rroute {
+  opacity: 0.5;
+}
+.se-rblock:not(.on) .se-rroute:hover {
+  opacity: 0.8;
+}
+.se-rbh {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 26px;
+  white-space: nowrap;
+}
+.se-rbh.hang {
+  padding-left: calc(var(--hx) + 12px);
+}
+.se-rbh.hang.tight .se-rbg {
+  display: none;
+}
+.se-rbh.hang.flip {
+  justify-content: flex-end;
+  padding-left: 0;
+  padding-right: calc(100% - var(--hx) + 12px);
+}
+.se-rbn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0 -6px;
+  padding: 5px 6px;
+  border-radius: 5px;
+  color: var(--ink-3);
+  font: 600 10.5px / 1 var(--sans);
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  transition:
+    color 240ms var(--o-drift),
+    background-color 240ms var(--o-drift);
+}
+.se-rbn svg {
+  width: 13px;
+  height: 13px;
+}
+.se-rbn:hover {
+  background: var(--well);
+  color: var(--ink);
+}
+.se-rblock.on .se-rbn,
+.se-vsec.on .se-rbn {
+  color: var(--ink);
+}
+.se-rbg {
+  color: var(--ink-3);
+  font: 400 italic 13px / 1 var(--serif);
+}
+.se-rbs {
+  color: var(--ink-3);
+  font: 400 11px / 1 var(--mono);
+}
+.se-rbs.you {
+  color: var(--you-ink);
+}
+.se-rbj {
+  color: var(--ink-2);
+  font: 400 italic 13.5px / 1 var(--serif);
+}
+svg.se-rjoin {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
+  overflow: visible;
+  pointer-events: none;
+}
+
+/* ---- the narrow form: each board's stops in its own section ---- */
+.se-vsec + .se-vsec {
+  margin-top: 10px;
+}
+.se-vbh {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  padding: 8px 0 2px 2px;
+}
+.se-vbh.child {
+  margin-left: 6px;
+  padding-left: 14px;
+  border-left: 1px solid var(--ink-3);
+}
+.se-vsec > :not(.se-vbh) {
+  transition: opacity 240ms var(--o-drift);
+}
+.se-vsec:not(.on) > :not(.se-vbh) {
+  opacity: 0.55;
+}
+
+/* ---- "Qué falta configurar" ---- */
+.se-head.withsetup {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 340px);
+  column-gap: 44px;
+  align-items: start;
+}
+.se-head.withsetup > * {
+  grid-column: 1;
+}
+.se-head.withsetup > .se-setup {
+  grid-column: 2;
+  grid-row: 1 / span 6;
+}
+.se-setup {
+  padding: 12px 12px 10px 14px;
+  border-radius: 12px;
+  background: var(--sheet);
+  box-shadow: inset 0 0 0 1px var(--rule);
+}
+.se-suh {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+.se-sun {
+  margin-left: auto;
+  color: var(--you-ink);
+  font: 400 11.5px / 1 var(--mono);
+}
+.se-sul {
+  display: grid;
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.se-sul li {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: 4px;
+  align-items: center;
+}
+.se-sul li.se-sgh {
+  display: block;
+  padding: 8px 0 2px;
+}
+.se-sgh .margin-label {
+  color: var(--ink-2);
+}
+.se-sbx {
+  display: grid;
+  place-items: center;
+  width: 15px;
+  height: 15px;
+  padding: 0;
+  border-radius: 4px;
+  box-shadow: inset 0 0 0 1.25px var(--ink-3);
+  color: var(--sheet);
+  transition:
+    background-color 240ms var(--o-drift),
+    box-shadow 240ms var(--o-drift);
+}
+button.se-sbx:hover {
+  box-shadow: inset 0 0 0 1.5px var(--ink);
+}
+.se-sul li.ok .se-sbx {
+  background: var(--ink);
+  box-shadow: none;
+}
+.se-sul li.err {
+  align-items: start;
+}
+.se-sul li.err .se-sbx {
+  margin-top: 6px;
+  box-shadow: inset 0 0 0 1.25px var(--warn);
+}
+.se-sbx svg {
+  width: 10px;
+  height: 10px;
+  stroke-width: 2;
+}
+.se-sug {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+  padding: 4px 6px;
+  border-radius: 6px;
+  text-align: left;
+  transition: background-color 120ms var(--ease);
+}
+.se-sug:hover {
+  background: var(--hov);
+}
+.se-st {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: var(--ink);
+  font-size: 13.5px;
+  line-height: 1.35;
+}
+.se-st b {
+  font-weight: 500;
+}
+.se-sv {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ink-3);
+  font: 400 italic 13.5px / 1.3 var(--serif);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.se-sul li.ok .se-st {
+  color: var(--ink-3);
+}
+.se-sul li.ok .se-st b {
+  color: var(--ink-2);
+}
+.se-sul li.err .se-st {
+  color: var(--warn);
+}
+.se-setup.done {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.se-sud {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: var(--ink-2);
+  font: 400 italic 14.5px / 1.35 var(--serif);
+}
+.se-sud b {
+  color: var(--ink);
+  font-style: normal;
+  font-weight: 500;
+}
+.se-sud svg {
+  flex: none;
+  width: 14px;
+  height: 14px;
+}
+.se-sustrip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 10px;
+  margin: 10px 0 4px;
+  padding: 7px 8px 7px 12px;
+  border-radius: 8px;
+  background: var(--you-wash);
+  color: var(--ink);
+  font-size: 13.5px;
+  line-height: 1.4;
+}
+.se-hedit-in > .se-sustrip {
+  margin: 0 0 4px;
+}
+.se-sustrip .margin-label {
+  color: var(--you-ink);
+}
+.se-sustrip .btn {
+  height: auto;
+  margin-left: auto;
+  padding: 2px 4px;
+  color: var(--you-ink);
+}
+
+@media (max-width: 1240px) {
+  .se-head.withsetup {
+    display: block;
+  }
+  .se-head.withsetup > .se-setup {
+    margin-top: 16px;
+  }
+}
+@media (max-width: 760px) {
+  .se-pairroutes {
+    display: none;
+  }
+  .se-tw {
+    display: none;
+  }
+  .se-ptabs > button {
+    padding: 0 10px;
+  }
+}
+
+/* ---- the cards' new rows and the route's marks ---- */
+.se-kq.four {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.se-kgrid.one,
+.se-kgrid-note {
+  grid-template-columns: minmax(0, 1fr);
+}
+.se-kgrid-note {
+  padding-bottom: 0;
+}
+.se-mi[disabled] {
+  opacity: 0.5;
+  cursor: default;
+}
+.se-mi[disabled]:hover {
+  background: none;
+  color: var(--ink-2);
+}
+.se-done-fixed {
+  margin-top: 18px;
+}
+.se-hrow .se-hh .se-hn {
+  display: block;
+}
+.se-backs text {
+  fill: var(--ink-3);
+  font: italic 400 12px var(--serif);
+}
+.se-backs text.you {
+  fill: var(--you-ink);
+}
+.se-stoplab.first {
+  max-width: 220px;
+}
+@media (max-width: 760px) {
+  .se-hrow .se-hh .se-req {
+    max-width: 112px;
+    line-height: 1.3;
+    text-align: right;
+    white-space: normal;
+  }
+}
+/* the steps' metas wrap whole on a phone (W9): a wrapped line keeps its first word */
+@media (max-width: 760px) {
+  .se-vroute .row .m {
+    margin-left: 0;
+    clip-path: none;
+  }
+  .se-vroute .row .m > :first-child {
+    margin-left: 0;
+  }
+}
+.se-bar .se-twin {
+  text-decoration: none;
+}

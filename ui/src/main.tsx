@@ -48,6 +48,7 @@ import './styles/studio-preview.css';
 import './styles/studio-home.css';
 import './styles/phone.css';
 import './styles/studio-editor.css';
+import './styles/studio-pair.css';
 import { applyChoice, loadChoice } from './theme-dom.ts';
 
 applyChoice(loadChoice());
