@@ -18,7 +18,7 @@ import { NodeGlyph } from '../../lanes/NodeGlyph.tsx';
 import type { ReadyDraft } from '../use-board-draft.ts';
 import { groupOptions, setListAs, setListGroup } from './arrange.ts';
 import { sampleParts } from './practice.ts';
-import { sampleTitle } from './samples.ts';
+import { sampleTitle, sampleValue } from './samples.ts';
 import { plainToast } from './toasts.tsx';
 
 // What Lo que ves adds for the new capabilities: the Rondas and Partes tiles, the branch strip under
@@ -104,7 +104,8 @@ export function BranchStrip({ def, step, at }: { def: BoardDefinition; step: Ste
           <path d="M5 5.1v5.8M11 7.6c0 2.4-2.6 2.6-5.4 3.6" />
         </g>
       </svg>
-      <span className="mono">{t('bs.preview.branch.sample')}</span>
+      {/* The branch tile's own sample, so the strip and the tile name the same branch. */}
+      <span className="mono">{sampleValue(branch, branch.name.length)}</span>
       {repo ? (
         <span className="pvtag">
           {t('bs.preview.branch.in', { repo: t('bs.preview.branch.repo') })}
