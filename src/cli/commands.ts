@@ -1377,6 +1377,9 @@ const check: Command = {
       result = withProject(cwd, (project) => checkGate(project, gate, fields));
     } catch (error) {
       if (error instanceof UsageError) throw error;
+      // A field nothing names is a typo in the call, never a reason to allow the action.
+      if (error instanceof OteaError && error.code === 'invalid_fields')
+        throw new UsageError(error.message);
       const message = error instanceof Error ? error.message : String(error);
       result = { gate, allowed: true, items: [], note: `could not check (${message})` };
     }

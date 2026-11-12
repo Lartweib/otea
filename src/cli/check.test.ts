@@ -135,4 +135,11 @@ describe('check', () => {
     expect(result.code).toBe(2);
     expect(result.err).toContain('Field "branch" given twice');
   });
+
+  it('refuses a field no board or preset names as a usage error, not a silent allow', async () => {
+    const result = await otea('check', '--gate', 'push', '--branch', 'x', '--field', 'Rpo=api');
+
+    expect(result.code).toBe(2);
+    expect(result.err).toContain('"Rpo"');
+  });
 });
