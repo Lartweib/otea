@@ -28,7 +28,9 @@ export class StudioRequestError extends Error {
   }
 }
 
-async function call<T>(method: string, path: string, payload?: unknown, signal?: AbortSignal) {
+async function call<T>(method: string, path: string, given?: unknown, signal?: AbortSignal) {
+  // The server takes a write only as JSON (src/server/writes.ts): one with nothing to say sends {}.
+  const payload = given === undefined && method !== 'GET' ? {} : given;
   const response = await fetch(path, {
     method,
     headers: {
