@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { clone } from '../../../../src/core/board/model.ts';
-import { creatures } from '../../../../src/core/board/testing.ts';
-import { moveTile, pageTiles, zoneOf } from './arrange.ts';
+import { clone, MOTIVE, STEP } from '../../../../src/core/board/model.ts';
+import { cambios, creatures, errores } from '../../../../src/core/board/testing.ts';
+import { groupOptions, moveTile, pageTiles, setListAs, setListGroup, zoneOf } from './arrange.ts';
 
 const refs = (tiles: { ref: string }[]) => tiles.map(({ ref }) => ref);
 
@@ -18,7 +18,15 @@ describe('pageTiles', () => {
   it('lays what the item has at a step in the zones, the list row apart', () => {
     const tiles = pageTiles(creatures(), 'sanimate');
     expect(refs(tiles.top)).toEqual([]);
-    expect(refs(tiles.main)).toEqual(['fdesc', 'eart', 'eanim', 'eswamp', 'ecode', 'fsteps']);
+    expect(refs(tiles.main)).toEqual([
+      'fdesc',
+      'eart',
+      'eanim',
+      'eswamp',
+      'ecode',
+      'fsteps',
+      'rounds',
+    ]);
     expect(refs(tiles.side)).toEqual(['fbiome']);
     expect(refs(tiles.row)).toEqual(['fbiome']);
     expect(tiles.main.find(({ ref }) => ref === 'eanim')).toMatchObject({
@@ -71,5 +79,47 @@ describe('moveTile', () => {
     const before = clone(def.steps);
     moveTile(def, 'eanim', 'hidden');
     expect(def.steps).toEqual(before);
+  });
+});
+
+describe('pageTiles: Rondas and Partes', () => {
+  it('shows Rondas on a board whose steps are reviewed, Principal by default, where Acomodar puts it', () => {
+    const def = creatures();
+    const tiles = pageTiles(def, 'sanimate');
+    expect(tiles.main.at(-1)).toMatchObject({ ref: 'rounds', origin: { kind: 'place' } });
+    moveTile(def, 'rounds', 'side');
+    expect(refs(pageTiles(def, 'sanimate').side)).toContain('rounds');
+    expect(def.layout.rounds).toBe('side');
+    for (const step of def.steps) step.reviewer = 'none';
+    expect(refs(pageTiles(def, 'sanimate').side)).not.toContain('rounds');
+  });
+
+  it('shows Partes only on a board that divides', () => {
+    expect(refs(pageTiles(cambios(), 'sexec').main)).toContain('parts');
+    expect(
+      Object.values(pageTiles(creatures(), 'sanimate'))
+        .flat()
+        .map(({ ref }) => ref),
+    ).not.toContain('parts');
+  });
+});
+
+describe('list settings', () => {
+  it('offers to group by a choice, level or yes-or-no field, Paso, and Motivo when there are motives', () => {
+    const def = errores();
+    expect(groupOptions(def)).toEqual([STEP, 'fcat', MOTIVE]);
+    def.drop.motives = [];
+    expect(groupOptions(def)).toEqual([STEP, 'fcat']);
+  });
+
+  it('writes the look and the grouping of the published list', () => {
+    const def = errores();
+    setListAs(def, 'table');
+    setListGroup(def, 'fcat');
+    expect(def.list).toEqual({ as: 'table', group: 'fcat' });
+    setListGroup(def, undefined);
+    expect(def.list).toEqual({ as: 'table' });
+    setListAs(def, 'list');
+    expect(def.list).toEqual({ as: 'list' });
   });
 });
