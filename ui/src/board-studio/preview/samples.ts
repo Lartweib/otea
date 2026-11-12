@@ -27,6 +27,8 @@ export type SampleItem = {
   agent: string | null;
   round: number;
   closed: boolean;
+  // A discarded sample's motive (its name), on a board that has motives.
+  motive?: string;
 };
 
 // The item's id prefix as the preview shows it: three letters of the item's name, no accents.
@@ -52,7 +54,8 @@ export function sampleTitle(def: BoardDefinition, k = 0): string {
 }
 
 // One item per step and look: the doer's work (an agent's lit, waiting when it never connected,
-// or yours), each review (yours with its halo, round 2), then one in Hecho.
+// or yours), each review (yours with its halo, round 2), then one in Hecho, and one discarded
+// with a motive on a board that has motives.
 export function sampleItems(def: BoardDefinition, offline: readonly string[] = []): SampleItem[] {
   const out: SampleItem[] = [];
   const add = (item: Omit<SampleItem, 'id' | 'title' | 'closed'>, closed = false) => {
@@ -81,6 +84,13 @@ export function sampleItems(def: BoardDefinition, offline: readonly string[] = [
     }
   }
   add({ step: null, phase: null, look: 'done', agent: null, round: 1 }, true);
+  const motives = def.drop.motives;
+  const motive = motives[1] ?? motives[0];
+  if (motive)
+    add(
+      { step: null, phase: null, look: 'dropped', agent: null, round: 1, motive: motive.name },
+      true,
+    );
   return out;
 }
 

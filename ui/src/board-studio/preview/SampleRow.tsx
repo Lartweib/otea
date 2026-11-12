@@ -13,6 +13,10 @@ export const laneOfSample = (item: SampleItem): Lane =>
   item.closed ? 'none' : item.look === 'yours' ? 'you' : 'ag';
 
 function turnText(item: SampleItem): string {
+  if (item.closed && item.look === 'dropped')
+    return item.motive
+      ? t('bs.preview.row.droppedAs', { motive: item.motive })
+      : t('bs.preview.row.dropped');
   if (item.closed) return t('bs.done');
   if (item.look === 'yours')
     return t(item.phase === 'doing' ? 'bs.preview.row.yourStep' : 'bs.preview.row.yourReview');
