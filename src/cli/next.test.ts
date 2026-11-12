@@ -125,3 +125,60 @@ describe('next and the board moves', () => {
     });
   });
 });
+
+describe('audio and other files on a board', () => {
+  let repo: TempRepo;
+  let otea: Cli;
+
+  beforeEach(async () => {
+    repo = tempGitRepo();
+    otea = cliAt(repo.dir);
+    await otea('init');
+    const def = creatures();
+    def.parts.evoice = { id: 'evoice', name: 'Voz', kind: 'audio', hint: '', options: [] };
+    def.parts.efile = { id: 'efile', name: 'Proyecto', kind: 'file', hint: '', options: [] };
+    def.steps[0]?.hand.push(
+      { ref: 'evoice', req: 'no', fresh: false },
+      { ref: 'efile', req: 'no', fresh: false },
+    );
+    const project = openProject(repo.dir);
+    try {
+      const record = createBoard(project, { name: 'Criaturas', lang: 'es' });
+      saveDraft(project, record.id, { definition: def, baseVersion: null });
+      publishBoard(project, record.id, { moves: {}, by: { kind: 'human', name: 'fede' } });
+    } finally {
+      project.db.close();
+    }
+    await otea('create', '--collection', 'Criaturas', '--title', 'Rana', '--field', 'fdesc=Verde');
+  });
+
+  afterEach(() => repo.remove());
+
+  it('lets an agent attach a sound and a project file to their parts', async () => {
+    repo.write('croak.mp3', 'ID3');
+    repo.write('rana.blend', 'BLENDER');
+
+    const sound = await otea('attach', 'CRI-1', join(repo.dir, 'croak.mp3'), '--json');
+    const file = await otea(
+      'attach',
+      'CRI-1',
+      join(repo.dir, 'rana.blend'),
+      '--module',
+      'efile',
+      '--json',
+    );
+
+    expect(sound.code, sound.err).toBe(2);
+    expect(sound.err).toContain('module');
+    const voice = await otea(
+      'attach',
+      'CRI-1',
+      join(repo.dir, 'croak.mp3'),
+      '--module',
+      'evoice',
+      '--json',
+    );
+    expect(JSON.parse(voice.out)).toMatchObject({ module: 'evoice', kind: 'audio' });
+    expect(JSON.parse(file.out)).toMatchObject({ module: 'efile', kind: 'file' });
+  });
+});

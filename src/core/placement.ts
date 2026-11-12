@@ -30,8 +30,9 @@ function takes(entry: LayoutEntry): readonly string[] {
 
 export function moduleAccepts(entry: LayoutEntry, filename: string): boolean {
   const { kind } = evidenceTypeOf(filename);
-  if (kind === 'file') return false;
   const accepted = takes(entry);
+  // An opaque file goes only to a module that takes files as such (files), never one that draws.
+  if (kind === 'file') return accepted.includes('file');
   return accepted.includes(kind) || accepted.includes(extensionOf(filename));
 }
 

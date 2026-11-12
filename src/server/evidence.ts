@@ -10,7 +10,8 @@ import type { EvidenceRecord } from '../store/queries.ts';
 // logs as plain text; anything else only as a download. nosniff keeps the browser to the declared
 // type, and the sandbox policy denies scripts and the origin to a file opened on its own.
 function presentation({ kind, contentType }: EvidenceRecord): { type: string; inline: boolean } {
-  if (kind === 'image' || kind === 'video') return { type: contentType, inline: true };
+  if (kind === 'image' || kind === 'video' || kind === 'audio')
+    return { type: contentType, inline: true };
   if (kind === 'diff' || kind === 'log' || kind === 'diagram') {
     return { type: 'text/plain; charset=utf-8', inline: true };
   }

@@ -40,13 +40,15 @@ const FIELD_MODULE: Readonly<Record<string, 'text' | 'markdown' | 'enum' | 'seve
   branch: 'text',
 };
 
-// Evidence kinds and the module that draws them; audio and other files have no module yet.
+// Evidence kinds and the module that draws them; audio and other files are offered by files.
 const EVIDENCE_MODULE: Readonly<Partial<Record<EvidenceKind, string>>> = {
   images: 'images',
   video: 'recording',
   code: 'diff',
   log: 'log',
   diagram: 'diagram',
+  audio: 'files',
+  file: 'files',
 };
 
 const VARIANT: Readonly<Record<string, string>> = {

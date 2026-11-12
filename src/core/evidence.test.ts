@@ -15,6 +15,9 @@ describe('evidenceTypeOf', () => {
     ['fix.patch', 'diff', 'text/x-diff'],
     ['test.log', 'log', 'text/plain'],
     ['output.txt', 'log', 'text/plain'],
+    ['take.mp3', 'audio', 'audio/mpeg'],
+    ['take.WAV', 'audio', 'audio/wav'],
+    ['take.ogg', 'audio', 'audio/ogg'],
   ])('detects %s as %s (%s)', (filename, kind, contentType) => {
     expect(evidenceTypeOf(filename)).toEqual({ kind, contentType });
   });

@@ -3,7 +3,7 @@ export const EVIDENCE_ROLES = ['before', 'after', 'single'] as const;
 
 export type EvidenceRole = (typeof EVIDENCE_ROLES)[number];
 
-export type EvidenceKind = 'image' | 'video' | 'diff' | 'log' | 'diagram' | 'file';
+export type EvidenceKind = 'image' | 'video' | 'audio' | 'diff' | 'log' | 'diagram' | 'file';
 
 export type EvidenceType = { kind: EvidenceKind; contentType: string };
 
@@ -11,7 +11,7 @@ export const MAX_EVIDENCE_MB = 50;
 
 export const MAX_EVIDENCE_BYTES = MAX_EVIDENCE_MB * 1024 * 1024;
 
-// Only formats a browser renders without running anything are images and videos. SVG is a
+// Only formats a browser renders without running anything are images, videos and audio. SVG is a
 // document that can carry scripts, so it stays an opaque file the server only offers as a download.
 const TYPES: Readonly<Record<string, EvidenceType>> = {
   gif: { kind: 'image', contentType: 'image/gif' },
@@ -22,6 +22,9 @@ const TYPES: Readonly<Record<string, EvidenceType>> = {
   mp4: { kind: 'video', contentType: 'video/mp4' },
   webm: { kind: 'video', contentType: 'video/webm' },
   mov: { kind: 'video', contentType: 'video/quicktime' },
+  mp3: { kind: 'audio', contentType: 'audio/mpeg' },
+  wav: { kind: 'audio', contentType: 'audio/wav' },
+  ogg: { kind: 'audio', contentType: 'audio/ogg' },
   diff: { kind: 'diff', contentType: 'text/x-diff' },
   patch: { kind: 'diff', contentType: 'text/x-diff' },
   log: { kind: 'log', contentType: 'text/plain' },

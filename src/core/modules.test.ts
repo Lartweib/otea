@@ -6,6 +6,7 @@ import {
   moduleFamily,
   readLayout,
 } from './modules.ts';
+import { moduleAccepts } from './placement.ts';
 import type { FieldSpec } from './preset.ts';
 
 const FIELDS: Record<string, FieldSpec> = {
@@ -39,12 +40,26 @@ describe('the module registry', () => {
       'score',
       'options',
       'diagram',
+      'files',
     ]);
     expect(moduleFamily('severity')).toBe('field');
     expect(moduleFamily('recording')).toBe('evidence');
     expect(moduleFamily('relations')).toBe('relation');
     expect(moduleFamily('children')).toBe('relation');
     expect(moduleFamily('rounds')).toBe('reserved');
+  });
+
+  it('lets the files module take audio and any other file, and nothing the others draw', () => {
+    const files = { module: 'files' as const, id: 'efile' };
+
+    expect(moduleFamily('files')).toBe('evidence');
+    expect(
+      ['take.mp3', 'take.wav', 'take.ogg', 'scene.blend', 'icon.svg'].map((name) =>
+        moduleAccepts(files, name),
+      ),
+    ).toEqual([true, true, true, true, true]);
+    expect(moduleAccepts(files, 'shot.png')).toBe(false);
+    expect(moduleAccepts({ module: 'log', id: 'log' }, 'scene.blend')).toBe(false);
   });
 
   it('places every module in at least one slot', () => {
