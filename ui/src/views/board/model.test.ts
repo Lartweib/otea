@@ -437,6 +437,7 @@ describe('what a board row says', () => {
     ];
     expect(roundOf(item({ id: 'A' }), feed, bug)).toBe(3);
     expect(roundOf(item({ id: 'B' }), feed, bug)).toBe(1);
+    expect(roundOf({ ...item({ id: 'A' }), round: 1 }, feed, bug)).toBe(1);
   });
 
   it('shows the first enum field that is off its default', () => {

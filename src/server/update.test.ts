@@ -73,3 +73,25 @@ describe('POST /api/items/:id/update', () => {
     expect(response.status).toBe(400);
   });
 });
+
+describe('GET /api/items on a board', () => {
+  it('carries each open item’s round as the engine counts it', async () => {
+    const project = memoryProject();
+    publishAs(project, tareasDeRepo(), 'brt');
+    publishAs(project, cambios(), 'bcam');
+    const parent = createItem(project, {
+      collection: 'Cambios',
+      title: 'Nube',
+      fields: { fwhat: 'x' },
+      actor: you,
+    });
+    const server = createServer(project, { token: TOKEN });
+    const response = await server.app.request('/api/items', {
+      headers: { host: LOCAL_HOST, cookie: SESSION_COOKIE },
+    });
+    const items = (await response.json()) as { id: string; round?: number }[];
+    expect(items.find(({ id }) => id === parent.id)?.round).toBe(1);
+    server.close();
+    project.db.close();
+  });
+});

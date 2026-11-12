@@ -467,12 +467,14 @@ export function boardEntries(
 
 // ---- what a row says ----
 
-// The round an item is in: one, plus every time you sent it back to an agent with your notes.
+// The round an item is in: on a board, the engine's (the server sends it); else one, plus every
+// time you sent it back to an agent with your notes.
 export function roundOf(
   item: Item,
   feed: readonly FeedEvent[],
   type: TypeView | undefined,
 ): number {
+  if (item.round !== undefined) return item.round;
   const agentStates = new Set(
     (type?.states ?? []).filter((s) => s.turn === 'agent').map((s) => s.name),
   );

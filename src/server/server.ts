@@ -15,6 +15,7 @@ import {
   showItem,
   updateItem,
 } from '../app/items.ts';
+import { boardRoundOf, liveBoards } from '../app/next.ts';
 import { listAgents, presenceSignature } from '../app/presence.ts';
 import { listPresetViews } from '../app/preset-views.ts';
 import { type Env, type Project, projectView } from '../app/project.ts';
@@ -239,9 +240,17 @@ function api(
       .get('/collections', (c) => c.json(listCollectionViews(project)))
       .get('/presets', (c) => c.json(listPresetViews(project)))
       .get('/agents', (c) => c.json({ agents: listAgents(project.db) }))
-      .get('/items', (c) =>
-        c.json(listItems(project, itemsFilter(c.req.query(), c.req.queries('field')))),
-      )
+      .get('/items', (c) => {
+        const items = listItems(project, itemsFilter(c.req.query(), c.req.queries('field')));
+        // On a board, each item's round as the engine counts it, so every list agrees with it.
+        const boards = liveBoards(project);
+        return c.json(
+          items.map((item) => {
+            const round = boardRoundOf(project, item, boards);
+            return round === undefined ? item : { ...item, round };
+          }),
+        );
+      })
       .post('/items', bodyLimit({ maxSize: MAX_CREATE_BYTES, onError: tooLarge }), async (c) => {
         assertWritable(c, auth, true);
         const { files, ...request } = await createRequest(c);

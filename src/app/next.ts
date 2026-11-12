@@ -293,6 +293,18 @@ export function boardBlockOf(ctx: Context, item: ItemRecord): BoardBlock | undef
   };
 }
 
+// The round of the step an item is on, as the engine counts it (what `otea next` says); undefined
+// off a board or once closed. `boards` lets a list read the live boards once.
+export function boardRoundOf(
+  ctx: Context,
+  item: ItemRecord,
+  boards: readonly LiveBoard[] = liveBoards(ctx),
+): number | undefined {
+  const board = boards.find(({ collection }) => collection === item.collection);
+  if (!board || isClosed(positionOf(item.state))) return undefined;
+  return itemOnBoard(ctx, item, board.def).round;
+}
+
 // `next`'s text for one item, as the agent `me` reads it; undefined off a board.
 export function itemNextText(ctx: Context, item: ItemRecord, me?: string): string | undefined {
   const board = liveBoardOf(ctx, item.collection);

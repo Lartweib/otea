@@ -185,6 +185,8 @@ describe('a row’s call to act', () => {
       2,
     );
     expect(roundOf(item({ id: 'A' }), [], bug)).toBe(0);
+    // On a board the engine's round wins over what the feed reads.
+    expect(roundOf({ ...item({ id: 'A' }), round: 1 }, feed, bug)).toBe(1);
   });
 });
 

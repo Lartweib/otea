@@ -311,6 +311,7 @@ export const detail = {
   'sheet.d.createdBy': 'Creado por',
   'sheet.d.updated': 'Actualizado',
   'sheet.d.parent': 'Padre',
+  'sheet.d.nobody': 'Nadie',
   'sheet.d.you': 'Tú',
   'sheet.d.youLower': 'tú',
   'sheet.d.more': '{count} más',
@@ -384,6 +385,7 @@ export const detail = {
   'bi.hand.saved': 'Guardaste {part} de «{title}».',
   'bi.hand.failed': 'No se guardó {part}. Vuelve a intentarlo.',
   'sheet.refused': 'Otea no lo movió. Mira lo que falta y vuelve a intentarlo.',
+  'bi.toast.delivered': 'Entregaste «{title}». Pasa a {state}.',
   'bi.refuse.blockers':
     'No se aprobó {id}: {other} ({board}, {step}) lo frena y sigue sin terminar.',
   'bi.refuse.blockersEnded': 'No se aprobó {id}: {other} ({board}) lo frena y sigue sin terminar.',

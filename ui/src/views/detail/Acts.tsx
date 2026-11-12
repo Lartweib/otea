@@ -168,19 +168,25 @@ export function Acts({
     c ? moveSaysOf(c, { agent, round: facts.round, word, back }) : null;
 
   const [refused, setRefused] = useState<{ k: string; text: string } | null>(null);
+  // A refusal stands until the item changes (a field filled, a move).
+  const refusalKey = `${item.id}:${item.state}:${item.updatedAt}`;
   // A move Otea refuses says so in the page's words, never as an error nobody sees.
   const make = (c: MoveChoice, reason = '') => {
-    const kind = c.move.closes === 'done' && c.kind !== 'own' ? 'close' : c.kind;
-    const k = `${item.id}:${item.state}`;
+    const kind = c.deliver
+      ? 'deliver'
+      : c.move.closes === 'done' && c.kind !== 'own'
+        ? 'close'
+        : c.kind;
+    const k = refusalKey;
     app
       .move(item.id, c.move.to, reason, toastOf(kind, item.title, word(c.move.to)))
       .catch(() => setRefused({ k, text: t('sheet.refused') }));
   };
-  const refusedNow = refused?.k === `${item.id}:${item.state}` ? refused.text : '';
+  const refusedNow = refused?.k === refusalKey ? refused.text : '';
   const choose = (c: MoveChoice, button: HTMLButtonElement) => {
     const no = refuse?.(c);
     if (no) {
-      setRefused({ k: `${item.id}:${item.state}`, text: no });
+      setRefused({ k: refusalKey, text: no });
       return;
     }
     if (c.move.reasonRequired) onNotes(c, button);
@@ -288,9 +294,7 @@ export function Acts({
               onClick={() =>
                 app
                   .move(item.id, back.move.to, answer, toastOf('answer', item.title, ''))
-                  .catch(() =>
-                    setRefused({ k: `${item.id}:${item.state}`, text: t('sheet.refused') }),
-                  )
+                  .catch(() => setRefused({ k: refusalKey, text: t('sheet.refused') }))
               }
             >
               {t('sheet.qa.send')}
