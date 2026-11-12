@@ -1,6 +1,7 @@
 import { activeLease } from '../../active-lease.ts';
 import type { FeedEvent } from '../../activity.ts';
 import { type App, typeOfItem } from '../../app/context.tsx';
+import { onPublishedBoard } from '../../board-studio/home/boards-store.ts';
 import { mainPath } from '../../derive/path.ts';
 import {
   agentOf,
@@ -232,6 +233,7 @@ export function tocaBlocks(
     now: app.now,
     feed: app.feed,
     types: (it: Item) => typeOfItem(it, app.collectionOf),
+    onBoard: (it: Item) => onPublishedBoard(it.collection),
   };
   const by = new Map<TocaSection, Item[]>();
   for (const it of app.all) {

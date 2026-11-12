@@ -68,6 +68,15 @@ export function boardOfCollection(
   return boards.find((b) => b.collection === collection);
 }
 
+// Whether a collection is a published board, as the store knows now (Te toca and Triaje read a
+// step being done on your turn as your own step there).
+export function onPublishedBoard(collection: string): boolean {
+  return (
+    state.status === 'ready' &&
+    state.boards.some((b) => b.collection === collection && b.liveVersion !== null)
+  );
+}
+
 // What the store holds now.
 export const boardsState = (): BoardsState => state;
 

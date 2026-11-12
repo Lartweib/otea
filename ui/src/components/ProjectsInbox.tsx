@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { typeOfItem, useApp } from '../app/context.tsx';
+import { onPublishedBoard } from '../board-studio/home/boards-store.ts';
 import { agentOf, type TocaSection, tocaSection } from '../derive/toca.ts';
 import { whenText } from '../derive/when.ts';
 import { listOf, t, tx } from '../i18n/i18n.ts';
@@ -39,6 +40,7 @@ export function hereBlocks(
     now: app.now,
     feed: app.feed,
     types: (it: Item) => typeOfItem(it, app.collectionOf),
+    onBoard: (it: Item) => onPublishedBoard(it.collection),
   };
   const rows = app.all
     .map((it) => ({ it, sec: tocaSection(it, ctx) }))

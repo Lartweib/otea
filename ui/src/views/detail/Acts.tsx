@@ -167,11 +167,15 @@ export function Acts({
   const says = (c: MoveChoice | null) =>
     c ? moveSaysOf(c, { agent, round: facts.round, word, back }) : null;
 
+  const [refused, setRefused] = useState<{ k: string; text: string } | null>(null);
+  // A move Otea refuses says so in the page's words, never as an error nobody sees.
   const make = (c: MoveChoice, reason = '') => {
     const kind = c.move.closes === 'done' && c.kind !== 'own' ? 'close' : c.kind;
-    void app.move(item.id, c.move.to, reason, toastOf(kind, item.title, word(c.move.to)));
+    const k = `${item.id}:${item.state}`;
+    app
+      .move(item.id, c.move.to, reason, toastOf(kind, item.title, word(c.move.to)))
+      .catch(() => setRefused({ k, text: t('sheet.refused') }));
   };
-  const [refused, setRefused] = useState<{ k: string; text: string } | null>(null);
   const refusedNow = refused?.k === `${item.id}:${item.state}` ? refused.text : '';
   const choose = (c: MoveChoice, button: HTMLButtonElement) => {
     const no = refuse?.(c);
@@ -282,7 +286,11 @@ export function Acts({
               variant="primary"
               disabled={!answer}
               onClick={() =>
-                void app.move(item.id, back.move.to, answer, toastOf('answer', item.title, ''))
+                app
+                  .move(item.id, back.move.to, answer, toastOf('answer', item.title, ''))
+                  .catch(() =>
+                    setRefused({ k: `${item.id}:${item.state}`, text: t('sheet.refused') }),
+                  )
               }
             >
               {t('sheet.qa.send')}

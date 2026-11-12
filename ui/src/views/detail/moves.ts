@@ -73,7 +73,7 @@ export function moveSaysOf(
     kind === 'approve'
       ? t('sheet.move.approve')
       : kind === 'own'
-        ? t('sheet.move.own')
+        ? choice.label
         : kind === 'sendback'
           ? t('sheet.move.sendBackVerb')
           : kind === 'discard'
@@ -87,9 +87,11 @@ export function moveSaysOf(
       : t('sheet.says.backAgent', { round: lands.round });
   } else if (move.closes === 'discarded') tail = t('sheet.says.closesUndone');
   else if (move.closes || move.turn === 'none') tail = t('sheet.says.closes');
-  else if (move.turn === 'agent')
-    tail = o.agent ? t('sheet.says.agent', { agent: o.agent }) : t('sheet.says.anAgent');
-  else tail = t('sheet.says.yours');
+  else if (move.turn === 'agent') {
+    // On a board, the agent of the step it lands on (none named when any agent may take it).
+    const who = o.back ? o.back(move.to).agent : o.agent;
+    tail = who ? t('sheet.says.agent', { agent: who }) : t('sheet.says.anAgent');
+  } else tail = t('sheet.says.yours');
   if (choice.blocked) tail = choice.blocked;
   return { verb, state, tail };
 }

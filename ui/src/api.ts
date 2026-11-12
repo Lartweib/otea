@@ -116,6 +116,11 @@ export async function moveItem(id: string, to: string, reason: string): Promise<
   await post(`/api/items/${encodeURIComponent(id)}/move`, reason === '' ? { to } : { to, reason });
 }
 
+// Fills fields of an item as the person (the own step's "Rellenar"), keyed by part id.
+export async function updateItemFields(id: string, fields: Record<string, string>): Promise<void> {
+  await post(`/api/items/${encodeURIComponent(id)}/update`, { fields });
+}
+
 // Takes back your last move, while its toast is up: the item returns to `from`, the state it left.
 export async function undoMove(id: string, from: string): Promise<void> {
   await post(`/api/items/${encodeURIComponent(id)}/undo`, { from });
