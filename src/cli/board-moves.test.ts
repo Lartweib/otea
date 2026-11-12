@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { openProject } from '../app/project.ts';
 import { publishAs } from '../app/testing.ts';
-import { errores } from '../core/board/testing.ts';
+import { cambios, errores, tareasDeRepo } from '../core/board/testing.ts';
 import { type Cli, cliAt, tempGitRepo } from './testing.ts';
 
 // The moves an agent makes on a board from the CLI: a way back, the note of a handoff, a drop.
@@ -149,6 +149,48 @@ describe('a relayed drop', () => {
         code: 'not_relayable',
         message: "Not relayed: on Errores the person drops items from the item's page.",
       });
+    } finally {
+      repo.remove();
+    }
+  });
+});
+
+describe('otea create on a board', () => {
+  it('says where the item starts, and refuses a part without its parent (exit 16)', async () => {
+    const repo = tempGitRepo();
+    try {
+      const otea = cliAt(repo.dir);
+      await otea('init', '--local');
+      const project = openProject(repo.dir);
+      try {
+        publishAs(project, errores(), 'berr');
+        publishAs(project, tareasDeRepo(), 'brt');
+        publishAs(project, cambios(), 'bcam');
+      } finally {
+        project.db.close();
+      }
+      const ready = await otea(
+        'create',
+        '--collection',
+        'Errores',
+        '--title',
+        'F',
+        '--field',
+        'Pasos=a',
+      );
+      expect(ready.out.trim()).toMatch(
+        /^Created \S+ in Triar: it already had everything Completar asks for\.$/,
+      );
+      const alone = await otea(
+        'create',
+        '--collection',
+        'Tareas de repo',
+        '--title',
+        'API',
+        '--json',
+      );
+      expect(alone.code).toBe(16);
+      expect(JSON.parse(alone.err).error.code).toBe('parent_required');
     } finally {
       repo.remove();
     }

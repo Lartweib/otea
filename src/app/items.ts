@@ -32,10 +32,12 @@ import { getCollection, presetOf, typeOfItem } from './collections.ts';
 import type { Context } from './context.ts';
 import { presentEvidence } from './evidence.ts';
 import {
+  assertMayStandAlone,
   assertMoveHandsOff,
   type BoardBlock,
   boardBlockOf,
   boardFieldInput,
+  boardStart,
   boardState,
 } from './next.ts';
 import {
@@ -112,8 +114,12 @@ export function insertNewItem(
   const preset = presetOf(ctx, collection);
   const type = typeFor(preset, input.type);
   if (input.parent === undefined) assertStandsAlone(preset, type);
+  assertMayStandAlone(ctx, collection.name, input.parent);
   const given = boardFieldInput(ctx, collection.name, input.fields ?? {});
-  const { title, fields, state } = intake(type, { ...given, title: input.title });
+  const taken = intake(type, { ...given, title: input.title });
+  const { title, fields } = taken;
+  // On a board the engine says where the item starts.
+  const state = boardStart(ctx, collection.name, { ...fields, title }) ?? taken.state;
   const seq = claimNextSeq(db, collection.name);
   const item: ItemRecord = {
     id: formatItemId(collection.prefix, seq),
