@@ -28,6 +28,7 @@ import {
 import { Body, bodySections } from './Body.tsx';
 import {
   approvalRefusal,
+  backOf,
   boardItemOf,
   branchStrip,
   type ItemBoardBlock,
@@ -375,6 +376,7 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
           <Acts
             onDrop={live && dropChoices.length ? () => setDropping(true) : undefined}
             refuse={live ? refuse : undefined}
+            back={live ? (to: string) => backOf(live, item, to) : undefined}
             item={item}
             type={type}
             facts={facts}

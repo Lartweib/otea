@@ -52,6 +52,8 @@ type ActsProps = {
   // and a move the board refuses (Aprobar while a wait no longer holds) says why instead.
   onDrop?: (() => void) | undefined;
   refuse?: ((choice: MoveChoice) => string | null) | undefined;
+  // On a Studio board: the agent and round a way back lands on.
+  back?: ((state: string) => { agent: string | null; round: number }) | undefined;
 };
 
 // Both blocks present while one leaves and the other arrives; the height glides 440 settle, and the
@@ -153,6 +155,7 @@ export function Acts({
   onNotes,
   onDrop,
   refuse,
+  back,
 }: ActsProps) {
   const app = useApp();
   const [pointed, setPointed] = useState<MoveChoice | null>(null);
@@ -162,7 +165,7 @@ export function Acts({
   const [free, setFree] = useState('');
   const agent = facts.agent;
   const says = (c: MoveChoice | null) =>
-    c ? moveSaysOf(c, { agent, round: facts.round, word }) : null;
+    c ? moveSaysOf(c, { agent, round: facts.round, word, back }) : null;
 
   const make = (c: MoveChoice, reason = '') => {
     const kind = c.move.closes === 'done' && c.kind !== 'own' ? 'close' : c.kind;

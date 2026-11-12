@@ -59,7 +59,13 @@ export type Says = { verb: string; state: string; tail: string };
 // The line under the moves: "Approve → fixed · it closes" (the component bolds the arrow and state).
 export function moveSaysOf(
   choice: MoveChoice,
-  o: { agent: string | null; round: number; word: (state: string) => string },
+  o: {
+    agent: string | null;
+    round: number;
+    word: (state: string) => string;
+    // On a board: the agent and round the move lands on (a way back may go to another step).
+    back?: ((state: string) => { agent: string | null; round: number }) | undefined;
+  },
 ): Says {
   const { move, kind } = choice;
   const state = o.word(move.to);
@@ -74,11 +80,12 @@ export function moveSaysOf(
             ? t('sheet.move.discard')
             : t('sheet.move.move');
   let tail: string;
-  if (kind === 'sendback')
-    tail = o.agent
-      ? t('sheet.says.back', { agent: o.agent, round: o.round + 1 })
-      : t('sheet.says.backAgent', { round: o.round + 1 });
-  else if (move.closes === 'discarded') tail = t('sheet.says.closesUndone');
+  if (kind === 'sendback') {
+    const lands = o.back?.(move.to) ?? { agent: o.agent, round: o.round + 1 };
+    tail = lands.agent
+      ? t('sheet.says.back', { agent: lands.agent, round: lands.round })
+      : t('sheet.says.backAgent', { round: lands.round });
+  } else if (move.closes === 'discarded') tail = t('sheet.says.closesUndone');
   else if (move.closes || move.turn === 'none') tail = t('sheet.says.closes');
   else if (move.turn === 'agent')
     tail = o.agent ? t('sheet.says.agent', { agent: o.agent }) : t('sheet.says.anAgent');
