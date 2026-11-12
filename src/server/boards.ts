@@ -1,5 +1,6 @@
 import { type Context, Hono } from 'hono';
 import { z } from 'zod';
+import { mergeAgentDraft, requestAgentDraft } from '../app/agent-draft.ts';
 import {
   boardProblems,
   createBoard,
@@ -23,8 +24,7 @@ import { assertConfigurable } from './writes.ts';
 // are open like the rest of the API; every write changes how the project works, so, like Studio's
 // other writes, it comes from this computer's signed-in browser.
 //
-// Contract for the slices (see the Studio PLAN): the routes answering 501 are filled by the server
-// slice; the bodies and answers here are the shapes the UI's board-studio/api.ts reads.
+// The bodies and answers here are the shapes the UI's board-studio/api.ts reads.
 
 const lang = z.enum(LANGS as [Lang, ...Lang[]]);
 
@@ -44,6 +44,15 @@ const PublishBody = z.strictObject({ moves: z.record(z.string(), z.string()) });
 
 const RestoreBody = z.strictObject({ version: z.number().int().positive().nullable() });
 
+const AgentDraftBody = z.strictObject({
+  name: z.string(),
+  need: z.string(),
+  agent: z.string().min(1).nullable(),
+  lang,
+});
+
+const MergeBody = z.strictObject({ evidence: z.number().int().positive() });
+
 const HUMAN = { kind: 'human' as const, name: 'human' };
 
 async function body<T>(c: Context, schema: z.ZodType<T>, expected: string): Promise<T> {
@@ -55,10 +64,6 @@ async function body<T>(c: Context, schema: z.ZodType<T>, expected: string): Prom
 
 function langOf(c: Context): Lang {
   return c.req.query('lang') === 'es' ? 'es' : 'en';
-}
-
-function notYet(what: string): never {
-  throw new RejectedRequest(501, 'not_implemented', `${what} is not built yet`);
 }
 
 export function boardsApi(project: Project, feed: ChangeFeed, auth: Session): Hono {
@@ -84,9 +89,16 @@ export function boardsApi(project: Project, feed: ChangeFeed, auth: Session): Ho
         return c.json(record, 201);
       })
       // "Que lo esboce un agente": creates the Pedido and a waiting board (server slice).
-      .post('/boards/agent-draft', (c) => {
+      .post('/boards/agent-draft', async (c) => {
         assertConfigurable(c, auth);
-        return notYet('Having an agent draft a board');
+        const input = await body(
+          c,
+          AgentDraftBody,
+          '{"name": string, "need": string, "agent": string | null, "lang": "en" | "es"}',
+        );
+        const asked = requestAgentDraft(project, input);
+        feed.notify();
+        return c.json(asked, 201);
       })
       .get('/boards/:id', (c) => {
         const record = getBoardRecord(project, id(c));
@@ -115,9 +127,12 @@ export function boardsApi(project: Project, feed: ChangeFeed, auth: Session): Ho
         return c.json(result);
       })
       // Merges an agent's board draft (its evidence on the Pedido) into the draft (server slice).
-      .post('/boards/:id/draft/merge', (c) => {
+      .post('/boards/:id/draft/merge', async (c) => {
         assertConfigurable(c, auth);
-        return notYet('Merging an agent draft');
+        const { evidence } = await body(c, MergeBody, '{"evidence": number}');
+        const record = mergeAgentDraft(project, id(c), evidence);
+        feed.notify();
+        return c.json(record);
       })
       .post('/boards/:id/publish/plan', (c) => c.json(publishPlan(project, id(c))))
       .post('/boards/:id/publish', async (c) => {

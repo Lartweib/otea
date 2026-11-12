@@ -213,9 +213,19 @@ export function createBoard(
   now: Clock = systemClock,
   ids: IdSource = newId,
 ): BoardRecord {
+  return transaction(ctx.db, () => insertNewBoard(ctx, input, now, ids));
+}
+
+// Creates the board inside the caller's transaction, so it can go with what asked for it.
+export function insertNewBoard(
+  ctx: Context,
+  input: CreateBoardInput,
+  now: Clock = systemClock,
+  ids: IdSource = newId,
+): BoardRecord {
   const name = input.name.trim();
   if (name === '') throw new OteaError('invalid_name', 'A board needs a name');
-  return transaction(ctx.db, () => {
+  {
     if (namesTaken(ctx).some((taken) => same(taken, name)))
       throw new OteaError('already_exists', `There is already a board called ${name}`);
     const names = { name, ...(input.item?.trim() ? { item: input.item.trim() } : {}) };
@@ -239,7 +249,7 @@ export function createBoard(
       agentNote: null,
     });
     return getBoardRecord(ctx, id);
-  });
+  }
 }
 
 export type SaveDraftInput = { definition: unknown; baseVersion: number | null };

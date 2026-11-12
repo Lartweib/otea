@@ -1,7 +1,9 @@
+import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import type { DatabaseSync } from 'node:sqlite';
 import { fileURLToPath } from 'node:url';
 import { renderUnicodeCompact } from 'uqr';
+import { draftToStartFrom, submitAgentDraft } from '../app/agent-draft.ts';
 import { type AgentsMdAction, connectAgent, writeAgentsMd } from '../app/agents.ts';
 import {
   type AppliedBlueprint,
@@ -604,6 +606,40 @@ function guideText(guide: Guide): string {
     ...guide.types.map(({ type, playbook }) => `--- Type ${type} ---\n\n${playbook.trimEnd()}`),
   ].join('\n\n');
 }
+
+const boardDraft: Command = {
+  name: 'board draft',
+  summary:
+    'Draft the board a Pedido asks for: without --file, print the draft to start from (JSON); with --file, check it as a board and hand it in on the Pedido as board.json, saying what is still wrong',
+  args: ['id'],
+  options: { file: { placeholder: 'board.json' } },
+  execute: (input) => {
+    const [id = ''] = input.args;
+    const file = input.option('file');
+    return withAgent(input, (project) => {
+      if (file === undefined) {
+        const definition = draftToStartFrom(project, id);
+        return { data: definition, text: JSON.stringify(definition, null, 2) };
+      }
+      const path = resolve(input.cwd, file);
+      let text: string;
+      try {
+        text = readFileSync(path, 'utf8');
+      } catch {
+        throw new OteaError('file_not_found', `No file at ${path}`);
+      }
+      const { actor, channel } = input;
+      const submitted = submitAgentDraft(project, { id, text, actor, channel });
+      const lines = [
+        `Handed in the board draft on ${id} (evidence ${submitted.evidence.id}); the person merges it in Studio.`,
+        ...(submitted.problems.length === 0
+          ? []
+          : ['Still to fix, for it to be published:', ...submitted.problems.map((p) => `  ${p}`)]),
+      ];
+      return { data: submitted, text: lines.join('\n') };
+    });
+  },
+};
 
 const board: Command = {
   name: 'board',
@@ -1357,6 +1393,7 @@ export const COMMANDS: readonly Command[] = [
   create,
   list,
   show,
+  boardDraft,
   board,
   brief,
   events,
