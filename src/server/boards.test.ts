@@ -61,7 +61,7 @@ describe('the boards API', () => {
     ]);
     expect(templates[3]?.name).toBe('Tareas simples');
     const repos = templates.find(({ key }) => key === 'repos');
-    expect((repos?.boards as Json[]).map(({ name }) => name)).toEqual([
+    expect(((repos?.boards ?? []) as Json[]).map(({ name }) => name)).toEqual([
       'Cambios',
       'Tareas de repo',
     ]);
