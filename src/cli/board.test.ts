@@ -167,3 +167,44 @@ describe('board', () => {
     });
   });
 });
+
+describe('board add', () => {
+  let repo: ReturnType<typeof tempGitRepo>;
+  let otea: Cli;
+
+  beforeEach(async () => {
+    repo = tempGitRepo();
+    otea = cliAt(repo.dir);
+    await otea('init', '--local');
+  });
+
+  afterEach(() => repo.remove());
+
+  it('creates and publishes a board from a template, in the project language', async () => {
+    const { code, out } = await otea('board', 'add', 'Bugs del juego', '--template', 'bugs');
+
+    expect(code).toBe(0);
+    expect(out).toMatch(
+      /^Published board "Bugs del juego" v1 from template bugs \(ids [A-Z0-9]+-<n>\)\n$/,
+    );
+    const { collections } = JSON.parse((await otea('board', '--json')).out);
+    expect(collections.map(({ name }: { name: string }) => name)).toContain('Bugs del juego');
+    expect((await otea('board', 'Bugs del juego')).out).toContain('Bugs del juego: steps for each');
+  });
+
+  it('starts blank without a template, naming its items with --item', async () => {
+    const added = JSON.parse(
+      (await otea('board', 'add', 'Recados', '--item', 'Recado', '--json')).out,
+    );
+
+    expect(added).toMatchObject({ version: 1, record: { collection: 'Recados' } });
+    expect((await otea('create', '--collection', 'Recados', '--title', 'Pan')).code).toBe(0);
+  });
+
+  it('refuses a taken name and an unknown template', async () => {
+    await otea('board', 'add', 'Recados');
+
+    expect((await otea('board', 'add', 'recados')).code).toBe(5);
+    expect((await otea('board', 'add', 'Otro', '--template', 'nope')).code).toBe(3);
+  });
+});

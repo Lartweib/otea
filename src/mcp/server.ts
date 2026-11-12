@@ -49,6 +49,7 @@ export const CLI_ONLY_COMMANDS = [
   'migrate',
   'connect',
   'collection add',
+  'board add',
   'collection icon',
   'blueprint apply',
   'blueprint status',
