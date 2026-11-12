@@ -14,6 +14,7 @@ import {
   coordinationPlaybook,
   updateBlueprint,
 } from '../app/blueprints.ts';
+import { addBoard } from '../app/boards.ts';
 import { briefFor } from '../app/brief.ts';
 import {
   addCollection,
@@ -55,6 +56,7 @@ import {
   addPathToProject,
   initProject,
   openProject,
+  PROJECT_LANG,
   type Project,
   type ProjectView,
   projectView,
@@ -606,6 +608,38 @@ function guideText(guide: Guide): string {
     ...guide.types.map(({ type, playbook }) => `--- Type ${type} ---\n\n${playbook.trimEnd()}`),
   ].join('\n\n');
 }
+
+const boardAdd: Command = {
+  name: 'board add',
+  summary:
+    "Make a board and publish it, from a template (bugs, assets, blog, tasks, research) or blank, in the project's language; --item names what each item is",
+  args: ['name'],
+  options: { template: {}, item: {} },
+  execute: ({ cwd, args: [name = ''], option }) => {
+    const template = option('template');
+    const item = option('item');
+    const added = withProject(cwd, (project) =>
+      addBoard(project, {
+        name,
+        lang: PROJECT_LANG,
+        by: { kind: 'human', name: 'human' },
+        ...(template === undefined ? {} : { template }),
+        ...(item === undefined ? {} : { item }),
+      }),
+    );
+    const prefix = added.record.collection
+      ? withProject(
+          cwd,
+          (project) => getCollection(project.db, added.record.collection ?? '').prefix,
+        )
+      : '';
+    const from = template === undefined ? 'blank' : `from template ${template}`;
+    return {
+      data: added,
+      text: `Published board "${name.trim()}" v${added.version} ${from} (ids ${prefix}-<n>)`,
+    };
+  },
+};
 
 const boardDraft: Command = {
   name: 'board draft',
@@ -1393,6 +1427,7 @@ export const COMMANDS: readonly Command[] = [
   create,
   list,
   show,
+  boardAdd,
   boardDraft,
   board,
   brief,

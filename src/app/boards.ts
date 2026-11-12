@@ -661,3 +661,20 @@ export function ensureRequestsBoard(
 export function listTemplates(lang: Lang): TemplateView[] {
   return TEMPLATES.map((template) => templateView(template, lang));
 }
+
+// Creates a board (from a template, or blank) and publishes it at once: what the home does, for the
+// CLI.
+export function addBoard(
+  ctx: Context,
+  input: CreateBoardInput & { by: Actor },
+  now: Clock = systemClock,
+): PublishResult {
+  const { by, ...create } = input;
+  const record = createBoard(ctx, create, now);
+  try {
+    return publishBoard(ctx, record.id, { moves: {}, by }, now);
+  } catch (error) {
+    discardDraft(ctx, record.id, now);
+    throw error;
+  }
+}
