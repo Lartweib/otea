@@ -4,9 +4,11 @@ import {
   DONE,
   isAgent,
   isEvidence,
+  LEVELS,
   partOf,
   SAME,
   type Selection,
+  type Split,
   stepIndex,
   TITLE,
   usedRefs,
@@ -33,7 +35,14 @@ export type ProblemCode =
   | 'cap_invalid'
   | 'agent_offline'
   | 'self_review'
-  | 'agent_closes';
+  | 'agent_closes'
+  | 'wait_no_split'
+  | 'skip_invalid'
+  | 'split_cycle'
+  | 'split_unknown'
+  | 'guard_no_push'
+  | 'initial_invalid'
+  | 'motive_agent_drop';
 
 export type ProblemLevel = 'error' | 'warning';
 
@@ -52,7 +61,13 @@ export type ProblemContext = {
   agents: readonly { name: string; connected: boolean }[];
   // The names of the project's other boards (live or draft), compared without case.
   takenNames?: readonly string[];
+  // This board's id and the project's boards (this one included), to check what a split names.
+  id?: string;
+  boards?: readonly BoardRef[];
 };
+
+// A board as a split reads it: its id, name and what it divides into.
+export type BoardRef = { id: string; name: string; split?: Split };
 
 // Words Otea already uses for its own things, in both languages, compared without case.
 export const RESERVED_NAMES = [
@@ -156,9 +171,11 @@ export function problemsOf(def: BoardDefinition, context: ProblemContext): Probl
     }
   }
 
+  // A way leads to another step, later or earlier (taken back), or to Hecho; never to itself.
   def.steps.forEach((step, index) => {
     for (const way of step.ways) {
-      if (way !== DONE && stepIndex(def, way) <= index)
+      const at = stepIndex(def, way);
+      if (way !== DONE && (at < 0 || at === index))
         add('error', 'way_invalid', { kind: 'step', id: step.id }, { step: step.name });
     }
   });
@@ -199,7 +216,54 @@ export function problemsOf(def: BoardDefinition, context: ProblemContext): Probl
     if (step.doer === 'you' && step.reviewer === 'you')
       add('warning', 'self_review', { kind: 'step', id: step.id }, { step: step.name });
   }
+  out.push(...laterProblems(def, context, partAt));
   return out;
+}
+
+// The settings boards gained to say what presets did: waits, skipping on creation, the split, the
+// protected branch, start values and motives.
+function laterProblems(
+  def: BoardDefinition,
+  context: ProblemContext,
+  partAt: (ref: string) => Selection,
+): Problem[] {
+  const out: Problem[] = [];
+  const add = (level: ProblemLevel, code: ProblemCode, at: Selection, params = {}) =>
+    out.push({ level, code, params, at });
+  const used = usedRefs(def);
+  def.steps.forEach((step, index) => {
+    const at: Selection = { kind: 'step', id: step.id };
+    if (step.waits.includes('parts') && !def.split)
+      add('error', 'wait_no_split', at, { step: step.name, board: def.name });
+    if (step.skipWhenReady && (index > 0 || step.reviewer !== 'none'))
+      add('error', 'skip_invalid', at, { step: step.name });
+  });
+  const split = def.split;
+  if (split && split.board !== SAME && context.boards && context.id !== undefined) {
+    const other = context.boards.find(({ id }) => id === split.board);
+    if (!other) add('error', 'split_unknown', { kind: 'about' }, { board: def.name });
+    else if (other.split?.board === context.id)
+      add('error', 'split_cycle', { kind: 'about' }, { board: def.name, other: other.name });
+  }
+  for (const part of Object.values(def.parts)) {
+    if (!used.has(part.id)) continue;
+    if (part.guard && !part.guard.push.some((id) => stepIndex(def, id) >= 0))
+      add('error', 'guard_no_push', partAt(part.id), { part: part.name });
+    if (part.initial !== undefined && !initialFits(part.kind, part.options, part.initial))
+      add('error', 'initial_invalid', partAt(part.id), { part: part.name });
+  }
+  if (def.drop.motives.length > 0) {
+    const dropper = def.steps.find((step) => step.doerMayDrop && step.doer !== 'you');
+    if (dropper) add('warning', 'motive_agent_drop', { kind: 'done' }, { step: dropper.name });
+  }
+  return out;
+}
+
+function initialFits(kind: string, options: readonly { id: string }[], value: string): boolean {
+  if (kind === 'level') return (LEVELS as readonly string[]).includes(value);
+  if (kind === 'yesno') return value === 'yes' || value === 'no';
+  if (kind === 'choice') return options.some(({ id }) => id === value);
+  return false;
 }
 
 export function blocking(problems: readonly Problem[]): boolean {

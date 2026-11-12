@@ -16,6 +16,7 @@ import {
   type Step,
   type StepInstructions,
   stepById,
+  stepDefaults,
   stepIndex,
   type Target,
   TITLE,
@@ -84,6 +85,7 @@ export function addStep(def: BoardDefinition, at: number, name: string, make: Id
     ways: [],
     back: SAME,
     instructions: { take: '', before: '', review: '' },
+    ...stepDefaults(),
   };
   def.steps.splice(Math.max(0, Math.min(at, def.steps.length)), 0, step);
   return id;

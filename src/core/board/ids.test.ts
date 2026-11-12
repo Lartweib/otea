@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { freshIds, ID_PATTERN, newId, sequenceIds } from './ids.ts';
-import type { BoardDefinition } from './model.ts';
+import { type BoardDefinition, boardDefaults, stepDefaults } from './model.ts';
+import { creatures } from './testing.ts';
 
 const def = (): BoardDefinition => ({
-  schema: 1,
+  schema: 2,
+  ...boardDefaults(),
   name: 'Criaturas',
   item: 'Criatura',
   icon: 'board',
@@ -29,6 +31,7 @@ const def = (): BoardDefinition => ({
       ways: ['s2', 'done'],
       back: 'same',
       instructions: { take: 'Mira @[f1]', before: '', review: '' },
+      ...stepDefaults(),
     },
     {
       id: 's2',
@@ -39,6 +42,7 @@ const def = (): BoardDefinition => ({
       ways: [],
       back: 's1',
       instructions: { take: '', before: '', review: '' },
+      ...stepDefaults(),
     },
   ],
   anytime: ['f1'],
@@ -93,5 +97,35 @@ describe('freshIds', () => {
     expect(concept?.instructions.take).toBe(`Mira @[${bioma?.id}]`);
     expect(after.about).toBe(`Sobre @[${arte?.id}]`);
     expect(before.steps[0]?.id).toBe('s1');
+  });
+
+  it('rewrites the references the later settings hold: ways back, guard, start value, grouping and motives', () => {
+    const before = creatures();
+    before.steps[1] = { ...before.steps[1]!, ways: ['sconcept'] };
+    before.parts.fbranch = {
+      id: 'fbranch',
+      name: 'Rama',
+      kind: 'branch',
+      hint: '',
+      options: [],
+      guard: { push: ['sanimate'], repo: 'fdesc' },
+    };
+    before.parts.fbiome = { ...before.parts.fbiome!, initial: 'cwood' };
+    before.list = { as: 'table', group: 'fbiome' };
+    before.drop = { by: 'page', motives: [{ id: 'dup', name: 'Duplicado' }] };
+    before.layout = { ...before.layout, rounds: 'main' };
+    before.split = { board: 'bother', always: true };
+    const after = freshIds(before, sequenceIds());
+    const [concept, animate] = after.steps;
+    const named = (name: string) => Object.values(after.parts).find((part) => part.name === name);
+    expect(animate?.ways).toEqual([concept?.id]);
+    expect(named('Rama')?.guard).toEqual({ push: [animate?.id], repo: named('Descripción')?.id });
+    const bioma = named('Bioma');
+    expect(bioma?.initial).toBe(bioma?.options.find((c) => c.name === 'Bosque')?.id);
+    expect(after.list).toEqual({ as: 'table', group: bioma?.id });
+    expect(after.drop.motives[0]?.id).not.toBe('dup');
+    expect(after.drop.motives[0]?.id).toMatch(/^[a-z][a-z0-9_]*$/);
+    expect(after.layout.rounds).toBe('main');
+    expect(after.split).toEqual({ board: 'bother', always: true });
   });
 });

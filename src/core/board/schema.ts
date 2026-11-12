@@ -6,8 +6,10 @@ import {
   DROPPED,
   EVIDENCE_KINDS,
   FIELD_KINDS,
+  PLACES,
   SAME,
   TITLE,
+  WAITS,
   ZONES,
 } from './model.ts';
 
@@ -18,6 +20,9 @@ import {
 const ID = /^[a-z][a-z0-9_-]*$/;
 
 const id = z.string().regex(ID, 'is not an id');
+
+// A motive names a closed state of its own (dropped__<id>), whose name takes no dash.
+const STATE_KEY = /^[a-z][a-z0-9_]*$/;
 
 const agent = z.strictObject({ agent: z.string().min(1) });
 
@@ -30,6 +35,8 @@ const part = z.strictObject({
   hint: z.string(),
   options: z.array(choice),
   show: z.string().optional(),
+  initial: z.string().optional(),
+  guard: z.strictObject({ push: z.array(id), repo: id.optional() }).optional(),
 });
 
 const hand = z.strictObject({
@@ -52,10 +59,20 @@ const step = z.strictObject({
   ways: z.array(id),
   back: id,
   instructions: z.strictObject({ take: z.string(), before: z.string(), review: z.string() }),
+  note: z
+    .strictObject({
+      req: z.enum(['no', 'always'], { error: 'must be "no" or "always"' }),
+      hint: z.string(),
+    })
+    .default({ req: 'no', hint: '' }),
+  waits: z.array(z.enum(WAITS, { error: 'waits for "parts" or "blockers"' })).default([]),
+  skipWhenReady: z.boolean().default(false),
+  doerMayDrop: z.boolean().default(false),
 });
 
 export const definitionSchema = z.strictObject({
-  schema: z.literal(BOARD_SCHEMA),
+  // A version 1 definition reads as version 2, every later setting at its default.
+  schema: z.union([z.literal(1), z.literal(BOARD_SCHEMA)]).transform(() => BOARD_SCHEMA),
   name: z.string(),
   item: z.string(),
   icon: z.string(),
@@ -71,6 +88,21 @@ export const definitionSchema = z.strictObject({
   cap: z.strictObject({ on: z.boolean(), n: z.number() }),
   samples: z.array(z.string()),
   template: z.string().optional(),
+  split: z.strictObject({ board: id, always: z.boolean() }).optional(),
+  drop: z
+    .strictObject({
+      by: z.enum(['page', 'anyone'], { error: 'must be "page" or "anyone"' }),
+      motives: z.array(
+        z.strictObject({
+          id: z.string().regex(STATE_KEY, 'is not a motive id (lowercase, digits, underscores)'),
+          name: z.string(),
+        }),
+      ),
+    })
+    .default({ by: 'anyone', motives: [] }),
+  list: z
+    .strictObject({ as: z.enum(['list', 'table']), group: id.optional() })
+    .default({ as: 'list' }),
 });
 
 export type DefinitionReading =
@@ -99,7 +131,7 @@ export function parseDefinition(raw: unknown): DefinitionReading {
 
 // Ids the engine gives a meaning of its own: where a way or a send-back leads, the title, and the
 // suffixes of a step's review states.
-const RESERVED = new Set([DONE, DROPPED, SAME, TITLE]);
+const RESERVED = new Set([DONE, DROPPED, SAME, TITLE, ...PLACES]);
 const REVIEW_SUFFIX = /__(review|yours)$/;
 
 // Ids a step or a part cannot take, though they have the shape of one: a reserved word, a state
@@ -118,9 +150,17 @@ function idClashes(definition: BoardDefinition): string[] {
       problems.push(`${at}: a field or evidence already has the id ${id}`);
     seen.add(id);
   });
-  for (const id of Object.keys(definition.parts)) {
+  for (const [id, part] of Object.entries(definition.parts)) {
     if (RESERVED.has(id)) problems.push(`parts.${id}: ${id} is a word the board keeps for itself`);
+    if (part.guard && part.kind !== 'branch')
+      problems.push(`parts.${id}.guard: only a branch field is protected`);
   }
+  const motives = new Set<string>();
+  definition.drop.motives.forEach(({ id }, index) => {
+    if (motives.has(id))
+      problems.push(`drop.motives.${index}.id: another motive already has the id ${id}`);
+    motives.add(id);
+  });
   return problems;
 }
 

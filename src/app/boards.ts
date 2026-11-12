@@ -357,7 +357,9 @@ export function publishPlan(ctx: Context, id: string): PublishPlan {
     from: record.live?.version ?? null,
     to: maxVersion(ctx.db, id) + 1,
     changes: changePlan(live, draft),
-    effects: live ? itemEffects(live, draft, items) : { moves: [], needs: [], reopened: [] },
+    effects: live
+      ? itemEffects(live, draft, items)
+      : { moves: [], needs: [], reopened: [], waiting: [], frozen: [] },
     problems: boardProblems(ctx, id, draft),
   };
 }

@@ -71,7 +71,22 @@ export type Part = {
   hint: string;
   options: Choice[];
   show?: string;
+  // "Empieza en…": the value a new item starts with, on choice (a choice id), level (a LEVELS key)
+  // and yes-or-no ('yes' | 'no') fields.
+  initial?: string;
+  // "Otea protege esta rama", on a branch field only: pushes are allowed only while one of `push`
+  // (step ids) is being done, never during its review, and merging only at Hecho. `repo` is the
+  // field (part id) the repository's name is read from.
+  guard?: Guard;
 };
+
+export type Guard = { push: string[]; repo?: string };
+
+// How a long text shows on the item page: as text, or as options side by side (### A · Name).
+export const LONG_SHOWS = ['text', 'options'] as const;
+
+// The kinds a "Empieza en…" reads.
+export const INITIAL_KINDS: readonly FieldKind[] = ['choice', 'level', 'yesno'];
 
 // The title is the one field every item has. It is not stored in `parts`: its ref is TITLE and its
 // name is the board's `title`.
@@ -100,8 +115,21 @@ export type Target = string;
 // agent reviews it.
 export type StepInstructions = { take: string; before: string; review: string };
 
-// `ways` are the alternatives to the default way (the next step, or DONE after the last one).
-// `back` is where a send-back lands: SAME (this step) or an earlier step's id.
+// What an Entrega waits for besides its parts: `parts`, that none of the item's parts (the items it
+// divides into) is still open; `blockers`, that nothing open blocks it, on any board.
+export const WAITS = ['parts', 'blockers'] as const;
+export type Wait = (typeof WAITS)[number];
+
+// "Nota de la entrega": a note the doer writes with each handoff, kept with the round. `hint` is
+// "Qué va aquí".
+export type Note = { req: 'no' | 'always'; hint: string };
+
+// `ways` are the alternatives to the default way (the next step, or DONE after the last one), and
+// the earlier steps the doer may take the item back to ("o regresarlo a…", always with a reason,
+// with no review, starting that step's next round). `back` is where a send-back lands: SAME (this
+// step) or an earlier step's id.
+// `skipWhenReady` (first step only, nobody reviews it): an item created with everything its Entrega
+// asks for starts at the next step. `doerMayDrop`: an agent doing it may drop the item, saying why.
 export const SAME = 'same';
 export type Step = {
   id: string;
@@ -112,7 +140,16 @@ export type Step = {
   ways: Target[];
   back: string;
   instructions: StepInstructions;
+  note: Note;
+  waits: Wait[];
+  skipWhenReady: boolean;
+  doerMayDrop: boolean;
 };
+
+// A step's settings that every new step starts with.
+export function stepDefaults(): Pick<Step, 'note' | 'waits' | 'skipWhenReady' | 'doerMayDrop'> {
+  return { note: { req: 'no', hint: '' }, waits: [], skipWhenReady: false, doerMayDrop: false };
+}
 
 // Where a part shows on the item page (Acomodar). The list row is `row`, an ordered list of refs.
 export const ZONES = ['top', 'main', 'side', 'hidden'] as const;
@@ -121,7 +158,26 @@ export type Zone = (typeof ZONES)[number];
 // The cap on the agents' own items: they add items only while fewer than `n` wait for you.
 export type Cap = { on: boolean; n: number };
 
-export const BOARD_SCHEMA = 1;
+// "Se divide en": the board each item's parts are on (a board's hidden id, or SAME for this board),
+// and whether a part is always part of one (`always`: it is never created alone).
+export type Split = { board: string; always: boolean };
+
+// Who may discard ("Descartar lo haces tú, desde la página o pidiéndoselo a un agente / solo desde
+// la página") and the motives a discard names (each one its own closed state).
+export type Drop = { by: 'page' | 'anyone'; motives: Choice[] };
+
+// How the published list shows its items, and what it groups them by: a part id (a choice, level
+// or yes-or-no field), STEP or MOTIVE.
+export type ListView = { as: 'list' | 'table'; group?: string };
+export const STEP = 'step';
+export const MOTIVE = 'motive';
+
+// Two places Acomodar lays out besides the parts: the rounds of the review, and the item's parts.
+export const ROUNDS = 'rounds';
+export const PARTS = 'parts';
+export const PLACES: readonly string[] = [ROUNDS, PARTS];
+
+export const BOARD_SCHEMA = 2;
 
 export type BoardDefinition = {
   schema: typeof BOARD_SCHEMA;
@@ -147,7 +203,15 @@ export type BoardDefinition = {
   samples: string[];
   // The template it was copied from, for the record only: nothing stays linked to it.
   template?: string;
+  split?: Split;
+  drop: Drop;
+  list: ListView;
 };
+
+// A board's settings that every new board starts with.
+export function boardDefaults(): Pick<BoardDefinition, 'drop' | 'list'> {
+  return { drop: { by: 'anyone', motives: [] }, list: { as: 'list' } };
+}
 
 // A selection in the editor: what a problem, a change or a "¿por qué está aquí?" points at.
 export type Selection =
@@ -183,6 +247,18 @@ export function partOf(def: BoardDefinition, ref: string): Part | undefined {
 
 export function isEvidence(part: Part): boolean {
   return isEvidenceKind(part.kind);
+}
+
+// The motive of a discard, by id.
+export function motiveById(def: BoardDefinition, id: string): Choice | undefined {
+  return def.drop.motives.find((motive) => motive.id === id);
+}
+
+// The protected branch field, with its guard, when the board has one.
+export function guardedBranch(def: BoardDefinition): (Part & { guard: Guard }) | undefined {
+  return Object.values(def.parts).find(
+    (part): part is Part & { guard: Guard } => part.kind === 'branch' && part.guard !== undefined,
+  );
 }
 
 // The default way out of a step: the next step, or DONE after the last.

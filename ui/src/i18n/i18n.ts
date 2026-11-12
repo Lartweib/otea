@@ -83,6 +83,11 @@ export function listOf(values: readonly string[]): string {
   return new Intl.ListFormat(current, { type: 'conjunction' }).format(values);
 }
 
+// "Rechazado, Duplicado o No se arreglará": a list where one of them is meant.
+export function listOr(values: readonly string[]): string {
+  return new Intl.ListFormat(current, { type: 'disjunction' }).format(values);
+}
+
 export function isLanguage(value: unknown): value is Language {
   return LANGUAGES.includes(value as Language);
 }

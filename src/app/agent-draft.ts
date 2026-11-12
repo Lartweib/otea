@@ -138,6 +138,7 @@ export function problemWords(problem: Problem): string {
     return typeof value === 'string' ? ` "${value}"` : '';
   };
   const [step, name, agent] = [quoted('step'), quoted('name'), quoted('agent')];
+  const [part, board, other] = [quoted('part'), quoted('board'), quoted('other')];
   const words: Record<Problem['code'], string> = {
     board_unnamed: 'the board has no name',
     board_name_taken: `another board is called${name}`,
@@ -148,12 +149,19 @@ export function problemWords(problem: Problem): string {
     part_missing: 'a step or the form names a part the board does not have',
     reserved_name: `${name.trim() || 'a name'} is a word Otea uses for itself`,
     when_unreadable: 'a "required only when" reads a part that is not a choice',
-    way_invalid: `a way out of step${step} goes back instead of forward`,
+    way_invalid: `a way out of step${step} leads to itself or to a step the board does not have`,
     back_invalid: `step${step} sends work back to a later step`,
     cap_invalid: 'the cap on new items is not a whole number above zero',
     agent_offline: `agent${agent} has never connected`,
     self_review: `step${step} has the same agent doing and reviewing it`,
     agent_closes: `step${step} would let an agent close the item: only the person says Done`,
+    wait_no_split: `step${step} waits for its parts, but${board} divides into nothing`,
+    skip_invalid: `step${step} starts new items past it, which only a first step nobody reviews may do`,
+    split_cycle: `${board.trim() || 'the board'} and${other} divide into each other`,
+    split_unknown: `${board.trim() || 'the board'} divides into a board that does not exist`,
+    guard_no_push: `the branch${part} is protected but no step lets it be pushed`,
+    initial_invalid: `the field${part} starts with a value it does not have`,
+    motive_agent_drop: `an agent that drops in step${step} must name a motive`,
   };
   return `${problem.level}: ${words[problem.code]}`;
 }

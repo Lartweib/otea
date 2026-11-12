@@ -1,17 +1,24 @@
 import { OteaError } from '../errors.ts';
 import type { LayoutEntry } from '../modules.ts';
 import { type Preset, readPreset } from '../preset.ts';
-import { backTarget, stateOf, waysOf } from './engine.ts';
+import { backTarget, backWaysOf, stateOf, waysOf } from './engine.ts';
 import {
   type BoardDefinition,
   DONE,
   DROPPED,
   type EvidenceKind,
+  guardedBranch,
+  INITIAL_KINDS,
   isAgent,
   isEvidenceKind,
+  MOTIVE,
+  PARTS,
   type Part,
   partOf,
+  ROUNDS,
+  STEP,
   type Step,
+  stepById,
   TITLE,
   usedRefs,
   type Zone,
@@ -74,7 +81,13 @@ const WORDS: Readonly<Record<Lang, Record<string, string>>> = {
   },
 };
 
-type RawField = { module: string; required?: 'create'; values?: string[]; label: string };
+type RawField = {
+  module: string;
+  required?: 'create';
+  values?: string[];
+  default?: string;
+  label: string;
+};
 
 function fieldOf(part: Part, required: boolean): RawField {
   let module = FIELD_MODULE[part.kind] ?? 'text';
@@ -89,6 +102,11 @@ function fieldOf(part: Part, required: boolean): RawField {
     module,
     ...(required ? { required: 'create' as const } : {}),
     ...(module === 'enum' && values ? { values } : {}),
+    ...(part.initial !== undefined &&
+    INITIAL_KINDS.includes(part.kind as never) &&
+    module !== 'text'
+      ? { default: part.initial }
+      : {}),
     label: part.name,
   };
 }
@@ -160,15 +178,19 @@ function transitionsOf(def: BoardDefinition): RawTransition[] {
     const doer = step.doer === 'you' ? 'human' : 'agent';
     const ways = waysOf(def, step.id).map(target);
     const back = stateOf({ step: backTarget(def, step.id), phase: 'doing' });
+    // A handoff that carries the round's note says it as the move's reason.
+    const note = step.note.req === 'always' ? { reason: 'required' as const } : {};
+    for (const earlier of backWaysOf(def, step.id))
+      out.push({ from: doing, to: target(earlier), by: doer, reason: 'required' });
     if (step.reviewer === 'none') {
-      for (const to of ways) out.push({ from: doing, to, by: doer });
+      for (const to of ways) out.push({ from: doing, to, by: doer, ...note });
       continue;
     }
     const review = stateOf({ step: step.id, phase: 'review' });
     const reviewer = step.reviewer === 'you' ? 'human' : 'agent';
-    out.push({ from: doing, to: review, by: doer });
+    out.push({ from: doing, to: review, by: doer, ...note });
     const yours = stateOf({ step: step.id, phase: 'yours' });
-    if (isAgent(step.reviewer)) out.push({ from: doing, to: yours, by: 'agent' });
+    if (isAgent(step.reviewer)) out.push({ from: doing, to: yours, by: 'agent', ...note });
     for (const to of ways) out.push({ from: review, to, by: reviewer });
     out.push({ from: review, to: back, by: reviewer, reason: 'required' });
     if (isAgent(step.reviewer)) {
@@ -177,6 +199,22 @@ function transitionsOf(def: BoardDefinition): RawTransition[] {
     }
   }
   return out.map(closingByYou);
+}
+
+// The published list: a list or a table (grid) whose columns are the list row, grouped by a field,
+// or by the step (state) when it groups by Paso or Motivo.
+function viewOf(def: BoardDefinition, row: readonly LayoutEntry[]) {
+  const group = def.list.group;
+  const byState = group === STEP || group === MOTIVE;
+  const groupBy = group === undefined ? undefined : byState ? 'state' : group;
+  const fields = row.flatMap(({ field }) => (field && field !== groupBy ? [field] : []));
+  return {
+    kind: def.list.as === 'table' ? 'grid' : 'list',
+    ...(groupBy ? { group_by: groupBy } : {}),
+    ...(def.list.as === 'table'
+      ? { columns: ['id', 'title', ...fields, 'state', 'who', 'age'] }
+      : {}),
+  };
 }
 
 function zoneOf(def: BoardDefinition, part: Part): Zone {
@@ -210,17 +248,50 @@ export function compileBoard(id: string, version: number, def: BoardDefinition):
   const states: Record<string, { turn: string; closes?: string }> = {};
   for (const phase of phases) states[phase.state] = { turn: phase.turn };
   states[DONE] = { turn: 'none', closes: 'done' };
-  states[DROPPED] = { turn: 'none', closes: 'discarded' };
+  // Plain Descartado stays besides the motives: it holds what was discarded before them.
+  const drops = [
+    DROPPED,
+    ...def.drop.motives.map(({ id: motive }) => stateOf({ closed: DROPPED, motive })),
+  ];
+  for (const state of drops) states[state] = { turn: 'none', closes: 'discarded' };
+  const dropper = def.drop.by === 'page' ? ('human-ui' as const) : ('human' as const);
+  const agentDrops = def.steps.flatMap((step) =>
+    step.doerMayDrop && step.doer !== 'you'
+      ? drops.map((to) => ({
+          from: stateOf({ step: step.id, phase: 'doing' }),
+          to,
+          by: 'agent' as const,
+          reason: 'required' as const,
+        }))
+      : [],
+  );
   const transitions: RawTransition[] = [
     ...transitionsOf(def),
-    ...phases.map(({ state }) => ({
-      from: state,
-      to: DROPPED,
-      by: 'human' as const,
-      reason: 'required' as const,
-    })),
+    ...phases.flatMap(({ state }) =>
+      drops.map((to) => ({ from: state, to, by: dropper, reason: 'required' as const })),
+    ),
+    ...agentDrops,
   ];
+  const branch = guardedBranch(def);
+  const pushes = (branch?.guard.push ?? [])
+    .filter((stepId) => stepById(def, stepId))
+    .map((stepId) => stateOf({ step: stepId, phase: 'doing' }));
+  const gates = branch
+    ? { ...(pushes.length > 0 ? { push: pushes } : {}), merge: [DONE] }
+    : undefined;
 
+  // The rounds and the parts take a place only where Acomodar put them (the parts only on a board
+  // that divides), first in their column: on top they read in the main column, hidden nowhere.
+  const places: Record<string, LayoutEntry> = {
+    [ROUNDS]: { module: 'rounds' },
+    ...(def.split ? { [PARTS]: { module: 'children' } } : {}),
+  };
+  const placed = (wanted: Zone) =>
+    Object.entries(def.layout).flatMap(([ref, at]) => {
+      const entry = places[ref];
+      const column = at === 'top' ? 'main' : at;
+      return entry && column === wanted ? [entry] : [];
+    });
   const zone = (wanted: Zone) =>
     ordered.filter((part) => zoneOf(def, part) === wanted).flatMap((part) => entryOf(part) ?? []);
   const fieldEntries = (entries: LayoutEntry[]) => entries.filter((entry) => entry.field);
@@ -229,8 +300,8 @@ export function compileBoard(id: string, version: number, def: BoardDefinition):
   const layout = {
     header: fieldEntries(top),
     evidence: [],
-    body: [...evidenceEntries(top), ...zone('main')],
-    side: [...zone('side'), { module: 'relations' }],
+    body: [...placed('main'), ...evidenceEntries(top), ...zone('main')],
+    side: [...placed('side'), ...zone('side'), { module: 'relations' }],
     // A column of a part nothing uses any more has no field to read.
     row: def.row.flatMap((ref) => {
       if (!used.has(ref)) return [];
@@ -261,6 +332,13 @@ export function compileBoard(id: string, version: number, def: BoardDefinition):
           ...Object.fromEntries(phases.map((phase) => [phase.state, phase.label(lang)])),
           [DONE]: WORDS[lang].done,
           [DROPPED]: WORDS[lang].dropped,
+          // A discard with a motive reads as its motive (Duplicado).
+          ...Object.fromEntries(
+            def.drop.motives.map(({ id: motive, name }) => [
+              stateOf({ closed: DROPPED, motive }),
+              name,
+            ]),
+          ),
         },
         fields: Object.fromEntries(
           Object.entries(fields).map(([key, field]) => [key, field.label]),
@@ -284,8 +362,14 @@ export function compileBoard(id: string, version: number, def: BoardDefinition):
     preset_version: version,
     icon: def.icon,
     fields,
-    workflow: { initial: stateOf({ step: first.id, phase: 'doing' }), states, transitions },
+    workflow: {
+      initial: stateOf({ step: first.id, phase: 'doing' }),
+      states,
+      transitions,
+      ...(gates ? { gates } : {}),
+    },
     types: { [BOARD_TYPE]: { label: def.item, icon: def.icon, layout } },
+    view: viewOf(def, layout.row),
     labels,
   };
   const reading = readPreset(JSON.stringify(raw));
