@@ -13,6 +13,7 @@ import {
   restoreBoard,
   saveDraft,
 } from '../api.ts';
+import type { PairWorkspace } from '../pair.ts';
 import type { ReadyDraft } from '../use-board-draft.ts';
 import { changeText, problemText } from '../words.ts';
 import { failedText, plainToast } from './toasts.tsx';
@@ -384,6 +385,8 @@ export function DiscardDialog({ draft, open, onClose, onDiscarded }: DiscardDial
 // Probar: a practice item through a throwaway copy of the draft; nothing is kept.
 export type PracticeDialogProps = {
   draft: ReadyDraft;
+  // A joined pair (pair.ts): the practice walks the parent's item and parts on the child board.
+  pair?: PairWorkspace;
   open: boolean;
   onClose: () => void;
 };
