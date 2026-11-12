@@ -1,3 +1,4 @@
+import { positionOf } from '../../../src/core/board/engine.ts';
 import { activeLease } from '../active-lease.ts';
 import type { FeedEvent } from '../activity.ts';
 import type { Item, TypeView } from '../types.ts';
@@ -25,6 +26,9 @@ export type TocaContext = {
   now: number;
   feed: readonly FeedEvent[];
   types: (item: Item) => TypeView | undefined;
+  // Whether the item is on a published board: there a step on your turn that is being done (not
+  // reviewed) is your own step, whoever handed it to you.
+  onBoard?: (item: Item) => boolean;
 };
 
 // Closed work stays in Cerrados for a week.
@@ -81,6 +85,10 @@ export function tocaSection(item: Item, ctx: TocaContext): TocaSection | null {
   }
   if (item.turn === 'agent') return isStuck(item, ctx.now) ? 'atasco' : 'encamino';
   if (handedNote(item, ctx.feed)?.reason.trim().endsWith('?')) return 'preguntas';
+  if (ctx.onBoard?.(item)) {
+    const at = positionOf(item.state);
+    return 'phase' in at && at.phase === 'doing' ? 'propios' : 'revisiones';
+  }
   const type = ctx.types(item);
   if (item.createdBy.kind === 'human' && type && item.state === type.initial) return 'propios';
   return 'revisiones';

@@ -7,7 +7,10 @@ import {
   backOf,
   boardItemOf,
   branchStrip,
+  handRefusal,
+  handRows,
   linksOf,
+  ownStepOf,
   partsCount,
   roundNotes,
   sheetLook,
@@ -400,5 +403,30 @@ describe('backOf: where a way back lands, in the rounds of the engine', () => {
     ]);
     expect(backOf(errores(), twice, 'striage')).toEqual({ agent: null, round: 3 });
     expect(backOf(errores(), twice, 'sfix')).toEqual({ agent: 'mender', round: 3 });
+  });
+});
+
+describe('the person’s own step', () => {
+  it('is a step you do while it is being done, not a review or an agent’s step', () => {
+    const def = tareasDeRepo();
+    expect(ownStepOf(def, { state: 'sprop', turn: 'human' })?.name).toBe('Propuesta');
+    expect(ownStepOf(def, { state: 'simpl', turn: 'agent' })).toBeUndefined();
+    expect(ownStepOf(def, { state: 'simpl__review', turn: 'human' })).toBeUndefined();
+    expect(ownStepOf(def, { state: 'done', turn: 'none' })).toBeUndefined();
+  });
+
+  it('lists what it hands, fillable when a field, and refuses Entregar in the page’s words', () => {
+    setLanguage('es');
+    const def = tareasDeRepo();
+    const step = ownStepOf(def, { state: 'sprop', turn: 'human' });
+    if (!step) throw new Error('no own step');
+    const missing = [{ ref: 'fwhat', name: 'Qué propone', reason: 'missing' }];
+    expect(handRows(def, step, missing)).toEqual([
+      expect.objectContaining({ ref: 'fwhat', name: 'Qué propone', ok: false, required: true }),
+    ]);
+    expect(handRows(def, step, missing)[0]?.part?.kind).toBe('long');
+    expect(handRefusal('TAR2-1', missing)).toBe('No se entregó TAR2-1: falta Qué propone.');
+    expect(handRefusal('TAR2-1', [])).toBeNull();
+    expect(handRows(def, step, [])[0]?.ok).toBe(true);
   });
 });

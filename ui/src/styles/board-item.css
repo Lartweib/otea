@@ -361,3 +361,66 @@ button.pmain:hover {
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
   gap: 8px;
 }
+
+/* your own step: what it hands, filled in place (the mock's itemChecklist, "Rellenar") */
+.bi-hand .hc .lnk {
+  font: inherit;
+  font-size: 12.5px;
+  color: var(--you);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in oklab, var(--you) 40%, transparent);
+  text-underline-offset: 3px;
+  margin-left: 4px;
+  transition: text-decoration-color 240ms var(--o-drift);
+}
+.bi-hand .hc .lnk:hover {
+  text-decoration-color: var(--you);
+}
+.bi-fill {
+  margin: 6px 0 10px 27px;
+  animation: bi-fill-in 420ms var(--o-settle) both;
+}
+.bi-fill textarea,
+.bi-fill input,
+.bi-fill select {
+  display: block;
+  width: 100%;
+  padding: 9px 12px;
+  border-radius: 7px;
+  border: 1px solid var(--rule-2);
+  background: var(--sheet);
+  font: 400 16px / 1.45 var(--serif);
+  color: var(--ink);
+  transition: border-color 240ms var(--o-drift);
+}
+.bi-fill textarea {
+  min-height: 72px;
+  resize: vertical;
+}
+.bi-fill textarea::placeholder,
+.bi-fill input::placeholder {
+  font-style: italic;
+  color: var(--ink-3);
+}
+.bi-fill textarea:focus,
+.bi-fill input:focus,
+.bi-fill select:focus {
+  outline: none;
+  border-color: var(--you);
+}
+.bi-fill .actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+}
+@keyframes bi-fill-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bi-fill {
+    animation: none;
+  }
+}

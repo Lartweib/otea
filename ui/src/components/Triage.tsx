@@ -9,6 +9,7 @@ import {
 import { waitsOf } from '../actions.ts';
 import { evidenceFileUrl, fetchItem } from '../api.ts';
 import { typeOfItem, useApp } from '../app/context.tsx';
+import { onPublishedBoard } from '../board-studio/home/boards-store.ts';
 import { t, tx } from '../i18n/i18n.ts';
 import { useEscape } from '../kit/escape.ts';
 import { Button, Count, StepPill } from '../kit/index.ts';
@@ -435,6 +436,7 @@ export function Triage() {
     now: app.now,
     feed: app.feed,
     types: (it: Item) => typeOfItem(it, app.collectionOf),
+    onBoard: (it: Item) => onPublishedBoard(it.collection),
   };
   const loading = app.items.status === 'loading';
   const waiting = loading ? [] : triageQueue(app.all, ctx);

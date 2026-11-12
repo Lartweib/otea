@@ -42,6 +42,16 @@ describe('the section of Te toca an item is in', () => {
     expect(tocaSection(filed, ctx())).toBe('revisiones');
   });
 
+  it('on a board, files a step you do yourself in Tus propios pasos, whoever handed it to you', () => {
+    const feed = [moved('A', 'striage', agent('kiln'), { reason: 'Completo.' })];
+    const board = { ...ctx(feed), onBoard: () => true };
+    expect(tocaSection(item({ id: 'A', state: 'striage', createdBy: agent('kiln') }), board)).toBe(
+      'propios',
+    );
+    expect(tocaSection(item({ id: 'B', state: 'sfix__review' }), board)).toBe('revisiones');
+    expect(tocaSection(item({ id: 'C', state: 'sfix__yours' }), board)).toBe('revisiones');
+  });
+
   it('puts every other item on your turn in Revisiones, and every other agent item En camino', () => {
     const feed = [moved('A', 'verify', agent('mender'), { reason: 'Hecho, con la prueba.' })];
     expect(tocaSection(item({ id: 'A', state: 'verify' }), ctx(feed))).toBe('revisiones');

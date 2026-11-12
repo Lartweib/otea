@@ -370,6 +370,21 @@ export const detail = {
     one: 'Not approved {id}: {list} is still unfinished.',
     other: 'Not approved {id}: {list} are still unfinished.',
   },
+  'bi.move.deliver': 'Hand off',
+  'bi.refuse.missing': {
+    one: 'Not handed off {id}: {list} is missing.',
+    other: 'Not handed off {id}: {list} are missing.',
+  },
+  'bi.hand.note': 'Handoff note',
+  'bi.hand.missing': 'missing',
+  'bi.hand.optional': 'optional',
+  'bi.hand.ready': 'ready',
+  'bi.hand.fill': 'Fill in',
+  'bi.hand.save': 'Save',
+  'bi.hand.cancel': 'Cancel',
+  'bi.hand.saved': 'You saved {part} of “{title}”.',
+  'bi.hand.failed': '{part} was not saved. Try again.',
+  'sheet.refused': 'Otea did not move it. See what is missing and try again.',
   'bi.refuse.blockers':
     'Not approved {id}: {other} ({board}, {step}) holds it back and is still unfinished.',
   'bi.refuse.blockersEnded':

@@ -17,6 +17,7 @@ import { NodeGlyph } from '../../lanes/NodeGlyph.tsx';
 import type { Item, ItemView, RelatedItem } from '../../types.ts';
 import {
   type BranchStrip,
+  type HandRow,
   type ItemLinks,
   type LinkedView,
   partsCount,
@@ -38,6 +39,140 @@ const lookOfLinked = (x: LinkedView, now: number) =>
     } as unknown as Item,
     now,
   );
+
+// The handoff checklist of your own step (the mock's itemChecklist): the note, then each part the
+// step hands, with Rellenar on a field still missing; it opens in place and saves as you.
+export function HandChecklist({
+  item,
+  rows,
+  canWrite,
+}: {
+  item: Pick<ItemView, 'id' | 'title' | 'fields'>;
+  rows: readonly HandRow[];
+  canWrite: boolean;
+}) {
+  const app = useApp();
+  const [open, setOpen] = useState<string | null>(null);
+  const [value, setValue] = useState('');
+  const [failed, setFailed] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  if (!rows.length) return null;
+  const fill = (row: HandRow) => {
+    setOpen(open === row.ref ? null : row.ref);
+    setValue(item.fields[row.ref] ?? '');
+    setFailed(null);
+  };
+  const save = (row: HandRow) => {
+    if (!value.trim() || saving) return;
+    setSaving(true);
+    app
+      .update(item.id, { [row.ref]: value })
+      .then(
+        () => {
+          setOpen(null);
+          toast({ msg: t('bi.hand.saved', { part: row.name, title: item.title }), id: item.id });
+        },
+        () => setFailed(t('bi.hand.failed', { part: row.name })),
+      )
+      .finally(() => setSaving(false));
+  };
+  return (
+    <div className="bi-check bi-hand" data-c>
+      {rows.map((row) => {
+        const editing = open === row.ref && !!row.part;
+        const options = row.part?.options ?? [];
+        return (
+          <div key={row.ref} className="bi-hrow">
+            <div className={['hc', row.ok ? 'ok' : 'miss', row.required ? 'req' : ''].join(' ')}>
+              <span className="bx">{row.ok ? <Icon name="check" /> : null}</span>
+              <span className="hn">
+                {row.name}
+                {!row.ok && row.part && canWrite ? (
+                  <>
+                    {' '}
+                    <button
+                      type="button"
+                      className="lnk"
+                      aria-expanded={editing}
+                      onClick={() => fill(row)}
+                    >
+                      {t('bi.hand.fill')}
+                    </button>
+                  </>
+                ) : null}
+              </span>
+              <small>
+                {row.ok
+                  ? t('bi.hand.ready')
+                  : row.required
+                    ? t('bi.hand.missing')
+                    : t('bi.hand.optional')}
+              </small>
+            </div>
+            {editing && row.part ? (
+              <form
+                className="bi-fill"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  save(row);
+                }}
+              >
+                {options.length > 0 ? (
+                  <select
+                    aria-label={row.name}
+                    value={value}
+                    onChange={(e) => setValue(e.target.value)}
+                  >
+                    <option value="" disabled>
+                      {row.name}
+                    </option>
+                    {options.map((o) => (
+                      <option key={o.id} value={o.id}>
+                        {o.name}
+                      </option>
+                    ))}
+                  </select>
+                ) : row.part.kind === 'long' ? (
+                  <textarea
+                    aria-label={row.name}
+                    rows={3}
+                    value={value}
+                    placeholder={row.part.hint || row.name}
+                    onChange={(e) => setValue(e.target.value)}
+                    // biome-ignore lint/a11y/noAutofocus: opened by its own button, to type at once
+                    autoFocus
+                  />
+                ) : (
+                  <input
+                    aria-label={row.name}
+                    value={value}
+                    placeholder={row.part.hint || row.name}
+                    onChange={(e) => setValue(e.target.value)}
+                    // biome-ignore lint/a11y/noAutofocus: opened by its own button, to type at once
+                    autoFocus
+                  />
+                )}
+                <div className="actions">
+                  <Button variant="primary" type="submit" disabled={!value.trim() || saving}>
+                    {t('bi.hand.save')}
+                  </Button>
+                  <Button variant="quiet" type="button" onClick={() => setOpen(null)}>
+                    {t('bi.hand.cancel')}
+                  </Button>
+                </div>
+                {failed ? (
+                  <p className="said warn" role="alert">
+                    {failed}
+                  </p>
+                ) : null}
+              </form>
+            ) : null}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 // "Que terminen Tareas de repo · 2 de 3 sin terminar", "Que nada lo frene · 1 lo frena / listo".
 export function WaitChecklist({

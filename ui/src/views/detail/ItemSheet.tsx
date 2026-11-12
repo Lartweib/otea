@@ -6,7 +6,7 @@ import { typeOfItem, useApp } from '../../app/context.tsx';
 import { boardOfCollection, boardsOf, useBoards } from '../../board-studio/home/boards-store.ts';
 import { t, tx } from '../../i18n/i18n.ts';
 import { TypeIcon } from '../../icons/TypeIcon.tsx';
-import { GhostButton, Icon, StepPill, Swap } from '../../kit/index.ts';
+import { GhostButton, Icon, StepPill, Swap, toast } from '../../kit/index.ts';
 import { laneOf } from '../../lanes/geometry.ts';
 import { lookOf } from '../../lanes/looks.ts';
 import { NodeGlyph } from '../../lanes/NodeGlyph.tsx';
@@ -19,6 +19,7 @@ import {
   BranchLine,
   type DropChoice,
   DropDialog,
+  HandChecklist,
   LinksSection,
   PartOfLine,
   PartsSection,
@@ -31,8 +32,11 @@ import {
   backOf,
   boardItemOf,
   branchStrip,
+  handRefusal,
+  handRows,
   type ItemBoardBlock,
   linksOf,
+  ownStepOf,
   roundNotes,
   sheetLook,
   waitRows,
@@ -103,14 +107,17 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
         : null,
     [live, item, now],
   );
+  // Your own step (Propuesta, Triar): yours to fill and hand off, not a review.
+  const ownStep = live ? ownStepOf(live, item) : undefined;
   const facts = useMemo(() => {
     const read = factsOf(item, type, now);
     if (!onBoard) return read;
     const round = onBoard.round > 0 ? onBoard.round : read.round;
+    if (ownStep) return { ...read, round, own: true, question: false };
     if (item.turn !== 'agent') return { ...read, round };
     const holder = item.lease?.holder ?? item.expiredLease?.holder ?? onBoard.agent;
     return { ...read, round, agent: holder, left: false };
-  }, [item, type, now, onBoard]);
+  }, [item, type, now, onBoard, ownStep]);
   const lane = onBoard?.route.lane ?? laneOf(item.turn);
   const planned = planMoves(item.transitions, { own: facts.own, word, waits: waitsOf(item) });
 
@@ -145,9 +152,25 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
       : t('bi.parts.title');
   const roundsStep = live && stepId ? stepById(live, stepId) : undefined;
   const rounds = live && roundsStep ? roundNotes(live, roundsStep.id, item.events, block) : null;
+  const block0 = (item as ItemView & { board?: ItemBoardBlock }).board;
+  const missing = block0?.missing ?? [];
+  // On your own step the primary hands it off ("Entregar"), asking for the note when the step does.
+  const deliver =
+    ownStep && planned.primary
+      ? {
+          ...planned.primary,
+          label: t('bi.move.deliver'),
+          move: {
+            ...planned.primary.move,
+            reasonRequired:
+              planned.primary.move.reasonRequired || missing.some(({ ref }) => ref === 'note'),
+          },
+        }
+      : planned.primary;
   const plan = live
     ? {
         ...planned,
+        primary: deliver,
         quiet: planned.quiet.map((c) => {
           const to = positionOf(c.move.to);
           if (c.kind !== 'sendback' || isClosed(to) || to.step === stepId) return c;
@@ -174,7 +197,13 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
       )
       .catch(() => undefined);
   };
-  const refuse = (c: MoveChoice) => (c.kind === 'approve' ? approvalRefusal(item.id, waits) : null);
+  const refuse = (c: MoveChoice) =>
+    c.kind === 'approve'
+      ? approvalRefusal(item.id, waits)
+      : c.kind === 'own' && ownStep
+        ? handRefusal(item.id, missing)
+        : null;
+  const hand = live && ownStep ? handRows(live, ownStep, missing) : [];
   const mode = actsModeOf({ look, canWrite: app.session.canWrite, question: facts.question, plan });
   const steps = onBoard ? onBoard.route.steps : type ? routeSteps(type) : [];
   const ci = onBoard ? onBoard.route.ci : type ? routeIndex(type, item.state, facts.visited) : 0;
@@ -221,7 +250,9 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
     const c = notes.choice;
     const kind = c.move.closes === 'done' ? 'close' : c.kind;
     setNotes({ ...notes, open: false });
-    void app.move(item.id, c.move.to, text, toastOf(kind, item.title, word(c.move.to)));
+    app
+      .move(item.id, c.move.to, text, toastOf(kind, item.title, word(c.move.to)))
+      .catch(() => toast({ msg: t('sheet.refused'), id: item.id }));
   };
 
   const cells = detailCells({ item, type, facts, own: facts.own && look === 'yours', now });
@@ -371,6 +402,9 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
               dips={onBoard ? onBoard.route.dips : presetDips}
               phone={app.phone}
             />
+          ) : null}
+          {hand.length ? (
+            <HandChecklist item={item} rows={hand} canWrite={app.session.canWrite} />
           ) : null}
           {live ? <WaitChecklist rows={waits} child={partsName} now={now} /> : null}
           <Acts

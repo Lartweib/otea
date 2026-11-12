@@ -3,6 +3,7 @@ import {
   gateAt,
   isClosed,
   type Linked,
+  NOTE_REF,
   positionOf,
   roundsOf,
   stateOf,
@@ -13,6 +14,9 @@ import {
   type BoardDefinition,
   DONE,
   guardedBranch,
+  isEvidence,
+  type Part,
+  type Step,
   stepById,
 } from '../../../../src/core/board/model.ts';
 import {
@@ -98,6 +102,8 @@ export type ItemBoardBlock = {
   notes: { step: string; round: number; note: string; at: string; by: string }[];
   gates: { push: GateAnswer; merge: GateAnswer } | null;
   branch: { value: string; repo?: string } | null;
+  // While its step is being done: what the handoff still lacks (parts by ref, `note`, the waits).
+  missing?: { ref: string; name: string; reason: string }[];
 };
 
 // An item the page lists: where it stands (board and step by name, or closed) and, when the item's
@@ -344,4 +350,66 @@ export function backOf(
   const turn = turnAt(def, { step: target.step, phase: 'doing' });
   const agent = turn.who === 'agent' ? (turn.agent ?? null) : null;
   return { agent, round: (rounds.rounds[target.step] ?? 0) + 1 };
+}
+
+// The step the person does while it is being done (Propuesta, Triar): their own step, whoever
+// handed it to them. Undefined on an agent's step, in a review and once closed.
+export function ownStepOf(
+  def: BoardDefinition,
+  item: { state: string; turn: string },
+): Step | undefined {
+  const position = positionOf(item.state);
+  if (isClosed(position) || position.phase !== 'doing' || item.turn !== 'human') return undefined;
+  const step = stepById(def, position.step);
+  return step?.doer === 'you' ? step : undefined;
+}
+
+// The handoff checklist of the person's own step (the mock's itemChecklist): the note when the step
+// asks for one, then each part it hands, done unless the engine still finds it missing.
+export type HandRow = {
+  ref: string;
+  name: string;
+  ok: boolean;
+  required: boolean;
+  // A field the page can fill in place ("Rellenar"); evidence is attached by an agent.
+  part?: Part;
+};
+
+export function handRows(
+  def: BoardDefinition,
+  step: Step,
+  missing: readonly { ref: string }[],
+): HandRow[] {
+  const lacks = new Set(missing.map(({ ref }) => ref));
+  const rows: HandRow[] = [];
+  if (step.note.req === 'always') {
+    rows.push({ ref: NOTE_REF, name: t('bi.hand.note'), ok: !lacks.has(NOTE_REF), required: true });
+  }
+  for (const hand of step.hand) {
+    const part = def.parts[hand.ref];
+    if (!part) continue;
+    rows.push({
+      ref: hand.ref,
+      name: part.name,
+      ok: !lacks.has(hand.ref),
+      required: hand.req !== 'no',
+      ...(isEvidence(part) ? {} : { part }),
+    });
+  }
+  return rows;
+}
+
+// Entregar on the person's own step, in the page's words, while a part it hands is missing (the
+// note is asked for by the notes form instead).
+export function handRefusal(
+  id: string,
+  missing: readonly { ref: string; name: string; reason: string }[],
+): string | null {
+  const parts = missing.filter(({ ref, reason }) => ref !== NOTE_REF && reason !== 'open');
+  if (!parts.length) return null;
+  return t('bi.refuse.missing', {
+    id,
+    list: listOf(parts.map(({ name }) => name)),
+    count: parts.length,
+  });
 }
