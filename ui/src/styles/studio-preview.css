@@ -2631,8 +2631,12 @@ button.st-offscreen .icon:last-child {
 /* El tablero as a Tabla: a fixed node column; columns drop by the table's own width (F15). */
 .bsp-tbl {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   margin-top: 4px;
   container-type: inline-size;
+}
+.bsp-tbl > * {
+  min-width: 0;
 }
 @container (max-width: 640px) {
   .bsp-tbl .tr .c-more {
