@@ -2205,6 +2205,181 @@ button.st-offscreen .icon:last-child {
   border-color: var(--you);
 }
 
+/* Probar: the note box, the skip at creation, the branch, a discard, a pair's tree of items */
+.bsp-prac .pvtag {
+  font: 400 11px / 1 var(--mono);
+  color: var(--ink-3);
+}
+.bsp-prac .said {
+  white-space: pre-line;
+}
+.bsp-prac input.pnote {
+  display: block;
+  margin-top: 6px;
+  width: 100%;
+  height: 32px;
+  padding: 0 10px;
+  border-radius: 7px;
+  border: 1px solid var(--rule-2);
+  background: var(--sheet);
+  font: 400 13.5px / 1 var(--sans);
+  color: var(--ink);
+}
+.bsp-prac input.pnote:focus {
+  outline: none;
+  border-color: var(--you);
+}
+.bsp-prac .tk:has(input.pnote) {
+  align-items: start;
+}
+.bsp-prac .skipln {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 14px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  box-shadow: inset 0 0 0 1px var(--rule-2);
+}
+.bsp-prac .gitln {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--rule-2);
+}
+.bsp-prac .gitln .chipb {
+  font: 500 12.5px / 1 var(--sans);
+  height: 28px;
+}
+.bsp-prac .gitans {
+  flex-basis: 100%;
+  font: 400 italic 15px / 1.45 var(--serif);
+  color: var(--warn);
+}
+.bsp-prac .gitans.ok {
+  color: var(--ink);
+}
+.bsp-prac .mockline {
+  margin-top: 12px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--rule-2);
+  font: 400 italic 13.5px / 1.4 var(--serif);
+  color: var(--ink-3);
+  max-width: 64ch;
+}
+.bsp-prac .mockline .btn {
+  font-style: normal;
+  color: var(--you-ink);
+  padding: 0 4px;
+  height: 26px;
+}
+.bsp-prac .hpart {
+  margin-left: 10px;
+  vertical-align: middle;
+}
+.bsp-prac .pkids {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--rule);
+}
+.bsp-prac .pkh {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  margin-bottom: 6px;
+}
+.bsp-prac .pkh .gloss {
+  font: 400 italic 13px / 1.2 var(--serif);
+  color: var(--ink-3);
+}
+.bsp-prac .pks {
+  display: grid;
+  gap: 2px;
+}
+.bsp-prac .pk {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.bsp-prac .pk.kid {
+  position: relative;
+  margin-left: 22px;
+}
+.bsp-prac .pk.kid::before {
+  content: "";
+  position: absolute;
+  left: -14px;
+  top: -6px;
+  height: calc(50% + 6px);
+  width: 9px;
+  border-left: 1px solid var(--rule-2);
+  border-bottom: 1px solid var(--rule-2);
+  border-bottom-left-radius: 6px;
+}
+.bsp-prac .pkm {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 16px auto minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 7px 8px;
+  border-radius: 8px;
+  text-align: left;
+  transition: background-color 240ms var(--o-glide);
+}
+.bsp-prac .pkm:hover {
+  background: var(--hov);
+}
+.bsp-prac .pk.on .pkm {
+  background: var(--well);
+}
+.bsp-prac .pkm .pid {
+  font: 400 11.5px / 1 var(--mono);
+  color: var(--ink-3);
+}
+.bsp-prac .pkm .pt2 {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: 430 15px / 1.25 var(--serif);
+}
+.bsp-prac .pkm .pst {
+  font-size: 12.5px;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+.bsp-prac .pk .btn.text {
+  flex: none;
+}
+.bsp-prac .pk.add .addbtn {
+  margin-left: -2px;
+}
+@media (max-width: 760px) {
+  .bsp-prac .pkm {
+    grid-template-columns: 16px auto minmax(0, 1fr);
+    row-gap: 2px;
+  }
+  .bsp-prac .pkm .pst {
+    grid-column: 2 / -1;
+    white-space: normal;
+  }
+  .bsp-prac .pk {
+    flex-wrap: wrap;
+  }
+  .bsp-prac .pk .pkm {
+    flex: 1 1 100%;
+  }
+  .bsp-prac .pk .btn.text {
+    margin: -4px 0 4px 34px;
+  }
+}
+
 @media (min-width: 1241px) {
   .bsp {
     position: sticky;
