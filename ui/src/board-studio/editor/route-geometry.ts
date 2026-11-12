@@ -125,7 +125,7 @@ export function wayArcs(def: BoardDefinition, g: Geom): Arc[] {
 export function backLoop(
   g: Geom,
   stepId: string,
-): { d: string; label: { x: number; y: number } } | null {
+): { d: string; label: { x: number; y: number; right: number } } | null {
   const st = g.stops.find((s) => s.key === stepId);
   if (st?.kind !== 'step' || !st.rv?.you) return null;
   const back = st.step.back === 'same' ? st : (g.stops.find((s) => s.key === st.step.back) ?? st);
@@ -136,7 +136,7 @@ export function backLoop(
   const land = back.y + (back.y === RY.you ? 0 : 6);
   return {
     d: `M${fx} ${RY.you}C${fx} ${yb} ${mid + 10} ${yb} ${mid} ${yb}S${bx} ${yb} ${bx} ${land}`,
-    label: { x: (fx + bx) / 2, y: yb + 15 },
+    label: { x: (fx + bx) / 2, y: yb + 15, right: Math.max(fx, bx) },
   };
 }
 
@@ -242,7 +242,10 @@ export function waitMarks(g: Geom): { key: string; x: number; y: number }[] {
 }
 
 // A protected branch: a branch glyph by each step it is pushed in, and by Hecho (merged there).
-export function branchMarks(def: BoardDefinition, g: Geom): { key: string; x: number; y: number }[] {
+export function branchMarks(
+  def: BoardDefinition,
+  g: Geom,
+): { key: string; x: number; y: number }[] {
   const branch = guardedBranch(def);
   if (!branch) return [];
   const out = g.stops.flatMap((st) =>

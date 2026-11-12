@@ -82,7 +82,7 @@ describe('ways and send-backs', () => {
     expect(backLoop(g, 'sanimate')).toBeNull();
     const loop = backLoop(g, 'sconcept');
     expect(loop?.d).toBe('M349 86C349 112 317 112 307 112S265 112 265 52');
-    expect(loop?.label).toEqual({ x: 307, y: 127 });
+    expect(loop?.label).toEqual({ x: 307, y: 127, right: 349 });
   });
 });
 

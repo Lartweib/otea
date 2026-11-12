@@ -9,6 +9,7 @@ import {
   type EvidenceKind,
   type FieldKind,
   isEvidenceKind,
+  MOTIVE,
   type PartKind,
   type Requirement,
   type Reviewer,
@@ -18,7 +19,6 @@ import {
   stepById,
   stepDefaults,
   stepIndex,
-  MOTIVE,
   type Target,
   TITLE,
   usedRefs,
@@ -357,7 +357,6 @@ export function removeBackWay(def: BoardDefinition, stepId: string, target: stri
   removeWay(def, stepId, target);
 }
 
-
 export function replaceWay(def: BoardDefinition, stepId: string, old: Target, next: Target) {
   const step = stepOf(def, stepId);
   if (step) step.ways = step.ways.map((w) => (w === old ? next : w));
@@ -447,7 +446,7 @@ function sortGuards(def: BoardDefinition): void {
 // "Otea protege esta rama": on a branch field only, pushed during `push` (step ids).
 export function setGuard(def: BoardDefinition, ref: string, on: boolean, push: string[] = []) {
   const part = def.parts[ref];
-  if (!part || part.kind !== 'branch') return;
+  if (part?.kind !== 'branch') return;
   if (!on) {
     delete part.guard;
     return;
@@ -524,7 +523,6 @@ export function setSplitAlways(def: BoardDefinition, always: boolean): void {
 }
 
 // ---- instructions ----
-
 
 export type InstructionAt =
   | { step: string; key: keyof StepInstructions }

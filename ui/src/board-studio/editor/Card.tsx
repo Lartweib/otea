@@ -12,17 +12,20 @@ export function Card() {
   const { draft } = useEditor();
   const def = draft.def;
   const sel = cardOf(def, draft.selection);
-  const key = cardKey(sel);
+  const key = `${draft.record.id}:${cardKey(sel)}`;
   const card = useRef<HTMLElement>(null);
   const shown = useRef<string | null>(null);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: runs when another card shows
   useLayoutEffect(() => {
     const el = card.current;
     const was = shown.current;
     shown.current = key;
     if (!el || was === null || was === key || reduced()) return;
     const line = el.querySelector<HTMLElement>(':scope > .se-cline');
-    const lab = document.querySelector<HTMLElement>(`.se-stoplab[data-key="${CSS.escape(key)}"]`);
+    const lab = document.querySelector<HTMLElement>(
+      `.se-stoplab[data-board="${CSS.escape(draft.record.id)}"][data-key="${CSS.escape(cardKey(sel))}"]`,
+    );
     if (line) {
       const cr = el.getBoundingClientRect();
       const lr = lab?.getBoundingClientRect();

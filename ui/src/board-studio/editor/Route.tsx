@@ -4,11 +4,15 @@ import { t } from '../../i18n/i18n.ts';
 import { lookGlyph } from '../../lanes/looks.ts';
 import { C } from '../../motion/curves.ts';
 import { reduced } from '../../motion/reduced.ts';
+import type { PairRole } from '../pair.ts';
+import type { ReadyDraft } from '../use-board-draft.ts';
 import { cardKey, cardOf, useEditor } from './context.ts';
 import { addStep } from './edits.ts';
 import { Glyph } from './glyphs.tsx';
 import {
+  backArcs,
   backLoop,
+  branchMarks,
   type Geom,
   geom,
   labelSpot,
@@ -18,6 +22,8 @@ import {
   pointsOf,
   RY,
   type Stop,
+  skipBypass,
+  waitMarks,
   wayArcs,
 } from './route-geometry.ts';
 import { whoWord } from './who.ts';
@@ -116,8 +122,60 @@ function stopSub(st: Stop): string {
   return t('bs.editor.route.sub_review', { doer, reviewer: whoWord(st.step.reviewer) });
 }
 
-export function Route() {
-  const { draft, setOpenRow } = useEditor();
+// The hourglass of a step that waits, and the branch of a protected branch's push steps and Hecho.
+function hourglass(x: number, y: number, key: string) {
+  return (
+    <g
+      key={`w${key}`}
+      className="se-mark"
+      transform={`translate(${x} ${y})`}
+      fill="none"
+      stroke="var(--ink-2)"
+      strokeWidth="1"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <title>{t('bs.editor.route.waits')}</title>
+      <path d="M-3 -4.2h6M-3 4.2h6" />
+      <path d="M-2.3 -4.2c0 2.6 4.6 2.4 4.6 4.2s-4.6 1.6-4.6 4.2M2.3 -4.2c0 2.6-4.6 2.4-4.6 4.2s4.6 1.6 4.6 4.2" />
+    </g>
+  );
+}
+
+function branchGlyph(x: number, y: number, key: string) {
+  return (
+    <g
+      key={`b${key}`}
+      className="se-mark se-brm"
+      transform={`translate(${x} ${y})`}
+      fill="none"
+      stroke="var(--ink-2)"
+      strokeWidth="1.1"
+      strokeLinecap="round"
+    >
+      <title>{t('bs.editor.route.branch')}</title>
+      <circle cx="-3" cy="-4.2" r="1.5" />
+      <circle cx="-3" cy="4.2" r="1.5" />
+      <circle cx="3.4" cy="-2.2" r="1.5" />
+      <path d="M-3 -2.7v5.4M3.4 -.7c0 2.6-3.2 2.4-5.6 3.6" />
+    </g>
+  );
+}
+
+// `board` and `role`: one of the two routes of a joined pair (the other is dimmed until hovered);
+// `dropX`: where the "se divide en" line drops, so the send-back label keeps clear of it.
+export function Route({
+  board,
+  role,
+  dropX,
+}: {
+  board?: ReadyDraft;
+  role?: PairRole;
+  dropX?: number | null;
+} = {}) {
+  const { draft: shown, setOpenRow, pair } = useEditor();
+  const draft = board ?? shown;
+  const active = !pair || role === undefined || pair.role === role;
   const def = draft.def;
   const wrap = useRef<HTMLDivElement>(null);
   const [W, setW] = useState(900);
@@ -133,17 +191,21 @@ export function Route() {
 
   const g: Geom = geom(def, W);
   const sel = cardOf(def, draft.selection);
-  const selKey = cardKey(sel);
+  const selKey = active ? cardKey(sel) : '';
   const selStop = g.stops.find((s) => s.key === selKey);
   const lanes = lanePaths(g);
   const arcs = wayArcs(def, g);
-  const loop = sel.kind === 'step' ? backLoop(g, sel.id) : null;
+  const loop = active && sel.kind === 'step' ? backLoop(g, sel.id) : null;
+  const backs = backArcs(def, g);
+  const bypass = skipBypass(def, g);
 
   const select = (key: string) => {
     setOpenRow(null);
     draft.endBurst();
-    if (key === 'form' || key === 'done') draft.select({ kind: key });
-    else draft.select({ kind: 'step', id: key });
+    const sel =
+      key === 'form' || key === 'done' ? { kind: key } : { kind: 'step' as const, id: key };
+    if (pair && role !== undefined && pair.role !== role) pair.switchTo(role, sel as never);
+    else draft.select(sel as never);
   };
   const add = (at: number) => {
     let id = '';
@@ -152,7 +214,9 @@ export function Route() {
     });
     if (id) {
       setOpenRow(null);
-      draft.select({ kind: 'step', id });
+      if (pair && role !== undefined && pair.role !== role)
+        pair.switchTo(role, { kind: 'step', id });
+      else draft.select({ kind: 'step', id });
       window.setTimeout(() => {
         const name = document.querySelector<HTMLInputElement>('.se-card input.se-stepname');
         name?.focus({ preventScroll: true });
@@ -276,7 +340,7 @@ export function Route() {
   });
 
   return (
-    <div className="se-rwrap" ref={wrap}>
+    <div className={active ? 'se-rwrap' : 'se-rwrap dim'} ref={wrap}>
       <div className="se-rstage" style={{ height: H + TOP, paddingTop: TOP }}>
         <svg
           className="se-route"
@@ -368,11 +432,77 @@ export function Route() {
                 strokeLinecap="round"
                 opacity=".7"
               />
-              <text x={loop.label.x} y={loop.label.y} textAnchor="middle">
-                {t('bs.editor.route.loop')}
-              </text>
+              {(() => {
+                const clear = dropX == null || Math.abs(dropX - loop.label.x) > 104;
+                const x = clear ? loop.label.x : loop.label.right + 12;
+                return (
+                  <text x={x} y={loop.label.y} textAnchor={clear ? 'middle' : 'start'}>
+                    {t('bs.editor.route.loop')}
+                  </text>
+                );
+              })()}
             </g>
           ) : null}
+          <g className="se-backs">
+            {backs.map((a) => (
+              <g key={`${a.from}<${a.to}`} className={a.you ? 'you' : undefined}>
+                <path
+                  d={a.d}
+                  fill="none"
+                  stroke={a.you ? 'var(--you)' : 'var(--ink-3)'}
+                  strokeWidth="1"
+                  strokeDasharray="2 3.5"
+                  strokeLinecap="round"
+                  opacity={a.you ? 0.75 : 1}
+                />
+                <path
+                  d={a.head}
+                  fill="none"
+                  stroke={a.you ? 'var(--you)' : 'var(--ink-3)'}
+                  strokeWidth="1"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <text
+                  x={a.label.x}
+                  y={a.label.y}
+                  textAnchor="middle"
+                  className={a.you ? 'you' : undefined}
+                >
+                  {t(a.doerYou ? 'bs.editor.route.back_you' : 'bs.editor.route.back_agent', {
+                    step:
+                      def.steps.find((s) => s.id === a.to)?.name.trim() ||
+                      t('bs.editor.route.unnamed'),
+                  })}
+                </text>
+              </g>
+            ))}
+            {bypass ? (
+              <g>
+                <path
+                  d={bypass.d}
+                  fill="none"
+                  stroke="var(--ink-3)"
+                  strokeWidth="1"
+                  strokeDasharray="2 3.5"
+                  strokeLinecap="round"
+                />
+                <path
+                  d={bypass.head}
+                  fill="none"
+                  stroke="var(--ink-3)"
+                  strokeWidth="1"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <text x={bypass.label.x} y={bypass.label.y} textAnchor="middle">
+                  {t('bs.editor.route.skip')}
+                </text>
+              </g>
+            ) : null}
+            {waitMarks(g).map((m) => hourglass(m.x, m.y, m.key))}
+            {branchMarks(def, g).map((m) => branchGlyph(m.x, m.y, m.key))}
+          </g>
           <path
             className="se-walked"
             data-ink=""
@@ -419,6 +549,7 @@ export function Route() {
                 type="button"
                 className={cls}
                 data-key={st.key}
+                data-board={draft.record.id}
                 style={{ left: spot.x }}
                 aria-current={st.key === selKey ? 'true' : undefined}
                 onClick={() => select(st.key)}
@@ -435,6 +566,8 @@ export function Route() {
               <button
                 type="button"
                 className="se-stopbtn"
+                data-key={st.key}
+                data-board={draft.record.id}
                 tabIndex={-1}
                 aria-hidden="true"
                 style={{ left: st.x, top: st.y + TOP } as CSSProperties}

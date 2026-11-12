@@ -22,6 +22,7 @@ import { C } from '../../motion/curves.ts';
 import { reduced } from '../../motion/reduced.ts';
 import { kindName } from '../words.ts';
 import { useEditor } from './context.ts';
+import { FieldExtras } from './cover.tsx';
 import {
   addChoice,
   type PartPlace,
@@ -73,7 +74,7 @@ const showWord = (show: string) => t(`bs.show.${show}` as PlainKey);
 
 // The editor unrolls from its top edge and rolls back up the same way (MOTION: a close is the open
 // mirrored).
-function Unroll({ open, children }: { open: boolean; children: ReactNode }) {
+export function Unroll({ open, children }: { open: boolean; children: ReactNode }) {
   const [shown, setShown] = useState(open);
   const box = useRef<HTMLDivElement>(null);
   if (open && !shown) setShown(true);
@@ -271,6 +272,8 @@ function PartEditor({ entry, part }: { entry: RowEntry; part: Part }) {
         </div>
       </div>,
     );
+
+  out.push(<FieldExtras key="extras" part={part} />);
 
   if (entry.at.type === 'step' && 'hand' in entry) {
     const stepId = entry.at.step;

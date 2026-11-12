@@ -7,6 +7,7 @@ import { problemText } from '../words.ts';
 import { useEditor } from './context.ts';
 import { Glyph } from './glyphs.tsx';
 import { EdPop, useAnchor } from './menus.tsx';
+import { PairTabs } from './Pair.tsx';
 
 // The editor's bar (mock renderBar): where you are, whether agents see this yet, whether it saved,
 // Deshacer and Rehacer, the problems, and Descartar, Probar and Publicar.
@@ -122,7 +123,7 @@ function Problems() {
 }
 
 export function Bar() {
-  const { draft, dialogs } = useEditor();
+  const { draft, dialogs, pair, twin } = useEditor();
   const { live, dirty } = liveState(draft);
   const bar = useRef<HTMLDivElement>(null);
   const [scrolled, setScrolled] = useState(false);
@@ -147,9 +148,19 @@ export function Bar() {
       <span className="se-crumb">
         <a href={studioHash({ kind: 'boards' })}>{t('bs.editor.kicker.studio')}</a>
         <span>/</span>
-        <span className="se-crumb-n">{draft.def.name}</span>
+        {pair ? null : <span className="se-crumb-n">{draft.def.name}</span>}
       </span>
-      <Chip />
+      {pair ? <PairTabs /> : <Chip />}
+      {twin ? (
+        <a
+          className="btn quiet sm se-twin"
+          href={studioHash({ kind: 'board', board: twin.id })}
+          title={t('bs.editor.twin.title')}
+        >
+          <Glyph name="board" />
+          {t('bs.editor.twin.open', { board: twin.definition.name })}
+        </a>
+      ) : null}
       <SaveState />
       <span className="se-sp" />
       <Problems />

@@ -5,20 +5,23 @@ import {
   FIELD_KINDS,
   type FieldKind,
   type PartKind,
+  type Wait,
 } from '../../../../src/core/board/model.ts';
 import { t } from '../../i18n/i18n.ts';
 import { C } from '../../motion/curves.ts';
 import { reduced } from '../../motion/reduced.ts';
 import { kindGloss, kindName } from '../words.ts';
 import { useEditor } from './context.ts';
-import { addPart, type PartPlace, reusePart } from './edits.ts';
+import { partsLabel } from './cover.tsx';
+import { addNote, addPart, addWait, hasNote, type PartPlace, reusePart } from './edits.ts';
 import { Glyph, kindGlyph } from './glyphs.tsx';
+import { splitInfo } from './joined.ts';
 import { EdPop, placeBy, useAnchor } from './menus.tsx';
 
 // «+ Añadir a la entrega» (mock partPicker): first what kind of thing, then which. The pop swaps
 // its content in place and its surface grows to the new size on the settle curve.
 
-type Stage = 'q' | 'field' | 'evidence' | 'reuse';
+type Stage = 'q' | 'field' | 'evidence' | 'reuse' | 'wait';
 
 const QUESTION = {
   step: 'bs.editor.pick.q_step',
@@ -27,9 +30,11 @@ const QUESTION = {
 } as const;
 
 export function AddPart({ at, label }: { at: PartPlace; label: string }) {
-  const { draft, setOpenRow } = useEditor();
+  const { draft, setOpenRow, boards } = useEditor();
   const def = draft.def;
   const pop = useAnchor();
+  const step = at.type === 'step' ? def.steps.find((s) => s.id === at.step) : undefined;
+  const split = splitInfo(def, boards, draft.record.id);
   const [stage, setStage] = useState<Stage>('q');
   const body = useRef<HTMLDivElement>(null);
   const was = useRef<{ stage: Stage; h: number } | null>(null);
@@ -102,6 +107,22 @@ export function AddPart({ at, label }: { at: PartPlace; label: string }) {
     draft.mutate((d) => reusePart(d, at, ref));
     done(ref);
   };
+  const opened = (row: string) => {
+    pop.close();
+    setOpenRow(row);
+  };
+  const wait = (w: Wait) => {
+    if (!step) return;
+    draft.endBurst();
+    draft.mutate((d) => addWait(d, step.id, w));
+    opened(`wait:${w}`);
+  };
+  const note = () => {
+    if (!step) return;
+    draft.endBurst();
+    draft.mutate((d) => addNote(d, step.id, t('bs.editor.note.default_hint')));
+    opened('note');
+  };
 
   const back = (
     <p className="se-kback" data-sw="">
@@ -113,7 +134,9 @@ export function AddPart({ at, label }: { at: PartPlace; label: string }) {
           ? t('bs.editor.pick.field_stage')
           : stage === 'evidence'
             ? t('bs.editor.pick.evidence_stage')
-            : t('bs.editor.pick.reuse_stage')}
+            : stage === 'wait'
+              ? t('bs.editor.pick.wait_stage')
+              : t('bs.editor.pick.reuse_stage')}
       </span>
     </p>
   );
@@ -168,7 +191,7 @@ export function AddPart({ at, label }: { at: PartPlace; label: string }) {
               <p className="plabel" data-i="" data-sw="">
                 {t(QUESTION[at.type])}
               </p>
-              <div className="se-kq">
+              <div className={step ? 'se-kq four' : 'se-kq'}>
                 <button type="button" data-i="" data-sw="" onClick={() => setStage('field')}>
                   <b>
                     <Glyph name="text" />
@@ -200,7 +223,65 @@ export function AddPart({ at, label }: { at: PartPlace; label: string }) {
                       : t('bs.editor.pick.reuse_none')}
                   </span>
                 </button>
+                {step ? (
+                  <button type="button" data-i="" data-sw="" onClick={() => setStage('wait')}>
+                    <b>
+                      <Glyph name="wait" />
+                      {t('bs.editor.pick.wait')}
+                    </b>
+                    <span>{t('bs.editor.pick.wait_gloss')}</span>
+                  </button>
+                ) : null}
               </div>
+            </>
+          ) : stage === 'wait' && step ? (
+            <>
+              {back}
+              <div className="se-kgrid one">
+                <button
+                  type="button"
+                  className="mi se-mi"
+                  data-i=""
+                  data-sw=""
+                  disabled={step.waits.includes('parts') || !split}
+                  onClick={() => wait('parts')}
+                >
+                  <Glyph name="parts" />
+                  <span className="se-lbx">
+                    {t('bs.editor.pick.wait_parts')}
+                    <span className="se-gl2">
+                      {step.waits.includes('parts')
+                        ? t('bs.editor.pick.wait_has')
+                        : split
+                          ? t('bs.editor.wait.parts_sent', {
+                              board: partsLabel(def, boards, draft.record.id),
+                            })
+                          : t('bs.editor.pick.wait_no_split', { item: def.item })}
+                    </span>
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  className="mi se-mi"
+                  data-i=""
+                  data-sw=""
+                  disabled={step.waits.includes('blockers')}
+                  onClick={() => wait('blockers')}
+                >
+                  <Glyph name="wait" />
+                  <span className="se-lbx">
+                    {t('bs.editor.pick.wait_blockers')}
+                    <span className="se-gl2">
+                      {step.waits.includes('blockers')
+                        ? t('bs.editor.pick.wait_has')
+                        : t('bs.editor.wait.blockers_sent')}
+                    </span>
+                  </span>
+                </button>
+              </div>
+              <p className="pnote" data-sw="">
+                {t('bs.editor.wait.approve')}
+              </p>
             </>
           ) : stage === 'reuse' ? (
             <>
@@ -227,6 +308,17 @@ export function AddPart({ at, label }: { at: PartPlace; label: string }) {
           ) : (
             <>
               {back}
+              {stage === 'field' && step && !hasNote(step) ? (
+                <div className="se-kgrid se-kgrid-note">
+                  <button type="button" className="mi se-mi" data-i="" data-sw="" onClick={note}>
+                    <Glyph name="note" />
+                    <span className="se-lbx">
+                      {t('bs.editor.note.name')}
+                      <span className="se-gl2">{t('bs.editor.pick.note_gloss')}</span>
+                    </span>
+                  </button>
+                </div>
+              ) : null}
               {kinds(stage === 'field' ? FIELD_KINDS : EVIDENCE_KINDS)}
             </>
           )}

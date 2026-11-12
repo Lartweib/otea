@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { BoardDefinition, Selection } from '../../../src/core/board/model.ts';
-import { type Problem, problemsOf } from '../../../src/core/board/problems.ts';
+import { type BoardRef, type Problem, problemsOf } from '../../../src/core/board/problems.ts';
 import { type BoardRecord, fetchBoard, saveDraft } from './api.ts';
 import {
   canRedo,
@@ -31,6 +31,8 @@ export type ReadyDraft = {
   save: SaveStatus;
   canUndo: boolean;
   canRedo: boolean;
+  // How many steps can be undone and redone: a joined pair keeps one history across both boards.
+  depth: { undo: number; redo: number };
   selection: Selection;
   select: (selection: Selection) => void;
   // «¿Por qué está aquí?»: selects what made a box appear and asks the editor to bring its card
@@ -57,7 +59,15 @@ export type DraftOptions = {
   takenNames: readonly string[];
   // How long edits settle before a save.
   delay?: number;
+  // The project's boards, for the problems of a split (what it names, and a split back).
+  boards?: readonly BoardRef[];
+  // Keep the undo history when the editor closes, to start from it when it opens this board again
+  // (Producto's boards open each other).
+  keepHistory?: boolean;
 };
+
+// The histories kept when an editor closed (keepHistory): the board's id, and the draft it held.
+const kept = new Map<string, { state: DraftState; selection: Selection }>();
 
 function firstSelection(def: BoardDefinition): Selection {
   const first = def.steps[0];
@@ -76,6 +86,13 @@ export function useBoardDraft(id: string, options: DraftOptions): BoardDraft {
   const [attempt, setAttempt] = useState(0);
   const [revealed, setRevealed] = useState(0);
   const base = useRef<number | null>(null);
+  const keepRef = useRef(options.keepHistory === true);
+  keepRef.current = options.keepHistory === true;
+  // The latest state and selection, for keepHistory to store when the editor closes.
+  const latest = useRef<{ state: DraftState | null; selection: Selection }>({
+    state: null,
+    selection: { kind: 'form' },
+  });
   // The draft as last read or written here: a save over a draft changed since is refused.
   const stamp = useRef<string | null>(null);
 
@@ -89,8 +106,14 @@ export function useBoardDraft(id: string, options: DraftOptions): BoardDraft {
         if (!def) throw new Error(id);
         base.current = record.draft ? record.draft.baseVersion : (record.live?.version ?? null);
         stamp.current = record.draft?.updatedAt ?? null;
-        setState(startDraft(def));
-        setSelection(firstSelection(def));
+        const was = keepRef.current ? kept.get(id) : undefined;
+        if (was && JSON.stringify(was.state.def) === JSON.stringify(def)) {
+          setState(was.state);
+          setSelection(was.selection);
+        } else {
+          setState(startDraft(def));
+          setSelection(firstSelection(def));
+        }
         setLoad({ status: 'ready', record });
       })
       .catch((error: unknown) => {
@@ -119,6 +142,13 @@ export function useBoardDraft(id: string, options: DraftOptions): BoardDraft {
     [id, options.delay],
   );
   useEffect(() => () => void saver.flush(), [saver]);
+  useEffect(
+    () => () => {
+      const { state: last, selection: at } = latest.current;
+      if (keepRef.current && last) kept.set(id, { state: last, selection: at });
+    },
+    [id],
+  );
 
   const mutate = useCallback(
     (change: (def: BoardDefinition) => void, burst?: string) =>
@@ -141,11 +171,13 @@ export function useBoardDraft(id: string, options: DraftOptions): BoardDraft {
     [saver],
   );
 
-  const { agents, takenNames } = options;
+  const { agents, takenNames, boards } = options;
   const problems = useMemo(
-    () => (state ? problemsOf(state.def, { agents, takenNames }) : []),
-    [state, agents, takenNames],
+    () =>
+      state ? problemsOf(state.def, { agents, takenNames, id, ...(boards ? { boards } : {}) }) : [],
+    [state, agents, takenNames, id, boards],
   );
+  latest.current = { state, selection };
 
   if (load.status === 'loading') return { status: 'loading' };
   if (load.status === 'failed' || !state)
@@ -164,6 +196,7 @@ export function useBoardDraft(id: string, options: DraftOptions): BoardDraft {
     save,
     canUndo: canUndo(state),
     canRedo: canRedo(state),
+    depth: { undo: state.undo.length, redo: state.redo.length },
     selection,
     select: setSelection,
     reveal: (next: Selection) => {

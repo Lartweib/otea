@@ -1,13 +1,16 @@
 import { type ReactNode, useState } from 'react';
-import { waysOf } from '../../../../src/core/board/engine.ts';
+import { backWaysOf, waysOf } from '../../../../src/core/board/engine.ts';
 import { DONE, isAgent, type Step, stepIndex } from '../../../../src/core/board/model.ts';
 import { useApp } from '../../app/context.tsx';
 import { t, tx } from '../../i18n/i18n.ts';
 import { toast } from '../../kit/pop/toast.tsx';
 import { problemText, targetName } from '../words.ts';
 import { useEditor } from './context.ts';
+import { BackConseq, BackRows, DropLine, NoteRow, SkipLine, WaitRow } from './cover.tsx';
 import {
+  addBackWay,
   addWay,
+  hasNote,
   moveStep,
   removeStep,
   removeWay,
@@ -23,6 +26,7 @@ import { BackMenu, Blank, useAnchor, WayMenu, WhoMenu } from './menus.tsx';
 import { AddPart } from './PartPicker.tsx';
 import { PartRow } from './PartRow.tsx';
 import { Conseq, sentenceNode } from './SentenceText.tsx';
+import { SetupStrip } from './Setup.tsx';
 import { roundsSentence, startsWithNames, stepConseq, stepPlace, waysConseq } from './sentences.ts';
 import { whoTitle, whoWord } from './who.ts';
 
@@ -54,7 +58,7 @@ export function Section({
 }
 
 export function StepCard({ step }: { step: Step }) {
-  const { draft, agents, dialogs, setOpenRow } = useEditor();
+  const { draft, agents, dialogs, setOpenRow, pair } = useEditor();
   const app = useApp();
   const def = draft.def;
   const i = stepIndex(def, step.id);
@@ -67,6 +71,9 @@ export function StepCard({ step }: { step: Step }) {
 
   const ways = waysOf(def, step.id);
   const later = [...def.steps.slice(i + 1).map((s) => s.id), DONE].filter((x) => !ways.includes(x));
+  const backs = backWaysOf(def, step.id);
+  const earlier = def.steps.slice(0, i).filter((s) => !backs.includes(s.id));
+  const note = hasNote(step);
   const conseq = stepConseq(step, agents);
   const starts = startsWithNames(def, step);
   const ways2 = waysConseq(def, step);
@@ -111,7 +118,14 @@ export function StepCard({ step }: { step: Step }) {
     <>
       <div className="se-chead">
         <div className="se-cht">
-          <p className="kicker">{sentenceNode(stepPlace(def, step))}</p>
+          <p className="kicker">
+            {pair ? (
+              <>
+                <b>{def.name}</b> ·{' '}
+              </>
+            ) : null}
+            {sentenceNode(stepPlace(def, step))}
+          </p>
           <input
             className="se-stepname"
             value={step.name}
@@ -156,7 +170,7 @@ export function StepCard({ step }: { step: Step }) {
         </div>
       </div>
 
-      <p className="se-sent">
+      <p className="se-sent se-who">
         {tx('bs.editor.who.sentence', {
           doer: (
             <Blank
@@ -179,6 +193,7 @@ export function StepCard({ step }: { step: Step }) {
             step.reviewer === 'you' ? t('bs.editor.who.reviews_you') : t('bs.editor.who.reviews'),
         })}
       </p>
+      <SetupStrip what="doer" ref_={step.id} />
       <WhoMenu
         kind="doer"
         current={step.doer}
@@ -223,7 +238,7 @@ export function StepCard({ step }: { step: Step }) {
       </Section>
 
       <Section label={t('bs.editor.card.hand')} gloss={t('bs.editor.card.hand_gloss')}>
-        {step.hand.length === 0 ? (
+        {step.hand.length === 0 && !note && !step.waits.length ? (
           <p className="se-emptyx">
             {tx(
               step.doer === 'you'
@@ -236,13 +251,18 @@ export function StepCard({ step }: { step: Step }) {
           </p>
         ) : null}
         <div className="se-hlist">
+          <NoteRow step={step} />
           {step.hand.map((hand) => (
             <PartRow key={hand.ref} entry={{ at: { type: 'step', step: step.id }, hand }} />
+          ))}
+          {step.waits.map((w) => (
+            <WaitRow key={w} step={step} wait={w} />
           ))}
         </div>
         <div className="se-addrow">
           <AddPart at={{ type: 'step', step: step.id }} label={t('bs.editor.card.hand_add')} />
         </div>
+        <SkipLine step={step} />
       </Section>
 
       <Section
@@ -288,8 +308,9 @@ export function StepCard({ step }: { step: Step }) {
               </button>
             </div>
           ))}
+          <BackRows step={step} />
         </div>
-        {later.length ? (
+        {later.length || earlier.length ? (
           <div className="se-addrow">
             <button
               type="button"
@@ -314,13 +335,19 @@ export function StepCard({ step }: { step: Step }) {
           open={wayMenu.open}
           onClose={wayMenu.close}
           targetName={tgt}
-          onPick={(target) =>
+          onPick={(target, back) =>
             draft.mutate((d) =>
-              replacing ? replaceWay(d, step.id, replacing, target) : addWay(d, step.id, target),
+              back
+                ? addBackWay(d, step.id, target)
+                : replacing
+                  ? replaceWay(d, step.id, replacing, target)
+                  : addWay(d, step.id, target),
             )
           }
         />
         {ways2 ? <Conseq s={ways2} id="se-ways-conseq" /> : null}
+        <BackConseq step={step} />
+        <DropLine step={step} />
       </Section>
 
       {step.reviewer === 'you' ? (

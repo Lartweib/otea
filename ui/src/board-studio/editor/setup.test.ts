@@ -27,6 +27,16 @@ describe('Qué falta configurar', () => {
     expect(items.find((i) => i.what === 'doer')?.sel).toEqual({ kind: 'step', id: 'sanalyse' });
   });
 
+  it('opens the branch row for the push and the repository: both are said there', () => {
+    const { parent, child } = pair();
+    const items = setupItems({ parent, child });
+    const repo = items.find((i) => i.what === 'repo');
+    expect(repo?.row).toBe('fbranch');
+    expect(repo?.sel).toEqual({ kind: 'form' });
+    expect(items.find((i) => i.what === 'push')?.row).toBe('fbranch');
+    expect(items.find((i) => i.what === 'doer')?.row).toBeNull();
+  });
+
   it('ticks an item by itself when its setting changes, or when you say it is fine', () => {
     const defs = pair();
     const items = setupItems(defs);
