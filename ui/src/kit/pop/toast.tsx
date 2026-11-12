@@ -17,9 +17,17 @@ import { layerEl } from './Pop.tsx';
 // Toasts (mock:3423-3469, MOTION §3.3): one surface at the foot of the page. A second message
 // replaces the first in place (the old one up, the new from below) and restarts the dwell; a
 // glint runs along the line on both, the opening and the replace. 12 s, paused while hovered or
-// focused. Deshacer closes it and undoes at once.
+// focused. Deshacer closes it and undoes at once; an action (Abrirlo) closes it and acts.
 
-export type ToastOptions = { msg: ReactNode; id?: string; undo?: () => void; node?: boolean };
+export type ToastAction = { label: string; run: () => void };
+
+export type ToastOptions = {
+  msg: ReactNode;
+  id?: string;
+  undo?: () => void;
+  action?: ToastAction;
+  node?: boolean;
+};
 
 type Shown = ToastOptions & { seq: number };
 
@@ -52,6 +60,7 @@ export function ToastHost() {
   );
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [undo, setUndo] = useState<(() => void) | undefined>(undefined);
+  const [action, setAction] = useState<ToastAction | undefined>(undefined);
   const [mounted, setMounted] = useState(false);
   const el = useRef<HTMLDivElement>(null);
   const choreo = useRef<Choreo | null>(null);
@@ -94,6 +103,7 @@ export function ToastHost() {
     if (!next || next.seq === seen.current) return;
     seen.current = next.seq;
     setUndo(() => next.undo);
+    setAction(next.action);
     const showing = mounted && choreo.current?.dir === 1;
     replaced.current = showing;
     pendingNode.current = !!next.node;
@@ -115,7 +125,7 @@ export function ToastHost() {
     if (!node || !msgs.length) return;
     const R = reduced();
     const box = node.querySelector<HTMLElement>('.msgs');
-    const ub = node.querySelector<HTMLElement>('[data-undo]');
+    const ub = node.querySelector<HTMLElement>('.tbtns');
     if (!choreo.current) {
       const fades = [box, ub].flatMap((x, i) => {
         const d = i ? 164 : 130;
@@ -239,19 +249,34 @@ export function ToastHost() {
               </p>
             ))}
           </span>
-          <button
-            type="button"
-            className="btn quiet sm"
-            data-undo=""
-            hidden={!undo}
-            onClick={() => {
-              const f = undo;
-              close();
-              f?.();
-            }}
-          >
-            {t('toast.undo')}
-          </button>
+          <span className="tbtns">
+            <button
+              type="button"
+              className="btn quiet sm"
+              data-act=""
+              hidden={!action}
+              onClick={() => {
+                const f = action?.run;
+                close();
+                f?.();
+              }}
+            >
+              {action?.label}
+            </button>
+            <button
+              type="button"
+              className="btn quiet sm"
+              data-undo=""
+              hidden={!undo}
+              onClick={() => {
+                const f = undo;
+                close();
+                f?.();
+              }}
+            >
+              {t('toast.undo')}
+            </button>
+          </span>
         </div>
       </div>
       <i className="tnode" aria-hidden="true">

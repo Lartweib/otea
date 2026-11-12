@@ -2,6 +2,7 @@ import { type ReactNode, useEffect, useLayoutEffect, useRef } from 'react';
 import { flushSync } from 'react-dom';
 import { useApp } from '../app/context.tsx';
 import { useWorkspace, workspace } from '../app/workspace.ts';
+import { openNewBoard } from '../board-studio/home/studio-dialogs.ts';
 import { stuckCount, tocaCount } from '../derive/toca.ts';
 import { t } from '../i18n/i18n.ts';
 import { TypeIcon } from '../icons/TypeIcon.tsx';
@@ -275,9 +276,7 @@ export function Rail() {
               type="button"
               className="add"
               data-tip={t('nav.newBoard')}
-              onClick={() => {
-                window.location.hash = studioHash();
-              }}
+              onClick={() => openNewBoard()}
             >
               <span className="ic">
                 <Icon name="plus" />
