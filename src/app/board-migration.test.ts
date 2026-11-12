@@ -94,6 +94,17 @@ describe('migrateBoards', () => {
       push: ['implementing'],
       repo: 'repo',
     });
+    // The moved tasks keep their numbers; new ones are numbered after them.
+    const next = () =>
+      createItem(ctx, {
+        collection: 'Tareas de repo',
+        parent: change.id,
+        title: 'Web',
+        fields: { repo: 'web', branch: 'feat/web' },
+        actor: you,
+        channel: 'ui',
+      }).id;
+    expect([next(), next(), next()]).toHaveLength(3);
   });
 
   it('reads a collection on a preset Otea never shipped as one step that keeps its fields', () => {
