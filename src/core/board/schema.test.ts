@@ -36,4 +36,30 @@ describe('parseDefinition', () => {
       problems: ['parts.fother: the part says its id is fdesc'],
     });
   });
+
+  it('refuses step ids the engine reserves or cannot read back, and duplicates', () => {
+    const def = creatures();
+    const [first, second] = def.steps as [(typeof def.steps)[0], (typeof def.steps)[0]];
+    const withStep = (id: string) =>
+      parseDefinition({ ...def, steps: [{ ...first, id }, ...def.steps.slice(1)] });
+    for (const id of ['done', 'dropped', 'same', 'title', 'a__review', 'a__yours']) {
+      const result = withStep(id);
+      expect(result.ok, id).toBe(false);
+      if (!result.ok) expect(result.problems[0]).toMatch(/^steps\.0\.id: /);
+    }
+    const twice = parseDefinition({ ...def, steps: [first, { ...second, id: first.id }] });
+    expect(twice).toEqual({
+      ok: false,
+      problems: ['steps.1.id: another step already has the id sconcept'],
+    });
+  });
+
+  it('refuses a part with the id of the title', () => {
+    const def = creatures();
+    const result = parseDefinition({
+      ...def,
+      parts: { ...def.parts, title: { ...def.parts.fdesc, id: 'title' } },
+    });
+    expect(result.ok).toBe(false);
+  });
 });
