@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { BoardSummary } from '../api.ts';
-import { arrivedDrafts, freeName, freshNames, nameIssue, statusOf } from './home-model.ts';
+import { arrivedDrafts, freeName, freshlyLive, nameIssue, statusOf } from './home-model.ts';
 
 // What Studio's home decides without drawing: a board's status in words, a free name for a copy,
 // the checks of a new board's name, the drafts an agent just delivered, and the boards the rail
@@ -90,12 +90,22 @@ describe('drafts that arrive', () => {
   });
 });
 
-describe('boards new to the rail', () => {
-  it('are the names it had not listed', () => {
-    expect(freshNames(['Tareas'], ['Tareas', 'Recursos'])).toEqual(['Recursos']);
+describe('boards published since the last read', () => {
+  it('are the collections of boards live now that were not live before', () => {
+    const before = [
+      summary({ id: 'a', status: 'draft', collection: null }),
+      summary({ id: 'b', status: 'live', collection: 'Errores' }),
+    ];
+    const after = [
+      summary({ id: 'a', status: 'live', collection: 'Criaturas' }),
+      summary({ id: 'b', status: 'changed', collection: 'Errores' }),
+      summary({ id: 'c', status: 'live', collection: 'Notas' }),
+    ];
+
+    expect(freshlyLive(before, after)).toEqual(['Criaturas', 'Notas']);
   });
 
-  it('are none before the rail has listed anything', () => {
-    expect(freshNames(null, ['Tareas', 'Recursos'])).toEqual([]);
+  it('are none on the first read', () => {
+    expect(freshlyLive(null, [summary({ status: 'live' })])).toEqual([]);
   });
 });

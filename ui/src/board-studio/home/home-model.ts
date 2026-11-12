@@ -47,9 +47,16 @@ export function arrivedDrafts(
   return after.filter((b) => waited.has(b.id) && b.status !== 'waiting');
 }
 
-// The names a list shows that it did not show before; none on its first showing.
-export function freshNames(before: readonly string[] | null, after: readonly string[]): string[] {
+const isLive = (b: BoardSummary) => b.status === 'live' || b.status === 'changed';
+
+// The collections of the boards published since the list before (the rail draws them in once).
+export function freshlyLive(
+  before: readonly BoardSummary[] | null,
+  after: readonly BoardSummary[],
+): string[] {
   if (!before) return [];
-  const had = new Set(before);
-  return after.filter((name) => !had.has(name));
+  const was = new Set(before.filter(isLive).map((b) => b.id));
+  return after
+    .filter((b) => isLive(b) && !was.has(b.id) && b.collection)
+    .map((b) => b.collection as string);
 }
