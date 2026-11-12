@@ -122,7 +122,7 @@ export function backLoop(
   stepId: string,
 ): { d: string; label: { x: number; y: number } } | null {
   const st = g.stops.find((s) => s.key === stepId);
-  if (!st || st.kind !== 'step' || !st.rv?.you) return null;
+  if (st?.kind !== 'step' || !st.rv?.you) return null;
   const back = st.step.back === 'same' ? st : (g.stops.find((s) => s.key === st.step.back) ?? st);
   const fx = st.rv.x;
   const bx = back.x;

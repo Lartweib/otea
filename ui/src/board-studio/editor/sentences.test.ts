@@ -71,17 +71,17 @@ describe('stepConseq', () => {
   it('says what each choice of who means', () => {
     setLanguage('es');
     const def = creatures();
-    expect(text(stepConseq(def, step(def, 'sconcept'), online))).toBe(
+    expect(text(stepConseq(step(def, 'sconcept'), online))).toBe(
       'Cuando un agente lo entrega, es tu turno: lo apruebas o lo devuelves.',
     );
-    expect(text(stepConseq(def, step(def, 'sanimate'), online))).toBe(
+    expect(text(stepConseq(step(def, 'sanimate'), online))).toBe(
       'scout lo aprueba o pide otra ronda, y adjunta lo que le pidas.',
     );
-    expect(text(stepConseq(def, step(def, 'spolish'), online))).toBe(
+    expect(text(stepConseq(step(def, 'spolish'), online))).toBe(
       'Es tu paso: lo haces y lo entregas tú. Nadie lo revisa.',
     );
     setLanguage('en');
-    expect(text(stepConseq(def, step(def, 'sconcept'), online))).toBe(
+    expect(text(stepConseq(step(def, 'sconcept'), online))).toBe(
       'When an agent hands it off, it is your turn: you approve it or send it back.',
     );
   });
@@ -90,12 +90,12 @@ describe('stepConseq', () => {
     setLanguage('es');
     const def = creatures();
     const polish = { ...step(def, 'spolish'), reviewer: 'you' as const };
-    const [self] = stepConseq(def, polish, online);
+    const [self] = stepConseq(polish, online);
     expect(self).toMatchObject({ level: 'warn' });
     expect(plain(self as Sentence)).toBe(
       'Lo haces y lo revisas tú: es lo mismo que nadie lo revise.',
     );
-    const offline = stepConseq(def, step(def, 'sanimate'), [{ name: 'kiln', connected: true }]);
+    const offline = stepConseq(step(def, 'sanimate'), [{ name: 'kiln', connected: true }]);
     expect(offline.at(-1)).toMatchObject({ level: 'warn' });
     expect(plain(offline.at(-1) as Sentence)).toBe(
       'scout no está conectado todavía, así que los ítems esperarán en Animar.',
@@ -106,7 +106,7 @@ describe('stepConseq', () => {
     setLanguage('es');
     const def = creatures();
     const animate = { ...step(def, 'sanimate'), doer: { agent: 'scout' } };
-    expect(text(stepConseq(def, animate, online))).toContain(
+    expect(text(stepConseq(animate, online))).toContain(
       'Nadie revisa su propio trabajo: si lo hizo scout, la revisión es tuya.',
     );
   });

@@ -32,7 +32,7 @@ export const studioEditor = {
   'bs.editor.route.create': 'Create · {item}',
   'bs.editor.route.asks': 'what it asks for',
   'bs.editor.route.ends': 'ends',
-  'bs.editor.route.sub_review': '{doer} · {reviewer} reviews',
+  'bs.editor.route.sub_review': '{doer} · reviewed by {reviewer}',
   'bs.editor.route.unnamed': 'no name',
   'bs.editor.route.or': 'or',
   'bs.editor.route.loop': 'if you send it back: next round',
