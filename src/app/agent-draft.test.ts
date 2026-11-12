@@ -149,6 +149,42 @@ describe('an agent drafting a board', () => {
     ]);
   });
 
+  it('takes the agent board whole: its own steps replace the ones it left out, with its item and text', () => {
+    const ctx = project();
+    const { board, item } = requestAgentDraft(
+      ctx,
+      { name: 'Tomas', need: 'x', agent: 'kiln', lang: 'es' },
+      now,
+    );
+    const draft = getBoardRecord(ctx, board.id).draft?.definition;
+    if (!draft) throw new Error('no draft');
+    const file: BoardDefinition = {
+      ...draft,
+      item: 'Toma',
+      about: 'Cada toma se graba y se mezcla.',
+      steps: [step('srec', 'Grabar'), step('smix', 'Mezclar')],
+    };
+
+    submitAgentDraft(
+      ctx,
+      { id: item, text: JSON.stringify(file), actor: kiln, channel: 'cli' },
+      now,
+    );
+    const merged = getBoardRecord(ctx, board.id).draft;
+
+    expect(merged?.definition.steps.map(({ name }) => name)).toEqual(['Grabar', 'Mezclar']);
+    expect(merged?.definition.item).toBe('Toma');
+    expect(merged?.definition.about).toBe('Cada toma se graba y se mezcla.');
+    expect(merged?.definition.name).toBe('Tomas');
+    expect(merged?.agentNote).toEqual([
+      '+ paso Grabar',
+      '+ paso Mezclar',
+      `− paso ${draft.steps[0]?.name}`,
+      'ítem: Toma',
+      'cambios en Sobre este tablero',
+    ]);
+  });
+
   it('refuses to merge evidence that is not a board draft of the board', () => {
     const ctx = project();
     const { board } = requestAgentDraft(
