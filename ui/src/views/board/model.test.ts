@@ -1,4 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
+import { compileBoard } from '../../../../src/core/board/compile.ts';
+import { creatures } from '../../../../src/core/board/testing.ts';
+import { typeViews } from '../../../../src/core/views.ts';
 import type { FeedEvent } from '../../activity.ts';
 import { agent, ago, inMinutes, item, moved, NOW, officialType } from '../../derive/fixtures.ts';
 import { setLanguage } from '../../i18n/i18n.ts';
@@ -54,6 +57,37 @@ const child = (id: string, parent: string, o: Partial<Item> = {}) =>
   item({ id, relations: [{ kind: 'parent', id: parent }] as NonNullable<Item['relations']>, ...o });
 
 beforeEach(() => setLanguage('en'));
+
+describe('a board made in Studio', () => {
+  const preset = compileBoard('bcria', 1, creatures());
+  const [type] = typeViews(preset.types);
+  const criaturas: CollectionView = {
+    name: 'Criaturas',
+    prefix: 'CRI',
+    preset: 'bcria',
+    icon: null,
+    types: [type as unknown as CollectionView['types'][number]],
+    view: { kind: 'list', groupBy: 'state', columns: ['id', 'title'] },
+  };
+
+  it('shows its steps, a review counted in the step it reviews, never a column of its own', () => {
+    const items = [
+      item({ id: 'CRI-1', collection: 'Criaturas', state: 'sconcept__review', turn: 'human' }),
+      item({ id: 'CRI-2', collection: 'Criaturas', state: 'sanimate__yours', turn: 'human' }),
+    ];
+    expect(pasosColumns(criaturas, items).map(({ key, label }) => `${key}:${label}`)).toEqual([
+      'sconcept:Concepto',
+      'sanimate:Animar',
+      'spolish:Pulir',
+      `${CLOSED_COL}:Done`,
+    ]);
+    expect(stepsStrip(criaturas, items).map(({ count }) => count)).toEqual([1, 1, 0, 0]);
+    expect(groupBoard(items, 'state', ctx(criaturas)).map(({ title }) => title)).toEqual([
+      'Concepto',
+      'Animar',
+    ]);
+  });
+});
 
 describe('the Pasos columns', () => {
   it('lists every open state in declaration order, leaves out empty off-path ones, and closes with one Done column', () => {

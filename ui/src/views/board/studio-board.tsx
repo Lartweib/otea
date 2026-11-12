@@ -2,11 +2,14 @@ import { useEffect, useState } from 'react';
 import type { BoardDefinition } from '../../../../src/core/board/model.ts';
 import { useApp } from '../../app/context.tsx';
 import { fetchBoard } from '../../board-studio/api.ts';
+import { sentenceNode } from '../../board-studio/editor/SentenceText.tsx';
+import { summary } from '../../board-studio/editor/sentences.ts';
 import { boardOfCollection, boardsOf, useBoards } from '../../board-studio/home/boards-store.ts';
-import { doesText } from '../../board-studio/words.ts';
+import { doesText, reviewsText } from '../../board-studio/words.ts';
 import { t, tx } from '../../i18n/i18n.ts';
 import { Button } from '../../kit/Button.tsx';
 import { Icon } from '../../kit/Icon.tsx';
+import type { LaneBlock } from '../../lanes/LaneList.tsx';
 import { studioHash } from '../../selection.ts';
 
 // A published board, as Studio shapes it (the mock's boardHtml): its live version's About for the
@@ -79,6 +82,60 @@ export function BoardActs({ studio, canWrite }: { studio: StudioBoard; canWrite:
       ) : null}
     </div>
   );
+}
+
+// What a Studio board says under its name: its About when it is a line or two, else the board in
+// sentences (Cada criatura empieza con…), as the editor's head says it. A long About (a preset's
+// playbook) is for agents, read with otea board.
+const DEK_MAX = 280;
+
+export function StudioDek({ studio }: { studio: StudioBoard }) {
+  const about = studio.live.about.trim();
+  if (about && about.length <= DEK_MAX && !about.startsWith('#'))
+    return (
+      <p className="dek" data-leaf="">
+        {about}
+      </p>
+    );
+  return (
+    <p className="dek" data-leaf="">
+      {summary(studio.live).map((s, i) => (
+        // biome-ignore lint/suspicious/noArrayIndexKey: the sentences of one summary, in order
+        <span key={i}>
+          {i ? ' ' : ''}
+          {sentenceNode(s)}
+        </span>
+      ))}
+    </p>
+  );
+}
+
+// An empty Studio board still shows its steps, each with who does and reviews it, and Hecho.
+export function emptyStepBlocks(studio: StudioBoard): LaneBlock[] {
+  return [
+    ...studio.live.steps.flatMap((step): LaneBlock[] => [
+      {
+        kind: 'sec',
+        key: `step:${step.id}`,
+        title: step.name,
+        count: 0,
+        gloss: `${doesText(step.doer)}, ${reviewsText(step.reviewer)}`,
+      },
+      {
+        kind: 'other',
+        key: `none:${step.id}`,
+        className: 'sec-none',
+        content: <span className="gloss">{t('bs.board.nothingIn', { step: step.name })}</span>,
+      },
+    ]),
+    {
+      kind: 'sec',
+      key: 'step:done',
+      title: t('bs.done'),
+      count: 0,
+      gloss: t('bs.board.doneGloss'),
+    },
+  ];
 }
 
 // «Todavía no hay ítems en X. Con Crear · Ítem empieza uno en Paso, donde …».

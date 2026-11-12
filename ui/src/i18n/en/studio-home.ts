@@ -82,6 +82,8 @@ export const studioHome = {
   'bs.board.create': 'Create · {item}',
   'bs.board.version': 'v{version}',
   'bs.board.changes': 'you have unpublished changes',
+  'bs.board.nothingIn': 'Nothing in {step} now.',
+  'bs.board.doneGloss': 'approved, or handed off at the end',
   'bs.board.teach':
     'No items in {board} yet. {create} starts one in {step}, where {does}. Connected agents can create them too.',
 } as const;

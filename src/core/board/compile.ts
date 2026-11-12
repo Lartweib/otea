@@ -61,16 +61,12 @@ const VARIANT: Readonly<Record<string, string>> = {
 
 const WORDS: Readonly<Record<Lang, Record<string, string>>> = {
   en: {
-    review: 'review',
-    yours: 'your review',
     done: 'Done',
     dropped: 'Dropped',
     yes: 'Yes',
     no: 'No',
   },
   es: {
-    review: 'revisión',
-    yours: 'tu revisión',
     done: 'Hecho',
     dropped: 'Descartado',
     yes: 'Sí',
@@ -130,13 +126,14 @@ function phasesOf(step: Step): Phase[] {
   const review: Phase = {
     state: stateOf({ step: step.id, phase: 'review' }),
     turn: step.reviewer === 'you' ? 'human' : 'agent',
-    label: (lang) => `${step.name} · ${WORDS[lang].review}`,
+    // A board is its steps: a review reads as the step it reviews, whose turn says who acts.
+    label: () => step.name,
   };
   if (!isAgent(step.reviewer)) return [doing, review];
   const yours: Phase = {
     state: stateOf({ step: step.id, phase: 'yours' }),
     turn: 'human',
-    label: (lang) => `${step.name} · ${WORDS[lang].yours}`,
+    label: () => step.name,
   };
   return [doing, review, yours];
 }

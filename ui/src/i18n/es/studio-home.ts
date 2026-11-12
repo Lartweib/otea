@@ -85,6 +85,8 @@ export const studioHome = {
   'bs.board.create': 'Crear · {item}',
   'bs.board.version': 'v{version}',
   'bs.board.changes': 'tienes cambios sin publicar',
+  'bs.board.nothingIn': 'Nada en {step} ahora.',
+  'bs.board.doneGloss': 'aprobados o entregados al final',
   'bs.board.teach':
     'Todavía no hay ítems en {board}. Con {create} empieza uno en {step}, donde {does}. Los agentes conectados también pueden crearlos.',
 } satisfies Partial<Catalog>;
