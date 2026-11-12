@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { cambios, tareasDeRepo } from '../../../../src/core/board/testing.ts';
 import { setDoer, toggleGuardPush } from './edits.ts';
-import { needsSetup, setupItems, setupRows, startSetup, tick } from './setup.ts';
+import { needsSetup, setupItems, setupLeft, setupRows, startSetup, tick } from './setup.ts';
 
 const pair = () => {
   const parent = cambios();
@@ -77,5 +77,14 @@ describe('Qué falta configurar', () => {
     expect(needsSetup(defs, { parentLive: true })).toBe(false);
     defs.child.template = 'tasks';
     expect(needsSetup(defs, { parentLive: false })).toBe(false);
+  });
+});
+
+describe('what is left to set up, for Publicar', () => {
+  it('counts the unticked rows while the checklist shows, and nothing once it is hidden', () => {
+    const rows = [{ done: true }, { done: false }, { done: false }];
+    expect(setupLeft({ rows, hidden: false })).toBe(2);
+    expect(setupLeft({ rows, hidden: true })).toBe(0);
+    expect(setupLeft(null)).toBe(0);
   });
 });

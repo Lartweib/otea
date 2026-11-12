@@ -31,6 +31,7 @@ import { Route } from './Route.tsx';
 import { sentenceNode } from './SentenceText.tsx';
 import { SetupPanel } from './Setup.tsx';
 import { plain, summary } from './sentences.ts';
+import { setupLeft } from './setup.ts';
 import { type PairState, usePair } from './use-pair.ts';
 import { VRoute } from './VRoute.tsx';
 
@@ -471,17 +472,19 @@ function Editor({
         <div className="se-grid">
           <Card />
           <section className="se-pv">
-            <PreviewPane draft={draft} />
+            <PreviewPane draft={draft} {...(state ? { pair: state.workspace } : {})} />
           </section>
         </div>
       </div>
       <PublishDialog
+        {...(state ? { pair: state.workspace, setupLeft: setupLeft(state.setup) } : {})}
         draft={draft}
         open={dialog === 'publish'}
         onClose={close}
         onPublished={() => draft.reload()}
       />
       <DiscardDialog
+        {...(state ? { pair: state.workspace } : {})}
         draft={draft}
         open={dialog === 'discard'}
         onClose={close}
@@ -490,7 +493,12 @@ function Editor({
           else draft.reload();
         }}
       />
-      <PracticeDialog draft={draft} open={dialog === 'practice'} onClose={close} />
+      <PracticeDialog
+        draft={draft}
+        {...(state ? { pair: state.workspace } : {})}
+        open={dialog === 'practice'}
+        onClose={close}
+      />
     </EditorContext.Provider>
   );
 }
