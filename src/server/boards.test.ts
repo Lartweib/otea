@@ -87,6 +87,46 @@ describe('the boards API', () => {
     expect(missing.status).toBe(404);
   });
 
+  it('publishes a joined pair in one go and undoes both at once', async () => {
+    const made = await call('POST', '/boards/set', { set: 'repos', lang: 'es', boards: [] });
+    const [parent, child] = made.body.records as [Json, Json];
+    const stamp = (record: Json) => (record.draft as { updatedAt: string }).updatedAt;
+    const ids = { parent: String(parent.id), child: String(child.id) };
+
+    const stale = await call('POST', '/boards/publish-pair', {
+      ...ids,
+      moves: { parent: {}, child: {} },
+      draftStamps: { parent: 'stale', child: stamp(child) },
+    });
+    expect(stale.status).toBe(409);
+    const untouched = await call('GET', `/boards/${ids.child}`);
+    expect((untouched.body.record as Json).live).toBeNull();
+
+    const published = await call('POST', '/boards/publish-pair', {
+      ...ids,
+      moves: { parent: {}, child: {} },
+      draftStamps: { parent: stamp(parent), child: stamp(child) },
+    });
+    expect(published.status).toBe(200);
+    expect((published.body.parent as Json).version).toBe(1);
+    expect((published.body.child as Json).version).toBe(1);
+    const listed = await call('GET', '/boards');
+    expect((listed.body.boards as Json[]).map(({ status }) => status)).toEqual(['live', 'live']);
+
+    const undone = await call('POST', '/boards/restore-pair', {
+      ...ids,
+      versions: { parent: null, child: null },
+    });
+    expect(undone.status).toBe(200);
+    expect((undone.body.parent as Json).live).toBeNull();
+    expect((undone.body.child as Json).live).toBeNull();
+    const after = await call('GET', '/boards');
+    expect((after.body.boards as Json[]).map(({ status }) => status)).toEqual(['draft', 'draft']);
+
+    const wrong = await call('POST', '/boards/publish-pair', { ...ids, moves: [] });
+    expect(wrong.status).toBe(400);
+  });
+
   it('creates a board with any name, saves its draft, plans and publishes it, and undoes that', async () => {
     const created = await call('POST', '/boards', { name: 'Tareas Ñandú', lang: 'es' });
     expect(created.status).toBe(201);
