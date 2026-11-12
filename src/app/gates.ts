@@ -2,7 +2,9 @@ import { type GateAction, gateAt, isClosed, positionOf } from '../core/board/eng
 import { type BoardDefinition, guardedBranch, TITLE } from '../core/board/model.ts';
 import { gateText } from '../core/board/next.ts';
 import { partByName } from '../core/board/reading.ts';
-import { selectItems } from '../store/queries.ts';
+import { OteaError } from '../core/errors.ts';
+import { listCollections, selectItems } from '../store/queries.ts';
+import { presetOf } from './collections.ts';
 import type { Context } from './context.ts';
 import { type Item, listItems, workflowOf } from './items.ts';
 import { itemOnBoard, type LiveBoard, liveBoards } from './next.ts';
@@ -89,6 +91,7 @@ function boardVerdicts(
 export function checkGate(ctx: Context, gate: string, fields: Record<string, string>): GateCheck {
   const boards = liveBoards(ctx);
   const onBoards = new Set(boards.map(({ collection }) => collection));
+  assertKnownKeys(ctx, boards, onBoards, fields);
   const fromBoards = GATED.includes(gate)
     ? boards.flatMap((board) => boardVerdicts(ctx, board, gate as GateAction, fields))
     : [];
@@ -101,18 +104,38 @@ export function checkGate(ctx: Context, gate: string, fields: Record<string, str
   return check;
 }
 
+// A key no board part and no preset field names is a typo: the check refuses it rather than
+// matching nothing and allowing the action.
+function assertKnownKeys(
+  ctx: Context,
+  boards: readonly LiveBoard[],
+  onBoards: ReadonlySet<string>,
+  fields: Readonly<Record<string, string>>,
+): void {
+  const presets = listCollections(ctx.db)
+    .filter(({ name }) => !onBoards.has(name))
+    .map((collection) => presetOf(ctx, collection));
+  for (const key of Object.keys(fields)) {
+    if (key === 'branch' || key === 'repo' || key === TITLE) continue;
+    const named =
+      boards.some(({ def }) => partByName(def, key) !== undefined) ||
+      presets.some((preset) => key in preset.fields);
+    if (!named) {
+      throw new OteaError('invalid_fields', `No board has a field named "${key}" to check`);
+    }
+  }
+}
+
 function presetVerdicts(
   ctx: Context,
   gate: string,
   fields: Record<string, string>,
   onBoards: ReadonlySet<string>,
 ): { verdict: GateVerdict; open: boolean }[] {
-  let items: Item[];
-  try {
-    items = listItems(ctx, { fields }).filter(({ collection }) => !onBoards.has(collection));
-  } catch {
-    return [];
-  }
+  // An error here fails the check closed: an item Otea cannot read is never allowed by silence.
+  const items: Item[] = listItems(ctx, { fields }).filter(
+    ({ collection }) => !onBoards.has(collection),
+  );
   return items.flatMap((item) => {
     const allowedIn = workflowOf(ctx, item).gates?.[gate];
     if (!allowedIn) return [];

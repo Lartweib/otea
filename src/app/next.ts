@@ -839,6 +839,36 @@ export function boardFieldInput<T extends Record<string, unknown>>(
   return readFieldInput(board.def, fields) as T;
 }
 
+// An agent cannot move the protected branch (or the repository it is read from) away from the
+// gate: once the branch is set, it changes only while a step that pushes it is being done, never in
+// its review or at a step that does not push it, where pushes and merges stay refused.
+export function assertBranchMayChange(
+  ctx: Context,
+  item: { id: string; collection: string; state: string; fields: Record<string, unknown> },
+  changes: Readonly<Record<string, unknown>>,
+  actor: Actor,
+): void {
+  if (actor.kind !== 'agent') return;
+  const board = liveBoardOf(ctx, item.collection);
+  const branch = board ? guardedBranch(board.def) : undefined;
+  if (!board || !branch) return;
+  const position = positionOf(item.state);
+  if (gateAt(board.def, position, 'push').allowed) return;
+  const keys = [branch.id, ...(branch.guard.repo === undefined ? [] : [branch.guard.repo])];
+  const moved = keys.filter((key) => {
+    const was = item.fields[key];
+    return key in changes && was !== undefined && was !== '' && changes[key] !== was;
+  });
+  const first = moved[0];
+  if (first === undefined) return;
+  const name = board.def.parts[first]?.name ?? first;
+  const pushers = branch.guard.push.map((id) => stepById(board.def, id)?.name ?? id).join(', ');
+  throw new OteaError(
+    'forbidden',
+    `Not updated ${item.id}: its ${name} is frozen here; it can change only while ${pushers} is being done.`,
+  );
+}
+
 // The state a reader names on a board (a step's name, `Done`), as the workflow's state.
 export function boardState(ctx: Context, collection: string, to: string): string {
   const board = liveBoardOf(ctx, collection);

@@ -32,6 +32,7 @@ import { getCollection, presetOf, typeOfItem } from './collections.ts';
 import type { Context } from './context.ts';
 import { presentEvidence } from './evidence.ts';
 import {
+  assertBranchMayChange,
   assertMayStandAlone,
   assertMoveHandsOff,
   type BoardBlock,
@@ -272,8 +273,10 @@ export function updateItem(ctx: Context, input: UpdateItemInput, now = systemClo
         `${item.id} is ${item.state} (turn none) and can no longer be updated`,
       );
     }
+    const fields = boardFieldInput(ctx, item.collection, input.fields ?? {});
+    assertBranchMayChange(ctx, item, fields, input.actor);
     const changes = {
-      ...boardFieldInput(ctx, item.collection, input.fields ?? {}),
+      ...fields,
       ...(input.title === undefined ? {} : { title: input.title }),
     };
     const revision = revise(type, item, changes);
