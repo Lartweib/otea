@@ -1,3 +1,6 @@
+import { existsSync, readFileSync, rmSync } from 'node:fs';
+import { join } from 'node:path';
+import { parse } from 'yaml';
 import { compileBoard } from '../core/board/compile.ts';
 import { type IdSource, newId } from '../core/board/ids.ts';
 import type { BoardDefinition } from '../core/board/model.ts';
@@ -135,8 +138,30 @@ function publish(
   setLiveVersion(ctx.db, board, version);
 }
 
-function readOne(ctx: Context, plan: Plan, lang: Lang, at: string, ids: IdSource): boolean {
+// A board other boards' items block (a blueprint's `blocks` connection into it) waits, on its
+// working step (its last), for nothing open to block an item.
+function waitingForBlockers(def: BoardDefinition): BoardDefinition {
+  const last = def.steps.at(-1);
+  if (!last || last.waits.includes('blockers')) return def;
+  return {
+    ...def,
+    steps: def.steps.map((step) =>
+      step === last ? { ...step, waits: [...step.waits, 'blockers' as const] } : step,
+    ),
+  };
+}
+
+function readOne(
+  ctx: Context,
+  plan: Plan,
+  lang: Lang,
+  at: string,
+  ids: IdSource,
+  blocked: ReadonlySet<string>,
+): boolean {
   const { collection, reading } = plan;
+  const waits = (def: BoardDefinition) =>
+    blocked.has(collection.name) ? waitingForBlockers(def) : def;
   const items = selectItems(ctx.db, { collection: collection.name });
   if (!reading) {
     const fields = [...new Set(items.flatMap((item) => Object.keys(item.fields)))];
@@ -147,7 +172,7 @@ function readOne(ctx: Context, plan: Plan, lang: Lang, at: string, ids: IdSource
           .flatMap(({ module }) => (module ? [[module, { id: module, module }] as const] : [])),
       ).values(),
     ];
-    const def = checked(genericBoard(collection.name, lang, fields, evidence, ids));
+    const def = checked(waits(genericBoard(collection.name, lang, fields, evidence, ids)));
     if (!def) return false;
     const preset = ctx.presets.presets.get(collection.preset);
     const closes = (state: string) =>
@@ -173,7 +198,9 @@ function readOne(ctx: Context, plan: Plan, lang: Lang, at: string, ids: IdSource
   const names = reading.boards.map(({ template }, index) =>
     index === 0 ? collection.name : freeName(ctx, template.board[lang]),
   );
-  const defs = readBoards(reading, lang, names, boardIds).map(checked);
+  const defs = readBoards(reading, lang, names, boardIds).map((def, index) =>
+    checked(index === 0 ? waits(def) : def),
+  );
   if (defs.some((def) => def === undefined)) return false;
   defs.forEach((def, index) => {
     const id = boardIds[index] ?? '';
@@ -251,13 +278,47 @@ export function migrateBoards(
   lang: Lang,
   now: Clock = systemClock,
   ids: IdSource = newId,
+  // Collections a blueprint's `blocks` connection pointed into.
+  blocked: ReadonlySet<string> = new Set(),
 ): number {
   if (pending(ctx).length === 0) return 0;
   // Read again inside the write lock: another process may have just read them.
   const count = transaction(ctx.db, () => {
     const at = now();
-    return pending(ctx).filter((plan) => readOne(ctx, plan, lang, at, ids)).length;
+    return pending(ctx).filter((plan) => readOne(ctx, plan, lang, at, ids, blocked)).length;
   });
   syncBoardPresets(ctx);
+  return count;
+}
+
+// The boards a project's old blueprint (`.otea/blueprint.yaml`) said other boards' items block:
+// `<board>.<type> blocks <board>.<type>`. Unreadable or missing reads as none.
+export function blockedByBlueprint(dataDir: string): Set<string> {
+  const path = join(dataDir, 'blueprint.yaml');
+  if (!existsSync(path)) return new Set();
+  try {
+    const doc: unknown = parse(readFileSync(path, 'utf8'));
+    const connections =
+      doc && typeof doc === 'object' && 'connections' in doc && Array.isArray(doc.connections)
+        ? doc.connections
+        : [];
+    return new Set(
+      connections.flatMap((text: unknown) => {
+        const match =
+          typeof text === 'string' ? /^\s*\S+\.\S+\s+blocks\s+(\S+)\.\S+\s*$/.exec(text) : null;
+        return match?.[1] ? [match[1]] : [];
+      }),
+    );
+  } catch {
+    return new Set();
+  }
+}
+
+// Reads every collection as boards (a blueprint's blocks become waits), then forgets the
+// blueprint: boards link freely, and "se divide en" is the only join they declare.
+export function migrateProjectBoards(ctx: Context & { dataDir: string }, lang: Lang): number {
+  const path = join(ctx.dataDir, 'blueprint.yaml');
+  const count = migrateBoards(ctx, lang, systemClock, newId, blockedByBlueprint(ctx.dataDir));
+  if (existsSync(path)) rmSync(path, { force: true });
   return count;
 }

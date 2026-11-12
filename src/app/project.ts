@@ -23,7 +23,8 @@ import {
   selectRegisteredProjects,
 } from '../store/registry.ts';
 import { readProjectBlueprint } from './blueprints.ts';
-import { ensureRequestsBoard, migrateCollections, syncBoardPresets } from './boards.ts';
+import { migrateProjectBoards } from './board-migration.ts';
+import { ensureRequestsBoard, syncBoardPresets } from './boards.ts';
 import { nameImplicitTypes } from './collections.ts';
 import type { Context } from './context.ts';
 import { playbookText } from './guide.ts';
@@ -133,20 +134,7 @@ function open(found: Found, identity = () => newIdentity(found.root)): Project {
   // Published boards join the catalog as compiled presets (app/boards.ts); a collection still on a
   // preset file is read as a published board, and every project has its Pedidos board.
   syncBoardPresets(project);
-  migrateCollections(project, PROJECT_LANG, undefined, undefined, (preset) => {
-    // What agents read on the preset: its own playbook, then its type's.
-    const paths = [preset.playbook, ...preset.types.map(({ playbook }) => playbook)].filter(
-      (path, index, all): path is string => path !== undefined && all.indexOf(path) === index,
-    );
-    const texts = paths.flatMap((path) => {
-      try {
-        return [playbookText(project, preset, path) ?? ''];
-      } catch {
-        return [];
-      }
-    });
-    return texts.join('\n\n').trim() || null;
-  });
+  migrateProjectBoards(project, PROJECT_LANG);
   ensureRequestsBoard(project, PROJECT_LANG);
   return project;
 }
