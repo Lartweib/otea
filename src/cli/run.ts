@@ -68,8 +68,12 @@ function parse(argv: string[]): { values: Values; positionals: string[] } {
   }
 }
 
-function actorFrom(values: Values, env: Io['env']): Actor {
-  const name = (typeof values.as === 'string' && values.as) || env.OTEA_AGENT || 'agent';
+// The agent acting: --as, or OTEA_AGENT. A command that declares --as itself (otea drop: the
+// motive) reads the agent from OTEA_AGENT alone.
+function actorFrom(values: Values, env: Io['env'], command?: Command): Actor {
+  const own = command !== undefined && 'as' in command.options;
+  const given = !own && typeof values.as === 'string' ? values.as : '';
+  const name = given || env.OTEA_AGENT || 'agent';
   return { kind: 'agent', name };
 }
 
@@ -108,7 +112,7 @@ function inputFor(command: Command, values: Values, args: string[], io: Io, json
   };
   return {
     cwd: io.cwd,
-    actor: actorFrom(values, io.env),
+    actor: actorFrom(values, io.env, command),
     channel: 'cli',
     harness: CLI_HARNESS,
     signal: io.signal,

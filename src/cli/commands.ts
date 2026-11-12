@@ -49,6 +49,7 @@ import {
   approveItem,
   type BoardMoveInput,
   type BoardMoveResult,
+  dropItem,
   handoffItem,
   liveBoardOf,
   nextFor,
@@ -822,12 +823,14 @@ function boardMove(
   const { actor, channel, option } = input;
   const way = option('way');
   const reason = option('reason');
+  const note = option('note');
   const move = {
     id,
     actor,
     channel,
     ...(way === undefined ? {} : { way }),
     ...(reason ? { reason } : {}),
+    ...(note ? { note } : {}),
   };
   return withAgent(input, (project) => {
     const { item, text } = run(project, move);
@@ -838,10 +841,35 @@ function boardMove(
 const handoffCommand: Command = {
   name: 'handoff',
   summary:
-    'Hand off the step you did on an item: refused, saying what is missing, until its handoff is complete; then to its review, or along --way (a step name or Done) with --reason when the step has several',
+    'Hand off the step you did on an item: refused, saying what is missing, until its handoff is complete; then to its review, or along --way (a step name or Done) with --reason when the step has several. --note is the note of the handoff, kept with the round (required where the step asks for one); --way an earlier step, with --reason, takes the item back to it for its next round',
   args: ['id'],
-  options: { way: { placeholder: 'step' }, reason: {} },
+  options: { way: { placeholder: 'step' }, reason: {}, note: {} },
   execute: (input) => boardMove(input, handoffItem),
+};
+
+const dropCommand: Command = {
+  name: 'drop',
+  summary:
+    'Drop an item that is not worth doing, saying why with --reason, and, on a board with motives, which one with --as (its name); an agent drops only while doing a step that lets it, so here --as names the motive, not the agent (set OTEA_AGENT instead)',
+  args: ['id'],
+  options: { reason: {}, as: { placeholder: 'motive' } },
+  execute: (input) => {
+    const [id = ''] = input.args;
+    const { actor, channel, option } = input;
+    const reason = option('reason');
+    const motive = option('as');
+    const dropping = {
+      id,
+      actor,
+      channel,
+      ...(reason ? { reason } : {}),
+      ...(motive ? { motive } : {}),
+    };
+    return withAgent(input, (project) => {
+      const { item, text } = dropItem(project, dropping);
+      return { data: { item, text }, text };
+    });
+  },
 };
 
 const approveCommand: Command = {
@@ -1511,6 +1539,7 @@ export const COMMANDS: readonly Command[] = [
   unlink,
   next,
   handoffCommand,
+  dropCommand,
   approveCommand,
   sendBack,
   move,

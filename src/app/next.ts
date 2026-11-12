@@ -643,7 +643,9 @@ function approves(def: BoardDefinition, from: Position, target: Position): boole
   return target.phase === 'doing' && stepIndex(def, target.step) > stepIndex(def, from.step);
 }
 
-type MoveWords = { reason?: string; note?: string };
+// A move's reason and note, and, for the person's discard, whether it came from the page or
+// through an agent (a relay).
+type MoveWords = { reason?: string; note?: string; via?: 'page' | 'relay' };
 
 // An agent's move along the compiled workflow is one of the engine's moves, checked as the engine
 // checks it: from a doing phase, the handoff this agent would make (into its review, yours when
@@ -740,7 +742,7 @@ export function assertMoveHandsOff(
     dropTarget(board, item, {
       actor: actor ?? { kind: 'human', name: 'you' },
       channel: 'ui',
-      via: 'page',
+      via: words.via ?? 'page',
       ...(words.reason === undefined ? {} : { reason: words.reason }),
       ...(motive === undefined ? {} : { motive }),
     });

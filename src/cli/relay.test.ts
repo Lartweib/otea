@@ -91,7 +91,7 @@ describe('relay', () => {
     const { code, err } = await otea('relay', 'TASKS-1', 'dropped', '--quote', QUOTE);
 
     expect(code).toBe(2);
-    expect(err).toContain('Moving from "todo__review" to "dropped" requires a reason');
+    expect(err).toContain('Not dropped TASKS-1: say why with --reason.');
   });
 
   it('refuses a human-ui transition with forbidden (exit 7), pointing to the web UI', async () => {
