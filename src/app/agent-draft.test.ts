@@ -66,7 +66,7 @@ describe('an agent drafting a board', () => {
       now,
     );
 
-    const pedido = getItem(ctx, item);
+    const pedido = getItem(ctx, item, now);
     expect(pedido.collection).toBe('Pedidos');
     expect(pedido.title).toBe('Esbozar el tablero Criaturas');
     expect(Object.values(pedido.fields)[0]).toContain(
