@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cambios, errores, tareasDeRepo } from '../core/board/testing.ts';
+import { cambios, creatures, errores, tareasDeRepo } from '../core/board/testing.ts';
 import { OteaError } from '../core/errors.ts';
 import { createItem, getItem } from './items.ts';
 import { createdTextOf } from './next.ts';
@@ -97,5 +97,33 @@ describe('creating an item on a board', () => {
         now,
       ).kind,
     ).toBe('blocks');
+  });
+  it('says in the words of the board that a board that divides into nothing keeps its parts at home', () => {
+    const ctx = memoryContext();
+    publishAs(ctx, tareasDeRepo(), 'brt', now);
+    publishAs(ctx, cambios(), 'bcam', now);
+    publishAs(ctx, creatures(), 'bcre', now);
+    const change = createItem(
+      ctx,
+      { collection: 'Cambios', title: 'Nube', fields: { fwhat: 'x' }, actor: you },
+      now,
+    );
+    const wolf = createItem(
+      ctx,
+      { collection: 'Criaturas', title: 'Lobo', fields: { fdesc: 'gris' }, actor: you },
+      now,
+    );
+    expect(
+      refusal(() =>
+        linkItems(
+          ctx,
+          { id: change.id, kind: 'parent', other: wolf.id, actor: you, channel: 'cli' },
+          now,
+        ),
+      ),
+    ).toEqual({
+      code: 'parent_across_boards',
+      message: `Not linked: a Criatura's parts stay on Criaturas, and ${change.id} is on Cambios. Link ${change.id} blocks ${wolf.id} to make ${wolf.id} wait, or ${change.id} implements ${wolf.id}.`,
+    });
   });
 });

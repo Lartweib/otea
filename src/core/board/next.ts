@@ -559,6 +559,17 @@ export function parentTypeText(
   return `Not linked: the parts of a ${parent.item} are ${child.name}, and ${other} is on ${otherBoard}.`;
 }
 
+// A board that divides into nothing keeps an item's parts on itself: a part on another board is
+// refused, and the links that are free between boards are named.
+export function partsAtHomeText(
+  parent: BoardDefinition,
+  parentId: string,
+  other: string,
+  otherBoard: string,
+): string {
+  return `Not linked: a ${parent.item}'s parts stay on ${parent.name}, and ${other} is on ${otherBoard}. Link ${other} blocks ${parentId} to make ${parentId} wait, or ${other} implements ${parentId}.`;
+}
+
 // What otea check answers for one item, in the board's words.
 export function gateText(
   def: BoardDefinition,
