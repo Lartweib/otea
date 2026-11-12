@@ -328,7 +328,7 @@ export function moveItem(ctx: Context, input: MoveItemInput, now = systemClock):
     assertMayWrite(item.id, lease, actor);
     authorizeMove(workflow, item.state, to, { actor, channel }, reason);
     assertCanLeave(type, item.state, to, item.fields);
-    assertMoveHandsOff(ctx, item, to);
+    assertMoveHandsOff(ctx, item, to, actor);
     assertMayEnter(ctx, item, workflow, to, at);
     const data = { ...(reason ? { reason } : {}), channel };
     return landMove(db, workflow, item, { to, actor, at, lease }, data);

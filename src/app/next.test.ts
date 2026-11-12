@@ -227,4 +227,74 @@ describe('the old paths on a board', () => {
     );
     expect(claimItem(ctx, { id: item.id, actor: kiln }, now).lease?.holder).toBe('kiln');
   });
+
+  it('lets an agent move only where the engine would take its handoff, never into its own review', () => {
+    const ctx = memoryContext();
+    const def = creatures();
+    def.steps = def.steps.map((s) => (s.id === 'sanimate' ? { ...s, doer: 'any' as const } : s));
+    board(ctx, def);
+    const item = creature(ctx);
+    attach(ctx, item.id, 'eart');
+    handoffItem(ctx, { id: item.id, actor: quill, channel: 'cli' }, now);
+    approveItem(ctx, { id: item.id, actor: you, channel: 'ui' }, now);
+    ctx.db
+      .prepare('UPDATE items SET fields = ? WHERE id = ?')
+      .run(JSON.stringify({ fdesc: 'Lenta', fsteps: '["cone","ctwo"]' }), item.id);
+    attach(ctx, item.id, 'eanim');
+    claimItem(ctx, { id: item.id, actor: scout }, now);
+
+    // scout reviews Animar: its own work goes to your review, not to scout's.
+    expect(() =>
+      moveItem(ctx, { id: item.id, to: 'sanimate__review', actor: scout, channel: 'cli' }, now),
+    ).toThrowError(expect.objectContaining({ code: 'forbidden' }));
+    expect(
+      moveItem(ctx, { id: item.id, to: 'sanimate__yours', actor: scout, channel: 'cli' }, now)
+        .state,
+    ).toBe('sanimate__yours');
+  });
+
+  it('refuses an agent that moves a review it is not the reviewer of', () => {
+    const ctx = memoryContext();
+    board(ctx);
+    const item = creature(ctx);
+    attach(ctx, item.id, 'eart');
+    handoffItem(ctx, { id: item.id, actor: quill, channel: 'cli' }, now);
+    approveItem(ctx, { id: item.id, actor: you, channel: 'ui' }, now);
+    ctx.db
+      .prepare('UPDATE items SET fields = ? WHERE id = ?')
+      .run(JSON.stringify({ fdesc: 'Lenta', fsteps: '["cone","ctwo"]' }), item.id);
+    attach(ctx, item.id, 'eanim');
+    handoffItem(ctx, { id: item.id, actor: kiln, channel: 'cli' }, now);
+
+    expect(() =>
+      moveItem(ctx, { id: item.id, to: 'spolish', actor: quill, channel: 'cli' }, now),
+    ).toThrowError(expect.objectContaining({ code: 'forbidden' }));
+    expect(
+      moveItem(ctx, { id: item.id, to: 'spolish', actor: scout, channel: 'cli' }, now).state,
+    ).toBe('spolish');
+  });
+});
+
+describe('rounds across a publish', () => {
+  it('starts no new round when a publish reopens a review, so fresh evidence still counts', () => {
+    const ctx = memoryContext();
+    const record = createBoard(ctx, { name: 'Criaturas', lang: 'es' }, now, sequenceIds());
+    saveDraft(ctx, record.id, { definition: creatures(), baseVersion: null }, now);
+    publishBoard(ctx, record.id, { moves: {}, by: you }, now);
+    const item = creature(ctx);
+    attach(ctx, item.id, 'eart');
+    handoffItem(ctx, { id: item.id, actor: quill, channel: 'cli' }, now);
+    const next = creatures();
+    next.steps = next.steps.map((s) =>
+      s.id === 'sconcept' ? { ...s, reviewer: 'none', ways: [] } : s,
+    );
+    saveDraft(ctx, record.id, { definition: next, baseVersion: 1 }, now);
+    publishBoard(ctx, record.id, { moves: {}, by: you }, now);
+    expect(getItem(ctx, item.id).state).toBe('sconcept');
+
+    expect(itemOnBoard(ctx, getItem(ctx, item.id), next).round).toBe(1);
+    expect(handoffItem(ctx, { id: item.id, actor: quill, channel: 'cli' }, now).item.state).toBe(
+      'sanimate',
+    );
+  });
 });

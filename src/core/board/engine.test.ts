@@ -186,6 +186,19 @@ describe('moves', () => {
 });
 
 describe('roundsOf', () => {
+  it('starts no round on a move a publish or a restore made, unless the step was never entered', () => {
+    const rounds = roundsOf(def, 'sconcept', at(0), [
+      { from: 'sconcept', to: 'sconcept__review', at: at(1) },
+      { from: 'sconcept__review', to: 'sconcept', at: at(2), quiet: true },
+      { from: 'sconcept', to: 'sanimate', at: at(3), quiet: true },
+    ]);
+    expect(rounds).toEqual({
+      rounds: { sconcept: 1, sanimate: 1 },
+      startedAt: { sconcept: at(0), sanimate: at(3) },
+      dips: [],
+    });
+  });
+
   it('counts every entry into a step, never restarting, and says when the current round began', () => {
     const rounds = roundsOf(def, 'sconcept', at(0), [
       { from: 'sconcept', to: 'sconcept__review', at: at(1) },

@@ -261,7 +261,9 @@ export function sendBack(def: BoardDefinition, position: Position): MoveResult {
   return { ok: true, to: { step: backTarget(def, position.step), phase: 'doing' } };
 }
 
-export type Transition = { from: string; to: string; at: string };
+// `quiet`: a move the board made itself (a publish or a restore placing the item), not one of the
+// work: it starts no round of a step already entered, and is never a send-back.
+export type Transition = { from: string; to: string; at: string; quiet?: boolean };
 
 // A step's round counts every time the item entered it, never restarting; `startedAt` is when the
 // current round of each step began, and `dips` are the send-backs, for the route to draw.
@@ -284,9 +286,13 @@ export function roundsOf(
   };
   const first = positionOf(initial);
   if (!isClosed(first)) enter(first.step, createdAt);
-  for (const { from, to, at } of transitions) {
+  for (const { from, to, at, quiet } of transitions) {
     const target = positionOf(to);
     if (isClosed(target) || target.phase !== 'doing') continue;
+    if (quiet) {
+      if (out.rounds[target.step] === undefined) enter(target.step, at);
+      continue;
+    }
     const source = positionOf(from);
     if (!isClosed(source) && source.step === target.step && source.phase === 'doing') continue;
     enter(target.step, at);

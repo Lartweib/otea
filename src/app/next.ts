@@ -69,12 +69,28 @@ function liveBoards(ctx: Context): LiveBoard[] {
   );
 }
 
-function transitionsOf(ctx: Context, id: string): { initial?: string; moves: Transition[] } {
+// Moves the board made itself, not the work: a publish or a restore placing the item, and the
+// reading of a preset collection as a board.
+const BOARD_MOVES = new Set(['publish', 'restore', 'migrate']);
+
+// The item's moves as the engine replays them. A collection read from a preset starts its history
+// at that reading: the states before it belong to the preset's workflow, not to the board's steps.
+function transitionsOf(
+  ctx: Context,
+  id: string,
+): { initial?: string; createdAt?: string; moves: Transition[] } {
   const events = selectEvents(ctx.db, id);
   const created = events.find(({ type }) => type === 'created');
-  const moves = events
-    .filter(({ type }) => type === 'transitioned')
-    .map(({ data, at }) => ({ from: String(data.from), to: String(data.to), at }));
+  const moved = events.filter(({ type }) => type === 'transitioned');
+  const migrated = moved.findLastIndex(({ data }) => data.reason === 'migrate');
+  const moves = moved.slice(migrated + 1).map(({ data, at }) => ({
+    from: String(data.from),
+    to: String(data.to),
+    at,
+    ...(BOARD_MOVES.has(String(data.reason)) ? { quiet: true } : {}),
+  }));
+  const reading = moved[migrated];
+  if (reading) return { initial: String(reading.data.to), createdAt: reading.at, moves };
   const state = created?.data.state;
   return typeof state === 'string' ? { initial: state, moves } : { moves };
 }
@@ -85,9 +101,9 @@ export type ItemOnBoard = { position: Position; facts: ItemFacts; rounds: Rounds
 // the rounds of each step, read from its moves.
 export function itemOnBoard(ctx: Context, item: ItemRecord, def: BoardDefinition): ItemOnBoard {
   const position = positionOf(item.state);
-  const { initial, moves } = transitionsOf(ctx, item.id);
+  const { initial, createdAt, moves } = transitionsOf(ctx, item.id);
   const first = def.steps[0]?.id ?? item.state;
-  const rounds = roundsOf(def, initial ?? first, item.createdAt, moves);
+  const rounds = roundsOf(def, initial ?? first, createdAt ?? item.createdAt, moves);
   const evidence = selectEvidence(ctx.db, item.id).flatMap((entry) =>
     entry.module === null ? [] : [{ part: entry.module, at: entry.createdAt }],
   );
@@ -369,11 +385,60 @@ export function sendBackItem(
   });
 }
 
+// An agent's move along the compiled workflow is one of the engine's moves, checked as the engine
+// checks it: from a doing phase, the handoff this agent would make (into its review, yours when
+// the agent reviews the step itself, or along a way); from a review, an approval or a send-back
+// by the step's reviewer. So otea move cannot walk around who may act.
+function assertAgentMove(
+  ctx: Context,
+  board: LiveBoard,
+  item: ItemRecord,
+  to: string,
+  actor: Actor,
+) {
+  const on = itemOnBoard(ctx, item, board.def);
+  const target = positionOf(to);
+  const position = on.position;
+  if (isClosed(position)) return;
+  if (position.phase === 'doing') {
+    const way = isClosed(target)
+      ? target.closed === DONE
+        ? DONE
+        : undefined
+      : target.step === position.step
+        ? undefined
+        : target.step;
+    const result = handoff(board.def, position, on.facts, {
+      by: { kind: 'agent', name: actor.name },
+      ...(way === undefined ? {} : { way }),
+    });
+    if (!result.ok) refuse(board.def, item, result);
+    if (stateOf(result.to) === to) return;
+    const step = stepById(board.def, position.step);
+    const into = result.to;
+    const where =
+      !isClosed(into) && into.phase === 'yours'
+        ? `your work on ${step?.name ?? position.step} goes to the person's review, not yours`
+        : `a handoff from ${step?.name ?? position.step} goes to ${stateOf(into)}`;
+    throw new OteaError('forbidden', `Not your move: ${where}; use otea handoff ${item.id}`);
+  }
+  assertReviewer(board.def, item, actor);
+}
+
 // A move along the compiled workflow that hands work off (into the step's review, or out of a
 // step nobody reviews) passes the same check a handoff does, so otea move cannot walk around it.
-export function assertMoveHandsOff(ctx: Context, item: ItemRecord, to: string): void {
+export function assertMoveHandsOff(
+  ctx: Context,
+  item: ItemRecord,
+  to: string,
+  actor?: Actor,
+): void {
   const board = liveBoardOf(ctx, item.collection);
   if (!board) return;
+  if (actor?.kind === 'agent') {
+    assertAgentMove(ctx, board, item, to, actor);
+    return;
+  }
   const from = positionOf(item.state);
   if (isClosed(from) || from.phase !== 'doing') return;
   const target = positionOf(to);
