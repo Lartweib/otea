@@ -156,8 +156,9 @@ describe('practice: the new capabilities', () => {
     expect(silent.said).toEqual({ kind: 'reason', you: true });
     expect(at(silent)).toBe('striage:doing:1');
     const back = takeBack(s, 'sfill', 'Faltan los pasos');
-    expect(at(back)).toBe('sfill:doing:2');
-    expect(back.said).toEqual({ kind: 'tookBack', you: true, step: 'Completar', round: 2 });
+    // As the server counts it: the item was created at Triar, so Completar starts its first round.
+    expect(at(back)).toBe('sfill:doing:1');
+    expect(back.said).toEqual({ kind: 'tookBack', you: true, step: 'Completar', round: 1 });
     expect(back.log.at(-1)).toEqual({
       kind: 'tookBack',
       by: 'you',
@@ -166,6 +167,12 @@ describe('practice: the new capabilities', () => {
       to: 'Completar',
       reason: 'Faltan los pasos',
     });
+  });
+
+  it('counts a skipped creation as the first round of the step it starts at', () => {
+    const back = takeBack(atFix(), 'striage', 'No se arregla ahora');
+    expect(at(back)).toBe('striage:doing:2');
+    expect(back.said).toEqual({ kind: 'tookBack', you: false, step: 'Triar', round: 2 });
   });
 
   it('refuses a handoff without its note, then hands off with one and keeps it', () => {

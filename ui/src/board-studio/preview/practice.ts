@@ -122,6 +122,8 @@ export type PracticeState = {
   title: string;
   position: Position;
   createdAt: string;
+  // The step it was created at, when the first step skipped it ("Crear con todo rellenado").
+  startedAt?: string;
   tick: number;
   transitions: Transition[];
   fields: Record<string, unknown>;
@@ -279,7 +281,7 @@ export type PracticeView = {
 const roundsNow = (s: PracticeState): Rounds =>
   roundsOf(
     s.def,
-    stateOf({ step: s.def.steps[0]?.id ?? '', phase: 'doing' }),
+    stateOf({ step: s.startedAt ?? s.def.steps[0]?.id ?? '', phase: 'doing' }),
     s.createdAt,
     s.transitions,
   );
@@ -651,6 +653,7 @@ export function createFilled(s: PracticeState): PracticeState {
   return {
     ...filled,
     position: placed.position,
+    startedAt: placed.position.step,
     note: '',
     fresh: false,
     said: { kind: 'skipped', step: step?.name ?? '', first: first.name },
