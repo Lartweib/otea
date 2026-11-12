@@ -152,13 +152,14 @@ describe('move by an agent', () => {
   afterEach(() => repo.remove());
 
   it.each([
-    ['done', [], 'human-ui'],
-    ['todo', ['--reason', 'Redo'], 'human'],
-    ['dropped', ['--reason', 'Drop'], 'human'],
-  ])('refuses %s from review (%s authority) with forbidden', async (to, extra, by) => {
+    ['done', []],
+    ['todo', ['--reason', 'Redo']],
+    ['dropped', ['--reason', 'Drop']],
+  ])('refuses %s from the person’s review with forbidden', async (to, extra) => {
     const { code, err } = await otea('move', 'TASKS-1', to, ...extra);
 
     expect(code).toBe(7);
-    expect(err).toContain(`requires ${by} authority`);
+    // On a board, the step engine says whose review it is.
+    expect(err).toContain('Not your turn: the person reviews En curso on TASKS-1');
   });
 });

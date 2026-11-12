@@ -545,8 +545,13 @@ describe('commands', () => {
 
           expect(code).toBe(4);
           expect(out).toBe('');
+          // On a board, the step engine words it with the board's names.
           expect(JSON.parse(err)).toEqual({
-            error: { code: 'invalid_transition', message: 'Cannot move from "todo" to "done"' },
+            error: {
+              code: 'invalid_transition',
+              message:
+                'TASKS-1 cannot go to Done: a handoff from En curso goes to En curso (in review); use otea handoff TASKS-1',
+            },
           });
         });
 
@@ -554,7 +559,7 @@ describe('commands', () => {
           const { code, err } = await otea('move', 'BUGS-1', 'done');
 
           expect(code).toBe(7);
-          expect(err).toContain('requires human-ui authority');
+          expect(err).toContain('Not your turn: the person reviews En curso on BUGS-1');
           expect((await json('show', 'BUGS-1')).state).toBe('todo__review');
         });
 

@@ -299,7 +299,10 @@ describe('mcp server', () => {
 
       const reply = await call('move', { id: 'TASKS-1', state: 'done' });
 
-      expect(reply.content[0]?.text).toContain('agent \\"claude\\" via mcp may not');
+      // On a board, the step engine refuses it first, in the board's words.
+      expect(reply.content[0]?.text).toContain(
+        'Not your turn: the person reviews En curso on TASKS-1',
+      );
     });
   });
 
