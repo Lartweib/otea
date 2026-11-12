@@ -1,5 +1,10 @@
-import { waysOf } from '../../../../src/core/board/engine.ts';
-import type { BoardDefinition, Doer, Step } from '../../../../src/core/board/model.ts';
+import { backWaysOf, waysOf } from '../../../../src/core/board/engine.ts';
+import {
+  type BoardDefinition,
+  type Doer,
+  guardedBranch,
+  type Step,
+} from '../../../../src/core/board/model.ts';
 import type { Lane } from '../../lanes/geometry.ts';
 import type { Look } from '../../lanes/looks.ts';
 
@@ -167,4 +172,84 @@ export function vrouteRows(def: BoardDefinition): VRow[] {
     ),
     { key: 'done', lane: 'none', look: 'done' },
   ];
+}
+
+// ---- the marks of ways back, the skip on creation, waits and the protected branch ----
+
+// A way back ("o regresarlo a…"): a dashed loop on the doer's lane, from the step back to the
+// earlier one, with a small arrowhead where it lands. Below your lane, above the agents'. `you`:
+// on your lane; the doer's word ("si lo devuelves" / "si lo regresa") follows the step's doer.
+export type BackArc = {
+  from: string;
+  to: string;
+  you: boolean;
+  doerYou: boolean;
+  d: string;
+  head: string;
+  label: { x: number; y: number };
+};
+
+export function backArcs(def: BoardDefinition, g: Geom): BackArc[] {
+  const out: BackArc[] = [];
+  for (const st of g.stops) {
+    if (st.kind !== 'step') continue;
+    backWaysOf(def, st.key).forEach((target, k) => {
+      const t = g.stops.find((s) => s.key === target);
+      if (!t) return;
+      const you = st.y === RY.you;
+      const yb = you ? RY.you + 24 + k * 8 : RY.ag - 22 - k * 8;
+      const ty = t.y + (you ? 6 : -6);
+      out.push({
+        from: st.key,
+        to: target,
+        you,
+        doerYou: st.step.doer === 'you',
+        d: `M${st.x - 3} ${st.y + (you ? 6 : -6)}C${st.x - 8} ${yb} ${t.x + 14} ${yb} ${t.x + 3} ${ty}`,
+        head: `M${t.x + 0.5} ${ty + (you ? 4 : -4)}l2.6 ${you ? -4.2 : 4.2}l3.4 1.6`,
+        label: { x: (st.x + t.x) / 2, y: you ? yb + 13 : yb - 4 },
+      });
+    });
+  }
+  return out;
+}
+
+// The skip on creation: a short dashed bypass above the agents' lane, from the start dot past the
+// first step to the second, with an arrowhead, clear of every way back.
+export function skipBypass(
+  def: BoardDefinition,
+  g: Geom,
+): { d: string; head: string; label: { x: number; y: number } } | null {
+  const [first, second] = def.steps;
+  const [a, b, c] = g.stops;
+  if (!first?.skipWhenReady || !second || !a || !b || !c) return null;
+  const yb = RY.ag - 19;
+  const ex = c.x - 4;
+  const ey = c.y - 7;
+  return {
+    d: `M${a.x + 4} ${a.y - 4}C${a.x + 14} ${yb} ${a.x + 30} ${yb} ${a.x + 48} ${yb}L${ex - 44} ${yb}C${ex - 16} ${yb} ${ex - 2} ${yb + 6} ${ex} ${ey}`,
+    head: `M${ex - 3.4} ${ey - 4.4}l3.4 4.4l3.2-4.6`,
+    label: { x: b.x, y: yb - 5 },
+  };
+}
+
+// A step that waits for something: a small hourglass under its node (over it on your lane).
+export function waitMarks(g: Geom): { key: string; x: number; y: number }[] {
+  return g.stops.flatMap((st) =>
+    st.kind === 'step' && st.step.waits.length
+      ? [{ key: st.key, x: st.x, y: st.y === RY.you ? st.y - 20 : st.y + 20 }]
+      : [],
+  );
+}
+
+// A protected branch: a branch glyph by each step it is pushed in, and by Hecho (merged there).
+export function branchMarks(def: BoardDefinition, g: Geom): { key: string; x: number; y: number }[] {
+  const branch = guardedBranch(def);
+  if (!branch) return [];
+  const out = g.stops.flatMap((st) =>
+    st.kind === 'step' && branch.guard.push.includes(st.key)
+      ? [{ key: st.key, x: st.x + 12, y: st.y - 13 }]
+      : [],
+  );
+  out.push({ key: 'done', x: g.xd + 12, y: RY.mid - 13 });
+  return out;
 }
