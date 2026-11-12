@@ -55,6 +55,17 @@ export function historyOf(
       const to = String(e.data.to);
       const state = word(to);
       const target = states.get(to);
+      // Otea reading a preset's item onto its board: no one moved it, and "migrate" is a marker.
+      if (e.data.reason === 'migrate') {
+        const note = typeof e.data.note === 'string' && e.data.note.trim() ? e.data.note : null;
+        return {
+          ...base,
+          who: 'Otea',
+          dot: 'agent',
+          text: t('sheet.h.migrated', { state }),
+          ...(note ? { quote: note } : {}),
+        };
+      }
       if (relay) {
         return {
           ...base,
