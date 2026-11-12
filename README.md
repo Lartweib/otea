@@ -266,7 +266,7 @@ types:
 | `deprecated_key` | warning | `close_requires`, the former name of `requires` |
 | `sample_*` | warning | a sample that does not fit the preset (below) |
 
-`otea validate` prints the warnings of the project's own presets, as warnings that never fail it; an official preset is read-only, so its notes (each official approval is given only in the web UI, by design) and every info note stay in Studio. Studio's `GET /api/studio/presets/<name>` carries them all as `notes`, each with its `code`, `level`, `message` (which starts with its place in the YAML, as problems do), `file` and a structured `path`, such as `{"section": "fields", "type": "bug", "field": "build_hash"}`, for the editor to open the part it is about. A blueprint is noted too: a `blocks` connection whose target type has no state that `requires: blockers_closed` waits for nothing, and `otea validate` warns about it in the project's blueprint (the official `product` blueprint's `bugs.bug blocks work.task` is one, since no `tasks` state waits for blockers).
+`otea validate` prints the warnings of the project's own presets, as warnings that never fail it; an official preset is read-only, so its notes (each official approval is given only in the web UI, by design) and every info note stay in Studio. Studio's `GET /api/studio/presets/<name>` carries them all as `notes`, each with its `code`, `level`, `message` (which starts with its place in the YAML, as problems do), `file` and a structured `path`, such as `{"section": "fields", "type": "bug", "field": "build_hash"}`, for the editor to open the part it is about.
 
 **Sample items.** A preset may carry a few example items in `samples.yaml`, beside `preset.yaml`, for Studio to draw the real detail, row, form and lanes from a draft. They never enter a collection or the database. Evidence files live in a `samples/` folder beside it:
 
@@ -302,7 +302,7 @@ otea init --template product   # Tareas, which waits for nothing open blocking i
 
 - A part on a board that is always part of another needs `--parent` (`otea create --collection "Tareas de repo" --parent CAMBIOS-1 …`); without it, or with a parent on another board, the create fails with exit 16 (`parent_required`, `parent_type`). `otea link A parent B` follows the same rule.
 - Every other link (`blocks`, `implements`, `relates`, `duplicates`) is free between any two boards. A step that waits for its blockers ("Algo que esperar") is not handed off, or approved, while one of them is open (exit 4, `blockers_open`); one that waits for its parts, while a part is open (exit 4, `children_open`).
-- Blueprints are gone. A project that had one is read once, when it opens: every collection becomes a board (each old preset has its own reading, so a `change` collection becomes Cambios plus Tareas de repo and its repo tasks move there with their history), a `blocks` connection into a board makes its working step wait for blockers, and `.otea/blueprint.yaml` is deleted.
+- Blueprints are gone. A project that had one is read once, when it opens: every collection becomes a board (each old preset has its own reading, so a `change` collection becomes Cambios plus Tareas de repo and its repo tasks move there with their history), a `blocks` connection into a board makes its working step wait for blockers, and `.otea/blueprint.yaml` is deleted once every collection reads as a board (while one cannot be read yet, Otea warns and keeps it). A collection on a preset Otea never shipped keeps its git gates as a guard on its `branch` field.
 
 ### Agent moves on a board
 
