@@ -187,8 +187,7 @@ function statusWords(s: BoardStatusView): ReactNode {
       return (
         <>
           <span>{t('bs.home.live', { version: s.version })}</span>
-          <span>·</span>
-          <span className="you">{t('bs.home.changed')}</span>
+          <span className="bpart you">· {t('bs.home.changed')}</span>
         </>
       );
     default:
@@ -245,22 +244,14 @@ function BoardRow({ board }: { board: BoardSummary }) {
           <span>{board.name}</span>
           <span className="tag line">{t('bs.home.eachItem', { item: board.item })}</span>
         </div>
+        {/* Each «· part» wraps whole, so a line never ends on a dangling dot. */}
         <div className="bmeta">
           {statusWords(status)}
-          <span>·</span>
-          <span>{t('bs.home.steps', { count: steps })}</span>
+          <span className="bpart">· {t('bs.home.steps', { count: steps })}</span>
           {live ? (
-            <>
-              <span>·</span>
-              <span>{t('bs.home.open', { count: board.open })}</span>
-            </>
+            <span className="bpart">· {t('bs.home.open', { count: board.open })}</span>
           ) : null}
-          {board.builtin ? (
-            <>
-              <span>·</span>
-              <span>{t('bs.home.builtin')}</span>
-            </>
-          ) : null}
+          {board.builtin ? <span className="bpart">· {t('bs.home.builtin')}</span> : null}
         </div>
       </div>
       <div className="bacts">

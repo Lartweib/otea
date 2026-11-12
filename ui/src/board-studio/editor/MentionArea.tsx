@@ -36,6 +36,8 @@ export function MentionArea({ at, stored, label, small, placeholder, rows = 2 }:
   const area = useRef<HTMLTextAreaElement>(null);
   const button = useRef<HTMLButtonElement>(null);
   const caret = useRef<[number, number] | null>(null);
+  // The @ typed to open the list: what the pick replaces (the caret moves on once focus leaves).
+  const typedAt = useRef<number | null>(null);
   const menu = useAnchor();
   const text = editableText(def, stored);
   const segments = mentionSegments(def, stored);
@@ -53,7 +55,12 @@ export function MentionArea({ at, stored, label, small, placeholder, rows = 2 }:
 
   const insert = (name: string) => {
     const el = area.current;
-    const [s, e] = caret.current ?? [text.length, text.length];
+    const typed = typedAt.current;
+    typedAt.current = null;
+    const [s, e] =
+      typed !== null && text[typed] === '@'
+        ? [typed, typed + 1]
+        : (caret.current ?? [text.length, text.length]);
     const before = text.slice(0, s);
     const piece = `${before && !/\s$/.test(before) ? ' ' : ''}@${name} `;
     const next = before + piece + text.slice(e);
@@ -124,8 +131,10 @@ export function MentionArea({ at, stored, label, small, placeholder, rows = 2 }:
               value.length === text.length + 1 &&
               value[at - 1] === '@' &&
               (at === 1 || /\s/.test(value[at - 2] ?? ''));
+            // Any other edit forgets the typed @: a later pick goes where the caret is.
+            if (!typed) typedAt.current = null;
             if (typed && !menu.open && button.current) {
-              caret.current = [at - 1, at];
+              typedAt.current = at - 1;
               menu.toggle(button.current);
             }
           }}

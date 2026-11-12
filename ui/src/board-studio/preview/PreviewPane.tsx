@@ -59,8 +59,9 @@ export function PreviewPane({ draft }: PreviewPaneProps) {
     const leave = (event: KeyboardEvent) => {
       if (event.key === 'Escape') setArranging(false);
     };
-    window.addEventListener('keydown', leave);
-    return () => window.removeEventListener('keydown', leave);
+    // Captured: the editor's own keys must not swallow it first.
+    window.addEventListener('keydown', leave, true);
+    return () => window.removeEventListener('keydown', leave, true);
   }, [showArrange]);
 
   // The body cross-fades when what it shows changes (a tab, a stop).

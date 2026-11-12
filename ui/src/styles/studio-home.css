@@ -131,6 +131,9 @@
   gap: 8px;
   flex-wrap: wrap;
 }
+.brow .bmeta .bpart {
+  white-space: nowrap;
+}
 .brow .bmeta .you {
   color: var(--you-ink);
 }
@@ -342,6 +345,14 @@
   font: 400 italic 15.5px / 1.5 var(--serif);
   color: var(--ink-2);
   max-width: 70ch;
+}
+/* An empty step of a published board: «Nada en Concepto ahora.», under its section. */
+.sec-none {
+  padding: 0 0 4px var(--pl);
+}
+.sec-none .gloss {
+  font: 400 italic 14px / 1.3 var(--serif);
+  color: var(--ink-3);
 }
 .teach b {
   font-style: normal;
