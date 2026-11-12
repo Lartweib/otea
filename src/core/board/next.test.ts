@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { handedText, nextText, refusalText } from './next.ts';
+import { boardText, handedText, nextText, refusalText } from './next.ts';
 import { creatures } from './testing.ts';
 
 const def = creatures();
@@ -126,5 +126,42 @@ describe('handedText', () => {
       'Handed off. CRI-12 moves on to Animar.',
     );
     expect(handedText(def, 'CRI-12', { closed: 'done' })).toBe('Handed off. CRI-12 is Done.');
+  });
+});
+
+describe('boardText', () => {
+  it('says the board’s own words: about, idle time, the cap and each step’s instructions', () => {
+    const board = { ...def, idle: 'Ordena el @[eart].', cap: { on: true, n: 2 } };
+
+    expect(boardText(board)).toBe(
+      [
+        'Criaturas: steps for each Criatura',
+        '',
+        'About this board',
+        '  Cada criatura del pantano.',
+        '',
+        'When there is nothing to do',
+        '  Ordena el Arte conceptual.',
+        '',
+        'New items',
+        '  Add items only while fewer than 2 wait for the person.',
+        '',
+        '1. Concepto: any agent does it; the person reviews it',
+        '   When you take it',
+        '     Pinta desde la Descripción.',
+        '   Before you hand it off',
+        '     Adjunta el Arte conceptual.',
+        '',
+        '2. Animar: kiln does it; scout reviews it',
+        '   When you take it',
+        '     Parte del Arte conceptual de Concepto.',
+        '   When you review it',
+        '     Mira el bucle.',
+        '',
+        '3. Pulir: the person does it',
+        '',
+        'Run otea next to get the item to take now.',
+      ].join('\n'),
+    );
   });
 });

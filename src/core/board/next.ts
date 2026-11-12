@@ -8,6 +8,7 @@ import {
   isEvidence,
   type Part,
   partOf,
+  type Step,
   stepById,
   type Target,
 } from './model.ts';
@@ -244,5 +245,46 @@ export function idleText(def: BoardDefinition, waitingForYou: number): string {
       ]),
     );
   }
+  return lines.join('\n');
+}
+
+function whoDoes(step: Step): string {
+  if (step.doer === 'you') return 'the person does it';
+  if (step.doer === 'any') return 'any agent does it';
+  return `${step.doer.agent} does it`;
+}
+
+function whoReviews(step: Step): string {
+  if (step.reviewer === 'none') return '';
+  if (step.reviewer === 'you') return '; the person reviews it';
+  return `; ${step.reviewer.agent} reviews it`;
+}
+
+// What `otea board` prints: the board's own words for agents (about it, idle time, the cap) and
+// each step's instructions, mentions read with today's names.
+export function boardText(def: BoardDefinition): string {
+  const lines = [`${def.name}: steps for each ${def.item}`];
+  lines.push(...section('About this board', indent(mentionText(def, def.about))));
+  lines.push(...section('When there is nothing to do', indent(mentionText(def, def.idle))));
+  if (def.cap.on)
+    lines.push(
+      ...section('New items', [
+        `  Add items only while fewer than ${def.cap.n} wait for the person.`,
+      ]),
+    );
+  def.steps.forEach((step, index) => {
+    const say = (title: string, text: string) => {
+      const body = indent(mentionText(def, text)).map((line) => `   ${line}`);
+      return body.length === 0 ? [] : [`   ${title}`, ...body];
+    };
+    lines.push(
+      '',
+      `${index + 1}. ${step.name}: ${whoDoes(step)}${whoReviews(step)}`,
+      ...say('When you take it', step.instructions.take),
+      ...say('Before you hand it off', step.instructions.before),
+      ...(step.reviewer === 'none' ? [] : say('When you review it', step.instructions.review)),
+    );
+  });
+  lines.push('', 'Run otea next to get the item to take now.');
   return lines.join('\n');
 }
