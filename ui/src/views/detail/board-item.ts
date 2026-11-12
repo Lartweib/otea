@@ -228,10 +228,15 @@ export function roundNotes(
 ): Round[] {
   const index = def.steps.findIndex((s) => s.id === stepId);
   const stepName = def.steps[index]?.name;
-  const rounds: Round[] = [{ round: 1, notes: [] }];
+  // Rounds count as the step engine counts them (roundsOf): each time the item enters the step.
+  const rounds: Round[] = [];
   const add = (n: number, note: RoundNote) => rounds[n - 1]?.notes.push(note);
   const indexOf = (step: string) => def.steps.findIndex((s) => s.id === step);
   for (const e of events) {
+    if (e.type === 'created' && typeof e.data.state === 'string') {
+      const at = positionOf(e.data.state);
+      if (!isClosed(at) && at.step === stepId) rounds.push({ round: 1, notes: [] });
+    }
     if (e.type !== 'transitioned') continue;
     const { from, to } = e.data;
     if (typeof from !== 'string' || typeof to !== 'string') continue;
@@ -249,16 +254,17 @@ export function roundNotes(
     const intoStep = !isClosed(target) && target.step === stepId && target.phase === 'doing';
     const fromStep = !isClosed(source) && source.step === stepId;
     const fromLater = !isClosed(source) && indexOf(source.step) > index;
-    const sentBack = intoStep && fromStep && source.phase !== 'doing';
-    // Back from a later step, or a migration that brought the person's question with it; moving
-    // on, forward, with a word opens no round.
-    const wayBack = intoStep && !fromStep && (fromLater || (migrated && text !== ''));
-    if (sentBack || wayBack) {
-      rounds.push({ round: rounds.length + 1, notes: text ? [note('back')] : [] });
+    const sentBack = fromStep && source.phase !== 'doing';
+    // Its words are the round's note when it came back (from its review or a later step) or a
+    // migration brought the person's question; moving on, forward, with a word says nothing here.
+    const back = sentBack || fromLater || migrated;
+    if (intoStep && !(fromStep && source.phase === 'doing')) {
+      rounds.push({ round: rounds.length + 1, notes: back && text ? [note('back')] : [] });
     } else if (fromStep && source.phase === 'doing' && text && !block) {
       add(rounds.length, note('handoff'));
     }
   }
+  if (rounds.length === 0) rounds.push({ round: 1, notes: [] });
   if (block) {
     for (const n of block.notes) {
       if (n.step !== stepId && n.step !== stepName) continue;
