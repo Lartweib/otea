@@ -1,11 +1,19 @@
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { openDatabase } from '../store/database.ts';
 import { migrate } from '../store/migrations.ts';
-import { listBoardSummaries } from './boards.ts';
+import { getBoardRecord, listBoardSummaries } from './boards.ts';
 import { addCollection } from './collections.ts';
 import { createItem } from './items.ts';
 import { addPathToProject, initProject, openProject, type Project } from './project.ts';
@@ -146,6 +154,51 @@ describe('project', () => {
       expect(item?.type).toBe('item');
       expect(JSON.parse(String(item?.fields))).toMatchObject({ priority: 'high' });
       expect(project.presets.presets.get(work?.id ?? '')?.name).toBe(work?.id);
+    });
+
+    it('reads a change collection as Cambios divided into Tareas de repo', () => {
+      const repo = gitRepo();
+      const first = initProject(repo, { local: true });
+      addCollection(first, { name: 'Cambios', preset: 'change' });
+      first.db.close();
+
+      const project = track(openProject(repo, ENV));
+
+      const names = listBoardSummaries(project).map(({ name }) => name);
+      expect(names).toEqual(expect.arrayContaining(['Cambios', 'Tareas de repo']));
+    });
+
+    it('makes a blueprint blocks connection a wait on the blocked board, then forgets the blueprint', () => {
+      const repo = gitRepo();
+      const first = initProject(repo, { local: true });
+      addCollection(first, { name: 'work', preset: 'tasks' });
+      addCollection(first, { name: 'bugs', preset: 'bug-triage' });
+      const blueprint = join(first.dataDir, 'blueprint.yaml');
+      writeFileSync(
+        blueprint,
+        [
+          'name: product',
+          'boards:',
+          '  - name: work',
+          '    preset: tasks',
+          '  - name: bugs',
+          '    preset: bug-triage',
+          'connections:',
+          '  - bugs.bug blocks work.task',
+          '',
+        ].join('\n'),
+      );
+      first.db.close();
+
+      const project = track(openProject(repo, ENV));
+
+      const work = listBoardSummaries(project).find(({ name }) => name === 'work');
+      const def = getBoardRecord(project, work?.id ?? '').live?.definition;
+      expect(def?.steps.find(({ id }) => id === 'todo')?.waits).toEqual(['blockers']);
+      const bugs = listBoardSummaries(project).find(({ name }) => name === 'bugs');
+      const bugDef = getBoardRecord(project, bugs?.id ?? '').live?.definition;
+      expect(bugDef?.steps.every(({ waits }) => waits.length === 0)).toBe(true);
+      expect(existsSync(blueprint)).toBe(false);
     });
 
     it('gives the project its Pedidos board once, in Spanish', () => {

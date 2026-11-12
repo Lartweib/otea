@@ -140,7 +140,7 @@ describe('commands', () => {
 
         const reset = await otea('collection', 'icon', 'tasks', 'default');
 
-        expect(reset.out).toBe(`Collection "tasks" shows icon checkbox (its preset's)\n`);
+        expect(reset.out).toBe(`Collection "tasks" shows icon checklist (its preset's)\n`);
       });
 
       it('refuses an unknown icon and an unknown collection', async () => {
@@ -207,16 +207,16 @@ describe('commands', () => {
         await otea('create', '--collection', 'tasks', '--title', 'X');
 
         expect((await json('show', 'TASKS-1')).events[0].data).toEqual({
-          state: 'todo',
+          state: 'incomplete',
           channel: 'cli',
         });
         expect((await otea('show', 'TASKS-1')).out).toContain('created by agent:agent via cli at ');
       });
 
-      it('creates an item on the first step of its board, with only the fields given', async () => {
+      it('creates an item in Completar when it lacks what Completar asks, with its start values', async () => {
         const item = await json('create', '--collection', 'tasks', '--title', 'Vague');
 
-        expect(item).toMatchObject({ state: 'todo', fields: {} });
+        expect(item).toMatchObject({ state: 'incomplete', fields: { priority: 'medium' } });
       });
 
       it('accepts every field through repeated --field', async () => {
@@ -236,7 +236,7 @@ describe('commands', () => {
       });
 
       it.each([
-        [['--field', 'priority=urgent'], 'Prioridad must be one of baja, media, alta'],
+        [['--field', 'priority=urgent'], 'Prioridad must be one of Baja, Media, Alta'],
         [['--field', 'owner=ana'], 'has no field "owner"'],
       ])('fails with invalid_fields for %j', async (extra, message) => {
         const { code, err } = await otea(
@@ -324,8 +324,8 @@ describe('commands', () => {
           '--description',
           'Steps',
         );
-        await otea('update', 'TASKS-1', '--field', 'priority=medium');
-        await otea('update', 'BUGS-1', '--field', 'priority=medium');
+        await otea('update', 'TASKS-1', '--field', 'priority=high');
+        await otea('update', 'BUGS-1', '--field', 'priority=high');
         await otea('handoff', 'BUGS-1');
       });
 
@@ -333,7 +333,7 @@ describe('commands', () => {
         it('prints aligned columns: id, state, turn, title', async () => {
           expect(await otea('list')).toMatchObject({
             code: 0,
-            out: 'TASKS-1  En curso              agent  Write docs\nBUGS-1   En curso (in review)  human  Fix login\n',
+            out: 'TASKS-1  Hacerlo              agent  Write docs\nBUGS-1   Hacerlo (in review)  human  Fix login\n',
           });
         });
 
@@ -343,11 +343,11 @@ describe('commands', () => {
           [['--collection', 'tasks'], ['TASKS-1']],
           [['--collection', 'tasks', '--turn', 'human'], []],
           [
-            ['--field', 'priority=medium'],
+            ['--field', 'priority=high'],
             ['TASKS-1', 'BUGS-1'],
           ],
-          [['--field', 'priority=medium', '--field', 'title=Fix login'], ['BUGS-1']],
-          [['--field', 'priority=high', '--field', 'title=Fix login'], []],
+          [['--field', 'priority=high', '--field', 'title=Fix login'], ['BUGS-1']],
+          [['--field', 'priority=low', '--field', 'title=Fix login'], []],
         ])('filters with %j', async (filters, ids) => {
           const items: Array<{ id: string }> = await json('list', ...filters);
 
@@ -386,9 +386,9 @@ describe('commands', () => {
           expect(code).toBe(0);
           expect(out).toContain('TASKS-1  Write docs');
           // A board item reads by names: its step, its fields and their choices.
-          expect(out).toContain('state: En curso  turn: agent  collection: tasks');
-          expect(out).toContain('Descripción: For v1\nPrioridad: media');
-          expect(out).toMatch(/agent:agent {2}created {2}En curso/);
+          expect(out).toContain('state: Hacerlo  turn: agent  collection: tasks');
+          expect(out).toContain('Descripción: For v1\nPrioridad: Alta');
+          expect(out).toMatch(/agent:agent {2}created {2}Hacerlo/);
         });
 
         it('prints transitions in order', async () => {
@@ -396,8 +396,8 @@ describe('commands', () => {
           const events = lines.slice(lines.indexOf('Events:') + 1).filter(Boolean);
 
           expect(events).toHaveLength(3);
-          expect(events[1]).toMatch(/updated +Prioridad: \(none\) -> "media"$/);
-          expect(events[2]).toMatch(/transitioned {2}En curso -> En curso \(in review\)$/);
+          expect(events[1]).toMatch(/updated +Prioridad: "Media" -> "Alta"$/);
+          expect(events[2]).toMatch(/transitioned {2}Hacerlo -> Hacerlo \(in review\)$/);
         });
 
         it('prints the item with events with --json', async () => {
@@ -414,13 +414,11 @@ describe('commands', () => {
 
         it('says which gated actions the item allows, in text and --json', async () => {
           await otea('collection', 'add', 'changes', '--preset', 'change');
-          await otea('create', '--collection', 'changes', '--type', 'change', '--title', 'Keys');
-          await otea(
+          await otea('create', '--collection', 'changes', '--title', 'Keys');
+          const task = await json(
             'create',
             '--collection',
-            'changes',
-            '--type',
-            'repo_task',
+            'Tareas de repo',
             '--parent',
             'CHANGES-1',
             '--title',
@@ -431,10 +429,8 @@ describe('commands', () => {
             'branch=chg-1/keys',
           );
 
-          expect((await otea('show', 'CHANGES-2')).out).toContain(
-            'Gates: push blocked, merge blocked',
-          );
-          expect((await json('show', 'CHANGES-2')).gates).toEqual({ push: false, merge: false });
+          expect((await otea('show', task.id)).out).toContain('Gates: push blocked, merge blocked');
+          expect((await json('show', task.id)).gates).toEqual({ push: false, merge: false });
           expect((await otea('show', 'CHANGES-1')).out).not.toContain('Gates:');
         });
 
@@ -449,7 +445,7 @@ describe('commands', () => {
 
         it('lists the human decisions the agent may relay', async () => {
           expect((await otea('show', 'BUGS-1')).out).toContain(
-            'Agent can relay to: En curso (reason required), Dropped (reason required)',
+            'Agent can relay to: Hacerlo (reason required), Dropped (reason required)',
           );
           expect((await json('show', 'BUGS-1')).relayable).toEqual([
             { to: 'todo', by: 'human', reasonRequired: true, turn: 'agent' },
@@ -470,7 +466,7 @@ describe('commands', () => {
         it('prints the updated item as a list row', async () => {
           expect(await otea('update', 'TASKS-2', '--title', 'Clear')).toMatchObject({
             code: 0,
-            out: 'TASKS-2  En curso  agent  Clear\n',
+            out: 'TASKS-2  Completar  agent  Clear\n',
           });
         });
 
@@ -486,7 +482,7 @@ describe('commands', () => {
 
           expect(item.fields).toEqual({ description: 'Steps', priority: 'high' });
           expect((await otea('show', 'TASKS-2')).out).toMatch(
-            /updated {2}Descripción: \(none\) -> "Steps"; Prioridad: \(none\) -> "alta"$/m,
+            /updated {2}Descripción: \(none\) -> "Steps"; Prioridad: "Media" -> "Alta"$/m,
           );
         });
 
@@ -525,7 +521,7 @@ describe('commands', () => {
         it('prints the moved item as a list row', async () => {
           expect(await otea('move', 'TASKS-1', 'todo__review')).toMatchObject({
             code: 0,
-            out: 'TASKS-1  En curso (in review)  human  Write docs\n',
+            out: 'TASKS-1  Hacerlo (in review)  human  Write docs\n',
           });
         });
 
@@ -548,7 +544,7 @@ describe('commands', () => {
             error: {
               code: 'invalid_transition',
               message:
-                'TASKS-1 cannot go to Done: a handoff from En curso goes to En curso (in review); use otea handoff TASKS-1',
+                'TASKS-1 cannot go to Done: a handoff from Hacerlo goes to Hacerlo (in review); use otea handoff TASKS-1',
             },
           });
         });
@@ -557,7 +553,7 @@ describe('commands', () => {
           const { code, err } = await otea('move', 'BUGS-1', 'done');
 
           expect(code).toBe(7);
-          expect(err).toContain('Not your turn: the person reviews En curso on BUGS-1');
+          expect(err).toContain('Not your turn: the person reviews Hacerlo on BUGS-1');
           expect((await json('show', 'BUGS-1')).state).toBe('todo__review');
         });
 
@@ -571,7 +567,7 @@ describe('commands', () => {
             channel: 'cli',
           });
           expect((await otea('show', 'TASKS-1')).out).toMatch(
-            /transitioned {2}En curso -> En curso \(in review\) \(Ready\)$/m,
+            /transitioned {2}Hacerlo -> Hacerlo \(in review\) \(Ready\)$/m,
           );
         });
 

@@ -10,14 +10,16 @@ describe('check', () => {
   let repo: ReturnType<typeof tempGitRepo>;
   let otea: Cli;
   let name: string;
+  let task: string;
 
   const json = async (...argv: string[]) => JSON.parse((await otea(...argv, '--json')).out);
-  const approve = (id: string) => {
+  // The person's own moves: approving the proposal, then the work.
+  const person = (id: string, to: string) => {
     const project = openProject(repo.dir);
     try {
       moveItem(project, {
         id,
-        to: 'approved',
+        to,
         actor: { kind: 'human', name: 'ana' },
         channel: 'ui',
       });
@@ -33,46 +35,45 @@ describe('check', () => {
     otea = cliAt(repo.dir, { OTEA_AGENT: 'claude' });
     await otea('init');
     await otea('collection', 'add', 'changes', '--preset', 'change');
-    await otea('create', '--collection', 'changes', '--type', 'change', '--title', 'Keys');
-    await otea(
-      'create',
-      '--collection',
-      'changes',
-      '--type',
-      'repo_task',
-      '--parent',
-      'CHANGES-1',
-      '--title',
-      'Keys here',
-      '--field',
-      `repo=${name}`,
-      '--field',
-      'branch=chg-1/keys',
-    );
+    await otea('create', '--collection', 'changes', '--title', 'Keys');
+    task = (
+      await json(
+        'create',
+        '--collection',
+        'Tareas de repo',
+        '--parent',
+        'CHANGES-1',
+        '--title',
+        'Keys here',
+        '--field',
+        `repo=${name}`,
+        '--field',
+        'branch=chg-1/keys',
+      )
+    ).id;
   });
 
   afterEach(() => repo.remove());
 
-  it('refuses a push before the plan is approved, with the states that allow it', async () => {
+  it('refuses a push before the proposal is approved, in the board’s words', async () => {
     expect(await otea('check', '--gate', 'push', '--branch', '--repo')).toEqual({
       code: 1,
-      out: 'push refused: CHANGES-2 is proposed; push is allowed only in implementing, revising\n',
+      out: `push refused: ${task} is in Propuesta; its branch can be pushed only while Implementar is being done.\n`,
       err: '',
     });
   });
 
-  it('allows a push while implementing and refuses it in review; merges only once approved', async () => {
-    await otea('relay', 'CHANGES-2', 'ready', '--quote', 'Go ahead with this repo');
-    await otea('move', 'CHANGES-2', 'implementing');
+  it('allows a push while implementing and refuses it in review; merges only once Done', async () => {
+    person(task, 'implementing');
 
     expect(await otea('check', '--gate', 'push', '--branch', '--repo')).toMatchObject({
       code: 0,
-      out: 'push allowed: CHANGES-2 is implementing\n',
+      out: `push allowed: ${task} is being done in Implementar.\n`,
     });
     expect((await otea('check', '--gate', 'merge', '--branch', '--repo')).code).toBe(1);
-    await otea('move', 'CHANGES-2', 'pr_review');
+    await otea('move', task, 'implementing__review');
     expect((await otea('check', '--gate', 'push', '--branch', '--repo')).code).toBe(1);
-    approve('CHANGES-2');
+    person(task, 'done');
 
     expect((await otea('check', '--gate', 'merge', '--branch', '--repo')).code).toBe(0);
     expect((await otea('check', '--gate', 'push', '--branch', '--repo')).code).toBe(1);
@@ -85,12 +86,11 @@ describe('check', () => {
       gate: 'push',
       allowed: false,
       items: [
-        {
-          id: 'CHANGES-2',
-          state: 'proposed',
+        expect.objectContaining({
+          id: task,
           allowed: false,
-          allowedIn: ['implementing', 'revising'],
-        },
+          text: `push refused: ${task} is in Propuesta; its branch can be pushed only while Implementar is being done.`,
+        }),
       ],
     });
     expect(

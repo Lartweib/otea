@@ -61,7 +61,7 @@ describe('relay', () => {
     await otea('relay', 'TASKS-1', 'dropped', '--quote', QUOTE, '--reason', 'Gone');
 
     expect((await otea('show', 'TASKS-1')).out).toMatch(
-      /human:human +transitioned {2}En curso \(in review\) -> Dropped \(Gone\), relayed by claude: "Discard it, the old flow is gone"$/m,
+      /human:human +transitioned {2}Hacerlo \(in review\) -> Dropped \(Gone\), relayed by claude: "Discard it, the old flow is gone"$/m,
     );
   });
 
@@ -159,7 +159,7 @@ describe('move by an agent', () => {
 
     expect(code).toBe(7);
     // On a board, the step engine says whose review it is.
-    expect(err).toContain('Not your turn: the person reviews En curso on TASKS-1');
+    expect(err).toContain('Not your turn: the person reviews Hacerlo on TASKS-1');
   });
   it('refuses dropped as otea drop does: only the person drops items here', async () => {
     const { code, err } = await otea('move', 'TASKS-1', 'dropped', '--reason', 'Drop');

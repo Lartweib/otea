@@ -1,43 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { type Cli, cliAt, tempGitRepo } from './testing.ts';
 
-// review is on the human's turn and waits for every child: a parent comes back only once they close.
-const EPIC = `
-preset: epic
-preset_version: 1
-fields:
-  title: { module: text, required: create }
-workflow:
-  initial: building
-  states:
-    building: { turn: agent }
-    parked: { turn: human }
-    review: { turn: human, requires: children_closed }
-    done: { turn: none, closes: done, requires: children_closed }
-  transitions:
-    - { from: building, to: review, by: agent }
-    - { from: building, to: parked, by: agent }
-    - { from: parked, to: review, by: human }
-    - { from: review, to: done, by: human }
-`;
-
-// review waits for every child and for everything that blocks the item, in any collection.
-const WEB = `
-preset: web
-preset_version: 1
-fields:
-  title: { module: text, required: create }
-workflow:
-  initial: building
-  states:
-    building: { turn: agent }
-    review: { turn: human, requires: [children_closed, blockers_closed] }
-    done: { turn: none, closes: done }
-  transitions:
-    - { from: building, to: review, by: agent }
-    - { from: review, to: done, by: human }
-`;
-
 describe('relations', () => {
   let repo: ReturnType<typeof tempGitRepo>;
   let otea: Cli;
@@ -177,7 +140,7 @@ describe('relations', () => {
 
     it('lists the children of a parent, with their relations in JSON', async () => {
       expect((await otea('list', '--parent', 'PARTS-1')).out).toBe(
-        'PARTS-3  En curso  agent  Movement\nPARTS-4  Dropped   none   Fur\n',
+        'PARTS-3  Hacerlo  agent  Movement\nPARTS-4  Dropped  none   Fur\n',
       );
       const [epic] = await json('list', '--collection', 'parts');
       expect(epic.children).toEqual({ total: 2, open: 1, done: 0, discarded: 1 });
@@ -215,84 +178,6 @@ describe('relations', () => {
       const events = (await otea('show', 'PARTS-3')).out;
 
       expect(events).toMatch(/relation_added\s+PARTS-2 blocks PARTS-3/);
-    });
-  });
-
-  describe('a working state that requires closed children', () => {
-    beforeEach(async () => {
-      repo.write('.otea/presets/epic/preset.yaml', EPIC);
-      await otea('collection', 'add', 'creatures', '--preset', 'epic');
-      for (const title of ['Create wolf', 'Body', 'Movement']) {
-        await otea('create', '--collection', 'creatures', '--title', title);
-      }
-      await otea('link', 'CREATURES-2', 'parent', 'CREATURES-1');
-      await otea('link', 'CREATURES-3', 'parent', 'CREATURES-1');
-      await otea('move', 'CREATURES-3', 'parked');
-    });
-
-    it('refuses a move into it with exit 4, listing each open child with its state', async () => {
-      const result = await otea('move', 'CREATURES-1', 'review');
-
-      expect(result.code).toBe(4);
-      expect(result.err).toContain('CREATURES-2 (building), CREATURES-3 (parked)');
-      expect(await errorOf('move', 'CREATURES-1', 'review')).toEqual({
-        code: 4,
-        error: 'children_open',
-      });
-    });
-
-    it('refuses a relayed decision into it the same way', async () => {
-      await otea('move', 'CREATURES-1', 'parked');
-
-      expect(
-        await errorOf('relay', 'CREATURES-1', 'review', '--quote', 'Send it back to me'),
-      ).toEqual({ code: 4, error: 'children_open' });
-    });
-
-    it('reports the requirement on the move in show --json', async () => {
-      const { transitions } = await json('show', 'CREATURES-1');
-
-      expect(transitions).toEqual([
-        {
-          to: 'review',
-          by: 'agent',
-          reasonRequired: false,
-          turn: 'human',
-          requires: ['children_closed'],
-        },
-        { to: 'parked', by: 'agent', reasonRequired: false, turn: 'human' },
-      ]);
-    });
-  });
-
-  describe('a state that requires closed blockers', () => {
-    beforeEach(async () => {
-      repo.write('.otea/presets/web/preset.yaml', WEB);
-      await otea('collection', 'add', 'web', '--preset', 'web');
-      await otea('create', '--collection', 'web', '--title', 'Login page');
-      await otea('create', '--collection', 'bugs', '--title', 'Login loops');
-      await otea('link', 'BUGS-2', 'blocks', 'WEB-1');
-    });
-
-    it('refuses a move into it with exit 4 while a blocker in another collection is open', async () => {
-      const result = await otea('move', 'WEB-1', 'review');
-
-      expect(result.code).toBe(4);
-      expect(result.err).toContain('1 of its 1 blockers is open: BUGS-2 (todo)');
-      expect(await errorOf('move', 'WEB-1', 'review')).toEqual({
-        code: 4,
-        error: 'blockers_open',
-      });
-    });
-
-    it('says in show what the item waits for, and lets it in once the blocker closes', async () => {
-      expect((await otea('show', 'WEB-1')).out).toContain(
-        'move it to review with evidence once its open blocker BUGS-2 is closed',
-      );
-
-      await otea('relay', 'BUGS-2', 'dropped', '--quote', 'Drop it', '--reason', 'Not a bug');
-
-      expect(await otea('move', 'WEB-1', 'review')).toMatchObject({ code: 0 });
     });
   });
 });

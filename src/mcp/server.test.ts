@@ -7,7 +7,6 @@ import { openProject } from '../app/project.ts';
 import { COMMANDS } from '../cli/commands.ts';
 import { type Cli, cliAt, tempGitRepo } from '../cli/testing.ts';
 import type { Actor } from '../core/item.ts';
-import { EVIDENCE_YAML, MIXED_YAML } from '../core/testing.ts';
 import {
   AGENT_COMMANDS,
   CLI_ONLY_COMMANDS,
@@ -121,13 +120,15 @@ describe('mcp server', () => {
     });
 
     it('reads a board published while it runs on its next call, without a restart', async () => {
-      expect((await data('next')).text).toContain('En curso, round 1');
+      expect((await data('next')).text).toContain('Hacerlo, round 1');
       const project = openProject(repo.dir);
       try {
         const id = liveBoardOf(project, 'tasks')?.id ?? '';
         const live = getBoardRecord(project, id).live;
         if (!live) throw new Error('not live');
-        const steps = live.definition.steps.map((step) => ({ ...step, name: 'Hacerlo' }));
+        const steps = live.definition.steps.map((step) =>
+          step.id === 'todo' ? { ...step, name: 'Escribirlo' } : step,
+        );
         saveDraft(project, id, {
           definition: { ...live.definition, steps },
           baseVersion: live.version,
@@ -137,7 +138,7 @@ describe('mcp server', () => {
         project.db.close();
       }
 
-      expect((await data('next')).text).toContain('Hacerlo, round 1');
+      expect((await data('next')).text).toContain('Escribirlo, round 1');
     });
 
     it('lists items as otea list --json does, with the same filters', async () => {
@@ -154,7 +155,9 @@ describe('mcp server', () => {
       const shown = await data('show', { id: 'TASKS-2' });
 
       expect(shown).toEqual(await json('show', 'TASKS-2'));
-      expect(shown.hint).toContain('TASKS-2 · Tarea · En curso, round 1\nYour turn: do this step.');
+      expect(shown.hint).toContain(
+        'TASKS-2 · Tarea · Completar, round 1\nYour turn: do this step.',
+      );
       expect(shown.relayable).toEqual([
         { to: 'dropped', by: 'human', reasonRequired: true, turn: 'none', closes: 'discarded' },
       ]);
@@ -203,7 +206,7 @@ describe('mcp server', () => {
 
       expect(handed).toMatchObject({
         item: { state: 'todo__review' },
-        text: 'Handed off. TASKS-1 waits for the person to review En curso.',
+        text: 'Handed off. TASKS-1 waits for the person to review Hacerlo.',
       });
       const refused = await call('approve', { id: 'TASKS-1' });
       expect(refused.isError).toBe(true);
@@ -301,7 +304,7 @@ describe('mcp server', () => {
 
       // On a board, the step engine refuses it first, in the board's words.
       expect(reply.content[0]?.text).toContain(
-        'Not your turn: the person reviews En curso on TASKS-1',
+        'Not your turn: the person reviews Hacerlo on TASKS-1',
       );
     });
   });
@@ -321,52 +324,6 @@ describe('mcp server', () => {
       expect(await errorOf('attach', { id: 'TASKS-1', file: 'nope.png' })).toBe(
         await cliError('attach', 'TASKS-1', 'nope.png'),
       );
-    });
-
-    it('creates items of a type and refuses a missing type as the CLI does', async () => {
-      repo.write('.otea/presets/work/preset.yaml', MIXED_YAML);
-      await otea('collection', 'add', 'work', '--preset', 'work');
-      const fresh = await connect(repo.dir, 'claude');
-
-      const bug = await call(
-        'create',
-        { collection: 'work', type: 'bug', title: 'Crash', field: ['severity=high'] },
-        fresh,
-      );
-      const untyped = await call('create', { collection: 'work', title: 'Crash' }, fresh);
-      const listed = await call('list', { type: 'bug' }, fresh);
-      await fresh.close();
-
-      expect(JSON.parse(bug.content[0]?.text ?? '')).toMatchObject({ id: 'WORK-1', type: 'bug' });
-      expect(untyped.isError).toBe(true);
-      expect(untyped.content[0]?.text).toBe(
-        await cliError('create', '--collection', 'work', '--title', 'Crash'),
-      );
-      expect(JSON.parse(listed.content[0]?.text ?? '')).toEqual(
-        await json('list', '--type', 'bug'),
-      );
-    });
-
-    it('places evidence in a layout module and refuses what the layout does not take, as the CLI does', async () => {
-      repo.write('.otea/presets/proof/preset.yaml', EVIDENCE_YAML);
-      await otea('collection', 'add', 'proof', '--preset', 'proof');
-      await otea('create', '--collection', 'proof', '--type', 'impr', '--title', 'Faster');
-      repo.write('home.png', 'png-home');
-      repo.write('notes.zip', 'zip');
-      const fresh = await connect(repo.dir, 'claude');
-
-      const placed = await call(
-        'attach',
-        { id: 'PROOF-1', file: 'home.png', module: 'mockup' },
-        fresh,
-      );
-      const ambiguous = await call('attach', { id: 'PROOF-1', file: 'home.png' }, fresh);
-      const refused = await call('attach', { id: 'PROOF-1', file: 'notes.zip' }, fresh);
-      await fresh.close();
-
-      expect(JSON.parse(placed.content[0]?.text ?? '')).toMatchObject({ module: 'mockup' });
-      expect(ambiguous.content[0]?.text).toBe(await cliError('attach', 'PROOF-1', 'home.png'));
-      expect(refused.content[0]?.text).toBe(await cliError('attach', 'PROOF-1', 'notes.zip'));
     });
 
     it('refuses a human-ui move with forbidden, as the CLI does', async () => {

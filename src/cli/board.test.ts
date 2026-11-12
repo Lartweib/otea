@@ -1,33 +1,9 @@
-import { readFileSync } from 'node:fs';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { getItem } from '../app/items.ts';
 import { itemNextText, liveBoardOf } from '../app/next.ts';
 import { openProject } from '../app/project.ts';
 import { boardText } from '../core/board/next.ts';
 import { type Cli, cliAt, tempGitRepo } from './testing.ts';
-
-const CHANGE_PLAYBOOK = readFileSync(
-  new URL('../../presets/change/playbook.md', import.meta.url),
-  'utf8',
-);
-
-// A preset a board cannot say (a state waits for closed children): its collection stays on it.
-const NOTES = (playbook: boolean) =>
-  [
-    'preset: notes',
-    'preset_version: 1',
-    ...(playbook ? ['playbook: ./playbook.md'] : []),
-    'fields:',
-    '  title: { module: text, required: create }',
-    'workflow:',
-    '  initial: open',
-    '  states:',
-    '    open: { turn: agent }',
-    '    closed: { turn: none, closes: done, requires: children_closed }',
-    '  transitions:',
-    '    - { from: open, to: closed, by: human }',
-    '',
-  ].join('\n');
 
 // What agents read about a board before acting: `otea board`, and the hint of `otea show`.
 describe('board', () => {
@@ -63,7 +39,9 @@ describe('board', () => {
     expect(code).toBe(0);
     expect(def).toBeDefined();
     expect(out).toBe(`${boardText(def ?? ({} as never))}\n`);
-    expect(out).toContain('1. En curso: any agent does it; the person reviews it');
+    expect(out).toContain(
+      '1. Completar: any agent does it\n\n2. Hacerlo: any agent does it; the person reviews it',
+    );
   });
 
   it('prints the board, its version and the text with --json', async () => {
@@ -73,28 +51,6 @@ describe('board', () => {
 
     expect(guide).toMatchObject({ kind: 'board', collection: 'work', version: 1 });
     expect(guide.text).toContain('work: steps for each Tarea');
-  });
-
-  it('prints the playbook of a collection still on a preset', async () => {
-    await otea('collection', 'add', 'changes', '--preset', 'change');
-
-    expect((await otea('board', 'changes')).out).toContain(CHANGE_PLAYBOOK.trimEnd());
-    expect(await json('board', 'changes')).toMatchObject({
-      kind: 'preset',
-      collection: 'changes',
-      preset: 'change',
-      playbook: CHANGE_PLAYBOOK,
-    });
-  });
-
-  it('says so when the preset has no playbook', async () => {
-    repo.write('.otea/presets/notes/preset.yaml', NOTES(false));
-    await otea('collection', 'add', 'notes', '--preset', 'notes');
-
-    expect((await otea('board', 'notes')).out).toBe(
-      'The notes preset of collection "notes" has no playbook.\n',
-    );
-    expect((await json('board', 'notes')).playbook).toBeNull();
   });
 
   it('indexes the boards without a name, each with how to read it', async () => {
@@ -107,9 +63,10 @@ describe('board', () => {
     expect(out).toBe(
       [
         'Read the board you work in before acting:',
-        '  Pedidos  board          otea board Pedidos',
-        '  work     board          otea board work',
-        '  changes  preset change  otea board changes',
+        '  Pedidos         board  otea board Pedidos',
+        '  work            board  otea board work',
+        '  changes         board  otea board changes',
+        '  Tareas de repo  board  otea board "Tareas de repo"',
         '',
       ].join('\n'),
     );
@@ -122,7 +79,8 @@ describe('board', () => {
     ).toEqual([
       ['Pedidos', false],
       ['work', false],
-      ['changes', true],
+      ['changes', false],
+      ['Tareas de repo', false],
     ]);
   });
 
@@ -153,17 +111,8 @@ describe('board', () => {
       );
       expect(hint).toContain('Your turn: do this step.');
       expect((await otea('show', 'TASKS-1')).out).toContain(
-        '\nNext:\n  TASKS-1 · Tarea · En curso, round 1\n  Your turn: do this step.\n',
+        '\nNext:\n  TASKS-1 · Tarea · Hacerlo, round 1\n  Your turn: do this step.\n',
       );
-    });
-
-    it('uses the section of the playbook that names the state on a preset', async () => {
-      repo.write('.otea/presets/notes/preset.yaml', NOTES(true));
-      repo.write('.otea/presets/notes/playbook.md', '# Notes\n\n## `open`\n\nWrite it down.\n');
-      await otea('collection', 'add', 'notes', '--preset', 'notes');
-      await otea('create', '--collection', 'notes', '--title', 'Idea');
-
-      expect((await json('show', 'NOTES-1')).hint).toBe('Your turn: Write it down.');
     });
   });
 });

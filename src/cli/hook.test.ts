@@ -2,6 +2,8 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { moveItem } from '../app/items.ts';
+import { openProject } from '../app/project.ts';
 import { type Cli, cliAt, tempGitRepo } from './testing.ts';
 
 describe('hook', () => {
@@ -129,13 +131,11 @@ describe('hook', () => {
       execFileSync('git', ['checkout', '--quiet', '-b', 'chg-1/keys'], { cwd: repo.dir });
       await otea('init');
       await otea('collection', 'add', 'changes', '--preset', 'change');
-      await otea('create', '--collection', 'changes', '--type', 'change', '--title', 'Keys');
+      await otea('create', '--collection', 'changes', '--title', 'Keys');
       await otea(
         'create',
         '--collection',
-        'changes',
-        '--type',
-        'repo_task',
+        'Tareas de repo',
         '--parent',
         'CHANGES-1',
         '--title',
@@ -165,13 +165,22 @@ describe('hook', () => {
       expect(await hook(repo.dir, '--branch', '--repo', 'elsewhere')).toEqual({
         code: 2,
         out: '',
-        err: 'otea: push refused: CHANGES-2 is proposed; push is allowed only in implementing, revising\n',
+        err: 'otea: push refused: TAR-1 is in Propuesta; its branch can be pushed only while Implementar is being done.\n',
       });
     });
 
     it('lets the call through when allowed, unmatched or unreadable', async () => {
-      await otea('relay', 'CHANGES-2', 'ready', '--quote', 'Go');
-      await otea('move', 'CHANGES-2', 'implementing');
+      const project = openProject(repo.dir);
+      try {
+        moveItem(project, {
+          id: 'TAR-1',
+          to: 'implementing',
+          actor: { kind: 'human', name: 'ana' },
+          channel: 'ui',
+        });
+      } finally {
+        project.db.close();
+      }
 
       expect((await hook(repo.dir, '--branch', '--repo', 'elsewhere')).code).toBe(0);
       expect((await hook(repo.dir, '--branch', '--repo')).code).toBe(0);
@@ -191,7 +200,7 @@ describe('hook', () => {
       const result = await merge('gh pr merge --squash');
 
       expect(result.code).toBe(2);
-      expect(result.err).toContain('merge refused: CHANGES-2 is proposed');
+      expect(result.err).toContain('merge refused: TAR-1 is in Propuesta');
     });
   });
 });

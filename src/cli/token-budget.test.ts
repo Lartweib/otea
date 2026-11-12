@@ -150,7 +150,10 @@ describe('token budget', () => {
     await measure(
       'handoff',
       'handoff',
-      onAccepted((id) => ({ cli: ['handoff', id], mcp: { id } })),
+      onAccepted((id) => ({
+        cli: ['handoff', id, '--note', 'Saved with an emoji: no crash'],
+        mcp: { id, note: 'Saved with an emoji: no crash' },
+      })),
     );
     await measure(
       'attach',

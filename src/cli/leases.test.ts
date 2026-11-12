@@ -26,7 +26,7 @@ describe('leases', () => {
 
       expect(code).toBe(0);
       expect(out).toMatch(
-        /^TASKS-1 {2}En curso {2}agent {2}First {2}held by claude until \d\d:\d\d\n$/,
+        /^TASKS-1 {2}Hacerlo {2}agent {2}First {2}held by claude until \d\d:\d\d\n$/,
       );
     });
 
@@ -122,7 +122,7 @@ describe('leases', () => {
     it('drops the lease and shows the release in the timeline', async () => {
       expect(await otea('release', 'TASKS-1', '--as', 'claude')).toMatchObject({
         code: 0,
-        out: 'TASKS-1  En curso  agent  First\n',
+        out: 'TASKS-1  Hacerlo  agent  First\n',
       });
       expect((await json('show', 'TASKS-1')).lease).toBeNull();
       expect((await otea('show', 'TASKS-1')).out).toMatch(/released +claude \(released\)$/m);
@@ -156,7 +156,7 @@ describe('leases', () => {
     it('is released when the holder moves it to review', async () => {
       const { out } = await otea('move', 'TASKS-1', 'todo__review', '--as', 'claude');
 
-      expect(out).toBe('TASKS-1  En curso (in review)  human  First\n');
+      expect(out).toBe('TASKS-1  Hacerlo (in review)  human  First\n');
       expect((await otea('show', 'TASKS-1')).out).toMatch(/released +claude \(handed off\)$/m);
     });
 
@@ -170,9 +170,7 @@ describe('leases', () => {
         null,
       ]);
       const shown = (await otea('show', 'TASKS-1')).out;
-      expect(shown).toMatch(
-        /^state: En curso {2}turn: agent {2}collection: tasks\nheld by claude/m,
-      );
+      expect(shown).toMatch(/^state: Hacerlo {2}turn: agent {2}collection: tasks\nheld by claude/m);
       expect(shown).toMatch(/claimed +claude until \S+Z$/m);
       expect((await json('show', 'TASKS-2')).lease).toBeNull();
     });
