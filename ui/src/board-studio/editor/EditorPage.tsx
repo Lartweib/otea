@@ -11,7 +11,7 @@ import { Bar } from './Bar.tsx';
 import { Card } from './Card.tsx';
 import { type Agents, cardOf, EditorContext, useEditor } from './context.ts';
 import { setBoardName } from './edits.ts';
-import { Glyph } from './glyphs.tsx';
+import { boardGlyph, Glyph } from './glyphs.tsx';
 import { Route } from './Route.tsx';
 import { sentenceNode } from './SentenceText.tsx';
 import { plain, summary } from './sentences.ts';
@@ -154,7 +154,7 @@ function Editor({ draft, agents }: { draft: ReadyDraft; agents: Agents }) {
                 draft.select({ kind: 'about' });
               }}
             >
-              <Glyph name="board" />
+              <Glyph name={boardGlyph(def.icon)} />
               {t('bs.editor.ends.about')}
             </button>
             <span className="se-hint">{tx('bs.editor.ends.hint', { plus: <b>+</b> })}</span>
