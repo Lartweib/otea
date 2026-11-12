@@ -358,6 +358,8 @@ export const studioPreview = {
   'bs.preview.publish.intro': 'Esto cambia en {name} (v{from} → v{to}):',
   'bs.preview.publish.introFirst':
     '{name} se pone en marcha. Los agentes que trabajan en él podrán tomar ítems en {step}.',
+  'bs.preview.publish.introFirstYou':
+    '{name} se pone en marcha. Los ítems nuevos empiezan en {step}, tu paso.',
   'bs.preview.publish.introFirstEmpty': '{name} se pone en marcha.',
   'bs.preview.publish.go': 'Ir',
   'bs.preview.publish.noChanges': 'No hay cambios.',
@@ -425,6 +427,7 @@ export const studioPreview = {
   'bs.preview.publish.pair.onlyOneAt':
     'Solo {name} tiene cambios; {other} sigue como está, en v{v}.',
   'bs.preview.publish.pair.headFirst': 'se pone en marcha',
+  'bs.preview.publish.pair.firstStepYou': 'Los ítems nuevos empiezan en {step}, tu paso.',
   'bs.preview.publish.pair.firstStep': 'Los agentes podrán tomar ítems en {step}.',
   'bs.preview.publish.pair.items': 'Qué pasa con sus ítems',
   'bs.preview.publish.pair.noneMove': 'Ningún ítem se mueve.',

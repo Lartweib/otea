@@ -236,10 +236,15 @@ function SinglePublishDialog({
         <p className="lede" data-i="">
           {isNew
             ? first
-              ? tx('bs.preview.publish.introFirst', {
-                  name: <b>{name}</b>,
-                  step: <b>{first.name}</b>,
-                })
+              ? tx(
+                  first.doer === 'you'
+                    ? 'bs.preview.publish.introFirstYou'
+                    : 'bs.preview.publish.introFirst',
+                  {
+                    name: <b>{name}</b>,
+                    step: <b>{first.name}</b>,
+                  },
+                )
               : tx('bs.preview.publish.introFirstEmpty', { name: <b>{name}</b> })
             : tx('bs.preview.publish.intro', {
                 name: <b>{name}</b>,
