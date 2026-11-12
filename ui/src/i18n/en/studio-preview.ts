@@ -361,6 +361,7 @@ export const studioPreview = {
   'bs.preview.publish.intro': 'This changes in {name} (v{from} → v{to}):',
   'bs.preview.publish.introFirst':
     '{name} starts running. The agents working on it can take items in {step}.',
+  'bs.preview.publish.introFirstYou': '{name} starts. New items start in {step}, your step.',
   'bs.preview.publish.introFirstEmpty': '{name} starts running.',
   'bs.preview.publish.go': 'Go',
   'bs.preview.publish.noChanges': 'No changes.',
@@ -425,6 +426,7 @@ export const studioPreview = {
   'bs.preview.publish.pair.onlyOne': 'Only {name} has changes; {other} stays as it is.',
   'bs.preview.publish.pair.onlyOneAt': 'Only {name} has changes; {other} stays as it is, at v{v}.',
   'bs.preview.publish.pair.headFirst': 'goes live',
+  'bs.preview.publish.pair.firstStepYou': 'New items start in {step}, your step.',
   'bs.preview.publish.pair.firstStep': 'Agents will be able to take items in {step}.',
   'bs.preview.publish.pair.items': 'What happens to its items',
   'bs.preview.publish.pair.noneMove': 'No item moves.',

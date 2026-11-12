@@ -205,7 +205,12 @@ export function PairPublishDialog({
         </p>
         {isNew && first ? (
           <p className="bsp-fhint">
-            {tx('bs.preview.publish.pair.firstStep', { step: <b>{first.name}</b> })}
+            {tx(
+              first.doer === 'you'
+                ? 'bs.preview.publish.pair.firstStepYou'
+                : 'bs.preview.publish.pair.firstStep',
+              { step: <b>{first.name}</b> },
+            )}
           </p>
         ) : null}
         <ul className="bsp-chg">
