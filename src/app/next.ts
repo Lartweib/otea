@@ -91,7 +91,8 @@ export function liveBoardOf(ctx: Context, collection: string): LiveBoard | undef
   };
 }
 
-function liveBoards(ctx: Context): LiveBoard[] {
+// Every published board that is on a collection.
+export function liveBoards(ctx: Context): LiveBoard[] {
   return listBoards(ctx.db).flatMap((row) =>
     row.collection === null ? [] : (liveBoardOf(ctx, row.collection) ?? []),
   );
