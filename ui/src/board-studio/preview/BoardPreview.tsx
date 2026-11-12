@@ -80,7 +80,7 @@ function SampleTable({ def, items }: { def: BoardDefinition; items: SampleItem[]
         <div key={group.key ?? ''}>
           {group.key !== null ? (
             <div className="tg">
-              <h3>{group.key}</h3>
+              <h3>{group.head}</h3>
               <span className="rl" />
               <span className="cnt">{group.rows.length}</span>
             </div>

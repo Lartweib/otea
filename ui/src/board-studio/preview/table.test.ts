@@ -43,6 +43,16 @@ describe('tableOf', () => {
     expect(ended).toEqual(['—', 'Duplicado']);
   });
 
+  it('heads each group with its value, capitalised', () => {
+    setLanguage('es');
+    const def = errores();
+    def.parts.fsev = { id: 'fsev', name: 'Severidad', kind: 'level', hint: '', options: [] };
+    def.list = { as: 'table', group: 'fsev' };
+    const table = tableOf(def, sampleItems(def));
+    expect(table.groups.map(({ key }) => key)).toEqual(['crítica']);
+    expect(table.groups.map(({ head }) => head)).toEqual(['Crítica']);
+  });
+
   it('has one group with no head when nothing groups it', () => {
     const def = errores();
     def.list = { as: 'table' };
