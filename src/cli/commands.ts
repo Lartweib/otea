@@ -129,9 +129,10 @@ function readable<T extends Item>(project: Project, raw: T): T {
           ...raw,
           relations: related.map((r) => {
             // A list's relations are bare refs (no collection or state): nothing to name.
-            if (typeof r.collection !== 'string' || typeof r.state !== 'string') return r;
-            const on = liveBoardOf(project, r.collection);
-            return on ? { ...r, state: stateName(on.def, r.state) } : r;
+            const { collection, state } = r as { collection?: unknown; state?: unknown };
+            if (typeof collection !== 'string' || typeof state !== 'string') return r;
+            const on = liveBoardOf(project, collection);
+            return on ? { ...r, state: stateName(on.def, state) } : r;
           }),
         }
       : raw
