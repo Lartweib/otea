@@ -391,7 +391,7 @@ export function publishPlan(ctx: Context, id: string): PublishPlan {
 }
 
 // A prefix for a new board's item ids: the first letters of what each item is called.
-function prefixOf(ctx: Context, item: string, name: string): string {
+export function prefixOf(ctx: Context, item: string, name: string): string {
   const letters = (text: string) =>
     text
       .normalize('NFD')
