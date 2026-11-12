@@ -50,6 +50,8 @@ describe('what happened today', () => {
       moved('C', 'fixed', you, { minutes: 20, from: 'verify' }),
       moved('B', 'accepted', agent('kiln'), { minutes: 10, from: 'reported', via: 'kiln' }),
       moved('D', 'rejected', you, { minutes: 5, from: 'reported' }), // discarded: neither
+      moved('B', 'fixing', you, { minutes: 4, from: 'needs_info', reason: 'migrate' }), // a reading
+      moved('C', 'fixed', you, { minutes: 3, from: 'verify', reason: 'migrate' }), // a reading
     ];
     expect(todayCounts(feed, ctx(items))).toEqual({ handed: 1, approved: 2, sent: 1 });
   });
