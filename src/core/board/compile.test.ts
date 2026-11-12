@@ -33,7 +33,7 @@ describe('compileBoard', () => {
     expect(moves).toEqual([
       'sconcept>sconcept__review:agent',
       'sconcept__review>sanimate:human',
-      'sconcept__review>done:human',
+      'sconcept__review>done:human-ui',
       'sconcept__review>sconcept:human!',
       'sanimate>sanimate__review:agent',
       'sanimate>sanimate__yours:agent',
@@ -41,7 +41,7 @@ describe('compileBoard', () => {
       'sanimate__review>sconcept:agent!',
       'sanimate__yours>spolish:human',
       'sanimate__yours>sconcept:human!',
-      'spolish>done:human',
+      'spolish>done:human-ui',
       ...[
         'sconcept',
         'sconcept__review',
