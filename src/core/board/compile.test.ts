@@ -112,7 +112,7 @@ describe('compileBoard', () => {
   });
 
   it('compiles every template and a blank board', () => {
-    for (const template of TEMPLATES) {
+    for (const template of TEMPLATES.filter(({ hidden }) => !hidden)) {
       for (const lang of ['en', 'es'] as const) {
         expect(() => compileBoard('bx', 1, instantiate(template, lang, {}))).not.toThrow();
       }

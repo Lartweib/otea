@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { compileBoard } from './compile.ts';
-import type { Part } from './model.ts';
+import { sequenceIds } from './ids.ts';
+import type { BoardDefinition, Part } from './model.ts';
+import { instantiateSet, requireSet, TEMPLATE_SETS } from './templates.ts';
 import { errores } from './testing.ts';
 
 const moves = (def = errores()) =>
@@ -82,5 +84,30 @@ describe('compileBoard, the later settings', () => {
     expect(compileBoard('berr', 1, def).types[0]?.layout.side).not.toContainEqual({
       module: 'children',
     });
+  });
+});
+
+describe('compileBoard, the template sets', () => {
+  it('compiles every board of every set', () => {
+    for (const set of TEMPLATE_SETS) {
+      for (const lang of ['en', 'es'] as const) {
+        const ids = set.boards.map((_, index) => ({ id: `b${index}` }));
+        for (const def of instantiateSet(set, lang, ids)) {
+          expect(() => compileBoard('bset', 1, def), `${set.key} ${def.name}`).not.toThrow();
+        }
+      }
+    }
+  });
+
+  it('compiles the protected branch of Tareas de repo into its gates', () => {
+    const [, tasks] = instantiateSet(
+      requireSet('repos'),
+      'es',
+      [{ id: 'b1' }, { id: 'b2' }],
+      sequenceIds(),
+    );
+    const preset = compileBoard('b2', 1, tasks as BoardDefinition);
+    const implement = tasks?.steps[1]?.id ?? '';
+    expect(preset.workflow.gates).toEqual({ push: [implement], merge: ['done'] });
   });
 });

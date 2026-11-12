@@ -10,16 +10,18 @@ import {
   itemEffects,
   itemMoves,
 } from '../core/board/plan.ts';
-import { blocking, type Problem, problemsOf } from '../core/board/problems.ts';
+import { type BoardRef, blocking, type Problem, problemsOf } from '../core/board/problems.ts';
 import { parseDefinition, readDefinition } from '../core/board/schema.ts';
 import {
   blankBoard,
   instantiate,
+  instantiateSet,
   type Lang,
+  listedTemplates,
   requestsBoard,
+  TEMPLATE_SETS,
   TEMPLATES,
   type TemplateView,
-  templateView,
 } from '../core/board/templates.ts';
 import { OteaError } from '../core/errors.ts';
 import type { Actor } from '../core/item.ts';
@@ -194,8 +196,30 @@ function agentsOf(ctx: Context): { name: string; connected: boolean }[] {
   return selectAgents(ctx.db).map(({ name }) => ({ name, connected: true }));
 }
 
+// Every board as a split reads it, by its draft (the person's latest words) or its live version;
+// `as` stands in for board `id`'s own definition.
+export function boardRefs(ctx: Context, id?: string, as?: BoardDefinition): BoardRef[] {
+  return listBoards(ctx.db).flatMap((row) => {
+    const record = recordOf(ctx, row);
+    const definition = row.id === id && as ? as : (record.draft ?? record.live)?.definition;
+    if (!definition) return [];
+    return [
+      {
+        id: row.id,
+        name: definition.name,
+        ...(definition.split ? { split: definition.split } : {}),
+      },
+    ];
+  });
+}
+
 export function boardProblems(ctx: Context, id: string, definition: BoardDefinition): Problem[] {
-  return problemsOf(definition, { agents: agentsOf(ctx), takenNames: namesTaken(ctx, id) });
+  return problemsOf(definition, {
+    agents: agentsOf(ctx),
+    takenNames: namesTaken(ctx, id),
+    id,
+    boards: boardRefs(ctx, id, definition),
+  });
 }
 
 export type CreateBoardInput = {
@@ -356,7 +380,9 @@ export function publishPlan(ctx: Context, id: string): PublishPlan {
   return {
     from: record.live?.version ?? null,
     to: maxVersion(ctx.db, id) + 1,
-    changes: changePlan(live, draft),
+    changes: changePlan(live, draft, {
+      boardName: (other) => boardRefs(ctx, id, draft).find((ref) => ref.id === other)?.name,
+    }),
     effects: live
       ? itemEffects(live, draft, items)
       : { moves: [], needs: [], reopened: [], waiting: [], frozen: [] },
@@ -796,8 +822,62 @@ export function ensureRequestsBoard(
   return id;
 }
 
+// What Studio's home offers: the listed single-board templates, then the sets.
 export function listTemplates(lang: Lang): TemplateView[] {
-  return TEMPLATES.map((template) => templateView(template, lang));
+  return listedTemplates(lang);
+}
+
+export type CreateSetInput = {
+  // A template set key (Cambios en varios repos, Producto).
+  set: string;
+  lang: Lang;
+  // The names the person typed for each board, in the set's order; empty keeps the template's.
+  boards: readonly { name?: string | undefined; item?: string | undefined }[];
+};
+
+// Creates every board of a set as a draft, in one transaction: none, or all of them. A split
+// names its child by the child's new board id.
+export function createBoardSet(
+  ctx: Context,
+  input: CreateSetInput,
+  now: Clock = systemClock,
+  ids: IdSource = newId,
+): BoardRecord[] {
+  const set = TEMPLATE_SETS.find(({ key }) => key === input.set);
+  if (!set) throw new OteaError('not_found', `There is no template ${input.set}`);
+  return transaction(ctx.db, () => {
+    const boards = set.boards.map((_, index) => {
+      const asked = input.boards[index] ?? {};
+      return {
+        id: ids('b'),
+        ...(asked.name?.trim() ? { name: asked.name.trim() } : {}),
+        ...(asked.item?.trim() ? { item: asked.item.trim() } : {}),
+      };
+    });
+    const defs = instantiateSet(set, input.lang, boards, ids);
+    const taken = namesTaken(ctx);
+    const seen: string[] = [];
+    for (const def of defs) {
+      if (def.name.trim() === '') throw new OteaError('invalid_name', 'A board needs a name');
+      if ([...taken, ...seen].some((name) => same(name, def.name)))
+        throw new OteaError('already_exists', `There is already a board called ${def.name}`);
+      seen.push(def.name);
+    }
+    const at = now();
+    return defs.map((definition, index) => {
+      const id = boards[index]?.id ?? ids('b');
+      insertBoard(ctx.db, { id, createdAt: at, builtin: false });
+      upsertDraft(ctx.db, {
+        boardId: id,
+        definition: JSON.stringify(definition),
+        baseVersion: null,
+        updatedAt: at,
+        requestItem: null,
+        agentNote: null,
+      });
+      return getBoardRecord(ctx, id);
+    });
+  });
 }
 
 // Creates a board (from a template, or blank) and publishes it at once: what the home does, for the
