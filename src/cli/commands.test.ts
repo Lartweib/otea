@@ -174,11 +174,9 @@ describe('commands', () => {
         const create = (title: string) =>
           otea('create', '--collection', 'tasks', '--title', title, '--description', 'D');
 
-        expect(await create('First')).toMatchObject({
-          code: 0,
-          out: 'TASKS-1\n',
-        });
-        expect((await create('Second')).out).toBe('TASKS-2\n');
+        expect(await create('First')).toMatchObject({ code: 0 });
+        // On a board it says where the item starts.
+        expect((await create('Second')).out).toMatch(/^Created TASKS-2 in \S+/);
       });
 
       it('prints the item with --json', async () => {

@@ -28,14 +28,16 @@ const BUDGETS: Readonly<Record<string, Sizes>> = {
   // block covers the step at hand. Raised when a preset collection read as a board kept its
   // playbook as the board's text: what agents read on the preset, as before.
   board: { text: 3030, json: 3090, mcp: 3090 },
-  create: { text: 5, json: 180, mcp: 180 },
+  // On a board, create says where the item starts (and why its first step was skipped).
+  create: { text: 20, json: 180, mcp: 180 },
   claim: { text: 25, json: 195, mcp: 195 },
   handoff: { text: 25, json: 195, mcp: 195 },
   attach: { text: 15, json: 90, mcp: 90 },
   wait: { text: 25, json: 195, mcp: 195 },
   // The tool definitions an MCP client reads when it connects.
   // Raised for next, handoff, approve and send_back, the board moves.
-  tools: { mcp: 2430 },
+  // drop, handoff's --note and its ways back.
+  tools: { mcp: 2830 },
 };
 
 // A bug as an agent files it in the bug-triage preset, every field filled.

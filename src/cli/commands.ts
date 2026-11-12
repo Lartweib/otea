@@ -49,6 +49,7 @@ import {
   approveItem,
   type BoardMoveInput,
   type BoardMoveResult,
+  createdTextOf,
   dropItem,
   handoffItem,
   liveBoardOf,
@@ -562,7 +563,7 @@ function fieldPair(pair: string): [string, string] {
 const create: Command = {
   name: 'create',
   summary:
-    'Create an item and print its id; it starts incomplete when a field required to complete it is missing',
+    'Create an item and say where it starts: on a board whose first step is skipped for an item that has everything it asks, at the next step; an item of a board that is always part of another needs --parent',
   args: [],
   options: {
     collection: { required: true },
@@ -579,8 +580,8 @@ const create: Command = {
     const parent = input.option('parent');
     const fields = fieldsFrom(input);
     const { actor, channel } = input;
-    const item = withAgent(input, (project) =>
-      createItem(project, {
+    return withAgent(input, (project) => {
+      const item = createItem(project, {
         collection,
         ...(type === undefined ? {} : { type }),
         title,
@@ -588,9 +589,10 @@ const create: Command = {
         ...(parent === undefined ? {} : { parent }),
         actor,
         channel,
-      }),
-    );
-    return { data: item, text: item.id };
+      });
+      // On a board: where it starts, and why when its first step was skipped or lacks something.
+      return { data: item, text: createdTextOf(project, item) ?? item.id };
+    });
   },
 };
 

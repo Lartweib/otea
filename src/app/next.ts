@@ -8,6 +8,7 @@ import {
   handoff,
   handoffCheck,
   type ItemFacts,
+  initialPosition,
   isClosed,
   type Linked,
   type MoveResult,
@@ -22,6 +23,7 @@ import {
   type Transition,
   turnAt,
 } from '../core/board/engine.ts';
+import { requiredParent } from '../core/board/joins.ts';
 import {
   type BoardDefinition,
   DONE,
@@ -37,12 +39,14 @@ import {
 } from '../core/board/model.ts';
 import {
   approvalRefusalText,
+  createdText,
   droppedText,
   dropRefusalText,
   handedText,
   idleText,
   NOT_TAKEN_BACK,
   nextText,
+  parentRequiredText,
   refusalText,
   takenBackText,
   wayByName,
@@ -784,6 +788,38 @@ function noteFor(
   if (words.note?.trim()) return words.note;
   if (step.note.req !== 'always') return undefined;
   return words.reason?.trim() ? words.reason : undefined;
+}
+
+// An item of a board that is always part of another's is refused without a parent.
+export function assertMayStandAlone(ctx: Context, collection: string, parent?: string): void {
+  const board = liveBoardOf(ctx, collection);
+  if (!board || parent !== undefined) return;
+  const owner = requiredParent(liveBoards(ctx), board.id);
+  if (owner) throw new OteaError('parent_required', parentRequiredText(board.def, owner.def));
+}
+
+// Where a new item starts on the board a collection is on (undefined off a board): the first
+// step, or the next one when the first is skipped for an item created with everything it asks.
+export function boardStart(
+  ctx: Context,
+  collection: string,
+  fields: Readonly<Record<string, unknown>>,
+): string | undefined {
+  const board = liveBoardOf(ctx, collection);
+  if (!board) return undefined;
+  return stateOf(initialPosition(board.def, { fields, evidence: [] }).position);
+}
+
+// What otea create says of a new item on a board: where it starts, and why when its first step was
+// skipped or still lacks what it asks for.
+export function createdTextOf(ctx: Context, item: ItemRecord): string | undefined {
+  const board = liveBoardOf(ctx, item.collection);
+  if (!board) return undefined;
+  const on = itemOnBoard(ctx, item, board.def);
+  const missing = isClosed(on.position)
+    ? []
+    : handoffCheck(board.def, on.position.step, on.facts).missing;
+  return createdText(board.def, item.id, on.position, missing);
 }
 
 // Fields a reader typed by name on a board (`--field Tamaño=Una`) as the item stores them; on a
