@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { creatures } from '../../../../src/core/board/testing.ts';
+import { creatures, errores, tareasDeRepo } from '../../../../src/core/board/testing.ts';
 import {
+  backArcs,
   backLoop,
+  branchMarks,
   geom,
   labelSpot,
   lanePaths,
@@ -10,7 +12,9 @@ import {
   pointsOf,
   RY,
   seg,
+  skipBypass,
   vrouteRows,
+  waitMarks,
   wayArcs,
 } from './route-geometry.ts';
 
@@ -109,5 +113,44 @@ describe('vrouteRows', () => {
       { key: 'spolish', lane: 'you', look: 'yours' },
       { key: 'done', lane: 'none', look: 'done' },
     ]);
+  });
+});
+
+describe('the marks of a board for everything', () => {
+  it('draws a way back as a dashed loop on the doer’s lane, ending in an arrowhead', () => {
+    const def = errores();
+    const g = geom(def, 900);
+    const arcs = backArcs(def, g);
+    expect(arcs.map((a) => [a.from, a.to, a.you])).toEqual([
+      ['striage', 'sfill', true],
+      ['sfix', 'striage', false],
+    ]);
+    const [mine, theirs] = arcs;
+    // Your lane: the loop hangs below it; the agents' lane: it rises above it.
+    expect(mine?.label.y).toBeGreaterThan(RY.you);
+    expect(theirs?.label.y).toBeLessThan(RY.ag);
+    expect(mine?.d.startsWith('M')).toBe(true);
+    expect(mine?.head.startsWith('M')).toBe(true);
+  });
+
+  it('draws the skip on creation above the agents’ lane, from the start dot to the second step', () => {
+    const def = errores();
+    const g = geom(def, 900);
+    const bypass = skipBypass(def, g);
+    const second = g.stops[2];
+    expect(bypass).not.toBeNull();
+    expect(bypass?.label.y).toBeLessThan(RY.ag - 19);
+    expect(bypass?.d).toContain(`${(second?.x ?? 0) - 4} ${(second?.y ?? 0) - 7}`);
+    const plain = creatures();
+    expect(skipBypass(plain, geom(plain, 900))).toBeNull();
+  });
+
+  it('marks a waiting step with an hourglass, and push steps and Hecho with a branch', () => {
+    const def = tareasDeRepo();
+    const g = geom(def, 900);
+    expect(branchMarks(def, g).map((m) => m.key)).toEqual(['simpl', 'done']);
+    const err = errores();
+    expect(waitMarks(geom(err, 900)).map((m) => m.key)).toEqual(['sfix']);
+    expect(branchMarks(creatures(), geom(creatures(), 900))).toEqual([]);
   });
 });
