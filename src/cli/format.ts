@@ -155,19 +155,28 @@ export function formatEvidence(evidence: EvidenceRecord): string {
   return columns([evidence.module === null ? [id, ...rest] : [id, evidence.module, ...rest]]);
 }
 
-function moduleHeading({ id, module, variant, required, label }: EvidenceModuleEntry): string {
+// `named`: on a board, evidence goes by its name; its hidden id is not a reader's word.
+function moduleHeading(
+  { id, module, variant, required, label }: EvidenceModuleEntry,
+  named: boolean,
+): string {
   const traits = [module, ...(variant ? [variant] : []), ...(required ? ['required'] : [])];
+  if (named && label) return `${label} (${traits.join(', ')})`;
   return `${id} (${traits.join(', ')})${label ? `: ${label}` : ''}`;
 }
 
-function evidenceLines(evidence: EvidenceRecord[], layout: Layout | undefined): string[] {
+function evidenceLines(
+  evidence: EvidenceRecord[],
+  layout: Layout | undefined,
+  named = false,
+): string[] {
   const rows = (entries: EvidenceRecord[]) => columns(entries.map(evidenceRow));
   const groups = layout ? groupEvidence(layout, evidence) : { modules: [], others: evidence };
   if (groups.modules.length === 0) {
     return evidence.length > 0 ? ['Evidence:', indent(rows(evidence)), ''] : [];
   }
   const sections = groups.modules.map(({ module, evidence: held }) =>
-    [moduleHeading(module), indent(held.length > 0 ? rows(held) : 'nothing yet')].join('\n'),
+    [moduleHeading(module, named), indent(held.length > 0 ? rows(held) : 'nothing yet')].join('\n'),
   );
   if (groups.others.length > 0) {
     sections.push(['other files', indent(rows(groups.others))].join('\n'));
@@ -230,10 +239,12 @@ function createdLine({ createdBy, createdAt, events }: ItemView): string {
 }
 
 // With the item type's layout, evidence is grouped by the module that draws it.
+// `named`: the item is on a board and reads by names (states, fields and moves already are).
 export function formatItemWithEvents(
   item: ItemView & { hint?: string },
   layout?: Layout,
   typed: Typed = notImplicit,
+  named = false,
 ): string {
   return [
     `${item.id}  ${item.title}`,
@@ -253,12 +264,13 @@ export function formatItemWithEvents(
     ...(item.missing.length > 0 && item.turn !== 'none'
       ? [`Missing to complete: ${item.missing.join(', ')}`]
       : []),
-    movesLine('move', item.transitions),
-    movesLine('relay', item.relayable),
+    // On a board, Next: says how to finish the step; what is left to relay still shows.
+    ...(named ? [] : [movesLine('move', item.transitions)]),
+    ...(named && item.relayable.length === 0 ? [] : [movesLine('relay', item.relayable)]),
     ...(item.gates ? [gatesLine(item.gates)] : []),
     '',
     ...relationLines(item),
-    ...evidenceLines(item.evidence, layout),
+    ...evidenceLines(item.evidence, layout, named),
     'Events:',
     indent(columns(item.events.map(eventRow))),
   ].join('\n');

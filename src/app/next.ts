@@ -26,6 +26,7 @@ import {
   type Target,
 } from '../core/board/model.ts';
 import { handedText, idleText, nextText, refusalText, wayByName } from '../core/board/next.ts';
+import { evidenceByName, readFieldInput, stateByName } from '../core/board/reading.ts';
 import { readDefinition } from '../core/board/schema.ts';
 import { OteaError } from '../core/errors.ts';
 import type { Actor } from '../core/item.ts';
@@ -451,6 +452,30 @@ export function assertMoveHandsOff(
   if (!intoReview && !along) return;
   const check = handoffCheck(board.def, step.id, itemOnBoard(ctx, item, board.def).facts);
   if (!check.ok) throw new OteaError('missing_fields', refusalText(item.id, check.missing));
+}
+
+// Fields a reader typed by name on a board (`--field Tamaño=Una`) as the item stores them; on a
+// collection still on a preset, as given.
+export function boardFieldInput<T extends Record<string, unknown>>(
+  ctx: Context,
+  collection: string,
+  fields: T,
+): T {
+  const board = liveBoardOf(ctx, collection);
+  if (!board || Object.keys(fields).length === 0) return fields;
+  return readFieldInput(board.def, fields) as T;
+}
+
+// The state a reader names on a board (a step's name, `Done`), as the workflow's state.
+export function boardState(ctx: Context, collection: string, to: string): string {
+  const board = liveBoardOf(ctx, collection);
+  return board ? stateByName(board.def, to) : to;
+}
+
+// The evidence part a reader names on a board (`--module Bocetos`), as its module id.
+export function boardModule(ctx: Context, collection: string, module: string): string {
+  const board = liveBoardOf(ctx, collection);
+  return board ? evidenceByName(board.def, module) : module;
 }
 
 // An agent claims only what is its own on a board: a step it may take, or a review it does.

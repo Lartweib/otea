@@ -31,7 +31,7 @@ import {
 import { getCollection, presetOf, typeOfItem } from './collections.ts';
 import type { Context } from './context.ts';
 import { presentEvidence } from './evidence.ts';
-import { assertMoveHandsOff } from './next.ts';
+import { assertMoveHandsOff, boardFieldInput, boardState } from './next.ts';
 import {
   addRelation,
   assertMayEnter,
@@ -106,7 +106,8 @@ export function insertNewItem(
   const preset = presetOf(ctx, collection);
   const type = typeFor(preset, input.type);
   if (input.parent === undefined) assertStandsAlone(preset, type);
-  const { title, fields, state } = intake(type, { ...input.fields, title: input.title });
+  const given = boardFieldInput(ctx, collection.name, input.fields ?? {});
+  const { title, fields, state } = intake(type, { ...given, title: input.title });
   const seq = claimNextSeq(db, collection.name);
   const item: ItemRecord = {
     id: formatItemId(collection.prefix, seq),
@@ -256,7 +257,7 @@ export function updateItem(ctx: Context, input: UpdateItemInput, now = systemClo
       );
     }
     const changes = {
-      ...input.fields,
+      ...boardFieldInput(ctx, item.collection, input.fields ?? {}),
       ...(input.title === undefined ? {} : { title: input.title }),
     };
     const revision = revise(type, item, changes);
@@ -322,7 +323,8 @@ export function moveItem(ctx: Context, input: MoveItemInput, now = systemClock):
     const item = requireItem(db, input.id);
     const type = typeOfItem(ctx, item);
     const { workflow } = type;
-    const { actor, channel, reason, to } = input;
+    const { actor, channel, reason } = input;
+    const to = boardState(ctx, item.collection, input.to);
     const at = now();
     const lease = activeLease(item.lease, at);
     assertMayWrite(item.id, lease, actor);

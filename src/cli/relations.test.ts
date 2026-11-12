@@ -177,7 +177,7 @@ describe('relations', () => {
 
     it('lists the children of a parent, with their relations in JSON', async () => {
       expect((await otea('list', '--parent', 'PARTS-1')).out).toBe(
-        'PARTS-3  todo     agent  Movement\nPARTS-4  dropped  none   Fur\n',
+        'PARTS-3  En curso  agent  Movement\nPARTS-4  Dropped   none   Fur\n',
       );
       const [epic] = await json('list', '--collection', 'parts');
       expect(epic.children).toEqual({ total: 2, open: 1, done: 0, discarded: 1 });
