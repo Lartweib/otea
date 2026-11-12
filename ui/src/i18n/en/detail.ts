@@ -337,6 +337,7 @@ export const detail = {
   'sheet.h.moved': 'Moved it to {state}',
   'sheet.h.approved': 'You approved: on to {state}',
   'sheet.h.sentBack': 'You sent it back to {state} with notes',
+  'sheet.h.migrated': 'Otea read it onto its board, in {state}',
   'sheet.h.closed': 'You closed it: {state}',
   'sheet.h.discarded': 'You discarded it: {state}',
   'sheet.h.youMoved': 'You moved it to {state}',

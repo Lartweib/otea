@@ -95,3 +95,31 @@ describe('the history of a stuck item you took in hand', () => {
     ]);
   });
 });
+
+describe('a board reading in the history', () => {
+  it('says Otea read the item onto its board, with the question it carried, never the word migrate', () => {
+    const otea = { kind: 'human', name: 'otea' } as const;
+    const [asked, plain] = historyOf(
+      [
+        ev('transitioned', otea, { from: 'fixing', to: 'sfix', reason: 'migrate' }, 20),
+        ev(
+          'transitioned',
+          otea,
+          { from: 'needs_info', to: 'sfill', reason: 'migrate', note: '¿Qué versión?' },
+          10,
+        ),
+      ],
+      bug,
+      word,
+      NOW,
+    );
+    expect(asked).toMatchObject({
+      text: 'Otea read it onto its board, in sfill',
+      who: 'Otea',
+      dot: 'agent',
+      quote: '¿Qué versión?',
+    });
+    expect(plain).toMatchObject({ text: 'Otea read it onto its board, in sfix', who: 'Otea' });
+    expect(plain?.quote).toBeUndefined();
+  });
+});
