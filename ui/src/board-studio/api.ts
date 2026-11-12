@@ -1,8 +1,11 @@
 import type {
   BoardRecord,
   BoardSummary,
+  PairRoles,
+  PublishPairResult,
   PublishPlan,
   PublishResult,
+  RestorePairResult,
 } from '../../../src/app/boards.ts';
 import type { BoardDefinition, Target } from '../../../src/core/board/model.ts';
 import type { Problem } from '../../../src/core/board/problems.ts';
@@ -13,7 +16,16 @@ import { serverMessage, unreachable } from '../remote.ts';
 // failure throws an Error whose message is the server's reason in words (or "unreachable"), never
 // swallowed: a caller shows it and offers Reintentar.
 
-export type { BoardRecord, BoardSummary, PublishPlan, PublishResult, TemplateView };
+export type {
+  BoardRecord,
+  BoardSummary,
+  PairRoles,
+  PublishPairResult,
+  PublishPlan,
+  PublishResult,
+  RestorePairResult,
+  TemplateView,
+};
 
 // A failed request, with the server's code when it gave one (board_conflict, not_publishable…).
 export class StudioRequestError extends Error {
@@ -123,6 +135,26 @@ export function publishBoard(
 // Undo publish: `version` is the one live before (null undoes a first publish).
 export function restoreBoard(id: string, version: number | null): Promise<BoardRecord> {
   return call('POST', `${board(id)}/restore`, { version });
+}
+
+// A joined pair (pair.ts): both boards published as one, the child first; a role is published
+/// only when `moves` names it (only one board had changes). All or nothing.
+export function publishPair(input: {
+  parent: string;
+  child: string;
+  moves: PairRoles<Readonly<Record<string, Target>>>;
+  draftStamps?: PairRoles<string | null>;
+}): Promise<PublishPairResult> {
+  return call('POST', '/api/boards/publish-pair', input);
+}
+
+// The joint publish's Deshacer: each named role back to its version (null undoes a first publish).
+export function restorePair(input: {
+  parent: string;
+  child: string;
+  versions: PairRoles<number | null>;
+}): Promise<RestorePairResult> {
+  return call('POST', '/api/boards/restore-pair', input);
 }
 
 // An agent's draft: handing it in (otea board draft --file) merges it into the board's draft, so the

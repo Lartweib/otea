@@ -10,8 +10,10 @@ import {
   listBoardSummaries,
   listTemplates,
   publishBoard,
+  publishPair,
   publishPlan,
   restoreBoard,
+  restorePair,
   saveDraft,
 } from '../app/boards.ts';
 import type { Project } from '../app/project.ts';
@@ -54,6 +56,32 @@ const PublishBody = z.strictObject({
 });
 
 const RestoreBody = z.strictObject({ version: z.number().int().positive().nullable() });
+
+const Moves = z.record(z.string(), z.string());
+const Stamp = z.string().nullable();
+const Version = z.number().int().positive().nullable();
+
+// A board that "se divide en" another and that board; a role is acted on when it is named.
+const PublishPairBody = z.strictObject({
+  parent: z.string(),
+  child: z.string(),
+  moves: z.strictObject({ parent: Moves.optional(), child: Moves.optional() }),
+  draftStamps: z.strictObject({ parent: Stamp.optional(), child: Stamp.optional() }).optional(),
+});
+
+const RestorePairBody = z.strictObject({
+  parent: z.string(),
+  child: z.string(),
+  versions: z.strictObject({ parent: Version.optional(), child: Version.optional() }),
+});
+
+// Drops the roles a body left out, so an absent role stays absent (exactOptionalPropertyTypes).
+function roles<T>(value: { parent?: T | undefined; child?: T | undefined } | undefined) {
+  return {
+    ...(value?.parent === undefined ? {} : { parent: value.parent }),
+    ...(value?.child === undefined ? {} : { child: value.child }),
+  };
+}
 
 const AgentDraftBody = z.strictObject({
   name: z.string(),
@@ -122,6 +150,41 @@ export function boardsApi(project: Project, feed: ChangeFeed, auth: Session): Ho
         const asked = requestAgentDraft(project, input);
         feed.notify();
         return c.json(asked, 201);
+      })
+      // The joined workspace's Publicar: both boards of a pair (or the one with changes), as one.
+      .post('/boards/publish-pair', async (c) => {
+        assertConfigurable(c, auth);
+        const input = await body(
+          c,
+          PublishPairBody,
+          '{"parent": id, "child": id, "moves": {"parent"?: moves, "child"?: moves}, "draftStamps"?: {"parent"?: string | null, "child"?: string | null}}',
+        );
+        const result = publishPair(project, {
+          parent: input.parent,
+          child: input.child,
+          moves: roles(input.moves),
+          draftStamps: roles(input.draftStamps),
+          by: HUMAN,
+        });
+        feed.notify();
+        return c.json(result);
+      })
+      // Its Deshacer: both boards back, or neither.
+      .post('/boards/restore-pair', async (c) => {
+        assertConfigurable(c, auth);
+        const input = await body(
+          c,
+          RestorePairBody,
+          '{"parent": id, "child": id, "versions": {"parent"?: number | null, "child"?: number | null}}',
+        );
+        const result = restorePair(project, {
+          parent: input.parent,
+          child: input.child,
+          versions: roles(input.versions),
+          by: HUMAN,
+        });
+        feed.notify();
+        return c.json(result);
       })
       .get('/boards/:id', (c) => {
         const record = getBoardRecord(project, id(c));

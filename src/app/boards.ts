@@ -482,58 +482,61 @@ export function publishBoard(
   input: PublishInput,
   now: Clock = systemClock,
 ): PublishResult {
-  const result = transaction(ctx.db, () => {
-    const row = requireRow(ctx, id);
-    const record = recordOf(ctx, row);
-    assertDraftUnchanged(ctx, id, input.draftStamp);
-    const draft = requireDraft(ctx, id).definition;
-    const problems = boardProblems(ctx, id, draft);
-    if (blocking(problems)) {
-      const codes = problems.filter(({ level }) => level === 'error').map(({ code }) => code);
-      throw new OteaError('not_publishable', `The draft has errors: ${codes.join(', ')}`);
-    }
-    const version = maxVersion(ctx.db, id) + 1;
-    compileBoard(id, version, draft);
-    const at = now();
-    const live = record.live?.definition ?? null;
-    let moved: PublishResult['moved'] = [];
-    if (live && row.collection !== null) {
-      const plan = itemMoves(live, draft, itemStates(ctx, row.collection), input.moves);
-      if (!plan.ok)
-        throw new OteaError('invalid_board', `Items of ${plan.step} need a step that exists`);
-      moved = plan.moves;
-    }
-    insertVersion(ctx.db, {
-      boardId: id,
-      version,
-      definition: JSON.stringify(draft),
-      publishedAt: at,
-      publishedBy: input.by.name,
-    });
-    setLiveVersion(ctx.db, id, version);
-    let collection = row.collection;
-    if (collection === null) {
-      collection = draft.name.trim();
-      insertCollection(ctx.db, {
-        name: collection,
-        prefix: prefixOf(ctx, draft.item, draft.name),
-        preset: id,
-        presetVersion: version,
-        nextSeq: 1,
-        icon: null,
-      });
-      setBoardCollection(ctx.db, id, collection);
-    } else if (collection !== draft.name.trim()) {
-      renameCollection(ctx.db, collection, draft.name.trim());
-      collection = draft.name.trim();
-    }
-    setCollectionPreset(ctx.db, collection, id, version);
-    moveItems(ctx, moved, input.by, at, { reason: 'publish', board_version: version });
-    deleteDraft(ctx.db, id);
-    return { version, moved, record: getBoardRecord(ctx, id) };
-  });
+  const result = transaction(ctx.db, () => publishWithin(ctx, id, input, now));
   syncBoardPresets(ctx);
   return result;
+}
+
+// The body of a publish, inside a transaction the caller holds.
+function publishWithin(ctx: Context, id: string, input: PublishInput, now: Clock): PublishResult {
+  const row = requireRow(ctx, id);
+  const record = recordOf(ctx, row);
+  assertDraftUnchanged(ctx, id, input.draftStamp);
+  const draft = requireDraft(ctx, id).definition;
+  const problems = boardProblems(ctx, id, draft);
+  if (blocking(problems)) {
+    const codes = problems.filter(({ level }) => level === 'error').map(({ code }) => code);
+    throw new OteaError('not_publishable', `The draft has errors: ${codes.join(', ')}`);
+  }
+  const version = maxVersion(ctx.db, id) + 1;
+  compileBoard(id, version, draft);
+  const at = now();
+  const live = record.live?.definition ?? null;
+  let moved: PublishResult['moved'] = [];
+  if (live && row.collection !== null) {
+    const plan = itemMoves(live, draft, itemStates(ctx, row.collection), input.moves);
+    if (!plan.ok)
+      throw new OteaError('invalid_board', `Items of ${plan.step} need a step that exists`);
+    moved = plan.moves;
+  }
+  insertVersion(ctx.db, {
+    boardId: id,
+    version,
+    definition: JSON.stringify(draft),
+    publishedAt: at,
+    publishedBy: input.by.name,
+  });
+  setLiveVersion(ctx.db, id, version);
+  let collection = row.collection;
+  if (collection === null) {
+    collection = draft.name.trim();
+    insertCollection(ctx.db, {
+      name: collection,
+      prefix: prefixOf(ctx, draft.item, draft.name),
+      preset: id,
+      presetVersion: version,
+      nextSeq: 1,
+      icon: null,
+    });
+    setBoardCollection(ctx.db, id, collection);
+  } else if (collection !== draft.name.trim()) {
+    renameCollection(ctx.db, collection, draft.name.trim());
+    collection = draft.name.trim();
+  }
+  setCollectionPreset(ctx.db, collection, id, version);
+  moveItems(ctx, moved, input.by, at, { reason: 'publish', board_version: version });
+  deleteDraft(ctx.db, id);
+  return { version, moved, record: getBoardRecord(ctx, id) };
 }
 
 export type RestoreInput = { version: number | null; by: Actor };
@@ -547,79 +550,167 @@ export function restoreBoard(
   input: RestoreInput,
   now: Clock = systemClock,
 ): BoardRecord {
-  const result = transaction(ctx.db, () => {
-    const row = requireRow(ctx, id);
-    if (row.liveVersion === null) throw new OteaError('not_undoable', 'The board is not published');
-    const undone = findVersion(ctx.db, id, row.liveVersion);
-    if (!undone) throw new OteaError('not_found', `Board ${id} lost version ${row.liveVersion}`);
-    if (input.version !== null && !findVersion(ctx.db, id, input.version))
-      throw new OteaError('not_found', `Board ${id} has no version ${input.version}`);
-    const at = now();
-    const collection = row.collection;
-    if (input.version === null) {
-      if (collection !== null && selectItems(ctx.db, { collection }).length > 0)
-        throw new OteaError(
-          'not_undoable',
-          'Items were created on the board since it was published',
-        );
-      setLiveVersion(ctx.db, id, null);
-      if (collection !== null) {
-        ctx.db.prepare('UPDATE boards SET collection = NULL WHERE id = ?').run(id);
-        deleteCollection(ctx.db, collection);
-      }
-    } else {
-      const version = input.version;
-      const back = readDefinition(findVersion(ctx.db, id, version)?.definition ?? '{}');
-      const name = back.name.trim();
-      if (collection !== null && !same(collection, name)) {
-        if (namesTaken(ctx, id).some((taken) => same(taken, name)))
-          throw new OteaError(
-            'already_exists',
-            `Another board is called ${name} now: rename it before you undo this`,
-          );
-      }
-      if (collection !== null) {
-        const states = new Map(
-          itemStates(ctx, collection).map(({ id: item, state }) => [item, state]),
-        );
-        const moves = publishMoves(ctx, collection, row.liveVersion)
-          .filter((move) => states.get(move.id) === move.to)
-          .map(({ id: item, from, to }) => ({ id: item, from: to, to: from }));
-        for (const move of moves) states.set(move.id, move.to);
-        // Every open item must stand somewhere the restored version has, or it would be stuck.
-        const undoneDef = readDefinition(undone.definition);
-        const known = compiledStates(back);
-        for (const [item, state] of states) {
-          const position = positionOf(state);
-          if (isClosed(position) || known.has(state)) continue;
-          const step = undoneDef.steps.find((s) => s.id === position.step);
-          throw new OteaError(
-            'not_undoable',
-            `${item} stands in ${step?.name ?? position.step}, which version ${version} does not have`,
-          );
-        }
-        setLiveVersion(ctx.db, id, version);
-        if (collection !== name) renameCollection(ctx.db, collection, name);
-        setCollectionPreset(ctx.db, name, id, version);
-        moveItems(ctx, moves, input.by, at, { reason: 'restore', board_version: version });
-      } else {
-        setLiveVersion(ctx.db, id, version);
-      }
-    }
-    // A draft written since the publish is the person's newer work: it stays, on the restored base.
-    const kept = findDraft(ctx.db, id);
-    upsertDraft(ctx.db, {
-      boardId: id,
-      definition: kept?.definition ?? undone.definition,
-      baseVersion: input.version,
-      updatedAt: at,
-      requestItem: kept?.requestItem ?? null,
-      agentNote: kept?.agentNote ?? null,
-    });
-    return getBoardRecord(ctx, id);
-  });
+  const result = transaction(ctx.db, () => restoreWithin(ctx, id, input, now));
   syncBoardPresets(ctx);
   return result;
+}
+
+// The body of a restore, inside a transaction the caller holds.
+function restoreWithin(ctx: Context, id: string, input: RestoreInput, now: Clock): BoardRecord {
+  const row = requireRow(ctx, id);
+  if (row.liveVersion === null) throw new OteaError('not_undoable', 'The board is not published');
+  const undone = findVersion(ctx.db, id, row.liveVersion);
+  if (!undone) throw new OteaError('not_found', `Board ${id} lost version ${row.liveVersion}`);
+  if (input.version !== null && !findVersion(ctx.db, id, input.version))
+    throw new OteaError('not_found', `Board ${id} has no version ${input.version}`);
+  const at = now();
+  const collection = row.collection;
+  if (input.version === null) {
+    if (collection !== null && selectItems(ctx.db, { collection }).length > 0)
+      throw new OteaError('not_undoable', 'Items were created on the board since it was published');
+    setLiveVersion(ctx.db, id, null);
+    if (collection !== null) {
+      ctx.db.prepare('UPDATE boards SET collection = NULL WHERE id = ?').run(id);
+      deleteCollection(ctx.db, collection);
+    }
+  } else {
+    const version = input.version;
+    const back = readDefinition(findVersion(ctx.db, id, version)?.definition ?? '{}');
+    const name = back.name.trim();
+    if (collection !== null && !same(collection, name)) {
+      if (namesTaken(ctx, id).some((taken) => same(taken, name)))
+        throw new OteaError(
+          'already_exists',
+          `Another board is called ${name} now: rename it before you undo this`,
+        );
+    }
+    if (collection !== null) {
+      const states = new Map(
+        itemStates(ctx, collection).map(({ id: item, state }) => [item, state]),
+      );
+      const moves = publishMoves(ctx, collection, row.liveVersion)
+        .filter((move) => states.get(move.id) === move.to)
+        .map(({ id: item, from, to }) => ({ id: item, from: to, to: from }));
+      for (const move of moves) states.set(move.id, move.to);
+      // Every open item must stand somewhere the restored version has, or it would be stuck.
+      const undoneDef = readDefinition(undone.definition);
+      const known = compiledStates(back);
+      for (const [item, state] of states) {
+        const position = positionOf(state);
+        if (isClosed(position) || known.has(state)) continue;
+        const step = undoneDef.steps.find((s) => s.id === position.step);
+        throw new OteaError(
+          'not_undoable',
+          `${item} stands in ${step?.name ?? position.step}, which version ${version} does not have`,
+        );
+      }
+      setLiveVersion(ctx.db, id, version);
+      if (collection !== name) renameCollection(ctx.db, collection, name);
+      setCollectionPreset(ctx.db, name, id, version);
+      moveItems(ctx, moves, input.by, at, { reason: 'restore', board_version: version });
+    } else {
+      setLiveVersion(ctx.db, id, version);
+    }
+  }
+  // A draft written since the publish is the person's newer work: it stays, on the restored base.
+  const kept = findDraft(ctx.db, id);
+  upsertDraft(ctx.db, {
+    boardId: id,
+    definition: kept?.definition ?? undone.definition,
+    baseVersion: input.version,
+    updatedAt: at,
+    requestItem: kept?.requestItem ?? null,
+    agentNote: kept?.agentNote ?? null,
+  });
+  return getBoardRecord(ctx, id);
+}
+
+// A board that "se divide en" another board and that board, published or undone as one: the
+// joined workspace's Publicar and its Deshacer. A role is acted on when the request names it.
+export type PairRoles<T> = { parent?: T; child?: T };
+
+export type PublishPairInput = {
+  parent: string;
+  child: string;
+  moves: PairRoles<Readonly<Record<string, Target>>>;
+  draftStamps?: PairRoles<string | null>;
+  by: Actor;
+};
+
+export type PublishPairResult = { parent: PublishResult | null; child: PublishResult | null };
+
+function assertPair(ctx: Context, parent: string, child: string): void {
+  const record = getBoardRecord(ctx, parent);
+  requireRow(ctx, child);
+  const split = (record.draft ?? record.live)?.definition.split;
+  if (split?.board !== child)
+    throw new OteaError('invalid_board', `Board ${parent} is not split into board ${child}`);
+}
+
+function stamped(input: PublishPairInput, role: 'parent' | 'child', moves: PublishInput['moves']) {
+  const stamp = input.draftStamps?.[role];
+  return { moves, by: input.by, ...(stamp === undefined ? {} : { draftStamp: stamp }) };
+}
+
+// Publishes the pair's drafts in one transaction, the child first so the parent's split names a
+// live board: both, or (when only one has changes) the one named, or nothing at all.
+export function publishPair(
+  ctx: Context,
+  input: PublishPairInput,
+  now: Clock = systemClock,
+): PublishPairResult {
+  const { parent: parentMoves, child: childMoves } = input.moves;
+  if (!parentMoves && !childMoves)
+    throw new OteaError('invalid_board', 'Name the boards to publish: nothing was asked for');
+  const result = transaction(ctx.db, () => {
+    assertPair(ctx, input.parent, input.child);
+    const child = childMoves
+      ? publishWithin(ctx, input.child, stamped(input, 'child', childMoves), now)
+      : null;
+    const parent = parentMoves
+      ? publishWithin(ctx, input.parent, stamped(input, 'parent', parentMoves), now)
+      : null;
+    return { parent, child };
+  });
+  syncBoardPresets(ctx);
+  // The parent's record was read before the child's publish finished: read both again.
+  return {
+    parent: result.parent && { ...result.parent, record: getBoardRecord(ctx, input.parent) },
+    child: result.child && { ...result.child, record: getBoardRecord(ctx, input.child) },
+  };
+}
+
+export type RestorePairInput = {
+  parent: string;
+  child: string;
+  versions: PairRoles<number | null>;
+  by: Actor;
+};
+
+export type RestorePairResult = { parent: BoardRecord | null; child: BoardRecord | null };
+
+// Undoes a joint publish in one transaction, the parent first (it names the child): both boards
+// go back, or neither does.
+export function restorePair(
+  ctx: Context,
+  input: RestorePairInput,
+  now: Clock = systemClock,
+): RestorePairResult {
+  const { parent: parentVersion, child: childVersion } = input.versions;
+  if (parentVersion === undefined && childVersion === undefined)
+    throw new OteaError('invalid_board', 'Name the boards to restore: nothing was asked for');
+  transaction(ctx.db, () => {
+    assertPair(ctx, input.parent, input.child);
+    if (parentVersion !== undefined)
+      restoreWithin(ctx, input.parent, { version: parentVersion, by: input.by }, now);
+    if (childVersion !== undefined)
+      restoreWithin(ctx, input.child, { version: childVersion, by: input.by }, now);
+  });
+  syncBoardPresets(ctx);
+  return {
+    parent: parentVersion === undefined ? null : getBoardRecord(ctx, input.parent),
+    child: childVersion === undefined ? null : getBoardRecord(ctx, input.child),
+  };
 }
 
 // The states a version's compiled workflow has for its steps (compile.ts phasesOf).
