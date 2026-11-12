@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { cambios, tareasDeRepo } from '../core/board/testing.ts';
 import { updateItemState } from '../store/queries.ts';
+import { addCollection } from './collections.ts';
 import { checkGate } from './gates.ts';
-import { createItem } from './items.ts';
+import { createItem, updateItem } from './items.ts';
 import { memoryContext, publishAs } from './testing.ts';
 
 const you = { kind: 'human' as const, name: 'fede' };
@@ -66,5 +67,38 @@ describe('gates on a board', () => {
   it('reads --field by the part’s name', () => {
     const { ctx, id } = repoTask();
     expect(checkGate(ctx, 'push', { Rama: 'feat/x' }).items.map((item) => item.id)).toEqual([id]);
+  });
+  it('refuses an unknown --field name instead of matching nothing', () => {
+    const { ctx } = repoTask();
+    expect(() => checkGate(ctx, 'push', { branch: 'feat/x', Rpo: 'api' })).toThrow(
+      expect.objectContaining({ code: 'invalid_fields' }),
+    );
+  });
+
+  it('fails closed when a collection still on a preset cannot be read', () => {
+    const { ctx } = repoTask();
+    addCollection(ctx, { name: 'Lost', preset: 'tasks' });
+    createItem(ctx, { collection: 'Lost', title: 'x', actor: you });
+    ctx.db.prepare("UPDATE collections SET preset = 'gone' WHERE name = 'Lost'").run();
+    expect(() => checkGate(ctx, 'push', { branch: 'feat/x' })).toThrow();
+  });
+
+  it('keeps the protected branch frozen for an agent outside the steps that push it', () => {
+    const { ctx, id } = repoTask();
+    const claude = { kind: 'agent' as const, name: 'claude' };
+    updateItemState(ctx.db, id, 'simpl__review', now());
+    expect(() =>
+      updateItem(ctx, { id, fields: { Rama: 'feat/other' }, actor: claude }, now),
+    ).toThrow(expect.objectContaining({ code: 'forbidden' }));
+    expect(() => updateItem(ctx, { id, fields: { Repo: 'web' }, actor: claude }, now)).toThrow(
+      expect.objectContaining({ code: 'forbidden' }),
+    );
+    expect(checkGate(ctx, 'push', { branch: 'feat/x', repo: 'api' }).allowed).toBe(false);
+    updateItemState(ctx.db, id, 'simpl', now());
+    expect(
+      updateItem(ctx, { id, fields: { Rama: 'feat/y' }, actor: claude }, now).fields,
+    ).toMatchObject({
+      fbranch: 'feat/y',
+    });
   });
 });
