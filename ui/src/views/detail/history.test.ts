@@ -122,4 +122,38 @@ describe('a board reading in the history', () => {
     expect(plain).toMatchObject({ text: 'Otea read it onto its board, in sfix', who: 'Otea' });
     expect(plain?.quote).toBeUndefined();
   });
+
+  it('says what happened before the reading without the preset’s state names', () => {
+    const otea = { kind: 'human', name: 'otea' } as const;
+    const board = {
+      ...bug,
+      states: [
+        { name: 'sfill', turn: 'agent' },
+        { name: 'striage', turn: 'human' },
+      ],
+    } as unknown as typeof bug;
+    const lines = historyOf(
+      [
+        ev('created', mender, { state: 'reported' }, 90),
+        ev(
+          'transitioned',
+          you,
+          { from: 'reported', to: 'needs_info', reason: '¿Qué versión?' },
+          80,
+        ),
+        ev('transitioned', mender, { from: 'needs_info', to: 'fixing' }, 70),
+        ev('transitioned', otea, { from: 'fixing', to: 'sfill', reason: 'migrate' }, 60),
+      ],
+      board,
+      word,
+      NOW,
+    );
+    expect(lines.map((l) => l.text)).toEqual([
+      'Otea read it onto its board, in sfill',
+      'Moved it, before its board',
+      'You moved it, before its board',
+      'Created it, before its board',
+    ]);
+    expect(lines[2]?.quote).toBe('¿Qué versión?');
+  });
 });
