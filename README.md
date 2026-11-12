@@ -10,7 +10,7 @@ Agents produce work faster than a human can follow it live. Otea is where work c
 
 - **Triage** many findings at once: filter, group, prioritize, discard.
 - **Review** results in depth: GIFs, video, diffs, logs, with concrete questions the agent reads back and acts on.
-- **Presets** shape each board and carry the agent playbook, so sharing a preset shares a way of working. **Blueprints** build a set of boards at once and say which links may join them.
+- **Boards** shape the work: their steps, who does and reviews each, what a handoff carries. **Templates** start a board, or several joined boards at once (a Cambio that divides into one Tarea de repo per repository).
 - **Local-first**: data stays with your project. No cloud, no accounts.
 - **Harness-neutral**: any agent with a shell (CLI) or MCP support can use it.
 - **Traceable**: every change is an append-only event, with who made it and through which channel.
@@ -36,9 +36,9 @@ There is no installable `otea` binary yet. Run the CLI from source inside the pr
 alias otea='node --disable-warning=ExperimentalWarning /path/to/otea/src/cli/main.ts'
 
 cd /path/to/your/project
-otea init
-otea collection add tasks                  # --preset tasks is the default
-otea collection add roadmap --icon map     # its own icon instead of its preset's
+otea init                                  # a new project starts with the boards Tareas and Errores
+otea init --template repos                 # or with a template's boards (repos, product, triage, ...; none for no board)
+otea board add Roadmap --template tasks    # another board, from a template, published at once
 otea create --collection tasks --title "Write the docs" --description "Install and first steps"
 otea create --collection tasks --title "Flaky login test"   # no description: starts incomplete
 otea create --collection tasks --title "Fix the footer" --description "Wrong year" --field priority=high
@@ -54,7 +54,7 @@ otea move TASKS-2 todo                     # refused (exit 8) while a required f
 otea update TASKS-2 --description "Fails on CI only, see run 42"   # fill what was missing
 otea move TASKS-2 todo
 otea move TASKS-4 discarded --reason "Out of scope"   # an incomplete item can be closed with a reason
-otea validate                              # check presets, blueprints, collections and items
+otea validate                              # check boards, collections and items
 otea check --gate push --branch --repo     # may this branch be pushed? exit 0 yes, 1 no (fails open)
 otea hook install --git --claude           # in a repo: make that check a pre-push hook and a Claude Code hook
 otea help                                  # every command, global options and exit codes
@@ -95,7 +95,7 @@ When a repo moves, `otea projects relink <old> <new>` points its link at the new
 A project created in `.otea/` (with `otea init --local`, or before common storage was the default) stays there until you move it; Otea never migrates on its own. `otea migrate --to common`, run from the project:
 
 1. copies the database into `$OTEA_HOME/data/<id>/` with `VACUUM INTO` and checks the copy (`PRAGMA integrity_check`, and the same row count and last row id in every table);
-2. copies `evidence/`, `presets/`, `blueprints/` and the blueprint copy, registers the project (same id) and links its folder;
+2. copies `evidence/` and `presets/`, registers the project (same id) and links its folder;
 3. renames `.otea/` to `.otea.migrated-<date>-<time>/`, a backup Otea never deletes (excluded from git like `.otea/`);
 4. prints what it did and how to undo it: `otea projects forget <folder>`, rename the backup back to `.otea`, and delete the copied data folder once it is no longer needed.
 
@@ -291,35 +291,31 @@ Samples are read strictly against the preset, and what does not fit is a note, n
 
 A type may have its own **playbook**, `playbook: ./epic.md`, beside the preset's, in the same folder. The hint of `otea show` takes the section for the state from the item's type's playbook first, then from the preset's. `otea playbook --collection <name>` prints the preset's playbook, then each type's own under `--- Type <type> ---`; its `--json` adds `types`, a list of `{type, playbook}` for the types that have one (empty when none do). The MCP `playbook` tool returns the same.
 
-### Blueprints
+### Templates that make several boards
 
-A **blueprint** is a set of boards, each a collection name plus a preset, and the links allowed between them. It builds all of a project's boards at once and says how they work together:
-
-```yaml
-blueprint: product
-blueprint_version: 1
-playbook: ./playbook.md          # optional: the coordination playbook, in Markdown
-boards:
-  work: { preset: tasks }
-  bugs: { preset: bug-triage }
-connections:                     # <board>.<type> <kind> <board>.<type>
-  - bugs.bug blocks work.task
-```
-
-A connection lets an item of one type in one board link to an item of one type in another, with one kind: `blocks`, `implements`, `relates` (either way) or `duplicates`. `parent` is never a connection; it stays inside a board.
+A template set makes several boards at once, joined the only way boards are declared to join: **"se divide en"** (each item of one board divides into items of another).
 
 ```sh
-otea init --blueprint product         # create the project and every board of the blueprint
-otea blueprint apply ./shared/studio  # or build them in an existing project (a name, or a path with a slash)
-otea blueprint status                 # compare the project's copy with its source
-otea blueprint update                 # bring the source's changes in, after confirmation (--yes skips it)
+otea init --template repos     # Cambios, which divides into Tareas de repo (always: a repo task is always part of a Cambio)
+otea init --template product   # Tareas, which waits for nothing open blocking it, and Errores (Clasificar errores)
 ```
 
-- Official blueprints live in [`blueprints/`](blueprints/) next to `presets/`: [`product`](blueprints/product/playbook.md) builds `work` (tasks) and `bugs` (bug-triage), where a bug can block a task. A project adds its own in `blueprints/<name>/blueprint.yaml` in its data folder (`.otea/blueprints/` for a local project), under names the official ones do not use.
-- Applying a blueprint creates each board as a collection; an existing collection of the same name and preset becomes its board, and one with another preset stops the apply before anything is created. A project has one blueprint.
-- The project keeps its **own copy** in `blueprint.yaml` in its data folder (with the playbook beside it as `blueprint.md`), plus where it came from and the hash of the source. It is a copy, not a live reference: editing the source changes nothing until `otea blueprint update`. `otea blueprint status` and `otea validate` list what the source changed (`+ board qa (preset tasks)`, `- bugs.bug blocks work.task`, `~ playbook`). Update adds boards and connections, and removes or rebuilds a board only while it has no items: a board with items is kept and reported.
-- Once a project has a blueprint, a link between two of its boards that the blueprint does not declare fails with exit 16 (`link_not_in_blueprint`), and the message lists what is allowed between those boards. Links inside one board, `parent` links, and boards outside the blueprint are not restricted. Without a blueprint nothing changes.
-- `otea playbook` (without `--collection`) ends with the blueprint's coordination playbook, and its `--json` carries it as `blueprint`. `otea validate` checks blueprints: unknown presets, unknown types, `parent` used as a connection, and connections listed twice.
+- A part on a board that is always part of another needs `--parent` (`otea create --collection "Tareas de repo" --parent CAMBIOS-1 …`); without it, or with a parent on another board, the create fails with exit 16 (`parent_required`, `parent_type`). `otea link A parent B` follows the same rule.
+- Every other link (`blocks`, `implements`, `relates`, `duplicates`) is free between any two boards. A step that waits for its blockers ("Algo que esperar") is not handed off, or approved, while one of them is open (exit 4, `blockers_open`); one that waits for its parts, while a part is open (exit 4, `children_open`).
+- Blueprints are gone. A project that had one is read once, when it opens: every collection becomes a board (each old preset has its own reading, so a `change` collection becomes Cambios plus Tareas de repo and its repo tasks move there with their history), a `blocks` connection into a board makes its working step wait for blockers, and `.otea/blueprint.yaml` is deleted.
+
+### Agent moves on a board
+
+```sh
+otea handoff BUG-4 --note "the test I ran and what I saw"   # a step that asks for a note refuses without it (exit 8)
+otea handoff BUG-4 --way "Triar" --reason "Cannot reproduce"  # a way back: no review, Triar starts its next round
+otea drop TAR-3 --reason "Out of scope" --as "Duplicado"     # drop with a motive (by name or id), where the board lets agents drop
+otea check --gate push --branch --repo                     # reads the board's protected Rama and its repo field
+```
+
+- The note of each handoff is kept with its round (`otea show --json`: `board.notes`). A way back needs `--reason` (exit 2, `reason_required`).
+- `otea drop` without `--reason` or, on a board with motives, without `--as` exits 2; where only the person drops it exits 7 (`forbidden`); where the person drops only from the page, a relayed drop exits 4.
+- `otea check` and the hooks (`otea hook install --git` for a pre-push hook, `--claude` for Claude Code's `git push` and `gh pr merge`) match the branch and the repo against the board's **Rama** field (the branch field Otea protects) and the field it names as the repo, never against a fixed `branch` key: a push is allowed only while one of the chosen steps is being done (frozen while it is reviewed), a merge once the item is Done.
 
 ### See it live
 
