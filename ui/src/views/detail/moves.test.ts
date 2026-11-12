@@ -118,3 +118,16 @@ describe('what the hovered move does (the movesays line)', () => {
     );
   });
 });
+
+describe('moveSaysOf on a board', () => {
+  it('says the round and agent the way back lands on, when the board knows them', () => {
+    const choice = { kind: 'sendback', move: { to: 'sfill' } } as unknown as MoveChoice;
+    const says = moveSaysOf(choice, {
+      agent: 'mender',
+      round: 1,
+      word,
+      back: () => ({ agent: null, round: 1 }),
+    });
+    expect(says.tail).toBe(moveSaysOf(choice, { agent: null, round: 0, word }).tail);
+  });
+});

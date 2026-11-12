@@ -329,3 +329,19 @@ export function roundNotes(
 export function sheetLook(look: Look, onBoard: boolean): Look {
   return onBoard && look === 'waiting' ? 'queued' : look;
 }
+
+// Where a way back (or a send-back) lands: the round it starts on that step, as the engine counts
+// rounds, and the step's own agent (none when any agent may take it).
+export function backOf(
+  def: BoardDefinition,
+  item: ItemLike,
+  to: string,
+): { agent: string | null; round: number } {
+  const target = positionOf(to);
+  if (isClosed(target)) return { agent: null, round: 0 };
+  const history = historyOf(item, def.steps[0]?.id ?? item.state);
+  const rounds = roundsOf(def, history.initial, history.createdAt, history.moves);
+  const turn = turnAt(def, { step: target.step, phase: 'doing' });
+  const agent = turn.who === 'agent' ? (turn.agent ?? null) : null;
+  return { agent, round: (rounds.rounds[target.step] ?? 0) + 1 };
+}

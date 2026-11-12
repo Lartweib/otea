@@ -4,6 +4,7 @@ import { setLanguage } from '../../i18n/i18n.ts';
 import type { ItemEvent, RelatedItem } from '../../types.ts';
 import {
   approvalRefusal,
+  backOf,
   boardItemOf,
   branchStrip,
   linksOf,
@@ -384,5 +385,20 @@ describe('sheetLook: open parts are a wait at the handoff, not a look', () => {
     expect(sheetLook('waiting', true)).toBe('queued');
     expect(sheetLook('working', true)).toBe('working');
     expect(sheetLook('waiting', false)).toBe('waiting');
+  });
+});
+
+describe('backOf: where a way back lands, in the rounds of the engine', () => {
+  it('names the round of the step it starts, and its own agent or none', () => {
+    const skipped = item('striage', [created('striage')]);
+    expect(backOf(errores(), skipped, 'sfill')).toEqual({ agent: null, round: 1 });
+    const twice = item('sfix', [
+      created('striage'),
+      moved('striage', 'sfix', you, '2026-01-02T00:00:00Z'),
+      moved('sfix', 'striage', agent('mender'), '2026-01-03T00:00:00Z'),
+      moved('striage', 'sfix', you, '2026-01-04T00:00:00Z'),
+    ]);
+    expect(backOf(errores(), twice, 'striage')).toEqual({ agent: null, round: 3 });
+    expect(backOf(errores(), twice, 'sfix')).toEqual({ agent: 'mender', round: 3 });
   });
 });
