@@ -1,6 +1,7 @@
 import type { DatabaseSync } from 'node:sqlite';
 import type { Channel } from '../core/authority.ts';
-import { assertInBlueprint } from '../core/blueprint.ts';
+import { partRule } from '../core/board/joins.ts';
+import { parentTypeText } from '../core/board/next.ts';
 import { OteaError } from '../core/errors.ts';
 import { assertTakesChild } from '../core/hierarchy.ts';
 import type { Actor } from '../core/item.ts';
@@ -32,6 +33,7 @@ import {
 import { typeOfItem } from './collections.ts';
 import type { Context } from './context.ts';
 import { type Item, present, requireItem, systemClock, workflowOf } from './items.ts';
+import { liveBoardOf, partsBoardOf } from './next.ts';
 
 // `kind` is one of the stored kinds; `other` is the item the relation points to: `otea link A blocks
 // B` reads A blocks B, and `otea link A parent B` makes B the parent of A.
@@ -67,11 +69,25 @@ function recordRelation(db: DatabaseSync, type: string, relation: Relation, who:
   }
 }
 
-// A collection is one board, and a tree of items lives inside it: a parent in another collection is
-// refused. What waits on another board says so with blocks; what delivers it, with implements.
-// Links stored before the rule are kept and read as they were.
-function assertSameBoard(from: ItemRecord, to: ItemRecord): void {
-  if (from.collection === to.collection) return;
+// A parent's parts live on the board it divides into ("se divide en"), or, on a board that divides
+// into nothing, on its own board: a part on another board is refused. What waits on another board
+// says so with blocks; what delivers it, with implements; those links are free between boards.
+function assertMayBePart(ctx: Context, from: ItemRecord, to: ItemRecord): void {
+  const parent = liveBoardOf(ctx, to.collection);
+  const child = liveBoardOf(ctx, from.collection);
+  const rule =
+    parent && child
+      ? partRule(parent, child)
+      : from.collection === to.collection
+        ? 'ok'
+        : 'across_boards';
+  if (rule === 'ok') return;
+  const into = parent ? partsBoardOf(ctx, parent) : undefined;
+  if (rule === 'parent_type' && parent && into)
+    throw new OteaError(
+      'parent_type',
+      parentTypeText(parent.def, into.def, from.id, child?.def.name ?? from.collection),
+    );
   throw new OteaError(
     'parent_across_boards',
     `${from.id} (${from.collection}) cannot be a child of ${to.id} (${to.collection}): a parent lives in the same collection; link ${from.id} blocks ${to.id} to make ${to.id} wait, or ${from.id} implements ${to.id}`,
@@ -87,9 +103,8 @@ export function addRelation(ctx: Context, given: Relation, who: Who, at: string)
   const relation = normalizeRelation(given);
   const from = requireItem(db, relation.from);
   const to = requireItem(db, relation.to);
-  if (relation.kind === 'parent') assertSameBoard(from, to);
+  if (relation.kind === 'parent') assertMayBePart(ctx, from, to);
   assertCanRelate(selectRelations(db), relation);
-  assertInBlueprint(ctx.blueprint, relation.kind, from, to);
   if (relation.kind === 'parent') {
     assertTakesChild(to.id, typeOfItem(ctx, to), from.type);
     const parent = presented(ctx, to, at);
