@@ -9,6 +9,7 @@ import {
   linksOf,
   partsCount,
   roundNotes,
+  sheetLook,
   waitRows,
 } from './board-item.ts';
 
@@ -375,5 +376,13 @@ describe('approvalRefusal: Aprobar refused in words when a wait no longer holds'
     );
     expect(approvalRefusal('ERR-1', [])).toBeNull();
     setLanguage('en');
+  });
+});
+
+describe('sheetLook: open parts are a wait at the handoff, not a look', () => {
+  it('reads an item on a board with open parts as queued; every other look stays', () => {
+    expect(sheetLook('waiting', true)).toBe('queued');
+    expect(sheetLook('working', true)).toBe('working');
+    expect(sheetLook('waiting', false)).toBe('waiting');
   });
 });

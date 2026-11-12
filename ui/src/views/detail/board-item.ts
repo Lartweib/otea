@@ -21,6 +21,7 @@ import {
   type RouteWords,
 } from '../../board-studio/preview/route.ts';
 import { listOf, t } from '../../i18n/i18n.ts';
+import type { Look } from '../../lanes/looks.ts';
 import type { ItemEvent, RelatedItem } from '../../types.ts';
 
 // An item on a published board, as the step engine reads it: the agent whose turn it is by the
@@ -320,4 +321,11 @@ export function roundNotes(
     for (const r of rounds) r.notes.sort((a, b) => a.at.localeCompare(b.at));
   }
   return rounds;
+}
+
+// On a board nothing waits by itself: a step that waits for its parts is the doer's to finish, and
+// the wait is a check at the handoff (its checklist says what is still open). So open parts never
+// make the item "waiting" there, the look an item on a preset took while its children were open.
+export function sheetLook(look: Look, onBoard: boolean): Look {
+  return onBoard && look === 'waiting' ? 'queued' : look;
 }
