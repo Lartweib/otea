@@ -34,6 +34,7 @@ export function MentionArea({ at, stored, label, small, placeholder, rows = 2 }:
   const { draft } = useEditor();
   const def = draft.def;
   const area = useRef<HTMLTextAreaElement>(null);
+  const button = useRef<HTMLButtonElement>(null);
   const caret = useRef<[number, number] | null>(null);
   const menu = useAnchor();
   const text = editableText(def, stored);
@@ -71,6 +72,7 @@ export function MentionArea({ at, stored, label, small, placeholder, rows = 2 }:
         <span className="se-il-t">{label}</span>
         <small>{small}</small>
         <button
+          ref={button}
           type="button"
           className="se-mention"
           aria-haspopup="menu"
@@ -111,7 +113,22 @@ export function MentionArea({ at, stored, label, small, placeholder, rows = 2 }:
           placeholder={placeholder}
           aria-label={label}
           spellCheck
-          onChange={(e) => change(e.target.value)}
+          onChange={(e) => {
+            const el = e.target;
+            const value = el.value;
+            const at = el.selectionStart;
+            change(value);
+            // Typing @ (at the start or after a space) opens the list; the @ is what the pick
+            // replaces, so it never stays doubled.
+            const typed =
+              value.length === text.length + 1 &&
+              value[at - 1] === '@' &&
+              (at === 1 || /\s/.test(value[at - 2] ?? ''));
+            if (typed && !menu.open && button.current) {
+              caret.current = [at - 1, at];
+              menu.toggle(button.current);
+            }
+          }}
           onBlur={(e) => {
             caret.current = [e.target.selectionStart, e.target.selectionEnd];
             draft.endBurst();
