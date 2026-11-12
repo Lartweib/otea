@@ -128,3 +128,11 @@ export function setupRows(
     return [{ ...item, done: store.ok.includes(item.k) || changed }];
   });
 }
+
+// What is left unticked in «Qué falta configurar» while it shows: Publicar says it.
+export function setupLeft(
+  setup: { rows: readonly { done: boolean }[]; hidden: boolean } | null | undefined,
+): number {
+  if (!setup || setup.hidden) return 0;
+  return setup.rows.filter((row) => !row.done).length;
+}
