@@ -97,6 +97,22 @@ describe('the note of a handoff', () => {
     ]);
   });
 
+  it('is read from the reason of a handoff too, as a move reads it', () => {
+    const ctx = memoryContext();
+    const id = bugInFix(ctx);
+    attach(ctx, id, 'ecode');
+    const done = handoffItem(
+      ctx,
+      { id, actor: mender, channel: 'cli', reason: 'la prueba pasó' },
+      now,
+    );
+    expect(done.text).toBe(`Handed off. ${id} waits for the person to review Arreglar.`);
+    const shown = showItem(ctx, id, { actor: you, channel: 'ui' }, now);
+    expect(shown.board?.notes).toEqual([
+      expect.objectContaining({ step: 'Arreglar', round: 1, note: 'la prueba pasó' }),
+    ]);
+  });
+
   it('is read from the reason of a move along the workflow too', () => {
     const ctx = memoryContext();
     const id = bugInFix(ctx);
