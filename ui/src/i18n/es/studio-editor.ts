@@ -6,6 +6,8 @@ export const studioEditor = {
   'bs.editor.loading': 'Abriendo el tablero…',
   'bs.editor.failed': 'El tablero no se abrió: {reason}',
   'bs.editor.retry': 'Reintentar',
+  'bs.editor.missing': 'Este tablero ya no existe, o el enlace está mal.',
+  'bs.editor.reload': 'Recargar',
 
   'bs.editor.kicker.studio': 'Studio',
   'bs.editor.kicker.edit': 'editar tablero',
@@ -263,6 +265,8 @@ export const studioEditor = {
   'bs.editor.chip.live': 'Publicado · v{v}',
   'bs.editor.save.saving': 'Guardando…',
   'bs.editor.save.failed': 'No se pudo guardar: {reason}',
+  'bs.editor.save.conflict':
+    'El borrador cambió mientras lo tenías abierto: un agente entregó su tablero, u otra ventana lo guardó. Recarga para verlo; tus últimos cambios aquí no se guardaron.',
   'bs.editor.undo': 'Deshacer',
   'bs.editor.redo': 'Rehacer',
   'bs.editor.discard': 'Descartar',

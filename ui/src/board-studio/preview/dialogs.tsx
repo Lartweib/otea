@@ -91,7 +91,7 @@ export function PublishDialog({ draft, open, onClose, onPublished }: PublishDial
     setBusy(true);
     setError(null);
     try {
-      const result = await publishBoard(id, moves);
+      const result = await publishBoard(id, moves, draft.record.draft?.updatedAt ?? null);
       setBusy(false);
       onClose();
       onPublished(result.record);

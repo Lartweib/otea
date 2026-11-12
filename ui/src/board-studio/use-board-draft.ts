@@ -47,7 +47,7 @@ export type ReadyDraft = {
 
 export type BoardDraft =
   | { status: 'loading' }
-  | { status: 'failed'; message: string; retry: () => void }
+  | { status: 'failed'; message: string; code?: string; retry: () => void }
   | ReadyDraft;
 
 export type DraftOptions = {
@@ -67,7 +67,7 @@ function firstSelection(def: BoardDefinition): Selection {
 export function useBoardDraft(id: string, options: DraftOptions): BoardDraft {
   const [load, setLoad] = useState<
     | { status: 'loading' }
-    | { status: 'failed'; message: string }
+    | { status: 'failed'; message: string; code?: string }
     | { status: 'ready'; record: BoardRecord }
   >({ status: 'loading' });
   const [state, setState] = useState<DraftState | null>(null);
@@ -76,6 +76,8 @@ export function useBoardDraft(id: string, options: DraftOptions): BoardDraft {
   const [attempt, setAttempt] = useState(0);
   const [revealed, setRevealed] = useState(0);
   const base = useRef<number | null>(null);
+  // The draft as last read or written here: a save over a draft changed since is refused.
+  const stamp = useRef<string | null>(null);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: a new attempt loads the board again
   useEffect(() => {
@@ -86,15 +88,18 @@ export function useBoardDraft(id: string, options: DraftOptions): BoardDraft {
         const def = (record.draft ?? record.live)?.definition;
         if (!def) throw new Error(id);
         base.current = record.draft ? record.draft.baseVersion : (record.live?.version ?? null);
+        stamp.current = record.draft?.updatedAt ?? null;
         setState(startDraft(def));
         setSelection(firstSelection(def));
         setLoad({ status: 'ready', record });
       })
       .catch((error: unknown) => {
         if (abort.signal.aborted) return;
+        const code = (error as { code?: unknown } | null)?.code;
         setLoad({
           status: 'failed',
           message: error instanceof Error ? error.message : String(error),
+          ...(typeof code === 'string' ? { code } : {}),
         });
       });
     return () => abort.abort();
@@ -105,7 +110,8 @@ export function useBoardDraft(id: string, options: DraftOptions): BoardDraft {
       createSaver({
         delay: options.delay ?? 600,
         save: async (def) => {
-          const saved = await saveDraft(id, def, base.current);
+          const saved = await saveDraft(id, def, base.current, stamp.current);
+          stamp.current = saved.record.draft?.updatedAt ?? null;
           setLoad({ status: 'ready', record: saved.record });
         },
         onStatus: setSave,
@@ -146,6 +152,7 @@ export function useBoardDraft(id: string, options: DraftOptions): BoardDraft {
     return {
       status: 'failed',
       message: load.status === 'failed' ? load.message : '',
+      ...(load.status === 'failed' && load.code ? { code: load.code } : {}),
       retry: () => setAttempt((n) => n + 1),
     };
   return {

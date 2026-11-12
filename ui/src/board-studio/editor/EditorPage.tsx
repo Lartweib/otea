@@ -46,7 +46,11 @@ export function EditorPage({ board }: EditorPageProps) {
   if (draft.status === 'failed')
     return (
       <div className="pane-message se-msg" role="alert">
-        <p>{t('bs.editor.failed', { reason: draft.message })}</p>
+        <p>
+          {draft.code === 'not_found'
+            ? t('bs.editor.missing')
+            : t('bs.editor.failed', { reason: draft.message })}
+        </p>
         <button type="button" className="btn quiet sm" onClick={draft.retry}>
           {t('bs.editor.retry')}
         </button>
