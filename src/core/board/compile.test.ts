@@ -73,6 +73,24 @@ describe('compileBoard', () => {
     expect(labels?.es?.values?.fbiome).toEqual({ cswamp: 'Pantano', cwood: 'Bosque' });
   });
 
+  it('names a level field’s values in both languages (the Tabla groups by them)', () => {
+    const def = creatures();
+    const level = { id: 'fsev', name: 'Severidad', kind: 'level' as const, hint: '', options: [] };
+    const preset = compileBoard('bcria', 1, {
+      ...def,
+      parts: { ...def.parts, fsev: level },
+      form: [...def.form, { ref: 'fsev', required: false }],
+    });
+    const labels = preset.types[0]?.labels;
+    expect(labels?.es?.values?.fsev).toEqual({
+      low: 'baja',
+      medium: 'media',
+      high: 'alta',
+      critical: 'crítica',
+    });
+    expect(labels?.en?.values?.fsev?.critical).toBe('critical');
+  });
+
   it('lays the item page out from Acomodar zones, evidence modules carrying the part id', () => {
     const layout = compileBoard('bcria', 1, creatures()).types[0]?.layout;
     expect(layout?.body).toEqual([
