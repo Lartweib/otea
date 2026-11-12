@@ -33,6 +33,7 @@ import { boardGuide, type Guide, guideIndex, hintFor } from '../app/guide.ts';
 import { forgetProjectPath, listProjects, relinkProjectPath, withRegistry } from '../app/home.ts';
 import {
   createItem,
+  getItem,
   type Item,
   type ItemView,
   type ListItemsFilter,
@@ -1146,8 +1147,14 @@ const attach: Command = {
       ...(module === undefined ? {} : { module }),
       ...(caption === undefined ? {} : { caption }),
     };
-    const evidence = withAgent(input, (project) => attachEvidence(project, evidenceInput));
-    return { data: evidence, text: formatEvidence(evidence) };
+    return withAgent(input, (project) => {
+      const evidence = attachEvidence(project, evidenceInput);
+      // On a board, the evidence goes by its name, never its hidden id.
+      const board = liveBoardOf(project, getItem(project, evidence.itemId).collection);
+      const name = evidence.module === null ? undefined : board?.def.parts[evidence.module]?.name;
+      const shown = name === undefined ? evidence : { ...evidence, module: name };
+      return { data: evidence, text: formatEvidence(shown) };
+    });
   },
 };
 

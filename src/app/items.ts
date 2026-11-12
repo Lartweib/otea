@@ -328,9 +328,10 @@ export function moveItem(ctx: Context, input: MoveItemInput, now = systemClock):
     const at = now();
     const lease = activeLease(item.lease, at);
     assertMayWrite(item.id, lease, actor);
+    // On a board, the step engine says first, in the board's words, why a move is not this actor's.
+    assertMoveHandsOff(ctx, item, to, actor);
     authorizeMove(workflow, item.state, to, { actor, channel }, reason);
     assertCanLeave(type, item.state, to, item.fields);
-    assertMoveHandsOff(ctx, item, to, actor);
     assertMayEnter(ctx, item, workflow, to, at);
     const data = { ...(reason ? { reason } : {}), channel };
     return landMove(db, workflow, item, { to, actor, at, lease }, data);
