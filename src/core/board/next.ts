@@ -6,6 +6,7 @@ import {
   type Hand,
   isAgent,
   isEvidence,
+  LEVELS,
   type Part,
   partOf,
   type Step,
@@ -105,9 +106,18 @@ function handLines(def: BoardDefinition, hands: readonly Hand[], input: NextInpu
           ? whenText(def, hand)
           : 'optional';
     const mark = missing ? '✗' : hand.req === 'always' ? '✓' : '·';
-    const line = `  ${mark} ${part.name}: ${req}${missing ? ` (${REASON[missing.reason]})` : ''}`;
+    const line = `  ${mark} ${part.name}: ${req}${missing ? ` (${REASON[missing.reason]})` : ''}${choicesText(part)}`;
     return part.hint && hand.req !== 'no' ? [line, `      what goes here: ${part.hint}`] : [line];
   });
+}
+
+// What a field takes, when it is a choice: the names an agent fills it with.
+function choicesText(part: Part): string {
+  if (part.kind === 'level') return `; one of ${LEVELS.join(', ')}`;
+  if (part.kind === 'yesno') return '; yes or no';
+  if (part.options.length === 0 || isEvidence(part)) return '';
+  const names = part.options.map(({ name }) => name).join(', ');
+  return part.kind === 'choice' ? `; one of ${names}` : `; any of ${names}`;
 }
 
 function section(title: string, lines: readonly string[]): string[] {
@@ -119,6 +129,19 @@ function indent(text: string): string[] {
     .split(/\r?\n/)
     .filter((line) => line.trim() !== '')
     .map((line) => `  ${line}`);
+}
+
+// A long board text (a playbook a preset carried) is read whole with otea board; next gives its
+// first paragraph and says where the rest is, so every next stays short.
+const ABOUT_BRIEF = 600;
+
+function aboutBrief(def: BoardDefinition): string {
+  const text = mentionText(def, def.about);
+  if (text.length <= ABOUT_BRIEF) return text;
+  const paragraphs = text.split(/\r?\n\s*\r?\n/).filter((p) => !/^\s*#/.test(p) && p.trim());
+  const first = paragraphs[0]?.trim() ?? '';
+  const brief = first.length > ABOUT_BRIEF ? `${first.slice(0, ABOUT_BRIEF - 1)}…` : first;
+  return `${brief}\n(The whole of it: otea board "${def.name}")`;
 }
 
 export function nextText(def: BoardDefinition, input: NextInput): string {
@@ -145,7 +168,7 @@ export function nextText(def: BoardDefinition, input: NextInput): string {
     head,
     reviewing ? `Your turn: review this step (${doerName} did it).` : 'Your turn: do this step.',
   ];
-  lines.push(...section('About this board', indent(mentionText(def, def.about))));
+  lines.push(...section('About this board', indent(aboutBrief(def))));
   lines.push(
     ...section(
       'Starts with',

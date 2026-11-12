@@ -7,6 +7,7 @@ import { transaction } from '../store/database.ts';
 import { typeOfItem } from './collections.ts';
 import type { Context } from './context.ts';
 import { type Item, landMove, requireItem, systemClock } from './items.ts';
+import { boardState } from './next.ts';
 import { assertMayEnter } from './relations.ts';
 
 // The human a relayed decision belongs to: the same actor the web UI records.
@@ -38,7 +39,8 @@ export function relayDecision(ctx: Context, input: RelayInput, now = systemClock
     const item = requireItem(db, input.id);
     const type = typeOfItem(ctx, item);
     const { workflow } = type;
-    const { to, reason, via, channel } = input;
+    const { reason, via, channel } = input;
+    const to = boardState(ctx, item.collection, input.to);
     authorizeRelay(workflow, item.state, to, reason);
     assertCanLeave(type, item.state, to, item.fields);
     const at = now();

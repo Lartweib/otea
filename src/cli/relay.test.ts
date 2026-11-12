@@ -25,7 +25,7 @@ describe('relay', () => {
   it('moves the item as the human via the agent and prints it as a list row', async () => {
     const result = await otea('relay', 'TASKS-1', 'dropped', '--quote', QUOTE, '--reason', 'Gone');
 
-    expect(result).toMatchObject({ code: 0, out: 'TASKS-1  dropped  none  Old flow\n' });
+    expect(result).toMatchObject({ code: 0, out: 'TASKS-1  Dropped  none  Old flow\n' });
     expect((await json('show', 'TASKS-1')).events.at(-1)).toMatchObject({
       type: 'transitioned',
       actor: { kind: 'human', name: 'human' },
@@ -61,7 +61,7 @@ describe('relay', () => {
     await otea('relay', 'TASKS-1', 'dropped', '--quote', QUOTE, '--reason', 'Gone');
 
     expect((await otea('show', 'TASKS-1')).out).toMatch(
-      /human:human +transitioned {2}todo__review -> dropped \(Gone\), relayed by claude: "Discard it, the old flow is gone"$/m,
+      /human:human +transitioned {2}En curso \(in review\) -> Dropped \(Gone\), relayed by claude: "Discard it, the old flow is gone"$/m,
     );
   });
 

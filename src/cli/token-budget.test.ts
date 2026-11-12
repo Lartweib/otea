@@ -18,14 +18,16 @@ type Sizes = Partial<Record<Surface, number>>;
 
 const BUDGETS: Readonly<Record<string, Sizes>> = {
   // The bug being fixed: every field, six events, two evidence files.
-  // Raised when show's Next: became next's whole answer on a board.
-  show: { text: 490, json: 890, mcp: 890 },
+  // Raised when show's Next: became next's whole answer on a board, and again when a preset's
+  // playbook became the board's text: Next: gives its first paragraph and where the rest is.
+  show: { text: 580, json: 990, mcp: 990 },
   // One row per item; measured with that bug alone.
   list: { text: 25, json: 195, mcp: 195 },
   'board index': { text: 32, json: 53, mcp: 53 },
   // The bug board's own words and each step's instructions, read once per session; show's Next:
-  // block covers the step at hand.
-  board: { text: 56, json: 80, mcp: 80 },
+  // block covers the step at hand. Raised when a preset collection read as a board kept its
+  // playbook as the board's text: what agents read on the preset, as before.
+  board: { text: 3030, json: 3090, mcp: 3090 },
   create: { text: 5, json: 180, mcp: 180 },
   claim: { text: 25, json: 195, mcp: 195 },
   handoff: { text: 25, json: 195, mcp: 195 },

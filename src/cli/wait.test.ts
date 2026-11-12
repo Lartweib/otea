@@ -38,7 +38,7 @@ describe('wait', () => {
     const { code, out } = await otea('wait', '--turn', 'agent');
 
     expect(code).toBe(0);
-    expect(out).toBe('TASKS-2  todo  agent  Second\n');
+    expect(out).toBe('TASKS-2  En curso  agent  Second\n');
   });
 
   it('prints the item like an entry of list --json with --json', async () => {
@@ -57,7 +57,7 @@ describe('wait', () => {
     await spawnCli(repo.dir, 'move', 'TASKS-2', 'todo__review');
 
     expect(await waiting.done).toBe(0);
-    expect(waiting.out()).toBe('TASKS-2  todo__review  human  Second\n');
+    expect(waiting.out()).toBe('TASKS-2  En curso (in review)  human  Second\n');
   });
 
   it('keeps waiting while the only matches are in another collection', async () => {
@@ -67,7 +67,7 @@ describe('wait', () => {
     await otea('create', '--collection', 'bugs', '--title', 'Crash', '--description', 'D');
 
     expect(await waiting.done).toBe(0);
-    expect(waiting.out()).toMatch(/^BUGS-1 {2}todo/);
+    expect(waiting.out()).toMatch(/^BUGS-1 {2}En curso/);
   });
 
   describe('--unclaimed', () => {
@@ -92,7 +92,7 @@ describe('wait', () => {
       await until(() => waiting.out() !== '', 8000);
 
       expect(await waiting.done).toBe(0);
-      expect(waiting.out()).toMatch(/^TASKS-1 {2}todo {2}agent {2}First\n$/);
+      expect(waiting.out()).toMatch(/^TASKS-1 {2}En curso {2}agent {2}First\n$/);
     });
   });
 

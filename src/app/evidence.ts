@@ -24,6 +24,7 @@ import {
 } from '../store/queries.ts';
 import { typeOfItem } from './collections.ts';
 import { requireItem, systemClock } from './items.ts';
+import { boardModule } from './next.ts';
 import type { Project } from './project.ts';
 
 // Files are stored once under evidence/ in the project's data folder, named by their sha256, so
@@ -110,7 +111,9 @@ export function placeFile(
   const request = {
     filename: file.filename,
     ...(file.role === undefined ? {} : { role: file.role }),
-    ...(file.module === undefined ? {} : { module: file.module }),
+    ...(file.module === undefined
+      ? {}
+      : { module: boardModule(project, item.collection, file.module) }),
   };
   const { filename, bytes, caption } = file;
   const placement = placeEvidence(type.layout, { id: item.id, type: type.name }, request);

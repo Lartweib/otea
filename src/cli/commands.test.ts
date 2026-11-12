@@ -238,8 +238,8 @@ describe('commands', () => {
       });
 
       it.each([
-        [['--field', 'priority=urgent'], 'field "priority" must be one of low, medium, high'],
-        [['--field', 'owner=ana'], 'unknown field "owner"'],
+        [['--field', 'priority=urgent'], 'Prioridad must be one of baja, media, alta'],
+        [['--field', 'owner=ana'], 'has no field "owner"'],
       ])('fails with invalid_fields for %j', async (extra, message) => {
         const { code, err } = await otea(
           'create',
@@ -335,7 +335,7 @@ describe('commands', () => {
         it('prints aligned columns: id, state, turn, title', async () => {
           expect(await otea('list')).toMatchObject({
             code: 0,
-            out: 'TASKS-1  todo          agent  Write docs\nBUGS-1   todo__review  human  Fix login\n',
+            out: 'TASKS-1  En curso              agent  Write docs\nBUGS-1   En curso (in review)  human  Fix login\n',
           });
         });
 
@@ -387,9 +387,10 @@ describe('commands', () => {
 
           expect(code).toBe(0);
           expect(out).toContain('TASKS-1  Write docs');
-          expect(out).toContain('state: todo  turn: agent  collection: tasks');
-          expect(out).toContain('description: For v1\npriority: medium');
-          expect(out).toMatch(/agent:agent {2}created {2}todo/);
+          // A board item reads by names: its step, its fields and their choices.
+          expect(out).toContain('state: En curso  turn: agent  collection: tasks');
+          expect(out).toContain('Descripción: For v1\nPrioridad: media');
+          expect(out).toMatch(/agent:agent {2}created {2}En curso/);
         });
 
         it('prints transitions in order', async () => {
@@ -397,8 +398,8 @@ describe('commands', () => {
           const events = lines.slice(lines.indexOf('Events:') + 1).filter(Boolean);
 
           expect(events).toHaveLength(3);
-          expect(events[1]).toMatch(/updated +priority: \(none\) -> "medium"$/);
-          expect(events[2]).toMatch(/transitioned {2}todo -> todo__review$/);
+          expect(events[1]).toMatch(/updated +Prioridad: \(none\) -> "media"$/);
+          expect(events[2]).toMatch(/transitioned {2}En curso -> En curso \(in review\)$/);
         });
 
         it('prints the item with events with --json', async () => {
@@ -440,8 +441,9 @@ describe('commands', () => {
         });
 
         it('lists the moves available to the agent', async () => {
-          expect((await otea('show', 'TASKS-1')).out).toContain('Agent can move to: todo__review');
-          expect((await otea('show', 'BUGS-1')).out).toContain('Agent can move to: nothing');
+          // On a board, Next: says how to finish the step instead.
+          expect((await otea('show', 'TASKS-1')).out).not.toContain('Agent can move to');
+          expect((await otea('show', 'TASKS-1')).out).toContain('otea handoff TASKS-1');
           expect((await json('show', 'TASKS-1')).transitions).toEqual([
             { to: 'todo__review', by: 'agent', reasonRequired: false, turn: 'human' },
           ]);
@@ -449,7 +451,7 @@ describe('commands', () => {
 
         it('lists the human decisions the agent may relay', async () => {
           expect((await otea('show', 'BUGS-1')).out).toContain(
-            'Agent can move to: nothing\nAgent can relay to: todo (reason required), dropped (reason required)',
+            'Agent can relay to: En curso (reason required), Dropped (reason required)',
           );
           expect((await json('show', 'BUGS-1')).relayable).toEqual([
             { to: 'todo', by: 'human', reasonRequired: true, turn: 'agent' },
@@ -470,7 +472,7 @@ describe('commands', () => {
         it('prints the updated item as a list row', async () => {
           expect(await otea('update', 'TASKS-2', '--title', 'Clear')).toMatchObject({
             code: 0,
-            out: 'TASKS-2  todo  agent  Clear\n',
+            out: 'TASKS-2  En curso  agent  Clear\n',
           });
         });
 
@@ -486,7 +488,7 @@ describe('commands', () => {
 
           expect(item.fields).toEqual({ description: 'Steps', priority: 'high' });
           expect((await otea('show', 'TASKS-2')).out).toMatch(
-            /updated {2}description: \(none\) -> "Steps"; priority: \(none\) -> "high"$/m,
+            /updated {2}Descripción: \(none\) -> "Steps"; Prioridad: \(none\) -> "alta"$/m,
           );
         });
 
@@ -525,7 +527,7 @@ describe('commands', () => {
         it('prints the moved item as a list row', async () => {
           expect(await otea('move', 'TASKS-1', 'todo__review')).toMatchObject({
             code: 0,
-            out: 'TASKS-1  todo__review  human  Write docs\n',
+            out: 'TASKS-1  En curso (in review)  human  Write docs\n',
           });
         });
 
@@ -566,7 +568,7 @@ describe('commands', () => {
             channel: 'cli',
           });
           expect((await otea('show', 'TASKS-1')).out).toMatch(
-            /transitioned {2}todo -> todo__review \(Ready\)$/m,
+            /transitioned {2}En curso -> En curso \(in review\) \(Ready\)$/m,
           );
         });
 

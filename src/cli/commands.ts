@@ -34,6 +34,7 @@ import { forgetProjectPath, listProjects, relinkProjectPath, withRegistry } from
 import {
   createItem,
   type Item,
+  type ItemView,
   type ListItemsFilter,
   listItems,
   moveItem,
@@ -48,6 +49,7 @@ import {
   type BoardMoveInput,
   type BoardMoveResult,
   handoffItem,
+  liveBoardOf,
   nextFor,
   sendBackItem,
 } from '../app/next.ts';
@@ -66,6 +68,7 @@ import { linkItems, unlinkItems } from '../app/relations.ts';
 import { relayDecision } from '../app/relay.ts';
 import { validateProject } from '../app/validate.ts';
 import { watch } from '../app/watch.ts';
+import { fieldsByName, stateName, valueName } from '../core/board/reading.ts';
 import { OteaError } from '../core/errors.ts';
 import { EVIDENCE_ROLES, type EvidenceRole, MAX_EVIDENCE_MB } from '../core/evidence.ts';
 import type { FieldValues } from '../core/fields.ts';
@@ -117,7 +120,58 @@ function typesShown(project: Project): (item: { collection: string }) => boolean
 }
 
 function itemResult(project: Project, item: Item): { data: Item; text: string } {
-  return { data: item, text: formatItem(item, typesShown(project)) };
+  return { data: item, text: formatItem(readable(project, item), typesShown(project)) };
+}
+
+// An item on a board as its reader says it: its step by name, its fields and choices by name, its
+// moves and events by step names. Hidden ids stay in --json, as the keys a program reads.
+function readable<T extends Item>(project: Project, item: T): T {
+  const board = liveBoardOf(project, item.collection);
+  if (!board) return item;
+  const { def } = board;
+  const named = (state: unknown) => stateName(def, String(state));
+  const out: Record<string, unknown> = {
+    ...item,
+    state: named(item.state),
+    fields: fieldsByName(def, item.fields),
+  };
+  const view = item as unknown as Partial<ItemView>;
+  const moves = (list: ItemView['transitions']) =>
+    list.map((move) => ({ ...move, to: named(move.to) }));
+  const partName = (ref: unknown) => def.parts[String(ref)]?.name ?? String(ref);
+  if (view.transitions) out.transitions = moves(view.transitions);
+  if (view.relayable) out.relayable = moves(view.relayable);
+  if (view.missing) out.missing = view.missing.map(partName);
+  if (view.evidence)
+    out.evidence = view.evidence.map((entry) =>
+      entry.module === null ? entry : { ...entry, module: partName(entry.module) },
+    );
+  if (view.events)
+    out.events = view.events.map((event) => {
+      const { data } = event;
+      if (event.type === 'created')
+        return { ...event, data: { ...data, state: named(data.state) } };
+      if (event.type === 'transitioned')
+        return { ...event, data: { ...data, from: named(data.from), to: named(data.to) } };
+      if (event.type === 'evidence_added' && typeof data.module === 'string')
+        return { ...event, data: { ...data, module: partName(data.module) } };
+      if (event.type === 'updated' && data.changes && typeof data.changes === 'object') {
+        const changes = Object.fromEntries(
+          Object.entries(data.changes as Record<string, { from?: unknown; to?: unknown }>).map(
+            ([key, change]) => {
+              const part = def.parts[key];
+              if (!part) return [key, change];
+              const say = (value: unknown) =>
+                value === undefined || value === null ? value : valueName(part, value);
+              return [part.name, { from: say(change.from), to: say(change.to) }];
+            },
+          ),
+        );
+        return { ...event, data: { ...data, changes } };
+      }
+      return event;
+    });
+  return out as T;
 }
 
 function withProject<T>(cwd: string, use: (project: Project) => T): T {
@@ -576,7 +630,8 @@ const list: Command = {
   execute: (input) => {
     return withAgent(input, (project) => {
       const items = listItems(project, listFilter(input));
-      return { data: items, text: formatItems(items, typesShown(project)) };
+      const shown = items.map((item) => readable(project, item));
+      return { data: items, text: formatItems(shown, typesShown(project)) };
     });
   },
 };
@@ -595,7 +650,14 @@ const show: Command = {
       const shown = showItem(project, id, performer);
       const item = { ...shown, hint: hintFor(project, shown, actor.name) };
       const { layout } = typeOfItem(project, shown);
-      return { data: item, text: formatItemWithEvents(item, layout, typesShown(project)) };
+      const named = liveBoardOf(project, item.collection) !== undefined;
+      const text = formatItemWithEvents(
+        readable(project, item),
+        layout,
+        typesShown(project),
+        named,
+      );
+      return { data: item, text };
     });
   },
 };

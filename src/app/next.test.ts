@@ -7,7 +7,7 @@ import { creatures } from '../core/board/testing.ts';
 import { insertEvidence } from '../store/queries.ts';
 import { createBoard, publishBoard, saveDraft } from './boards.ts';
 import type { Context } from './context.ts';
-import { createItem, getItem, moveItem } from './items.ts';
+import { createItem, getItem, moveItem, updateItem } from './items.ts';
 import { claimItem } from './leases.ts';
 import {
   approveItem,
@@ -296,5 +296,24 @@ describe('rounds across a publish', () => {
     expect(handoffItem(ctx, { id: item.id, actor: quill, channel: 'cli' }, now).item.state).toBe(
       'sanimate',
     );
+  });
+});
+
+describe('names on a board', () => {
+  it('fills a field and a choice by their names, and refuses a name the board has not in words', () => {
+    const ctx = memoryContext();
+    board(ctx);
+    const item = creature(ctx);
+    const updated = updateItem(ctx, { id: item.id, fields: { Bioma: 'Bosque' }, actor: kiln }, now);
+    expect(updated.fields.fbiome).toBe('cwood');
+    expect(() =>
+      updateItem(ctx, { id: item.id, fields: { Tamaño: 'Una' }, actor: kiln }, now),
+    ).toThrowError(/Criaturas has no field "Tamaño"; its fields are /);
+    const moved = moveItem(
+      ctx,
+      { id: item.id, to: 'Descartado', actor: you, channel: 'ui', reason: 'Repetida' },
+      now,
+    );
+    expect(moved.state).toBe('dropped');
   });
 });
