@@ -240,7 +240,10 @@ export function formatItemWithEvents(
     `state: ${item.state}  turn: ${item.turn}  ${typed(item) ? `type: ${item.type}  ` : ''}collection: ${item.collection}`,
     ...(item.lease ? [leaseLabel(item.lease)] : []),
     createdLine(item),
-    ...(item.hint ? [`Next: ${item.hint}`] : []),
+    // On a board the hint is next's whole answer, indented under its heading.
+    ...(item.hint
+      ? [item.hint.includes('\n') ? `Next:\n${indent(item.hint)}` : `Next: ${item.hint}`]
+      : []),
     ...fieldLines(item.fields),
     '',
     ...(item.missing.length > 0 && item.turn !== 'none'

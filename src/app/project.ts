@@ -23,7 +23,7 @@ import {
   selectRegisteredProjects,
 } from '../store/registry.ts';
 import { readProjectBlueprint } from './blueprints.ts';
-import { syncBoardPresets } from './boards.ts';
+import { ensureRequestsBoard, migrateCollections, syncBoardPresets } from './boards.ts';
 import { nameImplicitTypes } from './collections.ts';
 import type { Context } from './context.ts';
 import {
@@ -49,6 +49,10 @@ export type Project = Context & {
   storage: Storage;
   identity: ProjectIdentity;
 };
+
+// The language a project's own words start in (the boards it reads from presets, its Pedidos
+// board): Spanish, the owner's, since a project carries no language of its own yet.
+export const PROJECT_LANG = 'es' as const;
 
 type Found = { root: string; dataDir: string; storage: Storage };
 
@@ -125,8 +129,11 @@ function open(found: Found, identity = () => newIdentity(found.root)): Project {
     blueprint: readProjectBlueprint(found.dataDir)?.blueprint,
     identity: ensureIdentity(db, identity),
   };
-  // Published boards join the catalog as compiled presets (app/boards.ts).
+  // Published boards join the catalog as compiled presets (app/boards.ts); a collection still on a
+  // preset file is read as a published board, and every project has its Pedidos board.
   syncBoardPresets(project);
+  migrateCollections(project, PROJECT_LANG);
+  ensureRequestsBoard(project, PROJECT_LANG);
   return project;
 }
 

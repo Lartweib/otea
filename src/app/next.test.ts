@@ -7,7 +7,8 @@ import { creatures } from '../core/board/testing.ts';
 import { insertEvidence } from '../store/queries.ts';
 import { createBoard, publishBoard, saveDraft } from './boards.ts';
 import type { Context } from './context.ts';
-import { createItem, getItem } from './items.ts';
+import { createItem, getItem, moveItem } from './items.ts';
+import { claimItem } from './leases.ts';
 import {
   approveItem,
   handoffItem,
@@ -193,5 +194,37 @@ describe('the next service', () => {
     expect(() => sendBackItem(ctx, { id: item.id, actor: you, channel: 'ui' }, now)).toThrowError(
       expect.objectContaining({ code: 'reason_required' }),
     );
+  });
+});
+
+describe('the old paths on a board', () => {
+  it('refuses a move into a review while the handoff lacks something, in the same words', () => {
+    const ctx = memoryContext();
+    board(ctx);
+    const item = creature(ctx);
+    const move = () =>
+      moveItem(ctx, { id: item.id, to: 'sconcept__review', actor: quill, channel: 'cli' }, now);
+
+    expect(move).toThrowError(
+      refusalText(item.id, [
+        { ref: 'eart', name: 'Arte conceptual', reason: 'missing', fresh: true },
+      ]),
+    );
+    attach(ctx, item.id, 'eart');
+    expect(move().state).toBe('sconcept__review');
+  });
+
+  it('refuses a claim of a step the agent may not take', () => {
+    const ctx = memoryContext();
+    board(ctx);
+    const item = creature(ctx);
+    attach(ctx, item.id, 'eart');
+    handoffItem(ctx, { id: item.id, actor: quill, channel: 'cli' }, now);
+    approveItem(ctx, { id: item.id, actor: you, channel: 'ui' }, now);
+
+    expect(() => claimItem(ctx, { id: item.id, actor: quill }, now)).toThrowError(
+      'CRI-1 is at Animar, which kiln does; claim only what is yours (otea next)',
+    );
+    expect(claimItem(ctx, { id: item.id, actor: kiln }, now).lease?.holder).toBe('kiln');
   });
 });

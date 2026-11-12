@@ -18,19 +18,22 @@ type Sizes = Partial<Record<Surface, number>>;
 
 const BUDGETS: Readonly<Record<string, Sizes>> = {
   // The bug being fixed: every field, six events, two evidence files.
-  show: { text: 380, json: 810, mcp: 810 },
+  // Raised when show's Next: became next's whole answer on a board.
+  show: { text: 490, json: 890, mcp: 890 },
   // One row per item; measured with that bug alone.
   list: { text: 25, json: 195, mcp: 195 },
-  'playbook index': { text: 40, json: 30, mcp: 30 },
-  // The whole bug-triage playbook, read once per session; show's Next: line covers each step.
-  playbook: { text: 2920, json: 2990, mcp: 2990 },
+  'board index': { text: 32, json: 53, mcp: 53 },
+  // The bug board's own words and each step's instructions, read once per session; show's Next:
+  // block covers the step at hand.
+  board: { text: 56, json: 80, mcp: 80 },
   create: { text: 5, json: 180, mcp: 180 },
   claim: { text: 25, json: 195, mcp: 195 },
-  move: { text: 25, json: 195, mcp: 195 },
+  handoff: { text: 25, json: 195, mcp: 195 },
   attach: { text: 15, json: 90, mcp: 90 },
   wait: { text: 25, json: 195, mcp: 195 },
   // The tool definitions an MCP client reads when it connects.
-  tools: { mcp: 1910 },
+  // Raised for next, handoff, approve and send_back, the board moves.
+  tools: { mcp: 2430 },
 };
 
 // A bug as an agent files it in the bug-triage preset, every field filled.
@@ -115,7 +118,6 @@ describe('token budget', () => {
 
     // The bug being fixed, with proof attached.
     const id = await accepted();
-    await ok('move', id, 'fixing');
     await ok('attach', id, 'shots/before.png', '--role', 'before', '--caption', 'Blank page');
     await ok('attach', id, 'test.log', '--caption', '12 tests pass');
 
@@ -126,12 +128,8 @@ describe('token budget', () => {
       'wait',
       same({ cli: ['wait', '--turn', 'agent'], mcp: { turn: 'agent' } }),
     );
-    await measure('playbook index', 'playbook', same({ cli: ['playbook'], mcp: {} }));
-    await measure(
-      'playbook',
-      'playbook',
-      same({ cli: ['playbook', '--collection', 'bugs'], mcp: { collection: 'bugs' } }),
-    );
+    await measure('board index', 'board', same({ cli: ['board'], mcp: {} }));
+    await measure('board', 'board', same({ cli: ['board', 'bugs'], mcp: { name: 'bugs' } }));
     await measure(
       'create',
       'create',
@@ -146,9 +144,9 @@ describe('token budget', () => {
       return { cli: ['claim', id], mcp: { id } };
     });
     await measure(
-      'move',
-      'move',
-      onAccepted((id) => ({ cli: ['move', id, 'fixing'], mcp: { id, state: 'fixing' } })),
+      'handoff',
+      'handoff',
+      onAccepted((id) => ({ cli: ['handoff', id], mcp: { id } })),
     );
     await measure(
       'attach',

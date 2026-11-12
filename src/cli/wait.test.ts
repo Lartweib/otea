@@ -33,7 +33,7 @@ describe('wait', () => {
   afterEach(() => repo.remove());
 
   it('returns at once the item waiting longest on the turn, as a list row', async () => {
-    await otea('move', 'TASKS-1', 'in_progress');
+    await otea('move', 'TASKS-1', 'todo__review');
 
     const { code, out } = await otea('wait', '--turn', 'agent');
 
@@ -54,11 +54,10 @@ describe('wait', () => {
     expect(await settled(waiting)).toBe(false);
 
     // Only the move that reaches the turn needs another process; each one boots Node.
-    await otea('move', 'TASKS-2', 'in_progress');
-    await spawnCli(repo.dir, 'move', 'TASKS-2', 'review');
+    await spawnCli(repo.dir, 'move', 'TASKS-2', 'todo__review');
 
     expect(await waiting.done).toBe(0);
-    expect(waiting.out()).toBe('TASKS-2  review  human  Second\n');
+    expect(waiting.out()).toBe('TASKS-2  todo__review  human  Second\n');
   });
 
   it('keeps waiting while the only matches are in another collection', async () => {

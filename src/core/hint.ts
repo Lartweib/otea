@@ -111,7 +111,7 @@ function agentStep(workflow: Workflow, input: HintInput, mine: boolean): string 
   const path = pathToHuman(workflow, input.state);
   const last = path.at(-1);
   if (!last) {
-    return `${[...steps, 'work it'].join(' and ')}; no move of yours leaves ${input.state} (see otea playbook)`;
+    return `${[...steps, 'work it'].join(' and ')}; no move of yours leaves ${input.state} (see otea board)`;
   }
   if (incomplete) return sequence([...steps, `move it to ${last.to}`]);
   const through = path.slice(0, -1).map(({ to }) => `move it to ${to}`);

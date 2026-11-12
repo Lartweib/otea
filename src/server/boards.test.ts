@@ -1,5 +1,10 @@
+import { mkdtempSync, realpathSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import type { Project } from '../app/project.ts';
+import { createBoard, publishBoard, saveDraft } from '../app/boards.ts';
+import { createItem } from '../app/items.ts';
+import { initProject, openProject, type Project } from '../app/project.ts';
 import { creatures } from '../core/board/testing.ts';
 import { createServer, type OteaServer } from './server.ts';
 import { LOCAL_HOST, memoryProject, SESSION_COOKIE, TOKEN } from './testing.ts';
@@ -115,6 +120,47 @@ describe('the boards API', () => {
       const { status, body } = await call(method, path, method === 'POST' ? {} : undefined);
       expect(status).toBe(501);
       expect((body.error as Json).code).toBe('not_implemented');
+    }
+  });
+});
+
+// A board published by another process (the browser's server, the CLI) reaches a long-lived server
+// on its next request, without a restart.
+describe('a board published elsewhere', () => {
+  const dirs: string[] = [];
+
+  afterEach(() => {
+    for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('is read by the next items request of a server opened before it', async () => {
+    const dir = realpathSync.native(mkdtempSync(join(tmpdir(), 'otea-sync-')));
+    dirs.push(dir);
+    const serving = initProject(dir, { local: true });
+    const server = createServer(serving, { token: TOKEN });
+    const other = openProject(dir);
+    try {
+      const record = createBoard(other, { name: 'Criaturas', lang: 'es' });
+      saveDraft(other, record.id, { definition: creatures(), baseVersion: null });
+      publishBoard(other, record.id, { moves: {}, by: { kind: 'human', name: 'fede' } });
+      const item = createItem(other, {
+        collection: 'Criaturas',
+        title: 'Tortuga',
+        fields: { fdesc: 'Lenta' },
+        actor: { kind: 'human', name: 'fede' },
+        channel: 'ui',
+      });
+
+      const response = await server.app.request(`/api/items/${item.id}`, {
+        headers: { host: LOCAL_HOST },
+      });
+
+      expect(response.status).toBe(200);
+      expect(((await response.json()) as Json).state).toBe('sconcept');
+    } finally {
+      server.close();
+      other.db.close();
+      serving.db.close();
     }
   });
 });

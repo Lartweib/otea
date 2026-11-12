@@ -5,7 +5,9 @@ import { basename, join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { openDatabase } from '../store/database.ts';
 import { migrate } from '../store/migrations.ts';
+import { listBoardSummaries } from './boards.ts';
 import { addCollection } from './collections.ts';
+import { createItem } from './items.ts';
 import { addPathToProject, initProject, openProject, type Project } from './project.ts';
 
 // The temporary Otea home the test setup gives this file.
@@ -114,6 +116,50 @@ describe('project', () => {
     track(initProject(repo, { local: true }));
 
     expect(track(openProject(worktree, ENV)).root).toBe(repo);
+  });
+
+  describe('boards on open', () => {
+    it('reads every collection on a preset as a published board, items on its steps', () => {
+      const repo = gitRepo();
+      const first = initProject(repo, { local: true });
+      addCollection(first, { name: 'Work', preset: 'tasks' });
+      let id = '';
+      try {
+        id = createItem(first, {
+          collection: 'Work',
+          title: 'Paint',
+          fields: { priority: 'high' },
+          actor: { kind: 'agent', name: 'kiln' },
+        }).id;
+        first.db.prepare("UPDATE items SET state = 'in_progress' WHERE id = ?").run(id);
+      } finally {
+        first.db.close();
+      }
+
+      const project = track(openProject(repo, ENV));
+
+      const boards = listBoardSummaries(project);
+      const work = boards.find(({ collection }) => collection === 'Work');
+      expect(work?.status).toBe('live');
+      const item = project.db.prepare('SELECT * FROM items WHERE id = ?').get(id);
+      expect(item?.state).toBe('todo');
+      expect(item?.type).toBe('item');
+      expect(JSON.parse(String(item?.fields))).toMatchObject({ priority: 'high' });
+      expect(project.presets.presets.get(work?.id ?? '')?.name).toBe(work?.id);
+    });
+
+    it('gives the project its Pedidos board once, in Spanish', () => {
+      const repo = gitRepo();
+      initProject(repo, { local: true }).db.close();
+      openProject(repo, ENV).db.close();
+
+      const project = track(openProject(repo, ENV));
+
+      const builtin = listBoardSummaries(project).filter((board) => board.builtin);
+      expect(builtin.map(({ name, status }) => ({ name, status }))).toEqual([
+        { name: 'Pedidos', status: 'live' },
+      ]);
+    });
   });
 
   it('uses the directory itself outside git', () => {
@@ -279,9 +325,10 @@ describe('project', () => {
       track(initProject(c, { join: first.identity.name }, env));
 
       expect(joined).toMatchObject({ root: b, identity: first.identity, dataDir: first.dataDir });
-      expect(track(openProject(c, env)).db.prepare('SELECT name FROM collections').all()).toEqual([
-        { name: 'tasks' },
-      ]);
+      const names = track(openProject(c, env))
+        .db.prepare('SELECT name FROM collections ORDER BY name')
+        .all();
+      expect(names).toEqual([{ name: 'Pedidos' }, { name: 'tasks' }]);
     });
 
     it('keeps a folder in one project only', () => {

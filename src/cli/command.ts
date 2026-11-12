@@ -45,7 +45,8 @@ export type Output = { data: unknown; text: string; failure?: FailureCode };
 export type Command = {
   name: string;
   summary: string;
-  // A last name ending in `...` (`ids...`) takes that argument and every one after it, at least one.
+  // A last name ending in `...` (`ids...`) takes that argument and every one after it, at least one;
+  // one ending in `?` (`name?`) may be left out.
   args: readonly string[];
   options: Readonly<Record<string, OptionSpec>>;
   // Resolves with nothing when the command printed its output itself, record by record.
@@ -83,7 +84,9 @@ function optionUsage(name: string, spec: OptionSpec): string {
 }
 
 export function usageOf(command: Command): string {
-  const args = command.args.map((arg) => `<${arg}>`);
+  const args = command.args.map((arg) =>
+    arg.endsWith('?') ? `[<${arg.slice(0, -1)}>]` : `<${arg}>`,
+  );
   const options = Object.entries(command.options).map(([name, spec]) => optionUsage(name, spec));
   return ['otea', command.name, ...args, ...options].join(' ');
 }

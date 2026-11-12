@@ -105,7 +105,8 @@ describe('the projects api', () => {
     expect(settings.paths[0]?.kind).toBe('repo');
     expect(settings.paths[0]?.repos[0]?.gate).toBe('soft');
     expect(settings.database.bytes).toBeGreaterThan(0);
-    expect(settings.collections).toEqual([{ name: 'tasks', preset: 'tasks' }]);
+    expect(settings.collections.map(({ name }) => name)).toEqual(['Pedidos', 'tasks']);
+    expect(settings.collections[1]).toEqual({ name: 'tasks', preset: 'tasks' });
   });
 
   it('adds a path, relinks a moved one and forgets it, signed in', async () => {

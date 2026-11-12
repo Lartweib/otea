@@ -1,3 +1,4 @@
+import type { Channel } from '../core/authority.ts';
 import {
   approve,
   handoff,
@@ -15,10 +16,17 @@ import {
   type Transition,
   turnAt,
 } from '../core/board/engine.ts';
+import {
+  type BoardDefinition,
+  DONE,
+  isAgent,
+  type Reviewer,
+  type Step,
+  stepById,
+  type Target,
+} from '../core/board/model.ts';
 import { handedText, idleText, nextText, refusalText, wayByName } from '../core/board/next.ts';
-import { type BoardDefinition, isAgent, stepById, type Target } from '../core/board/model.ts';
 import { readDefinition } from '../core/board/schema.ts';
-import type { Channel } from '../core/authority.ts';
 import { OteaError } from '../core/errors.ts';
 import type { Actor } from '../core/item.ts';
 import { activeLease, assertMayWrite } from '../core/lease.ts';
@@ -359,4 +367,55 @@ export function sendBackItem(
     if (!result.ok) refuse(board.def, item, result);
     return land(ctx, item, board, result.to, input, at);
   });
+}
+
+// A move along the compiled workflow that hands work off (into the step's review, or out of a
+// step nobody reviews) passes the same check a handoff does, so otea move cannot walk around it.
+export function assertMoveHandsOff(ctx: Context, item: ItemRecord, to: string): void {
+  const board = liveBoardOf(ctx, item.collection);
+  if (!board) return;
+  const from = positionOf(item.state);
+  if (isClosed(from) || from.phase !== 'doing') return;
+  const target = positionOf(to);
+  const step = stepById(board.def, from.step);
+  if (!step) return;
+  const intoReview = !isClosed(target) && target.phase !== 'doing' && target.step === step.id;
+  const along =
+    step.reviewer === 'none' &&
+    (isClosed(target) ? target.closed === DONE : target.step !== step.id);
+  if (!intoReview && !along) return;
+  const check = handoffCheck(board.def, step.id, itemOnBoard(ctx, item, board.def).facts);
+  if (!check.ok) throw new OteaError('missing_fields', refusalText(item.id, check.missing));
+}
+
+// An agent claims only what is its own on a board: a step it may take, or a review it does.
+export function assertMayClaim(ctx: Context, item: ItemRecord, agent: string): void {
+  const board = liveBoardOf(ctx, item.collection);
+  if (!board) return;
+  const position = positionOf(item.state);
+  if (isClosed(position)) return;
+  const step = stepById(board.def, position.step);
+  if (!step) return;
+  const name = (who: Reviewer | Step['doer']) =>
+    who === 'you'
+      ? 'the person'
+      : who === 'any'
+        ? 'any agent'
+        : isAgent(who)
+          ? who.agent
+          : 'nobody';
+  if (position.phase === 'doing') {
+    if (mayTake(board.def, step.id, agent)) return;
+    throw new OteaError(
+      'not_claimable',
+      `${item.id} is at ${step.name}, which ${name(step.doer)} does; claim only what is yours (otea next)`,
+    );
+  }
+  if (position.phase === 'review' && isAgent(step.reviewer) && step.reviewer.agent === agent)
+    return;
+  const reviewer = position.phase === 'yours' ? 'you' : step.reviewer;
+  throw new OteaError(
+    'not_claimable',
+    `${item.id} waits for ${name(reviewer)} to review ${step.name}; claim only what is yours (otea next)`,
+  );
 }

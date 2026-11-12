@@ -1,19 +1,25 @@
 import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
+import { boardText } from '../core/board/next.ts';
 import { nextStep, playbookSection } from '../core/hint.ts';
 import { groupEvidence } from '../core/placement.ts';
 import { type ItemType, typeOf } from '../core/preset.ts';
 import { listCollections } from '../store/queries.ts';
 import { getCollection, presetOf } from './collections.ts';
 import type { ItemView } from './items.ts';
+import { itemNextText, liveBoardOf } from './next.ts';
 import { type LoadedPreset, OFFICIAL_PRESETS_DIR, projectPresetsDir } from './presets.ts';
 import type { Project } from './project.ts';
 import { openBlockers } from './relations.ts';
 
-// The playbook a collection's agents follow: its preset's, read from the preset's directory, or
-// nothing when the preset ships none; then each type's own, for the types that have one.
+// What agents read about a board before acting (`otea board`): a published board's own words for
+// them (core/board/next.ts boardText), or, for a collection still on a preset, its playbook. And
+// the line `otea show` gives about what to do now with an item.
+
 export type TypePlaybook = { type: string; playbook: string };
 
+// A collection still on a preset: its preset's playbook, read from the preset's directory, or
+// nothing when the preset ships none; then each type's own, for the types that have one.
 export type CollectionPlaybook = {
   collection: string;
   preset: string;
@@ -21,7 +27,18 @@ export type CollectionPlaybook = {
   types: TypePlaybook[];
 };
 
-export type PlaybookEntry = { name: string; preset: string; command: string };
+// A published board: its live version and what agents read of it.
+export type BoardGuide = { collection: string; board: string; version: number; text: string };
+
+export type Guide = ({ kind: 'board' } & BoardGuide) | ({ kind: 'preset' } & CollectionPlaybook);
+
+// `board` is the board's id when the collection is a published board, null on a preset.
+export type GuideEntry = {
+  name: string;
+  board: string | null;
+  preset: string;
+  command: string;
+};
 
 function presetDir(project: Project, preset: LoadedPreset): string {
   const base =
@@ -49,8 +66,11 @@ function sectionFor(project: Project, preset: LoadedPreset, type: ItemType, stat
   return undefined;
 }
 
-// The line `otea show` gives the agent about what to do now with the item.
+// What `otea show` says to do now with the item: next's text on a board; on a preset, the line its
+// workflow and playbook give.
 export function hintFor(project: Project, item: ItemView, me: string): string {
+  const onBoard = itemNextText(project, item, me);
+  if (onBoard !== undefined) return onBoard;
   const preset = presetOf(project, getCollection(project.db, item.collection));
   const type = typeOf(preset, item.type);
   const { workflow, layout } = type;
@@ -85,15 +105,28 @@ export function collectionPlaybook(project: Project, name: string): CollectionPl
   };
 }
 
-export function playbookCommand(collection: string): string {
-  return `otea playbook --collection ${collection}`;
+export function guideCommand(collection: string): string {
+  return /^[\w.-]+$/.test(collection) ? `otea board ${collection}` : `otea board "${collection}"`;
 }
 
-// The project's collections, each with its preset and how to read its playbook.
-export function playbookIndex(project: Project): PlaybookEntry[] {
+export function boardGuide(project: Project, name: string): Guide {
+  const board = liveBoardOf(project, getCollection(project.db, name).name);
+  if (!board) return { kind: 'preset', ...collectionPlaybook(project, name) };
+  return {
+    kind: 'board',
+    collection: name,
+    board: board.id,
+    version: board.version,
+    text: boardText(board.def),
+  };
+}
+
+// The project's collections, each with its board (or preset) and how to read what its agents do.
+export function guideIndex(project: Project): GuideEntry[] {
   return listCollections(project.db).map(({ name, preset }) => ({
     name,
+    board: liveBoardOf(project, name)?.id ?? null,
     preset,
-    command: playbookCommand(name),
+    command: guideCommand(name),
   }));
 }

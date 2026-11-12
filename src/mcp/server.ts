@@ -16,7 +16,7 @@ import { parseDuration } from '../core/lease.ts';
 // The commands an agent runs, each served as the tool of the same name. The rest belong to the
 // human or to setup and stay in the CLI.
 export const AGENT_COMMANDS = [
-  'playbook',
+  'board',
   'list',
   'show',
   'create',
@@ -24,6 +24,10 @@ export const AGENT_COMMANDS = [
   'attach',
   'link',
   'unlink',
+  'next',
+  'handoff',
+  'approve',
+  'send-back',
   'move',
   'claim',
   'heartbeat',
@@ -59,7 +63,12 @@ export const CLI_ONLY_COMMANDS = [
   'mcp',
 ];
 
-const READ_ONLY = new Set(['playbook', 'list', 'show', 'events', 'wait']);
+const READ_ONLY = new Set(['board', 'next', 'list', 'show', 'events', 'wait']);
+
+// A tool is named after its command, with words joined by underscores (send-back is send_back).
+export function toolName(command: string): string {
+  return command.replace(/[ -]/g, '_');
+}
 
 // A tool call answers once, so it cannot follow the event log.
 export const OMITTED_OPTIONS: Readonly<Record<string, readonly string[]>> = { events: ['follow'] };
@@ -103,7 +112,10 @@ function optionSchema(spec: OptionSpec): ZodType {
 function inputSchema(command: Command) {
   const omitted = OMITTED_OPTIONS[command.name] ?? [];
   const shape: Record<string, ZodType> = {};
-  for (const arg of command.args) shape[arg] = z.string();
+  for (const arg of command.args) {
+    if (arg.endsWith('?')) shape[arg.slice(0, -1)] = z.string().optional();
+    else shape[arg] = z.string();
+  }
   for (const [name, spec] of Object.entries(command.options)) {
     if (!omitted.includes(name)) shape[name] = optionSchema(spec);
   }
@@ -145,7 +157,11 @@ function inputFor(
     ask: async () => undefined,
     stdin: async () => '',
     print: (data) => records.push(data),
-    args: command.args.map((name) => String(values[name] ?? '')),
+    args: command.args.flatMap((name) => {
+      const key = name.endsWith('?') ? name.slice(0, -1) : name;
+      const value = values[key];
+      return value === undefined && key !== name ? [] : [String(value ?? '')];
+    }),
     flag: (name) => values[name] === true,
     option,
     options: (name) => {
@@ -200,7 +216,7 @@ export function createMcpServer(commands: readonly Command[], context: McpContex
     if (!command) throw new Error(`No "otea ${name}" command to serve`);
     const note = NOTES[name];
     server.registerTool(
-      name,
+      toolName(name),
       {
         description: note ? `${command.summary}. ${note}` : command.summary,
         inputSchema: inputSchema(command),

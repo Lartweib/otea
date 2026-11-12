@@ -53,13 +53,14 @@ describe('blueprints', () => {
       expect(result.out).toContain(
         'Built from blueprint product v1: work (tasks), bugs (bug-triage)',
       );
-      const collections = await json('playbook');
+      const collections = await json('board');
       expect(
         collections.collections.map(({ name, preset }: { name: string; preset: string }) => [
           name,
           preset,
         ]),
       ).toEqual([
+        ['Pedidos', expect.any(String)],
         ['work', 'tasks'],
         ['bugs', 'bug-triage'],
       ]);
@@ -98,15 +99,13 @@ describe('blueprints', () => {
       await otea('init', '--local');
     });
 
-    it('adds the boards to an existing project, reusing a collection of the same preset', async () => {
+    it('refuses a board whose collection is already a published board', async () => {
       await otea('collection', 'add', 'work');
 
-      const data = await json('blueprint', 'apply', 'product');
-
-      expect(data.boards).toEqual([
-        { name: 'work', preset: 'tasks', action: 'kept' },
-        { name: 'bugs', preset: 'bug-triage', action: 'created' },
-      ]);
+      expect(await errorOf('blueprint', 'apply', 'product')).toMatchObject({
+        code: 5,
+        error: { code: 'already_exists' },
+      });
     });
 
     it('refuses a board whose collection exists with another preset, creating nothing', async () => {
@@ -116,7 +115,7 @@ describe('blueprints', () => {
         code: 5,
         error: { code: 'already_exists' },
       });
-      expect((await json('playbook')).collections).toHaveLength(1);
+      expect((await json('board')).collections).toHaveLength(2);
       expect(existsSync(join(repo.dir, '.otea', 'blueprint.yaml'))).toBe(false);
     });
 
@@ -231,7 +230,7 @@ describe('blueprints', () => {
       await create('art', 'Draw the wolf');
       await create('work', 'Ship');
       expect((await otea('link', 'ART-1', 'implements', 'WORK-1')).code).toBe(0);
-      expect((await otea('playbook')).out).toContain('Coordinate the studio, art included.');
+      expect((await otea('board')).out).toContain('Coordinate the studio, art included.');
     });
 
     it('applies nothing when the answer is no, and asks for --yes with nobody to ask', async () => {
@@ -257,9 +256,9 @@ describe('blueprints', () => {
       expect(update.kept).toEqual([
         'Kept board bugs: it has 1 item, and a board with items is never deleted',
       ]);
-      expect(
-        (await json('playbook')).collections.map(({ name }: { name: string }) => name),
-      ).toContain('bugs');
+      expect((await json('board')).collections.map(({ name }: { name: string }) => name)).toContain(
+        'bugs',
+      );
       expect((await otea('blueprint', 'status')).out).toContain('- board bugs (preset bug-triage)');
     });
 
@@ -274,9 +273,10 @@ describe('blueprints', () => {
       const update = await json('blueprint', 'update', '--yes');
 
       expect(update.applied).toContain('Removed board bugs (it had no items)');
-      expect(
-        (await json('playbook')).collections.map(({ name }: { name: string }) => name),
-      ).toEqual(['work']);
+      expect((await json('board')).collections.map(({ name }: { name: string }) => name)).toEqual([
+        'Pedidos',
+        'work',
+      ]);
     });
 
     it('says when the source is gone, and refuses to update from it with exit 3', async () => {
@@ -306,11 +306,11 @@ describe('blueprints', () => {
     it('adds the coordination playbook to the playbook index', async () => {
       await otea('init', '--local', '--blueprint', 'product');
 
-      const { out } = await otea('playbook');
+      const { out } = await otea('board');
 
-      expect(out).toContain('otea playbook --collection bugs');
+      expect(out).toContain('otea board bugs');
       expect(out).toContain(PRODUCT_PLAYBOOK.trimEnd());
-      expect((await json('playbook')).blueprint).toEqual({
+      expect((await json('board')).blueprint).toEqual({
         name: 'product',
         playbook: PRODUCT_PLAYBOOK,
       });

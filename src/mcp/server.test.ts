@@ -1,12 +1,20 @@
 import { Client, InMemoryTransport } from '@modelcontextprotocol/client';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { getBoardRecord, publishBoard, saveDraft } from '../app/boards.ts';
+import { liveBoardOf } from '../app/next.ts';
 import { listAgents } from '../app/presence.ts';
 import { openProject } from '../app/project.ts';
 import { COMMANDS } from '../cli/commands.ts';
 import { type Cli, cliAt, tempGitRepo } from '../cli/testing.ts';
 import type { Actor } from '../core/item.ts';
 import { EVIDENCE_YAML, MIXED_YAML } from '../core/testing.ts';
-import { AGENT_COMMANDS, CLI_ONLY_COMMANDS, createMcpServer, OMITTED_OPTIONS } from './server.ts';
+import {
+  AGENT_COMMANDS,
+  CLI_ONLY_COMMANDS,
+  createMcpServer,
+  OMITTED_OPTIONS,
+  toolName,
+} from './server.ts';
 
 type Reply = { isError?: boolean; content: { type: string; text: string }[] };
 
@@ -56,7 +64,7 @@ describe('mcp server', () => {
       const { tools } = await client.listTools();
       const names = COMMANDS.map(({ name }) => name);
 
-      expect(tools.map(({ name }) => name).sort()).toEqual([...AGENT_COMMANDS].sort());
+      expect(tools.map(({ name }) => name).sort()).toEqual(AGENT_COMMANDS.map(toolName).sort());
       expect([...AGENT_COMMANDS, ...CLI_ONLY_COMMANDS].sort()).toEqual([...names].sort());
     });
 
@@ -64,10 +72,10 @@ describe('mcp server', () => {
       const { tools } = await client.listTools();
 
       for (const tool of tools) {
-        const command = COMMANDS.find(({ name }) => name === tool.name);
+        const command = COMMANDS.find(({ name }) => toolName(name) === tool.name);
         const omitted = OMITTED_OPTIONS[tool.name] ?? [];
         const expected = [
-          ...(command?.args ?? []),
+          ...(command?.args ?? []).map((arg) => arg.replace(/\?$/, '')),
           ...Object.keys(command?.options ?? {}).filter((name) => !omitted.includes(name)),
         ];
         expect(Object.keys(tool.inputSchema.properties ?? {}).sort(), tool.name).toEqual(
@@ -81,9 +89,10 @@ describe('mcp server', () => {
       const readOnly = tools.filter(({ annotations }) => annotations?.readOnlyHint);
 
       expect(readOnly.map(({ name }) => name).sort()).toEqual([
+        'board',
         'events',
         'list',
-        'playbook',
+        'next',
         'show',
         'wait',
       ]);
@@ -91,18 +100,44 @@ describe('mcp server', () => {
   });
 
   describe('reads', () => {
-    it('serves the playbook and its index as otea playbook --json does', async () => {
-      expect(await data('playbook')).toEqual(await json('playbook'));
-      expect(await data('playbook', { collection: 'tasks' })).toEqual(
-        await json('playbook', '--collection', 'tasks'),
-      );
+    it('serves a board and the index as otea board --json does', async () => {
+      expect(await data('board')).toEqual(await json('board'));
+      expect(await data('board', { name: 'tasks' })).toEqual(await json('board', 'tasks'));
     });
 
     it('fails with not_found for an unknown collection, as the CLI does', async () => {
-      const reply = await call('playbook', { collection: 'nope' });
+      const reply = await call('board', { name: 'nope' });
 
       expect(reply.isError).toBe(true);
-      expect(reply.content[0]?.text).toBe(await cliError('playbook', '--collection', 'nope'));
+      expect(reply.content[0]?.text).toBe(await cliError('board', 'nope'));
+    });
+
+    it('answers next as otea next --json does', async () => {
+      const next = await data('next');
+
+      expect(next).toEqual(await json('next'));
+      expect(next).toMatchObject({ item: 'TASKS-1', collection: 'tasks' });
+      expect(next.text).toContain('Your turn: do this step.');
+    });
+
+    it('reads a board published while it runs on its next call, without a restart', async () => {
+      expect((await data('next')).text).toContain('En curso, round 1');
+      const project = openProject(repo.dir);
+      try {
+        const id = liveBoardOf(project, 'tasks')?.id ?? '';
+        const live = getBoardRecord(project, id).live;
+        if (!live) throw new Error('not live');
+        const steps = live.definition.steps.map((step) => ({ ...step, name: 'Hacerlo' }));
+        saveDraft(project, id, {
+          definition: { ...live.definition, steps },
+          baseVersion: live.version,
+        });
+        publishBoard(project, id, { moves: {}, by: { kind: 'human', name: 'fede' } });
+      } finally {
+        project.db.close();
+      }
+
+      expect((await data('next')).text).toContain('Hacerlo, round 1');
     });
 
     it('lists items as otea list --json does, with the same filters', async () => {
@@ -119,9 +154,9 @@ describe('mcp server', () => {
       const shown = await data('show', { id: 'TASKS-2' });
 
       expect(shown).toEqual(await json('show', 'TASKS-2'));
-      expect(shown.hint).toBe('Your turn: claim it, fill in description, then move it to todo.');
+      expect(shown.hint).toContain('TASKS-2 · Tarea · En curso, round 1\nYour turn: do this step.');
       expect(shown.relayable).toEqual([
-        { to: 'discarded', by: 'human', reasonRequired: true, turn: 'none', closes: 'discarded' },
+        { to: 'dropped', by: 'human', reasonRequired: true, turn: 'none', closes: 'discarded' },
       ]);
     });
 
@@ -157,12 +192,24 @@ describe('mcp server', () => {
       });
       expect((await data('heartbeat', { id: 'TASKS-1' })).lease.holder).toBe('claude');
       expect((await data('release', { id: 'TASKS-1' })).lease).toBeNull();
-      await data('move', { id: 'TASKS-1', state: 'in_progress' });
-
-      expect(await data('move', { id: 'TASKS-1', state: 'review' })).toMatchObject({
-        state: 'review',
+      expect(await data('move', { id: 'TASKS-1', state: 'todo__review' })).toMatchObject({
+        state: 'todo__review',
         turn: 'human',
       });
+    });
+
+    it('hands off, approves and sends back with the words of the CLI', async () => {
+      const handed = await data('handoff', { id: 'TASKS-1' });
+
+      expect(handed).toMatchObject({
+        item: { state: 'todo__review' },
+        text: 'Handed off. TASKS-1 waits for the person to review En curso.',
+      });
+      const refused = await call('approve', { id: 'TASKS-1' });
+      expect(refused.isError).toBe(true);
+      expect(JSON.parse(refused.content[0]?.text ?? '').error.code).toBe('forbidden');
+      const back = await call('send_back', { id: 'TASKS-1', reason: 'More' });
+      expect(JSON.parse(back.content[0]?.text ?? '').error.code).toBe('forbidden');
     });
 
     it('attaches evidence read from a path resolved as the CLI resolves it', async () => {
@@ -187,11 +234,11 @@ describe('mcp server', () => {
 
     it('relays a human decision with the quote', async () => {
       const quote = 'Drop it, it is too vague';
-      await data('relay', { id: 'TASKS-2', state: 'discarded', quote, reason: 'Vague' });
+      await data('relay', { id: 'TASKS-2', state: 'dropped', quote, reason: 'Vague' });
 
       expect((await json('show', 'TASKS-2')).events.at(-1)).toMatchObject({
         actor: { kind: 'human', name: 'human' },
-        data: { to: 'discarded', quote, via: 'claude', source: 'conversation' },
+        data: { to: 'dropped', quote, via: 'claude', source: 'conversation' },
       });
     });
   });
@@ -203,8 +250,8 @@ describe('mcp server', () => {
         title: 'Footer',
         description: 'D',
       });
-      await data('move', { id, state: 'in_progress' });
-      await data('relay', { id: 'TASKS-2', state: 'discarded', quote: 'Drop it', reason: 'Vague' });
+      await data('handoff', { id });
+      await data('relay', { id: 'TASKS-2', state: 'dropped', quote: 'Drop it', reason: 'Vague' });
 
       const channels = async (item: string) =>
         (await json('show', item)).events.map(
@@ -248,8 +295,7 @@ describe('mcp server', () => {
     });
 
     it('names the mcp channel when it refuses a move', async () => {
-      await otea('move', 'TASKS-1', 'in_progress');
-      await otea('move', 'TASKS-1', 'review');
+      await otea('handoff', 'TASKS-1');
 
       const reply = await call('move', { id: 'TASKS-1', state: 'done' });
 
@@ -321,8 +367,7 @@ describe('mcp server', () => {
     });
 
     it('refuses a human-ui move with forbidden, as the CLI does', async () => {
-      await otea('move', 'TASKS-1', 'in_progress');
-      await otea('move', 'TASKS-1', 'review');
+      await otea('handoff', 'TASKS-1');
 
       const text = await errorOf('move', { id: 'TASKS-1', state: 'done' });
 
@@ -339,7 +384,7 @@ describe('mcp server', () => {
       const other = await connect(repo.dir, 'codex');
       await data('claim', { id: 'TASKS-1' });
 
-      const text = await errorOf('move', { id: 'TASKS-1', state: 'in_progress' }, other);
+      const text = await errorOf('move', { id: 'TASKS-1', state: 'todo__review' }, other);
 
       expect(JSON.parse(text).error.code).toBe('lease_held');
       await other.close();

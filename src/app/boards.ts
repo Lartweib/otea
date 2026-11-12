@@ -544,6 +544,17 @@ export function syncBoardPresets(ctx: Context): void {
   synced.set(ctx, { stamp, base, result });
 }
 
+// Whether a board can say what the preset does. A preset with several item types (a change and its
+// repo tasks), states that wait for closed children or blockers, or gates on git actions is more
+// than steps on two lanes: its collection stays on the preset, with all of that.
+export function sayableAsBoard(preset: LoadedPreset): boolean {
+  const [type, ...others] = preset.types;
+  if (!type || others.length > 0) return false;
+  const { workflow } = type;
+  if (workflow.gates && Object.keys(workflow.gates).length > 0) return false;
+  return workflow.states.every(({ requires }) => (requires ?? []).length === 0);
+}
+
 // Reads every collection still on a preset file as a published board (version 1), mapping its
 // items' states to the board's; returns how many it read. Run when a project opens.
 export function migrateCollections(
@@ -552,11 +563,21 @@ export function migrateCollections(
   now: Clock = systemClock,
   ids: IdSource = newId,
 ): number {
-  const pending = listCollections(ctx.db).filter(
-    ({ name }) => !findBoardOfCollection(ctx.db, name),
-  );
-  if (pending.length === 0) return 0;
-  transaction(ctx.db, () => {
+  const readable = (name: string) => {
+    const preset = ctx.presets.presets.get(name);
+    return preset !== undefined && sayableAsBoard(preset);
+  };
+  // The boards of the project's blueprint answer to it, links and all: they stay on their presets.
+  const inBlueprint = new Set((ctx.blueprint?.boards ?? []).map(({ name }) => name));
+  const unread = () =>
+    listCollections(ctx.db).filter(
+      ({ name, preset }) =>
+        readable(preset) && !inBlueprint.has(name) && !findBoardOfCollection(ctx.db, name),
+    );
+  if (unread().length === 0) return 0;
+  // Read again inside the write lock: another process may have just read them.
+  const read = transaction(ctx.db, () => {
+    const pending = unread();
     for (const collection of pending) {
       const preset = ctx.presets.presets.get(collection.preset);
       if (!preset) continue;
@@ -581,9 +602,10 @@ export function migrateCollections(
         if (to !== item.state) updateItemState(ctx.db, item.id, to, item.updatedAt);
       }
     }
+    return pending.length;
   });
   syncBoardPresets(ctx);
-  return pending.length;
+  return read;
 }
 
 // The project's built-in board for loose requests, published once; returns its id.
@@ -593,9 +615,12 @@ export function ensureRequestsBoard(
   now: Clock = systemClock,
   ids: IdSource = newId,
 ): string {
-  const existing = listBoards(ctx.db).find(({ builtin }) => builtin);
+  const builtin = () => listBoards(ctx.db).find((row) => row.builtin);
+  const existing = builtin();
   if (existing) return existing.id;
   const id = transaction(ctx.db, () => {
+    const other = builtin();
+    if (other) return other.id;
     const definition = requestsBoard(lang, ids);
     const board = ids('b');
     const at = now();

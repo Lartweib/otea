@@ -73,11 +73,12 @@ describe('type hierarchy', () => {
   });
 
   it('prints the preset playbook, then the playbook of each type that has one', async () => {
-    const { code, out } = await otea('playbook', '--collection', 'board');
+    const { code, out } = await otea('board', 'board');
 
     expect(code).toBe(0);
     expect(out).toBe(`${PLAYBOOK.trimEnd()}\n\n--- Type epic ---\n\n${EPIC_PLAYBOOK.trimEnd()}\n`);
-    expect(await json('playbook', '--collection', 'board')).toEqual({
+    expect(await json('board', 'board')).toEqual({
+      kind: 'preset',
       collection: 'board',
       preset: 'agile',
       playbook: PLAYBOOK,
