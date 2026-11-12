@@ -26,7 +26,8 @@ export type TableRow = {
 export type TableView = {
   columns: Part[];
   // `key`: the group's head; null when nothing groups the table.
-  groups: { key: string | null; rows: TableRow[] }[];
+  // `head`: the key as the group's head reads it, capitalised.
+  groups: { key: string | null; head: string | null; rows: TableRow[] }[];
 };
 
 const stepName = (def: BoardDefinition, item: SampleItem): string => {
@@ -73,6 +74,7 @@ export function tableOf(def: BoardDefinition, items: readonly SampleItem[]): Tab
     columns,
     groups: keys.map((key) => ({
       key,
+      head: key === null ? null : key.charAt(0).toLocaleUpperCase() + key.slice(1),
       rows: rows.filter((row) => keyOf(row.item) === key),
     })),
   };
