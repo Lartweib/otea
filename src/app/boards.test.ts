@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { stateOf } from '../core/board/engine.ts';
 import { sequenceIds } from '../core/board/ids.ts';
 import type { BoardDefinition } from '../core/board/model.ts';
-import { creatures } from '../core/board/testing.ts';
+import { creatures, step } from '../core/board/testing.ts';
 import { parsePreset } from '../core/preset.ts';
 import { findCollection } from '../store/queries.ts';
 import {
@@ -19,7 +19,8 @@ import {
 } from './boards.ts';
 import { addCollection } from './collections.ts';
 import type { Context } from './context.ts';
-import { createItem, getItem, moveItem } from './items.ts';
+import { createItem, getItem, moveItem, showItem } from './items.ts';
+import { claimItem } from './leases.ts';
 import { memoryContext } from './testing.ts';
 
 const you = { kind: 'human' as const, name: 'fede' };
@@ -235,6 +236,36 @@ describe('publishBoard', () => {
   });
 });
 
+describe('publish moves', () => {
+  it('lets go of the lease of an item a publish moves, and records it', () => {
+    const ctx = memoryContext();
+    const record = published(ctx);
+    const item = createItem(ctx, {
+      collection: 'Criaturas',
+      title: 'A',
+      fields: { fdesc: 'x' },
+      actor: you,
+      channel: 'ui',
+    });
+    claimItem(ctx, { id: item.id, actor: kiln }, now);
+    const draft = {
+      ...creatures(),
+      steps: creatures()
+        .steps.filter(({ id }) => id !== 'sconcept')
+        .map((s) => ({ ...s, back: 'same' })),
+    };
+    saveDraft(ctx, record.id, { definition: draft, baseVersion: 1 }, now);
+    publishBoard(ctx, record.id, { moves: { sconcept: 'spolish' }, by: you }, now);
+    expect(getItem(ctx, item.id).lease).toBeNull();
+    expect(showItem(ctx, item.id, { actor: you, channel: 'ui' }).events.at(-1)).toEqual(
+      expect.objectContaining({
+        type: 'released',
+        data: expect.objectContaining({ holder: 'kiln', cause: 'publish' }),
+      }),
+    );
+  });
+});
+
 describe('restoreBoard', () => {
   it('undoes a publish: the previous version is live again, the items go back, the changes return to the draft', () => {
     const ctx = memoryContext();
@@ -260,6 +291,73 @@ describe('restoreBoard', () => {
     expect(restored.draft?.baseVersion).toBe(1);
     expect(getItem(ctx, item.id).state).toBe('sconcept');
     expect(restored.versions.map(({ version }) => version)).toEqual([1, 2]);
+  });
+
+  it('refuses to restore while items stand in a step the restored version lacks, and says which', () => {
+    const ctx = memoryContext();
+    const record = published(ctx);
+    const item = createItem(ctx, {
+      collection: 'Criaturas',
+      title: 'A',
+      fields: { fdesc: 'x' },
+      actor: you,
+      channel: 'ui',
+    });
+    const draft = creatures();
+    draft.steps = [step('sfirst', 'Antes', { reviewer: 'none' }), ...draft.steps];
+    saveDraft(ctx, record.id, { definition: draft, baseVersion: 1 }, now);
+    publishBoard(ctx, record.id, { moves: {}, by: you }, now);
+    ctx.db.prepare('UPDATE items SET state = ? WHERE id = ?').run('sfirst', item.id);
+
+    expect(() => restoreBoard(ctx, record.id, { version: 1, by: you }, now)).toThrow(
+      expect.objectContaining({
+        code: 'not_undoable',
+        message: `${item.id} stands in Antes, which version 1 does not have`,
+      }),
+    );
+    expect(getBoardRecord(ctx, record.id).live?.version).toBe(2);
+  });
+
+  it('restores the old name only when no other board took it, in words', () => {
+    const ctx = memoryContext();
+    const record = published(ctx);
+    saveDraft(
+      ctx,
+      record.id,
+      { definition: { ...creatures(), name: 'Bestias' }, baseVersion: 1 },
+      now,
+    );
+    publishBoard(ctx, record.id, { moves: {}, by: you }, now);
+    const other = createBoard(ctx, { name: 'Criaturas', lang: 'es' }, now);
+    publishBoard(ctx, other.id, { moves: {}, by: you }, now);
+
+    expect(() => restoreBoard(ctx, record.id, { version: 1, by: you }, now)).toThrow(
+      expect.objectContaining({
+        code: 'already_exists',
+        message: 'Another board is called Criaturas now: rename it before you undo this',
+      }),
+    );
+  });
+
+  it('keeps a draft written since the publish instead of overwriting it', () => {
+    const ctx = memoryContext();
+    const record = published(ctx);
+    saveDraft(
+      ctx,
+      record.id,
+      { definition: { ...creatures(), item: 'Bestia' }, baseVersion: 1 },
+      now,
+    );
+    publishBoard(ctx, record.id, { moves: {}, by: you }, now);
+    saveDraft(
+      ctx,
+      record.id,
+      { definition: { ...creatures(), item: 'Monstruo' }, baseVersion: 2 },
+      now,
+    );
+    const restored = restoreBoard(ctx, record.id, { version: 1, by: you }, now);
+    expect(restored.draft?.definition.item).toBe('Monstruo');
+    expect(restored.draft?.baseVersion).toBe(1);
   });
 
   it('undoes a first publish while nothing was created on it', () => {
@@ -348,6 +446,56 @@ describe('migrateCollections', () => {
     expect(getItem(ctx, review.id).state).toBe(stateOf({ step: 'todo', phase: 'review' }));
     expect(getItem(ctx, review.id).fields.description).toBe('y');
     expect(migrateCollections(ctx, 'es', now)).toBe(0);
+  });
+
+  it('gives enum values that are not ids an id, rewrites the items, and the project still opens', () => {
+    const prio = parsePreset(`
+preset: prio
+preset_version: 1
+fields:
+  title: { module: text, required: create }
+  prio: { module: enum, values: [P1, P2] }
+workflow:
+  initial: todo
+  states:
+    todo: { turn: agent }
+    check: { turn: human }
+    done: { turn: none, closes: done }
+  transitions:
+    - { from: todo, to: check, by: agent }
+    - { from: check, to: done, by: human }
+`);
+    const ctx = memoryContext(prio);
+    addCollection(ctx, { name: 'Prio', preset: 'prio' });
+    const item = createItem(ctx, {
+      collection: 'Prio',
+      title: 'A',
+      fields: { prio: 'P2' },
+      actor: you,
+      channel: 'ui',
+    });
+    moveItem(ctx, { id: item.id, to: 'check', actor: kiln, channel: 'cli' });
+
+    expect(migrateCollections(ctx, 'en', now)).toBe(1);
+    expect(getItem(ctx, item.id).fields.prio).toBe('p2');
+    expect(getItem(ctx, item.id).state).toBe('todo__review');
+    expect(listBoardSummaries(ctx)[0]?.definition.parts.prio?.options[1]).toEqual({
+      id: 'p2',
+      name: 'P2',
+    });
+    expect(showItem(ctx, item.id, { actor: you, channel: 'ui' }).events.at(-1)).toEqual(
+      expect.objectContaining({
+        type: 'transitioned',
+        data: expect.objectContaining({ from: 'check', to: 'todo__review', reason: 'migrate' }),
+      }),
+    );
+  });
+
+  it('carries the preset playbook as the board text', () => {
+    const ctx = memoryContext();
+    addCollection(ctx, { name: 'Tareas', preset: 'tasks' });
+    migrateCollections(ctx, 'es', now, undefined, () => '# Playbook\n\nRead me.');
+    expect(listBoardSummaries(ctx)[0]?.definition.about).toBe('# Playbook\n\nRead me.');
   });
 
   it('leaves a collection on its preset when its states wait for closed children', () => {

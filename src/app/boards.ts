@@ -1,8 +1,8 @@
 import { compileBoard } from '../core/board/compile.ts';
-import { isClosed, positionOf } from '../core/board/engine.ts';
+import { isClosed, positionOf, stateOf } from '../core/board/engine.ts';
 import { boardFromPreset } from '../core/board/from-preset.ts';
 import { type IdSource, newId } from '../core/board/ids.ts';
-import type { BoardDefinition, Target } from '../core/board/model.ts';
+import { type BoardDefinition, isAgent, type Target } from '../core/board/model.ts';
 import {
   type Change,
   changePlan,
@@ -46,6 +46,7 @@ import {
 import { transaction } from '../store/database.ts';
 import {
   appendEvent,
+  clearLease,
   collectionTaken,
   deleteCollection,
   insertCollection,
@@ -373,6 +374,12 @@ function moveItems(
   at: string,
   data: Record<string, unknown>,
 ) {
+  const held = new Map(
+    itemsWithLease(
+      ctx,
+      moves.map(({ id }) => id),
+    ).map(({ id, holder }) => [id, holder]),
+  );
   for (const move of moves) {
     updateItemState(ctx.db, move.id, move.to, at);
     appendEvent(ctx.db, {
@@ -382,7 +389,30 @@ function moveItems(
       at,
       data: { from: move.from, to: move.to, channel: 'ui', ...data },
     });
+    // The agent holding it was working on the step it left: the lease goes with that work.
+    const holder = held.get(move.id);
+    if (holder !== undefined) {
+      clearLease(ctx.db, move.id);
+      appendEvent(ctx.db, {
+        itemId: move.id,
+        type: 'released',
+        actor: by,
+        at,
+        data: { holder, cause: String(data.reason ?? 'publish') },
+      });
+    }
   }
+}
+
+function itemsWithLease(ctx: Context, ids: readonly string[]): { id: string; holder: string }[] {
+  if (ids.length === 0) return [];
+  const rows = ctx.db
+    .prepare(
+      `SELECT id, lease_holder AS holder FROM items
+       WHERE lease_holder IS NOT NULL AND id IN (${ids.map(() => '?').join(', ')})`,
+    )
+    .all(...ids);
+  return rows.map((row) => ({ id: String(row.id), holder: String(row.holder) }));
 }
 
 // Publishes the draft as the next version, in one transaction: the board's collection (created on
@@ -478,37 +508,71 @@ export function restoreBoard(
         deleteCollection(ctx.db, collection);
       }
     } else {
-      const back = readDefinition(findVersion(ctx.db, id, input.version)?.definition ?? '{}');
-      setLiveVersion(ctx.db, id, input.version);
+      const version = input.version;
+      const back = readDefinition(findVersion(ctx.db, id, version)?.definition ?? '{}');
+      const name = back.name.trim();
+      if (collection !== null && !same(collection, name)) {
+        if (namesTaken(ctx, id).some((taken) => same(taken, name)))
+          throw new OteaError(
+            'already_exists',
+            `Another board is called ${name} now: rename it before you undo this`,
+          );
+      }
       if (collection !== null) {
-        if (collection !== back.name.trim()) renameCollection(ctx.db, collection, back.name.trim());
-        const name = back.name.trim();
-        setCollectionPreset(ctx.db, name, id, input.version);
-        const states = new Map(itemStates(ctx, name).map(({ id: item, state }) => [item, state]));
-        const moves = publishMoves(ctx, name, row.liveVersion).filter(
-          (move) => states.get(move.id) === move.to,
+        const states = new Map(
+          itemStates(ctx, collection).map(({ id: item, state }) => [item, state]),
         );
-        moveItems(
-          ctx,
-          moves.map(({ id: item, from, to }) => ({ id: item, from: to, to: from })),
-          input.by,
-          at,
-          { reason: 'restore', board_version: input.version },
-        );
+        const moves = publishMoves(ctx, collection, row.liveVersion)
+          .filter((move) => states.get(move.id) === move.to)
+          .map(({ id: item, from, to }) => ({ id: item, from: to, to: from }));
+        for (const move of moves) states.set(move.id, move.to);
+        // Every open item must stand somewhere the restored version has, or it would be stuck.
+        const undoneDef = readDefinition(undone.definition);
+        const known = compiledStates(back);
+        for (const [item, state] of states) {
+          const position = positionOf(state);
+          if (isClosed(position) || known.has(state)) continue;
+          const step = undoneDef.steps.find((s) => s.id === position.step);
+          throw new OteaError(
+            'not_undoable',
+            `${item} stands in ${step?.name ?? position.step}, which version ${version} does not have`,
+          );
+        }
+        setLiveVersion(ctx.db, id, version);
+        if (collection !== name) renameCollection(ctx.db, collection, name);
+        setCollectionPreset(ctx.db, name, id, version);
+        moveItems(ctx, moves, input.by, at, { reason: 'restore', board_version: version });
+      } else {
+        setLiveVersion(ctx.db, id, version);
       }
     }
+    // A draft written since the publish is the person's newer work: it stays, on the restored base.
+    const kept = findDraft(ctx.db, id);
     upsertDraft(ctx.db, {
       boardId: id,
-      definition: undone.definition,
+      definition: kept?.definition ?? undone.definition,
       baseVersion: input.version,
       updatedAt: at,
-      requestItem: null,
-      agentNote: null,
+      requestItem: kept?.requestItem ?? null,
+      agentNote: kept?.agentNote ?? null,
     });
     return getBoardRecord(ctx, id);
   });
   syncBoardPresets(ctx);
   return result;
+}
+
+// The states a version's compiled workflow has for its steps (compile.ts phasesOf).
+function compiledStates(def: BoardDefinition): Set<string> {
+  return new Set(
+    def.steps.flatMap((step) => {
+      const doing = stateOf({ step: step.id, phase: 'doing' });
+      if (step.reviewer === 'none') return [doing];
+      const review = stateOf({ step: step.id, phase: 'review' });
+      if (!isAgent(step.reviewer)) return [doing, review];
+      return [doing, review, stateOf({ step: step.id, phase: 'yours' })];
+    }),
+  );
 }
 
 // The moves a publish made, read back from its events.
@@ -572,6 +636,7 @@ export function migrateCollections(
   lang: Lang,
   now: Clock = systemClock,
   ids: IdSource = newId,
+  playbookOf: (preset: LoadedPreset) => string | null = () => null,
 ): number {
   const readable = (name: string) => {
     const preset = ctx.presets.presets.get(name);
@@ -588,10 +653,27 @@ export function migrateCollections(
   // Read again inside the write lock: another process may have just read them.
   const read = transaction(ctx.db, () => {
     const pending = unread();
+    let count = 0;
     for (const collection of pending) {
       const preset = ctx.presets.presets.get(collection.preset);
       if (!preset) continue;
-      const { definition, states } = boardFromPreset(preset, { name: collection.name, lang });
+      const reading = boardFromPreset(preset, {
+        name: collection.name,
+        lang,
+        playbook: playbookOf(preset),
+      });
+      const { states, values } = reading;
+      // A reading the board schema would not read back stays on its preset: a corrupt version
+      // would keep the project from opening at all.
+      const checked = parseDefinition(JSON.parse(JSON.stringify(reading.definition)));
+      if (!checked.ok) continue;
+      const { definition } = checked;
+      try {
+        compileBoard('bcheck', 1, definition);
+      } catch {
+        continue;
+      }
+      count++;
       const id = ids('b');
       const at = now();
       insertBoard(ctx.db, { id, createdAt: at, builtin: false });
@@ -608,14 +690,44 @@ export function migrateCollections(
       const first = definition.steps[0]?.id ?? 'done';
       ctx.db.prepare("UPDATE items SET type = 'item' WHERE collection = ?").run(collection.name);
       for (const item of selectItems(ctx.db, { collection: collection.name })) {
+        const fields = valuesAsChoices(item.fields, values);
+        if (fields !== item.fields) {
+          ctx.db
+            .prepare('UPDATE items SET fields = ? WHERE id = ?')
+            .run(JSON.stringify(fields), item.id);
+        }
         const to = states[item.state] ?? first;
-        if (to !== item.state) updateItemState(ctx.db, item.id, to, item.updatedAt);
+        if (to === item.state) continue;
+        updateItemState(ctx.db, item.id, to, item.updatedAt);
+        appendEvent(ctx.db, {
+          itemId: item.id,
+          type: 'transitioned',
+          actor: { kind: 'human', name: 'otea' },
+          at,
+          data: { from: item.state, to, reason: 'migrate', channel: 'ui' },
+        });
       }
     }
-    return pending.length;
+    return count;
   });
   syncBoardPresets(ctx);
   return read;
+}
+
+// An item's fields with each old enum value as the choice id the board gave it; the same object
+// when nothing changes.
+function valuesAsChoices(
+  fields: Record<string, unknown>,
+  values: Readonly<Record<string, Record<string, string>>>,
+): Record<string, unknown> {
+  let out = fields;
+  for (const [key, map] of Object.entries(values)) {
+    const value = fields[key];
+    if (typeof value !== 'string' || map[value] === undefined) continue;
+    if (out === fields) out = { ...fields };
+    out[key] = map[value];
+  }
+  return out;
 }
 
 // The project's built-in board for loose requests, published once; returns its id.

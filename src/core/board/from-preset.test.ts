@@ -4,6 +4,7 @@ import { parsePreset } from '../preset.ts';
 import { compileBoard } from './compile.ts';
 import { boardFromPreset } from './from-preset.ts';
 import { problemsOf } from './problems.ts';
+import { parseDefinition } from './schema.ts';
 
 const official = (name: string) =>
   parsePreset(
@@ -90,5 +91,39 @@ describe('boardFromPreset', () => {
       const { definition } = boardFromPreset(official(name), { name, lang: 'en' });
       expect(() => compileBoard('bx', 1, definition)).not.toThrow();
     }
+  });
+
+  it('gives enum values that are not ids an id, and says how to read the old values', () => {
+    const preset = parsePreset(`
+preset: prio
+preset_version: 1
+fields:
+  title: { module: text, required: create }
+  prio: { module: enum, values: [P1, "won't fix", '1', p2] }
+workflow:
+  initial: todo
+  states:
+    todo: { turn: agent }
+    done: { turn: none, closes: done }
+  transitions:
+    - { from: todo, to: done, by: human }
+`);
+    const { definition, values } = boardFromPreset(preset, { name: 'P', lang: 'en' });
+    expect(parseDefinition(JSON.parse(JSON.stringify(definition))).ok).toBe(true);
+    expect(definition.parts.prio?.options).toEqual([
+      { id: 'p1', name: 'P1' },
+      { id: 'won-t-fix', name: "won't fix" },
+      { id: 'v1', name: '1' },
+      { id: 'p2', name: 'p2' },
+    ]);
+    expect(values).toEqual({ prio: { P1: 'p1', "won't fix": 'won-t-fix', '1': 'v1' } });
+  });
+
+  it('carries the playbook as the board text and each state section as its step instructions', () => {
+    const playbook = '# Playbook\n\nRead this first.\n\n## todo\n\nPick one and do it.\n';
+    const preset = official('tasks');
+    const { definition } = boardFromPreset(preset, { name: 'T', lang: 'en', playbook });
+    expect(definition.about).toBe(playbook.trim());
+    expect(definition.steps[0]?.instructions.take).toBe('Pick one and do it.');
   });
 });

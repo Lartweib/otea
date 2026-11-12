@@ -1,3 +1,4 @@
+import { playbookSection } from '../hint.ts';
 import type { LayoutEntry } from '../modules.ts';
 import type { ItemType, Preset } from '../preset.ts';
 import { stateOf } from './engine.ts';
@@ -21,7 +22,34 @@ import { defaultZone, type Lang, TITLE_NAME } from './templates.ts';
 // state to the state its items take. It is a best reading, not a perfect one: a move the steps
 // cannot say (an agent sending work back) is dropped.
 
-export type PresetReadingAsBoard = { definition: BoardDefinition; states: Record<string, string> };
+// `values` maps, for each choice field whose values were not ids, every old value to its choice id.
+export type PresetReadingAsBoard = {
+  definition: BoardDefinition;
+  states: Record<string, string>;
+  values: Record<string, Record<string, string>>;
+};
+
+// A choice id for each enum value: the value itself when it already is one (`low`), else the value
+// lowercased with every other character a dash (`P1` is p1, `won't fix` won-t-fix), led by a v when
+// it does not start with a letter (`1` is v1), and numbered when two would meet.
+function choiceIds(values: readonly string[]): Map<string, string> {
+  const out = new Map<string, string>();
+  const used = new Set<string>();
+  for (const value of values) {
+    let base = value
+      .normalize('NFD')
+      .replace(/[̀-ͯ]/g, '')
+      .toLowerCase()
+      .replace(/[^a-z0-9_-]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+    if (!/^[a-z]/.test(base)) base = `v${base}`;
+    let id = base;
+    for (let n = 2; used.has(id); n++) id = `${base}-${n}`;
+    used.add(id);
+    out.set(value, id);
+  }
+  return out;
+}
 
 const FIELD_KIND: Readonly<Record<string, FieldKind>> = {
   text: 'text',
@@ -72,7 +100,7 @@ function layoutEntries(type: ItemType): Array<[LayoutEntry, Zone]> {
 
 export function boardFromPreset(
   preset: Preset,
-  options: { name: string; lang: Lang },
+  options: { name: string; lang: Lang; playbook?: string | null },
 ): PresetReadingAsBoard {
   const type = mainType(preset);
   const { workflow } = type;
@@ -81,19 +109,20 @@ export function boardFromPreset(
 
   const parts: Record<string, Part> = {};
   const layout: Record<string, Zone> = {};
+  const values: Record<string, Record<string, string>> = {};
   for (const [key, spec] of Object.entries(type.fields)) {
     if (key === 'title') continue;
     const kind = FIELD_KIND[spec.module] ?? 'text';
     const valueWords = words?.values?.[key] ?? {};
+    const ids = choiceIds(kind === 'choice' ? (spec.values ?? []) : []);
+    const renamed = [...ids].filter(([value, id]) => value !== id);
+    if (renamed.length > 0) values[key] = Object.fromEntries(renamed);
     parts[key] = {
       id: key,
       name: words?.fields[key] ?? spec.label ?? humanize(key),
       kind,
       hint: '',
-      options:
-        kind === 'choice'
-          ? (spec.values ?? []).map((value) => ({ id: value, name: valueWords[value] ?? value }))
-          : [],
+      options: [...ids].map(([value, id]) => ({ id, name: valueWords[value] ?? value })),
     };
   }
   const evidence: string[] = [];
@@ -236,6 +265,18 @@ export function boardFromPreset(
   const anytime = Object.keys(parts).filter((key) => !onForm.has(key) && !evidence.includes(key));
   const row = type.layout.row.flatMap(({ field }) => (field && parts[field] ? [field] : []));
 
+  // The playbook agents read on the preset is what they read on the board: the whole of it as the
+  // board's text, and the section of each state a step stands for as that step's instructions.
+  const playbook = options.playbook?.trim() ?? '';
+  if (playbook !== '') {
+    for (const step of steps) {
+      const sections = [...stepOfState]
+        .filter(([, owner]) => owner === step)
+        .flatMap(([state]) => playbookSection(playbook, state) ?? []);
+      step.instructions.take = [...new Set(sections)].join('\n\n');
+    }
+  }
+
   return {
     definition: {
       schema: BOARD_SCHEMA,
@@ -249,12 +290,13 @@ export function boardFromPreset(
       anytime,
       layout,
       row,
-      about: '',
+      about: playbook,
       idle: '',
       cap: { on: false, n: 3 },
       samples: [],
       template: preset.name,
     },
     states,
+    values,
   };
 }
