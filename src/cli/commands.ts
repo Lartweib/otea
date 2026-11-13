@@ -1496,7 +1496,8 @@ const serve: Command = {
 
 const devicesList: Command = {
   name: 'devices list',
-  summary: 'List the paired phones and tablets (otea serve --lan, otea phone tailscale), with when each was last seen',
+  summary:
+    'List the paired phones and tablets (otea serve --lan, otea phone tailscale), with when each was last seen',
   args: [],
   options: {},
   execute: ({ cwd }) => {
