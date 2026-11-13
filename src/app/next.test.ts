@@ -18,6 +18,7 @@ import {
   sendBackItem,
 } from './next.ts';
 import { memoryContext } from './testing.ts';
+import { undoMove } from './undo.ts';
 
 const you = { kind: 'human' as const, name: 'fede' };
 const kiln = { kind: 'agent' as const, name: 'kiln' };
@@ -424,5 +425,44 @@ describe('names on a board', () => {
       now,
     );
     expect(moved.state).toBe('dropped');
+  });
+});
+
+describe('rounds and Deshacer', () => {
+  // Tortuga handed off in Concepto, waiting for the person's verdict.
+  function handedTortuga(ctx: Context) {
+    board(ctx);
+    const item = creature(ctx, 'Tortuga');
+    attach(ctx, item.id, 'eart');
+    handoffItem(ctx, { id: item.id, actor: quill, channel: 'cli' }, now);
+    return item;
+  }
+  const review = stateOf({ step: 'sconcept', phase: 'review' });
+
+  it('takes an approval back without starting another round of the next step', () => {
+    const ctx = memoryContext();
+    const item = handedTortuga(ctx);
+    approveItem(ctx, { id: item.id, actor: you, channel: 'ui' }, now);
+    undoMove(ctx, { id: item.id, from: review, actor: you, channel: 'ui' }, now);
+    approveItem(ctx, { id: item.id, actor: you, channel: 'ui' }, now);
+
+    const on = itemOnBoard(ctx, getItem(ctx, item.id), creatures());
+    expect(on.position).toEqual({ step: 'sanimate', phase: 'doing' });
+    expect(on.round).toBe(1);
+  });
+
+  it('takes a send-back back: the step keeps its round and no note waits for the agent', () => {
+    const ctx = memoryContext();
+    const item = handedTortuga(ctx);
+    sendBackItem(ctx, { id: item.id, actor: you, channel: 'ui', reason: 'Más barro' }, now);
+    undoMove(ctx, { id: item.id, from: review, actor: you, channel: 'ui' }, now);
+
+    const on = itemOnBoard(ctx, getItem(ctx, item.id), creatures());
+    expect(on.position).toEqual({ step: 'sconcept', phase: 'review' });
+    expect(on.rounds.rounds.sconcept).toBe(1);
+    sendBackItem(ctx, { id: item.id, actor: you, channel: 'ui', reason: 'Más musgo' }, now);
+    const again = itemOnBoard(ctx, getItem(ctx, item.id), creatures());
+    expect(again.round).toBe(2);
+    expect(again.sentBack?.note).toBe('Más musgo');
   });
 });
