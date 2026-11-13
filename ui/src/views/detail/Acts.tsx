@@ -3,7 +3,7 @@ import { useApp } from '../../app/context.tsx';
 import { mainPath } from '../../derive/path.ts';
 import { whenText } from '../../derive/when.ts';
 import { t, tx } from '../../i18n/i18n.ts';
-import { Button, MenuItem, MenuLabel, MenuNote, Pop, Swap } from '../../kit/index.ts';
+import { Button, Icon, MenuItem, MenuLabel, MenuNote, Pop, Swap } from '../../kit/index.ts';
 import type { Look } from '../../lanes/looks.ts';
 import { C } from '../../motion/curves.ts';
 import { reduced } from '../../motion/reduced.ts';
@@ -54,6 +54,15 @@ type ActsProps = {
   refuse?: ((choice: MoveChoice) => string | null) | undefined;
   // On a Studio board: the agent and round a way back lands on.
   back?: ((state: string) => { agent: string | null; round: number }) | undefined;
+  // While an agent does the step: «Dejar una nota» in the receipt's place, and the line that says
+  // what it does.
+  note?: LeaveNote | undefined;
+};
+
+export type LeaveNote = {
+  open: boolean;
+  says: ReactNode;
+  onToggle: (button: HTMLButtonElement) => void;
 };
 
 // Both blocks present while one leaves and the other arrives; the height glides 440 settle, and the
@@ -156,6 +165,7 @@ export function Acts({
   onDrop,
   refuse,
   back,
+  note,
 }: ActsProps) {
   const app = useApp();
   const [pointed, setPointed] = useState<MoveChoice | null>(null);
@@ -401,6 +411,24 @@ export function Acts({
         {closeAs ? <div className="actions">{closeAs}</div> : null}
       </>
     );
+  } else if (note) {
+    body = (
+      <>
+        <div className="actions">
+          <Button
+            variant="quiet"
+            className={note.open ? 'on nt-leave' : 'nt-leave'}
+            aria-expanded={note.open}
+            onClick={(e) => note.onToggle(e.currentTarget)}
+          >
+            <Icon name="note" />
+            {t('notes.leave')}
+          </Button>
+          {closeAs}
+        </div>
+        <div className="movesays">{note.says}</div>
+      </>
+    );
   } else {
     const holder = item.lease?.holder ?? agent;
     let text: ReactNode;
@@ -429,5 +457,5 @@ export function Acts({
       </>
     );
   }
-  return <ActsBox k={`${mode}:${item.state}`}>{body}</ActsBox>;
+  return <ActsBox k={`${mode}:${item.state}${note ? ':note' : ''}`}>{body}</ActsBox>;
 }

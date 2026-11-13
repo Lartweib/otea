@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from 'react';
+import { type ReactNode, useLayoutEffect, useRef, useState } from 'react';
 import { t } from '../../i18n/i18n.ts';
 import { Button, useEscape } from '../../kit/index.ts';
 import { Choreo, part } from '../../motion/choreo.ts';
@@ -18,6 +18,11 @@ type NotesFormProps = {
   onSend: (text: string) => void;
   onCancel: () => void;
   onGone: () => void;
+  // A note to the agent at work («Dejar una nota»): its own words in the margin and the buttons,
+  // what goes between the text and the buttons (the «Sobre qué» picker) and the line after them.
+  words?: { title: string; aside: string; placeholder: string; aria: string; send: string };
+  extra?: ReactNode;
+  says?: ReactNode;
 };
 
 export function NotesForm({
@@ -29,6 +34,9 @@ export function NotesForm({
   onSend,
   onCancel,
   onGone,
+  words,
+  extra,
+  says,
 }: NotesFormProps) {
   const el = useRef<HTMLDivElement>(null);
   const ch = useRef<Choreo | null>(null);
@@ -132,31 +140,35 @@ export function NotesForm({
       <i className="nline" />
       <div className="nsurf">
         <div className="margin-label" data-i>
-          {t('sheet.notes.title')}
+          {words?.title ?? t('sheet.notes.title')}
           <span>
-            {why
-              ? t('sheet.notes.why', { state: why })
-              : agent
-                ? t('sheet.notes.for', { agent: who })
-                : t('sheet.notes.forAny')}
+            {words
+              ? words.aside
+              : why
+                ? t('sheet.notes.why', { state: why })
+                : agent
+                  ? t('sheet.notes.for', { agent: who })
+                  : t('sheet.notes.forAny')}
           </span>
         </div>
         <div>
           <textarea
             data-i
-            placeholder={t('sheet.notes.placeholder')}
+            placeholder={words?.placeholder ?? t('sheet.notes.placeholder')}
             rows={3}
-            aria-label={t('sheet.notes.aria', { agent: who })}
+            aria-label={words?.aria ?? t('sheet.notes.aria', { agent: who })}
             value={text}
             onChange={(e) => setText(e.target.value)}
           />
+          {extra}
           <div className="nbtns" data-i>
             <Button variant="primary" disabled={!text.trim()} onClick={() => onSend(text.trim())}>
-              {t('sheet.notes.send')}
+              {words?.send ?? t('sheet.notes.send')}
             </Button>
             <Button variant="quiet" onClick={onCancel}>
               {t('sheet.notes.cancel')}
             </Button>
+            {says ? <span className="says">{says}</span> : null}
           </div>
         </div>
       </div>

@@ -247,3 +247,40 @@ describe('the history of a field change, in the language on screen', () => {
     expect(line?.text).not.toContain('before');
   });
 });
+
+describe('a note to the agent at work, in one line', () => {
+  const claude = { kind: 'agent', name: 'claude-d' } as const;
+  const left = (note: number, text: string, minutes: number, anchor?: object) =>
+    ev(
+      'note_left',
+      you,
+      { note, text, step: 'fixing', stepName: 'Arreglar', round: 2, ...(anchor ? { anchor } : {}) },
+      minutes,
+    );
+
+  it('says you left it, the note, what it is on and who answered, with a hollow dot', () => {
+    setLanguage('es');
+    const lines = historyOf(
+      [
+        left(1, 'En el gif el foco salta.', 30, { evidence: 7, filename: 'pausa.gif' }),
+        ev('note_answered', claude, { note: 1, text: 'Visto.' }, 20),
+        left(2, '¿B también cierra?', 10),
+      ],
+      bug,
+      word,
+      NOW,
+    );
+    // One line per note, never one for the answer.
+    expect(lines).toHaveLength(2);
+    const [open, answered] = lines;
+    expect(open).toMatchObject({
+      dot: 'note',
+      text: 'Le dejaste una nota',
+      quote: '¿B también cierra?',
+    });
+    expect(open?.open).toBe(true);
+    expect(answered?.dot).toBe('note');
+    expect(answered?.open).toBe(false);
+    expect(answered?.who).toMatch(/^sobre pausa\.gif · contestó claude-d a las \d\d:\d\d$/);
+  });
+});

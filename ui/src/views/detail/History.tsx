@@ -34,13 +34,25 @@ export function History({ lines, id }: { lines: HistoryLine[]; id: string }) {
         </div>
         <ol className="tl" ref={list}>
           {lines.map((l) => (
-            <li key={l.id} data-ev={l.id} className={l.dot === 'agent' ? undefined : l.dot}>
+            <li
+              key={l.id}
+              data-ev={l.id}
+              className={l.dot === 'agent' ? undefined : l.dot === 'note' ? 'nt' : l.dot}
+            >
               <i className="dt" />
               <span className="tm">{l.when}</span>
               <span className="tx">
                 {l.text}
                 {l.quote ? <q>{l.quote}</q> : null}
-                <small>{l.who}</small>
+                <small>
+                  {l.who}
+                  {l.open ? (
+                    <>
+                      {l.who ? ' · ' : null}
+                      <span className="nt-un">{t('notes.open')}</span>
+                    </>
+                  ) : null}
+                </small>
               </span>
             </li>
           ))}

@@ -1,3 +1,9 @@
+import {
+  NOTE_ANSWERED,
+  NOTE_LEFT,
+  type NoteEvent,
+  notesOf,
+} from '../../../../src/core/board/notes.ts';
 import { describeEvent, formatTime, momentParts, relayOf } from '../../format.ts';
 import { t } from '../../i18n/i18n.ts';
 import { fieldWord, valueWord } from '../../preset-words.ts';
@@ -7,9 +13,12 @@ import type { ItemEvent, TypeView } from '../../types.ts';
 // first, a dot per event (yours blue, agents ink, a ring when an agent relayed your words), the
 // words of what happened, any quote, who did it.
 
+// A note to the agent at work is one line (its answer folds into it): a hollow blue dot, yours but
+// moving nothing; `open` while it waits for the answer.
 export type HistoryLine = {
   id: number;
-  dot: 'you' | 'agent' | 'relay';
+  dot: 'you' | 'agent' | 'relay' | 'note';
+  open?: boolean;
   when: string;
   text: string;
   quote?: string;
@@ -43,7 +52,10 @@ export function historyOf(
   // kept when it was written (`stateName`, `toName`), else as stored.
   const named = (state: string, kept: unknown) =>
     states.has(state) || typeof kept !== 'string' || kept === '' ? word(state) : kept;
-  const sorted = [...events].sort((a, b) => a.id - b.id);
+  const sorted = [...events]
+    .filter(({ type }) => type !== NOTE_ANSWERED)
+    .sort((a, b) => a.id - b.id);
+  const notes = new Map(notesOf(events as unknown as NoteEvent[]).map((note) => [note.note, note]));
   let handed = 0;
   // Before Otea read the item onto its board, its states were a preset's: their names are not
   // the board's words, so those lines say what happened without them.
@@ -62,6 +74,26 @@ export function historyOf(
       dot: (relay ? 'relay' : human ? 'you' : 'agent') as HistoryLine['dot'],
     };
     const reason = reasonOf(e);
+    if (e.type === NOTE_LEFT) {
+      const note = notes.get(Number(e.data.note));
+      const said = [
+        note?.anchor ? t('notes.h.on', { file: note.anchor.filename }) : null,
+        note?.answer
+          ? t('notes.h.answered', {
+              agent: note.answer.by,
+              time: momentParts(note.answer.at, now).time,
+            })
+          : null,
+      ].filter(Boolean);
+      return {
+        ...base,
+        dot: 'note',
+        open: !note?.answer,
+        text: t('notes.h.left'),
+        quote: String(e.data.text ?? ''),
+        who: said.join(' · '),
+      };
+    }
     if (e.type === 'created' && before(i, e.data.state)) {
       return { ...base, text: t(human ? 'sheet.h.createdYouBefore' : 'sheet.h.createdBefore') };
     }

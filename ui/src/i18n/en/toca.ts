@@ -60,6 +60,7 @@ export const toca = {
   'toca.sub.closedBy': 'closed by {agent}',
   'toca.sub.closedByYou': 'closed by you',
   'toca.quiet': '{agent} quiet · {time}',
+  'toca.replied': '{agent} answered',
   'toca.round': 'round {n}',
 
   // The agents column

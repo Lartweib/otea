@@ -50,17 +50,20 @@ export function HandChecklist({
   item,
   rows,
   canWrite,
+  notes,
 }: {
   item: Pick<ItemView, 'id' | 'title' | 'fields'>;
   rows: readonly HandRow[];
   canWrite: boolean;
+  // While an agent does the step and you left it notes: the wait for its answers, after a rule.
+  notes?: { unanswered: number } | undefined;
 }) {
   const app = useApp();
   const [open, setOpen] = useState<string | null>(null);
   const [value, setValue] = useState('');
   const [failed, setFailed] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  if (!rows.length) return null;
+  if (!rows.length && !notes) return null;
   const fill = (row: HandRow) => {
     setOpen(open === row.ref ? null : row.ref);
     setValue(item.fields[row.ref] ?? '');
@@ -174,6 +177,20 @@ export function HandChecklist({
           </div>
         );
       })}
+      {notes ? (
+        <>
+          {rows.length ? <div className="sep" /> : null}
+          <div className={notes.unanswered ? 'hc miss nt-gate' : 'hc ok nt-gate'}>
+            <span className="bx">{notes.unanswered ? null : <Icon name="check" />}</span>
+            <span className="hn">{t('notes.hand')}</span>
+            <small>
+              {notes.unanswered
+                ? t('notes.unanswered', { count: notes.unanswered })
+                : t('bi.hand.ready')}
+            </small>
+          </div>
+        </>
+      ) : null}
     </div>
   );
 }
@@ -564,17 +581,30 @@ const outcomeWord = (o: StepOutcome): string =>
 // closed item's last) open, each earlier one a line: the step, its rounds, how it left it.
 // `rail`: the step whose rounds the compare rail below shows (railStep); `onFold` tells it which
 // step was unfolded or folded, so the rail follows it (selectOnFold).
+// `notes`: what a round's card adds for the person's notes left in it (the step by id, the round).
+type NotesOf = (step: string, round: number) => ReactNode;
+
 export function RoundNotes({
   steps,
   rail,
   onFold,
+  notes,
 }: {
   steps: readonly StepRounds[];
   rail?: string | undefined;
   onFold?: (step: string, opening: boolean) => void;
+  notes?: NotesOf | undefined;
 }) {
   const only = steps.length === 1 ? steps[0] : undefined;
-  if (only?.current) return <StepRoundCards rounds={only.rounds} step={only.name} current />;
+  if (only?.current)
+    return (
+      <StepRoundCards
+        rounds={only.rounds}
+        step={only.name}
+        current
+        notes={notes ? (round) => notes(only.step, round) : undefined}
+      />
+    );
   return (
     <div className="bi-steps" title={t('bi.rounds.glossAll')}>
       {steps.map((group) => (
@@ -583,6 +613,7 @@ export function RoundNotes({
           group={group}
           rail={group.step === rail}
           {...(onFold ? { onFold } : {})}
+          {...(notes ? { notes } : {})}
         />
       ))}
     </div>
@@ -593,10 +624,12 @@ function StepFold({
   group,
   rail,
   onFold,
+  notes,
 }: {
   group: StepRounds;
   rail: boolean;
   onFold?: (step: string, opening: boolean) => void;
+  notes?: NotesOf;
 }) {
   const [open, setOpen] = useState(group.open);
   const body = useId();
@@ -624,7 +657,12 @@ function StepFold({
       </button>
       <div className="bi-step-body" id={body}>
         <div className="bi-step-inner">
-          <StepRoundCards rounds={group.rounds} step={group.name} current={group.current} />
+          <StepRoundCards
+            rounds={group.rounds}
+            step={group.name}
+            current={group.current}
+            notes={notes ? (round) => notes(group.step, round) : undefined}
+          />
         </div>
       </div>
     </div>
@@ -637,10 +675,12 @@ function StepRoundCards({
   rounds,
   step,
   current,
+  notes,
 }: {
   rounds: readonly Round[];
   step: string;
   current: boolean;
+  notes?: ((round: number) => ReactNode) | undefined;
 }) {
   const last = current ? rounds.length : 0;
   const first = current && rounds.length === 1 && (rounds[0]?.notes.length ?? 0) === 0;
@@ -651,6 +691,7 @@ function StepRoundCards({
           <span className="rk">{t('bi.rounds.round', { n: 1 })}</span>
           <span className="rs">{t('bi.rounds.now')}</span>
           <p>{t('bi.rounds.first')}</p>
+          {notes?.(1)}
         </div>
       ) : (
         [...rounds].reverse().map((r) => (
@@ -667,6 +708,7 @@ function StepRoundCards({
             ) : (
               <p className="none">{t('bi.rounds.none')}</p>
             )}
+            {notes?.(r.round)}
           </div>
         ))
       )}

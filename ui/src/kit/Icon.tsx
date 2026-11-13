@@ -110,6 +110,7 @@ export const IC = {
   filter: '<path d="M2.5 3.5h11l-4.2 5v4l-2.6 1.2V8.5z"/>',
   amp: '<path d="M9.5 2.5h4v4M13.5 2.5l-4.5 4.5M6.5 13.5h-4v-4M2.5 13.5 7 9"/>',
   red: '<path d="M13.5 6.5h-4v-4M9.5 6.5l4.5-4.5M2.5 9.5h4v4M6.5 9.5 2 14"/>',
+  note: '<path d="M3 3.5h10v7H7.5L4.5 13v-2.5H3z"/>',
 } as const;
 
 export type MockIconName = keyof typeof IC;

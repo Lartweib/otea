@@ -20,6 +20,7 @@ import {
   stepById,
   stepIndex,
 } from '../../../../src/core/board/model.ts';
+import type { ItemNote } from '../../../../src/core/board/notes.ts';
 import {
   type DefinitionRoute,
   definitionRoute,
@@ -75,6 +76,10 @@ export type ItemBoardBlock = {
   missing?: { ref: string; name: string; reason: string }[];
   // On a Pedido an agent drafts a board on: that board, and how the draft is handed in.
   request?: DraftRequest;
+  // The notes the person left on the item, every round's, oldest first (core/board/notes.ts).
+  thread?: ItemNote[];
+  // While an agent does its step: that agent and its last sign of life.
+  worker?: { name: string; lastSeen: string | null; holds: boolean };
 };
 
 // The board a Pedido asks an agent to draft (app/draft-request.ts): `arrived` once it handed one in;
@@ -445,4 +450,13 @@ export function handRefusal(
     list: listOf(parts.map(({ name }) => name)),
     count: parts.length,
   });
+}
+
+// When the round of the step the item is on began (the engine's count): the pieces of evidence a
+// note can be on are those attached from then on.
+export function roundStartOf(def: BoardDefinition, item: ItemLike): string | undefined {
+  const position = positionOf(item.state);
+  if (isClosed(position)) return undefined;
+  const history = historyFor(def, item.events, item.createdAt);
+  return roundsOf(def, history.initial, history.createdAt, history.moves).startedAt[position.step];
 }

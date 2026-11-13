@@ -94,6 +94,8 @@ export function bodySections(o: {
         // the item went through several.
         steps: BoardRounds;
         railName?: string | undefined;
+        // How many of the person's notes are on each piece of evidence, by its id.
+        noted?: ReadonlyMap<number, number> | undefined;
       }
     | undefined;
 }): Sec[] {
@@ -230,6 +232,7 @@ export function bodySections(o: {
           entry={block.entry}
           evidence={item.evidence}
           canWrite={canWrite}
+          {...(board?.noted ? { noted: board.noted } : {})}
         />,
       );
       return [];
