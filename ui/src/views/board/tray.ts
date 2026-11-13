@@ -61,3 +61,32 @@ export function trayStates(items: readonly Item[], word: (state: string) => stri
     .map(([state, count]) => t('boardView.tray.inState', { count, state: word(state) }))
     .join(' · ');
 }
+
+// The row of buttons: the moves the selection shares, the main one first; the closing moves
+// gather behind one "Cerrar como" button.
+export function trayGroups(buttons: readonly TrayButton[]): {
+  main: TrayButton[];
+  closing: TrayButton[];
+} {
+  return {
+    main: buttons.filter((b) => b.move.closes !== 'discarded'),
+    closing: buttons.filter((b) => b.move.closes === 'discarded'),
+  };
+}
+
+// The notice under the buttons, one plain sentence: reading, nothing shared, or only the shared
+// moves showing. `why` when there are moves left out to name behind "por qué".
+export function trayNotice(
+  plan: {
+    moves: readonly Move[];
+    hidden: readonly { moves: readonly string[] }[];
+    loading: boolean;
+  },
+  count: number,
+): { say: string; why: boolean } | null {
+  if (plan.loading) return { say: t('boardView.tray.reading'), why: false };
+  const why = plan.hidden.some((h) => h.moves.length > 0);
+  if (!plan.moves.length) return { say: t('boardView.tray.noneShared', { count }), why };
+  if (why) return { say: t('boardView.tray.someShared', { count }), why };
+  return null;
+}
