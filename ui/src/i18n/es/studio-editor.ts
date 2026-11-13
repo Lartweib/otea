@@ -50,8 +50,11 @@ export const studioEditor = {
 
   'bs.editor.card.place': 'Paso {n} de {count}',
   'bs.editor.card.stepname': 'Nombre del paso',
-  'bs.editor.card.earlier': 'Mover antes',
-  'bs.editor.card.later': 'Mover después',
+  'bs.editor.card.move': 'Mover',
+  'bs.editor.card.move_label': 'Mover el paso',
+  'bs.editor.card.earlier': 'Mover antes de {step}',
+  'bs.editor.card.later': 'Mover después de {step}',
+  'bs.editor.card.move_only': 'Es el único paso: no hay con qué cambiarlo de orden.',
   'bs.editor.card.remove': 'Quitar el paso',
   'bs.editor.who.sentence': '{doer} {does} y {reviewer} {reviews}.',
   'bs.editor.who.does_you': 'lo haces',
@@ -120,6 +123,12 @@ export const studioEditor = {
     'Al devolverlo también puedes elegir otro paso anterior; esto es lo que se propone.',
   'bs.editor.rounds':
     'Las rondas se cuentan por paso y no vuelven a empezar: si vuelve a {step} por tercera vez, es la ronda 3. Cada ronda guarda su evidencia y sus notas, y puedes compararlas.',
+  'bs.editor.hint.instructions_missing':
+    'Nada le dice al agente qué hacer en este paso: escribe al menos una instrucción.',
+  'bs.editor.hint.instructions_ask_part':
+    'Las instrucciones piden {part}, pero la entrega de este paso no lo exige.',
+  'bs.editor.hint.instructions_ask_evidence':
+    'Las instrucciones piden adjuntar algo, pero la entrega de este paso no exige ninguna evidencia.',
   'bs.editor.instr.title': 'Instrucciones',
   'bs.editor.instr.gloss': 'lo que lee el agente; menciona con @ y sigue a los renombres',
   'bs.editor.instr.yours':
@@ -271,6 +280,11 @@ export const studioEditor = {
   'bs.editor.save.failed': 'No se pudo guardar: {reason}',
   'bs.editor.save.conflict':
     'El borrador cambió mientras lo tenías abierto: un agente entregó su tablero, u otra ventana lo guardó. Recarga para verlo; tus últimos cambios aquí no se guardaron.',
+  'bs.editor.undone':
+    'Deshiciste la publicación de v{undone}: los agentes siguen con v{live}. Lo que tenía v{undone} sigue en este borrador, sin publicar: publícalo otra vez o descarta los cambios.',
+  'bs.editor.undone_first':
+    'Deshiciste la publicación: ningún agente ve este tablero. Lo que tenía sigue en este borrador: publícalo otra vez cuando quieras.',
+  'bs.editor.undone_ok': 'Entendido',
   'bs.editor.undo': 'Deshacer',
   'bs.editor.redo': 'Rehacer',
   'bs.editor.discard': 'Descartar cambios',

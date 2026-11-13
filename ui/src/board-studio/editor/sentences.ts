@@ -1,10 +1,12 @@
 import { startsWith, waysOf } from '../../../../src/core/board/engine.ts';
+import { instructionHints as hintsOf } from '../../../../src/core/board/hints.ts';
 import {
   type BoardDefinition,
   type Hand,
   isAgent,
   LEVELS,
   partOf,
+  type Selection,
   type Step,
   stepById,
   stepIndex,
@@ -17,8 +19,9 @@ import { doesText, reviewsText, targetName } from '../words.ts';
 // sentence is a message key with its params; a board's own words (step and part names) are marked
 // so the page can set them apart. `plain` says a sentence as text.
 
-// One of the board's own words, or several joined by "and"/"or" (with an arrow: "→ Animar").
-export type Name = { name: string };
+// One of the board's own words, or several joined by "and"/"or" (with an arrow: "→ Animar"). A
+// name `at` a card (a step, Hecho) is one the summary lets you press to select that card.
+export type Name = { name: string; at?: Selection };
 export type Names = { names: readonly string[]; join: 'and' | 'or'; arrow?: boolean };
 export type Value = string | number | Name | Names;
 
@@ -85,7 +88,7 @@ export function summary(def: BoardDefinition): Sentence[] {
     out.push({
       key: key as MessageKey,
       params: {
-        step: { name: unnamed(step.name) },
+        step: { name: unnamed(step.name), at: { kind: 'step', id: step.id } },
         does: doesText(step.doer),
         reviews: reviewsText(step.reviewer),
         ...(hand.length ? { hand: and(hand) } : {}),
@@ -96,12 +99,15 @@ export function summary(def: BoardDefinition): Sentence[] {
       out.push({
         key: 'bs.editor.sum.ways',
         params: {
-          step: { name: unnamed(step.name) },
+          step: { name: unnamed(step.name), at: { kind: 'step', id: step.id } },
           ways: { names: alt.map((w) => targetName(def, w)), join: 'or' },
         },
       });
   });
-  out.push({ key: 'bs.editor.sum.end', params: { done: { name: t('bs.done') } } });
+  out.push({
+    key: 'bs.editor.sum.end',
+    params: { done: { name: t('bs.done'), at: { kind: 'done' } } },
+  });
   return out;
 }
 
@@ -216,4 +222,20 @@ export function stepPlace(def: BoardDefinition, step: Step): Sentence {
     key: 'bs.editor.card.place',
     params: { n: stepIndex(def, step.id) + 1, count: def.steps.length },
   };
+}
+
+// The soft hints on what the step's agent reads (core hints.ts): no instructions at all, or
+// instructions that ask for more than the step's handoff requires. Never a blocker.
+export function instructionHints(def: BoardDefinition, step: Step): Sentence[] {
+  return hintsOf(def)
+    .filter((hint) => hint.step === step.id)
+    .map(({ code, params }) =>
+      code === 'instructions_ask_part'
+        ? {
+            key: 'bs.editor.hint.instructions_ask_part',
+            params: { part: { name: params.part ?? '' } },
+            level: 'warn',
+          }
+        : { key: `bs.editor.hint.${code}`, level: 'warn' },
+    );
 }

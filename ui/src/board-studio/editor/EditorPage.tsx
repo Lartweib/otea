@@ -14,7 +14,7 @@ import { DiscardDialog, PracticeDialog, PublishDialog } from '../preview/dialogs
 import { PreviewPane } from '../preview/PreviewPane.tsx';
 import { setBoardPrefixes } from '../preview/samples.ts';
 import { type DraftOptions, type ReadyDraft, useBoardDraft } from '../use-board-draft.ts';
-import { Bar } from './Bar.tsx';
+import { Bar, liveState } from './Bar.tsx';
 import { Card } from './Card.tsx';
 import {
   type Agents,
@@ -33,6 +33,7 @@ import { sentenceNode } from './SentenceText.tsx';
 import { SetupPanel } from './Setup.tsx';
 import { plain, summary } from './sentences.ts';
 import { setupLeft } from './setup.ts';
+import { undoneNotice } from './undone.ts';
 import { type PairState, usePair } from './use-pair.ts';
 import { VRoute } from './VRoute.tsx';
 
@@ -253,13 +254,23 @@ function kickerText(draft: ReadyDraft, pair: PairView | undefined, twin: BoardSu
 }
 
 function Head() {
-  const { draft, pair, twin } = useEditor();
+  const { draft, pair, twin, setOpenRow } = useEditor();
   const def = draft.def;
   const later = useSettled(def);
   const lines = summary(later);
+  // A step or Hecho pressed in the summary opens its card, as on the route.
+  const select = (at: Selection) => {
+    if (at.kind === 'step' && !def.steps.some((s) => s.id === at.id)) return;
+    setOpenRow(null);
+    draft.endBurst();
+    draft.select(at);
+  };
   const text = lines.map(plain).join(' ');
   const note = draft.record.draft?.agentNote;
   const setup = pair?.setup && !pair.setup.hidden;
+  const undone = undoneNotice(draft.record, liveState(draft).dirty);
+  // Entendido hides the notice until something else is undone (or the editor opens again).
+  const [hidden, setHidden] = useState<string | null>(null);
   return (
     <header className={setup ? 'se-head withsetup' : 'se-head'}>
       <p className="kicker">
@@ -286,7 +297,7 @@ function Head() {
             // biome-ignore lint/suspicious/noArrayIndexKey: the sentences of one summary, in order
             <span key={i}>
               {i ? ' ' : ''}
-              {sentenceNode(s)}
+              {sentenceNode(s, select)}
             </span>
           ))}
         </Swap>
@@ -301,6 +312,14 @@ function Head() {
               ))}
             </ul>
           ) : null}
+        </div>
+      ) : null}
+      {undone && undone !== hidden ? (
+        <div className="se-agentdraft se-undone" role="status">
+          <p>{undone}</p>
+          <button type="button" className="btn text sm" onClick={() => setHidden(undone)}>
+            {t('bs.editor.undone_ok')}
+          </button>
         </div>
       ) : null}
       <SetupPanel />

@@ -3,6 +3,7 @@ import { backWaysOf, waysOf } from '../../../../src/core/board/engine.ts';
 import { DONE, isAgent, type Step, stepIndex } from '../../../../src/core/board/model.ts';
 import { useApp } from '../../app/context.tsx';
 import { t, tx } from '../../i18n/i18n.ts';
+import { MenuItem, MenuLabel } from '../../kit/pop/Menu.tsx';
 import { toast } from '../../kit/pop/toast.tsx';
 import { problemText, targetName } from '../words.ts';
 import { useEditor } from './context.ts';
@@ -22,12 +23,21 @@ import {
 } from './edits.ts';
 import { Glyph, kindGlyph } from './glyphs.tsx';
 import { MentionArea } from './MentionArea.tsx';
-import { BackMenu, Blank, useAnchor, WayMenu, WhoMenu } from './menus.tsx';
+import { BackMenu, Blank, EdPop, useAnchor, WayMenu, WhoMenu } from './menus.tsx';
 import { AddPart } from './PartPicker.tsx';
 import { PartRow } from './PartRow.tsx';
+import { reorderChoices } from './reorder.ts';
 import { Conseq, sentenceNode } from './SentenceText.tsx';
 import { SetupStrip } from './Setup.tsx';
-import { roundsSentence, startsWithNames, stepConseq, stepPlace, waysConseq } from './sentences.ts';
+import {
+  instructionHints,
+  plain,
+  roundsSentence,
+  startsWithNames,
+  stepConseq,
+  stepPlace,
+  waysConseq,
+} from './sentences.ts';
 import { whoTitle, whoWord } from './who.ts';
 
 // A step's card (mock cardStep): the step as sentences with blanks. Who does it and who reviews it,
@@ -62,11 +72,13 @@ export function StepCard({ step }: { step: Step }) {
   const app = useApp();
   const def = draft.def;
   const i = stepIndex(def, step.id);
-  const n = def.steps.length;
   const doerMenu = useAnchor();
   const revMenu = useAnchor();
   const wayMenu = useAnchor();
   const backMenu = useAnchor();
+  const moveMenu = useAnchor();
+  const moves = reorderChoices(def, step.id);
+  const hints = instructionHints(def, step);
   const [replacing, setReplacing] = useState<string | undefined>(undefined);
 
   const ways = waysOf(def, step.id);
@@ -140,23 +152,15 @@ export function StepCard({ step }: { step: Step }) {
         <div className="se-ctools">
           <button
             type="button"
-            className="ghost-btn"
-            disabled={i === 0}
-            aria-label={t('bs.editor.card.earlier')}
-            title={t('bs.editor.card.earlier')}
-            onClick={() => draft.mutate((d) => moveStep(d, step.id, -1))}
+            className="ghost-btn se-movebtn"
+            disabled={!moves.length}
+            aria-haspopup="menu"
+            aria-expanded={moveMenu.open}
+            title={moves.length ? t('bs.editor.card.move_label') : t('bs.editor.card.move_only')}
+            onClick={(e) => moveMenu.toggle(e.currentTarget)}
           >
-            <Glyph name="left" />
-          </button>
-          <button
-            type="button"
-            className="ghost-btn"
-            disabled={i === n - 1}
-            aria-label={t('bs.editor.card.later')}
-            title={t('bs.editor.card.later')}
-            onClick={() => draft.mutate((d) => moveStep(d, step.id, 1))}
-          >
-            <Glyph name="right" />
+            <Glyph name="move" />
+            {t('bs.editor.card.move')}
           </button>
           <button
             type="button"
@@ -168,6 +172,25 @@ export function StepCard({ step }: { step: Step }) {
             <Glyph name="trash" />
           </button>
         </div>
+        <EdPop
+          anchor={moveMenu.anchor}
+          open={moveMenu.open}
+          onClose={moveMenu.close}
+          label={t('bs.editor.card.move_label')}
+          alignRight
+          estimate={130}
+        >
+          <MenuLabel>{t('bs.editor.card.move_label')}</MenuLabel>
+          {moves.map(({ dir, text }) => (
+            <MenuItem
+              key={dir}
+              className="se-mi"
+              onPick={() => draft.mutate((d) => moveStep(d, step.id, dir))}
+            >
+              {text}
+            </MenuItem>
+          ))}
+        </EdPop>
       </div>
 
       <p className="se-sent se-who">
@@ -409,6 +432,9 @@ export function StepCard({ step }: { step: Step }) {
             ) : null}
           </div>
         )}
+        {hints.map((h) => (
+          <Conseq key={plain(h)} s={h} />
+        ))}
       </Section>
 
       {mine.length ? (

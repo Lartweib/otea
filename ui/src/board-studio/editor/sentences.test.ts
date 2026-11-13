@@ -4,6 +4,8 @@ import { creatures } from '../../../../src/core/board/testing.ts';
 import { setLanguage } from '../../i18n/i18n.ts';
 import {
   handConseq,
+  instructionHints,
+  type Name,
   plain,
   roundsSentence,
   type Sentence,
@@ -63,7 +65,24 @@ describe('summary', () => {
       names: ['Título', 'Descripción', 'Bioma'],
       join: 'and',
     });
-    expect(first?.params?.step).toEqual({ name: 'Concepto' });
+    expect(first?.params?.step).toEqual({
+      name: 'Concepto',
+      at: { kind: 'step', id: 'sconcept' },
+    });
+  });
+
+  it('points each step and Hecho at its card, so the summary can select them', () => {
+    setLanguage('es');
+    const named = summary(creatures()).flatMap((s) =>
+      Object.values(s.params ?? {}).filter((v): v is Name => typeof v === 'object' && 'at' in v),
+    );
+    expect(named.map(({ name, at }) => [name, at])).toEqual([
+      ['Concepto', { kind: 'step', id: 'sconcept' }],
+      ['Concepto', { kind: 'step', id: 'sconcept' }],
+      ['Animar', { kind: 'step', id: 'sanimate' }],
+      ['Pulir', { kind: 'step', id: 'spolish' }],
+      ['Hecho', { kind: 'done' }],
+    ]);
   });
 });
 
@@ -175,5 +194,32 @@ describe('roundsSentence', () => {
     expect(plain(roundsSentence(def, step(def, 'sanimate')))).toContain(
       'si vuelve a Concepto por tercera vez, es la ronda 3.',
     );
+  });
+});
+
+describe('instructionHints, on the card', () => {
+  it('says each hint of the step in the language on screen, as a warning', () => {
+    setLanguage('es');
+    const def = { ...creatures(), about: '' };
+    const concept = step(def, 'sconcept');
+    concept.instructions = { take: '', before: '', review: '' };
+    const animate = step(def, 'sanimate');
+    animate.instructions.before = 'Deja los @[ecode].';
+    expect(instructionHints(def, concept).map(plain)).toEqual([
+      'Nada le dice al agente qué hacer en este paso: escribe al menos una instrucción.',
+    ]);
+    expect(instructionHints(def, animate).map((s) => [plain(s), s.level])).toEqual([
+      [
+        'Las instrucciones piden Cambios de código, pero la entrega de este paso no lo exige.',
+        'warn',
+      ],
+    ]);
+    animate.hand = animate.hand.filter(({ ref }) => ref === 'fsteps');
+    animate.instructions.before = 'Attach the test results.';
+    setLanguage('en');
+    expect(instructionHints(def, animate).map(plain)).toEqual([
+      'The instructions ask to attach something, but this step’s handoff requires no evidence.',
+    ]);
+    expect(instructionHints(def, step(def, 'spolish'))).toEqual([]);
   });
 });
