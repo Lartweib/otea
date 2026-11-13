@@ -86,18 +86,21 @@ jobs:
           npx electron-builder "${args[@]}"
           ls -la release
 
-      # The packaged app, unpacked: its otea command and the app opening a project with it.
+      # The packaged app, unpacked: its otea command and the app opening a project with it. Each is
+      # tried from a copy outside the checkout, where no node_modules of the checkout can stand in
+      # for what the app carries.
       - name: Try the app (Linux)
         if: runner.os == 'Linux'
         working-directory: desktop/release
         run: |
+          cp -R linux-unpacked "$RUNNER_TEMP/otea-app"
           project="$(mktemp -d)"
           export OTEA_HOME="$(mktemp -d)"
-          otea="$PWD/linux-unpacked/resources/bin/otea"
+          otea="$RUNNER_TEMP/otea-app/resources/bin/otea"
           (cd "$project" && "$otea" init)
           (cd "$project" && "$otea" projects current --json)
-          OTEA_DESKTOP_SMOKE=1 xvfb-run -a ./linux-unpacked/otea-desktop --no-sandbox --project "$project"
-          test -f latest-linux.yml && cat latest-linux.yml
+          OTEA_DESKTOP_SMOKE=1 xvfb-run -a "$RUNNER_TEMP/otea-app/otea-desktop" --no-sandbox --project "$project"
+          cat latest-linux.yml
 
       - name: Try the deb (Linux)
         if: runner.os == 'Linux'
@@ -115,38 +118,39 @@ jobs:
         if: runner.os == 'macOS'
         working-directory: desktop/release
         run: |
-          app="$(ls -d mac*/Otea.app | head -1)"
+          # The app as the dmg gives it.
+          volume="$(hdiutil attach -nobrowse Otea-*-mac.dmg | tail -1 | cut -f3)"
+          cp -R "$volume/Otea.app" "$RUNNER_TEMP/Otea.app"
+          hdiutil detach "$volume"
+          app="$RUNNER_TEMP/Otea.app"
+          codesign -dv "$app" 2>&1 | head -5 || true
           project="$(mktemp -d)"
           export OTEA_HOME="$(mktemp -d)"
           # Through a symlink, as /usr/local/bin/otea runs it.
           bin="$(mktemp -d)"
-          ln -s "$PWD/$app/Contents/Resources/bin/otea" "$bin/otea"
+          ln -s "$app/Contents/Resources/bin/otea" "$bin/otea"
           (cd "$project" && "$bin/otea" init && "$bin/otea" projects current --json)
           OTEA_DESKTOP_SMOKE=1 "$app/Contents/MacOS/Otea" --project "$project"
-          codesign -dv "$app" 2>&1 | head -5 || true
-          volume="$(hdiutil attach -nobrowse Otea-*-mac.dmg | tail -1 | cut -f3)"
-          test -x "$volume/Otea.app/Contents/Resources/bin/otea"
-          hdiutil detach "$volume"
-          test -f latest-mac.yml && cat latest-mac.yml
+          cat latest-mac.yml
 
       - name: Try the app (Windows)
         if: runner.os == 'Windows'
         working-directory: desktop/release
         shell: pwsh
         run: |
+          $copy = Join-Path $env:RUNNER_TEMP 'otea-app'
+          Copy-Item -Recurse win-unpacked $copy
           $project = New-Item -ItemType Directory (Join-Path $env:RUNNER_TEMP 'project')
           $env:OTEA_HOME = (New-Item -ItemType Directory (Join-Path $env:RUNNER_TEMP 'otea-home')).FullName
-          $otea = Join-Path $PWD 'win-unpacked\resources\bin\otea.cmd'
           Push-Location $project
-          & $otea init
+          & (Join-Path $copy 'resources\bin\otea.cmd') init
           if ($LASTEXITCODE -ne 0) { exit 1 }
           # Git Bash runs bin/otea, the same script as on macOS and Linux.
-          $script = (Join-Path $env:GITHUB_WORKSPACE 'desktop\release\win-unpacked\resources\bin\otea') -replace '\\', '/'
-          & sh $script projects current --json
+          & sh ((Join-Path $copy 'resources\bin\otea') -replace '\\', '/') projects current --json
           if ($LASTEXITCODE -ne 0) { exit 1 }
           Pop-Location
           $env:OTEA_DESKTOP_SMOKE = '1'
-          $app = Start-Process -FilePath '.\win-unpacked\Otea.exe' -ArgumentList '--project', "`"$project`"" -Wait -PassThru
+          $app = Start-Process -FilePath (Join-Path $copy 'Otea.exe') -ArgumentList '--project', "`"$project`"" -Wait -PassThru
           if ($app.ExitCode -ne 0) { throw "the app failed to open the project ($($app.ExitCode))" }
           Get-Content latest.yml
 

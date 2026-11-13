@@ -15,6 +15,10 @@ extraResources:
   # The CLI the app carries (scripts/stage-cli.mjs) and the otea commands that run it.
   - from: stage/otea
     to: otea
+  # electron-builder leaves out the node_modules at the root of what it copies, so the CLI's
+  # dependencies are copied on their own.
+  - from: stage/otea/node_modules
+    to: otea/node_modules
   - from: bin
     to: bin
 publish:
