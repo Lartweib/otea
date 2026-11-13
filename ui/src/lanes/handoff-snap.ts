@@ -1,5 +1,5 @@
 import { nodeOff } from './dom.ts';
-import { type Lane, type LaneParams, laneParams, type RowGeom } from './geometry.ts';
+import { type Lane, type LaneParams, laneParams, type RowGeom, trunkAt } from './geometry.ts';
 import type { Look } from './looks.ts';
 
 // The handoff's snapshots (SPEC §5.1, mock:2028-2050): every block of a list where it stands, the
@@ -38,15 +38,16 @@ export function liteState(universe: Universe | undefined): LiteState {
 }
 
 // Where a row that left because its item closed goes, or where one that came back comes from: the
-// trunk, at the fuse (mock:2046-2050). Null when the item is not closed.
+// trunk, at its point nearest the row (the fuse, or a pinch in a grouped list; mock:2046-2050). Null when the item is not closed.
 export function virtSink(Sx: Snap, k: string, other: BlockSnap): VirtualSnap | null {
   const st = Sx.st[k];
   if (!st?.closed) return null;
+  const ny = trunkAt(Sx.ov, other.ny ?? other.top + (other.off ?? 0));
   return {
     ...other,
     virtual: true,
-    top: Sx.ov.fuseAt - (other.off ?? 0),
-    ny: Sx.ov.fuseAt,
+    top: ny - (other.off ?? 0),
+    ny,
     lane: 'none',
     look: st.look,
     sec: '__trunk',

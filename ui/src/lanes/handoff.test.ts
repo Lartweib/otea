@@ -33,6 +33,20 @@ describe('the virtual ends of a list that sinks', () => {
     });
   });
 
+  it('sends it into the nearest pinch of a grouped list, not the far fuse', () => {
+    const rows = [
+      { key: 'X', top: 40, height: 50, off: 19.5, lane: 'ag' as const, look: 'queued' as const },
+      { key: 'Y', top: 100, height: 50, off: 19.5, lane: 'none' as const, look: 'done' as const },
+      { key: 'Z', top: 200, height: 50, off: 19.5, lane: 'ag' as const, look: 'queued' as const },
+    ];
+    const B: Snap = {
+      m: new Map(),
+      ov: laneParams(rows, 400, 600),
+      st: { A: { h: 'none', look: 'done', closed: true } },
+    };
+    expect(virtSink(B, 'A', block())).toMatchObject({ top: 100, ny: 119.5 });
+  });
+
   it('strikes a discarded one through', () => {
     const B = snapOf({ A: { h: 'none', look: 'dropped', closed: true } });
     expect(virtSink(B, 'A', block())?.dropped).toBe(true);
