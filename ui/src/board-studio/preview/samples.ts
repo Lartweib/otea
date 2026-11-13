@@ -40,7 +40,22 @@ export function itemPrefix(item: string): string {
   return letters.slice(0, 3).toUpperCase() || 'ITM';
 }
 
-export const sampleId = (def: BoardDefinition, n = 12): string => `${itemPrefix(def.item)}-${n}`;
+// The prefix the items of each board that already has a collection go by, by board name: a board
+// made before ids came from the item's name (ERRORES), or one whose three letters were taken
+// (BUG2), keeps its own. The editor sets it from the project's collections.
+let known: ReadonlyMap<string, string> = new Map();
+
+export function setBoardPrefixes(prefixes: ReadonlyMap<string, string>): void {
+  known = prefixes;
+}
+
+// The id prefix the preview shows for a board's items: the one its items already go by, else the
+// one a new board gets.
+export function boardPrefix(def: Pick<BoardDefinition, 'name' | 'item'>): string {
+  return known.get(def.name) ?? itemPrefix(def.item);
+}
+
+export const sampleId = (def: BoardDefinition, n = 12): string => `${boardPrefix(def)}-${n}`;
 
 // The k-th sample title: the board's own samples in turn, numbered once they run out.
 export function sampleTitle(def: BoardDefinition, k = 0): string {
@@ -61,7 +76,7 @@ export function sampleItems(def: BoardDefinition, offline: readonly string[] = [
   const add = (item: Omit<SampleItem, 'id' | 'title' | 'closed'>, closed = false) => {
     const n = out.length;
     out.push({
-      id: `${itemPrefix(def.item)}-${n + 1}`,
+      id: `${boardPrefix(def)}-${n + 1}`,
       title: sampleTitle(def, n),
       closed,
       ...item,

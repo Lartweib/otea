@@ -31,7 +31,7 @@ import {
   takenBackText,
 } from '../../../../src/core/board/next.ts';
 import { sampleBlocker, sampleParts } from './practice.ts';
-import { itemPrefix, type SampleFacts, sampleFacts, sampleId } from './samples.ts';
+import { boardPrefix, type SampleFacts, sampleFacts, sampleId } from './samples.ts';
 
 // Lo que lee el agente: `next`'s answer for a sample item at the step and phase on screen, from the
 // same writer the server uses (core/board/next.ts), and below it the exact answers to what an agent
@@ -289,7 +289,7 @@ export function agentView(
   const first = def.steps[0];
   const second = def.steps[1];
   if (first && second && first.id === step.id && first.skipWhenReady && first.reviewer === 'none') {
-    const prefix = itemPrefix(def.item);
+    const prefix = boardPrefix(def);
     const created = `otea create --collection "${def.name}" --title "…"`;
     const lacking = handoffCheck(def, first.id, { fields: {}, evidence: [] }).missing.filter(
       ({ ref }) => ref !== NOTE_REF,
@@ -330,7 +330,7 @@ export function agentView(
     );
   // A parent whose parts live on another board: something else linked as its part.
   if (def.split && def.split.board !== SAME && def.split.always && child) {
-    const other = `${itemPrefix(def.item) === 'TAR' ? 'BUG' : 'TAR'}-3`;
+    const other = `${boardPrefix(def) === 'TAR' ? 'BUG' : 'TAR'}-3`;
     answers.push(
       one(
         'ifOtherPart',

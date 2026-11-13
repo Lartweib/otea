@@ -441,7 +441,7 @@ export const studioPreview = {
   'bs.preview.publish.pair.undone':
     'The versions before are back; your changes stay in the drafts.',
 
-  'bs.preview.discard.label': 'Discard',
+  'bs.preview.discard.label': 'Discard changes',
   'bs.preview.discard.title': 'Discard the draft?',
   'bs.preview.discard.live':
     'You go back to v{v}, the version agents work with. Your changes are lost.',

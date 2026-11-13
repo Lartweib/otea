@@ -34,7 +34,7 @@ import { PartValue } from './PartValue.tsx';
 import { partsLabel, sampleBlocker, sampleParts } from './practice.ts';
 import { definitionRoute } from './route.ts';
 import { sampleRowBlock } from './SampleRow.tsx';
-import { itemPrefix, type SampleItem, sampleId, sampleTitle } from './samples.ts';
+import { boardPrefix, type SampleItem, sampleId, sampleTitle } from './samples.ts';
 import { arrangeToast } from './toasts.tsx';
 
 // Lo que ves: the item page at the selected step, in the item page's own grammar (its crumb,
@@ -204,7 +204,7 @@ export function ItemPreview({
           {tx('bs.preview.partOf', {
             item: (
               <span className="lnk">
-                {`${itemPrefix(context.parent.def.item)}-3 · ${sampleTitle(context.parent.def)}`}
+                {`${boardPrefix(context.parent.def)}-3 · ${sampleTitle(context.parent.def)}`}
               </span>
             ),
             board: <span className="pvtag">{context.parent.def.name}</span>,

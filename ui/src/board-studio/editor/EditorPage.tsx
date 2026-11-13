@@ -12,6 +12,7 @@ import { type BoardSummary, fetchBoards } from '../api.ts';
 import { madeWithOf, type PairIds, type PairRole } from '../pair.ts';
 import { DiscardDialog, PracticeDialog, PublishDialog } from '../preview/dialogs.tsx';
 import { PreviewPane } from '../preview/PreviewPane.tsx';
+import { setBoardPrefixes } from '../preview/samples.ts';
 import { type DraftOptions, type ReadyDraft, useBoardDraft } from '../use-board-draft.ts';
 import { Bar } from './Bar.tsx';
 import { Card } from './Card.tsx';
@@ -96,6 +97,18 @@ function useProject(board: string) {
     );
     return () => abort.abort();
   }, []);
+  // The previews show each board's items by the prefix they already go by (ERRORES-12, not
+  // BUG-12): a published board's collection keeps the prefix it was made with.
+  const { collectionOf } = app;
+  useMemo(() => {
+    const prefixes = new Map<string, string>();
+    for (const b of boards ?? []) {
+      const prefix = b.collection ? collectionOf(b.collection)?.prefix : undefined;
+      if (!prefix) continue;
+      for (const name of [b.name, b.definition.name]) prefixes.set(name, prefix);
+    }
+    setBoardPrefixes(prefixes);
+  }, [boards, collectionOf]);
   return { agents, boards, guard };
 }
 

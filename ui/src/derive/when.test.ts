@@ -11,11 +11,11 @@ const held = (minutes: number) =>
 describe('when, as a row says it', () => {
   it('says the time left on the lease of an agent at work', () => {
     setLanguage('es');
-    expect(whenText(held(102), NOW)).toEqual({ text: 'quedan 1 h 42', warn: false });
+    expect(whenText(held(102), NOW)).toEqual({ text: 'quedan 1 h 42 min', warn: false });
     expect(whenText(held(125), NOW)).toEqual({ text: 'quedan 2 h', warn: false });
     expect(whenText(held(9), NOW)).toEqual({ text: 'quedan 9 min', warn: false });
     setLanguage('en');
-    expect(whenText(held(102), NOW)).toEqual({ text: '1 h 42 left', warn: false });
+    expect(whenText(held(102), NOW)).toEqual({ text: '1 h 42 min left', warn: false });
   });
 
   it('says a lease ran out, in warn', () => {

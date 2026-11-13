@@ -39,7 +39,7 @@ import {
   type Target,
   TITLE,
 } from '../../../../src/core/board/model.ts';
-import { itemPrefix, sampleRaw, sampleTitle } from './samples.ts';
+import { boardPrefix, sampleRaw, sampleTitle } from './samples.ts';
 
 // Probar: practice items through a copy of the draft, over the same step engine agents meet.
 // Nothing here reaches the server; the dialog draws the state and words its log. A board that
@@ -157,7 +157,7 @@ const clock = (tick: number) => new Date(BASE + tick * 60_000).toISOString();
 // (one at its last step, one at its first), as the previews show them.
 export function sampleParts(def: BoardDefinition, child?: BoardDefinition): Linked[] {
   const on = child ?? def;
-  const prefix = itemPrefix(on.item);
+  const prefix = boardPrefix(on);
   const last = on.steps.at(-1)?.name ?? '—';
   const first = on.steps[0]?.name ?? '—';
   const board = child ? child.name : on.name;
@@ -179,7 +179,7 @@ export function partsLabel(def: BoardDefinition, child?: BoardDefinition): strin
 export function sampleBlocker(def: BoardDefinition, other?: BoardDefinition): Linked {
   const on = other ?? def;
   return {
-    id: `${itemPrefix(on.item)}-9`,
+    id: `${boardPrefix(on)}-9`,
     board: on.name,
     step: on.steps.at(-1)?.name ?? '—',
     closed: false,
@@ -192,7 +192,7 @@ function created(
 ): PracticeState | null {
   const first = def.steps[0];
   if (!first) return null;
-  const id = `${itemPrefix(def.item)}-${options.n ?? 1}`;
+  const id = `${boardPrefix(def)}-${options.n ?? 1}`;
   const title = options.title ?? sampleTitle(def);
   const fields: Record<string, unknown> = { [TITLE]: title };
   for (const { ref } of def.form) {

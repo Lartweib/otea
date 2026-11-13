@@ -4,7 +4,7 @@ import { NodeGlyph } from '../../lanes/NodeGlyph.tsx';
 import { Route } from '../../views/detail/Route.tsx';
 import type { ReadyDraft } from '../use-board-draft.ts';
 import { definitionRoute } from './route.ts';
-import { itemPrefix, sampleTitle } from './samples.ts';
+import { boardPrefix, sampleTitle } from './samples.ts';
 
 // Lo que ves for the stops that are not steps: the creation form (Crear · Item) and Hecho.
 
@@ -100,7 +100,7 @@ export function DonePreview({ draft }: { draft: ReadyDraft }) {
     <article className="bsp-ip">
       <div className="crumb bsp-crumb">
         <NodeGlyph look="done" size={14} />
-        <span className="id">{itemPrefix(def.item)}-9</span>
+        <span className="id">{boardPrefix(def)}-9</span>
         <span aria-hidden="true">·</span>
         <span>{def.item}</span>
         <span className="turn other">{t('bs.done')}</span>

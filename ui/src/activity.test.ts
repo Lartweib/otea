@@ -179,7 +179,7 @@ describe('lease dial', () => {
   it('says a lease length the way a row says a span', () => {
     expect(spanOf(15 * 60_000)).toBe('15 min');
     expect(spanOf(2 * 3_600_000)).toBe('2 h');
-    expect(spanOf(102 * 60_000)).toBe('1 h 42');
+    expect(spanOf(102 * 60_000)).toBe('1 h 42 min');
     expect(spanOf(45_000)).toBe('1 min');
   });
 
@@ -219,7 +219,7 @@ describe('leaseRows', () => {
     ];
     const [kiln, scout, mender] = leaseRows(items, [], T);
     if (!kiln || !scout || !mender) throw new Error('three rows');
-    expect(leaseLeft(mender, T)).toEqual({ main: '1 h 42', sub: 'left', warn: false });
+    expect(leaseLeft(mender, T)).toEqual({ main: '1 h 42 min', sub: 'left', warn: false });
     expect(leaseLeft(scout, T)).toEqual({ main: '12 min', sub: 'soon', warn: false });
     expect(leaseLeft(kiln, T)).toEqual({ main: 'expired', sub: 'unrenewed', warn: true });
   });

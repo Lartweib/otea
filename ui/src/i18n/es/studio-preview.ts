@@ -442,7 +442,7 @@ export const studioPreview = {
   'bs.preview.publish.pair.undone':
     'Vuelven las versiones de antes; tus cambios siguen en los borradores.',
 
-  'bs.preview.discard.label': 'Descartar',
+  'bs.preview.discard.label': 'Descartar cambios',
   'bs.preview.discard.title': '¿Descartar el borrador?',
   'bs.preview.discard.live':
     'Vuelves a v{v}, la versión con la que trabajan los agentes. Se pierden tus cambios.',
