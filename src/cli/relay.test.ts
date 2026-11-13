@@ -1,3 +1,5 @@
+import { writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { type Cli, cliAt, presetCollection, tempGitRepo } from './testing.ts';
 
@@ -197,6 +199,60 @@ describe('relay of a decision on the agent’s own step', () => {
     const { code } = await otea('relay', 'TASKS-1', 'todo', '--quote', 'again', '--reason', 'R');
 
     expect(code).toBe(0);
+  });
+});
+
+describe('relay by an agent that worked the step but did not hand it off', () => {
+  let repo: ReturnType<typeof tempGitRepo>;
+  let otea: Cli;
+
+  const relay = (...extra: string[]) =>
+    otea('relay', 'TASKS-1', 'todo', '--quote', 'redo', '--reason', 'Redo', ...extra);
+
+  beforeEach(async () => {
+    repo = tempGitRepo();
+    otea = cliAt(repo.dir, { OTEA_AGENT: 'claude' });
+    await otea('init');
+    presetCollection(repo.dir, 'tasks');
+    await otea('create', '--collection', 'tasks', '--title', 'Mine', '--description', 'D');
+  });
+
+  afterEach(() => repo.remove());
+
+  it('refuses it when the agent claimed the item in this round', async () => {
+    await otea('claim', 'TASKS-1');
+    await otea('release', 'TASKS-1');
+    await otea('handoff', 'TASKS-1', '--as', 'codex');
+
+    const { code, err } = await relay();
+
+    expect(code).toBe(7);
+    expect(err).toContain('Not relayed: claude did Hacerlo on TASKS-1 in this round');
+  });
+
+  it('refuses it when the agent attached evidence in this round', async () => {
+    writeFileSync(join(repo.dir, 'notes.txt'), 'what I found');
+    expect((await otea('attach', 'TASKS-1', 'notes.txt')).code).toBe(0);
+    await otea('handoff', 'TASKS-1', '--as', 'codex');
+
+    expect((await relay()).code).toBe(7);
+  });
+
+  it('refuses it when the agent changed the item’s fields in this round', async () => {
+    await otea('update', 'TASKS-1', '--description', 'Sharper');
+    await otea('handoff', 'TASKS-1', '--as', 'codex');
+
+    expect((await relay()).code).toBe(7);
+  });
+
+  it('lets it relay once the work it did belongs to an earlier round', async () => {
+    await otea('claim', 'TASKS-1');
+    await otea('release', 'TASKS-1');
+    await otea('handoff', 'TASKS-1', '--as', 'codex');
+    await relay('--as', 'gemini');
+    await otea('handoff', 'TASKS-1', '--note', 'Redone', '--as', 'codex');
+
+    expect((await relay()).code).toBe(0);
   });
 });
 

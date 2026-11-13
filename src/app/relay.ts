@@ -74,9 +74,20 @@ function movedBy(event: EventRecord, agent: string): boolean {
   return type === 'transitioned' && actor.kind === 'agent' && actor.name === agent;
 }
 
-// The step `agent` did itself in the round the item is in: on a board, a move it made out of the
-// doing of the item's step since that step's current round began (its handoff); off a board, the
-// state it left with the move that brought the item where it is.
+// What an agent does while doing a step, short of handing it off: taking the item, attaching its
+// evidence, changing its fields.
+const STEP_WORK = new Set(['claimed', 'evidence_added', 'updated']);
+
+function workedBy(event: EventRecord, agent: string): boolean {
+  const { type, actor } = event;
+  return STEP_WORK.has(type) && actor.kind === 'agent' && actor.name === agent;
+}
+
+// The step `agent` did itself in the round the item is in. On a board: since that step's current
+// round began, it handed the item off out of the step's doing, or, while the item stood in that
+// doing, claimed it, attached evidence to it or changed its fields (the step's work, even when
+// another agent handed it off). Work of an earlier round, or done in another step, does not count.
+// Off a board: the state it left with the move that brought the item where it is.
 function ownStep(ctx: Context, item: ItemRecord, agent: string): string | undefined {
   const events = selectEvents(ctx.db, item.id);
   const board = liveBoardOf(ctx, item.collection);
@@ -88,12 +99,20 @@ function ownStep(ctx: Context, item: ItemRecord, agent: string): string | undefi
   if (isClosed(position)) return undefined;
   const since = itemOnBoard(ctx, item, board.def).rounds.startedAt[position.step];
   if (since === undefined) return undefined;
-  const handedOff = events.some((event) => {
-    if (!movedBy(event, agent) || event.at < since) return false;
-    const from = positionOf(String(event.data.from));
-    return !isClosed(from) && from.step === position.step && from.phase === 'doing';
+  const doing = (state: unknown) => {
+    const at = positionOf(String(state));
+    return !isClosed(at) && at.step === position.step && at.phase === 'doing';
+  };
+  let state: unknown;
+  const did = events.some((event) => {
+    const before = state;
+    if (event.type === 'created') state = event.data.state;
+    if (event.type === 'transitioned') state = event.data.to;
+    if (event.at < since) return false;
+    if (movedBy(event, agent)) return doing(event.data.from);
+    return workedBy(event, agent) && doing(before);
   });
-  return handedOff ? (stepById(board.def, position.step)?.name ?? position.step) : undefined;
+  return did ? (stepById(board.def, position.step)?.name ?? position.step) : undefined;
 }
 
 // An agent relays the human's decisions, never one on its own work: the human makes that one in
