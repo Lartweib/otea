@@ -36,7 +36,9 @@ const px = (body: string, prop: string) =>
 
 describe('one centring for every reading column', () => {
   it('centres the panel and the board while nothing is open', () => {
-    expect(rule(frame, '.view:not(.narrow) :is(.panel, .board)')).toMatch(/margin-inline: auto;/);
+    expect(rule(frame, '.view:not(.narrow) :is(.panel, .board, .sh, .se, .tri)')).toMatch(
+      /margin-inline: auto;/,
+    );
   });
 
   it('is not a second rule of the panel’s own', () => {
@@ -52,10 +54,9 @@ describe('a board on a wide screen', () => {
     expect(rule(board, '.board')).not.toMatch(/max-width/);
   });
 
-  it('reads at the list’s width in Lista: the tools end where the list ends', () => {
-    const lista = px(rule(board, '.board[data-mode="lista"]'), '--board-w');
-    const pad = 2 * 40;
-    expect(lista - pad).toBe(px(rule(board, '.lista .lanes'), 'max-width'));
+  it('reads at the list’s width in Lista: the list fills the column, so it ends where the tools end', () => {
+    expect(px(rule(board, '.board[data-mode="lista"]'), '--board-w')).toBe(1120);
+    expect(board).not.toMatch(/\.lista \.lanes\s*\{[^}]*max-width/);
   });
 
   it('widens for Pasos and more for Tabla, to a bound', () => {
@@ -73,5 +74,54 @@ describe('a board on a wide screen', () => {
   it('draws the tools’ rule as its own piece, so it can stretch with the column', () => {
     expect(rule(board, '.tools')).not.toMatch(/border-bottom/);
     expect(rule(board, '.tools .trule')).toMatch(/background: var\(--rule\);/);
+  });
+});
+
+// One page axis (sweep #12-#15): every view's column stands 40px in from the main pane, and its
+// reading text (heads, section names, row titles, column heads, the way back) 72px further in, past
+// the lanes' gutter. On a wide screen every view's column sits in the middle of the pane.
+describe('one page axis for every view', () => {
+  const lanes = read('./lanes.css');
+  const table = read('./table.css');
+  const pasos = read('./pasos.css');
+  const triage = read('./triage.css');
+  const home = read('./studio-home.css');
+  const editor = read('./studio-editor.css');
+  const axis = px(rule(lanes, '.lanes'), '--pl');
+  // Every body of the rules whose whole selector is `selector`, joined.
+  const rules = (css: string, selector: string) =>
+    css
+      .split(`${selector} {`)
+      .slice(1)
+      .map((s) => s.slice(0, s.indexOf('}')))
+      .join('\n');
+
+  it('puts the lanes’ text 72px in', () => {
+    expect(axis).toBe(72);
+  });
+
+  it('heads Tabla’s groups and columns on the same axis as Lista’s', () => {
+    expect(rule(table, '.tabla .lanes')).not.toMatch(/--pl/);
+    expect(px(rule(table, '.thead'), 'padding-left')).toBe(axis);
+  });
+
+  it('starts Pasos’s columns on the axis, under the board’s head', () => {
+    expect(rule(pasos, '.cols')).toMatch(new RegExp(`padding: 22px 0 30px ${axis}px;`));
+  });
+
+  it('starts Studio’s home and editor on the axis', () => {
+    expect(rule(home, '.sh')).toMatch(new RegExp(`padding: 34px 40px 96px ${40 + axis}px;`));
+    expect(rule(editor, '.se')).toMatch(new RegExp(`padding: 0 40px 110px ${40 + axis}px;`));
+  });
+
+  it('puts Triaje’s way back on the axis', () => {
+    expect(rules(triage, '.tri .thd .back')).toMatch(new RegExp(`margin-left: ${axis - 9}px;`));
+  });
+
+  it('centres Studio and Triaje on a wide screen like the boards', () => {
+    expect(rule(frame, '.view:not(.narrow) :is(.panel, .board, .sh, .se, .tri)')).toMatch(
+      /margin-inline: auto;/,
+    );
+    expect(px(rule(triage, '.tri'), 'max-width')).toBeGreaterThan(0);
   });
 });

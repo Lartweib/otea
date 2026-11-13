@@ -7,7 +7,6 @@
   padding-bottom: 8px;
 }
 .tabla .lanes {
-  --pl: 60px;
   padding-bottom: 30px;
   container: none;
 }
@@ -19,7 +18,7 @@
   grid-template-columns: var(--cols);
   align-items: stretch;
   height: 38px;
-  padding-left: 60px;
+  padding-left: 72px;
   background: var(--ground);
   border-bottom: 1px solid var(--rule);
   font: 400 11.5px / 1 var(--mono);

@@ -4,6 +4,8 @@
 .tri {
   container: tri / inline-size;
   padding: 34px 40px 60px;
+  /* a column like a board's, centred on a wide screen (frame.css) */
+  max-width: 1760px;
 }
 /* The way out on the left; the title and where the pass stands over the middle, over the card. */
 .tri .thd {
@@ -26,7 +28,8 @@
   color: var(--ink-2);
   padding: 7px 9px;
   border-radius: 6px;
-  margin-left: -9px;
+  /* its text on the page axis (frame.css) */
+  margin-left: 63px;
   transition:
     background-color 240ms var(--o-drift),
     color var(--t-hover) var(--ease);
@@ -576,6 +579,9 @@
   .tri .ttitle {
     justify-items: start;
     text-align: left;
+  }
+  .tri .thd .back {
+    margin-left: -9px;
   }
   .tri .tbody {
     margin-top: 22px;

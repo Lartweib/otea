@@ -213,6 +213,7 @@
   .cols {
     grid-auto-columns: 232px;
     margin-right: calc(-1 * max(16px, env(safe-area-inset-right, 0px)));
+    padding-left: 0;
     padding-right: 16px;
   }
   .sheet {

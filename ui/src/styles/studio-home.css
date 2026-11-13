@@ -3,8 +3,9 @@
 
 /* ───────── the home ───────── */
 .sh {
-  padding: 34px 40px 96px;
-  max-width: 1180px;
+  /* on the page axis (frame.css): 72px past the column's edge, as wide as before */
+  padding: 34px 40px 96px 112px;
+  max-width: 1252px;
 }
 .sh .vhead .kicker {
   margin-bottom: 14px;

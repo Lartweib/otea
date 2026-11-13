@@ -2,8 +2,9 @@
    route laid flat on the two lanes, the card of the selected stop and the preview beside it. */
 
 .se {
-  padding: 0 40px 110px;
-  max-width: 1640px;
+  /* on the page axis (frame.css): 72px past the column's edge, as wide as before */
+  padding: 0 40px 110px 112px;
+  max-width: 1712px;
 }
 .se-msg {
   padding: 40px;
