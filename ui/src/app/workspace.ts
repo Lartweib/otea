@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from 'react';
 import type { IntakeParent } from '../components/NewItemForm.tsx';
+import { hashOf, type Route } from '../selection.ts';
 
 // How the workspace is laid out now (SPEC §6.4): the rail folded, the list narrowed beside an open
 // item or the intake, Ampliar, what the view lists (the detail's widths read it), the intake, the
@@ -64,6 +65,13 @@ export function makeWorkspace(): WorkspaceStore {
 }
 
 export const workspace: WorkspaceStore = makeWorkspace();
+
+// The new item page belongs to the place it was opened on, as the phone's capture sheet does: the
+// route moving anywhere else (a link, the back button, a typed hash) puts it away. Left open, on the
+// phone it kept the screen, and the bottom bar hidden, after you had gone.
+export function followRoute(store: WorkspaceStore, from: Route, to: Route): void {
+  if (hashOf(from) !== hashOf(to)) store.set({ intake: null });
+}
 
 export function useWorkspace(): Workspace {
   return useSyncExternalStore(workspace.subscribe, workspace.get, workspace.get);

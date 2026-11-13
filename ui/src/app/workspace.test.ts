@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { makeWorkspace } from './workspace.ts';
+import { followRoute, makeWorkspace } from './workspace.ts';
 
 let stored: Record<string, string>;
 
@@ -44,5 +44,26 @@ describe('the workspace', () => {
     off();
     ws.set({ narrow: false });
     expect(seen).toEqual([true]);
+  });
+});
+
+describe('the new item page follows the place (mobile analysis 2.3 #6)', () => {
+  it('goes when the route moves anywhere else, by the hash or the back button', () => {
+    const ws = makeWorkspace();
+    ws.set({ intake: { board: 'Tareas' } });
+    followRoute(ws, { view: 'board', board: 'Tareas' }, { view: 'board', board: 'Tareas' });
+    expect(ws.get().intake).toEqual({ board: 'Tareas' });
+    followRoute(ws, { view: 'board', board: 'Tareas' }, { view: 'board', board: 'Errores' });
+    expect(ws.get().intake).toBeNull();
+    ws.set({ intake: {} });
+    followRoute(ws, { view: 'toca' }, { view: 'toca', item: 'TAR-1' });
+    expect(ws.get().intake).toBeNull();
+  });
+
+  it('leaves the rest of the workspace as it was', () => {
+    const ws = makeWorkspace();
+    ws.set({ intake: {}, narrow: true, activity: true });
+    followRoute(ws, { view: 'toca' }, { view: 'triage' });
+    expect(ws.get()).toMatchObject({ intake: null, narrow: true, activity: true });
   });
 });

@@ -1,4 +1,12 @@
-import { createContext, type ReactNode, useCallback, useContext, useMemo, useRef } from 'react';
+import {
+  createContext,
+  type ReactNode,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+} from 'react';
 import type { FeedEvent } from '../activity.ts';
 import {
   linkItems,
@@ -31,7 +39,7 @@ import type {
 } from '../types.ts';
 import { useAppData } from './data.ts';
 import { Q } from './queue.ts';
-import { workspace } from './workspace.ts';
+import { followRoute, workspace } from './workspace.ts';
 
 // The app's shared state and actions (SPEC §6.3): every slice reads the data and acts through here.
 
@@ -126,6 +134,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const phone = usePhone();
   const ref = useRef({ data, route });
   ref.current = { data, route };
+
+  // The new item page belongs to where it was opened: going anywhere else puts it away.
+  const place = hashOf(route);
+  const placeAt = useRef(route);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the place is the route, by its hash
+  useEffect(() => {
+    followRoute(workspace, placeAt.current, route);
+    placeAt.current = route;
+  }, [place]);
 
   const collectionOf = useCallback(
     (name: string) => ref.current.data.collections.find((c) => c.name === name),
