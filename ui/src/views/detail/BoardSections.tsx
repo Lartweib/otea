@@ -641,7 +641,7 @@ function DropForm({
         <Button variant="quiet" onClick={onClose}>
           {t('common.cancel')}
         </Button>
-        <Button variant="quiet" className="warn" onClick={ok}>
+        <Button variant="danger" onClick={ok}>
           {t('bi.drop.ok')}
         </Button>
       </div>

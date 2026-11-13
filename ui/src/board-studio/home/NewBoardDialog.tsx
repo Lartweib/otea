@@ -34,7 +34,7 @@ export function NewBoardDialog({
   onClose: () => void;
 }) {
   return (
-    <Dialog open={open} label={t('bs.new.title')} onClose={onClose} className="wide sh-dlg">
+    <Dialog open={open} label={t('bs.new.title')} onClose={onClose} size="md" className="sh-dlg">
       <NewBoardForm key={n} start={template ?? BLANK} onClose={onClose} />
     </Dialog>
   );

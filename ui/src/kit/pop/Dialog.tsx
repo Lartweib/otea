@@ -7,16 +7,19 @@ import { layerEl } from './Pop.tsx';
 
 // A dialog (mock:3471-3495, MOTION §3.4): the scrim, then the line, then the surface riding up 6 px,
 // then its items; the close is the same gesture mirrored, the scrim leaving last. Focus goes back
-// where it was. Children mark what resolves with data-i.
+// where it was. Children mark what resolves with data-i. Every dialog sits on the same line under the
+// top bar (pops.css); size picks its width: sm 440 a question, md 640 a form, lg 860 Probar.
+export type DialogSize = 'sm' | 'md' | 'lg';
 type DialogProps = {
   open: boolean;
   label: string;
   onClose: () => void;
+  size?: DialogSize;
   className?: string;
   children: ReactNode;
 };
 
-export function Dialog({ open, label, onClose, className, children }: DialogProps) {
+export function Dialog({ open, label, onClose, size = 'sm', className, children }: DialogProps) {
   const [mounted, setMounted] = useState(open);
   const el = useRef<HTMLDivElement>(null);
   const scrim = useRef<HTMLDivElement>(null);
@@ -108,7 +111,9 @@ export function Dialog({ open, label, onClose, className, children }: DialogProp
       <div ref={scrim} className="scrim" onClick={onClose} />
       <div
         ref={el}
-        className={['pop', 'e-top', 'dialog', className].filter(Boolean).join(' ')}
+        className={['pop', 'e-top', 'dialog', size === 'sm' ? '' : `d-${size}`, className]
+          .filter(Boolean)
+          .join(' ')}
         role="dialog"
         aria-modal="true"
         aria-label={label}

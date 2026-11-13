@@ -141,6 +141,17 @@ describe('the half of the pair editor not in focus', () => {
   });
 });
 
+describe.each([
+  ['light', light],
+  ['dark', dark],
+])('the destructive button in %s', (_theme, t) => {
+  it('keeps its words at 4.5:1 or more on its warning fill', () => {
+    expect(
+      ratio(parse(t['--on-you'] as string), parse(t['--warn'] as string)),
+    ).toBeGreaterThanOrEqual(4.5);
+  });
+});
+
 describe('a disabled primary button', () => {
   const at = kit.indexOf('\n.btn.primary:disabled {');
   const body = kit.slice(kit.indexOf('{', at) + 1, kit.indexOf('}', at));

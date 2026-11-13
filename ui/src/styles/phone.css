@@ -429,9 +429,6 @@
   .prefs .seg2 {
     width: 100%;
   }
-  .dialog {
-    top: max(12vh, calc(16px + env(safe-area-inset-top, 0px)));
-  }
 
   /* Under 16 px a phone zooms the page into the field it focuses: the mock's 15 and 15.5 px fields
      (mock:491, 587, 623) write at 16 here. */

@@ -1810,21 +1810,6 @@ button.st-offscreen .icon:last-child {
 }
 
 /* ───────── the dialogs ───────── */
-.bsp-dialog.wide {
-  width: min(600px, calc(100vw - 32px));
-  margin-left: calc(min(600px, calc(100vw - 32px)) / -2);
-  top: 12vh;
-}
-.bsp-dialog.xwide {
-  width: min(860px, calc(100vw - 32px));
-  margin-left: calc(min(860px, calc(100vw - 32px)) / -2);
-  top: 6vh;
-}
-.bsp-dialog .pin {
-  max-height: 86vh;
-  overflow-y: auto;
-  scrollbar-width: thin;
-}
 .bsp-dialog .lede {
   font: 400 italic 15px / 1.45 var(--serif);
   color: var(--ink-2);
@@ -2267,10 +2252,6 @@ button.st-offscreen .icon:last-child {
   .bsp-ffield .flab {
     padding-top: 0;
     margin-bottom: 6px;
-  }
-  .bsp-dialog.wide,
-  .bsp-dialog.xwide {
-    top: 4vh;
   }
 }
 /* The row preview's lanes are laid flat, as the list draws them above its trunk. */
