@@ -256,6 +256,13 @@ otea profile                                                               # wha
 - Every `otea next` ends with `Your profile: <model> · <effort>. If you changed model or effort, update it: otea profile …`, and `--json` carries it as `profile`.
 - Every event an agent writes keeps the profile it had then (`profile` on each event in `otea events --json`, and in the web server's events; the person's events have none, and a relayed decision keeps the relaying agent's). The profile a round counts is the one on its handoff. Each change of profile is kept too, in its own append-only history.
 
+How each model performs, from those profiles: `otea stats` prints one row per model family and effort (the exact models and each board's steps under it) with its handoffs, how many came back for another round (sent back), the rounds a finished step took on average, the items done it handed off part of, the items discarded after its last handoff, and the median time from claim to handoff. A finished step counts for the profile on its last handoff; steps the person did and agents with no profile are left out. `--since 7d` (or `30d`, `12h`, `all`, the default) keeps a period and `--board <name>` one board; `--json` gives the same numbers. The web page shows them in Rendimiento (Performance), reached from the agents menu and the rail. The profiles are as the agents declare them: Otea does not check them.
+
+```sh
+otea stats --since 30d                                     # per model family and effort, last 30 days
+otea stats --board Errores --json                          # one board, as JSON
+```
+
 ### Working from an MCP client
 
 `otea mcp` serves the agent commands as tools of a [Model Context Protocol](https://modelcontextprotocol.io) server on stdin and stdout, so Claude Code and other MCP clients can work Otea without shelling out. Connect it once per project, naming the agent it acts as:

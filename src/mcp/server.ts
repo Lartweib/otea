@@ -45,6 +45,8 @@ export const AGENT_COMMANDS = [
 export const CLI_ONLY_COMMANDS = [
   'init',
   'brief',
+  // How each model performs is the person's reading, not an agent's.
+  'stats',
   'projects list',
   'projects current',
   'projects add',

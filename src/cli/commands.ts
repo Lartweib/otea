@@ -48,6 +48,7 @@ import {
   sendBackItem,
 } from '../app/next.ts';
 import { agentNotes, noteWaiting, replyNote, roundNotesOf } from '../app/notes.ts';
+import { performanceOf } from '../app/performance.ts';
 import { type Harness, seeAgent } from '../app/presence.ts';
 import {
   declareProfile,
@@ -131,6 +132,7 @@ import {
 import { boardsOf, eventData, itemCollections, itemData, readableEvent } from './names.ts';
 import { probeSignIn } from './probe.ts';
 import { readServeFile, removeServeFile, writeServeFile } from './serve-file.ts';
+import { statsText } from './stats.ts';
 
 // The text names an item's type only when its collection's preset has several.
 function typesShown(project: Project): (item: { collection: string }) => boolean {
@@ -1084,6 +1086,21 @@ const events: Command = {
   },
 };
 
+// How each model performs: per model family and effort, from the profile on each handoff.
+const stats: Command = {
+  name: 'stats',
+  summary:
+    'Print how each model performs on the boards, per model family and effort (and per exact model and step): handoffs, how many came back, rounds per finished step, items done, discards and the median time from claim to handoff; --since 7d, 30d or all (the default), --board keeps one board. Profiles are as the agents declare them',
+  args: [],
+  options: { board: {}, since: { placeholder: 'period' } },
+  execute: ({ cwd, option }) => {
+    const board = option('board');
+    const since = option('since') ?? 'all';
+    const view = withProject(cwd, (project) => performanceOf(project, { board, since }));
+    return { data: view, text: statsText(view, since) };
+  },
+};
+
 function durationFrom(name: string, value: string | undefined): number | undefined {
   if (value === undefined) return undefined;
   const duration = parseDuration(value);
@@ -1811,6 +1828,7 @@ export const COMMANDS: readonly Command[] = [
   board,
   brief,
   events,
+  stats,
   wait,
   claim,
   profileCommandSpec,
