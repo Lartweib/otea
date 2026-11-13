@@ -1,0 +1,21 @@
+#!/bin/sh
+# The otea command of the Otea desktop app (macOS, Linux, and Git Bash on Windows): runs the CLI the
+# app carries on the app's own Electron, as Node, so the machine needs no Node. It works through a
+# symlink (/usr/local/bin/otea, /usr/bin/otea): the app is found from where this file really is.
+self="$0"
+while [ -h "$self" ]; do
+  link="$(readlink "$self")"
+  case "$link" in
+    /*) self="$link" ;;
+    *) self="$(dirname "$self")/$link" ;;
+  esac
+done
+resources="$(cd "$(dirname "$self")/.." && pwd)"
+for app in "$resources/../MacOS/Otea" "$resources/../otea-desktop" "$resources/../Otea.exe"; do
+  if [ -f "$app" ]; then
+    export ELECTRON_RUN_AS_NODE=1
+    exec "$app" "$resources/otea/src/cli/main.ts" "$@"
+  fi
+done
+echo "otea: no Otea app next to $resources" >&2
+exit 1

@@ -28,8 +28,9 @@ jobs:
       - run: npm ci
       - run: npm run check
 
-  # The desktop shell is its own package. Only its types are checked here: the Electron binary is
-  # not downloaded, and its pure parts already run in the check job's tests.
+  # The desktop app is its own package. Here its types are checked and its bundle built: the
+  # Electron binary is not downloaded, and its pure parts already run in the check job's tests. The
+  # installers are built and tried by desktop.yml.
   desktop:
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -52,3 +53,4 @@ jobs:
         working-directory: .
       - run: npm ci
       - run: npm run typecheck
+      - run: npm run build

@@ -1,0 +1,218 @@
+name: Desktop
+
+# Builds the desktop installers on the three systems and tries each one on its runner: the app
+# opens a project with the CLI it carries, the installer puts `otea` on PATH and the uninstaller
+# takes it off. On a pull request that touches the app it stops there (the installers are kept as
+# the run's artifacts for a week); on a v* tag it also publishes them, with the update metadata
+# electron-updater reads, as the GitHub Release of that tag.
+on:
+  push:
+    tags: ['v*']
+  pull_request:
+    paths:
+      - 'desktop/**'
+      - '.github/workflows/desktop.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: desktop-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  package:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            desktop/package-lock.json
+
+      - name: Take the version from the tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          npm version "${GITHUB_REF_NAME#v}" --no-git-tag-version --allow-same-version
+          npm --prefix desktop version "${GITHUB_REF_NAME#v}" --no-git-tag-version --allow-same-version
+
+      - run: npm ci
+      - run: npm run build:ui
+      - run: npm ci
+        working-directory: desktop
+      - run: node build.mjs
+        working-directory: desktop
+      - run: node scripts/stage-cli.mjs
+        working-directory: desktop
+
+      # Signing is a drop-in: with these secrets set the build is signed (and on a Mac notarized
+      # and updated in place); without them it is unsigned, and a Mac build only ad-hoc signed.
+      - name: Package
+        working-directory: desktop
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+          MAC_CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
+          MAC_CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          args=(--publish never)
+          if [ "$RUNNER_OS" = macOS ]; then
+            if [ -n "$MAC_CSC_LINK" ]; then
+              export CSC_LINK="$MAC_CSC_LINK" CSC_KEY_PASSWORD="$MAC_CSC_KEY_PASSWORD"
+              args+=(-c.extraMetadata.oteaMacSigned=true)
+            else
+              export CSC_IDENTITY_AUTO_DISCOVERY=false
+              args+=(-c.mac.identity=-)
+            fi
+          fi
+          [ -n "$APPLE_ID" ] || unset APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID
+          [ -n "$WIN_CSC_LINK" ] || unset WIN_CSC_LINK WIN_CSC_KEY_PASSWORD
+          npx electron-builder "${args[@]}"
+          ls -la release
+
+      # The packaged app, unpacked: its otea command and the app opening a project with it.
+      - name: Try the app (Linux)
+        if: runner.os == 'Linux'
+        working-directory: desktop/release
+        run: |
+          project="$(mktemp -d)"
+          export OTEA_HOME="$(mktemp -d)"
+          otea="$PWD/linux-unpacked/resources/bin/otea"
+          (cd "$project" && "$otea" init)
+          (cd "$project" && "$otea" projects current --json)
+          OTEA_DESKTOP_SMOKE=1 xvfb-run -a ./linux-unpacked/otea-desktop --no-sandbox --project "$project"
+          test -f latest-linux.yml && cat latest-linux.yml
+
+      - name: Try the deb (Linux)
+        if: runner.os == 'Linux'
+        working-directory: desktop/release
+        run: |
+          sudo apt-get install -y ./Otea-*.deb
+          command -v otea
+          project="$(mktemp -d)"
+          export OTEA_HOME="$(mktemp -d)"
+          (cd "$project" && otea init && otea projects current --json)
+          sudo apt-get remove -y otea-desktop
+          if [ -e /usr/bin/otea ]; then echo "/usr/bin/otea is still there"; exit 1; fi
+
+      - name: Try the app (macOS)
+        if: runner.os == 'macOS'
+        working-directory: desktop/release
+        run: |
+          app="$(ls -d mac*/Otea.app | head -1)"
+          project="$(mktemp -d)"
+          export OTEA_HOME="$(mktemp -d)"
+          # Through a symlink, as /usr/local/bin/otea runs it.
+          bin="$(mktemp -d)"
+          ln -s "$PWD/$app/Contents/Resources/bin/otea" "$bin/otea"
+          (cd "$project" && "$bin/otea" init && "$bin/otea" projects current --json)
+          OTEA_DESKTOP_SMOKE=1 "$app/Contents/MacOS/Otea" --project "$project"
+          codesign -dv "$app" 2>&1 | head -5 || true
+          volume="$(hdiutil attach -nobrowse Otea-*-mac.dmg | tail -1 | cut -f3)"
+          test -x "$volume/Otea.app/Contents/Resources/bin/otea"
+          hdiutil detach "$volume"
+          test -f latest-mac.yml && cat latest-mac.yml
+
+      - name: Try the app (Windows)
+        if: runner.os == 'Windows'
+        working-directory: desktop/release
+        shell: pwsh
+        run: |
+          $project = New-Item -ItemType Directory (Join-Path $env:RUNNER_TEMP 'project')
+          $env:OTEA_HOME = (New-Item -ItemType Directory (Join-Path $env:RUNNER_TEMP 'otea-home')).FullName
+          $otea = Join-Path $PWD 'win-unpacked\resources\bin\otea.cmd'
+          Push-Location $project
+          & $otea init
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          # Git Bash runs bin/otea, the same script as on macOS and Linux.
+          $script = (Join-Path $env:GITHUB_WORKSPACE 'desktop\release\win-unpacked\resources\bin\otea') -replace '\\', '/'
+          & sh $script projects current --json
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          Pop-Location
+          $env:OTEA_DESKTOP_SMOKE = '1'
+          $app = Start-Process -FilePath '.\win-unpacked\Otea.exe' -ArgumentList '--project', "`"$project`"" -Wait -PassThru
+          if ($app.ExitCode -ne 0) { throw "the app failed to open the project ($($app.ExitCode))" }
+          Get-Content latest.yml
+
+      # The installer on the runner (never on anyone's machine): `otea` on the user's PATH, and off
+      # it again after the uninstall.
+      - name: Try the installer (Windows)
+        if: runner.os == 'Windows'
+        working-directory: desktop/release
+        shell: pwsh
+        run: |
+          $setup = Get-ChildItem 'Otea-Setup-*.exe' | Select-Object -First 1
+          Start-Process -FilePath $setup.FullName -ArgumentList '/S' -Wait
+          $userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
+          $bin = $userPath -split ';' | Where-Object { $_ -like '*\resources\bin' } | Select-Object -First 1
+          if (-not $bin) { throw "the installer did not put otea on the user's PATH: $userPath" }
+          Write-Output "otea is on PATH from $bin"
+          $env:Path = "$userPath;" + [Environment]::GetEnvironmentVariable('Path', 'Machine')
+          $env:OTEA_HOME = (New-Item -ItemType Directory (Join-Path $env:RUNNER_TEMP 'otea-home-2')).FullName
+          $project = New-Item -ItemType Directory (Join-Path $env:RUNNER_TEMP 'project-2')
+          Push-Location $project
+          cmd /d /c "otea init && otea projects current --json"
+          if ($LASTEXITCODE -ne 0) { throw 'otea did not run from PATH' }
+          Pop-Location
+          $uninstaller = Join-Path (Split-Path (Split-Path $bin)) 'Uninstall Otea.exe'
+          Start-Process -FilePath $uninstaller -ArgumentList '/S' -Wait
+          # The uninstaller hands over to a copy of itself: wait for the PATH to change.
+          for ($i = 0; $i -lt 60; $i++) {
+            $after = [Environment]::GetEnvironmentVariable('Path', 'User')
+            if (-not ($after -split ';' | Where-Object { $_ -eq $bin })) { break }
+            Start-Sleep -Seconds 2
+          }
+          if ($after -split ';' | Where-Object { $_ -eq $bin }) { throw "the uninstaller left $bin on PATH" }
+          Write-Output 'the uninstaller took otea off PATH'
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: otea-desktop-${{ runner.os }}
+          retention-days: 7
+          if-no-files-found: error
+          path: |
+            desktop/release/*.exe
+            desktop/release/*.dmg
+            desktop/release/*.zip
+            desktop/release/*.AppImage
+            desktop/release/*.deb
+            desktop/release/*.blockmap
+            desktop/release/latest*.yml
+
+  publish:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: package
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: otea-desktop-*
+          path: release
+          merge-multiple: true
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          ls -la release
+          gh release create "$GITHUB_REF_NAME" release/* \
+            --verify-tag --title "Otea ${GITHUB_REF_NAME#v}" --generate-notes

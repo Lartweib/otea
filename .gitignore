@@ -5,6 +5,8 @@ node_modules/
 dist/
 out/
 release/
+# The CLI the desktop app carries, laid out by desktop/scripts/stage-cli.mjs
+desktop/stage/
 
 # Otea project data (when dogfooding Otea on itself)
 .otea/

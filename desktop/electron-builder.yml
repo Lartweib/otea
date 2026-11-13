@@ -1,0 +1,62 @@
+# How the desktop app is packaged: `npm run dist` (build.mjs, scripts/stage-cli.mjs, electron-builder)
+# makes the installers in release/, with the update metadata (latest*.yml) electron-updater reads
+# from the GitHub Release. Unsigned until certificates exist: signing is a drop-in through the
+# release workflow's secrets (see README.md, "Signing").
+appId: dev.otea.desktop
+productName: Otea
+copyright: Copyright © Lartweib
+directories:
+  output: release
+  buildResources: build
+files:
+  - dist/**
+  - package.json
+extraResources:
+  # The CLI the app carries (scripts/stage-cli.mjs) and the otea commands that run it.
+  - from: stage/otea
+    to: otea
+  - from: bin
+    to: bin
+publish:
+  provider: github
+  owner: Lartweib
+  repo: otea
+  releaseType: release
+
+win:
+  target: nsis
+  icon: ../ui/public/icons/otea-512.png
+nsis:
+  # Per user, no admin: installs in %LOCALAPPDATA%\Programs\Otea and puts its bin on the user's PATH.
+  oneClick: true
+  perMachine: false
+  include: build/installer.nsh
+  artifactName: ${productName}-Setup-${version}.${ext}
+
+mac:
+  target:
+    - target: dmg
+      arch: universal
+    # The zip is what electron-updater applies on a Mac (once the app is signed).
+    - target: zip
+      arch: universal
+  category: public.app-category.developer-tools
+  icon: ../ui/public/icons/otea-512.png
+dmg:
+  artifactName: ${productName}-${version}-mac.${ext}
+
+linux:
+  target:
+    - AppImage
+    - deb
+  category: Development
+  executableName: otea-desktop
+  icon: ../ui/public/icons/otea-512.png
+  synopsis: The handoff surface between you and your AI agents
+  maintainer: Lartweib <https://github.com/Lartweib/otea>
+appImage:
+  artifactName: ${productName}-${version}-${arch}.${ext}
+deb:
+  artifactName: ${productName}-${version}-${arch}.${ext}
+  afterInstall: build/linux-after-install.sh
+  afterRemove: build/linux-after-remove.sh
