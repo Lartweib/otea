@@ -25,7 +25,7 @@ describe('board', () => {
 
   beforeEach(async () => {
     repo = tempGitRepo();
-    otea = cliAt(repo.dir);
+    otea = cliAt(repo.dir, { OTEA_AGENT: 'claude' });
     await otea('init', '--local', '--template', 'none');
   });
 
@@ -124,7 +124,7 @@ describe('board add', () => {
 
   beforeEach(async () => {
     repo = tempGitRepo();
-    otea = cliAt(repo.dir);
+    otea = cliAt(repo.dir, { OTEA_AGENT: 'claude' });
     await otea('init', '--local');
   });
 

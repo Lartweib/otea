@@ -272,10 +272,10 @@ function closedName(def: BoardDefinition, position: Position): string {
   return motive ? `${DROPPED_NAME} (${motive.name})` : DROPPED_NAME;
 }
 
-// ` --as "Rechazado|Duplicado"` on a board with motives.
-function asMotive(def: BoardDefinition): string {
+// ` --motive "Rechazado|Duplicado"` on a board with motives.
+function motiveFlag(def: BoardDefinition): string {
   const names = def.drop.motives.map(({ name }) => name);
-  return names.length === 0 ? '' : ` --as "${names.join('|')}"`;
+  return names.length === 0 ? '' : ` --motive "${names.join('|')}"`;
 }
 
 function noteFlag(step: Step, input: NextInput): string {
@@ -431,7 +431,7 @@ export function nextText(def: BoardDefinition, input: NextInput): string {
     }
     if (step.doerMayDrop && step.doer !== 'you')
       others.push(
-        `  Or drop it if it is not worth doing: otea drop ${id} --reason "why"${asMotive(def)}`,
+        `  Or drop it if it is not worth doing: otea drop ${id} --reason "why"${motiveFlag(def)}`,
       );
   }
   lines.push(...section('Next', [`  ${after}`, ...others]));
@@ -563,7 +563,7 @@ export function dropRefusalText(
     case 'reason_required':
       return `Not dropped ${id}: say why with --reason.`;
     case 'motive_required':
-      return `Not dropped ${id}: say which with${asMotive(def)}.`;
+      return `Not dropped ${id}: say which with${motiveFlag(def)}.`;
     case 'not_droppable':
       return `Not dropped ${id}: only the person drops items here.`;
     case 'not_relayable':

@@ -29,7 +29,7 @@ describe('serve', () => {
     repo = tempGitRepo();
     interrupt = new AbortController();
     opened = [];
-    otea = cliAt(repo.dir, {}, interrupt.signal, async (url) => {
+    otea = cliAt(repo.dir, { OTEA_AGENT: 'claude' }, interrupt.signal, async (url) => {
       opened.push(url);
     });
     await otea('init', '--local');

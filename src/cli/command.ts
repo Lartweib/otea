@@ -18,7 +18,11 @@ export type OptionSpec = {
 
 export type Input = {
   cwd: string;
-  actor: Actor;
+  // The agent acting. Reading it refuses an agent that gave no name, or an invalid one: every
+  // command that acts as an agent reads it, so none runs unnamed.
+  readonly actor: Actor;
+  // The name the agent gave, unchecked, or none: for a command that may run unnamed (otea mcp).
+  agent: string | undefined;
   // How the agent reached the command, recorded on its writes: the CLI itself or the MCP server.
   channel: AgentChannel;
   // What the agent came through, recorded with its presence: the MCP client, or the CLI itself.

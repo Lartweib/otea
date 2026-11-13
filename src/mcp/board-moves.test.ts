@@ -48,7 +48,7 @@ describe('board moves over MCP', () => {
     }
     const server = createMcpServer(COMMANDS, {
       cwd: repo.dir,
-      actor: { kind: 'agent', name: 'mender' },
+      agent: 'mender',
       warn: () => {},
     });
     client = new Client({ name: 'test', version: '0' });
@@ -73,8 +73,8 @@ describe('board moves over MCP', () => {
     expect(back.body.text).toBe(`Taken back. ${id} returns to Triar, round 2.`);
   });
 
-  it('drops with drop { reason, as }, the motive by name', async () => {
-    const dropped = await call('drop', { id, reason: 'repetido', as: 'Duplicado' });
+  it('drops with drop { reason, motive }, the motive by name', async () => {
+    const dropped = await call('drop', { id, reason: 'repetido', motive: 'Duplicado' });
     expect(dropped).toMatchObject({
       isError: false,
       body: { text: `Dropped. ${id} is Dropped (Duplicado).` },

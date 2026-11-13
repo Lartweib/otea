@@ -57,8 +57,7 @@ describe('projects', () => {
     await json(b, 'init', '--join', id);
     presetCollection(a.dir, 'tasks');
     await json(a, 'create', '--collection', 'tasks', '--title', 'From A');
-    const actor = { kind: 'agent', name: 'claude' } as const;
-    const server = createMcpServer(COMMANDS, { cwd: b.dir, actor, warn: () => {} });
+    const server = createMcpServer(COMMANDS, { cwd: b.dir, agent: 'claude', warn: () => {} });
     const client = new Client({ name: 'test', version: '0' });
     const [clientSide, serverSide] = InMemoryTransport.createLinkedPair();
     await server.connect(serverSide);

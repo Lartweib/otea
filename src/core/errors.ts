@@ -8,6 +8,7 @@ export type ErrorCode =
   | 'already_exists'
   | 'invalid_name'
   | 'invalid_agent_name'
+  | 'unnamed_agent'
   | 'invalid_icon'
   | 'invalid_id'
   | 'forbidden'

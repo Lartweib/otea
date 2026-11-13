@@ -21,7 +21,7 @@ describe('board moves from the CLI', () => {
 
   beforeEach(async () => {
     repo = tempGitRepo();
-    otea = cliAt(repo.dir);
+    otea = cliAt(repo.dir, { OTEA_AGENT: 'claude' });
     mender = cliAt(repo.dir, { OTEA_AGENT: 'mender' });
     await otea('init', '--local', '--template', 'none');
     const project = openProject(repo.dir);
@@ -96,23 +96,23 @@ describe('board moves from the CLI', () => {
     expect(shown.board.notes[0]).toMatchObject({ step: 'Arreglar', round: 1, note: 'se enciende' });
   });
 
-  it('drops with a motive named by --as, refusing without one', async () => {
+  it('drops with a motive named by --motive, refusing without one', async () => {
     await toFix();
 
     expect(await errorOf(mender, 'drop', id, '--reason', 'ya está')).toEqual({
       code: 2,
       error: {
         code: 'reason_required',
-        message: `Not dropped ${id}: say which with --as "Rechazado|Duplicado".`,
+        message: `Not dropped ${id}: say which with --motive "Rechazado|Duplicado".`,
       },
     });
-    const dropped = await mender('drop', id, '--reason', 'ya está', '--as', 'Duplicado');
+    const dropped = await mender('drop', id, '--reason', 'ya está', '--motive', 'Duplicado');
     expect(dropped.out.trim()).toBe(`Dropped. ${id} is Dropped (Duplicado).`);
     expect((await otea('next', '--as', 'mender')).out).not.toContain(id);
   });
 
   it('refuses an agent’s drop where only the person drops, with exit 7', async () => {
-    expect(await errorOf(mender, 'drop', id, '--reason', 'x', '--as', 'Rechazado')).toEqual({
+    expect(await errorOf(mender, 'drop', id, '--reason', 'x', '--motive', 'Rechazado')).toEqual({
       code: 7,
       error: { code: 'forbidden', message: `Not dropped ${id}: only the person drops items here.` },
     });
@@ -123,7 +123,7 @@ describe('a relayed drop', () => {
   it('is refused where the person drops only from the page, with exit 4', async () => {
     const repo = tempGitRepo();
     try {
-      const otea = cliAt(repo.dir);
+      const otea = cliAt(repo.dir, { OTEA_AGENT: 'claude' });
       await otea('init', '--local', '--template', 'none');
       const project = openProject(repo.dir);
       try {
@@ -159,7 +159,7 @@ describe('otea create on a board', () => {
   it('says where the item starts, and refuses a part without its parent (exit 16)', async () => {
     const repo = tempGitRepo();
     try {
-      const otea = cliAt(repo.dir);
+      const otea = cliAt(repo.dir, { OTEA_AGENT: 'claude' });
       await otea('init', '--local', '--template', 'none');
       const project = openProject(repo.dir);
       try {

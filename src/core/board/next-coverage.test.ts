@@ -54,7 +54,7 @@ describe('nextText, the later settings', () => {
       '  Done, once the person approves it',
       '  Or take it back to Triar (no review; Triar starts its next round):',
       '    otea handoff BUG-4 --way "Triar" --reason "why"',
-      '  Or drop it if it is not worth doing: otea drop BUG-4 --reason "why" --as "Rechazado|Duplicado"',
+      '  Or drop it if it is not worth doing: otea drop BUG-4 --reason "why" --motive "Rechazado|Duplicado"',
     ]);
     expect(lines(text, 'When you finish')).toEqual([
       'When you finish',
@@ -241,7 +241,7 @@ describe('refusals and answers', () => {
   it('words every refused drop, and the drop itself', () => {
     const def = errores();
     expect(dropRefusalText(def, 'BUG-4', 'motive_required')).toBe(
-      'Not dropped BUG-4: say which with --as "Rechazado|Duplicado".',
+      'Not dropped BUG-4: say which with --motive "Rechazado|Duplicado".',
     );
     expect(dropRefusalText(def, 'TASK-3', 'not_droppable')).toBe(
       'Not dropped TASK-3: only the person drops items here.',

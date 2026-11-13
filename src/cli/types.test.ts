@@ -9,7 +9,7 @@ describe('item types', () => {
 
   beforeEach(async () => {
     repo = tempGitRepo();
-    otea = cliAt(repo.dir);
+    otea = cliAt(repo.dir, { OTEA_AGENT: 'claude' });
     await otea('init', '--local');
     presetCollection(repo.dir, 'tasks');
   });

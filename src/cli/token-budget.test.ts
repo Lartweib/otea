@@ -1,7 +1,6 @@
 import { writeFileSync } from 'node:fs';
 import { Client, InMemoryTransport } from '@modelcontextprotocol/client';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import type { Actor } from '../core/item.ts';
 import { createMcpServer } from '../mcp/server.ts';
 import { COMMANDS } from './commands.ts';
 import { type Cli, cliAt, presetCollection, tempGitRepo } from './testing.ts';
@@ -36,8 +35,9 @@ const BUDGETS: Readonly<Record<string, Sizes>> = {
   wait: { text: 25, json: 195, mcp: 195 },
   // The tool definitions an MCP client reads when it connects.
   // Raised for next, handoff, approve and send_back, the board moves.
-  // drop, handoff's --note and its ways back.
-  tools: { mcp: 2830 },
+  // drop, handoff's --note and its ways back. Raised for the as every tool takes: the agent making
+  // the call, so subagents sharing one server keep their own leases.
+  tools: { mcp: 3230 },
 };
 
 // A bug as an agent files it in the bug-triage preset, every field filled.
@@ -113,8 +113,7 @@ describe('token budget', () => {
     otea = cliAt(repo.dir, { OTEA_AGENT: 'claude' });
     await ok('init', '--template', 'none');
     presetCollection(repo.dir, 'bugs', 'bug-triage');
-    const actor: Actor = { kind: 'agent', name: 'claude' };
-    const server = createMcpServer(COMMANDS, { cwd: repo.dir, actor, warn: () => {} });
+    const server = createMcpServer(COMMANDS, { cwd: repo.dir, agent: 'claude', warn: () => {} });
     client = new Client({ name: 'test', version: '0' });
     const [clientSide, serverSide] = InMemoryTransport.createLinkedPair();
     await server.connect(serverSide);
