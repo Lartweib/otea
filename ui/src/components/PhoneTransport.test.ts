@@ -63,6 +63,18 @@ describe('Configuración · Teléfono', () => {
     expect(html).toContain(HOST);
   });
 
+  // Only HTTPS lets the installed app open with the PC off: plain HTTP promises no such thing.
+  it('says the local network works only while this computer is on, and Tailscale opens without it', () => {
+    setLanguage('es');
+    const local = render({});
+    const away = render({ status: tailscale });
+
+    expect(local).toContain('funciona solo mientras este equipo está encendido');
+    expect(local).not.toContain('aunque este equipo esté apagado');
+    expect(away).toContain('Otea se abre aunque este equipo esté apagado');
+    expect(away).toContain('espera en cola');
+  });
+
   it('says how to install Tailscale, without a button that installs it', () => {
     const setup: TailscaleCheck = {
       state: 'missing',

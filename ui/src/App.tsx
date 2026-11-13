@@ -23,6 +23,7 @@ import { ToastHost } from './kit/pop/toast.tsx';
 import { Tooltip } from './kit/Tooltip.tsx';
 import { LaneDefs } from './lanes/LaneDefs.tsx';
 import { MODULES } from './modules/registry.ts';
+import { OfflineBar } from './offline/OfflineBar.tsx';
 import { CaptureSheet } from './phone/CaptureSheet.tsx';
 import { DeskOnly, deskOnlyOf } from './phone/DeskOnly.tsx';
 import { NavSheet } from './phone/NavSheet.tsx';
@@ -116,8 +117,18 @@ function Shell() {
   return (
     <>
       <LaneDefs />
-      <div className="app" data-folded={ws.folded ? '' : undefined}>
+      <div
+        className="app"
+        data-folded={ws.folded ? '' : undefined}
+        data-offline={app.sync.offline ? '' : undefined}
+      >
         <Topbar />
+        <OfflineBar
+          sync={app.sync}
+          now={app.now}
+          host={window.location.hostname}
+          phone={app.phone}
+        />
         <Rail />
         <main className="main">
           <ViewHost viewKey={viewKeyOf(route)} kind={route.view === 'lan' ? 'toca' : route.view}>

@@ -15,6 +15,7 @@ import { Pop } from '../kit/pop/Pop.tsx';
 import { Seg } from '../kit/Seg.tsx';
 import { Swap } from '../kit/Swap.tsx';
 import { type MotionPref, motionPref, setMotionPref } from '../motion/reduced.ts';
+import { InstallHint, wantsInstallLine } from '../offline/InstallHint.tsx';
 import type { ThemeChoice } from '../theme.ts';
 import { loadChoice, switchChoice } from '../theme-dom.ts';
 import { motionNote } from './prefs-model.ts';
@@ -134,6 +135,11 @@ export function PrefsBody({ server, onPair }: PrefsBodyProps) {
           {tx('prefs.translated', { only: <b>{t('prefs.onlyInterface')}</b> })}
         </p>
       </Group>
+      {wantsInstallLine(app.phone) ? (
+        <Group label={t('offline.install.title')}>
+          <InstallHint />
+        </Group>
+      ) : null}
       {app.session.canManageDevices ? (
         <Group label={t('prefs.session')}>
           <button type="button" className="plink" onClick={onPair}>

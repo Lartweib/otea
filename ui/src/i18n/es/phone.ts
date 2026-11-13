@@ -124,4 +124,31 @@ export const phone = {
   'phone.ts.step3': 'Escanea el código de emparejamiento que muestra Otea.',
   'phone.ts.ledger':
     'El certificado HTTPS es público: el nombre {host} queda en los registros de Certificate Transparency, que cualquiera puede leer.',
+  // La app instalada por HTTPS: sin el PC, la cola, las actualizaciones (offline/)
+  'offline.pcDown': 'Tu PC no responde',
+  'offline.oteaDown': 'Otea no responde',
+  'offline.synced': 'última sincronización {time}',
+  'offline.readOnly': 'solo lectura',
+  'offline.updated': 'Otea se actualizó',
+  'offline.sentOne': 'Enviado desde la cola: {title} · {id}',
+  'offline.sentMany': 'Enviados {n} ítems que estaban en cola',
+  'offline.refused': '{title} no se pudo enviar: míralo en la cola de Te toca',
+  'offline.full': 'La cola está llena ({mb} MB). Se vacía cuando tu PC vuelve a responder.',
+  'offline.storage': 'Este navegador no deja guardar la captura. Inténtalo cuando tu PC responda.',
+  'offline.queuedToast': 'En cola para {board} · se enviará cuando tu PC responda',
+  'offline.lands': 'en cola para {board} hasta que tu PC responda',
+  'offline.queue.title': 'En cola',
+  'offline.queue.note': 'Apuntado mientras tu PC no respondía. Se envían solos cuando responda.',
+  'offline.queue.waiting': 'en cola',
+  'offline.queue.refused': 'no se envió: {message}',
+  'offline.queue.discard': 'Descartar',
+  'offline.install.title': 'Aplicación',
+  'offline.install.add': 'Añadir a la pantalla de inicio',
+  'offline.install.ios': 'En Safari: Compartir › Añadir a la pantalla de inicio.',
+  'offline.install.android': 'En el menú del navegador (⋮) › Añadir a la pantalla de inicio.',
+  'offline.install.why': 'Instalada, se abre aunque tu PC esté apagado y se actualiza sola.',
+  'phone.transport.lanOnly':
+    'Por la red local el teléfono funciona solo mientras este equipo está encendido y Otea abierto.',
+  'phone.transport.offline':
+    'Instalada en el teléfono, Otea se abre aunque este equipo esté apagado: muestra lo último que vio, y lo que apuntes espera en cola hasta que este equipo responda.',
 } satisfies Partial<Catalog>;

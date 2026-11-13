@@ -10,13 +10,15 @@ import {
   useState,
 } from 'react';
 import { flushSync } from 'react-dom';
-import { createItem } from '../api.ts';
+import { createItem, Unheard } from '../api.ts';
 import { useApp } from '../app/context.tsx';
 import { boardOfCollection, boardsOf, useBoards } from '../board-studio/home/boards-store.ts';
 import { t } from '../i18n/i18n.ts';
 import { MAX_FILE_MB, sizeLabel, tooLarge } from '../intake-files.ts';
 import { Icon } from '../kit/Icon.tsx';
 import { toast } from '../kit/pop/toast.tsx';
+import { captureId, QUEUE_MAX_MB, type QueuedCapture } from '../offline/capture-queue.ts';
+import { enqueue, queueAvailable } from '../offline/queue-store.ts';
 import { BottomSheet } from './BottomSheet.tsx';
 import {
   type BoardPick,
@@ -48,6 +50,8 @@ export type CaptureBodyProps = {
   note: string;
   photo: { name: string; size: number; url: string; tooLarge: boolean } | null;
   posting: boolean;
+  // The PC does not answer: Guardar keeps the capture in the queue, and the line says so.
+  queues?: boolean;
   error?: string | undefined;
   titleRef?: Ref<HTMLInputElement>;
   photoRef?: Ref<HTMLInputElement>;
@@ -187,12 +191,14 @@ export function CaptureBody(p: CaptureBodyProps) {
             <Icon name="camera" className="cam" />
           </label>
           <span className="lands">
-            {type
-              ? t('phone.capture.lands', {
-                  board: board.name,
-                  step: landsStep(type, p.note.trim() !== ''),
-                })
-              : null}
+            {type && p.queues
+              ? t('offline.lands', { board: board.name })
+              : type
+                ? t('phone.capture.lands', {
+                    board: board.name,
+                    step: landsStep(type, p.note.trim() !== ''),
+                  })
+                : null}
           </span>
           <button type="submit" className="btn primary" disabled={!ready} aria-busy={p.posting}>
             {t('phone.capture.save')}
@@ -264,6 +270,11 @@ export function CaptureSheet() {
   const [posting, setPosting] = useState(false);
   const [error, setError] = useState<string>();
   const saved = useRef<{ board: string; id: string } | null>(null);
+  // Kept for the PC (it did not answer): the toast says so instead of where it went.
+  const queued = useRef<{ board: string } | null>(null);
+  // The capture's own id, sent as its Idempotency-Key: Guardar pressed again, or the queue sending
+  // it later, never makes a second item.
+  const key = useRef('');
 
   // Each opening starts blank.
   if (cap.open && cap.seq !== seq) {
@@ -276,6 +287,7 @@ export function CaptureSheet() {
     file.current = null;
     setPosting(false);
     setError(undefined);
+    key.current = captureId();
   }
 
   const pick = pickBoard(boards, { here: cap.o.board, last: lastBoard(project) });
@@ -321,12 +333,46 @@ export function CaptureSheet() {
     setPosting(true);
     setError(undefined);
     const { fields, files } = capturePayload(type, { title, note, photo: file.current });
+    // The PC does not answer: the capture waits on the phone and goes when it does.
+    const keep = async () => {
+      const [photo] = files;
+      const capture: QueuedCapture = {
+        id: key.current,
+        at: Date.now(),
+        board: board.name,
+        type: type.name,
+        fields,
+        ...(photo
+          ? {
+              photo: {
+                name: photo.file.name,
+                type: photo.file.type,
+                bytes: await photo.file.arrayBuffer(),
+                role: photo.role,
+              },
+            }
+          : {}),
+      };
+      const kept = await enqueue(capture);
+      if (!kept.ok) {
+        setPosting(false);
+        setError(
+          kept.reason === 'full' ? t('offline.full', { mb: QUEUE_MAX_MB }) : t('offline.storage'),
+        );
+        return;
+      }
+      rememberBoard(project, board.name);
+      queued.current = { board: board.name };
+      closeCapture();
+    };
+    if (app.sync.offline && queueAvailable()) return keep();
     try {
-      const item = await createItem(board.name, type.name, fields, undefined, files);
+      const item = await createItem(board.name, type.name, fields, undefined, files, key.current);
       rememberBoard(project, board.name);
       saved.current = { board: board.name, id: item.id };
       closeCapture();
     } catch (e) {
+      if (e instanceof Unheard && queueAvailable()) return keep();
       setPosting(false);
       setError(e instanceof Error ? e.message : String(e));
     }
@@ -343,8 +389,11 @@ export function CaptureSheet() {
       onClose={closeCapture}
       onClosed={() => {
         const s = saved.current;
+        const q = queued.current;
         saved.current = null;
+        queued.current = null;
         if (s) toast({ msg: t('phone.capture.saved', s), at: 'top' });
+        if (q) toast({ msg: t('offline.queuedToast', q), at: 'top' });
       }}
     >
       <CaptureBody
@@ -357,6 +406,7 @@ export function CaptureSheet() {
         note={note}
         photo={photo}
         posting={posting}
+        queues={app.sync.offline && queueAvailable()}
         error={error}
         titleRef={titleRef}
         onPick={() => setPicking((v) => !v)}

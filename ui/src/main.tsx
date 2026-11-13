@@ -9,6 +9,9 @@ import { App } from './App.tsx';
 import { PairScreen } from './components/PairScreen.tsx';
 import { startLanguage } from './i18n/i18n.ts';
 import { applyMotionPref } from './motion/reduced.ts';
+import { announceFlushed, announceUpdate } from './offline/announce.ts';
+import { startQueue } from './offline/queue-store.ts';
+import { startShell } from './offline/register.ts';
 // Every stylesheet, in the order of SPEC §11: the foundation's, then each slice's.
 import './styles/tokens.css';
 import './styles/tokens-legacy.css';
@@ -50,6 +53,7 @@ import './styles/studio.css';
 import './styles/studio-preview.css';
 import './styles/studio-home.css';
 import './styles/phone.css';
+import './styles/offline.css';
 import './styles/studio-editor.css';
 import './styles/studio-pair.css';
 import { applyChoice, loadChoice } from './theme-dom.ts';
@@ -58,12 +62,18 @@ applyChoice(loadChoice());
 applyMotionPref();
 startLanguage();
 
+// A phone on the LAN that has not paired yet is only served this screen.
+const pairing = window.location.pathname === '/pair';
+
 const root = document.getElementById('root');
 if (root) {
-  createRoot(root).render(
-    <StrictMode>
-      {/* A phone on the LAN that has not paired yet is only served this screen. */}
-      {window.location.pathname === '/pair' ? <PairScreen /> : <App />}
-    </StrictMode>,
-  );
+  createRoot(root).render(<StrictMode>{pairing ? <PairScreen /> : <App />}</StrictMode>);
+}
+
+// The installed app over HTTPS: opens without the PC, updates itself, sends what was captured
+// offline (offline/). Production builds only: the dev server has no /sw.js.
+if (!pairing && import.meta.env.PROD) {
+  void startShell();
+  startQueue(announceFlushed);
+  announceUpdate();
 }

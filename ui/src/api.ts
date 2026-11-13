@@ -3,6 +3,7 @@ import type { PerformanceView } from '../../src/core/board/performance.ts';
 import type { FeedEvent } from './activity.ts';
 import type { WrittenBrief } from './brief.ts';
 import { t } from './i18n/i18n.ts';
+import { noteRead, readOf } from './offline/sync-state.ts';
 import { type Agent, parseAgents } from './presence.ts';
 import type { LinkRequest } from './relations.ts';
 import { serverMessage, unreachable } from './remote.ts';
@@ -25,7 +26,14 @@ import type {
 import { type AgentDetail, parseAgentDetail } from './views/agent/agent-sheet.ts';
 
 async function get(path: string, signal: AbortSignal): Promise<Response> {
-  const response = await fetch(path, { signal, headers: { accept: 'application/json' } });
+  // Every read says whether the PC answered it (the offline line, sync-state.ts).
+  const response = await fetch(path, { signal, headers: { accept: 'application/json' } }).catch(
+    (error: unknown) => {
+      if (!signal.aborted) noteRead({ kind: 'failed' });
+      throw error;
+    },
+  );
+  noteRead(readOf(response.headers));
   // A device on the LAN whose token was revoked (or never paired) goes back to the pairing screen.
   if (response.status === 401) {
     const body: unknown = await response
@@ -116,20 +124,31 @@ export async function fetchPresets(signal: AbortSignal): Promise<PresetView[]> {
   return (await get('/api/presets', signal)).json();
 }
 
+// A write the PC did not hear: no answer, or the door's own with nothing behind it (Tailscale serve
+// answers 502 while Otea is not running). A capture keeps it in the queue instead of losing it.
+export class Unheard extends Error {
+  override readonly name = 'Unheard';
+}
+
 // A form sets its own content type (with the boundary); JSON says it.
-async function post<T>(path: string, payload: unknown): Promise<T> {
+async function post<T>(
+  path: string,
+  payload: unknown,
+  extra: Record<string, string> = {},
+): Promise<T> {
   const form = payload instanceof FormData;
   const response = await fetch(path, {
     method: 'POST',
     headers: form
-      ? { accept: 'application/json' }
-      : { accept: 'application/json', 'content-type': 'application/json' },
+      ? { accept: 'application/json', ...extra }
+      : { accept: 'application/json', 'content-type': 'application/json', ...extra },
     body: form ? payload : JSON.stringify(payload),
   }).catch(() => {
-    throw new Error(unreachable());
+    throw new Unheard(unreachable());
   });
   const body: unknown = await response.json().catch(() => undefined);
   if (response.ok) return body as T;
+  if ([502, 503, 504].includes(response.status)) throw new Unheard(unreachable());
   throw new Error(serverMessage(body, response.status));
 }
 
@@ -180,22 +199,26 @@ export type NewFile = { file: File; role: EvidenceRole };
 
 // parent: the item the new one is created under, as its child. files: attached as evidence in the
 // same write, sent as a form (the item's JSON in its "item" part, each file in a "file" part).
+// clientKey: the create's Idempotency-Key, so sending it again never makes a second item.
 export function createItem(
   collection: string,
   type: string,
   fields: Record<string, string>,
   parent?: string,
   files: readonly NewFile[] = [],
+  clientKey?: string,
 ): Promise<Item> {
   const payload = { collection, type, fields, ...(parent === undefined ? {} : { parent }) };
-  if (files.length === 0) return post<Item>('/api/items', payload);
+  const key: Record<string, string> =
+    clientKey === undefined ? {} : { 'idempotency-key': clientKey };
+  if (files.length === 0) return post<Item>('/api/items', payload, key);
   const form = new FormData();
   form.append(
     'item',
     JSON.stringify({ ...payload, evidence: files.map(({ role }) => ({ role })) }),
   );
   for (const { file } of files) form.append('file', file, file.name);
-  return post<Item>('/api/items', form);
+  return post<Item>('/api/items', form, key);
 }
 
 export async function linkItems({ id, kind, other }: LinkRequest): Promise<void> {

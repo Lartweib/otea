@@ -83,4 +83,43 @@ describe('the page a phone adds to its home screen', () => {
       expect(png.subarray(1, 4).toString()).toBe('PNG');
     }
   });
+
+  // The status bar and the splash take the page's ground, light and dark, from the tokens.
+  it('takes its theme colours from the ground token', () => {
+    const tokens = readFileSync(new URL('./styles/tokens.css', import.meta.url), 'utf8');
+    const grounds = [...tokens.matchAll(/--ground: oklch\(([\d.]+) ([\d.]+) ([\d.]+)\)/g)].map(
+      ([, l, c, h]) => hexOfOklch(Number(l), Number(c), Number(h)),
+    );
+    const [light, dark] = grounds;
+
+    expect(manifest.theme_color).toBe(light);
+    expect(manifest.background_color).toBe(light);
+    expect(html).toContain(
+      `<meta name="theme-color" media="(prefers-color-scheme: light)" content="${light}" />`,
+    );
+    expect(html).toContain(
+      `<meta name="theme-color" media="(prefers-color-scheme: dark)" content="${dark}" />`,
+    );
+  });
 });
+
+// OKLCH to sRGB hex (Björn Ottosson's matrices), to read a token as a manifest colour.
+function hexOfOklch(l: number, c: number, h: number): string {
+  const a = c * Math.cos((h * Math.PI) / 180);
+  const b = c * Math.sin((h * Math.PI) / 180);
+  const l1 = (l + 0.3963377774 * a + 0.2158037573 * b) ** 3;
+  const m1 = (l - 0.1055613458 * a - 0.0638541728 * b) ** 3;
+  const s1 = (l - 0.0894841775 * a - 1.291485548 * b) ** 3;
+  const linear = [
+    4.0767416621 * l1 - 3.3077115913 * m1 + 0.2309699292 * s1,
+    -1.2684380046 * l1 + 2.6097574011 * m1 - 0.3413193965 * s1,
+    -0.0041960863 * l1 - 0.7034186147 * m1 + 1.707614701 * s1,
+  ];
+  const channel = (x: number) => {
+    const v = x <= 0.0031308 ? 12.92 * x : 1.055 * x ** (1 / 2.4) - 0.055;
+    return Math.round(Math.min(1, Math.max(0, v)) * 255)
+      .toString(16)
+      .padStart(2, '0');
+  };
+  return `#${linear.map(channel).join('')}`;
+}

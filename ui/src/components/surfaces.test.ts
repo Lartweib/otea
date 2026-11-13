@@ -59,6 +59,8 @@ function fakeApp(o: Partial<App> = {}): App {
     version: 1,
     now: NOW,
     session: { canWrite: true, canConfigure: true, canManageDevices: true },
+    sync: { offline: false, syncedAt: null },
+    canCapture: true,
     project: { id: 'hollowmere', name: 'Hollowmere' } as NonNullable<App['project']>,
     items: { status: 'ready', value: items },
     all: items,

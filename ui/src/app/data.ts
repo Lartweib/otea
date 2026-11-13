@@ -11,6 +11,8 @@ import {
   fetchSession,
 } from '../api.ts';
 import { type Connection, useBeat, useLive, useRemote } from '../hooks.ts';
+import { flushQueue, queueAvailable } from '../offline/queue-store.ts';
+import { type SyncState, useSync } from '../offline/sync-state.ts';
 import type { Agent } from '../presence.ts';
 import type { Remote } from '../remote.ts';
 import type { CollectionView, Item, PresetView, ProjectOverview, ProjectView } from '../types.ts';
@@ -28,6 +30,10 @@ export type LoadedData = {
   presence: number;
   now: number;
   session: Session;
+  // Whether the PC answers, and when it last did: while it does not, the app shows the last data
+  // it saw, read-only, and a capture goes to the queue (canCapture).
+  sync: SyncState;
+  canCapture: boolean;
   project?: ProjectView;
   projects?: ProjectOverview[];
   items: Remote<Item[]>;
@@ -82,17 +88,24 @@ export function useAppData(): LoadedData {
   const agents = useAgents(version, presence, connection);
   const feed = useFeed(version);
   const studioChanged = useCallback(() => setStudioWrites((n) => n + 1), []);
+  // The PC is back (the live stream reconnected): what was captured without it goes now.
+  useEffect(() => {
+    if (connection === 'live') void flushQueue();
+  }, [connection]);
   const s = ready(session);
+  const sync = useSync();
   const data: LoadedData = {
     connection,
     version,
     presence,
     now,
     session: {
-      canWrite: s?.canWrite === true,
+      canWrite: s?.canWrite === true && !sync.offline,
       canConfigure: s?.canConfigure === true,
       canManageDevices: s?.canManageDevices === true,
     },
+    sync,
+    canCapture: s?.canWrite === true && (!sync.offline || queueAvailable()),
     items,
     all: ready(items) ?? [],
     collections: ready(collections) ?? [],

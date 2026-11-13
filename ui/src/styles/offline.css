@@ -1,0 +1,120 @@
+/* The installed app without the PC (offline/): the line under the top bar while the PC does not
+   answer, and Te toca's queue of what was captured meanwhile. */
+
+/* ───────── the line under the top bar ───────── */
+.app[data-offline] {
+  grid-template-rows: 60px auto minmax(0, 1fr);
+}
+.app[data-offline] > .rail,
+.app[data-offline] > .main {
+  grid-row: 3;
+}
+.offline-bar {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  margin: 0 0 8px;
+  padding: 7px 12px;
+  border: 1px solid var(--rule-2);
+  border-radius: 10px;
+  background: var(--sheet);
+  font: 400 12.5px / 1.35 var(--mono);
+  color: var(--ink-2);
+}
+.offline-bar .ob-dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--warn);
+}
+.offline-bar .ob-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.offline-bar .ob-text b {
+  font-weight: 500;
+  color: var(--ink);
+}
+.offline-bar .ob-ro {
+  flex: none;
+  color: var(--ink-3);
+}
+
+/* ───────── Te toca's queue ───────── */
+.queued {
+  padding-left: 72px;
+  margin: 0 0 20px;
+}
+.queued .q-head {
+  margin: 0 0 2px;
+  font: 500 12.5px / 1.4 var(--mono);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+.queued .q-n {
+  color: var(--ink-3);
+}
+.queued .q-note {
+  margin: 0 0 8px;
+  font: 400 13px / 1.45 var(--sans);
+  color: var(--ink-3);
+}
+.queued .q-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--rule);
+}
+.queued .q-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 12px;
+  row-gap: 2px;
+  min-height: 52px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--rule);
+}
+.queued .q-title {
+  grid-column: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: 500 15px / 1.35 var(--sans);
+  color: var(--ink);
+}
+.queued .q-meta {
+  grid-column: 1;
+  font: 400 12px / 1.4 var(--mono);
+  color: var(--ink-3);
+}
+.queued .q-tag {
+  color: var(--you-ink);
+}
+.queued .q-err {
+  color: var(--warn);
+}
+.queued .q-row > .btn {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+}
+
+@media (max-width: 720px) {
+  .app[data-offline] {
+    grid-template-rows: 56px auto minmax(0, 1fr);
+  }
+  .offline-bar {
+    margin: 0 0 6px;
+  }
+  .queued {
+    padding-left: 0;
+  }
+}

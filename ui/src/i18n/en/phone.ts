@@ -121,4 +121,32 @@ export const phone = {
   'phone.ts.step3': 'Scan the pairing code Otea shows.',
   'phone.ts.ledger':
     'The HTTPS certificate is public: the name {host} is listed in the Certificate Transparency logs, which anyone can read.',
+  // The installed app over HTTPS: without the PC, the queue, updates (offline/)
+  'offline.pcDown': 'Your PC is not answering',
+  'offline.oteaDown': 'Otea is not answering',
+  'offline.synced': 'last synced {time}',
+  'offline.readOnly': 'read-only',
+  'offline.updated': 'Otea updated',
+  'offline.sentOne': 'Sent from the queue: {title} · {id}',
+  'offline.sentMany': 'Sent {n} queued items',
+  'offline.refused': '{title} could not be sent: see the queue in Your turn',
+  'offline.full': 'The queue is full ({mb} MB). It empties as your PC answers again.',
+  'offline.storage': 'This browser would not keep the capture. Try again once your PC answers.',
+  'offline.queuedToast': 'Queued for {board} · it goes when your PC answers',
+  'offline.lands': 'queued for {board} until your PC answers',
+  'offline.queue.title': 'Queued',
+  'offline.queue.note':
+    'Captured while your PC was not answering. They send themselves when it does.',
+  'offline.queue.waiting': 'queued',
+  'offline.queue.refused': 'not sent: {message}',
+  'offline.queue.discard': 'Discard',
+  'offline.install.title': 'App',
+  'offline.install.add': 'Add to Home Screen',
+  'offline.install.ios': 'In Safari: Share › Add to Home Screen.',
+  'offline.install.android': 'In the browser menu (⋮) › Add to Home screen.',
+  'offline.install.why': 'Installed, it opens even with your PC off and updates itself.',
+  'phone.transport.lanOnly':
+    'Over the local network the phone works only while this computer is on and Otea is open.',
+  'phone.transport.offline':
+    'Installed on the phone, Otea opens even with this computer off: it shows the last it saw, and what you capture waits in a queue until this computer answers.',
 } as const;

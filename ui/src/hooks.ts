@@ -12,21 +12,46 @@ export type Connection = 'connecting' | 'live' | 'reconnecting';
 // (a session seen, a harness named, a lease taken or given back).
 export type Live = { connection: Connection; version: number; presence: number };
 
+const RETRY_MS = 10_000;
+
 export function useLive(url = '/api/stream'): Live {
   const [connection, setConnection] = useState<Connection>('connecting');
   const [version, setVersion] = useState(0);
   const [presence, setPresence] = useState(0);
   useEffect(() => {
-    const source = new EventSource(url);
+    let source: EventSource;
+    let retry: ReturnType<typeof setTimeout> | undefined;
     const refresh = () => setVersion((current) => current + 1);
-    source.addEventListener('ready', () => {
-      setConnection('live');
-      refresh();
-    });
-    source.addEventListener('change', refresh);
-    source.addEventListener('presence', () => setPresence((current) => current + 1));
-    source.addEventListener('error', () => setConnection('reconnecting'));
-    return () => source.close();
+    // The browser retries a stream that dropped, but gives up on one an answer refused (the 502 of
+    // a Tailscale door while the PC is off): that one is opened again, now and then and as the app
+    // comes back to the front or online.
+    const open = () => {
+      clearTimeout(retry);
+      source = new EventSource(url);
+      source.addEventListener('ready', () => {
+        setConnection('live');
+        refresh();
+      });
+      source.addEventListener('change', refresh);
+      source.addEventListener('presence', () => setPresence((current) => current + 1));
+      source.addEventListener('error', () => {
+        setConnection('reconnecting');
+        if (source.readyState === EventSource.CLOSED) retry = setTimeout(open, RETRY_MS);
+      });
+    };
+    const again = () => {
+      if (source.readyState === EventSource.CLOSED && document.visibilityState === 'visible')
+        open();
+    };
+    open();
+    window.addEventListener('online', again);
+    document.addEventListener('visibilitychange', again);
+    return () => {
+      clearTimeout(retry);
+      window.removeEventListener('online', again);
+      document.removeEventListener('visibilitychange', again);
+      source.close();
+    };
   }, [url]);
   return { connection, version, presence };
 }

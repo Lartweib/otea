@@ -9,6 +9,8 @@ import { Icon } from '../../kit/Icon.tsx';
 import { Swap } from '../../kit/Swap.tsx';
 import { LaneHead } from '../../lanes/LaneHead.tsx';
 import { LaneList } from '../../lanes/LaneList.tsx';
+import { QueuedCaptures } from '../../offline/QueuedCaptures.tsx';
+import { discard, useQueue } from '../../offline/queue-store.ts';
 import { liveAgents } from '../../presence.ts';
 import type { Item } from '../../types.ts';
 import { dayLine, tocaBlocks, universeOf } from './blocks.tsx';
@@ -104,6 +106,8 @@ export function TocaView({ atasco = false }: { atasco?: boolean }) {
   // Nobody connected, on the desk: the way to connect one, over the lanes.
   const lonely =
     !atasco && !app.phone && !empty && !!app.agents && liveAgents(app.agents).length === 0;
+  // What was captured while the PC did not answer, until it goes.
+  const queue = useQueue();
 
   let dekKey: string;
   let dek: React.ReactNode;
@@ -146,6 +150,9 @@ export function TocaView({ atasco = false }: { atasco?: boolean }) {
           </div>
           {recap ? <Recap today={today} phone={app.phone} /> : null}
         </header>
+        {atasco ? null : (
+          <QueuedCaptures captures={queue.captures} onDiscard={(id) => void discard(id)} />
+        )}
         {empty ? (
           <EmptyProject />
         ) : (

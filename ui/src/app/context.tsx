@@ -25,6 +25,7 @@ import { type Connection, usePhone, useRoute } from '../hooks.ts';
 import { toast } from '../kit/pop/toast.tsx';
 import { rowOf } from '../lanes/dom.ts';
 import { landed } from '../motion/bus.ts';
+import type { SyncState } from '../offline/sync-state.ts';
 import type { Agent } from '../presence.ts';
 import { linkRequestOf, unlinkRequestOf } from '../relations.ts';
 import type { Remote } from '../remote.ts';
@@ -51,6 +52,10 @@ export type AppData = {
   // A 30 s beat.
   now: number;
   session: { canWrite: boolean; canConfigure: boolean; canManageDevices: boolean };
+  // Whether the PC answers and when it last did; while it does not, writes wait (read-only) and
+  // a quick capture goes to the queue, where the app can keep one.
+  sync: SyncState;
+  canCapture: boolean;
   project?: ProjectView;
   projects?: ProjectOverview[];
   items: Remote<Item[]>;
@@ -238,6 +243,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     version: data.version,
     now: data.now,
     session: data.session,
+    sync: data.sync,
+    canCapture: data.canCapture,
     ...(data.project ? { project: data.project } : {}),
     ...(data.projects ? { projects: data.projects } : {}),
     items: data.items,

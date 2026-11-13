@@ -109,7 +109,8 @@ export function TabBar() {
       on={tabOn(app.route)}
       toca={tocaCount(app.all, { now: app.now })}
       panelOpen={open}
-      canCreate={app.session.canWrite}
+      // Offline too, where the app keeps a queue: the capture waits for the PC.
+      canCreate={app.canCapture}
       onToca={() => {
         navSheet.close();
         app.go({ view: 'toca' });
