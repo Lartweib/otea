@@ -35,7 +35,7 @@ export const toca = {
   'toca.since.days': { one: 'for {count} day', other: 'for {count} days' },
   'toca.dekStuck.lead': { one: '{n} thing went quiet: ', other: '{n} things went quiet: ' },
   'toca.dekStuck.agent': '{agent} has given no sign for {time}',
-  'toca.dekStuck.none': 'Nothing has gone quiet. The agents give signs.',
+  'toca.dekStuck.none': 'Nothing stuck: the agents keep checking in.',
 
   // A row's call to act and its small line
   'toca.act.atasco': 'Restart or reassign',

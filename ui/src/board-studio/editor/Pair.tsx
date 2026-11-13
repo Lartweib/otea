@@ -20,7 +20,7 @@ import { whoWord } from './who.ts';
 
 const ROLES: readonly PairRole[] = ['parent', 'child'];
 
-// borrador / publicado vN / cambios sin publicar.
+// borrador / publicado · vN / cambios sin publicar.
 export function stateWord(draft: ReadyDraft): { text: string; warm: boolean } {
   const { live, dirty } = liveState(draft);
   if (!live) return { text: t('bs.editor.pair.draft'), warm: true };

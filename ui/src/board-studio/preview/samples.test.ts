@@ -3,15 +3,21 @@ import { handoffCheck } from '../../../../src/core/board/engine.ts';
 import { creatures } from '../../../../src/core/board/testing.ts';
 import { setLanguage } from '../../i18n/i18n.ts';
 import {
+  boardPrefix,
   itemPrefix,
   sampleFacts,
+  sampleId,
   sampleItems,
   sampleRaw,
   sampleTitle,
   sampleValue,
+  setBoardPrefixes,
 } from './samples.ts';
 
-afterEach(() => setLanguage('en'));
+afterEach(() => {
+  setLanguage('en');
+  setBoardPrefixes(new Map());
+});
 
 const part = (id: string) => {
   const found = creatures().parts[id];
@@ -25,6 +31,19 @@ describe('itemPrefix', () => {
     expect(itemPrefix('Úlcera')).toBe('ULC');
     expect(itemPrefix('Bug')).toBe('BUG');
     expect(itemPrefix('')).toBe('ITM');
+  });
+});
+
+describe('boardPrefix', () => {
+  it('uses the prefix a board’s items already go by, else three letters of the item', () => {
+    const def = creatures();
+    expect(boardPrefix(def)).toBe('CRI');
+    expect(sampleId(def)).toBe('CRI-12');
+    setBoardPrefixes(new Map([['Criaturas', 'CRIATURAS']]));
+    expect(boardPrefix(def)).toBe('CRIATURAS');
+    expect(sampleId(def)).toBe('CRIATURAS-12');
+    expect(sampleItems(def)[0]?.id).toBe('CRIATURAS-1');
+    expect(boardPrefix({ ...def, name: 'Otra' })).toBe('CRI');
   });
 });
 

@@ -40,7 +40,7 @@ export const toca = {
     other: '{n} cosas se quedaron quietas: ',
   },
   'toca.dekStuck.agent': '{agent} no da señales desde hace {time}',
-  'toca.dekStuck.none': 'Nada se ha quedado quieto. Los agentes dan señales.',
+  'toca.dekStuck.none': 'Nada parado: los agentes siguen dando señales.',
 
   // La llamada a actuar de una fila y su línea pequeña
   'toca.act.atasco': 'Retomar o reasignar',

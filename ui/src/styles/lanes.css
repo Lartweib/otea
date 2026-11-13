@@ -433,13 +433,6 @@
 .fold[aria-expanded="false"] .fg {
   rotate: -90deg;
 }
-.fold .sg {
-  display: inline-block;
-  min-width: 0.6em;
-  text-align: center;
-  position: relative;
-  clip-path: inset(-2px -2px);
-}
 .row.child {
   --pt: 6px;
   --lh: 21px;

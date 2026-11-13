@@ -102,7 +102,7 @@ describe('the dek of Te toca', () => {
       quiet: [{ agent: 'Kiln', text: ' no da señales desde hace 12 min' }],
     });
     expect(atascoDek([], NOW)).toEqual({
-      lead: 'Nada se ha quedado quieto. Los agentes dan señales.',
+      lead: 'Nada parado: los agentes siguen dando señales.',
       quiet: [],
     });
   });

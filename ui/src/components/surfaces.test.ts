@@ -134,7 +134,7 @@ describe('Actividad', () => {
     vi.useRealTimers();
     expect(html).toContain('class="drawer"');
     expect(html).toMatch(/Reservas activas(<!-- -->)? <small>1<\/small>/);
-    expect(html).toContain('1 h 42');
+    expect(html).toContain('1 h 42 min');
     expect(html).toContain('restante');
     expect(html).toContain('stroke-dasharray');
     expect(html.replace(/<!-- -->/g, '')).toMatch(

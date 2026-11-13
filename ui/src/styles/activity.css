@@ -159,8 +159,9 @@
   min-width: 0;
   overflow-wrap: anywhere;
 }
+/* The id's padding sits in the spaces around it, so the sentence reads with single spaces. */
 .feed li .tx .id {
-  margin: 0 3px;
+  margin: 0 -2px;
 }
 .drawer .none {
   font: 400 italic 15px / 1.4 var(--serif);

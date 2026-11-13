@@ -89,7 +89,7 @@ export const common = {
 
   // When, as a row says it (derive/when.ts): the lease left, or how long it has been where it is
   'when.left': '{time} left',
-  'when.hoursMinutes': '{hours} h {minutes}',
+  'when.hoursMinutes': '{hours} h {minutes} min',
   'when.hours': '{hours} h',
   'when.minutes': '{minutes} min',
   'when.expired': 'expired',

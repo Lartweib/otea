@@ -73,7 +73,6 @@ export function FoldButton({
       <svg className="fg" viewBox="0 0 8 8" aria-hidden="true">
         <path d="M1.5 2.75 4 5.25l2.5-2.5" />
       </svg>
-      <span className="sg">{open ? '−' : '+'}</span>
       {t('boardView.inside', { count: n })}
     </button>
   );

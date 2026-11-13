@@ -58,7 +58,7 @@ import {
 import { relayoutTable, Tabla } from './Tabla.tsx';
 import { Tray } from './Tray.tsx';
 import { headLabel } from './table.ts';
-import { reverseTree, rollSign, runTree, treeRunning } from './tree.ts';
+import { reverseTree, runTree, treeRunning } from './tree.ts';
 import { useBoardPrefs, useFolds } from './use-board.ts';
 
 // A board (SPEC §10.1): its head and steps strip, the tools (Pasos · Lista · Tabla, Agrupar,
@@ -209,13 +209,11 @@ function Board({ board }: { board: string }) {
     if (treeRunning(id)) {
       setFolds(next);
       reverseTree(id);
-      requestAnimationFrame(() => rollSign(listEl(), id));
       return;
     }
     if (wasOpen) {
       // Folding: the button turns now; the rows go when the head is back.
       flushSync(() => setFolds(next));
-      rollSign(list, id);
       if (list) {
         runTree(list, id, false, () =>
           flushSync(() => setShownFolds((s) => withFold(s, next, id))),
@@ -226,7 +224,6 @@ function Board({ board }: { board: string }) {
         setFolds(next);
         setShownFolds((s) => withFold(s, next, id));
       });
-      rollSign(list, id);
       if (list)
         runTree(list, id, true, () =>
           flushSync(() => setShownFolds((s) => withFold(s, flip(next), id))),

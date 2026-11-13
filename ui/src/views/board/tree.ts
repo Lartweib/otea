@@ -55,19 +55,6 @@ function drawLanes(list: HTMLElement, p: LaneParams) {
   drawLight(svg, p);
 }
 
-// The sign on the fold button rolls when it turns (mock:2306).
-export function rollSign(list: HTMLElement | null, pid: string) {
-  const sg = list?.querySelector<HTMLElement>(`[data-fold="${CSS.escape(pid)}"] .sg`);
-  if (!sg || reduced()) return;
-  sg.animate(
-    [
-      { transform: 'translateY(60%)', opacity: 0, filter: 'blur(.8px)' },
-      { transform: 'none', opacity: 1, filter: 'blur(0px)' },
-    ],
-    { duration: 360, easing: C.glide },
-  );
-}
-
 // unfold: the children are shown already (the first frame hides them again, in the same task);
 // fold: they are shown until the head is back, then onFolded hides them.
 export function runTree(

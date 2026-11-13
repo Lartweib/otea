@@ -92,7 +92,7 @@ export const common = {
 
   // Cuándo, como lo dice una fila
   'when.left': 'quedan {time}',
-  'when.hoursMinutes': '{hours} h {minutes}',
+  'when.hoursMinutes': '{hours} h {minutes} min',
   'when.hours': '{hours} h',
   'when.minutes': '{minutes} min',
   'when.expired': 'vencida',
