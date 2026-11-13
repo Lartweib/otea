@@ -328,7 +328,7 @@ function withHandIn(ctx: Context, item: ItemRecord, def: BoardDefinition): Board
   const position = positionOf(item.state);
   if (isClosed(position)) return def;
   const request = draftRequestOf(ctx, item.id);
-  if (!request) return def;
+  if (!request || request.published) return def;
   const steps = def.steps.map((step) => {
     if (step.id !== position.step) return step;
     const take = [step.instructions.take.trim(), request.instructions].filter(Boolean).join('\n\n');

@@ -254,7 +254,8 @@ export function BranchLine({ strip }: { strip: BranchStrip | null }) {
 
 // The board a Pedido asks an agent to draft, after the buttons: its name, whether the draft arrived,
 // and a way to it in Studio; under it, folded, how to hand the draft in: the step's instructions,
-// which the agent reads, kept out of the person's words.
+// which the agent reads, kept out of the person's words. Once publishing it closed the Pedido, the
+// board it published and the way to it.
 export function DraftRequestLine({
   request,
   canConfigure,
@@ -262,6 +263,20 @@ export function DraftRequestLine({
   request: DraftRequest;
   canConfigure: boolean;
 }) {
+  if (request.published)
+    return (
+      <div className="bi-draft" data-c>
+        <div className="bstrip arrived">
+          <Icon name="board" />
+          <span>{tx('bi.request.published', { name: <b>{request.name}</b> })}</span>
+          {canConfigure ? (
+            <a className="lnk" href={studioHash({ kind: 'board', board: request.board })}>
+              {t('bi.request.openPublished')}
+            </a>
+          ) : null}
+        </div>
+      </div>
+    );
   return (
     <div className="bi-draft" data-c>
       <div className={request.arrived ? 'bstrip arrived' : 'bstrip'}>

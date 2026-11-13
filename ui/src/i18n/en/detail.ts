@@ -432,6 +432,8 @@ export const detail = {
   'bi.request.waiting': 'waiting for the draft',
   'bi.request.arrived': 'the draft arrived: review and publish it',
   'bi.request.open': 'Open the draft in Studio',
+  'bi.request.published': 'Published the board {name}',
+  'bi.request.openPublished': 'Open in Studio',
   'bi.request.instructions': 'Step instructions',
   'bi.request.reader': 'the agent reads them',
   'bi.wait.parts': 'Let {child} finish',

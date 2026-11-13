@@ -430,6 +430,8 @@ export const detail = {
   'bi.request.waiting': 'espera el esbozo',
   'bi.request.arrived': 'el esbozo llegó: revísalo y publícalo',
   'bi.request.open': 'Abrir el borrador en Studio',
+  'bi.request.published': 'Publicó el tablero {name}',
+  'bi.request.openPublished': 'Abrir en Studio',
   'bi.request.instructions': 'Instrucciones del paso',
   'bi.request.reader': 'las lee el agente, en inglés',
   'bi.wait.parts': 'Que terminen {child}',

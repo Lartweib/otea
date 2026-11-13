@@ -77,7 +77,14 @@ export type ItemBoardBlock = {
 
 // The board a Pedido asks an agent to draft (app/draft-request.ts): `arrived` once it handed one in;
 // `instructions`, how to hand it in, in English (agents read it as the step's instructions).
-export type DraftRequest = { board: string; name: string; arrived: boolean; instructions: string };
+// `published` once publishing the board closed the Pedido.
+export type DraftRequest = {
+  board: string;
+  name: string;
+  arrived: boolean;
+  published?: true;
+  instructions: string;
+};
 
 // An item the page lists: where it stands (board and step by name, or closed) and, when the item's
 // relations know it, its title, state and turn, to draw its node.
