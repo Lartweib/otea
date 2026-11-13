@@ -806,17 +806,17 @@ const move: Command = {
 const next: Command = {
   name: 'next',
   summary:
-    'Say which item to take now on the published boards (or in --collection), oldest first, and what its step asks: what it starts with, the instructions, the handoff and where it goes next; when there is none, what to do meanwhile',
+    'Say which item to take now on the published boards (or in --collection), oldest first, and what its step asks: what it starts with, the instructions, the handoff and where it goes next; when there is none, what to do meanwhile. Never offers an item another agent holds or was just offered; --claim also claims it in the same call',
   args: [],
-  options: { collection: {} },
+  options: { collection: {}, claim: { flag: true } },
   execute: (input) => {
     const collection = input.option('collection');
+    const claim = input.flag('claim');
     return withAgent(input, (project) => {
-      const answer = nextFor(
-        project,
-        input.actor.name,
-        collection === undefined ? {} : { collection },
-      );
+      const answer = nextFor(project, input.actor.name, {
+        ...(collection === undefined ? {} : { collection }),
+        ...(claim ? { claim } : {}),
+      });
       return { data: answer, text: answer.text };
     });
   },

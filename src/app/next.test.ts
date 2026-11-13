@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { stateOf } from '../core/board/engine.ts';
 import { sequenceIds } from '../core/board/ids.ts';
 import type { BoardDefinition } from '../core/board/model.ts';
-import { handedText, idleText, nextText, refusalText } from '../core/board/next.ts';
+import { handedText, idleText, nextText, noWayText, refusalText } from '../core/board/next.ts';
 import { creatures } from '../core/board/testing.ts';
 import { clockTime } from '../core/lease.ts';
 import { insertEvidence, selectEvents } from '../store/queries.ts';
@@ -16,6 +16,7 @@ import {
   itemNextText,
   itemOnBoard,
   nextFor,
+  OFFER_MS,
   sendBackItem,
 } from './next.ts';
 import { reassignItem } from './restart.ts';
@@ -109,7 +110,7 @@ describe('the next service', () => {
     expect(nextFor(ctx, 'kiln', { collection: 'Criaturas' }, now)).toEqual({
       item: null,
       collection: 'Criaturas',
-      text: idleText(def, 0),
+      text: idleText([{ def, waitingForYou: 0 }], 'Criaturas'),
     });
   });
 
@@ -232,7 +233,7 @@ describe('a round sent back', () => {
     expect(answer.item).toBe(item.id);
     expect(answer.sentBack).toEqual(sentBack);
     expect(answer.text).toContain(
-      `Concepto, round 2\nYour turn: do this step.\n\nSent back to you: "Más barro en las patas"\n  by the person, `,
+      `Concepto, round 2\nYour turn: do this step.\nClaim it first: otea claim ${item.id} (otea next --claim takes and claims the next in one call).\n\nSent back to you: "Más barro en las patas"\n  by the person, `,
     );
     expect(itemNextText(ctx, getItem(ctx, item.id), 'quill')).toBe(answer.text);
     expect(itemOnBoard(ctx, getItem(ctx, item.id), creatures()).sentBack).toEqual(sentBack);
@@ -557,5 +558,99 @@ describe('rounds and Deshacer', () => {
     const again = itemOnBoard(ctx, getItem(ctx, item.id), creatures());
     expect(again.round).toBe(2);
     expect(again.sentBack?.note).toBe('Más musgo');
+  });
+});
+
+describe('next among several agents', () => {
+  // A clock the test moves: one second per reading, and `later` jumps ahead.
+  function clock() {
+    let at = Date.UTC(2026, 10, 12, 9, 0, 0);
+    const read = () => {
+      at += 1000;
+      return new Date(at).toISOString();
+    };
+    const later = (ms: number) => {
+      at += ms;
+    };
+    return Object.assign(read, { later });
+  }
+
+  it('never offers the item it just offered one agent to another', () => {
+    const ctx = memoryContext();
+    board(ctx);
+    const first = creature(ctx, 'Tortuga');
+    const second = creature(ctx, 'Rana');
+    const at = clock();
+
+    expect(nextFor(ctx, 'quill', {}, at).item).toBe(first.id);
+    expect(nextFor(ctx, 'kiln', {}, at).item).toBe(second.id);
+    // Asked again, each agent keeps its own offer.
+    expect(nextFor(ctx, 'quill', {}, at).item).toBe(first.id);
+    expect(nextFor(ctx, 'scout', {}, at).item).toBeNull();
+  });
+
+  it('offers it to another agent once the offer runs out unclaimed, or the item moved on', () => {
+    const ctx = memoryContext();
+    board(ctx);
+    const item = creature(ctx);
+    const at = clock();
+    nextFor(ctx, 'quill', {}, at);
+    expect(nextFor(ctx, 'kiln', {}, at).item).toBeNull();
+
+    at.later(OFFER_MS);
+
+    expect(nextFor(ctx, 'kiln', {}, at).item).toBe(item.id);
+    attach(ctx, item.id, 'eart');
+    handoffItem(ctx, { id: item.id, actor: kiln, channel: 'cli' }, at);
+    approveItem(ctx, { id: item.id, actor: you, channel: 'ui' }, at);
+    expect(nextFor(ctx, 'kiln', {}, at).item).toBe(item.id);
+  });
+
+  it('takes and claims the next item in one call with claim', () => {
+    const ctx = memoryContext();
+    board(ctx);
+    const first = creature(ctx, 'Tortuga');
+    const second = creature(ctx, 'Rana');
+    const at = clock();
+
+    const taken = nextFor(ctx, 'quill', { claim: true }, at);
+
+    expect(taken.item).toBe(first.id);
+    const lease = taken.lease;
+    expect(lease?.holder).toBe('quill');
+    expect(taken.text).toContain(
+      `You hold it until ${clockTime(lease?.expiresAt ?? '')}; otea heartbeat ${first.id} keeps it longer.`,
+    );
+    expect(selectEvents(ctx.db, first.id).at(-1)).toMatchObject({ type: 'claimed' });
+    expect(nextFor(ctx, 'kiln', { claim: true }, at).item).toBe(second.id);
+    expect(nextFor(ctx, 'scout', { claim: true }, at).item).toBeNull();
+    // Asked again, the holder gets its own item back, still held.
+    expect(nextFor(ctx, 'quill', { claim: true }, at).item).toBe(first.id);
+  });
+
+  it('says once that there is nothing to do on every board, and how to wait', () => {
+    const ctx = memoryContext();
+    const def = board(ctx);
+    const other = { ...creatures(), name: 'Plantas' };
+    const plants = createBoard(ctx, { name: 'Plantas', lang: 'es' }, now, (kind) => `${kind}p`);
+    saveDraft(ctx, plants.id, { definition: other, baseVersion: null }, now);
+    publishBoard(ctx, plants.id, { moves: {}, by: you }, now);
+
+    expect(nextFor(ctx, 'kiln', {}, now).text).toBe(
+      idleText([
+        { def, waitingForYou: 0 },
+        { def: other, waitingForYou: 0 },
+      ]),
+    );
+  });
+
+  it('lists the ways a step has when an agent names one it has not', () => {
+    const ctx = memoryContext();
+    const def = board(ctx);
+    const item = creature(ctx);
+
+    expect(() =>
+      handoffItem(ctx, { id: item.id, actor: quill, channel: 'cli', way: 'Triar' }, now),
+    ).toThrowError(noWayText(def, item.id, 'sconcept', 'Triar'));
   });
 });

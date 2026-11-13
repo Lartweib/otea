@@ -66,7 +66,8 @@ export const CLI_ONLY_COMMANDS = [
   'mcp',
 ];
 
-const READ_ONLY = new Set(['board', 'next', 'list', 'show', 'events', 'wait']);
+// next is not among them: it keeps what it offers each agent, and claims it with claim.
+const READ_ONLY = new Set(['board', 'list', 'show', 'events', 'wait']);
 
 // A tool is named after its command, with words joined by underscores (send-back is send_back).
 export function toolName(command: string): string {

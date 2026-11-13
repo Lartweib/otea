@@ -93,7 +93,6 @@ describe('mcp server', () => {
         'board',
         'events',
         'list',
-        'next',
         'show',
         'wait',
       ]);

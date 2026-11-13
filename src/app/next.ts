@@ -1,6 +1,7 @@
 import type { Channel } from '../core/authority.ts';
 import {
   approve,
+  backWaysOf,
   type DropVia,
   drop,
   type GateAnswer,
@@ -23,6 +24,7 @@ import {
   sentBackAt,
   stateOf,
   turnAt,
+  waysOf,
 } from '../core/board/engine.ts';
 import { type History, handoffNotes, historyOf, roundAfter } from '../core/board/history.ts';
 import { requiredParent } from '../core/board/joins.ts';
@@ -48,30 +50,35 @@ import {
   idleText,
   NOT_TAKEN_BACK,
   nextText,
+  noWayText,
   parentRequiredText,
   refusalText,
   type SentBack,
   takenBackText,
+  targetName,
   wayByName,
 } from '../core/board/next.ts';
 import { evidenceByName, readFieldInput, stateByName, stateName } from '../core/board/reading.ts';
 import { readDefinition } from '../core/board/schema.ts';
 import { OteaError } from '../core/errors.ts';
 import type { Actor } from '../core/item.ts';
-import { activeLease, assertMayWrite } from '../core/lease.ts';
+import { activeLease, assertMayWrite, type Lease } from '../core/lease.ts';
 import { closesOf } from '../core/workflow.ts';
 import { findBoardOfCollection, findVersion, listBoards } from '../store/boards.ts';
 import { transaction } from '../store/database.ts';
 import {
   type ItemRecord,
+  saveOffer,
   selectEvents,
   selectEvidence,
   selectItems,
+  selectOffers,
   selectRelationsOf,
   selectStateEntries,
 } from '../store/queries.ts';
 import type { Context } from './context.ts';
 import { type Item, landMove, requireItem, systemClock, workflowOf } from './items.ts';
+import { takeItem } from './lease-take.ts';
 
 // What agents meet on a published board: the facts the step engine reads of an item, `next` (the
 // item to take and its text) and the three moves an agent makes on a board (handoff, approve and
@@ -376,19 +383,36 @@ export function waitingForYou(ctx: Context, board: LiveBoard): number {
 }
 
 // `sentBack`: the note the item came back with, when a send-back started the round to do.
+// `lease`: the lease the agent holds on it (taken by next --claim, or claimed before).
 export type NextAnswer = {
   item: string | null;
   collection: string | null;
   text: string;
   sentBack?: SentBack;
+  lease?: Lease;
 };
 
-// The item the agent should take, and its text: what was sent back to it first, then the oldest
-// waiting; or, when there is none, each board's words for idle time and its cap on new items.
+// For this long after `next` offers an item to an agent, no other agent is offered it, so two
+// agents asking at once never take the same item; claiming it holds it longer.
+export const OFFER_MS = 2 * 60_000;
+
+// Whether `next` offered the item to another agent a moment ago, in the state it is still in.
+function offeredElsewhere(ctx: Context, agent: string, at: string) {
+  const offers = selectOffers(ctx.db).filter(
+    (offer) => offer.agent !== agent && Date.parse(at) - Date.parse(offer.at) < OFFER_MS,
+  );
+  return (item: ItemRecord) =>
+    offers.some((offer) => offer.item === item.id && offer.state === item.state);
+}
+
+// The item the agent should take, and its text: one it holds first, then what was sent back to it,
+// then the oldest waiting; never one another agent holds or was just offered. With `claim`, the
+// agent claims it in the same transaction, so no other agent can take it between the two. When
+// there is none: that, once, each board's words for idle time and its cap, and how to wait.
 export function nextFor(
   ctx: Context,
   agent: string,
-  options: { collection?: string } = {},
+  options: { collection?: string; claim?: boolean } = {},
   now = systemClock,
 ): NextAnswer {
   const boards = liveBoards(ctx).filter(
@@ -400,39 +424,55 @@ export function nextFor(
       `There is no published board on collection "${options.collection}"`,
     );
   }
-  const at = now();
-  const entered = selectStateEntries(ctx.db);
-  const since = (item: ItemRecord) => entered.get(item.id) ?? item.createdAt;
-  const candidates = boards.flatMap((board) =>
-    selectItems(ctx.db, { collection: board.collection })
-      .filter((item) => isTheirs(ctx, board.def, item, agent, at))
-      .map((item) => ({
-        item,
-        board,
-        returned: itemOnBoard(ctx, item, board.def).sentBack !== undefined,
-      })),
-  );
-  candidates.sort(
-    (a, b) =>
-      Number(b.returned) - Number(a.returned) ||
-      since(a.item).localeCompare(since(b.item)) ||
-      a.item.createdAt.localeCompare(b.item.createdAt),
-  );
-  const first = candidates[0];
-  if (first) {
-    const sentBack = itemOnBoard(ctx, first.item, first.board.def).sentBack;
+  return transaction(ctx.db, () => {
+    const at = now();
+    const entered = selectStateEntries(ctx.db);
+    const since = (item: ItemRecord) => entered.get(item.id) ?? item.createdAt;
+    const offered = offeredElsewhere(ctx, agent, at);
+    const candidates = boards.flatMap((board) =>
+      selectItems(ctx.db, { collection: board.collection })
+        .filter((item) => !offered(item) && isTheirs(ctx, board.def, item, agent, at))
+        .map((item) => ({
+          item,
+          board,
+          held: activeLease(item.lease, at) !== null,
+          returned: itemOnBoard(ctx, item, board.def).sentBack !== undefined,
+        })),
+    );
+    candidates.sort(
+      (a, b) =>
+        Number(b.held) - Number(a.held) ||
+        Number(b.returned) - Number(a.returned) ||
+        since(a.item).localeCompare(since(b.item)) ||
+        a.item.createdAt.localeCompare(b.item.createdAt),
+    );
+    const first = candidates[0];
+    if (!first) {
+      const idle = boards.map((board) => ({
+        def: board.def,
+        waitingForYou: waitingForYou(ctx, board),
+      }));
+      return {
+        item: null,
+        collection: options.collection ?? null,
+        text: idleText(idle, options.collection),
+      };
+    }
+    const { board } = first;
+    const lease = options.claim
+      ? takeItem(ctx.db, first.item, { kind: 'agent', name: agent }, at)
+      : (activeLease(first.item.lease, at) ?? undefined);
+    const item = lease ? { ...first.item, lease } : first.item;
+    if (!lease) saveOffer(ctx.db, { agent, item: item.id, state: item.state, at });
+    const sentBack = itemOnBoard(ctx, item, board.def).sentBack;
     return {
-      item: first.item.id,
-      collection: first.board.collection,
-      text: textFor(ctx, first.item, first.board.def, at, agent),
+      item: item.id,
+      collection: board.collection,
+      text: textFor(ctx, item, board.def, at, agent),
       ...(sentBack === undefined ? {} : { sentBack }),
+      ...(lease ? { lease } : {}),
     };
-  }
-  return {
-    item: null,
-    collection: options.collection ?? null,
-    text: boards.map((board) => idleText(board.def, waitingForYou(ctx, board))).join('\n\n'),
-  };
+  });
 }
 
 export type BoardMoveInput = {
@@ -466,16 +506,24 @@ function wayOf(
 ): Target | undefined {
   if (way === undefined || isClosed(position)) return undefined;
   const target = wayByName(def, position.step, way);
-  if (target === undefined) {
-    const step = stepById(def, position.step)?.name ?? position.step;
-    throw new OteaError('invalid_transition', `${id} has no way "${way}" from ${step}`, {
-      kind: 'no_way',
-      item: id,
-      way,
-      step,
-    });
-  }
+  if (target === undefined) refuseWay(def, id, position, way);
   return target;
+}
+
+// A way the step does not have, refused with the ways it has (on, and back while it is done).
+function refuseWay(def: BoardDefinition, id: string, position: Position, way: string): never {
+  if (isClosed(position))
+    throw new OteaError('invalid_transition', `${id} is closed`, { kind: 'no_way', item: id });
+  const reviewing = position.phase !== 'doing';
+  const name = (target: Target) => targetName(def, target);
+  throw new OteaError('invalid_transition', noWayText(def, id, position.step, way, reviewing), {
+    kind: 'no_way',
+    item: id,
+    way,
+    step: name(position.step),
+    ways: waysOf(def, position.step).map(name),
+    back: reviewing ? [] : backWaysOf(def, position.step).map(name),
+  });
 }
 
 const PHASE_WORDS: Readonly<Record<string, string>> = {
@@ -488,6 +536,8 @@ function refuse(
   def: BoardDefinition,
   item: ItemRecord,
   result: Exclude<MoveResult, { ok: true }>,
+  // The way the mover asked for, as it named it.
+  tried?: string,
 ): never {
   if (result.code === 'missing') refuseHandoff(item.id, result.missing);
   if (result.code === 'reason_required')
@@ -496,10 +546,7 @@ function refuse(
       item: item.id,
     });
   if (result.code === 'bad_way')
-    throw new OteaError('invalid_transition', `${item.id} cannot go that way from here`, {
-      kind: 'no_way',
-      item: item.id,
-    });
+    refuseWay(def, item.id, positionOf(item.state), tried ?? 'that way');
   if (result.code === 'not_yours') {
     const position = positionOf(item.state);
     const step = isClosed(position) ? undefined : stepById(def, position.step);
@@ -616,7 +663,7 @@ export function handoffItem(
       ...(way === undefined ? {} : { way }),
       ...(input.reason === undefined ? {} : { reason: input.reason }),
     });
-    if (!result.ok) refuse(board.def, item, result);
+    if (!result.ok) refuse(board.def, item, result, input.way);
     const moved = land(ctx, item, board, result.to, { ...input, ...(note ? { note } : {}) }, at);
     if (result.back && !isClosed(result.to)) {
       const round = itemOnBoard(ctx, requireItem(ctx.db, item.id), board.def).round;
@@ -644,7 +691,7 @@ export function approveItem(
     const result = approve(board.def, position, way, facts);
     if (!result.ok) {
       if (result.code === 'missing') refuseApproval(item, result);
-      refuse(board.def, item, result);
+      refuse(board.def, item, result, input.way);
     }
     const moved = land(ctx, item, board, result.to, input, at);
     return { item: moved, text: handedText(board.def, item.id, result.to) };
@@ -799,7 +846,7 @@ function assertAgentMove(
         ...(words.reason === undefined ? {} : { reason: words.reason }),
       },
     );
-    if (!result.ok) refuse(board.def, item, result);
+    if (!result.ok) refuse(board.def, item, result, stateName(board.def, to));
     if (stateOf(result.to) === to) return;
     const step = stepById(board.def, position.step);
     const into = result.to;

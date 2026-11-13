@@ -194,6 +194,16 @@ const MIGRATIONS = [
 
   ALTER TABLE project ADD COLUMN repos_read INTEGER NOT NULL DEFAULT 0;
   `,
+  // The item `otea next` last offered each agent, in the state it was offered in and when: for a
+  // while no other agent is offered it, so two agents asking at once never get the same item.
+  `
+  CREATE TABLE offers (
+    agent TEXT PRIMARY KEY,
+    item TEXT NOT NULL REFERENCES items (id) ON DELETE CASCADE,
+    state TEXT NOT NULL,
+    at TEXT NOT NULL
+  );
+  `,
 ];
 
 function userVersion(db: DatabaseSync): number {
