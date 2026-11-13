@@ -36,6 +36,10 @@ const groups = (markup: string) =>
     open: attrs?.includes('data-open') ?? false,
     current: attrs?.includes('data-current') ?? false,
   }));
+const railed = (markup: string) =>
+  [...markup.matchAll(/<div class="bi-step"([^>]*)>/g)].map(([, attrs]) =>
+    attrs?.includes('data-rail'),
+  );
 
 describe('RoundNotes: the item’s whole history, grouped by step', () => {
   it('folds each earlier step into one line with its rounds and outcome; the current one is open', () => {
@@ -76,5 +80,19 @@ describe('RoundNotes: the item’s whole history, grouped by step', () => {
     ]);
     expect(markup).toContain('<span class="bo">done</span>');
     expect(markup).not.toContain('this round');
+  });
+});
+
+describe('RoundNotes and the compare rail under it', () => {
+  it('marks the step whose rounds the rail shows: the current one, or the one chosen', () => {
+    const steps = stepRounds(errores(), 'striage', events);
+    expect(railed(renderToStaticMarkup(<RoundNotes steps={steps} rail="striage" />))).toEqual([
+      false,
+      true,
+    ]);
+    expect(railed(renderToStaticMarkup(<RoundNotes steps={steps} rail="sfix" />))).toEqual([
+      true,
+      false,
+    ]);
   });
 });

@@ -38,6 +38,8 @@ import {
   type ItemBoardBlock,
   linksOf,
   ownStepOf,
+  railStep,
+  selectOnFold,
   sheetLook,
   stepRounds,
   waitRows,
@@ -150,6 +152,16 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
   const roundsStep = live && stepId ? stepById(live, stepId) : undefined;
   // Every step it went through with its rounds, the step it is on last.
   const journey = live ? stepRounds(live, item.state, item.events) : [];
+  // The step whose rounds the compare rail under Rondas shows: the one unfolded last there, else
+  // the step it is on; named in the rail's title when the item went through several.
+  const [chosen, setChosen] = useState<{ item: string; step?: string }>({ item: item.id });
+  const chosenStep = chosen.item === item.id ? chosen.step : undefined;
+  const rail = railStep(journey, chosenStep);
+  const railName = journey.length > 1 ? journey.find(({ step }) => step === rail)?.name : undefined;
+  const onFold = (step: string, opening: boolean) => {
+    const next = selectOnFold(chosenStep, step, opening);
+    setChosen(next === undefined ? { item: item.id } : { item: item.id, step: next });
+  };
   const block0 = (item as ItemView & { board?: ItemBoardBlock }).board;
   const missing = block0?.missing ?? [];
   // On your own step the primary hands it off ("Entregar"), asking for the note when the step does.
@@ -317,12 +329,15 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
               .filter((p) => p.show === 'options')
               .map((p) => p.id),
           ),
-          rounds: journey.length ? <RoundNotes steps={journey} /> : null,
+          rounds: journey.length ? (
+            <RoundNotes steps={journey} rail={rail} onFold={onFold} />
+          ) : null,
           // Where the board's layout places no Rondas, they come after the fields only when
           // there is something to say or a review to say it to.
           roundsAfter: hasNotes || (!!roundsStep && roundsStep.reviewer !== 'none'),
           sections: boardSections,
-          steps: stepId ? { def: live, step: stepId } : { def: live },
+          steps: rail ? { def: live, step: rail } : { def: live },
+          railName,
         }
       : undefined,
   });

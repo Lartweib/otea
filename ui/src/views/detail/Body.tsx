@@ -89,8 +89,11 @@ export function bodySections(o: {
         rounds: ReactNode;
         roundsAfter: boolean;
         sections: Sec[];
-        // The board and the step the item is on, for its rounds as the step engine counts them.
+        // The board and the step whose rounds the rail shows (the one the item is on unless
+        // another was unfolded in Rondas), as the step engine counts them; that step's name when
+        // the item went through several.
         steps: BoardRounds;
+        railName?: string | undefined;
       }
     | undefined;
 }): Sec[] {
@@ -192,13 +195,14 @@ export function bodySections(o: {
               <Plain k={k} label={label ?? t('rounds.title')} className="d-sec mod">
                 {board?.rounds}
                 <RoundsModule
+                  key={board?.steps.step}
                   slot={slotData(block.at)}
                   item={item}
                   type={type}
                   entry={block.entry}
                   canWrite={canWrite}
                   quiet={!!board}
-                  {...(board ? { board: board.steps } : {})}
+                  {...(board ? { board: board.steps, stepName: board.railName } : {})}
                 />
               </Plain>
             ),

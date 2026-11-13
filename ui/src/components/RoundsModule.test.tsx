@@ -147,4 +147,21 @@ describe('the rounds of a board step', () => {
     expect(labels[1]).toContain('aprobada');
     expect(labels[1]).not.toContain('devuelta');
   });
+
+  it('names the step whose rounds it shows when the item went through several', () => {
+    setLanguage('es');
+    const html = renderToStaticMarkup(
+      <RoundsModule
+        item={onBoard}
+        type={{ ...bug, states }}
+        entry={{ module: 'rounds' }}
+        canWrite
+        quiet
+        board={{ def, step: 'sconcept' }}
+        stepName="Concepto"
+      />,
+    );
+    expect(html).toContain('<h2 class="t-label">Rondas de Concepto</h2>');
+    expect(html).toContain('aria-label="Rondas de Concepto"');
+  });
 });
