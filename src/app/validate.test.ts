@@ -1,10 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { cambios, tareasDeRepo } from '../core/board/testing.ts';
 import { parsePreset } from '../core/preset.ts';
 import { insertRelation } from '../store/queries.ts';
 import { addCollection } from './collections.ts';
 import type { Context } from './context.ts';
 import { createItem } from './items.ts';
-import { memoryContext, REVIEWS } from './testing.ts';
+import { memoryContext, publishAs, REVIEWS } from './testing.ts';
 import { validateProject } from './validate.ts';
 
 const ana = { kind: 'human', name: 'ana' } as const;
@@ -171,5 +172,27 @@ describe('validateProject', () => {
 
       expect(validateProject(ctx).findings).toEqual([]);
     });
+  });
+
+  it('says nothing of a part on the board its parent’s board divides into', () => {
+    const boards = memoryContext();
+    publishAs(boards, tareasDeRepo(), 'brt');
+    publishAs(boards, cambios(), 'bcam');
+    const change = createItem(boards, {
+      collection: 'Cambios',
+      title: 'Nube',
+      fields: { fwhat: 'x' },
+      actor: ana,
+    });
+    createItem(boards, {
+      collection: 'Tareas de repo',
+      title: 'API',
+      fields: { frepo: 'api', fbranch: 'feat/a' },
+      parent: change.id,
+      actor: ana,
+    });
+
+    expect(validateProject(boards).findings).toEqual([]);
+    boards.db.close();
   });
 });

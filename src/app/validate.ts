@@ -1,9 +1,11 @@
+import { partRule } from '../core/board/joins.ts';
 import { OteaError } from '../core/errors.ts';
 import { type Finding, itemFindings } from '../core/validation.ts';
 import type { Workflow } from '../core/workflow.ts';
 import { findItem, listCollections, selectItems, selectRelations } from '../store/queries.ts';
 import type { Context } from './context.ts';
 import { workflowOf } from './items.ts';
+import { liveBoardOf } from './next.ts';
 import { type LoadedPreset, requirePreset } from './presets.ts';
 
 export type ValidationReport = { errors: number; warnings: number; findings: Finding[] };
@@ -31,12 +33,20 @@ function waitsForChildren(ctx: Context, item: { collection: string; type: string
 
 // A parent in another collection, linked before a tree had to live in one: it still reads, and each
 // is reported with its two ways out. Merging the collections keeps the tree; converting it to blocks
-// keeps the wait of a parent that waits for its children, and to implements keeps the rest.
+// keeps the wait of a parent that waits for its children, and to implements keeps the rest. A part
+// on the board its parent's board divides into ("se divide en") is the declared join, not a stray.
+function declaredPart(ctx: Context, child: string, parent: string): boolean {
+  const childBoard = liveBoardOf(ctx, child);
+  const parentBoard = liveBoardOf(ctx, parent);
+  return !!childBoard && !!parentBoard && partRule(parentBoard, childBoard) === 'ok';
+}
+
 function parentAcrossBoards(ctx: Context): Finding[] {
   return selectRelations(ctx.db, 'parent').flatMap(({ from, to }) => {
     const child = findItem(ctx.db, from);
     const parent = findItem(ctx.db, to);
     if (!child || !parent || child.collection === parent.collection) return [];
+    if (declaredPart(ctx, child.collection, parent.collection)) return [];
     const merge = `merge ${child.collection} and ${parent.collection} into one preset as types`;
     const unlink = `otea unlink ${from} parent ${to}`;
     const convert = waitsForChildren(ctx, parent)
