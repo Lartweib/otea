@@ -63,6 +63,19 @@ export function ghostOf(
   return g;
 }
 
+type Edge = { left: number; top: number; width: number };
+
+// Where a leaf starts: where it stood, at the size its text showed. A rule (data-leaf="w") also
+// starts at its old width, so it stretches with what it underlines instead of snapping.
+export function flipStart(a: Edge, b: Edge, s: number, stretch: boolean): string | null {
+  const dx = a.left - b.left;
+  const dy = a.top - b.top;
+  const sx = stretch && b.width > 0 ? a.width / b.width : s;
+  if (Math.abs(dx) + Math.abs(dy) < 0.5 && Math.abs(s - 1) < 0.004 && Math.abs(sx - 1) < 0.004)
+    return null;
+  return `translate(${dx}px, ${dy}px) ${stretch ? `scale(${sx}, ${s})` : `scale(${s})`}`;
+}
+
 export type FlipOptions = {
   T?: number;
   delay?: number;
@@ -98,11 +111,10 @@ export function flipLeaves(
       if (R) continue;
       const fb = parseFloat(getComputedStyle(a.e).fontSize);
       const s = noScale ? 1 : a.fs / fb;
-      const dx = a.r.left - b.left;
-      const dy = a.r.top - b.top;
-      if (Math.abs(dx) + Math.abs(dy) < 0.5 && Math.abs(s - 1) < 0.004) continue;
+      const from = flipStart(a.r, b, s, a.e.dataset.leaf === 'w');
+      if (!from) continue;
       const kf: Keyframe[] = [
-        { transform: `translate(${dx}px, ${dy}px) scale(${s})`, transformOrigin: '0 0' },
+        { transform: from, transformOrigin: '0 0' },
         { transform: 'none', transformOrigin: '0 0' },
       ];
       const an = a.e.animate(kf, { duration: T, delay, easing: C.settle, fill: 'backwards' });

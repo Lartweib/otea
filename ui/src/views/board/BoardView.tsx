@@ -44,7 +44,7 @@ import {
   stepsStrip,
   valueText,
 } from './model.ts';
-import { type MorphJob, morph, penFade } from './morph-run.ts';
+import { columnRects, type MorphJob, morph, penFade } from './morph-run.ts';
 import { Pasos } from './Pasos.tsx';
 import { listaBlocks, type RowCtx, tablaBlocks } from './rows.tsx';
 import {
@@ -131,7 +131,13 @@ function Board({ board }: { board: string }) {
   const [noRoom, setNoRoom] = useState<string[]>([]);
   const [morphing, setMorphing] = useState<{ from: BoardMode; to: BoardMode } | null>(null);
   const job = useRef<MorphJob | null>(null);
-  const pending = useRef<{ from: BoardMode; to: BoardMode; w: number } | null>(null);
+  const pending = useRef<{
+    from: BoardMode;
+    to: BoardMode;
+    w: number;
+    before: Map<HTMLElement, DOMRect>;
+  } | null>(null);
+  const turned = useRef<Map<HTMLElement, DOMRect> | null>(null);
   const stage = useRef<HTMLDivElement>(null);
   const viewRef = useRef<HTMLDivElement>(null);
   const born = useRef(true);
@@ -326,10 +332,28 @@ function Board({ board }: { board: string }) {
 
   // ---- the views and the morph ----
   const setMode = (m: BoardMode) => choose({ mode: m });
+  // What moves when the column changes width (board.css): its head, tools and filter tokens, and
+  // the stage, which carries the views.
+  const columnPieces = (): HTMLElement[] => {
+    const b = viewRef.current;
+    const s = stage.current;
+    if (!b || !s) return [];
+    const leaves = [...b.querySelectorAll<HTMLElement>('[data-leaf]')].filter(
+      (e) => !s.contains(e) && !e.parentElement?.closest('[data-leaf]'),
+    );
+    return [s, ...leaves];
+  };
   const switchMode = (next: BoardMode) => {
     const j = job.current;
     if (j && !j.done) {
       if ((next === j.from && j.target === 1) || (next === j.to && j.target === 0)) {
+        // Turned back, the column takes the other width again: the side it was going to keeps the
+        // width it was laid out at, and the column glides back from where it is.
+        turned.current = columnRects(columnPieces());
+        const B = stage.current?.querySelector<HTMLElement>(
+          `:scope > [data-mode="${j.to}"]:not(.mghost)`,
+        );
+        if (B) B.style.width = `${B.offsetWidth}px`;
         j.reverse();
         setMode(next);
         return;
@@ -341,15 +365,29 @@ function Board({ board }: { board: string }) {
     setMenu(null);
     if (cur === 'tabla') setTicked([]);
     const was = stage.current?.querySelector<HTMLElement>(`:scope > [data-mode="${cur}"]`);
-    pending.current = { from: cur, to: next, w: was?.offsetWidth ?? 0 };
+    pending.current = {
+      from: cur,
+      to: next,
+      w: was?.offsetWidth ?? 0,
+      before: columnRects(columnPieces()),
+    };
     setMorphing({ from: cur, to: next });
     setMode(next);
     if (selected) moveSplit();
   };
   useLayoutEffect(() => {
+    const t = turned.current;
+    turned.current = null;
+    if (t) job.current?.reglide(t);
     const p = pending.current;
     const el = stage.current;
     if (!p || !el) return;
+    // A view that sets another column width is laid out at it before the morph reads it: the
+    // table takes the room it now has first (this render again, before the frame is drawn).
+    if (el.clientWidth !== stageW) {
+      setStageW(el.clientWidth);
+      return;
+    }
     pending.current = null;
     const A = el.querySelector<HTMLElement>(`:scope > [data-mode="${p.from}"]`);
     const B = el.querySelector<HTMLElement>(`:scope > [data-mode="${p.to}"]`);
@@ -358,7 +396,7 @@ function Board({ board }: { board: string }) {
       return;
     }
     if (selected) penFade(false);
-    job.current = morph(el, A, B, p.from, p.to, onDone(p.from), p.w || undefined);
+    job.current = morph(el, A, B, p.from, p.to, onDone(p.from), p.w || undefined, p.before);
   });
   // A morph still running when the board goes ends with it, and touches nothing after; it reads
   // the open item as it is when it ends, not as it was when it began.
@@ -461,7 +499,7 @@ function Board({ board }: { board: string }) {
   const modes: BoardMode[] = morphing ? [morphing.from, morphing.to] : [mode];
 
   return (
-    <div className="board" ref={viewRef}>
+    <div className="board" data-mode={mode} ref={viewRef}>
       <Head board={board} items={items} studio={studio} />
       {studio ? <BoardActs studio={studio} canWrite={app.session.canWrite} /> : null}
       <Tools
@@ -637,8 +675,15 @@ function Tools({
     setMenu(menu?.kind === kind ? null : { kind, anchor });
   const modes = phone ? MODES.filter((m) => m !== 'tabla') : MODES;
   return (
-    <div className="tools" data-enter="fade" data-leaf="">
-      <div className="switch" role="tablist" aria-label={t('boardView.modes')} ref={sw}>
+    <div className="tools" data-enter="fade">
+      <i className="trule" data-leaf="w" />
+      <div
+        className="switch"
+        role="tablist"
+        aria-label={t('boardView.modes')}
+        ref={sw}
+        data-leaf=""
+      >
         {modes.map((m) => (
           <button
             key={m}
@@ -659,6 +704,7 @@ function Tools({
         ref={group.ref}
         type="button"
         className="tool"
+        data-leaf=""
         hidden={group.hidden}
         aria-haspopup="menu"
         aria-expanded={menu?.kind === 'group'}
@@ -671,6 +717,7 @@ function Tools({
       <button
         type="button"
         className="tool"
+        data-leaf=""
         aria-haspopup="menu"
         aria-expanded={menu?.kind === 'filter' || menu?.kind === 'show'}
         onClick={(e) => toggle('filter', e.currentTarget)}
@@ -684,6 +731,7 @@ function Tools({
         ref={columns.ref}
         type="button"
         className="tool"
+        data-leaf=""
         hidden={columns.hidden}
         aria-haspopup="menu"
         aria-expanded={menu?.kind === 'columns'}
@@ -694,7 +742,7 @@ function Tools({
         <b className="ccount">{columnsShown}</b>
         <Chevron />
       </button>
-      <span className="count">
+      <span className="count" data-leaf="">
         {shown === total
           ? t('boardView.count', { count: total })
           : t('boardView.countOf', { shown, total })}
@@ -707,7 +755,7 @@ function Tools({
           </span>
         ) : null}
       </span>
-      <button type="button" className="tool newb" onClick={onNew}>
+      <button type="button" className="tool newb" data-leaf="" onClick={onNew}>
         <Icon name="plus" />
         <span className="wl">{t('boardView.tools.newItem')}</span>
       </button>

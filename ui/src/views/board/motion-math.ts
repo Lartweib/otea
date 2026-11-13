@@ -121,3 +121,29 @@ export function near(
 ): boolean {
   return r.y + stageTop < vr.bottom + 160 && r.y + r.h + stageTop > vr.top - 160;
 }
+
+// ---- the board column's glide ----
+
+// On a wide screen each view sets the board column's width (board.css), so a switch moves the
+// head, the tools and the stage. Each is laid out at once where it ends and glides there from where
+// it was, on the morph's clock. A rule (data-leaf="w") also stretches from its old width.
+export const GLIDE_T = 480;
+
+type Edge = { left: number; top: number; width: number };
+export type Glide = { dx: number; dy: number; sx: number };
+
+export function glideFrom(a: Edge, b: Edge, stretch: boolean): Glide | null {
+  const dx = a.left - b.left;
+  const dy = a.top - b.top;
+  const sx = stretch && b.width > 0 ? a.width / b.width : 1;
+  if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5 && Math.abs(sx - 1) < 0.004) return null;
+  return { dx, dy, sx };
+}
+
+// Its transform t ms in: nothing once it has arrived, so the last frame is the layout itself.
+export function glideFrame(g: Glide, t: number, T: number): string {
+  const k = 1 - F.settle(clamp(t / T));
+  if (k < 1e-4) return '';
+  const move = `translate(${g.dx * k}px, ${g.dy * k}px)`;
+  return Math.abs(g.sx - 1) < 1e-4 ? move : `${move} scale(${1 + (g.sx - 1) * k}, 1)`;
+}

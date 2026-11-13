@@ -7,6 +7,10 @@ import {
   aFade,
   colFade,
   edgeFrame,
+  GLIDE_T,
+  type Glide,
+  glideFrame,
+  glideFrom,
   inkHead,
   morphDelay,
   morphEnds,
@@ -22,7 +26,8 @@ import {
 // shaped copies, the id, the node or the card's edge gathering into the node, who, when, the card's
 // plate becoming the row's band); the ink head draws B's lanes and resolves what only B has; toward
 // Pasos the columns trace their rules and the cards resolve. Pressed again mid-way, it turns back
-// from where it is. Per-frame writes go straight to the DOM.
+// from where it is. Per-frame writes go straight to the DOM. On a wide screen the views set the
+// board column's width: its head, tools and stage glide from where they stood on the same clock.
 
 export type MorphJob = {
   from: BoardMode;
@@ -31,7 +36,14 @@ export type MorphJob = {
   done: boolean;
   reverse(): void;
   finishNow(): void;
+  // After a turn back has laid the column out at its old width: glide from where it is now.
+  reglide(before: Map<HTMLElement, DOMRect>): void;
 };
+
+// Where the column's pieces stand on screen, before a switch changes its width.
+export function columnRects(pieces: HTMLElement[]): Map<HTMLElement, DOMRect> {
+  return new Map(pieces.map((e) => [e, e.getBoundingClientRect()]));
+}
 
 type R = { x: number; y: number; w: number; h: number };
 type Swap = { ra: R; rb: R; ca: HTMLElement; cb: HTMLElement };
@@ -106,6 +118,8 @@ export function morph(
   onFinish: (side: 0 | 1) => void,
   // A's width as it stood in flow, measured before it turned absolute.
   aWidth = A.offsetWidth,
+  // Where the column's pieces (columnRects) stood before the switch laid them out anew.
+  before?: Map<HTMLElement, DOMRect>,
 ): MorphJob {
   const job: MorphJob = {
     from,
@@ -114,15 +128,40 @@ export function morph(
     done: false,
     reverse: () => undefined,
     finishNow: () => undefined,
+    reglide: () => undefined,
   };
   A.style.width = `${aWidth}px`;
   let ov: HTMLElement | null = null;
   let under: HTMLElement | null = null;
   let raf = 0;
+  // The column's glide: each piece from where it stood to where it is laid out, on the morph's clock.
+  let glides: { e: HTMLElement; g: Glide }[] = [];
+  let g0 = 0;
+  const aim = (from: Map<HTMLElement, DOMRect> | undefined) => {
+    for (const { e } of glides) e.style.transform = '';
+    glides = [];
+    g0 = performance.now();
+    if (!from || reduced()) return;
+    for (const e of from.keys()) e.style.transform = '';
+    for (const [e, a] of from) {
+      if (!e.isConnected) continue;
+      const b = e.getBoundingClientRect();
+      if (!(a.width || a.height) || !(b.width || b.height)) continue;
+      const g = glideFrom(a, b, e.dataset.leaf === 'w');
+      if (g) glides.push({ e, g });
+    }
+  };
+  const glideTo = (now: number): boolean => {
+    const t = now - g0;
+    for (const { e, g } of glides) e.style.transform = glideFrame(g, t, GLIDE_T);
+    return !glides.length || t >= GLIDE_T;
+  };
+  aim(before);
   const finishTo = (side: 0 | 1) => {
     if (job.done) return;
     job.done = true;
     cancelAnimationFrame(raf);
+    for (const { e } of glides) e.style.transform = '';
     ov?.remove();
     under?.remove();
     // The cards take their own sheet back in the frame the plates go, with no fade of their own.
@@ -455,6 +494,7 @@ export function morph(
         e.style.filter = blurOf(1 - f.o);
       }
     }
+    const arrived = glideTo(now);
     aOp = aFade({ fwd, t, a0: st.aOp0 });
     A.style.opacity = String(aOp);
     A.style.filter = blurOf(1 - aOp);
@@ -463,6 +503,7 @@ export function morph(
     A.style.display = aOp < 0.001 ? 'none' : '';
     const resting =
       all &&
+      arrived &&
       (fwd ? head >= 0.999 && t > 520 : head <= 0.001 && t > 300) &&
       (bCard && fwd ? t > 300 + 60 * bCols.length + 380 : true);
     const end = morphEnds(st.resting, resting);
@@ -489,6 +530,11 @@ export function morph(
     raf = requestAnimationFrame(frame);
   };
   job.finishNow = () => finishTo(job.target);
+  job.reglide = (from) => {
+    if (job.done) return;
+    aim(from);
+    glideTo(g0);
+  };
   return job;
 }
 
