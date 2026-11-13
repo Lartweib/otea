@@ -7,7 +7,7 @@ import { addCollection } from '../app/collections.ts';
 import { openProject } from '../app/project.ts';
 import { saveProfile } from '../store/queries.ts';
 import type { Opener } from './opener.ts';
-import { run } from './run.ts';
+import { type Io, run } from './run.ts';
 
 export type Result = { code: number; out: string; err: string };
 
@@ -22,6 +22,8 @@ export function cliAt(
   stdin?: string,
   // Whether stdout is a terminal a person reads (it is piped otherwise).
   terminal = false,
+  // A fake tailscale CLI and network probe (otea phone); none by default.
+  network: Pick<Io, 'tailscale' | 'probe'> = {},
 ): Cli {
   return async (...argv) => {
     let out = '';
@@ -31,6 +33,7 @@ export function cliAt(
       env,
       signal,
       openUrl,
+      ...network,
       ...(ask ? { ask } : {}),
       ...(stdin === undefined ? {} : { stdin: async () => stdin }),
       stdout: { write: (chunk: string) => (out += chunk), isTTY: terminal },

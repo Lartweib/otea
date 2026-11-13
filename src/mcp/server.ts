@@ -3,6 +3,7 @@ import { type CallToolResult, McpServer } from '@modelcontextprotocol/server';
 import { StdioServerTransport } from '@modelcontextprotocol/server/stdio';
 import { type ZodType, z } from 'zod';
 import type { Harness } from '../app/presence.ts';
+import { NO_TAILSCALE } from '../app/tailscale.ts';
 import {
   type Command,
   errorData,
@@ -68,6 +69,10 @@ export const CLI_ONLY_COMMANDS = [
   'open',
   'devices list',
   'devices revoke',
+  'phone status',
+  'phone lan',
+  'phone tailscale',
+  'phone relay',
   'mcp',
 ];
 
@@ -181,6 +186,8 @@ function inputFor(
     openUrl: async () => {
       throw new Error('No browser to open over MCP');
     },
+    tailscale: NO_TAILSCALE,
+    probe: async () => false,
     terminal: false,
     warn: context.warn,
     ask: async () => undefined,

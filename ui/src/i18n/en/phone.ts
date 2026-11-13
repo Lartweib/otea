@@ -73,4 +73,52 @@ export const phone = {
   'phone.sb.placeholder': 'What is missing, what you would change…',
   'phone.sb.cancel': 'Cancel',
   'phone.sb.send': 'Send',
+  'phone.transport.section': 'Phone',
+  'phone.transport.sub': 'how a phone reaches Otea',
+  'phone.transport.choose': 'Phone transport',
+  'phone.transport.lan': 'Local network',
+  'phone.transport.lanText': 'On the same Wi‑Fi as this computer, over plain HTTP.',
+  'phone.transport.default': 'default',
+  'phone.transport.tailscale': 'Tailscale',
+  'phone.transport.tailscaleText':
+    'From anywhere, over HTTPS. Only devices logged in to your tailnet reach it.',
+  'phone.transport.relay': 'Otea relay',
+  'phone.transport.relayText': 'A service to reach Otea without setting anything up.',
+  'phone.transport.soon': 'not available yet',
+  'phone.transport.inUse': 'in use',
+  'phone.transport.settingUp': 'Setting up Tailscale…',
+  'phone.transport.again': 'Check again',
+  'phone.transport.signIn':
+    'Sign this browser in with {command} to choose how a phone reaches Otea.',
+  'phone.transport.tokens':
+    'Whatever the transport, a phone pairs once with a code from this computer, and only your paired devices get in.',
+  'phone.transport.pair': 'Pair a phone',
+  'phone.status.transport': 'transport',
+  'phone.status.url': 'address',
+  'phone.status.reachable': 'reachable',
+  'phone.status.yes': 'Otea answers',
+  'phone.status.no': 'no answer',
+  'phone.status.none': 'no address to try',
+  'phone.status.loading': 'checking…',
+  'phone.status.lanOff': 'Otea is not open to the network. Start it with:',
+  'phone.ts.missing':
+    'Tailscale is not installed on this computer. Otea does not install it: install it, log in, then check again.',
+  'phone.ts.download': 'Download Tailscale',
+  'phone.ts.loggedOut':
+    'Tailscale is installed but not logged in. Run this and log in once in the browser it opens:',
+  'phone.ts.logIn': 'Open the login page',
+  'phone.ts.noMagicDns':
+    'MagicDNS is off on your tailnet. Turn it on in the DNS settings; new tailnets have it on.',
+  'phone.ts.noHttps':
+    'HTTPS certificates are off on your tailnet. Turn them on in the DNS settings.',
+  'phone.ts.dnsSettings': 'Open the DNS settings',
+  'phone.ts.taken': '{url} already forwards to {target}. Free it with this, then check again:',
+  'phone.ts.failed': 'Tailscale answered with an error: {message}',
+  'phone.ts.notServing': 'tailscale serve no longer forwards to Otea. Check again to set it up.',
+  'phone.ts.steps': 'On the phone',
+  'phone.ts.step1': 'Install the Tailscale app.',
+  'phone.ts.step2': 'Log in with the same account as this computer.',
+  'phone.ts.step3': 'Scan the pairing code Otea shows.',
+  'phone.ts.ledger':
+    'The HTTPS certificate is public: the name {host} is listed in the Certificate Transparency logs, which anyone can read.',
 } as const;

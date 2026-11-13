@@ -10,12 +10,13 @@ export const sessionCookie = (port: number) => `otea_session_${port}`;
 // A paired device's token, set once by POST /api/pair (otea serve --lan).
 export const deviceCookie = (port: number) => `otea_device_${port}`;
 
-// Who is on the other end: this computer, a device paired over the LAN, or a device on the LAN that
-// has not paired yet (it only reaches the pairing screen).
+// Who is on the other end: this computer, a paired device, or a device that has not paired yet (it
+// only reaches the pairing screen). A device comes through a phone transport: `address` is what its
+// pairing attempts are counted by, and `secure` says it came over HTTPS (Tailscale).
 export type Client =
   | { kind: 'local' }
-  | { kind: 'device'; device: Device; address: string }
-  | { kind: 'unpaired'; address: string };
+  | { kind: 'device'; device: Device; address: string; secure: boolean }
+  | { kind: 'unpaired'; address: string; secure: boolean };
 
 export type OteaEnv = { Variables: { client: Client } };
 

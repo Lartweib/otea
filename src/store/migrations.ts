@@ -235,6 +235,15 @@ export const MIGRATIONS = [
   UPDATE items SET state = substr(state, 1, length(state) - length('__yours')) || '__review'
   WHERE substr(state, -length('__yours')) = '__yours';
   `,
+  // How a phone reaches the desk (see app/phone.ts): one row once a transport is chosen; none means
+  // the local network. Tailscale keeps the name a phone opens, `<machine>.<tailnet>.ts.net`.
+  `
+  CREATE TABLE phone (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    transport TEXT NOT NULL,
+    tailscale_host TEXT
+  );
+  `,
 ];
 
 function userVersion(db: DatabaseSync): number {

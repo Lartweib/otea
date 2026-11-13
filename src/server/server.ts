@@ -1,6 +1,7 @@
 import { type Context, Hono } from 'hono';
 import { bodyLimit } from 'hono/body-limit';
 import { getCookie } from 'hono/cookie';
+import { z } from 'zod';
 import { syncBoardPresets } from '../app/boards.ts';
 import { briefFor } from '../app/brief.ts';
 import { listCollectionViews } from '../app/collections.ts';
@@ -18,11 +19,22 @@ import {
 import { boardRoundOf, liveBoards } from '../app/next.ts';
 import { leaveNote, notesSummary, notesView } from '../app/notes.ts';
 import { performanceOf } from '../app/performance.ts';
+import {
+  choosePhoneTransport,
+  fetchProbe,
+  isTransport,
+  type Probe,
+  phoneSettings,
+  phoneStatus,
+  RELAY_UNAVAILABLE,
+  switchToTailscale,
+} from '../app/phone.ts';
 import { listAgents, presenceSignature } from '../app/presence.ts';
 import { listPresetViews } from '../app/preset-views.ts';
 import { type Env, type Project, projectView } from '../app/project.ts';
 import { linkItems, unlinkItems } from '../app/relations.ts';
 import { reassignItem, restartItem, undoRelease } from '../app/restart.ts';
+import { NO_TAILSCALE, type TailscaleCli } from '../app/tailscale.ts';
 import { undoMove } from '../app/undo.ts';
 import { PERIOD_HINT, parsePeriod } from '../core/board/performance.ts';
 import { MAX_EVIDENCE_MB } from '../core/evidence.ts';
@@ -39,20 +51,13 @@ import {
 } from './errors.ts';
 import { serveEvidence } from './evidence.ts';
 import { DEFAULT_PORT, isAllowedHost } from './hosts.ts';
-import {
-  AttemptLimiter,
-  type Clock,
-  isLoopback,
-  isPrivateAddress,
-  PairingCodes,
-  plainAddress,
-} from './lan.ts';
+import { AttemptLimiter, type Clock, isLoopback, PairingCodes, plainAddress } from './lan.ts';
 import {
   assertCanManageDevices,
-  assertLanOn,
-  type Lan,
-  lanView,
+  assertPhoneOn,
+  type Phone,
   pair,
+  pairingView,
   peekPairing,
   revoke,
 } from './pairing.ts';
@@ -67,6 +72,13 @@ import {
   session,
 } from './session.ts';
 import { type LiveStreams, liveStreams } from './stream.ts';
+import {
+  type Arrival,
+  lanTransport,
+  type PhoneTransport,
+  proxied,
+  tailscaleTransport,
+} from './transports.ts';
 import { BUILT_UI_DIR, mountUi } from './ui.ts';
 import {
   assertConfigurable,
@@ -90,8 +102,9 @@ import {
 
 export type OteaServer = {
   app: Hono<OteaEnv>;
-  // Present when the server was started with LAN access (otea serve --lan).
-  lan: Lan | undefined;
+  // Phone access: the pairing code and the doors a phone comes through (otea serve --lan opens the
+  // local network's; choosing Tailscale opens its own).
+  phone: Phone;
   listeningOn(port: number): void;
   close(): void;
 };
@@ -106,6 +119,10 @@ export type ServerOptions = {
   now?: Clock;
   // Where the registry of the other projects is found (OTEA_HOME).
   env?: Env;
+  // The tailscale CLI Configuración's Tailscale option runs, and how a phone URL is tried; the
+  // real ones only where otea serve runs (tests give fakes).
+  tailscale?: TailscaleCli;
+  probe?: Probe;
 };
 
 function isTurn(value: string): value is Turn {
@@ -176,7 +193,16 @@ function tooLarge(): never {
   );
 }
 
-type Doors = { auth: Session; lan: Lan | undefined; port: Port; env: Env };
+type Doors = {
+  auth: Session;
+  phone: Phone;
+  port: Port;
+  env: Env;
+  tailscale: TailscaleCli;
+  probe: Probe;
+};
+
+const TransportBody = z.object({ transport: z.string() });
 
 function api(
   project: Project,
@@ -184,7 +210,7 @@ function api(
   streams: LiveStreams,
   doors: Doors,
 ): Hono<OteaEnv> {
-  const { auth, lan, port, env } = doors;
+  const { auth, phone, port, env } = doors;
   return (
     new Hono<OteaEnv>()
       // A board published from another process (the CLI, another server) joins the catalog before
@@ -200,21 +226,52 @@ function api(
           canConfigure: auth.canConfigure(c),
         }),
       )
-      .post('/pair/peek', async (c) => c.json(await peekPairing(c, project, lan)))
+      .post('/pair/peek', async (c) => c.json(await peekPairing(c, project, phone)))
       .post('/pair', async (c) => {
-        const paired = await pair(c, project, lan, port);
+        const paired = await pair(c, project, phone, port);
         feed.notify();
         return c.json(paired, 201);
       })
       .get('/lan', (c) => {
         assertCanManageDevices(c, auth);
-        return c.json(lanView(project, lan, port(), c.req.query('address')));
+        return c.json(pairingView(project, phone, port(), c.req.query('address')));
       })
       .post('/lan/code', (c) => {
         assertCanManageDevices(c, auth);
         assertSameOrigin(c);
-        assertLanOn(lan).codes.issue();
-        return c.json(lanView(project, lan, port(), c.req.query('address')), 201);
+        assertPhoneOn(phone).codes.issue();
+        return c.json(pairingView(project, phone, port(), c.req.query('address')), 201);
+      })
+      // How a phone reaches the desk: the chosen transport, its URL and whether it answers there.
+      .get('/phone', async (c) => {
+        assertCanManageDevices(c, auth);
+        return c.json(await phoneStatus(project.db, statusSources(doors)));
+      })
+      // Chooses the transport. Tailscale is set up first (tailscale serve points at this port) and
+      // kept only once it is ready; the Otea relay is not available yet.
+      .post('/phone', async (c) => {
+        assertConfigurable(c, auth);
+        const parsed = TransportBody.safeParse(await c.req.json().catch(() => undefined));
+        const transport = parsed.success ? parsed.data.transport : '';
+        if (!isTransport(transport)) {
+          throw new RejectedRequest(
+            400,
+            'invalid_body',
+            'Expected {"transport": "lan" | "tailscale"}',
+          );
+        }
+        if (transport === 'relay') {
+          throw new RejectedRequest(409, 'transport_unavailable', RELAY_UNAVAILABLE);
+        }
+        const check =
+          transport === 'tailscale'
+            ? await switchToTailscale(project.db, doors.tailscale, port())
+            : null;
+        if (transport === 'lan')
+          choosePhoneTransport(project.db, { transport, tailscaleHost: null });
+        if (phone.chosen()) phone.codes.issue();
+        const status = await phoneStatus(project.db, statusSources(doors));
+        return c.json({ ...status, ...(check ? { tailscale: check } : {}) });
       })
       .post('/devices/:id/revoke', (c) => {
         assertCanManageDevices(c, auth);
@@ -389,6 +446,16 @@ function isPairingPath(c: Context): boolean {
   );
 }
 
+function statusSources(doors: Doors) {
+  const port = doors.port();
+  return {
+    port,
+    lanUrls: doors.phone.lan?.urls(port) ?? [],
+    tailscale: doors.tailscale,
+    probe: doors.probe,
+  };
+}
+
 function remoteAddress(c: Context): string | undefined {
   const incoming = (c.env as { incoming?: { socket?: { remoteAddress?: string } } } | undefined)
     ?.incoming;
@@ -403,35 +470,49 @@ export function createServer(project: Project, options: ServerOptions = {}): Ote
   const feed = createChangeFeed(project.db, options.pollIntervalMs);
   const streams = liveStreams(feed, () => presenceSignature(project.db));
   const now = options.now ?? Date.now;
-  const lan: Lan | undefined = options.lan && {
-    hosts: [...(options.lan.names ?? []), ...options.lan.addresses],
+  const lan = options.lan && lanTransport([...(options.lan.names ?? []), ...options.lan.addresses]);
+  const tailscaleDoor = (): PhoneTransport | undefined => {
+    const { transport, tailscaleHost } = phoneSettings(project.db);
+    return transport === 'tailscale' && tailscaleHost
+      ? tailscaleTransport(tailscaleHost)
+      : undefined;
+  };
+  const phone: Phone = {
+    lan,
     codes: new PairingCodes(now),
     attempts: new AttemptLimiter(now),
+    settings: () => phoneSettings(project.db),
+    doors: () => [tailscaleDoor(), lan].filter((door) => door !== undefined),
+    chosen: () => (phoneSettings(project.db).transport === 'tailscale' ? tailscaleDoor() : lan),
   };
   let port = DEFAULT_PORT;
   const app = new Hono<OteaEnv>();
-  // Without LAN access the server listens on 127.0.0.1 only, and every request is this computer's.
-  // With it, a request from this computer must still name localhost; one from the network must come
-  // from a private address and name one of this computer's addresses or its own .local name (any
-  // other DNS name is how a rebinding page gets in), and then carries a device token or reaches only
-  // the pairing screen.
+  // A request one of the open phone doors admits is a device's: from the local network, a private
+  // address naming one of this computer's addresses or its own .local name (any other DNS name is
+  // how a rebinding page gets in); through Tailscale, what tailscale serve forwards. It carries a
+  // device token or reaches only the pairing screen. Any other request must come from this computer
+  // and name localhost; one a proxy forwarded (X-Forwarded-For) is never this computer's own.
   const identify = (c: Context): Client => {
     const host = c.req.header('host');
     const remote = remoteAddress(c);
-    if (!lan || (remote !== undefined && isLoopback(remote))) {
-      if (!isAllowedHost(host, port))
+    const arrival: Arrival = { host, remote, forwardedFor: c.req.header('x-forwarded-for') };
+    const admission = phone
+      .doors()
+      .map((door) => door.admit(arrival, port))
+      .find((admitted) => admitted !== undefined);
+    if (!admission) {
+      const here = remote === undefined || isLoopback(remote);
+      if (!here || proxied(arrival) || !isAllowedHost(host, port)) {
         throw new ForbiddenHost(`Host "${host ?? ''}" is not allowed`);
+      }
       return { kind: 'local' };
     }
-    const named = lan.hosts.some((name) => host?.toLowerCase() === `${name}:${port}`);
-    if (remote === undefined || !isPrivateAddress(remote) || !named) {
-      throw new ForbiddenHost(`Host "${host ?? ''}" is not allowed`);
-    }
+    const { address, secure } = admission;
     const device = deviceByToken(project.db, getCookie(c, deviceCookie(port)) ?? '');
-    if (!device) return { kind: 'unpaired', address: remote };
+    if (!device) return { kind: 'unpaired', address, secure };
     const seen = device.lastSeenAt === null ? 0 : Date.parse(device.lastSeenAt);
     if (now() - seen >= SEEN_EVERY_MS) touchDevice(project.db, device.id, new Date(now()));
-    return { kind: 'device', device, address: remote };
+    return { kind: 'device', device, address, secure };
   };
   app.use(async (c, next) => {
     const client = identify(c);
@@ -449,11 +530,13 @@ export function createServer(project: Project, options: ServerOptions = {}): Ote
   });
   const boundPort = () => port;
   mountAuth(app, options.token, boundPort);
-  const doors = {
+  const doors: Doors = {
     auth: session(options.token, boundPort),
-    lan,
+    phone,
     port: boundPort,
     env: options.env ?? process.env,
+    tailscale: options.tailscale ?? NO_TAILSCALE,
+    probe: options.probe ?? fetchProbe,
   };
   app.route('/api', api(project, feed, streams, doors));
   mountUi(app, options.uiDir ?? BUILT_UI_DIR);
@@ -463,7 +546,7 @@ export function createServer(project: Project, options: ServerOptions = {}): Ote
   });
   return {
     app,
-    lan,
+    phone,
     listeningOn(listened) {
       port = listened;
     },

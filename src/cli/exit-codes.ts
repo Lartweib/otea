@@ -69,6 +69,8 @@ export const EXIT_CODES: Readonly<Record<'ok' | FailureCode, number>> = {
   // No profile declared, or not declared again in this session: otea profile says how.
   profile_required: 2,
   board_conflict: 4,
+  // A phone transport that cannot carry a phone yet: Tailscale not ready, the Otea relay.
+  transport_unavailable: 20,
   // 128 + SIGINT, as shells report a command stopped by Ctrl+C.
   interrupted: 130,
 };

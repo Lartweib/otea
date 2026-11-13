@@ -49,6 +49,7 @@ import {
 } from '../app/next.ts';
 import { agentNotes, noteWaiting, replyNote, roundNotesOf } from '../app/notes.ts';
 import { performanceOf } from '../app/performance.ts';
+import type { Probe, TransportKind } from '../app/phone.ts';
 import { type Harness, seeAgent } from '../app/presence.ts';
 import {
   declareProfile,
@@ -79,6 +80,7 @@ import {
   repoNameAt,
   UnknownRepo,
 } from '../app/repos.ts';
+import type { TailscaleCli } from '../app/tailscale.ts';
 import { validateProject } from '../app/validate.ts';
 import { watch } from '../app/watch.ts';
 import { AGENT_GUIDE } from '../core/agent-guide.ts';
@@ -130,6 +132,8 @@ import {
   removeGitHook,
 } from './hooks.ts';
 import { boardsOf, eventData, itemCollections, itemData, readableEvent } from './names.ts';
+import { PHONE_COMMANDS } from './phone.ts';
+import { portFrom, portToOpen } from './ports.ts';
 import { probeSignIn } from './probe.ts';
 import { readServeFile, removeServeFile, writeServeFile } from './serve-file.ts';
 import { statsText } from './stats.ts';
@@ -1365,34 +1369,27 @@ const attach: Command = {
   },
 };
 
-const PORT_PATTERN = /^\d{1,5}$/;
-
-function portFrom(value: string | undefined): number {
-  if (value === undefined) return DEFAULT_PORT;
-  const port = Number(value);
-  if (!PORT_PATTERN.test(value) || port > 65535) {
-    throw new UsageError('--port must be an integer between 0 and 65535');
-  }
-  return port;
-}
-
-// With LAN access: the URLs a device on the network opens (the .local name first when it
-// resolves), the first pairing code, and the same pairing link by IP when the first is a name.
-type LanServed = {
+// Phone access, when a door is open: the chosen transport, the URLs a phone opens on it (on the
+// local network the .local name first when it resolves; on Tailscale its HTTPS name), the first
+// pairing code, and on the local network the same pairing link by IP when the first is a name.
+type PhoneServed = {
+  transport: TransportKind;
   urls: string[];
   pairingUrl: string | undefined;
   byAddress?: string;
   code: string | undefined;
 };
 
-type Served = { url: string; signInUrl: string; lan?: LanServed };
+type Served = { url: string; signInUrl: string; phone?: PhoneServed };
+
+type ServeOptions = { port: number; lan: boolean; tailscale: TailscaleCli; probe: Probe };
 
 async function serveUntil(
   signal: AbortSignal,
   cwd: string,
-  port: number,
-  lan: boolean,
+  options: ServeOptions,
 ): Promise<Served> {
+  const { port, lan, tailscale, probe } = options;
   const project = openProject(cwd);
   try {
     const dir = project.dataDir;
@@ -1400,7 +1397,12 @@ async function serveUntil(
     const addresses = lan ? lanAddresses() : [];
     const name = lan ? await localName(addresses) : undefined;
     const names = name ? [name] : [];
-    const server = createServer(project, lan ? { token, lan: { addresses, names } } : { token });
+    const server = createServer(project, {
+      token,
+      tailscale,
+      probe,
+      ...(lan ? { lan: { addresses, names } } : {}),
+    });
     const running = await listen(server, port, lan ? ALL_INTERFACES : undefined);
     writeServeFile(dir, { port: running.port, pid: process.pid });
     const stop = () => {
@@ -1409,18 +1411,20 @@ async function serveUntil(
     };
     signal.addEventListener('abort', stop, { once: true });
     const served = { url: running.url, signInUrl: signInUrl(running.url, token) };
-    if (!server.lan) return served;
-    const urls = [...names, ...addresses].map((host) => `http://${host}:${running.port}`);
-    const code = server.lan.codes.issue();
+    const door = server.phone.chosen();
+    if (!door) return served;
+    const urls = door.urls(running.port);
+    const code = server.phone.codes.issue();
     const first = urls[0];
     const address = addresses[0];
     const byAddress =
-      names.length > 0 && address !== undefined
+      door.kind === 'lan' && names.length > 0 && address !== undefined
         ? { byAddress: pairingUrl(`http://${address}:${running.port}`, code) }
         : {};
     return {
       ...served,
-      lan: {
+      phone: {
+        transport: door.kind,
         urls,
         pairingUrl: first === undefined ? undefined : pairingUrl(first, code),
         ...byAddress,
@@ -1437,27 +1441,38 @@ function signInUrl(url: string, token: string): string {
   return `${url}/auth?token=${encodeURIComponent(token)}`;
 }
 
-function lanText(lan: LanServed): string {
-  if (lan.pairingUrl === undefined) {
+function phoneText(phone: PhoneServed): string {
+  if (phone.pairingUrl === undefined) {
     return 'LAN access is on, but this computer has no private network address a phone could reach';
   }
+  const where =
+    phone.transport === 'tailscale'
+      ? `Phone access through Tailscale: ${phone.urls.join(', ')} (your tailnet's devices only; if a phone cannot open it, run otea phone tailscale)`
+      : `LAN access on: ${phone.urls.join(', ')} (same network only; otea phone tailscale reaches it when away)`;
   return [
-    `LAN access on: ${lan.urls.join(', ')} (same network only; use Tailscale when away)`,
-    `Pair a phone: scan this code, or open ${lan.pairingUrl} (pairing code ${lan.code}, 10 minutes, works once)`,
-    ...(lan.byAddress ? [`If the phone cannot open the .local name, open ${lan.byAddress}`] : []),
-    renderUnicodeCompact(lan.pairingUrl, { ecc: 'M', border: 2 }),
+    where,
+    `Pair a phone: scan this code, or open ${phone.pairingUrl} (pairing code ${phone.code}, 10 minutes, works once)`,
+    ...(phone.byAddress
+      ? [`If the phone cannot open the .local name, open ${phone.byAddress}`]
+      : []),
+    renderUnicodeCompact(phone.pairingUrl, { ecc: 'M', border: 2 }),
     'A new code and the paired devices are in the UI, in Preferences under Pair a phone; otea devices list and revoke them too',
   ].join('\n');
 }
 
 const serve: Command = {
   name: 'serve',
-  summary: `Serve the live UI on 127.0.0.1 (default port ${DEFAULT_PORT}) until Ctrl+C and sign this browser in; --lan also lets phones on the same network pair and open it`,
+  summary: `Serve the live UI on 127.0.0.1 (default port ${DEFAULT_PORT}) until Ctrl+C and sign this browser in; --lan also lets phones on the same network pair and open it, and a phone on Tailscale (otea phone tailscale) pairs without it`,
   args: [],
   options: { port: {}, 'no-open': { flag: true }, lan: { flag: true } },
-  execute: async ({ cwd, option, flag, signal, openUrl, warn, terminal }) => {
-    const served = await serveUntil(signal, cwd, portFrom(option('port')), flag('lan'));
-    const { url, signInUrl, lan } = served;
+  execute: async ({ cwd, option, flag, signal, openUrl, warn, terminal, tailscale, probe }) => {
+    const served = await serveUntil(signal, cwd, {
+      port: portFrom(option('port')),
+      lan: flag('lan'),
+      tailscale,
+      probe,
+    });
+    const { url, signInUrl, phone } = served;
     // With --no-open the person signs a browser in by hand: the link carries the project's key, so
     // it is printed only to a terminal, never to a pipe, a log or --json.
     const signIn = !flag('no-open')
@@ -1474,14 +1489,14 @@ const serve: Command = {
       });
     }
     const running = [`Otea running at ${url}`, ...signIn].join('\n');
-    if (!lan) return { data: { url }, text: running };
-    return { data: { url, lan }, text: `${running}\n${lanText(lan)}` };
+    if (!phone) return { data: { url }, text: running };
+    return { data: { url, phone }, text: `${running}\n${phoneText(phone)}` };
   },
 };
 
 const devicesList: Command = {
   name: 'devices list',
-  summary: 'List the devices paired over the LAN (otea serve --lan), with when each was last seen',
+  summary: 'List the paired phones and tablets (otea serve --lan, otea phone tailscale), with when each was last seen',
   args: [],
   options: {},
   execute: ({ cwd }) => {
@@ -1509,11 +1524,6 @@ const devicesRevoke: Command = {
 
 function notRunning(message: string): CommandFailure {
   return new CommandFailure('not_running', `${message}; run "otea serve" in this project first`);
-}
-
-function portToOpen(dir: string, option: string | undefined): number {
-  if (option !== undefined) return portFrom(option);
-  return readServeFile(dir)?.port ?? DEFAULT_PORT;
 }
 
 const open: Command = {
@@ -1854,6 +1864,7 @@ export const COMMANDS: readonly Command[] = [
   open,
   devicesList,
   devicesRevoke,
+  ...PHONE_COMMANDS,
   mcp,
 ];
 

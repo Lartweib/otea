@@ -38,6 +38,7 @@ describe('migrate', () => {
         'board_drafts',
         'repos',
         'offers',
+        'phone',
       ]),
     );
     expect(userVersion(db)).toBe(16);

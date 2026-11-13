@@ -90,7 +90,11 @@ export const surfaces = {
   'lan.never': 'never',
   'lan.revoke': 'Revoke',
   'lan.revokeLabel': 'Revoke {name}',
-  'lan.away': 'Away from home? Reach it through Tailscale instead of opening a port.',
+  'lan.away': 'Away from home? Choose Tailscale under Settings › Phone instead of opening a port.',
+  'lan.awayTailscale':
+    'Through Tailscale, over HTTPS: only devices logged in to your tailnet reach this address.',
+  'lan.offTailscale': 'Tailscale is not set up yet.',
+  'lan.setUpTailscale': 'Set it up under Settings › Phone, or with {command}.',
   'lan.qrLabel': 'QR code that opens the pairing screen on a phone',
   'lan.qrOff': 'LAN access is off',
   'lan.qrOffText': 'Turn it on to show a pairing code for a phone.',
@@ -355,6 +359,8 @@ export const surfaces = {
   'projects.sub.holds': '{agent} has it',
   'projects.sub.yours': 'you opened it',
   'lan.dialogLead': 'Scan it with the phone on the same network. It expires in 5 minutes.',
+  'lan.dialogLeadTailscale':
+    'Scan it with the phone logged in to Tailscale. It expires in 10 minutes.',
   'lan.done': 'Done',
   'lan.revoked': 'revoked just now',
   'settings.kicker': 'Project',
