@@ -168,18 +168,28 @@
   color: var(--ink-2);
   margin-top: 10px;
 }
+/* One grid for the table; the header and each row take its columns (subgrid), so a column starts at
+   the same x in every line whatever its cells hold. */
 .pj-repos {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, max-content) max-content;
+  column-gap: 12px;
   margin-top: 12px;
   border-top: 1px solid var(--rule);
 }
 .pj-repo {
   display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) auto minmax(0, 1.4fr);
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
   gap: 12px;
   align-items: baseline;
   padding: 9px 0;
   border-bottom: 1px solid var(--rule);
   font-size: 13.5px;
+}
+.pj-repo > * {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 .pj-repo .t-cap {
   font: 400 11.5px / 1.3 var(--mono);
@@ -435,7 +445,17 @@
     grid-template-columns: minmax(0, 1fr);
     row-gap: 12px;
   }
+  .pj-repos {
+    grid-template-columns: minmax(0, 1fr) max-content;
+  }
   .pj-repo {
-    grid-template-columns: minmax(0, 1fr) auto;
+    row-gap: 6px;
+  }
+  /* A phone line: the name and its count, then the folder and the gate each across the table. */
+  .pj-repo > .pj-repo-items {
+    grid-area: 1 / 2;
+  }
+  .pj-repo > .pj-repo-wide {
+    grid-column: 1 / -1;
   }
 }
