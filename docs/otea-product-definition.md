@@ -119,7 +119,7 @@ Each action or field in a preset declares who may perform it:
 
 Enforced by the core regardless of preset or module.
 
-1. **An agent never approves its own work on its own authority.** Actions marked `human` or `human-ui` cannot be performed by an agent acting for itself.
+1. **An agent never approves its own work on its own authority.** Actions marked `human` or `human-ui` cannot be performed by an agent acting for itself. On a board, a step is done by the person or any agent and reviewed by nobody, the person or any agent, never one agent by name; an agent never reviews a step it did in that round (the same work that bars it from relaying the decision on it), so another agent reviews it: the engine refuses the review and `next` never offers it.
 2. **`human-ui` actions are not exposed in the CLI or MCP.** They exist only in the web UI, protected by a session token visible only to the browser.
 3. **Relayed decisions are always labelled as relayed.** They can never be recorded as direct UI decisions.
 4. **History is append-only.** The event log is never truncated or rewritten. Iterations are never overwritten.
