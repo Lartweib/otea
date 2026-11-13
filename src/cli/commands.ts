@@ -70,6 +70,7 @@ import {
 } from '../app/repos.ts';
 import { validateProject } from '../app/validate.ts';
 import { watch } from '../app/watch.ts';
+import { AGENT_GUIDE } from '../core/agent-guide.ts';
 import { fieldsByName, stateName, valueName } from '../core/board/reading.ts';
 import { isSetKey, LISTED_KEYS } from '../core/board/templates.ts';
 import { OteaError } from '../core/errors.ts';
@@ -672,8 +673,13 @@ const show: Command = {
   },
 };
 
+// otea board text opens with Otea's agent guide; --json keeps the board's data alone.
+const withAgentGuide = (text: string) => `${AGENT_GUIDE}
+
+${text}`;
+
 function guideText(guide: Guide): string {
-  return guide.text;
+  return withAgentGuide(guide.text);
 }
 
 const boardName = (record: BoardRecord) => (record.live ?? record.draft)?.definition.name ?? '';
@@ -784,7 +790,7 @@ const board: Command = {
                 ),
               ),
             ].join('\n');
-      return { data: { boards }, text: index };
+      return { data: { boards }, text: withAgentGuide(index) };
     });
   },
 };

@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { AGENT_GUIDE } from '../core/agent-guide.ts';
 import { type Cli, cliAt, tempGitRepo } from './testing.ts';
 
 const MAIN = fileURLToPath(new URL('./main.ts', import.meta.url));
@@ -12,6 +13,8 @@ const BLOCK = [
   '## Otea',
   '',
   'This project hands work between humans and agents through Otea. Run `otea next` (or call the `next` tool of the Otea MCP server) to get the item to take and what its step asks, and `otea board <name>` (the `board` tool) to read the instructions of a board. Hand off with `otea handoff <id>`; `otea show <id>` says what to do next with each item.',
+  '',
+  AGENT_GUIDE,
   '<!-- otea:end -->',
 ].join('\n');
 

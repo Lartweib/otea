@@ -22,11 +22,13 @@ const BUDGETS: Readonly<Record<string, Sizes>> = {
   show: { text: 580, json: 990, mcp: 990 },
   // One row per item; measured with that bug alone.
   list: { text: 25, json: 195, mcp: 195 },
-  'board index': { text: 32, json: 53, mcp: 53 },
+  // Raised when otea board began with Otea's agent guide (instructions below): read once a session.
+  'board index': { text: 255, json: 53, mcp: 53 },
   // The bug board's own words and each step's instructions, read once per session; show's Next:
   // block covers the step at hand. Raised when a preset collection read as a board kept its
   // playbook as the board's text: what agents read on the preset, as before.
-  board: { text: 3030, json: 3090, mcp: 3090 },
+  // Its text opens with Otea's agent guide too.
+  board: { text: 3255, json: 3090, mcp: 3090 },
   // On a board, create says where the item starts (and why its first step was skipped).
   create: { text: 20, json: 180, mcp: 180 },
   claim: { text: 25, json: 195, mcp: 195 },
@@ -38,6 +40,9 @@ const BUDGETS: Readonly<Record<string, Sizes>> = {
   // drop, handoff's --note and its ways back. Raised for the as every tool takes: the agent making
   // the call, so subagents sharing one server keep their own leases.
   tools: { mcp: 3230 },
+  // Otea's agent guide, the server's instructions: in every MCP agent's context from the start, so
+  // it buys only what agents keep getting wrong. Measured at 203.
+  instructions: { mcp: 225 },
 };
 
 // A bug as an agent files it in the bug-triage preset, every field filled.
@@ -163,6 +168,7 @@ describe('token budget', () => {
       })),
     );
     sizes.tools = { mcp: tokens(JSON.stringify(await client.listTools())) };
+    sizes.instructions = { mcp: tokens(client.getInstructions() ?? '') };
   }, 60_000);
 
   afterAll(async () => {
