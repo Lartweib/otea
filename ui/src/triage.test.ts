@@ -4,6 +4,11 @@ import {
   cardWords,
   dragIntent,
   dragProgress,
+  flightLift,
+  HANDOVER,
+  landArc,
+  landOpacity,
+  liftOpacity,
   pileLanding,
   pileOf,
   pileSide,
@@ -498,5 +503,54 @@ describe('pileLanding', () => {
 
   it('never grows a card onto a pile wider than it', () => {
     expect(pileLanding(card, { ...pile, width: 900 }).scale).toBe(1);
+  });
+});
+
+describe('the handover between a flying card and its pile entry', () => {
+  const T = 560;
+
+  it('keeps a landing card fully opaque until its last 80 ms', () => {
+    expect(HANDOVER).toBe(80);
+    expect(landOpacity(0, T)).toBe(1);
+    expect(landOpacity(0.5, T)).toBe(1);
+    expect(landOpacity((T - HANDOVER) / T, T)).toBe(1);
+  });
+
+  it('crossfades out over the last 80 ms, gone as it sits on its entry', () => {
+    const mid = landOpacity((T - HANDOVER / 2) / T, T);
+    expect(mid).toBeGreaterThan(0);
+    expect(mid).toBeLessThan(1);
+    expect(landOpacity(1, T)).toBe(0);
+  });
+
+  it('a card taken back off its pile is the landing reversed: opaque after its first 80 ms', () => {
+    for (const k of [0, 0.05, 0.1, 0.143, 0.3, 0.9, 1]) {
+      expect(liftOpacity(k, T)).toBeCloseTo(landOpacity(1 - k, T));
+    }
+    expect(liftOpacity(0, T)).toBe(0);
+    expect(liftOpacity(HANDOVER / T, T)).toBe(1);
+  });
+
+  it('lifts the card off the stack at once and keeps it lifted while it flies', () => {
+    expect(flightLift(0, T)).toBe(0);
+    expect(flightLift(HANDOVER / T, T)).toBe(1);
+    expect(flightLift(0.5, T)).toBe(1);
+  });
+
+  it('a card already held (dragged) flies on lifted from its first frame', () => {
+    expect(flightLift(0, T, 1)).toBe(1);
+  });
+
+  it('settles it flat only as it lands', () => {
+    expect(flightLift((T - HANDOVER) / T, T)).toBe(1);
+    expect(flightLift(1, T)).toBe(0);
+  });
+
+  it('carries the card over the pile heading: no rise at either end, the most halfway', () => {
+    expect(landArc(0)).toBe(0);
+    expect(landArc(1)).toBeCloseTo(0);
+    expect(landArc(0.5)).toBeGreaterThan(landArc(0.25));
+    expect(landArc(0.5)).toBeGreaterThan(landArc(0.75));
+    expect(landArc(0.5)).toBeGreaterThan(0);
   });
 });

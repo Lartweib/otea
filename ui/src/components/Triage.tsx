@@ -24,6 +24,7 @@ import {
   cardWords,
   type Direction,
   dragIntent,
+  HANDOVER,
   type Pile,
   type PileEntry,
   pileLanding,
@@ -457,13 +458,17 @@ type PileProps = {
 
 // One pile beside the card: what this pass approved (right) or sent back (left), the last decided
 // on top. The cards already on it make way for one landing and close up over one taken back,
-// sliding to their new places (360, settle); under reduced motion they just are there.
+// sliding to their new places (360, settle); under reduced motion they just are there. A card taken
+// back off the pile leaves its entry as the landing's handover reversed: the entry crossfades out
+// (HANDOVER ms) as the card comes up out of it.
 function PileOf({ pile, entries, landing, titleOf, lookOf, wordOf, onOpen }: PileProps) {
   const side = pileSide(pile);
   const all = landing ? [landing, ...entries] : entries;
   const { shown, more } = pileView(all, PILE_SHOWN);
   const list = useRef<HTMLOListElement>(null);
   const tops = useRef(new Map<string, number>());
+  const copies = useRef(new Map<string, HTMLElement>());
+  const held = all.map((e) => e.id).join(' ');
   const keys = shown.map((e) => e.id).join(' ');
   // biome-ignore lint/correctness/useExhaustiveDependencies: measured again when the pile changes
   useLayoutEffect(() => {
@@ -471,10 +476,24 @@ function PileOf({ pile, entries, landing, titleOf, lookOf, wordOf, onOpen }: Pil
     if (!ol) return;
     const was = tops.current;
     const now = new Map<string, number>();
+    const still = new Set(held.split(' '));
+    for (const [id, top] of was) {
+      const copy = copies.current.get(id);
+      if (still.has(id) || !copy || ol.offsetWidth === 0) continue;
+      copy.classList.add('tpile-ghost');
+      copy.style.top = `${top}px`;
+      copy.inert = true;
+      ol.append(copy);
+      void anim(copy, [{ opacity: 1 }, { opacity: 0 }], HANDOVER, 'drift', 0, 'forwards')
+        .finished.catch(() => undefined)
+        .then(() => copy.remove());
+    }
+    copies.current = new Map();
     for (const li of ol.querySelectorAll<HTMLElement>(':scope > li[data-id]')) {
       const id = li.dataset.id ?? '';
       const top = li.offsetTop;
       now.set(id, top);
+      copies.current.set(id, li.cloneNode(true) as HTMLElement);
       const before = was.get(id);
       if (before !== undefined && before !== top && !reduced()) {
         anim(
@@ -488,7 +507,7 @@ function PileOf({ pile, entries, landing, titleOf, lookOf, wordOf, onOpen }: Pil
       }
     }
     tops.current = now;
-  }, [keys, landing?.id]);
+  }, [keys, held, landing?.id]);
   const label = t(pile === 'approved' ? 'triage.pileApproved' : 'triage.pileSent');
   return (
     <aside className="tpile" data-side={side} aria-label={label}>
@@ -654,10 +673,13 @@ export function Triage() {
     const box = list?.getBoundingClientRect();
     const at = stack.current?.getBoundingClientRect();
     if (!box || !at || box.width === 0 || reduced()) return undefined;
-    return pileLanding(
-      { left: at.left, top: at.top, width: card.offsetWidth, height: card.offsetHeight },
-      { left: box.left, top: box.top, width: box.width, height: 0 },
-    );
+    return {
+      ...pileLanding(
+        { left: at.left, top: at.top, width: card.offsetWidth, height: card.offsetHeight },
+        { left: box.left, top: box.top, width: box.width, height: 0 },
+      ),
+      entry: () => list?.querySelector<HTMLElement>('.tpile-card[data-landing]'),
+    };
   };
 
   const decide = (kind: TriKind, reason = '', from?: From) => {

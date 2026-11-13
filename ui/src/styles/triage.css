@@ -99,6 +99,7 @@
   letter-spacing: 0;
 }
 .tpile-list {
+  position: relative;
   display: grid;
   gap: 8px;
   margin: 14px 0 0;
@@ -108,6 +109,14 @@
 .tpile-card {
   min-width: 0;
   transition: opacity 220ms var(--o-drift);
+}
+/* An entry whose card was taken back, crossfading out where it was as the card comes up out of it. */
+.tpile-card.tpile-ghost {
+  position: absolute;
+  left: 0;
+  right: 0;
+  margin: 0;
+  pointer-events: none;
 }
 /* The place made for the card flying here: laid out at once, seen as the card hands over to it. */
 .tpile-card[data-landing] {
@@ -256,6 +265,15 @@
   z-index: var(--z-flight);
   pointer-events: none;
   will-change: transform, opacity;
+}
+/* In flight (thrown, or taken back): lifted as it was held (--lift 1, the drag's shadow) while it
+   crosses the piles, settling flat (0, the stack's rest) only as it lands. */
+.tcard.tflight[data-flying] {
+  box-shadow:
+    0 calc(24px + 10px * var(--lift, 0)) calc(48px + 12px * var(--lift, 0))
+    calc(-36px + 2px * var(--lift, 0)) var(--shadow),
+    0 calc(2px * var(--lift, 0)) calc(6px * var(--lift, 0)) -3px var(--shadow);
+  transition: none;
 }
 .tcard[data-ready] {
   cursor: grab;
