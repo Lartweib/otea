@@ -5,7 +5,7 @@ import { type ZodType, z } from 'zod';
 import type { Harness } from '../app/presence.ts';
 import {
   type Command,
-  failureCode,
+  errorData,
   type Input,
   type OptionSpec,
   UsageError,
@@ -217,9 +217,7 @@ async function callCommand(
     );
     return reply(JSON.stringify(output === undefined ? records : output.data), false);
   } catch (error) {
-    const code = failureCode(error);
-    const message = error instanceof Error ? error.message : String(error);
-    return reply(JSON.stringify({ error: { code, message } }), true);
+    return reply(JSON.stringify(errorData(error)), true);
   }
 }
 

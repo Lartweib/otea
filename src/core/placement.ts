@@ -36,9 +36,14 @@ export function moduleAccepts(entry: LayoutEntry, filename: string): boolean {
   return accepted.includes(kind) || accepted.includes(extensionOf(filename));
 }
 
+// A module as a reader knows it: its label (a board part's name), or its id.
+function quoted(entry: EvidenceModuleEntry): string {
+  return `"${entry.label ?? entry.id}"`;
+}
+
 function named(entry: EvidenceModuleEntry): string {
   const variant = entry.variant === undefined ? '' : `, ${entry.variant}`;
-  return `"${entry.id}" (${entry.module}${variant})`;
+  return `${quoted(entry)} (${entry.module}${variant})`;
 }
 
 function isCompare(entry: LayoutEntry): boolean {
@@ -82,13 +87,18 @@ function chosen(
     throw new OteaError(
       'evidence_not_accepted',
       `${subject} does not take ${filename}. It takes: ${list}`,
+      { kind: 'modules', modules: modules.map(({ id }) => id) },
     );
   }
   if (more.length > 0) {
-    const options = fitting.map(({ id }) => `--module ${id}`).join(' or ');
+    // A board takes its evidence by name (--module "Vídeo del arreglo"), a preset by id.
+    const options = fitting
+      .map(({ id, label }) => `--module ${label === undefined ? id : `"${label}"`}`)
+      .join(' or ');
     throw new OteaError(
       'module_required',
       `${filename} fits more than one evidence module of ${target.id} (${target.type}): pass ${options}`,
+      { kind: 'modules', modules: fitting.map(({ id }) => id) },
     );
   }
   return only;

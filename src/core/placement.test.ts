@@ -70,7 +70,7 @@ describe('placeEvidence', () => {
     refused(
       () => place(BUG, 'shot.jpg', { role: 'before' }),
       'evidence_not_accepted',
-      `${SUBJECT} does not take shot.jpg. It takes: "images" (images, compare): png, gif; "log" (log): log`,
+      `${SUBJECT} does not take shot.jpg. It takes: "Before and after" (images, compare): png, gif; "log" (log): log`,
     );
   });
 
@@ -121,7 +121,7 @@ describe('placeEvidence', () => {
       refused(
         () => place(BUG, 'a.gif', role ? { role } : {}),
         'invalid_role',
-        '"images" (images, compare) compares a before and an after: pass --role before or --role after',
+        '"Before and after" (images, compare) compares a before and an after: pass --role before or --role after',
       );
     }
   });

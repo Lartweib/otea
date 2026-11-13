@@ -7,6 +7,7 @@ import {
   closesOf,
   type Requirement,
   requirementsOf,
+  stateLabel,
   type Transition,
   type Turn,
   transitionsFrom,
@@ -38,13 +39,24 @@ export function mayPerform(by: Authority, { actor, channel }: Performer): boolea
   return by === 'agent' || actor.kind === 'human';
 }
 
-function forbidden(from: string, to: string, transitions: Transition[], performer: Performer) {
+// A move as a reader says it, its states by name.
+function moving(workflow: Workflow, from: string, to: string): string {
+  return `Moving from "${stateLabel(workflow, from)}" to "${stateLabel(workflow, to)}"`;
+}
+
+function forbidden(
+  workflow: Workflow,
+  from: string,
+  to: string,
+  transitions: Transition[],
+  performer: Performer,
+) {
   const required = [...new Set(transitions.map(({ by }) => `${by} authority (${WHO[by]})`))];
   const { actor, channel } = performer;
   return new OteaError(
     'forbidden',
-    `Moving from "${from}" to "${to}" requires ${required.join(' or ')}; ${actor.kind} "${actor.name}" via ${channel} may not`,
-    { kind: 'move', why: 'not_allowed' },
+    `${moving(workflow, from, to)} requires ${required.join(' or ')}; ${actor.kind} "${actor.name}" via ${channel} may not`,
+    { kind: 'move', why: 'not_allowed', from, to },
   );
 }
 
@@ -91,12 +103,14 @@ export function relayableMoves(workflow: Workflow, from: string): Move[] {
   return [...moves.values()];
 }
 
-function requireReason(transition: Transition, reason: string | undefined): void {
+function requireReason(workflow: Workflow, transition: Transition, reason?: string): void {
   if (transition.reasonRequired && !reason?.trim()) {
     const { from, to } = transition;
-    throw new OteaError('reason_required', `Moving from "${from}" to "${to}" requires a reason`, {
+    throw new OteaError('reason_required', `${moving(workflow, from, to)} requires a reason`, {
       kind: 'move',
       why: 'reason_required',
+      from,
+      to,
     });
   }
 }
@@ -110,8 +124,8 @@ export function authorizeMove(
 ): Transition {
   const transitions = assertTransition(workflow, from, to);
   const allowed = transitions.find(({ by }) => mayPerform(by, performer));
-  if (!allowed) throw forbidden(from, to, transitions, performer);
-  requireReason(allowed, reason);
+  if (!allowed) throw forbidden(workflow, from, to, transitions, performer);
+  requireReason(workflow, allowed, reason);
   return allowed;
 }
 
@@ -126,17 +140,17 @@ export function authorizeRelay(
   const transitions = assertTransition(workflow, from, to);
   const human = transitions.find(({ by }) => by === 'human');
   if (human) {
-    requireReason(human, reason);
+    requireReason(workflow, human, reason);
     return human;
   }
   if (transitions.some(({ by }) => by === 'agent')) {
     throw new OteaError(
       'not_relayable',
-      `Moving from "${from}" to "${to}" needs no human decision; make it with "otea move"`,
+      `${moving(workflow, from, to)} needs no human decision; make it with "otea move"`,
     );
   }
   throw new OteaError(
     'forbidden',
-    `Moving from "${from}" to "${to}" requires human-ui authority (${WHO['human-ui']}) and cannot be relayed; the human must make it in the web UI`,
+    `${moving(workflow, from, to)} requires human-ui authority (${WHO['human-ui']}) and cannot be relayed; the human must make it in the web UI`,
   );
 }

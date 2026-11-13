@@ -11,6 +11,7 @@ import {
   itemMoves,
 } from '../core/board/plan.ts';
 import { type BoardRef, blocking, type Problem, problemsOf } from '../core/board/problems.ts';
+import { stateName } from '../core/board/reading.ts';
 import { parseDefinition, readDefinition } from '../core/board/schema.ts';
 import {
   blankBoard,
@@ -455,12 +456,15 @@ export type PublishResult = {
   record: BoardRecord;
 };
 
+// `boards`: the definitions the moves leave and land in, whose step names the events keep, so the
+// history still reads them once a step is deleted.
 function moveItems(
   ctx: Context,
   moves: readonly { id: string; from: string; to: string }[],
   by: Actor,
   at: string,
   data: Record<string, unknown>,
+  boards?: { from: BoardDefinition; to: BoardDefinition },
 ) {
   const held = new Map(
     itemsWithLease(
@@ -475,7 +479,15 @@ function moveItems(
       type: 'transitioned',
       actor: by,
       at,
-      data: { from: move.from, to: move.to, channel: 'ui', ...data },
+      data: {
+        from: move.from,
+        to: move.to,
+        ...(boards
+          ? { fromName: stateName(boards.from, move.from), toName: stateName(boards.to, move.to) }
+          : {}),
+        channel: 'ui',
+        ...data,
+      },
     });
     // The agent holding it was working on the step it left: the lease goes with that work.
     const holder = held.get(move.id);
@@ -566,7 +578,8 @@ function publishWithin(ctx: Context, id: string, input: PublishInput, now: Clock
     collection = draft.name.trim();
   }
   setCollectionPreset(ctx.db, collection, id, version);
-  moveItems(ctx, moved, input.by, at, { reason: 'publish', board_version: version });
+  const boards = live ? { from: live, to: draft } : undefined;
+  moveItems(ctx, moved, input.by, at, { reason: 'publish', board_version: version }, boards);
   const request = input.closeRequest ? openRequest(ctx, requestItem) : null;
   const from = request ? findItem(ctx.db, request.id)?.state : undefined;
   if (request && from !== undefined) {
@@ -651,7 +664,8 @@ function restoreWithin(ctx: Context, id: string, input: RestoreInput, now: Clock
       setLiveVersion(ctx.db, id, version);
       if (collection !== name) renameCollection(ctx.db, collection, name);
       setCollectionPreset(ctx.db, name, id, version);
-      moveItems(ctx, moves, input.by, at, { reason: 'restore', board_version: version });
+      const boards = { from: undoneDef, to: back };
+      moveItems(ctx, moves, input.by, at, { reason: 'restore', board_version: version }, boards);
     } else {
       setLiveVersion(ctx.db, id, version);
     }

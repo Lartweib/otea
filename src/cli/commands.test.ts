@@ -466,7 +466,7 @@ describe('commands', () => {
           const { code, err } = await otea('update', 'TASKS-2', '--title', ' ');
 
           expect(code).toBe(8);
-          expect(err).toContain('field "title" is required and cannot be cleared');
+          expect(err).toContain('field "Título" is required and cannot be cleared');
         });
 
         it('rejects updating a closed item', async () => {
@@ -548,7 +548,7 @@ describe('commands', () => {
           const { code, err } = await otea('relay', 'BUGS-1', 'todo', '--quote', 'redo');
 
           expect(code).toBe(2);
-          expect(err).toContain('Moving from "todo__review" to "todo" requires a reason');
+          expect(err).toContain('Moving from "Hacerlo (in review)" to "Hacerlo" requires a reason');
           expect(
             (
               await otea(

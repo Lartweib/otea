@@ -22,6 +22,9 @@ export type Requirement = (typeof REQUIREMENTS)[number];
 
 export type State = {
   name: string;
+  // The name a reader knows the state by, when it is not its key: a board step's (Refinar (in
+  // review)), whose state is a hidden id.
+  label?: string;
   turn: Turn;
   closes?: Closing;
   requires?: Requirement[];
@@ -77,11 +80,19 @@ export function transitionsBetween(workflow: Workflow, from: string, to: string)
   return transitionsFrom(workflow, from).filter((transition) => transition.to === to);
 }
 
+// A state as a reader names it: its label, or its key.
+export function stateLabel(workflow: Workflow, state: string): string {
+  return workflow.states.find(({ name }) => name === state)?.label ?? state;
+}
+
 export function assertTransition(workflow: Workflow, from: string, to: string): Transition[] {
   const transitions = transitionsBetween(workflow, from, to);
   if (transitions.length > 0) return transitions;
-  throw new OteaError('invalid_transition', `Cannot move from "${from}" to "${to}"`, {
+  const said = (state: string) => stateLabel(workflow, state);
+  throw new OteaError('invalid_transition', `Cannot move from "${said(from)}" to "${said(to)}"`, {
     kind: 'move',
     why: 'no_move',
+    from,
+    to,
   });
 }

@@ -71,6 +71,20 @@ export type ItemWithEvents = Item & { events: EventRecord[] };
 
 export const systemClock: Clock = () => new Date().toISOString();
 
+// The names of the states an event is about (`{ from, to }` gives fromName and toName), kept with
+// it so its history still reads them once their step is deleted; none for a state known by its key.
+export function stateNames(
+  workflow: Workflow,
+  states: Readonly<Record<string, string>>,
+): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(states).flatMap(([key, state]) => {
+      const label = workflow.states.find(({ name }) => name === state)?.label;
+      return label === undefined ? [] : [[`${key}Name`, label]];
+    }),
+  );
+}
+
 // What readers see: the turn (and, once closed, how) derived from the state, and only a lease that
 // is still active at `at`; one that ran out without a release is kept apart, as expiredLease.
 export function present(item: ItemRecord, workflow: Workflow, at: string): Item {
@@ -140,7 +154,8 @@ export function insertNewItem(
   };
   insertItem(db, item);
   const { channel } = input;
-  const data = channel === undefined ? { state } : { state, channel };
+  const named = { state, ...stateNames(type.workflow, { state }) };
+  const data = channel === undefined ? named : { ...named, channel };
   appendEvent(db, { itemId: item.id, type: 'created', actor: input.actor, at, data });
   const created = present(item, type.workflow, at);
   if (input.parent === undefined) return { item, created };
@@ -334,7 +349,13 @@ export function landMove(
     type: 'transitioned',
     actor,
     at,
-    data: { from: item.state, to, ...data, ...trail },
+    data: {
+      from: item.state,
+      to,
+      ...stateNames(workflow, { from: item.state, to }),
+      ...data,
+      ...trail,
+    },
   });
   const handoff = lease !== null && (board || turnOf(workflow, to) !== 'agent');
   if (handoff) {

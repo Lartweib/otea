@@ -13,10 +13,9 @@ describe('board moves from the CLI', () => {
 
   const errorOf = async (cli: Cli, ...argv: string[]) => {
     const result = await cli(...argv, '--json');
-    return {
-      code: result.code,
-      error: JSON.parse(result.err).error as { code: string; message: string },
-    };
+    // Its code and message: what these refusals say (their details are the UI's).
+    const { code, message } = JSON.parse(result.err).error as { code: string; message: string };
+    return { code: result.code, error: { code, message } };
   };
 
   beforeEach(async () => {
@@ -148,6 +147,13 @@ describe('a relayed drop', () => {
       expect(JSON.parse(result.err).error).toEqual({
         code: 'not_relayable',
         message: "Not relayed: on Errores the person drops items from the item's page.",
+        details: {
+          kind: 'drop',
+          item: id,
+          board: 'Errores',
+          why: 'not_relayable',
+          motives: ['Rechazado', 'Duplicado'],
+        },
       });
     } finally {
       repo.remove();

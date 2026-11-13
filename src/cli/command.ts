@@ -82,6 +82,15 @@ export function failureCode(error: unknown): FailureCode {
   return 'unexpected';
 }
 
+// A refusal as --json and MCP give it: its code, its message (in names) and, when it has them, its
+// details, which keep the ids a program sends back.
+export function errorData(error: unknown): { error: Record<string, unknown> } {
+  const code = failureCode(error);
+  const message = error instanceof Error ? error.message : String(error);
+  const details = error instanceof OteaError ? error.details : undefined;
+  return { error: { code, message, ...(details === undefined ? {} : { details }) } };
+}
+
 function optionUsage(name: string, spec: OptionSpec): string {
   if (spec.flag) return `[--${name}]`;
   const value = spec.placeholder ?? spec.choices?.join('|') ?? name;

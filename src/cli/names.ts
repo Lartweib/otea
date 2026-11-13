@@ -1,7 +1,8 @@
 import type { Item } from '../app/items.ts';
 import { liveBoardOf } from '../app/next.ts';
 import type { Project } from '../app/project.ts';
-import type { BoardDefinition, Part } from '../core/board/model.ts';
+import { isClosed, positionOf } from '../core/board/engine.ts';
+import { type BoardDefinition, type Part, stepById } from '../core/board/model.ts';
 import { stateName, valueName } from '../core/board/reading.ts';
 import { type EventRecord, findItem } from '../store/queries.ts';
 
@@ -36,6 +37,17 @@ export function itemCollections(project: Project): (id: string) => string {
 
 const state = (def: Board, id: unknown) =>
   def === undefined ? String(id) : stateName(def, String(id));
+
+// Whether a state's step is gone: deleted since, or its whole board.
+function lost(def: Board, id: string): boolean {
+  if (def === undefined) return true;
+  const position = positionOf(id);
+  return !isClosed(position) && stepById(def, position.step) === undefined;
+}
+
+// A state an event is about: by the live board, or by the name the event kept once it is lost.
+const stateThen = (def: Board, id: unknown, kept: unknown) =>
+  typeof kept === 'string' && lost(def, String(id)) ? kept : state(def, id);
 const partOf = (def: Board, id: unknown): Part | undefined => def?.parts[String(id)];
 const partName = (def: Board, id: unknown) => partOf(def, id)?.name ?? String(id);
 const OPTIONS: readonly string[] = ['choice', 'multi'];
@@ -54,12 +66,15 @@ function fieldsData(def: Board, fields: Readonly<Record<string, unknown>>): Fiel
 
 // An event as its reader says it, its ids replaced by names: what the text prints.
 export function readableEvent(def: Board, event: EventRecord): EventRecord {
-  if (def === undefined) return event;
   const { data } = event;
   const named = (fields: Record<string, unknown>) => ({ ...event, data: { ...data, ...fields } });
-  if (event.type === 'created') return named({ state: state(def, data.state) });
+  if (event.type === 'created') return named({ state: stateThen(def, data.state, data.stateName) });
   if (event.type === 'transitioned')
-    return named({ from: state(def, data.from), to: state(def, data.to) });
+    return named({
+      from: stateThen(def, data.from, data.fromName),
+      to: stateThen(def, data.to, data.toName),
+    });
+  if (def === undefined) return event;
   if (event.type === 'evidence_added' && typeof data.module === 'string')
     return named({ module: partName(def, data.module) });
   if (event.type === 'updated' && data.changes && typeof data.changes === 'object') {
@@ -83,9 +98,13 @@ export function readableEvent(def: Board, event: EventRecord): EventRecord {
 export function eventData(def: Board, event: EventRecord): EventRecord {
   const { data } = event;
   const named = (fields: Record<string, unknown>) => ({ ...event, data: { ...data, ...fields } });
-  if (event.type === 'created') return named({ stateName: state(def, data.state) });
+  if (event.type === 'created')
+    return named({ stateName: stateThen(def, data.state, data.stateName) });
   if (event.type === 'transitioned')
-    return named({ fromName: state(def, data.from), toName: state(def, data.to) });
+    return named({
+      fromName: stateThen(def, data.from, data.fromName),
+      toName: stateThen(def, data.to, data.toName),
+    });
   if (event.type === 'evidence_added' && typeof data.module === 'string')
     return named({ moduleName: partName(def, data.module) });
   if (event.type === 'updated' && data.changes && typeof data.changes === 'object') {
