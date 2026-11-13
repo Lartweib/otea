@@ -887,6 +887,42 @@
   }
 }
 
+/* ───────── a thumb's size: the controls the 390 sweep found short, drawn at 44 (mobile mock) ───────── */
+/* Volver was 56×27, Triaje 71×28, Aprobar and Devolver 34, Lo frena… 28, Anteriores 14, the cross
+   that unlinks 26: each is drawn 44 px tall here, so the press lands on what the eye sees. */
+@media (max-width: 720px) {
+  .btn,
+  .ghost-btn,
+  .tri .thd .back,
+  .sec .sact,
+  .addbtn,
+  .plink {
+    min-height: 44px;
+  }
+  .btn.icon {
+    min-width: 44px;
+  }
+  .mi {
+    min-height: 44px;
+    padding-block: 11px;
+  }
+  .rd-earlier summary {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+  }
+  .rel-remove,
+  .prow .x {
+    width: 44px;
+    height: 44px;
+  }
+  /* The new item page's fields, a thumb's height like the capture's. */
+  .ffield input[type="text"],
+  .ffield select {
+    min-height: 44px;
+  }
+}
+
 /* ───────── a finger: every control answers 44 px around it ───────── */
 /* The control keeps its drawn size; an invisible ::after reaches out to 44 px each way it is short. */
 @media (max-width: 720px) and (pointer: coarse) {
@@ -905,7 +941,10 @@
     .btn,
     .tri .thd .back,
     .elsewhere,
-    .mi
+    .mi,
+    .d-head .lnk,
+    a.id,
+    .rchip .x
   ) {
     position: relative;
   }
@@ -924,7 +963,10 @@
     .btn,
     .tri .thd .back,
     .elsewhere,
-    .mi
+    .mi,
+    .d-head .lnk,
+    a.id,
+    .rchip .x
   )::after {
     content: "";
     position: absolute;

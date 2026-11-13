@@ -109,9 +109,9 @@
   .pgroup .seg2 > button {
     flex: 1;
     justify-content: center;
-    height: 36px;
+    height: 44px;
   }
   .pgroup .seg2 .knob {
-    height: 36px;
+    height: 44px;
   }
 }
