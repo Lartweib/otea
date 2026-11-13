@@ -38,8 +38,8 @@ import {
   type ItemBoardBlock,
   linksOf,
   ownStepOf,
-  roundNotes,
   sheetLook,
+  stepRounds,
   waitRows,
 } from './board-item.ts';
 import { Details, detailCells } from './Details.tsx';
@@ -147,7 +147,8 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
       ? (links?.partsBoard ?? childSummary?.name ?? t('bi.parts.title'))
       : t('bi.parts.title');
   const roundsStep = live && stepId ? stepById(live, stepId) : undefined;
-  const rounds = live && roundsStep ? roundNotes(live, roundsStep.id, item.events) : null;
+  // Every step it went through with its rounds, the step it is on last.
+  const journey = live ? stepRounds(live, item.state, item.events) : [];
   const block0 = (item as ItemView & { board?: ItemBoardBlock }).board;
   const missing = block0?.missing ?? [];
   // On your own step the primary hands it off ("Entregar"), asking for the note when the step does.
@@ -299,7 +300,9 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
           },
         ]
       : [];
-  const hasNotes = !!rounds && (rounds.length > 1 || (rounds[0]?.notes.length ?? 0) > 0);
+  const only = journey.length === 1 ? journey[0]?.rounds : undefined;
+  const hasNotes =
+    journey.length > 1 || (!!only && (only.length > 1 || (only[0]?.notes.length ?? 0) > 0));
   const sections = bodySections({
     item,
     type,
@@ -313,11 +316,10 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
               .filter((p) => p.show === 'options')
               .map((p) => p.id),
           ),
-          rounds:
-            rounds && roundsStep ? <RoundNotes rounds={rounds} step={roundsStep.name} /> : null,
+          rounds: journey.length ? <RoundNotes steps={journey} /> : null,
           // Where the board's layout places no Rondas, they come after the fields only when
           // there is something to say or a review to say it to.
-          roundsAfter: !!roundsStep && (hasNotes || roundsStep.reviewer !== 'none'),
+          roundsAfter: hasNotes || (!!roundsStep && roundsStep.reviewer !== 'none'),
           sections: boardSections,
           steps: stepId ? { def: live, step: stepId } : { def: live },
         }

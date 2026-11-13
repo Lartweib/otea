@@ -6,6 +6,7 @@ import {
   NOTE_REF,
   positionOf,
   roundsOf,
+  type Transition,
   turnAt,
 } from '../../../../src/core/board/engine.ts';
 import { handoffNotes, historyOf, roundsOfStep } from '../../../../src/core/board/history.ts';
@@ -17,6 +18,7 @@ import {
   type Part,
   type Step,
   stepById,
+  stepIndex,
 } from '../../../../src/core/board/model.ts';
 import {
   type DefinitionRoute,
@@ -265,6 +267,77 @@ export function roundNotes(
   }
   for (const r of rounds) r.notes.sort((a, b) => a.at.localeCompare(b.at));
   return rounds;
+}
+
+// How the item last left a step: moved on after a review (approved), moved on by its doer
+// (handed), moved on after a send-back into it (reworked), back to an earlier step, or closed.
+export type StepOutcome =
+  | { kind: 'approved' | 'handed' | 'reworked' | 'done' | 'dropped' }
+  | { kind: 'back'; to: string };
+
+// One step the item went through with its rounds (roundNotes). `current`: the step it is on;
+// `open`: drawn unfolded, the current step, or the last one of a closed item.
+export type StepRounds = {
+  step: string;
+  name: string;
+  rounds: Round[];
+  current: boolean;
+  open: boolean;
+  outcome?: StepOutcome;
+};
+
+// Every step the item went through, as the engine counts its rounds, in the order each was last
+// entered (so the step it is on comes last), each with how it last left it.
+export function stepRounds(
+  def: BoardDefinition,
+  state: string,
+  events: readonly ItemEvent[],
+): StepRounds[] {
+  const created = events.find(({ type }) => type === 'created')?.at ?? '';
+  const history = historyFor(def, events, created);
+  const engine = roundsOf(def, history.initial, history.createdAt, history.moves);
+  const steps = Object.keys(engine.rounds).filter((id) => (engine.rounds[id] ?? 0) > 0);
+  const order = (id: string) => engine.startedAt[id] ?? '';
+  steps.sort((a, b) => order(a).localeCompare(order(b)) || stepIndex(def, a) - stepIndex(def, b));
+  const position = positionOf(state);
+  const left = new Map<string, Transition>();
+  for (const move of history.moves) {
+    if (move.quiet) continue;
+    const from = positionOf(move.from);
+    const to = positionOf(move.to);
+    if (isClosed(from) || (!isClosed(to) && to.step === from.step)) continue;
+    left.set(from.step, move);
+  }
+  const closing = history.moves.findLast(({ to, quiet }) => !quiet && isClosed(positionOf(to)));
+  const closingFrom = closing ? positionOf(closing.from) : undefined;
+  const last = isClosed(position)
+    ? closingFrom && !isClosed(closingFrom)
+      ? closingFrom.step
+      : steps.at(-1)
+    : position.step;
+  const outcomeOf = (id: string): StepOutcome | undefined => {
+    if (!isClosed(position) && id === position.step) return undefined;
+    const move = left.get(id);
+    if (!move) return undefined;
+    const to = positionOf(move.to);
+    if (isClosed(to)) return { kind: to.closed === DONE ? 'done' : 'dropped' };
+    if (stepIndex(def, to.step) < stepIndex(def, id))
+      return { kind: 'back', to: stepById(def, to.step)?.name ?? to.step };
+    if (engine.dips.some((dip) => dip.to === id)) return { kind: 'reworked' };
+    const from = positionOf(move.from);
+    return { kind: !isClosed(from) && from.phase !== 'doing' ? 'approved' : 'handed' };
+  };
+  return steps.map((id) => {
+    const outcome = outcomeOf(id);
+    return {
+      step: id,
+      name: stepById(def, id)?.name ?? id,
+      rounds: roundNotes(def, id, events),
+      current: !isClosed(position) && id === position.step,
+      open: id === last,
+      ...(outcome ? { outcome } : {}),
+    };
+  });
 }
 
 // On a board nothing waits by itself: a step that waits for its parts is the doer's to finish, and

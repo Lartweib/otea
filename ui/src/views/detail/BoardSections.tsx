@@ -1,4 +1,4 @@
-import { type ReactNode, useState } from 'react';
+import { type ReactNode, useId, useState } from 'react';
 import { useApp } from '../../app/context.tsx';
 import { listOr, t, tx } from '../../i18n/i18n.ts';
 import {
@@ -25,6 +25,8 @@ import {
   partsCount,
   type Round,
   type RoundNote,
+  type StepOutcome,
+  type StepRounds,
   type WaitRow,
 } from './board-item.ts';
 
@@ -553,10 +555,68 @@ const bylineOf = (n: RoundNote): string => {
     : t('bi.rounds.handoff', { by: n.by });
 };
 
-// Rondas: each round of the step with its notes, the current one marked; a first round says so.
-export function RoundNotes({ rounds, step }: { rounds: readonly Round[]; step: string }) {
-  const last = rounds.length;
-  const first = last === 1 && (rounds[0]?.notes.length ?? 0) === 0;
+// How the item left a step, in the words of the folded line.
+const outcomeWord = (o: StepOutcome): string =>
+  o.kind === 'back' ? t('bi.rounds.sentBack', { step: o.to }) : t(`bi.rounds.${o.kind}`);
+
+// Rondas: every step the item went through with its rounds. While it has never left its step,
+// that step's rounds alone, as they always were; else one fold per step, the step it is on (or a
+// closed item's last) open, each earlier one a line: the step, its rounds, how it left it.
+export function RoundNotes({ steps }: { steps: readonly StepRounds[] }) {
+  const only = steps.length === 1 ? steps[0] : undefined;
+  if (only?.current) return <StepRoundCards rounds={only.rounds} step={only.name} current />;
+  return (
+    <div className="bi-steps" title={t('bi.rounds.glossAll')}>
+      {steps.map((group) => (
+        <StepFold key={group.step} group={group} />
+      ))}
+    </div>
+  );
+}
+
+function StepFold({ group }: { group: StepRounds }) {
+  const [open, setOpen] = useState(group.open);
+  const body = useId();
+  return (
+    <div
+      className="bi-step"
+      data-open={open || undefined}
+      data-current={group.current || undefined}
+    >
+      <button
+        type="button"
+        className="bi-step-head"
+        aria-expanded={open}
+        aria-controls={body}
+        onClick={() => setOpen(!open)}
+      >
+        <Icon name="chevron" />
+        <b>{group.name}</b>
+        <span className="bc">{t('rounds.count', { count: group.rounds.length })}</span>
+        {group.outcome ? <span className="bo">{outcomeWord(group.outcome)}</span> : null}
+      </button>
+      <div className="bi-step-body" id={body}>
+        <div className="bi-step-inner">
+          <StepRoundCards rounds={group.rounds} step={group.name} current={group.current} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// One step's rounds, newest first; on the step it is on, its latest round marked, a first round
+// with nothing said yet says so.
+function StepRoundCards({
+  rounds,
+  step,
+  current,
+}: {
+  rounds: readonly Round[];
+  step: string;
+  current: boolean;
+}) {
+  const last = current ? rounds.length : 0;
+  const first = current && rounds.length === 1 && (rounds[0]?.notes.length ?? 0) === 0;
   return (
     <div className="bi-rounds" title={t('bi.rounds.gloss', { step })}>
       {first ? (
