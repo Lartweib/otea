@@ -107,6 +107,7 @@ describe('a finger’s size: every control on the phone is at least 44 px (#34)'
       '.sec .sact',
       '.addbtn',
       '.plink',
+      '.chipb',
       '.mi',
       '.rd-earlier summary',
       '.ffield input[type="text"]',
