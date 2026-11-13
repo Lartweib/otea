@@ -5,19 +5,27 @@ import { afterEach, describe, expect, it } from 'vitest';
 import type { BoardDefinition } from '../core/board/model.ts';
 import { step } from '../core/board/testing.ts';
 import {
-  BOARD_JSON_SCHEMA,
   draftToStartFrom,
   mergeAgentDraft,
   requestAgentDraft,
   submitAgentDraft,
   waitingDraftOf,
 } from './agent-draft.ts';
-import { ensureRequestsBoard, getBoardRecord, listBoardSummaries } from './boards.ts';
+import {
+  ensureRequestsBoard,
+  getBoardRecord,
+  listBoardSummaries,
+  publishBoard,
+  publishPlan,
+} from './boards.ts';
+import { BOARD_JSON_SCHEMA } from './draft-request.ts';
 import { getItem, showItem } from './items.ts';
+import { itemNextText } from './next.ts';
 import type { Project } from './project.ts';
 import { memoryContext, projectOf } from './testing.ts';
 
 const kiln = { kind: 'agent' as const, name: 'kiln' };
+const you = { kind: 'human' as const, name: 'human' };
 
 let tick = 0;
 const now = () => new Date(Date.UTC(2026, 10, 12, 9, 0, tick++)).toISOString();
@@ -71,18 +79,89 @@ describe('an agent drafting a board', () => {
     const pedido = getItem(ctx, item, now);
     expect(pedido.collection).toBe('Pedidos');
     expect(pedido.title).toBe('Esbozar el tablero Criaturas');
-    expect(Object.values(pedido.fields)[0]).toContain(
-      'Criaturas del pantano, con arte y animación',
-    );
-    expect(Object.values(pedido.fields)[0]).toContain(`otea board draft ${item}`);
-    expect(Object.values(pedido.fields)[0]).toContain(
-      `To check it before: its shape, each key with an example, is the JSON Schema ${BOARD_JSON_SCHEMA}.`,
-    );
+    // Qué necesitas keeps the person's words, and only them.
+    expect(Object.values(pedido.fields)).toEqual(['Criaturas del pantano, con arte y animación']);
     expect(pedido.lease?.holder).toBe('kiln');
     expect(board.draft?.requestItem).toBe(item);
     const summary = listBoardSummaries(ctx).find(({ id }) => id === board.id);
     expect(summary).toMatchObject({ name: 'Criaturas', status: 'waiting', requestItem: item });
     expect(waitingDraftOf(ctx, item)?.id).toBe(board.id);
+  });
+
+  it('gives how to hand the draft in as the step instructions, and the page the board to open', () => {
+    const ctx = project();
+    const { board, item } = requestAgentDraft(
+      ctx,
+      { name: 'Criaturas', need: 'Criaturas del pantano', agent: 'kiln', lang: 'es' },
+      now,
+    );
+    const pedido = getItem(ctx, item, now);
+
+    const text = itemNextText(ctx, pedido, 'kiln') ?? '';
+    const take = text.slice(text.indexOf('When you take it'), text.indexOf('Handoff'));
+    expect(take).toContain(`otea board draft ${item} > board.json`);
+    expect(take).toContain(`otea board draft ${item} --file board.json`);
+    expect(take).toContain(`is the JSON Schema ${BOARD_JSON_SCHEMA}.`);
+    expect(text).toContain('Qué necesitas: Criaturas del pantano');
+
+    const shown = showItem(ctx, item, { actor: kiln, channel: 'cli' }, now).board?.request;
+    expect(shown).toMatchObject({ board: board.id, name: 'Criaturas', arrived: false });
+    expect(shown?.instructions).toContain(`otea board draft ${item} --file board.json`);
+  });
+
+  it('offers to close the Pedido on publish, and closes it as done when asked', () => {
+    const ctx = project();
+    const { board, item } = requestAgentDraft(
+      ctx,
+      { name: 'Criaturas', need: 'x', agent: 'kiln', lang: 'es' },
+      now,
+    );
+    const draft = getBoardRecord(ctx, board.id).draft?.definition;
+    if (!draft) throw new Error('no draft');
+    submitAgentDraft(
+      ctx,
+      { id: item, text: JSON.stringify(agentFile(draft)), actor: kiln, channel: 'cli' },
+      now,
+    );
+    expect(showItem(ctx, item, { actor: kiln, channel: 'cli' }, now).board?.request).toMatchObject(
+      { arrived: true },
+    );
+
+    expect(publishPlan(ctx, board.id).request).toEqual({
+      id: item,
+      title: 'Esbozar el tablero Criaturas',
+    });
+    publishBoard(ctx, board.id, { moves: {}, by: you, closeRequest: true }, now);
+
+    const closed = getItem(ctx, item, now);
+    expect(closed.state).toBe('done');
+    expect(closed.lease).toBeNull();
+    expect(closed.events.at(-2)).toMatchObject({
+      type: 'transitioned',
+      actor: you,
+      data: { to: 'done', reason: 'Publicado el tablero Criaturas' },
+    });
+    expect(showItem(ctx, item, { actor: kiln, channel: 'cli' }, now).board?.request).toBeUndefined();
+  });
+
+  it('leaves the Pedido open when the publish does not close it', () => {
+    const ctx = project();
+    const { board, item } = requestAgentDraft(
+      ctx,
+      { name: 'Criaturas', need: 'x', agent: null, lang: 'es' },
+      now,
+    );
+    const draft = getBoardRecord(ctx, board.id).draft?.definition;
+    if (!draft) throw new Error('no draft');
+    submitAgentDraft(
+      ctx,
+      { id: item, text: JSON.stringify(agentFile(draft)), actor: kiln, channel: 'cli' },
+      now,
+    );
+
+    publishBoard(ctx, board.id, { moves: {}, by: you }, now);
+
+    expect(getItem(ctx, item, now).state).not.toBe('done');
   });
 
   it('words the Pedido in English when asked to', () => {

@@ -77,6 +77,7 @@ import {
   selectStateEntries,
 } from '../store/queries.ts';
 import type { Context } from './context.ts';
+import { type DraftRequest, draftRequestOf } from './draft-request.ts';
 import { type Item, landMove, requireItem, systemClock, workflowOf } from './items.ts';
 import { takeItem } from './lease-take.ts';
 
@@ -252,6 +253,8 @@ export type BoardBlock = {
   missing: Missing[];
   // While its step is being done after a send-back: the note it came back with, and from whom.
   sentBack?: SentBack;
+  // On a Pedido an agent drafts a board on: that board, and how the draft is handed in.
+  request?: DraftRequest;
 };
 
 function filled(value: unknown): value is string {
@@ -266,6 +269,7 @@ export function boardBlockOf(ctx: Context, item: ItemRecord): BoardBlock | undef
   const value = guarded ? item.fields[guarded.id] : undefined;
   const repo = guarded?.guard.repo === undefined ? undefined : item.fields[guarded.guard.repo];
   const gate = (action: 'push' | 'merge') => gateAt(board.def, on.position, action);
+  const request = draftRequestOf(ctx, item.id);
   return {
     parts: on.links.parts,
     partsBoard: partsBoardOf(ctx, board)?.def.name ?? null,
@@ -279,6 +283,7 @@ export function boardBlockOf(ctx: Context, item: ItemRecord): BoardBlock | undef
         ? []
         : handoffCheck(board.def, on.position.step, on.facts).missing,
     ...(on.sentBack === undefined ? {} : { sentBack: on.sentBack }),
+    ...(request === undefined ? {} : { request }),
   };
 }
 
@@ -317,13 +322,29 @@ export function leftFor(ctx: Context, id: string): string | undefined {
   return cause === 'reassign' && typeof next === 'string' ? next : undefined;
 }
 
+// On a Pedido an agent drafts a board on, how to hand the draft in follows the instructions of the
+// step it stands on: the agent reads it where it reads any step's, apart from the person's words.
+function withHandIn(ctx: Context, item: ItemRecord, def: BoardDefinition): BoardDefinition {
+  const position = positionOf(item.state);
+  if (isClosed(position)) return def;
+  const request = draftRequestOf(ctx, item.id);
+  if (!request) return def;
+  const steps = def.steps.map((step) => {
+    if (step.id !== position.step) return step;
+    const take = [step.instructions.take.trim(), request.instructions].filter(Boolean).join('\n\n');
+    return { ...step, instructions: { ...step.instructions, take } };
+  });
+  return { ...def, steps };
+}
+
 function textFor(
   ctx: Context,
   item: ItemRecord,
-  def: BoardDefinition,
+  live: BoardDefinition,
   at: string,
   me?: string,
 ): string {
+  const def = withHandIn(ctx, item, live);
   const on = itemOnBoard(ctx, item, def);
   const lease = activeLease(item.lease, at);
   const left = leftFor(ctx, item.id);
