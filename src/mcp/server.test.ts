@@ -160,7 +160,14 @@ describe('mcp server', () => {
         'TASKS-2 · Tarea · Completar, round 1\nYour turn: do this step.',
       );
       expect(shown.relayable).toEqual([
-        { to: 'dropped', by: 'human', reasonRequired: true, turn: 'none', closes: 'discarded' },
+        {
+          to: 'dropped',
+          toName: 'Dropped',
+          by: 'human',
+          reasonRequired: true,
+          turn: 'none',
+          closes: 'discarded',
+        },
       ]);
     });
 
@@ -187,7 +194,13 @@ describe('mcp server', () => {
         state: 'todo',
         createdBy: { name: 'claude' },
       });
-      expect(updated).toMatchObject({ title: 'Fix the footer', fields: { priority: 'high' } });
+      expect(updated).toMatchObject({ title: 'Fix the footer' });
+      expect(updated.fields).toContainEqual({
+        id: 'priority',
+        name: 'Prioridad',
+        value: 'high',
+        label: 'Alta',
+      });
     });
 
     it('claims, renews, moves and releases with the agent as the lease holder', async () => {

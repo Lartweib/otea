@@ -19,9 +19,10 @@ const BUDGETS: Readonly<Record<string, Sizes>> = {
   // The bug being fixed: every field, six events, two evidence files.
   // Raised when show's Next: became next's whole answer on a board, and again when a preset's
   // playbook became the board's text: Next: gives its first paragraph and where the rest is.
-  show: { text: 580, json: 990, mcp: 990 },
-  // One row per item; measured with that bug alone.
-  list: { text: 25, json: 195, mcp: 195 },
+  // Raised when --json and MCP gave each field as { id, name, value } and each step its name.
+  show: { text: 580, json: 1170, mcp: 1170 },
+  // One row per item; measured with that bug alone. Raised with show, for the same names.
+  list: { text: 25, json: 285, mcp: 285 },
   // Raised when otea board began with Otea's agent guide (instructions below): read once a session.
   'board index': { text: 255, json: 53, mcp: 53 },
   // The bug board's own words and each step's instructions, read once per session; show's Next:
@@ -30,11 +31,12 @@ const BUDGETS: Readonly<Record<string, Sizes>> = {
   // Its text opens with Otea's agent guide too.
   board: { text: 3255, json: 3090, mcp: 3090 },
   // On a board, create says where the item starts (and why its first step was skipped).
-  create: { text: 20, json: 180, mcp: 180 },
-  claim: { text: 25, json: 195, mcp: 195 },
-  handoff: { text: 25, json: 195, mcp: 195 },
+  // The item rows below were raised with show, for the same names.
+  create: { text: 20, json: 270, mcp: 270 },
+  claim: { text: 25, json: 285, mcp: 285 },
+  handoff: { text: 25, json: 295, mcp: 295 },
   attach: { text: 15, json: 90, mcp: 90 },
-  wait: { text: 25, json: 195, mcp: 195 },
+  wait: { text: 25, json: 285, mcp: 285 },
   // The tool definitions an MCP client reads when it connects.
   // Raised for next, handoff, approve and send_back, the board moves.
   // drop, handoff's --note and its ways back. Raised for the as every tool takes: the agent making

@@ -137,7 +137,10 @@ describe('commands', () => {
         expect(item).toMatchObject({
           id: 'TASKS-1',
           title: 'First',
-          fields: { description: 'Why', priority: 'high' },
+          fields: [
+            { id: 'description', name: 'Descripción', value: 'Why' },
+            { id: 'priority', name: 'Prioridad', value: 'high', label: 'Alta' },
+          ],
           presetVersion: 1,
           state: 'todo',
           turn: 'agent',
@@ -150,6 +153,7 @@ describe('commands', () => {
 
         expect((await json('show', 'TASKS-1')).events[0].data).toEqual({
           state: 'incomplete',
+          stateName: 'Completar',
           channel: 'cli',
         });
         expect((await otea('show', 'TASKS-1')).out).toContain(
@@ -160,7 +164,10 @@ describe('commands', () => {
       it('creates an item in Completar when it lacks what Completar asks, with its start values', async () => {
         const item = await json('create', '--collection', 'tasks', '--title', 'Vague');
 
-        expect(item).toMatchObject({ state: 'incomplete', fields: { priority: 'medium' } });
+        expect(item).toMatchObject({
+          state: 'incomplete',
+          fields: [{ id: 'priority', name: 'Prioridad', value: 'medium', label: 'Media' }],
+        });
       });
 
       it('accepts every field through repeated --field', async () => {
@@ -176,7 +183,10 @@ describe('commands', () => {
           'priority=low',
         );
 
-        expect(item.fields).toEqual({ description: 'a=b', priority: 'low' });
+        expect(item.fields).toEqual([
+          { id: 'description', name: 'Descripción', value: 'a=b' },
+          { id: 'priority', name: 'Prioridad', value: 'low', label: 'Baja' },
+        ]);
       });
 
       it.each([
@@ -383,7 +393,13 @@ describe('commands', () => {
           expect((await otea('show', 'TASKS-1')).out).not.toContain('Agent can move to');
           expect((await otea('show', 'TASKS-1')).out).toContain('otea handoff TASKS-1');
           expect((await json('show', 'TASKS-1')).transitions).toEqual([
-            { to: 'todo__review', by: 'agent', reasonRequired: false, turn: 'human' },
+            {
+              to: 'todo__review',
+              toName: 'Hacerlo (in review)',
+              by: 'agent',
+              reasonRequired: false,
+              turn: 'human',
+            },
           ]);
         });
 
@@ -392,8 +408,15 @@ describe('commands', () => {
             'Agent can relay to: Hacerlo (reason required), Dropped (reason required)',
           );
           expect((await json('show', 'BUGS-1')).relayable).toEqual([
-            { to: 'todo', by: 'human', reasonRequired: true, turn: 'agent' },
-            { to: 'dropped', by: 'human', reasonRequired: true, turn: 'none', closes: 'discarded' },
+            { to: 'todo', toName: 'Hacerlo', by: 'human', reasonRequired: true, turn: 'agent' },
+            {
+              to: 'dropped',
+              toName: 'Dropped',
+              by: 'human',
+              reasonRequired: true,
+              turn: 'none',
+              closes: 'discarded',
+            },
           ]);
         });
 
@@ -424,7 +447,11 @@ describe('commands', () => {
             'priority=high',
           );
 
-          expect(item.fields).toEqual({ description: 'Steps', priority: 'high' });
+          // In the order the item holds them: priority came with the item, description now.
+          expect(item.fields).toEqual([
+            { id: 'priority', name: 'Prioridad', value: 'high', label: 'Alta' },
+            { id: 'description', name: 'Descripción', value: 'Steps' },
+          ]);
           expect((await otea('show', 'TASKS-2')).out).toMatch(
             /updated {2}Descripción: \(none\) -> "Steps"; Prioridad: "Media" -> "Alta"$/m,
           );
@@ -432,7 +459,7 @@ describe('commands', () => {
 
         it('clears an optional field with a blank value', async () => {
           await otea('update', 'TASKS-2', '--field', 'priority=low');
-          expect((await json('update', 'TASKS-2', '--field', 'priority=')).fields).toEqual({});
+          expect((await json('update', 'TASKS-2', '--field', 'priority=')).fields).toEqual([]);
         });
 
         it('rejects clearing a create-required field', async () => {
@@ -506,7 +533,9 @@ describe('commands', () => {
 
           expect((await json('show', 'TASKS-1')).events[2].data).toEqual({
             from: 'todo',
+            fromName: 'Hacerlo',
             to: 'todo__review',
+            toName: 'Hacerlo (in review)',
             reason: 'Ready',
             channel: 'cli',
           });

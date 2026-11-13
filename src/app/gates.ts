@@ -1,7 +1,7 @@
 import { type GateAction, gateAt, isClosed, positionOf } from '../core/board/engine.ts';
 import { type BoardDefinition, guardedBranch, TITLE } from '../core/board/model.ts';
 import { baseGateText, baseRefusal, gateText } from '../core/board/next.ts';
-import { partByName } from '../core/board/reading.ts';
+import { partByName, stateName } from '../core/board/reading.ts';
 import { OteaError } from '../core/errors.ts';
 import { listCollections, selectItems } from '../store/queries.ts';
 import { presetOf } from './collections.ts';
@@ -9,13 +9,15 @@ import type { Context } from './context.ts';
 import { type Item, listItems, workflowOf } from './items.ts';
 import { itemOnBoard, type LiveBoard, liveBoards } from './next.ts';
 
-// How one item stands on a gated action: whether its state allows it, and which states do; on a
-// board, `text` says it in the board's words (gateText).
+// How one item stands on a gated action: whether its state allows it, and which states do, each
+// by id and by name; on a board, `text` says it in the board's words (gateText).
 export type GateVerdict = {
   id: string;
   state: string;
+  stateName: string;
   allowed: boolean;
   allowedIn: string[];
+  allowedInNames: string[];
   text?: string;
 };
 
@@ -94,11 +96,14 @@ function boardVerdicts(
     .map((item) => {
       const position = positionOf(item.state);
       const round = itemOnBoard(ctx, item, board.def).round;
+      const allowedIn = workflowOf(ctx, item).gates?.[gate] ?? [];
       const verdict: GateVerdict = {
         id: item.id,
         state: item.state,
+        stateName: stateName(board.def, item.state),
         allowed: gateAt(board.def, position, gate).allowed,
-        allowedIn: workflowOf(ctx, item).gates?.[gate] ?? [],
+        allowedIn,
+        allowedInNames: allowedIn.map((state) => stateName(board.def, state)),
         text: gateText(board.def, item.id, position, gate, round),
       };
       return { verdict, open: !isClosed(position) };
@@ -127,11 +132,14 @@ function baseCheck(
     .map((item): GateVerdict => {
       const position = positionOf(item.state);
       const round = itemOnBoard(ctx, item, board.def).round;
+      const allowedIn = workflowOf(ctx, item).gates?.merge ?? [];
       return {
         id: item.id,
         state: item.state,
+        stateName: stateName(board.def, item.state),
         allowed: gateAt(board.def, position, 'merge').allowed,
-        allowedIn: workflowOf(ctx, item).gates?.merge ?? [],
+        allowedIn,
+        allowedInNames: allowedIn.map((state) => stateName(board.def, state)),
         text: baseGateText(board.def, item.id, position, gate, round, base),
       };
     });
@@ -234,11 +242,14 @@ function presetVerdicts(
   return items.flatMap((item) => {
     const allowedIn = workflowOf(ctx, item).gates?.[gate];
     if (!allowedIn) return [];
+    // A preset's states are its words already.
     const verdict = {
       id: item.id,
       state: item.state,
+      stateName: item.state,
       allowed: allowedIn.includes(item.state),
       allowedIn,
+      allowedInNames: allowedIn,
     };
     return [{ verdict, open: item.turn !== 'none' }];
   });
