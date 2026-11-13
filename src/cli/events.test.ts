@@ -10,7 +10,8 @@ import {
   until,
 } from './testing.ts';
 
-const AT = '\\d{4}-\\d\\d-\\d\\dT\\S+Z';
+// Text says a time as its UTC day and minute; --json keeps the ISO timestamp.
+const AT = '\\d{4}-\\d\\d-\\d\\d \\d\\d:\\d\\d UTC';
 
 describe('events', () => {
   let repo: TempRepo;
@@ -41,7 +42,7 @@ describe('events', () => {
     expect(first).toMatch(new RegExp(`^1  TASKS-1  ${AT}  agent:claude  created  todo$`));
     expect(second).toMatch(new RegExp(`^2  BUGS-1  ${AT}  agent:claude  created  todo$`));
     expect(third).toMatch(
-      /^3 {2}TASKS-1 {2}\S+ {2}agent:claude {2}transitioned {2}todo -> todo__review$/,
+      new RegExp(`^3 {2}TASKS-1 {2}${AT} {2}agent:claude {2}transitioned {2}todo -> todo__review$`),
     );
     expect(rest).toEqual([]);
   });

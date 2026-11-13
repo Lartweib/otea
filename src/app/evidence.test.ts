@@ -99,6 +99,37 @@ describe('attachEvidence', () => {
     expect(stored()).toEqual([first.sha256]);
   });
 
+  describe('the same file twice', () => {
+    const types = () => getItem(project, 'TASKS-1', at(T5)).events.map(({ type }) => type);
+
+    it('adds nothing while the item has not moved, and returns the entry it has', () => {
+      const first = attach({ caption: 'Crash' });
+      const again = attach({ path: file('renamed.png'), caption: 'Crash ' });
+
+      expect(again).toEqual({ ...first, duplicate: true });
+      expect(showItem(project, 'TASKS-1', { actor: claude, channel: 'cli' }).evidence).toEqual([
+        first,
+      ]);
+      expect(types().filter((type) => type === 'evidence_added')).toHaveLength(1);
+    });
+
+    it('is new again once the item moved, as a new round asks for', () => {
+      attach();
+      moveItem(project, { id: 'TASKS-1', to: 'in_progress', actor: claude, channel: 'cli' });
+
+      expect(attach()).toMatchObject({ id: 2 });
+      expect(attach()).toMatchObject({ id: 2, duplicate: true });
+    });
+
+    it('is another entry in another role, or with another caption', () => {
+      attach({ role: 'before' });
+
+      expect(attach({ role: 'after' })).toMatchObject({ id: 2, role: 'after' });
+      expect(attach({ role: 'after' })).toMatchObject({ id: 2, duplicate: true });
+      expect(attach({ role: 'after', caption: 'Saved' })).toMatchObject({ id: 3 });
+    });
+  });
+
   it('derives the kind from the extension', () => {
     expect(attach({ path: file('fix.diff', '--- a\n+++ b\n') })).toMatchObject({
       kind: 'diff',

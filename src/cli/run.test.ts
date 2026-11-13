@@ -103,7 +103,7 @@ describe('run', () => {
       const { code, out } = await otea('init', '--local');
 
       expect(code).toBe(0);
-      expect(out).toBe(`${oteaDir()}\nMade the boards Tareas, Errores\n`);
+      expect(out).toBe(`Project data in ${oteaDir()}\nMade the boards Tareas, Errores\n`);
       expect(existsSync(join(oteaDir(), 'otea.db'))).toBe(true);
     });
 
@@ -111,6 +111,7 @@ describe('run', () => {
       const first = await otea('init');
       const [path] = first.out.split('\n');
 
+      expect(path).toMatch(/^Project data in /);
       expect(first.out).toBe(`${path}\nMade the boards Tareas, Errores\n`);
       expect(await otea('init')).toMatchObject({ code: 0, out: `${path}\n` });
       expect(await otea('init', '--local')).toMatchObject({ code: 0, out: `${path}\n` });
@@ -121,7 +122,7 @@ describe('run', () => {
 
       expect(await otea('init', '--local', '--template', 'product')).toMatchObject({
         code: 0,
-        out: `${oteaDir()}\nThe project already has boards; add one with otea board add <name> --template product\n`,
+        out: `Project data in ${oteaDir()}\nThe project already has boards; add one with otea board add <name> --template product\n`,
       });
       expect((await otea('init', '--local', '--template', 'nope')).code).toBe(3);
     });
@@ -137,7 +138,7 @@ describe('run', () => {
       const { code, out } = await otea('init', '--local', '--template', 'repos');
 
       expect(code).toBe(0);
-      expect(out).toBe(`${oteaDir()}\nMade the boards Cambios, Tareas de repo\n`);
+      expect(out).toBe(`Project data in ${oteaDir()}\nMade the boards Cambios, Tareas de repo\n`);
     });
 
     it('prints root, path, storage and the project identity with --json', async () => {

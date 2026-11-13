@@ -54,6 +54,17 @@ describe('attach', () => {
     });
   });
 
+  it('says the same file attached again adds nothing, and marks it in --json', async () => {
+    await otea('attach', 'TASKS-1', 'test.log');
+
+    expect(await otea('attach', 'TASKS-1', 'test.log')).toMatchObject({
+      code: 0,
+      out: '#1  single  log  test.log  14 B\nTASKS-1 already has this file as #1; nothing added.\n',
+    });
+    expect(await json('attach', 'TASKS-1', 'test.log')).toMatchObject({ id: 1, duplicate: true });
+    expect((await json('show', 'TASKS-1')).evidence).toHaveLength(1);
+  });
+
   it('accepts an absolute path', async () => {
     expect((await json('attach', 'TASKS-1', join(repo.dir, 'test.log'))).kind).toBe('log');
   });
@@ -102,7 +113,7 @@ describe('attach', () => {
     await otea('attach', 'TASKS-1', 'test.log');
 
     expect((await otea('events', '--since', '1')).out).toMatch(
-      /^2 {2}TASKS-1 {2}\S+ {2}agent:claude {2}evidence_added {2}#1 single log test\.log\n$/,
+      /^2 {2}TASKS-1 {2}\d{4}-\d\d-\d\d \d\d:\d\d UTC {2}agent:claude {2}evidence_added {2}#1 single log test\.log\n$/,
     );
     expect((await json('events', '--since', '1')).type).toBe('evidence_added');
   });

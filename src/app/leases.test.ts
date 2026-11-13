@@ -60,7 +60,7 @@ describe('leases', () => {
       const claim = () => claimItem(ctx, { id: 'TASKS-1', actor: codex }, at(T5));
 
       expect(claim).toThrow(expect.objectContaining({ code: 'lease_held' }));
-      expect(claim).toThrow(`TASKS-1 is held by claude until ${T15}`);
+      expect(claim).toThrow('TASKS-1 is held by claude until 2026-01-01 00:15 UTC');
       expect(getItem(ctx, 'TASKS-1', at(T5)).lease?.holder).toBe('claude');
       expect(events()).toHaveLength(2);
     });
@@ -122,7 +122,9 @@ describe('leases', () => {
       const beat = () => heartbeatItem(ctx, { id: 'TASKS-1', actor: codex }, at(T5));
 
       expect(beat).toThrow(expect.objectContaining({ code: 'not_lease_holder' }));
-      expect(beat).toThrow(`TASKS-1 is held by claude until ${T15}`);
+      expect(beat).toThrow(
+        'TASKS-1 is held by claude until 2026-01-01 00:15 UTC, not by codex: only claude can renew or release it',
+      );
     });
 
     it('refuses the former holder once the lease expired', () => {

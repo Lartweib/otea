@@ -69,7 +69,11 @@ describe('devices', () => {
     expect((await items()).status).toBe(200);
     const [device] = JSON.parse((await otea('devices', 'list', '--json')).out);
     expect(device).toMatchObject({ name: 'Pixel · Chrome' });
-    expect((await otea('devices', 'list')).out).toContain(`${device.id}  Pixel · Chrome  paired`);
+    expect((await otea('devices', 'list')).out).toMatch(
+      new RegExp(
+        `^${device.id} {2}Pixel · Chrome {2}paired \\d{4}-\\d\\d-\\d\\d \\d\\d:\\d\\d UTC {2}last seen \\d{4}-\\d\\d-\\d\\d \\d\\d:\\d\\d UTC `,
+      ),
+    );
 
     const revoked = await otea('devices', 'revoke', device.id);
 

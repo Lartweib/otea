@@ -71,6 +71,9 @@ describe('a stuck item', () => {
       expect(() => restartItem(ctx, { id: 'TASKS-1', actor: you, channel: 'ui' }, at(T30))).toThrow(
         expect.objectContaining({ code: 'not_stuck' }),
       );
+      expect(() => restartItem(ctx, { id: 'TASKS-1', actor: you, channel: 'ui' }, at(T30))).toThrow(
+        'TASKS-1 is held by quill until 2026-11-11 12:45 UTC; it is not stuck',
+      );
 
       createItem(ctx, { collection: 'tasks', title: 'Free', actor: you }, at(T0));
       expect(() => restartItem(ctx, { id: 'TASKS-2', actor: you, channel: 'ui' }, at(T30))).toThrow(

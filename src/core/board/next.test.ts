@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { clockTime } from '../lease.ts';
+import { timeText } from '../time.ts';
 import { boardText, handedText, idleText, nextText, noWayText, refusalText } from './next.ts';
 import { creatures } from './testing.ts';
 
@@ -85,7 +85,7 @@ describe('nextText', () => {
       '\nHandoff\n  ✗ Note: required (what you changed since it was sent back)\n',
     );
     expect(text).toContain(
-      '  otea handoff CRI-12 --note "what you changed since it was sent back"',
+      '  otea handoff CRI-12 --note "<what you changed since it was sent back>"',
     );
   });
 
@@ -169,7 +169,7 @@ describe('nextText with a lease', () => {
       holder: { name: 'inv-a', expiresAt: until },
     });
     expect(text).toBe(
-      `CRI-12 · Criatura · Concepto, round 1\nHeld by inv-a until ${clockTime(until)}: pick another item.`,
+      `CRI-12 · Criatura · Concepto, round 1\nHeld by inv-a until ${timeText(until)}: pick another item.`,
     );
   });
 
@@ -214,7 +214,7 @@ describe('nextText with a lease', () => {
       holder: { name: 'inv-a', expiresAt: until },
     });
     expect(text.split('\n')[2]).toBe(
-      `You hold it until ${clockTime(until)}; otea heartbeat CRI-12 keeps it longer.`,
+      `You hold it until ${timeText(until)}; otea heartbeat CRI-12 keeps it longer.`,
     );
     expect(text).not.toContain('Claim it first');
   });
@@ -327,7 +327,7 @@ describe('refusalText after a send-back', () => {
         { ref: 'note', name: 'note', reason: 'missing', fresh: true, hint: '', sentBack: true },
       ]),
     ).toBe(
-      'Not handed off CRI-12: missing a note (it was sent back: say what you changed).\nCall handoff again with --note "what you changed since it was sent back".',
+      'Not handed off CRI-12: missing a note (it was sent back: say what you changed).\nCall handoff again with --note "<what you changed since it was sent back>".',
     );
   });
 });

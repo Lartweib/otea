@@ -21,6 +21,8 @@ import {
   findEvidence,
   type ItemRecord,
   insertEvidence,
+  selectEvents,
+  selectEvidence,
 } from '../store/queries.ts';
 import { typeOfItem } from './collections.ts';
 import { requireItem, systemClock } from './items.ts';
@@ -162,12 +164,37 @@ export function recordEvidence(
   return { id, ...entry };
 }
 
-// Attaches the file at a path. A refusal stores nothing.
-export function attachEvidence(
+// An attach that added nothing: the item already had the same file there.
+export type Attached = EvidenceRecord & { duplicate?: true };
+
+// The entry the item already has for the same bytes in the same module and role, with the same
+// caption, attached since it last moved: attaching it again adds nothing. Once the item moves (a
+// new round), the same file is new again.
+function sameSinceMoved(
   project: Project,
-  input: AttachInput,
-  now = systemClock,
-): EvidenceRecord {
+  itemId: string,
+  file: PlacedFile,
+): EvidenceRecord | undefined {
+  const sha256 = createHash('sha256').update(file.bytes).digest('hex');
+  const events = selectEvents(project.db, itemId);
+  const moved = events.findLast(({ type }) => type === 'transitioned')?.id ?? 0;
+  const since = new Set(
+    events.flatMap(({ id, type, data }) =>
+      type === 'evidence_added' && id > moved ? [Number(data.evidenceId)] : [],
+    ),
+  );
+  return selectEvidence(project.db, itemId).findLast(
+    (entry) =>
+      since.has(entry.id) &&
+      entry.sha256 === sha256 &&
+      entry.module === file.module &&
+      entry.role === file.role &&
+      entry.caption === (file.caption?.trim() || null),
+  );
+}
+
+// Attaches the file at a path. A refusal stores nothing; the same file again adds nothing.
+export function attachEvidence(project: Project, input: AttachInput, now = systemClock): Attached {
   const file: EvidenceFile = {
     filename: basename(input.path),
     bytes: readEvidence(input.path),
@@ -179,6 +206,8 @@ export function attachEvidence(
     const item = requireItem(project.db, input.id);
     const at = now();
     const placed = placeFile(project, item, file, input.actor, at);
+    const same = sameSinceMoved(project, item.id, placed);
+    if (same) return { ...same, duplicate: true };
     return recordEvidence(project, item.id, placed, input, at);
   });
 }

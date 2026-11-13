@@ -1,3 +1,5 @@
+import { positionOf } from '../core/board/engine.ts';
+import { placeText } from '../core/board/next.ts';
 import { OteaError } from '../core/errors.ts';
 import type { Actor } from '../core/item.ts';
 import { activeLease, DEFAULT_LEASE_TTL_MS, leaseExpiry, leaseHeld } from '../core/lease.ts';
@@ -7,14 +9,14 @@ import { appendEvent, clearLease, type ItemRecord, takeLease } from '../store/qu
 import type { Context } from './context.ts';
 import { type Item, present, requireItem, systemClock, workflowOf } from './items.ts';
 import { takeItem } from './lease-take.ts';
-import { assertMayClaim } from './next.ts';
+import { assertMayClaim, liveBoardOf } from './next.ts';
 
 export type LeaseInput = { id: string; actor: Actor; ttlMs?: number };
 
 function notHolder(item: ItemRecord, actor: Actor, at: string): OteaError {
   const lease = activeLease(item.lease, at);
   const message = lease
-    ? leaseHeld(item.id, lease).message
+    ? `${leaseHeld(item.id, lease).message}, not by ${actor.name}: only ${lease.holder} can renew or release it`
     : `${item.id} is not held by ${actor.name}; claim it first`;
   return new OteaError('not_lease_holder', message);
 }
@@ -26,9 +28,11 @@ export function claimItem(ctx: Context, input: LeaseInput, now = systemClock): I
     const workflow = workflowOf(ctx, item);
     const turn = turnOf(workflow, item.state);
     if (turn !== 'agent') {
+      const board = liveBoardOf(ctx, item.collection);
+      const where = board ? placeText(board.def, positionOf(item.state)) : item.state;
       throw new OteaError(
         'not_claimable',
-        `${item.id} is in ${item.state} (turn ${turn}); only items on the agent turn can be claimed`,
+        `${item.id} is in ${where} (turn ${turn}); only items on the agent turn can be claimed`,
       );
     }
     assertMayClaim(ctx, item, input.actor.name);

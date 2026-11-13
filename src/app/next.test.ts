@@ -4,7 +4,7 @@ import { sequenceIds } from '../core/board/ids.ts';
 import type { BoardDefinition } from '../core/board/model.ts';
 import { handedText, idleText, nextText, noWayText, refusalText } from '../core/board/next.ts';
 import { creatures } from '../core/board/testing.ts';
-import { clockTime } from '../core/lease.ts';
+import { timeText } from '../core/time.ts';
 import { insertEvidence, selectEvents } from '../store/queries.ts';
 import { createBoard, publishBoard, saveDraft } from './boards.ts';
 import type { Context } from './context.ts';
@@ -450,7 +450,7 @@ describe('leases on a board', () => {
     const text = itemNextText(ctx, getItem(ctx, item.id, now), 'scout', now) ?? '';
 
     expect(text).toBe(
-      `CRI-1 · Criatura · Concepto, round 1\nHeld by quill until ${clockTime(held.lease?.expiresAt ?? '')}: pick another item.`,
+      `CRI-1 · Criatura · Concepto, round 1\nHeld by quill until ${timeText(held.lease?.expiresAt ?? '')}: pick another item.`,
     );
     expect(itemNextText(ctx, getItem(ctx, item.id, now), 'quill', now)).toContain('Your turn');
   });
@@ -619,7 +619,7 @@ describe('next among several agents', () => {
     const lease = taken.lease;
     expect(lease?.holder).toBe('quill');
     expect(taken.text).toContain(
-      `You hold it until ${clockTime(lease?.expiresAt ?? '')}; otea heartbeat ${first.id} keeps it longer.`,
+      `You hold it until ${timeText(lease?.expiresAt ?? '')}; otea heartbeat ${first.id} keeps it longer.`,
     );
     expect(selectEvents(ctx.db, first.id).at(-1)).toMatchObject({ type: 'claimed' });
     expect(nextFor(ctx, 'kiln', { claim: true }, at).item).toBe(second.id);

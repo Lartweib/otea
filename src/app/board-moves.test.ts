@@ -82,7 +82,7 @@ describe('the note of a handoff', () => {
 
     expect(refusal(() => handoffItem(ctx, { id, actor: mender, channel: 'cli' }, now))).toEqual({
       code: 'missing_fields',
-      message: `Not handed off ${id}: missing a note.\nCall handoff again with --note "la prueba".`,
+      message: `Not handed off ${id}: missing a note.\nCall handoff again with --note "<la prueba>".`,
     });
 
     const done = handoffItem(
