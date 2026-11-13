@@ -1,10 +1,11 @@
 import { useState } from 'react';
+import { clockOf } from '../activity.ts';
 import { useApp } from '../app/context.tsx';
+import { Prof } from '../components/Prof.tsx';
 import { tocaCount } from '../derive/toca.ts';
-import { ageLabel } from '../format.ts';
+import { agoLabel } from '../format.ts';
 import { t, tx } from '../i18n/i18n.ts';
 import { iconDrawing, TypeIcon } from '../icons/TypeIcon.tsx';
-import { Count } from '../kit/Count.tsx';
 import { Icon } from '../kit/Icon.tsx';
 import { AgentMark, Chevron, Tile } from '../kit/Marks.tsx';
 import { MenuLabel } from '../kit/pop/Menu.tsx';
@@ -18,8 +19,10 @@ import {
   agentRows,
   elsewhereLine,
   type PillMark,
+  type PillSummary,
   type ProjectRow,
   pillMark,
+  pillSummary,
   projectRows,
 } from './topbar-model.ts';
 
@@ -245,41 +248,111 @@ function Elsewhere() {
 }
 
 // The pill's mark (mock:1395-1400): the working node with its orbit, a ring, a dashed ring; the
-// dashed ring in warn while offline.
-function AgentsMark({ kind }: { kind: PillMark }) {
+// dashed ring in warn while offline. While anyone works a soft halo breathes behind it (still
+// with reduced motion); a warn dot says one went quiet.
+function AgentsMark({ kind, quiet }: { kind: PillMark; quiet: boolean }) {
+  const dot = quiet ? <i className="wdot" /> : null;
   if (kind === 'working') {
     return (
-      <svg className="am" viewBox="-12 -12 24 24" aria-hidden="true">
-        <circle r="4.6" fill="none" stroke="var(--ink)" strokeWidth="1.6" />
-        <circle
-          className="orb"
-          r="8.6"
-          fill="none"
-          stroke="var(--ink)"
-          strokeWidth="1.6"
-          strokeLinecap="round"
-          strokeDasharray="14 54"
-        />
-      </svg>
+      <span className="amw pulse">
+        <svg className="am" viewBox="-12 -12 24 24" aria-hidden="true">
+          <circle r="4.6" fill="none" stroke="var(--ink)" strokeWidth="1.6" />
+          <circle
+            className="orb"
+            r="8.6"
+            fill="none"
+            stroke="var(--ink)"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+            strokeDasharray="14 54"
+          />
+        </svg>
+        {dot}
+      </span>
     );
   }
   if (kind === 'idle') {
     return (
-      <svg className="am" viewBox="-12 -12 24 24" aria-hidden="true">
-        <circle r="5" fill="none" stroke="var(--ink-2)" strokeWidth="1.6" />
-      </svg>
+      <span className="amw">
+        <svg className="am" viewBox="-12 -12 24 24" aria-hidden="true">
+          <circle r="5" fill="none" stroke="var(--ink-2)" strokeWidth="1.6" />
+        </svg>
+        {dot}
+      </span>
     );
   }
   return (
-    <svg className="am" viewBox="-12 -12 24 24" aria-hidden="true">
-      <circle
-        r="5.5"
-        fill="none"
-        stroke={kind === 'offline' ? 'var(--warn)' : 'var(--ink-3)'}
-        strokeWidth="1.5"
-        strokeDasharray="2.2 1.9"
-      />
-    </svg>
+    <span className="amw">
+      <svg className="am" viewBox="-12 -12 24 24" aria-hidden="true">
+        <circle
+          r="5.5"
+          fill="none"
+          stroke={kind === 'offline' ? 'var(--warn)' : 'var(--ink-3)'}
+          strokeWidth="1.5"
+          strokeDasharray="2.2 1.9"
+        />
+      </svg>
+    </span>
+  );
+}
+
+// The pill's words (mock §1): what happens, then one datum in grey, or in warn when one went quiet.
+export function PillWords({ summary }: { summary: PillSummary }) {
+  if (summary.kind === 'offline') return <span>{t('shell.offline')}</span>;
+  if (summary.kind === 'none') return <span>{t('shell.pill.none')}</span>;
+  const { extra } = summary;
+  return (
+    <>
+      <span>
+        {summary.kind === 'working'
+          ? t('shell.pill.working', { count: summary.count })
+          : t('shell.pill.waiting', { count: summary.count })}
+      </span>
+      {extra ? (
+        <small className={extra.kind === 'quiet' ? 'wl warn-t' : 'wl'}>
+          {extra.kind === 'of'
+            ? t('shell.pill.of', { count: extra.n })
+            : extra.kind === 'quiet'
+              ? t('shell.pill.quiet', { count: extra.n })
+              : t('shell.pill.noProfile', { count: extra.n })}
+        </small>
+      ) : null}
+    </>
+  );
+}
+
+// What the agent does now, under its profile: the mini node, the verb, the item.
+function RowDoing({ row, now }: { row: AgentRow; now: number }) {
+  const it = row.item;
+  if (!row.profile && row.state === 'idle') {
+    return (
+      <span className="held wrap">
+        <span className="verb">{t('shell.row.noProfile')}</span>
+      </span>
+    );
+  }
+  if (row.state === 'idle' || !it) {
+    return (
+      <span className="held">
+        <span className="verb">
+          {t('shell.row.idle', { time: clockOf(Math.min(row.since, now)) })}
+        </span>
+      </span>
+    );
+  }
+  const verb =
+    row.state === 'work'
+      ? t('shell.row.work')
+      : row.state === 'wait'
+        ? t('shell.row.wait')
+        : t('shell.row.quiet', { time: clockOf(row.since) });
+  return (
+    <span className={row.state === 'quiet' ? 'held warn' : 'held'}>
+      <NodeGlyph look={it.look} size={14} />
+      <span className="verb">{verb}</span>
+      <span className="id">{it.id}</span>
+      <span className="tx">{it.title}</span>
+    </span>
   );
 }
 
@@ -288,15 +361,17 @@ type AgentsMenuProps = {
   rows: AgentRow[];
   counts: ReturnType<typeof agentCounts>;
   now: number;
-  onOpen: (id: string) => void;
+  onOpen: (agent: string) => void;
   onActivity: () => void;
   onConnect: () => void;
   onPerformance: () => void;
 };
 
-// The agents menu's rows (mock:3381-3393): who is connected, with its harness, what it holds (a
-// mini node, the id, the title: it opens the item), or that it is idle, or quiet; when it last gave
-// a sign. Then Ver actividad, Conectar un agente and Ver rendimiento, and what connected means.
+// The agents menu (mock §2): who is connected, what asks for attention first. Each row: the name,
+// its harness, the profile it declares in mono with its marks (sin perfil in warn; sin confirmar
+// and cambió in grey), what it does now, when it last gave a sign; the whole row opens its sheet.
+// Then Ver actividad, Conectar un agente and Ver rendimiento, what connected means and that the
+// profile is the agent's own word.
 export function AgentsMenuBody({
   project,
   rows,
@@ -307,13 +382,21 @@ export function AgentsMenuBody({
   onConnect,
   onPerformance,
 }: AgentsMenuProps) {
+  const waiting = counts.live - counts.holding;
   return (
     <>
       <MenuLabel
         aside={
-          <span>
-            {t('shell.holding', { count: counts.holding })} ·{' '}
-            {t('shell.idleCount', { count: counts.idle })}
+          <span className="sum">
+            {counts.holding ? <b>{t('shell.pill.working', { count: counts.holding })}</b> : null}
+            {counts.holding && waiting ? ' · ' : null}
+            {waiting ? t('shell.pill.waiting', { count: waiting }) : null}
+            {counts.quiet ? (
+              <>
+                {' · '}
+                <span className="warn-t">{t('shell.pill.quiet', { count: counts.quiet })}</span>
+              </>
+            ) : null}
           </span>
         }
       >
@@ -325,29 +408,54 @@ export function AgentsMenuBody({
         </p>
       ) : null}
       {rows.map((a) => (
-        <div key={a.name} className="arow" data-i="">
+        <button
+          key={a.name}
+          type="button"
+          className="arow"
+          data-i=""
+          data-agent={a.name}
+          title={t('shell.row.open', { agent: a.name })}
+          onClick={() => onOpen(a.name)}
+        >
           <AgentMark name={a.name} decorative />
-          <div className="ab">
-            <div className="an">
+          <span className="ab">
+            <span className="an">
               {a.name}
               {a.harness ? (
                 <span className="htag">
                   {a.harness.toLowerCase() === 'cli' ? t('shell.cli') : a.harness}
                 </span>
               ) : null}
-            </div>
-            {a.held.length === 0 ? <div className="idle">{t('shell.idle')}</div> : null}
-            {a.held.map((h) => (
-              <button key={h.id} type="button" className="held" onClick={() => onOpen(h.id)}>
-                <NodeGlyph look={h.look} size={14} />
-                <span className="id">{h.id}</span>
-                <span className="tx">{h.title}</span>
-              </button>
-            ))}
-            {a.quiet ? <div className="idle warn">{t('shell.quiet')}</div> : null}
-          </div>
-          <span className="seen">{ageLabel(a.lastSeen, now)}</span>
-        </div>
+            </span>
+            <span className="prow2">
+              {a.profile ? (
+                <Prof profile={a.profile} />
+              ) : (
+                <span className="flag">
+                  <Icon name="warn" />
+                  {t('shell.flag.noProfile')}
+                </span>
+              )}
+              {a.profile && !a.confirmed ? (
+                <span className="flag soft" title={t('shell.flag.unconfirmedTip')}>
+                  {t('shell.flag.unconfirmed')}
+                </span>
+              ) : null}
+              {a.profile && a.changedAt ? (
+                <span className="flag soft">
+                  {t('shell.flag.changed', { time: clockOf(Date.parse(a.changedAt)) })}
+                </span>
+              ) : null}
+            </span>
+            <RowDoing row={a} now={now} />
+          </span>
+          <span className={a.quiet ? 'seen warn-t' : 'seen'}>
+            {agoLabel(a.lastSeen, now)}
+            <span className="go" aria-hidden="true">
+              <Icon name="right" />
+            </span>
+          </span>
+        </button>
       ))}
       <button type="button" className="mrow" data-i="" onClick={onActivity}>
         <span className="ic">
@@ -378,6 +486,7 @@ export function AgentsMenuBody({
       </button>
       <p className="pnote afoot" data-i="">
         {t('shell.connectedRule')}
+        <span className="self">{t('shell.selfDeclared')}</span>
       </p>
     </>
   );
@@ -390,8 +499,9 @@ function AgentsPill() {
   if (app.agents === null) return null;
   const agents = app.agents ?? [];
   // One source for the pill and its menu: the menu's rows.
-  const rows = agentRows(agents, app.all, app.now);
+  const rows = agentRows(agents, app.all, app.now, app.feed);
   const mark = pillMark(app.connection, rows);
+  const summary = pillSummary(app.connection, rows);
   const offline = mark === 'offline';
   const counts = agentCounts(rows);
   const close = () => setOpen(false);
@@ -408,23 +518,9 @@ function AgentsPill() {
         disabled={offline}
         onClick={() => setOpen((o) => !o)}
       >
-        <span className="amw">
-          <AgentsMark kind={mark} />
-        </span>
-        {offline ? (
-          <span>{t('shell.offline')}</span>
-        ) : (
-          <>
-            <span>
-              <Count value={counts.live} />
-              <span className="wl"> {t('shell.agentsWord', { count: counts.live })}</span>
-            </span>
-            <small className="wl">
-              <Count value={counts.holding} /> {t('shell.workingWord')}
-            </small>
-            <Chevron />
-          </>
-        )}
+        <AgentsMark kind={mark} quiet={!offline && counts.quiet > 0} />
+        <PillWords summary={summary} />
+        {offline ? null : <Chevron />}
       </button>
       <Pop
         open={open && !offline}
@@ -441,9 +537,9 @@ function AgentsPill() {
           rows={rows}
           counts={counts}
           now={Date.now()}
-          onOpen={(id) => {
+          onOpen={(name) => {
             close();
-            app.openItem(id);
+            app.openAgent(name);
           }}
           onActivity={() => {
             close();

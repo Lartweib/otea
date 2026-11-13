@@ -15,6 +15,7 @@ import { reduced } from '../../motion/reduced.ts';
 import { relayoutList } from '../../motion/relayout.ts';
 import { T, Tt } from '../../motion/time.ts';
 import type { ItemView } from '../../types.ts';
+import { AgentSheet } from '../agent/AgentSheet.tsx';
 import { dividerBounds, dividerKey, intakeTarget, sheetItem } from './frame.ts';
 import { ItemMissing } from './ItemMissing.tsx';
 import { ItemSheet } from './ItemSheet.tsx';
@@ -26,6 +27,13 @@ import { drawRoute, undrawRoute } from './Route.tsx';
 // they are; the pen draws from the row into the headline. On the phone the item is a pushed page.
 
 const INTAKE = '\u0000intake';
+// An agent's sheet (agents mock §3) shows here too, keyed by its name after this mark.
+const AGENT = '\u0000agent:';
+const agentOf = (target: string | null) =>
+  target?.startsWith(AGENT) ? target.slice(AGENT.length) : null;
+// The row the pen draws from: an item's; neither the intake nor an agent has one.
+const rowIdOf = (target: string | null) =>
+  target === INTAKE || agentOf(target) !== null ? null : target;
 
 // The items opened so far, so reopening or swapping back never waits for the server.
 const cache = new Map<string, ItemView | null>();
@@ -172,7 +180,7 @@ export function DetailHost() {
   // After Crear: the created id, until the place opens it (or anything else).
   const [created, setCreated] = useState<string | null>(null);
   const placed = intakeTarget(!!ws.intake, want, created);
-  const target = placed === 'intake' ? INTAKE : placed;
+  const target = placed === 'intake' ? INTAKE : ws.agent && !want ? `${AGENT}${ws.agent}` : placed;
   const lastIntake = useRef(ws.intake);
   if (ws.intake) lastIntake.current = ws.intake;
   // The place moved on (to the created item, or anywhere): the sheet follows it again.
@@ -180,7 +188,8 @@ export function DetailHost() {
   useEffect(() => {
     if (created && want !== wantAtCreate.current) setCreated(null);
   }, [created, want]);
-  const ready = target === INTAKE || (target != null && item !== undefined);
+  const ready =
+    target === INTAKE || agentOf(target) !== null || (target != null && item !== undefined);
   const [shown, setShown] = useState<string | null>(null);
   const sheetRef = useRef<HTMLElement>(null);
   const dividerRef = useRef<HTMLDivElement>(null);
@@ -236,7 +245,7 @@ export function DetailHost() {
     drawRoute(sheetRef.current?.querySelector('.route-wrap') ?? null);
     const p = pen();
     if (p && !phone) {
-      p.id = target === INTAKE ? null : target;
+      p.id = rowIdOf(target);
       p.u = 0;
       p.to(1, 140);
     }
@@ -288,7 +297,7 @@ export function DetailHost() {
       setNarrow(true);
       const p = pen();
       if (p) {
-        p.id = target === INTAKE ? null : target;
+        p.id = rowIdOf(target);
         p.to(1, 0);
       }
     }
@@ -351,7 +360,7 @@ export function DetailHost() {
     const sIn = sheet?.querySelector<HTMLElement>(':scope > .sheet-in:not(.sheet-old)');
     if (!sheet || !sIn) return;
     const R = reduced();
-    const id = target === INTAKE ? null : target;
+    const id = rowIdOf(target);
     const newRow = id ? rowOf(id) : null;
     // One band travels to the newly picked row.
     const nb = newRow?.querySelector<HTMLElement>('.band') ?? null;
@@ -657,7 +666,10 @@ export function DetailHost() {
     host?.moveSplit();
   }, [kind]);
 
-  useEscape(shown != null && shown !== INTAKE && !ws.intake && !ws.full, 'detail', app.closeItem);
+  const agentShown = agentOf(shown);
+  useEscape(shown != null && shown !== INTAKE && !ws.intake && !ws.full, 'detail', () =>
+    agentShown !== null ? app.closeAgent() : app.closeItem(),
+  );
   useEscape(ws.full && shown != null, 'full', () => workspace.set({ full: false }));
   useEscape(!!ws.intake, 'intake', () => workspace.set({ intake: null }));
 
@@ -698,7 +710,7 @@ export function DetailHost() {
   const main = typeof document === 'undefined' ? null : mainEl();
   const [lo, hi] = dividerBounds(main?.clientWidth ?? 1200);
   const content = shown === INTAKE ? null : st.last;
-  const order = shown === INTAKE ? [] : listOrder();
+  const order = shown === INTAKE || agentShown !== null ? [] : listOrder();
   const at = order.indexOf(shown);
   const nav = { prev: at > 0, next: at >= 0 && at < order.length - 1 };
   const goNav = (dir: -1 | 1) => {
@@ -780,6 +792,10 @@ export function DetailHost() {
                   }}
                 />
               </div>
+            </div>
+          ) : agentShown !== null ? (
+            <div data-c>
+              <AgentSheet name={agentShown} onClose={app.closeAgent} />
             </div>
           ) : content ? (
             <ItemSheet

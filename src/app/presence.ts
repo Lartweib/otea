@@ -4,9 +4,12 @@ import { activeLease } from '../core/lease.ts';
 import {
   findAgent,
   findProfile,
+  type ProfileView,
+  profileView,
   saveProfile,
   selectAgents,
   selectLeases,
+  selectProfileChanges,
   unconfirmProfile,
   upsertAgent,
 } from '../store/queries.ts';
@@ -37,12 +40,20 @@ export const SEEN_PRECISION_MS = 30_000;
 // one, and its profile stands unconfirmed until it declares it again.
 export const CLI_SESSION_GAP_MS = 60 * 60_000;
 
+// `profile`: what the agent declares it runs as (null before it declares one), `profileConfirmed`
+// whether it declared it in its current session, `profileChangedAt` when its model or effort last
+// changed (null while it never did).
 export type AgentPresence = {
   name: string;
   harness: string | null;
+  harnessVersion: string | null;
+  connectedAt: string | null;
   holding: string[];
   lastSeen: string;
   live: boolean;
+  profile: ProfileView | null;
+  profileConfirmed: boolean;
+  profileChangedAt: string | null;
 };
 
 // The harness an agent is known by after a sighting: an MCP client names itself and replaces what
@@ -73,8 +84,11 @@ export function seeAgent(db: DatabaseSync, sighting: Sighting, now: Clock = syst
   const fresh = known && Date.parse(at) - Date.parse(known.lastSeen) < SEEN_PRECISION_MS;
   const same =
     known && known.harness === next.harness && known.harnessVersion === next.harnessVersion;
-  if (fresh && same) return false;
-  upsertAgent(db, { name: sighting.agent, ...next, lastSeen: at });
+  // It connects anew on its first sighting, in a new session, or back after it was away.
+  const back = !known?.connectedAt || Date.parse(at) - Date.parse(known.lastSeen) > LIVE_WINDOW_MS;
+  const connectedAt = sighting.newSession || back ? at : (known?.connectedAt ?? at);
+  if (fresh && same && connectedAt === known?.connectedAt) return false;
+  upsertAgent(db, { name: sighting.agent, ...next, lastSeen: at, connectedAt });
   return true;
 }
 
@@ -95,11 +109,25 @@ export function listAgents(db: DatabaseSync, now: Clock = systemClock): AgentPre
     const live = activeLease(lease, at);
     if (live) holding.set(live.holder, [...(holding.get(live.holder) ?? []), id]);
   }
-  const agents = selectAgents(db).map(({ name, harness, lastSeen }) => {
-    const held = holding.get(name) ?? [];
-    const recent = Date.parse(at) - Date.parse(lastSeen) <= LIVE_WINDOW_MS;
-    return { name, harness, holding: held, lastSeen, live: recent || held.length > 0 };
-  });
+  const agents = selectAgents(db).map(
+    ({ name, harness, harnessVersion, connectedAt, lastSeen }) => {
+      const held = holding.get(name) ?? [];
+      const recent = Date.parse(at) - Date.parse(lastSeen) <= LIVE_WINDOW_MS;
+      const declared = findProfile(db, name);
+      return {
+        name,
+        harness,
+        harnessVersion,
+        connectedAt,
+        holding: held,
+        lastSeen,
+        live: recent || held.length > 0,
+        profile: declared ? profileView(declared.profile) : null,
+        profileConfirmed: declared?.confirmed ?? false,
+        profileChangedAt: profileChangedAt(db, name),
+      };
+    },
+  );
   return agents.sort(
     (a, b) =>
       Number(b.live) - Number(a.live) ||
@@ -113,6 +141,22 @@ export function listAgents(db: DatabaseSync, now: Clock = systemClock): AgentPre
 export function presenceSignature(db: DatabaseSync, now: Clock = systemClock): string {
   const agents = listAgents(db, now).sort((a, b) => a.name.localeCompare(b.name));
   return JSON.stringify(
-    agents.map(({ name, harness, holding, lastSeen }) => [name, harness, holding, lastSeen]),
+    agents.map(({ name, harness, holding, lastSeen, profile, profileConfirmed }) => [
+      name,
+      harness,
+      holding,
+      lastSeen,
+      profile,
+      profileConfirmed,
+    ]),
   );
+}
+
+// When the agent last changed model or effort: a harness the client renamed is no change of its.
+export function profileChangedAt(db: DatabaseSync, agent: string): string | null {
+  const changes = selectProfileChanges(db, agent);
+  const key = ({ profile }: (typeof changes)[number]) => `${profile.model} ${profile.effort}`;
+  const keys = changes.map(key);
+  const at = keys.findLastIndex((each, i) => i > 0 && each !== keys[i - 1]);
+  return at < 0 ? null : (changes[at]?.at ?? null);
 }

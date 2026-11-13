@@ -1,13 +1,82 @@
-/* Te toca and Atasco (mock:313-317, 338-350): the panel, the head and its narrow forms beside the detail. */
+/* Te toca and Atasco (mock:313-317, 338-350; agents mock §4): one centred column, the head with the
+   day's recap under it, and its narrow forms beside the detail. */
 
 /* ───────── Te toca ───────── */
 .panel {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 260px;
-  column-gap: 72px;
+  grid-template-columns: minmax(0, 1fr);
   padding: 32px 56px 0 40px;
   min-height: 100%;
-  max-width: 1480px;
+  max-width: 1120px;
+}
+/* the day's recap under the dek, your approvals in your colour, a hairline to the edge */
+.head .recap {
+  margin-top: 10px;
+  font: 400 13px / 1.4 var(--sans);
+  color: var(--ink-3);
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+}
+.head .recap .n {
+  color: var(--ink);
+  font-size: 12.5px;
+}
+.head .recap .n.you {
+  color: var(--you-ink);
+}
+.head .recap .rule {
+  flex: 1;
+  height: 1px;
+  background: var(--rule);
+  transform: translateY(-3px);
+}
+/* the call to act names who does it and the profile it acts with: room for both on one line */
+.panel .row .a {
+  width: 288px;
+}
+.row .a small .pw {
+  white-space: nowrap;
+}
+.row .a small .prof {
+  font-size: 11px;
+  color: var(--ink-3);
+}
+/* nobody connected: one block with the way to connect one, on the lanes' reading edge */
+.noagents {
+  margin: 4px 0 22px 72px;
+  padding: 22px 24px;
+  border-radius: 12px;
+  background: var(--sheet);
+  box-shadow: 0 0 0 1px var(--rule);
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  gap: 16px;
+  max-width: 720px;
+}
+.noagents h4 {
+  font: 450 20px / 1.2 var(--serif);
+  margin: 0;
+}
+.noagents p {
+  font: 400 italic 15px / 1.45 var(--serif);
+  color: var(--ink-2);
+  margin: 4px 0 0;
+  max-width: 34em;
+}
+.noagents .acts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  margin-top: 14px;
+}
+.noagents .cmd {
+  font: 400 12px / 1 var(--mono);
+  color: var(--ink-3);
+}
+.view.narrow .noagents {
+  display: none;
 }
 .head {
   padding-left: 72px;
@@ -38,9 +107,6 @@
 .view.narrow .panel {
   grid-template-columns: minmax(0, 1fr);
   padding-right: 22px;
-}
-.view.narrow .agents {
-  display: none;
 }
 /* beside the detail the age column narrows to 64 px, but a lease's time left ("quedan 1 h 42") keeps its words */
 .view.narrow .panel .row .age {

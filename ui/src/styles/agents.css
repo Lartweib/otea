@@ -1,104 +1,362 @@
-/* The agents column of Te toca (mock:318-336): who works, what each agent does, its last two hours. */
+/* The agent as an entity (agents mock §1-5): the profile everywhere it is named, its marks, and an
+   agent's sheet beside the list, the same shape as an item's. */
 
-.agents {
-  padding-top: 6px;
-  padding-bottom: 40px;
+/* ───────── the profile, wherever an agent is named: model · effort, grey mono ───────── */
+.prof {
+  font: 400 11.5px / 1.3 var(--mono);
+  color: var(--ink-2);
+  white-space: nowrap;
+  letter-spacing: 0;
 }
-.agents h3 {
-  font: 450 21px / 1.1 var(--serif);
-  font-variation-settings: "opsz" 24;
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--rule);
+.prof i {
+  font-style: normal;
+  color: var(--ink-3);
+  padding: 0 1px;
 }
-.agents h3 .n {
-  font-size: 12px;
-}
-.agents h3 .n.wk {
-  margin-left: -6px;
-}
-.agents-none {
-  padding: 15px 0 13px;
-  border-bottom: 1px solid var(--rule);
-  font: 400 italic 15px / 1.4 var(--serif);
+small.prof {
+  font-size: 11px;
   color: var(--ink-3);
 }
-.agent {
-  padding: 15px 0 13px;
-  border-bottom: 1px solid var(--rule);
-  position: relative;
+/* "Quién lo hace": the doer's profile on its own line under the name, never cut */
+.dlist dd:has(> .prof) {
+  flex-wrap: wrap;
+  row-gap: 2px;
 }
-.agent .who {
-  font-weight: 600;
-  font-size: 14px;
+.dlist dd > .prof {
+  flex-basis: 100%;
+  padding-left: 29px;
+  white-space: normal;
+}
+/* a mark on a profile: sin perfil in warn; sin confirmar and cambió in grey */
+.flag {
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font: 400 11px / 1 var(--mono);
+  color: var(--warn);
+  padding: 2px 6px 2px 5px;
+  border-radius: 4px;
+  background: color-mix(in oklch, var(--warn) 11%, transparent);
+}
+.flag.soft {
+  color: var(--ink-2);
+  background: var(--well);
+}
+.flag svg {
+  width: 11px;
+  height: 11px;
+}
+
+/* ───────── an agent's sheet ───────── */
+.ag-grid {
+  max-width: 820px;
+}
+.ag-grid .crumb .chip {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 7px;
+  border-radius: 999px;
+  font: 400 11.5px / 1 var(--mono);
+  color: var(--ink-2);
+  box-shadow: inset 0 0 0 1px var(--rule-2);
+  background: var(--well);
+}
+.ag-grid .crumb .from {
+  font: 400 11.5px / 1 var(--mono);
+  color: var(--ink-3);
+}
+.ag-grid .headline {
   display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 8px;
+  align-items: center;
+  gap: 14px;
 }
-.agent .who .sw {
+.ag-grid .headline .mk.lg {
+  width: 34px;
+  height: 28px;
+  border-radius: 8px;
+  font-size: 13px;
+}
+.ag-grid .standfirst em {
+  font-style: normal;
+  color: var(--ink);
+}
+.ag-grid .standfirst em.you-t {
+  color: var(--you-ink);
+}
+.ag-meta {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px 24px;
+  padding: 18px 0;
+  border-top: 1px solid var(--rule);
+  border-bottom: 1px solid var(--rule);
+  margin-top: 22px;
+}
+.ag-meta .lbl {
+  font: 600 10px / 1.3 var(--sans);
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin-bottom: 7px;
+}
+.ag-meta .v {
+  font: 400 14px / 1.3 var(--sans);
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ag-meta .v small {
+  font: 400 11px / 1 var(--mono);
+  color: var(--ink-3);
+}
+.ag-meta .v.warn-t {
+  color: var(--warn);
+}
+.ag-blk {
+  display: grid;
+  grid-template-columns: 116px minmax(0, 1fr);
+  gap: 20px;
+  padding: 20px 0;
+  border-bottom: 1px solid var(--rule);
+}
+.ag-blk:last-child {
+  border-bottom: 0;
+}
+.ag-body {
+  min-width: 0;
+}
+.ag-body p.none {
+  font: 400 italic 14.5px / 1.4 var(--serif);
+  color: var(--ink-3);
+  padding: 2px 0 6px;
+}
+
+/* the profile now, big, and how it got there */
+.pnow {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.pbig {
+  font: 450 22px / 1.1 var(--serif);
+  font-variation-settings: "opsz" 24;
+}
+.pbig i {
+  font-style: normal;
+  color: var(--ink-3);
+  padding: 0 6px;
+}
+.pbig.warn {
+  color: var(--warn);
+}
+.pnow .when {
+  font: 400 11.5px / 1 var(--mono);
+  color: var(--ink-3);
+}
+.ptrail {
+  margin: 12px 0 0;
+  padding: 0 0 0 18px;
+  list-style: none;
   position: relative;
-  display: inline-block;
-  text-align: right;
+}
+.ptrail::before {
+  content: "";
+  position: absolute;
+  left: 4px;
+  top: 10px;
+  bottom: 10px;
+  width: 1px;
+  background: var(--rule-2);
+}
+.ptrail li {
+  position: relative;
+  font: 400 13.5px / 1.45 var(--sans);
+  color: var(--ink-2);
+  padding: 4px 0;
+}
+.ptrail li::before {
+  content: "";
+  position: absolute;
+  left: -17px;
+  top: 10px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--sheet);
+  box-shadow: inset 0 0 0 1.5px var(--ink-3);
+}
+.ptrail li.now::before {
+  background: var(--ink);
+  box-shadow: none;
+}
+.ptrail .t {
+  font: 400 11.5px / 1 var(--mono);
+  color: var(--ink-3);
+  margin-right: 8px;
+}
+.ptrail b {
+  font: 400 12px / 1 var(--mono);
+  color: var(--ink);
+}
+.self-note {
+  margin-top: 10px;
+  font: 400 italic 13.5px / 1.45 var(--serif);
+  color: var(--ink-3);
+  max-width: 52ch;
+}
+
+/* its work: what it holds now, its last handoffs */
+.wk .sub {
+  font: 600 10px / 1.3 var(--sans);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin: 0 0 6px;
+}
+.wk .sub.gap {
+  margin-top: 16px;
+}
+.wrow {
+  display: grid;
+  grid-template-columns: 14px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: baseline;
+  width: calc(100% + 16px);
+  padding: 6px 8px;
+  margin: 0 -8px;
+  border-radius: 6px;
+  text-align: left;
+  color: inherit;
+  transition: background-color 240ms var(--o-drift);
+}
+.wrow:hover {
+  background: var(--hov);
+}
+.wrow .cn {
+  transform: translateY(2px);
+  overflow: visible;
+}
+.wrow .wb {
+  min-width: 0;
+}
+.wrow .t {
+  display: block;
+  font: 400 15.5px / 1.3 var(--serif);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.wrow .s {
+  display: block;
+  font: 400 12px / 1.4 var(--sans);
+  color: var(--ink-3);
+  margin-top: 1px;
+}
+.wrow .s .id {
+  font: 400 11px / 1 var(--mono);
+}
+.wrow .s .prof {
+  font-size: 11px;
+}
+.wrow .r {
   font: 400 11.5px / 1 var(--mono);
   color: var(--ink-3);
   white-space: nowrap;
 }
-.agent .who .sw .warn-t {
+.wrow .r.warn-t {
   color: var(--warn);
 }
-.agent .who .sw .you-t {
-  color: var(--you-ink);
-}
-.agent .doing {
-  font: 400 15px / 1.35 var(--serif);
-  color: var(--ink);
-  margin-top: 3px;
-  text-wrap: balance;
-}
-.agent .doing i {
-  color: var(--ink-2);
-}
-.agent .meta {
-  font-size: 12.5px;
-  color: var(--ink-3);
-  margin-top: 4px;
-}
-.agent .meta .id {
-  font-size: 11px;
-}
-.trace {
+
+/* its last two hours */
+.ag-body .trace {
   display: block;
-  margin-top: 10px;
+  margin-top: 4px;
   overflow: visible;
   width: 100%;
-  height: 24px;
+  height: 26px;
 }
-.axis {
+.ag-body .axis {
   display: flex;
   justify-content: space-between;
   font: 400 10.5px / 1 var(--mono);
   color: var(--ink-3);
   padding: 9px 0 0;
 }
-.connect {
-  display: block;
-  margin-top: 16px;
-  font-size: 13px;
-  color: var(--ink-2);
-  font-weight: 500;
-}
-.connect:hover {
-  color: var(--ink);
-}
-.colophon {
-  margin-top: 30px;
-  font: 400 italic 14px / 1.5 var(--serif);
+.tkey {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin-top: 10px;
+  font: 400 12px / 1.3 var(--sans);
   color: var(--ink-3);
 }
-.agents .colophon .n {
-  font-style: normal;
-  color: var(--ink-2);
+.tkey span {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+}
+
+/* the steps it may take */
+.elig {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.erow {
+  display: grid;
+  grid-template-columns: 16px max-content minmax(0, 1fr);
+  gap: 10px;
+  align-items: baseline;
+  padding: 7px 0;
+  border-bottom: 1px dashed var(--rule);
+}
+.erow:last-child {
+  border-bottom: 0;
+}
+.erow .ic {
+  width: 14px;
+  height: 14px;
+  transform: translateY(2px);
+  color: var(--ink);
+}
+.erow.no .ic {
+  color: var(--ink-3);
+}
+.erow .st {
+  font: 400 13.5px / 1.3 var(--sans);
+}
+.erow .st .bd {
+  color: var(--ink-3);
+}
+.erow.no .st {
+  color: var(--ink-3);
+}
+.erow .why {
+  font: 400 12px / 1.35 var(--sans);
+  color: var(--ink-3);
+  text-align: right;
+}
+
+/* on the phone the sheet is a page: the blocks stack their label over their content */
+@media (max-width: 720px) {
+  .ag-meta {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+  .ag-blk {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+  }
+  .erow {
+    grid-template-columns: 16px minmax(0, 1fr);
+  }
+  .erow .why {
+    grid-column: 2;
+    text-align: left;
+  }
 }

@@ -1,6 +1,7 @@
 import type { Layout } from '../../src/core/modules.ts';
 import type { FieldRequirement, Labels } from '../../src/core/preset.ts';
 import type { ChildrenSummary, RelationRef, RelationView } from '../../src/core/relations.ts';
+import type { AgentProfile } from './presence.ts';
 
 // Relation kinds and how they read from either item, from the core. Type-only.
 export type {
@@ -47,12 +48,15 @@ export type Item = {
   children?: ChildrenSummary;
 };
 
+// `profile`: what the agent behind the event (the one acting, or relaying your word) had declared
+// it runs as when the event was written; absent for yours and for an agent with none.
 export type ItemEvent = {
   id: number;
   type: string;
   actor: Actor;
   at: string;
   data: Record<string, unknown>;
+  profile?: AgentProfile;
 };
 
 export type ItemWithEvents = Item & { events: ItemEvent[] };

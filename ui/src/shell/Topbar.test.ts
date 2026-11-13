@@ -10,6 +10,8 @@ import { agentCounts, agentRows, projectRows } from './topbar-model.ts';
 
 afterEach(() => setLanguage('en'));
 
+const opus = { harness: 'claude-code', model: 'opus', effort: 'high', family: 'opus' };
+
 const agent = (name: string, o: Partial<Agent> = {}): Agent => ({
   name,
   harness: null,
@@ -78,20 +80,36 @@ describe('the topbar', () => {
     expect(busy).toContain('class="brand yours working"');
   });
 
-  it('counts the agents connected and those working', () => {
+  it('says how many work, with the total in grey, the halo breathing behind the orbit', () => {
     setLanguage('es');
     const html = topbar({
-      agents: [agent('Scout', { holding: ['X'] }), agent('Quill'), agent('Old', { live: false })],
+      agents: [
+        agent('Scout', { holding: ['X'], profile: opus }),
+        agent('Quill', { profile: opus }),
+        agent('Old', { live: false }),
+      ],
     });
-    expect(html).toMatch(/data-v="2">2<\/span><\/span><span class="wl"> agentes<\/span>/);
-    expect(html).toMatch(/data-v="1">1<\/span><\/span> trabajando/);
+    expect(html).toContain('<span>1 trabajando</span><small class="wl">de 2</small>');
+    expect(html).toContain('class="amw pulse"');
     expect(html).toContain('class="orb"');
+  });
+
+  it('says how many wait when nobody works, and that one has no profile', () => {
+    setLanguage('es');
+    const html = topbar({ agents: [agent('Scout', { profile: opus }), agent('Quill')] });
+    expect(html).toContain('<span>2 en espera</span><small class="wl">1 sin perfil</small>');
+    expect(html).not.toContain('pulse');
+  });
+
+  it('says Sin agentes with nobody connected', () => {
+    setLanguage('es');
+    expect(topbar({ agents: [] })).toContain('<span>Sin agentes</span>');
   });
 
   it('quiets and disables the agents pill while the stream is down', () => {
     setLanguage('es');
     const html = topbar({ connection: 'reconnecting', agents: [agent('Scout')] });
-    expect(html).toContain('sin conexión');
+    expect(html).toContain('Sin conexión');
     expect(html).toMatch(/class="apill"[^>]*disabled=""/);
   });
 
@@ -184,9 +202,21 @@ describe('the agents menu', () => {
     }),
   ];
   const agents = [
-    agent('Scout', { harness: 'Claude Code', holding: ['ERR-231'] }),
+    agent('Scout', {
+      harness: 'Claude Code',
+      holding: ['ERR-231'],
+      profile: opus,
+      profileConfirmed: true,
+      profileChangedAt: ago(20),
+    }),
     agent('Quill'),
-    agent('Kiln', { harness: 'cli', live: false, lastSeen: ago(12) }),
+    agent('Kiln', {
+      harness: 'cli',
+      live: false,
+      lastSeen: ago(12),
+      profile: opus,
+      profileConfirmed: false,
+    }),
   ];
   const menu = () => {
     setLanguage('es');
@@ -205,26 +235,43 @@ describe('the agents menu', () => {
     );
   };
 
-  it('heads with the project and who holds a lease, counting every agent it lists', () => {
+  it('heads with the project and what they do, one gone quiet in warn', () => {
     expect(menu()).toContain(
-      '<div class="plabel" data-i=""><span>agentes en Hollowmere</span><span>1 con reserva · 2 inactivos</span></div>',
+      '<div class="plabel" data-i=""><span>agentes en Hollowmere</span><span class="sum"><b>1 trabajando</b> · 2 en espera · <span class="warn-t">1 callado</span></span></div>',
     );
   });
 
-  it('shows each agent with its harness, what it holds as a mini node, or that it is idle', () => {
+  it('puts the quiet one first, then who works, then who waits', () => {
+    const names = [...menu().matchAll(/data-agent="([^"]+)"/g)].map(([, name]) => name);
+    expect(names).toEqual(['Kiln', 'Scout', 'Quill']);
+  });
+
+  it('shows each agent with its harness, its profile in mono and what it does now', () => {
     const html = menu();
     expect(html).toContain('<span class="htag">Claude Code</span>');
-    expect(html).toMatch(/class="held"[^>]*><svg class="cn"/);
+    expect(html).toContain('<span class="prof">opus <i>·</i> high</span>');
+    expect(html).toMatch(/class="held"><svg class="cn"/);
     expect(html).toContain(
-      '<span class="id">ERR-231</span><span class="tx">Huecos en la colisión</span>',
+      '<span class="verb">trabaja en</span><span class="id">ERR-231</span><span class="tx">Huecos en la colisión</span>',
     );
-    expect(html).toContain('inactivo · sin reserva');
+  });
+
+  it('marks a profile missing in warn, unconfirmed or just changed in grey', () => {
+    const html = menu();
+    expect(html).toMatch(/<span class="flag"><svg[\s\S]*?<\/svg>sin perfil<\/span>/);
+    expect(html).toContain('no toma pasos hasta declarar modelo y esfuerzo');
+    expect(html).toMatch(/<span class="flag soft" title="[^"]+">sin confirmar<\/span>/);
+    expect(html).toMatch(/<span class="flag soft">cambió \d\d:\d\d<\/span>/);
   });
 
   it('warns of an agent gone quiet on its expired lease', () => {
     const html = menu();
-    expect(html).toContain('<span class="htag">CLI</span>');
-    expect(html).toContain('<div class="idle warn">callado · su reserva venció</div>');
+    expect(html).toContain('<span class="htag">claude-code</span>');
+    expect(html).toMatch(/class="held warn">.*callado desde \d\d:\d\d ·/);
+  });
+
+  it('opens the agent’s sheet from its whole row', () => {
+    expect(menu()).toMatch(/<button type="button" class="arow" data-i="" data-agent="Scout"/);
   });
 
   it('offers the activity and how to connect another, then says what connected means', () => {

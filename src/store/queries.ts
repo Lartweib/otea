@@ -553,12 +553,14 @@ export function markReposRead(db: DatabaseSync): void {
   db.prepare('UPDATE project SET repos_read = 1').run();
 }
 
-// An agent's presence: the harness it last came through and when it was last seen.
+// An agent's presence: the harness it last came through, when it was last seen and when it
+// connected (null for an agent only ever given a profile).
 export type AgentRecord = {
   name: string;
   harness: string | null;
   harnessVersion: string | null;
   lastSeen: string;
+  connectedAt: string | null;
 };
 
 type AgentRow = {
@@ -566,6 +568,7 @@ type AgentRow = {
   harness: string | null;
   harness_version: string | null;
   last_seen: string;
+  connected_at: string | null;
 };
 
 function toAgent(row: AgentRow): AgentRecord {
@@ -574,6 +577,7 @@ function toAgent(row: AgentRow): AgentRecord {
     harness: row.harness,
     harnessVersion: row.harness_version,
     lastSeen: row.last_seen,
+    connectedAt: row.connected_at,
   };
 }
 
@@ -587,12 +591,17 @@ export function selectAgents(db: DatabaseSync): AgentRecord[] {
   return rows.map(toAgent);
 }
 
-export function upsertAgent(db: DatabaseSync, agent: AgentRecord): void {
-  const sql = `INSERT INTO agents (name, harness, harness_version, last_seen)
-    VALUES (:name, :harness, :harnessVersion, :lastSeen)
+// A record given without `connectedAt` keeps the one known.
+export function upsertAgent(
+  db: DatabaseSync,
+  agent: Omit<AgentRecord, 'connectedAt'> & { connectedAt?: string | null },
+): void {
+  const sql = `INSERT INTO agents (name, harness, harness_version, last_seen, connected_at)
+    VALUES (:name, :harness, :harnessVersion, :lastSeen, :connectedAt)
     ON CONFLICT (name) DO UPDATE SET harness = excluded.harness,
-      harness_version = excluded.harness_version, last_seen = excluded.last_seen`;
-  db.prepare(sql).run(agent);
+      harness_version = excluded.harness_version, last_seen = excluded.last_seen,
+      connected_at = COALESCE(excluded.connected_at, agents.connected_at)`;
+  db.prepare(sql).run({ ...agent, connectedAt: agent.connectedAt ?? null });
 }
 
 // The profile an agent declared, and whether it declared it in its current session.

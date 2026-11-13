@@ -24,6 +24,7 @@ describe('the workspace', () => {
       intake: null,
       activity: false,
       connect: false,
+      agent: null,
     });
   });
 
@@ -58,6 +59,18 @@ describe('the new item page follows the place (mobile analysis 2.3 #6)', () => {
     ws.set({ intake: {} });
     followRoute(ws, { view: 'toca' }, { view: 'toca', item: 'TAR-1' });
     expect(ws.get().intake).toBeNull();
+  });
+
+  it('keeps an agent’s sheet while an item closes, and puts it away when anything else opens', () => {
+    const ws = makeWorkspace();
+    ws.set({ agent: 'claude-a' });
+    followRoute(ws, { view: 'toca', item: 'TAR-1' }, { view: 'toca' });
+    expect(ws.get().agent).toBe('claude-a');
+    followRoute(ws, { view: 'toca' }, { view: 'toca', item: 'TAR-2' });
+    expect(ws.get().agent).toBeNull();
+    ws.set({ agent: 'claude-a' });
+    followRoute(ws, { view: 'toca' }, { view: 'atasco' });
+    expect(ws.get().agent).toBeNull();
   });
 
   it('leaves the rest of the workspace as it was', () => {

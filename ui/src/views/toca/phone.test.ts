@@ -214,10 +214,11 @@ describe("Te toca's head on the phone", () => {
     expect(html).toContain('Hoy entregaron 1, aprobaste 0 y devolviste 0 con notas.');
   });
 
-  it('keeps the desk dek', () => {
+  it('says the day under the title on the desk too, now that the agents column is gone', () => {
     setLanguage('es');
     const html = render(fake(false));
-    expect(html).toContain('Los agentes entregaron');
-    expect(html).not.toContain('p-recap');
+    expect(html).not.toContain('Los agentes entregaron');
+    expect(html).toContain('class="recap"');
+    expect(html).toMatch(/Hoy entregaron <span class="n">.*1.*<\/span>, aprobaste/);
   });
 });

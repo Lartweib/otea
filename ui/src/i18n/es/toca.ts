@@ -68,15 +68,18 @@ export const toca = {
   'toca.replied': '{agent} contestó',
   'toca.round': 'ronda {n}',
 
-  // La columna de agentes
-  'toca.agents.title': 'Agentes',
-  'toca.agents.working': 'trabajando',
-  'toca.agents.none': 'Ningún agente en las últimas dos horas.',
-  'toca.agent.work': 'trabajando · {time}',
-  'toca.agent.quiet': 'callado · {time}',
-  'toca.agent.wait': 'espera tu respuesta',
-  'toca.agent.free': 'libre desde {time}',
-  'toca.agent.last': 'Lo último:',
+  // Sin agentes conectados
+  'toca.noAgents.title': 'Ningún agente conectado',
+  'toca.noAgents.waiting': {
+    one: 'Un ítem está en turno de un agente y espera a que alguien lo tome. Conecta uno desde su terminal y empezará por él.',
+    other:
+      '{count} ítems están en turno de un agente y esperan a que alguien los tome. Conecta uno desde su terminal y empezará por el más antiguo.',
+  },
+  'toca.noAgents.nothing':
+    'Nada espera a un agente ahora. Conecta uno desde su terminal y tomará lo que llegue a su turno.',
+  'toca.noAgents.command': 'otea connect --as <nombre>',
+
+  // La línea de actividad de un agente (en su ficha)
   'toca.agent.trace': 'Últimas dos horas de {agent}',
   'toca.axis.from': '−2 h',
   'toca.axis.mid': '−1 h',

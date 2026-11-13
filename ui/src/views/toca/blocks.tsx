@@ -2,6 +2,7 @@ import { activeLease } from '../../active-lease.ts';
 import type { FeedEvent } from '../../activity.ts';
 import { type App, typeOfItem } from '../../app/context.tsx';
 import { onPublishedBoard } from '../../board-studio/home/boards-store.ts';
+import { Prof } from '../../components/Prof.tsx';
 import { mainPath } from '../../derive/path.ts';
 import {
   agentOf,
@@ -19,6 +20,7 @@ import { laneOf } from '../../lanes/geometry.ts';
 import type { Universe } from '../../lanes/handoff.ts';
 import type { LaneBlock } from '../../lanes/LaneList.tsx';
 import { lookOf } from '../../lanes/looks.ts';
+import { actedWith } from '../../presence.ts';
 import { stateWord } from '../../preset-words.ts';
 import { roundsOf } from '../../rounds.ts';
 import type { Item, TypeView } from '../../types.ts';
@@ -168,7 +170,8 @@ export function notesMark(notes: NonNullable<Item['notes']>): string | null {
   return notes.replied ? t('toca.replied', { agent: notes.replied.by }) : null;
 }
 
-type TocaApp = Pick<App, 'all' | 'now' | 'feed' | 'collectionOf' | 'route'>;
+type TocaApp = Pick<App, 'all' | 'now' | 'feed' | 'collectionOf' | 'route'> &
+  Partial<Pick<App, 'agents'>>;
 
 function TocaRow({
   it,
@@ -194,6 +197,16 @@ function TocaRow({
   // The person's notes on the round: still waiting for the agent, or its latest answer, a light
   // mark that never changes whose turn it is.
   const mark = it.notes ? notesMark(it.notes) : null;
+  // On the desk, the profile the agent acted with beside its name (agents mock §5).
+  const who = call.sub.agent;
+  const prof =
+    who && !phone
+      ? actedWith(
+          who,
+          app.feed.filter((e) => e.itemId === it.id),
+          app.agents,
+        )
+      : null;
   return (
     <>
       <div className="main-c">
@@ -249,6 +262,14 @@ function TocaRow({
           {call.sub.agent
             ? tx(call.sub.key as 'toca.sub.holds', { agent: <b>{call.sub.agent}</b> })
             : t(call.sub.key as 'toca.sub.yourTurn')}
+          {prof ? (
+            <>
+              {' '}
+              <span className="pw">
+                · <Prof profile={prof} />
+              </span>
+            </>
+          ) : null}
         </small>
       </div>
       <div className={when.warn ? 'age warn' : 'age'} data-leaf="" data-s={`${it.id}:when`}>

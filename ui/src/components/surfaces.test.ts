@@ -87,6 +87,8 @@ function fakeApp(o: Partial<App> = {}): App {
     closeActivity: noop,
     openConnect: noop,
     closeConnect: noop,
+    openAgent: noop,
+    closeAgent: noop,
     studioChanged: noop,
     ...o,
   };

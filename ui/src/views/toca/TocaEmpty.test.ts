@@ -55,8 +55,32 @@ describe('Te toca on the phone (mobile mock 1)', () => {
       phone,
     });
 
-  it('leaves the agents column out: the agents live in the menu up top', () => {
-    expect(render(app(false))).toContain('class="agents"');
+  it('has no agents column on either: the agents live in the menu up top', () => {
+    expect(render(app(false))).not.toContain('class="agents"');
     expect(render(app(true))).not.toContain('class="agents"');
+  });
+
+  it('offers to connect an agent on the desk while none is connected, counting what waits', () => {
+    const waiting = item({ id: 'ERR-2', turn: 'agent', state: 'fixing' });
+    const html = render(
+      fake({
+        all: [item({ id: 'ERR-1' }), waiting],
+        collections: [errores as unknown as CollectionView],
+      }),
+    );
+    expect(html).toContain('class="noagents"');
+    expect(html).toContain('No agent connected');
+    expect(html).toContain('One item is on an agent’s turn');
+    const live = { name: 'kiln', harness: null, holding: [], lastSeen: 'x', live: true };
+    expect(
+      render(
+        fake({
+          all: [waiting],
+          collections: [errores as unknown as CollectionView],
+          agents: [live],
+        }),
+      ),
+    ).not.toContain('noagents');
+    expect(render(app(true))).not.toContain('noagents');
   });
 });

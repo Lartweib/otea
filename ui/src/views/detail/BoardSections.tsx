@@ -1,5 +1,6 @@
 import { type ReactNode, useId, useState } from 'react';
 import { useApp } from '../../app/context.tsx';
+import { Prof } from '../../components/Prof.tsx';
 import { listOr, t, tx } from '../../i18n/i18n.ts';
 import {
   Button,
@@ -696,7 +697,20 @@ function StepRoundCards({
       ) : (
         [...rounds].reverse().map((r) => (
           <div key={r.round} className={r.round === last ? 'rd on' : 'rd'}>
-            <span className="rk">{t('bi.rounds.round', { n: r.round })}</span>
+            <span className="rh">
+              <span className="rk">{t('bi.rounds.round', { n: r.round })}</span>
+              {r.doer ? (
+                <span className="rw">
+                  · <b>{r.doer.name}</b>
+                  {r.doer.profile ? (
+                    <>
+                      {' '}
+                      <Prof profile={r.doer.profile} paren />
+                    </>
+                  ) : null}
+                </span>
+              ) : null}
+            </span>
             <span className="rs">{r.round === last ? t('bi.rounds.now') : ''}</span>
             {r.notes.length ? (
               r.notes.map((n) => (

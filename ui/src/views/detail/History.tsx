@@ -1,4 +1,5 @@
 import { useLayoutEffect, useRef } from 'react';
+import { Prof } from '../../components/Prof.tsx';
 import { t } from '../../i18n/i18n.ts';
 import { C } from '../../motion/curves.ts';
 import { reduced } from '../../motion/reduced.ts';
@@ -46,6 +47,12 @@ export function History({ lines, id }: { lines: HistoryLine[]; id: string }) {
                 {l.quote ? <q>{l.quote}</q> : null}
                 <small>
                   {l.who}
+                  {l.profile ? (
+                    <>
+                      {' '}
+                      <Prof profile={l.profile} />
+                    </>
+                  ) : null}
                   {l.open ? (
                     <>
                       {l.who ? ' · ' : null}

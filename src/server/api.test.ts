@@ -83,16 +83,38 @@ describe('api', () => {
       expect(response.status).toBe(200);
       expect(await response.json()).toEqual({
         agents: [
-          {
+          expect.objectContaining({
             name: 'claude',
             harness: 'claude-code',
+            harnessVersion: '2.1.0',
             holding: ['TASKS-1'],
             lastSeen: recently,
             live: true,
-          },
-          { name: 'codex', harness: 'cli', holding: [], lastSeen: T0, live: false },
+            profile: null,
+          }),
+          expect.objectContaining({
+            name: 'codex',
+            harness: 'cli',
+            holding: [],
+            lastSeen: T0,
+            live: false,
+          }),
         ],
       });
+    });
+
+    it('gives one agent with the profiles it declared, and 404 for one never seen', async () => {
+      seeAgent(project.db, { agent: 'codex', channel: 'cli', harness: CLI_HARNESS }, () => T0);
+
+      const response = await get('/api/agents/codex');
+
+      expect(response.status).toBe(200);
+      expect(await response.json()).toMatchObject({
+        agent: { name: 'codex' },
+        profiles: [],
+        steps: [],
+      });
+      expect((await get('/api/agents/ghost')).status).toBe(404);
     });
 
     it('lists no one before an agent is seen', async () => {

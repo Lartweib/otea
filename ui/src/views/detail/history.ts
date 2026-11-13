@@ -6,6 +6,7 @@ import {
 } from '../../../../src/core/board/notes.ts';
 import { describeEvent, formatTime, momentParts, relayOf } from '../../format.ts';
 import { t } from '../../i18n/i18n.ts';
+import type { AgentProfile } from '../../presence.ts';
 import { fieldWord, valueWord } from '../../preset-words.ts';
 import type { ItemEvent, TypeView } from '../../types.ts';
 
@@ -23,6 +24,8 @@ export type HistoryLine = {
   text: string;
   quote?: string;
   who: string;
+  // The profile the agent wrote it with; none on yours, nor on your decision an agent relayed.
+  profile?: AgentProfile;
 };
 
 const reasonOf = (e: ItemEvent) =>
@@ -72,6 +75,7 @@ export function historyOf(
       when: whenOf(e.at, now),
       who,
       dot: (relay ? 'relay' : human ? 'you' : 'agent') as HistoryLine['dot'],
+      ...(!human && !relay && e.profile ? { profile: e.profile } : {}),
     };
     const reason = reasonOf(e);
     if (e.type === NOTE_LEFT) {

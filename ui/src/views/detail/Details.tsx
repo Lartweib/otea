@@ -1,4 +1,5 @@
 import { type ReactNode, useLayoutEffect, useRef, useState } from 'react';
+import { Prof } from '../../components/Prof.tsx';
 import { whenText } from '../../derive/when.ts';
 import { externalUrl, gateRows } from '../../gates.ts';
 import { t } from '../../i18n/i18n.ts';
@@ -8,6 +9,7 @@ import { AgentMark, Icon, Swap } from '../../kit/index.ts';
 import { moduleFor } from '../../modules/registry.ts';
 import { C } from '../../motion/curves.ts';
 import { reduced } from '../../motion/reduced.ts';
+import { type Agent, actedWith } from '../../presence.ts';
 import { typeWord } from '../../preset-words.ts';
 import type { ItemView, TypeView } from '../../types.ts';
 import type { Facts } from './facts.ts';
@@ -60,9 +62,12 @@ export function detailCells(o: {
   // On a board: who reviews the step it is on (the step engine's word), and no preset gate rows
   // (the branch strip says them).
   board?: { reviewer: 'you' | 'none' | 'any' } | undefined;
+  agents?: readonly Agent[] | null | undefined;
 }): (Cell & { key: string })[] {
   const { item, type, facts, now } = o;
   const you = t('sheet.d.you');
+  // The profile the doer acted with on this item (agents mock §5), else the one it declares now.
+  const doerProfile = facts.agent ? actedWith(facts.agent, item.events, o.agents) : null;
   const doer: Cell = o.own
     ? { label: t('sheet.d.doer'), value: you, cls: 'you' }
     : {
@@ -71,6 +76,7 @@ export function detailCells(o: {
           <>
             <AgentMark name={facts.agent} decorative />
             {facts.agent}
+            {doerProfile ? <Prof profile={doerProfile} small /> : null}
           </>
         ) : (
           '—'

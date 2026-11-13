@@ -17,7 +17,7 @@ const rule = (selector: string): string => {
 
 describe('the panel on a wide screen', () => {
   it('keeps its reading width', () => {
-    expect(rule('.panel')).toMatch(/max-width: 1480px;/);
+    expect(rule('.panel')).toMatch(/max-width: 1120px;/);
   });
 
   it('is not centred beside an open item', () => {

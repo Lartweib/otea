@@ -96,6 +96,7 @@ describe('the catalogs', () => {
     'bs.editor.part.no_short',
     'bs.preview.branch.sample',
     'bs.preview.branch.repo',
+    'agent.harness',
   ]);
 
   it('leave no English message untranslated in Spanish', () => {

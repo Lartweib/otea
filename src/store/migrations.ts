@@ -244,6 +244,10 @@ export const MIGRATIONS = [
     tailscale_host TEXT
   );
   `,
+  // When an agent connected: its first sighting, a new session, or a sighting after it was away.
+  `
+  ALTER TABLE agents ADD COLUMN connected_at TEXT;
+  `,
 ];
 
 function userVersion(db: DatabaseSync): number {
