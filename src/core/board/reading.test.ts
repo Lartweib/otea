@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { evidenceByName, fieldsByName, readFieldInput, stateName } from './reading.ts';
-import { creatures } from './testing.ts';
+import { creatures, errores } from './testing.ts';
 
 const def = creatures();
 
@@ -36,5 +36,30 @@ describe('reading a board item by names', () => {
       Bioma: 'Pantano',
       Descripción: 'Lenta',
     });
+  });
+
+  it('fills the board description field when given "description", in any language', () => {
+    // Criaturas has one long text, Descripción: "description" fills it.
+    expect(readFieldInput(def, { description: 'Lenta' })).toEqual({ fdesc: 'Lenta' });
+    // A board with several long texts takes the one named Description, in English or Spanish.
+    const several = errores();
+    several.parts.fdesc = { id: 'fdesc', name: 'Descripción', kind: 'long', hint: '', options: [] };
+    several.form = [...several.form, { ref: 'fdesc', required: true }];
+    expect(readFieldInput(several, { description: 'Se cae' })).toEqual({ fdesc: 'Se cae' });
+  });
+
+  it('refuses "description" with the long texts named when the board has no single one', () => {
+    const several = errores();
+    several.parts.fnotes = { id: 'fnotes', name: 'Notas', kind: 'long', hint: '', options: [] };
+    several.form = [...several.form, { ref: 'fnotes', required: true }];
+    expect(() => readFieldInput(several, { description: 'x' })).toThrowError(
+      'Errores has no description field; fill one of its long texts by name: Pasos, Notas',
+    );
+  });
+
+  it('refuses the description field given twice, once as "description" and once by its name', () => {
+    expect(() => readFieldInput(def, { description: 'a', Descripción: 'b' })).toThrowError(
+      'Descripción given twice',
+    );
   });
 });
