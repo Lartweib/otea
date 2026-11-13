@@ -15,6 +15,15 @@ const NS = 'http://www.w3.org/2000/svg';
 
 type Geom = { d: string; h: Lane; y0: number; len: number };
 
+// While a morph carries the row's node (morph-run.ts), the pen starts from the node on its way, so
+// it stays drawn through the morph (sweep #24).
+function travellingNode(id: string): DOMRect | null {
+  const c = document.querySelector<HTMLElement>(`.stage > .ov > [data-node="${CSS.escape(id)}"]`);
+  if (!c || c.style.display === 'none') return null;
+  const r = c.getBoundingClientRect();
+  return r.width || r.height ? r : null;
+}
+
 export class Pen {
   readonly svg: SVGSVGElement;
   private readonly path: SVGPathElement;
@@ -66,10 +75,10 @@ export class Pen {
       y0 = r.top - mr.top + 18;
     } else {
       const band = row.querySelector('.band')?.getBoundingClientRect();
-      const nd = row.querySelector('.nd')?.getBoundingClientRect();
+      const nd = travellingNode(this.id) ?? row.querySelector('.nd')?.getBoundingClientRect();
       if (!band || !nd) return null;
       x0 = Math.min(band.right - mr.left, lw - 6);
-      y0 = nd.top + 12 - mr.top;
+      y0 = nd.top + nd.height / 2 - mr.top;
     }
     if (y0Override != null) y0 = y0Override;
     const xs = Math.round(sr.left - mr.left + 18) + 0.5;

@@ -2,7 +2,7 @@ import { C, clamp, F, lerp } from '../../motion/curves.ts';
 import { reduced } from '../../motion/reduced.ts';
 import { Tt } from '../../motion/time.ts';
 import type { BoardMode } from './model.ts';
-import { blurOf, copyOf, landedOn, moveOf } from './morph-clone.ts';
+import { blurOf, copyOf, glyphOf, landedOn, moveOf } from './morph-clone.ts';
 import {
   aFade,
   colFade,
@@ -15,8 +15,12 @@ import {
   morphDelay,
   morphEnds,
   near,
+  nodeFrom,
+  type Pt,
   plateOpacity,
+  rowResolve,
   titleFrame,
+  travelFrame,
   whoFrame,
 } from './motion-math.ts';
 
@@ -28,6 +32,9 @@ import {
 // Pasos the columns trace their rules and the cards resolve. Pressed again mid-way, it turns back
 // from where it is. Per-frame writes go straight to the DOM. On a wide screen the views set the
 // board column's width: its head, tools and stage glide from where they stood on the same clock.
+// Lista ⇄ Tabla is the same row on both sides (sweep #23): each piece travels as one copy, the
+// destination's own, from where the old glyphs stood, and the rest of the row comes with it, on
+// the row's clock; the node travels on that clock too, so it never leaves its row.
 
 export type MorphJob = {
   from: BoardMode;
@@ -47,6 +54,8 @@ export function columnRects(pieces: HTMLElement[]): Map<HTMLElement, DOMRect> {
 
 type R = { x: number; y: number; w: number; h: number };
 type Swap = { ra: R; rb: R; ca: HTMLElement; cb: HTMLElement };
+// One copy on its way from the old glyphs to the new (travelFrame).
+type Trip = { c: HTMLElement; from: Pt; to: Pt; o: Pt; s0: number };
 type Piece = {
   id: string;
   from: number;
@@ -75,6 +84,9 @@ type Piece = {
   plate?: HTMLElement;
   // The side it has landed on and handed back to, if it has.
   landed?: 0 | 1 | null;
+  // Lista ⇄ Tabla: its copies' trips, and how far its row has to come.
+  trips?: Trip[];
+  rowDy?: number;
 };
 
 const KEYS = ['t', 'id', 'node', 'edge', 'who', 'when'] as const;
@@ -225,6 +237,24 @@ export function morph(
     .map((e) => (e.dataset.s ?? '').replace(/:t$/, ''));
   const cloneAt = (src: HTMLElement, r: R, extra = '') =>
     copyOf(src, r, lay, { wrap: true, extra });
+  // The same row on both sides: Lista ⇄ Tabla.
+  const sameRow = !aCard && !bCard;
+  const glyph = (el: Element): Pt => {
+    const g = glyphOf(el);
+    return { x: g.left - sr.left, y: g.top - sr.top };
+  };
+  const fontOf = (el: Element) => parseFloat(getComputedStyle(el).fontSize) || 1;
+  // The destination's copy c of b, starting from a's glyphs.
+  const trip = (a: HTMLElement, b: HTMLElement, c: HTMLElement): Trip => {
+    const to = glyph(b);
+    return {
+      c,
+      from: glyph(a),
+      to,
+      o: { x: to.x - parseFloat(c.style.left), y: to.y - parseFloat(c.style.top) },
+      s0: fontOf(a) / fontOf(b),
+    };
+  };
 
   // Cards travel column by column: their delay from where they stand in Pasos.
   const order = new Map<string, number>();
@@ -262,12 +292,14 @@ export function morph(
       fA: parseFloat(getComputedStyle(tA).fontSize),
       fB: parseFloat(getComputedStyle(tB).fontSize),
     };
+    if (sameRow) P.trips = [trip(tA, tB, P.tB)];
     const iA = q(A, id, 'id');
     const iB = q(B, id, 'id');
     if (iA && iB) {
       P.iA = rel(iA);
       P.iB = rel(iB);
       P.idc = cloneAt(iB, P.iB);
+      if (sameRow) P.trips?.push(trip(iA, iB, P.idc));
     }
     for (const k of ['who', 'when'] as const) {
       const xa = q(A, id, k);
@@ -276,6 +308,7 @@ export function morph(
         const ra = rel(xa);
         const rb = rel(xb);
         P[k] = { ra, rb, ca: cloneAt(xa, ra), cb: cloneAt(xb, rb) };
+        if (sameRow) P.trips?.push(trip(xa, xb, P[k].cb));
       }
     }
     const nA = q(A, id, 'node') ?? q(A, id, 'edge');
@@ -285,9 +318,11 @@ export function morph(
       P.nB = rel(nB);
       P.aEdge = nA.classList.contains('edge');
       P.bEdge = nB.classList.contains('edge');
-      const src = P.aEdge ? nB : nA;
+      const src = nodeFrom(P.aEdge, P.bEdge) === 'b' ? nB : nA;
       P.nd = cloneAt(src, rel(src), 'width:24px;overflow:visible');
       P.nd.style.transformOrigin = '50% 50%';
+      // The pen to an open item follows its node while it travels (pen.ts).
+      P.nd.dataset.node = id;
       if (P.aEdge || P.bEdge) {
         // The card's own edge: its colour, its dashes when it waits, its glow when it is yours.
         const src = P.aEdge ? nA : nB;
@@ -314,8 +349,15 @@ export function morph(
         P.plate = plate;
       }
     }
+    if (sameRow) {
+      const k = CSS.escape(id);
+      const ra = A.querySelector(`.lanes > [data-k="${k}"]`);
+      const rb = B.querySelector(`.lanes > [data-k="${k}"]`);
+      if (ra && rb) P.rowDy = rel(ra).y - rel(rb).y;
+    }
     parts.push(P);
   });
+  const partOf = new Map(parts.map((P) => [P.id, P]));
   const partIds = new Set(parts.map((P) => P.id));
   for (const e of [...$$('[data-s]', A), ...$$('[data-s]', B)]) {
     if (!partIds.has((e.dataset.s ?? '').replace(/:[a-z]+$/, ''))) e.style.visibility = 'visible';
@@ -335,7 +377,7 @@ export function morph(
     p.setAttribute('pathLength', '1');
     p.style.strokeDasharray = '1';
   }
-  const keepLanes = !aCard && !bCard; // Lista ⇄ Tabla: the lanes stay, only the rows resolve
+  const keepLanes = sameRow; // Lista ⇄ Tabla: the lanes stay, only the rows resolve
   const bGlow = $$<SVGGElement>('svg.ink > .glow', B);
   const bBranch = $$<SVGGElement>('svg.ink > .branch', B);
   const bCols = bCard
@@ -411,18 +453,29 @@ export function morph(
       P.u = u;
       const x = lerp(P.rA.x, P.rB.x, u);
       const y = lerp(P.rA.y, P.rB.y, u);
-      const tf = titleFrame(u);
-      P.tA.style.transform = moveOf(x - P.rA.x, y - P.rA.y, lerp(1, P.fB / P.fA, u));
-      P.tB.style.transform = moveOf(x - P.rB.x, y - P.rB.y, lerp(P.fA / P.fB, 1, u));
-      P.tA.style.opacity = String(tf.a);
-      P.tB.style.opacity = String(tf.b);
-      P.tA.style.filter = P.tB.style.filter = blurOf(tf.blur);
-      if (P.idc && P.iA && P.iB) {
+      if (P.trips) {
+        // One copy each, the destination's, from the old glyphs: nothing shows twice.
+        P.tA.style.opacity = '0';
+        if (P.who) P.who.ca.style.opacity = '0';
+        if (P.when) P.when.ca.style.opacity = '0';
+        for (const T of P.trips) {
+          const f = travelFrame(T.from, T.to, T.o, T.s0, u);
+          T.c.style.transform = moveOf(f.dx, f.dy, f.s);
+        }
+      } else {
+        const tf = titleFrame(u);
+        P.tA.style.transform = moveOf(x - P.rA.x, y - P.rA.y, lerp(1, P.fB / P.fA, u));
+        P.tB.style.transform = moveOf(x - P.rB.x, y - P.rB.y, lerp(P.fA / P.fB, 1, u));
+        P.tA.style.opacity = String(tf.a);
+        P.tB.style.opacity = String(tf.b);
+        P.tA.style.filter = P.tB.style.filter = blurOf(tf.blur);
+      }
+      if (P.idc && P.iA && P.iB && !P.trips) {
         P.idc.style.transform = moveOf((P.iA.x - P.iB.x) * (1 - u), (P.iA.y - P.iB.y) * (1 - u));
       }
       for (const k of ['who', 'when'] as const) {
         const W = P[k];
-        if (!W) continue;
+        if (!W || P.trips) continue;
         const wx = lerp(W.ra.x, W.rb.x, u);
         const wy = lerp(W.ra.y, W.rb.y, u);
         const wf = whoFrame(u);
@@ -477,6 +530,16 @@ export function morph(
       for (const g of bBranch) g.style.opacity = String(clamp((head - 0.65) / 0.35));
     }
     for (const { e, y } of bBlocks) {
+      const P = sameRow ? partOf.get(e.dataset.k ?? '') : undefined;
+      if (P?.rowDy !== undefined) {
+        // The rest of the row comes with its title and its node, on the row's clock.
+        const u = P.u ?? 0;
+        const r = rowResolve(u);
+        e.style.opacity = String(r);
+        e.style.transform = moveOf(0, P.rowDy * (1 - u));
+        e.style.filter = blurOf(1 - r);
+        continue;
+      }
       const r = clamp((head * HB - y + 8) / 56);
       e.style.opacity = String(r * r * (3 - 2 * r));
       e.style.transform = moveOf(-4 * (1 - r), 0);
@@ -536,19 +599,4 @@ export function morph(
     glideTo(g0);
   };
   return job;
-}
-
-// The pen from the list to the open item fades for the morph and comes back after (mock:2888).
-export function penFade(on: boolean) {
-  const pen = document.querySelector<SVGSVGElement>('.main > svg.link');
-  if (!pen) return;
-  if (reduced()) {
-    pen.style.opacity = on ? '1' : '0';
-    return;
-  }
-  pen.animate([{ opacity: on ? 0 : 1 }, { opacity: on ? 1 : 0 }], {
-    duration: on ? 300 : 160,
-    easing: C.drift,
-    fill: 'forwards',
-  });
 }
