@@ -1,7 +1,7 @@
 import type { DatabaseSync } from 'node:sqlite';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { openDatabase } from './database.ts';
-import { MIGRATIONS, migrate } from './migrations.ts';
+import { migrate } from './migrations.ts';
 
 const userVersion = (db: DatabaseSync) => db.prepare('PRAGMA user_version').get()?.user_version;
 
@@ -41,14 +41,14 @@ describe('migrate', () => {
         'phone',
       ]),
     );
-    expect(userVersion(db)).toBe(16);
+    expect(userVersion(db)).toBe(17);
   });
 
   it('is idempotent', () => {
     migrate(db);
     migrate(db);
 
-    expect(userVersion(db)).toBe(16);
+    expect(userVersion(db)).toBe(17);
   });
 
   describe('from version 1', () => {
@@ -228,7 +228,7 @@ describe('migrate', () => {
 
   describe('from the version before steps named no agent', () => {
     beforeEach(() => {
-      migrate(db, MIGRATIONS.length - 1);
+      migrate(db, 15);
       db.exec(`
         INSERT INTO collections (name, prefix, preset, preset_version, next_seq)
         VALUES ('Criaturas', 'CRI', 'bcria', 1, 3);
