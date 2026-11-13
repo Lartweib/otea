@@ -96,14 +96,54 @@ export function triageQueue(items: readonly Item[], ctx: TocaContext): string[] 
 
 // A pass: the cards in the order met, the one on top, and how many were decided. gone: the decided
 // cards seen leaving the reviews; one that comes back (Deshacer, or a failed move) returns on top.
-export type TriState = { q: string[]; i: number; decided: number; gone: string[] };
+// out: the decided cards, in the order decided, each on the pile its move put it on.
+export type TriState = {
+  q: string[];
+  i: number;
+  decided: number;
+  gone: string[];
+  out: PileEntry[];
+};
 export type TriKind = 'approve' | 'send' | 'later';
+
+// The piles beside the card: what this pass approved, and what it sent back. A thrown card lands
+// on the pile of its side (right approves, left sends back); Later goes on none.
+export type Pile = 'approved' | 'sent';
+export type PileEntry = { id: string; pile: Pile; to: string };
+
+export const pileOf = (kind: TriKind): Pile | undefined =>
+  kind === 'approve' ? 'approved' : kind === 'send' ? 'sent' : undefined;
+export const pileSide = (pile: Pile): Direction => (pile === 'approved' ? 'right' : 'left');
+
+// One pile, the card decided last on top.
+export const triPile = (s: TriState, pile: Pile): PileEntry[] =>
+  s.out.filter((e) => e.pile === pile).reverse();
+
+// A tall pile shows its newest cards whole; the rest are counted under them.
+export function pileView(
+  entries: readonly PileEntry[],
+  max: number,
+): { shown: PileEntry[]; more: number } {
+  return { shown: entries.slice(0, max), more: Math.max(0, entries.length - max) };
+}
+
+// Where a thrown card lands on its pile, from where it rests: moved so the centres line up and its
+// top meets the pile's top, brought down to the pile's width (never grown). The card turns about
+// its centre.
+export type Box = { left: number; top: number; width: number; height: number };
+export function pileLanding(card: Box, pile: Box): { x: number; y: number; scale: number } {
+  const scale = Math.min(1, pile.width / card.width);
+  const x = pile.left + pile.width / 2 - (card.left + card.width / 2);
+  const y = pile.top - card.top - (card.height / 2) * (1 - scale);
+  return { x, y, scale };
+}
 
 export const triStart = (ids: readonly string[]): TriState => ({
   q: [...ids],
   i: 0,
   decided: 0,
   gone: [],
+  out: [],
 });
 export const triCurrent = (s: TriState): string | undefined => s.q[s.i];
 export const triNext = (s: TriState): string | undefined => s.q[s.i + 1];
@@ -114,7 +154,14 @@ export function triReturn(s: TriState, id: string): TriState {
   if (at < 0 || at >= s.i) return s;
   const q = s.q.filter((each) => each !== id);
   q.splice(s.i - 1, 0, id);
-  return { ...s, q, i: s.i - 1, decided: s.decided - 1, gone: s.gone.filter((g) => g !== id) };
+  return {
+    ...s,
+    q,
+    i: s.i - 1,
+    decided: s.decided - 1,
+    gone: s.gone.filter((g) => g !== id),
+    out: s.out.filter((e) => e.id !== id),
+  };
 }
 
 // The reviews changed under the pass: a new one joins the end, one still to come that left the
@@ -142,8 +189,14 @@ export function triSync(s: TriState, waiting: readonly string[]): TriState {
   return next;
 }
 
-export function triDecide(s: TriState, kind: TriKind): TriState {
-  if (kind !== 'later') return { ...s, i: s.i + 1, decided: s.decided + 1 };
+// A decision: approved or sent back, the card goes on its pile with the step it went to (to).
+export function triDecide(s: TriState, kind: TriKind, to = ''): TriState {
+  const pile = pileOf(kind);
+  const id = s.q[s.i];
+  if (pile) {
+    const out = id === undefined ? s.out : [...s.out, { id, pile, to }];
+    return { ...s, i: s.i + 1, decided: s.decided + 1, out };
+  }
   const q = [...s.q];
   const [current] = q.splice(s.i, 1);
   if (current !== undefined) q.push(current);
