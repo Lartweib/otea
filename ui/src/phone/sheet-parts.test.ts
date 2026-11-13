@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { mirrorDelays, type Part } from '../motion/choreo.ts';
+import { closeT, mirrorDelays, type Part } from '../motion/choreo.ts';
 import { sheetParts } from './sheet-parts.ts';
 
 const el = (name: string) => ({ name }) as unknown as Element;
@@ -57,15 +57,30 @@ describe('sheetParts (mock:3588-3594)', () => {
     expect(parts.at(-1)).toMatchObject({ el: nth(parts, 1).el, ronly: true, from: { opacity: 0 } });
   });
 
-  it('closes as its mirror: the last thing to open is the first to close', () => {
-    const copy: Part[] = parts.map(({ d1: _, ...p }) => p);
-    const D = mirrorDelays(copy);
-    expect(D).toBe(Math.max(...copy.map((p) => p.d0 + p.T)));
-    for (const p of copy) expect((p.d1 ?? 0) + p.d0 + p.T).toBe(D);
-    // the rows are gone before the sheet lands, as they came after it rose
-    const row = nth(copy, 3);
+  it('closes at once: the sheet starts down in the same frame, no part waits on the rows', () => {
+    const copy: Part[] = parts.map((p) => ({ ...p }));
+    mirrorDelays(copy);
     const sheet = nth(copy, 1);
-    expect((row.d1 ?? 0) + row.T).toBeLessThan((sheet.d1 ?? 0) + sheet.T);
+    expect(sheet.d1).toBe(0);
+    expect(closeT(sheet)).toBe(560);
+    for (const p of copy)
+      expect(p.d1 ?? 0, String((p.el as unknown as { name: string })?.name)).toBe(
+        p === nth(copy, 0) ? 560 - 360 : 0,
+      );
+  });
+
+  it('closes as its mirror: the same path back, the rows gone before the sheet lands', () => {
+    const copy: Part[] = parts.map((p) => ({ ...p }));
+    mirrorDelays(copy);
+    const end = (p: Part) => (p.d1 ?? 0) + closeT(p);
+    const sheet = nth(copy, 1);
+    // the scrim fades with the sheet and is gone as it lands, as both started together
+    expect(end(nth(copy, 0))).toBe(end(sheet));
+    for (const row of parts.slice(2, -1)) {
+      const p = nth(copy, parts.indexOf(row));
+      expect(end(p)).toBeLessThan(end(sheet));
+      expect({ from: p.from, to: p.to }).toEqual({ from: row.from, to: row.to });
+    }
   });
 
   it('leaves a missing part for the Choreo to skip', () => {
