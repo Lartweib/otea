@@ -22,6 +22,7 @@ import { ToastHost } from './kit/pop/toast.tsx';
 import { Tooltip } from './kit/Tooltip.tsx';
 import { LaneDefs } from './lanes/LaneDefs.tsx';
 import { MODULES } from './modules/registry.ts';
+import { CaptureSheet } from './phone/CaptureSheet.tsx';
 import { Fab } from './phone/Fab.tsx';
 import { NavSheet } from './phone/NavSheet.tsx';
 import { SheetButton } from './phone/SheetButton.tsx';
@@ -133,6 +134,7 @@ function Shell() {
       <SheetButton />
       <Fab />
       <NavSheet />
+      <CaptureSheet />
       <LanguageNote />
       <ToastHost />
       <Tooltip />

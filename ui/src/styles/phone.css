@@ -95,6 +95,216 @@
   height: 44px;
 }
 
+/* ───────── the quick capture (mock screen 3): the title focused, the board as a chip ───────── */
+/* It sits on the keyboard (--kb, from the visual viewport), so Guardar is never under the keys. */
+.nsheet.capture {
+  bottom: var(--kb, 0px);
+  max-height: calc(88dvh - var(--kb, 0px));
+}
+.nsheet.capture input,
+.nsheet.capture textarea {
+  user-select: text;
+  -webkit-user-select: text;
+  touch-action: manipulation;
+}
+.capture .cap-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 2px 4px 0;
+}
+.capture .boardpick {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  max-width: 62%;
+  min-height: 44px;
+  padding: 0 12px 0 14px;
+  border-radius: 999px;
+  background: var(--well);
+  color: var(--ink);
+  font: 500 15px / 1 var(--sans);
+  -webkit-tap-highlight-color: transparent;
+}
+.capture .boardpick .bp-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.capture .boardpick .chev {
+  flex: none;
+  color: var(--ink-3);
+  transition: rotate 200ms var(--ease);
+}
+.capture .boardpick[aria-expanded="true"] .chev {
+  rotate: 180deg;
+}
+.capture .boardpick:active {
+  background: var(--hov);
+}
+.capture .cap-why {
+  min-width: 0;
+  font: 400 12.5px / 1.35 var(--mono);
+  color: var(--ink-3);
+}
+.capture .cap-boards {
+  margin-top: 8px;
+}
+.capture .cap-boards > .nrow {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+.capture .cap-boards > .nrow:disabled {
+  grid-template-columns: minmax(0, 1fr);
+  row-gap: 2px;
+  cursor: default;
+  color: var(--ink-3);
+}
+.capture .cap-boards .why {
+  font: 400 12px / 1.35 var(--mono);
+  color: var(--ink-3);
+  white-space: normal;
+}
+.capture .ftitle {
+  display: block;
+  width: calc(100% - 8px);
+  margin: 10px 4px 0;
+  padding: 10px 0;
+  border: 0;
+  border-bottom: 2px solid var(--you);
+  border-radius: 0;
+  background: transparent;
+  outline: none;
+  font: 400 24px / 1.3 var(--serif);
+  color: var(--ink);
+  caret-color: var(--you);
+}
+.capture .ftitle::placeholder {
+  color: var(--ink-3);
+  font-style: italic;
+}
+.capture .fnote {
+  display: block;
+  width: calc(100% - 8px);
+  min-height: 52px;
+  max-height: 30dvh;
+  margin: 0 4px;
+  padding: 15px 0 13px;
+  border: 0;
+  border-bottom: 1px solid var(--rule);
+  border-radius: 0;
+  background: transparent;
+  outline: none;
+  resize: none;
+  field-sizing: content;
+  font: italic 17px / 1.4 var(--serif);
+  color: var(--ink);
+  caret-color: var(--you);
+}
+.capture .fnote:focus {
+  border-bottom-color: var(--rule-2);
+}
+.capture .fnote::placeholder {
+  color: var(--ink-3);
+}
+.capture .cap-photo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 10px 4px 0;
+}
+.capture .cap-photo img {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  object-fit: cover;
+  background: var(--well);
+}
+.capture .cp-name {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font: 400 13px / 1.3 var(--mono);
+  color: var(--ink-2);
+}
+.capture .cp-name small {
+  font: 400 12px / 1.3 var(--mono);
+  color: var(--ink-3);
+}
+.capture .cp-name small.big {
+  color: var(--warn);
+}
+.capture .cap-acts {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 4px 2px;
+}
+.capture .photo {
+  position: relative;
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  box-shadow: inset 0 0 0 1px var(--rule-2);
+  color: var(--ink-2);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.capture .photo .cam {
+  width: 20px;
+  height: 20px;
+}
+.capture .photo:active {
+  background: var(--hov);
+}
+.capture .photo:focus-within {
+  outline: 2px solid var(--you);
+  outline-offset: 2px;
+}
+/* The system camera's input covers the button: the press on it is the press on the input. */
+.capture .photo input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+.capture .lands {
+  flex: 1;
+  min-width: 0;
+  font: 400 12.5px / 1.35 var(--mono);
+  color: var(--ink-3);
+  overflow-wrap: anywhere;
+}
+.capture .cap-acts .btn {
+  flex: none;
+  height: 48px;
+  padding: 0 20px;
+  border-radius: 10px;
+  font-size: 15.5px;
+}
+.capture .cap-err {
+  margin: 6px 4px 0;
+  font: 400 13px / 1.4 var(--sans);
+  color: var(--warn);
+}
+.capture .cap-none {
+  margin: 6px 12px 10px;
+  font: italic 17px / 1.45 var(--serif);
+  color: var(--ink-2);
+}
+
 /* ───────── phone (mock:894-942, verbatim) ───────── */
 @media (max-width: 720px) {
   .app {
@@ -342,6 +552,11 @@
   }
   .toast {
     bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+  }
+  /* The capture's toast sits under the top bar, never over it (the foot is the thumb's). */
+  .toast.at-top {
+    top: calc(56px + 8px + env(safe-area-inset-top, 0px));
+    bottom: auto;
   }
 
   /* The topbar: the project pill takes what the agents pill leaves. */

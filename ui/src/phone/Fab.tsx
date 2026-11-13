@@ -4,11 +4,13 @@ import { useWorkspace, type Workspace } from '../app/workspace.ts';
 import { t } from '../i18n/i18n.ts';
 import { Icon } from '../kit/Icon.tsx';
 import type { Route } from '../selection.ts';
+import { openCapture } from './capture.ts';
 import { useRise } from './rise.ts';
 
 // The phone's Nuevo ítem (SPEC §10.7, mock:936, 954): a 48 px ink round with a + at the bottom
 // right, the sheet button's twin on the left, on the lists only (Te toca, Atasco, a board). On a
-// board it creates there. It rises in with the list and sinks away, mirrored (rise.ts).
+// board it creates there. It opens the quick capture (CaptureSheet), which grows out of it. It
+// rises in with the list and sinks away, mirrored (rise.ts).
 
 export function fabFor(
   route: Route,
@@ -42,5 +44,12 @@ export function Fab() {
   if (target) last.current = target;
   const { mounted, ref } = useRise<HTMLButtonElement>(target !== null);
   if (!mounted) return null;
-  return <FabButton ref={ref} onPress={() => app.newItem(last.current ?? undefined)} />;
+  return (
+    <FabButton
+      ref={ref}
+      onPress={() =>
+        openCapture({ board: last.current?.board, from: () => document.querySelector('.fab') })
+      }
+    />
+  );
 }

@@ -27,7 +27,13 @@ export type ToastOptions = {
   undo?: () => void;
   action?: ToastAction;
   node?: boolean;
+  // Under the top bar instead of at the foot: on the phone, where the foot is the thumb's.
+  at?: 'top';
 };
+
+export function toastClass(at: ToastOptions['at']): string {
+  return at === 'top' ? 'pop e-top toast at-top' : 'pop e-top toast';
+}
 
 type Shown = ToastOptions & { seq: number };
 
@@ -61,6 +67,7 @@ export function ToastHost() {
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [undo, setUndo] = useState<(() => void) | undefined>(undefined);
   const [action, setAction] = useState<ToastAction | undefined>(undefined);
+  const [at, setAt] = useState<ToastOptions['at']>(undefined);
   const [mounted, setMounted] = useState(false);
   const el = useRef<HTMLDivElement>(null);
   const choreo = useRef<Choreo | null>(null);
@@ -104,6 +111,7 @@ export function ToastHost() {
     seen.current = next.seq;
     setUndo(() => next.undo);
     setAction(next.action);
+    setAt(next.at);
     const showing = mounted && choreo.current?.dir === 1;
     replaced.current = showing;
     pendingNode.current = !!next.node;
@@ -228,7 +236,7 @@ export function ToastHost() {
   const surface = (
     <div
       ref={el}
-      className="pop e-top toast"
+      className={toastClass(at)}
       role="status"
       aria-live="polite"
       onMouseEnter={pause}
