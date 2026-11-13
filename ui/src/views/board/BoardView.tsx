@@ -544,7 +544,8 @@ function Board({ board }: { board: string }) {
         onMode={switchMode}
         menu={menu}
         setMenu={setMenu}
-        onNew={() => app.newItem({ board })}
+        // One way to create on a board: the head's «Crear · Ítem» when Studio shapes it, else here.
+        onNew={app.session.canWrite && !studio ? () => app.newItem({ board }) : undefined}
       />
       <Tokens prefs={prefs} ctx={ctx} onRemove={(k) => setFilter(k, [])} onClear={clearFilters} />
       <div className="stage" ref={stage}>
@@ -675,7 +676,7 @@ function Tools({
   onMode: (m: BoardMode) => void;
   menu: Menu | null;
   setMenu: (m: Menu | null) => void;
-  onNew: () => void;
+  onNew: (() => void) | undefined;
 }) {
   const sw = useRef<HTMLDivElement>(null);
   const uline = useRef<HTMLElement>(null);
@@ -786,10 +787,12 @@ function Tools({
           </span>
         ) : null}
       </span>
-      <button type="button" className="tool newb" data-leaf="" onClick={onNew}>
-        <Icon name="plus" />
-        <span className="wl">{t('boardView.tools.newItem')}</span>
-      </button>
+      {onNew ? (
+        <button type="button" className="tool newb" data-leaf="" onClick={onNew}>
+          <Icon name="plus" />
+          <span className="wl">{t('boardView.tools.newItem')}</span>
+        </button>
+      ) : null}
     </div>
   );
 }
