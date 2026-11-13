@@ -308,7 +308,15 @@ describe('audio and other files on a board', () => {
       'evoice',
       '--json',
     );
-    expect(JSON.parse(voice.out)).toMatchObject({ module: 'evoice', kind: 'audio' });
-    expect(JSON.parse(file.out)).toMatchObject({ module: 'efile', kind: 'file' });
+    expect(JSON.parse(voice.out)).toMatchObject({
+      module: 'evoice',
+      moduleName: 'Voz',
+      kind: 'audio',
+    });
+    expect(JSON.parse(file.out)).toMatchObject({
+      module: 'efile',
+      moduleName: 'Proyecto',
+      kind: 'file',
+    });
   });
 });

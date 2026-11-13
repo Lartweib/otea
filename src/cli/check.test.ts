@@ -164,6 +164,18 @@ describe('check', () => {
     ).toBe(0);
   });
 
+  it('names the steps beside their ids in --json', async () => {
+    const { items } = await json('check', '--gate', 'push', '--branch', '--repo');
+
+    expect(items).toEqual([
+      expect.objectContaining({
+        stateName: 'Propuesta',
+        allowedIn: ['implementing'],
+        allowedInNames: ['Implementar'],
+      }),
+    ]);
+  });
+
   it('allows the action, with a note on stderr, when nothing matches or nothing gates it', async () => {
     for (const argv of [
       ['--gate', 'push', '--branch', 'other'],

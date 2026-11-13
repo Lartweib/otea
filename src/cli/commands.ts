@@ -71,7 +71,7 @@ import {
 import { validateProject } from '../app/validate.ts';
 import { watch } from '../app/watch.ts';
 import { AGENT_GUIDE } from '../core/agent-guide.ts';
-import { fieldsByName, stateName, valueName } from '../core/board/reading.ts';
+import { fieldsByName, stateName } from '../core/board/reading.ts';
 import { isSetKey, LISTED_KEYS } from '../core/board/templates.ts';
 import { OteaError } from '../core/errors.ts';
 import { EVIDENCE_ROLES, type EvidenceRole, MAX_EVIDENCE_MB } from '../core/evidence.ts';
@@ -116,6 +116,7 @@ import {
   removeClaudeHook,
   removeGitHook,
 } from './hooks.ts';
+import { boardsOf, eventData, itemCollections, itemData, readableEvent } from './names.ts';
 import { probeSignIn } from './probe.ts';
 import { readServeFile, removeServeFile, writeServeFile } from './serve-file.ts';
 
@@ -131,8 +132,11 @@ function typesShown(project: Project): (item: { collection: string }) => boolean
   };
 }
 
-function itemResult(project: Project, item: Item): { data: Item; text: string } {
-  return { data: item, text: formatItem(readable(project, item), typesShown(project)) };
+function itemResult(project: Project, item: Item): Output {
+  return {
+    data: itemData(project, item),
+    text: formatItem(readable(project, item), typesShown(project)),
+  };
 }
 
 // An item on a board as its reader says it: its step by name, its fields and choices by name, its
@@ -174,31 +178,7 @@ function readable<T extends Item>(project: Project, raw: T): T {
     out.evidence = view.evidence.map((entry) =>
       entry.module === null ? entry : { ...entry, module: partName(entry.module) },
     );
-  if (view.events)
-    out.events = view.events.map((event) => {
-      const { data } = event;
-      if (event.type === 'created')
-        return { ...event, data: { ...data, state: named(data.state) } };
-      if (event.type === 'transitioned')
-        return { ...event, data: { ...data, from: named(data.from), to: named(data.to) } };
-      if (event.type === 'evidence_added' && typeof data.module === 'string')
-        return { ...event, data: { ...data, module: partName(data.module) } };
-      if (event.type === 'updated' && data.changes && typeof data.changes === 'object') {
-        const changes = Object.fromEntries(
-          Object.entries(data.changes as Record<string, { from?: unknown; to?: unknown }>).map(
-            ([key, change]) => {
-              const part = def.parts[key];
-              if (!part) return [key, change];
-              const say = (value: unknown) =>
-                value === undefined || value === null ? value : valueName(part, value);
-              return [part.name, { from: say(change.from), to: say(change.to) }];
-            },
-          ),
-        );
-        return { ...event, data: { ...data, changes } };
-      }
-      return event;
-    });
+  if (view.events) out.events = view.events.map((event) => readableEvent(def, event));
   return out as T;
 }
 
@@ -599,7 +579,7 @@ const create: Command = {
         channel,
       });
       // On a board: where it starts, and why when its first step was skipped or lacks something.
-      return { data: item, text: createdTextOf(project, item) ?? item.id };
+      return { data: itemData(project, item), text: createdTextOf(project, item) ?? item.id };
     });
   },
 };
@@ -643,7 +623,11 @@ const list: Command = {
     return withAgent(input, (project) => {
       const items = listItems(project, listFilter(input));
       const shown = items.map((item) => readable(project, item));
-      return { data: items, text: formatItems(shown, typesShown(project)) };
+      const boardOf = boardsOf(project);
+      return {
+        data: items.map((item) => itemData(project, item, boardOf)),
+        text: formatItems(shown, typesShown(project)),
+      };
     });
   },
 };
@@ -669,7 +653,7 @@ const show: Command = {
         typesShown(project),
         named,
       );
-      return { data: item, text };
+      return { data: itemData(project, item), text };
     });
   },
 };
@@ -850,7 +834,7 @@ function boardMove(
   };
   return withAgent(input, (project) => {
     const { item, text } = run(project, move);
-    return { data: { item, text }, text };
+    return { data: { item: itemData(project, item), text }, text };
   });
 }
 
@@ -883,7 +867,7 @@ const dropCommand: Command = {
     };
     return withAgent(input, (project) => {
       const { item, text } = dropItem(project, dropping);
-      return { data: { item, text }, text };
+      return { data: { item: itemData(project, item), text }, text };
     });
   },
 };
@@ -1025,9 +1009,13 @@ const events: Command = {
     }
     await withAgentWhile(input, async (project) => {
       let since = filter.since ?? 0;
+      const collectionOf = itemCollections(project);
       const printNew = () => {
+        // Read afresh each time: a board published while following names its steps anew.
+        const boardOf = boardsOf(project);
         for (const event of listEvents(project, { ...filter, since })) {
-          input.print(event, formatEvent(event));
+          const def = boardOf(collectionOf(event.itemId));
+          input.print(eventData(def, event), formatEvent(readableEvent(def, event)));
           since = event.id;
         }
         return undefined;
@@ -1198,7 +1186,8 @@ const attach: Command = {
       const same = evidence.duplicate
         ? `\n${evidence.itemId} already has this file as #${evidence.id}; nothing added.`
         : '';
-      return { data: evidence, text: `${formatEvidence(shown)}${same}` };
+      const data = name === undefined ? evidence : { ...evidence, moduleName: name };
+      return { data, text: `${formatEvidence(shown)}${same}` };
     });
   },
 };
@@ -1438,14 +1427,14 @@ function gateText({ gate, allowed, items, refusal }: GateCheck): string {
   if (refusal !== undefined) said.push(refusal);
   if (said.length > 0) return said.join('\n');
   if (allowed) {
-    const states = items.map(({ id, state }) => `${id} is ${state}`);
+    const states = items.map(({ id, stateName }) => `${id} is ${stateName}`);
     return `${gate} allowed: ${states.join(', ')}`;
   }
   return items
     .filter((item) => !item.allowed)
     .map(
-      ({ id, state, allowedIn }) =>
-        `${gate} refused: ${id} is ${state}; ${gate} is allowed only in ${allowedIn.join(', ')}`,
+      ({ id, stateName, allowedInNames }) =>
+        `${gate} refused: ${id} is ${stateName}; ${gate} is allowed only in ${allowedInNames.join(', ')}`,
     )
     .join('\n');
 }
