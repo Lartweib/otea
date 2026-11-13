@@ -17,6 +17,7 @@ import {
   type Rounds,
   roundsOf,
   sendBack,
+  sentBackAt,
   stateOf,
   type Transition,
   turnAt,
@@ -35,6 +36,7 @@ import {
   partOf,
   type Requirement,
   SAME,
+  type Step,
   stepById,
   type Target,
   TITLE,
@@ -305,10 +307,17 @@ const blockersOf = (s: PracticeState): Linked[] => {
   return [s.simBlocker ? blocker : { ...blocker, closed: true }];
 };
 
+// A send-back started the round of the step being done: its handoff carries a note.
+const sentBackNow = (s: PracticeState): boolean =>
+  !isClosed(s.position) &&
+  s.position.phase === 'doing' &&
+  sentBackAt(s.def, s.transitions, s.position.step) >= 0;
+
 const factsOf = (s: PracticeState, rounds: Rounds, step: string, child?: BoardDefinition) => ({
   fields: s.fields,
   evidence: s.evidence,
   ...(rounds.startedAt[step] ? { roundStartedAt: rounds.startedAt[step] } : {}),
+  ...(sentBackNow(s) ? { sentBack: true } : {}),
   note: s.note,
   parts: partsOf(s, child),
   blockers: blockersOf(s),
@@ -330,6 +339,13 @@ const CLOSED_VIEW = {
   canSkip: false,
   dropsAs: 'you' as const,
 };
+
+// The note row: the step's when it asks for a note or hints at one, required after a send-back.
+function noteRow(s: PracticeState, step: Step | undefined): PracticeView['note'] {
+  if (!step) return null;
+  if (step.note.req !== 'always' && sentBackNow(s)) return { req: 'always', hint: step.note.hint };
+  return step.note.req === 'always' || step.note.hint.trim() ? step.note : null;
+}
 
 export function practiceView(s: PracticeState, child?: BoardDefinition): PracticeView {
   const rounds = roundsNow(s);
@@ -407,7 +423,7 @@ export function practiceView(s: PracticeState, child?: BoardDefinition): Practic
     way,
     backs: backWaysOf(s.def, stepId),
     checklist,
-    note: step && (step.note.req === 'always' || step.note.hint.trim()) ? step.note : null,
+    note: noteRow(s, step),
     waits,
     actor,
     agent,
@@ -433,8 +449,8 @@ function fillAll(s: PracticeState): PracticeState {
   const step = stepById(s.def, s.position.step);
   let next = s;
   for (const { ref } of step?.hand ?? []) next = fillPart(next, ref);
-  if (step?.note.req === 'always' && !next.note.trim())
-    next = { ...next, note: step.note.hint.trim() || 'ok' };
+  if ((step?.note.req === 'always' || sentBackNow(s)) && !next.note.trim())
+    next = { ...next, note: step?.note.hint.trim() || 'ok' };
   return next;
 }
 
