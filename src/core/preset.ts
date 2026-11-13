@@ -101,9 +101,6 @@ export type PresetReading =
   | { ok: true; preset: Preset; warnings: string[]; notes: PresetNote[] }
   | { ok: false; problems: string[] };
 
-// `playbooks`, the texts of the preset's playbooks by path, let the reading check its gates.
-export type ReadOptions = { playbooks?: Readonly<Record<string, string>> };
-
 const NAME = /^[a-z0-9][a-z0-9-]*$/;
 const KEY = /^[a-z][a-z0-9_]*$/;
 
@@ -598,7 +595,7 @@ function parseYaml(text: string): { ok: true; value: unknown } | { ok: false; pr
   }
 }
 
-export function readPreset(text: string, options: ReadOptions = {}): PresetReading {
+export function readPreset(text: string): PresetReading {
   const yaml = parseYaml(text);
   if (!yaml.ok) return { ok: false, problems: [yaml.problem] };
   const result = presetSchema.safeParse(yaml.value);
@@ -643,7 +640,7 @@ export function readPreset(text: string, options: ReadOptions = {}): PresetReadi
   if (raw.playbook !== undefined) preset.playbook = raw.playbook;
   const names = presetNames(raw.labels);
   if (names) preset.names = names;
-  const notes = [...presetWarnings(raw), ...presetNotes(preset, options.playbooks)];
+  const notes = [...presetWarnings(raw), ...presetNotes(preset)];
   const warnings = notes.filter(({ level }) => level === 'warning').map(({ message }) => message);
   return { ok: true, preset, warnings, notes };
 }

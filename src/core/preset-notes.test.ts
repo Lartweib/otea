@@ -1,7 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { type PresetReading, readPreset } from './preset.ts';
-import { gateNotes } from './preset-notes.ts';
 
 const BUGS_YAML = `
 preset: bugs
@@ -44,8 +43,8 @@ types:
       intake: [title]
 `;
 
-function read(yaml: string, options?: Parameters<typeof readPreset>[1]) {
-  const reading: PresetReading = readPreset(yaml, options);
+function read(yaml: string) {
+  const reading: PresetReading = readPreset(yaml);
   if (!reading.ok) throw new Error(reading.problems.join('; '));
   return reading;
 }
@@ -104,27 +103,6 @@ describe('preset notes', () => {
     expect(stuck.map(({ path }) => path.state)).toEqual(['reported', 'verify']);
   });
 
-  it('warns about a gate that no playbook checks, once the playbooks are given', () => {
-    const notes = read(BUGS_YAML, { playbooks: { './playbook.md': 'Fix the bug.' } }).notes;
-    expect(notes).toContainEqual({
-      code: 'gate_unchecked',
-      level: 'warning',
-      message:
-        'workflow.gates.ship: no playbook of the preset runs otea check --gate ship, and Otea records no gate checks, so nothing may ever stop on it',
-      path: { section: 'gates', gate: 'ship' },
-    });
-  });
-
-  it('takes a gate the playbook checks as called', () => {
-    const playbooks = { './playbook.md': 'Before shipping, run `otea check --gate ship`.' };
-    const notes = read(BUGS_YAML, { playbooks }).notes;
-    expect(notes.filter(({ code }) => code === 'gate_unchecked')).toEqual([]);
-  });
-
-  it('skips the gate check while the playbooks are unknown', () => {
-    expect(read(BUGS_YAML).notes.filter(({ code }) => code === 'gate_unchecked')).toEqual([]);
-  });
-
   it('notes, as info, a field that only one type has', () => {
     expect(read(BUGS_YAML).notes).toContainEqual({
       code: 'field_single_type',
@@ -153,11 +131,6 @@ describe('preset notes', () => {
       message: 'workflow.states.fixing.close_requires: deprecated; write requires: children_closed',
       path: { section: 'states', state: 'fixing' },
     });
-  });
-
-  it('names no type for a gate of the shared workflow', () => {
-    const notes = gateNotes(read(BUGS_YAML).preset, {});
-    expect(notes.map(({ path }) => path)).toEqual([{ section: 'gates', gate: 'ship' }]);
   });
 });
 
