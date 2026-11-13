@@ -5,6 +5,7 @@ import { typeViews } from '../../../../src/core/views.ts';
 import type { FeedEvent } from '../../activity.ts';
 import { agent, ago, inMinutes, item, moved, NOW, officialType } from '../../derive/fixtures.ts';
 import { setLanguage } from '../../i18n/i18n.ts';
+import { stateWordIn } from '../../preset-words.ts';
 import type { CollectionView, Item } from '../../types.ts';
 import {
   applyFilters,
@@ -19,7 +20,6 @@ import {
   groupBoard,
   groupOptions,
   holds,
-  motiveColumns,
   motivesOf,
   pasosCards,
   pasosColumns,
@@ -27,6 +27,7 @@ import {
   signalOf,
   sortBoard,
   stepsStrip,
+  tablaCells,
   valueText,
 } from './model.ts';
 
@@ -512,11 +513,32 @@ describe('the motives a board discards with', () => {
     ]);
   });
 
-  it('widen the Turno column to the longest motive, on a board that has them', () => {
-    const who = { key: 'who', kind: 'who' as const, label: 'who' };
-    const id = { key: 'id', kind: 'id' as const, label: 'id', chars: 7 };
-    expect(motiveColumns([id, who], bugs)).toEqual([id, { ...who, chars: 'Rechazado'.length }]);
-    expect(motiveColumns([id, who], errores)).toEqual([id, who]);
+  it('read in Tabla’s step column, never in its who column', () => {
+    setLanguage('es');
+    expect(items.map((it) => tablaCells(it, c))).toEqual([
+      { step: stateWordIn(bugs.types, 'sfill'), ended: false, age: '30 min' },
+      { step: 'Duplicado', ended: true, age: '30 min' },
+      { step: 'Rechazado', ended: true, age: '30 min' },
+      { step: 'Descartado', ended: true, age: '30 min' },
+      { step: stateWordIn(bugs.types, 'done'), ended: true, age: '30 min' },
+    ]);
+  });
+
+  it('give Tabla’s age column the age, a lease’s time left going to who’s tooltip', () => {
+    setLanguage('es');
+    const held = item({
+      id: 'E-6',
+      collection: 'Errores',
+      state: 'sfill',
+      turn: 'agent',
+      updatedAt: ago(3),
+      lease: { holder: 'scout', expiresAt: inMinutes(112) },
+    });
+    const cells = tablaCells(held, c);
+
+    expect(cells.age).toBe('3 min');
+    expect(cells.lease).toMatch(/^quedan 1 h 52 min · .*scout/);
+    expect(tablaCells(items[0] as Item, c).lease).toBeUndefined();
   });
 
   it('are a grouping and a filter only on a board that has them', () => {
