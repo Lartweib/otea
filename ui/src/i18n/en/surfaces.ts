@@ -15,7 +15,7 @@ export const surfaces = {
   'emptyList.copied': 'copied',
   'emptyList.firstTitle': 'How should this project work?',
   'emptyList.firstBody':
-    'Pick a preset for your first collection. It brings the states, whose turn each one is, and the playbook your agent reads.',
+    'Pick a preset for your first collection. It brings the states, whose turn each one is, and the instructions your agent reads.',
   'emptyList.presetBugs': 'findings, fixes, evidence',
   'emptyList.presetTasks': 'plain work, done or not',
   'emptyList.presetChange': 'a change, planned and shipped',
@@ -222,7 +222,7 @@ export const surfaces = {
   'settings.hard': 'hard',
   'settings.hookInstalled': 'hook installed',
   'settings.soft': 'soft',
-  'settings.playbookOnly': 'playbook only',
+  'settings.instructionsOnly': 'instructions only',
   'settings.notChecked': 'not checked while missing',
   'settings.noRepos': 'No repo inside this folder yet.',
   'settings.newLocation': 'new location of {path}',

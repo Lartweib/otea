@@ -16,7 +16,7 @@ export const surfaces = {
   'emptyList.copied': 'copiado',
   'emptyList.firstTitle': '¿Cómo debe funcionar este proyecto?',
   'emptyList.firstBody':
-    'Elige un preset para tu primera colección. Trae los estados, de quién es el turno en cada uno y el playbook que lee tu agente.',
+    'Elige un preset para tu primera colección. Trae los estados, de quién es el turno en cada uno y las instrucciones que lee tu agente.',
   'emptyList.presetBugs': 'hallazgos, arreglos, evidencia',
   'emptyList.presetTasks': 'trabajo simple, hecho o no',
   'emptyList.presetChange': 'un cambio, planificado y entregado',
@@ -225,7 +225,7 @@ export const surfaces = {
   'settings.hard': 'estricto',
   'settings.hookInstalled': 'hook instalado',
   'settings.soft': 'flexible',
-  'settings.playbookOnly': 'solo el playbook',
+  'settings.instructionsOnly': 'solo las instrucciones',
   'settings.notChecked': 'sin comprobar mientras no se encuentre',
   'settings.noRepos': 'Todavía no hay ningún repositorio en esta carpeta.',
   'settings.newLocation': 'nueva ubicación de {path}',
