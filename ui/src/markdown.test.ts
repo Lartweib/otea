@@ -15,6 +15,15 @@ describe('markdown', () => {
     expect(html).toContain('<pre><code>npm test\n</code></pre>');
   });
 
+  it('keeps the ")" of a list numbered "1)", as it was written', () => {
+    const html = renderMarkdown('Pasos:\n1) api\n2) web\n\n- a\n\n1. one\n2. two\n\n3) three');
+
+    expect(html).toContain('<ol class="paren">\n<li>api</li>');
+    expect(html).toContain('<ol>\n<li>one</li>');
+    expect(html).toContain('<ol class="paren" start="3">\n<li>three</li>');
+    expect(renderMarkdown('```\n<ol>\n```\n\n1) x')).toContain('<ol class="paren">\n<li>x</li>');
+  });
+
   it('escapes raw HTML instead of injecting it', () => {
     const html = renderMarkdown('<script>alert(1)</script>\n\n<img src=x onerror=alert(1)>');
 
