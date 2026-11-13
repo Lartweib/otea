@@ -51,6 +51,12 @@
 .view.narrow {
   width: var(--listw);
 }
+/* A view's reading column (Te toca's panel, a board): on a wide screen it keeps its width and sits
+   in the middle of the main pane; beside an open item it compacts on the left of the detail again,
+   carried there by the list's relayout (relayoutList). */
+.view:not(.narrow) :is(.panel, .board) {
+  margin-inline: auto;
+}
 .view.leaving {
   pointer-events: none;
   z-index: 1;

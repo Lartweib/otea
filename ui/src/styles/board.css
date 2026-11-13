@@ -6,6 +6,24 @@
   min-height: 100%;
   position: relative;
 }
+/* On a wide screen a board is one column, centred in the main pane (frame.css), as wide as the view
+   it shows: Lista reads at the list's width, so the tools end where the list ends; Pasos and Tabla
+   widen it. A switch glides the column as part of the morph (morph-run.ts); beside an open item it
+   compacts on the left. A 1440 desktop and the phone keep the whole pane. */
+.board[data-mode="lista"] {
+  --board-w: 1120px;
+}
+.board[data-mode="pasos"] {
+  --board-w: 1260px;
+}
+.board[data-mode="tabla"] {
+  --board-w: 1760px;
+}
+@media (min-width: 1441px) {
+  .view:not(.narrow) .board {
+    max-width: var(--board-w);
+  }
+}
 .board .bhead,
 .board .ftoks {
   max-width: 1040px;
@@ -52,11 +70,20 @@
   display: flex;
   align-items: center;
   gap: 18px;
-  padding: 0 0 0 72px;
+  /* the rule is its own piece (.trule); this keeps the bottom pixel it stands on */
+  padding: 0 0 1px 72px;
   height: 40px;
-  border-bottom: 1px solid var(--rule);
   position: relative;
+}
+.tools .trule {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: var(--rule);
   transform-origin: 0 0;
+  pointer-events: none;
 }
 .switch {
   display: flex;

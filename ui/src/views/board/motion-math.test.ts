@@ -6,6 +6,9 @@ import {
   childResolve,
   colFade,
   edgeFrame,
+  GLIDE_T,
+  glideFrame,
+  glideFrom,
   inkHead,
   morphDelay,
   morphEnds,
@@ -139,5 +142,44 @@ describe('the morph ends a frame after its last piece lands', () => {
   it('ends in the next one, if it is still at rest', () => {
     expect(morphEnds(true, true)).toBe(true);
     expect(morphEnds(true, false)).toBe(false);
+  });
+});
+
+describe('the board column glides with the morph', () => {
+  // On a wide screen each view sets the column's width, so a switch moves the head, the tools and
+  // the stage. Each is laid out at once where it ends and glides there from where it was, on the
+  // morph's own clock, so a turn back starts from where they are.
+  const a = { left: 600, top: 80, width: 1040 };
+  const b = { left: 280, top: 80, width: 1680 };
+
+  it('starts where each piece was', () => {
+    expect(glideFrom(a, b, false)).toEqual({ dx: 320, dy: 0, sx: 1 });
+  });
+
+  it('stretches a rule by its width, from its left end', () => {
+    expect(glideFrom(a, b, true)?.sx).toBeCloseTo(1040 / 1680);
+  });
+
+  it('leaves alone what did not move', () => {
+    expect(glideFrom(a, a, true)).toBeNull();
+  });
+
+  it('goes from the start to nothing on the settle curve', () => {
+    const g = { dx: 320, dy: 0, sx: 0.5 };
+    expect(glideFrame(g, 0, GLIDE_T)).toBe('translate(320px, 0px) scale(0.5, 1)');
+    const mid = 1 - F.settle(0.5);
+    expect(glideFrame(g, GLIDE_T / 2, GLIDE_T)).toBe(
+      `translate(${320 * mid}px, 0px) scale(${1 - 0.5 * mid}, 1)`,
+    );
+    expect(glideFrame({ dx: 320, dy: 0, sx: 1 }, 0, GLIDE_T)).toBe('translate(320px, 0px)');
+  });
+
+  it('writes nothing once it has arrived, so the last frame is the layout itself', () => {
+    expect(glideFrame({ dx: 320, dy: 0, sx: 0.5 }, GLIDE_T, GLIDE_T)).toBe('');
+    expect(glideFrame({ dx: 320, dy: 0, sx: 0.5 }, GLIDE_T + 200, GLIDE_T)).toBe('');
+  });
+
+  it('lands within the shortest morph', () => {
+    expect(GLIDE_T).toBeLessThanOrEqual(520);
   });
 });

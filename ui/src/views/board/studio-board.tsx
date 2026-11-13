@@ -60,7 +60,7 @@ export function BoardActs({ studio, canWrite }: { studio: StudioBoard; canWrite:
   const app = useApp();
   const collection = app.route.view === 'board' ? app.route.board : '';
   return (
-    <div className="bv-acts" data-enter="fade">
+    <div className="bv-acts" data-enter="fade" data-leaf="">
       {canWrite ? (
         <Button variant="primary" onClick={() => app.newItem({ board: collection })}>
           <Icon name="plus" />
