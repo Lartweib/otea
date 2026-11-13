@@ -12,6 +12,8 @@ export function testApp(o: Partial<App> = {}): App {
     version: 1,
     now: NOW,
     session: { canWrite: true, canConfigure: true, canManageDevices: true },
+    sync: { offline: false, syncedAt: null },
+    canCapture: true,
     project: { id: 'hm', name: 'Hollowmere', icon: null },
     items: { status: 'ready', value: o.all ?? [] },
     all: [],

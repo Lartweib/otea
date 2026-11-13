@@ -1,5 +1,6 @@
-// Otea on a phone's home screen, over plain HTTP on the LAN: a manifest and icons, no service worker
-// (browsers refuse one on an insecure origin). These are the pieces the pairing screen reads.
+// Otea on a phone's home screen: a manifest and icons everywhere; no service worker over the LAN's
+// plain HTTP (browsers refuse one on an insecure origin), one over HTTPS (offline/register.ts).
+// These are the pieces the pairing screen and Preferencias read.
 
 type Media = (query: string) => { matches: boolean };
 

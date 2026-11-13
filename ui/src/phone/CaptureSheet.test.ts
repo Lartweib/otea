@@ -88,6 +88,15 @@ describe('the capture sheet (mock screen 3)', () => {
     }
   });
 
+  it('says the capture waits in the queue while the PC does not answer, and still saves', () => {
+    setLanguage('es');
+    const html = render(props({ title: 'Niebla', queues: true }));
+
+    expect(html).toContain('en cola para Pedidos hasta que tu PC responda');
+    expect(html).not.toContain('llega a Pedidos');
+    expect(html).not.toMatch(/type="submit"[^>]*disabled/);
+  });
+
   it('opens the system camera for the photo', () => {
     const html = render(props());
     expect(html).toMatch(/<input type="file" accept="image\/\*" capture="environment"/);

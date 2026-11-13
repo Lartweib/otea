@@ -219,6 +219,10 @@ export function PhoneTransportView({
           ) : null}
         </div>
       ) : null}
+      {/* Only HTTPS lets the installed app open without this computer: plain HTTP promises none. */}
+      <p className="pj-hint">
+        {t(tailscale ? 'phone.transport.offline' : 'phone.transport.lanOnly')}
+      </p>
       <p className="pj-hint">{t('phone.transport.tokens')}</p>
       <div className="ph-acts">
         <Button size="sm" variant="primary" onClick={onPair}>
