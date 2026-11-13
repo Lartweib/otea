@@ -197,6 +197,115 @@ describe('the next service', () => {
   });
 });
 
+describe('a round sent back', () => {
+  // Tortuga handed off and sent back by the person with a note; Rana, older, still in Concepto.
+  function sentBackTortuga(ctx: Context) {
+    board(ctx);
+    const older = creature(ctx, 'Rana');
+    const item = creature(ctx, 'Tortuga');
+    attach(ctx, item.id, 'eart');
+    handoffItem(ctx, { id: item.id, actor: quill, channel: 'cli' }, now);
+    const back = sendBackItem(
+      ctx,
+      { id: item.id, actor: you, channel: 'ui', reason: 'Más barro en las patas' },
+      now,
+    );
+    return { item, older, at: back.item.updatedAt };
+  }
+
+  it('starts the agent’s next round with the note, who sent it, when and from which review', () => {
+    const ctx = memoryContext();
+    const { item, at } = sentBackTortuga(ctx);
+    const sentBack = {
+      note: 'Más barro en las patas',
+      by: { kind: 'human' as const, name: 'fede' },
+      at,
+      step: 'Concepto',
+      round: 1,
+    };
+
+    const answer = nextFor(ctx, 'quill', {}, now);
+
+    expect(answer.item).toBe(item.id);
+    expect(answer.sentBack).toEqual(sentBack);
+    expect(answer.text).toContain(
+      `Concepto, round 2\nYour turn: do this step.\n\nSent back to you: "Más barro en las patas"\n  by the person, `,
+    );
+    expect(itemNextText(ctx, getItem(ctx, item.id), 'quill')).toBe(answer.text);
+    expect(itemOnBoard(ctx, getItem(ctx, item.id), creatures()).sentBack).toEqual(sentBack);
+  });
+
+  it('puts a returned item before older ones', () => {
+    const ctx = memoryContext();
+    const { item, older } = sentBackTortuga(ctx);
+
+    expect(nextFor(ctx, 'quill', {}, now).item).toBe(item.id);
+    attach(ctx, item.id, 'eart');
+    handoffItem(ctx, { id: item.id, actor: quill, channel: 'cli', note: 'Barro añadido' }, now);
+    expect(nextFor(ctx, 'quill', {}, now).item).toBe(older.id);
+  });
+
+  it('refuses to hand it off again without a note for that round, then takes it with one', () => {
+    const ctx = memoryContext();
+    const { item } = sentBackTortuga(ctx);
+    attach(ctx, item.id, 'eart');
+    const bare = () => handoffItem(ctx, { id: item.id, actor: quill, channel: 'cli' }, now);
+
+    expect(bare).toThrowError(
+      'Not handed off CRI-2: missing a note (it was sent back: say what you changed).',
+    );
+    expect(bare).toThrowError(expect.objectContaining({ code: 'missing_fields' }));
+    const handed = handoffItem(
+      ctx,
+      { id: item.id, actor: quill, channel: 'cli', note: 'Barro añadido' },
+      now,
+    );
+
+    expect(handed.item.state).toBe(stateOf({ step: 'sconcept', phase: 'review' }));
+    expect(itemOnBoard(ctx, getItem(ctx, item.id), creatures()).sentBack).toBeUndefined();
+  });
+
+  it('holds otea move to the same note', () => {
+    const ctx = memoryContext();
+    const { item } = sentBackTortuga(ctx);
+    attach(ctx, item.id, 'eart');
+    const review = stateOf({ step: 'sconcept', phase: 'review' });
+
+    expect(() =>
+      moveItem(ctx, { id: item.id, to: review, actor: quill, channel: 'cli' }, now),
+    ).toThrowError(/missing a note/);
+    expect(
+      moveItem(
+        ctx,
+        { id: item.id, to: review, actor: quill, channel: 'cli', note: 'Barro añadido' },
+        now,
+      ).state,
+    ).toBe(review);
+  });
+
+  it('names the agent reviewer that asked for another round', () => {
+    const ctx = memoryContext();
+    board(ctx);
+    const item = creature(ctx);
+    attach(ctx, item.id, 'eart');
+    handoffItem(ctx, { id: item.id, actor: quill, channel: 'cli' }, now);
+    approveItem(ctx, { id: item.id, actor: you, channel: 'ui' }, now);
+    ctx.db
+      .prepare('UPDATE items SET fields = ? WHERE id = ?')
+      .run(JSON.stringify({ fdesc: 'Lenta', fsteps: '["cone","ctwo"]' }), item.id);
+    attach(ctx, item.id, 'eanim');
+    handoffItem(ctx, { id: item.id, actor: kiln, channel: 'cli' }, now);
+    sendBackItem(ctx, { id: item.id, actor: scout, channel: 'mcp', reason: 'Más barro' }, now);
+
+    expect(nextFor(ctx, 'quill', {}, now).sentBack).toMatchObject({
+      note: 'Más barro',
+      by: { kind: 'agent', name: 'scout' },
+      step: 'Animar',
+      round: 1,
+    });
+  });
+});
+
 describe('the old paths on a board', () => {
   it('refuses a move into a review while the handoff lacks something, in the same words', () => {
     const ctx = memoryContext();
