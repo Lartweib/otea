@@ -76,6 +76,10 @@ export function flipStart(a: Edge, b: Edge, s: number, stretch: boolean): string
   return `translate(${dx}px, ${dy}px) ${stretch ? `scale(${sx}, ${s})` : `scale(${s})`}`;
 }
 
+// A leaf whose width changes cannot slide at its new width from where it stood without running
+// over what is beside it: it changes in place instead (flipLeaves' `swap`).
+export const changesShape = (a: Edge, b: Edge): boolean => Math.abs(a.width - b.width) > 1;
+
 export type FlipOptions = {
   T?: number;
   delay?: number;
@@ -84,6 +88,9 @@ export type FlipOptions = {
   inT?: number;
   layer?: HTMLElement;
   noScale?: boolean;
+  // Leaves that, when their width changes, dissolve where they stood and resolve where they land,
+  // one after the other, instead of sliding.
+  swap?: (e: HTMLElement) => boolean;
 };
 
 // Moves every element from where it is on screen to where `mutate` puts it. One that stops showing
@@ -93,10 +100,22 @@ export function flipLeaves(
   mutate: () => void,
   opts: FlipOptions = {},
 ): { e: HTMLElement; kf: Keyframe[] }[] {
-  const { T = 560, delay = 0, outT = 220, inDelay = 380, inT = 220, layer, noScale = false } = opts;
+  const {
+    T = 560,
+    delay = 0,
+    outT = 220,
+    inDelay = 380,
+    inT = 220,
+    layer,
+    noScale = false,
+    swap,
+  } = opts;
   const A = els.map((e) => {
     const r = e.getBoundingClientRect();
-    return { e, r, vis: isShown(r), fs: fsOf(e, r), op: +getComputedStyle(e).opacity };
+    const vis = isShown(r);
+    // What it looks like now, in case it changes shape: a copy made after the change would not be.
+    const was = vis && swap?.(e) ? ghostOf(e, layer ?? fxl(), r) : null;
+    return { e, r, vis, was, fs: fsOf(e, r), op: +getComputedStyle(e).opacity };
   });
   for (const e of els) {
     for (const a of e.getAnimations()) if (a.id === 'flip' || a.id === 'fin') a.cancel();
@@ -107,6 +126,35 @@ export function flipLeaves(
   for (const a of A) {
     const b = a.e.getBoundingClientRect();
     const visB = isShown(b);
+    const was = a.was;
+    if (was && visB && changesShape(a.r, b)) {
+      const out = was.animate(
+        [
+          { opacity: a.op, filter: 'blur(0px)' },
+          { opacity: 0, filter: R ? 'blur(0px)' : 'blur(1.5px)' },
+        ],
+        { duration: R ? 160 : outT, delay: R ? 0 : delay, easing: C.drift, fill: 'both' },
+      );
+      out.finished.then(
+        () => was.remove(),
+        () => was.remove(),
+      );
+      const an = a.e.animate(
+        [
+          { opacity: 0, filter: R ? 'blur(0px)' : 'blur(1.5px)' },
+          { opacity: 1, filter: 'blur(0px)' },
+        ],
+        {
+          duration: R ? 160 : inT,
+          delay: R ? 0 : delay + outT,
+          easing: C.drift,
+          fill: 'backwards',
+        },
+      );
+      an.id = 'fin';
+      continue;
+    }
+    was?.remove();
     if (a.vis && visB) {
       if (R) continue;
       const fb = parseFloat(getComputedStyle(a.e).fontSize);

@@ -1,7 +1,7 @@
 // The motion engine (SPEC §3): DOM-level, framework-free. React renders structure; these move it.
 export { anim } from './anim.ts';
 export { motionBus } from './bus.ts';
-export { Choreo, mirrorDelays, type Part, part } from './choreo.ts';
+export { Choreo, closeT, leaveTogether, mirrorDelays, type Part, part } from './choreo.ts';
 export {
   C,
   type Curve,

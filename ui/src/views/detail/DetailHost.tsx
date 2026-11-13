@@ -8,12 +8,12 @@ import { t } from '../../i18n/i18n.ts';
 import { useEscape } from '../../kit/escape.ts';
 import { curView, listOrder, redrawLists, rowOf } from '../../lanes/dom.ts';
 import { motionBus } from '../../motion/bus.ts';
-import { Choreo, mirrorDelays, type Part, part } from '../../motion/choreo.ts';
+import { Choreo, leaveTogether, mirrorDelays, type Part, part } from '../../motion/choreo.ts';
 import { C, F, lerp } from '../../motion/curves.ts';
 import { drive } from '../../motion/drive.ts';
 import { reduced } from '../../motion/reduced.ts';
 import { relayoutList } from '../../motion/relayout.ts';
-import { Tt } from '../../motion/time.ts';
+import { T, Tt } from '../../motion/time.ts';
 import type { ItemView } from '../../types.ts';
 import { dividerBounds, dividerKey, intakeTarget, sheetItem } from './frame.ts';
 import { ItemMissing } from './ItemMissing.tsx';
@@ -63,21 +63,26 @@ function placeSplit(kind: Kind): number {
 }
 
 // The list compacts beside the sheet, or widens back, as one FLIP (mock:2890-2933).
-function narrowList(on: boolean, kind: Kind, delay = 0): void {
+function narrowList(on: boolean, kind: Kind): void {
   const view = curView();
   const apply = () => {
     if (on) placeSplit(kind);
     view?.classList.toggle('narrow', on);
     view?.classList.toggle('chead', on);
   };
-  if (view) relayoutList(view, on, apply, { delay });
+  if (view) relayoutList(view, on, apply);
   else apply();
   workspace.set({ narrow: on });
 }
 
+// Closing beside the list, the sheet, its divider and the pen leave together within one fade; only
+// then does the list widen (sweep #6), so no row slides under a sheet that still shows.
+const LEAVE = T.fade;
+
 // The open gesture's parts (mock:2936-2947): the divider draws down, the sheet fades and slides,
-// its content resolves; the close is the same parts mirrored. The frame and the content are two
-// Choreos sharing one mirror, so the content can be swapped without touching the frame.
+// its content resolves. On the phone the close is the same parts mirrored; beside the list they
+// leave together (LEAVE). The frame and the content are two Choreos sharing one mirror, so the
+// content can be swapped without touching the frame.
 function openParts(sheet: HTMLElement, divider: HTMLElement | null, phone: boolean) {
   const content = [...sheet.querySelectorAll(':scope > .sheet-in:not(.sheet-old) [data-c]')];
   if (phone) {
@@ -126,6 +131,7 @@ function openParts(sheet: HTMLElement, divider: HTMLElement | null, phone: boole
       100 + 30 * i,
     ),
   ]);
+  leaveTogether([...frame, ...inner], LEAVE);
   mirrorDelays([...frame, ...inner]);
   return { frame, inner };
 }
@@ -188,6 +194,9 @@ export function DetailHost() {
     viewKey: viewKeyOf(app.route),
     full: false,
     pen: null as Pen | null,
+    // Whether the list is laid out beside the sheet, and the widening that waits for the sheet.
+    narrow: false,
+    widen: 0,
   });
   const st = S.current;
   st.last = sheetItem(st.last, want, item);
@@ -209,9 +218,18 @@ export function DetailHost() {
     st.inner = new Choreo(inner);
   };
 
+  // The list beside the sheet, or back to the whole room: once per change, never twice.
+  const setNarrow = (on: boolean, force = false) => {
+    window.clearTimeout(st.widen);
+    st.widen = 0;
+    if (st.narrow === on && !force) return;
+    st.narrow = on;
+    narrowList(on, kindRef.current);
+  };
+
   const open = () => {
     st.phase = 'open';
-    if (!phone) narrowList(true, kindRef.current);
+    if (!phone) setNarrow(true, true);
     buildChoreo(true);
     void st.frame?.go(1);
     void st.inner?.go(1);
@@ -247,8 +265,10 @@ export function DetailHost() {
     const sheet = sheetRef.current;
     undrawRoute(sheet?.querySelector('.route-wrap') ?? null, phone);
     if (!phone) {
-      st.pen?.to(0, 120);
-      narrowList(false, kindRef.current, 340);
+      // The pen leaves on the sheet's clock; the list widens once both are gone.
+      st.pen?.to(0, 0, LEAVE);
+      window.clearTimeout(st.widen);
+      st.widen = window.setTimeout(() => setNarrow(false), reduced() ? T.reduced : LEAVE);
     }
     const frame = st.frame;
     void st.inner?.go(0);
@@ -265,7 +285,7 @@ export function DetailHost() {
       for (const a of l.getAnimations()) a.cancel();
     drawRoute(wrap ?? null, 0);
     if (!phone) {
-      narrowList(true, kindRef.current);
+      setNarrow(true);
       const p = pen();
       if (p) {
         p.id = target === INTAKE ? null : target;
@@ -299,7 +319,7 @@ export function DetailHost() {
       );
     }
     if (!els.length) finish();
-    narrowList(false, kindRef.current);
+    setNarrow(false, true);
   };
 
   const prepareSwap = (from: string): Pending | null => {
