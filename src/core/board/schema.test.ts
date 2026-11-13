@@ -133,7 +133,32 @@ describe('parseDefinition', () => {
     expect(result).toEqual({
       ok: false,
       problems: [
-        'step 1 "Concepto" › doer: must be "you", "any" or {"agent": "<name>"}, not "kiln" (who does the step: "you" (the person), "any" agent, or one agent, e.g. "any") [steps.0.doer]',
+        'step 1 "Concepto" › doer: must be "you" or "any", not "kiln" (who does the step: "you" (the person) or "any" agent, e.g. "any") [steps.0.doer]',
+      ],
+    });
+  });
+
+  it('reads a step one named agent did or reviewed as any agent, with a note for each', () => {
+    const def = creatures();
+    const [concept, animate, polish] = def.steps as [Step, Step, Step];
+    const older = {
+      ...def,
+      steps: [
+        concept,
+        { ...animate, doer: { agent: 'kiln' }, reviewer: { agent: 'scout' } },
+        { ...polish, doer: 'you', reviewer: { agent: 'kiln' } },
+      ],
+    };
+    expect(parseDefinition(older)).toEqual({
+      ok: true,
+      definition: {
+        ...def,
+        steps: [concept, animate, { ...polish, doer: 'you', reviewer: 'any' }],
+      },
+      notes: [
+        'step 2 "Animar": kiln no longer does it: any agent does [steps.1.doer]',
+        'step 2 "Animar": scout no longer reviews it: any agent does, never the one that did it [steps.1.reviewer]',
+        'step 3 "Pulir": kiln no longer reviews it: any agent does, never the one that did it [steps.2.reviewer]',
       ],
     });
   });

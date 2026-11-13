@@ -109,6 +109,20 @@ describe('nextText', () => {
     expect(text).toContain('  ✓ Note: required (what you changed since it was sent back)');
   });
 
+  it('never offers an agent the review of a step it did in this round', () => {
+    const text = nextText(def, {
+      ...base,
+      round: 2,
+      position: { step: 'sanimate', phase: 'review' },
+      missing: [],
+      me: 'kiln',
+      did: ['kiln'],
+    });
+    expect(text).toBe(
+      'CRI-12 · Criatura · Animar, round 2\nYou did this step in this round: another agent reviews it. Pick another item.',
+    );
+  });
+
   it('tells an agent reviewer how to approve or ask for another round', () => {
     const text = nextText(def, {
       ...base,
@@ -117,6 +131,7 @@ describe('nextText', () => {
       missing: [],
       evidence: { eart: 2, eanim: 1 },
       me: 'scout',
+      did: ['kiln'],
     });
     expect(text).toContain('CRI-12 · Criatura · Animar, round 2');
     expect(text).toContain('Your turn: review this step (kiln did it).');
@@ -338,7 +353,7 @@ describe('handedText', () => {
       'Handed off. CRI-12 waits for the person to review Concepto.',
     );
     expect(handedText(def, 'CRI-12', { step: 'sanimate', phase: 'review' })).toBe(
-      'Handed off. CRI-12 waits for scout to review Animar.',
+      'Handed off. CRI-12 waits for another agent to review Animar.',
     );
     expect(handedText(def, 'CRI-12', { step: 'sanimate', phase: 'doing' })).toBe(
       'Handed off. CRI-12 moves on to Animar.',
@@ -370,7 +385,7 @@ describe('boardText', () => {
         '   Before you hand it off',
         '     Adjunta el Arte conceptual.',
         '',
-        '2. Animar: kiln does it; scout reviews it',
+        '2. Animar: any agent does it; another agent reviews it, never the one that did it',
         '   When you take it',
         '     Parte del Arte conceptual de Concepto.',
         '   When you review it',

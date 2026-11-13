@@ -112,6 +112,31 @@ describe('an agent drafting a board', () => {
     expect(shown?.instructions).toContain(`otea board draft ${item} --file board.json`);
   });
 
+  it('reads a hand-in whose step names one agent as any agent, and says so', () => {
+    const ctx = project();
+    const { board, item } = requestAgentDraft(
+      ctx,
+      { name: 'Criaturas', need: 'x', agent: 'kiln', lang: 'es' },
+      now,
+    );
+    const draft = getBoardRecord(ctx, board.id).draft?.definition;
+    if (!draft) throw new Error('no draft');
+    const file = agentFile(draft);
+    const steps = file.steps.map((step, index) =>
+      index === 0 ? { ...step, reviewer: { agent: 'scout' } } : step,
+    );
+    const submitted = submitAgentDraft(
+      ctx,
+      { id: item, text: JSON.stringify({ ...file, steps }), actor: kiln, channel: 'cli' },
+      now,
+    );
+    const name = file.steps[0]?.name ?? '';
+    expect(submitted.notes).toEqual([
+      `step 1 "${name}": scout no longer reviews it: any agent does, never the one that did it [steps.0.reviewer]`,
+    ]);
+    expect(getBoardRecord(ctx, board.id).draft?.definition.steps[0]?.reviewer).toBe('any');
+  });
+
   it('offers to close the Pedido on publish, and closes it as done when asked', () => {
     const ctx = project();
     const { board, item } = requestAgentDraft(

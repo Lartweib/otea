@@ -1,7 +1,7 @@
 import type { DatabaseSync } from 'node:sqlite';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { openDatabase } from './database.ts';
-import { migrate } from './migrations.ts';
+import { MIGRATIONS, migrate } from './migrations.ts';
 
 const userVersion = (db: DatabaseSync) => db.prepare('PRAGMA user_version').get()?.user_version;
 
@@ -221,6 +221,28 @@ describe('migrate', () => {
       expect(db.prepare(sql).all()).toEqual([
         { name: 'claude', harness: null, harness_version: null, last_seen: 't3' },
         { name: 'codex', harness: null, harness_version: null, last_seen: 't2' },
+      ]);
+    });
+  });
+
+  describe('from the version before steps named no agent', () => {
+    beforeEach(() => {
+      migrate(db, MIGRATIONS.length - 1);
+      db.exec(`
+        INSERT INTO collections (name, prefix, preset, preset_version, next_seq)
+        VALUES ('Criaturas', 'CRI', 'bcria', 1, 3);
+        INSERT INTO items (id, collection, seq, title, fields, preset_version, state, created_at,
+          updated_at, created_by_kind, created_by_name)
+        VALUES ('CRI-1', 'Criaturas', 1, 'A', '{}', 1, 'sanimate__yours', 't1', 't1', 'human', 'ana'),
+          ('CRI-2', 'Criaturas', 2, 'B', '{}', 1, 'syours', 't1', 't1', 'human', 'ana');
+      `);
+      migrate(db);
+    });
+
+    it("reads the person's review of a step an agent reviewed as the step's review", () => {
+      expect(db.prepare('SELECT id, state FROM items ORDER BY id').all()).toEqual([
+        { id: 'CRI-1', state: 'sanimate__review' },
+        { id: 'CRI-2', state: 'syours' },
       ]);
     });
   });

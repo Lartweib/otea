@@ -9,7 +9,6 @@ import {
   type EvidenceKind,
   guardedBranch,
   INITIAL_KINDS,
-  isAgent,
   isEvidenceKind,
   LEVELS,
   MOTIVE,
@@ -157,13 +156,7 @@ function phasesOf(step: Step): Phase[] {
     // A board is its steps: a review reads as the step it reviews, whose turn says who acts.
     label: () => step.name,
   };
-  if (!isAgent(step.reviewer)) return [doing, review];
-  const yours: Phase = {
-    state: stateOf({ step: step.id, phase: 'yours' }),
-    turn: 'human',
-    label: () => step.name,
-  };
-  return [doing, review, yours];
+  return [doing, review];
 }
 
 type RawTransition = {
@@ -199,14 +192,8 @@ function transitionsOf(def: BoardDefinition): RawTransition[] {
     const review = stateOf({ step: step.id, phase: 'review' });
     const reviewer = step.reviewer === 'you' ? 'human' : 'agent';
     out.push({ from: doing, to: review, by: doer, ...note });
-    const yours = stateOf({ step: step.id, phase: 'yours' });
-    if (isAgent(step.reviewer)) out.push({ from: doing, to: yours, by: 'agent', ...note });
     for (const to of ways) out.push({ from: review, to, by: reviewer });
     out.push({ from: review, to: back, by: reviewer, reason: 'required' });
-    if (isAgent(step.reviewer)) {
-      for (const to of ways) out.push({ from: yours, to, by: 'human' });
-      out.push({ from: yours, to: back, by: 'human', reason: 'required' });
-    }
   }
   return out.map(closingByYou);
 }

@@ -20,7 +20,6 @@ export const boardStudio = {
   'bs.problem.back_invalid':
     'A send-back in {step} lands on a later step. It can only return to this step or an earlier one.',
   'bs.problem.cap_invalid': 'The cap has to be at least 1.',
-  'bs.problem.agent_offline': '{agent} is not connected yet, so items will wait in {step}.',
   'bs.problem.self_review': 'In {step} you do it and review it: the same as nobody reviewing it.',
   'bs.problem.agent_closes':
     'Only you call something done: in {step} an agent would close it. Review it yourself before Done.',
@@ -116,10 +115,9 @@ export const boardStudio = {
   'bs.who.none': 'Nobody',
   'bs.does.you': 'you do it',
   'bs.does.any': 'any agent does it',
-  'bs.does.agent': '{agent} does it',
   'bs.reviews.you': 'you review it',
   'bs.reviews.none': 'nobody reviews it',
-  'bs.reviews.agent': '{agent} reviews it',
+  'bs.reviews.any': 'another agent reviews it',
 
   // Otea's own places on a route.
   'bs.done': 'Done',

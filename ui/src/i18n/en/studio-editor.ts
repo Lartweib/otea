@@ -46,6 +46,7 @@ export const studioEditor = {
   'bs.editor.vroute.done': 'ends here',
   'bs.editor.who.you': 'you',
   'bs.editor.who.any': 'any agent',
+  'bs.editor.who.another': 'another agent',
   'bs.editor.who.none': 'nobody',
 
   // A step's card.
@@ -68,21 +69,19 @@ export const studioEditor = {
   'bs.editor.who.any_doer': 'the first free one working on this board',
   'bs.editor.who.none_rev': 'it moves on as soon as it is handed off',
   'bs.editor.who.you_rev': 'you approve it or send it back',
-  'bs.editor.who.connected': 'connected',
-  'bs.editor.who.offline': 'not connected yet',
+  'bs.editor.who.any_rev': 'never the one that did it: it approves it or asks for another round',
   'bs.editor.an_agent': 'an agent',
   'bs.editor.conseq.you_review':
-    'When {who} hands it off, it is your turn: you approve it or send it back.',
+    'When an agent hands it off, it is your turn: you approve it or send it back.',
   'bs.editor.conseq.no_review': 'It moves on as soon as it is handed off. It does not pass by you.',
   'bs.editor.conseq.yours_alone': 'It is your step: you do it and hand it off. Nobody reviews it.',
   'bs.editor.conseq.agent_reviews_you':
-    '{agent} reviews what you do. If it asks for another round, it comes back to you.',
+    'An agent reviews what you do. If it asks for another round, it comes back to you.',
   'bs.editor.conseq.self_review': 'You do it and review it: the same as nobody reviewing it.',
   'bs.editor.conseq.agent_reviews':
-    '{agent} approves it or asks for another round, and attaches what you ask it for.',
+    'Another agent approves it or asks for another round, and attaches what you ask it for.',
   'bs.editor.conseq.own_work':
-    'Nobody reviews their own work: if {agent} did it, the review is yours.',
-  'bs.editor.conseq.offline': '{agent} is not connected yet, so items will wait in {step}.',
+    'Nobody reviews their own work: an agent that did it in this round never reviews it; another agent does.',
   'bs.editor.card.starts': 'Starts with',
   'bs.editor.card.starts_gloss': 'what it already carries; no need to ask for it again',
   'bs.editor.card.from_step': 'handed off in {step}',
@@ -141,7 +140,7 @@ export const studioEditor = {
   'bs.editor.instr.before_small': 'the last thing it checks',
   'bs.editor.instr.before_ph': 'E.g.: Record a new test and describe it in one line.',
   'bs.editor.instr.review': 'When reviewing it',
-  'bs.editor.instr.review_small': 'what {agent} looks at',
+  'bs.editor.instr.review_small': 'what the reviewing agent looks at',
   'bs.editor.instr.review_ph': 'E.g.: Check that the video shows the whole action.',
   'bs.editor.instr.mention': '@ mention',
   'bs.editor.instr.mention_label': 'Mention',

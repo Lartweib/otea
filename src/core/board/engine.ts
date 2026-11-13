@@ -5,12 +5,10 @@ import {
   DROPPED,
   defaultWay,
   guardedBranch,
-  isAgent,
   isEvidence,
   motiveById,
   type Part,
   partOf,
-  type Reviewer,
   SAME,
   type Step,
   stepById,
@@ -24,22 +22,24 @@ import {
 // next and handoff, the MCP tools, the CLI, Studio's previews and Probar all call it, so what the
 // person designs is what the agents meet.
 
-// The phases of a step: `doing` (the doer's), `review` (the reviewer's) and `yours`, the review
-// that falls to you when the step's agent reviewer did the work itself.
-export type Phase = 'doing' | 'review' | 'yours';
+// The phases of a step: `doing` (the doer's) and `review` (the reviewer's).
+export type Phase = 'doing' | 'review';
 
 export type Closed = typeof DONE | typeof DROPPED;
 
 // A discard on a board with motives names one (`motive`, a motive id).
 export type Position = { step: string; phase: Phase } | { closed: Closed; motive?: string };
 
-const SUFFIX: Readonly<Record<Phase, string>> = { doing: '', review: '__review', yours: '__yours' };
+const SUFFIX: Readonly<Record<Phase, string>> = { doing: '', review: '__review' };
+
+// The person's review an older board kept apart (when its named agent reviewer had done the work
+// itself): it reads as the step's review.
+const YOURS = '__yours';
 
 const MOTIVE_PREFIX = `${DROPPED}__`;
 
-// The workflow state a position compiles to: the step id while doing, `<id>__review` and
-// `<id>__yours` for the reviews, `done` and `dropped` when closed, and `dropped__<motive>` for a
-// discard with a motive.
+// The workflow state a position compiles to: the step id while doing, `<id>__review` for its
+// review, `done` and `dropped` when closed, and `dropped__<motive>` for a discard with a motive.
 export function stateOf(position: Position): string {
   if ('closed' in position) {
     if (position.closed === DROPPED && position.motive) return MOTIVE_PREFIX + position.motive;
@@ -52,9 +52,8 @@ export function positionOf(state: string): Position {
   if (state === DONE || state === DROPPED) return { closed: state };
   if (state.startsWith(MOTIVE_PREFIX))
     return { closed: DROPPED, motive: state.slice(MOTIVE_PREFIX.length) };
-  for (const phase of ['review', 'yours'] as const) {
-    if (state.endsWith(SUFFIX[phase]))
-      return { step: state.slice(0, -SUFFIX[phase].length), phase };
+  for (const suffix of [SUFFIX.review, YOURS]) {
+    if (state.endsWith(suffix)) return { step: state.slice(0, -suffix.length), phase: 'review' };
   }
   return { step: state, phase: 'doing' };
 }
@@ -88,34 +87,35 @@ export function backWaysOf(def: BoardDefinition, stepId: string): string[] {
     .filter((id) => step.ways.includes(id));
 }
 
-// Who reviews the step's work: its reviewer, except that nobody reviews their own work, so an
-// agent reviewer's review of what it did itself falls to you.
-export function reviewerFor(def: BoardDefinition, stepId: string, doneBy?: string): Reviewer {
-  const reviewer = stepById(def, stepId)?.reviewer ?? 'none';
-  if (isAgent(reviewer) && doneBy !== undefined && reviewer.agent === doneBy) return 'you';
-  return reviewer;
-}
-
-export type Turn = { who: 'you' } | { who: 'agent'; agent?: string } | { who: 'none' };
+export type Turn = { who: 'you' } | { who: 'agent' } | { who: 'none' };
 
 export function turnAt(def: BoardDefinition, position: Position): Turn {
   if (isClosed(position)) return { who: 'none' };
   const step = stepById(def, position.step);
   if (!step) return { who: 'none' };
-  if (position.phase === 'yours') return { who: 'you' };
   const who = position.phase === 'doing' ? step.doer : step.reviewer;
   if (who === 'you') return { who: 'you' };
   if (who === 'any') return { who: 'agent' };
-  if (who === 'none') return { who: 'none' };
-  return { who: 'agent', agent: who.agent };
+  return { who: 'none' };
 }
 
-// Whether the agent may take the step's work: any agent for an any-agent step, the named one for a
-// named step, none for yours.
-export function mayTake(def: BoardDefinition, stepId: string, agent: string): boolean {
-  const doer = stepById(def, stepId)?.doer;
-  if (doer === 'any') return true;
-  return doer !== undefined && isAgent(doer) && doer.agent === agent;
+// Whether the agent may take the step's work: any agent for an any-agent step, none for yours.
+export function mayTake(def: BoardDefinition, stepId: string): boolean {
+  return stepById(def, stepId)?.doer === 'any';
+}
+
+// Whether the performer may review the step where the item stands: the person always; an agent
+// only on a step any agent reviews, and never a step it did in that round (`did`: the agents that
+// did it), so another agent reviews it.
+export function mayReview(
+  def: BoardDefinition,
+  position: Position,
+  by: Performer,
+  did: readonly string[] = [],
+): boolean {
+  if (isClosed(position) || position.phase === 'doing') return false;
+  if (by.kind === 'human') return true;
+  return stepById(def, position.step)?.reviewer === 'any' && !did.includes(by.name);
 }
 
 // Another item an item waits for: one of its parts, or one that blocks it. `board` and `step` are
@@ -137,6 +137,8 @@ export type ItemFacts = {
   parts?: readonly Linked[];
   blockers?: readonly Linked[];
   unanswered?: readonly number[];
+  // The agents that did the step in its current round, none of which may review it.
+  did?: readonly string[];
 };
 
 // The refs of what a handoff lacks besides parts: the note, the person's notes left unanswered, and
@@ -326,21 +328,19 @@ export type MoveRefusal =
         | 'not_yours'
         | 'bad_way'
         | 'unknown_step'
-        | 'reason_required';
+        | 'reason_required'
+        | 'own_work';
     };
 
 // `back`: the doer took the item back to an earlier step, for that step's next round.
 export type MoveResult = { ok: true; to: Position; back?: true } | MoveRefusal;
 
 function mayDo(step: Step, by: Performer): boolean {
-  if (step.doer === 'you') return by.kind === 'human';
-  if (step.doer === 'any') return true;
-  return by.kind === 'human' || by.name === step.doer.agent;
+  return step.doer === 'any' || by.kind === 'human';
 }
 
 // A handoff from the doing phase: refused while something required is missing; otherwise to the
-// review (yours when the reviewer did the work), or, with no reviewer, along the way picked (the
-// default when none is). A way back to an earlier step needs a reason and nothing else: giving up
+// review, or, with no reviewer, along the way picked (the default when none is). A way back to an earlier step needs a reason and nothing else: giving up
 // has nothing to hand, and nobody reviews it.
 export function handoff(
   def: BoardDefinition,
@@ -361,25 +361,27 @@ export function handoff(
     return { ok: false, code: 'bad_way' };
   const check = handoffCheck(def, step.id, facts);
   if (!check.ok) return { ok: false, code: 'missing', missing: check.missing };
-  const reviewer = reviewerFor(
-    def,
-    step.id,
-    options.by.kind === 'agent' ? options.by.name : undefined,
-  );
-  if (reviewer === 'none') return { ok: true, to: positionAt(options.way ?? ways[0] ?? DONE) };
-  const phase = reviewer === 'you' && isAgent(step.reviewer) ? 'yours' : 'review';
-  return { ok: true, to: { step: step.id, phase } };
+  if (step.reviewer === 'none') return { ok: true, to: positionAt(options.way ?? ways[0] ?? DONE) };
+  return { ok: true, to: { step: step.id, phase: 'review' } };
+}
+
+// Whether the agent reviewing did the round itself: nobody reviews their own work.
+function ownWork(by: Performer | undefined, did: readonly string[] = []): boolean {
+  return by?.kind === 'agent' && did.includes(by.name);
 }
 
 // An approval from a review: along the way picked, or the default. With the item's facts, what the
-// step waits for is checked again: a part reopened during the review stops the approval.
+// step waits for is checked again: a part reopened during the review stops the approval. `by`: who
+// approves; an agent that did the round (facts.did) is refused.
 export function approve(
   def: BoardDefinition,
   position: Position,
   way?: Target,
   facts?: ItemFacts,
+  by?: Performer,
 ): MoveResult {
   if (isClosed(position) || position.phase === 'doing') return { ok: false, code: 'not_review' };
+  if (ownWork(by, facts?.did)) return { ok: false, code: 'own_work' };
   const ways = waysOf(def, position.step);
   if (ways.length === 0) return { ok: false, code: 'unknown_step' };
   if (way !== undefined && !ways.includes(way)) return { ok: false, code: 'bad_way' };
@@ -397,9 +399,15 @@ export function backTarget(def: BoardDefinition, stepId: string): string {
   return back >= 0 && back <= stepIndex(def, stepId) ? step.back : stepId;
 }
 
-// A send-back (Devolver, or an agent reviewer's Pedir otra ronda) from a review.
-export function sendBack(def: BoardDefinition, position: Position): MoveResult {
+// A send-back (Devolver, or an agent reviewer's Pedir otra ronda) from a review; never by the agent
+// that did the round.
+export function sendBack(
+  def: BoardDefinition,
+  position: Position,
+  options: { by?: Performer; did?: readonly string[] } = {},
+): MoveResult {
   if (isClosed(position) || position.phase === 'doing') return { ok: false, code: 'not_review' };
+  if (ownWork(options.by, options.did)) return { ok: false, code: 'own_work' };
   if (!stepById(def, position.step)) return { ok: false, code: 'unknown_step' };
   return { ok: true, to: { step: backTarget(def, position.step), phase: 'doing' } };
 }

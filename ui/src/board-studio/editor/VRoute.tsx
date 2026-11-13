@@ -77,13 +77,7 @@ export function VRoute({ board, role }: { board?: ReadyDraft; role?: PairRole } 
       const doer = step.doer;
       meta = (
         <>
-          {doer === 'you' ? (
-            <AgentMark you decorative />
-          ) : doer === 'any' ? (
-            <span className="mk any">ag</span>
-          ) : (
-            <AgentMark name={doer.agent} decorative />
-          )}
+          {doer === 'you' ? <AgentMark you decorative /> : <span className="mk any">ag</span>}
           <span>{whoWord(doer)}</span>
           <span className="sep">·</span>
           <span className={step.reviewer === 'you' ? 'stp you' : undefined}>

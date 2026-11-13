@@ -31,7 +31,7 @@ describe('instructionHints, what an agent reads on a step', () => {
   it('counts the review instructions when an agent only reviews', () => {
     const def = bare();
     const polish = at(def, 'spolish');
-    polish.reviewer = { agent: 'scout' };
+    polish.reviewer = 'any';
     expect(instructionHints(def).map(({ code, step }) => [code, step])).toEqual([
       ['instructions_missing', 'spolish'],
     ]);

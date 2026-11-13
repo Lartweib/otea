@@ -250,55 +250,16 @@
             "examples": ["Fix"]
           },
           "doer": {
-            "anyOf": [
-              {
-                "type": "string",
-                "enum": ["you", "any"]
-              },
-              {
-                "type": "object",
-                "properties": {
-                  "agent": {
-                    "type": "string",
-                    "minLength": 1,
-                    "description": "The Otea name of the agent",
-                    "examples": ["claude-b"]
-                  }
-                },
-                "required": ["agent"],
-                "additionalProperties": false
-              }
-            ],
-            "description": "Who does the step: \"you\" (the person), \"any\" agent, or one agent",
-            "examples": [
-              "any",
-              {
-                "agent": "claude-b"
-              }
-            ]
+            "type": "string",
+            "enum": ["you", "any"],
+            "description": "Who does the step: \"you\" (the person) or \"any\" agent",
+            "examples": ["any", "you"]
           },
           "reviewer": {
-            "anyOf": [
-              {
-                "type": "string",
-                "enum": ["none", "you"]
-              },
-              {
-                "type": "object",
-                "properties": {
-                  "agent": {
-                    "type": "string",
-                    "minLength": 1,
-                    "description": "The Otea name of the agent",
-                    "examples": ["claude-b"]
-                  }
-                },
-                "required": ["agent"],
-                "additionalProperties": false
-              }
-            ],
-            "description": "Who reviews the step: \"none\", \"you\" (the person), or one agent",
-            "examples": ["you"]
+            "type": "string",
+            "enum": ["none", "you", "any"],
+            "description": "Who reviews the step: \"none\", \"you\" (the person) or \"any\" agent, never the one that did it in that round",
+            "examples": ["you", "any"]
           },
           "hand": {
             "type": "array",

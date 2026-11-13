@@ -22,11 +22,6 @@ const step = (def: ReturnType<typeof creatures>, id: string) => {
   if (!found) throw new Error(id);
   return found;
 };
-const online = [
-  { name: 'kiln', connected: true },
-  { name: 'scout', connected: true },
-];
-
 describe('summary', () => {
   it('says a blank board in both languages', () => {
     setLanguage('es');
@@ -47,7 +42,7 @@ describe('summary', () => {
       'Cada criatura empieza con Título, Descripción y Bioma. ' +
         'En Concepto, cualquier agente lo hace y tú lo revisas; entrega Arte conceptual y Barro. ' +
         'Desde Concepto también puede ir a Hecho. ' +
-        'Luego, en Animar, kiln lo hace y scout lo revisa; entrega Animación y Comprobaciones. ' +
+        'Luego, en Animar, cualquier agente lo hace y otro agente lo revisa; entrega Animación y Comprobaciones. ' +
         'Luego, en Pulir, lo haces tú y nadie lo revisa. Después, Hecho.',
     );
   });
@@ -90,43 +85,32 @@ describe('stepConseq', () => {
   it('says what each choice of who means', () => {
     setLanguage('es');
     const def = creatures();
-    expect(text(stepConseq(step(def, 'sconcept'), online))).toBe(
+    expect(text(stepConseq(step(def, 'sconcept')))).toBe(
       'Cuando un agente lo entrega, es tu turno: lo apruebas o lo devuelves.',
     );
-    expect(text(stepConseq(step(def, 'sanimate'), online))).toBe(
-      'scout lo aprueba o pide otra ronda, y adjunta lo que le pidas.',
+    expect(text(stepConseq(step(def, 'sanimate')))).toBe(
+      'Otro agente lo aprueba o pide otra ronda, y adjunta lo que le pidas. Nadie revisa su propio trabajo: el agente que lo hizo en esta ronda nunca lo revisa; lo revisa otro.',
     );
-    expect(text(stepConseq(step(def, 'spolish'), online))).toBe(
+    expect(text(stepConseq(step(def, 'spolish')))).toBe(
       'Es tu paso: lo haces y lo entregas tú. Nadie lo revisa.',
     );
+    expect(text(stepConseq({ ...step(def, 'spolish'), reviewer: 'any' }))).toBe(
+      'Un agente revisa lo que haces. Si pide otra ronda, vuelve a ti.',
+    );
     setLanguage('en');
-    expect(text(stepConseq(step(def, 'sconcept'), online))).toBe(
+    expect(text(stepConseq(step(def, 'sconcept')))).toBe(
       'When an agent hands it off, it is your turn: you approve it or send it back.',
     );
   });
 
-  it('warns when you review your own step and when an agent was never seen', () => {
+  it('warns when you review your own step', () => {
     setLanguage('es');
     const def = creatures();
     const polish = { ...step(def, 'spolish'), reviewer: 'you' as const };
-    const [self] = stepConseq(polish, online);
+    const [self] = stepConseq(polish);
     expect(self).toMatchObject({ level: 'warn' });
     expect(plain(self as Sentence)).toBe(
       'Lo haces y lo revisas tú: es lo mismo que nadie lo revise.',
-    );
-    const offline = stepConseq(step(def, 'sanimate'), [{ name: 'kiln', connected: true }]);
-    expect(offline.at(-1)).toMatchObject({ level: 'warn' });
-    expect(plain(offline.at(-1) as Sentence)).toBe(
-      'scout no está conectado todavía, así que los ítems esperarán en Animar.',
-    );
-  });
-
-  it('says that nobody reviews their own work', () => {
-    setLanguage('es');
-    const def = creatures();
-    const animate = { ...step(def, 'sanimate'), doer: { agent: 'scout' } };
-    expect(text(stepConseq(animate, online))).toContain(
-      'Nadie revisa su propio trabajo: si lo hizo scout, la revisión es tuya.',
     );
   });
 });

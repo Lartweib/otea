@@ -267,15 +267,13 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
       .catch(() => toast({ msg: t('sheet.refused'), id: item.id }));
   };
 
-  const reviewerOf = (r: NonNullable<typeof roundsStep>['reviewer']) =>
-    typeof r === 'string' ? r : r.agent;
   const cells = detailCells({
     item,
     type,
     facts,
     own: facts.own && look === 'yours',
     now,
-    board: live ? { reviewer: roundsStep ? reviewerOf(roundsStep.reviewer) : 'none' } : undefined,
+    board: live ? { reviewer: roundsStep ? roundsStep.reviewer : 'none' } : undefined,
   });
   const canWrite = app.session.canWrite;
   const boardSections =

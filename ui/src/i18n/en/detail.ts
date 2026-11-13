@@ -320,6 +320,7 @@ export const detail = {
   'sheet.d.updated': 'Updated',
   'sheet.d.parent': 'Parent',
   'sheet.d.nobody': 'Nobody',
+  'sheet.d.anotherAgent': 'Another agent',
   'sheet.d.you': 'You',
   'sheet.d.youLower': 'you',
   'sheet.d.more': '{count} more',

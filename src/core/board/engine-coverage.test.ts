@@ -186,10 +186,10 @@ describe('drop', () => {
     const def = errores();
     const reason = { reason: 'no vale la pena', motive: 'rejected' };
     expect(drop(def, fixing, { by: mender, via: 'agent', ...reason }).ok).toBe(true);
-    expect(drop(def, fixing, { by: kiln, via: 'agent', ...reason })).toEqual({
-      ok: false,
-      code: 'not_droppable',
-    });
+    expect(drop(def, fixing, { by: kiln, via: 'agent', ...reason }).ok).toBe(true);
+    expect(
+      drop(def, { step: 'striage', phase: 'doing' }, { by: kiln, via: 'agent', ...reason }),
+    ).toEqual({ ok: false, code: 'not_droppable' });
     expect(
       drop(def, { step: 'sfix', phase: 'review' }, { by: mender, via: 'agent', ...reason }),
     ).toEqual({ ok: false, code: 'not_droppable' });

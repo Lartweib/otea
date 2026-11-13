@@ -59,7 +59,7 @@ export function detailCells(o: {
   now: number;
   // On a board: who reviews the step it is on (the step engine's word), and no preset gate rows
   // (the branch strip says them).
-  board?: { reviewer: 'you' | 'none' | string } | undefined;
+  board?: { reviewer: 'you' | 'none' | 'any' } | undefined;
 }): (Cell & { key: string })[] {
   const { item, type, facts, now } = o;
   const you = t('sheet.d.you');
@@ -109,15 +109,7 @@ export function detailCells(o: {
       ? { label: t('sheet.d.reviewer'), value: you, cls: 'you' }
       : o.board.reviewer === 'none'
         ? { label: t('sheet.d.reviewer'), value: t('sheet.d.nobody') }
-        : {
-            label: t('sheet.d.reviewer'),
-            value: (
-              <>
-                <AgentMark name={o.board.reviewer} decorative />
-                {o.board.reviewer}
-              </>
-            ),
-          };
+        : { label: t('sheet.d.reviewer'), value: t('sheet.d.anotherAgent') };
   return keyed([
     doer,
     reviewer,

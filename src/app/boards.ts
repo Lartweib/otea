@@ -1,7 +1,7 @@
 import { compileBoard } from '../core/board/compile.ts';
 import { isClosed, positionOf, stateOf } from '../core/board/engine.ts';
 import { type IdSource, newId } from '../core/board/ids.ts';
-import { type BoardDefinition, DONE, isAgent, type Target } from '../core/board/model.ts';
+import { type BoardDefinition, DONE, type Target } from '../core/board/model.ts';
 import {
   type Change,
   changePlan,
@@ -56,7 +56,6 @@ import {
   findItem,
   insertCollection,
   listCollections,
-  selectAgents,
   selectItems,
   setCollectionPreset,
   updateItemState,
@@ -196,10 +195,6 @@ function namesTaken(ctx: Context, except?: string): string[] {
 const same = (a: string, b: string) =>
   a.trim().toLocaleLowerCase() === b.trim().toLocaleLowerCase();
 
-function agentsOf(ctx: Context): { name: string; connected: boolean }[] {
-  return selectAgents(ctx.db).map(({ name }) => ({ name, connected: true }));
-}
-
 // Every board as a split reads it, by its draft (the person's latest words) or its live version;
 // `as` stands in for board `id`'s own definition.
 export function boardRefs(ctx: Context, id?: string, as?: BoardDefinition): BoardRef[] {
@@ -219,7 +214,6 @@ export function boardRefs(ctx: Context, id?: string, as?: BoardDefinition): Boar
 
 export function boardProblems(ctx: Context, id: string, definition: BoardDefinition): Problem[] {
   return problemsOf(definition, {
-    agents: agentsOf(ctx),
     takenNames: namesTaken(ctx, id),
     id,
     boards: boardRefs(ctx, id, definition),
@@ -314,7 +308,7 @@ export function saveDraft(
   input: SaveDraftInput,
   now: Clock = systemClock,
   agentNote?: string[],
-): { record: BoardRecord; problems: Problem[] } {
+): { record: BoardRecord; problems: Problem[]; notes?: string[] } {
   const reading = parseDefinition(input.definition);
   if (!reading.ok)
     throw new OteaError(
@@ -343,6 +337,7 @@ export function saveDraft(
     return {
       record: getBoardRecord(ctx, id),
       problems: boardProblems(ctx, id, reading.definition),
+      ...(reading.notes ? { notes: reading.notes } : {}),
     };
   });
 }
@@ -821,9 +816,7 @@ function compiledStates(def: BoardDefinition): Set<string> {
     def.steps.flatMap((step) => {
       const doing = stateOf({ step: step.id, phase: 'doing' });
       if (step.reviewer === 'none') return [doing];
-      const review = stateOf({ step: step.id, phase: 'review' });
-      if (!isAgent(step.reviewer)) return [doing, review];
-      return [doing, review, stateOf({ step: step.id, phase: 'yours' })];
+      return [doing, stateOf({ step: step.id, phase: 'review' })];
     }),
   );
 }

@@ -70,7 +70,7 @@ describe('the readings of the shipped presets', () => {
           ok: true,
           definition: def,
         });
-        const errors = problemsOf(def, { agents: [], id: ids[index] ?? '', boards }).filter(
+        const errors = problemsOf(def, { id: ids[index] ?? '', boards }).filter(
           ({ level }) => level === 'error',
         );
         expect(errors).toEqual([]);

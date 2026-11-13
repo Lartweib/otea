@@ -3,9 +3,9 @@ import {
   approve,
   handoff,
   handoffCheck,
+  mayReview,
   mayTake,
   positionOf,
-  reviewerFor,
   roundsOf,
   sendBack,
   sentBackAt,
@@ -23,20 +23,11 @@ const kiln = { kind: 'agent' as const, name: 'kiln' };
 const scout = { kind: 'agent' as const, name: 'scout' };
 const you = { kind: 'human' as const, name: 'fede' };
 
-// Animar done by any agent, still reviewed by scout.
-function anyAnimates(): BoardDefinition {
-  return {
-    ...def,
-    steps: def.steps.map((s) => (s.id === 'sanimate' ? { ...s, doer: 'any' as const } : s)),
-  };
-}
-
 describe('positions and states', () => {
   it('names a step phase as a state and reads it back', () => {
     for (const position of [
       { step: 'sconcept', phase: 'doing' as const },
       { step: 'sconcept', phase: 'review' as const },
-      { step: 'sanimate', phase: 'yours' as const },
       { closed: 'done' as const },
       { closed: 'dropped' as const },
     ]) {
@@ -44,6 +35,10 @@ describe('positions and states', () => {
     }
     expect(stateOf({ step: 'sconcept', phase: 'doing' })).toBe('sconcept');
     expect(stateOf({ step: 'sconcept', phase: 'review' })).toBe('sconcept__review');
+  });
+
+  it("reads the person's review an older board kept apart as the step's review", () => {
+    expect(positionOf('sanimate__yours')).toEqual({ step: 'sanimate', phase: 'review' });
   });
 });
 
@@ -58,29 +53,27 @@ describe('turns', () => {
   it('gives the doing phase to the doer and the review to the reviewer', () => {
     expect(turnAt(def, { step: 'sconcept', phase: 'doing' })).toEqual({ who: 'agent' });
     expect(turnAt(def, { step: 'sconcept', phase: 'review' })).toEqual({ who: 'you' });
-    expect(turnAt(def, { step: 'sanimate', phase: 'doing' })).toEqual({
-      who: 'agent',
-      agent: 'kiln',
-    });
-    expect(turnAt(def, { step: 'sanimate', phase: 'review' })).toEqual({
-      who: 'agent',
-      agent: 'scout',
-    });
-    expect(turnAt(def, { step: 'sanimate', phase: 'yours' })).toEqual({ who: 'you' });
+    expect(turnAt(def, { step: 'sanimate', phase: 'doing' })).toEqual({ who: 'agent' });
+    expect(turnAt(def, { step: 'sanimate', phase: 'review' })).toEqual({ who: 'agent' });
     expect(turnAt(def, { step: 'spolish', phase: 'doing' })).toEqual({ who: 'you' });
     expect(turnAt(def, { closed: 'done' })).toEqual({ who: 'none' });
   });
 
-  it('lets any agent take an any-agent step, and only the named one take a named step', () => {
-    expect(mayTake(def, 'sconcept', 'kiln')).toBe(true);
-    expect(mayTake(def, 'sanimate', 'kiln')).toBe(true);
-    expect(mayTake(def, 'sanimate', 'scout')).toBe(false);
-    expect(mayTake(def, 'spolish', 'kiln')).toBe(false);
+  it('lets any agent take an any-agent step, and none take yours', () => {
+    expect(mayTake(def, 'sconcept')).toBe(true);
+    expect(mayTake(def, 'sanimate')).toBe(true);
+    expect(mayTake(def, 'sanimate')).toBe(true);
+    expect(mayTake(def, 'spolish')).toBe(false);
   });
 
-  it('never lets an agent review its own work: the review becomes yours', () => {
-    expect(reviewerFor(anyAnimates(), 'sanimate', 'scout')).toBe('you');
-    expect(reviewerFor(anyAnimates(), 'sanimate', 'kiln')).toEqual({ agent: 'scout' });
+  it('never lets an agent review a step it did in that round: another agent does', () => {
+    const review = { step: 'sanimate', phase: 'review' as const };
+    expect(mayReview(def, review, scout, ['scout'])).toBe(false);
+    expect(mayReview(def, review, kiln, ['scout'])).toBe(true);
+    expect(mayReview(def, review, you, ['scout'])).toBe(true);
+    const yours = { step: 'sconcept', phase: 'review' as const };
+    expect(mayReview(def, yours, kiln)).toBe(false);
+    expect(mayReview(def, yours, you, ['kiln'])).toBe(true);
   });
 });
 
@@ -154,23 +147,23 @@ describe('moves', () => {
     });
   });
 
-  it('sends the review to you when the reviewer did the work', () => {
+  it('hands an agent-reviewed step to its review, whoever did it', () => {
     const done = {
       fields: { fsteps: ['cone', 'ctwo'] },
       evidence: [{ part: 'eanim', at: at(12) }],
       roundStartedAt: at(10),
     };
-    expect(
-      handoff(anyAnimates(), { step: 'sanimate', phase: 'doing' }, done, { by: scout }),
-    ).toEqual({ ok: true, to: { step: 'sanimate', phase: 'yours' } });
+    expect(handoff(def, { step: 'sanimate', phase: 'doing' }, done, { by: scout })).toEqual({
+      ok: true,
+      to: { step: 'sanimate', phase: 'review' },
+    });
   });
 
   it('refuses a handoff out of turn or along a way the step does not have', () => {
     const review = { step: 'sconcept', phase: 'review' as const };
     expect(handoff(def, review, ready, { by: kiln })).toMatchObject({ code: 'not_doing' });
-    const animate = { step: 'sanimate', phase: 'doing' as const };
-    expect(handoff(def, animate, ready, { by: scout })).toMatchObject({ code: 'not_yours' });
     const polish = { step: 'spolish', phase: 'doing' as const };
+    expect(handoff(def, polish, ready, { by: scout })).toMatchObject({ code: 'not_yours' });
     expect(handoff(def, polish, ready, { by: you, way: 'sconcept' })).toMatchObject({
       code: 'bad_way',
     });
@@ -181,6 +174,18 @@ describe('moves', () => {
     expect(approve(def, review)).toEqual({ ok: true, to: { step: 'sanimate', phase: 'doing' } });
     expect(approve(def, review, 'done')).toEqual({ ok: true, to: { closed: 'done' } });
     expect(approve(def, concept)).toMatchObject({ ok: false, code: 'not_review' });
+  });
+
+  it('refuses the review of the agent that did the round, approval or send-back', () => {
+    const review = { step: 'sanimate', phase: 'review' as const };
+    const facts = { fields: {}, evidence: [], did: ['scout'] };
+    expect(approve(def, review, undefined, facts, scout)).toEqual({ ok: false, code: 'own_work' });
+    expect(sendBack(def, review, { by: scout, did: ['scout'] })).toEqual({
+      ok: false,
+      code: 'own_work',
+    });
+    expect(approve(def, review, undefined, facts, kiln)).toMatchObject({ ok: true });
+    expect(sendBack(def, review, { by: kiln, did: ['scout'] })).toMatchObject({ ok: true });
   });
 
   it('sends back to this step or the earlier one it names', () => {

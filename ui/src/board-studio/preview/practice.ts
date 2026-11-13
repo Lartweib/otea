@@ -30,7 +30,6 @@ import {
   clone,
   DONE,
   guardedBranch,
-  isAgent,
   isEvidence,
   motiveById,
   partOf,
@@ -84,7 +83,7 @@ export type PracticeLog =
   | { kind: 'approved'; by: Actor; who: string | null; step: string; to: Target; id?: string }
   | { kind: 'approvalRefused'; open: Linked[] }
   | { kind: 'sentBack'; step: string; note: string; to: string; round: number }
-  | { kind: 'again'; who: string; step: string }
+  | { kind: 'again'; who: string | null; step: string }
   // A way back: Devolver a… (you) or Regresar a… (an agent), always with a reason.
   | { kind: 'tookBack'; by: Actor; who: string | null; id: string; to: string; reason: string }
   | {
@@ -399,7 +398,7 @@ export function practiceView(s: PracticeState, child?: BoardDefinition): Practic
       : turn.who === 'you'
         ? 'you'
         : 'reviewer';
-  const agent = turn.who === 'agent' ? (turn.agent ?? null) : null;
+  const agent = null;
   const first = s.def.steps[0];
   const canSkip =
     s.fresh &&
@@ -616,7 +615,7 @@ export function sendBackPractice(s: PracticeState, note: string): PracticeState 
           to: target?.name ?? '',
           round: (view.rounds.rounds[result.to.step] ?? 1) + 1,
         }
-      : { kind: 'again', who: view.agent ?? '', step: step.name };
+      : { kind: 'again', who: view.agent, step: step.name };
   const next = moved(s, result.to, [log]);
   const fresh = (target?.hand ?? []).some(({ fresh, ref }) => {
     const part = partOf(s.def, ref);
@@ -776,7 +775,7 @@ export function simulate(
 
 export const reviewerIsAgent = (def: BoardDefinition, stepId: string): boolean => {
   const step = stepById(def, stepId);
-  return step !== undefined && isAgent(step.reviewer);
+  return step !== undefined && step.reviewer === 'any';
 };
 
 const actorOf = (view: PracticeView): Actor => (view.actor === 'you' ? 'you' : 'agent');
@@ -911,7 +910,7 @@ export function quickAction(
   if (isClosed(item.position)) return null;
   const turn = turnAt(item.def, item.position);
   const you = turn.who === 'you';
-  const agent = turn.who === 'agent' ? (turn.agent ?? null) : null;
+  const agent = null;
   return { kind: item.position.phase === 'doing' ? 'handOff' : 'approve', agent, you };
 }
 

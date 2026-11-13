@@ -1,6 +1,6 @@
 import { startsWith } from './engine.ts';
 import { mentionedRefs } from './mentions.ts';
-import { type BoardDefinition, isAgent, isEvidence, partOf, type Step } from './model.ts';
+import { type BoardDefinition, isEvidence, partOf, type Step } from './model.ts';
 
 // Soft hints on what an agent reads on a step, for Studio's card and `otea validate`: a step an
 // agent works with nothing to read (no instructions, and no words of the board's own, which every
@@ -27,7 +27,7 @@ const ATTACH = /\b(adjunt|attach|evidenc|screenshot|captura)/i;
 // agent reviews it.
 function readBy(step: Step): { doer: string[]; all: string[] } {
   const doer = step.doer === 'you' ? [] : [step.instructions.take, step.instructions.before];
-  const review = isAgent(step.reviewer) ? [step.instructions.review] : [];
+  const review = step.reviewer === 'any' ? [step.instructions.review] : [];
   return { doer, all: [...doer, ...review] };
 }
 

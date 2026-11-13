@@ -42,7 +42,7 @@ describe('Qué falta configurar', () => {
     const items = setupItems(defs);
     let store = startSetup(items, defs);
     expect(setupRows(items, defs, store).filter((r) => r.done)).toEqual([]);
-    setDoer(defs.child, 'simpl', { agent: 'mender' });
+    setDoer(defs.child, 'simpl', 'you');
     toggleGuardPush(defs.child, 'fbranch', 'sprop');
     store = tick(store, 'doer:parent:sanalyse');
     expect(

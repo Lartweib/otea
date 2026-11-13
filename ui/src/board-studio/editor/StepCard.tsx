@@ -1,6 +1,6 @@
 import { type ReactNode, useState } from 'react';
 import { backWaysOf, waysOf } from '../../../../src/core/board/engine.ts';
-import { DONE, isAgent, type Step, stepIndex } from '../../../../src/core/board/model.ts';
+import { DONE, type Step, stepIndex } from '../../../../src/core/board/model.ts';
 import { useApp } from '../../app/context.tsx';
 import { t, tx } from '../../i18n/i18n.ts';
 import { MenuItem, MenuLabel } from '../../kit/pop/Menu.tsx';
@@ -68,7 +68,7 @@ export function Section({
 }
 
 export function StepCard({ step }: { step: Step }) {
-  const { draft, agents, dialogs, setOpenRow, pair } = useEditor();
+  const { draft, dialogs, setOpenRow, pair } = useEditor();
   const app = useApp();
   const def = draft.def;
   const i = stepIndex(def, step.id);
@@ -86,13 +86,13 @@ export function StepCard({ step }: { step: Step }) {
   const backs = backWaysOf(def, step.id);
   const earlier = def.steps.slice(0, i).filter((s) => !backs.includes(s.id));
   const note = hasNote(step);
-  const conseq = stepConseq(step, agents);
+  const conseq = stepConseq(step);
   const starts = startsWithNames(def, step);
   const ways2 = waysConseq(def, step);
   const mine = draft.problems.filter(
     (p) => p.at.kind === 'step' && p.at.id === step.id && !SAID.has(p.code),
   );
-  const agentGets = step.doer !== 'you' || isAgent(step.reviewer);
+  const agentGets = step.doer !== 'you' || step.reviewer === 'any';
   const tgt = (x: string) => targetName(def, x);
 
   const remove = () => {
@@ -206,7 +206,7 @@ export function StepCard({ step }: { step: Step }) {
           does: step.doer === 'you' ? t('bs.editor.who.does_you') : t('bs.editor.who.does'),
           reviewer: (
             <Blank
-              label={whoWord(step.reviewer)}
+              label={whoWord(step.reviewer, 'reviewer')}
               you={step.reviewer === 'you'}
               open={revMenu.open}
               onPress={revMenu.toggle}
@@ -220,7 +220,6 @@ export function StepCard({ step }: { step: Step }) {
       <WhoMenu
         kind="doer"
         current={step.doer}
-        agents={agents}
         anchor={doerMenu.anchor}
         open={doerMenu.open}
         onClose={doerMenu.close}
@@ -229,7 +228,6 @@ export function StepCard({ step }: { step: Step }) {
       <WhoMenu
         kind="reviewer"
         current={step.reviewer}
-        agents={agents}
         anchor={revMenu.anchor}
         open={revMenu.open}
         onClose={revMenu.close}
@@ -421,12 +419,12 @@ export function StepCard({ step }: { step: Step }) {
                 />
               </>
             ) : null}
-            {isAgent(step.reviewer) ? (
+            {step.reviewer === 'any' ? (
               <MentionArea
                 at={{ step: step.id, key: 'review' }}
                 stored={step.instructions.review}
                 label={t('bs.editor.instr.review')}
-                small={t('bs.editor.instr.review_small', { agent: step.reviewer.agent })}
+                small={t('bs.editor.instr.review_small')}
                 placeholder={t('bs.editor.instr.review_ph')}
               />
             ) : null}

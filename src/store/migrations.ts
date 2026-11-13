@@ -1,7 +1,7 @@
 import type { DatabaseSync } from 'node:sqlite';
 import { transaction } from './database.ts';
 
-const MIGRATIONS = [
+export const MIGRATIONS = [
   `
   CREATE TABLE collections (
     name TEXT PRIMARY KEY,
@@ -227,6 +227,13 @@ const MIGRATIONS = [
 
   CREATE TRIGGER agent_profiles_no_delete BEFORE DELETE ON agent_profiles
   BEGIN SELECT RAISE(ABORT, 'profile changes are append-only'); END;
+  `,
+  // A step names no agent any more: any agent does it, and any agent but the one that did it
+  // reviews it. The person's review a board kept apart when its named reviewer had done the work
+  // itself (`<step>__yours`) is the step's review now (`<step>__review`).
+  `
+  UPDATE items SET state = substr(state, 1, length(state) - length('__yours')) || '__review'
+  WHERE substr(state, -length('__yours')) = '__yours';
   `,
 ];
 

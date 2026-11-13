@@ -2,7 +2,6 @@ import { type ReactNode, useState } from 'react';
 import { backWaysOf } from '../../../../src/core/board/engine.ts';
 import {
   type BoardDefinition,
-  isAgent,
   LEVELS,
   type Part,
   type Step,
@@ -597,11 +596,7 @@ function GuardLines({ part, def }: { part: Part; def: BoardDefinition }) {
                 className="se-mi"
                 onClick={() => draft.mutate((d) => toggleGuardPush(d, part.id, s.id))}
               >
-                {isAgent(s.doer) ? (
-                  <AgentMark name={s.doer.agent} decorative />
-                ) : (
-                  <span className="mk any">{t('bs.editor.lane.ag')}</span>
-                )}
+                <span className="mk any">{t('bs.editor.lane.ag')}</span>
                 <span className="se-lbx">
                   {unnamed(s.name)}
                   <span className="se-gl2">{whoWord(s.doer)}</span>

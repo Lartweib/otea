@@ -53,8 +53,6 @@ export type BoardDraft =
   | ReadyDraft;
 
 export type DraftOptions = {
-  // The project's agents, for "no está conectado todavía".
-  agents: readonly { name: string; connected: boolean }[];
   // The names of the project's other boards.
   takenNames: readonly string[];
   // How long edits settle before a save.
@@ -171,11 +169,10 @@ export function useBoardDraft(id: string, options: DraftOptions): BoardDraft {
     [saver],
   );
 
-  const { agents, takenNames, boards } = options;
+  const { takenNames, boards } = options;
   const problems = useMemo(
-    () =>
-      state ? problemsOf(state.def, { agents, takenNames, id, ...(boards ? { boards } : {}) }) : [],
-    [state, agents, takenNames, id, boards],
+    () => (state ? problemsOf(state.def, { takenNames, id, ...(boards ? { boards } : {}) }) : []),
+    [state, takenNames, id, boards],
   );
   latest.current = { state, selection };
 

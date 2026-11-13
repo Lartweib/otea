@@ -121,7 +121,7 @@ export function problemWords(problem: Problem): string {
     const value = problem.params[key];
     return typeof value === 'string' ? ` "${value}"` : '';
   };
-  const [step, name, agent] = [quoted('step'), quoted('name'), quoted('agent')];
+  const [step, name] = [quoted('step'), quoted('name')];
   const [part, board, other] = [quoted('part'), quoted('board'), quoted('other')];
   const words: Record<Problem['code'], string> = {
     board_unnamed: 'the board has no name',
@@ -136,8 +136,7 @@ export function problemWords(problem: Problem): string {
     way_invalid: `a way out of step${step} leads to itself or to a step the board does not have`,
     back_invalid: `step${step} sends work back to a later step`,
     cap_invalid: 'the cap on new items is not a whole number above zero',
-    agent_offline: `agent${agent} has never connected`,
-    self_review: `step${step} has the same agent doing and reviewing it`,
+    self_review: `step${step} has the person doing and reviewing it`,
     agent_closes: `step${step} would let an agent close the item: only the person says Done`,
     wait_no_split: `step${step} waits for its parts, but${board} divides into nothing`,
     skip_invalid: `step${step} starts new items past it, which only a first step nobody reviews may do`,
@@ -167,7 +166,13 @@ function notABoard(pedido: string, problems: readonly string[]): string {
 
 export type SubmitInput = { id: string; text: string; actor: Actor; channel: Channel };
 
-export type Submitted = { board: string; evidence: EvidenceRecord; problems: string[] };
+// `notes`: what reading it as today's board changed (a step that named one agent is any agent's).
+export type Submitted = {
+  board: string;
+  evidence: EvidenceRecord;
+  problems: string[];
+  notes: string[];
+};
 
 // The agent hands in its draft: it must read as a board; then it is kept on the Pedido as
 // board.json and merged by id into the board's draft at once (handing it in is the agent's
@@ -197,7 +202,7 @@ export function submitAgentDraft(
     return recordEvidence(project, item.id, placed, input, at);
   });
   mergeAgentDraft(project, board.id, evidence.id, now);
-  return { board: board.id, evidence, problems };
+  return { board: board.id, evidence, problems, notes: reading.notes ?? [] };
 }
 
 type Words = {

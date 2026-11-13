@@ -70,8 +70,8 @@ describe('sampleItems', () => {
     expect(shape).toEqual([
       ['sconcept', 'doing', 'working', null, 1],
       ['sconcept', 'review', 'yours', null, 2],
-      ['sanimate', 'doing', 'working', 'kiln', 1],
-      ['sanimate', 'review', 'working', 'scout', 1],
+      ['sanimate', 'doing', 'working', null, 1],
+      ['sanimate', 'review', 'working', null, 1],
       ['spolish', 'doing', 'yours', null, 1],
       [null, null, 'done', null, 1],
     ]);
@@ -87,9 +87,12 @@ describe('sampleItems', () => {
     expect(items[1]?.title).toBe('Tortuga musgosa (2)');
   });
 
-  it('shows an item waiting when its agent never connected', () => {
-    const items = sampleItems(creatures(), ['kiln']);
-    expect(items.find((item) => item.step === 'sanimate')?.look).toBe('waiting');
+  it('shows an agent at work at a step any agent does, and another agent reviewing it', () => {
+    const items = sampleItems(creatures()).filter((item) => item.step === 'sanimate');
+    expect(items.map(({ phase, look, agent }) => [phase, look, agent])).toEqual([
+      ['doing', 'working', null],
+      ['review', 'working', null],
+    ]);
   });
 });
 

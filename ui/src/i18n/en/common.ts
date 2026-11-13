@@ -139,6 +139,8 @@ export const common = {
   'refusal.notYourTurn': 'Not your turn: {who} does {step} on {item}.',
   'refusal.ownStep':
     '{who} may not relay the decision on {item}: it did {step} in this round. You make it.',
+  'refusal.ownReview':
+    '{who} may not review {step} on {item}: it did it in this round. Another agent reviews it.',
   'refusal.notYourReview': 'Not your turn: {who} reviews {step} on {item}.',
   'refusal.thePerson': 'the person',
   'refusal.thisStep': 'this step',

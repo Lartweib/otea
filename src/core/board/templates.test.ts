@@ -18,8 +18,6 @@ import {
   templateView,
 } from './templates.ts';
 
-const agents: { name: string; connected: boolean }[] = [];
-
 describe('templates', () => {
   it('lists the templates of the design, in order, the sets last', () => {
     expect(listedTemplates('es').map(({ key, name }) => `${key}:${name}`)).toEqual([
@@ -48,7 +46,7 @@ describe('templates', () => {
         }));
         defs.forEach((def, index) => {
           expect(def.template).toBe(set.key);
-          const problems = problemsOf(def, { agents, id: `b${index}`, boards });
+          const problems = problemsOf(def, { id: `b${index}`, boards });
           expect(problems.filter(({ level }) => level === 'error')).toEqual([]);
         });
       });
@@ -77,7 +75,7 @@ describe('templates', () => {
       it(`copies ${template.key} in ${lang} into a board that publishes without errors`, () => {
         const def = instantiate(template, lang, {}, sequenceIds());
         expect(assertIconName(def.icon)).toBe(def.icon);
-        expect(problemsOf(def, { agents }).filter(({ level }) => level === 'error')).toEqual([]);
+        expect(problemsOf(def, {}).filter(({ level }) => level === 'error')).toEqual([]);
         for (const ref of usedRefs(def)) expect(partOf(def, ref)?.name).toBeTruthy();
         for (const step of def.steps) {
           for (const text of Object.values(step.instructions)) {
@@ -134,7 +132,7 @@ describe('blankBoard', () => {
       expect.objectContaining({ name: 'Hacerlo', doer: 'any', reviewer: 'you', hand: [] }),
     ]);
     expect(def.title).toBe('Título');
-    expect(problemsOf(def, { agents })).toEqual([]);
+    expect(problemsOf(def, {})).toEqual([]);
     expect(blankBoard('en', { name: 'Creatures' }).item).toBe('Item');
   });
 });

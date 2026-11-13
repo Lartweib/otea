@@ -3,13 +3,8 @@ import type { BoardDefinition, Step } from './model.ts';
 import { problemsOf } from './problems.ts';
 import { cambios, errores, tareasDeRepo } from './testing.ts';
 
-const agents = [
-  { name: 'mender', connected: true },
-  { name: 'scout', connected: true },
-];
-
 const found = (def: BoardDefinition, more = {}) =>
-  problemsOf(def, { agents, ...more }).map(({ level, code, params, at }) => ({
+  problemsOf(def, more).map(({ level, code, params, at }) => ({
     level,
     code,
     params,

@@ -142,6 +142,8 @@ export const common = {
   'refusal.notYourTurn': 'No te toca: {who} hace {step} en {item}.',
   'refusal.ownStep':
     '{who} no puede transmitir la decisión sobre {item}: hizo {step} en esta ronda. La decides tú.',
+  'refusal.ownReview':
+    '{who} no puede revisar {step} en {item}: lo hizo en esta ronda. Lo revisa otro agente.',
   'refusal.notYourReview': 'No te toca: {who} revisa {step} en {item}.',
   'refusal.thePerson': 'la persona',
   'refusal.thisStep': 'este paso',

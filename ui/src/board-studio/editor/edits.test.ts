@@ -31,13 +31,7 @@ const counter = () => {
   return (kind: string) => `${kind}new${++n}`;
 };
 
-const codes = (def: ReturnType<typeof creatures>) =>
-  problemsOf(def, {
-    agents: [
-      { name: 'kiln', connected: true },
-      { name: 'scout', connected: true },
-    ],
-  }).map((p) => p.code);
+const codes = (def: ReturnType<typeof creatures>) => problemsOf(def, {}).map((p) => p.code);
 
 describe('addStep', () => {
   it('adds a step where asked: any agent does it, you review it, a unique name', () => {
@@ -106,8 +100,8 @@ describe('removeStep', () => {
 describe('who', () => {
   it('sets who does it and who reviews it; a reviewer other than you keeps no send-back', () => {
     const def = creatures();
-    setDoer(def, 'sconcept', { agent: 'kiln' });
-    expect(def.steps[0]?.doer).toEqual({ agent: 'kiln' });
+    setDoer(def, 'sconcept', 'you');
+    expect(def.steps[0]?.doer).toBe('you');
     setBack(def, 'spolish', 'sconcept');
     setReviewer(def, 'spolish', 'you');
     expect(def.steps[2]?.back).toBe('sconcept');

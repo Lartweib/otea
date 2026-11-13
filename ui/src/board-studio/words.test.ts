@@ -11,12 +11,7 @@ describe('problemText', () => {
   it('says every problem in words, in the language on screen', () => {
     const def = creatures();
     def.steps[1] = { ...(def.steps[1] ?? step('x', 'x')), name: 'Arte conceptual' };
-    const [problem] = problemsOf(def, {
-      agents: [
-        { name: 'kiln', connected: true },
-        { name: 'scout', connected: true },
-      ],
-    });
+    const [problem] = problemsOf(def, {});
     if (!problem) throw new Error('fixture');
     setLanguage('es');
     expect(problemText(problem)).toBe(
@@ -31,24 +26,10 @@ describe('problemText', () => {
   it('counts uses of one kind instead of repeating them', () => {
     const def = creatures();
     def.steps[1] = { ...(def.steps[1] ?? step('x', 'x')), name: 'Concepto' };
-    const problem = problemsOf(def, {
-      agents: [
-        { name: 'kiln', connected: true },
-        { name: 'scout', connected: true },
-      ],
-    }).find(({ code }) => code === 'duplicate_name');
+    const problem = problemsOf(def, {}).find(({ code }) => code === 'duplicate_name');
     if (!problem) throw new Error('fixture');
     setLanguage('es');
     expect(problemText(problem)).toMatch(/^«Concepto» se usa para 2 pasos\./);
-  });
-
-  it('words an offline agent as the warning it is', () => {
-    const [problem] = problemsOf(creatures(), { agents: [{ name: 'kiln', connected: true }] });
-    if (!problem) throw new Error('fixture');
-    setLanguage('es');
-    expect(problemText(problem)).toBe(
-      'scout no está conectado todavía, así que los ítems esperarán en Animar.',
-    );
   });
 });
 
@@ -59,11 +40,11 @@ describe('changeText', () => {
       'Criaturas se crea con 3 pasos: Concepto, Animar y Pulir.',
     ]);
     const draft = creatures();
-    draft.steps.push(step('snew', 'Montar', { doer: { agent: 'kiln' } }));
+    draft.steps.push(step('snew', 'Montar', { doer: 'any', reviewer: 'any' }));
     draft.steps[0]?.hand.push({ ref: 'ecode', req: 'always', fresh: true });
     expect(changePlan(creatures(), draft).map(changeText)).toEqual([
       'Concepto entrega también Cambios de código, obligatorio y nuevo en cada ronda.',
-      'Paso nuevo: Montar (kiln lo hace, tú lo revisas).',
+      'Paso nuevo: Montar (cualquier agente lo hace, otro agente lo revisa).',
     ]);
   });
 });
@@ -72,8 +53,9 @@ describe('who and kinds', () => {
   it('says who does and reviews a step, and names kinds and targets', () => {
     setLanguage('es');
     expect(doesText('any')).toBe('cualquier agente lo hace');
-    expect(doesText({ agent: 'kiln' })).toBe('kiln lo hace');
+    expect(doesText('you')).toBe('lo haces tú');
     expect(reviewsText('none')).toBe('nadie lo revisa');
+    expect(reviewsText('any')).toBe('otro agente lo revisa');
     expect(kindName('video')).toBe('Vídeo o GIF');
     expect(targetName(creatures(), 'done')).toBe('Hecho');
     expect(targetName(creatures(), 'sanimate')).toBe('Animar');
@@ -118,13 +100,12 @@ describe('the later settings, in words', () => {
     setLanguage('es');
     const def = cambios();
     delete def.split;
-    const [wait] = problemsOf(def, { agents: [] });
+    const [wait] = problemsOf(def, {});
     if (!wait) throw new Error('fixture');
     expect(problemText(wait)).toBe(
       'Ejecutar espera a sus partes, pero Cambios no se divide en nada.',
     );
     const cycle = problemsOf(cambios(), {
-      agents: [],
       id: 'bcam',
       boards: [
         { id: 'bcam', name: 'Cambios', split: { board: 'brt', always: true } },

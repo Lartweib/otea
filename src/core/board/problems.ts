@@ -2,7 +2,6 @@ import { startsWith, waysOf } from './engine.ts';
 import {
   type BoardDefinition,
   DONE,
-  isAgent,
   isEvidence,
   LEVELS,
   partOf,
@@ -33,7 +32,6 @@ export type ProblemCode =
   | 'way_invalid'
   | 'back_invalid'
   | 'cap_invalid'
-  | 'agent_offline'
   | 'self_review'
   | 'agent_closes'
   | 'wait_no_split'
@@ -58,8 +56,6 @@ export type Problem = {
 };
 
 export type ProblemContext = {
-  // The project's agents and whether each is connected now.
-  agents: readonly { name: string; connected: boolean }[];
   // The names of the project's other boards (live or draft), compared without case.
   takenNames?: readonly string[];
   // This board's id and the project's boards (this one included), to check what a split names.
@@ -189,21 +185,6 @@ export function problemsOf(def: BoardDefinition, context: ProblemContext): Probl
 
   if (def.cap.on && (!Number.isInteger(def.cap.n) || def.cap.n < 1))
     add('error', 'cap_invalid', { kind: 'about' });
-
-  const connected = new Set(context.agents.filter((a) => a.connected).map(({ name }) => name));
-  for (const step of def.steps) {
-    const seen = new Set<string>();
-    for (const who of [step.doer, step.reviewer]) {
-      if (!isAgent(who) || connected.has(who.agent) || seen.has(who.agent)) continue;
-      seen.add(who.agent);
-      add(
-        'warning',
-        'agent_offline',
-        { kind: 'step', id: step.id },
-        { agent: who.agent, step: step.name },
-      );
-    }
-  }
 
   // Only you say something is Hecho: an agent may not close an item as done, by handing it off with
   // nobody reviewing or by approving it.

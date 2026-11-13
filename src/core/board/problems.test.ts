@@ -3,17 +3,12 @@ import type { BoardDefinition } from './model.ts';
 import { blocking, problemsOf } from './problems.ts';
 import { creatures, step } from './testing.ts';
 
-const agents = [
-  { name: 'kiln', connected: true },
-  { name: 'scout', connected: true },
-];
-
-const codes = (def: BoardDefinition, list = agents) =>
-  problemsOf(def, { agents: list }).map(({ level, code }) => `${level}:${code}`);
+const codes = (def: BoardDefinition) =>
+  problemsOf(def, {}).map(({ level, code }) => `${level}:${code}`);
 
 describe('problemsOf', () => {
   it('finds nothing wrong with a sound board', () => {
-    expect(problemsOf(creatures(), { agents })).toEqual([]);
+    expect(problemsOf(creatures(), {})).toEqual([]);
   });
 
   it('blocks a board without a name or without steps', () => {
@@ -24,7 +19,7 @@ describe('problemsOf', () => {
   it('blocks a name used twice in the board name space, at the second use', () => {
     const def = creatures();
     def.steps[1] = { ...(def.steps[1] ?? step('x', 'x')), name: 'arte conceptual ' };
-    const found = problemsOf(def, { agents });
+    const found = problemsOf(def, {});
     expect(found).toEqual([
       {
         level: 'error',
@@ -63,7 +58,7 @@ describe('problemsOf', () => {
     def.form = [{ ref: 'fdesc', required: true }];
     expect(codes(def)).toEqual(['error:when_unreadable']);
     concept.hand[1] = { ref: 'eswamp', req: 'when', fresh: false };
-    expect(problemsOf(def, { agents })[0]).toMatchObject({
+    expect(problemsOf(def, {})[0]).toMatchObject({
       code: 'when_unreadable',
       at: { kind: 'part', id: 'eswamp', step: 'sconcept' },
     });
@@ -87,17 +82,6 @@ describe('problemsOf', () => {
     expect(codes(def)).toEqual(['error:way_invalid', 'error:way_invalid', 'error:back_invalid']);
   });
 
-  it('warns about an agent that is not connected yet', () => {
-    expect(problemsOf(creatures(), { agents: [{ name: 'kiln', connected: true }] })).toEqual([
-      {
-        level: 'warning',
-        code: 'agent_offline',
-        params: { agent: 'scout', step: 'Animar' },
-        at: { kind: 'step', id: 'sanimate' },
-      },
-    ]);
-  });
-
   it('blocks an agent closing an item as done: only you say something is Hecho', () => {
     const def = creatures();
     def.steps = [
@@ -106,7 +90,7 @@ describe('problemsOf', () => {
     ];
     expect(codes(def)).toEqual(['error:agent_closes']);
     def.steps = [
-      step('sa', 'Hacer', { reviewer: { agent: 'kiln' }, ways: [] }),
+      step('sa', 'Hacer', { reviewer: 'any', ways: [] }),
       step('sb', 'Ver', { doer: 'you', reviewer: 'none' }),
     ];
     def.steps[0]?.ways.push('done');
@@ -127,7 +111,7 @@ describe('problemsOf', () => {
   });
 
   it('blocks a name another board of the project already has, whatever its case', () => {
-    expect(problemsOf(creatures(), { agents, takenNames: ['criaturas'] })).toEqual([
+    expect(problemsOf(creatures(), { takenNames: ['criaturas'] })).toEqual([
       {
         level: 'error',
         code: 'board_name_taken',
@@ -138,7 +122,7 @@ describe('problemsOf', () => {
   });
 
   it('says whether anything blocks publishing', () => {
-    expect(blocking(problemsOf(creatures(), { agents: [] }))).toBe(false);
-    expect(blocking(problemsOf({ ...creatures(), steps: [] }, { agents }))).toBe(true);
+    expect(blocking(problemsOf(creatures(), {}))).toBe(false);
+    expect(blocking(problemsOf({ ...creatures(), steps: [] }, {}))).toBe(true);
   });
 });

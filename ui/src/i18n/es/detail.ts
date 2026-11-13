@@ -319,6 +319,7 @@ export const detail = {
   'sheet.d.updated': 'Actualizado',
   'sheet.d.parent': 'Padre',
   'sheet.d.nobody': 'Nadie',
+  'sheet.d.anotherAgent': 'Otro agente',
   'sheet.d.you': 'Tú',
   'sheet.d.youLower': 'tú',
   'sheet.d.more': '{count} más',

@@ -7,10 +7,8 @@ import type { ReadyDraft } from '../use-board-draft.ts';
 import type { SetupRow } from './setup.ts';
 
 // What every part of the editor shares: the draft (edited only through `mutate`), the project's
-// agents and boards, which handoff row is open, the dialogs the bar and the cards open and, when
+// boards, which handoff row is open, the dialogs the bar and the cards open and, when
 // the board is joined to another one, the pair it is edited with.
-
-export type Agents = readonly { name: string; connected: boolean }[];
 
 export type Dialogs = { practice: () => void; publish: () => void; discard: () => void };
 
@@ -37,7 +35,6 @@ export type PairView = {
 
 export type Editor = {
   draft: ReadyDraft;
-  agents: Agents;
   openRow: string | null;
   setOpenRow: (ref: string | null) => void;
   dialogs: Dialogs;

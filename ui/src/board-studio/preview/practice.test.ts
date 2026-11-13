@@ -104,13 +104,13 @@ describe('practice', () => {
     expect(practiceView(s).ways).toEqual(['sanimate', 'done']);
     s = approvePractice(s);
     expect(at(s)).toBe('sanimate:doing:1');
-    expect(practiceView(s)).toMatchObject({ actor: 'agent', agent: 'kiln' });
+    expect(practiceView(s)).toMatchObject({ actor: 'agent', agent: null });
     s = handOff(fillPart(fillPart(s, 'eanim'), 'fsteps'));
     expect(at(s)).toBe('sanimate:review:1');
-    expect(practiceView(s)).toMatchObject({ actor: 'reviewer', agent: 'scout' });
+    expect(practiceView(s)).toMatchObject({ actor: 'reviewer', agent: null });
     s = sendBackPractice(s, '');
     expect(at(s)).toBe('sconcept:doing:2');
-    expect(s.log.at(-1)).toMatchObject({ kind: 'again', who: 'scout', step: 'Animar' });
+    expect(s.log.at(-1)).toMatchObject({ kind: 'again', who: null, step: 'Animar' });
     s = approvePractice(handOff(writeNote(fillPart(s, 'eart'), 'Otra pose')));
     s = approvePractice(handOff(fillPart(s, 'eanim')));
     expect(at(s)).toBe('spolish:doing:1');
@@ -195,7 +195,7 @@ describe('practice: the new capabilities', () => {
     expect(refused.log.at(-1)).toMatchObject({
       kind: 'refused',
       by: 'agent',
-      who: 'mender',
+      who: null,
       note: true,
     });
     s = handOff(writeNote(s, 'Probé el faro al anochecer.'));
@@ -241,7 +241,7 @@ describe('practice: the new capabilities', () => {
     expect(dropped.log.at(-1)).toEqual({
       kind: 'dropped',
       by: 'agent',
-      who: 'mender',
+      who: null,
       id: 'BUG-1',
       motive: 'Duplicado',
       reason: 'Igual que BUG-3',
