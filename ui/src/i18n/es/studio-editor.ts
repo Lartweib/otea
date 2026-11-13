@@ -350,6 +350,12 @@ export const studioEditor = {
     'Esto solo se cumple en los repositorios donde Otea vigila las subidas (Ajustes › Repositorios).',
   'bs.editor.guard.no_push': '«{part}» está protegida pero no se puede subir en ningún paso.',
   'bs.editor.guard.off': 'Sin protección: cualquiera puede subir a la rama en cualquier momento.',
+  'bs.editor.guard.base_switch': 'También protege la rama base.',
+  'bs.editor.guard.base_label': 'Rama base',
+  'bs.editor.guard.base_on':
+    'Los agentes solo suben o fusionan a {base} la rama de cada {item} ya en Hecho. Tú sigues pudiendo: desde la web del repositorio, o con git push --no-verify.',
+  'bs.editor.guard.base_off':
+    'La rama base no se revisa: un agente podría fusionar en local una rama en revisión y subirla.',
   'bs.editor.drop.title': 'Descartar',
   'bs.editor.drop.gloss': 'la otra forma de terminar',
   'bs.editor.drop.by': 'Descartar lo haces tú, {by}',

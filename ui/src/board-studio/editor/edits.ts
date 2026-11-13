@@ -471,6 +471,16 @@ export function setGuardRepo(def: BoardDefinition, ref: string, repo: string | u
   else guard.repo = repo;
 }
 
+// "También protege la rama base": the base branch agents merge into only once an item is Hecho;
+// undefined stops protecting it. A name being typed is kept as it is (problems say when it is not a
+// branch name).
+export function setGuardBase(def: BoardDefinition, ref: string, base: string | undefined): void {
+  const guard = def.parts[ref]?.guard;
+  if (!guard) return;
+  if (base === undefined) delete guard.base;
+  else guard.base = base;
+}
+
 // ---- discarding: who, and with which motive ----
 
 export function setDropBy(def: BoardDefinition, by: 'page' | 'anyone'): void {

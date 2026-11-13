@@ -59,6 +59,14 @@ span.se-lnk {
 .se-capline + .se-conseq {
   margin-top: 4px;
 }
+/* The base branch a protected branch protects too: a short name, typed under its switch. */
+.se-fld.se-base {
+  max-width: 240px;
+  margin-top: 10px;
+}
+.se-fld.se-base + .se-conseq {
+  margin-top: 8px;
+}
 .se-conseqs > .se-conseq + .se-conseq {
   margin-top: 6px;
 }
