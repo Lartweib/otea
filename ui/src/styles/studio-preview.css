@@ -2637,6 +2637,8 @@ button.st-offscreen .icon:last-child {
 }
 /* the kit's tick box, not the dialog's text input */
 .bsp-request input.ck {
+  display: grid;
+  place-items: center;
   flex: none;
   width: 14px;
   height: 14px;
