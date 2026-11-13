@@ -2,15 +2,24 @@
    pointer; its pull (--p, 0 to 1, on the card) brings up the stamp of the move a release would make
    and lights its leading edge; the stack's --rise (0 to 1) brings the card under it toward its place. */
 .tri {
+  container: tri / inline-size;
   padding: 34px 40px 60px;
-  max-width: 980px;
 }
+/* The way out on the left; the title and where the pass stands over the middle, over the card. */
 .tri .thd {
-  display: flex;
-  align-items: baseline;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
   gap: 16px;
-  flex-wrap: wrap;
-  padding-left: 72px;
+}
+.tri .thd .back {
+  justify-self: start;
+}
+.tri .ttitle {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  text-align: center;
 }
 .tri .thd .back {
   font: 500 12.5px / 1 var(--sans);
@@ -33,11 +42,171 @@
   font: 400 11.5px / 1 var(--mono);
   color: var(--ink-3);
 }
+/* The card in the middle, a pile on each side: sent back on the left, approved on the right, the
+   sides the card is thrown to. */
+.tri .tbody {
+  display: grid;
+  grid-template-columns: minmax(12rem, 1fr) minmax(0, 800px) minmax(12rem, 1fr);
+  align-items: start;
+  gap: 40px;
+  margin-top: 30px;
+}
+.tri .tmain {
+  grid-column: 2;
+  min-width: 0;
+}
 .tri .tstack {
   --rise: 0;
   position: relative;
-  margin: 26px 0 0 72px;
   min-height: 420px;
+}
+
+/* ---- the piles ---- */
+.tpile {
+  width: 100%;
+  max-width: 17rem;
+  /* Level with the card's top, under the stamp that rides it. */
+  padding-top: 2px;
+}
+.tpile[data-side="left"] {
+  grid-column: 1;
+  grid-row: 1;
+  justify-self: end;
+}
+.tpile[data-side="right"] {
+  grid-column: 3;
+  grid-row: 1;
+  justify-self: start;
+}
+.tpile-k {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding-bottom: 9px;
+  border-bottom: 1.5px solid var(--ink-2);
+  font: 600 10.5px / 1 var(--sans);
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+.tpile[data-side="right"] .tpile-k {
+  border-color: var(--you);
+  color: var(--you-ink);
+}
+.tpile-k .n {
+  font: 400 12px / 1 var(--mono);
+  letter-spacing: 0;
+}
+.tpile-list {
+  display: grid;
+  gap: 8px;
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.tpile-card {
+  min-width: 0;
+  transition: opacity 220ms var(--o-drift);
+}
+/* The place made for the card flying here: laid out at once, seen as the card hands over to it. */
+.tpile-card[data-landing] {
+  opacity: 0;
+  transition: none;
+}
+.tpile-card button {
+  display: grid;
+  gap: 5px;
+  width: 100%;
+  padding: 11px 13px 12px;
+  border: 1px solid var(--rule);
+  border-radius: 9px;
+  background: var(--sheet);
+  box-shadow: 0 10px 22px -20px var(--shadow);
+  text-align: left;
+  color: var(--ink);
+  transition:
+    border-color 240ms var(--o-drift),
+    box-shadow 240ms var(--o-drift);
+}
+.tpile-card button:hover {
+  border-color: var(--rule-2);
+  box-shadow: 0 14px 26px -20px var(--shadow);
+}
+.tpile-id {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font: 400 11px / 1 var(--mono);
+  color: var(--ink-3);
+}
+.tpile-title {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  font: 430 15.5px / 1.25 var(--serif);
+  letter-spacing: -0.005em;
+  overflow-wrap: anywhere;
+}
+.tpile-to {
+  font: 400 11px / 1.3 var(--mono);
+  color: var(--ink-3);
+}
+.tpile-empty {
+  padding: 16px 14px;
+  border: 1px dashed var(--rule-2);
+  border-radius: 9px;
+  font: 400 italic 14px / 1.4 var(--serif);
+  color: var(--ink-3);
+}
+/* What a tall pile holds under the cards it shows: its edges, counted. */
+.tpile-more {
+  position: relative;
+  margin-top: 4px;
+  padding-top: 12px;
+  font: 400 11px / 1.3 var(--mono);
+  color: var(--ink-3);
+}
+.tpile-more::before {
+  content: "";
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  top: 0;
+  height: 6px;
+  border: 1px solid var(--rule);
+  border-top: 0;
+  border-radius: 0 0 8px 8px;
+  background: var(--sheet);
+}
+/* On a view too narrow for the piles, only their counts, under the card. */
+.tcounts {
+  display: none;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 18px;
+  font: 400 11.5px / 1.3 var(--mono);
+  color: var(--ink-3);
+}
+.tcounts [data-side="right"] {
+  color: var(--you-ink);
+}
+@container tri (max-width: 959px) {
+  .tri .tbody {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .tri .tmain {
+    grid-column: 1;
+    justify-self: center;
+    width: min(800px, 100%);
+  }
+  .tpile {
+    display: none;
+  }
+  .tcounts {
+    display: flex;
+  }
 }
 /* The card after the next one: only an edge, two steps down the stack. */
 .tri .tstack::before {
@@ -58,6 +227,7 @@
   opacity: calc(0.3 + 0.25 * var(--rise));
 }
 .tri-loading {
+  text-align: center;
   font: 400 italic 15px / 1.4 var(--serif);
   color: var(--ink-3);
 }
@@ -345,6 +515,7 @@
 
 .tdone {
   padding: 40px 0 0;
+  text-align: center;
 }
 .tdone h2 {
   font: 430 34px / 1.1 var(--serif);
@@ -355,6 +526,7 @@
   color: var(--ink-2);
   margin-top: 8px;
   max-width: 52ch;
+  margin-inline: auto;
 }
 .tdone .acts2 {
   margin-top: 16px;
@@ -378,11 +550,17 @@
   .tri {
     padding: 20px 16px 40px;
   }
+  /* The way out above the title, both on the left. */
   .tri .thd {
-    padding-left: 0;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 6px;
   }
-  .tri .tstack {
-    margin-left: 0;
+  .tri .ttitle {
+    justify-items: start;
+    text-align: left;
+  }
+  .tri .tbody {
+    margin-top: 22px;
   }
   .tcard {
     padding: 18px 18px;

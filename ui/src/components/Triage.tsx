@@ -14,7 +14,7 @@ import { t, tx } from '../i18n/i18n.ts';
 import { useEscape } from '../kit/escape.ts';
 import { Button, Count, StepPill } from '../kit/index.ts';
 import { toast } from '../kit/pop/toast.tsx';
-import type { Look } from '../lanes/looks.ts';
+import { type Look, lookOf } from '../lanes/looks.ts';
 import { NodeGlyph } from '../lanes/NodeGlyph.tsx';
 import { anim } from '../motion/anim.ts';
 import { Choreo, part } from '../motion/choreo.ts';
@@ -24,6 +24,12 @@ import {
   cardWords,
   type Direction,
   dragIntent,
+  type Pile,
+  type PileEntry,
+  pileLanding,
+  pileOf,
+  pileSide,
+  pileView,
   releaseDirection,
   resist,
   type TriagePlan,
@@ -34,6 +40,7 @@ import {
   triCurrent,
   triDecide,
   triNext,
+  triPile,
   triReturn,
   triStart,
   triSync,
@@ -46,6 +53,7 @@ import {
   type Flight,
   heldAt,
   hold,
+  type Landing,
   lift,
   returnIn,
   settleStack,
@@ -60,6 +68,9 @@ import {
 // opens notes in the card and throws it left with them, Después drops it to the end of the pass;
 // the card under it rises into its place. Deshacer (the toast's) brings a card back from its side.
 // "Todo al día." once every card is decided.
+// The card holds the middle; what the pass decided piles up beside it, on the side it was thrown
+// to: sent back on the left, approved on the right, the last one on top. Where the view is too
+// narrow for the piles they fold to their counts under the card, and a card is thrown off the side.
 
 // The views of the card on top and of the one under it (their moves and evidence), read ahead, so
 // a card rises ready. Read again when the live stream says something changed.
@@ -430,6 +441,97 @@ function TriCard({
   );
 }
 
+// How many cards a pile shows whole; the rest are its edges, counted.
+const PILE_SHOWN = 6;
+
+type PileProps = {
+  pile: Pile;
+  entries: readonly PileEntry[];
+  // The card flying onto this pile now, if any: its place is made at once, unseen until it lands.
+  landing: PileEntry | undefined;
+  titleOf: (id: string) => string;
+  lookOf: (id: string) => Look;
+  wordOf: (id: string, state: string) => string;
+  onOpen: (id: string) => void;
+};
+
+// One pile beside the card: what this pass approved (right) or sent back (left), the last decided
+// on top. The cards already on it make way for one landing and close up over one taken back,
+// sliding to their new places (360, settle); under reduced motion they just are there.
+function PileOf({ pile, entries, landing, titleOf, lookOf, wordOf, onOpen }: PileProps) {
+  const side = pileSide(pile);
+  const all = landing ? [landing, ...entries] : entries;
+  const { shown, more } = pileView(all, PILE_SHOWN);
+  const list = useRef<HTMLOListElement>(null);
+  const tops = useRef(new Map<string, number>());
+  const keys = shown.map((e) => e.id).join(' ');
+  // biome-ignore lint/correctness/useExhaustiveDependencies: measured again when the pile changes
+  useLayoutEffect(() => {
+    const ol = list.current;
+    if (!ol) return;
+    const was = tops.current;
+    const now = new Map<string, number>();
+    for (const li of ol.querySelectorAll<HTMLElement>(':scope > li[data-id]')) {
+      const id = li.dataset.id ?? '';
+      const top = li.offsetTop;
+      now.set(id, top);
+      const before = was.get(id);
+      if (before !== undefined && before !== top && !reduced()) {
+        anim(
+          li,
+          [{ transform: `translateY(${before - top}px)` }, { transform: 'none' }],
+          360,
+          'settle',
+          0,
+          'backwards',
+        );
+      }
+    }
+    tops.current = now;
+  }, [keys, landing?.id]);
+  const label = t(pile === 'approved' ? 'triage.pileApproved' : 'triage.pileSent');
+  return (
+    <aside className="tpile" data-side={side} aria-label={label}>
+      <div className="tpile-k">
+        <span>{label}</span>
+        <Count value={entries.length} />
+      </div>
+      <ol className="tpile-list" ref={list} data-pile-land={side}>
+        {all.length === 0 ? (
+          <li className="tpile-empty">
+            {t(pile === 'approved' ? 'triage.pileApprovedEmpty' : 'triage.pileSentEmpty')}
+          </li>
+        ) : (
+          shown.map((e) => (
+            <li
+              key={e.id}
+              data-id={e.id}
+              data-landing={e === landing ? '' : undefined}
+              className="tpile-card"
+            >
+              <button type="button" onClick={() => onOpen(e.id)}>
+                <span className="tpile-id">
+                  <NodeGlyph look={lookOf(e.id)} size={14} />
+                  {e.id}
+                </span>
+                <span className="tpile-title">{titleOf(e.id)}</span>
+                <span className="tpile-to">
+                  {t('triage.stampTo', { state: wordOf(e.id, e.to) })}
+                </span>
+              </button>
+            </li>
+          ))
+        )}
+      </ol>
+      {more > 0 ? (
+        <p className="tpile-more" data-more={Math.min(more, 3)}>
+          {t('triage.pileMore', { count: more })}
+        </p>
+      ) : null}
+    </aside>
+  );
+}
+
 export function Triage() {
   const app = useApp();
   const ctx = {
@@ -463,6 +565,9 @@ export function Triage() {
   const failed = useRef(new Set<string>());
   const settled = useRef<string | undefined>(undefined);
   const stack = useRef<HTMLDivElement>(null);
+  const root = useRef<HTMLDivElement>(null);
+  // The card flying onto its pile now: its place on the pile is made as it leaves.
+  const [landing, setLanding] = useState<PileEntry | undefined>(undefined);
 
   const s = pass ?? triStart([]);
   const cur = triCurrent(s);
@@ -499,7 +604,7 @@ export function Triage() {
     const side = exits.current.get(cur);
     if (side) {
       exits.current.delete(cur);
-      returnIn(top, side);
+      returnIn(top, side, landingOn(top, side));
       return;
     }
     const under = nextShown ? els.current.get(nextShown) : undefined;
@@ -542,6 +647,19 @@ export function Triage() {
     return it ? stateWord(typeOfItem(it, app.collectionOf), state) : state;
   };
 
+  // Where a card resting on the stack lands on the pile of its side, if that pile is on the screen
+  // (on a narrow view the piles fold to their counts, and the card is thrown off the side).
+  const landingOn = (card: HTMLElement, side: Direction): Landing | undefined => {
+    const list = root.current?.querySelector<HTMLElement>(`[data-pile-land="${side}"]`);
+    const box = list?.getBoundingClientRect();
+    const at = stack.current?.getBoundingClientRect();
+    if (!box || !at || box.width === 0 || reduced()) return undefined;
+    return pileLanding(
+      { left: at.left, top: at.top, width: card.offsetWidth, height: card.offsetHeight },
+      { left: box.left, top: box.top, width: box.width, height: 0 },
+    );
+  };
+
   const decide = (kind: TriKind, reason = '', from?: From) => {
     if (!cur || flying.current) return;
     const id = cur;
@@ -555,10 +673,12 @@ export function Triage() {
     const shown = shownOf(id);
     if (shown) frozen.current.set(id, shown);
     const card = els.current.get(id);
+    const pile = pileOf(kind);
+    if (pile && move) setLanding({ id, pile, to: move.to });
     const out = card
       ? kind === 'later'
         ? dropLater(card)
-        : throwOut(card, side, from?.x ?? 0, from?.v ?? 0)
+        : throwOut(card, side, from?.x ?? 0, from?.v ?? 0, landingOn(card, side))
       : null;
     flight.current = out;
     if (move && it) {
@@ -582,9 +702,10 @@ export function Triage() {
       const back = failed.current.delete(id);
       // A card that comes back at once is the same card on top: it is shown again from its side.
       if (back) settled.current = '';
+      setLanding(undefined);
       setPass((was) => {
         if (!was) return was;
-        const after = triSync(triDecide(was, kind), live.current);
+        const after = triSync(triDecide(was, kind, move?.to), live.current);
         return back ? triReturn(after, id) : after;
       });
     });
@@ -615,37 +736,78 @@ export function Triage() {
       />
     );
   };
+  const approved = triPile(s, 'approved');
+  const sent = triPile(s, 'sent');
+  const pileProps = {
+    titleOf: (id: string) => known.current.get(id)?.title ?? id,
+    lookOf: (id: string): Look => {
+      const it = known.current.get(id);
+      return it ? lookOf(it, app.now) : 'done';
+    },
+    wordOf: (id: string, state: string) => wordOf(id)(state),
+    onOpen: (id: string) => app.openItem(id),
+  };
   return (
-    <div className="tri">
+    <div className="tri" ref={root}>
       <div className="thd" data-enter="head">
         <button type="button" className="back" onClick={() => app.go({ view: 'toca' })}>
           <span aria-hidden="true">← </span>
           {t('triage.back')}
         </button>
-        <h1 className="display">{t('triage.title')}</h1>
-        {pass ? (
-          <span className="tpos">
-            {cur ? (
-              <>
-                {tx('triage.pos', { at: <Count value={at} />, n })}
-                {' · '}
-              </>
-            ) : null}
-            {t('triage.decided', { count: s.decided })}
-          </span>
-        ) : null}
+        <div className="ttitle">
+          <h1 className="display">{t('triage.title')}</h1>
+          {pass ? (
+            <span className="tpos">
+              {cur ? (
+                <>
+                  {tx('triage.pos', { at: <Count value={at} />, n })}
+                  {' · '}
+                </>
+              ) : null}
+              {t('triage.decided', { count: s.decided })}
+            </span>
+          ) : null}
+        </div>
       </div>
-      <div className="tstack" ref={stack} data-enter="fade" data-behind={behind}>
-        {loading ? (
-          <p className="tri-loading">{t('common.loading')}</p>
-        ) : cur ? (
-          <>
-            {nextShown ? card(nextShown, true) : null}
-            {card(cur, false)}
-          </>
-        ) : (
-          <Done decided={s.decided} onBack={() => app.go({ view: 'toca' })} />
-        )}
+      <div className="tbody">
+        <PileOf
+          pile="sent"
+          entries={sent}
+          landing={landing?.pile === 'sent' ? landing : undefined}
+          {...pileProps}
+        />
+        <div className="tmain">
+          <div className="tstack" ref={stack} data-enter="fade" data-behind={behind}>
+            {loading ? (
+              <p className="tri-loading">{t('common.loading')}</p>
+            ) : cur ? (
+              <>
+                {nextShown ? card(nextShown, true) : null}
+                {card(cur, false)}
+              </>
+            ) : (
+              <Done decided={s.decided} onBack={() => app.go({ view: 'toca' })} />
+            )}
+          </div>
+          {s.decided > 0 ? (
+            <p className="tcounts">
+              <span data-side="left">
+                <span aria-hidden="true">← </span>
+                {t('triage.countSent', { count: sent.length })}
+              </span>
+              <span data-side="right">
+                {t('triage.countApproved', { count: approved.length })}
+                <span aria-hidden="true"> →</span>
+              </span>
+            </p>
+          ) : null}
+        </div>
+        <PileOf
+          pile="approved"
+          entries={approved}
+          landing={landing?.pile === 'approved' ? landing : undefined}
+          {...pileProps}
+        />
       </div>
     </div>
   );
