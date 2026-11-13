@@ -149,7 +149,7 @@ describe('validateProject', () => {
             severity: 'warning',
             subject: 'TASKS-1',
             message:
-              'parent EPICS-1 is in another collection (epics); merge tasks and epics into one preset as types, or convert the link to blocks, since EPICS-1 waits for its children: otea unlink TASKS-1 parent EPICS-1, otea link TASKS-1 blocks EPICS-1, and write requires: blockers_closed where its preset requires children_closed',
+              'parent EPICS-1 is on another board (epics); in Studio make epics divide into tasks, or convert the link to blocks, since EPICS-1 waits for its parts: otea unlink TASKS-1 parent EPICS-1, otea link TASKS-1 blocks EPICS-1, and in Studio have epics wait for nothing holding it back where it waits for its parts',
           },
         ],
       });
@@ -163,7 +163,7 @@ describe('validateProject', () => {
           severity: 'warning',
           subject: 'EPICS-1',
           message:
-            'parent NOTES-1 is in another collection (notes); merge epics and notes into one preset as types, or convert the link to implements: otea unlink EPICS-1 parent NOTES-1, otea link EPICS-1 implements NOTES-1',
+            'parent NOTES-1 is on another board (notes); in Studio make notes divide into epics, or convert the link to implements: otea unlink EPICS-1 parent NOTES-1, otea link EPICS-1 implements NOTES-1',
         },
       ]);
     });

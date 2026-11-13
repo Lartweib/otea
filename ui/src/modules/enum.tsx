@@ -62,5 +62,4 @@ export const enumModule: FieldModuleUi = {
     { label: 'module.enum.offDefault', field: priority, value: 'high' },
     { label: 'module.enum.empty', field: area, value: '' },
   ],
-  yaml: 'fields:\n  priority: { module: enum, values: [low, medium, high], default: medium }',
 };

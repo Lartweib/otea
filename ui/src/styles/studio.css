@@ -1444,7 +1444,7 @@ button.st-card[aria-pressed="true"] {
   gap: 4px 10px;
 }
 .layout.catalog .mod-use-field {
-  font: 500 13px / 1.2 var(--mono);
+  font: 500 14px / 1.25 var(--sans);
   color: var(--ink);
 }
 .layout.catalog .mod-use-modules {
@@ -1463,16 +1463,6 @@ button.st-card[aria-pressed="true"] {
 }
 .layout.catalog .mod-chip:hover {
   background: var(--well);
-}
-.layout.catalog .mod-yaml {
-  margin: 0;
-  padding: 14px 16px;
-  overflow: auto;
-  border-radius: 8px;
-  background: var(--well);
-  font: 400 12px / 1.6 var(--mono);
-  color: var(--ink);
-  scrollbar-width: thin;
 }
 .layout.catalog .margin-label span {
   display: block;

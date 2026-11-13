@@ -1,5 +1,11 @@
 import { useState } from 'react';
-import { type CatalogEntry, type CatalogOrigin, type ModuleUse, usageSummary } from '../catalog.ts';
+import {
+  boardsOf,
+  type CatalogEntry,
+  type CatalogOrigin,
+  type ModuleUse,
+  usageSummary,
+} from '../catalog.ts';
 import { type PlainKey, t, tx } from '../i18n/i18n.ts';
 import { Pill } from '../kit/index.ts';
 import { NodeGlyph } from '../lanes/NodeGlyph.tsx';
@@ -7,7 +13,7 @@ import type { FieldModuleUi, Sample } from '../modules/contract.ts';
 import { moduleFor } from '../modules/registry.ts';
 import type { Remote } from '../remote.ts';
 import { ITEMS_HASH, modulesHash } from '../selection.ts';
-import type { PresetView } from '../types.ts';
+import type { FieldView, PresetView } from '../types.ts';
 import { FieldControl } from './FieldControl.tsx';
 
 const ORIGIN_NOTE: Record<CatalogOrigin, PlainKey | undefined> = {
@@ -51,7 +57,7 @@ function IndexEntry({ entry, selected }: { entry: CatalogEntry; selected: boolea
   );
 }
 
-// The left pane: every module the UI knows, then the ones presets name that it does not.
+// The left pane: every module the UI knows, then the ones boards name that it does not.
 export function ModuleIndex({ entries, selected }: IndexProps) {
   const known = entries.filter(({ origin }) => origin !== 'unknown');
   const unknown = entries.filter(({ origin }) => origin === 'unknown');
@@ -151,38 +157,20 @@ function SamplePreview({
   );
 }
 
-function fieldFacts({ field }: ModuleUse): string[] {
-  const facts: string[] = [];
-  if (field.required) facts.push(t('catalog.requiredTo', { when: field.required }));
-  if (field.values) facts.push(t('catalog.values', { values: field.values.join(', ') }));
-  if (field.default !== undefined) facts.push(t('catalog.default', { value: field.default }));
-  return facts;
-}
+// A field as its board calls it: its label, else its name.
+const fieldName = (field: FieldView) => field.label ?? field.name;
 
 function Uses({ uses, presets }: { uses: ModuleUse[]; presets: Remote<PresetView[]> }) {
-  if (presets.status === 'loading')
-    return <p className="st-small">{t('catalog.loadingPresets')}</p>;
+  if (presets.status === 'loading') return <p className="st-small">{t('catalog.loadingBoards')}</p>;
   if (presets.status === 'failed') return <p className="st-error">{presets.message}</p>;
   if (uses.length === 0) return <p className="st-small">{t('catalog.noUses')}</p>;
   return (
     <ul className="mod-uses">
       {uses.map((use) => (
-        <li key={`${use.preset}:${use.field.name}`} className="mod-use">
+        <li key={`${use.board}:${use.field.name}`} className="mod-use">
           <span className="mod-use-head">
-            <code className="mod-use-field">
-              {use.preset}.{use.field.name}
-            </code>
-            <span className="st-cap">
-              {t('catalog.presetOrigin', { origin: use.origin, version: use.version })}
-            </span>
-          </span>
-          {fieldFacts(use).length > 0 ? (
-            <span className="st-small">{fieldFacts(use).join(' · ')}</span>
-          ) : null}
-          <span className="st-small">
-            {use.collections.length > 0
-              ? t('catalog.inCollections', { collections: use.collections.join(', ') })
-              : t('catalog.noCollectionUsesPreset')}
+            <span className="mod-use-field">{fieldName(use.field)}</span>
+            <span className="st-cap">{t('catalog.onBoardName', { board: use.board })}</span>
           </span>
         </li>
       ))}
@@ -192,7 +180,7 @@ function Uses({ uses, presets }: { uses: ModuleUse[]; presets: Remote<PresetView
 
 type PanelProps = { entry: CatalogEntry; presets: Remote<PresetView[]> };
 
-// The right pane for one module: what it is, how it looks, who uses it, how to declare it.
+// The right pane for one module: what it is, how it looks and which board fields use it.
 export function ModulePanel({ entry, presets }: PanelProps) {
   const known = entry.origin !== 'unknown';
   const module = moduleFor(entry.name);
@@ -235,46 +223,29 @@ export function ModulePanel({ entry, presets }: PanelProps) {
         </h2>
         <Uses uses={entry.uses} presets={presets} />
       </section>
-      {known ? (
-        <section className="mod-sec" aria-labelledby="mod-yaml">
-          <h2 className="margin-label" id="mod-yaml">
-            {t('catalog.inYaml')}
-          </h2>
-          <pre className="mod-yaml">
-            <code>{module.yaml}</code>
-          </pre>
-        </section>
-      ) : null}
     </article>
   );
 }
 
-function PresetList({ presets }: { presets: Remote<PresetView[]> }) {
-  if (presets.status === 'loading')
-    return <p className="st-small">{t('catalog.loadingPresets')}</p>;
+function BoardList({ presets }: { presets: Remote<PresetView[]> }) {
+  if (presets.status === 'loading') return <p className="st-small">{t('catalog.loadingBoards')}</p>;
   if (presets.status === 'failed') return <p className="st-error">{presets.message}</p>;
+  const boards = boardsOf(presets.value);
+  if (boards.length === 0) return <p className="st-small">{t('catalog.noBoards')}</p>;
   return (
     <ul className="mod-uses">
-      {presets.value.map((preset) => (
-        <li key={preset.name} className="mod-use">
+      {boards.map(({ board, fields }) => (
+        <li key={board} className="mod-use">
           <span className="mod-use-head">
-            <code className="mod-use-field">{preset.name}</code>
-            <span className="st-cap">
-              {t('catalog.presetOrigin', { origin: preset.origin, version: preset.version })}
-            </span>
+            <span className="mod-use-field">{board}</span>
           </span>
           <span className="mod-use-modules">
-            {preset.fields.map((field) => (
+            {fields.map((field) => (
               <a key={field.name} className="mod-chip" href={modulesHash(field.module)}>
-                <span className="st-cap">{field.name}</span>
+                <span className="st-cap">{fieldName(field)}</span>
                 <Pill size="sm">{field.module}</Pill>
               </a>
             ))}
-          </span>
-          <span className="st-small">
-            {preset.collections.length > 0
-              ? t('catalog.inCollections', { collections: preset.collections.join(', ') })
-              : t('catalog.noCollectionUsesIt')}
           </span>
         </li>
       ))}
@@ -282,7 +253,7 @@ function PresetList({ presets }: { presets: Remote<PresetView[]> }) {
   );
 }
 
-// The right pane with no module chosen: what modules are, and which presets pick which.
+// The right pane with no module chosen: what modules are, and which board fields use which.
 export function CatalogOverview({ presets }: { presets: Remote<PresetView[]> }) {
   return (
     <article className="mod-sheet" aria-labelledby="mod-title">
@@ -295,11 +266,11 @@ export function CatalogOverview({ presets }: { presets: Remote<PresetView[]> }) 
         </h1>
         <p className="dek">{tx('catalog.intro', { folder: <code>.otea/modules/</code> })}</p>
       </header>
-      <section className="mod-sec" aria-labelledby="mod-presets">
-        <h2 className="margin-label" id="mod-presets">
-          {t('catalog.loaded')}
+      <section className="mod-sec" aria-labelledby="mod-boards">
+        <h2 className="margin-label" id="mod-boards">
+          {t('catalog.boards')}
         </h2>
-        <PresetList presets={presets} />
+        <BoardList presets={presets} />
       </section>
     </article>
   );

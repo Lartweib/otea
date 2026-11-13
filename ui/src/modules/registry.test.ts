@@ -51,12 +51,11 @@ describe('module registry', () => {
     expect(MODULES.every(({ origin }) => origin === 'official')).toBe(true);
   });
 
-  it('describes every module with a summary, samples and a preset.yaml snippet', () => {
+  it('describes every module with a summary and samples', () => {
     for (const module of MODULES) {
       expect(module.summary).not.toBe('');
       expect(module.samples.length).toBeGreaterThan(1);
       expect(module.samples.every(({ field }) => field.module === module.name)).toBe(true);
-      expect(module.yaml).toContain(`module: ${module.name}`);
     }
   });
 
