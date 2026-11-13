@@ -19,9 +19,13 @@ export function precacheList(bundled: readonly string[], publicFiles: readonly s
   return ['/', ...[...new Set(files)].sort()];
 }
 
-export function versionOf(list: readonly string[]): string {
-  return createHash('sha256').update(list.join('\n')).digest('hex').slice(0, 12);
+// The files the app is made of and the worker's own code: a change to either is a new version.
+export function versionOf(list: readonly string[], code = ''): string {
+  return createHash('sha256').update(list.join('\n')).update(code).digest('hex').slice(0, 12);
 }
+
+// What the worker is built with in place of its version, then swapped for it.
+const UNVERSIONED = 'otea-unversioned';
 
 function filesUnder(dir: string): string[] {
   const out: string[] = [];
@@ -53,7 +57,7 @@ export function serviceWorker(): Plugin {
         input: ENTRY,
         transform: {
           define: {
-            __OTEA_VERSION__: JSON.stringify(versionOf(list)),
+            __OTEA_VERSION__: JSON.stringify(UNVERSIONED),
             __OTEA_PRECACHE__: JSON.stringify(list),
           },
         },
@@ -62,7 +66,8 @@ export function serviceWorker(): Plugin {
       await build.close();
       const [chunk] = output;
       if (!chunk || chunk.type !== 'chunk') throw new Error('The service worker did not build');
-      this.emitFile({ type: 'asset', fileName: 'sw.js', source: chunk.code });
+      const source = chunk.code.replaceAll(UNVERSIONED, versionOf(list, chunk.code));
+      this.emitFile({ type: 'asset', fileName: 'sw.js', source });
     },
   };
 }

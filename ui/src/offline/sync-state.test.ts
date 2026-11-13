@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { offlineCapable, takeUpdatedNote, UPDATED_KEY } from './register.ts';
+import { noteVersion, offlineCapable, VERSION_KEY } from './register.ts';
 import { FROM_CACHE, SAVED_AT } from './sw-routes.ts';
 import { afterRead, readOf, type SyncState } from './sync-state.ts';
 
@@ -61,24 +61,30 @@ describe('offlineCapable', () => {
   });
 });
 
-describe('takeUpdatedNote', () => {
-  const storeOf = (value: string | null) => {
-    const map = new Map<string, string>(value === null ? [] : [[UPDATED_KEY, value]]);
+describe('noteVersion', () => {
+  const memory = () => {
+    const map = new Map<string, string>();
     return {
       getItem: (k: string) => map.get(k) ?? null,
       setItem: (k: string, v: string) => void map.set(k, v),
-      removeItem: (k: string) => void map.delete(k),
+      map,
     };
   };
 
-  it('says "updated" once, on the first load after an update', () => {
-    const store = storeOf('1');
-    expect(takeUpdatedNote(store)).toBe(true);
-    expect(takeUpdatedNote(store)).toBe(false);
+  it('says "updated" once, on the first look at a new version', () => {
+    const store = memory();
+    store.setItem(VERSION_KEY, 'aaa');
+
+    expect(noteVersion(store, 'bbb')).toBe(true);
+    expect(noteVersion(store, 'bbb')).toBe(false);
+    expect(store.map.get(VERSION_KEY)).toBe('bbb');
   });
 
-  it('says nothing otherwise, or without storage', () => {
-    expect(takeUpdatedNote(storeOf(null))).toBe(false);
-    expect(takeUpdatedNote(undefined)).toBe(false);
+  it('says nothing on the first version this browser runs, or without storage', () => {
+    const store = memory();
+
+    expect(noteVersion(store, 'aaa')).toBe(false);
+    expect(store.map.get(VERSION_KEY)).toBe('aaa');
+    expect(noteVersion(undefined, 'aaa')).toBe(false);
   });
 });

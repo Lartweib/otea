@@ -32,5 +32,6 @@ describe('versionOf', () => {
 
     expect(versionOf(['/', '/assets/index-abc.js'])).toBe(a);
     expect(versionOf(['/', '/assets/index-abd.js'])).not.toBe(a);
+    expect(versionOf(['/', '/assets/index-abc.js'], 'worker code')).not.toBe(a);
   });
 });

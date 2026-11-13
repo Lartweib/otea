@@ -4,8 +4,8 @@
 //
 // Updates apply by themselves on the next open: the browser checks sw.js on every open; a new
 // version installs in the background and waits; when the app goes to the background (or opens
-// with one already waiting) it takes over and the page reloads out of sight, and the next look
-// says, quietly, "Otea se actualizó".
+// with one already waiting) it takes over and the page reloads out of sight. The first look at a
+// version the app has not run before says, quietly, "Otea se actualizó".
 
 export type Where = { secure: boolean; hasWorker: boolean; userAgent: string };
 
@@ -21,32 +21,29 @@ export function here(): Where {
   };
 }
 
-export const UPDATED_KEY = 'otea.updated';
+export const VERSION_KEY = 'otea.version';
 
-type Store = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
+type Store = Pick<Storage, 'getItem' | 'setItem'>;
 
-// Whether this load is the first after an update; the note shows once.
-export function takeUpdatedNote(store: Store | undefined): boolean {
+// The version running now, against the last one this browser ran: true once, on the first look at
+// a new one. Never on the first version it ever runs (an install is not an update).
+export function noteVersion(store: Store | undefined, version: string): boolean {
   try {
-    if (store?.getItem(UPDATED_KEY) !== '1') return false;
-    store.removeItem(UPDATED_KEY);
-    return true;
+    const before = store?.getItem(VERSION_KEY) ?? null;
+    if (before === version) return false;
+    store?.setItem(VERSION_KEY, version);
+    return before !== null;
   } catch {
     return false;
   }
 }
 
-function markUpdated(store: Store | undefined): void {
-  try {
-    store?.setItem(UPDATED_KEY, '1');
-  } catch {
-    // Storage off: the update still applies, without its note.
-  }
-}
-
 const SKIP_WAITING = { type: 'skip-waiting' };
+const ASK_VERSION = { type: 'version' };
 // How often a long-lived app (a phone keeps it in memory for days) asks for a new version.
 const CHECK_EVERY_MS = 60 * 60 * 1000;
+// The first moments after opening count as the opening: a reload then goes unnoticed.
+const BOOT_MS = 4000;
 
 function storage(): Store | undefined {
   try {
@@ -68,7 +65,9 @@ export function promptInstall(): void {
   void event?.prompt().catch(() => undefined);
 }
 
-export async function startShell(): Promise<ServiceWorkerRegistration | undefined> {
+export async function startShell(
+  onUpdated: () => void,
+): Promise<ServiceWorkerRegistration | undefined> {
   if (!offlineCapable(here())) return undefined;
   window.addEventListener('beforeinstallprompt', (event) => {
     event.preventDefault();
@@ -81,30 +80,39 @@ export async function startShell(): Promise<ServiceWorkerRegistration | undefine
   } catch {
     return undefined;
   }
-  let asked = false;
-  const apply = (worker: ServiceWorker) => {
-    asked = true;
-    markUpdated(storage());
-    worker.postMessage(SKIP_WAITING);
-  };
-  sw.addEventListener('controllerchange', () => {
-    if (asked) window.location.reload();
-  });
-  const whenHidden = (worker: ServiceWorker) => {
-    if (document.visibilityState === 'hidden') return apply(worker);
+  const apply = (worker: ServiceWorker) => worker.postMessage(SKIP_WAITING);
+  // Out of sight (in the background, or, with `opening`, a moment after opening), now; otherwise
+  // once it is.
+  const whenQuiet = (act: () => void, opening = false) => {
+    const quiet = document.visibilityState === 'hidden' || (opening && performance.now() < BOOT_MS);
+    if (quiet) return act();
     const off = () => {
       if (document.visibilityState !== 'hidden') return;
       document.removeEventListener('visibilitychange', off);
-      apply(worker);
+      act();
     };
     document.addEventListener('visibilitychange', off);
   };
+  // A new version took over (this page asked, or another): the page reloads into it, out of
+  // sight, and the next look says so. Never on the first install, which changes nothing on screen.
+  const updating = !!sw.controller;
+  sw.addEventListener('controllerchange', () => {
+    if (updating) whenQuiet(() => window.location.reload(), true);
+  });
+  // The version this page runs on: the one that controls it says.
+  sw.addEventListener('message', (event: MessageEvent) => {
+    const data = event.data as { type?: unknown; version?: unknown } | null;
+    if (data?.type === 'version' && typeof data.version === 'string') {
+      if (noteVersion(storage(), data.version)) onUpdated();
+    }
+  });
+  sw.controller?.postMessage(ASK_VERSION);
   // One already waiting as the app opens: this open is the next open.
   if (registration.waiting && sw.controller) apply(registration.waiting);
   registration.addEventListener('updatefound', () => {
     const worker = registration.installing;
     worker?.addEventListener('statechange', () => {
-      if (worker.state === 'installed' && sw.controller) whenHidden(worker);
+      if (worker.state === 'installed' && sw.controller) whenQuiet(() => apply(worker));
     });
   });
   let checked = Date.now();

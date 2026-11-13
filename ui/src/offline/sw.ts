@@ -21,7 +21,10 @@ declare const __OTEA_PRECACHE__: string[];
 type ExtendableEvent = Event & { waitUntil(promise: Promise<unknown>): void };
 type FetchEvent = ExtendableEvent & { request: Request; respondWith(r: Promise<Response>): void };
 type SyncEvent = ExtendableEvent & { tag: string };
-type MessageEvt = ExtendableEvent & { data: unknown };
+type MessageEvt = ExtendableEvent & {
+  data: unknown;
+  source: { postMessage(message: unknown): void } | null;
+};
 type Scope = {
   location: Location;
   skipWaiting(): Promise<void>;
@@ -64,9 +67,9 @@ sw.addEventListener('activate', (event) => {
 });
 
 sw.addEventListener('message', (event) => {
-  if ((event.data as { type?: unknown } | null)?.type === 'skip-waiting') {
-    event.waitUntil(sw.skipWaiting());
-  }
+  const type = (event.data as { type?: unknown } | null)?.type;
+  if (type === 'skip-waiting') event.waitUntil(sw.skipWaiting());
+  if (type === 'version') event.source?.postMessage({ type: 'version', version: VERSION });
 });
 
 sw.addEventListener('fetch', (event) => {
