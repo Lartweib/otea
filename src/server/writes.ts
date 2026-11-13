@@ -67,6 +67,7 @@ export function assertConfigurable(c: Context, auth: Session): void {
       403,
       'forbidden',
       'Only the browser on this computer, signed in with "otea open", changes the project setup',
+      { kind: 'desk_only' },
     );
   }
   assertSameOrigin(c);

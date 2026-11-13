@@ -7,7 +7,8 @@ import { es } from './es.ts';
 // The interface's own words, in English and Spanish. Only the chrome: what a preset names (states,
 // fields, types, descriptions) is shown as written, or in the preset's own labels for the language
 // on screen (preset-words.ts). Item content is never translated. The CLI and the API stay in
-// English, so a server's error message is shown as it comes.
+// English: a server's refusal is worded here from its code and details (refusals.ts), and its
+// English message is shown only for a refusal this UI does not know.
 
 export type Language = 'en' | 'es';
 

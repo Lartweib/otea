@@ -1,5 +1,6 @@
 import type { Connection } from './hooks.ts';
 import { t } from './i18n/i18n.ts';
+import { refusalWords } from './refusals.ts';
 
 export type Remote<T> =
   | { status: 'loading' }
@@ -21,8 +22,12 @@ export function afterFailure<T>(
 
 export const signIn = () => t('error.signIn');
 
+// A refusal in the language on screen, from its code and details; the server's own (English)
+// message only for a refusal this UI does not know.
 export function serverMessage(body: unknown, status: number): string {
   if (status === 401) return signIn();
-  const message = (body as { error?: { message?: unknown } } | undefined)?.error?.message;
-  return typeof message === 'string' ? message : t('error.requestFailed', { status });
+  const error = (body as { error?: { message?: unknown } } | undefined)?.error;
+  const words = refusalWords(error);
+  if (words !== undefined) return words;
+  return typeof error?.message === 'string' ? error.message : t('error.requestFailed', { status });
 }

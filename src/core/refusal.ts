@@ -71,4 +71,6 @@ export type RefusalDetails =
   | { kind: 'draft_errors'; codes: string[] }
   | { kind: 'restore_used' }
   | { kind: 'restore_step_lost'; item: string; step: string; version: number }
-  | { kind: 'restore_name_taken'; name: string };
+  | { kind: 'restore_name_taken'; name: string }
+  // A setup change from a device other than this computer's signed-in browser.
+  | { kind: 'desk_only' };
