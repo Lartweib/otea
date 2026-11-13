@@ -33,6 +33,7 @@ import {
 import { listAgents, presenceSignature } from '../app/presence.ts';
 import { listPresetViews } from '../app/preset-views.ts';
 import { type Env, type Project, projectView } from '../app/project.ts';
+import { answerQuestion } from '../app/questions.ts';
 import { linkItems, unlinkItems } from '../app/relations.ts';
 import { reassignItem, restartItem, undoRelease } from '../app/restart.ts';
 import { NO_TAILSCALE, type TailscaleCli } from '../app/tailscale.ts';
@@ -82,6 +83,7 @@ import {
 } from './transports.ts';
 import { BUILT_UI_DIR, mountUi } from './ui.ts';
 import {
+  answerRequest,
   assertConfigurable,
   assertSameOrigin,
   assertSignedIn,
@@ -365,6 +367,16 @@ function api(
         leaveNote(project, { id, ...request, ...HUMAN_IN_UI });
         feed.notify();
         return c.json(notesView(project, id), 201);
+      })
+      // The person's answer to an agent's question, from the phone too: the turn goes back to the
+      // agent, in the same round.
+      .post('/items/:id/answer', async (c) => {
+        assertWritable(c, auth);
+        const { text } = await answerRequest(c);
+        const id = c.req.param('id');
+        answerQuestion(project, { id, text, ...HUMAN_IN_UI });
+        feed.notify();
+        return c.json(showItem(project, id, HUMAN_IN_UI));
       })
       .post('/items/:id/update', async (c) => {
         assertWritable(c, auth);

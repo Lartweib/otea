@@ -316,6 +316,13 @@ export function selectEvents(db: DatabaseSync, itemId: string): EventRecord[] {
   return (db.prepare(sql).all(itemId) as EventRow[]).map(toEvent);
 }
 
+// Every item's events of the given types, in commit order: a list reads what it needs of all items
+// in one query.
+export function selectEventsOfTypes(db: DatabaseSync, types: readonly string[]): EventRecord[] {
+  const sql = `SELECT * FROM events WHERE type IN (${types.map(() => '?').join(', ')}) ORDER BY id`;
+  return (db.prepare(sql).all(...types) as EventRow[]).map(toEvent);
+}
+
 // limit caps the oldest events after the cursor; latest keeps the newest ones instead (where a feed
 // that starts now begins reading). Either way they come in commit order.
 export type EventFilter = {

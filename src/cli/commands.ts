@@ -68,6 +68,7 @@ import {
   projectView,
   setProjectIcon,
 } from '../app/project.ts';
+import { answerWaiting, askQuestion } from '../app/questions.ts';
 import { readerFilter } from '../app/reader-filter.ts';
 import { linkItems, unlinkItems } from '../app/relations.ts';
 import { relayDecision } from '../app/relay.ts';
@@ -1124,7 +1125,7 @@ const LEASE_RECHECK_MS = 1000;
 const wait: Command = {
   name: 'wait',
   summary:
-    'Wait until an item is on the turn and print it as a list row, at once if one already is; the one waiting longest in its state comes first. A note from the person on an item you hold wakes it too, saying which',
+    'Wait until an item is on the turn and print it as a list row, at once if one already is; the one waiting longest in its state comes first. A note from the person on an item you hold, or their answer to your question, wakes it too, saying which',
   args: [],
   options: {
     turn: { required: true, choices: ['agent', 'human'] },
@@ -1143,13 +1144,15 @@ const wait: Command = {
       ...(filter.availableTo === undefined ? {} : { recheckMs: LEASE_RECHECK_MS }),
     };
     const result = await withAgentWhile(input, async (project) => {
-      // A note from the person on an item this agent holds wakes it too: it answers it first.
+      // A note from the person on an item this agent holds wakes it too: it answers it first. So
+      // does the person's answer to its question.
       const me = input.actor.name;
-      const check = () => noteWaiting(project, me) ?? oldestWaiting(project, filter);
+      const check = () =>
+        noteWaiting(project, me) ?? answerWaiting(project, me) ?? oldestWaiting(project, filter);
       const waited = await watch(project.db, check, options);
       if (!('found' in waited)) return waited;
       const { found } = waited;
-      return 'unanswered' in found ? { data: found, text: found.text } : itemResult(project, found);
+      return 'text' in found ? { data: found, text: found.text } : itemResult(project, found);
     });
     if ('data' in result) return result;
     if (result.stopped === 'timeout') {
@@ -1278,6 +1281,23 @@ const reply: Command = {
     return withAgent(input, (project) => {
       const replied = replyNote(project, { id, note: Number(given), text: answer, actor, channel });
       return { data: replied, text: replied.text };
+    });
+  },
+};
+
+// An agent's question to the person: the turn is theirs until they answer, nothing else moves.
+const ask: Command = {
+  name: 'ask',
+  summary:
+    'Ask the person a question while you do a step: the turn is theirs until they answer (the step, round and lease stay); wait wakes on the answer, and next and show give it',
+  args: ['id', 'question'],
+  options: {},
+  execute: (input) => {
+    const [id = '', question = ''] = input.args;
+    const { actor, channel } = input;
+    return withAgent(input, (project) => {
+      const asked = askQuestion(project, { id, text: question, actor, channel });
+      return { data: asked, text: asked.text };
     });
   },
 };
@@ -1851,6 +1871,7 @@ export const COMMANDS: readonly Command[] = [
   unlink,
   next,
   reply,
+  ask,
   handoffCommand,
   dropCommand,
   approveCommand,

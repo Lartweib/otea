@@ -37,6 +37,7 @@ describe("Otea's agent guide", () => {
       'every subagent',
       "never reuse your parent's",
       '--as <name>',
+      'otea ask <id> "<question>"',
     ]) {
       expect(AGENT_GUIDE).toContain(line);
     }

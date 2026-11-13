@@ -307,6 +307,16 @@ const NoteBody = z.object({
 
 export type NoteRequest = { text: string; anchor?: { evidence: number; seconds?: number } };
 
+const AnswerBody = z.object({ text: z.string() });
+
+// The person's answer to an agent's question: its text.
+export async function answerRequest(c: Context): Promise<{ text: string }> {
+  const raw: unknown = await c.req.json().catch(() => undefined);
+  const parsed = AnswerBody.safeParse(raw);
+  if (!parsed.success) throw new RejectedRequest(400, 'invalid_body', 'Expected {"text": string}');
+  return { text: parsed.data.text };
+}
+
 // A note from the person to the agent at work: its text, and the evidence it is on, if any.
 export async function noteRequest(c: Context): Promise<NoteRequest> {
   const raw: unknown = await c.req.json().catch(() => undefined);
