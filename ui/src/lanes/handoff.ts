@@ -3,7 +3,7 @@ import { C, clamp, sstep } from '../motion/curves.ts';
 import { type Drive, drive, wait } from '../motion/drive.ts';
 import { reduced } from '../motion/reduced.ts';
 import { breathe } from './breathe.ts';
-import { type Lane, lanePaths, X } from './geometry.ts';
+import { type Lane, lanePaths, lerpPinches, X } from './geometry.ts';
 import { type Carry, type End, planHandoff } from './handoff-plan.ts';
 import { type CarryGeom, handoffClock, type Pose, plegarPose, progressAt } from './handoff-pose.ts';
 import { type BlockSnap, type Snap, snap, type Universe } from './handoff-snap.ts';
@@ -477,6 +477,7 @@ export function runHandoff(
         lastOpen: pA.lastOpen + (pB.lastOpen - pA.lastOpen) * pr,
         fuseAt: pA.fuseAt + (pB.fuseAt - pA.fuseAt) * pr,
         closed: pr > 0.5 ? pB.closed : pA.closed,
+        pinches: lerpPinches(pA.pinches, pB.pinches, pr),
       });
       const [lag, lyou, ltr] = lines;
       lag?.setAttribute('d', paths.ag);

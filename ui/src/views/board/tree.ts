@@ -131,6 +131,12 @@ export function runTree(
       H: B.H + shift,
       lastOpen: vy(B.lastOpen),
       fuseAt: vy(B.fuseAt),
+      pinches: B.pinches.map((k) => ({
+        in: k.in === null ? null : vy(k.in),
+        at: vy(k.at),
+        end: vy(k.end),
+        out: vy(k.out),
+      })),
       ys: B.ys.map(vy),
       ws: B.ws.map(vy),
       as: B.as.map(vy),
