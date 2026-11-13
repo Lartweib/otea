@@ -55,7 +55,7 @@ otea update TASKS-2 --description "Fails on CI only, see run 42"   # fill what w
 otea move TASKS-2 todo
 otea move TASKS-4 discarded --reason "Out of scope"   # an incomplete item can be closed with a reason
 otea validate                              # check boards, collections and items
-otea check --gate push --branch --repo     # may this branch be pushed? exit 0 yes, 1 no (fails open)
+otea check --gate push --branch --repo     # may this branch be pushed? exit 0 yes, 19 no (fails open)
 otea hook install --git --claude           # in a repo: make that check a pre-push hook and a Claude Code hook
 otea help                                  # every command, global options and exit codes
 ```
@@ -333,7 +333,15 @@ otea check --gate push --branch --repo                     # reads the board's p
 
 - The note of each handoff is kept with its round (`otea show --json`: `board.notes`). A way back needs `--reason` (exit 2, `reason_required`).
 - `otea drop` without `--reason` or, on a board with motives, without `--as` exits 2; where only the person drops it exits 7 (`forbidden`); where the person drops only from the page, a relayed drop exits 4.
-- `otea check` and the hooks (`otea hook install --git` for a pre-push hook, `--claude` for Claude Code's `git push` and `gh pr merge`) match the branch and the repo against the board's **Rama** field (the branch field Otea protects) and the field it names as the repo, never against a fixed `branch` key: a push is allowed only while one of the chosen steps is being done (frozen while it is reviewed), a merge once the item is Done.
+- `otea check` and the hooks (`otea hook install --git` for a pre-push hook, `--claude` for Claude Code's `git push` and `gh pr merge`) match the branch and the repo against the board's **Rama** field (the branch field Otea protects) and the field it names as the repo, never against a fixed `branch` key: a push is allowed only while one of the chosen steps is being done (frozen while it is reviewed), a merge once the item is Done. Repo names match whatever their case (`--repo API` is `api`), as git hosts and the file systems of Windows and macOS take them, so `otea repos add` refuses a name another repo already holds in any case.
+
+| `otea check` exit | Name | Meaning |
+| --- | --- | --- |
+| 0 | `ok` | allowed, or nothing gates the action, or the check could not run (fails open, with a note on stderr) |
+| 19 | `gate_refused` | refused; the reason on stdout. The pre-push hook stops the push on this code only |
+| 2 | `usage`, `invalid_gate` | a gate or a field no board or preset declares (`--gate psuh`, `--gate deploy`): the message names the gates there are (`merge, push`, plus any a preset declares) |
+| 2 | `hook_refused` | with `--claude-hook`: refused, which makes Claude Code block the call |
+| 1 | `unexpected` | Otea failed; a hook lets the action go on |
 
 ### See it live
 

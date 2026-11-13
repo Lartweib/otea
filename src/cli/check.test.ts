@@ -4,6 +4,7 @@ import { basename, join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { moveItem } from '../app/items.ts';
 import { openProject } from '../app/project.ts';
+import { EXIT_CODES } from './exit-codes.ts';
 import { type Cli, cliAt, tempGitRepo } from './testing.ts';
 
 describe('check', () => {
@@ -60,7 +61,7 @@ describe('check', () => {
 
   it('refuses a push before the proposal is approved, in the board’s words', async () => {
     expect(await otea('check', '--gate', 'push', '--branch', '--repo')).toEqual({
-      code: 1,
+      code: 19,
       out: `push refused: ${task} is in Propuesta; its branch can be pushed only while Implementar is being done.\n`,
       err: '',
     });
@@ -73,13 +74,13 @@ describe('check', () => {
       code: 0,
       out: `push allowed: ${task} is being done in Implementar.\n`,
     });
-    expect((await otea('check', '--gate', 'merge', '--branch', '--repo')).code).toBe(1);
+    expect((await otea('check', '--gate', 'merge', '--branch', '--repo')).code).toBe(19);
     await otea('move', task, 'implementing__review');
-    expect((await otea('check', '--gate', 'push', '--branch', '--repo')).code).toBe(1);
+    expect((await otea('check', '--gate', 'push', '--branch', '--repo')).code).toBe(19);
     person(task, 'done');
 
     expect((await otea('check', '--gate', 'merge', '--branch', '--repo')).code).toBe(0);
-    expect((await otea('check', '--gate', 'push', '--branch', '--repo')).code).toBe(1);
+    expect((await otea('check', '--gate', 'push', '--branch', '--repo')).code).toBe(19);
   });
 
   it('knows a clone of the repo in another folder by the repo’s name, not the folder’s', async () => {
@@ -94,7 +95,7 @@ describe('check', () => {
       await at('projects', 'add', '.', '--to', id);
 
       expect(await at('check', '--gate', 'push', '--branch', '--repo')).toMatchObject({
-        code: 1,
+        code: 19,
         out: `push refused: ${task} is in Propuesta; its branch can be pushed only while Implementar is being done.\n`,
       });
     } finally {
@@ -129,7 +130,7 @@ describe('check', () => {
     execFileSync('git', ['init', '--quiet', '-b', 'chg-1/keys'], { cwd: nested });
     const result = await cliAt(nested)('check', '--gate', 'push', '--branch', '--repo');
 
-    expect(result).toMatchObject({ code: 1, out: '' });
+    expect(result).toMatchObject({ code: 19, out: '' });
     expect(result.err).toContain(`push refused: cannot tell which repo ${nested}`);
     expect(result.err).toContain('otea repos add');
 
@@ -163,7 +164,7 @@ describe('check', () => {
   it('allows the action, with a note on stderr, when nothing matches or nothing gates it', async () => {
     for (const argv of [
       ['--gate', 'push', '--branch', 'other'],
-      ['--gate', 'publish', '--branch', '--repo'],
+      ['--gate', 'merge', '--branch', '--repo', 'elsewhere'],
     ]) {
       const result = await otea('check', ...argv);
       expect(result).toMatchObject({ code: 0, out: '' });
@@ -203,5 +204,30 @@ describe('check', () => {
 
     expect(result.code).toBe(2);
     expect(result.err).toContain('"Rpo"');
+  });
+
+  it('refuses a gate nobody declares as a usage error, naming the gates there are', async () => {
+    for (const gate of ['deploy', 'psuh']) {
+      const result = await otea('check', '--gate', gate, '--branch', '--repo');
+
+      expect(result.code).toBe(2);
+      expect(result.out).toBe('');
+      expect(result.err).toContain(`Unknown gate "${gate}"; the gates are merge, push`);
+    }
+  });
+
+  it('matches the repo whatever its case, as git hosts and the folder it defaults to do', async () => {
+    for (const repoName of [name.toUpperCase(), name.toLowerCase()]) {
+      const result = await otea('check', '--gate', 'push', '--branch', '--repo', repoName);
+
+      expect(result.code).toBe(19);
+      expect(result.out).toContain(`push refused: ${task}`);
+    }
+  });
+
+  it('gives a refused gate its own exit code, not the one of an unexpected failure', async () => {
+    expect(EXIT_CODES.gate_refused).toBe(19);
+    const codes = Object.entries(EXIT_CODES).filter(([, code]) => code === 19);
+    expect(codes).toEqual([['gate_refused', 19]]);
   });
 });

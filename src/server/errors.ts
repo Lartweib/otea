@@ -30,6 +30,7 @@ export const HTTP_STATUS: Readonly<Record<ErrorCode, ContentfulStatusCode>> = {
   module_required: 400,
   invalid_role: 400,
   invalid_relation: 400,
+  invalid_gate: 400,
   self_relation: 400,
   parent_exists: 409,
   parent_type: 409,
