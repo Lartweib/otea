@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ago, NOW, officialType } from '../../derive/fixtures.ts';
 import type { ItemEvent, ItemView } from '../../types.ts';
-import { factsOf, standOf } from './facts.ts';
+import { boardFactsOf, factsOf, standAgentOf, standOf } from './facts.ts';
 
 const bug = officialType('bug-triage');
 let seq = 0;
@@ -140,6 +140,16 @@ describe('the standfirst (mock:2670-2678)', () => {
     });
   });
 
+  it('says whom you left a stuck item for', () => {
+    expect(standOf({ ...base, look: 'queued', left: true })).toEqual({
+      key: 'sheet.stand.left',
+      agent: 'Mender',
+    });
+    expect(standOf({ ...base, look: 'queued', agent: null, left: true }).key).toBe(
+      'sheet.stand.waitsAgent',
+    );
+  });
+
   it('says waiting, working, its children', () => {
     expect(standOf({ ...base, look: 'queued' }).key).toBe('sheet.stand.waits');
     expect(standOf({ ...base, look: 'queued', agent: null }).key).toBe('sheet.stand.waitsAgent');
@@ -176,5 +186,48 @@ describe('who a stuck item waits for once you took it in hand', () => {
     expect(
       stuck([...before, ev('released', you, { holder: 'kiln', cause: 'restart' }, 1)]),
     ).toBeNull();
+  });
+});
+
+describe('who an item on a board waits for', () => {
+  const kiln = { kind: 'agent', name: 'kiln' } as const;
+  const board = { agent: null, round: 2 };
+
+  it('keeps the agent you left a stuck item for, over the step’s any agent', () => {
+    const item = view({
+      state: 'sinv',
+      turn: 'agent',
+      events: [
+        ev('claimed', kiln, { holder: 'kiln' }, 59),
+        ev('released', you, { holder: 'kiln', cause: 'reassign', next: 'quill' }, 1),
+      ],
+    });
+    const f = boardFactsOf(factsOf(item, undefined, NOW), item, board, false);
+    expect(f).toMatchObject({ agent: 'quill', left: true, round: 2 });
+  });
+
+  it('waits for whoever takes the next step, not the agent that handed it on', () => {
+    const inv = { kind: 'agent', name: 'inv-a' } as const;
+    const item = view({
+      state: 'ssum',
+      turn: 'agent',
+      events: [ev('transitioned', inv, { from: 'sdig', to: 'ssum' }, 5)],
+    });
+    const read = factsOf(item, undefined, NOW);
+    expect(standAgentOf(read, false)).toBe('inv-a');
+    expect(standAgentOf(boardFactsOf(read, item, board, false), true)).toBeNull();
+    const step = { agent: 'mender', round: 1 };
+    expect(standAgentOf(boardFactsOf(read, item, step, false), true)).toBe('mender');
+  });
+
+  it('names the holder, else the step’s agent, once no item was left for anyone', () => {
+    const held = view({ turn: 'agent', lease: { holder: 'kiln', expiresAt: ago(-5) } });
+    expect(boardFactsOf(factsOf(held, undefined, NOW), held, board, false).agent).toBe('kiln');
+    const free = view({ turn: 'agent' });
+    const step = { agent: 'mender', round: 1 };
+    expect(boardFactsOf(factsOf(free, undefined, NOW), free, step, false)).toMatchObject({
+      agent: 'mender',
+      left: false,
+    });
   });
 });

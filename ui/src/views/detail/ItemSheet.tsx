@@ -42,7 +42,7 @@ import {
   waitRows,
 } from './board-item.ts';
 import { Details, detailCells } from './Details.tsx';
-import { factsOf, standOf } from './facts.ts';
+import { boardFactsOf, factsOf, standAgentOf, standOf } from './facts.ts';
 import { toastOf } from './frame.ts';
 import { History } from './History.tsx';
 import { historyOf } from './history.ts';
@@ -111,12 +111,7 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
   const ownStep = live ? ownStepOf(live, item) : undefined;
   const facts = useMemo(() => {
     const read = factsOf(item, type, now);
-    if (!onBoard) return read;
-    const round = onBoard.round > 0 ? onBoard.round : read.round;
-    if (ownStep) return { ...read, round, own: true, question: false };
-    if (item.turn !== 'agent') return { ...read, round };
-    const holder = item.lease?.holder ?? item.expiredLease?.holder ?? onBoard.agent;
-    return { ...read, round, agent: holder, left: false };
+    return onBoard ? boardFactsOf(read, item, onBoard, ownStep !== undefined) : read;
   }, [item, type, now, onBoard, ownStep]);
   const lane = onBoard?.route.lane ?? laneOf(item.turn);
   const planned = planMoves(item.transitions, { own: facts.own, word, waits: waitsOf(item) });
@@ -210,11 +205,12 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
   const ci = onBoard ? onBoard.route.ci : type ? routeIndex(type, item.state, facts.visited) : 0;
   const stand = standOf({
     look,
-    agent: facts.left ? facts.agent : (facts.handed?.agent ?? facts.agent),
+    agent: standAgentOf(facts, onBoard !== null && item.turn === 'agent'),
     round: facts.round,
     question: facts.question,
     own: facts.own,
     quiet: look === 'stuck' ? quietFor(item.expiredLease?.expiresAt, now) : null,
+    left: facts.left,
   });
   const standText = tx(
     stand.key as 'sheet.stand.handedRound',
