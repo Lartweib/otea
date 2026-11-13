@@ -1,11 +1,21 @@
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { sequenceIds } from '../../../../src/core/board/ids.ts';
+import { instantiate, requireTemplate } from '../../../../src/core/board/templates.ts';
 import { type App, AppTestProvider } from '../../app/context.tsx';
 import { agent, inMinutes, item, moved, NOW, officialType } from '../../derive/fixtures.ts';
 import { setLanguage } from '../../i18n/i18n.ts';
 import type { CollectionView, Item, ViewSpec } from '../../types.ts';
 import { BoardView } from './BoardView.tsx';
+import type { StudioBoard } from './studio-board.tsx';
+
+// The board Studio shapes is read with a fetch the server render never makes; a test hands it in.
+const studied = vi.hoisted(() => ({ board: null as StudioBoard | null }));
+vi.mock('./studio-board.tsx', async (actual) => ({
+  ...(await actual<typeof import('./studio-board.tsx')>()),
+  useStudioBoard: () => studied.board,
+}));
 
 const bug = officialType('bug-triage');
 const errores = (kind: ViewSpec['kind']): CollectionView => ({
@@ -35,7 +45,7 @@ const seed: Item[] = [
   }),
 ];
 
-const render = (kind: ViewSpec['kind'], all: Item[] = seed, phone = false) => {
+const render = (kind: ViewSpec['kind'], all: Item[] = seed, phone = false, canWrite = true) => {
   const col = errores(kind);
   const value = {
     all,
@@ -45,6 +55,7 @@ const render = (kind: ViewSpec['kind'], all: Item[] = seed, phone = false) => {
     route: { view: 'board', board: 'Errores' },
     project: { id: 'p', name: 'Hollowmere', icon: null },
     phone,
+    session: { canWrite, canConfigure: true, canManageDevices: true },
   } as unknown as App;
   const props = { value } as Parameters<typeof AppTestProvider>[0];
   return renderToStaticMarkup(
@@ -53,7 +64,10 @@ const render = (kind: ViewSpec['kind'], all: Item[] = seed, phone = false) => {
 };
 
 beforeEach(() => setLanguage('es'));
-afterEach(() => setLanguage('en'));
+afterEach(() => {
+  setLanguage('en');
+  studied.board = null;
+});
 
 describe('a board', () => {
   it('heads with its kicker, its name, the preset dek and the steps strip', () => {
@@ -137,6 +151,35 @@ describe('a board', () => {
     expect(html).toContain('Todavía no hay ítems en Errores.');
     expect(html).toContain('Nuevo ítem en Errores');
     expect(html).toContain('Conectar un agente');
+  });
+});
+
+describe('a board Studio shapes', () => {
+  const shaped = (): StudioBoard => ({
+    id: 'b1',
+    version: 1,
+    changed: false,
+    live: instantiate(
+      requireTemplate('bugs'),
+      'es',
+      { name: 'Errores', item: 'Bug' },
+      sequenceIds(),
+    ),
+  });
+
+  it('offers one way to create: Crear · Bug in its head, no Nuevo ítem in the toolbar', () => {
+    studied.board = shaped();
+    const html = render('list');
+    expect(html).toContain('Crear · Bug');
+    expect(html).not.toContain('Nuevo ítem');
+    expect(html).not.toContain('newb');
+  });
+
+  it('keeps Nuevo ítem out for whoever may not write, as the head does', () => {
+    studied.board = shaped();
+    const html = render('list', seed, false, false);
+    expect(html).not.toContain('Crear · Bug');
+    expect(html).not.toContain('newb');
   });
 });
 
