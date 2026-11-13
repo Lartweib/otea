@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -7,6 +7,7 @@ import { parsePreset } from '../core/preset.ts';
 import { selectEvents } from '../store/queries.ts';
 import { migrateBoards, migrateProjectBoards } from './board-migration.ts';
 import { getBoardRecord, listBoardSummaries } from './boards.ts';
+import { loadPresets } from './presets.ts';
 import { addCollection } from './collections.ts';
 import type { Context } from './context.ts';
 import { checkGate } from './gates.ts';
@@ -136,6 +137,37 @@ workflow:
     expect(getItem(ctx, open.id).state).toBe(board?.steps[0]?.id);
     expect(getItem(ctx, open.id).fields.ingredients).toBe('agua');
     expect(getItem(ctx, done.id).state).toBe('done');
+  });
+
+  it("carries a project preset's playbooks into the board's words for agents", () => {
+    const dir = mkdtempSync(join(tmpdir(), 'otea-pb-'));
+    const preset = join(dir, 'presets', 'recipes');
+    mkdirSync(preset, { recursive: true });
+    writeFileSync(
+      join(preset, 'preset.yaml'),
+      `preset: recipes
+preset_version: 1
+playbook: ./playbook.md
+types:
+  dish: { label: Dish, playbook: ./dish.md }
+fields:
+  title: { module: text, required: create }
+workflow:
+  initial: cooking
+  states:
+    cooking: { turn: agent }
+    served: { turn: none, closes: done }
+  transitions: [{ from: cooking, to: served, by: human }]
+`,
+    );
+    writeFileSync(join(preset, 'playbook.md'), '# Recipes\n\nTaste before you serve.\n');
+    writeFileSync(join(preset, 'dish.md'), 'Plate it warm.\n');
+    const ctx = { ...memoryContext(), presets: loadPresets(dir) };
+    addCollection(ctx, { name: 'Recetas', preset: 'recipes' });
+    expect(migrateBoards(ctx, 'es', now, sequenceIds())).toBe(1);
+    expect(boardOf(ctx, 'Recetas').live?.definition.about).toBe(
+      '# Recipes\n\nTaste before you serve.\n\nPlate it warm.',
+    );
   });
 
   it('keeps a blocks link between two migrated boards as a plain link', () => {
