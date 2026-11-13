@@ -46,6 +46,7 @@ import {
   nextFor,
   sendBackItem,
 } from '../app/next.ts';
+import { agentNotes, noteWaiting, replyNote, roundNotesOf } from '../app/notes.ts';
 import { type Harness, seeAgent } from '../app/presence.ts';
 import {
   declareProfile,
@@ -694,7 +695,10 @@ const show: Command = {
         typesShown(project),
         named,
       );
-      return { data: itemData(project, item), text };
+      // The person's notes of this round, as data too: the text has them in its Next: block.
+      const notes = roundNotesOf(project, item.id);
+      const data = itemData(project, item);
+      return { data: notes.length === 0 ? data : { ...data, notes }, text };
     });
   },
 };
@@ -1090,7 +1094,7 @@ const LEASE_RECHECK_MS = 1000;
 const wait: Command = {
   name: 'wait',
   summary:
-    'Wait until an item is on the turn and print it as a list row, at once if one already is; the one waiting longest in its state comes first',
+    'Wait until an item is on the turn and print it as a list row, at once if one already is; the one waiting longest in its state comes first. A note from the person on an item you hold wakes it too, saying which',
   args: [],
   options: {
     turn: { required: true, choices: ['agent', 'human'] },
@@ -1109,8 +1113,13 @@ const wait: Command = {
       ...(filter.availableTo === undefined ? {} : { recheckMs: LEASE_RECHECK_MS }),
     };
     const result = await withAgentWhile(input, async (project) => {
-      const waited = await watch(project.db, () => oldestWaiting(project, filter), options);
-      return 'found' in waited ? itemResult(project, waited.found) : waited;
+      // A note from the person on an item this agent holds wakes it too: it answers it first.
+      const me = input.actor.name;
+      const check = () => noteWaiting(project, me) ?? oldestWaiting(project, filter);
+      const waited = await watch(project.db, check, options);
+      if (!('found' in waited)) return waited;
+      const { found } = waited;
+      return 'unanswered' in found ? { data: found, text: found.text } : itemResult(project, found);
     });
     if ('data' in result) return result;
     if (result.stopped === 'timeout') {
@@ -1208,7 +1217,38 @@ const heartbeat: Command = {
     const { actor, option } = input;
     const ttl = ttlFrom(option('ttl'));
     const lease = { id, actor, ...(ttl === undefined ? {} : { ttlMs: ttl }) };
-    return withAgent(input, (project) => itemResult(project, heartbeatItem(project, lease)));
+    return withAgent(input, (project) =>
+      withNotes(project, id, itemResult(project, heartbeatItem(project, lease))),
+    );
+  },
+};
+
+// What an agent's answer adds while notes from the person wait for its answer: their block after
+// the text, and the notes and that block in the data (`notes`, `text`).
+function withNotes(project: Project, id: string, output: Output): Output {
+  const waiting = agentNotes(project, id);
+  if (!waiting) return output;
+  return {
+    data: { ...(output.data as Record<string, unknown>), notes: waiting.notes, text: waiting.text },
+    text: `${output.text}\n\n${waiting.text}`,
+  };
+}
+
+const reply: Command = {
+  name: 'reply',
+  summary:
+    'Answer a note the person left while you do a step (--note, its number; next, show and heartbeat print them): a short answer; the step, round and lease stay as they are. A handoff waits until every note of the round is answered',
+  args: ['id', 'answer'],
+  options: { note: { required: true, placeholder: 'n' } },
+  execute: (input) => {
+    const [id = '', answer = ''] = input.args;
+    const given = input.required('note');
+    if (!/^[1-9]\d*$/.test(given)) throw new UsageError('--note must be the number of a note');
+    const { actor, channel } = input;
+    return withAgent(input, (project) => {
+      const replied = replyNote(project, { id, note: Number(given), text: answer, actor, channel });
+      return { data: replied, text: replied.text };
+    });
   },
 };
 
@@ -1294,7 +1334,7 @@ const attach: Command = {
         ? `\n${evidence.itemId} already has this file as #${evidence.id}; nothing added.`
         : '';
       const data = name === undefined ? evidence : { ...evidence, moduleName: name };
-      return { data, text: `${formatEvidence(shown)}${same}` };
+      return withNotes(project, evidence.itemId, { data, text: `${formatEvidence(shown)}${same}` });
     });
   },
 };
@@ -1772,6 +1812,7 @@ export const COMMANDS: readonly Command[] = [
   link,
   unlink,
   next,
+  reply,
   handoffCommand,
   dropCommand,
   approveCommand,

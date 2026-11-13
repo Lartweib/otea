@@ -123,6 +123,11 @@ function describeAction({ type, data }: Event): string {
   if (type === 'relation_added' || type === 'relation_removed') {
     return describeRelation(data as Relation);
   }
+  if (type === 'note_left' || type === 'note_answered') {
+    const on = (data.anchor as { filename?: unknown } | undefined)?.filename;
+    const where = typeof on === 'string' ? ` (on ${on})` : '';
+    return `note ${String(data.note)}: ${JSON.stringify(String(data.text ?? ''))}${where}`;
+  }
   if (type === 'evidence_added') {
     const caption = typeof data.caption === 'string' ? ` (${JSON.stringify(data.caption)})` : '';
     const { evidenceId, role, kind, filename } = data;

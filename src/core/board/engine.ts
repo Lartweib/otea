@@ -126,7 +126,8 @@ export type Linked = { id: string; board: string; step?: string; closed: boolean
 // by part (the evidence module id it was attached to) and when, and when the step's current round
 // began (a fresh part counts only from then on). `note` is the note the handoff carries; `parts`
 // and `blockers` are what its waits read (none when left out). `sentBack`: a send-back started the
-// step's current round, so its handoff carries a note, whatever the step asks.
+// step's current round, so its handoff carries a note, whatever the step asks. `unanswered`: the
+// notes the person left in the round (core/board/notes.ts) the agent has not answered yet.
 export type ItemFacts = {
   fields: Readonly<Record<string, unknown>>;
   evidence: readonly { part: string; at: string }[];
@@ -135,17 +136,20 @@ export type ItemFacts = {
   sentBack?: boolean;
   parts?: readonly Linked[];
   blockers?: readonly Linked[];
+  unanswered?: readonly number[];
 };
 
-// The refs of what a handoff lacks besides parts: the note, and each wait.
+// The refs of what a handoff lacks besides parts: the note, the person's notes left unanswered, and
+// each wait.
 export const NOTE_REF = 'note';
+export const NOTES_REF = 'notes';
 export const WAIT_PARTS = 'wait:parts';
 export const WAIT_BLOCKERS = 'wait:blockers';
 
 // `missing`: nothing there; `not_new`: there, but from an earlier round; `unchecked`: a checklist
 // with boxes still open; `open`: a wait whose items are not finished (`open`, of `total`). The note
 // carries its `hint` ("Qué va aquí"), and `sentBack` when it is wanted because the round was sent
-// back.
+// back. The person's unanswered notes carry their numbers (`notes`).
 export type Missing = {
   ref: string;
   name: string;
@@ -155,6 +159,7 @@ export type Missing = {
   sentBack?: boolean;
   open?: Linked[];
   total?: number;
+  notes?: number[];
 };
 
 export type HandoffCheck = { ok: boolean; missing: Missing[] };
@@ -249,8 +254,26 @@ export function openWaits(step: Step, facts: ItemFacts): Missing[] {
   return out;
 }
 
+// How many of the step's required handoff deliverables are in (`done`), of how many it asks for
+// now (`of`): its parts required always, and those required when a value holds that does. The
+// handoff note is not one: it is written at the handoff.
+export function deliverables(
+  def: BoardDefinition,
+  stepId: string,
+  facts: ItemFacts,
+): { done: number; of: number } {
+  const step = stepById(def, stepId);
+  if (!step) return { done: 0, of: 0 };
+  const of = step.hand.filter((hand) => {
+    if (!partOf(def, hand.ref) || hand.req === 'no') return false;
+    if (hand.req !== 'when') return true;
+    return hand.when !== undefined && whenHolds(def, facts, hand.when.part, hand.when.value);
+  }).length;
+  return { done: of - missingOf(def, step, facts).length, of };
+}
+
 // What the step's handoff still lacks: the parts in the order the step lists them, then the note,
-// then what it waits for.
+// then the person's notes still unanswered, then what it waits for.
 export function handoffCheck(def: BoardDefinition, stepId: string, facts: ItemFacts): HandoffCheck {
   const step = stepById(def, stepId);
   if (!step) return { ok: false, missing: [] };
@@ -269,6 +292,14 @@ export function handoffCheck(def: BoardDefinition, stepId: string, facts: ItemFa
       fresh: true,
       hint: step.note.hint,
       ...(sentBack ? { sentBack } : {}),
+    });
+  if (facts.unanswered && facts.unanswered.length > 0)
+    missing.push({
+      ref: NOTES_REF,
+      name: NOTES_REF,
+      reason: 'missing',
+      fresh: false,
+      notes: [...facts.unanswered],
     });
   missing.push(...openWaits(step, facts));
   return { ok: missing.length === 0, missing };

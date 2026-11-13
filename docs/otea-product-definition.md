@@ -80,6 +80,7 @@ Different domains and loop shapes (linear, iterative), same structure.
 | **Lease** | Time-limited claim on an item, with heartbeat and takeover on expiry. |
 | **Event** | Append-only record of every change. Source of history and audit. |
 | **Evidence** | Files attached to an item or iteration, with roles. |
+| **Note (in flight)** | What the human says to the agent while it does a step, without moving the item; the agent answers it before handing off (§5). |
 
 ## 5. Item lifecycle
 
@@ -92,6 +93,7 @@ The preset defines the actual states. The core provides the building blocks ever
 3. **Work** (agent): claim with a lease, verify the problem still exists, act, attach evidence.
 4. **Review** (human, one item in depth): inspect evidence, answer the preset's questions, approve or request changes.
 5. **Iterate**: requested changes open a new iteration; the agent reads the feedback and goes back to work.
+   - *Notes while it works*: the human need not wait for the review to say something. While an agent does a step, the human leaves a note (desk or phone) that changes neither the step, the round nor the lease, optionally on a piece of evidence already attached in that round (the very version seen, not a later one put in its place). Several may wait at once, numbered per item. Each keeps its moment: step, round, time and how many of the step's required handoff deliverables were in (the handoff note is not one). The agent reads it in the answers it already asks for (heartbeat, show, next, attach; `otea wait` wakes on it) and answers it with `otea reply`; it cannot hand off while a note of the round is unanswered. The thread is the human's: an agent never opens one, and what it needs to ask the human still goes in a handoff, which changes the turn. Once handed off, the notes belong to their round.
 6. **Close**: done, discarded, already fixed, etc., always with the actor and reason recorded.
 
 Two distinct modes of human attention are both first-class: **triage** (breadth) and **review** (depth).
@@ -531,7 +533,7 @@ Three origins, one folder structure:
 - **Preset builder flow**: the agent interviews the user ("what do you want to track?") following a builder playbook and using the Build toolset. No wizard inside the server.
 - **Brief generator**: selected items -> Markdown brief ordered by dependencies, with success criteria and limits.
 - **Turn notification** (how an agent learns the turn came back):
-  - `otea wait --turn agent` blocks until something is waiting for the agent. Harnesses that run background commands and resume the agent when they exit (e.g. Claude Code) use it directly.
+  - `otea wait --turn agent` blocks until something is waiting for the agent, or a note from the human waits on an item it holds. Harnesses that run background commands and resume the agent when they exit (e.g. Claude Code) use it directly.
   - Otherwise the agent polls `otea list --turn agent`, on its own loop or on a schedule the playbook suggests to the user.
   - On a fresh session, the playbook's first step is `otea list --turn agent`.
   - Otea never spawns agents.

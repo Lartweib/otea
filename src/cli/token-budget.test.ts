@@ -41,8 +41,9 @@ const BUDGETS: Readonly<Record<string, Sizes>> = {
   // The tool definitions an MCP client reads when it connects.
   // Raised for next, handoff, approve and send_back, the board moves.
   // drop, handoff's --note and its ways back. Raised for the as every tool takes: the agent making
-  // the call, so subagents sharing one server keep their own leases.
-  tools: { mcp: 3230 },
+  // the call, so subagents sharing one server keep their own leases. Raised for reply, the answer
+  // to a note from the person, and wait saying a note wakes it (measured at 3347).
+  tools: { mcp: 3450 },
   // Otea's agent guide, the server's instructions: in every MCP agent's context from the start, so
   // it buys only what agents keep getting wrong. Measured at 203. Raised to 270 for the line on
   // declaring the profile every agent and subagent must keep current (measured at 246).

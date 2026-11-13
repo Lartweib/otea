@@ -27,6 +27,7 @@ export const AGENT_COMMANDS = [
   'link',
   'unlink',
   'next',
+  'reply',
   'handoff',
   'drop',
   'approve',

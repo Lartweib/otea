@@ -16,6 +16,7 @@ import {
   updateItem,
 } from '../app/items.ts';
 import { boardRoundOf, liveBoards } from '../app/next.ts';
+import { leaveNote, notesSummary, notesView } from '../app/notes.ts';
 import { listAgents, presenceSignature } from '../app/presence.ts';
 import { listPresetViews } from '../app/preset-views.ts';
 import { type Env, type Project, projectView } from '../app/project.ts';
@@ -77,6 +78,7 @@ import {
   MAX_CREATE_BYTES,
   MAX_INTAKE_FILES,
   moveRequest,
+  noteRequest,
   pathRequest,
   reassignRequest,
   relinkRequest,
@@ -247,7 +249,13 @@ function api(
         return c.json(
           items.map((item) => {
             const round = boardRoundOf(project, item, boards);
-            return round === undefined ? item : { ...item, round };
+            // The notes of its round: how many, how many wait, and what the agent answered last.
+            const notes = notesSummary(project, item, boards);
+            return {
+              ...item,
+              ...(round === undefined ? {} : { round }),
+              ...(notes === undefined ? {} : { notes }),
+            };
           }),
         );
       })
@@ -269,6 +277,25 @@ function api(
         const item = moveItem(project, { id: c.req.param('id'), ...request, ...HUMAN_IN_UI });
         feed.notify();
         return c.json(item);
+      })
+      // Notes from the person to the agent doing the item's step: the thread (all of it, or a step
+      // and round), and a new note, from the phone too; neither moves the item.
+      .get('/items/:id/notes', (c) => {
+        const { step } = c.req.query();
+        const round = wholeNumber('round', c.req.query('round'), 1);
+        const filter = {
+          ...(step === undefined ? {} : { step }),
+          ...(round === undefined ? {} : { round }),
+        };
+        return c.json(notesView(project, c.req.param('id'), filter));
+      })
+      .post('/items/:id/notes', async (c) => {
+        assertWritable(c, auth);
+        const request = await noteRequest(c);
+        const id = c.req.param('id');
+        leaveNote(project, { id, ...request, ...HUMAN_IN_UI });
+        feed.notify();
+        return c.json(notesView(project, id), 201);
       })
       .post('/items/:id/update', async (c) => {
         assertWritable(c, auth);

@@ -11,4 +11,5 @@ export const AGENT_GUIDE = [
   '6. Hand off with the exact command next prints under "When you finish".',
   '7. Never relay a decision on a step you did: the person decides it.',
   '8. Never push to a branch the item\'s "Branch" lines do not allow.',
+  '9. Answer every note from the person (otea reply) before you hand off.',
 ].join('\n');

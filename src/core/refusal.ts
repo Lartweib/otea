@@ -94,4 +94,12 @@ export type RefusalDetails =
   | { kind: 'restore_step_lost'; item: string; step: string; version: number }
   | { kind: 'restore_name_taken'; name: string }
   // A setup change from a device other than this computer's signed-in browser.
-  | { kind: 'desk_only' };
+  | { kind: 'desk_only' }
+  // A note from the person, or an agent's answer to one, refused: left by someone other than the
+  // person (or answered by someone other than an agent), without text, on an item no agent is
+  // doing, or on evidence not attached to the item in this round.
+  | {
+      kind: 'note';
+      item: string;
+      why: 'not_person' | 'not_agent' | 'empty' | 'not_working' | 'anchor';
+    };

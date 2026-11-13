@@ -58,6 +58,7 @@ import {
   targetName,
   wayByName,
 } from '../core/board/next.ts';
+import { type ItemNote, notesOf, unansweredOf } from '../core/board/notes.ts';
 import { evidenceByName, readFieldInput, stateByName, stateName } from '../core/board/reading.ts';
 import { readDefinition } from '../core/board/schema.ts';
 import { OteaError } from '../core/errors.ts';
@@ -67,6 +68,7 @@ import { closesOf } from '../core/workflow.ts';
 import { findBoardOfCollection, findVersion, listBoards } from '../store/boards.ts';
 import { transaction } from '../store/database.ts';
 import {
+  findAgent,
   type ItemRecord,
   saveOffer,
   selectEvents,
@@ -112,8 +114,12 @@ export function liveBoards(ctx: Context): LiveBoard[] {
 
 // The item's moves as the engine replays them (core/board/history.ts), the moves taken back left
 // out.
-function historyFor(ctx: Context, item: ItemRecord, def: BoardDefinition): History {
-  return historyOf(selectEvents(ctx.db, item.id), {
+function historyFor(
+  item: ItemRecord,
+  def: BoardDefinition,
+  events: ReturnType<typeof selectEvents>,
+): History {
+  return historyOf(events, {
     initial: def.steps[0]?.id ?? item.state,
     createdAt: item.createdAt,
   });
@@ -173,6 +179,10 @@ export type ItemOnBoard = {
   links: Links;
   // While a step is being done, the send-back that started its round.
   sentBack?: SentBack;
+  // Every note the person left on the item (core/board/notes.ts), oldest first, and those of the
+  // round of the step it stands on now.
+  thread: ItemNote[];
+  roundNotes: ItemNote[];
 };
 
 // The send-back that started the round of the step being done, with its note, who sent it, when
@@ -203,7 +213,8 @@ function sentBackOf(
 // handed off, and the send-back its current round started with.
 export function itemOnBoard(ctx: Context, item: ItemRecord, def: BoardDefinition): ItemOnBoard {
   const position = positionOf(item.state);
-  const history = historyFor(ctx, item, def);
+  const events = selectEvents(ctx.db, item.id);
+  const history = historyFor(item, def, events);
   const rounds = roundsOf(def, history.initial, history.createdAt, history.moves);
   const evidence = selectEvidence(ctx.db, item.id).flatMap((entry) =>
     entry.module === null ? [] : [{ part: entry.module, at: entry.createdAt }],
@@ -212,6 +223,11 @@ export function itemOnBoard(ctx: Context, item: ItemRecord, def: BoardDefinition
   const startedAt = step === undefined ? undefined : rounds.startedAt[step];
   const links = linksOf(ctx, item.id);
   const sentBack = sentBackOf(def, position, history);
+  const round = step === undefined ? 0 : (rounds.rounds[step] ?? 1);
+  const thread = notesOf(events);
+  const roundNotes = thread.filter((note) => note.step === step && note.round === round);
+  const unanswered =
+    isClosed(position) || position.phase !== 'doing' ? [] : unansweredOf(roundNotes);
   const facts: ItemFacts = {
     fields: { ...item.fields, title: item.title },
     evidence,
@@ -219,8 +235,8 @@ export function itemOnBoard(ctx: Context, item: ItemRecord, def: BoardDefinition
     ...(sentBack === undefined ? {} : { sentBack: true }),
     parts: links.parts,
     blockers: links.blockers,
+    ...(unanswered.length === 0 ? {} : { unanswered }),
   };
-  const round = step === undefined ? 0 : (rounds.rounds[step] ?? 1);
   const notes = handoffNotes(def, history).map(({ step: id, round: n, note, at, by }) => ({
     step: stepById(def, id)?.name ?? id,
     round: n,
@@ -236,6 +252,8 @@ export function itemOnBoard(ctx: Context, item: ItemRecord, def: BoardDefinition
     notes,
     links,
     ...(sentBack === undefined ? {} : { sentBack }),
+    thread,
+    roundNotes,
   };
 }
 
@@ -256,7 +274,32 @@ export type BoardBlock = {
   sentBack?: SentBack;
   // On a Pedido an agent drafts a board on: that board, and how the draft is handed in.
   request?: DraftRequest;
+  // The notes the person left on the item, every round's, oldest first, when there are any.
+  thread?: ItemNote[];
+  // While an agent's step is being done: the agent at work on it and when it last gave a sign of
+  // life (any call, a heartbeat included), so the page can warn that a note may go unread.
+  worker?: Worker;
 };
+
+export type Worker = { name: string; lastSeen: string | null; holds: boolean };
+
+// The agent doing the item's step now: the one holding its lease (even run out), else the agent the
+// step names; none on a step the person does, or off a doing phase.
+export function workerOf(
+  ctx: Context,
+  item: ItemRecord,
+  def: BoardDefinition,
+  at: string = systemClock(),
+): Worker | undefined {
+  const position = positionOf(item.state);
+  if (isClosed(position) || position.phase !== 'doing') return undefined;
+  const step = stepById(def, position.step);
+  if (!step || step.doer === 'you') return undefined;
+  const name = item.lease?.holder ?? (isAgent(step.doer) ? step.doer.agent : undefined);
+  if (name === undefined) return undefined;
+  const holds = activeLease(item.lease, at)?.holder === name;
+  return { name, lastSeen: findAgent(ctx.db, name)?.lastSeen ?? null, holds };
+}
 
 function filled(value: unknown): value is string {
   return typeof value === 'string' && value.trim() !== '';
@@ -271,6 +314,7 @@ export function boardBlockOf(ctx: Context, item: ItemRecord): BoardBlock | undef
   const repo = guarded?.guard.repo === undefined ? undefined : item.fields[guarded.guard.repo];
   const gate = (action: 'push' | 'merge') => gateAt(board.def, on.position, action);
   const request = draftRequestOf(ctx, item.id);
+  const worker = workerOf(ctx, item, board.def);
   return {
     parts: on.links.parts,
     partsBoard: partsBoardOf(ctx, board)?.def.name ?? null,
@@ -285,6 +329,8 @@ export function boardBlockOf(ctx: Context, item: ItemRecord): BoardBlock | undef
         : handoffCheck(board.def, on.position.step, on.facts).missing,
     ...(on.sentBack === undefined ? {} : { sentBack: on.sentBack }),
     ...(request === undefined ? {} : { request }),
+    ...(on.thread.length === 0 ? {} : { thread: on.thread }),
+    ...(worker === undefined ? {} : { worker }),
   };
 }
 
@@ -371,6 +417,7 @@ function textFor(
     ...(on.sentBack === undefined ? {} : { sentBack: on.sentBack }),
     ...(lease ? { holder: { name: lease.holder, expiresAt: lease.expiresAt } } : {}),
     ...(left === undefined ? {} : { leftFor: left }),
+    ...(on.roundNotes.length === 0 ? {} : { notes: on.roundNotes }),
   });
 }
 
@@ -412,6 +459,8 @@ export type NextAnswer = {
   text: string;
   sentBack?: SentBack;
   lease?: Lease;
+  // The notes the person left in the round of the step to do, when there are any.
+  notes?: ItemNote[];
 };
 
 // For this long after `next` offers an item to an agent, no other agent is offered it, so two
@@ -488,13 +537,14 @@ export function nextFor(
       : (activeLease(first.item.lease, at) ?? undefined);
     const item = lease ? { ...first.item, lease } : first.item;
     if (!lease) saveOffer(ctx.db, { agent, item: item.id, state: item.state, at });
-    const sentBack = itemOnBoard(ctx, item, board.def).sentBack;
+    const { sentBack, roundNotes } = itemOnBoard(ctx, item, board.def);
     return {
       item: item.id,
       collection: board.collection,
       text: textFor(ctx, item, board.def, at, agent),
       ...(sentBack === undefined ? {} : { sentBack }),
       ...(lease ? { lease } : {}),
+      ...(roundNotes.length === 0 ? {} : { notes: roundNotes }),
     };
   });
 }
@@ -940,7 +990,9 @@ export function assertMoveHandsOff(
       ? target.closed === DONE
       : stepIndex(board.def, target.step) > stepIndex(board.def, step.id));
   if (!intoReview && !along) return note;
-  const facts = note === undefined ? on.facts : { ...on.facts, note };
+  // The person's own notes wait for the agent's answer, never for the person.
+  const { unanswered: _notes, ...theirs } = on.facts;
+  const facts = note === undefined ? theirs : { ...theirs, note };
   const check = handoffCheck(board.def, step.id, facts);
   if (!check.ok) refuseHandoff(item.id, check.missing);
   return note;
