@@ -310,7 +310,7 @@ export const studioPreview = {
     'Not handed off {id}: {why}: {open}.\nNothing moves {id} meanwhile: hand it off again once they reach Done or Dropped.',
   'bs.preview.try.said.blocked':
     'Not handed off {id}: {by} ({board}, {step}) holds it back and is not finished.\nHand it off again once {by} reaches Done or Dropped, or ask the person to remove the link.',
-  'bs.preview.try.said.approvalRefused': 'Not approved {id}: {open} reopened and is not finished.',
+  'bs.preview.try.said.approvalRefused': 'Not approved {id}: {open} is not finished.',
   'bs.preview.try.said.noteToo': 'So does the handoff note.',
   'bs.preview.try.said.reasonYou': 'Write at least a note: it says what is missing.',
   'bs.preview.try.said.reason': 'Not taken back {id}: it needs to say why.',

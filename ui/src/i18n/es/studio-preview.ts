@@ -311,8 +311,7 @@ export const studioPreview = {
     'No se entregó {id}: {why}: {open}.\nNada mueve {id} mientras tanto: vuelve a entregarlo cuando lleguen a Hecho o Descartado.',
   'bs.preview.try.said.blocked':
     'No se entregó {id}: {by} ({board}, {step}) lo frena y sigue sin terminar.\nVuelve a entregarlo cuando {by} llegue a Hecho o Descartado, o pide a la persona que quite el enlace.',
-  'bs.preview.try.said.approvalRefused':
-    'No se aprobó {id}: {open} se reabrió y sigue sin terminar.',
+  'bs.preview.try.said.approvalRefused': 'No se aprobó {id}: {open} sigue sin terminar.',
   'bs.preview.try.said.noteToo': 'La nota de la entrega también.',
   'bs.preview.try.said.reasonYou': 'Escribe al menos una nota: dice qué falta.',
   'bs.preview.try.said.reason': 'No se regresó {id}: falta decir por qué.',

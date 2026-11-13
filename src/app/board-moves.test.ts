@@ -182,7 +182,7 @@ describe('waiting for parts', () => {
 
     expect(refusal(() => approveItem(ctx, { id, actor: you, channel: 'ui' }, now))).toEqual({
       code: 'children_open',
-      message: `Not approved ${id}: ${part} (Propuesta) was reopened and is not finished.`,
+      message: `Not approved ${id}: its part ${part} (Propuesta) is not finished.`,
     });
     expect(
       refusal(() => moveItem(ctx, { id, to: 'done', actor: you, channel: 'ui' }, now)).code,

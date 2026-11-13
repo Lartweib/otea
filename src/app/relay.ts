@@ -45,7 +45,7 @@ export function relayDecision(ctx: Context, input: RelayInput, now = systemClock
     const { reason, via, channel } = input;
     const to = boardState(ctx, item.collection, input.to);
     // On a board the engine says first: a discard the person makes only on the page, an approval
-    // whose parts were reopened.
+    // whose parts are not finished.
     const note = assertMoveHandsOff(ctx, item, to, RELAYED_HUMAN, {
       ...(reason === undefined ? {} : { reason }),
       via: 'relay',
