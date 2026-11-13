@@ -61,6 +61,15 @@ import {
 } from '../app/project.ts';
 import { linkItems, unlinkItems } from '../app/relations.ts';
 import { relayDecision } from '../app/relay.ts';
+import {
+  addRepo,
+  listRepos,
+  type Repo,
+  readReposAtFolder,
+  removeRepo,
+  repoNameAt,
+  UnknownRepo,
+} from '../app/repos.ts';
 import { validateProject } from '../app/validate.ts';
 import { watch } from '../app/watch.ts';
 import { fieldsByName, stateName, valueName } from '../core/board/reading.ts';
@@ -91,7 +100,7 @@ import {
   formatReport,
   indent,
 } from './format.ts';
-import { currentBranch, localBranches, repoName } from './gitrepo.ts';
+import { currentBranch, localBranches } from './gitrepo.ts';
 import {
   type HookChange,
   installClaudeHook,
@@ -268,7 +277,11 @@ const init: Command = {
     let shown: ProjectView;
     try {
       shown = icon === undefined ? projectView(project) : setProjectIcon(project, icon);
-      if (target === undefined) made = initBoards(project, template);
+      // The repos at the project's folders are added now, before any clone of them is linked.
+      if (target === undefined) {
+        made = initBoards(project, template);
+        listRepos(project);
+      } else readReposAtFolder(project, root);
     } finally {
       project.db.close();
     }
@@ -329,7 +342,55 @@ const projectsAdd: Command = {
   options: { to: { required: true, placeholder: 'project' } },
   execute: ({ cwd, required, args: [path = ''] }) => {
     const linked = addPathToProject(resolve(cwd, path), required('to'));
-    return { data: linked, text: `Linked ${linked.path} to ${linked.projectId}` };
+    const repos = withProject(linked.path, (project) => readReposAtFolder(project, linked.path));
+    const text = [`Linked ${linked.path} to ${linked.projectId}`, ...reposAddedText(repos)];
+    return { data: { ...linked, repos }, text: text.join('\n') };
+  },
+};
+
+function reposAddedText(repos: readonly Repo[]): string[] {
+  if (repos.length === 0) return [];
+  return [
+    `Added the repo${repos.length === 1 ? '' : 's'} ${repos.map(({ name }) => name).join(', ')}`,
+  ];
+}
+
+const reposList: Command = {
+  name: 'repos list',
+  summary:
+    "List the project's repos: the name its items give each one (a repo task's repo field) and what tells it apart wherever it is cloned (its origin URL, or its root commit without one)",
+  args: [],
+  options: {},
+  execute: ({ cwd }) => {
+    const repos = withProject(cwd, (project) => listRepos(project));
+    const text = repos.map(({ name, identity }) => `${name}  ${identity}`).join('\n');
+    return { data: repos, text: text || 'No repos' };
+  },
+};
+
+const reposAdd: Command = {
+  name: 'repos add',
+  summary:
+    'Add the repo at a folder (default: here) to the project, under --name or its folder name; a repo already added is renamed by --name. Every clone of it, in any folder, goes by that name in gate checks',
+  args: ['path?'],
+  options: { name: { placeholder: 'name' } },
+  execute: ({ cwd, option, args: [path = '.'] }) => {
+    const repo = withProject(cwd, (project) =>
+      addRepo(project, resolve(cwd, path), option('name')),
+    );
+    return { data: repo, text: `${repo.name}  ${repo.identity}` };
+  },
+};
+
+const reposRemove: Command = {
+  name: 'repos remove',
+  summary:
+    'Remove a repo from the project by name; its items keep their values, and gate checks refuse in it until it is added again',
+  args: ['name'],
+  options: {},
+  execute: ({ cwd, args: [name = ''] }) => {
+    const repo = withProject(cwd, (project) => removeRepo(project, name));
+    return { data: repo, text: `Removed ${repo.name}` };
   },
 };
 
@@ -1312,10 +1373,12 @@ const mcp: Command = {
 };
 
 // The fields a gate check matches: --field pairs, plus the branch and the repo, which default to
-// the git checkout's when given without a value (the branch to `defaultBranch`, when given).
+// the git checkout's when given without a value (the branch to `defaultBranch`, when given; the
+// repo to the name the project gives the repo checked out, app/repos.ts).
 function gateFields(
   { option, options }: Input,
   cwd: string,
+  project: Project,
   defaultBranch = () => currentBranch(cwd),
 ): Record<string, string> {
   const fields: Record<string, string> = {};
@@ -1327,7 +1390,7 @@ function gateFields(
   const branch = option('branch');
   if (branch !== undefined) set('branch', branch || defaultBranch());
   const repo = option('repo');
-  if (repo !== undefined) set('repo', repo || repoName(cwd));
+  if (repo !== undefined) set('repo', repo || repoNameAt(project, cwd));
   return fields;
 }
 
@@ -1386,11 +1449,12 @@ function checkBranches(
 // As a Claude Code hook it reads the call from the event on stdin: it checks where the call runs
 // and, with --branch and no name, the branches the call acts on (see commandBranches); it refuses
 // with exit 2 and the reason on stderr, which blocks the call. A push whose branches it cannot
-// tell is refused, not allowed: on a project, failing open there would skip every gate.
+// tell is refused, not allowed: on a project, failing open there would skip every gate. So is a
+// push or merge in a repo the project cannot match (--repo with no name), whatever its folder.
 const check: Command = {
   name: 'check',
   summary:
-    'Check whether the items matching the fields allow a gated action: exit 0 when allowed, 1 when refused; it allows the action, with a note, when no item matches or the check cannot run. --branch and --repo default to the git checkout; --claude-hook reads a Claude Code PreToolUse event on stdin and refuses with exit 2',
+    'Check whether the items matching the fields allow a gated action: exit 0 when allowed, 1 when refused; it allows the action, with a note, when no item matches or the check cannot run. --branch defaults to the branch checked out, --repo to the name the project gives the repo checked out (otea repos list), refused when the project does not know it; --claude-hook reads a Claude Code PreToolUse event on stdin and refuses with exit 2',
   args: [],
   options: {
     gate: { required: true, placeholder: 'action' },
@@ -1409,7 +1473,7 @@ const check: Command = {
       const named = input.option('branch');
       result = withProject(cwd, (project) => {
         const branches = named === '' ? commandBranches(cwd, event.command) : [named ?? ''];
-        const fields = branches.map((branch) => gateFields(input, cwd, () => branch));
+        const fields = branches.map((branch) => gateFields(input, cwd, project, () => branch));
         return checkBranches(project, gate, fields);
       });
     } catch (error) {
@@ -1418,6 +1482,12 @@ const check: Command = {
         const why = `${gate} refused: cannot tell which branches the command writes to (${error.message}); name them in it`;
         input.warn(why);
         return { data: { gate, allowed: false, items: [] }, text: '', failure: 'hook_refused' };
+      }
+      // Inside a project, a repo it cannot match could be any of its repos: refused, not allowed.
+      if (error instanceof UnknownRepo) {
+        input.warn(`${gate} refused: ${error.message}`);
+        const failure = hook ? 'hook_refused' : 'gate_refused';
+        return { data: { gate, allowed: false, items: [] }, text: '', failure };
       }
       // A field nothing names is a typo in the call, never a reason to allow the action.
       if (error instanceof OteaError && error.code === 'invalid_fields')
@@ -1493,6 +1563,9 @@ export const COMMANDS: readonly Command[] = [
   projectsAdd,
   projectsRelink,
   projectsForget,
+  reposList,
+  reposAdd,
+  reposRemove,
   migrateCommand,
   connect,
   collectionAdd,

@@ -23,6 +23,7 @@ import {
   openRegistered,
   type Project,
 } from '../app/project.ts';
+import { identityAt, listRepos, type Repo, readReposAtFolder, reposInside } from '../app/repos.ts';
 import { hasOteaGitHook } from '../cli/hooks.ts';
 import { readServeFile } from '../cli/serve-file.ts';
 import { OteaError } from '../core/errors.ts';
@@ -123,7 +124,8 @@ export function projectOverviews(current: Project, env: Env = process.env): Proj
 export type GateKind = 'hard' | 'soft';
 
 // A repo of the project: a linked repo, or one inside a linked folder. Its name is what a repo
-// task's `repo` field holds: its folder's name.
+// task's `repo` field holds: the name the project gives it (app/repos.ts), or its folder's name
+// while the project does not know it.
 export type RepoSettings = { name: string; folder: string; gate: GateKind; items: number };
 
 export type PathSettings = OverviewPath & { repos: RepoSettings[] };
@@ -143,24 +145,6 @@ export type ProjectSettings = {
   paths: PathSettings[];
 };
 
-const SKIPPED = new Set(['node_modules', '.git', '.otea']);
-
-// The git repos at most two folders below a parent folder.
-function reposInside(folder: string, depth = 2): string[] {
-  if (depth === 0) return [];
-  let entries: string[];
-  try {
-    entries = readdirSync(folder, { withFileTypes: true })
-      .filter((entry) => entry.isDirectory() && !SKIPPED.has(entry.name))
-      .map((entry) => join(folder, entry.name));
-  } catch {
-    return [];
-  }
-  return entries.flatMap((dir) =>
-    existsSync(join(dir, '.git')) ? [dir] : reposInside(dir, depth - 1),
-  );
-}
-
 function sizeOf(path: string): { bytes: number; files: number } {
   if (!existsSync(path)) return { bytes: 0, files: 0 };
   const stat = statSync(path);
@@ -174,23 +158,27 @@ function sizeOf(path: string): { bytes: number; files: number } {
   );
 }
 
-// `repos`: the repository each item's branch is in (a board's guard reads it from a field).
-function repoOf(path: string, parent: string, repos: readonly unknown[]): RepoSettings {
-  const name = basename(path);
+// `itemRepos`: the repository each item's branch is in (a board's guard reads it from a field);
+// `known`: the repos the project knows, by what identifies them.
+type RepoNames = { itemRepos: readonly unknown[]; known: readonly Repo[] };
+
+function repoOf(path: string, parent: string, { itemRepos, known }: RepoNames): RepoSettings {
+  const identity = identityAt(path);
+  const name = known.find((repo) => repo.identity === identity)?.name ?? basename(path);
   return {
     name,
     folder: relative(parent, path).replaceAll('\\', '/') || '.',
     gate: hasOteaGitHook(path) ? 'hard' : 'soft',
-    items: repos.filter((repo) => repo === name).length,
+    items: itemRepos.filter((repo) => repo === name).length,
   };
 }
 
-function pathSettings(path: OverviewPath, itemRepos: readonly unknown[]): PathSettings {
+function pathSettings(path: OverviewPath, names: RepoNames): PathSettings {
   if (path.missing) return { ...path, repos: [] };
   const repos =
     path.kind === 'repo'
-      ? [repoOf(path.path, path.path, itemRepos)]
-      : reposInside(path.path).map((repo) => repoOf(repo, path.path, itemRepos));
+      ? [repoOf(path.path, path.path, names)]
+      : reposInside(path.path).map((repo) => repoOf(repo, path.path, names));
   return { ...path, repos };
 }
 
@@ -206,7 +194,8 @@ export function projectSettings(project: Project, env: Env = process.env): Proje
   ];
   const items = listItems(project);
   const boards = liveBoards(project);
-  const repos = items.map((item) => repoOfItem(project, item, boards));
+  const itemRepos = items.map((item) => repoOfItem(project, item, boards));
+  const names = { itemRepos, known: listRepos(project, env) };
   const database = databasePath(dataDir);
   const evidence = evidenceDir(dataDir);
   return {
@@ -219,7 +208,7 @@ export function projectSettings(project: Project, env: Env = process.env): Proje
     evidence: { path: evidence, ...sizeOf(evidence) },
     items: items.length,
     collections: listCollectionViews(project).map(({ name, preset }) => ({ name, preset })),
-    paths: [...paths].sort(byPlace).map((path) => pathSettings(path, repos)),
+    paths: [...paths].sort(byPlace).map((path) => pathSettings(path, names)),
   };
 }
 
@@ -247,6 +236,7 @@ export function addPath(project: Project, path: string, env: Env = process.env):
     throw new OteaError('forbidden', 'A local project has one folder; run otea migrate first');
   }
   const linked = addPathToProject(path, project.identity.id, env);
+  readReposAtFolder(project, linked.path, env);
   return { path: linked.path, kind: linked.kind, missing: false };
 }
 
