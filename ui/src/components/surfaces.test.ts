@@ -63,6 +63,7 @@ function fakeApp(o: Partial<App> = {}): App {
     items: { status: 'ready', value: items },
     all: items,
     collections: [errores],
+    collectionsReady: true,
     collectionOf: (name) => (name === 'Errores' ? errores : undefined),
     presets: [],
     presetsRemote: { status: 'ready', value: [] },

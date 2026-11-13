@@ -16,6 +16,7 @@ export function testApp(o: Partial<App> = {}): App {
     items: { status: 'ready', value: o.all ?? [] },
     all: [],
     collections,
+    collectionsReady: true,
     collectionOf: (name) => collections.find((c) => c.name === name),
     presets: [],
     presetsRemote: { status: 'ready', value: [] },

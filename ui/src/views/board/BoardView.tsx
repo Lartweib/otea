@@ -111,8 +111,42 @@ function useToolFade(show: boolean) {
 export function BoardView({ board }: { board: string }) {
   const app = useApp();
   const collection = app.collectionOf(board);
-  if (!collection) return <div className="board" />;
-  return <Board board={board} key={board} />;
+  if (collection) return <Board board={board} key={board} />;
+  if (!app.collectionsReady) return <div className="board" />;
+  // In Lista's column, so on a wide screen it stands where the board would.
+  return (
+    <div className="board" data-mode="lista">
+      <BoardMissing board={board} />
+    </div>
+  );
+}
+
+// A board the project does not have (a mistyped or renamed link): the board's own head saying so,
+// and the way home, in the empty states' grammar.
+function BoardMissing({ board }: { board: string }) {
+  const app = useApp();
+  return (
+    <>
+      <header className="bhead" data-enter="head">
+        <div>
+          <div className="kicker" data-leaf="">
+            <b>{t('boardView.kicker')}</b> &nbsp;·&nbsp; {app.project?.name ?? ''}
+          </div>
+          <h1 className="display" data-leaf="">
+            {t('boardView.missing.title')}
+          </h1>
+        </div>
+      </header>
+      <div className="empty empty-big empty-missing" data-enter="fade" data-leaf="">
+        <p>{t('boardView.missing.text', { board })}</p>
+        <div className="acts2">
+          <Button variant="primary" onClick={() => app.go({ view: 'toca' })}>
+            {t('boardView.missing.home')}
+          </Button>
+        </div>
+      </div>
+    </>
+  );
 }
 
 function Board({ board }: { board: string }) {

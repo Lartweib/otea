@@ -155,7 +155,8 @@
   .head,
   .bhead,
   .tools,
-  .ftoks {
+  .ftoks,
+  .empty-big.empty-missing {
     padding-left: 0;
   }
   .display {

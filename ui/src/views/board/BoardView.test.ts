@@ -139,3 +139,42 @@ describe('a board', () => {
     expect(html).toContain('Conectar un agente');
   });
 });
+
+describe('a board that is not there', () => {
+  const missing = (collectionsReady: boolean) => {
+    const value = {
+      all: seed,
+      now: NOW,
+      feed: [],
+      collectionsReady,
+      collectionOf: () => undefined,
+      route: { view: 'board', board: 'NoExiste' },
+      project: { id: 'p', name: 'Hollowmere', icon: null },
+      phone: false,
+    } as unknown as App;
+    const props = { value } as Parameters<typeof AppTestProvider>[0];
+    return renderToStaticMarkup(
+      createElement(AppTestProvider, props, createElement(BoardView, { board: 'NoExiste' })),
+    );
+  };
+
+  it('says which board was not found and offers the way back to Te toca', () => {
+    const html = missing(true);
+    expect(html).toContain('<b>Tablero</b>');
+    expect(html).toContain('<h1 class="display" data-leaf="">Tablero no encontrado</h1>');
+    expect(html).toContain('No hay ningún tablero llamado «NoExiste» en este proyecto.');
+    expect(html).toMatch(/<button[^>]*>Ir a Te toca<\/button>/);
+  });
+
+  it('speaks English', () => {
+    setLanguage('en');
+    const html = missing(true);
+    expect(html).toContain('Board not found');
+    expect(html).toContain('There is no board called “NoExiste” in this project.');
+    expect(html).toContain('Go to Your turn');
+  });
+
+  it('says nothing while the boards are still loading', () => {
+    expect(missing(false)).toBe('<div class="board"></div>');
+  });
+});

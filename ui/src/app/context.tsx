@@ -46,6 +46,8 @@ export type AppData = {
   items: Remote<Item[]>;
   all: Item[];
   collections: CollectionView[];
+  // The boards have been read once: a board missing from them is not there.
+  collectionsReady: boolean;
   collectionOf(name: string): CollectionView | undefined;
   presets: PresetView[];
   // The presets as loaded (the module catalog shows their loading); bumps when Studio writes.
@@ -200,6 +202,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     items: data.items,
     all: data.all,
     collections: data.collections,
+    collectionsReady: data.collectionsReady,
     collectionOf,
     presets: data.presets,
     presetsRemote: data.presetsRemote,

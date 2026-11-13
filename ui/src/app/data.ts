@@ -33,6 +33,8 @@ export type LoadedData = {
   items: Remote<Item[]>;
   all: Item[];
   collections: CollectionView[];
+  // The boards have been read once: a board missing from them is not there.
+  collectionsReady: boolean;
   presets: PresetView[];
   presetsRemote: Remote<PresetView[]>;
   agents: Agent[] | null | undefined;
@@ -94,6 +96,7 @@ export function useAppData(): LoadedData {
     items,
     all: ready(items) ?? [],
     collections: ready(collections) ?? [],
+    collectionsReady: collections.status === 'ready',
     presets: ready(presets) ?? [],
     presetsRemote: presets,
     agents,
