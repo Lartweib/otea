@@ -33,7 +33,12 @@ export function OfflineBar({ sync, now, host, phone = false }: OfflineBarProps) 
       <span className="ob-dot" aria-hidden="true" />
       <span className="ob-text">
         <b>{downWords(host, phone)}</b>
-        {synced === null ? null : <span className="ob-when"> · {synced}</span>}
+        {synced === null ? null : (
+          <>
+            <span className="ob-sep"> · </span>
+            <span className="ob-when">{synced}</span>
+          </>
+        )}
       </span>
       <span className="ob-ro">{t('offline.readOnly')}</span>
     </div>

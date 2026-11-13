@@ -111,8 +111,22 @@
   .app[data-offline] {
     grid-template-rows: 56px auto minmax(0, 1fr);
   }
+  /* Two lines at 390: what is wrong and read-only, then since when. */
   .offline-bar {
+    align-items: flex-start;
     margin: 0 0 6px;
+  }
+  .offline-bar .ob-dot {
+    margin-top: 5px;
+  }
+  .offline-bar .ob-text {
+    white-space: normal;
+  }
+  .offline-bar .ob-sep {
+    display: none;
+  }
+  .offline-bar .ob-when {
+    display: block;
   }
   .queued {
     padding-left: 0;

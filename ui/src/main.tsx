@@ -9,7 +9,7 @@ import { App } from './App.tsx';
 import { PairScreen } from './components/PairScreen.tsx';
 import { startLanguage } from './i18n/i18n.ts';
 import { applyMotionPref } from './motion/reduced.ts';
-import { announceFlushed, announceUpdate } from './offline/announce.ts';
+import { announceFlushed, announceUpdated } from './offline/announce.ts';
 import { startQueue } from './offline/queue-store.ts';
 import { startShell } from './offline/register.ts';
 // Every stylesheet, in the order of SPEC §11: the foundation's, then each slice's.
@@ -73,7 +73,6 @@ if (root) {
 // The installed app over HTTPS: opens without the PC, updates itself, sends what was captured
 // offline (offline/). Production builds only: the dev server has no /sw.js.
 if (!pairing && import.meta.env.PROD) {
-  void startShell();
+  void startShell(announceUpdated);
   startQueue(announceFlushed);
-  announceUpdate();
 }
