@@ -37,8 +37,21 @@ describe('initBoards', () => {
     expect(names(ctx)).toEqual([]);
   });
 
-  it('refuses a template it does not know with not_found', () => {
-    expect(() => initBoards(memoryContext(), 'nope')).toThrow(
+  it('makes no board from a template on a project that has boards of its own', () => {
+    const ctx = memoryContext();
+    initBoards(ctx);
+
+    expect(initBoards(ctx, 'product')).toEqual([]);
+    expect(initBoards(ctx, 'decisions')).toEqual([]);
+    expect(names(ctx)).toEqual(['Tareas live', 'Errores live']);
+  });
+
+  it('refuses a template it does not know with not_found, boards or not', () => {
+    const ctx = memoryContext();
+    expect(() => initBoards(ctx, 'nope')).toThrow(expect.objectContaining({ code: 'not_found' }));
+    initBoards(ctx);
+    expect(() => initBoards(ctx, 'nope')).toThrow(expect.objectContaining({ code: 'not_found' }));
+    expect(() => initBoards(ctx, 'repotasks')).toThrow(
       expect.objectContaining({ code: 'not_found' }),
     );
   });

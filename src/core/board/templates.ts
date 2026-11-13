@@ -789,6 +789,16 @@ export function listedTemplates(lang: Lang): TemplateView[] {
   ];
 }
 
+// The keys of what Studio's home offers, in its order: the one catalog the CLI takes and lists.
+export const LISTED_KEYS: readonly string[] = [
+  ...TEMPLATES.filter(({ hidden }) => !hidden).map(({ key }) => key),
+  ...TEMPLATE_SETS.map(({ key }) => key),
+];
+
+export function isListedKey(key: string): boolean {
+  return LISTED_KEYS.includes(key);
+}
+
 const BLANK = {
   item: w('Item', 'Ítem'),
   step: w('Do it', 'Hacerlo'),

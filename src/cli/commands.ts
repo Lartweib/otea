@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { renderUnicodeCompact } from 'uqr';
 import { draftToStartFrom, submitAgentDraft } from '../app/agent-draft.ts';
 import { type AgentsMdAction, connectAgent, writeAgentsMd } from '../app/agents.ts';
-import { addBoard } from '../app/boards.ts';
+import { addBoard, addBoardSet, type BoardRecord } from '../app/boards.ts';
 import { briefFor } from '../app/brief.ts';
 import {
   addCollection,
@@ -22,7 +22,7 @@ import { attachEvidence } from '../app/evidence.ts';
 import { checkGate, type GateCheck } from '../app/gates.ts';
 import { boardGuide, type Guide, guideIndex, hintFor } from '../app/guide.ts';
 import { forgetProjectPath, listProjects, relinkProjectPath, withRegistry } from '../app/home.ts';
-import { type InitBoard, initBoards } from '../app/init-boards.ts';
+import { hasOwnBoards, type InitBoard, initBoards, NO_BOARDS } from '../app/init-boards.ts';
 import {
   createItem,
   getItem,
@@ -73,6 +73,7 @@ import {
 import { validateProject } from '../app/validate.ts';
 import { watch } from '../app/watch.ts';
 import { fieldsByName, stateName, valueName } from '../core/board/reading.ts';
+import { isSetKey, LISTED_KEYS } from '../core/board/templates.ts';
 import { OteaError } from '../core/errors.ts';
 import { EVIDENCE_ROLES, type EvidenceRole, MAX_EVIDENCE_MB } from '../core/evidence.ts';
 import type { FieldValues } from '../core/fields.ts';
@@ -243,10 +244,13 @@ function boardsText(boards: readonly InitBoard[]): string {
   return `Made the boards ${boards.map(({ name }) => name).join(', ')}`;
 }
 
+// The templates the CLI takes, the same Studio's home offers, as its help lists them.
+const TEMPLATE_KEYS = LISTED_KEYS.join(', ');
+
 const init: Command = {
   name: 'init',
   summary:
-    'Create or reuse the project at the repository root: in the Otea home ($OTEA_HOME, default ~/.otea), or with --local in .otea at the root; --join <project> links the repo to a registered project instead (refused when a project in a folder above covers it, unless --here); on a project with no boards yet it makes Tareas and Errores, or with --template <key> the boards of that template (a set such as product or repos makes all of its boards; none makes no board); --icon gives the project an icon (without one the UI draws a monogram of its name); --agents-md also adds (or refreshes) a block in AGENTS.md telling agents to run "otea next" and "otea board"',
+    `Create or reuse the project at the repository root: in the Otea home ($OTEA_HOME, default ~/.otea), or with --local in .otea at the root; --join <project> links the repo to a registered project instead (refused when a project in a folder above covers it, unless --here); on a project with no boards of its own yet it makes Tareas and Errores, or with --template <key> the boards of that template (${TEMPLATE_KEYS}; a set such as repos or product makes all of its boards; none makes no board but Pedidos, the board for loose requests every project has); on a project that has boards it makes none; --icon gives the project an icon (without one the UI draws a monogram of its name); --agents-md also adds (or refreshes) a block in AGENTS.md telling agents to run "otea next" and "otea board"`,
   args: [],
   options: {
     'agents-md': { flag: true },
@@ -275,10 +279,12 @@ const init: Command = {
     const { root, dataDir: path, storage } = project;
     let made: InitBoard[] = [];
     let shown: ProjectView;
+    let kept = false;
     try {
       shown = icon === undefined ? projectView(project) : setProjectIcon(project, icon);
       // The repos at the project's folders are added now, before any clone of them is linked.
       if (target === undefined) {
+        kept = template !== undefined && template !== NO_BOARDS && hasOwnBoards(project);
         made = initBoards(project, template);
         listRepos(project);
       } else readReposAtFolder(project, root);
@@ -286,7 +292,15 @@ const init: Command = {
       project.db.close();
     }
     const data = { root, path, ...shown, storage, boards: made };
-    const lines = [path, ...(made.length > 0 ? [boardsText(made)] : [])];
+    const lines = [
+      path,
+      ...(made.length > 0 ? [boardsText(made)] : []),
+      ...(kept
+        ? [
+            `The project already has boards; add one with otea board add <name> --template ${template}`,
+          ]
+        : []),
+    ];
     if (!flag('agents-md')) return { data, text: lines.join('\n') };
     const agentsMd = writeAgentsMd(root);
     const text = [...lines, AGENTS_MD_TEXT[agentsMd.action](agentsMd.path)].join('\n');
@@ -675,15 +689,29 @@ function guideText(guide: Guide): string {
   return guide.text;
 }
 
+const boardName = (record: BoardRecord) => (record.live ?? record.draft)?.definition.name ?? '';
+
 const boardAdd: Command = {
   name: 'board add',
   summary:
-    "Make a board and publish it, from a template (bugs, assets, blog, tasks, research) or blank, in the project's language; --item names what each item is",
+    `Make a board and publish it, from a template (${TEMPLATE_KEYS}) or blank, in the project's language; --item names what each item is; a set such as repos or product makes all of its boards, the name and --item naming the first`,
   args: ['name'],
-  options: { template: {}, item: {} },
+  options: { template: { placeholder: 'key' }, item: {} },
   execute: ({ cwd, args: [name = ''], option }) => {
     const template = option('template');
     const item = option('item');
+    if (template !== undefined && isSetKey(template)) {
+      const boards = withProject(cwd, (project) =>
+        addBoardSet(project, {
+          set: template,
+          lang: PROJECT_LANG,
+          by: { kind: 'human', name: 'human' },
+          boards: [{ name, ...(item === undefined ? {} : { item }) }],
+        }),
+      );
+      const names = boards.map(({ record }) => `"${boardName(record)}"`).join(', ');
+      return { data: boards, text: `Published boards ${names} from template ${template}` };
+    }
     const added = withProject(cwd, (project) =>
       addBoard(project, {
         name,
@@ -754,15 +782,15 @@ const board: Command = {
         const guide = boardGuide(project, name);
         return { data: guide, text: guideText(guide) };
       }
-      const collections = guideIndex(project);
+      const boards = guideIndex(project);
       const index =
-        collections.length === 0
+        boards.length === 0
           ? 'No boards yet; a human makes one in Studio or with "otea board add <name>".'
           : [
               'Read the board you work in before acting:',
               indent(
                 columns(
-                  collections.map(({ name: each, board: id, command }) => [
+                  boards.map(({ name: each, board: id, command }) => [
                     each,
                     id === null ? 'draft' : 'board',
                     command,
@@ -770,7 +798,7 @@ const board: Command = {
                 ),
               ),
             ].join('\n');
-      return { data: { collections }, text: index };
+      return { data: { boards }, text: index };
     });
   },
 };

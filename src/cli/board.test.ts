@@ -3,6 +3,7 @@ import { getItem } from '../app/items.ts';
 import { itemNextText, liveBoardOf } from '../app/next.ts';
 import { openProject } from '../app/project.ts';
 import { boardText } from '../core/board/next.ts';
+import { listedTemplates } from '../core/board/templates.ts';
 import { type Cli, cliAt, tempGitRepo } from './testing.ts';
 
 // What agents read about a board before acting: `otea board`, and the hint of `otea show`.
@@ -70,9 +71,9 @@ describe('board', () => {
         '',
       ].join('\n'),
     );
-    const { collections } = await json('board');
+    const { boards } = await json('board');
     expect(
-      collections.map(({ name, board }: { name: string; board: string | null }) => [
+      boards.map(({ name, board }: { name: string; board: string | null }) => [
         name,
         board === null,
       ]),
@@ -87,7 +88,7 @@ describe('board', () => {
   it('quotes a board name with spaces in the command', async () => {
     await otea('collection', 'add', 'my work');
 
-    expect((await json('board')).collections[1].command).toBe('otea board "my work"');
+    expect((await json('board')).boards[1].command).toBe('otea board "my work"');
   });
 
   it('fails with not_found for an unknown collection', async () => {
@@ -136,8 +137,8 @@ describe('board add', () => {
     expect(out).toMatch(
       /^Published board "Bugs del juego" v1 from template bugs \(ids [A-Z0-9]+-<n>\)\n$/,
     );
-    const { collections } = JSON.parse((await otea('board', '--json')).out);
-    expect(collections.map(({ name }: { name: string }) => name)).toContain('Bugs del juego');
+    const { boards } = JSON.parse((await otea('board', '--json')).out);
+    expect(boards.map(({ name }: { name: string }) => name)).toContain('Bugs del juego');
     expect((await otea('board', 'Bugs del juego')).out).toContain('Bugs del juego: steps for each');
   });
 
@@ -155,6 +156,27 @@ describe('board add', () => {
 
     expect((await otea('board', 'add', 'recados')).code).toBe(5);
     expect((await otea('board', 'add', 'Otro', '--template', 'nope')).code).toBe(3);
+  });
+
+  it('makes every board of a template set, the name naming the first', async () => {
+    const { code, out } = await otea('board', 'add', 'Cambios web', '--template', 'repos');
+
+    expect(code).toBe(0);
+    expect(out).toBe('Published boards "Cambios web", "Tareas de repo" from template repos\n');
+    const { boards } = JSON.parse((await otea('board', '--json')).out);
+    const names = boards.map(({ name }: { name: string }) => name);
+    expect(names).toEqual(expect.arrayContaining(['Cambios web', 'Tareas de repo']));
+  });
+
+  it('refuses a template that only comes as part of a set, as Studio never offers it', async () => {
+    expect((await otea('board', 'add', 'Sueltos', '--template', 'repotasks')).code).toBe(3);
+  });
+
+  it('lists in its help the templates Studio offers, sets too', async () => {
+    const { out } = await otea('board', 'add', '--help');
+
+    const keys = listedTemplates('en').map(({ key }) => key);
+    expect(out).toContain(`(${keys.join(', ')})`);
   });
 
   it('names a related item’s step on its own board in otea show', async () => {

@@ -261,7 +261,8 @@ export function insertNewBoard(
     const names = { name, ...(input.item?.trim() ? { item: input.item.trim() } : {}) };
     let definition: BoardDefinition;
     if (input.template !== undefined) {
-      const template = TEMPLATES.find(({ key }) => key === input.template);
+      // A board that only comes in a set is never offered on its own.
+      const template = TEMPLATES.find(({ key, hidden }) => key === input.template && !hidden);
       if (!template) throw new OteaError('not_found', `There is no template ${input.template}`);
       definition = instantiate(template, input.lang, names, ids);
     } else {
@@ -902,4 +903,19 @@ export function addBoard(
     discardDraft(ctx, record.id, now);
     throw error;
   }
+}
+
+// Creates every board of a set and publishes them at once, a part board before the board that
+// divides into it: what the home does, for the CLI and otea init.
+export function addBoardSet(
+  ctx: Context,
+  input: CreateSetInput & { by: Actor },
+  now: Clock = systemClock,
+): PublishResult[] {
+  const { by, ...create } = input;
+  const records = createBoardSet(ctx, create, now);
+  const published = [...records]
+    .reverse()
+    .map((record) => publishBoard(ctx, record.id, { moves: {}, by }, now));
+  return published.reverse();
 }
