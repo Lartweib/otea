@@ -27,11 +27,14 @@
   background: var(--you);
   color: var(--on-you);
 }
-.btn.primary:hover {
+.btn.primary:hover:not(:disabled) {
   background: color-mix(in oklch, var(--you) 88%, var(--ink));
 }
+/* disabled: off the accent, a quiet well with muted words, so it never reads as the action */
 .btn.primary:disabled {
-  opacity: 0.45;
+  background: var(--well);
+  color: var(--ink-3);
+  border-color: var(--rule-2);
   cursor: default;
   transform: none;
 }
