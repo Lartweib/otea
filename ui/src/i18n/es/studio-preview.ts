@@ -387,6 +387,7 @@ export const studioPreview = {
   'bs.preview.publish.seeBoard': 'Ver el tablero',
   'bs.preview.publish.closeRequest': 'Cerrar {id}, «{title}»: publicarlo es aceptar el esbozo',
   'bs.preview.publish.toast.requestClosed': '{id} queda cerrado.',
+  'bs.preview.publish.toast.requestReopened': '{id} vuelve a estar abierto.',
   'bs.preview.publish.toast.first':
     '{name} ya está en marcha (v1). Los agentes pueden tomar ítems en {step}.',
   'bs.preview.publish.toast.next':

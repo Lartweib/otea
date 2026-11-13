@@ -17,6 +17,8 @@ import {
   listBoardSummaries,
   publishBoard,
   publishPlan,
+  restoreBoard,
+  saveDraft,
 } from './boards.ts';
 import { BOARD_JSON_SCHEMA } from './draft-request.ts';
 import { getItem, showItem } from './items.ts';
@@ -144,6 +146,66 @@ describe('an agent drafting a board', () => {
     expect(
       showItem(ctx, item, { actor: kiln, channel: 'cli' }, now).board?.request,
     ).toBeUndefined();
+  });
+
+  it('reopens the Pedido it closed when the publish is undone, its draft back on it', () => {
+    const ctx = project();
+    const { board, item } = requestAgentDraft(
+      ctx,
+      { name: 'Criaturas', need: 'x', agent: 'kiln', lang: 'es' },
+      now,
+    );
+    const draft = getBoardRecord(ctx, board.id).draft?.definition;
+    if (!draft) throw new Error('no draft');
+    submitAgentDraft(
+      ctx,
+      { id: item, text: JSON.stringify(agentFile(draft)), actor: kiln, channel: 'cli' },
+      now,
+    );
+    const before = getItem(ctx, item, now).state;
+    publishBoard(ctx, board.id, { moves: {}, by: you, closeRequest: true }, now);
+
+    restoreBoard(ctx, board.id, { version: null, by: you }, now);
+
+    const reopened = getItem(ctx, item, now);
+    expect(reopened.state).toBe(before);
+    expect(reopened.events.at(-1)).toMatchObject({
+      type: 'transitioned',
+      actor: you,
+      data: { from: 'done', to: before },
+    });
+    expect(getBoardRecord(ctx, board.id).draft).toMatchObject({ requestItem: item });
+    expect(showItem(ctx, item, { actor: kiln, channel: 'cli' }, now).board?.request).toMatchObject({
+      board: board.id,
+      arrived: true,
+    });
+  });
+
+  it('leaves the Pedido closed when a later publish, which did not close it, is undone', () => {
+    const ctx = project();
+    const { board, item } = requestAgentDraft(
+      ctx,
+      { name: 'Criaturas', need: 'x', agent: null, lang: 'es' },
+      now,
+    );
+    const draft = getBoardRecord(ctx, board.id).draft?.definition;
+    if (!draft) throw new Error('no draft');
+    submitAgentDraft(
+      ctx,
+      { id: item, text: JSON.stringify(agentFile(draft)), actor: kiln, channel: 'cli' },
+      now,
+    );
+    publishBoard(ctx, board.id, { moves: {}, by: you, closeRequest: true }, now);
+    const live = getBoardRecord(ctx, board.id).live?.definition;
+    if (!live) throw new Error('not published');
+    saveDraft(ctx, board.id, { definition: { ...live, icon: 'star' }, baseVersion: 1 }, now);
+    publishBoard(ctx, board.id, { moves: {}, by: you }, now);
+    const events = getItem(ctx, item, now).events.length;
+
+    restoreBoard(ctx, board.id, { version: 1, by: you }, now);
+
+    expect(getItem(ctx, item, now).state).toBe('done');
+    expect(getItem(ctx, item, now).events).toHaveLength(events);
   });
 
   it('leaves the Pedido open when the publish does not close it', () => {

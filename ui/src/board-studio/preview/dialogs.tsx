@@ -159,10 +159,19 @@ function SinglePublishDialog({
           restoreBoard(id, ready.from)
             .then((record) => {
               onPublished(record);
-              plainToast(
+              const undone =
                 ready.from === null
                   ? tx('bs.preview.publish.toast.undoneFirst', { name: <b>{name}</b> })
-                  : t('bs.preview.publish.toast.undone', { v: ready.from }),
+                  : t('bs.preview.publish.toast.undone', { v: ready.from });
+              // The Pedido the publish closed is open again, its draft back on it.
+              const pedido = closing ? record.draft?.requestItem : null;
+              plainToast(
+                <>
+                  {undone}{' '}
+                  {pedido
+                    ? tx('bs.preview.publish.toast.requestReopened', { id: <b>{pedido}</b> })
+                    : null}
+                </>,
               );
             })
             .catch((e: unknown) => plainToast(failedText(message(e))));
