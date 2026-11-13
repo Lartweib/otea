@@ -1,42 +1,9 @@
-/* The list when there is nothing (yet) to list, in the empty-big grammar (mock:251-254): first run,
-   an empty board, nothing on your turn, no agent yet. The lanes are drawn and waiting at the left. */
+/* A board's list when it has nothing to list, in the empty-big grammar (mock:251-254): an italic
+   serif paragraph, its commands in mono, the ways out as kit buttons. */
 
-.empty-big.empty-first,
-.empty-big.empty-collection,
-.empty-big.empty-agent,
-.empty-big.empty-zero {
-  position: relative;
-  display: grid;
-  grid-template-columns: 56px minmax(0, 1fr);
-  column-gap: 16px;
-  max-width: 760px;
-  padding: 18px 0 30px;
-}
-.empty-big.empty-zero,
-.empty-big.empty-agent {
-  grid-template-columns: minmax(0, 1fr);
-  padding-left: var(--pl, 72px);
-}
 /* A board that is not there: under its head, on the head's left edge. */
 .empty-big.empty-missing {
   padding: 0 0 30px var(--pl, 72px);
-}
-.empty-big.empty-first:not([data-route]) {
-  grid-template-columns: minmax(0, 1fr);
-  padding-left: var(--pl, 72px);
-}
-.empty-copy {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 10px;
-  min-width: 0;
-}
-.empty-title {
-  font: 430 26px / 1.15 var(--serif);
-  font-variation-settings: "opsz" 36;
-  letter-spacing: -0.015em;
-  margin: 0;
 }
 .empty-big p {
   font: 400 italic 17px / 1.45 var(--serif);
@@ -52,152 +19,10 @@
   padding: 2px 5px;
   border-radius: 4px;
 }
-.empty-big .empty-step {
-  font: 400 15px / 1.4 var(--serif);
-  font-style: normal;
-  color: var(--ink);
-  margin-top: 6px;
-}
-.empty-big .empty-note,
-.empty-big p.empty-note {
-  font: 400 italic 14px / 1.4 var(--serif);
-  color: var(--ink-3);
-}
 .empty-big .acts2 {
   display: flex;
   align-items: center;
   gap: 12px;
   margin-top: 8px;
   flex-wrap: wrap;
-}
-.empty-presets {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  border: 0;
-  padding: 0;
-  margin: 4px 0;
-}
-.empty-presets .chipb {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 8px;
-}
-.empty-presets .chipb .mono {
-  font: 500 12px / 1 var(--mono);
-}
-.empty-presets .chipb small {
-  font: 400 italic 13px / 1 var(--serif);
-  color: var(--ink-3);
-}
-
-/* the lanes drawn, waiting; a preset's route down them */
-.eln {
-  stroke: var(--lane);
-  stroke-width: 1;
-  fill: none;
-}
-.elny {
-  stroke: var(--you);
-  stroke-width: 1;
-  fill: none;
-}
-.empty-route {
-  position: relative;
-}
-.empty-route .lane-head {
-  position: static;
-  display: block;
-  height: 16px;
-  margin-bottom: 6px;
-}
-.empty-route-body {
-  position: relative;
-  display: grid;
-  grid-template-columns: 56px auto;
-}
-.empty-route-lanes {
-  overflow: visible;
-}
-.empty-route-lanes .ko {
-  fill: var(--ground);
-}
-.empty-route-path {
-  fill: none;
-  stroke: var(--ink);
-  stroke-width: 1.5;
-  stroke-linecap: round;
-}
-.empty-route-names {
-  list-style: none;
-  margin: 0;
-  padding: 0 0 0 8px;
-}
-.empty-route-names li {
-  display: flex;
-  align-items: center;
-  font: 400 11.5px / 1 var(--mono);
-  color: var(--ink-3);
-}
-.empty-ghosts {
-  position: relative;
-  min-height: 168px;
-}
-.empty-ghost {
-  position: absolute;
-  left: 56px;
-  width: 220px;
-  height: 36px;
-  border-radius: 7px;
-  background:
-    linear-gradient(var(--rule), var(--rule)) 0 8px / 70% 9px no-repeat,
-    linear-gradient(var(--rule), var(--rule)) 0 24px / 36% 6px no-repeat;
-  opacity: 0.7;
-}
-.empty-ghost-lanes {
-  position: absolute;
-  left: 0;
-  top: 0;
-}
-.empty-steps {
-  display: grid;
-  grid-template-columns: 56px minmax(0, 1fr);
-  column-gap: 16px;
-  margin: 16px 0 0 calc(-1 * var(--pl, 72px));
-}
-.empty-steps-lanes {
-  overflow: visible;
-}
-.empty-steps-lanes .ko {
-  fill: var(--ground);
-}
-.empty-step-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-.empty-step-list li {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 6px;
-}
-.empty-step-title {
-  font: 430 17px / 1.3 var(--serif);
-  color: var(--ink);
-}
-.empty-cmd {
-  margin: 2px 0;
-}
-
-@media (max-width: 720px) {
-  .empty-big.empty-first,
-  .empty-big.empty-collection {
-    grid-template-columns: minmax(0, 1fr);
-    padding-left: 0;
-  }
-  .empty-route,
-  .empty-ghosts {
-    display: none;
-  }
 }

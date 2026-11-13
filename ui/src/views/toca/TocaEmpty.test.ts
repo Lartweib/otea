@@ -32,9 +32,10 @@ const render = (app: App, node: ReactNode = createElement(TocaView)) =>
   renderToStaticMarkup(createElement(Provider, { value: app }, node));
 
 describe('Te toca with nothing to list yet', () => {
-  it('offers the first board when the project has none', () => {
+  // The project page (EmptyProject) loads its settings first, so the static render holds neither.
+  it('lists no lanes when no board has an item, and offers no preset to start from', () => {
     const html = render(fake({ all: [], collections: [] }));
-    expect(html).toContain('empty-first');
+    expect(html).not.toContain('empty-first');
     expect(html).not.toContain('class="lanes');
   });
 
@@ -42,6 +43,6 @@ describe('Te toca with nothing to list yet', () => {
     const html = render(
       fake({ all: [item({ id: 'ERR-1' })], collections: [errores as unknown as CollectionView] }),
     );
-    expect(html).not.toContain('empty-first');
+    expect(html).toContain('class="lanes');
   });
 });
