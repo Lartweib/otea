@@ -126,6 +126,15 @@ export function listRepos(project: Project, env: Env = process.env): Repo[] {
   return selectRepos(project.db);
 }
 
+// The checkouts of the repo the project names `name` (in any case) in the project's folders (the
+// folders linked to it, or the repos below them); none for a name the project does not know.
+export function checkoutsOf(project: Project, name: string, env: Env = process.env): string[] {
+  const repo = listRepos(project, env).find((each) => sameRepo(each.name, name));
+  if (!repo) return [];
+  const folders = projectFolders(project, env).flatMap(reposAt);
+  return [...new Set(folders)].filter((folder) => identityAt(folder) === repo.identity);
+}
+
 // Registers the repos at a folder just linked to the project (the folder, or the repos below it),
 // after the first read of the others, so a clone never takes the name of the repo it is a clone of.
 export function readReposAtFolder(project: Project, path: string, env: Env = process.env): Repo[] {

@@ -8,6 +8,7 @@ import { DEFAULT_TYPE } from '../core/preset.ts';
 import { describeRelation, type Relation, type RelationView } from '../core/relations.ts';
 import { timeText } from '../core/time.ts';
 import type { EvidenceRecord } from '../store/queries.ts';
+import type { GitHookStatus } from './hooks.ts';
 
 type Event = ItemView['events'][number];
 
@@ -232,6 +233,19 @@ function gatesLine(gates: Record<string, boolean>): string {
   return `Gates: ${verdicts.join(', ')}`;
 }
 
+// Whether the checkouts of the item's repo have Otea's pre-push hook (show, on a repo task).
+export function gitHookLine({ repo, installed, missing }: GitHookStatus): string {
+  if (installed.length === 0 && missing.length === 0)
+    return `Git hook: no checkout of ${repo} is known to the project (otea repos add)`;
+  const said = [
+    ...(installed.length > 0 ? [`installed in ${installed.join(', ')}`] : []),
+    ...(missing.length > 0
+      ? [`not installed in ${missing.join(', ')}: run otea hook install --git there`]
+      : []),
+  ];
+  return `Git hook: ${said.join('; ')}`;
+}
+
 function createdLine({ createdBy, createdAt, events }: ItemView): string {
   const channel = events.find(({ type }) => type === 'created')?.data.channel;
   const via = typeof channel === 'string' ? ` via ${channel}` : '';
@@ -241,7 +255,7 @@ function createdLine({ createdBy, createdAt, events }: ItemView): string {
 // With the item type's layout, evidence is grouped by the module that draws it.
 // `named`: the item is on a board and reads by names (states, fields and moves already are).
 export function formatItemWithEvents(
-  item: ItemView & { hint?: string },
+  item: ItemView & { hint?: string; gitHook?: GitHookStatus },
   layout?: Layout,
   typed: Typed = notImplicit,
   named = false,
@@ -268,6 +282,7 @@ export function formatItemWithEvents(
     ...(named ? [] : [movesLine('move', item.transitions)]),
     ...(named && item.relayable.length === 0 ? [] : [movesLine('relay', item.relayable)]),
     ...(item.gates ? [gatesLine(item.gates)] : []),
+    ...(item.gitHook ? [gitHookLine(item.gitHook)] : []),
     '',
     ...relationLines(item),
     ...evidenceLines(item.evidence, layout, named),
