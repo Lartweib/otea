@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { ago, NOW, officialType } from '../../derive/fixtures.ts';
+import { setLanguage } from '../../i18n/i18n.ts';
 import type { ItemEvent } from '../../types.ts';
 import { historyOf } from './history.ts';
 
@@ -155,5 +156,31 @@ describe('a board reading in the history', () => {
       'Created it, before its board',
     ]);
     expect(lines[2]?.quote).toBe('¿Qué versión?');
+  });
+});
+
+describe('the history of a field change, in the language on screen', () => {
+  afterEach(() => setLanguage('en'));
+
+  it('names the field and its old value in the preset’s words, never their keys', () => {
+    setLanguage('es');
+    const [line] = historyOf(
+      [ev('updated', you, { changes: { severity: { from: 'medium', to: 'high' } } })],
+      bug,
+      word,
+      NOW,
+    );
+    expect(line?.text).toBe('Actualizó Severidad (antes: media)');
+  });
+
+  it('says an evidence role in words', () => {
+    setLanguage('es');
+    const [line] = historyOf(
+      [ev('evidence_added', mender, { filename: 'a.png', role: 'before' })],
+      bug,
+      word,
+      NOW,
+    );
+    expect(line?.text).not.toContain('before');
   });
 });
