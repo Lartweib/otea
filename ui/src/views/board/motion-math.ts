@@ -113,6 +113,37 @@ export function morphEnds(restingBefore: boolean, restingNow: boolean): boolean 
   return restingBefore && restingNow;
 }
 
+// ---- Lista ⇄ Tabla: the same row on both sides (sweep #23, #24) ----
+
+export type Pt = { x: number; y: number };
+
+// One copy, the destination's own, travels with its first glyph on the line from where the old
+// glyph stood (from) to where it lands (to), at the old size (s0) shrinking to its own; o is that
+// glyph's place in the copy's box, whose transform origin is its top left. No second copy crosses
+// it, so its text never shows twice.
+export function travelFrame(
+  from: Pt,
+  to: Pt,
+  o: Pt,
+  s0: number,
+  u: number,
+): { dx: number; dy: number; s: number } {
+  if (u >= 1) return { dx: 0, dy: 0, s: 1 };
+  const s = lerp(s0, 1, u);
+  return {
+    dx: lerp(from.x, to.x, u) - to.x + (1 - s) * o.x,
+    dy: lerp(from.y, to.y, u) - to.y + (1 - s) * o.y,
+    s,
+  };
+}
+
+// The node that travels is the one the destination draws, so it lands as itself; toward a card the
+// old node travels, gathering into the card's edge.
+export const nodeFrom = (_aEdge: boolean, bEdge: boolean): 'a' | 'b' => (bEdge ? 'a' : 'b');
+
+// What only the destination's row has comes in as the row arrives, on the row's own clock.
+export const rowResolve = (u: number): number => sstep(clamp((u - 0.4) / 0.6));
+
 // Only what is within the viewport and 160 px around it travels.
 export function near(
   r: { y: number; h: number },

@@ -13,9 +13,12 @@ import {
   morphDelay,
   morphEnds,
   near,
+  nodeFrom,
   plateOpacity,
   revealAt,
+  rowResolve,
   titleFrame,
+  travelFrame,
   treeSpan,
   treeStepSpan,
   whoFrame,
@@ -181,5 +184,47 @@ describe('the board column glides with the morph', () => {
 
   it('lands within the shortest morph', () => {
     expect(GLIDE_T).toBeLessThanOrEqual(520);
+  });
+});
+
+// Lista ⇄ Tabla (sweep #23, #24): a row is the same row on both sides, so it moves as one piece.
+describe('a row that is the same row on both sides', () => {
+  const from = { x: 373, y: 391.7 };
+  const to = { x: 473, y: 399.9 };
+  const o = { x: 0, y: 11 };
+  // where the copy's first glyph is drawn: its box, moved, plus its glyph offset at its scale
+  const glyph = (f: { dx: number; dy: number; s: number }) => ({
+    x: to.x - o.x + f.dx + f.s * o.x,
+    y: to.y - o.y + f.dy + f.s * o.y,
+  });
+
+  it('starts its one copy with its glyphs where the old ones stood, at their size', () => {
+    const f = travelFrame(from, to, o, 17.5 / 15.5, 0);
+    expect(f.s).toBeCloseTo(17.5 / 15.5);
+    expect(glyph(f).x).toBeCloseTo(from.x);
+    expect(glyph(f).y).toBeCloseTo(from.y);
+  });
+
+  it('moves its glyphs on a straight line, in step with the clock', () => {
+    const f = travelFrame(from, to, o, 1.2, 0.5);
+    expect(glyph(f).x).toBeCloseTo(423);
+    expect(glyph(f).y).toBeCloseTo(395.8);
+  });
+
+  it('ends where the destination draws it, with nothing left to write', () => {
+    expect(travelFrame(from, to, o, 1.2, 1)).toEqual({ dx: 0, dy: 0, s: 1 });
+  });
+
+  it('travels the node the destination draws, unless the destination is a card edge', () => {
+    expect(nodeFrom(false, false)).toBe('b');
+    expect(nodeFrom(true, false)).toBe('b');
+    expect(nodeFrom(false, true)).toBe('a');
+  });
+
+  it('brings in the rest of the row as the row arrives, not ahead of it', () => {
+    expect(rowResolve(0)).toBe(0);
+    expect(rowResolve(0.4)).toBe(0);
+    expect(rowResolve(0.75)).toBeGreaterThan(0.3);
+    expect(rowResolve(1)).toBe(1);
   });
 });

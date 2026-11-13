@@ -44,7 +44,7 @@ import {
   stepsStrip,
   valueText,
 } from './model.ts';
-import { columnRects, type MorphJob, morph, penFade } from './morph-run.ts';
+import { columnRects, type MorphJob, morph } from './morph-run.ts';
 import { Pasos } from './Pasos.tsx';
 import { listaBlocks, type RowCtx, tablaBlocks } from './rows.tsx';
 import {
@@ -426,7 +426,6 @@ function Board({ board }: { board: string }) {
       setMorphing(null);
       return;
     }
-    if (selected) penFade(false);
     job.current = morph(el, A, B, p.from, p.to, onDone(p.from), p.w || undefined, p.before);
   });
   // A morph still running when the board goes ends with it, and touches nothing after; it reads
@@ -449,10 +448,7 @@ function Board({ board }: { board: string }) {
       if (side === 0) setMode(from);
     });
     if (viewRef.current) redrawLists(viewRef.current);
-    if (selectedNow.current) {
-      penFade(true);
-      moveSplit();
-    }
+    if (selectedNow.current) moveSplit();
   };
 
   const modeEl = (m: BoardMode, ghost: boolean): ReactNode => {

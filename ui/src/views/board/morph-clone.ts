@@ -101,6 +101,11 @@ function firstLine(el: Element): DOMRect | null {
   return r ?? null;
 }
 
+// Where an element's first glyph is drawn: its first line box, or its own box if it has no text.
+export function glyphOf(el: Element): DOMRect {
+  return firstLine(el) ?? el.getBoundingClientRect();
+}
+
 function contentRight(el: HTMLElement): number {
   let box: HTMLElement | null = el.parentElement;
   while (box && INLINE.has(getComputedStyle(box).display)) box = box.parentElement;
