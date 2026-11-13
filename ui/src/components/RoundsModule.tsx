@@ -4,6 +4,7 @@ import { feedbackOf, frameLabel, toggleMark, verdictMoves } from '../compare.ts'
 import { momentLabel } from '../format.ts';
 import { t } from '../i18n/i18n.ts';
 import { AgentMark, Button, NodeMark } from '../kit/index.ts';
+import { stateWord } from '../preset-words.ts';
 import { type Round, roundFiles, roundsOf } from '../rounds.ts';
 import type { Evidence, ItemView, LayoutEntry, TypeView } from '../types.ts';
 import { CompareRounds } from './CompareRounds.tsx';
@@ -14,9 +15,14 @@ const STEP = 210;
 const AG = 18;
 const YOU = 54;
 
+// A state as the preset names it in the language on screen.
+type StateName = (state: string) => string;
+
 // The item's own path between the lanes: down to your lane at the end of each round, back up with
-// each verdict, into the trunk once it closes.
-function Rail({ rounds, closed }: { rounds: Round[]; closed: boolean }) {
+// each verdict, into the trunk once it closes. Under each node, its round on three short lines (the
+// round, when it was handed in, the verdict), each narrower than the gap between nodes so labels
+// never meet; the whole label is its title.
+function Rail({ rounds, closed, name }: { rounds: Round[]; closed: boolean; name: StateName }) {
   const width = Math.max(rounds.length * STEP + 64, 320);
   const xs = rounds.map((_, index) => 64 + index * STEP + STEP / 2 - 40);
   let d = `M0 ${AG}`;
@@ -73,29 +79,36 @@ function Rail({ rounds, closed }: { rounds: Round[]; closed: boolean }) {
       <span className="rd-lane" data-lane="you">
         {t('list.laneYou')}
       </span>
-      {rounds.map((round, index) => (
-        <span
-          key={round.n}
-          className="rd-label"
-          data-now={index === rounds.length - 1 || undefined}
-          style={{ left: xs[index] }}
-        >
-          <b>{t('rounds.round', { n: round.n })}</b>
-          <span className="t-cap">
-            {momentLabel(round.endedAt, Date.now())} · {verdictWord(round)}
+      {rounds.map((round, index) => {
+        const lines = [
+          t('rounds.round', { n: round.n }),
+          momentLabel(round.endedAt, Date.now()),
+          verdictWord(round, name),
+        ];
+        return (
+          <span
+            key={round.n}
+            className="rd-label"
+            data-now={index === rounds.length - 1 || undefined}
+            style={{ left: xs[index], maxWidth: STEP - 24 }}
+            title={lines.join(' · ')}
+          >
+            <b>{lines[0]}</b>
+            <span className="t-cap rd-line">{lines[1]}</span>
+            <span className="t-cap rd-line">{lines[2]}</span>
           </span>
-        </span>
-      ))}
+        );
+      })}
     </div>
   );
 }
 
-function verdictWord(round: Round): string {
+function verdictWord(round: Round, name: StateName): string {
   const { verdict } = round;
   if (!verdict) return t('rounds.yourVerdict');
   if (verdict.kind === 'sent-back')
     return t('rounds.sentBackAt', { at: momentLabel(verdict.at, Date.now()) });
-  return t('rounds.closedAs', { state: verdict.to });
+  return t('rounds.closedAs', { state: name(verdict.to) });
 }
 
 function Media({ entry }: { entry: Evidence }) {
@@ -162,7 +175,7 @@ function Note({ round }: { round: Round }) {
   );
 }
 
-function VerdictLine({ round }: { round: Round }) {
+function VerdictLine({ round, name }: { round: Round; name: StateName }) {
   const { verdict } = round;
   if (!verdict) return <p className="rd-verdict-line t-small">{t('rounds.waiting')}</p>;
   const by = verdict.relayedBy ? t('rounds.relayedBy', { agent: verdict.relayedBy }) : '';
@@ -170,7 +183,7 @@ function VerdictLine({ round }: { round: Round }) {
     verdict.kind === 'sent-back'
       ? t('rounds.sentBack', { at: momentLabel(verdict.at, Date.now()) })
       : t('rounds.closedIn', {
-          state: verdict.to,
+          state: name(verdict.to),
           n: round.n,
           at: momentLabel(verdict.at, Date.now()),
         });
@@ -188,7 +201,7 @@ function VerdictLine({ round }: { round: Round }) {
   );
 }
 
-function Earlier({ rounds }: { rounds: Round[] }): ReactNode {
+function Earlier({ rounds, name }: { rounds: Round[]; name: StateName }): ReactNode {
   if (rounds.length === 0) return null;
   return (
     <details className="rd-earlier">
@@ -204,7 +217,7 @@ function Earlier({ rounds }: { rounds: Round[] }): ReactNode {
               </span>
             </span>
             <Note round={round} />
-            <VerdictLine round={round} />
+            <VerdictLine round={round} name={name} />
           </li>
         ))}
       </ol>
@@ -305,6 +318,7 @@ export function RoundsModule({ item, type, entry, canWrite, slot, quiet }: Round
   const rounds = roundsOf(item.events, item.evidence, type.states);
   const modules = type.layout.evidence.flatMap(({ id }) => (id === undefined ? [] : [id]));
   const title = entry.label ?? t('rounds.title');
+  const name: StateName = (state) => stateWord(type, state);
   const latest = rounds.at(-1);
   if (!latest) {
     if (quiet) return null;
@@ -324,7 +338,7 @@ export function RoundsModule({ item, type, entry, canWrite, slot, quiet }: Round
         <span className="t-cap">{t('rounds.count', { count: rounds.length })}</span>
       </div>
       <div className="rd-scroll">
-        <Rail rounds={rounds} closed={closed} />
+        <Rail rounds={rounds} closed={closed} name={name} />
       </div>
       <article className="rd-current">
         <header className="rd-current-head">
@@ -352,10 +366,10 @@ export function RoundsModule({ item, type, entry, canWrite, slot, quiet }: Round
             onUnmark={(frame) => setMarks((current) => toggleMark(current, frame))}
           />
         ) : (
-          <VerdictLine round={latest} />
+          <VerdictLine round={latest} name={name} />
         )}
       </article>
-      <Earlier rounds={rounds.slice(0, -1)} />
+      <Earlier rounds={rounds.slice(0, -1)} name={name} />
     </section>
   );
 }
