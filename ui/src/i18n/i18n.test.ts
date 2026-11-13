@@ -48,6 +48,69 @@ describe('the catalogs', () => {
       if (typeof target !== 'string') expect(target.other, key).toBeDefined();
     }
   });
+
+  // Words both languages say alike: names, units, codes, holes alone. Any other Spanish message
+  // equal to its English one was left untranslated.
+  const SAID_ALIKE = new Set([
+    'app.studio',
+    'nav.studio',
+    'catalog.kicker',
+    'bs.home.title',
+    'bs.editor.kicker.studio',
+    'when.hoursMinutes',
+    'when.hours',
+    'when.minutes',
+    'toca.axis.from',
+    'toca.axis.mid',
+    'evidence.seconds',
+    'lanes.agents',
+    'list.laneAgents',
+    'bs.editor.lane.ag',
+    'shell.cli',
+    'prefs.auto',
+    'prefs.english',
+    'prefs.spanish',
+    'column.id',
+    'bulk.stateCount',
+    'bulk.whoOne',
+    'bulk.blockedOne',
+    'bulk.hiddenMoves',
+    'bulk.landed',
+    'relations.labelled',
+    'rounds.closedAs',
+    'evidence.alt',
+    'sheet.typeBoard',
+    'evidence.diff',
+    'diagram.version',
+    'diagram.v',
+    'bs.board.version',
+    'brief.markdown',
+    'pair.token',
+    'catalog.local',
+    'bs.kind.audio',
+    'bs.kind.log',
+    'bs.no',
+    'bs.editor.part.no_short',
+    'bs.preview.branch.sample',
+    'bs.preview.branch.repo',
+  ]);
+
+  it('leave no English message untranslated in Spanish', () => {
+    const same = Object.keys(en).filter(
+      (key) =>
+        !SAID_ALIKE.has(key) &&
+        JSON.stringify(en[key as keyof typeof en]) === JSON.stringify(es[key as keyof typeof en]),
+    );
+    expect(same).toEqual([]);
+  });
+
+  it('let no Spanish into the English catalog', () => {
+    const spanish = Object.entries(en)
+      .filter(([key]) => key !== 'prefs.spanish')
+      .filter(([, message]) => /[áéíóúñ¿¡«»]/i.test(forms(message).join(' ')))
+      .map(([key]) => key);
+    expect(spanish).toEqual([]);
+  });
 });
 
 describe('t', () => {
