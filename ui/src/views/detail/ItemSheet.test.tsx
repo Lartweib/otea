@@ -149,7 +149,9 @@ describe('the item sheet', () => {
         ev('released', you, { holder: 'kiln', ...data }, 1),
       ],
     });
-    expect(render(stuck({ cause: 'reassign', next: 'quill' }))).toContain('Espera a <b>quill</b>.');
+    expect(render(stuck({ cause: 'reassign', next: 'quill' }))).toContain(
+      'Se lo dejaste a <b>quill</b>.',
+    );
     expect(render(stuck({ cause: 'restart' }))).toContain('Espera a un agente.');
   });
 

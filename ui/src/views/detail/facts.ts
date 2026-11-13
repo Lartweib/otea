@@ -126,6 +126,31 @@ export function factsOf(item: ItemView, type: TypeView | undefined, _now: number
   };
 }
 
+// On a published board the step engine says the round, and whose turn it is: your own step, or,
+// on the agent's turn, the holder (live or run out), else the agent you left a stuck item for,
+// else the step's own agent (none when any agent may take it).
+export function boardFactsOf(
+  read: Facts,
+  item: Pick<ItemView, 'turn' | 'lease' | 'expiredLease'>,
+  board: { agent: string | null; round: number },
+  own: boolean,
+): Facts {
+  const round = board.round > 0 ? board.round : read.round;
+  if (own) return { ...read, round, own: true, question: false };
+  if (item.turn !== 'agent') return { ...read, round };
+  const holder = item.lease?.holder ?? item.expiredLease?.holder;
+  if (holder) return { ...read, round, agent: holder, left: false };
+  return read.left ? { ...read, round } : { ...read, round, agent: board.agent, left: false };
+}
+
+// Whom the standfirst names: the agent that handed it to you, else the agent that has it. On a
+// board's agent turn (`boardAgentTurn`) the agent that handed it on is done with it; the step waits
+// for its holder, its own agent, or the one you left it for (boardFactsOf).
+export function standAgentOf(facts: Facts, boardAgentTurn: boolean): string | null {
+  if (facts.left || boardAgentTurn) return facts.agent;
+  return facts.handed?.agent ?? facts.agent;
+}
+
 export type Stand = { key: MessageKey; agent?: string; round?: number; time?: string };
 
 // The standfirst under the headline: who hands it to you, asks, has gone quiet; your step; done.
@@ -136,6 +161,8 @@ export function standOf(o: {
   question: boolean;
   own: boolean;
   quiet: string | null;
+  // You left the stuck item for `agent` (Reasignar) and no agent has taken it since.
+  left?: boolean;
 }): Stand {
   const a = o.agent ? { agent: o.agent } : {};
   const r = o.round > 1;
@@ -154,6 +181,7 @@ export function standOf(o: {
         : { key: 'sheet.stand.stuckNow', ...a };
     case 'queued':
       if (!o.agent) return { key: 'sheet.stand.waitsAgent' };
+      if (o.left) return { key: 'sheet.stand.left', ...a };
       return r
         ? { key: 'sheet.stand.waitsRound', ...a, round: o.round }
         : { key: 'sheet.stand.waits', ...a };

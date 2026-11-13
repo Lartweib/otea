@@ -247,6 +247,7 @@ export const detail = {
   'sheet.stand.waits': 'Espera a {agent}.',
   'sheet.stand.waitsRound': 'Espera a {agent}, en la ronda {round}.',
   'sheet.stand.waitsAgent': 'Espera a un agente.',
+  'sheet.stand.left': 'Se lo dejaste a {agent}.',
   'sheet.stand.kids': 'Espera a sus hijos.',
   'sheet.stand.working': '{agent} lo está haciendo.',
   'sheet.stand.workingRound': '{agent} lo está haciendo en la ronda {round}.',
