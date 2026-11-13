@@ -40,14 +40,14 @@ describe('migrate', () => {
         'offers',
       ]),
     );
-    expect(userVersion(db)).toBe(15);
+    expect(userVersion(db)).toBe(16);
   });
 
   it('is idempotent', () => {
     migrate(db);
     migrate(db);
 
-    expect(userVersion(db)).toBe(15);
+    expect(userVersion(db)).toBe(16);
   });
 
   describe('from version 1', () => {
