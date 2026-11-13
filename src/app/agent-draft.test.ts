@@ -123,9 +123,9 @@ describe('an agent drafting a board', () => {
       { id: item, text: JSON.stringify(agentFile(draft)), actor: kiln, channel: 'cli' },
       now,
     );
-    expect(showItem(ctx, item, { actor: kiln, channel: 'cli' }, now).board?.request).toMatchObject(
-      { arrived: true },
-    );
+    expect(showItem(ctx, item, { actor: kiln, channel: 'cli' }, now).board?.request).toMatchObject({
+      arrived: true,
+    });
 
     expect(publishPlan(ctx, board.id).request).toEqual({
       id: item,
@@ -141,7 +141,9 @@ describe('an agent drafting a board', () => {
       actor: you,
       data: { to: 'done', reason: 'Publicado el tablero Criaturas' },
     });
-    expect(showItem(ctx, item, { actor: kiln, channel: 'cli' }, now).board?.request).toBeUndefined();
+    expect(
+      showItem(ctx, item, { actor: kiln, channel: 'cli' }, now).board?.request,
+    ).toBeUndefined();
   });
 
   it('leaves the Pedido open when the publish does not close it', () => {
