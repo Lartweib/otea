@@ -147,8 +147,14 @@ describe('hook', () => {
       const [theirs, ours] = hooks.PreToolUse;
 
       expect(result.out).toContain(
-        'settings.local.json (settings.local.json is per machine and not committed: the hooks name the path to Otea on this machine):',
+        "settings.local.json (kept out of git through .git/info/exclude: it names this machine's path to Otea):",
       );
+      const status = execFileSync('git', ['status', '--porcelain'], {
+        cwd: repo.dir,
+        encoding: 'utf8',
+      });
+      expect(status).not.toContain('.claude');
+      expect(read('.git/info/exclude')).toContain('/.claude/settings.local.json');
       expect(permissions).toEqual({ allow: ['Bash(npm test)'] });
       expect(theirs).toEqual({ matcher: 'Edit', hooks: [{ type: 'command', command: 'x' }] });
       expect(ours.matcher).toBe('Bash');

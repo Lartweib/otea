@@ -1,5 +1,6 @@
 import { execFileSync } from 'node:child_process';
-import { resolve } from 'node:path';
+import { basename, dirname, relative, resolve, sep } from 'node:path';
+import { excludeFromGit } from '../app/project.ts';
 
 function git(cwd: string, ...args: string[]): string {
   return execFileSync('git', args, {
@@ -69,4 +70,36 @@ export function repoRoot(cwd: string): string {
 // hooks/); throws outside a repo.
 export function gitPath(cwd: string, path: string): string {
   return resolve(cwd, git(cwd, 'rev-parse', '--git-path', path));
+}
+
+// How a file Otea writes for this machine alone (it names this machine's path to Otea) stands with
+// git: kept out through .git/info/exclude (never .gitignore, a tracked file), already tracked (Otea
+// leaves git alone and says so), or outside any repo.
+export type KeptOut = 'excluded' | 'tracked' | 'outside';
+
+export function keepOutOfGit(file: string): KeptOut {
+  let top: string;
+  try {
+    top = git(dirname(file), 'rev-parse', '--show-toplevel');
+  } catch {
+    return 'outside';
+  }
+  const path = relative(top, file).split(sep).join('/');
+  try {
+    git(top, 'ls-files', '--error-unmatch', '--', path);
+    return 'tracked';
+  } catch {}
+  excludeFromGit(resolve(top, git(top, 'rev-parse', '--git-common-dir')), `/${path}`);
+  return 'excluded';
+}
+
+// What a command says after the file it wrote, by how it stands with git.
+export function keptOutNote(file: string, kept: KeptOut): string | undefined {
+  if (kept === 'excluded') {
+    return "kept out of git through .git/info/exclude: it names this machine's path to Otea";
+  }
+  if (kept === 'tracked') {
+    return `${basename(file)} is tracked by git: it now names this machine's path to Otea, so keep that change out of your commits`;
+  }
+  return undefined;
 }

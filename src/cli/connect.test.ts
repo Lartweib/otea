@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -91,8 +92,33 @@ describe('setup for agents', () => {
       expect(code).toBe(0);
       expect(JSON.parse(read('.mcp.json'))).toEqual({ mcpServers: { otea: entry('claude-b') } });
       expect(out).toBe(
-        `Connected "claude-b": ${join(repo.dir, '.mcp.json')} serves otea mcp --as claude-b\n`,
+        `Connected "claude-b": ${join(repo.dir, '.mcp.json')} serves otea mcp --as claude-b (kept out of git through .git/info/exclude: it names this machine's path to Otea)\n`,
       );
+    });
+
+    it('keeps .mcp.json out of git, as the per-machine file it is, once', async () => {
+      await otea('connect', '--as', 'claude');
+      await otea('connect', '--as', 'claude-b');
+
+      const status = execFileSync('git', ['status', '--porcelain'], {
+        cwd: repo.dir,
+        encoding: 'utf8',
+      });
+      expect(status).not.toContain('.mcp.json');
+      const lines = read('.git/info/exclude').split(/\r?\n/);
+      expect(lines.filter((line) => line === '/.mcp.json')).toHaveLength(1);
+    });
+
+    it('says so when .mcp.json is tracked, and leaves git alone', async () => {
+      repo.write('.mcp.json', JSON.stringify({ mcpServers: {} }));
+      execFileSync('git', ['add', '.mcp.json'], { cwd: repo.dir });
+
+      const { out } = await otea('connect', '--as', 'claude');
+
+      expect(out).toContain(
+        "(.mcp.json is tracked by git: it now names this machine's path to Otea, so keep that change out of your commits)",
+      );
+      expect(read('.git/info/exclude')).not.toContain('/.mcp.json');
     });
 
     it('prints the config it wrote with --json', async () => {
@@ -101,6 +127,7 @@ describe('setup for agents', () => {
         server: 'otea',
         agent: 'claude',
         ...entry('claude'),
+        git: 'excluded',
       });
     });
 

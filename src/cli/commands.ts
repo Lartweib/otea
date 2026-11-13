@@ -99,7 +99,14 @@ import {
   formatReport,
   indent,
 } from './format.ts';
-import { branchesBrought, currentBranch, localBranches, remoteOf } from './gitrepo.ts';
+import {
+  branchesBrought,
+  currentBranch,
+  keepOutOfGit,
+  keptOutNote,
+  localBranches,
+  remoteOf,
+} from './gitrepo.ts';
 import {
   type HookChange,
   installClaudeHook,
@@ -511,8 +518,11 @@ const connect: Command = {
     const name = option('as') ?? (await ask('Agent name (short, like claude-b): '))?.trim();
     if (name === undefined) throw new UsageError('Name the agent with --as <name>');
     const connection = connectAgent(root, name, MAIN);
-    const text = `Connected "${name}": ${connection.path} serves otea mcp --as ${name}`;
-    return { data: connection, text };
+    // The entry names this machine's path to Otea: the file stays out of git.
+    const git = keepOutOfGit(connection.path);
+    const note = keptOutNote(connection.path, git);
+    const text = `Connected "${name}": ${connection.path} serves otea mcp --as ${name}${note ? ` (${note})` : ''}`;
+    return { data: { ...connection, git }, text };
   },
 };
 

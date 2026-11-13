@@ -2,7 +2,7 @@ import { chmodSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync }
 import { dirname, join } from 'node:path';
 import { CommandFailure } from './command.ts';
 import { EXIT_CODES } from './exit-codes.ts';
-import { gitPath, repoRoot } from './gitrepo.ts';
+import { gitPath, keepOutOfGit, keptOutNote, repoRoot } from './gitrepo.ts';
 
 // What installing or removing a hook did to its file; `content` is what was written or removed.
 export type HookChange = {
@@ -139,9 +139,6 @@ export function claudeSettingsFile(cwd: string): string {
   return join(repoRoot(cwd), '.claude', 'settings.local.json');
 }
 
-const LOCAL_NOTE =
-  'settings.local.json is per machine and not committed: the hooks name the path to Otea on this machine';
-
 function readSettings(path: string): Settings {
   if (!existsSync(path)) return {};
   try {
@@ -188,13 +185,13 @@ export function installClaudeHook(cwd: string, main: string): HookChange {
     hooks: { ...(base.hooks ?? {}), PreToolUse: [...existing, group] },
   };
   const content = JSON.stringify(group, null, 2);
-  const note = LOCAL_NOTE;
-  if (JSON.stringify(next) === JSON.stringify(before)) {
-    return { path, action: 'unchanged', content, note };
-  }
+  const unchanged = JSON.stringify(next) === JSON.stringify(before);
   const existed = existsSync(path);
-  writeSettings(path, next);
-  return { path, action: existed ? 'updated' : 'created', content, note };
+  if (!unchanged) writeSettings(path, next);
+  // The hooks name this machine's path to Otea: the file stays out of git.
+  const note = keptOutNote(path, keepOutOfGit(path));
+  const action = unchanged ? 'unchanged' : existed ? 'updated' : 'created';
+  return { path, action, content, ...(note ? { note } : {}) };
 }
 
 export function removeClaudeHook(cwd: string): HookChange {
