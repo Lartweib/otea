@@ -687,3 +687,13 @@ export function selectLeases(db: DatabaseSync): { id: string; lease: Lease }[] {
     lease: { holder: row.lease_holder, expiresAt: row.lease_expires_at },
   }));
 }
+
+// The item a create with this client key made, if one did (see the client_keys migration).
+export function itemOfClientKey(db: DatabaseSync, key: string): string | undefined {
+  const row = db.prepare('SELECT item FROM client_keys WHERE key = ?').get(key);
+  return row === undefined ? undefined : String(row.item);
+}
+
+export function insertClientKey(db: DatabaseSync, key: string, item: string, at: string): void {
+  db.prepare('INSERT INTO client_keys (key, item, at) VALUES (?, ?, ?)').run(key, item, at);
+}

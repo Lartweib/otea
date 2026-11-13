@@ -113,6 +113,49 @@ describe('POST /api/items', () => {
     expect(await errorOf(response)).toBe('not_found');
   });
 
+  // A phone that captured offline sends again until it hears back: the same key never makes two.
+  describe('with an idempotency key', () => {
+    const KEY = 'cap-6f1c2a90-4b1e-4c55-9d1f-0a8a3e2b7c11';
+
+    it('creates the item once and answers a resend with the same item', async () => {
+      const first = await create({ title: 'Ship' }, { 'idempotency-key': KEY });
+      const again = await create({ title: 'Ship' }, { 'idempotency-key': KEY });
+
+      expect(first.status).toBe(201);
+      expect(again.status).toBe(200);
+      expect(again.headers.get('idempotent-replayed')).toBe('true');
+      expect(await again.json()).toMatchObject({ id: 'TASKS-1', title: 'Ship' });
+      expect(listItems(project).map((item) => item.id)).toEqual(['TASKS-1']);
+    });
+
+    it('creates one item per key', async () => {
+      await create({ title: 'One' }, { 'idempotency-key': `${KEY}-a` });
+      await create({ title: 'Two' }, { 'idempotency-key': `${KEY}-b` });
+
+      expect(listItems(project).map((item) => item.title)).toEqual(['One', 'Two']);
+    });
+
+    it('records no key for a create that was refused, so a corrected resend creates', async () => {
+      const refused = await create({ title: '  ' }, { 'idempotency-key': KEY });
+      const fixed = await create({ title: 'Ship' }, { 'idempotency-key': KEY });
+
+      expect(refused.status).toBe(422);
+      expect(fixed.status).toBe(201);
+    });
+
+    it.each([
+      ['empty', ''],
+      ['too long', 'k'.repeat(129)],
+      ['with spaces', 'a key'],
+    ])('rejects a key that is %s with 400', async (_, key) => {
+      const response = await create({ title: 'Ship' }, { 'idempotency-key': key });
+
+      expect(response.status).toBe(400);
+      expect(await errorOf(response)).toBe('invalid_idempotency_key');
+      nothingWritten();
+    });
+  });
+
   describe('guards', () => {
     it('rejects a request without a valid session with 401', async () => {
       const response = await create({ title: 'X' }, { cookie: '' });
