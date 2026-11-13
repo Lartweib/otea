@@ -46,3 +46,17 @@ describe('Te toca with nothing to list yet', () => {
     expect(html).toContain('class="lanes');
   });
 });
+
+describe('Te toca on the phone (mobile mock 1)', () => {
+  const app = (phone: boolean) =>
+    fake({
+      all: [item({ id: 'ERR-1' })],
+      collections: [errores as unknown as CollectionView],
+      phone,
+    });
+
+  it('leaves the agents column out: the agents live in the menu up top', () => {
+    expect(render(app(false))).toContain('class="agents"');
+    expect(render(app(true))).not.toContain('class="agents"');
+  });
+});

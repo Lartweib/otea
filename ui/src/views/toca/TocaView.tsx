@@ -88,16 +88,19 @@ export function TocaView({ atasco = false }: { atasco?: boolean }) {
           </>
         )}
       </section>
-      <AgentsColumn
-        agents={app.agents}
-        items={app.all}
-        feed={app.feed}
-        now={app.now}
-        today={today}
-        types={types}
-        turnOf={turnOf}
-        onConnect={app.openConnect}
-      />
+      {/* On the phone the agents live in the topbar's menu, not in a column under the list. */}
+      {app.phone ? null : (
+        <AgentsColumn
+          agents={app.agents}
+          items={app.all}
+          feed={app.feed}
+          now={app.now}
+          today={today}
+          types={types}
+          turnOf={turnOf}
+          onConnect={app.openConnect}
+        />
+      )}
     </div>
   );
 }

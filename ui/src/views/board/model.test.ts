@@ -23,6 +23,8 @@ import {
   motivesOf,
   pasosCards,
   pasosColumns,
+  phoneChips,
+  phonePrefs,
   roundOf,
   signalOf,
   sortBoard,
@@ -548,5 +550,51 @@ describe('the motives a board discards with', () => {
     const only = applyFilters(items, { motive: ['duplicate'] }, c);
     expect(only.map((it) => it.id)).toEqual(['E-2']);
     expect(valueText('motive', 'duplicate', c)).toBe('Duplicado');
+  });
+});
+
+describe('a board on the phone (mobile mock 4)', () => {
+  const items = [
+    item({ id: 'A', state: 'verify' }),
+    item({ id: 'B', state: 'fixing', turn: 'agent' }),
+    item({ id: 'C', state: 'fixing', turn: 'agent' }),
+    item({ id: 'D', state: 'fixed', turn: 'none', closes: 'done' }),
+  ];
+
+  it('filters by step with one chip each, after Todos with every item', () => {
+    const chips = phoneChips(errores, items);
+    expect(chips.map((c) => [c.key, c.count])).toEqual([
+      [null, 4],
+      ['reported', 0],
+      ['accepted', 0],
+      ['fixing', 2],
+      ['verify', 1],
+      [CLOSED_COL, 1],
+    ]);
+    expect(chips[0]?.label).toBe('All');
+    expect(chips[5]?.label).toBe('Done');
+    setLanguage('es');
+    expect(phoneChips(errores, items)[0]?.label).toBe('Todos');
+  });
+
+  it('lists by step, in the default order, the chosen step only', () => {
+    expect(phonePrefs(null)).toEqual({ group: 'state', sort: null, filters: {} });
+    expect(phonePrefs('fixing')).toEqual({
+      group: 'state',
+      sort: null,
+      filters: { state: ['fixing'] },
+    });
+  });
+
+  it('keeps only the chosen step’s items', () => {
+    const { entries } = boardEntries(
+      items,
+      phonePrefs('fixing'),
+      { collapsed: new Set(), expanded: new Set() },
+      ctx(),
+    );
+    expect(
+      entries.filter((e) => e.kind === 'row').map((e) => e.kind === 'row' && e.item.id),
+    ).toEqual(['B', 'C']);
   });
 });

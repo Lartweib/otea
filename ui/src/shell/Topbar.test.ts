@@ -111,9 +111,9 @@ describe('the project menu', () => {
     }),
     overview({ id: 'quiet', name: 'Quiet' }),
   ];
-  const menu = () => {
+  const menu = (phone = false) => {
     setLanguage('es');
-    const app = testApp({ projects });
+    const app = testApp({ projects, phone });
     const { rows, total } = projectRows(
       app.project ?? { id: '', name: '', icon: null },
       projects,
@@ -158,6 +158,12 @@ describe('the project menu', () => {
   it('ends with the project’s settings and how to start another', () => {
     const html = menu();
     expect(html).toContain('configuración de Hollowmere');
+    expect(html).toContain('proyecto nuevo: <code>otea init</code> en un repo');
+  });
+
+  it('leaves the settings out on the phone: they are on the computer', () => {
+    const html = menu(true);
+    expect(html).not.toContain('configuración de Hollowmere');
     expect(html).toContain('proyecto nuevo: <code>otea init</code> en un repo');
   });
 });

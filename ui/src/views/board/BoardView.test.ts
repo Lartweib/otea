@@ -80,13 +80,12 @@ describe('a board', () => {
     expect(html).toMatch(/<span class="you">A verificar <span class="n sn">/);
   });
 
-  it('offers Pasos, Lista and Tabla, the count and Nuevo ítem; no Tabla on the phone', () => {
+  it('offers Pasos, Lista and Tabla, the count and Nuevo ítem', () => {
     const html = render('list');
     expect(html.match(/role="tab"/g)).toHaveLength(3);
     expect(html).toContain('Pasos');
     expect(html).toContain('3 ítems');
     expect(html).toContain('Nuevo ítem');
-    expect(render('list', seed, true).match(/role="tab"/g)).toHaveLength(2);
   });
 
   it('lists Lista grouped by step, each row on its lane with its id, step and who', () => {
@@ -180,6 +179,58 @@ describe('a board Studio shapes', () => {
     const html = render('list', seed, false, false);
     expect(html).not.toContain('Crear · Bug');
     expect(html).not.toContain('newb');
+  });
+});
+
+describe('a board on the phone (mobile mock 4)', () => {
+  it('is read in Lista only: no view switch, no Agrupar or Filtrar, nothing to create', () => {
+    for (const kind of ['list', 'board', 'grid'] as const) {
+      const html = render(kind, seed, true);
+      expect(html, kind).not.toContain('role="tab"');
+      expect(html, kind).not.toContain('class="tools"');
+      expect(html, kind).not.toContain('class="cols"');
+      expect(html, kind).not.toContain('class="tabla');
+      expect(html, kind).not.toContain('Nuevo ítem');
+      expect(html, kind).toContain('data-list="board"');
+    }
+  });
+
+  it('filters by step with chips: Todos first and pressed, then each step with its count', () => {
+    const html = render('list', seed, true);
+    expect(html).toMatch(
+      /<fieldset class="stepchips" aria-label="Paso"[^>]*>.*Todos <b>3<\/b>.*Reportado <b>0<\/b>.*En arreglo <b>1<\/b>.*A verificar <b>1<\/b>.*Hecho <b>1<\/b>/,
+    );
+    expect(html).toMatch(/<button type="button" aria-pressed="true">Todos/);
+    expect(html.match(/aria-pressed="true"/g)).toHaveLength(1);
+  });
+
+  it('says at its foot where a board is edited', () => {
+    expect(render('list', seed, true)).toContain(
+      'En el teléfono los tableros se leen. Pasos, campos y vistas se editan en el ordenador.',
+    );
+    setLanguage('en');
+    expect(render('list', seed, true)).toContain(
+      'On the phone, boards are read. Steps, fields and views are edited on the computer.',
+    );
+    expect(render('list', seed, false)).not.toContain('boards are read');
+  });
+
+  it('drops Crear and Editar tablero from a Studio board’s head', () => {
+    studied.board = {
+      id: 'b1',
+      version: 1,
+      changed: true,
+      live: instantiate(
+        requireTemplate('bugs'),
+        'es',
+        { name: 'Errores', item: 'Bug' },
+        sequenceIds(),
+      ),
+    };
+    const html = render('list', seed, true);
+    expect(html).not.toContain('Crear · Bug');
+    expect(html).not.toContain('Editar tablero');
+    expect(html).not.toContain('bv-acts');
   });
 });
 

@@ -15,12 +15,33 @@ const DESK = '192.168.1.24';
 const LAN_HOST = `${DESK}:4400`;
 const PHONE = '192.168.1.50';
 
-// The routes that change how the project is set up: its paths and its boards.
-const DESK_ONLY: Array<{ path: string; body: (repo: string) => unknown }> = [
+// The routes that change how the project is set up: its paths and its boards (Studio's every write).
+type DeskRoute = {
+  method?: 'POST' | 'PUT' | 'DELETE';
+  path: string;
+  body: (repo: string) => unknown;
+};
+const DESK_ONLY: DeskRoute[] = [
   { path: '/api/project/paths', body: (repo) => ({ path: repo }) },
   { path: '/api/project/paths/relink', body: (repo) => ({ from: repo, to: repo }) },
   { path: '/api/project/paths/forget', body: (repo) => ({ path: repo }) },
   { path: '/api/boards', body: () => ({ name: 'Criaturas', lang: 'es' }) },
+  { path: '/api/boards/set', body: () => ({ set: 'product', lang: 'es', boards: [] }) },
+  {
+    path: '/api/boards/agent-draft',
+    body: () => ({ name: 'Criaturas', need: 'Un tablero', agent: null, lang: 'es' }),
+  },
+  { path: '/api/boards/publish-pair', body: () => ({ parent: 'b1', child: 'b2', moves: {} }) },
+  { path: '/api/boards/restore-pair', body: () => ({ parent: 'b1', child: 'b2', versions: {} }) },
+  {
+    method: 'PUT',
+    path: '/api/boards/b1/draft',
+    body: () => ({ definition: {}, baseVersion: null }),
+  },
+  { method: 'DELETE', path: '/api/boards/b1/draft', body: () => ({}) },
+  { path: '/api/boards/b1/draft/merge', body: () => ({ evidence: 1 }) },
+  { path: '/api/boards/b1/publish', body: () => ({ moves: {} }) },
+  { path: '/api/boards/b1/restore', body: () => ({ version: null }) },
 ];
 
 describe('desk-only routes, with LAN access on', () => {
@@ -36,7 +57,12 @@ describe('desk-only routes, with LAN access on', () => {
     return made.dir;
   };
   // This computer's signed-in browser, or a paired phone on the LAN.
-  const post = (path: string, body: unknown, from: 'desk' | 'phone') => {
+  const post = (
+    path: string,
+    body: unknown,
+    from: 'desk' | 'phone',
+    method: DeskRoute['method'] = 'POST',
+  ) => {
     const host = from === 'desk' ? LOCAL_HOST : LAN_HOST;
     const headers = {
       host,
@@ -48,7 +74,7 @@ describe('desk-only routes, with LAN access on', () => {
     return Promise.resolve(
       server.app.request(
         path,
-        { method: 'POST', headers, body: JSON.stringify(body) },
+        { method, headers, body: JSON.stringify(body) },
         { incoming: { socket: { remoteAddress } } },
       ),
     );
@@ -86,19 +112,22 @@ describe('desk-only routes, with LAN access on', () => {
     rmSync(home, { recursive: true, force: true });
   });
 
-  it.each(DESK_ONLY)('refuses $path to a paired device with 403', async ({ path, body }) => {
-    const response = await post(path, body(repo()), 'phone');
+  it.each(DESK_ONLY)(
+    'refuses $method $path to a paired device with 403',
+    async ({ method, path, body }) => {
+      const response = await post(path, body(repo()), 'phone', method);
 
-    expect(response.status).toBe(403);
-    expect(((await response.json()) as { error: unknown }).error).toMatchObject({
-      code: 'forbidden',
-      details: { kind: 'desk_only' },
-    });
-  });
+      expect(response.status).toBe(403);
+      expect(((await response.json()) as { error: unknown }).error).toMatchObject({
+        code: 'forbidden',
+        details: { kind: 'desk_only' },
+      });
+    },
+  );
 
   it('changes nothing for a paired device', async () => {
     const before = await settings();
-    for (const { path, body } of DESK_ONLY) await post(path, body(repo()), 'phone');
+    for (const { method, path, body } of DESK_ONLY) await post(path, body(repo()), 'phone', method);
 
     expect(await settings()).toEqual(before);
     expect((await boards()).map(({ name }) => name)).toEqual(['Pedidos']);

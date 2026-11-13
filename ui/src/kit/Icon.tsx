@@ -83,9 +83,9 @@ export const IC = {
   board: '<rect x="2.5" y="3" width="11" height="10" rx="1.6"/><path d="M6 3v10"/>',
   plus: '<path d="M8 3.2v9.6M3.2 8h9.6"/>',
   side: '<rect x="2.3" y="3" width="11.4" height="10" rx="1.6"/><path d="M6.2 3v10"/>',
-  // the side panel's sibling: a sheet risen from the screen's foot, and the way it came
-  sheet:
-    '<rect x="2.3" y="3" width="11.4" height="10" rx="1.6"/><path d="M3.9 13v-2.3a1.3 1.3 0 0 1 1.3-1.3h5.6a1.3 1.3 0 0 1 1.3 1.3V13"/><path d="M6.5 6.9 8 5.4l1.5 1.5"/>',
+  // the phone's Panel: a page with its head and the rail beside it (mobile mock 1)
+  panel:
+    '<rect x="2.3" y="2.3" width="11.4" height="11.4" rx="2"/><path d="M2.3 5.8h11.4M5.8 5.8v7.9"/>',
   lista: '<path d="M5.8 4.5h7.7M5.8 8h7.7M5.8 11.5h7.7M2.6 4.5h.01M2.6 8h.01M2.6 11.5h.01"/>',
   tabla:
     '<rect x="2.3" y="3" width="11.4" height="10" rx="1.6"/><path d="M2.3 6.6h11.4M6.4 6.6V13"/>',

@@ -32,6 +32,8 @@ type BottomSheetProps = {
   onClose: () => void;
   // After the close has finished and the sheet is gone.
   onClosed?: () => void;
+  // Close at once, with no motion: a row that takes you somewhere does not wait for the sheet.
+  instant?: boolean;
   // A head with the title and a close button; without it the sheet is only its content.
   title?: ReactNode;
   // The button it was opened from: the sheet grows out of it as it rises.
@@ -56,6 +58,7 @@ export function BottomSheet({
   label,
   onClose,
   onClosed,
+  instant = false,
   title,
   from,
   className,
@@ -119,6 +122,12 @@ export function BottomSheet({
       choreo.current.go(1);
       el.style.transform = '';
       if (scrim.current) scrim.current.style.opacity = '';
+    } else if (instant) {
+      settling.current?.cancel();
+      settling.current = null;
+      choreo.current?.cancel();
+      for (const a of leaving.current?.anims ?? []) a.cancel();
+      finish();
     } else if (leaving.current) {
       const l = leaving.current;
       l.done.then(() => {

@@ -23,9 +23,9 @@ import { Tooltip } from './kit/Tooltip.tsx';
 import { LaneDefs } from './lanes/LaneDefs.tsx';
 import { MODULES } from './modules/registry.ts';
 import { CaptureSheet } from './phone/CaptureSheet.tsx';
-import { Fab } from './phone/Fab.tsx';
+import { DeskOnly, deskOnlyOf } from './phone/DeskOnly.tsx';
 import { NavSheet } from './phone/NavSheet.tsx';
-import { SheetButton } from './phone/SheetButton.tsx';
+import { TabBar } from './phone/TabBar.tsx';
 import type { Route } from './selection.ts';
 import { Rail } from './shell/Rail.tsx';
 import { Topbar } from './shell/Topbar.tsx';
@@ -72,6 +72,9 @@ function Catalog({ name }: { name: string | undefined }) {
 
 function View({ route }: { route: Route }): ReactNode {
   const app = useApp();
+  // On the phone, the pages that set the project up are on the computer: they say so.
+  const desk = app.phone ? deskOnlyOf(route) : null;
+  if (desk) return <DeskOnly page={desk} />;
   switch (route.view) {
     case 'toca':
     case 'lan':
@@ -131,8 +134,7 @@ function Shell() {
       </Dialog>
       <ConnectDialog />
       <StudioDialogs />
-      <SheetButton />
-      <Fab />
+      <TabBar />
       <NavSheet />
       <CaptureSheet />
       <LanguageNote />
