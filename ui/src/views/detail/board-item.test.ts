@@ -14,6 +14,7 @@ import {
   partsCount,
   roundNotes,
   sheetLook,
+  stepRounds,
   waitRows,
 } from './board-item.ts';
 
@@ -452,5 +453,150 @@ describe('the person’s own step', () => {
     expect(handRefusal('TAR2-1', missing)).toBe('No se entregó TAR2-1: falta Qué propone.');
     expect(handRefusal('TAR2-1', [])).toBeNull();
     expect(handRows(def, step, [])[0]?.ok).toBe(true);
+  });
+});
+
+describe('stepRounds: the item’s whole history, grouped by step', () => {
+  const mender = agent('mender');
+  const kiln = agent('kiln');
+  const note = (e: ItemEvent, text: string): ItemEvent => ({
+    ...e,
+    data: { ...e.data, note: text },
+  });
+  // Completar → Triar (sent back to Completar once) → Triar → Arreglar, sent back once in review.
+  const crossed = (): ItemEvent[] => [
+    created('sfill'),
+    note(moved('sfill', 'striage', kiln, '2026-01-02T00:00:00Z'), 'Completo.'),
+    said(moved('striage', 'sfill', you, '2026-01-03T00:00:00Z'), '¿En qué versión?'),
+    note(moved('sfill', 'striage', kiln, '2026-01-04T00:00:00Z'), 'La 1.2.'),
+    moved('striage', 'sfix', you, '2026-01-05T00:00:00Z'),
+    note(moved('sfix', 'sfix__review', mender, '2026-01-06T00:00:00Z'), 'Probé el muelle.'),
+    said(moved('sfix__review', 'sfix', you, '2026-01-07T00:00:00Z'), 'Sigue cayendo.'),
+    note(moved('sfix', 'sfix__review', mender, '2026-01-08T00:00:00Z'), 'Ya no cae.'),
+  ];
+  const brief = (groups: ReturnType<typeof stepRounds>) =>
+    groups.map(({ step, name, rounds, outcome, current, open }) => ({
+      step,
+      name,
+      count: rounds.length,
+      outcome,
+      current,
+      open,
+    }));
+
+  it('lists every step it went through in order, the current one open, earlier ones folded', () => {
+    expect(brief(stepRounds(errores(), 'sfix__review', crossed()))).toEqual([
+      {
+        step: 'sfill',
+        name: 'Completar',
+        count: 2,
+        outcome: { kind: 'reworked' },
+        current: false,
+        open: false,
+      },
+      {
+        step: 'striage',
+        name: 'Triar',
+        count: 2,
+        outcome: { kind: 'handed' },
+        current: false,
+        open: false,
+      },
+      { step: 'sfix', name: 'Arreglar', count: 2, outcome: undefined, current: true, open: true },
+    ]);
+  });
+
+  it('gives each step its rounds as roundNotes counts them, never counted again', () => {
+    const events = crossed();
+    for (const group of stepRounds(errores(), 'sfix__review', events))
+      expect(group.rounds).toEqual(roundNotes(errores(), group.step, events));
+  });
+
+  it('reads an approval from a review as approved, and a way back as sent back to that step', () => {
+    const approved = [
+      created('sconcept'),
+      moved('sconcept', 'sconcept__review', agent('quill'), '2026-01-02T00:00:00Z'),
+      moved('sconcept__review', 'sanimate', you, '2026-01-03T00:00:00Z'),
+    ];
+    expect(stepRounds(creatures(), 'sanimate', approved)[0]?.outcome).toEqual({ kind: 'approved' });
+    const back = [
+      ...crossed(),
+      said(moved('sfix__review', 'striage', you, '2026-01-09T00:00:00Z'), 'Otra categoría.'),
+    ];
+    // The step it is on comes last: it was entered last.
+    expect(brief(stepRounds(errores(), 'striage', back))).toEqual([
+      {
+        step: 'sfill',
+        name: 'Completar',
+        count: 2,
+        outcome: { kind: 'reworked' },
+        current: false,
+        open: false,
+      },
+      {
+        step: 'sfix',
+        name: 'Arreglar',
+        count: 2,
+        outcome: { kind: 'back', to: 'Triar' },
+        current: false,
+        open: false,
+      },
+      { step: 'striage', name: 'Triar', count: 3, outcome: undefined, current: true, open: true },
+    ]);
+  });
+
+  it('folds every step of a closed item but its last, which says how it closed', () => {
+    const dropped = [
+      ...crossed(),
+      said(moved('sfix__review', 'dropped__duplicate', you, '2026-01-09T00:00:00Z'), 'Repetido.'),
+    ];
+    expect(brief(stepRounds(errores(), 'dropped__duplicate', dropped))).toEqual([
+      {
+        step: 'sfill',
+        name: 'Completar',
+        count: 2,
+        outcome: { kind: 'reworked' },
+        current: false,
+        open: false,
+      },
+      {
+        step: 'striage',
+        name: 'Triar',
+        count: 2,
+        outcome: { kind: 'handed' },
+        current: false,
+        open: false,
+      },
+      {
+        step: 'sfix',
+        name: 'Arreglar',
+        count: 2,
+        outcome: { kind: 'dropped' },
+        current: false,
+        open: true,
+      },
+    ]);
+    const done = [...crossed(), moved('sfix__review', 'done', you, '2026-01-09T00:00:00Z')];
+    expect(stepRounds(errores(), 'done', done).at(-1)).toMatchObject({
+      step: 'sfix',
+      outcome: { kind: 'done' },
+      open: true,
+    });
+  });
+
+  it('is the one step it is on when it never moved, and leaves out a move taken back', () => {
+    expect(brief(stepRounds(errores(), 'sfix', [created('sfix')]))).toEqual([
+      { step: 'sfix', name: 'Arreglar', count: 1, outcome: undefined, current: true, open: true },
+    ]);
+    const on = moved('striage', 'sfix', you, '2026-01-03T00:00:00Z');
+    const events: ItemEvent[] = [
+      created('striage'),
+      on,
+      {
+        ...moved('sfix', 'striage', you, '2026-01-03T00:00:05Z'),
+        data: { from: 'sfix', to: 'striage', undoes: on.id },
+      },
+    ];
+    expect(stepRounds(errores(), 'striage', events).map(({ step }) => step)).toEqual(['striage']);
   });
 });
