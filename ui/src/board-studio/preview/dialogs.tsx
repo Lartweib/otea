@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { SAME, type Target } from '../../../../src/core/board/model.ts';
 import type { Change } from '../../../../src/core/board/plan.ts';
 import { language, t, tx } from '../../i18n/i18n.ts';
+import { Checkbox } from '../../kit/Marks.tsx';
 import { Dialog } from '../../kit/pop/Dialog.tsx';
 import {
   type BoardRecord,
@@ -76,6 +77,9 @@ function SinglePublishDialog({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
+  // The Pedido an agent drafted the board on: publishing is taking the draft, so it closes too,
+  // unless the person unticks it.
+  const [closeRequest, setCloseRequest] = useState(true);
   const id = draft.record.id;
   const saved = draft.save.kind === 'saved';
 
@@ -84,6 +88,7 @@ function SinglePublishDialog({
   useEffect(() => {
     if (!open) return;
     setError(null);
+    setCloseRequest(true);
     if (!saved) {
       setPlan({ status: 'saving' });
       if (draft.save.kind !== 'saving') draft.retrySave();
@@ -125,7 +130,8 @@ function SinglePublishDialog({
     setBusy(true);
     setError(null);
     try {
-      const result = await publishBoard(id, moves, draft.record.draft?.updatedAt ?? null);
+      const closing = !!ready.request && closeRequest;
+      const result = await publishBoard(id, moves, draft.record.draft?.updatedAt ?? null, closing);
       setBusy(false);
       onClose();
       onPublished(result.record);
@@ -141,9 +147,13 @@ function SinglePublishDialog({
             step: <b>{first?.name ?? '—'}</b>,
           })
         : tx('bs.preview.publish.toast.next', { name: <b>{name}</b>, v: result.version });
+      const closed =
+        closing && ready.request
+          ? tx('bs.preview.publish.toast.requestClosed', { id: <b>{ready.request.id}</b> })
+          : null;
       plainToast(
         <>
-          {msg} {view}
+          {msg} {closed} {view}
         </>,
         () => {
           restoreBoard(id, ready.from)
@@ -331,6 +341,17 @@ function SinglePublishDialog({
               {t('bs.preview.publish.pair.publish')}
             </button>
           </p>
+        ) : null}
+        {ready.request ? (
+          <label className="bsp-request" htmlFor="bsp-close-request" data-i="">
+            <Checkbox id="bsp-close-request" checked={closeRequest} onChange={setCloseRequest} />
+            <span>
+              {tx('bs.preview.publish.closeRequest', {
+                id: <b>{ready.request.id}</b>,
+                title: ready.request.title,
+              })}
+            </span>
+          </label>
         ) : null}
         <p className="bsp-dwarn" aria-live="polite">
           {error ? failedText(error) : ''}

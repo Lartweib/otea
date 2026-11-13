@@ -2622,6 +2622,34 @@ button.st-offscreen .icon:last-child {
   flex-wrap: wrap;
 }
 
+/* Publicar on a board an agent drafted: also close its Pedido */
+.bsp-request {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin-top: 14px;
+  padding: 9px 12px;
+  border-radius: 8px;
+  background: var(--well);
+  font: 400 13.5px / 1.45 var(--sans);
+  color: var(--ink-2);
+  cursor: pointer;
+}
+/* the kit's tick box, not the dialog's text input */
+.bsp-request input.ck {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  margin: 3px 0 0;
+  padding: 0;
+  border: 0;
+  border-radius: 3.5px;
+}
+.bsp-request b {
+  font-weight: 500;
+  color: var(--ink);
+}
+
 @media (max-width: 760px) {
   .bsp-tbl .tr .c-more,
   .bsp-tbl .tr .c-s {

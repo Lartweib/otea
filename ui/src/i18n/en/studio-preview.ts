@@ -387,6 +387,8 @@ export const studioPreview = {
   'bs.preview.publish.publish': 'Publish',
   'bs.preview.publish.publishing': 'Publishing…',
   'bs.preview.publish.seeBoard': 'See the board',
+  'bs.preview.publish.closeRequest': 'Close {id}, “{title}”: publishing it takes the draft',
+  'bs.preview.publish.toast.requestClosed': '{id} is closed.',
   'bs.preview.publish.toast.first': '{name} is now running (v1). Agents can take items in {step}.',
   'bs.preview.publish.toast.next': 'Published: {name} v{v}. Agents get it on their next call.',
   'bs.preview.publish.toast.undoneFirst': '{name} is a draft again.',

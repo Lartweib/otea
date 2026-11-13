@@ -123,13 +123,16 @@ export function fetchPublishPlan(id: string): Promise<PublishPlan> {
   return call('POST', `${board(id)}/publish/plan`);
 }
 
+// `closeRequest`: also close, as done, the open Pedido an agent drafted the board on.
 export function publishBoard(
   id: string,
   moves: Readonly<Record<string, Target>>,
   draftStamp?: string | null,
+  closeRequest = false,
 ): Promise<PublishResult> {
   const stamp = draftStamp === undefined ? {} : { draftStamp };
-  return call('POST', `${board(id)}/publish`, { moves, ...stamp });
+  const close = closeRequest ? { closeRequest } : {};
+  return call('POST', `${board(id)}/publish`, { moves, ...stamp, ...close });
 }
 
 // Undo publish: `version` is the one live before (null undoes a first publish).
