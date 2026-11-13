@@ -779,7 +779,6 @@ select.input {
   align-items: center;
   gap: 10px;
   width: 100%;
-  height: 60px;
   padding: 0 14px 0 16px;
   border: 1px dashed var(--lane);
   border-radius: var(--r-m);
@@ -789,14 +788,9 @@ select.input {
   text-align: left;
   cursor: pointer;
   transition:
-    height var(--m-slow) var(--m-ease),
     background-color var(--m-fast) var(--m-ease),
     border-color var(--m-fast) var(--m-ease),
     color var(--m-fast) var(--m-ease);
-}
-
-.intake-drop[data-slim] {
-  height: 40px;
 }
 
 .intake-drop:hover:not(:disabled),
@@ -814,11 +808,6 @@ select.input {
 .intake-drop:disabled {
   cursor: default;
   opacity: 0.6;
-}
-
-.intake-limits {
-  margin-left: auto;
-  white-space: nowrap;
 }
 
 .intake-file-list {
