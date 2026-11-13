@@ -109,7 +109,7 @@ export function StudioHome({ canWrite }: StudioHomeProps) {
               title={t('bs.home.agentDraft')}
               text={t('bs.home.agentDraftText')}
               note={t('bs.home.agentDraftKey')}
-              onClick={openAgentDraft}
+              onClick={() => openAgentDraft()}
             />
           </div>
         </>

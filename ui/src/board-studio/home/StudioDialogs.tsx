@@ -72,6 +72,7 @@ export function StudioDialogs() {
       <AgentDraftDialog
         open={open?.kind === 'agent'}
         n={shown?.kind === 'agent' ? shown.n : 0}
+        name={shown?.kind === 'agent' ? shown.name : ''}
         onClose={closeStudioDialog}
       />
     </>

@@ -3,11 +3,12 @@ import type { Lang } from '../../../../src/core/board/templates.ts';
 import { fetchTemplates, type TemplateView } from '../api.ts';
 
 // Which of Studio's creation dialogs is open, wherever it was asked from (the home's plates and
-// templates, the rail's Nuevo tablero, the phone's sheet); App renders them once.
+// templates, the rail's Nuevo tablero, the phone's sheet); App renders them once. Nuevo tablero
+// can hand over to Que lo esboce un agente, with the name typed so far.
 
 export type StudioDialog =
   | { kind: 'new'; template: string | null; n: number }
-  | { kind: 'agent'; n: number }
+  | { kind: 'agent'; name: string; n: number }
   | null;
 
 let open: StudioDialog = null;
@@ -20,7 +21,7 @@ const set = (next: StudioDialog) => {
 
 export const openNewBoard = (template: string | null = null) =>
   set({ kind: 'new', template, n: ++n });
-export const openAgentDraft = () => set({ kind: 'agent', n: ++n });
+export const openAgentDraft = (name = '') => set({ kind: 'agent', name, n: ++n });
 export const closeStudioDialog = () => set(null);
 
 const subscribe = (fn: () => void) => {
@@ -32,7 +33,7 @@ export function useStudioDialog(): StudioDialog {
   return useSyncExternalStore(
     subscribe,
     () => open,
-    () => null,
+    () => open,
   );
 }
 
