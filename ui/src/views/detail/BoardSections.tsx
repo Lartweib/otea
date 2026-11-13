@@ -14,9 +14,11 @@ import {
 } from '../../kit/index.ts';
 import { lookOf } from '../../lanes/looks.ts';
 import { NodeGlyph } from '../../lanes/NodeGlyph.tsx';
+import { studioHash } from '../../selection.ts';
 import type { Item, ItemView, RelatedItem } from '../../types.ts';
 import {
   type BranchStrip,
+  type DraftRequest,
   type HandRow,
   type ItemLinks,
   type LinkedView,
@@ -246,6 +248,43 @@ export function BranchLine({ strip }: { strip: BranchStrip | null }) {
       {strip.repo ? <span className="pvtag">{t('bi.branch.in', { repo: strip.repo })}</span> : null}
       <span className="sep">·</span>
       <span>{said}</span>
+    </div>
+  );
+}
+
+// The board a Pedido asks an agent to draft, after the buttons: its name, whether the draft arrived,
+// and a way to it in Studio; under it, folded, how to hand the draft in: the step's instructions,
+// which the agent reads, kept out of the person's words.
+export function DraftRequestLine({
+  request,
+  canConfigure,
+}: {
+  request: DraftRequest;
+  canConfigure: boolean;
+}) {
+  return (
+    <div className="bi-draft" data-c>
+      <div className={request.arrived ? 'bstrip arrived' : 'bstrip'}>
+        <Icon name="board" />
+        <span>{tx('bi.request.board', { name: <b>{request.name}</b> })}</span>
+        <span className="sep">·</span>
+        <span>{t(request.arrived ? 'bi.request.arrived' : 'bi.request.waiting')}</span>
+        {canConfigure ? (
+          <a className="lnk" href={studioHash({ kind: 'board', board: request.board })}>
+            {t('bi.request.open')}
+          </a>
+        ) : null}
+      </div>
+      <details className="bi-instr">
+        <summary>
+          <Icon name="chevron" />
+          {t('bi.request.instructions')}
+          <span className="pvtag">{t('bi.request.reader')}</span>
+        </summary>
+        <p className="mono" lang="en">
+          {request.instructions}
+        </p>
+      </details>
     </div>
   );
 }

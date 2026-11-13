@@ -17,6 +17,7 @@ import { useStudioBoard } from '../board/studio-board.tsx';
 import { Acts, actsModeOf } from './Acts.tsx';
 import {
   BranchLine,
+  DraftRequestLine,
   type DropChoice,
   DropDialog,
   HandChecklist,
@@ -444,6 +445,12 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
             ) : null}
           </div>
           <BranchLine strip={strip} />
+          {block?.request ? (
+            <DraftRequestLine
+              request={block.request}
+              canConfigure={!!app.session.canConfigure && !app.phone}
+            />
+          ) : null}
         </div>
         {live ? (
           <DropDialog
