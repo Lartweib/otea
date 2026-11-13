@@ -2,6 +2,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { AGENT_GUIDE } from '../core/agent-guide.ts';
 import { assertAgentName } from '../core/item.ts';
+import type { Launcher } from './launcher.ts';
 
 const BEGIN = '<!-- otea:begin -->';
 const END = '<!-- otea:end -->';
@@ -49,19 +50,20 @@ export function writeAgentsMd(root: string): AgentsMdResult {
 
 export const MCP_SERVER = 'otea';
 
-export type McpEntry = { command: string; args: string[] };
+export type McpEntry = { command: string; args: string[]; env?: Record<string, string> };
 
 export type Connection = McpEntry & { path: string; server: string; agent: string };
 
 // Pins the agent's name in the project's MCP config (.mcp.json, read by Claude Code and other
 // clients), so everything the server does is attributed to it. Other servers are kept.
-export function connectAgent(root: string, agent: string, main: string): Connection {
+export function connectAgent(root: string, agent: string, launcher: Launcher): Connection {
   assertAgentName(agent);
   const path = join(root, '.mcp.json');
   const config = existsSync(path) ? readConfig(path) : {};
   const entry: McpEntry = {
-    command: 'node',
-    args: ['--disable-warning=ExperimentalWarning', main, 'mcp', '--as', agent],
+    command: launcher.command,
+    args: [...launcher.args, 'mcp', '--as', agent],
+    ...(launcher.env ? { env: { ...launcher.env } } : {}),
   };
   const servers = { ...(config.mcpServers ?? {}), [MCP_SERVER]: entry };
   writeFileSync(path, `${JSON.stringify({ ...config, mcpServers: servers }, null, 2)}\n`);
