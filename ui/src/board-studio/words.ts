@@ -5,7 +5,7 @@ import type {
   Reviewer,
   Target,
 } from '../../../src/core/board/model.ts';
-import { DONE, isAgent, stepById } from '../../../src/core/board/model.ts';
+import { DONE, stepById } from '../../../src/core/board/model.ts';
 import type { Change } from '../../../src/core/board/plan.ts';
 import type { Problem } from '../../../src/core/board/problems.ts';
 import { listOf, listOr, type PlainKey, t } from '../i18n/i18n.ts';
@@ -16,19 +16,17 @@ import { listOf, listOr, type PlainKey, t } from '../i18n/i18n.ts';
 const str = (value: unknown) => (Array.isArray(value) ? value.map(String) : String(value ?? ''));
 
 export function doesText(who: Doer): string {
-  if (who === 'you') return t('bs.does.you');
-  if (who === 'any') return t('bs.does.any');
-  return t('bs.does.agent', { agent: who.agent });
+  return t(who === 'you' ? 'bs.does.you' : 'bs.does.any');
 }
 
+// Any agent reviews a step but the one that did it: "otro agente lo revisa".
 export function reviewsText(who: Reviewer): string {
   if (who === 'you') return t('bs.reviews.you');
   if (who === 'none') return t('bs.reviews.none');
-  return t('bs.reviews.agent', { agent: who.agent });
+  return t('bs.reviews.any');
 }
 
 export function whoName(who: Doer | Reviewer): string {
-  if (isAgent(who)) return who.agent;
   return t(who === 'you' ? 'bs.who.you' : who === 'any' ? 'bs.who.any' : 'bs.who.none');
 }
 
@@ -117,11 +115,6 @@ export function problemText(problem: Problem): string {
       return t('bs.problem.back_invalid', { step: str(p.step) as string });
     case 'cap_invalid':
       return t('bs.problem.cap_invalid');
-    case 'agent_offline':
-      return t('bs.problem.agent_offline', {
-        agent: str(p.agent) as string,
-        step: str(p.step) as string,
-      });
     case 'self_review':
       return t('bs.problem.self_review', { step: str(p.step) as string });
     case 'agent_closes':

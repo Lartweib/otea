@@ -16,7 +16,6 @@ describe('agentView', () => {
     const def = creatures();
     const view = agentView(def, 'sanimate', 'doing');
     if (view.kind !== 'text') throw new Error(view.kind);
-    expect(view.who).toBe('kiln');
     expect(view.text).toBe(
       nextText(def, {
         id: 'CRI-12',
@@ -26,7 +25,6 @@ describe('agentView', () => {
         fields: view.facts.fields,
         evidence: view.facts.evidence,
         missing: view.missing,
-        me: 'kiln',
       }),
     );
     expect(view.text).toContain('✗ Animación: required, new this round (missing)');
@@ -47,7 +45,6 @@ describe('agentView', () => {
     first.hand = [];
     const view = agentView(def, 'sconcept', 'doing');
     if (view.kind !== 'text') throw new Error(view.kind);
-    expect(view.who).toBeNull();
     expect(view.after).toEqual({
       kind: 'handed',
       text: handedText(def, 'CRI-12', { step: 'sconcept', phase: 'review' }),
@@ -58,8 +55,7 @@ describe('agentView', () => {
     const view = agentView(creatures(), 'sanimate', 'review');
     if (view.kind !== 'text') throw new Error(view.kind);
     expect(view.phase).toBe('review');
-    expect(view.who).toBe('scout');
-    expect(view.text).toContain('Your turn: review this step (kiln did it).');
+    expect(view.text).toContain('Your turn: review this step (another agent did it).');
     expect(view.after.kind).toBe('handed');
   });
 

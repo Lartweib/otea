@@ -14,6 +14,7 @@ import {
   type Linked,
   type Missing,
   type MoveResult,
+  mayReview,
   mayTake,
   type Position,
   positionOf,
@@ -33,7 +34,6 @@ import {
   DONE,
   DROPPED,
   guardedBranch,
-  isAgent,
   type Reviewer,
   SAME,
   type Step,
@@ -68,6 +68,7 @@ import { closesOf } from '../core/workflow.ts';
 import { findBoardOfCollection, findVersion, listBoards } from '../store/boards.ts';
 import { transaction } from '../store/database.ts';
 import {
+  type EventRecord,
   findAgent,
   type ItemRecord,
   saveOffer,
@@ -208,6 +209,38 @@ function sentBackOf(
   };
 }
 
+// What an agent does while doing a step, short of handing it off: taking the item, attaching its
+// evidence, changing its fields.
+const STEP_WORK = new Set(['claimed', 'evidence_added', 'updated']);
+
+// The agents that did the step the item stands in, in its current round (since `since`): each one
+// that handed the item off out of the step's doing or, while the item stood in that doing, claimed
+// it, attached evidence to it or changed its fields (the step's work, even when another agent
+// handed it off). Work of an earlier round, or done in another step, does not count. None of them
+// reviews the step, nor relays the decision on it.
+function roundWorkers(
+  position: Position,
+  events: readonly EventRecord[],
+  since: string | undefined,
+): string[] {
+  if (isClosed(position) || since === undefined) return [];
+  const doing = (state: unknown) => {
+    const at = positionOf(String(state));
+    return !isClosed(at) && at.step === position.step && at.phase === 'doing';
+  };
+  const out = new Set<string>();
+  let state: unknown;
+  for (const event of events) {
+    const before = state;
+    if (event.type === 'created') state = event.data.state;
+    if (event.type === 'transitioned') state = event.data.to;
+    if (event.at < since || event.actor.kind !== 'agent') continue;
+    const moved = event.type === 'transitioned' && doing(event.data.from);
+    if (moved || (STEP_WORK.has(event.type) && doing(before))) out.add(event.actor.name);
+  }
+  return [...out];
+}
+
 // The item as the engine reads it: its fields (title included), its evidence by part and when, the
 // rounds of each step, read from its moves, its parts and what blocks it, the note of each round
 // handed off, and the send-back its current round started with.
@@ -228,6 +261,7 @@ export function itemOnBoard(ctx: Context, item: ItemRecord, def: BoardDefinition
   const roundNotes = thread.filter((note) => note.step === step && note.round === round);
   const unanswered =
     isClosed(position) || position.phase !== 'doing' ? [] : unansweredOf(roundNotes);
+  const did = roundWorkers(position, events, startedAt);
   const facts: ItemFacts = {
     fields: { ...item.fields, title: item.title },
     evidence,
@@ -236,6 +270,7 @@ export function itemOnBoard(ctx: Context, item: ItemRecord, def: BoardDefinition
     parts: links.parts,
     blockers: links.blockers,
     ...(unanswered.length === 0 ? {} : { unanswered }),
+    ...(did.length === 0 ? {} : { did }),
   };
   const notes = handoffNotes(def, history).map(({ step: id, round: n, note, at, by }) => ({
     step: stepById(def, id)?.name ?? id,
@@ -283,8 +318,8 @@ export type BoardBlock = {
 
 export type Worker = { name: string; lastSeen: string | null; holds: boolean };
 
-// The agent doing the item's step now: the one holding its lease (even run out), else the agent the
-// step names; none on a step the person does, or off a doing phase.
+// The agent doing the item's step now: the one holding its lease (even run out); none on a step the
+// person does, nobody holds, or off a doing phase.
 export function workerOf(
   ctx: Context,
   item: ItemRecord,
@@ -295,7 +330,7 @@ export function workerOf(
   if (isClosed(position) || position.phase !== 'doing') return undefined;
   const step = stepById(def, position.step);
   if (!step || step.doer === 'you') return undefined;
-  const name = item.lease?.holder ?? (isAgent(step.doer) ? step.doer.agent : undefined);
+  const name = item.lease?.holder;
   if (name === undefined) return undefined;
   const holds = activeLease(item.lease, at)?.holder === name;
   return { name, lastSeen: findAgent(ctx.db, name)?.lastSeen ?? null, holds };
@@ -415,14 +450,16 @@ function textFor(
     ...(child === undefined ? {} : { child: child.def }),
     ...(me === undefined ? {} : { me }),
     ...(on.sentBack === undefined ? {} : { sentBack: on.sentBack }),
+    ...(on.facts.did === undefined ? {} : { did: on.facts.did }),
     ...(lease ? { holder: { name: lease.holder, expiresAt: lease.expiresAt } } : {}),
     ...(left === undefined ? {} : { leftFor: left }),
     ...(on.roundNotes.length === 0 ? {} : { notes: on.roundNotes }),
   });
 }
 
-// Whether the item is the agent's to take now: a doing phase it may take, or a review it is the
-// reviewer of; never one another agent holds, nor one the person left for another agent.
+// Whether the item is the agent's to take now: a doing phase it may take, or a review any agent
+// does that it did not do itself; never one another agent holds, nor one the person left for
+// another agent.
 function isTheirs(
   ctx: Context,
   def: BoardDefinition,
@@ -433,15 +470,24 @@ function isTheirs(
   const lease = activeLease(item.lease, at);
   if (lease && lease.holder !== agent) return false;
   const position = positionOf(item.state);
-  if (isClosed(position) || position.phase === 'yours') return false;
-  const reviewer = stepById(def, position.step)?.reviewer;
+  if (isClosed(position)) return false;
   const mine =
     position.phase === 'doing'
-      ? mayTake(def, position.step, agent)
-      : reviewer !== undefined && isAgent(reviewer) && reviewer.agent === agent;
+      ? mayTake(def, position.step)
+      : stepById(def, position.step)?.reviewer === 'any' &&
+        mayReview(def, position, { kind: 'agent', name: agent }, roundWorkersOf(ctx, item, def));
   if (!mine || lease) return mine;
   const left = leftFor(ctx, item.id);
   return left === undefined || left === agent;
+}
+
+// The agents that did the step the item stands in, in its current round.
+export function roundWorkersOf(
+  ctx: Context,
+  item: ItemRecord,
+  def: BoardDefinition,
+): readonly string[] {
+  return itemOnBoard(ctx, item, def).facts.did ?? [];
 }
 
 // How many of the board's open items wait for the person.
@@ -624,19 +670,19 @@ function refuse(
   if (result.code === 'not_yours') {
     const position = positionOf(item.state);
     const step = isClosed(position) ? undefined : stepById(def, position.step);
-    const agent = step && isAgent(step.doer) ? step.doer.agent : undefined;
     throw new OteaError(
       'forbidden',
-      `Not your turn: ${agent ?? 'the person'} does ${step?.name ?? 'this step'} on ${item.id}`,
+      `Not your turn: the person does ${step?.name ?? 'this step'} on ${item.id}`,
       {
         kind: 'not_your_turn',
         item: item.id,
         review: false,
         ...(step ? { step: step.name } : {}),
-        ...(agent === undefined ? {} : { who: agent }),
       },
     );
   }
+  // assertReviewer refuses an agent's review of its own round before the engine is asked.
+  if (result.code === 'own_work') throw new Error('own work reached the engine unchecked');
   throw new OteaError(
     'invalid_transition',
     `${item.id} ${PHASE_WORDS[result.code] ?? result.code}`,
@@ -663,26 +709,36 @@ function refuseApproval(item: ItemRecord, result: Exclude<MoveResult, { ok: true
   });
 }
 
-// Whether the performer reviews the item now: the step's agent reviewer, or the person for their
-// own reviews (an agent relays those with otea relay, never approves them).
-function assertReviewer(def: BoardDefinition, item: ItemRecord, actor: Actor): void {
+// Whether the performer reviews the item now: any agent but the one that did the round, on a step
+// any agent reviews; the person for their own reviews (an agent relays those with otea relay, never
+// approves them).
+function assertReviewer(ctx: Context, def: BoardDefinition, item: ItemRecord, actor: Actor): void {
   const position = positionOf(item.state);
   if (isClosed(position) || position.phase === 'doing') return;
-  const turn = turnAt(def, position);
-  if (actor.kind === 'human') return;
-  if (turn.who === 'agent' && (turn.agent === undefined || turn.agent === actor.name)) return;
+  if (mayReview(def, position, actor, roundWorkersOf(ctx, item, def))) return;
+  if (turnAt(def, position).who === 'agent') refuseOwnWork(def, item, actor.name);
   const step = stepById(def, position.step);
-  const agent = turn.who === 'agent' && turn.agent ? turn.agent : undefined;
   throw new OteaError(
     'forbidden',
-    `Not your turn: ${agent ?? 'the person'} reviews ${step?.name ?? 'this step'} on ${item.id}`,
+    `Not your turn: the person reviews ${step?.name ?? 'this step'} on ${item.id}`,
     {
       kind: 'not_your_turn',
       item: item.id,
       review: true,
       ...(step ? { step: step.name } : {}),
-      ...(agent === undefined ? {} : { who: agent }),
     },
+  );
+}
+
+// An agent reviewing a step it did in that round: another agent reviews it.
+function refuseOwnWork(def: BoardDefinition, item: ItemRecord, who: string): never {
+  const position = positionOf(item.state);
+  const step = isClosed(position) ? position.closed : stepById(def, position.step)?.name;
+  const name = step ?? 'this step';
+  throw new OteaError(
+    'forbidden',
+    `Not your review: ${who} did ${name} on ${item.id} in this round, so another agent reviews it; pick another item (otea next)`,
+    { kind: 'own_review', item: item.id, step: name, who },
   );
 }
 
@@ -759,12 +815,13 @@ export function approveItem(
     const board = requireBoard(ctx, item);
     const at = now();
     const position = positionOf(item.state);
-    assertReviewer(board.def, item, input.actor);
+    assertReviewer(ctx, board.def, item, input.actor);
     const way = wayOf(board.def, position, item.id, input.way);
     const facts = itemOnBoard(ctx, item, board.def).facts;
-    const result = approve(board.def, position, way, facts);
+    const result = approve(board.def, position, way, facts, input.actor);
     if (!result.ok) {
       if (result.code === 'missing') refuseApproval(item, result);
+      if (result.code === 'own_work') refuseOwnWork(board.def, item, input.actor.name);
       refuse(board.def, item, result, input.way);
     }
     const moved = land(ctx, item, board, result.to, input, at);
@@ -790,8 +847,10 @@ export function sendBackItem(
     const board = requireBoard(ctx, item);
     const at = now();
     const position = positionOf(item.state);
-    assertReviewer(board.def, item, input.actor);
-    const result = sendBack(board.def, position);
+    assertReviewer(ctx, board.def, item, input.actor);
+    const did = roundWorkersOf(ctx, item, board.def);
+    const result = sendBack(board.def, position, { by: input.actor, did });
+    if (!result.ok && result.code === 'own_work') refuseOwnWork(board.def, item, input.actor.name);
     if (!result.ok) refuse(board.def, item, result);
     const moved = land(ctx, item, board, result.to, input, at);
     return { item: moved, text: handedText(board.def, item.id, result.to) };
@@ -925,17 +984,12 @@ function assertAgentMove(
     const step = stepById(board.def, position.step);
     const into = result.to;
     const name = step?.name ?? position.step;
-    if (!isClosed(into) && into.phase === 'yours')
-      throw new OteaError(
-        'forbidden',
-        `Not your move: your work on ${name} goes to the person's review, not yours; use otea handoff ${item.id}`,
-      );
     throw new OteaError(
       'invalid_transition',
       `${item.id} cannot go to ${stateName(board.def, to)}: a handoff from ${name} goes to ${stateName(board.def, stateOf(into))}; use otea handoff ${item.id}`,
     );
   }
-  assertReviewer(board.def, item, actor);
+  assertReviewer(ctx, board.def, item, actor);
   if (approves(board.def, position, target)) {
     const result = approve(board.def, position, undefined, on.facts);
     if (!result.ok && result.code === 'missing') refuseApproval(item, result);
@@ -1121,26 +1175,19 @@ export function assertMayClaim(ctx: Context, item: ItemRecord, agent: string): v
   if (isClosed(position)) return;
   const step = stepById(board.def, position.step);
   if (!step) return;
-  const name = (who: Reviewer | Step['doer']) =>
-    who === 'you'
-      ? 'the person'
-      : who === 'any'
-        ? 'any agent'
-        : isAgent(who)
-          ? who.agent
-          : 'nobody';
   if (position.phase === 'doing') {
-    if (mayTake(board.def, step.id, agent)) return;
+    if (mayTake(board.def, step.id)) return;
     throw new OteaError(
       'not_claimable',
-      `${item.id} is at ${step.name}, which ${name(step.doer)} does; claim only what is yours (otea next)`,
+      `${item.id} is at ${step.name}, which the person does; claim only what is yours (otea next)`,
     );
   }
-  if (position.phase === 'review' && isAgent(step.reviewer) && step.reviewer.agent === agent)
-    return;
-  const reviewer = position.phase === 'yours' ? 'you' : step.reviewer;
+  const did = roundWorkersOf(ctx, item, board.def);
+  if (mayReview(board.def, position, { kind: 'agent', name: agent }, did)) return;
+  const who = step.reviewer === 'any' ? 'another agent' : 'the person';
+  const own = did.includes(agent) ? ' (you did it in this round)' : '';
   throw new OteaError(
     'not_claimable',
-    `${item.id} waits for ${name(reviewer)} to review ${step.name}; claim only what is yours (otea next)`,
+    `${item.id} waits for ${who} to review ${step.name}${own}; claim only what is yours (otea next)`,
   );
 }

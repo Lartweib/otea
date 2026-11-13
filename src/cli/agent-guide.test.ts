@@ -32,6 +32,7 @@ describe("Otea's agent guide", () => {
       '"Sent back to you"',
       'the exact command next prints',
       'Never relay a decision on a step you did',
+      'nor review it',
       'Never push to a branch',
       'every subagent',
       "never reuse your parent's",

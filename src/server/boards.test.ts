@@ -142,10 +142,25 @@ describe('the boards API', () => {
       baseVersion: null,
     });
     expect(saved.status).toBe(200);
-    expect((saved.body.problems as Json[]).map(({ code }) => code)).toEqual([
-      'agent_offline',
-      'agent_offline',
+    expect(saved.body.problems).toEqual([]);
+    expect(saved.body.notes).toBeUndefined();
+
+    const [concept, animate, polish] = creatures().steps;
+    const older = await call('PUT', `/boards/${id}/draft`, {
+      definition: {
+        ...creatures(),
+        name: 'Tareas Ñandú',
+        steps: [concept, { ...animate, doer: { agent: 'kiln' } }, polish],
+      },
+      baseVersion: null,
+    });
+    expect(older.status).toBe(200);
+    expect(older.body.notes).toEqual([
+      'step 2 "Animar": kiln no longer does it: any agent does [steps.1.doer]',
     ]);
+    expect(
+      ((older.body.record as Json).draft as Json & { definition: Json }).definition.steps,
+    ).toEqual(creatures().steps);
 
     const plan = await call('POST', `/boards/${id}/publish/plan`);
     expect(plan.body).toEqual(expect.objectContaining({ from: null, to: 1 }));

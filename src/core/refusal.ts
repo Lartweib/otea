@@ -29,6 +29,8 @@ export type RefusalDetails =
   | { kind: 'not_your_turn'; item: string; step?: string; who?: string; review: boolean }
   // A relay of a human decision on a step the relaying agent (`who`) did itself in this round.
   | { kind: 'own_step'; item: string; step: string; who: string }
+  // A review by an agent (`who`) of a step it did itself in this round: another agent reviews it.
+  | { kind: 'own_review'; item: string; step: string; who: string }
   // A discard the board does not take.
   | {
       kind: 'drop';

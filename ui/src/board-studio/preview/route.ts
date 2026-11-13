@@ -62,12 +62,7 @@ export function definitionRoute(
     const step = def.steps.find(({ id }) => id === at.step);
     if (step) {
       ci = at.phase === 'doing' ? index(step.id) : reviewAt(step.id);
-      lane =
-        at.phase === 'doing'
-          ? laneOfWho(step.doer)
-          : at.phase === 'yours'
-            ? 'you'
-            : laneOfWho(step.reviewer);
+      lane = at.phase === 'doing' ? laneOfWho(step.doer) : laneOfWho(step.reviewer);
     }
   }
 

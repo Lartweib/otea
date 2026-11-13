@@ -46,6 +46,14 @@ function creature(ctx: Context, title = 'Tortuga') {
   );
 }
 
+// Fills what Animar hands off: its checklist and a new animation.
+function ready(ctx: Context, id: string) {
+  ctx.db
+    .prepare('UPDATE items SET fields = ? WHERE id = ?')
+    .run(JSON.stringify({ fdesc: 'Lenta', fsteps: '["cone","ctwo"]' }), id);
+  attach(ctx, id, 'eanim');
+}
+
 function attach(ctx: Context, id: string, module: string) {
   insertEvidence(ctx.db, {
     itemId: id,
@@ -167,7 +175,9 @@ describe('the next service', () => {
 
   it('refuses a step out of turn as forbidden, and a way the step has not', () => {
     const ctx = memoryContext();
-    board(ctx);
+    const def = creatures();
+    def.steps = def.steps.map((s) => (s.id === 'sanimate' ? { ...s, doer: 'you' as const } : s));
+    board(ctx, def);
     const item = creature(ctx);
     attach(ctx, item.id, 'eart');
     handoffItem(ctx, { id: item.id, actor: quill, channel: 'cli' }, now);
@@ -327,64 +337,97 @@ describe('the old paths on a board', () => {
     expect(move().state).toBe('sconcept__review');
   });
 
-  it('refuses a claim of a step the agent may not take', () => {
-    const ctx = memoryContext();
-    board(ctx);
-    const item = creature(ctx);
-    attach(ctx, item.id, 'eart');
-    handoffItem(ctx, { id: item.id, actor: quill, channel: 'cli' }, now);
-    approveItem(ctx, { id: item.id, actor: you, channel: 'ui' }, now);
-
-    expect(() => claimItem(ctx, { id: item.id, actor: quill }, now)).toThrowError(
-      'CRI-1 is at Animar, which kiln does; claim only what is yours (otea next)',
-    );
-    expect(claimItem(ctx, { id: item.id, actor: kiln }, now).lease?.holder).toBe('kiln');
-  });
-
-  it('lets an agent move only where the engine would take its handoff, never into its own review', () => {
+  it('refuses a claim of a step the person does, and of the review of its own round', () => {
     const ctx = memoryContext();
     const def = creatures();
-    def.steps = def.steps.map((s) => (s.id === 'sanimate' ? { ...s, doer: 'any' as const } : s));
+    def.steps = def.steps.map((s) => (s.id === 'sconcept' ? { ...s, doer: 'you' as const } : s));
     board(ctx, def);
     const item = creature(ctx);
+    expect(() => claimItem(ctx, { id: item.id, actor: quill }, now)).toThrowError(
+      'CRI-1 is in Concepto (turn human); only items on the agent turn can be claimed',
+    );
     attach(ctx, item.id, 'eart');
-    handoffItem(ctx, { id: item.id, actor: quill, channel: 'cli' }, now);
+    handoffItem(ctx, { id: item.id, actor: you, channel: 'ui' }, now);
     approveItem(ctx, { id: item.id, actor: you, channel: 'ui' }, now);
-    ctx.db
-      .prepare('UPDATE items SET fields = ? WHERE id = ?')
-      .run(JSON.stringify({ fdesc: 'Lenta', fsteps: '["cone","ctwo"]' }), item.id);
-    attach(ctx, item.id, 'eanim');
-    claimItem(ctx, { id: item.id, actor: scout }, now);
+    ready(ctx, item.id);
+    handoffItem(ctx, { id: item.id, actor: kiln, channel: 'cli' }, now);
 
-    // scout reviews Animar: its own work goes to your review, not to scout's.
-    expect(() =>
-      moveItem(ctx, { id: item.id, to: 'sanimate__review', actor: scout, channel: 'cli' }, now),
-    ).toThrowError(expect.objectContaining({ code: 'forbidden' }));
-    expect(
-      moveItem(ctx, { id: item.id, to: 'sanimate__yours', actor: scout, channel: 'cli' }, now)
-        .state,
-    ).toBe('sanimate__yours');
+    expect(() => claimItem(ctx, { id: item.id, actor: kiln }, now)).toThrowError(
+      'CRI-1 waits for another agent to review Animar (you did it in this round); claim only what is yours (otea next)',
+    );
+    expect(claimItem(ctx, { id: item.id, actor: scout }, now).lease?.holder).toBe('scout');
   });
 
-  it('refuses an agent that moves a review it is not the reviewer of', () => {
+  it('lets an agent move into the review of its own work, never out of it', () => {
     const ctx = memoryContext();
     board(ctx);
     const item = creature(ctx);
     attach(ctx, item.id, 'eart');
     handoffItem(ctx, { id: item.id, actor: quill, channel: 'cli' }, now);
     approveItem(ctx, { id: item.id, actor: you, channel: 'ui' }, now);
-    ctx.db
-      .prepare('UPDATE items SET fields = ? WHERE id = ?')
-      .run(JSON.stringify({ fdesc: 'Lenta', fsteps: '["cone","ctwo"]' }), item.id);
-    attach(ctx, item.id, 'eanim');
+    ready(ctx, item.id);
+    claimItem(ctx, { id: item.id, actor: scout }, now);
+
+    expect(
+      moveItem(ctx, { id: item.id, to: 'sanimate__review', actor: scout, channel: 'cli' }, now)
+        .state,
+    ).toBe('sanimate__review');
+    expect(() =>
+      moveItem(ctx, { id: item.id, to: 'spolish', actor: scout, channel: 'cli' }, now),
+    ).toThrowError(
+      expect.objectContaining({
+        code: 'forbidden',
+        details: expect.objectContaining({ kind: 'own_review', who: 'scout' }),
+      }),
+    );
+  });
+
+  it('refuses the review of an agent that did the round, whoever handed it off', () => {
+    const ctx = memoryContext();
+    board(ctx);
+    const item = creature(ctx);
+    attach(ctx, item.id, 'eart');
+    handoffItem(ctx, { id: item.id, actor: quill, channel: 'cli' }, now);
+    approveItem(ctx, { id: item.id, actor: you, channel: 'ui' }, now);
+    ready(ctx, item.id);
+    updateItem(ctx, { id: item.id, fields: { Bioma: 'Bosque' }, actor: quill }, now);
     handoffItem(ctx, { id: item.id, actor: kiln, channel: 'cli' }, now);
 
-    expect(() =>
-      moveItem(ctx, { id: item.id, to: 'spolish', actor: quill, channel: 'cli' }, now),
-    ).toThrowError(expect.objectContaining({ code: 'forbidden' }));
+    for (const actor of [kiln, quill]) {
+      expect(() => approveItem(ctx, { id: item.id, actor, channel: 'cli' }, now)).toThrowError(
+        `Not your review: ${actor.name} did Animar on CRI-1 in this round, so another agent reviews it; pick another item (otea next)`,
+      );
+      expect(() =>
+        sendBackItem(ctx, { id: item.id, actor, channel: 'cli', reason: 'otra' }, now),
+      ).toThrowError(expect.objectContaining({ code: 'forbidden' }));
+      expect(nextFor(ctx, actor.name, {}, now).item).toBeNull();
+    }
+    expect(nextFor(ctx, 'scout', {}, now).item).toBe(item.id);
     expect(
       moveItem(ctx, { id: item.id, to: 'spolish', actor: scout, channel: 'cli' }, now).state,
     ).toBe('spolish');
+  });
+
+  it('lets the agent that did an earlier round review the next one', () => {
+    const ctx = memoryContext();
+    board(ctx);
+    const item = creature(ctx);
+    attach(ctx, item.id, 'eart');
+    handoffItem(ctx, { id: item.id, actor: quill, channel: 'cli' }, now);
+    approveItem(ctx, { id: item.id, actor: you, channel: 'ui' }, now);
+    ready(ctx, item.id);
+    handoffItem(ctx, { id: item.id, actor: kiln, channel: 'cli' }, now);
+    sendBackItem(ctx, { id: item.id, actor: scout, channel: 'cli', reason: 'Más barro' }, now);
+    attach(ctx, item.id, 'eart');
+    handoffItem(ctx, { id: item.id, actor: quill, channel: 'cli', note: 'barro' }, now);
+    approveItem(ctx, { id: item.id, actor: you, channel: 'ui' }, now);
+    attach(ctx, item.id, 'eanim');
+    handoffItem(ctx, { id: item.id, actor: scout, channel: 'cli', note: 'más barro' }, now);
+
+    expect(nextFor(ctx, 'scout', {}, now).item).toBeNull();
+    expect(nextFor(ctx, 'kiln', {}, now).text).toContain(
+      'Your turn: review this step (scout did it).',
+    );
   });
 });
 

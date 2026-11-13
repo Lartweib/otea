@@ -27,11 +27,9 @@ describe('definitionRoute', () => {
     expect([done.ci, done.lane]).toEqual([4, 'none']);
   });
 
-  it('keeps a review on the same lane at its step, and a review that falls to you on your lane', () => {
-    const scout = definitionRoute(creatures(), { step: 'sanimate', phase: 'review' }, [], words);
-    expect([scout.ci, scout.lane]).toEqual([2, 'ag']);
-    const yours = definitionRoute(creatures(), { step: 'sanimate', phase: 'yours' }, [], words);
-    expect([yours.ci, yours.lane]).toEqual([2, 'you']);
+  it('keeps an agent review on the agents’ lane at its step', () => {
+    const review = definitionRoute(creatures(), { step: 'sanimate', phase: 'review' }, [], words);
+    expect([review.ci, review.lane]).toEqual([2, 'ag']);
   });
 
   it('draws each send-back as a dip at the review it came from', () => {

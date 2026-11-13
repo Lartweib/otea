@@ -10,7 +10,7 @@ import { type EventRecord, type ItemRecord, selectEvents } from '../store/querie
 import { typeOfItem } from './collections.ts';
 import type { Context } from './context.ts';
 import { type Item, landMove, requireItem, systemClock } from './items.ts';
-import { assertMoveHandsOff, boardState, itemOnBoard, liveBoardOf } from './next.ts';
+import { assertMoveHandsOff, boardState, liveBoardOf, roundWorkersOf } from './next.ts';
 import { assertMayEnter } from './relations.ts';
 
 // The human a relayed decision belongs to: the same actor the web UI records.
@@ -74,20 +74,9 @@ function movedBy(event: EventRecord, agent: string): boolean {
   return type === 'transitioned' && actor.kind === 'agent' && actor.name === agent;
 }
 
-// What an agent does while doing a step, short of handing it off: taking the item, attaching its
-// evidence, changing its fields.
-const STEP_WORK = new Set(['claimed', 'evidence_added', 'updated']);
-
-function workedBy(event: EventRecord, agent: string): boolean {
-  const { type, actor } = event;
-  return STEP_WORK.has(type) && actor.kind === 'agent' && actor.name === agent;
-}
-
-// The step `agent` did itself in the round the item is in. On a board: since that step's current
-// round began, it handed the item off out of the step's doing, or, while the item stood in that
-// doing, claimed it, attached evidence to it or changed its fields (the step's work, even when
-// another agent handed it off). Work of an earlier round, or done in another step, does not count.
-// Off a board: the state it left with the move that brought the item where it is.
+// The step `agent` did itself in the round the item is in. On a board: one of the agents that did
+// the step in its current round (next.ts roundWorkersOf). Off a board: the state it left with the move
+// that brought the item where it is.
 function ownStep(ctx: Context, item: ItemRecord, agent: string): string | undefined {
   const events = selectEvents(ctx.db, item.id);
   const board = liveBoardOf(ctx, item.collection);
@@ -96,23 +85,8 @@ function ownStep(ctx: Context, item: ItemRecord, agent: string): string | undefi
     return last && movedBy(last, agent) ? String(last.data.from) : undefined;
   }
   const position = positionOf(item.state);
-  if (isClosed(position)) return undefined;
-  const since = itemOnBoard(ctx, item, board.def).rounds.startedAt[position.step];
-  if (since === undefined) return undefined;
-  const doing = (state: unknown) => {
-    const at = positionOf(String(state));
-    return !isClosed(at) && at.step === position.step && at.phase === 'doing';
-  };
-  let state: unknown;
-  const did = events.some((event) => {
-    const before = state;
-    if (event.type === 'created') state = event.data.state;
-    if (event.type === 'transitioned') state = event.data.to;
-    if (event.at < since) return false;
-    if (movedBy(event, agent)) return doing(event.data.from);
-    return workedBy(event, agent) && doing(before);
-  });
-  return did ? (stepById(board.def, position.step)?.name ?? position.step) : undefined;
+  if (isClosed(position) || !roundWorkersOf(ctx, item, board.def).includes(agent)) return undefined;
+  return stepById(board.def, position.step)?.name ?? position.step;
 }
 
 // An agent relays the human's decisions, never one on its own work: the human makes that one in

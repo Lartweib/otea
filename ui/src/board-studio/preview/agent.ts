@@ -13,7 +13,6 @@ import {
 import {
   type BoardDefinition,
   guardedBranch,
-  isAgent,
   SAME,
   stepById,
 } from '../../../../src/core/board/model.ts';
@@ -75,8 +74,6 @@ export type AgentView =
       kind: 'text';
       step: string;
       phase: 'doing' | 'review';
-      // The agent it is for; null for any agent.
-      who: string | null;
       id: string;
       text: string;
       facts: SampleFacts;
@@ -94,9 +91,9 @@ function agentPhase(
 ): 'doing' | 'review' | null {
   const step = stepById(def, stepId);
   if (!step) return null;
-  if (wanted !== 'doing' && isAgent(step.reviewer)) return 'review';
+  if (wanted !== 'doing' && step.reviewer === 'any') return 'review';
   if (step.doer !== 'you') return 'doing';
-  return isAgent(step.reviewer) ? 'review' : null;
+  return step.reviewer === 'any' ? 'review' : null;
 }
 
 // The board a split names: the pair's child, or this board for parts of its own kind.
@@ -130,9 +127,6 @@ export function agentView(
   const blockers: Linked[] = step.waits.includes('blockers') ? [sampleBlocker(def)] : [];
   const linked = { ...facts.engine, parts, blockers };
   const missing = handoffCheck(def, step.id, linked).missing;
-  const reviewer = isAgent(step.reviewer) ? step.reviewer.agent : null;
-  const doer = isAgent(step.doer) ? step.doer.agent : null;
-  const who = phase === 'review' ? reviewer : doer;
   const position = { step: step.id, phase };
   const text = nextText(def, {
     id: itemId,
@@ -142,7 +136,6 @@ export function agentView(
     fields: facts.fields,
     evidence: facts.evidence,
     missing,
-    ...(who ? { me: who } : {}),
     ...(def.split ? { parts } : {}),
     ...(blockers.length ? { blockers } : {}),
     ...(child ? { child } : {}),
@@ -167,7 +160,7 @@ export function agentView(
       answers.push(one('ifEmpty', handoffCommand, after.text, 'refusal'));
     } else {
       const moved = handoff(def, position, facts.engine, {
-        by: { kind: 'agent', name: who ?? 'agent' },
+        by: { kind: 'agent', name: 'agent' },
       });
       after = moved.ok
         ? { kind: 'handed', text: handedText(def, itemId, moved.to) }
@@ -345,7 +338,6 @@ export function agentView(
     kind: 'text',
     step: step.id,
     phase,
-    who,
     id: itemId,
     text,
     facts,

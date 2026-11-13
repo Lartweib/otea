@@ -16,10 +16,7 @@ import { tableOf } from './table.ts';
 
 export function BoardPreview({ draft }: { draft: ReadyDraft }) {
   const { def } = draft;
-  const offline = draft.problems
-    .filter((p) => p.code === 'agent_offline')
-    .map((p) => String(p.params.agent));
-  const items = sampleItems(def, offline);
+  const items = sampleItems(def);
   const blocks: LaneBlock[] = [];
   for (const step of def.steps) {
     const here = items.filter((item) => !item.closed && item.step === step.id);

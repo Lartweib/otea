@@ -21,8 +21,6 @@ export const boardStudio = {
   'bs.problem.back_invalid':
     'Si lo devuelves en {step}, vuelve a un paso posterior. Solo puede volver a este paso o a uno anterior.',
   'bs.problem.cap_invalid': 'El tope tiene que ser al menos 1.',
-  'bs.problem.agent_offline':
-    '{agent} no está conectado todavía, así que los ítems esperarán en {step}.',
   'bs.problem.self_review': 'En {step} lo haces y lo revisas tú: es lo mismo que nadie lo revise.',
   'bs.problem.agent_closes':
     'Solo tú das algo por hecho: en {step} lo cerraría un agente. Revísalo tú antes de Hecho.',
@@ -116,10 +114,9 @@ export const boardStudio = {
   'bs.who.none': 'Nadie',
   'bs.does.you': 'lo haces tú',
   'bs.does.any': 'cualquier agente lo hace',
-  'bs.does.agent': '{agent} lo hace',
   'bs.reviews.you': 'tú lo revisas',
   'bs.reviews.none': 'nadie lo revisa',
-  'bs.reviews.agent': '{agent} lo revisa',
+  'bs.reviews.any': 'otro agente lo revisa',
 
   'bs.done': 'Hecho',
   'bs.dropped': 'Descartado',

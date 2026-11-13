@@ -108,15 +108,14 @@ export function AgentPreview({
         ) : null}
       </>
     );
-  const who = view.who ?? t('bs.preview.agent.anyAgent');
   return (
     <>
       <p className="bsp-axl">
         {name}{' '}
         <small>
           {view.phase === 'review'
-            ? t('bs.preview.agent.forReviewer', { who })
-            : t('bs.preview.agent.for', { who })}
+            ? t('bs.preview.agent.forReviewer', { who: t('bs.preview.anotherAgent') })
+            : t('bs.preview.agent.for', { who: t('bs.preview.agent.anyAgent') })}
         </small>
       </p>
       <pre className="bsp-agentx">{marked(view.text)}</pre>

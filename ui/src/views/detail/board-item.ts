@@ -54,7 +54,7 @@ export function boardItemOf(
   const history = historyFor(def, item.events, item.createdAt);
   const rounds = roundsOf(def, history.initial, history.createdAt, history.moves);
   const turn = turnAt(def, position);
-  const agent = turn.who === 'agent' ? (turn.agent ?? null) : null;
+  const agent = null;
   const round = isClosed(position) ? 0 : (rounds.rounds[position.step] ?? 1);
   const at = isClosed(position) ? DONE : { step: position.step, phase: position.phase };
   return { agent, round, route: definitionRoute(def, at, rounds.dips, words) };
@@ -381,7 +381,7 @@ export function backOf(
   const history = historyFor(def, item.events, item.createdAt);
   const rounds = roundsOf(def, history.initial, history.createdAt, history.moves);
   const turn = turnAt(def, { step: target.step, phase: 'doing' });
-  const agent = turn.who === 'agent' ? (turn.agent ?? null) : null;
+  const agent = null;
   return { agent, round: (rounds.rounds[target.step] ?? 0) + 1 };
 }
 

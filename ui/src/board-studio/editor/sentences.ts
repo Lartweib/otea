@@ -3,7 +3,6 @@ import { instructionHints as hintsOf } from '../../../../src/core/board/hints.ts
 import {
   type BoardDefinition,
   type Hand,
-  isAgent,
   LEVELS,
   partOf,
   type Selection,
@@ -115,39 +114,20 @@ const and = (names: readonly string[]): Names => ({ names, join: 'and' });
 
 // ---- a step's card ----
 
-// Who does or reviews the step, by name, for the sentences ("un agente", "kiln").
-const agentWord = (step: Step) =>
-  step.doer === 'any' ? t('bs.editor.an_agent') : isAgent(step.doer) ? step.doer.agent : '';
-
-export function stepConseq(
-  step: Step,
-  agents: readonly { name: string; connected: boolean }[],
-): Sentence[] {
+// What the choice of who does and reviews the step means. A step names no agent: any agent does
+// it, and any agent but the one that did it reviews it.
+export function stepConseq(step: Step): Sentence[] {
   const out: Sentence[] = [];
   const agentDoes = step.doer !== 'you';
   const rev = step.reviewer;
-  if (agentDoes && rev === 'you')
-    out.push({ key: 'bs.editor.conseq.you_review', params: { who: agentWord(step) } });
+  if (agentDoes && rev === 'you') out.push({ key: 'bs.editor.conseq.you_review' });
   if (agentDoes && rev === 'none') out.push({ key: 'bs.editor.conseq.no_review' });
   if (!agentDoes && rev === 'none') out.push({ key: 'bs.editor.conseq.yours_alone' });
-  if (!agentDoes && isAgent(rev))
-    out.push({ key: 'bs.editor.conseq.agent_reviews_you', params: { agent: rev.agent } });
+  if (!agentDoes && rev === 'any') out.push({ key: 'bs.editor.conseq.agent_reviews_you' });
   if (!agentDoes && rev === 'you') out.push({ key: 'bs.editor.conseq.self_review', level: 'warn' });
-  if (agentDoes && isAgent(rev)) {
-    out.push({ key: 'bs.editor.conseq.agent_reviews', params: { agent: rev.agent } });
-    if (step.doer === 'any' || (isAgent(step.doer) && step.doer.agent === rev.agent))
-      out.push({ key: 'bs.editor.conseq.own_work', params: { agent: rev.agent } });
-  }
-  const seen = new Set<string>();
-  for (const who of [step.doer, rev]) {
-    if (!isAgent(who) || seen.has(who.agent)) continue;
-    seen.add(who.agent);
-    if (!agents.some((a) => a.name === who.agent && a.connected))
-      out.push({
-        key: 'bs.editor.conseq.offline',
-        params: { agent: who.agent, step: { name: unnamed(step.name) } },
-        level: 'warn',
-      });
+  if (agentDoes && rev === 'any') {
+    out.push({ key: 'bs.editor.conseq.agent_reviews' });
+    out.push({ key: 'bs.editor.conseq.own_work' });
   }
   return out;
 }

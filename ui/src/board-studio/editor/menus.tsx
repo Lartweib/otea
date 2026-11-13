@@ -4,18 +4,15 @@ import type { BoardDefinition } from '../../../../src/core/board/model.ts';
 import {
   DONE,
   type Doer,
-  isAgent,
   type Reviewer,
   SAME,
   type Step,
-  sameWho,
   type Target,
 } from '../../../../src/core/board/model.ts';
 import { t } from '../../i18n/i18n.ts';
 import { AgentMark } from '../../kit/Marks.tsx';
 import { MenuItem, MenuLabel, MenuNote, MenuRule } from '../../kit/pop/Menu.tsx';
 import { Pop, type PopEdge } from '../../kit/pop/Pop.tsx';
-import type { Agents } from './context.ts';
 import { Chev } from './glyphs.tsx';
 import { whoTitle } from './who.ts';
 
@@ -145,16 +142,14 @@ export function Blank({ label, you = false, open, onPress, ariaLabel }: BlankPro
 function whoMark(who: Doer | Reviewer) {
   if (who === 'you') return <AgentMark you decorative />;
   if (who === 'any') return <span className="mk any">{t('bs.editor.lane.ag')}</span>;
-  if (who === 'none') return <AgentMark decorative />;
-  return <AgentMark name={who.agent} decorative />;
+  return <AgentMark decorative />;
 }
 
-// Who does a step, or who reviews it: you, any agent (doer) or nobody (reviewer), then every agent
-// of the project, each marked connected or not yet.
+// Who does a step (you or any agent), or who reviews it (nobody, you, or any agent but the one that
+// did it). A step names no agent: whichever agent is free takes it.
 export function WhoMenu({
   kind,
   current,
-  agents,
   anchor,
   open,
   onClose,
@@ -162,7 +157,6 @@ export function WhoMenu({
 }: {
   kind: 'doer' | 'reviewer';
   current: Doer | Reviewer;
-  agents: Agents;
   anchor: HTMLElement | null;
   open: boolean;
   onClose: () => void;
@@ -177,29 +171,17 @@ export function WhoMenu({
       : [
           { who: 'none', gloss: t('bs.editor.who.none_rev') },
           { who: 'you', gloss: t('bs.editor.who.you_rev') },
+          { who: 'any', gloss: t('bs.editor.who.any_rev') },
         ];
-  const names = new Set(agents.map((a) => a.name));
-  if (isAgent(current) && !names.has(current.agent))
-    options.push({ who: current, gloss: t('bs.editor.who.offline') });
-  for (const a of agents)
-    options.push({
-      who: { agent: a.name },
-      gloss: a.connected ? t('bs.editor.who.connected') : t('bs.editor.who.offline'),
-    });
   const label = kind === 'doer' ? t('bs.editor.who.doer_label') : t('bs.editor.who.rev_label');
   return (
     <EdPop open={open} anchor={anchor} onClose={onClose} label={label} estimate={320}>
       <MenuLabel>{label}</MenuLabel>
       {options.map(({ who, gloss }) => (
-        <MenuItem
-          key={isAgent(who) ? `a:${who.agent}` : who}
-          on={sameWho(who, current)}
-          className="se-mi"
-          onPick={() => onPick(who)}
-        >
+        <MenuItem key={who} on={who === current} className="se-mi" onPick={() => onPick(who)}>
           {whoMark(who)}
           <span className="se-lbx">
-            {whoTitle(who)}
+            {whoTitle(who, kind)}
             <span className="se-gl2">{gloss}</span>
           </span>
         </MenuItem>

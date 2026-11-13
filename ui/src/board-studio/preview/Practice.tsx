@@ -171,7 +171,7 @@ function logLine(run: PracticeRun, id: string, entry: PracticeLog): ReactNode {
     case 'sentBack':
       return t('bs.preview.try.log.sentBack', { step: entry.step, note: qt(entry.note) });
     case 'again':
-      return t('bs.preview.try.log.otherRound', { who: entry.who, step: entry.step });
+      return t('bs.preview.try.log.otherRound', { who: agent(entry.who), step: entry.step });
     case 'tookBack':
       return entry.by === 'you'
         ? t('bs.preview.try.log.tookBackYou', {
@@ -298,10 +298,13 @@ function gateSentence(state: PracticeState, round: number): string {
       why = t('bs.preview.try.git.closed', { id });
       break;
     case 'review': {
-      const reviewer = step?.reviewer;
       why =
-        reviewer && typeof reviewer === 'object'
-          ? t('bs.preview.try.git.reviewAgent', { id, who: reviewer.agent, step: step?.name ?? '' })
+        step?.reviewer === 'any'
+          ? t('bs.preview.try.git.reviewAgent', {
+              id,
+              who: t('bs.preview.anotherAgent'),
+              step: step.name,
+            })
           : t('bs.preview.try.git.reviewYou', { id, step: step?.name ?? '' });
       break;
     }

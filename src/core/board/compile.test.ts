@@ -18,7 +18,6 @@ describe('compileBoard', () => {
       'sconcept__review:human',
       'sanimate:agent',
       'sanimate__review:agent',
-      'sanimate__yours:human',
       'spolish:human',
       'done:none',
       'dropped:none',
@@ -36,20 +35,12 @@ describe('compileBoard', () => {
       'sconcept__review>done:human-ui',
       'sconcept__review>sconcept:human!',
       'sanimate>sanimate__review:agent',
-      'sanimate>sanimate__yours:agent',
       'sanimate__review>spolish:agent',
       'sanimate__review>sconcept:agent!',
-      'sanimate__yours>spolish:human',
-      'sanimate__yours>sconcept:human!',
       'spolish>done:human-ui',
-      ...[
-        'sconcept',
-        'sconcept__review',
-        'sanimate',
-        'sanimate__review',
-        'sanimate__yours',
-        'spolish',
-      ].map((state) => `${state}>dropped:human!`),
+      ...['sconcept', 'sconcept__review', 'sanimate', 'sanimate__review', 'spolish'].map(
+        (state) => `${state}>dropped:human!`,
+      ),
     ]);
   });
 

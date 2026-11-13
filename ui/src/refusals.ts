@@ -158,6 +158,8 @@ function said(details: RefusalDetails): string | undefined {
     }
     case 'own_step':
       return t('refusal.ownStep', { who: details.who, item: details.item, step: details.step });
+    case 'own_review':
+      return t('refusal.ownReview', { who: details.who, item: details.item, step: details.step });
     case 'frozen':
       return t('refusal.frozen', {
         item: details.item,

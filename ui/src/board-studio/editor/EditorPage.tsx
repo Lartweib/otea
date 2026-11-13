@@ -17,7 +17,6 @@ import { type DraftOptions, type ReadyDraft, useBoardDraft } from '../use-board-
 import { Bar, liveState } from './Bar.tsx';
 import { Card } from './Card.tsx';
 import {
-  type Agents,
   cardOf,
   EditorContext,
   type Editor as EditorValue,
@@ -74,12 +73,6 @@ function pairOther(
 
 function useProject(board: string) {
   const app = useApp();
-  // An agent Otea has seen is connected; one named on the board but never seen is not.
-  const names = (app.agents ?? []).map((a) => a.name).join('\n');
-  const agents: Agents = useMemo(
-    () => (names ? names.split('\n').map((name) => ({ name, connected: true })) : []),
-    [names],
-  );
   const [boards, setBoards] = useState<BoardSummary[] | null>(null);
   // biome-ignore lint/correctness/useExhaustiveDependencies: read again for each board opened
   useEffect(() => {
@@ -110,18 +103,16 @@ function useProject(board: string) {
     }
     setBoardPrefixes(prefixes);
   }, [boards, collectionOf]);
-  return { agents, boards, guard };
+  return { boards, guard };
 }
 
 function optionsFor(
   id: string,
-  agents: Agents,
   boards: readonly BoardSummary[] | null,
   keepHistory: boolean,
 ): DraftOptions {
   const list = boards ?? [];
   return {
-    agents,
     takenNames: list.filter((b) => b.id !== id).map((b) => b.name),
     boards: list.map(
       (b): BoardRef => ({
@@ -150,11 +141,11 @@ function Failed({ draft }: { draft: { message: string; code?: string; retry: () 
 }
 
 export function EditorPage({ board }: EditorPageProps) {
-  const { agents, boards, guard } = useProject(board);
+  const { boards, guard } = useProject(board);
   const twin = boards ? madeWithOf(boards, board)[0] : undefined;
   const options = useMemo(
-    () => optionsFor(board, agents, boards, twin !== undefined),
-    [board, agents, boards, twin],
+    () => optionsFor(board, boards, twin !== undefined),
+    [board, boards, twin],
   );
   const draft = useBoardDraft(board, options);
   if (draft.status === 'loading' || boards === null)
@@ -163,35 +154,23 @@ export function EditorPage({ board }: EditorPageProps) {
   const other = pairOther(boards, board, draft);
   if (other)
     return (
-      <PairLoader
-        key={other.other}
-        main={draft}
-        other={other}
-        agents={agents}
-        boards={boards}
-        guard={guard}
-      />
+      <PairLoader key={other.other} main={draft} other={other} boards={boards} guard={guard} />
     );
-  return <Editor draft={draft} agents={agents} boards={boards} twin={twin} guard={guard} />;
+  return <Editor draft={draft} boards={boards} twin={twin} guard={guard} />;
 }
 
 function PairLoader({
   main,
   other,
-  agents,
   boards,
   guard,
 }: {
   main: ReadyDraft;
   other: { ids: PairIds; other: string; role: PairRole };
-  agents: Agents;
   boards: readonly BoardSummary[];
   guard: boolean | undefined;
 }) {
-  const options = useMemo(
-    () => optionsFor(other.other, agents, boards, false),
-    [other.other, agents, boards],
-  );
+  const options = useMemo(() => optionsFor(other.other, boards, false), [other.other, boards]);
   const draft = useBoardDraft(other.other, options);
   if (draft.status === 'loading')
     return <p className="pane-message se-msg">{t('bs.editor.loading')}</p>;
@@ -204,7 +183,6 @@ function PairLoader({
       parent={parent}
       child={child}
       first={other.role}
-      agents={agents}
       boards={boards}
       guard={guard}
     />
@@ -216,7 +194,6 @@ function PairEditor({
   parent,
   child,
   first,
-  agents,
   boards,
   guard,
 }: {
@@ -224,12 +201,11 @@ function PairEditor({
   parent: ReadyDraft;
   child: ReadyDraft;
   first: PairRole;
-  agents: Agents;
   boards: readonly BoardSummary[];
   guard: boolean | undefined;
 }) {
   const state = usePair(ids, parent, child, first);
-  return <Editor draft={state.active} agents={agents} boards={boards} pair={state} guard={guard} />;
+  return <Editor draft={state.active} boards={boards} pair={state} guard={guard} />;
 }
 
 // The summary follows the edits a moment later, so typing a name does not shimmer it on every key.
@@ -365,14 +341,12 @@ function flash(el: Element | null) {
 
 function Editor({
   draft,
-  agents,
   boards,
   twin,
   pair: state,
   guard,
 }: {
   draft: ReadyDraft;
-  agents: Agents;
   boards: readonly BoardSummary[];
   twin?: BoardSummary | undefined;
   pair?: PairState;
@@ -468,7 +442,6 @@ function Editor({
   const editor: EditorValue = useMemo(
     () => ({
       draft,
-      agents,
       openRow,
       setOpenRow,
       dialogs,
@@ -477,7 +450,7 @@ function Editor({
       ...(twin ? { twin } : {}),
       guardInstalled: guard,
     }),
-    [draft, agents, openRow, dialogs, live, pair, twin, guard],
+    [draft, openRow, dialogs, live, pair, twin, guard],
   );
   const def = draft.def;
   const card = cardOf(def, sel);

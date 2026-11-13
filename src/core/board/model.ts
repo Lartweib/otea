@@ -93,10 +93,10 @@ export const INITIAL_KINDS: readonly FieldKind[] = ['choice', 'level', 'yesno'];
 // name is the board's `title`.
 export const TITLE = 'title';
 
-// Who does a step, and who reviews it. An agent is named by its Otea agent name (claude-b).
-export type AgentRef = { agent: string };
-export type Doer = 'you' | 'any' | AgentRef;
-export type Reviewer = 'none' | 'you' | AgentRef;
+// Who does a step: you (the person) or any agent. Who reviews it: you, any agent, or nobody. An
+// agent never reviews a step it did in that round: another agent does (engine.ts mayReview).
+export type Doer = 'you' | 'any';
+export type Reviewer = 'none' | 'you' | 'any';
 
 // Required: always; only when another part the item already carries has a value; or never.
 export type Requirement = 'always' | 'when' | 'no';
@@ -225,15 +225,6 @@ export type Selection =
   | { kind: 'done' }
   | { kind: 'about' }
   | { kind: 'anytime' };
-
-export function isAgent(who: Doer | Reviewer): who is AgentRef {
-  return typeof who === 'object' && who !== null && 'agent' in who;
-}
-
-export function sameWho(a: Doer | Reviewer, b: Doer | Reviewer): boolean {
-  if (isAgent(a) && isAgent(b)) return a.agent === b.agent;
-  return a === b;
-}
 
 export function stepById(def: BoardDefinition, id: string): Step | undefined {
   return def.steps.find((step) => step.id === id);

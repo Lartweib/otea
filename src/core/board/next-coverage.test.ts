@@ -142,7 +142,7 @@ describe('nextText, the later settings', () => {
 
   it('tells an agent reviewer the branch is frozen', () => {
     const def = errores();
-    def.steps[2] = { ...def.steps[2]!, reviewer: { agent: 'scout' } };
+    def.steps[2] = { ...def.steps[2]!, reviewer: 'any' };
     const review = nextText(def, {
       ...base,
       position: { step: 'sfix', phase: 'review' },
@@ -150,7 +150,7 @@ describe('nextText, the later settings', () => {
     });
     expect(lines(review, 'Branch')).toEqual([
       'Branch',
-      '  feat/x in api is frozen while scout reviews it: do not push. It can be merged only once it is Done.',
+      '  feat/x in api is frozen while another agent reviews it: do not push. It can be merged only once it is Done.',
     ]);
   });
 

@@ -21,7 +21,6 @@ import {
   DONE,
   guardedBranch,
   type Hand,
-  isAgent,
   isEvidence,
   LEVELS,
   motiveById,
@@ -79,6 +78,8 @@ export type NextInput = {
   leftFor?: string;
   // The notes the person left in this round of the step, oldest first.
   notes?: readonly ItemNote[];
+  // The agents that did the step in this round, none of which may review it.
+  did?: readonly string[];
 };
 
 // Another agent's say on the item keeps the asking agent off it: a live lease it does not hold, or
@@ -304,11 +305,7 @@ function pushLines(
       `  ${where}: you may push while you do ${step.name}. While it is reviewed it is frozen; it can be merged only once it is ${DONE_NAME}.`,
     ];
   if (answer.why === 'review') {
-    const who =
-      isAgent(step.reviewer) && !isClosed(position) && position.phase === 'review'
-        ? step.reviewer.agent
-        : 'the person';
-    return [`  ${where} is frozen while ${who} reviews it: do not push. ${merge}`];
+    return [`  ${where} is frozen while ${reviewerName(step)} reviews it: do not push. ${merge}`];
   }
   const elsewhere = branch.push.length > 0 ? ` You may push in ${and(branch.push, 'or')}.` : '';
   return [`  ${where}: no pushes in ${step.name}.${elsewhere}`];
@@ -420,16 +417,20 @@ export function nextText(def: BoardDefinition, input: NextInput): string {
   const reviewing = position.phase !== 'doing';
   if (!reviewing && step.doer === 'you')
     return `${head}\nThe person does this step: pick another item.`;
-  if (reviewing && (position.phase === 'yours' || !isAgent(step.reviewer)))
+  if (reviewing && step.reviewer !== 'any')
     return `${head}\nWaiting for the person to review it: pick another item.`;
-  if (!reviewing && isAgent(step.doer) && input.me !== undefined && input.me !== step.doer.agent)
-    return `${head}\n${step.doer.agent} does this step: pick another item.`;
+  if (reviewing && input.me !== undefined && input.did?.includes(input.me))
+    return `${head}\nYou did this step in this round: another agent reviews it. Pick another item.`;
   const elsewhere = heldElsewhere(input);
   if (elsewhere) return `${head}\n${elsewhere}`;
 
   const ways = waysOf(def, step.id);
   const names = ways.map((way) => targetName(def, way));
-  const doerName = isAgent(step.doer) ? step.doer.agent : 'another agent';
+  const doerName = input.did?.length
+    ? and([...input.did], 'and')
+    : step.doer === 'you'
+      ? 'the person'
+      : 'another agent';
   const lines = [
     head,
     reviewing ? `Your turn: review this step (${doerName} did it).` : 'Your turn: do this step.',
@@ -477,7 +478,7 @@ export function nextText(def: BoardDefinition, input: NextInput): string {
   } else if (step.reviewer === 'none') {
     after = several ? `${and(names, 'or')}: you pick with --way and say why` : `${names[0]}`;
   } else {
-    const who = step.reviewer === 'you' ? 'the person' : step.reviewer.agent;
+    const who = reviewerName(step);
     after = several
       ? `${and(names, 'or')}: ${who} picks when approving it`
       : `${names[0]}, once ${who} approves it`;
@@ -712,7 +713,6 @@ export function placeText(def: BoardDefinition, position: Position): string {
   if (isClosed(position)) return position.closed === DONE ? DONE_NAME : DROPPED_NAME;
   const name = stepById(def, position.step)?.name ?? position.step;
   if (position.phase === 'review') return `the review of ${name}`;
-  if (position.phase === 'yours') return `the person's review of ${name}`;
   return name;
 }
 
@@ -740,10 +740,7 @@ export function gateText(
     case 'done':
       return `merge allowed: ${id} is ${DONE_NAME}.`;
     case 'review': {
-      const who =
-        step && isAgent(step.reviewer) && !isClosed(position) && position.phase === 'review'
-          ? step.reviewer.agent
-          : 'the person';
+      const who = step ? reviewerName(step) : 'the person';
       return `push refused: ${id} waits for ${who} to review ${name}; its branch can be pushed only while ${push} is being done.`;
     }
     case 'not_push_step':
@@ -787,8 +784,7 @@ export function handedText(def: BoardDefinition, id: string, to: Position): stri
   const step = stepById(def, to.step);
   const name = step?.name ?? to.step;
   if (to.phase === 'doing') return `Handed off. ${id} moves on to ${name}.`;
-  const who =
-    to.phase === 'review' && step && isAgent(step.reviewer) ? step.reviewer.agent : 'the person';
+  const who = step ? reviewerName(step) : 'the person';
   return `Handed off. ${id} waits for ${who} to review ${name}.`;
 }
 
@@ -833,16 +829,19 @@ function quoted(name: string): string {
   return /^[\w.-]+$/.test(name) ? name : `"${name}"`;
 }
 
+// Who reviews a step, as a sentence names them: never the agent that did the round.
+function reviewerName(step: Step): string {
+  return step.reviewer === 'any' ? 'another agent' : 'the person';
+}
+
 function whoDoes(step: Step): string {
-  if (step.doer === 'you') return 'the person does it';
-  if (step.doer === 'any') return 'any agent does it';
-  return `${step.doer.agent} does it`;
+  return step.doer === 'you' ? 'the person does it' : 'any agent does it';
 }
 
 function whoReviews(step: Step): string {
   if (step.reviewer === 'none') return '';
   if (step.reviewer === 'you') return '; the person reviews it';
-  return `; ${step.reviewer.agent} reviews it`;
+  return '; another agent reviews it, never the one that did it';
 }
 
 // What `otea board` prints: the board's own words for agents (about it, idle time, the cap) and

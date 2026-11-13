@@ -788,6 +788,9 @@ const boardDraft: Command = {
       const submitted = submitAgentDraft(project, { id, text, actor, channel });
       const lines = [
         `Handed in the board draft on ${id} (evidence ${submitted.evidence.id}); it is in Studio now, for the person to try and publish.`,
+        ...(submitted.notes.length === 0
+          ? []
+          : ["Read as today's board:", ...submitted.notes.map((n) => `  ${n}`)]),
         ...(submitted.problems.length === 0
           ? []
           : ['Still to fix, for it to be published:', ...submitted.problems.map((p) => `  ${p}`)]),

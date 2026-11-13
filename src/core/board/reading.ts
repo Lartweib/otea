@@ -5,7 +5,6 @@ import {
   CHOICE_KINDS,
   DONE,
   DROPPED,
-  isAgent,
   isEvidence,
   LEVELS,
   type Part,
@@ -162,7 +161,6 @@ export function stateName(def: BoardDefinition, state: string): string {
   if (isClosed(position)) return position.closed === DONE ? DONE_NAME : DROPPED_NAME;
   const name = stepById(def, position.step)?.name ?? position.step;
   if (position.phase === 'review') return `${name} (in review)`;
-  if (position.phase === 'yours') return `${name} (the person's review)`;
   return name;
 }
 
@@ -172,9 +170,7 @@ function statesOf(def: BoardDefinition): string[] {
     ...def.steps.flatMap((step) => {
       const doing = stateOf({ step: step.id, phase: 'doing' });
       if (step.reviewer === 'none') return [doing];
-      const review = stateOf({ step: step.id, phase: 'review' });
-      if (!isAgent(step.reviewer)) return [doing, review];
-      return [doing, review, stateOf({ step: step.id, phase: 'yours' })];
+      return [doing, stateOf({ step: step.id, phase: 'review' })];
     }),
     DONE,
     DROPPED,

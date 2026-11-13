@@ -28,11 +28,11 @@ describe('changePlan', () => {
     concept.reviewer = 'none';
     concept.hand.push({ ref: 'ecode', req: 'always', fresh: false });
     concept.hand[0] = { ref: 'eart', req: 'no', fresh: false };
-    animate.doer = 'any';
+    animate.doer = 'you';
     animate.hand = animate.hand.filter(({ ref }) => ref !== 'ecode');
     animate.instructions.take = 'Otra cosa';
     draft.steps = draft.steps.filter(({ id }) => id !== 'spolish');
-    draft.steps.push(step('snew', 'Animar en el motor', { doer: { agent: 'kiln' } }));
+    draft.steps.push(step('snew', 'Animar en el motor', { doer: 'any' }));
     expect(changePlan(live, draft)).toEqual([
       { kind: 'board_renamed', from: 'Criaturas', to: 'Bestias' },
       { kind: 'item_renamed', to: 'Bestia' },
@@ -56,7 +56,7 @@ describe('changePlan', () => {
         req: 'always',
         fresh: false,
       },
-      { kind: 'step_doer', step: 'sanimate', name: 'Animar', doer: 'any' },
+      { kind: 'step_doer', step: 'sanimate', name: 'Animar', doer: 'you' },
       {
         kind: 'hand_removed',
         step: 'sanimate',
@@ -69,7 +69,7 @@ describe('changePlan', () => {
         kind: 'step_added',
         step: 'snew',
         name: 'Animar en el motor',
-        doer: { agent: 'kiln' },
+        doer: 'any',
         reviewer: 'you',
       },
       { kind: 'step_removed', step: 'spolish', name: 'Pulir' },

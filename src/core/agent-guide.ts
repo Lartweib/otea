@@ -9,7 +9,7 @@ export const AGENT_GUIDE = [
   '4. Do what the step says: its instructions and every line of "Before you hand it off". Do not skip, reorder or add steps; never invent a procedure of your own.',
   '5. "Sent back to you": read the note and address every point before you hand it off again.',
   '6. Hand off with the exact command next prints under "When you finish".',
-  '7. Never relay a decision on a step you did: the person decides it.',
+  '7. Never relay a decision on a step you did, nor review it.',
   '8. Never push to a branch the item\'s "Branch" lines do not allow.',
   '9. Answer every note from the person (otea reply) before you hand off.',
 ].join('\n');

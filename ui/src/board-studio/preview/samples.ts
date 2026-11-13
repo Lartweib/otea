@@ -2,7 +2,6 @@ import type { ItemFacts, Phase } from '../../../../src/core/board/engine.ts';
 import { startsWith } from '../../../../src/core/board/engine.ts';
 import {
   type BoardDefinition,
-  isAgent,
   isEvidence,
   LEVELS,
   type Part,
@@ -68,10 +67,10 @@ export function sampleTitle(def: BoardDefinition, k = 0): string {
   return k < titles.length ? base : `${base} (${Math.floor(k / titles.length) + 1})`;
 }
 
-// One item per step and look: the doer's work (an agent's lit, waiting when it never connected,
-// or yours), each review (yours with its halo, round 2), then one in Hecho, and one discarded
-// with a motive on a board that has motives.
-export function sampleItems(def: BoardDefinition, offline: readonly string[] = []): SampleItem[] {
+// One item per step and look: the doer's work (an agent's lit, or yours), each review (yours with
+// its halo, round 2; another agent's, round 1), then one in Hecho, and one discarded with a motive
+// on a board that has motives.
+export function sampleItems(def: BoardDefinition): SampleItem[] {
   const out: SampleItem[] = [];
   const add = (item: Omit<SampleItem, 'id' | 'title' | 'closed'>, closed = false) => {
     const n = out.length;
@@ -82,21 +81,13 @@ export function sampleItems(def: BoardDefinition, offline: readonly string[] = [
       ...item,
     });
   };
-  const agentLook = (agent: string | null): Look =>
-    agent !== null && offline.includes(agent) ? 'waiting' : 'working';
   for (const step of def.steps) {
-    if (step.doer === 'you')
-      add({ step: step.id, phase: 'doing', look: 'yours', agent: null, round: 1 });
-    else {
-      const agent = isAgent(step.doer) ? step.doer.agent : null;
-      add({ step: step.id, phase: 'doing', look: agentLook(agent), agent, round: 1 });
-    }
+    const look: Look = step.doer === 'you' ? 'yours' : 'working';
+    add({ step: step.id, phase: 'doing', look, agent: null, round: 1 });
     if (step.reviewer === 'you' && step.doer !== 'you')
       add({ step: step.id, phase: 'review', look: 'yours', agent: null, round: 2 });
-    if (isAgent(step.reviewer)) {
-      const agent = step.reviewer.agent;
-      add({ step: step.id, phase: 'review', look: agentLook(agent), agent, round: 1 });
-    }
+    if (step.reviewer === 'any')
+      add({ step: step.id, phase: 'review', look: 'working', agent: null, round: 1 });
   }
   add({ step: null, phase: null, look: 'done', agent: null, round: 1 }, true);
   const motives = def.drop.motives;

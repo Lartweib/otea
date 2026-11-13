@@ -45,7 +45,7 @@ const item = (state: string, events: ItemEvent[]) => ({
 });
 
 describe('boardItemOf: the item page reads a published board through the step engine', () => {
-  it('names the step’s own agent, not the last agent that moved the item', () => {
+  it('names no agent at a step any agent does, not the last agent that moved the item', () => {
     const events = [
       created('sconcept'),
       moved('sconcept', 'sconcept__review', agent('quill'), '2026-01-02T00:00:00Z'),
@@ -53,17 +53,17 @@ describe('boardItemOf: the item page reads a published board through the step en
     ];
     const on = boardItemOf(creatures(), item('sanimate', events), words);
 
-    expect(on?.agent).toBe('kiln');
+    expect(on?.agent).toBeNull();
     expect(on?.round).toBe(1);
   });
 
-  it('says no agent for a step any agent may take, and the reviewer during an agent review', () => {
+  it('says no agent for a step any agent may take, nor during a review any agent does', () => {
     expect(boardItemOf(creatures(), item('sconcept', [created('sconcept')]), words)?.agent).toBe(
       null,
     );
     expect(
       boardItemOf(creatures(), item('sanimate__review', [created('sconcept')]), words)?.agent,
-    ).toBe('scout');
+    ).toBeNull();
   });
 
   it('counts the round from a migration as the engine does: its question opens the next round', () => {
@@ -419,7 +419,7 @@ describe('sheetLook: open parts are a wait at the handoff, not a look', () => {
 });
 
 describe('backOf: where a way back lands, in the rounds of the engine', () => {
-  it('names the round of the step it starts, and its own agent or none', () => {
+  it('names the round of the step it starts, and no agent', () => {
     const skipped = item('striage', [created('striage')]);
     expect(backOf(errores(), skipped, 'sfill')).toEqual({ agent: null, round: 1 });
     const twice = item('sfix', [
@@ -429,7 +429,7 @@ describe('backOf: where a way back lands, in the rounds of the engine', () => {
       moved('striage', 'sfix', you, '2026-01-04T00:00:00Z'),
     ]);
     expect(backOf(errores(), twice, 'striage')).toEqual({ agent: null, round: 3 });
-    expect(backOf(errores(), twice, 'sfix')).toEqual({ agent: 'mender', round: 3 });
+    expect(backOf(errores(), twice, 'sfix')).toEqual({ agent: null, round: 3 });
   });
 });
 

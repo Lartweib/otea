@@ -36,7 +36,7 @@ describe('the mini route', () => {
     const r = miniRoute(
       board([
         ['you', 'none'],
-        [{ agent: 'kiln' }, { agent: 'scout' }],
+        ['any', 'any'],
       ]),
       196,
     );

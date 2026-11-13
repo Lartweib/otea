@@ -18,7 +18,7 @@ export function step(id: string, name: string, rest: Partial<Step> = {}): Step {
 }
 
 // Criaturas: Concepto (any agent, you review, concept art new each round, may skip to Hecho),
-// Animar (kiln does it, scout reviews, a send-back lands on Concepto) and Pulir (you do it).
+// Animar (any agent does it, another agent reviews, a send-back lands on Concepto) and Pulir (you do it).
 export function creatures(): BoardDefinition {
   return {
     schema: 2,
@@ -85,8 +85,8 @@ export function creatures(): BoardDefinition {
         },
       }),
       step('sanimate', 'Animar', {
-        doer: { agent: 'kiln' },
-        reviewer: { agent: 'scout' },
+        doer: 'any',
+        reviewer: 'any',
         hand: [
           { ref: 'eanim', req: 'always', fresh: true },
           { ref: 'ecode', req: 'no', fresh: false },
@@ -113,7 +113,7 @@ export function creatures(): BoardDefinition {
 }
 
 // Errores, as bug-triage becomes: Completar (any agent, nobody reviews, skipped when the bug
-// arrives complete) → Triar (you; may give it back to Completar) → Arreglar (mender, you review, a
+// arrives complete) → Triar (you; may give it back to Completar) → Arreglar (any agent, you review, a
 // note each handoff, may take it back to Triar, may drop it). Motives on discard, page only.
 export function errores(): BoardDefinition {
   const def = creatures();
@@ -155,7 +155,7 @@ export function errores(): BoardDefinition {
       ways: ['sfill'],
     }),
     step('sfix', 'Arreglar', {
-      doer: { agent: 'mender' },
+      doer: 'any',
       hand: [{ ref: 'ecode', req: 'always', fresh: false }],
       ways: ['striage'],
       note: { req: 'always', hint: 'la prueba' },

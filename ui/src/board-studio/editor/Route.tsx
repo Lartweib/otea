@@ -119,7 +119,7 @@ function stopSub(st: Stop): string {
   if (st.kind === 'done') return t('bs.editor.route.ends');
   const doer = whoWord(st.step.doer);
   if (st.step.reviewer === 'none') return doer;
-  return t('bs.editor.route.sub_review', { doer, reviewer: whoWord(st.step.reviewer) });
+  return t('bs.editor.route.sub_review', { doer, reviewer: whoWord(st.step.reviewer, 'reviewer') });
 }
 
 // The hourglass of a step that waits, and the branch of a protected branch's push steps and Hecho.

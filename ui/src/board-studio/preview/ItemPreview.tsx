@@ -2,7 +2,6 @@ import { type DragEvent, type ReactNode, useLayoutEffect, useRef, useState } fro
 import { type Phase, waysOf } from '../../../../src/core/board/engine.ts';
 import {
   type BoardDefinition,
-  isAgent,
   partOf,
   type Selection,
   type Step,
@@ -42,16 +41,9 @@ import { arrangeToast } from './toasts.tsx';
 // list. Every box says where it comes from: a click reveals its card. Acomodar turns the boxes into
 // tiles that move between zones; a move only changes how things show.
 
-export const agentWord = (who: Step['doer'] | Step['reviewer']): string =>
-  isAgent(who) ? who.agent : t('bs.preview.anAgent');
-
-export function lookAt(step: Step, phase: Phase, offline: readonly string[]): Look {
-  if (phase === 'yours' || (phase === 'review' && step.reviewer === 'you')) return 'yours';
-  if (phase === 'doing' && step.doer === 'you') return 'yours';
-  if (phase === 'doing') {
-    const agent = isAgent(step.doer) ? step.doer.agent : null;
-    return agent && offline.includes(agent) ? 'waiting' : 'working';
-  }
+export function lookAt(step: Step, phase: Phase): Look {
+  if (phase === 'review' && step.reviewer === 'you') return 'yours';
+  if (phase === 'doing') return step.doer === 'you' ? 'yours' : 'working';
   return 'queued';
 }
 
@@ -72,9 +64,6 @@ function originText(def: BoardDefinition, origin: Origin): string {
   if (origin.kind === 'place') return '';
   return stepById(def, origin.step)?.name ?? '';
 }
-
-const offlineOf = (draft: ReadyDraft) =>
-  draft.problems.filter((p) => p.code === 'agent_offline').map((p) => String(p.params.agent));
 
 export function ItemPreview({
   draft,
@@ -97,15 +86,16 @@ export function ItemPreview({
   if (!step) return null;
   const hasReview = step.reviewer !== 'none';
   const at: Phase = hasReview ? phase : 'doing';
-  const offline = offlineOf(draft);
-  const look = lookAt(step, at, offline);
+  const look = lookAt(step, at);
   const id = sampleId(def);
   const title = sampleTitle(def);
   const yours = look === 'yours';
-  const doer = step.doer === 'you' ? t('bs.preview.you') : agentWord(step.doer);
+  const doer = step.doer === 'you' ? t('bs.preview.you') : t('bs.preview.anAgent');
   // The doer at the start of a sentence.
   const Doer = step.doer === 'any' ? t('bs.preview.anAgentCap') : doer;
-  const reviewer = agentWord(step.reviewer);
+  // Any agent reviews it but the one that did it.
+  const reviewer = t('bs.preview.anotherAgent');
+  const Reviewer = t('bs.preview.anotherAgentCap');
   const route = definitionRoute(def, { step: step.id, phase: at }, [], {
     done: t('bs.done'),
     dip: (n) => t('bs.preview.dip', { n }),
@@ -121,14 +111,12 @@ export function ItemPreview({
     : t('bs.preview.turn.of', { who: at === 'doing' ? doer : reviewer });
   const stand: ReactNode =
     at !== 'doing'
-      ? step.reviewer === 'you' || at === 'yours'
+      ? step.reviewer === 'you'
         ? tx('bs.preview.stand.handed', { who: <b>{Doer}</b> })
-        : tx('bs.preview.stand.reviewing', { who: <b>{reviewer}</b> })
+        : tx('bs.preview.stand.reviewing', { who: <b>{Reviewer}</b> })
       : step.doer === 'you'
         ? t('bs.preview.stand.yourStep')
-        : isAgent(step.doer)
-          ? tx('bs.preview.stand.doing', { who: <b>{doer}</b> })
-          : t('bs.preview.stand.doingAny');
+        : t('bs.preview.stand.doingAny');
 
   const sample: SampleItem = {
     id,
@@ -136,14 +124,7 @@ export function ItemPreview({
     step: step.id,
     phase: at,
     look,
-    agent:
-      at === 'doing'
-        ? isAgent(step.doer)
-          ? step.doer.agent
-          : null
-        : isAgent(step.reviewer)
-          ? step.reviewer.agent
-          : null,
+    agent: null,
     round: 1,
     closed: false,
   };
@@ -359,7 +340,7 @@ function Moves({
   const { def } = draft;
   const first = ways[0];
   const why = () => draft.reveal({ kind: 'step', id: step.id });
-  if (at !== 'doing' && (step.reviewer === 'you' || at === 'yours'))
+  if (at !== 'doing' && step.reviewer === 'you')
     return (
       <div className="actions bsp-actions">
         <button type="button" className="btn primary" onClick={why}>
@@ -407,12 +388,10 @@ function Moves({
       </button>
     );
   }
-  const same =
-    isAgent(step.doer) && isAgent(step.reviewer) && step.doer.agent === step.reviewer.agent;
   return (
     <button type="button" className="bsp-waitline" onClick={why}>
-      {t('bs.preview.wait.reviewing', { who: reviewer })}
-      {same ? ` ${t('bs.preview.wait.selfReview')}` : ''}
+      {t('bs.preview.wait.reviewing', { who: t('bs.preview.anotherAgentCap') })}
+      {step.doer === 'any' ? ` ${t('bs.preview.wait.selfReview')}` : ''}
     </button>
   );
 }

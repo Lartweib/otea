@@ -46,6 +46,7 @@ export const studioEditor = {
   'bs.editor.vroute.done': 'termina aquí',
   'bs.editor.who.you': 'tú',
   'bs.editor.who.any': 'cualquier agente',
+  'bs.editor.who.another': 'otro agente',
   'bs.editor.who.none': 'nadie',
 
   'bs.editor.card.place': 'Paso {n} de {count}',
@@ -67,22 +68,19 @@ export const studioEditor = {
   'bs.editor.who.any_doer': 'el primero libre que trabaje en este tablero',
   'bs.editor.who.none_rev': 'avanza en cuanto se entrega',
   'bs.editor.who.you_rev': 'lo apruebas o lo devuelves',
-  'bs.editor.who.connected': 'conectado',
-  'bs.editor.who.offline': 'sin conectar todavía',
+  'bs.editor.who.any_rev': 'nunca el que lo hizo: lo aprueba o pide otra ronda',
   'bs.editor.an_agent': 'un agente',
   'bs.editor.conseq.you_review':
-    'Cuando {who} lo entrega, es tu turno: lo apruebas o lo devuelves.',
+    'Cuando un agente lo entrega, es tu turno: lo apruebas o lo devuelves.',
   'bs.editor.conseq.no_review': 'Avanza en cuanto se entrega. No pasa por ti.',
   'bs.editor.conseq.yours_alone': 'Es tu paso: lo haces y lo entregas tú. Nadie lo revisa.',
   'bs.editor.conseq.agent_reviews_you':
-    '{agent} revisa lo que haces. Si pide otra ronda, vuelve a ti.',
+    'Un agente revisa lo que haces. Si pide otra ronda, vuelve a ti.',
   'bs.editor.conseq.self_review': 'Lo haces y lo revisas tú: es lo mismo que nadie lo revise.',
   'bs.editor.conseq.agent_reviews':
-    '{agent} lo aprueba o pide otra ronda, y adjunta lo que le pidas.',
+    'Otro agente lo aprueba o pide otra ronda, y adjunta lo que le pidas.',
   'bs.editor.conseq.own_work':
-    'Nadie revisa su propio trabajo: si lo hizo {agent}, la revisión es tuya.',
-  'bs.editor.conseq.offline':
-    '{agent} no está conectado todavía, así que los ítems esperarán en {step}.',
+    'Nadie revisa su propio trabajo: el agente que lo hizo en esta ronda nunca lo revisa; lo revisa otro.',
   'bs.editor.card.starts': 'Empieza con',
   'bs.editor.card.starts_gloss': 'lo que ya trae; no hace falta pedirlo otra vez',
   'bs.editor.card.from_step': 'entregado en {step}',
@@ -141,7 +139,7 @@ export const studioEditor = {
   'bs.editor.instr.before_small': 'lo último que comprueba',
   'bs.editor.instr.before_ph': 'Ej.: Graba una prueba nueva y descríbela en una línea.',
   'bs.editor.instr.review': 'Al revisarlo',
-  'bs.editor.instr.review_small': 'lo que mira {agent}',
+  'bs.editor.instr.review_small': 'lo que mira el agente que revisa',
   'bs.editor.instr.review_ph': 'Ej.: Comprueba que el vídeo muestra la acción completa.',
   'bs.editor.instr.mention': '@ mencionar',
   'bs.editor.instr.mention_label': 'Mencionar',

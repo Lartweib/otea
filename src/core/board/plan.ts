@@ -8,7 +8,6 @@ import {
   type Drop,
   defaultWay,
   guardedBranch,
-  isAgent,
   isEvidence,
   type ListView,
   MOTIVE,
@@ -92,8 +91,6 @@ export type PlanContext = { boardName?: (id: string) => string | undefined };
 
 const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
 
-const whoKey = (who: Doer | Reviewer) => (isAgent(who) ? `agent:${who.agent}` : who);
-
 export function changePlan(
   live: BoardDefinition | null,
   draft: BoardDefinition,
@@ -112,9 +109,8 @@ export function changePlan(
       continue;
     }
     if (old.name !== name) out.push({ kind: 'step_renamed', step: id, from: old.name, to: name });
-    if (whoKey(old.doer) !== whoKey(step.doer))
-      out.push({ kind: 'step_doer', step: id, name, doer: step.doer });
-    if (whoKey(old.reviewer) !== whoKey(step.reviewer))
+    if (old.doer !== step.doer) out.push({ kind: 'step_doer', step: id, name, doer: step.doer });
+    if (old.reviewer !== step.reviewer)
       out.push({ kind: 'step_reviewer', step: id, name, reviewer: step.reviewer });
     for (const hand of step.hand) {
       const part = partOf(draft, hand.ref);
@@ -332,7 +328,6 @@ function phaseSurvives(draft: BoardDefinition, stepId: string, phase: string): b
   const step = draft.steps.find(({ id }) => id === stepId);
   if (!step) return false;
   if (phase === 'review') return step.reviewer !== 'none';
-  if (phase === 'yours') return isAgent(step.reviewer);
   return true;
 }
 

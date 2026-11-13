@@ -44,10 +44,6 @@ const flag = (description: string, example: boolean) =>
 // A motive names a closed state of its own (dropped__<id>), whose name takes no dash.
 const STATE_KEY = /^[a-z][a-z0-9_]*$/;
 
-const agent = z.strictObject({
-  agent: z.string().min(1).meta(about('The Otea name of the agent', 'claude-b')),
-});
-
 const choice = z
   .strictObject({
     id: idOf('The hidden id of the choice', 'chigh'),
@@ -146,19 +142,17 @@ const step = z
     id: idOf('The hidden id of the step', 'sfix'),
     name: text('What the step is called', 'Fix'),
     doer: z
-      .union([z.enum(['you', 'any']), agent], {
-        error: 'must be "you", "any" or {"agent": "<name>"}',
-      })
-      .meta(
-        about('Who does the step: "you" (the person), "any" agent, or one agent', 'any', {
-          agent: 'claude-b',
-        }),
-      ),
+      .enum(['you', 'any'], { error: 'must be "you" or "any"' })
+      .meta(about('Who does the step: "you" (the person) or "any" agent', 'any', 'you')),
     reviewer: z
-      .union([z.enum(['none', 'you']), agent], {
-        error: 'must be "none", "you" or {"agent": "<name>"}',
-      })
-      .meta(about('Who reviews the step: "none", "you" (the person), or one agent', 'you')),
+      .enum(['none', 'you', 'any'], { error: 'must be "none", "you" or "any"' })
+      .meta(
+        about(
+          'Who reviews the step: "none", "you" (the person) or "any" agent, never the one that did it in that round',
+          'you',
+          'any',
+        ),
+      ),
     hand: z
       .array(hand)
       .meta(about('What the step hands off', [{ ref: 'fsteps', req: 'always', fresh: false }])),
@@ -331,11 +325,14 @@ export function boardJsonSchema(): Record<string, unknown> {
 
 let published: Record<string, unknown> | undefined;
 
+// `notes`: what the reading changed in a board written before (a step done or reviewed by one named
+// agent now reads as any agent), for whoever handed it in.
 export type DefinitionReading =
-  | { ok: true; definition: BoardDefinition }
+  | { ok: true; definition: BoardDefinition; notes?: string[] }
   | { ok: false; problems: string[] };
 
-export function parseDefinition(raw: unknown): DefinitionReading {
+export function parseDefinition(input: unknown): DefinitionReading {
+  const { raw, notes } = anyAgent(input);
   const result = definitionSchema.safeParse(raw);
   if (!result.success) {
     published ??= boardJsonSchema();
@@ -350,7 +347,35 @@ export function parseDefinition(raw: unknown): DefinitionReading {
   if (misfiled.length > 0) return { ok: false, problems: misfiled };
   const clashes = idClashes(raw, definition);
   if (clashes.length > 0) return { ok: false, problems: clashes };
-  return { ok: true, definition };
+  return notes.length > 0 ? { ok: true, definition, notes } : { ok: true, definition };
+}
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+// A board written before a step's doer was you or any agent, and its reviewer you, any agent or
+// nobody, named one agent: {"agent": "claude-b"}. It reads as "any" (any agent does it; any agent
+// but the one that did it reviews it), nothing else changing, with a note for each step it touched.
+function anyAgent(input: unknown): { raw: unknown; notes: string[] } {
+  if (!isRecord(input) || !Array.isArray(input.steps)) return { raw: input, notes: [] };
+  const notes: string[] = [];
+  const steps = input.steps.map((step: unknown, index) => {
+    if (!isRecord(step)) return step;
+    const out = { ...step };
+    for (const key of ['doer', 'reviewer'] as const) {
+      const who = step[key];
+      if (!isRecord(who) || typeof who.agent !== 'string') continue;
+      out[key] = 'any';
+      const name = typeof step.name === 'string' ? ` "${step.name}"` : '';
+      const now =
+        key === 'doer'
+          ? `${who.agent} no longer does it: any agent does`
+          : `${who.agent} no longer reviews it: any agent does, never the one that did it`;
+      notes.push(`step ${index + 1}${name}: ${now} [steps.${index}.${key}]`);
+    }
+    return out;
+  });
+  return notes.length > 0 ? { raw: { ...input, steps }, notes } : { raw: input, notes };
 }
 
 // A problem at a place of the board, in the words of a shape error.
