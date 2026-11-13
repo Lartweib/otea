@@ -1,6 +1,7 @@
 import { fileURLToPath } from 'node:url';
 import { readDefinition } from '../core/board/schema.ts';
-import { findDraft, listBoards } from '../store/boards.ts';
+import { findBoard, findDraft, findVersion, listBoards } from '../store/boards.ts';
+import { selectEvents } from '../store/queries.ts';
 import type { Context } from './context.ts';
 
 // A Pedido an agent drafts a board on ("Que lo esboce un agente"): the board waiting on it, and how
@@ -25,7 +26,14 @@ export function handInText(id: string): string {
 }
 
 // The board drafted on a Pedido while its draft is open: `arrived` once the agent handed one in.
-export type DraftRequest = { board: string; name: string; arrived: boolean; instructions: string };
+// Once publishing the board closed the Pedido, `published`, with no hand-in left to give.
+export type DraftRequest = {
+  board: string;
+  name: string;
+  arrived: boolean;
+  published?: true;
+  instructions: string;
+};
 
 export function draftRequestOf(ctx: Context, item: string): DraftRequest | undefined {
   for (const { id } of listBoards(ctx.db)) {
@@ -38,5 +46,22 @@ export function draftRequestOf(ctx: Context, item: string): DraftRequest | undef
       instructions: handInText(item),
     };
   }
-  return undefined;
+  return publishedRequestOf(ctx, item);
+}
+
+// The board whose publish closed the Pedido, while that publish stands (undoing it writes
+// `unpublished_board`) and the board is still live, under its name today.
+function publishedRequestOf(ctx: Context, item: string): DraftRequest | undefined {
+  const mark = selectEvents(ctx.db, item).findLast(
+    ({ type, data }) =>
+      type === 'transitioned' &&
+      (typeof data.published_board === 'string' || typeof data.unpublished_board === 'string'),
+  );
+  const id = mark?.data.published_board;
+  if (typeof id !== 'string') return undefined;
+  const row = findBoard(ctx.db, id);
+  const live = row?.liveVersion == null ? undefined : findVersion(ctx.db, id, row.liveVersion);
+  if (!live) return undefined;
+  const name = readDefinition(live.definition).name;
+  return { board: id, name, arrived: true, published: true, instructions: '' };
 }

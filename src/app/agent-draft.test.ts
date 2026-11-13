@@ -25,6 +25,7 @@ import { getItem, showItem } from './items.ts';
 import { itemNextText } from './next.ts';
 import type { Project } from './project.ts';
 import { memoryContext, projectOf } from './testing.ts';
+import { undoMove } from './undo.ts';
 
 const kiln = { kind: 'agent' as const, name: 'kiln' };
 const you = { kind: 'human' as const, name: 'human' };
@@ -143,9 +144,39 @@ describe('an agent drafting a board', () => {
       actor: you,
       data: { to: 'done', reason: 'Publicado el tablero Criaturas' },
     });
-    expect(
-      showItem(ctx, item, { actor: kiln, channel: 'cli' }, now).board?.request,
-    ).toBeUndefined();
+    expect(showItem(ctx, item, { actor: kiln, channel: 'cli' }, now).board?.request).toEqual({
+      board: board.id,
+      name: 'Criaturas',
+      arrived: true,
+      published: true,
+      instructions: '',
+    });
+  });
+
+  it('keeps the link to the board it published once its close is taken back, with no hand-in', () => {
+    const ctx = project();
+    const { board, item } = requestAgentDraft(
+      ctx,
+      { name: 'Criaturas', need: 'x', agent: null, lang: 'es' },
+      now,
+    );
+    const draft = getBoardRecord(ctx, board.id).draft?.definition;
+    if (!draft) throw new Error('no draft');
+    submitAgentDraft(
+      ctx,
+      { id: item, text: JSON.stringify(agentFile(draft)), actor: kiln, channel: 'cli' },
+      now,
+    );
+    const before = getItem(ctx, item, now).state;
+    publishBoard(ctx, board.id, { moves: {}, by: you, closeRequest: true }, now);
+    undoMove(ctx, { id: item, from: before, actor: you, channel: 'ui' }, now);
+    expect(getItem(ctx, item, now).state).toBe(before);
+
+    expect(showItem(ctx, item, { actor: kiln, channel: 'cli' }, now).board?.request).toMatchObject({
+      board: board.id,
+      published: true,
+    });
+    expect(itemNextText(ctx, getItem(ctx, item, now), 'kiln')).not.toContain('otea board draft');
   });
 
   it('reopens the Pedido it closed when the publish is undone, its draft back on it', () => {
