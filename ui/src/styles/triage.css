@@ -291,6 +291,10 @@
   transition-duration: 160ms;
 }
 .tcard.under {
+  /* As tall as the top card, whatever its own length: only its offset edge shows under it. What
+     it says past that height is cut (not its stamp, above it) until it is the top card. */
+  height: var(--h, auto);
+  clip-path: inset(-30px -30px 0 -30px round 0 0 12px 12px);
   transform: translateY(calc(14px - 14px * var(--rise))) scale(calc(0.975 + 0.025 * var(--rise)));
   opacity: calc(0.55 + 0.45 * var(--rise));
   pointer-events: none;
