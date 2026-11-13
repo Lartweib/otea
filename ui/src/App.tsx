@@ -11,6 +11,7 @@ import { BriefView } from './components/BriefView.tsx';
 import { ConnectDialog } from './components/ConnectDialog.tsx';
 import { LanguageNote } from './components/LanguageNote.tsx';
 import { LanPanel } from './components/LanPanel.tsx';
+import { ModelPerformance } from './components/ModelPerformance.tsx';
 import { CatalogOverview, ModuleIndex, ModulePanel } from './components/ModuleCatalog.tsx';
 import { ProjectSettings } from './components/ProjectSettings.tsx';
 import { ProjectsInbox } from './components/ProjectsInbox.tsx';
@@ -95,6 +96,8 @@ function View({ route }: { route: Route }): ReactNode {
           canWrite={app.session.canConfigure}
         />
       );
+    case 'performance':
+      return <ModelPerformance />;
     case 'studio':
       return <BoardStudio page={route.page} canWrite={app.session.canConfigure} />;
     case 'modules':

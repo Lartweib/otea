@@ -46,6 +46,10 @@ export type PerformanceRow = Numbers & {
 
 export type PerformanceReport = { rows: PerformanceRow[]; total: Numbers };
 
+// The report as the server and otea stats give it: with the boards read, by name, and the time the
+// period starts at (null for all of it).
+export type PerformanceView = PerformanceReport & { boards: string[]; since: string | null };
+
 // The board's own moves (a publish, a restore, the reading of a preset): not the work.
 const BOARD_MOVES = new Set(['publish', 'restore', 'migrate']);
 

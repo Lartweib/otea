@@ -7,7 +7,14 @@ import type { CollectionView, Item } from '../types.ts';
 
 // What the rail lists (SPEC §7.2, mock:1420-1458), worked out from the data alone.
 
-export type RailKey = 'toca' | 'atasco' | `board:${string}` | 'studio' | 'settings' | null;
+export type RailKey =
+  | 'toca'
+  | 'atasco'
+  | `board:${string}`
+  | 'studio'
+  | 'settings'
+  | 'performance'
+  | null;
 
 // The row the selection pill sits on: the view in sight, if the rail lists it.
 export function railKey(route: Route): RailKey {
@@ -24,6 +31,8 @@ export function railKey(route: Route): RailKey {
       return 'studio';
     case 'settings':
       return 'settings';
+    case 'performance':
+      return 'performance';
     default:
       return null;
   }

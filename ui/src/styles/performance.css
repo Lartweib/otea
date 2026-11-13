@@ -1,0 +1,198 @@
+/* Rendimiento (#/performance): how each model performs. A page in the board grammar (kicker,
+   display, dek), then the filters, one plain reading, and a table of figures in columns with a thin
+   meter for how many handoffs come back: one hue on a track of the same hue, no other colour. */
+
+.perf-body {
+  padding-left: 72px;
+  max-width: 1040px;
+}
+.perf-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding: 18px 0;
+  border-top: 1px solid var(--rule);
+}
+.perf-boards {
+  height: 32px;
+  padding: 0 28px 0 12px;
+  border-radius: 999px;
+  border: 0;
+  box-shadow: inset 0 0 0 1px var(--rule);
+  background:
+    var(--sheet)
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M3.25 4.75 6 7.5l2.75-2.75' fill='none' stroke='%23888' stroke-width='1.3'/%3E%3C/svg%3E")
+    no-repeat right 10px center / 12px;
+  appearance: none;
+  font: 500 12.5px / 1 var(--sans);
+  color: var(--ink-2);
+  cursor: pointer;
+}
+.perf-boards:hover {
+  color: var(--ink);
+}
+
+/* the one reading: a sentence in the page's serif, never a hero number */
+.perf-reading,
+.perf-few {
+  font: 400 21px / 1.35 var(--serif);
+  font-variation-settings: "opsz" 24;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  max-width: 44ch;
+  text-wrap: pretty;
+  margin: 6px 0 26px;
+}
+.perf-few {
+  font-style: italic;
+  font-size: 17px;
+  color: var(--ink-2);
+}
+
+/* ───────── the table ───────── */
+.perf-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
+}
+.perf-table th,
+.perf-table td {
+  padding: 0 12px;
+  height: 40px;
+  text-align: left;
+  font-weight: 400;
+  border-bottom: 1px solid var(--rule);
+  white-space: nowrap;
+}
+.perf-table th:first-child {
+  padding-left: 0;
+}
+.perf-table thead th {
+  height: 32px;
+  font: 600 10.5px / 1 var(--sans);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  border-bottom-color: var(--rule-2);
+}
+.perf-table thead th[data-tip] {
+  cursor: help;
+}
+.perf-table .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-2);
+}
+.perf-table thead .num {
+  color: var(--ink-3);
+}
+.perf-table .perf-row th {
+  color: var(--ink);
+}
+.perf-open {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  margin-left: -4px;
+  padding: 0 6px 0 2px;
+  border-radius: 6px;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.perf-open:hover {
+  background: var(--hov);
+}
+.perf-open .chev {
+  width: 12px;
+  height: 12px;
+  fill: none;
+  stroke: var(--ink-3);
+  stroke-width: 1.3;
+}
+.perf-name {
+  font: 500 14px / 1 var(--sans);
+}
+.perf-row:hover > * {
+  background: var(--hov);
+}
+
+/* a row's models and steps, folded under it */
+.perf-table .perf-sub-head td {
+  height: 30px;
+  padding-left: 22px;
+  font: 400 11.5px / 1 var(--mono);
+  color: var(--ink-3);
+  border-bottom: 0;
+}
+.perf-table .perf-sub th {
+  padding-left: 22px;
+  color: var(--ink-2);
+}
+.perf-table .perf-sub > * {
+  height: 34px;
+  font-size: 13px;
+}
+.perf-model {
+  font: 400 12.5px / 1 var(--mono);
+}
+.perf-board {
+  color: var(--ink-3);
+}
+.perf-group.open .perf-row > * {
+  border-bottom-color: transparent;
+}
+
+/* how many handoffs come back: a thin meter (6 px, round ends) on a track of its own hue */
+.perf-back-cell {
+  width: 1%;
+}
+.perf-back {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  width: 100%;
+}
+.perf-meter {
+  position: relative;
+  width: 72px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--you-wash);
+  box-shadow: inset 0 0 0 1px var(--tint);
+  overflow: hidden;
+}
+.perf-meter > i {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 999px;
+  background: var(--you);
+}
+.perf-back[data-few] .perf-meter {
+  opacity: 0.45;
+}
+.perf-fig {
+  min-width: 4ch;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-2);
+}
+.perf-none {
+  color: var(--ink-3);
+}
+
+.perf-empty {
+  padding: 8px 0 12px;
+}
+.perf-empty .pane-message {
+  padding-left: 0;
+}
+.perf-note {
+  margin-top: 22px;
+  max-width: 70ch;
+  font: 400 italic 14px / 1.5 var(--serif);
+  color: var(--ink-3);
+}

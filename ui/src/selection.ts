@@ -1,5 +1,5 @@
 // Routes live in the hash (SPEC §6.2): `#/` Te toca, `#/atasco`, `#/b/<board>` a board, `#/triage`,
-// `#/projects`, `#/settings`, `#/lan` (the pairing dialog over Te toca), `#/studio[/...]` (see
+// `#/projects`, `#/settings`, `#/performance`, `#/lan` (the pairing dialog over Te toca), `#/studio[/...]` (see
 // StudioPage), `#/modules[/<name>]` and `#/brief/<id>,<id>`. An open item appends
 // `/i/<id>` to Te toca, Atasco and a board (`#/b/Errores/i/ERR-214`; `#/i/ERR-214` on Te toca). A
 // bare `#<id>`, the CLI's deep link, opens the item on Te toca. Item ids never start with a slash.
@@ -10,6 +10,7 @@ export type ViewRoute =
   | { view: 'triage' }
   | { view: 'projects' }
   | { view: 'settings' }
+  | { view: 'performance' }
   | { view: 'lan' }
   | { view: 'studio'; page: StudioPage }
   | { view: 'modules'; name?: string }
@@ -28,6 +29,7 @@ const STUDIO = '/studio';
 const LAN = '/lan';
 const PROJECTS = '/projects';
 const SETTINGS = '/settings';
+const PERFORMANCE = '/performance';
 
 // LAN access: the pairing code for a phone and the paired devices.
 export const LAN_HASH = `#${LAN}`;
@@ -37,6 +39,9 @@ export const PROJECTS_HASH = `#${PROJECTS}`;
 
 // The settings of the project this server serves: its paths, repos and storage.
 export const SETTINGS_HASH = `#${SETTINGS}`;
+
+// How each model performs: handoffs, send-backs and rounds per model family and effort.
+export const PERFORMANCE_HASH = `#${PERFORMANCE}`;
 
 // Swipe triage: what waits for you, one card at a time.
 export const TRIAGE_HASH = `#${TRIAGE}`;
@@ -81,6 +86,7 @@ export function routeFromHash(hash: string): Route {
   if (path === LAN) return { view: 'lan' };
   if (path === PROJECTS) return { view: 'projects' };
   if (path === SETTINGS) return { view: 'settings' };
+  if (path === PERFORMANCE) return { view: 'performance' };
   if (path === ATASCO || path.startsWith(`${ATASCO}/`)) {
     return withItem({ view: 'atasco' }, path.slice(ATASCO.length));
   }
@@ -130,6 +136,8 @@ export function hashOf(route: Route): string {
       return PROJECTS_HASH;
     case 'settings':
       return SETTINGS_HASH;
+    case 'performance':
+      return PERFORMANCE_HASH;
     case 'lan':
       return LAN_HASH;
     case 'studio':

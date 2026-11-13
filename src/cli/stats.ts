@@ -1,5 +1,4 @@
-import type { PerformanceView } from '../app/performance.ts';
-import type { Numbers } from '../core/board/performance.ts';
+import type { Numbers, PerformanceView } from '../core/board/performance.ts';
 import { columns } from './format.ts';
 
 // otea stats as text: one row per model family and effort, its exact models and its board steps

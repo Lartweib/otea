@@ -33,6 +33,8 @@ export const shell = {
   'shell.activityLine': 'reservas en curso, los últimos eventos',
   'shell.connect': 'Conectar un agente',
   'shell.connectLine': 'otea mcp --as <nombre>',
+  'shell.performance': 'Ver rendimiento',
+  'shell.performanceLine': 'cuántas entregas vuelven, por modelo',
   'shell.connectedRule': 'conectado: tiene una reserva, o tuvo actividad en los últimos 5 min',
 
   // Preferencias: lo que es de este navegador
@@ -91,6 +93,7 @@ export const shell = {
   'nav.project': 'proyecto',
   'nav.studio': 'Studio',
   'nav.settings': 'Configuración',
+  'nav.performance': 'Rendimiento',
   'nav.prefs': 'Preferencias',
   'nav.hide': 'Ocultar el panel',
   'nav.show': 'Mostrar el panel',

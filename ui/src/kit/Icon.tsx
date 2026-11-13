@@ -92,6 +92,8 @@ export const IC = {
   pasos:
     '<rect x="2.4" y="3" width="3" height="10" rx="1"/><rect x="6.5" y="3" width="3" height="7" rx="1"/><rect x="10.6" y="3" width="3" height="4.6" rx="1"/>',
   act: '<path d="M1.8 8.3h2.6l1.6-4.2 3 8.2 1.6-4h3.6"/>',
+  // Rendimiento: three bars on a baseline
+  perf: '<path d="M2.5 13.2h11"/><path d="M4.6 10.8V8.2M8 10.8V4.2M11.4 10.8V6.4"/>',
   link: '<path d="M7 9.2a2.6 2.6 0 0 0 3.7 0l2-2a2.6 2.6 0 0 0-3.7-3.7l-.6.6"/><path d="M9 6.8a2.6 2.6 0 0 0-3.7 0l-2 2a2.6 2.6 0 0 0 3.7 3.7l.6-.6"/>',
   sys: '<rect x="2" y="3" width="12" height="8" rx="1.3"/><path d="M6 13.5h4M8 11v2.5"/>',
   sun: '<circle cx="8" cy="8" r="2.6"/><path d="M8 1.8v1.4M8 12.8v1.4M1.8 8h1.4M12.8 8h1.4M3.6 3.6l1 1M11.4 11.4l1 1M3.6 12.4l1-1M11.4 4.6l1-1"/>',

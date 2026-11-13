@@ -31,6 +31,8 @@ export const shell = {
   'shell.activityLine': 'leases running down, the latest events',
   'shell.connect': 'Connect an agent',
   'shell.connectLine': 'otea mcp --as <name>',
+  'shell.performance': 'See performance',
+  'shell.performanceLine': 'how many handoffs come back, per model',
   'shell.connectedRule': 'connected: holds a lease, or was active in the last 5 min',
 
   // Preferences: what belongs to this browser
@@ -88,6 +90,7 @@ export const shell = {
   'nav.project': 'project',
   'nav.studio': 'Studio',
   'nav.settings': 'Settings',
+  'nav.performance': 'Performance',
   'nav.prefs': 'Preferences',
   'nav.hide': 'Hide the panel',
   'nav.show': 'Show the panel',

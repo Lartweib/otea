@@ -61,6 +61,7 @@ describe('the catalogs', () => {
     'when.hoursMinutes',
     'when.hours',
     'when.minutes',
+    'perf.underMinute',
     'toca.axis.from',
     'toca.axis.mid',
     'evidence.seconds',

@@ -349,6 +349,13 @@ export function Rail() {
               to={{ view: 'settings' }}
             />
           ) : null}
+          <Row
+            k="performance"
+            on={key === 'performance'}
+            icon={<Icon name="perf" />}
+            label={t('nav.performance')}
+            to={{ view: 'performance' }}
+          />
         </nav>
       </div>
       <div className="rail-foot">

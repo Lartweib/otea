@@ -2,7 +2,7 @@ import {
   type ItemTrail,
   modelPerformance,
   PERIOD_HINT,
-  type PerformanceReport,
+  type PerformanceView,
   parsePeriod,
 } from '../core/board/performance.ts';
 import { OteaError } from '../core/errors.ts';
@@ -20,12 +20,6 @@ export type PerformanceInput = {
   board?: string | undefined;
   // A period back from now (7d, 30d, 12h) or all; all when left out.
   since?: string | undefined;
-};
-
-export type PerformanceView = PerformanceReport & {
-  // The boards read, by name, and the time the period starts at (null for all of it).
-  boards: string[];
-  since: string | null;
 };
 
 export function performanceOf(

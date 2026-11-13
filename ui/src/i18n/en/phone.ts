@@ -32,6 +32,7 @@ export const phone = {
   'phone.deskOnly.studio': 'Studio is on the computer.',
   'phone.deskOnly.settings': 'Settings is on the computer.',
   'phone.deskOnly.modules': 'The module catalog is on the computer.',
+  'phone.deskOnly.performance': 'Performance is on the computer.',
   'phone.deskOnly.text': 'On the phone you review, capture and read the boards.',
   'phone.steps': 'Step',
   'phone.allSteps': 'All',

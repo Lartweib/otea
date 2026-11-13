@@ -200,6 +200,7 @@ describe('the agents menu', () => {
         onOpen: () => undefined,
         onActivity: () => undefined,
         onConnect: () => undefined,
+        onPerformance: () => undefined,
       }),
     );
   };
@@ -233,5 +234,11 @@ describe('the agents menu', () => {
     );
     expect(html).toContain('<b>Conectar un agente</b><small>otea mcp --as &lt;nombre&gt;</small>');
     expect(html).toContain('conectado: tiene una reserva, o tuvo actividad en los últimos 5 min');
+  });
+
+  it('leads to how each model performs, in its footer', () => {
+    expect(menu()).toContain(
+      '<b>Ver rendimiento</b><small>cuántas entregas vuelven, por modelo</small>',
+    );
   });
 });
