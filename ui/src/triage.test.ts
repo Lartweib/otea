@@ -4,6 +4,10 @@ import {
   cardWords,
   dragIntent,
   dragProgress,
+  pileLanding,
+  pileOf,
+  pileSide,
+  pileView,
   releaseDirection,
   resist,
   roundOf,
@@ -18,6 +22,7 @@ import {
   triCurrent,
   triDecide,
   triNext,
+  triPile,
   triReturn,
   triStart,
   triSync,
@@ -395,5 +400,103 @@ describe('triReturn and a decision taken back', () => {
     const s = triSync(decided, ['A', 'B']);
     expect(triCurrent(s)).toBe('B');
     expect(s.decided).toBe(1);
+  });
+});
+
+describe('the piles (which pile a move goes to, and what each holds)', () => {
+  it('an approval goes on the approved pile, a send-back on the sent-back one, Later on none', () => {
+    expect(pileOf('approve')).toBe('approved');
+    expect(pileOf('send')).toBe('sent');
+    expect(pileOf('later')).toBeUndefined();
+  });
+
+  it('each pile sits on the side its card is thrown to: approved right, sent back left', () => {
+    expect(pileSide('approved')).toBe('right');
+    expect(pileSide('sent')).toBe('left');
+  });
+
+  it('a pass starts with both piles empty', () => {
+    const s = triStart(['A', 'B']);
+    expect(triPile(s, 'approved')).toEqual([]);
+    expect(triPile(s, 'sent')).toEqual([]);
+  });
+
+  it('a decided card lands on its pile with the step it went to, newest on top', () => {
+    let s = triStart(['A', 'B', 'C', 'D', 'E']);
+    s = triDecide(s, 'approve', 'done');
+    s = triDecide(s, 'send', 'todo');
+    s = triDecide(s, 'approve', 'done');
+    s = triDecide(s, 'later');
+    s = triDecide(s, 'approve', 'shipped');
+    expect(triPile(s, 'approved')).toEqual([
+      { id: 'E', pile: 'approved', to: 'shipped' },
+      { id: 'C', pile: 'approved', to: 'done' },
+      { id: 'A', pile: 'approved', to: 'done' },
+    ]);
+    expect(triPile(s, 'sent')).toEqual([{ id: 'B', pile: 'sent', to: 'todo' }]);
+  });
+
+  it('the piles count what was decided, never what was left for later', () => {
+    let s = triStart(['A', 'B', 'C']);
+    s = triDecide(s, 'approve', 'done');
+    s = triDecide(s, 'later');
+    s = triDecide(s, 'send', 'todo');
+    expect(triPile(s, 'approved').length + triPile(s, 'sent').length).toBe(s.decided);
+  });
+
+  it('a card taken back (Deshacer, a failed move) leaves its pile', () => {
+    let s = triStart(['A', 'B', 'C']);
+    s = triDecide(s, 'approve', 'done');
+    s = triDecide(s, 'send', 'todo');
+    const r = triReturn(s, 'A');
+    expect(triPile(r, 'approved')).toEqual([]);
+    expect(triPile(r, 'sent')).toEqual([{ id: 'B', pile: 'sent', to: 'todo' }]);
+  });
+
+  it('a card that left the reviews and comes back leaves its pile too', () => {
+    const decided = triDecide(triStart(['A', 'B']), 'send', 'todo');
+    const left = triSync(decided, ['B']);
+    expect(triPile(left, 'sent')).toHaveLength(1);
+    const back = triSync(left, ['A', 'B']);
+    expect(triPile(back, 'sent')).toEqual([]);
+  });
+});
+
+describe('pileView', () => {
+  const entries = ['F', 'E', 'D', 'C', 'B', 'A'].map((id) => ({
+    id,
+    pile: 'approved' as const,
+    to: 'done',
+  }));
+
+  it('shows a short pile whole', () => {
+    expect(pileView(entries.slice(0, 3), 5)).toEqual({ shown: entries.slice(0, 3), more: 0 });
+  });
+
+  it('shows the newest of a tall pile and counts the rest under them', () => {
+    expect(pileView(entries, 4)).toEqual({ shown: entries.slice(0, 4), more: 2 });
+  });
+});
+
+describe('pileLanding', () => {
+  const card = { left: 500, top: 200, width: 760, height: 400 };
+  const pile = { left: 1300, top: 240, width: 260, height: 0 };
+
+  it('brings the card down to the pile width, its top on the pile top', () => {
+    const at = pileLanding(card, pile);
+    expect(at.scale).toBeCloseTo(260 / 760);
+    // Centres line up: 500 + 380 + x = 1300 + 130.
+    expect(at.x).toBeCloseTo(550);
+    // The scaled card's top on the pile's top: 200 + 200 + y - 200 * scale = 240.
+    expect(at.y).toBeCloseTo(240 - 400 + 200 * (260 / 760));
+  });
+
+  it('lands to the left for a pile on the left', () => {
+    const at = pileLanding(card, { left: 140, top: 240, width: 260, height: 0 });
+    expect(at.x).toBeLessThan(0);
+  });
+
+  it('never grows a card onto a pile wider than it', () => {
+    expect(pileLanding(card, { ...pile, width: 900 }).scale).toBe(1);
   });
 });
