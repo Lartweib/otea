@@ -215,23 +215,27 @@ describe('project presets', () => {
     ).replace('preset_version: 2', 'preset_version: 2\nplaybook: ./playbook.md');
 
     it('carries each note with its code, level and path', () => {
-      write('notes', { 'preset.yaml': GATED, 'playbook.md': 'Work the notes.' });
+      const yaml = NOTES.replace(
+        'open: { turn: agent }',
+        'open: { turn: agent, close_requires: children_closed }',
+      );
+      write('notes', { 'preset.yaml': yaml });
 
       expect(own(loadPresets(root))).toEqual([
         {
           preset: 'notes',
           origin: 'project',
           path: join(root, 'presets', 'notes', 'preset.yaml'),
-          code: 'gate_unchecked',
+          code: 'deprecated_key',
           level: 'warning',
-          at: { section: 'gates', gate: 'ship' },
-          message: expect.stringContaining('workflow.gates.ship: no playbook'),
+          at: { section: 'states', state: 'open' },
+          message: expect.stringContaining('workflow.states.open.close_requires: deprecated'),
         },
       ]);
     });
 
-    it('reads the playbooks to find the gates they check', () => {
-      write('notes', { 'preset.yaml': GATED, 'playbook.md': 'Run otea check --gate ship.' });
+    it('notes no gate its playbook leaves unchecked: agents read the board, not the playbook', () => {
+      write('notes', { 'preset.yaml': GATED, 'playbook.md': 'Work the notes.' });
 
       expect(own(loadPresets(root))).toEqual([]);
     });

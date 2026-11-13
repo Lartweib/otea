@@ -11,7 +11,6 @@ export type PresetNoteCode =
   | 'deprecated_key'
   | 'field_unplaced'
   | 'state_stuck_in_chat'
-  | 'gate_unchecked'
   | 'field_single_type'
   | 'sample_invalid'
   | 'sample_unknown_type'
@@ -20,7 +19,7 @@ export type PresetNoteCode =
   | 'sample_invalid_value'
   | 'sample_missing_file';
 
-export type PresetSection = 'fields' | 'layout' | 'states' | 'moves' | 'gates' | 'samples';
+export type PresetSection = 'fields' | 'layout' | 'states' | 'moves' | 'samples';
 
 // `type` is set when the note is about one type (its own field, its own workflow); `index` is a
 // sample's position in samples.yaml.
@@ -29,7 +28,6 @@ export type PresetPath = {
   type?: string;
   field?: string;
   state?: string;
-  gate?: string;
   slot?: LayoutSlot;
   index?: number;
   file?: string;
@@ -145,27 +143,6 @@ function stuckNotes(preset: Preset): PresetNote[] {
   });
 }
 
-// A gate nothing calls. Otea records no gate checks (hooks run otea check but leave no trace), so
-// the only sign that a gate is used is the playbook asking the agent to run otea check --gate.
-// `playbooks` are the texts of the preset's playbooks; any of them may name any gate.
-export function gateNotes(
-  preset: Preset,
-  playbooks: Readonly<Record<string, string>>,
-): PresetNote[] {
-  const text = Object.values(playbooks).join('\n');
-  const called = (gate: string) => new RegExp(`--gate[ =]${gate}(?![\\w-])`).test(text);
-  return workflowsOf(preset).flatMap(({ workflow, type }) =>
-    Object.keys(workflow.gates ?? {})
-      .filter((gate) => !called(gate))
-      .map((gate) => ({
-        code: 'gate_unchecked' as const,
-        level: 'warning' as const,
-        message: `${prefixOf(type)}.gates.${gate}: no playbook of the preset runs otea check --gate ${gate}, and Otea records no gate checks, so nothing may ever stop on it`,
-        path: { section: 'gates' as const, ...scoped(type), gate },
-      })),
-  );
-}
-
 // A field only one type of several has: fine when meant, but it reads as missing once an item
 // switches type.
 function singleTypeNotes(preset: Preset): PresetNote[] {
@@ -182,16 +159,7 @@ function singleTypeNotes(preset: Preset): PresetNote[] {
   );
 }
 
-// The notes the preset's YAML alone shows. The gate check needs the playbooks: it runs only when
-// they are given.
-export function presetNotes(
-  preset: Preset,
-  playbooks?: Readonly<Record<string, string>>,
-): PresetNote[] {
-  return [
-    ...unplacedNotes(preset),
-    ...stuckNotes(preset),
-    ...(playbooks ? gateNotes(preset, playbooks) : []),
-    ...singleTypeNotes(preset),
-  ];
+// The notes the preset's YAML alone shows.
+export function presetNotes(preset: Preset): PresetNote[] {
+  return [...unplacedNotes(preset), ...stuckNotes(preset), ...singleTypeNotes(preset)];
 }

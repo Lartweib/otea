@@ -3,7 +3,6 @@ import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { OteaError } from '../core/errors.ts';
 import { type Preset, type PresetNote, type PresetPath, readPreset } from '../core/preset.ts';
-import { gateNotes } from '../core/preset-notes.ts';
 import { readSamples, SAMPLES_DIR, SAMPLES_FILE } from '../core/samples.ts';
 
 export const OFFICIAL_PRESETS_DIR = fileURLToPath(new URL('../../presets/', import.meta.url));
@@ -48,7 +47,7 @@ function subdirectories(dir: string): string[] {
     .sort();
 }
 
-// The texts of the playbooks the preset points to, by path, for the gate check.
+// The texts of the playbooks the preset points to, by path.
 function playbookTexts(dir: string, preset: Preset): Record<string, string> {
   const paths = [preset.playbook, ...preset.types.map(({ playbook }) => playbook)];
   return Object.fromEntries(
@@ -77,7 +76,7 @@ export function samplesText(dir: string): string | undefined {
 function notesOf(dir: string, preset: Preset, notes: PresetNote[]): Array<[string, PresetNote]> {
   const samples = readSamples(samplesText(dir), preset, sampleFiles(dir));
   return [
-    ...[...notes, ...gateNotes(preset, playbookTexts(dir, preset))].map(
+    ...notes.map(
       (note): [string, PresetNote] => [join(dir, 'preset.yaml'), note],
     ),
     ...samples.notes.map((note): [string, PresetNote] => [join(dir, SAMPLES_FILE), note]),
