@@ -21,8 +21,10 @@ describe('how a node looks', () => {
 
   it('draws each look exactly as the mock does', () => {
     expect(lookGlyph('yours')).toBe('<g class="lk"><circle r="5" fill="var(--you)"/></g>');
+    // Working: the orbiting arc rides a faint full ring around the core, both centred on it, and the
+    // lane stops at the ring, so the node never reads as «O)».
     expect(lookGlyph('working')).toBe(
-      '<g class="lk"><circle r="4.4" fill="var(--ground)" stroke="var(--ink)" stroke-width="1.25"/><circle class="orb" r="8.2" fill="none" stroke="var(--ink)" stroke-width="1.25" stroke-linecap="round" stroke-dasharray="13.9 51.5"/></g>',
+      '<g class="lk"><circle r="9.6" fill="var(--ground)"/><circle class="trk" r="8.2" fill="none" stroke="var(--ink)" stroke-opacity=".2" stroke-width="1.25"/><circle r="4.4" fill="var(--ground)" stroke="var(--ink)" stroke-width="1.25"/><circle class="orb" r="8.2" fill="none" stroke="var(--ink)" stroke-width="1.25" stroke-linecap="round" stroke-dasharray="13.9 51.5"/></g>',
     );
     expect(lookGlyph('waiting')).toContain('stroke-dasharray="2.6 2.2"');
     expect(lookGlyph('stuck')).toContain('<circle class="wd" r="1.6" fill="var(--warn)"/>');
