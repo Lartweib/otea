@@ -12,7 +12,7 @@ export const studioHome = {
   'bs.home.templatesFailed': 'The templates could not be read: {reason}',
   'bs.home.retry': 'Try again',
   'bs.home.readOnly':
-    'Only this computer’s browser changes the boards. From here you can look at them.',
+    'Here you can look at the boards but not change them. To edit them, run {command} in the project, on its computer: it opens Otea signed in.',
   'bs.home.eachItem': 'each item: {item}',
   'bs.home.live': 'published · v{version}',
   'bs.home.changed': 'unpublished changes',

@@ -1,6 +1,6 @@
 import { type ReactNode, useRef } from 'react';
 import { useApp } from '../../app/context.tsx';
-import { language, t } from '../../i18n/i18n.ts';
+import { language, t, tx } from '../../i18n/i18n.ts';
 import { Button } from '../../kit/Button.tsx';
 import { Count } from '../../kit/Count.tsx';
 import { Icon } from '../../kit/Icon.tsx';
@@ -115,7 +115,7 @@ export function StudioHome({ canWrite }: StudioHomeProps) {
         </>
       ) : (
         <p className="sh-note" data-e="in">
-          {t('bs.home.readOnly')}
+          {tx('bs.home.readOnly', { command: <code>otea open</code> })}
         </p>
       )}
 
