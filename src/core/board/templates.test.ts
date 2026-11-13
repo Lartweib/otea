@@ -8,6 +8,7 @@ import {
   blankBoard,
   instantiate,
   instantiateSet,
+  LISTED_KEYS,
   listedTemplates,
   requestsBoard,
   requireSet,
@@ -145,5 +146,21 @@ describe('requestsBoard', () => {
     expect(es.item).toBe('Pedido');
     expect(Object.values(es.parts).map(({ name }) => name)).toEqual(['Qué necesitas', 'Qué hice']);
     expect(requestsBoard('en').name).toBe('Requests');
+  });
+});
+
+describe('the Research template', () => {
+  it('speaks of any project, not of a game', () => {
+    for (const lang of ['en', 'es'] as const) {
+      const def = instantiate(requireTemplate('research'), lang, {});
+      const words = JSON.stringify([def.about, def.samples, def.steps.map((s) => s.instructions)]);
+      expect(words).not.toMatch(/engine|wolves|saved game|motor|lobos|partida/i);
+    }
+  });
+});
+
+describe('LISTED_KEYS', () => {
+  it('holds the keys Studio offers, in its order', () => {
+    expect(LISTED_KEYS).toEqual(listedTemplates('en').map(({ key }) => key));
   });
 });
