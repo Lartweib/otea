@@ -47,6 +47,10 @@ export const CLI_ONLY_COMMANDS = [
   'projects add',
   'projects relink',
   'projects forget',
+  // A repo's name decides which items a gate checks, so agents never set it.
+  'repos list',
+  'repos add',
+  'repos remove',
   'migrate',
   'connect',
   'collection add',

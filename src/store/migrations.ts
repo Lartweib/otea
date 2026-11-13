@@ -182,6 +182,18 @@ const MIGRATIONS = [
     agent_note TEXT
   );
   `,
+  // The project's repos: the name its items give each one (a repo task's `repo` field) and what
+  // identifies it wherever it is cloned (its origin URL, or its root commit; core/repo.ts). The
+  // repos already at a project's folders are read in once, the first time they are needed, since
+  // that takes git (`repos_read`).
+  `
+  CREATE TABLE repos (
+    name TEXT PRIMARY KEY,
+    identity TEXT NOT NULL UNIQUE
+  );
+
+  ALTER TABLE project ADD COLUMN repos_read INTEGER NOT NULL DEFAULT 0;
+  `,
 ];
 
 function userVersion(db: DatabaseSync): number {

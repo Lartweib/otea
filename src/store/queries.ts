@@ -491,6 +491,37 @@ export function updateProjectIcon(db: DatabaseSync, icon: string | null): void {
   db.prepare('UPDATE project SET icon = ?').run(icon);
 }
 
+// A repo of the project: the name its items give it, and what identifies it (core/repo.ts).
+export type RepoRecord = { name: string; identity: string };
+
+export function selectRepos(db: DatabaseSync): RepoRecord[] {
+  return db.prepare('SELECT name, identity FROM repos ORDER BY name').all() as RepoRecord[];
+}
+
+export function insertRepo(db: DatabaseSync, repo: RepoRecord): void {
+  db.prepare('INSERT INTO repos (name, identity) VALUES (?, ?)').run(repo.name, repo.identity);
+}
+
+export function renameRepo(db: DatabaseSync, identity: string, name: string): void {
+  db.prepare('UPDATE repos SET name = ? WHERE identity = ?').run(name, identity);
+}
+
+export function deleteRepo(db: DatabaseSync, name: string): void {
+  db.prepare('DELETE FROM repos WHERE name = ?').run(name);
+}
+
+// Whether the repos at the project's folders were read in (app/repos.ts).
+export function selectReposRead(db: DatabaseSync): boolean {
+  const row = db.prepare('SELECT repos_read FROM project').get() as
+    | { repos_read: number }
+    | undefined;
+  return row?.repos_read === 1;
+}
+
+export function markReposRead(db: DatabaseSync): void {
+  db.prepare('UPDATE project SET repos_read = 1').run();
+}
+
 // An agent's presence: the harness it last came through and when it was last seen.
 export type AgentRecord = {
   name: string;

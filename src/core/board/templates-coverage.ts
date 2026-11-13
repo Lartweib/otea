@@ -409,7 +409,10 @@ export const COVERAGE_TEMPLATES: readonly Template[] = [
         key: 'repo',
         kind: 'text',
         name: w('Repo', 'Repo'),
-        hint: w('the folder of the repository, e.g. api', 'la carpeta del repositorio, p. ej. api'),
+        hint: w(
+          'the repository, by the name the project gives it (otea repos list), e.g. api',
+          'el repositorio, con el nombre que le da el proyecto (otea repos list), p. ej. api',
+        ),
       },
       {
         key: 'branch',

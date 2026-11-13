@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, realpathSync, renameSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -5,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { addCollection } from '../app/collections.ts';
 import { createItem, moveItem } from '../app/items.ts';
 import { initProject, type Project } from '../app/project.ts';
+import { addRepo } from '../app/repos.ts';
 import { tempGitRepo } from '../cli/testing.ts';
 import type { Actor } from '../core/item.ts';
 import type { ProjectOverview, ProjectSettings } from './projects.ts';
@@ -107,6 +109,16 @@ describe('the projects api', () => {
     expect(settings.database.bytes).toBeGreaterThan(0);
     expect(settings.collections.map(({ name }) => name)).toEqual(['Pedidos', 'tasks']);
     expect(settings.collections[1]).toEqual({ name: 'tasks', preset: 'tasks' });
+  });
+
+  it('names each repo as the project does, not by its folder', async () => {
+    execFileSync('git', ['remote', 'add', 'origin', 'https://github.com/acme/keys'], {
+      cwd: here.root,
+    });
+    addRepo(here, here.root, 'keys', env);
+
+    const settings = await get<ProjectSettings>('/api/project/settings');
+    expect(settings.paths[0]?.repos[0]?.name).toBe('keys');
   });
 
   it('adds a path, relinks a moved one and forgets it, signed in', async () => {

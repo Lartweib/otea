@@ -28,9 +28,12 @@ describe('check', () => {
     }
   };
 
+  const ORIGIN = 'https://github.com/acme/keys.git';
+
   beforeEach(async () => {
     repo = tempGitRepo();
     execFileSync('git', ['checkout', '--quiet', '-b', 'chg-1/keys'], { cwd: repo.dir });
+    execFileSync('git', ['remote', 'add', 'origin', ORIGIN], { cwd: repo.dir });
     name = basename(repo.dir);
     otea = cliAt(repo.dir, { OTEA_AGENT: 'claude' });
     await otea('init');
@@ -77,6 +80,65 @@ describe('check', () => {
 
     expect((await otea('check', '--gate', 'merge', '--branch', '--repo')).code).toBe(0);
     expect((await otea('check', '--gate', 'push', '--branch', '--repo')).code).toBe(1);
+  });
+
+  it('knows a clone of the repo in another folder by the repo’s name, not the folder’s', async () => {
+    const clone = tempGitRepo();
+    try {
+      const at = cliAt(clone.dir, { OTEA_AGENT: 'claude' });
+      execFileSync('git', ['checkout', '--quiet', '-b', 'chg-1/keys'], { cwd: clone.dir });
+      execFileSync('git', ['remote', 'add', 'origin', 'git@github.com:acme/keys'], {
+        cwd: clone.dir,
+      });
+      const { id } = JSON.parse((await otea('projects', 'current', '--json')).out);
+      await at('projects', 'add', '.', '--to', id);
+
+      expect(await at('check', '--gate', 'push', '--branch', '--repo')).toMatchObject({
+        code: 1,
+        out: `push refused: ${task} is in Propuesta; its branch can be pushed only while Implementar is being done.\n`,
+      });
+    } finally {
+      clone.remove();
+    }
+  });
+
+  it('reads in the repos of a project from before, under the names its items give them', async () => {
+    const project = openProject(repo.dir);
+    try {
+      project.db.exec('DELETE FROM repos; UPDATE project SET repos_read = 0');
+    } finally {
+      project.db.close();
+    }
+    const clone = tempGitRepo();
+    try {
+      execFileSync('git', ['remote', 'add', 'origin', ORIGIN], { cwd: clone.dir });
+      const { id } = JSON.parse((await otea('projects', 'current', '--json')).out);
+      await cliAt(clone.dir)('projects', 'add', '.', '--to', id);
+
+      expect(await json('repos', 'list')).toEqual([
+        { name, identity: 'remote:github.com/acme/keys' },
+      ]);
+    } finally {
+      clone.remove();
+    }
+  });
+
+  it('refuses, in a project, a push from a repo it cannot tell is one of the project’s', async () => {
+    const nested = join(repo.dir, 'vendor', 'lib');
+    mkdirSync(nested, { recursive: true });
+    execFileSync('git', ['init', '--quiet', '-b', 'chg-1/keys'], { cwd: nested });
+    const result = await cliAt(nested)('check', '--gate', 'push', '--branch', '--repo');
+
+    expect(result).toMatchObject({ code: 1, out: '' });
+    expect(result.err).toContain(`push refused: cannot tell which repo ${nested}`);
+    expect(result.err).toContain('otea repos add');
+
+    const commit = ['-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '--allow-empty'];
+    execFileSync('git', [...commit, '--quiet', '-m', 'one'], { cwd: nested });
+    expect((await cliAt(nested)('repos', 'add', '--name', 'lib')).code).toBe(0);
+    const named = await cliAt(nested)('check', '--gate', 'push', '--branch', '--repo');
+    expect(named.code).toBe(0);
+    expect(named.err).toContain('no item with a push gate matches');
   });
 
   it('takes the branch and the repo by name, and other fields with --field', async () => {
