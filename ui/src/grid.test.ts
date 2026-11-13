@@ -205,15 +205,14 @@ describe('the grid width tiers', () => {
     expect(columnWidth(column('severity'), false)).toBe(112);
     expect(columnWidth(column('severity'), true)).toBe(52);
     expect(columnWidth(column('who'), false)).toBe(52);
-    // A board that discards with motives says the longest one there ("No se arreglará", 15).
-    expect(columnWidth({ ...column('who'), chars: 15 }, false)).toBe(116);
-    // The longest age: the time left on a lease, '23 h 59 min left', and its 12 px of padding.
-    expect(columnWidth(column('age'), false)).toBe(130);
+    // The longest age, 'yesterday', and its 12 px of padding: the column says an age only, never
+    // the time left on a lease.
+    expect(columnWidth(column('age'), false)).toBe(79);
     expect(columnWidth(column('category'), false)).toBe(117);
     expect(columnWidth(column('area'), false)).toBe(160);
     const { shown } = fitColumns(gridColumns(bugs), 640, {});
     // At 640 the title keeps its 240: severity and the step step out.
-    expect(gridTemplate(shown, 640).tracks).toBe('28px 72px minmax(0, 1fr) 52px 130px');
+    expect(gridTemplate(shown, 640).tracks).toBe('28px 72px minmax(0, 1fr) 52px 79px');
   });
 
   it('keeps who beside an open item, as the mock does, while the title keeps 160', () => {
@@ -235,30 +234,30 @@ describe('the spare width', () => {
       const { title, air } = layout(room);
       return [title, air];
     };
-    expect(at(1179)).toEqual([326, 0]);
-    expect(at(1659)).toEqual([644, 27]);
-    expect(at(2299)).toEqual([858, 98]);
-    expect(at(1320)).toEqual([467, 0]);
-    expect(at(3179)).toEqual([1558, 128]);
+    expect(at(1179)).toEqual([377, 0]);
+    expect(at(1659)).toEqual([659, 33]);
+    expect(at(2299)).toEqual([873, 104]);
+    expect(at(1320)).toEqual([518, 0]);
+    expect(at(3179)).toEqual([1609, 128]);
   });
 
   it('puts the air before every column after the title, so the table fills its room', () => {
     const { tracks } = layout(1659);
 
-    expect(tracks).toBe('28px 72px minmax(0, 1fr) 144px 139px 187px 137px 79px 157px');
+    expect(tracks).toBe('28px 72px minmax(0, 1fr) 150px 145px 193px 143px 85px 112px');
     const px = tracks
       .replace('minmax(0, 1fr)', '0')
       .split(' ')
       .map((track) => Number.parseInt(track, 10) || 0);
     // The lanes' 60 px of padding on the left and 12 on the right.
-    expect(px.reduce((sum, track) => sum + track, 0) + 644 + 72).toBe(1659);
+    expect(px.reduce((sum, track) => sum + track, 0) + 659 + 72).toBe(1659);
   });
 
   it('keeps the air it is given (a drag holds it still), the title taking the difference', () => {
     const { shown } = fitColumns(gridColumns(bugs), 2299, { state: 150 });
 
-    expect(gridTemplate(shown, 2299, 107)).toMatchObject({ air: 107, title: 764 });
-    expect(gridTemplate(shown, 2299)).toMatchObject({ air: 94, title: 842 });
+    expect(gridTemplate(shown, 2299, 107)).toMatchObject({ air: 107, title: 815 });
+    expect(gridTemplate(shown, 2299)).toMatchObject({ air: 99, title: 863 });
   });
 });
 
@@ -280,11 +279,11 @@ describe('column widths', () => {
   });
 
   it('takes a width the viewer gave, from the title, within the column limits', () => {
-    expect(layout(1179, { state: 150 }).title).toBe(286);
+    expect(layout(1179, { state: 150 }).title).toBe(337);
     expect(widths(1179, { category: 10, area: 300, id: 300, who: 90 })).toMatchObject({
       id: 72,
       category: 64,
-      area: 299,
+      area: 300,
       who: 52,
     });
     expect(widths(2299, { area: 900 }).area).toBe(480);
@@ -305,7 +304,7 @@ describe('column widths', () => {
     const { title, shown } = layout(1179, { area: 480, category: 300 });
 
     expect(title).toBe(240);
-    expect(widths(1179, { area: 480, category: 300 })).toMatchObject({ area: 215, category: 148 });
+    expect(widths(1179, { area: 480, category: 300 })).toMatchObject({ area: 247, category: 167 });
     expect(shown).toHaveLength(8);
   });
 
@@ -313,7 +312,7 @@ describe('column widths', () => {
     const more = chosenColumns(bugs, [...bugs.view.columns, 'environment', 'type']);
 
     expect(layout(1179, {}, more).dropped).toEqual(['environment']);
-    expect(layout(2299, {}, more)).toMatchObject({ dropped: [], title: 782, air: 54 });
+    expect(layout(2299, {}, more)).toMatchObject({ dropped: [], title: 801, air: 58 });
     // At 760 the title would get 156: category steps out too.
     expect(layout(760).dropped).toEqual(['category', 'area']);
   });

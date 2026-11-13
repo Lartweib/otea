@@ -10,7 +10,7 @@ import type { LaneBlock } from '../../lanes/LaneList.tsx';
 import { lookOf } from '../../lanes/looks.ts';
 import { stateWordIn, typeWord, valueWordIn } from '../../preset-words.ts';
 import type { CollectionView, Item } from '../../types.ts';
-import { type Entry, endedTurnText, motiveOfItem, roundOf, severityOf, signalOf } from './model.ts';
+import { type Entry, roundOf, severityOf, signalOf, tablaCells } from './model.ts';
 import { cellClass } from './table.ts';
 
 // The rows of Lista (board rows on the lanes, mock:1725-1733) and Tabla (40 px rows whose cells
@@ -226,12 +226,8 @@ function Cell({ column, item, ctx }: { column: GridColumn; item: Item; ctx: RowC
       const tone = item.turn === 'human' ? 'you' : item.turn === 'none' ? 'none' : undefined;
       return (
         <span className={cls} style={pad} data-leaf="">
-          <StepPill {...(tone ? { tone } : {})}>
-            {/* A discard reads by its motive under Turno; its step is Descartado. */}
-            {motiveOfItem(item)
-              ? t('boardView.dropped')
-              : stateWordIn(ctx.collection.types, item.state)}
-          </StepPill>
+          {/* A discard reads as its motive (Duplicado), plain Descartado without one. */}
+          <StepPill {...(tone ? { tone } : {})}>{tablaCells(item, ctx).step}</StepPill>
         </span>
       );
     }
@@ -271,29 +267,28 @@ function Cell({ column, item, ctx }: { column: GridColumn; item: Item; ctx: RowC
           {item.fields[column.key] ?? ''}
         </span>
       );
-    case 'who':
-      return (
-        <span className={`${cls} who`} style={pad} data-leaf="" data-s={`${item.id}:who`}>
-          {item.turn === 'none' ? (
-            <span className="endt">{endedTurnText(item, ctx.collection)}</span>
-          ) : (
-            <Who item={item} feed={ctx.feed} />
-          )}
-        </span>
-      );
-    case 'age': {
-      const when = whenText(item, ctx.now);
+    case 'who': {
+      // Whose turn it is; an agent's lease (its time left) is the tooltip.
+      const cells = tablaCells(item, ctx);
       return (
         <span
-          className={`${cls} age r${when.warn ? ' warn' : ''}`}
+          className={`${cls} who`}
           style={pad}
           data-leaf=""
-          data-s={`${item.id}:when`}
+          data-s={`${item.id}:who`}
+          title={cells.lease}
         >
-          {when.text}
+          {cells.ended ? <span className="endt">—</span> : <Who item={item} feed={ctx.feed} />}
         </span>
       );
     }
+    case 'age':
+      // How long the item has been where it is.
+      return (
+        <span className={`${cls} age r`} style={pad} data-leaf="" data-s={`${item.id}:when`}>
+          {tablaCells(item, ctx).age}
+        </span>
+      );
     default:
       return null;
   }

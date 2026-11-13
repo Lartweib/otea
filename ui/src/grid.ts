@@ -21,8 +21,7 @@ export type GridColumn = {
   label: string;
   field?: FieldView;
   values?: string[];
-  // The id column: how many characters its ids take (the prefix, a dash and three digits); the who
-  // column: the longest discard motive it says for an ended item.
+  // The id column: how many characters its ids take (the prefix, a dash and three digits).
   chars?: number;
 };
 
@@ -184,11 +183,13 @@ export function shownColumns(columns: readonly GridColumn[], tier: GridTier): Sh
 const widthFor = (texts: readonly string[], min: number) =>
   Math.min(160, Math.max(min, Math.max(...texts.map((text) => text.length)) * 7 + 40));
 
-// The longest age a row says: the time left on a lease, expired, or days ago.
+// The longest age a row says: now, minutes, hours, yesterday or days ago.
 function ageChars(): number {
   const said = [
-    t('when.left', { time: t('when.hoursMinutes', { hours: 23, minutes: 59 }) }),
-    t('when.expired'),
+    t('when.now'),
+    t('when.minutes', { minutes: 59 }),
+    t('when.hours', { hours: 23 }),
+    t('when.yesterday'),
     t('when.days', { count: 30 }),
   ];
   return Math.max(...said.map((text) => text.length));
@@ -205,11 +206,10 @@ export function columnWidth(column: GridColumn, compact: boolean): number {
     case 'severity':
       return compact ? 52 : 112;
     case 'who':
-      // The agent's mark or your chip, never the name; its head reads whole. On a board that
-      // discards with motives, the longest motive (sans 12.5 is about 6.8px a character).
-      return Math.max(52, Math.round((column.chars ?? 0) * 6.8 + 14));
+      // The agent's mark or your chip, never the name; its head reads whole.
+      return 52;
     case 'age':
-      // An age, or the time left on a lease (`23 h 59 left`), and the cell's 12 px on the right.
+      // An age (never the time left on a lease: that is who's tooltip), and its 12 px on the right.
       return Math.max(60, monoWidth(ageChars()) + 14);
     case 'text':
       return 160;

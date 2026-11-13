@@ -1,9 +1,11 @@
 import type { FeedEvent } from '../../activity.ts';
 import { mainPath } from '../../derive/path.ts';
 import { agentOf } from '../../derive/toca.ts';
+import { whenText } from '../../derive/when.ts';
 import { availableColumns, normalText, sortItems, textValues } from '../../grid.ts';
 import { t } from '../../i18n/i18n.ts';
 import { fieldLabel } from '../../intake.ts';
+import { timeCell } from '../../lease.ts';
 import { type Folds, parentOf } from '../../nesting.ts';
 import { fieldWord, stateWordIn, typeWord, valueWordIn } from '../../preset-words.ts';
 import type { CollectionView, FieldView, Item, TypeView } from '../../types.ts';
@@ -154,26 +156,36 @@ export function motivesOf(collection: CollectionView): Motive[] {
   );
 }
 
-// Tabla's Turno column holds an ended item's motive: as wide as the longest one, never cut.
-export function motiveColumns<C extends { key: string; chars?: number }>(
-  columns: readonly C[],
-  collection: CollectionView,
-): C[] {
-  const longest = Math.max(0, ...motivesOf(collection).map((m) => m.name.length));
-  return columns.map((c) => (c.key === 'who' && longest > 0 ? { ...c, chars: longest } : c));
-}
-
 // The motive an item was discarded with, plain `dropped` for a discard without one, '' otherwise.
 export function motiveOfItem(item: Item): string {
   if (item.closes !== 'discarded') return '';
   return item.state.startsWith(MOTIVE_PREFIX) ? item.state.slice(MOTIVE_PREFIX.length) : NO_MOTIVE;
 }
 
-// What an ended item says under Turno: its motive's name, or "—".
-export function endedTurnText(item: Item, collection: CollectionView): string {
-  const motive = motiveOfItem(item);
-  if (!motive || motive === NO_MOTIVE) return '—';
-  return motivesOf(collection).find((m) => m.id === motive)?.name ?? '—';
+// ---- Tabla: each column its own data ----
+
+export type TablaCells = {
+  // The step, in the board's words: a discard reads as its motive (Duplicado), plain Descartado
+  // without one.
+  step: string;
+  // Nobody's turn any more: who says "—".
+  ended: boolean;
+  // How long the item has been where it is, never the time left on a lease.
+  age: string;
+  // The lease an agent holds, or held until it ran out: who's tooltip.
+  lease?: string;
+};
+
+export function tablaCells(item: Item, ctx: BoardCtx): TablaCells {
+  const time = timeCell(item, ctx.now);
+  return {
+    step: stateWordIn(ctx.collection.types, item.state),
+    ended: item.turn === 'none',
+    age: whenText({ ...item, turn: 'none' }, ctx.now).text,
+    ...(time.tone === 'age' || item.turn !== 'agent'
+      ? {}
+      : { lease: `${whenText(item, ctx.now).text} · ${time.label}` }),
+  };
 }
 
 const ONE_LINE = ['enum', 'severity', 'text'];

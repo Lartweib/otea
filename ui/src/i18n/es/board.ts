@@ -156,7 +156,6 @@ export const board = {
   'boardView.group.none': 'sin agrupar',
   'boardView.group.motive': 'motivo',
   'boardView.motive.none': 'Sin motivo',
-  'boardView.dropped': 'Descartado',
   'boardView.turn.human': 'te toca',
   'boardView.turn.agent': 'con agentes',
   'boardView.turn.none': 'cerrado',

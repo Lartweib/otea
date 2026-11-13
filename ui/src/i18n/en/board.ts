@@ -150,7 +150,6 @@ export const board = {
   'boardView.group.none': 'no grouping',
   'boardView.group.motive': 'motive',
   'boardView.motive.none': 'No motive',
-  'boardView.dropped': 'Dropped',
   'boardView.turn.human': 'your turn',
   'boardView.turn.agent': 'with agents',
   'boardView.turn.none': 'closed',
