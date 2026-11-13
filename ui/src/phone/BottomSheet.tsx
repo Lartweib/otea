@@ -1,4 +1,5 @@
 import {
+  type CSSProperties,
   type ReactNode,
   type PointerEvent as ReactPointerEvent,
   useEffect,
@@ -34,8 +35,10 @@ type BottomSheetProps = {
   // A head with the title and a close button; without it the sheet is only its content.
   title?: ReactNode;
   // The button it was opened from: the sheet grows out of it as it rises.
-  from?: () => Element | null;
+  from?: (() => Element | null) | undefined;
   className?: string;
+  // Custom properties for the sheet (the capture's keyboard inset).
+  style?: CSSProperties;
   children: ReactNode;
 };
 
@@ -56,6 +59,7 @@ export function BottomSheet({
   title,
   from,
   className,
+  style,
   children,
 }: BottomSheetProps) {
   const [mounted, setMounted] = useState(open);
@@ -253,6 +257,7 @@ export function BottomSheet({
       <div
         ref={sheet}
         className={['nsheet', className].filter(Boolean).join(' ')}
+        style={style}
         role="dialog"
         aria-modal="true"
         aria-label={label}
