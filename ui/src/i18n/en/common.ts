@@ -26,7 +26,6 @@ export const common = {
   'app.modules': 'Modules',
   'app.studio': 'Studio',
   'app.newItem': 'New item',
-  'app.notFound': 'Item {id} not found.',
   'app.noModule': 'No module named {name}.',
   'connection.connecting': 'Connecting…',
   'connection.live': 'Live',

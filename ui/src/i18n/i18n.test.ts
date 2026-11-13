@@ -115,11 +115,11 @@ describe('the catalogs', () => {
 
 describe('t', () => {
   it('fills holes and picks the plural form of the language on screen', () => {
-    expect(t('app.notFound', { id: 'BUG-1' })).toBe('Item BUG-1 not found.');
+    expect(t('list.childOf', { id: 'BUG-1' })).toBe('Child of BUG-1');
     expect(t('common.files', { count: 1 })).toBe('1 file');
     expect(t('common.files', { count: 3 })).toBe('3 files');
     setLanguage('es');
-    expect(t('app.notFound', { id: 'BUG-1' })).toBe('No se encontró el ítem BUG-1.');
+    expect(t('list.childOf', { id: 'BUG-1' })).toBe('Hijo de BUG-1');
     expect(t('common.files', { count: 1 })).toBe('1 archivo');
     expect(t('common.files', { count: 0 })).toBe('0 archivos');
     // Spanish has a `many` category for millions; without its own form, `other` says it.
@@ -137,9 +137,9 @@ describe('t', () => {
       // @ts-expect-error: no such key
       t('app.nothing'),
       // @ts-expect-error: the message needs its id
-      t('app.notFound'),
+      t('list.childOf'),
       // @ts-expect-error: a hole the message does not have
-      t('app.notFound', { name: 'x' }),
+      t('list.childOf', { name: 'x' }),
     ];
     expect(wrong).toBeTypeOf('function');
   });

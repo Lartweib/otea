@@ -232,6 +232,9 @@ export const detail = {
   'sheet.reduce': 'Reducir',
   'sheet.close': 'Cerrar',
   'sheet.back': 'Volver',
+  'sheet.missing.title': 'Ítem no encontrado',
+  'sheet.missing.text':
+    'No hay ningún ítem {id} en este proyecto. Puede que se haya borrado o que el enlace tenga un error.',
   'sheet.yourTurn': 'tu turno',
   'sheet.typeBoard': '{type} · {board}',
   'sheet.stand.handed': '{agent} te lo entrega.',

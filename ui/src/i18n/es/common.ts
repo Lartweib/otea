@@ -29,7 +29,6 @@ export const common = {
   'app.modules': 'Módulos',
   'app.studio': 'Studio',
   'app.newItem': 'Nuevo ítem',
-  'app.notFound': 'No se encontró el ítem {id}.',
   'app.noModule': 'No hay ningún módulo llamado {name}.',
   'connection.connecting': 'Conectando…',
   'connection.live': 'En vivo',

@@ -233,6 +233,9 @@ export const detail = {
   'sheet.reduce': 'Reduce',
   'sheet.close': 'Close',
   'sheet.back': 'Back',
+  'sheet.missing.title': 'Item not found',
+  'sheet.missing.text':
+    'There is no item {id} in this project. It may have been deleted, or the link may be wrong.',
   'sheet.yourTurn': 'your turn',
   'sheet.typeBoard': '{type} · {board}',
   'sheet.stand.handed': '{agent} hands it to you.',

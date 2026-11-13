@@ -84,6 +84,17 @@ export function stuckToastOf(o: { title: string; state: string; agent?: string }
     : t('sheet.toast.restarted', { title, state: o.state });
 }
 
+// The item the sheet holds: the one asked for once the server has answered, null when it has no
+// such item (the sheet then says so; it never keeps the item open before), else what it held, so a
+// swap waits for the next item and a close shows what it showed until it is gone.
+export function sheetItem<T>(
+  last: T | null,
+  want: string | null,
+  item: T | null | undefined,
+): T | null {
+  return want != null && item !== undefined ? item : last;
+}
+
 // What the sheet shows: the new item form while it is open, and after Crear until the place asks
 // for the created item, so the form swaps into it rather than closing first (mock:3990-3991).
 export function intakeTarget(
