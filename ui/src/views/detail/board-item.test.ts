@@ -239,6 +239,7 @@ describe('roundNotes: each round of the step with its notes', () => {
             at: '2026-01-02T00:00:00Z',
           },
         ],
+        doer: { name: 'mender' },
       },
       {
         round: 2,
@@ -252,6 +253,21 @@ describe('roundNotes: each round of the step with its notes', () => {
           },
         ],
       },
+    ]);
+  });
+
+  it('names who did each round with the profile it handed off with (agents mock §5)', () => {
+    const opus = { harness: 'claude-code', model: 'opus', effort: 'high', family: 'opus' };
+    const gpt = { harness: 'codex', model: 'gpt-5.5', effort: 'high', family: 'gpt-5' };
+    const events: ItemEvent[] = [
+      created('sfix'),
+      { ...moved('sfix', 'sfix__review', agent('codex-b'), '2026-01-02T00:00:00Z'), profile: gpt },
+      said(moved('sfix__review', 'sfix', you, '2026-01-03T00:00:00Z'), 'Falta la fecha.'),
+      { ...moved('sfix', 'sfix__review', by, '2026-01-04T00:00:00Z'), profile: opus },
+    ];
+    expect(roundNotes(errores(), 'sfix', events).map((r) => [r.round, r.doer])).toEqual([
+      [1, { name: 'codex-b', profile: gpt }],
+      [2, { name: 'mender', profile: opus }],
     ]);
   });
 

@@ -2,6 +2,7 @@ import { type Context, Hono } from 'hono';
 import { bodyLimit } from 'hono/body-limit';
 import { getCookie } from 'hono/cookie';
 import { z } from 'zod';
+import { agentDetail } from '../app/agent-detail.ts';
 import { syncBoardPresets } from '../app/boards.ts';
 import { briefFor } from '../app/brief.ts';
 import { listCollectionViews } from '../app/collections.ts';
@@ -309,6 +310,7 @@ function api(
         }
         return c.json(performanceOf(project, { board, since }));
       })
+      .get('/agents/:name', (c) => c.json(agentDetail(project, c.req.param('name'))))
       .get('/items', (c) => {
         const items = listItems(project, itemsFilter(c.req.query(), c.req.queries('field')));
         // On a board, each item's round as the engine counts it, so every list agrees with it.

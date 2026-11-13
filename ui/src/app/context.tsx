@@ -94,6 +94,9 @@ export type AppActions = {
   closeActivity(): void;
   openConnect(): void;
   closeConnect(): void;
+  // An agent's sheet beside the list, in place of any open item.
+  openAgent(name: string): void;
+  closeAgent(): void;
   studioChanged(): void;
 };
 
@@ -210,6 +213,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       closeActivity: () => workspace.set({ activity: false }),
       openConnect: () => workspace.set({ connect: true }),
       closeConnect: () => workspace.set({ connect: false }),
+      openAgent(name) {
+        workspace.set({ intake: null, agent: name });
+        const { item: open, ...view } = ref.current.route;
+        if (open) go(view as ViewRoute);
+      },
+      closeAgent: () => workspace.set({ agent: null }),
       studioChanged: () => ref.current.data.studioChanged(),
     }),
     [],

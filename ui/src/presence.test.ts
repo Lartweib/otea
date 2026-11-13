@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { type Agent, liveAgents, parseAgents, pillState } from './presence.ts';
+import { type Agent, actedWith, liveAgents, parseAgents, pillState } from './presence.ts';
 
 const agent = (name: string, o: Partial<Agent> = {}): Agent => ({
   name,
@@ -65,8 +65,65 @@ describe('parseAgents', () => {
     ]);
   });
 
+  it('reads the profile, its confirmation, when it changed and when the agent connected', () => {
+    const profile = { harness: 'claude-code', model: 'opus', effort: 'high', family: 'opus' };
+    const body = {
+      agents: [
+        {
+          name: 'claude-a',
+          harness: 'claude-code',
+          harnessVersion: '2.1.4',
+          connectedAt: 'c',
+          holding: [],
+          lastSeen: 'x',
+          live: true,
+          profile,
+          profileConfirmed: false,
+          profileChangedAt: 'p',
+        },
+        { name: 'pi-e', harness: 'pi', lastSeen: 'y', profile: { model: 3 } },
+      ],
+    };
+    expect(parseAgents(body)).toEqual([
+      {
+        name: 'claude-a',
+        harness: 'claude-code',
+        harnessVersion: '2.1.4',
+        connectedAt: 'c',
+        holding: [],
+        lastSeen: 'x',
+        live: true,
+        profile,
+        profileConfirmed: false,
+        profileChangedAt: 'p',
+      },
+      { name: 'pi-e', harness: 'pi', holding: [], lastSeen: 'y', live: true, profile: null },
+    ]);
+  });
+
   it('reads anything else as nobody', () => {
     expect(parseAgents(null)).toEqual([]);
     expect(parseAgents({ agents: 'no' })).toEqual([]);
+  });
+});
+
+describe('actedWith', () => {
+  const opus = { harness: 'claude-code', model: 'opus', effort: 'high', family: 'opus' };
+  const sonnet = { harness: 'claude-code', model: 'sonnet', effort: 'medium', family: 'sonnet' };
+  const by = (name: string, profile?: typeof opus, via?: string) => ({
+    actor: { kind: 'agent' as const, name },
+    data: via ? { via } : {},
+    ...(profile ? { profile } : {}),
+  });
+
+  it('reads the profile the agent last acted with, not the one it declares now', () => {
+    const now = [agent('claude-d', { profile: sonnet })];
+    expect(actedWith('claude-d', [by('claude-d', opus), by('codex-b')], now)).toEqual(opus);
+  });
+
+  it('falls back on what it declares now, and leaves out a decision it relayed', () => {
+    const now = [agent('claude-d', { profile: sonnet })];
+    expect(actedWith('claude-d', [by('claude-d', opus, 'you')], now)).toEqual(sonnet);
+    expect(actedWith('nobody', [], now)).toBeNull();
   });
 });

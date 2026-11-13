@@ -6,6 +6,7 @@ import type { Context } from './context.ts';
 import { createItem } from './items.ts';
 import { claimItem, releaseItem } from './leases.ts';
 import { CLI_HARNESS, listAgents, presenceSignature, seeAgent } from './presence.ts';
+import { declareProfile } from './profile.ts';
 import { memoryContext } from './testing.ts';
 
 const ana: Actor = { kind: 'human', name: 'ana' };
@@ -40,6 +41,7 @@ describe('agent presence', () => {
         harness: 'claude-code',
         harnessVersion: '2.1.0',
         lastSeen: T0,
+        connectedAt: T0,
       });
     });
 
@@ -112,7 +114,18 @@ describe('agent presence', () => {
       seeAgent(ctx.db, { agent: 'claude', channel: 'mcp', harness: CLAUDE_CODE }, at(T0));
 
       expect(listAgents(ctx.db, at(T5))).toEqual([
-        { name: 'claude', harness: 'claude-code', holding: [], lastSeen: T0, live: true },
+        {
+          name: 'claude',
+          harness: 'claude-code',
+          harnessVersion: '2.1.0',
+          connectedAt: T0,
+          holding: [],
+          lastSeen: T0,
+          live: true,
+          profile: null,
+          profileConfirmed: false,
+          profileChangedAt: null,
+        },
       ]);
       expect(listAgents(ctx.db, at(T5_1S))[0]?.live).toBe(false);
     });
@@ -123,13 +136,13 @@ describe('agent presence', () => {
       claimItem(ctx, { id: 'TASKS-1', actor: claude, ttlMs: 60 * 60_000 }, at(T0));
 
       expect(listAgents(ctx.db, at(T30))).toEqual([
-        {
+        expect.objectContaining({
           name: 'claude',
           harness: 'claude-code',
           holding: ['TASKS-1', 'TASKS-2'],
           lastSeen: T0,
           live: true,
-        },
+        }),
       ]);
     });
 
@@ -158,6 +171,58 @@ describe('agent presence', () => {
         ['gone', false],
         ['old', false],
       ]);
+    });
+  });
+
+  describe('connection and profile', () => {
+    it('keeps when the agent connected while it stays, and starts again after it was away', () => {
+      seeAgent(ctx.db, { agent: 'claude', channel: 'cli' }, at(T0));
+      seeAgent(ctx.db, { agent: 'claude', channel: 'cli' }, at(T1));
+      expect(findAgent(ctx.db, 'claude')?.connectedAt).toBe(T0);
+
+      seeAgent(ctx.db, { agent: 'claude', channel: 'cli' }, at(T30));
+      expect(findAgent(ctx.db, 'claude')?.connectedAt).toBe(T30);
+    });
+
+    it('starts a new connection with a new MCP session', () => {
+      seeAgent(ctx.db, { agent: 'claude', channel: 'mcp', harness: CLAUDE_CODE }, at(T0));
+      seeAgent(
+        ctx.db,
+        { agent: 'claude', channel: 'mcp', harness: CLAUDE_CODE, newSession: true },
+        at(T0_20S),
+      );
+      expect(findAgent(ctx.db, 'claude')?.connectedAt).toBe(T0_20S);
+    });
+
+    it('lists the profile the agent declared, whether it is confirmed, and when it last changed', () => {
+      seeAgent(ctx.db, { agent: 'claude', channel: 'mcp', harness: CLAUDE_CODE }, at(T0));
+      const mcp = { agent: 'claude', channel: 'mcp' as const, harness: CLAUDE_CODE };
+      declareProfile(ctx.db, { ...mcp, model: 'claude-opus-5-5', effort: 'high' }, at(T0));
+      expect(listAgents(ctx.db, at(T1))[0]).toMatchObject({
+        profile: {
+          harness: 'claude-code',
+          model: 'claude-opus-5-5',
+          effort: 'high',
+          family: 'opus',
+        },
+        profileConfirmed: true,
+        profileChangedAt: null,
+      });
+
+      declareProfile(ctx.db, { ...mcp, model: 'claude-sonnet-5', effort: 'medium' }, at(T1));
+      expect(listAgents(ctx.db, at(T1))[0]).toMatchObject({
+        profile: { model: 'claude-sonnet-5', effort: 'medium' },
+        profileChangedAt: T1,
+      });
+    });
+
+    it('tells the stream when a profile is declared', () => {
+      seeAgent(ctx.db, { agent: 'claude', channel: 'mcp', harness: CLAUDE_CODE }, at(T0));
+      const before = presenceSignature(ctx.db, at(T0));
+      const mcp = { agent: 'claude', channel: 'mcp' as const, harness: CLAUDE_CODE };
+      declareProfile(ctx.db, { ...mcp, model: 'claude-opus-5-5', effort: 'high' }, at(T0));
+
+      expect(presenceSignature(ctx.db, at(T0))).not.toBe(before);
     });
   });
 

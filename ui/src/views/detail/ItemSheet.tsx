@@ -348,6 +348,7 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
     own: facts.own && look === 'yours',
     now,
     board: live ? { reviewer: roundsStep ? roundsStep.reviewer : 'none' } : undefined,
+    agents: app.agents,
   });
   const canWrite = app.session.canWrite;
   const boardSections =

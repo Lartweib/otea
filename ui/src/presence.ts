@@ -1,4 +1,5 @@
 import type { Connection } from './hooks.ts';
+import type { ItemEvent } from './types.ts';
 
 // An agent the server has seen in this project: its name (the actor of its claims, leases and
 // writes), the harness its MCP client named (none when it only used the CLI), the items it holds a
@@ -9,7 +10,49 @@ export type Agent = {
   holding: string[];
   lastSeen: string;
   live: boolean;
+  // What an older server leaves out: the harness's version, when the agent connected, and the
+  // profile it declares (null before it declares one), whether it declared it in this session and
+  // when its model or effort last changed.
+  harnessVersion?: string | null;
+  connectedAt?: string | null;
+  profile?: AgentProfile | null;
+  profileConfirmed?: boolean;
+  profileChangedAt?: string | null;
 };
+
+// What an agent declares it runs as, as declared, with the family its model groups under.
+export type AgentProfile = { harness: string; model: string; effort: string; family: string };
+
+// A profile as the server gives it, or null when it is not one.
+export function parseProfile(raw: unknown): AgentProfile | null {
+  const p = raw as Partial<AgentProfile> | null;
+  if (typeof p?.model !== 'string' || typeof p.effort !== 'string') return null;
+  return {
+    harness: typeof p.harness === 'string' ? p.harness : '',
+    model: p.model,
+    effort: p.effort,
+    family: typeof p.family === 'string' ? p.family : p.model,
+  };
+}
+
+const textOr = (value: unknown): string | null => (typeof value === 'string' ? value : null);
+
+// The profile an agent acted with: the one its last own event among these kept (each event keeps
+// the profile of that moment), else the one it declares now; null when neither says.
+export function actedWith(
+  agent: string,
+  events: readonly Pick<ItemEvent, 'actor' | 'data' | 'profile'>[],
+  agents?: readonly Agent[] | null,
+): AgentProfile | null {
+  const own = events.findLast(
+    (e) =>
+      e.actor.kind === 'agent' &&
+      e.actor.name === agent &&
+      typeof e.data.via !== 'string' &&
+      e.profile !== undefined,
+  );
+  return own?.profile ?? agents?.find((a) => a.name === agent)?.profile ?? null;
+}
 
 // What the agents pill can say: nothing at all while the server has no presence to tell (an older
 // server), offline while the live stream is down (it cannot count), or how many are connected.
@@ -55,6 +98,11 @@ export function parseAgents(body: unknown): Agent[] {
           : [],
         lastSeen: each.lastSeen,
         live: each.live !== false,
+        ...('harnessVersion' in each ? { harnessVersion: textOr(each.harnessVersion) } : {}),
+        ...('connectedAt' in each ? { connectedAt: textOr(each.connectedAt) } : {}),
+        ...('profile' in each ? { profile: parseProfile(each.profile) } : {}),
+        ...('profileConfirmed' in each ? { profileConfirmed: each.profileConfirmed === true } : {}),
+        ...('profileChangedAt' in each ? { profileChangedAt: textOr(each.profileChangedAt) } : {}),
       },
     ];
   });

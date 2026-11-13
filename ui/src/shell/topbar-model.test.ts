@@ -1,9 +1,16 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { ago, inMinutes, item, NOW } from '../derive/fixtures.ts';
+import { agent as actor, ago, inMinutes, item, moved, NOW } from '../derive/fixtures.ts';
 import { setLanguage } from '../i18n/i18n.ts';
 import type { Agent } from '../presence.ts';
 import type { ProjectOverview } from '../types.ts';
-import { agentCounts, agentRows, elsewhereLine, pillMark, projectRows } from './topbar-model.ts';
+import {
+  agentCounts,
+  agentRows,
+  elsewhereLine,
+  pillMark,
+  pillSummary,
+  projectRows,
+} from './topbar-model.ts';
 
 afterEach(() => setLanguage('en'));
 
@@ -143,21 +150,43 @@ describe('the agents menu’s rows', () => {
       lease: null,
       expiredLease: { holder: 'Kiln', expiresAt: ago(12) },
     }),
+    item({ id: 'TAR-7', title: 'Paginar la API', turn: 'human', state: 'verify' }),
   ];
+  const feed = [moved('TAR-7', 'verify', actor('Quill'), { reason: '¿Por cursor?', minutes: 3 })];
+  const opus = { harness: 'claude-code', model: 'opus', effort: 'high', family: 'opus' };
 
-  it('lists each connected agent with its harness and what it holds, as a mini node', () => {
+  it('lists each connected agent with its harness, profile and what it holds, as a mini node', () => {
     const rows = agentRows(
-      [agent('Scout', { harness: 'Claude Code', holding: ['ERR-231'] }), agent('Quill')],
+      [
+        agent('Scout', {
+          harness: 'Claude Code',
+          holding: ['ERR-231'],
+          profile: opus,
+          profileConfirmed: true,
+          profileChangedAt: ago(20),
+        }),
+      ],
       items,
       NOW,
     );
     expect(rows[0]).toMatchObject({
       name: 'Scout',
       harness: 'Claude Code',
+      profile: opus,
+      confirmed: true,
+      changedAt: ago(20),
       held: [{ id: 'ERR-231', title: 'Huecos en la colisión', look: 'working' }],
+      state: 'work',
       quiet: false,
     });
-    expect(rows[1]).toMatchObject({ name: 'Quill', held: [], quiet: false });
+  });
+
+  it('tags a command-line agent with the harness its profile names', () => {
+    const [row] = agentRows([agent('Quill', { harness: 'cli', profile: opus })], items, NOW);
+    expect(row?.harness).toBe('claude-code');
+    const [mcp] = agentRows([agent('Scout', { harness: 'codex', profile: opus })], items, NOW);
+    expect(mcp?.harness).toBe('codex');
+    expect(agentRows([agent('Ivy', { harness: 'cli' })], items, NOW)[0]?.harness).toBe('cli');
   });
 
   it('keeps an agent gone quiet on its expired lease, its item stuck', () => {
@@ -166,39 +195,87 @@ describe('the agents menu’s rows', () => {
       expect.objectContaining({
         name: 'Kiln',
         quiet: true,
+        state: 'quiet',
         held: [{ id: 'CRE-44', title: 'Tortuga musgosa', look: 'stuck' }],
       }),
     ]);
+  });
+
+  it('says an agent waits for your answer when its last handoff asks you something', () => {
+    const [row] = agentRows([agent('Quill')], items, NOW, feed);
+    expect(row).toMatchObject({ state: 'wait', item: { id: 'TAR-7' } });
   });
 
   it('leaves out an agent that is gone with nothing stuck', () => {
     expect(agentRows([agent('Old', { live: false })], items, NOW)).toEqual([]);
   });
 
-  it('counts the agents the menu lists, those holding a lease and the idle', () => {
+  it('puts what asks for attention first: quiet, then working, then waiting, then idle', () => {
     const rows = agentRows(
       [
-        agent('Scout', { holding: ['ERR-231'] }),
+        agent('Idle', { lastSeen: ago(0) }),
         agent('Quill'),
-        agent('Old', { live: false }),
+        agent('Scout', { holding: ['ERR-231'] }),
         agent('Kiln', { live: false, lastSeen: ago(12) }),
       ],
       items,
       NOW,
+      feed,
     );
-    // Kiln went quiet on its stuck item: the menu lists it, so the pill counts it too.
-    expect(rows.map((r) => r.name)).toEqual(['Scout', 'Quill', 'Kiln']);
-    expect(agentCounts(rows)).toEqual({ live: 3, holding: 1, idle: 2 });
+    expect(rows.map((r) => r.name)).toEqual(['Kiln', 'Scout', 'Quill', 'Idle']);
+    expect(agentCounts(rows)).toEqual({ live: 4, holding: 1, idle: 3, quiet: 1, noProfile: 4 });
   });
 });
 
-describe('the agents pill’s mark', () => {
+describe('the agents pill', () => {
   const rows = (agents: Agent[]) => agentRows(agents, [], NOW);
+  const opus = { harness: 'claude-code', model: 'opus', effort: 'high', family: 'opus' };
+  const stuck = [
+    item({ id: 'X', turn: 'agent', expiredLease: { holder: 'q', expiresAt: ago(12) } }),
+  ];
 
   it('turns while an agent holds a lease, rests as a ring with agents, dashes with none', () => {
     expect(pillMark('live', rows([agent('a', { holding: ['X'] })]))).toBe('working');
     expect(pillMark('live', rows([agent('a')]))).toBe('idle');
     expect(pillMark('live', [])).toBe('none');
     expect(pillMark('reconnecting', rows([agent('a')]))).toBe('offline');
+  });
+
+  it('says what happens, not how many: working first, the total in grey', () => {
+    const a = (name: string, o: Partial<Agent> = {}) => agent(name, { profile: opus, ...o });
+    expect(pillSummary('live', rows([a('a', { holding: ['X'] }), a('b'), a('c')]))).toEqual({
+      kind: 'working',
+      count: 1,
+      extra: { kind: 'of', n: 3 },
+    });
+    expect(pillSummary('live', rows([a('a'), a('b')]))).toEqual({
+      kind: 'waiting',
+      count: 2,
+      extra: null,
+    });
+  });
+
+  it('lets a quiet agent win over one without a profile, and that over the total', () => {
+    const a = (name: string, o: Partial<Agent> = {}) => agent(name, { profile: opus, ...o });
+    const quiet = agentRows(
+      [a('a', { holding: ['W'] }), a('q', { live: false, lastSeen: ago(12) }), agent('n')],
+      stuck,
+      NOW,
+    );
+    expect(pillSummary('live', quiet)).toEqual({
+      kind: 'working',
+      count: 1,
+      extra: { kind: 'quiet', n: 1 },
+    });
+    expect(pillSummary('live', rows([a('a'), agent('n', { profile: null })]))).toEqual({
+      kind: 'waiting',
+      count: 2,
+      extra: { kind: 'noProfile', n: 1 },
+    });
+  });
+
+  it('says nobody is connected, or that it cannot count while offline', () => {
+    expect(pillSummary('live', [])).toEqual({ kind: 'none' });
+    expect(pillSummary('reconnecting', rows([agent('a')]))).toEqual({ kind: 'offline' });
   });
 });

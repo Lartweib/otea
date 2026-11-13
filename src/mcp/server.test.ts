@@ -514,13 +514,13 @@ describe('mcp server', () => {
       await data('list');
 
       expect(agents()).toEqual([
-        {
+        expect.objectContaining({
           name: 'claude',
           harness: 'test',
           holding: [],
           lastSeen: expect.any(String),
           live: true,
-        },
+        }),
       ]);
     });
 

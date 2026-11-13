@@ -41,14 +41,14 @@ describe('migrate', () => {
         'phone',
       ]),
     );
-    expect(userVersion(db)).toBe(17);
+    expect(userVersion(db)).toBe(18);
   });
 
   it('is idempotent', () => {
     migrate(db);
     migrate(db);
 
-    expect(userVersion(db)).toBe(17);
+    expect(userVersion(db)).toBe(18);
   });
 
   describe('from version 1', () => {

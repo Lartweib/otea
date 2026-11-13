@@ -22,6 +22,7 @@ import type {
   Session,
   TransportKind,
 } from './types.ts';
+import { type AgentDetail, parseAgentDetail } from './views/agent/agent-sheet.ts';
 
 async function get(path: string, signal: AbortSignal): Promise<Response> {
   const response = await fetch(path, { signal, headers: { accept: 'application/json' } });
@@ -102,6 +103,13 @@ export async function fetchProject(signal: AbortSignal): Promise<ProjectView> {
 export async function fetchAgents(signal: AbortSignal): Promise<Agent[] | null> {
   const response = await get('/api/agents', signal);
   return response.status === 404 ? null : parseAgents(await response.json());
+}
+
+// One agent's sheet: every profile it declared and the steps it may take; null when Otea does not
+// know it.
+export async function fetchAgent(name: string, signal: AbortSignal): Promise<AgentDetail | null> {
+  const response = await get(`/api/agents/${encodeURIComponent(name)}`, signal);
+  return response.status === 404 ? null : parseAgentDetail(await response.json());
 }
 
 export async function fetchPresets(signal: AbortSignal): Promise<PresetView[]> {

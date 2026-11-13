@@ -28,6 +28,7 @@ import {
 } from '../../board-studio/preview/route.ts';
 import { listOf, t } from '../../i18n/i18n.ts';
 import type { Look } from '../../lanes/looks.ts';
+import type { AgentProfile } from '../../presence.ts';
 import type { ItemEvent, RelatedItem } from '../../types.ts';
 
 // An item on a published board, as the step engine reads it: the agent whose turn it is by the
@@ -232,7 +233,41 @@ export type RoundNote = {
   person: boolean;
   at: string;
 };
-export type Round = { round: number; notes: RoundNote[] };
+// `doer`: the agent that did the round, with the profile it did it with (agents mock §5).
+export type Round = {
+  round: number;
+  notes: RoundNote[];
+  doer?: { name: string; profile?: AgentProfile };
+};
+
+// The agent that did each round of the step: its last own move off the step within the round,
+// else, while the round is under way, its last claim since it began. Relayed decisions are yours.
+function roundDoers(
+  stepId: string,
+  starts: readonly { at: string }[],
+  events: readonly ItemEvent[],
+): (Round['doer'] | undefined)[] {
+  const sorted = [...events].sort((a, b) => a.id - b.id);
+  const offStep = (e: ItemEvent) => {
+    const from = positionOf(String(e.data.from ?? ''));
+    return !isClosed(from) && from.step === stepId;
+  };
+  return starts.map(({ at }, i) => {
+    const next = starts[i + 1]?.at;
+    const own = sorted.filter(
+      (e) =>
+        e.actor.kind === 'agent' &&
+        typeof e.data.via !== 'string' &&
+        e.at >= at &&
+        (next === undefined || e.at < next),
+    );
+    const pick =
+      own.filter((e) => e.type === 'transitioned' && offStep(e)).at(-1) ??
+      (next === undefined ? own.filter((e) => e.type === 'claimed').at(-1) : undefined);
+    if (!pick) return undefined;
+    return { name: pick.actor.name, ...(pick.profile ? { profile: pick.profile } : {}) };
+  });
+}
 
 // The rounds of the step as the engine counts them, each with what the send-back that opened it
 // said and the notes of the handoffs made in it, oldest first.
@@ -243,7 +278,9 @@ export function roundNotes(
 ): Round[] {
   const created = events.find(({ type }) => type === 'created')?.at ?? '';
   const history = historyFor(def, events, created);
-  const rounds: Round[] = roundsOfStep(def, history, stepId).map(({ round, back }) => ({
+  const starts = roundsOfStep(def, history, stepId);
+  const doers = roundDoers(stepId, starts, events);
+  const rounds: Round[] = starts.map(({ round, back }, i) => ({
     round,
     notes: back?.said.text
       ? [
@@ -256,6 +293,7 @@ export function roundNotes(
           },
         ]
       : [],
+    ...(doers[i] ? { doer: doers[i] } : {}),
   }));
   if (rounds.length === 0) rounds.push({ round: 1, notes: [] });
   for (const n of handoffNotes(def, history)) {

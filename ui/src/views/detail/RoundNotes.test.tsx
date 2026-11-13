@@ -41,6 +41,17 @@ const railed = (markup: string) =>
     attrs?.includes('data-rail'),
   );
 
+describe('RoundNotes: who did each round', () => {
+  it('reads “Ronda 2 · mender (opus · high)”, the profile in mono in parentheses', () => {
+    setLanguage('es');
+    const opus = { harness: 'claude-code', model: 'opus', effort: 'high', family: 'opus' };
+    const list = events.map((e) => (e.actor.kind === 'agent' ? { ...e, profile: opus } : e));
+    expect(html('sfix__review', list.slice(0, 5))).toContain(
+      '<span class="rh"><span class="rk">Ronda 2</span><span class="rw">· <b>mender</b> <span class="prof">(opus <i>·</i> high)</span></span></span>',
+    );
+  });
+});
+
 describe('RoundNotes: the item’s whole history, grouped by step', () => {
   it('folds each earlier step into one line with its rounds and outcome; the current one is open', () => {
     setLanguage('es');

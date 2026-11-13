@@ -117,6 +117,37 @@ describe('Te toca', () => {
     expect(out).toContain('<div class="age" data-leaf="" data-s="A:when">30 min</div>');
   });
 
+  it('names the profile each agent acted with beside it, the one it declares now while it works', () => {
+    setLanguage('es');
+    const opus = { harness: 'claude-code', model: 'opus', effort: 'high', family: 'opus' };
+    const sonnet = { harness: 'claude-code', model: 'sonnet', effort: 'medium', family: 'sonnet' };
+    const handed = { ...moved('A', 'verify', agent('Mender')), profile: opus };
+    const working = item({
+      id: 'W',
+      turn: 'agent',
+      state: 'fixing',
+      lease: { holder: 'Kiln', expiresAt: inMinutes(14) },
+    });
+    const agents = [
+      { name: 'Mender', harness: null, holding: [], lastSeen: ago(1), live: true, profile: sonnet },
+      {
+        name: 'Kiln',
+        harness: null,
+        holding: ['W'],
+        lastSeen: ago(1),
+        live: true,
+        profile: sonnet,
+      },
+    ];
+    const blocks = tocaBlocks({ ...app([item({ id: 'A' }), working], [handed]), agents }, false);
+    expect(html(blocks.find((b) => b.key === 'A'))).toContain(
+      '<small>entrega <b>Mender</b> <span class="pw">· <span class="prof">opus <i>·</i> high</span></span></small>',
+    );
+    expect(html(blocks.find((b) => b.key === 'W'))).toContain(
+      '<small>lo hace <b>Kiln</b> <span class="pw">· <span class="prof">sonnet <i>·</i> medium</span></span></small>',
+    );
+  });
+
   it('says who went quiet on a stuck row, in warn, and its lease expired', () => {
     setLanguage('es');
     const stuck = item({
