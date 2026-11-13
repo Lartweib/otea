@@ -39,22 +39,20 @@ cd /path/to/your/project
 otea init                                  # a new project starts with the boards Tareas and Errores
 otea init --template repos                 # or with a template's boards (repos, product, triage, ...; none for no board)
 otea board add Roadmap --template tasks    # another board, from a template, published at once
-otea create --collection tasks --title "Write the docs" --description "Install and first steps"
-otea create --collection tasks --title "Flaky login test"   # no description: starts incomplete
-otea create --collection tasks --title "Fix the footer" --description "Wrong year" --field priority=high
-otea create --collection tasks --title "Dark mode?"           # also incomplete
+otea create --collection Tareas --title "Write the docs" --description "Install and first steps"
+otea create --collection Tareas --title "Flaky login test"   # no description: starts in Completar
+otea create --collection Tareas --title "Fix the footer" --description "Wrong year" --field Prioridad=Alta
 otea list --turn agent --unclaimed --json # waiting for agents and not held by another one
 otea wait --turn agent --unclaimed         # or block until there is one (see below)
-otea list --field Priority=High            # items whose field holds that value, by name or id (repeat to AND them)
-otea show TASKS-1                          # what to do next, fields, moves the agent can make or relay, lease, timeline
-otea show TAR-1                            # on a repo task, also whether that repo's checkouts have the pre-push hook
-otea claim TASKS-1 --as claude             # hold it for 15 minutes (--ttl 30m for another length)
-otea heartbeat TASKS-1 --as claude         # extend the lease on long work
-otea move TASKS-1 in_progress --as claude
-otea move TASKS-2 todo                     # refused (exit 8) while a required field is missing
-otea update TASKS-2 --description "Fails on CI only, see run 42"   # fill what was missing
-otea move TASKS-2 todo
-otea move TASKS-4 discarded --reason "Out of scope"   # an incomplete item can be closed with a reason
+otea list --field Prioridad=Alta           # items whose field holds that value, by name or id (repeat to AND them)
+otea next                                  # which item to take now, and what its step asks
+otea show TAR-1                            # what to do next, fields, moves the agent can relay, lease, timeline
+otea claim TAR-1 --as claude               # hold it for 15 minutes (--ttl 30m for another length)
+otea heartbeat TAR-1 --as claude           # extend the lease on long work
+otea handoff TAR-2                         # refused (exit 8) while what Completar asks for is missing
+otea update TAR-2 --description "Fails on CI only, see run 42"   # fill what was missing
+otea handoff TAR-2                         # on to Hacerlo
+otea handoff TAR-1 --note "Install and first steps written"     # to the person's review
 otea validate                              # check boards, collections and items
 otea check --gate push --branch --repo     # may this branch be pushed? exit 0 yes, 19 no (fails open)
 otea hook install --git --claude           # in a repo: make that check a pre-push hook and a Claude Code hook
@@ -65,7 +63,7 @@ Agents claim an item before working it. A lease is atomic: while one agent holds
 
 A lease that ran out without a release leaves its item stuck (**Atasco** in the web UI). There the person either puts it back in the queue of its step for any agent to claim (**Retomar**, `POST /api/items/:id/restart`) or leaves it for a named agent (**Reasignar**, `POST /api/items/:id/reassign` with `{"agent"}`). Both drop the lease that ran out and write a `released` event by the human with `cause` `restart` or `reassign` (and `next`, the agent it is left for); `otea show` reads them as `(back in the queue)` and `(left for <agent>)`. The agent named is expected, not enforced: any agent may still claim the item, but `otea next` offers it only to that agent, and `otea show` tells any other `Left for <agent>: pick another item.` (and that agent `The person left it for you.`) until an agent claims or moves it. An item whose lease is still running, or that has none, is refused (409, `not_stuck`). While its toast is up, `POST /api/items/:id/undo` with `{"release": true}` gives the lease back as it was (with `{"from"}` it takes back a move, as before); like moves, these writes need the session, JSON and the server's own origin.
 
-`otea update` changes fields of an open item (a blank value clears an optional field) and records the old and new values in the timeline; items in a closed state (turn `none`) cannot be updated. Agents act through the CLI, so it only performs transitions whose authority is `agent`. Approving work (`review` -> `done` in the tasks preset) is `human-ui`: the CLI refuses it with exit code 7 (`forbidden`).
+`otea update` changes fields of an open item (a blank value clears an optional field) and records the old and new values in the timeline; items in a closed state (turn `none`) cannot be updated. Agents act through the CLI, so it only makes the moves a board gives agents. Approving a step the person reviews (`Hacerlo (in review)` -> `Done` on Tareas) is the person's, in the web UI: `otea approve`, `otea move` and `otea relay` refuse it with exit code 7 (`forbidden`).
 
 ### Projects
 
@@ -135,7 +133,7 @@ otea show BUGS-1                           # lists the evidence above the timeli
   - A file no module of the type accepts is refused with exit 15 (`evidence_not_accepted`); the message lists what each module takes.
   - When several modules accept it, `--module <id>` says which, otherwise exit 2 (`module_required`). A module's id is its `id:` in the layout, or its module kind (`images`, `log`) when it declares none; ids are unique within a type. An unknown id fails with exit 3 (`not_found`).
   - A `compare` module takes only `--role before` or `--role after`; every other module takes single files. A role that does not fit fails with exit 2 (`invalid_role`).
-  - A type that places no evidence module takes any file in any role, as before. Evidence attached before modules existed (or to a module a preset edit removed) belongs to the first module that accepts it.
+  - A type that places no evidence module takes any file in any role, as before. Evidence attached before modules existed (or to a module a board edit removed) belongs to the first module that accepts it.
 - `otea show` groups the evidence by module, in layout order, marks required ones and says `nothing yet` for an empty one; files no module draws come last as `other files`. The MCP `attach` tool takes the same `module` and `role`.
 - The kind comes from the extension: `gif`, `png`, `jpg`, `jpeg` and `webp` are images; `mp4`, `webm` and `mov` videos; `diff` and `patch` diffs; `log` and `txt` logs; anything else, SVG included (it can carry scripts), is a plain file.
 - Evidence is append-only, like the event log, and each attachment adds an `evidence_added` event to the timeline. Attaching the same file again (same content, module, role and caption) before the item moves adds nothing: `otea attach` prints the entry it already has and says so (`--json`: the entry with `"duplicate": true`). Once the item moves, as in a new round, the same file is a new entry. It follows the rules of `otea update`: an item another agent holds refuses it (exit 12, `lease_held`) and so does a closed item (exit 4, `item_closed`). A missing file fails with exit 3 (`file_not_found`) and one over 50 MB with exit 14 (`evidence_too_large`).
@@ -147,51 +145,46 @@ otea show BUGS-1                           # lists the evidence above the timeli
 Items link to each other with a typed relation: `parent`, `blocks`, `duplicates`, `implements` and `relates`. A collection is one board: a tree of `parent` links lives inside it, and the other kinds link items across the collections of the project.
 
 ```sh
-otea create --collection tasks --title "Create wolf" --description "A wolf for the forest"
-otea create --collection tasks --title "Body" --description "Mesh and rig" --parent TASKS-1
-otea create --collection tasks --title "Movement" --description "Walk, trot, run" --parent TASKS-1
-otea link TASKS-2 blocks TASKS-3            # body before movement
-otea link BUGS-7 duplicates BUGS-3          # BUGS-7 is a copy of BUGS-3
-otea link TASKS-9 implements BUGS-3         # work on one board delivers an item of another
-otea link TASKS-3 parent TASKS-4            # TASKS-4 becomes the parent of TASKS-3
-otea link BUGS-3 parent TASKS-1             # refused, exit 16 (parent_across_boards)
-otea unlink TASKS-2 blocks TASKS-3
-otea list --parent TASKS-1                  # the children of TASKS-1
-otea show TASKS-1                           # children summary and relations by kind
+otea create --collection Tareas --title "Create wolf" --description "A wolf for the forest"
+otea create --collection Tareas --title "Body" --description "Mesh and rig" --parent TAR-1
+otea create --collection Tareas --title "Movement" --description "Walk, trot, run" --parent TAR-1
+otea link TAR-2 blocks TAR-3                # body before movement
+otea link BUG-7 duplicates BUG-3            # BUG-7 is a copy of BUG-3
+otea link TAR-9 implements BUG-3            # work on one board delivers an item of another
+otea link TAR-3 parent TAR-4                # TAR-4 becomes the parent of TAR-3
+otea link BUG-3 parent TAR-1                # refused, exit 16 (parent_across_boards)
+otea unlink TAR-2 blocks TAR-3
+otea list --parent TAR-1                    # the children of TAR-1
+otea show TAR-1                             # children summary and relations by kind
 ```
 
-What waits on another board says so with `blocks`, and a state that declares `requires: blockers_closed` waits for it. Here the `web` collection's preset holds its review until every child and every blocker is closed:
-
-```yaml
-# .otea/presets/web/preset.yaml, an excerpt
-review: { turn: human, requires: [children_closed, blockers_closed] }
-```
+What waits on another item says so with `blocks`, and a step that waits for its blockers (**Algo que esperar** in Studio, `"waits": ["blockers"]` in `board.json`) is not handed off, or approved, while one of them is open. The Tareas board of `otea init --template product` waits for them:
 
 ```sh
-otea link API-4 blocks WEB-2                # the login page waits for the auth endpoint
-otea move WEB-2 review                      # exit 4 (blockers_open) while API-4 is open
-otea show WEB-2                             # "... once its open blocker API-4 is closed"
+otea link TAR-2 blocks TAR-1                # the login page waits for the auth endpoint
+otea handoff TAR-1                          # exit 4 (blockers_open) while TAR-2 is open
+otea show TAR-1                             # its Handoff says "Nothing open blocks it: required (TAR-2 on Tareas, in Hacerlo, blocks it)"
 ```
 
 - `otea link <id> <kind> <other>` reads as a sentence for `blocks`, `duplicates`, `implements` and `relates`; `<id> parent <other>` makes `<other>` the parent of `<id>`. `otea create --parent <id>` creates the item as a child in the same write. `otea unlink` takes the link named the same way (`relates` either way round).
 - Each pair is linked once per kind; an item has at most one parent, in its own collection; `parent` and `blocks` never loop. Refusals: a self link, a second parent, a parent in another collection or a cycle exit 16 (`self_relation`, `parent_exists`, `parent_across_boards`, `relation_cycle`; the cycle's path, or for another collection's parent the `blocks` and `implements` links to use instead, in the message); a missing item exits 3 (`not_found`); a repeated link exits 5 (`already_exists`); an unknown kind exits 2 (`invalid_relation`); an open child under a closed parent exits 4 (`item_closed`). The CLI, the API and MCP refuse alike.
-- A `parent` across collections linked before the rule is kept and read as before. `otea validate` warns on each and names a way out: merge the two collections into one preset as types, or convert the link, to `blocks` when the parent's workflow waits for its children (then write `requires: blockers_closed` where it requires `children_closed`, so the wait is kept) and to `implements` otherwise. Nothing is migrated for you.
+- A `parent` across collections linked before the rule is kept and read as before. `otea validate` warns on each and names a way out, such as converting the link to `blocks` or `implements`. Nothing is migrated for you.
 - Linking changes neither item's fields nor state, so it is not bound by leases and works on closed items. Every link and unlink is recorded in both items' timelines (`relation_added`, `relation_removed`), with who did it and through which channel.
 - `otea show` prints, for a parent, `Children: n of m closed (d done, x discarded)`, then the relations grouped by kind with each other item's state and turn. `--json`, `otea list --json` and the API carry `relations` (and `children` for a parent) on the items that have them.
-- A preset can make any state wait for the children, a working one as well as a closed one: `review: { turn: human, requires: children_closed }` brings a parent back to the human only once every child is closed. Moving or relaying into it while a child is open fails with exit 4 (`children_open`), listing the open children. Its twin, `requires: blockers_closed`, waits for every item that `blocks` this one, in any collection, and fails with exit 4 (`blockers_open`), listing the open blockers. A state may require both, as a list: `requires: [children_closed, blockers_closed]`. Nothing ever moves an item for its children or its blockers, and `otea show`'s hint says what the next move still waits for. The moves in `--json`, the API and MCP carry `requires` as a list. The former `close_requires` still works, and `otea validate` warns on it.
+- A step waits for what its board says: its blockers (`"waits": ["blockers"]`), every item that `blocks` this one, in any board, refused with exit 4 (`blockers_open`); or its parts (`"waits": ["parts"]`), the items it divides into on another board (see [Templates that make several boards](#templates-that-make-several-boards)), refused with exit 4 (`children_open`). Each refusal names what is still open, and the approval is checked again, so a part reopened during the review stops it. Nothing ever moves an item for its parts or its blockers, and `otea show`'s `Next:` says what the handoff still waits for.
 - The MCP server serves `link` and `unlink` as tools. In the web UI the relations show in the side of the detail and a parent's children in its body; a signed-in browser adds and removes links there (`POST /api/items/:id/link` and `/unlink`, `{kind, other}`, behind the same checks as moves) and creates children with **+ child**. In the list a parent shows how many children are still open, and children in the same section sit under their parent, foldable. With two collections or more the sidebar leads with **All work**: one tree across collections, where an item sits under its parent (same collection) and under whatever it blocks or implements, with `relates` counted on the row; an item's detail lists its links to other collections under **Across boards**.
 
 ### Relaying a decision made in conversation
 
-Transitions with `human` authority (discarding a task in the tasks preset) can also be made by an agent relaying what the human decided in the conversation. That is a separate command, so a harness can ask the human to confirm every call:
+The person's decisions on a board, such as sending a step they review back or dropping an item, can also be made by an agent relaying what the person decided in the conversation. That is a separate command, so a harness can ask the human to confirm every call:
 
 ```sh
-otea relay TASKS-3 discarded --quote "Drop it, billing moves to the vendor" --reason "Billing moves to the vendor" --as claude
+otea relay TAR-3 Dropped --quote "Drop it, billing moves to the vendor" --reason "Billing moves to the vendor" --as claude
 ```
 
 - The move is recorded as the human's (`actor: human`) with `via: <agent>`, `source: conversation` and the quote, and `otea show` (and `--json`) and the UI timeline always mark it as relayed (`human, relayed by claude`), never as a UI decision.
 - `--quote` is required and cannot be blank (exit 2, `quote_required`). When the transition requires a reason, `--reason` is required too (exit 2, `reason_required`): the quote is evidence of the approval, the reason is the same field the UI records, and a quote such as "yes" explains nothing.
-- `human-ui` transitions (approving, sending back from review) cannot be relayed: exit 7 (`forbidden`), make them in the web UI. Transitions an agent may make itself are refused with exit 4 (`not_relayable`): use `otea move`. Unknown items and undeclared moves fail as usual (exit 3, exit 4).
+- An approval cannot be relayed: exit 7 (`forbidden`), the person approves in the web UI. Moves an agent may make itself are refused with exit 4 (`not_relayable`): use `otea handoff` or `otea drop`. Unknown items and undeclared moves fail as usual (exit 3, exit 4).
 - An agent never relays a decision on its own work: once it has done the item's step in the current round (handed it off, or, while the step was being done, claimed the item, attached evidence or changed its fields, even if another agent handed it off; off a board, once it made the move that brought the item where it is), every relay of it by that agent exits 7 (`forbidden`, details `own_step`); the person decides in the web UI.
 - A relayed decision is the human's, so like a move in the UI it is not blocked by another agent's lease; moving off the agent turn releases that lease as usual (the release is marked as relayed too).
 
@@ -202,7 +195,7 @@ An agent does not have to poll `otea list`: `otea wait` blocks until there is wo
 ```sh
 otea wait --turn agent --unclaimed --timeout 15m --json   # then: otea claim <id>
 otea events --since 42 --json                              # events after id 42, one JSON object per line
-otea events --item TASKS-1 --follow                        # keep printing new events until Ctrl+C
+otea events --item TAR-1 --follow                          # keep printing new events until Ctrl+C
 ```
 
 - `otea wait --turn agent|human` returns at once when an item is already on that turn, otherwise as soon as one gets there. It prints the item as a row of `otea list` (with `--json`, one object shaped like an entry of `otea list --json`). When several match, it prints the one that has waited longest: the first to enter its current state (field updates and leases do not reset it), ties going to the first created.
@@ -243,7 +236,7 @@ otea connect --as claude-b     # or just "otea connect" at a terminal, which ask
 - `.mcp.json` then names this machine's path to Otea, so it is a file for this machine alone: `connect` keeps it out of git through `.git/info/exclude` (never `.gitignore`, which is tracked) and says so. When the repo already tracks `.mcp.json` (a team's shared servers), Otea leaves git alone and says the file is tracked, so keep the change out of your commits; `--json` tells which with `git` (`excluded`, `tracked`, or `outside` a repo).
 - The name is a short slug: at most 24 lowercase letters, digits and single dashes, starting with a letter, and not `you`, `human` or `agent`. Anything else fails with exit 6 (`invalid_agent_name`) and writes nothing. Without `--as`, `connect` asks for the name at a terminal and fails with exit 2 otherwise, so scripts pass `--as`. The web UI shows each agent by a mark derived from its name, so a stable name keeps its mark stable.
 - On initialize the server gives Otea's agent guide as its `instructions`, which clients such as Claude Code put in the agent's context.
-- Tools: `board`, `board_draft`, `list`, `show`, `create`, `update`, `attach`, `link`, `unlink`, `next`, `handoff`, `drop`, `approve`, `send_back`, `move`, `claim`, `heartbeat`, `release`, `relay`, `events` and `wait`, one per agent command, named after it with words joined by underscores (`otea send-back` is `send_back`, `otea board draft` is `board_draft`). Each takes that command's arguments and options by name (`{"id": "TASKS-1", "state": "review"}`, `"field": ["priority=high"]`, durations as `"90s"`, `"15m"`, `"1h"`; `attach` takes `file` as a path the server reads, relative to the directory it runs in) and runs the command itself, so the rules, the validations and the error codes are those of the CLI. Setup and human commands (`init`, `brief`, `projects`, `migrate`, `connect`, `collection icon`, `board add`, `validate`, `check`, `hook`, `serve`, `open`, `devices`, `mcp`) stay in the CLI, and `human-ui` moves are refused (`forbidden`) as in the CLI.
+- Tools: `board`, `board_draft`, `list`, `show`, `create`, `update`, `attach`, `link`, `unlink`, `next`, `handoff`, `drop`, `approve`, `send_back`, `move`, `claim`, `heartbeat`, `release`, `relay`, `events` and `wait`, one per agent command, named after it with words joined by underscores (`otea send-back` is `send_back`, `otea board draft` is `board_draft`). Each takes that command's arguments and options by name (`{"id": "TAR-1", "note": "what changed"}`, `"field": ["Prioridad=Alta"]`, durations as `"90s"`, `"15m"`, `"1h"`; `attach` takes `file` as a path the server reads, relative to the directory it runs in) and runs the command itself, so the rules, the validations and the error codes are those of the CLI. Setup and human commands (`init`, `brief`, `projects`, `migrate`, `connect`, `collection icon`, `board add`, `validate`, `check`, `hook`, `serve`, `open`, `devices`, `mcp`) stay in the CLI, and `human-ui` moves are refused (`forbidden`) as in the CLI.
 - A tool returns the JSON the command prints with `--json`; `events` returns its events as one array. A failure is a tool error whose text is the same `{"error":{"code","message"}}`.
 - `wait` gives up with the `timeout` error after 5 minutes unless `timeout` says otherwise, and refuses more than 15 minutes, since clients time out long tool calls: call it again to keep waiting. A cancelled call stops waiting. `events` has no `follow`: call it again with the last event id as `since`.
 - Every tool takes `as`, the name of the agent making the call; without it the call acts as the agent the server was started as (`otea mcp --as`, or `$OTEA_AGENT`). Subagents share their parent's server, so each one passes its own `as` on every call: otherwise they sign with one name and take over each other's leases. A server started without a name refuses a call without `as` (`unnamed_agent`). The name rule is the CLI's (`invalid_agent_name`). The project is found from the directory the client starts the server in. Nothing but the protocol goes to stdout.
@@ -312,7 +305,7 @@ otea check --gate push --branch --repo                     # reads the board's p
 | --- | --- | --- |
 | 0 | `ok` | allowed, or nothing gates the action, or the check could not run (fails open, with a note on stderr) |
 | 19 | `gate_refused` | refused; the reason on stdout. The pre-push hook stops the push on this code only |
-| 2 | `usage`, `invalid_gate` | a gate or a field no board or preset declares (`--gate psuh`, `--gate deploy`): the message names the gates there are (`merge, push`, plus any a preset declares) |
+| 2 | `usage`, `invalid_gate` | a gate or a field no board declares (`--gate psuh`, `--gate deploy`): the message names the gates there are (`merge, push`) |
 | 2 | `hook_refused` | with `--claude-hook`: refused, which makes Claude Code block the call |
 | 1 | `unexpected` | Otea failed; a hook lets the action go on |
 
@@ -332,18 +325,17 @@ otea serve                  # Otea running at http://127.0.0.1:4400
 In another terminal in the same project, create and move items and watch them update:
 
 ```sh
-otea create --collection tasks --title "Review the copy" --description "Landing page"
-otea move TASKS-1 in_progress
-otea move TASKS-1 review
+otea create --collection Tareas --title "Review the copy" --description "Landing page"
+otea handoff TAR-1 --as claude
 ```
 
-`TASKS-1` is now waiting for you: approve it (`done`) or send it back with a reason (`todo`) from its detail in the UI. The CLI refuses those moves, and the timeline shows your decision as `human (ui)`.
+`TAR-1` is now waiting for you: approve it or send it back with a note from its detail in the UI. The CLI refuses the approval, and the timeline shows your decision as `human (ui)`.
 
-You can also create items from the browser: when it is signed in, **New item** opens a form generated from the collection's preset. Only the title is required; leave the description empty and the item starts in `incomplete`, in the *With agents* section, for an agent to investigate and complete following the playbook (`otea update`, then `otea move <id> todo`). The timeline shows who created it as `human (ui)`.
+You can also create items from the browser: when it is signed in, **New item** opens a form from the board's fields. Only the title is required; an item that lacks what the board's first step asks (a Descripción on Tareas) starts there, in Completar, for an agent to complete (`otea update`, then `otea handoff <id>`), and one that has it starts at the next step. The timeline shows who created it as `human (ui)`.
 
 On a phone the selected item unfolds in place under its row, with its moves at the bottom of the screen. **Triage**, at the end of *Waiting for you*, shows what waits for you one card at a time: swipe right for the primary move, left to send it back to the agent (asking for the reason when the workflow requires one), or use the buttons.
 
-**Modules** in the top bar (or `#/modules` in the URL) opens the catalog of field modules: what each one does, a live preview of how it looks in a row, in the detail and as a form control, which preset fields use it, and how to declare it in `preset.yaml`. `#/modules/<name>` links to one module. The data comes from `GET /api/presets`, which lists every loaded preset (official and project) with its fields and the collections that use it.
+`#/modules` in the URL opens the catalog of field modules: what each one does and a live preview of how it looks in a row, in the detail and as a form control. `#/modules/<name>` links to one module. It still lists the presets boards were read from (`GET /api/presets`), a leftover of the model before boards; a board's fields are set in Studio.
 
 **Agents at work.** Otea notes each agent it sees: every agent command, from the CLI or the MCP server, records when that agent was last seen (to within 30 seconds, so a busy agent does not write on every call), and the harness it came through: the `clientInfo` name the MCP client sends in `initialize` (`claude-code`, say), or `cli` for an agent only seen at the command line. An MCP server notes its agent as soon as the client connects. `GET /api/agents` returns `{"agents":[{"name","harness","holding","lastSeen","live"}]}`: `harness` is `null` when unknown (agents that wrote before presence was kept start from their last event), `holding` lists the ids of the items the agent holds a live lease on, `lastSeen` is an ISO time, and `live` is true when the agent was seen in the last 5 minutes or holds a lease. Live agents come first, then the most recently seen; the human is never listed. Besides `change`, `GET /api/stream` sends a `presence` event when an agent is seen anew, changes harness or takes or drops a lease; time running out (the 5 minutes, a lease expiring) sends nothing, so the UI reads `lastSeen` and the leases for that.
 
