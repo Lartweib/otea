@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { getBoardRecord, listBoardSummaries, publishBoard, saveDraft } from '../app/boards.ts';
 import { moveItem } from '../app/items.ts';
+import { oteaLauncher } from '../app/launcher.ts';
 import { openProject } from '../app/project.ts';
 import { EXIT_CODES } from './exit-codes.ts';
 import { installGitHook } from './hooks.ts';
@@ -311,7 +312,12 @@ describe('check', () => {
         const bare = join(remote.dir, 'origin.git');
         execFileSync('git', ['init', '-q', '--bare', bare]);
         git('push', '-q', '--no-verify', bare, 'main:main');
-        installGitHook(repo.dir, fileURLToPath(new URL('./main.ts', import.meta.url)));
+        installGitHook(
+          repo.dir,
+          oteaLauncher(fileURLToPath(new URL('./main.ts', import.meta.url)), {
+            execPath: process.execPath,
+          }),
+        );
         person(task, 'implementing');
         commit('keys');
         await otea('move', task, 'implementing__review');

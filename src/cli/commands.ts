@@ -33,6 +33,7 @@ import {
   showItem,
   updateItem,
 } from '../app/items.ts';
+import { oteaLauncher } from '../app/launcher.ts';
 import { claimItem, heartbeatItem, releaseItem } from '../app/leases.ts';
 import { type MigrationReport, migrateToCommon } from '../app/migrate.ts';
 import {
@@ -504,7 +505,12 @@ const migrateCommand: Command = {
   },
 };
 
-const MAIN = fileURLToPath(new URL('./main.ts', import.meta.url));
+// How what Otea writes (.mcp.json, hooks) runs this Otea again: a checkout on Node, the desktop app
+// on its own Electron.
+const OTEA = oteaLauncher(fileURLToPath(new URL('./main.ts', import.meta.url)), {
+  execPath: process.execPath,
+  electron: process.versions.electron,
+});
 
 const connect: Command = {
   name: 'connect',
@@ -531,7 +537,7 @@ const connect: Command = {
         );
       }
     });
-    const connection = connectAgent(root, name, MAIN);
+    const connection = connectAgent(root, name, OTEA);
     // The entry names this machine's path to Otea: the file stays out of git.
     const git = keepOutOfGit(connection.path);
     const note = keptOutNote(connection.path, git);
@@ -1763,7 +1769,7 @@ const hookInstall: Command = {
   execute: (input) =>
     hookOutput(
       hookTargets(input).map((target) =>
-        target === 'git' ? installGitHook(input.cwd, MAIN) : installClaudeHook(input.cwd, MAIN),
+        target === 'git' ? installGitHook(input.cwd, OTEA) : installClaudeHook(input.cwd, OTEA),
       ),
     ),
 };

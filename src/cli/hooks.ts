@@ -2,6 +2,7 @@ import { chmodSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync }
 import { dirname, join } from 'node:path';
 import { repoOfItem } from '../app/gates.ts';
 import type { Item } from '../app/items.ts';
+import { type Launcher, shellLine } from '../app/launcher.ts';
 import type { Project } from '../app/project.ts';
 import { checkoutsOf } from '../app/repos.ts';
 import { CommandFailure } from './command.ts';
@@ -20,22 +21,20 @@ export type HookChange = {
 // The first lines of the pre-push hook Otea writes; a hook without them is someone else's.
 const MARK = '# otea-hook: pre-push';
 
-// How a hook runs this checkout of Otea, as `otea connect` does for the MCP server.
-function oteaCommand(main: string): string {
-  return `node --disable-warning=ExperimentalWarning "${main}"`;
-}
+// How a hook runs this Otea, as `otea connect` does for the MCP server.
+const oteaCommand = shellLine;
 
 // Checks every branch the push writes to or deletes on the remote, not the local branch it sends
 // from, which may be another; refuses only when otea check refuses (gate_refused): if Otea cannot
 // run at all, or fails, the push goes on. Tags and other refs are not branches and go unchecked.
 // --commits names what the remote has and what it gets, so a push into a base branch a board
 // protects is checked against the branches it brings in.
-function gitCheckLines(main: string): string {
+function gitCheckLines(otea: Launcher): string {
   return [
     'while read -r local_ref local_sha remote_ref remote_sha; do',
     '  case "$remote_ref" in',
     '    refs/heads/*)',
-    `      ${oteaCommand(main)} check --gate push --branch "\${remote_ref#refs/heads/}" --repo --commits "$remote_sha..$local_sha" < /dev/null`,
+    `      ${oteaCommand(otea)} check --gate push --branch "\${remote_ref#refs/heads/}" --repo --commits "$remote_sha..$local_sha" < /dev/null`,
     `      if [ $? -eq ${EXIT_CODES.gate_refused} ]; then exit 1; fi`,
     '      ;;',
     '  esac',
@@ -43,13 +42,13 @@ function gitCheckLines(main: string): string {
   ].join('\n');
 }
 
-function preHook(main: string): string {
+function preHook(otea: Launcher): string {
   const header = [
     '#!/bin/sh',
     MARK,
     '# Written by otea hook install --git; otea hook remove --git removes it.',
   ];
-  return `${[...header, gitCheckLines(main), 'exit 0'].join('\n')}\n`;
+  return `${[...header, gitCheckLines(otea), 'exit 0'].join('\n')}\n`;
 }
 
 // The pre-push hook of the repo at cwd, wherever core.hooksPath puts it.
@@ -57,14 +56,14 @@ export function gitHookFile(cwd: string): string {
   return gitPath(cwd, 'hooks/pre-push');
 }
 
-export function installGitHook(cwd: string, main: string): HookChange {
+export function installGitHook(cwd: string, otea: Launcher): HookChange {
   const path = gitHookFile(cwd);
-  const content = preHook(main);
+  const content = preHook(otea);
   const current = existsSync(path) ? readFileSync(path, 'utf8') : undefined;
   if (current !== undefined && !current.includes(MARK)) {
     throw new CommandFailure(
       'already_exists',
-      `${path} is another pre-push hook; Otea leaves it as it is. To gate pushes, add to it:\n\n${gitCheckLines(main)}`,
+      `${path} is another pre-push hook; Otea leaves it as it is. To gate pushes, add to it:\n\n${gitCheckLines(otea)}`,
     );
   }
   const note = gitHookNote(path);
@@ -134,12 +133,12 @@ const CLAUDE_GATES: ReadonlyArray<[string, string]> = [
   ['merge', 'gh pr merge'],
 ];
 
-function claudeHooks(main: string): ClaudeHook[] {
+function claudeHooks(otea: Launcher): ClaudeHook[] {
   return CLAUDE_GATES.flatMap(([gate, command]) =>
     [`Bash(${command})`, `Bash(${command} *)`].map((rule) => ({
       type: 'command' as const,
       if: rule,
-      command: `${oteaCommand(main)} check --gate ${gate} --branch --repo --claude-hook`,
+      command: `${oteaCommand(otea)} check --gate ${gate} --branch --repo --claude-hook`,
     })),
   );
 }
@@ -193,11 +192,11 @@ function writeSettings(path: string, settings: Settings): void {
   writeFileSync(path, `${JSON.stringify(settings, null, 2)}\n`);
 }
 
-export function installClaudeHook(cwd: string, main: string): HookChange {
+export function installClaudeHook(cwd: string, otea: Launcher): HookChange {
   const path = claudeSettingsFile(cwd);
   const before = readSettings(path);
   const base = withoutOurs(before);
-  const group = { matcher: 'Bash', hooks: claudeHooks(main) };
+  const group = { matcher: 'Bash', hooks: claudeHooks(otea) };
   const existing = Array.isArray(base.hooks?.PreToolUse) ? base.hooks.PreToolUse : [];
   const next: Settings = {
     ...base,

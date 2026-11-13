@@ -3,6 +3,7 @@ import { existsSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { moveItem } from '../app/items.ts';
+import { oteaLauncher } from '../app/launcher.ts';
 import { openProject } from '../app/project.ts';
 import { installGitHook } from './hooks.ts';
 import { type Cli, cliAt, presetCollection, tempGitRepo } from './testing.ts';
@@ -100,7 +101,7 @@ describe('hook', () => {
         );
         const author = ['-c', 'user.name=t', '-c', 'user.email=t@t'];
         git(...author, 'commit', '--quiet', '--allow-empty', '-m', 'one');
-        installGitHook(repo.dir, join(repo.dir, 'otea.mjs'));
+        installGitHook(repo.dir, oteaLauncher(join(repo.dir, 'otea.mjs'), { execPath: 'node' }));
       });
 
       afterEach(() => remote.remove());
