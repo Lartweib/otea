@@ -129,10 +129,10 @@ span.se-lnk {
   transition: opacity 240ms var(--o-drift);
 }
 .se-dkp:not(.on) {
-  opacity: 0.55;
+  opacity: var(--dim);
 }
 .se-dkp:not(.on):hover {
-  opacity: 0.85;
+  opacity: 0.92;
 }
 .se-dkj {
   position: relative;
@@ -176,10 +176,10 @@ span.se-lnk {
   transition: opacity 240ms var(--o-drift);
 }
 .se-rblock:not(.on) .se-rroute {
-  opacity: 0.5;
+  opacity: var(--dim);
 }
 .se-rblock:not(.on) .se-rroute:hover {
-  opacity: 0.8;
+  opacity: 0.92;
 }
 .se-rbh {
   position: relative;
@@ -272,7 +272,7 @@ svg.se-rjoin {
   transition: opacity 240ms var(--o-drift);
 }
 .se-vsec:not(.on) > :not(.se-vbh) {
-  opacity: 0.55;
+  opacity: var(--dim);
 }
 
 /* ---- "Qué falta configurar" ---- */

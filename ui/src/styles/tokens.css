@@ -31,6 +31,10 @@
   --z-tooltip: 5;
   --z-flight: 20;
 
+  /* how far a half out of focus fades (the pair editor's other board): quiet, yet its muted and
+     accent labels still read at 3:1 on the page, light and dark (contrast.test.ts) */
+  --dim: 0.75;
+
   /* light: a paper with a breath of the brand hue; hairlines kept fine, so the lanes read as drawn
      with a pen, not ruled; the lane light is a tint of colour with a soft halo, never a dark mark */
   --ground: oklch(0.98 0.005 268);
@@ -41,7 +45,7 @@
   --sel: oklch(0.95 0.017 268);
   --ink: oklch(0.215 0.022 266);
   --ink-2: oklch(0.43 0.017 267);
-  --ink-3: oklch(0.54 0.016 268);
+  --ink-3: oklch(0.51 0.016 268);
   --rule: oklch(0.918 0.007 268);
   --rule-2: oklch(0.855 0.009 268);
   --lane: oklch(0.735 0.013 266);
@@ -87,7 +91,7 @@
     --sel: oklch(0.262 0.03 266);
     --ink: oklch(0.945 0.006 266);
     --ink-2: oklch(0.77 0.012 266);
-    --ink-3: oklch(0.6 0.013 266);
+    --ink-3: oklch(0.69 0.013 266);
     --rule: oklch(0.29 0.013 266);
     --rule-2: oklch(0.37 0.014 266);
     --lane: oklch(0.56 0.014 266);
@@ -132,7 +136,7 @@
   --sel: oklch(0.262 0.03 266);
   --ink: oklch(0.945 0.006 266);
   --ink-2: oklch(0.77 0.012 266);
-  --ink-3: oklch(0.6 0.013 266);
+  --ink-3: oklch(0.69 0.013 266);
   --rule: oklch(0.29 0.013 266);
   --rule-2: oklch(0.37 0.014 266);
   --lane: oklch(0.56 0.014 266);
