@@ -73,6 +73,33 @@ describe('serve', () => {
     expect(opened).toEqual([]);
   });
 
+  it('prints the sign-in url with --no-open at a terminal, where only the person reads it', async () => {
+    const terminal = cliAt(repo.dir, {}, interrupt.signal, undefined, undefined, undefined, true);
+
+    const { out } = await terminal('serve', '--port', '0', '--no-open');
+    const url = /^Otea running at (\S+)\n/.exec(out)?.[1];
+
+    expect(out).toBe(
+      `Otea running at ${url}\nSign a browser in at ${url}/auth?token=${token()} (it holds this project's key: keep it to yourself)\n`,
+    );
+    const signIn = await fetch(`${url}/auth?token=${token()}`, { redirect: 'manual' });
+    expect(signIn.status).toBe(302);
+  });
+
+  it('keeps the token out of piped output and --json, pointing to otea open instead', async () => {
+    const { out } = await otea('serve', '--port', '0', '--no-open');
+    const url = /^Otea running at (\S+)\n/.exec(out)?.[1];
+
+    expect(out).toBe(
+      `Otea running at ${url}\nRun "otea open" here to sign a browser in (the sign-in link is printed only at a terminal)\n`,
+    );
+    interrupt.abort();
+    interrupt = new AbortController();
+    const terminal = cliAt(repo.dir, {}, interrupt.signal, undefined, undefined, undefined, true);
+    const json = await terminal('serve', '--port', '0', '--no-open', '--json');
+    expect(json.out).not.toContain(token());
+  });
+
   it('keeps serving with a one-line note when no browser can be opened', async () => {
     const failing = cliAt(repo.dir, {}, interrupt.signal, () => Promise.reject(new Error('nope')));
 

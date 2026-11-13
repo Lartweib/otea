@@ -305,7 +305,7 @@ cd /path/to/your/project
 otea serve                  # Otea running at http://127.0.0.1:4400
 ```
 
-`otea serve` opens your browser already signed in to act on items (the session lives in an HTTP-only cookie; the token in `ui-token` in the project's data folder is never printed). Pass `--no-open` to skip the browser, and run `otea open` from the project later to sign a browser in to the running server. A tab opened on the plain URL without signing in is read-only.
+`otea serve` opens your browser already signed in to act on items (the session lives in an HTTP-only cookie; the token in `ui-token` in the project's data folder is never printed, except as below). Pass `--no-open` to skip the browser: at a terminal `otea serve` then prints the sign-in link (`<url>/auth?token=…`) for you to open by hand; piped to a file or a log, or with `--json`, it never prints the token and says to run `otea open`, which signs a browser in to the running server from the project. A tab opened on the plain URL without signing in is read-only.
 
 In another terminal in the same project, create and move items and watch them update:
 

@@ -29,6 +29,9 @@ export type Input = {
   harness?: Harness | undefined;
   signal: AbortSignal;
   openUrl: Opener;
+  // Whether what the command prints goes to a terminal a person reads, not to a pipe or a log: only
+  // there may it print a secret (the sign-in link).
+  terminal: boolean;
   warn(message: string): void;
   // Asks the person at the terminal and resolves with their answer, or with nothing when there is
   // nobody to ask (no terminal, or the MCP server).

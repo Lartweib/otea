@@ -3,7 +3,8 @@ import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { type Cli, cliAt, type TempRepo, tempGitRepo } from './testing.ts';
 
-const URL_LINE = /^Otea running at (http:\/\/127\.0\.0\.1:(\d+))\n$/;
+// The first line; --no-open adds how to sign a browser in after it.
+const URL_LINE = /^Otea running at (http:\/\/127\.0\.0\.1:(\d+))\n/;
 
 describe('open', () => {
   let repo: TempRepo;

@@ -7,7 +7,7 @@ import { EXIT_CODES } from './exit-codes.ts';
 import { commandHelp, generalHelp, HELP_HINT } from './help.ts';
 import type { Opener } from './opener.ts';
 
-type Writer = { write(chunk: string): unknown };
+type Writer = { write(chunk: string): unknown; isTTY?: boolean };
 
 export type Io = {
   cwd: string;
@@ -120,6 +120,7 @@ function inputFor(command: Command, values: Values, args: string[], io: Io, json
     harness: CLI_HARNESS,
     signal: io.signal,
     openUrl: io.openUrl,
+    terminal: io.stdout.isTTY === true,
     warn: (message) =>
       io.stderr.write(`otea: ${message}
 `),

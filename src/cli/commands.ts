@@ -1273,16 +1273,25 @@ const serve: Command = {
   summary: `Serve the live UI on 127.0.0.1 (default port ${DEFAULT_PORT}) until Ctrl+C and sign this browser in; --lan also lets phones on the same network pair and open it`,
   args: [],
   options: { port: {}, 'no-open': { flag: true }, lan: { flag: true } },
-  execute: async ({ cwd, option, flag, signal, openUrl, warn }) => {
+  execute: async ({ cwd, option, flag, signal, openUrl, warn, terminal }) => {
     const served = await serveUntil(signal, cwd, portFrom(option('port')), flag('lan'));
     const { url, signInUrl, lan } = served;
+    // With --no-open the person signs a browser in by hand: the link carries the project's key, so
+    // it is printed only to a terminal, never to a pipe, a log or --json.
+    const signIn = !flag('no-open')
+      ? []
+      : terminal
+        ? [`Sign a browser in at ${signInUrl} (it holds this project's key: keep it to yourself)`]
+        : [
+            'Run "otea open" here to sign a browser in (the sign-in link is printed only at a terminal)',
+          ];
     if (!flag('no-open')) {
       await openUrl(signInUrl).catch((error: unknown) => {
         const reason = error instanceof Error ? error.message : String(error);
         warn(`Could not open a browser (${reason}); run "otea open" to try again`);
       });
     }
-    const running = `Otea running at ${url}`;
+    const running = [`Otea running at ${url}`, ...signIn].join('\n');
     if (!lan) return { data: { url }, text: running };
     return { data: { url, lan }, text: `${running}\n${lanText(lan)}` };
   },
