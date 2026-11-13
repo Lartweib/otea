@@ -76,6 +76,7 @@ import {
   selectRelationsOf,
   selectStateEntries,
 } from '../store/queries.ts';
+import { collectionNamed } from './collections.ts';
 import type { Context } from './context.ts';
 import { type DraftRequest, draftRequestOf } from './draft-request.ts';
 import { type Item, landMove, requireItem, systemClock, workflowOf } from './items.ts';
@@ -436,8 +437,10 @@ export function nextFor(
   options: { collection?: string; claim?: boolean } = {},
   now = systemClock,
 ): NextAnswer {
+  const { collection } = options;
+  const named = collection === undefined ? undefined : collectionNamed(ctx.db, collection);
   const boards = liveBoards(ctx).filter(
-    (board) => options.collection === undefined || board.collection === options.collection,
+    (board) => named === undefined || board.collection === named,
   );
   if (options.collection !== undefined && boards.length === 0) {
     throw new OteaError(

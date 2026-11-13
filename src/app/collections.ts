@@ -54,6 +54,12 @@ export function addCollection(ctx: Context, input: AddCollectionInput): Collecti
   return transaction(ctx.db, () => insertNewCollection(ctx, input));
 }
 
+// The name of the collection a reader names, in any case (findCollection); the name as given when
+// no collection has it, so what reads it finds nothing, as before.
+export function collectionNamed(db: DatabaseSync, name: string): string {
+  return findCollection(db, name)?.name ?? name;
+}
+
 export function getCollection(db: DatabaseSync, name: string): Collection {
   const collection = findCollection(db, name);
   if (!collection) throw new OteaError('not_found', `Collection "${name}" not found`);
@@ -98,7 +104,7 @@ export function setCollectionIcon(ctx: Context, name: string, icon: string | nul
   const valid = icon === null ? null : assertIconName(icon);
   return transaction(ctx.db, () => {
     const collection = getCollection(ctx.db, name);
-    updateCollectionIcon(ctx.db, name, valid);
+    updateCollectionIcon(ctx.db, collection.name, valid);
     return { ...collection, icon: valid };
   });
 }
