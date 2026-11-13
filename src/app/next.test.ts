@@ -4,7 +4,8 @@ import { sequenceIds } from '../core/board/ids.ts';
 import type { BoardDefinition } from '../core/board/model.ts';
 import { handedText, idleText, nextText, refusalText } from '../core/board/next.ts';
 import { creatures } from '../core/board/testing.ts';
-import { insertEvidence } from '../store/queries.ts';
+import { clockTime } from '../core/lease.ts';
+import { insertEvidence, selectEvents } from '../store/queries.ts';
 import { createBoard, publishBoard, saveDraft } from './boards.ts';
 import type { Context } from './context.ts';
 import { createItem, getItem, moveItem, updateItem } from './items.ts';
@@ -17,6 +18,7 @@ import {
   nextFor,
   sendBackItem,
 } from './next.ts';
+import { reassignItem } from './restart.ts';
 import { memoryContext } from './testing.ts';
 import { undoMove } from './undo.ts';
 
@@ -382,6 +384,97 @@ describe('the old paths on a board', () => {
     expect(
       moveItem(ctx, { id: item.id, to: 'spolish', actor: scout, channel: 'cli' }, now).state,
     ).toBe('spolish');
+  });
+});
+
+describe('leases on a board', () => {
+  // Concepto hands straight on to Animar, which any agent does.
+  function straight(ctx: Context) {
+    const def = creatures();
+    def.steps = def.steps.map((s) =>
+      s.id === 'sconcept'
+        ? { ...s, reviewer: 'none' as const, ways: [] }
+        : s.id === 'sanimate'
+          ? { ...s, doer: 'any' as const, reviewer: 'you' as const }
+          : s,
+    );
+    return board(ctx, def);
+  }
+
+  it('releases the lease when a step with no review hands the item on to the next step', () => {
+    const ctx = memoryContext();
+    straight(ctx);
+    const item = creature(ctx);
+    attach(ctx, item.id, 'eart');
+    claimItem(ctx, { id: item.id, actor: quill }, now);
+
+    const moved = handoffItem(ctx, { id: item.id, actor: quill, channel: 'cli' }, now).item;
+
+    expect(moved.state).toBe('sanimate');
+    expect(moved.lease).toBeNull();
+    expect(getItem(ctx, item.id).lease).toBeNull();
+    const released = selectEvents(ctx.db, item.id).filter(({ type }) => type === 'released');
+    expect(released.map(({ data }) => data)).toEqual([{ holder: 'quill', cause: 'handoff' }]);
+    // Another agent takes the next step at once; the one that handed it off claims again to go on.
+    expect(nextFor(ctx, 'scout', {}, now).item).toBe(item.id);
+    expect(claimItem(ctx, { id: item.id, actor: quill }, now).lease?.holder).toBe('quill');
+  });
+
+  it('does not carry the doer’s lease into an agent’s review of the step', () => {
+    const ctx = memoryContext();
+    board(ctx);
+    const item = creature(ctx);
+    attach(ctx, item.id, 'eart');
+    handoffItem(ctx, { id: item.id, actor: quill, channel: 'cli' }, now);
+    approveItem(ctx, { id: item.id, actor: you, channel: 'ui' }, now);
+    ctx.db
+      .prepare('UPDATE items SET fields = ? WHERE id = ?')
+      .run(JSON.stringify({ fdesc: 'Lenta', fsteps: '["cone","ctwo"]' }), item.id);
+    attach(ctx, item.id, 'eanim');
+    claimItem(ctx, { id: item.id, actor: kiln }, now);
+
+    const moved = handoffItem(ctx, { id: item.id, actor: kiln, channel: 'cli' }, now).item;
+
+    expect(moved.state).toBe('sanimate__review');
+    expect(moved.lease).toBeNull();
+    expect(nextFor(ctx, 'scout', {}, now).text).toContain('Your turn: review this step');
+  });
+
+  it('tells another agent who holds the item and until when, never that it is its turn', () => {
+    const ctx = memoryContext();
+    board(ctx);
+    const item = creature(ctx);
+    const held = claimItem(ctx, { id: item.id, actor: quill }, now);
+
+    const text = itemNextText(ctx, getItem(ctx, item.id, now), 'scout', now) ?? '';
+
+    expect(text).toBe(
+      `CRI-1 · Criatura · Concepto, round 1\nHeld by quill until ${clockTime(held.lease?.expiresAt ?? '')}: pick another item.`,
+    );
+    expect(itemNextText(ctx, getItem(ctx, item.id, now), 'quill', now)).toContain('Your turn');
+  });
+
+  it('says whom the person left a stuck item for, and offers it only to that agent', () => {
+    const ctx = memoryContext();
+    board(ctx);
+    const item = creature(ctx);
+    claimItem(ctx, { id: item.id, actor: quill, ttlMs: 1000 }, now);
+    tick += 5;
+    reassignItem(ctx, { id: item.id, agent: 'kiln', actor: you, channel: 'ui' }, now);
+
+    expect(itemNextText(ctx, getItem(ctx, item.id, now), 'scout', now)).toBe(
+      'CRI-1 · Criatura · Concepto, round 1\nLeft for kiln: pick another item.',
+    );
+    expect(itemNextText(ctx, getItem(ctx, item.id, now), 'kiln', now)).toContain(
+      'Your turn: do this step.\nThe person left it for you.',
+    );
+    expect(nextFor(ctx, 'scout', {}, now).item).toBeNull();
+    expect(nextFor(ctx, 'kiln', {}, now).item).toBe(item.id);
+    // Once kiln claims it, it is kiln's like any held item.
+    claimItem(ctx, { id: item.id, actor: kiln }, now);
+    expect(itemNextText(ctx, getItem(ctx, item.id, now), 'kiln', now)).not.toContain(
+      'left it for you',
+    );
   });
 });
 

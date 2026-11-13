@@ -55,7 +55,8 @@ export function relayDecision(ctx: Context, input: RelayInput, now = systemClock
     const at = now();
     assertMayEnter(ctx, item, workflow, to, at);
     assertNotOwnStep(ctx, item, via);
-    const move = { to, actor: RELAYED_HUMAN, at, lease: activeLease(item.lease, at) };
+    const board = liveBoardOf(ctx, item.collection) !== undefined;
+    const move = { to, actor: RELAYED_HUMAN, at, lease: activeLease(item.lease, at), board };
     const data = {
       ...(reason ? { reason } : {}),
       ...(note ? { note } : {}),

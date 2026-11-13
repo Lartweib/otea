@@ -1,3 +1,4 @@
+import { clockTime } from '../lease.ts';
 import {
   backTarget,
   backWaysOf,
@@ -70,7 +71,23 @@ export type NextInput = {
   child?: BoardDefinition;
   // The send-back that started this round, while the step is being done.
   sentBack?: SentBack;
+  // The agent holding the item's live lease, and until when.
+  holder?: { name: string; expiresAt: string };
+  // The agent the person left a stuck item for (Reasignar), until an agent claims or moves it.
+  leftFor?: string;
 };
+
+// Another agent's say on the item keeps the asking agent off it: a live lease it does not hold, or
+// a stuck item the person left for someone else.
+function heldElsewhere(input: NextInput): string | undefined {
+  const { me, holder, leftFor } = input;
+  if (me === undefined) return undefined;
+  if (holder && holder.name !== me)
+    return `Held by ${holder.name} until ${clockTime(holder.expiresAt)}: pick another item.`;
+  if (!holder && leftFor !== undefined && leftFor !== me)
+    return `Left for ${leftFor}: pick another item.`;
+  return undefined;
+}
 
 function and(words: readonly string[], last = 'and'): string {
   if (words.length < 2) return words.join('');
@@ -383,6 +400,8 @@ export function nextText(def: BoardDefinition, input: NextInput): string {
     return `${head}\nWaiting for the person to review it: pick another item.`;
   if (!reviewing && isAgent(step.doer) && input.me !== undefined && input.me !== step.doer.agent)
     return `${head}\n${step.doer.agent} does this step: pick another item.`;
+  const elsewhere = heldElsewhere(input);
+  if (elsewhere) return `${head}\n${elsewhere}`;
 
   const ways = waysOf(def, step.id);
   const names = ways.map((way) => targetName(def, way));
@@ -391,6 +410,8 @@ export function nextText(def: BoardDefinition, input: NextInput): string {
     head,
     reviewing ? `Your turn: review this step (${doerName} did it).` : 'Your turn: do this step.',
   ];
+  if (!input.holder && input.leftFor !== undefined && input.leftFor === input.me)
+    lines.push('The person left it for you.');
   if (!reviewing && input.sentBack) lines.push(...sentBackLines(input.sentBack));
   lines.push(...section('About this board', indent(aboutBrief(def))));
   lines.push(
