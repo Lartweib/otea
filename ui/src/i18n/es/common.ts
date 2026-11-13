@@ -145,6 +145,8 @@ export const common = {
   'refusal.notReview': '{item} no espera una revisión.',
   'refusal.unknownStep': '{item} está en un paso que el tablero ya no tiene.',
   'refusal.notYourTurn': 'No te toca: {who} hace {step} en {item}.',
+  'refusal.ownStep':
+    '{who} no puede transmitir la decisión sobre {item}: hizo {step} en esta ronda. La decides tú.',
   'refusal.notYourReview': 'No te toca: {who} revisa {step} en {item}.',
   'refusal.thePerson': 'la persona',
   'refusal.thisStep': 'este paso',

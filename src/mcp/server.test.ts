@@ -340,6 +340,19 @@ describe('mcp server', () => {
       ).toMatchObject({ error: { code: 'forbidden' } });
     });
 
+    it('refuses to relay a decision on the agent’s own step, as the CLI does', async () => {
+      await data('handoff', { id: 'TASKS-1' });
+      const relayed = { id: 'TASKS-1', state: 'todo', quote: 'dale', reason: 'Redo' };
+
+      const text = await errorOf('relay', relayed);
+
+      expect(JSON.parse(text)).toEqual(
+        JSON.parse(await cliError('relay', 'TASKS-1', 'todo', '--quote', 'dale', '--reason', 'R')),
+      );
+      expect(JSON.parse(text).error.code).toBe('forbidden');
+      expect((await json('show', 'TASKS-1')).state).toBe('todo__review');
+    });
+
     it('refuses a write on an item another agent holds with lease_held', async () => {
       const other = await connect(repo.dir, 'codex');
       await data('claim', { id: 'TASKS-1' });

@@ -45,13 +45,13 @@ describe('change preset', () => {
     reason?: string,
   ) => moveItem(ctx, { id, to, actor, channel, ...(reason ? { reason } : {}) }, at);
   const decide = (id: string, to: string, reason?: string) => move(id, to, human, 'ui', reason);
-  const relay = (id: string, to: string, reason?: string) =>
+  const relay = (id: string, to: string, reason?: string, via = 'claude') =>
     relayDecision(
       ctx,
       {
         id,
         to,
-        via: 'claude',
+        via,
         channel: 'cli',
         quote: 'Yes, go ahead',
         ...(reason ? { reason } : {}),
@@ -268,7 +268,9 @@ describe('change preset', () => {
 
     expect(relay(api, 'ready')).toMatchObject({ state: 'ready', turn: 'agent' });
     expect(stateOf(web)).toBe('proposed');
-    expect(relay(id, 'executing')).toMatchObject({ state: 'executing' });
+    // claude handed the plan in, so another agent relays its approval.
+    expect(() => relay(id, 'executing')).toThrow(forbidden);
+    expect(relay(id, 'executing', undefined, 'codex')).toMatchObject({ state: 'executing' });
     expect(
       showItem(ctx, web, { actor: claude, channel: 'cli' }, at).relayable.map(({ to }) => to),
     ).toEqual(['ready', 'dropped']);

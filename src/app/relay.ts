@@ -1,13 +1,16 @@
 import { type AgentChannel, authorizeRelay } from '../core/authority.ts';
+import { isClosed, positionOf } from '../core/board/engine.ts';
+import { stepById } from '../core/board/model.ts';
 import { OteaError } from '../core/errors.ts';
 import { assertCanLeave } from '../core/fields.ts';
 import type { Actor } from '../core/item.ts';
 import { activeLease } from '../core/lease.ts';
 import { transaction } from '../store/database.ts';
+import { type EventRecord, type ItemRecord, selectEvents } from '../store/queries.ts';
 import { typeOfItem } from './collections.ts';
 import type { Context } from './context.ts';
 import { type Item, landMove, requireItem, systemClock } from './items.ts';
-import { assertMoveHandsOff, boardState } from './next.ts';
+import { assertMoveHandsOff, boardState, itemOnBoard, liveBoardOf } from './next.ts';
 import { assertMayEnter } from './relations.ts';
 
 // The human a relayed decision belongs to: the same actor the web UI records.
@@ -51,6 +54,7 @@ export function relayDecision(ctx: Context, input: RelayInput, now = systemClock
     assertCanLeave(type, item.state, to, item.fields);
     const at = now();
     assertMayEnter(ctx, item, workflow, to, at);
+    assertNotOwnStep(ctx, item, via);
     const move = { to, actor: RELAYED_HUMAN, at, lease: activeLease(item.lease, at) };
     const data = {
       ...(reason ? { reason } : {}),
@@ -61,4 +65,44 @@ export function relayDecision(ctx: Context, input: RelayInput, now = systemClock
     };
     return landMove(db, workflow, item, move, data, { via });
   });
+}
+
+// A move the agent made itself, not one it relayed (a relayed move is the human's).
+function movedBy(event: EventRecord, agent: string): boolean {
+  const { type, actor } = event;
+  return type === 'transitioned' && actor.kind === 'agent' && actor.name === agent;
+}
+
+// The step `agent` did itself in the round the item is in: on a board, a move it made out of the
+// doing of the item's step since that step's current round began (its handoff); off a board, the
+// state it left with the move that brought the item where it is.
+function ownStep(ctx: Context, item: ItemRecord, agent: string): string | undefined {
+  const events = selectEvents(ctx.db, item.id);
+  const board = liveBoardOf(ctx, item.collection);
+  if (!board) {
+    const last = events.findLast(({ type }) => type === 'transitioned');
+    return last && movedBy(last, agent) ? String(last.data.from) : undefined;
+  }
+  const position = positionOf(item.state);
+  if (isClosed(position)) return undefined;
+  const since = itemOnBoard(ctx, item, board.def).rounds.startedAt[position.step];
+  if (since === undefined) return undefined;
+  const handedOff = events.some((event) => {
+    if (!movedBy(event, agent) || event.at < since) return false;
+    const from = positionOf(String(event.data.from));
+    return !isClosed(from) && from.step === position.step && from.phase === 'doing';
+  });
+  return handedOff ? (stepById(board.def, position.step)?.name ?? position.step) : undefined;
+}
+
+// An agent relays the human's decisions, never one on its own work: the human makes that one in
+// the web UI, where nobody speaks for them.
+function assertNotOwnStep(ctx: Context, item: ItemRecord, via: string): void {
+  const step = ownStep(ctx, item, via);
+  if (step === undefined) return;
+  throw new OteaError(
+    'forbidden',
+    `Not relayed: ${via} did ${step} on ${item.id} in this round, so it may not relay the decision on its own work; the person makes it in the web UI.`,
+    { kind: 'own_step', item: item.id, step, who: via },
+  );
 }
