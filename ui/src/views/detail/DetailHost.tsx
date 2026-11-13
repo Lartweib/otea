@@ -15,7 +15,8 @@ import { reduced } from '../../motion/reduced.ts';
 import { relayoutList } from '../../motion/relayout.ts';
 import { Tt } from '../../motion/time.ts';
 import type { ItemView } from '../../types.ts';
-import { dividerBounds, dividerKey, intakeTarget } from './frame.ts';
+import { dividerBounds, dividerKey, intakeTarget, sheetItem } from './frame.ts';
+import { ItemMissing } from './ItemMissing.tsx';
 import { ItemSheet } from './ItemSheet.tsx';
 import { Pen } from './pen.ts';
 import { drawRoute, undrawRoute } from './Route.tsx';
@@ -189,7 +190,7 @@ export function DetailHost() {
     pen: null as Pen | null,
   });
   const st = S.current;
-  if (item && item.id === want) st.last = item;
+  st.last = sheetItem(st.last, want, item);
   const kind = ws.listKind;
   const kindRef = useRef(kind);
   kindRef.current = kind;
@@ -676,7 +677,7 @@ export function DetailHost() {
   if (shown == null) return null;
   const main = typeof document === 'undefined' ? null : mainEl();
   const [lo, hi] = dividerBounds(main?.clientWidth ?? 1200);
-  const content = shown === INTAKE ? null : shown === want && item ? item : st.last;
+  const content = shown === INTAKE ? null : st.last;
   const order = shown === INTAKE ? [] : listOrder();
   const at = order.indexOf(shown);
   const nav = { prev: at > 0, next: at >= 0 && at < order.length - 1 };
@@ -771,9 +772,7 @@ export function DetailHost() {
               onClose={app.closeItem}
             />
           ) : (
-            <p className="pane-message t-small" data-c>
-              {t('app.notFound', { id: shown })}
-            </p>
+            <ItemMissing id={shown} phone={phone} onClose={app.closeItem} />
           )}
         </div>
       </article>
