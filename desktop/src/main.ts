@@ -4,13 +4,24 @@
 // state itself from /api/items and the live stream (Desk-Pick: "owner"), with the page's own
 // attentionOf, so the tray keeps working while the window is closed to it.
 import { execFile } from 'node:child_process';
-import { readFileSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import {
+  accessSync,
+  constants,
+  existsSync,
+  lstatSync,
+  readFileSync,
+  readlinkSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
+import { basename, join, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 import {
   app,
   BrowserWindow,
   dialog,
+  ipcMain,
   Menu,
   type MenuItemConstructorOptions,
   nativeTheme,
@@ -18,10 +29,30 @@ import {
   systemPreferences,
   Tray,
 } from 'electron';
+import electronUpdater from 'electron-updater';
+import {
+  COMMAND_LINK,
+  installCommand,
+  isInstalled,
+  type LinkPort,
+  type LinkState,
+} from './command-link.ts';
+import { COPY, type Copy, langOf } from './copy.ts';
 import { type Icons, loadIcons, type Theme } from './icons.ts';
-import { type Snapshot, watchItems } from './live.ts';
+import { type Snapshot, type Watch, watchItems } from './live.ts';
 import { FRAME_MS } from './marks.ts';
-import { type Connection, connect, sourceCli } from './server.ts';
+import type { NoticeView } from './notice.ts';
+import type { PickerState } from './picker.ts';
+import { firstProject, forget, parseRecents, type Recent, remember } from './recent.ts';
+import {
+  bundledCli,
+  type Cli,
+  type Connection,
+  connect,
+  createProject,
+  currentProject,
+  sourceCli,
+} from './server.ts';
 import {
   badgeText,
   collectionLabel,
@@ -35,6 +66,7 @@ import {
   tooltip,
 } from './state.ts';
 import { cooldown, throttle } from './throttle.ts';
+import { type Notice, startUpdates, updateMode } from './updates.ts';
 
 const { values: options } = parseArgs({
   args: process.argv.slice(app.isPackaged ? 1 : 2),
@@ -42,12 +74,24 @@ const { values: options } = parseArgs({
   strict: false,
 });
 
+// This file runs bundled from desktop/dist (see build.mjs), in a checkout and in the app alike.
 const REPO_ROOT = resolve(import.meta.dirname, '..', '..');
-// `npm start` runs in desktop/; npm keeps the folder it was called from in INIT_CWD.
-const PROJECT_DIR = resolve(
-  typeof options.project === 'string' ? options.project : (process.env.INIT_CWD ?? process.cwd()),
-);
+// The packaged app runs the CLI it carries, on its own Electron; a checkout runs its own source.
+const CLI: Cli = app.isPackaged
+  ? bundledCli(process.resourcesPath, process.execPath)
+  : sourceCli(REPO_ROOT);
+// A checkout's `npm start` opens the folder npm was called from (INIT_CWD); the app reopens the
+// last project or asks.
+const ASKED_DIR =
+  typeof options.project === 'string'
+    ? resolve(options.project)
+    : app.isPackaged
+      ? undefined
+      : resolve(process.env.INIT_CWD ?? process.cwd());
 const PORT = typeof options.port === 'string' ? Number(options.port) : undefined;
+// CI starts the packaged app with OTEA_DESKTOP_SMOKE=1: it opens the project, says so and quits.
+const SMOKE = process.env.OTEA_DESKTOP_SMOKE === '1';
+const RELEASES_URL = 'https://github.com/Lartweib/otea/releases/latest';
 
 const APPLY_MS = 500; // at most twice a second per surface
 const ATTENTION_MS = 30_000; // one flash or bounce per 30s
@@ -97,9 +141,83 @@ function reducedMotion(): boolean {
 }
 
 function fail(message: string): void {
-  dialog.showErrorBox('Otea', message);
+  if (SMOKE) console.error(`OTEA_DESKTOP_SMOKE failed: ${message}`);
+  else dialog.showErrorBox('Otea', message);
   app.exit(1);
 }
+
+const message = (error: unknown) => (error instanceof Error ? error.message : String(error));
+
+const RECENTS_FILE = () => join(app.getPath('userData'), 'recent-projects.json');
+
+function readRecents(): Recent[] {
+  try {
+    return parseRecents(JSON.parse(readFileSync(RECENTS_FILE(), 'utf8')));
+  } catch {
+    return [];
+  }
+}
+
+function writeRecents(recents: readonly Recent[]): void {
+  try {
+    writeFileSync(
+      RECENTS_FILE(),
+      `${JSON.stringify(recents, null, 2)}
+`,
+    );
+  } catch {
+    // only a convenience: the app works without it
+  }
+}
+
+// The build says whether the Mac app is signed (electron-builder's extraMetadata, set by the
+// release workflow when it has the certificate): only a signed Mac app can apply an update.
+function macSigned(): boolean {
+  try {
+    const meta = JSON.parse(readFileSync(join(app.getAppPath(), 'package.json'), 'utf8'));
+    return meta.oteaMacSigned === true;
+  } catch {
+    return false;
+  }
+}
+
+const macLinkPort = (copy: Copy): LinkPort => ({
+  state(link): LinkState {
+    try {
+      if (!lstatSync(link).isSymbolicLink()) return { kind: 'file' };
+      return { kind: 'link', to: readlinkSync(link) };
+    } catch {
+      return { kind: 'missing' };
+    }
+  },
+  writable(dir) {
+    try {
+      accessSync(dir, constants.W_OK);
+      return true;
+    } catch {
+      return false;
+    }
+  },
+  symlink(target, link) {
+    rmSync(link, { force: true });
+    symlinkSync(target, link);
+  },
+  runAdmin: (script) =>
+    new Promise((done, failed) => {
+      execFile('osascript', ['-e', script], (error) => (error ? failed(error) : done()));
+    }),
+  confirm: async (plan) => {
+    const { response } = await dialog.showMessageBox({
+      type: 'question',
+      message: copy.commandAsk,
+      detail: plan === 'install' ? copy.commandInstall : copy.commandReplace,
+      buttons: [copy.install, copy.cancel],
+      defaultId: 0,
+      cancelId: 1,
+    });
+    return response === 0;
+  },
+});
 
 class Shell {
   private attention: DeskAttention | undefined;
@@ -121,11 +239,21 @@ class Shell {
   private readonly tray: Tray;
   private readonly win: BrowserWindow;
   private readonly icons: Icons;
-  private readonly connection: Connection;
+  private readonly copy: Copy;
+  private connection: Connection | undefined;
+  private watch: Watch | undefined;
+  private recents = readRecents();
+  // The picker's state while a project opens, or after it failed to.
+  private opening: string | undefined;
+  private pickerError: string | undefined;
+  private update: Notice | undefined;
+  private noticeDismissed = false;
+  private readonly macCommand: string | undefined =
+    IS_MAC && app.isPackaged ? join(process.resourcesPath, 'bin', 'otea') : undefined;
 
-  constructor(icons: Icons, connection: Connection) {
+  constructor(icons: Icons, copy: Copy) {
     this.icons = icons;
-    this.connection = connection;
+    this.copy = copy;
     this.win = new BrowserWindow({
       width: 1280,
       height: 820,
@@ -134,8 +262,14 @@ class Shell {
       title: 'Otea',
       icon: icons.app,
       autoHideMenuBar: true,
-      webPreferences: { sandbox: true, contextIsolation: true },
+      show: !SMOKE,
+      webPreferences: {
+        sandbox: true,
+        contextIsolation: true,
+        preload: join(import.meta.dirname, 'preload.cjs'),
+      },
     });
+    this.win.webContents.on('did-finish-load', () => this.sendNotice());
     this.win.webContents.setWindowOpenHandler(({ url }) => {
       if (/^https?:/.test(url)) void shell.openExternal(url);
       return { action: 'deny' };
@@ -149,7 +283,6 @@ class Shell {
       if (IS_WIN) this.win.flashFrame(false);
     });
     this.win.on('show', () => this.drawOverlay());
-    void this.win.loadURL(connection.signInUrl);
 
     this.tray = new Tray(icons.tray('idle', this.theme, 0));
     this.tray.setToolTip('Otea');
@@ -171,7 +304,57 @@ class Shell {
   }
 
   start(): void {
-    const watch = watchItems(this.connection.url, {
+    app.on('before-quit', () => {
+      this.quitting = true;
+      this.detach();
+    });
+  }
+
+  // Leaves the project shown: stops watching it, and stops its otea serve if the app started it.
+  private detach(): void {
+    this.watch?.close();
+    this.watch = undefined;
+    this.connection?.child?.kill();
+    this.connection = undefined;
+  }
+
+  // Opens the project of the folder: attaches to its otea serve or starts one, and shows its UI.
+  async open(dir: string, port?: number): Promise<void> {
+    this.opening = basename(dir);
+    this.pickerError = undefined;
+    try {
+      const found = await connect(CLI, dir, port);
+      // Already open: the server just started for it is not needed.
+      if (this.connection?.project.id === found.project.id) found.child?.kill();
+      else this.attach(found);
+      const connection = this.connection ?? found;
+      const { project } = connection;
+      this.recents = remember(this.recents, {
+        root: project.root,
+        name: project.name,
+        openedAt: Date.now(),
+      });
+      writeRecents(this.recents);
+      this.opening = undefined;
+      await this.win.loadURL(connection.signInUrl);
+      this.buildMenu();
+      if (SMOKE) {
+        console.log(`OTEA_DESKTOP_SMOKE ok ${project.name} ${connection.url}`);
+        app.quit();
+      }
+    } catch (error) {
+      this.opening = undefined;
+      if (SMOKE) return fail(message(error));
+      this.pickerError = message(error);
+      await this.showPicker();
+    }
+  }
+
+  private attach(connection: Connection): void {
+    this.detach();
+    this.connection = connection;
+    this.snapshot = { items: [], collections: [] };
+    this.watch = watchItems(connection.url, {
       onSnapshot: (snapshot) => {
         this.snapshot = snapshot;
         this.derive();
@@ -181,11 +364,114 @@ class Shell {
         this.derive();
       },
     });
-    app.on('before-quit', () => {
-      this.quitting = true;
-      watch.close();
-      this.connection.child?.kill();
+  }
+
+  async showPicker(): Promise<void> {
+    await this.win.loadFile(join(import.meta.dirname, 'picker.html'));
+    this.show();
+  }
+
+  pickerState(): PickerState {
+    return {
+      lang: this.copy === COPY.es ? 'es' : 'en',
+      recents: this.recents,
+      ...(this.opening === undefined ? {} : { opening: this.opening }),
+      ...(this.pickerError === undefined ? {} : { error: this.pickerError }),
+    };
+  }
+
+  // "Abrir carpeta" and "Crear proyecto": a folder from the system's dialog, made a project when it
+  // is not one yet (asking first, unless the person asked to create one).
+  async pickFolder(create: boolean): Promise<PickerState> {
+    const chosen = await dialog.showOpenDialog(this.win, {
+      title: create ? this.copy.chooseNewFolder : this.copy.chooseFolder,
+      properties: ['openDirectory', 'createDirectory'],
     });
+    const dir = chosen.filePaths[0];
+    if (chosen.canceled || dir === undefined) return this.pickerState();
+    this.pickerError = undefined;
+    try {
+      if (create) await createProject(CLI, dir);
+      else if (!(await isProject(dir))) {
+        const { response } = await dialog.showMessageBox(this.win, {
+          type: 'question',
+          message: this.copy.noProjectTitle,
+          detail: this.copy.noProject(dir),
+          buttons: [this.copy.createProject, this.copy.cancel],
+          defaultId: 0,
+          cancelId: 1,
+        });
+        if (response !== 0) return this.pickerState();
+        await createProject(CLI, dir);
+      }
+    } catch (error) {
+      this.pickerError = message(error);
+      return this.pickerState();
+    }
+    void this.open(dir);
+    return this.pickerState();
+  }
+
+  openRecent(root: string): PickerState {
+    void this.open(root);
+    return this.pickerState();
+  }
+
+  forgetRecent(root: string): PickerState {
+    this.recents = forget(this.recents, root);
+    writeRecents(this.recents);
+    return this.pickerState();
+  }
+
+  // An update to tell about: a quiet notice in the window and an item in the tray menu.
+  setUpdate(notice: Notice): void {
+    this.update = notice;
+    this.noticeDismissed = false;
+    this.sendNotice();
+    this.buildMenu();
+  }
+
+  dismissNotice(): void {
+    this.noticeDismissed = true;
+  }
+
+  actOnUpdate(): void {
+    const update = this.update;
+    if (update?.kind === 'restart') {
+      this.quitting = true;
+      electronUpdater.autoUpdater.quitAndInstall(true, true);
+    } else if (update?.kind === 'download') void shell.openExternal(update.url);
+  }
+
+  private noticeView(): NoticeView | null {
+    const update = this.update;
+    if (!update || this.noticeDismissed) return null;
+    const { copy } = this;
+    return update.kind === 'restart'
+      ? { text: copy.updated, action: copy.restart, dismiss: copy.dismiss }
+      : { text: copy.available(update.version), action: copy.download, dismiss: copy.dismiss };
+  }
+
+  private sendNotice(): void {
+    this.win.webContents.send('desktop:notice', this.noticeView());
+  }
+
+  private async installCommand(): Promise<void> {
+    if (!this.macCommand) return;
+    try {
+      const done = await installCommand(macLinkPort(this.copy), this.macCommand, COMMAND_LINK);
+      if (done === 'installed') {
+        await dialog.showMessageBox({ type: 'info', message: this.copy.commandDone });
+      }
+    } catch (error) {
+      dialog.showErrorBox('Otea', message(error));
+    }
+    this.buildMenu();
+  }
+
+  private commandMissing(): boolean {
+    if (!this.macCommand) return false;
+    return !isInstalled(macLinkPort(this.copy).state(COMMAND_LINK), this.macCommand);
   }
 
   show(hash?: string): void {
@@ -278,6 +564,24 @@ class Shell {
     }
   }
 
+  private extraItems(): MenuItemConstructorOptions[] {
+    const items: MenuItemConstructorOptions[] = [];
+    const update = this.update;
+    if (update) {
+      items.push({
+        label:
+          update.kind === 'restart'
+            ? this.copy.menuRestart(update.version)
+            : this.copy.menuDownload(update.version),
+        click: () => this.actOnUpdate(),
+      });
+    }
+    if (this.commandMissing()) {
+      items.push({ label: this.copy.menuCommand, click: () => void this.installCommand() });
+    }
+    return items;
+  }
+
   private buildMenu(): void {
     const a = this.attention;
     const header: MenuItemConstructorOptions =
@@ -299,8 +603,11 @@ class Shell {
       ...(recent.length > 0 ? [{ type: 'separator' } as const, ...recent] : []),
       ...(collections.length > 0 ? [{ type: 'separator' } as const, ...collections] : []),
       { type: 'separator' },
-      { label: 'Open Otea', click: () => this.show() },
-      { label: 'Quit Otea', click: () => app.quit() },
+      { label: this.copy.menuOpen, click: () => this.show() },
+      { label: this.copy.menuSwitch, click: () => void this.showPicker() },
+      ...this.extraItems(),
+      { type: 'separator' },
+      { label: this.copy.menuQuit, click: () => app.quit() },
     ]);
     menu.on('menu-will-show', () => {
       this.menuOpen = true;
@@ -313,23 +620,93 @@ class Shell {
   }
 }
 
+const isProject = (dir: string) =>
+  currentProject(CLI, dir).then(
+    () => true,
+    () => false,
+  );
+
+function wireUpdates(shellInstance: Shell): void {
+  const mode = updateMode({
+    packaged: app.isPackaged && !SMOKE,
+    platform: process.platform,
+    macSigned: macSigned(),
+  });
+  if (mode === 'off') return;
+  const { autoUpdater } = electronUpdater;
+  autoUpdater.autoDownload = false;
+  // An update downloaded is applied when Otea quits, even if nobody clicks the notice.
+  autoUpdater.autoInstallOnAppQuit = mode === 'install';
+  autoUpdater.logger = null;
+  startUpdates({
+    updater: {
+      check: async () => {
+        const result = await autoUpdater.checkForUpdates();
+        return result?.isUpdateAvailable ? result.updateInfo.version : undefined;
+      },
+      download: async () => {
+        await autoUpdater.downloadUpdate();
+      },
+    },
+    mode,
+    releasesUrl: RELEASES_URL,
+    every: (ms, run) => {
+      const timer = setInterval(run, ms);
+      return () => clearInterval(timer);
+    },
+    onNotice: (notice) => shellInstance.setUpdate(notice),
+    log: (text) => console.warn(text),
+  });
+}
+
+// The picker's calls, answered only for the picker's own page.
+function wirePicker(shellInstance: Shell): void {
+  const handle = (channel: string, run: (arg: string) => PickerState | Promise<PickerState>) =>
+    ipcMain.handle(channel, (event, arg: unknown) => {
+      if (event.senderFrame?.url.startsWith('file:') !== true) throw new Error('not the picker');
+      return run(String(arg));
+    });
+  handle('picker:state', () => shellInstance.pickerState());
+  handle('picker:open-folder', () => shellInstance.pickFolder(false));
+  handle('picker:create', () => shellInstance.pickFolder(true));
+  handle('picker:open-recent', (root) => shellInstance.openRecent(root));
+  handle('picker:forget', (root) => shellInstance.forgetRecent(root));
+  ipcMain.on('desktop:notice-act', () => shellInstance.actOnUpdate());
+  ipcMain.on('desktop:notice-dismiss', () => shellInstance.dismissNotice());
+}
+
+const projectArg = (argv: readonly string[]) => {
+  const at = argv.indexOf('--project');
+  return at >= 0 ? argv[at + 1] : undefined;
+};
+
 if (!app.requestSingleInstanceLock()) app.quit();
 else {
   if (IS_WIN) app.setAppUserModelId('dev.otea.desktop');
   Menu.setApplicationMenu(null);
   let shellInstance: Shell | undefined;
-  app.on('second-instance', () => shellInstance?.show());
+  // `--project` on a second launch opens that project in the running app.
+  app.on('second-instance', (_event, argv) => {
+    const dir = projectArg(argv);
+    if (dir !== undefined) void shellInstance?.open(resolve(dir));
+    else shellInstance?.show();
+  });
   // Closed to the tray: the app lives on until Quit Otea.
   app.on('window-all-closed', () => {});
   app.on('activate', () => shellInstance?.show());
   void app.whenReady().then(async () => {
     try {
+      const copy = COPY[langOf(app.getLocale())];
       const icons = await loadIcons(join(app.getPath('userData'), 'icons'));
-      const connection = await connect(sourceCli(REPO_ROOT), PROJECT_DIR, PORT);
-      shellInstance = new Shell(icons, connection);
+      shellInstance = new Shell(icons, copy);
       shellInstance.start();
+      wirePicker(shellInstance);
+      wireUpdates(shellInstance);
+      const first = firstProject({ asked: ASKED_DIR, recents: readRecents(), exists: existsSync });
+      if (first.kind === 'open') await shellInstance.open(first.dir, PORT);
+      else await shellInstance.showPicker();
     } catch (error) {
-      fail(error instanceof Error ? error.message : String(error));
+      fail(message(error));
     }
   });
 }

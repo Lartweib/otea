@@ -1,22 +1,33 @@
 {
-  "name": "@otea/desktop",
+  "name": "otea-desktop",
+  "productName": "Otea",
   "version": "0.1.0",
   "private": true,
-  "description": "The Otea desktop shell: the UI of otea serve in a window, its state on the taskbar, the Dock and the tray.",
+  "description": "The Otea desktop app: the UI of otea serve in a window, its state on the taskbar, the Dock and the tray, and the otea command on PATH.",
+  "author": "Lartweib",
+  "homepage": "https://github.com/Lartweib/otea",
   "license": "AGPL-3.0-only",
   "type": "module",
-  "main": "src/main.ts",
+  "main": "dist/main.mjs",
   "engines": {
     "node": ">=22.18"
   },
   "scripts": {
-    "start": "electron .",
+    "build": "node build.mjs",
+    "start": "node build.mjs && electron .",
+    "stage": "node scripts/stage-cli.mjs",
+    "dist": "node build.mjs && node scripts/stage-cli.mjs && electron-builder --publish never",
     "typecheck": "tsc --noEmit",
     "test": "npm --prefix .. exec -- vitest run desktop"
+  },
+  "dependencies": {
+    "electron-updater": "6.8.11"
   },
   "devDependencies": {
     "@types/node": "24.19.2",
     "electron": "45.2.1",
+    "electron-builder": "26.18.0",
+    "esbuild": "0.28.2",
     "typescript": "7.0.2"
   }
 }
