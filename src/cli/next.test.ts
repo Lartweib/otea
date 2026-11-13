@@ -199,7 +199,7 @@ describe('next and the board moves', () => {
     const client = new Client({ name: 'test', version: '0' });
     const server = createMcpServer(COMMANDS, {
       cwd: repo.dir,
-      actor: { kind: 'agent', name: 'scout' },
+      agent: 'scout',
       warn: () => {},
     });
     const [clientSide, serverSide] = InMemoryTransport.createLinkedPair();
