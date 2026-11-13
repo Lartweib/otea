@@ -3,6 +3,7 @@ import { cambios, errores, tareasDeRepo } from '../core/board/testing.ts';
 import { OteaError } from '../core/errors.ts';
 import type { RefusalDetails } from '../core/refusal.ts';
 import { updateItemState } from '../store/queries.ts';
+import { createBoard, saveDraft } from './boards.ts';
 import type { Context } from './context.ts';
 import { createItem, getItem, moveItem, requireItem, updateItem } from './items.ts';
 import { handoffItem, sendBackItem } from './next.ts';
@@ -184,5 +185,13 @@ describe('the details of a refusal', () => {
       ),
     ).toEqual({ code: 'already_exists', details: { kind: 'already_linked' } });
     expect(getItem(ctx, part).id).toBe(part);
+  });
+
+  it('say a Studio draft is not a board, or changed under the editor', () => {
+    const ctx = memoryContext();
+    const board = createBoard(ctx, { name: 'Pruebas', lang: 'es' }, now);
+    expect(
+      details(() => saveDraft(ctx, board.id, { definition: {}, baseVersion: null }, now)),
+    ).toEqual({ code: 'invalid_board', details: { kind: 'draft_invalid' } });
   });
 });

@@ -141,6 +141,11 @@ describe('a refusal from the server', () => {
       ],
       ['item_closed', { kind: 'closed', item: 'ERR-1' }, 'ERR-1 ya terminó: no admite cambios.'],
       ['not_found', { kind: 'item_missing', item: 'ERR-9' }, 'No existe el ítem ERR-9.'],
+      [
+        'invalid_board',
+        { kind: 'draft_invalid' },
+        'No se pudo leer el borrador como tablero: recarga el editor.',
+      ],
     ];
     for (const [code, details, said] of cases) {
       expect(serverMessage(refused(code, 'English', details), 409)).toBe(said);

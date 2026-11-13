@@ -65,6 +65,7 @@ export type RefusalDetails =
   | { kind: 'parent_required'; item?: string; parent?: string }
   // Studio: the draft or the board changed under the editor, a name, a draft with errors.
   | { kind: 'draft_changed' }
+  | { kind: 'draft_invalid' }
   | { kind: 'board_changed'; version: number | null }
   | { kind: 'board_name_taken'; name: string }
   | { kind: 'board_name_empty' }
