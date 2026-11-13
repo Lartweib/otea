@@ -84,8 +84,34 @@ describe('next and the board moves', () => {
     const { code, out } = await otea('next', '--collection', 'Criaturas', '--as', 'kiln');
 
     expect(code).toBe(0);
-    expect(out).toBe('Nothing to do on Criaturas right now.\n');
+    expect(out).toBe(
+      'Nothing to do on Criaturas right now.\nWait for one: otea wait --turn agent --unclaimed --collection Criaturas, then otea next --collection Criaturas.\n',
+    );
     expect((await otea('next', '--collection', 'Nope')).code).toBe(3);
+  });
+
+  it('claims the item it offers with --claim, so a second agent gets another', async () => {
+    await otea('create', '--collection', 'Criaturas', '--title', 'Rana', '--field', 'fdesc=Verde');
+
+    const taken = await json('next', '--claim', '--as', 'quill');
+    const other = await json('next', '--as', 'kiln');
+
+    expect(taken).toMatchObject({ item: 'CRI-1', lease: { holder: 'quill' } });
+    expect(taken.text).toContain('\nYou hold it until ');
+    expect((await json('show', 'CRI-1')).lease).toMatchObject({ holder: 'quill' });
+    expect(other.item).toBe('CRI-2');
+    expect(other.text).toContain('\nClaim it first: otea claim CRI-2 ');
+    // kiln was just offered CRI-2: a third agent is offered neither.
+    expect((await json('next', '--as', 'scout')).item).toBeNull();
+  });
+
+  it('lists the ways a step has when an agent names one it has not', async () => {
+    const bad = await otea('handoff', 'CRI-1', '--way', 'Triar', '--as', 'quill');
+
+    expect(bad.code).toBe(4);
+    expect(bad.err).toBe(
+      'otea: CRI-1 has no way "Triar" from Concepto. From Concepto it goes on to Animar or Done.\n',
+    );
   });
 
   it('refuses a handoff with nothing attached, exactly, then hands it off', async () => {
@@ -143,7 +169,7 @@ describe('next and the board moves', () => {
     expect((await otea('next', '--as', 'quill')).out).toContain(block);
     expect(await json('next', '--as', 'quill')).toMatchObject({ item: 'CRI-1', sentBack });
     expect((await otea('show', 'CRI-1', '--as', 'quill')).out).toContain(
-      'Next:\n  CRI-1 · Criatura · Concepto, round 2\n  Your turn: do this step.\n\n  Sent back to you: "Más barro en las patas"\n    by the person, ',
+      'Next:\n  CRI-1 · Criatura · Concepto, round 2\n  Your turn: do this step.\n  Claim it first: otea claim CRI-1 (otea next --claim takes and claims the next in one call).\n\n  Sent back to you: "Más barro en las patas"\n    by the person, ',
     );
     expect((await json('show', 'CRI-1', '--as', 'quill')).board.sentBack).toMatchObject(sentBack);
 

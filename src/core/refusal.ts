@@ -13,8 +13,16 @@ export type RefusalDetails =
   // A send-back or a way back without a reason.
   | { kind: 'send_back_reason'; item: string }
   | { kind: 'way_back_reason'; item: string }
-  // A way the item does not have from where it stands.
-  | { kind: 'no_way'; item: string; way?: string; step?: string }
+  // A way the item does not have from where it stands, with the ways it has: on (`ways`) and, while
+  // its step is being done, back to an earlier step (`back`).
+  | {
+      kind: 'no_way';
+      item: string;
+      way?: string;
+      step?: string;
+      ways?: string[];
+      back?: string[];
+    }
   // The item is not where the move starts: not being done, not in a review, or in a lost step.
   | { kind: 'not_here'; item: string; why: 'not_doing' | 'not_review' | 'unknown_step' }
   // Not this performer's turn: `who` is an agent's name, or undefined for the person.

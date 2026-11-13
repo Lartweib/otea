@@ -89,6 +89,15 @@ function heldElsewhere(input: NextInput): string | undefined {
   return undefined;
 }
 
+// Whether the asking agent holds the item, and until when; or that it claims it before it starts,
+// so no other agent takes it meanwhile.
+function holdLine({ id, holder, me }: NextInput): string {
+  if (holder && holder.name === me)
+    return `You hold it until ${clockTime(holder.expiresAt)}; otea heartbeat ${id} keeps it longer.`;
+  if (holder) return `Held by ${holder.name} until ${clockTime(holder.expiresAt)}.`;
+  return `Claim it first: otea claim ${id} (otea next --claim takes and claims the next in one call).`;
+}
+
 function and(words: readonly string[], last = 'and'): string {
   if (words.length < 2) return words.join('');
   return `${words.slice(0, -1).join(', ')} ${last} ${words.at(-1)}`;
@@ -129,9 +138,18 @@ function valueText(part: Part, input: NextInput): string {
   const value = part.id === 'title' ? input.title : input.fields[part.id];
   if (value === undefined || value === null || value === '') return '(empty)';
   if (['choice', 'multi', 'check'].includes(part.kind)) return choiceNames(part, value);
-  const line = String(value).split(/\r?\n/)[0] ?? '';
-  return line.length > 80 ? `${line.slice(0, 79)}…` : line;
+  const text = String(value).trimEnd();
+  const whole =
+    text.length <= VALUE_BRIEF
+      ? text
+      : `${text.slice(0, VALUE_BRIEF - 1).trimEnd()}… (the whole of it: otea show ${input.id})`;
+  // Every line of the value, the later ones indented under its name.
+  return whole.split(/\r?\n/).join('\n    ');
 }
+
+// A value longer than this is given up to here in `Starts with`, and read whole with otea show, so
+// every next stays short.
+const VALUE_BRIEF = 500;
 
 const REASON: Readonly<Record<Missing['reason'], string>> = {
   missing: 'missing',
@@ -412,6 +430,7 @@ export function nextText(def: BoardDefinition, input: NextInput): string {
   ];
   if (!input.holder && input.leftFor !== undefined && input.leftFor === input.me)
     lines.push('The person left it for you.');
+  lines.push(holdLine(input));
   if (!reviewing && input.sentBack) lines.push(...sentBackLines(input.sentBack));
   lines.push(...section('About this board', indent(aboutBrief(def))));
   lines.push(
@@ -577,6 +596,26 @@ export function approvalRefusalText(id: string, missing: readonly Missing[]): st
 // The refusal of a way back without a reason.
 export const NOT_TAKEN_BACK = 'Not taken back: say why with --reason.';
 
+// The refusal of a way the step does not have, with the ways it has: on to a later step (or Done)
+// and, while it is being done, back to an earlier one with a reason.
+export function noWayText(
+  def: BoardDefinition,
+  id: string,
+  stepId: string,
+  way: string,
+  reviewing = false,
+): string {
+  const name = targetName(def, stepId);
+  const on = waysOf(def, stepId).map((target) => targetName(def, target));
+  const back = reviewing ? [] : backWaysOf(def, stepId).map((target) => targetName(def, target));
+  const choice = back.length === 1 ? (back[0] ?? '') : `<${back.join('|')}>`;
+  const backText =
+    back.length === 0
+      ? ''
+      : `, or back to ${and(back, 'or')} (otea handoff ${id} --way "${choice}" --reason "why")`;
+  return `${id} has no way "${way}" from ${name}. From ${name} it goes on to ${and(on, 'or')}${backText}.`;
+}
+
 // The line after the doer takes an item back to an earlier step.
 export function takenBackText(
   def: BoardDefinition,
@@ -732,22 +771,45 @@ export function handedText(def: BoardDefinition, id: string, to: Position): stri
   return `Handed off. ${id} waits for ${who} to review ${name}.`;
 }
 
-// What `next` answers when nothing on the board is the agent's: the board's own words for idle
-// time, and the cap on new items when it is on.
-export function idleText(def: BoardDefinition, waitingForYou: number): string {
-  const lines = [`Nothing to do on ${def.name} right now.`];
-  lines.push(...section('When there is nothing to do', indent(mentionText(def, def.idle))));
-  if (def.cap.on) {
-    const room = waitingForYou < def.cap.n;
+export type IdleBoard = { def: BoardDefinition; waitingForYou: number };
+
+// What `next` answers when nothing on the boards asked is the agent's: that, once, naming them; each
+// board's own words for idle time and its cap on new items when it is on; and how to wait for the
+// next item (on `collection` when next was asked of one).
+export function idleText(boards: readonly IdleBoard[], collection?: string): string {
+  const names = boards.map(({ def }) => def.name);
+  const lines = [`Nothing to do on ${and(names, 'or')} right now.`];
+  const of = (title: string, def: BoardDefinition) =>
+    boards.length > 1 ? `${title} on ${def.name}` : title;
+  for (const { def, waitingForYou } of boards) {
     lines.push(
-      ...section('New items', [
-        room
-          ? `  You may add items while fewer than ${def.cap.n} wait for the person (${waitingForYou} do).`
-          : `  Do not add items: ${waitingForYou} already wait for the person (the cap is ${def.cap.n}).`,
-      ]),
+      ...section(
+        boards.length > 1
+          ? `On ${def.name}, when there is nothing to do`
+          : 'When there is nothing to do',
+        indent(mentionText(def, def.idle)),
+      ),
     );
+    if (def.cap.on) {
+      const room = waitingForYou < def.cap.n;
+      lines.push(
+        ...section(of('New items', def), [
+          room
+            ? `  You may add items while fewer than ${def.cap.n} wait for the person (${waitingForYou} do).`
+            : `  Do not add items: ${waitingForYou} already wait for the person (the cap is ${def.cap.n}).`,
+        ]),
+      );
+    }
   }
+  const on = collection === undefined ? '' : ` --collection ${quoted(collection)}`;
+  if (lines.length > 1) lines.push('');
+  lines.push(`Wait for one: otea wait --turn agent --unclaimed${on}, then otea next${on}.`);
   return lines.join('\n');
+}
+
+// A name as a command line takes it: bare when it is one plain word, quoted otherwise.
+function quoted(name: string): string {
+  return /^[\w.-]+$/.test(name) ? name : `"${name}"`;
 }
 
 function whoDoes(step: Step): string {

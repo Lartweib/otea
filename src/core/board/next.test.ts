@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { clockTime } from '../lease.ts';
-import { boardText, handedText, nextText, refusalText } from './next.ts';
+import { boardText, handedText, idleText, nextText, noWayText, refusalText } from './next.ts';
 import { creatures } from './testing.ts';
 
 const def = creatures();
@@ -24,6 +24,7 @@ describe('nextText', () => {
       [
         'CRI-12 · Criatura · Concepto, round 1',
         'Your turn: do this step.',
+        'Claim it first: otea claim CRI-12 (otea next --claim takes and claims the next in one call).',
         '',
         'About this board',
         '  Cada criatura del pantano.',
@@ -71,9 +72,10 @@ describe('nextText', () => {
       },
     });
     const lines = text.split('\n');
-    expect(lines.slice(0, 6)).toEqual([
+    expect(lines.slice(0, 7)).toEqual([
       'CRI-12 · Criatura · Concepto, round 2',
       'Your turn: do this step.',
+      'Claim it first: otea claim CRI-12 (otea next --claim takes and claims the next in one call).',
       '',
       'Sent back to you: "Más barro en las patas.',
       '  Y la concha más oscura."',
@@ -187,6 +189,121 @@ describe('nextText with a lease', () => {
     );
     const mine = nextText(def, { ...doing, me: 'resumidor', leftFor: 'resumidor' });
     expect(mine).toContain('Your turn: do this step.\nThe person left it for you.');
+  });
+
+  it('tells an agent to claim an item nobody holds before it starts', () => {
+    const text = nextText(def, { ...doing, me: 'inv-a' });
+    expect(text.split('\n').slice(0, 3)).toEqual([
+      'CRI-12 · Criatura · Concepto, round 1',
+      'Your turn: do this step.',
+      'Claim it first: otea claim CRI-12 (otea next --claim takes and claims the next in one call).',
+    ]);
+    const review = nextText(def, {
+      ...base,
+      position: { step: 'sanimate', phase: 'review' },
+      missing: [],
+      me: 'scout',
+    });
+    expect(review).toContain('Claim it first: otea claim CRI-12 ');
+  });
+
+  it('tells the holder until when it holds the item, and how to keep it', () => {
+    const text = nextText(def, {
+      ...doing,
+      me: 'inv-a',
+      holder: { name: 'inv-a', expiresAt: until },
+    });
+    expect(text.split('\n')[2]).toBe(
+      `You hold it until ${clockTime(until)}; otea heartbeat CRI-12 keeps it longer.`,
+    );
+    expect(text).not.toContain('Claim it first');
+  });
+});
+
+describe('nextText, what the item starts with', () => {
+  const doing = { ...base, position: { step: 'sconcept', phase: 'doing' as const }, missing: [] };
+
+  it('gives every line of a value, indented under its name', () => {
+    const text = nextText(def, {
+      ...doing,
+      fields: {
+        ...base.fields,
+        fdesc: 'Una tortuga con musgo.\nCamina lento.\n\nVive en el barro.',
+      },
+    });
+    expect(text).toContain(
+      [
+        '  Descripción: Una tortuga con musgo.',
+        '    Camina lento.',
+        '    ',
+        '    Vive en el barro.',
+        '  Bioma: Pantano',
+      ].join('\n'),
+    );
+  });
+
+  it('points to otea show for a value too long to give whole', () => {
+    const long = `${'Musgo verde. '.repeat(60)}FIN`;
+    const text = nextText(def, { ...doing, fields: { ...base.fields, fdesc: long } });
+    const line = text.split('\n').find((each) => each.startsWith('  Descripción: ')) ?? '';
+    expect(line).not.toContain('FIN');
+    expect(line.endsWith('… (the whole of it: otea show CRI-12)')).toBe(true);
+    expect(line.length).toBeLessThan(560);
+  });
+});
+
+describe('idleText', () => {
+  const quiet = { ...def, idle: '' };
+
+  it('says once that there is nothing to do, and how to wait for the next item', () => {
+    expect(idleText([{ def: quiet, waitingForYou: 0 }])).toBe(
+      [
+        'Nothing to do on Criaturas right now.',
+        'Wait for one: otea wait --turn agent --unclaimed, then otea next.',
+      ].join('\n'),
+    );
+  });
+
+  it('names every board on one line, then each board’s own words for idle time', () => {
+    const tasks = { ...quiet, name: 'Tareas', idle: 'Revisa los tests.', cap: { on: true, n: 2 } };
+    expect(
+      idleText(
+        [
+          { def: quiet, waitingForYou: 0 },
+          { def: tasks, waitingForYou: 3 },
+        ],
+        'Tareas',
+      ),
+    ).toBe(
+      [
+        'Nothing to do on Criaturas or Tareas right now.',
+        '',
+        'On Tareas, when there is nothing to do',
+        '  Revisa los tests.',
+        '',
+        'New items on Tareas',
+        '  Do not add items: 3 already wait for the person (the cap is 2).',
+        '',
+        'Wait for one: otea wait --turn agent --unclaimed --collection Tareas, then otea next --collection Tareas.',
+      ].join('\n'),
+    );
+  });
+});
+
+describe('noWayText', () => {
+  it('lists the ways an item may go from its step, forward and back', () => {
+    const back = {
+      ...def,
+      steps: def.steps.map((step) =>
+        step.id === 'sanimate' ? { ...step, ways: [...step.ways, 'sconcept'] } : step,
+      ),
+    };
+    expect(noWayText(back, 'CRI-12', 'sanimate', 'Triar')).toBe(
+      'CRI-12 has no way "Triar" from Animar. From Animar it goes on to Pulir, or back to Concepto (otea handoff CRI-12 --way "Concepto" --reason "why").',
+    );
+    expect(noWayText(def, 'CRI-12', 'sconcept', 'Nowhere')).toBe(
+      'CRI-12 has no way "Nowhere" from Concepto. From Concepto it goes on to Animar or Done.',
+    );
   });
 });
 

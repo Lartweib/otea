@@ -6,6 +6,7 @@ import { transaction } from '../store/database.ts';
 import { appendEvent, clearLease, type ItemRecord, takeLease } from '../store/queries.ts';
 import type { Context } from './context.ts';
 import { type Item, present, requireItem, systemClock, workflowOf } from './items.ts';
+import { takeItem } from './lease-take.ts';
 import { assertMayClaim } from './next.ts';
 
 export type LeaseInput = { id: string; actor: Actor; ttlMs?: number };
@@ -32,19 +33,7 @@ export function claimItem(ctx: Context, input: LeaseInput, now = systemClock): I
     }
     assertMayClaim(ctx, item, input.actor.name);
     const at = now();
-    const current = activeLease(item.lease, at);
-    const { actor } = input;
-    if (current && current.holder !== actor.name) throw leaseHeld(item.id, current);
-    const lease = {
-      holder: actor.name,
-      expiresAt: leaseExpiry(at, input.ttlMs ?? DEFAULT_LEASE_TTL_MS),
-    };
-    if (!takeLease(db, item.id, lease, at)) throw new OteaError('lease_held', `${item.id} is held`);
-    if (!current) {
-      const previous = item.lease && item.lease.holder !== actor.name ? item.lease.holder : null;
-      const data = previous ? { ...lease, previous } : lease;
-      appendEvent(db, { itemId: item.id, type: 'claimed', actor, at, data });
-    }
+    const lease = takeItem(db, item, input.actor, at, input.ttlMs);
     return present({ ...item, lease }, workflow, at);
   });
 }

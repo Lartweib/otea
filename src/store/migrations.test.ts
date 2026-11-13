@@ -37,16 +37,17 @@ describe('migrate', () => {
         'board_versions',
         'board_drafts',
         'repos',
+        'offers',
       ]),
     );
-    expect(userVersion(db)).toBe(13);
+    expect(userVersion(db)).toBe(14);
   });
 
   it('is idempotent', () => {
     migrate(db);
     migrate(db);
 
-    expect(userVersion(db)).toBe(13);
+    expect(userVersion(db)).toBe(14);
   });
 
   describe('from version 1', () => {

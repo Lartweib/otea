@@ -564,6 +564,20 @@ export function upsertAgent(db: DatabaseSync, agent: AgentRecord): void {
   db.prepare(sql).run(agent);
 }
 
+// What `otea next` last offered an agent: the item, the state it was in, and when.
+export type Offer = { agent: string; item: string; state: string; at: string };
+
+export function selectOffers(db: DatabaseSync): Offer[] {
+  return db.prepare('SELECT agent, item, state, at FROM offers').all() as Offer[];
+}
+
+// An agent holds one offer at a time: a new one replaces the last.
+export function saveOffer(db: DatabaseSync, offer: Offer): void {
+  const sql = `INSERT INTO offers (agent, item, state, at) VALUES (:agent, :item, :state, :at)
+    ON CONFLICT (agent) DO UPDATE SET item = excluded.item, state = excluded.state, at = excluded.at`;
+  db.prepare(sql).run(offer);
+}
+
 // The items with a lease stored, live or expired, in creation order.
 export function selectLeases(db: DatabaseSync): { id: string; lease: Lease }[] {
   const sql = `SELECT id, lease_holder, lease_expires_at FROM items
