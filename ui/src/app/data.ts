@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { withoutUndone } from '../../../src/core/board/history.ts';
 import { FEED_SIZE, type FeedEvent, mergeFeed } from '../activity.ts';
 import {
   fetchCollections,
@@ -13,7 +14,6 @@ import { type Connection, useBeat, useLive, useRemote } from '../hooks.ts';
 import type { Agent } from '../presence.ts';
 import type { Remote } from '../remote.ts';
 import type { CollectionView, Item, PresetView, ProjectOverview, ProjectView } from '../types.ts';
-import { dropUndone } from '../undone.ts';
 import { useAgents } from '../use-agents.ts';
 
 // Everything the app reads from the server, kept live (moved out of App.tsx): the stream, the
@@ -64,7 +64,7 @@ export function useFeed(version: number): FeedEvent[] {
     );
     return () => controller.abort();
   }, [version]);
-  return useMemo(() => dropUndone(feed.events), [feed.events]);
+  return useMemo(() => withoutUndone(feed.events), [feed.events]);
 }
 
 export function useAppData(): LoadedData {

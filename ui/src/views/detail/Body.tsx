@@ -11,6 +11,7 @@ import { type DetailBlock, detailBlocks, slotData } from '../../item-types.ts';
 import { moduleFor } from '../../modules/registry.ts';
 import { C } from '../../motion/curves.ts';
 import { reduced } from '../../motion/reduced.ts';
+import type { BoardRounds } from '../../rounds.ts';
 import type { Evidence, ItemView, TypeView } from '../../types.ts';
 import type { Facts } from './facts.ts';
 import { Structure } from './Structure.tsx';
@@ -83,7 +84,14 @@ export function bodySections(o: {
   // (drawn where its layout puts Rondas, else after the fields), and its own sections (Partes,
   // Enlaces) in place of Structure.
   board?:
-    | { options: ReadonlySet<string>; rounds: ReactNode; roundsAfter: boolean; sections: Sec[] }
+    | {
+        options: ReadonlySet<string>;
+        rounds: ReactNode;
+        roundsAfter: boolean;
+        sections: Sec[];
+        // The board and the step the item is on, for its rounds as the step engine counts them.
+        steps: BoardRounds;
+      }
     | undefined;
 }): Sec[] {
   const { item, type, facts, canWrite, now, board } = o;
@@ -190,6 +198,7 @@ export function bodySections(o: {
                   entry={block.entry}
                   canWrite={canWrite}
                   quiet={!!board}
+                  {...(board ? { board: board.steps } : {})}
                 />
               </Plain>
             ),

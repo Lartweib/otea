@@ -300,6 +300,11 @@ describe('cardWords', () => {
   it('has no agent when nobody handed it over', () => {
     expect(cardWords(item({ id: 'A' }), [])).toEqual({ agent: null, say: '', round: 1 });
   });
+
+  it('says the round the step engine counts on a board (the server sends it)', () => {
+    const feed = [moved('A', 'fixing', you, { reason: 'falta' })];
+    expect(cardWords({ ...item({ id: 'A' }), round: 1 }, feed).round).toBe(1);
+  });
 });
 
 describe('tiltOf', () => {

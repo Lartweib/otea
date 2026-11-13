@@ -32,6 +32,11 @@ describe('withoutUndone: a move taken back never happened', () => {
     const c = move('sconcept__review', 'sanimate', you);
     expect(withoutUndone([a, b, undo, c])).toEqual([a, c]);
   });
+
+  it('keeps the list as it is when nothing was undone', () => {
+    const events = [move('sconcept', 'sconcept__review')];
+    expect(withoutUndone(events)).toBe(events);
+  });
 });
 
 describe('historyOf: the moves the engine replays', () => {

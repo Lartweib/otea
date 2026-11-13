@@ -5,7 +5,7 @@ import { momentLabel } from '../format.ts';
 import { t } from '../i18n/i18n.ts';
 import { AgentMark, Button, NodeMark } from '../kit/index.ts';
 import { stateWord } from '../preset-words.ts';
-import { type Round, roundFiles, roundsOf } from '../rounds.ts';
+import { type BoardRounds, type Round, roundFiles, roundsOf } from '../rounds.ts';
 import type { Evidence, ItemView, LayoutEntry, TypeView } from '../types.ts';
 import { CompareRounds } from './CompareRounds.tsx';
 import { ImageSingle } from './evidence/ImageViews.tsx';
@@ -28,7 +28,8 @@ function Rail({ rounds, closed, name }: { rounds: Round[]; closed: boolean; name
   let d = `M0 ${AG}`;
   xs.forEach((x, index) => {
     d += ` H${x - 40} C${x - 18} ${AG} ${x - 18} ${YOU} ${x} ${YOU}`;
-    if (rounds[index]?.verdict?.kind === 'sent-back') {
+    const kind = rounds[index]?.verdict?.kind;
+    if (kind === 'sent-back' || kind === 'approved') {
       d += ` C${x + 18} ${YOU} ${x + 18} ${AG} ${x + 40} ${AG}`;
     }
   });
@@ -108,6 +109,8 @@ function verdictWord(round: Round, name: StateName): string {
   if (!verdict) return t('rounds.yourVerdict');
   if (verdict.kind === 'sent-back')
     return t('rounds.sentBackAt', { at: momentLabel(verdict.at, Date.now()) });
+  if (verdict.kind === 'approved')
+    return t('rounds.approvedAt', { at: momentLabel(verdict.at, Date.now()) });
   return t('rounds.closedAs', { state: name(verdict.to) });
 }
 
@@ -182,11 +185,13 @@ function VerdictLine({ round, name }: { round: Round; name: StateName }) {
   const what =
     verdict.kind === 'sent-back'
       ? t('rounds.sentBack', { at: momentLabel(verdict.at, Date.now()) })
-      : t('rounds.closedIn', {
-          state: name(verdict.to),
-          n: round.n,
-          at: momentLabel(verdict.at, Date.now()),
-        });
+      : verdict.kind === 'approved'
+        ? t('rounds.approved', { at: momentLabel(verdict.at, Date.now()) })
+        : t('rounds.closedIn', {
+            state: name(verdict.to),
+            n: round.n,
+            at: momentLabel(verdict.at, Date.now()),
+          });
   return (
     <p className="rd-verdict-line t-small" data-kind={verdict.kind}>
       <b>{what}</b>
@@ -234,6 +239,8 @@ type RoundsModuleProps = {
   slot?: Readonly<Record<string, string>>;
   // A Studio board draws its round notes above: no "no rounds yet" under them.
   quiet?: boolean;
+  // On a board: its rounds are its step's, as the step engine counts them.
+  board?: BoardRounds;
 };
 
 // The item's rounds, read from its history: the path between the lanes, the latest round with its
@@ -313,9 +320,17 @@ function Verdict({
   );
 }
 
-export function RoundsModule({ item, type, entry, canWrite, slot, quiet }: RoundsModuleProps) {
+export function RoundsModule({
+  item,
+  type,
+  entry,
+  canWrite,
+  slot,
+  quiet,
+  board,
+}: RoundsModuleProps) {
   const [marks, setMarks] = useState<number[]>([]);
-  const rounds = roundsOf(item.events, item.evidence, type.states);
+  const rounds = roundsOf(item.events, item.evidence, type.states, board);
   const modules = type.layout.evidence.flatMap(({ id }) => (id === undefined ? [] : [id]));
   const title = entry.label ?? t('rounds.title');
   const name: StateName = (state) => stateWord(type, state);

@@ -151,7 +151,7 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
       ? (links?.partsBoard ?? childSummary?.name ?? t('bi.parts.title'))
       : t('bi.parts.title');
   const roundsStep = live && stepId ? stepById(live, stepId) : undefined;
-  const rounds = live && roundsStep ? roundNotes(live, roundsStep.id, item.events, block) : null;
+  const rounds = live && roundsStep ? roundNotes(live, roundsStep.id, item.events) : null;
   const block0 = (item as ItemView & { board?: ItemBoardBlock }).board;
   const missing = block0?.missing ?? [];
   // On your own step the primary hands it off ("Entregar"), asking for the note when the step does.
@@ -322,6 +322,7 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
           // there is something to say or a review to say it to.
           roundsAfter: !!roundsStep && (hasNotes || roundsStep.reviewer !== 'none'),
           sections: boardSections,
+          steps: stepId ? { def: live, step: stepId } : { def: live },
         }
       : undefined,
   });

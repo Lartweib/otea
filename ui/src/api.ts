@@ -1,3 +1,4 @@
+import { withoutUndone } from '../../src/core/board/history.ts';
 import type { FeedEvent } from './activity.ts';
 import type { WrittenBrief } from './brief.ts';
 import { t } from './i18n/i18n.ts';
@@ -18,7 +19,6 @@ import type {
   ProjectView,
   Session,
 } from './types.ts';
-import { dropUndone } from './undone.ts';
 
 async function get(path: string, signal: AbortSignal): Promise<Response> {
   const response = await fetch(path, { signal, headers: { accept: 'application/json' } });
@@ -46,7 +46,7 @@ export async function fetchItem(id: string, signal: AbortSignal): Promise<ItemVi
   const response = await get(`/api/items/${encodeURIComponent(id)}`, signal);
   if (response.status === 404) return null;
   const item = (await response.json()) as ItemView;
-  return { ...item, events: dropUndone(item.events) };
+  return { ...item, events: withoutUndone(item.events) };
 }
 
 // A brief for the items, in the order given; limits and success left out take the brief's defaults.

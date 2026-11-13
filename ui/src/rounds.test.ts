@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { creatures } from '../../src/core/board/testing.ts';
 import { optionsSummary, parseOptions } from './options.ts';
 import { roundFiles, roundsOf } from './rounds.ts';
 import type { Evidence, ItemEvent, State } from './types.ts';
@@ -94,6 +95,61 @@ describe('rounds', () => {
 
   it('has no rounds before the agent first hands it over', () => {
     expect(roundsOf(events.slice(0, 2), evidence, STATES)).toEqual([]);
+  });
+});
+
+describe('rounds on a board', () => {
+  // Criaturas: Concepto (any agent, you review), Animar (kiln, scout reviews), Pulir (you).
+  const def = creatures();
+  const BOARD: State[] = [
+    { name: 'sconcept', turn: 'agent' },
+    { name: 'sconcept__review', turn: 'human' },
+    { name: 'sanimate', turn: 'agent' },
+    { name: 'sanimate__review', turn: 'agent' },
+    { name: 'spolish', turn: 'human' },
+    { name: 'done', turn: 'none', closes: 'done' },
+    { name: 'dropped', turn: 'none', closes: 'discarded' },
+  ];
+  const pinta = { kind: 'agent' as const, name: 'pinta' };
+  const created: ItemEvent = {
+    id: ++ids,
+    type: 'created',
+    actor: you,
+    at: '2026-11-02T08:00:00.000Z',
+    data: { state: 'sconcept' },
+  };
+  const handed = moved('09:00', pinta, 'sconcept', 'sconcept__review', { note: 'Dos bocetos' });
+  const back = moved('10:00', you, 'sconcept__review', 'sconcept', { reason: 'Más barro' });
+  const again = moved('11:00', pinta, 'sconcept', 'sconcept__review', { note: 'Con barro' });
+  const approved = moved('12:00', you, 'sconcept__review', 'sanimate', { channel: 'ui' });
+  const story = [created, handed, back, again, approved];
+
+  it('reads each handoff’s note, and an approval as approved, never as sent back', () => {
+    const rounds = roundsOf(story, [], BOARD, { def, step: 'sconcept' });
+    expect(rounds.map(({ n, note, verdict }) => [n, note, verdict?.kind])).toEqual([
+      [1, 'Dos bocetos', 'sent-back'],
+      [2, 'Con barro', 'approved'],
+    ]);
+  });
+
+  it('counts by step as the engine does: the next step starts with no rounds of its own', () => {
+    expect(roundsOf(story, [], BOARD, { def, step: 'sanimate' })).toEqual([]);
+  });
+
+  it('drops an approval taken back with Deshacer', () => {
+    const undo = moved('12:00', you, 'sanimate', 'sconcept__review', { undoes: approved.id });
+    const twice = moved('12:01', you, 'sconcept__review', 'sanimate', { channel: 'ui' });
+    const rounds = roundsOf([...story, undo, twice], [], BOARD, { def, step: 'sconcept' });
+    expect(rounds.map(({ n, verdict }) => [n, verdict?.kind, verdict?.at])).toEqual([
+      [1, 'sent-back', back.at],
+      [2, 'approved', twice.at],
+    ]);
+  });
+
+  it('keeps the last step’s rounds once the item is closed', () => {
+    const done = moved('13:00', you, 'sconcept__review', 'done', { channel: 'ui' });
+    const rounds = roundsOf([created, handed, done], [], BOARD, { def });
+    expect(rounds.map(({ n, verdict }) => [n, verdict?.kind])).toEqual([[1, 'closed']]);
   });
 });
 
