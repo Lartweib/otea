@@ -244,7 +244,7 @@ describe('refusals and answers', () => {
       ].join('\n'),
     );
     expect(approvalRefusalText('CH-3', [{ ...parts, open: [rt('RT-4', 'Implementar')] }])).toBe(
-      'Not approved CH-3: RT-4 (Implementar) was reopened and is not finished.',
+      'Not approved CH-3: 1 of its 3 Tareas de repo is not finished: RT-4 (Implementar).',
     );
   });
 

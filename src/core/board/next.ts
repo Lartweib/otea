@@ -578,16 +578,11 @@ export function refusalText(id: string, missing: readonly Missing[]): string {
   return lines.join('\n');
 }
 
-// The refusal of an approval whose waits no longer hold: a part reopened, or a blocker added.
+// The refusal of an approval whose waits do not hold: a part not finished (reopened, or never
+// finished), or a blocker added. Parts are said as a handoff says them, and as the web UI does.
 export function approvalRefusalText(id: string, missing: readonly Missing[]): string {
   const sentences = missing.flatMap((wait) => {
-    if (wait.ref === WAIT_PARTS) {
-      const open = wait.open ?? [];
-      const one = open.length === 1;
-      return [
-        `${and(named(open))} ${one ? 'was' : 'were'} reopened and ${one ? 'is' : 'are'} not finished`,
-      ];
-    }
+    if (wait.ref === WAIT_PARTS) return [partsHold(id, wait)];
     if (wait.ref === WAIT_BLOCKERS) return [blockersHold(wait).text];
     return [];
   });

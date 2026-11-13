@@ -10,7 +10,7 @@ const refused = (code: string, message: string, details?: unknown) => ({
 
 const reopened = refused(
   'children_open',
-  'Not approved CAMBIOS-1: TAR-6 (Implementar) was reopened and is not finished.',
+  'Not approved CAMBIOS-1: 1 of its 4 Tareas de repo is not finished: TAR-6 (Implementar).',
   {
     kind: 'approval',
     item: 'CAMBIOS-1',
