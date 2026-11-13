@@ -17,12 +17,14 @@ import {
 } from '../app/items.ts';
 import { boardRoundOf, liveBoards } from '../app/next.ts';
 import { leaveNote, notesSummary, notesView } from '../app/notes.ts';
+import { performanceOf } from '../app/performance.ts';
 import { listAgents, presenceSignature } from '../app/presence.ts';
 import { listPresetViews } from '../app/preset-views.ts';
 import { type Env, type Project, projectView } from '../app/project.ts';
 import { linkItems, unlinkItems } from '../app/relations.ts';
 import { reassignItem, restartItem, undoRelease } from '../app/restart.ts';
 import { undoMove } from '../app/undo.ts';
+import { PERIOD_HINT, parsePeriod } from '../core/board/performance.ts';
 import { MAX_EVIDENCE_MB } from '../core/evidence.ts';
 import { TURNS, type Turn } from '../core/workflow.ts';
 import type { EventFilter } from '../store/queries.ts';
@@ -242,6 +244,14 @@ function api(
       .get('/collections', (c) => c.json(listCollectionViews(project)))
       .get('/presets', (c) => c.json(listPresetViews(project)))
       .get('/agents', (c) => c.json({ agents: listAgents(project.db) }))
+      // How each model performs (Rendimiento): per model family and effort, for a board and a period.
+      .get('/performance', (c) => {
+        const { board, since = 'all' } = c.req.query();
+        if (!parsePeriod(since, new Date().toISOString())) {
+          throw new InvalidQuery(`since takes ${PERIOD_HINT}`);
+        }
+        return c.json(performanceOf(project, { board, since }));
+      })
       .get('/items', (c) => {
         const items = listItems(project, itemsFilter(c.req.query(), c.req.queries('field')));
         // On a board, each item's round as the engine counts it, so every list agrees with it.
