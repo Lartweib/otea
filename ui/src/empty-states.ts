@@ -53,8 +53,10 @@ export function createCommand(collection: string, title: string): string {
   return `otea create --collection ${collection} --title "${title}"`;
 }
 
-export function playbookCommand(collection: string): string {
-  return `otea playbook --collection ${collection}`;
+// What an agent reads about a board before acting; a name with spaces is quoted, as `otea board`
+// itself prints it.
+export function boardCommand(collection: string): string {
+  return /^[\w.-]+$/.test(collection) ? `otea board ${collection}` : `otea board "${collection}"`;
 }
 
 export const CONNECT_COMMAND = 'otea connect --as claude-a';

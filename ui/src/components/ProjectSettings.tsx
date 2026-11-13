@@ -41,7 +41,7 @@ function Gate({ repo }: { repo: RepoSettings }) {
   return (
     <span className="pj-gate">
       <span className="pj-gate-mark">{t('settings.soft')}</span>
-      <span className="t-cap">{t('settings.playbookOnly')}</span>
+      <span className="t-cap">{t('settings.instructionsOnly')}</span>
       <code className="pj-code">otea hook install</code>
     </span>
   );

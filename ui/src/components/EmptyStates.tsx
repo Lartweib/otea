@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   addCommand,
+  boardCommand,
   CONNECT_COMMAND,
   createCommand,
-  playbookCommand,
   routeOf,
 } from '../empty-states.ts';
 import { type PlainKey, t, tx } from '../i18n/i18n.ts';
@@ -204,7 +204,7 @@ export function EmptyCollection({ collection, example, agents, onCreate }: Empty
         <h2 className="empty-title" id="empty-collection-title">
           {collection === undefined ? t('empty.noItems') : t('emptyList.nothingIn', { collection })}
         </h2>
-        <p>{tx('emptyList.agentsFile', { command: <code>{playbookCommand(example)}</code> })}</p>
+        <p>{tx('emptyList.agentsFile', { command: <code>{boardCommand(example)}</code> })}</p>
         <CommandLine command={createCommand(example, t('emptyList.exampleTitle'))} />
         <div className="acts2">
           {onCreate ? (

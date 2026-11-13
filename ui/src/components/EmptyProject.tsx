@@ -22,7 +22,7 @@ export function EmptyProject() {
           command={`otea create --collection ${first} --title "${t('emptyProject.example')}"`}
         />
         <p className="pj-empty-agents">
-          {tx('emptyProject.agents', { command: <code>otea playbook</code> })}
+          {tx('emptyProject.agents', { command: <code>otea board</code> })}
         </p>
         <dl className="pj-facts">
           <dt>{t('emptyProject.path')}</dt>

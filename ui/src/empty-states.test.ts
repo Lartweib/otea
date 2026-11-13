@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { addCommand, createCommand, emptyKind, firstName, routeOf } from './empty-states.ts';
+import {
+  addCommand,
+  boardCommand,
+  createCommand,
+  emptyKind,
+  firstName,
+  routeOf,
+} from './empty-states.ts';
 import { X } from './lanes/geometry.ts';
 import type { Layout, PresetView, Turn } from './types.ts';
 
@@ -43,6 +50,11 @@ describe('empty states', () => {
     expect(createCommand('bugs', 'What you found')).toBe(
       'otea create --collection bugs --title "What you found"',
     );
+  });
+
+  it('points agents at the board they read, quoting a name with spaces', () => {
+    expect(boardCommand('Errores')).toBe('otea board Errores');
+    expect(boardCommand('Tareas de repo')).toBe('otea board "Tareas de repo"');
   });
 
   it('lays a preset route down the lanes, each state on its turn', () => {
