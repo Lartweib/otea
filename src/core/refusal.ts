@@ -52,7 +52,17 @@ export type RefusalDetails =
   | { kind: 'not_stuck'; item: string; holder?: string }
   | { kind: 'agent_name'; name: string }
   // A preset workflow's move: no such move, not the performer's, or it needs a reason.
-  | { kind: 'move'; why: 'no_move' | 'reason_required' | 'not_allowed' }
+  // `from` and `to`: the states, by key.
+  | {
+      kind: 'move';
+      why: 'no_move' | 'reason_required' | 'not_allowed';
+      from?: string;
+      to?: string;
+    }
+  // Evidence a file does not fit, or fits more than one of: the modules, by id.
+  | { kind: 'modules'; modules: string[] }
+  // Fields a create refused (missing, unknown or a value not allowed), by key.
+  | { kind: 'invalid_fields'; fields: string[] }
   // A preset move that needs fields filled first; `labels` by language, when the preset gives them.
   | { kind: 'fields_missing'; fields: { key: string; labels?: Record<string, string> }[] }
   // A preset state that takes the item only once its children or blockers are closed.

@@ -24,6 +24,7 @@ import {
   usedRefs,
   type Zone,
 } from './model.ts';
+import { stateName } from './reading.ts';
 import { defaultZone, LANGS, type Lang } from './templates.ts';
 
 // A published board version compiled into the preset the rest of Otea already reads (items, moves,
@@ -397,5 +398,9 @@ export function compileBoard(id: string, version: number, def: BoardDefinition):
       'invalid_preset',
       `Board ${def.name} does not compile: ${reading.problems.join('; ')}`,
     );
-  return reading.preset;
+  // Its states are hidden ids: each reads as its step (Refinar (in review)), in what Otea says.
+  const { preset } = reading;
+  for (const workflow of [preset.workflow, ...preset.types.map((type) => type.workflow)])
+    for (const state of workflow.states) state.label = stateName(def, state.name);
+  return preset;
 }

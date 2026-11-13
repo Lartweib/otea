@@ -32,7 +32,7 @@ function fieldMessages(type: ItemType, item: StoredItem, of: string): Array<[Sev
     const value = values[name];
     const missing = value === undefined || (typeof value === 'string' && value.trim() === '');
     if (spec.required === 'create' && missing) {
-      found.push(['error', `missing required field "${name}"`]);
+      found.push(['error', `missing required field "${spec.label ?? name}"`]);
     }
   }
   return found;

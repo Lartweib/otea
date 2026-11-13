@@ -66,7 +66,11 @@ describe('board moves over MCP', () => {
     expect(await call('handoff', { id, way: 'Triar' })).toEqual({
       isError: true,
       body: {
-        error: { code: 'reason_required', message: 'Not taken back: say why with --reason.' },
+        error: {
+          code: 'reason_required',
+          message: 'Not taken back: say why with --reason.',
+          details: { kind: 'way_back_reason', item: id },
+        },
       },
     });
     const back = await call('handoff', { id, way: 'Triar', reason: 'no es un bug' });

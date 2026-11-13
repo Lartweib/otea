@@ -117,7 +117,7 @@ export function readFieldInput(
     if (!part || isEvidence(part)) {
       throw new OteaError(
         'invalid_fields',
-        `${def.name} has no field "${key}"; its fields are ${namesOf(namedParts(def).filter((p) => !isEvidence(p)))}`,
+        `${def.name} has no field "${key}"; its fields are ${fieldNames(def).join(', ')}`,
       );
     }
     out[part.id] = valueFor(part, value);
@@ -163,12 +163,28 @@ function statesOf(def: BoardDefinition): string[] {
 // The state a reader names (`otea move CRI-1 "Concepto (in review)"`, `Animar`, `Hecho`), or the
 // text as given when it names none, so a stored state still reads as itself.
 export function stateByName(def: BoardDefinition, text: string): string {
+  return findState(def, text) ?? text;
+}
+
+// The state a reader names, by name (in any case) or id; undefined when the board has none.
+export function findState(def: BoardDefinition, text: string): string | undefined {
   const wanted = fold(text);
   if (['hecho', 'done'].includes(wanted)) return DONE;
   if (['descartado', 'dropped'].includes(wanted)) return DROPPED;
-  return (
-    statesOf(def).find((state) => state === text || fold(stateName(def, state)) === wanted) ?? text
-  );
+  return statesOf(def).find((state) => state === text || fold(stateName(def, state)) === wanted);
+}
+
+// The names a reader can give the board's states, in its order: each step, its reviews, then
+// Done and Dropped.
+export function stateNames(def: BoardDefinition): string[] {
+  return [...new Set(statesOf(def).map((state) => stateName(def, state)))];
+}
+
+// The names a reader can give the board's fields, its evidence aside.
+export function fieldNames(def: BoardDefinition): string[] {
+  return namedParts(def)
+    .filter((part) => !isEvidence(part))
+    .map(({ name }) => name);
 }
 
 // A stored value as a reader says it: choices by their names.

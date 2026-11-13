@@ -1,6 +1,6 @@
 import { OteaError } from './errors.ts';
 import type { FieldSpec, Labels, Shape } from './preset.ts';
-import { turnOf } from './workflow.ts';
+import { stateLabel, turnOf } from './workflow.ts';
 
 export type FieldValues = Record<string, string>;
 
@@ -10,32 +10,48 @@ function isBlank(value: string | undefined): value is undefined {
   return value === undefined || value.trim() === '';
 }
 
+// The name a reader knows a field by: its label (a board part's name), or its key.
+function said(name: string, spec: FieldSpec): string {
+  return spec.label ?? name;
+}
+
 export function valueProblem(name: string, spec: FieldSpec, value: string): string | undefined {
   if (spec.values && !spec.values.includes(value)) {
-    return `field "${name}" must be one of ${spec.values.join(', ')}`;
+    return `field "${said(name, spec)}" must be one of ${spec.values.join(', ')}`;
   }
   return undefined;
 }
 
 export function intake(preset: Shape, input: FieldValues): Intake {
-  const problems = Object.keys(input)
-    .filter((name) => !(name in preset.fields))
-    .map((name) => `unknown field "${name}"`);
+  const unknown = Object.keys(input).filter((name) => !(name in preset.fields));
+  const problems = unknown.map((name) => `unknown field "${name}"`);
+  // The fields refused, by key, for a program to read beside the names in the message.
+  const refused = [...unknown];
   const values: FieldValues = {};
   let complete = true;
   for (const [name, spec] of Object.entries(preset.fields)) {
     const given = input[name];
     const value = isBlank(given) ? spec.default : given;
     if (value === undefined) {
-      if (spec.required === 'create') problems.push(`missing required field "${name}"`);
+      if (spec.required === 'create') {
+        problems.push(`missing required field "${said(name, spec)}"`);
+        refused.push(name);
+      }
       if (spec.required === 'complete') complete = false;
       continue;
     }
     const problem = valueProblem(name, spec, value);
-    if (problem) problems.push(problem);
+    if (problem) {
+      problems.push(problem);
+      refused.push(name);
+    }
     values[name] = value;
   }
-  if (problems.length > 0) throw new OteaError('invalid_fields', problems.join('; '));
+  if (problems.length > 0)
+    throw new OteaError('invalid_fields', problems.join('; '), {
+      kind: 'invalid_fields',
+      fields: refused,
+    });
   const { title = '', ...fields } = values;
   const { initial, incomplete } = preset.workflow;
   return { title, fields, state: complete ? initial : (incomplete ?? initial) };
@@ -67,7 +83,7 @@ export function revise(preset: Shape, current: Content, input: FieldValues): Rev
     }
     const next = isBlank(given) ? null : given;
     if (next === null && spec.required === 'create') {
-      problems.push(`field "${name}" is required and cannot be cleared`);
+      problems.push(`field "${said(name, spec)}" is required and cannot be cleared`);
       continue;
     }
     const problem = next === null ? undefined : valueProblem(name, spec, next);
@@ -104,7 +120,7 @@ export function assertCanLeave(
   if (missing.length === 0) return;
   throw new OteaError(
     'missing_fields',
-    `Cannot move from "${from}" to "${to}" while fields required to complete are missing: ${missing.join(', ')}`,
+    `Cannot move from "${stateLabel(workflow, from)}" to "${stateLabel(workflow, to)}" while fields required to complete are missing: ${missing.map((key) => preset.fields[key]?.label ?? key).join(', ')}`,
     {
       kind: 'fields_missing',
       fields: missing.map((key) => {

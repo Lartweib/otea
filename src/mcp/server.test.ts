@@ -347,7 +347,7 @@ describe('mcp server', () => {
 
       const cli = JSON.parse(await cliError('move', 'TASKS-1', 'done'));
       expect(JSON.parse(text)).toEqual({
-        error: { code: 'forbidden', message: cli.error.message.replace('via cli', 'via mcp') },
+        error: { ...cli.error, message: cli.error.message.replace('via cli', 'via mcp') },
       });
       expect(
         JSON.parse(await errorOf('relay', { id: 'TASKS-1', state: 'done', quote: 'Yes' })),

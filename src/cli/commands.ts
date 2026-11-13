@@ -57,6 +57,7 @@ import {
   projectView,
   setProjectIcon,
 } from '../app/project.ts';
+import { readerFilter } from '../app/reader-filter.ts';
 import { linkItems, unlinkItems } from '../app/relations.ts';
 import { relayDecision } from '../app/relay.ts';
 import {
@@ -608,7 +609,7 @@ function listFilter({ option, options, flag, actor }: Input): ListItemsFilter {
 const list: Command = {
   name: 'list',
   summary:
-    'List items in creation order, optionally filtered; --unclaimed hides items others hold, --parent keeps the children of an item, --field key=value (repeatable) keeps items whose field holds exactly that value',
+    'List items in creation order, optionally filtered; --unclaimed hides items others hold, --parent keeps the children of an item, --field key=value (repeatable) keeps items whose field holds exactly that value; --state and --field take the board names (any case) or ids',
   args: [],
   options: {
     collection: {},
@@ -621,7 +622,10 @@ const list: Command = {
   },
   execute: (input) => {
     return withAgent(input, (project) => {
-      const items = listItems(project, listFilter(input));
+      // A step and fields named as the board names them, or by id: each item on its own board.
+      const filter = listFilter(input);
+      const { state: _state, fields: _fields, ...stored } = filter;
+      const items = listItems(project, stored).filter(readerFilter(project, filter));
       const shown = items.map((item) => readable(project, item));
       const boardOf = boardsOf(project);
       return {

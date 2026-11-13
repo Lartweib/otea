@@ -102,7 +102,7 @@ describe('relay', () => {
     expect(JSON.parse(err).error).toEqual({
       code: 'forbidden',
       message:
-        'Moving from "todo__review" to "done" requires human-ui authority (a human in the web UI) and cannot be relayed; the human must make it in the web UI',
+        'Moving from "Hacerlo (in review)" to "Done" requires human-ui authority (a human in the web UI) and cannot be relayed; the human must make it in the web UI',
     });
     expect((await json('show', 'TASKS-1')).state).toBe('todo__review');
   });
@@ -171,6 +171,7 @@ describe('relay of a decision on the agent’s own step', () => {
       code: 'forbidden',
       message:
         'Not relayed: claude did Hacerlo on TASKS-1 in this round, so it may not relay the decision on its own work; the person makes it in the web UI.',
+      details: { kind: 'own_step', item: 'TASKS-1', step: 'Hacerlo', who: 'claude' },
     });
     expect((await json('show', 'TASKS-1')).state).toBe('todo__review');
   });

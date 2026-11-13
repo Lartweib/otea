@@ -1,7 +1,14 @@
 import { type ParseArgsOptionsConfig, parseArgs } from 'node:util';
 import { CLI_HARNESS } from '../app/presence.ts';
 import { type Actor, agentActor } from '../core/item.ts';
-import { type Command, failureCode, type Input, UsageError, usageOf } from './command.ts';
+import {
+  type Command,
+  errorData,
+  failureCode,
+  type Input,
+  UsageError,
+  usageOf,
+} from './command.ts';
 import { COMMANDS, findCommand } from './commands.ts';
 import { EXIT_CODES } from './exit-codes.ts';
 import { commandHelp, generalHelp, HELP_HINT } from './help.ts';
@@ -170,7 +177,7 @@ function report(error: unknown, argv: string[], io: Io, json: boolean): number {
   const code = failureCode(error);
   const message = error instanceof Error ? error.message : String(error);
   if (json) {
-    io.stderr.write(`${JSON.stringify({ error: { code, message } })}\n`);
+    io.stderr.write(`${JSON.stringify(errorData(error))}\n`);
   } else {
     const hint = EXIT_CODES[code] === EXIT_CODES.usage ? `\n${usageHint(argv)}` : '';
     io.stderr.write(`otea: ${message}${hint}\n`);
