@@ -68,7 +68,7 @@ describe('validate', () => {
 
     expect(code).toBe(0);
     expect(out).toContain(
-      'warning  BUGS-1  parent TASKS-1 is in another collection (tasks); merge bugs and tasks into one preset as types, or convert the link to implements: otea unlink BUGS-1 parent TASKS-1, otea link BUGS-1 implements TASKS-1',
+      'warning  BUGS-1  parent TASKS-1 is on another board (tasks); in Studio make tasks divide into bugs, or convert the link to implements: otea unlink BUGS-1 parent TASKS-1, otea link BUGS-1 implements TASKS-1',
     );
     expect((await otea('show', 'BUGS-1')).out).toMatch(/parent\s+TASKS-1/);
   });

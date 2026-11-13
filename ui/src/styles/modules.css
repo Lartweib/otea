@@ -298,14 +298,6 @@
   background: var(--sel);
 }
 
-.mod-yaml {
-  margin: 0;
-  padding: 12px 14px;
-  overflow-x: auto;
-  font: 400 12.5px / 1.6 var(--mono);
-  scrollbar-width: thin;
-}
-
 @media (prefers-reduced-motion: reduce) {
   .mod-entry {
     transition-duration: 1ms;

@@ -23,7 +23,6 @@ export const FALLBACK_MODULE: FieldModuleUi = {
   Detail: PlainText,
   Edit: TextInput,
   samples: [],
-  yaml: '',
 };
 
 export function isKnownModule(name: string): name is FieldModule {

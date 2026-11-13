@@ -53,5 +53,4 @@ export const markdown: FieldModuleUi = {
     },
     { label: 'module.markdown.empty', field: description, value: '' },
   ],
-  yaml: 'fields:\n  description: { module: markdown, required: complete }',
 };

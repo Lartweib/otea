@@ -7,13 +7,13 @@ const tasks: PresetView = {
   version: 1,
   origin: 'official',
   fields: [
-    { name: 'title', module: 'text', required: 'create' },
-    { name: 'description', module: 'markdown', required: 'complete' },
-    { name: 'priority', module: 'enum', values: ['low', 'high'], default: 'low' },
+    { name: 'title', module: 'text', required: 'create', label: 'Título' },
+    { name: 'fdesc', module: 'markdown', required: 'complete', label: 'Descripción' },
+    { name: 'fprio', module: 'enum', values: ['low', 'high'], default: 'low' },
   ],
   types: [],
   view: { kind: 'list', groupBy: 'turn', columns: ['id', 'title', 'state', 'who', 'age'] },
-  collections: ['tasks', 'bugs'],
+  collections: ['Tareas'],
 };
 
 const research: PresetView = {
@@ -27,6 +27,17 @@ const research: PresetView = {
   ],
   types: [],
   view: { kind: 'list', groupBy: 'turn', columns: ['id', 'title', 'state', 'who', 'age'] },
+  collections: ['Notas'],
+};
+
+// An official preset no board was read from: none of its fields is any board's.
+const unused: PresetView = {
+  name: 'review',
+  version: 1,
+  origin: 'official',
+  fields: [{ name: 'verdict', module: 'stars' }],
+  types: [],
+  view: { kind: 'list', groupBy: 'turn', columns: ['id', 'title', 'state', 'who', 'age'] },
   collections: [],
 };
 
@@ -38,9 +49,12 @@ const registered = [
 ] as const;
 
 describe('module catalog', () => {
-  it('lists registered modules in order, then unknown ones referenced by presets, by name', () => {
+  it('lists registered modules in order, then unknown ones a board names, by name', () => {
     expect(
-      catalogEntries(registered, [tasks, research]).map(({ name, origin }) => [name, origin]),
+      catalogEntries(registered, [tasks, research, unused]).map(({ name, origin }) => [
+        name,
+        origin,
+      ]),
     ).toEqual([
       ['text', 'official'],
       ['markdown', 'official'],
@@ -51,28 +65,19 @@ describe('module catalog', () => {
     ]);
   });
 
-  it('records which preset fields use each module and their collections', () => {
-    const [text] = catalogEntries(registered, [tasks, research]);
+  it('records which board fields use each module, never a preset no board was read from', () => {
+    const [text] = catalogEntries(registered, [tasks, research, unused]);
 
     expect(text?.uses).toEqual([
       {
-        preset: 'tasks',
-        version: 1,
-        origin: 'official',
-        field: { name: 'title', module: 'text', required: 'create' },
-        collections: ['tasks', 'bugs'],
+        board: 'Tareas',
+        field: { name: 'title', module: 'text', required: 'create', label: 'Título' },
       },
-      {
-        preset: 'research',
-        version: 2,
-        origin: 'project',
-        field: { name: 'title', module: 'text', required: 'create' },
-        collections: [],
-      },
+      { board: 'Notas', field: { name: 'title', module: 'text', required: 'create' } },
     ]);
   });
 
-  it('keeps a registered module that no preset uses, with no uses', () => {
+  it('keeps a registered module that no board uses, with no uses', () => {
     const diagram = catalogEntries(registered, [tasks]).find(({ name }) => name === 'diagram');
 
     expect(diagram).toEqual({ name: 'diagram', origin: 'local', uses: [] });
@@ -88,10 +93,10 @@ describe('module catalog', () => {
   });
 
   it.each([
-    [[], 'not used by any loaded preset'],
-    [[tasks], '1 field in tasks'],
-    [[tasks, research], '2 fields in 2 presets'],
-  ])('summarises the usage of text across %# presets', (presets, summary) => {
+    [[], 'not used by any board'],
+    [[tasks], '1 field on Tareas'],
+    [[tasks, research], '2 fields on 2 boards'],
+  ])('summarises the usage of text across %# boards', (presets, summary) => {
     const [text] = catalogEntries(registered, presets);
 
     expect(usageSummary(text?.uses ?? [])).toBe(summary);

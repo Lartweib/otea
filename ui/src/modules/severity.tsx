@@ -50,5 +50,4 @@ export const severityModule: FieldModuleUi = {
     { label: 'module.severity.medium', field: severity, value: 'medium' },
     { label: 'module.severity.empty', field: severity, value: '' },
   ],
-  yaml: 'fields:\n  severity: { module: severity, required: complete }  # low, medium, high, critical',
 };

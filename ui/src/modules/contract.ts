@@ -38,6 +38,4 @@ export type FieldModuleUi = {
   // In intake: the control that writes the value.
   Edit: (props: EditProps) => ReactNode;
   samples: readonly Sample[];
-  // How a preset declares a field with this module.
-  yaml: string;
 };

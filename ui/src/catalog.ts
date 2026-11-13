@@ -1,35 +1,37 @@
 import { t } from './i18n/i18n.ts';
 import type { ModuleOrigin } from './modules/contract.ts';
-import type { FieldView, PresetOrigin, PresetView } from './types.ts';
+import type { FieldView, PresetView } from './types.ts';
 
-// A preset field that uses a module.
-export type ModuleUse = {
-  preset: string;
-  version: number;
-  origin: PresetOrigin;
-  field: FieldView;
-  collections: string[];
-};
+// A board field that shows through a module.
+export type ModuleUse = { board: string; field: FieldView };
 
-// `unknown`: named by a loaded preset, but this UI has no module of that name.
+// `unknown`: named by a board's field, but this UI has no module of that name.
 export type CatalogOrigin = ModuleOrigin | 'unknown';
 
 export type CatalogEntry = { name: string; origin: CatalogOrigin; uses: ModuleUse[] };
 
 type Registered = { readonly name: string; readonly origin: ModuleOrigin };
 
+// The boards and their fields, as the server serves them: each board's fields come in the preset it
+// was compiled to, which names the board among its collections. A preset no board was read from
+// (an official one, kept for reading old collections) is no board's.
+export function boardsOf(presets: readonly PresetView[]): { board: string; fields: FieldView[] }[] {
+  return presets.flatMap(({ fields, collections }) =>
+    collections.map((board) => ({ board, fields })),
+  );
+}
+
 function usesByModule(presets: readonly PresetView[]): Map<string, ModuleUse[]> {
   const uses = new Map<string, ModuleUse[]>();
-  for (const { name, version, origin, fields, collections } of presets) {
+  for (const { board, fields } of boardsOf(presets)) {
     for (const field of fields) {
-      const use = { preset: name, version, origin, field, collections };
-      uses.set(field.module, [...(uses.get(field.module) ?? []), use]);
+      uses.set(field.module, [...(uses.get(field.module) ?? []), { board, field }]);
     }
   }
   return uses;
 }
 
-// Every registered module in registry order, then every unknown module a preset names, by name.
+// Every registered module in registry order, then every unknown module a board names, by name.
 export function catalogEntries(
   registered: readonly Registered[],
   presets: readonly PresetView[],
@@ -45,9 +47,9 @@ export function catalogEntries(
 
 export function usageSummary(uses: readonly ModuleUse[]): string {
   if (uses.length === 0) return t('catalog.unused');
-  const presets = new Set(uses.map(({ preset }) => preset));
+  const boards = new Set(uses.map(({ board }) => board));
   const fields = t('catalog.fields', { count: uses.length });
-  return presets.size === 1
-    ? t('catalog.inPreset', { fields, preset: [...presets][0] ?? '' })
-    : t('catalog.inPresets', { fields, count: presets.size });
+  return boards.size === 1
+    ? t('catalog.onBoard', { fields, board: [...boards][0] ?? '' })
+    : t('catalog.onBoards', { fields, count: boards.size });
 }

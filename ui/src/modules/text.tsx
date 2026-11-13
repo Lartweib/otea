@@ -55,5 +55,4 @@ export const text: FieldModuleUi = {
     },
     { label: 'module.text.empty', field: { name: 'owner', module: 'text' }, value: '' },
   ],
-  yaml: 'fields:\n  title: { module: text, required: create }',
 };

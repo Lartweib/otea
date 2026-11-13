@@ -34,9 +34,9 @@ function waitsForChildren(ctx: Context, item: { collection: string; type: string
   return workflow.states.some(({ requires }) => requires?.includes('children_closed'));
 }
 
-// A parent in another collection, linked before a tree had to live in one: it still reads, and each
-// is reported with its two ways out. Merging the collections keeps the tree; converting it to blocks
-// keeps the wait of a parent that waits for its children, and to implements keeps the rest. A part
+// A parent on another board, linked before a tree had to live in one: it still reads, and each is
+// reported with its two ways out. Making its board divide into the child's keeps the tree; blocks
+// keeps the wait of a parent that waits for its parts, and implements keeps the rest. A part
 // on the board its parent's board divides into ("se divide en") is the declared join, not a stray.
 function declaredPart(ctx: Context, child: string, parent: string): boolean {
   const childBoard = liveBoardOf(ctx, child);
@@ -50,16 +50,16 @@ function parentAcrossBoards(ctx: Context): Finding[] {
     const parent = findItem(ctx.db, to);
     if (!child || !parent || child.collection === parent.collection) return [];
     if (declaredPart(ctx, child.collection, parent.collection)) return [];
-    const merge = `merge ${child.collection} and ${parent.collection} into one preset as types`;
+    const join = `in Studio make ${parent.collection} divide into ${child.collection}`;
     const unlink = `otea unlink ${from} parent ${to}`;
     const convert = waitsForChildren(ctx, parent)
-      ? `convert the link to blocks, since ${to} waits for its children: ${unlink}, otea link ${from} blocks ${to}, and write requires: blockers_closed where its preset requires children_closed`
+      ? `convert the link to blocks, since ${to} waits for its parts: ${unlink}, otea link ${from} blocks ${to}, and in Studio have ${parent.collection} wait for nothing holding it back where it waits for its parts`
       : `convert the link to implements: ${unlink}, otea link ${from} implements ${to}`;
     return [
       {
         severity: 'warning' as const,
         subject: from,
-        message: `parent ${to} is in another collection (${parent.collection}); ${merge}, or ${convert}`,
+        message: `parent ${to} is on another board (${parent.collection}); ${join}, or ${convert}`,
       },
     ];
   });
