@@ -6,8 +6,8 @@ import type { PartKind } from '../../../../src/core/board/model.ts';
 const G = {
   undo: '<path d="M5.5 4L2.8 6.7l2.7 2.7"/><path d="M3 6.7h6.2a3.6 3.6 0 0 1 0 7.2H6.5"/>',
   redo: '<path d="M10.5 4l2.7 2.7-2.7 2.7"/><path d="M13 6.7H6.8a3.6 3.6 0 0 0 0 7.2h2.7"/>',
-  left: '<path d="M9.5 3.5L5 8l4.5 4.5"/>',
-  right: '<path d="M6.5 3.5L11 8l-4.5 4.5"/>',
+  // A change of order: one arrow each way, on two rows.
+  move: '<path d="M2.5 5.5h10M10 3l2.5 2.5L10 8"/><path d="M13.5 10.5h-10M6 8l-2.5 2.5L6 13"/>',
   trash: '<path d="M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.6 8.5h5.8l.6-8.5"/>',
   play: '<path d="M5 3.5v9l7-4.5z"/>',
   plus: '<path d="M8 3.2v9.6M3.2 8h9.6"/>',

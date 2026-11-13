@@ -208,6 +208,25 @@ input.se-bigname:focus {
   font-style: normal;
   font-weight: 400;
 }
+/* A step (or Hecho) in the summary: press it to open its card. */
+.se-namelink {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  font-style: normal;
+  text-decoration: underline dotted var(--ink-3);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.2em;
+  cursor: pointer;
+  transition: text-decoration-color 200ms var(--o-drift);
+}
+.se-namelink:hover,
+.se-namelink:focus-visible {
+  text-decoration: underline solid var(--you);
+  text-decoration-thickness: 1px;
+}
 .se-agentdraft {
   max-width: 860px;
   margin: 12px 0 0;
@@ -227,6 +246,16 @@ input.se-bigname:focus {
   margin: 8px 0 0;
   padding: 0;
   list-style: none;
+}
+/* After Deshacer on a publish: the draft still holds the undone version. */
+.se-agentdraft.se-undone {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 14px;
+}
+.se-agentdraft.se-undone p {
+  flex: 1 1 32em;
 }
 .se-agentdraft li {
   padding: 5px 7px;
@@ -476,6 +505,11 @@ input.se-stepname:focus {
 .se-ctools .se-ic {
   width: 14px;
   height: 14px;
+}
+/* Mover: a change of order, said in words, so it never reads as previous and next. */
+.se-ctools .se-movebtn[aria-expanded="true"] {
+  background: var(--well);
+  color: var(--ink);
 }
 .se-sent {
   margin: 18px 0 0;

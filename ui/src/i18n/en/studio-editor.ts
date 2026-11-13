@@ -51,8 +51,11 @@ export const studioEditor = {
   // A step's card.
   'bs.editor.card.place': 'Step {n} of {count}',
   'bs.editor.card.stepname': 'Step name',
-  'bs.editor.card.earlier': 'Move earlier',
-  'bs.editor.card.later': 'Move later',
+  'bs.editor.card.move': 'Move',
+  'bs.editor.card.move_label': 'Move the step',
+  'bs.editor.card.earlier': 'Move before {step}',
+  'bs.editor.card.later': 'Move after {step}',
+  'bs.editor.card.move_only': 'It is the only step: there is nothing to reorder it with.',
   'bs.editor.card.remove': 'Remove the step',
   'bs.editor.who.sentence': '{doer} {does} and {reviewer} {reviews}.',
   'bs.editor.who.does_you': 'do it',
@@ -120,6 +123,12 @@ export const studioEditor = {
     'When you send it back you can also pick another earlier step; this is what is suggested.',
   'bs.editor.rounds':
     'Rounds are counted per step and never start over: if it goes back to {step} a third time, it is round 3. Each round keeps its evidence and notes, and you can compare them.',
+  'bs.editor.hint.instructions_missing':
+    'Nothing tells the agent what to do in this step: write at least one instruction.',
+  'bs.editor.hint.instructions_ask_part':
+    'The instructions ask for {part}, but this step’s handoff does not require it.',
+  'bs.editor.hint.instructions_ask_evidence':
+    'The instructions ask to attach something, but this step’s handoff requires no evidence.',
   'bs.editor.instr.title': 'Instructions',
   'bs.editor.instr.gloss': 'what the agent reads; mention with @ and it follows renames',
   'bs.editor.instr.yours':
@@ -274,6 +283,11 @@ export const studioEditor = {
   'bs.editor.save.failed': 'Could not save: {reason}',
   'bs.editor.save.conflict':
     'The draft changed while you had it open: an agent handed in its board, or another window saved it. Reload to see it; your last edits here were not saved.',
+  'bs.editor.undone':
+    'You undid publishing v{undone}: agents keep v{live}. What v{undone} had is still in this draft, unpublished: publish it again or discard the changes.',
+  'bs.editor.undone_first':
+    'You undid the publish: no agent sees this board. What it had is still in this draft: publish it again when you are ready.',
+  'bs.editor.undone_ok': 'Got it',
   'bs.editor.undo': 'Undo',
   'bs.editor.redo': 'Redo',
   'bs.editor.discard': 'Discard changes',
