@@ -9,7 +9,8 @@
 }
 .d-head .relln .pvtag,
 .isec .pvtag,
-.bstrip .pvtag {
+.bstrip .pvtag,
+.bi-instr .pvtag {
   font: 400 11px / 1 var(--mono);
   font-style: normal;
   color: var(--ink-3);
