@@ -15,7 +15,66 @@ describe('parseDefinition', () => {
     const bad = { ...creatures(), steps: [{ id: 'Not An Id', name: 'x' }] };
     const result = parseDefinition(bad);
     expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.problems[0]).toMatch(/^steps\.0\./);
+    if (!result.ok) expect(result.problems.join('\n')).toMatch(/^step 1 "x"/m);
+  });
+
+  describe('words a board.json of the wrong shape for whoever wrote it', () => {
+    const problemsOf = (raw: unknown) => {
+      const result = parseDefinition(raw);
+      if (result.ok) throw new Error('expected problems');
+      return result.problems;
+    };
+
+    it('says in one line which keys a board lacks', () => {
+      expect(problemsOf({ name: 'Releases', steps: [] })).toEqual([
+        'the board lacks schema, item, icon, title, parts, form, anytime, layout, row, about, idle, cap and samples',
+      ]);
+    });
+
+    it('says what a lone missing key is for, with an example and where it goes', () => {
+      const def = creatures();
+      const { back: _back, ...first } = def.steps[0] as Step;
+      expect(problemsOf({ ...def, steps: [first, ...def.steps.slice(1)] })).toEqual([
+        'step 1 "Concepto" lacks back (where a send-back lands: same (this step) or an earlier step id, e.g. "same") [steps.0.back]',
+      ]);
+    });
+
+    it('names the place in the board, what was expected and what it found', () => {
+      const def = creatures();
+      const [first] = def.steps as [Step];
+      expect(
+        problemsOf({
+          ...def,
+          schema: 7,
+          cap: { on: 'yes', n: 3 },
+          parts: {
+            ...def.parts,
+            fx: { ...def.parts.fdesc, id: 'fx', name: 'Rareza', kind: 'poem' },
+          },
+          steps: [
+            { ...first, id: 'Not An Id', hand: [{ ref: 'fdesc', req: 'maybe', fresh: false }] },
+          ],
+        }),
+      ).toEqual([
+        'schema: must be 2, not 7 (the version of the board format: write 2, e.g. 2) [schema]',
+        'field "Rareza" (fx) › kind: must be one of "text", "long", "check", "choice", "multi", "level", "number", "date", "yesno", "url", "branch", "images", "video", "audio", "code", "log", "diagram" or "file", not "poem" (a field (text, long, check, choice, multi, level, number, date, yesno, url, branch) or evidence (images, video, audio, code, log, diagram, file), e.g. "long") [parts.fx.kind]',
+        'step 1 "Concepto" › id: "Not An Id" is not an id: lowercase letters, digits, - and _, starting with a letter (the hidden id of the step, e.g. "sfix") [steps.0.id]',
+        'step 1 "Concepto" › handoff 1 (fdesc) › req: must be "always", "when" or "no", not "maybe" (whether it is required: always, only when another part has a value, or no, e.g. "always") [steps.0.hand.0.req]',
+        'cap › on: must be true or false, not "yes" (whether agents add items only while few wait for the person, e.g. false) [cap.on]',
+      ]);
+    });
+
+    it('lists the keys a part of the board takes when it has one it does not know', () => {
+      const def = creatures();
+      const [first] = def.steps as [Step];
+      expect(problemsOf({ ...def, steps: [{ ...first, owner: 'kiln' }] })).toEqual([
+        'step 1 "Concepto": a key a board does not know: "owner" (it takes id, name, doer, reviewer, hand, ways, back, instructions, note, waits, skipWhenReady, doerMayDrop) [steps.0]',
+      ]);
+    });
+
+    it('says a board is an object', () => {
+      expect(problemsOf([])).toEqual(['the board: must be an object, not a list']);
+    });
   });
 
   it('refuses an unknown part kind and a zone that does not exist', () => {
@@ -34,7 +93,9 @@ describe('parseDefinition', () => {
     const result = parseDefinition({ ...def, parts: { fother: def.parts.fdesc } });
     expect(result).toEqual({
       ok: false,
-      problems: ['parts.fother: the part says its id is fdesc'],
+      problems: [
+        'field "Descripción" (fother) › id: the part says its id is fdesc [parts.fother.id]',
+      ],
     });
   });
 
@@ -46,12 +107,13 @@ describe('parseDefinition', () => {
     for (const id of ['done', 'dropped', 'same', 'title', 'a__review', 'a__yours']) {
       const result = withStep(id);
       expect(result.ok, id).toBe(false);
-      if (!result.ok) expect(result.problems[0]).toMatch(/^steps\.0\.id: /);
+      if (!result.ok)
+        expect(result.problems[0]).toMatch(/^step 1 "Concepto" › id: .*\[steps\.0\.id\]$/);
     }
     const twice = parseDefinition({ ...def, steps: [first, { ...second, id: first.id }] });
     expect(twice).toEqual({
       ok: false,
-      problems: ['steps.1.id: another step already has the id sconcept'],
+      problems: ['step 2 "Animar" › id: another step already has the id sconcept [steps.1.id]'],
     });
   });
 
@@ -70,7 +132,9 @@ describe('parseDefinition', () => {
     const result = parseDefinition({ ...def, steps: [{ ...first, doer: 'kiln' }] });
     expect(result).toEqual({
       ok: false,
-      problems: ['steps.0.doer: who does the step: "you", "any" or {"agent": "<name>"}'],
+      problems: [
+        'step 1 "Concepto" › doer: must be "you", "any" or {"agent": "<name>"}, not "kiln" (who does the step: "you" (the person), "any" agent, or one agent, e.g. "any") [steps.0.doer]',
+      ],
     });
   });
 
@@ -119,7 +183,8 @@ describe('parseDefinition', () => {
       drop: { by: 'anyone', motives: [{ id: 'won-t-fix', name: 'No' }] },
     });
     expect(motive.ok).toBe(false);
-    if (!motive.ok) expect(motive.problems[0]).toMatch(/^drop\.motives\.0\.id: /);
+    if (!motive.ok)
+      expect(motive.problems[0]).toMatch(/^drop › motive 1 "No" › id: .*\[drop\.motives\.0\.id\]$/);
     for (const id of ['rounds', 'parts']) {
       const result = parseDefinition({
         ...def,
@@ -140,7 +205,9 @@ describe('parseDefinition', () => {
     });
     expect(guard).toEqual({
       ok: false,
-      problems: ['parts.fdesc.guard: only a branch field is protected'],
+      problems: [
+        'field "Descripción" (fdesc) › guard: only a branch field is protected [parts.fdesc.guard]',
+      ],
     });
   });
 });

@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import type { Channel } from '../core/authority.ts';
 import {
   type BoardDefinition,
@@ -43,6 +44,11 @@ const TITLE: Readonly<Record<Lang, (name: string) => string>> = {
   es: (name) => `Esbozar el tablero ${name}`,
 };
 
+// The JSON Schema of board.json Otea ships, generated from the board's zod schema.
+export const BOARD_JSON_SCHEMA = fileURLToPath(
+  new URL('../../schemas/board.schema.json', import.meta.url),
+);
+
 // What the agent reads under the person's words: agents read English.
 const HOW = (id: string) =>
   [
@@ -50,6 +56,7 @@ const HOW = (id: string) =>
     `How to hand it in: start from the draft with otea board draft ${id} > ${DRAFT_FILENAME},`,
     'change it (keep the ids of what is there; give what you add new ids), then run',
     `otea board draft ${id} --file ${DRAFT_FILENAME}. It says what is wrong until the board is right.`,
+    `To check it before: its shape, each key with an example, is the JSON Schema ${BOARD_JSON_SCHEMA}.`,
   ].join('\n');
 
 export type AgentDraftRequest = { name: string; need: string; agent: string | null; lang: Lang };
@@ -166,6 +173,20 @@ export function problemWords(problem: Problem): string {
   return `${problem.level}: ${words[problem.code]}`;
 }
 
+const SHOWN_PROBLEMS = 12;
+
+// A board.json of the wrong shape, for the agent that wrote it: what is wrong, one line each, then
+// where to start from, the published shape, and Studio, where the person can finish it.
+function notABoard(pedido: string, problems: readonly string[]): string {
+  const more = problems.length - SHOWN_PROBLEMS;
+  return [
+    'The file is not a board:',
+    ...problems.slice(0, SHOWN_PROBLEMS).map((problem) => `  ${problem}`),
+    ...(more > 0 ? [`  and ${more} more`] : []),
+    `Start from what otea board draft ${pedido} prints: it has every key a board takes. Each key, with what it is for and an example, is in ${BOARD_JSON_SCHEMA}. A board you cannot get right in JSON, the person can finish in Studio.`,
+  ].join('\n');
+}
+
 export type SubmitInput = { id: string; text: string; actor: Actor; channel: Channel };
 
 export type Submitted = { board: string; evidence: EvidenceRecord; problems: string[] };
@@ -187,8 +208,7 @@ export function submitAgentDraft(
     throw new OteaError('invalid_board', `${DRAFT_FILENAME} is not JSON`);
   }
   const reading = parseDefinition(raw);
-  if (!reading.ok)
-    throw new OteaError('invalid_board', `The file is not a board: ${reading.problems.join('; ')}`);
+  if (!reading.ok) throw new OteaError('invalid_board', notABoard(input.id, reading.problems));
   const problems = boardProblems(project, board.id, reading.definition).map(problemWords);
   const evidence = transaction(project.db, () => {
     const item = requireItem(project.db, input.id);

@@ -1,0 +1,700 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "schema": {
+      "anyOf": [
+        {
+          "type": "number",
+          "const": 1
+        },
+        {
+          "type": "number",
+          "const": 2
+        }
+      ],
+      "description": "The version of the board format: write 2",
+      "examples": [2]
+    },
+    "name": {
+      "type": "string",
+      "description": "The name of the board",
+      "examples": ["Bugs"]
+    },
+    "item": {
+      "type": "string",
+      "description": "What one item of the board is called",
+      "examples": ["Bug"]
+    },
+    "icon": {
+      "type": "string",
+      "description": "The icon: board, bug, paw, book, inbox, flask or check2",
+      "examples": ["bug"]
+    },
+    "title": {
+      "type": "string",
+      "description": "The name of the title field every item has",
+      "examples": ["Title"]
+    },
+    "parts": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9_-]*$"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_-]*$",
+            "description": "The hidden id of the part: its key in parts",
+            "examples": ["fsteps"]
+          },
+          "name": {
+            "type": "string",
+            "description": "What the field or evidence is called",
+            "examples": ["Steps to reproduce"]
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "text",
+              "long",
+              "check",
+              "choice",
+              "multi",
+              "level",
+              "number",
+              "date",
+              "yesno",
+              "url",
+              "branch",
+              "images",
+              "video",
+              "audio",
+              "code",
+              "log",
+              "diagram",
+              "file"
+            ],
+            "description": "A field (text, long, check, choice, multi, level, number, date, yesno, url, branch) or evidence (images, video, audio, code, log, diagram, file)",
+            "examples": ["long", "images"]
+          },
+          "hint": {
+            "type": "string",
+            "description": "What goes here: the line agents read",
+            "examples": ["The commands that show the bug", ""]
+          },
+          "options": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "pattern": "^[a-z][a-z0-9_-]*$",
+                  "description": "The hidden id of the choice",
+                  "examples": ["chigh"]
+                },
+                "name": {
+                  "type": "string",
+                  "description": "What the choice reads",
+                  "examples": ["High"]
+                }
+              },
+              "required": ["id", "name"],
+              "additionalProperties": false,
+              "description": "A choice of the field",
+              "examples": [
+                {
+                  "id": "chigh",
+                  "name": "High"
+                }
+              ]
+            },
+            "description": "The choices of a choice, multi or check field; empty for any other kind",
+            "examples": [
+              [
+                {
+                  "id": "chigh",
+                  "name": "High"
+                }
+              ],
+              []
+            ]
+          },
+          "show": {
+            "type": "string",
+            "description": "How evidence shows: images as gallery, one or ba; video as strip or player",
+            "examples": ["gallery"]
+          },
+          "initial": {
+            "type": "string",
+            "description": "The value a new item starts with: a choice id, a level (low, medium, high, critical), yes or no",
+            "examples": ["chigh"]
+          },
+          "guard": {
+            "type": "object",
+            "properties": {
+              "push": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^[a-z][a-z0-9_-]*$"
+                },
+                "description": "The steps (ids) during which the branch may be pushed",
+                "examples": [["simplement"]]
+              },
+              "repo": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_-]*$",
+                "description": "The field (part id) the repository is read from",
+                "examples": ["frepo"]
+              }
+            },
+            "required": ["push"],
+            "additionalProperties": false,
+            "description": "A branch field only: Otea protects the branch",
+            "examples": [
+              {
+                "push": ["simplement"],
+                "repo": "frepo"
+              }
+            ]
+          }
+        },
+        "required": ["id", "name", "kind", "hint", "options"],
+        "additionalProperties": false,
+        "description": "A field (something to fill) or a piece of evidence (something to show)",
+        "examples": [
+          {
+            "id": "fsteps",
+            "name": "Steps to reproduce",
+            "kind": "long",
+            "hint": "",
+            "options": []
+          }
+        ]
+      },
+      "description": "The fields and evidence of the board, by id",
+      "examples": [
+        {
+          "fsteps": {
+            "id": "fsteps",
+            "name": "Steps to reproduce",
+            "kind": "long",
+            "hint": "",
+            "options": []
+          }
+        }
+      ]
+    },
+    "form": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "ref": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_-]*$",
+            "description": "A field (id) the creation form asks for",
+            "examples": ["fsteps"]
+          },
+          "required": {
+            "type": "boolean",
+            "description": "Whether the form requires it",
+            "examples": [true]
+          }
+        },
+        "required": ["ref", "required"],
+        "additionalProperties": false,
+        "description": "A field of the creation form",
+        "examples": [
+          {
+            "ref": "fsteps",
+            "required": true
+          }
+        ]
+      },
+      "description": "The creation form besides the title, in order",
+      "examples": [
+        [
+          {
+            "ref": "fsteps",
+            "required": true
+          }
+        ]
+      ]
+    },
+    "steps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_-]*$",
+            "description": "The hidden id of the step",
+            "examples": ["sfix"]
+          },
+          "name": {
+            "type": "string",
+            "description": "What the step is called",
+            "examples": ["Fix"]
+          },
+          "doer": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": ["you", "any"]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "agent": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "The Otea name of the agent",
+                    "examples": ["claude-b"]
+                  }
+                },
+                "required": ["agent"],
+                "additionalProperties": false
+              }
+            ],
+            "description": "Who does the step: \"you\" (the person), \"any\" agent, or one agent",
+            "examples": [
+              "any",
+              {
+                "agent": "claude-b"
+              }
+            ]
+          },
+          "reviewer": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": ["none", "you"]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "agent": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "The Otea name of the agent",
+                    "examples": ["claude-b"]
+                  }
+                },
+                "required": ["agent"],
+                "additionalProperties": false
+              }
+            ],
+            "description": "Who reviews the step: \"none\", \"you\" (the person), or one agent",
+            "examples": ["you"]
+          },
+          "hand": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "ref": {
+                  "type": "string",
+                  "pattern": "^[a-z][a-z0-9_-]*$",
+                  "description": "The part (id) the step hands off, or title",
+                  "examples": ["fsteps"]
+                },
+                "req": {
+                  "type": "string",
+                  "enum": ["always", "when", "no"],
+                  "description": "Whether it is required: always, only when another part has a value, or no",
+                  "examples": ["always"]
+                },
+                "when": {
+                  "type": "object",
+                  "properties": {
+                    "part": {
+                      "type": "string",
+                      "pattern": "^[a-z][a-z0-9_-]*$",
+                      "description": "The choice, multi, level or yesno part (id) it reads",
+                      "examples": ["fseverity"]
+                    },
+                    "value": {
+                      "type": "string",
+                      "description": "The value that makes it required: a choice id, a level, yes or no",
+                      "examples": ["high"]
+                    }
+                  },
+                  "required": ["part", "value"],
+                  "additionalProperties": false,
+                  "description": "With req \"when\": which part and value make it required",
+                  "examples": [
+                    {
+                      "part": "fseverity",
+                      "value": "high"
+                    }
+                  ]
+                },
+                "fresh": {
+                  "type": "boolean",
+                  "description": "Evidence only: new in each round, so a send-back empties it",
+                  "examples": [false]
+                }
+              },
+              "required": ["ref", "req", "fresh"],
+              "additionalProperties": false,
+              "description": "One thing the step hands off",
+              "examples": [
+                {
+                  "ref": "fsteps",
+                  "req": "always",
+                  "fresh": false
+                }
+              ]
+            },
+            "description": "What the step hands off",
+            "examples": [
+              [
+                {
+                  "ref": "fsteps",
+                  "req": "always",
+                  "fresh": false
+                }
+              ]
+            ]
+          },
+          "ways": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]*$"
+            },
+            "description": "Ways out besides the next step: a later step (id) or done, or an earlier step to take the item back to",
+            "examples": [["done"], []]
+          },
+          "back": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_-]*$",
+            "description": "Where a send-back lands: same (this step) or an earlier step id",
+            "examples": ["same"]
+          },
+          "instructions": {
+            "type": "object",
+            "properties": {
+              "take": {
+                "type": "string",
+                "description": "What an agent reads when it takes the step",
+                "examples": ["Reproduce it first."]
+              },
+              "before": {
+                "type": "string",
+                "description": "What an agent reads before it hands the step off",
+                "examples": ["Run the tests."]
+              },
+              "review": {
+                "type": "string",
+                "description": "What an agent reviewing the step reads",
+                "examples": ["Check the test fails first."]
+              }
+            },
+            "required": ["take", "before", "review"],
+            "additionalProperties": false,
+            "description": "The instructions agents read on the step",
+            "examples": [
+              {
+                "take": "Reproduce it first.",
+                "before": "Run the tests.",
+                "review": ""
+              }
+            ]
+          },
+          "note": {
+            "default": {
+              "req": "no",
+              "hint": ""
+            },
+            "description": "The note the doer writes with each handoff",
+            "examples": [
+              {
+                "req": "no",
+                "hint": ""
+              }
+            ],
+            "type": "object",
+            "properties": {
+              "req": {
+                "type": "string",
+                "enum": ["no", "always"],
+                "description": "Whether each handoff needs a note",
+                "examples": ["always"]
+              },
+              "hint": {
+                "type": "string",
+                "description": "What goes in the note",
+                "examples": ["What you ran and what you saw"]
+              }
+            },
+            "required": ["req", "hint"],
+            "additionalProperties": false
+          },
+          "waits": {
+            "default": [],
+            "description": "What the step waits for before it is handed off: its parts closed, its blockers closed",
+            "examples": [["blockers"], []],
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": ["parts", "blockers"]
+            }
+          },
+          "skipWhenReady": {
+            "default": false,
+            "type": "boolean",
+            "description": "First step nobody reviews only: an item created with all it hands off starts at the next step",
+            "examples": [false]
+          },
+          "doerMayDrop": {
+            "default": false,
+            "type": "boolean",
+            "description": "Whether an agent doing it may drop the item, saying why",
+            "examples": [false]
+          }
+        },
+        "required": ["id", "name", "doer", "reviewer", "hand", "ways", "back", "instructions"],
+        "additionalProperties": false,
+        "description": "A step of the board, in order",
+        "examples": []
+      },
+      "description": "The steps, in order: the default way out of each is the next one, and done after the last",
+      "examples": []
+    },
+    "anytime": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9_-]*$"
+      },
+      "description": "Parts (ids) that can be filled at any step",
+      "examples": [["fbranch"], []]
+    },
+    "layout": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9_-]*$"
+      },
+      "additionalProperties": {
+        "type": "string",
+        "enum": ["top", "main", "side", "hidden"]
+      },
+      "description": "Where each part (or rounds, or parts) shows on the item page: top, main, side, hidden",
+      "examples": [
+        {
+          "fsteps": "main",
+          "rounds": "side"
+        }
+      ]
+    },
+    "row": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9_-]*$"
+      },
+      "description": "The parts (ids) the list row shows, in order",
+      "examples": [["fseverity"], []]
+    },
+    "about": {
+      "type": "string",
+      "description": "About this board: what it is for",
+      "examples": ["Bugs found in the app, until fixed."]
+    },
+    "idle": {
+      "type": "string",
+      "description": "What an agent does when the board has nothing for it",
+      "examples": ["Look for new bugs."]
+    },
+    "cap": {
+      "type": "object",
+      "properties": {
+        "on": {
+          "type": "boolean",
+          "description": "Whether agents add items only while few wait for the person",
+          "examples": [false]
+        },
+        "n": {
+          "type": "number",
+          "description": "How many may wait for the person",
+          "examples": [3]
+        }
+      },
+      "required": ["on", "n"],
+      "additionalProperties": false,
+      "description": "The cap on the items agents add",
+      "examples": [
+        {
+          "on": false,
+          "n": 3
+        }
+      ]
+    },
+    "samples": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Titles of the sample items previews draw",
+      "examples": [["Login fails on Safari"], []]
+    },
+    "template": {
+      "type": "string",
+      "description": "The template it was copied from, for the record",
+      "examples": ["bugs"]
+    },
+    "split": {
+      "type": "object",
+      "properties": {
+        "board": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]*$",
+          "description": "The board (hidden id) its items divide into, or same",
+          "examples": ["same"]
+        },
+        "always": {
+          "type": "boolean",
+          "description": "Whether a part is never created alone",
+          "examples": [false]
+        }
+      },
+      "required": ["board", "always"],
+      "additionalProperties": false,
+      "description": "\"Se divide en\": the board each item divides into",
+      "examples": [
+        {
+          "board": "same",
+          "always": false
+        }
+      ]
+    },
+    "madeWith": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9_-]*$"
+      },
+      "description": "The boards (hidden ids) a template made with this one",
+      "examples": [["bbugs"]]
+    },
+    "drop": {
+      "default": {
+        "by": "anyone",
+        "motives": []
+      },
+      "description": "Who may drop an item, and the motives a drop names",
+      "examples": [
+        {
+          "by": "anyone",
+          "motives": []
+        }
+      ],
+      "type": "object",
+      "properties": {
+        "by": {
+          "type": "string",
+          "enum": ["page", "anyone"],
+          "description": "Who may drop an item: only from its page, or anyone (an agent too, asked to)",
+          "examples": ["anyone"]
+        },
+        "motives": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_]*$",
+                "description": "The hidden id of the motive",
+                "examples": ["wont_fix"]
+              },
+              "name": {
+                "type": "string",
+                "description": "What the motive reads",
+                "examples": ["Won't fix"]
+              }
+            },
+            "required": ["id", "name"],
+            "additionalProperties": false,
+            "description": "A motive a drop names",
+            "examples": [
+              {
+                "id": "wont_fix",
+                "name": "Won't fix"
+              }
+            ]
+          },
+          "description": "The motives a drop names",
+          "examples": [
+            [
+              {
+                "id": "duplicate",
+                "name": "Duplicate"
+              }
+            ],
+            []
+          ]
+        }
+      },
+      "required": ["by", "motives"],
+      "additionalProperties": false
+    },
+    "list": {
+      "default": {
+        "as": "list"
+      },
+      "description": "How the published list shows its items",
+      "examples": [
+        {
+          "as": "list"
+        }
+      ],
+      "type": "object",
+      "properties": {
+        "as": {
+          "type": "string",
+          "enum": ["list", "table"],
+          "description": "How the published list shows its items",
+          "examples": ["list"]
+        },
+        "group": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]*$",
+          "description": "What it groups by: a choice, level or yesno part (id), step or motive",
+          "examples": ["step"]
+        }
+      },
+      "required": ["as"],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "schema",
+    "name",
+    "item",
+    "icon",
+    "title",
+    "parts",
+    "form",
+    "steps",
+    "anytime",
+    "layout",
+    "row",
+    "about",
+    "idle",
+    "cap",
+    "samples"
+  ],
+  "additionalProperties": false,
+  "title": "Otea board",
+  "description": "A board definition (board.json): what `otea board draft <id>` prints and `otea board draft <id> --file board.json` reads."
+}

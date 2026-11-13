@@ -5,6 +5,8 @@ import { afterEach, describe, expect, it } from 'vitest';
 import type { BoardDefinition } from '../core/board/model.ts';
 import { step } from '../core/board/testing.ts';
 import {
+  BOARD_JSON_SCHEMA,
+  draftToStartFrom,
   mergeAgentDraft,
   requestAgentDraft,
   submitAgentDraft,
@@ -73,6 +75,9 @@ describe('an agent drafting a board', () => {
       'Criaturas del pantano, con arte y animación',
     );
     expect(Object.values(pedido.fields)[0]).toContain(`otea board draft ${item}`);
+    expect(Object.values(pedido.fields)[0]).toContain(
+      `To check it before: its shape, each key with an example, is the JSON Schema ${BOARD_JSON_SCHEMA}.`,
+    );
     expect(pedido.lease?.holder).toBe('kiln');
     expect(board.draft?.requestItem).toBe(item);
     const summary = listBoardSummaries(ctx).find(({ id }) => id === board.id);
@@ -103,11 +108,54 @@ describe('an agent drafting a board', () => {
 
     expect(() =>
       submitAgentDraft(ctx, { id: item, text: '{"name": 3}', actor: kiln, channel: 'cli' }, now),
-    ).toThrowError(/The file is not a board: .*steps/);
+    ).toThrowError(/The file is not a board:\n {2}.*steps/);
     expect(() =>
       submitAgentDraft(ctx, { id: item, text: 'not json', actor: kiln, channel: 'cli' }, now),
     ).toThrowError(/board\.json is not JSON/);
     expect(showItem(ctx, item, { actor: kiln, channel: 'cli' }).evidence).toEqual([]);
+  });
+
+  it('says what is wrong one line each, then where to start, the published shape and Studio', () => {
+    const ctx = project();
+    const { item } = requestAgentDraft(
+      ctx,
+      { name: 'Releases', need: 'x', agent: 'kiln', lang: 'en' },
+      now,
+    );
+    const text = JSON.stringify({ name: 'Releases', steps: [], owner: 'kiln' });
+
+    expect(() =>
+      submitAgentDraft(ctx, { id: item, text, actor: kiln, channel: 'cli' }, now),
+    ).toThrowError(
+      [
+        'The file is not a board:',
+        '  the board lacks schema, item, icon, title, parts, form, anytime, layout, row, about, idle, cap and samples',
+        '  the board: a key a board does not know: "owner" (it takes schema, name, item, icon, title, parts, form, steps, anytime, layout, row, about, idle, cap, samples, template, split, madeWith, drop, list)',
+        `Start from what otea board draft ${item} prints: it has every key a board takes. Each key, with what it is for and an example, is in ${BOARD_JSON_SCHEMA}. A board you cannot get right in JSON, the person can finish in Studio.`,
+      ].join('\n'),
+    );
+  });
+
+  it('lists at most twelve problems, and says how many more there are', () => {
+    const ctx = project();
+    const { item } = requestAgentDraft(
+      ctx,
+      { name: 'Releases', need: 'x', agent: 'kiln', lang: 'en' },
+      now,
+    );
+    // Fourteen steps, each whole but for an id that is not one.
+    const steps = Array.from({ length: 14 }, (_, n) => ({ ...step(`s${n}`, 'x'), id: `S ${n}` }));
+    const text = JSON.stringify({ ...draftToStartFrom(ctx, item), steps });
+
+    let message = '';
+    try {
+      submitAgentDraft(ctx, { id: item, text, actor: kiln, channel: 'cli' }, now);
+    } catch (error) {
+      message = (error as Error).message;
+    }
+    const lines = message.split('\n');
+    expect(lines.filter((line) => line.startsWith('  step '))).toHaveLength(12);
+    expect(lines).toContain('  and 2 more');
   });
 
   it('attaches the draft to the Pedido and merges it into the board at once, leaving the waiting status with a note', () => {
