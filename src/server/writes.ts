@@ -202,6 +202,23 @@ export async function createRequest(c: Context): Promise<CreateRequest> {
   };
 }
 
+const CLIENT_KEY = /^[A-Za-z0-9_-]{1,128}$/;
+
+// The create's Idempotency-Key, when the client sends one: a phone resending a capture it queued
+// offline gets the item the first send made instead of a second one.
+export function clientKeyOf(c: Context): string | undefined {
+  const key = c.req.header('idempotency-key');
+  if (key === undefined) return undefined;
+  if (!CLIENT_KEY.test(key)) {
+    throw new RejectedRequest(
+      400,
+      'invalid_idempotency_key',
+      'Idempotency-Key takes 1 to 128 letters, digits, "-" or "_"',
+    );
+  }
+  return key;
+}
+
 const LinkBody = z.object({ kind: z.string().min(1), other: z.string().min(1) });
 
 // A relation from the item in the path: `kind` as `otea link` takes it, `other` the item it points to.

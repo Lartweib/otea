@@ -19,6 +19,7 @@ import {
   type EvidenceRecord,
   findItem,
   type ItemRecord,
+  insertClientKey,
   insertItem,
   listCollections,
   selectEvents,
@@ -123,6 +124,8 @@ export type CreateItemInput = {
   parent?: string;
   actor: Actor;
   channel?: Channel;
+  // The client's key for this create (Idempotency-Key), kept with the item in the same write.
+  clientKey?: string;
 };
 
 // Writes the item, its created event and its parent link, inside the caller's transaction.
@@ -158,6 +161,7 @@ export function insertNewItem(
     lease: null,
   };
   insertItem(db, item);
+  if (input.clientKey !== undefined) insertClientKey(db, input.clientKey, item.id, at);
   const { channel } = input;
   const named = { state, ...stateNames(type.workflow, { state }) };
   const data = channel === undefined ? named : { ...named, channel };

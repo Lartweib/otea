@@ -248,6 +248,15 @@ export const MIGRATIONS = [
   `
   ALTER TABLE agents ADD COLUMN connected_at TEXT;
   `,
+  // The key a client sends with a create (Idempotency-Key): a phone that captured offline sends it
+  // again until it hears back, and the same key answers with the item it made instead of a second.
+  `
+  CREATE TABLE client_keys (
+    key TEXT PRIMARY KEY,
+    item TEXT NOT NULL REFERENCES items (id) ON DELETE CASCADE,
+    at TEXT NOT NULL
+  );
+  `,
 ];
 
 function userVersion(db: DatabaseSync): number {

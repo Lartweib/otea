@@ -36,6 +36,7 @@ describe('home screen on the LAN', () => {
     writeFileSync(join(dir, 'manifest.webmanifest'), '{"name":"Otea","display":"standalone"}');
     writeFileSync(join(dir, 'icons', 'otea-192.png'), 'png');
     writeFileSync(join(dir, 'icons', 'apple-touch-icon.png'), 'png');
+    writeFileSync(join(dir, 'sw.js'), 'self.addEventListener("fetch", () => {});');
     project = memoryProject();
     server = createServer(project, {
       uiDir: dir,
@@ -63,6 +64,16 @@ describe('home screen on the LAN', () => {
       expect((await get(path)).status).toBe(200);
     },
   );
+
+  // The installed app's service worker (HTTPS only): checked with the server on every open, so a
+  // new version installs itself, and served like the other static files.
+  it('serves the service worker as a script the browser checks on every open', async () => {
+    const response = await get('/sw.js');
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get('content-type')).toContain('javascript');
+    expect(response.headers.get('cache-control')).toBe('no-cache');
+  });
 
   it('still keeps everything else from an unpaired device', async () => {
     expect((await get('/api/items')).status).toBe(401);

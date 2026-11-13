@@ -11,6 +11,7 @@ import { listEvents } from '../app/events.ts';
 import { createItemWithEvidence } from '../app/intake.ts';
 import {
   createItem,
+  getItem,
   type ListItemsFilter,
   listItems,
   moveItem,
@@ -41,7 +42,7 @@ import { undoMove } from '../app/undo.ts';
 import { PERIOD_HINT, parsePeriod } from '../core/board/performance.ts';
 import { MAX_EVIDENCE_MB } from '../core/evidence.ts';
 import { TURNS, type Turn } from '../core/workflow.ts';
-import type { EventFilter } from '../store/queries.ts';
+import { type EventFilter, itemOfClientKey } from '../store/queries.ts';
 import { boardsApi } from './boards.ts';
 import { type ChangeFeed, createChangeFeed } from './changes.ts';
 import {
@@ -89,6 +90,7 @@ import {
   assertSignedIn,
   assertWritable,
   briefRequest,
+  clientKeyOf,
   createRequest,
   HUMAN_IN_UI,
   linkRequest,
@@ -332,8 +334,20 @@ function api(
       })
       .post('/items', bodyLimit({ maxSize: MAX_CREATE_BYTES, onError: tooLarge }), async (c) => {
         assertWritable(c, auth, true);
+        const clientKey = clientKeyOf(c);
         const { files, ...request } = await createRequest(c);
-        const input = { ...request, ...HUMAN_IN_UI };
+        // Sent again (a phone that never heard back): the item the first send made, not a second.
+        const made = clientKey === undefined ? undefined : itemOfClientKey(project.db, clientKey);
+        if (made !== undefined) {
+          const { events: _events, ...item } = getItem(project, made);
+          c.header('idempotent-replayed', 'true');
+          return c.json(item, 200);
+        }
+        const input = {
+          ...request,
+          ...HUMAN_IN_UI,
+          ...(clientKey === undefined ? {} : { clientKey }),
+        };
         const item =
           files.length === 0
             ? createItem(project, input)
@@ -451,9 +465,11 @@ function isPairingPath(c: Context): boolean {
   if (method === 'POST') return path === '/api/pair' || path === '/api/pair/peek';
   if (method !== 'GET' && method !== 'HEAD') return false;
   // The home-screen manifest and icons too: a phone adds Otea to its home screen before it pairs.
+  // The service worker is a static file like them; it caches nothing a request was refused.
   return (
     path === '/pair' ||
     path === '/manifest.webmanifest' ||
+    path === '/sw.js' ||
     path.startsWith('/assets/') ||
     path.startsWith('/icons/') ||
     /^\/otea-[a-z-]+\.svg$/.test(path)
