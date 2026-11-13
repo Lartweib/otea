@@ -7,10 +7,19 @@ import { C } from '../motion/curves.ts';
 
 const ROW = '.nav > .nrow, .nav > button, .nav > a';
 
+// A tip is said unless its words are already written beside it: an unfolded rail's row, unless the
+// row's tip says more than its label (data-tip-more: a board's yours / open).
+export function tipWanted(at: { folded: boolean; row: boolean; more: boolean }): boolean {
+  return at.folded || !at.row || at.more;
+}
+
 function shows(el: HTMLElement): boolean {
   if (!el.isConnected || !el.dataset.tip) return false;
-  const folded = !!el.closest('.app[data-folded]');
-  return folded || !el.matches(ROW);
+  return tipWanted({
+    folded: !!el.closest('.app[data-folded]'),
+    row: el.matches(ROW),
+    more: el.dataset.tipMore !== undefined,
+  });
 }
 
 export function Tooltip() {

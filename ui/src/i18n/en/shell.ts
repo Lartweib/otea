@@ -81,6 +81,7 @@ export const shell = {
   'nav.atasco': 'Stuck',
   'nav.views': 'views',
   'nav.boards': 'boards',
+  'nav.boardPair': 'Your turn: {yours} · Open: {open}',
   'nav.newBoard': 'New board',
   'nav.newItem': 'New item',
   'nav.newItemIn': 'New item in {board}',

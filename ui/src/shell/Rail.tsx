@@ -39,11 +39,14 @@ type RowProps = {
   label: string;
   to: ViewRoute | string;
   pair?: ReactNode;
+  // What the pair counts, when its numbers alone do not say (a board's yours / open): the row's tip
+  // says it after the label, even unfolded, since the + covers the pair under the pointer.
+  pairTip?: string;
   badge?: { n: number; warn?: boolean };
   plus?: ReactNode;
 };
 
-function Row({ k, on, icon, label, to, pair, badge, plus }: RowProps) {
+function Row({ k, on, icon, label, to, pair, pairTip, badge, plus }: RowProps) {
   const app = useApp();
   const go = () => {
     if (typeof to === 'string') window.location.hash = to;
@@ -57,7 +60,8 @@ function Row({ k, on, icon, label, to, pair, badge, plus }: RowProps) {
       tabIndex={0}
       aria-current={on ? 'page' : undefined}
       data-k={k}
-      data-tip={label}
+      data-tip={pairTip ? `${label} · ${pairTip}` : label}
+      data-tip-more={pairTip ? '' : undefined}
       onClick={go}
       onKeyDown={(e) => {
         if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) {
@@ -308,6 +312,7 @@ export function Rail() {
                   <Count value={b.yours} tone="you" hold /> / <Count value={b.open} hold />
                 </>
               }
+              pairTip={t('nav.boardPair', { yours: b.yours, open: b.open })}
               badge={{ n: b.yours }}
               plus={canWrite ? plus(b.name) : undefined}
             />

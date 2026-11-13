@@ -84,6 +84,7 @@ export const shell = {
   'nav.atasco': 'Atasco',
   'nav.views': 'vistas',
   'nav.boards': 'tableros',
+  'nav.boardPair': 'Te toca: {yours} · Abiertos: {open}',
   'nav.newBoard': 'Nuevo tablero',
   'nav.newItem': 'Nuevo ítem',
   'nav.newItemIn': 'Nuevo ítem en {board}',
