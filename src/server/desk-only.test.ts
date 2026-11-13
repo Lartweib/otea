@@ -90,7 +90,10 @@ describe('desk-only routes, with LAN access on', () => {
     const response = await post(path, body(repo()), 'phone');
 
     expect(response.status).toBe(403);
-    expect(((await response.json()) as { error: { code: string } }).error.code).toBe('forbidden');
+    expect(((await response.json()) as { error: unknown }).error).toMatchObject({
+      code: 'forbidden',
+      details: { kind: 'desk_only' },
+    });
   });
 
   it('changes nothing for a paired device', async () => {

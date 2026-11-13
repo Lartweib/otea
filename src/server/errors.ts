@@ -53,11 +53,18 @@ export class ForbiddenHost extends Error {}
 export class RejectedRequest extends Error {
   readonly status: ContentfulStatusCode;
   readonly code: string;
+  readonly details: RefusalDetails | undefined;
 
-  constructor(status: ContentfulStatusCode, code: string, message: string) {
+  constructor(
+    status: ContentfulStatusCode,
+    code: string,
+    message: string,
+    details?: RefusalDetails,
+  ) {
     super(message);
     this.status = status;
     this.code = code;
+    this.details = details;
   }
 }
 
@@ -82,7 +89,7 @@ export function toErrorResponse(error: unknown): ErrorResponse {
     return { status: 400, body: errorBody('invalid_query', error.message) };
   }
   if (error instanceof RejectedRequest) {
-    return { status: error.status, body: errorBody(error.code, error.message) };
+    return { status: error.status, body: errorBody(error.code, error.message, error.details) };
   }
   if (error instanceof ForbiddenHost) {
     return { status: 403, body: errorBody('forbidden_host', error.message) };
