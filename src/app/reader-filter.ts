@@ -3,6 +3,7 @@ import { TITLE } from '../core/board/model.ts';
 import { findState, readFieldInput, stateName, stateNames } from '../core/board/reading.ts';
 import { OteaError } from '../core/errors.ts';
 import { type ItemRecord, listCollections } from '../store/queries.ts';
+import { collectionNamed } from './collections.ts';
 import type { Context } from './context.ts';
 import { liveBoardOf } from './next.ts';
 
@@ -47,7 +48,9 @@ export function readerFilter(ctx: Context, filter: ReaderFilter): Test {
   if (filter.state === undefined && filter.fields === undefined) return () => true;
   const { collection } = filter;
   const names =
-    collection === undefined ? listCollections(ctx.db).map(({ name }) => name) : [collection];
+    collection === undefined
+      ? listCollections(ctx.db).map(({ name }) => name)
+      : [collectionNamed(ctx.db, collection)];
   const tests = new Map<string, Test>();
   const refusals: unknown[] = [];
   for (const name of names) {

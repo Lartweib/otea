@@ -526,7 +526,7 @@ const collectionIconCommand: Command = {
     const own = icon === DEFAULT_ICON ? ` (its preset's)` : '';
     return {
       data: collection,
-      text: `Collection "${name}" shows icon ${collection.icon ?? 'none'}${own}`,
+      text: `Collection "${collection.name}" shows icon ${collection.icon ?? 'none'}${own}`,
     };
   },
 };

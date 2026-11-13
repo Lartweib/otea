@@ -68,9 +68,14 @@ export function setCollectionPreset(
   db.prepare('UPDATE items SET preset_version = ? WHERE collection = ?').run(version, name);
 }
 
+// A collection by its name, or by the same name in another case: a collection is a board, whose
+// name is unique whatever its case, so `tareas` is Tareas.
 export function findCollection(db: DatabaseSync, name: string): CollectionRecord | undefined {
   const row = db.prepare('SELECT * FROM collections WHERE name = ?').get(name);
-  return row && toCollection(row as CollectionRow);
+  if (row) return toCollection(row as CollectionRow);
+  const folded = name.trim().toLocaleLowerCase();
+  const same = listCollections(db).filter((each) => each.name.toLocaleLowerCase() === folded);
+  return same.length === 1 ? same[0] : undefined;
 }
 
 export function listCollections(db: DatabaseSync): CollectionRecord[] {

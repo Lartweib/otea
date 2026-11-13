@@ -28,7 +28,7 @@ import {
   updateItemContent,
   updateItemState,
 } from '../store/queries.ts';
-import { getCollection, presetOf, typeOfItem } from './collections.ts';
+import { collectionNamed, getCollection, presetOf, typeOfItem } from './collections.ts';
 import type { Context } from './context.ts';
 import { presentEvidence } from './evidence.ts';
 import {
@@ -196,7 +196,11 @@ export function listItems(ctx: Context, filter: ListItemsFilter = {}, now = syst
     if (!preset) throw new OteaError('not_found', `Collection "${collection}" not found`);
     return typeOf(preset, type).workflow;
   };
-  const { turn, availableTo, parent, fields, ...stored } = filter;
+  const { turn, availableTo, parent, fields, ...given } = filter;
+  const stored =
+    given.collection === undefined
+      ? given
+      : { ...given, collection: collectionNamed(ctx.db, given.collection) };
   if (parent !== undefined) requireItem(ctx.db, parent);
   const relations = selectRelations(ctx.db);
   const children = parent === undefined ? undefined : new Set(childIds(relations, parent));
