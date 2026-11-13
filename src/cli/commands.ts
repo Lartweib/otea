@@ -79,7 +79,7 @@ import { pairingUrl } from '../server/pairing.ts';
 import { createServer } from '../server/server.ts';
 import { ensureUiToken, readUiToken } from '../server/token.ts';
 import type { EventFilter } from '../store/queries.ts';
-import { mergeTarget, prHeadBranch, readHookEvent } from './claude-hook.ts';
+import { mergeTarget, prHeadBranch, pushTargets, readHookEvent } from './claude-hook.ts';
 import { type Command, CommandFailure, type Input, type Output, UsageError } from './command.ts';
 import {
   columns,
@@ -91,7 +91,7 @@ import {
   formatReport,
   indent,
 } from './format.ts';
-import { currentBranch, repoName } from './gitrepo.ts';
+import { currentBranch, localBranches, repoName } from './gitrepo.ts';
 import {
   type HookChange,
   installClaudeHook,
@@ -1348,10 +1348,45 @@ function gateText({ gate, allowed, items }: GateCheck): string {
     .join('\n');
 }
 
+// The branches a hooked command acts on: the head branch of the PR a `gh pr merge <pr>` names and
+// the branches its `git push` calls write to, or the current branch when it names none. Throws
+// UntoldTarget for a push that may write to branches it does not name.
+function commandBranches(cwd: string, command: string | undefined): string[] {
+  const pr = command === undefined ? undefined : mergeTarget(command);
+  const push = command === undefined ? undefined : pushTargets(command);
+  if (push !== undefined && 'unknown' in push) throw new UntoldTarget(push.unknown);
+  if (pr === undefined && push === undefined) return [currentBranch(cwd)];
+  const branches = pr === undefined ? [] : [prHeadBranch(cwd, pr)];
+  if (push !== undefined) {
+    branches.push(...push.branches);
+    if (push.current) branches.push(currentBranch(cwd));
+    if (push.every) branches.push(...localBranches(cwd));
+  }
+  return [...new Set(branches)];
+}
+
+class UntoldTarget extends Error {}
+
+// One check of the gate for each set of fields (one per branch): refused when any is, with the
+// items of all.
+function checkBranches(
+  project: Project,
+  gate: string,
+  fieldSets: ReadonlyArray<Record<string, string>>,
+): GateCheck {
+  if (fieldSets.length === 0) return { gate, allowed: true, items: [], note: 'no branch to check' };
+  const checks = fieldSets.map((fields) => checkGate(project, gate, fields));
+  const items = checks.flatMap((check) => check.items);
+  const result: GateCheck = { gate, allowed: checks.every((check) => check.allowed), items };
+  if (items.length === 0 && checks[0]?.note) result.note = checks[0].note;
+  return result;
+}
+
 // A gate check fails open: anything that keeps it from answering allows the action, with a note.
 // As a Claude Code hook it reads the call from the event on stdin: it checks where the call runs
-// and, for `gh pr merge <pr>`, the head branch of that PR; it refuses with exit 2 and the reason on
-// stderr, which blocks the call.
+// and, with --branch and no name, the branches the call acts on (see commandBranches); it refuses
+// with exit 2 and the reason on stderr, which blocks the call. A push whose branches it cannot
+// tell is refused, not allowed: on a project, failing open there would skip every gate.
 const check: Command = {
   name: 'check',
   summary:
@@ -1371,13 +1406,19 @@ const check: Command = {
     try {
       const event = hook ? readHookEvent(await input.stdin()) : {};
       const cwd = event.cwd ?? input.cwd;
-      const pr = event.command === undefined ? undefined : mergeTarget(event.command);
-      const fields = gateFields(input, cwd, () =>
-        pr === undefined ? currentBranch(cwd) : prHeadBranch(cwd, pr),
-      );
-      result = withProject(cwd, (project) => checkGate(project, gate, fields));
+      const named = input.option('branch');
+      result = withProject(cwd, (project) => {
+        const branches = named === '' ? commandBranches(cwd, event.command) : [named ?? ''];
+        const fields = branches.map((branch) => gateFields(input, cwd, () => branch));
+        return checkBranches(project, gate, fields);
+      });
     } catch (error) {
       if (error instanceof UsageError) throw error;
+      if (error instanceof UntoldTarget) {
+        const why = `${gate} refused: cannot tell which branches the command writes to (${error.message}); name them in it`;
+        input.warn(why);
+        return { data: { gate, allowed: false, items: [] }, text: '', failure: 'hook_refused' };
+      }
       // A field nothing names is a typo in the call, never a reason to allow the action.
       if (error instanceof OteaError && error.code === 'invalid_fields')
         throw new UsageError(error.message);

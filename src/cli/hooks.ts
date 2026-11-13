@@ -20,14 +20,15 @@ function oteaCommand(main: string): string {
   return `node --disable-warning=ExperimentalWarning "${main}"`;
 }
 
-// Checks every branch the push sends, refusing only when otea check refuses (exit 1): if Otea
-// cannot run at all, the push goes on.
+// Checks every branch the push writes to or deletes on the remote, not the local branch it sends
+// from, which may be another; refuses only when otea check refuses (exit 1): if Otea cannot run at
+// all, the push goes on. Tags and other refs are not branches and go unchecked.
 function gitCheckLines(main: string): string {
   return [
     'while read -r local_ref local_sha remote_ref remote_sha; do',
-    '  case "$local_ref" in',
+    '  case "$remote_ref" in',
     '    refs/heads/*)',
-    `      ${oteaCommand(main)} check --gate push --branch "\${local_ref#refs/heads/}" --repo < /dev/null`,
+    `      ${oteaCommand(main)} check --gate push --branch "\${remote_ref#refs/heads/}" --repo < /dev/null`,
     '      if [ $? -eq 1 ]; then exit 1; fi',
     '      ;;',
     '  esac',

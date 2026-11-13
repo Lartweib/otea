@@ -19,6 +19,12 @@ export function currentBranch(cwd: string): string {
   }
 }
 
+// The local branches of the repo at cwd; throws outside a repo.
+export function localBranches(cwd: string): string[] {
+  const listed = git(cwd, 'for-each-ref', '--format=%(refname:short)', 'refs/heads');
+  return listed.split('\n').filter(Boolean);
+}
+
 // The name a repo task's `repo` field gives the repo at cwd. Until the project registers its repos
 // by name, it is the repo's folder name: the folder above its common git dir, so a worktree of it
 // answers with the repo's name, not its own folder's. A registered name will be looked up here.
