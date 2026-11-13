@@ -4,7 +4,7 @@ You are an agent working on a collection that uses the `change` preset, through 
 
 If your client has the Otea MCP tools (`list`, `show`, `create`, `update`, `attach`, `claim`, `move`, `relay` and the rest, served by `otea mcp`), you may use them instead of the CLI: each tool is the command of the same name, takes its options by name (`{"id": "CHG-1", "state": "plan_review"}`, `"field": ["repo=api"]`), and follows the same rules and error codes, so everything below applies to both. A tool error carries the code the CLI exit code stands for (`lease_held` for 12, `timeout` for 13, `forbidden` for 7).
 
-The examples use a collection named `changes`; use the name `otea playbook` lists.
+The examples use a collection named `changes`; use the name `otea board` lists.
 
 ## 1. Start of every session
 
