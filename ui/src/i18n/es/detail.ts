@@ -348,6 +348,8 @@ export const detail = {
   'sheet.h.movedBefore': 'Lo movió, antes de su tablero',
   'sheet.h.movedYouBefore': 'Lo moviste, antes de su tablero',
   'sheet.h.migrated': 'Otea lo pasó a su tablero, en {state}',
+  'sheet.h.published': 'Al publicar v{version}, pasó a {state}',
+  'sheet.h.restored': 'Al deshacer una publicación, volvió a {state}',
   'sheet.h.closed': 'Lo cerraste: {state}',
   'sheet.h.discarded': 'Lo descartaste: {state}',
   'sheet.h.youMoved': 'Lo pasaste a {state}',
