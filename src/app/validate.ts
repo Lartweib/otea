@@ -1,7 +1,10 @@
+import { type Hint, instructionHints } from '../core/board/hints.ts';
 import { partRule } from '../core/board/joins.ts';
+import { readDefinition } from '../core/board/schema.ts';
 import { OteaError } from '../core/errors.ts';
 import { type Finding, itemFindings } from '../core/validation.ts';
 import type { Workflow } from '../core/workflow.ts';
+import { findVersion, listBoards } from '../store/boards.ts';
 import { findItem, listCollections, selectItems, selectRelations } from '../store/queries.ts';
 import type { Context } from './context.ts';
 import { workflowOf } from './items.ts';
@@ -75,6 +78,31 @@ function presetWarnings(ctx: Context): Finding[] {
     }));
 }
 
+function hintWords({ code, params }: Hint): string {
+  const step = `step "${params.step}"`;
+  if (code === 'instructions_missing')
+    return `${step}: an agent works it, but no instructions tell it what to do; write them in Studio`;
+  if (code === 'instructions_ask_part')
+    return `${step}: its instructions ask for "${params.part ?? ''}", but its handoff does not require it`;
+  return `${step}: its instructions ask to attach something, but its handoff requires no evidence`;
+}
+
+// The soft hints on what agents read on each live board (Studio shows the same on the step's card).
+// The built-in Pedidos board is left out: what each Pedido asks is its own instruction.
+function boardHints(ctx: Context): Finding[] {
+  return listBoards(ctx.db).flatMap((row) => {
+    if (row.builtin || row.liveVersion === null) return [];
+    const live = findVersion(ctx.db, row.id, row.liveVersion);
+    if (!live) return [];
+    const def = readDefinition(live.definition);
+    return instructionHints(def).map((hint) => ({
+      severity: 'warning' as const,
+      subject: `board ${def.name}`,
+      message: hintWords(hint),
+    }));
+  });
+}
+
 // `extra` carries findings checked elsewhere.
 export function validateProject(ctx: Context, extra: readonly Finding[] = []): ValidationReport {
   const findings: Finding[] = [
@@ -101,6 +129,7 @@ export function validateProject(ctx: Context, extra: readonly Finding[] = []): V
     }
   }
   findings.push(...parentAcrossBoards(ctx));
+  findings.push(...boardHints(ctx));
   const errors = findings.filter(({ severity }) => severity === 'error').length;
   return { errors, warnings: findings.length - errors, findings };
 }

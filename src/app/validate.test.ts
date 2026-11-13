@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { cambios, tareasDeRepo } from '../core/board/testing.ts';
+import type { Step } from '../core/board/model.ts';
+import { cambios, creatures, tareasDeRepo } from '../core/board/testing.ts';
 import { parsePreset } from '../core/preset.ts';
 import { insertRelation } from '../store/queries.ts';
 import { addCollection } from './collections.ts';
@@ -193,6 +194,60 @@ describe('validateProject', () => {
     });
 
     expect(validateProject(boards).findings).toEqual([]);
+    boards.db.close();
+  });
+
+  it('hints, without failing, at a live board whose agents read nothing or are asked for more', () => {
+    const boards = memoryContext();
+    const def = creatures();
+    // No words of the board's own either: Concepto's agent reads nothing at all.
+    def.about = '';
+    const animate = def.steps[1];
+    if (!animate) throw new Error('Animar');
+    animate.instructions.before = 'Deja también los @[ecode].';
+    def.steps[0] = {
+      ...(def.steps[0] as Step),
+      instructions: { take: '', before: '', review: '' },
+    };
+    publishAs(boards, def, 'bcri');
+
+    expect(validateProject(boards)).toEqual({
+      errors: 0,
+      warnings: 2,
+      findings: [
+        {
+          severity: 'warning',
+          subject: 'board Criaturas',
+          message:
+            'step "Concepto": an agent works it, but no instructions tell it what to do; write them in Studio',
+        },
+        {
+          severity: 'warning',
+          subject: 'board Criaturas',
+          message:
+            'step "Animar": its instructions ask for "Cambios de código", but its handoff does not require it',
+        },
+      ],
+    });
+    boards.db.close();
+  });
+
+  it('hints when instructions ask to attach something and the handoff requires no evidence', () => {
+    const boards = memoryContext();
+    const def = tareasDeRepo();
+    const implement = def.steps[1] as Step;
+    implement.hand = [];
+    implement.instructions.before = 'Adjuntá el resultado de los tests.';
+    publishAs(boards, def, 'brt');
+
+    expect(validateProject(boards).findings).toEqual([
+      {
+        severity: 'warning',
+        subject: 'board Tareas de repo',
+        message:
+          'step "Implementar": its instructions ask to attach something, but its handoff requires no evidence',
+      },
+    ]);
     boards.db.close();
   });
 });
