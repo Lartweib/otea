@@ -505,7 +505,8 @@
   -webkit-mask-image: none;
   mask-image: none;
 }
-.view.narrow .row {
+/* a table row keeps its own 40 px line: its node hangs on it (nodeOff) */
+.view.narrow .row:not(.trow) {
   --lh: 21px;
 }
 .view.narrow .row .m {
