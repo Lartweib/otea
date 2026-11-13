@@ -149,6 +149,16 @@ export async function reassignItem(id: string, agent: string): Promise<void> {
   await post(`/api/items/${encodeURIComponent(id)}/reassign`, { agent });
 }
 
+// A note to the agent doing the item's step: it moves nothing; `anchor` is a piece of evidence of
+// this round, by its id, and for a recording the moment seen.
+export async function postNote(
+  id: string,
+  text: string,
+  anchor?: { evidence: number; seconds?: number },
+): Promise<void> {
+  await post(`/api/items/${encodeURIComponent(id)}/notes`, anchor ? { text, anchor } : { text });
+}
+
 export async function undoRelease(id: string): Promise<void> {
   await post(`/api/items/${encodeURIComponent(id)}/undo`, { release: true });
 }

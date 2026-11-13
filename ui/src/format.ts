@@ -74,6 +74,8 @@ export function describeEvent({ type, data }: ItemEvent, words: FieldWords = AS_
     const caption = typeof data.caption === 'string' ? `: ${data.caption}` : '';
     return `${t('event.attached', { file: String(data.filename) })}${role}${caption}`;
   }
+  if (type === 'note_left') return t('event.noteLeft');
+  if (type === 'note_answered') return t('event.noteAnswered', { n: String(data.note) });
   return type;
 }
 

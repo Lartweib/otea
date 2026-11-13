@@ -104,6 +104,14 @@ const HERE_WHY = {
   unknown_step: 'refusal.unknownStep',
 } as const;
 
+const NOTE_WHY = {
+  not_person: 'refusal.note.notPerson',
+  not_agent: 'refusal.note.notAgent',
+  empty: 'refusal.note.empty',
+  not_working: 'refusal.note.notWorking',
+  anchor: 'refusal.note.anchor',
+} as const;
+
 const MOVE_WHY = {
   no_move: 'refusal.move.none',
   reason_required: 'refusal.move.reason',
@@ -248,6 +256,8 @@ function said(details: RefusalDetails): string | undefined {
       return t('refusal.restoreNameTaken', { name: details.name });
     case 'desk_only':
       return t('refusal.deskOnly');
+    case 'note':
+      return t(NOTE_WHY[details.why], { item: details.item });
     default:
       return undefined;
   }

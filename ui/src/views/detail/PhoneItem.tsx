@@ -22,6 +22,8 @@ import { Acts, type ActsMode } from './Acts.tsx';
 import type { Facts } from './facts.ts';
 import { toastOf } from './frame.ts';
 import { type MoveChoice, type MovePlan, moveSaysOf } from './moves.ts';
+import { AnchorPicker, countWords, showPiece, Thread } from './NotesThread.tsx';
+import type { ItemNote } from './notes.ts';
 import {
   compareFiles,
   type PhoneRound,
@@ -58,6 +60,28 @@ type PhoneItemProps = {
   refuse?: ((choice: MoveChoice) => string | null) | undefined;
   back?: ((state: string) => { agent: string | null; round: number }) | undefined;
   onClose: () => void;
+  notes?: PhoneNotes | undefined;
+};
+
+// The person's notes on the phone (the notes mock, part 4): while the agent works, the round's
+// thread and «Dejar una nota» docked, its sheet with the pieces as a strip; when reviewing, each
+// round's notes folded under what was delivered.
+export type PhoneNotes = {
+  // The notes of a round of the step under review (or being done), by its number.
+  of: (round: number) => ItemNote[];
+  // How many notes are on each piece of evidence, by its id.
+  noted: ReadonlyMap<number, number>;
+  // While the agent does the step and you may write: the round's notes, who they go to, the round,
+  // the pieces a note can be on, and the words after the note.
+  leave?: {
+    round: number;
+    to: string | null;
+    step: string;
+    pieces: Evidence[];
+    says: string;
+    warn: boolean;
+    send: (text: string, anchor: number | null) => void;
+  };
 };
 
 function Fold({
@@ -94,7 +118,17 @@ function Lab({ children, x }: { children: ReactNode; x?: ReactNode }) {
   );
 }
 
-function Files({ evidence }: { evidence: readonly Evidence[] }) {
+function Pin({ count }: { count: number | undefined }) {
+  return count ? <span className="pin">{t('notes.count', { count })}</span> : null;
+}
+
+function Files({
+  evidence,
+  noted,
+}: {
+  evidence: readonly Evidence[];
+  noted?: ReadonlyMap<number, number> | undefined;
+}) {
   const { images, files } = splitEvidence(evidence);
   return (
     <>
@@ -107,9 +141,11 @@ function Files({ evidence }: { evidence: readonly Evidence[] }) {
               href={evidenceFileUrl(e.id)}
               target="_blank"
               rel="noreferrer"
+              data-ev-ids={e.id}
             >
               <img src={evidenceFileUrl(e.id)} alt={e.caption ?? e.filename} loading="lazy" />
               <span className="cap">{e.filename}</span>
+              <Pin count={noted?.get(e.id)} />
             </a>
           ))}
         </div>
@@ -123,8 +159,10 @@ function Files({ evidence }: { evidence: readonly Evidence[] }) {
               href={evidenceFileUrl(e.id)}
               target="_blank"
               rel="noreferrer"
+              data-ev-ids={e.id}
             >
               <span className="fn">{e.filename}</span>
+              <Pin count={noted?.get(e.id)} />
             </a>
           ))}
         </div>
@@ -144,7 +182,42 @@ function Quote({ text }: { text: string }) {
   );
 }
 
-function RoundView({ r, newest, now }: { r: PhoneRound; newest: boolean; now: number }) {
+// A round's notes, folded under what was delivered: open the first time.
+function RoundThread({
+  notes,
+  evidence,
+  now,
+}: {
+  notes: readonly ItemNote[];
+  evidence: readonly Evidence[];
+  now: number;
+}) {
+  const [open, setOpen] = useState(true);
+  if (notes.length === 0) return null;
+  const words = countWords(notes);
+  return (
+    <Fold
+      label={t('notes.phone.round')}
+      summary={`${words.count}, ${words.state}`}
+      open={open}
+      onToggle={() => setOpen((v) => !v)}
+    >
+      <Thread notes={notes} evidence={evidence} now={now} agent={null} />
+    </Fold>
+  );
+}
+
+function RoundView({
+  r,
+  newest,
+  now,
+  notes,
+}: {
+  r: PhoneRound;
+  newest: boolean;
+  now: number;
+  notes?: PhoneNotes | undefined;
+}) {
   const { images, files } = splitEvidence(r.evidence);
   return (
     <>
@@ -162,9 +235,12 @@ function RoundView({ r, newest, now }: { r: PhoneRound; newest: boolean; now: nu
           {r.by} · {t('sheet.ago', { time: spanText(now - Date.parse(r.at)) })}
         </div>
       </section>
+      {notes ? (
+        <RoundThread key={r.n} notes={notes.of(r.n)} evidence={r.evidence} now={now} />
+      ) : null}
       <section className="p-part" data-c>
         <Lab x={evidenceWords(images.length, files.length) || '—'}>{t('sheet.evidence')}</Lab>
-        <Files evidence={r.evidence} />
+        <Files evidence={r.evidence} noted={notes?.noted} />
       </section>
       {r.asked ? (
         <section className="p-part" data-c>
@@ -258,14 +334,37 @@ export function PhoneItem(p: PhoneItemProps) {
   const dock = p.mode === 'moves' && app.session.canWrite;
   const sendback = plan.quiet.find((c) => c.kind === 'sendback' && !c.blocked);
   const primary = plan.primary && !plan.primary.blocked ? plan.primary : null;
-  const docked = dock && (primary || sendback);
+  const leave = app.session.canWrite ? p.notes?.leave : undefined;
+  const docked = (dock && (primary || sendback)) || !!leave;
   const [asking, setAsking] = useState<Asking | null>(null);
   const [refused, setRefused] = useState('');
   const [text, setText] = useState('');
   const backBtn = useRef<HTMLButtonElement>(null);
   const primaryBtn = useRef<HTMLButtonElement>(null);
   const area = useRef<HTMLTextAreaElement>(null);
-  const inset = useKeyboardInset(!!asking?.open);
+  // The note to the agent at work, in a sheet from below.
+  const [noting, setNoting] = useState(false);
+  const [noteText, setNoteText] = useState('');
+  const [anchor, setAnchor] = useState<number | null>(null);
+  const noteBtn = useRef<HTMLButtonElement>(null);
+  const noteArea = useRef<HTMLTextAreaElement>(null);
+  const inset = useKeyboardInset(!!asking?.open || noting);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: on each opening only
+  useLayoutEffect(() => {
+    if (noting) noteArea.current?.focus({ preventScroll: true });
+  }, [noting]);
+  const openNote = () => {
+    setNoteText('');
+    setAnchor(null);
+    setNoting(true);
+  };
+  const sendNote = () => {
+    if (!leave || !noteText.trim()) return;
+    setNoting(false);
+    leave.send(noteText.trim(), anchor);
+  };
+  const roundNotes = leave ? (p.notes?.of(leave.round) ?? []) : [];
+  const noteWords = countWords(roundNotes);
 
   const make = (c: MoveChoice, reason = '') => {
     const kind = c.deliver ? 'deliver' : c.move.closes === 'done' ? 'close' : c.kind;
@@ -367,6 +466,14 @@ export function PhoneItem(p: PhoneItemProps) {
       </p>
       {p.route}
       {p.checks}
+      {leave && roundNotes.length ? (
+        <section className="p-part p-notes" data-c>
+          <Lab x={<span className="you">{`${noteWords.count} · ${noteWords.state}`}</span>}>
+            {t('notes.title')}
+          </Lab>
+          <Thread notes={roundNotes} evidence={item.evidence} now={now} agent={leave.to} />
+        </section>
+      ) : null}
       {docked ? null : (
         <Acts
           item={item}
@@ -410,7 +517,12 @@ export function PhoneItem(p: PhoneItemProps) {
       {pick === 'compare' && newest && before ? (
         <CompareView older={before} newer={newest} />
       ) : shown ? (
-        <RoundView r={shown} newest={shown === newest} now={now} />
+        <RoundView
+          r={shown}
+          newest={shown === newest}
+          now={now}
+          notes={leave ? undefined : p.notes}
+        />
       ) : null}
 
       <Fold
@@ -433,7 +545,24 @@ export function PhoneItem(p: PhoneItemProps) {
       ) : null}
 
       {docked ? <div className="p-push" /> : null}
-      {docked ? (
+      {docked && leave ? (
+        <section className="p-dock" aria-label={t('phone.r.dock')}>
+          <div className="btns">
+            <button
+              ref={noteBtn}
+              type="button"
+              className="btn quiet nt-dock"
+              aria-haspopup="dialog"
+              aria-expanded={noting}
+              onClick={openNote}
+            >
+              <Icon name="note" />
+              {t('notes.leave')}
+            </button>
+          </div>
+          <p className="hint">{tx('notes.phone.hint', { beat: <b>{t('notes.phone.beat')}</b> })}</p>
+        </section>
+      ) : docked ? (
         <section className="p-dock" aria-label={t('phone.r.dock')}>
           <div className={primary && sendback ? 'btns two' : 'btns'}>
             {sendback ? (
@@ -471,6 +600,52 @@ export function PhoneItem(p: PhoneItemProps) {
         </section>
       ) : null}
 
+      {leave ? (
+        <BottomSheet
+          open={noting}
+          label={leave.to ? t('notes.phone.title', { agent: leave.to }) : t('notes.phone.titleAny')}
+          title={leave.to ? t('notes.phone.title', { agent: leave.to }) : t('notes.phone.titleAny')}
+          className="p-sb nt-sheet"
+          style={{ '--kb': `${inset}px` } as CSSProperties}
+          from={() => noteBtn.current}
+          onClose={() => setNoting(false)}
+        >
+          <p className={leave.warn ? 'p-sb-to warn' : 'p-sb-to'} data-i="">
+            {t('notes.phone.says')} ·{' '}
+            <b>
+              {leave.step} · {t('toca.round', { n: leave.round })}
+            </b>{' '}
+            · {leave.says}
+          </p>
+          <textarea
+            ref={noteArea}
+            className="p-sb-area"
+            data-i=""
+            rows={4}
+            aria-label={t('notes.form.aria', { agent: leave.to ?? t('notes.anyAgent') })}
+            placeholder={t('notes.form.placeholder')}
+            value={noteText}
+            onChange={(e) => setNoteText(e.target.value)}
+          />
+          {leave.pieces.length ? (
+            <div className="nt-pstrip" data-i="">
+              <div className="nt-apick-l">
+                <b>{t('notes.anchor.label')}</b>
+                <span>{t('notes.anchor.gloss', { n: leave.round })}</span>
+              </div>
+              <AnchorPicker pieces={leave.pieces} picked={anchor} onPick={setAnchor} strip />
+            </div>
+          ) : null}
+          <div className="p-sb-acts" data-i="">
+            <Button variant="quiet" onClick={() => setNoting(false)}>
+              {t('phone.sb.cancel')}
+            </Button>
+            <Button variant="primary" disabled={!noteText.trim()} onClick={sendNote}>
+              {t('notes.phone.send')}
+            </Button>
+          </div>
+        </BottomSheet>
+      ) : null}
       <BottomSheet
         open={!!asking?.open}
         label={sheetTitle}

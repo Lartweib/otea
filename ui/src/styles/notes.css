@@ -1,0 +1,517 @@
+/* Notes from the person while an agent does a step (the notes mock): the thread, a note's cite,
+   the «Sobre qué» picker, a round's notes in Rondas, the history line, and the phone's dock and
+   sheet. Said in serif, who and when in mono; yours in your blue on the right, the agent's on the
+   left in grey with its mark; a note still unanswered marked with the blue dot. */
+
+.nt-thread {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  max-width: 640px;
+  min-width: 0;
+}
+.nt-ex {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 7px;
+  min-width: 0;
+}
+.nt-ex .when {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font: 400 11.5px / 1.3 var(--mono);
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+.nt-ex .when::before,
+.nt-ex .when::after {
+  content: "";
+  flex: 1;
+  min-width: 12px;
+  height: 1px;
+  background: var(--rule);
+}
+.nt-ex .when .w {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.nt-msg {
+  min-width: 0;
+  max-width: 80%;
+  padding: 9px 13px 10px;
+}
+.nt-msg q {
+  quotes: none;
+  display: block;
+  font: 400 16px / 1.45 var(--serif);
+  color: var(--ink);
+  text-wrap: pretty;
+  overflow-wrap: anywhere;
+  white-space: pre-line;
+}
+.nt-msg .by {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 7px;
+  font: 400 11.5px / 1.3 var(--mono);
+  color: var(--ink-3);
+}
+.nt-msg.you {
+  justify-self: end;
+  background: var(--you-wash);
+  box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--you) 30%, transparent);
+  border-radius: 12px 12px 4px 12px;
+}
+.nt-msg.you.open {
+  box-shadow: inset 0 0 0 1.5px var(--you);
+}
+.nt-msg.you .by {
+  justify-content: flex-end;
+  margin-top: 5px;
+}
+.nt-msg.you .by b {
+  font-weight: 400;
+  color: var(--you-ink);
+}
+.nt-msg.ag {
+  justify-self: start;
+  background: var(--well);
+  border-radius: 12px 12px 12px 4px;
+}
+.nt-msg.ag .by {
+  margin-bottom: 4px;
+}
+.nt-msg.ag .by .nm {
+  font: 600 12.5px / 1 var(--sans);
+  color: var(--ink);
+}
+.nt-msg.ag .prof {
+  white-space: nowrap;
+}
+.nt-msg.ag q {
+  font-size: 15.5px;
+}
+/* waiting: the agent's side drawn dashed, as an empty required part is */
+.nt-msg.wait {
+  justify-self: start;
+  border-radius: 12px 12px 12px 4px;
+  outline: 1.5px dashed var(--lane);
+  outline-offset: -1.5px;
+}
+.nt-msg.wait p {
+  margin: 0;
+  font: 400 italic 15px / 1.4 var(--serif);
+  color: var(--ink-2);
+}
+.nt-msg.wait small {
+  display: block;
+  margin-top: 3px;
+  font: 400 11.5px / 1.4 var(--mono);
+  color: var(--ink-3);
+}
+.nt-un {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: 400 11.5px / 1 var(--mono);
+  color: var(--you-ink);
+  white-space: nowrap;
+}
+.nt-un::before {
+  content: "";
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--you);
+  box-shadow: 0 0 0 3px var(--tint);
+}
+
+/* the cited piece of evidence, inside the note: it leads to the piece */
+.nt-cite {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 8px;
+  padding: 5px 10px 5px 5px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--sheet);
+  box-shadow: 0 0 0 1px var(--rule);
+  width: fit-content;
+  max-width: 100%;
+  text-align: left;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  transition: box-shadow 240ms var(--o-drift);
+}
+.nt-cite:hover {
+  box-shadow: 0 0 0 1px var(--ink-3);
+}
+.nt-cite .nt-tb {
+  width: 56px;
+  height: 40px;
+}
+.nt-cite .tx {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+.nt-cite .tx b {
+  font: 400 12px / 1.2 var(--mono);
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.nt-cite .tx small {
+  font: 400 11px / 1.2 var(--mono);
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+
+/* a piece as a thumbnail: the image, a recording's first frame, or a file as lines */
+.nt-tb {
+  position: relative;
+  flex: none;
+  display: block;
+  width: 72px;
+  height: 52px;
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--well);
+  box-shadow: 0 0 0 1px var(--rule);
+}
+.nt-tb img,
+.nt-tb video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.nt-tb.file {
+  display: grid;
+  align-content: start;
+  gap: 3px;
+  padding: 6px;
+}
+.nt-tb.file i {
+  display: block;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--rule-2);
+}
+.nt-tb.file i.p {
+  background: color-mix(in oklch, var(--plus) 60%, transparent);
+}
+.nt-tb.file i.m {
+  background: color-mix(in oklch, var(--minus) 60%, transparent);
+}
+.nt-tb.none {
+  display: grid;
+  place-items: center;
+  background: var(--sheet);
+  font: 400 italic 13px var(--serif);
+  color: var(--ink-3);
+  box-shadow: inset 0 0 0 1px var(--rule-2);
+}
+
+/* «Sobre qué»: the pieces of the round so far; the one picked ringed as a gallery's current one */
+.nt-apick-l {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  margin: 12px 0 7px;
+  font: 400 12px / 1.3 var(--mono);
+  color: var(--ink-3);
+}
+.nt-apick-l b {
+  font-weight: 500;
+  color: var(--ink-2);
+}
+.nt-apick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  max-width: 72ch;
+}
+.nt-ap {
+  display: grid;
+  justify-items: start;
+  gap: 5px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+}
+.nt-ap .nt-tb {
+  transition:
+    box-shadow 120ms var(--ease),
+    transform 120ms var(--ease);
+}
+.nt-ap:hover .nt-tb {
+  transform: translateY(-1px);
+}
+.nt-ap[aria-checked="true"] .nt-tb {
+  box-shadow: 0 0 0 2px var(--ink);
+}
+.nt-ap[aria-checked="true"] .nt-tb.none {
+  color: var(--ink);
+}
+.nt-ap .nm {
+  max-width: 80px;
+  font: 400 11px / 1.2 var(--mono);
+  color: var(--ink-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.nt-ap[aria-checked="true"] .nm {
+  color: var(--ink);
+}
+.notes .nbtns {
+  align-items: center;
+  flex-wrap: wrap;
+}
+.notes .nbtns .says {
+  margin-left: 6px;
+  font: 400 12px / 1.4 var(--mono);
+  color: var(--ink-3);
+}
+.nt-quiet {
+  color: var(--warn);
+}
+.nt-leave .ic {
+  width: 15px;
+  height: 15px;
+}
+
+/* the thread's section while the agent works, and the gate in the handoff checklist */
+.nt-sec .margin-label span.you {
+  color: var(--you-ink);
+  white-space: nowrap;
+  font-size: 10.5px;
+}
+.bi-check .sep {
+  height: 1px;
+  background: var(--rule);
+  margin: 4px 0 2px 27px;
+  max-width: 40ch;
+}
+.bi-check .hc.nt-gate small {
+  color: var(--you-ink);
+}
+.bi-check .hc.nt-gate.ok small {
+  color: var(--ink-3);
+}
+
+/* a piece of evidence some note is on */
+.ev-head .ev-noted {
+  margin-left: auto;
+  font: 400 11.5px / 1 var(--mono);
+  color: var(--you-ink);
+}
+
+/* a round's notes in its card: a line to the thread, or the thread folded in the card */
+.bi-rounds .rn-notes,
+.bi-rounds .rn-fold {
+  grid-column: 1 / -1;
+}
+.bi-rounds .rn-notes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 8px;
+  width: 100%;
+  margin-top: 8px;
+  padding: 7px 0 0;
+  border: 0;
+  border-top: 1px solid var(--rule);
+  background: none;
+  font: 400 11.5px / 1.3 var(--mono);
+  color: var(--ink-3);
+  text-align: left;
+  cursor: pointer;
+}
+.bi-rounds .rn-notes b {
+  font-weight: 400;
+  color: var(--ink-2);
+}
+.bi-rounds .rn-notes:hover b {
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: var(--rule-2);
+}
+.bi-rounds .rn-notes .nt-un,
+.bi-rounds .rn-notes .st {
+  margin-left: auto;
+}
+.bi-rounds .rn-notes svg {
+  align-self: center;
+  width: 12px;
+  height: 12px;
+  transform: rotate(-90deg);
+  transition: transform 240ms var(--o-drift);
+}
+.bi-rounds .rn-fold[data-open] .rn-notes svg {
+  transform: none;
+}
+.bi-rounds .rd:has(.rn-fold[data-open]) {
+  grid-column: 1 / -1;
+}
+.rn-body {
+  display: grid;
+  grid-template-rows: 0fr;
+  visibility: hidden;
+  transition:
+    grid-template-rows 240ms var(--o-drift),
+    visibility 0s linear 240ms;
+}
+.rn-fold[data-open] .rn-body {
+  grid-template-rows: 1fr;
+  visibility: visible;
+  transition:
+    grid-template-rows 240ms var(--o-drift),
+    visibility 0s linear 0s;
+}
+.rn-inner {
+  min-height: 0;
+  overflow: hidden;
+}
+.rn-inner .nt-thread {
+  padding: 12px 0 4px;
+  max-width: none;
+}
+
+/* history: one line per note, a hollow blue dot (yours, but it moves nothing) */
+.tl li.nt .dt {
+  width: 8px;
+  height: 8px;
+  margin-left: 1px;
+  background: var(--sheet);
+  box-shadow:
+    inset 0 0 0 1.5px var(--you),
+    0 0 0 3px var(--sheet);
+}
+.tl li.nt .tx q {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tl li .tx small .nt-un {
+  font-size: 11px;
+}
+
+/* Te toca: the agent answered, or notes still wait, without the turn changing */
+.m .mpt.nt {
+  min-width: 0;
+  overflow: hidden;
+}
+.m .mpt .nt-mark {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--you-ink);
+}
+
+/* ───────── the phone: the same thread in one column, the dock, and the note's sheet ───────── */
+@media (max-width: 720px) {
+  .p-item .nt-thread {
+    margin-top: 12px;
+    gap: 14px;
+  }
+  .p-item .nt-msg {
+    max-width: 88%;
+  }
+  .p-item .nt-cite {
+    min-height: 48px;
+  }
+  .p-notes .p-lab .x .you {
+    color: var(--you-ink);
+  }
+  .p-shot .pin,
+  .p-file .pin {
+    display: inline-flex;
+    align-items: center;
+    height: 20px;
+    padding: 0 7px;
+    border-radius: 999px;
+    font: 400 11px var(--mono);
+    color: var(--you-ink);
+  }
+  .p-shot .pin {
+    position: absolute;
+    right: 8px;
+    top: 8px;
+    background: color-mix(in oklch, var(--sheet) 90%, transparent);
+  }
+  .p-file .pin {
+    margin-left: auto;
+  }
+  .p-dock .nt-dock {
+    gap: 8px;
+  }
+  .p-dock .nt-dock .ic {
+    width: 19px;
+    height: 19px;
+  }
+  .p-sb-to.warn {
+    color: var(--warn);
+  }
+  /* «Sobre qué» on the phone: a strip of 76×56 thumbnails that slides sideways */
+  .nt-pstrip .nt-apick-l {
+    justify-content: space-between;
+    margin: 14px 0 6px;
+  }
+  .nt-apick.strip {
+    flex-wrap: nowrap;
+    gap: 10px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    margin: 0 -12px;
+    padding: 3px 12px 4px;
+    max-width: none;
+  }
+  .nt-apick.strip::-webkit-scrollbar {
+    display: none;
+  }
+  .nt-apick.strip .nt-ap {
+    flex: none;
+    min-width: 76px;
+    min-height: 44px;
+  }
+  .nt-apick.strip .nt-tb {
+    width: 76px;
+    height: 56px;
+    border-radius: 8px;
+  }
+  .nt-apick.strip .nm {
+    max-width: 76px;
+    font-size: 11.5px;
+  }
+  .p-fold-body .nt-thread {
+    margin-top: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rn-body,
+  .rn-fold[data-open] .rn-body,
+  .bi-rounds .rn-notes svg,
+  .nt-cite,
+  .nt-ap .nt-tb {
+    transition: none;
+  }
+}
+:root[data-motion="reduced"] .rn-body,
+:root[data-motion="reduced"] .rn-fold[data-open] .rn-body,
+:root[data-motion="reduced"] .bi-rounds .rn-notes svg {
+  transition: none;
+}

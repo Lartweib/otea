@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
-import { isClosed, positionOf } from '../../../../src/core/board/engine.ts';
+import { isClosed, NOTE_REF, positionOf } from '../../../../src/core/board/engine.ts';
 import { SAME, stepById } from '../../../../src/core/board/model.ts';
 import { waitsOf } from '../../actions.ts';
 import { typeOfItem, useApp } from '../../app/context.tsx';
@@ -39,6 +39,7 @@ import {
   linksOf,
   ownStepOf,
   railStep,
+  roundStartOf,
   selectOnFold,
   sheetLook,
   stepRounds,
@@ -51,6 +52,15 @@ import { History } from './History.tsx';
 import { historyOf } from './history.ts';
 import { type MoveChoice, planMoves } from './moves.ts';
 import { NotesForm } from './NotesForm.tsx';
+import { AnchorPicker, NotesSection, RoundNotesLine } from './NotesThread.tsx';
+import {
+  anchorPieces,
+  notedOn,
+  notesCount,
+  quietMinutes,
+  roundNotesOf,
+  threadOf,
+} from './notes.ts';
 import { PhoneItem } from './PhoneItem.tsx';
 import { Route } from './Route.tsx';
 import { routeIndex, routeSteps } from './route.ts';
@@ -215,6 +225,28 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
         ? handRefusal(item.id, missing)
         : null;
   const hand = live && ownStep ? handRows(live, ownStep, missing) : [];
+
+  // ---- notes to the agent while it does its step (the notes mock) ----
+  const thread = useMemo(() => threadOf(block, item.events), [block, item.events]);
+  const agentStep =
+    live && roundsStep && !ownStep && !isClosed(position) && position.phase === 'doing'
+      ? roundsStep
+      : undefined;
+  const round = onBoard?.round ?? 0;
+  const roundNotes = agentStep ? roundNotesOf(thread, agentStep.id, round) : [];
+  const { unanswered } = notesCount(roundNotes);
+  const worker = block?.worker;
+  const noteTo = worker?.name ?? facts.agent;
+  // What the agent has to hand, read only: its parts, then the wait for your notes' answers.
+  const agentHand = live && agentStep ? handRows(live, agentStep, missing) : [];
+  const deliverable = agentHand.filter((r) => r.required && r.ref !== NOTE_REF);
+  const had = { done: deliverable.filter((r) => r.ok).length, of: deliverable.length };
+  const pieces = useMemo(
+    () => (live && agentStep ? anchorPieces(item.evidence, roundStartOf(live, item)) : []),
+    [live, agentStep, item],
+  );
+  const noted = useMemo(() => notedOn(thread), [thread]);
+  const canNote = !!agentStep && app.session.canWrite;
   const mode = actsModeOf({ look, canWrite: app.session.canWrite, question: facts.question, plan });
   const steps = onBoard ? onBoard.route.steps : type ? routeSteps(type) : [];
   const ci = onBoard ? onBoard.route.ci : type ? routeIndex(type, item.state, facts.visited) : 0;
@@ -257,6 +289,48 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
     const below = root.current?.querySelector('.d-details')?.getBoundingClientRect().top ?? null;
     setNotes({ choice, button, open: true, below: notes ? null : below });
   };
+  // The note to the agent at work, drawn from «Dejar una nota» as the notes form is.
+  const [noting, setNoting] = useState<{
+    button: HTMLButtonElement;
+    open: boolean;
+    below: number | null;
+  } | null>(null);
+  const [anchor, setAnchor] = useState<number | null>(null);
+  const toggleNote = (button: HTMLButtonElement) => {
+    if (noting?.open) {
+      setNoting({ ...noting, open: false });
+      return;
+    }
+    const below = root.current?.querySelector('.d-details')?.getBoundingClientRect().top ?? null;
+    setAnchor(null);
+    setNoting({ button, open: true, below: noting ? null : below });
+  };
+  const postNote = (text: string, on?: { evidence: number }) =>
+    app.note(item.id, text, on).then(
+      () => toast({ msg: t('notes.sent', { agent: who, title: item.title }), id: item.id }),
+      () => toast({ msg: t('notes.failed'), id: item.id }),
+    );
+  const sendNote = (text: string) => {
+    if (!noting) return;
+    setNoting({ ...noting, open: false });
+    void postNote(text, anchor === null ? undefined : { evidence: anchor });
+  };
+  const quiet = canNote ? quietMinutes(worker, now) : null;
+  const who = noteTo ?? t('notes.anyAgent');
+  // After the note: the agent has gone quiet, or how many deliverables were in and when it reads.
+  const noteSays =
+    quiet !== null
+      ? t('notes.quiet', { agent: who, minutes: quiet })
+      : [had.of > 0 ? t('notes.had', { done: had.done, count: had.of }) : null, t('notes.nextBeat')]
+          .filter(Boolean)
+          .join(' · ');
+  const leave = canNote
+    ? {
+        open: !!noting?.open,
+        says: tx('notes.leaveSays', { agent: <b>{who}</b> }),
+        onToggle: toggleNote,
+      }
+    : undefined;
   const send = (text: string) => {
     if (!notes) return;
     const c = notes.choice;
@@ -313,7 +387,9 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
       : [];
   const only = journey.length === 1 ? journey[0]?.rounds : undefined;
   const hasNotes =
-    journey.length > 1 || (!!only && (only.length > 1 || (only[0]?.notes.length ?? 0) > 0));
+    journey.length > 1 ||
+    thread.length > 0 ||
+    (!!only && (only.length > 1 || (only[0]?.notes.length ?? 0) > 0));
   const sections = bodySections({
     item,
     type,
@@ -328,7 +404,19 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
               .map((p) => p.id),
           ),
           rounds: journey.length ? (
-            <RoundNotes steps={journey} rail={rail} onFold={onFold} />
+            <RoundNotes
+              steps={journey}
+              rail={rail}
+              onFold={onFold}
+              notes={(step, r) => (
+                <RoundNotesLine
+                  notes={roundNotesOf(thread, step, r)}
+                  live={!!agentStep && step === agentStep.id && r === round}
+                  evidence={item.evidence}
+                  now={now}
+                />
+              )}
+            />
           ) : null,
           // Where the board's layout places no Rondas, they come after the fields only when
           // there is something to say or a review to say it to.
@@ -336,9 +424,16 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
           sections: boardSections,
           steps: rail ? { def: live, step: rail } : { def: live },
           railName,
+          noted,
         }
       : undefined,
   });
+  // While the agent works, the round's thread comes first: it is all you can do there.
+  if (agentStep && roundNotes.length)
+    sections.unshift({
+      key: 'notes',
+      node: <NotesSection notes={roundNotes} evidence={item.evidence} now={now} agent={noteTo} />,
+    });
   const lines = historyOf(item.events, type, word, now);
   const stateShown = word(item.state);
   const yours = item.turn === 'human';
@@ -380,6 +475,14 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
               {hand.length ? (
                 <HandChecklist item={item} rows={hand} canWrite={app.session.canWrite} />
               ) : null}
+              {agentStep ? (
+                <HandChecklist
+                  item={item}
+                  rows={agentHand}
+                  canWrite={false}
+                  notes={roundNotes.length ? { unanswered } : undefined}
+                />
+              ) : null}
               {live ? <WaitChecklist rows={waits} child={partsName} now={now} /> : null}
             </>
           }
@@ -394,6 +497,31 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
           refuse={live ? refuse : undefined}
           back={live ? (to: string) => backOf(live, item, to) : undefined}
           onClose={onClose}
+          notes={
+            live
+              ? {
+                  of: (n) => roundNotesOf(thread, stepId, n),
+                  noted,
+                  ...(canNote && agentStep
+                    ? {
+                        leave: {
+                          round,
+                          to: noteTo,
+                          step: agentStep.name,
+                          pieces,
+                          says:
+                            quiet !== null || had.of === 0
+                              ? noteSays
+                              : t('notes.had', { done: had.done, count: had.of }),
+                          warn: quiet !== null,
+                          send: (text: string, on: number | null) =>
+                            postNote(text, on === null ? undefined : { evidence: on }),
+                        },
+                      }
+                    : {}),
+                }
+              : undefined
+          }
         />
       </ItemTypeScope>
     );
@@ -475,6 +603,14 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
           {hand.length ? (
             <HandChecklist item={item} rows={hand} canWrite={app.session.canWrite} />
           ) : null}
+          {agentStep ? (
+            <HandChecklist
+              item={item}
+              rows={agentHand}
+              canWrite={false}
+              notes={roundNotes.length ? { unanswered } : undefined}
+            />
+          ) : null}
           {live ? <WaitChecklist rows={waits} child={partsName} now={now} /> : null}
           <Acts
             onDrop={live && dropChoices.length ? () => setDropping(true) : undefined}
@@ -489,8 +625,41 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
             word={word}
             notesOpen={notes?.open ? notes.choice : null}
             onNotes={openNotes}
+            note={leave}
           />
           <div className="notes-slot">
+            {noting ? (
+              <NotesForm
+                key="note"
+                open={noting.open}
+                agent={noteTo}
+                why={null}
+                button={noting.button}
+                belowTop={noting.below}
+                words={{
+                  title: t('notes.form.title'),
+                  aside: t('notes.form.for', { agent: who }),
+                  placeholder: t('notes.form.placeholder'),
+                  aria: t('notes.form.aria', { agent: who }),
+                  send: t('notes.form.send'),
+                }}
+                extra={
+                  pieces.length ? (
+                    <div className="nt-anchor" data-i>
+                      <div className="nt-apick-l">
+                        <b>{t('notes.anchor.label')}</b>
+                        <span>{t('notes.anchor.gloss', { n: round })}</span>
+                      </div>
+                      <AnchorPicker pieces={pieces} picked={anchor} onPick={setAnchor} />
+                    </div>
+                  ) : null
+                }
+                says={quiet !== null ? <span className="nt-quiet">{noteSays}</span> : noteSays}
+                onSend={sendNote}
+                onCancel={() => setNoting({ ...noting, open: false })}
+                onGone={() => setNoting((n) => (n && !n.open ? null : n))}
+              />
+            ) : null}
             {notes ? (
               <NotesForm
                 key={notes.choice.move.to}

@@ -23,6 +23,9 @@ export type Item = {
   id: string;
   // On a published board: the round of the step it is on, as the engine counts it.
   round?: number;
+  // On a list, when the round it is on has notes from the person: how many, how many wait for an
+  // answer, and the agent's latest answer (the turn stays where it was).
+  notes?: { count: number; unanswered: number; replied?: { note: number; by: string; at: string } };
   collection: string;
   // The item type: "item" in a collection whose preset declares no types.
   type: string;

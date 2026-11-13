@@ -30,6 +30,7 @@ export function testApp(o: Partial<App> = {}): App {
     closeItem: noop,
     move: async () => undefined,
     update: async () => undefined,
+    note: async () => undefined,
     restart: async () => undefined,
     reassign: async () => undefined,
     link: async () => undefined,

@@ -103,12 +103,16 @@ type EvidenceModuleProps = {
   canWrite: boolean;
   // The data attributes of its place in the layout (slotData), for Studio to find it.
   slot?: Readonly<Record<string, string>>;
+  // How many of the person's notes are on each piece of evidence, by its id: the module says how
+  // many are on its files, and a note's cite finds it by them.
+  noted?: ReadonlyMap<number, number>;
 };
 
 // One evidence module of the item's layout, where the layout places it. Files are served only to a
 // signed-in browser, so a read-only one lists their names.
-export function EvidenceModule({ entry, evidence, canWrite, slot }: EvidenceModuleProps) {
+export function EvidenceModule({ entry, evidence, canWrite, slot, noted }: EvidenceModuleProps) {
   const held = evidenceOf(evidence, entry);
+  const notes = held.reduce((sum, { id }) => sum + (noted?.get(id) ?? 0), 0);
   const title = moduleTitle(entry);
   const headingId = `evidence-${entry.id}`;
   return (
@@ -117,6 +121,7 @@ export function EvidenceModule({ entry, evidence, canWrite, slot }: EvidenceModu
       aria-labelledby={headingId}
       data-module={entry.module}
       data-variant={entry.variant}
+      data-ev-ids={held.length ? held.map(({ id }) => id).join(' ') : undefined}
       {...slot}
     >
       <header className="ev-head">
@@ -126,6 +131,7 @@ export function EvidenceModule({ entry, evidence, canWrite, slot }: EvidenceModu
         {entry.required ? (
           <span className="ev-required t-cap">{t('evidence.required')}</span>
         ) : null}
+        {notes ? <span className="ev-noted">{t('notes.count', { count: notes })}</span> : null}
       </header>
       {held.length === 0 ? (
         <Empty entry={entry} />

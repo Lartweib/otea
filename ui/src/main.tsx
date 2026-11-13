@@ -36,6 +36,7 @@ import './styles/evidence.css';
 import './styles/relations.css';
 import './styles/modules.css';
 import './styles/rounds.css';
+import './styles/notes.css';
 import './styles/compare.css';
 import './styles/triage.css';
 import './styles/activity.css';

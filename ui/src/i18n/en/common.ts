@@ -199,6 +199,11 @@ export const common = {
   'refusal.restoreNameTaken': 'Not undone: another board is called {name} now; rename it first.',
   'refusal.deskOnly':
     'Only the browser on this computer, signed in with `otea open`, changes the project setup.',
+  'refusal.note.notPerson': 'No note left on {item}: only you leave notes.',
+  'refusal.note.notAgent': 'Not answered: the agent answers the notes on {item}.',
+  'refusal.note.empty': 'No note left on {item}: it has no text.',
+  'refusal.note.notWorking': 'No note left on {item}: no agent is doing a step on it now.',
+  'refusal.note.anchor': 'No note left on {item}: that piece is not of this round any more.',
   'refusal.unexpected': 'Something went wrong on the server. Try again.',
   'refusal.badRequest': 'Otea did not understand the request. Reload the page and try again.',
   'refusal.otherOrigin': 'Otea takes changes only from its own page.',

@@ -184,4 +184,16 @@ describe('a refusal from the server', () => {
     expect(serverMessage(refused('brand_new', 'Something new'), 409)).toBe('Something new');
     expect(serverMessage(refused('not_stuck', 'x', { kind: 'from_the_future' }), 409)).toBe('x');
   });
+
+  it('words a refused note to the agent at work', () => {
+    setLanguage('es');
+    const notWorking = refused('invalid_transition', 'No note left on TAR-7', {
+      kind: 'note',
+      item: 'TAR-7',
+      why: 'not_working',
+    });
+    expect(serverMessage(notWorking, 409)).toBe(
+      'No se dejó la nota en TAR-7: ningún agente está haciendo un paso en él ahora.',
+    );
+  });
 });

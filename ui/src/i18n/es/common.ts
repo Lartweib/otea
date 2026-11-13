@@ -203,6 +203,12 @@ export const common = {
     'No se deshizo: otro tablero se llama {name} ahora; cámbiale el nombre antes.',
   'refusal.deskOnly':
     'Solo el navegador de este equipo, con la sesión de `otea open`, cambia la configuración del proyecto.',
+  'refusal.note.notPerson': 'No se dejó la nota en {item}: solo tú dejas notas.',
+  'refusal.note.notAgent': 'Sin respuesta: las notas de {item} las contesta el agente.',
+  'refusal.note.empty': 'No se dejó la nota en {item}: no tiene texto.',
+  'refusal.note.notWorking':
+    'No se dejó la nota en {item}: ningún agente está haciendo un paso en él ahora.',
+  'refusal.note.anchor': 'No se dejó la nota en {item}: esa pieza ya no es de esta ronda.',
   'refusal.unexpected': 'Algo falló en el servidor. Vuelve a intentarlo.',
   'refusal.badRequest': 'Otea no entendió la petición. Recarga la página y vuelve a intentarlo.',
   'refusal.otherOrigin': 'Otea solo acepta cambios desde su propia página.',

@@ -162,6 +162,12 @@ export function rowCall(item: Item, sec: TocaSection, ctx: TocaContext): RowCall
   }
 }
 
+// "1 sin respuesta" while notes wait for the agent's answer, else "claude-d contestó".
+export function notesMark(notes: NonNullable<Item['notes']>): string | null {
+  if (notes.unanswered > 0) return t('notes.unanswered', { count: notes.unanswered });
+  return notes.replied ? t('toca.replied', { agent: notes.replied.by }) : null;
+}
+
 type TocaApp = Pick<App, 'all' | 'now' | 'feed' | 'collectionOf' | 'route'>;
 
 function TocaRow({
@@ -185,6 +191,9 @@ function TocaRow({
   // On the phone a review says what the agent delivered: its note and how much evidence.
   const delivered = phone && sec === 'revisiones' ? deliveryOf(it, app.feed) : null;
   const files = delivered ? evidenceWords(delivered.images, delivered.files) : '';
+  // The person's notes on the round: still waiting for the agent, or its latest answer, a light
+  // mark that never changes whose turn it is.
+  const mark = it.notes ? notesMark(it.notes) : null;
   return (
     <>
       <div className="main-c">
@@ -214,6 +223,12 @@ function TocaRow({
             <span className="mpt">
               <span className="sep">·</span>
               <span className="round">{t('toca.round', { n: round })}</span>
+            </span>
+          ) : null}
+          {mark ? (
+            <span className="mpt nt">
+              <span className="sep">·</span>
+              <span className="nt-mark">{mark}</span>
             </span>
           ) : null}
         </div>

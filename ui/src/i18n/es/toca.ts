@@ -65,6 +65,7 @@ export const toca = {
   'toca.sub.closedBy': 'lo cerró {agent}',
   'toca.sub.closedByYou': 'cerrado por ti',
   'toca.quiet': '{agent} callado · {time}',
+  'toca.replied': '{agent} contestó',
   'toca.round': 'ronda {n}',
 
   // La columna de agentes

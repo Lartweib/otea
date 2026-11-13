@@ -127,6 +127,8 @@ describe('format', () => {
       event('relation_added', { kind: 'relates', from: 'B-1', to: 'B-2' }),
       'Linked: B-1 relates to B-2',
     ],
+    [event('note_left', { note: 1, text: 'hi', step: 's', round: 1 }), 'Left a note'],
+    [event('note_answered', { note: 3, text: 'done' }), 'Answered note 3'],
     [event('commented', { text: 'hi' }), 'commented'],
   ])('describes %j', (input, expected) => {
     expect(describeEvent(input)).toBe(expected);
