@@ -24,6 +24,7 @@ import {
   replaceBackWay,
   setDoerMayDrop,
   setGuard,
+  setGuardBase,
   setGuardRepo,
   setInitial,
   setNoteHint,
@@ -644,6 +645,7 @@ function GuardLines({ part, def }: { part: Part; def: BoardDefinition }) {
           </EdPop>
           {guard.repo ? <SetupStrip what="repo" ref_={guard.repo} /> : null}
           <p className="se-conseq">{t('bs.editor.guard.frozen')}</p>
+          <BaseLines part={part} def={def} />
           <p className={guardInstalled === false ? 'se-conseq warn' : 'se-conseq'}>
             {t('bs.editor.guard.hooks')}
           </p>
@@ -655,6 +657,55 @@ function GuardLines({ part, def }: { part: Part; def: BoardDefinition }) {
         </>
       ) : (
         <p className="se-conseq">{t('bs.editor.guard.off')}</p>
+      )}
+    </>
+  );
+}
+
+// "También protege la rama base": agents push or merge into the base branch only the branch of an
+// item that is Hecho; the person still can.
+function BaseLines({ part, def }: { part: Part; def: BoardDefinition }) {
+  const { draft } = useEditor();
+  const base = part.guard?.base;
+  const toggle = () =>
+    draft.mutate((d) => setGuardBase(d, part.id, base === undefined ? 'main' : undefined));
+  return (
+    <>
+      <SwitchLine
+        on={base !== undefined}
+        label={t('bs.editor.guard.base_switch')}
+        onToggle={toggle}
+      >
+        {t('bs.editor.guard.base_switch')}
+      </SwitchLine>
+      {base !== undefined ? (
+        <>
+          <label className="se-fld se-base">
+            <span className="se-flab">{t('bs.editor.guard.base_label')}</span>
+            <input
+              className="se-tx se-mono"
+              value={base}
+              maxLength={80}
+              spellCheck={false}
+              autoComplete="off"
+              onChange={(e) =>
+                draft.mutate(
+                  (d) => setGuardBase(d, part.id, e.target.value.trim()),
+                  `base:${part.id}`,
+                )
+              }
+              onBlur={() => draft.endBurst()}
+            />
+          </label>
+          <p className="se-conseq">
+            {tx('bs.editor.guard.base_on', {
+              base: <span className="se-mono">{base || '…'}</span>,
+              item: def.item,
+            })}
+          </p>
+        </>
+      ) : (
+        <p className="se-conseq">{t('bs.editor.guard.base_off')}</p>
       )}
     </>
   );

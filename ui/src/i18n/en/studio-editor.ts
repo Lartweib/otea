@@ -355,6 +355,12 @@ export const studioEditor = {
     'This only holds in the repositories where Otea watches pushes (Settings › Repositories).',
   'bs.editor.guard.no_push': '“{part}” is protected but can be pushed in no step.',
   'bs.editor.guard.off': 'Unprotected: anyone can push to the branch at any time.',
+  'bs.editor.guard.base_switch': 'It protects the base branch too.',
+  'bs.editor.guard.base_label': 'Base branch',
+  'bs.editor.guard.base_on':
+    'Agents push or merge into {base} only the branch of each {item} once it is Done. You still can: from the repository’s website, or with git push --no-verify.',
+  'bs.editor.guard.base_off':
+    'The base branch is not checked: an agent could merge a branch under review into it locally and push it.',
   'bs.editor.drop.title': 'Drop',
   'bs.editor.drop.gloss': 'the other way to end',
   'bs.editor.drop.by': 'You drop it, {by}',

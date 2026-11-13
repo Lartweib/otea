@@ -19,6 +19,7 @@ import {
   setDoerMayDrop,
   setDropBy,
   setGuard,
+  setGuardBase,
   setGuardRepo,
   setInitial,
   setNoteHint,
@@ -170,6 +171,19 @@ describe('the protected branch', () => {
     expect(def.parts.fbranch?.guard).toEqual({ push: ['sprop'] });
     setGuardRepo(def, 'fbranch', 'frepo');
     expect(def.parts.fbranch?.guard?.repo).toBe('frepo');
+  });
+
+  it('protects the base branch too, by name, and stops when turned off', () => {
+    const def = tareasDeRepo();
+    setGuardBase(def, 'fbranch', 'main');
+    expect(def.parts.fbranch?.guard?.base).toBe('main');
+    setGuardBase(def, 'fbranch', 'release/2.x');
+    expect(def.parts.fbranch?.guard?.base).toBe('release/2.x');
+    setGuardBase(def, 'fbranch', undefined);
+    expect(def.parts.fbranch?.guard).not.toHaveProperty('base');
+    setGuard(def, 'fbranch', false);
+    setGuardBase(def, 'fbranch', 'main');
+    expect(def.parts.fbranch?.guard).toBeUndefined();
   });
 
   it('never guards a field that is not a branch', () => {
