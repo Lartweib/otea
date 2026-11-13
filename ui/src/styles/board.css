@@ -254,9 +254,6 @@
 .board .stage.settling * {
   transition: none;
 }
-.lista .lanes {
-  max-width: 1040px;
-}
 /* a folded parent's children stay in the list, out of the lanes */
 .lanes > .row.folded {
   display: none;
