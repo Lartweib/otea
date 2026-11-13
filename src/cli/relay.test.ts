@@ -1,7 +1,7 @@
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { type Cli, cliAt, presetCollection, tempGitRepo } from './testing.ts';
+import { type Cli, cliAt, declareProfiles, presetCollection, tempGitRepo } from './testing.ts';
 
 const QUOTE = 'Discard it, the old flow is gone';
 const USAGE = 'Usage: otea relay <id> <state> --quote <what the human said> [--reason <reason>]';
@@ -16,6 +16,7 @@ describe('relay', () => {
     repo = tempGitRepo();
     otea = cliAt(repo.dir, { OTEA_AGENT: 'claude' });
     await otea('init');
+    declareProfiles(repo.dir, 'claude', 'claude-a', 'claude-b', 'codex', 'gemini', 'quill');
     presetCollection(repo.dir, 'tasks');
     await otea('create', '--collection', 'tasks', '--title', 'Old flow', '--description', 'D');
     await otea('create', '--collection', 'tasks', '--title', 'Held', '--description', 'D');
@@ -149,6 +150,7 @@ describe('relay of a decision on the agent’s own step', () => {
     repo = tempGitRepo();
     otea = cliAt(repo.dir, { OTEA_AGENT: 'claude' });
     await otea('init');
+    declareProfiles(repo.dir, 'claude', 'claude-a', 'claude-b', 'codex', 'gemini', 'quill');
     presetCollection(repo.dir, 'tasks');
     await otea('create', '--collection', 'tasks', '--title', 'Mine', '--description', 'D');
     await otea('handoff', 'TASKS-1');
@@ -213,6 +215,7 @@ describe('relay by an agent that worked the step but did not hand it off', () =>
     repo = tempGitRepo();
     otea = cliAt(repo.dir, { OTEA_AGENT: 'claude' });
     await otea('init');
+    declareProfiles(repo.dir, 'claude', 'claude-a', 'claude-b', 'codex', 'gemini', 'quill');
     presetCollection(repo.dir, 'tasks');
     await otea('create', '--collection', 'tasks', '--title', 'Mine', '--description', 'D');
   });
@@ -264,6 +267,7 @@ describe('move by an agent', () => {
     repo = tempGitRepo();
     otea = cliAt(repo.dir, { OTEA_AGENT: 'claude' });
     await otea('init');
+    declareProfiles(repo.dir, 'claude', 'claude-a', 'claude-b', 'codex', 'gemini', 'quill');
     presetCollection(repo.dir, 'tasks');
     await otea('create', '--collection', 'tasks', '--title', 'T', '--description', 'D');
     await otea('handoff', 'TASKS-1');

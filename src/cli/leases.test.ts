@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   type Cli,
   cliAt,
+  declareProfiles,
   presetCollection,
   spawnCli,
   type TempRepo,
@@ -22,6 +23,7 @@ describe('leases', () => {
     repo = tempGitRepo();
     otea = cliAt(repo.dir, { OTEA_AGENT: 'claude' });
     await otea('init');
+    declareProfiles(repo.dir, 'claude', 'claude-a', 'claude-b', 'codex', 'gemini', 'quill');
     presetCollection(repo.dir, 'tasks');
     await otea('create', '--collection', 'tasks', '--title', 'First', '--description', 'D');
     await otea('create', '--collection', 'tasks', '--title', 'Second', '--description', 'D');

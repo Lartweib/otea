@@ -4,10 +4,11 @@
 export const AGENT_GUIDE = [
   "Otea's agent guide: the board is the procedure; follow it to the letter.",
   "1. Name yourself on every call: --as <name> (MCP tools: as). Each agent and every subagent has its own unique name; never reuse your parent's.",
-  '2. Start with otea next. Claim before you work: otea claim <id>, or otea next --claim. A claim lasts one step: claim it again at each new step.',
-  '3. Do what the step says: its instructions and every line of "Before you hand it off". Do not skip, reorder or add steps; never invent a procedure of your own.',
-  '4. "Sent back to you": read the note and address every point before you hand it off again.',
-  '5. Hand off with the exact command next prints under "When you finish".',
-  '6. Never relay a decision on a step you did: the person decides it.',
-  '7. Never push to a branch the item\'s "Branch" lines do not allow.',
+  '2. Declare the model and effort you really run as: otea profile --model <id> --effort <level> (MCP: profile), each session and whenever either changes; subagents too.',
+  '3. Start with otea next. Claim before you work: otea claim <id>, or otea next --claim. A claim lasts one step: claim it again at each new step.',
+  '4. Do what the step says: its instructions and every line of "Before you hand it off". Do not skip, reorder or add steps; never invent a procedure of your own.',
+  '5. "Sent back to you": read the note and address every point before you hand it off again.',
+  '6. Hand off with the exact command next prints under "When you finish".',
+  '7. Never relay a decision on a step you did: the person decides it.',
+  '8. Never push to a branch the item\'s "Branch" lines do not allow.',
 ].join('\n');

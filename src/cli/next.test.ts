@@ -11,7 +11,11 @@ import { nextText, refusalText } from '../core/board/next.ts';
 import { creatures } from '../core/board/testing.ts';
 import { createMcpServer } from '../mcp/server.ts';
 import { COMMANDS } from './commands.ts';
-import { type Cli, cliAt, type TempRepo, tempGitRepo } from './testing.ts';
+import { type Cli, cliAt, declareProfiles, type TempRepo, tempGitRepo } from './testing.ts';
+
+// The line every next ends with, for an agent that declared the profile declareProfiles gives.
+const reminder = (agent: string) =>
+  `Your profile: claude-opus-5-5 · high. If you changed model or effort, update it: otea profile --model <id> --effort <level> --as ${agent}`;
 
 // Agents on a published board: next, handoff, approve and send-back, worded by the one writer.
 describe('next and the board moves', () => {
@@ -24,6 +28,7 @@ describe('next and the board moves', () => {
     repo = tempGitRepo();
     otea = cliAt(repo.dir, { OTEA_AGENT: 'claude' });
     await otea('init');
+    declareProfiles(repo.dir, 'claude', 'quill', 'kiln', 'scout');
     const project = openProject(repo.dir);
     try {
       const record = createBoard(project, { name: 'Criaturas', lang: 'es' });
@@ -74,7 +79,7 @@ describe('next and the board moves', () => {
       project.db.close();
     }
     expect(code).toBe(0);
-    expect(out).toBe(`${expected}\n`);
+    expect(out).toBe(`${expected}\n\n${reminder('quill')}\n`);
   });
 
   it('says what to do meanwhile when nothing is the agent’s', async () => {
@@ -85,7 +90,7 @@ describe('next and the board moves', () => {
 
     expect(code).toBe(0);
     expect(out).toBe(
-      'Nothing to do on Criaturas right now.\nWait for one: otea wait --turn agent --unclaimed --collection Criaturas, then otea next --collection Criaturas.\n',
+      `Nothing to do on Criaturas right now.\nWait for one: otea wait --turn agent --unclaimed --collection Criaturas, then otea next --collection Criaturas.\n\n${reminder('kiln')}\n`,
     );
     expect((await otea('next', '--collection', 'Nope')).code).toBe(3);
   });
@@ -189,6 +194,8 @@ describe('next and the board moves', () => {
       return JSON.parse(reply.content[0]?.text ?? '');
     };
     try {
+      // A new session: the agent declares its profile before next offers it work.
+      await tool('profile', { model: 'claude-opus-5-5', effort: 'high' });
       const next = await tool('next', {});
       expect(next).toMatchObject({ item: 'CRI-1', sentBack });
       expect(next.text).toContain(block);
@@ -264,6 +271,7 @@ describe('audio and other files on a board', () => {
     repo = tempGitRepo();
     otea = cliAt(repo.dir, { OTEA_AGENT: 'claude' });
     await otea('init');
+    declareProfiles(repo.dir, 'claude', 'quill', 'kiln', 'scout');
     const def = creatures();
     def.parts.evoice = { id: 'evoice', name: 'Voz', kind: 'audio', hint: '', options: [] };
     def.parts.efile = { id: 'efile', name: 'Proyecto', kind: 'file', hint: '', options: [] };

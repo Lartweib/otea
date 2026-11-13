@@ -33,6 +33,7 @@ export const AGENT_COMMANDS = [
   'send-back',
   'move',
   'claim',
+  'profile',
   'heartbeat',
   'release',
   'relay',
@@ -154,12 +155,16 @@ function inputFor(
   signal: AbortSignal,
   records: unknown[],
   harness: Harness | undefined,
+  seen: Set<string>,
 ): Input {
   const option = (name: string) => {
     const value = values[name];
     return typeof value === 'string' ? value : undefined;
   };
   const agent = typeof values.as === 'string' && values.as !== '' ? values.as : context.agent;
+  // The first call of each agent on this server starts its session here.
+  const newSession = agent !== undefined && !seen.has(agent);
+  if (agent !== undefined) seen.add(agent);
   return {
     cwd: context.cwd,
     get actor(): Actor {
@@ -168,6 +173,7 @@ function inputFor(
     agent,
     channel: 'mcp',
     harness,
+    ...(newSession ? { newSession } : {}),
     signal,
     openUrl: async () => {
       throw new Error('No browser to open over MCP');
@@ -208,12 +214,13 @@ async function callCommand(
   context: McpContext,
   signal: AbortSignal,
   harness: Harness | undefined,
+  seen: Set<string>,
 ): Promise<CallToolResult> {
   const records: unknown[] = [];
   try {
     const given = command.name === 'wait' ? waitValues(values) : values;
     const output = await command.execute(
-      inputFor(command, given, context, signal, records, harness),
+      inputFor(command, given, context, signal, records, harness, seen),
     );
     return reply(JSON.stringify(output === undefined ? records : output.data), false);
   } catch (error) {
@@ -230,6 +237,8 @@ export function createMcpServer(commands: readonly Command[], context: McpContex
     const client = server.server.getClientVersion();
     return client && { name: client.name, version: client.version };
   };
+  // The agents that called this server so far: each one's first call starts its session.
+  const seen = new Set<string>();
   server.server.oninitialized = () => context.greeted?.(harness());
   for (const name of AGENT_COMMANDS) {
     const command = commands.find((candidate) => candidate.name === name);
@@ -243,7 +252,7 @@ export function createMcpServer(commands: readonly Command[], context: McpContex
         annotations: { readOnlyHint: READ_ONLY.has(name) },
       },
       (values: Values, { mcpReq }) =>
-        callCommand(command, values, context, mcpReq.signal, harness()),
+        callCommand(command, values, context, mcpReq.signal, harness(), seen),
     );
   }
   return server;

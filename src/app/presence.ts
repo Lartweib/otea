@@ -1,7 +1,15 @@
 import type { DatabaseSync } from 'node:sqlite';
 import type { AgentChannel } from '../core/authority.ts';
 import { activeLease } from '../core/lease.ts';
-import { findAgent, selectAgents, selectLeases, upsertAgent } from '../store/queries.ts';
+import {
+  findAgent,
+  findProfile,
+  saveProfile,
+  selectAgents,
+  selectLeases,
+  unconfirmProfile,
+  upsertAgent,
+} from '../store/queries.ts';
 import { type Clock, systemClock } from './items.ts';
 
 // What an agent came through: an MCP client's clientInfo, or `cli` for the command line.
@@ -9,8 +17,14 @@ export type Harness = { name: string; version?: string | undefined };
 
 export const CLI_HARNESS: Harness = { name: 'cli' };
 
-// An agent seen acting, through a channel and maybe a known harness.
-export type Sighting = { agent: string; channel: AgentChannel; harness?: Harness | undefined };
+// An agent seen acting, through a channel and maybe a known harness. `newSession`: the first time
+// it is seen in a session (an MCP client initialized the server, or its first call there).
+export type Sighting = {
+  agent: string;
+  channel: AgentChannel;
+  harness?: Harness | undefined;
+  newSession?: boolean;
+};
 
 // An agent counts as live while it was seen this recently, or while it holds a lease.
 export const LIVE_WINDOW_MS = 5 * 60_000;
@@ -18,6 +32,10 @@ export const LIVE_WINDOW_MS = 5 * 60_000;
 // Seen again within this, an agent's last-seen time is left as it is: an agent reading item after
 // item writes once, not on every call (each write wakes the live UI).
 export const SEEN_PRECISION_MS = 30_000;
+
+// A command-line agent has no session Otea can see: back after this long away, it counts as a new
+// one, and its profile stands unconfirmed until it declares it again.
+export const CLI_SESSION_GAP_MS = 60 * 60_000;
 
 export type AgentPresence = {
   name: string;
@@ -46,6 +64,11 @@ function harnessAfter(
 export function seeAgent(db: DatabaseSync, sighting: Sighting, now: Clock = systemClock): boolean {
   const at = now();
   const known = findAgent(db, sighting.agent);
+  const away = known && Date.parse(at) - Date.parse(known.lastSeen) > CLI_SESSION_GAP_MS;
+  if (sighting.newSession || (sighting.channel === 'cli' && away)) {
+    unconfirmProfile(db, sighting.agent);
+  }
+  followClient(db, sighting, at);
   const next = harnessAfter(known, sighting);
   const fresh = known && Date.parse(at) - Date.parse(known.lastSeen) < SEEN_PRECISION_MS;
   const same =
@@ -53,6 +76,15 @@ export function seeAgent(db: DatabaseSync, sighting: Sighting, now: Clock = syst
   if (fresh && same) return false;
   upsertAgent(db, { name: sighting.agent, ...next, lastSeen: at });
   return true;
+}
+
+// A profile's harness is the MCP client's: when the client names another one, the profile follows.
+function followClient(db: DatabaseSync, { agent, channel, harness }: Sighting, at: string): void {
+  if (channel !== 'mcp' || !harness) return;
+  const declared = findProfile(db, agent);
+  if (!declared || declared.profile.harness === harness.name) return;
+  const profile = { ...declared.profile, harness: harness.name };
+  saveProfile(db, agent, profile, { at, channel, confirmed: declared.confirmed });
 }
 
 // The agents seen in the project, never the human: live ones first, then the most recently seen.

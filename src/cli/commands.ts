@@ -48,6 +48,13 @@ import {
 } from '../app/next.ts';
 import { type Harness, seeAgent } from '../app/presence.ts';
 import {
+  declareProfile,
+  presetProfile,
+  profileCommand,
+  profileReminder,
+  requireProfile,
+} from '../app/profile.ts';
+import {
   addPathToProject,
   initProject,
   openProject,
@@ -80,6 +87,7 @@ import type { FieldValues } from '../core/fields.ts';
 import { assertIconName } from '../core/icons.ts';
 import { type Actor, assertAgentName } from '../core/item.ts';
 import { parseDuration } from '../core/lease.ts';
+import { profileLine } from '../core/profile.ts';
 import { describeRelation, RELATION_KINDS } from '../core/relations.ts';
 import { timeText } from '../core/time.ts';
 import { TURNS, type Turn } from '../core/workflow.ts';
@@ -89,7 +97,7 @@ import { ALL_INTERFACES, DEFAULT_PORT, listen } from '../server/listen.ts';
 import { pairingUrl } from '../server/pairing.ts';
 import { createServer } from '../server/server.ts';
 import { ensureUiToken, readUiToken } from '../server/token.ts';
-import type { EventFilter } from '../store/queries.ts';
+import { type EventFilter, findProfile, type ProfileView, profileView } from '../store/queries.ts';
 import { mergeTarget, prBranches, pushTargets, readHookEvent } from './claude-hook.ts';
 import { type Command, CommandFailure, type Input, type Output, UsageError } from './command.ts';
 import {
@@ -203,8 +211,14 @@ async function withProjectWhile<T>(cwd: string, use: (project: Project) => Promi
 }
 
 // Notes that the agent running the command was seen, so the UI can show who is at work.
-function seen(project: Project, { actor, channel, harness }: Input): void {
-  if (actor.kind === 'agent') seeAgent(project.db, { agent: actor.name, channel, harness });
+function seen(project: Project, { actor, channel, harness, newSession }: Input): void {
+  if (actor.kind !== 'agent') return;
+  seeAgent(project.db, {
+    agent: actor.name,
+    channel,
+    harness,
+    ...(newSession ? { newSession } : {}),
+  });
 }
 
 // Opens the project for a command an agent runs, noting the agent as seen first.
@@ -494,13 +508,28 @@ const MAIN = fileURLToPath(new URL('./main.ts', import.meta.url));
 const connect: Command = {
   name: 'connect',
   summary:
-    'Pin an agent name in the project MCP config (.mcp.json) so every MCP action is attributed to it; asks for the name unless --as gives it',
+    'Pin an agent name in the project MCP config (.mcp.json) so every MCP action is attributed to it; asks for the name unless --as gives it. --model and --effort give the profile it runs as (required unless it declared one), which the agent confirms in its first session',
   args: [],
-  options: {},
+  options: {
+    model: { placeholder: 'id' },
+    effort: { placeholder: 'level' },
+  },
   execute: async ({ cwd, option, ask }) => {
     const root = withProject(cwd, (project) => project.root);
     const name = option('as') ?? (await ask('Agent name (short, like claude-b): '))?.trim();
     if (name === undefined) throw new UsageError('Name the agent with --as <name>');
+    assertAgentName(name);
+    const model = option('model');
+    const effort = option('effort');
+    withProject(cwd, (project) => {
+      if (model !== undefined && effort !== undefined) {
+        presetProfile(project.db, { agent: name, model, effort });
+      } else if (!findProfile(project.db, name)) {
+        throw new UsageError(
+          `Give the profile ${name} runs as: --model <id> --effort <level>, exactly as its harness names them (such as claude-opus-5-5 and high)`,
+        );
+      }
+    });
     const connection = connectAgent(root, name, MAIN);
     // The entry names this machine's path to Otea: the file stays out of git.
     const git = keepOutOfGit(connection.path);
@@ -650,8 +679,10 @@ const show: Command = {
     return withAgent(input, (project) => {
       const shown = showItem(project, id, performer);
       const gitHook = gitHookOf(project, shown);
+      // Each event's profile is left to otea events: show stays within its token budget.
       const item = {
         ...shown,
+        events: shown.events.map(({ profile: _profile, ...event }) => event),
         hint: hintFor(project, shown, actor.name),
         ...(gitHook === undefined ? {} : { gitHook }),
       };
@@ -813,12 +844,15 @@ const next: Command = {
   execute: (input) => {
     const collection = input.option('collection');
     const claim = input.flag('claim');
+    const { actor, channel } = input;
     return withAgent(input, (project) => {
-      const answer = nextFor(project, input.actor.name, {
+      const profile = requireProfile(project.db, actor.name, { channel, confirmed: true });
+      const answer = nextFor(project, actor.name, {
         ...(collection === undefined ? {} : { collection }),
         ...(claim ? { claim } : {}),
       });
-      return { data: answer, text: answer.text };
+      const text = `${answer.text}\n\n${profileReminder(profile, actor.name, channel)}`;
+      return { data: { ...answer, text, profile: profileView(profile) }, text };
     });
   },
 };
@@ -1097,9 +1131,72 @@ const claim: Command = {
     const { actor, option } = input;
     const ttl = ttlFrom(option('ttl'));
     const lease = { id, actor, ...(ttl === undefined ? {} : { ttlMs: ttl }) };
-    return withAgent(input, (project) => itemResult(project, claimItem(project, lease)));
+    return withAgent(input, (project) => {
+      requireProfile(project.db, actor.name, { channel: input.channel });
+      return itemResult(project, claimItem(project, lease));
+    });
   },
 };
+
+// The profile an agent runs as: declared with --model and --effort (--harness too for a
+// command-line agent the first time; an MCP client names its own), or shown without them.
+const profileCommandSpec: Command = {
+  name: 'profile',
+  summary:
+    'Declare the profile you run as: --model the exact model id and --effort the effort, as your harness names them (such as claude-opus-5-5 and high); --harness the tool you run in, the first time on the command line (an MCP client names its own). Declare it at the start of each session and whenever the model or effort changes; it is kept on everything you do. Without options, shows it',
+  args: [],
+  options: {
+    model: { placeholder: 'id' },
+    effort: { placeholder: 'level' },
+    harness: { placeholder: 'name' },
+  },
+  execute: (input) => {
+    const { actor, channel, harness, option } = input;
+    const model = option('model');
+    const effort = option('effort');
+    const given = option('harness');
+    return withAgent(input, (project) => {
+      const known = findProfile(project.db, actor.name);
+      if (model === undefined && effort === undefined && given === undefined) {
+        if (!known) {
+          const text = `${actor.name} has no profile yet: declare it with ${profileCommand(actor.name, channel)}`;
+          return { data: { agent: actor.name, profile: null, confirmed: false }, text };
+        }
+        const view = profileView(known.profile);
+        return {
+          data: { agent: actor.name, profile: view, confirmed: known.confirmed },
+          text: profileText(actor.name, view, known.confirmed, channel),
+        };
+      }
+      const declaredModel = model ?? known?.profile.model;
+      const declaredEffort = effort ?? known?.profile.effort;
+      if (declaredModel === undefined || declaredEffort === undefined) {
+        throw new UsageError('Declare both --model <id> and --effort <level> the first time');
+      }
+      const declared = declareProfile(project.db, {
+        agent: actor.name,
+        channel,
+        harness,
+        model: declaredModel,
+        effort: declaredEffort,
+        ...(given === undefined ? {} : { given }),
+      });
+      return { data: declared, text: profileText(actor.name, declared.profile, true, channel) };
+    });
+  },
+};
+
+function profileText(
+  agent: string,
+  profile: ProfileView,
+  confirmed: boolean,
+  channel: Input['channel'],
+): string {
+  const line = `${agent} runs as ${profileLine(profile)} on ${profile.harness} (family ${profile.family})`;
+  return confirmed
+    ? line
+    : `${line}; not confirmed in this session: declare it again with ${profileCommand(agent, channel)}`;
+}
 
 const heartbeat: Command = {
   name: 'heartbeat',
@@ -1383,7 +1480,7 @@ const open: Command = {
 function greetedBy(cwd: string, actor: Actor, harness: Harness | undefined, warn: Input['warn']) {
   try {
     withProject(cwd, (project) =>
-      seeAgent(project.db, { agent: actor.name, channel: 'mcp', harness }),
+      seeAgent(project.db, { agent: actor.name, channel: 'mcp', harness, newSession: true }),
     );
   } catch (error) {
     if (error instanceof OteaError && error.code === 'not_found') return;
@@ -1667,6 +1764,7 @@ export const COMMANDS: readonly Command[] = [
   events,
   wait,
   claim,
+  profileCommandSpec,
   heartbeat,
   release,
   update,

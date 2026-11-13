@@ -27,6 +27,9 @@ export type Input = {
   channel: AgentChannel;
   // What the agent came through, recorded with its presence: the MCP client, or the CLI itself.
   harness?: Harness | undefined;
+  // The agent's first call in a new session (an MCP server it has not called before): its profile
+  // stands unconfirmed until it declares it again.
+  newSession?: boolean;
   signal: AbortSignal;
   openUrl: Opener;
   // Whether what the command prints goes to a terminal a person reads, not to a pipe or a log: only

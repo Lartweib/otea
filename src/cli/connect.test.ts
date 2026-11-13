@@ -6,6 +6,9 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { AGENT_GUIDE } from '../core/agent-guide.ts';
 import { type Cli, cliAt, tempGitRepo } from './testing.ts';
 
+// The profile connect gives the agent it pins.
+const PROFILE = ['--model', 'claude-opus-5-5', '--effort', 'high'];
+
 const MAIN = fileURLToPath(new URL('./main.ts', import.meta.url));
 
 const BLOCK = [
@@ -90,7 +93,7 @@ describe('setup for agents', () => {
     });
 
     it('pins the agent name in the project MCP config', async () => {
-      const { code, out } = await otea('connect', '--as', 'claude-b');
+      const { code, out } = await otea('connect', '--as', 'claude-b', ...PROFILE);
 
       expect(code).toBe(0);
       expect(JSON.parse(read('.mcp.json'))).toEqual({ mcpServers: { otea: entry('claude-b') } });
@@ -100,8 +103,8 @@ describe('setup for agents', () => {
     });
 
     it('keeps .mcp.json out of git, as the per-machine file it is, once', async () => {
-      await otea('connect', '--as', 'claude');
-      await otea('connect', '--as', 'claude-b');
+      await otea('connect', '--as', 'claude', ...PROFILE);
+      await otea('connect', '--as', 'claude-b', ...PROFILE);
 
       const status = execFileSync('git', ['status', '--porcelain'], {
         cwd: repo.dir,
@@ -116,7 +119,7 @@ describe('setup for agents', () => {
       repo.write('.mcp.json', JSON.stringify({ mcpServers: {} }));
       execFileSync('git', ['add', '.mcp.json'], { cwd: repo.dir });
 
-      const { out } = await otea('connect', '--as', 'claude');
+      const { out } = await otea('connect', '--as', 'claude', ...PROFILE);
 
       expect(out).toContain(
         "(.mcp.json is tracked by git: it now names this machine's path to Otea, so keep that change out of your commits)",
@@ -125,7 +128,7 @@ describe('setup for agents', () => {
     });
 
     it('prints the config it wrote with --json', async () => {
-      expect(await json('connect', '--as', 'claude')).toEqual({
+      expect(await json('connect', '--as', 'claude', ...PROFILE)).toEqual({
         path: join(repo.dir, '.mcp.json'),
         server: 'otea',
         agent: 'claude',
@@ -136,8 +139,8 @@ describe('setup for agents', () => {
 
     it('keeps the other servers and replaces its own entry', async () => {
       repo.write('.mcp.json', JSON.stringify({ mcpServers: { other: { command: 'x' } } }));
-      await otea('connect', '--as', 'claude');
-      await otea('connect', '--as', 'claude-b');
+      await otea('connect', '--as', 'claude', ...PROFILE);
+      await otea('connect', '--as', 'claude-b', ...PROFILE);
 
       expect(JSON.parse(read('.mcp.json'))).toEqual({
         mcpServers: { other: { command: 'x' }, otea: entry('claude-b') },
@@ -152,7 +155,7 @@ describe('setup for agents', () => {
       };
       const asking = cliAt(repo.dir, {}, undefined, undefined, ask);
 
-      expect((await asking('connect')).code).toBe(0);
+      expect((await asking('connect', ...PROFILE)).code).toBe(0);
       expect(questions).toEqual(['Agent name (short, like claude-b): ']);
       expect(JSON.parse(read('.mcp.json')).mcpServers.otea).toEqual(entry('codex'));
     });
@@ -186,7 +189,7 @@ describe('setup for agents', () => {
     it('fails with not_found before init', async () => {
       const bare = tempGitRepo();
       try {
-        expect((await cliAt(bare.dir)('connect', '--as', 'claude')).code).toBe(3);
+        expect((await cliAt(bare.dir)('connect', '--as', 'claude', ...PROFILE)).code).toBe(3);
       } finally {
         bare.remove();
       }

@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { listAgents } from '../app/presence.ts';
 import { openProject } from '../app/project.ts';
-import { type Cli, cliAt, presetCollection, tempGitRepo } from './testing.ts';
+import { type Cli, cliAt, declareProfiles, presetCollection, tempGitRepo } from './testing.ts';
 
 // An agent's name is its identity: every agent command needs one, there is no default, and one
 // rule says which names are valid wherever a name is given.
@@ -27,6 +27,7 @@ describe('agent identity on the CLI', () => {
     repo = tempGitRepo();
     unnamed = cliAt(repo.dir);
     await unnamed('init', '--local');
+    declareProfiles(repo.dir, 'claude');
     presetCollection(repo.dir, 'tasks');
     await cliAt(repo.dir, { OTEA_AGENT: 'claude' })(
       'create',
@@ -79,6 +80,7 @@ describe('agent identity on the CLI', () => {
 
   it('acts as the name --as gives, before OTEA_AGENT', async () => {
     const otea = cliAt(repo.dir, { OTEA_AGENT: 'claude' });
+    declareProfiles(repo.dir, 'codex');
     const item = JSON.parse((await otea('claim', 'TASKS-1', '--as', 'codex', '--json')).out);
 
     expect(item.lease.holder).toBe('codex');
