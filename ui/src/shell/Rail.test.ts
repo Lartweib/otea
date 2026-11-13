@@ -59,10 +59,26 @@ describe('the rail', () => {
     const html = rail();
     expect(html).toContain('<div class="rail-label">tableros</div>');
     expect(html).toMatch(
-      /Errores<\/span><span class="pair"><span class="n you"><span class="nv" data-v="1">1<\/span><\/span> \/ <span class="n"><span class="nv" data-v="3">3/,
+      /Errores<\/span><span class="pair"[^>]*><span class="n you"><span class="nv" data-v="1">1<\/span><\/span> \/ <span class="n"><span class="nv" data-v="3">3/,
     );
     expect(html).toContain('aria-label="Nuevo ítem en Errores"');
     expect(html).toContain('Nuevo tablero');
+  });
+
+  // The + takes the pair's place under the pointer, so the row itself says what the pair counts,
+  // folded or not.
+  it('says what a board’s pair counts when you rest on its row', () => {
+    expect(rail()).toMatch(
+      /data-k="board:Errores" data-tip="Errores · Te toca: 1 · Abiertos: 3" data-tip-more=""/,
+    );
+    setLanguage('en');
+    const en = renderIn(
+      testApp({ all, collections: [board('Errores', 'bug'), board('Criaturas', 'paw')] }),
+      createElement(Rail),
+    );
+    expect(en).toContain('data-tip="Errores · Your turn: 1 · Open: 3" data-tip-more=""');
+    // Te toca and Atasco count one thing each: their rows name it, and say nothing more.
+    expect(rail()).toMatch(/data-k="toca" data-tip="Te toca">/);
   });
 
   it('marks the row in view and slides one pill under it', () => {
