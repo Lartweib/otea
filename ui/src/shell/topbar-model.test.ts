@@ -175,21 +175,30 @@ describe('the agents menu’s rows', () => {
     expect(agentRows([agent('Old', { live: false })], items, NOW)).toEqual([]);
   });
 
-  it('counts the connected, those holding a lease and the idle', () => {
-    const counts = agentCounts([
-      agent('Scout', { holding: ['ERR-231'] }),
-      agent('Quill'),
-      agent('Old', { live: false }),
-    ]);
-    expect(counts).toEqual({ live: 2, holding: 1, idle: 1 });
+  it('counts the agents the menu lists, those holding a lease and the idle', () => {
+    const rows = agentRows(
+      [
+        agent('Scout', { holding: ['ERR-231'] }),
+        agent('Quill'),
+        agent('Old', { live: false }),
+        agent('Kiln', { live: false, lastSeen: ago(12) }),
+      ],
+      items,
+      NOW,
+    );
+    // Kiln went quiet on its stuck item: the menu lists it, so the pill counts it too.
+    expect(rows.map((r) => r.name)).toEqual(['Scout', 'Quill', 'Kiln']);
+    expect(agentCounts(rows)).toEqual({ live: 3, holding: 1, idle: 2 });
   });
 });
 
 describe('the agents pill’s mark', () => {
+  const rows = (agents: Agent[]) => agentRows(agents, [], NOW);
+
   it('turns while an agent holds a lease, rests as a ring with agents, dashes with none', () => {
-    expect(pillMark('live', [agent('a', { holding: ['X'] })])).toBe('working');
-    expect(pillMark('live', [agent('a')])).toBe('idle');
+    expect(pillMark('live', rows([agent('a', { holding: ['X'] })]))).toBe('working');
+    expect(pillMark('live', rows([agent('a')]))).toBe('idle');
     expect(pillMark('live', [])).toBe('none');
-    expect(pillMark('reconnecting', [agent('a')])).toBe('offline');
+    expect(pillMark('reconnecting', rows([agent('a')]))).toBe('offline');
   });
 });
