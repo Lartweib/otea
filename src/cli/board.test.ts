@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { getItem } from '../app/items.ts';
 import { itemNextText, liveBoardOf } from '../app/next.ts';
 import { openProject } from '../app/project.ts';
+import { AGENT_GUIDE } from '../core/agent-guide.ts';
 import { boardText } from '../core/board/next.ts';
 import { listedTemplates } from '../core/board/templates.ts';
 import { type Cli, cliAt, presetCollection, tempGitRepo } from './testing.ts';
@@ -39,7 +40,7 @@ describe('board', () => {
     const def = read((project) => liveBoardOf(project, 'work')?.def);
     expect(code).toBe(0);
     expect(def).toBeDefined();
-    expect(out).toBe(`${boardText(def ?? ({} as never))}\n`);
+    expect(out).toBe(`${AGENT_GUIDE}\n\n${boardText(def ?? ({} as never))}\n`);
     expect(out).toContain(
       '1. Completar: any agent does it\n\n2. Hacerlo: any agent does it; the person reviews it',
     );
@@ -63,6 +64,8 @@ describe('board', () => {
     expect(code).toBe(0);
     expect(out).toBe(
       [
+        AGENT_GUIDE,
+        '',
         'Read the board you work in before acting:',
         '  Pedidos         board  otea board Pedidos',
         '  work            board  otea board work',

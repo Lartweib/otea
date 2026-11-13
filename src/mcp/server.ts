@@ -10,6 +10,7 @@ import {
   type OptionSpec,
   UsageError,
 } from '../cli/command.ts';
+import { AGENT_GUIDE } from '../core/agent-guide.ts';
 import { type Actor, agentActor } from '../core/item.ts';
 import { parseDuration } from '../core/lease.ts';
 
@@ -223,7 +224,9 @@ async function callCommand(
 }
 
 export function createMcpServer(commands: readonly Command[], context: McpContext): McpServer {
-  const server = new McpServer({ name: 'otea', version: VERSION });
+  // Otea's agent guide as the server's instructions: clients such as Claude Code put them in the
+  // agent's context when it connects.
+  const server = new McpServer({ name: 'otea', version: VERSION }, { instructions: AGENT_GUIDE });
   // The client names itself in initialize: its clientInfo is the harness the agent works through.
   const harness = (): Harness | undefined => {
     const client = server.server.getClientVersion();
