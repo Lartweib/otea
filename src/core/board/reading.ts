@@ -101,6 +101,25 @@ function valueFor(part: Part, value: unknown): unknown {
   return value;
 }
 
+// `--description` (and MCP's `description`) on a board with no field of that name: the long text
+// named Description in English or Spanish, else the board's only long text. Refuses, naming the
+// long texts, a board with several and none of them the description, or with none.
+const DESCRIPTION = 'description';
+const DESCRIPTION_NAMES = new Set([DESCRIPTION, 'descripcion']);
+
+function descriptionOf(def: BoardDefinition): Part {
+  const long = namedParts(def).filter((part) => part.kind === 'long');
+  const named = long.filter((part) => DESCRIPTION_NAMES.has(fold(part.name)));
+  const pool = named.length > 0 ? named : long;
+  if (pool.length === 1 && pool[0]) return pool[0];
+  throw new OteaError(
+    'invalid_fields',
+    long.length === 0
+      ? `${def.name} has no description field; its fields are ${fieldNames(def).join(', ')}`
+      : `${def.name} has no description field; fill one of its long texts by name: ${namesOf(long)}`,
+  );
+}
+
 // The fields a reader typed, by name or id, as the item stores them: by part id, with choices as
 // their ids. Refuses, in words, a name the board has not and a value no choice has.
 export function readFieldInput(
@@ -113,13 +132,15 @@ export function readFieldInput(
       out[TITLE] = value;
       continue;
     }
-    const part = partByName(def, key);
+    const part =
+      partByName(def, key) ?? (fold(key) === DESCRIPTION ? descriptionOf(def) : undefined);
     if (!part || isEvidence(part)) {
       throw new OteaError(
         'invalid_fields',
         `${def.name} has no field "${key}"; its fields are ${fieldNames(def).join(', ')}`,
       );
     }
+    if (part.id in out) throw new OteaError('invalid_fields', `${part.name} given twice`);
     out[part.id] = valueFor(part, value);
   }
   return out;

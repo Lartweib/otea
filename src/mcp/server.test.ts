@@ -180,6 +180,18 @@ describe('mcp server', () => {
   });
 
   describe('writes', () => {
+    it('fills a board description field from description, whatever its name', async () => {
+      const created = await data('create', {
+        collection: 'Errores',
+        title: 'Se cae',
+        description: 'Al abrir el menú',
+      });
+
+      expect(created.fields).toContainEqual(
+        expect.objectContaining({ name: 'Descripción', value: 'Al abrir el menú' }),
+      );
+    });
+
     it('creates and updates items as the agent', async () => {
       const created = await data('create', {
         collection: 'tasks',
