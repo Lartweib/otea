@@ -31,14 +31,19 @@ export function ImageSingle({ evidence }: { evidence: Evidence }) {
   );
 }
 
-// Every image, oldest first: one large, the rest as thumbnails. Left and right step through them.
+// Every image, oldest first: one large, the rest as thumbnails. It opens on the newest (the latest
+// round's), and follows a newer one that arrives until another is picked. Left and right step
+// through them.
 export function ImageGallery({ evidence, label }: { evidence: Evidence[]; label: string }) {
   const fileUrl = useFileUrl();
-  const [index, setIndex] = useState(0);
-  const current = evidence[Math.min(index, evidence.length - 1)];
+  const [picked, setPicked] = useState<number | undefined>(undefined);
+  const at = evidence.findIndex(({ id }) => id === picked);
+  const index = at >= 0 ? at : evidence.length - 1;
+  const current = evidence[index];
   if (!current) return null;
   const many = evidence.length > 1;
-  const step = (delta: number) => setIndex((at) => stepIndex(at, delta, evidence.length));
+  const setIndex = (to: number) => setPicked(evidence[to]?.id);
+  const step = (delta: number) => setIndex(stepIndex(index, delta, evidence.length));
   const onKeyDown = (event: KeyboardEvent<HTMLElement>) =>
     stepWithArrows(event, index, evidence.length, setIndex);
   return (
