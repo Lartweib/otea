@@ -181,6 +181,18 @@ describe('the agents menu’s rows', () => {
     });
   });
 
+  it('says an agent waits for your answer while its question waits, on an item it holds', () => {
+    const asked = item({
+      id: 'CRI-1',
+      title: 'Tortuga',
+      state: 'sconcept',
+      lease: { holder: 'Kiln', expiresAt: inMinutes(30) },
+      asks: { question: 1, by: 'Kiln', text: '¿Liso?', at: ago(5) },
+    });
+    const [row] = agentRows([agent('Kiln', { holding: ['CRI-1'] })], [asked], NOW);
+    expect(row).toMatchObject({ state: 'wait', working: false, item: { id: 'CRI-1' } });
+  });
+
   it('tags a command-line agent with the harness its profile names', () => {
     const [row] = agentRows([agent('Quill', { harness: 'cli', profile: opus })], items, NOW);
     expect(row?.harness).toBe('claude-code');
