@@ -167,6 +167,7 @@ export function problemWords(problem: Problem): string {
     split_cycle: `${board.trim() || 'the board'} and${other} divide into each other`,
     split_unknown: `${board.trim() || 'the board'} divides into a board that does not exist`,
     guard_no_push: `the branch${part} is protected but no step lets it be pushed`,
+    guard_base: `the base branch the branch${part} protects too is not a branch name`,
     initial_invalid: `the field${part} starts with a value it does not have`,
     motive_agent_drop: `an agent that drops in step${step} must name a motive`,
   };

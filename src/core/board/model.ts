@@ -76,11 +76,12 @@ export type Part = {
   initial?: string;
   // "Otea protege esta rama", on a branch field only: pushes are allowed only while one of `push`
   // (step ids) is being done, never during its review, and merging only at Hecho. `repo` is the
-  // field (part id) the repository's name is read from.
+  // field (part id) the repository's name is read from. `base` names the base branch the board
+  // protects too: an agent pushes or merges into it only to bring in an item that is Hecho.
   guard?: Guard;
 };
 
-export type Guard = { push: string[]; repo?: string };
+export type Guard = { push: string[]; repo?: string; base?: string };
 
 // How a long text shows on the item page: as text, or as options side by side (### A · Name).
 export const LONG_SHOWS = ['text', 'options'] as const;

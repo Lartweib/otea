@@ -53,8 +53,15 @@ export function mergeTarget(command: string): string | undefined {
 }
 
 // Where the git pushes of a command write: the branches they name, the current branch (`current`,
-// when a push names none, or names HEAD) and every local branch (`every`, for --all).
-export type PushTargets = { branches: string[]; current: boolean; every: boolean };
+// when a push names none, or names HEAD) and every local branch (`every`, for --all). `from` holds
+// what a named branch is sent from when it is not the branch of that name: the ref of `src:dst`
+// (HEAD included), or '' for a delete.
+export type PushTargets = {
+  branches: string[];
+  current: boolean;
+  every: boolean;
+  from: Record<string, string>;
+};
 
 const CURRENT = Symbol('current');
 
@@ -78,24 +85,34 @@ function refspecBranch(refspec: string): string | typeof CURRENT | undefined {
   return target;
 }
 
+// What a refspec sends: its source when it names one apart from its destination ('' for `:dst`),
+// undefined for a refspec that sends the branch of its own name.
+function refspecSource(refspec: string): string | undefined {
+  const spec = refspec.replace(/^\+/, '');
+  const colon = spec.indexOf(':');
+  return colon < 0 ? undefined : spec.slice(0, colon);
+}
+
 // Where the `git push` calls of a command write, nothing when it has none, or `unknown` with why it
 // cannot tell, for a push that may write to branches it does not name.
 export function pushTargets(command: string): PushTargets | { unknown: string } | undefined {
   const calls = [...command.matchAll(/\bgit\s+push(?=\s|$)([^;&|\n]*)/g)];
   if (calls.length === 0) return undefined;
-  const targets: PushTargets = { branches: [], current: false, every: false };
+  const targets: PushTargets = { branches: [], current: false, every: false, from: {} };
   try {
     for (const [, rest] of calls) {
       const args = words(rest ?? '');
       const positional: string[] = [];
       let all = false;
       let tags = false;
+      let remove = false;
       for (let index = 0; index < args.length; index++) {
         const arg = args[index] ?? '';
         if (PUSH_VALUE_FLAGS.has(arg)) index++;
         else if (PUSH_UNTOLD.has(arg)) throw new Error(`${arg} writes branches it does not name`);
         else if (arg === '--all' || arg === '--branches') all = true;
         else if (arg === '--tags') tags = true;
+        else if (arg === '--delete' || arg === '-d') remove = true;
         else if (!arg.startsWith('-')) positional.push(arg);
       }
       const [remote, ...refspecs] = positional;
@@ -106,7 +123,11 @@ export function pushTargets(command: string): PushTargets | { unknown: string } 
       for (const refspec of refspecs) {
         const branch = refspecBranch(refspec);
         if (branch === CURRENT) targets.current = true;
-        else if (branch !== undefined) targets.branches.push(branch);
+        else if (branch !== undefined) {
+          targets.branches.push(branch);
+          const source = remove ? '' : refspecSource(refspec);
+          if (source !== undefined) targets.from[branch] = source;
+        }
       }
     }
   } catch (error) {
@@ -118,18 +139,36 @@ export function pushTargets(command: string): PushTargets | { unknown: string } 
 // gh asks the forge over the network, so a hook never waits on it longer than this.
 const GH_TIMEOUT_MS = 10_000;
 
-// The head branch of a PR, asked of gh in the repo at cwd; throws when gh is missing, fails or
-// takes too long.
-export function prHeadBranch(cwd: string, pr: string, gh = 'gh'): string {
-  let branch = '';
+// The head branch of a PR and the base branch it merges into, asked of gh in the repo at cwd (the
+// PR of the branch checked out, when `pr` names none); throws when gh is missing, fails or takes
+// too long.
+export function prBranches(
+  cwd: string,
+  pr: string | undefined,
+  gh = 'gh',
+): { head: string; base: string } {
+  const which = pr === undefined ? [] : [pr];
+  let read = '';
   try {
-    branch = execFileSync(gh, ['pr', 'view', pr, '--json', 'headRefName', '--jq', '.headRefName'], {
-      cwd,
-      encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'ignore'],
-      timeout: GH_TIMEOUT_MS,
-    }).trim();
+    read = execFileSync(
+      gh,
+      [
+        'pr',
+        'view',
+        ...which,
+        '--json',
+        'headRefName,baseRefName',
+        '--jq',
+        '.headRefName + " " + .baseRefName',
+      ],
+      { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], timeout: GH_TIMEOUT_MS },
+    ).trim();
   } catch {}
-  if (branch === '') throw new Error(`gh could not tell the head branch of PR ${pr}`);
-  return branch;
+  const [head = '', base = ''] = read.split(' ');
+  if (head === '' || base === '') {
+    throw new Error(
+      `gh could not tell the branches of ${pr === undefined ? 'the PR' : `PR ${pr}`}`,
+    );
+  }
+  return { head, base };
 }

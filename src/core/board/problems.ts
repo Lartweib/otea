@@ -41,6 +41,7 @@ export type ProblemCode =
   | 'split_cycle'
   | 'split_unknown'
   | 'guard_no_push'
+  | 'guard_base'
   | 'initial_invalid'
   | 'motive_agent_drop';
 
@@ -249,6 +250,8 @@ function laterProblems(
     if (!used.has(part.id)) continue;
     if (part.guard && !part.guard.push.some((id) => stepIndex(def, id) >= 0))
       add('error', 'guard_no_push', partAt(part.id), { part: part.name });
+    if (part.guard?.base !== undefined && !isBranchName(part.guard.base))
+      add('error', 'guard_base', partAt(part.id), { part: part.name });
     if (part.initial !== undefined && !initialFits(part.kind, part.options, part.initial))
       add('error', 'initial_invalid', partAt(part.id), { part: part.name });
   }
@@ -257,6 +260,12 @@ function laterProblems(
     if (dropper) add('warning', 'motive_agent_drop', { kind: 'done' }, { step: dropper.name });
   }
   return out;
+}
+
+// A git branch name as a person types one: no spaces or the characters git refuses, no "..", not
+// starting with a slash or a dot, nor ending with one.
+function isBranchName(name: string): boolean {
+  return /^(?![./])(?!.*\.\.)(?!.*[./]$)[^\s~^:?*[\\]+$/.test(name);
 }
 
 function initialFits(kind: string, options: readonly { id: string }[], value: string): boolean {

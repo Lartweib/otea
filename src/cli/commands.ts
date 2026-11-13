@@ -17,7 +17,7 @@ import {
 import { listDevices, revokeDevice } from '../app/devices.ts';
 import { listEvents } from '../app/events.ts';
 import { attachEvidence } from '../app/evidence.ts';
-import { checkGate, type GateCheck } from '../app/gates.ts';
+import { type Brings, checkGate, type GateCheck } from '../app/gates.ts';
 import { boardGuide, type Guide, guideIndex, hintFor } from '../app/guide.ts';
 import { forgetProjectPath, listProjects, relinkProjectPath, withRegistry } from '../app/home.ts';
 import { hasOwnBoards, type InitBoard, initBoards, NO_BOARDS } from '../app/init-boards.ts';
@@ -87,7 +87,7 @@ import { pairingUrl } from '../server/pairing.ts';
 import { createServer } from '../server/server.ts';
 import { ensureUiToken, readUiToken } from '../server/token.ts';
 import type { EventFilter } from '../store/queries.ts';
-import { mergeTarget, prHeadBranch, pushTargets, readHookEvent } from './claude-hook.ts';
+import { mergeTarget, prBranches, pushTargets, readHookEvent } from './claude-hook.ts';
 import { type Command, CommandFailure, type Input, type Output, UsageError } from './command.ts';
 import {
   columns,
@@ -99,7 +99,7 @@ import {
   formatReport,
   indent,
 } from './format.ts';
-import { currentBranch, localBranches } from './gitrepo.ts';
+import { branchesBrought, currentBranch, localBranches, remoteOf } from './gitrepo.ts';
 import {
   type HookChange,
   installClaudeHook,
@@ -1402,9 +1402,11 @@ function gateFields(
   return fields;
 }
 
-function gateText({ gate, allowed, items }: GateCheck): string {
-  // On a board, the step engine's words for each item.
+function gateText({ gate, allowed, items, refusal }: GateCheck): string {
+  // On a board, the step engine's words for each item, and why a push into a protected base
+  // branch that brings in none of its items is refused.
   const said = items.filter((item) => allowed || !item.allowed).flatMap(({ text }) => text ?? []);
+  if (refusal !== undefined) said.push(refusal);
   if (said.length > 0) return said.join('\n');
   if (allowed) {
     const states = items.map(({ id, state }) => `${id} is ${state}`);
@@ -1419,37 +1421,78 @@ function gateText({ gate, allowed, items }: GateCheck): string {
     .join('\n');
 }
 
-// The branches a hooked command acts on: the head branch of the PR a `gh pr merge <pr>` names and
-// the branches its `git push` calls write to, or the current branch when it names none. Throws
-// UntoldTarget for a push that may write to branches it does not name.
-function commandBranches(cwd: string, command: string | undefined): string[] {
+// One branch a check asks about: the branch, what a push or merge into it brings in (when a board
+// protects it as its base), and for a merged PR the base it merges into, asked only when no item
+// has the PR's branch.
+type Target = { branch: string; brings?: Brings; into?: () => string };
+
+// What a push of `branch` sent from `from` brings in: the local branches in it and not yet on
+// the remote's `branch`.
+function pushOf(cwd: string, branch: string, from = branch): Target {
+  return { branch, brings: () => branchesBrought(cwd, from, remoteOf(cwd, branch)) };
+}
+
+// The branches a hooked command acts on: the head branch of the PR a `gh pr merge` merges (and
+// the base it merges into) and the branches its `git push` calls write to, or the current branch
+// when it names none. Throws UntoldTarget for a push that may write to branches it does not name.
+function commandTargets(cwd: string, command: string | undefined): Target[] {
   const pr = command === undefined ? undefined : mergeTarget(command);
+  const merges = command !== undefined && /\bgh\s+pr\s+merge\b/.test(command);
   const push = command === undefined ? undefined : pushTargets(command);
   if (push !== undefined && 'unknown' in push) throw new UntoldTarget(push.unknown);
-  if (pr === undefined && push === undefined) return [currentBranch(cwd)];
-  const branches = pr === undefined ? [] : [prHeadBranch(cwd, pr)];
-  if (push !== undefined) {
-    branches.push(...push.branches);
-    if (push.current) branches.push(currentBranch(cwd));
-    if (push.every) branches.push(...localBranches(cwd));
+  if (!merges && push === undefined) return [pushOf(cwd, currentBranch(cwd))];
+  const targets: Target[] = [];
+  if (merges) {
+    let asked: { head: string; base: string } | undefined;
+    const ask = () => {
+      asked ??= prBranches(cwd, pr);
+      return asked;
+    };
+    const head = pr === undefined ? currentBranch(cwd) : ask().head;
+    targets.push({ branch: head, into: () => ask().base });
   }
-  return [...new Set(branches)];
+  if (push !== undefined) {
+    for (const branch of push.branches) targets.push(pushOf(cwd, branch, push.from[branch]));
+    if (push.current) targets.push(pushOf(cwd, currentBranch(cwd), 'HEAD'));
+    if (push.every) targets.push(...localBranches(cwd).map((branch) => pushOf(cwd, branch)));
+  }
+  return targets.filter(
+    (target, index) => targets.findIndex(({ branch }) => branch === target.branch) === index,
+  );
 }
 
 class UntoldTarget extends Error {}
 
-// One check of the gate for each set of fields (one per branch): refused when any is, with the
-// items of all.
-function checkBranches(
+// The commits a push sends, as `--commits <remote>..<local>` names them: what the remote has of
+// the branch and what it gets (the ids a pre-push hook reads; all zeros for a branch created or
+// deleted).
+function commitsOption(value: string): { from: string; to: string } {
+  const [from, to, ...rest] = value.split('..');
+  if (from === undefined || to === undefined || rest.length > 0) {
+    throw new UsageError('--commits takes <remote>..<local>, the commits the push sends');
+  }
+  return { from, to };
+}
+
+// One check of the gate for each branch: refused when any is, with the items of all. A merged PR
+// whose branch no item has is checked as a merge into its base, which a board may protect.
+function checkTargets(
   project: Project,
   gate: string,
-  fieldSets: ReadonlyArray<Record<string, string>>,
+  targets: readonly Target[],
+  fields: (branch: string) => Record<string, string>,
 ): GateCheck {
-  if (fieldSets.length === 0) return { gate, allowed: true, items: [], note: 'no branch to check' };
-  const checks = fieldSets.map((fields) => checkGate(project, gate, fields));
+  if (targets.length === 0) return { gate, allowed: true, items: [], note: 'no branch to check' };
+  const checks = targets.map((target) => {
+    const check = checkGate(project, gate, fields(target.branch), target.brings);
+    if (check.items.length > 0 || check.refusal !== undefined || !target.into) return check;
+    return checkGate(project, gate, fields(target.into()), () => [target.branch]);
+  });
   const items = checks.flatMap((check) => check.items);
   const result: GateCheck = { gate, allowed: checks.every((check) => check.allowed), items };
-  if (items.length === 0 && checks[0]?.note) result.note = checks[0].note;
+  const refusals = checks.flatMap((check) => check.refusal ?? []);
+  if (refusals.length > 0) result.refusal = refusals.join('\n');
+  else if (items.length === 0 && checks[0]?.note) result.note = checks[0].note;
   return result;
 }
 
@@ -1462,13 +1505,14 @@ function checkBranches(
 const check: Command = {
   name: 'check',
   summary:
-    'Check whether the items matching the fields allow a gated action: exit 0 when allowed, 19 when refused, 2 for a gate nothing declares; repo names match whatever their case; it allows the action, with a note, when no item matches or the check cannot run. --branch defaults to the branch checked out, --repo to the name the project gives the repo checked out (otea repos list), refused when the project does not know it; --claude-hook reads a Claude Code PreToolUse event on stdin and refuses with exit 2',
+    'Check whether the items matching the fields allow a gated action: exit 0 when allowed, 19 when refused, 2 for a gate nothing declares; repo names match whatever their case; it allows the action, with a note, when no item matches or the check cannot run. --branch defaults to the branch checked out, --repo to the name the project gives the repo checked out (otea repos list), refused when the project does not know it. A push or merge into a base branch a board protects is checked against the items whose branches it brings in: --commits <remote>..<local> names the commits a push sends (the pre-push hook passes them), else the branch against its upstream; --claude-hook reads a Claude Code PreToolUse event on stdin and refuses with exit 2',
   args: [],
   options: {
     gate: { required: true, placeholder: 'action' },
     field: { multiple: true, placeholder: 'key=value' },
     branch: { optionalValue: true, placeholder: 'name' },
     repo: { optionalValue: true, placeholder: 'name' },
+    commits: { placeholder: 'remote..local' },
     'claude-hook': { flag: true },
   },
   execute: async (input) => {
@@ -1479,10 +1523,16 @@ const check: Command = {
       const event = hook ? readHookEvent(await input.stdin()) : {};
       const cwd = event.cwd ?? input.cwd;
       const named = input.option('branch');
+      const commits = input.option('commits');
+      const sent = commits === undefined ? undefined : commitsOption(commits);
       result = withProject(cwd, (project) => {
-        const branches = named === '' ? commandBranches(cwd, event.command) : [named ?? ''];
-        const fields = branches.map((branch) => gateFields(input, cwd, project, () => branch));
-        return checkBranches(project, gate, fields);
+        const given = (branch: string): Target =>
+          sent === undefined
+            ? pushOf(cwd, branch)
+            : { branch, brings: () => branchesBrought(cwd, sent.to, sent.from) };
+        const targets = named === '' ? commandTargets(cwd, event.command) : [given(named ?? '')];
+        const fields = (branch: string) => gateFields(input, cwd, project, () => branch);
+        return checkTargets(project, gate, targets, fields);
       });
     } catch (error) {
       if (error instanceof UsageError) throw error;
@@ -1505,7 +1555,8 @@ const check: Command = {
       result = { gate, allowed: true, items: [], note: `could not check (${message})` };
     }
     if (result.note) input.warn(`${result.note}; ${gate} allowed`);
-    if (result.items.length === 0) return { data: result, text: '' };
+    if (result.items.length === 0 && result.refusal === undefined)
+      return { data: result, text: '' };
     const text = gateText(result);
     if (result.allowed) return { data: result, text };
     if (!hook) return { data: result, text, failure: 'gate_refused' };

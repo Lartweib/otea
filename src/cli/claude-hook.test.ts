@@ -1,11 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { mergeTarget, prHeadBranch, pushTargets, readHookEvent } from './claude-hook.ts';
+import { mergeTarget, prBranches, pushTargets, readHookEvent } from './claude-hook.ts';
 
 // Without gh, the check that calls this fails open with the note it throws.
-describe('prHeadBranch', () => {
-  it('throws when gh cannot tell the head branch', () => {
-    expect(() => prHeadBranch(process.cwd(), '482', 'otea-no-such-gh')).toThrow(
-      'gh could not tell the head branch of PR 482',
+describe('prBranches', () => {
+  it('throws when gh cannot tell the branches of the PR', () => {
+    expect(() => prBranches(process.cwd(), '482', 'otea-no-such-gh')).toThrow(
+      'gh could not tell the branches of PR 482',
+    );
+    expect(() => prBranches(process.cwd(), undefined, 'otea-no-such-gh')).toThrow(
+      'gh could not tell the branches of the PR',
     );
   });
 });
@@ -35,8 +38,18 @@ describe('mergeTarget', () => {
 });
 
 describe('pushTargets', () => {
-  const branches = (...names: string[]) => ({ branches: names, current: false, every: false });
-  const current = { branches: [], current: true, every: false };
+  const branches = (...names: string[]) => ({
+    branches: names,
+    current: false,
+    every: false,
+    from: {},
+  });
+  const sent = (from: Record<string, string>, ...names: string[]) => ({
+    ...branches(...names),
+    from,
+  });
+  const current = { branches: [], current: true, every: false, from: {} };
+  const every = { branches: [], current: false, every: true, from: {} };
 
   it.each<[string, ReturnType<typeof pushTargets>]>([
     ['gh pr merge 482', undefined],
@@ -47,19 +60,19 @@ describe('pushTargets', () => {
     ['git push --force-with-lease origin HEAD', current],
     ['git push origin @', current],
     ['git push origin feat/x', branches('feat/x')],
-    ['git push origin main:refs/heads/feat/x --force', branches('feat/x')],
-    ['git push origin HEAD:feat/x', branches('feat/x')],
-    ['git push origin +main:feat/x', branches('feat/x')],
-    ['git push origin a:b c +HEAD:refs/heads/d', branches('b', 'c', 'd')],
-    ['git push origin :feat/x', branches('feat/x')],
-    ['git push --delete origin feat/x', branches('feat/x')],
+    ['git push origin main:refs/heads/feat/x --force', sent({ 'feat/x': 'main' }, 'feat/x')],
+    ['git push origin HEAD:feat/x', sent({ 'feat/x': 'HEAD' }, 'feat/x')],
+    ['git push origin +main:feat/x', sent({ 'feat/x': 'main' }, 'feat/x')],
+    ['git push origin a:b c +HEAD:refs/heads/d', sent({ b: 'a', d: 'HEAD' }, 'b', 'c', 'd')],
+    ['git push origin :feat/x', sent({ 'feat/x': '' }, 'feat/x')],
+    ['git push --delete origin feat/x', sent({ 'feat/x': '' }, 'feat/x')],
     ['git push -o ci.skip --repo origin x feat/y', branches('feat/y')],
     ['git push origin v1:refs/tags/v1', branches()],
     ['git push origin --tags', branches()],
-    ['git push origin --all', { branches: [], current: false, every: true }],
-    ['git push --branches origin', { branches: [], current: false, every: true }],
-    ['cd api && git push origin a:b && git push origin c', branches('b', 'c')],
-    ['git push origin main:feat/x; echo done', branches('feat/x')],
+    ['git push origin --all', every],
+    ['git push --branches origin', every],
+    ['cd api && git push origin a:b && git push origin c', sent({ b: 'a' }, 'b', 'c')],
+    ['git push origin main:feat/x; echo done', sent({ 'feat/x': 'main' }, 'feat/x')],
   ])('reads %j', (command, targets) => {
     expect(pushTargets(command)).toEqual(targets);
   });

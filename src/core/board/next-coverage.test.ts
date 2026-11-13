@@ -123,6 +123,23 @@ describe('nextText, the later settings', () => {
     );
   });
 
+  it('says the base branch takes the branch only once Done, when the board protects it', () => {
+    const def = errores();
+    const branch = Object.values(def.parts).find((part) => part.guard);
+    if (!branch?.guard) throw new Error('no protected branch');
+    branch.guard.base = 'main';
+    const doing = nextText(def, {
+      ...base,
+      position: { step: 'sfix', phase: 'doing' },
+      me: 'mender',
+    });
+    expect(lines(doing, 'Branch')).toEqual([
+      'Branch',
+      '  feat/x in api: you may push while you do Arreglar. While it is reviewed it is frozen; it can be merged only once it is Done.',
+      '  main is protected too: push or merge feat/x into it only once BUG-4 is Done.',
+    ]);
+  });
+
   it('tells an agent reviewer the branch is frozen', () => {
     const def = errores();
     def.steps[2] = { ...def.steps[2]!, reviewer: { agent: 'scout' } };

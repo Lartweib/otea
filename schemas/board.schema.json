@@ -151,6 +151,11 @@
                 "pattern": "^[a-z][a-z0-9_-]*$",
                 "description": "The field (part id) the repository is read from",
                 "examples": ["frepo"]
+              },
+              "base": {
+                "type": "string",
+                "description": "The base branch Otea protects too: agents push or merge into it only to bring in an item that is Done",
+                "examples": ["main"]
               }
             },
             "required": ["push"],
@@ -159,7 +164,8 @@
             "examples": [
               {
                 "push": ["simplement"],
-                "repo": "frepo"
+                "repo": "frepo",
+                "base": "main"
               }
             ]
           }

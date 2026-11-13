@@ -69,7 +69,7 @@ export type Change =
   | { kind: 'waits'; step: string; name: string; waits: Wait[]; board?: string }
   | { kind: 'doer_drop'; step: string; name: string; on: boolean }
   // The protected branch: the names of the steps it is pushed in; `push: null` when unprotected.
-  | { kind: 'guard'; part: string; partName: string; push: string[] | null }
+  | { kind: 'guard'; part: string; partName: string; push: string[] | null; base?: string }
   // A start value: the raw value (a level key, yes or no, a choice id) and, for a choice, its name.
   | {
       kind: 'initial';
@@ -189,8 +189,15 @@ function laterBoardChanges(
     const pushNames = (def: BoardDefinition, guard: typeof part.guard) =>
       guard ? guard.push.flatMap((s) => stepById(def, s)?.name ?? []) : null;
     const [was, now] = [pushNames(live, old?.guard), pushNames(draft, part.guard)];
-    if (!same(was, now) || !same(old?.guard?.repo, part.guard?.repo))
-      out.push({ kind: 'guard', part: part.id, partName: part.name, push: now });
+    const moved = (key: 'repo' | 'base') => !same(old?.guard?.[key], part.guard?.[key]);
+    if (!same(was, now) || moved('repo') || moved('base'))
+      out.push({
+        kind: 'guard',
+        part: part.id,
+        partName: part.name,
+        push: now,
+        ...(part.guard?.base === undefined ? {} : { base: part.guard.base }),
+      });
     if ((old?.initial ?? null) !== (part.initial ?? null)) {
       const choice = part.options.find(({ id }) => id === part.initial);
       out.push({

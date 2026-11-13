@@ -1,10 +1,13 @@
 import { execFileSync } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
 import { basename, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { getBoardRecord, listBoardSummaries, publishBoard, saveDraft } from '../app/boards.ts';
 import { moveItem } from '../app/items.ts';
 import { openProject } from '../app/project.ts';
 import { EXIT_CODES } from './exit-codes.ts';
+import { installGitHook } from './hooks.ts';
 import { type Cli, cliAt, presetCollection, tempGitRepo } from './testing.ts';
 
 describe('check', () => {
@@ -229,5 +232,141 @@ describe('check', () => {
     expect(EXIT_CODES.gate_refused).toBe(19);
     const codes = Object.entries(EXIT_CODES).filter(([, code]) => code === 19);
     expect(codes).toEqual([['gate_refused', 19]]);
+  });
+
+  describe('with the base branch protected', () => {
+    const git = (...args: string[]) =>
+      execFileSync('git', args, { cwd: repo.dir, stdio: 'pipe', encoding: 'utf8' }).trim();
+    const commit = (message: string) =>
+      git(
+        '-c',
+        'user.name=t',
+        '-c',
+        'user.email=t@t',
+        'commit',
+        '-q',
+        '--allow-empty',
+        '-m',
+        message,
+      );
+    const push = (...argv: string[]) => otea('check', '--gate', 'push', ...argv);
+
+    // The person turns on "protect the base branch too" in Studio and publishes.
+    beforeEach(() => {
+      const project = openProject(repo.dir);
+      try {
+        const board = listBoardSummaries(project).find(
+          ({ collection }) => collection === 'Tareas de repo',
+        );
+        const live = board && getBoardRecord(project, board.id).live;
+        if (!board || !live) throw new Error('no Tareas de repo board');
+        const def = structuredClone(live.definition);
+        const branch = Object.values(def.parts).find((part) => part.guard);
+        if (!branch?.guard) throw new Error('no protected branch');
+        branch.guard.base = 'main';
+        saveDraft(project, board.id, { definition: def, baseVersion: live.version });
+        publishBoard(project, board.id, { moves: {}, by: { kind: 'human', name: 'ana' } });
+      } finally {
+        project.db.close();
+      }
+      commit('root');
+      git('branch', 'main');
+      git('update-ref', 'refs/remotes/origin/main', 'main');
+    });
+
+    it('refuses a local merge into the base while the item is reviewed, and allows it once Done', async () => {
+      person(task, 'implementing');
+      commit('keys');
+      await otea('move', task, 'implementing__review');
+      git('checkout', '-q', 'main');
+      git('merge', '-q', '--ff-only', 'chg-1/keys');
+
+      expect(await push('--branch', '--repo')).toEqual({
+        code: 19,
+        out: `push refused: ${task} is in Implementar, round 1; main takes its branch only once ${task} is Done.\n`,
+        err: '',
+      });
+      person(task, 'done');
+      expect(await push('--branch', '--repo')).toMatchObject({
+        code: 0,
+        out: `push allowed: ${task} is Done; main takes its branch.\n`,
+      });
+    });
+
+    it('stops a real push into the base through the pre-push hook until the item is Done', async () => {
+      const remote = tempGitRepo();
+      try {
+        const bare = join(remote.dir, 'origin.git');
+        execFileSync('git', ['init', '-q', '--bare', bare]);
+        git('push', '-q', '--no-verify', bare, 'main:main');
+        installGitHook(repo.dir, fileURLToPath(new URL('./main.ts', import.meta.url)));
+        person(task, 'implementing');
+        commit('keys');
+        await otea('move', task, 'implementing__review');
+        git('checkout', '-q', 'main');
+        git('merge', '-q', '--ff-only', 'chg-1/keys');
+
+        const refused = (() => {
+          try {
+            git('push', '-q', bare, 'main');
+            return 'pushed';
+          } catch (error) {
+            return String((error as { stdout?: string }).stdout);
+          }
+        })();
+        expect(refused).toContain(
+          `push refused: ${task} is in Implementar, round 1; main takes its branch only once ${task} is Done.`,
+        );
+        expect(git('--git-dir', bare, 'rev-parse', 'main')).not.toBe(git('rev-parse', 'main'));
+        person(task, 'done');
+        git('push', '-q', bare, 'main');
+        expect(git('--git-dir', bare, 'rev-parse', 'main')).toBe(git('rev-parse', 'main'));
+      } finally {
+        remote.remove();
+      }
+    });
+
+    it('refuses an agent’s git push into the base by what it sends, as a Claude Code hook', async () => {
+      const hooked = (command: string) => {
+        const event = { cwd: repo.dir, tool_name: 'Bash', tool_input: { command } };
+        const at = cliAt(repo.dir, {}, undefined, undefined, undefined, JSON.stringify(event));
+        return at('check', '--gate', 'push', '--branch', '--repo', '--claude-hook');
+      };
+      person(task, 'implementing');
+      commit('keys');
+      await otea('move', task, 'implementing__review');
+
+      const sent = await hooked('git push origin chg-1/keys:main');
+      expect(sent.code).toBe(2);
+      expect(sent.err).toContain(`main takes its branch only once ${task} is Done`);
+      expect((await hooked('git push origin main')).code).toBe(2);
+      expect((await hooked('git push origin --delete main')).code).toBe(2);
+      git('checkout', '-q', 'main');
+      git('merge', '-q', '--ff-only', 'chg-1/keys');
+      expect((await hooked('git push')).code).toBe(2);
+      person(task, 'done');
+      expect((await hooked('git push origin main')).code).toBe(0);
+      expect((await hooked('git push origin HEAD:main')).code).toBe(0);
+    });
+
+    it('refuses a push to the base that brings in no item, by the commits the push sends', async () => {
+      const root = git('rev-parse', 'HEAD');
+      git('checkout', '-q', 'main');
+      commit('straight onto main');
+      const head = git('rev-parse', 'HEAD');
+      const none =
+        'push refused: main is the base branch Tareas de repo protects; it takes only the branch of a Tarea de repo that is Done, and this push brings in none.\n';
+
+      expect(await push('--branch', '--repo')).toEqual({ code: 19, out: none, err: '' });
+      expect(await push('--branch', 'main', '--repo', '--commits', `${root}..${head}`)).toEqual({
+        code: 19,
+        out: none,
+        err: '',
+      });
+      expect(
+        (await push('--branch', 'main', '--repo', '--commits', `${head}..${'0'.repeat(40)}`)).code,
+      ).toBe(19);
+      expect((await push('--branch', 'other', '--repo')).code).toBe(0);
+    });
   });
 });
