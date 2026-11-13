@@ -1,6 +1,7 @@
 import type { Channel } from '../core/authority.ts';
 import { OteaError } from '../core/errors.ts';
 import type { Actor } from '../core/item.ts';
+import type { RefusalDetails } from '../core/refusal.ts';
 import { transaction } from '../store/database.ts';
 import { appendEvent, selectEvents, updateItemState } from '../store/queries.ts';
 import { typeOfItem } from './collections.ts';
@@ -14,6 +15,8 @@ import { type Clock, type Item, present, requireItem, systemClock } from './item
 // The toast stays about 6 s; the undo is honoured a little longer, for a slow click or a slow link.
 export const UNDO_WINDOW_MS = 30_000;
 
+type Why = Extract<RefusalDetails, { kind: 'undo' }>['why'];
+
 export type UndoMoveInput = { id: string; from: string; actor: Actor; channel: Channel };
 
 export function undoMove(ctx: Context, input: UndoMoveInput, now: Clock = systemClock): Item {
@@ -23,17 +26,22 @@ export function undoMove(ctx: Context, input: UndoMoveInput, now: Clock = system
     const at = now();
     const moves = selectEvents(db, item.id).filter((e) => e.type === 'transitioned');
     const last = moves.at(-1);
-    const refuse = (why: string): never => {
-      throw new OteaError('not_undoable', `${item.id}: ${why}`);
+    const refuse = (why: Why, text: string): never => {
+      throw new OteaError('not_undoable', `${item.id}: ${text}`, {
+        kind: 'undo',
+        item: item.id,
+        why,
+      });
     };
-    if (!last) return refuse('it has not moved');
-    if (last.data.undoes !== undefined) return refuse('its last move is already undone');
+    if (!last) return refuse('not_moved', 'it has not moved');
+    if (last.data.undoes !== undefined)
+      return refuse('already_undone', 'its last move is already undone');
     if (last.actor.kind !== input.actor.kind || last.actor.name !== input.actor.name)
-      return refuse('its last move is not yours');
+      return refuse('not_yours', 'its last move is not yours');
     if (last.data.to !== item.state || last.data.from !== input.from)
-      return refuse(`its last move is not from "${input.from}"`);
+      return refuse('not_from', `its last move is not from "${input.from}"`);
     if (Date.parse(at) - Date.parse(last.at) > UNDO_WINDOW_MS)
-      return refuse('the move is too old to take back');
+      return refuse('too_old', 'the move is too old to take back');
     const { workflow } = typeOfItem(ctx, item);
     updateItemState(db, item.id, input.from, at);
     appendEvent(db, {

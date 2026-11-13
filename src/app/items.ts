@@ -83,7 +83,8 @@ export function present(item: ItemRecord, workflow: Workflow, at: string): Item 
 
 export function requireItem(db: DatabaseSync, id: string): ItemRecord {
   const item = findItem(db, id);
-  if (!item) throw new OteaError('not_found', `Item "${id}" not found`);
+  if (!item)
+    throw new OteaError('not_found', `Item "${id}" not found`, { kind: 'item_missing', item: id });
   return item;
 }
 
@@ -271,6 +272,7 @@ export function updateItem(ctx: Context, input: UpdateItemInput, now = systemClo
       throw new OteaError(
         'item_closed',
         `${item.id} is ${item.state} (turn none) and can no longer be updated`,
+        { kind: 'closed', item: item.id },
       );
     }
     const fields = boardFieldInput(ctx, item.collection, input.fields ?? {});

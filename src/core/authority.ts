@@ -44,6 +44,7 @@ function forbidden(from: string, to: string, transitions: Transition[], performe
   return new OteaError(
     'forbidden',
     `Moving from "${from}" to "${to}" requires ${required.join(' or ')}; ${actor.kind} "${actor.name}" via ${channel} may not`,
+    { kind: 'move', why: 'not_allowed' },
   );
 }
 
@@ -93,7 +94,10 @@ export function relayableMoves(workflow: Workflow, from: string): Move[] {
 function requireReason(transition: Transition, reason: string | undefined): void {
   if (transition.reasonRequired && !reason?.trim()) {
     const { from, to } = transition;
-    throw new OteaError('reason_required', `Moving from "${from}" to "${to}" requires a reason`);
+    throw new OteaError('reason_required', `Moving from "${from}" to "${to}" requires a reason`, {
+      kind: 'move',
+      why: 'reason_required',
+    });
   }
 }
 

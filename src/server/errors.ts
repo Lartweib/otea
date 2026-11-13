@@ -1,5 +1,6 @@
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import { type ErrorCode, OteaError } from '../core/errors.ts';
+import type { RefusalDetails } from '../core/refusal.ts';
 
 export const HTTP_STATUS: Readonly<Record<ErrorCode, ContentfulStatusCode>> = {
   not_found: 404,
@@ -60,17 +61,22 @@ export class RejectedRequest extends Error {
   }
 }
 
-export type ErrorBody = { error: { code: string; message: string } };
+export type ErrorBody = {
+  error: { code: string; message: string; details?: RefusalDetails };
+};
 
 export type ErrorResponse = { status: ContentfulStatusCode; body: ErrorBody };
 
-export function errorBody(code: string, message: string): ErrorBody {
-  return { error: { code, message } };
+export function errorBody(code: string, message: string, details?: RefusalDetails): ErrorBody {
+  return { error: { code, message, ...(details === undefined ? {} : { details }) } };
 }
 
 export function toErrorResponse(error: unknown): ErrorResponse {
   if (error instanceof OteaError) {
-    return { status: HTTP_STATUS[error.code], body: errorBody(error.code, error.message) };
+    return {
+      status: HTTP_STATUS[error.code],
+      body: errorBody(error.code, error.message, error.details),
+    };
   }
   if (error instanceof InvalidQuery) {
     return { status: 400, body: errorBody('invalid_query', error.message) };

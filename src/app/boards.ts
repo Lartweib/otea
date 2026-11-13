@@ -250,10 +250,14 @@ export function insertNewBoard(
   ids: IdSource = newId,
 ): BoardRecord {
   const name = input.name.trim();
-  if (name === '') throw new OteaError('invalid_name', 'A board needs a name');
+  if (name === '')
+    throw new OteaError('invalid_name', 'A board needs a name', { kind: 'board_name_empty' });
   {
     if (namesTaken(ctx).some((taken) => same(taken, name)))
-      throw new OteaError('already_exists', `There is already a board called ${name}`);
+      throw new OteaError('already_exists', `There is already a board called ${name}`, {
+        kind: 'board_name_taken',
+        name,
+      });
     const names = { name, ...(input.item?.trim() ? { item: input.item.trim() } : {}) };
     let definition: BoardDefinition;
     if (input.template !== undefined) {
@@ -294,6 +298,7 @@ function assertDraftUnchanged(ctx: Context, id: string, stamp: string | null | u
     throw new OteaError(
       'board_conflict',
       'The draft changed since you opened it (an agent handed in its board, or another window saved it): reload to see it',
+      { kind: 'draft_changed' },
     );
 }
 
@@ -318,6 +323,7 @@ export function saveDraft(
       throw new OteaError(
         'board_conflict',
         `The board changed since this draft started: it is at version ${row.liveVersion ?? 'none'} now`,
+        { kind: 'board_changed', version: row.liveVersion },
       );
     assertDraftUnchanged(ctx, id, input.draftStamp);
     const previous = findDraft(ctx.db, id);
@@ -496,7 +502,10 @@ function publishWithin(ctx: Context, id: string, input: PublishInput, now: Clock
   const problems = boardProblems(ctx, id, draft);
   if (blocking(problems)) {
     const codes = problems.filter(({ level }) => level === 'error').map(({ code }) => code);
-    throw new OteaError('not_publishable', `The draft has errors: ${codes.join(', ')}`);
+    throw new OteaError('not_publishable', `The draft has errors: ${codes.join(', ')}`, {
+      kind: 'draft_errors',
+      codes,
+    });
   }
   const version = maxVersion(ctx.db, id) + 1;
   compileBoard(id, version, draft);
@@ -567,7 +576,11 @@ function restoreWithin(ctx: Context, id: string, input: RestoreInput, now: Clock
   const collection = row.collection;
   if (input.version === null) {
     if (collection !== null && selectItems(ctx.db, { collection }).length > 0)
-      throw new OteaError('not_undoable', 'Items were created on the board since it was published');
+      throw new OteaError(
+        'not_undoable',
+        'Items were created on the board since it was published',
+        { kind: 'restore_used' },
+      );
     setLiveVersion(ctx.db, id, null);
     if (collection !== null) {
       ctx.db.prepare('UPDATE boards SET collection = NULL WHERE id = ?').run(id);
@@ -582,6 +595,7 @@ function restoreWithin(ctx: Context, id: string, input: RestoreInput, now: Clock
         throw new OteaError(
           'already_exists',
           `Another board is called ${name} now: rename it before you undo this`,
+          { kind: 'restore_name_taken', name },
         );
     }
     if (collection !== null) {
@@ -602,6 +616,7 @@ function restoreWithin(ctx: Context, id: string, input: RestoreInput, now: Clock
         throw new OteaError(
           'not_undoable',
           `${item} stands in ${step?.name ?? position.step}, which version ${version} does not have`,
+          { kind: 'restore_step_lost', item, step: step?.name ?? position.step, version },
         );
       }
       setLiveVersion(ctx.db, id, version);
@@ -845,9 +860,13 @@ export function createBoardSet(
     const taken = namesTaken(ctx);
     const seen: string[] = [];
     for (const def of defs) {
-      if (def.name.trim() === '') throw new OteaError('invalid_name', 'A board needs a name');
+      if (def.name.trim() === '')
+        throw new OteaError('invalid_name', 'A board needs a name', { kind: 'board_name_empty' });
       if ([...taken, ...seen].some((name) => same(name, def.name)))
-        throw new OteaError('already_exists', `There is already a board called ${def.name}`);
+        throw new OteaError('already_exists', `There is already a board called ${def.name}`, {
+          kind: 'board_name_taken',
+          name: def.name,
+        });
       seen.push(def.name);
     }
     const at = now();
