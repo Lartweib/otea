@@ -27,6 +27,9 @@ export type Item = {
   // On a list, when the round it is on has notes from the person: how many, how many wait for an
   // answer, and the agent's latest answer (the turn stays where it was).
   notes?: { count: number; unanswered: number; replied?: { note: number; by: string; at: string } };
+  // On a board, while an agent's question waits for your answer (otea ask): the question; the turn
+  // is yours until you answer it.
+  asks?: { question: number; by: string; text: string; at: string };
   collection: string;
   // The item type: "item" in a collection whose preset declares no types.
   type: string;

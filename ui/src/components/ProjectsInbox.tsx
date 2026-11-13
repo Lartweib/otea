@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { typeOfItem, useApp } from '../app/context.tsx';
 import { onPublishedBoard } from '../board-studio/home/boards-store.ts';
-import { agentOf, type TocaSection, tocaSection } from '../derive/toca.ts';
+import { agentOf, askingAgent, type TocaSection, tocaSection } from '../derive/toca.ts';
 import { whenText } from '../derive/when.ts';
 import { listOf, t, tx } from '../i18n/i18n.ts';
 import { LaneHead } from '../lanes/LaneHead.tsx';
@@ -59,7 +59,8 @@ export function hereBlocks(
     blocks.push({ kind: 'empty', key: `empty:p:${name}`, content: t('projects.emptyHere') });
   for (const { it, sec } of rows) {
     const when = whenText(it, app.now);
-    const { a, sub } = action(sec, agentOf(it, app.feed));
+    const asker = sec === 'preguntas' ? askingAgent(it, app.feed) : null;
+    const { a, sub } = action(sec, asker ?? agentOf(it, app.feed));
     const state = stateWord(typeOfItem(it, app.collectionOf), it.state);
     blocks.push({
       kind: 'row',

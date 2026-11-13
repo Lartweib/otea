@@ -246,8 +246,15 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
     [live, agentStep, item],
   );
   const noted = useMemo(() => notedOn(thread), [thread]);
-  const canNote = !!agentStep && app.session.canWrite;
-  const mode = actsModeOf({ look, canWrite: app.session.canWrite, question: facts.question, plan });
+  // While the agent's question waits for you, you answer it rather than leave a note.
+  const canNote = !!agentStep && app.session.canWrite && !item.asks;
+  const mode = actsModeOf({
+    look,
+    canWrite: app.session.canWrite,
+    question: facts.question,
+    plan,
+    asks: !!item.asks,
+  });
   const steps = onBoard ? onBoard.route.steps : type ? routeSteps(type) : [];
   const ci = onBoard ? onBoard.route.ci : type ? routeIndex(type, item.state, facts.visited) : 0;
   const stand = standOf({

@@ -78,6 +78,7 @@ function fakeApp(o: Partial<App> = {}): App {
     move: async () => undefined,
     update: async () => undefined,
     note: async () => undefined,
+    answer: async () => undefined,
     restart: async () => undefined,
     reassign: async () => undefined,
     link: async () => undefined,

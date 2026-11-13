@@ -6,6 +6,7 @@ import { Prof } from '../../components/Prof.tsx';
 import { mainPath } from '../../derive/path.ts';
 import {
   agentOf,
+  askingAgent,
   handedNote,
   TOCA_SECTIONS,
   type TocaContext,
@@ -108,7 +109,7 @@ export function rowCall(item: Item, sec: TocaSection, ctx: TocaContext): RowCall
     case 'preguntas':
       return {
         act: t('toca.act.preguntas'),
-        sub: sub('toca.sub.asks', handedNote(item, feed)?.agent),
+        sub: sub('toca.sub.asks', askingAgent(item, feed)),
       };
     case 'revisiones': {
       const who = handedNote(item, feed)?.agent ?? agentOf(item, feed);

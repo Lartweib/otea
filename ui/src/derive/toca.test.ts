@@ -2,7 +2,15 @@ import { describe, expect, it } from 'vitest';
 import type { FeedEvent } from '../activity.ts';
 import type { Item } from '../types.ts';
 import { agent, ago, inMinutes, item, moved, NOW, officialType, you } from './fixtures.ts';
-import { agentOf, boardCounts, handedNote, stuckCount, tocaCount, tocaSection } from './toca.ts';
+import {
+  agentOf,
+  askingAgent,
+  boardCounts,
+  handedNote,
+  stuckCount,
+  tocaCount,
+  tocaSection,
+} from './toca.ts';
 
 const bug = officialType('bug-triage');
 const ctx = (feed: FeedEvent[] = []) => ({ now: NOW, feed, types: () => bug });
@@ -27,6 +35,21 @@ describe('the section of Te toca an item is in', () => {
     });
     expect(tocaSection(stuck, ctx())).toBe('atasco');
     expect(tocaSection(retaken, ctx())).toBe('encamino');
+  });
+
+  it('puts an agent’s question (otea ask) in Preguntas, whatever its handoff said', () => {
+    const asks = { question: 1, by: 'kiln', text: 'Liso o con musgo', at: ago(3) };
+    const asked = item({ id: 'A', state: 'sconcept', asks });
+    const onBoard = { ...ctx(), onBoard: () => true };
+    expect(tocaSection(asked, onBoard)).toBe('preguntas');
+    expect(askingAgent(asked, [])).toBe('kiln');
+  });
+
+  it('on a board, reads a handoff note ending in a question as a review, not a question', () => {
+    const handed = item({ id: 'A', state: 'sconcept__review' });
+    const move = moved('A', 'sconcept__review', agent('kiln'));
+    const feed = [{ ...move, data: { ...move.data, note: '¿Liso o con musgo?' } }];
+    expect(tocaSection(handed, { ...ctx(feed), onBoard: () => true })).toBe('revisiones');
   });
 
   it('reads a handoff whose words end in a question as a question for you', () => {
