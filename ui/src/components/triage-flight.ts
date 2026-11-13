@@ -21,13 +21,18 @@ import {
 //   it was let go at, and lets go of its opacity before it lands, while the card under it rises
 //   into its place (560, settle, from wherever the pull had brought it);
 // - let go short of it: it springs home with the same speed, the card under it sinks back;
-// - taken back (Deshacer, a failed move): the throw mirrored, back from the side it left by;
+// - with its pile beside the stack (a wide screen): thrown onto it, brought down to the pile's width,
+//   and let go only as it lands there, where the pile's new top card takes over;
+// - taken back (Deshacer, a failed move): the throw mirrored, back from the side (or the pile) it
+//   left by;
 // - under reduced motion: crossfades in place.
 // While it moves sideways the card is drawn by its face: a copy fixed over where it rests, above
 // everything (--z-flight), so it flies over the view's edge instead of being cut by it. The card
 // itself waits unseen in the stack (it keeps the pointer) and is seen again once the face lands.
 
 export type Flight = { done: Promise<void>; cancel: () => void };
+// Where a thrown card lands on its pile, from where it rests (pileLanding).
+export type Landing = { x: number; y: number; scale: number };
 
 const THROW = 560;
 const HOME = 440;
@@ -96,9 +101,15 @@ function keepStamp(face: HTMLElement, side: Direction | undefined, x: number): v
   }
 }
 
-function pose(face: HTMLElement, x: number, tilt = tiltOf(x)): void {
-  face.style.transform = `translateX(${x.toFixed(2)}px) rotate(${tilt.toFixed(3)}deg)`;
+function pose(face: HTMLElement, x: number, tilt = tiltOf(x), y = 0, scale = 1): void {
+  face.style.transform =
+    y === 0 && scale === 1
+      ? `translateX(${x.toFixed(2)}px) rotate(${tilt.toFixed(3)}deg)`
+      : `translate(${x.toFixed(2)}px, ${y.toFixed(2)}px) rotate(${tilt.toFixed(3)}deg) scale(${scale.toFixed(4)})`;
 }
+
+// A card landing on its pile stays whole until it is almost there, then hands over to the pile.
+const landFade = (k: number): number => 1 - F.drift(clamp((k - 0.62) / 0.33));
 
 // The card where the pointer has it, and what that pull says.
 export function hold(card: HTMLElement, x: number): void {
@@ -174,8 +185,15 @@ function riseWith(stack: HTMLElement | null, from: number, k: number): void {
   setRise(stack, lerp(from, 1, F.settle(clamp((k * THROW - 60) / (THROW - 60)))));
 }
 
-// Thrown on its way: from where it was let go (x, at speed v in px/ms), on to its side.
-export function throwOut(card: HTMLElement, side: Direction, x = 0, v = 0): Flight {
+// Thrown on its way: from where it was let go (x, at speed v in px/ms), on to its side, or onto
+// its pile when there is one to land on.
+export function throwOut(
+  card: HTMLElement,
+  side: Direction,
+  x = 0,
+  v = 0,
+  landing?: Landing,
+): Flight {
   const stack = stackOf(card);
   card.style.pointerEvents = 'none';
   if (reduced()) {
@@ -184,7 +202,7 @@ export function throwOut(card: HTMLElement, side: Direction, x = 0, v = 0): Flig
   }
   const face = faceOf(card);
   delete face.dataset.held;
-  const to = throwTo(side, x);
+  const to = landing ? landing.x : throwTo(side, x);
   // A button press starts still; a fling carries its speed (never against its way).
   const v0 = side === 'right' ? Math.max(0, v) : Math.min(0, v);
   const at = spring(x, to, v0, THROW);
@@ -193,12 +211,19 @@ export function throwOut(card: HTMLElement, side: Direction, x = 0, v = 0): Flig
   face.dataset.lean = side;
   const thrown = flight(THROW, (k, t) => {
     const now = at(t).x;
-    const fade = throwFade(k);
     card.dataset.x = now.toFixed(2);
-    pose(face, now, tiltOf(now) * 1.3);
-    keepStamp(face, side, now);
-    face.style.opacity = fade.toFixed(4);
-    face.style.filter = `blur(${((1 - fade) * 1.5).toFixed(2)}px)`;
+    if (landing) {
+      // Onto the pile: down and smaller as it goes, straightening as it settles there.
+      const e = F.settle(k);
+      pose(face, now, tiltOf(now) * (1 - e), lerp(0, landing.y, e), lerp(1, landing.scale, e));
+      face.style.opacity = landFade(k).toFixed(4);
+    } else {
+      const fade = throwFade(k);
+      pose(face, now, tiltOf(now) * 1.3);
+      keepStamp(face, side, now);
+      face.style.opacity = fade.toFixed(4);
+      face.style.filter = `blur(${((1 - fade) * 1.5).toFixed(2)}px)`;
+    }
     // The stamp is already set when the card leaves by a button: the decision reads all the way.
     face.style.setProperty('--p', Math.max(p0, F.settle(clamp(k * 3))).toFixed(4));
     face.dataset.armed = '';
@@ -256,15 +281,15 @@ export function springHome(card: HTMLElement, x: number, v = 0): Flight {
   });
 }
 
-// Taken back: the throw mirrored, from the side it left by to its place, while the card that had
-// risen sinks back under it.
-export function returnIn(card: HTMLElement, side: Direction): Flight {
+// Taken back: the throw mirrored, from the side (or the pile) it left by to its place, while the
+// card that had risen sinks back under it.
+export function returnIn(card: HTMLElement, side: Direction, landing?: Landing): Flight {
   const stack = stackOf(card);
   if (reduced()) {
     setRise(stack, 0);
     return faded(anim(card, [{ opacity: 0 }, { opacity: 1 }], 160, 'drift', 0, 'backwards'));
   }
-  const from = throwTo(side, 0);
+  const from = landing ? landing.x : throwTo(side, 0);
   const at = spring(from, 0, 0, THROW);
   const face = faceOf(card);
   return flight(THROW, (k, t) => {
@@ -274,6 +299,14 @@ export function returnIn(card: HTMLElement, side: Direction): Flight {
       return;
     }
     const now = at(t).x;
+    if (landing) {
+      // Lifted off its pile, growing back to its size as it comes home.
+      const e = F.settle(k);
+      pose(face, now, 0, lerp(landing.y, 0, e), lerp(landing.scale, 1, e));
+      face.style.opacity = F.drift(clamp(k * 2.4)).toFixed(4);
+      setRise(stack, 1 - e);
+      return;
+    }
     // It is seen as it comes in, whole well before it lands.
     const fade = F.drift(clamp(k * 2.4));
     pose(face, now, tiltOf(now) * 1.3);
