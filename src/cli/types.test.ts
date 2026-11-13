@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { type Cli, cliAt, presetCollection, tempGitRepo, type TempRepo } from './testing.ts';
+import { type Cli, cliAt, presetCollection, type TempRepo, tempGitRepo } from './testing.ts';
 
 describe('item types', () => {
   let repo: TempRepo;

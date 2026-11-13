@@ -1,6 +1,15 @@
 import { setTimeout as delay } from 'node:timers/promises';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { type Cli, cliAt, presetCollection, spawnCli, startCli, tempGitRepo, type TempRepo, until } from './testing.ts';
+import {
+  type Cli,
+  cliAt,
+  presetCollection,
+  spawnCli,
+  startCli,
+  type TempRepo,
+  tempGitRepo,
+  until,
+} from './testing.ts';
 
 const USAGE =
   'Usage: otea wait --turn <agent|human> [--collection <collection>] [--unclaimed] [--timeout <duration>]';

@@ -2,7 +2,7 @@ import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { openDatabase } from '../store/database.ts';
 import { insertRelation } from '../store/queries.ts';
-import { type Cli, cliAt, presetCollection, tempGitRepo, type TempRepo } from './testing.ts';
+import { type Cli, cliAt, presetCollection, type TempRepo, tempGitRepo } from './testing.ts';
 
 const NOTES = (version: number) => `
 preset: notes

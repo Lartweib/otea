@@ -1,5 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { type Cli, cliAt, presetCollection, spawnCli, startCli, tempGitRepo, type TempRepo, until } from './testing.ts';
+import {
+  type Cli,
+  cliAt,
+  presetCollection,
+  spawnCli,
+  startCli,
+  type TempRepo,
+  tempGitRepo,
+  until,
+} from './testing.ts';
 
 const AT = '\\d{4}-\\d\\d-\\d\\dT\\S+Z';
 

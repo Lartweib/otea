@@ -247,8 +247,7 @@ const TEMPLATE_KEYS = LISTED_KEYS.join(', ');
 
 const init: Command = {
   name: 'init',
-  summary:
-    `Create or reuse the project at the repository root: in the Otea home ($OTEA_HOME, default ~/.otea), or with --local in .otea at the root; --join <project> links the repo to a registered project instead (refused when a project in a folder above covers it, unless --here); on a project with no boards of its own yet it makes Tareas and Errores, or with --template <key> the boards of that template (${TEMPLATE_KEYS}; a set such as repos or product makes all of its boards; none makes no board but Pedidos, the board for loose requests every project has); on a project that has boards it makes none; --icon gives the project an icon (without one the UI draws a monogram of its name); --agents-md also adds (or refreshes) a block in AGENTS.md telling agents to run "otea next" and "otea board"`,
+  summary: `Create or reuse the project at the repository root: in the Otea home ($OTEA_HOME, default ~/.otea), or with --local in .otea at the root; --join <project> links the repo to a registered project instead (refused when a project in a folder above covers it, unless --here); on a project with no boards of its own yet it makes Tareas and Errores, or with --template <key> the boards of that template (${TEMPLATE_KEYS}; a set such as repos or product makes all of its boards; none makes no board but Pedidos, the board for loose requests every project has); on a project that has boards it makes none; --icon gives the project an icon (without one the UI draws a monogram of its name); --agents-md also adds (or refreshes) a block in AGENTS.md telling agents to run "otea next" and "otea board"`,
   args: [],
   options: {
     'agents-md': { flag: true },
@@ -671,8 +670,7 @@ const boardName = (record: BoardRecord) => (record.live ?? record.draft)?.defini
 
 const boardAdd: Command = {
   name: 'board add',
-  summary:
-    `Make a board and publish it, from a template (${TEMPLATE_KEYS}) or blank, in the project's language; --item names what each item is; a set such as repos or product makes all of its boards, the name and --item naming the first`,
+  summary: `Make a board and publish it, from a template (${TEMPLATE_KEYS}) or blank, in the project's language; --item names what each item is; a set such as repos or product makes all of its boards, the name and --item naming the first`,
   args: ['name'],
   options: { template: { placeholder: 'key' }, item: {} },
   execute: ({ cwd, args: [name = ''], option }) => {

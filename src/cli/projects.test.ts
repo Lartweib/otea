@@ -4,7 +4,7 @@ import { Client, InMemoryTransport } from '@modelcontextprotocol/client';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createMcpServer } from '../mcp/server.ts';
 import { COMMANDS } from './commands.ts';
-import { cliAt, presetCollection, spawnCli, tempGitRepo, type TempRepo } from './testing.ts';
+import { cliAt, presetCollection, spawnCli, type TempRepo, tempGitRepo } from './testing.ts';
 
 // Two separate repos that share one project in common storage. The test setup points OTEA_HOME at a
 // temporary folder for this file, in this process and in the CLI processes it spawns.
