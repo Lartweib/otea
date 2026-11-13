@@ -40,6 +40,9 @@ import {
   MODES,
   pasosCards,
   pasosColumns,
+  phoneChips,
+  phonePrefs,
+  type StepChip,
   stepsStrip,
   valueText,
 } from './model.ts';
@@ -177,7 +180,10 @@ function Board({ board }: { board: string }) {
   const [stageW, setStageW] = useState(0);
 
   const studio = useStudioBoard(board);
-  const mode: BoardMode = app.phone && prefs.mode === 'tabla' ? 'lista' : prefs.mode;
+  // The phone reads a board in Lista only, by step: the step chip it shows, or every step.
+  const phone = app.phone;
+  const [step, setStep] = useState<string | null>(null);
+  const mode: BoardMode = phone ? 'lista' : prefs.mode;
   const items = useMemo(() => app.all.filter((it) => it.collection === board), [app.all, board]);
   const ctx: BoardCtx = { collection: col, now: app.now, feed: app.feed };
   const universe = useMemo(() => universeOf(app.all, app.now), [app.all, app.now]);
@@ -215,7 +221,7 @@ function Board({ board }: { board: string }) {
     else now.add(value);
     setFilter(key, [...now]);
   };
-  const clearFilters = () => choose({ filters: {} });
+  const clearFilters = () => (phone ? setStep(null) : choose({ filters: {} }));
 
   // ---- the tree ----
   const listEl = () =>
@@ -282,7 +288,12 @@ function Board({ board }: { board: string }) {
   };
 
   // ---- the model ----
-  const { entries, shown, total } = boardEntries(items, prefs, shownFolds, ctx);
+  const { entries, shown, total } = boardEntries(
+    items,
+    phone ? phonePrefs(step) : prefs,
+    shownFolds,
+    ctx,
+  );
   const filtered = applyFilters(items, prefs.filters, ctx);
   const rowCtx: RowCtx = {
     collection: col,
@@ -305,6 +316,9 @@ function Board({ board }: { board: string }) {
           big: true,
           content: studio ? (
             <Teach board={board} studio={studio} />
+          ) : phone ? (
+            // On the phone, Nuevo in the bottom bar creates here; agents connect on the computer.
+            <p>{t('boardView.empty', { board })}</p>
           ) : (
             <>
               <p>{t('boardView.empty', { board })}</p>
@@ -524,22 +538,33 @@ function Board({ board }: { board: string }) {
   return (
     <div className="board" data-mode={mode} ref={viewRef}>
       <Head board={board} items={items} studio={studio} />
-      {studio ? <BoardActs studio={studio} canWrite={app.session.canWrite} /> : null}
-      <Tools
-        col={col}
-        mode={mode}
-        phone={app.phone}
-        prefs={prefs}
-        shown={shown}
-        total={total}
-        columnsShown={columns.length}
-        onMode={switchMode}
-        menu={menu}
-        setMenu={setMenu}
-        // One way to create on a board: the head's «Crear · Ítem» when Studio shapes it, else here.
-        onNew={app.session.canWrite && !studio ? () => app.newItem({ board }) : undefined}
-      />
-      <Tokens prefs={prefs} ctx={ctx} onRemove={(k) => setFilter(k, [])} onClear={clearFilters} />
+      {phone ? (
+        // On the phone a board is read: no Crear, no Editar tablero; Nuevo is in the bottom bar.
+        <StepChips chips={phoneChips(col, items)} on={step} onPick={setStep} />
+      ) : (
+        <>
+          {studio ? <BoardActs studio={studio} canWrite={app.session.canWrite} /> : null}
+          <Tools
+            col={col}
+            mode={mode}
+            prefs={prefs}
+            shown={shown}
+            total={total}
+            columnsShown={columns.length}
+            onMode={switchMode}
+            menu={menu}
+            setMenu={setMenu}
+            // One way to create on a board: the head's «Crear · Ítem» when Studio shapes it, else here.
+            onNew={app.session.canWrite && !studio ? () => app.newItem({ board }) : undefined}
+          />
+          <Tokens
+            prefs={prefs}
+            ctx={ctx}
+            onRemove={(k) => setFilter(k, [])}
+            onClear={clearFilters}
+          />
+        </>
+      )}
       <div className="stage" ref={stage}>
         {mode === 'pasos' && !morphing && items.length > 0 && !shown ? (
           <p className="nomatch">
@@ -551,6 +576,12 @@ function Board({ board }: { board: string }) {
         ) : null}
         {modes.map((m) => modeEl(m, !!morphing && m === morphing.from))}
       </div>
+      {phone ? (
+        <p className="ro" data-enter="fade" data-leaf="">
+          <Icon name="sys" />
+          <span>{t('phone.readOnly')}</span>
+        </p>
+      ) : null}
       <BoardMenus
         menu={menu}
         setMenu={setMenu}
@@ -648,7 +679,6 @@ function StepWord(p: { first: boolean; you: boolean; label: string; count: numbe
 function Tools({
   col,
   mode,
-  phone,
   prefs,
   shown,
   total,
@@ -660,7 +690,6 @@ function Tools({
 }: {
   col: CollectionView;
   mode: BoardMode;
-  phone: boolean;
   prefs: ViewPrefs;
   shown: number;
   total: number;
@@ -697,7 +726,6 @@ function Tools({
     : undefined;
   const toggle = (kind: 'group' | 'filter' | 'columns', anchor: HTMLElement) =>
     setMenu(menu?.kind === kind ? null : { kind, anchor });
-  const modes = phone ? MODES.filter((m) => m !== 'tabla') : MODES;
   return (
     <div className="tools" data-enter="fade">
       <i className="trule" data-leaf="w" />
@@ -708,7 +736,7 @@ function Tools({
         ref={sw}
         data-leaf=""
       >
-        {modes.map((m) => (
+        {MODES.map((m) => (
           <button
             key={m}
             type="button"
@@ -786,6 +814,35 @@ function Tools({
         </button>
       ) : null}
     </div>
+  );
+}
+
+// ---- the phone's step chips ----
+
+// A board on the phone filters by step (mobile mock 4): Todos, then each step with its count, one
+// pressed at a time, in a row that scrolls sideways under the finger.
+function StepChips({
+  chips,
+  on,
+  onPick,
+}: {
+  chips: StepChip[];
+  on: string | null;
+  onPick: (step: string | null) => void;
+}) {
+  return (
+    <fieldset className="stepchips" aria-label={t('phone.steps')} data-enter="fade">
+      {chips.map((c) => (
+        <button
+          key={c.key ?? ''}
+          type="button"
+          aria-pressed={c.key === on}
+          onClick={() => onPick(c.key)}
+        >
+          {c.label} <b>{c.count}</b>
+        </button>
+      ))}
+    </fieldset>
   );
 }
 

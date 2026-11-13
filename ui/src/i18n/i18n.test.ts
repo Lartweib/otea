@@ -54,6 +54,7 @@ describe('the catalogs', () => {
   const SAID_ALIKE = new Set([
     'app.studio',
     'nav.studio',
+    'phone.nav',
     'catalog.kicker',
     'bs.home.title',
     'bs.editor.kicker.studio',

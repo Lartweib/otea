@@ -3,8 +3,7 @@
    It loads last, so it wins over everyone's sheet at the same specificity. */
 
 /* ───────── outside the phone, its parts stay away (mock:147, 862) ───────── */
-.sheetbtn,
-.fab {
+.tabbar {
   display: none;
 }
 
@@ -75,6 +74,27 @@
   overflow-wrap: anywhere;
   line-height: 1.3;
 }
+/* Where the rest is: Studio and Settings are on the computer (mobile mock 5). */
+.nsheet .desk,
+.deskonly .desk {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  margin: 10px 0 0;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--well);
+  font: 13.5px / 1.45 var(--sans);
+  color: var(--ink-2);
+}
+.desk .ic,
+.ro .ic {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  color: var(--ink-3);
+}
+
 /* A sheet with a head (today's menus): the title and its close. */
 .nsheet-head {
   display: flex;
@@ -432,9 +452,6 @@
     left: 0;
     z-index: 40;
   }
-  .fab {
-    z-index: 35;
-  }
   .sheet-in {
     padding: 12px max(16px, env(safe-area-inset-right, 0px)) 100px
       max(16px, env(safe-area-inset-left, 0px));
@@ -502,54 +519,161 @@
   .app {
     padding-top: env(safe-area-inset-top, 0px);
   }
-  /* Every page ends clear of the two buttons at the bottom. */
+  /* Every page ends clear of the bottom bar. */
   .view > * {
     padding-bottom: calc(90px + env(safe-area-inset-bottom, 0px));
   }
 
-  /* The two buttons under the thumb: the sheet on the left, Nuevo ítem's + on the right. Twins in
-     size and place; the + wears the ink, the sheet the paper. */
-  .sheetbtn,
-  .fab {
-    display: inline-grid;
-    place-items: center;
+  /* The bottom bar (mobile mock 1, 4): Te toca · Nuevo · Panel, solid on the screen's foot. One
+     create button, nothing floating over content: every page ends above it. */
+  .tabbar {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    /* The three labels share a line; Nuevo's round stands a little taller than the icons. */
+    align-items: end;
     position: fixed;
-    bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+    left: 0;
+    right: 0;
+    bottom: 0;
     z-index: 35;
-    width: 48px;
-    height: 48px;
-    border-radius: 50%;
+    padding: 6px max(12px, env(safe-area-inset-right, 0px))
+      calc(8px + env(safe-area-inset-bottom, 0px)) max(12px, env(safe-area-inset-left, 0px));
+    background: color-mix(in oklch, var(--ground) 86%, transparent);
+    -webkit-backdrop-filter: blur(14px);
+    backdrop-filter: blur(14px);
+    border-top: 1px solid var(--rule);
+  }
+  .tabbar .tab {
+    position: relative;
+    min-height: 56px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 3px;
+    padding-bottom: 2px;
+    border-radius: 12px;
+    font: 500 12px / 1.2 var(--sans);
+    color: var(--ink-3);
     -webkit-tap-highlight-color: transparent;
-    transition:
-      background-color 120ms var(--ease),
-      color 120ms var(--ease);
+    transition: color 120ms var(--ease);
   }
-  .sheetbtn .ic,
-  .fab .ic {
-    width: 20px;
-    height: 20px;
+  .tabbar .tab .ic {
+    width: 24px;
+    height: 24px;
+    stroke-width: 1.15;
   }
-  .sheetbtn {
-    left: max(16px, env(safe-area-inset-left, 0px));
-    background: var(--sheet);
-    color: var(--ink-2);
-    border: 1px solid var(--rule);
-    box-shadow: 0 12px 28px -16px var(--shadow);
-  }
-  .sheetbtn:active,
-  .sheetbtn[aria-expanded="true"] {
-    background: var(--hov);
+  .tabbar .tab.on,
+  .tabbar .tab:active,
+  .tabbar .tab[aria-expanded="true"] {
     color: var(--ink);
   }
-  .fab {
-    right: max(16px, env(safe-area-inset-right, 0px));
+  .tabbar .tbadge {
+    position: absolute;
+    top: 4px;
+    left: calc(50% + 6px);
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 9px;
+    background: var(--you);
+    color: var(--on-you);
+    font: 600 11px / 18px var(--sans);
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+  }
+  .tabbar .plus {
+    color: var(--ink-2);
+  }
+  .tabbar .disc {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
     background: var(--ink);
     color: var(--ground);
-    box-shadow: 0 12px 28px -14px var(--shadow);
+    box-shadow: 0 8px 18px -8px var(--shadow);
+    transition: background-color 120ms var(--ease);
   }
-  .fab:active {
+  .tabbar .disc .ic {
+    width: 22px;
+    height: 22px;
+    stroke-width: 1.45;
+  }
+  .tabbar .plus:active .disc {
     background: var(--ink-2);
   }
+  .tabbar .plus:disabled {
+    opacity: 0.45;
+  }
+
+  /* A board on the phone (mobile mock 4): read in Lista, filtered by step with a row of chips that
+     scrolls sideways past the gutters; a line at its foot says where it is edited. */
+  .stepchips {
+    display: flex;
+    gap: 8px;
+    min-inline-size: 0;
+    border: 0;
+    margin: 14px calc(-1 * max(16px, env(safe-area-inset-right, 0px))) 0
+      calc(-1 * max(16px, env(safe-area-inset-left, 0px)));
+    padding: 1px max(16px, env(safe-area-inset-right, 0px)) 1px
+      max(16px, env(safe-area-inset-left, 0px));
+    margin-bottom: 18px;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+  }
+  .stepchips::-webkit-scrollbar {
+    display: none;
+  }
+  .stepchips button {
+    flex: none;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 16px;
+    border-radius: 999px;
+    background: var(--sheet);
+    box-shadow: 0 0 0 1px var(--rule);
+    font: 500 14px var(--sans);
+    color: var(--ink-2);
+    -webkit-tap-highlight-color: transparent;
+  }
+  .stepchips button b {
+    font: 400 12px var(--mono);
+    color: var(--ink-3);
+  }
+  .stepchips button[aria-pressed="true"] {
+    background: var(--ink);
+    color: var(--sheet);
+    box-shadow: none;
+  }
+  .stepchips button[aria-pressed="true"] b {
+    color: inherit;
+    opacity: 0.75;
+  }
+  .board > .ro {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 18px 0 0;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: var(--well);
+    font: 13.5px / 1.4 var(--sans);
+    color: var(--ink-2);
+  }
+
+  /* A page the phone leaves to the computer (Studio, Settings): its head and where it is. */
+  .deskonly {
+    padding: 22px 0 90px;
+  }
+  .deskonly .empty-big .desk {
+    font-style: normal;
+  }
+
   .toast {
     bottom: calc(76px + env(safe-area-inset-bottom, 0px));
   }

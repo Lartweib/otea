@@ -1,17 +1,16 @@
 import type { Catalog } from '../i18n.ts';
 
-// El área phone del catálogo en español: la hoja de navegación, el botón Nuevo ítem y las hojas
-// que suben desde abajo.
+// El área phone del catálogo en español: la barra de abajo, el panel, las páginas que quedan para
+// el ordenador y las hojas que suben desde abajo.
 export const phone = {
-  'phone.nav': 'Panel del proyecto',
-  'phone.openNav': 'Abrir el panel del proyecto',
+  'phone.tabs': 'Navegación',
+  'phone.nav': 'Panel',
   'phone.toca': 'Te toca',
-  'phone.atasco': 'Atasco',
-  'phone.boards': 'tableros',
-  'phone.newBoard': 'Nuevo tablero',
+  'phone.new': 'Nuevo',
+  'phone.boards': 'tableros · solo lectura',
   'phone.prefs': 'Preferencias',
+  'phone.desk': 'Studio y Configuración están en el ordenador.',
   'phone.newItem': 'Nuevo ítem',
-  'phone.newItemIn': 'Nuevo ítem en {board}',
   'phone.close': 'Cerrar',
   // Captura rápida (mock, pantalla 3)
   'phone.capture.board': 'Tablero: {board}. Cambiarlo',
@@ -32,4 +31,12 @@ export const phone = {
   'phone.capture.needs': 'pide {fields} para crear · en el ordenador',
   'phone.capture.partOf': 'siempre es parte de {board} · en el ordenador',
   'phone.capture.none': 'Ningún tablero acepta solo un título. Créalo en el ordenador.',
+  'phone.deskOnly.studio': 'Studio está en el ordenador.',
+  'phone.deskOnly.settings': 'Configuración está en el ordenador.',
+  'phone.deskOnly.modules': 'El catálogo de módulos está en el ordenador.',
+  'phone.deskOnly.text': 'En el teléfono revisas, apuntas y lees los tableros.',
+  'phone.steps': 'Paso',
+  'phone.allSteps': 'Todos',
+  'phone.readOnly':
+    'En el teléfono los tableros se leen. Pasos, campos y vistas se editan en el ordenador.',
 } satisfies Partial<Catalog>;

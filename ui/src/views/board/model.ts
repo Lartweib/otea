@@ -81,6 +81,26 @@ export function stepsStrip(collection: CollectionView, items: readonly Item[]): 
   });
 }
 
+// ---- the phone: Lista only, filtered by step ----
+
+export type StepChip = { key: string | null; label: string; count: number };
+
+// A board on the phone (mobile mock 4) filters by step with a row of chips: Todos with every item,
+// then each step of the strip with its count.
+export function phoneChips(collection: CollectionView, items: readonly Item[]): StepChip[] {
+  return [
+    { key: null, label: t('phone.allSteps'), count: items.length },
+    ...stepsStrip(collection, items).map(({ key, label, count }) => ({ key, label, count })),
+  ];
+}
+
+// What the phone lists a board by: its steps, in the default order, the chosen step only. The
+// grouping, sort and filters chosen on the computer stay there: the phone has no Agrupar or
+// Filtrar to undo them with.
+export function phonePrefs(step: string | null): BoardPrefsLike {
+  return { group: 'state', sort: null, filters: step === null ? {} : { state: [step] } };
+}
+
 export type Card = { item: Item; kids: Item[] };
 
 // The cards of each column: an item whose parent is listed rides in its parent's card.

@@ -1,7 +1,6 @@
-import { type ReactNode, useEffect, useRef } from 'react';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { useApp } from '../app/context.tsx';
-import { openNewBoard } from '../board-studio/home/studio-dialogs.ts';
-import { stuckCount, tocaCount } from '../derive/toca.ts';
+import { tocaCount } from '../derive/toca.ts';
 import { t } from '../i18n/i18n.ts';
 import { Count } from '../kit/Count.tsx';
 import { Icon } from '../kit/Icon.tsx';
@@ -13,18 +12,19 @@ import { shellUi } from '../shell/shell-ui.ts';
 import { BottomSheet } from './BottomSheet.tsx';
 import { navSheet, useNavSheet } from './nav.ts';
 
-// The phone's nav sheet (SPEC §10.7, mock:3581-3616): the rail as a sheet from below. Te toca,
-// Atasco, the boards with their open counts, Nuevo tablero, and Preferencias at its foot. The
-// sheet button at the bottom left (`.sheetbtn`) opens it, and it rises out of that button.
+// The phone's Panel (mobile mock 5): the rail as a sheet from below. Te toca, the boards (read on
+// the phone) with yours / open, Preferencias at its foot, and a line saying Studio and Settings
+// are on the computer, where a button that fails would be. The bottom bar's Panel opens it, and it
+// rises out of that tab. A row closes it at once (the way there does not wait for it); the scrim
+// or a flick takes it down the way it came.
 
-// Where you are, as the sheet marks it: Te toca, Atasco or a board.
+// Where you are, as the sheet marks it: Te toca (Atasco is one of its sections) or a board.
 export function navOn(route: Route): string | null {
   switch (route.view) {
     case 'toca':
     case 'lan':
-      return 'toca';
     case 'atasco':
-      return 'atasco';
+      return 'toca';
     case 'board':
       return `board:${route.board}`;
     default:
@@ -35,10 +35,8 @@ export function navOn(route: Route): string | null {
 export type NavBodyProps = {
   route: Route;
   toca: number;
-  atasco: number;
   boards: BoardEntry[];
   onGo: (to: ViewRoute) => void;
-  onNewBoard: () => void;
   onPrefs: () => void;
 };
 
@@ -68,7 +66,7 @@ function Row({ i, on = false, icon, label, pair, className, onPress }: RowProps)
   );
 }
 
-export function NavBody({ route, toca, atasco, boards, onGo, onNewBoard, onPrefs }: NavBodyProps) {
+export function NavBody({ route, toca, boards, onGo, onPrefs }: NavBodyProps) {
   const on = navOn(route);
   let i = 0;
   return (
@@ -81,14 +79,6 @@ export function NavBody({ route, toca, atasco, boards, onGo, onNewBoard, onPrefs
           label={t('phone.toca')}
           pair={<Count value={toca} tone="you" hold />}
           onPress={() => onGo({ view: 'toca' })}
-        />
-        <Row
-          i={i++}
-          on={on === 'atasco'}
-          icon={<Icon name="atasco" />}
-          label={t('phone.atasco')}
-          pair={<Count value={atasco} tone="warn" hold />}
-          onPress={() => onGo({ view: 'atasco' })}
         />
       </nav>
       <div className="rail-label" data-i={i++}>
@@ -115,18 +105,15 @@ export function NavBody({ route, toca, atasco, boards, onGo, onNewBoard, onPrefs
             onPress={() => onGo({ view: 'board', board: b.name })}
           />
         ))}
-        <Row
-          i={i++}
-          className="add"
-          icon={<Icon name="plus" />}
-          label={t('phone.newBoard')}
-          onPress={onNewBoard}
-        />
       </nav>
       <div className="foot">
         <nav className="nav">
           <Row i={i++} icon={<Buddy />} label={t('phone.prefs')} onPress={onPrefs} />
         </nav>
+        <p className="desk" data-i={i++}>
+          <Icon name="sys" />
+          <span>{t('phone.desk')}</span>
+        </p>
       </div>
     </>
   );
@@ -136,6 +123,8 @@ export function NavSheet() {
   const app = useApp();
   const open = useNavSheet();
   const after = useRef<(() => void) | null>(null);
+  // A row takes it away at once; the scrim, Escape or a flick take it down the way it came.
+  const [now, setNow] = useState(false);
   const phone = app.phone;
   const view = navOn(app.route) ?? app.route.view;
 
@@ -148,16 +137,19 @@ export function NavSheet() {
   // biome-ignore lint/correctness/useExhaustiveDependencies: closes on a change of place
   useEffect(() => navSheet.close(), [view]);
 
+  if (open && now) setNow(false);
   if (!phone) return null;
-  const then = (fn: () => void) => {
-    after.current = fn;
+  const closeNow = (then?: () => void) => {
+    after.current = then ?? null;
+    setNow(true);
     navSheet.close();
   };
   return (
     <BottomSheet
       open={open}
+      instant={now}
       label={t('phone.nav')}
-      from={() => document.querySelector('.sheetbtn')}
+      from={() => document.querySelector('.tabbar [data-tab="panel"]')}
       onClose={navSheet.close}
       onClosed={() => {
         const fn = after.current;
@@ -168,16 +160,14 @@ export function NavSheet() {
       <NavBody
         route={app.route}
         toca={tocaCount(app.all, { now: app.now })}
-        atasco={stuckCount(app.all, { now: app.now })}
         boards={boardEntries(app.collections, app.all)}
         onGo={(to) => {
-          navSheet.close();
+          closeNow();
           app.go(to);
         }}
-        onNewBoard={() => then(() => openNewBoard())}
         // Preferences are the shell's: its button sits in the rail, which the phone hides. The
-        // pop is pinned to the bottom on the phone (phone.css), wherever its anchor is.
-        onPrefs={() => then(() => shellUi.set({ prefs: true }))}
+        // pop is pinned to the bottom on the phone (phone.css); it opens once the panel is gone.
+        onPrefs={() => closeNow(() => shellUi.set({ prefs: true }))}
       />
     </BottomSheet>
   );

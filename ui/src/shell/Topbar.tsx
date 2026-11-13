@@ -175,9 +175,12 @@ export function ProjectMenuBody({ project, rows, total, onClose }: ProjectMenuPr
         );
       })}
       <div className="pfoot" data-i="">
-        <button type="button" onClick={() => away('settings')}>
-          {t('shell.settingsOf', { project })}
-        </button>
+        {/* The project's settings are on the computer: the phone leaves them out. */}
+        {app.phone ? null : (
+          <button type="button" onClick={() => away('settings')}>
+            {t('shell.settingsOf', { project })}
+          </button>
+        )}
         <span>{tx('shell.newProject', { command: <code>otea init</code> })}</span>
       </div>
     </>

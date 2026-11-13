@@ -1,14 +1,14 @@
-// The phone area of the English catalog: the nav sheet, the New item button and bottom sheets.
+// The phone area of the English catalog: the bottom bar, the panel, the pages left to the computer
+// and bottom sheets.
 export const phone = {
-  'phone.nav': 'Project panel',
-  'phone.openNav': 'Open the project panel',
+  'phone.tabs': 'Navigation',
+  'phone.nav': 'Panel',
   'phone.toca': 'Your turn',
-  'phone.atasco': 'Stuck',
-  'phone.boards': 'boards',
-  'phone.newBoard': 'New board',
+  'phone.new': 'New',
+  'phone.boards': 'boards · read only',
   'phone.prefs': 'Preferences',
+  'phone.desk': 'Studio and Settings are on the computer.',
   'phone.newItem': 'New item',
-  'phone.newItemIn': 'New item in {board}',
   'phone.close': 'Close',
   // Quick capture (mock screen 3)
   'phone.capture.board': 'Board: {board}. Change it',
@@ -29,4 +29,12 @@ export const phone = {
   'phone.capture.needs': 'asks for {fields} to create · on the computer',
   'phone.capture.partOf': 'always part of {board} · on the computer',
   'phone.capture.none': 'No board takes a title alone. Create it on the computer.',
+  'phone.deskOnly.studio': 'Studio is on the computer.',
+  'phone.deskOnly.settings': 'Settings is on the computer.',
+  'phone.deskOnly.modules': 'The module catalog is on the computer.',
+  'phone.deskOnly.text': 'On the phone you review, capture and read the boards.',
+  'phone.steps': 'Step',
+  'phone.allSteps': 'All',
+  'phone.readOnly':
+    'On the phone, boards are read. Steps, fields and views are edited on the computer.',
 } as const;

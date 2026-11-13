@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 // The phone's sheet (phone.css): the heading on the page's gutter, rows that never clip, and the
-// two round buttons at the bottom in place of the topbar's panel button.
+// bottom bar (Te toca · Nuevo · Panel) in place of the topbar's panel button.
 
 const sheet = (name: string) =>
   readFileSync(new URL(`../styles/${name}`, import.meta.url), 'utf8').replace(
@@ -67,16 +67,28 @@ describe('the bottom buttons', () => {
     expect(sheet('shell.css')).not.toContain('.navbtn');
   });
 
-  it('draws the sheet button and the + as two 48 px rounds, left and right', () => {
-    for (const sel of ['.sheetbtn', '.fab']) {
-      const r = rules(phone, sel);
-      expect(r, sel).toMatch(/width:\s*48px/);
-      expect(r, sel).toMatch(/height:\s*48px/);
-      expect(r, sel).toMatch(/border-radius:\s*50%/);
-      expect(r, sel).toMatch(/env\(safe-area-inset-bottom/);
-    }
-    expect(rules(phone, '.sheetbtn')).toMatch(/left:\s*max\(16px, env\(safe-area-inset-left/);
-    expect(rules(phone, '.fab')).toMatch(/right:\s*max\(16px, env\(safe-area-inset-right/);
+  it('has no floating buttons: the sheet button and the + gave way to the bottom bar', () => {
+    expect(phoneCss).not.toContain('.sheetbtn');
+    expect(phoneCss).not.toContain('.fab');
+  });
+
+  it('draws the bottom bar on the screen’s foot, three tabs wide, clear of the home bar', () => {
+    const bar = rules(phone, '.tabbar');
+    expect(bar).toMatch(/position:\s*fixed/);
+    expect(bar).toMatch(/bottom:\s*0/);
+    expect(bar).toMatch(/grid-template-columns:\s*repeat\(3, minmax\(0, 1fr\)\)/);
+    expect(bar).toMatch(/env\(safe-area-inset-bottom/);
+    expect(bar).toMatch(/border-top:\s*1px solid var\(--rule\)/);
+    expect(rules(phoneCss, '.tabbar')).toMatch(/display:\s*none/);
+    expect(rules(phone, '.tabbar .tab')).toMatch(/min-height:\s*56px/);
+    const disc = rules(phone, '.tabbar .disc');
+    expect(disc).toMatch(/width:\s*40px/);
+    expect(disc).toMatch(/border-radius:\s*50%/);
+    expect(disc).toMatch(/background:\s*var\(--ink\)/);
+  });
+
+  it('gives the step chips on a board a thumb’s height', () => {
+    expect(rules(phone, '.stepchips button')).toMatch(/min-height:\s*44px/);
   });
 
   it('keeps the last row clear of them on every page', () => {
