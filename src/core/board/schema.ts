@@ -90,11 +90,16 @@ const part = z
       .strictObject({
         push: ids('The steps (ids) during which the branch may be pushed', ['simplement']),
         repo: idOf('The field (part id) the repository is read from', 'frepo').optional(),
+        base: text(
+          'The base branch Otea protects too: agents push or merge into it only to bring in an item that is Done',
+          'main',
+        ).optional(),
       })
       .meta(
         about('A branch field only: Otea protects the branch', {
           push: ['simplement'],
           repo: 'frepo',
+          base: 'main',
         }),
       )
       .optional(),

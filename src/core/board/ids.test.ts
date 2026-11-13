@@ -108,7 +108,7 @@ describe('freshIds', () => {
       kind: 'branch',
       hint: '',
       options: [],
-      guard: { push: ['sanimate'], repo: 'fdesc' },
+      guard: { push: ['sanimate'], repo: 'fdesc', base: 'main' },
     };
     before.parts.fbiome = { ...before.parts.fbiome!, initial: 'cwood' };
     before.list = { as: 'table', group: 'fbiome' };
@@ -119,7 +119,11 @@ describe('freshIds', () => {
     const [concept, animate] = after.steps;
     const named = (name: string) => Object.values(after.parts).find((part) => part.name === name);
     expect(animate?.ways).toEqual([concept?.id]);
-    expect(named('Rama')?.guard).toEqual({ push: [animate?.id], repo: named('Descripción')?.id });
+    expect(named('Rama')?.guard).toEqual({
+      push: [animate?.id],
+      repo: named('Descripción')?.id,
+      base: 'main',
+    });
     const bioma = named('Bioma');
     expect(bioma?.initial).toBe(bioma?.options.find((c) => c.name === 'Bosque')?.id);
     expect(after.list).toEqual({ as: 'table', group: bioma?.id });

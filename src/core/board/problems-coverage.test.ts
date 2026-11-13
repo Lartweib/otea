@@ -111,6 +111,26 @@ describe('problemsOf, the later settings', () => {
     ]);
   });
 
+  it('blocks a protected base that is not a branch name', () => {
+    for (const base of ['', ' ', 'my main', 'main..x', '/main', 'main.', 'a:b', 'a~1']) {
+      const def = tareasDeRepo();
+      def.parts.fbranch = { ...def.parts.fbranch!, guard: { push: ['simpl'], base } };
+      expect(found(def)).toEqual([
+        {
+          level: 'error',
+          code: 'guard_base',
+          params: { part: 'Rama' },
+          at: { kind: 'form' },
+        },
+      ]);
+    }
+    for (const base of ['main', 'release/2.x', 'develop']) {
+      const def = tareasDeRepo();
+      def.parts.fbranch = { ...def.parts.fbranch!, guard: { push: ['simpl'], base } };
+      expect(found(def)).toEqual([]);
+    }
+  });
+
   it('blocks a start value that is not one of the field values', () => {
     const def = errores();
     def.parts.fcat = { ...def.parts.fcat!, initial: 'cgone' };

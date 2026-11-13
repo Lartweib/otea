@@ -85,6 +85,7 @@ export function freshIds(def: BoardDefinition, ids: IdSource = newId): BoardDefi
       part.guard = {
         push: part.guard.push.map(ref),
         ...(part.guard.repo === undefined ? {} : { repo: ref(part.guard.repo) }),
+        ...(part.guard.base === undefined ? {} : { base: part.guard.base }),
       };
   }
   if (out.list.group !== undefined) out.list = { ...out.list, group: ref(out.list.group) };

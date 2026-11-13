@@ -24,12 +24,14 @@ function oteaCommand(main: string): string {
 // Checks every branch the push writes to or deletes on the remote, not the local branch it sends
 // from, which may be another; refuses only when otea check refuses (gate_refused): if Otea cannot
 // run at all, or fails, the push goes on. Tags and other refs are not branches and go unchecked.
+// --commits names what the remote has and what it gets, so a push into a base branch a board
+// protects is checked against the branches it brings in.
 function gitCheckLines(main: string): string {
   return [
     'while read -r local_ref local_sha remote_ref remote_sha; do',
     '  case "$remote_ref" in',
     '    refs/heads/*)',
-    `      ${oteaCommand(main)} check --gate push --branch "\${remote_ref#refs/heads/}" --repo < /dev/null`,
+    `      ${oteaCommand(main)} check --gate push --branch "\${remote_ref#refs/heads/}" --repo --commits "$remote_sha..$local_sha" < /dev/null`,
     `      if [ $? -eq ${EXIT_CODES.gate_refused} ]; then exit 1; fi`,
     '      ;;',
     '  esac',

@@ -10,9 +10,12 @@ const you = { kind: 'human' as const, name: 'fede' };
 let tick = 0;
 const now = () => new Date(Date.UTC(2026, 10, 12, 9, 0, tick++)).toISOString();
 
-function repoTask() {
+function repoTask(base?: string) {
   const ctx = memoryContext();
-  publishAs(ctx, tareasDeRepo(), 'brt', now);
+  const def = tareasDeRepo();
+  const guard = def.parts.fbranch?.guard;
+  if (guard && base !== undefined) guard.base = base;
+  publishAs(ctx, def, 'brt', now);
   publishAs(ctx, cambios(), 'bcam', now);
   const parent = createItem(
     ctx,
@@ -99,6 +102,63 @@ describe('gates on a board', () => {
       updateItem(ctx, { id, fields: { Rama: 'feat/y' }, actor: claude }, now).fields,
     ).toMatchObject({
       fbranch: 'feat/y',
+    });
+  });
+
+  describe('with the base branch protected', () => {
+    it('leaves the base alone when the board does not protect it', () => {
+      const { ctx } = repoTask();
+      expect(checkGate(ctx, 'push', { branch: 'main', repo: 'api' })).toMatchObject({
+        allowed: true,
+        items: [],
+      });
+    });
+
+    it('refuses a push to the base that brings in no item’s branch', () => {
+      const { ctx } = repoTask('main');
+      const check = checkGate(ctx, 'push', { branch: 'main', repo: 'api' }, () => ['scratch']);
+      expect(check).toMatchObject({ allowed: false, items: [] });
+      expect(check.refusal).toBe(
+        'push refused: main is the base branch Tareas de repo protects; it takes only the branch of a Tarea de repo that is Done, and this push brings in none.',
+      );
+      expect(checkGate(ctx, 'push', { branch: 'main', repo: 'api' }).allowed).toBe(false);
+    });
+
+    it('refuses a push to the base that brings in an item in review, and allows it once Done', () => {
+      const { ctx, id } = repoTask('main');
+      updateItemState(ctx.db, id, 'simpl__review', now());
+      const brings = () => ['feat/x'];
+
+      const check = checkGate(ctx, 'push', { branch: 'main', repo: 'api' }, brings);
+      expect(check).toMatchObject({ allowed: false, items: [{ id, allowed: false }] });
+      expect(check.items[0]?.text).toBe(
+        `push refused: ${id} is in Implementar, round 1; main takes its branch only once ${id} is Done.`,
+      );
+      expect(checkGate(ctx, 'push', { branch: 'main', repo: 'web' }, brings).allowed).toBe(false);
+      updateItemState(ctx.db, id, 'done', now());
+      const done = checkGate(ctx, 'push', { branch: 'main', repo: 'api' }, brings);
+      expect(done).toMatchObject({ allowed: true, items: [{ id, allowed: true }] });
+      expect(done.items[0]?.text).toBe(`push allowed: ${id} is Done; main takes its branch.`);
+    });
+
+    it('checks a merge into the base like a push to it', () => {
+      const { ctx, id } = repoTask('main');
+      const merge = checkGate(ctx, 'merge', { branch: 'main', repo: 'api' }, () => ['feat/x']);
+      expect(merge.items[0]?.text).toBe(
+        `merge refused: ${id} is in Propuesta, round 1; main takes its branch only once ${id} is Done.`,
+      );
+      expect(checkGate(ctx, 'merge', { branch: 'main' }, () => ['feat/z']).refusal).toBe(
+        'merge refused: main is the base branch Tareas de repo protects; it takes only the branch of a Tarea de repo that is Done, and this merge brings in none.',
+      );
+    });
+
+    it('still gates the item’s own branch as before', () => {
+      const { ctx, id } = repoTask('main');
+      updateItemState(ctx.db, id, 'simpl', now());
+      expect(checkGate(ctx, 'push', { branch: 'feat/x', repo: 'api' })).toMatchObject({
+        allowed: true,
+        items: [{ id }],
+      });
     });
   });
 });

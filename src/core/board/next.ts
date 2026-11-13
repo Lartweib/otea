@@ -247,6 +247,21 @@ function branchLines(
 ): string[] {
   const branch = branchOf(def, input.fields);
   if (!branch) return [];
+  const base = guardedBranch(def)?.guard.base;
+  const into = base
+    ? [
+        `  ${base} is protected too: push or merge ${branch.value} into it only once ${input.id} is ${DONE_NAME}.`,
+      ]
+    : [];
+  return [...pushLines(def, step, position, branch), ...into];
+}
+
+function pushLines(
+  def: BoardDefinition,
+  step: Step,
+  position: Position,
+  branch: { value: string; repo?: string; push: string[] },
+): string[] {
   const where = `${branch.value}${branch.repo ? ` in ${branch.repo}` : ''}`;
   const merge = `It can be merged only once it is ${DONE_NAME}.`;
   const answer = gateAt(def, position, 'push');
@@ -659,6 +674,30 @@ export function gateText(
         ? `merge refused: ${id} is ${closedName(def, position)}; its branch can be merged only once ${id} is ${DONE_NAME}.`
         : `merge refused: ${id} is in ${name}, round ${round}; its branch can be merged only once ${id} is ${DONE_NAME}.`;
   }
+}
+
+// What otea check answers for one item whose branch a push or merge brings into the base branch
+// the board protects: allowed only once the item is Hecho.
+export function baseGateText(
+  def: BoardDefinition,
+  id: string,
+  position: Position,
+  action: GateAction,
+  round: number,
+  base: string,
+): string {
+  if (isClosed(position) && position.closed === DONE)
+    return `${action} allowed: ${id} is ${DONE_NAME}; ${base} takes its branch.`;
+  const where = isClosed(position)
+    ? `is ${closedName(def, position)}`
+    : `is in ${stepById(def, position.step)?.name ?? ''}, round ${round}`;
+  return `${action} refused: ${id} ${where}; ${base} takes its branch only once ${id} is ${DONE_NAME}.`;
+}
+
+// Why a push or merge into the protected base branch that brings in no item of the board is
+// refused.
+export function baseRefusal(def: BoardDefinition, action: GateAction, base: string): string {
+  return `${action} refused: ${base} is the base branch ${def.name} protects; it takes only the branch of a ${def.item.trim() || 'item'} that is ${DONE_NAME}, and this ${action} brings in none.`;
 }
 
 // The line after a handoff, approval or send-back: where the item stands now.

@@ -142,6 +142,8 @@ export function problemText(problem: Problem): string {
       return t('bs.problem.split_unknown', { board: str(p.board) as string });
     case 'guard_no_push':
       return t('bs.problem.guard_no_push', { part: str(p.part) as string });
+    case 'guard_base':
+      return t('bs.problem.guard_base', { part: str(p.part) as string });
     case 'initial_invalid':
       return t('bs.problem.initial_invalid', { part: str(p.part) as string });
     case 'motive_agent_drop':
@@ -273,7 +275,10 @@ export function changeText(change: Change): string {
     case 'guard':
       return change.push === null
         ? t('bs.change.guard_off', { part: change.partName })
-        : t('bs.change.guard_on', { part: change.partName, steps: listOr(change.push) });
+        : t('bs.change.guard_on', { part: change.partName, steps: listOr(change.push) }) +
+            (change.base === undefined
+              ? ''
+              : ` ${t('bs.change.guard_base', { base: change.base })}`);
     case 'initial':
       return change.value === null
         ? t('bs.change.initial_off', { part: change.partName })

@@ -32,6 +32,7 @@ export const boardStudio = {
   'bs.problem.split_unknown':
     'Each item of {board} divides into a board that no longer exists. Pick another in About the board.',
   'bs.problem.guard_no_push': '“{part}” is protected but cannot be pushed in any step.',
+  'bs.problem.guard_base': 'The base branch “{part}” protects is not a branch name.',
   'bs.problem.initial_invalid': '{part} starts with a value it no longer has. Pick another.',
   'bs.problem.motive_agent_drop':
     'With discard motives, an agent that drops in {step} has to pick one.',
@@ -88,6 +89,7 @@ export const boardStudio = {
   'bs.change.guard_on':
     'Otea protects the {part}: it is pushed only while {steps} is being done, and merged once it is Done.',
   'bs.change.guard_off': 'Otea no longer protects the {part}.',
+  'bs.change.guard_base': 'Agents merge into {base} only the branch of an item that is Done.',
   'bs.change.initial_on': 'Every new item starts with {part}: {value}.',
   'bs.change.initial_off': '{part} no longer has a start value.',
   'bs.change.split_on': 'Each item divides into {board}.',

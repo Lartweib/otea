@@ -39,7 +39,9 @@ describe('hook', () => {
       );
       expect(result.out).toContain('  # otea-hook: pre-push');
       expect(hook.startsWith('#!/bin/sh\n# otea-hook: pre-push\n')).toBe(true);
-      expect(hook).toContain(`check --gate push --branch "\${remote_ref#refs/heads/}" --repo`);
+      expect(hook).toContain(
+        `check --gate push --branch "\${remote_ref#refs/heads/}" --repo --commits "$remote_sha..$local_sha"`,
+      );
       expect(hook).toContain('if [ $? -eq 19 ]; then exit 1; fi');
       if (process.platform !== 'win32') {
         expect(statSync(join(repo.dir, '.git/hooks/pre-push')).mode & 0o111).not.toBe(0);

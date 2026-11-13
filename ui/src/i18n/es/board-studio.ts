@@ -34,6 +34,7 @@ export const boardStudio = {
   'bs.problem.split_unknown':
     'Cada ítem de {board} se divide en un tablero que ya no existe. Elige otro en Sobre el tablero.',
   'bs.problem.guard_no_push': '«{part}» está protegida pero no se puede subir en ningún paso.',
+  'bs.problem.guard_base': 'La rama base que protege «{part}» no es un nombre de rama.',
   'bs.problem.initial_invalid': '{part} empieza en un valor que ya no tiene. Elige otro.',
   'bs.problem.motive_agent_drop':
     'Con motivos de descarte, un agente que descarta en {step} tiene que elegir uno.',
@@ -89,6 +90,7 @@ export const boardStudio = {
   'bs.change.guard_on':
     'Otea protege la {part}: se sube solo mientras se hace {steps}, y se fusiona cuando está Hecho.',
   'bs.change.guard_off': 'Otea ya no protege la {part}.',
+  'bs.change.guard_base': 'Los agentes solo fusionan a {base} la rama de un ítem Hecho.',
   'bs.change.initial_on': 'Cada ítem nuevo empieza con {part}: {value}.',
   'bs.change.initial_off': '{part} ya no tiene valor de inicio.',
   'bs.change.split_on': 'Cada ítem se divide en {board}.',
