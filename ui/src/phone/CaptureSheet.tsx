@@ -210,7 +210,7 @@ export function CaptureBody(p: CaptureBodyProps) {
 
 // The keyboard's height over the page, from the visual viewport: the sheet sits on it, so Guardar
 // is never under the keys. 0 without a keyboard or without the API.
-function useKeyboardInset(on: boolean): number {
+export function useKeyboardInset(on: boolean): number {
   const [inset, setInset] = useState(0);
   useEffect(() => {
     const vv = typeof window === 'undefined' ? undefined : window.visualViewport;

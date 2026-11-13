@@ -49,6 +49,7 @@ import { History } from './History.tsx';
 import { historyOf } from './history.ts';
 import { type MoveChoice, planMoves } from './moves.ts';
 import { NotesForm } from './NotesForm.tsx';
+import { PhoneItem } from './PhoneItem.tsx';
 import { Route } from './Route.tsx';
 import { routeIndex, routeSteps } from './route.ts';
 
@@ -328,6 +329,62 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
   const lines = historyOf(item.events, type, word, now);
   const stateShown = word(item.state);
   const yours = item.turn === 'human';
+  const route =
+    steps.length > 0 ? (
+      <Route
+        id={item.id}
+        steps={steps}
+        words={onBoard ? onBoard.route.words : steps.map((s) => word(s.name))}
+        ci={ci}
+        lane={lane}
+        look={look}
+        dips={onBoard ? onBoard.route.dips : presetDips}
+        phone={app.phone}
+      />
+    ) : null;
+
+  if (app.phone) {
+    // On the phone: what was delivered first, the rounds as one segment, the moves docked. What
+    // was asked is the item's fields; the rounds, the evidence and the board's sections are
+    // drawn by the delivery, and links and parts stay on the computer.
+    const request = sections.filter(({ key }) => key.startsWith('f:'));
+    const firstField = request[0]?.key.slice(2);
+    return (
+      <ItemTypeScope type={type}>
+        <PhoneItem
+          item={item}
+          type={type}
+          board={live ? { def: live, step: stepId } : undefined}
+          look={look}
+          facts={facts}
+          plan={plan}
+          mode={mode}
+          word={word}
+          stand={standText}
+          route={route}
+          checks={
+            <>
+              {hand.length ? (
+                <HandChecklist item={item} rows={hand} canWrite={app.session.canWrite} />
+              ) : null}
+              {live ? <WaitChecklist rows={waits} child={partsName} now={now} /> : null}
+            </>
+          }
+          details={<Details cells={cells} k={`${item.state}:${item.updatedAt}`} />}
+          detailsSummary={[facts.agent, typeWord(type, item.type), item.collection]
+            .filter(Boolean)
+            .join(' · ')}
+          request={request.length ? <Body id={item.id} sections={request} /> : null}
+          requestSummary={
+            (firstField ? (item.fields[firstField] ?? '') : '').trim().split(/\n/)[0] ?? ''
+          }
+          refuse={live ? refuse : undefined}
+          back={live ? (to: string) => backOf(live, item, to) : undefined}
+          onClose={onClose}
+        />
+      </ItemTypeScope>
+    );
+  }
 
   return (
     <ItemTypeScope type={type}>
@@ -401,18 +458,7 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
               {standText}
             </Swap>
           </div>
-          {steps.length > 0 ? (
-            <Route
-              id={item.id}
-              steps={steps}
-              words={onBoard ? onBoard.route.words : steps.map((s) => word(s.name))}
-              ci={ci}
-              lane={lane}
-              look={look}
-              dips={onBoard ? onBoard.route.dips : presetDips}
-              phone={app.phone}
-            />
-          ) : null}
+          {route}
           {hand.length ? (
             <HandChecklist item={item} rows={hand} canWrite={app.session.canWrite} />
           ) : null}

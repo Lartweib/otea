@@ -944,3 +944,461 @@
     -webkit-tap-highlight-color: transparent;
   }
 }
+
+/* ───────── Te toca on the phone (mobile mock 1) ───────── */
+/* Under the title, the day as the agents column said it. */
+.p-recap {
+  margin: 10px 0 0;
+  font: 400 12.5px / 1.5 var(--mono);
+  color: var(--ink-3);
+}
+/* A review says what the agent delivered: its mark, its note, how much evidence. */
+.row .p-said {
+  grid-column: 1 / -1;
+  grid-row: 3;
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin-top: 4px;
+  min-width: 0;
+  font: 400 14px / 1.4 var(--sans);
+  color: var(--ink-2);
+  overflow-wrap: anywhere;
+}
+.p-said .mk {
+  flex: none;
+  margin-top: 1px;
+}
+/* A long note keeps to two lines here; the item says it whole. */
+.p-said > span:not(.mk) {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+/* Spanish quotes the agent and you in angle quotes (the mock's «»). */
+:lang(es) :is(.p-said, .p-asked) q {
+  quotes: "«" "»" "“" "”";
+}
+/* Your empty sections, in one italic line. */
+.empty[data-k="quiet"] {
+  padding-top: 18px;
+}
+/* En camino, folded in one line until it is opened. */
+.p-foldb {
+  padding-left: var(--pl);
+}
+.p-fold {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 10px;
+  min-height: 52px;
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
+}
+.p-fold .sum {
+  flex: 1;
+  min-width: 0;
+  font: 400 14px / 1.35 var(--sans);
+  color: var(--ink-2);
+}
+.p-fold .sum .mk {
+  margin-right: 6px;
+  vertical-align: 1px;
+}
+.p-fold .ic,
+.p-more .ic {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  color: var(--ink-3);
+  transition: transform 240ms var(--ease);
+}
+.p-fold[aria-expanded="true"] .ic,
+.p-more[aria-expanded="true"] .ic {
+  transform: rotate(180deg);
+}
+@media (max-width: 720px) {
+  /* Triaje, one tap from Revisiones, at a thumb's size. */
+  .sec .sact {
+    min-height: 44px;
+    padding: 0 6px 0 10px;
+    font-size: 14px;
+  }
+}
+
+/* ───────── reviewing an item on the phone (mobile mock 2) ───────── */
+.p-ihead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 52px;
+  margin-left: -8px;
+}
+.p-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  min-height: 44px;
+  padding: 0 12px 0 4px;
+  border-radius: 22px;
+  font: 500 15px var(--sans);
+  color: var(--ink-2);
+  -webkit-tap-highlight-color: transparent;
+}
+.p-back:active {
+  background: var(--hov);
+}
+.p-back .ic {
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.p-ihead .id {
+  margin-left: auto;
+  font: 400 13px var(--mono);
+  color: var(--ink-3);
+}
+.p-item .p-title {
+  font-size: 31px;
+  line-height: 1.08;
+  margin: 6px 0 8px;
+}
+.p-item .acts {
+  margin-top: 14px;
+}
+/* The rounds of the step, one segment: Ronda N · … · Comparar. */
+.p-rseg {
+  min-inline-size: 0;
+  border: 0;
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  margin: 18px 0 0;
+  border-radius: 14px;
+  background: var(--well);
+  overflow-x: auto;
+  scrollbar-width: none;
+  overscroll-behavior-x: contain;
+}
+.p-rseg::-webkit-scrollbar {
+  display: none;
+}
+.p-rseg button {
+  flex: 1 0 96px;
+  min-height: 52px;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  font: 500 14px var(--sans);
+  color: var(--ink-2);
+  -webkit-tap-highlight-color: transparent;
+}
+.p-rseg button small {
+  font: 400 11.5px var(--mono);
+  color: var(--ink-3);
+}
+.p-rseg button[aria-pressed="true"] {
+  background: var(--sheet);
+  color: var(--ink);
+  box-shadow:
+    0 1px 2px var(--shadow),
+    0 0 0 1px var(--rule);
+}
+.p-rseg button[aria-pressed="true"] small {
+  color: var(--you-ink);
+}
+.p-part {
+  padding: 16px 0 0;
+}
+.p-part + .p-part {
+  margin-top: 16px;
+  border-top: 1px solid var(--rule);
+}
+.p-lab {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  font: 500 11.5px / 1.3 var(--sans);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.p-lab .x {
+  font: 400 12px var(--mono);
+  letter-spacing: 0;
+  text-transform: none;
+  text-align: right;
+}
+.p-text {
+  margin: 8px 0 0;
+  font: 400 17px / 1.45 var(--serif);
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.p-text.none {
+  font-style: italic;
+  color: var(--ink-3);
+}
+.p-none {
+  margin: 8px 0 0;
+  font: italic 400 15px / 1.4 var(--serif);
+  color: var(--ink-3);
+}
+.p-by {
+  margin-top: 6px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font: 400 12.5px var(--mono);
+  color: var(--ink-3);
+}
+.p-ev {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px;
+  margin-top: 10px;
+}
+.p-shot {
+  position: relative;
+  display: block;
+  height: 104px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--fig);
+  box-shadow: inset 0 0 0 1px var(--fig-line);
+}
+.p-shot img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.p-shot .cap {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 3px 10px 4px;
+  background: color-mix(in oklch, var(--sheet) 88%, transparent);
+  font: 400 11px var(--mono);
+  color: var(--ink-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.p-files {
+  margin-top: 10px;
+  border-radius: 10px;
+  background: var(--well);
+  padding: 0 12px;
+}
+.p-file {
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  font: 400 13px var(--mono);
+  color: var(--ink-2);
+  -webkit-tap-highlight-color: transparent;
+}
+.p-file + .p-file {
+  border-top: 1px solid var(--rule);
+}
+.p-file .fn {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.p-file .ch {
+  margin-left: auto;
+  flex: none;
+  color: var(--ink-3);
+}
+.p-file.new .ch {
+  color: var(--plus);
+}
+.p-file.gone .ch {
+  color: var(--minus);
+}
+.p-file.gone .fn {
+  text-decoration: line-through;
+  color: var(--ink-3);
+}
+.p-asked {
+  margin-top: 8px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--you-wash);
+  box-shadow: inset 2px 0 0 var(--you);
+  font: italic 400 16px / 1.45 var(--serif);
+  color: var(--ink-2);
+  overflow-wrap: anywhere;
+}
+.p-cmp {
+  margin-top: 12px;
+}
+.p-cmp .k {
+  font: 400 12px var(--mono);
+  color: var(--ink-3);
+}
+.p-cmp .p-text {
+  margin-top: 2px;
+}
+.p-cmp.was .p-text {
+  color: var(--ink-2);
+}
+/* Detalles and Lo pedido, folded under the delivery. */
+.p-fold-sec {
+  margin-top: 16px;
+  border-top: 1px solid var(--rule);
+}
+.p-fold-sec + .p-fold-sec {
+  margin-top: 0;
+}
+.p-more {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 10px;
+  min-height: 52px;
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
+}
+.p-more .l {
+  flex: none;
+  font: 500 11.5px var(--sans);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.p-more .s {
+  flex: 1;
+  min-width: 0;
+  font: 400 14px var(--sans);
+  color: var(--ink-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.p-fold-body {
+  padding-bottom: 12px;
+}
+/* Under its fold, Details is only its list: the fold's rule is its top. */
+.p-fold-body .dlist {
+  margin-top: 0;
+  border: 0;
+}
+.p-fold-body .dlab {
+  display: none;
+}
+/* Aprobar and Devolver, docked at the foot at 48 px. The dock is the page's last block, stuck to
+   the bottom of the page as it scrolls (it rides in and out with the page): the content always
+   ends above it, never under it. */
+.sheet-in:has(.p-item.docked) {
+  padding-bottom: 0;
+}
+/* A short page still has its dock at the foot of the screen. */
+.p-item.docked {
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100dvh - 12px - env(safe-area-inset-top, 0px));
+}
+.p-item .p-push {
+  flex: 1 0 24px;
+}
+.p-dock {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  margin: 0 calc(-1 * max(16px, env(safe-area-inset-right, 0px))) 0
+    calc(-1 * max(16px, env(safe-area-inset-left, 0px)));
+  padding: 10px max(16px, env(safe-area-inset-right, 0px))
+    calc(14px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+  background: var(--sheet);
+  border-top: 1px solid var(--rule);
+  box-shadow: 0 -16px 30px -24px var(--shadow);
+}
+.p-dock .btns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+}
+.p-dock .btns.two {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr);
+}
+.p-dock .btn,
+.p-sb .btn {
+  min-height: 48px;
+  border-radius: 10px;
+  font: 600 15.5px var(--sans);
+  letter-spacing: -0.005em;
+}
+.p-dock .hint {
+  margin: 8px 0 0;
+  text-align: center;
+  font: 400 12px / 1.4 var(--mono);
+  color: var(--ink-3);
+}
+.p-dock .hint b {
+  font-weight: 500;
+  color: var(--ink-2);
+}
+.p-dock .hint.warn {
+  font: 400 13px / 1.4 var(--sans);
+  color: var(--warn);
+}
+/* Devolver with a note (mobile mock 2b): the note focused, on the keyboard. */
+.nsheet.p-sb {
+  bottom: var(--kb, 0px);
+  max-height: calc(88dvh - var(--kb, 0px));
+}
+.p-sb-to {
+  margin: 0;
+  padding: 0 12px;
+  font: 400 12.5px / 1.5 var(--mono);
+  color: var(--ink-3);
+}
+.p-sb-to b {
+  font-weight: 500;
+  color: var(--ink-2);
+}
+.nsheet.p-sb .p-sb-area {
+  display: block;
+  width: 100%;
+  margin: 12px 0 0;
+  min-height: 112px;
+  padding: 12px 14px;
+  border: 0;
+  border-radius: 12px;
+  box-shadow: inset 0 0 0 1.5px var(--you);
+  background: var(--ground);
+  font: 400 17px / 1.45 var(--serif);
+  color: var(--ink);
+  resize: none;
+  outline: none;
+  user-select: text;
+  -webkit-user-select: text;
+  touch-action: manipulation;
+}
+.p-sb-area::placeholder {
+  font-style: italic;
+  color: var(--ink-3);
+}
+.p-sb-acts {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr);
+  gap: 10px;
+  padding: 12px 0 4px;
+}
