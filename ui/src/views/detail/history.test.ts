@@ -97,6 +97,27 @@ describe('the history of a stuck item you took in hand', () => {
   });
 });
 
+describe('a move the board made in the history', () => {
+  afterEach(() => setLanguage('en'));
+
+  it('says a publish moved it, never the word publish as your note', () => {
+    const events = [
+      ev('transitioned', you, { from: 'gone', to: 'fixing', reason: 'publish', board_version: 3 }),
+      ev('transitioned', you, { from: 'verify', to: 'fixed', reason: 'restore', board_version: 2 }),
+    ];
+    const [restored, published] = historyOf(events, bug, word, NOW);
+    expect(published).toMatchObject({ text: 'When v3 was published, it moved to fixing' });
+    expect(published?.quote).toBeUndefined();
+    expect(restored).toMatchObject({ text: 'When a publish was undone, it went back to fixed' });
+    expect(restored?.quote).toBeUndefined();
+
+    setLanguage('es');
+    const [back, moved] = historyOf(events, bug, word, NOW);
+    expect(moved?.text).toBe('Al publicar v3, pasó a fixing');
+    expect(back?.text).toBe('Al deshacer una publicación, volvió a fixed');
+  });
+});
+
 describe('a board reading in the history', () => {
   it('says Otea read the item onto its board, with the question it carried, never the word migrate', () => {
     const otea = { kind: 'human', name: 'otea' } as const;

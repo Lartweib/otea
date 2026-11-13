@@ -93,6 +93,13 @@ export function historyOf(
           ...(note ? { quote: note } : {}),
         };
       }
+      // A publish, or its undo, placing the item: the board moved it, and its reason is a marker.
+      if (e.data.reason === 'publish')
+        return {
+          ...base,
+          text: t('sheet.h.published', { version: String(e.data.board_version ?? ''), state }),
+        };
+      if (e.data.reason === 'restore') return { ...base, text: t('sheet.h.restored', { state }) };
       if (relay) {
         return {
           ...base,

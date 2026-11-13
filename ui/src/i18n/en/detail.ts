@@ -349,6 +349,8 @@ export const detail = {
   'sheet.h.movedBefore': 'Moved it, before its board',
   'sheet.h.movedYouBefore': 'You moved it, before its board',
   'sheet.h.migrated': 'Otea read it onto its board, in {state}',
+  'sheet.h.published': 'When v{version} was published, it moved to {state}',
+  'sheet.h.restored': 'When a publish was undone, it went back to {state}',
   'sheet.h.closed': 'You closed it: {state}',
   'sheet.h.discarded': 'You discarded it: {state}',
   'sheet.h.youMoved': 'You moved it to {state}',
