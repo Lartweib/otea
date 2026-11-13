@@ -97,3 +97,36 @@ describe('the bottom buttons', () => {
     );
   });
 });
+
+describe('a finger’s size: every control on the phone is at least 44 px (#34)', () => {
+  it('draws the buttons the 390 sweep found short at 44 px, as the mobile mock does', () => {
+    for (const sel of [
+      '.btn',
+      '.ghost-btn',
+      '.tri .thd .back',
+      '.sec .sact',
+      '.addbtn',
+      '.plink',
+      '.mi',
+      '.rd-earlier summary',
+      '.ffield input[type="text"]',
+      '.ffield select',
+    ])
+      expect(rules(phone, sel), sel).toMatch(/min-height:\s*44px/);
+    for (const sel of ['.rel-remove', '.prow .x']) {
+      expect(rules(phone, sel), sel).toMatch(/width:\s*44px/);
+      expect(rules(phone, sel), sel).toMatch(/height:\s*44px/);
+    }
+  });
+
+  it('gives Preferences’ segments and their knob 44 px', () => {
+    expect(rules(sheet('prefs.css'), '.pgroup .seg2 > button')).toMatch(/height:\s*44px/);
+    expect(rules(sheet('prefs.css'), '.pgroup .seg2 .knob')).toMatch(/height:\s*44px/);
+  });
+
+  it('reaches 44 px around a link inside a line of text, without moving the line', () => {
+    const finger = phoneCss.slice(phoneCss.indexOf('(pointer: coarse)'));
+    const list = finger.slice(0, finger.indexOf('::after'));
+    for (const sel of ['.d-head .lnk', 'a.id', '.rchip .x']) expect(list, sel).toContain(sel);
+  });
+});
