@@ -1,6 +1,6 @@
 import { activeLease } from '../../active-lease.ts';
 import type { FeedEvent } from '../../activity.ts';
-import { handedNote, isStuck } from '../../derive/toca.ts';
+import { askingAgent, handedNote, isStuck } from '../../derive/toca.ts';
 import type { Agent } from '../../presence.ts';
 import type { Item, Turn } from '../../types.ts';
 
@@ -136,8 +136,8 @@ const latest = <T>(xs: readonly T[], at: (x: T) => number): T | undefined =>
   );
 
 // What the agent is up to: working (it holds a lease, since its claim), quiet (its lease ran out,
-// since then), waiting for your answer (its last handoff asks you something), or free (since its
-// last act).
+// since then), waiting for your answer (its question waits for you, even on an item it holds), or
+// free (since its last act).
 export function agentState(
   name: string,
   items: readonly Item[],
@@ -147,7 +147,7 @@ export function agentState(
 ): AgentState {
   const lastClaim = (id: string) =>
     feed.findLast((e) => e.itemId === id && e.type === 'claimed' && byAgent(e, name));
-  const held = items.filter((it) => activeLease(it.lease, now)?.holder === name);
+  const held = items.filter((it) => activeLease(it.lease, now)?.holder === name && !it.asks);
   if (held.length) {
     const claimAt = (it: Item) => Date.parse(lastClaim(it.id)?.at ?? it.updatedAt);
     const it = latest(held, claimAt) ?? null;
@@ -159,13 +159,9 @@ export function agentState(
     const it = latest(ran, at) ?? null;
     return { state: 'quiet', since: it ? at(it) : now, item: it };
   }
-  const asks = items.filter((it) => {
-    if (it.turn !== 'human') return false;
-    const note = handedNote(it, feed);
-    return note?.agent === name && note.reason.trim().endsWith('?');
-  });
+  const asks = items.filter((it) => askingAgent(it, feed) === name);
   if (asks.length) {
-    const at = (it: Item) => Date.parse(handedNote(it, feed)?.at ?? it.updatedAt);
+    const at = (it: Item) => Date.parse(it.asks?.at ?? handedNote(it, feed)?.at ?? it.updatedAt);
     const it = latest(asks, at) ?? null;
     return { state: 'wait', since: it ? at(it) : now, item: it };
   }

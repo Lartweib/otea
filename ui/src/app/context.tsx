@@ -11,6 +11,7 @@ import type { FeedEvent } from '../activity.ts';
 import {
   linkItems,
   moveItem,
+  postAnswer,
   postNote,
   reassignItem,
   restartItem,
@@ -82,6 +83,8 @@ export type AppActions = {
   update(id: string, fields: Record<string, string>): Promise<void>;
   // A note to the agent doing the item's step, optionally on a piece of evidence; it moves nothing.
   note(id: string, text: string, anchor?: { evidence: number; seconds?: number }): Promise<void>;
+  // Your answer to an agent's question: the turn goes back to it, with no move to undo.
+  answer(id: string, text: string, toast?: string): Promise<void>;
   // A stuck item: back in the queue of its step (restart), or left for an agent (reassign). Both
   // run as any change does (the lists' handoff), then the toast offers Deshacer: the lease that
   // ran out comes back while the toast is up.
@@ -189,6 +192,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       },
       async note(id, text, anchor) {
         await Q.run(() => postNote(id, text, anchor));
+      },
+      async answer(id, text, message) {
+        await Q.run(() => postAnswer(id, text));
+        if (message === undefined) return;
+        await landed();
+        toast({ msg: message, id });
       },
       async restart(id, message) {
         await Q.run(() => restartItem(id));

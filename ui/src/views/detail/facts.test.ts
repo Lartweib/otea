@@ -96,6 +96,25 @@ describe('what the sheet reads from the item', () => {
     expect(f.own).toBe(false);
   });
 
+  it('reads an agent’s question (otea ask) as what it handed you, and your answer', () => {
+    const asks = { question: 1, by: 'kiln', text: '¿Liso o con musgo?', at: ago(6) };
+    const asked = factsOf(view({ state: 'sconcept', asks }), undefined, NOW);
+    expect(asked.question).toBe(true);
+    expect(asked.handed).toEqual({ agent: 'kiln', reason: '¿Liso o con musgo?', at: ago(6) });
+    const kiln = { kind: 'agent', name: 'kiln' } as const;
+    const events = [
+      ev('question_asked', kiln, { question: 1, text: '¿Liso o con musgo?' }, 6),
+      ev('question_answered', you, { question: 1, text: 'Con musgo' }, 2),
+    ];
+    const answered = factsOf(view({ state: 'sconcept', turn: 'agent', events }), undefined, NOW);
+    expect(answered.question).toBe(false);
+    expect(answered.answered).toEqual({
+      reason: 'Con musgo',
+      at: ago(2),
+      asked: { agent: 'kiln', text: '¿Liso o con musgo?' },
+    });
+  });
+
   it('reads your own step: created by you, still where its type starts, nobody handed it', () => {
     const events = [ev('created', you, { state: 'reported' }, 30)];
     expect(factsOf(view({ state: 'reported', events, createdBy: you }), bug, NOW).own).toBe(true);

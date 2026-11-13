@@ -4,6 +4,11 @@ import {
   type NoteEvent,
   notesOf,
 } from '../../../../src/core/board/notes.ts';
+import {
+  legacyAsks,
+  QUESTION_ANSWERED,
+  QUESTION_ASKED,
+} from '../../../../src/core/board/questions.ts';
 import { describeEvent, formatTime, momentParts, relayOf } from '../../format.ts';
 import { t } from '../../i18n/i18n.ts';
 import type { AgentProfile } from '../../presence.ts';
@@ -98,6 +103,11 @@ export function historyOf(
         who: said.join(' · '),
       };
     }
+    // An agent's question (otea ask) and your answer: neither moves the item.
+    if (e.type === QUESTION_ASKED)
+      return { ...base, text: t('sheet.h.askedYou'), quote: String(e.data.text ?? '') };
+    if (e.type === QUESTION_ANSWERED)
+      return { ...base, text: t('sheet.h.youAnswered'), quote: String(e.data.text ?? '') };
     if (e.type === 'created' && before(i, e.data.state)) {
       return { ...base, text: t(human ? 'sheet.h.createdYouBefore' : 'sheet.h.createdBefore') };
     }
@@ -147,7 +157,7 @@ export function historyOf(
       if (!human) {
         if (target?.turn === 'human') {
           handed += 1;
-          const asked = reason?.trim().endsWith('?');
+          const asked = legacyAsks(reason);
           const key = asked
             ? 'sheet.h.asked'
             : handed > 1

@@ -167,6 +167,11 @@ export async function postNote(
   await post(`/api/items/${encodeURIComponent(id)}/notes`, anchor ? { text, anchor } : { text });
 }
 
+// Your answer to an agent's question (otea ask): the turn goes back to the agent, in the same round.
+export async function postAnswer(id: string, text: string): Promise<void> {
+  await post(`/api/items/${encodeURIComponent(id)}/answer`, { text });
+}
+
 export async function undoRelease(id: string): Promise<void> {
   await post(`/api/items/${encodeURIComponent(id)}/undo`, { release: true });
 }

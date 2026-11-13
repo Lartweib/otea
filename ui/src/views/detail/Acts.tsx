@@ -26,9 +26,12 @@ export function actsModeOf(o: {
   canWrite: boolean;
   question: boolean;
   plan: MovePlan;
+  // An agent's question waits for your answer (otea ask): answered in place, with no move.
+  asks?: boolean;
 }): ActsMode {
   if (!o.canWrite) return 'read';
   if (o.look === 'yours') {
+    if (o.asks) return 'qa';
     if (o.question && o.plan.quiet.some((c) => c.kind === 'sendback')) return 'qa';
     if (!o.plan.primary && o.plan.quiet.some((c) => c.blocked)) return 'wait';
     return 'moves';
@@ -255,7 +258,7 @@ export function Acts({
       </>
     );
   } else if (mode === 'qa') {
-    const back = plan.quiet.find((c) => c.kind === 'sendback') as MoveChoice;
+    const back = plan.quiet.find((c) => c.kind === 'sendback');
     const hasOptions = !!type?.fields.some((f) => f.name === 'options');
     const options = hasOptions ? parseOptions(item.fields.options ?? '') : [];
     const answer = [opt, free.trim()].filter(Boolean).join('. ');
@@ -301,11 +304,17 @@ export function Acts({
             <Button
               variant="primary"
               disabled={!answer}
-              onClick={() =>
-                app
-                  .move(item.id, back.move.to, answer, toastOf('answer', item.title, ''))
-                  .catch(() => setRefused({ k: refusalKey, text: t('sheet.refused') }))
-              }
+              onClick={() => {
+                const refused = () => setRefused({ k: refusalKey, text: t('sheet.refused') });
+                // An agent's question (otea ask) takes the answer with no move; an old handoff
+                // that asked is answered by sending it back with it.
+                const sent = item.asks
+                  ? app.answer(item.id, answer, toastOf('answer', item.title, ''))
+                  : back
+                    ? app.move(item.id, back.move.to, answer, toastOf('answer', item.title, ''))
+                    : Promise.reject(new Error('no way to answer'));
+                sent.catch(refused);
+              }}
             >
               {t('sheet.qa.send')}
             </Button>

@@ -16,6 +16,25 @@ const mender = { kind: 'agent', name: 'Mender' } as const;
 const you = { kind: 'human', name: 'fede' } as const;
 const word = (s: string) => s;
 
+describe('an agent’s question and your answer in the history', () => {
+  it('says each, with its words, and moves nothing', () => {
+    const kiln = { kind: 'agent', name: 'kiln' } as const;
+    const lines = historyOf(
+      [
+        ev('question_asked', kiln, { question: 1, text: '¿Liso o con musgo?' }, 6),
+        ev('question_answered', you, { question: 1, text: 'Con musgo' }, 2),
+      ],
+      bug,
+      word,
+      NOW,
+    );
+    expect(lines.map((l) => [l.text, l.quote, l.who, l.dot])).toEqual([
+      ['You answered', 'Con musgo', 'you', 'you'],
+      ['Asked you', '¿Liso o con musgo?', 'kiln', 'agent'],
+    ]);
+  });
+});
+
 describe('the history, newest first, in words', () => {
   const events = [
     ev('created', { kind: 'agent', name: 'Scout' }, { state: 'reported' }, 900),

@@ -139,6 +139,20 @@ describe('agentState', () => {
     });
   });
 
+  it('waits for your answer while its question (otea ask) waits, on an item it still holds', () => {
+    const it0 = item({
+      id: 'A',
+      state: 'sconcept',
+      lease: { holder: 'kiln', expiresAt: inMinutes(10) },
+      asks: { question: 1, by: 'kiln', text: '¿Liso?', at: ago(6) },
+    });
+    expect(agentState('kiln', [it0], [], NOW)).toMatchObject({
+      state: 'wait',
+      item: it0,
+      since: NOW - 6 * MIN,
+    });
+  });
+
   it('waits for your answer when its last handoff asks you something', () => {
     const it0 = item({ id: 'A', state: 'reported' });
     const feed = [moved('A', 'reported', agent('scout'), { minutes: 14, reason: '¿La 0.9?' })];

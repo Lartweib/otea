@@ -21,6 +21,7 @@ import {
   stepIndex,
 } from '../../../../src/core/board/model.ts';
 import type { ItemNote } from '../../../../src/core/board/notes.ts';
+import type { ItemQuestion } from '../../../../src/core/board/questions.ts';
 import {
   type DefinitionRoute,
   definitionRoute,
@@ -79,6 +80,10 @@ export type ItemBoardBlock = {
   request?: DraftRequest;
   // The notes the person left on the item, every round's, oldest first (core/board/notes.ts).
   thread?: ItemNote[];
+  // The questions agents asked you on the item, every round's, oldest first, and the one that
+  // waits for your answer now (core/board/questions.ts).
+  questions?: ItemQuestion[];
+  asking?: ItemQuestion;
   // While an agent does its step: that agent and its last sign of life.
   worker?: { name: string; lastSeen: string | null; holds: boolean };
 };

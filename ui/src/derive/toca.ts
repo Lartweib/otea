@@ -1,4 +1,5 @@
 import { positionOf } from '../../../src/core/board/engine.ts';
+import { legacyAsks } from '../../../src/core/board/questions.ts';
 import { activeLease } from '../active-lease.ts';
 import type { FeedEvent } from '../activity.ts';
 import { onPublishedBoard } from '../board-studio/home/boards-store.ts';
@@ -41,6 +42,19 @@ export function isStuck(item: Item, now: number): boolean {
 }
 
 export type HandedNote = { agent: string; reason: string; at: string };
+
+// The agent asking you something: the one whose question waits for your answer (otea ask), or, for
+// a handoff written before there was one, the agent whose handoff ended in a question mark.
+export function askingAgent(item: Item, feed: readonly FeedEvent[]): string | null {
+  if (item.asks) return item.asks.by;
+  if (item.turn !== 'human') return null;
+  const note = handedNote(item, feed);
+  return note && legacyAsks(note.reason) ? note.agent : null;
+}
+
+export function asksYou(item: Item, feed: readonly FeedEvent[]): boolean {
+  return askingAgent(item, feed) !== null;
+}
 
 // The agent move that brought the item into its current state, and what it said (the feed is in
 // id order, oldest first).
@@ -92,7 +106,7 @@ export function tocaSection(item: Item, ctx: TocaContext): TocaSection | null {
     return ctx.now - Date.parse(item.updatedAt) <= CLOSED_FOR ? 'cerrados' : null;
   }
   if (item.turn === 'agent') return isStuck(item, ctx.now) ? 'atasco' : 'encamino';
-  if (handedNote(item, ctx.feed)?.reason.trim().endsWith('?')) return 'preguntas';
+  if (asksYou(item, ctx.feed)) return 'preguntas';
   if (ctx.onBoard?.(item)) {
     const at = positionOf(item.state);
     return 'phase' in at && at.phase === 'doing' ? 'propios' : 'revisiones';

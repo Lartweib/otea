@@ -76,6 +76,9 @@ export function describeEvent({ type, data }: ItemEvent, words: FieldWords = AS_
   }
   if (type === 'note_left') return t('event.noteLeft');
   if (type === 'note_answered') return t('event.noteAnswered', { n: String(data.note) });
+  if (type === 'question_asked') return t('event.questionAsked');
+  if (type === 'question_answered')
+    return t('event.questionAnswered', { n: String(data.question) });
   return type;
 }
 

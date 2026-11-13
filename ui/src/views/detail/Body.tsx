@@ -128,6 +128,19 @@ export function bodySections(o: {
         />
       ),
     });
+  const asked = facts.answered?.asked;
+  if (asked && item.turn !== 'human')
+    out.push({
+      key: 'asked',
+      node: (
+        <Note
+          k="asked"
+          label={t('sheet.asked', { agent: asked.agent })}
+          aside=""
+          text={asked.text}
+        />
+      ),
+    });
   if (facts.answered && item.turn !== 'human')
     out.push({
       key: 'answer',

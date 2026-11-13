@@ -1,3 +1,8 @@
+import {
+  legacyAsks,
+  QUESTION_ANSWERED,
+  QUESTION_ASKED,
+} from '../../../../src/core/board/questions.ts';
 import { turnAgent } from '../../actions.ts';
 import { mainPath } from '../../derive/path.ts';
 import { leftFor } from '../../derive/toca.ts';
@@ -23,7 +28,8 @@ export type Facts = {
   question: boolean;
   own: boolean;
   mine: { reason: string; at: string; round: number } | null;
-  answered: { reason: string; at: string } | null;
+  // What you answered last, and, for an agent's question (otea ask), what it asked and who.
+  answered: { reason: string; at: string; asked?: { agent: string; text: string } } | null;
   visited: string[];
   // The rounds you sent back, oldest first, with the state the agent had handed it to.
   sentBack: { n: number; at: string; state: string }[];
@@ -37,7 +43,23 @@ const isAgentMove = (e: ItemEvent) =>
 const isYourMove = (e: ItemEvent) =>
   e.type === 'transitioned' && (e.actor.kind === 'human' || !!relayOf(e));
 
-const asks = (reason: string) => reason.trim().endsWith('?');
+// A handoff written before otea ask, whose words asked you something.
+const asks = (reason: string) => legacyAsks(reason);
+
+// Your answer to an agent's question (otea ask) in the round the item is in: since its last move.
+function answeredQuestion(events: readonly ItemEvent[]): Facts['answered'] {
+  const since = events.findLastIndex((e) => e.type === 'transitioned');
+  const answer = events.slice(since + 1).findLast((e) => e.type === QUESTION_ANSWERED);
+  if (!answer) return null;
+  const asked = events.find(
+    (e) => e.type === QUESTION_ASKED && e.data.question === answer.data.question,
+  );
+  return {
+    reason: String(answer.data.text ?? ''),
+    at: answer.at,
+    ...(asked ? { asked: { agent: asked.actor.name, text: String(asked.data.text ?? '') } } : {}),
+  };
+}
 
 // Your send-backs: a move of yours from a step on your turn back to an agent's (not forward along
 // the main path), other than an answer to the question the agent just asked; each at the step it
@@ -68,8 +90,10 @@ function sentBackOf(events: readonly ItemEvent[], type: TypeView | undefined): F
 export function factsOf(item: ItemView, type: TypeView | undefined, _now: number): Facts {
   const events = [...item.events].sort((a, b) => a.id - b.id);
   const last = events.findLast((e) => e.type === 'transitioned' && e.data.to === item.state);
-  const handed =
-    last && isAgentMove(last)
+  // An agent's question that waits for you (otea ask) is what it handed you, in its words.
+  const handed = item.asks
+    ? { agent: item.asks.by, reason: item.asks.text, at: item.asks.at }
+    : last && isAgentMove(last)
       ? { agent: last.actor.name, reason: reasonOf(last), at: last.at }
       : null;
   const rounds = roundsOf(events, item.evidence, type?.states ?? []);
@@ -90,12 +114,13 @@ export function factsOf(item: ItemView, type: TypeView | undefined, _now: number
       answered = { reason: reasonOf(e), at: e.at };
   }
   if (answered && last && last.at !== answered.at) answered = null;
+  answered = answeredQuestion(events) ?? answered;
   const visited: string[] = [];
   for (const e of events) {
     const s = e.type === 'created' ? e.data.state : e.type === 'transitioned' ? e.data.to : null;
     if (typeof s === 'string' && !visited.includes(s)) visited.push(s);
   }
-  const question = item.turn === 'human' && !!handed && asks(handed.reason);
+  const question = !!item.asks || (item.turn === 'human' && !!handed && asks(handed.reason));
   const moved = events.some((e) => e.type === 'transitioned');
   const own =
     item.turn === 'human' &&
