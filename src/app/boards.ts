@@ -533,7 +533,7 @@ function publishWithin(ctx: Context, id: string, input: PublishInput, now: Clock
   const row = requireRow(ctx, id);
   const record = recordOf(ctx, row);
   assertDraftUnchanged(ctx, id, input.draftStamp);
-  const { definition: draft, requestItem } = requireDraft(ctx, id);
+  const { definition: draft, requestItem, agentNote } = requireDraft(ctx, id);
   const problems = boardProblems(ctx, id, draft);
   if (blocking(problems)) {
     const codes = problems.filter(({ level }) => level === 'error').map(({ code }) => code);
@@ -584,7 +584,13 @@ function publishWithin(ctx: Context, id: string, input: PublishInput, now: Clock
   const from = request ? findItem(ctx.db, request.id)?.state : undefined;
   if (request && from !== undefined) {
     const reason = REQUEST_CLOSED[boardLang(draft)](draft.name.trim());
-    moveItems(ctx, [{ id: request.id, from, to: DONE }], input.by, at, { reason });
+    // What undoing this publish needs to reopen the Pedido with its draft (closedRequest).
+    moveItems(ctx, [{ id: request.id, from, to: DONE }], input.by, at, {
+      reason,
+      published_board: id,
+      board_version: version,
+      agent_note: agentNote,
+    });
   }
   deleteDraft(ctx.db, id);
   return { version, moved, record: getBoardRecord(ctx, id) };
@@ -616,6 +622,7 @@ function restoreWithin(ctx: Context, id: string, input: RestoreInput, now: Clock
     throw new OteaError('not_found', `Board ${id} has no version ${input.version}`);
   const at = now();
   const collection = row.collection;
+  const request = closedRequest(ctx, id, row.liveVersion);
   if (input.version === null) {
     if (collection !== null && selectItems(ctx.db, { collection }).length > 0)
       throw new OteaError(
@@ -670,6 +677,11 @@ function restoreWithin(ctx: Context, id: string, input: RestoreInput, now: Clock
       setLiveVersion(ctx.db, id, version);
     }
   }
+  // The Pedido the undone publish closed opens again where it stood, its draft back on it.
+  if (request) {
+    const back = { id: request.item, from: DONE, to: request.from };
+    moveItems(ctx, [back], input.by, at, { reason: 'restore', unpublished_board: id });
+  }
   // A draft written since the publish is the person's newer work: it stays, on the restored base.
   const kept = findDraft(ctx.db, id);
   upsertDraft(ctx.db, {
@@ -677,10 +689,42 @@ function restoreWithin(ctx: Context, id: string, input: RestoreInput, now: Clock
     definition: kept?.definition ?? undone.definition,
     baseVersion: input.version,
     updatedAt: at,
-    requestItem: kept?.requestItem ?? null,
-    agentNote: kept?.agentNote ?? null,
+    requestItem: kept?.requestItem ?? request?.item ?? null,
+    agentNote: kept ? kept.agentNote : (request?.agentNote ?? null),
   });
   return getBoardRecord(ctx, id);
+}
+
+// The Pedido that publishing `version` of board `id` closed, while it still stands closed by it:
+// where it stood before and the draft's agent note, to give back on undo.
+function closedRequest(
+  ctx: Context,
+  id: string,
+  version: number,
+): { item: string; from: string; agentNote: string | null } | null {
+  const rows = ctx.db
+    .prepare(
+      `SELECT id, item_id AS item, data FROM events
+       WHERE type = 'transitioned' AND data LIKE ? ORDER BY id DESC`,
+    )
+    .all(`%"published_board":${JSON.stringify(id)}%`);
+  for (const row of rows) {
+    const data = JSON.parse(String(row.data)) as Record<string, unknown>;
+    if (data.published_board !== id || data.board_version !== version) continue;
+    const item = String(row.item);
+    if (findItem(ctx.db, item)?.state !== DONE) return null;
+    const last = ctx.db
+      .prepare(`SELECT MAX(id) AS id FROM events WHERE item_id = ? AND type = 'transitioned'`)
+      .get(item);
+    if (last?.id !== row.id) return null;
+    const note = data.agent_note;
+    return {
+      item,
+      from: String(data.from),
+      agentNote: Array.isArray(note) ? JSON.stringify(note) : null,
+    };
+  }
+  return null;
 }
 
 // A board that "se divide en" another board and that board, published or undone as one: the
