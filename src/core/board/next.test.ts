@@ -52,6 +52,60 @@ describe('nextText', () => {
     );
   });
 
+  it('starts a round that was sent back with the note, who sent it, when and from which review', () => {
+    const text = nextText(def, {
+      ...base,
+      round: 2,
+      position: { step: 'sconcept', phase: 'doing' },
+      missing: [
+        { ref: 'eart', name: 'Arte conceptual', reason: 'not_new', fresh: true },
+        { ref: 'note', name: 'note', reason: 'missing', fresh: true, hint: '', sentBack: true },
+      ],
+      sentBack: {
+        note: 'Más barro en las patas.\nY la concha más oscura.',
+        by: { kind: 'agent', name: 'scout' },
+        at: '2026-11-12T10:04:00.000Z',
+        step: 'Animar',
+        round: 1,
+      },
+    });
+    const lines = text.split('\n');
+    expect(lines.slice(0, 6)).toEqual([
+      'CRI-12 · Criatura · Concepto, round 2',
+      'Your turn: do this step.',
+      '',
+      'Sent back to you: "Más barro en las patas.',
+      '  Y la concha más oscura."',
+      '  by scout, 2026-11-12 10:04 UTC, from the review of Animar round 1',
+    ]);
+    expect(text).toContain(
+      '\nHandoff\n  ✗ Note: required (what you changed since it was sent back)\n',
+    );
+    expect(text).toContain(
+      '  otea handoff CRI-12 --note "what you changed since it was sent back"',
+    );
+  });
+
+  it('names the person who sent it back as the person', () => {
+    const text = nextText(def, {
+      ...base,
+      round: 2,
+      position: { step: 'sconcept', phase: 'doing' },
+      missing: [],
+      sentBack: {
+        note: 'Otra pose',
+        by: { kind: 'human', name: 'fede' },
+        at: '2026-11-12T10:04:00.000Z',
+        step: 'Concepto',
+        round: 1,
+      },
+    });
+    expect(text).toContain(
+      '\nSent back to you: "Otra pose"\n  by the person, 2026-11-12 10:04 UTC, from the review of Concepto round 1\n',
+    );
+    expect(text).toContain('  ✓ Note: required (what you changed since it was sent back)');
+  });
+
   it('tells an agent reviewer how to approve or ask for another round', () => {
     const text = nextText(def, {
       ...base,
@@ -110,6 +164,18 @@ describe('refusalText', () => {
       ]),
     ).toBe(
       'Not handed off CRI-12: missing Arte conceptual (new this round) and Comprobaciones (every box ticked).\nAttach or fill them with otea attach CRI-12 / otea update CRI-12, then call handoff again.',
+    );
+  });
+});
+
+describe('refusalText after a send-back', () => {
+  it('asks for the note the sent-back round needs, saying why', () => {
+    expect(
+      refusalText('CRI-12', [
+        { ref: 'note', name: 'note', reason: 'missing', fresh: true, hint: '', sentBack: true },
+      ]),
+    ).toBe(
+      'Not handed off CRI-12: missing a note (it was sent back: say what you changed).\nCall handoff again with --note "what you changed since it was sent back".',
     );
   });
 });

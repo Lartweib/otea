@@ -38,6 +38,19 @@ import {
 export const DONE_NAME = 'Done';
 export const DROPPED_NAME = 'Dropped';
 
+// The send-back that started the round being done: the reviewer's note, who sent it (`by`) and
+// when, and the review it came from (that step's name and round).
+export type SentBack = {
+  note: string;
+  by: { kind: 'human' | 'agent'; name: string };
+  at: string;
+  step: string;
+  round: number;
+};
+
+// The note's hint when the round was sent back and the step itself asks for no note.
+export const SENT_BACK_HINT = 'what you changed since it was sent back';
+
 export type NextInput = {
   id: string;
   title: string;
@@ -55,6 +68,8 @@ export type NextInput = {
   blockers?: readonly Linked[];
   // The board its parts are on, when the board divides (itself, for parts of the same kind).
   child?: BoardDefinition;
+  // The send-back that started this round, while the step is being done.
+  sentBack?: SentBack;
 };
 
 function and(words: readonly string[], last = 'and'): string {
@@ -121,12 +136,44 @@ function onBoards(open: readonly Linked[]): string {
   return open.at(-1)?.step ? `${list},` : list;
 }
 
-// The note the handoff carries: always the first line of the Handoff when the step asks for one.
-function noteLine(step: Step, input: NextInput): string[] {
-  if (step.note.req !== 'always') return [];
-  const missing = input.missing.some(({ ref }) => ref === NOTE_REF);
+// What the note of the handoff says: the step's hint, or, on a round sent back where the step asks
+// for no note and hints at none, what changed since.
+function noteHint(step: Step, sentBack: boolean): string {
   const hint = step.note.hint.trim();
+  if (hint || step.note.req === 'always') return hint;
+  return sentBack ? SENT_BACK_HINT : '';
+}
+
+// Whether the handoff carries a note: the step asks for one, or the round was sent back.
+function wantsNote(step: Step, input: NextInput): boolean {
+  return step.note.req === 'always' || input.sentBack !== undefined;
+}
+
+// The note the handoff carries: always the first line of the Handoff when it needs one.
+function noteLine(step: Step, input: NextInput): string[] {
+  if (!wantsNote(step, input)) return [];
+  const missing = input.missing.some(({ ref }) => ref === NOTE_REF);
+  const hint = noteHint(step, input.sentBack !== undefined);
   return [`  ${missing ? '✗' : '✓'} Note: required${hint ? ` (${hint})` : ''}`];
+}
+
+// "2026-11-12 10:04 UTC": one clock for every agent, wherever it runs.
+function utcText(iso: string): string {
+  return `${iso.slice(0, 16).replace('T', ' ')} UTC`;
+}
+
+// The block a round sent back starts with: the note as the reviewer wrote it, then who, when and
+// from which review.
+function sentBackLines(sent: SentBack): string[] {
+  const [first = '', ...rest] = sent.note.trim().split(/\r?\n/);
+  const quoted = [`Sent back to you: "${first}`, ...rest.map((line) => `  ${line}`)];
+  quoted[quoted.length - 1] += '"';
+  const who = sent.by.kind === 'human' ? 'the person' : sent.by.name;
+  return [
+    '',
+    ...quoted,
+    `  by ${who}, ${utcText(sent.at)}, from the review of ${sent.step} round ${sent.round}`,
+  ];
 }
 
 // What the step waits for: the last lines of the Handoff.
@@ -231,9 +278,9 @@ function asMotive(def: BoardDefinition): string {
   return names.length === 0 ? '' : ` --as "${names.join('|')}"`;
 }
 
-function noteFlag(step: Step): string {
-  if (step.note.req !== 'always') return '';
-  return ` --note "${step.note.hint.trim() || 'what changed in this round'}"`;
+function noteFlag(step: Step, input: NextInput): string {
+  if (!wantsNote(step, input)) return '';
+  return ` --note "${noteHint(step, input.sentBack !== undefined) || 'what changed in this round'}"`;
 }
 
 function whenText(def: BoardDefinition, hand: Hand): string {
@@ -329,6 +376,7 @@ export function nextText(def: BoardDefinition, input: NextInput): string {
     head,
     reviewing ? `Your turn: review this step (${doerName} did it).` : 'Your turn: do this step.',
   ];
+  if (!reviewing && input.sentBack) lines.push(...sentBackLines(input.sentBack));
   lines.push(...section('About this board', indent(aboutBrief(def))));
   lines.push(
     ...section(
@@ -395,7 +443,7 @@ export function nextText(def: BoardDefinition, input: NextInput): string {
         `  otea send-back ${id} --reason "what to change"`,
       ]
     : [
-        `  otea handoff ${id}${several && step.reviewer === 'none' ? ` --way ${choice} --reason "why"` : ''}${noteFlag(step)}`,
+        `  otea handoff ${id}${several && step.reviewer === 'none' ? ` --way ${choice} --reason "why"` : ''}${noteFlag(step, input)}`,
       ];
   lines.push(...section('When you finish', finish));
   return lines.join('\n');
@@ -438,14 +486,17 @@ function blockersHold(wait: Missing): { text: string; them: string; one: boolean
 // what it waits for holds it, that alone, with what to do.
 export function refusalText(id: string, missing: readonly Missing[]): string {
   const note = missing.find(({ ref }) => ref === NOTE_REF);
-  const flag = note ? ` with --note "${note.hint?.trim() || 'what changed in this round'}"` : '';
+  const hint =
+    note?.hint?.trim() || (note?.sentBack ? SENT_BACK_HINT : 'what changed in this round');
+  const flag = note ? ` with --note "${hint}"` : '';
   const parts = missing.filter(({ reason, ref }) => reason !== 'open' && ref !== NOTE_REF);
   if (parts.length > 0 || note) {
     const what = parts.map(({ name, reason, fresh }) => {
       const said = reason === 'missing' && fresh ? 'new this round' : MISSING_NOTE[reason];
       return said ? `${name} (${said})` : name;
     });
-    if (note) what.push('a note');
+    if (note)
+      what.push(note.sentBack ? 'a note (it was sent back: say what you changed)' : 'a note');
     const then =
       parts.length === 0
         ? `Call handoff again${flag}.`

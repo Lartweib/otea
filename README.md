@@ -332,6 +332,7 @@ otea check --gate push --branch --repo                     # reads the board's p
 ```
 
 - The note of each handoff is kept with its round (`otea show --json`: `board.notes`). A way back needs `--reason` (exit 2, `reason_required`).
+- A round that a send-back started opens, in `otea next` and `otea show`, with `Sent back to you: "…"`: the reviewer's note, who sent it, when and from which review (`sentBack` in `otea next --json`, `board.sentBack` in `otea show --json`, and the same over MCP). `otea next` offers items sent back before the rest, and handing one in again needs `--note` saying what changed, even on a step that asks for no note (exit 8).
 - `otea drop` without `--reason` or, on a board with motives, without `--as` exits 2; where only the person drops it exits 7 (`forbidden`); where the person drops only from the page, a relayed drop exits 4.
 - `otea check` and the hooks (`otea hook install --git` for a pre-push hook, `--claude` for Claude Code's `git push` and `gh pr merge`) match the branch and the repo against the board's **Rama** field (the branch field Otea protects) and the field it names as the repo, never against a fixed `branch` key: a push is allowed only while one of the chosen steps is being done (frozen while it is reviewed), a merge once the item is Done. Repo names match whatever their case (`--repo API` is `api`), as git hosts and the file systems of Windows and macOS take them, so `otea repos add` refuses a name another repo already holds in any case.
 

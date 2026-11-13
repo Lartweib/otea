@@ -1,12 +1,16 @@
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { Client, InMemoryTransport } from '@modelcontextprotocol/client';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createBoard, publishBoard, saveDraft } from '../app/boards.ts';
 import { getItem } from '../app/items.ts';
+import { sendBackItem } from '../app/next.ts';
 import { openProject } from '../app/project.ts';
 import { handoffCheck, positionOf } from '../core/board/engine.ts';
 import { nextText, refusalText } from '../core/board/next.ts';
 import { creatures } from '../core/board/testing.ts';
+import { createMcpServer } from '../mcp/server.ts';
+import { COMMANDS } from './commands.ts';
 import { type Cli, cliAt, type TempRepo, tempGitRepo } from './testing.ts';
 
 // Agents on a published board: next, handoff, approve and send-back, worded by the one writer.
@@ -112,6 +116,72 @@ describe('next and the board moves', () => {
     expect((await otea('send-back', 'CRI-1')).code).toBe(2);
     const bad = await otea('handoff', 'CRI-1', '--way', 'Nowhere', '--as', 'quill');
     expect(bad.code).toBe(4);
+  });
+
+  it('gives the note of a send-back to next, show and MCP, and wants a note to hand it in again', async () => {
+    await otea('attach', 'CRI-1', art(), '--module', 'eart', '--as', 'quill');
+    await otea('handoff', 'CRI-1', '--as', 'quill');
+    const project = openProject(repo.dir);
+    try {
+      sendBackItem(project, {
+        id: 'CRI-1',
+        actor: { kind: 'human', name: 'fede' },
+        channel: 'ui',
+        reason: 'Más barro en las patas',
+      });
+    } finally {
+      project.db.close();
+    }
+    const block = 'Sent back to you: "Más barro en las patas"\n  by the person, ';
+    const sentBack = {
+      note: 'Más barro en las patas',
+      by: { kind: 'human', name: 'fede' },
+      step: 'Concepto',
+      round: 1,
+    };
+
+    expect((await otea('next', '--as', 'quill')).out).toContain(block);
+    expect(await json('next', '--as', 'quill')).toMatchObject({ item: 'CRI-1', sentBack });
+    expect((await otea('show', 'CRI-1', '--as', 'quill')).out).toContain(
+      'Next:\n  CRI-1 · Criatura · Concepto, round 2\n  Your turn: do this step.\n\n  Sent back to you: "Más barro en las patas"\n    by the person, ',
+    );
+    expect((await json('show', 'CRI-1', '--as', 'quill')).board.sentBack).toMatchObject(sentBack);
+
+    const client = new Client({ name: 'test', version: '0' });
+    const server = createMcpServer(COMMANDS, {
+      cwd: repo.dir,
+      actor: { kind: 'agent', name: 'quill' },
+      warn: () => {},
+    });
+    const [clientSide, serverSide] = InMemoryTransport.createLinkedPair();
+    await server.connect(serverSide);
+    await client.connect(clientSide);
+    const tool = async (name: string, args: Record<string, unknown>) => {
+      const reply = (await client.callTool({ name, arguments: args })) as {
+        content: { text: string }[];
+      };
+      return JSON.parse(reply.content[0]?.text ?? '');
+    };
+    try {
+      const next = await tool('next', {});
+      expect(next).toMatchObject({ item: 'CRI-1', sentBack });
+      expect(next.text).toContain(block);
+      expect((await tool('show', { id: 'CRI-1' })).board.sentBack).toMatchObject(sentBack);
+    } finally {
+      await client.close();
+    }
+
+    await otea('attach', 'CRI-1', art(), '--module', 'eart', '--as', 'quill');
+    const bare = await otea('handoff', 'CRI-1', '--as', 'quill');
+    expect(bare.code).toBe(8);
+    expect(bare.err).toBe(
+      'otea: Not handed off CRI-1: missing a note (it was sent back: say what you changed).\nCall handoff again with --note "what you changed since it was sent back".\n',
+    );
+    const noted = await otea('handoff', 'CRI-1', '--note', 'Barro añadido', '--as', 'quill');
+    expect(noted).toMatchObject({
+      code: 0,
+      out: 'Handed off. CRI-1 waits for the person to review Concepto.\n',
+    });
   });
 
   it('prints the moved item and the line with --json', async () => {

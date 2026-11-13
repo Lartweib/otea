@@ -8,6 +8,7 @@ import {
   reviewerFor,
   roundsOf,
   sendBack,
+  sentBackAt,
   startsWith,
   stateOf,
   turnAt,
@@ -118,6 +119,15 @@ describe('handoffCheck', () => {
     const all = facts({ fields: { fsteps: '["cone","ctwo"]' }, evidence: anim });
     expect(handoffCheck(def, 'sanimate', all).ok).toBe(true);
   });
+
+  it('wants a note after a send-back, even where the step asks for none', () => {
+    const art = [{ part: 'eart', at: at(12) }];
+    expect(handoffCheck(def, 'sconcept', facts({ evidence: art, sentBack: true })).missing).toEqual(
+      [{ ref: 'note', name: 'note', reason: 'missing', fresh: true, hint: '', sentBack: true }],
+    );
+    const said = facts({ evidence: art, sentBack: true, note: 'Más barro en las patas' });
+    expect(handoffCheck(def, 'sconcept', said).ok).toBe(true);
+  });
 });
 
 describe('moves', () => {
@@ -216,6 +226,39 @@ describe('roundsOf', () => {
         { from: 'sanimate', to: 'sconcept', at: at(6) },
       ],
     });
+  });
+});
+
+describe('sentBackAt', () => {
+  it('finds the send-back that started the step’s current round, never a way back or an older one', () => {
+    const moves = [
+      { from: 'sconcept', to: 'sconcept__review', at: at(1) },
+      { from: 'sconcept__review', to: 'sconcept', at: at(2) },
+    ];
+    expect(sentBackAt(def, moves, 'sconcept')).toBe(1);
+    const again = [
+      ...moves,
+      { from: 'sconcept', to: 'sconcept__review', at: at(3) },
+      { from: 'sconcept__review', to: 'sanimate', at: at(4) },
+      { from: 'sanimate', to: 'sanimate__review', at: at(5) },
+      { from: 'sanimate__review', to: 'sconcept', at: at(6) },
+    ];
+    expect(sentBackAt(def, again, 'sconcept')).toBe(5);
+    expect(sentBackAt(def, again, 'sanimate')).toBe(-1);
+    // The doer taking it back is not a send-back; a quiet move after it changes nothing.
+    const takenBack = [
+      { from: 'sconcept', to: 'sconcept__review', at: at(1) },
+      { from: 'sconcept__review', to: 'sanimate', at: at(2) },
+      { from: 'sanimate', to: 'sconcept', at: at(3) },
+    ];
+    expect(sentBackAt(def, takenBack, 'sconcept')).toBe(-1);
+    expect(
+      sentBackAt(
+        def,
+        [...moves, { from: 'sconcept', to: 'sconcept', at: at(3), quiet: true }],
+        'sconcept',
+      ),
+    ).toBe(1);
   });
 });
 

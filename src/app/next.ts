@@ -20,6 +20,7 @@ import {
   refusalCode,
   roundsOf,
   sendBack,
+  sentBackAt,
   stateOf,
   type Transition,
   turnAt,
@@ -49,6 +50,7 @@ import {
   nextText,
   parentRequiredText,
   refusalText,
+  type SentBack,
   takenBackText,
   wayByName,
 } from '../core/board/next.ts';
@@ -111,6 +113,17 @@ function noteOf(data: Record<string, unknown>): string | undefined {
   return typeof data.note === 'string' && data.note.trim() !== '' ? data.note : undefined;
 }
 
+// What a move said and who made it, by the move's index: a send-back's note is its reason (or the
+// quote of a relayed one).
+type Said = { by: Actor; text?: string };
+
+function saidOf(data: Record<string, unknown>, by: Actor): Said {
+  const text = [data.note, data.reason, data.quote].find(
+    (value): value is string => typeof value === 'string' && value.trim() !== '',
+  );
+  return text === undefined ? { by } : { by, text };
+}
+
 // The item's moves as the engine replays them. A collection read from a preset starts its history
 // at that reading: the states before it belong to the preset's workflow, not to the board's steps.
 // A reading that carries a note (Falta información read as Completar) starts that step's next
@@ -118,13 +131,20 @@ function noteOf(data: Record<string, unknown>): string | undefined {
 function transitionsOf(
   ctx: Context,
   id: string,
-): { initial?: string; createdAt?: string; moves: Transition[]; notes: RawNote[] } {
+): {
+  initial?: string;
+  createdAt?: string;
+  moves: Transition[];
+  notes: RawNote[];
+  said: Said[];
+} {
   const events = selectEvents(ctx.db, id);
   const created = events.find(({ type }) => type === 'created');
   const moved = events.filter(({ type }) => type === 'transitioned');
   const migrated = moved.findLastIndex(({ data }) => data.reason === 'migrate');
   const moves: Transition[] = [];
   const notes: RawNote[] = [];
+  const said: Said[] = [];
   const reading = moved[migrated];
   const asked = reading ? noteOf(reading.data) : undefined;
   if (reading && asked !== undefined) {
@@ -135,6 +155,7 @@ function transitionsOf(
         to: to.step,
         at: reading.at,
       });
+      said.push(saidOf(reading.data, reading.actor));
       const by = moved
         .slice(0, migrated)
         .findLast(({ data }) => String(data.to) === String(reading.data.from))?.actor.name;
@@ -158,10 +179,14 @@ function transitionsOf(
       at,
       ...(BOARD_MOVES.has(String(data.reason)) ? { quiet: true } : {}),
     });
+    said.push(saidOf(data, actor));
   }
-  if (reading) return { initial: String(reading.data.to), createdAt: reading.at, moves, notes };
+  if (reading)
+    return { initial: String(reading.data.to), createdAt: reading.at, moves, notes, said };
   const state = created?.data.state;
-  return typeof state === 'string' ? { initial: state, moves, notes } : { moves, notes };
+  return typeof state === 'string'
+    ? { initial: state, moves, notes, said }
+    : { moves, notes, said };
 }
 
 // The live board with this id, when it is published on a collection.
@@ -216,14 +241,40 @@ export type ItemOnBoard = {
   round: number;
   notes: RoundNote[];
   links: Links;
+  // While a step is being done, the send-back that started its round.
+  sentBack?: SentBack;
 };
 
+// The send-back that started the round of the step being done, with its note, who sent it, when
+// and the review it came from; undefined when the round began any other way.
+function sentBackOf(
+  def: BoardDefinition,
+  position: Position,
+  history: { start: string; since: string; moves: Transition[]; said: Said[] },
+): SentBack | undefined {
+  if (isClosed(position) || position.phase !== 'doing') return undefined;
+  const index = sentBackAt(def, history.moves, position.step);
+  const move = history.moves[index];
+  const said = history.said[index];
+  if (!move || !said) return undefined;
+  const from = positionOf(move.from);
+  if (isClosed(from)) return undefined;
+  const rounds = roundsOf(def, history.start, history.since, history.moves.slice(0, index));
+  return {
+    note: said.text ?? '',
+    by: { kind: said.by.kind, name: said.by.name },
+    at: move.at,
+    step: stepById(def, from.step)?.name ?? from.step,
+    round: rounds.rounds[from.step] ?? 1,
+  };
+}
+
 // The item as the engine reads it: its fields (title included), its evidence by part and when, the
-// rounds of each step, read from its moves, its parts and what blocks it, and the note of each
-// round handed off.
+// rounds of each step, read from its moves, its parts and what blocks it, the note of each round
+// handed off, and the send-back its current round started with.
 export function itemOnBoard(ctx: Context, item: ItemRecord, def: BoardDefinition): ItemOnBoard {
   const position = positionOf(item.state);
-  const { initial, createdAt, moves, notes } = transitionsOf(ctx, item.id);
+  const { initial, createdAt, moves, notes, said: words } = transitionsOf(ctx, item.id);
   const start = initial ?? def.steps[0]?.id ?? item.state;
   const since = createdAt ?? item.createdAt;
   const rounds = roundsOf(def, start, since, moves);
@@ -233,10 +284,12 @@ export function itemOnBoard(ctx: Context, item: ItemRecord, def: BoardDefinition
   const step = isClosed(position) ? undefined : position.step;
   const startedAt = step === undefined ? undefined : rounds.startedAt[step];
   const links = linksOf(ctx, item.id);
+  const sentBack = sentBackOf(def, position, { start, since, moves, said: words });
   const facts: ItemFacts = {
     fields: { ...item.fields, title: item.title },
     evidence,
     ...(startedAt === undefined ? {} : { roundStartedAt: startedAt }),
+    ...(sentBack === undefined ? {} : { sentBack: true }),
     parts: links.parts,
     blockers: links.blockers,
   };
@@ -248,7 +301,15 @@ export function itemOnBoard(ctx: Context, item: ItemRecord, def: BoardDefinition
     at,
     by,
   }));
-  return { position, facts, rounds, round, notes: said, links };
+  return {
+    position,
+    facts,
+    rounds,
+    round,
+    notes: said,
+    links,
+    ...(sentBack === undefined ? {} : { sentBack }),
+  };
 }
 
 // What an item's page reads of it on a board (PLAN §9.1): its parts and the board they are on,
@@ -264,6 +325,8 @@ export type BoardBlock = {
   branch: { value: string; repo?: string } | null;
   // While its step is being done: what the handoff still lacks, as the engine checks it.
   missing: Missing[];
+  // While its step is being done after a send-back: the note it came back with, and from whom.
+  sentBack?: SentBack;
 };
 
 function filled(value: unknown): value is string {
@@ -290,6 +353,7 @@ export function boardBlockOf(ctx: Context, item: ItemRecord): BoardBlock | undef
       isClosed(on.position) || on.position.phase !== 'doing'
         ? []
         : handoffCheck(board.def, on.position.step, on.facts).missing,
+    ...(on.sentBack === undefined ? {} : { sentBack: on.sentBack }),
   };
 }
 
@@ -333,6 +397,7 @@ function textFor(ctx: Context, item: ItemRecord, def: BoardDefinition, me?: stri
     blockers: on.links.blockers,
     ...(child === undefined ? {} : { child: child.def }),
     ...(me === undefined ? {} : { me }),
+    ...(on.sentBack === undefined ? {} : { sentBack: on.sentBack }),
   });
 }
 
@@ -356,10 +421,16 @@ export function waitingForYou(ctx: Context, board: LiveBoard): number {
   ).length;
 }
 
-export type NextAnswer = { item: string | null; collection: string | null; text: string };
+// `sentBack`: the note the item came back with, when a send-back started the round to do.
+export type NextAnswer = {
+  item: string | null;
+  collection: string | null;
+  text: string;
+  sentBack?: SentBack;
+};
 
-// The item the agent should take, oldest waiting first, and its text; or, when there is none, each
-// board's words for idle time and its cap on new items.
+// The item the agent should take, and its text: what was sent back to it first, then the oldest
+// waiting; or, when there is none, each board's words for idle time and its cap on new items.
 export function nextFor(
   ctx: Context,
   agent: string,
@@ -381,19 +452,26 @@ export function nextFor(
   const candidates = boards.flatMap((board) =>
     selectItems(ctx.db, { collection: board.collection })
       .filter((item) => isTheirs(board.def, item, agent, at))
-      .map((item) => ({ item, board })),
+      .map((item) => ({
+        item,
+        board,
+        returned: itemOnBoard(ctx, item, board.def).sentBack !== undefined,
+      })),
   );
   candidates.sort(
     (a, b) =>
+      Number(b.returned) - Number(a.returned) ||
       since(a.item).localeCompare(since(b.item)) ||
       a.item.createdAt.localeCompare(b.item.createdAt),
   );
   const first = candidates[0];
   if (first) {
+    const sentBack = itemOnBoard(ctx, first.item, first.board.def).sentBack;
     return {
       item: first.item.id,
       collection: first.board.collection,
       text: textFor(ctx, first.item, first.board.def, agent),
+      ...(sentBack === undefined ? {} : { sentBack }),
     };
   }
   return {
@@ -572,9 +650,11 @@ export function handoffItem(
     const on = itemOnBoard(ctx, item, board.def);
     const way = wayOf(board.def, on.position, item.id, input.way);
     const by = { kind: input.actor.kind, name: input.actor.name };
-    // A step that asks for a note reads the reason when no note is given, as a move does.
+    // A step that asks for a note (or a round sent back) reads the reason when no note is given,
+    // as a move does.
     const step = isClosed(on.position) ? undefined : stepById(board.def, on.position.step);
-    const asked = way === undefined && step?.note.req === 'always' && !input.note?.trim();
+    const wanted = step?.note.req === 'always' || on.facts.sentBack === true;
+    const asked = way === undefined && wanted && !input.note?.trim();
     const note = asked && input.reason?.trim() ? input.reason : input.note;
     const facts = note === undefined ? on.facts : { ...on.facts, note };
     const result = handoff(board.def, on.position, facts, {
@@ -802,7 +882,8 @@ export function assertMoveHandsOff(
   if (!board) return undefined;
   const from = positionOf(item.state);
   const step = isClosed(from) ? undefined : stepById(board.def, from.step);
-  const note = noteFor(board.def, step, from, positionOf(to), words);
+  const sentBack = itemOnBoard(ctx, item, board.def).sentBack !== undefined;
+  const note = noteFor(board.def, step, from, positionOf(to), words, sentBack);
   if (actor?.kind === 'agent') {
     assertAgentMove(ctx, board, item, to, actor, words);
     return note;
@@ -840,20 +921,21 @@ export function assertMoveHandsOff(
   return note;
 }
 
-// The note a move hands off with: the one given, or, on a step that asks for a note, its reason;
-// none for a discard or a way back (their reason is theirs).
+// The note a move hands off with: the one given, or, on a step that asks for a note (or a round
+// sent back), its reason; none for a discard or a way back (their reason is theirs).
 function noteFor(
   def: BoardDefinition,
   step: Step | undefined,
   from: Position,
   to: Position,
   words: MoveWords,
+  sentBack: boolean,
 ): string | undefined {
   if (!step || isClosed(from) || from.phase !== 'doing') return undefined;
   if (isClosed(to) ? to.closed !== DONE : stepIndex(def, to.step) < stepIndex(def, step.id))
     return undefined;
   if (words.note?.trim()) return words.note;
-  if (step.note.req !== 'always') return undefined;
+  if (step.note.req !== 'always' && !sentBack) return undefined;
   return words.reason?.trim() ? words.reason : undefined;
 }
 

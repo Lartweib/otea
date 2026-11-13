@@ -125,12 +125,14 @@ export type Linked = { id: string; board: string; step?: string; closed: boolean
 // What the engine reads of an item to check a handoff: its field values by part id, its evidence
 // by part (the evidence module id it was attached to) and when, and when the step's current round
 // began (a fresh part counts only from then on). `note` is the note the handoff carries; `parts`
-// and `blockers` are what its waits read (none when left out).
+// and `blockers` are what its waits read (none when left out). `sentBack`: a send-back started the
+// step's current round, so its handoff carries a note, whatever the step asks.
 export type ItemFacts = {
   fields: Readonly<Record<string, unknown>>;
   evidence: readonly { part: string; at: string }[];
   roundStartedAt?: string;
   note?: string;
+  sentBack?: boolean;
   parts?: readonly Linked[];
   blockers?: readonly Linked[];
 };
@@ -142,13 +144,15 @@ export const WAIT_BLOCKERS = 'wait:blockers';
 
 // `missing`: nothing there; `not_new`: there, but from an earlier round; `unchecked`: a checklist
 // with boxes still open; `open`: a wait whose items are not finished (`open`, of `total`). The note
-// carries its `hint` ("Qué va aquí").
+// carries its `hint` ("Qué va aquí"), and `sentBack` when it is wanted because the round was sent
+// back.
 export type Missing = {
   ref: string;
   name: string;
   reason: 'missing' | 'not_new' | 'unchecked' | 'open';
   fresh: boolean;
   hint?: string;
+  sentBack?: boolean;
   open?: Linked[];
   total?: number;
 };
@@ -256,13 +260,15 @@ export function handoffCheck(def: BoardDefinition, stepId: string, facts: ItemFa
     reason,
     fresh,
   }));
-  if (step.note.req === 'always' && !facts.note?.trim())
+  const sentBack = step.note.req !== 'always' && facts.sentBack === true;
+  if ((step.note.req === 'always' || sentBack) && !facts.note?.trim())
     missing.push({
       ref: NOTE_REF,
       name: NOTE_REF,
       reason: 'missing',
       fresh: true,
       hint: step.note.hint,
+      ...(sentBack ? { sentBack } : {}),
     });
   missing.push(...openWaits(step, facts));
   return { ok: missing.length === 0, missing };
@@ -490,6 +496,27 @@ export function roundsOf(
     }
   }
   return out;
+}
+
+// The move that started the step's current round when it was a send-back (from a review of this
+// step or a later one), as its index in `transitions`; -1 when the round began any other way.
+export function sentBackAt(
+  def: BoardDefinition,
+  transitions: readonly Transition[],
+  stepId: string,
+): number {
+  for (let index = transitions.length - 1; index >= 0; index -= 1) {
+    const move = transitions[index];
+    if (!move || move.quiet) continue;
+    const target = positionOf(move.to);
+    if (isClosed(target) || target.phase !== 'doing' || target.step !== stepId) continue;
+    const source = positionOf(move.from);
+    if (isClosed(source)) return -1;
+    if (source.step === stepId && source.phase === 'doing') continue;
+    const review = source.phase !== 'doing';
+    return review && stepIndex(def, stepId) <= stepIndex(def, source.step) ? index : -1;
+  }
+  return -1;
 }
 
 // What a step starts with: the title, the creation form and everything handed off before it, each
