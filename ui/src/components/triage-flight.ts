@@ -6,7 +6,11 @@ import { spring } from '../motion/spring.ts';
 import {
   type Direction,
   dragProgress,
+  flightLift,
   LATER_POSE,
+  landArc,
+  landOpacity,
+  liftOpacity,
   stampShift,
   throwFade,
   throwTo,
@@ -31,8 +35,14 @@ import {
 // itself waits unseen in the stack (it keeps the pointer) and is seen again once the face lands.
 
 export type Flight = { done: Promise<void>; cancel: () => void };
-// Where a thrown card lands on its pile, from where it rests (pileLanding).
-export type Landing = { x: number; y: number; scale: number };
+// Where a thrown card lands on its pile, from where it rests (pileLanding), and the pile entry it
+// hands over to as it lands (made unseen as the card leaves).
+export type Landing = {
+  x: number;
+  y: number;
+  scale: number;
+  entry?: () => HTMLElement | null | undefined;
+};
 
 const THROW = 560;
 const HOME = 440;
@@ -108,8 +118,12 @@ function pose(face: HTMLElement, x: number, tilt = tiltOf(x), y = 0, scale = 1):
       : `translate(${x.toFixed(2)}px, ${y.toFixed(2)}px) rotate(${tilt.toFixed(3)}deg) scale(${scale.toFixed(4)})`;
 }
 
-// A card landing on its pile stays whole until it is almost there, then hands over to the pile.
-const landFade = (k: number): number => 1 - F.drift(clamp((k - 0.62) / 0.33));
+// How lifted the flying card looks: its shadow, from the stack's rest (0) to the drag's hold (1).
+// A card brought down to a pile's width (scale) keeps the drag's shadow as seen on the screen.
+function lifted(face: HTMLElement, lift: number, scale = 1): void {
+  face.dataset.flying = '';
+  face.style.setProperty('--lift', (lift / Math.max(scale, 0.25)).toFixed(4));
+}
 
 // The card where the pointer has it, and what that pull says.
 export function hold(card: HTMLElement, x: number): void {
@@ -149,6 +163,8 @@ function rest(card: HTMLElement): void {
   delete card.dataset.lean;
   delete card.dataset.armed;
   delete card.dataset.held;
+  delete card.dataset.flying;
+  card.style.removeProperty('--lift');
 }
 
 function flight(T: number, frame: (k: number, t: number) => void): Flight {
@@ -201,6 +217,8 @@ export function throwOut(
     return faded(anim(card, [{ opacity: 1 }, { opacity: 0 }], 160, 'drift', 0, 'forwards'));
   }
   const face = faceOf(card);
+  // A card let go of a drag flies on as lifted as it was held.
+  const held = face.dataset.held !== undefined ? 1 : 0;
   delete face.dataset.held;
   const to = landing ? landing.x : throwTo(side, x);
   // A button press starts still; a fling carries its speed (never against its way).
@@ -213,10 +231,15 @@ export function throwOut(
     const now = at(t).x;
     card.dataset.x = now.toFixed(2);
     if (landing) {
-      // Onto the pile: down and smaller as it goes, straightening as it settles there.
+      // Onto the pile, over its heading: down and smaller as it goes, straightening as it settles
+      // there, whole and lifted until it sits on its entry, then handing over to it.
       const e = F.settle(k);
-      pose(face, now, tiltOf(now) * (1 - e), lerp(0, landing.y, e), lerp(1, landing.scale, e));
-      face.style.opacity = landFade(k).toFixed(4);
+      const scale = lerp(1, landing.scale, e);
+      pose(face, now, tiltOf(now) * (1 - e), lerp(0, landing.y, e) - landArc(k), scale);
+      const o = landOpacity(k, THROW);
+      face.style.opacity = o.toFixed(4);
+      const entry = landing.entry?.();
+      if (entry) entry.style.opacity = (1 - o).toFixed(4);
     } else {
       const fade = throwFade(k);
       pose(face, now, tiltOf(now) * 1.3);
@@ -227,6 +250,7 @@ export function throwOut(
     // The stamp is already set when the card leaves by a button: the decision reads all the way.
     face.style.setProperty('--p', Math.max(p0, F.settle(clamp(k * 3))).toFixed(4));
     face.dataset.armed = '';
+    lifted(face, flightLift(k, THROW, held), landing ? lerp(1, landing.scale, F.settle(k)) : 1);
     riseWith(stack, rise0, k);
   });
   // Landed, the face goes; the card stays unseen until the pass lets it go.
@@ -300,10 +324,13 @@ export function returnIn(card: HTMLElement, side: Direction, landing?: Landing):
     }
     const now = at(t).x;
     if (landing) {
-      // Lifted off its pile, growing back to its size as it comes home.
+      // The landing reversed: out of its entry in a crossfade, whole and lifted from then on, back
+      // over the pile's heading, growing to its size and settling flat on the stack.
       const e = F.settle(k);
-      pose(face, now, 0, lerp(landing.y, 0, e), lerp(landing.scale, 1, e));
-      face.style.opacity = F.drift(clamp(k * 2.4)).toFixed(4);
+      const scale = lerp(landing.scale, 1, e);
+      pose(face, now, 0, lerp(landing.y, 0, e) - landArc(k), scale);
+      face.style.opacity = liftOpacity(k, THROW).toFixed(4);
+      lifted(face, flightLift(k, THROW), scale);
       setRise(stack, 1 - e);
       return;
     }

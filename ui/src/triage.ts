@@ -249,6 +249,27 @@ export function throwTo(side: Direction, dx: number): number {
 // A thrown card stays whole as it leaves, then lets go well before it lands.
 export const throwFade = (k: number): number => 1 - sstep(clamp((k - 0.2) / 0.65));
 
+// A card thrown onto its pile is whole and lifted all the way there: it hands over to its entry
+// only in its last HANDOVER ms (a crossfade, as it settles flat), and a card taken back off its pile
+// is exactly that reversed. k is the flight's progress (0 to 1) over its T ms.
+export const HANDOVER = 80;
+const handing = (k: number, T: number): number => sstep(clamp((k * T - (T - HANDOVER)) / HANDOVER));
+export const landOpacity = (k: number, T: number): number => 1 - handing(k, T);
+export const liftOpacity = (k: number, T: number): number => landOpacity(1 - k, T);
+
+// How lifted the flying card looks (0 flat on the stack or its entry, 1 held up): up off the stack
+// in its first HANDOVER ms (already up when it was dragged: from), down only as it lands.
+export function flightLift(k: number, T: number, from = 0): number {
+  const up = from + (1 - from) * sstep(clamp((k * T) / HANDOVER));
+  return up * landOpacity(k, T);
+}
+
+// The card's path onto its pile rises above the straight line (px, up), the most halfway through the
+// flight (k), when it is already over the pile: it is seen to pass over the pile's heading and drop
+// onto its entry, never to slide under the heading.
+const ARC = 28;
+export const landArc = (e: number): number => ARC * Math.sin(Math.PI * clamp(e));
+
 // A card left for later drops behind (mock:4033).
 export const LATER_POSE = 'translateY(24px) scale(0.97)';
 
