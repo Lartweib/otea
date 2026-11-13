@@ -17,25 +17,28 @@ import { rememberDrafter } from './studio-dialogs.ts';
 
 const ANY = '';
 
+// `name`: what Nuevo tablero had typed, when it handed over.
 export function AgentDraftDialog({
   open,
   n,
+  name = '',
   onClose,
 }: {
   open: boolean;
   n: number;
+  name?: string;
   onClose: () => void;
 }) {
   return (
     <Dialog open={open} label={t('bs.ask.title')} onClose={onClose} size="md" className="sh-dlg">
-      <AgentDraftForm key={n} onClose={onClose} />
+      <AgentDraftForm key={n} start={name} onClose={onClose} />
     </Dialog>
   );
 }
 
-function AgentDraftForm({ onClose }: { onClose: () => void }) {
+function AgentDraftForm({ start, onClose }: { start: string; onClose: () => void }) {
   const app = useApp();
-  const [name, setName] = useState('');
+  const [name, setName] = useState(start);
   const [need, setNeed] = useState('');
   const [who, setWho] = useState(ANY);
   const [problem, setProblem] = useState('');

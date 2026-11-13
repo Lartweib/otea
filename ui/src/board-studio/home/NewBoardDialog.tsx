@@ -3,6 +3,7 @@ import { blankBoard } from '../../../../src/core/board/templates.ts';
 import { useApp } from '../../app/context.tsx';
 import { language, t, tx } from '../../i18n/i18n.ts';
 import { Button, ChipButton } from '../../kit/Button.tsx';
+import { Icon } from '../../kit/Icon.tsx';
 import { Dialog } from '../../kit/pop/Dialog.tsx';
 import { toast } from '../../kit/pop/toast.tsx';
 import { Swap } from '../../kit/Swap.tsx';
@@ -13,10 +14,11 @@ import { createBoard, createBoardSet, StudioRequestError, type TemplateView } fr
 import { boardsOf, loadBoards, useBoards } from './boards-store.ts';
 import { freeName, nameIssue, setBoards } from './home-model.ts';
 import { MiniRoute } from './MiniRoute.tsx';
-import { useTemplates } from './studio-dialogs.ts';
+import { openAgentDraft, useTemplates } from './studio-dialogs.ts';
 
 // Nuevo tablero (the mock's newBoardDialog): a name, what each item is called, and what it starts
-// from, blank or a template, with its route. The checks are in words; a name already taken comes
+// from, blank or a template, with its route; or, as on Studio's home, Que lo esboce un agente,
+// which hands over to that dialog with the name typed. The checks are in words; a name already taken comes
 // back from the server too (409). On create, the draft opens in the editor.
 
 const BLANK = 'blank';
@@ -217,6 +219,16 @@ function NewBoardForm({ start, onClose }: { start: string; onClose: () => void }
               {setBoards(x) ? ` ${t('bs.new.boards', { count: setBoards(x)?.length ?? 0 })}` : ''}
             </ChipButton>
           ))}
+          <ChipButton
+            on={false}
+            className="nb-agent"
+            onClick={() =>
+              openAgentDraft(isDefault(name, (x) => x.definition.name) ? '' : name.trim())
+            }
+          >
+            <Icon name="inbox" />
+            {t('bs.home.agentDraft')}
+          </ChipButton>
         </div>
         <Swap k={pick} as="div" dy={3} className="nb-body">
           {tpl && set ? (
