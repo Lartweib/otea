@@ -1,5 +1,6 @@
 import { describeEvent, formatTime, momentParts, relayOf } from '../../format.ts';
 import { t } from '../../i18n/i18n.ts';
+import { fieldWord, valueWord } from '../../preset-words.ts';
 import type { ItemEvent, TypeView } from '../../types.ts';
 
 // The item's history as the sheet's lane says it (SPEC §10.3, mock:638-649, 2736-2739): newest
@@ -34,6 +35,10 @@ export function historyOf(
   now: number,
 ): HistoryLine[] {
   const states = new Map((type?.states ?? []).map((s) => [s.name, s]));
+  const fieldWords = {
+    field: (key: string) => fieldWord(type, key) ?? key,
+    value: (key: string, value: string) => valueWord(type, key, value),
+  };
   const sorted = [...events].sort((a, b) => a.id - b.id);
   let handed = 0;
   // Before Otea read the item onto its board, its states were a preset's: their names are not
@@ -137,7 +142,7 @@ export function historyOf(
         ...caption,
       };
     }
-    return { ...base, text: describeEvent(e) };
+    return { ...base, text: describeEvent(e, fieldWords) };
   });
   return lines.reverse();
 }

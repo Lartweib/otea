@@ -252,7 +252,7 @@ describe('values, filters and sorting: every view honours them', () => {
       ['high', 1, true],
       ['', 2, false],
     ]);
-    expect(sev.at(-1)?.label).toBe('no severity');
+    expect(sev.at(-1)?.label).toBe('Severity: none');
     expect(filterChoices(items, 'state', {}, c).map((v) => [v.value, v.count])).toEqual([
       ['fixing', 2],
       ['verify', 1],
