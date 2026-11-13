@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { moveItem } from '../app/items.ts';
 import { openProject } from '../app/project.ts';
 import { EXIT_CODES } from './exit-codes.ts';
-import { type Cli, cliAt, tempGitRepo } from './testing.ts';
+import { type Cli, cliAt, presetCollection, tempGitRepo } from './testing.ts';
 
 describe('check', () => {
   let repo: ReturnType<typeof tempGitRepo>;
@@ -38,7 +38,7 @@ describe('check', () => {
     name = basename(repo.dir);
     otea = cliAt(repo.dir, { OTEA_AGENT: 'claude' });
     await otea('init');
-    await otea('collection', 'add', 'changes', '--preset', 'change');
+    presetCollection(repo.dir, 'changes', 'change');
     await otea('create', '--collection', 'changes', '--title', 'Keys');
     task = (
       await json(

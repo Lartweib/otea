@@ -84,7 +84,7 @@ export const surfaces = {
   'intake.required': '(required)',
   'intake.create': 'Create',
   'intake.creating': 'Creating…',
-  'intake.noCollections': 'No collections yet. Add one with {command}.',
+  'intake.noCollections': 'No boards yet. Add one with {command}.',
   'intake.leftToAgent': 'Optional now — if left empty, an agent will complete it',
   'intake.startsReady': 'Starts ready in {state}.',
   'intake.startsIncomplete': 'Starts in {state}: an agent will complete {fields} first.',

@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { type Cli, cliAt, tempGitRepo } from './testing.ts';
+import { type Cli, cliAt, presetCollection, tempGitRepo } from './testing.ts';
 
 describe('commands', () => {
   let repo: ReturnType<typeof tempGitRepo>;
@@ -19,7 +19,7 @@ describe('commands', () => {
   afterEach(() => repo.remove());
 
   it('fails with not_found before init', async () => {
-    const { code, err } = await otea('collection', 'add', 'tasks');
+    const { code, err } = await otea('list');
 
     expect(code).toBe(3);
     expect(err).toContain('run init first');
@@ -41,7 +41,7 @@ describe('commands', () => {
     afterEach(() => rmSync(product, { recursive: true, force: true }));
 
     it('works with it from inside the repo', async () => {
-      expect((await otea('collection', 'add', 'tasks')).code).toBe(0);
+      expect((await otea('board', 'add', 'Tareas web')).code).toBe(0);
 
       expect((await otea('list', '--json')).code).toBe(0);
     });
@@ -63,74 +63,16 @@ describe('commands', () => {
       await otea('init', '--local');
     });
 
-    describe('collection add', () => {
-      it('adds a collection with the tasks preset by default', async () => {
-        const { code, out } = await otea('collection', 'add', 'tasks');
+    it('has no collection add: a board is added with board add', async () => {
+      const { code, err } = await otea('collection', 'add', 'tasks');
 
-        expect(code).toBe(0);
-        expect(out).toBe('Added collection "tasks" with preset tasks v2 (ids TASKS-<n>)\n');
-      });
-
-      it('prints the collection with --json', async () => {
-        expect(await json('collection', 'add', 'bugs', '--preset', 'tasks')).toEqual({
-          name: 'bugs',
-          prefix: 'BUGS',
-          preset: 'tasks',
-          presetVersion: 2,
-          nextSeq: 1,
-          icon: 'checklist',
-        });
-      });
-
-      it('gives the collection its own icon with --icon', async () => {
-        expect(await json('collection', 'add', 'roadmap', '--icon', 'map')).toMatchObject({
-          name: 'roadmap',
-          icon: 'map',
-        });
-      });
-
-      it('fails with invalid_icon for an unknown icon, naming the close ones, and adds nothing', async () => {
-        const { code, err } = await otea('collection', 'add', 'bugs', '--icon', 'bgu');
-
-        expect(code).toBe(6);
-        expect(err).toContain('Unknown icon "bgu" (did you mean bug?)');
-        expect((await otea('collection', 'add', 'bugs')).code).toBe(0);
-      });
-
-      it('fails with not_found for an unknown preset', async () => {
-        const { code, err } = await otea('collection', 'add', 'bugs', '--preset', 'nope');
-
-        expect(code).toBe(3);
-        expect(err).toContain('Preset "nope" not found');
-      });
-
-      it('fails with invalid_preset for a broken project preset', async () => {
-        repo.write('.otea/presets/broken/preset.yaml', 'preset: broken\n');
-
-        expect((await otea('collection', 'add', 'bugs', '--preset', 'broken')).code).toBe(9);
-      });
-
-      it('fails with already_exists for a duplicate', async () => {
-        await otea('collection', 'add', 'tasks');
-
-        expect((await otea('collection', 'add', 'tasks')).code).toBe(5);
-      });
-
-      it('fails with invalid_name for an unusable name', async () => {
-        expect((await otea('collection', 'add', '!!')).code).toBe(6);
-      });
-
-      it('requires the name', async () => {
-        const { code, err } = await otea('collection', 'add');
-
-        expect(code).toBe(2);
-        expect(err).toContain('Usage: otea collection add <name>');
-      });
+      expect(code).toBe(2);
+      expect(err).toContain('Unknown command');
     });
 
     describe('collection icon', () => {
       beforeEach(async () => {
-        await otea('collection', 'add', 'tasks');
+        presetCollection(repo.dir, 'tasks');
       });
 
       it("changes a collection's icon, and goes back to its preset's with default", async () => {
@@ -167,7 +109,7 @@ describe('commands', () => {
 
     describe('create', () => {
       beforeEach(async () => {
-        await otea('collection', 'add', 'tasks');
+        presetCollection(repo.dir, 'tasks');
       });
 
       it('prints the new id', async () => {
@@ -304,8 +246,8 @@ describe('commands', () => {
 
     describe('with items', () => {
       beforeEach(async () => {
-        await otea('collection', 'add', 'tasks');
-        await otea('collection', 'add', 'bugs');
+        presetCollection(repo.dir, 'tasks');
+        presetCollection(repo.dir, 'bugs');
         await otea(
           'create',
           '--collection',
@@ -413,7 +355,7 @@ describe('commands', () => {
         });
 
         it('says which gated actions the item allows, in text and --json', async () => {
-          await otea('collection', 'add', 'changes', '--preset', 'change');
+          presetCollection(repo.dir, 'changes', 'change');
           await otea('create', '--collection', 'changes', '--title', 'Keys');
           const task = await json(
             'create',

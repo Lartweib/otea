@@ -5,7 +5,7 @@ import { getDefaultEnvironment, StdioClientTransport } from '@modelcontextprotoc
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { listAgents } from '../app/presence.ts';
 import { openProject } from '../app/project.ts';
-import { type Cli, cliAt, tempGitRepo, until } from './testing.ts';
+import { type Cli, cliAt, presetCollection, tempGitRepo, until } from './testing.ts';
 
 const MAIN = fileURLToPath(new URL('./main.ts', import.meta.url));
 const ARGS = ['--disable-warning=ExperimentalWarning', MAIN, 'mcp'];
@@ -18,7 +18,7 @@ describe('mcp', () => {
     repo = tempGitRepo();
     otea = cliAt(repo.dir);
     await otea('init', '--local');
-    await otea('collection', 'add', 'tasks');
+    presetCollection(repo.dir, 'tasks');
     await otea('create', '--collection', 'tasks', '--title', 'Docs', '--description', 'For v1');
   });
 

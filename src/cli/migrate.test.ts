@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { writeServeFile } from './serve-file.ts';
-import { type Cli, cliAt, type TempRepo, tempGitRepo } from './testing.ts';
+import { type Cli, cliAt, presetCollection, tempGitRepo, type TempRepo } from './testing.ts';
 
 describe('migrate', () => {
   let repo: TempRepo;
@@ -12,7 +12,7 @@ describe('migrate', () => {
     repo = tempGitRepo();
     otea = cliAt(repo.dir, { OTEA_AGENT: 'claude' });
     await otea('init', '--local');
-    await otea('collection', 'add', 'tasks');
+    presetCollection(repo.dir, 'tasks');
     await otea('create', '--collection', 'tasks', '--title', 'Kept');
   });
 

@@ -4,7 +4,7 @@ import { itemNextText, liveBoardOf } from '../app/next.ts';
 import { openProject } from '../app/project.ts';
 import { boardText } from '../core/board/next.ts';
 import { listedTemplates } from '../core/board/templates.ts';
-import { type Cli, cliAt, tempGitRepo } from './testing.ts';
+import { type Cli, cliAt, presetCollection, tempGitRepo } from './testing.ts';
 
 // What agents read about a board before acting: `otea board`, and the hint of `otea show`.
 describe('board', () => {
@@ -32,7 +32,7 @@ describe('board', () => {
   afterEach(() => repo.remove());
 
   it("prints a published board's own words and each step's instructions", async () => {
-    await otea('collection', 'add', 'work');
+    presetCollection(repo.dir, 'work');
 
     const { code, out } = await otea('board', 'work');
 
@@ -46,7 +46,7 @@ describe('board', () => {
   });
 
   it('prints the board, its version and the text with --json', async () => {
-    await otea('collection', 'add', 'work');
+    presetCollection(repo.dir, 'work');
 
     const guide = await json('board', 'work');
 
@@ -55,8 +55,8 @@ describe('board', () => {
   });
 
   it('indexes the boards without a name, each with how to read it', async () => {
-    await otea('collection', 'add', 'work');
-    await otea('collection', 'add', 'changes', '--preset', 'change');
+    presetCollection(repo.dir, 'work');
+    presetCollection(repo.dir, 'changes', 'change');
 
     const { code, out } = await otea('board');
 
@@ -86,7 +86,7 @@ describe('board', () => {
   });
 
   it('quotes a board name with spaces in the command', async () => {
-    await otea('collection', 'add', 'my work');
+    presetCollection(repo.dir, 'my work');
 
     expect((await json('board')).boards[1].command).toBe('otea board "my work"');
   });
@@ -102,7 +102,7 @@ describe('board', () => {
 
   describe('show', () => {
     it("says what to do now on a board in next's own words", async () => {
-      await otea('collection', 'add', 'tasks');
+      presetCollection(repo.dir, 'tasks');
       await otea('create', '--collection', 'tasks', '--title', 'Docs', '--description', 'For v1');
 
       const hint = (await json('show', 'TASKS-1', '--as', 'quill')).hint;
@@ -180,7 +180,7 @@ describe('board add', () => {
   });
 
   it('names a related item’s step on its own board in otea show', async () => {
-    await otea('collection', 'add', 'work');
+    presetCollection(repo.dir, 'work');
     await otea('create', '--collection', 'work', '--title', 'A');
     await otea('create', '--collection', 'work', '--title', 'B');
     await otea('link', 'WORK-1', 'blocks', 'WORK-2');

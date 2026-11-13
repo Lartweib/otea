@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { createServer, type Server } from 'node:net';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { type Cli, cliAt, tempGitRepo } from './testing.ts';
+import { type Cli, cliAt, presetCollection, tempGitRepo } from './testing.ts';
 
 const URL_LINE = /^Otea running at (http:\/\/127\.0\.0\.1:\d+)\n$/;
 
@@ -41,7 +41,7 @@ describe('serve', () => {
   });
 
   it('serves the project on 127.0.0.1 until interrupted', async () => {
-    await otea('collection', 'add', 'tasks');
+    presetCollection(repo.dir, 'tasks');
     await otea('create', '--collection', 'tasks', '--title', 'First');
 
     const { code, out } = await otea('serve', '--port', '0');

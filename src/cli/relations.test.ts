@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { type Cli, cliAt, tempGitRepo } from './testing.ts';
+import { type Cli, cliAt, presetCollection, tempGitRepo } from './testing.ts';
 
 describe('relations', () => {
   let repo: ReturnType<typeof tempGitRepo>;
@@ -15,8 +15,8 @@ describe('relations', () => {
     repo = tempGitRepo();
     otea = cliAt(repo.dir, { OTEA_AGENT: 'claude' });
     await otea('init', '--local');
-    await otea('collection', 'add', 'parts');
-    await otea('collection', 'add', 'bugs');
+    presetCollection(repo.dir, 'parts');
+    presetCollection(repo.dir, 'bugs');
     for (const title of ['Create wolf', 'Body', 'Movement']) {
       await otea('create', '--collection', 'parts', '--title', title, '--description', 'D');
     }

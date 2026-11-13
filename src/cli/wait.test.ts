@@ -1,14 +1,6 @@
 import { setTimeout as delay } from 'node:timers/promises';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import {
-  type Cli,
-  cliAt,
-  spawnCli,
-  startCli,
-  type TempRepo,
-  tempGitRepo,
-  until,
-} from './testing.ts';
+import { type Cli, cliAt, presetCollection, spawnCli, startCli, tempGitRepo, type TempRepo, until } from './testing.ts';
 
 const USAGE =
   'Usage: otea wait --turn <agent|human> [--collection <collection>] [--unclaimed] [--timeout <duration>]';
@@ -24,8 +16,8 @@ describe('wait', () => {
     repo = tempGitRepo();
     otea = cliAt(repo.dir, { OTEA_AGENT: 'claude' });
     await otea('init');
-    await otea('collection', 'add', 'tasks');
-    await otea('collection', 'add', 'bugs');
+    presetCollection(repo.dir, 'tasks');
+    presetCollection(repo.dir, 'bugs');
     await otea('create', '--collection', 'tasks', '--title', 'First', '--description', 'D');
     await otea('create', '--collection', 'tasks', '--title', 'Second', '--description', 'D');
   });

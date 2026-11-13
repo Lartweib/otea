@@ -1,13 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import {
-  type Cli,
-  cliAt,
-  spawnCli,
-  startCli,
-  type TempRepo,
-  tempGitRepo,
-  until,
-} from './testing.ts';
+import { type Cli, cliAt, presetCollection, spawnCli, startCli, tempGitRepo, type TempRepo, until } from './testing.ts';
 
 const AT = '\\d{4}-\\d\\d-\\d\\dT\\S+Z';
 
@@ -23,8 +15,8 @@ describe('events', () => {
     repo = tempGitRepo();
     otea = cliAt(repo.dir);
     await otea('init');
-    await otea('collection', 'add', 'tasks');
-    await otea('collection', 'add', 'bugs');
+    presetCollection(repo.dir, 'tasks');
+    presetCollection(repo.dir, 'bugs');
     await otea('create', '--collection', 'tasks', '--title', 'First', '--description', 'D');
     await otea('create', '--collection', 'bugs', '--title', 'Crash', '--description', 'D');
     await otea('move', 'TASKS-1', 'todo__review');

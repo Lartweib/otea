@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { type Cli, cliAt, spawnCli, type TempRepo, tempGitRepo } from './testing.ts';
+import { type Cli, cliAt, presetCollection, spawnCli, tempGitRepo, type TempRepo } from './testing.ts';
 
 const HELD = (holder: string) => new RegExp(`held by ${holder} until \\d\\d:\\d\\d`);
 
@@ -13,7 +13,7 @@ describe('leases', () => {
     repo = tempGitRepo();
     otea = cliAt(repo.dir);
     await otea('init');
-    await otea('collection', 'add', 'tasks');
+    presetCollection(repo.dir, 'tasks');
     await otea('create', '--collection', 'tasks', '--title', 'First', '--description', 'D');
     await otea('create', '--collection', 'tasks', '--title', 'Second', '--description', 'D');
   });
