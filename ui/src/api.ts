@@ -1,4 +1,5 @@
 import { withoutUndone } from '../../src/core/board/history.ts';
+import type { PerformanceView } from '../../src/core/board/performance.ts';
 import type { FeedEvent } from './activity.ts';
 import type { WrittenBrief } from './brief.ts';
 import { t } from './i18n/i18n.ts';
@@ -36,6 +37,16 @@ async function get(path: string, signal: AbortSignal): Promise<Response> {
     throw new Error(t('error.getFailed', { path, status: response.status }));
   }
   return response;
+}
+
+// How each model performs (Rendimiento), on one board or all of them, over a period.
+export async function fetchPerformance(
+  query: { board?: string | undefined; since: string },
+  signal: AbortSignal,
+): Promise<PerformanceView> {
+  const params = new URLSearchParams({ since: query.since });
+  if (query.board) params.set('board', query.board);
+  return (await get(`/api/performance?${params}`, signal)).json();
 }
 
 export async function fetchItems(signal: AbortSignal): Promise<Item[]> {

@@ -12,6 +12,7 @@ describe('deskOnlyOf', () => {
     expect(deskOnlyOf({ view: 'studio', page: { kind: 'board', board: 'b1' } })).toBe('studio');
     expect(deskOnlyOf({ view: 'settings' })).toBe('settings');
     expect(deskOnlyOf({ view: 'modules' })).toBe('modules');
+    expect(deskOnlyOf({ view: 'performance' })).toBe('performance');
   });
 
   it('leaves every page the phone keeps alone', () => {
@@ -23,7 +24,7 @@ describe('deskOnlyOf', () => {
 });
 
 describe('DeskOnly', () => {
-  const render = (page: 'studio' | 'settings' | 'modules') =>
+  const render = (page: 'studio' | 'settings' | 'modules' | 'performance') =>
     renderIn(testApp(), createElement(DeskOnly, { page }));
 
   it('says the page is on the computer, in the page’s own head, and offers the way to Te toca', () => {
@@ -36,6 +37,7 @@ describe('DeskOnly', () => {
   it('names Settings and the catalog too, and speaks Spanish', () => {
     expect(render('settings')).toContain('Settings is on the computer.');
     expect(render('modules')).toContain('The module catalog is on the computer.');
+    expect(render('performance')).toContain('Performance is on the computer.');
     setLanguage('es');
     const html = render('settings');
     expect(html).toContain('<h1 class="display" data-leaf="">Configuración</h1>');

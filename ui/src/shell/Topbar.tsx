@@ -291,11 +291,12 @@ type AgentsMenuProps = {
   onOpen: (id: string) => void;
   onActivity: () => void;
   onConnect: () => void;
+  onPerformance: () => void;
 };
 
 // The agents menu's rows (mock:3381-3393): who is connected, with its harness, what it holds (a
 // mini node, the id, the title: it opens the item), or that it is idle, or quiet; when it last gave
-// a sign. Then Ver actividad and Conectar un agente, and what connected means.
+// a sign. Then Ver actividad, Conectar un agente and Ver rendimiento, and what connected means.
 export function AgentsMenuBody({
   project,
   rows,
@@ -304,6 +305,7 @@ export function AgentsMenuBody({
   onOpen,
   onActivity,
   onConnect,
+  onPerformance,
 }: AgentsMenuProps) {
   return (
     <>
@@ -363,6 +365,15 @@ export function AgentsMenuBody({
         <span>
           <b>{t('shell.connect')}</b>
           <small>{t('shell.connectLine')}</small>
+        </span>
+      </button>
+      <button type="button" className="mrow" data-i="" onClick={onPerformance}>
+        <span className="ic">
+          <Icon name="perf" />
+        </span>
+        <span>
+          <b>{t('shell.performance')}</b>
+          <small>{t('shell.performanceLine')}</small>
         </span>
       </button>
       <p className="pnote afoot" data-i="">
@@ -441,6 +452,10 @@ function AgentsPill() {
           onConnect={() => {
             close();
             app.openConnect();
+          }}
+          onPerformance={() => {
+            close();
+            app.go({ view: 'performance' });
           }}
         />
       </Pop>

@@ -4,24 +4,30 @@ import { Button } from '../kit/Button.tsx';
 import { Icon } from '../kit/Icon.tsx';
 import type { Route } from '../selection.ts';
 
-// The pages the phone leaves to the computer (mobile mock, scope): Studio, Settings and the module
-// catalog. A link or a typed address that reaches one on the phone gets its head and a line saying
+// The pages the phone leaves to the computer (mobile mock, scope): Studio, Settings, the module
+// catalog and Rendimiento. A link or a typed address that reaches one on the phone gets its head and a line saying
 // where it is, with the way back to Te toca, never a page whose every write the server refuses.
 
-export type DeskPage = 'studio' | 'settings' | 'modules';
+export type DeskPage = 'studio' | 'settings' | 'modules' | 'performance';
 
 export function deskOnlyOf(route: Route): DeskPage | null {
   switch (route.view) {
     case 'studio':
     case 'settings':
     case 'modules':
+    case 'performance':
       return route.view;
     default:
       return null;
   }
 }
 
-const TITLE = { studio: 'nav.studio', settings: 'nav.settings', modules: 'app.modules' } as const;
+const TITLE = {
+  studio: 'nav.studio',
+  settings: 'nav.settings',
+  modules: 'app.modules',
+  performance: 'nav.performance',
+} as const;
 
 export function DeskOnly({ page }: { page: DeskPage }) {
   const app = useApp();
