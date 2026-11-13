@@ -2,7 +2,8 @@ import { createElement, type FunctionComponent } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { FIELD_MODULES } from '../../../src/core/preset.ts';
-import type { FieldView } from '../types.ts';
+import { ItemTypeScope } from '../preset-words.ts';
+import type { FieldView, TypeView } from '../types.ts';
 import type { EditProps, ShowProps } from './contract.ts';
 import { FALLBACK_MODULE, isKnownModule, MODULES, moduleFor } from './registry.ts';
 
@@ -172,5 +173,35 @@ describe('severity module', () => {
       'critical',
     ]);
     expect(html).toContain('<option value="high" selected="">high</option>');
+  });
+});
+
+describe('text module', () => {
+  it('says a checklist’s list of ids by the names its type gives them, in the detail and the row', () => {
+    const board = {
+      name: 'item',
+      label: 'Item',
+      initial: 'a',
+      states: [],
+      fields: [],
+      layout: { header: [], body: [], side: [], evidence: [], row: [], intake: [] },
+      labels: {
+        en: { states: {}, fields: {}, values: { fsteps: { crig: 'Rig', cwalk: 'Trot' } } },
+      },
+    } as unknown as TypeView;
+    const field: FieldView = { name: 'fsteps', module: 'text' };
+    const scoped = (component: FunctionComponent<ShowProps> | undefined) =>
+      component
+        ? renderToStaticMarkup(
+            createElement(
+              ItemTypeScope,
+              { type: board },
+              createElement(component, { field, value: '["crig","cwalk"]' }),
+            ),
+          )
+        : '';
+
+    expect(scoped(moduleFor('text').Detail)).toBe('<span class="body">Rig, Trot</span>');
+    expect(scoped(moduleFor('text').Row)).toContain('>Rig, Trot</span>');
   });
 });
