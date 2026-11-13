@@ -232,69 +232,18 @@ otea connect --as claude-b     # or just "otea connect" at a terminal, which ask
 
 What an agent reads back costs tokens on every call, so output size is tested like behavior. `src/cli/token-budget.test.ts` measures the CLI text, the CLI `--json` and the MCP result of `show`, `list`, `board` (the index and one board), `create`, `claim`, `handoff`, `attach` and `wait`, plus the MCP tool definitions, on a full bug-triage item, and fails when one grows past its budget. Tokens are estimated as characters / 4, not counted by a tokenizer. `--json` and MCP results are compact JSON, one line, no indentation. `OTEA_TOKEN_REPORT=sizes.json npx vitest run src/cli/token-budget.test.ts` writes the current sizes; raise a budget only on purpose.
 
-### Presets
+### Templates
 
-Every collection is governed by a preset: its fields, states, turns and transitions, plus a playbook for agents. Official presets live in [`presets/`](presets/):
+`otea init --template <key>`, `otea board add <name> --template <key>` and Studio's **Nuevo tablero** take the same templates: `bugs`, `assets`, `blog`, `tasks`, `research`, `triage`, `review`, `decisions`, and the sets `repos` and `product`, which make several boards at once (below). `otea init --help` and `otea board add --help` list them from the same catalog. `otea board add <name> --template repos` makes every board of the set, the name (and `--item`) naming the first; its `--json` is the list of boards it published.
 
-- [`tasks`](presets/tasks/playbook.md): the default; an agent works a task and a human approves it in review.
-- [`bug-triage`](presets/bug-triage/playbook.md): an agent files a documented bug (steps, expected and actual, environment, severity), you triage it, the agent fixes the ones you accept and returns proof, and you verify the fix. It lists bugs in a grid by category (an enum: crash, visual, gameplay, physics, audio, performance, ui), severity and area. Area is free text, in the words the project uses; the grid filters and groups by it as written (lowercased, so `Farm` and `farm` are one), and a project that wants a fixed set of values can make it an enum in its own preset. `otea collection add bugs --preset bug-triage`
-- [`change`](presets/change/playbook.md): one piece of work across several repos. You create a `change`; the agent plans it as one `repo_task` child per repo (with its `repo` and `branch`; a repo task lives only under a change, and a change takes nothing else), you approve each repo task's plan (`proposed` to `ready`), the agent implements it, records its pull request (`pr`) and hands it to `pr_review`, and you approve it (`approved`, which closes it), and then the agent merges it. The change goes to `verify` once every repo task is closed. A repo task's gates say whether its branch may be pushed (only while `implementing` or `revising`; it is frozen in review) and merged (only once `approved`): `otea show <id> --json` carries `"gates": {"push": true, "merge": false}`. Otea does not talk to any forge: the agent fills `repo`, `branch` and `pr` with `otea update`. `otea collection add changes --preset change`
+- Every project has **Pedidos**, the board for loose requests (an agent's board draft arrives on one too). It is made when the project is first opened, so `otea init --template none` leaves Pedidos and nothing else.
+- `otea init` makes boards only on a project with no boards of its own (Pedidos aside): Tareas and Errores by default, or the template's. On a project that already has boards it makes none and, when given `--template`, says to add one with `otea board add`. An unknown template fails with exit 3 (`not_found`) either way.
 
-A project can add its own in `presets/<name>/preset.yaml` in its data folder (`otea projects current` prints it; `.otea/presets/` for a local project) (with its `playbook.md`) and use it with `otea collection add <collection> --preset <name>`; project presets cannot reuse an official name. The format is described in §9 of the [product definition](docs/otea-product-definition.md#9-preset-format).
+### Collections from before boards
 
-A preset can hold several **item types** in one collection, for example bugs and improvements, each with its own fields, workflow and layout. Items then carry their type: `otea create --collection work --type bug --title "..."` (`--type` is required only when the preset has more than one type), `otea list --type impr`, and every `--json` output include it (the text of `list` and `show` names it only when the preset has several). A preset without `types` has a single type, `item`; a preset with one type names it by declaring just that one under `types`, as `tasks` (`task`) and `bug-triage` (`bug`) do. Items stored as `item` before their preset named its type take that name the next time the project is opened. Each type may name an icon the web UI draws beside its items (`icon: bug`, or a top-level `icon` for a preset without types; `tasks` uses `checkbox` and `bug-triage` uses `bug`); an unknown name is a preset problem that suggests the close ones. A top-level `icon` is also the preset's own icon, the default of its collections, next to types too; without it the preset's icon is its first root type's. The official presets use `checklist` (`tasks`), `bug` (`bug-triage`) and `layers` (`change`).
+Projects made before boards kept each collection on a preset (`presets/<name>/preset.yaml`, official or the project's own). The first time such a project opens, every collection is read once as a board: an official preset becomes its template's board (`tasks` Tareas, `bug-triage` Errores, `change` Cambios plus Tareas de repo, and so on) with its own words for agents, and a project's own preset becomes a board of one step, Hacerlo, that keeps its items' fields, with the text of its playbooks (its own `playbook.md`, then its types') as the board's words, which agents read with `otea board <name>`. Nothing makes a collection on a preset any more: boards are made with `otea board add` or in Studio.
 
-**Collection and project icons.** Every collection shows an icon: its preset's, unless it was given its own with `otea collection add <name> --icon <icon>` or later with `otea collection icon <name> <icon>` (`otea collection icon <name> default` goes back to the preset's). `otea init --icon <icon>` gives the project an icon, also on a project that already exists; a project without one is drawn as a two-letter monogram of its name. Icons are named as in presets (the 112 in [`src/core/icons.ts`](src/core/icons.ts)), and an unknown name fails with exit 6 (`invalid_icon`), naming the close ones, and changes nothing. `GET /api/collections` gives each collection its resolved `icon` (its own, else its preset's, `null` when neither has one), `GET /api/presets` each preset's `icon`, and `GET /api/project` the project's `id`, `name` and `icon` (`null` when it has none). Closed states say what closing means (`closes: done` or `closes: discarded`), and an agent can never close an item as `done`. `otea validate` checks types, layouts and closing kinds, and reports items whose type the preset no longer declares.
-
-Types can form a **hierarchy**. Under `types.<type>`, `children: [story, bug]` lists the types that may hang under it with `parent`, and `root: false` says it may not live with no parent (`root` defaults to `true`):
-
-```yaml
-types:
-  epic: { label: Epic, children: [story, bug], playbook: ./epic.md }
-  story: { label: Story, root: false, children: [bug] }
-  bug: { label: Bug }
-```
-
-- The hierarchy applies only once a type of the preset lists `children`; then a type without `children` takes none. A preset where no type lists them, as every official one, takes any child under any type.
-- `otea link <child> parent <parent>`, `otea create --parent` and the API refuse a child whose type the parent's type does not list with exit 16 (`parent_type`), and `otea create` of a type with `root: false` and no `--parent` with exit 16 (`parent_required`).
-- `otea validate` reports a child that is not a type of the preset or is listed twice, a loop (`epic -> story -> epic`, or a type under itself), and a `root: false` type that no type lists in its `children`.
-- `GET /api/collections` and `/api/presets` carry `children` and `root` on each type of a preset with a hierarchy, and the web UI's **+ child** offers only the types the parent takes (and hides on a type that takes none); **New item** offers only the types that may stand alone.
-
-**Notes on a preset.** A preset can be valid and still leave things in the dark. Loading it also notes, without stopping it:
-
-| Code | Level | What it means |
-| --- | --- | --- |
-| `field_unplaced` | warning | a field no layout slot (header, body, side, row, intake, phone) places, so nobody sees it; the title never counts |
-| `state_stuck_in_chat` | warning | a human-turn state that a decision relayed from chat cannot move forward: every exit is `human-ui`, or its `human` exits only go back (to a state no farther from the start) or to a `discarded` close |
-| `gate_unchecked` | warning | a gate no playbook of the preset runs `otea check --gate <name>` for; Otea records no gate checks, so the playbook is the only sign it is used |
-| `field_single_type` | info | a field only one type of several has |
-| `deprecated_key` | warning | `close_requires`, the former name of `requires` |
-| `sample_*` | warning | a sample that does not fit the preset (below) |
-
-`otea validate` prints the warnings of the project's own presets, as warnings that never fail it; an official preset is read-only, so its notes (each official approval is given only in the web UI, by design) and every info note stay in Studio. Studio's `GET /api/studio/presets/<name>` carries them all as `notes`, each with its `code`, `level`, `message` (which starts with its place in the YAML, as problems do), `file` and a structured `path`, such as `{"section": "fields", "type": "bug", "field": "build_hash"}`, for the editor to open the part it is about.
-
-**Sample items.** A preset may carry a few example items in `samples.yaml`, beside `preset.yaml`, for Studio to draw the real detail, row, form and lanes from a draft. They never enter a collection or the database. Evidence files live in a `samples/` folder beside it:
-
-```yaml
-samples:
-  - type: bug                     # optional when the preset has one type
-    id: BUGS-1                    # the id it shows; any text
-    title: Wall-slide jump drops the buffered input
-    state: reported
-    fields: { steps: ..., severity: high }
-    evidence:                     # role: before, after or single (the default); module and caption optional
-      - { file: wall-slide-before.png, role: before }
-    relations:                    # the other item, described: kind as read from this one
-      - { kind: blocks, id: WORK-2, title: Coyote time on moving platforms, type: task, state: todo }
-    history:                      # actor human or agent; ago: 5m, 3h, 2d
-      - { actor: agent, name: claude-a, event: created, ago: 2m }
-```
-
-Samples are read strictly against the preset, and what does not fit is a note, never a problem: a sample with an unknown key or type is left out (`sample_invalid`, `sample_unknown_type`), a state the workflow lacks is drawn as its initial state (`sample_unknown_state`), a value of an unknown field shows as plain text (`sample_unknown_field`), one its field does not allow is noted (`sample_invalid_value`), and evidence whose file `samples/` lacks is dropped (`sample_missing_file`). Every official preset ships samples. `GET /api/studio/presets/<name>/samples` returns `{yaml, files, samples, notes}`, `GET /api/studio/presets/<name>/samples/<file>` serves a file of the folder, and `POST /api/studio/presets/<name>` takes `samples` (the text of `samples.yaml`) beside `yaml` and `playbooks`; changing only the samples leaves `preset_version` as it is. Duplicating a preset copies its samples and their files.
-
-**Studio's preview.** `src/core/views.ts` builds what clients draw from a preset alone, so the server and Studio's preview share it: `typeViews(types)`, `draftCollectionView(preset, {name, icon?})`, `itemMoves(type, state, fields, performer)` (the moves, relayable decisions, missing fields and gates of an item in a state), and `sampleItem` / `sampleItemView(preset, sample, {collection, now, performer?})`, which draw a sample as `GET /api/items/:id` draws a stored item (its `ago` times counted back from `now`, the desk's browser as performer by default). `ui/src/studio/preview.ts` wraps them as `draftPreview(draft, {yaml, files}, {collection, now})`, reading the samples against the draft. The rendered detail, list row and create form mark each part the layout places with `data-type`, `data-slot`, `data-index` and, for a field, `data-field`, so a click finds its place in the preset. `POST /api/studio/presets` with `{"name"}` creates a blank project preset, and `POST /api/studio/presets/<name>/delete` deletes a project preset that no collection uses (`in_use`, 409, otherwise); both only from this computer's signed-in browser, and official presets stay read-only.
-
-A type may have its own **playbook**, `playbook: ./epic.md`, beside the preset's, in the same folder; Studio edits it with the preset's, and the `gate_unchecked` note reads both. When a collection on a preset reads as a published board, the preset's playbook becomes the board's text, which agents read with `otea board <name>`.
+**Icons.** `otea init --icon <icon>` gives the project an icon, also on a project that already exists; a project without one is drawn as a two-letter monogram of its name. `otea collection icon <name> <icon>` gives a board its own icon in the lists (`otea collection icon <name> default` shows its default again). Icons are named as in [`src/core/icons.ts`](src/core/icons.ts) (112 of them), and an unknown name fails with exit 6 (`invalid_icon`), naming the close ones, and changes nothing. `GET /api/collections` gives each collection its resolved `icon`, and `GET /api/project` the project's `id`, `name` and `icon` (`null` when it has none).
 
 ### Templates that make several boards
 
