@@ -528,8 +528,8 @@ export const TEMPLATES: readonly Template[] = [
           ['sources', 'always'],
         ],
         take: w(
-          'Look in the engine documentation first.',
-          'Busca primero en la documentación del motor.',
+          "Look in the project's own documentation first.",
+          'Busca primero en la documentación del propio proyecto.',
         ),
       },
       {
@@ -546,8 +546,11 @@ export const TEMPLATES: readonly Template[] = [
     ],
     anytime: [],
     samples: {
-      en: ['Which physics engine handles 200 wolves?', 'How big is a saved game?'],
-      es: ['¿Qué motor de físicas aguanta 200 lobos?', '¿Cuánto pesa una partida guardada?'],
+      en: ['Which search library fits our data?', 'How do similar tools handle offline use?'],
+      es: [
+        '¿Qué biblioteca de búsqueda encaja con nuestros datos?',
+        '¿Cómo resuelven el uso sin conexión herramientas parecidas?',
+      ],
     },
   },
   ...COVERAGE_TEMPLATES,
