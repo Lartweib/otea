@@ -136,7 +136,8 @@
   column-gap: 0;
   padding: 0 0 0 var(--pl);
   height: 40px;
-  align-items: center;
+  /* the cells' text sits on the title's baseline (rows.test.ts) */
+  align-items: baseline;
   border-bottom: 1px solid var(--rule);
 }
 .trow .band {
@@ -200,12 +201,15 @@
 .trow .c.age.warn {
   color: var(--warn);
 }
+/* a box without text keeps to the row's centre */
 .trow .who {
+  align-self: center;
   width: auto;
   padding: 0;
   justify-content: flex-start;
 }
 .ckc {
+  align-self: center;
   display: flex;
   align-items: center;
 }

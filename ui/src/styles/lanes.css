@@ -251,6 +251,10 @@
   column-gap: 20px;
   padding: var(--pt) 0 9px var(--pl);
 }
+/* One height for every list row: --pt + --lh, 3 px, the 18 px meta line and 9 px (rows.test.ts). */
+.row:not(.trow) .lift {
+  min-height: 61px;
+}
 .row .band {
   position: absolute;
   z-index: -1;
@@ -310,6 +314,7 @@
 .row .m {
   margin-top: 3px;
   font-size: 12.5px;
+  line-height: 18px;
   color: var(--ink-3);
   display: flex;
   gap: 7px;
@@ -337,6 +342,7 @@
   color: var(--warn);
 }
 .m .round {
+  line-height: 1;
   font-style: italic;
   font-family: var(--serif);
   font-size: 13.5px;
@@ -433,8 +439,9 @@
 .fold[aria-expanded="false"] .fg {
   rotate: -90deg;
 }
+/* a shorter title line starts lower, so a child is as tall as its parent */
 .row.child {
-  --pt: 6px;
+  --pt: 10px;
   --lh: 21px;
 }
 .row.child .t {
@@ -500,6 +507,7 @@
 }
 /* a table row keeps its own 40 px line: its node hangs on it (nodeOff) */
 .view.narrow .row:not(.trow) {
+  --pt: 10px;
   --lh: 21px;
 }
 .view.narrow .row .m {

@@ -1,7 +1,7 @@
 import { nodeOff } from './dom.ts';
 
 // A parent's branch to its children (SPEC §4.6, mock:1883-1915): it leaves 6 px right of the
-// parent title's left edge, 10 px under its node, drops to the last child and bends into each with
+// parent title's left edge, 2 px under its meta line (so it never crosses the id), drops to the last child and bends into each with
 // a 7 px elbow, ending 6 px before the child's title.
 
 export type TreeKid = { el: HTMLElement; cy: number; end: number; top: number; h: number };
@@ -20,6 +20,19 @@ export function shiftOf(transform: string): number {
   const v = (m[2] ?? '').split(',').map(Number);
   return (m[1] ? v[12] : v[4]) ?? 0;
 }
+
+// Where a parent's branch leaves it, in the list: 2 px under its meta line (row top + metaFoot),
+// and never above 10 px under its node; a row without a meta line leaves it there.
+export function legTop(top: number, node: number, metaFoot: number | null): number {
+  const under = top + node + 10;
+  return metaFoot === null ? under : Math.max(under, top + metaFoot + 2);
+}
+
+// The foot of a row's meta line, from the row's top (both under the same transform).
+const metaFootOf = (row: HTMLElement): number | null => {
+  const m = row.querySelector<HTMLElement>('.m');
+  return m ? m.getBoundingClientRect().bottom - row.getBoundingClientRect().top : null;
+};
 
 // A row's title's left edge, as it stands in the layout.
 const titleLeft = (row: HTMLElement) =>
@@ -47,7 +60,7 @@ export function treeGeom(list: HTMLElement, parentKey: string): TreeGeom | null 
   if (!kids.length) return null;
   const lr = list.getBoundingClientRect();
   const bx = Math.round(titleLeft(P) - lr.left + 6) + 0.5;
-  const y0 = P.offsetTop + nodeOff(P) + 10;
+  const y0 = legTop(P.offsetTop, nodeOff(P), metaFootOf(P));
   const ks = kids.map((c) => ({
     el: c,
     cy: c.offsetTop + nodeOff(c),
