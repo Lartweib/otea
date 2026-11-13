@@ -22,7 +22,7 @@ describe('next and the board moves', () => {
 
   beforeEach(async () => {
     repo = tempGitRepo();
-    otea = cliAt(repo.dir);
+    otea = cliAt(repo.dir, { OTEA_AGENT: 'claude' });
     await otea('init');
     const project = openProject(repo.dir);
     try {
@@ -150,7 +150,7 @@ describe('next and the board moves', () => {
     const client = new Client({ name: 'test', version: '0' });
     const server = createMcpServer(COMMANDS, {
       cwd: repo.dir,
-      actor: { kind: 'agent', name: 'quill' },
+      agent: 'quill',
       warn: () => {},
     });
     const [clientSide, serverSide] = InMemoryTransport.createLinkedPair();
@@ -202,7 +202,7 @@ describe('audio and other files on a board', () => {
 
   beforeEach(async () => {
     repo = tempGitRepo();
-    otea = cliAt(repo.dir);
+    otea = cliAt(repo.dir, { OTEA_AGENT: 'claude' });
     await otea('init');
     const def = creatures();
     def.parts.evoice = { id: 'evoice', name: 'Voz', kind: 'audio', hint: '', options: [] };

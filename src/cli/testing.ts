@@ -52,7 +52,7 @@ export function startCli(cwd: string, ...argv: string[]): Running {
   let err = '';
   const done = run(argv, {
     cwd,
-    env: {},
+    env: { OTEA_AGENT: 'claude' },
     signal: interrupt.signal,
     openUrl: async () => {},
     stdout: { write: (chunk: string) => (out += chunk) },
@@ -80,7 +80,10 @@ const MAIN = fileURLToPath(new URL('./main.ts', import.meta.url));
 export function spawnCli(cwd: string, ...argv: string[]): Promise<Result> {
   return new Promise((resolve, reject) => {
     const args = ['--disable-warning=ExperimentalWarning', MAIN, ...argv];
-    const child = spawn(process.execPath, args, { cwd, env: { ...process.env, OTEA_AGENT: '' } });
+    const child = spawn(process.execPath, args, {
+      cwd,
+      env: { ...process.env, OTEA_AGENT: 'claude' },
+    });
     let out = '';
     let err = '';
     child.stdout.setEncoding('utf8').on('data', (chunk: string) => (out += chunk));

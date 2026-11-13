@@ -17,9 +17,10 @@ import {
 
 type Reply = { isError?: boolean; content: { type: string; text: string }[] };
 
-async function connect(cwd: string, name: string): Promise<Client> {
-  const actor: Actor = { kind: 'agent', name };
-  const server = createMcpServer(COMMANDS, { cwd, actor, warn: () => {} });
+// `name`: the agent the server was started as (otea mcp --as), or none.
+async function connect(cwd: string, name?: string): Promise<Client> {
+  const agent = name === undefined ? {} : { agent: name };
+  const server = createMcpServer(COMMANDS, { cwd, ...agent, warn: () => {} });
   const client = new Client({ name: 'test', version: '0' });
   const [clientSide, serverSide] = InMemoryTransport.createLinkedPair();
   await server.connect(serverSide);
@@ -74,6 +75,7 @@ describe('mcp server', () => {
         const command = COMMANDS.find(({ name }) => toolName(name) === tool.name);
         const omitted = OMITTED_OPTIONS[tool.name] ?? [];
         const expected = [
+          'as',
           ...(command?.args ?? []).map((arg) => arg.replace(/\?$/, '')),
           ...Object.keys(command?.options ?? {}).filter((name) => !omitted.includes(name)),
         ];
@@ -364,6 +366,48 @@ describe('mcp server', () => {
     });
   });
 
+  // Subagents share their parent's server, so each call can say who makes it.
+  describe('identity', () => {
+    const error = (reply: Reply) => JSON.parse(reply.content[0]?.text ?? '').error;
+
+    it('acts as the agent a call names with as, over the name the server was started with', async () => {
+      const claimed = await data('claim', { id: 'TASKS-1', as: 'claude-b' });
+
+      expect(claimed.lease.holder).toBe('claude-b');
+    });
+
+    it('keeps two subagents on one server apart: one cannot take what the other holds', async () => {
+      await data('claim', { id: 'TASKS-1', as: 'scout' });
+      const reply = await call('claim', { id: 'TASKS-1', as: 'fixer' });
+
+      expect(reply.isError).toBe(true);
+      expect(error(reply).code).toBe('lease_held');
+    });
+
+    it('refuses a call that names nobody on a server started without a name', async () => {
+      const bare = await connect(repo.dir);
+      try {
+        const reply = await call('claim', { id: 'TASKS-1' }, bare);
+
+        expect(reply.isError).toBe(true);
+        expect(error(reply).code).toBe('unnamed_agent');
+        expect(error(reply).message).toContain('as');
+        expect((await call('claim', { id: 'TASKS-1', as: 'scout' }, bare)).isError).toBeFalsy();
+      } finally {
+        await bare.close();
+      }
+    });
+
+    it('refuses an invalid name in as, as the CLI does', async () => {
+      const reply = await call('claim', { id: 'TASKS-1', as: 'Scout' });
+
+      expect(error(reply).code).toBe('invalid_agent_name');
+      expect(error(reply)).toEqual(
+        JSON.parse(await cliError('claim', 'TASKS-1', '--as', 'Scout')).error,
+      );
+    });
+  });
+
   describe('wait', () => {
     it('returns at once the item already on the turn', async () => {
       expect(await data('wait', { turn: 'agent', unclaimed: true })).toEqual(
@@ -401,10 +445,9 @@ describe('mcp server', () => {
 
     it('hands over the clientInfo of initialize once the client has introduced itself', async () => {
       const greeted: unknown[] = [];
-      const actor: Actor = { kind: 'agent', name: 'codex' };
       const server = createMcpServer(COMMANDS, {
         cwd: repo.dir,
-        actor,
+        agent: 'codex',
         warn: () => {},
         greeted: (harness) => greeted.push(harness),
       });

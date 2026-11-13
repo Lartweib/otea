@@ -1,6 +1,6 @@
 import { type ParseArgsOptionsConfig, parseArgs } from 'node:util';
 import { CLI_HARNESS } from '../app/presence.ts';
-import type { Actor } from '../core/item.ts';
+import { type Actor, agentActor } from '../core/item.ts';
 import { type Command, failureCode, type Input, UsageError, usageOf } from './command.ts';
 import { COMMANDS, findCommand } from './commands.ts';
 import { EXIT_CODES } from './exit-codes.ts';
@@ -68,14 +68,13 @@ function parse(argv: string[]): { values: Values; positionals: string[] } {
   }
 }
 
-// The agent acting: --as, or OTEA_AGENT. A command that declares --as itself (otea drop: the
-// motive) reads the agent from OTEA_AGENT alone.
-function actorFrom(values: Values, env: Io['env'], command?: Command): Actor {
-  const own = command !== undefined && 'as' in command.options;
-  const given = !own && typeof values.as === 'string' ? values.as : '';
-  const name = given || env.OTEA_AGENT || 'agent';
-  return { kind: 'agent', name };
+// The name the agent gave: --as, or OTEA_AGENT. There is no default: an unnamed agent is refused.
+function agentName(values: Values, env: Io['env']): string | undefined {
+  const given = typeof values.as === 'string' ? values.as : '';
+  return given || env.OTEA_AGENT || undefined;
 }
+
+const NAME_YOURSELF = 'pass --as <name> or set OTEA_AGENT=<name>';
 
 function validate(command: Command, values: Values, args: string[]): void {
   for (const name of Object.keys(values)) {
@@ -110,9 +109,13 @@ function inputFor(command: Command, values: Values, args: string[], io: Io, json
     const value = values[name];
     return Array.isArray(value) ? value.map(String) : [];
   };
+  const agent = agentName(values, io.env);
   return {
     cwd: io.cwd,
-    actor: actorFrom(values, io.env, command),
+    get actor(): Actor {
+      return agentActor(agent, NAME_YOURSELF);
+    },
+    agent,
     channel: 'cli',
     harness: CLI_HARNESS,
     signal: io.signal,

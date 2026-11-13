@@ -22,7 +22,7 @@ describe('events', () => {
 
   beforeEach(async () => {
     repo = tempGitRepo();
-    otea = cliAt(repo.dir);
+    otea = cliAt(repo.dir, { OTEA_AGENT: 'claude' });
     await otea('init');
     presetCollection(repo.dir, 'tasks');
     presetCollection(repo.dir, 'bugs');
@@ -38,10 +38,10 @@ describe('events', () => {
 
     expect(code).toBe(0);
     const [first, second, third, ...rest] = lines(out);
-    expect(first).toMatch(new RegExp(`^1  TASKS-1  ${AT}  agent:agent  created  todo$`));
-    expect(second).toMatch(new RegExp(`^2  BUGS-1  ${AT}  agent:agent  created  todo$`));
+    expect(first).toMatch(new RegExp(`^1  TASKS-1  ${AT}  agent:claude  created  todo$`));
+    expect(second).toMatch(new RegExp(`^2  BUGS-1  ${AT}  agent:claude  created  todo$`));
     expect(third).toMatch(
-      /^3 {2}TASKS-1 {2}\S+ {2}agent:agent {2}transitioned {2}todo -> todo__review$/,
+      /^3 {2}TASKS-1 {2}\S+ {2}agent:claude {2}transitioned {2}todo -> todo__review$/,
     );
     expect(rest).toEqual([]);
   });

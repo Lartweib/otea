@@ -10,7 +10,7 @@ import {
   type OptionSpec,
   UsageError,
 } from '../cli/command.ts';
-import type { Actor } from '../core/item.ts';
+import { type Actor, agentActor } from '../core/item.ts';
 import { parseDuration } from '../core/lease.ts';
 
 // The commands an agent runs, each served as the tool of the same name. The rest belong to the
@@ -95,11 +95,14 @@ const VERSION: string = JSON.parse(
   readFileSync(new URL('../../package.json', import.meta.url), 'utf8'),
 ).version;
 
+// `agent`: the name the server was started as (otea mcp --as), which a call that names nobody acts
+// as. Subagents share their parent's server, so every call can name its own agent with `as`, which
+// wins; a call that names nobody on a server started without a name is refused.
 // `greeted` hears the client's name once it has introduced itself, so the agent shows up as seen
 // before its first call.
 export type McpContext = {
   cwd: string;
-  actor: Actor;
+  agent?: string;
   warn(message: string): void;
   greeted?(harness: Harness | undefined): void;
 };
@@ -114,9 +117,14 @@ function optionSchema(spec: OptionSpec): ZodType {
   return spec.required ? described : described.optional();
 }
 
+// Every tool takes the agent making the call, so subagents on one server stay apart.
+const AS = z.string().optional().describe('your agent name; each subagent its own');
+
+const NAME_YOURSELF = 'pass as with your agent name on every call';
+
 function inputSchema(command: Command) {
   const omitted = OMITTED_OPTIONS[command.name] ?? [];
-  const shape: Record<string, ZodType> = {};
+  const shape: Record<string, ZodType> = { as: AS };
   for (const arg of command.args) {
     if (arg.endsWith('?')) shape[arg.slice(0, -1)] = z.string().optional();
     else shape[arg] = z.string();
@@ -149,9 +157,13 @@ function inputFor(
     const value = values[name];
     return typeof value === 'string' ? value : undefined;
   };
+  const agent = typeof values.as === 'string' && values.as !== '' ? values.as : context.agent;
   return {
     cwd: context.cwd,
-    actor: context.actor,
+    get actor(): Actor {
+      return agentActor(agent, NAME_YOURSELF);
+    },
+    agent,
     channel: 'mcp',
     harness,
     signal,

@@ -7,7 +7,7 @@ const GLOBAL_OPTIONS = [
   ['--json', 'Print JSON to stdout; errors go to stderr as {"error":{"code","message"}}'],
   [
     '--as <name>',
-    'Agent name recorded on writes and holding leases (default: $OTEA_AGENT, then "agent")',
+    'Your agent name, recorded on writes and holding leases (or $OTEA_AGENT); agent commands need one, unique among the agents working now',
   ],
   ['-h, --help', 'Show help'],
 ];

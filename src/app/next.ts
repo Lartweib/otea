@@ -743,7 +743,7 @@ const DROP_CODES = {
   not_relayable: 'not_relayable',
 } as const;
 
-// The motive a reader names (`--as "Duplicado"`, or its id); undefined when it names none.
+// The motive a reader names (`--motive "Duplicado"`, or its id); undefined when it names none.
 export function motiveByName(def: BoardDefinition, name?: string): string | undefined {
   if (name === undefined) return undefined;
   const wanted = name.trim().toLocaleLowerCase();

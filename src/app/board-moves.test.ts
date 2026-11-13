@@ -203,7 +203,7 @@ describe('a drop', () => {
     });
     expect(refusal(() => drop({ reason: 'ya está' }))).toEqual({
       code: 'reason_required',
-      message: `Not dropped ${id}: say which with --as "Rechazado|Duplicado".`,
+      message: `Not dropped ${id}: say which with --motive "Rechazado|Duplicado".`,
     });
     expect(drop({ reason: 'ya está', motive: 'duplicado' }).text).toBe(
       `Dropped. ${id} is Dropped (Duplicado).`,

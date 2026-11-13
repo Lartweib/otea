@@ -16,7 +16,7 @@ describe('hook', () => {
 
   beforeEach(() => {
     repo = tempGitRepo();
-    otea = cliAt(repo.dir);
+    otea = cliAt(repo.dir, { OTEA_AGENT: 'claude' });
   });
 
   afterEach(() => repo.remove());

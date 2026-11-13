@@ -76,7 +76,7 @@ import { OteaError } from '../core/errors.ts';
 import { EVIDENCE_ROLES, type EvidenceRole, MAX_EVIDENCE_MB } from '../core/evidence.ts';
 import type { FieldValues } from '../core/fields.ts';
 import { assertIconName } from '../core/icons.ts';
-import type { Actor } from '../core/item.ts';
+import { type Actor, assertAgentName } from '../core/item.ts';
 import { parseDuration } from '../core/lease.ts';
 import { describeRelation, RELATION_KINDS } from '../core/relations.ts';
 import { TURNS, type Turn } from '../core/workflow.ts';
@@ -849,14 +849,14 @@ const handoffCommand: Command = {
 const dropCommand: Command = {
   name: 'drop',
   summary:
-    'Drop an item that is not worth doing, saying why with --reason, and, on a board with motives, which one with --as (its name); an agent drops only while doing a step that lets it, so here --as names the motive, not the agent (set OTEA_AGENT instead)',
+    'Drop an item that is not worth doing, saying why with --reason, and, on a board with motives, which one with --motive (its name); an agent drops only while doing a step that lets it',
   args: ['id'],
-  options: { reason: {}, as: { placeholder: 'motive' } },
+  options: { reason: {}, motive: {} },
   execute: (input) => {
     const [id = ''] = input.args;
     const { actor, channel, option } = input;
     const reason = option('reason');
-    const motive = option('as');
+    const motive = option('motive');
     const dropping = {
       id,
       actor,
@@ -1366,12 +1366,16 @@ function greetedBy(cwd: string, actor: Actor, harness: Harness | undefined, warn
 const mcp: Command = {
   name: 'mcp',
   summary:
-    'Serve the agent commands as MCP tools on stdin and stdout, acting as the agent named by --as, until the client disconnects',
+    'Serve the agent commands as MCP tools on stdin and stdout until the client disconnects; each tool call acts as the agent its as argument names, or as the one --as names',
   args: [],
   options: {},
-  execute: async ({ cwd, actor, signal, warn }) => {
-    const greeted = (harness: Harness | undefined) => greetedBy(cwd, actor, harness, warn);
-    await serveStdio(createMcpServer(COMMANDS, { cwd, actor, warn, greeted }), signal);
+  execute: async ({ cwd, agent, signal, warn }) => {
+    if (agent !== undefined) assertAgentName(agent);
+    const greeted = (harness: Harness | undefined) => {
+      if (agent !== undefined) greetedBy(cwd, { kind: 'agent', name: agent }, harness, warn);
+    };
+    const named = agent === undefined ? {} : { agent };
+    await serveStdio(createMcpServer(COMMANDS, { cwd, ...named, warn, greeted }), signal);
     return undefined;
   },
 };

@@ -13,7 +13,7 @@ describe('commands', () => {
 
   beforeEach(() => {
     repo = tempGitRepo();
-    otea = cliAt(repo.dir);
+    otea = cliAt(repo.dir, { OTEA_AGENT: 'claude' });
   });
 
   afterEach(() => repo.remove());
@@ -35,7 +35,7 @@ describe('commands', () => {
       api = join(product, 'api');
       mkdirSync(join(api, 'src'), { recursive: true });
       execFileSync('git', ['init', '--quiet'], { cwd: api, stdio: 'ignore' });
-      otea = cliAt(join(api, 'src'));
+      otea = cliAt(join(api, 'src'), { OTEA_AGENT: 'claude' });
     });
 
     afterEach(() => rmSync(product, { recursive: true, force: true }));
@@ -141,7 +141,7 @@ describe('commands', () => {
           presetVersion: 1,
           state: 'todo',
           turn: 'agent',
-          createdBy: { kind: 'agent', name: 'agent' },
+          createdBy: { kind: 'agent', name: 'claude' },
         });
       });
 
@@ -152,7 +152,9 @@ describe('commands', () => {
           state: 'incomplete',
           channel: 'cli',
         });
-        expect((await otea('show', 'TASKS-1')).out).toContain('created by agent:agent via cli at ');
+        expect((await otea('show', 'TASKS-1')).out).toContain(
+          'created by agent:claude via cli at ',
+        );
       });
 
       it('creates an item in Completar when it lacks what Completar asks, with its start values', async () => {
@@ -330,7 +332,7 @@ describe('commands', () => {
           // A board item reads by names: its step, its fields and their choices.
           expect(out).toContain('state: Hacerlo  turn: agent  collection: tasks');
           expect(out).toContain('Descripción: For v1\nPrioridad: Alta');
-          expect(out).toMatch(/agent:agent {2}created {2}Hacerlo/);
+          expect(out).toMatch(/agent:claude {2}created {2}Hacerlo/);
         });
 
         it('prints transitions in order', async () => {
