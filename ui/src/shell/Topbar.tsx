@@ -283,7 +283,7 @@ function AgentsMark({ kind }: { kind: PillMark }) {
 type AgentsMenuProps = {
   project: string;
   rows: AgentRow[];
-  counts: { live: number; holding: number; idle: number };
+  counts: ReturnType<typeof agentCounts>;
   now: number;
   onOpen: (id: string) => void;
   onActivity: () => void;
@@ -375,9 +375,11 @@ function AgentsPill() {
   const [btn, setBtn] = useState<HTMLButtonElement | null>(null);
   if (app.agents === null) return null;
   const agents = app.agents ?? [];
-  const mark = pillMark(app.connection, agents);
+  // One source for the pill and its menu: the menu's rows.
+  const rows = agentRows(agents, app.all, app.now);
+  const mark = pillMark(app.connection, rows);
   const offline = mark === 'offline';
-  const counts = agentCounts(agents);
+  const counts = agentCounts(rows);
   const close = () => setOpen(false);
   return (
     <>
@@ -422,7 +424,7 @@ function AgentsPill() {
       >
         <AgentsMenuBody
           project={app.project?.name ?? ''}
-          rows={agentRows(agents, app.all, app.now)}
+          rows={rows}
           counts={counts}
           now={Date.now()}
           onOpen={(id) => {

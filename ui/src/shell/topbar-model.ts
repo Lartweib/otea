@@ -86,6 +86,8 @@ export type AgentRow = {
   held: HeldItem[];
   // It went quiet: a lease of its ran out with nobody releasing it.
   quiet: boolean;
+  // It holds a lease now.
+  working: boolean;
   lastSeen: string;
 };
 
@@ -113,29 +115,30 @@ export function agentRows(
       harness: a.harness,
       held: [...holding, ...stuck.filter((s) => !holding.some((h) => h.id === s.id))],
       quiet: stuck.length > 0,
+      working: a.holding.length > 0,
       lastSeen: a.lastSeen,
     };
   });
 }
 
-// The connected agents, those holding a lease ("trabajando") and the idle.
-export function agentCounts(agents: readonly Agent[]): {
+// The agents the menu lists, those holding a lease ("trabajando") and the rest, holding none (one
+// gone quiet says so in its row): counted from the menu's own rows, so the pill and the menu agree.
+export function agentCounts(rows: readonly AgentRow[]): {
   live: number;
   holding: number;
   idle: number;
 } {
-  const live = liveAgents(agents);
-  const holding = live.filter((a) => a.holding.length > 0).length;
-  return { live: live.length, holding, idle: live.length - holding };
+  const holding = rows.filter((a) => a.working).length;
+  return { live: rows.length, holding, idle: rows.length - holding };
 }
 
 export type PillMark = 'working' | 'idle' | 'none' | 'offline';
 
 // The pill's 16 px mark: the working node with its orbit while an agent holds a lease, a ring with
 // agents connected, a dashed ring with none; offline while the stream is down (it cannot count).
-export function pillMark(connection: Connection, agents: readonly Agent[]): PillMark {
+export function pillMark(connection: Connection, rows: readonly AgentRow[]): PillMark {
   if (connection !== 'live') return 'offline';
-  const { live, holding } = agentCounts(agents);
+  const { live, holding } = agentCounts(rows);
   if (holding > 0) return 'working';
   return live > 0 ? 'idle' : 'none';
 }

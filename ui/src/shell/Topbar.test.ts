@@ -189,7 +189,7 @@ describe('the agents menu', () => {
       createElement(AgentsMenuBody, {
         project: 'Hollowmere',
         rows: agentRows(agents, items, NOW),
-        counts: agentCounts(agents),
+        counts: agentCounts(agentRows(agents, items, NOW)),
         now: NOW,
         onOpen: () => undefined,
         onActivity: () => undefined,
@@ -198,9 +198,9 @@ describe('the agents menu', () => {
     );
   };
 
-  it('heads with the project and who holds a lease', () => {
+  it('heads with the project and who holds a lease, counting every agent it lists', () => {
     expect(menu()).toContain(
-      '<div class="plabel" data-i=""><span>agentes en Hollowmere</span><span>1 con reserva · 1 inactivo</span></div>',
+      '<div class="plabel" data-i=""><span>agentes en Hollowmere</span><span>1 con reserva · 2 inactivos</span></div>',
     );
   });
 
