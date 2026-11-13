@@ -146,7 +146,8 @@ export function agentRows(
       );
       const st = agentState(a.name, items, feed, now, a.lastSeen);
       const quiet = stuck.length > 0;
-      const working = a.holding.length > 0;
+      // An item whose question waits for you is not work: the agent waits for your answer.
+      const working = a.holding.some((id) => !items.find((each) => each.id === id)?.asks);
       const state: AgentDoing = working ? 'work' : quiet ? 'quiet' : DOING[st.state];
       return {
         name: a.name,
