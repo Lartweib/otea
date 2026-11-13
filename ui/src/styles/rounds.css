@@ -296,7 +296,7 @@
 
 .rd-rail {
   position: relative;
-  height: 108px;
+  height: 124px;
 }
 
 .rd-rail svg {
@@ -351,6 +351,15 @@
 .rd-label b {
   font-weight: 500;
   color: var(--ink-2);
+}
+
+/* Each line of a label stays within the gap between two nodes (max-width on .rd-label): a longer
+   date or verdict is cut with an ellipsis, never drawn over its neighbour; the title says it all. */
+.rd-label b,
+.rd-line {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .rd-label[data-now] b {
