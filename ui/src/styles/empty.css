@@ -17,6 +17,10 @@
   grid-template-columns: minmax(0, 1fr);
   padding-left: var(--pl, 72px);
 }
+/* A board that is not there: under its head, on the head's left edge. */
+.empty-big.empty-missing {
+  padding: 0 0 30px var(--pl, 72px);
+}
 .empty-big.empty-first:not([data-route]) {
   grid-template-columns: minmax(0, 1fr);
   padding-left: var(--pl, 72px);
