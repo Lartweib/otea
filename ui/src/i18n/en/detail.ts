@@ -138,6 +138,7 @@ export const detail = {
 
   // The rounds module: rounds read from the item's history
   'rounds.title': 'Rounds',
+  'rounds.titleOf': '{title} of {step}',
   'rounds.count': { one: '{count} round', other: '{count} rounds' },
   'rounds.round': 'round {n}',
   'rounds.none': 'No rounds yet: the first ends when the agent hands it to you.',

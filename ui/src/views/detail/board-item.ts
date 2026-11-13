@@ -340,6 +340,28 @@ export function stepRounds(
   });
 }
 
+// The step whose rounds the compare rail under Rondas shows: the one the person unfolded last
+// while it is one the item went through, else the one that stands open (the step it is on, or a
+// closed item's last).
+export function railStep(
+  steps: readonly StepRounds[],
+  chosen: string | undefined,
+): string | undefined {
+  if (chosen !== undefined && steps.some(({ step }) => step === chosen)) return chosen;
+  return (steps.find(({ current }) => current) ?? steps.find(({ open }) => open))?.step;
+}
+
+// The rail's choice after a fold opens or closes `step`: unfolding a step shows its rounds;
+// folding the one shown goes back to the default; folding another leaves the rail as it is.
+export function selectOnFold(
+  chosen: string | undefined,
+  step: string,
+  opening: boolean,
+): string | undefined {
+  if (opening) return step;
+  return chosen === step ? undefined : chosen;
+}
+
 // On a board nothing waits by itself: a step that waits for its parts is the doer's to finish, and
 // the wait is a check at the handoff (its checklist says what is still open). So open parts never
 // make the item "waiting" there, the look an item on a preset took while its children were open.

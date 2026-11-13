@@ -241,6 +241,8 @@ type RoundsModuleProps = {
   quiet?: boolean;
   // On a board: its rounds are its step's, as the step engine counts them.
   board?: BoardRounds;
+  // That step's name, said in the title when the item went through several steps.
+  stepName?: string | undefined;
 };
 
 // The item's rounds, read from its history: the path between the lanes, the latest round with its
@@ -328,11 +330,13 @@ export function RoundsModule({
   slot,
   quiet,
   board,
+  stepName,
 }: RoundsModuleProps) {
   const [marks, setMarks] = useState<number[]>([]);
   const rounds = roundsOf(item.events, item.evidence, type.states, board);
   const modules = type.layout.evidence.flatMap(({ id }) => (id === undefined ? [] : [id]));
-  const title = entry.label ?? t('rounds.title');
+  const plain = entry.label ?? t('rounds.title');
+  const title = stepName ? t('rounds.titleOf', { title: plain, step: stepName }) : plain;
   const name: StateName = (state) => stateWord(type, state);
   const latest = rounds.at(-1);
   if (!latest) {

@@ -12,7 +12,9 @@ import {
   linksOf,
   ownStepOf,
   partsCount,
+  railStep,
   roundNotes,
+  selectOnFold,
   sheetLook,
   stepRounds,
   waitRows,
@@ -598,5 +600,41 @@ describe('stepRounds: the item’s whole history, grouped by step', () => {
       },
     ];
     expect(stepRounds(errores(), 'striage', events).map(({ step }) => step)).toEqual(['striage']);
+  });
+});
+
+describe('railStep: the step whose rounds the compare rail shows', () => {
+  // Triar → Arreglar, sent back once in its review, then back to Triar.
+  const events = [
+    created('striage'),
+    moved('striage', 'sfix', you, '2026-01-02T00:00:00Z'),
+    moved('sfix', 'sfix__review', agent('mender'), '2026-01-03T00:00:00Z'),
+    moved('sfix__review', 'sfix', you, '2026-01-04T00:00:00Z'),
+    moved('sfix', 'sfix__review', agent('mender'), '2026-01-05T00:00:00Z'),
+    moved('sfix__review', 'striage', you, '2026-01-06T00:00:00Z'),
+  ];
+
+  it('is the step it is on until another is chosen, and the chosen one while it stands', () => {
+    const groups = stepRounds(errores(), 'striage', events);
+    expect(railStep(groups, undefined)).toBe('striage');
+    expect(railStep(groups, 'sfix')).toBe('sfix');
+    // A step the item never went through (a stale choice) gives way to the current one.
+    expect(railStep(groups, 'sfill')).toBe('striage');
+  });
+
+  it('is the last step of a closed item, which stands open', () => {
+    const done = [
+      ...events.slice(0, 5),
+      moved('sfix__review', 'done', you, '2026-01-06T00:00:00Z'),
+    ];
+    expect(railStep(stepRounds(errores(), 'done', done), undefined)).toBe('sfix');
+  });
+
+  it('follows the step just unfolded, and goes back to the default when that one folds', () => {
+    expect(selectOnFold(undefined, 'sfix', true)).toBe('sfix');
+    expect(selectOnFold('sfix', 'sfill', true)).toBe('sfill');
+    expect(selectOnFold('sfix', 'sfix', false)).toBeUndefined();
+    // Folding a step the rail does not show leaves the rail where it is.
+    expect(selectOnFold('sfix', 'sfill', false)).toBe('sfix');
   });
 });

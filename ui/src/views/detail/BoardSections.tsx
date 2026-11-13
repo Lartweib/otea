@@ -562,19 +562,42 @@ const outcomeWord = (o: StepOutcome): string =>
 // Rondas: every step the item went through with its rounds. While it has never left its step,
 // that step's rounds alone, as they always were; else one fold per step, the step it is on (or a
 // closed item's last) open, each earlier one a line: the step, its rounds, how it left it.
-export function RoundNotes({ steps }: { steps: readonly StepRounds[] }) {
+// `rail`: the step whose rounds the compare rail below shows (railStep); `onFold` tells it which
+// step was unfolded or folded, so the rail follows it (selectOnFold).
+export function RoundNotes({
+  steps,
+  rail,
+  onFold,
+}: {
+  steps: readonly StepRounds[];
+  rail?: string | undefined;
+  onFold?: (step: string, opening: boolean) => void;
+}) {
   const only = steps.length === 1 ? steps[0] : undefined;
   if (only?.current) return <StepRoundCards rounds={only.rounds} step={only.name} current />;
   return (
     <div className="bi-steps" title={t('bi.rounds.glossAll')}>
       {steps.map((group) => (
-        <StepFold key={group.step} group={group} />
+        <StepFold
+          key={group.step}
+          group={group}
+          rail={group.step === rail}
+          {...(onFold ? { onFold } : {})}
+        />
       ))}
     </div>
   );
 }
 
-function StepFold({ group }: { group: StepRounds }) {
+function StepFold({
+  group,
+  rail,
+  onFold,
+}: {
+  group: StepRounds;
+  rail: boolean;
+  onFold?: (step: string, opening: boolean) => void;
+}) {
   const [open, setOpen] = useState(group.open);
   const body = useId();
   return (
@@ -582,13 +605,17 @@ function StepFold({ group }: { group: StepRounds }) {
       className="bi-step"
       data-open={open || undefined}
       data-current={group.current || undefined}
+      data-rail={rail || undefined}
     >
       <button
         type="button"
         className="bi-step-head"
         aria-expanded={open}
         aria-controls={body}
-        onClick={() => setOpen(!open)}
+        onClick={() => {
+          setOpen(!open);
+          onFold?.(group.step, !open);
+        }}
       >
         <Icon name="chevron" />
         <b>{group.name}</b>
