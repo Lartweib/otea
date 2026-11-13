@@ -19,6 +19,8 @@ export function cliAt(
   openUrl: Opener = async () => {},
   ask?: (question: string) => Promise<string>,
   stdin?: string,
+  // Whether stdout is a terminal a person reads (it is piped otherwise).
+  terminal = false,
 ): Cli {
   return async (...argv) => {
     let out = '';
@@ -30,7 +32,7 @@ export function cliAt(
       openUrl,
       ...(ask ? { ask } : {}),
       ...(stdin === undefined ? {} : { stdin: async () => stdin }),
-      stdout: { write: (chunk: string) => (out += chunk) },
+      stdout: { write: (chunk: string) => (out += chunk), isTTY: terminal },
       stderr: { write: (chunk: string) => (err += chunk) },
     });
     return { code, out, err };

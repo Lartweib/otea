@@ -170,6 +170,7 @@ function inputFor(
     openUrl: async () => {
       throw new Error('No browser to open over MCP');
     },
+    terminal: false,
     warn: context.warn,
     ask: async () => undefined,
     stdin: async () => '',
