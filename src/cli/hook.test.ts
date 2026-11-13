@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { moveItem } from '../app/items.ts';
 import { openProject } from '../app/project.ts';
+import { installGitHook } from './hooks.ts';
 import { type Cli, cliAt, tempGitRepo } from './testing.ts';
 
 describe('hook', () => {
@@ -38,7 +39,7 @@ describe('hook', () => {
       );
       expect(result.out).toContain('  # otea-hook: pre-push');
       expect(hook.startsWith('#!/bin/sh\n# otea-hook: pre-push\n')).toBe(true);
-      expect(hook).toContain(`check --gate push --branch "\${local_ref#refs/heads/}" --repo`);
+      expect(hook).toContain(`check --gate push --branch "\${remote_ref#refs/heads/}" --repo`);
       expect(hook).toContain('if [ $? -eq 1 ]; then exit 1; fi');
       if (process.platform !== 'win32') {
         expect(statSync(join(repo.dir, '.git/hooks/pre-push')).mode & 0o111).not.toBe(0);
@@ -63,6 +64,60 @@ describe('hook', () => {
       expect(install.err).toContain('check --gate push --branch');
       expect((await otea('hook', 'remove', '--git')).code).toBe(7);
       expect(read('.git/hooks/pre-push')).toBe('#!/bin/sh\necho mine\n');
+    });
+
+    // A real push through the hook, with a stand-in for Otea that logs the branch it is asked
+    // about and refuses `frozen`.
+    describe('on a push', () => {
+      let remote: ReturnType<typeof tempGitRepo>;
+      const git = (...args: string[]) =>
+        execFileSync('git', args, { cwd: repo.dir, stdio: 'pipe', encoding: 'utf8' });
+      const push = (...args: string[]) => {
+        try {
+          git('push', '--quiet', remote.dir, ...args);
+          return 0;
+        } catch (error) {
+          return (error as { status: number }).status;
+        }
+      };
+      const asked = () => read('asked.log').split('\n').filter(Boolean);
+
+      beforeEach(() => {
+        remote = tempGitRepo();
+        execFileSync('git', ['init', '--quiet', '--bare', '--initial-branch=main'], {
+          cwd: remote.dir,
+        });
+        repo.write(
+          'otea.mjs',
+          [
+            "import { appendFileSync } from 'node:fs';",
+            "const branch = process.argv[process.argv.indexOf('--branch') + 1];",
+            `appendFileSync(${JSON.stringify(join(repo.dir, 'asked.log'))}, branch + '\\n');`,
+            "process.exit(branch === 'frozen' ? 1 : 0);",
+          ].join('\n'),
+        );
+        const author = ['-c', 'user.name=t', '-c', 'user.email=t@t'];
+        git(...author, 'commit', '--quiet', '--allow-empty', '-m', 'one');
+        installGitHook(repo.dir, join(repo.dir, 'otea.mjs'));
+      });
+
+      afterEach(() => remote.remove());
+
+      it('checks the branch the push writes to, not the one it sends from', () => {
+        expect(push('HEAD:refs/heads/frozen', '--force')).toBe(1);
+        git('branch', 'frozen');
+        expect(push('frozen:refs/heads/open', '+HEAD:loose')).toBe(0);
+
+        expect(asked()).toEqual(['frozen', 'open', 'loose']);
+      });
+
+      it('checks a branch the push deletes, and leaves tags alone', () => {
+        git('push', '--quiet', '--no-verify', remote.dir, 'HEAD:refs/heads/frozen');
+
+        expect(push('--delete', 'frozen')).toBe(1);
+        expect(push('HEAD:refs/tags/v1')).toBe(0);
+        expect(asked()).toEqual(['frozen']);
+      });
     });
 
     it('writes it where core.hooksPath points', async () => {
@@ -201,6 +256,36 @@ describe('hook', () => {
 
       expect(result.code).toBe(2);
       expect(result.err).toContain('merge refused: TAR-1 is in Propuesta');
+    });
+
+    const push = (command: string) => {
+      const event = { cwd: repo.dir, tool_name: 'Bash', tool_input: { command } };
+      const at = cliAt(repo.dir, {}, undefined, undefined, undefined, JSON.stringify(event));
+      return at('check', '--gate', 'push', '--branch', '--repo', 'elsewhere', '--claude-hook');
+    };
+
+    it('checks the branches a git push writes to, not the one checked out', async () => {
+      const commit = ['-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '--allow-empty'];
+      execFileSync('git', [...commit, '--quiet', '-m', 'one'], { cwd: repo.dir });
+      execFileSync('git', ['checkout', '--quiet', '-b', 'other'], { cwd: repo.dir });
+
+      const forced = await push('git push origin main:refs/heads/chg-1/keys --force');
+      expect(forced.code).toBe(2);
+      expect(forced.err).toContain('push refused: TAR-1 is in Propuesta');
+      expect((await push('git push origin a:b +HEAD:chg-1/keys')).code).toBe(2);
+      expect((await push('git push origin other')).code).toBe(0);
+      expect((await push('git push')).code).toBe(0);
+      expect((await push('git push --all origin')).code).toBe(2);
+      execFileSync('git', ['checkout', '--quiet', 'chg-1/keys'], { cwd: repo.dir });
+      expect((await push('git push origin chg-1/keys:other')).code).toBe(0);
+      expect((await push('git push -u origin')).code).toBe(2);
+    });
+
+    it('refuses a git push whose branches it cannot tell', async () => {
+      const result = await push('git push --mirror origin');
+
+      expect(result.code).toBe(2);
+      expect(result.err).toContain('push refused: cannot tell which branches');
     });
   });
 });

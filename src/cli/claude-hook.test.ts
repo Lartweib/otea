@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { mergeTarget, prHeadBranch, readHookEvent } from './claude-hook.ts';
+import { mergeTarget, prHeadBranch, pushTargets, readHookEvent } from './claude-hook.ts';
 
 // Without gh, the check that calls this fails open with the note it throws.
 describe('prHeadBranch', () => {
@@ -31,6 +31,48 @@ describe('mergeTarget', () => {
     ['gh pr view 482', undefined],
   ])('reads %j as %j', (command, target) => {
     expect(mergeTarget(command)).toBe(target);
+  });
+});
+
+describe('pushTargets', () => {
+  const branches = (...names: string[]) => ({ branches: names, current: false, every: false });
+  const current = { branches: [], current: true, every: false };
+
+  it.each<[string, ReturnType<typeof pushTargets>]>([
+    ['gh pr merge 482', undefined],
+    ['git pushy', undefined],
+    ['git push', current],
+    ['git push origin', current],
+    ['git push -u origin', current],
+    ['git push --force-with-lease origin HEAD', current],
+    ['git push origin @', current],
+    ['git push origin feat/x', branches('feat/x')],
+    ['git push origin main:refs/heads/feat/x --force', branches('feat/x')],
+    ['git push origin HEAD:feat/x', branches('feat/x')],
+    ['git push origin +main:feat/x', branches('feat/x')],
+    ['git push origin a:b c +HEAD:refs/heads/d', branches('b', 'c', 'd')],
+    ['git push origin :feat/x', branches('feat/x')],
+    ['git push --delete origin feat/x', branches('feat/x')],
+    ['git push -o ci.skip --repo origin x feat/y', branches('feat/y')],
+    ['git push origin v1:refs/tags/v1', branches()],
+    ['git push origin --tags', branches()],
+    ['git push origin --all', { branches: [], current: false, every: true }],
+    ['git push --branches origin', { branches: [], current: false, every: true }],
+    ['cd api && git push origin a:b && git push origin c', branches('b', 'c')],
+    ['git push origin main:feat/x; echo done', branches('feat/x')],
+  ])('reads %j', (command, targets) => {
+    expect(pushTargets(command)).toEqual(targets);
+  });
+
+  it.each([
+    'git push --mirror origin',
+    'git push --prune origin',
+    'git push origin "refs/heads/*:refs/heads/*"',
+    'git push origin HEAD:$BRANCH',
+    'git push origin "$(git branch --show-current)"',
+    'git push origin main:HEAD',
+  ])('cannot tell where %j pushes', (command) => {
+    expect(pushTargets(command)).toHaveProperty('unknown');
   });
 });
 
