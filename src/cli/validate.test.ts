@@ -2,7 +2,7 @@ import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { openDatabase } from '../store/database.ts';
 import { insertRelation } from '../store/queries.ts';
-import { type Cli, cliAt, type TempRepo, tempGitRepo } from './testing.ts';
+import { type Cli, cliAt, presetCollection, tempGitRepo, type TempRepo } from './testing.ts';
 
 const NOTES = (version: number) => `
 preset: notes
@@ -23,7 +23,7 @@ describe('validate', () => {
     repo = tempGitRepo();
     otea = cliAt(repo.dir);
     await otea('init', '--local');
-    await otea('collection', 'add', 'tasks');
+    presetCollection(repo.dir, 'tasks');
     await otea('create', '--collection', 'tasks', '--title', 'A', '--description', 'D');
   });
 
@@ -50,7 +50,7 @@ describe('validate', () => {
   });
 
   it('warns on a parent in another collection, linked before the rule, and keeps it', async () => {
-    await otea('collection', 'add', 'bugs');
+    presetCollection(repo.dir, 'bugs');
     await otea('create', '--collection', 'bugs', '--title', 'Clips', '--description', 'D');
     const db = openDatabase(join(repo.dir, '.otea', 'otea.db'));
     const actor = { kind: 'human', name: 'ana' } as const;

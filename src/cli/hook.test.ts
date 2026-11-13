@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { moveItem } from '../app/items.ts';
 import { openProject } from '../app/project.ts';
 import { installGitHook } from './hooks.ts';
-import { type Cli, cliAt, tempGitRepo } from './testing.ts';
+import { type Cli, cliAt, presetCollection, tempGitRepo } from './testing.ts';
 
 describe('hook', () => {
   let repo: ReturnType<typeof tempGitRepo>;
@@ -188,7 +188,7 @@ describe('hook', () => {
         cwd: repo.dir,
       });
       await otea('init', '--template', 'none');
-      await otea('collection', 'add', 'changes', '--preset', 'change');
+      presetCollection(repo.dir, 'changes', 'change');
       await otea('create', '--collection', 'changes', '--title', 'Keys');
       await otea(
         'create',

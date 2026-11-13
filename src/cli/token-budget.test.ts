@@ -4,7 +4,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { Actor } from '../core/item.ts';
 import { createMcpServer } from '../mcp/server.ts';
 import { COMMANDS } from './commands.ts';
-import { type Cli, cliAt, tempGitRepo } from './testing.ts';
+import { type Cli, cliAt, presetCollection, tempGitRepo } from './testing.ts';
 
 // What an agent reads back costs tokens on every call, so each operation has a budget per surface:
 // the CLI text, the CLI --json and the MCP tool result. Tokens are estimated as characters / 4,
@@ -112,7 +112,7 @@ describe('token budget', () => {
     repo.write('test.log', 'PASS 12 tests\n');
     otea = cliAt(repo.dir, { OTEA_AGENT: 'claude' });
     await ok('init', '--template', 'none');
-    await ok('collection', 'add', 'bugs', '--preset', 'bug-triage');
+    presetCollection(repo.dir, 'bugs', 'bug-triage');
     const actor: Actor = { kind: 'agent', name: 'claude' };
     const server = createMcpServer(COMMANDS, { cwd: repo.dir, actor, warn: () => {} });
     client = new Client({ name: 'test', version: '0' });

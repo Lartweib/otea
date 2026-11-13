@@ -85,7 +85,7 @@ export const surfaces = {
   'intake.required': '(obligatorio)',
   'intake.create': 'Crear',
   'intake.creating': 'Creando…',
-  'intake.noCollections': 'Todavía no hay colecciones. Añade una con {command}.',
+  'intake.noCollections': 'Todavía no hay tableros. Añade uno con {command}.',
   'intake.leftToAgent': 'Opcional por ahora: si lo dejas vacío, lo completará un agente',
   'intake.startsReady': 'Empieza listo en {state}.',
   'intake.startsIncomplete': 'Empieza en {state}: un agente completará antes {fields}.',

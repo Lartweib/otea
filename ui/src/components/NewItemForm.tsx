@@ -428,7 +428,7 @@ export function NewItemForm({ board, parent, onCancel, onCreated }: NewItemFormP
         <p className="lede">{t('common.loading')}</p>
       ) : (
         <p className="lede">
-          {tx('intake.noCollections', { command: <code>otea collection add &lt;name&gt;</code> })}
+          {tx('intake.noCollections', { command: <code>otea board add &lt;name&gt;</code> })}
         </p>
       )}
     </div>

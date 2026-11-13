@@ -3,6 +3,8 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { addCollection } from '../app/collections.ts';
+import { openProject } from '../app/project.ts';
 import type { Opener } from './opener.ts';
 import { run } from './run.ts';
 
@@ -106,4 +108,16 @@ export function tempGitRepo(): TempRepo {
     },
     remove: () => rmSync(dir, { recursive: true, force: true }),
   };
+}
+
+// A collection on a preset, as projects made them before boards: the next command that opens the
+// project reads it as a board, keeping the preset's states as its steps. Tests that stand on those
+// states seed one this way; nothing in the CLI makes one any more.
+export function presetCollection(cwd: string, name: string, preset = 'tasks'): void {
+  const project = openProject(cwd);
+  try {
+    addCollection(project, { name, preset });
+  } finally {
+    project.db.close();
+  }
 }

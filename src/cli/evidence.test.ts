@@ -3,7 +3,7 @@ import { readFileSync, truncateSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { MAX_EVIDENCE_BYTES } from '../core/evidence.ts';
-import { type Cli, cliAt, tempGitRepo } from './testing.ts';
+import { type Cli, cliAt, presetCollection, tempGitRepo } from './testing.ts';
 
 describe('attach', () => {
   let repo: ReturnType<typeof tempGitRepo>;
@@ -16,7 +16,7 @@ describe('attach', () => {
     repo = tempGitRepo();
     otea = cliAt(repo.dir, { OTEA_AGENT: 'claude' });
     await otea('init', '--local');
-    await otea('collection', 'add', 'tasks');
+    presetCollection(repo.dir, 'tasks');
     await otea('create', '--collection', 'tasks', '--title', 'Crash', '--description', 'On save');
     repo.write('shots/before.png', 'png-before');
     repo.write('test.log', 'PASS 12 tests\n');

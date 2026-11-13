@@ -53,7 +53,6 @@ export const CLI_ONLY_COMMANDS = [
   'repos remove',
   'migrate',
   'connect',
-  'collection add',
   'board add',
   'collection icon',
   'validate',

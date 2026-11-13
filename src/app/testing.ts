@@ -5,7 +5,7 @@ import { openDatabase } from '../store/database.ts';
 import { migrate } from '../store/migrations.ts';
 import { createBoard, publishBoard, saveDraft } from './boards.ts';
 import type { Context } from './context.ts';
-import { loadPresets, type PresetCatalog } from './presets.ts';
+import { type LoadedPreset, loadPresets, type PresetCatalog } from './presets.ts';
 import type { Project } from './project.ts';
 
 export const REVIEWS = parsePreset(`
@@ -21,7 +21,10 @@ workflow:
 
 export function catalogWith(...presets: Preset[]): PresetCatalog {
   const official = loadPresets();
-  const extra = presets.map((preset) => [preset.name, { ...preset, origin: 'project' }] as const);
+  const extra = presets.map((preset): [string, LoadedPreset] => [
+    preset.name,
+    { ...preset, origin: 'project' },
+  ]);
   return {
     presets: new Map([...official.presets, ...extra]),
     problems: official.problems,

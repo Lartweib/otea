@@ -4,7 +4,7 @@ import { Client, InMemoryTransport } from '@modelcontextprotocol/client';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createMcpServer } from '../mcp/server.ts';
 import { COMMANDS } from './commands.ts';
-import { cliAt, spawnCli, type TempRepo, tempGitRepo } from './testing.ts';
+import { cliAt, presetCollection, spawnCli, tempGitRepo, type TempRepo } from './testing.ts';
 
 // Two separate repos that share one project in common storage. The test setup points OTEA_HOME at a
 // temporary folder for this file, in this process and in the CLI processes it spawns.
@@ -40,7 +40,7 @@ describe('projects', () => {
     const { id } = await json(a, 'init');
 
     const joined = await json(b, 'init', '--join', id);
-    await json(a, 'collection', 'add', 'tasks');
+    presetCollection(a.dir, 'tasks');
     await json(a, 'create', '--collection', 'tasks', '--title', 'From A');
 
     expect(joined).toMatchObject({ root: b.dir, id, storage: 'common' });
@@ -55,7 +55,7 @@ describe('projects', () => {
   it('serves the shared project to an MCP client in the other repo', async () => {
     const { id } = await json(a, 'init');
     await json(b, 'init', '--join', id);
-    await json(a, 'collection', 'add', 'tasks');
+    presetCollection(a.dir, 'tasks');
     await json(a, 'create', '--collection', 'tasks', '--title', 'From A');
     const actor = { kind: 'agent', name: 'claude' } as const;
     const server = createMcpServer(COMMANDS, { cwd: b.dir, actor, warn: () => {} });
@@ -117,7 +117,7 @@ describe('projects', () => {
 
   it('projects forget unlinks a folder and keeps the items for the next folder that joins', async () => {
     const { id } = await json(a, 'init');
-    await json(a, 'collection', 'add', 'tasks');
+    presetCollection(a.dir, 'tasks');
     await json(a, 'create', '--collection', 'tasks', '--title', 'Kept');
 
     const forgotten = await cliAt(a.dir)('projects', 'forget', a.dir);

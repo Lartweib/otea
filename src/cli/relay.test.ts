@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { type Cli, cliAt, tempGitRepo } from './testing.ts';
+import { type Cli, cliAt, presetCollection, tempGitRepo } from './testing.ts';
 
 const QUOTE = 'Discard it, the old flow is gone';
 const USAGE = 'Usage: otea relay <id> <state> --quote <what the human said> [--reason <reason>]';
@@ -14,7 +14,7 @@ describe('relay', () => {
     repo = tempGitRepo();
     otea = cliAt(repo.dir, { OTEA_AGENT: 'claude' });
     await otea('init');
-    await otea('collection', 'add', 'tasks');
+    presetCollection(repo.dir, 'tasks');
     await otea('create', '--collection', 'tasks', '--title', 'Old flow', '--description', 'D');
     await otea('create', '--collection', 'tasks', '--title', 'Held', '--description', 'D');
     // Another agent did the step: an agent relays only decisions on work it did not do itself.
@@ -207,7 +207,7 @@ describe('move by an agent', () => {
     repo = tempGitRepo();
     otea = cliAt(repo.dir);
     await otea('init');
-    await otea('collection', 'add', 'tasks');
+    presetCollection(repo.dir, 'tasks');
     await otea('create', '--collection', 'tasks', '--title', 'T', '--description', 'D');
     await otea('handoff', 'TASKS-1');
   });

@@ -8,9 +8,7 @@ import { type AgentsMdAction, connectAgent, writeAgentsMd } from '../app/agents.
 import { addBoard, addBoardSet, type BoardRecord } from '../app/boards.ts';
 import { briefFor } from '../app/brief.ts';
 import {
-  addCollection,
   collectionIcon,
-  DEFAULT_PRESET,
   getCollection,
   presetOf,
   setCollectionIcon,
@@ -516,26 +514,6 @@ const connect: Command = {
     const connection = connectAgent(root, name, MAIN);
     const text = `Connected "${name}": ${connection.path} serves otea mcp --as ${name}`;
     return { data: connection, text };
-  },
-};
-
-const collectionAdd: Command = {
-  name: 'collection add',
-  summary: `Add a collection governed by a preset (default: ${DEFAULT_PRESET}); --icon gives it its own icon instead of the preset's`,
-  args: ['name'],
-  options: { preset: {}, icon: { placeholder: 'icon' } },
-  execute: ({ cwd, option, args: [name = ''] }) => {
-    const preset = option('preset') ?? DEFAULT_PRESET;
-    const icon = option('icon');
-    const collection = withProject(cwd, (project) => {
-      const added = addCollection(project, { name, preset, icon });
-      return { ...added, icon: collectionIcon(project, added) };
-    });
-    const { prefix, presetVersion } = collection;
-    return {
-      data: collection,
-      text: `Added collection "${name}" with preset ${preset} v${presetVersion} (ids ${prefix}-<n>)`,
-    };
   },
 };
 
@@ -1597,7 +1575,6 @@ export const COMMANDS: readonly Command[] = [
   reposRemove,
   migrateCommand,
   connect,
-  collectionAdd,
   collectionIconCommand,
   create,
   list,

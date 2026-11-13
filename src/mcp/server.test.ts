@@ -5,7 +5,7 @@ import { liveBoardOf } from '../app/next.ts';
 import { listAgents } from '../app/presence.ts';
 import { openProject } from '../app/project.ts';
 import { COMMANDS } from '../cli/commands.ts';
-import { type Cli, cliAt, tempGitRepo } from '../cli/testing.ts';
+import { type Cli, cliAt, presetCollection, tempGitRepo } from '../cli/testing.ts';
 import type { Actor } from '../core/item.ts';
 import {
   AGENT_COMMANDS,
@@ -47,7 +47,7 @@ describe('mcp server', () => {
     repo = tempGitRepo();
     otea = cliAt(repo.dir, { OTEA_AGENT: 'claude' });
     await otea('init', '--local');
-    await otea('collection', 'add', 'tasks');
+    presetCollection(repo.dir, 'tasks');
     await otea('create', '--collection', 'tasks', '--title', 'Docs', '--description', 'For v1');
     await otea('create', '--collection', 'tasks', '--title', 'Vague');
     client = await connect(repo.dir, 'claude');
@@ -287,7 +287,7 @@ describe('mcp server', () => {
     });
 
     it('refuses a parent in another collection, with the error of the CLI', async () => {
-      await otea('collection', 'add', 'bugs');
+      presetCollection(repo.dir, 'bugs');
       await otea('create', '--collection', 'bugs', '--title', 'Clips', '--description', 'D');
 
       const reply = await call('link', { id: 'BUGS-1', kind: 'parent', other: 'TASKS-1' });
