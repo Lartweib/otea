@@ -370,14 +370,38 @@ export function boardRoundOf(
 }
 
 // `next`'s text for one item, as the agent `me` reads it; undefined off a board.
-export function itemNextText(ctx: Context, item: ItemRecord, me?: string): string | undefined {
+export function itemNextText(
+  ctx: Context,
+  item: ItemRecord,
+  me?: string,
+  now = systemClock,
+): string | undefined {
   const board = liveBoardOf(ctx, item.collection);
   if (!board) return undefined;
-  return textFor(ctx, item, board.def, me);
+  return textFor(ctx, item, board.def, now(), me);
 }
 
-function textFor(ctx: Context, item: ItemRecord, def: BoardDefinition, me?: string): string {
+// The agent the person left a stuck item for (Reasignar), while no agent has claimed or moved it
+// since; undefined otherwise.
+export function leftFor(ctx: Context, id: string): string | undefined {
+  const last = selectEvents(ctx.db, id).findLast(({ type }) =>
+    ['claimed', 'released', 'transitioned'].includes(type),
+  );
+  if (last?.type !== 'released' || last.actor.kind !== 'human') return undefined;
+  const { cause, next } = last.data;
+  return cause === 'reassign' && typeof next === 'string' ? next : undefined;
+}
+
+function textFor(
+  ctx: Context,
+  item: ItemRecord,
+  def: BoardDefinition,
+  at: string,
+  me?: string,
+): string {
   const on = itemOnBoard(ctx, item, def);
+  const lease = activeLease(item.lease, at);
+  const left = leftFor(ctx, item.id);
   const counts: Record<string, number> = {};
   for (const { part } of on.facts.evidence) counts[part] = (counts[part] ?? 0) + 1;
   const missing = isClosed(on.position)
@@ -398,20 +422,32 @@ function textFor(ctx: Context, item: ItemRecord, def: BoardDefinition, me?: stri
     ...(child === undefined ? {} : { child: child.def }),
     ...(me === undefined ? {} : { me }),
     ...(on.sentBack === undefined ? {} : { sentBack: on.sentBack }),
+    ...(lease ? { holder: { name: lease.holder, expiresAt: lease.expiresAt } } : {}),
+    ...(left === undefined ? {} : { leftFor: left }),
   });
 }
 
 // Whether the item is the agent's to take now: a doing phase it may take, or a review it is the
-// reviewer of; never one another agent holds.
-function isTheirs(def: BoardDefinition, item: ItemRecord, agent: string, at: string): boolean {
+// reviewer of; never one another agent holds, nor one the person left for another agent.
+function isTheirs(
+  ctx: Context,
+  def: BoardDefinition,
+  item: ItemRecord,
+  agent: string,
+  at: string,
+): boolean {
   const lease = activeLease(item.lease, at);
   if (lease && lease.holder !== agent) return false;
   const position = positionOf(item.state);
-  if (isClosed(position)) return false;
-  if (position.phase === 'doing') return mayTake(def, position.step, agent);
-  if (position.phase === 'yours') return false;
+  if (isClosed(position) || position.phase === 'yours') return false;
   const reviewer = stepById(def, position.step)?.reviewer;
-  return reviewer !== undefined && isAgent(reviewer) && reviewer.agent === agent;
+  const mine =
+    position.phase === 'doing'
+      ? mayTake(def, position.step, agent)
+      : reviewer !== undefined && isAgent(reviewer) && reviewer.agent === agent;
+  if (!mine || lease) return mine;
+  const left = leftFor(ctx, item.id);
+  return left === undefined || left === agent;
 }
 
 // How many of the board's open items wait for the person.
@@ -451,7 +487,7 @@ export function nextFor(
   const since = (item: ItemRecord) => entered.get(item.id) ?? item.createdAt;
   const candidates = boards.flatMap((board) =>
     selectItems(ctx.db, { collection: board.collection })
-      .filter((item) => isTheirs(board.def, item, agent, at))
+      .filter((item) => isTheirs(ctx, board.def, item, agent, at))
       .map((item) => ({
         item,
         board,
@@ -470,7 +506,7 @@ export function nextFor(
     return {
       item: first.item.id,
       collection: first.board.collection,
-      text: textFor(ctx, first.item, first.board.def, agent),
+      text: textFor(ctx, first.item, first.board.def, at, agent),
       ...(sentBack === undefined ? {} : { sentBack }),
     };
   }
@@ -629,7 +665,7 @@ function land(
     ctx.db,
     workflowOf(ctx, item),
     item,
-    { to: stateOf(to), actor: input.actor, at, lease },
+    { to: stateOf(to), actor: input.actor, at, lease, board: true },
     data,
   );
 }

@@ -40,6 +40,7 @@ import {
   boardFieldInput,
   boardStart,
   boardState,
+  liveBoardOf,
 } from './next.ts';
 import {
   addRelation,
@@ -312,17 +313,21 @@ export type MoveItemInput = {
   note?: string;
 };
 
-// Lands an authorized move: the new state, its transitioned event and, when the item leaves the agent
-// turn, the release of the lease it carried. `trail` (who relayed it) is recorded on both.
+// Lands an authorized move: the new state, its transitioned event and the release of the lease it
+// carried. `trail` (who relayed it) is recorded on both. Off a board a lease lasts while the item
+// stays on the agent turn (todo, then in_progress). On a board (`board`) a lease is for one step's
+// doing or review: every move ends it, live or run out, so it never blocks the next step or reads
+// as someone working there. An agent that goes on to the next step itself claims it again.
 export function landMove(
   db: DatabaseSync,
   workflow: Workflow,
   item: ItemRecord,
-  move: { to: string; actor: Actor; at: string; lease: Lease | null },
+  move: { to: string; actor: Actor; at: string; lease: Lease | null; board: boolean },
   data: Record<string, unknown>,
   trail: Record<string, unknown> = {},
 ): Item {
-  const { to, actor, at, lease } = move;
+  const { to, actor, at, board } = move;
+  const lease = board ? item.lease : move.lease;
   updateItemState(db, item.id, to, at);
   appendEvent(db, {
     itemId: item.id,
@@ -331,7 +336,7 @@ export function landMove(
     at,
     data: { from: item.state, to, ...data, ...trail },
   });
-  const handoff = lease !== null && turnOf(workflow, to) !== 'agent';
+  const handoff = lease !== null && (board || turnOf(workflow, to) !== 'agent');
   if (handoff) {
     clearLease(db, item.id);
     const released = { holder: lease.holder, cause: 'handoff', ...trail };
@@ -361,6 +366,7 @@ export function moveItem(ctx: Context, input: MoveItemInput, now = systemClock):
     assertCanLeave(type, item.state, to, item.fields);
     assertMayEnter(ctx, item, workflow, to, at);
     const data = { ...(reason ? { reason } : {}), ...(note ? { note } : {}), channel };
-    return landMove(db, workflow, item, { to, actor, at, lease }, data);
+    const board = liveBoardOf(ctx, item.collection) !== undefined;
+    return landMove(db, workflow, item, { to, actor, at, lease, board }, data);
   });
 }

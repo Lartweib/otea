@@ -1,19 +1,12 @@
 import type { Item, ItemView } from '../app/items.ts';
 import type { ValidationReport } from '../app/validate.ts';
 import type { Actor } from '../core/item.ts';
-import type { Lease } from '../core/lease.ts';
+import { clockTime, type Lease } from '../core/lease.ts';
 import type { Layout } from '../core/modules.ts';
 import { type EvidenceModuleEntry, groupEvidence } from '../core/placement.ts';
 import { DEFAULT_TYPE } from '../core/preset.ts';
 import { describeRelation, type Relation, type RelationView } from '../core/relations.ts';
 import type { EvidenceRecord } from '../store/queries.ts';
-
-// The local time of day of a timestamp, as HH:MM.
-export function clockTime(iso: string): string {
-  const date = new Date(iso);
-  const pad = (value: number) => String(value).padStart(2, '0');
-  return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
-}
 
 type Event = ItemView['events'][number];
 

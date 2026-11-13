@@ -184,6 +184,38 @@ describe('next and the board moves', () => {
     });
   });
 
+  it('sends another agent elsewhere while one holds the item, in show and MCP alike', async () => {
+    await otea('claim', 'CRI-1', '--as', 'quill');
+    const held =
+      /^ {2}CRI-1 · Criatura · Concepto, round 1\n {2}Held by quill until \d\d:\d\d: pick another item\.$/m;
+
+    const shown = (await otea('show', 'CRI-1', '--as', 'scout')).out;
+    expect(shown).toMatch(held);
+    expect(shown).not.toContain('Your turn');
+    expect((await otea('show', 'CRI-1', '--as', 'quill')).out).toContain(
+      'Your turn: do this step.',
+    );
+
+    const client = new Client({ name: 'test', version: '0' });
+    const server = createMcpServer(COMMANDS, {
+      cwd: repo.dir,
+      actor: { kind: 'agent', name: 'scout' },
+      warn: () => {},
+    });
+    const [clientSide, serverSide] = InMemoryTransport.createLinkedPair();
+    await server.connect(serverSide);
+    await client.connect(clientSide);
+    try {
+      const reply = (await client.callTool({ name: 'show', arguments: { id: 'CRI-1' } })) as {
+        content: { text: string }[];
+      };
+      const hint = JSON.parse(reply.content[0]?.text ?? '').hint as string;
+      expect(hint).toMatch(/\nHeld by quill until \d\d:\d\d: pick another item\.$/);
+    } finally {
+      await client.close();
+    }
+  });
+
   it('prints the moved item and the line with --json', async () => {
     await otea('attach', 'CRI-1', art(), '--module', 'eart', '--as', 'quill');
 

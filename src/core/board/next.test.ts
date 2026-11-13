@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { clockTime } from '../lease.ts';
 import { boardText, handedText, nextText, refusalText } from './next.ts';
 import { creatures } from './testing.ts';
 
@@ -152,6 +153,40 @@ describe('nextText', () => {
     expect(nextText(def, { ...base, position: { closed: 'done' }, missing: [] })).toBe(
       'CRI-12 · Criatura · Done\nClosed: nothing left to do.',
     );
+  });
+});
+
+describe('nextText with a lease', () => {
+  const doing = { ...base, position: { step: 'sconcept', phase: 'doing' as const }, missing: [] };
+  const until = '2026-11-13T03:09:49.806Z';
+
+  it('sends an agent to another item while another agent holds this one, never saying it is its turn', () => {
+    const text = nextText(def, {
+      ...doing,
+      me: 'inv-b',
+      holder: { name: 'inv-a', expiresAt: until },
+    });
+    expect(text).toBe(
+      `CRI-12 · Criatura · Concepto, round 1\nHeld by inv-a until ${clockTime(until)}: pick another item.`,
+    );
+  });
+
+  it('reads as usual to the holder itself', () => {
+    const text = nextText(def, {
+      ...doing,
+      me: 'inv-a',
+      holder: { name: 'inv-a', expiresAt: until },
+    });
+    expect(text).toContain('Your turn: do this step.');
+    expect(text).not.toContain('Held by');
+  });
+
+  it('says whom the person left a stuck item for', () => {
+    expect(nextText(def, { ...doing, me: 'inv-b', leftFor: 'resumidor' })).toBe(
+      'CRI-12 · Criatura · Concepto, round 1\nLeft for resumidor: pick another item.',
+    );
+    const mine = nextText(def, { ...doing, me: 'resumidor', leftFor: 'resumidor' });
+    expect(mine).toContain('Your turn: do this step.\nThe person left it for you.');
   });
 });
 
