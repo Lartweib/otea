@@ -39,6 +39,10 @@ export function historyOf(
     field: (key: string) => fieldWord(type, key) ?? key,
     value: (key: string, value: string) => valueWord(type, key, value),
   };
+  // A state the type still has reads by its name today; one deleted since, by the name its event
+  // kept when it was written (`stateName`, `toName`), else as stored.
+  const named = (state: string, kept: unknown) =>
+    states.has(state) || typeof kept !== 'string' || kept === '' ? word(state) : kept;
   const sorted = [...events].sort((a, b) => a.id - b.id);
   let handed = 0;
   // Before Otea read the item onto its board, its states were a preset's: their names are not
@@ -71,12 +75,12 @@ export function historyOf(
       return { ...base, text: t(human ? 'sheet.h.movedYouBefore' : 'sheet.h.movedBefore'), ...q };
     }
     if (e.type === 'created') {
-      const state = word(String(e.data.state));
+      const state = named(String(e.data.state), e.data.stateName);
       return { ...base, text: t(human ? 'sheet.h.createdYou' : 'sheet.h.created', { state }) };
     }
     if (e.type === 'transitioned') {
       const to = String(e.data.to);
-      const state = word(to);
+      const state = named(to, e.data.toName);
       const target = states.get(to);
       // Otea reading a preset's item onto its board: no one moved it, and "migrate" is a marker.
       if (e.data.reason === 'migrate') {
