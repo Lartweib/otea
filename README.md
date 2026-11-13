@@ -275,7 +275,7 @@ otea init --template product   # Tareas, which waits for nothing open blocking i
 
 ### An agent drafting a board
 
-In Studio, **Nuevo tablero** can leave a board for an agent to draft: it waits as a draft, and a Pedido (assigned to the agent when one is named) says what the board is for and how to hand it in.
+In Studio, **Que lo esboce un agente** (on Studio's home and in **Nuevo tablero**) leaves a board for an agent to draft: it waits as a draft, and a Pedido (assigned to the agent when one is named) keeps what the board is for in the person's words. How to hand it in is the instructions of the Pedido's step, which `otea next` and `otea show` give the agent; the Pedido's page links to the board in Studio.
 
 ```sh
 otea board draft PED-1 > board.json          # the draft to start from: every key a board takes
@@ -285,6 +285,7 @@ otea board draft PED-1 --file board.json     # check it as a board and hand it i
 - The shape of `board.json` is published as a JSON Schema, [`schemas/board.schema.json`](schemas/board.schema.json), each key with what it is for and an example: check a draft against it before handing it in. It is generated from the board's zod schema (`src/core/board/schema.ts`), and a test keeps the two together.
 - A file that is not a board is refused (exit 9, `invalid_board`) with one line per problem: where, in the board's terms (`step 2 "Fix" › handoff 1 (fsteps) › req`), what was expected and what it found, what the key is for with an example, and the JSON path (`[steps.1.hand.0.req]`). Then it points at the draft to start from, the schema, and Studio, where the person can finish what is hard to say in JSON.
 - A board that is a board but not ready (a step with no name, an agent that never connected) is handed in all the same, and the command lists what is still to fix for it to be published.
+- Publishing the board offers to close its Pedido as done (checked by default): publishing is the person taking the draft. Unchecked, the Pedido stays open.
 
 ### Agent moves on a board
 

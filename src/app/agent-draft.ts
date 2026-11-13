@@ -1,5 +1,4 @@
 import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
 import type { Channel } from '../core/authority.ts';
 import {
   type BoardDefinition,
@@ -10,7 +9,7 @@ import {
 } from '../core/board/model.ts';
 import type { Problem } from '../core/board/problems.ts';
 import { parseDefinition } from '../core/board/schema.ts';
-import { type Lang, TITLE_NAME } from '../core/board/templates.ts';
+import { boardLang, type Lang } from '../core/board/templates.ts';
 import { OteaError } from '../core/errors.ts';
 import type { Actor } from '../core/item.ts';
 import { DEFAULT_LEASE_TTL_MS, leaseExpiry } from '../core/lease.ts';
@@ -25,16 +24,16 @@ import {
   insertNewBoard,
   saveDraft,
 } from './boards.ts';
+import { BOARD_JSON_SCHEMA, DRAFT_FILENAME } from './draft-request.ts';
 import { evidenceFile, placeFile, recordEvidence } from './evidence.ts';
 import { insertNewItem, requireItem, systemClock } from './items.ts';
 import { liveBoardOf } from './next.ts';
 import type { Project } from './project.ts';
 
-// "Que lo esboce un agente": the person asks on a Pedido, the board waits as a draft, the agent
+// "Que lo esboce un agente": the person asks on a Pedido (their words its field; how to hand the
+// draft in, its step's instructions: draft-request.ts), the board waits as a draft, the agent
 // hands in a board.json on that Pedido (checked as a board, kept as evidence), and the person
 // merges it into the draft, which says what the agent added.
-
-export const DRAFT_FILENAME = 'board.json';
 
 // The module the draft is kept under on the Pedido.
 export const DRAFT_MODULE = 'files';
@@ -43,21 +42,6 @@ const TITLE: Readonly<Record<Lang, (name: string) => string>> = {
   en: (name) => `Draft the board ${name}`,
   es: (name) => `Esbozar el tablero ${name}`,
 };
-
-// The JSON Schema of board.json Otea ships, generated from the board's zod schema.
-export const BOARD_JSON_SCHEMA = fileURLToPath(
-  new URL('../../schemas/board.schema.json', import.meta.url),
-);
-
-// What the agent reads under the person's words: agents read English.
-const HOW = (id: string) =>
-  [
-    '',
-    `How to hand it in: start from the draft with otea board draft ${id} > ${DRAFT_FILENAME},`,
-    'change it (keep the ids of what is there; give what you add new ids), then run',
-    `otea board draft ${id} --file ${DRAFT_FILENAME}. It says what is wrong until the board is right.`,
-    `To check it before: its shape, each key with an example, is the JSON Schema ${BOARD_JSON_SCHEMA}.`,
-  ].join('\n');
 
 export type AgentDraftRequest = { name: string; need: string; agent: string | null; lang: Lang };
 
@@ -89,13 +73,6 @@ export function requestAgentDraft(
       },
       at,
     );
-    // Under the person's words, how the agent hands its draft in (it needs the Pedido's id).
-    if (first) {
-      const fields = { ...item.fields, [first]: `${need}\n${HOW(item.id)}` };
-      project.db
-        .prepare('UPDATE items SET fields = ? WHERE id = ?')
-        .run(JSON.stringify(fields), item.id);
-    }
     if (input.agent) {
       const lease = { holder: input.agent, expiresAt: leaseExpiry(at, DEFAULT_LEASE_TTL_MS) };
       takeLease(project.db, item.id, lease, at);
@@ -260,11 +237,6 @@ const NOTE_WORDS: Readonly<Record<Lang, Words>> = {
   },
 };
 
-// The board's language, read from what it calls the title (the board was made in it).
-function langOf(def: BoardDefinition): Lang {
-  return def.title === TITLE_NAME.es ? 'es' : 'en';
-}
-
 const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
 
 // The agent's board is what it was asked for, whole: its steps (in its order) replace the draft's,
@@ -275,7 +247,7 @@ export function mergeDefinitions(
   draft: BoardDefinition,
   agent: BoardDefinition,
 ): { definition: BoardDefinition; note: string[] } {
-  const words = NOTE_WORDS[langOf(draft)];
+  const words = NOTE_WORDS[boardLang(draft)];
   const out: BoardDefinition = {
     ...clone(agent),
     name: draft.name,

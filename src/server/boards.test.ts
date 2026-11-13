@@ -288,6 +288,25 @@ describe('an agent drafting a board', () => {
       });
       expect(merged.status).toBe(200);
       expect(await status()).toMatchObject({ status: 'draft' });
+
+      // The Pedido's page names the board, and keeps the hand-in apart from the person's words.
+      const page = (await call('GET', `/items/${item}`)).body;
+      expect(Object.values(page.fields as Json)).toEqual(['Criaturas del pantano']);
+      expect((page.board as Json).request).toMatchObject({
+        board: boardId,
+        name: 'Criaturas',
+        arrived: true,
+      });
+
+      // Publishing offers to close the Pedido, and closes it when asked.
+      const plan = await call('POST', `/boards/${boardId}/publish/plan`);
+      expect(plan.body.request).toEqual({ id: item, title: 'Esbozar el tablero Criaturas' });
+      const published = await call('POST', `/boards/${boardId}/publish`, {
+        moves: {},
+        closeRequest: true,
+      });
+      expect(published.status, JSON.stringify(published.body)).toBe(200);
+      expect((await call('GET', `/items/${item}`)).body.state).toBe('done');
     } finally {
       server.close();
       serving.db.close();

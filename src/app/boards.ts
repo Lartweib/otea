@@ -1,7 +1,7 @@
 import { compileBoard } from '../core/board/compile.ts';
 import { isClosed, positionOf, stateOf } from '../core/board/engine.ts';
 import { type IdSource, newId } from '../core/board/ids.ts';
-import { type BoardDefinition, isAgent, type Target } from '../core/board/model.ts';
+import { type BoardDefinition, DONE, isAgent, type Target } from '../core/board/model.ts';
 import {
   type Change,
   changePlan,
@@ -14,6 +14,7 @@ import { type BoardRef, blocking, type Problem, problemsOf } from '../core/board
 import { parseDefinition, readDefinition } from '../core/board/schema.ts';
 import {
   blankBoard,
+  boardLang,
   instantiate,
   instantiateSet,
   type Lang,
@@ -51,6 +52,7 @@ import {
   clearLease,
   collectionTaken,
   deleteCollection,
+  findItem,
   insertCollection,
   listCollections,
   selectAgents,
@@ -368,6 +370,8 @@ export type PublishPlan = {
   changes: Change[];
   effects: ItemEffects;
   problems: Problem[];
+  // The open Pedido an agent drafted the board on: publishing offers to close it.
+  request: { id: string; title: string } | null;
 };
 
 function requireDraft(ctx: Context, id: string): NonNullable<BoardRecord['draft']> {
@@ -390,7 +394,7 @@ function itemStates(ctx: Context, collection: string | null): ItemState[] {
 
 export function publishPlan(ctx: Context, id: string): PublishPlan {
   const record = getBoardRecord(ctx, id);
-  const draft = requireDraft(ctx, id).definition;
+  const { definition: draft, requestItem } = requireDraft(ctx, id);
   const live = record.live?.definition ?? null;
   const items = itemStates(ctx, record.collection);
   return {
@@ -403,8 +407,22 @@ export function publishPlan(ctx: Context, id: string): PublishPlan {
       ? itemEffects(live, draft, items)
       : { moves: [], needs: [], reopened: [], waiting: [], frozen: [] },
     problems: boardProblems(ctx, id, draft),
+    request: openRequest(ctx, requestItem),
   };
 }
+
+// The Pedido a draft was asked on, while it is open.
+function openRequest(ctx: Context, id: string | null): { id: string; title: string } | null {
+  const item = id === null ? undefined : findItem(ctx.db, id);
+  if (!item || isClosed(positionOf(item.state))) return null;
+  return { id: item.id, title: item.title };
+}
+
+// What closing the Pedido on publish says, in the board's language.
+const REQUEST_CLOSED: Readonly<Record<Lang, (name: string) => string>> = {
+  en: (name) => `Published the board ${name}`,
+  es: (name) => `Publicado el tablero ${name}`,
+};
 
 // A prefix for a new board's item ids: the first letters of what each item is called.
 export function prefixOf(ctx: Context, item: string, name: string): string {
@@ -426,6 +444,9 @@ export type PublishInput = {
   moves: Readonly<Record<string, Target>>;
   by: Actor;
   draftStamp?: string | null;
+  // Closes, as done, the open Pedido an agent drafted the board on: publishing is the person
+  // taking the draft.
+  closeRequest?: boolean;
 };
 
 export type PublishResult = {
@@ -500,7 +521,7 @@ function publishWithin(ctx: Context, id: string, input: PublishInput, now: Clock
   const row = requireRow(ctx, id);
   const record = recordOf(ctx, row);
   assertDraftUnchanged(ctx, id, input.draftStamp);
-  const draft = requireDraft(ctx, id).definition;
+  const { definition: draft, requestItem } = requireDraft(ctx, id);
   const problems = boardProblems(ctx, id, draft);
   if (blocking(problems)) {
     const codes = problems.filter(({ level }) => level === 'error').map(({ code }) => code);
@@ -546,6 +567,12 @@ function publishWithin(ctx: Context, id: string, input: PublishInput, now: Clock
   }
   setCollectionPreset(ctx.db, collection, id, version);
   moveItems(ctx, moved, input.by, at, { reason: 'publish', board_version: version });
+  const request = input.closeRequest ? openRequest(ctx, requestItem) : null;
+  const from = request ? findItem(ctx.db, request.id)?.state : undefined;
+  if (request && from !== undefined) {
+    const reason = REQUEST_CLOSED[boardLang(draft)](draft.name.trim());
+    moveItems(ctx, [{ id: request.id, from, to: DONE }], input.by, at, { reason });
+  }
   deleteDraft(ctx.db, id);
   return { version, moved, record: getBoardRecord(ctx, id) };
 }

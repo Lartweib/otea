@@ -882,6 +882,11 @@ const REQUESTS: Template = {
   },
 };
 
+// The language a board was made in, read from what it calls the title.
+export function boardLang(def: BoardDefinition): Lang {
+  return def.title === TITLE_NAME.es ? 'es' : 'en';
+}
+
 // The project's built-in board for loose requests (Pedidos); an agent's board draft arrives on one.
 export function requestsBoard(lang: Lang, ids: IdSource = newId): BoardDefinition {
   const def = instantiate(REQUESTS, lang, {}, ids);
