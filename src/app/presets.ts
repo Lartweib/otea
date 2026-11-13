@@ -76,9 +76,7 @@ export function samplesText(dir: string): string | undefined {
 function notesOf(dir: string, preset: Preset, notes: PresetNote[]): Array<[string, PresetNote]> {
   const samples = readSamples(samplesText(dir), preset, sampleFiles(dir));
   return [
-    ...notes.map(
-      (note): [string, PresetNote] => [join(dir, 'preset.yaml'), note],
-    ),
+    ...notes.map((note): [string, PresetNote] => [join(dir, 'preset.yaml'), note]),
     ...samples.notes.map((note): [string, PresetNote] => [join(dir, SAMPLES_FILE), note]),
   ];
 }

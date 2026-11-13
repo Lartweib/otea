@@ -7,11 +7,11 @@ import { parsePreset } from '../core/preset.ts';
 import { selectEvents } from '../store/queries.ts';
 import { migrateBoards, migrateProjectBoards } from './board-migration.ts';
 import { getBoardRecord, listBoardSummaries } from './boards.ts';
-import { loadPresets } from './presets.ts';
 import { addCollection } from './collections.ts';
 import type { Context } from './context.ts';
 import { checkGate } from './gates.ts';
 import { createItem, getItem, moveItem } from './items.ts';
+import { loadPresets } from './presets.ts';
 import { addRelation } from './relations.ts';
 import { catalogWith, memoryContext } from './testing.ts';
 

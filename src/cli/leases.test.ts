@@ -1,5 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { type Cli, cliAt, presetCollection, spawnCli, tempGitRepo, type TempRepo } from './testing.ts';
+import {
+  type Cli,
+  cliAt,
+  presetCollection,
+  spawnCli,
+  type TempRepo,
+  tempGitRepo,
+} from './testing.ts';
 
 const HELD = (holder: string) => new RegExp(`held by ${holder} until \\d\\d:\\d\\d`);
 
