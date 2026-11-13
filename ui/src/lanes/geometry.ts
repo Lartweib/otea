@@ -48,11 +48,16 @@ export function laneParams(
   const ys: number[] = [];
   const ws: number[] = [];
   const as: number[] = [];
+  // The lanes fuse below the last open row: a closed row listed above an open one (a list grouped by
+  // a field keeps closed rows inside its groups) sits between the lanes, which run on past it.
+  let lastOpenTop = Number.NEGATIVE_INFINITY;
+  for (const r of rows)
+    if (!r.ghost && r.lane !== 'none') lastOpenTop = Math.max(lastOpenTop, r.top);
   for (const r of rows) {
     if (r.ghost) continue;
     const y = r.top + r.off;
     if (r.lane === 'none') {
-      if (firstClosed == null || y < firstClosed) firstClosed = y;
+      if (r.top > lastOpenTop && (firstClosed == null || y < firstClosed)) firstClosed = y;
     } else lastOpen = Math.max(lastOpen, r.top + r.height - 6);
     if (r.lane === 'you') ys.push(y);
     if (r.look === 'stuck') ws.push(y);
