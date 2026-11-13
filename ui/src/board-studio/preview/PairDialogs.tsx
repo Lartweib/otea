@@ -379,7 +379,8 @@ export function PairPublishDialog({
       open={open}
       label={t('bs.preview.publish.label')}
       onClose={onClose}
-      className="bsp-dialog wide"
+      size="md"
+      className="bsp-dialog"
     >
       <h4 data-i="">{title}</h4>
       {content}
@@ -595,7 +596,7 @@ export function PairDiscardDialog({ pair, open, onClose, onDiscarded }: PairDisc
         ) : null}
         <button
           type="button"
-          className="btn quiet warn"
+          className="btn danger"
           disabled={busy || changed.length === 0}
           onClick={() => void run(changed)}
         >

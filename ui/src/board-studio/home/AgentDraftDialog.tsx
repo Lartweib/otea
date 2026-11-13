@@ -27,7 +27,7 @@ export function AgentDraftDialog({
   onClose: () => void;
 }) {
   return (
-    <Dialog open={open} label={t('bs.ask.title')} onClose={onClose} className="wide sh-dlg">
+    <Dialog open={open} label={t('bs.ask.title')} onClose={onClose} size="md" className="sh-dlg">
       <AgentDraftForm key={n} onClose={onClose} />
     </Dialog>
   );

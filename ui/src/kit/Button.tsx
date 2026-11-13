@@ -1,8 +1,9 @@
 import type { ButtonHTMLAttributes } from 'react';
 
 // primary: the one move that hands the turn on; quiet: a bordered button on the sheet; text: a
-// word that acts. 'default' is quiet (the moves' planner still names it so).
-export type ButtonVariant = 'default' | 'primary' | 'quiet' | 'text';
+// word that acts; danger: the confirmation that throws work away. 'default' is quiet (the moves'
+// planner still names it so).
+export type ButtonVariant = 'default' | 'primary' | 'quiet' | 'text' | 'danger';
 
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: ButtonVariant;

@@ -188,11 +188,23 @@
   background: var(--scrim);
   z-index: 55;
 }
+/* Every dialog hangs from one line under the top bar (60 px; 56 on a phone) and takes one of three
+   widths: sm 440 (a question), md 640 (a form, a list of changes), lg 860 (Probar). Its body
+   scrolls before the box runs past the bottom of the screen. No other sheet places a dialog. */
 .dialog {
+  --dlg-w: 440px;
+  --dlg-top: calc(60px + clamp(24px, 7vh, 88px));
+  --dlg-foot: 24px;
   left: 50%;
-  top: 20vh;
-  width: min(440px, calc(100vw - 32px));
-  margin-left: calc(min(440px, calc(100vw - 32px)) / -2);
+  top: var(--dlg-top);
+  width: min(var(--dlg-w), calc(100vw - 32px));
+  margin-left: calc(min(var(--dlg-w), calc(100vw - 32px)) / -2);
+}
+.dialog.d-md {
+  --dlg-w: 640px;
+}
+.dialog.d-lg {
+  --dlg-w: 860px;
 }
 .dialog .pline {
   transform-origin: 50% 0;
@@ -202,6 +214,16 @@
 }
 .dialog .pin {
   padding: 18px 20px 16px;
+  max-height: calc(100dvh - var(--dlg-top) - var(--dlg-foot));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+@media (max-width: 720px) {
+  .dialog {
+    --dlg-top: calc(56px + 12px + env(safe-area-inset-top, 0px));
+    --dlg-foot: max(16px, env(safe-area-inset-bottom, 0px));
+  }
 }
 .dialog h4 {
   font: 450 22px / 1.15 var(--serif);

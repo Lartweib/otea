@@ -18,7 +18,7 @@ export {
 export { Node, NodeMark, nodeLabel } from './Node.tsx';
 export { Pill, type PillTone } from './Pill.tsx';
 export { anchorAbove, anchorBelow, type Place } from './pop/anchors.ts';
-export { Dialog } from './pop/Dialog.tsx';
+export { Dialog, type DialogSize } from './pop/Dialog.tsx';
 export { MenuItem, MenuLabel, MenuNote, MenuRule } from './pop/Menu.tsx';
 export { Pop, PopContext, type PopEdge, popParts, usePop } from './pop/Pop.tsx';
 export { ToastHost, type ToastOptions, toast } from './pop/toast.tsx';

@@ -971,12 +971,7 @@
   background: color-mix(in oklch, var(--minus) 12%, transparent);
 }
 
-/* save: a dialog in the pop's grammar, wide enough for the lines that change */
-.dialog.st-confirmd {
-  width: min(640px, calc(100vw - 32px));
-  margin-left: calc(min(640px, calc(100vw - 32px)) / -2);
-  top: 14vh;
-}
+/* save: a dialog in the pop's grammar; it sits where every dialog does (pops.css) */
 .dialog.st-confirmd .pin {
   display: grid;
   gap: 12px;

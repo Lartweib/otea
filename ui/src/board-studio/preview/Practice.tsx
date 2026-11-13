@@ -1024,7 +1024,8 @@ export function PracticeDialog({ draft, pair, open, onClose }: PracticeDialogPro
       open={open}
       label={t(pair ? 'bs.preview.try.labelPair' : 'bs.preview.try.label')}
       onClose={onClose}
-      className="bsp-dialog xwide"
+      size="lg"
+      className="bsp-dialog"
     >
       <div className="bsp-prac">
         <div className="banner" data-i="">

@@ -357,7 +357,8 @@ function SinglePublishDialog({
       open={open}
       label={t('bs.preview.publish.label')}
       onClose={onClose}
-      className="bsp-dialog wide"
+      size="md"
+      className="bsp-dialog"
     >
       <h4 data-i="">
         {isNew ? t('bs.preview.publish.titleFirst', { name }) : t('bs.preview.publish.title')}
@@ -448,12 +449,7 @@ function SingleDiscardDialog({
         <button type="button" className="btn quiet" onClick={onClose}>
           {t('bs.preview.publish.keepEditing')}
         </button>
-        <button
-          type="button"
-          className="btn quiet warn"
-          disabled={busy}
-          onClick={() => void discard()}
-        >
+        <button type="button" className="btn danger" disabled={busy} onClick={() => void discard()}>
           {t('bs.preview.discard.discard')}
         </button>
       </div>

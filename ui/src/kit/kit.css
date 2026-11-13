@@ -38,6 +38,22 @@
   cursor: default;
   transform: none;
 }
+/* danger: the confirmation that throws work away (Descartar), filled with the warning colour; its
+   words read at 5:1 on it, light and dark; disabled, it leaves the fill as a primary does */
+.btn.danger {
+  background: var(--warn);
+  color: var(--on-you);
+}
+.btn.danger:hover:not(:disabled) {
+  background: color-mix(in oklch, var(--warn) 88%, var(--ink));
+}
+.btn.danger:disabled {
+  background: var(--well);
+  color: var(--ink-3);
+  border-color: var(--rule-2);
+  cursor: default;
+  transform: none;
+}
 .btn.quiet {
   border-color: var(--rule-2);
   color: var(--ink);
