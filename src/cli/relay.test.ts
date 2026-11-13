@@ -191,7 +191,7 @@ describe('relay of a decision on the agent’s own step', () => {
 
   it('lets the agent relay again once a new round of the step is handed off by another', async () => {
     await otea('relay', 'TASKS-1', 'todo', '--quote', 'redo', '--reason', 'Redo', '--as', 'codex');
-    await otea('handoff', 'TASKS-1', '--as', 'codex');
+    await otea('handoff', 'TASKS-1', '--note', 'Redone', '--as', 'codex');
 
     const { code } = await otea('relay', 'TASKS-1', 'todo', '--quote', 'again', '--reason', 'R');
 
