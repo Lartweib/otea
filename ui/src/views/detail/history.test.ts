@@ -159,6 +159,48 @@ describe('a board reading in the history', () => {
   });
 });
 
+describe('a step deleted since', () => {
+  const board = {
+    ...bug,
+    states: [
+      { name: 'sdraw', turn: 'agent' },
+      { name: 'sdraw:review', turn: 'human' },
+    ],
+  } as unknown as typeof bug;
+  const named = (s: string) => ({ sdraw: 'Dibujar', 'sdraw:review': 'Dibujar (revisión)' })[s] ?? s;
+
+  it('reads by the name its events kept, never its id', () => {
+    const lines = historyOf(
+      [
+        ev('created', you, { state: 'sold', stateName: 'Bocetar' }, 90),
+        ev(
+          'transitioned',
+          mender,
+          { from: 'sold', to: 'sold:review', toName: 'Bocetar (revisión)' },
+          80,
+        ),
+      ],
+      board,
+      named,
+      NOW,
+    );
+    expect(lines.map((l) => l.text)).toEqual([
+      'Moved it to Bocetar (revisión)',
+      'You created it in Bocetar',
+    ]);
+  });
+
+  it('reads a step that still stands by its name today', () => {
+    const [line] = historyOf(
+      [ev('transitioned', mender, { from: 'sdraw', to: 'sdraw:review', toName: 'Old name' }, 80)],
+      board,
+      named,
+      NOW,
+    );
+    expect(line?.text).toBe('Handed it to you in Dibujar (revisión)');
+  });
+});
+
 describe('the history of a field change, in the language on screen', () => {
   afterEach(() => setLanguage('en'));
 
