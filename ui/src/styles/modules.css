@@ -40,6 +40,16 @@
   padding-left: 22px;
 }
 
+/* A list written "1)" reads "1)", not "1." (markdown.ts marks it). */
+@counter-style paren {
+  system: extends decimal;
+  suffix: ") ";
+}
+
+.md ol.paren {
+  list-style-type: paren;
+}
+
 .md li > ul,
 .md li > ol {
   margin-top: 4px;
