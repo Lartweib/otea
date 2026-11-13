@@ -6,11 +6,12 @@ import {
   useRef,
   useState,
 } from 'react';
+import type { BoardDefinition } from '../../../src/core/board/model.ts';
 import { waitsOf } from '../actions.ts';
 import { evidenceFileUrl, fetchItem } from '../api.ts';
 import { typeOfItem, useApp } from '../app/context.tsx';
 import { onPublishedBoard } from '../board-studio/home/boards-store.ts';
-import { t, tx } from '../i18n/i18n.ts';
+import { listOf, t, tx } from '../i18n/i18n.ts';
 import { useEscape } from '../kit/escape.ts';
 import { Button, Count, StepPill } from '../kit/index.ts';
 import { toast } from '../kit/pop/toast.tsx';
@@ -19,11 +20,16 @@ import { NodeGlyph } from '../lanes/NodeGlyph.tsx';
 import { anim } from '../motion/anim.ts';
 import { Choreo, part } from '../motion/choreo.ts';
 import { reduced } from '../motion/reduced.ts';
-import { stateWord } from '../preset-words.ts';
+import { stateWord, valueWord } from '../preset-words.ts';
+import { approvalWaitWords } from '../refusals.ts';
 import {
+  approvalGate,
+  cardFigures,
   cardWords,
   type Direction,
+  deliveredFields,
   dragIntent,
+  type Gate,
   HANDOVER,
   type Pile,
   type PileEntry,
@@ -33,6 +39,7 @@ import {
   pileView,
   releaseDirection,
   resist,
+  roundEvidence,
   type TriagePlan,
   type TriKind,
   type TriState,
@@ -47,6 +54,8 @@ import {
   triSync,
 } from '../triage.ts';
 import type { Evidence, Item, ItemView, Move } from '../types.ts';
+import { useStudioBoard } from '../views/board/studio-board.tsx';
+import type { ItemBoardBlock } from '../views/detail/board-item.ts';
 import {
   arriveUnder,
   dropFace,
@@ -94,13 +103,9 @@ function useViews(ids: readonly string[], version: number): ReadonlyMap<string, 
   return views;
 }
 
-// Images side by side, before then after, each captioned under a caps kicker (mock:2576-2611).
-function Figures({ evidence }: { evidence: readonly Evidence[] }) {
-  const rank = { before: 0, after: 1, single: 2 } as const;
-  const shown = evidence
-    .filter((e) => e.contentType.startsWith('image/'))
-    .sort((a, b) => rank[a.role] - rank[b.role])
-    .slice(0, 2);
+// Images side by side, before then after, each captioned under a caps kicker (mock:2576-2611):
+// the round's newest (cardFigures).
+function Figures({ shown }: { shown: readonly Evidence[] }) {
   if (shown.length === 0) return null;
   return (
     <div className="figs">
@@ -120,6 +125,35 @@ function Figures({ evidence }: { evidence: readonly Evidence[] }) {
           </figcaption>
         </figure>
       ))}
+    </div>
+  );
+}
+
+// What the round hands in: the step's fields with their values, and the round's files the images
+// above do not show.
+function Delivered({ round }: { round: RoundShown }) {
+  const { fields, files } = round;
+  if (fields.length === 0 && files.length === 0) return null;
+  return (
+    <div className="tc-hand">
+      {fields.length > 0 ? (
+        <>
+          <p className="tc-hk">{t('triage.delivered')}</p>
+          <dl>
+            {fields.map((f) => (
+              <div key={f.ref}>
+                <dt>{f.name}</dt>
+                <dd>{f.value}</dd>
+              </div>
+            ))}
+          </dl>
+        </>
+      ) : null}
+      {files.length > 0 ? (
+        <p className="tc-files">
+          {t('triage.alsoFiles', { list: listOf(files.map((f) => f.filename)) })}
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -217,10 +251,21 @@ type Drag = {
 // Where a decision starts from: the card's pull and speed when it was let go (none for a button).
 export type From = { x: number; v: number };
 
+// What a card shows of the round under review: its images, the fields and other files it hands in.
+// pending: the board the item is on is still being read (its gate is not known yet).
+type RoundShown = {
+  figures: Evidence[];
+  fields: { ref: string; name: string; value: string }[];
+  files: Evidence[];
+  gate: Gate | undefined;
+  pending: boolean;
+};
+
 type CardProps = {
   item: Item;
   under: boolean;
   view: ItemView | undefined;
+  round: RoundShown;
   words: ReturnType<typeof cardWords>;
   state: string;
   phone: boolean;
@@ -254,10 +299,18 @@ function Stamp({ side, move, word }: { side: Direction; move: Move; word: string
   );
 }
 
+// The card's moves once its view is read and, on a board, the board too: an approval the board
+// would refuse is never offered, it is shown held with why.
+function planOf(view: ItemView | undefined, round: RoundShown): TriagePlan | undefined {
+  if (!view || round.pending) return undefined;
+  return triagePlan(view.transitions, waitsOf(view), round.gate);
+}
+
 function TriCard({
   item,
   under,
   view,
+  round,
   words,
   state,
   phone,
@@ -270,9 +323,7 @@ function TriCard({
   const card = useRef<HTMLElement | null>(null);
   const drag = useRef<Drag | null>(null);
   const home = useRef<Flight | null>(null);
-  const plan: TriagePlan | undefined = view
-    ? triagePlan(view.transitions, waitsOf(view))
-    : undefined;
+  const plan = planOf(view, round);
   const forward = plan?.forward;
   const back = plan?.back;
   // The card under the top one waits complete (inert): it is the same card, brought forward.
@@ -374,6 +425,7 @@ function TriCard({
   }, []);
 
   const blocked = plan?.blocked?.[0];
+  const waitId = `tc-wait-${item.id}`;
   return (
     <article
       ref={(el) => {
@@ -401,9 +453,15 @@ function TriCard({
       <h2>{item.title}</h2>
       <p className="sf">{standfirst(words)}</p>
       {words.say ? <p className="say">{words.say}</p> : null}
-      {view ? <Figures evidence={view.evidence} /> : null}
+      <Delivered round={round} />
+      <Figures shown={round.figures} />
       <div className="tc-acts">
-        <Button variant="primary" disabled={!ready || !forward} onClick={approve}>
+        <Button
+          variant="primary"
+          disabled={!ready || !forward}
+          onClick={approve}
+          aria-describedby={blocked ? waitId : undefined}
+        >
           {t('triage.approve')}
         </Button>
         {!plan || back ? (
@@ -424,8 +482,13 @@ function TriCard({
           {t('triage.open')}
         </Button>
       </div>
-      {blocked ? <p className="tc-wait">{blocked.note}</p> : null}
-      {ready && (forward || back) ? (
+      {blocked ? (
+        <p className="tc-wait" id={waitId} data-gate={round.gate ? '' : undefined}>
+          {blocked.note}
+        </p>
+      ) : null}
+      {/* The hint names both ways: said only while both are open. */}
+      {ready && forward && back ? (
         <p className="tc-hint" aria-hidden="true">
           {phone ? t('triage.swipeHint') : t('triage.dragHint')}
         </p>
@@ -571,6 +634,7 @@ export function Triage() {
   type Shown = {
     item: Item;
     view: ItemView | undefined;
+    round: RoundShown;
     words: ReturnType<typeof cardWords>;
     state: string;
   };
@@ -596,6 +660,16 @@ export function Triage() {
     [cur, nextShown].filter((id): id is string => !!id),
     app.version,
   );
+  // The boards the two cards are on, when Studio publishes them: what a step hands in, and what
+  // its approval waits for.
+  const collectionOf = (id: string | undefined) =>
+    id ? (known.current.get(id)?.collection ?? '') : '';
+  const boards = [
+    [collectionOf(cur), useStudioBoard(collectionOf(cur))?.live],
+    [collectionOf(nextShown), useStudioBoard(collectionOf(nextShown))?.live],
+  ] as const;
+  const defOf = (collection: string): BoardDefinition | undefined =>
+    boards.find(([c, def]) => c === collection && def)?.[1];
 
   // New reviews join the pass, reviews moved elsewhere drop out, a decided one taken back returns
   // (never mid-flight).
@@ -653,11 +727,36 @@ export function Triage() {
     const it = known.current.get(id);
     if (!it) return undefined;
     const type = typeOfItem(it, app.collectionOf);
+    const view = views.get(id);
     return {
       item: it,
-      view: views.get(id),
-      words: cardWords(it, app.feed),
+      view,
+      round: roundShown(it, view, type),
+      words: cardWords(it, app.feed, view),
       state: stateWord(type, it.state),
+    };
+  }
+
+  // The round under review, as the card shows it (on a board, read with the board).
+  function roundShown(
+    it: Item,
+    view: ItemView | undefined,
+    type: ReturnType<typeof typeOfItem>,
+  ): RoundShown {
+    const def = defOf(it.collection);
+    const pending = !def && onPublishedBoard(it.collection);
+    if (!view) return { figures: [], fields: [], files: [], gate: undefined, pending };
+    const round = roundEvidence(view, def);
+    const figures = cardFigures(round);
+    const files = round.filter((e) => !e.contentType.startsWith('image/'));
+    const block = (view as ItemView & { board?: ItemBoardBlock }).board;
+    const held = def ? approvalGate(def, { state: view.state, board: block }) : undefined;
+    return {
+      figures,
+      fields: def ? deliveredFields(def, view, (f, v) => valueWord(type, f, v)) : [],
+      files,
+      gate: held ? { to: held.to, note: approvalWaitWords(held.missing) } : undefined,
+      pending,
     };
   }
 
@@ -686,13 +785,12 @@ export function Triage() {
     if (!cur || flying.current) return;
     const id = cur;
     const it = known.current.get(id);
-    const view = views.get(id);
-    const plan = view ? triagePlan(view.transitions, waitsOf(view)) : undefined;
+    const shown = shownOf(id);
+    const plan = shown ? planOf(shown.view, shown.round) : undefined;
     const move = kind === 'approve' ? plan?.forward : kind === 'send' ? plan?.back : undefined;
     if (kind !== 'later' && !move) return;
     const side: Direction = kind === 'approve' ? 'right' : 'left';
     flying.current = id;
-    const shown = shownOf(id);
     if (shown) frozen.current.set(id, shown);
     const card = els.current.get(id);
     const pile = pileOf(kind);
@@ -745,6 +843,7 @@ export function Triage() {
         item={shown.item}
         under={under}
         view={shown.view}
+        round={shown.round}
         words={shown.words}
         state={shown.state}
         phone={app.phone}

@@ -1,11 +1,19 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
+import type { Linked } from '../../src/core/board/engine.ts';
+import { cambios, creatures, errores } from '../../src/core/board/testing.ts';
 import { agent, ago, item, moved, NOW, officialType, you } from './derive/fixtures.ts';
+import { setLanguage } from './i18n/i18n.ts';
+import { approvalWaitWords } from './refusals.ts';
 import {
+  approvalGate,
+  cardFigures,
   cardWords,
+  deliveredFields,
   dragIntent,
   dragProgress,
   flightLift,
   HANDOVER,
+  handoffOf,
   landArc,
   landOpacity,
   liftOpacity,
@@ -15,6 +23,7 @@ import {
   pileView,
   releaseDirection,
   resist,
+  roundEvidence,
   roundOf,
   stampShift,
   swipeAction,
@@ -32,7 +41,7 @@ import {
   triStart,
   triSync,
 } from './triage.ts';
-import type { Move } from './types.ts';
+import type { Evidence, ItemEvent, Move } from './types.ts';
 
 const done: Move = { to: 'done', by: 'human-ui', reasonRequired: false, turn: 'none' };
 const backWithReason: Move = { to: 'todo', by: 'human-ui', reasonRequired: true, turn: 'agent' };
@@ -552,5 +561,226 @@ describe('the handover between a flying card and its pile entry', () => {
     expect(landArc(0.5)).toBeGreaterThan(landArc(0.25));
     expect(landArc(0.5)).toBeGreaterThan(landArc(0.75));
     expect(landArc(0.5)).toBeGreaterThan(0);
+  });
+});
+
+// ---- what a card shows of the round under review (the current round, what it delivered) ----
+
+let eid = 100;
+const ev = (
+  type: string,
+  at: string,
+  data: Record<string, unknown>,
+  actor: ItemEvent['actor'] = { kind: 'agent', name: 'kiln' },
+): ItemEvent => ({ id: ++eid, type, actor, at, data });
+const proof = (id: number, at: string, o: Partial<Evidence> = {}): Evidence => ({
+  id,
+  itemId: 'C-1',
+  role: 'single',
+  module: 'eart',
+  kind: 'image',
+  filename: `f${id}.png`,
+  contentType: 'image/png',
+  size: 1,
+  sha256: '',
+  caption: null,
+  createdAt: at,
+  actor: { kind: 'agent', name: 'kiln' },
+  channel: 'cli',
+  ...o,
+});
+const T = (h: number) => `2026-01-01T${String(h).padStart(2, '0')}:00:00Z`;
+
+describe('roundEvidence: the files of the round under review', () => {
+  it('keeps only what came after the step’s round began, never an earlier round’s', () => {
+    const view = {
+      state: 'sfix__review',
+      createdAt: T(0),
+      events: [
+        ev('created', T(0), { state: 'sfix' }, you),
+        ev('transitioned', T(2), { from: 'sfix', to: 'sfix__review' }),
+        ev('transitioned', T(3), { from: 'sfix__review', to: 'sfix', reason: 'otra' }, you),
+        ev('transitioned', T(5), { from: 'sfix', to: 'sfix__review' }),
+      ],
+      evidence: [proof(1, T(1)), proof(2, T(4))],
+    };
+    expect(roundEvidence(view).map((e) => e.id)).toEqual([2]);
+  });
+
+  it('never shows an earlier step’s files on a later step’s review', () => {
+    const view = {
+      state: 'sfinal__review',
+      createdAt: T(0),
+      events: [
+        ev('created', T(0), { state: 'ssketch' }, you),
+        ev('transitioned', T(2), { from: 'ssketch', to: 'ssketch__review' }),
+        ev('transitioned', T(3), { from: 'ssketch__review', to: 'sfinal' }, you),
+        ev('transitioned', T(5), { from: 'sfinal', to: 'sfinal__review' }),
+      ],
+      evidence: [proof(1, T(1)), proof(2, T(4))],
+    };
+    expect(roundEvidence(view).map((e) => e.id)).toEqual([2]);
+  });
+
+  it('keeps, with the board read, only the files the step hands in (not its references)', () => {
+    const def = creatures();
+    const view = {
+      state: 'sconcept__review',
+      createdAt: T(0),
+      events: [
+        ev('created', T(0), { state: 'sconcept' }, you),
+        ev('transitioned', T(5), { from: 'sconcept', to: 'sconcept__review' }),
+      ],
+      evidence: [proof(1, T(1), { module: 'eref' }), proof(2, T(4), { module: 'eart' })],
+    };
+    expect(roundEvidence(view, def).map((e) => e.id)).toEqual([2]);
+  });
+
+  it('keeps every file of an item whose states are not a board’s steps', () => {
+    const view = {
+      state: 'verify',
+      createdAt: T(0),
+      events: [ev('transitioned', T(5), { from: 'fixing', to: 'verify' })],
+      evidence: [proof(1, T(1)), proof(2, T(4))],
+    };
+    expect(roundEvidence(view).map((e) => e.id)).toEqual([1, 2]);
+  });
+});
+
+describe('cardFigures: the images a card shows', () => {
+  it('shows the newest two, newest first', () => {
+    const shown = cardFigures([proof(1, T(1)), proof(2, T(2)), proof(3, T(3))]);
+    expect(shown.map((e) => e.id)).toEqual([3, 2]);
+  });
+
+  it('shows the newest before and the newest after, in that order', () => {
+    const shown = cardFigures([
+      proof(1, T(1), { role: 'before' }),
+      proof(2, T(2), { role: 'after' }),
+      proof(3, T(3), { role: 'before' }),
+      proof(4, T(4), { role: 'after' }),
+      proof(5, T(5)),
+    ]);
+    expect(shown.map((e) => e.id)).toEqual([3, 4]);
+  });
+
+  it('leaves out what is not an image', () => {
+    expect(cardFigures([proof(1, T(1), { contentType: 'text/x-diff' })])).toEqual([]);
+  });
+});
+
+describe('handoffOf: who handed the round in, and its note', () => {
+  it('reads the handoff’s note, which a board keeps apart from the reason', () => {
+    const view = {
+      state: 'sfix__review',
+      events: [
+        ev('transitioned', T(2), { from: 'sfix', to: 'sfix__review', note: 'Viejo.' }),
+        ev('transitioned', T(3), { from: 'sfix__review', to: 'sfix', reason: 'otra' }, you),
+        ev('transitioned', T(5), { from: 'sfix', to: 'sfix__review', note: ' Ya cruzan. ' }),
+      ],
+    };
+    expect(handoffOf(view)).toEqual({ agent: 'kiln', note: 'Ya cruzan.' });
+  });
+
+  it('reads the reason when the move carries no note, and nothing when you moved it', () => {
+    const said = {
+      state: 'verify',
+      events: [ev('transitioned', T(1), { to: 'verify', reason: 'Listo.' })],
+    };
+    expect(handoffOf(said)).toEqual({ agent: 'kiln', note: 'Listo.' });
+    const mine = { state: 'verify', events: [ev('transitioned', T(1), { to: 'verify' }, you)] };
+    expect(handoffOf(mine)).toBeNull();
+  });
+});
+
+describe('deliveredFields: the fields the step hands in, with their values', () => {
+  it('lists the step’s handed fields that hold a value, by their names', () => {
+    const def = cambios();
+    const view = { state: 'sanalyse__review', fields: { fplan: 'Tres pasos.', fwhat: 'x' } };
+    expect(deliveredFields(def, view, (_f, v) => v)).toEqual([
+      { ref: 'fplan', name: 'Plan', value: 'Tres pasos.' },
+    ]);
+    expect(deliveredFields(def, { ...view, fields: { fplan: ' ' } }, (_f, v) => v)).toEqual([]);
+  });
+
+  it('says a choice in its words', () => {
+    const view = { state: 'striage__review', fields: { fcat: 'cgame' } };
+    expect(deliveredFields(errores(), view, (f, v) => `${f}:${v}`)).toEqual([
+      { ref: 'fcat', name: 'Categoría', value: 'fcat:cgame' },
+    ]);
+  });
+});
+
+describe('approvalGate: why Aprobar waits, before it is tried', () => {
+  const open = { id: 'TAR-6', board: 'Tareas de repo', step: 'Implementar', closed: false };
+  const done = { id: 'TAR-5', board: 'Tareas de repo', closed: true };
+  const block = (parts: Linked[]) => ({
+    parts,
+    partsBoard: 'Tareas de repo',
+    blockers: [],
+    blocking: [],
+    notes: [],
+    gates: null,
+    branch: null,
+  });
+
+  it('holds the approvals of a review whose step waits for a part still open', () => {
+    const gate = approvalGate(cambios(), { state: 'sexec__review', board: block([done, open]) });
+    expect(gate?.to).toEqual(['done']);
+    expect(gate?.missing).toEqual([
+      {
+        ref: 'wait:parts',
+        name: 'Tareas de repo',
+        reason: 'open',
+        fresh: false,
+        open: [open],
+        total: 2,
+      },
+    ]);
+  });
+
+  it('holds nothing once the parts are finished, or on a step that waits for none', () => {
+    const finished = { state: 'sexec__review', board: block([done]) };
+    expect(approvalGate(cambios(), finished)).toBeUndefined();
+    const other = { state: 'sanalyse__review', board: block([open]) };
+    expect(approvalGate(cambios(), other)).toBeUndefined();
+  });
+});
+
+describe('triagePlan with a gate', () => {
+  const next: Move = { to: 'done', by: 'human', reasonRequired: false, turn: 'none' };
+  const sendBack: Move = { to: 'sexec', by: 'human', reasonRequired: true, turn: 'agent' };
+
+  it('never swipes an approval the board would refuse, and says why', () => {
+    const gate = { to: ['done'], note: 'TAR-6 sigue sin terminar' };
+    expect(triagePlan([next, sendBack], {}, gate)).toEqual({
+      back: sendBack,
+      blocked: [{ move: next, note: 'TAR-6 sigue sin terminar' }],
+    });
+  });
+});
+
+describe('approvalWaitWords: the gate in the language on screen', () => {
+  afterEach(() => setLanguage('en'));
+
+  it('says the part is still not finished, never that it was reopened', () => {
+    const missing = [
+      {
+        ref: 'wait:parts',
+        name: 'Tareas de repo',
+        reason: 'open' as const,
+        fresh: false,
+        open: [{ id: 'TAR-6', board: 'Tareas de repo', step: 'Implementar', closed: false }],
+        total: 1,
+      },
+    ];
+    setLanguage('es');
+    expect(approvalWaitWords(missing)).toBe(
+      'Aún no se puede aprobar: su parte TAR-6 (Implementar) sigue sin terminar.',
+    );
+    setLanguage('en');
+    expect(approvalWaitWords(missing)).toBe(
+      'Not approvable yet: its part TAR-6 (Implementar) is not finished.',
+    );
   });
 });

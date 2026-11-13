@@ -60,16 +60,21 @@ function handoffWhy(missing: readonly Missing[]): string {
     .join('; ');
 }
 
+// A part that holds an approval may have been reopened or never finished: it is said as what it is
+// now, still not finished.
 function approvalWhy(missing: readonly Missing[]): string {
   return missing
     .flatMap((wait) => {
-      const open = wait.open ?? [];
-      if (wait.ref === PARTS)
-        return [t('refusal.why.reopened', { list: named(open), count: open.length })];
+      if (wait.ref === PARTS) return [partsWhy(wait)];
       if (wait.ref === BLOCKERS) return [blockersWhy(wait)];
       return [];
     })
     .join('; ');
+}
+
+// Why Aprobar waits, said before it is tried (Triaje): the waits an approval would be refused for.
+export function approvalWaitWords(missing: readonly Missing[]): string {
+  return t('triage.cantApprove', { why: approvalWhy(missing) });
 }
 
 const DROP_WHY = {

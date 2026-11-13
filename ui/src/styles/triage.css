@@ -452,6 +452,47 @@
   color: var(--ink);
   white-space: pre-line;
 }
+/* What the round hands in: the step's fields, each value under its name, and its other files. */
+.tcard .tc-hand {
+  margin-top: 16px;
+  max-width: 64ch;
+}
+.tcard .tc-hk,
+.tcard .tc-hand dt {
+  font: 600 10px / 1.2 var(--sans);
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+.tcard .tc-hand dl {
+  display: grid;
+  gap: 10px;
+  margin: 8px 0 0;
+  padding-left: 12px;
+  border-left: 2px solid var(--rule);
+}
+.tcard .tc-hand dd {
+  margin: 3px 0 0;
+  font: 400 15px / 1.5 var(--serif);
+  color: var(--ink);
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+  line-clamp: 4;
+  overflow: hidden;
+}
+.tcard .tc-files {
+  font: 400 11.5px / 1.45 var(--mono);
+  color: var(--ink-2);
+  margin-top: 10px;
+  overflow-wrap: anywhere;
+}
+.tcard .tc-wait[data-gate] {
+  font: 400 13px / 1.45 var(--sans);
+  color: var(--ink-2);
+}
 .tcard .figs {
   display: grid;
   gap: 16px;

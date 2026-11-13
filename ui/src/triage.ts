@@ -1,9 +1,19 @@
+import {
+  isClosed,
+  type Linked,
+  type Missing,
+  openWaits,
+  positionOf,
+  stateOf,
+  waysOf,
+} from '../../src/core/board/engine.ts';
+import { type BoardDefinition, DONE, isEvidence, stepById } from '../../src/core/board/model.ts';
 import type { Waits } from './actions.ts';
 import { moveBlock, moveVariants } from './actions.ts';
 import type { FeedEvent } from './activity.ts';
 import { handedNote, type TocaContext, tocaSection } from './derive/toca.ts';
 import { clamp, sstep } from './motion/curves.ts';
-import type { Item, Move } from './types.ts';
+import type { Evidence, Item, ItemView, Move } from './types.ts';
 
 // Triaje (SPEC §10.4, mock:3995-4036): the reviews, one card at a time. Aprobar is the primary move,
 // Devolver… sends the item back to an agent with notes, Después leaves it for the end of the pass.
@@ -26,13 +36,16 @@ export type SwipeAction =
   | { kind: 'explain'; to: string }
   | { kind: 'none' };
 
-export function triagePlan(moves: readonly Move[], waits?: Waits): TriagePlan {
+// gate: what a board refuses before it is tried, the approvals (by where they lead) and why.
+export type Gate = { to: readonly string[]; note: string };
+
+export function triagePlan(moves: readonly Move[], waits?: Waits, gate?: Gate): TriagePlan {
   const blocked = moves.flatMap((move) => {
-    const note = moveBlock(move, waits);
+    const note = gate?.to.includes(move.to) ? gate.note : moveBlock(move, waits);
     return note === undefined ? [] : [{ move, note }];
   });
   const free = moves.filter((move) => !blocked.some((entry) => entry.move === move));
-  const forward = moves[moveVariants(moves, waits).indexOf('primary')];
+  const forward = free[moveVariants(free, waits).indexOf('primary')];
   const back = free.find((move) => move !== forward && move.turn === 'agent');
   return {
     ...(forward ? { forward } : {}),
@@ -219,16 +232,116 @@ export function roundOf(id: string, feed: readonly FeedEvent[]): number {
 }
 
 // What a card says under its title: who hands it to you, in which round, and what it said.
+// With the item's own history read (view), the handoff is read there: the feed may not reach it,
+// and a board keeps the handoff's words as its note.
 export function cardWords(
   item: Item,
   feed: readonly FeedEvent[],
+  view?: Pick<ItemView, 'state' | 'events'>,
 ): { agent: string | null; say: string; round: number } {
-  const note = handedNote(item, feed);
+  const handed = view
+    ? handoffOf(view)
+    : (() => {
+        const note = handedNote(item, feed);
+        return note ? { agent: note.agent, note: note.reason.trim() } : null;
+      })();
   return {
-    agent: note?.agent ?? null,
-    say: note?.reason.trim() ?? '',
+    agent: handed?.agent ?? null,
+    say: handed?.note ?? '',
     round: roundOf(item.id, feed),
   };
+}
+
+// ---- what a card shows of the round under review ----
+
+type Said = { data: Record<string, unknown> };
+// What a move said: its note (a board's handoff), else its reason.
+const wordsOf = ({ data }: Said): string => {
+  const said = typeof data.note === 'string' && data.note.trim() ? data.note : data.reason;
+  return typeof said === 'string' ? said.trim() : '';
+};
+
+// The agent move that brought the item into its state, and what it said; null when an agent did
+// not hand it in itself (you moved it, or it was relayed).
+export function handoffOf(
+  view: Pick<ItemView, 'state' | 'events'>,
+): { agent: string; note: string } | null {
+  const last = view.events.findLast((e) => e.type === 'transitioned' && e.data.to === view.state);
+  if (last?.actor.kind !== 'agent' || typeof last.data.via === 'string') return null;
+  return { agent: last.actor.name, note: wordsOf(last) };
+}
+
+// The files of the round under review: on a board's review, what came since the item last entered
+// the step to be done (an earlier round's files, or an earlier step's, are not this round's) and,
+// with the board read (def), only into the parts the step hands in (a reference is not delivered);
+// elsewhere every file.
+export function roundEvidence(
+  view: Pick<ItemView, 'state' | 'createdAt' | 'events' | 'evidence'>,
+  def?: BoardDefinition,
+): Evidence[] {
+  const at = positionOf(view.state);
+  if (isClosed(at) || at.phase === 'doing') return [...view.evidence];
+  const doing = stateOf({ step: at.step, phase: 'doing' });
+  const entered = view.events.findLast(
+    (e) =>
+      (e.type === 'transitioned' && e.data.to === doing) ||
+      (e.type === 'created' && e.data.state === doing),
+  );
+  const since = entered?.at ?? view.createdAt;
+  const step = def ? stepById(def, at.step) : undefined;
+  const handed = step ? new Set(step.hand.map(({ ref }) => ref)) : undefined;
+  return view.evidence.filter(
+    (e) => e.createdAt >= since && (!handed || (e.module !== null && handed.has(e.module))),
+  );
+}
+
+const newestFirst = (evidence: readonly Evidence[]): Evidence[] =>
+  [...evidence].sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id - a.id);
+
+// The images a card shows: the newest before and after when there are, else the newest two.
+export function cardFigures(evidence: readonly Evidence[]): Evidence[] {
+  const images = newestFirst(evidence.filter((e) => e.contentType.startsWith('image/')));
+  const before = images.find((e) => e.role === 'before');
+  const after = images.find((e) => e.role === 'after');
+  if (before || after) return [before, after].filter((e): e is Evidence => e !== undefined);
+  return images.slice(0, 2);
+}
+
+// The fields the step under review hands in that hold a value, by the board's names, each value
+// in its words (word: a choice's name, yes or no).
+export function deliveredFields(
+  def: BoardDefinition,
+  view: { state: string; fields: Readonly<Record<string, string>> },
+  word: (field: string, value: string) => string,
+): { ref: string; name: string; value: string }[] {
+  const at = positionOf(view.state);
+  const step = isClosed(at) ? undefined : stepById(def, at.step);
+  return (step?.hand ?? []).flatMap(({ ref }) => {
+    const part = def.parts[ref];
+    const value = view.fields[ref]?.trim();
+    if (!part || isEvidence(part) || !value) return [];
+    return [{ ref, name: part.name, value: word(ref, value) }];
+  });
+}
+
+// What the board would refuse an approval for now, before it is tried: the waits of the step under
+// review that no longer hold (a part still open, something open blocking it), and the moves that
+// approve (where they lead). Undefined when nothing holds it.
+export function approvalGate(
+  def: BoardDefinition,
+  view: { state: string; board?: { parts: Linked[]; blockers: Linked[] } | undefined },
+): { to: string[]; missing: Missing[] } | undefined {
+  const at = positionOf(view.state);
+  if (isClosed(at) || at.phase === 'doing' || !view.board) return undefined;
+  const step = stepById(def, at.step);
+  if (!step) return undefined;
+  const { parts, blockers } = view.board;
+  const missing = openWaits(step, { fields: {}, evidence: [], parts, blockers });
+  if (missing.length === 0) return undefined;
+  const to = waysOf(def, step.id).map((way) =>
+    way === DONE ? DONE : stateOf({ step: way, phase: 'doing' }),
+  );
+  return { to, missing };
 }
 
 // The drag's pose. The card tilts with the pull, never past a slight 3 degrees.
