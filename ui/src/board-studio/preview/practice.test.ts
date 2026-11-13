@@ -88,6 +88,17 @@ describe('practice', () => {
     });
   });
 
+  it('wants a handoff note in the round a send-back started, as the real board does', () => {
+    let s = sendBackPractice(handOff(fillPart(start(), 'eart')), 'Más contraste');
+    expect(practiceView(s).note).toEqual({ req: 'always', hint: '' });
+    s = handOff(fillPart(s, 'eart'));
+    expect(at(s)).toBe('sconcept:doing:2');
+    expect(s.said).toEqual({ kind: 'refused', missing: [], note: true });
+    s = handOff(writeNote(s, 'Más contraste en la concha'));
+    expect(at(s)).toBe('sconcept:review:2');
+    expect(practiceView(approvePractice(s)).note).toBeNull();
+  });
+
   it('walks the whole board: an agent reviewer’s other round, ways, Hecho', () => {
     let s = handOff(fillPart(start(), 'eart'));
     expect(practiceView(s).ways).toEqual(['sanimate', 'done']);
@@ -100,7 +111,7 @@ describe('practice', () => {
     s = sendBackPractice(s, '');
     expect(at(s)).toBe('sconcept:doing:2');
     expect(s.log.at(-1)).toMatchObject({ kind: 'again', who: 'scout', step: 'Animar' });
-    s = approvePractice(handOff(fillPart(s, 'eart')));
+    s = approvePractice(handOff(writeNote(fillPart(s, 'eart'), 'Otra pose')));
     s = approvePractice(handOff(fillPart(s, 'eanim')));
     expect(at(s)).toBe('spolish:doing:1');
     s = handOff(s);
