@@ -47,14 +47,15 @@ function Gate({ repo }: { repo: RepoSettings }) {
   );
 }
 
-function Repos({ repos }: { repos: RepoSettings[] }) {
+// One grid for the table: the header and every row lay their cells on its columns (subgrid).
+export function Repos({ repos }: { repos: RepoSettings[] }) {
   return (
     <div className="pj-repos">
       <div className="pj-repo pj-repo-head">
         <span>{t('settings.repoName')}</span>
-        <span>{t('settings.inFolder')}</span>
-        <span>{t('settings.gate')}</span>
-        <span>{t('settings.items')}</span>
+        <span className="pj-repo-wide">{t('settings.inFolder')}</span>
+        <span className="pj-repo-wide">{t('settings.gate')}</span>
+        <span className="pj-repo-items">{t('settings.items')}</span>
       </div>
       {repos.map((repo) => (
         <div key={repo.folder} className="pj-repo">
@@ -62,8 +63,10 @@ function Repos({ repos }: { repos: RepoSettings[] }) {
             <TypeIcon name="git-branch" size={14} />
             <span>{repo.name}</span>
           </span>
-          <span className="t-cap">{repo.folder === '.' ? '' : `${repo.folder}/`}</span>
-          <span>
+          <span className="t-cap pj-repo-wide">
+            {repo.folder === '.' ? '—' : `${repo.folder}/`}
+          </span>
+          <span className="pj-repo-wide">
             <Gate repo={repo} />
           </span>
           <span className="t-cap pj-repo-items">
