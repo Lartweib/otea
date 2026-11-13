@@ -6,7 +6,12 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { createInterface } from 'node:readline';
 
-export type Cli = { command: string; args: readonly string[] };
+// `env` is added to the environment the CLI runs in.
+export type Cli = {
+  command: string;
+  args: readonly string[];
+  env?: Readonly<Record<string, string>>;
+};
 
 export type Project = { id: string; name: string; root: string; dataDir: string };
 
@@ -26,6 +31,18 @@ export function sourceCli(repoRoot: string): Cli {
   };
 }
 
+// The CLI the packaged app carries in resources/otea, run on the app's own Electron as Node, the
+// same way its bin/otea runs it for a terminal.
+export function bundledCli(resourcesPath: string, execPath: string): Cli {
+  return {
+    command: execPath,
+    args: [join(resourcesPath, 'otea', 'src', 'cli', 'main.ts')],
+    env: { ELECTRON_RUN_AS_NODE: '1' },
+  };
+}
+
+const envOf = (cli: Cli) => (cli.env ? { ...process.env, ...cli.env } : process.env);
+
 function failure(stderr: string, fallback: string): Error {
   try {
     const parsed = JSON.parse(stderr) as { error?: { message?: string } };
@@ -36,18 +53,28 @@ function failure(stderr: string, fallback: string): Error {
   return new Error(stderr.trim() || fallback);
 }
 
-export function currentProject(cli: Cli, cwd: string): Promise<Project> {
+function runJson<T>(cli: Cli, cwd: string, args: readonly string[]): Promise<T> {
   return new Promise((resolve, reject) => {
     execFile(
       cli.command,
-      [...cli.args, 'projects', 'current', '--json'],
-      { cwd, windowsHide: true },
+      [...cli.args, ...args, '--json'],
+      { cwd, windowsHide: true, env: envOf(cli) },
       (error, stdout, stderr) => {
         if (error) reject(failure(stderr, error.message));
-        else resolve(JSON.parse(stdout) as Project);
+        else resolve(JSON.parse(stdout) as T);
       },
     );
   });
+}
+
+export function currentProject(cli: Cli, cwd: string): Promise<Project> {
+  return runJson(cli, cwd, ['projects', 'current']);
+}
+
+// `otea init` in the folder: the project at its repository root (or the folder), made or reused.
+export async function createProject(cli: Cli, cwd: string): Promise<Project> {
+  await runJson(cli, cwd, ['init']);
+  return currentProject(cli, cwd);
 }
 
 export function readServeFile(dataDir: string): { port: number; pid: number } | undefined {
@@ -92,6 +119,7 @@ export function startServe(
   if (port !== undefined) args.push('--port', String(port));
   const child = spawn(cli.command, args, {
     cwd,
+    env: envOf(cli),
     windowsHide: true,
     stdio: ['ignore', 'pipe', 'pipe'],
   });
