@@ -1,17 +1,22 @@
+import { useValueWord } from '../preset-words.ts';
 import type { EditProps, FieldModuleUi, ShowProps } from './contract.ts';
 
-export function PlainText({ value }: ShowProps) {
-  return <span className="body">{value}</span>;
+// The value as written; a checklist's or a multi choice's list of ids by its names.
+export function PlainText({ field, value }: ShowProps) {
+  const word = useValueWord();
+  return <span className="body">{word(field.name, value)}</span>;
 }
 
 // In the row only when the type places it there (a repo task's repo): the value as written, in ink,
 // with the field named for a screen reader. An empty one puts nothing.
 function RowText({ field, value }: ShowProps) {
+  const word = useValueWord();
   if (value === '') return null;
+  const said = word(field.name, value);
   return (
-    <span className="row-text" title={value}>
+    <span className="row-text" title={said}>
       <span className="visually-hidden">{field.name}: </span>
-      {value}
+      {said}
     </span>
   );
 }

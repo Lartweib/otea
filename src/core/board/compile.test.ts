@@ -91,6 +91,24 @@ describe('compileBoard', () => {
     expect(labels?.en?.values?.fsev?.critical).toBe('critical');
   });
 
+  it('names a checklist’s and a multi choice’s options, so the item page reads names, not ids', () => {
+    const def = creatures();
+    const options = [
+      { id: 'crig', name: 'Rig' },
+      { id: 'cwalk', name: 'Trote' },
+    ];
+    const check = { id: 'fcheck', name: 'Pasos', kind: 'check' as const, hint: '', options };
+    const multi = { id: 'fmulti', name: 'Zonas', kind: 'multi' as const, hint: '', options };
+    const preset = compileBoard('bcria', 1, {
+      ...def,
+      parts: { ...def.parts, fcheck: check, fmulti: multi },
+      form: [...def.form, { ref: 'fcheck', required: false }, { ref: 'fmulti', required: false }],
+    });
+    const labels = preset.types[0]?.labels;
+    expect(labels?.es?.values?.fcheck).toEqual({ crig: 'Rig', cwalk: 'Trote' });
+    expect(labels?.en?.values?.fmulti).toEqual({ crig: 'Rig', cwalk: 'Trote' });
+  });
+
   it('lays the item page out from Acomodar zones, evidence modules carrying the part id', () => {
     const layout = compileBoard('bcria', 1, creatures()).types[0]?.layout;
     expect(layout?.body).toEqual([

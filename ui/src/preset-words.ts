@@ -31,13 +31,37 @@ export function fieldWord(type: TypeView | undefined, field: string): string | u
 }
 
 // A field's value in words in the language on screen, or as written.
+// A checklist or a multi choice holds a JSON list of its options' ids: said as their names.
 export function valueWord(type: TypeView | undefined, field: string, value: string): string {
-  return wordsOf(type)?.values?.[field]?.[value] ?? value;
+  const words = wordsOf(type)?.values?.[field];
+  return words ? said(words, value) : value;
 }
 
 // A value named across a collection's types: the first word for it.
 export function valueWordIn(types: readonly TypeView[], field: string, value: string): string {
-  return types.map((type) => wordsOf(type)?.values?.[field]?.[value]).find(Boolean) ?? value;
+  const words = types.map((type) => wordsOf(type)?.values?.[field]).filter(Boolean);
+  const named = words.find((each) => each?.[value]);
+  if (named) return named[value] ?? value;
+  const [first] = words;
+  return first ? said(first, value) : value;
+}
+
+function said(words: Readonly<Record<string, string>>, value: string): string {
+  const one = words[value];
+  if (one !== undefined) return one;
+  const ids = idList(value);
+  return ids ? ids.map((id) => words[id] ?? id).join(', ') : value;
+}
+
+// The ids of a JSON list of strings, or undefined for anything else.
+function idList(value: string): string[] | undefined {
+  if (!value.startsWith('[')) return undefined;
+  try {
+    const list: unknown = JSON.parse(value);
+    return Array.isArray(list) && list.every((id) => typeof id === 'string') ? list : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 // The key as a tooltip, when what is shown is its label.

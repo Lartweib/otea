@@ -354,7 +354,14 @@ export function compileBoard(id: string, version: number, def: BoardDefinition):
         ),
         values: Object.fromEntries(
           ordered
-            .filter((part) => fields[part.id]?.module === 'enum' || part.kind === 'level')
+            // A checklist and a multi choice hold their options' ids too (a JSON list).
+            .filter(
+              (part) =>
+                fields[part.id]?.module === 'enum' ||
+                part.kind === 'level' ||
+                part.kind === 'check' ||
+                part.kind === 'multi',
+            )
             .filter((part) => fields[part.id] !== undefined)
             .map((part) => [
               part.id,

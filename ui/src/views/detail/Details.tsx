@@ -38,7 +38,8 @@ const keyed = (cells: Cell[]): (Cell & { key: string })[] => {
 
 function Value({ placed }: { placed: PlacedValue }) {
   const url = externalUrl(placed.value);
-  if (placed.value === '') return <>—</>;
+  // An empty list (a checklist with nothing ticked) is as empty as no value.
+  if (placed.value === '' || placed.value === '[]') return <>—</>;
   if (url)
     return (
       <a className="detail-ext" href={url} target="_blank" rel="noreferrer noopener">

@@ -56,6 +56,21 @@ describe('preset words', () => {
     expect(valueWordIn([repoTask], 'severity', 'high')).toBe('alta');
   });
 
+  it('say a checklist’s or multi choice’s list of ids by its names, an unknown id as written', () => {
+    const board = {
+      ...repoTask,
+      labels: {
+        en: { states: {}, fields: {}, values: { fsteps: { crig: 'Rig', cwalk: 'Trot' } } },
+      },
+    } as unknown as TypeView;
+
+    expect(valueWord(board, 'fsteps', '["crig","cwalk","cgone"]')).toBe('Rig, Trot, cgone');
+    expect(valueWord(board, 'fsteps', '[]')).toBe('');
+    expect(valueWordIn([board], 'fsteps', '["cwalk"]')).toBe('Trot');
+    expect(valueWord(board, 'fsteps', '[not json')).toBe('[not json');
+    expect(valueWord(repoTask, 'notes', '["a"]')).toBe('["a"]');
+  });
+
   it('fall back to the key for a type without labels, or while the type is unknown', () => {
     setLanguage('es');
 
