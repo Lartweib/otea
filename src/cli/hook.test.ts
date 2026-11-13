@@ -40,7 +40,7 @@ describe('hook', () => {
       expect(result.out).toContain('  # otea-hook: pre-push');
       expect(hook.startsWith('#!/bin/sh\n# otea-hook: pre-push\n')).toBe(true);
       expect(hook).toContain(`check --gate push --branch "\${remote_ref#refs/heads/}" --repo`);
-      expect(hook).toContain('if [ $? -eq 1 ]; then exit 1; fi');
+      expect(hook).toContain('if [ $? -eq 19 ]; then exit 1; fi');
       if (process.platform !== 'win32') {
         expect(statSync(join(repo.dir, '.git/hooks/pre-push')).mode & 0o111).not.toBe(0);
       }
@@ -93,7 +93,7 @@ describe('hook', () => {
             "import { appendFileSync } from 'node:fs';",
             "const branch = process.argv[process.argv.indexOf('--branch') + 1];",
             `appendFileSync(${JSON.stringify(join(repo.dir, 'asked.log'))}, branch + '\\n');`,
-            "process.exit(branch === 'frozen' ? 1 : 0);",
+            "process.exit(branch === 'frozen' ? 19 : 1);",
           ].join('\n'),
         );
         const author = ['-c', 'user.name=t', '-c', 'user.email=t@t'];

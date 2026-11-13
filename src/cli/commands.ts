@@ -1454,7 +1454,7 @@ function checkBranches(
 const check: Command = {
   name: 'check',
   summary:
-    'Check whether the items matching the fields allow a gated action: exit 0 when allowed, 1 when refused; it allows the action, with a note, when no item matches or the check cannot run. --branch defaults to the branch checked out, --repo to the name the project gives the repo checked out (otea repos list), refused when the project does not know it; --claude-hook reads a Claude Code PreToolUse event on stdin and refuses with exit 2',
+    'Check whether the items matching the fields allow a gated action: exit 0 when allowed, 19 when refused, 2 for a gate nothing declares; repo names match whatever their case; it allows the action, with a note, when no item matches or the check cannot run. --branch defaults to the branch checked out, --repo to the name the project gives the repo checked out (otea repos list), refused when the project does not know it; --claude-hook reads a Claude Code PreToolUse event on stdin and refuses with exit 2',
   args: [],
   options: {
     gate: { required: true, placeholder: 'action' },
@@ -1489,9 +1489,10 @@ const check: Command = {
         const failure = hook ? 'hook_refused' : 'gate_refused';
         return { data: { gate, allowed: false, items: [] }, text: '', failure };
       }
-      // A field nothing names is a typo in the call, never a reason to allow the action.
+      // A field or a gate nothing names is a typo in the call, never a reason to allow the action.
       if (error instanceof OteaError && error.code === 'invalid_fields')
         throw new UsageError(error.message);
+      if (error instanceof OteaError && error.code === 'invalid_gate') throw error;
       const message = error instanceof Error ? error.message : String(error);
       result = { gate, allowed: true, items: [], note: `could not check (${message})` };
     }

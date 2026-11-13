@@ -108,7 +108,10 @@ describe('repos', () => {
     expect(addRepo(project, other, 'billing', ENV).name).toBe('billing');
     expect(repoNameAt(project, other, ENV)).toBe('billing');
     expect(() => addRepo(project, other, 'api', ENV)).toThrow(/"api" already names another repo/);
-    expect(removeRepo(project, 'billing', ENV).name).toBe('billing');
+    // Repo names match whatever their case in a gate check, so a case apart is no other name.
+    expect(() => addRepo(project, other, 'API', ENV)).toThrow(/"api" already names another repo/);
+    expect(addRepo(project, other, 'Billing', ENV).name).toBe('Billing');
+    expect(removeRepo(project, 'billing', ENV).name).toBe('Billing');
     expect(listRepos(project, ENV).map(({ name }) => name)).toEqual(['api', 'web']);
   });
 });

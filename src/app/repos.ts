@@ -14,7 +14,7 @@ import {
   selectReposRead,
 } from '../store/queries.ts';
 import type { PathKind } from '../store/registry.ts';
-import { repoOfItem } from './gates.ts';
+import { repoOfItem, sameRepo } from './gates.ts';
 import { kindOf, listProjects, repoFingerprint, withRegistry } from './home.ts';
 import { listItems } from './items.ts';
 import { liveBoards } from './next.ts';
@@ -176,11 +176,12 @@ export function addRepo(
   const existing = repos.find((repo) => repo.identity === identity);
   const wanted = label || existing?.name || basename(top);
   if (existing?.name === wanted) return existing;
-  const holder = repos.find((repo) => repo.name === wanted);
+  // A gate check matches repo names whatever their case, so a case apart is the same name.
+  const holder = repos.find((repo) => repo.identity !== identity && sameRepo(repo.name, wanted));
   if (holder) {
     throw new OteaError(
       'already_exists',
-      `"${wanted}" already names another repo (${holder.identity}); give this one another name with --name`,
+      `"${holder.name}" already names another repo (${holder.identity}); give this one another name with --name`,
     );
   }
   const repo = { name: wanted, identity };
@@ -191,8 +192,8 @@ export function addRepo(
 
 // Forgets a repo by name; its items keep their values.
 export function removeRepo(project: Project, name: string, env: Env = process.env): Repo {
-  const repo = listRepos(project, env).find((each) => each.name === name);
+  const repo = listRepos(project, env).find((each) => sameRepo(each.name, name));
   if (!repo) throw new OteaError('not_found', `No repo named "${name}"; run otea repos`);
-  deleteRepo(project.db, name);
+  deleteRepo(project.db, repo.name);
   return repo;
 }

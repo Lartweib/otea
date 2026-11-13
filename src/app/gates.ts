@@ -50,13 +50,22 @@ function boardKeys(
   return out;
 }
 
+// Repo names match whatever their case: git hosts and the default file systems of Windows and macOS
+// take `API` and `api` as one repo, so a check must not let one of them pass where the other stops.
+export function sameRepo(stored: unknown, named: string): boolean {
+  return typeof stored === 'string' && stored.toLowerCase() === named.toLowerCase();
+}
+
+// Whether the item holds every key; `repo`, the key its repo name is in, matches by sameRepo.
 function holds(
   item: { title: string; fields: Record<string, unknown> },
   keys: Record<string, string>,
+  repo?: string,
 ) {
-  return Object.entries(keys).every(
-    ([key, value]) => (key === TITLE ? item.title : item.fields[key]) === value,
-  );
+  return Object.entries(keys).every(([key, value]) => {
+    const stored = key === TITLE ? item.title : item.fields[key];
+    return key === repo ? sameRepo(stored, value) : stored === value;
+  });
 }
 
 function boardVerdicts(
@@ -67,8 +76,9 @@ function boardVerdicts(
 ): { verdict: GateVerdict; open: boolean }[] {
   const keys = boardKeys(board.def, fields);
   if (!keys) return [];
+  const repo = guardedBranch(board.def)?.guard.repo;
   return selectItems(ctx.db, { collection: board.collection })
-    .filter((item) => holds(item, keys))
+    .filter((item) => holds(item, keys, repo))
     .map((item) => {
       const position = positionOf(item.state);
       const round = itemOnBoard(ctx, item, board.def).round;
@@ -91,6 +101,7 @@ function boardVerdicts(
 export function checkGate(ctx: Context, gate: string, fields: Record<string, string>): GateCheck {
   const boards = liveBoards(ctx);
   const onBoards = new Set(boards.map(({ collection }) => collection));
+  assertKnownGate(ctx, gate, onBoards);
   assertKnownKeys(ctx, boards, onBoards, fields);
   const fromBoards = GATED.includes(gate)
     ? boards.flatMap((board) => boardVerdicts(ctx, board, gate as GateAction, fields))
@@ -102,6 +113,19 @@ export function checkGate(ctx: Context, gate: string, fields: Record<string, str
   const check: GateCheck = { gate, allowed: items.every(({ allowed }) => allowed), items };
   if (items.length === 0) check.note = `no item with a ${gate} gate matches`;
   return check;
+}
+
+// A gate no board and no preset declares is a typo (`psuh`) or an action Otea does not gate
+// (`deploy`): the check refuses it rather than matching nothing and allowing the action.
+function assertKnownGate(ctx: Context, gate: string, onBoards: ReadonlySet<string>): void {
+  const declared = listCollections(ctx.db)
+    .filter(({ name }) => !onBoards.has(name))
+    .flatMap((collection) =>
+      presetOf(ctx, collection).types.flatMap(({ workflow }) => Object.keys(workflow.gates ?? {})),
+    );
+  const gates = [...new Set([...GATED, ...declared])].sort();
+  if (gates.includes(gate)) return;
+  throw new OteaError('invalid_gate', `Unknown gate "${gate}"; the gates are ${gates.join(', ')}`);
 }
 
 // A key no board part and no preset field names is a typo: the check refuses it rather than
@@ -133,8 +157,10 @@ function presetVerdicts(
   onBoards: ReadonlySet<string>,
 ): { verdict: GateVerdict; open: boolean }[] {
   // An error here fails the check closed: an item Otea cannot read is never allowed by silence.
-  const items: Item[] = listItems(ctx, { fields }).filter(
-    ({ collection }) => !onBoards.has(collection),
+  const { repo, ...exact } = fields;
+  const items: Item[] = listItems(ctx, { fields: exact }).filter(
+    (item) =>
+      !onBoards.has(item.collection) && (repo === undefined || sameRepo(item.fields.repo, repo)),
   );
   return items.flatMap((item) => {
     const allowedIn = workflowOf(ctx, item).gates?.[gate];
