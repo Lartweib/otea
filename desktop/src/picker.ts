@@ -32,13 +32,13 @@ function render(state: PickerState): void {
   const main = byId<HTMLElement>('picker');
   main.hidden = false;
   main.classList.toggle('opening', state.opening !== undefined);
-  byId('title').textContent = copy.pickerTitle;
+  byId('title').textContent = state.opening ?? copy.pickerTitle;
   byId('dek').textContent = copy.pickerDek;
   byId('dek').hidden = state.opening !== undefined;
   byId('moves').hidden = state.opening !== undefined;
   const status = byId('status');
   status.hidden = state.opening === undefined;
-  status.textContent = state.opening === undefined ? '' : copy.opening(state.opening);
+  status.textContent = state.opening === undefined ? '' : copy.opening;
   byId('error').textContent = state.error ?? '';
   const openFolder = byId<HTMLButtonElement>('open-folder');
   openFolder.textContent = copy.openFolder;

@@ -19,7 +19,7 @@ const STYLE = `
   font: 500 13px/20px var(--sans, system-ui, sans-serif);
   animation: in 240ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
 }
-@media (max-width: 720px) { .pill { bottom: 76px; right: 12px; } }
+@media (max-width: 720px) { .pill { bottom: 84px; right: 12px; } }
 @media (prefers-reduced-motion: reduce) { .pill { animation: none; } }
 @keyframes in { from { opacity: 0; transform: translateY(6px); } }
 .sep { color: var(--ink-3, oklch(0.51 0.016 268)); padding: 0 6px; }
