@@ -45,7 +45,8 @@ export type ErrorCode =
   | 'not_publishable'
   | 'invalid_gate'
   | 'invalid_profile'
-  | 'profile_required';
+  | 'profile_required'
+  | 'transport_unavailable';
 
 // `details`: what the refusal says, as data, for the web UI to word it in its own language; the
 // message is the English agents and the CLI read.

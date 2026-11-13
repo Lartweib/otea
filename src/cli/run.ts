@@ -1,5 +1,7 @@
 import { type ParseArgsOptionsConfig, parseArgs } from 'node:util';
+import type { Probe } from '../app/phone.ts';
 import { CLI_HARNESS } from '../app/presence.ts';
+import { NO_TAILSCALE, type TailscaleCli } from '../app/tailscale.ts';
 import { type Actor, agentActor } from '../core/item.ts';
 import {
   type Command,
@@ -23,6 +25,10 @@ export type Io = {
   stderr: Writer;
   signal: AbortSignal;
   openUrl: Opener;
+  // The real tailscale CLI and network probe only where otea runs for a person (main.ts); none
+  // elsewhere, so no test ever reaches this computer's network.
+  tailscale?: TailscaleCli;
+  probe?: Probe;
   // Present only when a person can answer at the terminal.
   ask?: (question: string) => Promise<string>;
   // Present only when something is piped in.
@@ -127,6 +133,8 @@ function inputFor(command: Command, values: Values, args: string[], io: Io, json
     harness: CLI_HARNESS,
     signal: io.signal,
     openUrl: io.openUrl,
+    tailscale: io.tailscale ?? NO_TAILSCALE,
+    probe: io.probe ?? (async () => false),
     terminal: io.stdout.isTTY === true,
     warn: (message) =>
       io.stderr.write(`otea: ${message}

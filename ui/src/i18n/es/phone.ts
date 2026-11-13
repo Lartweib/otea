@@ -75,4 +75,53 @@ export const phone = {
   'phone.sb.placeholder': 'Qué falta, qué cambiarías…',
   'phone.sb.cancel': 'Cancelar',
   'phone.sb.send': 'Enviar',
+  'phone.transport.section': 'Teléfono',
+  'phone.transport.sub': 'cómo llega el teléfono a Otea',
+  'phone.transport.choose': 'Transporte del teléfono',
+  'phone.transport.lan': 'Red local',
+  'phone.transport.lanText': 'En la misma red wifi que este equipo, por HTTP sin cifrar.',
+  'phone.transport.default': 'predeterminado',
+  'phone.transport.tailscale': 'Tailscale',
+  'phone.transport.tailscaleText':
+    'Desde cualquier lugar, por HTTPS. Solo llegan los dispositivos con sesión en tu tailnet.',
+  'phone.transport.relay': 'Relay de Otea',
+  'phone.transport.relayText': 'Un servicio para llegar a Otea sin configurar nada.',
+  'phone.transport.soon': 'todavía no disponible',
+  'phone.transport.inUse': 'en uso',
+  'phone.transport.settingUp': 'Configurando Tailscale…',
+  'phone.transport.again': 'Comprobar de nuevo',
+  'phone.transport.signIn':
+    'Inicia sesión en este navegador con {command} para elegir cómo llega el teléfono a Otea.',
+  'phone.transport.tokens':
+    'Sea cual sea el transporte, el teléfono se empareja una vez con un código de este equipo y solo entran tus dispositivos emparejados.',
+  'phone.transport.pair': 'Emparejar un teléfono',
+  'phone.status.transport': 'transporte',
+  'phone.status.url': 'dirección',
+  'phone.status.reachable': 'alcanzable',
+  'phone.status.yes': 'Otea responde',
+  'phone.status.no': 'sin respuesta',
+  'phone.status.none': 'ninguna dirección que probar',
+  'phone.status.loading': 'comprobando…',
+  'phone.status.lanOff': 'Otea no está abierto a la red. Ábrelo con:',
+  'phone.ts.missing':
+    'Tailscale no está instalado en este equipo. Otea no lo instala: instálalo, inicia sesión y vuelve a comprobar.',
+  'phone.ts.download': 'Descargar Tailscale',
+  'phone.ts.loggedOut':
+    'Tailscale está instalado pero sin sesión. Ejecuta esto e inicia sesión una vez en el navegador que se abre:',
+  'phone.ts.logIn': 'Abrir la página de inicio de sesión',
+  'phone.ts.noMagicDns':
+    'MagicDNS está desactivado en tu tailnet. Actívalo en la configuración de DNS; las tailnets nuevas lo traen activado.',
+  'phone.ts.noHttps':
+    'Los certificados HTTPS están desactivados en tu tailnet. Actívalos en la configuración de DNS.',
+  'phone.ts.dnsSettings': 'Abrir la configuración de DNS',
+  'phone.ts.taken': '{url} ya redirige a {target}. Libéralo con esto y vuelve a comprobar:',
+  'phone.ts.failed': 'Tailscale respondió con un error: {message}',
+  'phone.ts.notServing':
+    'tailscale serve ya no redirige a Otea. Comprueba de nuevo para configurarlo.',
+  'phone.ts.steps': 'En el teléfono',
+  'phone.ts.step1': 'Instala la app de Tailscale.',
+  'phone.ts.step2': 'Inicia sesión con la misma cuenta que en este equipo.',
+  'phone.ts.step3': 'Escanea el código de emparejamiento que muestra Otea.',
+  'phone.ts.ledger':
+    'El certificado HTTPS es público: el nombre {host} queda en los registros de Certificate Transparency, que cualquiera puede leer.',
 } satisfies Partial<Catalog>;

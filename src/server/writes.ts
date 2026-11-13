@@ -10,7 +10,7 @@ import {
   MAX_EVIDENCE_MB,
 } from '../core/evidence.ts';
 import { RejectedRequest } from './errors.ts';
-import type { Session } from './session.ts';
+import { clientOf, type Session } from './session.ts';
 
 export const HUMAN_IN_UI: Performer = { actor: { kind: 'human', name: 'human' }, channel: 'ui' };
 
@@ -40,10 +40,12 @@ export function assertSignedIn(c: Context, auth: Session, purpose = 'act from th
 
 // A write comes from a page this server served, as JSON: no other site can forge one. Creating an
 // item may also come as a form, to carry the files it is filed with (withFiles); the origin check
-// covers both.
+// covers both. A phone on Tailscale opens the UI over HTTPS, so its pages' origin is https://.
 export function assertSameOrigin(c: Context, withFiles = false): void {
   const origin = c.req.header('origin');
-  if (origin !== `http://${c.req.header('host')}`) {
+  const client = clientOf(c);
+  const scheme = client.kind !== 'local' && client.secure ? 'https' : 'http';
+  if (origin !== `${scheme}://${c.req.header('host')}`) {
     throw new RejectedRequest(403, 'forbidden_origin', `Origin "${origin ?? ''}" is not allowed`);
   }
   const media = mediaOf(c.req.header('content-type'));

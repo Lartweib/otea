@@ -14,11 +14,13 @@ import type {
   LanView,
   Paired,
   PairingPeek,
+  PhoneStatus,
   PresetView,
   ProjectOverview,
   ProjectSettings,
   ProjectView,
   Session,
+  TransportKind,
 } from './types.ts';
 
 async function get(path: string, signal: AbortSignal): Promise<Response> {
@@ -192,6 +194,16 @@ export async function fetchLan(signal: AbortSignal, address?: string): Promise<L
 
 export function newPairingCode(address?: string): Promise<LanView> {
   return post<LanView>(`/api/lan/code${lanQuery(address)}`, {});
+}
+
+// The phone transport, its URL and whether Otea answers there (this computer's browser only).
+export async function fetchPhone(signal: AbortSignal): Promise<PhoneStatus> {
+  return (await get('/api/phone', signal)).json();
+}
+
+// Chooses the phone transport; Tailscale is set up on this computer first and kept once ready.
+export function choosePhoneTransport(transport: TransportKind): Promise<PhoneStatus> {
+  return post<PhoneStatus>('/api/phone', { transport });
 }
 
 export async function revokeDevice(id: string): Promise<void> {

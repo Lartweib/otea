@@ -9,8 +9,9 @@ import type { Remote } from '../remote.ts';
 import type { Device, LanView } from '../types.ts';
 
 // Emparejar un teléfono (#/lan, SPEC §10.4, mock:3529-3536): a dialog over Te toca with the real
-// pairing code as a QR (132 px), where it points, and the paired devices, each with Revocar.
-// Turning LAN access on stays a command (otea serve --lan): nothing in a page opens the door.
+// pairing code as a QR (132 px), where it points on the chosen transport (the local network or
+// Tailscale's HTTPS name), and the paired devices, each with Revocar. Opening the local network
+// stays a command (otea serve --lan); Tailscale is set up in Configuración · Teléfono.
 
 const REFRESH_MS = 3000;
 
@@ -144,16 +145,28 @@ export function LanPanel({ canManage }: LanPanelProps) {
   const fallback =
     lan && codeLive && isLocalName(shownName) ? ipFallback(lan.urls, codeLive.url) : undefined;
   const devices = lan ? lan.devices : [];
+  const tailscale = lan?.transport === 'tailscale';
   const gone = [...revoked.values()].filter((d) => !devices.some((x) => x.id === d.id));
   return (
     <>
       <h4 data-i="">{t('lan.title')}</h4>
       <p data-i="">
         {lan && !lan.enabled ? (
-          <>
-            {t('lan.off')}{' '}
-            {tx('lan.turnOn', { command: <code className="inl">otea serve --lan</code> })}
-          </>
+          tailscale ? (
+            <>
+              {t('lan.offTailscale')}{' '}
+              {tx('lan.setUpTailscale', {
+                command: <code className="inl">otea phone tailscale</code>,
+              })}
+            </>
+          ) : (
+            <>
+              {t('lan.off')}{' '}
+              {tx('lan.turnOn', { command: <code className="inl">otea serve --lan</code> })}
+            </>
+          )
+        ) : tailscale ? (
+          t('lan.dialogLeadTailscale')
         ) : (
           t('lan.dialogLead')
         )}
@@ -176,7 +189,7 @@ export function LanPanel({ canManage }: LanPanelProps) {
             </select>
           ) : (
             <span className="lan-addr">
-              {lan?.enabled ? `http://${shown}` : 'http://127.0.0.1'}
+              {lan?.enabled ? `${tailscale ? 'https' : 'http'}://${shown}` : 'http://127.0.0.1'}
             </span>
           )}
           <span className="lan-code">
@@ -226,7 +239,7 @@ export function LanPanel({ canManage }: LanPanelProps) {
         </p>
       ) : null}
       <p className="lan-away" data-i="">
-        {t('lan.away')}
+        {tailscale ? t('lan.awayTailscale') : t('lan.away')}
       </p>
       {done}
     </>

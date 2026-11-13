@@ -1,4 +1,6 @@
+import type { Probe } from '../app/phone.ts';
 import type { Harness } from '../app/presence.ts';
+import type { TailscaleCli } from '../app/tailscale.ts';
 import type { AgentChannel } from '../core/authority.ts';
 import { OteaError } from '../core/errors.ts';
 import type { Actor } from '../core/item.ts';
@@ -32,6 +34,9 @@ export type Input = {
   newSession?: boolean;
   signal: AbortSignal;
   openUrl: Opener;
+  // The tailscale CLI otea phone tailscale runs, and how otea phone status tries a phone URL.
+  tailscale: TailscaleCli;
+  probe: Probe;
   // Whether what the command prints goes to a terminal a person reads, not to a pipe or a log: only
   // there may it print a secret (the sign-in link).
   terminal: boolean;

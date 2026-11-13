@@ -1,4 +1,6 @@
 import { createInterface } from 'node:readline/promises';
+import { fetchProbe } from '../app/phone.ts';
+import { systemTailscale } from '../app/tailscale-cli.ts';
 import { systemOpener } from './opener.ts';
 import { run } from './run.ts';
 
@@ -28,5 +30,7 @@ process.exitCode = await run(process.argv.slice(2), {
   stderr: process.stderr,
   signal: interrupt.signal,
   openUrl: systemOpener(),
+  tailscale: systemTailscale(),
+  probe: fetchProbe,
   ...(process.stdin.isTTY ? { ask } : { stdin }),
 });

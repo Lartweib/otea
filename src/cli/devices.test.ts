@@ -40,22 +40,22 @@ describe('devices', () => {
     expect(code).toBe(0);
     expect(data.url).toMatch(/^http:\/\/127\.0\.0\.1:\d+$/);
     if (lan === undefined) {
-      expect(data.lan).toEqual({ urls: [], pairingUrl: undefined, code: undefined });
+      expect(data.phone).toEqual({ transport: 'lan', urls: [] });
       return;
     }
     const byIp = `http://${lan}:${new URL(data.url).port}`;
-    expect(data.lan.urls).toContain(byIp);
-    expect(data.lan.pairingUrl).toBe(`${data.lan.urls[0]}/pair#code=${data.lan.code}`);
+    expect(data.phone.urls).toContain(byIp);
+    expect(data.phone.pairingUrl).toBe(`${data.phone.urls[0]}/pair#code=${data.phone.code}`);
     // With a .local name first, the same link by IP comes along for phones that cannot resolve it.
-    if (data.lan.urls[0] !== byIp) {
-      expect(data.lan.urls[0]).toMatch(/^http:\/\/[a-z0-9-]+\.local:\d+$/);
-      expect(data.lan.byAddress).toBe(`${byIp}/pair#code=${data.lan.code}`);
+    if (data.phone.urls[0] !== byIp) {
+      expect(data.phone.urls[0]).toMatch(/^http:\/\/[a-z0-9-]+\.local:\d+$/);
+      expect(data.phone.byAddress).toBe(`${byIp}/pair#code=${data.phone.code}`);
     }
   });
 
   it.skipIf(lan === undefined)('pairs a phone over the LAN, lists it and revokes it', async () => {
     const { out } = await otea('serve', '--port', '0', '--no-open', '--lan', '--json');
-    const { lan: served } = JSON.parse(out);
+    const { phone: served } = JSON.parse(out);
     const base = `http://${lan}:${new URL(JSON.parse(out).url).port}`;
     const paired = await fetch(`${base}/api/pair`, {
       method: 'POST',

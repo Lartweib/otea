@@ -93,7 +93,12 @@ export const surfaces = {
   'lan.never': 'nunca',
   'lan.revoke': 'Revocar',
   'lan.revokeLabel': 'Revocar {name}',
-  'lan.away': '¿Fuera de casa? Accede a través de Tailscale en lugar de abrir un puerto.',
+  'lan.away':
+    '¿Fuera de casa? Elige Tailscale en Configuración › Teléfono en lugar de abrir un puerto.',
+  'lan.awayTailscale':
+    'Por Tailscale, con HTTPS: solo llegan a esta dirección los dispositivos con sesión en tu tailnet.',
+  'lan.offTailscale': 'Tailscale todavía no está configurado.',
+  'lan.setUpTailscale': 'Configúralo en Configuración › Teléfono o con {command}.',
   'lan.qrLabel': 'Código QR que abre la pantalla de emparejamiento en un teléfono',
   'lan.qrOff': 'El acceso por la red local está desactivado',
   'lan.qrOffText': 'Actívalo para mostrar un código de emparejamiento para un teléfono.',
@@ -358,6 +363,8 @@ export const surfaces = {
   'projects.sub.holds': 'lo tiene {agent}',
   'projects.sub.yours': 'lo abriste tú',
   'lan.dialogLead': 'Escanéalo con el teléfono en la misma red. Caduca en 5 minutos.',
+  'lan.dialogLeadTailscale':
+    'Escanéalo con el teléfono con sesión en Tailscale. Caduca en 10 minutos.',
   'lan.done': 'Hecho',
   'lan.revoked': 'revocado ahora',
   'settings.kicker': 'Proyecto',

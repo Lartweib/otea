@@ -4,7 +4,7 @@ import { listDevices, pairDevice, revokeDevice } from '../app/devices.ts';
 import { createItem, moveItem } from '../app/items.ts';
 import type { Project } from '../app/project.ts';
 import { CODE_TTL_MS, formatCode, MAX_ATTEMPTS, MAX_WRONG_CODES } from './lan.ts';
-import type { LanView } from './pairing.ts';
+import type { PairingView } from './pairing.ts';
 import { createServer, type OteaServer } from './server.ts';
 import { LOCAL_HOST, memoryProject, SESSION_COOKIE, TOKEN } from './testing.ts';
 
@@ -43,7 +43,7 @@ describe('LAN access', () => {
     ((await response.json()) as { error: { code: string } }).error.code;
   const deviceCookieOf = (response: Response) =>
     /otea_device_4400=[^;]+/.exec(response.headers.get('set-cookie') ?? '')?.[0];
-  const issue = () => formatCode((server.lan?.codes.issue() ?? { code: '' }).code);
+  const issue = () => formatCode(server.phone.codes.issue().code);
   const pairPhone = async (code = issue(), name = 'Pixel · Chrome') => {
     const response = await call('/api/pair', { method: 'POST', body: { code, name } });
     return { response, cookie: deviceCookieOf(response) };
@@ -77,7 +77,7 @@ describe('LAN access', () => {
     afterEach(() => local.close());
 
     it('has no LAN access', () => {
-      expect(local.lan).toBeUndefined();
+      expect(local.phone.doors()).toEqual([]);
     });
 
     it('refuses a request naming a LAN address, even from the LAN', async () => {
@@ -109,7 +109,7 @@ describe('LAN access', () => {
       );
 
       expect(response.status).toBe(409);
-      expect(await errorOf(response)).toBe('lan_off');
+      expect(await errorOf(response)).toBe('phone_off');
     });
   });
 
@@ -353,9 +353,10 @@ describe('LAN access', () => {
     it('shows the pairing code as a QR code and the paired devices', async () => {
       const code = issue();
       pairDevice(project.db, 'iPad');
-      const view = (await (await desk('/api/lan')).json()) as LanView;
+      const view = (await (await desk('/api/lan')).json()) as PairingView;
 
       expect(view).toMatchObject({
+        transport: 'lan',
         enabled: true,
         urls: [`http://${LAN_HOST}`],
         code: { code, url: `http://${LAN_HOST}/pair#code=${code}` },
@@ -367,7 +368,7 @@ describe('LAN access', () => {
     it('issues a new code, replacing the old one', async () => {
       const old = issue();
       const response = await desk('/api/lan/code', { method: 'POST', body: {} });
-      const { code } = ((await response.json()) as LanView).code ?? { code: '' };
+      const { code } = ((await response.json()) as PairingView).code ?? { code: '' };
 
       expect(response.status).toBe(201);
       expect(code).not.toBe(old);

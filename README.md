@@ -385,21 +385,40 @@ On a phone the selected item unfolds in place under its row, with its moves at t
 
 **Notes while an agent works.** `POST /api/items/:id/notes` with `{"text", "anchor"?: {"evidence", "seconds"?}}` leaves a note from the person (allowed from a paired phone, as every move is) and answers `201` with the thread; it is refused unless an agent's step is being done (`invalid_transition`), without text (`reason_required`), or on evidence not attached to the item in this round (`invalid_fields`), each with `details.kind: "note"` and its `why`. `GET /api/items/:id/notes` reads the thread, every round's or, with `?step=<name or id>&round=<n>`, one round's (with only `round`, of the step the item stands on), as `{"item","notes","worker"}`: each note with its moment (`stepName`, `round`, `at`, `delivered: {done, of}`, `to`, `anchor`) and, once answered, `answer: {text, at, by}`; `worker` is the agent doing the step and `lastSeen`, its last sign of life (any call, a heartbeat included), so the page can warn that a note may go unread. `GET /api/items/:id` gives the same as `board.thread` and `board.worker`, and `GET /api/items` marks an item whose round has notes with `notes: {count, unanswered, replied?: {note, by, at}}`, so a list can say the agent answered without the turn changing.
 
-### A phone on the same network
+### A phone: on the same network, or through Tailscale
 
-`otea serve` answers this computer only (127.0.0.1). `otea serve --lan` also listens on the local network so a phone can pair once and then open the UI:
+`otea serve` answers this computer only (127.0.0.1). A phone reaches it through a **phone transport**; the transports are interchangeable, and whichever carries the phone, it pairs once with a code shown on this computer, gets its own device token, and only paired devices get in:
+
+- **Local network** (the default): `otea serve --lan` also listens on the local network, plain HTTP, same Wi-Fi only.
+- **Tailscale**: `otea phone tailscale` gives Otea an HTTPS address on your tailnet, `https://<machine>.<tailnet>.ts.net`, that your own devices reach from anywhere.
+- **Otea relay**: a future service. It is not available yet: `otea phone relay` and Configuración say so.
 
 ```sh
 otea serve --lan            # prints the LAN address, a pairing code and its QR code
+otea phone tailscale        # sets Tailscale up for this project (see below)
+otea phone status           # the transport, its URL, whether Otea answers there, the paired devices
+otea phone lan              # back to the local network
 otea devices list           # the paired devices, with when each was last seen
 otea devices revoke <id>    # its token stops working at once
 ```
 
-The terminal and **Pair a phone** in Preferences (`#/lan`, this computer's signed-in browser only) show a QR code for `http://<lan-ip>:<port>/pair#code=XXXX-XXXX`. The code lasts 10 minutes, works once, and is thrown away after 5 wrong tries; **New code** shows another. The phone trades it for its own device token (an HTTP-only cookie; only its SHA-256 is stored), and each device can be revoked from the same page. A request from the network must come from a private address (including Tailscale's 100.64.0.0/10), name one of this computer's IP addresses as its host (never a DNS name), and carry a device token; without one it reaches only the pairing screen. Pairing attempts are limited to 10 a minute per address. Traffic on the LAN is plain HTTP, so use it on a network you trust, and reach Otea through Tailscale when away instead of opening a port.
+The terminal and **Pair a phone** in Preferences (`#/lan`, this computer's signed-in browser only) show a QR code for the chosen transport: `http://<lan-ip>:<port>/pair#code=XXXX-XXXX` on the local network, `https://<machine>.<tailnet>.ts.net/pair#code=XXXX-XXXX` on Tailscale. The code lasts 10 minutes, works once, and is thrown away after 5 wrong tries; **New code** shows another. The phone trades it for its own device token (an HTTP-only cookie, `Secure` over HTTPS; only its SHA-256 is stored), and each device can be revoked from the same page. A request from the network must come from a private address (including Tailscale's 100.64.0.0/10), name one of this computer's IP addresses as its host (never a DNS name), and carry a device token; without one it reaches only the pairing screen. Pairing attempts are limited to 10 a minute per address. Traffic on the LAN is plain HTTP, so use it on a network you trust, and use Tailscale when away instead of opening a port.
 
 When this computer's `<hostname>.local` resolves (mDNS) to one of those addresses, the QR code and the terminal use it first, so a home-screen shortcut survives a new DHCP address; the same link by IP is printed and shown beside it for phones that cannot resolve `.local`. The server answers that one name besides its IPs; any other host name is refused.
 
 After pairing, the phone suggests adding Otea to its home screen (a web app manifest and icons, served before pairing too; no service worker, which browsers refuse on plain HTTP). On iOS the home-screen app keeps its own storage, apart from Safari: it opens on the pairing screen and pairs once more, by typing a new code. On Android over plain HTTP, Chrome adds a shortcut rather than installing the app.
+
+#### Tailscale
+
+`otea phone tailscale` (or **Settings › Phone › Tailscale** in the UI) takes these steps on this computer, and stops at the first one that is missing, saying what to do:
+
+1. Finds the `tailscale` CLI: on `PATH`, then where the installers put it (`C:\Program Files\Tailscale\tailscale.exe` on Windows, the app or Homebrew on macOS, `/usr/bin` and friends on Linux). When it is missing, it prints how to install it (`winget install --id tailscale.tailscale`, `brew install --cask tailscale`, or Tailscale's install script, and the download page); **Otea never installs anything.**
+2. Checks that Tailscale is logged in. When it is not, it says to run `tailscale up` and log in once in the browser; `otea phone tailscale --login` runs `tailscale up` for you.
+3. Checks that the tailnet has MagicDNS and HTTPS certificates on (they are on by default on new tailnets); when not, it points at the DNS page of the admin console.
+4. Runs `tailscale serve --bg --https=443 http://127.0.0.1:<port>` (the running `otea serve`'s port, or `--port`): Tailscale terminates HTTPS with an automatic certificate and forwards to Otea, for your tailnet only (`serve`, never `funnel`). If `https://<machine>.<tailnet>.ts.net/` already forwards elsewhere, it leaves it alone and says how to free it.
+5. Makes Tailscale the phone transport: the pairing QR now carries the HTTPS URL. On the phone: install the Tailscale app, log in with the same account, and scan Otea's QR code.
+
+What `tailscale serve` forwards comes from this computer, so Otea tells it apart by its host (the tailnet name) and its `X-Forwarded-For`, never takes it for this computer's own browser, and still asks for a device token. A forwarded request that no chosen transport expects is refused. The HTTPS certificate is public: the machine's name on the tailnet is listed in the Certificate Transparency logs. `otea phone lan` goes back to the local network (and says how to stop `tailscale serve`); exit 20 (`transport_unavailable`) means Tailscale is not ready yet, or the relay was chosen.
 
 Working on the UI itself: keep `otea serve` running and start `npm run dev:ui` in the Otea checkout for hot reload (it proxies `/api` to port 4400).
 

@@ -135,8 +135,14 @@ export type Device = {
   hint: string;
 };
 
-// LAN access as the desk sees it: off unless otea serve --lan; the code while one is good.
+// How a phone reaches the desk (src/app/phone.ts): the local network (the default), Tailscale, or
+// the Otea relay, which is not available yet.
+export type TransportKind = 'lan' | 'tailscale' | 'relay';
+
+// Pairing as the desk sees it, on the chosen transport: off until its door is open (otea serve --lan,
+// or Tailscale set up); the code while one is good.
 export type LanView = {
+  transport: TransportKind;
   enabled: boolean;
   urls: string[];
   code: {
@@ -146,6 +152,24 @@ export type LanView = {
     qr: { size: number; cells: boolean[][] };
   } | null;
   devices: Device[];
+};
+
+// Where Tailscale stands for Otea (src/app/tailscale.ts), from the first thing missing to ready.
+export type TailscaleCheck =
+  | { state: 'missing'; install: { commands: string[]; link: string } }
+  | { state: 'logged_out'; authUrl: string | null }
+  | { state: 'no_magic_dns'; settings: string }
+  | { state: 'no_https'; settings: string }
+  | { state: 'taken'; host: string; target: string }
+  | { state: 'ready'; host: string; url: string; serving: boolean }
+  | { state: 'failed'; message: string };
+
+// The phone transport in use, the URL a phone opens on it and whether Otea answered there.
+export type PhoneStatus = {
+  transport: TransportKind;
+  url: string | null;
+  reachable: boolean | null;
+  tailscale: TailscaleCheck | null;
 };
 
 export type PairingPeek = { project: string; expiresAt: string };

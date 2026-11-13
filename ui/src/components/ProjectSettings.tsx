@@ -5,6 +5,7 @@ import {
   forgetProjectPath,
   relinkProjectPath,
 } from '../api.ts';
+import { useApp } from '../app/context.tsx';
 import { type Connection, useRemote } from '../hooks.ts';
 import { t, tx } from '../i18n/i18n.ts';
 import { TypeIcon } from '../icons/TypeIcon.tsx';
@@ -12,6 +13,7 @@ import { Button, Icon } from '../kit/index.ts';
 import { sizeLabel } from '../projects.ts';
 import type { RepoSettings, ProjectSettings as Settings } from '../types.ts';
 import { CopyGlyph } from './CopyCommand.tsx';
+import { PhoneTransport } from './PhoneTransport.tsx';
 
 type PathSettings = Settings['paths'][number];
 
@@ -343,6 +345,7 @@ type ProjectSettingsProps = {
 // One project's settings: its name, the paths and repos that lead to it, and where its data lives.
 // Nothing here touches the disk but the registry: relink and forget change which folders lead here.
 export function ProjectSettings({ version, connection, canWrite }: ProjectSettingsProps) {
+  const app = useApp();
   const [changes, setChanges] = useState(0);
   const settings = useRemote(fetchProjectSettings, version * 1000 + changes, connection);
   const changed = () => setChanges((count) => count + 1);
@@ -415,6 +418,9 @@ export function ProjectSettings({ version, connection, canWrite }: ProjectSettin
               </p>
             )}
           </div>
+        </Section>
+        <Section name={t('phone.transport.section')} sub={t('phone.transport.sub')}>
+          <PhoneTransport canWrite={canWrite} onPair={() => app.go({ view: 'lan' })} />
         </Section>
         <Section
           name={t('settings.storage')}

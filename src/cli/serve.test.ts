@@ -137,7 +137,7 @@ describe('serve', () => {
     const { out } = await otea('serve', '--port', '0', '--json');
 
     expect(JSON.parse(out).url).toMatch(/^http:\/\/127\.0\.0\.1:\d+$/);
-    expect(JSON.parse(out).lan).toBeUndefined();
+    expect(JSON.parse(out).phone).toBeUndefined();
   });
 
   it('fails with a clear error when the port is busy', async () => {
