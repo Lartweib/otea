@@ -896,7 +896,8 @@
   .tri .thd .back,
   .sec .sact,
   .addbtn,
-  .plink {
+  .plink,
+  .chipb {
     min-height: 44px;
   }
   .btn.icon {
