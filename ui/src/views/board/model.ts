@@ -265,7 +265,9 @@ export function valueText(key: string, value: string, ctx: BoardCtx): string {
     return motivesOf(collection).find((m) => m.id === value)?.name ?? value;
   }
   return value === ''
-    ? t('section.noValue', { group: lower(fieldName(collection, key)) })
+    ? // The field's name as its board wrote it, never spliced into the UI's grammar: a Spanish
+      // board read in English says "Severidad: none", not "No severidad".
+      t('section.noValue', { group: fieldName(collection, key) })
     : valueWordIn(collection.types, key, value);
 }
 

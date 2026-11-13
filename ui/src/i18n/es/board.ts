@@ -6,7 +6,7 @@ export const board = {
   'section.human': 'Te esperan',
   'section.agent': 'Con agentes',
   'section.none': 'Cerrados',
-  'section.noValue': 'sin {group}',
+  'section.noValue': '{group}: sin valor',
   'section.empty': 'Nada por aquí.',
   'group.forYou': '· {count} para ti',
   'group.yoursInside': {

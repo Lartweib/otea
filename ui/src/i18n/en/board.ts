@@ -4,7 +4,7 @@ export const board = {
   'section.human': 'Waiting for you',
   'section.agent': 'With agents',
   'section.none': 'Closed',
-  'section.noValue': 'no {group}',
+  'section.noValue': '{group}: none',
   'section.empty': 'Nothing here.',
   'group.forYou': '· {count} for you',
   'group.yoursInside': {
