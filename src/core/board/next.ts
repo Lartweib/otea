@@ -8,6 +8,7 @@ import {
   type Linked,
   type Missing,
   NOTE_REF,
+  NOTES_REF,
   type Position,
   startsWith,
   WAIT_BLOCKERS,
@@ -30,6 +31,7 @@ import {
   stepById,
   type Target,
 } from './model.ts';
+import { type ItemNote, notesBlock, notesHandLine, notesRefusal } from './notes.ts';
 
 // The one writer of what an agent reads: `next`'s answer for an item at a step, the refusal of a
 // handoff and the line after one. Studio's "Lo que lee el agente" calls the same functions on the
@@ -75,6 +77,8 @@ export type NextInput = {
   holder?: { name: string; expiresAt: string };
   // The agent the person left a stuck item for (Reasignar), until an agent claims or moves it.
   leftFor?: string;
+  // The notes the person left in this round of the step, oldest first.
+  notes?: readonly ItemNote[];
 };
 
 // Another agent's say on the item keeps the asking agent off it: a live lease it does not hold, or
@@ -345,6 +349,7 @@ function handLines(def: BoardDefinition, step: Step, input: NextInput): string[]
   const lines = [
     ...noteLine(step, input),
     ...partLines(def, step.hand, input),
+    ...notesHandLine(input.notes ?? []),
     ...waitLines(step, input),
   ];
   return lines.length === 0 ? ['  nothing required'] : lines;
@@ -432,6 +437,7 @@ export function nextText(def: BoardDefinition, input: NextInput): string {
   if (!input.holder && input.leftFor !== undefined && input.leftFor === input.me)
     lines.push('The person left it for you.');
   lines.push(holdLine(input));
+  if (!reviewing) lines.push(...notesBlock(id, input.notes ?? [], input.me));
   if (!reviewing && input.sentBack) lines.push(...sentBackLines(input.sentBack));
   lines.push(...section('About this board', indent(aboutBrief(def))));
   lines.push(
@@ -541,6 +547,14 @@ function blockersHold(wait: Missing): { text: string; them: string; one: boolean
 // The exact refusal of a handoff that lacks something: the parts and the note lead; when only
 // what it waits for holds it, that alone, with what to do.
 export function refusalText(id: string, missing: readonly Missing[]): string {
+  const asked = missing.find(({ ref }) => ref === NOTES_REF)?.notes ?? [];
+  const rest = missing.filter(({ ref }) => ref !== NOTES_REF);
+  const notes = notesRefusal(id, asked);
+  if (rest.length === 0) return notes.join('\n');
+  return [lackingText(id, rest), ...notes].join('\n');
+}
+
+function lackingText(id: string, missing: readonly Missing[]): string {
   const note = missing.find(({ ref }) => ref === NOTE_REF);
   const hint =
     note?.hint?.trim() || (note?.sentBack ? SENT_BACK_HINT : 'what changed in this round');

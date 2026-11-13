@@ -295,3 +295,28 @@ export async function reassignRequest(c: Context): Promise<{ agent: string }> {
   if (!parsed.success) throw new RejectedRequest(400, 'invalid_body', 'Expected {"agent": string}');
   return parsed.data;
 }
+
+const NoteBody = z.object({
+  text: z.string(),
+  anchor: z
+    .object({ evidence: z.number().int().positive(), seconds: z.number().min(0).optional() })
+    .optional(),
+});
+
+export type NoteRequest = { text: string; anchor?: { evidence: number; seconds?: number } };
+
+// A note from the person to the agent at work: its text, and the evidence it is on, if any.
+export async function noteRequest(c: Context): Promise<NoteRequest> {
+  const raw: unknown = await c.req.json().catch(() => undefined);
+  const parsed = NoteBody.safeParse(raw);
+  if (!parsed.success)
+    throw new RejectedRequest(
+      400,
+      'invalid_body',
+      'Expected {"text": string, "anchor"?: {"evidence": number, "seconds"?: number}}',
+    );
+  const { text, anchor } = parsed.data;
+  if (anchor === undefined) return { text };
+  const { evidence, seconds } = anchor;
+  return { text, anchor: { evidence, ...(seconds === undefined ? {} : { seconds }) } };
+}
