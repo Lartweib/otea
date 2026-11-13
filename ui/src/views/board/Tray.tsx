@@ -8,7 +8,7 @@ import { t } from '../../i18n/i18n.ts';
 import { Button } from '../../kit/Button.tsx';
 import { Count } from '../../kit/Count.tsx';
 import { Icon } from '../../kit/Icon.tsx';
-import { Checkbox } from '../../kit/Marks.tsx';
+import { Chevron } from '../../kit/Marks.tsx';
 import { anchorAbove } from '../../kit/pop/anchors.ts';
 import { MenuItem, MenuLabel } from '../../kit/pop/Menu.tsx';
 import { Pop } from '../../kit/pop/Pop.tsx';
@@ -19,12 +19,15 @@ import { Choreo, part } from '../../motion/choreo.ts';
 import { reduced } from '../../motion/reduced.ts';
 import { stateWordIn } from '../../preset-words.ts';
 import type { CollectionView, Item, Move } from '../../types.ts';
-import { type TrayButton, trayButtons, trayStates } from './tray.ts';
+import { type TrayButton, trayButtons, trayGroups, trayNotice, trayStates } from './tray.ts';
 
 // The tray (SPEC §10.1, mock:478-494, 3738-3844): docked at the foot of the table while rows are
-// ticked. A line leads, the surface unrolls; the count rolls; only the moves every ticked item can
-// take; Devolver asks its reason once; a run moves one item at a time through the handoff, then a
-// receipt stays 6 s and a toast offers Deshacer.
+// ticked, centred on the board's column and carried with it. A line leads, the surface unrolls.
+// The count leads as its title, the steps under it; the moves every ticked item can take are
+// buttons, the main one filled, the closing ones behind Cerrar como; one plain sentence says what
+// the selection shares, the moves left out behind "por qué"; Limpiar sits in the corner. Devolver
+// asks its reason once; a run moves one item at a time through the handoff, then a receipt stays
+// 6 s and a toast offers Deshacer.
 
 type Phase =
   | { kind: 'idle' }
@@ -127,6 +130,16 @@ export function Tray({
   const ch = useRef<Choreo | null>(null);
   const [keepOpen, setKeepOpen] = useState(false);
   const keepBtn = useRef<HTMLButtonElement>(null);
+  const [closeOpen, setCloseOpen] = useState(false);
+  const closeBtn = useRef<HTMLButtonElement>(null);
+  const [whyOpen, setWhyOpen] = useState(false);
+  // Another selection asks its own "por qué".
+  const ticks = items.map((it) => it.id).join(' ');
+  const [whyFor, setWhyFor] = useState(ticks);
+  if (whyFor !== ticks) {
+    setWhyFor(ticks);
+    setWhyOpen(false);
+  }
   const [reason, setReason] = useState('');
   const word = (s: string) => stateWordIn(collection.types, s);
 
@@ -184,7 +197,9 @@ export function Tray({
   });
   const plan = bulkPlan(selected);
   const buttons = trayButtons(plan.moves, word);
+  const { main, closing } = trayGroups(buttons);
   const byState = plan.states;
+  const notice = trayNotice(plan, items.length);
 
   if (!present) return null;
 
@@ -266,14 +281,15 @@ export function Tray({
   } else {
     k = phase.kind;
     const count = items.length;
+    // With nothing shared, choosing one step is the way on: it leads.
+    const keepMain = !main.length && byState.length > 1;
     body = (
       <div className="tgrid">
         <div className="tcount">
-          <Checkbox checked aria-label={t('boardView.tray.clearAria')} onChange={onClear} />
-          <b>
+          <h3 className="ttitle">
             <Count value={count} /> {t('boardView.tray.selected', { count })}
-          </b>
-          <small>{trayStates(items, word)}</small>
+          </h3>
+          <p className="tsteps">{trayStates(items, word)}</p>
         </div>
         <div className="tmoves">
           {phase.kind === 'reason' ? (
@@ -307,51 +323,77 @@ export function Tray({
             </form>
           ) : (
             <div className="tbtns">
-              {buttons.map((b) => (
-                <span key={b.move.to} className="tb">
-                  {b.closeAs ? <span className="closeas">{t('common.closeAs')}</span> : null}
-                  <Button variant={b.variant} size="sm" onClick={() => press(b)}>
-                    {b.label}
-                  </Button>
-                </span>
+              {main.map((b) => (
+                <Button
+                  key={b.move.to}
+                  variant={b.variant === 'primary' ? 'primary' : 'quiet'}
+                  size="sm"
+                  onClick={() => press(b)}
+                >
+                  {b.label}
+                </Button>
               ))}
+              {closing.length ? (
+                <button
+                  ref={closeBtn}
+                  type="button"
+                  className="btn quiet sm"
+                  aria-haspopup="menu"
+                  aria-expanded={closeOpen}
+                  onClick={() => setCloseOpen((o) => !o)}
+                >
+                  {t('boardView.tray.closeAs')}
+                  <Chevron />
+                </button>
+              ) : null}
               {byState.length > 1 ? (
                 <button
                   ref={keepBtn}
                   type="button"
-                  className="btn text sm"
+                  className={keepMain ? 'btn primary sm' : 'btn quiet sm'}
                   aria-haspopup="menu"
                   aria-expanded={keepOpen}
                   onClick={() => setKeepOpen((o) => !o)}
                 >
-                  {t('boardView.tray.keepOnly')} ▾
+                  {t('boardView.tray.keepOnly')}
+                  <Chevron />
                 </button>
               ) : null}
+              <Button
+                variant="quiet"
+                size="sm"
+                onClick={() => app.go({ view: 'brief', ids: items.map((it) => it.id) })}
+              >
+                {t('boardView.tray.brief')}
+              </Button>
             </div>
           )}
-          <div className="tcap">
-            {plan.loading
-              ? t('boardView.tray.reading')
-              : buttons.length
-                ? t('boardView.tray.cap', { count })
-                : t('boardView.tray.none')}
-            {!plan.loading && plan.hidden.length
-              ? ` · ${t('boardView.tray.capHidden', { moves: hiddenSaid(selected, plan.hidden, word) })}`
-              : ''}
-          </div>
-        </div>
-        <div className="tend">
-          <Button
-            variant="text"
-            size="sm"
-            onClick={() => app.go({ view: 'brief', ids: items.map((it) => it.id) })}
-          >
-            {t('boardView.tray.brief')}
-          </Button>
-          <Button variant="text" size="sm" className="tclear" onClick={onClear}>
-            <Icon name="x" />
-            {t('boardView.tray.clear')}
-          </Button>
+          {notice ? (
+            <p className="tsay">
+              {notice.say}
+              {notice.why ? (
+                <>
+                  {' '}
+                  <button
+                    type="button"
+                    className="twhy"
+                    aria-expanded={whyOpen}
+                    onClick={() => setWhyOpen((o) => !o)}
+                  >
+                    {t('boardView.tray.whyShow')}
+                  </button>
+                  {whyOpen ? (
+                    <span className="twhylist">
+                      {' '}
+                      {t('boardView.tray.hiddenSaid', {
+                        moves: hiddenSaid(selected, plan.hidden, word),
+                      })}
+                    </span>
+                  ) : null}
+                </>
+              ) : null}
+            </p>
+          ) : null}
         </div>
       </div>
     );
@@ -361,6 +403,7 @@ export function Tray({
     <section
       className={phase.kind === 'receipt' ? 'tray lifted' : 'tray'}
       ref={el}
+      data-leaf=""
       aria-label={t('boardView.tray.aria')}
     >
       <i className="tline" />
@@ -368,6 +411,18 @@ export function Tray({
         <Swap k={k} as="div" className="tswap">
           {body}
         </Swap>
+        {phase.kind === 'idle' || phase.kind === 'reason' ? (
+          <Button
+            variant="text"
+            size="sm"
+            className="tclear"
+            aria-label={t('boardView.tray.clearAria')}
+            onClick={onClear}
+          >
+            <Icon name="x" />
+            {t('boardView.tray.clear')}
+          </Button>
+        ) : null}
       </div>
       <Pop
         open={keepOpen}
@@ -386,6 +441,28 @@ export function Tray({
               id: n.ids[0] ?? '',
               state: word(n.state),
             })}
+          </MenuItem>
+        ))}
+      </Pop>
+      <Pop
+        open={closeOpen}
+        anchor={closeBtn.current}
+        edge="bottom"
+        place={closeBtn.current ? anchorAbove(closeBtn.current) : 'above'}
+        role="menu"
+        label={t('boardView.tray.closeAs')}
+        onClose={() => setCloseOpen(false)}
+      >
+        <MenuLabel>{t('boardView.tray.closeAs')}</MenuLabel>
+        {closing.map((b) => (
+          <MenuItem
+            key={b.move.to}
+            onPick={() => {
+              setCloseOpen(false);
+              press(b);
+            }}
+          >
+            {b.label}
           </MenuItem>
         ))}
       </Pop>

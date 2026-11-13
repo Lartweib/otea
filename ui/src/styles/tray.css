@@ -1,12 +1,14 @@
 /* The bulk tray, docked at the foot of the table (SPEC §10.1, mock:478-494). The boards slice owns
-   this file (SPEC §11). */
+   this file (SPEC §11). It sits centred on the board's column: the table is as wide as the column,
+   so it centres on the table, and the list's relayout carries it when the column compacts (it is a
+   leaf). Title, then the steps; the moves as buttons; one plain sentence; Limpiar in the corner. */
 
 .tray {
   position: sticky;
   bottom: 14px;
   transition: bottom 440ms var(--o-settle);
   z-index: 8;
-  margin: 18px 0 0 60px;
+  margin: 18px auto 0;
   max-width: 980px;
 }
 /* while the toast below says what moved, the receipt rises clear of it */
@@ -24,8 +26,9 @@
   z-index: 2;
 }
 .tray .tsurf {
+  position: relative;
   min-height: 76px;
-  padding: 14px 16px 14px 18px;
+  padding: 16px 18px 16px 20px;
   background: var(--sheet);
   border: 1px solid var(--rule);
   border-top: 0;
@@ -33,41 +36,41 @@
   box-shadow: 0 22px 44px -26px var(--shadow);
 }
 .tray .tgrid {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  gap: 22px;
-  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px 32px;
+  align-items: flex-start;
   min-height: 48px;
+  /* the corner's Limpiar */
+  padding-right: 84px;
 }
+/* the count leads, as the title; the steps under it, smaller and quieter */
 .tray .tcount {
-  display: grid;
-  grid-template-columns: 14px auto;
-  column-gap: 10px;
-  row-gap: 5px;
-  align-items: center;
-}
-.tray .tcount b {
-  font: 450 19px / 1 var(--serif);
-}
-.tray .tcount b .n {
-  font: inherit;
-  color: inherit;
-}
-.tray .closeas {
-  font: 400 12px / 1 var(--mono);
-  color: var(--ink-3);
-  margin: 0 2px 0 6px;
-}
-.tray .tcount small {
-  grid-column: 2;
-  font: 400 11.5px / 1.2 var(--mono);
-  color: var(--ink-3);
-  white-space: nowrap;
-}
-.tray .tmoves {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  min-width: 150px;
+}
+.tray .ttitle {
+  margin: 0;
+  font: 450 21px / 1.1 var(--serif);
+  color: var(--ink);
+  white-space: nowrap;
+}
+.tray .ttitle .n {
+  font: inherit;
+  color: inherit;
+}
+.tray .tsteps {
+  margin: 0;
+  font: 400 12.5px / 1.35 var(--sans);
+  color: var(--ink-2);
+}
+.tray .tmoves {
+  flex: 1 1 360px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
   min-width: 0;
 }
 .tray .tbtns {
@@ -76,14 +79,30 @@
   align-items: center;
   flex-wrap: wrap;
 }
-.tray .tb {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
+.tray .tbtns svg {
+  margin-left: 2px;
 }
-.tray .tcap {
-  font: 400 11.5px / 1.3 var(--mono);
-  color: var(--ink-3);
+/* one plain sentence, in body type; the moves left out fold behind "por qué" */
+.tray .tsay {
+  margin: 0;
+  font: 400 13.5px / 1.45 var(--sans);
+  color: var(--ink-2);
+}
+.tray .twhy {
+  font: inherit;
+  color: var(--ink-2);
+  text-decoration: underline;
+  text-decoration-color: var(--rule-2);
+  text-underline-offset: 3px;
+}
+.tray .twhy:hover {
+  color: var(--ink);
+}
+.tray .twhy[aria-expanded="true"] {
+  color: var(--ink);
+}
+.tray .twhylist {
+  color: var(--ink-2);
 }
 .tray .tnote {
   display: grid;
@@ -117,13 +136,14 @@
 .tray .tprog .n {
   font-style: normal;
 }
+.tray .tclear {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  gap: 4px;
+  color: var(--ink-2);
+}
 .tray .tclear svg {
   width: 12px;
   height: 12px;
-}
-.tray .tend {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 2px;
 }
