@@ -21,7 +21,7 @@ export function withoutUndone<E extends Pick<HistoryEvent, 'id' | 'data'>>(
 ): E[] {
   const gone = new Set<number>();
   for (const e of events) if (typeof e.data.undoes === 'number') gone.add(e.data.undoes).add(e.id);
-  return gone.size === 0 ? [...events] : events.filter((e) => !gone.has(e.id));
+  return gone.size === 0 ? (events as E[]) : events.filter((e) => !gone.has(e.id));
 }
 
 // Moves the board made itself, not the work: a publish or a restore placing the item, and the

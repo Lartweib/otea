@@ -217,10 +217,11 @@ const said = (e: ItemEvent, reason: string): ItemEvent => ({ ...e, data: { ...e.
 
 describe('roundNotes: each round of the step with its notes', () => {
   const by = agent('mender');
+  const handed = (e: ItemEvent, note: string): ItemEvent => ({ ...e, data: { ...e.data, note } });
   it('keeps the handoff note and the person’s send-back reason, round by round', () => {
     const events: ItemEvent[] = [
       created('sfix'),
-      said(moved('sfix', 'sfix__review', by, '2026-01-02T00:00:00Z'), 'Probé el muelle.'),
+      handed(moved('sfix', 'sfix__review', by, '2026-01-02T00:00:00Z'), 'Probé el muelle.'),
       said(moved('sfix__review', 'sfix', you, '2026-01-03T00:00:00Z'), 'Sigue cayendo.'),
     ];
     expect(roundNotes(errores(), 'sfix', events)).toEqual([
@@ -335,16 +336,7 @@ describe('roundNotes: each round of the step with its notes', () => {
         data: { from: 'needs_info', to: 'sfill', reason: 'migrate', note: '¿Qué versión?' },
       },
     ];
-    const block = {
-      parts: [],
-      partsBoard: null,
-      blockers: [],
-      blocking: [],
-      notes: [{ step: 'sfill', round: 2, note: '¿Qué versión?', at, by: 'fede' }],
-      gates: null,
-      branch: null,
-    };
-    expect(roundNotes(errores(), 'sfill', events, block)).toEqual([
+    expect(roundNotes(errores(), 'sfill', events)).toEqual([
       { round: 1, notes: [] },
       {
         round: 2,
@@ -355,6 +347,38 @@ describe('roundNotes: each round of the step with its notes', () => {
 
   it('is one round with nothing to say on a first round', () => {
     expect(roundNotes(errores(), 'sfix', [created('sfix')])).toEqual([{ round: 1, notes: [] }]);
+  });
+
+  it('opens no round for a send-back the person took back with Deshacer', () => {
+    const back = said(moved('sfix__review', 'sfix', you, '2026-01-03T00:00:00Z'), 'Sigue.');
+    const undo = {
+      ...moved('sfix', 'sfix__review', you, '2026-01-03T00:00:05Z'),
+      data: { from: 'sfix', to: 'sfix__review', undoes: back.id },
+    };
+    const events: ItemEvent[] = [
+      created('sfix'),
+      handed(moved('sfix', 'sfix__review', by, '2026-01-02T00:00:00Z'), 'Probé el muelle.'),
+      back,
+      undo,
+    ];
+    expect(roundNotes(errores(), 'sfix', events).map(({ round }) => round)).toEqual([1]);
+  });
+});
+
+describe('boardItemOf and Deshacer', () => {
+  it('keeps the next step in its first round after an approval taken back and given again', () => {
+    const approved = moved('sconcept__review', 'sanimate', you, '2026-01-03T00:00:00Z');
+    const events: ItemEvent[] = [
+      created('sconcept'),
+      moved('sconcept', 'sconcept__review', agent('quill'), '2026-01-02T00:00:00Z'),
+      approved,
+      {
+        ...moved('sanimate', 'sconcept__review', you, '2026-01-03T00:00:05Z'),
+        data: { from: 'sanimate', to: 'sconcept__review', undoes: approved.id },
+      },
+      moved('sconcept__review', 'sanimate', you, '2026-01-03T00:00:09Z'),
+    ];
+    expect(boardItemOf(creatures(), item('sanimate', events), words)?.round).toBe(1);
   });
 });
 

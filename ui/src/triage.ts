@@ -216,7 +216,8 @@ export function triDecide(s: TriState, kind: TriKind, to = ''): TriState {
   return { ...s, q };
 }
 
-// The round the item is in: one more for every time you sent it back with notes.
+// The round the item is in off a board: one more for every time you sent it back with notes (on a
+// board the server sends the step engine's round with the item).
 export function roundOf(id: string, feed: readonly FeedEvent[]): number {
   return (
     1 +
@@ -248,7 +249,7 @@ export function cardWords(
   return {
     agent: handed?.agent ?? null,
     say: handed?.note ?? '',
-    round: roundOf(item.id, feed),
+    round: item.round ?? roundOf(item.id, feed),
   };
 }
 
