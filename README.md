@@ -19,6 +19,20 @@ Agents produce work faster than a human can follow it live. Otea is where work c
 
 Early design. Nothing is usable yet. The product definition lives in [`docs/otea-product-definition.md`](docs/otea-product-definition.md).
 
+## Install
+
+Download Otea for your system from [GitHub Releases](https://github.com/Lartweib/otea/releases/latest) and install it like any desktop app. It needs nothing else: no Node, no npm.
+
+| System | Download | The `otea` command |
+| --- | --- | --- |
+| Windows | `Otea-Setup-<version>.exe`: installs for your user, no administrator | on your PATH after the install; the uninstaller takes it off |
+| macOS (Apple Silicon and Intel) | `Otea-<version>-mac.dmg`: drag Otea to Applications | tray menu › **Install the otea command** (`/usr/local/bin/otea`) |
+| Linux | the `.deb` (`sudo apt install ./Otea-<version>-amd64.deb`), or the `.AppImage` for the app alone | `/usr/bin/otea` from the deb |
+
+Open Otea like any app. The first time it asks for a project: **Open folder** or **Create project**; after that it reopens the last one, and the tray menu opens another. It runs `otea serve` itself and shows the UI in its window, with no console. Agents run `otea` from any new terminal, on the CLI the app carries. Otea checks for updates at start and every few hours, downloads them in the background and says so in a corner ("Otea updated · restart"); the update applies when you restart it.
+
+The installers are not signed yet. On Windows, SmartScreen warns on the first run: **More info** › **Run anyway**. On macOS, Gatekeeper refuses the first open: Control-click Otea in Applications › **Open** (on macOS 15 and later, System Settings › Privacy & Security › **Open Anyway**); until the Mac app is signed it announces a new version with a download link instead of updating itself. More in [`desktop/README.md`](desktop/README.md).
+
 ## Development
 
 Requirements: Node.js 22.18 or later (Node 24 recommended, see `.nvmrc`).
@@ -30,7 +44,7 @@ npm run check   # lint, typecheck and tests
 
 Tests never touch your real `~/.otea`: the test setup gives every test file a temporary `OTEA_HOME`, and code that falls back to the home folder throws inside tests, so a test must pass `OTEA_HOME` in the env it hands to Otea.
 
-There is no installable `otea` binary yet. Run the CLI from source inside the project you want to track (npm scripts always run from the Otea checkout, so `npm run otea` is only useful for `help`):
+Without the desktop app, run the CLI from source inside the project you want to track (npm scripts always run from the Otea checkout, so `npm run otea` is only useful for `help`):
 
 ```sh
 alias otea='node --disable-warning=ExperimentalWarning /path/to/otea/src/cli/main.ts'

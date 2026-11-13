@@ -144,16 +144,20 @@ In the UI the human navigates between linked projects and, inside a project, bet
 ### Distribution
 
 - **Desktop app (Electron)** with a traditional installer per OS that ends by opening the app. Native window, taskbar icon, system notifications when it is the human's turn, tray.
+  - Downloaded from GitHub Releases (no store): an NSIS installer for Windows (per user, no administrator), a dmg for macOS (one universal app for Apple Silicon and Intel), an AppImage and a deb for Linux, all built with electron-builder in CI on a `v*` tag (`.github/workflows/desktop.yml`).
+  - The app opens a project the way an editor opens a folder: the first run offers **Open folder** or **Create project** (`otea init`), later runs reopen the last project, and the tray menu opens another from the recent ones. It attaches to the project's running `otea serve` or starts one, and shows the UI in its window; there is no console.
+  - It updates itself from GitHub Releases (electron-updater): a check at start and every 4 hours, the download in the background, then a quiet notice in a corner of the window ("Otea se actualizó · reiniciar") and an item in the tray menu. It never restarts on its own; a downloaded update applies when the app next quits.
+  - Unsigned until certificates exist: Windows shows its SmartScreen warning and macOS its Gatekeeper refusal on the first open, and since macOS applies updates only to signed apps, the Mac app announces a new version with a download link instead. Signing is a drop-in through the release workflow's secrets.
   - The web UI already publishes whose turn it is (the living mark, see DESIGN.md, Brand): the page title counts what waits for the human ("(2) Otea") and the favicon swaps between four frames. The shell can follow both off the window it hosts, and `ui/src/attention.ts` derives the same state from the items for the main process.
 - Electron was chosen over Tauri for render consistency: one bundled Chromium on every OS, so testing on one OS covers the UI on all of them. Accepted cost: larger installer.
-- **The CLI is independent of the window**: the installer puts `otea` on the PATH for agents; it never needs the app running.
+- **The CLI is independent of the window**: installing puts `otea` on the PATH for agents (the Windows installer on the user's PATH, the deb in `/usr/bin`, the Mac app through its "Install the otea command" action, a symlink in `/usr/local/bin`); it never needs the app running.
 - **Running from source** (clone + run) works without the installer, including serving the UI in a browser.
 - Installers for all OSes are built in CI.
 
 ### Stack
 
 - **Node.js only**, TypeScript end to end. Electron already ships Node; a second runtime would mean two SQLite drivers on the same file.
-- The installed CLI runs on Electron's bundled Node (as editors like VS Code do for their CLI); without the installer it is `npm i -g @otea/cli`.
+- The installed CLI runs on Electron's bundled Node (as editors like VS Code do for their CLI): the app carries the CLI's source and production dependencies in `resources/otea`, and `resources/bin/otea` runs `src/cli/main.ts` with `ELECTRON_RUN_AS_NODE=1`, Node stripping the types as it does from source. What the CLI writes to run itself later (the `.mcp.json` entry, the hooks) does the same, so a machine with the app needs no Node. Without the installer it is `npm i -g @otea/cli`.
 - `node:sqlite` (built in, no native module to rebuild for Electron). Its API is still marked release candidate, so all database access is confined to `src/store/`; swapping to `better-sqlite3` would stay local to that folder.
 - Verified by spike (Electron 45.0.0, Node 24.22, SQLite 3.53.4, Windows):
   - `node:sqlite` works without flags in the Electron main process and under `ELECTRON_RUN_AS_NODE` (the bundled CLI). Plain Node 22 also works but prints an `ExperimentalWarning`; the npm-installed CLI requires Node >= 24 or filters the warning.
