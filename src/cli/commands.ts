@@ -111,6 +111,7 @@ import {
   remoteOf,
 } from './gitrepo.ts';
 import {
+  gitHookOf,
   type HookChange,
   installClaudeHook,
   installGitHook,
@@ -648,7 +649,12 @@ const show: Command = {
     const performer = { actor, channel };
     return withAgent(input, (project) => {
       const shown = showItem(project, id, performer);
-      const item = { ...shown, hint: hintFor(project, shown, actor.name) };
+      const gitHook = gitHookOf(project, shown);
+      const item = {
+        ...shown,
+        hint: hintFor(project, shown, actor.name),
+        ...(gitHook === undefined ? {} : { gitHook }),
+      };
       const { layout } = typeOfItem(project, shown);
       const named = liveBoardOf(project, item.collection) !== undefined;
       const text = formatItemWithEvents(

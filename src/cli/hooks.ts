@@ -1,5 +1,9 @@
 import { chmodSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
+import { repoOfItem } from '../app/gates.ts';
+import type { Item } from '../app/items.ts';
+import type { Project } from '../app/project.ts';
+import { checkoutsOf } from '../app/repos.ts';
 import { CommandFailure } from './command.ts';
 import { EXIT_CODES } from './exit-codes.ts';
 import { gitPath, keepOutOfGit, keptOutNote, repoRoot } from './gitrepo.ts';
@@ -88,6 +92,21 @@ export function hasOteaGitHook(cwd: string): boolean {
   } catch {
     return false;
   }
+}
+
+// Where the repo a repo task names is checked out in the project's folders, and which of those
+// checkouts have Otea's pre-push hook: a push from one without it is never checked.
+export type GitHookStatus = { repo: string; installed: string[]; missing: string[] };
+
+export function gitHookOf(project: Project, item: Item): GitHookStatus | undefined {
+  const repo = repoOfItem(project, item);
+  if (typeof repo !== 'string' || repo.trim() === '') return undefined;
+  const checkouts = checkoutsOf(project, repo);
+  return {
+    repo,
+    installed: checkouts.filter((path) => hasOteaGitHook(path)),
+    missing: checkouts.filter((path) => !hasOteaGitHook(path)),
+  };
 }
 
 export function removeGitHook(cwd: string): HookChange {
