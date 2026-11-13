@@ -7,11 +7,11 @@ name: Desktop
 # electron-updater reads, as the GitHub Release of that tag.
 on:
   push:
-    tags: ['v*']
+    tags: ["v*"]
   pull_request:
     paths:
-      - 'desktop/**'
-      - '.github/workflows/desktop.yml'
+      - "desktop/**"
+      - ".github/workflows/desktop.yml"
   workflow_dispatch:
 
 permissions:
