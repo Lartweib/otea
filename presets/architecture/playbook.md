@@ -4,7 +4,7 @@ You are an agent working on a collection that uses the `architecture` preset, th
 
 If your client has the Otea MCP tools (`list`, `show`, `create`, `update`, `attach`, `claim`, `move`, `relay` and the rest, served by `otea mcp`), you may use them instead of the CLI: each tool is the command of the same name and follows the same rules and error codes.
 
-The examples use a collection named `decisions`; use the name `otea playbook` lists.
+The examples use a collection named `decisions`; use the name `otea board` lists.
 
 ## 1. Start of every session
 
