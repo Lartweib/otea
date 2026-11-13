@@ -3,6 +3,7 @@ import type { Channel } from '../core/authority.ts';
 import type { EvidenceKind, EvidenceRole } from '../core/evidence.ts';
 import type { Actor } from '../core/item.ts';
 import type { Lease } from '../core/lease.ts';
+import { modelFamily, type Profile } from '../core/profile.ts';
 import type { Relation, RelationKind } from '../core/relations.ts';
 
 export type CollectionRecord = {
@@ -242,6 +243,18 @@ export function updateItemContent(db: DatabaseSync, id: string, content: ItemCon
   );
 }
 
+// A profile as events and agents give it: as declared, with the family its model groups under.
+export type ProfileView = Profile & { family: string };
+
+export const profileView = (profile: Profile): ProfileView => ({
+  harness: profile.harness,
+  model: profile.model,
+  effort: profile.effort,
+  family: modelFamily(profile.model),
+});
+
+// `profile`: the profile the agent behind the event had declared when it was written (the agent
+// acting, or the one relaying a decision); absent for the person and for agents with none.
 export type EventRecord = {
   id: number;
   itemId: string;
@@ -249,6 +262,7 @@ export type EventRecord = {
   actor: Actor;
   at: string;
   data: Record<string, unknown>;
+  profile?: ProfileView;
 };
 
 type EventRow = {
@@ -259,10 +273,11 @@ type EventRow = {
   actor_name: string;
   at: string;
   data: string;
+  profile: string | null;
 };
 
 function toEvent(row: EventRow): EventRecord {
-  return {
+  const event: EventRecord = {
     id: row.id,
     itemId: row.item_id,
     type: row.type,
@@ -270,11 +285,21 @@ function toEvent(row: EventRow): EventRecord {
     at: row.at,
     data: JSON.parse(row.data) as Record<string, unknown>,
   };
+  if (row.profile) event.profile = profileView(JSON.parse(row.profile) as Profile);
+  return event;
 }
 
+// The agent whose profile an event keeps: the agent acting, or the one relaying the person's word.
+function agentBehind(event: Omit<EventRecord, 'id'>): string | null {
+  if (event.actor.kind === 'agent') return event.actor.name;
+  return typeof event.data.via === 'string' ? event.data.via : null;
+}
+
+// Every event keeps the profile its agent has declared at that moment, read in the same statement.
 export function appendEvent(db: DatabaseSync, event: Omit<EventRecord, 'id'>): void {
   db.prepare(
-    'INSERT INTO events (item_id, type, actor_kind, actor_name, at, data) VALUES (?, ?, ?, ?, ?, ?)',
+    `INSERT INTO events (item_id, type, actor_kind, actor_name, at, data, profile)
+      VALUES (?, ?, ?, ?, ?, ?, (SELECT profile FROM agents WHERE name = ?))`,
   ).run(
     event.itemId,
     event.type,
@@ -282,6 +307,7 @@ export function appendEvent(db: DatabaseSync, event: Omit<EventRecord, 'id'>): v
     event.actor.name,
     event.at,
     JSON.stringify(event.data),
+    agentBehind(event),
   );
 }
 
@@ -567,6 +593,61 @@ export function upsertAgent(db: DatabaseSync, agent: AgentRecord): void {
     ON CONFLICT (name) DO UPDATE SET harness = excluded.harness,
       harness_version = excluded.harness_version, last_seen = excluded.last_seen`;
   db.prepare(sql).run(agent);
+}
+
+// The profile an agent declared, and whether it declared it in its current session.
+export type DeclaredProfile = { profile: Profile; confirmed: boolean };
+
+export function findProfile(db: DatabaseSync, agent: string): DeclaredProfile | undefined {
+  const sql = 'SELECT profile, profile_confirmed FROM agents WHERE name = ?';
+  const row = db.prepare(sql).get(agent) as
+    | { profile: string | null; profile_confirmed: number }
+    | undefined;
+  if (!row?.profile) return undefined;
+  return { profile: JSON.parse(row.profile) as Profile, confirmed: row.profile_confirmed === 1 };
+}
+
+// Sets the agent's profile, confirmed or not for its session. Returns whether it changed; each
+// change is kept in agent_profiles.
+export function saveProfile(
+  db: DatabaseSync,
+  agent: string,
+  profile: Profile,
+  { at, channel, confirmed }: { at: string; channel: string; confirmed: boolean },
+): boolean {
+  const { harness, model, effort } = profile;
+  const json = JSON.stringify({ harness, model, effort });
+  const before = db.prepare('SELECT profile FROM agents WHERE name = ?').get(agent) as
+    | { profile: string | null }
+    | undefined;
+  const sql = `INSERT INTO agents (name, last_seen, profile, profile_confirmed)
+    VALUES (:agent, :at, :json, :confirmed)
+    ON CONFLICT (name) DO UPDATE SET profile = excluded.profile,
+      profile_confirmed = excluded.profile_confirmed`;
+  db.prepare(sql).run({ agent, at, json, confirmed: confirmed ? 1 : 0 });
+  if (before?.profile === json) return false;
+  const insert = 'INSERT INTO agent_profiles (agent, profile, at, channel) VALUES (?, ?, ?, ?)';
+  db.prepare(insert).run(agent, json, at, channel);
+  return true;
+}
+
+// A new session of the agent: its profile stands unconfirmed until it declares it again.
+export function unconfirmProfile(db: DatabaseSync, agent: string): void {
+  const sql = 'UPDATE agents SET profile_confirmed = 0 WHERE name = ? AND profile_confirmed = 1';
+  db.prepare(sql).run(agent);
+}
+
+export type ProfileChange = { profile: ProfileView; at: string; channel: string };
+
+// Every profile the agent declared, oldest first.
+export function selectProfileChanges(db: DatabaseSync, agent: string): ProfileChange[] {
+  const sql = 'SELECT profile, at, channel FROM agent_profiles WHERE agent = ? ORDER BY id';
+  const rows = db.prepare(sql).all(agent) as { profile: string; at: string; channel: string }[];
+  return rows.map(({ profile, at, channel }) => ({
+    profile: profileView(JSON.parse(profile) as Profile),
+    at,
+    channel,
+  }));
 }
 
 // What `otea next` last offered an agent: the item, the state it was in, and when.

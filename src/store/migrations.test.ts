@@ -40,14 +40,14 @@ describe('migrate', () => {
         'offers',
       ]),
     );
-    expect(userVersion(db)).toBe(14);
+    expect(userVersion(db)).toBe(15);
   });
 
   it('is idempotent', () => {
     migrate(db);
     migrate(db);
 
-    expect(userVersion(db)).toBe(14);
+    expect(userVersion(db)).toBe(15);
   });
 
   describe('from version 1', () => {
@@ -217,7 +217,8 @@ describe('migrate', () => {
     });
 
     it('starts the presence of agents that already wrote from their last event, never the human', () => {
-      expect(db.prepare('SELECT * FROM agents ORDER BY name').all()).toEqual([
+      const sql = 'SELECT name, harness, harness_version, last_seen FROM agents ORDER BY name';
+      expect(db.prepare(sql).all()).toEqual([
         { name: 'claude', harness: null, harness_version: null, last_seen: 't3' },
         { name: 'codex', harness: null, harness_version: null, last_seen: 't2' },
       ]);

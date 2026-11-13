@@ -5,7 +5,14 @@ import { getDefaultEnvironment, StdioClientTransport } from '@modelcontextprotoc
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { listAgents } from '../app/presence.ts';
 import { openProject } from '../app/project.ts';
-import { type Cli, cliAt, presetCollection, tempGitRepo, until } from './testing.ts';
+import {
+  type Cli,
+  cliAt,
+  declareProfiles,
+  presetCollection,
+  tempGitRepo,
+  until,
+} from './testing.ts';
 
 const MAIN = fileURLToPath(new URL('./main.ts', import.meta.url));
 const ARGS = ['--disable-warning=ExperimentalWarning', MAIN, 'mcp'];
@@ -18,6 +25,7 @@ describe('mcp', () => {
     repo = tempGitRepo();
     otea = cliAt(repo.dir, { OTEA_AGENT: 'claude' });
     await otea('init', '--local');
+    declareProfiles(repo.dir, 'claude', 'claude-a', 'claude-b', 'codex', 'gemini', 'quill');
     presetCollection(repo.dir, 'tasks');
     await otea('create', '--collection', 'tasks', '--title', 'Docs', '--description', 'For v1');
   });

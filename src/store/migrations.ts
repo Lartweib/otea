@@ -204,6 +204,30 @@ const MIGRATIONS = [
     at TEXT NOT NULL
   );
   `,
+  // The profile each agent declares (otea profile): its harness, model and effort as JSON, and
+  // whether it was declared in the agent's current session. Every event an agent writes keeps the
+  // profile it had then; every change is kept in agent_profiles, append-only.
+  `
+  ALTER TABLE agents ADD COLUMN profile TEXT;
+  ALTER TABLE agents ADD COLUMN profile_confirmed INTEGER NOT NULL DEFAULT 0;
+  ALTER TABLE events ADD COLUMN profile TEXT;
+
+  CREATE TABLE agent_profiles (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    agent TEXT NOT NULL,
+    profile TEXT NOT NULL,
+    at TEXT NOT NULL,
+    channel TEXT NOT NULL
+  );
+
+  CREATE INDEX agent_profiles_agent ON agent_profiles (agent);
+
+  CREATE TRIGGER agent_profiles_no_update BEFORE UPDATE ON agent_profiles
+  BEGIN SELECT RAISE(ABORT, 'profile changes are append-only'); END;
+
+  CREATE TRIGGER agent_profiles_no_delete BEFORE DELETE ON agent_profiles
+  BEGIN SELECT RAISE(ABORT, 'profile changes are append-only'); END;
+  `,
 ];
 
 function userVersion(db: DatabaseSync): number {

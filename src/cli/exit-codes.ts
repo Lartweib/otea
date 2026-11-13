@@ -65,6 +65,9 @@ export const EXIT_CODES: Readonly<Record<'ok' | FailureCode, number>> = {
   invalid_board: 9,
   not_publishable: 9,
   invalid_gate: 2,
+  invalid_profile: 2,
+  // No profile declared, or not declared again in this session: otea profile says how.
+  profile_required: 2,
   board_conflict: 4,
   // 128 + SIGINT, as shells report a command stopped by Ctrl+C.
   interrupted: 130,

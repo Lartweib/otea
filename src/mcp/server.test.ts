@@ -5,7 +5,7 @@ import { liveBoardOf } from '../app/next.ts';
 import { listAgents } from '../app/presence.ts';
 import { openProject } from '../app/project.ts';
 import { COMMANDS } from '../cli/commands.ts';
-import { type Cli, cliAt, presetCollection, tempGitRepo } from '../cli/testing.ts';
+import { type Cli, cliAt, declareProfiles, presetCollection, tempGitRepo } from '../cli/testing.ts';
 import type { Actor } from '../core/item.ts';
 import {
   AGENT_COMMANDS,
@@ -48,6 +48,7 @@ describe('mcp server', () => {
     repo = tempGitRepo();
     otea = cliAt(repo.dir, { OTEA_AGENT: 'claude' });
     await otea('init', '--local');
+    declareProfiles(repo.dir, 'claude');
     presetCollection(repo.dir, 'tasks');
     await otea('create', '--collection', 'tasks', '--title', 'Docs', '--description', 'For v1');
     await otea('create', '--collection', 'tasks', '--title', 'Vague');
@@ -112,15 +113,21 @@ describe('mcp server', () => {
       expect(reply.content[0]?.text).toBe(await cliError('board', 'nope'));
     });
 
-    it('answers next as otea next --json does', async () => {
+    it('answers next as otea next --json does, once the agent declared its profile', async () => {
+      await data('profile', { model: 'claude-opus-5-5', effort: 'high' });
       const next = await data('next');
 
-      expect(next).toEqual(await json('next'));
+      // The last line says how to update the profile on each surface.
+      const { text, ...rest } = await json('next');
+      expect(next).toEqual({ ...rest, text: expect.any(String) });
+      expect(next.text.split('\n').slice(0, -1)).toEqual(text.split('\n').slice(0, -1));
+      expect(next.text).toContain('update it: the profile tool with as "claude", model <id>');
       expect(next).toMatchObject({ item: 'TASKS-1', collection: 'tasks' });
       expect(next.text).toContain('Your turn: do this step.');
     });
 
     it('reads a board published while it runs on its next call, without a restart', async () => {
+      await data('profile', { model: 'claude-opus-5-5', effort: 'high' });
       expect((await data('next')).text).toContain('Hacerlo, round 1');
       const project = openProject(repo.dir);
       try {
@@ -396,12 +403,14 @@ describe('mcp server', () => {
     const error = (reply: Reply) => JSON.parse(reply.content[0]?.text ?? '').error;
 
     it('acts as the agent a call names with as, over the name the server was started with', async () => {
+      declareProfiles(repo.dir, 'claude-b');
       const claimed = await data('claim', { id: 'TASKS-1', as: 'claude-b' });
 
       expect(claimed.lease.holder).toBe('claude-b');
     });
 
     it('keeps two subagents on one server apart: one cannot take what the other holds', async () => {
+      declareProfiles(repo.dir, 'scout', 'fixer');
       await data('claim', { id: 'TASKS-1', as: 'scout' });
       const reply = await call('claim', { id: 'TASKS-1', as: 'fixer' });
 
@@ -410,6 +419,7 @@ describe('mcp server', () => {
     });
 
     it('refuses a call that names nobody on a server started without a name', async () => {
+      declareProfiles(repo.dir, 'scout');
       const bare = await connect(repo.dir);
       try {
         const reply = await call('claim', { id: 'TASKS-1' }, bare);

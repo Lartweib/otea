@@ -3,7 +3,7 @@ import { Client, InMemoryTransport } from '@modelcontextprotocol/client';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createMcpServer } from '../mcp/server.ts';
 import { COMMANDS } from './commands.ts';
-import { type Cli, cliAt, presetCollection, tempGitRepo } from './testing.ts';
+import { type Cli, cliAt, declareProfiles, presetCollection, tempGitRepo } from './testing.ts';
 
 // What an agent reads back costs tokens on every call, so each operation has a budget per surface:
 // the CLI text, the CLI --json and the MCP tool result. Tokens are estimated as characters / 4,
@@ -24,7 +24,8 @@ const BUDGETS: Readonly<Record<string, Sizes>> = {
   // One row per item; measured with that bug alone. Raised with show, for the same names.
   list: { text: 25, json: 285, mcp: 285 },
   // Raised when otea board began with Otea's agent guide (instructions below): read once a session.
-  'board index': { text: 255, json: 53, mcp: 53 },
+  // Raised again with the guide's line on declaring the profile (otea profile).
+  'board index': { text: 300, json: 53, mcp: 53 },
   // The bug board's own words and each step's instructions, read once per session; show's Next:
   // block covers the step at hand. Raised when a preset collection read as a board kept its
   // playbook as the board's text: what agents read on the preset, as before.
@@ -43,8 +44,9 @@ const BUDGETS: Readonly<Record<string, Sizes>> = {
   // the call, so subagents sharing one server keep their own leases.
   tools: { mcp: 3230 },
   // Otea's agent guide, the server's instructions: in every MCP agent's context from the start, so
-  // it buys only what agents keep getting wrong. Measured at 203.
-  instructions: { mcp: 225 },
+  // it buys only what agents keep getting wrong. Measured at 203. Raised to 270 for the line on
+  // declaring the profile every agent and subagent must keep current (measured at 246).
+  instructions: { mcp: 270 },
 };
 
 // A bug as an agent files it in the bug-triage preset, every field filled.
@@ -119,6 +121,7 @@ describe('token budget', () => {
     repo.write('test.log', 'PASS 12 tests\n');
     otea = cliAt(repo.dir, { OTEA_AGENT: 'claude' });
     await ok('init', '--template', 'none');
+    declareProfiles(repo.dir, 'claude');
     presetCollection(repo.dir, 'bugs', 'bug-triage');
     const server = createMcpServer(COMMANDS, { cwd: repo.dir, agent: 'claude', warn: () => {} });
     client = new Client({ name: 'test', version: '0' });

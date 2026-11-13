@@ -43,7 +43,9 @@ export type ErrorCode =
   | 'invalid_board'
   | 'board_conflict'
   | 'not_publishable'
-  | 'invalid_gate';
+  | 'invalid_gate'
+  | 'invalid_profile'
+  | 'profile_required';
 
 // `details`: what the refusal says, as data, for the web UI to word it in its own language; the
 // message is the English agents and the CLI read.

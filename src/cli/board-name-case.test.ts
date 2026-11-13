@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { type Cli, cliAt, tempGitRepo } from './testing.ts';
+import { type Cli, cliAt, declareProfiles, tempGitRepo } from './testing.ts';
 
 // A board is named in any case wherever a command takes one, as its steps and fields are (list
 // --state/--field) and as its name is unique whatever its case: `tareas` is Tareas.
@@ -13,6 +13,7 @@ describe('a board named in another case', () => {
     repo = tempGitRepo();
     otea = cliAt(repo.dir, { OTEA_AGENT: 'claude' });
     await otea('init');
+    declareProfiles(repo.dir, 'claude', 'claude-a', 'claude-b', 'codex', 'gemini', 'quill');
     await otea('create', '--collection', 'Tareas', '--title', 'Docs', '--description', 'D');
   });
 

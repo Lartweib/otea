@@ -5,6 +5,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { addCollection } from '../app/collections.ts';
 import { openProject } from '../app/project.ts';
+import { saveProfile } from '../store/queries.ts';
 import type { Opener } from './opener.ts';
 import { run } from './run.ts';
 
@@ -122,6 +123,21 @@ export function presetCollection(cwd: string, name: string, preset = 'tasks'): v
   const project = openProject(cwd);
   try {
     addCollection(project, { name, preset });
+  } finally {
+    project.db.close();
+  }
+}
+
+// Agents with a declared profile, confirmed for their session, as `otea profile` leaves them: next
+// and claim need one. Run after init.
+export function declareProfiles(dir: string, ...agents: string[]): void {
+  const project = openProject(dir);
+  try {
+    const profile = { harness: 'claude-code', model: 'claude-opus-5-5', effort: 'high' };
+    const at = new Date().toISOString();
+    for (const agent of agents) {
+      saveProfile(project.db, agent, profile, { at, channel: 'cli', confirmed: true });
+    }
   } finally {
     project.db.close();
   }
