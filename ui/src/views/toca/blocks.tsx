@@ -14,6 +14,7 @@ import {
 import { whenText } from '../../derive/when.ts';
 import { language, type PlainKey, t, tx } from '../../i18n/i18n.ts';
 import { Icon } from '../../kit/Icon.tsx';
+import { AgentMark } from '../../kit/Marks.tsx';
 import { laneOf } from '../../lanes/geometry.ts';
 import type { Universe } from '../../lanes/handoff.ts';
 import type { LaneBlock } from '../../lanes/LaneList.tsx';
@@ -21,6 +22,7 @@ import { lookOf } from '../../lanes/looks.ts';
 import { stateWord } from '../../preset-words.ts';
 import { roundsOf } from '../../rounds.ts';
 import type { Item, TypeView } from '../../types.ts';
+import { deliveryOf, evidenceWords, quietLine } from './phone.ts';
 import { spanText } from './words.ts';
 
 // The blocks of Te toca and Atasco (SPEC §8.1, mock:1694-1804): the sections in order, each with
@@ -167,17 +169,22 @@ function TocaRow({
   sec,
   app,
   ctx,
+  phone = false,
 }: {
   it: Item;
   sec: TocaSection;
   app: TocaApp;
   ctx: TocaContext;
+  phone?: boolean;
 }) {
   const when = whenText(it, app.now);
   const type = ctx.types(it);
   const call = rowCall(it, sec, ctx);
   const stuck = sec === 'atasco' && it.expiredLease;
   const round = stuck ? 0 : roundOf(it, app.feed, type);
+  // On the phone a review says what the agent delivered: its note and how much evidence.
+  const delivered = phone && sec === 'revisiones' ? deliveryOf(it, app.feed) : null;
+  const files = delivered ? evidenceWords(delivered.images, delivered.files) : '';
   return (
     <>
       <div className="main-c">
@@ -210,6 +217,16 @@ function TocaRow({
             </span>
           ) : null}
         </div>
+        {delivered && (delivered.note || files) ? (
+          <div className="p-said" data-leaf="">
+            <AgentMark name={delivered.agent} />
+            <span>
+              {delivered.note ? <q>{delivered.note}</q> : null}
+              {delivered.note && files ? ' · ' : null}
+              {files}
+            </span>
+          </div>
+        ) : null}
       </div>
       <div className={sec === 'atasco' ? 'a warn' : 'a'} data-leaf="">
         {call.act}
@@ -226,11 +243,44 @@ function TocaRow({
   );
 }
 
+// Your sections: on the phone, the empty ones join one line instead of each saying it is empty.
+const YOURS: readonly TocaSection[] = ['atasco', 'preguntas', 'revisiones', 'propios'];
+
+// phone (mobile mock 1): only what is yours on top, the empty ones in one italic line, En camino
+// folded in one line until it is opened, no Cerrados.
+export type TocaPhone = { encamino: boolean; onFold: () => void };
+
+function FoldLine({ rows, ctx, o }: { rows: Item[]; ctx: TocaContext; o: TocaPhone }) {
+  const first = rows[0];
+  if (!first) return null;
+  const who = agentOf(first, ctx.feed);
+  return (
+    <button
+      type="button"
+      className="p-fold"
+      aria-expanded={o.encamino}
+      onClick={(e) => {
+        e.stopPropagation();
+        o.onFold();
+      }}
+    >
+      <span className="sum">
+        {who ? <AgentMark name={who} decorative /> : null}
+        {rows.length > 1
+          ? t('phone.fold.more', { title: first.title, n: rows.length - 1 })
+          : first.title}
+      </span>
+      <Icon name="chevron" />
+    </button>
+  );
+}
+
 export function tocaBlocks(
   app: TocaApp,
   atasco: boolean,
-  o: { onTriage?: () => void } = {},
+  o: { onTriage?: () => void; phone?: TocaPhone } = {},
 ): LaneBlock[] {
+  const phone = atasco ? undefined : o.phone;
   const ctx: TocaContext = {
     now: app.now,
     feed: app.feed,
@@ -244,8 +294,20 @@ export function tocaBlocks(
   }
   const blocks: LaneBlock[] = [];
   const at = (it: Item) => Date.parse(it.updatedAt);
+  const quiet: TocaSection[] = [];
+  const quietBlock = () => {
+    if (!quiet.length) return;
+    blocks.push({ kind: 'empty', key: 'quiet', content: quietLine(quiet) });
+    quiet.length = 0;
+  };
   for (const sec of TOCA_SECTIONS) {
     if (atasco && sec !== 'atasco') continue;
+    if (phone && sec === 'cerrados') continue;
+    if (phone && YOURS.includes(sec) && !by.get(sec)?.length) {
+      quiet.push(sec);
+      continue;
+    }
+    if (phone && !YOURS.includes(sec)) quietBlock();
     const rows =
       sec === 'cerrados'
         ? (by.get(sec) ?? []).sort((a, b) => at(b) - at(a)).slice(0, CLOSED_SHOWN)
@@ -283,7 +345,15 @@ export function tocaBlocks(
         key: `empty:${sec}`,
         content: t(`toca.empty.${sec}` as PlainKey),
       });
-    for (const it of rows) {
+    if (phone && sec === 'encamino' && rows.length)
+      blocks.push({
+        kind: 'other',
+        key: 'fold:encamino',
+        className: 'p-foldb',
+        content: <FoldLine rows={rows} ctx={ctx} o={phone} />,
+      });
+    const shown = phone && sec === 'encamino' && !phone.encamino ? [] : rows;
+    for (const it of shown) {
       blocks.push({
         kind: 'row',
         key: it.id,
@@ -291,9 +361,10 @@ export function tocaBlocks(
         look: lookOf(it, app.now),
         sec,
         selected: app.route.item === it.id,
-        content: <TocaRow it={it} sec={sec} app={app} ctx={ctx} />,
+        content: <TocaRow it={it} sec={sec} app={app} ctx={ctx} phone={!!phone} />,
       });
     }
   }
+  quietBlock();
   return blocks;
 }

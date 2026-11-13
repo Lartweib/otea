@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { typeOfItem, useApp } from '../../app/context.tsx';
 import { EmptyProject } from '../../components/EmptyProject.tsx';
 import { t } from '../../i18n/i18n.ts';
@@ -25,6 +26,10 @@ export function TocaView({ atasco = false }: { atasco?: boolean }) {
   const open = (id: string) => (app.route.item === id ? app.closeItem() : app.openItem(id));
   // No item on any board (every project has Pedidos, so never no board): the project's own page.
   const empty = app.items.status === 'ready' && !atasco && app.all.length === 0;
+  // On the phone En camino comes folded in one line.
+  const [encamino, setEncamino] = useState(false);
+  // On the phone the agents column is gone: the day's recap moves under the title.
+  const recap = app.phone && !atasco;
 
   let dekKey: string;
   let dek: React.ReactNode;
@@ -46,8 +51,10 @@ export function TocaView({ atasco = false }: { atasco?: boolean }) {
     );
   } else {
     const d = tocaDek(app.all, today.handed, app.now);
-    dekKey = d.lead + d.handed.before + d.handed.n;
-    dek = (
+    dekKey = d.lead + (recap ? '' : d.handed.before + d.handed.n);
+    dek = recap ? (
+      d.lead
+    ) : (
       <>
         {d.lead} {d.handed.before}
         {d.handed.n ? <em>{d.handed.n}</em> : null}
@@ -71,6 +78,15 @@ export function TocaView({ atasco = false }: { atasco?: boolean }) {
               {dek}
             </Swap>
           </div>
+          {recap ? (
+            <p className="p-recap" data-leaf="">
+              {t('toca.colophon', {
+                handed: String(today.handed),
+                approved: String(today.approved),
+                sent: String(today.sent),
+              })}
+            </p>
+          ) : null}
         </header>
         {empty ? (
           <EmptyProject />
@@ -79,7 +95,10 @@ export function TocaView({ atasco = false }: { atasco?: boolean }) {
             <LaneHead />
             <LaneList
               list={atasco ? 'atasco' : 'toca'}
-              blocks={tocaBlocks(app, atasco, { onTriage: () => app.go({ view: 'triage' }) })}
+              blocks={tocaBlocks(app, atasco, {
+                onTriage: () => app.go({ view: 'triage' }),
+                ...(app.phone ? { phone: { encamino, onFold: () => setEncamino((v) => !v) } } : {}),
+              })}
               universe={universeOf(app.all, app.now)}
               sink
               drawInOnMount
