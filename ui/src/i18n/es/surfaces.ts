@@ -8,39 +8,8 @@ export const surfaces = {
   'empty.waiting': { one: '{count} te espera', other: '{count} te esperan' },
   'empty.withAgents': { one: '{count} con un agente', other: '{count} con agentes' },
   'empty.nothingWaiting': 'Nada te espera',
-  'empty.noItems': 'Todavía no hay ítems',
   'empty.noItemsIn': 'Todavía no hay ítems en {collection}',
   'empty.newIn': 'Nuevo ítem en {collection}',
-
-  'emptyList.copy': 'copiar',
-  'emptyList.copied': 'copiado',
-  'emptyList.firstTitle': '¿Cómo debe funcionar este proyecto?',
-  'emptyList.firstBody':
-    'Elige un preset para tu primera colección. Trae los estados, de quién es el turno en cada uno y las instrucciones que lee tu agente.',
-  'emptyList.presetBugs': 'hallazgos, arreglos, evidencia',
-  'emptyList.presetTasks': 'trabajo simple, hecho o no',
-  'emptyList.presetChange': 'un cambio, planificado y entregado',
-  'emptyList.firstMake': 'Créala desde cualquier terminal en el repositorio:',
-  'emptyList.firstLater': 'Más adelante puedes añadir otras colecciones, con otros presets.',
-  'emptyList.firstConnect': 'Después conecta un agente:',
-  'emptyList.nothingIn': 'Todavía no hay nada en {collection}',
-  'emptyList.agentsFile':
-    'Los agentes registran aquí lo que encuentran, después de leer {command}. También puedes añadir uno tú.',
-  'emptyList.exampleTitle': 'Lo que encontraste',
-  'emptyList.orAsk': 'o pide a un agente que registre lo que encuentre',
-  'emptyList.zeroTitle': 'Nada en tu turno',
-  'emptyList.zeroBody': {
-    one: 'Los agentes están con {count} ítem. Cuando uno te necesite, llegará a tu carril.',
-    other: 'Los agentes están con {count} ítems. Cuando uno te necesite, llegará a tu carril.',
-  },
-  'emptyList.agentTitle': 'Conecta tu primer agente',
-  'emptyList.agentBody':
-    'Otea está escuchando. Un agente aparece la primera vez que llama, sin nada más que configurar.',
-  'emptyList.agentStep1': 'Añade Otea a tu agente',
-  'emptyList.agentStep2': 'Pídele que mire',
-  'emptyList.agentAsk': '«Revisa otea por si hay algo en tu turno y toma lo primero».',
-  'emptyList.agentStep3': 'Esperando su primera llamada',
-  'emptyList.agentWaits': 'El carril del agente sigue punteado hasta que alguien lo ocupa.',
 
   // Encargo: un traspaso en Markdown de los ítems elegidos en una cuadrícula
   'brief.open': 'encargo',
