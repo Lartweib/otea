@@ -322,6 +322,10 @@ class Shell {
   async open(dir: string, port?: number): Promise<void> {
     this.opening = basename(dir);
     this.pickerError = undefined;
+    // An empty window says what it is opening meanwhile.
+    if (!this.connection && !SMOKE) {
+      this.win.loadFile(join(import.meta.dirname, 'picker.html')).catch(() => {});
+    }
     try {
       const found = await connect(CLI, dir, port);
       // Already open: the server just started for it is not needed.
