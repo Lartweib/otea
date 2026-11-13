@@ -147,7 +147,7 @@ describe('relay of a decision on the agent’s own step', () => {
     repo = tempGitRepo();
     otea = cliAt(repo.dir, { OTEA_AGENT: 'claude' });
     await otea('init');
-    await otea('collection', 'add', 'tasks');
+    presetCollection(repo.dir, 'tasks');
     await otea('create', '--collection', 'tasks', '--title', 'Mine', '--description', 'D');
     await otea('handoff', 'TASKS-1');
   });
