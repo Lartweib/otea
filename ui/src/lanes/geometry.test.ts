@@ -53,6 +53,38 @@ describe('the lanes', () => {
     expect(p.lastOpen).toBe(76.5);
   });
 
+  it('runs the lanes past a closed row grouped above open ones and fuses below the last open row', () => {
+    // A list grouped by a field: closed rows sit inside the groups, among the open ones.
+    const p = laneParams(
+      [
+        row('A', 40, 'you', 'yours'),
+        row('B', 100, 'none', 'dropped'),
+        row('C', 200, 'ag', 'queued'),
+        row('D', 300, 'ag', 'queued'),
+        row('E', 400, 'none', 'dropped'),
+        row('F', 500, 'ag', 'queued'),
+      ],
+      600,
+      700,
+    );
+    expect(p.lastOpen).toBe(544);
+    expect(p.fuseAt).toBe(584.5);
+    expect(p.closed).toBe(false);
+    const after = laneParams(
+      [
+        row('A', 40, 'ag', 'queued'),
+        row('B', 100, 'none', 'done'),
+        row('C', 200, 'you', 'yours'),
+        row('D', 300, 'none', 'done'),
+      ],
+      400,
+      700,
+    );
+    expect(after.lastOpen).toBe(244);
+    expect(after.fuseAt).toBe(320.5);
+    expect(after.closed).toBe(true);
+  });
+
   it('fuses at the foot when nothing closed is listed, and lights nothing in Atasco but the stuck', () => {
     const p = laneParams([row('A', 0, 'ag', 'stuck')], 200, 600, true);
     expect(p.fuseAt).toBe(184.5);
