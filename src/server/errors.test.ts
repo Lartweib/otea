@@ -26,6 +26,14 @@ describe('errors', () => {
     });
   });
 
+  it('carries a refusal’s details beside its English message, for the UI to word it', () => {
+    const details = { kind: 'closed', item: 'BUG-1' } as const;
+    expect(toErrorResponse(new OteaError('item_closed', 'BUG-1 is done', details))).toEqual({
+      status: 409,
+      body: { error: { code: 'item_closed', message: 'BUG-1 is done', details } },
+    });
+  });
+
   it('describes an invalid query as 400', () => {
     expect(toErrorResponse(new InvalidQuery('Bad turn'))).toEqual({
       status: 400,

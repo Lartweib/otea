@@ -111,15 +111,23 @@ function sameLink(stored: Relation, next: Relation): boolean {
 // link per pair and kind, at most one parent, and no loop in parents or in blocks.
 export function assertCanRelate(existing: readonly Relation[], next: Relation): void {
   const { kind, from, to } = next;
-  if (from === to) throw new OteaError('self_relation', `${from} cannot be related to itself`);
+  if (from === to)
+    throw new OteaError('self_relation', `${from} cannot be related to itself`, {
+      kind: 'self_link',
+      item: from,
+    });
   const same = existing.find((stored) => sameLink(stored, next));
-  if (same) throw new OteaError('already_exists', `Already linked: ${describeRelation(same)}`);
+  if (same)
+    throw new OteaError('already_exists', `Already linked: ${describeRelation(same)}`, {
+      kind: 'already_linked',
+    });
   if (kind === 'parent') {
     const parent = existing.find((stored) => stored.kind === 'parent' && stored.from === from);
     if (parent) {
       throw new OteaError(
         'parent_exists',
         `${from} already has a parent, ${parent.to}; unlink it first (an item has at most one parent)`,
+        { kind: 'parent_exists', item: from, parent: parent.to },
       );
     }
   }
@@ -133,6 +141,7 @@ export function assertCanRelate(existing: readonly Relation[], next: Relation): 
     throw new OteaError(
       'relation_cycle',
       `${describeRelation(next)} would close a cycle: ${loop.map(describeRelation).join(', ')}`,
+      { kind: 'link_cycle' },
     );
   }
 }
@@ -214,6 +223,13 @@ export function assertChildrenClosed(
   throw new OteaError(
     'children_open',
     `${id} cannot move to "${to}" while ${open.length} of its ${children.length} children are open: ${listOpen(open)}`,
+    {
+      kind: 'links_open',
+      item: id,
+      links: 'children',
+      open: open.map((child) => child.id),
+      total: children.length,
+    },
   );
 }
 
@@ -230,5 +246,12 @@ export function assertBlockersClosed(
   throw new OteaError(
     'blockers_open',
     `${id} cannot move to "${to}" while ${open.length} of its ${blockers.length} blockers ${are} open: ${listOpen(open)}`,
+    {
+      kind: 'links_open',
+      item: id,
+      links: 'blockers',
+      open: open.map((blocker) => blocker.id),
+      total: blockers.length,
+    },
   );
 }

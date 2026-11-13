@@ -1,3 +1,5 @@
+import type { RefusalDetails } from './refusal.ts';
+
 export type ErrorCode =
   | 'invalid_transition'
   | 'not_undoable'
@@ -41,12 +43,16 @@ export type ErrorCode =
   | 'board_conflict'
   | 'not_publishable';
 
+// `details`: what the refusal says, as data, for the web UI to word it in its own language; the
+// message is the English agents and the CLI read.
 export class OteaError extends Error {
   readonly code: ErrorCode;
+  readonly details: RefusalDetails | undefined;
 
-  constructor(code: ErrorCode, message: string) {
+  constructor(code: ErrorCode, message: string, details?: RefusalDetails) {
     super(message);
     this.name = 'OteaError';
     this.code = code;
+    this.details = details;
   }
 }

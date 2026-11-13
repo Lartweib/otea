@@ -1,5 +1,5 @@
 import { OteaError } from './errors.ts';
-import type { FieldSpec, Shape } from './preset.ts';
+import type { FieldSpec, Labels, Shape } from './preset.ts';
 import { turnOf } from './workflow.ts';
 
 export type FieldValues = Record<string, string>;
@@ -93,7 +93,7 @@ export function missingToComplete(preset: Shape, fields: Record<string, unknown>
 }
 
 export function assertCanLeave(
-  preset: Shape,
+  preset: Shape & { labels?: Labels },
   from: string,
   to: string,
   fields: Record<string, unknown>,
@@ -105,6 +105,16 @@ export function assertCanLeave(
   throw new OteaError(
     'missing_fields',
     `Cannot move from "${from}" to "${to}" while fields required to complete are missing: ${missing.join(', ')}`,
+    {
+      kind: 'fields_missing',
+      fields: missing.map((key) => {
+        const said = Object.entries(preset.labels ?? {}).flatMap(([language, words]) => {
+          const label = words.fields[key];
+          return label === undefined ? [] : [[language, label] as const];
+        });
+        return said.length === 0 ? { key } : { key, labels: Object.fromEntries(said) };
+      }),
+    },
   );
 }
 

@@ -424,7 +424,11 @@ types:
 
       expect(response.status).toBe(404);
       expect(await response.json()).toEqual({
-        error: { code: 'not_found', message: 'Item "TASKS-9" not found' },
+        error: {
+          code: 'not_found',
+          message: 'Item "TASKS-9" not found',
+          details: { kind: 'item_missing', item: 'TASKS-9' },
+        },
       });
     });
   });

@@ -80,5 +80,8 @@ export function transitionsBetween(workflow: Workflow, from: string, to: string)
 export function assertTransition(workflow: Workflow, from: string, to: string): Transition[] {
   const transitions = transitionsBetween(workflow, from, to);
   if (transitions.length > 0) return transitions;
-  throw new OteaError('invalid_transition', `Cannot move from "${from}" to "${to}"`);
+  throw new OteaError('invalid_transition', `Cannot move from "${from}" to "${to}"`, {
+    kind: 'move',
+    why: 'no_move',
+  });
 }

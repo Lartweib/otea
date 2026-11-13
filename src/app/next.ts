@@ -435,10 +435,13 @@ function wayOf(
   if (way === undefined || isClosed(position)) return undefined;
   const target = wayByName(def, position.step, way);
   if (target === undefined) {
-    throw new OteaError(
-      'invalid_transition',
-      `${id} has no way "${way}" from ${stepById(def, position.step)?.name ?? position.step}`,
-    );
+    const step = stepById(def, position.step)?.name ?? position.step;
+    throw new OteaError('invalid_transition', `${id} has no way "${way}" from ${step}`, {
+      kind: 'no_way',
+      item: id,
+      way,
+      step,
+    });
   }
   return target;
 }
@@ -454,30 +457,57 @@ function refuse(
   item: ItemRecord,
   result: Exclude<MoveResult, { ok: true }>,
 ): never {
-  if (result.code === 'missing')
-    throw new OteaError(refusalCode(result.missing), refusalText(item.id, result.missing));
-  if (result.code === 'reason_required') throw new OteaError('reason_required', NOT_TAKEN_BACK);
+  if (result.code === 'missing') refuseHandoff(item.id, result.missing);
+  if (result.code === 'reason_required')
+    throw new OteaError('reason_required', NOT_TAKEN_BACK, {
+      kind: 'way_back_reason',
+      item: item.id,
+    });
   if (result.code === 'bad_way')
-    throw new OteaError('invalid_transition', `${item.id} cannot go that way from here`);
+    throw new OteaError('invalid_transition', `${item.id} cannot go that way from here`, {
+      kind: 'no_way',
+      item: item.id,
+    });
   if (result.code === 'not_yours') {
     const position = positionOf(item.state);
     const step = isClosed(position) ? undefined : stepById(def, position.step);
-    const who = step && isAgent(step.doer) ? step.doer.agent : 'the person';
+    const agent = step && isAgent(step.doer) ? step.doer.agent : undefined;
     throw new OteaError(
       'forbidden',
-      `Not your turn: ${who} does ${step?.name ?? 'this step'} on ${item.id}`,
+      `Not your turn: ${agent ?? 'the person'} does ${step?.name ?? 'this step'} on ${item.id}`,
+      {
+        kind: 'not_your_turn',
+        item: item.id,
+        review: false,
+        ...(step ? { step: step.name } : {}),
+        ...(agent === undefined ? {} : { who: agent }),
+      },
     );
   }
   throw new OteaError(
     'invalid_transition',
     `${item.id} ${PHASE_WORDS[result.code] ?? result.code}`,
+    { kind: 'not_here', item: item.id, why: result.code },
   );
+}
+
+// A handoff that lacks what its step asks for, or whose waits do not hold.
+function refuseHandoff(id: string, missing: Missing[]): never {
+  throw new OteaError(refusalCode(missing), refusalText(id, missing), {
+    kind: 'handoff',
+    item: id,
+    missing,
+  });
 }
 
 // An approval whose waits no longer hold (a part reopened, a blocker added during the review).
 function refuseApproval(item: ItemRecord, result: Exclude<MoveResult, { ok: true }>): never {
   if (result.code !== 'missing') throw new Error('not an approval refusal');
-  throw new OteaError(refusalCode(result.missing), approvalRefusalText(item.id, result.missing));
+  throw new OteaError(refusalCode(result.missing), approvalRefusalText(item.id, result.missing), {
+    kind: 'approval',
+    item: item.id,
+    missing: result.missing,
+  });
 }
 
 // Whether the performer reviews the item now: the step's agent reviewer, or the person for their
@@ -489,10 +519,17 @@ function assertReviewer(def: BoardDefinition, item: ItemRecord, actor: Actor): v
   if (actor.kind === 'human') return;
   if (turn.who === 'agent' && (turn.agent === undefined || turn.agent === actor.name)) return;
   const step = stepById(def, position.step);
-  const who = turn.who === 'agent' && turn.agent ? turn.agent : 'the person';
+  const agent = turn.who === 'agent' && turn.agent ? turn.agent : undefined;
   throw new OteaError(
     'forbidden',
-    `Not your turn: ${who} reviews ${step?.name ?? 'this step'} on ${item.id}`,
+    `Not your turn: ${agent ?? 'the person'} reviews ${step?.name ?? 'this step'} on ${item.id}`,
+    {
+      kind: 'not_your_turn',
+      item: item.id,
+      review: true,
+      ...(step ? { step: step.name } : {}),
+      ...(agent === undefined ? {} : { who: agent }),
+    },
   );
 }
 
@@ -591,6 +628,7 @@ export function sendBackItem(
     throw new OteaError(
       'reason_required',
       `Sending ${input.id} back needs a reason: what to change`,
+      { kind: 'send_back_reason', item: input.id },
     );
   return transaction(ctx.db, () => {
     const item = requireItem(ctx.db, input.id);
@@ -644,7 +682,13 @@ function dropTarget(board: LiveBoard, item: ItemRecord, input: Omit<DropInput, '
     ...(motive === undefined ? {} : { motive }),
   });
   if (!result.ok)
-    throw new OteaError(DROP_CODES[result.code], dropRefusalText(board.def, item.id, result.code));
+    throw new OteaError(DROP_CODES[result.code], dropRefusalText(board.def, item.id, result.code), {
+      kind: 'drop',
+      item: item.id,
+      board: board.def.name,
+      why: result.code,
+      motives: board.def.drop.motives.map(({ name }) => name),
+    });
   return result.to;
 }
 
@@ -792,8 +836,7 @@ export function assertMoveHandsOff(
   if (!intoReview && !along) return note;
   const facts = note === undefined ? on.facts : { ...on.facts, note };
   const check = handoffCheck(board.def, step.id, facts);
-  if (!check.ok)
-    throw new OteaError(refusalCode(check.missing), refusalText(item.id, check.missing));
+  if (!check.ok) refuseHandoff(item.id, check.missing);
   return note;
 }
 
@@ -819,7 +862,12 @@ export function assertMayStandAlone(ctx: Context, collection: string, parent?: s
   const board = liveBoardOf(ctx, collection);
   if (!board || parent !== undefined) return;
   const owner = requiredParent(liveBoards(ctx), board.id);
-  if (owner) throw new OteaError('parent_required', parentRequiredText(board.def, owner.def));
+  if (owner)
+    throw new OteaError('parent_required', parentRequiredText(board.def, owner.def), {
+      kind: 'parent_required',
+      item: board.def.item,
+      parent: owner.def.item,
+    });
 }
 
 // Where a new item starts on the board a collection is on (undefined off a board): the first
@@ -885,6 +933,12 @@ export function assertBranchMayChange(
   throw new OteaError(
     'forbidden',
     `Not updated ${item.id}: its ${name} is frozen here; it can change only while ${pushers} is being done.`,
+    {
+      kind: 'frozen',
+      item: item.id,
+      part: name,
+      steps: branch.guard.push.map((id) => stepById(board.def, id)?.name ?? id),
+    },
   );
 }
 

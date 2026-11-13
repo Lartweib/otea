@@ -12,6 +12,7 @@ export function assertAgentName(name: string): void {
   throw new OteaError(
     'invalid_agent_name',
     `"${name}" cannot name an agent: use at most 24 lowercase letters, digits and single dashes, starting with a letter (not "you" or "human"), such as claude-b`,
+    { kind: 'agent_name', name },
   );
 }
 

@@ -87,15 +87,18 @@ function assertMayBePart(ctx: Context, from: ItemRecord, to: ItemRecord): void {
     throw new OteaError(
       'parent_type',
       parentTypeText(parent.def, into.def, from.id, child?.def.name ?? from.collection),
+      { kind: 'parent_board', item: from.id, parent: to.id, board: into.def.name },
     );
   if (parent && child)
     throw new OteaError(
       'parent_across_boards',
       partsAtHomeText(parent.def, to.id, from.id, child.def.name),
+      { kind: 'parent_board', item: from.id, parent: to.id, board: parent.def.name },
     );
   throw new OteaError(
     'parent_across_boards',
     `${from.id} (${from.collection}) cannot be a child of ${to.id} (${to.collection}): a parent lives in the same collection; link ${from.id} blocks ${to.id} to make ${to.id} wait, or ${from.id} implements ${to.id}`,
+    { kind: 'parent_board', item: from.id, parent: to.id },
   );
 }
 
@@ -117,6 +120,7 @@ export function addRelation(ctx: Context, given: Relation, who: Who, at: string)
       throw new OteaError(
         'item_closed',
         `${to.id} is ${to.state} (closed) and takes no open child; reopen it or link with relates`,
+        { kind: 'parent_closed', parent: to.id },
       );
     }
   }
@@ -149,7 +153,7 @@ export function unlinkItems(ctx: Context, input: LinkInput, now = systemClock): 
     );
     if (!stored) {
       const text = `${given.from} ${given.kind} ${given.to}`;
-      throw new OteaError('not_found', `No relation "${text}" to remove`);
+      throw new OteaError('not_found', `No relation "${text}" to remove`, { kind: 'no_link' });
     }
     const relation: Relation = { kind: stored.kind, from: stored.from, to: stored.to };
     deleteRelation(db, relation);
