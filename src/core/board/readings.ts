@@ -540,6 +540,7 @@ const EVIDENCE_KIND: Readonly<Record<string, Part['kind']>> = {
 // as optional evidence; open items go there, closed ones to Hecho or Descartado by their state.
 // `branch`: the field a preset's git gates matched on, kept as the protected branch (pushed while
 // the step is done, merged at Hecho), its repository read from `repo` when the items carry one.
+// `about`: the preset's playbooks, which become the board's words for agents.
 export function genericBoard(
   name: string,
   lang: Lang,
@@ -547,6 +548,7 @@ export function genericBoard(
   evidence: readonly { id: string; module: string }[],
   ids: IdSource = newId,
   branch?: { field: string; repo?: string },
+  about = '',
 ): BoardDefinition {
   const parts: BoardDefinition['parts'] = {};
   const humanize = (key: string) => {
@@ -605,7 +607,7 @@ export function genericBoard(
     anytime: Object.keys(parts).filter((id) => !evidenceIds.includes(id)),
     layout: { rounds: 'main' },
     row: [],
-    about: '',
+    about,
     idle: '',
     cap: { on: false, n: 3 },
     samples: [],

@@ -186,7 +186,7 @@ function readOne(
           .flatMap(({ module }) => (module ? [[module, { id: module, module }] as const] : [])),
       ).values(),
     ];
-    const def = checked(waits(genericBoard(collection.name, lang, fields, evidence, ids, branch)));
+    const def = checked(waits(genericBoard(collection.name, lang, fields, evidence, ids, branch, preset.playbookText)));
     if (!def) return false;
     const closes = (state: string) =>
       preset.workflow.states.find(({ name }) => name === state)?.closes;

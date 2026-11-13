@@ -10,7 +10,9 @@ export const OFFICIAL_PRESETS_DIR = fileURLToPath(new URL('../../presets/', impo
 
 export type PresetOrigin = 'official' | 'project';
 
-export type LoadedPreset = Preset & { origin: PresetOrigin };
+// `playbookText`: the text of the playbooks it points to (its own, then its types'), which becomes the
+// board's words for agents when its collection is read as a board.
+export type LoadedPreset = Preset & { origin: PresetOrigin; playbookText?: string };
 
 // `path` is the file the problem is in. A note (a warning or an info note) also carries its code,
 // level and `at`, its place in the preset.
@@ -113,7 +115,15 @@ function loadOne(dir: string, name: string, origin: PresetOrigin): Loaded {
       message,
     }),
   );
-  return { preset: { ...preset, origin }, problems, warnings };
+  const playbookText = Object.values(playbookTexts(join(dir, name), preset))
+    .map((text) => text.trim())
+    .filter((text) => text !== '')
+    .join('\n\n');
+  return {
+    preset: { ...preset, origin, ...(playbookText === '' ? {} : { playbookText }) },
+    problems,
+    warnings,
+  };
 }
 
 export function loadPresets(dataDir?: string, officialDir = OFFICIAL_PRESETS_DIR): PresetCatalog {
