@@ -151,6 +151,8 @@ function said(details: RefusalDetails): string | undefined {
       };
       return details.review ? t('refusal.notYourReview', words) : t('refusal.notYourTurn', words);
     }
+    case 'own_step':
+      return t('refusal.ownStep', { who: details.who, item: details.item, step: details.step });
     case 'frozen':
       return t('refusal.frozen', {
         item: details.item,

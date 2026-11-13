@@ -110,6 +110,7 @@ Each action or field in a preset declares who may perform it:
 - An agent may relay a decision only after the human explicitly approved it. This is enforced in two layers:
   - **Playbook**: relaying requires an explicit human approval in the conversation, quoted in the record.
   - **Harness**: relaying is a dedicated MCP tool / CLI command, separate from every other write, so the harness permission system can require human confirmation on each call. That confirmation prompt is the hard gate.
+- An agent may not relay a decision on its own work: once it handed off the item's step in the current round, Otea refuses every relay of that item by it (`forbidden`). The human makes that decision in the web UI.
 - Otea cannot see the conversation, so it cannot prove a relayed decision was really made by the human. Presets choose `human-ui` wherever that matters. Defaults are conservative: approval of an agent's own deliverable is `human-ui` unless the preset relaxes it explicitly.
 
 ## 7. Core invariants

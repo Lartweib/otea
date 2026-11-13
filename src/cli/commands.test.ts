@@ -577,7 +577,19 @@ describe('commands', () => {
           expect(code).toBe(2);
           expect(err).toContain('Moving from "todo__review" to "todo" requires a reason');
           expect(
-            (await otea('relay', 'BUGS-1', 'todo', '--quote', 'redo', '--reason', 'Redo')).code,
+            (
+              await otea(
+                'relay',
+                'BUGS-1',
+                'todo',
+                '--quote',
+                'redo',
+                '--reason',
+                'R',
+                '--as',
+                'codex',
+              )
+            ).code,
           ).toBe(0);
         });
 

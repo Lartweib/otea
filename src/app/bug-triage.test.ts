@@ -45,13 +45,13 @@ describe('bug-triage preset', () => {
     reason?: string,
   ) => moveItem(ctx, { id, to, actor, channel, ...(reason ? { reason } : {}) }, at);
   const triage = (id: string, to: string, reason?: string) => move(id, to, human, 'ui', reason);
-  const relay = (id: string, to: string, reason?: string) =>
+  const relay = (id: string, to: string, reason?: string, via = 'claude') =>
     relayDecision(
       ctx,
       {
         id,
         to,
-        via: 'claude',
+        via,
         channel: 'cli',
         quote: 'Yes, go ahead',
         ...(reason ? { reason } : {}),
@@ -210,7 +210,11 @@ describe('bug-triage preset', () => {
     move(accepted, 'verify', claude, 'cli', 'Commit abc123');
 
     expect(() => relay(accepted, 'fixed')).toThrow(expect.objectContaining({ code: 'forbidden' }));
-    expect(relay(accepted, 'fixing', 'Still broken')).toMatchObject({ state: 'fixing' });
+    // claude fixed it, so another agent relays the send-back.
+    expect(() => relay(accepted, 'fixing', 'Still broken')).toThrow(
+      expect.objectContaining({ code: 'forbidden' }),
+    );
+    expect(relay(accepted, 'fixing', 'Still broken', 'codex')).toMatchObject({ state: 'fixing' });
   });
 
   it('lists the relayable decisions of a reported bug and of one in verify', () => {

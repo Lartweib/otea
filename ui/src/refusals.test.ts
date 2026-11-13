@@ -152,6 +152,23 @@ describe('a refusal from the server', () => {
     }
   });
 
+  it('says an agent may not relay the decision on a step it did itself, in es and en', () => {
+    const own = refused('forbidden', 'English', {
+      kind: 'own_step',
+      item: 'CAM-3',
+      step: 'Implementar',
+      who: 'claude',
+    });
+    setLanguage('es');
+    expect(serverMessage(own, 403)).toBe(
+      'claude no puede transmitir la decisión sobre CAM-3: hizo Implementar en esta ronda. La decides tú.',
+    );
+    setLanguage('en');
+    expect(serverMessage(own, 403)).toBe(
+      'claude may not relay the decision on CAM-3: it did Implementar in this round. You make it.',
+    );
+  });
+
   it('words a known code without details, and shows an unknown one as it came', () => {
     setLanguage('es');
     expect(serverMessage(refused('unexpected', 'Unexpected error'), 500)).toBe(

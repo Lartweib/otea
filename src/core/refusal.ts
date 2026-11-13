@@ -19,6 +19,8 @@ export type RefusalDetails =
   | { kind: 'not_here'; item: string; why: 'not_doing' | 'not_review' | 'unknown_step' }
   // Not this performer's turn: `who` is an agent's name, or undefined for the person.
   | { kind: 'not_your_turn'; item: string; step?: string; who?: string; review: boolean }
+  // A relay of a human decision on a step the relaying agent (`who`) did itself in this round.
+  | { kind: 'own_step'; item: string; step: string; who: string }
   // A discard the board does not take.
   | {
       kind: 'drop';

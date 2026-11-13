@@ -17,7 +17,8 @@ describe('relay', () => {
     await otea('collection', 'add', 'tasks');
     await otea('create', '--collection', 'tasks', '--title', 'Old flow', '--description', 'D');
     await otea('create', '--collection', 'tasks', '--title', 'Held', '--description', 'D');
-    await otea('handoff', 'TASKS-1');
+    // Another agent did the step: an agent relays only decisions on work it did not do itself.
+    await otea('handoff', 'TASKS-1', '--as', 'codex');
   });
 
   afterEach(() => repo.remove());
@@ -51,10 +52,10 @@ describe('relay', () => {
       '--reason',
       'Gone',
       '--as',
-      'codex',
+      'gemini',
     );
 
-    expect((await json('show', 'TASKS-1')).events.at(-1).data.via).toBe('codex');
+    expect((await json('show', 'TASKS-1')).events.at(-1).data.via).toBe('gemini');
   });
 
   it('shows the relay and the quote in the timeline of show', async () => {
@@ -133,6 +134,68 @@ describe('relay', () => {
       actor: { kind: 'human', name: 'human' },
       data: { holder: 'codex', cause: 'handoff', via: 'claude' },
     });
+  });
+});
+
+describe('relay of a decision on the agent’s own step', () => {
+  let repo: ReturnType<typeof tempGitRepo>;
+  let otea: Cli;
+
+  const json = async (...argv: string[]) => JSON.parse((await otea(...argv, '--json')).out);
+
+  beforeEach(async () => {
+    repo = tempGitRepo();
+    otea = cliAt(repo.dir, { OTEA_AGENT: 'claude' });
+    await otea('init');
+    await otea('collection', 'add', 'tasks');
+    await otea('create', '--collection', 'tasks', '--title', 'Mine', '--description', 'D');
+    await otea('handoff', 'TASKS-1');
+  });
+
+  afterEach(() => repo.remove());
+
+  it('refuses it with forbidden (exit 7) and leaves the item in review', async () => {
+    const { code, err } = await otea(
+      'relay',
+      'TASKS-1',
+      'todo',
+      '--quote',
+      'dale',
+      '--reason',
+      'Redo',
+      '--json',
+    );
+
+    expect(code).toBe(7);
+    expect(JSON.parse(err).error).toEqual({
+      code: 'forbidden',
+      message:
+        'Not relayed: claude did Hacerlo on TASKS-1 in this round, so it may not relay the decision on its own work; the person makes it in the web UI.',
+    });
+    expect((await json('show', 'TASKS-1')).state).toBe('todo__review');
+  });
+
+  it('refuses any human decision on it, a discard included', async () => {
+    const { code } = await otea('relay', 'TASKS-1', 'dropped', '--quote', 'drop', '--reason', 'x');
+
+    expect(code).toBe(7);
+    expect((await json('show', 'TASKS-1')).state).toBe('todo__review');
+  });
+
+  it('lets another agent relay it', async () => {
+    const relayed = ['relay', 'TASKS-1', 'todo', '--quote', 'redo', '--reason', 'Redo'];
+
+    expect((await otea(...relayed, '--as', 'codex')).code).toBe(0);
+    expect((await json('show', 'TASKS-1')).state).toBe('todo');
+  });
+
+  it('lets the agent relay again once a new round of the step is handed off by another', async () => {
+    await otea('relay', 'TASKS-1', 'todo', '--quote', 'redo', '--reason', 'Redo', '--as', 'codex');
+    await otea('handoff', 'TASKS-1', '--as', 'codex');
+
+    const { code } = await otea('relay', 'TASKS-1', 'todo', '--quote', 'again', '--reason', 'R');
+
+    expect(code).toBe(0);
   });
 });
 

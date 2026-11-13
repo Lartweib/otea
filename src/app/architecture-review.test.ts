@@ -122,7 +122,8 @@ describe('the architecture and review presets', () => {
       {
         id,
         to: 'in_progress',
-        via: 'claude',
+        // Another agent relays it: claude did the piece.
+        via: 'codex',
         channel: 'cli',
         quote: 'Too frantic',
         reason: 'Too frantic',

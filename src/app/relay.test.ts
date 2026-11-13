@@ -42,8 +42,9 @@ describe('relayDecision', () => {
     addCollection(ctx, { name: 'tasks' });
     const fields = { description: 'Details' };
     createItem(ctx, { collection: 'tasks', title: 'First', fields, actor: claude }, at(T0));
-    move('in_progress');
-    move('review');
+    // Another agent did the work: an agent relays only decisions on work it did not do itself.
+    move('in_progress', codex);
+    move('review', codex);
   });
 
   afterEach(() => ctx.db.close());
@@ -66,6 +67,17 @@ describe('relayDecision', () => {
         quote: 'Drop it, we no longer need it',
       },
     });
+  });
+
+  it('refuses a decision on work the relaying agent did itself, with own_step details', () => {
+    expect(() => relay({ via: 'codex' })).toThrow(
+      expect.objectContaining({
+        code: 'forbidden',
+        details: { kind: 'own_step', item: 'TASKS-1', step: 'in_progress', who: 'codex' },
+      }),
+    );
+    expect(item().state).toBe('review');
+    expect(relay()).toMatchObject({ state: 'discarded' });
   });
 
   it('records the channel the relaying agent used', () => {
