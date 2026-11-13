@@ -398,6 +398,11 @@
 .ph-opt[data-kind="relay"] .ph-opt-text {
   color: var(--ink-3);
 }
+/* "not available yet" reads under the line, so the name keeps one line. */
+.ph-opt[data-kind="relay"] .ph-opt-tag {
+  grid-column: 2 / -1;
+  grid-row: 3;
+}
 .ph-status {
   width: 100%;
   max-width: 820px;
