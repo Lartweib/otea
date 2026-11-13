@@ -12,4 +12,5 @@ export const AGENT_GUIDE = [
   '7. Never relay a decision on a step you did, nor review it.',
   '8. Never push to a branch the item\'s "Branch" lines do not allow.',
   '9. Answer every note from the person (otea reply) before you hand off.',
+  '10. Ask the person only with otea ask <id> "<question>" (MCP: ask).',
 ].join('\n');

@@ -59,6 +59,7 @@ import {
   wayByName,
 } from '../core/board/next.ts';
 import { type ItemNote, notesOf, unansweredOf } from '../core/board/notes.ts';
+import { type ItemQuestion, openQuestion, questionsOf } from '../core/board/questions.ts';
 import { evidenceByName, readFieldInput, stateByName, stateName } from '../core/board/reading.ts';
 import { readDefinition } from '../core/board/schema.ts';
 import { OteaError } from '../core/errors.ts';
@@ -184,6 +185,12 @@ export type ItemOnBoard = {
   // round of the step it stands on now.
   thread: ItemNote[];
   roundNotes: ItemNote[];
+  // Every question an agent asked the person on the item (core/board/questions.ts), oldest first,
+  // those of the round of the step it stands on now, and the one of them still unanswered while the
+  // step is being done: the person has the turn until they answer it.
+  questions: ItemQuestion[];
+  roundQuestions: ItemQuestion[];
+  asking?: ItemQuestion;
 };
 
 // The send-back that started the round of the step being done, with its note, who sent it, when
@@ -261,6 +268,10 @@ export function itemOnBoard(ctx: Context, item: ItemRecord, def: BoardDefinition
   const roundNotes = thread.filter((note) => note.step === step && note.round === round);
   const unanswered =
     isClosed(position) || position.phase !== 'doing' ? [] : unansweredOf(roundNotes);
+  const questions = questionsOf(events);
+  const roundQuestions = questions.filter((q) => q.step === step && q.round === round);
+  const asking =
+    isClosed(position) || position.phase !== 'doing' ? undefined : openQuestion(events);
   const did = roundWorkers(position, events, startedAt);
   const facts: ItemFacts = {
     fields: { ...item.fields, title: item.title },
@@ -289,6 +300,9 @@ export function itemOnBoard(ctx: Context, item: ItemRecord, def: BoardDefinition
     ...(sentBack === undefined ? {} : { sentBack }),
     thread,
     roundNotes,
+    questions,
+    roundQuestions,
+    ...(asking === undefined ? {} : { asking }),
   };
 }
 
@@ -311,6 +325,10 @@ export type BoardBlock = {
   request?: DraftRequest;
   // The notes the person left on the item, every round's, oldest first, when there are any.
   thread?: ItemNote[];
+  // The questions agents asked the person on the item, every round's, oldest first, and the one
+  // that waits for the person's answer now, when there are any.
+  questions?: ItemQuestion[];
+  asking?: ItemQuestion;
   // While an agent's step is being done: the agent at work on it and when it last gave a sign of
   // life (any call, a heartbeat included), so the page can warn that a note may go unread.
   worker?: Worker;
@@ -365,6 +383,8 @@ export function boardBlockOf(ctx: Context, item: ItemRecord): BoardBlock | undef
     ...(on.sentBack === undefined ? {} : { sentBack: on.sentBack }),
     ...(request === undefined ? {} : { request }),
     ...(on.thread.length === 0 ? {} : { thread: on.thread }),
+    ...(on.questions.length === 0 ? {} : { questions: on.questions }),
+    ...(on.asking === undefined ? {} : { asking: on.asking }),
     ...(worker === undefined ? {} : { worker }),
   };
 }
@@ -454,6 +474,7 @@ function textFor(
     ...(lease ? { holder: { name: lease.holder, expiresAt: lease.expiresAt } } : {}),
     ...(left === undefined ? {} : { leftFor: left }),
     ...(on.roundNotes.length === 0 ? {} : { notes: on.roundNotes }),
+    ...(on.roundQuestions.length === 0 ? {} : { questions: on.roundQuestions }),
   });
 }
 
@@ -471,6 +492,8 @@ function isTheirs(
   if (lease && lease.holder !== agent) return false;
   const position = positionOf(item.state);
   if (isClosed(position)) return false;
+  // A question waits for the person: the turn is theirs until they answer it.
+  if (itemOnBoard(ctx, item, def).asking) return false;
   const mine =
     position.phase === 'doing'
       ? mayTake(def, position.step)
@@ -690,6 +713,15 @@ function refuse(
   );
 }
 
+// An agent's handoff while its question waits for the person: the turn is theirs.
+function refuseAsking(id: string, asking: ItemQuestion): never {
+  throw new OteaError(
+    'invalid_transition',
+    `Not handed off ${id}: the question to the person waits for their answer ("${asking.text}"); otea wait --turn agent wakes you when they answer`,
+    { kind: 'question', item: id, why: 'asking' },
+  );
+}
+
 // A handoff that lacks what its step asks for, or whose waits do not hold.
 function refuseHandoff(id: string, missing: Missing[]): never {
   throw new OteaError(refusalCode(missing), refusalText(id, missing), {
@@ -779,6 +811,7 @@ export function handoffItem(
     const at = now();
     assertMayWrite(item.id, activeLease(item.lease, at), input.actor);
     const on = itemOnBoard(ctx, item, board.def);
+    if (on.asking && input.actor.kind === 'agent') refuseAsking(item.id, on.asking);
     const way = wayOf(board.def, on.position, item.id, input.way);
     const by = { kind: input.actor.kind, name: input.actor.name };
     // A step that asks for a note (or a round sent back) reads the reason when no note is given,

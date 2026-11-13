@@ -104,4 +104,12 @@ export type RefusalDetails =
       kind: 'note';
       item: string;
       why: 'not_person' | 'not_agent' | 'empty' | 'not_working' | 'anchor';
+    }
+  // An agent's question to the person (otea ask) or its answer refused: asked by the person, an
+  // empty one, off a step an agent is doing, while one already waits, or no question to answer; and
+  // an agent's handoff while its question waits (`asking`).
+  | {
+      kind: 'question';
+      item: string;
+      why: 'not_person' | 'not_agent' | 'empty' | 'not_working' | 'asking' | 'none_open';
     };

@@ -128,6 +128,8 @@ function describeAction({ type, data }: Event): string {
     const where = typeof on === 'string' ? ` (on ${on})` : '';
     return `note ${String(data.note)}: ${JSON.stringify(String(data.text ?? ''))}${where}`;
   }
+  if (type === 'question_asked' || type === 'question_answered')
+    return `question ${String(data.question)}: ${JSON.stringify(String(data.text ?? ''))}`;
   if (type === 'evidence_added') {
     const caption = typeof data.caption === 'string' ? ` (${JSON.stringify(data.caption)})` : '';
     const { evidenceId, role, kind, filename } = data;

@@ -24,8 +24,9 @@ const BUDGETS: Readonly<Record<string, Sizes>> = {
   // One row per item; measured with that bug alone. Raised with show, for the same names.
   list: { text: 25, json: 285, mcp: 285 },
   // Raised when otea board began with Otea's agent guide (instructions below): read once a session.
-  // Raised again with the guide's line on declaring the profile (otea profile).
-  'board index': { text: 300, json: 53, mcp: 53 },
+  // Raised again with the guide's line on declaring the profile (otea profile), and with its line
+  // on asking the person with otea ask (measured at 308).
+  'board index': { text: 330, json: 53, mcp: 53 },
   // The bug board's own words and each step's instructions, read once per session; show's Next:
   // block covers the step at hand. Raised when a preset collection read as a board kept its
   // playbook as the board's text: what agents read on the preset, as before.
@@ -42,12 +43,15 @@ const BUDGETS: Readonly<Record<string, Sizes>> = {
   // Raised for next, handoff, approve and send_back, the board moves.
   // drop, handoff's --note and its ways back. Raised for the as every tool takes: the agent making
   // the call, so subagents sharing one server keep their own leases. Raised for reply, the answer
-  // to a note from the person, and wait saying a note wakes it (measured at 3347).
-  tools: { mcp: 3450 },
+  // to a note from the person, and wait saying a note wakes it (measured at 3347). Raised for ask,
+  // an agent's question to the person, which hands the turn over (measured at 3481).
+  tools: { mcp: 3600 },
   // Otea's agent guide, the server's instructions: in every MCP agent's context from the start, so
   // it buys only what agents keep getting wrong. Measured at 203. Raised to 270 for the line on
-  // declaring the profile every agent and subagent must keep current (measured at 246).
-  instructions: { mcp: 270 },
+  // declaring the profile every agent and subagent must keep current (measured at 246). Raised to
+  // 300 for the line on asking the person only with otea ask, the one way that hands the turn over
+  // (measured at 279).
+  instructions: { mcp: 300 },
 };
 
 // A bug as an agent files it in the bug-triage preset, every field filled.

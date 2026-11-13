@@ -1,5 +1,6 @@
 import type { DatabaseSync } from 'node:sqlite';
 import { authorizeMove, type Channel, type Move, type Performer } from '../core/authority.ts';
+import { openQuestion } from '../core/board/questions.ts';
 import { OteaError } from '../core/errors.ts';
 import { assertCanLeave, type FieldValues, intake, revise } from '../core/fields.ts';
 import { assertStandsAlone } from '../core/hierarchy.ts';
@@ -28,6 +29,7 @@ import {
   updateItemContent,
   updateItemState,
 } from '../store/queries.ts';
+import { type Asks, askingItems, withAsks } from './asking.ts';
 import { collectionNamed, getCollection, presetOf, typeOfItem } from './collections.ts';
 import type { Context } from './context.ts';
 import { presentEvidence } from './evidence.ts';
@@ -65,6 +67,9 @@ export type Item = ItemRecord & {
   expiredLease?: Lease;
   relations?: RelationRef[];
   children?: ChildrenSummary;
+  // On a board, while an agent's question waits for the person (otea ask): the question; the turn
+  // is the person's until they answer it.
+  asks?: Asks;
 };
 
 export type ItemWithEvents = Item & { events: EventRecord[] };
@@ -205,8 +210,9 @@ export function listItems(ctx: Context, filter: ListItemsFilter = {}, now = syst
   const relations = selectRelations(ctx.db);
   const children = parent === undefined ? undefined : new Set(childIds(relations, parent));
   const at = now();
+  const asking = askingItems(ctx.db);
   const items = selectItems(ctx.db, stored)
-    .map((item) => present(item, workflowFor(item), at))
+    .map((item) => withAsks(present(item, workflowFor(item), at), asking.get(item.id)))
     .filter((item) => turn === undefined || item.turn === turn)
     .filter(({ lease }) => availableTo === undefined || !lease || lease.holder === availableTo)
     .filter(({ id }) => children === undefined || children.has(id))
@@ -237,7 +243,8 @@ export function oldestWaiting(
 export function getItem(ctx: Context, id: string, now = systemClock): ItemWithEvents {
   const item = requireItem(ctx.db, id);
   const workflow = workflowOf(ctx, item);
-  return { ...present(item, workflow, now()), events: selectEvents(ctx.db, id) };
+  const events = selectEvents(ctx.db, id);
+  return { ...withAsks(present(item, workflow, now()), openQuestion(events)), events };
 }
 
 // `transitions` are the moves the performer may make, `relayable` the human decisions an agent

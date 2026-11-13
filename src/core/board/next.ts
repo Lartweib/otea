@@ -31,6 +31,7 @@ import {
   type Target,
 } from './model.ts';
 import { type ItemNote, notesBlock, notesHandLine, notesRefusal } from './notes.ts';
+import { answersBlock, type ItemQuestion, waitingAnswerText } from './questions.ts';
 
 // The one writer of what an agent reads: `next`'s answer for an item at a step, the refusal of a
 // handoff and the line after one. Studio's "Lo que lee el agente" calls the same functions on the
@@ -78,6 +79,8 @@ export type NextInput = {
   leftFor?: string;
   // The notes the person left in this round of the step, oldest first.
   notes?: readonly ItemNote[];
+  // The questions agents asked the person in this round of the step, oldest first.
+  questions?: readonly ItemQuestion[];
   // The agents that did the step in this round, none of which may review it.
   did?: readonly string[];
 };
@@ -423,6 +426,8 @@ export function nextText(def: BoardDefinition, input: NextInput): string {
     return `${head}\nYou did this step in this round: another agent reviews it. Pick another item.`;
   const elsewhere = heldElsewhere(input);
   if (elsewhere) return `${head}\n${elsewhere}`;
+  const open = reviewing ? undefined : input.questions?.find(({ answer }) => !answer);
+  if (open) return [head, ...waitingAnswerText(open, input.me)].join('\n');
 
   const ways = waysOf(def, step.id);
   const names = ways.map((way) => targetName(def, way));
@@ -440,6 +445,7 @@ export function nextText(def: BoardDefinition, input: NextInput): string {
   lines.push(holdLine(input));
   if (!reviewing) lines.push(...notesBlock(id, input.notes ?? [], input.me));
   if (!reviewing && input.sentBack) lines.push(...sentBackLines(input.sentBack));
+  if (!reviewing) lines.push(...answersBlock(input.questions ?? [], input.me));
   lines.push(...section('About this board', indent(aboutBrief(def))));
   lines.push(
     ...section(

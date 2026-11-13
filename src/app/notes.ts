@@ -30,7 +30,7 @@ import { itemOnBoard, type LiveBoard, liveBoardOf, type Worker, workerOf } from 
 // Notes from the person while an agent does a step (core/board/notes.ts): the person leaves one
 // (the page, the phone included) without moving the item; the agent answers it with otea reply,
 // and hands off only once every note of the round is answered. Agents never open a thread: what
-// they ask the person goes in a handoff, which changes the turn.
+// they ask the person goes through otea ask (questions.ts), which changes the turn.
 
 type Why = 'not_person' | 'not_agent' | 'empty' | 'not_working' | 'anchor';
 
@@ -112,7 +112,7 @@ export function leaveNote(ctx: Context, input: LeaveNoteInput, now = systemClock
       'forbidden',
       id,
       'not_person',
-      `No note left on ${id}: only the person leaves notes. To ask the person something, hand it off with your question as its note.`,
+      `No note left on ${id}: only the person leaves notes. To ask the person something: otea ask ${id} "<question>"`,
     );
   const text = input.text.trim();
   if (text === '') refuse('reason_required', id, 'empty', `No note left on ${id}: it has no text`);
