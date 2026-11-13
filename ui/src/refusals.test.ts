@@ -31,14 +31,21 @@ describe('a refusal from the server', () => {
   it('is said in Spanish from its code and details, never as the English message', () => {
     setLanguage('es');
     expect(serverMessage(reopened, 409)).toBe(
-      'No se aprobó CAMBIOS-1: TAR-6 (Implementar) se reabrió y sigue sin terminar.',
+      'No se aprobó CAMBIOS-1: 1 de sus 4 partes sigue sin terminar: TAR-6 (Implementar).',
     );
   });
 
   it('is said in the English UI’s own words too', () => {
     expect(serverMessage(reopened, 409)).toBe(
-      'Not approved CAMBIOS-1: TAR-6 (Implementar) was reopened and is not finished.',
+      'Not approved CAMBIOS-1: 1 of its 4 parts is not finished: TAR-6 (Implementar).',
     );
+  });
+
+  it('never says a part was reopened: it may never have finished', () => {
+    setLanguage('es');
+    expect(serverMessage(reopened, 409)).not.toMatch(/reabri/);
+    setLanguage('en');
+    expect(serverMessage(reopened, 409)).not.toMatch(/reopen/);
   });
 
   it('names what a handoff lacks, the note included, without the CLI’s flags', () => {

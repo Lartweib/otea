@@ -123,10 +123,6 @@ export const common = {
     one: '{list} blocks it and is not finished',
     other: '{list} block it and are not finished',
   },
-  'refusal.why.reopened': {
-    one: '{list} was reopened and is not finished',
-    other: '{list} were reopened and are not finished',
-  },
   'refusal.drop': 'Not discarded {item}: {why}.',
   'refusal.drop.notOpen': 'it has already ended',
   'refusal.drop.reason': 'say why',

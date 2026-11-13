@@ -126,10 +126,6 @@ export const common = {
     one: '{list} lo frena y sigue sin terminar',
     other: '{list} lo frenan y siguen sin terminar',
   },
-  'refusal.why.reopened': {
-    one: '{list} se reabrió y sigue sin terminar',
-    other: '{list} se reabrieron y siguen sin terminar',
-  },
   'refusal.drop': 'No se descartó {item}: {why}.',
   'refusal.drop.notOpen': 'ya terminó',
   'refusal.drop.reason': 'di por qué',
