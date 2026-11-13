@@ -14,6 +14,8 @@ export type Part = {
   curve: Curve;
   d0: number;
   d1?: number;
+  // How long it takes to close, when that is shorter than its open (leaveTogether).
+  T1?: number;
   // Exists only under reduced motion (it holds the element at `to` in full motion).
   ronly?: boolean;
 };
@@ -33,7 +35,7 @@ export const part = (
   T: number,
   curve: Curve,
   d0 = 0,
-  extra: Partial<Pick<Part, 'd1' | 'ronly'>> = {},
+  extra: Partial<Pick<Part, 'd1' | 'T1' | 'ronly'>> = {},
 ): Part => ({ el, from, to, T, curve, d0, ...extra });
 
 // The close delays that mirror the open, and the gesture's length.
@@ -42,6 +44,16 @@ export function mirrorDelays(parts: Part[]): number {
   for (const p of parts) if (p.d1 == null) p.d1 = D - p.d0 - p.T;
   return D;
 }
+
+// A close where every part leaves at once and within T: nothing waits, nothing outlasts the fade.
+export function leaveTogether(parts: Part[], T: number): void {
+  for (const p of parts) {
+    p.d1 = 0;
+    p.T1 = Math.min(p.T, T);
+  }
+}
+
+export const closeT = (p: Part): number => p.T1 ?? p.T;
 
 function computed(el: Element, target: Keyframe): Keyframe {
   const cs = getComputedStyle(el) as unknown as Record<string, string>;
@@ -87,7 +99,7 @@ export class Choreo {
         delay = 0;
         if (!isOp) kf = [target, target];
       } else {
-        T = p.T * (running ? clamp(pp, 0.45, 1) : 1);
+        T = (dir ? p.T : closeT(p)) * (running ? clamp(pp, 0.45, 1) : 1);
         delay = (dir ? p.d0 : (p.d1 ?? 0)) * prog;
         if (p.ronly) kf = [p.to, p.to];
       }

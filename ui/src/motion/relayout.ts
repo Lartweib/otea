@@ -24,6 +24,10 @@ const timers = new WeakMap<HTMLElement, number>();
 // (on a wide screen the centred panel travels far to the left when an item opens).
 export const RELAYOUT_LEAVES = '[data-leaf], .lanes > svg.ink';
 
+// A tool gains or loses its label with the room: it changes in place rather than slide over the
+// next one (flipLeaves' swap). The rule under the tools stretches as before.
+const inTools = (e: HTMLElement) => !!e.closest('.tools') && e.dataset.leaf !== 'w';
+
 const visible = (v: HTMLElement, sel: string) =>
   [...v.querySelectorAll<HTMLElement>(sel)].filter((e) => !e.closest('.mghost'));
 
@@ -49,7 +53,7 @@ export function relayoutList(
       mutate();
       redrawLists(view);
     },
-    { delay, inDelay: narrow ? 300 : delay + 340, outT: 220 },
+    { delay, inDelay: narrow ? 300 : delay + 340, outT: 220, swap: inTools },
   );
   if (reduced()) {
     GLOW_HOLD.on = false;
