@@ -316,6 +316,7 @@ export function saveDraft(
     throw new OteaError(
       'invalid_board',
       `The draft is not a board: ${reading.problems.join('; ')}`,
+      { kind: 'draft_invalid' },
     );
   return transaction(ctx.db, () => {
     const row = requireRow(ctx, id);

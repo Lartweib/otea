@@ -193,6 +193,7 @@ export const common = {
     'El tablero cambió desde que empezó este borrador: ahora va por la versión {version}.',
   'refusal.boardUnpublished':
     'El tablero cambió desde que empezó este borrador: ahora no está publicado.',
+  'refusal.draftInvalid': 'No se pudo leer el borrador como tablero: recarga el editor.',
   'refusal.boardNameTaken': 'Ya hay un tablero llamado {name}.',
   'refusal.boardNameEmpty': 'El tablero necesita un nombre.',
   'refusal.draftErrors': 'El borrador tiene errores: corrígelos antes de publicar.',

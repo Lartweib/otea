@@ -190,6 +190,7 @@ export const common = {
     'The board changed since this draft started: it is at version {version} now.',
   'refusal.boardUnpublished':
     'The board changed since this draft started: it is not published now.',
+  'refusal.draftInvalid': 'The draft could not be read as a board: reload the editor.',
   'refusal.boardNameTaken': 'There is already a board called {name}.',
   'refusal.boardNameEmpty': 'A board needs a name.',
   'refusal.draftErrors': 'The draft has errors: fix them before you publish.',

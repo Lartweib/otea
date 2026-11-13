@@ -215,6 +215,8 @@ function said(details: RefusalDetails): string | undefined {
         : t('refusal.parentRequiredAny');
     case 'draft_changed':
       return t('refusal.draftChanged');
+    case 'draft_invalid':
+      return t('refusal.draftInvalid');
     case 'board_changed':
       return details.version === null
         ? t('refusal.boardUnpublished')
