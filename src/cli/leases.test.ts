@@ -8,7 +8,9 @@ import {
   tempGitRepo,
 } from './testing.ts';
 
-const HELD = (holder: string) => new RegExp(`held by ${holder} until \\d\\d:\\d\\d`);
+// Every text says a time one way: its UTC day and minute, named UTC.
+const UTC = String.raw`\d{4}-\d\d-\d\d \d\d:\d\d UTC`;
+const HELD = (holder: string) => new RegExp(`held by ${holder} until ${UTC}`);
 
 describe('leases', () => {
   let repo: TempRepo;
@@ -33,7 +35,7 @@ describe('leases', () => {
 
       expect(code).toBe(0);
       expect(out).toMatch(
-        /^TASKS-1 {2}Hacerlo {2}agent {2}First {2}held by claude until \d\d:\d\d\n$/,
+        new RegExp(`^TASKS-1 {2}Hacerlo {2}agent {2}First {2}held by claude until ${UTC}\\n$`),
       );
     });
 
@@ -72,7 +74,9 @@ describe('leases', () => {
 
       expect(code).toBe(12);
       expect(JSON.parse(err).error).toMatchObject({ code: 'lease_held' });
-      expect(JSON.parse(err).error.message).toMatch(/^TASKS-1 is held by claude until \S+Z$/);
+      expect(JSON.parse(err).error.message).toMatch(
+        new RegExp(`^TASKS-1 is held by claude until ${UTC}$`),
+      );
     });
 
     it('fails with not_claimable (exit 4) when the turn is not the agent', async () => {
@@ -81,7 +85,9 @@ describe('leases', () => {
       const { code, err } = await otea('claim', 'TASKS-1');
 
       expect(code).toBe(4);
-      expect(err).toContain('only items on the agent turn can be claimed');
+      expect(err).toContain(
+        'TASKS-1 is in the review of Hacerlo (turn human); only items on the agent turn can be claimed',
+      );
     });
 
     it('lets exactly one of two agents claiming concurrently win', async () => {
@@ -114,10 +120,17 @@ describe('leases', () => {
     });
 
     it('fails with not_lease_holder (exit 12) for another agent', async () => {
-      const { code, err } = await otea('heartbeat', 'TASKS-1', '--as', 'codex');
+      const { code, err } = await otea('heartbeat', 'TASKS-1', '--as', 'codex', '--json');
 
       expect(code).toBe(12);
-      expect(err).toContain('TASKS-1 is held by claude until');
+      expect(JSON.parse(err).error).toEqual({
+        code: 'not_lease_holder',
+        message: expect.stringMatching(
+          new RegExp(
+            `^TASKS-1 is held by claude until ${UTC}, not by codex: only claude can renew or release it$`,
+          ),
+        ),
+      });
     });
   });
 
@@ -178,7 +191,10 @@ describe('leases', () => {
       ]);
       const shown = (await otea('show', 'TASKS-1')).out;
       expect(shown).toMatch(/^state: Hacerlo {2}turn: agent {2}collection: tasks\nheld by claude/m);
-      expect(shown).toMatch(/claimed +claude until \S+Z$/m);
+      expect(shown).toMatch(
+        new RegExp(`^ +${UTC} +agent:claude +claimed +claude until ${UTC}$`, 'm'),
+      );
+      expect(shown).toMatch(new RegExp(`^created by agent:claude via cli at ${UTC}$`, 'm'));
       expect((await json('show', 'TASKS-2')).lease).toBeNull();
     });
 

@@ -3,6 +3,7 @@ import { OteaError } from '../core/errors.ts';
 import { type Actor, assertAgentName } from '../core/item.ts';
 import { activeLease } from '../core/lease.ts';
 import type { RefusalDetails } from '../core/refusal.ts';
+import { timeText } from '../core/time.ts';
 import { transaction } from '../store/database.ts';
 import {
   appendEvent,
@@ -57,7 +58,7 @@ function stuckLease(item: ItemRecord, at: string) {
   if (live) {
     throw new OteaError(
       'not_stuck',
-      `${item.id} is held by ${live.holder} until ${live.expiresAt}; it is not stuck`,
+      `${item.id} is held by ${live.holder} until ${timeText(live.expiresAt)}; it is not stuck`,
       { kind: 'not_stuck', item: item.id, holder: live.holder },
     );
   }

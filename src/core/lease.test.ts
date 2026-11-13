@@ -57,7 +57,7 @@ describe('assertMayWrite', () => {
     const write = () => assertMayWrite('TASKS-1', lease, agent('codex'));
 
     expect(write).toThrow(expect.objectContaining({ code: 'lease_held' }));
-    expect(write).toThrow('TASKS-1 is held by claude until 2026-01-01T00:15:00.000Z');
+    expect(write).toThrow('TASKS-1 is held by claude until 2026-01-01 00:15 UTC');
   });
 
   it('lets a human write regardless of the lease', () => {

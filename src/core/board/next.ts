@@ -1,4 +1,4 @@
-import { clockTime } from '../lease.ts';
+import { timeText } from '../time.ts';
 import {
   backTarget,
   backWaysOf,
@@ -83,7 +83,7 @@ function heldElsewhere(input: NextInput): string | undefined {
   const { me, holder, leftFor } = input;
   if (me === undefined) return undefined;
   if (holder && holder.name !== me)
-    return `Held by ${holder.name} until ${clockTime(holder.expiresAt)}: pick another item.`;
+    return `Held by ${holder.name} until ${timeText(holder.expiresAt)}: pick another item.`;
   if (!holder && leftFor !== undefined && leftFor !== me)
     return `Left for ${leftFor}: pick another item.`;
   return undefined;
@@ -93,8 +93,8 @@ function heldElsewhere(input: NextInput): string | undefined {
 // so no other agent takes it meanwhile.
 function holdLine({ id, holder, me }: NextInput): string {
   if (holder && holder.name === me)
-    return `You hold it until ${clockTime(holder.expiresAt)}; otea heartbeat ${id} keeps it longer.`;
-  if (holder) return `Held by ${holder.name} until ${clockTime(holder.expiresAt)}.`;
+    return `You hold it until ${timeText(holder.expiresAt)}; otea heartbeat ${id} keeps it longer.`;
+  if (holder) return `Held by ${holder.name} until ${timeText(holder.expiresAt)}.`;
   return `Claim it first: otea claim ${id} (otea next --claim takes and claims the next in one call).`;
 }
 
@@ -192,11 +192,6 @@ function noteLine(step: Step, input: NextInput): string[] {
   return [`  ${missing ? '✗' : '✓'} Note: required${hint ? ` (${hint})` : ''}`];
 }
 
-// "2026-11-12 10:04 UTC": one clock for every agent, wherever it runs.
-function utcText(iso: string): string {
-  return `${iso.slice(0, 16).replace('T', ' ')} UTC`;
-}
-
 // The block a round sent back starts with: the note as the reviewer wrote it, then who, when and
 // from which review.
 function sentBackLines(sent: SentBack): string[] {
@@ -207,7 +202,7 @@ function sentBackLines(sent: SentBack): string[] {
   return [
     '',
     ...quoted,
-    `  by ${who}, ${utcText(sent.at)}, from the review of ${sent.step} round ${sent.round}`,
+    `  by ${who}, ${timeText(sent.at)}, from the review of ${sent.step} round ${sent.round}`,
   ];
 }
 
@@ -328,9 +323,15 @@ function motiveFlag(def: BoardDefinition): string {
   return names.length === 0 ? '' : ` --motive "${names.join('|')}"`;
 }
 
+// The note flag a command shows: the hint as a <placeholder>, so it reads as what to write, never
+// as the note itself.
+function noteArg(hint: string): string {
+  return `--note "<${hint}>"`;
+}
+
 function noteFlag(step: Step, input: NextInput): string {
   if (!wantsNote(step, input)) return '';
-  return ` --note "${noteHint(step, input.sentBack !== undefined) || 'what changed in this round'}"`;
+  return ` ${noteArg(noteHint(step, input.sentBack !== undefined) || 'what changed in this round')}`;
 }
 
 function whenText(def: BoardDefinition, hand: Hand): string {
@@ -543,7 +544,7 @@ export function refusalText(id: string, missing: readonly Missing[]): string {
   const note = missing.find(({ ref }) => ref === NOTE_REF);
   const hint =
     note?.hint?.trim() || (note?.sentBack ? SENT_BACK_HINT : 'what changed in this round');
-  const flag = note ? ` with --note "${hint}"` : '';
+  const flag = note ? ` with ${noteArg(hint)}` : '';
   const parts = missing.filter(({ reason, ref }) => reason !== 'open' && ref !== NOTE_REF);
   if (parts.length > 0 || note) {
     const what = parts.map(({ name, reason, fresh }) => {
@@ -696,6 +697,16 @@ export function partsAtHomeText(
   return `Not linked: a ${parent.item}'s parts stay on ${parent.name}, and ${other} is on ${otherBoard}. Link ${other} blocks ${parentId} to make ${parentId} wait, or ${other} implements ${parentId}.`;
 }
 
+// Where an item is, as a sentence says it after "is in": the step, or its review ("the review of
+// Implementar"), so an item that waits for a review never reads as still being done.
+export function placeText(def: BoardDefinition, position: Position): string {
+  if (isClosed(position)) return position.closed === DONE ? DONE_NAME : DROPPED_NAME;
+  const name = stepById(def, position.step)?.name ?? position.step;
+  if (position.phase === 'review') return `the review of ${name}`;
+  if (position.phase === 'yours') return `the person's review of ${name}`;
+  return name;
+}
+
 // What otea check answers for one item, in the board's words.
 export function gateText(
   def: BoardDefinition,
@@ -711,6 +722,7 @@ export function gateText(
   );
   const step = isClosed(position) ? undefined : stepById(def, position.step);
   const name = step?.name ?? '';
+  const where = placeText(def, position);
   switch (answer.why) {
     case 'unguarded':
       return `${action} allowed: ${def.name} protects no branch.`;
@@ -726,13 +738,13 @@ export function gateText(
       return `push refused: ${id} waits for ${who} to review ${name}; its branch can be pushed only while ${push} is being done.`;
     }
     case 'not_push_step':
-      return `push refused: ${id} is in ${name}; its branch can be pushed only while ${push} is being done.`;
+      return `push refused: ${id} is in ${where}; its branch can be pushed only while ${push} is being done.`;
     case 'closed':
       return `push refused: ${id} is ${closedName(def, position)}; nothing is pushed to a closed item's branch.`;
     case 'not_done':
       return isClosed(position)
         ? `merge refused: ${id} is ${closedName(def, position)}; its branch can be merged only once ${id} is ${DONE_NAME}.`
-        : `merge refused: ${id} is in ${name}, round ${round}; its branch can be merged only once ${id} is ${DONE_NAME}.`;
+        : `merge refused: ${id} is in ${where}, round ${round}; its branch can be merged only once ${id} is ${DONE_NAME}.`;
   }
 }
 

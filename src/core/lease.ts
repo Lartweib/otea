@@ -1,5 +1,6 @@
 import { OteaError } from './errors.ts';
 import type { Actor } from './item.ts';
+import { timeText } from './time.ts';
 
 export type Lease = { holder: string; expiresAt: string };
 
@@ -24,15 +25,11 @@ export function activeLease(lease: Lease | null, at: string): Lease | null {
   return lease && Date.parse(lease.expiresAt) > Date.parse(at) ? lease : null;
 }
 
-// The local time of day of a timestamp, as HH:MM (when a lease runs out, as a reader says it).
-export function clockTime(iso: string): string {
-  const date = new Date(iso);
-  const pad = (value: number) => String(value).padStart(2, '0');
-  return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
-}
-
 export function leaseHeld(id: string, lease: Lease): OteaError {
-  return new OteaError('lease_held', `${id} is held by ${lease.holder} until ${lease.expiresAt}`);
+  return new OteaError(
+    'lease_held',
+    `${id} is held by ${lease.holder} until ${timeText(lease.expiresAt)}`,
+  );
 }
 
 // Humans lead: only agents are bound by another actor's lease.

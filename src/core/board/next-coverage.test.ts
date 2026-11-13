@@ -58,7 +58,7 @@ describe('nextText, the later settings', () => {
     ]);
     expect(lines(text, 'When you finish')).toEqual([
       'When you finish',
-      '  otea handoff BUG-4 --note "la prueba"',
+      '  otea handoff BUG-4 --note "<la prueba>"',
     ]);
   });
 
@@ -201,12 +201,12 @@ describe('refusals and answers', () => {
 
   it('asks for the note in its own words, alone or with the parts', () => {
     expect(refusalText('REV-2', [note])).toBe(
-      'Not handed off REV-2: missing a note.\nCall handoff again with --note "qué cambió en esta ronda".',
+      'Not handed off REV-2: missing a note.\nCall handoff again with --note "<qué cambió en esta ronda>".',
     );
     expect(refusalText('REV-2', [video, note])).toBe(
       [
         'Not handed off REV-2: missing Vídeo (new this round) and a note.',
-        'Attach or fill them with otea attach REV-2 / otea update REV-2, then call handoff again with --note "qué cambió en esta ronda".',
+        'Attach or fill them with otea attach REV-2 / otea update REV-2, then call handoff again with --note "<qué cambió en esta ronda>".',
       ].join('\n'),
     );
   });
@@ -308,6 +308,9 @@ describe('refusals and answers', () => {
     );
     expect(gateText(def, 'RT-4', { step: 'simpl', phase: 'doing' }, 'merge', 2)).toBe(
       'merge refused: RT-4 is in Implementar, round 2; its branch can be merged only once RT-4 is Done.',
+    );
+    expect(gateText(def, 'RT-4', { step: 'simpl', phase: 'review' }, 'merge', 2)).toBe(
+      'merge refused: RT-4 is in the review of Implementar, round 2; its branch can be merged only once RT-4 is Done.',
     );
     expect(gateText(def, 'RT-4', { step: 'sprop', phase: 'doing' }, 'push', 1)).toBe(
       'push refused: RT-4 is in Propuesta; its branch can be pushed only while Implementar is being done.',

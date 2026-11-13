@@ -96,7 +96,7 @@ describe('agentView: the new capabilities', () => {
     const empty = view.answers[0]?.runs[0];
     expect(empty?.text).toBe(
       'Not handed off BUG-12: missing Cambios de código and a note.\n' +
-        'Attach or fill them with otea attach BUG-12 / otea update BUG-12, then call handoff again with --note "la prueba".',
+        'Attach or fill them with otea attach BUG-12 / otea update BUG-12, then call handoff again with --note "<la prueba>".',
     );
     expect(view.answers[1]?.runs[0]?.command).toBe('otea handoff BUG-12 --note "la prueba"');
     expect(view.answers[1]?.runs[0]?.text).toMatch(/^Not handed off BUG-12: /);

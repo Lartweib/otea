@@ -79,6 +79,7 @@ import { assertIconName } from '../core/icons.ts';
 import { type Actor, assertAgentName } from '../core/item.ts';
 import { parseDuration } from '../core/lease.ts';
 import { describeRelation, RELATION_KINDS } from '../core/relations.ts';
+import { timeText } from '../core/time.ts';
 import { TURNS, type Turn } from '../core/workflow.ts';
 import { createMcpServer, serveStdio } from '../mcp/server.ts';
 import { formatCode, lanAddresses, localName } from '../server/lan.ts';
@@ -297,7 +298,7 @@ const init: Command = {
     }
     const data = { root, path, ...shown, storage, boards: made };
     const lines = [
-      path,
+      `Project data in ${path}`,
       ...(made.length > 0 ? [boardsText(made)] : []),
       ...(kept
         ? [
@@ -1188,7 +1189,10 @@ const attach: Command = {
       const board = liveBoardOf(project, getItem(project, evidence.itemId).collection);
       const name = evidence.module === null ? undefined : board?.def.parts[evidence.module]?.name;
       const shown = name === undefined ? evidence : { ...evidence, module: name };
-      return { data: evidence, text: formatEvidence(shown) };
+      const same = evidence.duplicate
+        ? `\n${evidence.itemId} already has this file as #${evidence.id}; nothing added.`
+        : '';
+      return { data: evidence, text: `${formatEvidence(shown)}${same}` };
     });
   },
 };
@@ -1317,7 +1321,7 @@ const devicesList: Command = {
     const text = devices
       .map(
         ({ id, name, pairedAt, lastSeenAt, hint }) =>
-          `${id}  ${name}  paired ${pairedAt}  last seen ${lastSeenAt ?? 'never'}  token ··${hint}`,
+          `${id}  ${name}  paired ${timeText(pairedAt)}  last seen ${lastSeenAt ? timeText(lastSeenAt) : 'never'}  token ··${hint}`,
       )
       .join('\n');
     return { data: devices, text: text || 'No paired devices' };

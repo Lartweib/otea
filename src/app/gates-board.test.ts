@@ -59,7 +59,7 @@ describe('gates on a board', () => {
     );
     const merge = checkGate(ctx, 'merge', { branch: 'feat/x', repo: 'api' });
     expect(merge.items[0]?.text).toBe(
-      `merge refused: ${id} is in Implementar, round 1; its branch can be merged only once ${id} is Done.`,
+      `merge refused: ${id} is in the review of Implementar, round 1; its branch can be merged only once ${id} is Done.`,
     );
     updateItemState(ctx.db, id, 'done', now());
     expect(checkGate(ctx, 'merge', { branch: 'feat/x', repo: 'api' })).toMatchObject({

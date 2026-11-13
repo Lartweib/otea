@@ -1,11 +1,12 @@
 import type { Item, ItemView } from '../app/items.ts';
 import type { ValidationReport } from '../app/validate.ts';
 import type { Actor } from '../core/item.ts';
-import { clockTime, type Lease } from '../core/lease.ts';
+import type { Lease } from '../core/lease.ts';
 import type { Layout } from '../core/modules.ts';
 import { type EvidenceModuleEntry, groupEvidence } from '../core/placement.ts';
 import { DEFAULT_TYPE } from '../core/preset.ts';
 import { describeRelation, type Relation, type RelationView } from '../core/relations.ts';
+import { timeText } from '../core/time.ts';
 import type { EvidenceRecord } from '../store/queries.ts';
 
 type Event = ItemView['events'][number];
@@ -36,7 +37,7 @@ function actorLabel(actor: Actor): string {
 }
 
 function leaseLabel({ holder, expiresAt }: Lease): string {
-  return `held by ${holder} until ${clockTime(expiresAt)}`;
+  return `held by ${holder} until ${timeText(expiresAt)}`;
 }
 
 // Whether the text names an item's type. Commands know whether its preset has several types; left
@@ -115,7 +116,7 @@ function describeAction({ type, data }: Event): string {
   if (type === 'claimed') {
     const previous =
       data.previous === undefined ? '' : `, taken over from ${String(data.previous)}`;
-    return `${String(data.holder)} until ${String(data.expiresAt)}${previous}`;
+    return `${String(data.holder)} until ${timeText(String(data.expiresAt))}${previous}`;
   }
   if (type === 'released') return `${String(data.holder)} (${releaseCause(data)})`;
   if (type === 'relation_added' || type === 'relation_removed') {
@@ -131,7 +132,7 @@ function describeAction({ type, data }: Event): string {
 }
 
 function eventRow(event: Event): string[] {
-  return [event.at, actorLabel(event.actor), event.type, describeEvent(event)];
+  return [timeText(event.at), actorLabel(event.actor), event.type, describeEvent(event)];
 }
 
 export function formatEvent(event: Event): string {
@@ -234,7 +235,7 @@ function gatesLine(gates: Record<string, boolean>): string {
 function createdLine({ createdBy, createdAt, events }: ItemView): string {
   const channel = events.find(({ type }) => type === 'created')?.data.channel;
   const via = typeof channel === 'string' ? ` via ${channel}` : '';
-  return `created by ${actorLabel(createdBy)}${via} at ${createdAt}`;
+  return `created by ${actorLabel(createdBy)}${via} at ${timeText(createdAt)}`;
 }
 
 // With the item type's layout, evidence is grouped by the module that draws it.

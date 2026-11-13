@@ -363,6 +363,19 @@ describe('mcp server', () => {
       expect(JSON.parse(text).error.code).toBe('lease_held');
       await other.close();
     });
+
+    it('refuses a heartbeat on a lease another agent holds with not_lease_holder', async () => {
+      const other = await connect(repo.dir, 'codex');
+      await data('claim', { id: 'TASKS-1' });
+
+      const text = await errorOf('heartbeat', { id: 'TASKS-1' }, other);
+
+      expect(JSON.parse(text).error).toMatchObject({
+        code: 'not_lease_holder',
+        message: expect.stringMatching(/, not by codex: only claude can renew or release it$/),
+      });
+      await other.close();
+    });
   });
 
   // Subagents share their parent's server, so each call can say who makes it.

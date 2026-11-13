@@ -1,5 +1,6 @@
 import { type Brief, DEFAULT_LIMITS, DEFAULT_SUCCESS, writeBrief } from '../core/brief.ts';
 import { OteaError } from '../core/errors.ts';
+import { timeText } from '../core/time.ts';
 import { type Clock, listItems, systemClock } from './items.ts';
 import type { Project } from './project.ts';
 import { listRelations } from './relations.ts';
@@ -14,9 +15,6 @@ export type BriefRequest = {
 // The brief, with the limits and success lines it was written with (the defaults, when none were
 // given), so an editor can start from them.
 export type WrittenBrief = Brief & { limits: readonly string[]; success: readonly string[] };
-
-// The time a brief was written, as a person reads it at a glance: 2026-11-03 14:12 UTC.
-const stamp = (iso: string) => `${iso.slice(0, 10)} ${iso.slice(11, 16)} UTC`;
 
 // A brief for the chosen items, read from the project as they stand now.
 export function briefFor(
@@ -49,7 +47,7 @@ export function briefFor(
     isOpen: (id) => byId.get(id)?.closes === undefined,
     limits,
     success,
-    writtenAt: stamp(now()),
+    writtenAt: timeText(now()),
   });
   return { ...brief, limits, success };
 }

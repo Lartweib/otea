@@ -87,7 +87,7 @@ describe('board moves from the CLI', () => {
       code: 8,
       error: {
         code: 'missing_fields',
-        message: `Not handed off ${id}: missing a note.\nCall handoff again with --note "la prueba".`,
+        message: `Not handed off ${id}: missing a note.\nCall handoff again with --note "<la prueba>".`,
       },
     });
     const done = await mender('handoff', id, '--note', 'se enciende');

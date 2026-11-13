@@ -201,7 +201,7 @@ describe('next and the board moves', () => {
     const bare = await otea('handoff', 'CRI-1', '--as', 'quill');
     expect(bare.code).toBe(8);
     expect(bare.err).toBe(
-      'otea: Not handed off CRI-1: missing a note (it was sent back: say what you changed).\nCall handoff again with --note "what you changed since it was sent back".\n',
+      'otea: Not handed off CRI-1: missing a note (it was sent back: say what you changed).\nCall handoff again with --note "<what you changed since it was sent back>".\n',
     );
     const noted = await otea('handoff', 'CRI-1', '--note', 'Barro añadido', '--as', 'quill');
     expect(noted).toMatchObject({
@@ -213,7 +213,7 @@ describe('next and the board moves', () => {
   it('sends another agent elsewhere while one holds the item, in show and MCP alike', async () => {
     await otea('claim', 'CRI-1', '--as', 'quill');
     const held =
-      /^ {2}CRI-1 · Criatura · Concepto, round 1\n {2}Held by quill until \d\d:\d\d: pick another item\.$/m;
+      /^ {2}CRI-1 · Criatura · Concepto, round 1\n {2}Held by quill until \d{4}-\d\d-\d\d \d\d:\d\d UTC: pick another item\.$/m;
 
     const shown = (await otea('show', 'CRI-1', '--as', 'scout')).out;
     expect(shown).toMatch(held);
@@ -236,7 +236,9 @@ describe('next and the board moves', () => {
         content: { text: string }[];
       };
       const hint = JSON.parse(reply.content[0]?.text ?? '').hint as string;
-      expect(hint).toMatch(/\nHeld by quill until \d\d:\d\d: pick another item\.$/);
+      expect(hint).toMatch(
+        /\nHeld by quill until \d{4}-\d\d-\d\d \d\d:\d\d UTC: pick another item\.$/,
+      );
     } finally {
       await client.close();
     }
