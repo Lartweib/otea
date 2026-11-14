@@ -201,5 +201,34 @@ export function historyOf(
     }
     return { ...base, text: describeEvent(e, fieldWords) };
   });
-  return lines.reverse();
+  return withProfileChanges(sorted, lines).reverse();
 }
+
+// An agent that acts on the item with another profile than its last one here gets a line of its
+// own just before that action: "Switched to sonnet · medium" (the harness too when that changed).
+// Its first profile on the item says nothing; each agent is compared only with itself. The line's
+// id sits between its event's and the one before, so it stays unique and in order.
+function withProfileChanges(sorted: readonly ItemEvent[], lines: HistoryLine[]): HistoryLine[] {
+  const last = new Map<string, AgentProfile>();
+  return sorted.flatMap((e, i) => {
+    const line = lines[i] as HistoryLine;
+    if (e.actor.kind !== 'agent' || !e.profile) return [line];
+    const before = last.get(e.actor.name);
+    last.set(e.actor.name, e.profile);
+    if (!before || sameProfile(before, e.profile)) return [line];
+    const words = [e.profile.model, e.profile.effort];
+    if (before.harness !== e.profile.harness && e.profile.harness) words.unshift(e.profile.harness);
+    const change: HistoryLine = {
+      id: e.id - 0.5,
+      dot: 'agent',
+      when: line.when,
+      text: t('sheet.h.profileChanged', { profile: words.join(' · ') }),
+      who: e.actor.name,
+      profile: e.profile,
+    };
+    return [change, line];
+  });
+}
+
+const sameProfile = (a: AgentProfile, b: AgentProfile) =>
+  a.harness === b.harness && a.model === b.model && a.effort === b.effort;

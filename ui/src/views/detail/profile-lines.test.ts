@@ -64,6 +64,67 @@ describe('the profile in the history', () => {
   });
 });
 
+describe('a profile change in the history', () => {
+  const sonnet = { ...opus, model: 'sonnet', effort: 'medium', family: 'sonnet' };
+  const by = (id: number, name: string, profile: typeof opus, minutes: number): ItemEvent => ({
+    id,
+    type: 'claimed',
+    actor: { kind: 'agent', name },
+    at: ago(minutes),
+    data: {},
+    profile,
+  });
+
+  it('says when an agent acts with another model or effort than its last one on the item', () => {
+    setLanguage('es');
+    const lines = historyOf(
+      [by(1, 'ana', opus, 60), by(2, 'ana', opus, 50), by(3, 'ana', sonnet, 40)],
+      bug,
+      (s) => s,
+      NOW,
+    );
+    expect(lines.map((l) => [l.text, l.who])).toEqual([
+      ['Tomó la reserva', 'ana'],
+      ['Cambió a sonnet · medium', 'ana'],
+      ['Tomó la reserva', 'ana'],
+      ['Tomó la reserva', 'ana'],
+    ]);
+    expect(lines[1]?.profile?.model).toBe('sonnet');
+    setLanguage('en');
+    expect(
+      historyOf([by(1, 'ana', opus, 60), by(2, 'ana', sonnet, 50)], bug, (s) => s, NOW)[1]?.text,
+    ).toBe('Switched to sonnet · medium');
+  });
+
+  it('names the harness when that is what changed', () => {
+    const codex = { ...opus, harness: 'codex' };
+    const lines = historyOf([by(1, 'ana', opus, 60), by(2, 'ana', codex, 50)], bug, (s) => s, NOW);
+    expect(lines[1]?.text).toBe('Switched to codex · opus · high');
+  });
+
+  it('compares each agent only with itself, and says nothing on the first profile', () => {
+    const lines = historyOf(
+      [by(1, 'ana', opus, 60), by(2, 'bo', sonnet, 50), by(3, 'ana', opus, 40)],
+      bug,
+      (s) => s,
+      NOW,
+    );
+    expect(lines.map((l) => l.text)).toEqual([
+      'Took the lease',
+      'Took the lease',
+      'Took the lease',
+    ]);
+  });
+
+  it('gives the line an id of its own, between its event and the one before', () => {
+    const lines = historyOf([by(1, 'ana', opus, 60), by(2, 'ana', sonnet, 50)], bug, (s) => s, NOW);
+    const ids = lines.map((l) => l.id);
+    expect(new Set(ids).size).toBe(3);
+    expect(ids[1]).toBeGreaterThan(1);
+    expect(ids[1]).toBeLessThan(2);
+  });
+});
+
 describe('Quién lo hace', () => {
   it('names the doer with the profile it acted with', () => {
     setLanguage('es');
