@@ -13,4 +13,5 @@ export const AGENT_GUIDE = [
   '8. Never push to a branch the item\'s "Branch" lines do not allow.',
   '9. Answer every note from the person (otea reply) before you hand off.',
   '10. Ask the person only with otea ask <id> "<question>" (MCP: ask).',
+  '11. To propose a new board, run otea board draft --new "<name>" --why "<what it is for>" (MCP: board_draft); the person publishes it.',
 ].join('\n');

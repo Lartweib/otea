@@ -40,6 +40,8 @@ describe("Otea's agent guide", () => {
       'otea ask <id> "<question>"',
       'Declare only what you can read from your settings',
       'declare unknown. Never guess.',
+      'To propose a new board, run otea board draft --new "<name>" --why "<what it is for>"',
+      'the person publishes it',
     ]) {
       expect(AGENT_GUIDE).toContain(line);
     }

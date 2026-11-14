@@ -43,7 +43,17 @@ const TITLE: Readonly<Record<Lang, (name: string) => string>> = {
   es: (name) => `Esbozar el tablero ${name}`,
 };
 
-export type AgentDraftRequest = { name: string; need: string; agent: string | null; lang: Lang };
+// `by`: who asks for it, the person in Studio unless said otherwise (an agent the person asked for
+// a board: otea board draft --new).
+export type AgentDraftRequest = {
+  name: string;
+  need: string;
+  agent: string | null;
+  lang: Lang;
+  by?: { actor: Actor; channel: Channel };
+};
+
+const PERSON = { actor: { kind: 'human', name: 'human' }, channel: 'ui' } as const;
 
 // Creates the Pedido (assigned to the agent when one is named: it holds the item) and the board,
 // waiting on it.
@@ -62,14 +72,15 @@ export function requestAgentDraft(
     const at = now();
     const need = input.need.trim();
     if (need === '') throw new OteaError('missing_fields', 'Say what the board is for');
+    const { actor, channel } = input.by ?? PERSON;
     const { item } = insertNewItem(
       project,
       {
         collection,
         title: TITLE[input.lang](input.name.trim()),
         fields: first ? { [first]: need } : {},
-        actor: { kind: 'human', name: 'human' },
-        channel: 'ui',
+        actor,
+        channel,
       },
       at,
     );
@@ -79,7 +90,7 @@ export function requestAgentDraft(
       appendEvent(project.db, {
         itemId: item.id,
         type: 'claimed',
-        actor: { kind: 'human', name: 'human' },
+        actor,
         at,
         data: { ...lease, cause: 'assigned' },
       });
@@ -153,15 +164,28 @@ export function problemWords(problem: Problem): string {
 const SHOWN_PROBLEMS = 12;
 
 // A board.json of the wrong shape, for the agent that wrote it: what is wrong, one line each, then
-// where to start from, the published shape, and Studio, where the person can finish it.
-function notABoard(pedido: string, problems: readonly string[]): string {
+// where to start from (`start`), the published shape, and Studio, where the person can finish it.
+function notABoard(start: string, problems: readonly string[]): string {
   const more = problems.length - SHOWN_PROBLEMS;
   return [
     'The file is not a board:',
     ...problems.slice(0, SHOWN_PROBLEMS).map((problem) => `  ${problem}`),
     ...(more > 0 ? [`  and ${more} more`] : []),
-    `Start from what otea board draft ${pedido} prints: it has every key a board takes. Each key, with what it is for and an example, is in ${BOARD_JSON_SCHEMA}. A board you cannot get right in JSON, the person can finish in Studio.`,
+    `${start}: it has every key a board takes. Each key, with what it is for and an example, is in ${BOARD_JSON_SCHEMA}. A board you cannot get right in JSON, the person can finish in Studio.`,
   ].join('\n');
+}
+
+// The agent's board.json read as a board, or what is wrong with it; `start`: where to start from.
+function readDraftFile(text: string, start: string) {
+  let raw: unknown;
+  try {
+    raw = JSON.parse(text);
+  } catch {
+    throw new OteaError('invalid_board', `${DRAFT_FILENAME} is not JSON`);
+  }
+  const reading = parseDefinition(raw);
+  if (!reading.ok) throw new OteaError('invalid_board', notABoard(start, reading.problems));
+  return reading;
 }
 
 export type SubmitInput = { id: string; text: string; actor: Actor; channel: Channel };
@@ -184,14 +208,7 @@ export function submitAgentDraft(
   now = systemClock,
 ): Submitted {
   const board = requireWaiting(project, input.id);
-  let raw: unknown;
-  try {
-    raw = JSON.parse(input.text);
-  } catch {
-    throw new OteaError('invalid_board', `${DRAFT_FILENAME} is not JSON`);
-  }
-  const reading = parseDefinition(raw);
-  if (!reading.ok) throw new OteaError('invalid_board', notABoard(input.id, reading.problems));
+  const reading = readDraftFile(input.text, `Start from what otea board draft ${input.id} prints`);
   const problems = boardProblems(project, board.id, reading.definition).map(problemWords);
   const evidence = transaction(project.db, () => {
     const item = requireItem(project.db, input.id);
@@ -203,6 +220,49 @@ export function submitAgentDraft(
   });
   mergeAgentDraft(project, board.id, evidence.id, now);
   return { board: board.id, evidence, problems, notes: reading.notes ?? [] };
+}
+
+export type ProposeInput = {
+  name: string;
+  need: string;
+  lang: Lang;
+  actor: Actor;
+  channel: Channel;
+  text?: string;
+};
+
+// An agent the person asked for a board starts what Studio's "Que lo esboce un agente" does: the
+// Pedido, held by the agent, and the board waiting on it; with a board.json, handed in at once.
+// A file that is not a board makes nothing. Publishing stays the person's, in Studio.
+export function proposeAgentDraft(
+  project: Project,
+  input: ProposeInput,
+  now = systemClock,
+): { board: BoardRecord; item: string; submitted?: Submitted } {
+  if (input.text !== undefined)
+    readDraftFile(
+      input.text,
+      'Nothing was made. Without --file it makes the board and its Pedido; then start from what otea board draft <Pedido> prints',
+    );
+  const { actor, channel } = input;
+  const asked = requestAgentDraft(
+    project,
+    {
+      name: input.name,
+      need: input.need,
+      agent: actor.name,
+      lang: input.lang,
+      by: { actor, channel },
+    },
+    now,
+  );
+  if (input.text === undefined) return asked;
+  const submitted = submitAgentDraft(
+    project,
+    { id: asked.item, text: input.text, actor, channel },
+    now,
+  );
+  return { board: getBoardRecord(project, asked.board.id), item: asked.item, submitted };
 }
 
 type Words = {

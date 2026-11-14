@@ -316,7 +316,10 @@ otea init --template product   # Tareas, which waits for nothing open blocking i
 
 In Studio, **Que lo esboce un agente** (on Studio's home and in **Nuevo tablero**) leaves a board for an agent to draft: it waits as a draft, and a Pedido (assigned to the agent when one is named) keeps what the board is for in the person's words. How to hand it in is the instructions of the Pedido's step, which `otea next` and `otea show` give the agent; the Pedido's page links to the board in Studio.
 
+An agent the person asks for a board starts the same thing from the CLI or MCP (the `board_draft` tool, with `new` and `why`): `otea board draft --new "<name>" --why "<what it is for>"` makes the waiting board and its Pedido, held by the agent, with `--why` as what the board is for. A name another board or draft has is refused (`already_exists`), as in Studio, and an unnamed agent too. With `--file board.json` it hands the draft in at once, checked as below; a file that is not a board makes nothing. It prints the Pedido and the board's link in Studio, where it waits for the person to try and publish: agents never publish.
+
 ```sh
+otea board draft --new "Criaturas" --why "Swamp creatures, with art and animation"   # makes PED-1 and the board
 otea board draft PED-1 > board.json          # the draft to start from: every key a board takes
 otea board draft PED-1 --file board.json     # check it as a board and hand it in on the Pedido
 ```

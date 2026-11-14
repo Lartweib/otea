@@ -3,7 +3,12 @@ import { resolve } from 'node:path';
 import type { DatabaseSync } from 'node:sqlite';
 import { fileURLToPath } from 'node:url';
 import { renderUnicodeCompact } from 'uqr';
-import { draftToStartFrom, submitAgentDraft } from '../app/agent-draft.ts';
+import {
+  draftToStartFrom,
+  proposeAgentDraft,
+  type Submitted,
+  submitAgentDraft,
+} from '../app/agent-draft.ts';
 import { type AgentsMdAction, connectAgent, writeAgentsMd } from '../app/agents.ts';
 import { addBoard, addBoardSet, type BoardRecord } from '../app/boards.ts';
 import { briefFor } from '../app/brief.ts';
@@ -15,6 +20,7 @@ import {
   typeOfItem,
 } from '../app/collections.ts';
 import { listDevices, revokeDevice } from '../app/devices.ts';
+import { handInText } from '../app/draft-request.ts';
 import { listEvents } from '../app/events.ts';
 import { attachEvidence } from '../app/evidence.ts';
 import { type Brings, checkGate, type GateCheck } from '../app/gates.ts';
@@ -771,39 +777,88 @@ const boardAdd: Command = {
   },
 };
 
+function draftFile(cwd: string, file: string): string {
+  const path = resolve(cwd, file);
+  try {
+    return readFileSync(path, 'utf8');
+  } catch {
+    throw new OteaError('file_not_found', `No file at ${path}`);
+  }
+}
+
+function handedInLines(id: string, submitted: Submitted): string[] {
+  return [
+    `Handed in the board draft on ${id} (evidence ${submitted.evidence.id}); it is in Studio now, for the person to try and publish.`,
+    ...(submitted.notes.length === 0
+      ? []
+      : ["Read as today's board:", ...submitted.notes.map((n) => `  ${n}`)]),
+    ...(submitted.problems.length === 0
+      ? []
+      : ['Still to fix, for it to be published:', ...submitted.problems.map((p) => `  ${p}`)]),
+  ];
+}
+
+// The board's page in Studio, on the port otea serve runs on (or would).
+function studioLink(project: Project, board: string): string {
+  const port = portToOpen(project.dataDir, undefined);
+  return `http://127.0.0.1:${port}/#/studio/board/${encodeURIComponent(board)}`;
+}
+
+// otea board draft --new: the agent the person asked for a board starts it; the person publishes.
+function proposeBoard(input: Input, name: string): Output {
+  const why = input.option('why')?.trim() ?? '';
+  const file = input.option('file');
+  return withAgent(input, (project) => {
+    if (why === '')
+      throw new OteaError('missing_fields', 'Say what the board is for: --why "<what it is for>"');
+    const text = file === undefined ? undefined : draftFile(input.cwd, file);
+    const { actor, channel } = input;
+    const made = proposeAgentDraft(project, {
+      name,
+      need: why,
+      lang: PROJECT_LANG,
+      actor,
+      channel,
+      ...(text === undefined ? {} : { text }),
+    });
+    const studio = studioLink(project, made.board.id);
+    const lines = [
+      ...(made.submitted ? handedInLines(made.item, made.submitted) : []),
+      `The board "${name.trim()}" waits in Studio for the person to try and publish, on the Pedido ${made.item} you hold: ${studio}`,
+      ...(made.submitted ? [] : [handInText(made.item)]),
+    ];
+    return { data: { ...made, studio }, text: lines.join('\n') };
+  });
+}
+
 const boardDraft: Command = {
   name: 'board draft',
   summary:
-    'Draft the board a Pedido asks for: without --file, print the draft to start from (JSON); with --file, check it as a board and hand it in on the Pedido as board.json, saying what is still wrong',
-  args: ['id'],
-  options: { file: { placeholder: 'board.json' } },
+    'Draft the board a Pedido asks for: without --file, print the draft to start from (JSON); with --file, check it as a board and hand it in on the Pedido as board.json, saying what is still wrong. To propose a new board the person asked you for, --new <name> --why "<what it is for>" (and --file to hand it in at once) makes it and its Pedido, which you hold; the person publishes it in Studio',
+  args: ['id?'],
+  options: {
+    file: { placeholder: 'board.json' },
+    new: { placeholder: 'name' },
+    why: { placeholder: 'what it is for' },
+  },
   execute: (input) => {
-    const [id = ''] = input.args;
+    const [id] = input.args;
+    const name = input.option('new');
+    if (name !== undefined && id !== undefined)
+      throw new UsageError('Give the Pedido or --new <name>, not both');
+    if (name !== undefined) return proposeBoard(input, name);
+    if (id === undefined) throw new UsageError('Give the Pedido, or --new <name> for a new board');
+    if (input.option('why') !== undefined) throw new UsageError('--why goes with --new <name>');
     const file = input.option('file');
     return withAgent(input, (project) => {
       if (file === undefined) {
         const definition = draftToStartFrom(project, id);
         return { data: definition, text: JSON.stringify(definition, null, 2) };
       }
-      const path = resolve(input.cwd, file);
-      let text: string;
-      try {
-        text = readFileSync(path, 'utf8');
-      } catch {
-        throw new OteaError('file_not_found', `No file at ${path}`);
-      }
+      const text = draftFile(input.cwd, file);
       const { actor, channel } = input;
       const submitted = submitAgentDraft(project, { id, text, actor, channel });
-      const lines = [
-        `Handed in the board draft on ${id} (evidence ${submitted.evidence.id}); it is in Studio now, for the person to try and publish.`,
-        ...(submitted.notes.length === 0
-          ? []
-          : ["Read as today's board:", ...submitted.notes.map((n) => `  ${n}`)]),
-        ...(submitted.problems.length === 0
-          ? []
-          : ['Still to fix, for it to be published:', ...submitted.problems.map((p) => `  ${p}`)]),
-      ];
-      return { data: submitted, text: lines.join('\n') };
+      return { data: submitted, text: handedInLines(id, submitted).join('\n') };
     });
   },
 };
@@ -811,7 +866,7 @@ const boardDraft: Command = {
 const board: Command = {
   name: 'board',
   summary:
-    "Print what agents read about a board before acting: its own words for them and each step's instructions; without a name, the project's boards and how to read each",
+    'Print what agents read about a board before acting: its own words for them and each step\'s instructions; without a name, the project\'s boards and how to read each. To propose a new board, otea board draft --new "<name>" --why "<what it is for>"; the person publishes it in Studio',
   args: ['name?'],
   options: {},
   execute: (input) => {
