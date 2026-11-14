@@ -376,7 +376,8 @@ export const surfaces = {
   'perf.display': 'Rendimiento',
   'perf.dek':
     'Cómo rinde cada modelo en {name}: cuántas de sus entregas vuelven, cuántas rondas lleva terminar un paso y cuánto tarda en entregar.',
-  'perf.declared': 'Los perfiles los declaran los propios agentes; Otea no los comprueba.',
+  'perf.declared':
+    'Los perfiles los declaran los propios agentes; Otea no los comprueba. Sin declarar es lo que un agente no pudo leer: va aparte.',
   'perf.period': 'Periodo',
   'perf.period.7d': '7 días',
   'perf.period.30d': '30 días',

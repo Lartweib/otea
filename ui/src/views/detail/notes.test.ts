@@ -111,6 +111,13 @@ describe('the agent’s profile, as a thread says it', () => {
     );
     expect(profileWords(undefined)).toBeNull();
   });
+
+  it('says plainly what the agent could not read', () => {
+    setLanguage('es');
+    expect(profileWords({ harness: 'codex', model: 'unknown', effort: 'unknown' })).toBe(
+      'sin declarar · sin declarar',
+    );
+  });
 });
 
 describe('a note to an agent that gives no sign of life', () => {

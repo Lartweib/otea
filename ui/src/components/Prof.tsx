@@ -1,4 +1,5 @@
 import type { AgentProfile } from '../presence.ts';
+import { profileValue } from '../profile-words.ts';
 
 // A profile as every surface writes it (agents mock §5): the model and the effort in grey mono,
 // after the agent's name in its usual letter; in parentheses where a round names who did it.
@@ -14,7 +15,7 @@ export function Prof({
   const words = (
     <>
       {paren ? '(' : null}
-      {profile.model} <i>·</i> {profile.effort}
+      {profileValue(profile.model)} <i>·</i> {profileValue(profile.effort)}
       {paren ? ')' : null}
     </>
   );

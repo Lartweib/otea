@@ -19,6 +19,7 @@ import {
   roundsText,
   spanText,
 } from '../performance.ts';
+import { profileValue } from '../profile-words.ts';
 
 // Rendimiento (desktop only): how each model performs, per model family and effort, from the
 // profile on each handoff. One plain reading on top when the data is enough, then a table with a
@@ -91,7 +92,7 @@ function Row({ row, oneBoard }: { row: PerformanceRow; oneBoard: boolean }) {
           {row.models.map((model) => (
             <tr key={model.model} className="perf-sub">
               <th scope="row">
-                <span className="perf-model">{model.model}</span>
+                <span className="perf-model">{profileValue(model.model)}</span>
               </th>
               <Figures numbers={model} />
             </tr>

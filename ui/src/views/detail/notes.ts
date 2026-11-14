@@ -3,6 +3,7 @@ import { modelFamily, type Profile } from '../../../../src/core/profile.ts';
 import { latestFirst } from '../../evidence.ts';
 import { momentParts } from '../../format.ts';
 import { t } from '../../i18n/i18n.ts';
+import { profilePair } from '../../profile-words.ts';
 import type { Evidence, ItemEvent } from '../../types.ts';
 
 // Notes from the person while an agent does a step (core/board/notes.ts), as the item page reads
@@ -55,7 +56,7 @@ export function noteContext(note: ItemNote, now: number): string {
 
 // "opus · high": the family of the model the agent declared, and its effort.
 export function profileWords(profile: Profile | undefined): string | null {
-  return profile ? `${modelFamily(profile.model)} · ${profile.effort}` : null;
+  return profile ? profilePair(modelFamily(profile.model), profile.effort) : null;
 }
 
 // An agent counts as live while it was seen this recently (LIVE_WINDOW_MS in app/presence.ts).

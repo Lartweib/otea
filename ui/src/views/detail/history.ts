@@ -16,6 +16,7 @@ import { describeEvent, formatTime, momentParts, relayOf } from '../../format.ts
 import { t } from '../../i18n/i18n.ts';
 import type { AgentProfile } from '../../presence.ts';
 import { fieldWord, valueWord } from '../../preset-words.ts';
+import { profileValue } from '../../profile-words.ts';
 import type { ItemEvent, TypeView } from '../../types.ts';
 
 // The item's history as the sheet's lane says it (SPEC §10.3, mock:638-649, 2736-2739): newest
@@ -227,7 +228,7 @@ function withProfileChanges(sorted: readonly ItemEvent[], lines: HistoryLine[]):
     const before = last.get(e.actor.name);
     last.set(e.actor.name, e.profile);
     if (!before || sameProfile(before, e.profile)) return [line];
-    const words = [e.profile.model, e.profile.effort];
+    const words = [profileValue(e.profile.model), profileValue(e.profile.effort)];
     if (before.harness !== e.profile.harness && e.profile.harness) words.unshift(e.profile.harness);
     const change: HistoryLine = {
       id: e.id - 0.5,
