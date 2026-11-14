@@ -1414,14 +1414,20 @@ type PhoneServed = {
 
 type Served = { url: string; signInUrl: string; phone?: PhoneServed };
 
-type ServeOptions = { port: number; lan: boolean; tailscale: TailscaleCli; probe: Probe };
+type ServeOptions = {
+  port: number;
+  lan: boolean;
+  tailscale: TailscaleCli;
+  probe: Probe;
+  warn: Input['warn'];
+};
 
 async function serveUntil(
   signal: AbortSignal,
   cwd: string,
   options: ServeOptions,
 ): Promise<Served> {
-  const { port, lan, tailscale, probe } = options;
+  const { port, lan, tailscale, probe, warn } = options;
   const project = openProject(cwd);
   try {
     const dir = project.dataDir;
@@ -1434,7 +1440,7 @@ async function serveUntil(
       tailscale,
       probe,
       // The project's own key pair for Web Push, kept beside the UI token.
-      notify: { keys: ensureVapidKeys(dir) },
+      notify: { keys: ensureVapidKeys(dir, { warn }) },
       ...(lan ? { lan: { addresses, names } } : {}),
     });
     const running = await listen(server, port, lan ? ALL_INTERFACES : undefined);
@@ -1505,6 +1511,7 @@ const serve: Command = {
       lan: flag('lan'),
       tailscale,
       probe,
+      warn,
     });
     const { url, signInUrl, phone } = served;
     // With --no-open the person signs a browser in by hand: the link carries the project's key, so

@@ -87,6 +87,14 @@ describe('migrateToCommon', () => {
     const report = migrateToCommon(repo, env, NOW);
 
     expect(readFileSync(join(report.to, 'push-keys.json'), 'utf8')).toBe(keys);
+    // On Windows the copy would take its new folder's ACL: nothing is inherited from the folder any
+    // more, and the current user has full control.
+    if (process.platform === 'win32') {
+      const acl = execFileSync('icacls', [join(report.to, 'push-keys.json')], { encoding: 'utf8' });
+      const entries = acl.split('\n').filter((line) => line.includes(':('));
+      expect(entries.filter((line) => line.includes('(I)'))).toEqual([]);
+      expect(entries.some((line) => line.includes(`${process.env.USERNAME}:(F)`))).toBe(true);
+    }
   });
 
   it('keeps the project identity', () => {

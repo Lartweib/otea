@@ -8,6 +8,7 @@ import {
 } from 'node:crypto';
 import { chmodSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { restrictToOwner } from '../app/owner-only.ts';
 
 // Web Push, as the PC sends it to a paired phone: the payload encrypted for the phone's browser
 // (aes128gcm, RFC 8291 over RFC 8188) and the request signed with the project's VAPID key (RFC 8292),
@@ -15,7 +16,8 @@ import { join } from 'node:path';
 // web-push package: the protocol is two small, fixed recipes, and web-push would bring its own
 // dependency tree (http_ece, asn1.js, jws, https-proxy-agent) into a CLI that ships six.
 //
-// The VAPID key pair is made per project, on first use, and kept beside the UI token (mode 0600);
+// The VAPID key pair is made per project, on first use, and kept beside the UI token (mode 0600,
+// and on Windows an ACL for the current user alone);
 // the public half goes to the phone's browser, which hands it to its push service. Nothing else
 // ever leaves this computer but the encrypted payload, and only to a browser's push service.
 
@@ -65,7 +67,15 @@ const isKeys = (value: unknown): value is VapidKeys => {
   );
 };
 
-export function ensureVapidKeys(dir: string): VapidKeys {
+// `restrict` keeps a new key file to its owner where the mode does not (Windows); `warn` says when
+// it could not.
+export function ensureVapidKeys(
+  dir: string,
+  {
+    warn,
+    restrict = (path: string) => restrictToOwner(path, warn ? { warn } : {}),
+  }: { warn?: (message: string) => void; restrict?: (path: string) => void } = {},
+): VapidKeys {
   const path = join(dir, PUSH_KEYS_FILE);
   if (existsSync(path)) {
     try {
@@ -82,6 +92,7 @@ export function ensureVapidKeys(dir: string): VapidKeys {
   } catch {
     // best effort: some file systems ignore permissions
   }
+  restrict(path);
   return keys;
 }
 

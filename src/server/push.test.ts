@@ -218,4 +218,12 @@ describe('ensureVapidKeys', () => {
       expect(statSync(join(dir, PUSH_KEYS_FILE)).mode & 0o777).toBe(0o600);
     }
   });
+
+  it('keeps a new key file to its owner on Windows too, once, when it is made', () => {
+    const restricted: string[] = [];
+    const restrict = (path: string) => restricted.push(path);
+    ensureVapidKeys(dir, { restrict });
+    ensureVapidKeys(dir, { restrict });
+    expect(restricted).toEqual([join(dir, PUSH_KEYS_FILE)]);
+  });
 });
