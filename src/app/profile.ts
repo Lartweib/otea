@@ -53,10 +53,9 @@ export function declareProfile(
   input: ProfileInput,
   now: Clock = systemClock,
 ): DeclaredProfileView {
-  const { given } = input;
-  assertProfileValue('model', input.model);
-  assertProfileValue('effort', input.effort);
-  if (given !== undefined) assertProfileValue('harness', given);
+  const model = assertProfileValue('model', input.model);
+  const effort = assertProfileValue('effort', input.effort);
+  if (input.given !== undefined) assertProfileValue('harness', input.given);
   return transaction(db, () => {
     const harness = harnessOf(db, input);
     if (harness === undefined) {
@@ -65,7 +64,7 @@ export function declareProfile(
         'Name the harness you run in too: --harness <name>, such as claude-code, codex or gemini-cli',
       );
     }
-    const profile: Profile = { harness, model: input.model, effort: input.effort };
+    const profile: Profile = { harness, model, effort };
     const at = now();
     const changed = saveProfile(db, input.agent, profile, {
       at,
@@ -97,7 +96,7 @@ export function requireProfile(
       channel === 'cli' ? ' (add --harness <name> the first time, such as claude-code)' : '';
     throw new OteaError(
       'profile_required',
-      `${agent} has no profile yet: declare the model and effort you run as, exactly as your harness names them, with ${how}${harness}`,
+      `${agent} has no profile yet: declare the model and effort you run as, exactly as your harness names them (unknown for one you cannot read; never guess), with ${how}${harness}`,
     );
   }
   if (confirmed && !declared.confirmed) {
@@ -121,10 +120,12 @@ export function presetProfile(
   { agent, model, effort, given }: Omit<ProfileInput, 'channel' | 'harness'>,
   now: Clock = systemClock,
 ): ProfileView {
-  assertProfileValue('model', model);
-  assertProfileValue('effort', effort);
   if (given !== undefined) assertProfileValue('harness', given);
-  const profile: Profile = { harness: given ?? 'mcp', model, effort };
+  const profile: Profile = {
+    harness: given ?? 'mcp',
+    model: assertProfileValue('model', model),
+    effort: assertProfileValue('effort', effort),
+  };
   transaction(db, () =>
     saveProfile(db, agent, profile, { at: now(), channel: 'cli', confirmed: false }),
   );

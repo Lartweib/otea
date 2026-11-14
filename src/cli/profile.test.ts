@@ -67,6 +67,43 @@ describe('otea profile', () => {
     });
   });
 
+  describe('a value the agent cannot read', () => {
+    it('is declared as unknown, in one spelling, and still makes the profile', async () => {
+      const { code, out } = await otea(
+        'profile',
+        '--model',
+        'Unknown',
+        '--effort',
+        'unknown',
+        '--harness',
+        'claude-code',
+      );
+
+      expect(code).toBe(0);
+      expect(out).toBe('claude runs as unknown · unknown on claude-code (family unknown)\n');
+      expect(profileOf('claude')).toEqual({
+        profile: { harness: 'claude-code', model: 'unknown', effort: 'unknown' },
+        confirmed: true,
+      });
+      expect((await otea('next')).code).toBe(0);
+    });
+
+    it('is refused for the harness, which the agent always knows', async () => {
+      const { code, err } = await otea(...DECLARE, '--harness', 'unknown');
+
+      expect(code).toBe(2);
+      expect(err).toContain('you always know it');
+      expect(profileOf('claude')).toBeUndefined();
+    });
+
+    it('is what the help says to declare, never a guess', async () => {
+      const { out } = await otea('profile', '--help');
+
+      expect(out).toContain('only what you can read from your settings');
+      expect(out).toContain('declare unknown. Never guess');
+    });
+  });
+
   it('says there is none yet, and how to declare it', async () => {
     const { code, out } = await otea('profile');
 
@@ -82,6 +119,7 @@ describe('otea profile', () => {
       expect(code).toBe(2);
       expect(err).toContain('claude has no profile yet');
       expect(err).toContain('otea profile --model <id> --effort <level> --as claude');
+      expect(err).toContain('unknown for one you cannot read; never guess');
     });
 
     it('keeps the profile on its event', async () => {
@@ -195,6 +233,20 @@ describe('otea profile', () => {
         effort: 'medium',
         family: 'sonnet',
       });
+    });
+
+    it('takes unknown for the effort the agent cannot read', async () => {
+      client = await connectClient();
+
+      const { isError, data } = await call('profile', {
+        as: 'quill',
+        model: 'claude-sonnet-4-5',
+        effort: 'UNKNOWN',
+      });
+
+      expect(isError).toBe(false);
+      expect(data.profile).toMatchObject({ effort: 'unknown', family: 'sonnet' });
+      expect((await call('next', { as: 'quill' })).isError).toBe(false);
     });
 
     it('leaves the profile unconfirmed in a new session until it is declared again', async () => {

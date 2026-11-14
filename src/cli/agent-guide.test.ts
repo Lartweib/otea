@@ -38,6 +38,8 @@ describe("Otea's agent guide", () => {
       "never reuse your parent's",
       '--as <name>',
       'otea ask <id> "<question>"',
+      'Declare only what you can read from your settings',
+      'declare unknown. Never guess.',
     ]) {
       expect(AGENT_GUIDE).toContain(line);
     }

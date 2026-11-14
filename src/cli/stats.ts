@@ -1,4 +1,5 @@
 import type { Numbers, PerformanceView } from '../core/board/performance.ts';
+import { isUnknown } from '../core/profile.ts';
 import { columns } from './format.ts';
 
 // otea stats as text: one row per model family and effort, its exact models and its board steps
@@ -15,6 +16,9 @@ const HEAD = [
 ];
 
 const NONE = '–';
+
+// A model or an effort the agent could not read, as the person reads it.
+const word = (value: string) => (isUnknown(value) ? 'not declared' : value);
 
 // A span of time, roughly: minutes under two hours, then hours under two days, then days.
 export function spanText(ms: number | null): string {
@@ -48,9 +52,9 @@ export function statsText(view: PerformanceView, period: string): string {
     return `${title}\n\nNo handoffs yet by an agent with a declared profile.`;
   }
   const rows = view.rows.flatMap((row) => [
-    cells(`${row.family} · ${row.effort}`, row),
+    cells(`${word(row.family)} · ${word(row.effort)}`, row),
     ...(row.models.length > 1 || row.models[0]?.model !== row.family
-      ? row.models.map((model) => cells(`  ${model.model}`, model))
+      ? row.models.map((model) => cells(`  ${word(model.model)}`, model))
       : []),
     ...row.steps.map((step) => cells(`  ${step.board} › ${step.stepName}`, step)),
   ]);

@@ -5,6 +5,7 @@ import { openProject } from '../app/project.ts';
 import { publishAs } from '../app/testing.ts';
 import { creatures } from '../core/board/testing.ts';
 import { saveProfile } from '../store/queries.ts';
+import { statsText } from './stats.ts';
 import { type Cli, cliAt, type TempRepo, tempGitRepo } from './testing.ts';
 
 const you = { kind: 'human' as const, name: 'fede' };
@@ -123,5 +124,42 @@ describe('otea stats', () => {
 
     expect(code).not.toBe(0);
     expect(err).toContain('7d, 30d or 12h, or all');
+  });
+});
+
+describe('statsText', () => {
+  const numbers = {
+    handoffs: 3,
+    sentBack: 1,
+    finishedSteps: 0,
+    rounds: 0,
+    itemsFinished: 0,
+    discards: 0,
+    medianClaimToHandoffMs: null,
+  };
+
+  it('says not declared for a model or an effort the agent could not read', () => {
+    const out = statsText(
+      {
+        rows: [
+          { family: 'opus', effort: 'unknown', ...numbers, models: [], steps: [] },
+          {
+            family: 'unknown',
+            effort: 'high',
+            ...numbers,
+            models: [{ model: 'unknown', ...numbers }],
+            steps: [],
+          },
+        ],
+        total: numbers,
+        boards: ['Criaturas'],
+        since: null,
+      },
+      'all',
+    );
+
+    expect(out).toMatch(/^opus · not declared\s+3/m);
+    expect(out).toMatch(/^not declared · high\s+3/m);
+    expect(out).not.toContain('unknown');
   });
 });

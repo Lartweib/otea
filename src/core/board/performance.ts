@@ -1,3 +1,4 @@
+import { isUnknown } from '../profile.ts';
 import { isClosed, positionOf, roundsOf, type Transition } from './engine.ts';
 import { type HistoryEvent, withoutUndone } from './history.ts';
 import { type BoardDefinition, DONE, DROPPED, stepById, stepIndex } from './model.ts';
@@ -213,6 +214,14 @@ const groupOf = ({ family, effort }: EventProfile) => JSON.stringify([family, ef
 
 const byHandoffs = (a: Numbers, b: Numbers) => b.handoffs - a.handoffs;
 
+// How little a row's profile says: a model the agent could not read says least, then an effort.
+// Such rows are their own groups, never a family's, and come after the declared ones.
+const unread = ({ family, effort }: PerformanceRow) =>
+  (isUnknown(family) ? 2 : 0) + (isUnknown(effort) ? 1 : 0);
+
+const byDeclared = (a: PerformanceRow, b: PerformanceRow) =>
+  unread(a) - unread(b) || byHandoffs(a, b);
+
 // Every item's facts in the period (handoffs by when they were made, finished steps, discards and
 // items by when they happened), grouped by family and effort. `since`: an ISO time, or all.
 export function modelPerformance(
@@ -267,7 +276,7 @@ export function modelPerformance(
         .sort(byHandoffs),
     };
   });
-  return { rows: rows.sort(byHandoffs), total: numbersOf(facts, () => true) };
+  return { rows: rows.sort(byDeclared), total: numbersOf(facts, () => true) };
 }
 
 const PERIOD = /^(\d+)([dh])$/;
