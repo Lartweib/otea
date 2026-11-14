@@ -242,7 +242,7 @@ describe('deleteBoardForever', () => {
     const board = criaturas();
 
     expect(deletePlan(project, board)).toEqual({
-      boards: [{ id: board, name: 'Criaturas', items: 0 }],
+      boards: [{ id: board, name: 'Criaturas', items: 0, archived: false }],
       items: 0,
       confirm: false,
     });

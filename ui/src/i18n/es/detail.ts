@@ -20,6 +20,8 @@ export const detail = {
   'detail.evidence': 'Evidencia',
   'detail.missing': 'falta para completar',
   'detail.readOnly': 'Solo lectura. Ejecuta {command} para actuar desde este navegador.',
+  'detail.archived':
+    'Solo lectura: {board} está archivado. Restáuralo en Archivados, en Studio, para trabajar en este ítem.',
   'detail.receipt': '{state} · ahora es {turn} · {ago}',
   'detail.close': 'Cerrar el detalle',
   'detail.parent': 'Padre',

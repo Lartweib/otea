@@ -197,6 +197,22 @@ export const common = {
   'refusal.restoreStepLost':
     'Not undone: {item} stands in {step}, which version {version} does not have.',
   'refusal.restoreNameTaken': 'Not undone: another board is called {name} now; rename it first.',
+  'refusal.boardArchived.item':
+    '{item} is on {board}, an archived board: it is read-only. Restore the board to work on it.',
+  'refusal.boardArchived': '{board} is archived: restore it to change it.',
+  'refusal.boardBuiltin':
+    '{board} is the project’s board for requests: it is not archived or deleted.',
+  'refusal.boardSplitChild':
+    '{parent} divides into {board}: archive, restore or delete {parent} and {board} goes with it.',
+  'refusal.boardHasItems': {
+    one: '{board} has 1 item: archive it first, then delete it.',
+    other: '{board} has {count} items: archive it first, then delete it.',
+  },
+  'refusal.boardDeleteConfirm': {
+    one: 'Deleting {board} deletes 1 item: type the board’s name to confirm.',
+    other: 'Deleting {board} deletes {count} items: type the board’s name to confirm.',
+  },
+  'refusal.boardNotArchived': '{board} is not archived.',
   'refusal.deskOnly':
     'Only the browser on this computer, signed in with `otea open`, changes the project setup.',
   'refusal.note.notPerson': 'No note left on {item}: only you leave notes.',

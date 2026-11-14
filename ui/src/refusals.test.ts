@@ -196,4 +196,41 @@ describe('a refusal from the server', () => {
       'No se dejó la nota en TAR-7: ningún agente está haciendo un paso en él ahora.',
     );
   });
+
+  it('words archiving and deleting a board, and an archived item', () => {
+    setLanguage('es');
+    const frozen = refused('board_archived', 'x', {
+      kind: 'board_archived',
+      board: 'Criaturas',
+      item: 'CRI-3',
+    });
+    expect(serverMessage(frozen, 409)).toBe(
+      'CRI-3 está en Criaturas, un tablero archivado: es solo de lectura. Restaura el tablero para trabajar en él.',
+    );
+    const pedidos = refused('forbidden', 'x', { kind: 'board_builtin', board: 'Pedidos' });
+    expect(serverMessage(pedidos, 403)).toBe(
+      'Pedidos es el tablero de pedidos del proyecto: no se archiva ni se elimina.',
+    );
+    const child = refused('in_use', 'x', {
+      kind: 'board_split_child',
+      board: 'Tareas de repo',
+      parent: 'Cambios',
+    });
+    expect(serverMessage(child, 409)).toBe(
+      'Cambios se divide en Tareas de repo: archiva, restaura o elimina Cambios y Tareas de repo va con él.',
+    );
+    const items = refused('in_use', 'x', { kind: 'board_has_items', board: 'Criaturas', items: 2 });
+    expect(serverMessage(items, 409)).toBe(
+      'Criaturas tiene 2 ítems: archívalo primero y después elimínalo.',
+    );
+    setLanguage('en');
+    const confirm = refused('reason_required', 'x', {
+      kind: 'board_delete_confirm',
+      board: 'Criaturas',
+      items: 1,
+    });
+    expect(serverMessage(confirm, 400)).toBe(
+      'Deleting Criaturas deletes 1 item: type the board’s name to confirm.',
+    );
+  });
 });

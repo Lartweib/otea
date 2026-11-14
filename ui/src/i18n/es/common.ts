@@ -201,6 +201,22 @@ export const common = {
     'No se deshizo: {item} está en {step}, que la versión {version} no tiene.',
   'refusal.restoreNameTaken':
     'No se deshizo: otro tablero se llama {name} ahora; cámbiale el nombre antes.',
+  'refusal.boardArchived.item':
+    '{item} está en {board}, un tablero archivado: es solo de lectura. Restaura el tablero para trabajar en él.',
+  'refusal.boardArchived': '{board} está archivado: restáuralo para cambiarlo.',
+  'refusal.boardBuiltin':
+    '{board} es el tablero de pedidos del proyecto: no se archiva ni se elimina.',
+  'refusal.boardSplitChild':
+    '{parent} se divide en {board}: archiva, restaura o elimina {parent} y {board} va con él.',
+  'refusal.boardHasItems': {
+    one: '{board} tiene 1 ítem: archívalo primero y después elimínalo.',
+    other: '{board} tiene {count} ítems: archívalo primero y después elimínalo.',
+  },
+  'refusal.boardDeleteConfirm': {
+    one: 'Eliminar {board} elimina 1 ítem: escribe el nombre del tablero para confirmar.',
+    other: 'Eliminar {board} elimina {count} ítems: escribe el nombre del tablero para confirmar.',
+  },
+  'refusal.boardNotArchived': '{board} no está archivado.',
   'refusal.deskOnly':
     'Solo el navegador de este equipo, con la sesión de `otea open`, cambia la configuración del proyecto.',
   'refusal.note.notPerson': 'No se dejó la nota en {item}: solo tú dejas notas.',

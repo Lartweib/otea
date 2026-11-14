@@ -1,3 +1,4 @@
+import type { ArchivedBoard, ArchivePlan, DeletePlan } from '../../../src/app/board-archive.ts';
 import type {
   BoardRecord,
   BoardSummary,
@@ -17,8 +18,11 @@ import { serverMessage, unreachable } from '../remote.ts';
 // swallowed: a caller shows it and offers Reintentar.
 
 export type {
+  ArchivedBoard,
+  ArchivePlan,
   BoardRecord,
   BoardSummary,
+  DeletePlan,
   PairRoles,
   PublishPairResult,
   PublishPlan,
@@ -175,4 +179,32 @@ export function requestAgentDraft(
 
 export function mergeAgentDraft(id: string, evidence: number): Promise<BoardRecord> {
   return call('POST', `${board(id)}/draft/merge`, { evidence });
+}
+
+// Archiving, restoring and deleting a board (src/app/board-archive.ts): the plans the dialogs
+// read first, and the acts.
+export function fetchArchivePlan(id: string): Promise<ArchivePlan> {
+  return call('GET', `${board(id)}/archive/plan`);
+}
+
+export function archiveBoard(id: string): Promise<{ archived: string[] }> {
+  return call('POST', `${board(id)}/archive`);
+}
+
+export function unarchiveBoard(id: string): Promise<{ restored: string[] }> {
+  return call('POST', `${board(id)}/unarchive`);
+}
+
+export function fetchDeletePlan(id: string): Promise<DeletePlan> {
+  return call('GET', `${board(id)}/delete/plan`);
+}
+
+// `confirm`: the board's name as the person typed it, when the delete takes items with it.
+export function deleteBoard(id: string, confirm?: string): Promise<{ deleted: string[] }> {
+  return call('DELETE', board(id), confirm === undefined ? {} : { confirm });
+}
+
+export async function fetchArchivedBoards(signal?: AbortSignal): Promise<ArchivedBoard[]> {
+  const path = '/api/boards/archived';
+  return (await call<{ boards: ArchivedBoard[] }>('GET', path, undefined, signal)).boards;
 }

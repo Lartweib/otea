@@ -1,6 +1,6 @@
 import { rmSync } from 'node:fs';
 import { isClosed, positionOf } from '../core/board/engine.ts';
-import { type BoardDefinition, SAME } from '../core/board/model.ts';
+import { type BoardDefinition, DONE, SAME } from '../core/board/model.ts';
 import { stateName } from '../core/board/reading.ts';
 import { readDefinition } from '../core/board/schema.ts';
 import { OteaError } from '../core/errors.ts';
@@ -53,7 +53,8 @@ export type ArchivePlanBoard = {
 export type ArchivePlan = { boards: ArchivePlanBoard[] };
 
 export type DeletePlan = {
-  boards: { id: string; name: string; items: number }[];
+  // `archived`: a board that stands is deleted only while it has no items.
+  boards: { id: string; name: string; items: number; archived: boolean }[];
   items: number;
   // The person types the board's name to delete items with it.
   confirm: boolean;
@@ -64,7 +65,8 @@ export type ArchivedEntry = {
   title: string;
   state: string;
   stateName: string;
-  closed: boolean;
+  // How it ended, when it has: done, or dropped (discarded, whatever its motive).
+  closed: false | 'done' | 'dropped';
 };
 
 export type ArchivedBoard = {
@@ -245,6 +247,7 @@ export function deletePlan(ctx: Context, id: string): DeletePlan {
     id: row.id,
     name: nameOf(ctx, row),
     items: itemsOf(ctx, row).length,
+    archived: row.archivedAt !== null,
   }));
   const items = boards.reduce((sum, board) => sum + board.items, 0);
   return { boards, items, confirm: items > 0 };
@@ -339,7 +342,7 @@ export function listArchivedBoards(ctx: Context): ArchivedBoard[] {
           title: item.title,
           state: item.state,
           stateName: stateName(def, item.state),
-          closed: !isOpen(item.state),
+          closed: isOpen(item.state) ? false : item.state === DONE ? 'done' : 'dropped',
         })),
       },
     ];
