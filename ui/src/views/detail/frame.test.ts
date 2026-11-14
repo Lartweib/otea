@@ -17,6 +17,11 @@ describe('the divider (mock:3220-3255)', () => {
     expect(dividerBounds(600)).toEqual([340, 340]);
   });
 
+  it('keeps a page between its readable width and the room less the divider and 560 for the sheet', () => {
+    expect(dividerBounds(2284, 'page')).toEqual([960, 1715]);
+    expect(dividerBounds(1440 - 260, 'page')).toEqual([960, 960]);
+  });
+
   it('steps 16 with the arrows, 64 with shift, to the ends with Home and End, home with Enter', () => {
     const b: [number, number] = [340, 731];
     expect(dividerKey('ArrowLeft', false, 520, b)).toEqual({ w: 504 });

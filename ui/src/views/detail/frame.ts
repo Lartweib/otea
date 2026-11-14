@@ -1,3 +1,4 @@
+import { pageBounds, type SplitKind } from '../../app/widths.ts';
 import { t } from '../../i18n/i18n.ts';
 import { clamp } from '../../motion/curves.ts';
 import type { MoveKind } from './moves.ts';
@@ -5,8 +6,13 @@ import type { MoveKind } from './moves.ts';
 // The detail's frame, pure: the divider's bounds and keys, the pen's path, the details' cut, the
 // toast a move leaves and whether it offers Undo.
 
-// The list keeps at least 340 px; the sheet at least 440, past the 9 px divider.
-export function dividerBounds(room: number): [number, number] {
+// The list keeps at least 340 px; the sheet at least 440, past the 9 px divider. A page keeps its own
+// bounds (pageBounds); when they cross, the sheet lies over it and there is nothing to drag.
+export function dividerBounds(room: number, kind: SplitKind = 'list'): [number, number] {
+  if (kind === 'page') {
+    const [lo, hi] = pageBounds(room);
+    return [lo, Math.max(lo, hi)];
+  }
   return [340, Math.max(340, room - 9 - 440)];
 }
 

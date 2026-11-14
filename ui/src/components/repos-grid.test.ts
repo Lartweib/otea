@@ -19,7 +19,8 @@ const rule = (selector: string, from = 0, indent = ''): string => {
   const open = css.indexOf('{', at);
   return css.slice(open + 1, css.indexOf('}', open));
 };
-const narrow = css.indexOf('@media (max-width: 720px)');
+// The table reflows by its section's width (a phone, or Configuración beside a sheet).
+const narrow = css.indexOf('@container pjsec (max-width: 620px)');
 
 describe('the repos table grid', () => {
   it('is one grid for the whole table', () => {
@@ -32,13 +33,13 @@ describe('the repos table grid', () => {
     expect(rule('.pj-repo')).toMatch(/grid-template-columns: subgrid;/);
   });
 
-  it('narrows the table, not each row, on a phone', () => {
+  it('narrows the table, not each row, when it is narrow', () => {
     expect(narrow).toBeGreaterThan(0);
     expect(rule('.pj-repos', narrow, '  ')).toMatch(/grid-template-columns: /);
     expect(rule('.pj-repo', narrow, '  ')).not.toMatch(/grid-template-columns: (?!subgrid)/);
   });
 
-  it('gives the folder and the gate the full width on a phone, beside no other cell', () => {
+  it('gives the folder and the gate the full width when narrow, beside no other cell', () => {
     const wide = rule('.pj-repo > .pj-repo-wide', narrow, '  ');
     expect(wide).toMatch(/grid-column: 1 \/ -1;/);
     expect(rule('.pj-repo > .pj-repo-items', narrow, '  ')).toMatch(/grid-area: 1 \/ 2;/);
