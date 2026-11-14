@@ -1,5 +1,6 @@
 import type { DatabaseSync } from 'node:sqlite';
 import type { Channel } from '../core/authority.ts';
+import { OteaError } from '../core/errors.ts';
 import type { EvidenceKind, EvidenceRole } from '../core/evidence.ts';
 import type { Actor } from '../core/item.ts';
 import type { Lease } from '../core/lease.ts';
@@ -75,13 +76,29 @@ export function findCollection(db: DatabaseSync, name: string): CollectionRecord
   const row = db.prepare('SELECT * FROM collections WHERE name = ?').get(name);
   if (row) return toCollection(row as CollectionRow);
   const folded = name.trim().toLocaleLowerCase();
-  const same = listCollections(db).filter((each) => each.name.toLocaleLowerCase() === folded);
+  const same = listCollections(db, { archived: true }).filter(
+    (each) => each.name.toLocaleLowerCase() === folded,
+  );
   return same.length === 1 ? same[0] : undefined;
 }
 
-export function listCollections(db: DatabaseSync): CollectionRecord[] {
-  const rows = db.prepare('SELECT * FROM collections').all() as CollectionRow[];
-  return rows.map(toCollection);
+// The collections of an archived board (app/board-archive.ts): left out of every list.
+const ARCHIVED =
+  'SELECT collection FROM boards WHERE archived_at IS NOT NULL AND collection IS NOT NULL';
+
+export function collectionArchived(db: DatabaseSync, name: string): boolean {
+  return db.prepare(`SELECT 1 FROM (${ARCHIVED}) WHERE collection = ?`).get(name) !== undefined;
+}
+
+// The collections in use, an archived board's left out; `archived` lists those too.
+export function listCollections(
+  db: DatabaseSync,
+  options: { archived?: boolean } = {},
+): CollectionRecord[] {
+  const sql = options.archived
+    ? 'SELECT * FROM collections'
+    : `SELECT * FROM collections WHERE name NOT IN (${ARCHIVED})`;
+  return (db.prepare(sql).all() as CollectionRow[]).map(toCollection);
 }
 
 // Only a collection without items may go: nothing else refers to it.
@@ -177,12 +194,13 @@ export function findItem(db: DatabaseSync, id: string): ItemRecord | undefined {
   return row && toItem(row as ItemRow);
 }
 
-export type ItemFilter = { collection?: string; state?: string; type?: string };
+// An archived board's items are left out unless `archived` asks for them.
+export type ItemFilter = { collection?: string; state?: string; type?: string; archived?: boolean };
 
 export function selectItems(db: DatabaseSync, filter: ItemFilter): ItemRecord[] {
   const sql = `SELECT * FROM items
     WHERE (:collection IS NULL OR collection = :collection) AND (:state IS NULL OR state = :state)
-      AND (:type IS NULL OR type = :type)
+      AND (:type IS NULL OR type = :type)${filter.archived ? '' : ` AND collection NOT IN (${ARCHIVED})`}
     ORDER BY created_at, rowid`;
   const params = {
     collection: filter.collection ?? null,
@@ -295,8 +313,31 @@ function agentBehind(event: Omit<EventRecord, 'id'>): string | null {
   return typeof event.data.via === 'string' ? event.data.via : null;
 }
 
+// The archived board an item is on, by its name (its collection's); undefined while it stands.
+export function archivedBoardOf(db: DatabaseSync, itemId: string): string | undefined {
+  const row = db
+    .prepare(
+      `SELECT i.collection AS name FROM items i JOIN boards b ON b.collection = i.collection
+       WHERE i.id = ? AND b.archived_at IS NOT NULL`,
+    )
+    .get(itemId);
+  return row ? String(row.name) : undefined;
+}
+
+// An item on an archived board is read-only: nothing writes to it (core/errors.ts board_archived).
+export function boardArchived(item: string, board: string): OteaError {
+  return new OteaError(
+    'board_archived',
+    `${item} is on ${board}, an archived board: it is read-only. Work on the items of the boards in otea next; the person restores ${board} in Studio to work on it again`,
+    { kind: 'board_archived', item, board },
+  );
+}
+
 // Every event keeps the profile its agent has declared at that moment, read in the same statement.
+// No event is written to an item of an archived board: it stays as it was archived.
 export function appendEvent(db: DatabaseSync, event: Omit<EventRecord, 'id'>): void {
+  const archived = archivedBoardOf(db, event.itemId);
+  if (archived !== undefined) throw boardArchived(event.itemId, archived);
   db.prepare(
     `INSERT INTO events (item_id, type, actor_kind, actor_name, at, data, profile)
       VALUES (?, ?, ?, ?, ?, ?, (SELECT profile FROM agents WHERE name = ?))`,

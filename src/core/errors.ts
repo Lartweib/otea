@@ -46,7 +46,9 @@ export type ErrorCode =
   | 'invalid_gate'
   | 'invalid_profile'
   | 'profile_required'
-  | 'transport_unavailable';
+  | 'transport_unavailable'
+  // An item of an archived board: read-only until the person restores the board.
+  | 'board_archived';
 
 // `details`: what the refusal says, as data, for the web UI to word it in its own language; the
 // message is the English agents and the CLI read.

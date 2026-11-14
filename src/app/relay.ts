@@ -9,7 +9,7 @@ import { transaction } from '../store/database.ts';
 import { type EventRecord, type ItemRecord, selectEvents } from '../store/queries.ts';
 import { typeOfItem } from './collections.ts';
 import type { Context } from './context.ts';
-import { type Item, landMove, requireItem, systemClock } from './items.ts';
+import { type Item, landMove, requireWritableItem, systemClock } from './items.ts';
 import { assertMoveHandsOff, boardState, liveBoardOf, roundWorkersOf } from './next.ts';
 import { assertMayEnter } from './relations.ts';
 
@@ -39,7 +39,7 @@ export function relayDecision(ctx: Context, input: RelayInput, now = systemClock
   }
   const { db } = ctx;
   return transaction(db, () => {
-    const item = requireItem(db, input.id);
+    const item = requireWritableItem(db, input.id);
     const type = typeOfItem(ctx, item);
     const { workflow } = type;
     const { reason, via, channel } = input;

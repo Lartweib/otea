@@ -20,7 +20,7 @@ import {
   selectEventsOfTypes,
 } from '../store/queries.ts';
 import type { Context } from './context.ts';
-import { requireItem, systemClock } from './items.ts';
+import { requireItem, requireWritableItem, systemClock } from './items.ts';
 import { itemOnBoard, type LiveBoard, liveBoardOf } from './next.ts';
 
 // An agent's question to the person (core/board/questions.ts): the agent asks while it does a step,
@@ -70,7 +70,7 @@ export function askQuestion(ctx: Context, input: AskInput, now = systemClock): A
   const text = input.text.trim();
   if (text === '') refuse('reason_required', id, 'empty', `Not asked on ${id}: say your question`);
   return transaction(ctx.db, () => {
-    const item = requireItem(ctx.db, id);
+    const item = requireWritableItem(ctx.db, id);
     const at = now();
     assertMayWrite(item.id, activeLease(item.lease, at), input.actor);
     const { board, step } = doing(ctx, item);
@@ -115,7 +115,7 @@ export function answerQuestion(ctx: Context, input: AnswerInput, now = systemClo
   const text = input.text.trim();
   if (text === '') refuse('reason_required', id, 'empty', `Not answered on ${id}: say your answer`);
   return transaction(ctx.db, () => {
-    const item = requireItem(ctx.db, id);
+    const item = requireWritableItem(ctx.db, id);
     const board = liveBoardOf(ctx, item.collection);
     const open = board ? itemOnBoard(ctx, item, board.def).asking : undefined;
     if (!open)

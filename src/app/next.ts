@@ -83,7 +83,14 @@ import {
 import { collectionNamed } from './collections.ts';
 import type { Context } from './context.ts';
 import { type DraftRequest, draftRequestOf } from './draft-request.ts';
-import { type Item, landMove, requireItem, systemClock, workflowOf } from './items.ts';
+import {
+  type Item,
+  landMove,
+  requireItem,
+  requireWritableItem,
+  systemClock,
+  workflowOf,
+} from './items.ts';
 import { takeItem } from './lease-take.ts';
 
 // What agents meet on a published board: the facts the step engine reads of an item, `next` (the
@@ -806,7 +813,7 @@ export function handoffItem(
   now = systemClock,
 ): BoardMoveResult {
   return transaction(ctx.db, () => {
-    const item = requireItem(ctx.db, input.id);
+    const item = requireWritableItem(ctx.db, input.id);
     const board = requireBoard(ctx, item);
     const at = now();
     assertMayWrite(item.id, activeLease(item.lease, at), input.actor);
@@ -844,7 +851,7 @@ export function approveItem(
   now = systemClock,
 ): BoardMoveResult {
   return transaction(ctx.db, () => {
-    const item = requireItem(ctx.db, input.id);
+    const item = requireWritableItem(ctx.db, input.id);
     const board = requireBoard(ctx, item);
     const at = now();
     const position = positionOf(item.state);
@@ -876,7 +883,7 @@ export function sendBackItem(
       { kind: 'send_back_reason', item: input.id },
     );
   return transaction(ctx.db, () => {
-    const item = requireItem(ctx.db, input.id);
+    const item = requireWritableItem(ctx.db, input.id);
     const board = requireBoard(ctx, item);
     const at = now();
     const position = positionOf(item.state);
@@ -944,7 +951,7 @@ function dropTarget(board: LiveBoard, item: ItemRecord, input: Omit<DropInput, '
 // through an agent.
 export function dropItem(ctx: Context, input: DropInput, now = systemClock): BoardMoveResult {
   return transaction(ctx.db, () => {
-    const item = requireItem(ctx.db, input.id);
+    const item = requireWritableItem(ctx.db, input.id);
     const board = requireBoard(ctx, item);
     const at = now();
     if (input.actor.kind === 'agent' && input.via !== 'relay')

@@ -2,6 +2,14 @@ import { type Context, Hono } from 'hono';
 import { z } from 'zod';
 import { mergeAgentDraft, requestAgentDraft } from '../app/agent-draft.ts';
 import {
+  archiveBoard,
+  archivePlan,
+  deleteBoardForever,
+  deletePlan,
+  listArchivedBoards,
+  unarchiveBoard,
+} from '../app/board-archive.ts';
+import {
   boardProblems,
   createBoard,
   createBoardSet,
@@ -92,6 +100,11 @@ const AgentDraftBody = z.strictObject({
 });
 
 const MergeBody = z.strictObject({ evidence: z.number().int().positive() });
+
+const EmptyBody = z.strictObject({});
+
+// The board's name, typed by the person, when the delete takes items with it.
+const DeleteBody = z.strictObject({ confirm: z.string().optional() });
 
 const HUMAN = { kind: 'human' as const, name: 'human' };
 
@@ -184,6 +197,33 @@ export function boardsApi(project: Project, feed: ChangeFeed, auth: Session): Ho
           versions: roles(input.versions),
           by: HUMAN,
         });
+        feed.notify();
+        return c.json(result);
+      })
+      // Archivados: the archived boards and their items, to read and search (board-archive.ts).
+      .get('/boards/archived', (c) => c.json({ boards: listArchivedBoards(project) }))
+      .get('/boards/:id/archive/plan', (c) => c.json(archivePlan(project, id(c))))
+      .get('/boards/:id/delete/plan', (c) => c.json(deletePlan(project, id(c))))
+      // Archiving, restoring and deleting a board are the person's, like publishing: only from
+      // this computer's signed-in browser, never an agent, a forwarded request or a phone.
+      .post('/boards/:id/archive', async (c) => {
+        assertConfigurable(c, auth);
+        await body(c, EmptyBody, '{}');
+        const result = archiveBoard(project, id(c), { by: HUMAN });
+        feed.notify();
+        return c.json(result);
+      })
+      .post('/boards/:id/unarchive', async (c) => {
+        assertConfigurable(c, auth);
+        await body(c, EmptyBody, '{}');
+        const result = unarchiveBoard(project, id(c), { by: HUMAN });
+        feed.notify();
+        return c.json(result);
+      })
+      .delete('/boards/:id', async (c) => {
+        assertConfigurable(c, auth);
+        const { confirm } = await body(c, DeleteBody, '{"confirm"?: string}');
+        const result = deleteBoardForever(project, id(c), confirm === undefined ? {} : { confirm });
         feed.notify();
         return c.json(result);
       })

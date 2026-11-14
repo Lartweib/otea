@@ -71,6 +71,8 @@ export const EXIT_CODES: Readonly<Record<'ok' | FailureCode, number>> = {
   board_conflict: 4,
   // A phone transport that cannot carry a phone yet: Tailscale not ready, the Otea relay.
   transport_unavailable: 20,
+  // An item of an archived board: it is read-only until the person restores the board in Studio.
+  board_archived: 21,
   // 128 + SIGINT, as shells report a command stopped by Ctrl+C.
   interrupted: 130,
 };

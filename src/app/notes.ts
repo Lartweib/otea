@@ -24,7 +24,7 @@ import {
   selectLeases,
 } from '../store/queries.ts';
 import type { Context } from './context.ts';
-import { requireItem, systemClock } from './items.ts';
+import { requireItem, requireWritableItem, systemClock } from './items.ts';
 import { itemOnBoard, type LiveBoard, liveBoardOf, type Worker, workerOf } from './next.ts';
 
 // Notes from the person while an agent does a step (core/board/notes.ts): the person leaves one
@@ -117,7 +117,7 @@ export function leaveNote(ctx: Context, input: LeaveNoteInput, now = systemClock
   const text = input.text.trim();
   if (text === '') refuse('reason_required', id, 'empty', `No note left on ${id}: it has no text`);
   return transaction(ctx.db, () => {
-    const item = requireItem(ctx.db, id);
+    const item = requireWritableItem(ctx.db, id);
     const at = now();
     const { board, step } = workedOn(ctx, item);
     const on = itemOnBoard(ctx, item, board.def);
@@ -173,7 +173,7 @@ export function replyNote(ctx: Context, input: ReplyNoteInput, now = systemClock
   if (input.actor.kind !== 'agent')
     refuse('forbidden', id, 'not_agent', `Not answered: the agent answers the notes on ${id}`);
   return transaction(ctx.db, () => {
-    const item = requireItem(ctx.db, id);
+    const item = requireWritableItem(ctx.db, id);
     const at = now();
     const left = notesOf(selectEvents(ctx.db, item.id)).find(({ note }) => note === input.note);
     if (!left) throw new OteaError('not_found', `${item.id} has no note ${input.note}`);

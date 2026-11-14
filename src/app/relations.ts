@@ -32,7 +32,14 @@ import {
 } from '../store/queries.ts';
 import { typeOfItem } from './collections.ts';
 import type { Context } from './context.ts';
-import { type Item, present, requireItem, systemClock, workflowOf } from './items.ts';
+import {
+  type Item,
+  present,
+  requireItem,
+  requireWritableItem,
+  systemClock,
+  workflowOf,
+} from './items.ts';
 import { liveBoardOf, partsBoardOf } from './next.ts';
 
 // `kind` is one of the stored kinds; `other` is the item the relation points to: `otea link A blocks
@@ -109,8 +116,8 @@ function assertMayBePart(ctx: Context, from: ItemRecord, to: ItemRecord): void {
 export function addRelation(ctx: Context, given: Relation, who: Who, at: string): RelationRecord {
   const { db } = ctx;
   const relation = normalizeRelation(given);
-  const from = requireItem(db, relation.from);
-  const to = requireItem(db, relation.to);
+  const from = requireWritableItem(db, relation.from);
+  const to = requireWritableItem(db, relation.to);
   if (relation.kind === 'parent') assertMayBePart(ctx, from, to);
   assertCanRelate(selectRelations(db), relation);
   if (relation.kind === 'parent') {
@@ -146,8 +153,8 @@ export function unlinkItems(ctx: Context, input: LinkInput, now = systemClock): 
   const given = relationOf(input);
   const { db } = ctx;
   return transaction(db, () => {
-    requireItem(db, given.from);
-    requireItem(db, given.to);
+    requireWritableItem(db, given.from);
+    requireWritableItem(db, given.to);
     const stored = selectRelations(db, given.kind).find((relation) =>
       matchesRelation(relation, given),
     );

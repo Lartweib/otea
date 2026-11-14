@@ -48,6 +48,7 @@ export const HTTP_STATUS: Readonly<Record<ErrorCode, ContentfulStatusCode>> = {
   invalid_board: 422,
   board_conflict: 409,
   transport_unavailable: 409,
+  board_archived: 409,
   not_publishable: 422,
 };
 

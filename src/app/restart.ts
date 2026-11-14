@@ -13,7 +13,14 @@ import {
   takeLease,
 } from '../store/queries.ts';
 import type { Context } from './context.ts';
-import { type Clock, type Item, present, requireItem, systemClock, workflowOf } from './items.ts';
+import {
+  type Clock,
+  type Item,
+  present,
+  requireWritableItem,
+  systemClock,
+  workflowOf,
+} from './items.ts';
 import { UNDO_WINDOW_MS } from './undo.ts';
 
 // A stuck item: its agent's lease ran out without a release (Atasco). The person, from the UI,
@@ -38,7 +45,7 @@ function releaseStuck(
 ): Item {
   const { db } = ctx;
   return transaction(db, () => {
-    const item = requireItem(db, input.id);
+    const item = requireWritableItem(db, input.id);
     const at = now();
     const ran = stuckLease(item, at);
     clearLease(db, item.id);
@@ -82,7 +89,7 @@ export function reassignItem(ctx: Context, input: ReassignInput, now: Clock = sy
 export function undoRelease(ctx: Context, input: RestartInput, now: Clock = systemClock): Item {
   const { db } = ctx;
   return transaction(db, () => {
-    const item = requireItem(db, input.id);
+    const item = requireWritableItem(db, input.id);
     const at = now();
     const refuse = (why: Why, text: string): never => {
       throw new OteaError('not_undoable', `${item.id}: ${text}`, {

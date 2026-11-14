@@ -138,6 +138,19 @@ function requireRow(ctx: Context, id: string): BoardRow {
   return row;
 }
 
+// A board Studio may change: an archived one is read-only until it is restored (board-archive.ts).
+function requireStanding(ctx: Context, id: string): BoardRow {
+  const row = requireRow(ctx, id);
+  if (row.archivedAt !== null) {
+    const board = row.collection ?? id;
+    throw new OteaError('board_archived', `${board} is archived: restore it to change it`, {
+      kind: 'board_archived',
+      board,
+    });
+  }
+  return row;
+}
+
 export function getBoardRecord(ctx: Context, id: string): BoardRecord {
   return recordOf(ctx, requireRow(ctx, id));
 }
@@ -178,7 +191,7 @@ export function listBoardSummaries(ctx: Context): BoardSummary[] {
 
 // Every board name in the project but `except`'s, live and draft, plus collections not on a board.
 function namesTaken(ctx: Context, except?: string): string[] {
-  const names = listBoards(ctx.db)
+  const names = listBoards(ctx.db, { archived: true })
     .filter(({ id }) => id !== except)
     .flatMap((row) => {
       const record = recordOf(ctx, row);
@@ -317,7 +330,7 @@ export function saveDraft(
       { kind: 'draft_invalid' },
     );
   return transaction(ctx.db, () => {
-    const row = requireRow(ctx, id);
+    const row = requireStanding(ctx, id);
     if (row.liveVersion !== input.baseVersion)
       throw new OteaError(
         'board_conflict',
@@ -349,7 +362,7 @@ export function discardDraft(
   now: Clock = systemClock,
 ): { deleted: boolean } {
   return transaction(ctx.db, () => {
-    const row = requireRow(ctx, id);
+    const row = requireStanding(ctx, id);
     deleteDraft(ctx.db, id);
     if (row.liveVersion === null) {
       if (maxVersion(ctx.db, id) === 0) deleteBoard(ctx.db, id);
@@ -525,7 +538,7 @@ export function publishBoard(
 
 // The body of a publish, inside a transaction the caller holds.
 function publishWithin(ctx: Context, id: string, input: PublishInput, now: Clock): PublishResult {
-  const row = requireRow(ctx, id);
+  const row = requireStanding(ctx, id);
   const record = recordOf(ctx, row);
   assertDraftUnchanged(ctx, id, input.draftStamp);
   const { definition: draft, requestItem, agentNote } = requireDraft(ctx, id);
@@ -609,7 +622,7 @@ export function restoreBoard(
 
 // The body of a restore, inside a transaction the caller holds.
 function restoreWithin(ctx: Context, id: string, input: RestoreInput, now: Clock): BoardRecord {
-  const row = requireRow(ctx, id);
+  const row = requireStanding(ctx, id);
   if (row.liveVersion === null) throw new OteaError('not_undoable', 'The board is not published');
   const undone = findVersion(ctx.db, id, row.liveVersion);
   if (!undone) throw new OteaError('not_found', `Board ${id} lost version ${row.liveVersion}`);
@@ -849,7 +862,8 @@ export function syncBoardPresets(ctx: Context): void {
   if (known && known.stamp === stamp && ctx.presets === known.result) return;
   const base = known && ctx.presets === known.result ? known.base : ctx.presets;
   const presets = new Map(base.presets);
-  for (const row of listBoards(ctx.db)) {
+  // An archived board's items are still read under it.
+  for (const row of listBoards(ctx.db, { archived: true })) {
     if (row.liveVersion === null) continue;
     const version = findVersion(ctx.db, row.id, row.liveVersion);
     if (!version) continue;
