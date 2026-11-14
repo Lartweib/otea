@@ -1431,7 +1431,7 @@ async function serveUntil(
   const project = openProject(cwd);
   try {
     const dir = project.dataDir;
-    const token = ensureUiToken(dir);
+    const token = ensureUiToken(dir, { warn });
     const addresses = lan ? lanAddresses() : [];
     const name = lan ? await localName(addresses) : undefined;
     const names = name ? [name] : [];

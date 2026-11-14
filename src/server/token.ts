@@ -1,6 +1,7 @@
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { chmodSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { restrictToOwner } from '../app/owner-only.ts';
 
 export const UI_TOKEN_FILE = 'ui-token';
 
@@ -13,7 +14,15 @@ export function readUiToken(dir: string): string | undefined {
   return TOKEN_PATTERN.test(token) ? token : undefined;
 }
 
-export function ensureUiToken(dir: string): string {
+// The token is kept to its owner: mode 0600, and on Windows, which ignores the mode, an ACL for the
+// current user alone (`restrict`); `warn` says when that could not be done.
+export function ensureUiToken(
+  dir: string,
+  {
+    warn,
+    restrict = (path: string) => restrictToOwner(path, warn ? { warn } : {}),
+  }: { warn?: (message: string) => void; restrict?: (path: string) => void } = {},
+): string {
   const existing = readUiToken(dir);
   if (existing) return existing;
   const token = randomBytes(32).toString('base64url');
@@ -24,6 +33,7 @@ export function ensureUiToken(dir: string): string {
   } catch {
     // best effort: some file systems ignore permissions
   }
+  restrict(path);
   return token;
 }
 

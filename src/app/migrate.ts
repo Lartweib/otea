@@ -39,7 +39,8 @@ import {
 
 const BACKUP_PREFIX = '.otea.migrated-';
 
-// The folders and files copied next to the database; ui-token and serve.json are made again when served.
+// The folders and files copied next to the database; ui-token and serve.json are made again when served
+// (ensureUiToken keeps the new token to its owner).
 // The push keys go along: the phones' subscriptions are bound to them.
 const PUSH_KEYS = 'push-keys.json';
 const COPIED = ['evidence', 'presets', PUSH_KEYS];

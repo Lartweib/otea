@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -51,6 +52,22 @@ describe('ui token', () => {
     ensureUiToken(dir);
 
     expect(statSync(join(dir, UI_TOKEN_FILE)).mode & 0o777).toBe(0o600);
+  });
+
+  it('keeps a new token file to its owner on Windows too, once, when it is made', () => {
+    const restricted: string[] = [];
+    const restrict = (path: string) => restricted.push(path);
+    ensureUiToken(dir, { restrict });
+    ensureUiToken(dir, { restrict });
+    expect(restricted).toEqual([join(dir, UI_TOKEN_FILE)]);
+  });
+
+  it.skipIf(process.platform !== 'win32')('leaves the token file to the current user alone', () => {
+    ensureUiToken(dir);
+    const acl = execFileSync('icacls', [join(dir, UI_TOKEN_FILE)], { encoding: 'utf8' });
+    const entries = acl.split('\n').filter((line) => line.includes(':('));
+    expect(entries.filter((line) => line.includes('(I)'))).toEqual([]);
+    expect(entries.some((line) => line.includes(`${process.env.USERNAME}:(F)`))).toBe(true);
   });
 
   it.each([
