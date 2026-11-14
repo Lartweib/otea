@@ -172,6 +172,11 @@
   color: var(--ink-3);
   white-space: nowrap;
 }
+/* on a recording, the moment the note was left at: it takes the player back there */
+.nt-cite .nt-at {
+  color: var(--you);
+  font-variant-numeric: tabular-nums;
+}
 
 /* a piece as a thumbnail: the image, a recording's first frame, or a file as lines */
 .nt-tb {

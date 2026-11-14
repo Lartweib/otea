@@ -516,6 +516,7 @@ export const detail = {
   'notes.waitingAny': 'El agente todavía no contestó.',
   'notes.waitingSmall': 'le llega en su próximo latido · no puede entregar sin contestar',
   'notes.cite': 'Ver {file} en Evidencia',
+  'notes.citeAt': 'Ver {file} en Evidencia, en {time}',
   'notes.at': 'en {time}',
   'notes.hand': 'Que conteste tus notas',
   'notes.round.live': { one: '{count} nota en el hilo', other: '{count} notas en el hilo' },

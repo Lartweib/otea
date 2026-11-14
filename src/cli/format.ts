@@ -1,5 +1,6 @@
 import type { Item, ItemView } from '../app/items.ts';
 import type { ValidationReport } from '../app/validate.ts';
+import { moment } from '../core/board/notes.ts';
 import type { Actor } from '../core/item.ts';
 import type { Lease } from '../core/lease.ts';
 import type { Layout } from '../core/modules.ts';
@@ -124,8 +125,9 @@ function describeAction({ type, data }: Event): string {
     return describeRelation(data as Relation);
   }
   if (type === 'note_left' || type === 'note_answered') {
-    const on = (data.anchor as { filename?: unknown } | undefined)?.filename;
-    const where = typeof on === 'string' ? ` (on ${on})` : '';
+    const anchor = data.anchor as { filename?: unknown; seconds?: unknown } | undefined;
+    const at = typeof anchor?.seconds === 'number' ? ` at ${moment(anchor.seconds)}` : '';
+    const where = typeof anchor?.filename === 'string' ? ` (on ${anchor.filename}${at})` : '';
     return `note ${String(data.note)}: ${JSON.stringify(String(data.text ?? ''))}${where}`;
   }
   if (type === 'question_asked' || type === 'question_answered')

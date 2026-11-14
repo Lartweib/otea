@@ -5,9 +5,11 @@ import { Button } from '../../kit/index.ts';
 import type { Evidence } from '../../types.ts';
 import { stepWithArrows } from './arrows.ts';
 import { FileMeta } from './FileMeta.tsx';
+import { SEEK_EVENT } from './video-moment.ts';
 
-// The browser's own player, with its controls. Nothing plays until asked.
-export function VideoPlayer({ evidence }: { evidence: Evidence }) {
+// The browser's own player, with its controls. Nothing plays until asked; `start`, the moment it
+// opens at (a note's, when its timestamp led here).
+export function VideoPlayer({ evidence, start }: { evidence: Evidence; start?: number }) {
   const fileUrl = useFileUrl();
   return (
     <figure className="ev-figure">
@@ -15,10 +17,14 @@ export function VideoPlayer({ evidence }: { evidence: Evidence }) {
         {/* biome-ignore lint/a11y/useMediaCaption: agents attach screen recordings without captions. */}
         <video
           className="ev-media"
+          data-ev-video={evidence.id}
           src={fileUrl(evidence)}
           controls
           preload="metadata"
           playsInline
+          onLoadedMetadata={(event) => {
+            if (start !== undefined) event.currentTarget.currentTime = start;
+          }}
         />
       </div>
       <figcaption>
@@ -121,7 +127,25 @@ export function VideoFrames({ evidence }: { evidence: Evidence }) {
   const fileUrl = useFileUrl();
   const frames = useFrames(fileUrl(evidence));
   const [index, setIndex] = useState(0);
+  // Whether the person picked a frame: its moment is then what a note on the recording is on.
+  const [picked, setPicked] = useState(false);
+  const pick = (at: number) => {
+    setIndex(at);
+    setPicked(true);
+  };
   const [playing, setPlaying] = useState(false);
+  // A note's timestamp asks the strip to play from its moment (video-moment.ts).
+  const [start, setStart] = useState<number | undefined>(undefined);
+  const [strip, setStrip] = useState<HTMLElement | null>(null);
+  useEffect(() => {
+    if (!strip) return;
+    const seek = (event: Event) => {
+      setStart(Number((event as CustomEvent<number>).detail));
+      setPlaying(true);
+    };
+    strip.addEventListener(SEEK_EVENT, seek);
+    return () => strip.removeEventListener(SEEK_EVENT, seek);
+  }, [strip]);
   if (frames.status === 'failed' || playing) {
     return (
       <div className="ev-frames">
@@ -132,7 +156,7 @@ export function VideoFrames({ evidence }: { evidence: Evidence }) {
         ) : (
           <p className="t-cap">{t('evidence.noFrames')}</p>
         )}
-        <VideoPlayer evidence={evidence} />
+        <VideoPlayer evidence={evidence} {...(start === undefined ? {} : { start })} />
       </div>
     );
   }
@@ -147,10 +171,13 @@ export function VideoFrames({ evidence }: { evidence: Evidence }) {
   const current = list[Math.min(index, list.length - 1)];
   if (!current) return null;
   const onKeyDown = (event: KeyboardEvent<HTMLElement>) =>
-    stepWithArrows(event, index, list.length, setIndex);
+    stepWithArrows(event, index, list.length, pick);
   return (
     <section
+      ref={setStrip}
       className="ev-frames"
+      data-ev-video={evidence.id}
+      data-ev-at={picked ? current.time : undefined}
       aria-roledescription={t('evidence.framesRole')}
       aria-label={evidence.filename}
       onKeyDown={onKeyDown}
@@ -177,7 +204,7 @@ export function VideoFrames({ evidence }: { evidence: Evidence }) {
               className="ev-thumb well"
               aria-current={at === index ? 'true' : undefined}
               aria-label={t('evidence.frameAt', { time: seconds(frame.time) })}
-              onClick={() => setIndex(at)}
+              onClick={() => pick(at)}
             >
               <img src={frame.src} alt="" />
             </button>

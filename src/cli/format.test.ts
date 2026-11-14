@@ -26,3 +26,25 @@ describe('a release the person made from Atasco', () => {
     expect(released({ holder: 'kiln', cause: 'handoff' })).toMatch(/kiln \(handed off\)$/);
   });
 });
+
+describe('a note on a recording in the timeline', () => {
+  const note = (anchor: Record<string, unknown>) =>
+    formatEvent({
+      id: 10,
+      itemId: 'TASKS-1',
+      type: 'note_left',
+      actor: human,
+      at: 'T',
+      data: { note: 1, text: 'It stutters here', anchor },
+    });
+
+  it('names the moment the person was at in it', () => {
+    expect(note({ evidence: 4, filename: 'run.webm', seconds: 62.4 })).toMatch(
+      /note 1: "It stutters here" \(on run\.webm at 1:02\.4\)$/,
+    );
+  });
+
+  it('names only the file when the note has no moment', () => {
+    expect(note({ evidence: 4, filename: 'shot.png' })).toMatch(/\(on shot\.png\)$/);
+  });
+});

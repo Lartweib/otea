@@ -4,6 +4,7 @@ import { SAME, stepById } from '../../../../src/core/board/model.ts';
 import { waitsOf } from '../../actions.ts';
 import { typeOfItem, useApp } from '../../app/context.tsx';
 import { boardOfCollection, boardsOf, useBoards } from '../../board-studio/home/boards-store.ts';
+import { noteAnchor } from '../../components/evidence/video-moment.ts';
 import { t, tx } from '../../i18n/i18n.ts';
 import { TypeIcon } from '../../icons/TypeIcon.tsx';
 import { GhostButton, Icon, StepPill, Swap, toast } from '../../kit/index.ts';
@@ -312,7 +313,7 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
     setAnchor(null);
     setNoting({ button, open: true, below: noting ? null : below });
   };
-  const postNote = (text: string, on?: { evidence: number }) =>
+  const postNote = (text: string, on?: { evidence: number; seconds?: number }) =>
     app.note(item.id, text, on).then(
       () => toast({ msg: t('notes.sent', { agent: who, title: item.title }), id: item.id }),
       () => toast({ msg: t('notes.failed'), id: item.id }),
@@ -320,7 +321,8 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
   const sendNote = (text: string) => {
     if (!noting) return;
     setNoting({ ...noting, open: false });
-    void postNote(text, anchor === null ? undefined : { evidence: anchor });
+    // On a recording, the moment its player is at goes with the note.
+    void postNote(text, noteAnchor(anchor));
   };
   const quiet = canNote ? quietMinutes(worker, now) : null;
   const who = noteTo ?? t('notes.anyAgent');
@@ -522,8 +524,7 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
                               ? noteSays
                               : t('notes.had', { done: had.done, count: had.of }),
                           warn: quiet !== null,
-                          send: (text: string, on: number | null) =>
-                            postNote(text, on === null ? undefined : { evidence: on }),
+                          send: (text: string, on: number | null) => postNote(text, noteAnchor(on)),
                         },
                       }
                     : {}),

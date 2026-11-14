@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   type ItemNote,
+  moment,
   NOTE_ANSWERED,
   NOTE_LEFT,
   type NoteEvent,
@@ -226,5 +227,14 @@ describe('what the agent reads of the notes', () => {
     expect(waitNoteText('TAR-7', [2, 3])).toBe(
       'TAR-7: new notes from the person (notes 2 and 3). Read them: otea show TAR-7',
     );
+  });
+});
+
+describe('a moment in a recording', () => {
+  it('reads m:ss, with the tenth of a second when there is one', () => {
+    expect(moment(2)).toBe('0:02');
+    expect(moment(62.4)).toBe('1:02.4');
+    expect(moment(0.9)).toBe('0:00.9');
+    expect(moment(-3)).toBe('0:00');
   });
 });
