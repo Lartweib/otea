@@ -366,6 +366,7 @@ export const detail = {
   'sheet.h.claimed': 'Tomó la reserva',
   'sheet.h.claimedOver': 'Tomó la reserva de {previous}',
   'sheet.h.released': 'Soltó la reserva',
+  'sheet.h.profileChanged': 'Cambió a {profile}',
   'sheet.h.restarted': 'Lo pusiste otra vez en la cola',
   'sheet.h.reassigned': 'Se lo dejaste a {agent}',
   'sheet.h.attached': 'Adjuntó {file}',
