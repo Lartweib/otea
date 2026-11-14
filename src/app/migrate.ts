@@ -26,6 +26,7 @@ import {
   registerProject,
   withRegistry,
 } from './home.ts';
+import { restrictToOwner } from './owner-only.ts';
 import {
   databasePath,
   type Env,
@@ -40,7 +41,8 @@ const BACKUP_PREFIX = '.otea.migrated-';
 
 // The folders and files copied next to the database; ui-token and serve.json are made again when served.
 // The push keys go along: the phones' subscriptions are bound to them.
-const COPIED = ['evidence', 'presets', 'push-keys.json'];
+const PUSH_KEYS = 'push-keys.json';
+const COPIED = ['evidence', 'presets', PUSH_KEYS];
 
 export type MigrationReport = {
   // migrated: moved now; finished: an earlier run had copied and registered it, this one moved the
@@ -147,6 +149,8 @@ function migrate(project: Project, env: Env, now: Date): MigrationReport {
       if (existsSync(join(from, name)))
         cpSync(join(from, name), join(to, name), { recursive: true });
     }
+    // A copy takes the new folder's ACL on Windows: the push keys are kept to their owner again.
+    if (existsSync(join(to, PUSH_KEYS))) restrictToOwner(join(to, PUSH_KEYS));
     project.db.close();
     const registry = openRegistry(env);
     try {
