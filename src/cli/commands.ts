@@ -101,6 +101,7 @@ import { createMcpServer, serveStdio } from '../mcp/server.ts';
 import { formatCode, lanAddresses, localName } from '../server/lan.ts';
 import { ALL_INTERFACES, DEFAULT_PORT, listen } from '../server/listen.ts';
 import { pairingUrl } from '../server/pairing.ts';
+import { ensureVapidKeys } from '../server/push.ts';
 import { createServer } from '../server/server.ts';
 import { ensureUiToken, readUiToken } from '../server/token.ts';
 import { type EventFilter, findProfile, type ProfileView, profileView } from '../store/queries.ts';
@@ -1421,6 +1422,8 @@ async function serveUntil(
       token,
       tailscale,
       probe,
+      // The project's own key pair for Web Push, kept beside the UI token.
+      notify: { keys: ensureVapidKeys(dir) },
       ...(lan ? { lan: { addresses, names } } : {}),
     });
     const running = await listen(server, port, lan ? ALL_INTERFACES : undefined);

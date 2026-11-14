@@ -257,6 +257,21 @@ export const MIGRATIONS = [
     at TEXT NOT NULL
   );
   `,
+  // Who is told when something becomes yours (app/notify-targets.ts): a paired device's Web Push
+  // subscription, dropped with the device, or the desktop app (id 'desktop', no subscription). Each
+  // keeps the kinds it wants, its quiet hours and the language its notices are written in.
+  `
+  CREATE TABLE notify_targets (
+    id TEXT PRIMARY KEY,
+    device TEXT UNIQUE REFERENCES devices (id) ON DELETE CASCADE,
+    endpoint TEXT UNIQUE,
+    p256dh TEXT,
+    auth TEXT,
+    lang TEXT NOT NULL,
+    prefs TEXT NOT NULL,
+    created_at TEXT NOT NULL
+  );
+  `,
 ];
 
 function userVersion(db: DatabaseSync): number {

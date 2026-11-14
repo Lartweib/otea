@@ -39,16 +39,17 @@ describe('migrate', () => {
         'repos',
         'offers',
         'phone',
+        'notify_targets',
       ]),
     );
-    expect(userVersion(db)).toBe(19);
+    expect(userVersion(db)).toBe(20);
   });
 
   it('is idempotent', () => {
     migrate(db);
     migrate(db);
 
-    expect(userVersion(db)).toBe(19);
+    expect(userVersion(db)).toBe(20);
   });
 
   describe('from version 1', () => {

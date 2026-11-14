@@ -55,6 +55,8 @@ import {
 import { serveEvidence } from './evidence.ts';
 import { DEFAULT_PORT, isAllowedHost } from './hosts.ts';
 import { AttemptLimiter, type Clock, isLoopback, PairingCodes, plainAddress } from './lan.ts';
+import { createNotifier, type Notifier } from './notifier.ts';
+import { notifyApi } from './notify-api.ts';
 import {
   assertCanManageDevices,
   assertPhoneOn,
@@ -65,6 +67,7 @@ import {
   revoke,
 } from './pairing.ts';
 import { addPath, forgetPath, projectOverviews, projectSettings, relinkPath } from './projects.ts';
+import { generateVapidKeys, type PushSender, type VapidKeys, webPushSender } from './push.ts';
 import {
   type Client,
   deviceCookie,
@@ -110,6 +113,8 @@ export type OteaServer = {
   // Phone access: the pairing code and the doors a phone comes through (otea serve --lan opens the
   // local network's; choosing Tailscale opens its own).
   phone: Phone;
+  // Who is told when something becomes theirs (pushes to phones, the desktop app's notices).
+  notifier: Notifier;
   listeningOn(port: number): void;
   close(): void;
 };
@@ -128,6 +133,15 @@ export type ServerOptions = {
   // real ones only where otea serve runs (tests give fakes).
   tailscale?: TailscaleCli;
   probe?: Probe;
+  // Notifications: the project's VAPID keys (otea serve keeps them in .otea; a test gets fresh
+  // ones), how a push is sent (the real web push, or a fake), and how often the items are looked
+  // at again for what a clock alone changes (a lease running out).
+  notify?: {
+    keys?: VapidKeys;
+    sender?: PushSender;
+    tickMs?: number;
+    minuteOfDay?: (ms: number) => number;
+  };
 };
 
 function isTurn(value: string): value is Turn {
@@ -199,6 +213,8 @@ function tooLarge(): never {
 }
 
 type Doors = {
+  notifier: Notifier;
+  keys: VapidKeys;
   auth: Session;
   phone: Phone;
   port: Port;
@@ -281,7 +297,9 @@ function api(
       .post('/devices/:id/revoke', (c) => {
         assertCanManageDevices(c, auth);
         assertSameOrigin(c);
+        // Its push subscription goes with it.
         const device = revoke(project, c.req.param('id'));
+        doors.notifier.refresh();
         feed.notify();
         return c.json(device);
       })
@@ -452,6 +470,7 @@ function api(
         return serveEvidence(c, project, c.req.param('id'));
       })
       .route('/', boardsApi(project, feed, auth))
+      .route('/', notifyApi(project, doors.notifier, doors.keys, auth))
       .get('/events', (c) => c.json(listEvents(project, eventsFilter(c.req.query()))))
       .get('/stream', (c) => streams.handle(c))
       .all('*', (c) => c.json(errorBody('not_found', `No route ${c.req.path}`), 404))
@@ -560,7 +579,20 @@ export function createServer(project: Project, options: ServerOptions = {}): Ote
   });
   const boundPort = () => port;
   mountAuth(app, options.token, boundPort);
+  const keys = options.notify?.keys ?? generateVapidKeys();
+  const notifier = createNotifier(project, feed, {
+    sender: options.notify?.sender ?? webPushSender(keys),
+    now,
+    ...(options.notify?.tickMs === undefined ? {} : { tickMs: options.notify.tickMs }),
+    ...(options.notify?.minuteOfDay === undefined
+      ? {}
+      : { minuteOfDay: options.notify.minuteOfDay }),
+  });
+  // Devices subscribed before this start are told from now on.
+  notifier.refresh();
   const doors: Doors = {
+    notifier,
+    keys,
     auth: session(options.token, boundPort),
     phone,
     port: boundPort,
@@ -577,10 +609,12 @@ export function createServer(project: Project, options: ServerOptions = {}): Ote
   return {
     app,
     phone,
+    notifier,
     listeningOn(listened) {
       port = listened;
     },
     close() {
+      notifier.close();
       streams.closeAll();
       feed.close();
     },
