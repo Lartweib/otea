@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import type { Numbers, PerformanceRow } from '../../src/core/board/performance.ts';
 import { setLanguage } from './i18n/i18n.ts';
-import { MIN_HANDOFFS, readingOf, roundsText, spanText } from './performance.ts';
+import { labelOf, MIN_HANDOFFS, readingOf, roundsText, spanText } from './performance.ts';
 
 afterEach(() => setLanguage('en'));
 
@@ -18,7 +18,27 @@ const numbers = (handoffs: number, sentBack: number): Numbers => ({
 const row = (family: string, effort: string, handoffs: number, sentBack: number) =>
   ({ family, effort, ...numbers(handoffs, sentBack), models: [], steps: [] }) as PerformanceRow;
 
+describe('labelOf: a row as the table names it', () => {
+  it('says not declared for a model or an effort the agent could not read', () => {
+    expect(labelOf(row('unknown', 'high', 1, 0))).toBe('not declared · high');
+    setLanguage('es');
+    expect(labelOf(row('opus', 'unknown', 1, 0))).toBe('opus · sin declarar');
+  });
+});
+
 describe('readingOf: one plain sentence when the data is enough', () => {
+  it('reads only rows whose model and effort were declared', () => {
+    setLanguage('es');
+    const rows = [
+      row('opus', 'high', 10, 0),
+      row('unknown', 'high', 10, 9),
+      row('sonnet', 'unknown', 10, 9),
+    ];
+
+    expect(readingOf(rows)).toBe('Con opus · high, ninguna entrega vuelve.');
+    expect(readingOf([row('unknown', 'unknown', 10, 9)])).toBeNull();
+  });
+
   it('sets the model whose handoffs come back most beside the one they come back least', () => {
     setLanguage('es');
     const rows = [

@@ -96,6 +96,13 @@ describe('a profile change in the history', () => {
     ).toBe('Switched to sonnet · medium');
   });
 
+  it('says plainly an effort the agent could not read', () => {
+    setLanguage('es');
+    const unread = { ...opus, effort: 'unknown' };
+    const lines = historyOf([by(1, 'ana', opus, 60), by(2, 'ana', unread, 50)], bug, (s) => s, NOW);
+    expect(lines[1]?.text).toBe('Cambió a opus · sin declarar');
+  });
+
   it('names the harness when that is what changed', () => {
     const codex = { ...opus, harness: 'codex' };
     const lines = historyOf([by(1, 'ana', opus, 60), by(2, 'ana', codex, 50)], bug, (s) => s, NOW);

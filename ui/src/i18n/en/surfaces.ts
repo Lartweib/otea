@@ -372,7 +372,8 @@ export const surfaces = {
   'perf.display': 'Performance',
   'perf.dek':
     'How each model performs in {name}: how many of its handoffs come back, how many rounds a step takes to finish and how long it takes to hand off.',
-  'perf.declared': 'Profiles are as the agents declare them; Otea does not check them.',
+  'perf.declared':
+    'Profiles are as the agents declare them; Otea does not check them. Not declared is what an agent could not read: it stays apart.',
   'perf.period': 'Period',
   'perf.period.7d': '7 days',
   'perf.period.30d': '30 days',

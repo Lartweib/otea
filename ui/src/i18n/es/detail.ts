@@ -558,6 +558,7 @@ export const detail = {
   'agent.since': 'desde las {time}',
   'agent.unconfirmed': 'sin confirmar en esta sesión',
   'agent.noProfile': 'Sin perfil',
+  'agent.notDeclared': 'sin declarar',
   'agent.trail.first': 'declaró {profile}',
   'agent.trail.change': 'pasó de {from} a {to}',
   'agent.selfNote': 'Lo declara el propio agente. Otea lo guarda con cada acción; no lo comprueba.',

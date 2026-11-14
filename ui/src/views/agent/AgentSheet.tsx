@@ -13,6 +13,7 @@ import { lookOf } from '../../lanes/looks.ts';
 import { NodeGlyph } from '../../lanes/NodeGlyph.tsx';
 import type { Agent, AgentProfile } from '../../presence.ts';
 import { stateWord } from '../../preset-words.ts';
+import { profilePair, profileValue } from '../../profile-words.ts';
 import { type AgentRow, agentRows, harnessOf } from '../../shell/topbar-model.ts';
 import type { Item } from '../../types.ts';
 import { whenOf } from '../detail/history.ts';
@@ -115,15 +116,15 @@ function ProfileBlock({
 }) {
   const profile = presence.profile ?? null;
   const trail = profileTrail(detail?.profiles ?? []);
-  const words = (p: AgentProfile) => <b>{`${p.model} · ${p.effort}`}</b>;
+  const words = (p: AgentProfile) => <b>{profilePair(p.model, p.effort)}</b>;
   return (
     <Block label={t('agent.profile')} gloss={t('agent.profileGloss')}>
       <div className="pnow">
         {profile ? (
           <span className="pbig">
-            {profile.model}
+            {profileValue(profile.model)}
             <i>·</i>
-            {profile.effort}
+            {profileValue(profile.effort)}
           </span>
         ) : (
           <span className="pbig warn">{t('agent.noProfile')}</span>

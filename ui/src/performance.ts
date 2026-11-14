@@ -1,5 +1,7 @@
 import type { Numbers, PerformanceRow } from '../../src/core/board/performance.ts';
+import { isUnknown } from '../../src/core/profile.ts';
 import { language, t } from './i18n/i18n.ts';
+import { profilePair } from './profile-words.ts';
 
 // Rendimiento's words and figures, worked out from the server's numbers alone
 // (src/core/board/performance.ts): the one plain reading at the top, and each figure of the table.
@@ -12,7 +14,11 @@ export const NONE = '–';
 export const rateOf = ({ handoffs, sentBack }: Numbers) =>
   handoffs === 0 ? 0 : sentBack / handoffs;
 
-export const labelOf = ({ family, effort }: PerformanceRow) => `${family} · ${effort}`;
+export const labelOf = ({ family, effort }: PerformanceRow) => profilePair(family, effort);
+
+// A row whose model or effort the agent could not read: its own group in the table, never read
+// into the sentence at the top.
+const declared = ({ family, effort }: PerformanceRow) => !isUnknown(family) && !isUnknown(effort);
 
 // How often a row's handoffs come back, as "1 in N" (or none, or nearly all).
 function comesBack(row: PerformanceRow, first: boolean): string {
@@ -26,7 +32,7 @@ function comesBack(row: PerformanceRow, first: boolean): string {
 // The sentence at the top: the rows with enough handoffs, the one whose handoffs come back most
 // beside the one they come back least; null while no row has enough.
 export function readingOf(rows: readonly PerformanceRow[]): string | null {
-  const enough = rows.filter(({ handoffs }) => handoffs >= MIN_HANDOFFS);
+  const enough = rows.filter((row) => declared(row) && row.handoffs >= MIN_HANDOFFS);
   if (enough.length === 0) return null;
   const sorted = [...enough].sort((a, b) => rateOf(b) - rateOf(a));
   const worst = sorted[0] as PerformanceRow;

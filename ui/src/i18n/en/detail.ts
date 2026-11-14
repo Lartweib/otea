@@ -560,6 +560,7 @@ export const detail = {
   'agent.since': 'since {time}',
   'agent.unconfirmed': 'not confirmed in this session',
   'agent.noProfile': 'No profile',
+  'agent.notDeclared': 'not declared',
   'agent.trail.first': 'declared {profile}',
   'agent.trail.change': 'went from {from} to {to}',
   'agent.selfNote':
