@@ -149,4 +149,29 @@ export const phone = {
     'Over the local network the phone works only while this computer is on and Otea is open.',
   'phone.transport.offline':
     'Installed on the phone, Otea opens even with this computer off: it shows the last it saw, and what you capture waits in a queue until this computer answers.',
+  // Preferencias › Avisos: notifications on the phone (Web Push) and in the desktop app (notify/)
+  'notify.title': 'notifications',
+  'notify.turn': 'It is your turn',
+  'notify.turnHint': 'a review, or an agent asks you',
+  'notify.replied': 'An agent answered your note',
+  'notify.stuck': 'Something got stuck',
+  'notify.stuckHint': 'an agent went quiet holding it',
+  'notify.quiet': 'Quiet hours',
+  'notify.from': 'From',
+  'notify.to': 'to',
+  'notify.on': 'Turn on notifications',
+  'notify.onNote':
+    'On this phone, when something is yours. At most one per item every few minutes.',
+  'notify.off': 'Turn off on this phone',
+  'notify.desktopNote':
+    'As the system’s notifications, with the window closed too. A burst comes as one.',
+  'notify.needsHttps':
+    'Notifications reach the phone over HTTPS only: connect it through Tailscale (Settings, on the computer).',
+  'notify.needsHome':
+    'On iPhone, notifications reach Otea only once it is on the Home Screen (see above) and opened from there.',
+  'notify.unsupported': 'This browser does not receive notifications.',
+  'notify.blocked':
+    'Notifications are blocked for Otea. Allow them in this browser’s settings for this site.',
+  'notify.failed': 'They could not be turned on. Try again.',
+  'notify.saveFailed': 'Not saved. Try again.',
 } as const;

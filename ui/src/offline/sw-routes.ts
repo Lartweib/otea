@@ -7,14 +7,21 @@
 // - data: what the read views show. The network first; when the PC does not answer, the last
 //   answer that came back, marked as such (see offline headers below).
 // - network: everything else, untouched: writes, the live stream, evidence files, pairing and the
-//   phone settings, other origins.
+//   phone settings, the notification settings, other origins.
 
 export type SwRoute = 'shell' | 'static' | 'data' | 'network';
 
 export type SwRequest = { method: string; url: string; mode: string };
 
 // Read live or not at all: the stream, the files, and what belongs to this computer's browser.
-const LIVE_ONLY = ['/api/stream', '/api/evidence/', '/api/pair', '/api/lan', '/api/phone'];
+const LIVE_ONLY = [
+  '/api/stream',
+  '/api/evidence/',
+  '/api/pair',
+  '/api/lan',
+  '/api/phone',
+  '/api/notify',
+];
 
 export function swRoute(
   request: SwRequest,

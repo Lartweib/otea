@@ -15,6 +15,7 @@ import { Pop } from '../kit/pop/Pop.tsx';
 import { Seg } from '../kit/Seg.tsx';
 import { Swap } from '../kit/Swap.tsx';
 import { type MotionPref, motionPref, setMotionPref } from '../motion/reduced.ts';
+import { NotifyGroup } from '../notify/NotifyGroup.tsx';
 import { InstallHint, wantsInstallLine } from '../offline/InstallHint.tsx';
 import type { ThemeChoice } from '../theme.ts';
 import { loadChoice, switchChoice } from '../theme-dom.ts';
@@ -26,7 +27,7 @@ import { useMedia } from './use-media.ts';
 // bottom edge, 420 wide, rising from the button at the rail's foot (its line leads from the
 // button's centre), left aligned with the rail; on a phone the same pop pinned 12 px from the
 // sides and the bottom. Theme (the feathered circle), motion (with its note that swaps in place),
-// language (only the interface is translated), the session (pairing a phone, where this browser
+// language (only the interface is translated), notifications (Avisos, where they can reach), the session (pairing a phone, where this browser
 // may) and the server. The handoff is not a choice: it always folds (Plegar).
 
 function Group({ label, children }: { label: string; children: ReactNode }) {
@@ -140,6 +141,7 @@ export function PrefsBody({ server, onPair }: PrefsBodyProps) {
           <InstallHint />
         </Group>
       ) : null}
+      <NotifyGroup />
       {app.session.canManageDevices ? (
         <Group label={t('prefs.session')}>
           <button type="button" className="plink" onClick={onPair}>
@@ -178,8 +180,14 @@ export function PrefsButton() {
       });
       return;
     }
+    // Held by its foot above the button, so a group that fills in after it opens (Avisos) grows
+    // upward; past the room above the button, it scrolls.
     const rail = btn.closest('.rail')?.getBoundingClientRect();
     anchorAbove(btn, rail?.left)(el);
+    const r = btn.getBoundingClientRect();
+    el.style.top = 'auto';
+    el.style.bottom = `${window.innerHeight - r.top + 8}px`;
+    el.style.setProperty('--prefs-max', `${Math.max(240, r.top - 8 - 16)}px`);
   };
   return (
     <>

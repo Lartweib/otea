@@ -1,8 +1,10 @@
 import { withoutUndone } from '../../src/core/board/history.ts';
 import type { PerformanceView } from '../../src/core/board/performance.ts';
+import type { NotifyPrefs } from '../../src/core/notify/planner.ts';
 import type { FeedEvent } from './activity.ts';
 import type { WrittenBrief } from './brief.ts';
-import { t } from './i18n/i18n.ts';
+import { type Language, t } from './i18n/i18n.ts';
+import type { NotifyView } from './notify/offer.ts';
 import { noteRead, readOf } from './offline/sync-state.ts';
 import { type Agent, parseAgents } from './presence.ts';
 import type { LinkRequest } from './relations.ts';
@@ -250,6 +252,27 @@ export async function fetchPhone(signal: AbortSignal): Promise<PhoneStatus> {
 // Chooses the phone transport; Tailscale is set up on this computer first and kept once ready.
 export function choosePhoneTransport(transport: TransportKind): Promise<PhoneStatus> {
   return post<PhoneStatus>('/api/phone', { transport });
+}
+
+// Preferencias › Avisos: this device's push subscription and what it is told, or the desktop
+// app's notices (notify/).
+export async function fetchNotify(signal: AbortSignal): Promise<NotifyView> {
+  return (await get('/api/notify', signal)).json();
+}
+
+export function postSubscription(
+  subscription: { endpoint: string; keys: { p256dh: string; auth: string } },
+  lang: Language,
+): Promise<NotifyView> {
+  return post<NotifyView>('/api/notify/subscribe', { ...subscription, lang });
+}
+
+export function postUnsubscribe(): Promise<NotifyView> {
+  return post<NotifyView>('/api/notify/unsubscribe', {});
+}
+
+export function postNotifyPrefs(prefs: NotifyPrefs, lang: Language): Promise<NotifyView> {
+  return post<NotifyView>('/api/notify/prefs', { prefs, lang });
 }
 
 export async function revokeDevice(id: string): Promise<void> {
