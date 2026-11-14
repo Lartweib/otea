@@ -10,6 +10,7 @@ import { studioHash } from '../../selection.ts';
 import { RowIcon } from '../../shell/Rail.tsx';
 import { boardIcon } from '../../shell/rail-model.ts';
 import type { BoardSummary, TemplateView } from '../api.ts';
+import { Archived } from './Archived.tsx';
 import { loadBoards, useBoards } from './boards-store.ts';
 import {
   type BlockJoin,
@@ -140,6 +141,8 @@ export function StudioHome({ canWrite }: StudioHomeProps) {
           tpls.map((x) => <TemplateRow key={x.key} template={x} canWrite={canWrite} />)
         )}
       </div>
+
+      <Archived canWrite={canWrite} />
     </div>
   );
 }

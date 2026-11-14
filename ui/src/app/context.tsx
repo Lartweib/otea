@@ -270,6 +270,17 @@ export function useApp(): App {
   return app;
 }
 
+// The app as a reader sees it: what is under it acts as a browser that cannot write (an item of
+// an archived board).
+export function ReadOnly({ on, children }: { on: boolean; children: ReactNode }) {
+  const app = useApp();
+  const value = useMemo(
+    () => (on ? { ...app, session: { ...app.session, canWrite: false } } : app),
+    [app, on],
+  );
+  return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
+}
+
 // For tests and previews: a provider over given data.
 export function AppTestProvider({ value, children }: { value: App; children: ReactNode }) {
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

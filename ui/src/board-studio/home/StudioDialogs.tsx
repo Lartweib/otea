@@ -5,6 +5,7 @@ import { toast } from '../../kit/pop/toast.tsx';
 import { studioHash } from '../../selection.ts';
 import type { BoardSummary } from '../api.ts';
 import { AgentDraftDialog } from './AgentDraftDialog.tsx';
+import { ArchiveDialogs } from './ArchiveDialogs.tsx';
 import { boardsOf, useBoards } from './boards-store.ts';
 import { arrivedDrafts } from './home-model.ts';
 import { NewBoardDialog } from './NewBoardDialog.tsx';
@@ -75,6 +76,7 @@ export function StudioDialogs() {
         name={shown?.kind === 'agent' ? shown.name : ''}
         onClose={closeStudioDialog}
       />
+      <ArchiveDialogs />
     </>
   );
 }

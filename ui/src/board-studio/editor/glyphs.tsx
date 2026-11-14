@@ -8,6 +8,8 @@ const G = {
   redo: '<path d="M10.5 4l2.7 2.7-2.7 2.7"/><path d="M13 6.7H6.8a3.6 3.6 0 0 0 0 7.2h2.7"/>',
   // A change of order: one arrow each way, on two rows.
   move: '<path d="M2.5 5.5h10M10 3l2.5 2.5L10 8"/><path d="M13.5 10.5h-10M6 8l-2.5 2.5L6 13"/>',
+  // The board's own menu: Archivar, Eliminar.
+  more: '<g fill="currentColor" stroke="none"><circle cx="3.5" cy="8" r="1.2"/><circle cx="8" cy="8" r="1.2"/><circle cx="12.5" cy="8" r="1.2"/></g>',
   trash: '<path d="M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.6 8.5h5.8l.6-8.5"/>',
   play: '<path d="M5 3.5v9l7-4.5z"/>',
   plus: '<path d="M8 3.2v9.6M3.2 8h9.6"/>',

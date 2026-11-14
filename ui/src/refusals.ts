@@ -256,6 +256,20 @@ function said(details: RefusalDetails): string | undefined {
       return t('refusal.restoreNameTaken', { name: details.name });
     case 'desk_only':
       return t('refusal.deskOnly');
+    case 'board_archived':
+      return details.item
+        ? t('refusal.boardArchived.item', { item: details.item, board: details.board })
+        : t('refusal.boardArchived', { board: details.board });
+    case 'board_builtin':
+      return t('refusal.boardBuiltin', { board: details.board });
+    case 'board_split_child':
+      return t('refusal.boardSplitChild', { board: details.board, parent: details.parent });
+    case 'board_has_items':
+      return t('refusal.boardHasItems', { board: details.board, count: details.items });
+    case 'board_delete_confirm':
+      return t('refusal.boardDeleteConfirm', { board: details.board, count: details.items });
+    case 'board_not_archived':
+      return t('refusal.boardNotArchived', { board: details.board });
     case 'note':
       return t(NOTE_WHY[details.why], { item: details.item });
     default:

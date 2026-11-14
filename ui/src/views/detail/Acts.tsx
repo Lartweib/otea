@@ -239,7 +239,13 @@ export function Acts({
 
   let body: ReactNode = null;
   if (mode === 'read') {
-    body = <p className="receipt">{tx('detail.readOnly', { command: <code>otea open</code> })}</p>;
+    body = (
+      <p className="receipt">
+        {item.archived
+          ? t('detail.archived', { board: item.archived.board })
+          : tx('detail.readOnly', { command: <code>otea open</code> })}
+      </p>
+    );
   } else if (mode === 'moves') {
     const first = plan.primary ?? plan.quiet[0] ?? plan.close[0] ?? null;
     body = (

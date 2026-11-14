@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { t } from '../../i18n/i18n.ts';
-import { MenuLabel, MenuNote } from '../../kit/pop/Menu.tsx';
+import { MenuItem, MenuLabel, MenuNote } from '../../kit/pop/Menu.tsx';
 import { Swap } from '../../kit/Swap.tsx';
 import { studioHash } from '../../selection.ts';
+import { openArchive, openDelete } from '../home/archive.ts';
 import { problemText } from '../words.ts';
 import { useEditor } from './context.ts';
 import { Glyph } from './glyphs.tsx';
@@ -122,6 +123,43 @@ function Problems() {
   );
 }
 
+// The board's own menu: Archivar and Eliminar, for a published board of yours (never Pedidos). On a
+// joined pair it acts on the parent, which takes the board it divides into along.
+function BoardMenu() {
+  const { draft, pair } = useEditor();
+  const pop = useAnchor();
+  if (!draft.record.live || draft.record.builtin) return null;
+  const id = pair ? pair.ids.parent : draft.record.id;
+  return (
+    <>
+      <button
+        type="button"
+        className="ghost-btn"
+        aria-haspopup="menu"
+        aria-expanded={pop.open}
+        aria-label={t('bs.archive.menu')}
+        title={t('bs.archive.menu')}
+        onClick={(e) => pop.toggle(e.currentTarget)}
+      >
+        <Glyph name="more" />
+      </button>
+      <EdPop
+        open={pop.open}
+        anchor={pop.anchor}
+        alignRight
+        onClose={pop.close}
+        label={t('bs.archive.menu')}
+        estimate={120}
+      >
+        <MenuItem onPick={() => openArchive(id)}>{t('bs.archive.archiveItem')}</MenuItem>
+        <MenuItem className="danger" onPick={() => openDelete(id)}>
+          {t('bs.archive.deleteItem')}
+        </MenuItem>
+      </EdPop>
+    </>
+  );
+}
+
 export function Bar() {
   const { draft, dialogs, pair, twin } = useEditor();
   const { live, dirty } = liveState(draft);
@@ -185,6 +223,7 @@ export function Bar() {
         >
           <Glyph name="redo" />
         </button>
+        <BoardMenu />
         <span className="se-vr" />
         {!live || dirty ? (
           <button type="button" className="btn text sm" onClick={dialogs.discard}>

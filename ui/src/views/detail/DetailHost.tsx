@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useReducer, useRef, useState } from 'react';
 import { fetchItem } from '../../api.ts';
-import { useApp } from '../../app/context.tsx';
+import { ReadOnly, useApp } from '../../app/context.tsx';
 import { type SplitKind, splitKindOf, splitOf, storedWidth, WIDTH_KEYS } from '../../app/widths.ts';
 import { useWorkspace, workspace } from '../../app/workspace.ts';
 import { NewItemForm } from '../../components/NewItemForm.tsx';
@@ -802,15 +802,18 @@ export function DetailHost() {
               <AgentSheet name={agentShown} onClose={app.closeAgent} />
             </div>
           ) : content ? (
-            <ItemSheet
-              key={content.id}
-              item={content}
-              full={ws.full}
-              nav={nav}
-              onNav={goNav}
-              onFull={() => workspace.set({ full: !ws.full })}
-              onClose={app.closeItem}
-            />
+            // An item of an archived board reads as it was, with nothing to act on.
+            <ReadOnly on={!!content.archived}>
+              <ItemSheet
+                key={content.id}
+                item={content}
+                full={ws.full}
+                nav={nav}
+                onNav={goNav}
+                onFull={() => workspace.set({ full: !ws.full })}
+                onClose={app.closeItem}
+              />
+            </ReadOnly>
           ) : (
             <ItemMissing id={shown} phone={phone} onClose={app.closeItem} />
           )}
