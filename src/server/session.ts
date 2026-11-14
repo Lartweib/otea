@@ -7,7 +7,7 @@ export type Port = () => number;
 
 export const sessionCookie = (port: number) => `otea_session_${port}`;
 
-// A paired device's token, set once by POST /api/pair (otea serve --lan).
+// A paired device's token, set once by POST /api/pair (local network or Tailscale).
 export const deviceCookie = (port: number) => `otea_device_${port}`;
 
 // Who is on the other end: this computer, a paired device, or a device that has not paired yet (it

@@ -2,13 +2,13 @@ import type { Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { createAdaptorServer } from '@hono/node-server';
 import { DEFAULT_PORT } from './hosts.ts';
+import { lanAddresses, localName } from './lan.ts';
+import type { Fetch, LanNetwork } from './lan-access.ts';
 import type { OteaServer } from './server.ts';
 
 export { DEFAULT_PORT } from './hosts.ts';
 
 const HOST = '127.0.0.1';
-// Every IPv4 interface, for LAN access only (otea serve --lan).
-export const ALL_INTERFACES = '0.0.0.0';
 
 // Ports above 1024 that browsers (and fetch) refuse to connect to, per the Fetch spec's bad-port list.
 const UNSAFE_PORTS = new Set([
@@ -29,26 +29,47 @@ export class PortInUseError extends Error {
   }
 }
 
-function stop(http: Server, server: OteaServer): Promise<void> {
-  server.close();
+function shut(http: Server): Promise<void> {
   return new Promise((resolve) => {
     http.close(() => resolve());
     http.closeAllConnections();
   });
 }
 
-export function listen(
-  server: OteaServer,
-  port = DEFAULT_PORT,
-  bindTo: typeof HOST | typeof ALL_INTERFACES = HOST,
-): Promise<Listening> {
+async function stop(http: Server, server: OteaServer): Promise<void> {
+  await server.lan.close();
+  server.close();
+  await shut(http);
+}
+
+// The real local network: this computer's private addresses (and its .local name when it
+// resolves to one), and a listener on one of them beside the one on 127.0.0.1.
+export const localNetwork: LanNetwork = {
+  async hosts() {
+    const addresses = lanAddresses();
+    const name = await localName(addresses);
+    return { addresses, names: name ? [name] : [] };
+  },
+  listen(fetch: Fetch, address: string, port: number) {
+    const http = createAdaptorServer({ fetch }) as Server;
+    return new Promise((resolve, reject) => {
+      http.once('error', reject);
+      http.listen(port, address, () => {
+        http.off('error', reject);
+        resolve(() => shut(http));
+      });
+    });
+  },
+};
+
+export function listen(server: OteaServer, port = DEFAULT_PORT): Promise<Listening> {
   const http = createAdaptorServer({ fetch: server.app.fetch }) as Server;
   return new Promise((resolve, reject) => {
     http.once('error', (error: NodeJS.ErrnoException) => {
       server.close();
       reject(error.code === 'EADDRINUSE' ? new PortInUseError(port) : error);
     });
-    const bind = () => http.listen(port, bindTo, onListening);
+    const bind = () => http.listen(port, HOST, onListening);
     const onListening = () => {
       const { port: bound } = http.address() as AddressInfo;
       // A random port the browser would refuse: ask the system for another one.

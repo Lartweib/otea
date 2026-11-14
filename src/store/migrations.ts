@@ -272,6 +272,11 @@ export const MIGRATIONS = [
     created_at TEXT NOT NULL
   );
   `,
+  // Whether the local network is open to phones (Settings › Phone, otea phone lan --open): every
+  // otea serve starts with it open until it is closed again.
+  `
+  ALTER TABLE phone ADD COLUMN lan_open INTEGER NOT NULL DEFAULT 0;
+  `,
 ];
 
 function userVersion(db: DatabaseSync): number {

@@ -29,6 +29,7 @@ import {
   phoneSettings,
   phoneStatus,
   RELAY_UNAVAILABLE,
+  setLanOpen,
   switchToTailscale,
 } from '../app/phone.ts';
 import { listAgents, presenceSignature } from '../app/presence.ts';
@@ -55,6 +56,7 @@ import {
 import { serveEvidence } from './evidence.ts';
 import { DEFAULT_PORT, isAllowedHost } from './hosts.ts';
 import { AttemptLimiter, type Clock, isLoopback, PairingCodes, plainAddress } from './lan.ts';
+import { type LanAccess, type LanNetwork, lanAccess, openLan } from './lan-access.ts';
 import { createNotifier, type Notifier } from './notifier.ts';
 import { notifyApi } from './notify-api.ts';
 import {
@@ -78,13 +80,7 @@ import {
   session,
 } from './session.ts';
 import { type LiveStreams, liveStreams } from './stream.ts';
-import {
-  type Arrival,
-  lanTransport,
-  type PhoneTransport,
-  proxied,
-  tailscaleTransport,
-} from './transports.ts';
+import { type Arrival, type PhoneTransport, proxied, tailscaleTransport } from './transports.ts';
 import { BUILT_UI_DIR, mountUi } from './ui.ts';
 import {
   answerRequest,
@@ -110,9 +106,12 @@ import {
 
 export type OteaServer = {
   app: Hono<OteaEnv>;
-  // Phone access: the pairing code and the doors a phone comes through (otea serve --lan opens the
-  // local network's; choosing Tailscale opens its own).
+  // Phone access: the pairing code and the doors a phone comes through (opening the local network
+  // opens its own; choosing Tailscale opens its own).
   phone: Phone;
+  // The local network's door, opened and closed while the server runs (Settings › Phone, otea
+  // phone lan --open, otea serve --lan).
+  lan: LanAccess;
   // Who is told when something becomes theirs (pushes to phones, the desktop app's notices).
   notifier: Notifier;
   listeningOn(port: number): void;
@@ -123,9 +122,13 @@ export type ServerOptions = {
   pollIntervalMs?: number;
   uiDir?: string;
   token?: string;
-  // LAN access, off unless given: the addresses of this computer a paired device may reach it at,
-  // and the names (its mDNS `<hostname>.local`) that resolve to one of them.
+  // LAN access open from the start, for a caller that listens on every interface itself: the
+  // addresses of this computer a paired device may reach it at, and the names (its mDNS
+  // `<hostname>.local`) that resolve to one of them.
   lan?: { addresses: string[]; names?: string[] };
+  // How the local network opens while the server runs (otea serve gives the real one; tests give a
+  // fake). Without it, and without `lan`, the local network cannot open.
+  network?: LanNetwork;
   now?: Clock;
   // Where the registry of the other projects is found (OTEA_HOME).
   env?: Env;
@@ -213,6 +216,7 @@ function tooLarge(): never {
 }
 
 type Doors = {
+  lan: LanAccess;
   notifier: Notifier;
   keys: VapidKeys;
   auth: Session;
@@ -266,7 +270,22 @@ function api(
       // How a phone reaches the desk: the chosen transport, its URL and whether it answers there.
       .get('/phone', async (c) => {
         assertCanManageDevices(c, auth);
-        return c.json(await phoneStatus(project.db, statusSources(doors)));
+        return c.json(await phoneView(project, doors));
+      })
+      // Opens the local network to phones without a restart, and keeps it open for the next otea
+      // serve; closing it stops listening there. Paired devices stay paired either way.
+      .post('/lan/open', async (c) => {
+        assertConfigurable(c, auth);
+        await doors.lan.open();
+        setLanOpen(project.db, true);
+        if (phone.chosen()) phone.codes.issue();
+        return c.json(await phoneView(project, doors));
+      })
+      .post('/lan/close', async (c) => {
+        assertConfigurable(c, auth);
+        setLanOpen(project.db, false);
+        await doors.lan.close();
+        return c.json(await phoneView(project, doors));
       })
       // Chooses the transport. Tailscale is set up first (tailscale serve points at this port) and
       // kept only once it is ready; the Otea relay is not available yet.
@@ -291,7 +310,7 @@ function api(
         if (transport === 'lan')
           choosePhoneTransport(project.db, { transport, tailscaleHost: null });
         if (phone.chosen()) phone.codes.issue();
-        const status = await phoneStatus(project.db, statusSources(doors));
+        const status = await phoneView(project, doors);
         return c.json({ ...status, ...(check ? { tailscale: check } : {}) });
       })
       .post('/devices/:id/revoke', (c) => {
@@ -505,6 +524,13 @@ function statusSources(doors: Doors) {
   };
 }
 
+// The transport's status, whether the local network is open now, and whether opening it may make
+// Windows ask for a firewall permission (Otea never changes the firewall itself).
+async function phoneView(project: Project, doors: Doors) {
+  const status = await phoneStatus(project.db, statusSources(doors));
+  return { ...status, lanOpen: doors.lan.isOpen(), firewallPrompt: process.platform === 'win32' };
+}
+
 function remoteAddress(c: Context): string | undefined {
   const incoming = (c.env as { incoming?: { socket?: { remoteAddress?: string } } } | undefined)
     ?.incoming;
@@ -519,7 +545,11 @@ export function createServer(project: Project, options: ServerOptions = {}): Ote
   const feed = createChangeFeed(project.db, options.pollIntervalMs);
   const streams = liveStreams(feed, () => presenceSignature(project.db));
   const now = options.now ?? Date.now;
-  const lan = options.lan && lanTransport([...(options.lan.names ?? []), ...options.lan.addresses]);
+  let port = DEFAULT_PORT;
+  const app = new Hono<OteaEnv>();
+  const lan = options.lan
+    ? openLan({ addresses: options.lan.addresses, names: options.lan.names ?? [] })
+    : lanAccess(app.fetch, () => port, options.network);
   const tailscaleDoor = (): PhoneTransport | undefined => {
     const { transport, tailscaleHost } = phoneSettings(project.db);
     return transport === 'tailscale' && tailscaleHost
@@ -527,15 +557,16 @@ export function createServer(project: Project, options: ServerOptions = {}): Ote
       : undefined;
   };
   const phone: Phone = {
-    lan,
+    get lan() {
+      return lan.transport();
+    },
     codes: new PairingCodes(now),
     attempts: new AttemptLimiter(now),
     settings: () => phoneSettings(project.db),
-    doors: () => [tailscaleDoor(), lan].filter((door) => door !== undefined),
-    chosen: () => (phoneSettings(project.db).transport === 'tailscale' ? tailscaleDoor() : lan),
+    doors: () => [tailscaleDoor(), lan.transport()].filter((door) => door !== undefined),
+    chosen: () =>
+      phoneSettings(project.db).transport === 'tailscale' ? tailscaleDoor() : lan.transport(),
   };
-  let port = DEFAULT_PORT;
-  const app = new Hono<OteaEnv>();
   // A request one of the open phone doors admits is a device's: from the local network, a private
   // address naming one of this computer's addresses or its own .local name (any other DNS name is
   // how a rebinding page gets in); through Tailscale, what tailscale serve forwards. It carries a
@@ -591,6 +622,7 @@ export function createServer(project: Project, options: ServerOptions = {}): Ote
   // Devices subscribed before this start are told from now on.
   notifier.refresh();
   const doors: Doors = {
+    lan,
     notifier,
     keys,
     auth: session(options.token, boundPort),
@@ -609,11 +641,13 @@ export function createServer(project: Project, options: ServerOptions = {}): Ote
   return {
     app,
     phone,
+    lan,
     notifier,
     listeningOn(listened) {
       port = listened;
     },
     close() {
+      void lan.close();
       notifier.close();
       streams.closeAll();
       feed.close();

@@ -249,6 +249,16 @@ export async function fetchPhone(signal: AbortSignal): Promise<PhoneStatus> {
   return (await get('/api/phone', signal)).json();
 }
 
+// Opens the local network to phones while otea serve runs, and keeps it open for the next one;
+// closing it stops listening there (this computer's browser only).
+export function openLan(): Promise<PhoneStatus> {
+  return post<PhoneStatus>('/api/lan/open', {});
+}
+
+export function closeLan(): Promise<PhoneStatus> {
+  return post<PhoneStatus>('/api/lan/close', {});
+}
+
 // Chooses the phone transport; Tailscale is set up on this computer first and kept once ready.
 export function choosePhoneTransport(transport: TransportKind): Promise<PhoneStatus> {
   return post<PhoneStatus>('/api/phone', { transport });

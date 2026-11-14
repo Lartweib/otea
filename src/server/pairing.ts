@@ -14,7 +14,7 @@ import { assertSameOrigin } from './writes.ts';
 // Phone access as the server runs it: the pairing code it holds, whichever transport carries the
 // phone, and the doors open now.
 export type Phone = {
-  // The local network's door, open with otea serve --lan.
+  // The local network's door, while it is open (Settings › Phone, otea phone lan --open).
   lan: PhoneTransport | undefined;
   codes: PairingCodes;
   attempts: AttemptLimiter;
@@ -95,7 +95,7 @@ export function assertPhoneOn(phone: Phone): Phone {
     throw new RejectedRequest(
       409,
       'phone_off',
-      'Phone access is off; start "otea serve --lan", or set up Tailscale with "otea phone tailscale"',
+      'Phone access is off; open the local network in Settings > Phone (or with "otea phone lan --open"), or set up Tailscale with "otea phone tailscale"',
     );
   }
   return phone;

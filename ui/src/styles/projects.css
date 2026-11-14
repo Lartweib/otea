@@ -448,6 +448,13 @@
   color: var(--ink);
   max-width: 68ch;
 }
+/* Abrir a la red local / Cerrar a la red, with the firewall line under it before the first open. */
+.ph-lan {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
 .ph-link {
   font: 500 13px / 1.4 var(--sans);
   color: var(--you-ink);

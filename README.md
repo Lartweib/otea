@@ -391,12 +391,14 @@ On a phone the selected item unfolds in place under its row, with its moves at t
 
 `otea serve` answers this computer only (127.0.0.1). A phone reaches it through a **phone transport**; the transports are interchangeable, and whichever carries the phone, it pairs once with a code shown on this computer, gets its own device token, and only paired devices get in:
 
-- **Local network** (the default): `otea serve --lan` also listens on the local network, plain HTTP, same Wi-Fi only.
+- **Local network** (the default): **Open to the local network** in Settings › Phone (or `otea phone lan --open`) makes the running `otea serve` also listen on this computer's network addresses, plain HTTP, same Wi-Fi only, without a restart. The choice is kept, so every `otea serve` after (the desktop app's too) starts open; **Close to the network** (or `otea phone lan --close`) stops listening there, and paired phones stay paired but cannot reach Otea off this computer until it opens again. `otea serve --lan` opens it for that run only.
 - **Tailscale**: `otea phone tailscale` gives Otea an HTTPS address on your tailnet, `https://<machine>.<tailnet>.ts.net`, that your own devices reach from anywhere.
 - **Otea relay**: a future service. It is not available yet: `otea phone relay` and Configuración say so.
 
 ```sh
-otea serve --lan            # prints the LAN address, a pairing code and its QR code
+otea phone lan --open       # opens the local network now (on the running otea serve) and from now on
+otea phone lan --close      # closes it again; paired phones stay paired
+otea serve --lan            # opens it for this run only; prints the LAN address, a pairing code and its QR code
 otea phone tailscale        # sets Tailscale up for this project (see below)
 otea phone status           # the transport, its URL, whether Otea answers there, the paired devices
 otea phone lan              # back to the local network
@@ -404,7 +406,7 @@ otea devices list           # the paired devices, with when each was last seen
 otea devices revoke <id>    # its token stops working at once
 ```
 
-The terminal and **Pair a phone** in Settings › Phone (`#/lan`, this computer's signed-in browser only; Preferences links there) show a QR code for the chosen transport: `http://<lan-ip>:<port>/pair#code=XXXX-XXXX` on the local network, `https://<machine>.<tailnet>.ts.net/pair#code=XXXX-XXXX` on Tailscale. The code lasts 10 minutes, works once, and is thrown away after 5 wrong tries; **New code** shows another. The phone trades it for its own device token (an HTTP-only cookie, `Secure` over HTTPS; only its SHA-256 is stored), and each device can be revoked from the same page. A request from the network must come from a private address (including Tailscale's 100.64.0.0/10), name one of this computer's IP addresses as its host (never a DNS name), and carry a device token; without one it reaches only the pairing screen. Pairing attempts are limited to 10 a minute per address. Traffic on the LAN is plain HTTP, so use it on a network you trust, and use Tailscale when away instead of opening a port.
+The terminal and **Pair a phone** in Settings › Phone (`#/lan`, this computer's signed-in browser only; Preferences links there) show a QR code for the chosen transport: `http://<lan-ip>:<port>/pair#code=XXXX-XXXX` on the local network, `https://<machine>.<tailnet>.ts.net/pair#code=XXXX-XXXX` on Tailscale. The code lasts 10 minutes, works once, and is thrown away after 5 wrong tries; **New code** shows another. The phone trades it for its own device token (an HTTP-only cookie, `Secure` over HTTPS; only its SHA-256 is stored), and each device can be revoked from the same page. A request from the network must come from a private address (including Tailscale's 100.64.0.0/10), name one of this computer's IP addresses as its host (never a DNS name), and carry a device token; without one it reaches only the pairing screen. Pairing attempts are limited to 10 a minute per address. Traffic on the LAN is plain HTTP, so use it on a network you trust, and use Tailscale when away instead of opening a port. Only this computer's signed-in browser opens or closes the local network (`POST /api/lan/open`, `POST /api/lan/close`); a paired phone or anything a proxy forwarded is refused. The first time, Windows may ask whether to let Otea through its firewall; Otea never changes the firewall or the network settings itself. **Pair a phone** on a closed local network opens it and shows the code in one step.
 
 When this computer's `<hostname>.local` resolves (mDNS) to one of those addresses, the QR code and the terminal use it first, so a home-screen shortcut survives a new DHCP address; the same link by IP is printed and shown beside it for phones that cannot resolve `.local`. The server answers that one name besides its IPs; any other host name is refused.
 

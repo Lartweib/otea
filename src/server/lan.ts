@@ -3,8 +3,8 @@ import { lookup } from 'node:dns/promises';
 import { hostname, networkInterfaces } from 'node:os';
 import { sameToken } from './token.ts';
 
-// LAN access (otea serve --lan): the server listens on every interface, and a request that does not
-// come from this computer gets past the door only with a device token, earned once with a pairing
+// LAN access (Settings › Phone, otea phone lan --open, otea serve --lan): the server also listens
+// on this computer's private addresses, and a request that does not come from this computer gets past the door only with a device token, earned once with a pairing
 // code shown on the desk. Everything here is the policy; server.ts applies it.
 
 function octets(ip: string): number[] | undefined {

@@ -149,7 +149,7 @@ export type Device = {
 // the Otea relay, which is not available yet.
 export type TransportKind = 'lan' | 'tailscale' | 'relay';
 
-// Pairing as the desk sees it, on the chosen transport: off until its door is open (otea serve --lan,
+// Pairing as the desk sees it, on the chosen transport: off until its door is open (Abrir a la red local,
 // or Tailscale set up); the code while one is good.
 export type LanView = {
   transport: TransportKind;
@@ -180,6 +180,10 @@ export type PhoneStatus = {
   url: string | null;
   reachable: boolean | null;
   tailscale: TailscaleCheck | null;
+  // Whether the local network is open to phones now (Abrir a la red local), and whether opening it
+  // may make Windows ask for a firewall permission.
+  lanOpen: boolean;
+  firewallPrompt: boolean;
 };
 
 export type PairingPeek = { project: string; expiresAt: string };

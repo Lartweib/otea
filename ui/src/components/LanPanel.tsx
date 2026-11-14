@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { fetchLan, newPairingCode, revokeDevice } from '../api.ts';
+import { fetchLan, newPairingCode, openLan, revokeDevice } from '../api.ts';
 import { useApp } from '../app/context.tsx';
 import { agoLabel, momentLabel } from '../format.ts';
 import { t, tx } from '../i18n/i18n.ts';
@@ -10,8 +10,8 @@ import type { Device, LanView } from '../types.ts';
 
 // Emparejar un teléfono (#/lan, SPEC §10.4, mock:3529-3536): a dialog over Te toca with the real
 // pairing code as a QR (132 px), where it points on the chosen transport (the local network or
-// Tailscale's HTTPS name), and the paired devices, each with Revocar. Opening the local network
-// stays a command (otea serve --lan); Tailscale is set up in Configuración · Teléfono.
+// Tailscale's HTTPS name), and the paired devices, each with Revocar. A closed local network opens
+// here too (Abrir a la red local); Tailscale is set up in Configuración · Teléfono.
 
 const REFRESH_MS = 3000;
 
@@ -160,10 +160,7 @@ export function LanPanel({ canManage }: LanPanelProps) {
               })}
             </>
           ) : (
-            <>
-              {t('lan.off')}{' '}
-              {tx('lan.turnOn', { command: <code className="inl">otea serve --lan</code> })}
-            </>
+            t('lan.off')
           )
         ) : tailscale ? (
           t('lan.dialogLeadTailscale')
@@ -205,6 +202,10 @@ export function LanPanel({ canManage }: LanPanelProps) {
           {lan?.enabled ? (
             <Button size="sm" variant="quiet" onClick={() => act(() => newPairingCode(address))}>
               {t('lan.newCode')}
+            </Button>
+          ) : lan && !tailscale ? (
+            <Button size="sm" variant="quiet" onClick={() => act(openLan)}>
+              {t('phone.lan.open')}
             </Button>
           ) : null}
         </div>

@@ -1,16 +1,20 @@
 import { listDevices } from '../app/devices.ts';
 import {
   choosePhoneTransport,
+  lanOpen,
   type PhoneStatus,
   phoneSettings,
   phoneStatus,
   RELAY_UNAVAILABLE,
+  setLanOpen,
   switchToTailscale,
 } from '../app/phone.ts';
 import { openProject, type Project } from '../app/project.ts';
 import type { TailscaleCheck } from '../app/tailscale.ts';
 import { lanAddresses, localName } from '../server/lan.ts';
-import { type Command, CommandFailure } from './command.ts';
+import { sessionCookie } from '../server/session.ts';
+import { readUiToken } from '../server/token.ts';
+import { type Command, CommandFailure, UsageError } from './command.ts';
 import { portToOpen } from './ports.ts';
 import { readServeFile } from './serve-file.ts';
 
@@ -68,10 +72,13 @@ function lanUrls(port: number): Promise<string[]> {
   );
 }
 
-function statusText(status: PhoneStatus, running: number | undefined, devices: number): string {
+type Shown = { running: number | undefined; devices: number; open: boolean };
+
+function statusText(status: PhoneStatus, { running, devices, open }: Shown): string {
   const lines: string[] = [];
   const tailscale = status.transport === 'tailscale';
   lines.push(`Transport: ${tailscale ? 'Tailscale' : 'local network'}`);
+  lines.push(`Open to the local network: ${open ? 'yes' : 'no (otea phone lan --open)'}`);
   lines.push(`URL: ${status.url ?? 'none (this computer has no private network address)'}`);
   const reach =
     status.reachable === null
@@ -80,7 +87,7 @@ function statusText(status: PhoneStatus, running: number | undefined, devices: n
         ? 'yes'
         : tailscale
           ? 'no (run otea phone tailscale)'
-          : 'no (start otea serve --lan)';
+          : 'no (open it with otea phone lan --open, or in Settings > Phone)';
   lines.push(`Reachable: ${reach}`);
   lines.push(
     running === undefined ? 'Otea: not running (otea serve)' : `Otea: running on port ${running}`,
@@ -106,32 +113,102 @@ const phoneStatusCommand: Command = {
       const urls = phoneSettings(project.db).transport === 'lan' ? await lanUrls(port) : [];
       const status = await phoneStatus(project.db, { port, lanUrls: urls, tailscale, probe });
       const devices = listDevices(project.db).length;
+      const open = lanOpen(project.db);
       return {
-        data: { ...status, port, running: running !== undefined, devices },
-        text: statusText(status, running, devices),
+        data: { ...status, lanOpen: open, port, running: running !== undefined, devices },
+        text: statusText(status, { running, devices, open }),
       };
     }),
 };
 
+// Opens or closes the local network on the otea serve running on `port`, as Settings › Phone
+// does: from this computer, signed in with the project's key. It keeps the choice itself. Says
+// 'down' when nothing answers there (a serve file left behind), so the choice is kept here instead.
+async function tellRunning(dir: string, port: number, open: boolean): Promise<'done' | 'down'> {
+  const token = readUiToken(dir);
+  if (!token) return 'down';
+  const base = `http://127.0.0.1:${port}`;
+  let response: Response;
+  try {
+    response = await fetch(`${base}/api/lan/${open ? 'open' : 'close'}`, {
+      method: 'POST',
+      headers: {
+        cookie: `${sessionCookie(port)}=${token}`,
+        origin: base,
+        'content-type': 'application/json',
+      },
+      body: '{}',
+      signal: AbortSignal.timeout(10_000),
+    });
+  } catch {
+    return 'down';
+  }
+  if (response.ok) {
+    await response.body?.cancel();
+    return 'done';
+  }
+  const body = (await response.json().catch(() => undefined)) as
+    | { error?: { message?: string } }
+    | undefined;
+  throw new CommandFailure(
+    'transport_unavailable',
+    `The otea serve on port ${port} could not ${open ? 'open' : 'close'} the local network: ${body?.error?.message ?? `HTTP ${response.status}`}`,
+  );
+}
+
+// Keeps the choice, on the running otea serve when there is one; says where it stands.
+async function keepLan(project: Project, open: boolean): Promise<string> {
+  const running = readServeFile(project.dataDir)?.port;
+  const told = running === undefined ? 'down' : await tellRunning(project.dataDir, running, open);
+  if (told === 'done') {
+    return open
+      ? `The otea serve on port ${running} is open to it now, and every otea serve after starts open.`
+      : `The otea serve on port ${running} stopped listening on the network.`;
+  }
+  setLanOpen(project.db, open);
+  return open
+    ? 'Otea is not running: the next otea serve starts open to it.'
+    : 'Otea is not running; the next otea serve answers this computer only.';
+}
+
 const phoneLan: Command = {
   name: 'phone lan',
   summary:
-    'Pair phones over the local network (the default): plain HTTP to this computer, opened with otea serve --lan',
+    'Pair phones over the local network (the default): plain HTTP to this computer; --open opens it to phones now and for every otea serve after (the same as Settings > Phone), --close closes it again',
   args: [],
-  options: {},
-  execute: ({ cwd }) =>
+  options: { open: { flag: true }, close: { flag: true } },
+  execute: ({ cwd, flag }) =>
     withProject(cwd, async (project) => {
+      if (flag('open') && flag('close')) {
+        throw new UsageError('--open cannot be combined with --close');
+      }
+      if (flag('close')) {
+        const lines = [
+          'Otea is closed to the local network.',
+          await keepLan(project, false),
+          'Paired phones stay paired; they reach Otea again once it is open.',
+        ];
+        return { data: { ...phoneSettings(project.db), lanOpen: false }, text: lines.join('\n') };
+      }
       const was = phoneSettings(project.db);
       const settings = choosePhoneTransport(project.db, { transport: 'lan', tailscaleHost: null });
+      const kept = flag('open') ? await keepLan(project, true) : undefined;
+      const open = lanOpen(project.db);
       const lines = [
-        'Phones now pair over the local network. Start otea serve --lan (restart it if it runs without --lan) to let them in.',
+        open
+          ? 'Phones now pair over the local network, and Otea is open to it.'
+          : 'Phones now pair over the local network. Open Otea to it with otea phone lan --open, or in Settings > Phone.',
+        ...(kept === undefined ? [] : [kept]),
+        ...(kept !== undefined && process.platform === 'win32'
+          ? ['Windows may ask once to let Otea through its firewall; Otea never changes it itself.']
+          : []),
         ...(was.tailscaleHost
           ? [
               `tailscale serve may still forward https://${was.tailscaleHost} to this computer; Otea no longer answers through it. Stop it with: tailscale serve --https=443 off`,
             ]
           : []),
       ];
-      return { data: settings, text: lines.join('\n') };
+      return { data: { ...settings, lanOpen: open }, text: lines.join('\n') };
     }),
 };
 

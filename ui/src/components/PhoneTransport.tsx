@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
-import { choosePhoneTransport, fetchPhone } from '../api.ts';
+import { choosePhoneTransport, closeLan, fetchPhone, openLan } from '../api.ts';
 import { type MessageKey, type PlainKey, t, tx } from '../i18n/i18n.ts';
 import { Button } from '../kit/index.ts';
 import type { PhoneStatus, TailscaleCheck, TransportKind } from '../types.ts';
 import { CopyCommand } from './CopyCommand.tsx';
 
 // Configuración · Teléfono: how a phone reaches Otea. The transports are interchangeable: the local
-// network (the default, otea serve --lan), Tailscale (set up here: Otea runs tailscale serve on this
+// network (the default, opened here with Abrir a la red local), Tailscale (set up here: Otea runs tailscale serve on this
 // computer, never an installer) and the Otea relay, which is not available yet. Whichever carries
 // the phone, it pairs with a code from this computer and only paired devices get in.
 
@@ -126,6 +126,7 @@ function ProblemNote({ found }: { found: Problem }) {
 
 function reachLabel(status: PhoneStatus | null): string {
   if (!status) return t('phone.status.loading');
+  if (status.transport === 'lan' && !status.lanOpen) return t('phone.status.closed');
   if (status.reachable === null) return t('phone.status.none');
   return status.reachable ? t('phone.status.yes') : t('phone.status.no');
 }
@@ -138,7 +139,14 @@ export type PhoneTransportViewProps = {
   canWrite: boolean;
   onChoose: (kind: TransportKind) => void;
   onPair: () => void;
+  onOpenLan: () => void;
+  onCloseLan: () => void;
 };
+
+// Emparejar un teléfono on the closed local network opens it first, then shows the code.
+export function opensBeforePairing(status: PhoneStatus | null): boolean {
+  return status?.transport === 'lan' && !status.lanOpen;
+}
 
 export function PhoneTransportView({
   status,
@@ -147,6 +155,8 @@ export function PhoneTransportView({
   canWrite,
   onChoose,
   onPair,
+  onOpenLan,
+  onCloseLan,
 }: PhoneTransportViewProps) {
   if (!canWrite) {
     return (
@@ -160,8 +170,8 @@ export function PhoneTransportView({
   const found = check && (transport === 'tailscale' || setup) ? problemOf(check) : null;
   const tailscale = transport === 'tailscale';
   const host = tailscale && status?.url ? new URL(status.url).host : null;
-  // No address answers (or otea serve runs without --lan, so there is none to try).
-  const lanClosed = !tailscale && status !== null && status.reachable !== true;
+  const lan = !tailscale && status !== null;
+  const lanClosed = lan && !status.lanOpen;
   return (
     <div className="ph-transport">
       <div className="ph-opts" role="radiogroup" aria-label={t('phone.transport.choose')}>
@@ -194,10 +204,19 @@ export function PhoneTransportView({
           </span>
         </dd>
       </dl>
-      {lanClosed ? (
-        <div className="ph-problem" role="status">
-          <p>{t('phone.status.lanOff')}</p>
-          <CopyCommand command="otea serve --lan" />
+      {lan ? (
+        <div className="ph-lan">
+          <Button
+            size="sm"
+            variant="quiet"
+            disabled={busy}
+            onClick={lanClosed ? onOpenLan : onCloseLan}
+          >
+            {t(lanClosed ? 'phone.lan.open' : 'phone.lan.close')}
+          </Button>
+          {lanClosed && status.firewallPrompt ? (
+            <p className="pj-hint">{t('phone.lan.firewall')}</p>
+          ) : null}
         </div>
       ) : null}
       {found ? <ProblemNote found={found} /> : null}
@@ -225,7 +244,7 @@ export function PhoneTransportView({
       </p>
       <p className="pj-hint">{t('phone.transport.tokens')}</p>
       <div className="ph-acts">
-        <Button size="sm" variant="primary" onClick={onPair}>
+        <Button size="sm" variant="primary" disabled={busy} onClick={onPair}>
           {t('phone.transport.pair')}
         </Button>
       </div>
@@ -266,6 +285,19 @@ export function PhoneTransport({ canWrite, onPair }: { canWrite: boolean; onPair
       .finally(() => setBusy(false));
   };
 
+  // Opens or closes the local network on the running server; the status comes back with it.
+  const lan = (change: () => Promise<PhoneStatus>, then?: () => void) => {
+    setBusy(true);
+    setFailure(undefined);
+    change()
+      .then((next) => {
+        setStatus(next);
+        then?.();
+      })
+      .catch((error: unknown) => setFailure(error instanceof Error ? error.message : ''))
+      .finally(() => setBusy(false));
+  };
+
   return (
     <>
       <PhoneTransportView
@@ -274,7 +306,9 @@ export function PhoneTransport({ canWrite, onPair }: { canWrite: boolean; onPair
         busy={busy}
         canWrite={canWrite}
         onChoose={choose}
-        onPair={onPair}
+        onPair={() => (opensBeforePairing(status) ? lan(openLan, onPair) : onPair())}
+        onOpenLan={() => lan(openLan)}
+        onCloseLan={() => lan(closeLan)}
       />
       {failure ? (
         <p className="dhint" role="alert">
