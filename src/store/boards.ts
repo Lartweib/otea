@@ -10,6 +10,8 @@ export type BoardRow = {
   liveVersion: number | null;
   builtin: boolean;
   createdAt: string;
+  // When the person archived it (app/board-archive.ts); null while it stands.
+  archivedAt: string | null;
 };
 
 export type VersionRow = {
@@ -39,6 +41,7 @@ function toBoard(row: Row): BoardRow {
     liveVersion: row.live_version === null ? null : Number(row.live_version),
     builtin: Number(row.builtin) === 1,
     createdAt: String(row.created_at),
+    archivedAt: row.archived_at == null ? null : String(row.archived_at),
   };
 }
 
@@ -63,11 +66,17 @@ export function findBoardOfCollection(db: DatabaseSync, collection: string): Boa
   return row && toBoard(row);
 }
 
-export function listBoards(db: DatabaseSync): BoardRow[] {
+// The boards that stand; `archived` adds the archived ones (what reads their items needs).
+export function listBoards(db: DatabaseSync, options: { archived?: boolean } = {}): BoardRow[] {
+  const archived = options.archived ? '' : ' AND archived_at IS NULL';
   return db
-    .prepare('SELECT * FROM boards WHERE retired_at IS NULL ORDER BY created_at, id')
+    .prepare(`SELECT * FROM boards WHERE retired_at IS NULL${archived} ORDER BY created_at, id`)
     .all()
     .map(toBoard);
+}
+
+export function setArchived(db: DatabaseSync, id: string, at: string | null): void {
+  db.prepare('UPDATE boards SET archived_at = ? WHERE id = ?').run(at, id);
 }
 
 // A board that was published once and undone keeps its versions (they are append-only): discarding
@@ -170,12 +179,12 @@ export function renameCollection(db: DatabaseSync, from: string, to: string): vo
   db.prepare('UPDATE items SET collection = ? WHERE collection = ?').run(to, from);
 }
 
-// Changes whenever a board is published, restored or added: a long-lived reader (the MCP server)
+// Changes whenever a board is published, restored, added, archived or deleted: a long-lived reader (the MCP server)
 // compares it to know when to compile the boards again.
 export function boardsStamp(db: DatabaseSync): string {
   const row = db
     .prepare(
-      "SELECT count(*) AS n, coalesce(group_concat(id || ':' || coalesce(live_version, 0) || ':' || coalesce(collection, ''), ','), '') AS s FROM (SELECT * FROM boards ORDER BY id)",
+      "SELECT count(*) AS n, coalesce(group_concat(id || ':' || coalesce(live_version, 0) || ':' || coalesce(collection, '') || ':' || coalesce(archived_at, ''), ','), '') AS s FROM (SELECT * FROM boards ORDER BY id)",
     )
     .get();
   return `${row?.n ?? 0}|${row?.s ?? ''}`;

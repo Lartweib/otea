@@ -6,7 +6,14 @@ import { transaction } from '../store/database.ts';
 import { appendEvent, selectEvents, updateItemState } from '../store/queries.ts';
 import { typeOfItem } from './collections.ts';
 import type { Context } from './context.ts';
-import { type Clock, type Item, present, requireItem, stateNames, systemClock } from './items.ts';
+import {
+  type Clock,
+  type Item,
+  present,
+  requireWritableItem,
+  stateNames,
+  systemClock,
+} from './items.ts';
 
 // The person takes back their last move while its toast is still up: the item returns to the state
 // it left, outside the workflow's transitions (an approval has no move back). The undo is itself a
@@ -22,7 +29,7 @@ export type UndoMoveInput = { id: string; from: string; actor: Actor; channel: C
 export function undoMove(ctx: Context, input: UndoMoveInput, now: Clock = systemClock): Item {
   const { db } = ctx;
   return transaction(db, () => {
-    const item = requireItem(db, input.id);
+    const item = requireWritableItem(db, input.id);
     const at = now();
     const moves = selectEvents(db, item.id).filter((e) => e.type === 'transitioned');
     const last = moves.at(-1);

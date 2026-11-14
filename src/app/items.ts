@@ -13,8 +13,11 @@ import { type Closing, closesOf, type Turn, turnOf, type Workflow } from '../cor
 import { transaction } from '../store/database.ts';
 import {
   appendEvent,
+  archivedBoardOf,
+  boardArchived,
   claimNextSeq,
   clearLease,
+  collectionArchived,
   type EventRecord,
   type EvidenceRecord,
   findItem,
@@ -109,6 +112,14 @@ export function requireItem(db: DatabaseSync, id: string): ItemRecord {
   return item;
 }
 
+// An item a write acts on: one on an archived board is refused before anything else is checked.
+export function requireWritableItem(db: DatabaseSync, id: string): ItemRecord {
+  const item = requireItem(db, id);
+  const board = archivedBoardOf(db, id);
+  if (board !== undefined) throw boardArchived(id, board);
+  return item;
+}
+
 // The workflow an item follows: its type's.
 export function workflowOf(ctx: Context, item: Pick<ItemRecord, 'collection' | 'type'>): Workflow {
   return typeOfItem(ctx, item).workflow;
@@ -136,6 +147,12 @@ export function insertNewItem(
 ): { item: ItemRecord; created: Item } {
   const { db } = ctx;
   const collection = getCollection(db, input.collection);
+  if (collectionArchived(db, collection.name))
+    throw new OteaError(
+      'board_archived',
+      `${collection.name} is an archived board: it takes no new items until the person restores it in Studio`,
+      { kind: 'board_archived', board: collection.name },
+    );
   const preset = presetOf(ctx, collection);
   const type = typeFor(preset, input.type);
   if (input.parent === undefined) assertStandsAlone(preset, type);
@@ -264,6 +281,8 @@ export type ItemView = ItemWithEvents & {
   gates?: Record<string, boolean>;
   // On a published board: its parts, blockers, round notes, branch and gates (PLAN §9.1).
   board?: BoardBlock;
+  // On an archived board: read-only, by the board's name.
+  archived?: { board: string };
 };
 
 export function showItem(
@@ -278,9 +297,14 @@ export function showItem(
   const children = childrenOf(ctx, item.id, at);
   const { gates, ...moves } = itemMoves(type, item.state, item.fields, performer);
   const board = boardBlockOf(ctx, item);
+  const archived = archivedBoardOf(ctx.db, item.id);
   return {
     ...item,
     ...moves,
+    // An archived board's item is read-only: it offers no move to anyone.
+    ...(archived === undefined
+      ? {}
+      : { archived: { board: archived }, transitions: [], relayable: [] }),
     evidence: presentEvidence(type.layout, selectEvidence(ctx.db, item.id)),
     relations: relatedItems(ctx, item.id, at),
     ...(children.length > 0 ? { children: childrenSummary(children) } : {}),
@@ -294,7 +318,7 @@ export type UpdateItemInput = { id: string; title?: string; fields?: FieldValues
 export function updateItem(ctx: Context, input: UpdateItemInput, now = systemClock): Item {
   const { db } = ctx;
   return transaction(db, () => {
-    const item = requireItem(db, input.id);
+    const item = requireWritableItem(db, input.id);
     const preset = presetOf(ctx, getCollection(db, item.collection));
     const type: ItemType = typeOf(preset, item.type);
     const at = now();
@@ -385,7 +409,7 @@ export function landMove(
 export function moveItem(ctx: Context, input: MoveItemInput, now = systemClock): Item {
   const { db } = ctx;
   return transaction(db, () => {
-    const item = requireItem(db, input.id);
+    const item = requireWritableItem(db, input.id);
     const type = typeOfItem(ctx, item);
     const { workflow } = type;
     const { actor, channel, reason } = input;

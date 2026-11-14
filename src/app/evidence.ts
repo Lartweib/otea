@@ -25,7 +25,7 @@ import {
   selectEvidence,
 } from '../store/queries.ts';
 import { typeOfItem } from './collections.ts';
-import { requireItem, systemClock } from './items.ts';
+import { requireWritableItem, systemClock } from './items.ts';
 import { boardModule } from './next.ts';
 import type { Project } from './project.ts';
 
@@ -203,7 +203,7 @@ export function attachEvidence(project: Project, input: AttachInput, now = syste
     ...(input.caption === undefined ? {} : { caption: input.caption }),
   };
   return transaction(project.db, () => {
-    const item = requireItem(project.db, input.id);
+    const item = requireWritableItem(project.db, input.id);
     const at = now();
     const placed = placeFile(project, item, file, input.actor, at);
     const same = sameSinceMoved(project, item.id, placed);

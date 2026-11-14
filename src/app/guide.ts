@@ -22,6 +22,8 @@ export type GuideEntry = {
 
 // What `otea show` says to do now with the item: next's text on its board.
 export function hintFor(project: Project, item: ItemView, me: string): string {
+  if (item.archived)
+    return `${item.id} is on ${item.archived.board}, an archived board: it is read-only. Pick another item with otea next.`;
   return itemNextText(project, item, me) ?? '';
 }
 

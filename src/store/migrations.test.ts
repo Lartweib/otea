@@ -42,14 +42,14 @@ describe('migrate', () => {
         'notify_targets',
       ]),
     );
-    expect(userVersion(db)).toBe(21);
+    expect(userVersion(db)).toBe(22);
   });
 
   it('is idempotent', () => {
     migrate(db);
     migrate(db);
 
-    expect(userVersion(db)).toBe(21);
+    expect(userVersion(db)).toBe(22);
   });
 
   describe('from version 1', () => {
@@ -317,6 +317,57 @@ describe('migrate', () => {
         VALUES ('TASKS-9', 'created', 'human', 'ana', 't', '{}')`;
 
       expect(() => db.exec(orphan)).toThrow(/FOREIGN KEY/);
+    });
+  });
+
+  // A board's rows stay append-only while it stands; only an archived board, on its way out, lets
+  // its items' events and evidence and its versions go (app/board-archive.ts deleteBoard).
+  describe('an archived board', () => {
+    beforeEach(() => {
+      migrate(db);
+      db.exec(`
+        INSERT INTO collections (name, prefix, preset, preset_version, next_seq)
+        VALUES ('Criaturas', 'CRI', 'b1', 1, 2);
+        INSERT INTO boards (id, collection, live_version, created_at) VALUES ('b1', 'Criaturas', 1, 't');
+        INSERT INTO board_versions (board_id, version, definition, published_at, published_by)
+        VALUES ('b1', 1, '{}', 't', 'fede');
+        INSERT INTO items (id, collection, seq, title, fields, preset_version, state, created_at,
+          updated_at, created_by_kind, created_by_name)
+        VALUES ('CRI-1', 'Criaturas', 1, 'A', '{}', 1, 'todo', 't', 't', 'human', 'ana');
+        INSERT INTO events (item_id, type, actor_kind, actor_name, at, data)
+        VALUES ('CRI-1', 'created', 'human', 'ana', 't', '{}');
+        INSERT INTO evidence (item_id, role, kind, filename, content_type, size, sha256, created_at,
+          actor_kind, actor_name, channel)
+        VALUES ('CRI-1', 'result', 'image', 'a.png', 'image/png', 1, 'abc', 't', 'agent', 'kiln', 'cli');
+      `);
+    });
+
+    const remove = () =>
+      db.exec(`
+        DELETE FROM events WHERE item_id = 'CRI-1';
+        DELETE FROM evidence WHERE item_id = 'CRI-1';
+        DELETE FROM board_versions WHERE board_id = 'b1';
+      `);
+
+    it('keeps the rows of a board that stands append-only', () => {
+      expect(() => db.exec("DELETE FROM events WHERE item_id = 'CRI-1'")).toThrow(/append-only/);
+      expect(() => db.exec("DELETE FROM evidence WHERE item_id = 'CRI-1'")).toThrow(/append-only/);
+      expect(() => db.exec("DELETE FROM board_versions WHERE board_id = 'b1'")).toThrow(
+        /append-only/,
+      );
+    });
+
+    it('lets them go once the board is archived', () => {
+      db.exec("UPDATE boards SET archived_at = 't' WHERE id = 'b1'");
+
+      expect(remove).not.toThrow();
+      expect(db.prepare('SELECT count(*) AS n FROM events').get()?.n).toBe(0);
+    });
+
+    it('still never lets an event change', () => {
+      db.exec("UPDATE boards SET archived_at = 't' WHERE id = 'b1'");
+
+      expect(() => db.exec("UPDATE events SET type = 'edited'")).toThrow(/append-only/);
     });
   });
 });

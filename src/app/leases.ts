@@ -7,7 +7,7 @@ import { turnOf } from '../core/workflow.ts';
 import { transaction } from '../store/database.ts';
 import { appendEvent, clearLease, type ItemRecord, takeLease } from '../store/queries.ts';
 import type { Context } from './context.ts';
-import { type Item, present, requireItem, systemClock, workflowOf } from './items.ts';
+import { type Item, present, requireWritableItem, systemClock, workflowOf } from './items.ts';
 import { takeItem } from './lease-take.ts';
 import { assertMayClaim, liveBoardOf } from './next.ts';
 
@@ -24,7 +24,7 @@ function notHolder(item: ItemRecord, actor: Actor, at: string): OteaError {
 export function claimItem(ctx: Context, input: LeaseInput, now = systemClock): Item {
   const { db } = ctx;
   return transaction(db, () => {
-    const item = requireItem(db, input.id);
+    const item = requireWritableItem(db, input.id);
     const workflow = workflowOf(ctx, item);
     const turn = turnOf(workflow, item.state);
     if (turn !== 'agent') {
@@ -45,7 +45,7 @@ export function claimItem(ctx: Context, input: LeaseInput, now = systemClock): I
 export function heartbeatItem(ctx: Context, input: LeaseInput, now = systemClock): Item {
   const { db } = ctx;
   return transaction(db, () => {
-    const item = requireItem(db, input.id);
+    const item = requireWritableItem(db, input.id);
     const at = now();
     const current = activeLease(item.lease, at);
     if (current?.holder !== input.actor.name) throw notHolder(item, input.actor, at);
@@ -61,7 +61,7 @@ export function heartbeatItem(ctx: Context, input: LeaseInput, now = systemClock
 export function releaseItem(ctx: Context, input: LeaseInput, now = systemClock): Item {
   const { db } = ctx;
   return transaction(db, () => {
-    const item = requireItem(db, input.id);
+    const item = requireWritableItem(db, input.id);
     const at = now();
     const current = activeLease(item.lease, at);
     if (current?.holder !== input.actor.name) throw notHolder(item, input.actor, at);

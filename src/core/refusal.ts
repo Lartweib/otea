@@ -97,6 +97,15 @@ export type RefusalDetails =
   | { kind: 'restore_name_taken'; name: string }
   // A setup change from a device other than this computer's signed-in browser.
   | { kind: 'desk_only' }
+  // Archiving and deleting boards (app/board-archive.ts): an item or a board of an archived board
+  // (read-only), Pedidos, a board another divides into, a delete that needs the name typed, a
+  // board that still has items, one to restore with the board it was archived with.
+  | { kind: 'board_archived'; board: string; item?: string }
+  | { kind: 'board_builtin'; board: string }
+  | { kind: 'board_split_child'; board: string; parent: string }
+  | { kind: 'board_delete_confirm'; board: string; items: number }
+  | { kind: 'board_has_items'; board: string; items: number }
+  | { kind: 'board_not_archived'; board: string }
   // A note from the person, or an agent's answer to one, refused: left by someone other than the
   // person (or answered by someone other than an agent), without text, on an item no agent is
   // doing, or on evidence not attached to the item in this round.

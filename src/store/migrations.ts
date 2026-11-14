@@ -277,6 +277,33 @@ export const MIGRATIONS = [
   `
   ALTER TABLE phone ADD COLUMN lan_open INTEGER NOT NULL DEFAULT 0;
   `,
+  // A board the person archived (app/board-archive.ts): gone from every list, its items kept to
+  // read. Its rows stay append-only while it stands; once archived, deleting the board may take its
+  // items' events and evidence and its versions with it, and nothing else may delete them.
+  `
+  ALTER TABLE boards ADD COLUMN archived_at TEXT;
+
+  DROP TRIGGER events_no_delete;
+  CREATE TRIGGER events_no_delete BEFORE DELETE ON events
+  WHEN NOT EXISTS (
+    SELECT 1 FROM items i JOIN boards b ON b.collection = i.collection
+    WHERE i.id = OLD.item_id AND b.archived_at IS NOT NULL
+  )
+  BEGIN SELECT RAISE(ABORT, 'events are append-only'); END;
+
+  DROP TRIGGER evidence_no_delete;
+  CREATE TRIGGER evidence_no_delete BEFORE DELETE ON evidence
+  WHEN NOT EXISTS (
+    SELECT 1 FROM items i JOIN boards b ON b.collection = i.collection
+    WHERE i.id = OLD.item_id AND b.archived_at IS NOT NULL
+  )
+  BEGIN SELECT RAISE(ABORT, 'evidence is append-only'); END;
+
+  DROP TRIGGER board_versions_no_delete;
+  CREATE TRIGGER board_versions_no_delete BEFORE DELETE ON board_versions
+  WHEN NOT EXISTS (SELECT 1 FROM boards WHERE id = OLD.board_id AND archived_at IS NOT NULL)
+  BEGIN SELECT RAISE(ABORT, 'board versions are append-only'); END;
+  `,
 ];
 
 function userVersion(db: DatabaseSync): number {

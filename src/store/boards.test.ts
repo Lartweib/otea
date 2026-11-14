@@ -45,6 +45,7 @@ describe('board storage', () => {
       liveVersion: null,
       builtin: false,
       createdAt: 't0',
+      archivedAt: null,
     });
     insertVersion(db, {
       boardId: 'b1',

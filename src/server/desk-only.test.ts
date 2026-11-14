@@ -45,6 +45,9 @@ const DESK_ONLY: DeskRoute[] = [
   // Opening and closing the local network to phones.
   { path: '/api/lan/open', body: () => ({}) },
   { path: '/api/lan/close', body: () => ({}) },
+  { path: '/api/boards/b1/archive', body: () => ({}) },
+  { path: '/api/boards/b1/unarchive', body: () => ({}) },
+  { method: 'DELETE', path: '/api/boards/b1', body: () => ({ confirm: 'Criaturas' }) },
 ];
 
 describe('desk-only routes, with LAN access on', () => {
