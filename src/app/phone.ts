@@ -11,7 +11,8 @@ import {
 
 // How a phone reaches the desk: the phone transport. They are interchangeable; the pairing code,
 // the device tokens and what a paired phone may do stay the same whichever carries it.
-// - lan: the local network, plain HTTP to this computer's address (otea serve --lan). The default.
+// - lan: the local network, plain HTTP to this computer's address (open it in Settings › Phone or
+//   with otea phone lan --open). The default.
 // - tailscale: `tailscale serve` gives this computer an HTTPS name on the person's tailnet,
 //   `https://<machine>.<tailnet>.ts.net`, reachable from their own devices wherever they are.
 // - relay: the Otea relay, a future service. Only the seam exists: choosing it is refused.
@@ -22,7 +23,7 @@ export type TransportKind = (typeof TRANSPORTS)[number];
 export type PhoneSettings = { transport: TransportKind; tailscaleHost: string | null };
 
 export const RELAY_UNAVAILABLE =
-  'The Otea relay is not available yet; use the local network (otea serve --lan) or Tailscale (otea phone tailscale)';
+  'The Otea relay is not available yet; use the local network (otea phone lan --open) or Tailscale (otea phone tailscale)';
 
 const DEFAULT: PhoneSettings = { transport: 'lan', tailscaleHost: null };
 
@@ -56,6 +57,21 @@ export function choosePhoneTransport(db: DatabaseSync, settings: PhoneSettings):
        tailscale_host = excluded.tailscale_host`,
   ).run(settings.transport, host);
   return { transport: settings.transport, tailscaleHost: host };
+}
+
+// Whether the local network is open to phones: chosen in Settings › Phone or with otea phone lan
+// --open, and kept, so every otea serve (the desktop app's too) starts with it open. It is apart
+// from the transport: the LAN may stay open while Tailscale carries the pairing code.
+export function lanOpen(db: DatabaseSync): boolean {
+  const row = db.prepare('SELECT lan_open FROM phone').get() as { lan_open: number } | undefined;
+  return row?.lan_open === 1;
+}
+
+export function setLanOpen(db: DatabaseSync, open: boolean): void {
+  db.prepare(
+    `INSERT INTO phone (id, transport, tailscale_host, lan_open) VALUES (1, 'lan', NULL, ?)
+     ON CONFLICT (id) DO UPDATE SET lan_open = excluded.lan_open`,
+  ).run(open ? 1 : 0);
 }
 
 // Whether Otea answers at a URL, as a phone would reach it (a pairing-screen file, open to anyone

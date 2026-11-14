@@ -102,7 +102,11 @@ export const phone = {
   'phone.status.no': 'sin respuesta',
   'phone.status.none': 'ninguna dirección que probar',
   'phone.status.loading': 'comprobando…',
-  'phone.status.lanOff': 'Otea no está abierto a la red. Ábrelo con:',
+  'phone.status.closed': 'no está abierto a la red',
+  'phone.lan.open': 'Abrir a la red local',
+  'phone.lan.close': 'Cerrar a la red',
+  'phone.lan.firewall':
+    'Windows puede pedir permiso al firewall la primera vez. Otea nunca cambia el firewall ni la configuración de red.',
   'phone.ts.missing':
     'Tailscale no está instalado en este equipo. Otea no lo instala: instálalo, inicia sesión y vuelve a comprobar.',
   'phone.ts.download': 'Descargar Tailscale',

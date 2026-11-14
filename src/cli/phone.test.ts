@@ -116,9 +116,55 @@ describe('otea phone', () => {
     const { code, out } = await otea('phone', 'lan');
 
     expect(code).toBe(0);
-    expect(out).toContain('otea serve --lan');
+    expect(out).toContain('otea phone lan --open');
     expect(out).toContain('tailscale serve --https=443 off');
     expect(JSON.parse((await otea('phone', 'status', '--json')).out).transport).toBe('lan');
+  });
+
+  describe('lan --open and --close', () => {
+    it('opens the local network for every otea serve from now on, and closes it again', async () => {
+      const opened = await otea('phone', 'lan', '--open');
+
+      expect(opened.code).toBe(0);
+      expect(opened.out).toContain('the next otea serve starts open to it');
+      expect(JSON.parse((await otea('phone', 'status', '--json')).out)).toMatchObject({
+        transport: 'lan',
+        lanOpen: true,
+      });
+      expect((await otea('phone', 'status')).out).toContain('Open to the local network: yes');
+      const served = JSON.parse((await otea('serve', '--port', '0', '--no-open', '--json')).out);
+      expect(served.phone).toMatchObject({ transport: 'lan' });
+      const port = new URL(served.url).port;
+
+      const closed = await otea('phone', 'lan', '--close');
+
+      expect(closed.code).toBe(0);
+      expect(closed.out).toContain(
+        `The otea serve on port ${port} stopped listening on the network`,
+      );
+      expect(closed.out).toContain('Paired phones stay paired');
+      expect(JSON.parse((await otea('phone', 'status', '--json')).out).lanOpen).toBe(false);
+    });
+
+    it('serves only this computer while the local network is closed, until it opens', async () => {
+      const served = JSON.parse((await otea('serve', '--port', '0', '--no-open', '--json')).out);
+      expect(served.phone).toBeUndefined();
+
+      const opened = await otea('phone', 'lan', '--open');
+
+      expect(opened.code).toBe(0);
+      expect(opened.out).toContain(
+        `The otea serve on port ${new URL(served.url).port} is open to it now`,
+      );
+      expect(JSON.parse((await otea('phone', 'status', '--json')).out).lanOpen).toBe(true);
+    });
+
+    it('refuses --open together with --close', async () => {
+      const { code, err } = await otea('phone', 'lan', '--open', '--close');
+
+      expect(code).toBe(2);
+      expect(err).toContain('--open cannot be combined with --close');
+    });
   });
 
   it('refuses the Otea relay, which is not available yet', async () => {

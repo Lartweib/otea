@@ -83,7 +83,6 @@ export const surfaces = {
     'Desactivado de forma predeterminada. Cuando está activado, un teléfono en la misma red puede abrir Otea tras emparejarse una vez.',
   'lan.on': 'Activado. Escucha en {address}; solo pasan los dispositivos emparejados.',
   'lan.off': 'Desactivado. Otea escucha en 127.0.0.1, así que solo este equipo puede abrirlo.',
-  'lan.turnOn': 'Reinícialo con {command} para que un teléfono de esta red pueda emparejarse.',
   'lan.where.off': 'solo 127.0.0.1',
   'lan.devices': 'dispositivos emparejados',
   'lan.devicesActive': 'sus tokens están activos',

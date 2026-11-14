@@ -1,6 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { OteaError } from '../core/errors.ts';
-import { choosePhoneTransport, phoneSettings, phoneStatus, switchToTailscale } from './phone.ts';
+import {
+  choosePhoneTransport,
+  lanOpen,
+  phoneSettings,
+  phoneStatus,
+  setLanOpen,
+  switchToTailscale,
+} from './phone.ts';
 import type { Project } from './project.ts';
 import { fakeTailscale, TAILNET_HOST } from './tailscale-testing.ts';
 import { memoryContext, projectOf } from './testing.ts';
@@ -30,6 +37,29 @@ describe('the phone transport setting', () => {
 
     choosePhoneTransport(project.db, { transport: 'lan', tailscaleHost: null });
     expect(phoneSettings(project.db)).toEqual({ transport: 'lan', tailscaleHost: null });
+  });
+
+  it('keeps the local network closed until it is opened, and remembers the choice', () => {
+    expect(lanOpen(project.db)).toBe(false);
+
+    setLanOpen(project.db, true);
+    expect(lanOpen(project.db)).toBe(true);
+    expect(phoneSettings(project.db)).toEqual({ transport: 'lan', tailscaleHost: null });
+
+    setLanOpen(project.db, false);
+    expect(lanOpen(project.db)).toBe(false);
+  });
+
+  it('keeps the local network open whichever transport is chosen', () => {
+    setLanOpen(project.db, true);
+    choosePhoneTransport(project.db, { transport: 'tailscale', tailscaleHost: TAILNET_HOST });
+    expect(lanOpen(project.db)).toBe(true);
+
+    setLanOpen(project.db, false);
+    expect(phoneSettings(project.db)).toEqual({
+      transport: 'tailscale',
+      tailscaleHost: TAILNET_HOST,
+    });
   });
 
   it('refuses Tailscale without the name it is reached at', () => {

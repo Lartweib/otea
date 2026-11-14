@@ -3,7 +3,12 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, describe, expect, it } from 'vitest';
 import { setLanguage } from '../i18n/i18n.ts';
 import type { PhoneStatus, TailscaleCheck } from '../types.ts';
-import { PhoneTransportView, type PhoneTransportViewProps, problemOf } from './PhoneTransport.tsx';
+import {
+  opensBeforePairing,
+  PhoneTransportView,
+  type PhoneTransportViewProps,
+  problemOf,
+} from './PhoneTransport.tsx';
 
 afterEach(() => setLanguage('en'));
 
@@ -13,6 +18,8 @@ const lan: PhoneStatus = {
   url: 'http://192.168.1.24:4400',
   reachable: true,
   tailscale: null,
+  lanOpen: true,
+  firewallPrompt: false,
 };
 const ready: TailscaleCheck = { state: 'ready', host: HOST, url: `https://${HOST}`, serving: true };
 const tailscale: PhoneStatus = {
@@ -20,6 +27,8 @@ const tailscale: PhoneStatus = {
   url: `https://${HOST}`,
   reachable: true,
   tailscale: ready,
+  lanOpen: false,
+  firewallPrompt: false,
 };
 
 const render = (props: Partial<PhoneTransportViewProps>) =>
@@ -31,6 +40,8 @@ const render = (props: Partial<PhoneTransportViewProps>) =>
       canWrite: true,
       onChoose: () => {},
       onPair: () => {},
+      onOpenLan: () => {},
+      onCloseLan: () => {},
       ...props,
     }),
   );
@@ -90,15 +101,49 @@ describe('Configuración · Teléfono', () => {
     expect(html).toContain('href="https://tailscale.com/download/windows"');
   });
 
-  it('says the local network door is closed when nothing answers', () => {
-    const html = render({ status: { ...lan, reachable: false } });
+  const closed: PhoneStatus = { ...lan, url: null, reachable: null, lanOpen: false };
 
-    expect(html).toContain('no answer');
-    expect(html).toContain('otea serve --lan');
-    const closed = render({ status: { ...lan, url: null, reachable: null } });
-    expect(closed).toContain('no address to try');
-    expect(closed).toContain('otea serve --lan');
-    expect(render({})).not.toContain('otea serve --lan');
+  it('opens the local network with a button, not a command to restart with', () => {
+    const html = render({ status: closed });
+
+    expect(html).toMatch(/<button[^>]*>Open to the local network<\/button>/);
+    expect(html).toContain('not open to the network');
+    expect(html).not.toContain('otea serve --lan');
+    expect(html).not.toContain('ph-problem');
+    expect(html).not.toContain('Close to the network');
+  });
+
+  it('says Windows may ask for a firewall permission, only on Windows and before it opens', () => {
+    setLanguage('es');
+    const windows = render({ status: { ...closed, firewallPrompt: true } });
+
+    expect(windows).toContain('Abrir a la red local');
+    expect(windows).toContain('Windows puede pedir permiso');
+    expect(render({ status: closed })).not.toContain('Windows');
+    expect(render({ status: { ...lan, firewallPrompt: true } })).not.toContain('Windows');
+  });
+
+  it('closes the local network again once it is open', () => {
+    setLanguage('es');
+    const html = render({});
+
+    expect(html).toMatch(/<button[^>]*>Cerrar a la red<\/button>/);
+    expect(html).not.toContain('Abrir a la red local');
+    expect(html).toContain('Emparejar un teléfono');
+  });
+
+  it('opens the local network before pairing only when it is the closed transport', () => {
+    expect(opensBeforePairing(closed)).toBe(true);
+    expect(opensBeforePairing(lan)).toBe(false);
+    expect(opensBeforePairing(tailscale)).toBe(false);
+    expect(opensBeforePairing(null)).toBe(false);
+  });
+
+  it('offers neither button on Tailscale', () => {
+    const html = render({ status: tailscale });
+
+    expect(html).not.toContain('Open to the local network');
+    expect(html).not.toContain('Close to the network');
   });
 
   it('asks this computer’s browser to sign in before choosing', () => {

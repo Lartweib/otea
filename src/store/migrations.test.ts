@@ -42,14 +42,14 @@ describe('migrate', () => {
         'notify_targets',
       ]),
     );
-    expect(userVersion(db)).toBe(20);
+    expect(userVersion(db)).toBe(21);
   });
 
   it('is idempotent', () => {
     migrate(db);
     migrate(db);
 
-    expect(userVersion(db)).toBe(20);
+    expect(userVersion(db)).toBe(21);
   });
 
   describe('from version 1', () => {

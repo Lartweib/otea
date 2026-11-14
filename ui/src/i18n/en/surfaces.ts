@@ -80,7 +80,6 @@ export const surfaces = {
     'Off by default. When it is on, a phone on the same network can open Otea after pairing once.',
   'lan.on': 'On. Listening on {address}; only paired devices get past the door.',
   'lan.off': 'Off. Otea listens on 127.0.0.1, so only this computer can open it.',
-  'lan.turnOn': 'Restart it with {command} to let a phone on this network pair.',
   'lan.where.off': '127.0.0.1 only',
   'lan.devices': 'paired devices',
   'lan.devicesActive': 'their tokens are active',

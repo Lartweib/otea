@@ -2,7 +2,7 @@ import { connect, createServer as createNetServer, type Server } from 'node:net'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { Project } from '../app/project.ts';
 import { lanAddresses } from './lan.ts';
-import { ALL_INTERFACES, DEFAULT_PORT, isUnsafePort, type Listening, listen } from './listen.ts';
+import { DEFAULT_PORT, isUnsafePort, type Listening, listen, localNetwork } from './listen.ts';
 import { createServer } from './server.ts';
 import { memoryProject } from './testing.ts';
 
@@ -68,20 +68,38 @@ describe('listen', () => {
 
   const lan = lanAddresses()[0];
 
-  it.skipIf(lan === undefined)('does not answer on the LAN unless asked to', async () => {
-    listening = await listen(createServer(project, { lan: { addresses: [lan ?? ''] } }), 0);
+  it.skipIf(lan === undefined)('does not answer on the LAN unless it is opened', async () => {
+    listening = await listen(createServer(project, { network: localNetwork }), 0);
 
-    await expect(fetch(`http://${lan}:${listening.port}/pair`)).rejects.toThrow();
+    await expect(fetch(`http://${lan}:${listening.port}/api/items`)).rejects.toThrow();
   });
 
-  it.skipIf(lan === undefined)('with LAN access, refuses an unpaired device', async () => {
-    const server = createServer(project, { lan: { addresses: [lan ?? ''] } });
-    listening = await listen(server, 0, ALL_INTERFACES);
-    const response = await fetch(`http://${lan}:${listening.port}/api/items`);
+  it.skipIf(lan === undefined)('opens the LAN while it runs, and closes it again', async () => {
+    const server = createServer(project, { network: localNetwork });
+    listening = await listen(server, 0);
+    const items = `http://${lan}:${listening.port}/api/items`;
 
+    await server.lan.open();
+    const response = await fetch(items);
     expect(response.status).toBe(401);
     expect(await response.json()).toMatchObject({ error: { code: 'unpaired' } });
     expect((await fetch(`${listening.url}/api/items`)).status).toBe(200);
+
+    await server.lan.close();
+    await expect(fetch(items)).rejects.toThrow();
+    expect((await fetch(`${listening.url}/api/items`)).status).toBe(200);
+  });
+
+  it.skipIf(lan === undefined)('stops listening on the LAN when it stops', async () => {
+    const server = createServer(project, { network: localNetwork });
+    listening = await listen(server, 0);
+    const { port } = listening;
+    await server.lan.open();
+
+    await listening.close();
+    listening = undefined;
+
+    await expect(fetch(`http://${lan}:${port}/api/items`)).rejects.toThrow();
   });
 
   it('fails with a clear error when the port is busy', async () => {

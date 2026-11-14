@@ -34,7 +34,7 @@ export function proxied(arrival: Arrival): boolean {
   );
 }
 
-// The local network (otea serve --lan): a private address naming one of this computer's names or
+// The local network (while it is open): a private address naming one of this computer's names or
 // addresses, over plain HTTP.
 export function lanTransport(hosts: readonly string[]): PhoneTransport {
   return {

@@ -49,7 +49,7 @@ import {
 } from '../app/next.ts';
 import { agentNotes, noteWaiting, replyNote, roundNotesOf } from '../app/notes.ts';
 import { performanceOf } from '../app/performance.ts';
-import type { Probe, TransportKind } from '../app/phone.ts';
+import { lanOpen, type Probe, type TransportKind } from '../app/phone.ts';
 import { type Harness, seeAgent, waitBeat } from '../app/presence.ts';
 import {
   declareProfile,
@@ -98,8 +98,8 @@ import { describeRelation, RELATION_KINDS } from '../core/relations.ts';
 import { timeText } from '../core/time.ts';
 import { TURNS, type Turn } from '../core/workflow.ts';
 import { createMcpServer, serveStdio } from '../mcp/server.ts';
-import { formatCode, lanAddresses, localName } from '../server/lan.ts';
-import { ALL_INTERFACES, DEFAULT_PORT, listen } from '../server/listen.ts';
+import { formatCode } from '../server/lan.ts';
+import { DEFAULT_PORT, listen, localNetwork } from '../server/listen.ts';
 import { pairingUrl } from '../server/pairing.ts';
 import { ensureVapidKeys } from '../server/push.ts';
 import { createServer } from '../server/server.ts';
@@ -1432,18 +1432,22 @@ async function serveUntil(
   try {
     const dir = project.dataDir;
     const token = ensureUiToken(dir, { warn });
-    const addresses = lan ? lanAddresses() : [];
-    const name = lan ? await localName(addresses) : undefined;
-    const names = name ? [name] : [];
     const server = createServer(project, {
       token,
       tailscale,
       probe,
       // The project's own key pair for Web Push, kept beside the UI token.
       notify: { keys: ensureVapidKeys(dir, { warn }) },
-      ...(lan ? { lan: { addresses, names } } : {}),
+      network: localNetwork,
     });
-    const running = await listen(server, port, lan ? ALL_INTERFACES : undefined);
+    const running = await listen(server, port);
+    // Open to the local network when it was left open (Settings › Phone, otea phone lan --open),
+    // or for this run only with --lan; if it cannot open, Otea still serves this computer.
+    if (lan || lanOpen(project.db)) {
+      await server.lan.open().catch((error: unknown) => {
+        warn(`Could not open Otea to the local network: ${(error as Error).message}`);
+      });
+    }
     writeServeFile(dir, { port: running.port, pid: process.pid });
     const stop = () => {
       removeServeFile(dir, process.pid);
@@ -1456,10 +1460,11 @@ async function serveUntil(
     const urls = door.urls(running.port);
     const code = server.phone.codes.issue();
     const first = urls[0];
-    const address = addresses[0];
+    // The .local name comes first when it resolves; the same link by IP comes along.
+    const byIp = urls.find((url) => !new URL(url).hostname.endsWith('.local'));
     const byAddress =
-      door.kind === 'lan' && names.length > 0 && address !== undefined
-        ? { byAddress: pairingUrl(`http://${address}:${running.port}`, code) }
+      door.kind === 'lan' && first !== byIp && byIp !== undefined
+        ? { byAddress: pairingUrl(byIp, code) }
         : {};
     return {
       ...served,
@@ -1502,7 +1507,7 @@ function phoneText(phone: PhoneServed): string {
 
 const serve: Command = {
   name: 'serve',
-  summary: `Serve the live UI on 127.0.0.1 (default port ${DEFAULT_PORT}) until Ctrl+C and sign this browser in; --lan also lets phones on the same network pair and open it, and a phone on Tailscale (otea phone tailscale) pairs without it`,
+  summary: `Serve the live UI on 127.0.0.1 (default port ${DEFAULT_PORT}) until Ctrl+C and sign this browser in; it also opens to phones on the same network when that was left open (Settings > Phone, otea phone lan --open), and --lan opens it for this run only; a phone on Tailscale (otea phone tailscale) pairs without it`,
   args: [],
   options: { port: {}, 'no-open': { flag: true }, lan: { flag: true } },
   execute: async ({ cwd, option, flag, signal, openUrl, warn, terminal, tailscale, probe }) => {
@@ -1538,7 +1543,7 @@ const serve: Command = {
 const devicesList: Command = {
   name: 'devices list',
   summary:
-    'List the paired phones and tablets (otea serve --lan, otea phone tailscale), with when each was last seen',
+    'List the paired phones and tablets (local network or otea phone tailscale), with when each was last seen',
   args: [],
   options: {},
   execute: ({ cwd }) => {
