@@ -51,6 +51,10 @@
 .view.narrow {
   width: var(--listw);
 }
+/* A page that cannot keep its readable width beside the sheet stays whole; the sheet lies over it. */
+.main[data-overlay] > .view.narrow {
+  width: 100%;
+}
 /* A view's reading column (Te toca's panel, a board, Studio's home and editor, Triaje): on a wide
    screen it keeps its width and sits in the middle of the main pane; beside an open item it compacts
    on the left of the detail again, carried there by the list's relayout (relayoutList). Every

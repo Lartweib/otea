@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useReducer, useRef, useState } from 'react';
 import { fetchItem } from '../../api.ts';
 import { useApp } from '../../app/context.tsx';
-import { listWidth, storedWidth, WIDTH_KEYS } from '../../app/widths.ts';
+import { type SplitKind, splitKindOf, splitOf, storedWidth, WIDTH_KEYS } from '../../app/widths.ts';
 import { useWorkspace, workspace } from '../../app/workspace.ts';
 import { NewItemForm } from '../../components/NewItemForm.tsx';
 import { t } from '../../i18n/i18n.ts';
@@ -56,7 +56,7 @@ function useItemView(id: string | null, version: number): ItemView | null | unde
   return id ? cache.get(id) : undefined;
 }
 
-type Kind = 'list' | 'table' | 'cards';
+type Kind = SplitKind;
 
 const root = () => document.documentElement;
 const mainEl = () => document.querySelector<HTMLElement>('.main');
@@ -65,8 +65,10 @@ const listw = () => parseFloat(getComputedStyle(root()).getPropertyValue('--list
 function placeSplit(kind: Kind): number {
   const main = mainEl();
   if (!main) return listw();
-  const w = listWidth(main.clientWidth, kind, storedWidth(kind));
+  const { listw: w, overlay } = splitOf(main.clientWidth, kind, storedWidth(kind));
   root().style.setProperty('--listw', `${w}px`);
+  // A page that cannot keep its width beside the sheet stays whole under it (frame.css, sheet.css).
+  main.toggleAttribute('data-overlay', overlay);
   return w;
 }
 
@@ -75,6 +77,7 @@ function narrowList(on: boolean, kind: Kind): void {
   const view = curView();
   const apply = () => {
     if (on) placeSplit(kind);
+    else mainEl()?.removeAttribute('data-overlay');
     view?.classList.toggle('narrow', on);
     view?.classList.toggle('chead', on);
   };
@@ -209,7 +212,8 @@ export function DetailHost() {
   });
   const st = S.current;
   st.last = sheetItem(st.last, want, item);
-  const kind = ws.listKind;
+  // What sits left of the sheet sizes the split: a board by how it lists, any other view as a page.
+  const kind = splitKindOf(app.route.view, ws.listKind);
   const kindRef = useRef(kind);
   kindRef.current = kind;
 
@@ -678,7 +682,7 @@ export function DetailHost() {
     const main = mainEl();
     const d = dividerRef.current;
     if (!main) return;
-    const [lo, hi] = dividerBounds(main.clientWidth);
+    const [lo, hi] = dividerBounds(main.clientWidth, kindRef.current);
     const v = Math.round(Math.min(hi, Math.max(lo, w)));
     if (persist) {
       try {
@@ -701,14 +705,14 @@ export function DetailHost() {
       // nothing stored
     }
     const a = listw();
-    const b = listWidth(mainEl()?.clientWidth ?? 0, kindRef.current, null);
+    const b = splitOf(mainEl()?.clientWidth ?? 0, kindRef.current, null).listw;
     if (reduced()) setW(b, false);
     else drive(200, (k) => setW(lerp(a, b, F.settle(k)), false));
   };
 
   if (shown == null) return null;
   const main = typeof document === 'undefined' ? null : mainEl();
-  const [lo, hi] = dividerBounds(main?.clientWidth ?? 1200);
+  const [lo, hi] = dividerBounds(main?.clientWidth ?? 1200, kind);
   const content = shown === INTAKE ? null : st.last;
   const order = shown === INTAKE || agentShown !== null ? [] : listOrder();
   const at = order.indexOf(shown);
@@ -760,7 +764,7 @@ export function DetailHost() {
             e.key,
             e.shiftKey,
             listw(),
-            dividerBounds(mainEl()?.clientWidth ?? 0),
+            dividerBounds(mainEl()?.clientWidth ?? 0, kindRef.current),
           );
           if (!r) return;
           e.preventDefault();

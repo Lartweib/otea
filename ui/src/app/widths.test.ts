@@ -1,5 +1,43 @@
 import { describe, expect, it } from 'vitest';
-import { listWidth } from './widths.ts';
+import { listWidth, PAGE_MIN, pageSplit, splitKindOf, splitOf } from './widths.ts';
+
+describe('a page beside a sheet (Configuración, Rendimiento, Studio)', () => {
+  it('splits by what the view shows, never by the last board’s Lista or Tabla', () => {
+    expect(splitKindOf('settings', 'list')).toBe('page');
+    expect(splitKindOf('settings', 'table')).toBe('page');
+    expect(splitKindOf('performance', 'cards')).toBe('page');
+    expect(splitKindOf('studio', 'list')).toBe('page');
+    expect(splitKindOf('board', 'table')).toBe('table');
+    expect(splitKindOf('toca', 'list')).toBe('list');
+    expect(splitKindOf('triage', 'cards')).toBe('cards');
+  });
+
+  it('docks the sheet at the right and leaves the page at least its readable width', () => {
+    // 2560 wide: the page keeps 1235, the sheet takes the 1040 to the right edge.
+    expect(pageSplit(2284, null)).toEqual({ listw: 1235, overlay: false });
+    // 1920 wide: the page never goes under its minimum; the sheet takes the rest.
+    expect(pageSplit(1644, null)).toEqual({ listw: PAGE_MIN, overlay: false });
+    expect(PAGE_MIN).toBeGreaterThanOrEqual(900);
+  });
+
+  it('lays the sheet over the page when both cannot fit, instead of squeezing the page', () => {
+    // 1440 wide: the page stays whole under a 680 px sheet docked at the right.
+    expect(pageSplit(1164, null)).toEqual({ listw: 1164 - 9 - 680, overlay: true });
+    expect(pageSplit(500, null)).toEqual({ listw: 0, overlay: true });
+  });
+
+  it('remembers a dragged page width, within the page’s bounds', () => {
+    expect(pageSplit(2284, 1500)).toEqual({ listw: 1500, overlay: false });
+    expect(pageSplit(2284, 400)).toEqual({ listw: PAGE_MIN, overlay: false });
+    expect(pageSplit(2284, 2200)).toEqual({ listw: 2284 - 9 - 560, overlay: false });
+  });
+
+  it('keeps the lists as they were', () => {
+    expect(splitOf(2000, 'list', null)).toEqual({ listw: 680, overlay: false });
+    expect(splitOf(2600, 'table', null)).toEqual({ listw: 1320, overlay: false });
+    expect(splitOf(2284, 'page', null)).toEqual({ listw: 1235, overlay: false });
+  });
+});
 
 describe('the list’s width beside the detail', () => {
   it('gives a list a third of the room, between 520 and 783 px', () => {

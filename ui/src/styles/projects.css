@@ -46,6 +46,11 @@
 }
 
 /* ───────── Configuración ───────── */
+/* The page and each section body are containers: beside a sheet the page is narrower than the
+   window, so it reflows by its own width (the @container rules at the end), not the window's. */
+.pj-settings {
+  container: pj / inline-size;
+}
 .pj-body {
   padding-left: 72px;
 }
@@ -70,6 +75,7 @@
 }
 .pj-sec-body {
   min-width: 0;
+  container: pjsec / inline-size;
 }
 .pj-name {
   display: flex;
@@ -189,7 +195,7 @@
 }
 .pj-repo > * {
   min-width: 0;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 .pj-repo .t-cap {
   font: 400 11.5px / 1.3 var(--mono);
@@ -592,20 +598,31 @@
   .inbox-foot {
     padding-left: 0;
   }
+  .ph-opts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Narrow (on the phone, or beside a sheet): a section's label goes above its body. */
+@container pj (max-width: 760px) {
+  .pj-body {
+    padding-left: 0;
+  }
   .pj-sec {
     grid-template-columns: minmax(0, 1fr);
     row-gap: 12px;
   }
-  .ph-opts {
-    grid-template-columns: minmax(0, 1fr);
-  }
+}
+
+/* A repos table too narrow for its four columns: two lines per repo, the name and its count, then
+   the folder and the gate each across the table; never one letter per line. */
+@container pjsec (max-width: 620px) {
   .pj-repos {
     grid-template-columns: minmax(0, 1fr) max-content;
   }
   .pj-repo {
     row-gap: 6px;
   }
-  /* A phone line: the name and its count, then the folder and the gate each across the table. */
   .pj-repo > .pj-repo-items {
     grid-area: 1 / 2;
   }

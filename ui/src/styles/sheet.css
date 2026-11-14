@@ -19,6 +19,15 @@
 .sheet.full {
   left: 0;
 }
+/* Over a page (data-overlay, set by the detail's split): an edge and a shade set it apart, and with
+   the page whole under it there is no divider to drag. */
+.main[data-overlay] > .sheet {
+  border-left: 1px solid var(--rule);
+  box-shadow: -18px 0 40px -24px rgb(0 0 0 / 0.35);
+}
+.main[data-overlay] > .divider {
+  display: none;
+}
 .cover {
   position: absolute;
   top: 0;
