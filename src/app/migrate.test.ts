@@ -4,6 +4,7 @@ import {
   mkdirSync,
   mkdtempSync,
   readdirSync,
+  readFileSync,
   realpathSync,
   renameSync,
   rmSync,
@@ -77,6 +78,15 @@ describe('migrateToCommon', () => {
     expect(titles()).toEqual({ storage: 'common', titles: ['Kept'] });
     const status = execFileSync('git', ['status', '--porcelain'], { cwd: repo, encoding: 'utf8' });
     expect(status).toBe('');
+  });
+
+  it('keeps the key its phones’ notifications are signed with', () => {
+    const keys = '{"publicKey":"P","privateKey":"K"}';
+    writeFileSync(join(repo, '.otea', 'push-keys.json'), keys);
+
+    const report = migrateToCommon(repo, env, NOW);
+
+    expect(readFileSync(join(report.to, 'push-keys.json'), 'utf8')).toBe(keys);
   });
 
   it('keeps the project identity', () => {

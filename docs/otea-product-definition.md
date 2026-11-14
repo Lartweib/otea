@@ -255,6 +255,7 @@ A project's data folder: `$OTEA_HOME/data/<project-id>/` in common storage, `.ot
   modules/                 local modules (§10.3)
   otea.db                  project identity, items (with their lease), iterations, events (append-only)
   ui-token                 browser session token (never committed, never printed)
+  push-keys.json           the project's Web Push (VAPID) key pair for phone notifications (never committed)
   serve.json               port and pid of the running `otea serve`, removed on shutdown
   evidence/<collection>/<item-id>/...
 ```

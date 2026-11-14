@@ -421,6 +421,12 @@ After pairing, the phone suggests adding Otea to its home screen (a web app mani
 
 What `tailscale serve` forwards comes from this computer, so Otea tells it apart by its host (the tailnet name) and its `X-Forwarded-For`, never takes it for this computer's own browser, and still asks for a device token. A forwarded request that no chosen transport expects is refused. The HTTPS certificate is public: the machine's name on the tailnet is listed in the Certificate Transparency logs. `otea phone lan` goes back to the local network (and says how to stop `tailscale serve`); exit 20 (`transport_unavailable`) means Tailscale is not ready yet, or the relay was chosen.
 
+#### Notifications
+
+On a phone over HTTPS (Tailscale), **Preferences › Notifications** (Avisos) turns on Web Push: the phone's browser subscribes with the project's own VAPID key pair (made on the first `otea serve`, kept in `push-keys.json` in the data folder with owner-only permissions) and `otea serve` posts each notice to that browser's push service, encrypted for it (aes128gcm) and to no other host. On iPhone, Safari allows it only for Otea added to the Home Screen; over the local network's plain HTTP no browser allows it, and Preferences says so. The desktop app shows the same notices as the system's notifications (see `desktop/README.md`).
+
+What is told, each a switch, all on by default: something is your turn (a review, or an agent's question via `otea ask`), an agent answered your note, an item got stuck (an agent went quiet holding its lease). A burst arrives as one ("3 things are yours"), an item is told about at most once every five minutes, and optional quiet hours (off by default) keep it silent. A notice carries a title, the item's id and title and where tapping it leads (the item, or Your turn for a burst); nothing else from the item. Unpairing a phone unsubscribes it, and a subscription its push service reports gone (404, 410) is dropped. The API: `GET /api/notify`, `POST /api/notify/subscribe` (a paired device on HTTPS), `/api/notify/unsubscribe`, `/api/notify/prefs`, and the desktop app's `GET /api/notify/stream` (this computer only).
+
 Working on the UI itself: keep `otea serve` running and start `npm run dev:ui` in the Otea checkout for hot reload (it proxies `/api` to port 4400).
 
 ## License
