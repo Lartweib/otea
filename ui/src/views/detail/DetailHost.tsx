@@ -803,7 +803,7 @@ export function DetailHost() {
             </div>
           ) : content ? (
             // An item of an archived board reads as it was, with nothing to act on.
-            <ReadOnly on={!!content.archived}>
+            <ReadOnly on={!!content.archived} collection={content.archived?.collection}>
               <ItemSheet
                 key={content.id}
                 item={content}

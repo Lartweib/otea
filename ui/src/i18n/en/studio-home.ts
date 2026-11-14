@@ -162,6 +162,7 @@ export const studioHome = {
   'bs.archived.restore': 'Restore',
   'bs.archived.delete': 'Delete…',
   'bs.archived.nothing': 'No archived item matches “{query}”.',
+  'bs.archived.review': '{step} · in review',
   'bs.archived.empty': 'It had no items.',
   'bs.archived.failed': 'The archived boards could not be read: {reason}',
 } as const;

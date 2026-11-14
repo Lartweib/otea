@@ -10,6 +10,7 @@ import { type ItemType, typeFor, typeOf } from '../core/preset.ts';
 import { type ChildrenSummary, childrenSummary, type RelationRef } from '../core/relations.ts';
 import { itemMoves } from '../core/views.ts';
 import { type Closing, closesOf, type Turn, turnOf, type Workflow } from '../core/workflow.ts';
+import { findBoardOfCollection } from '../store/boards.ts';
 import { transaction } from '../store/database.ts';
 import {
   appendEvent,
@@ -281,8 +282,8 @@ export type ItemView = ItemWithEvents & {
   gates?: Record<string, boolean>;
   // On a published board: its parts, blockers, round notes, branch and gates (PLAN §9.1).
   board?: BoardBlock;
-  // On an archived board: read-only, by the board's name.
-  archived?: { board: string };
+  // On an archived board: read-only; the board by its name and its hidden id.
+  archived?: { board: string; id: string };
 };
 
 export function showItem(
@@ -298,13 +299,15 @@ export function showItem(
   const { gates, ...moves } = itemMoves(type, item.state, item.fields, performer);
   const board = boardBlockOf(ctx, item);
   const archived = archivedBoardOf(ctx.db, item.id);
+  const archivedId =
+    archived === undefined ? undefined : findBoardOfCollection(ctx.db, item.collection)?.id;
   return {
     ...item,
     ...moves,
     // An archived board's item is read-only: it offers no move to anyone.
     ...(archived === undefined
       ? {}
-      : { archived: { board: archived }, transitions: [], relayable: [] }),
+      : { archived: { board: archived, id: archivedId ?? '' }, transitions: [], relayable: [] }),
     evidence: presentEvidence(type.layout, selectEvidence(ctx.db, item.id)),
     relations: relatedItems(ctx, item.id, at),
     ...(children.length > 0 ? { children: childrenSummary(children) } : {}),

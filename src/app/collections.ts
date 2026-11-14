@@ -112,8 +112,12 @@ export function setCollectionIcon(ctx: Context, name: string, icon: string | nul
 // `icon` is resolved: the collection's own or its preset's, so clients never resolve it.
 export type { CollectionView } from '../core/views.ts';
 
-export function listCollectionViews(ctx: Context): CollectionView[] {
-  return listCollections(ctx.db).map((collection) => {
+// `archived`: an archived board's collection too (what reading its items needs).
+export function listCollectionViews(
+  ctx: Context,
+  options: { archived?: boolean } = {},
+): CollectionView[] {
+  return listCollections(ctx.db, options).map((collection) => {
     const { types, view } = presetOf(ctx, collection);
     return {
       name: collection.name,

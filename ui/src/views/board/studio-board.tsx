@@ -24,11 +24,12 @@ export type StudioBoard = {
 };
 
 // The live definition is read from the board's record: the home's summary carries the draft.
-export function useStudioBoard(collection: string): StudioBoard | null {
+export function useStudioBoard(collection: string, archived?: string): StudioBoard | null {
   const app = useApp();
   const summary = boardOfCollection(boardsOf(useBoards(app.version)), collection);
   const [board, setBoard] = useState<StudioBoard | null>(null);
-  const id = summary?.id;
+  // An archived board is in no list: its item names it (`archived`, its hidden id).
+  const id = summary?.id ?? archived;
   const status = summary?.status;
   const version = summary?.liveVersion;
   // biome-ignore lint/correctness/useExhaustiveDependencies: read again when the board changes

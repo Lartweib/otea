@@ -99,6 +99,7 @@ describe('archiveBoard', () => {
 
     expect(getItem(project, id, now).title).toBe('Ciervo');
     expect(showItem(project, id, { actor: you, channel: 'ui' }, now).archived).toEqual({
+      id: board,
       board: 'Criaturas',
     });
     expect(listArchivedBoards(project)).toEqual([

@@ -1,6 +1,6 @@
 import { rmSync } from 'node:fs';
 import { isClosed, positionOf } from '../core/board/engine.ts';
-import { type BoardDefinition, DONE, SAME } from '../core/board/model.ts';
+import { type BoardDefinition, DONE, SAME, stepById } from '../core/board/model.ts';
 import { stateName } from '../core/board/reading.ts';
 import { readDefinition } from '../core/board/schema.ts';
 import { OteaError } from '../core/errors.ts';
@@ -64,7 +64,9 @@ export type ArchivedEntry = {
   id: string;
   title: string;
   state: string;
+  // Its step's name, and whether it waits in that step's review; closed, as `closed` says.
   stateName: string;
+  review: boolean;
   // How it ended, when it has: done, or dropped (discarded, whatever its motive).
   closed: false | 'done' | 'dropped';
 };
@@ -316,6 +318,13 @@ export function deleteBoardForever(
   return result;
 }
 
+function entryStep(def: BoardDefinition, state: string): { stateName: string; review: boolean } {
+  const position = positionOf(state);
+  if (isClosed(position)) return { stateName: stateName(def, state), review: false };
+  const name = stepById(def, position.step)?.name ?? position.step;
+  return { stateName: name, review: position.phase === 'review' };
+}
+
 // Studio's Archivados: every archived board with its items.
 export function listArchivedBoards(ctx: Context): ArchivedBoard[] {
   const rows = listBoards(ctx.db, { archived: true }).filter(
@@ -341,7 +350,7 @@ export function listArchivedBoards(ctx: Context): ArchivedBoard[] {
           id: item.id,
           title: item.title,
           state: item.state,
-          stateName: stateName(def, item.state),
+          ...entryStep(def, item.state),
           closed: isOpen(item.state) ? false : item.state === DONE ? 'done' : 'dropped',
         })),
       },

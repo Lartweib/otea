@@ -18,6 +18,7 @@ const board = (name: string, entries: [string, string][], parent: string | null 
       title,
       state: 's1__doing',
       stateName: 'Hacerlo',
+      review: false,
       closed: false,
     })),
   }) satisfies ArchivedBoard;

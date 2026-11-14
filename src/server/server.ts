@@ -392,7 +392,15 @@ function api(
         feed.notify();
         return c.json(item, 201);
       })
-      .get('/items/:id', (c) => c.json(showItem(project, c.req.param('id'), HUMAN_IN_UI)))
+      .get('/items/:id', (c) => {
+        const item = showItem(project, c.req.param('id'), HUMAN_IN_UI);
+        if (!item.archived) return c.json(item);
+        // An archived board's collection is in no list: the page reads the item's words from here.
+        const collection = listCollectionViews(project, { archived: true }).find(
+          ({ name }) => name === item.collection,
+        );
+        return c.json({ ...item, archived: { ...item.archived, collection } });
+      })
       .post('/items/:id/move', async (c) => {
         assertWritable(c, auth);
         const request = await moveRequest(c);
