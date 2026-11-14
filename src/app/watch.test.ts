@@ -4,9 +4,12 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { DatabaseSync } from 'node:sqlite';
 import { setTimeout as delay } from 'node:timers/promises';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { openDatabase } from '../store/database.ts';
-import { watch } from './watch.ts';
+import { POLL_INTERVAL_MS, watch } from './watch.ts';
+
+const MINUTE = 60_000;
+const HOUR = 60 * MINUTE;
 
 describe('watch', () => {
   const path = join(tmpdir(), `otea-test-${randomUUID()}.db`);
@@ -65,6 +68,27 @@ describe('watch', () => {
     await watch(own, never, { signal, intervalMs: 10, recheckMs: 30, timeoutMs: 200 });
 
     expect(checks).toBeGreaterThan(2);
+  });
+
+  it('beats while it waits, however long the wait, so the waiter is not taken for gone', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+    try {
+      const beats: number[] = [];
+      const start = Date.now();
+      const watching = watch(own, never, {
+        signal,
+        timeoutMs: 2 * HOUR,
+        beat: { everyMs: 5 * MINUTE, run: () => beats.push(Date.now() - start) },
+      });
+      await vi.advanceTimersByTimeAsync(2 * HOUR);
+
+      expect(await watching).toEqual({ stopped: 'timeout' });
+      expect(beats).toHaveLength(24);
+      const gaps = beats.map((at, i) => at - (beats[i - 1] ?? 0));
+      expect(Math.max(...gaps)).toBeLessThanOrEqual(5 * MINUTE + POLL_INTERVAL_MS);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('stops when the signal aborts', async () => {

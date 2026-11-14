@@ -50,7 +50,7 @@ import {
 import { agentNotes, noteWaiting, replyNote, roundNotesOf } from '../app/notes.ts';
 import { performanceOf } from '../app/performance.ts';
 import type { Probe, TransportKind } from '../app/phone.ts';
-import { type Harness, seeAgent } from '../app/presence.ts';
+import { type Harness, seeAgent, waitBeat } from '../app/presence.ts';
 import {
   declareProfile,
   presetProfile,
@@ -1150,7 +1150,18 @@ const wait: Command = {
       const me = input.actor.name;
       const check = () =>
         noteWaiting(project, me) ?? answerWaiting(project, me) ?? oldestWaiting(project, filter);
-      const waited = await watch(project.db, check, options);
+      // Waiting is not time away: the agent is seen as it waits, so its profile stays confirmed.
+      const beat =
+        input.actor.kind === 'agent'
+          ? {
+              beat: waitBeat(project.db, {
+                agent: me,
+                channel: input.channel,
+                harness: input.harness,
+              }),
+            }
+          : {};
+      const waited = await watch(project.db, check, { ...options, ...beat });
       if (!('found' in waited)) return waited;
       const { found } = waited;
       return 'text' in found ? { data: found, text: found.text } : itemResult(project, found);

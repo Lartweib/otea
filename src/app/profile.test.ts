@@ -5,7 +5,7 @@ import { addCollection } from './collections.ts';
 import type { Context } from './context.ts';
 import { createItem, getItem } from './items.ts';
 import { claimItem } from './leases.ts';
-import { seeAgent } from './presence.ts';
+import { LIVE_WINDOW_MS, seeAgent, waitBeat } from './presence.ts';
 import { declareProfile, requireProfile } from './profile.ts';
 import { memoryContext } from './testing.ts';
 
@@ -147,6 +147,22 @@ describe('agent profile', () => {
       seeAgent(ctx.db, { agent: 'claude', channel: 'cli' }, at(T2H));
 
       expect(findProfile(ctx.db, 'claude')?.confirmed).toBe(false);
+    });
+
+    it('keep it confirmed through an otea wait of hours: the wait sees the agent as it waits', () => {
+      let time = Date.parse(T0);
+      const clock = () => new Date(time).toISOString();
+      seeAgent(ctx.db, { agent: 'claude', channel: 'cli' }, clock);
+      declare({ ...OPUS, harness: 'codex' });
+      const beat = waitBeat(ctx.db, { agent: 'claude', channel: 'cli', newSession: true }, clock);
+      expect(beat.everyMs).toBeLessThan(LIVE_WINDOW_MS);
+      while (time < Date.parse(T2H)) {
+        time += beat.everyMs;
+        beat.run();
+      }
+      seeAgent(ctx.db, { agent: 'claude', channel: 'cli' }, clock);
+
+      expect(findProfile(ctx.db, 'claude')?.confirmed).toBe(true);
     });
 
     it('follow the MCP client when it names another harness', () => {
