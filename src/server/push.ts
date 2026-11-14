@@ -48,23 +48,34 @@ const SEND_TIMEOUT_MS = 10_000;
 
 const b64 = (text: string) => Buffer.from(text, 'base64url');
 
-export function generateVapidKeys(): VapidKeys {
+const SCALAR_BYTES = 32;
+
+// node's ECDH drops a private scalar's leading zero bytes (about one key in 256 starts with one):
+// the scalar is always written at its full width.
+const fullScalar = (scalar: Buffer) =>
+  Buffer.concat([Buffer.alloc(Math.max(0, SCALAR_BYTES - scalar.length)), scalar]);
+
+// `privateKey` makes the pair from a known scalar, for tests.
+export function generateVapidKeys(privateKey?: Buffer): VapidKeys {
   const ecdh = createECDH('prime256v1');
-  ecdh.generateKeys();
+  if (privateKey) ecdh.setPrivateKey(privateKey);
+  else ecdh.generateKeys();
   return {
     publicKey: ecdh.getPublicKey().toString('base64url'),
-    privateKey: ecdh.getPrivateKey().toString('base64url'),
+    privateKey: fullScalar(ecdh.getPrivateKey()).toString('base64url'),
   };
 }
 
-const isKeys = (value: unknown): value is VapidKeys => {
+// A kept file whose private key was saved short (before it was padded) still holds a good key:
+// read it padded, so the phones subscribed to it keep working.
+const readKeys = (value: unknown): VapidKeys | undefined => {
   const keys = value as Partial<VapidKeys> | null;
-  return (
-    typeof keys?.publicKey === 'string' &&
-    typeof keys.privateKey === 'string' &&
-    b64(keys.publicKey).length === 65 &&
-    b64(keys.privateKey).length === 32
-  );
+  if (typeof keys?.publicKey !== 'string' || typeof keys.privateKey !== 'string') return undefined;
+  const scalar = b64(keys.privateKey);
+  if (b64(keys.publicKey).length !== 65 || scalar.length === 0 || scalar.length > SCALAR_BYTES) {
+    return undefined;
+  }
+  return { publicKey: keys.publicKey, privateKey: fullScalar(scalar).toString('base64url') };
 };
 
 // `restrict` keeps a new key file to its owner where the mode does not (Windows); `warn` says when
@@ -79,8 +90,8 @@ export function ensureVapidKeys(
   const path = join(dir, PUSH_KEYS_FILE);
   if (existsSync(path)) {
     try {
-      const kept: unknown = JSON.parse(readFileSync(path, 'utf8'));
-      if (isKeys(kept)) return kept;
+      const kept = readKeys(JSON.parse(readFileSync(path, 'utf8')));
+      if (kept) return kept;
     } catch {
       // unreadable: made again below, and phones subscribe again
     }
