@@ -243,6 +243,35 @@ describe('modelPerformance', () => {
 
     expect(rows.map(({ family }) => family)).toEqual(['sonnet', 'opus']);
   });
+
+  it('keeps a model or an effort the agent could not read apart from every family, after the rest', () => {
+    const unknownModel = AGENT(
+      quill,
+      profiled({ harness: 'codex', model: 'unknown', effort: 'high' }),
+    );
+    const unknownEffort = AGENT(kiln, profiled({ ...OPUS, effort: 'unknown' }));
+    const events = [
+      created(),
+      move('sconcept', 'sconcept__review', unknownModel),
+      move('sconcept__review', 'sconcept', YOU, { reason: 'No' }),
+      move('sconcept', 'sconcept__review', unknownModel),
+      move('sconcept__review', 'sanimate', YOU),
+      move('sanimate', 'sanimate__review', unknownEffort),
+      move('sanimate__review', 'sanimate', YOU, { reason: 'No' }),
+      move('sanimate', 'sanimate__review', unknownEffort),
+      move('sanimate__review', 'sanimate', YOU, { reason: 'No' }),
+      move('sanimate', 'sanimate__review', opus),
+    ];
+
+    const { rows } = modelPerformance([trail('CRI-1', events)]);
+
+    expect(rows.map(({ family, effort, handoffs }) => [family, effort, handoffs])).toEqual([
+      ['opus', 'high', 1],
+      ['opus', 'unknown', 2],
+      ['unknown', 'high', 2],
+    ]);
+    expect(rows.at(-1)?.models.map(({ model }) => model)).toEqual(['unknown']);
+  });
 });
 
 describe('parsePeriod', () => {

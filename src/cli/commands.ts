@@ -1197,7 +1197,7 @@ const claim: Command = {
 const profileCommandSpec: Command = {
   name: 'profile',
   summary:
-    'Declare the profile you run as: --model the exact model id and --effort the effort, as your harness names them (such as claude-opus-5-5 and high); --harness the tool you run in, the first time on the command line (an MCP client names its own). Declare it at the start of each session and whenever the model or effort changes; it is kept on everything you do. Without options, shows it',
+    'Declare the profile you run as: --model the exact model id and --effort the effort, as your harness names them (such as claude-opus-5-5 and high). Declare only what you can read from your settings; if you cannot know a value, declare unknown. Never guess. --harness the tool you run in, the first time on the command line (an MCP client names its own). Declare it at the start of each session and whenever the model or effort changes; it is kept on everything you do. Without options, shows it',
   args: [],
   options: {
     model: { placeholder: 'id' },
