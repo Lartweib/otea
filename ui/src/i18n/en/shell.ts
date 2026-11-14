@@ -71,7 +71,7 @@ export const shell = {
   'prefs.onlyInterface': 'Only the interface is translated.',
   'prefs.translated': '{only} Item content, their fields and what agents write stay as they are.',
   'prefs.session': 'session',
-  'prefs.pair': 'Pair a phone…',
+  'prefs.phone': 'Phone, in Settings…',
   'prefs.about': 'about',
   'prefs.server': 'server',
 

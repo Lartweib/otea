@@ -74,7 +74,7 @@ export const shell = {
   'prefs.translated':
     '{only} El contenido de los ítems, sus campos y lo que escriben los agentes se quedan como están.',
   'prefs.session': 'sesión',
-  'prefs.pair': 'Emparejar un teléfono…',
+  'prefs.phone': 'Teléfono, en Configuración…',
   'prefs.about': 'acerca de',
   'prefs.server': 'servidor',
 
