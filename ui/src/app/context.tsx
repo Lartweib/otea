@@ -272,12 +272,25 @@ export function useApp(): App {
 
 // The app as a reader sees it: what is under it acts as a browser that cannot write (an item of
 // an archived board).
-export function ReadOnly({ on, children }: { on: boolean; children: ReactNode }) {
+// `collection`: the archived board's, which no list holds, read by its name.
+export function ReadOnly({
+  on,
+  collection,
+  children,
+}: {
+  on: boolean;
+  collection?: CollectionView | undefined;
+  children: ReactNode;
+}) {
   const app = useApp();
-  const value = useMemo(
-    () => (on ? { ...app, session: { ...app.session, canWrite: false } } : app),
-    [app, on],
-  );
+  const value = useMemo(() => {
+    if (!on) return app;
+    const session = { ...app.session, canWrite: false };
+    if (!collection) return { ...app, session };
+    const collectionOf = (name: string) =>
+      name === collection.name ? collection : app.collectionOf(name);
+    return { ...app, session, collectionOf };
+  }, [app, on, collection]);
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }
 

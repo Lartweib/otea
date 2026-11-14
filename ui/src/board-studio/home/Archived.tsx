@@ -128,7 +128,9 @@ export function Archived({ canWrite }: { canWrite: boolean }) {
                             ? t('node.done')
                             : entry.closed === 'dropped'
                               ? t('node.discarded')
-                              : entry.stateName}
+                              : entry.review
+                                ? t('bs.archived.review', { step: entry.stateName })
+                                : entry.stateName}
                         </span>
                       </li>
                     ))}

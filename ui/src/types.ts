@@ -130,8 +130,9 @@ export type ItemView = Omit<ItemWithEvents, 'relations'> & {
   relations: RelatedItem[];
   // Which gated actions (otea check) its state allows, when its workflow gates any.
   gates?: Record<string, boolean>;
-  // On an archived board (Studio's Archivados): read-only, by the board's name.
-  archived?: { board: string };
+  // On an archived board (Studio's Archivados): read-only. The board by its name and hidden id, and
+  // its collection, which no list holds, to read the item's words.
+  archived?: { board: string; id: string; collection?: CollectionView };
 };
 
 // canManageDevices: this computer's signed-in browser, the only one that pairs and revokes devices.

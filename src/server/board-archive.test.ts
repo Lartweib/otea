@@ -81,7 +81,11 @@ describe('archiving and deleting boards over the API', () => {
       boards: [{ id: board, name: 'Criaturas', items: 1, entries: [{ id: item }] }],
     });
     const shown = await call(`/api/items/${item}`);
-    expect(await shown.json()).toMatchObject({ id: item, archived: { board: 'Criaturas' } });
+    expect(await shown.json()).toMatchObject({
+      id: item,
+      transitions: [],
+      archived: { board: 'Criaturas', id: board, collection: { name: 'Criaturas' } },
+    });
 
     const moved = await call(`/api/items/${item}/move`, { method: 'POST', body: { to: 'done' } });
     expect(moved.status).toBe(409);

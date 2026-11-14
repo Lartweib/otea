@@ -166,6 +166,7 @@ export const studioHome = {
   'bs.archived.restore': 'Restaurar',
   'bs.archived.delete': 'Eliminar…',
   'bs.archived.nothing': 'Ningún ítem archivado coincide con «{query}».',
+  'bs.archived.review': '{step} · en revisión',
   'bs.archived.empty': 'No tenía ítems.',
   'bs.archived.failed': 'No se pudieron leer los archivados: {reason}',
 } satisfies Partial<Catalog>;
