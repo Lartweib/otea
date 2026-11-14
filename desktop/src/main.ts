@@ -24,6 +24,7 @@ import {
   ipcMain,
   Menu,
   type MenuItemConstructorOptions,
+  Notification,
   nativeTheme,
   shell,
   systemPreferences,
@@ -39,7 +40,7 @@ import {
 } from './command-link.ts';
 import { COPY, type Copy, langOf } from './copy.ts';
 import { type Icons, loadIcons, type Theme } from './icons.ts';
-import { type Snapshot, type Watch, watchItems } from './live.ts';
+import { type DeskNotice, type Snapshot, type Watch, watchItems, watchNotices } from './live.ts';
 import { FRAME_MS } from './marks.ts';
 import type { NoticeView } from './notice.ts';
 import type { PickerState } from './picker.ts';
@@ -242,6 +243,10 @@ class Shell {
   private readonly copy: Copy;
   private connection: Connection | undefined;
   private watch: Watch | undefined;
+  private notices: Watch | undefined;
+  // The system notifications shown, by tag: a later one about the same item takes the place of
+  // the earlier, and holding them keeps their clicks alive.
+  private readonly shown = new Map<string, Notification>();
   private recents = readRecents();
   // The picker's state while a project opens, or after it failed to.
   private opening: string | undefined;
@@ -314,6 +319,8 @@ class Shell {
   private detach(): void {
     this.watch?.close();
     this.watch = undefined;
+    this.notices?.close();
+    this.notices = undefined;
     this.connection?.child?.kill();
     this.connection = undefined;
   }
@@ -368,6 +375,28 @@ class Shell {
         this.derive();
       },
     });
+    this.notices = watchNotices(connection.url, this.copy === COPY.es ? 'es' : 'en', (notice) =>
+      this.notify(notice),
+    );
+  }
+
+  // Preferencias › Avisos in the desktop app: the server's notices as the system's notifications;
+  // a click opens the window on the item (or Te toca, for a burst).
+  private notify(notice: DeskNotice): void {
+    if (SMOKE || !Notification.isSupported()) return;
+    const key = notice.tag || notice.url;
+    this.shown.get(key)?.close();
+    const shown = new Notification({
+      title: notice.title,
+      body: notice.body,
+      icon: this.icons.app,
+    });
+    shown.on('click', () => this.show(notice.url.slice(1)));
+    shown.on('close', () => {
+      if (this.shown.get(key) === shown) this.shown.delete(key);
+    });
+    this.shown.set(key, shown);
+    shown.show();
   }
 
   async showPicker(): Promise<void> {

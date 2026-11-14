@@ -42,14 +42,18 @@ describe('swRoute', () => {
     expect(route(path)).toBe('data');
   });
 
-  it.each(['/api/stream', '/api/evidence/3/file', '/api/pair', '/api/lan', '/api/phone'])(
-    'leaves %s to the network',
-    (path) => {
-      expect(route(path)).toBe('network');
-      // An evidence file opened in a tab is a page load, yet never the app.
-      expect(route(path, { mode: 'navigate' })).toBe('network');
-    },
-  );
+  it.each([
+    '/api/stream',
+    '/api/evidence/3/file',
+    '/api/pair',
+    '/api/lan',
+    '/api/phone',
+    '/api/notify',
+  ])('leaves %s to the network', (path) => {
+    expect(route(path)).toBe('network');
+    // An evidence file opened in a tab is a page load, yet never the app.
+    expect(route(path, { mode: 'navigate' })).toBe('network');
+  });
 
   it('never touches a write or another origin', () => {
     expect(route('/api/items', { method: 'POST' })).toBe('network');

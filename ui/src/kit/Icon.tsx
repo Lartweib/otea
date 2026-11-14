@@ -111,6 +111,7 @@ export const IC = {
   amp: '<path d="M9.5 2.5h4v4M13.5 2.5l-4.5 4.5M6.5 13.5h-4v-4M2.5 13.5 7 9"/>',
   red: '<path d="M13.5 6.5h-4v-4M9.5 6.5l4.5-4.5M2.5 9.5h4v4M6.5 9.5 2 14"/>',
   note: '<path d="M3 3.5h10v7H7.5L4.5 13v-2.5H3z"/>',
+  bell: '<path d="M4 11V7.5a4 4 0 0 1 8 0V11l1 1.5H3z"/><path d="M6.6 14h2.8"/>',
 } as const;
 
 export type MockIconName = keyof typeof IC;

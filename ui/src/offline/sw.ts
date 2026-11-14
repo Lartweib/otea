@@ -1,6 +1,7 @@
 import { flush, sendWith } from './capture-queue.ts';
 import { idbQueue } from './idb-queue.ts';
 import { SYNC_TAG } from './register.ts';
+import { clickTarget, openFromClick, pushNotification, type WindowLike } from './sw-push.ts';
 import { SHELL_KEY, swRoute } from './sw-routes.ts';
 import {
   type CacheLike,
@@ -25,17 +26,25 @@ type MessageEvt = ExtendableEvent & {
   data: unknown;
   source: { postMessage(message: unknown): void } | null;
 };
+type PushEvt = ExtendableEvent & { data: { json(): unknown } | null };
+type ClickEvt = ExtendableEvent & { notification: { data: unknown; close(): void } };
 type Scope = {
   location: Location;
   skipWaiting(): Promise<void>;
+  registration: {
+    showNotification(title: string, options: NotificationOptions): Promise<void>;
+  };
   clients: {
     claim(): Promise<void>;
-    matchAll(): Promise<{ postMessage(message: unknown): void }[]>;
+    matchAll(options?: { type: 'window'; includeUncontrolled: boolean }): Promise<WindowLike[]>;
+    openWindow(url: string): Promise<unknown>;
   };
   addEventListener(type: 'install' | 'activate', fn: (e: ExtendableEvent) => void): void;
   addEventListener(type: 'fetch', fn: (e: FetchEvent) => void): void;
   addEventListener(type: 'sync', fn: (e: SyncEvent) => void): void;
   addEventListener(type: 'message', fn: (e: MessageEvt) => void): void;
+  addEventListener(type: 'push', fn: (e: PushEvt) => void): void;
+  addEventListener(type: 'notificationclick', fn: (e: ClickEvt) => void): void;
 };
 
 const sw = self as unknown as Scope;
@@ -99,6 +108,30 @@ sw.addEventListener('sync', (event) => {
         client.postMessage({ type: 'queue-changed' });
       // Still unheard: rejecting asks the browser to try the sync again later.
       if (out.unheard) throw new Error('PC not reachable');
+    }),
+  );
+});
+
+// A notice from the PC (Preferencias › Avisos): always shown, as browsers require of a push.
+sw.addEventListener('push', (event) => {
+  let payload: unknown;
+  try {
+    payload = event.data?.json();
+  } catch {
+    payload = undefined;
+  }
+  const { title, options } = pushNotification(payload);
+  event.waitUntil(sw.registration.showNotification(title, options));
+});
+
+// A tap opens the app on the item it is about (or Te toca, for a burst).
+sw.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const target = clickTarget(event.notification.data, origin);
+  event.waitUntil(
+    openFromClick(target, {
+      matchAll: () => sw.clients.matchAll({ type: 'window', includeUncontrolled: true }),
+      openWindow: (url) => sw.clients.openWindow(url),
     }),
   );
 });

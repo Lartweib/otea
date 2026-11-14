@@ -65,6 +65,16 @@ export function promptInstall(): void {
   void event?.prompt().catch(() => undefined);
 }
 
+// Moves the page to a place in the app (a hash route) without reloading it.
+export function goTo(url: string): void {
+  try {
+    const target = new URL(url, window.location.href);
+    if (target.origin === window.location.origin) window.location.hash = target.hash;
+  } catch {
+    // not a place in the app
+  }
+}
+
 export async function startShell(
   onUpdated: () => void,
 ): Promise<ServiceWorkerRegistration | undefined> {
@@ -99,12 +109,14 @@ export async function startShell(
   sw.addEventListener('controllerchange', () => {
     if (updating) whenQuiet(() => window.location.reload(), true);
   });
-  // The version this page runs on: the one that controls it says.
+  // The version this page runs on: the one that controls it says. A tapped notification asks the
+  // open app to go to its item (sw-push.ts).
   sw.addEventListener('message', (event: MessageEvent) => {
-    const data = event.data as { type?: unknown; version?: unknown } | null;
+    const data = event.data as { type?: unknown; version?: unknown; url?: unknown } | null;
     if (data?.type === 'version' && typeof data.version === 'string') {
       if (noteVersion(storage(), data.version)) onUpdated();
     }
+    if (data?.type === 'open' && typeof data.url === 'string') goTo(data.url);
   });
   sw.controller?.postMessage(ASK_VERSION);
   // One already waiting as the app opens: this open is the next open.

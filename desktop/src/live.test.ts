@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { sseEvents } from './live.ts';
+import { parseNotice, sseEvents, sseMessages } from './live.ts';
 import { readServeFile, readUiToken, signInUrl } from './server.ts';
 
 describe('sseEvents', () => {
@@ -18,6 +18,31 @@ describe('sseEvents', () => {
       events: ['change'],
       rest: '',
     });
+  });
+});
+
+describe('sseMessages', () => {
+  it('keeps each message’s data', () => {
+    expect(sseMessages('event: notice\ndata: {"title":"Te toca"}\n\nevent: rea')).toEqual({
+      messages: [{ event: 'notice', data: '{"title":"Te toca"}' }],
+      rest: 'event: rea',
+    });
+  });
+});
+
+describe('parseNotice', () => {
+  it('reads a notice the server sent the desktop app', () => {
+    expect(
+      parseNotice(
+        '{"title":"Te toca","body":"T-1 · Ship","tag":"otea-item-T-1","url":"/#/i/T-1","item":"T-1"}',
+      ),
+    ).toEqual({ title: 'Te toca', body: 'T-1 · Ship', tag: 'otea-item-T-1', url: '/#/i/T-1' });
+  });
+
+  it('opens only places in the app, and skips what does not read', () => {
+    expect(parseNotice('{"title":"x","body":"y","url":"https://evil.example"}')?.url).toBe('/#/');
+    expect(parseNotice('{"title":1}')).toBeUndefined();
+    expect(parseNotice('nope')).toBeUndefined();
   });
 });
 

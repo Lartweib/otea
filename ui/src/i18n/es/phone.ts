@@ -151,4 +151,29 @@ export const phone = {
     'Por la red local el teléfono funciona solo mientras este equipo está encendido y Otea abierto.',
   'phone.transport.offline':
     'Instalada en el teléfono, Otea se abre aunque este equipo esté apagado: muestra lo último que vio, y lo que apuntes espera en cola hasta que este equipo responda.',
+  // Preferencias › Avisos: avisos en el teléfono (Web Push) y en la app de escritorio (notify/)
+  'notify.title': 'avisos',
+  'notify.turn': 'Te toca',
+  'notify.turnHint': 'una revisión, o un agente te pregunta',
+  'notify.replied': 'Un agente contestó tu nota',
+  'notify.stuck': 'Algo se atascó',
+  'notify.stuckHint': 'un agente dejó de dar señales con él',
+  'notify.quiet': 'Horas de silencio',
+  'notify.from': 'De',
+  'notify.to': 'a',
+  'notify.on': 'Activar avisos',
+  'notify.onNote':
+    'En este teléfono, cuando algo te toca. Como mucho uno por ítem cada pocos minutos.',
+  'notify.off': 'Desactivar en este teléfono',
+  'notify.desktopNote':
+    'Como avisos del sistema, también con la ventana cerrada. Varios seguidos llegan en uno.',
+  'notify.needsHttps':
+    'Los avisos llegan al teléfono solo por HTTPS: conéctalo por Tailscale (Configuración, en el equipo).',
+  'notify.needsHome':
+    'En iPhone, los avisos llegan a Otea solo cuando está en la pantalla de inicio (arriba) y la abres desde ahí.',
+  'notify.unsupported': 'Este navegador no recibe avisos.',
+  'notify.blocked':
+    'Los avisos de Otea están bloqueados. Permítelos en los ajustes de este navegador para este sitio.',
+  'notify.failed': 'No se pudieron activar. Vuelve a intentarlo.',
+  'notify.saveFailed': 'No se guardó. Vuelve a intentarlo.',
 } satisfies Partial<Catalog>;

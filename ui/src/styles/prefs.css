@@ -7,6 +7,11 @@
 }
 .prefs .psurf {
   padding: 6px 6px 8px;
+  /* Never past the screen: above the button on the desk (Preferences.tsx sets the room), the
+     screen less its margins on a phone; what does not fit scrolls. */
+  max-height: var(--prefs-max, calc(100dvh - 24px - env(safe-area-inset-bottom, 0px)));
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 .phead {
   display: grid;
@@ -89,6 +94,86 @@
 .about dd {
   margin: 0;
   font: 400 12.5px / 1 var(--mono);
+}
+
+/* Avisos (notify/NotifyGroup.tsx): a switch per kind, then the quiet hours. */
+.nchoices {
+  display: grid;
+  gap: 2px;
+  width: 100%;
+}
+.ntog {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  column-gap: 10px;
+  align-items: start;
+  width: 100%;
+  padding: 6px 0;
+  text-align: left;
+  font-size: 13.5px;
+  line-height: 1.35;
+  color: var(--ink);
+}
+.ntog .ntx small {
+  display: block;
+  font-size: 12px;
+  color: var(--ink-3);
+}
+.nsw {
+  position: relative;
+  width: 34px;
+  height: 20px;
+  margin-top: -1px;
+  border-radius: 999px;
+  background: var(--rule-2);
+  transition: background-color 240ms var(--o-drift);
+}
+.nsw::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--sheet);
+  box-shadow: 0 1px 2px var(--shadow);
+  transition: transform 420ms var(--o-settle);
+}
+.ntog[aria-checked="true"] .nsw {
+  background: var(--you);
+}
+.ntog[aria-checked="true"] .nsw::after {
+  transform: translateX(14px);
+}
+.ntog:focus-visible {
+  outline: 2px solid var(--you);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+.nquiet {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  padding: 0 0 6px 44px;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.nquiet .input {
+  width: auto;
+  min-width: 0;
+  font: 400 13px / 1 var(--mono);
+  padding: 6px 8px;
+}
+.pgroup .nproblem {
+  color: var(--warn);
+}
+@media (pointer: coarse) {
+  .ntog {
+    min-height: 44px;
+    align-items: center;
+  }
 }
 
 /* a phone: the same pop pinned to the screen's foot, its groups stacked (mock:4342-4346) */
