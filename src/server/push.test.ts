@@ -6,7 +6,7 @@ import {
   randomBytes,
   verify,
 } from 'node:crypto';
-import { mkdtempSync, readFileSync, rmSync, statSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -22,6 +22,11 @@ import {
 } from './push.ts';
 
 const b64 = (text: string) => Buffer.from(text, 'base64url');
+
+// A P-256 private scalar whose first byte is zero, as about one generated key in 256 is: node's
+// ECDH hands such a key back one byte short.
+const LEADING_ZERO = Buffer.alloc(32, 7);
+LEADING_ZERO[0] = 0;
 
 // RFC 8291, Appendix A: the example message, its keys, salt and the body it encrypts to.
 const RFC = {
@@ -89,6 +94,14 @@ describe('encryptPayload', () => {
   });
 });
 
+describe('generateVapidKeys', () => {
+  it('keeps a private key with a leading zero byte at its full 32 bytes', () => {
+    const keys = generateVapidKeys(LEADING_ZERO);
+    expect(b64(keys.privateKey)).toEqual(LEADING_ZERO);
+    expect(b64(keys.publicKey)).toHaveLength(65);
+  });
+});
+
 describe('vapidAuthorization', () => {
   it('signs a short-lived claim for the push service’s origin with the project’s key', () => {
     const keys = generateVapidKeys();
@@ -117,6 +130,13 @@ describe('vapidAuthorization', () => {
     expect(
       verify('sha256', signed, { key: publicKey, dsaEncoding: 'ieee-p1363' }, b64(signature ?? '')),
     ).toBe(true);
+  });
+
+  it('gives a 64-byte signature even for a key with a leading zero byte', () => {
+    const keys = generateVapidKeys(LEADING_ZERO);
+    const header = vapidAuthorization('https://fcm.googleapis.com/x', keys, 0);
+    const signature = /^vapid t=[^.]+\.[^.]+\.([^,]+),/.exec(header)?.[1] ?? '';
+    expect(b64(signature)).toHaveLength(64);
   });
 });
 
@@ -225,5 +245,12 @@ describe('ensureVapidKeys', () => {
     ensureVapidKeys(dir, { restrict });
     ensureVapidKeys(dir, { restrict });
     expect(restricted).toEqual([join(dir, PUSH_KEYS_FILE)]);
+  });
+
+  it('reads back a kept key saved one byte short, padded, instead of making new ones', () => {
+    const full = generateVapidKeys(LEADING_ZERO);
+    const short = { ...full, privateKey: LEADING_ZERO.subarray(1).toString('base64url') };
+    writeFileSync(join(dir, PUSH_KEYS_FILE), JSON.stringify(short));
+    expect(ensureVapidKeys(dir)).toEqual(full);
   });
 });
