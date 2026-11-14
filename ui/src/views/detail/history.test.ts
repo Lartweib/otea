@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
+import type { BoardDefinition } from '../../../../src/core/board/model.ts';
 import { ago, NOW, officialType } from '../../derive/fixtures.ts';
 import { setLanguage } from '../../i18n/i18n.ts';
 import type { ItemEvent } from '../../types.ts';
@@ -228,6 +229,49 @@ describe('a step deleted since', () => {
       'Moved it to Bocetar (revisión)',
       'You created it in Bocetar',
     ]);
+  });
+
+  afterEach(() => setLanguage('en'));
+
+  // Events written before step names were kept with them carry only the step's id.
+  const def = {
+    steps: [
+      { id: 'sdraw', name: 'Dibujar' },
+      { id: 'sink', name: 'Entintar' },
+    ],
+  } as unknown as BoardDefinition;
+
+  it('reads an event that kept no name by the board’s step of that id', () => {
+    const [line] = historyOf(
+      [ev('transitioned', mender, { from: 'sdraw', to: 'sink' }, 80)],
+      board,
+      named,
+      NOW,
+      def,
+    );
+    expect(line?.text).toBe('Moved it to Entintar');
+  });
+
+  it('says a step since removed, neutrally, when its event kept no name', () => {
+    setLanguage('es');
+    const lines = historyOf(
+      [
+        ev('created', you, { state: 'sold' }, 90),
+        ev('transitioned', mender, { from: 'sold', to: 'sgone' }, 80),
+      ],
+      board,
+      named,
+      NOW,
+      def,
+    );
+    expect(lines.map((l) => l.text)).toEqual([
+      'Lo pasó a un paso que ya no existe',
+      'Lo creaste en un paso que ya no existe',
+    ]);
+    setLanguage('en');
+    expect(
+      historyOf([ev('created', you, { state: 'sold' }, 90)], board, named, NOW, def)[0]?.text,
+    ).toBe('You created it in a step since removed');
   });
 
   it('reads a step that still stands by its name today', () => {

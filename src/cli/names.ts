@@ -45,9 +45,16 @@ function lost(def: Board, id: string): boolean {
   return !isClosed(position) && stepById(def, position.step) === undefined;
 }
 
-// A state an event is about: by the live board, or by the name the event kept once it is lost.
-const stateThen = (def: Board, id: unknown, kept: unknown) =>
-  typeof kept === 'string' && lost(def, String(id)) ? kept : state(def, id);
+// What an event written before step names were kept says of a step removed since.
+const REMOVED_STEP = 'a removed step';
+
+// A state an event is about: by the live board, or by the name the event kept once it is lost; an
+// older event that kept none says the step is gone (its id stays in the --json data).
+function stateThen(def: Board, id: unknown, kept: unknown): string {
+  if (!lost(def, String(id))) return state(def, id);
+  if (typeof kept === 'string' && kept !== '') return kept;
+  return def === undefined ? String(id) : REMOVED_STEP;
+}
 const partOf = (def: Board, id: unknown): Part | undefined => def?.parts[String(id)];
 const partName = (def: Board, id: unknown) => partOf(def, id)?.name ?? String(id);
 const OPTIONS: readonly string[] = ['choice', 'multi'];
