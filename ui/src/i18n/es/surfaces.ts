@@ -118,7 +118,7 @@ export const surfaces = {
   'pair.intro':
     'Escaneaste el código del escritorio. Este teléfono recibe su propio token de dispositivo; puedes revocarlo desde el escritorio cuando quieras.',
   'pair.introTyped':
-    'Escribe el código de emparejamiento que aparece en el escritorio, en Preferencias, en Emparejar un teléfono.',
+    'Escribe el código de emparejamiento que aparece en el escritorio, en Configuración › Teléfono.',
   'pair.desk': 'el escritorio',
   'pair.phone': 'este teléfono',
   'pair.notPaired': 'todavía sin emparejar',
@@ -143,7 +143,7 @@ export const surfaces = {
   'pair.titleApp': 'Emparejar esta app',
   'pair.appName': '{system} · pantalla de inicio',
   'pair.introApp':
-    'Escribe el código que aparece en tu equipo, en Preferencias, en Emparejar un teléfono. Esta app de la pantalla de inicio guarda su propio token, aparte del navegador; si ya usaste el código allí, muestra uno nuevo.',
+    'Escribe el código que aparece en tu equipo, en Configuración › Teléfono. Esta app de la pantalla de inicio guarda su propio token, aparte del navegador; si ya usaste el código allí, muestra uno nuevo.',
   'home.title': 'Agrega Otea a tu pantalla de inicio',
   'home.ios': 'Toca Compartir y luego Agregar a pantalla de inicio.',
   'home.iosAfter':

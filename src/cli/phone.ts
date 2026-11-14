@@ -31,7 +31,7 @@ export const LEDGER_NOTE =
 
 const PHONE_STEPS = [
   'On the phone: install the Tailscale app, log in with the same account, then scan the pairing code.',
-  'The code is in the UI under Preferences > Pair a phone (otea serve prints one when it starts).',
+  'The code is in the UI under Settings > Phone > Pair a phone (otea serve prints one when it starts).',
 ];
 
 // What stops Tailscale, and what the person does about it; Otea never installs or logs in for them.

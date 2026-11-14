@@ -112,7 +112,7 @@ export const surfaces = {
   'pair.titlePlain': 'Pair this phone',
   'pair.intro':
     'You scanned the code on the desk. This phone gets its own device token; you can revoke it from the desk at any time.',
-  'pair.introTyped': 'Type the pairing code shown on the desk, in Preferences, under Pair a phone.',
+  'pair.introTyped': 'Type the pairing code shown on the desk, in Settings › Phone.',
   'pair.desk': 'the desk',
   'pair.phone': 'this phone',
   'pair.notPaired': 'not paired yet',
@@ -137,7 +137,7 @@ export const surfaces = {
   'pair.titleApp': 'Pair this app',
   'pair.appName': '{system} · home screen',
   'pair.introApp':
-    'Enter the code shown on your computer, in Preferences, under Pair a phone. This home-screen app keeps its own token, apart from the browser; if you already used the code there, show a new one.',
+    'Enter the code shown on your computer, in Settings › Phone. This home-screen app keeps its own token, apart from the browser; if you already used the code there, show a new one.',
   'home.title': 'Add Otea to your home screen',
   'home.ios': 'Tap Share, then Add to Home Screen.',
   'home.iosAfter':

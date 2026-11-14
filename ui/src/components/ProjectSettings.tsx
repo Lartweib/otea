@@ -1,4 +1,4 @@
-import { type FormEvent, type ReactNode, useState } from 'react';
+import { type FormEvent, type ReactNode, useEffect, useState } from 'react';
 import {
   addProjectPath,
   fetchProjectSettings,
@@ -14,12 +14,15 @@ import { sizeLabel } from '../projects.ts';
 import type { RepoSettings, ProjectSettings as Settings } from '../types.ts';
 import { CopyGlyph } from './CopyCommand.tsx';
 import { PhoneTransport } from './PhoneTransport.tsx';
+import { settingsSectionId, takeSettingsFocus } from './settings-focus.ts';
 
 type PathSettings = Settings['paths'][number];
 
-function Section({ name, sub, children }: { name: string; sub?: string; children: ReactNode }) {
+type SectionProps = { name: string; sub?: string; id?: string; children: ReactNode };
+
+function Section({ name, sub, id, children }: SectionProps) {
   return (
-    <section className="pj-sec">
+    <section className="pj-sec" id={id}>
       <div className="pj-sec-label">
         <h2>{name}</h2>
         {sub ? <span className="margin-label">{sub}</span> : null}
@@ -349,6 +352,13 @@ export function ProjectSettings({ version, connection, canWrite }: ProjectSettin
   const [changes, setChanges] = useState(0);
   const settings = useRemote(fetchProjectSettings, version * 1000 + changes, connection);
   const changed = () => setChanges((count) => count + 1);
+  const ready = settings.status === 'ready';
+  // Arriving from Preferencias › Teléfono: once the sections are drawn, scroll to the one asked for.
+  useEffect(() => {
+    if (!ready) return;
+    const section = takeSettingsFocus();
+    if (section) document.getElementById(settingsSectionId(section))?.scrollIntoView();
+  }, [ready]);
   if (settings.status !== 'ready') {
     return (
       <div className="page pj-settings">
@@ -419,7 +429,11 @@ export function ProjectSettings({ version, connection, canWrite }: ProjectSettin
             )}
           </div>
         </Section>
-        <Section name={t('phone.transport.section')} sub={t('phone.transport.sub')}>
+        <Section
+          name={t('phone.transport.section')}
+          sub={t('phone.transport.sub')}
+          id={settingsSectionId('phone')}
+        >
           <PhoneTransport canWrite={canWrite} onPair={() => app.go({ view: 'lan' })} />
         </Section>
         <Section

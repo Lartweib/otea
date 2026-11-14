@@ -1479,7 +1479,7 @@ function phoneText(phone: PhoneServed): string {
       ? [`If the phone cannot open the .local name, open ${phone.byAddress}`]
       : []),
     renderUnicodeCompact(phone.pairingUrl, { ecc: 'M', border: 2 }),
-    'A new code and the paired devices are in the UI, in Preferences under Pair a phone; otea devices list and revoke them too',
+    'A new code and the paired devices are in the UI, in Settings > Phone; otea devices list and revoke them too',
   ].join('\n');
 }
 

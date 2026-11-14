@@ -10,7 +10,7 @@ const body = (canManageDevices = true) => {
   setLanguage('es');
   return renderIn(
     testApp({ session: { canWrite: true, canConfigure: true, canManageDevices } }),
-    createElement(PrefsBody, { server: '127.0.0.1:4615', onPair: () => undefined }),
+    createElement(PrefsBody, { server: '127.0.0.1:4615', onPhone: () => undefined }),
   );
 };
 
@@ -43,9 +43,10 @@ describe('Preferences', () => {
     expect(html).toContain('<b>Solo se traduce la interfaz.</b> El contenido de los ítems');
   });
 
-  it('pairs a phone only where this browser may, and names the server', () => {
-    expect(body()).toContain('Emparejar un teléfono…');
-    expect(body(false)).not.toContain('Emparejar un teléfono…');
+  it('leads to Configuración › Teléfono only where this browser may, and names the server', () => {
+    expect(body()).toContain('Teléfono, en Configuración…');
+    expect(body()).not.toContain('Emparejar un teléfono');
+    expect(body(false)).not.toContain('Teléfono, en Configuración…');
     expect(body()).toMatch(/<dt>servidor<\/dt><dd>127.0.0.1:4615<\/dd>/);
   });
 });

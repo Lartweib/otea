@@ -1,5 +1,6 @@
 import { type ReactNode, useState } from 'react';
 import { useApp } from '../app/context.tsx';
+import { focusSettings } from '../components/settings-focus.ts';
 import {
   browserLanguage,
   chooseLanguageSetting,
@@ -27,8 +28,8 @@ import { useMedia } from './use-media.ts';
 // bottom edge, 420 wide, rising from the button at the rail's foot (its line leads from the
 // button's centre), left aligned with the rail; on a phone the same pop pinned 12 px from the
 // sides and the bottom. Theme (the feathered circle), motion (with its note that swaps in place),
-// language (only the interface is translated), notifications (Avisos, where they can reach), the session (pairing a phone, where this browser
-// may) and the server. The handoff is not a choice: it always folds (Plegar).
+// language (only the interface is translated), notifications (Avisos, where they can reach), the session (the way to Configuración › Teléfono,
+// where this browser may connect a phone) and the server. The handoff is not a choice: it always folds (Plegar).
 
 function Group({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -56,11 +57,11 @@ function MotionNoteText({ pref, systemReduced }: { pref: MotionPref; systemReduc
 type PrefsBodyProps = {
   // The server this browser talks to (its host and port).
   server: string;
-  // Leads to the pairing dialog; the panel closes on the way.
-  onPair: () => void;
+  // Leads to Configuración › Teléfono, where a phone is connected; the panel closes on the way.
+  onPhone: () => void;
 };
 
-export function PrefsBody({ server, onPair }: PrefsBodyProps) {
+export function PrefsBody({ server, onPhone }: PrefsBodyProps) {
   const app = useApp();
   const systemReduced = useMedia(REDUCE);
   const [theme, setTheme] = useState<ThemeChoice>(loadChoice);
@@ -144,9 +145,9 @@ export function PrefsBody({ server, onPair }: PrefsBodyProps) {
       <NotifyGroup />
       {app.session.canManageDevices ? (
         <Group label={t('prefs.session')}>
-          <button type="button" className="plink" onClick={onPair}>
+          <button type="button" className="plink" onClick={onPhone}>
             <Icon name="link" />
-            {t('prefs.pair')}
+            {t('prefs.phone')}
           </button>
         </Group>
       ) : null}
@@ -216,9 +217,10 @@ export function PrefsButton() {
       >
         <PrefsBody
           server={typeof window === 'undefined' ? '' : window.location.host}
-          onPair={() => {
+          onPhone={() => {
             close();
-            app.go({ view: 'lan' });
+            focusSettings('phone');
+            app.go({ view: 'settings' });
           }}
         />
       </Pop>
