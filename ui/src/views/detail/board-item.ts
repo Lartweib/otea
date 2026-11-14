@@ -334,6 +334,24 @@ export type StepRounds = {
   outcome?: StepOutcome;
 };
 
+// A step the item went through, by its name on the board today; one deleted since, by the name an
+// event kept for it when it was written, else said to be gone, as the history reads it
+// (sheet.h.goneStep): never its bare id.
+function stepWord(def: BoardDefinition, id: string, events: readonly ItemEvent[]): string {
+  const live = stepById(def, id)?.name;
+  if (live) return live;
+  const kept = (state: unknown, name: unknown) =>
+    state === id && typeof name === 'string' && name !== '' ? name : undefined;
+  for (const { data } of [...events].sort((a, b) => b.id - a.id)) {
+    const name =
+      kept(data.to, data.toName) ??
+      kept(data.from, data.fromName) ??
+      kept(data.state, data.stateName);
+    if (name) return name;
+  }
+  return t('sheet.h.goneStep');
+}
+
 // Every step the item went through, as the engine counts its rounds, in the order each was last
 // entered (so the step it is on comes last), each with how it last left it.
 export function stepRounds(
@@ -370,7 +388,7 @@ export function stepRounds(
     const to = positionOf(move.to);
     if (isClosed(to)) return { kind: to.closed === DONE ? 'done' : 'dropped' };
     if (stepIndex(def, to.step) < stepIndex(def, id))
-      return { kind: 'back', to: stepById(def, to.step)?.name ?? to.step };
+      return { kind: 'back', to: stepWord(def, to.step, events) };
     if (engine.dips.some((dip) => dip.to === id)) return { kind: 'reworked' };
     const from = positionOf(move.from);
     return { kind: !isClosed(from) && from.phase !== 'doing' ? 'approved' : 'handed' };
@@ -379,7 +397,7 @@ export function stepRounds(
     const outcome = outcomeOf(id);
     return {
       step: id,
-      name: stepById(def, id)?.name ?? id,
+      name: stepWord(def, id, events),
       rounds: roundNotes(def, id, events),
       current: !isClosed(position) && id === position.step,
       open: id === last,
