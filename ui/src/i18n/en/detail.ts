@@ -368,6 +368,7 @@ export const detail = {
   'sheet.h.claimedOver': 'Took the lease from {previous}',
   'sheet.h.released': 'Let the lease go',
   'sheet.h.profileChanged': 'Switched to {profile}',
+  'sheet.h.goneStep': 'a step since removed',
   'sheet.h.restarted': 'You put it back in the queue',
   'sheet.h.reassigned': 'You left it for {agent}',
   'sheet.h.attached': 'Attached {file}',

@@ -1,3 +1,5 @@
+import { isClosed, positionOf } from '../../../../src/core/board/engine.ts';
+import { type BoardDefinition, stepById } from '../../../../src/core/board/model.ts';
 import {
   NOTE_ANSWERED,
   NOTE_LEFT,
@@ -9,6 +11,7 @@ import {
   QUESTION_ANSWERED,
   QUESTION_ASKED,
 } from '../../../../src/core/board/questions.ts';
+import { stateName } from '../../../../src/core/board/reading.ts';
 import { describeEvent, formatTime, momentParts, relayOf } from '../../format.ts';
 import { t } from '../../i18n/i18n.ts';
 import type { AgentProfile } from '../../presence.ts';
@@ -50,6 +53,7 @@ export function historyOf(
   type: TypeView | undefined,
   word: (state: string) => string,
   now: number,
+  board?: BoardDefinition,
 ): HistoryLine[] {
   const states = new Map((type?.states ?? []).map((s) => [s.name, s]));
   const fieldWords = {
@@ -57,9 +61,16 @@ export function historyOf(
     value: (key: string, value: string) => valueWord(type, key, value),
   };
   // A state the type still has reads by its name today; one deleted since, by the name its event
-  // kept when it was written (`stateName`, `toName`), else as stored.
-  const named = (state: string, kept: unknown) =>
-    states.has(state) || typeof kept !== 'string' || kept === '' ? word(state) : kept;
+  // kept when it was written (`stateName`, `toName`). An event written before names were kept
+  // reads by the board's step of that id, or says the step is gone; off a board, as stored.
+  const named = (state: string, kept: unknown) => {
+    if (states.has(state)) return word(state);
+    if (typeof kept === 'string' && kept !== '') return kept;
+    if (!board) return word(state);
+    const position = positionOf(state);
+    if (isClosed(position)) return word(state);
+    return stepById(board, position.step) ? stateName(board, state) : t('sheet.h.goneStep');
+  };
   const sorted = [...events]
     .filter(({ type }) => type !== NOTE_ANSWERED)
     .sort((a, b) => a.id - b.id);

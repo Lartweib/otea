@@ -444,7 +444,7 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
       key: 'notes',
       node: <NotesSection notes={roundNotes} evidence={item.evidence} now={now} agent={noteTo} />,
     });
-  const lines = historyOf(item.events, type, word, now);
+  const lines = historyOf(item.events, type, word, now, live);
   const stateShown = word(item.state);
   const yours = item.turn === 'human';
   const route =
