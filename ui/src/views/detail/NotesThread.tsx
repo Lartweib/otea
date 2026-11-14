@@ -1,7 +1,8 @@
 import { useId, useState } from 'react';
-import type { NoteAnchor } from '../../../../src/core/board/notes.ts';
+import { moment, type NoteAnchor } from '../../../../src/core/board/notes.ts';
+import { seekVideo } from '../../components/evidence/video-moment.ts';
 import { useFileUrl } from '../../evidence-files.ts';
-import { t } from '../../i18n/i18n.ts';
+import { t, tx } from '../../i18n/i18n.ts';
 import { AgentMark, Icon } from '../../kit/index.ts';
 import { C } from '../../motion/curves.ts';
 import { reduced } from '../../motion/reduced.ts';
@@ -68,29 +69,45 @@ export function Thumb({
   );
 }
 
-const moment = (seconds: number) => {
-  const whole = Math.max(0, Math.floor(seconds));
-  return `${Math.floor(whole / 60)}:${String(whole % 60).padStart(2, '0')}`;
-};
-
+// The cite of the piece a note is on: its thumbnail, its name, its part, and on a recording the
+// moment the note was left at; it leads to the piece, and to that moment in its player.
 function Cite({ anchor, evidence }: { anchor: NoteAnchor; evidence: Evidence | undefined }) {
-  const small = [
-    anchor.partName,
-    anchor.seconds === undefined ? null : t('notes.at', { time: moment(anchor.seconds) }),
-  ]
-    .filter(Boolean)
-    .join(' · ');
+  const { seconds } = anchor;
+  const time = seconds === undefined ? null : moment(seconds);
+  const at =
+    seconds === undefined
+      ? null
+      : tx('notes.at', {
+          time: (
+            <time className="nt-at" dateTime={`PT${seconds}S`}>
+              {time}
+            </time>
+          ),
+        });
   return (
     <button
       type="button"
       className="nt-cite"
-      title={t('notes.cite', { file: anchor.filename })}
-      onClick={() => showPiece(anchor.evidence)}
+      title={
+        time
+          ? t('notes.citeAt', { file: anchor.filename, time })
+          : t('notes.cite', { file: anchor.filename })
+      }
+      onClick={() => {
+        showPiece(anchor.evidence);
+        if (seconds !== undefined) seekVideo(anchor.evidence, seconds);
+      }}
     >
       <Thumb evidence={evidence} filename={anchor.filename} />
       <span className="tx">
         <b>{anchor.filename}</b>
-        {small ? <small>{small}</small> : null}
+        {anchor.partName || at ? (
+          <small>
+            {anchor.partName}
+            {anchor.partName && at ? ' · ' : null}
+            {at}
+          </small>
+        ) : null}
       </span>
     </button>
   );

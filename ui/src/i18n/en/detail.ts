@@ -519,6 +519,7 @@ export const detail = {
   'notes.waitingAny': 'The agent has not answered yet.',
   'notes.waitingSmall': 'it gets it on its next heartbeat · it cannot hand off without answering',
   'notes.cite': 'See {file} in Evidence',
+  'notes.citeAt': 'See {file} in Evidence, at {time}',
   'notes.at': 'at {time}',
   'notes.hand': 'That it answers your notes',
   'notes.round.live': { one: '{count} note in the thread', other: '{count} notes in the thread' },

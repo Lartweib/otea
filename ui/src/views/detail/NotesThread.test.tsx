@@ -92,6 +92,24 @@ describe('the thread of notes', () => {
     expect(html).toContain('Grabación');
   });
 
+  it('shows the moment a note on a recording was left at, and the way back to it', () => {
+    setLanguage('es');
+    const clip: Evidence = { ...gif, id: 9, kind: 'video', filename: 'pausa.webm' };
+    const onClip: ItemNote = {
+      ...base,
+      note: 3,
+      text: 'Acá se traba.',
+      at: ago(10),
+      delivered: { done: 2, of: 3 },
+      anchor: { evidence: 9, filename: 'pausa.webm', seconds: 62.4 },
+    };
+    const html = renderToStaticMarkup(
+      <Thread notes={[onClip]} evidence={[clip]} now={NOW} agent="claude-d" />,
+    );
+    expect(html).toContain('en <time class="nt-at" dateTime="PT62.4S">1:02.4</time>');
+    expect(html).toContain('title="Ver pausa.webm en Evidencia, en 1:02.4"');
+  });
+
   it('counts the notes in the section’s margin', () => {
     setLanguage('es');
     const html = renderToStaticMarkup(

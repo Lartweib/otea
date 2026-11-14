@@ -142,9 +142,13 @@ function brief(text: string): string {
   return first.length <= BRIEF ? first : `${first.slice(0, BRIEF - 1).trimEnd()}…`;
 }
 
-function moment(seconds: number): string {
-  const whole = Math.max(0, Math.floor(seconds));
-  return `${Math.floor(whole / 60)}:${String(whole % 60).padStart(2, '0')}`;
+// A moment in a recording as m:ss, "1:02", with its tenth of a second when it has one, "1:02.4":
+// in a clip of a few seconds, whole seconds would say little.
+export function moment(seconds: number): string {
+  const tenths = Math.max(0, Math.round(seconds * 10));
+  const whole = Math.floor(tenths / 10);
+  const tenth = tenths % 10 ? `.${tenths % 10}` : '';
+  return `${Math.floor(whole / 60)}:${String(whole % 60).padStart(2, '0')}${tenth}`;
 }
 
 // "on pausa.gif at 0:02", or "on ui/PauseMenu.tsx (Diff)" with the part's name.
