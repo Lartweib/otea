@@ -617,6 +617,47 @@ describe('stepRounds: the item’s whole history, grouped by step', () => {
     ];
     expect(stepRounds(errores(), 'striage', events).map(({ step }) => step)).toEqual(['striage']);
   });
+
+  // A step deleted from the board since: the name its event kept, else said to be gone, as the
+  // history reads it; never its bare id.
+  const names = (groups: ReturnType<typeof stepRounds>) =>
+    groups.map(({ name, outcome }) => ({ name, outcome }));
+
+  it('says a step since removed when its events kept no name, in either language', () => {
+    const events = [
+      created('sgone'),
+      moved('sgone', 'sfix', you, '2026-01-02T00:00:00Z'),
+      moved('sfix', 'sgone', you, '2026-01-03T00:00:00Z'),
+      moved('sgone', 'sfix', you, '2026-01-04T00:00:00Z'),
+    ];
+    setLanguage('es');
+    try {
+      expect(names(stepRounds(errores(), 'sfix', events))).toEqual([
+        { name: 'un paso que ya no existe', outcome: { kind: 'reworked' } },
+        { name: 'Arreglar', outcome: undefined },
+      ]);
+    } finally {
+      setLanguage('en');
+    }
+    const groups = stepRounds(errores(), 'striage', [
+      ...events,
+      moved('sfix', 'sgone', you, '2026-01-05T00:00:00Z'),
+      moved('sgone', 'striage', you, '2026-01-06T00:00:00Z'),
+    ]);
+    expect(groups.find(({ step }) => step === 'sgone')?.name).toBe('a step since removed');
+    expect(groups.find(({ step }) => step === 'sfix')?.outcome).toEqual({
+      kind: 'back',
+      to: 'a step since removed',
+    });
+  });
+
+  it('reads a step since removed by the name its event kept', () => {
+    const events: ItemEvent[] = [
+      { ...created('sgone'), data: { state: 'sgone', stateName: 'Dibujar' } },
+      moved('sgone', 'sfix', you, '2026-01-02T00:00:00Z'),
+    ];
+    expect(stepRounds(errores(), 'sfix', events)[0]?.name).toBe('Dibujar');
+  });
 });
 
 describe('railStep: the step whose rounds the compare rail shows', () => {
