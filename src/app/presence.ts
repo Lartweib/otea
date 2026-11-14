@@ -92,6 +92,20 @@ export function seeAgent(db: DatabaseSync, sighting: Sighting, now: Clock = syst
   return true;
 }
 
+// A waiting agent is seen this often while `otea wait` blocks: inside LIVE_WINDOW_MS, so it stays
+// live, and far inside CLI_SESSION_GAP_MS, so a wait of hours is no time away and its profile
+// stays confirmed for what it does next.
+export const WAIT_BEAT_MS = 4 * 60_000;
+
+// The beat of a wait (watch's `beat`): sees the agent again, never as a new session.
+export function waitBeat(
+  db: DatabaseSync,
+  { newSession: _, ...sighting }: Sighting,
+  now: Clock = systemClock,
+): { everyMs: number; run: () => void } {
+  return { everyMs: WAIT_BEAT_MS, run: () => void seeAgent(db, sighting, now) };
+}
+
 // A profile's harness is the MCP client's: when the client names another one, the profile follows.
 function followClient(db: DatabaseSync, { agent, channel, harness }: Sighting, at: string): void {
   if (channel !== 'mcp' || !harness) return;
