@@ -24,7 +24,7 @@ export const boardStudio = {
   'bs.problem.cap_invalid': 'El tope tiene que ser al menos 1.',
   'bs.problem.self_review': 'En {step} lo haces y lo revisas tú: es lo mismo que nadie lo revise.',
   'bs.problem.agent_closes':
-    'Solo tú das algo por hecho: en {step} lo cerraría un agente. Revísalo tú antes de Hecho.',
+    'Solo tú das algo por hecho: en {step} lo cerraría un agente. Revísalo tú, ahí o en el paso justo anterior (entonces un agente puede integrarlo).',
   'bs.problem.wait_no_split': '{step} espera a sus partes, pero {board} no se divide en nada.',
   'bs.problem.skip_invalid':
     '«Empieza directamente en…» solo vale en el primer paso, y solo si nadie lo revisa. Quítalo de {step}.',

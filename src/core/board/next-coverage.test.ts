@@ -14,7 +14,7 @@ import {
   refusalText,
   takenBackText,
 } from './next.ts';
-import { cambios, errores, tareasDeRepo } from './testing.ts';
+import { cambios, errores, step, tareasDeRepo } from './testing.ts';
 
 const base = {
   id: 'BUG-4',
@@ -138,6 +138,34 @@ describe('nextText, the later settings', () => {
       '  feat/x in api: you may push while you do Arreglar. While it is reviewed it is frozen; it can be merged only once it is Done.',
       '  main is protected too: push or merge feat/x into it only once BUG-4 is Done.',
     ]);
+  });
+
+  it('says the agent merges in the land step, once you approved, when the board has one', () => {
+    const def = errores();
+    const branch = Object.values(def.parts).find((part) => part.guard);
+    if (!branch?.guard) throw new Error('no protected branch');
+    branch.guard.base = 'main';
+    def.steps.push(step('sland', 'Integrar', { reviewer: 'none' }));
+    const fix = def.steps.find((s) => s.id === 'sfix');
+    if (fix) fix.reviewer = 'you';
+    const doing = nextText(def, {
+      ...base,
+      position: { step: 'sfix', phase: 'doing' },
+      me: 'mender',
+    });
+    expect(lines(doing, 'Branch')).toEqual([
+      'Branch',
+      '  feat/x in api: you may push while you do Arreglar. While it is reviewed it is frozen; once you approve it, an agent merges it in Integrar.',
+      '  main is protected too: push or merge feat/x into it only in Integrar, once you approved BUG-4.',
+    ]);
+    const landing = nextText(def, {
+      ...base,
+      position: { step: 'sland', phase: 'doing' },
+      me: 'mender',
+    });
+    expect(lines(landing, 'Branch')).toContain(
+      '  main is protected too: merge feat/x into it now, in Integrar; you approved BUG-4.',
+    );
   });
 
   it('tells an agent reviewer the branch is frozen', () => {

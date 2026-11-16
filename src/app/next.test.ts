@@ -9,7 +9,7 @@ import { insertEvidence, selectEvents } from '../store/queries.ts';
 import { createBoard, publishBoard, saveDraft } from './boards.ts';
 import type { Context } from './context.ts';
 import { createItem, getItem, moveItem, updateItem } from './items.ts';
-import { claimItem } from './leases.ts';
+import { claimItem, releaseItem } from './leases.ts';
 import {
   approveItem,
   handoffItem,
@@ -321,6 +321,21 @@ describe('a round sent back', () => {
   });
 });
 
+describe('the order next offers work in', () => {
+  it('offers work already approved further along before new work, whatever its age', () => {
+    const ctx = memoryContext();
+    board(ctx);
+    const old = creature(ctx, 'Vieja');
+    const along = creature(ctx, 'Avanzada');
+    attach(ctx, along.id, 'eart');
+    handoffItem(ctx, { id: along.id, actor: quill, channel: 'cli' }, now);
+    approveItem(ctx, { id: along.id, actor: you, channel: 'ui' }, now);
+
+    expect(nextFor(ctx, 'kiln', {}, now).item).toBe(along.id);
+    expect(old.id).not.toBe(along.id);
+  });
+});
+
 describe('the old paths on a board', () => {
   it('refuses a move into a review while the handoff lacks something, in the same words', () => {
     const ctx = memoryContext();
@@ -409,6 +424,23 @@ describe('the old paths on a board', () => {
     ).toBe('spolish');
   });
 
+  it('lets an agent that only claimed and released the round review it', () => {
+    const ctx = memoryContext();
+    board(ctx);
+    const item = creature(ctx);
+    attach(ctx, item.id, 'eart');
+    handoffItem(ctx, { id: item.id, actor: quill, channel: 'cli' }, now);
+    approveItem(ctx, { id: item.id, actor: you, channel: 'ui' }, now);
+    ready(ctx, item.id);
+    claimItem(ctx, { id: item.id, actor: scout }, now);
+    releaseItem(ctx, { id: item.id, actor: scout }, now);
+    handoffItem(ctx, { id: item.id, actor: kiln, channel: 'cli' }, now);
+
+    expect(nextFor(ctx, 'scout', {}, now).text).toContain(
+      'Your turn: review this step (kiln did it).',
+    );
+  });
+
   it('lets the agent that did an earlier round review the next one', () => {
     const ctx = memoryContext();
     board(ctx);
@@ -429,6 +461,21 @@ describe('the old paths on a board', () => {
     expect(nextFor(ctx, 'kiln', {}, now).text).toContain(
       'Your turn: review this step (scout did it).',
     );
+  });
+
+  it('shows the reviewer the note the doer handed the round off with', () => {
+    const ctx = memoryContext();
+    board(ctx);
+    const item = creature(ctx);
+    attach(ctx, item.id, 'eart');
+    handoffItem(ctx, { id: item.id, actor: quill, channel: 'cli' }, now);
+    approveItem(ctx, { id: item.id, actor: you, channel: 'ui' }, now);
+    ready(ctx, item.id);
+    handoffItem(ctx, { id: item.id, actor: scout, channel: 'cli', note: 'Barro\ny musgo' }, now);
+
+    const text = nextFor(ctx, 'kiln', {}, now).text;
+    expect(text).toContain('Handoff note from scout:\n  Barro\n  y musgo');
+    expect(text).not.toContain('✗ Note');
   });
 });
 
@@ -541,6 +588,9 @@ describe('work planned by an item still in its step', () => {
     );
 
     expect(nextFor(ctx, 'kiln', {}, now).item).toBeNull();
+    expect(itemNextText(ctx, getItem(ctx, task.id), 'kiln', now)).toContain(
+      `Waits for ${plan.id}, which planned it, to leave Concepto: pick another item.`,
+    );
     expect(() => claimItem(ctx, { id: task.id, actor: kiln }, now)).toThrow(
       `${task.id} waits for ${plan.id}, which planned it, to leave Concepto; claim only what is yours (otea next)`,
     );
@@ -549,7 +599,7 @@ describe('work planned by an item still in its step', () => {
     expect(nextFor(ctx, 'kiln', {}, now).item).toBeNull();
 
     approveItem(ctx, { id: plan.id, actor: you, channel: 'ui' }, now);
-    expect(nextFor(ctx, 'kiln', {}, now).item).toBe(task.id);
+    expect(claimItem(ctx, { id: task.id, actor: kiln }, now).lease?.holder).toBe('kiln');
   });
 });
 

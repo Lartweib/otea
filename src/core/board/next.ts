@@ -6,6 +6,7 @@ import {
   type GateAction,
   gateAt,
   isClosed,
+  isLandStep,
   type Linked,
   type Missing,
   NOTE_REF,
@@ -84,13 +85,19 @@ export type NextInput = {
   questions?: readonly ItemQuestion[];
   // The agents that did the step in this round, none of which may review it.
   did?: readonly string[];
+  // The item that planned this one, while it still stands in the step it planned it in.
+  plannedBy?: { id: string; step: string };
+  // The note the doer handed this round off with, for its reviewer to read.
+  handed?: { note: string; by: string };
 };
 
 // Another agent's say on the item keeps the asking agent off it: a live lease it does not hold, or
 // a stuck item the person left for someone else.
 function heldElsewhere(input: NextInput): string | undefined {
-  const { me, holder, leftFor } = input;
+  const { me, holder, leftFor, plannedBy } = input;
   if (me === undefined) return undefined;
+  if (plannedBy)
+    return `Waits for ${plannedBy.id}, which planned it, to leave ${plannedBy.step}: pick another item.`;
   if (holder && holder.name !== me)
     return `Held by ${holder.name} until ${timeText(holder.expiresAt)}: pick another item.`;
   if (!holder && leftFor !== undefined && leftFor !== me)
@@ -195,6 +202,8 @@ function wantsNote(step: Step, input: NextInput): boolean {
 
 // The note the handoff carries: always the first line of the Handoff when it needs one.
 function noteLine(step: Step, input: NextInput): string[] {
+  // Under review the note was handed already: the reviewer reads it above, it owes none.
+  if (!isClosed(input.position) && input.position.phase !== 'doing') return [];
   if (!wantsNote(step, input)) return [];
   const missing = input.missing.some(({ ref }) => ref === NOTE_REF);
   const hint = noteHint(step, input.sentBack !== undefined);
@@ -287,12 +296,27 @@ function branchLines(
   const branch = branchOf(def, input.fields);
   if (!branch) return [];
   const base = guardedBranch(def)?.guard.base;
-  const into = base
-    ? [
-        `  ${base} is protected too: push or merge ${branch.value} into it only once ${input.id} is ${DONE_NAME}.`,
-      ]
-    : [];
+  const land = landStepOf(def);
+  const landing = gateAt(def, position, 'merge').why === 'landing';
+  const into = !base
+    ? []
+    : landing
+      ? [
+          `  ${base} is protected too: merge ${branch.value} into it now, in ${step.name}; you approved ${input.id}.`,
+        ]
+      : land
+        ? [
+            `  ${base} is protected too: push or merge ${branch.value} into it only in ${land.name}, once you approved ${input.id}.`,
+          ]
+        : [
+            `  ${base} is protected too: push or merge ${branch.value} into it only once ${input.id} is ${DONE_NAME}.`,
+          ];
   return [...pushLines(def, step, position, branch), ...into];
+}
+
+// The board's land step, when it has one: where an agent merges what the person approved.
+function landStepOf(def: BoardDefinition): Step | undefined {
+  return def.steps.find((step) => isLandStep(def, step.id));
 }
 
 function pushLines(
@@ -302,11 +326,15 @@ function pushLines(
   branch: { value: string; repo?: string; push: string[] },
 ): string[] {
   const where = `${branch.value}${branch.repo ? ` in ${branch.repo}` : ''}`;
-  const merge = `It can be merged only once it is ${DONE_NAME}.`;
+  const land = landStepOf(def);
+  const mergedWhen = land
+    ? `once you approve it, an agent merges it in ${land.name}`
+    : `it can be merged only once it is ${DONE_NAME}`;
+  const merge = `${mergedWhen.charAt(0).toUpperCase()}${mergedWhen.slice(1)}.`;
   const answer = gateAt(def, position, 'push');
   if (answer.why === 'doing')
     return [
-      `  ${where}: you may push while you do ${step.name}. While it is reviewed it is frozen; it can be merged only once it is ${DONE_NAME}.`,
+      `  ${where}: you may push while you do ${step.name}. While it is reviewed it is frozen; ${mergedWhen}.`,
     ];
   if (answer.why === 'review') {
     return [`  ${where} is frozen while ${reviewerName(step)} reviews it: do not push. ${merge}`];
@@ -450,6 +478,15 @@ export function nextText(def: BoardDefinition, input: NextInput): string {
   if (!person) lines.push(holdLine(input));
   else if (input.holder)
     lines.push(`Held by ${input.holder.name} until ${timeText(input.holder.expiresAt)}.`);
+  if (reviewing && input.handed?.note.trim())
+    lines.push(
+      '',
+      `Handoff note from ${input.handed.by}:`,
+      ...input.handed.note
+        .trim()
+        .split(/\r?\n/)
+        .map((line) => `  ${line}`),
+    );
   if (!reviewing) lines.push(...notesBlock(id, input.notes ?? [], input.me));
   if (!reviewing && input.sentBack) lines.push(...sentBackLines(input.sentBack));
   if (!reviewing) lines.push(...answersBlock(input.questions ?? [], input.me));
@@ -752,6 +789,8 @@ export function gateText(
       return `push allowed: ${id} is being done in ${name}.`;
     case 'done':
       return `merge allowed: ${id} is ${DONE_NAME}.`;
+    case 'landing':
+      return `merge allowed: ${id} is being landed in ${name}, after your approval.`;
     case 'review': {
       const who = step ? reviewerName(step) : 'the person';
       return `push refused: ${id} waits for ${who} to review ${name}; its branch can be pushed only while ${push} is being done.`;
@@ -779,6 +818,8 @@ export function baseGateText(
 ): string {
   if (isClosed(position) && position.closed === DONE)
     return `${action} allowed: ${id} is ${DONE_NAME}; ${base} takes its branch.`;
+  if (gateAt(def, position, 'merge').why === 'landing')
+    return `${action} allowed: ${id} is being landed in ${placeText(def, position)}, after your approval; ${base} takes its branch.`;
   const where = isClosed(position)
     ? `is ${closedName(def, position)}`
     : `is in ${stepById(def, position.step)?.name ?? ''}, round ${round}`;

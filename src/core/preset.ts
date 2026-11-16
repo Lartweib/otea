@@ -119,6 +119,8 @@ const transitionSchema = z.strictObject({
   to: z.string(),
   by: z.enum(AUTHORITIES),
   reason: z.literal('required').optional(),
+  // A board's land step: an agent closes the item as done after the person approved the step before.
+  land: z.literal(true).optional(),
 });
 
 const workflowSchema = z.strictObject({
@@ -241,7 +243,7 @@ function transitionProblems(at: string, workflow: RawWorkflow): string[] {
   const { states } = workflow;
   const problems: string[] = [];
   const seen = new Set<string>();
-  workflow.transitions.forEach(({ from, to, by }, index) => {
+  workflow.transitions.forEach(({ from, to, by, land }, index) => {
     const where = `${at}.transitions.${index}`;
     for (const source of [from].flat()) {
       if (!(source in states)) problems.push(`${where}.from: unknown state "${source}"`);
@@ -250,8 +252,9 @@ function transitionProblems(at: string, workflow: RawWorkflow): string[] {
         problems.push(`${where}: duplicate transition "${source}" -> "${to}" by ${by}`);
       seen.add(key);
       if (source === to) problems.push(`${where}: "${source}" -> "${to}" does not change state`);
-      // Agents never approve their own work: only a human may close an item as done.
-      if (by === 'agent' && states[to]?.closes === 'done') {
+      // Agents never approve their own work: only a human may close an item as done, except when
+      // an agent lands what the person already approved.
+      if (by === 'agent' && states[to]?.closes === 'done' && !land) {
         problems.push(
           `${where}: an agent cannot close an item as done ("${source}" -> "${to}"); use human or human-ui`,
         );

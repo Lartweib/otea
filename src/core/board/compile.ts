@@ -1,7 +1,7 @@
 import { OteaError } from '../errors.ts';
 import type { LayoutEntry } from '../modules.ts';
 import { type Preset, readPreset } from '../preset.ts';
-import { backTarget, backWaysOf, stateOf, waysOf } from './engine.ts';
+import { backTarget, backWaysOf, isLandStep, stateOf, waysOf } from './engine.ts';
 import {
   type BoardDefinition,
   DONE,
@@ -164,6 +164,7 @@ type RawTransition = {
   to: string;
   by: 'agent' | 'human' | 'human-ui';
   reason?: 'required';
+  land?: true;
 };
 
 // Only the person says Hecho, and only on the item page: an agent cannot relay it.
@@ -186,7 +187,9 @@ function transitionsOf(def: BoardDefinition): RawTransition[] {
     for (const earlier of backWaysOf(def, step.id))
       out.push({ from: doing, to: target(earlier), by: doer, reason: 'required' });
     if (step.reviewer === 'none') {
-      for (const to of ways) out.push({ from: doing, to, by: doer, ...note });
+      const land = isLandStep(def, step.id) ? { land: true as const } : {};
+      for (const to of ways)
+        out.push({ from: doing, to, by: doer, ...note, ...(to === DONE ? land : {}) });
       continue;
     }
     const review = stateOf({ step: step.id, phase: 'review' });
