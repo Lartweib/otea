@@ -1,5 +1,6 @@
 import type { DatabaseSync } from 'node:sqlite';
 import type { AgentChannel } from '../core/authority.ts';
+import { OteaError } from '../core/errors.ts';
 import { activeLease } from '../core/lease.ts';
 import {
   findAgent,
@@ -10,6 +11,7 @@ import {
   saveProfile,
   selectAgents,
   selectLeases,
+  selectListener,
   selectListening,
   selectProfileChanges,
   unconfirmProfile,
@@ -29,6 +31,8 @@ export type Sighting = {
   channel: AgentChannel;
   harness?: Harness | undefined;
   newSession?: boolean;
+  // The MCP server it is heard through (its process id), which keeps its name to itself.
+  session?: number;
 };
 
 // Seen again after this long away, an agent connects anew (its connectedAt starts over).
@@ -107,7 +111,38 @@ export function seeAgent(db: DatabaseSync, sighting: Sighting, now: Clock = syst
 // Hears an agent that listens now: sees it, and notes it listening.
 export function hearAgent(db: DatabaseSync, sighting: Sighting, now: Clock = systemClock): void {
   seeAgent(db, sighting, now);
-  markListening(db, sighting.agent, now());
+  markListening(db, sighting.agent, now(), sighting.session);
+}
+
+// Whether a process still runs on this computer, where every MCP server of the project runs.
+export function processAlive(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    return (error as NodeJS.ErrnoException).code === 'EPERM';
+  }
+}
+
+// An MCP session (`session`, its server's process id) takes an agent name only while no other open
+// session works under it: two sessions under one name would take one item twice and hand off each
+// other's work. A session that closed or went quiet leaves the name free; a command-line wait
+// shares it with its own agent.
+export function claimName(
+  db: DatabaseSync,
+  agent: string,
+  session: number,
+  alive: (pid: number) => boolean = processAlive,
+  now: Clock = systemClock,
+): void {
+  const heard = selectListener(db, agent);
+  if (!heard?.session || heard.session === session || !heard.at) return;
+  if (Date.parse(now()) - Date.parse(heard.at) >= LISTEN_WINDOW_MS) return;
+  if (!alive(heard.session)) return;
+  throw new OteaError(
+    'name_in_use',
+    `Another session works as ${agent} right now: give this one its own name, passing as "${agent}-2" (or another name) on every call`,
+  );
 }
 
 // The beat of a wait (watch's `beat`): hears the agent again, never as a new session. Far inside

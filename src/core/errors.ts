@@ -21,6 +21,7 @@ export type ErrorCode =
   | 'not_claimable'
   | 'lease_held'
   | 'not_lease_holder'
+  | 'name_in_use'
   | 'not_relayable'
   | 'quote_required'
   | 'file_not_found'

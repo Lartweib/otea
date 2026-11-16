@@ -56,7 +56,14 @@ import {
 import { agentNotes, noteWaiting, replyNote, roundNotesOf } from '../app/notes.ts';
 import { performanceOf } from '../app/performance.ts';
 import { lanOpen, type Probe, type TransportKind } from '../app/phone.ts';
-import { type Harness, hearAgent, LISTEN_BEAT_MS, seeAgent, waitBeat } from '../app/presence.ts';
+import {
+  claimName,
+  type Harness,
+  hearAgent,
+  LISTEN_BEAT_MS,
+  seeAgent,
+  waitBeat,
+} from '../app/presence.ts';
 import {
   declareProfile,
   presetProfile,
@@ -1697,6 +1704,8 @@ const open: Command = {
 // The agent counts as heard as soon as its MCP client connects, and again on every beat while the
 // server stays open. Without a project yet there is nowhere to note it, and every tool call will
 // say so, so that is no warning.
+// Each server is its own session (process.pid): a name another open session works under is not
+// taken (claimName), and the refusal reaches the agent on its call.
 function heardBy(
   cwd: string,
   agent: string,
@@ -1705,17 +1714,32 @@ function heardBy(
   newSession = false,
 ) {
   try {
-    withProject(cwd, (project) =>
+    withProject(cwd, (project) => {
+      claimName(project.db, agent, process.pid);
       hearAgent(project.db, {
         agent,
         channel: 'mcp',
         harness,
+        session: process.pid,
         ...(newSession ? { newSession } : {}),
-      }),
-    );
+      });
+    });
+    return true;
   } catch (error) {
-    if (error instanceof OteaError && error.code === 'not_found') return;
+    if (error instanceof OteaError && error.code === 'not_found') return true;
+    if (error instanceof OteaError && error.code === 'name_in_use') return false;
     warn(`could not note ${agent} as seen: ${(error as Error).message}`);
+    return true;
+  }
+}
+
+// The first call of an agent on this server: refused while another open session works under its
+// name, so two sessions never share one.
+function claimedBy(cwd: string, agent: string): void {
+  try {
+    withProject(cwd, (project) => claimName(project.db, agent, process.pid));
+  } catch (error) {
+    if (error instanceof OteaError && error.code === 'name_in_use') throw error;
   }
 }
 
@@ -1734,12 +1758,15 @@ const mcp: Command = {
     const greeted = (harness: Harness | undefined) => {
       client = harness;
       if (agent === undefined) return;
-      voices.add(agent);
-      heardBy(cwd, agent, harness, warn, true);
+      if (heardBy(cwd, agent, harness, warn, true)) voices.add(agent);
     };
-    const heard = (name: string) => voices.add(name);
+    const heard = (name: string) => {
+      claimedBy(cwd, name);
+      heardBy(cwd, name, client, warn);
+      voices.add(name);
+    };
     const beat = setInterval(() => {
-      for (const name of voices) heardBy(cwd, name, client, warn);
+      for (const name of voices) if (!heardBy(cwd, name, client, warn)) voices.delete(name);
     }, LISTEN_BEAT_MS);
     beat.unref();
     const named = agent === undefined ? {} : { agent };

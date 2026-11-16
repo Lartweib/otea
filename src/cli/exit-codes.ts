@@ -45,6 +45,8 @@ export const EXIT_CODES: Readonly<Record<'ok' | FailureCode, number>> = {
   not_running: 11,
   lease_held: 12,
   not_lease_holder: 12,
+  // Another open MCP session works under the agent name.
+  name_in_use: 12,
   timeout: 13,
   evidence_too_large: 14,
   evidence_not_accepted: 15,

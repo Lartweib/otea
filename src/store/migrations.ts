@@ -309,6 +309,11 @@ export const MIGRATIONS = [
   `
   ALTER TABLE agents ADD COLUMN listening_at TEXT;
   `,
+  // The MCP server (its process id) an agent's name was last heard listening from: a second open
+  // session may not work under the same name (app/presence.ts claimName).
+  `
+  ALTER TABLE agents ADD COLUMN listening_session INTEGER;
+  `,
 ];
 
 function userVersion(db: DatabaseSync): number {
