@@ -1,6 +1,7 @@
 import {
   type CSSProperties,
   type ReactNode,
+  useEffect,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -34,6 +35,7 @@ import {
   phoneRounds,
   roundTagWord,
   splitEvidence,
+  unopenedOf,
 } from './phone-review.ts';
 
 // Reviewing an item on the phone (mobile mock 2, 2b): what was delivered first (the round's note,
@@ -144,14 +146,22 @@ function Files({
   evidence,
   noted,
   marks,
+  onSeen,
 }: {
   evidence: readonly Evidence[];
   noted?: ReadonlyMap<number, number> | undefined;
   marks?: ReadonlyMap<number, Mark> | undefined;
+  // A file shown in the reader, opened or stepped to.
+  onSeen?: ((id: number) => void) | undefined;
 }) {
   const { images, files } = splitEvidence(evidence);
   const order = [...images, ...files];
   const [at, setAt] = useState<number | null>(null);
+  const seenId = at === null ? null : (order[at]?.id ?? null);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: once per file shown
+  useEffect(() => {
+    if (seenId !== null) onSeen?.(seenId);
+  }, [seenId]);
   const opened = useRef<HTMLElement | null>(null);
   const open = (e: Evidence, from: HTMLElement) => {
     opened.current = from;
@@ -260,6 +270,7 @@ function RoundView({
   newest,
   now,
   notes,
+  onSeen,
 }: {
   r: PhoneRound;
   // The round before it, to mark its files against.
@@ -267,6 +278,7 @@ function RoundView({
   newest: boolean;
   now: number;
   notes?: PhoneNotes | undefined;
+  onSeen?: ((id: number) => void) | undefined;
 }) {
   const { images, files } = splitEvidence(r.evidence);
   return (
@@ -294,6 +306,7 @@ function RoundView({
           evidence={r.evidence}
           noted={notes?.noted}
           marks={prior ? fileMarks(prior.evidence, r.evidence) : undefined}
+          onSeen={onSeen}
         />
       </section>
       {r.asked ? (
@@ -382,6 +395,11 @@ export function PhoneItem(p: PhoneItemProps) {
   const shown = pick === 'compare' ? null : (rounds.find((r) => r.n === pick) ?? rounds[0] ?? null);
   const newest = rounds[0];
   const before = rounds[1];
+
+  // The files the person has opened in the reader, for Aprobar to say what is left unseen.
+  const [seen, setSeen] = useState<ReadonlySet<number>>(() => new Set());
+  const markSeen = (id: number) => setSeen((had) => (had.has(id) ? had : new Set([...had, id])));
+  const unseen = newest ? unopenedOf(newest.evidence, seen) : { unopened: 0, total: 0 };
 
   const [details, setDetails] = useState(false);
   const [request, setRequest] = useState(rounds.length === 0);
@@ -580,6 +598,7 @@ export function PhoneItem(p: PhoneItemProps) {
           newest={shown === newest}
           now={now}
           notes={leave ? undefined : p.notes}
+          onSeen={markSeen}
         />
       ) : null}
 
@@ -656,6 +675,11 @@ export function PhoneItem(p: PhoneItemProps) {
               </button>
             ) : null}
           </div>
+          {primary && unseen.unopened > 0 && !refused ? (
+            <p className="hint unseen">
+              {t('phone.r.unopened', { n: unseen.unopened, total: unseen.total })}
+            </p>
+          ) : null}
           {refused ? (
             <p className="hint warn" role="alert">
               {refused}

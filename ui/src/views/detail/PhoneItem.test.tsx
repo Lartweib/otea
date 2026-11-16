@@ -159,6 +159,13 @@ describe('reviewing an item on the phone', () => {
     expect(html).not.toContain('cerrar como');
   });
 
+  it('says beside Aprobar how many files are still unopened, without holding the move', () => {
+    setLanguage('es');
+    const dock = render().slice(render().indexOf('class="p-dock"'));
+    expect(dock).toContain('Sin abrir: 2 de 2 archivos');
+    expect(dock).toMatch(/<button[^>]*class="btn primary"(?![^>]*disabled)/);
+  });
+
   it('reads an item on an agent turn without a dock or a move', () => {
     setLanguage('es');
     const html = render({

@@ -1503,6 +1503,13 @@
   font: 400 13px / 1.4 var(--sans);
   color: var(--warn);
 }
+.p-dock .hint.unseen {
+  font: 500 12.5px / 1.4 var(--sans);
+  color: var(--ink-2);
+}
+.p-dock .hint.unseen + .hint {
+  margin-top: 2px;
+}
 /* Devolver with a note (mobile mock 2b): the note focused, on the keyboard. */
 .nsheet.p-sb {
   bottom: var(--kb, 0px);
