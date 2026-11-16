@@ -32,6 +32,15 @@ describe('a page beside a sheet (Configuración, Rendimiento, Studio)', () => {
     expect(pageSplit(2284, 2200)).toEqual({ listw: 2284 - 9 - 560, overlay: false });
   });
 
+  it('lays the sheet over a list too narrow to read beside it, instead of squeezing both', () => {
+    // An 800 px window: a list beside the sheet would get under 460 px, its rows cut mid-word.
+    expect(splitOf(724, 'list', null)).toEqual({ listw: 724 - 9 - 680, overlay: true });
+    expect(splitOf(724, 'table', null)).toEqual({ listw: 724 - 9 - 680, overlay: true });
+    expect(splitOf(600, 'cards', null)).toEqual({ listw: 0, overlay: true });
+    // A 1000 px window still keeps the list readable beside the sheet.
+    expect(splitOf(924, 'list', null)).toEqual({ listw: 475, overlay: false });
+  });
+
   it('keeps the lists as they were', () => {
     expect(splitOf(2000, 'list', null)).toEqual({ listw: 680, overlay: false });
     expect(splitOf(2600, 'table', null)).toEqual({ listw: 1320, overlay: false });

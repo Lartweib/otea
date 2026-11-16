@@ -449,7 +449,8 @@
 }
 .arow .held {
   display: flex;
-  gap: 7px;
+  flex-wrap: wrap;
+  gap: 2px 7px;
   align-items: center;
   width: 100%;
   margin-top: 5px;
@@ -468,6 +469,8 @@
   overflow: visible;
 }
 .arow .held span.tx {
+  /* never cut to a letter: under 8em beside the verb and id, the title takes its own line */
+  flex: 1 1 8em;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;

@@ -286,4 +286,23 @@
     white-space: normal;
     overflow-wrap: anywhere;
   }
+  /* thumb-sized targets: the back link, each id and the document/markdown switch reach 44 px,
+     the id's without moving the row (its padding is taken back by its margin) */
+  .brief-head .back {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+  .brief-row .t-id {
+    display: inline-block;
+    padding: 16px 0;
+    margin: -16px 0;
+  }
+  .brief-bar .seg2 button {
+    min-height: 44px;
+  }
+}
+/* a word breaks only when it alone does not fit the line */
+.brief-md {
+  overflow-wrap: break-word;
 }
