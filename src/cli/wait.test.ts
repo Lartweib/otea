@@ -79,6 +79,15 @@ describe('wait', () => {
     }
   });
 
+  it('wakes an agent only for an item next would offer it, not one just offered to another', async () => {
+    await otea('next', '--as', 'codex');
+
+    const { code, out } = await otea('wait', '--turn', 'agent', '--unclaimed', '--as', 'gemini');
+
+    expect(code).toBe(0);
+    expect(out).toBe('TASKS-2  Hacerlo  agent  Second\n');
+  });
+
   it('keeps waiting while the only matches are in another collection', async () => {
     const waiting = startCli(repo.dir, 'wait', '--turn', 'agent', '--collection', 'bugs');
     expect(await settled(waiting)).toBe(false);
