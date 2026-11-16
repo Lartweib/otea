@@ -136,6 +136,23 @@ describe('what the agent reads of the notes', () => {
     ]);
   });
 
+  it('says the line or the diagram node a note is on, quoting the line', () => {
+    const onLine = note(5, {
+      anchor: { evidence: 11, filename: 'cambios.diff', line: 12, quote: 'const port = 3000;' },
+    });
+    const onNode = note(4, {
+      anchor: { evidence: 12, filename: 'flujo.mmd', node: 'Scan QR' },
+      answer: { text: 'ok', at: '2026-11-13T13:40:00.000Z', by: 'claude-d' },
+    });
+    const block = notesBlock('TAR-7', [onLine, onNode], 'claude-d');
+    expect(block).toContain(
+      '      on cambios.diff at line 12: "const port = 3000;" · unanswered: otea reply TAR-7 --note 5 "<your short answer>"',
+    );
+    expect(block).toContain(
+      '      on flujo.mmd at node "Scan QR" · you answered 2026-11-13 13:40 UTC',
+    );
+  });
+
   it('says who answered when it was another agent, and when all are answered', () => {
     const plain = note(1, { answer: { text: 'ok', at: '2026-11-13T13:40:00.000Z', by: 'kiln' } });
     expect(notesBlock('TAR-7', [plain], 'claude-d')).toEqual([

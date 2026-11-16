@@ -13,13 +13,17 @@ export const NOTE_ANSWERED = 'note_answered';
 
 // The piece of evidence a note is on: the very file the person saw (its evidence id, so a later
 // file attached in its place leaves the note on the one seen), its name and part then, and for a
-// recording, the moment in it.
+// recording, the moment in it; in a text, the line (its number when the viewer numbers it, and its
+// text as seen); in a diagram, the node by its label.
 export type NoteAnchor = {
   evidence: number;
   filename: string;
   part?: string;
   partName?: string;
   seconds?: number;
+  line?: number;
+  quote?: string;
+  node?: string;
 };
 
 // `profile`: the one the agent had declared when it answered (every event keeps it).
@@ -60,6 +64,9 @@ function anchorOf(value: unknown): NoteAnchor | undefined {
     ...(typeof raw.part === 'string' ? { part: raw.part } : {}),
     ...(typeof raw.partName === 'string' ? { partName: raw.partName } : {}),
     ...(typeof raw.seconds === 'number' ? { seconds: raw.seconds } : {}),
+    ...(typeof raw.line === 'number' ? { line: raw.line } : {}),
+    ...(typeof raw.quote === 'string' ? { quote: raw.quote } : {}),
+    ...(typeof raw.node === 'string' ? { node: raw.node } : {}),
   };
 }
 
@@ -155,7 +162,15 @@ export function moment(seconds: number): string {
 function onText(anchor: NoteAnchor, withPart: boolean): string {
   const part = withPart && anchor.partName ? ` (${anchor.partName})` : '';
   const at = anchor.seconds === undefined ? '' : ` at ${moment(anchor.seconds)}`;
-  return `on ${anchor.filename}${part}${at}`;
+  const quote = anchor.quote === undefined ? '' : `"${anchor.quote}"`;
+  const line =
+    anchor.line !== undefined
+      ? ` at line ${anchor.line}${quote ? `: ${quote}` : ''}`
+      : quote
+        ? ` at the line ${quote}`
+        : '';
+  const node = anchor.node === undefined ? '' : ` at node "${anchor.node}"`;
+  return `on ${anchor.filename}${part}${at}${line}${node}`;
 }
 
 // What was in when the note was left: where, when, and how many deliverables.

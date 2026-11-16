@@ -125,9 +125,15 @@ function describeAction({ type, data }: Event): string {
     return describeRelation(data as Relation);
   }
   if (type === 'note_left' || type === 'note_answered') {
-    const anchor = data.anchor as { filename?: unknown; seconds?: unknown } | undefined;
+    const anchor = data.anchor as
+      | { filename?: unknown; seconds?: unknown; line?: unknown; quote?: unknown; node?: unknown }
+      | undefined;
     const at = typeof anchor?.seconds === 'number' ? ` at ${moment(anchor.seconds)}` : '';
-    const where = typeof anchor?.filename === 'string' ? ` (on ${anchor.filename}${at})` : '';
+    const quote = typeof anchor?.quote === 'string' ? `: ${JSON.stringify(anchor.quote)}` : '';
+    const line = typeof anchor?.line === 'number' ? ` at line ${anchor.line}${quote}` : '';
+    const node = typeof anchor?.node === 'string' ? ` at node ${JSON.stringify(anchor.node)}` : '';
+    const where =
+      typeof anchor?.filename === 'string' ? ` (on ${anchor.filename}${at}${line}${node})` : '';
     return `note ${String(data.note)}: ${JSON.stringify(String(data.text ?? ''))}${where}`;
   }
   if (type === 'question_asked' || type === 'question_answered')

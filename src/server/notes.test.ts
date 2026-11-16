@@ -126,6 +126,16 @@ describe('notes from the person over the API', () => {
     expect(((await response.json()) as { notes: unknown[] }).notes[0]).toMatchObject({
       anchor: { evidence, filename: 'pose.png', partName: 'Arte conceptual', seconds: 2 },
     });
+
+    const onLine = await call('/items/CRI-1/notes', {
+      method: 'POST',
+      body: { text: 'Esta línea', anchor: { evidence, line: 3, quote: 'x = 1', node: 'A' } },
+    });
+    expect(onLine.status).toBe(201);
+    const notes = ((await onLine.json()) as { notes: { text: string }[] }).notes;
+    expect(notes.find(({ text }) => text === 'Esta línea')).toMatchObject({
+      anchor: { evidence, line: 3, quote: 'x = 1', node: 'A' },
+    });
   });
 
   it('refuses a malformed note and an empty one', async () => {

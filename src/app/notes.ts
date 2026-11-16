@@ -47,7 +47,7 @@ export type LeaveNoteInput = {
   id: string;
   text: string;
   // A piece of evidence of this round of the item, by its id, and for a recording the moment seen.
-  anchor?: { evidence: number; seconds?: number };
+  anchor?: { evidence: number; seconds?: number; line?: number; quote?: string; node?: string };
   actor: Actor;
   channel: Channel;
 };
@@ -70,6 +70,15 @@ function workedOn(ctx: Context, item: ItemRecord): { board: LiveBoard; step: str
   return { board, step: step.id };
 }
 
+// A line quoted, or a node named, as seen: trimmed, and never longer than an agent needs to find it.
+const QUOTE_MAX = 200;
+const NODE_MAX = 120;
+
+function clip(text: string | undefined, max: number): string | undefined {
+  const trimmed = text?.trim();
+  return trimmed ? trimmed.slice(0, max) : undefined;
+}
+
 function anchorFor(
   ctx: Context,
   item: ItemRecord,
@@ -78,12 +87,13 @@ function anchorFor(
   given: NonNullable<LeaveNoteInput['anchor']>,
 ): NoteAnchor {
   const evidence = findEvidence(ctx.db, given.evidence);
-  const seconds = given.seconds;
+  const { seconds, line } = given;
   const fits =
     evidence !== undefined &&
     evidence.itemId === item.id &&
     (roundStartedAt === undefined || evidence.createdAt >= roundStartedAt) &&
-    (seconds === undefined || (Number.isFinite(seconds) && seconds >= 0));
+    (seconds === undefined || (Number.isFinite(seconds) && seconds >= 0)) &&
+    (line === undefined || (Number.isInteger(line) && line > 0));
   if (!fits)
     refuse(
       'invalid_fields',
@@ -93,12 +103,17 @@ function anchorFor(
     );
   const part = evidence.module ?? undefined;
   const partName = part === undefined ? undefined : board.def.parts[part]?.name;
+  const quote = clip(given.quote, QUOTE_MAX);
+  const node = clip(given.node, NODE_MAX);
   return {
     evidence: evidence.id,
     filename: evidence.filename,
     ...(part === undefined ? {} : { part }),
     ...(partName === undefined ? {} : { partName }),
     ...(seconds === undefined ? {} : { seconds }),
+    ...(line === undefined ? {} : { line }),
+    ...(quote === undefined ? {} : { quote }),
+    ...(node === undefined ? {} : { node }),
   };
 }
 

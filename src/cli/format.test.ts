@@ -44,6 +44,15 @@ describe('a note on a recording in the timeline', () => {
     );
   });
 
+  it('names the line it quotes, or the diagram node', () => {
+    expect(note({ evidence: 4, filename: 'a.diff', line: 12, quote: 'x = 1' })).toMatch(
+      /\(on a\.diff at line 12: "x = 1"\)$/,
+    );
+    expect(note({ evidence: 5, filename: 'f.mmd', node: 'Scan QR' })).toMatch(
+      /\(on f\.mmd at node "Scan QR"\)$/,
+    );
+  });
+
   it('names only the file when the note has no moment', () => {
     expect(note({ evidence: 4, filename: 'shot.png' })).toMatch(/\(on shot\.png\)$/);
   });
