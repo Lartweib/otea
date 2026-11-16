@@ -1,7 +1,8 @@
 import { t } from '../../i18n/i18n.ts';
 import { Dialog } from '../../kit/pop/Dialog.tsx';
 import type { Evidence } from '../../types.ts';
-import { EvidenceReader, type ReaderDecide } from './EvidenceViewer.tsx';
+import { EvidenceReader, type ReaderDecide, type ReaderNote } from './EvidenceViewer.tsx';
+import type { ReaderPick } from './reader-pick.ts';
 
 // A file of the round against the round before it.
 export type FileMark = 'new' | 'changed' | 'same';
@@ -22,12 +23,24 @@ type PaneProps = {
   // The files opened in the reader, by evidence id.
   seen: ReadonlySet<number>;
   decide?: ReaderDecide | undefined;
+  note?: ReaderNote | undefined;
+  start?: ReaderPick | undefined;
 };
 
 // The desk reader's page (the review mock, desk): the round's files listed on the left, each with
 // its part, how it compares with the round before and whether you opened it; the one picked read on
 // the right in the viewer for its kind, the others a step away ("3 of 7").
-export function ReaderPane({ evidence, at, onAt, parts, marks, seen, decide }: PaneProps) {
+export function ReaderPane({
+  evidence,
+  at,
+  onAt,
+  parts,
+  marks,
+  seen,
+  decide,
+  note,
+  start,
+}: PaneProps) {
   return (
     <div className="rd-pane">
       <nav className="rd-list" aria-label={t('evidence.reader.files')}>
@@ -54,7 +67,14 @@ export function ReaderPane({ evidence, at, onAt, parts, marks, seen, decide }: P
         })}
       </nav>
       <div className="rd-main">
-        <EvidenceReader evidence={evidence} at={at} onAt={onAt} decide={decide} />
+        <EvidenceReader
+          evidence={evidence}
+          at={at}
+          onAt={onAt}
+          decide={decide}
+          note={note}
+          start={start}
+        />
       </div>
     </div>
   );

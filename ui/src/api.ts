@@ -183,7 +183,7 @@ export async function reassignItem(id: string, agent: string): Promise<void> {
 export async function postNote(
   id: string,
   text: string,
-  anchor?: { evidence: number; seconds?: number },
+  anchor?: { evidence: number; seconds?: number; line?: number; quote?: string; node?: string },
 ): Promise<void> {
   await post(`/api/items/${encodeURIComponent(id)}/notes`, anchor ? { text, anchor } : { text });
 }

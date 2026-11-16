@@ -1,5 +1,6 @@
 import { useId, useState } from 'react';
 import { moment, type NoteAnchor } from '../../../../src/core/board/notes.ts';
+import { pickWords, READ_AT } from '../../components/evidence/reader-pick.ts';
 import { seekVideo } from '../../components/evidence/video-moment.ts';
 import { NoteText } from '../../components/NoteText.tsx';
 import { useFileUrl } from '../../evidence-files.ts';
@@ -75,6 +76,15 @@ export function Thumb({
 function Cite({ anchor, evidence }: { anchor: NoteAnchor; evidence: Evidence | undefined }) {
   const { seconds } = anchor;
   const time = seconds === undefined ? null : moment(seconds);
+  // A line or a diagram node the note is on, in a few words.
+  const where =
+    anchor.line !== undefined || anchor.quote !== undefined || anchor.node !== undefined
+      ? pickWords({
+          ...(anchor.line === undefined ? {} : { line: anchor.line }),
+          ...(anchor.quote === undefined ? {} : { quote: anchor.quote }),
+          ...(anchor.node === undefined ? {} : { node: anchor.node }),
+        })
+      : null;
   const at =
     seconds === undefined
       ? null
@@ -95,6 +105,18 @@ function Cite({ anchor, evidence }: { anchor: NoteAnchor; evidence: Evidence | u
           : t('notes.cite', { file: anchor.filename })
       }
       onClick={() => {
+        const { line, quote, node } = anchor;
+        if (line !== undefined || quote !== undefined || node !== undefined) {
+          const pick = {
+            ...(line === undefined ? {} : { line }),
+            ...(quote === undefined ? {} : { quote }),
+            ...(node === undefined ? {} : { node }),
+          };
+          window.dispatchEvent(
+            new CustomEvent(READ_AT, { detail: { evidence: anchor.evidence, pick } }),
+          );
+          return;
+        }
         showPiece(anchor.evidence);
         if (seconds !== undefined) seekVideo(anchor.evidence, seconds);
       }}
@@ -102,11 +124,13 @@ function Cite({ anchor, evidence }: { anchor: NoteAnchor; evidence: Evidence | u
       <Thumb evidence={evidence} filename={anchor.filename} />
       <span className="tx">
         <b>{anchor.filename}</b>
-        {anchor.partName || at ? (
+        {anchor.partName || at || where ? (
           <small>
             {anchor.partName}
             {anchor.partName && at ? ' · ' : null}
             {at}
+            {(anchor.partName || at) && where ? ' · ' : null}
+            {where}
           </small>
         ) : null}
       </span>

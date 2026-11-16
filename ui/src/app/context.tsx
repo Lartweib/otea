@@ -87,7 +87,11 @@ export type AppActions = {
   // Fills fields of an item as the person, keyed by part id.
   update(id: string, fields: Record<string, string>): Promise<void>;
   // A note to the agent doing the item's step, optionally on a piece of evidence; it moves nothing.
-  note(id: string, text: string, anchor?: { evidence: number; seconds?: number }): Promise<void>;
+  note(
+    id: string,
+    text: string,
+    anchor?: { evidence: number; seconds?: number; line?: number; quote?: string; node?: string },
+  ): Promise<void>;
   // Your answer to an agent's question: the turn goes back to it, with no move to undo.
   answer(id: string, text: string, toast?: string): Promise<void>;
   // A stuck item: back in the queue of its step (restart), or left for an agent (reassign). Both

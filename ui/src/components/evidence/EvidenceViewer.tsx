@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useFileUrl } from '../../evidence-files.ts';
 import { t } from '../../i18n/i18n.ts';
 import { Icon } from '../../kit/index.ts';
@@ -7,6 +7,7 @@ import { DiagramView } from './DiagramView.tsx';
 import { FileMeta } from './FileMeta.tsx';
 import { FileView } from './FileViews.tsx';
 import { ImageSingle } from './ImageViews.tsx';
+import { findPick, pickAnchor, pickAt, pickWords, type ReaderPick } from './reader-pick.ts';
 import { DiffView, LogView } from './TextViews.tsx';
 import { VideoPlayer } from './VideoViews.tsx';
 
@@ -132,22 +133,61 @@ export type ReaderDecide = {
   approve?: { label: string; onClick: () => void } | undefined;
 };
 
+// A note to the agent at work from inside the reader, on the file read: on the line or diagram node
+// clicked, else on the whole file.
+export type ReaderNote = {
+  onSend: (text: string, anchor: { evidence: number } & ReaderPick) => void;
+};
+
 // The files of a round read one at a time, the same viewer as the desk's: where you are among them
-// ("2 of 7") and a step to the one before or after.
+// ("2 of 7") and a step to the one before or after. `start` lights a line or node on opening, as a
+// note's cite asks.
 export function EvidenceReader({
   evidence,
   at,
   onAt,
   phone,
   decide,
+  note,
+  start,
 }: {
   evidence: readonly Evidence[];
   at: number;
   onAt: (at: number) => void;
   phone?: boolean;
   decide?: ReaderDecide | undefined;
+  note?: ReaderNote | undefined;
+  start?: ReaderPick | undefined;
 }) {
   const shown = evidence[at];
+  const view = useRef<HTMLDivElement>(null);
+  const [pick, setPick] = useState<{ id: number; pick: ReaderPick } | null>(null);
+  const [text, setText] = useState('');
+  const shownId = shown?.id;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: once per cite that opens the reader
+  useEffect(() => {
+    if (start && shownId !== undefined) setPick({ id: shownId, pick: start });
+  }, [start]);
+  const picked = pick && pick.id === shownId ? pick.pick : null;
+  // The picked line or node is lit once its viewer has drawn it (a text is fetched first).
+  // biome-ignore lint/correctness/useExhaustiveDependencies: another file shown clears the light
+  useEffect(() => {
+    const root = view.current;
+    if (!root) return;
+    for (const el of root.querySelectorAll('[data-picked]')) el.removeAttribute('data-picked');
+    if (!picked) return;
+    let tries = 0;
+    let frame = 0;
+    const light = () => {
+      const el = findPick(root, picked);
+      if (el) {
+        el.setAttribute('data-picked', 'true');
+        el.scrollIntoView?.({ block: 'nearest' });
+      } else if (tries++ < 90) frame = requestAnimationFrame(light);
+    };
+    light();
+    return () => cancelAnimationFrame(frame);
+  }, [picked, shownId]);
   if (!shown) return null;
   return (
     <div className="ev-reader">
@@ -175,9 +215,50 @@ export function EvidenceReader({
           <Icon name="right" />
         </button>
       </div>
-      <div className="ev-reader-view">
+      {/* biome-ignore lint/a11y/noStaticElementInteractions: a click on a line picks it for the note; the note is also sent without one */}
+      {/* biome-ignore lint/a11y/useKeyWithClickEvents: picking is optional, the note goes on the whole file */}
+      <div
+        ref={view}
+        className="ev-reader-view"
+        data-picking={note ? 'true' : undefined}
+        onClick={
+          note
+            ? (e) => {
+                const hit = pickAt(e.target);
+                if (hit) setPick({ id: shown.id, pick: hit.pick });
+              }
+            : undefined
+        }
+      >
         <EvidenceViewer key={shown.id} evidence={shown} {...(phone ? { phone } : {})} />
       </div>
+      {note ? (
+        <div className="ev-reader-note">
+          <div className="ev-reader-on">
+            <b>{t('notes.pick.on', { what: pickWords(picked) })}</b>
+            <span>{t('notes.pick.hint')}</span>
+          </div>
+          <textarea
+            rows={2}
+            value={text}
+            placeholder={t('notes.pick.placeholder')}
+            aria-label={t('notes.pick.on', { what: pickWords(picked) })}
+            onChange={(e) => setText(e.currentTarget.value)}
+          />
+          <button
+            type="button"
+            className="btn primary"
+            disabled={!text.trim()}
+            onClick={() => {
+              note.onSend(text.trim(), pickAnchor(shown.id, picked));
+              setText('');
+              setPick(null);
+            }}
+          >
+            {t('notes.pick.send')}
+          </button>
+        </div>
+      ) : null}
       {decide ? (
         <div className="ev-reader-decide">
           <span className="ev-reader-seen">
