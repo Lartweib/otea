@@ -60,6 +60,9 @@ type ActsProps = {
   // While an agent does the step: «Dejar una nota» in the receipt's place, and the line that says
   // what it does.
   note?: LeaveNote | undefined;
+  // Under the moves, when files of the round were not opened in the reader: one line, never a
+  // hold on Aprobar.
+  unopened?: string | undefined;
 };
 
 export type LeaveNote = {
@@ -169,6 +172,7 @@ export function Acts({
   refuse,
   back,
   note,
+  unopened,
 }: ActsProps) {
   const app = useApp();
   const [pointed, setPointed] = useState<MoveChoice | null>(null);
@@ -216,6 +220,7 @@ export function Acts({
       className={notesOpen === c || notesOpen?.move.to === c.move.to ? 'on' : undefined}
       disabled={!!c.blocked}
       aria-expanded={c.move.reasonRequired ? notesOpen?.move.to === c.move.to : undefined}
+      data-move={c.move.to}
       onClick={(e) => choose(c, e.currentTarget)}
       {...hover(c)}
     >
@@ -256,6 +261,7 @@ export function Acts({
           {closeAs}
         </div>
         <SaysLine text={says(pointed ?? first)} />
+        {unopened && !refusedNow ? <p className="said unseen">{unopened}</p> : null}
         {refusedNow ? (
           <p className="said warn" role="alert">
             {refusedNow}

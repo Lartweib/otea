@@ -8,6 +8,7 @@ import { latestFirst, leftovers } from '../../evidence.ts';
 import { useFileUrl } from '../../evidence-files.ts';
 import { t } from '../../i18n/i18n.ts';
 import { type DetailBlock, detailBlocks, slotData } from '../../item-types.ts';
+import { Button } from '../../kit/index.ts';
 import { moduleFor } from '../../modules/registry.ts';
 import { C } from '../../motion/curves.ts';
 import { reduced } from '../../motion/reduced.ts';
@@ -80,6 +81,8 @@ export function bodySections(o: {
   facts: Facts;
   canWrite: boolean;
   now: number;
+  // Opens the reader, at a file or at the round's first.
+  onRead?: ((id?: number) => void) | undefined;
   // On a Studio board: the long texts it shows as options side by side, the notes of each round
   // (drawn where its layout puts Rondas, else after the fields), and its own sections (Partes,
   // Enlaces) in place of Structure.
@@ -99,7 +102,7 @@ export function bodySections(o: {
       }
     | undefined;
 }): Sec[] {
-  const { item, type, facts, canWrite, now, board } = o;
+  const { item, type, facts, canWrite, now, board, onRead } = o;
   let roundsDrawn = false;
   const out: Sec[] = [];
   const agent = facts.handed?.agent ?? facts.agent ?? '';
@@ -246,6 +249,7 @@ export function bodySections(o: {
           evidence={item.evidence}
           canWrite={canWrite}
           {...(board?.noted ? { noted: board.noted } : {})}
+          onRead={onRead}
         />,
       );
       return [];
@@ -283,6 +287,11 @@ export function bodySections(o: {
         <div className="margin-label">
           {t('sheet.evidence')}
           <span>{count ? t('sheet.files', { count }) : '—'}</span>
+          {onRead && canWrite && count ? (
+            <Button size="sm" variant="text" className="ev-read-all" onClick={() => onRead()}>
+              {t('evidence.reader.open')}
+            </Button>
+          ) : null}
         </div>
         {evidence.length ? (
           <div className="evs">{evidence}</div>

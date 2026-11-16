@@ -1,9 +1,10 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { isClosed, NOTE_REF, positionOf } from '../../../../src/core/board/engine.ts';
 import { SAME, stepById } from '../../../../src/core/board/model.ts';
 import { waitsOf } from '../../actions.ts';
 import { typeOfItem, useApp } from '../../app/context.tsx';
 import { boardOfCollection, boardsOf, useBoards } from '../../board-studio/home/boards-store.ts';
+import { DeskReader } from '../../components/evidence/DeskReader.tsx';
 import { noteAnchor } from '../../components/evidence/video-moment.ts';
 import { t, tx } from '../../i18n/i18n.ts';
 import { TypeIcon } from '../../icons/TypeIcon.tsx';
@@ -12,6 +13,7 @@ import { laneOf } from '../../lanes/geometry.ts';
 import { lookOf } from '../../lanes/looks.ts';
 import { NodeGlyph } from '../../lanes/NodeGlyph.tsx';
 import { ItemTypeScope, stateWord, stateWordIn, typeWord } from '../../preset-words.ts';
+import { roundsOf } from '../../rounds.ts';
 import { studioHash } from '../../selection.ts';
 import type { ItemView, RelatedItem } from '../../types.ts';
 import { useStudioBoard } from '../board/studio-board.tsx';
@@ -63,6 +65,7 @@ import {
   threadOf,
 } from './notes.ts';
 import { PhoneItem } from './PhoneItem.tsx';
+import { partNames, phoneRounds, readerOf, unopenedOf } from './phone-review.ts';
 import { Route } from './Route.tsx';
 import { routeIndex, routeSteps } from './route.ts';
 
@@ -100,6 +103,9 @@ const dipWhen = (iso: string, now: number): string => {
   );
   return t('sheet.when.on', { day: fmt.format(Date.parse(iso)) });
 };
+
+// No file opened yet in the reader.
+const NONE_SEEN: ReadonlySet<number> = new Set();
 
 export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheetProps) {
   const app = useApp();
@@ -356,6 +362,74 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
       .catch(() => toast({ msg: t('sheet.refused'), id: item.id }));
   };
 
+  // ---- the reader: the round's files one at a time, opened from the evidence (review mock) ----
+  const readerStep = stepId ?? journey.find(({ open }) => open)?.step ?? null;
+  const readerRounds = useMemo(() => {
+    const on = live ? { def: live, ...(readerStep ? { step: readerStep } : {}) } : undefined;
+    const read = roundsOf(item.events, item.evidence, type?.states ?? [], on);
+    return phoneRounds(read, item.turn === 'human');
+  }, [item.events, item.evidence, item.turn, type, live, readerStep]);
+  const reader = useMemo(
+    () => readerOf(readerRounds, item.evidence),
+    [readerRounds, item.evidence],
+  );
+  const parts = useMemo(() => (type ? partNames(type.layout) : undefined), [type]);
+  const [reading, setReading] = useState<{ item: string; at: number; open: boolean } | null>(null);
+  const [opened, setOpened] = useState<{ item: string; ids: ReadonlySet<number> }>({
+    item: item.id,
+    ids: new Set(),
+  });
+  const seen = opened.item === item.id ? opened.ids : NONE_SEEN;
+  const readAt = reading?.item === item.id ? reading : null;
+  const shownId = readAt?.open ? reader.files[readAt.at]?.id : undefined;
+  useEffect(() => {
+    if (shownId === undefined) return;
+    setOpened((was) => {
+      const ids = was.item === item.id ? was.ids : NONE_SEEN;
+      return ids.has(shownId) ? was : { item: item.id, ids: new Set([...ids, shownId]) };
+    });
+  }, [shownId, item.id]);
+  const onRead = (id?: number) => {
+    const at = id === undefined ? 0 : reader.files.findIndex((e) => e.id === id);
+    setReading({ item: item.id, at: Math.max(0, at), open: true });
+  };
+  const closeReader = () => setReading((r) => (r ? { ...r, open: false } : r));
+  // A move made from inside the reader is the page's own: the reader closes, then the move's button
+  // below is pressed, so a refusal or the notes form shows where it always does.
+  const pressMove = (to: string) => {
+    closeReader();
+    let tries = 0;
+    const press = () => {
+      if (document.querySelector('.rd-dialog') && tries++ < 90) {
+        requestAnimationFrame(press);
+        return;
+      }
+      root.current?.querySelector<HTMLButtonElement>(`[data-move="${CSS.escape(to)}"]`)?.click();
+    };
+    requestAnimationFrame(press);
+  };
+  const choices = plan.primary ? [plan.primary, ...plan.quiet] : plan.quiet;
+  const approveChoice = choices.find((c) => c.kind === 'approve' && !c.blocked);
+  const backChoice = plan.quiet.find((c) => c.kind === 'sendback' && !c.blocked);
+  const deciding = mode === 'moves' && app.session.canWrite && !!(approveChoice || backChoice);
+  const decide = deciding
+    ? {
+        seen: reader.files.filter((e) => seen.has(e.id)).length,
+        back: backChoice
+          ? { label: backChoice.label, onClick: () => pressMove(backChoice.move.to) }
+          : undefined,
+        approve: approveChoice
+          ? { label: approveChoice.label, onClick: () => pressMove(approveChoice.move.to) }
+          : undefined,
+      }
+    : undefined;
+  const unseen = approveChoice && deciding ? unopenedOf(reader.files, seen) : null;
+  const unopenedLine =
+    unseen && unseen.unopened > 0
+      ? t('evidence.reader.unopened', { n: unseen.unopened, total: unseen.total })
+      : undefined;
+  const canRead = app.session.canWrite && reader.files.length > 0;
+
   const cells = detailCells({
     item,
     type,
@@ -417,6 +491,7 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
     facts,
     canWrite,
     now,
+    onRead: canRead ? onRead : undefined,
     board: live
       ? {
           options: new Set(
@@ -669,7 +744,21 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
             notesOpen={notes?.open ? notes.choice : null}
             onNotes={openNotes}
             note={leave}
+            unopened={unopenedLine}
           />
+          {canRead ? (
+            <DeskReader
+              open={!!readAt?.open}
+              onClose={closeReader}
+              evidence={reader.files}
+              at={readAt?.at ?? 0}
+              onAt={(at) => setReading({ item: item.id, at, open: true })}
+              parts={parts}
+              marks={reader.marks}
+              seen={seen}
+              decide={decide}
+            />
+          ) : null}
           <div className="notes-slot">
             {noting ? (
               <NotesForm

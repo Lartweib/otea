@@ -108,11 +108,20 @@ type EvidenceModuleProps = {
   // How many of the person's notes are on each piece of evidence, by its id: the module says how
   // many are on its files, and a note's cite finds it by them.
   noted?: ReadonlyMap<number, number>;
+  // Opens the reader at a file: the module's newest one.
+  onRead?: ((id: number) => void) | undefined;
 };
 
 // One evidence module of the item's layout, where the layout places it. Files are served only to a
 // signed-in browser, so a read-only one lists their names.
-export function EvidenceModule({ entry, evidence, canWrite, slot, noted }: EvidenceModuleProps) {
+export function EvidenceModule({
+  entry,
+  evidence,
+  canWrite,
+  slot,
+  noted,
+  onRead,
+}: EvidenceModuleProps) {
   const held = evidenceOf(evidence, entry);
   const notes = held.reduce((sum, { id }) => sum + (noted?.get(id) ?? 0), 0);
   const title = moduleTitle(entry);
@@ -134,6 +143,20 @@ export function EvidenceModule({ entry, evidence, canWrite, slot, noted }: Evide
           <span className="ev-required t-cap">{t('evidence.required')}</span>
         ) : null}
         {notes ? <span className="ev-noted">{t('notes.count', { count: notes })}</span> : null}
+        {onRead && canWrite && held.length ? (
+          <Button
+            size="sm"
+            variant="text"
+            className="ev-read"
+            aria-label={t('evidence.reader.openAt', { file: latestFirst(held)[0]?.filename ?? '' })}
+            onClick={() => {
+              const newest = latestFirst(held)[0];
+              if (newest) onRead(newest.id);
+            }}
+          >
+            {t('evidence.reader.open')}
+          </Button>
+        ) : null}
       </header>
       {held.length === 0 ? (
         <Empty entry={entry} />

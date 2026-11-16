@@ -1,4 +1,5 @@
 import { evidenceModules } from '../../../../src/core/placement.ts';
+import { latestFirst } from '../../evidence.ts';
 import { t } from '../../i18n/i18n.ts';
 import type { Round } from '../../rounds.ts';
 import type { Evidence, Layout } from '../../types.ts';
@@ -132,4 +133,18 @@ export function partNames(layout: Layout): Map<string, string> {
     if (entry.label !== undefined) names.set(entry.id, entry.label);
   }
   return names;
+}
+
+// What the reader reads, on the desk as on the phone: the newest round's files, images first, each
+// marked against the round before; or, when no round was handed yet, every file of the item.
+export function readerOf(
+  rounds: readonly PhoneRound[],
+  evidence: readonly Evidence[],
+): { files: Evidence[]; marks: Map<number, 'new' | 'changed' | 'same'> } {
+  const [newest, prior] = rounds;
+  const { images, files } = splitEvidence(newest ? newest.evidence : latestFirst(evidence));
+  return {
+    files: [...images, ...files],
+    marks: newest && prior ? fileMarks(prior.evidence, newest.evidence) : new Map(),
+  };
 }
