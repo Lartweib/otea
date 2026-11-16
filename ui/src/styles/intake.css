@@ -256,6 +256,8 @@
     color var(--t-hover) var(--ease);
 }
 .intake-role[aria-pressed="true"] {
+  /* detail.css draws a pressed pill filled; here it is outlined, so its text stays readable. */
+  background: none;
   color: var(--ink);
   box-shadow: inset 0 0 0 1.5px var(--ink);
 }

@@ -157,6 +157,20 @@ describe('the capture sheet (mock screen 3)', () => {
     expect(big).toMatch(/type="submit"[^>]*disabled/);
   });
 
+  it('asks whether the photo is a before or an after where the board compares', () => {
+    setLanguage('es');
+    const photo = { name: 'IMG_2042.jpg', size: 900_000, url: 'blob:y', tooLarge: false };
+    const html = render(props({ title: 'A', photo, roles: ['before', 'after'], role: 'after' }));
+    expect(html).toContain('class="cap-roles"');
+    expect(html).toMatch(/aria-pressed="false"[^>]*>antes</);
+    expect(html).toMatch(/aria-pressed="true"[^>]*>después</);
+    expect(html).toContain('¿La foto es el antes o el después?');
+    expect(render(props({ title: 'A', photo, roles: ['single'] }))).not.toContain('cap-roles');
+    expect(render(props({ title: 'A', photo, roles: ['single', 'before', 'after'] }))).toContain(
+      'La foto va como',
+    );
+  });
+
   it('says why when no board takes a title alone', () => {
     const html = render(props({ board: undefined, why: 'none' }));
     expect(html).toContain('No board takes a title alone');

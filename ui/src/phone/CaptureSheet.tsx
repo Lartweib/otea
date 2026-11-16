@@ -19,6 +19,7 @@ import { Icon } from '../kit/Icon.tsx';
 import { toast } from '../kit/pop/toast.tsx';
 import { captureId, QUEUE_MAX_MB, type QueuedCapture } from '../offline/capture-queue.ts';
 import { enqueue, queueAvailable } from '../offline/queue-store.ts';
+import type { EvidenceRole } from '../types.ts';
 import { BottomSheet } from './BottomSheet.tsx';
 import {
   type BoardPick,
@@ -29,6 +30,7 @@ import {
   landsStep,
   lastBoard,
   noteField,
+  photoRoles,
   pickBoard,
   rememberBoard,
   useCapture,
@@ -49,6 +51,10 @@ export type CaptureBodyProps = {
   title: string;
   note: string;
   photo: { name: string; size: number; url: string; tooLarge: boolean } | null;
+  // The roles the photo can take on this board; more than one is asked (Antes, Después).
+  roles?: readonly EvidenceRole[];
+  role?: EvidenceRole | undefined;
+  onRole?: (role: EvidenceRole) => void;
   posting: boolean;
   // The PC does not answer: Guardar keeps the capture in the queue, and the line says so.
   queues?: boolean;
@@ -62,6 +68,12 @@ export type CaptureBodyProps = {
   onPhoto: (file: File | null) => void;
   onSave: () => void;
 };
+
+const ROLE_WORD = {
+  single: 'intake.roleSingle',
+  before: 'evidence.before',
+  after: 'evidence.after',
+} as const;
 
 function hintOf({ why, skipped }: Pick<CaptureBodyProps, 'why' | 'skipped'>): string | null {
   if (skipped !== undefined) return t('phone.capture.skipped', { board: skipped });
@@ -175,6 +187,25 @@ export function CaptureBody(p: CaptureBodyProps) {
             </button>
           </div>
         ) : null}
+        {p.photo && p.roles && p.roles.length > 1 ? (
+          <fieldset className="cap-roles">
+            <legend>
+              {p.roles.includes('single')
+                ? t('phone.capture.roleWhere')
+                : t('phone.capture.roleOf')}
+            </legend>
+            {p.roles.map((each) => (
+              <button
+                key={each}
+                type="button"
+                aria-pressed={each === (p.role ?? p.roles?.[0])}
+                onClick={() => p.onRole?.(each)}
+              >
+                {t(ROLE_WORD[each])}
+              </button>
+            ))}
+          </fieldset>
+        ) : null}
         <div className="cap-acts">
           <label className="photo">
             <input
@@ -266,6 +297,7 @@ export function CaptureSheet() {
   const [title, setTitle] = useState('');
   const [note, setNote] = useState('');
   const [photo, setPhoto] = useState<Photo>(null);
+  const [role, setRole] = useState<EvidenceRole>();
   const file = useRef<File | null>(null);
   const [posting, setPosting] = useState(false);
   const [error, setError] = useState<string>();
@@ -284,6 +316,7 @@ export function CaptureSheet() {
     setTitle('');
     setNote('');
     setPhoto(null);
+    setRole(undefined);
     file.current = null;
     setPosting(false);
     setError(undefined);
@@ -332,7 +365,7 @@ export function CaptureSheet() {
     if (!board || !type || posting) return;
     setPosting(true);
     setError(undefined);
-    const { fields, files } = capturePayload(type, { title, note, photo: file.current });
+    const { fields, files } = capturePayload(type, { title, note, photo: file.current, role });
     // The PC does not answer: the capture waits on the phone and goes when it does.
     const keep = async () => {
       const [photo] = files;
@@ -405,6 +438,9 @@ export function CaptureSheet() {
         title={title}
         note={note}
         photo={photo}
+        roles={board?.type && photo ? photoRoles(board.type, photo.name) : []}
+        role={role}
+        onRole={setRole}
         posting={posting}
         queues={app.sync.offline && queueAvailable()}
         error={error}

@@ -1,3 +1,5 @@
+import type { LayoutEntry as CoreEntry } from '../../src/core/modules.ts';
+import { moduleAccepts } from '../../src/core/placement.ts';
 import { evidenceEntries } from './evidence.ts';
 import type { EvidenceRole, LayoutEntry, LayoutSlot, TypeView } from './types.ts';
 
@@ -13,8 +15,14 @@ export type FileDraft = { key: string; file: File; role: EvidenceRole };
 
 // The roles a file of this type can take: a type with no evidence module takes any; a compare takes
 // a before and an after, every other module single files. One role offered is no choice at all.
-export function rolesFor(type: TypeView): EvidenceRole[] {
-  const modules = evidenceEntries(type, SLOTS);
+// Given the file, only the modules that take it count (the server places it in one of them): a photo
+// on a board whose only image module compares is a before or an after. When none takes it, the
+// type's roles stand and the server says why it refuses.
+export function rolesFor(type: TypeView, filename?: string): EvidenceRole[] {
+  const all = evidenceEntries(type, SLOTS);
+  const taking =
+    filename === undefined ? [] : all.filter((e) => moduleAccepts(e as CoreEntry, filename));
+  const modules = taking.length > 0 ? taking : all;
   if (modules.length === 0) return ['single', 'before', 'after'];
   const isCompare = ({ module, variant }: LayoutEntry) =>
     module === 'images' && variant === 'compare';
@@ -52,9 +60,14 @@ export function tooLarge(file: Pick<File, 'size'>): boolean {
 export function withFiles(
   drafts: readonly FileDraft[],
   files: readonly File[],
-  role: EvidenceRole,
+  // One role for every file, or each file's own (the first its modules take).
+  role: EvidenceRole | ((file: File) => EvidenceRole),
   key: () => string,
 ): FileDraft[] {
   const room = Math.max(0, MAX_FILES - drafts.length);
-  return [...drafts, ...files.slice(0, room).map((file) => ({ key: key(), file, role }))];
+  const roleOf = typeof role === 'function' ? role : () => role;
+  return [
+    ...drafts,
+    ...files.slice(0, room).map((file) => ({ key: key(), file, role: roleOf(file) })),
+  ];
 }

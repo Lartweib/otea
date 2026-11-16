@@ -4,7 +4,7 @@ import { fieldLabel, missingToCreate, startOf } from '../intake.ts';
 import { firstRole, rolesFor } from '../intake-files.ts';
 import { intakeTypes } from '../item-types.ts';
 import { fieldWord, stateWord } from '../preset-words.ts';
-import type { CollectionView, TypeView } from '../types.ts';
+import type { CollectionView, EvidenceRole, TypeView } from '../types.ts';
 
 // The phone's quick capture (mock "Captura rápida", screen 3): a sheet from below with the title
 // focused, the board it goes to as a chip, an optional note and photo, and Guardar. This file is
@@ -154,15 +154,30 @@ export function noteField(type: TypeView): string | undefined {
   )?.name;
 }
 
-// What Guardar sends: the title, the note where the type keeps it, the photo as evidence.
+// The roles a photo can take on this type: those of the modules that take an image. More than one
+// is a choice the capture shows (Antes, Después).
+export function photoRoles(type: TypeView, name: string): EvidenceRole[] {
+  return rolesFor(type, name);
+}
+
+// What Guardar sends: the title, the note where the type keeps it, the photo as evidence, in the
+// role picked (else the first its modules take).
 export function capturePayload(
   type: TypeView,
-  { title, note, photo }: { title: string; note: string; photo: File | null },
+  {
+    title,
+    note,
+    photo,
+    role,
+  }: { title: string; note: string; photo: File | null; role?: EvidenceRole | undefined },
 ): { fields: Record<string, string>; files: NewFile[] } {
   const fields: Record<string, string> = { title: title.trim() };
   const into = noteField(type);
   if (into && note.trim() !== '') fields[into] = note.trim();
-  const files = photo ? [{ file: photo, role: firstRole(rolesFor(type)) }] : [];
+  const roles = photo ? photoRoles(type, photo.name) : [];
+  const files = photo
+    ? [{ file: photo, role: role && roles.includes(role) ? role : firstRole(roles) }]
+    : [];
   return { fields, files };
 }
 

@@ -261,6 +261,38 @@
 .capture .cp-name small.big {
   color: var(--warn);
 }
+/* Antes or Después: where the board's only image part compares (DR-2). */
+.capture .cap-roles {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 10px 4px 0;
+  padding: 0;
+  border: 0;
+}
+.capture .cap-roles legend {
+  float: left;
+  width: 100%;
+  margin-bottom: 2px;
+  font: 400 12.5px / 1.3 var(--sans);
+  color: var(--ink-2);
+}
+.capture .cap-roles button {
+  min-height: 44px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  box-shadow: inset 0 0 0 1px var(--rule-2);
+  font: 500 14px var(--sans);
+  color: var(--ink-2);
+  -webkit-tap-highlight-color: transparent;
+}
+.capture .cap-roles button[aria-pressed="true"] {
+  box-shadow: inset 0 0 0 1.5px var(--ink);
+  color: var(--ink);
+}
 .capture .cap-acts {
   display: flex;
   align-items: center;

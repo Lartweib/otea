@@ -22,6 +22,8 @@ export const phone = {
   'phone.capture.photo': 'Add a photo',
   'phone.capture.photoAgain': 'Take another photo',
   'phone.capture.removePhoto': 'Remove the photo',
+  'phone.capture.roleOf': 'Is the photo the before or the after?',
+  'phone.capture.roleWhere': 'The photo goes as',
   'phone.capture.tooLarge': 'Over {mb} MB: it will not upload',
   'phone.capture.lands': 'lands in {board} › {step}',
   'phone.capture.save': 'Save',

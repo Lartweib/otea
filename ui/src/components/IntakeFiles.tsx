@@ -37,8 +37,8 @@ function Thumb({ file }: { file: File }) {
 
 type IntakeFilesProps = {
   drafts: readonly FileDraft[];
-  // The roles the type offers its files; one role is no choice, so none is shown.
-  roles: readonly EvidenceRole[];
+  // The roles the type offers a file, by its name; one role is no choice, so none is shown.
+  roles: (name: string) => readonly EvidenceRole[];
   disabled: boolean;
   onAdd: (files: File[]) => void;
   onRole: (key: string, role: EvidenceRole) => void;
@@ -111,6 +111,7 @@ export function IntakeFiles({
           <ul className="intake-file-list">
             {drafts.map(({ key, file, role }) => {
               const large = tooLarge(file);
+              const offered = roles(file.name);
               return (
                 <li key={key} className="intake-file" data-error={large || undefined}>
                   <Thumb file={file} />
@@ -120,12 +121,12 @@ export function IntakeFiles({
                       {large ? t('intake.tooLarge', { mb: MAX_FILE_MB }) : sizeLabel(file.size)}
                     </span>
                   </span>
-                  {roles.length > 1 ? (
+                  {offered.length > 1 ? (
                     <fieldset className="intake-roles" disabled={disabled}>
                       <legend className="visually-hidden">
                         {t('intake.roleOf', { name: file.name })}
                       </legend>
-                      {roles.map((each) => (
+                      {offered.map((each) => (
                         <button
                           key={each}
                           type="button"
