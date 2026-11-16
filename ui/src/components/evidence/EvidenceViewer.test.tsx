@@ -108,3 +108,55 @@ describe('a diff', () => {
     expect(html).not.toMatch(/>wrap</);
   });
 });
+
+describe('a diff side by side', () => {
+  const diff = piece('diff', 'lado.diff', 'text/x-diff');
+  keepEvidenceText(
+    `/api/evidence/${diff.id}/file`,
+    'diff --git a/x.ts b/x.ts\n--- a/x.ts\n+++ b/x.ts\n@@ -1,2 +1,2 @@\n keep\n-old\n+new\n',
+  );
+
+  it('offers unified and side by side on the desk, unified first', () => {
+    const html = renderToStaticMarkup(<EvidenceViewer evidence={diff} />);
+    expect(html).toMatch(/aria-pressed="true"[^>]*>unified</);
+    expect(html).toMatch(/aria-pressed="false"[^>]*>side by side</);
+  });
+
+  it('draws the old and the new file in two columns when asked', () => {
+    const html = renderToStaticMarkup(<EvidenceViewer evidence={diff} split />);
+    expect(html).toContain('ev-split');
+    expect(html).toMatch(/data-side="old"[\s\S]*old[\s\S]*data-side="new"[\s\S]*new/);
+  });
+
+  it('keeps the phone unified, with no choice', () => {
+    const html = renderToStaticMarkup(<EvidenceViewer evidence={diff} phone />);
+    expect(html).not.toContain('side by side');
+    expect(html).not.toContain('ev-split');
+  });
+});
+
+describe('a log', () => {
+  const log = piece('log', 'pruebas.log', 'text/plain');
+  keepEvidenceText(
+    `/api/evidence/${log.id}/file`,
+    'RUN v5\n ✓ adds\nFAIL src/tip.test.ts\nError: expected 2\ndone\n',
+  );
+
+  it('can be searched and says how many lines report a failure', () => {
+    const html = renderToStaticMarkup(<EvidenceViewer evidence={log} />);
+    expect(html).toMatch(/<input[^>]*type="search"[^>]*aria-label="Search the log"/);
+    expect(html).toMatch(/>next error · 2</);
+  });
+
+  it('marks the lines that report a failure', () => {
+    const html = renderToStaticMarkup(<EvidenceViewer evidence={log} />);
+    expect(html.match(/data-error="true"/g)?.length).toBe(2);
+  });
+
+  it('offers no jump when nothing failed', () => {
+    const clean = piece('log', 'ok.log', 'text/plain');
+    keepEvidenceText(`/api/evidence/${clean.id}/file`, 'all good\n');
+    const html = renderToStaticMarkup(<EvidenceViewer evidence={clean} />);
+    expect(html).not.toContain('next error');
+  });
+});
