@@ -113,12 +113,24 @@ export type LinkedView = Linked & {
   ended?: RelatedItem['closes'];
 };
 
+// The links that hold nothing back but say how two items stand, in any board: what it implements
+// (an idea's tasks), duplicates or relates to. Kept by kind, in this order.
+export const RELATED_KINDS = [
+  'implements',
+  'implemented_by',
+  'duplicates',
+  'duplicated_by',
+  'relates',
+] as const;
+export type RelatedKind = (typeof RELATED_KINDS)[number];
+
 export type ItemLinks = {
   parent: LinkedView | null;
   parts: LinkedView[];
   partsBoard: string | null;
   blockers: LinkedView[];
   blocking: LinkedView[];
+  related: { kind: RelatedKind; items: LinkedView[] }[];
 };
 
 type Names = (related: RelatedItem) => { board: string; step?: string };
@@ -156,6 +168,9 @@ export function linksOf(
     partsBoard: block?.partsBoard ?? null,
     blockers: block ? merged(block.blockers) : of('blocked_by'),
     blocking: block ? merged(block.blocking) : of('blocks'),
+    related: RELATED_KINDS.map((kind) => ({ kind, items: of(kind) })).filter(
+      ({ items }) => items.length > 0,
+    ),
   };
 }
 

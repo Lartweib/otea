@@ -428,7 +428,8 @@ export function PartsSection({
   );
 }
 
-// Enlaces: "Lo frena" and "Frena a", each with its picker and its note (F11), across boards.
+// Enlaces: "Lo frena" and "Frena a", each with its picker and its note (F11), across boards; then
+// what it implements, duplicates or relates to, and what implements it (an idea's tasks).
 export function LinksSection({
   item,
   links,
@@ -501,7 +502,21 @@ export function LinksSection({
           </div>
         </>
       ) : null}
-      {!links.blockers.length && !links.blocking.length ? (
+      {links.related.map(({ kind, items }) => (
+        <div key={kind} className="lrel">
+          <p className="lsub">{t(`bi.links.${kind}`)}</p>
+          <div className="plist">
+            {items.map((x) => (
+              <Prow
+                key={x.id}
+                x={{ ...x, step: x.step ? `${x.board} · ${x.step}` : x.board }}
+                now={now}
+              />
+            ))}
+          </div>
+        </div>
+      ))}
+      {!links.blockers.length && !links.blocking.length && !links.related.length ? (
         <p className="emptyx">{t('bi.links.none')}</p>
       ) : null}
       {canWrite ? (

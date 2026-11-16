@@ -57,6 +57,9 @@ type PhoneItemProps = {
   detailsSummary: string;
   request: ReactNode;
   requestSummary: string;
+  // What holds it back, what it holds back, implements or relates to, in any board (read only).
+  links?: ReactNode | undefined;
+  linksSummary?: string | undefined;
   refuse?: ((choice: MoveChoice) => string | null) | undefined;
   back?: ((state: string) => { agent: string | null; round: number }) | undefined;
   onClose: () => void;
@@ -329,6 +332,7 @@ export function PhoneItem(p: PhoneItemProps) {
 
   const [details, setDetails] = useState(false);
   const [request, setRequest] = useState(rounds.length === 0);
+  const [linked, setLinked] = useState(false);
 
   // ---- the moves: Aprobar and Devolver docked; a note asked for in a sheet from below ----
   const dock = p.mode === 'moves' && app.session.canWrite;
@@ -541,6 +545,16 @@ export function PhoneItem(p: PhoneItemProps) {
           onToggle={() => setRequest((v) => !v)}
         >
           {p.request}
+        </Fold>
+      ) : null}
+      {p.links ? (
+        <Fold
+          label={t('bi.links.title')}
+          summary={p.linksSummary ?? ''}
+          open={linked}
+          onToggle={() => setLinked((v) => !v)}
+        >
+          {p.links}
         </Fold>
       ) : null}
 
