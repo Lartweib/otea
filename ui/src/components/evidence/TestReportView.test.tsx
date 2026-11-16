@@ -63,10 +63,10 @@ describe('a test report', () => {
         <EvidenceViewer evidence={now} />
       </ItemEvidence.Provider>,
     );
-    expect(html).toContain('Against the previous round:');
+    expect(html).toContain('Against the earlier run:');
     expect(html).toContain('1 new failure · 1 fixed');
     expect(html).toContain('data-new="true"');
-    expect(html).toContain('Fixed since the previous round');
+    expect(html).toContain('Fixed since the earlier run');
   });
 
   it('reads a vitest JSON report in a files part, and any other JSON as data', () => {

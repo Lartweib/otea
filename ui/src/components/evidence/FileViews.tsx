@@ -8,8 +8,10 @@ import type { Evidence } from '../../types.ts';
 import { compareCells, parseDelimited } from './data-view.ts';
 import { FileMeta } from './FileMeta.tsx';
 import { fileViewOf } from './file-view.ts';
+import { useEarlier } from './item-evidence.ts';
 import { PdfFileView } from './PdfView.tsx';
 import { mayBeReport, ReportOr } from './TestReportView.tsx';
+import { TextChanges } from './TextChanges.tsx';
 import { LogView, TextState, useEvidenceText } from './TextViews.tsx';
 
 // The source of a data file (the lines it came as), a toggle away from how it reads.
@@ -178,20 +180,32 @@ export function JsonFileView({ evidence }: { evidence: Evidence }) {
   );
 }
 
-// A Markdown file (a design document, a README) read as formatted text, its source a toggle away.
+// A Markdown file (a design document, a README) read as formatted text, its source a toggle away;
+// when the round before handed a version of it, what changed against that one is another.
 export function MarkdownFileView({ evidence }: { evidence: Evidence }) {
   const state = useEvidenceText(evidence);
-  const [source, setSource] = useState(false);
+  const earlier = useEarlier(evidence);
+  const [show, setShow] = useState<'read' | 'source' | 'changes'>('read');
   if (state.status !== 'ready') return <TextState state={state} evidence={evidence} />;
+  const toggle = (to: 'source' | 'changes') => setShow(show === to ? 'read' : to);
   return (
     <div className="ev-doc">
       <div className="ev-tools">
         <FileMeta evidence={evidence} />
-        <Button size="sm" aria-pressed={source} onClick={() => setSource(!source)}>
-          {t('evidence.source')}
-        </Button>
+        <span className="ev-tool-set">
+          {earlier ? (
+            <Button size="sm" aria-pressed={show === 'changes'} onClick={() => toggle('changes')}>
+              {t('evidence.changes.toggle')}
+            </Button>
+          ) : null}
+          <Button size="sm" aria-pressed={show === 'source'} onClick={() => toggle('source')}>
+            {t('evidence.source')}
+          </Button>
+        </span>
       </div>
-      {source ? (
+      {show === 'changes' && earlier ? (
+        <TextChanges evidence={evidence} earlier={earlier} />
+      ) : show === 'source' ? (
         <pre className="ev-doc-source">{state.text}</pre>
       ) : (
         <div

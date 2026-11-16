@@ -1284,3 +1284,58 @@
   cursor: pointer;
   color: var(--ink-2);
 }
+
+/* A document against its version of the round before: words or paragraphs removed and added. */
+.ev-changes {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.ev-changes-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 12px;
+  color: var(--ink-2);
+}
+
+.ev-changes-body {
+  max-width: 72ch;
+  padding: 14px 16px;
+  border-radius: 8px;
+  display: grid;
+  gap: 10px;
+  font: 400 14px / 1.6 var(--sans);
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+}
+
+.ev-changes-body p {
+  margin: 0;
+}
+
+.ev-changes-body ins,
+.ev-changes-body del {
+  text-decoration: none;
+  border-radius: 3px;
+  padding: 0 1px;
+}
+
+.ev-changes-body ins {
+  color: var(--plus);
+  background: color-mix(in oklch, var(--plus) 13%, transparent);
+}
+
+.ev-changes-body del {
+  color: var(--minus);
+  background: color-mix(in oklch, var(--minus) 11%, transparent);
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+}
+
+.ev-para-pair {
+  display: grid;
+  gap: 6px;
+}
