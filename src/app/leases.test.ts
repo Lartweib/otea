@@ -112,6 +112,13 @@ describe('leases', () => {
       expect(events()).toHaveLength(2);
     });
 
+    it('never shortens a longer lease when no ttl is given', () => {
+      claimItem(ctx, { id: 'TASKS-2', actor: claude, ttlMs: 3_600_000 }, at(T0));
+
+      const item = heartbeatItem(ctx, { id: 'TASKS-2', actor: claude }, at(T5));
+      expect(item.lease?.expiresAt).toBe('2026-01-01T01:00:00.000Z');
+    });
+
     it('accepts a ttl', () => {
       const item = heartbeatItem(ctx, { id: 'TASKS-1', actor: claude, ttlMs: 60_000 }, at(T5));
 

@@ -49,10 +49,10 @@ export function heartbeatItem(ctx: Context, input: LeaseInput, now = systemClock
     const at = now();
     const current = activeLease(item.lease, at);
     if (current?.holder !== input.actor.name) throw notHolder(item, input.actor, at);
-    const lease = {
-      holder: current.holder,
-      expiresAt: leaseExpiry(at, input.ttlMs ?? DEFAULT_LEASE_TTL_MS),
-    };
+    // A ttl given sets the lease from now; none extends it, never shortening a longer one.
+    const extended = leaseExpiry(at, input.ttlMs ?? DEFAULT_LEASE_TTL_MS);
+    const keep = input.ttlMs === undefined && current.expiresAt > extended;
+    const lease = { holder: current.holder, expiresAt: keep ? current.expiresAt : extended };
     takeLease(db, item.id, lease, at);
     return present({ ...item, lease }, workflowOf(ctx, item), at);
   });
