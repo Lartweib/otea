@@ -501,6 +501,8 @@ function isTheirs(
   if (isClosed(position)) return false;
   // A question waits for the person: the turn is theirs until they answer it.
   if (itemOnBoard(ctx, item, def).asking) return false;
+  // Planned work waits for the plan that made it to be approved.
+  if (plannedBy(ctx, item)) return false;
   const mine =
     position.phase === 'doing'
       ? mayTake(def, position.step)
@@ -1228,6 +1230,44 @@ export function boardModule(ctx: Context, collection: string, module: string): s
 }
 
 // An agent claims only what is its own on a board: a step it may take, or a review it does.
+// The item a planned item waits for, if any: what it implements (or, for a sub-item, what its
+// parent waits for), while that item is open and still in the step it stood in when the plan was
+// linked. A step that waits for its parts never holds them, which would hold both forever.
+export function plannedBy(
+  ctx: Context,
+  item: ItemRecord,
+  seen = new Set<string>(),
+): { id: string; step: string } | undefined {
+  if (seen.has(item.id)) return undefined;
+  seen.add(item.id);
+  for (const relation of selectRelationsOf(ctx.db, item.id)) {
+    if (relation.from !== item.id) continue;
+    if (relation.kind === 'parent') {
+      const held = plannedBy(ctx, requireItem(ctx.db, relation.to), seen);
+      if (held) return held;
+      continue;
+    }
+    if (relation.kind !== 'implements') continue;
+    const plan = requireItem(ctx.db, relation.to);
+    const board = liveBoardOf(ctx, plan.collection);
+    const position = positionOf(plan.state);
+    if (!board || isClosed(position)) continue;
+    const step = stepById(board.def, position.step);
+    if (!step || step.waits.includes('parts')) continue;
+    const then = selectEvents(ctx.db, plan.id)
+      .filter(
+        ({ type, at }) =>
+          (type === 'created' || type === 'transitioned') && at <= relation.createdAt,
+      )
+      .at(-1);
+    const state = then?.type === 'created' ? then.data.state : then?.data.to;
+    if (typeof state !== 'string') continue;
+    const was = positionOf(state);
+    if (!isClosed(was) && was.step === position.step) return { id: plan.id, step: step.name };
+  }
+  return undefined;
+}
+
 function assertMayHandOff(ctx: Context, item: ItemRecord, agent: string, at: string): void {
   const left = leftFor(ctx, item.id);
   if (left !== undefined && left !== agent) {
@@ -1252,6 +1292,13 @@ export function assertMayClaim(ctx: Context, item: ItemRecord, agent: string): v
   if (isClosed(position)) return;
   const step = stepById(board.def, position.step);
   if (!step) return;
+  const planned = plannedBy(ctx, item);
+  if (planned) {
+    throw new OteaError(
+      'not_claimable',
+      `${item.id} waits for ${planned.id}, which planned it, to leave ${planned.step}; claim only what is yours (otea next)`,
+    );
+  }
   // While a question waits, the item stays with the agent that asked it.
   const asking = itemOnBoard(ctx, item, board.def).asking;
   if (asking && asking.by !== agent) {

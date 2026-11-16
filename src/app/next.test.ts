@@ -19,6 +19,7 @@ import {
   OFFER_MS,
   sendBackItem,
 } from './next.ts';
+import { linkItems } from './relations.ts';
 import { reassignItem } from './restart.ts';
 import { memoryContext } from './testing.ts';
 import { undoMove } from './undo.ts';
@@ -523,6 +524,32 @@ describe('leases on a board', () => {
     expect(itemNextText(ctx, getItem(ctx, item.id, now), 'kiln', now)).not.toContain(
       'left it for you',
     );
+  });
+});
+
+describe('work planned by an item still in its step', () => {
+  it('holds what implements an item until that item leaves the step it was planned in', () => {
+    const ctx = memoryContext();
+    board(ctx);
+    const plan = creature(ctx, 'Plan');
+    claimItem(ctx, { id: plan.id, actor: quill }, now);
+    const task = creature(ctx, 'Tarea');
+    linkItems(
+      ctx,
+      { id: task.id, kind: 'implements', other: plan.id, actor: quill, channel: 'cli' },
+      now,
+    );
+
+    expect(nextFor(ctx, 'kiln', {}, now).item).toBeNull();
+    expect(() => claimItem(ctx, { id: task.id, actor: kiln }, now)).toThrow(
+      `${task.id} waits for ${plan.id}, which planned it, to leave Concepto; claim only what is yours (otea next)`,
+    );
+    attach(ctx, plan.id, 'eart');
+    handoffItem(ctx, { id: plan.id, actor: quill, channel: 'cli' }, now);
+    expect(nextFor(ctx, 'kiln', {}, now).item).toBeNull();
+
+    approveItem(ctx, { id: plan.id, actor: you, channel: 'ui' }, now);
+    expect(nextFor(ctx, 'kiln', {}, now).item).toBe(task.id);
   });
 });
 
