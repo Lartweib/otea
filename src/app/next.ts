@@ -425,14 +425,16 @@ export function boardBlockOf(ctx: Context, item: ItemRecord): BoardBlock | undef
 }
 
 // The round of the step an item is on, as the engine counts it (what `otea next` says); undefined
-// off a board or once closed. `boards` lets a list read the live boards once.
+// off a board, 0 once closed. `boards` lets a list read the live boards once.
 export function boardRoundOf(
   ctx: Context,
   item: ItemRecord,
   boards: readonly LiveBoard[] = liveBoards(ctx),
 ): number | undefined {
   const board = boards.find(({ collection }) => collection === item.collection);
-  if (!board || isClosed(positionOf(item.state))) return undefined;
+  if (!board) return undefined;
+  // A closed item is in no round: 0, so no list falls back to counting rounds across its steps.
+  if (isClosed(positionOf(item.state))) return 0;
   return itemOnBoard(ctx, item, board.def).round;
 }
 

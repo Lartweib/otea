@@ -1,8 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createItem, getItem } from '../app/items.ts';
+import { dropItem } from '../app/next.ts';
 import type { Project } from '../app/project.ts';
 import { publishAs } from '../app/testing.ts';
-import { cambios, tareasDeRepo } from '../core/board/testing.ts';
+import { cambios, errores, tareasDeRepo } from '../core/board/testing.ts';
 import { createServer, type OteaServer } from './server.ts';
 import { LOCAL_HOST, memoryProject, SESSION_COOKIE, TOKEN } from './testing.ts';
 
@@ -91,6 +92,27 @@ describe('GET /api/items on a board', () => {
     });
     const items = (await response.json()) as { id: string; round?: number }[];
     expect(items.find(({ id }) => id === parent.id)?.round).toBe(1);
+    server.close();
+    project.db.close();
+  });
+
+  it('carries no round for a closed item, so no list counts rounds across its steps', async () => {
+    const project = memoryProject();
+    publishAs(project, errores(), 'berr');
+    const bug = createItem(project, {
+      collection: 'Errores',
+      title: 'Faro',
+      fields: {},
+      actor: you,
+      channel: 'ui',
+    });
+    dropItem(project, { id: bug.id, actor: you, channel: 'ui', reason: 'x', motive: 'Rechazado' });
+    const server = createServer(project, { token: TOKEN });
+    const response = await server.app.request('/api/items', {
+      headers: { host: LOCAL_HOST, cookie: SESSION_COOKIE },
+    });
+    const items = (await response.json()) as { id: string; round?: number }[];
+    expect(items.find(({ id }) => id === bug.id)?.round).toBe(0);
     server.close();
     project.db.close();
   });

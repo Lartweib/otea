@@ -15,7 +15,7 @@ import { stateName } from '../../../../src/core/board/reading.ts';
 import { describeEvent, formatTime, momentParts, relayOf } from '../../format.ts';
 import { t } from '../../i18n/i18n.ts';
 import type { AgentProfile } from '../../presence.ts';
-import { fieldWord, valueWord } from '../../preset-words.ts';
+import { fieldWord, keptStateWord, valueWord } from '../../preset-words.ts';
 import { profileValue } from '../../profile-words.ts';
 import type { ItemEvent, TypeView } from '../../types.ts';
 
@@ -66,11 +66,13 @@ export function historyOf(
   // reads by the board's step of that id, or says the step is gone; off a board, as stored.
   const named = (state: string, kept: unknown) => {
     if (states.has(state)) return word(state);
-    if (typeof kept === 'string' && kept !== '') return kept;
+    if (typeof kept === 'string' && kept !== '') return keptStateWord(kept);
     if (!board) return word(state);
     const position = positionOf(state);
     if (isClosed(position)) return word(state);
-    return stepById(board, position.step) ? stateName(board, state) : t('sheet.h.goneStep');
+    return stepById(board, position.step)
+      ? keptStateWord(stateName(board, state))
+      : t('sheet.h.goneStep');
   };
   const sorted = [...events]
     .filter(({ type }) => type !== NOTE_ANSWERED)
