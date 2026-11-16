@@ -1,5 +1,7 @@
 import { setTimeout as delay } from 'node:timers/promises';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { listAgents } from '../app/presence.ts';
+import { openProject } from '../app/project.ts';
 import {
   type Cli,
   cliAt,
@@ -61,6 +63,20 @@ describe('wait', () => {
 
     expect(await waiting.done).toBe(0);
     expect(waiting.out()).toBe('TASKS-2  Hacerlo (in review)  human  Second\n');
+  });
+
+  it('counts the waiting agent as listening from the start of its wait', async () => {
+    const waiting = startCli(repo.dir, 'wait', '--turn', 'human', '--as', 'quill');
+    expect(await settled(waiting)).toBe(false);
+
+    const project = openProject(repo.dir);
+    try {
+      const quill = listAgents(project.db).find(({ name }) => name === 'quill');
+      expect(quill).toMatchObject({ listening: true, live: true });
+    } finally {
+      project.db.close();
+      await waiting.stop();
+    }
   });
 
   it('keeps waiting while the only matches are in another collection', async () => {

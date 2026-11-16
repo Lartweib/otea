@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { creatures } from '../core/board/testing.ts';
 import { agentDetail } from './agent-detail.ts';
 import type { Context } from './context.ts';
-import { seeAgent } from './presence.ts';
+import { hearAgent, seeAgent } from './presence.ts';
 import { declareProfile } from './profile.ts';
 import { memoryContext, publishAs } from './testing.ts';
 
@@ -28,7 +28,8 @@ describe('agentDetail', () => {
 
   it('gives its presence and every profile it declared, oldest first', () => {
     const mcp = { agent: 'kiln', channel: 'mcp' as const, harness: CLAUDE_CODE };
-    seeAgent(ctx.db, mcp, at(T0));
+    // Connected through an open MCP server, which hears it.
+    hearAgent(ctx.db, mcp, at(T0));
     declareProfile(ctx.db, { ...mcp, model: 'claude-opus-5-5', effort: 'high' }, at(T0));
     declareProfile(ctx.db, { ...mcp, model: 'claude-sonnet-5', effort: 'medium' }, at(T1));
 

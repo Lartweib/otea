@@ -5,7 +5,14 @@ import { addCollection } from './collections.ts';
 import type { Context } from './context.ts';
 import { createItem } from './items.ts';
 import { claimItem, releaseItem } from './leases.ts';
-import { CLI_HARNESS, listAgents, presenceSignature, seeAgent } from './presence.ts';
+import {
+  CLI_HARNESS,
+  hearAgent,
+  listAgents,
+  presenceSignature,
+  seeAgent,
+  waitBeat,
+} from './presence.ts';
 import { declareProfile } from './profile.ts';
 import { memoryContext } from './testing.ts';
 
@@ -17,6 +24,8 @@ const T0_20S = '2026-01-01T00:00:20.000Z';
 const T1 = '2026-01-01T00:01:00.000Z';
 const T5 = '2026-01-01T00:05:00.000Z';
 const T5_1S = '2026-01-01T00:05:01.000Z';
+const T2 = '2026-01-01T00:02:00.000Z';
+const T2_31S = '2026-01-01T00:02:31.000Z';
 const T30 = '2026-01-01T00:30:00.000Z';
 
 const at = (time: string) => () => time;
@@ -110,10 +119,16 @@ describe('agent presence', () => {
       expect(listAgents(ctx.db, at(T0))).toEqual([]);
     });
 
-    it('counts an agent as live for five minutes after it was seen', () => {
-      seeAgent(ctx.db, { agent: 'claude', channel: 'mcp', harness: CLAUDE_CODE }, at(T0));
+    it('never counts an agent live for having been seen: a read or a write is no listening', () => {
+      seeAgent(ctx.db, { agent: 'claude', channel: 'cli' }, at(T0));
 
-      expect(listAgents(ctx.db, at(T5))).toEqual([
+      expect(listAgents(ctx.db, at(T0))[0]).toMatchObject({ live: false, listening: false });
+    });
+
+    it('counts an agent live while it listens: an open MCP server or a wait hears it', () => {
+      hearAgent(ctx.db, { agent: 'claude', channel: 'mcp', harness: CLAUDE_CODE }, at(T0));
+
+      expect(listAgents(ctx.db, at(T2))).toEqual([
         {
           name: 'claude',
           harness: 'claude-code',
@@ -122,12 +137,22 @@ describe('agent presence', () => {
           holding: [],
           lastSeen: T0,
           live: true,
+          listening: true,
           profile: null,
           profileConfirmed: false,
           profileChangedAt: null,
         },
       ]);
-      expect(listAgents(ctx.db, at(T5_1S))[0]?.live).toBe(false);
+      expect(listAgents(ctx.db, at(T2_31S))[0]).toMatchObject({ live: false, listening: false });
+    });
+
+    it('hears an agent on every beat of its wait', () => {
+      const beat = waitBeat(ctx.db, { agent: 'claude', channel: 'cli' }, at(T5));
+      expect(beat.everyMs).toBeLessThanOrEqual(60_000);
+
+      beat.run();
+
+      expect(listAgents(ctx.db, at(T5_1S))[0]).toMatchObject({ live: true, listening: true });
     });
 
     it('lists the items an agent holds a live lease on, and keeps it live while it holds them', () => {
@@ -160,7 +185,7 @@ describe('agent presence', () => {
       seeAgent(ctx.db, { agent: 'holder', channel: 'cli' }, at(T0));
       const holder: Actor = { kind: 'agent', name: 'holder' };
       claimItem(ctx, { id: 'TASKS-1', actor: holder, ttlMs: 60 * 60_000 }, at(T0));
-      seeAgent(ctx.db, { agent: 'recent', channel: 'cli' }, at(T30));
+      hearAgent(ctx.db, { agent: 'recent', channel: 'cli' }, at(T30));
       seeAgent(ctx.db, { agent: 'gone', channel: 'cli' }, at(T1));
 
       const names = listAgents(ctx.db, at(T30)).map(({ name, live }) => [name, live]);

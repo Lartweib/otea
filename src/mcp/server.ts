@@ -117,6 +117,8 @@ export type McpContext = {
   agent?: string;
   warn(message: string): void;
   greeted?(harness: Harness | undefined): void;
+  // An agent called a tool: the server, open, keeps it heard as listening (otea mcp beats it).
+  heard?(agent: string): void;
 };
 
 type Values = Record<string, unknown>;
@@ -173,7 +175,10 @@ function inputFor(
   const agent = typeof values.as === 'string' && values.as !== '' ? values.as : context.agent;
   // The first call of each agent on this server starts its session here.
   const newSession = agent !== undefined && !seen.has(agent);
-  if (agent !== undefined) seen.add(agent);
+  if (agent !== undefined) {
+    if (newSession) context.heard?.(agent);
+    seen.add(agent);
+  }
   return {
     cwd: context.cwd,
     get actor(): Actor {

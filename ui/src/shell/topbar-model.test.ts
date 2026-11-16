@@ -235,7 +235,8 @@ describe('the agents menu’s rows', () => {
       feed,
     );
     expect(rows.map((r) => r.name)).toEqual(['Kiln', 'Scout', 'Quill', 'Idle']);
-    expect(agentCounts(rows)).toEqual({ live: 4, holding: 1, idle: 3, quiet: 1, noProfile: 4 });
+    // The quiet one is no listener: idle counts only those listening with nothing held.
+    expect(agentCounts(rows)).toEqual({ live: 4, holding: 1, idle: 2, quiet: 1, noProfile: 4 });
   });
 });
 

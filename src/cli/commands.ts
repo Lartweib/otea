@@ -56,7 +56,7 @@ import {
 import { agentNotes, noteWaiting, replyNote, roundNotesOf } from '../app/notes.ts';
 import { performanceOf } from '../app/performance.ts';
 import { lanOpen, type Probe, type TransportKind } from '../app/phone.ts';
-import { type Harness, seeAgent, waitBeat } from '../app/presence.ts';
+import { type Harness, hearAgent, LISTEN_BEAT_MS, seeAgent, waitBeat } from '../app/presence.ts';
 import {
   declareProfile,
   presetProfile,
@@ -230,7 +230,9 @@ async function withProjectWhile<T>(cwd: string, use: (project: Project) => Promi
 function seen(project: Project, input: Input, actor: Actor = input.actor): void {
   const { channel, harness, newSession } = input;
   if (actor.kind !== 'agent') return;
-  seeAgent(project.db, {
+  // Through an MCP server the agent is connected: the open server is listening for it.
+  const note = channel === 'mcp' ? hearAgent : seeAgent;
+  note(project.db, {
     agent: actor.name,
     channel,
     harness,
@@ -1241,7 +1243,8 @@ const wait: Command = {
       const me = input.actor.name;
       const check = () =>
         noteWaiting(project, me) ?? answerWaiting(project, me) ?? oldestWaiting(project, filter);
-      // Waiting is not time away: the agent is seen as it waits, so its profile stays confirmed.
+      // Waiting is listening: the agent is heard as it waits, so it counts as connected and its
+      // profile stays confirmed.
       const beat =
         input.actor.kind === 'agent'
           ? {
@@ -1252,6 +1255,8 @@ const wait: Command = {
               }),
             }
           : {};
+      // It listens from the start, not from its first beat.
+      beat.beat?.run();
       const waited = await watch(project.db, check, { ...options, ...beat });
       if (!('found' in waited)) return waited;
       const { found } = waited;
@@ -1689,16 +1694,28 @@ const open: Command = {
 };
 
 // Stdout carries the protocol, so the command prints nothing itself.
-// The agent counts as seen as soon as its MCP client connects. Without a project yet there is
-// nowhere to note it, and every tool call will say so, so that is no warning.
-function greetedBy(cwd: string, actor: Actor, harness: Harness | undefined, warn: Input['warn']) {
+// The agent counts as heard as soon as its MCP client connects, and again on every beat while the
+// server stays open. Without a project yet there is nowhere to note it, and every tool call will
+// say so, so that is no warning.
+function heardBy(
+  cwd: string,
+  agent: string,
+  harness: Harness | undefined,
+  warn: Input['warn'],
+  newSession = false,
+) {
   try {
     withProject(cwd, (project) =>
-      seeAgent(project.db, { agent: actor.name, channel: 'mcp', harness, newSession: true }),
+      hearAgent(project.db, {
+        agent,
+        channel: 'mcp',
+        harness,
+        ...(newSession ? { newSession } : {}),
+      }),
     );
   } catch (error) {
     if (error instanceof OteaError && error.code === 'not_found') return;
-    warn(`could not note ${actor.name} as seen: ${(error as Error).message}`);
+    warn(`could not note ${agent} as seen: ${(error as Error).message}`);
   }
 }
 
@@ -1710,11 +1727,27 @@ const mcp: Command = {
   options: {},
   execute: async ({ cwd, agent, signal, warn }) => {
     if (agent !== undefined) assertAgentName(agent);
+    // Every agent that connected or called through this server, heard again on each beat until
+    // the client disconnects: that is what makes it count as connected.
+    const voices = new Set<string>();
+    let client: Harness | undefined;
     const greeted = (harness: Harness | undefined) => {
-      if (agent !== undefined) greetedBy(cwd, { kind: 'agent', name: agent }, harness, warn);
+      client = harness;
+      if (agent === undefined) return;
+      voices.add(agent);
+      heardBy(cwd, agent, harness, warn, true);
     };
+    const heard = (name: string) => voices.add(name);
+    const beat = setInterval(() => {
+      for (const name of voices) heardBy(cwd, name, client, warn);
+    }, LISTEN_BEAT_MS);
+    beat.unref();
     const named = agent === undefined ? {} : { agent };
-    await serveStdio(createMcpServer(COMMANDS, { cwd, ...named, warn, greeted }), signal);
+    try {
+      await serveStdio(createMcpServer(COMMANDS, { cwd, ...named, warn, greeted, heard }), signal);
+    } finally {
+      clearInterval(beat);
+    }
     return undefined;
   },
 };

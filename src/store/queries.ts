@@ -634,6 +634,21 @@ export function findAgent(db: DatabaseSync, name: string): AgentRecord | undefin
   return row && toAgent(row as AgentRow);
 }
 
+// Notes that an agent listens now: its MCP server is open, or its otea wait blocks.
+export function markListening(db: DatabaseSync, agent: string, at: string): void {
+  const sql = `INSERT INTO agents (name, last_seen, listening_at) VALUES (:agent, :at, :at)
+    ON CONFLICT (name) DO UPDATE SET listening_at = excluded.listening_at`;
+  db.prepare(sql).run({ agent, at });
+}
+
+// When each agent was last heard listening, for those ever heard.
+export function selectListening(db: DatabaseSync): Map<string, string> {
+  const rows = db
+    .prepare('SELECT name, listening_at FROM agents WHERE listening_at IS NOT NULL')
+    .all() as { name: string; listening_at: string }[];
+  return new Map(rows.map((row) => [row.name, row.listening_at]));
+}
+
 export function selectAgents(db: DatabaseSync): AgentRecord[] {
   const rows = db.prepare('SELECT * FROM agents ORDER BY name').all() as AgentRow[];
   return rows.map(toAgent);
