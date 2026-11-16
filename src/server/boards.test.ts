@@ -56,6 +56,7 @@ describe('the boards API', () => {
       'triage',
       'review',
       'decisions',
+      'ideas',
       'repos',
       'product',
     ]);
