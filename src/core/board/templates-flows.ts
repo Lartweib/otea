@@ -3,8 +3,8 @@ import { w } from './template-words.ts';
 import type { Template, TemplateSet } from './templates.ts';
 
 // The boards designed and run end to end during the overnight validation: from an idea to its
-// tasks (Ideas and Implementación), work across repositories (Trabajos and Entregas) and the bugs
-// of a team's repositories (Errores de trabajo).
+// tasks (Ideas and Implementación), the changes a person asks of an agent (Encargos), work across
+// repositories (Trabajos and Entregas) and the bugs of a team's repositories (Errores de trabajo).
 
 const IDEAS: Template = {
   key: 'ideaboard',
@@ -344,6 +344,212 @@ const IMPLEMENTATION: Template = {
   samples: {
     en: ['Habit data model', 'Today screen'],
     es: ['Modelo de datos de hábitos', 'Pantalla de hoy'],
+  },
+};
+
+// Small changes the person asks an agent for, each on its own branch: an agent clarifies it, does
+// it, and once the person approves it, lands it on main on its own (the land step).
+const CHANGES: Template = {
+  key: 'changes',
+  icon: 'git-merge',
+  name: w('Ask for changes', 'Encargos'),
+  description: w(
+    'An agent clarifies each change, does it on its own branch with its proof, and merges it into main once you approve it.',
+    'Un agente aclara cada encargo, lo hace en su rama con su prueba y lo integra en main cuando lo apruebas.',
+  ),
+  board: w('Changes', 'Encargos'),
+  item: w('Change', 'Encargo'),
+  about: w(
+    "Small changes the person asks an agent for in their own project. Each one is done on its own branch and goes through the person's review before it reaches main.",
+    'Encargos chicos que la persona le pide a un agente en un proyecto propio. Cada uno se hace en su rama y pasa por la revisión de la persona antes de llegar a main.',
+  ),
+  idle: w(
+    'No changes for you. Wait with otea wait --turn agent --unclaimed; do not make changes up.',
+    'No hay encargos para ti. Espera con otea wait --turn agent --unclaimed; no inventes encargos.',
+  ),
+  parts: [
+    {
+      key: 'want',
+      kind: 'long',
+      name: w('What I want', 'Qué quiero'),
+      hint: w(
+        'what the person asks for, in their words',
+        'lo que la persona pide, en sus palabras',
+      ),
+    },
+    {
+      key: 'check',
+      kind: 'long',
+      name: w('How I check it', 'Cómo lo valido'),
+      hint: w(
+        'a list of things the person can check to approve it',
+        'una lista de cosas que la persona puede comprobar para aprobarlo',
+      ),
+    },
+    {
+      key: 'kind',
+      kind: 'choice',
+      name: w('Kind of change', 'Clase de cambio'),
+      hint: w(
+        'what kind of change it is; it decides which proof is asked for',
+        'qué clase de cambio es; decide qué evidencia se pide',
+      ),
+      options: [
+        w('Interface', 'Interfaz'),
+        w('Bug', 'Error'),
+        w('Documentation', 'Documentación'),
+        w('Other', 'Otro'),
+      ],
+      optionKeys: ['ui', 'bug', 'doc', 'other'],
+      initial: 'other',
+    },
+    {
+      key: 'branch',
+      kind: 'branch',
+      name: w('Branch', 'Rama'),
+      hint: w('change/<id>-<topic>, made from main', 'encargo/<id>-<tema>, creada desde main'),
+      guard: { push: ['doit', 'land'], base: 'main' },
+    },
+    {
+      key: 'diff',
+      kind: 'code',
+      name: w('Diff', 'Diff'),
+      hint: w(
+        "the branch's whole git diff main...HEAD",
+        'git diff main...HEAD de la rama, completo',
+      ),
+    },
+    {
+      key: 'shots',
+      kind: 'images',
+      name: w('Screenshots', 'Capturas'),
+      hint: w('before and after, same window size', 'antes y después, mismo tamaño de ventana'),
+      show: 'ba',
+    },
+    {
+      key: 'video',
+      kind: 'video',
+      name: w('Video', 'Vídeo'),
+      hint: w(
+        'when the change reads better in motion',
+        'si el cambio se entiende mejor en movimiento',
+      ),
+    },
+    {
+      key: 'tests',
+      kind: 'log',
+      name: w('Test output', 'Salida de las pruebas'),
+      hint: w(
+        'the whole output of the test command, passing',
+        'la salida completa del comando de pruebas, pasando',
+      ),
+    },
+    {
+      key: 'commit',
+      kind: 'text',
+      name: w('Commit on main', 'Commit en main'),
+      hint: w(
+        'the short hash of the commit that landed on main',
+        'el hash corto del commit que quedó en main',
+      ),
+    },
+  ],
+  form: [
+    ['want', true],
+    ['check', false],
+    ['kind', false],
+  ],
+  steps: [
+    {
+      key: 'clarify',
+      name: w('Clarify', 'Aclarar'),
+      doer: 'any',
+      reviewer: 'none',
+      hand: [
+        ['want', 'always'],
+        ['check', 'always'],
+      ],
+      skip: true,
+      take: w(
+        'Read @{want}. If it is not enough to know what to do or how to check it, ask the person with otea ask; do not guess.',
+        'Lee @{want}. Si no alcanza para saber qué hacer o cómo comprobarlo, pregúntale a la persona con otea ask; no adivines.',
+      ),
+      before: w(
+        'Write @{check} as a short list of things the person can check, and pick the @{kind}.',
+        'Escribe @{check} como una lista corta de cosas que la persona puede comprobar, y elige el @{kind}.',
+      ),
+    },
+    {
+      key: 'doit',
+      name: w('Do it', 'Hacerlo'),
+      doer: 'any',
+      reviewer: 'you',
+      hand: [
+        ['branch', 'always'],
+        ['diff', 'always', true],
+        ['shots', 'when', true, ['kind', 'ui']],
+        ['tests', 'when', true, ['kind', 'bug']],
+      ],
+      note: w(
+        'what you changed, how you tested it and what was left out',
+        'qué cambiaste, cómo lo probaste y qué quedó afuera',
+      ),
+      take: w(
+        'Make @{branch} from main and work only there. Meet each point of @{check}; if something is ambiguous, ask with otea ask before going on. If it is a bug, write a failing test first.',
+        'Crea @{branch} desde main y trabaja solo ahí. Cumple cada punto de @{check}; si algo es ambiguo, pregunta con otea ask antes de seguir. Si es un error, escribe primero una prueba que falle.',
+      ),
+      before: w(
+        'Attach the @{diff} against main. For an interface change, @{shots} before and after. For a bug, @{tests} with the new test passing. In the note, say what you changed, how you tested it and what was left out.',
+        'Adjunta @{diff} contra main. Si es de interfaz, @{shots} antes y después. Si es un error, @{tests} con la prueba nueva pasando. En la nota, di qué cambiaste, cómo lo probaste y qué quedó afuera.',
+      ),
+    },
+    {
+      key: 'land',
+      name: w('Land', 'Integrar'),
+      doer: 'any',
+      reviewer: 'none',
+      hand: [['commit', 'always']],
+      take: w(
+        'The person approved it: rebase @{branch} on main, bring it in with a fast-forward and push main. Add nothing the person did not approve.',
+        'La persona lo aprobó: rebasa @{branch} sobre main, intégrala con fast-forward y empuja main. No agregues nada que la persona no haya aprobado.',
+      ),
+      before: w(
+        'Write in @{commit} the short hash of the commit that landed on main, and delete the branch.',
+        'Escribe en @{commit} el hash corto del commit que quedó en main y borra la rama.',
+      ),
+    },
+  ],
+  anytime: ['kind', 'video'],
+  motives: [
+    ['rejected', w('Rejected', 'Rechazado')],
+    ['duplicate', w('Duplicate', 'Duplicado')],
+    ['stale', w('No longer needed', 'Ya no hace falta')],
+  ],
+  list: { as: 'list', group: 'step' },
+  row: ['kind', 'branch'],
+  layout: {
+    rounds: 'main',
+    want: 'top',
+    check: 'main',
+    diff: 'main',
+    shots: 'main',
+    video: 'main',
+    tests: 'main',
+    kind: 'side',
+    branch: 'side',
+    commit: 'side',
+  },
+  samples: {
+    en: [
+      'A more visible button',
+      'The total per person rounds wrong',
+      'Explain how to run the tests',
+    ],
+    es: [
+      'Botón más visible',
+      'El total por persona redondea mal',
+      'Explicar cómo correr las pruebas',
+    ],
   },
 };
 
@@ -848,6 +1054,7 @@ const REPO_BUGS: Template = {
 export const FLOW_TEMPLATES: readonly Template[] = [
   IDEAS,
   IMPLEMENTATION,
+  CHANGES,
   JOBS,
   DELIVERIES,
   REPO_BUGS,

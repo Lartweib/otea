@@ -29,6 +29,7 @@ describe('templates', () => {
       'triage:Clasificar errores',
       'review:Revisar por rondas',
       'decisions:Decisiones',
+      'changes:Encargos',
       'repobugs:Errores de trabajo',
       'ideas:De la idea a las tareas',
       'repos:Trabajo en varios repos',
