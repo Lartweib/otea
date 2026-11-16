@@ -63,6 +63,8 @@ export const CLI_ONLY_COMMANDS = [
   'migrate',
   'connect',
   'board add',
+  // A cut-out image is a file on the agent's own disk, which only the command line can hand it.
+  'crop',
   'collection icon',
   'validate',
   'check',
