@@ -48,7 +48,8 @@ const BUDGETS: Readonly<Record<string, Sizes>> = {
   // to a note from the person, and wait saying a note wakes it (measured at 3347). Raised for ask,
   // an agent's question to the person, which hands the turn over (measured at 3481). Raised for
   // board_draft's new and why, an agent proposing a board the person asked for (measured at 3606).
-  tools: { mcp: 3700 },
+  // Raised for merged, recording that a Done item's branch is in (measured at 3768).
+  tools: { mcp: 3850 },
   // Otea's agent guide, the server's instructions: in every MCP agent's context from the start, so
   // it buys only what agents keep getting wrong. Measured at 203. Raised to 270 for the line on
   // declaring the profile every agent and subagent must keep current (measured at 246). Raised to

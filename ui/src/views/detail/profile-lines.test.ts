@@ -148,4 +148,30 @@ describe('Quién lo hace', () => {
     const [doer] = detailCells({ item: view, type: bug, facts, own: false, now: NOW });
     expect(markup(doer?.value)).toContain('claude-d<small class="prof">opus <i>·</i> high</small>');
   });
+
+  it('names who approved a closed board item, not the reviewer its last step would have', () => {
+    setLanguage('es');
+    const view = {
+      ...item({ id: 'ERR-1', turn: 'none', state: 'verify' }),
+      events: events.slice(0, 3),
+      transitions: [],
+      relayable: [],
+      missing: [],
+      evidence: [],
+      relations: [],
+    } as unknown as ItemView;
+    const facts = factsOf(view, bug, NOW);
+    const cells = (reviewedBy: { kind: 'human' | 'agent'; name: string } | null) =>
+      detailCells({
+        item: view,
+        type: bug,
+        facts,
+        own: false,
+        now: NOW,
+        board: { reviewer: 'none', reviewedBy },
+      })[1];
+    expect(markup(cells({ kind: 'agent', name: 'kiln' })?.value)).toContain('kiln');
+    expect(cells({ kind: 'human', name: 'fede' })?.value).toBe('Tú');
+    expect(cells(null)?.value).toBe('—');
+  });
 });

@@ -61,7 +61,13 @@ export function detailCells(o: {
   now: number;
   // On a board: who reviews the step it is on (the step engine's word), and no preset gate rows
   // (the branch strip says them).
-  board?: { reviewer: 'you' | 'none' | 'any' } | undefined;
+  // Once the item is closed, who approved it, as its moves say (null: nobody reviewed it).
+  board?:
+    | {
+        reviewer: 'you' | 'none' | 'any';
+        reviewedBy?: { kind: 'human' | 'agent'; name: string } | null;
+      }
+    | undefined;
   agents?: readonly Agent[] | null | undefined;
 }): (Cell & { key: string })[] {
   const { item, type, facts, now } = o;
@@ -110,12 +116,27 @@ export function detailCells(o: {
   const parent = item.relations.find((r) => r.kind === 'parent');
   const created = item.createdBy;
   const gates = o.board ? [] : gateRows(type, item.state, item.gates);
+  const approved = o.board?.reviewedBy;
   const reviewer: Cell =
-    !o.board || o.board.reviewer === 'you'
-      ? { label: t('sheet.d.reviewer'), value: you, cls: 'you' }
-      : o.board.reviewer === 'none'
-        ? { label: t('sheet.d.reviewer'), value: t('sheet.d.nobody') }
-        : { label: t('sheet.d.reviewer'), value: t('sheet.d.anotherAgent') };
+    approved !== undefined
+      ? approved === null
+        ? { label: t('sheet.d.reviewer'), value: '—' }
+        : approved.kind === 'human'
+          ? { label: t('sheet.d.reviewer'), value: you, cls: 'you' }
+          : {
+              label: t('sheet.d.reviewer'),
+              value: (
+                <>
+                  <AgentMark name={approved.name} decorative />
+                  {approved.name}
+                </>
+              ),
+            }
+      : !o.board || o.board.reviewer === 'you'
+        ? { label: t('sheet.d.reviewer'), value: you, cls: 'you' }
+        : o.board.reviewer === 'none'
+          ? { label: t('sheet.d.reviewer'), value: t('sheet.d.nobody') }
+          : { label: t('sheet.d.reviewer'), value: t('sheet.d.anotherAgent') };
   return keyed([
     doer,
     reviewer,

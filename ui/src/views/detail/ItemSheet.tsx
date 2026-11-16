@@ -124,10 +124,14 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
   );
   // Your own step (Propuesta, Triar): yours to fill and hand off, not a review.
   const ownStep = live ? ownStepOf(live, item) : undefined;
+  // What the server read of the item on its board; once closed, who did its work and approved it.
+  const closedBy = (item as ItemView & { board?: ItemBoardBlock }).board?.closedBy;
   const facts = useMemo(() => {
     const read = factsOf(item, type, now);
-    return onBoard ? boardFactsOf(read, item, onBoard, ownStep !== undefined) : read;
-  }, [item, type, now, onBoard, ownStep]);
+    const on = onBoard ? boardFactsOf(read, item, onBoard, ownStep !== undefined) : read;
+    // A closed item was done by the agent that handed its work off, never by its reviewer.
+    return closedBy?.doer ? { ...on, agent: closedBy.doer } : on;
+  }, [item, type, now, onBoard, ownStep, closedBy]);
   const lane = onBoard?.route.lane ?? laneOf(item.turn);
   const planned = planMoves(item.transitions, { own: facts.own, word, waits: waitsOf(item) });
 
@@ -142,7 +146,9 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
   const position = positionOf(item.state);
   const stepId = isClosed(position) ? null : position.step;
   const waits = live && links && stepId ? waitRows(live, stepId, links) : [];
-  const strip = live ? branchStrip(live, item.state, item.fields) : null;
+  const strip = live
+    ? branchStrip(live, item.state, item.fields, { merged: !!block?.merged })
+    : null;
   const split = live?.split;
   const childSummary =
     split && split.board !== SAME ? summaries.find((b) => b.id === split.board) : undefined;
@@ -225,7 +231,7 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
       : c.kind === 'own' && ownStep
         ? handRefusal(item.id, missing)
         : null;
-  const hand = live && ownStep ? handRows(live, ownStep, missing) : [];
+  const hand = live && ownStep ? handRows(live, ownStep, missing, item.fields) : [];
 
   // ---- notes to the agent while it does its step (the notes mock) ----
   const thread = useMemo(() => threadOf(block, item.events), [block, item.events]);
@@ -239,7 +245,7 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
   const worker = block?.worker;
   const noteTo = worker?.name ?? facts.agent;
   // What the agent has to hand, read only: its parts, then the wait for your notes' answers.
-  const agentHand = live && agentStep ? handRows(live, agentStep, missing) : [];
+  const agentHand = live && agentStep ? handRows(live, agentStep, missing, item.fields) : [];
   const deliverable = agentHand.filter((r) => r.required && r.ref !== NOTE_REF);
   const had = { done: deliverable.filter((r) => r.ok).length, of: deliverable.length };
   const pieces = useMemo(
@@ -356,7 +362,12 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
     facts,
     own: facts.own && look === 'yours',
     now,
-    board: live ? { reviewer: roundsStep ? roundsStep.reviewer : 'none' } : undefined,
+    board: live
+      ? {
+          reviewer: roundsStep ? roundsStep.reviewer : 'none',
+          ...(closedBy ? { reviewedBy: closedBy.reviewer ?? null } : {}),
+        }
+      : undefined,
     agents: app.agents,
   });
   const canWrite = app.session.canWrite;

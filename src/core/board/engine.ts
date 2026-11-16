@@ -191,7 +191,12 @@ function hasValue(part: Part, value: unknown): boolean {
 
 // Whether a "required only when…" holds: the part it reads carries the value (one of them, for a
 // multi). A yes-or-no reads `yes` and `no`.
-export function whenHolds(def: BoardDefinition, facts: ItemFacts, part: string, value: string) {
+export function whenHolds(
+  def: BoardDefinition,
+  facts: Pick<ItemFacts, 'fields'>,
+  part: string,
+  value: string,
+) {
   const read = partOf(def, part);
   const given = facts.fields[part];
   if (!read || given === undefined || given === null) return false;

@@ -41,6 +41,7 @@ import {
 } from '../app/items.ts';
 import { oteaLauncher } from '../app/launcher.ts';
 import { claimItem, heartbeatItem, releaseItem } from '../app/leases.ts';
+import { markMerged } from '../app/merged.ts';
 import { type MigrationReport, migrateToCommon } from '../app/migrate.ts';
 import {
   approveItem,
@@ -1409,6 +1410,33 @@ const reply: Command = {
   },
 };
 
+// That a Done item's branch is in: Done takes no other change, so this is how its page and rows
+// learn the work was merged.
+const merged: Command = {
+  name: 'merged',
+  summary:
+    "Record that a Done item's branch was merged (--pr, its pull request; --commit, the merge commit), so its page and rows stop saying it waits to be merged",
+  args: ['id'],
+  options: { pr: { placeholder: 'url' }, commit: { placeholder: 'sha' } },
+  execute: (input) => {
+    const [id = ''] = input.args;
+    const { actor, channel } = input;
+    const pr = input.option('pr');
+    const commit = input.option('commit');
+    return withAgent(input, (project) => {
+      const done = markMerged(project, {
+        id,
+        actor,
+        channel,
+        ...(pr === undefined ? {} : { pr }),
+        ...(commit === undefined ? {} : { commit }),
+      });
+      const said = [done.pr, done.commit].filter(Boolean).join(', ');
+      return { data: done, text: `Marked ${id} merged${said ? ` (${said})` : ''}.` };
+    });
+  },
+};
+
 // An agent's question to the person: the turn is theirs until they answer, nothing else moves.
 const ask: Command = {
   name: 'ask',
@@ -2066,6 +2094,7 @@ export const COMMANDS: readonly Command[] = [
   unlink,
   next,
   reply,
+  merged,
   ask,
   handoffCommand,
   dropCommand,

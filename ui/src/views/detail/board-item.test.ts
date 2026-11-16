@@ -202,6 +202,7 @@ describe('branchStrip: the protected branch where the item stands', () => {
     });
     expect(branchStrip(def, 'simpl__review', fields)?.key).toBe('frozen');
     expect(branchStrip(def, 'done', fields)?.key).toBe('merge');
+    expect(branchStrip(def, 'done', fields, { merged: true })?.key).toBe('merged');
     expect(branchStrip(def, 'dropped', fields)?.key).toBe('closed');
     expect(branchStrip(def, 'sprop', fields)).toMatchObject({
       tone: 'off',
@@ -471,6 +472,33 @@ describe('the person’s own step', () => {
     expect(handRefusal('TAR2-1', missing)).toBe('No se entregó TAR2-1: falta Qué propone.');
     expect(handRefusal('TAR2-1', [])).toBeNull();
     expect(handRows(def, step, [])[0]?.ok).toBe(true);
+  });
+
+  it('leaves out a deliverable asked only when a field holds a value it does not hold', () => {
+    setLanguage('es');
+    const def = tareasDeRepo();
+    def.parts.fkind = {
+      id: 'fkind',
+      name: 'Tipo',
+      kind: 'choice',
+      hint: '',
+      options: [
+        { id: 'cui', name: 'Interfaz' },
+        { id: 'cbug', name: 'Error' },
+      ],
+    };
+    const step = def.steps.find((s) => s.id === 'simpl');
+    if (!step) throw new Error('no Implementar');
+    step.hand.push({
+      ref: 'fwhat',
+      req: 'when',
+      when: { part: 'fkind', value: 'cui' },
+      fresh: false,
+    });
+    const refs = (fields: Record<string, string>) =>
+      handRows(def, step, [], fields).map(({ ref }) => ref);
+    expect(refs({ fkind: 'cbug' })).toEqual(['ecode']);
+    expect(refs({ fkind: 'cui' })).toEqual(['ecode', 'fwhat']);
   });
 });
 

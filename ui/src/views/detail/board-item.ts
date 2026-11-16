@@ -8,6 +8,7 @@ import {
   roundsOf,
   type Transition,
   turnAt,
+  whenHolds,
 } from '../../../../src/core/board/engine.ts';
 import { handoffNotes, historyOf, roundsOfStep } from '../../../../src/core/board/history.ts';
 import {
@@ -86,6 +87,10 @@ export type ItemBoardBlock = {
   asking?: ItemQuestion;
   // While an agent does its step: that agent and its last sign of life.
   worker?: { name: string; lastSeen: string | null; holds: boolean };
+  // Once closed: the agent that did the work and who approved it (app/next.ts closedByOf).
+  closedBy?: { doer?: string; reviewer?: { kind: 'human' | 'agent'; name: string } };
+  // Once Done: that its branch was merged (otea merged).
+  merged?: { at: string; by: string; branch?: string; pr?: string; commit?: string };
 };
 
 // The board a Pedido asks an agent to draft (app/draft-request.ts): `arrived` once it handed one in;
@@ -197,7 +202,7 @@ export function approvalRefusal(id: string, rows: readonly WaitRow[]): string | 
 // may it be merged (F10). The engine's gate answers, as otea check does.
 export type BranchStrip = {
   tone: 'ok' | 'frozen' | 'off';
-  key: 'push' | 'frozen' | 'merge' | 'closed' | 'noPush';
+  key: 'push' | 'frozen' | 'merge' | 'merged' | 'closed' | 'noPush';
   value: string;
   repo?: string;
   step?: string;
@@ -207,6 +212,8 @@ export function branchStrip(
   def: BoardDefinition,
   state: string,
   fields: Readonly<Record<string, string>>,
+  // Whether its branch was marked merged once Done (otea merged).
+  o: { merged?: boolean } = {},
 ): BranchStrip | null {
   const branch = guardedBranch(def);
   const value = branch ? fields[branch.id]?.trim() : undefined;
@@ -216,7 +223,7 @@ export function branchStrip(
   const position = positionOf(state);
   if (isClosed(position)) {
     return position.closed === DONE
-      ? { tone: 'ok', key: 'merge', value, ...repo }
+      ? { tone: 'ok', key: o.merged ? 'merged' : 'merge', value, ...repo }
       : { tone: 'off', key: 'closed', value, ...repo };
   }
   const step = stepById(def, position.step)?.name ?? position.step;
@@ -478,15 +485,22 @@ export function handRows(
   def: BoardDefinition,
   step: Step,
   missing: readonly { ref: string }[],
+  // The item's fields: a deliverable asked only when a field holds a value is left out while it
+  // does not (the engine neither asks for it nor counts it).
+  fields?: Readonly<Record<string, unknown>>,
 ): HandRow[] {
   const lacks = new Set(missing.map(({ ref }) => ref));
+  const applies = (hand: Step['hand'][number]) =>
+    hand.req !== 'when' ||
+    fields === undefined ||
+    (hand.when !== undefined && whenHolds(def, { fields }, hand.when.part, hand.when.value));
   const rows: HandRow[] = [];
   if (step.note.req === 'always') {
     rows.push({ ref: NOTE_REF, name: t('bi.hand.note'), ok: !lacks.has(NOTE_REF), required: true });
   }
   for (const hand of step.hand) {
     const part = def.parts[hand.ref];
-    if (!part) continue;
+    if (!part || !applies(hand)) continue;
     rows.push({
       ref: hand.ref,
       name: part.name,

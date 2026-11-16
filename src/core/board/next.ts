@@ -89,6 +89,8 @@ export type NextInput = {
   plannedBy?: { id: string; step: string };
   // The note the doer handed this round off with, for its reviewer to read.
   handed?: { note: string; by: string };
+  // Once Done: that its branch was merged, and the commit when given.
+  merged?: { commit?: string };
 };
 
 // Another agent's say on the item keeps the asking agent off it: a live lease it does not hold, or
@@ -439,8 +441,13 @@ export function nextText(def: BoardDefinition, input: NextInput): string {
   const { position, id } = input;
   if (isClosed(position)) {
     const branch = branchOf(def, input.fields);
+    const said = input.merged?.commit ? ` (${input.merged.commit})` : '';
     const merge =
-      position.closed === DONE && branch ? ` Its branch ${branch.value} may be merged now.` : '';
+      position.closed !== DONE || !branch
+        ? ''
+        : input.merged
+          ? ` Its branch ${branch.value} was merged${said}.`
+          : ` Its branch ${branch.value} may be merged now; once it is, otea merged ${id} --pr <url>.`;
     return `${id} · ${def.item} · ${closedName(def, position)}\nClosed: nothing left to do.${merge}`;
   }
   const step = stepById(def, position.step);
