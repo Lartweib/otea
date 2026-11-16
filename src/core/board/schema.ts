@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { ICON_NAMES } from '../icons.ts';
 import {
   BOARD_SCHEMA,
   type BoardDefinition,
@@ -213,7 +214,7 @@ export const definitionSchema = z
       .transform(() => BOARD_SCHEMA),
     name: text('The name of the board', 'Bugs'),
     item: text('What one item of the board is called', 'Bug'),
-    icon: text('The icon: board, bug, paw, book, inbox, flask or check2', 'bug'),
+    icon: text(`The icon of the board and its items, one of: ${ICON_NAMES.join(', ')}`, 'bug'),
     title: text('The name of the title field every item has', 'Title'),
     parts: z.record(id, part).meta(
       about('The fields and evidence of the board, by id', {

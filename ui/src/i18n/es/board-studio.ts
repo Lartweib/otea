@@ -6,6 +6,7 @@ import type { Catalog } from '../i18n.ts';
 // ítem.
 export const boardStudio = {
   'bs.problem.board_unnamed': 'El tablero no tiene nombre.',
+  'bs.problem.icon_unknown': 'Otea no tiene el icono «{icon}». Elige otro.',
   'bs.problem.board_name_taken': 'Ya hay un tablero que se llama {name}.',
   'bs.problem.no_steps': 'El tablero no tiene ningún paso.',
   'bs.problem.step_unnamed': 'Hay un paso sin nombre.',

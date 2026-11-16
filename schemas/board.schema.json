@@ -28,7 +28,7 @@
     },
     "icon": {
       "type": "string",
-      "description": "The icon: board, bug, paw, book, inbox, flask or check2",
+      "description": "The icon of the board and its items, one of: layers, checkbox, list, stack, inbox, flag, milestone, target, rocket, clipboard, calendar, clock, hourglass, checklist, briefcase, chart, bug, git-branch, git-merge, terminal, code, brackets, database, server, plug, cpu, package, gear, wrench, shield, lock, key, cloud, browser, mobile, test-tube, gauge, image, film, camera, play, music, palette, brush, pen, ruler, shapes, eye, frame, sparkle, pen-nib, layout, type, cube, book, doc, note, chat-bubble, question, lightbulb, megaphone, bookmark, quote, link, mail, diagram, compare, paw, feather, bone, egg, fish, bird, leaf, sprout, tree, mountain, flame, drop, moon, sun, crystal, sword, shieldcrest, potion, map, compass, dice, controller, heart, star, skull, crown, ghost, puzzle, beaker, magnet, bolt, anchor, hook, trophy, gift, tag, pin, globe, home, user, users, robot, cart, coins, building",
       "examples": ["bug"]
     },
     "title": {
