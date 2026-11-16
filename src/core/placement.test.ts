@@ -62,6 +62,17 @@ describe('placeEvidence', () => {
     expect(place(IMPR, 'repro.webm')).toEqual({ module: 'recording', role: 'single' });
   });
 
+  it('places a test report (JUnit XML, vitest or jest JSON) in a log module, as test output', () => {
+    expect(place(BUG, 'junit.xml')).toEqual({ module: 'log', role: 'single' });
+    expect(place(BUG, 'results.json')).toEqual({ module: 'log', role: 'single' });
+    // A module that takes files still takes them; one that draws images never does.
+    refused(
+      () => place(IMPR, 'junit.xml'),
+      'evidence_not_accepted',
+      `${SUBJECT} does not take junit.xml. It takes: "screens" (images, gallery): image; "diff" (diff): diff; "mockup" (images): image; "recording" (recording): video`,
+    );
+  });
+
   it('honours accepts by extension', () => {
     expect(place(BUG, 'shot.PNG', { role: 'before' })).toEqual({
       module: 'images',

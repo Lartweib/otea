@@ -9,6 +9,7 @@ import { compareCells, parseDelimited } from './data-view.ts';
 import { FileMeta } from './FileMeta.tsx';
 import { fileViewOf } from './file-view.ts';
 import { PdfFileView } from './PdfView.tsx';
+import { mayBeReport, ReportOr } from './TestReportView.tsx';
 import { LogView, TextState, useEvidenceText } from './TextViews.tsx';
 
 // The source of a data file (the lines it came as), a toggle away from how it reads.
@@ -223,14 +224,18 @@ export function FileOffer({ evidence }: { evidence: Evidence }) {
   );
 }
 
-// A file of a files part, read the way its type is: Markdown formatted, a PDF as its pages, code
-// and text as lines, anything else offered to open or download.
+// A file of a files part, read the way its type is: Markdown formatted, a PDF as its pages, a test
+// report as its results, code and text as lines, anything else offered to open or download.
 export function FileView({ evidence }: { evidence: Evidence }) {
   const view = fileViewOf(evidence);
   if (view === 'markdown') return <MarkdownFileView evidence={evidence} />;
-  if (view === 'json') return <JsonFileView evidence={evidence} />;
   if (view === 'table') return <TableFileView evidence={evidence} />;
   if (view === 'pdf') return <PdfFileView evidence={evidence} />;
-  if (view === 'text') return <LogView evidence={evidence} />;
+  if (view === 'json' || view === 'text') {
+    const plain =
+      view === 'json' ? <JsonFileView evidence={evidence} /> : <LogView evidence={evidence} />;
+    // A test run's report (JUnit XML, vitest or jest JSON) reads as its results.
+    return mayBeReport(evidence) ? <ReportOr evidence={evidence}>{plain}</ReportOr> : plain;
+  }
   return <FileOffer evidence={evidence} />;
 }

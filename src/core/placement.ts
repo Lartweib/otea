@@ -23,6 +23,9 @@ function extensionOf(filename: string): string {
   return dot < 0 ? '' : filename.slice(dot + 1).toLowerCase();
 }
 
+// The extensions a test report comes as.
+const REPORTS = new Set(['xml', 'json']);
+
 // What a module takes: its `accepts` (kinds or extensions), or every kind its family draws.
 function takes(entry: LayoutEntry): readonly string[] {
   return entry.accepts ?? MODULE_REGISTRY[entry.module].accepts ?? [];
@@ -31,6 +34,10 @@ function takes(entry: LayoutEntry): readonly string[] {
 export function moduleAccepts(entry: LayoutEntry, filename: string): boolean {
   const { kind } = evidenceTypeOf(filename);
   const accepted = takes(entry);
+  // A test run's report (JUnit XML, vitest or jest JSON) is test output: a log module takes it, and
+  // reads it as its results.
+  if (kind === 'file' && accepted.includes('log') && REPORTS.has(extensionOf(filename)))
+    return true;
   // An opaque file goes only to a module that takes files as such (files), never one that draws.
   if (kind === 'file') return accepted.includes('file');
   return accepted.includes(kind) || accepted.includes(extensionOf(filename));

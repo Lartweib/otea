@@ -8,6 +8,7 @@ import { FileMeta } from './FileMeta.tsx';
 import { FileView } from './FileViews.tsx';
 import { ImageSingle } from './ImageViews.tsx';
 import { findPick, pickAnchor, pickAt, pickWords, type ReaderPick } from './reader-pick.ts';
+import { ReportOr } from './TestReportView.tsx';
 import { DiffView, LogView } from './TextViews.tsx';
 import { VideoPlayer } from './VideoViews.tsx';
 
@@ -117,7 +118,11 @@ export function EvidenceViewer({
         />
       );
     case 'log':
-      return <LogView evidence={evidence} />;
+      return (
+        <ReportOr evidence={evidence}>
+          <LogView evidence={evidence} />
+        </ReportOr>
+      );
     case 'diagram':
       return <DiagramView evidence={[evidence]} />;
     default:
