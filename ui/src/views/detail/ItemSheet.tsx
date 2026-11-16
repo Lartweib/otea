@@ -5,6 +5,7 @@ import { waitsOf } from '../../actions.ts';
 import { typeOfItem, useApp } from '../../app/context.tsx';
 import { boardOfCollection, boardsOf, useBoards } from '../../board-studio/home/boards-store.ts';
 import { DeskReader } from '../../components/evidence/DeskReader.tsx';
+import { ItemEvidence } from '../../components/evidence/item-evidence.ts';
 import { READ_AT, type ReaderPick } from '../../components/evidence/reader-pick.ts';
 import { noteAnchor } from '../../components/evidence/video-moment.ts';
 import { t, tx } from '../../i18n/i18n.ts';
@@ -583,299 +584,304 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
     const firstField = request[0]?.key.slice(2);
     return (
       <ItemTypeScope type={type}>
-        <PhoneItem
-          item={item}
-          type={type}
-          board={
-            live
-              ? // Closed, the rounds read are those of the step the history opens on.
-                { def: live, step: stepId ?? journey.find(({ open }) => open)?.step ?? null }
-              : undefined
-          }
-          look={look}
-          facts={facts}
-          plan={plan}
-          mode={mode}
-          word={word}
-          stand={standText}
-          route={route}
-          checks={
-            <>
-              {hand.length ? (
-                <HandChecklist item={item} rows={hand} canWrite={app.session.canWrite} />
-              ) : null}
-              {agentStep ? (
-                <HandChecklist
+        <ItemEvidence.Provider value={item.evidence}>
+          <PhoneItem
+            item={item}
+            type={type}
+            board={
+              live
+                ? // Closed, the rounds read are those of the step the history opens on.
+                  { def: live, step: stepId ?? journey.find(({ open }) => open)?.step ?? null }
+                : undefined
+            }
+            look={look}
+            facts={facts}
+            plan={plan}
+            mode={mode}
+            word={word}
+            stand={standText}
+            route={route}
+            checks={
+              <>
+                {hand.length ? (
+                  <HandChecklist item={item} rows={hand} canWrite={app.session.canWrite} />
+                ) : null}
+                {agentStep ? (
+                  <HandChecklist
+                    item={item}
+                    rows={agentHand}
+                    canWrite={false}
+                    notes={roundNotes.length ? { unanswered } : undefined}
+                  />
+                ) : null}
+                {live ? <WaitChecklist rows={waits} child={partsName} now={now} /> : null}
+              </>
+            }
+            details={<Details cells={cells} k={`${item.state}:${item.updatedAt}`} />}
+            detailsSummary={[facts.agent, typeWord(type, item.type), item.collection]
+              .filter(Boolean)
+              .join(' · ')}
+            request={request.length ? <Body id={item.id} sections={request} /> : null}
+            requestSummary={
+              (firstField ? (item.fields[firstField] ?? '') : '').trim().split(/\n/)[0] ?? ''
+            }
+            links={
+              links && (links.blockers.length || links.blocking.length || links.related.length) ? (
+                <LinksSection
                   item={item}
-                  rows={agentHand}
+                  links={links}
                   canWrite={false}
-                  notes={roundNotes.length ? { unanswered } : undefined}
+                  now={now}
+                  boardOf={(x) => x.collection}
                 />
-              ) : null}
-              {live ? <WaitChecklist rows={waits} child={partsName} now={now} /> : null}
-            </>
-          }
-          details={<Details cells={cells} k={`${item.state}:${item.updatedAt}`} />}
-          detailsSummary={[facts.agent, typeWord(type, item.type), item.collection]
-            .filter(Boolean)
-            .join(' · ')}
-          request={request.length ? <Body id={item.id} sections={request} /> : null}
-          requestSummary={
-            (firstField ? (item.fields[firstField] ?? '') : '').trim().split(/\n/)[0] ?? ''
-          }
-          links={
-            links && (links.blockers.length || links.blocking.length || links.related.length) ? (
-              <LinksSection
-                item={item}
-                links={links}
-                canWrite={false}
-                now={now}
-                boardOf={(x) => x.collection}
-              />
-            ) : null
-          }
-          linksSummary={
-            links
-              ? [...links.blockers, ...links.blocking, ...links.related.flatMap((g) => g.items)]
-                  .map((x) => x.id)
-                  .join(' · ')
-              : ''
-          }
-          refuse={live ? refuse : undefined}
-          back={live ? (to: string) => backOf(live, item, to) : undefined}
-          onClose={onClose}
-          notes={
-            live
-              ? {
-                  of: (n) => roundNotesOf(thread, stepId, n),
-                  noted,
-                  ...(canNote && agentStep
-                    ? {
-                        leave: {
-                          round,
-                          to: noteTo,
-                          step: agentStep.name,
-                          pieces,
-                          says:
-                            quiet !== null || had.of === 0
-                              ? noteSays
-                              : t('notes.had', { done: had.done, count: had.of }),
-                          warn: quiet !== null,
-                          send: (text: string, on: number | null) => postNote(text, noteAnchor(on)),
-                          sendOn: (text, on) => postNote(text, on),
-                        },
-                      }
-                    : {}),
-                }
-              : undefined
-          }
-        />
+              ) : null
+            }
+            linksSummary={
+              links
+                ? [...links.blockers, ...links.blocking, ...links.related.flatMap((g) => g.items)]
+                    .map((x) => x.id)
+                    .join(' · ')
+                : ''
+            }
+            refuse={live ? refuse : undefined}
+            back={live ? (to: string) => backOf(live, item, to) : undefined}
+            onClose={onClose}
+            notes={
+              live
+                ? {
+                    of: (n) => roundNotesOf(thread, stepId, n),
+                    noted,
+                    ...(canNote && agentStep
+                      ? {
+                          leave: {
+                            round,
+                            to: noteTo,
+                            step: agentStep.name,
+                            pieces,
+                            says:
+                              quiet !== null || had.of === 0
+                                ? noteSays
+                                : t('notes.had', { done: had.done, count: had.of }),
+                            warn: quiet !== null,
+                            send: (text: string, on: number | null) =>
+                              postNote(text, noteAnchor(on)),
+                            sendOn: (text, on) => postNote(text, on),
+                          },
+                        }
+                      : {}),
+                  }
+                : undefined
+            }
+          />
+        </ItemEvidence.Provider>
       </ItemTypeScope>
     );
   }
 
   return (
     <ItemTypeScope type={type}>
-      <div className="d-grid" ref={root}>
-        <div className="sheet-bar" data-c>
-          <Swap k={`${item.state}:${item.turn}:${look}`} as="div" className="crumb" dy={3}>
-            <NodeGlyph look={look} size={14} />
-            <span className="id">{item.id}</span>
-            <StepPill
-              {...(yours
-                ? { tone: 'you' as const }
-                : item.turn === 'none'
-                  ? { tone: 'none' as const }
-                  : {})}
-            >
-              {stateShown}
-            </StepPill>
-            {yours ? <span className="turn">{t('sheet.yourTurn')}</span> : null}
-            <span className="ttag">
-              <TypeIcon name={type?.icon} size={13} />
-              {t('sheet.typeBoard', { type: typeWord(type, item.type), board: item.collection })}
-            </span>
-          </Swap>
-          <div className="bar-r">
-            {app.session.canConfigure && !app.phone && board ? (
-              <a
-                className="ghost-btn cz"
-                href={studioHash({ kind: 'board', board: board.id })}
-                aria-label={t('bs.home.editBoard')}
+      <ItemEvidence.Provider value={item.evidence}>
+        <div className="d-grid" ref={root}>
+          <div className="sheet-bar" data-c>
+            <Swap k={`${item.state}:${item.turn}:${look}`} as="div" className="crumb" dy={3}>
+              <NodeGlyph look={look} size={14} />
+              <span className="id">{item.id}</span>
+              <StepPill
+                {...(yours
+                  ? { tone: 'you' as const }
+                  : item.turn === 'none'
+                    ? { tone: 'none' as const }
+                    : {})}
               >
-                <Icon name="sliders" />
-                <span className="wl">{t('bs.home.editBoard')}</span>
-              </a>
-            ) : null}
-            <GhostButton
-              data-nav="-1"
-              aria-label={t('sheet.prev')}
-              disabled={!nav.prev}
-              onClick={() => onNav(-1)}
-            >
-              ‹<span className="wl"> {t('sheet.prev')}</span>
-            </GhostButton>
-            <GhostButton
-              data-nav="1"
-              aria-label={t('sheet.next')}
-              disabled={!nav.next}
-              onClick={() => onNav(1)}
-            >
-              <span className="wl">{t('sheet.next')} </span>›
-            </GhostButton>
-            <i className="vr" />
-            <GhostButton
-              className="ampliar"
-              onClick={onFull}
-              aria-pressed={full}
-              aria-label={t('sheet.expand')}
-            >
-              <Swap k={full ? 'r' : 'a'} className="swp" dy={3} outT={200} inT={300}>
-                <span className="wl">{full ? t('sheet.reduce') : t('sheet.expand')}</span>
-              </Swap>
-              <Icon name={full ? 'red' : 'amp'} />
-            </GhostButton>
-            <GhostButton className="closeb" onClick={onClose}>
-              {app.phone ? t('sheet.back') : t('sheet.close')}
-            </GhostButton>
-          </div>
-        </div>
-        <div className="d-head">
-          <h1 className="headline" data-c>
-            {item.title}
-          </h1>
-          {links ? <PartOfLine parent={links.parent} /> : null}
-          <div data-c>
-            <Swap
-              k={`${stand.key}:${stand.agent ?? ''}:${stand.round ?? ''}:${stand.time ?? ''}`}
-              as="p"
-              className="standfirst"
-              dy={4}
-            >
-              {standText}
+                {stateShown}
+              </StepPill>
+              {yours ? <span className="turn">{t('sheet.yourTurn')}</span> : null}
+              <span className="ttag">
+                <TypeIcon name={type?.icon} size={13} />
+                {t('sheet.typeBoard', { type: typeWord(type, item.type), board: item.collection })}
+              </span>
             </Swap>
+            <div className="bar-r">
+              {app.session.canConfigure && !app.phone && board ? (
+                <a
+                  className="ghost-btn cz"
+                  href={studioHash({ kind: 'board', board: board.id })}
+                  aria-label={t('bs.home.editBoard')}
+                >
+                  <Icon name="sliders" />
+                  <span className="wl">{t('bs.home.editBoard')}</span>
+                </a>
+              ) : null}
+              <GhostButton
+                data-nav="-1"
+                aria-label={t('sheet.prev')}
+                disabled={!nav.prev}
+                onClick={() => onNav(-1)}
+              >
+                ‹<span className="wl"> {t('sheet.prev')}</span>
+              </GhostButton>
+              <GhostButton
+                data-nav="1"
+                aria-label={t('sheet.next')}
+                disabled={!nav.next}
+                onClick={() => onNav(1)}
+              >
+                <span className="wl">{t('sheet.next')} </span>›
+              </GhostButton>
+              <i className="vr" />
+              <GhostButton
+                className="ampliar"
+                onClick={onFull}
+                aria-pressed={full}
+                aria-label={t('sheet.expand')}
+              >
+                <Swap k={full ? 'r' : 'a'} className="swp" dy={3} outT={200} inT={300}>
+                  <span className="wl">{full ? t('sheet.reduce') : t('sheet.expand')}</span>
+                </Swap>
+                <Icon name={full ? 'red' : 'amp'} />
+              </GhostButton>
+              <GhostButton className="closeb" onClick={onClose}>
+                {app.phone ? t('sheet.back') : t('sheet.close')}
+              </GhostButton>
+            </div>
           </div>
-          {route}
-          {hand.length ? (
-            <HandChecklist item={item} rows={hand} canWrite={app.session.canWrite} />
-          ) : null}
-          {agentStep ? (
-            <HandChecklist
+          <div className="d-head">
+            <h1 className="headline" data-c>
+              {item.title}
+            </h1>
+            {links ? <PartOfLine parent={links.parent} /> : null}
+            <div data-c>
+              <Swap
+                k={`${stand.key}:${stand.agent ?? ''}:${stand.round ?? ''}:${stand.time ?? ''}`}
+                as="p"
+                className="standfirst"
+                dy={4}
+              >
+                {standText}
+              </Swap>
+            </div>
+            {route}
+            {hand.length ? (
+              <HandChecklist item={item} rows={hand} canWrite={app.session.canWrite} />
+            ) : null}
+            {agentStep ? (
+              <HandChecklist
+                item={item}
+                rows={agentHand}
+                canWrite={false}
+                notes={roundNotes.length ? { unanswered } : undefined}
+              />
+            ) : null}
+            {live ? <WaitChecklist rows={waits} child={partsName} now={now} /> : null}
+            <Acts
+              onDrop={live && dropChoices.length ? () => setDropping(true) : undefined}
+              refuse={live ? refuse : undefined}
+              back={live ? (to: string) => backOf(live, item, to) : undefined}
               item={item}
-              rows={agentHand}
-              canWrite={false}
-              notes={roundNotes.length ? { unanswered } : undefined}
+              type={type}
+              facts={facts}
+              look={look}
+              plan={plan}
+              mode={mode}
+              word={word}
+              notesOpen={notes?.open ? notes.choice : null}
+              onNotes={openNotes}
+              note={leave}
+              unopened={unopenedLine}
             />
-          ) : null}
-          {live ? <WaitChecklist rows={waits} child={partsName} now={now} /> : null}
-          <Acts
-            onDrop={live && dropChoices.length ? () => setDropping(true) : undefined}
-            refuse={live ? refuse : undefined}
-            back={live ? (to: string) => backOf(live, item, to) : undefined}
-            item={item}
-            type={type}
-            facts={facts}
-            look={look}
-            plan={plan}
-            mode={mode}
-            word={word}
-            notesOpen={notes?.open ? notes.choice : null}
-            onNotes={openNotes}
-            note={leave}
-            unopened={unopenedLine}
-          />
-          {canRead ? (
-            <DeskReader
-              open={!!readAt?.open}
-              onClose={closeReader}
-              evidence={reader.files}
-              at={readAt?.at ?? 0}
-              onAt={(at) => setReading({ item: item.id, at, open: true })}
-              parts={parts}
-              marks={reader.marks}
-              seen={seen}
-              decide={decide}
-              start={start}
-              note={
-                canNote
-                  ? {
-                      onSend: (text, on) => {
-                        void postNote(text, on);
-                      },
-                    }
-                  : undefined
-              }
-            />
-          ) : null}
-          <div className="notes-slot">
-            {noting ? (
-              <NotesForm
-                key="note"
-                open={noting.open}
-                agent={noteTo}
-                why={null}
-                button={noting.button}
-                belowTop={noting.below}
-                words={{
-                  title: t('notes.form.title'),
-                  aside: t('notes.form.for', { agent: who }),
-                  placeholder: t('notes.form.placeholder'),
-                  aria: t('notes.form.aria', { agent: who }),
-                  send: t('notes.form.send'),
-                }}
-                extra={
-                  pieces.length ? (
-                    <div className="nt-anchor" data-i>
-                      <div className="nt-apick-l">
-                        <b>{t('notes.anchor.label')}</b>
-                        <span>{t('notes.anchor.gloss', { n: round })}</span>
-                      </div>
-                      <AnchorPicker pieces={pieces} picked={anchor} onPick={setAnchor} />
-                    </div>
-                  ) : null
+            {canRead ? (
+              <DeskReader
+                open={!!readAt?.open}
+                onClose={closeReader}
+                evidence={reader.files}
+                at={readAt?.at ?? 0}
+                onAt={(at) => setReading({ item: item.id, at, open: true })}
+                parts={parts}
+                marks={reader.marks}
+                seen={seen}
+                decide={decide}
+                start={start}
+                note={
+                  canNote
+                    ? {
+                        onSend: (text, on) => {
+                          void postNote(text, on);
+                        },
+                      }
+                    : undefined
                 }
-                says={quiet !== null ? <span className="nt-quiet">{noteSays}</span> : noteSays}
-                onSend={sendNote}
-                onCancel={() => setNoting({ ...noting, open: false })}
-                onGone={() => setNoting((n) => (n && !n.open ? null : n))}
               />
             ) : null}
-            {notes ? (
-              <NotesForm
-                key={notes.choice.move.to}
-                open={notes.open}
-                agent={facts.agent}
-                why={notes.choice.kind === 'sendback' ? null : word(notes.choice.move.to)}
-                button={notes.button}
-                belowTop={notes.below}
-                onSend={send}
-                onCancel={() => setNotes({ ...notes, open: false })}
-                onGone={() => setNotes((n) => (n && !n.open ? null : n))}
+            <div className="notes-slot">
+              {noting ? (
+                <NotesForm
+                  key="note"
+                  open={noting.open}
+                  agent={noteTo}
+                  why={null}
+                  button={noting.button}
+                  belowTop={noting.below}
+                  words={{
+                    title: t('notes.form.title'),
+                    aside: t('notes.form.for', { agent: who }),
+                    placeholder: t('notes.form.placeholder'),
+                    aria: t('notes.form.aria', { agent: who }),
+                    send: t('notes.form.send'),
+                  }}
+                  extra={
+                    pieces.length ? (
+                      <div className="nt-anchor" data-i>
+                        <div className="nt-apick-l">
+                          <b>{t('notes.anchor.label')}</b>
+                          <span>{t('notes.anchor.gloss', { n: round })}</span>
+                        </div>
+                        <AnchorPicker pieces={pieces} picked={anchor} onPick={setAnchor} />
+                      </div>
+                    ) : null
+                  }
+                  says={quiet !== null ? <span className="nt-quiet">{noteSays}</span> : noteSays}
+                  onSend={sendNote}
+                  onCancel={() => setNoting({ ...noting, open: false })}
+                  onGone={() => setNoting((n) => (n && !n.open ? null : n))}
+                />
+              ) : null}
+              {notes ? (
+                <NotesForm
+                  key={notes.choice.move.to}
+                  open={notes.open}
+                  agent={facts.agent}
+                  why={notes.choice.kind === 'sendback' ? null : word(notes.choice.move.to)}
+                  button={notes.button}
+                  belowTop={notes.below}
+                  onSend={send}
+                  onCancel={() => setNotes({ ...notes, open: false })}
+                  onGone={() => setNotes((n) => (n && !n.open ? null : n))}
+                />
+              ) : null}
+            </div>
+            <BranchLine strip={strip} />
+            {block?.request ? (
+              <DraftRequestLine
+                request={block.request}
+                canConfigure={!!app.session.canConfigure && !app.phone}
               />
             ) : null}
           </div>
-          <BranchLine strip={strip} />
-          {block?.request ? (
-            <DraftRequestLine
-              request={block.request}
-              canConfigure={!!app.session.canConfigure && !app.phone}
+          {live ? (
+            <DropDialog
+              open={dropping}
+              item={item}
+              choices={dropChoices}
+              onClose={() => setDropping(false)}
+              onDrop={drop}
             />
           ) : null}
+          <Details cells={cells} k={`${item.state}:${item.updatedAt}`} />
+          <div className="d-line" />
+          <Body id={item.id} sections={sections} />
+          <History id={item.id} lines={lines} />
         </div>
-        {live ? (
-          <DropDialog
-            open={dropping}
-            item={item}
-            choices={dropChoices}
-            onClose={() => setDropping(false)}
-            onDrop={drop}
-          />
-        ) : null}
-        <Details cells={cells} k={`${item.state}:${item.updatedAt}`} />
-        <div className="d-line" />
-        <Body id={item.id} sections={sections} />
-        <History id={item.id} lines={lines} />
-      </div>
+      </ItemEvidence.Provider>
     </ItemTypeScope>
   );
 }

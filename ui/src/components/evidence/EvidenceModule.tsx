@@ -7,6 +7,7 @@ import { EvidenceList } from '../EvidenceList.tsx';
 import { DiagramView } from './DiagramView.tsx';
 import { FileView } from './FileViews.tsx';
 import { ImageCompare, ImageGallery, ImageSingle } from './ImageViews.tsx';
+import { ReportOr } from './TestReportView.tsx';
 import { DiffView, LogView } from './TextViews.tsx';
 import { VideoFrames, VideoPlayer } from './VideoViews.tsx';
 
@@ -93,7 +94,11 @@ function Body({ entry, held, title }: { entry: LayoutEntry; held: Evidence[]; ti
         if (module === 'recording') return <VideoPlayer key={shown.id} evidence={shown} />;
         if (module === 'diff') return <DiffView key={shown.id} evidence={shown} />;
         if (module === 'files') return <FileView key={shown.id} evidence={shown} />;
-        return <LogView key={shown.id} evidence={shown} />;
+        return (
+          <ReportOr key={shown.id} evidence={shown}>
+            <LogView evidence={shown} />
+          </ReportOr>
+        );
       }}
     </OneOf>
   );
