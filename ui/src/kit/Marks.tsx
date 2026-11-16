@@ -1,12 +1,13 @@
 import type { ChangeEvent, CSSProperties, InputHTMLAttributes, ReactNode } from 'react';
 import { useLayoutEffect, useRef } from 'react';
-import { agentHue, initialsOf } from '../agent-mark.ts';
+import { markOf } from '../agent-mark.ts';
 import { t } from '../i18n/i18n.ts';
 
-// The five hues an agent's mark takes, by the bucket of its name (SPEC §1).
+// The five hues an agent's mark takes: the project gives each agent its own while hues are left
+// (agent-mark.ts), else by the bucket of its name (SPEC §1).
 export const AGENT_HUE_DEGREES = [150, 32, 318, 212, 75] as const;
 
-export const agentHueDegrees = (name: string): number => AGENT_HUE_DEGREES[agentHue(name)] ?? 266;
+export const agentHueDegrees = (name: string): number => AGENT_HUE_DEGREES[markOf(name).hue] ?? 266;
 
 type AgentMarkProps = {
   // The agent; null or undefined for nobody.
@@ -47,7 +48,7 @@ export function AgentMark({ name, you = false, className, decorative = false }: 
       title={decorative ? undefined : name}
       aria-hidden={decorative || undefined}
     >
-      {initialsOf(name)}
+      {markOf(name).initials}
     </span>
   );
 }
