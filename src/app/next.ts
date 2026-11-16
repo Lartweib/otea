@@ -1252,6 +1252,14 @@ export function assertMayClaim(ctx: Context, item: ItemRecord, agent: string): v
   if (isClosed(position)) return;
   const step = stepById(board.def, position.step);
   if (!step) return;
+  // While a question waits, the item stays with the agent that asked it.
+  const asking = itemOnBoard(ctx, item, board.def).asking;
+  if (asking && asking.by !== agent) {
+    throw new OteaError(
+      'not_claimable',
+      `${item.id} waits for the person to answer ${asking.by}'s question; claim only what is yours (otea next)`,
+    );
+  }
   if (position.phase === 'doing') {
     if (mayTake(board.def, step.id)) return;
     throw new OteaError(
