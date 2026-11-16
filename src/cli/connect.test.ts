@@ -92,6 +92,12 @@ describe('setup for agents', () => {
       args: ['--disable-warning=ExperimentalWarning', MAIN, 'mcp', '--as', name],
     });
 
+    it('names --as in its usage, beside the profile', async () => {
+      const { out } = await otea('connect', '--help');
+
+      expect(out).toContain('otea connect [--as <name>] [--model <id>] [--effort <level>]');
+    });
+
     it('pins the agent name in the project MCP config', async () => {
       const { code, out } = await otea('connect', '--as', 'claude-b', ...PROFILE);
 

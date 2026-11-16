@@ -53,6 +53,12 @@ describe('assertProfileValue', () => {
     expect(() => assertProfileValue('effort', 'two words')).toThrow(/unknown.*never guess/);
   });
 
+  it('never offers unknown for a harness, where it is refused', () => {
+    expect(() => assertProfileValue('harness', 'claude code')).toThrow(
+      '--harness takes one word of at most 100 characters: the tool you run in (such as claude-code, codex or gemini-cli)',
+    );
+  });
+
   it.each(['', ' ', 'two words', 'x'.repeat(101)])('refuses %j', (value) => {
     expect(() => assertProfileValue('model', value)).toThrow(/--model/);
   });

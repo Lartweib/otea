@@ -558,7 +558,9 @@ const connect: Command = {
   summary:
     'Pin an agent name in the project MCP config (.mcp.json) so every MCP action is attributed to it; asks for the name unless --as gives it. --model and --effort give the profile it runs as (required unless it declared one), which the agent confirms in its first session',
   args: [],
+  // --as is a global option; it is named here so the usage line shows it.
   options: {
+    as: { placeholder: 'name' },
     model: { placeholder: 'id' },
     effort: { placeholder: 'level' },
   },
