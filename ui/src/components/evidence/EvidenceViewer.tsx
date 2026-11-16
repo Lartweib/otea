@@ -89,7 +89,16 @@ export function GifView({ evidence }: { evidence: Evidence }) {
 
 // One piece of evidence read the way its kind is. `phone` reads a diff unified and wrapped, as the
 // narrow screen needs.
-export function EvidenceViewer({ evidence, phone }: { evidence: Evidence; phone?: boolean }) {
+export function EvidenceViewer({
+  evidence,
+  phone,
+  split,
+}: {
+  evidence: Evidence;
+  phone?: boolean;
+  // A diff opens side by side (the desk only).
+  split?: boolean;
+}) {
   switch (viewOf(evidence)) {
     case 'image':
       return <ImageSingle evidence={evidence} />;
@@ -100,7 +109,12 @@ export function EvidenceViewer({ evidence, phone }: { evidence: Evidence; phone?
     case 'audio':
       return <AudioPlayer evidence={evidence} />;
     case 'diff':
-      return <DiffView evidence={evidence} {...(phone ? { wrap: true } : {})} />;
+      return (
+        <DiffView
+          evidence={evidence}
+          {...(phone ? { wrap: true } : split !== undefined ? { split } : {})}
+        />
+      );
     case 'log':
       return <LogView evidence={evidence} />;
     case 'diagram':

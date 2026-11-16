@@ -441,8 +441,10 @@
 }
 
 .ev-line {
+  /* Its own tint only: the theme's --tint must not wash every line. */
+  --tint: transparent;
   display: flex;
-  background: var(--tint, transparent);
+  background: var(--tint);
 }
 
 .ev-line[data-kind="add"] {
@@ -714,4 +716,97 @@
 }
 .ev-diff > .ev-tools {
   margin-bottom: 6px;
+}
+
+/* Side by side: the old file on the left, the new on the right; each half wraps its long lines. */
+.ev-split .ev-lines {
+  display: block;
+}
+
+.ev-split-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.ev-split-row > .ev-line {
+  min-width: 0;
+}
+
+.ev-split-row > .ev-line[data-side="new"] {
+  border-left: 1px solid var(--rule);
+}
+
+.ev-split .ev-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.ev-split .ev-gutter {
+  position: static;
+}
+
+.ev-line[data-kind="none"] {
+  --tint: color-mix(in oklch, var(--ink-2) 5%, transparent);
+}
+
+.ev-tool-set {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.ev-seg {
+  margin: 0;
+  border: 0;
+  min-inline-size: 0;
+}
+
+.ev-tools > .t-cap {
+  white-space: nowrap;
+}
+
+/* Log: search and the lines that report a failure. */
+.ev-find {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.ev-find-input.input {
+  width: 13rem;
+  min-height: 30px;
+  padding: 0 12px;
+  font-size: 13px;
+}
+
+.ev-find-count {
+  min-width: 5ch;
+  font-variant-numeric: tabular-nums;
+}
+
+.ev-line[data-error="true"] {
+  --tint: color-mix(in oklch, var(--minus) 10%, transparent);
+}
+
+.ev-line[data-error="true"] .ev-no {
+  color: var(--minus);
+  opacity: 1;
+}
+
+.ev-line[data-found="true"] {
+  --tint: color-mix(in oklch, var(--you) 14%, transparent);
+}
+
+.ev-line[data-current="true"] {
+  --tint: color-mix(in oklch, var(--you) 30%, transparent);
+}
+
+/* A log shown in full scrolls inside its box, so a step to a line keeps the page where it is. */
+.ev-log .ev-code {
+  max-height: min(70vh, 720px);
+  overflow-y: auto;
 }
