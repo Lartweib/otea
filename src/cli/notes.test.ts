@@ -151,7 +151,9 @@ describe('notes from the person, on the CLI and over MCP', () => {
 
     const beat = await call('heartbeat', { id: 'CRI-1' });
     expect(beat.data.notes).toHaveLength(1);
-    expect(beat.data.text).toContain('otea reply CRI-1 --note 1');
+    expect(beat.data.text).toContain(
+      'reply { id: "CRI-1", note: "1", answer: "<your short answer>" }',
+    );
 
     const answered = await call('reply', { id: 'CRI-1', note: '1', answer: 'Sí' });
     expect(answered.isError).toBe(false);
