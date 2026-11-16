@@ -306,6 +306,39 @@ describe('check', () => {
       });
     });
 
+    it('takes a Done branch this checkout knows only from the remote, as a fresh clone does', async () => {
+      person(task, 'implementing');
+      commit('keys');
+      git('update-ref', 'refs/remotes/origin/chg-1/keys', 'chg-1/keys');
+      await otea('move', task, 'implementing__review');
+      person(task, 'done');
+      git('checkout', '-q', 'main');
+      git('merge', '-q', '--ff-only', 'origin/chg-1/keys');
+      git('branch', '-q', '-D', 'chg-1/keys');
+
+      expect(await push('--branch', '--repo')).toMatchObject({
+        code: 0,
+        out: `push allowed: ${task} is Done; main takes its branch.\n`,
+      });
+    });
+
+    it('refuses a local branch that holds commits its remote never got, so nobody reviewed', async () => {
+      person(task, 'implementing');
+      commit('keys');
+      git('update-ref', 'refs/remotes/origin/chg-1/keys', 'chg-1/keys');
+      await otea('move', task, 'implementing__review');
+      person(task, 'done');
+      commit('after the review');
+      git('checkout', '-q', 'main');
+      git('merge', '-q', '--ff-only', 'chg-1/keys');
+
+      expect(await push('--branch', '--repo')).toEqual({
+        code: 19,
+        out: `push refused: chg-1/keys holds commits origin/chg-1/keys never got, so nobody reviewed them; main takes ${task}'s branch only as it was pushed.\n`,
+        err: '',
+      });
+    });
+
     it('stops a real push into the base through the pre-push hook until the item is Done', async () => {
       const remote = tempGitRepo();
       try {
