@@ -871,7 +871,7 @@ function proposeBoard(input: Input, name: string): Output {
 const boardDraft: Command = {
   name: 'board draft',
   summary:
-    'Draft the board a Pedido asks for: without --file, print the draft to start from (JSON); with --file, check it as a board and hand it in on the Pedido as board.json, saying what is still wrong. To propose a new board the person asked you for, --new <name> --why "<what it is for>" (and --file to hand it in at once) makes it and its Pedido, which you hold; the person publishes it in Studio',
+    'Draft the board a Pedido asks for: without --file, print the draft to start from (JSON); with --file, check it as a board and hand it in on the Pedido as board.json, saying what is still wrong (the board keeps the name it was asked for; the name in the file is not used). To propose a new board the person asked you for, --new <name> --why "<what it is for>" (and --file to hand it in at once) makes it and its Pedido, which you hold; the person publishes it in Studio',
   args: ['id?'],
   options: {
     file: { placeholder: 'board.json' },

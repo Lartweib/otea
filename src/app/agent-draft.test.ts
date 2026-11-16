@@ -12,6 +12,7 @@ import {
   waitingDraftOf,
 } from './agent-draft.ts';
 import {
+  addBoard,
   ensureRequestsBoard,
   getBoardRecord,
   listBoardSummaries,
@@ -135,6 +136,39 @@ describe('an agent drafting a board', () => {
       `step 1 "${name}": scout no longer reviews it: any agent does, never the one that did it [steps.0.reviewer]`,
     ]);
     expect(getBoardRecord(ctx, board.id).draft?.definition.steps[0]?.reviewer).toBe('any');
+  });
+
+  it('keeps the board’s name whatever the file calls it, checks it under that name, and says so', () => {
+    const ctx = project();
+    addBoard(ctx, { name: 'Otro', template: 'tasks', lang: 'es', by: you }, now);
+    const { board, item } = requestAgentDraft(
+      ctx,
+      { name: 'Criaturas', need: 'x', agent: 'kiln', lang: 'es' },
+      now,
+    );
+    const draft = getBoardRecord(ctx, board.id).draft?.definition;
+    if (!draft) throw new Error('no draft');
+    for (const name of ['Otro', '', 'Criaturas']) {
+      const submitted = submitAgentDraft(
+        ctx,
+        {
+          id: item,
+          text: JSON.stringify({ ...agentFile(draft), name }),
+          actor: kiln,
+          channel: 'cli',
+        },
+        now,
+      );
+      expect(submitted.problems).toEqual([]);
+      expect(getBoardRecord(ctx, board.id).draft?.definition.name).toBe('Criaturas');
+      expect(submitted.notes).toEqual(
+        name === 'Criaturas'
+          ? []
+          : [
+              `name: the board keeps the name "Criaturas" it was asked for; the file's ${name ? `"${name}"` : 'empty name'} is not used [name]`,
+            ],
+      );
+    }
   });
 
   it('offers to close the Pedido on publish, and closes it as done when asked', () => {
