@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { moduleAccepts } from '../placement.ts';
 import { compileBoard } from './compile.ts';
 import { blankBoard, instantiate, TEMPLATES } from './templates.ts';
 import { creatures } from './testing.ts';
@@ -134,8 +135,26 @@ describe('compileBoard', () => {
 
     const layout = compileBoard('bcria', 1, def).types[0]?.layout;
 
-    expect(layout?.body).toContainEqual({ module: 'files', id: 'evoice', label: 'Voz' });
+    expect(layout?.body).toContainEqual({
+      module: 'files',
+      id: 'evoice',
+      label: 'Voz',
+      accepts: ['audio'],
+    });
     expect(layout?.side).toContainEqual({ module: 'files', id: 'efile', label: 'Proyecto' });
+  });
+
+  it('lets an audio part take audio only, so a data file never fits a voice note', () => {
+    const def = creatures();
+    def.parts.evoice = { id: 'evoice', name: 'Voz', kind: 'audio', hint: '', options: [] };
+    def.steps[0]?.hand.push({ ref: 'evoice', req: 'no', fresh: false });
+
+    const layout = compileBoard('bcria', 1, def).types[0]?.layout;
+    const voice = layout?.body.find((entry) => entry.id === 'evoice');
+
+    expect(voice && moduleAccepts(voice, 'nota.ogg')).toBe(true);
+    expect(voice && moduleAccepts(voice, 'datos.csv')).toBe(false);
+    expect(voice && moduleAccepts(voice, 'datos.json')).toBe(false);
   });
 
   it('compiles every template and a blank board', () => {
