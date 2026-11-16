@@ -7,6 +7,7 @@ import { createItem } from './items.ts';
 import { claimItem, releaseItem } from './leases.ts';
 import {
   CLI_HARNESS,
+  claimName,
   hearAgent,
   listAgents,
   presenceSignature,
@@ -248,6 +249,33 @@ describe('agent presence', () => {
       declareProfile(ctx.db, { ...mcp, model: 'claude-opus-5-5', effort: 'high' }, at(T0));
 
       expect(presenceSignature(ctx.db, at(T0))).not.toBe(before);
+    });
+  });
+
+  describe('claimName', () => {
+    const mcp = { agent: 'claude', channel: 'mcp' as const, harness: CLAUDE_CODE };
+    const alive = (pids: number[]) => (pid: number) => pids.includes(pid);
+
+    it('refuses a name another open MCP session works under, telling how to take another', () => {
+      hearAgent(ctx.db, { ...mcp, session: 101 }, at(T0));
+
+      expect(() => claimName(ctx.db, 'claude', 202, alive([101, 202]), at(T1))).toThrow(
+        'Another session works as claude right now: give this one its own name, passing as "claude-2" (or another name) on every call',
+      );
+      expect(() => claimName(ctx.db, 'claude', 101, alive([101, 202]), at(T1))).not.toThrow();
+    });
+
+    it('takes the name once that session closed or went quiet', () => {
+      hearAgent(ctx.db, { ...mcp, session: 101 }, at(T0));
+
+      expect(() => claimName(ctx.db, 'claude', 202, alive([202]), at(T1))).not.toThrow();
+      expect(() => claimName(ctx.db, 'claude', 202, alive([101, 202]), at(T5))).not.toThrow();
+    });
+
+    it('leaves a name a command-line wait listens under to the MCP session too', () => {
+      hearAgent(ctx.db, { agent: 'claude', channel: 'cli', harness: CLI_HARNESS }, at(T0));
+
+      expect(() => claimName(ctx.db, 'claude', 202, alive([202]), at(T1))).not.toThrow();
     });
   });
 

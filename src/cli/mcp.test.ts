@@ -86,6 +86,48 @@ describe('mcp', () => {
     });
   });
 
+  it('refuses a second open session the name another session works under', async () => {
+    const open = async () => {
+      const client = new Client({ name: 'claude-code', version: '2.1.0' });
+      await client.connect(
+        new StdioClientTransport({
+          command: process.execPath,
+          args: [...ARGS, '--as', 'claude'],
+          cwd: repo.dir,
+          env: { ...getDefaultEnvironment(), OTEA_HOME: process.env.OTEA_HOME ?? '' },
+          stderr: 'pipe',
+        }),
+      );
+      return client;
+    };
+    const first = await open();
+    const listening = () => {
+      const project = openProject(repo.dir);
+      try {
+        return listAgents(project.db).some(({ name, listening }) => name === 'claude' && listening);
+      } finally {
+        project.db.close();
+      }
+    };
+    await until(listening);
+    const second = await open();
+    try {
+      const mine = await first.callTool({ name: 'claim', arguments: { id: 'TASKS-1' } });
+      expect(mine.isError).toBeFalsy();
+
+      const refused = await second.callTool({ name: 'claim', arguments: { id: 'TASKS-1' } });
+      expect(refused.isError).toBe(true);
+      expect(JSON.parse((refused.content as { text: string }[])[0]?.text ?? '')).toMatchObject({
+        error: { code: 'name_in_use' },
+      });
+      const renamed = await second.callTool({ name: 'list', arguments: { as: 'claude-b' } });
+      expect(renamed.isError).toBeFalsy();
+    } finally {
+      await first.close();
+      await second.close();
+    }
+  });
+
   it('prints nothing but the protocol and exits once the client closes stdin', async () => {
     const child = spawn(process.execPath, ARGS, { cwd: repo.dir });
     let out = '';

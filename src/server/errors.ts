@@ -23,6 +23,7 @@ export const HTTP_STATUS: Readonly<Record<ErrorCode, ContentfulStatusCode>> = {
   not_claimable: 409,
   lease_held: 409,
   not_lease_holder: 409,
+  name_in_use: 409,
   not_relayable: 409,
   quote_required: 400,
   file_not_found: 404,
