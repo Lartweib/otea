@@ -1088,3 +1088,48 @@
     max-height: 160px;
   }
 }
+
+/* A note from inside the reader: a click picks a line or a node, lit until the note is sent. */
+.ev-reader-view[data-picking="true"] .ev-line,
+.ev-reader-view[data-picking="true"] .dg-node {
+  cursor: pointer;
+}
+.ev-reader-view .ev-line[data-picked="true"] {
+  background: var(--you-wash);
+  box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--you) 55%, transparent);
+}
+.ev-reader-view .dg-node[data-picked="true"] > :first-child {
+  stroke: var(--you);
+  stroke-width: 2.5;
+}
+.ev-reader-note {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px 10px;
+  align-items: end;
+  padding-top: 12px;
+  border-top: 1px solid var(--rule);
+}
+.ev-reader-on {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  font: 400 12.5px var(--sans);
+  color: var(--ink-2);
+}
+.ev-reader-on b {
+  font-weight: 600;
+  color: var(--ink);
+}
+.ev-reader-note textarea {
+  min-width: 0;
+  min-height: 44px;
+  padding: 8px 10px;
+  border: 1px solid var(--rule-2);
+  border-radius: 8px;
+  background: var(--sheet);
+  color: var(--ink);
+  font: 400 14px / 1.4 var(--sans);
+  resize: vertical;
+}

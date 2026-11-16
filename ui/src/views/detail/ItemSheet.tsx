@@ -5,6 +5,7 @@ import { waitsOf } from '../../actions.ts';
 import { typeOfItem, useApp } from '../../app/context.tsx';
 import { boardOfCollection, boardsOf, useBoards } from '../../board-studio/home/boards-store.ts';
 import { DeskReader } from '../../components/evidence/DeskReader.tsx';
+import { READ_AT, type ReaderPick } from '../../components/evidence/reader-pick.ts';
 import { noteAnchor } from '../../components/evidence/video-moment.ts';
 import { t, tx } from '../../i18n/i18n.ts';
 import { TypeIcon } from '../../icons/TypeIcon.tsx';
@@ -325,7 +326,10 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
     setAnchor(null);
     setNoting({ button, open: true, below: noting ? null : below });
   };
-  const postNote = (text: string, on?: { evidence: number; seconds?: number }) =>
+  const postNote = (
+    text: string,
+    on?: { evidence: number; seconds?: number; line?: number; quote?: string; node?: string },
+  ) =>
     app.note(item.id, text, on).then(
       () => toast({ msg: t('notes.sent', { agent: who, title: item.title }), id: item.id }),
       () => toast({ msg: t('notes.failed'), id: item.id }),
@@ -369,9 +373,14 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
     const read = roundsOf(item.events, item.evidence, type?.states ?? [], on);
     return phoneRounds(read, item.turn === 'human');
   }, [item.events, item.evidence, item.turn, type, live, readerStep]);
-  const reader = useMemo(
+  const handed = useMemo(
     () => readerOf(readerRounds, item.evidence),
     [readerRounds, item.evidence],
+  );
+  // While the agent works, the reader reads this round's files, the ones a note can be on.
+  const reader = useMemo(
+    () => (agentStep ? readerOf([], pieces) : handed),
+    [agentStep, pieces, handed],
   );
   const parts = useMemo(() => (type ? partNames(type.layout) : undefined), [type]);
   const [reading, setReading] = useState<{ item: string; at: number; open: boolean } | null>(null);
@@ -389,10 +398,21 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
       return ids.has(shownId) ? was : { item: item.id, ids: new Set([...ids, shownId]) };
     });
   }, [shownId, item.id]);
-  const onRead = (id?: number) => {
+  const [start, setStart] = useState<ReaderPick | undefined>(undefined);
+  const onRead = (id?: number, pick?: ReaderPick) => {
     const at = id === undefined ? 0 : reader.files.findIndex((e) => e.id === id);
+    setStart(pick);
     setReading({ item: item.id, at: Math.max(0, at), open: true });
   };
+  // A note's cite on a line or a node opens the reader there.
+  useEffect(() => {
+    const open = (e: Event) => {
+      const { evidence, pick } = (e as CustomEvent<{ evidence: number; pick: ReaderPick }>).detail;
+      if (reader.files.some(({ id }) => id === evidence)) onRead(evidence, pick);
+    };
+    window.addEventListener(READ_AT, open);
+    return () => window.removeEventListener(READ_AT, open);
+  });
   const closeReader = () => setReading((r) => (r ? { ...r, open: false } : r));
   // A move made from inside the reader is the page's own: the reader closes, then the move's button
   // below is pressed, so a refusal or the notes form shows where it always does.
@@ -757,6 +777,16 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
               marks={reader.marks}
               seen={seen}
               decide={decide}
+              start={start}
+              note={
+                canNote
+                  ? {
+                      onSend: (text, on) => {
+                        void postNote(text, on);
+                      },
+                    }
+                  : undefined
+              }
             />
           ) : null}
           <div className="notes-slot">
