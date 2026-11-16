@@ -1346,6 +1346,8 @@
 .ev-para-pair {
   display: grid;
   gap: 6px;
+}
+
 /* A point or a zone of an image a note is on, drawn over the image in the reader. */
 .ev-reader-view[data-spotting="true"] img.ev-img {
   cursor: crosshair;
