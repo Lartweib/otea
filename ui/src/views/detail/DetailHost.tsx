@@ -6,6 +6,7 @@ import { useWorkspace, workspace } from '../../app/workspace.ts';
 import { NewItemForm } from '../../components/NewItemForm.tsx';
 import { t } from '../../i18n/i18n.ts';
 import { useEscape } from '../../kit/escape.ts';
+import { returnFocus } from '../../kit/pop/focus.ts';
 import { curView, listOrder, redrawLists, rowOf } from '../../lanes/dom.ts';
 import { motionBus } from '../../motion/bus.ts';
 import { Choreo, leaveTogether, mirrorDelays, type Part, part } from '../../motion/choreo.ts';
@@ -194,6 +195,7 @@ export function DetailHost() {
   const ready =
     target === INTAKE || agentOf(target) !== null || (target != null && item !== undefined);
   const [shown, setShown] = useState<string | null>(null);
+  const focusBack = useRef<HTMLElement | null>(null);
   const sheetRef = useRef<HTMLElement>(null);
   const dividerRef = useRef<HTMLDivElement>(null);
   const linkRef = useRef<SVGSVGElement>(null);
@@ -269,6 +271,10 @@ export function DetailHost() {
       for (const a of v.getAnimations()) a.cancel();
     }
     workspace.set({ full: false });
+    // Focus left in the sheet (or dropped to the page) goes back to what opened it.
+    const active = document.activeElement;
+    if (active === document.body || sheetRef.current?.contains(active))
+      returnFocus(focusBack.current);
     setShown(null);
     redrawLists();
   };
@@ -459,6 +465,7 @@ export function DetailHost() {
     if (target && ready) {
       if (shown == null) {
         st.pending = { kind: 'open' };
+        focusBack.current = document.activeElement as HTMLElement | null;
         setShown(target);
         return;
       }

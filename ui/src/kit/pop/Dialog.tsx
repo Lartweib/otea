@@ -2,7 +2,7 @@ import { type ReactNode, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Choreo, part } from '../../motion/choreo.ts';
 import { useEscape } from '../escape.ts';
-import { focusFirst, onDialogTab } from './focus.ts';
+import { focusFirst, onDialogTab, returnFocus } from './focus.ts';
 import { layerEl } from './Pop.tsx';
 
 // A dialog (mock:3471-3495, MOTION §3.4): the scrim, then the line, then the surface riding up 6 px,
@@ -95,7 +95,7 @@ export function Dialog({ open, label, onClose, size = 'sm', className, children 
         if (latest && ch.dir === 0) {
           choreo.current = null;
           setMounted(false);
-          focusBack.current?.focus?.({ preventScroll: true });
+          returnFocus(focusBack.current);
         }
       });
     }

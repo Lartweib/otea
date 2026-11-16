@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { menuStep, tabStep } from './focus.ts';
+import { focusTarget, menuStep, noteTrigger, tabStep } from './focus.ts';
 
 describe('moving through a menu by keys', () => {
   it('goes down and up, wrapping, and to the ends', () => {
@@ -28,5 +28,27 @@ describe('keeping Tab inside a dialog', () => {
   it('lets the browser move within', () => {
     expect(tabStep(false, 0, 3)).toBeNull();
     expect(tabStep(true, 1, 3)).toBeNull();
+  });
+});
+
+describe('handing focus back when something closes', () => {
+  const el = (isConnected: boolean) => ({ isConnected, focus: () => undefined });
+
+  it('goes back to what had focus when it opened', () => {
+    const saved = el(true);
+    noteTrigger(el(true));
+    expect(focusTarget(saved)).toBe(saved);
+  });
+
+  it('goes to the trigger of the last pop when what had focus is gone', () => {
+    const trigger = el(true);
+    noteTrigger(trigger);
+    expect(focusTarget(el(false))).toBe(trigger);
+    expect(focusTarget(null)).toBe(trigger);
+  });
+
+  it('goes nowhere when both are gone', () => {
+    noteTrigger(el(false));
+    expect(focusTarget(el(false))).toBeNull();
   });
 });

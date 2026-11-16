@@ -68,3 +68,23 @@ export function onDialogTab(root: HTMLElement, event: KeyboardEvent): void {
   event.preventDefault();
   all[next]?.focus({ preventScroll: true });
 }
+
+// Where focus goes back when a pop, a dialog or a drawer closes. Each remembers what had focus
+// when it opened; when that is gone (a menu item of a pop that closed on the way), the trigger of
+// the last pop that closed takes it, so focus never falls to the page's body.
+type Focusable = { isConnected: boolean; focus(options?: FocusOptions): void };
+
+let lastTrigger: Focusable | null = null;
+
+export function noteTrigger(el: Focusable | null): void {
+  if (el) lastTrigger = el;
+}
+
+export function focusTarget(saved: Focusable | null): Focusable | null {
+  if (saved?.isConnected) return saved;
+  return lastTrigger?.isConnected ? lastTrigger : null;
+}
+
+export function returnFocus(saved: Focusable | null): void {
+  focusTarget(saved)?.focus({ preventScroll: true });
+}

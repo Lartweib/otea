@@ -3,7 +3,14 @@ import { officialType } from '../../derive/fixtures.ts';
 import { availableColumns, chosenColumns } from '../../grid.ts';
 import { setLanguage } from '../../i18n/i18n.ts';
 import type { CollectionView } from '../../types.ts';
-import { cellClass, headLabel, resizedWidth, tableLayout, widthChip } from './table.ts';
+import {
+  cellClass,
+  colMenuAfter,
+  headLabel,
+  resizedWidth,
+  tableLayout,
+  widthChip,
+} from './table.ts';
 
 const bugs: CollectionView = {
   name: 'Errores',
@@ -79,5 +86,20 @@ describe('resizing a column by the edge that faces the title', () => {
     expect(widthChip('paso', 150, { min: 64, max: 300 })).toBe('paso · 150');
     expect(widthChip('paso', 64, { min: 64, max: 300 })).toBe('paso · mín');
     expect(widthChip('paso', 300, { min: 64, max: 300 })).toBe('paso · máx');
+  });
+});
+
+describe('a column head menu', () => {
+  const a = {} as HTMLElement;
+  it('opens on a press of its head', () => {
+    expect(colMenuAfter(null, 'title', a)).toEqual({ kind: 'col', key: 'title', anchor: a });
+  });
+  it('closes on a second press of the same head', () => {
+    expect(colMenuAfter({ kind: 'col', key: 'title', anchor: a }, 'title', a)).toBeNull();
+  });
+  it('moves to another head', () => {
+    expect(colMenuAfter({ kind: 'col', key: 'title', anchor: a }, 'state', a)).toMatchObject({
+      key: 'state',
+    });
   });
 });

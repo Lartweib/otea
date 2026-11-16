@@ -12,7 +12,7 @@ import { Choreo, type Part, part } from '../../motion/choreo.ts';
 import { clamp } from '../../motion/curves.ts';
 import { useEscape } from '../escape.ts';
 import { type Place, placer } from './anchors.ts';
-import { focusFirst, onMenuKey } from './focus.ts';
+import { focusFirst, noteTrigger, onMenuKey, returnFocus } from './focus.ts';
 
 // A pop: the line leads from the trigger, the surface unrolls riding its edge, the items resolve
 // (mock:3258-3291, MOTION §3.1). It stays mounted while it closes, the same gesture mirrored, and
@@ -107,6 +107,9 @@ export function Pop({
   const me = useRef({});
   const closeRef = useRef(onClose);
   closeRef.current = onClose;
+  // Its trigger, kept past a close that clears it (a menu whose anchor is its open state).
+  const trigger = useRef(anchor);
+  if (anchor) trigger.current = anchor;
   if (open && !mounted) setMounted(true);
 
   // Open: place it, lead the line from the trigger's centre, run the gesture. Close: the mirror,
@@ -135,6 +138,10 @@ export function Pop({
       choreo.current.go(1);
     } else if (choreo.current) {
       if (openPop?.id === me.current) openPop = null;
+      noteTrigger(trigger.current);
+      // Focus inside it (or dropped to the page) goes back to its trigger, not to the body.
+      const active = document.activeElement;
+      if (active === document.body || node.contains(active)) returnFocus(trigger.current);
       const ch = choreo.current;
       ch.go(0).then((latest) => {
         if (latest && ch.dir === 0) {
@@ -153,6 +160,17 @@ export function Pop({
     node.addEventListener('keydown', key);
     return () => node.removeEventListener('keydown', key);
   }, [mounted, role]);
+
+  // The window resized while it is open: it stays by its trigger and inside the viewport.
+  useEffect(() => {
+    if (!open) return;
+    const again = () => {
+      const node = el.current;
+      if (node) placer(place, anchor)?.(node);
+    };
+    window.addEventListener('resize', again);
+    return () => window.removeEventListener('resize', again);
+  }, [open, anchor, place]);
 
   // A press outside closes it.
   useEffect(() => {
