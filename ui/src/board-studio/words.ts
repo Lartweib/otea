@@ -143,6 +143,10 @@ export function problemText(problem: Problem): string {
       return t('bs.problem.initial_invalid', { part: str(p.part) as string });
     case 'motive_agent_drop':
       return t('bs.problem.motive_agent_drop', { step: str(p.step) as string });
+    case 'mention_raw':
+      return t('bs.problem.mention_raw', { step: str(p.step) as string });
+    case 'mention_unknown':
+      return t('bs.problem.mention_unknown', { step: str(p.step) as string });
   }
 }
 

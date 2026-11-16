@@ -37,6 +37,10 @@ export const boardStudio = {
   'bs.problem.initial_invalid': '{part} empieza en un valor que ya no tiene. Elige otro.',
   'bs.problem.motive_agent_drop':
     'Con motivos de descarte, un agente que descarta en {step} tiene que elegir uno.',
+  'bs.problem.mention_raw':
+    'Las instrucciones de {step} nombran algo con @ y llaves: escribe @ y elígelo, así los agentes leen su nombre.',
+  'bs.problem.mention_unknown':
+    'Las instrucciones de {step} mencionan algo que este tablero ya no tiene.',
   'bs.use.title': 'el título',
   'bs.use.field': 'un campo',
   'bs.use.evidence': 'una evidencia',

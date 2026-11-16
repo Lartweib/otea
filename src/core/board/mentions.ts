@@ -17,6 +17,11 @@ export function mentionables(def: BoardDefinition): Mentionable[] {
   ];
 }
 
+// Whether a mention's ref names a step, the title or a part of the board.
+export function mentionNames(def: BoardDefinition, ref: string): boolean {
+  return nameOf(def, ref) !== null;
+}
+
 function nameOf(def: BoardDefinition, ref: string): string | null {
   const step = def.steps.find(({ id }) => id === ref);
   if (step) return step.name;
