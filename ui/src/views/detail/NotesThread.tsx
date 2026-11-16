@@ -19,6 +19,13 @@ import { type ItemNote, noteContext, notesCount, noteTime, profileWords } from '
 // The piece of evidence a note is on, by the very file seen: the page finds it by its id.
 const pieceSelector = (evidence: number) => `[data-ev-ids~="${evidence}"]`;
 
+// After a note is left, its "todavía no contestó" box is scrolled into sight; its scroll margin
+// (notes.css) keeps it above the toast that says the note went, so the toast never covers it.
+export function clearOfToast(root: ParentNode, still = reduced()): void {
+  const waits = [...root.querySelectorAll<HTMLElement>('.nt-msg.wait')];
+  waits.at(-1)?.scrollIntoView({ behavior: still ? 'auto' : 'smooth', block: 'nearest' });
+}
+
 // The cited piece scrolled to and lit, as the mock's flash: a ring of your blue that fades.
 export function showPiece(evidence: number): void {
   const el = document.querySelector<HTMLElement>(pieceSelector(evidence));
@@ -279,7 +286,9 @@ export function AnchorPicker({
         aria-checked={picked === null}
         onClick={() => onPick(null)}
       >
-        <span className="nt-tb none">{t('notes.anchor.none').toLowerCase()}</span>
+        <span className="nt-tb none" aria-hidden="true">
+          {t('notes.anchor.none').toLowerCase()}
+        </span>
         <span className="nm">{t('notes.anchor.none')}</span>
       </button>
       {pieces.map((e) => (
@@ -293,7 +302,10 @@ export function AnchorPicker({
           title={e.filename}
           onClick={() => onPick(e.id)}
         >
-          <Thumb evidence={e} filename={e.filename} />
+          {/* the thumbnail is a picture of the file the name already says */}
+          <span aria-hidden="true">
+            <Thumb evidence={e} filename={e.filename} />
+          </span>
           <span className="nm">{e.filename}</span>
         </button>
       ))}

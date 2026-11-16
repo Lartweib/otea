@@ -467,6 +467,16 @@ input.se-bigname:focus {
 .se-card-in {
   padding: 20px 22px 24px;
 }
+/* the card that was showing, leaving over the new one (Card.tsx) */
+.se-card-out {
+  position: absolute;
+  inset: 0 0 auto;
+  max-height: 100%;
+  overflow: hidden;
+  pointer-events: none;
+  background: var(--sheet);
+  border-radius: 12px;
+}
 .se-chead {
   display: flex;
   align-items: flex-start;

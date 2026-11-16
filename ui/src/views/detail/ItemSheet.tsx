@@ -56,7 +56,7 @@ import { History } from './History.tsx';
 import { historyOf } from './history.ts';
 import { type MoveChoice, planMoves } from './moves.ts';
 import { NotesForm } from './NotesForm.tsx';
-import { AnchorPicker, NotesSection, RoundNotesLine } from './NotesThread.tsx';
+import { AnchorPicker, clearOfToast, NotesSection, RoundNotesLine } from './NotesThread.tsx';
 import {
   anchorPieces,
   notedOn,
@@ -336,7 +336,10 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
     on?: { evidence: number; seconds?: number; line?: number; quote?: string; node?: string },
   ) =>
     app.note(item.id, text, on).then(
-      () => toast({ msg: t('notes.sent', { agent: who, title: item.title }), id: item.id }),
+      () => {
+        toast({ msg: t('notes.sent', { agent: who, title: item.title }), id: item.id });
+        requestAnimationFrame(() => root.current && clearOfToast(root.current));
+      },
       () => toast({ msg: t('notes.failed'), id: item.id }),
     );
   const sendNote = (text: string) => {

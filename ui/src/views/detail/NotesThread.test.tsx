@@ -7,7 +7,13 @@ import { setLanguage } from '../../i18n/i18n.ts';
 import { testApp } from '../../shell/test-app.ts';
 import type { Evidence } from '../../types.ts';
 import { HandChecklist } from './BoardSections.tsx';
-import { AnchorPicker, NotesSection, RoundNotesLine, Thread } from './NotesThread.tsx';
+import {
+  AnchorPicker,
+  clearOfToast,
+  NotesSection,
+  RoundNotesLine,
+  Thread,
+} from './NotesThread.tsx';
 
 afterEach(() => setLanguage('en'));
 
@@ -200,5 +206,19 @@ describe('the handoff checklist while the agent works', () => {
     expect(html).toContain('1 sin respuesta');
     expect(html).toContain('class="sep"');
     expect(html).not.toContain('Rellenar');
+  });
+});
+
+describe('clearOfToast: the note just left stays in sight above its toast', () => {
+  it('scrolls the last unanswered note’s wait box into view, nearest, when there is one', () => {
+    const calls: ScrollIntoViewOptions[] = [];
+    const wait = { scrollIntoView: (o: ScrollIntoViewOptions) => calls.push(o) };
+    const root = {
+      querySelectorAll: (sel: string) => (sel === '.nt-msg.wait' ? [{}, wait] : []),
+    } as unknown as ParentNode;
+    clearOfToast(root, true);
+    expect(calls).toEqual([{ behavior: 'auto', block: 'nearest' }]);
+    clearOfToast({ querySelectorAll: () => [] } as unknown as ParentNode, false);
+    expect(calls).toHaveLength(1);
   });
 });

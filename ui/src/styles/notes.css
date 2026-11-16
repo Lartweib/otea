@@ -114,6 +114,8 @@
   border-radius: 12px 12px 12px 4px;
   outline: 1.5px dashed var(--lane);
   outline-offset: -1.5px;
+  /* scrolled into sight after a note is left, it stays above the toast that says so (pops.css) */
+  scroll-margin-bottom: 96px;
 }
 .nt-msg.wait p {
   margin: 0;
@@ -268,6 +270,10 @@
   background: none;
   color: inherit;
   cursor: pointer;
+}
+/* the thumbnail's wrapper only hides it from the button's name: the layout sees the thumbnail */
+.nt-tbw {
+  display: contents;
 }
 .nt-ap .nt-tb {
   transition:
