@@ -84,6 +84,7 @@ describe('the catalogs', () => {
     'evidence.alt',
     'sheet.typeBoard',
     'evidence.diff',
+    'evidence.kind.diff',
     'diagram.version',
     'diagram.v',
     'bs.board.version',

@@ -62,20 +62,44 @@ export function splitEvidence(evidence: readonly Evidence[]): {
   };
 }
 
-export type FileChange = { name: string; kind: Evidence['kind']; change: 'new' | 'gone' | 'same' };
+export type FileChange = {
+  name: string;
+  kind: Evidence['kind'];
+  change: 'new' | 'changed' | 'gone' | 'same';
+};
 
-// From one round's files to the next, by name: what came new, what stayed, what is gone.
+// How a file of a round stands against the round before: new by name, changed when the name came
+// again with other contents, the same when its contents did not change.
+function changeOf(e: Evidence, was: ReadonlyMap<string, Evidence>): 'new' | 'changed' | 'same' {
+  const old = was.get(e.filename);
+  if (!old) return 'new';
+  return old.sha256 === e.sha256 ? 'same' : 'changed';
+}
+
+// From one round's files to the next, by name: what came new, what changed, what stayed, what is
+// gone.
 export function compareFiles(older: readonly Evidence[], newer: readonly Evidence[]): FileChange[] {
-  const was = new Set(older.map((e) => e.filename));
+  const was = new Map(older.map((e) => [e.filename, e]));
   const now = new Set(newer.map((e) => e.filename));
   const of = (e: Evidence, change: FileChange['change']): FileChange => ({
     name: e.filename,
     kind: e.kind,
     change,
   });
+  const marked = newer.map((e) => of(e, changeOf(e, was)));
   return [
-    ...newer.filter((e) => !was.has(e.filename)).map((e) => of(e, 'new')),
-    ...newer.filter((e) => was.has(e.filename)).map((e) => of(e, 'same')),
+    ...marked.filter((c) => c.change === 'new'),
+    ...marked.filter((c) => c.change !== 'new'),
     ...older.filter((e) => !now.has(e.filename)).map((e) => of(e, 'gone')),
   ];
+}
+
+// Each file of a round marked against the round before, by its id; nothing on a first round.
+export function fileMarks(
+  older: readonly Evidence[],
+  newer: readonly Evidence[],
+): Map<number, 'new' | 'changed' | 'same'> {
+  if (older.length === 0) return new Map();
+  const was = new Map(older.map((e) => [e.filename, e]));
+  return new Map(newer.map((e) => [e.id, changeOf(e, was)]));
 }

@@ -19,6 +19,11 @@ export type Text = { status: 'loading' } | { status: 'ready'; text: string } | {
 // An entry never changes, so its text is fetched once per page, by where it loads from.
 const texts = new Map<string, string>();
 
+// A file's text already in hand, read from here on without fetching it.
+export function keepEvidenceText(url: string, text: string): void {
+  texts.set(url, text);
+}
+
 export function useEvidenceText(evidence: Evidence): Text {
   const fileUrl = useFileUrl();
   const { size } = evidence;
@@ -84,7 +89,7 @@ function DiffRow({ line }: { line: DiffLine }) {
   );
 }
 
-function DiffFileView({ file, open }: { file: DiffFile; open: boolean }) {
+function DiffFileView({ file, open, wrap }: { file: DiffFile; open: boolean; wrap: boolean }) {
   const largest = Math.max(
     0,
     ...file.hunks.flatMap(({ lines }) =>
@@ -100,7 +105,7 @@ function DiffFileView({ file, open }: { file: DiffFile; open: boolean }) {
           <span className="ev-minus">−{file.deletions}</span>
         </span>
       </summary>
-      <div className="ev-code" style={digits(largest)}>
+      <div className="ev-code" data-wrap={wrap ? 'true' : undefined} style={digits(largest)}>
         <div className="ev-lines">
           {file.hunks.map((hunk, index) => (
             // biome-ignore lint/suspicious/noArrayIndexKey: hunks have no identity beyond their place.
@@ -127,8 +132,11 @@ function DiffFileView({ file, open }: { file: DiffFile; open: boolean }) {
 // Diffs this long open their first file only; the rest wait folded.
 const OPEN_LINES = 400;
 
-export function DiffView({ evidence }: { evidence: Evidence }) {
+// A long line wraps on request; `wrap` holds it wrapped with no toggle (the phone's diff).
+export function DiffView({ evidence, wrap: held }: { evidence: Evidence; wrap?: boolean }) {
   const state = useEvidenceText(evidence);
+  const [wrapped, setWrapped] = useState(false);
+  const wrap = held ?? wrapped;
   if (state.status !== 'ready') return <TextState state={state} evidence={evidence} />;
   const files = parseDiff(state.text);
   if (files.length === 0) return <LogView evidence={evidence} />;
@@ -146,12 +154,20 @@ export function DiffView({ evidence }: { evidence: Evidence }) {
   }));
   return (
     <div className="ev-diff">
-      <p className="ev-diff-sum t-cap">
-        {t('common.files', { count: files.length })} · <span className="ev-plus">+{additions}</span>{' '}
-        <span className="ev-minus">−{deletions}</span>
-      </p>
+      <div className="ev-tools">
+        <p className="ev-diff-sum t-cap">
+          {t('common.files', { count: files.length })} ·{' '}
+          <span className="ev-plus">+{additions}</span>{' '}
+          <span className="ev-minus">−{deletions}</span>
+        </p>
+        {held === undefined ? (
+          <Button size="sm" aria-pressed={wrapped} onClick={() => setWrapped(!wrapped)}>
+            {t('evidence.wrap')}
+          </Button>
+        ) : null}
+      </div>
       {keyed.map(({ file, key, first }) => (
-        <DiffFileView key={key} file={file} open={lines <= OPEN_LINES || first} />
+        <DiffFileView key={key} file={file} open={lines <= OPEN_LINES || first} wrap={wrap} />
       ))}
       <FileMeta evidence={evidence} />
     </div>

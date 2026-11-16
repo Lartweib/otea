@@ -9,6 +9,7 @@ import {
 import type { BoardDefinition } from '../../../../src/core/board/model.ts';
 import { evidenceFileUrl } from '../../api.ts';
 import { useApp } from '../../app/context.tsx';
+import { EvidenceReader } from '../../components/evidence/EvidenceViewer.tsx';
 import { NoteText } from '../../components/NoteText.tsx';
 import { t, tx } from '../../i18n/i18n.ts';
 import { AgentMark, Button, Icon, StepPill } from '../../kit/index.ts';
@@ -27,6 +28,7 @@ import { AnchorPicker, countWords, showPiece, Thread } from './NotesThread.tsx';
 import type { ItemNote } from './notes.ts';
 import {
   compareFiles,
+  fileMarks,
   type PhoneRound,
   phoneRounds,
   roundTagWord,
@@ -126,54 +128,94 @@ function Pin({ count }: { count: number | undefined }) {
   return count ? <span className="pin">{t('notes.count', { count })}</span> : null;
 }
 
+type Mark = 'new' | 'changed' | 'same';
+
+const MARK_WORD: Record<Mark, () => string> = {
+  new: () => t('phone.r.new'),
+  changed: () => t('phone.r.changedFile'),
+  same: () => t('phone.r.same'),
+};
+
+// The round's files: images as thumbnails, the rest as rows with their kind, each marked against
+// the round before. A tap opens it in the reader, the desk's viewer for its kind, from where the
+// others are a step away ("2 de 7"); nothing opens as a raw file.
 function Files({
   evidence,
   noted,
+  marks,
 }: {
   evidence: readonly Evidence[];
   noted?: ReadonlyMap<number, number> | undefined;
+  marks?: ReadonlyMap<number, Mark> | undefined;
 }) {
   const { images, files } = splitEvidence(evidence);
+  const order = [...images, ...files];
+  const [at, setAt] = useState<number | null>(null);
+  const opened = useRef<HTMLElement | null>(null);
+  const open = (e: Evidence, from: HTMLElement) => {
+    opened.current = from;
+    setAt(order.indexOf(e));
+  };
+  const mark = (e: Evidence) => {
+    const m = marks?.get(e.id);
+    return m ? <span className={`mk ${m}`}>{MARK_WORD[m]()}</span> : null;
+  };
   return (
     <>
       {images.length ? (
         <div className="p-ev">
           {images.map((e) => (
-            <a
+            <button
               key={e.id}
+              type="button"
               className="p-shot"
-              href={evidenceFileUrl(e.id)}
-              target="_blank"
-              rel="noreferrer"
               data-ev-ids={e.id}
+              aria-label={t('phone.r.read', { file: e.filename })}
+              onClick={(ev) => open(e, ev.currentTarget)}
             >
-              <img src={evidenceFileUrl(e.id)} alt={e.caption ?? e.filename} loading="lazy" />
+              <img src={evidenceFileUrl(e.id)} alt="" loading="lazy" />
               <span className="cap">{e.filename}</span>
+              {mark(e)}
               <Pin count={noted?.get(e.id)} />
-            </a>
+            </button>
           ))}
         </div>
       ) : null}
       {files.length ? (
         <div className="p-files">
           {files.map((e) => (
-            <a
+            <button
               key={e.id}
+              type="button"
               className="p-file"
-              href={evidenceFileUrl(e.id)}
-              target="_blank"
-              rel="noreferrer"
               data-ev-ids={e.id}
+              onClick={(ev) => open(e, ev.currentTarget)}
             >
               <span className="fn">{e.filename}</span>
+              <span className="kd">{t(`evidence.kind.${e.kind}`)}</span>
+              {mark(e)}
               <Pin count={noted?.get(e.id)} />
-            </a>
+            </button>
           ))}
         </div>
       ) : null}
       {images.length + files.length === 0 ? (
         <p className="p-none">{t('phone.r.noEvidence')}</p>
       ) : null}
+      <BottomSheet
+        open={at !== null}
+        label={t('phone.r.reader')}
+        title={t('phone.r.reader')}
+        className="p-sb p-read"
+        from={() => opened.current}
+        onClose={() => setAt(null)}
+      >
+        {at !== null ? (
+          <div data-i="">
+            <EvidenceReader evidence={order} at={at} onAt={setAt} phone />
+          </div>
+        ) : null}
+      </BottomSheet>
     </>
   );
 }
@@ -213,11 +255,14 @@ function RoundThread({
 
 function RoundView({
   r,
+  prior,
   newest,
   now,
   notes,
 }: {
   r: PhoneRound;
+  // The round before it, to mark its files against.
+  prior: PhoneRound | undefined;
   newest: boolean;
   now: number;
   notes?: PhoneNotes | undefined;
@@ -244,7 +289,11 @@ function RoundView({
       ) : null}
       <section className="p-part" data-c>
         <Lab x={evidenceWords(images.length, files.length) || '—'}>{t('sheet.evidence')}</Lab>
-        <Files evidence={r.evidence} noted={notes?.noted} />
+        <Files
+          evidence={r.evidence}
+          noted={notes?.noted}
+          marks={prior ? fileMarks(prior.evidence, r.evidence) : undefined}
+        />
       </section>
       {r.asked ? (
         <section className="p-part" data-c>
@@ -298,7 +347,9 @@ function CompareView({ older, newer }: { older: PhoneRound; newer: PhoneRound })
                     ? `+ ${t('phone.r.new')}`
                     : c.change === 'gone'
                       ? `− ${t('phone.r.gone')}`
-                      : t('phone.r.same')}
+                      : c.change === 'changed'
+                        ? `~ ${t('phone.r.changedFile')}`
+                        : t('phone.r.same')}
                 </span>
               </div>
             ))}
@@ -524,6 +575,7 @@ export function PhoneItem(p: PhoneItemProps) {
       ) : shown ? (
         <RoundView
           r={shown}
+          prior={rounds.find((r) => r.n === shown.n - 1)}
           newest={shown === newest}
           now={now}
           notes={leave ? undefined : p.notes}
