@@ -85,6 +85,8 @@ export function problemText(problem: Problem): string {
       return t('bs.problem.board_unnamed');
     case 'board_name_taken':
       return t('bs.problem.board_name_taken', { name: str(p.name) as string });
+    case 'icon_unknown':
+      return t('bs.problem.icon_unknown', { icon: str(p.icon) as string });
     case 'no_steps':
       return t('bs.problem.no_steps');
     case 'step_unnamed':

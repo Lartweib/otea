@@ -1,3 +1,4 @@
+import { closeIconNames, isIconName } from '../icons.ts';
 import { startsWith, waysOf } from './engine.ts';
 import {
   type BoardDefinition,
@@ -22,6 +23,7 @@ import {
 export type ProblemCode =
   | 'board_unnamed'
   | 'board_name_taken'
+  | 'icon_unknown'
   | 'no_steps'
   | 'step_unnamed'
   | 'part_unnamed'
@@ -103,6 +105,10 @@ export function problemsOf(def: BoardDefinition, context: ProblemContext): Probl
   if (key(def.name) === '') add('error', 'board_unnamed', { kind: 'about' });
   else if ((context.takenNames ?? []).some((name) => key(name) === key(def.name)))
     add('error', 'board_name_taken', { kind: 'about' }, { name: def.name.trim() });
+  // An icon Otea has no drawing for would publish a type it cannot draw: refused here, by name.
+  const icon = def.icon.trim();
+  if (icon !== '' && !isIconName(icon))
+    add('error', 'icon_unknown', { kind: 'about' }, { icon, close: closeIconNames(icon) });
   if (def.steps.length === 0) add('error', 'no_steps', { kind: 'form' });
 
   for (const step of def.steps) {

@@ -30,6 +30,22 @@ describe('problemsOf', () => {
     ]);
   });
 
+  it('blocks an icon Otea has no drawing for, naming the closest ones', () => {
+    const def = { ...creatures(), icon: 'flask' };
+    expect(problemsOf(def, {})).toEqual([
+      {
+        level: 'error',
+        code: 'icon_unknown',
+        params: { icon: 'flask', close: ['flag', 'flame'] },
+        at: { kind: 'about' },
+      },
+    ]);
+    expect(problemsOf({ ...creatures(), icon: 'chekbox' }, {})[0]?.params).toEqual({
+      icon: 'chekbox',
+      close: ['checkbox'],
+    });
+  });
+
   it('ignores parts nothing uses', () => {
     const def = creatures();
     def.parts.funused = { id: 'funused', name: 'Concepto', kind: 'text', hint: '', options: [] };

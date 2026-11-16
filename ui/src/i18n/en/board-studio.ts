@@ -4,6 +4,7 @@
 export const boardStudio = {
   // Problems (core/board/problems.ts), one per code.
   'bs.problem.board_unnamed': 'The board has no name.',
+  'bs.problem.icon_unknown': 'Otea has no icon called “{icon}”. Pick another.',
   'bs.problem.board_name_taken': 'There is already a board called {name}.',
   'bs.problem.no_steps': 'The board has no steps.',
   'bs.problem.step_unnamed': 'A step has no name.',

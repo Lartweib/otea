@@ -126,6 +126,9 @@ export function draftToStartFrom(project: Project, pedido: string): BoardDefinit
   return board.draft.definition;
 }
 
+const closeWords = (close: unknown) =>
+  Array.isArray(close) && close.length > 0 ? ` (did you mean ${close.join(', ')}?)` : '';
+
 // A problem of the board in English, for the agent that drafted it.
 export function problemWords(problem: Problem): string {
   const quoted = (key: string) => {
@@ -137,6 +140,7 @@ export function problemWords(problem: Problem): string {
   const words: Record<Problem['code'], string> = {
     board_unnamed: 'the board has no name',
     board_name_taken: `another board is called${name}`,
+    icon_unknown: `the icon${quoted('icon')} is not one Otea draws${closeWords(problem.params.close)}; the icons are listed in ${BOARD_JSON_SCHEMA}`,
     no_steps: 'the board has no steps',
     step_unnamed: 'a step has no name',
     part_unnamed: 'a field or piece of evidence has no name',
