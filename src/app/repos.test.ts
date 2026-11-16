@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, realpathSync, rmSync } from 'node:fs';
+import { appendFileSync, mkdirSync, mkdtempSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -16,12 +16,22 @@ describe('repos', () => {
   let folder: string;
   let project: Project;
 
-  // A repo in the product folder, with an origin when given one.
+  // A repo in the product folder, with an origin when given one. The origin is written into the
+  // repo's config as `git remote add` writes it, one git process fewer: a loaded Windows runner
+  // takes seconds per process, and the setup that makes two of these timed out there.
   const repo = (name: string, origin?: string) => {
     const dir = join(folder, name);
     mkdirSync(dir);
     git(dir, 'init', '--quiet');
-    if (origin) git(dir, 'remote', 'add', 'origin', origin);
+    if (origin) {
+      appendFileSync(
+        join(dir, '.git', 'config'),
+        `[remote "origin"]
+	url = ${origin}
+	fetch = +refs/heads/*:refs/remotes/origin/*
+`,
+      );
+    }
     return dir;
   };
 
