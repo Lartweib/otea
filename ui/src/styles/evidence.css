@@ -613,3 +613,64 @@
   font: 400 italic 15px / 1.4 var(--serif);
   color: var(--ink-3);
 }
+
+/* ---- a files part: a Markdown document read formatted, or a file offered to open or download ---- */
+.ev-doc {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.ev-doc .ev-tools {
+  justify-content: space-between;
+}
+
+.ev-doc-body {
+  max-width: 72ch;
+  padding: 16px 18px;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  overflow-wrap: break-word;
+}
+
+.ev-doc-source {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 7px;
+  background: var(--well);
+  font: 400 12.5px / 1.6 var(--mono);
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+}
+
+.ev-offer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  padding: 12px 14px;
+}
+
+.ev-offer-name {
+  font: 500 13px var(--mono);
+  overflow-wrap: anywhere;
+}
+
+.ev-offer-acts {
+  display: inline-flex;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.ev-offer-cap {
+  flex-basis: 100%;
+}
+
+/* a read file in the loose list takes the row's whole width */
+.evidence-entry.evidence-file {
+  display: block;
+}
+
+.ev-offer-acts a {
+  text-decoration: none;
+}

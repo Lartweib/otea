@@ -1,10 +1,11 @@
 import { useFileUrl } from '../evidence-files.ts';
 import { Pill } from '../kit/index.ts';
 import type { Evidence } from '../types.ts';
+import { FileView } from './evidence/FileViews.tsx';
 
 type EvidenceListProps = { evidence: Evidence[]; canWrite: boolean };
 
-// The files attached as proof, oldest first. The server hands them only to a signed-in browser,
+// The files attached as proof, oldest first; a file of no other kind is read (or offered) whole. The server hands them only to a signed-in browser,
 // so a read-only one lists them without thumbnails or links.
 export function EvidenceList({ evidence, canWrite }: EvidenceListProps) {
   const fileUrl = useFileUrl();
@@ -12,6 +13,13 @@ export function EvidenceList({ evidence, canWrite }: EvidenceListProps) {
     <ul className="evidence">
       {evidence.map((entry) => {
         const url = fileUrl(entry);
+        // A file a signed-in browser can read is read here: Markdown formatted, text as lines.
+        if (canWrite && entry.kind === 'file')
+          return (
+            <li key={entry.id} className="evidence-entry evidence-file">
+              <FileView evidence={entry} />
+            </li>
+          );
         return (
           <li key={entry.id} className="evidence-entry">
             {canWrite && entry.kind === 'image' ? (
