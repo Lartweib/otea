@@ -127,6 +127,10 @@ export const detail = {
   'diagram.v': 'v{version}',
   'diagram.diagram': 'diagrama',
   'diagram.source': 'fuente',
+  'diagram.enlarge': 'Ampliar',
+  'diagram.zoomIn': 'Acercar',
+  'diagram.zoomOut': 'Alejar',
+  'diagram.close': 'Cerrar',
   'diagram.unreadable':
     'No se puede dibujar este archivo: línea {line}, {message}. Debajo está su fuente.',
   'diagram.newNodes': 'nuevo en v{version}: {names}',

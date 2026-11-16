@@ -74,6 +74,47 @@ describe('the diagram module', () => {
     expect(drawing.edges).toHaveLength(2);
   });
 
+  const finite = (drawing: ReturnType<typeof layoutDiagram>) =>
+    [drawing.width, drawing.height]
+      .concat(drawing.nodes.flatMap(({ x, y, w, h }) => [x, y, w, h]))
+      .concat(drawing.edges.flatMap(({ lx, ly }) => [lx, ly]))
+      .every(Number.isFinite) && drawing.edges.every(({ d }) => !d.includes('NaN'));
+
+  const overlap = (drawing: ReturnType<typeof layoutDiagram>) =>
+    drawing.nodes.some((a, i) =>
+      drawing.nodes
+        .slice(i + 1)
+        .some((b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h),
+    );
+
+  it('lays out a cycle back to the start next to nodes nothing links', () => {
+    const loose = layoutDiagram(parsed('flowchart TD\n  X[Suelto]\n  A --> B\n  B --> A'));
+    const loop = layoutDiagram(
+      parsed(
+        'flowchart TD\n  Habitos[Vista]\n  Ajustes[Ajustes]\n  Hoy --> Store\n  Store --> Racha{¿Racha?}\n  Racha -->|calcula al leer| Hoy',
+      ),
+    );
+    const back = layoutDiagram(parsed('flowchart LR\n  A --> B --> C --> D\n  D --> A'));
+    for (const drawing of [loose, loop, back]) {
+      expect(finite(drawing)).toBe(true);
+      expect(overlap(drawing)).toBe(false);
+    }
+    const y = (id: string) => loop.nodes.find((node) => node.id === id)?.y ?? -1;
+    expect(y('Hoy')).toBeLessThan(y('Store'));
+    expect(y('Store')).toBeLessThan(y('Racha'));
+    // Nodes nothing links stand first in their rank, clear of the loop round the far side.
+    const left = (id: string) => loop.nodes.find((node) => node.id === id)?.x ?? -1;
+    expect(left('Ajustes')).toBeLessThan(left('Hoy'));
+    expect(left('Habitos')).toBeLessThan(left('Hoy'));
+    const x = (id: string) => back.nodes.find((node) => node.id === id)?.x ?? -1;
+    expect(x('A')).toBeLessThan(x('B'));
+    expect(x('C')).toBeLessThan(x('D'));
+    const ahead = layoutDiagram(parsed('flowchart LR\n  a --> b'));
+    const behind = layoutDiagram(parsed('flowchart RL\n  a --> b'));
+    expect(behind.height).toBe(ahead.height);
+    expect(back.height).toBeGreaterThan(ahead.height);
+  });
+
   it('says what a version adds to the one before, in nodes, edges and lines', () => {
     const v1 = 'flowchart LR\n  web --> api\n  api --> keys';
     const v2 = 'flowchart LR\n  web --> api\n  mobile --> api\n  api --> keys';

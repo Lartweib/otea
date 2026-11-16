@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { type CSSProperties, useState } from 'react';
 import {
   addedLines,
   addedSince,
@@ -11,6 +11,7 @@ import {
 } from '../../diagram.ts';
 import { momentLabel } from '../../format.ts';
 import { t } from '../../i18n/i18n.ts';
+import { Dialog } from '../../kit/pop/Dialog.tsx';
 import type { Evidence } from '../../types.ts';
 import { TextState, useEvidenceText } from './TextViews.tsx';
 
@@ -19,14 +20,24 @@ type View = 'diagram' | 'source';
 function Segment({
   on,
   onClick,
+  className,
+  label,
   children,
 }: {
-  on: boolean;
+  on?: boolean;
   onClick: () => void;
+  className?: string;
+  label?: string;
   children: string;
 }) {
   return (
-    <button type="button" className="dg-seg" aria-pressed={on} onClick={onClick}>
+    <button
+      type="button"
+      className={className ? `dg-seg ${className}` : 'dg-seg'}
+      aria-pressed={on}
+      aria-label={label}
+      onClick={onClick}
+    >
       {children}
     </button>
   );
@@ -62,7 +73,18 @@ function NodeBox({ node, added }: { node: Placed; added: boolean }) {
   );
 }
 
-function Drawing({ diagram, previous }: { diagram: Diagram; previous: Diagram | undefined }) {
+// In the item's column the drawing takes the column's width but never shrinks below three quarters
+// of its own size, so its labels stay readable: a wider one scrolls sideways. Enlarged, it is drawn
+// at the zoom picked.
+function Drawing({
+  diagram,
+  previous,
+  zoom,
+}: {
+  diagram: Diagram;
+  previous: Diagram | undefined;
+  zoom?: number;
+}) {
   const drawing = layoutDiagram(diagram);
   const added = addedSince(diagram, previous);
   const label = t('diagram.aria', { count: diagram.nodes.length });
@@ -73,6 +95,12 @@ function Drawing({ diagram, previous }: { diagram: Diagram; previous: Diagram | 
       className="dg"
       viewBox={`0 0 ${drawing.width} ${drawing.height}`}
       width={drawing.width}
+      data-zoom={zoom === undefined ? undefined : true}
+      style={
+        (zoom === undefined
+          ? { '--dg-w': drawing.width }
+          : { width: drawing.width * zoom }) as CSSProperties
+      }
       role="img"
       aria-label={label}
     >
@@ -140,17 +168,74 @@ function Source({ text, added, failed }: { text: string; added: Set<number>; fai
   );
 }
 
+const ZOOMS = [0.5, 0.75, 1, 1.25, 1.5, 2, 3];
+
+// The diagram on the whole screen: zoom out and in by steps, scroll (or drag a finger) to move
+// round it.
+function Enlarged({
+  open,
+  onClose,
+  title,
+  diagram,
+  previous,
+}: {
+  open: boolean;
+  onClose: () => void;
+  title: string;
+  diagram: Diagram;
+  previous: Diagram | undefined;
+}) {
+  const [step, setStep] = useState(ZOOMS.indexOf(1));
+  const zoom = ZOOMS[step] ?? 1;
+  return (
+    <Dialog open={open} label={title} onClose={onClose} size="lg" className="dg-dialog">
+      <div className="dg-bar" data-i>
+        <span className="dg-file">{title}</span>
+        <span className="dg-switch">
+          <Segment
+            label={t('diagram.zoomOut')}
+            onClick={() => setStep(Math.max(0, step - 1))}
+            className="dg-zoom"
+          >
+            −
+          </Segment>
+          <span className="dg-seg dg-level" aria-live="polite">
+            {`${Math.round(zoom * 100)}%`}
+          </span>
+          <Segment
+            label={t('diagram.zoomIn')}
+            onClick={() => setStep(Math.min(ZOOMS.length - 1, step + 1))}
+            className="dg-zoom"
+          >
+            +
+          </Segment>
+        </span>
+        <span className="dg-switch">
+          <Segment onClick={onClose}>{t('diagram.close')}</Segment>
+        </span>
+      </div>
+      <div className="dg-stage dg-stage-big well" data-i>
+        <Drawing diagram={diagram} previous={previous} zoom={zoom} />
+      </div>
+    </Dialog>
+  );
+}
+
 // One version's text, read once it is shown, with the version before for what changed.
 function Version({
   shown,
   before,
   view,
   number,
+  enlarged,
+  onClose,
 }: {
   shown: Evidence;
   before: Evidence | undefined;
   view: View;
   number: number;
+  enlarged: boolean;
+  onClose: () => void;
 }) {
   const text = useEvidenceText(shown);
   const prior = useEvidenceText(before ?? shown);
@@ -191,16 +276,24 @@ function Version({
             : t('diagram.newEdges', { version: number, count: added.edges.size })}
         </p>
       ) : null}
+      <Enlarged
+        open={enlarged}
+        onClose={onClose}
+        title={shown.filename}
+        diagram={parsed.diagram}
+        previous={previousDiagram}
+      />
     </div>
   );
 }
 
-// The diagram an agent attached, newest version first: each attach is a version, and what the shown
-// version adds to the one before is drawn dashed and named under it. Its source is a toggle away.
-export function DiagramView({ evidence }: { evidence: readonly Evidence[] }) {
-  const versions = [...evidence].sort((a, b) => a.id - b.id);
+// One file's diagram, newest version first: each attach of the same file is a version, and what the
+// shown version adds to the one before is drawn dashed and named under it. Its source is a toggle
+// away; Enlarge draws it on the whole screen.
+function DiagramFile({ versions }: { versions: readonly Evidence[] }) {
   const [picked, setPicked] = useState<number>();
   const [view, setView] = useState<View>('diagram');
+  const [enlarged, setEnlarged] = useState(false);
   const index = Math.max(
     0,
     picked === undefined ? versions.length - 1 : versions.findIndex(({ id }) => id === picked),
@@ -233,8 +326,37 @@ export function DiagramView({ evidence }: { evidence: readonly Evidence[] }) {
             ))}
           </span>
         ) : null}
+        <span className="dg-switch">
+          <Segment className="dg-enlarge" onClick={() => setEnlarged(true)}>
+            {t('diagram.enlarge')}
+          </Segment>
+        </span>
       </div>
-      <Version key={shown.id} shown={shown} before={before} view={view} number={index + 1} />
+      <Version
+        key={shown.id}
+        shown={shown}
+        before={before}
+        view={view}
+        number={index + 1}
+        enlarged={enlarged}
+        onClose={() => setEnlarged(false)}
+      />
     </div>
+  );
+}
+
+// The diagrams an agent attached: each file is drawn on its own, in the order first attached; only
+// the same file attached again counts as its next version.
+export function DiagramView({ evidence }: { evidence: readonly Evidence[] }) {
+  const files = new Map<string, Evidence[]>();
+  for (const entry of [...evidence].sort((a, b) => a.id - b.id)) {
+    files.set(entry.filename, [...(files.get(entry.filename) ?? []), entry]);
+  }
+  return (
+    <>
+      {[...files].map(([filename, versions]) => (
+        <DiagramFile key={filename} versions={versions} />
+      ))}
+    </>
   );
 }
