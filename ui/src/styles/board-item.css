@@ -275,13 +275,18 @@ button.lk2:hover {
   grid-column: 1 / -1;
   margin-top: 5px;
   font: 400 14.5px / 1.4 var(--serif);
-  overflow-wrap: break-word;
+  overflow-wrap: anywhere;
   min-width: 0;
 }
 /* a round's note is Markdown: its paragraphs and lists keep the card's serif, tighter */
 .bi-rounds .rn .md {
   gap: 6px;
-  overflow-wrap: break-word;
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.bi-rounds .rn pre {
+  max-width: 100%;
+  overflow-x: auto;
 }
 .bi-rounds p small,
 .bi-rounds .rn small {

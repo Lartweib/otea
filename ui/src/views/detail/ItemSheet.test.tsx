@@ -4,7 +4,7 @@ import { type App, AppTestProvider } from '../../app/context.tsx';
 import { ago, NOW, officialType } from '../../derive/fixtures.ts';
 import { setLanguage } from '../../i18n/i18n.ts';
 import type { CollectionView, ItemEvent, ItemView } from '../../types.ts';
-import { ItemSheet } from './ItemSheet.tsx';
+import { ItemSheet, leaveSays } from './ItemSheet.tsx';
 
 afterEach(() => setLanguage('en'));
 
@@ -109,6 +109,21 @@ describe('the item sheet', () => {
     ])
       expect(html).toContain(`class="${cls}`);
     expect(html.match(/data-c="true"/g)?.length).toBeGreaterThanOrEqual(7);
+  });
+
+  it('says a note reaches "el agente" with the contraction Spanish needs', () => {
+    setLanguage('es');
+    expect(leaveSays(null)).toBe(
+      'le llega al agente en su próximo latido · no cambia paso, ronda ni reserva',
+    );
+    expect(renderToStaticMarkup(<>{leaveSays('Mender')}</>)).toContain('le llega a <b>Mender</b>');
+  });
+
+  it('names its icon-only buttons, so a narrow bar still reads them', () => {
+    const html = render();
+    expect(html).toMatch(
+      /class="[^"]*ampliar[^"]*"[^>]*aria-label="[^"]+"|aria-label="[^"]+"[^>]*class="[^"]*ampliar/,
+    );
   });
 
   it('says who hands it to you in which round, and the moves from its transitions', () => {

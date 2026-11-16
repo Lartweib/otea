@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { isClosed, NOTE_REF, positionOf } from '../../../../src/core/board/engine.ts';
 import { SAME, stepById } from '../../../../src/core/board/model.ts';
 import { waitsOf } from '../../actions.ts';
@@ -107,6 +107,11 @@ const dipWhen = (iso: string, now: number): string => {
 
 // No file opened yet in the reader.
 const NONE_SEEN: ReadonlySet<number> = new Set();
+
+// Where a note goes: to the agent by its name, or "al agente" when none holds the step yet.
+export function leaveSays(agent: string | null): ReactNode {
+  return agent ? tx('notes.leaveSays', { agent: <b>{agent}</b> }) : t('notes.leaveSaysAny');
+}
 
 export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheetProps) {
   const app = useApp();
@@ -352,7 +357,7 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
   const leave = canNote
     ? {
         open: !!noting?.open,
-        says: tx('notes.leaveSays', { agent: <b>{who}</b> }),
+        says: leaveSays(noteTo ?? null),
         onToggle: toggleNote,
       }
     : undefined;
@@ -690,7 +695,11 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
           </Swap>
           <div className="bar-r">
             {app.session.canConfigure && !app.phone && board ? (
-              <a className="ghost-btn cz" href={studioHash({ kind: 'board', board: board.id })}>
+              <a
+                className="ghost-btn cz"
+                href={studioHash({ kind: 'board', board: board.id })}
+                aria-label={t('bs.home.editBoard')}
+              >
                 <Icon name="sliders" />
                 <span className="wl">{t('bs.home.editBoard')}</span>
               </a>
@@ -712,7 +721,12 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
               <span className="wl">{t('sheet.next')} </span>›
             </GhostButton>
             <i className="vr" />
-            <GhostButton className="ampliar" onClick={onFull} aria-pressed={full}>
+            <GhostButton
+              className="ampliar"
+              onClick={onFull}
+              aria-pressed={full}
+              aria-label={t('sheet.expand')}
+            >
               <Swap k={full ? 'r' : 'a'} className="swp" dy={3} outT={200} inT={300}>
                 <span className="wl">{full ? t('sheet.reduce') : t('sheet.expand')}</span>
               </Swap>

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { type CSSProperties, useEffect, useMemo, useRef, useState } from 'react';
 import { SAME, type Selection } from '../../../../src/core/board/model.ts';
 import type { BoardRef } from '../../../../src/core/board/problems.ts';
 import { fetchProjectSettings } from '../../api.ts';
@@ -258,6 +258,7 @@ function Head() {
             className="se-bigname"
             value={def.name}
             size={Math.max(4, def.name.length + 1)}
+            style={{ '--n': Math.max(4, def.name.length + 1) } as CSSProperties}
             maxLength={40}
             aria-label={t('bs.editor.name.label')}
             onChange={(e) => draft.mutate((d) => setBoardName(d, e.target.value), 'board:name')}

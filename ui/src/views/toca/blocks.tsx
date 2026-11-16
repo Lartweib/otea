@@ -221,7 +221,8 @@ function TocaRow({
             {it.id}
           </span>
           <span className="bd">
-            {it.collection} › {stateWord(type, it.state)}
+            <span className="bdc">{it.collection}</span>
+            <span className="bds">› {stateWord(type, it.state)}</span>
           </span>
           {stuck ? (
             <span className="mpt">

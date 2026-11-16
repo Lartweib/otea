@@ -10,6 +10,8 @@ import {
 import { flushSync } from 'react-dom';
 import { useApp } from '../../app/context.tsx';
 import { workspace } from '../../app/workspace.ts';
+import { type ArchivedBoard, fetchArchivedBoards } from '../../board-studio/api.ts';
+import { archivedNamed } from '../../board-studio/home/archive.ts';
 import { availableColumns, chosenColumns, filterable, type Sort, type Widths } from '../../grid.ts';
 import { t } from '../../i18n/i18n.ts';
 import { Button } from '../../kit/Button.tsx';
@@ -22,6 +24,7 @@ import { type LaneBlock, LaneList } from '../../lanes/LaneList.tsx';
 import { C } from '../../motion/curves.ts';
 import { reduced } from '../../motion/reduced.ts';
 import type { Folds } from '../../nesting.ts';
+import { studioHash } from '../../selection.ts';
 import type { CollectionView, Item } from '../../types.ts';
 import type { ViewPrefs } from '../../view-prefs.ts';
 import { moveSplit } from '../detail/DetailHost.tsx';
@@ -59,7 +62,7 @@ import {
 } from './studio-board.tsx';
 import { relayoutTable, Tabla } from './Tabla.tsx';
 import { Tray } from './Tray.tsx';
-import { headLabel } from './table.ts';
+import { colMenuAfter, headLabel } from './table.ts';
 import { reverseTree, runTree, treeRunning } from './tree.ts';
 import { useBoardPrefs, useFolds } from './use-board.ts';
 
@@ -123,10 +126,25 @@ export function BoardView({ board }: { board: string }) {
   );
 }
 
-// A board the project does not have (a mistyped or renamed link): the board's own head saying so,
+// The archived board a link names, read once the page shows it missing.
+function useArchivedNamed(board: string): ArchivedBoard | undefined {
+  const [found, setFound] = useState<ArchivedBoard | undefined>(undefined);
+  useEffect(() => {
+    const ctl = new AbortController();
+    fetchArchivedBoards(ctl.signal).then(
+      (boards) => setFound(archivedNamed(boards, board)),
+      () => undefined,
+    );
+    return () => ctl.abort();
+  }, [board]);
+  return found;
+}
+
+// A board the project does not have (a mistyped or renamed link, or one archived since): the board's own head saying so,
 // and the way home, in the empty states' grammar.
 function BoardMissing({ board }: { board: string }) {
   const app = useApp();
+  const archived = useArchivedNamed(board);
   return (
     <>
       <header className="bhead" data-enter="head">
@@ -135,14 +153,31 @@ function BoardMissing({ board }: { board: string }) {
             <b>{t('boardView.kicker')}</b> &nbsp;·&nbsp; {app.project?.name ?? ''}
           </div>
           <h1 className="display" data-leaf="">
-            {t('boardView.missing.title')}
+            {t(archived ? 'boardView.archived.title' : 'boardView.missing.title')}
           </h1>
         </div>
       </header>
       <div className="empty empty-big empty-missing" data-enter="fade" data-leaf="">
-        <p>{t('boardView.missing.text', { board })}</p>
+        <p>
+          {archived
+            ? t('boardView.archived.text', { board: archived.name })
+            : t('boardView.missing.text', { board })}
+        </p>
         <div className="acts2">
-          <Button variant="primary" onClick={() => app.go({ view: 'toca' })}>
+          {archived && app.session.canConfigure ? (
+            <Button
+              variant="primary"
+              onClick={() => {
+                window.location.hash = studioHash();
+              }}
+            >
+              {t('boardView.archived.open')}
+            </Button>
+          ) : null}
+          <Button
+            variant={archived && app.session.canConfigure ? 'quiet' : 'primary'}
+            onClick={() => app.go({ view: 'toca' })}
+          >
             {t('boardView.missing.home')}
           </Button>
         </div>
@@ -512,7 +547,7 @@ function Board({ board }: { board: string }) {
         ticks={ticks}
         onRow={open}
         onSort={(sort: Sort) => choose({ sort })}
-        onMenu={(key, anchor) => setMenu({ kind: 'col', key, anchor })}
+        onMenu={(key, anchor) => setMenu(colMenuAfter(menu, key, anchor))}
         menuKey={menuKey}
         onWidths={(widths: Widths, flip) => {
           const tbl = stage.current?.querySelector<HTMLElement>('.tabla:not(.mghost)') ?? null;

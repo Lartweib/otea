@@ -45,13 +45,21 @@ export type Phrase =
   | { key: 'activity.released' }
   | { key: 'activity.restarted' }
   | { key: 'activity.reassigned'; agent: string }
-  | { key: 'activity.handed'; state: string }
-  | { key: 'activity.moved'; state: string }
-  | { key: 'activity.created'; state: string }
+  | { key: 'activity.handed'; state: string; name?: string }
+  | { key: 'activity.moved' | 'activity.sentBack'; state: string; name?: string }
+  | { key: 'activity.created'; state: string; name?: string }
   | { key: 'activity.attached'; file: string }
   | { key: 'activity.edited' }
   | { key: 'activity.linked' | 'activity.unlinked'; kind: string; from: string; to: string }
-  | { key: 'activity.other'; type: string };
+  | {
+      key:
+        | 'activity.asked'
+        | 'activity.answered'
+        | 'activity.noteLeft'
+        | 'activity.noteAnswered'
+        | 'activity.merged'
+        | 'activity.touched';
+    };
 
 const MINUTE = 60_000;
 
@@ -101,16 +109,27 @@ function phraseOf(event: FeedEvent, turnOf: TurnOf): Pick<FeedLine, 'kind' | 'ph
   }
   if (type === 'transitioned') {
     const state = text(data.to);
+    const name = named(data.toName);
     const handed = event.actor.kind === 'agent' && turnOf(event.itemId, state) === 'human';
+    // You sent it back: out of a review with what to change.
+    const back =
+      event.actor.kind === 'human' &&
+      /__review$/.test(text(data.from)) &&
+      typeof data.reason === 'string' &&
+      data.reason !== '';
+    if (back) return { kind: 'other', phrase: { key: 'activity.sentBack', state, ...name } };
     return handed
-      ? { kind: 'handoff', phrase: { key: 'activity.handed', state } }
-      : { kind: 'other', phrase: { key: 'activity.moved', state } };
+      ? { kind: 'handoff', phrase: { key: 'activity.handed', state, ...name } }
+      : { kind: 'other', phrase: { key: 'activity.moved', state, ...name } };
   }
   if (type === 'evidence_added') {
     return { kind: 'evidence', phrase: { key: 'activity.attached', file: text(data.filename) } };
   }
   if (type === 'created')
-    return { kind: 'other', phrase: { key: 'activity.created', state: text(data.state) } };
+    return {
+      kind: 'other',
+      phrase: { key: 'activity.created', state: text(data.state), ...named(data.stateName) },
+    };
   if (type === 'updated') return { kind: 'other', phrase: { key: 'activity.edited' } };
   if (type === 'relation_added' || type === 'relation_removed') {
     const key = type === 'relation_added' ? 'activity.linked' : 'activity.unlinked';
@@ -119,7 +138,25 @@ function phraseOf(event: FeedEvent, turnOf: TurnOf): Pick<FeedLine, 'kind' | 'ph
       phrase: { key, kind: text(data.kind), from: text(data.from), to: text(data.to) },
     };
   }
-  return { kind: 'other', phrase: { key: 'activity.other', type } };
+  const said = SAID[type];
+  if (said) return said;
+  // A kind of event this page does not know yet: said plainly, never by its type.
+  return { kind: 'other', phrase: { key: 'activity.touched' } };
+}
+
+// The events the feed says in words of their own: a question and its answer go with handoffs,
+// since the item waits on one side while they are open.
+const SAID: Record<string, Pick<FeedLine, 'kind' | 'phrase'>> = {
+  question_asked: { kind: 'handoff', phrase: { key: 'activity.asked' } },
+  question_answered: { kind: 'handoff', phrase: { key: 'activity.answered' } },
+  note_left: { kind: 'other', phrase: { key: 'activity.noteLeft' } },
+  note_answered: { kind: 'other', phrase: { key: 'activity.noteAnswered' } },
+  merged: { kind: 'other', phrase: { key: 'activity.merged' } },
+};
+
+// The name a move wrote for its step, kept beside the step's key.
+function named(value: unknown): { name?: string } {
+  return typeof value === 'string' && value !== '' ? { name: value } : {};
 }
 
 // The feed, newest first. A lease released on a handoff is not drawn apart: the handoff says it.

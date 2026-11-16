@@ -323,6 +323,23 @@
   overflow: hidden;
   transform-origin: 0 0;
 }
+/* where it is: the board gives way (with an ellipsis) so the step it is on always shows */
+.m .id {
+  flex: none;
+}
+.m .bd {
+  display: inline-flex;
+  gap: 0.3em;
+  min-width: 0;
+}
+.m .bd .bdc {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.m .bd .bds {
+  flex: none;
+}
 /* a part after the id keeps its dot with it, so a line that wraps never ends on one */
 .m .mpt {
   display: inline-flex;

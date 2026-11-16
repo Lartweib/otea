@@ -974,7 +974,9 @@
     .mi,
     .d-head .lnk,
     a.id,
-    .rchip .x
+    .rchip .x,
+    .brief-head .back,
+    .brief-row .t-id
   ) {
     position: relative;
   }
@@ -996,7 +998,9 @@
     .mi,
     .d-head .lnk,
     a.id,
-    .rchip .x
+    .rchip .x,
+    .brief-head .back,
+    .brief-row .t-id
   )::after {
     content: "";
     position: absolute;

@@ -172,6 +172,7 @@
   margin: 0 0 12px;
 }
 .se-nameline {
+  container-type: inline-size;
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
@@ -187,6 +188,8 @@ input.se-bigname {
   background: none;
   color: var(--ink);
   font: 420 50px / 1.04 var(--serif);
+  /* A long name gets smaller to fit its line (--n: its length), down to 28px; never cut. */
+  font-size: min(50px, max(28px, calc(100cqi / (var(--n, 20) * 0.5))));
   font-variation-settings: "opsz" 72;
   letter-spacing: -0.026em;
   transition: border-color 240ms var(--o-drift);
@@ -1152,7 +1155,7 @@ input.se-stepname:focus {
     padding: 0 16px 100px;
   }
   input.se-bigname {
-    font-size: 36px;
+    font-size: min(36px, max(24px, calc(100cqi / (var(--n, 20) * 0.5))));
   }
   .se-rwrap,
   .se-hint {
