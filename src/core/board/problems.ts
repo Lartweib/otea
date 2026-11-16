@@ -1,5 +1,6 @@
 import { closeIconNames, isIconName } from '../icons.ts';
 import { isLandStep, startsWith, waysOf } from './engine.ts';
+import { mentionedRefs, mentionNames } from './mentions.ts';
 import {
   type BoardDefinition,
   DONE,
@@ -43,7 +44,9 @@ export type ProblemCode =
   | 'guard_no_push'
   | 'guard_base'
   | 'initial_invalid'
-  | 'motive_agent_drop';
+  | 'motive_agent_drop'
+  | 'mention_raw'
+  | 'mention_unknown';
 
 export type ProblemLevel = 'error' | 'warning';
 
@@ -205,6 +208,16 @@ export function problemsOf(def: BoardDefinition, context: ProblemContext): Probl
   for (const step of def.steps) {
     if (step.doer === 'you' && step.reviewer === 'you')
       add('warning', 'self_review', { kind: 'step', id: step.id }, { step: step.name });
+  }
+
+  // A step's instructions mention parts and steps as @[id]; a template's @{key}, or an id the board
+  // does not have, would reach agents as it is written.
+  for (const step of def.steps) {
+    const text = Object.values(step.instructions).join('\n');
+    const at: Selection = { kind: 'step', id: step.id };
+    if (/@\{[^}]*\}/.test(text)) add('warning', 'mention_raw', at, { step: step.name });
+    if (mentionedRefs(text).some((ref) => !mentionNames(def, ref)))
+      add('warning', 'mention_unknown', at, { step: step.name });
   }
   out.push(...laterProblems(def, context, partAt));
   return out;

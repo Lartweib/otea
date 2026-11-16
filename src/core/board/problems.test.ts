@@ -130,6 +130,18 @@ describe('problemsOf', () => {
     expect(codes(def)).toEqual(['error:agent_closes']);
   });
 
+  it('warns about a mention written @{key} or naming nothing: agents would read it raw', () => {
+    const def = creatures();
+    const first = def.steps[0];
+    if (!first) throw new Error('no step');
+    first.instructions.take = 'Read @[fdesc] first.';
+    expect(codes(def)).toEqual([]);
+    first.instructions.take = 'Read @{fdesc} first.';
+    expect(codes(def)).toEqual(['warning:mention_raw']);
+    first.instructions.take = 'Read @[fgone] first.';
+    expect(codes(def)).toEqual(['warning:mention_unknown']);
+  });
+
   it('warns when you review your own step', () => {
     const def = creatures();
     def.steps = [step('sa', 'Hacer', { doer: 'you', reviewer: 'you' })];

@@ -367,7 +367,7 @@
             },
             "required": ["take", "before", "review"],
             "additionalProperties": false,
-            "description": "The instructions agents read on the step",
+            "description": "The instructions agents read on the step; mention a step or part as @[id], its id, which agents read as its name",
             "examples": [
               {
                 "take": "Reproduce it first.",

@@ -36,6 +36,10 @@ export const boardStudio = {
   'bs.problem.initial_invalid': '{part} starts with a value it no longer has. Pick another.',
   'bs.problem.motive_agent_drop':
     'With discard motives, an agent that drops in {step} has to pick one.',
+  'bs.problem.mention_raw':
+    'The instructions of {step} name something with @ and curly braces: type @ and pick it, so agents read its name.',
+  'bs.problem.mention_unknown':
+    'The instructions of {step} mention something this board no longer has.',
   'bs.use.title': 'the title',
   'bs.use.field': 'a field',
   'bs.use.evidence': 'a piece of evidence',

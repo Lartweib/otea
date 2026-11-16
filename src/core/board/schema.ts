@@ -170,11 +170,14 @@ const step = z
         review: text('What an agent reviewing the step reads', 'Check the test fails first.'),
       })
       .meta(
-        about('The instructions agents read on the step', {
-          take: 'Reproduce it first.',
-          before: 'Run the tests.',
-          review: '',
-        }),
+        about(
+          'The instructions agents read on the step; mention a step or part as @[id], its id, which agents read as its name',
+          {
+            take: 'Reproduce it first.',
+            before: 'Run the tests.',
+            review: '',
+          },
+        ),
       ),
     note: z
       .strictObject({

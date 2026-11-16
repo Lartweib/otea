@@ -161,6 +161,8 @@ export function problemWords(problem: Problem): string {
     guard_base: `the base branch the branch${part} protects too is not a branch name`,
     initial_invalid: `the field${part} starts with a value it does not have`,
     motive_agent_drop: `an agent that drops in step${step} must name a motive`,
+    mention_raw: `step${step} mentions something as @{…}: write it @[id], the id of the step or part`,
+    mention_unknown: `step${step} mentions an @[id] the board does not have`,
   };
   return `${problem.level}: ${words[problem.code]}`;
 }
