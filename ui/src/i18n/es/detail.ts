@@ -255,6 +255,12 @@ export const detail = {
   'notes.pick.hintTouch': 'Toca una línea o un nodo del diagrama para anclar la nota.',
   'notes.pick.inLine': 'En una línea…',
   'notes.pick.inNode': 'En un nodo…',
+  'notes.pick.point': 'un punto de la imagen',
+  'notes.pick.zone': 'una zona de la imagen',
+  'notes.pick.inSpot': 'En un punto…',
+  'notes.pick.hintImage':
+    'Haz clic en la imagen para marcar un punto, o arrastra sobre ella para marcar una zona.',
+  'notes.pick.hintImageTouch': 'Toca la imagen para marcar un punto.',
   'notes.pick.on': 'Nota sobre {what}',
   'notes.pick.placeholder': '¿Qué debería mirar el agente aquí?',
   'notes.pick.send': 'Dejar nota',

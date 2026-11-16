@@ -1018,6 +1018,7 @@
 /* The reader's own place for the viewer, and deciding from inside it: what you opened, then the
    moves, on one line at its foot. */
 .ev-reader-view {
+  position: relative;
   min-width: 0;
 }
 .ev-reader-decide {
@@ -1338,4 +1339,32 @@
 .ev-para-pair {
   display: grid;
   gap: 6px;
+/* A point or a zone of an image a note is on, drawn over the image in the reader. */
+.ev-reader-view[data-spotting="true"] img.ev-img {
+  cursor: crosshair;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.ev-spot-layer {
+  position: absolute;
+  pointer-events: none;
+}
+
+.ev-spot {
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  margin: -11px 0 0 -11px;
+  border-radius: 50%;
+  border: 2px solid var(--you);
+  background: color-mix(in oklch, var(--you) 22%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in oklch, var(--sheet) 80%, transparent);
+}
+
+.ev-spot[data-zone] {
+  margin: 0;
+  border-radius: 4px;
+  background: color-mix(in oklch, var(--you) 14%, transparent);
 }

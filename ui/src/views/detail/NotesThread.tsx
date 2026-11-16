@@ -1,6 +1,6 @@
 import { useId, useState } from 'react';
 import { moment, type NoteAnchor } from '../../../../src/core/board/notes.ts';
-import { pickWords, READ_AT } from '../../components/evidence/reader-pick.ts';
+import { pickOfAnchor, pickWords, READ_AT } from '../../components/evidence/reader-pick.ts';
 import { seekVideo } from '../../components/evidence/video-moment.ts';
 import { NoteText } from '../../components/NoteText.tsx';
 import { useFileUrl } from '../../evidence-files.ts';
@@ -83,15 +83,9 @@ export function Thumb({
 function Cite({ anchor, evidence }: { anchor: NoteAnchor; evidence: Evidence | undefined }) {
   const { seconds } = anchor;
   const time = seconds === undefined ? null : moment(seconds);
-  // A line or a diagram node the note is on, in a few words.
-  const where =
-    anchor.line !== undefined || anchor.quote !== undefined || anchor.node !== undefined
-      ? pickWords({
-          ...(anchor.line === undefined ? {} : { line: anchor.line }),
-          ...(anchor.quote === undefined ? {} : { quote: anchor.quote }),
-          ...(anchor.node === undefined ? {} : { node: anchor.node }),
-        })
-      : null;
+  // A line, a diagram node or a spot of an image the note is on, in a few words.
+  const inside = pickOfAnchor(anchor);
+  const where = inside ? pickWords(inside) : null;
   const at =
     seconds === undefined
       ? null
@@ -112,15 +106,9 @@ function Cite({ anchor, evidence }: { anchor: NoteAnchor; evidence: Evidence | u
           : t('notes.cite', { file: anchor.filename })
       }
       onClick={() => {
-        const { line, quote, node } = anchor;
-        if (line !== undefined || quote !== undefined || node !== undefined) {
-          const pick = {
-            ...(line === undefined ? {} : { line }),
-            ...(quote === undefined ? {} : { quote }),
-            ...(node === undefined ? {} : { node }),
-          };
+        if (inside) {
           window.dispatchEvent(
-            new CustomEvent(READ_AT, { detail: { evidence: anchor.evidence, pick } }),
+            new CustomEvent(READ_AT, { detail: { evidence: anchor.evidence, pick: inside } }),
           );
           return;
         }

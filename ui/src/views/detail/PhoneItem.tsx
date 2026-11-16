@@ -815,7 +815,11 @@ export function PhoneItem(p: PhoneItemProps) {
               <AnchorPicker pieces={leave.pieces} picked={anchor} onPick={setAnchor} strip />
               {pickable ? (
                 <Button size="sm" variant="quiet" className="nt-pick-in" onClick={pickInPiece}>
-                  {pickable === 'node' ? t('notes.pick.inNode') : t('notes.pick.inLine')}
+                  {pickable === 'node'
+                    ? t('notes.pick.inNode')
+                    : pickable === 'spot'
+                      ? t('notes.pick.inSpot')
+                      : t('notes.pick.inLine')}
                 </Button>
               ) : null}
             </div>

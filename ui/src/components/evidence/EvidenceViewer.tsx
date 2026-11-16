@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { type CSSProperties, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useFileUrl } from '../../evidence-files.ts';
 import { t } from '../../i18n/i18n.ts';
 import { Icon } from '../../kit/index.ts';
@@ -7,7 +7,15 @@ import { DiagramView } from './DiagramView.tsx';
 import { FileMeta } from './FileMeta.tsx';
 import { FileView } from './FileViews.tsx';
 import { ImageSingle } from './ImageViews.tsx';
-import { findPick, pickAnchor, pickAt, pickWords, type ReaderPick } from './reader-pick.ts';
+import {
+  findPick,
+  pickAnchor,
+  pickAt,
+  pickableOn,
+  pickWords,
+  type ReaderPick,
+  spotOf,
+} from './reader-pick.ts';
 import { ReportOr } from './TestReportView.tsx';
 import { DiffView, LogView } from './TextViews.tsx';
 import { VideoPlayer } from './VideoViews.tsx';
@@ -177,6 +185,40 @@ export function EvidenceReader({
     if (start && shownId !== undefined) setPick({ id: shownId, pick: start });
   }, [start]);
   const picked = pick && pick.id === shownId ? pick.pick : null;
+  // An image takes a point (or, on the desk, a zone dragged over it) for the note.
+  const spotting = note !== undefined && shown !== undefined && pickableOn(shown) === 'spot';
+  const press = useRef<{ x: number; y: number } | null>(null);
+  const [drag, setDrag] = useState<ReaderPick | null>(null);
+  const [frame, setFrame] = useState<CSSProperties | null>(null);
+  const imageOf = () => view.current?.querySelector<HTMLImageElement>('img.ev-img:not([hidden])');
+  const spot = drag ?? (picked?.x !== undefined ? picked : null);
+  // The spot is drawn over the image, so the layer follows the image's box as the page lays out.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the image is found anew per file shown
+  useLayoutEffect(() => {
+    const root = view.current;
+    const img = imageOf();
+    if (!spot || !root || !img) {
+      setFrame(null);
+      return;
+    }
+    const measure = () => {
+      const a = img.getBoundingClientRect();
+      const r = root.getBoundingClientRect();
+      setFrame({
+        left: a.left - r.left + root.scrollLeft,
+        top: a.top - r.top + root.scrollTop,
+        width: a.width,
+        height: a.height,
+      });
+    };
+    measure();
+    img.addEventListener('load', measure);
+    window.addEventListener('resize', measure);
+    return () => {
+      img.removeEventListener('load', measure);
+      window.removeEventListener('resize', measure);
+    };
+  }, [spot?.x, spot?.y, spot?.w, spot?.h, shownId]);
   // The picked line or node is lit once its viewer has drawn it (a text is fetched first).
   // biome-ignore lint/correctness/useExhaustiveDependencies: another file shown clears the light
   useEffect(() => {
@@ -229,6 +271,43 @@ export function EvidenceReader({
         ref={view}
         className="ev-reader-view"
         data-picking={note ? 'true' : undefined}
+        data-spotting={spotting ? 'true' : undefined}
+        onPointerDown={
+          spotting
+            ? (e) => {
+                const img = imageOf();
+                if (!img || e.target !== img) return;
+                e.preventDefault();
+                press.current = { x: e.clientX, y: e.clientY };
+                e.currentTarget.setPointerCapture?.(e.pointerId);
+              }
+            : undefined
+        }
+        onPointerMove={
+          spotting && !phone
+            ? (e) => {
+                const img = imageOf();
+                if (!press.current || !img) return;
+                const at = { x: e.clientX, y: e.clientY };
+                const zone = spotOf(img.getBoundingClientRect(), press.current, at, true);
+                setDrag(zone?.w !== undefined ? zone : null);
+              }
+            : undefined
+        }
+        onPointerUp={
+          spotting
+            ? (e) => {
+                const img = imageOf();
+                const from = press.current;
+                press.current = null;
+                setDrag(null);
+                if (!from || !img) return;
+                const at = { x: e.clientX, y: e.clientY };
+                const hit = spotOf(img.getBoundingClientRect(), from, at, !phone);
+                if (hit) setPick({ id: shown.id, pick: hit });
+              }
+            : undefined
+        }
         onClick={
           note
             ? (e) => {
@@ -239,12 +318,29 @@ export function EvidenceReader({
         }
       >
         <EvidenceViewer key={shown.id} evidence={shown} {...(phone ? { phone } : {})} />
+        {spot && frame ? (
+          <div className="ev-spot-layer" style={frame} aria-hidden="true">
+            <span
+              className="ev-spot"
+              data-zone={spot.w !== undefined ? 'true' : undefined}
+              style={{
+                left: `${spot.x}%`,
+                top: `${spot.y}%`,
+                ...(spot.w !== undefined ? { width: `${spot.w}%`, height: `${spot.h}%` } : {}),
+              }}
+            />
+          </div>
+        ) : null}
       </div>
       {note ? (
         <div className="ev-reader-note">
           <div className="ev-reader-on">
             <b>{t('notes.pick.on', { what: pickWords(picked) })}</b>
-            <span>{t(phone ? 'notes.pick.hintTouch' : 'notes.pick.hint')}</span>
+            <span>
+              {spotting
+                ? t(phone ? 'notes.pick.hintImageTouch' : 'notes.pick.hintImage')
+                : t(phone ? 'notes.pick.hintTouch' : 'notes.pick.hint')}
+            </span>
           </div>
           <textarea
             rows={2}

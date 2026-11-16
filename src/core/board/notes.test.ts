@@ -153,6 +153,22 @@ describe('what the agent reads of the notes', () => {
     );
   });
 
+  it('says the point or the zone of an image a note is on, in percent of the image', () => {
+    const onPoint = note(6, {
+      anchor: { evidence: 13, filename: 'menu.png', x: 34.2, y: 61.8 },
+    });
+    const onZone = note(7, {
+      anchor: { evidence: 13, filename: 'menu.png', x: 20, y: 30, w: 25, h: 30.5 },
+    });
+    const block = notesBlock('TAR-7', [onPoint, onZone], 'claude-d');
+    expect(block).toContain(
+      '      on menu.png at the point x 34.2%, y 61.8% (from the top left) · unanswered: otea reply TAR-7 --note 6 "<your short answer>"',
+    );
+    expect(block).toContain(
+      '      on menu.png at the zone x 20–45%, y 30–60.5% (from the top left; otea crop TAR-7 --note 7 cuts it out) · unanswered: otea reply TAR-7 --note 7 "<your short answer>"',
+    );
+  });
+
   it('says who answered when it was another agent, and when all are answered', () => {
     const plain = note(1, { answer: { text: 'ok', at: '2026-11-13T13:40:00.000Z', by: 'kiln' } });
     expect(notesBlock('TAR-7', [plain], 'claude-d')).toEqual([

@@ -2,6 +2,7 @@ import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { isClosed, NOTE_REF, positionOf } from '../../../../src/core/board/engine.ts';
 import { SAME, stepById } from '../../../../src/core/board/model.ts';
 import { waitsOf } from '../../actions.ts';
+import type { NoteAnchorInput } from '../../api.ts';
 import { typeOfItem, useApp } from '../../app/context.tsx';
 import { boardOfCollection, boardsOf, useBoards } from '../../board-studio/home/boards-store.ts';
 import { DeskReader } from '../../components/evidence/DeskReader.tsx';
@@ -332,10 +333,7 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
     setAnchor(null);
     setNoting({ button, open: true, below: noting ? null : below });
   };
-  const postNote = (
-    text: string,
-    on?: { evidence: number; seconds?: number; line?: number; quote?: string; node?: string },
-  ) =>
+  const postNote = (text: string, on?: NoteAnchorInput) =>
     app.note(item.id, text, on).then(
       () => {
         toast({ msg: t('notes.sent', { agent: who, title: item.title }), id: item.id });

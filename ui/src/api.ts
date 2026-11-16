@@ -178,13 +178,23 @@ export async function reassignItem(id: string, agent: string): Promise<void> {
   await post(`/api/items/${encodeURIComponent(id)}/reassign`, { agent });
 }
 
+// Where a note is on: a piece of evidence of this round by its id, and in it the moment of a
+// recording, a line of a text, a node of a diagram, or a point or zone of an image (in percent).
+export type NoteAnchorInput = {
+  evidence: number;
+  seconds?: number;
+  line?: number;
+  quote?: string;
+  node?: string;
+  x?: number;
+  y?: number;
+  w?: number;
+  h?: number;
+};
+
 // A note to the agent doing the item's step: it moves nothing; `anchor` is a piece of evidence of
 // this round, by its id, and for a recording the moment seen.
-export async function postNote(
-  id: string,
-  text: string,
-  anchor?: { evidence: number; seconds?: number; line?: number; quote?: string; node?: string },
-): Promise<void> {
+export async function postNote(id: string, text: string, anchor?: NoteAnchorInput): Promise<void> {
   await post(`/api/items/${encodeURIComponent(id)}/notes`, anchor ? { text, anchor } : { text });
 }
 
