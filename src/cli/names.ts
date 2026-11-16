@@ -3,7 +3,7 @@ import { liveBoardOf } from '../app/next.ts';
 import type { Project } from '../app/project.ts';
 import { isClosed, positionOf } from '../core/board/engine.ts';
 import { type BoardDefinition, type Part, stepById } from '../core/board/model.ts';
-import { stateName, valueName } from '../core/board/reading.ts';
+import { langOf, stateName, valueName } from '../core/board/reading.ts';
 import { type EventRecord, findItem } from '../store/queries.ts';
 
 // What --json and MCP give a program: the stored ids, the keys it can send back, with the names a
@@ -66,7 +66,7 @@ function fieldsData(def: Board, fields: Readonly<Record<string, unknown>>): Fiel
     const part = partOf(def, id);
     const field: Field = { id, name: part?.name ?? id, value };
     if (part && OPTIONS.includes(part.kind) && value !== null && value !== undefined)
-      field.label = valueName(part, value);
+      field.label = valueName(part, value, def ? langOf(def) : 'en');
     return field;
   });
 }
@@ -91,7 +91,7 @@ export function readableEvent(def: Board, event: EventRecord): EventRecord {
           const part = partOf(def, key);
           if (!part) return [key, change];
           const say = (value: unknown) =>
-            value === undefined || value === null ? value : valueName(part, value);
+            value === undefined || value === null ? value : valueName(part, value, langOf(def));
           return [part.name, { from: say(change.from), to: say(change.to) }];
         },
       ),

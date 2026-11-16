@@ -38,6 +38,16 @@ describe('reading a board item by names', () => {
     });
   });
 
+  it('says a level in the board’s language, as its field name is', () => {
+    const spanish = creatures();
+    spanish.parts.fsev = { id: 'fsev', name: 'Severidad', kind: 'level', hint: '', options: [] };
+    expect(fieldsByName(spanish, { fsev: 'medium' })).toEqual({ Severidad: 'media' });
+    const english = creatures();
+    english.title = 'Title';
+    english.parts.fsev = { id: 'fsev', name: 'Severity', kind: 'level', hint: '', options: [] };
+    expect(fieldsByName(english, { fsev: 'critical' })).toEqual({ Severity: 'critical' });
+  });
+
   it('fills the board description field when given "description", in any language', () => {
     // Criaturas has one long text, Descripción: "description" fills it.
     expect(readFieldInput(def, { description: 'Lenta' })).toEqual({ fdesc: 'Lenta' });
