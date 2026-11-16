@@ -1,11 +1,12 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { setLanguage } from '../../i18n/i18n.ts';
 import type { Round } from '../../rounds.ts';
-import type { Evidence } from '../../types.ts';
+import type { Evidence, Layout } from '../../types.ts';
 import {
   compareFiles,
   fileMarks,
   notesDock,
+  partNames,
   phoneRounds,
   roundTagWord,
   splitEvidence,
@@ -124,5 +125,26 @@ describe('the note dock on the phone', () => {
     expect(notesDock('stuck', true)).toBe(false);
     expect(notesDock('moves', true)).toBe(true);
     expect(notesDock('moves', false)).toBe(false);
+  });
+});
+
+describe('partNames: which part of the board each file was attached to', () => {
+  it('names each evidence module by its board part, so one file in two parts reads as two', () => {
+    const layout = {
+      header: [],
+      body: [
+        { module: 'recording', id: 'evideo', label: 'Grabación' },
+        { module: 'recording', id: 'estrip', variant: 'frames', label: 'Tira de fotogramas' },
+        { module: 'markdown', field: 'fdesc', label: 'Descripción' },
+      ],
+      side: [],
+      evidence: [{ module: 'files', id: 'efile' }],
+      phone: [],
+    } as unknown as Layout;
+    const names = partNames(layout);
+    expect(names.get('evideo')).toBe('Grabación');
+    expect(names.get('estrip')).toBe('Tira de fotogramas');
+    expect(names.has('fdesc')).toBe(false);
+    expect(names.has('efile')).toBe(false);
   });
 });
