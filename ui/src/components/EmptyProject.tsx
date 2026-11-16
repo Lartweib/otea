@@ -1,14 +1,37 @@
 import { fetchProjectSettings } from '../api.ts';
+import { useApp } from '../app/context.tsx';
 import { useRemote } from '../hooks.ts';
 import { t, tx } from '../i18n/i18n.ts';
-import { CopyCommand } from './CopyCommand.tsx';
+import { Button } from '../kit/Button.tsx';
+import { Icon } from '../kit/Icon.tsx';
+import type { ProjectSettings } from '../types.ts';
 
 // The list of a project with no items yet: its lanes run empty, and it says how items arrive.
 export function EmptyProject() {
+  const app = useApp();
   const settings = useRemote(fetchProjectSettings, 0, 'live');
   if (settings.status !== 'ready') return null;
-  const { name, dataDir, collections, paths } = settings.value;
-  const first = collections[0]?.name ?? 'tasks';
+  return (
+    <EmptyProjectView
+      settings={settings.value}
+      onNew={() => app.newItem()}
+      onConnect={app.openConnect}
+    />
+  );
+}
+
+// The person writes the first item here, or connects an agent that will; the boards go by their
+// names, never by a hidden id.
+export function EmptyProjectView({
+  settings,
+  onNew,
+  onConnect,
+}: {
+  settings: ProjectSettings;
+  onNew: () => void;
+  onConnect: () => void;
+}) {
+  const { name, dataDir, collections, paths } = settings;
   return (
     <div className="pj-empty-project">
       <svg className="pj-empty-lanes" width="56" height="100%" aria-hidden="true">
@@ -18,9 +41,15 @@ export function EmptyProject() {
       <div className="pj-empty-body">
         <h2 className="pj-empty-title">{t('emptyProject.title', { name })}</h2>
         <p className="pj-empty-text">{t('emptyProject.text')}</p>
-        <CopyCommand
-          command={`otea create --collection ${first} --title "${t('emptyProject.example')}"`}
-        />
+        <div className="pj-empty-acts">
+          <Button variant="primary" onClick={onNew}>
+            {t('app.newItem')}
+          </Button>
+          <Button variant="quiet" onClick={onConnect}>
+            <Icon name="plus" />
+            {t('toca.connect')}
+          </Button>
+        </div>
         <p className="pj-empty-agents">
           {tx('emptyProject.agents', { command: <code>otea board</code> })}
         </p>
@@ -34,8 +63,8 @@ export function EmptyProject() {
           </dd>
           <dt>{t('emptyProject.store')}</dt>
           <dd>{dataDir}</dd>
-          <dt>{t('emptyProject.collections')}</dt>
-          <dd>{collections.map((each) => `${each.name} (${each.preset})`).join(', ')}</dd>
+          <dt>{t('emptyProject.boards')}</dt>
+          <dd>{collections.map((each) => each.name).join(', ')}</dd>
         </dl>
       </div>
     </div>

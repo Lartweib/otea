@@ -77,7 +77,7 @@ export const toca = {
   },
   'toca.noAgents.nothing':
     'Nada espera a un agente ahora. Conecta uno desde su terminal y tomará lo que llegue a su turno.',
-  'toca.noAgents.command': 'otea connect --as <nombre>',
+  'toca.noAgents.command': 'otea connect --as <nombre> --model <modelo> --effort <esfuerzo>',
 
   // La línea de actividad de un agente (en su ficha)
   'toca.agent.trace': 'Últimas dos horas de {agent}',

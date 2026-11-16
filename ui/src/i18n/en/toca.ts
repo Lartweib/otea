@@ -72,7 +72,7 @@ export const toca = {
   },
   'toca.noAgents.nothing':
     'Nothing waits for an agent right now. Connect one from its terminal and it takes what reaches its turn.',
-  'toca.noAgents.command': 'otea connect --as <name>',
+  'toca.noAgents.command': 'otea connect --as <name> --model <model> --effort <effort>',
 
   // An agent's activity line (in its sheet)
   'toca.agent.trace': 'The last two hours of {agent}',

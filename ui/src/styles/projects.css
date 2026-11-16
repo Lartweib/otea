@@ -637,3 +637,8 @@
     grid-column: 1 / -1;
   }
 }
+.pj-empty-acts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}

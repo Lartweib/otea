@@ -229,18 +229,28 @@ export const surfaces = {
   // A project with no items yet
   'emptyProject.title': 'Nothing in {name} yet',
   'emptyProject.text':
-    'Items arrive when an agent creates them through the CLI or MCP, or when you write one. Nothing here is waiting for you.',
-  'emptyProject.agents': 'or let an agent start: {command} tells it how this project works',
+    'Items arrive when you write one, or when an agent creates them through the CLI or MCP. Nothing here is waiting for you.',
+  'emptyProject.agents':
+    'A connected agent reads {command} first: it tells it how this project works.',
   'emptyProject.path': 'path',
   'emptyProject.store': 'store',
-  'emptyProject.collections': 'collections',
+  'emptyProject.boards': 'boards',
   'emptyProject.example': 'Write the first task',
 
   // Connect an agent
   'connect.title': 'Connect an agent',
-  'connect.body':
-    'Your agent talks to Otea over MCP. Add this to its configuration and it shows up here when it takes its first lease.',
-  'connect.command': 'otea mcp --as <name>',
+  'connect.body': 'Once per project, connect it; then, each session, tell it to keep working.',
+  'connect.setup':
+    'In the agent’s terminal, at the project, with its own name, model and effort (unknown when it cannot tell):',
+  'connect.command': 'otea connect --as <name> --model <model> --effort <effort>',
+  'connect.others':
+    'Claude Code reads the .mcp.json it writes. Codex, Gemini and the rest use the CLI: {command} gives them the guide in AGENTS.md.',
+  'connect.session': 'Each session, paste this so it keeps going until you stop it:',
+  'connect.prompt':
+    'Work the Otea queue until I stop you. Call next with claim; do the step, hand it off, and call next again without stopping. When there is nothing to do, wait for new work: run `otea wait --turn agent --unclaimed` in the background if you can (or call the wait tool with a timeout of 5m), then call next again. Answer my notes with reply.',
+  'connect.copyPrompt': 'Copy the instruction',
+  'connect.copiedPrompt': 'Copied',
+  'connect.appears': 'It shows up here as soon as it calls Otea.',
   'connect.done': 'Done',
   // Surfaces, redrawn (SPEC §10.4-10.5): Actividad, Triaje, Nuevo ítem, Te espera, Emparejar, Configuración
   'activity.open': 'See activity',
