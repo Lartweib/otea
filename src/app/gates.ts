@@ -34,8 +34,18 @@ export type GateCheck = {
 };
 
 // The branches a push or merge into a base branch brings in: asked of git only when a board
-// protects that branch as its base.
-export type Brings = () => readonly string[];
+// protects that branch as its base. `unpushed` names those of them that hold commits their remote
+// never got (`remote`): never reviewed, so they are refused whatever their item's state.
+export type Brought = {
+  branches: readonly string[];
+  unpushed?: readonly { branch: string; remote: string }[];
+};
+export type Brings = () => readonly string[] | Brought;
+
+function brought(brings: Brings): Brought {
+  const asked = brings();
+  return Array.isArray(asked) ? { branches: asked } : (asked as Brought);
+}
 
 const GATED: readonly string[] = ['push', 'merge'];
 
@@ -121,18 +131,31 @@ function baseCheck(
 ): GateCheck {
   const branch = guardedBranch(board.def);
   const base = fields.branch ?? '';
-  const brought = new Set(brings().filter((name) => name !== base));
+  const { branches, unpushed = [] } = brought(brings);
+  const names = new Set(branches.filter((name) => name !== base));
   const repo = branch?.guard.repo;
   const items = selectItems(ctx.db, { collection: board.collection })
-    .filter((item) => branch && brought.has(item.fields[branch.id] as string))
+    .filter((item) => branch && names.has(item.fields[branch.id] as string))
     .filter(
       (item) =>
-        repo === undefined || fields.repo === undefined || item.fields[repo] === fields.repo,
+        repo === undefined || fields.repo === undefined || sameRepo(item.fields[repo], fields.repo),
     )
     .map((item): GateVerdict => {
       const position = positionOf(item.state);
       const round = itemOnBoard(ctx, item, board.def).round;
       const allowedIn = workflowOf(ctx, item).gates?.merge ?? [];
+      const ahead = unpushed.find(({ branch: name }) => branch && name === item.fields[branch.id]);
+      if (ahead) {
+        return {
+          id: item.id,
+          state: item.state,
+          stateName: stateName(board.def, item.state),
+          allowed: false,
+          allowedIn,
+          allowedInNames: allowedIn.map((state) => stateName(board.def, state)),
+          text: `${gate} refused: ${ahead.branch} holds commits ${ahead.remote} never got, so nobody reviewed them; ${base} takes ${item.id}'s branch only as it was pushed.`,
+        };
+      }
       return {
         id: item.id,
         state: item.state,
@@ -143,9 +166,7 @@ function baseCheck(
         text: baseGateText(board.def, item.id, position, gate, round, base),
       };
     });
-  if (items.length === 0)
-    return { gate, allowed: false, items, refusal: baseRefusal(board.def, gate, base) };
-  return { gate, allowed: items.every(({ allowed }) => allowed), items };
+  return { gate, allowed: items.length > 0 && items.every(({ allowed }) => allowed), items };
 }
 
 // Checks the items whose fields hold every value given and whose workflow gates the action: on a
@@ -171,14 +192,21 @@ export function checkGate(
       )
     : [];
   if (bases.length > 0) {
-    const checks = bases.map((board) => baseCheck(ctx, board, gate as GateAction, fields, brings));
-    const refusal = checks.find((check) => check.refusal)?.refusal;
-    return {
-      gate,
-      allowed: checks.every(({ allowed }) => allowed),
-      items: checks.flatMap(({ items }) => items),
-      ...(refusal === undefined ? {} : { refusal }),
-    };
+    // Every board that protects the base is asked at once: the action must bring in an item of
+    // one of them, and every item it brings in, whatever its board, must allow it.
+    const items = bases.flatMap(
+      (board) => baseCheck(ctx, board, gate as GateAction, fields, brings).items,
+    );
+    if (items.length === 0) {
+      const defs = bases.map(({ def }) => def);
+      return {
+        gate,
+        allowed: false,
+        items,
+        refusal: baseRefusal(defs, gate as GateAction, fields.branch ?? ''),
+      };
+    }
+    return { gate, allowed: items.every(({ allowed }) => allowed), items };
   }
   const fromBoards = GATED.includes(gate)
     ? boards.flatMap((board) => boardVerdicts(ctx, board, gate as GateAction, fields))

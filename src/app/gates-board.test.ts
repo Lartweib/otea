@@ -152,6 +152,26 @@ describe('gates on a board', () => {
       );
     });
 
+    it('takes the Done item of one board when another board protects the same base', () => {
+      const { ctx, id } = repoTask('main');
+      const fixes = tareasDeRepo();
+      fixes.name = 'Cambios de base';
+      fixes.item = 'Cambio de base';
+      const guard = fixes.parts.fbranch?.guard;
+      if (guard) guard.base = 'main';
+      publishAs(ctx, fixes, 'barr', now);
+      updateItemState(ctx.db, id, 'done', now());
+
+      const merge = checkGate(ctx, 'merge', { branch: 'main', repo: 'api' }, () => ['feat/x']);
+      expect(merge).toMatchObject({ allowed: true, items: [{ id, allowed: true }] });
+      expect(merge.refusal).toBeUndefined();
+      const none = checkGate(ctx, 'merge', { branch: 'main', repo: 'api' }, () => ['feat/z']);
+      expect(none.allowed).toBe(false);
+      expect(none.refusal).toBe(
+        'merge refused: main is the base branch Tareas de repo and Cambios de base protect; it takes only the branch of a Tarea de repo or a Cambio de base that is Done, and this merge brings in none.',
+      );
+    });
+
     it('still gates the item’s own branch as before', () => {
       const { ctx, id } = repoTask('main');
       updateItemState(ctx.db, id, 'simpl', now());
