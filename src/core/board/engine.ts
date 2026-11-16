@@ -473,8 +473,30 @@ export type GateAction = 'push' | 'merge';
 // board protects no branch, so it gates nothing).
 export type GateAnswer = {
   allowed: boolean;
-  why: 'doing' | 'review' | 'not_push_step' | 'closed' | 'done' | 'not_done' | 'unguarded';
+  why:
+    | 'doing'
+    | 'review'
+    | 'not_push_step'
+    | 'closed'
+    | 'done'
+    | 'not_done'
+    | 'landing'
+    | 'unguarded';
 };
+
+// A last step an agent does with nobody reviewing, reached only from steps the person closes
+// (approves, or does with nobody reviewing): the person's approval already said the work is good,
+// so the agent lands it (merges it) and closes the item as Done itself.
+export function isLandStep(def: BoardDefinition, stepId: string): boolean {
+  const step = stepById(def, stepId);
+  if (!step || step.doer === 'you' || step.reviewer !== 'none') return false;
+  if (!waysOf(def, stepId).includes(DONE)) return false;
+  const into = def.steps.filter(
+    (other) => other.id !== stepId && waysOf(def, other.id).includes(stepId),
+  );
+  const closer = (other: Step) => (other.reviewer === 'none' ? other.doer : other.reviewer);
+  return into.length > 0 && into.every((other) => closer(other) === 'you');
+}
 
 // Whether the item's protected branch may take the action where the item stands: a push only while
 // one of the guard's steps is being done (never during its review), a merge only once it is Hecho.
@@ -483,7 +505,10 @@ export function gateAt(def: BoardDefinition, position: Position, action: GateAct
   if (!branch) return { allowed: true, why: 'unguarded' };
   if (action === 'merge') {
     const done = isClosed(position) && position.closed === DONE;
-    return done ? { allowed: true, why: 'done' } : { allowed: false, why: 'not_done' };
+    if (done) return { allowed: true, why: 'done' };
+    const landing =
+      !isClosed(position) && position.phase === 'doing' && isLandStep(def, position.step);
+    return landing ? { allowed: true, why: 'landing' } : { allowed: false, why: 'not_done' };
   }
   if (isClosed(position)) return { allowed: false, why: 'closed' };
   if (!branch.guard.push.includes(position.step)) return { allowed: false, why: 'not_push_step' };

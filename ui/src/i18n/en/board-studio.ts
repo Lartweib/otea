@@ -23,7 +23,7 @@ export const boardStudio = {
   'bs.problem.cap_invalid': 'The cap has to be at least 1.',
   'bs.problem.self_review': 'In {step} you do it and review it: the same as nobody reviewing it.',
   'bs.problem.agent_closes':
-    'Only you call something done: in {step} an agent would close it. Review it yourself before Done.',
+    'Only you call something done: in {step} an agent would close it. Review it yourself, there or in the step just before (then an agent may land it).',
   'bs.problem.wait_no_split': '{step} waits for its parts, but {board} divides into nothing.',
   'bs.problem.skip_invalid':
     '“Starts straight at…” only works on the first step, and only when nobody reviews it. Take it off {step}.',

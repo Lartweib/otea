@@ -222,15 +222,12 @@ describe('relay by an agent that worked the step but did not hand it off', () =>
 
   afterEach(() => repo.remove());
 
-  it('refuses it when the agent claimed the item in this round', async () => {
+  it('lets it relay when the agent only claimed the item and let it go untouched', async () => {
     await otea('claim', 'TASKS-1');
     await otea('release', 'TASKS-1');
     await otea('handoff', 'TASKS-1', '--as', 'codex');
 
-    const { code, err } = await relay();
-
-    expect(code).toBe(7);
-    expect(err).toContain('Not relayed: claude did Hacerlo on TASKS-1 in this round');
+    expect((await relay()).code).toBe(0);
   });
 
   it('refuses it when the agent attached evidence in this round', async () => {

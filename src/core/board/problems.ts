@@ -1,5 +1,5 @@
 import { closeIconNames, isIconName } from '../icons.ts';
-import { startsWith, waysOf } from './engine.ts';
+import { isLandStep, startsWith, waysOf } from './engine.ts';
 import {
   type BoardDefinition,
   DONE,
@@ -193,10 +193,12 @@ export function problemsOf(def: BoardDefinition, context: ProblemContext): Probl
     add('error', 'cap_invalid', { kind: 'about' });
 
   // Only you say something is Hecho: an agent may not close an item as done, by handing it off with
-  // nobody reviewing or by approving it.
+  // nobody reviewing or by approving it; except to land work in a last step it reaches only once
+  // you approved it.
   for (const step of def.steps) {
     const closer = step.reviewer === 'none' ? step.doer : step.reviewer;
     if (closer === 'you' || !waysOf(def, step.id).includes(DONE)) continue;
+    if (isLandStep(def, step.id)) continue;
     add('error', 'agent_closes', { kind: 'step', id: step.id }, { step: step.name });
   }
 

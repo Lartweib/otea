@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cambios, tareasDeRepo } from '../core/board/testing.ts';
+import { cambios, step, tareasDeRepo } from '../core/board/testing.ts';
 import { updateItemState } from '../store/queries.ts';
 import { addCollection } from './collections.ts';
 import { checkGate } from './gates.ts';
@@ -33,7 +33,7 @@ function repoTask(base?: string) {
     },
     now,
   );
-  return { ctx, id: task.id };
+  return { ctx, id: task.id, parent: parent.id };
 }
 
 describe('gates on a board', () => {
@@ -169,6 +169,66 @@ describe('gates on a board', () => {
       expect(none.allowed).toBe(false);
       expect(none.refusal).toBe(
         'merge refused: main is the base branch Tareas de repo and Cambios de base protect; it takes only the branch of a Tarea de repo or a Cambio de base that is Done, and this merge brings in none.',
+      );
+    });
+
+    it('leaves a dropped duplicate on the same branch out of a merge into the base', () => {
+      const { ctx, id, parent } = repoTask('main');
+      const twin = createItem(
+        ctx,
+        {
+          collection: 'Tareas de repo',
+          title: 'API otra vez',
+          fields: { frepo: 'api', fbranch: 'feat/x' },
+          parent,
+          actor: you,
+        },
+        now,
+      );
+      updateItemState(ctx.db, twin.id, 'dropped', now());
+      updateItemState(ctx.db, id, 'done', now());
+
+      const merge = checkGate(ctx, 'merge', { branch: 'main', repo: 'api' }, () => ['feat/x']);
+      expect(merge).toMatchObject({ allowed: true, items: [{ id, allowed: true }] });
+      updateItemState(ctx.db, id, 'dropped', now());
+      const dropped = checkGate(ctx, 'merge', { branch: 'main', repo: 'api' }, () => ['feat/x']);
+      expect(dropped.allowed).toBe(false);
+      expect(dropped.items).toEqual([]);
+    });
+
+    it('lets the agent merge into the base while it lands an item you approved', () => {
+      const ctx = memoryContext();
+      const def = tareasDeRepo();
+      const guard = def.parts.fbranch?.guard;
+      if (guard) guard.base = 'main';
+      def.steps.push(step('sland', 'Integrar', { reviewer: 'none' }));
+      publishAs(ctx, def, 'brt', now);
+      publishAs(ctx, cambios(), 'bcam', now);
+      const parent = createItem(
+        ctx,
+        { collection: 'Cambios', title: 'Nube', fields: { fwhat: 'x' }, actor: you },
+        now,
+      );
+      const task = createItem(
+        ctx,
+        {
+          collection: 'Tareas de repo',
+          title: 'API',
+          fields: { frepo: 'api', fbranch: 'feat/x' },
+          parent: parent.id,
+          actor: you,
+        },
+        now,
+      );
+      updateItemState(ctx.db, task.id, 'simpl', now());
+      const brings = () => ['feat/x'];
+      expect(checkGate(ctx, 'merge', { branch: 'main', repo: 'api' }, brings).allowed).toBe(false);
+
+      updateItemState(ctx.db, task.id, 'sland', now());
+      const merge = checkGate(ctx, 'merge', { branch: 'main', repo: 'api' }, brings);
+      expect(merge).toMatchObject({ allowed: true, items: [{ id: task.id, allowed: true }] });
+      expect(merge.items[0]?.text).toBe(
+        `merge allowed: ${task.id} is being landed in Integrar, after your approval; main takes its branch.`,
       );
     });
 

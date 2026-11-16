@@ -101,15 +101,32 @@ describe('problemsOf', () => {
   it('blocks an agent closing an item as done: only you say something is Hecho', () => {
     const def = creatures();
     def.steps = [
-      step('sa', 'Hacer', { reviewer: 'you' }),
+      step('sa', 'Hacer', { reviewer: 'any' }),
       step('sb', 'Cerrar', { reviewer: 'none' }),
     ];
+    expect(codes(def)).toEqual(['error:agent_closes']);
+    def.steps = [step('sb', 'Cerrar', { reviewer: 'none' })];
     expect(codes(def)).toEqual(['error:agent_closes']);
     def.steps = [
       step('sa', 'Hacer', { reviewer: 'any', ways: [] }),
       step('sb', 'Ver', { doer: 'you', reviewer: 'none' }),
     ];
     def.steps[0]?.ways.push('done');
+    expect(codes(def)).toEqual(['error:agent_closes']);
+  });
+
+  it('lets an agent close the item in a last step it reaches only once you approved the one before', () => {
+    const def = creatures();
+    def.steps = [
+      step('sa', 'Hacer', { reviewer: 'you' }),
+      step('sb', 'Integrar', { reviewer: 'none' }),
+    ];
+    expect(codes(def)).toEqual([]);
+    def.steps = [
+      step('sa', 'Hacer', { reviewer: 'you', ways: ['sb'] }),
+      step('sm', 'Medio', { reviewer: 'any' }),
+      step('sb', 'Integrar', { reviewer: 'none' }),
+    ];
     expect(codes(def)).toEqual(['error:agent_closes']);
   });
 

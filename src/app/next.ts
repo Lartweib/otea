@@ -225,12 +225,12 @@ function sentBackOf(
 
 // What an agent does while doing a step, short of handing it off: taking the item, attaching its
 // evidence, changing its fields.
-const STEP_WORK = new Set(['claimed', 'evidence_added', 'updated']);
+const STEP_WORK = new Set(['evidence_added', 'updated']);
 
 // The agents that did the step the item stands in, in its current round (since `since`): each one
-// that handed the item off out of the step's doing or, while the item stood in that doing, claimed
-// it, attached evidence to it or changed its fields (the step's work, even when another agent
-// handed it off). Work of an earlier round, or done in another step, does not count. None of them
+// that handed the item off out of the step's doing or, while the item stood in that doing,
+// attached evidence to it or changed its fields (the step's work, even when another agent handed
+// it off). Claiming it and letting it go untouched is not work: that agent may still review it. Work of an earlier round, or done in another step, does not count. None of them
 // reviews the step, nor relays the decision on it.
 function roundWorkers(
   position: Position,
@@ -464,6 +464,9 @@ function textFor(
     : handoffCheck(def, on.position.step, on.facts).missing;
   const board = liveBoardOf(ctx, item.collection);
   const child = board ? partsBoardOf(ctx, board) : undefined;
+  const planned = isClosed(on.position) ? undefined : plannedBy(ctx, item);
+  const stepName = isClosed(on.position) ? undefined : stepById(def, on.position.step)?.name;
+  const handed = on.notes.findLast(({ step, round }) => step === stepName && round === on.round);
   return nextText(def, {
     id: item.id,
     title: item.title,
@@ -480,6 +483,8 @@ function textFor(
     ...(on.facts.did === undefined ? {} : { did: on.facts.did }),
     ...(lease ? { holder: { name: lease.holder, expiresAt: lease.expiresAt } } : {}),
     ...(left === undefined ? {} : { leftFor: left }),
+    ...(planned === undefined ? {} : { plannedBy: planned }),
+    ...(handed === undefined ? {} : { handed: { note: handed.note, by: handed.by } }),
     ...(on.roundNotes.length === 0 ? {} : { notes: on.roundNotes }),
     ...(on.roundQuestions.length === 0 ? {} : { questions: on.roundQuestions }),
   });
@@ -570,8 +575,18 @@ export function offerableTo(ctx: Context, agent: string, now = systemClock) {
   };
 }
 
+// How far along its board an open item stands: whether it waits for a review, and its step's place.
+function progressOf(def: BoardDefinition, item: ItemRecord): { review: boolean; along: number } {
+  const position = positionOf(item.state);
+  if (isClosed(position)) return { review: false, along: -1 };
+  return {
+    review: position.phase !== 'doing',
+    along: def.steps.findIndex((step) => step.id === position.step),
+  };
+}
+
 // The item the agent should take, and its text: one it holds first, then what was sent back to it,
-// then the oldest waiting; never one another agent holds or was just offered. With `claim`, the
+// then reviews and work furthest along, then the oldest waiting; never one another agent holds or was just offered. With `claim`, the
 // agent claims it in the same transaction, so no other agent can take it between the two. When
 // there is none: that, once, each board's words for idle time and its cap, and how to wait.
 export function nextFor(
@@ -604,12 +619,17 @@ export function nextFor(
           board,
           held: activeLease(item.lease, at) !== null,
           returned: itemOnBoard(ctx, item, board.def).sentBack !== undefined,
+          ...progressOf(board.def, item),
         })),
     );
+    // Work already handed on comes before new work: a review, then the step furthest along (its
+    // earlier steps are approved), and only then the oldest.
     candidates.sort(
       (a, b) =>
         Number(b.held) - Number(a.held) ||
         Number(b.returned) - Number(a.returned) ||
+        Number(b.review) - Number(a.review) ||
+        b.along - a.along ||
         since(a.item).localeCompare(since(b.item)) ||
         a.item.createdAt.localeCompare(b.item.createdAt),
     );

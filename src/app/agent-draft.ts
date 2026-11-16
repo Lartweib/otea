@@ -152,7 +152,7 @@ export function problemWords(problem: Problem): string {
     back_invalid: `step${step} sends work back to a later step`,
     cap_invalid: 'the cap on new items is not a whole number above zero',
     self_review: `step${step} has the person doing and reviewing it`,
-    agent_closes: `step${step} would let an agent close the item: only the person says Done`,
+    agent_closes: `step${step} would let an agent close the item: only the person says Done (an agent may close it only in a last step every way into it comes from a step the person closes)`,
     wait_no_split: `step${step} waits for its parts, but${board} divides into nothing`,
     skip_invalid: `step${step} starts new items past it, which only a first step nobody reviews may do`,
     split_cycle: `${board.trim() || 'the board'} and${other} divide into each other`,

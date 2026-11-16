@@ -1,5 +1,11 @@
-import { type GateAction, gateAt, isClosed, positionOf } from '../core/board/engine.ts';
-import { type BoardDefinition, guardedBranch, TITLE } from '../core/board/model.ts';
+import {
+  type GateAction,
+  gateAt,
+  isClosed,
+  type Position,
+  positionOf,
+} from '../core/board/engine.ts';
+import { type BoardDefinition, DROPPED, guardedBranch, TITLE } from '../core/board/model.ts';
 import { baseGateText, baseRefusal, gateText } from '../core/board/next.ts';
 import { partByName, stateName } from '../core/board/reading.ts';
 import { OteaError } from '../core/errors.ts';
@@ -120,6 +126,10 @@ function boardVerdicts(
     });
 }
 
+function isDropped(position: Position): boolean {
+  return isClosed(position) && position.closed === DROPPED;
+}
+
 // A push or merge into the base branch a board protects: allowed only when it brings in the
 // branch of at least one of the board's items (in the repo checked) and every such item is Hecho.
 function baseCheck(
@@ -140,6 +150,9 @@ function baseCheck(
       (item) =>
         repo === undefined || fields.repo === undefined || sameRepo(item.fields[repo], fields.repo),
     )
+    // A dropped item brings nothing in: a duplicate left on the same branch never blocks the item
+    // that was done there, and alone it allows nothing.
+    .filter((item) => !isDropped(positionOf(item.state)))
     .map((item): GateVerdict => {
       const position = positionOf(item.state);
       const round = itemOnBoard(ctx, item, board.def).round;
