@@ -1,7 +1,8 @@
-// How a file in a files part is read on the item page: Markdown as formatted text, code, data and
-// plain text as numbered lines, anything else offered to open or download. SVG is never drawn
-// inline (it can carry scripts): it is offered as a file.
-export type FileView = 'markdown' | 'text' | 'download';
+// How a file in a files part is read on the item page: Markdown as formatted text, JSON as a tree,
+// CSV and TSV as a table, code and plain text as numbered lines, anything else
+// offered to open or download. SVG is never drawn inline (it can carry scripts): it is offered as a
+// file.
+export type FileView = 'markdown' | 'json' | 'table' | 'text' | 'download';
 
 const MARKDOWN = new Set(['md', 'markdown', 'mdown', 'mkd']);
 
@@ -65,6 +66,8 @@ export function fileViewOf({
   const dot = filename.lastIndexOf('.');
   const ext = (dot >= 0 ? filename.slice(dot + 1) : filename).toLowerCase();
   if (MARKDOWN.has(ext) || contentType === 'text/markdown') return 'markdown';
+  if (ext === 'json' || contentType === 'application/json') return 'json';
+  if (ext === 'csv' || ext === 'tsv' || contentType === 'text/csv') return 'table';
   if (contentType === 'image/svg+xml') return 'download';
   if (TEXT.has(ext) || contentType.startsWith('text/') || contentType === 'application/json')
     return 'text';
