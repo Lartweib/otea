@@ -514,6 +514,10 @@ describe('leases on a board', () => {
     );
     expect(nextFor(ctx, 'scout', {}, now).item).toBeNull();
     expect(nextFor(ctx, 'kiln', {}, now).item).toBe(item.id);
+    attach(ctx, item.id, 'eart');
+    expect(() => handoffItem(ctx, { id: item.id, actor: scout, channel: 'cli' }, now)).toThrow(
+      'CRI-1 was left for kiln; hand off only what is yours (otea next)',
+    );
     // Once kiln claims it, it is kiln's like any held item.
     claimItem(ctx, { id: item.id, actor: kiln }, now);
     expect(itemNextText(ctx, getItem(ctx, item.id, now), 'kiln', now)).not.toContain(
@@ -630,6 +634,35 @@ describe('next among several agents', () => {
     // Asked again, each agent keeps its own offer.
     expect(nextFor(ctx, 'quill', {}, at).item).toBe(first.id);
     expect(nextFor(ctx, 'scout', {}, at).item).toBeNull();
+  });
+
+  it('refuses a handoff of an item just offered to another agent that it never claimed', () => {
+    const ctx = memoryContext();
+    board(ctx);
+    const item = creature(ctx);
+    const at = clock();
+    nextFor(ctx, 'quill', {}, at);
+    attach(ctx, item.id, 'eart');
+
+    expect(() => handoffItem(ctx, { id: item.id, actor: kiln, channel: 'cli' }, at)).toThrow(
+      'CRI-1 was just offered to another agent; hand off only what is yours (otea next)',
+    );
+    expect(handoffItem(ctx, { id: item.id, actor: quill, channel: 'cli' }, at).item.id).toBe(
+      item.id,
+    );
+  });
+
+  it('offers a reassigned item to its agent at once, though it was just offered to another', () => {
+    const ctx = memoryContext();
+    board(ctx);
+    const item = creature(ctx);
+    const at = clock();
+    nextFor(ctx, 'quill', {}, at);
+    claimItem(ctx, { id: item.id, actor: quill, ttlMs: 1000 }, at);
+    at.later(5000);
+    reassignItem(ctx, { id: item.id, agent: 'kiln', actor: you, channel: 'ui' }, at);
+
+    expect(nextFor(ctx, 'kiln', {}, at).item).toBe(item.id);
   });
 
   it('offers it to another agent once the offer runs out unclaimed, or the item moved on', () => {
