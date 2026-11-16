@@ -10,7 +10,7 @@ import {
 import type { BoardDefinition } from '../../../../src/core/board/model.ts';
 import { evidenceFileUrl } from '../../api.ts';
 import { useApp } from '../../app/context.tsx';
-import { EvidenceReader } from '../../components/evidence/EvidenceViewer.tsx';
+import { EvidenceReader, type ReaderDecide } from '../../components/evidence/EvidenceViewer.tsx';
 import { NoteText } from '../../components/NoteText.tsx';
 import { t, tx } from '../../i18n/i18n.ts';
 import { AgentMark, Button, Icon, StepPill } from '../../kit/index.ts';
@@ -148,11 +148,14 @@ function Files({
   noted,
   marks,
   parts,
+  decide,
   onSeen,
 }: {
   evidence: readonly Evidence[];
   // The board part each file went to, by module id; a file without one reads by its kind.
   parts?: ReadonlyMap<string, string> | undefined;
+  // Aprobar and Devolver from inside the reader, on the round that waits for your verdict.
+  decide?: ReaderDecide | undefined;
   noted?: ReadonlyMap<number, number> | undefined;
   marks?: ReadonlyMap<number, Mark> | undefined;
   // A file shown in the reader, opened or stepped to.
@@ -171,6 +174,26 @@ function Files({
     opened.current = from;
     setAt(order.indexOf(e));
   };
+  // A move from inside the reader: the sheet leaves first, then the move is made as from the dock,
+  // so its note sheet or refusal shows where it always does.
+  const after = (go: () => void) => () => {
+    setAt(null);
+    let tries = 0;
+    const wait = () => {
+      if (document.querySelector('.p-read') && tries++ < 90) requestAnimationFrame(wait);
+      else go();
+    };
+    requestAnimationFrame(wait);
+  };
+  const deciding = decide
+    ? {
+        seen: decide.seen,
+        back: decide.back ? { ...decide.back, onClick: after(decide.back.onClick) } : undefined,
+        approve: decide.approve
+          ? { ...decide.approve, onClick: after(decide.approve.onClick) }
+          : undefined,
+      }
+    : undefined;
   const mark = (e: Evidence) => {
     const m = marks?.get(e.id);
     return m ? <span className={`mk ${m}`}>{MARK_WORD[m]()}</span> : null;
@@ -230,7 +253,7 @@ function Files({
       >
         {at !== null ? (
           <div data-i="">
-            <EvidenceReader evidence={order} at={at} onAt={setAt} phone />
+            <EvidenceReader evidence={order} at={at} onAt={setAt} phone decide={deciding} />
           </div>
         ) : null}
       </BottomSheet>
@@ -278,10 +301,12 @@ function RoundView({
   now,
   notes,
   parts,
+  decide,
   onSeen,
 }: {
   r: PhoneRound;
   parts?: ReadonlyMap<string, string> | undefined;
+  decide?: ReaderDecide | undefined;
   // The round before it, to mark its files against.
   prior: PhoneRound | undefined;
   newest: boolean;
@@ -316,6 +341,7 @@ function RoundView({
           noted={notes?.noted}
           marks={prior ? fileMarks(prior.evidence, r.evidence) : undefined}
           parts={parts}
+          decide={decide}
           onSeen={onSeen}
         />
       </section>
@@ -472,6 +498,15 @@ export function PhoneItem(p: PhoneItemProps) {
     if (c.move.reasonRequired || c.kind === 'sendback') ask(c);
     else make(c);
   };
+  // Aprobar and Devolver from inside the reader, as the dock has them: the newest round only.
+  const readerDecide: ReaderDecide | undefined =
+    docked && dock && (primary || sendback) && newest
+      ? {
+          seen: newest.evidence.filter((e) => seen.has(e.id)).length,
+          back: sendback ? { label: sendback.label, onClick: () => choose(sendback) } : undefined,
+          approve: primary ? { label: primary.label, onClick: () => choose(primary) } : undefined,
+        }
+      : undefined;
   const send = () => {
     if (!asking || !text.trim()) return;
     setAsking({ ...asking, open: false });
@@ -610,6 +645,7 @@ export function PhoneItem(p: PhoneItemProps) {
           now={now}
           notes={leave ? undefined : p.notes}
           parts={parts}
+          decide={shown === newest ? readerDecide : undefined}
           onSeen={markSeen}
         />
       ) : null}
