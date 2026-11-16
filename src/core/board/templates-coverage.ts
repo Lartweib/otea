@@ -1,5 +1,6 @@
 import { EMPTY, w } from './template-words.ts';
 import type { Template, TemplateSet } from './templates.ts';
+import { FLOW_SETS } from './templates-flows.ts';
 
 // The templates that say what the old presets said: sorting bugs (bug-triage), reviewing by rounds
 // (review) and decisions (architecture); and the boards that only come in a set: Cambios and its
@@ -538,6 +539,7 @@ export const COVERAGE_TEMPLATES: readonly Template[] = [
 // Templates that make several boards at once. Cambios en varios repos joins its two boards with
 // "se divide en"; Producto's two boards stay apart, and a bug holds a task back with a link.
 export const TEMPLATE_SETS: readonly TemplateSet[] = [
+  ...FLOW_SETS,
   {
     key: 'repos',
     icon: 'layers',

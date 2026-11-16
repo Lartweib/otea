@@ -29,6 +29,7 @@ import {
 
 import { EMPTY, type Lang, TITLE_NAME, type Words, w } from './template-words.ts';
 import { COVERAGE_TEMPLATES, TEMPLATE_SETS } from './templates-coverage.ts';
+import { FLOW_TEMPLATES } from './templates-flows.ts';
 
 export { LANGS, type Lang, TITLE_NAME } from './template-words.ts';
 
@@ -44,8 +45,12 @@ type TemplatePart = {
   optionKeys?: readonly string[];
   show?: string;
   initial?: string;
-  guard?: { push: readonly string[]; repo?: string };
+  guard?: { push: readonly string[]; repo?: string; base?: string };
 };
+
+// A conditional requirement: the part (by key) and the value that makes it required, read as
+// `initial` is (an option's key or position, a level key, yes or no).
+type TemplateWhen = readonly [part: string, value: string];
 
 // `ways` holds later steps (or DONE) and earlier ones, which the doer may take the item back to.
 // `back` is where a send-back lands (an earlier step's key), the step itself when left out.
@@ -54,7 +59,7 @@ type TemplateStep = {
   name: Words;
   doer: Doer;
   reviewer: Reviewer;
-  hand: readonly (readonly [key: string, req: Requirement, fresh?: boolean])[];
+  hand: readonly (readonly [key: string, req: Requirement, fresh?: boolean, when?: TemplateWhen])[];
   ways?: readonly string[];
   back?: string;
   take?: Words;
@@ -68,7 +73,8 @@ type TemplateStep = {
 
 // `hidden`: one board of a set, or a preset's reading; never listed on its own. `layout` places a
 // part (by key), the rounds or the parts; the rest go to their kind's default zone. `row` lists
-// part keys; `list.group` a part key, STEP or MOTIVE.
+// part keys; `list.group` a part key, STEP or MOTIVE. `split`: its items divide into parts on the
+// same board.
 export type Template = {
   key: string;
   icon: string;
@@ -89,6 +95,7 @@ export type Template = {
   list?: { as: ListView['as']; group?: string };
   row?: readonly string[];
   layout?: Readonly<Record<string, Zone>>;
+  split?: { always: boolean };
 };
 
 // Every single-board template: the five of the first Studio, then the ones that say what the old
@@ -554,6 +561,7 @@ export const TEMPLATES: readonly Template[] = [
     },
   },
   ...COVERAGE_TEMPLATES,
+  ...FLOW_TEMPLATES,
 ];
 
 export function requireTemplate(key: string): Template {
@@ -604,19 +612,23 @@ export function instantiate(
   }
   for (const step of template.steps) refs.set(step.key, keep ? step.key : ids('s'));
   const ref = (key: string) => refs.get(key) ?? key;
+  // A value as a choice part stores it (its option's id); a level, yes or no as written.
+  const storedValue = (key: string, value: string) => {
+    const part = template.parts.find((candidate) => candidate.key === key);
+    if (part?.kind !== 'choice') return value;
+    const at = part.optionKeys?.indexOf(value) ?? -1;
+    const position = /^\d+$/.test(value) ? Number(value) : at;
+    return choices.get(key)?.[position] ?? value;
+  };
   for (const part of template.parts) {
     const made = parts[ref(part.key)];
     if (!made) continue;
-    if (part.initial !== undefined) {
-      const options = choices.get(part.key) ?? [];
-      const at = part.optionKeys?.indexOf(part.initial) ?? -1;
-      const position = /^\d+$/.test(part.initial) ? Number(part.initial) : at;
-      made.initial = part.kind === 'choice' ? (options[position] ?? part.initial) : part.initial;
-    }
+    if (part.initial !== undefined) made.initial = storedValue(part.key, part.initial);
     if (part.guard)
       made.guard = {
         push: part.guard.push.map(ref),
         ...(part.guard.repo === undefined ? {} : { repo: ref(part.guard.repo) }),
+        ...(part.guard.base === undefined ? {} : { base: part.guard.base }),
       };
   }
   const words = (text: Words | undefined) =>
@@ -626,7 +638,12 @@ export function instantiate(
     name: step.name[lang],
     doer: step.doer,
     reviewer: step.reviewer,
-    hand: step.hand.map(([key, req, fresh]) => ({ ref: ref(key), req, fresh: fresh ?? false })),
+    hand: step.hand.map(([key, req, fresh, when]) => ({
+      ref: ref(key),
+      req,
+      ...(when ? { when: { part: ref(when[0]), value: storedValue(when[0], when[1]) } } : {}),
+      fresh: fresh ?? false,
+    })),
     ways: (step.ways ?? []).map((way) => (way === DONE ? DONE : ref(way))),
     back: step.back === undefined ? SAME : ref(step.back),
     instructions: {
@@ -686,6 +703,7 @@ export function instantiate(
     idle: words(template.idle),
     cap: { on: false, n: 3 },
     samples: [...template.samples[lang]],
+    ...(template.split ? { split: { board: SAME, always: template.split.always } } : {}),
     template: template.key,
   };
 }

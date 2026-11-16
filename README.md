@@ -294,7 +294,7 @@ What an agent reads back costs tokens on every call, so output size is tested li
 
 ### Templates
 
-`otea init --template <key>`, `otea board add <name> --template <key>` and Studio's **Nuevo tablero** take the same templates: `bugs`, `assets`, `blog`, `tasks`, `research`, `triage`, `review`, `decisions`, and the sets `repos` and `product`, which make several boards at once (below). `otea init --help` and `otea board add --help` list them from the same catalog. `otea board add <name> --template repos` makes every board of the set, the name (and `--item`) naming the first; its `--json` is the list of boards it published.
+`otea init --template <key>`, `otea board add <name> --template <key>` and Studio's **Nuevo tablero** take the same templates: `bugs`, `assets`, `blog`, `tasks`, `research`, `triage`, `review`, `decisions`, and the sets `ideas`, `repos` and `product`, which make several boards at once (below). `otea init --help` and `otea board add --help` list them from the same catalog. `otea board add <name> --template repos` makes every board of the set, the name (and `--item`) naming the first; its `--json` is the list of boards it published.
 
 - Every project has **Pedidos**, the board for loose requests (an agent's board draft arrives on one too). It is made when the project is first opened, so `otea init --template none` leaves Pedidos and nothing else.
 - `otea init` makes boards only on a project with no boards of its own (Pedidos aside): Tareas and Errores by default, or the template's. On a project that already has boards it makes none and, when given `--template`, says to add one with `otea board add`. An unknown template fails with exit 3 (`not_found`) either way.
@@ -310,10 +310,12 @@ Projects made before boards kept each collection on a preset (`presets/<name>/pr
 A template set makes several boards at once, joined the only way boards are declared to join: **"se divide en"** (each item of one board divides into items of another).
 
 ```sh
+otea init --template ideas     # Ideas, each divided into its Decisions, and Implementación, the tasks a planned Idea makes
 otea init --template repos     # Cambios, which divides into Tareas de repo (always: a repo task is always part of a Cambio)
 otea init --template product   # Tareas, which waits for nothing open blocking it, and Errores (Clasificar errores)
 ```
 
+- **De la idea a las tareas** (`ideas`): an agent refines each Idea by asking you, one question at a time, into a Brief (or a Decision into its Options), designs it (an architecture document, Mermaid diagrams, the project's `.md` files) once its Decisions, parts on the same board, are closed, and plans it: it creates the tasks on Implementación, each linked `implements` to the Idea and `blocks` in order. Those tasks wait until you approve the plan. A task born complete skips Preparar; Hacer waits for its subtasks and blockers.
 - A part on a board that is always part of another needs `--parent` (`otea create --collection "Tareas de repo" --parent CAMBIOS-1 …`); without it, or with a parent on another board, the create fails with exit 16 (`parent_required`, `parent_type`). `otea link A parent B` follows the same rule.
 - Every other link (`blocks`, `implements`, `relates`, `duplicates`) is free between any two boards. A step that waits for its blockers ("Algo que esperar") is not handed off, or approved, while one of them is open (exit 4, `blockers_open`); one that waits for its parts, while a part is open (exit 4, `children_open`).
 - Blueprints are gone. A project that had one is read once, when it opens: every collection becomes a board (each old preset has its own reading, so a `change` collection becomes Cambios plus Tareas de repo and its repo tasks move there with their history), a `blocks` connection into a board makes its working step wait for blockers, and `.otea/blueprint.yaml` is deleted once every collection reads as a board (while one cannot be read yet, Otea warns and keeps it). A collection on a preset Otea never shipped keeps its git gates as a guard on its `branch` field.
