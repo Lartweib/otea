@@ -548,8 +548,24 @@ function offeredElsewhere(ctx: Context, agent: string, at: string) {
   const offers = selectOffers(ctx.db).filter(
     (offer) => offer.agent !== agent && Date.parse(at) - Date.parse(offer.at) < OFFER_MS,
   );
+  // An item the person left for this agent (Reasignar) is its own, whoever was offered it before.
   return (item: ItemRecord) =>
-    offers.some((offer) => offer.item === item.id && offer.state === item.state);
+    offers.some((offer) => offer.item === item.id && offer.state === item.state) &&
+    leftFor(ctx, item.id) !== agent;
+}
+
+// Whether next could offer the item to the agent now: on a board, it is the agent's to do or
+// review, and neither left for nor just offered to another agent. An item off the boards always is.
+export function offerableTo(ctx: Context, agent: string, now = systemClock) {
+  const at = now();
+  const offered = offeredElsewhere(ctx, agent, at);
+  const boards = liveBoards(ctx);
+  return (item: { id: string; collection: string }): boolean => {
+    const board = boards.find(({ collection }) => collection === item.collection);
+    if (!board) return true;
+    const record = requireItem(ctx.db, item.id);
+    return !offered(record) && isTheirs(ctx, board.def, record, agent, at);
+  };
 }
 
 // The item the agent should take, and its text: one it holds first, then what was sent back to it,
@@ -816,7 +832,11 @@ export function handoffItem(
     const item = requireWritableItem(ctx.db, input.id);
     const board = requireBoard(ctx, item);
     const at = now();
-    assertMayWrite(item.id, activeLease(item.lease, at), input.actor);
+    const lease = activeLease(item.lease, at);
+    assertMayWrite(item.id, lease, input.actor);
+    // An agent that holds no lease on it never hands off an item left for or just offered to
+    // another agent; whether the step is an agent's at all, the handoff itself answers.
+    if (input.actor.kind === 'agent' && !lease) assertMayHandOff(ctx, item, input.actor.name, at);
     const on = itemOnBoard(ctx, item, board.def);
     if (on.asking && input.actor.kind === 'agent') refuseAsking(item.id, on.asking);
     const way = wayOf(board.def, on.position, item.id, input.way);
@@ -1208,6 +1228,23 @@ export function boardModule(ctx: Context, collection: string, module: string): s
 }
 
 // An agent claims only what is its own on a board: a step it may take, or a review it does.
+function assertMayHandOff(ctx: Context, item: ItemRecord, agent: string, at: string): void {
+  const left = leftFor(ctx, item.id);
+  if (left !== undefined && left !== agent) {
+    throw new OteaError(
+      'not_claimable',
+      `${item.id} was left for ${left}; hand off only what is yours (otea next)`,
+    );
+  }
+  const offer = offeredElsewhere(ctx, agent, at);
+  if (left === undefined && offer(item)) {
+    throw new OteaError(
+      'not_claimable',
+      `${item.id} was just offered to another agent; hand off only what is yours (otea next)`,
+    );
+  }
+}
+
 export function assertMayClaim(ctx: Context, item: ItemRecord, agent: string): void {
   const board = liveBoardOf(ctx, item.collection);
   if (!board) return;
