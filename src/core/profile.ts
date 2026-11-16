@@ -49,8 +49,10 @@ export function assertProfileValue(name: 'model' | 'effort' | 'harness', value: 
   if (VALUE.test(value)) return value;
   // Each option with its own example, and unknown offered only where it is taken.
   const said: Record<typeof name, string> = {
-    model: 'the exact model id, as your harness names it (such as claude-opus-5-5), or unknown when you cannot read it: never guess',
-    effort: 'the effort, as your harness names it (such as high), or unknown when you cannot read it: never guess',
+    model:
+      'the exact model id, as your harness names it (such as claude-opus-5-5), or unknown when you cannot read it: never guess',
+    effort:
+      'the effort, as your harness names it (such as high), or unknown when you cannot read it: never guess',
     harness: 'the tool you run in (such as claude-code, codex or gemini-cli)',
   };
   throw new OteaError(
