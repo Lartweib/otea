@@ -787,8 +787,16 @@ export function baseGateText(
 
 // Why a push or merge into the protected base branch that brings in no item of the board is
 // refused.
-export function baseRefusal(def: BoardDefinition, action: GateAction, base: string): string {
-  return `${action} refused: ${base} is the base branch ${def.name} protects; it takes only the branch of a ${def.item.trim() || 'item'} that is ${DONE_NAME}, and this ${action} brings in none.`;
+// Said once for every board that protects `base`, so a branch of any of them is named.
+export function baseRefusal(
+  all: readonly BoardDefinition[],
+  action: GateAction,
+  base: string,
+): string {
+  const names = all.map((def) => def.name).join(' and ');
+  const items = all.map((def) => `a ${def.item.trim() || 'item'}`).join(' or ');
+  const verb = all.length > 1 ? 'protect' : 'protects';
+  return `${action} refused: ${base} is the base branch ${names} ${verb}; it takes only the branch of ${items} that is ${DONE_NAME}, and this ${action} brings in none.`;
 }
 
 // The line after a handoff, approval or send-back: where the item stands now.
