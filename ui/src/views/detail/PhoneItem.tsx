@@ -32,6 +32,7 @@ import {
   fileMarks,
   notesDock,
   type PhoneRound,
+  partNames,
   phoneRounds,
   roundTagWord,
   splitEvidence,
@@ -146,9 +147,12 @@ function Files({
   evidence,
   noted,
   marks,
+  parts,
   onSeen,
 }: {
   evidence: readonly Evidence[];
+  // The board part each file went to, by module id; a file without one reads by its kind.
+  parts?: ReadonlyMap<string, string> | undefined;
   noted?: ReadonlyMap<number, number> | undefined;
   marks?: ReadonlyMap<number, Mark> | undefined;
   // A file shown in the reader, opened or stepped to.
@@ -203,7 +207,10 @@ function Files({
               onClick={(ev) => open(e, ev.currentTarget)}
             >
               <span className="fn">{e.filename}</span>
-              <span className="kd">{t(`evidence.kind.${e.kind}`)}</span>
+              <span className="kd">
+                {(e.module === null ? undefined : parts?.get(e.module)) ??
+                  t(`evidence.kind.${e.kind}`)}
+              </span>
               {mark(e)}
               <Pin count={noted?.get(e.id)} />
             </button>
@@ -270,9 +277,11 @@ function RoundView({
   newest,
   now,
   notes,
+  parts,
   onSeen,
 }: {
   r: PhoneRound;
+  parts?: ReadonlyMap<string, string> | undefined;
   // The round before it, to mark its files against.
   prior: PhoneRound | undefined;
   newest: boolean;
@@ -306,6 +315,7 @@ function RoundView({
           evidence={r.evidence}
           noted={notes?.noted}
           marks={prior ? fileMarks(prior.evidence, r.evidence) : undefined}
+          parts={parts}
           onSeen={onSeen}
         />
       </section>
@@ -391,6 +401,7 @@ export function PhoneItem(p: PhoneItemProps) {
     const read = roundsOf(item.events, item.evidence, p.type?.states ?? [], board);
     return phoneRounds(read, item.turn === 'human');
   }, [item.events, item.evidence, item.turn, p.type, p.board]);
+  const parts = useMemo(() => (p.type ? partNames(p.type.layout) : undefined), [p.type]);
   const [pick, setPick] = useState<number | 'compare' | null>(null);
   const shown = pick === 'compare' ? null : (rounds.find((r) => r.n === pick) ?? rounds[0] ?? null);
   const newest = rounds[0];
@@ -598,6 +609,7 @@ export function PhoneItem(p: PhoneItemProps) {
           newest={shown === newest}
           now={now}
           notes={leave ? undefined : p.notes}
+          parts={parts}
           onSeen={markSeen}
         />
       ) : null}

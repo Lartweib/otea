@@ -1,6 +1,7 @@
+import { evidenceModules } from '../../../../src/core/placement.ts';
 import { t } from '../../i18n/i18n.ts';
 import type { Round } from '../../rounds.ts';
-import type { Evidence } from '../../types.ts';
+import type { Evidence, Layout } from '../../types.ts';
 
 // Reviewing an item on the phone (mobile mock 2): the rounds of the step under review as one
 // segmented control, newest first, each with what the agent delivered, its evidence and what you
@@ -120,4 +121,15 @@ export function unopenedOf(
     unopened: evidence.filter(({ id }) => !opened.has(id)).length,
     total: evidence.length,
   };
+}
+
+// The board part each evidence module is, by module id: the same file attached to two parts (a
+// recording and its frames strip) then reads as two parts, not as a duplicate. A module without a
+// part's name (a preset's) is left out, and its files read by their kind.
+export function partNames(layout: Layout): Map<string, string> {
+  const names = new Map<string, string>();
+  for (const entry of evidenceModules(layout)) {
+    if (entry.label !== undefined) names.set(entry.id, entry.label);
+  }
+  return names;
 }
