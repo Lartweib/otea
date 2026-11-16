@@ -20,7 +20,7 @@ import { useEscape } from '../kit/escape.ts';
 import { AgentMark, Icon, IconButton, Swap } from '../kit/index.ts';
 import { returnFocus } from '../kit/pop/focus.ts';
 import { Choreo, part } from '../motion/choreo.ts';
-import { stateWord, stateWordIn } from '../preset-words.ts';
+import { keptStateWord, stateWord, stateWordIn } from '../preset-words.ts';
 
 // Actividad (SPEC §10.4, mock:804-827, 3538-3579): a 500 px drawer from the right of .main. It
 // slides in (translateX 100% → 0, 600 settle) while its parts resolve at 120 + 34·min(i, 5); the
@@ -83,7 +83,7 @@ function Lease({ row, now, onOpen }: { row: LeaseRow; now: number; onOpen: () =>
 // board no longer has it (that name is the compiled one, in the board's first language).
 function named(phrase: { state: string; name?: string }, state: (s: string) => string): string {
   const word = state(phrase.state);
-  return word !== phrase.state ? word : (phrase.name ?? word);
+  return word !== phrase.state ? word : phrase.name ? keptStateWord(phrase.name) : word;
 }
 
 // The sentence of a feed line, the item's id as a button that opens it.

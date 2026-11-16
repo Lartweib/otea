@@ -44,6 +44,7 @@ export const common = {
   'node.incomplete': 'Agent: incomplete',
   'node.done': 'Done',
   'node.discarded': 'Discarded',
+  'state.inReview': '{step} · in review',
   'actor.human': 'human',
   'actor.agent': 'agent',
 

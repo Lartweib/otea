@@ -6,6 +6,7 @@ import { setLanguage } from './i18n/i18n.ts';
 import {
   fieldWord,
   ItemTypeScope,
+  keptStateWord,
   keyTitle,
   stateWord,
   typeWord,
@@ -98,5 +99,21 @@ describe('preset words', () => {
   it('keep the key at hand as a tooltip only where a label shows', () => {
     expect(keyTitle('revisión de PR', 'pr_review')).toBe('pr_review');
     expect(keyTitle('pr_review', 'pr_review')).toBeUndefined();
+  });
+});
+
+describe('keptStateWord', () => {
+  afterEach(() => setLanguage('en'));
+
+  it('says the state name an event kept in the language on screen, never Otea’s English words', () => {
+    setLanguage('es');
+    expect(keptStateWord('Done')).toBe('Hecho');
+    expect(keptStateWord('Dropped')).toBe('Descartado');
+    expect(keptStateWord('Dropped (Duplicado)')).toBe('Duplicado');
+    expect(keptStateWord('Refinar (in review)')).toBe('Refinar · en revisión');
+    expect(keptStateWord('Refinar')).toBe('Refinar');
+    setLanguage('en');
+    expect(keptStateWord('Refinar (in review)')).toBe('Refinar · in review');
+    expect(keptStateWord('Done')).toBe('Done');
   });
 });

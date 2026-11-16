@@ -1,5 +1,5 @@
 import { createContext, createElement, type ReactNode, useContext } from 'react';
-import { language } from './i18n/i18n.ts';
+import { language, t } from './i18n/i18n.ts';
 import type { TypeView } from './types.ts';
 
 // The words a preset wrote (its types, states and fields), in the language on screen when the
@@ -13,6 +13,18 @@ function wordsOf(type: TypeView | undefined) {
 
 export function stateWord(type: TypeView | undefined, state: string): string {
   return wordsOf(type)?.states[state] ?? state;
+}
+
+// A state name an event kept when it was written (stateName, toName): Otea writes it in English
+// (Done, Dropped (Duplicado), Refinar (in review)); said here in the language on screen.
+export function keptStateWord(name: string): string {
+  if (name === 'Done') return t('node.done');
+  if (name === 'Dropped') return t('node.discarded');
+  const motive = /^Dropped \((.+)\)$/.exec(name);
+  if (motive?.[1]) return motive[1];
+  const review = /^(.+) \(in review\)$/.exec(name);
+  if (review?.[1]) return t('state.inReview', { step: review[1] });
+  return name;
 }
 
 // A state named across a collection's types (a group of the list by state): the first label for it.

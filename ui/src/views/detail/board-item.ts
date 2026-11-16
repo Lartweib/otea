@@ -31,6 +31,7 @@ import {
 import { listOf, t } from '../../i18n/i18n.ts';
 import type { Look } from '../../lanes/looks.ts';
 import type { AgentProfile } from '../../presence.ts';
+import { keptStateWord } from '../../preset-words.ts';
 import type { ItemEvent, RelatedItem } from '../../types.ts';
 
 // An item on a published board, as the step engine reads it: the agent whose turn it is by the
@@ -369,7 +370,7 @@ function stepWord(def: BoardDefinition, id: string, events: readonly ItemEvent[]
       kept(data.to, data.toName) ??
       kept(data.from, data.fromName) ??
       kept(data.state, data.stateName);
-    if (name) return name;
+    if (name) return keptStateWord(name);
   }
   return t('sheet.h.goneStep');
 }
