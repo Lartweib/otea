@@ -14,6 +14,7 @@ import {
 import { AGENT_GUIDE } from '../core/agent-guide.ts';
 import { type Actor, agentActor } from '../core/item.ts';
 import { parseDuration } from '../core/lease.ts';
+import { mcpWords } from './words.ts';
 
 // The commands an agent runs, each served as the tool of the same name. The rest belong to the
 // human or to setup and stay in the CLI.
@@ -235,6 +236,7 @@ async function callCommand(
   signal: AbortSignal,
   harness: Harness | undefined,
   seen: Set<string>,
+  commands: readonly Command[],
 ): Promise<CallToolResult> {
   const records: unknown[] = [];
   try {
@@ -242,10 +244,21 @@ async function callCommand(
     const output = await command.execute(
       inputFor(command, given, context, signal, records, harness, seen),
     );
-    return reply(JSON.stringify(output === undefined ? records : output.data), false);
+    const data = output === undefined ? records : inMcpWords(output.data, commands);
+    return reply(JSON.stringify(data), false);
   } catch (error) {
-    return reply(JSON.stringify(errorData(error)), true);
+    const { error: data } = errorData(error);
+    const message =
+      typeof data.message === 'string' ? mcpWords(data.message, commands) : data.message;
+    return reply(JSON.stringify({ error: { ...data, message } }), true);
   }
+}
+
+// What a command says to the agent (its `text`), in the words of the tools it calls.
+function inMcpWords(data: unknown, commands: readonly Command[]): unknown {
+  if (data === null || typeof data !== 'object' || Array.isArray(data)) return data;
+  const { text } = data as { text?: unknown };
+  return typeof text === 'string' ? { ...data, text: mcpWords(text, commands) } : data;
 }
 
 export function createMcpServer(commands: readonly Command[], context: McpContext): McpServer {
@@ -272,7 +285,7 @@ export function createMcpServer(commands: readonly Command[], context: McpContex
         annotations: { readOnlyHint: READ_ONLY.has(name) },
       },
       (values: Values, { mcpReq }) =>
-        callCommand(command, values, context, mcpReq.signal, harness(), seen),
+        callCommand(command, values, context, mcpReq.signal, harness(), seen, commands),
     );
   }
   return server;

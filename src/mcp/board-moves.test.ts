@@ -68,7 +68,7 @@ describe('board moves over MCP', () => {
       body: {
         error: {
           code: 'reason_required',
-          message: 'Not taken back: say why with --reason.',
+          message: 'Not taken back: say why with { reason }.',
           details: { kind: 'way_back_reason', item: id },
         },
       },
@@ -89,5 +89,6 @@ describe('board moves over MCP', () => {
     const refused = await call('handoff', { id });
     expect(refused.body.error.code).toBe('missing_fields');
     expect(refused.body.error.message).toContain('a note');
+    expect(refused.body.error.message).not.toContain('--');
   });
 });

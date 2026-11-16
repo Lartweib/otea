@@ -14,6 +14,7 @@ import {
   OMITTED_OPTIONS,
   toolName,
 } from './server.ts';
+import { mcpWords } from './words.ts';
 
 type Reply = { isError?: boolean; content: { type: string; text: string }[] };
 
@@ -101,9 +102,13 @@ describe('mcp server', () => {
   });
 
   describe('reads', () => {
-    it('serves a board and the index as otea board --json does', async () => {
-      expect(await data('board')).toEqual(await json('board'));
-      expect(await data('board', { name: 'tasks' })).toEqual(await json('board', 'tasks'));
+    // Over MCP, what Otea says names the tools, not the commands (mcpWords).
+    const inTools = (data: { text?: string }) =>
+      data.text === undefined ? data : { ...data, text: mcpWords(data.text, COMMANDS) };
+
+    it('serves a board and the index as otea board --json does, in the words of the tools', async () => {
+      expect(await data('board')).toEqual(inTools(await json('board')));
+      expect(await data('board', { name: 'tasks' })).toEqual(inTools(await json('board', 'tasks')));
     });
 
     it('fails with not_found for an unknown collection, as the CLI does', async () => {
@@ -120,7 +125,9 @@ describe('mcp server', () => {
       // The last line says how to update the profile on each surface.
       const { text, ...rest } = await json('next');
       expect(next).toEqual({ ...rest, text: expect.any(String) });
-      expect(next.text.split('\n').slice(0, -1)).toEqual(text.split('\n').slice(0, -1));
+      expect(next.text.split('\n').slice(0, -1)).toEqual(
+        mcpWords(text, COMMANDS).split('\n').slice(0, -1),
+      );
       expect(next.text).toContain('update it: the profile tool with as "claude", model <id>');
       expect(next).toMatchObject({ item: 'TASKS-1', collection: 'tasks' });
       expect(next.text).toContain('Your turn: do this step.');
@@ -352,9 +359,9 @@ describe('mcp server', () => {
 
     it('replies with the error otea prints under --json', async () => {
       expect(await errorOf('show', { id: 'TASKS-9' })).toBe(await cliError('show', 'TASKS-9'));
-      expect(await errorOf('events', { since: 'soon' })).toBe(
-        await cliError('events', '--since', 'soon'),
-      );
+      expect(JSON.parse(await errorOf('events', { since: 'soon' }))).toEqual({
+        error: { code: 'usage', message: '{ since } must be an integer of at least 0' },
+      });
       expect(await errorOf('attach', { id: 'TASKS-1', file: 'nope.png' })).toBe(
         await cliError('attach', 'TASKS-1', 'nope.png'),
       );
@@ -476,7 +483,7 @@ describe('mcp server', () => {
       const reply = await call('wait', { turn: 'human', timeout: '1h' });
 
       expect(JSON.parse(reply.content[0]?.text ?? '')).toEqual({
-        error: { code: 'usage', message: '--timeout must be at most 15m over MCP' },
+        error: { code: 'usage', message: '{ timeout } must be at most 15m over MCP' },
       });
     });
   });
