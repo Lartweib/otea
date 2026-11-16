@@ -1,3 +1,9 @@
+import {
+  type BoardDefinition,
+  isEvidence,
+  partOf,
+  stepById,
+} from '../../../../src/core/board/model.ts';
 import { evidenceModules } from '../../../../src/core/placement.ts';
 import { latestFirst } from '../../evidence.ts';
 import { t } from '../../i18n/i18n.ts';
@@ -147,4 +153,26 @@ export function readerOf(
     files: [...images, ...files],
     marks: newest && prior ? fileMarks(prior.evidence, newest.evidence) : new Map(),
   };
+}
+
+// What a step handed off that is not a file (Commit en main): its fields that hold a value, by name,
+// in the step's order. A step that hands off only fields still shows what it delivered.
+export type HandedField = { ref: string; name: string; value: string };
+
+export function handedFields(
+  def: BoardDefinition,
+  step: string | null,
+  fields: Readonly<Record<string, unknown>>,
+): HandedField[] {
+  const on = step ? stepById(def, step) : undefined;
+  if (!on) return [];
+  return on.hand.flatMap(({ ref }) => {
+    const part = partOf(def, ref);
+    const value = fields[ref];
+    if (!part || isEvidence(part) || value === undefined || value === null || value === '')
+      return [];
+    return [
+      { ref, name: part.name, value: typeof value === 'string' ? value : JSON.stringify(value) },
+    ];
+  });
 }
