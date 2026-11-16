@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { agentDetail } from '../app/agent-detail.ts';
 import { syncBoardPresets } from '../app/boards.ts';
 import { briefFor } from '../app/brief.ts';
-import { listCollectionViews } from '../app/collections.ts';
+import { listCollectionViews, listShownCollectionViews } from '../app/collections.ts';
 import { deviceByToken, touchDevice } from '../app/devices.ts';
 import { listEvents } from '../app/events.ts';
 import { createItemWithEvidence } from '../app/intake.ts';
@@ -340,7 +340,7 @@ function api(
         const { path } = await pathRequest(c);
         return c.json(forgetPath(project, path, env));
       })
-      .get('/collections', (c) => c.json(listCollectionViews(project)))
+      .get('/collections', (c) => c.json(listShownCollectionViews(project)))
       .get('/presets', (c) => c.json(listPresetViews(project)))
       .get('/agents', (c) => c.json({ agents: listAgents(project.db) }))
       // How each model performs (Rendimiento): per model family and effort, for a board and a period.

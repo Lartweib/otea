@@ -103,35 +103,36 @@ describe('run', () => {
       const { code, out } = await otea('init', '--local');
 
       expect(code).toBe(0);
-      expect(out).toBe(`Project data in ${oteaDir()}\nMade the boards Tareas, Errores\n`);
+      expect(out).toBe(`Project data in ${oteaDir()}\n`);
       expect(existsSync(join(oteaDir(), 'otea.db'))).toBe(true);
     });
 
     it('is idempotent, making its first boards once', async () => {
-      const first = await otea('init');
+      const first = await otea('init', '--template', 'changes');
       const [path] = first.out.split('\n');
 
       expect(path).toMatch(/^Project data in /);
-      expect(first.out).toBe(`${path}\nMade the boards Tareas, Errores\n`);
+      expect(first.out).toBe(`${path}\nMade the boards Encargos\n`);
       expect(await otea('init')).toMatchObject({ code: 0, out: `${path}\n` });
       expect(await otea('init', '--local')).toMatchObject({ code: 0, out: `${path}\n` });
     });
 
     it('makes no board from --template on a project that has boards, and says how to add one', async () => {
-      await otea('init', '--local');
+      await otea('init', '--local', '--template', 'changes');
 
-      expect(await otea('init', '--local', '--template', 'product')).toMatchObject({
+      expect(await otea('init', '--local', '--template', 'ideas')).toMatchObject({
         code: 0,
-        out: `Project data in ${oteaDir()}\nThe project already has boards; add one with otea board add <name> --template product\n`,
+        out: `Project data in ${oteaDir()}\nThe project already has boards; add one with otea board add <name> --template ideas\n`,
       });
       expect((await otea('init', '--local', '--template', 'nope')).code).toBe(3);
     });
 
-    it('says in its help that none leaves only the built-in Pedidos, and lists the templates', async () => {
+    it('says in its help that it makes no board unless --template names one, and lists the templates', async () => {
       const { out } = await otea('init', '--help');
 
-      expect(out).toContain('none makes no board but Pedidos');
-      expect(out).toContain('repos, product');
+      expect(out).toContain('it makes no board unless --template <key> names one');
+      expect(out).toContain('bug-reports, content');
+      expect(out).toContain('ideas, repos');
     });
 
     it('makes the boards of a template set with --template', async () => {
@@ -152,10 +153,7 @@ describe('run', () => {
         name: basename(repo.dir),
         icon: null,
         storage: 'common',
-        boards: [
-          { id: expect.any(String), name: 'Tareas' },
-          { id: expect.any(String), name: 'Errores' },
-        ],
+        boards: [],
       });
     });
 

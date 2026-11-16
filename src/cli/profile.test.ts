@@ -27,6 +27,7 @@ describe('otea profile', () => {
     repo = tempGitRepo();
     otea = cliAt(repo.dir, { OTEA_AGENT: 'claude' });
     await otea('init', '--local');
+    await cliAt(repo.dir)('board', 'add', 'Tareas', '--template', 'tasks');
     await otea('create', '--collection', 'Tareas', '--title', 'First');
   });
 

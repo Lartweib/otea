@@ -13,8 +13,17 @@ describe('a board named in another case', () => {
     repo = tempGitRepo();
     otea = cliAt(repo.dir, { OTEA_AGENT: 'claude' });
     await otea('init');
+    await cliAt(repo.dir)('board', 'add', 'Tareas', '--template', 'tasks');
     declareProfiles(repo.dir, 'claude', 'claude-a', 'claude-b', 'codex', 'gemini', 'quill');
-    await otea('create', '--collection', 'Tareas', '--title', 'Docs', '--description', 'D');
+    await otea(
+      'create',
+      '--collection',
+      'Tareas',
+      '--title',
+      'Docs',
+      '--field',
+      'Qué hay que hacer=D',
+    );
   });
 
   afterEach(() => repo.remove());
@@ -26,8 +35,8 @@ describe('a board named in another case', () => {
       'tareas',
       '--title',
       'B',
-      '--description',
-      'D',
+      '--field',
+      'Qué hay que hacer=D',
     );
 
     expect(created).toMatchObject({ id: 'TAR-2', collection: 'Tareas' });

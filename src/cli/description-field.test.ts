@@ -11,6 +11,7 @@ describe('--description on a board', () => {
     repo = tempGitRepo();
     otea = cliAt(repo.dir, { OTEA_AGENT: 'claude' });
     await otea('init');
+    await cliAt(repo.dir)('board', 'add', 'Errores', '--template', 'triage');
   });
 
   afterEach(() => repo.remove());

@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { ensureRequestsBoard } from '../app/boards.ts';
 import { addCollection, setCollectionIcon } from '../app/collections.ts';
 import { createItem, moveItem } from '../app/items.ts';
 import { claimItem } from '../app/leases.ts';
@@ -165,6 +166,25 @@ describe('api', () => {
           }),
         }),
       ]);
+    });
+  });
+
+  describe('GET /api/collections and Pedidos', () => {
+    it('leaves the built-in Pedidos out until it holds an item', async () => {
+      ensureRequestsBoard(project, 'es');
+      const names = async () =>
+        ((await (await get('/api/collections')).json()) as Array<{ name: string }>).map(
+          ({ name }) => name,
+        );
+
+      expect(await names()).toEqual(['tasks', 'bugs']);
+      createItem(project, {
+        collection: 'Pedidos',
+        title: 'Ordenar las texturas',
+        fields: { 'Qué necesitas': 'Por nombre' },
+        actor: ana,
+      });
+      expect(await names()).toContain('Pedidos');
     });
   });
 

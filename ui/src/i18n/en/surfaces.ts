@@ -235,6 +235,10 @@ export const surfaces = {
   'emptyProject.path': 'path',
   'emptyProject.store': 'store',
   'emptyProject.boards': 'boards',
+  'emptyProject.noBoards':
+    'This project has no boards yet. Pick the ones you use: each brings its steps, who does each one and what is handed in.',
+  'emptyProject.pickBoards': 'Pick boards',
+  'emptyProject.noBoardsYet': 'none yet',
   'emptyProject.example': 'Write the first task',
 
   // Connect an agent

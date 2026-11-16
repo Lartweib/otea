@@ -15,9 +15,15 @@ const settings = {
   paths: [{ path: 'D:/code/tipcalc', repos: [] }],
 } as unknown as ProjectSettings;
 
-const render = () =>
+const render = (boards: string[] = ['Pedidos', 'Tareas']) =>
   renderToStaticMarkup(
-    createElement(EmptyProjectView, { settings, onNew: () => {}, onConnect: () => {} }),
+    createElement(EmptyProjectView, {
+      settings,
+      boards,
+      onNew: () => {},
+      onConnect: () => {},
+      onPickBoards: () => {},
+    }),
   );
 
 // A project with no item yet: the person writes the first one here, or connects an agent.
@@ -40,6 +46,18 @@ describe('the empty project page', () => {
     setLanguage('en');
     expect(render()).toContain('boards');
     expect(render()).not.toContain('collections');
+    setLanguage('es');
+  });
+
+  it('asks a project with no board yet to pick its boards first, never to write an item', () => {
+    setLanguage('es');
+    const html = render([]);
+    expect(html).toContain('>Elegir tableros</button>');
+    expect(html).not.toContain('Nuevo ítem');
+    expect(html).toContain('Conectar un agente</button>');
+    expect(html).toContain('ninguno todavía');
+    setLanguage('en');
+    expect(render([])).toContain('>Pick boards</button>');
     setLanguage('es');
   });
 });

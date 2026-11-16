@@ -19,7 +19,8 @@ describe('names in, names out', () => {
   beforeEach(async () => {
     repo = tempGitRepo();
     otea = cliAt(repo.dir, { OTEA_AGENT: 'claude' });
-    await otea('init', '--template', 'bugs');
+    await otea('init');
+    await cliAt(repo.dir)('board', 'add', 'Bugs', '--template', 'bugs');
     await otea(
       'create',
       '--collection',
