@@ -244,13 +244,34 @@ describe('Te espera', () => {
 });
 
 describe('dialogs', () => {
-  it('Conectar un agente says what to add, with the command and Hecho', () => {
+  it('Conectar un agente gives the command that connects it and the instruction for each session', () => {
     setLanguage('es');
     workspace.set({ connect: true });
     const html = render(createElement(ConnectDialog));
     expect(html).toContain('Conectar un agente');
-    expect(html).toContain('otea mcp --as &lt;nombre&gt;');
+    expect(html).toContain(
+      'otea connect --as &lt;nombre&gt; --model &lt;modelo&gt; --effort &lt;esfuerzo&gt;',
+    );
+    expect(html).not.toContain('otea mcp --as');
+    expect(html).toContain('otea init --agents-md');
+    expect(html).toContain('Trabaja la cola de Otea hasta que te detenga.');
+    expect(html).toContain('otea wait --turn agent --unclaimed');
+    expect(html).toContain('Copiar la instrucción');
+    expect(html).toContain('en cuanto llame a Otea');
+    expect(html).not.toContain('primera reserva');
     expect(html).toContain('>Hecho</button>');
+  });
+
+  it('Connect an agent reads in English too', () => {
+    setLanguage('en');
+    workspace.set({ connect: true });
+    const html = render(createElement(ConnectDialog));
+    expect(html).toContain(
+      'otea connect --as &lt;name&gt; --model &lt;model&gt; --effort &lt;effort&gt;',
+    );
+    expect(html).toContain('Work the Otea queue until I stop you.');
+    expect(html).toContain('Copy the instruction');
+    setLanguage('es');
   });
 
   it('Emparejar un teléfono asks this computer’s browser to sign in when it cannot manage devices', () => {
