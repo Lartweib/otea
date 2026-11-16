@@ -6,6 +6,7 @@ import {
   isEvidence,
   type Part,
   type Step,
+  usedRefs,
 } from '../core/board/model.ts';
 import type { Problem } from '../core/board/problems.ts';
 import { parseDefinition } from '../core/board/schema.ts';
@@ -194,6 +195,21 @@ function readDraftFile(text: string, start: string) {
   return reading;
 }
 
+// The parts a draft defines but places nowhere (form, a step's handoff, anytime): no item would
+// get them, and Studio does not show them on the board, so the agent is told, by their names.
+function unplacedNote(def: BoardDefinition): string[] {
+  const used = usedRefs(def);
+  const names = Object.values(def.parts)
+    .filter(({ id }) => !used.has(id))
+    .map(({ name }) => name);
+  if (names.length === 0) return [];
+  const listed =
+    names.length === 1 ? names[0] : `${names.slice(0, -1).join(', ')} and ${names.at(-1)}`;
+  return [
+    `parts: ${listed} ${names.length === 1 ? 'is' : 'are'} on no form, handoff or anytime, so no item gets ${names.length === 1 ? 'it' : 'them'}: place each, or remove it [parts]`,
+  ];
+}
+
 const nameNote = (kept: string, file: string) =>
   `name: the board keeps the name "${kept}" it was asked for; the file's ${file.trim() ? `"${file.trim()}"` : 'empty name'} is not used [name]`;
 
@@ -234,7 +250,12 @@ export function submitAgentDraft(
     return recordEvidence(project, item.id, placed, input, at);
   });
   mergeAgentDraft(project, board.id, evidence.id, now);
-  return { board: board.id, evidence, problems, notes: [...kept, ...(reading.notes ?? [])] };
+  return {
+    board: board.id,
+    evidence,
+    problems,
+    notes: [...kept, ...(reading.notes ?? []), ...unplacedNote(checked)],
+  };
 }
 
 export type ProposeInput = {
@@ -334,7 +355,11 @@ export function mergeDefinitions(
     parts: { ...clone(draft.parts), ...clone(agent.parts) },
     layout: { ...draft.layout, ...agent.layout },
   };
-  const added: Part[] = Object.values(agent.parts).filter((part) => !draft.parts[part.id]);
+  // A part placed nowhere is not on the board: Studio never says it was added.
+  const placed = usedRefs(agent);
+  const added: Part[] = Object.values(agent.parts).filter(
+    (part) => !draft.parts[part.id] && placed.has(part.id),
+  );
   const before = new Map(draft.steps.map((step) => [step.id, step]));
   const fresh = agent.steps.filter(({ id }) => !before.has(id));
   const gone = draft.steps.filter(({ id }) => !agent.steps.some((step) => step.id === id));

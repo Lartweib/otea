@@ -138,6 +138,35 @@ describe('an agent drafting a board', () => {
     expect(getBoardRecord(ctx, board.id).draft?.definition.steps[0]?.reviewer).toBe('any');
   });
 
+  it('says, by name, the parts no form, handoff or anytime places: no item would get them', () => {
+    const ctx = project();
+    const { board, item } = requestAgentDraft(
+      ctx,
+      { name: 'Criaturas', need: 'x', agent: 'kiln', lang: 'es' },
+      now,
+    );
+    const draft = getBoardRecord(ctx, board.id).draft?.definition;
+    if (!draft) throw new Error('no draft');
+    const file = agentFile(draft);
+    file.parts = {
+      ...file.parts,
+      ftexto: { id: 'ftexto', name: 'Texto corto', kind: 'text', hint: '', options: [] },
+      eimg: { id: 'eimg', name: 'Capturas', kind: 'images', hint: '', options: [] },
+    };
+    const submitted = submitAgentDraft(
+      ctx,
+      { id: item, text: JSON.stringify(file), actor: kiln, channel: 'cli' },
+      now,
+    );
+    expect(submitted.notes).toContain(
+      'parts: Texto corto and Capturas are on no form, handoff or anytime, so no item gets them: place each, or remove it [parts]',
+    );
+    expect(submitted.notes.join(' ')).not.toMatch(/ftexto|eimg/);
+    // Studio never says it added what no item gets.
+    const note = getBoardRecord(ctx, board.id).draft?.agentNote ?? [];
+    expect(note.join(' ')).not.toMatch(/Texto corto|Capturas/);
+  });
+
   it('keeps the board’s name whatever the file calls it, checks it under that name, and says so', () => {
     const ctx = project();
     addBoard(ctx, { name: 'Otro', template: 'tasks', lang: 'es', by: you }, now);
