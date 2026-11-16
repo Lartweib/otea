@@ -150,6 +150,7 @@ export function EvidenceReader({
   decide,
   note,
   start,
+  draft = '',
 }: {
   evidence: readonly Evidence[];
   at: number;
@@ -158,11 +159,13 @@ export function EvidenceReader({
   decide?: ReaderDecide | undefined;
   note?: ReaderNote | undefined;
   start?: ReaderPick | undefined;
+  // The note already begun elsewhere (the phone's note sheet), carried into the reader's.
+  draft?: string;
 }) {
   const shown = evidence[at];
   const view = useRef<HTMLDivElement>(null);
   const [pick, setPick] = useState<{ id: number; pick: ReaderPick } | null>(null);
-  const [text, setText] = useState('');
+  const [text, setText] = useState(draft);
   const shownId = shown?.id;
   // biome-ignore lint/correctness/useExhaustiveDependencies: once per cite that opens the reader
   useEffect(() => {
@@ -236,7 +239,7 @@ export function EvidenceReader({
         <div className="ev-reader-note">
           <div className="ev-reader-on">
             <b>{t('notes.pick.on', { what: pickWords(picked) })}</b>
-            <span>{t('notes.pick.hint')}</span>
+            <span>{t(phone ? 'notes.pick.hintTouch' : 'notes.pick.hint')}</span>
           </div>
           <textarea
             rows={2}

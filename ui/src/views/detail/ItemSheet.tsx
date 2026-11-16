@@ -654,6 +654,7 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
                               : t('notes.had', { done: had.done, count: had.of }),
                           warn: quiet !== null,
                           send: (text: string, on: number | null) => postNote(text, noteAnchor(on)),
+                          sendOn: (text, on) => postNote(text, on),
                         },
                       }
                     : {}),

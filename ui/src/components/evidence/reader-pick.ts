@@ -1,4 +1,6 @@
 import { t } from '../../i18n/i18n.ts';
+import type { Evidence } from '../../types.ts';
+import { fileViewOf } from './file-view.ts';
 
 // The event a note's cite sends to open the reader at its line or node: { evidence, pick }.
 export const READ_AT = 'otea:read-at';
@@ -6,6 +8,17 @@ export const READ_AT = 'otea:read-at';
 // What the person picked in the reader to anchor a note to: a line of a text (its number when the
 // viewer numbers it, its text as seen) or a node of a diagram, by its label.
 export type ReaderPick = { line?: number; quote?: string; node?: string };
+
+// What a note can be on inside a file, picked in the reader: a line of what reads as numbered lines
+// (a diff, a log, code or plain text), a node of a diagram; null when the file is read whole.
+export function pickableOn(
+  evidence: Pick<Evidence, 'kind' | 'filename' | 'contentType'>,
+): 'line' | 'node' | null {
+  if (evidence.kind === 'diff' || evidence.kind === 'log') return 'line';
+  if (evidence.kind === 'diagram') return 'node';
+  if (evidence.kind === 'file' && fileViewOf(evidence) === 'text') return 'line';
+  return null;
+}
 
 // What a click read from the viewer: a line's numbers (a diff has the old and the new), its text
 // and the sign drawn before it; or a node's label.

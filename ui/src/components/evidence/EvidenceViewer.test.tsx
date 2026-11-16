@@ -87,6 +87,20 @@ describe('EvidenceReader', () => {
     const html = renderToStaticMarkup(<EvidenceReader evidence={files} at={0} onAt={() => {}} />);
     expect(html).toContain('1 de 3');
   });
+
+  it('carries a note begun elsewhere into its own, and on the phone says to tap', () => {
+    const note = { onSend: () => {} };
+    const phone = renderToStaticMarkup(
+      <EvidenceReader evidence={files} at={1} onAt={() => {}} phone note={note} draft="Mirá" />,
+    );
+    expect(phone).toMatch(/<textarea[^>]*>Mirá<\/textarea>/);
+    expect(phone).toContain('Tap a line');
+    const desk = renderToStaticMarkup(
+      <EvidenceReader evidence={files} at={1} onAt={() => {}} note={note} />,
+    );
+    expect(desk).toContain('Click a line');
+    expect(desk).toMatch(/<textarea[^>]*><\/textarea>/);
+  });
 });
 
 describe('a diff', () => {

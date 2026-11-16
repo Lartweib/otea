@@ -11,6 +11,7 @@ import type { BoardDefinition } from '../../../../src/core/board/model.ts';
 import { evidenceFileUrl } from '../../api.ts';
 import { useApp } from '../../app/context.tsx';
 import { EvidenceReader, type ReaderDecide } from '../../components/evidence/EvidenceViewer.tsx';
+import { pickableOn, type ReaderPick } from '../../components/evidence/reader-pick.ts';
 import { NoteText } from '../../components/NoteText.tsx';
 import { t, tx } from '../../i18n/i18n.ts';
 import { AgentMark, Button, Icon, StepPill } from '../../kit/index.ts';
@@ -91,6 +92,8 @@ export type PhoneNotes = {
     says: string;
     warn: boolean;
     send: (text: string, anchor: number | null) => void;
+    // A note on a line or a diagram node of a piece, picked in the reader.
+    sendOn: (text: string, anchor: { evidence: number } & ReaderPick) => void;
   };
 };
 
@@ -458,9 +461,11 @@ export function PhoneItem(p: PhoneItemProps) {
   const [noting, setNoting] = useState(false);
   const [noteText, setNoteText] = useState('');
   const [anchor, setAnchor] = useState<number | null>(null);
+  // The piece read in the reader to pick a line or node for the note, by its place among the pieces.
+  const [pickIn, setPickIn] = useState<number | null>(null);
   const noteBtn = useRef<HTMLButtonElement>(null);
   const noteArea = useRef<HTMLTextAreaElement>(null);
-  const inset = useKeyboardInset(!!asking?.open || noting);
+  const inset = useKeyboardInset(!!asking?.open || noting || pickIn !== null);
   // biome-ignore lint/correctness/useExhaustiveDependencies: on each opening only
   useLayoutEffect(() => {
     if (noting) noteArea.current?.focus({ preventScroll: true });
@@ -474,6 +479,14 @@ export function PhoneItem(p: PhoneItemProps) {
     if (!leave || !noteText.trim()) return;
     setNoting(false);
     leave.send(noteText.trim(), anchor);
+  };
+  const anchored = leave && anchor !== null ? leave.pieces.find((e) => e.id === anchor) : undefined;
+  const pickable = anchored ? pickableOn(anchored) : null;
+  // From the note sheet to the reader, the note begun carried along, to put it on a line or a node.
+  const pickInPiece = () => {
+    if (!leave || !anchored) return;
+    setNoting(false);
+    setPickIn(leave.pieces.indexOf(anchored));
   };
   const roundNotes = leave ? (p.notes?.of(leave.round) ?? []) : [];
   const noteWords = countWords(roundNotes);
@@ -774,6 +787,11 @@ export function PhoneItem(p: PhoneItemProps) {
                 <span>{t('notes.anchor.gloss', { n: leave.round })}</span>
               </div>
               <AnchorPicker pieces={leave.pieces} picked={anchor} onPick={setAnchor} strip />
+              {pickable ? (
+                <Button size="sm" variant="quiet" className="nt-pick-in" onClick={pickInPiece}>
+                  {pickable === 'node' ? t('notes.pick.inNode') : t('notes.pick.inLine')}
+                </Button>
+              ) : null}
             </div>
           ) : null}
           <div className="p-sb-acts" data-i="">
@@ -784,6 +802,35 @@ export function PhoneItem(p: PhoneItemProps) {
               {t('notes.phone.send')}
             </Button>
           </div>
+        </BottomSheet>
+      ) : null}
+      {leave ? (
+        <BottomSheet
+          open={pickIn !== null}
+          label={t('phone.r.reader')}
+          title={t('phone.r.reader')}
+          className="p-sb p-read"
+          style={{ '--kb': `${inset}px` } as CSSProperties}
+          from={() => noteBtn.current}
+          onClose={() => setPickIn(null)}
+        >
+          {pickIn !== null ? (
+            <div data-i="">
+              <EvidenceReader
+                evidence={leave.pieces}
+                at={pickIn}
+                onAt={setPickIn}
+                phone
+                draft={noteText}
+                note={{
+                  onSend: (text, on) => {
+                    setPickIn(null);
+                    leave.sendOn(text, on);
+                  },
+                }}
+              />
+            </div>
+          ) : null}
         </BottomSheet>
       ) : null}
       <BottomSheet
