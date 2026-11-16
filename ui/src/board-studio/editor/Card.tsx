@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef } from 'react';
+import { type ReactNode, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { C, clamp } from '../../motion/curves.ts';
 import { reduced } from '../../motion/reduced.ts';
 import { cardKey, cardOf, useEditor } from './context.ts';
@@ -15,6 +15,32 @@ export function Card() {
   const key = `${draft.record.id}:${cardKey(sel)}`;
   const card = useRef<HTMLElement>(null);
   const shown = useRef<string | null>(null);
+  // The card that was showing leaves the way the new one comes in, reversed (closes mirror opens):
+  // it stays over the new one, aria-hidden, while it fades, lowers and blurs out.
+  const last = useRef<{ key: string; sel: typeof sel }>({ key, sel });
+  const [leaving, setLeaving] = useState<{ key: string; sel: typeof sel } | null>(null);
+  const ghost = useRef<HTMLDivElement>(null);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: runs when another card shows
+  useLayoutEffect(() => {
+    const before = last.current;
+    last.current = { key, sel };
+    if (before.key !== key && shown.current !== null && !reduced()) setLeaving(before);
+  }, [key]);
+
+  useLayoutEffect(() => {
+    const el = ghost.current;
+    if (!el || !leaving) return;
+    const out = el.animate(
+      [
+        { opacity: 1, transform: 'none', filter: 'blur(0px)' },
+        { opacity: 0, transform: 'translateY(5px)', filter: 'blur(1px)' },
+      ],
+      { duration: 380, easing: C.glide, fill: 'forwards' },
+    );
+    out.onfinish = () => setLeaving(null);
+    return () => out.cancel();
+  }, [leaving]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: runs when another card shows
   useLayoutEffect(() => {
@@ -77,21 +103,37 @@ export function Card() {
     });
   }, [draft.revealed, draft.selection]);
 
-  let body = null;
-  if (sel.kind === 'step') {
-    const step = def.steps.find((s) => s.id === sel.id);
-    body = step ? <StepCard key={step.id} step={step} /> : null;
-  } else if (sel.kind === 'form') body = <FormCard />;
-  else if (sel.kind === 'done') body = <DoneCard />;
-  else if (sel.kind === 'about') body = <AboutCard />;
-  else body = <AnyCard />;
-
   return (
     <section className="se-card" ref={card}>
       <i className="se-cline" />
       <div className="se-card-in" key={key}>
-        {body}
+        {bodyOf(def, sel)}
       </div>
+      {leaving ? (
+        <div
+          ref={ghost}
+          className="se-card-in se-card-out"
+          key={`out:${leaving.key}`}
+          aria-hidden="true"
+          inert
+        >
+          {bodyOf(def, leaving.sel)}
+        </div>
+      ) : null}
     </section>
   );
+}
+
+function bodyOf(
+  def: ReturnType<typeof useEditor>['draft']['def'],
+  sel: ReturnType<typeof cardOf>,
+): ReactNode {
+  if (sel.kind === 'step') {
+    const step = def.steps.find((s) => s.id === sel.id);
+    return step ? <StepCard key={step.id} step={step} /> : null;
+  }
+  if (sel.kind === 'form') return <FormCard />;
+  if (sel.kind === 'done') return <DoneCard />;
+  if (sel.kind === 'about') return <AboutCard />;
+  return <AnyCard />;
 }
