@@ -2,7 +2,7 @@ import { type ParseArgsOptionsConfig, parseArgs } from 'node:util';
 import type { Probe } from '../app/phone.ts';
 import { CLI_HARNESS } from '../app/presence.ts';
 import { NO_TAILSCALE, type TailscaleCli } from '../app/tailscale.ts';
-import { type Actor, agentActor } from '../core/item.ts';
+import { type Actor, agentActor, readerActor } from '../core/item.ts';
 import {
   type Command,
   errorData,
@@ -127,6 +127,9 @@ function inputFor(command: Command, values: Values, args: string[], io: Io, json
     cwd: io.cwd,
     get actor(): Actor {
       return agentActor(agent, NAME_YOURSELF);
+    },
+    get reader(): Actor {
+      return readerActor(agent);
     },
     agent,
     channel: 'cli',

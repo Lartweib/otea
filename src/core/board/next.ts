@@ -1,3 +1,4 @@
+import { PERSON_READER } from '../item.ts';
 import { timeText } from '../time.ts';
 import {
   backTarget,
@@ -436,13 +437,19 @@ export function nextText(def: BoardDefinition, input: NextInput): string {
     : step.doer === 'you'
       ? 'the person'
       : 'another agent';
-  const lines = [
-    head,
-    reviewing ? `Your turn: review this step (${doerName} did it).` : 'Your turn: do this step.',
-  ];
+  // The person reading at a terminal (no agent name) reads what the agent is told, as the agent's.
+  const person = input.me === PERSON_READER.name;
+  const turn = reviewing
+    ? `review this step (${doerName} did it).`
+    : person
+      ? 'an agent does this step.'
+      : 'do this step.';
+  const lines = [head, `${person ? "An agent's turn" : 'Your turn'}: ${turn}`];
   if (!input.holder && input.leftFor !== undefined && input.leftFor === input.me)
     lines.push('The person left it for you.');
-  lines.push(holdLine(input));
+  if (!person) lines.push(holdLine(input));
+  else if (input.holder)
+    lines.push(`Held by ${input.holder.name} until ${timeText(input.holder.expiresAt)}.`);
   if (!reviewing) lines.push(...notesBlock(id, input.notes ?? [], input.me));
   if (!reviewing && input.sentBack) lines.push(...sentBackLines(input.sentBack));
   if (!reviewing) lines.push(...answersBlock(input.questions ?? [], input.me));
