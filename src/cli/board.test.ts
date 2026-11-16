@@ -178,17 +178,17 @@ describe('board add', () => {
   });
 
   it('makes every board of a template set, the name naming the first', async () => {
-    const { code, out } = await person('board', 'add', 'Cambios web', '--template', 'repos');
+    const { code, out } = await person('board', 'add', 'Trabajos web', '--template', 'repos');
 
     expect(code).toBe(0);
-    expect(out).toBe('Published boards "Cambios web", "Tareas de repo" from template repos\n');
+    expect(out).toBe('Published boards "Trabajos web", "Entregas" from template repos\n');
     const { boards } = JSON.parse((await otea('board', '--json')).out);
     const names = boards.map(({ name }: { name: string }) => name);
-    expect(names).toEqual(expect.arrayContaining(['Cambios web', 'Tareas de repo']));
+    expect(names).toEqual(expect.arrayContaining(['Trabajos web', 'Entregas']));
   });
 
   it('refuses a template that only comes as part of a set, as Studio never offers it', async () => {
-    expect((await person('board', 'add', 'Sueltos', '--template', 'repotasks')).code).toBe(3);
+    expect((await person('board', 'add', 'Sueltos', '--template', 'deliveries')).code).toBe(3);
   });
 
   it('lists in its help the templates Studio offers, sets too', async () => {

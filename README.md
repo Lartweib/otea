@@ -51,7 +51,7 @@ alias otea='node --disable-warning=ExperimentalWarning /path/to/otea/src/cli/mai
 
 cd /path/to/your/project
 otea init                                  # a new project starts with the boards Tareas and Errores
-otea init --template repos                 # or with a template's boards (repos, product, triage, ...; none for no board)
+otea init --template repos                 # or with a template's boards (ideas, repos, repobugs, product, ...; none for no board)
 otea board add Roadmap --template tasks    # another board, from a template, published at once (yours: no agent name)
 
 # What an agent runs: every command that acts names the agent (--as, or OTEA_AGENT for the session)
@@ -294,7 +294,7 @@ What an agent reads back costs tokens on every call, so output size is tested li
 
 ### Templates
 
-`otea init --template <key>`, `otea board add <name> --template <key>` and Studio's **Nuevo tablero** take the same templates: `bugs`, `assets`, `blog`, `tasks`, `research`, `triage`, `review`, `decisions`, and the sets `ideas`, `repos` and `product`, which make several boards at once (below). `otea init --help` and `otea board add --help` list them from the same catalog. `otea board add <name> --template repos` makes every board of the set, the name (and `--item`) naming the first; its `--json` is the list of boards it published.
+`otea init --template <key>`, `otea board add <name> --template <key>` and Studio's **Nuevo tablero** take the same templates: `bugs`, `assets`, `blog`, `tasks`, `research`, `triage`, `review`, `decisions`, `repobugs`, and the sets `ideas`, `repos` and `product`, which make several boards at once (below). `otea init --help` and `otea board add --help` list them from the same catalog. `otea board add <name> --template repos` makes every board of the set, the name (and `--item`) naming the first; its `--json` is the list of boards it published.
 
 - Every project has **Pedidos**, the board for loose requests (an agent's board draft arrives on one too). It is made when the project is first opened, so `otea init --template none` leaves Pedidos and nothing else.
 - `otea init` makes boards only on a project with no boards of its own (Pedidos aside): Tareas and Errores by default, or the template's. On a project that already has boards it makes none and, when given `--template`, says to add one with `otea board add`. An unknown template fails with exit 3 (`not_found`) either way.
@@ -311,12 +311,14 @@ A template set makes several boards at once, joined the only way boards are decl
 
 ```sh
 otea init --template ideas     # Ideas, each divided into its Decisions, and Implementación, the tasks a planned Idea makes
-otea init --template repos     # Cambios, which divides into Tareas de repo (always: a repo task is always part of a Cambio)
+otea init --template repos     # Trabajos, which divides into Entregas (always: a delivery is always part of a Trabajo)
 otea init --template product   # Tareas, which waits for nothing open blocking it, and Errores (Clasificar errores)
 ```
 
 - **De la idea a las tareas** (`ideas`): an agent refines each Idea by asking you, one question at a time, into a Brief (or a Decision into its Options), designs it (an architecture document, Mermaid diagrams, the project's `.md` files) once its Decisions, parts on the same board, are closed, and plans it: it creates the tasks on Implementación, each linked `implements` to the Idea and `blocks` in order. Those tasks wait until you approve the plan. A task born complete skips Preparar; Hacer waits for its subtasks and blockers.
-- A part on a board that is always part of another needs `--parent` (`otea create --collection "Tareas de repo" --parent CAMBIOS-1 …`); without it, or with a parent on another board, the create fails with exit 16 (`parent_required`, `parent_type`). `otea link A parent B` follows the same rule.
+- **Trabajo en varios repos** (`repos`): a Trabajo is born from a GitHub issue; an agent analyses it into a plan with one line per delivery and a merge plan, which you approve, then creates one Entrega per line (`--parent`), linked `blocks` in merge order. Each Entrega is done on its own branch by one agent and reviewed by another; you approve its merge once its blockers are in (Aprobar el merge), and Otea guards both its branch and `main`. Once the Entregas are merged, the Trabajo's agent tests everything together and hands it off. Record a merge with `otea merged <id> --pr <url>`.
+- **Errores de trabajo** (`repobugs`, a single board): you report a bug, an agent triages it (repo, cause and a failing reproduction; it may drop it as not reproducible, duplicate or not a bug, with you reviewing), another agent reviews the fix on its own branch, and you verify it before the merge.
+- A part on a board that is always part of another needs `--parent` (`otea create --collection Entregas --parent TRA-1 …`); without it, or with a parent on another board, the create fails with exit 16 (`parent_required`, `parent_type`). `otea link A parent B` follows the same rule.
 - Every other link (`blocks`, `implements`, `relates`, `duplicates`) is free between any two boards. A step that waits for its blockers ("Algo que esperar") is not handed off, or approved, while one of them is open (exit 4, `blockers_open`); one that waits for its parts, while a part is open (exit 4, `children_open`).
 - Blueprints are gone. A project that had one is read once, when it opens: every collection becomes a board (each old preset has its own reading, so a `change` collection becomes Cambios plus Tareas de repo and its repo tasks move there with their history), a `blocks` connection into a board makes its working step wait for blockers, and `.otea/blueprint.yaml` is deleted once every collection reads as a board (while one cannot be read yet, Otea warns and keeps it). A collection on a preset Otea never shipped keeps its git gates as a guard on its `branch` field.
 
@@ -345,7 +347,7 @@ A board you no longer work on is archived, or deleted, from its menu in Studio's
 - **Archiving** takes the board out of every list: Te toca, Triage, the board views and filters, the phone, `otea next`, `otea list`, the index of `otea board` and the git gates. Its items stay to read, with their history and evidence, in Studio's **Archivados** (`GET /api/boards/archived`), where they are searched by title or id and opened read-only. Open items may be archived: they freeze where they stand, and the leases on them are released (each with a `released` event, cause `archive`); the confirmation says how many freeze and how many leases go. Nothing writes to an archived item: a move, an update, a claim, a heartbeat, a note, a question, a link, evidence or a new item on the board fails with exit 21 (`board_archived`, HTTP 409), saying the board is archived and the person restores it in Studio. Its name stays taken, and Studio does not change it while it is archived.
 - **Restoring** (**Restaurar** in Archivados, or **Deshacer** in the toast) brings everything back as it was: the board in the lists, its items where they stood and writable again. Released leases are not taken again: an agent claims the item anew.
 - **Deleting** takes a board without items at once, after one confirmation. A board with items is archived first, then deleted from Archivados once you type its name (the API refuses `{"confirm": "<name>"}` that does not match, `reason_required`, details `board_delete_confirm`): its items, their history, notes and evidence go for good, while an empty board loses nothing a template cannot make again. Deleting removes the board, its versions, its draft, its collection and its items with their events, evidence and links; an evidence file goes from the project's data folder unless another item's evidence shares it. Events on other items stay as they were written, a link to a deleted item included.
-- **A board another divides into** (Tareas de repo, under Cambios) goes with its parent: archiving, restoring and deleting Cambios takes Tareas de repo along, as the confirmation says, and the child alone is refused while its parent stands (`in_use`, details `board_split_child`), since the parent's items have their parts there.
+- **A board another divides into** (Entregas, under Trabajos) goes with its parent: archiving, restoring and deleting Trabajos takes Entregas along, as the confirmation says, and the child alone is refused while its parent stands (`in_use`, details `board_split_child`), since the parent's items have their parts there.
 
 ### Agent moves on a board
 

@@ -20,8 +20,8 @@ describe('initBoards', () => {
   it('makes every board of a template set, the part board joined to its parent', () => {
     const ctx = memoryContext();
 
-    expect(initBoards(ctx, 'repos').map(({ name }) => name)).toEqual(['Cambios', 'Tareas de repo']);
-    expect(names(ctx).sort()).toEqual(['Cambios live', 'Tareas de repo live']);
+    expect(initBoards(ctx, 'repos').map(({ name }) => name)).toEqual(['Trabajos', 'Entregas']);
+    expect(names(ctx).sort()).toEqual(['Entregas live', 'Trabajos live']);
   });
 
   it('makes one board from a single template', () => {
@@ -51,7 +51,7 @@ describe('initBoards', () => {
     expect(() => initBoards(ctx, 'nope')).toThrow(expect.objectContaining({ code: 'not_found' }));
     initBoards(ctx);
     expect(() => initBoards(ctx, 'nope')).toThrow(expect.objectContaining({ code: 'not_found' }));
-    expect(() => initBoards(ctx, 'repotasks')).toThrow(
+    expect(() => initBoards(ctx, 'deliveries')).toThrow(
       expect.objectContaining({ code: 'not_found' }),
     );
   });

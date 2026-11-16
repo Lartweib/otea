@@ -99,7 +99,7 @@ describe('compileBoard, the template sets', () => {
     }
   });
 
-  it('compiles the protected branch of Tareas de repo into its gates', () => {
+  it('compiles the protected branch of Entregas into its gates', () => {
     const [, tasks] = instantiateSet(
       requireSet('repos'),
       'es',
@@ -107,7 +107,7 @@ describe('compileBoard, the template sets', () => {
       sequenceIds(),
     );
     const preset = compileBoard('b2', 1, tasks as BoardDefinition);
-    const implement = tasks?.steps[1]?.id ?? '';
+    const implement = tasks?.steps[0]?.id ?? '';
     expect(preset.workflow.gates).toEqual({ push: [implement], merge: ['done'] });
   });
 });
