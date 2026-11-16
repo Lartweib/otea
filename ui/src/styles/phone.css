@@ -1553,3 +1553,16 @@
   gap: 10px;
   padding: 12px 0 4px;
 }
+/* Deciding from inside the reader: the moves stay at the foot of the sheet. */
+.p-read .ev-reader-decide {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  padding-bottom: 6px;
+  background: var(--sheet);
+  /* The sheet's own padding below stays covered, so no line shows under the moves. */
+  box-shadow: 0 24px 0 var(--sheet);
+}
+.p-read .ev-reader-decide .btn {
+  min-height: 44px;
+}
