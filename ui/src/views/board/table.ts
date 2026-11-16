@@ -71,3 +71,14 @@ export function widthChip(label: string, w: number, limits: { min: number; max: 
     w <= limits.min ? t('boardView.col.min') : w >= limits.max ? t('boardView.col.max') : String(w);
   return `${label} · ${said}`;
 }
+
+// A column head's menu: a press opens it, a second press of the same head closes it.
+export type ColMenu = { kind: 'col'; key: string; anchor: HTMLElement };
+
+export function colMenuAfter(
+  menu: { kind: string; key?: string; anchor?: HTMLElement } | null,
+  key: string,
+  anchor: HTMLElement,
+): ColMenu | null {
+  return menu?.kind === 'col' && menu.key === key ? null : { kind: 'col', key, anchor };
+}
