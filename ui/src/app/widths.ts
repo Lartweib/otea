@@ -33,9 +33,16 @@ export function pageSplit(
   stored?: number | null,
 ): { listw: number; overlay: boolean } {
   const [lo, hi] = pageBounds(room);
-  if (hi < lo)
-    return { listw: Math.max(0, room - 9 - Math.min(OVERLAY_SHEET, room - 9)), overlay: true };
+  if (hi < lo) return overlaid(room);
   return { listw: Math.round(clamp(stored || room - 9 - PAGE_SHEET, lo, hi)), overlay: false };
+}
+
+// Under LIST_READABLE a list's rows cut their words: the sheet lies over the list instead, and the
+// list keeps the whole room under it (a window of about 800 px).
+const LIST_READABLE = 460;
+
+function overlaid(room: number): { listw: number; overlay: boolean } {
+  return { listw: Math.max(0, room - 9 - Math.min(OVERLAY_SHEET, room - 9)), overlay: true };
 }
 
 export function splitOf(
@@ -44,6 +51,7 @@ export function splitOf(
   stored?: number | null,
 ): { listw: number; overlay: boolean } {
   if (kind === 'page') return pageSplit(room, stored);
+  if (room - 9 - 440 < LIST_READABLE) return overlaid(room);
   return { listw: listWidth(room, kind, stored), overlay: false };
 }
 
