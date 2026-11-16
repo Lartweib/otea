@@ -1183,7 +1183,11 @@
   margin: 8px 0 0;
   font: 400 17px / 1.45 var(--serif);
   color: var(--ink);
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
+}
+/* a note in Markdown: its blocks tighter than the page's; a table scrolls in its own box */
+.p-text.md {
+  gap: 8px;
 }
 .p-text.none {
   font-style: italic;

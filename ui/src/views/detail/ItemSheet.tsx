@@ -483,7 +483,12 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
         <PhoneItem
           item={item}
           type={type}
-          board={live ? { def: live, step: stepId } : undefined}
+          board={
+            live
+              ? // Closed, the rounds read are those of the step the history opens on.
+                { def: live, step: stepId ?? journey.find(({ open }) => open)?.step ?? null }
+              : undefined
+          }
           look={look}
           facts={facts}
           plan={plan}

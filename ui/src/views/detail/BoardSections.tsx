@@ -1,5 +1,6 @@
 import { type ReactNode, useId, useState } from 'react';
 import { useApp } from '../../app/context.tsx';
+import { NoteText } from '../../components/NoteText.tsx';
 import { Prof } from '../../components/Prof.tsx';
 import { listOr, t, tx } from '../../i18n/i18n.ts';
 import {
@@ -729,10 +730,10 @@ function StepRoundCards({
             <span className="rs">{r.round === last ? t('bi.rounds.now') : ''}</span>
             {r.notes.length ? (
               r.notes.map((n) => (
-                <p key={`${n.at}:${n.kind}`}>
-                  {n.text}
+                <div key={`${n.at}:${n.kind}`} className="rn">
+                  <NoteText text={n.text} />
                   <small>{bylineOf(n)}</small>
-                </p>
+                </div>
               ))
             ) : (
               <p className="none">{t('bi.rounds.none')}</p>
