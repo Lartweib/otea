@@ -124,17 +124,20 @@ describe('board', () => {
 describe('board add', () => {
   let repo: ReturnType<typeof tempGitRepo>;
   let otea: Cli;
+  // The person at the terminal publishes boards; an agent only proposes one.
+  let person: Cli;
 
   beforeEach(async () => {
     repo = tempGitRepo();
     otea = cliAt(repo.dir, { OTEA_AGENT: 'claude' });
+    person = cliAt(repo.dir);
     await otea('init', '--local');
   });
 
   afterEach(() => repo.remove());
 
   it('creates and publishes a board from a template, in the project language', async () => {
-    const { code, out } = await otea('board', 'add', 'Bugs del juego', '--template', 'bugs');
+    const { code, out } = await person('board', 'add', 'Bugs del juego', '--template', 'bugs');
 
     expect(code).toBe(0);
     expect(out).toMatch(
@@ -147,22 +150,34 @@ describe('board add', () => {
 
   it('starts blank without a template, naming its items with --item', async () => {
     const added = JSON.parse(
-      (await otea('board', 'add', 'Recados', '--item', 'Recado', '--json')).out,
+      (await person('board', 'add', 'Recados', '--item', 'Recado', '--json')).out,
     );
 
     expect(added).toMatchObject({ version: 1, record: { collection: 'Recados' } });
     expect((await otea('create', '--collection', 'Recados', '--title', 'Pan')).code).toBe(0);
   });
 
-  it('refuses a taken name and an unknown template', async () => {
-    await otea('board', 'add', 'Recados');
+  it('refuses an agent, which proposes a board instead of publishing it as the person', async () => {
+    const { code, err } = await otea('board', 'add', 'Recados', '--json');
 
-    expect((await otea('board', 'add', 'recados')).code).toBe(5);
-    expect((await otea('board', 'add', 'Otro', '--template', 'nope')).code).toBe(3);
+    expect(code).toBe(7);
+    expect(JSON.parse(err).error.code).toBe('forbidden');
+    expect(JSON.parse(err).error.message).toContain(
+      'otea board draft --new "Recados" --why "<what it is for>"',
+    );
+    const { boards } = JSON.parse((await otea('board', '--json')).out);
+    expect(boards.map(({ name }: { name: string }) => name)).not.toContain('Recados');
+  });
+
+  it('refuses a taken name and an unknown template', async () => {
+    await person('board', 'add', 'Recados');
+
+    expect((await person('board', 'add', 'recados')).code).toBe(5);
+    expect((await person('board', 'add', 'Otro', '--template', 'nope')).code).toBe(3);
   });
 
   it('makes every board of a template set, the name naming the first', async () => {
-    const { code, out } = await otea('board', 'add', 'Cambios web', '--template', 'repos');
+    const { code, out } = await person('board', 'add', 'Cambios web', '--template', 'repos');
 
     expect(code).toBe(0);
     expect(out).toBe('Published boards "Cambios web", "Tareas de repo" from template repos\n');
@@ -172,11 +187,11 @@ describe('board add', () => {
   });
 
   it('refuses a template that only comes as part of a set, as Studio never offers it', async () => {
-    expect((await otea('board', 'add', 'Sueltos', '--template', 'repotasks')).code).toBe(3);
+    expect((await person('board', 'add', 'Sueltos', '--template', 'repotasks')).code).toBe(3);
   });
 
   it('lists in its help the templates Studio offers, sets too', async () => {
-    const { out } = await otea('board', 'add', '--help');
+    const { out } = await person('board', 'add', '--help');
 
     const keys = listedTemplates('en').map(({ key }) => key);
     expect(out).toContain(`(${keys.join(', ')})`);

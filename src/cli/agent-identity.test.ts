@@ -42,7 +42,7 @@ describe('agent identity on the CLI', () => {
 
   afterEach(() => repo.remove());
 
-  it.each([['claim', 'TASKS-1'], ['next'], ['list'], ['show', 'TASKS-1']])(
+  it.each([['claim', 'TASKS-1'], ['next'], ['create', '--collection', 'tasks', '--title', 'T']])(
     'refuses "otea %s" without a name, saying how to name yourself',
     async (...argv) => {
       const { code, error } = await errorOf(unnamed, ...argv);
@@ -53,6 +53,35 @@ describe('agent identity on the CLI', () => {
       expect(error.message).toContain('OTEA_AGENT');
     },
   );
+
+  it.each([['list'], ['show', 'TASKS-1'], ['events'], ['board'], ['board', 'tasks']])(
+    'lets the person read with "otea %s" without a name',
+    async (...argv) => {
+      const result = await unnamed(...argv);
+
+      expect(result.err).toBe('');
+      expect(result.code).toBe(0);
+    },
+  );
+
+  it('never records a reader without a name as an agent', async () => {
+    await unnamed('list');
+    await unnamed('show', 'TASKS-1');
+
+    expect(agents()).toEqual(['claude']);
+  });
+
+  it('tells the person reading whose turn it is, not that it is theirs', async () => {
+    const { out } = await unnamed('show', 'TASKS-1');
+
+    expect(out).toContain("An agent's turn: an agent does this step.");
+    expect(out).not.toContain('Your turn');
+    expect(out).not.toContain('Claim it first');
+  });
+
+  it('still checks the name a reader gives', async () => {
+    expect((await errorOf(unnamed, 'list', '--as', 'You')).error.code).toBe('invalid_agent_name');
+  });
 
   it('never records an unnamed agent', async () => {
     await unnamed('claim', 'TASKS-1');

@@ -30,6 +30,16 @@ export function agentActor(name: string | undefined, how: string): Actor {
   return { kind: 'agent', name };
 }
 
+// The person reading at a terminal: reads need no agent name, and are never recorded as an agent.
+export const PERSON_READER: Actor = { kind: 'human', name: 'human' };
+
+// Who reads: the agent the name gives (checked), or the person when no name was given.
+export function readerActor(name: string | undefined): Actor {
+  if (name === undefined || name === '') return PERSON_READER;
+  assertAgentName(name);
+  return { kind: 'agent', name };
+}
+
 export type ItemId = { prefix: string; seq: number };
 
 const ID_PATTERN = /^([A-Z0-9]+)-([1-9][0-9]*)$/;

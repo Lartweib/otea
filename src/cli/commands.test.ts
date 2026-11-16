@@ -41,7 +41,7 @@ describe('commands', () => {
     afterEach(() => rmSync(product, { recursive: true, force: true }));
 
     it('works with it from inside the repo', async () => {
-      expect((await otea('board', 'add', 'Tareas web')).code).toBe(0);
+      expect((await cliAt(join(api, 'src'))('board', 'add', 'Tareas web')).code).toBe(0);
 
       expect((await otea('list', '--json')).code).toBe(0);
     });

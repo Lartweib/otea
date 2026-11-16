@@ -23,6 +23,9 @@ export type Input = {
   // The agent acting. Reading it refuses an agent that gave no name, or an invalid one: every
   // command that acts as an agent reads it, so none runs unnamed.
   readonly actor: Actor;
+  // Who reads, for a command that only reads (list, show, events, board): the named agent, or the
+  // person at the terminal when no name was given. A name given is checked as for actor.
+  readonly reader: Actor;
   // The name the agent gave, unchecked, or none: for a command that may run unnamed (otea mcp).
   agent: string | undefined;
   // How the agent reached the command, recorded on its writes: the CLI itself or the MCP server.

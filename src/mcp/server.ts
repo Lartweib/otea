@@ -179,6 +179,10 @@ function inputFor(
     get actor(): Actor {
       return agentActor(agent, NAME_YOURSELF);
     },
+    // Over MCP the caller is always an agent: reading needs its name too.
+    get reader(): Actor {
+      return agentActor(agent, NAME_YOURSELF);
+    },
     agent,
     channel: 'mcp',
     harness,

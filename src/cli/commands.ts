@@ -227,7 +227,8 @@ async function withProjectWhile<T>(cwd: string, use: (project: Project) => Promi
 }
 
 // Notes that the agent running the command was seen, so the UI can show who is at work.
-function seen(project: Project, { actor, channel, harness, newSession }: Input): void {
+function seen(project: Project, input: Input, actor: Actor = input.actor): void {
+  const { channel, harness, newSession } = input;
   if (actor.kind !== 'agent') return;
   seeAgent(project.db, {
     agent: actor.name,
@@ -241,6 +242,22 @@ function seen(project: Project, { actor, channel, harness, newSession }: Input):
 function withAgent<T>(input: Input, use: (project: Project) => T): T {
   return withProject(input.cwd, (project) => {
     seen(project, input);
+    return use(project);
+  });
+}
+
+// Opens the project for a command that only reads: an agent that gave its name is seen; the person
+// reading without one is not.
+function withReader<T>(input: Input, use: (project: Project) => T): T {
+  return withProject(input.cwd, (project) => {
+    seen(project, input, input.reader);
+    return use(project);
+  });
+}
+
+async function withReaderWhile<T>(input: Input, use: (project: Project) => Promise<T>): Promise<T> {
+  return withProjectWhile(input.cwd, (project) => {
+    seen(project, input, input.reader);
     return use(project);
   });
 }
@@ -636,7 +653,7 @@ const create: Command = {
   },
 };
 
-function listFilter({ option, options, flag, actor }: Input): ListItemsFilter {
+function listFilter({ option, options, flag, reader }: Input): ListItemsFilter {
   const filter: ListItemsFilter = {};
   const collection = option('collection');
   const state = option('state');
@@ -648,7 +665,7 @@ function listFilter({ option, options, flag, actor }: Input): ListItemsFilter {
   if (state !== undefined) filter.state = state;
   if (type !== undefined) filter.type = type;
   if (turn !== undefined) filter.turn = turn as Turn;
-  if (flag('unclaimed')) filter.availableTo = actor.name;
+  if (flag('unclaimed')) filter.availableTo = reader.name;
   for (const [key, value] of options('field').map(fieldPair)) {
     filter.fields ??= {};
     if (key in filter.fields) throw new UsageError(`Field "${key}" given twice`);
@@ -672,7 +689,7 @@ const list: Command = {
     unclaimed: { flag: true },
   },
   execute: (input) => {
-    return withAgent(input, (project) => {
+    return withReader(input, (project) => {
       // A step and fields named as the board names them, or by id: each item on its own board.
       const filter = listFilter(input);
       const { state: _state, fields: _fields, ...stored } = filter;
@@ -695,9 +712,9 @@ const show: Command = {
   options: {},
   execute: (input) => {
     const [id = ''] = input.args;
-    const { actor, channel } = input;
+    const { reader: actor, channel } = input;
     const performer = { actor, channel };
-    return withAgent(input, (project) => {
+    return withReader(input, (project) => {
       const shown = showItem(project, id, performer);
       const gitHook = gitHookOf(project, shown);
       // Each event's profile is left to otea events: show stays within its token budget.
@@ -736,10 +753,17 @@ const boardName = (record: BoardRecord) => (record.live ?? record.draft)?.defini
 
 const boardAdd: Command = {
   name: 'board add',
-  summary: `Make a board and publish it, from a template (${TEMPLATE_KEYS}) or blank, in the project's language; --item names what each item is; a set such as repos or product makes all of its boards, the name and --item naming the first`,
+  summary: `For the person, with no agent name: make a board and publish it, from a template (${TEMPLATE_KEYS}) or blank, in the project's language; --item names what each item is; a set such as repos or product makes all of its boards, the name and --item naming the first`,
   args: ['name'],
   options: { template: { placeholder: 'key' }, item: {} },
-  execute: ({ cwd, args: [name = ''], option }) => {
+  execute: ({ cwd, args: [name = ''], option, agent }) => {
+    // Publishing is the person's: an agent that names itself proposes the board instead.
+    if (agent !== undefined) {
+      throw new OteaError(
+        'forbidden',
+        `otea board add publishes a board as the person. An agent proposes one for the person to publish in Studio: otea board draft --new "${name.trim()}" --why "<what it is for>" --as ${agent}`,
+      );
+    }
     const template = option('template');
     const item = option('item');
     if (template !== undefined && isSetKey(template)) {
@@ -871,7 +895,7 @@ const board: Command = {
   options: {},
   execute: (input) => {
     const [name = ''] = input.args;
-    return withAgent(input, (project) => {
+    return withReader(input, (project) => {
       if (name !== '') {
         const guide = boardGuide(project, name);
         return { data: guide, text: guideText(guide) };
@@ -965,6 +989,8 @@ const handoffCommand: Command = {
   args: ['id'],
   options: { way: { placeholder: 'step' }, reason: {}, note: {} },
   execute: (input) => boardMove(input, handoffItem),
+};
+  },
 };
 
 const dropCommand: Command = {
@@ -1127,7 +1153,7 @@ const events: Command = {
     if (follow && filter.limit !== undefined) {
       throw new UsageError('--limit cannot be combined with --follow');
     }
-    await withAgentWhile(input, async (project) => {
+    await withReaderWhile(input, async (project) => {
       let since = filter.since ?? 0;
       const collectionOf = itemCollections(project);
       const printNew = () => {
