@@ -8,6 +8,7 @@ import {
   notesDock,
   partNames,
   phoneRounds,
+  readerOf,
   roundTagWord,
   splitEvidence,
 } from './phone-review.ts';
@@ -146,5 +147,20 @@ describe('partNames: which part of the board each file was attached to', () => {
     expect(names.get('estrip')).toBe('Tira de fotogramas');
     expect(names.has('fdesc')).toBe(false);
     expect(names.has('efile')).toBe(false);
+  });
+});
+
+describe('readerOf: what the reader reads', () => {
+  it('reads the newest round, images first, marked against the round before', () => {
+    const read = readerOf(phoneRounds(rounds, true), []);
+    expect(read.files.map((e) => e.filename)).toEqual(['subiendo.png', 'saves.ts']);
+    expect([...read.marks.values()]).toEqual(['new', 'new']);
+  });
+
+  it('reads every file of the item, newest first, when no round was handed', () => {
+    const loose = [file('a.log'), file('b.png', 'image')];
+    const read = readerOf([], loose);
+    expect(read.files.map((e) => e.filename)).toEqual(['b.png', 'a.log']);
+    expect(read.marks.size).toBe(0);
   });
 });

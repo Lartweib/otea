@@ -972,3 +972,119 @@
 .ev-json-val[data-kind="null"] {
   color: var(--warn);
 }
+
+/* The reader's own place for the viewer, and deciding from inside it: what you opened, then the
+   moves, on one line at its foot. */
+.ev-reader-view {
+  min-width: 0;
+}
+.ev-reader-decide {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-top: 12px;
+  border-top: 1px solid var(--rule);
+}
+.ev-reader-seen {
+  margin-right: auto;
+  font: 400 12.5px var(--sans);
+  color: var(--ink-2);
+}
+
+/* The desk reader (review mock, desk): the round's files on the left, the one picked on the right. */
+.dialog.rd-dialog {
+  --dlg-w: 1400px;
+}
+.rd-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.rd-title {
+  font: 600 14px var(--sans);
+  color: var(--ink);
+}
+.rd-pane {
+  display: grid;
+  grid-template-columns: minmax(200px, 260px) minmax(0, 1fr);
+  gap: 20px;
+  min-height: 0;
+}
+.rd-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: calc(100dvh - var(--dlg-top) - var(--dlg-foot) - 110px);
+  overflow: auto;
+}
+.rd-file {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 2px 8px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+}
+.rd-file:hover {
+  background: var(--you-wash);
+}
+.rd-file[aria-current="true"] {
+  background: var(--you-wash);
+  box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--you) 40%, transparent);
+}
+.rd-fn {
+  overflow-wrap: anywhere;
+  font: 400 12.5px / 1.35 var(--mono);
+}
+.rd-kd {
+  grid-column: 1;
+  font: 400 12px var(--sans);
+  color: var(--ink-3);
+}
+.rd-file .mk {
+  grid-column: 2;
+  grid-row: 1;
+  font: 500 11.5px var(--sans);
+  color: var(--ink-3);
+}
+.rd-file .mk.new {
+  color: var(--plus);
+}
+.rd-file .mk.changed {
+  color: var(--you);
+}
+.rd-seen {
+  grid-column: 2;
+  grid-row: 2;
+  justify-self: end;
+  align-self: center;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ink-3);
+}
+.rd-main {
+  min-width: 0;
+}
+.rd-main .ev-reader {
+  display: grid;
+  gap: 12px;
+}
+.rd-main .ev-reader-view {
+  max-height: calc(100dvh - var(--dlg-top) - var(--dlg-foot) - 190px);
+  overflow: auto;
+}
+@media (max-width: 760px) {
+  .rd-pane {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .rd-list {
+    max-height: 160px;
+  }
+}

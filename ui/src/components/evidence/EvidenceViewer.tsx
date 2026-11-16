@@ -124,6 +124,14 @@ export function EvidenceViewer({
   }
 }
 
+// Deciding from inside the reader, when the item waits for your verdict: how many of its files you
+// opened, and the moves themselves. Approve never waits for the files left unopened.
+export type ReaderDecide = {
+  seen: number;
+  back?: { label: string; onClick: () => void } | undefined;
+  approve?: { label: string; onClick: () => void } | undefined;
+};
+
 // The files of a round read one at a time, the same viewer as the desk's: where you are among them
 // ("2 of 7") and a step to the one before or after.
 export function EvidenceReader({
@@ -131,11 +139,13 @@ export function EvidenceReader({
   at,
   onAt,
   phone,
+  decide,
 }: {
   evidence: readonly Evidence[];
   at: number;
   onAt: (at: number) => void;
   phone?: boolean;
+  decide?: ReaderDecide | undefined;
 }) {
   const shown = evidence[at];
   if (!shown) return null;
@@ -165,7 +175,26 @@ export function EvidenceReader({
           <Icon name="right" />
         </button>
       </div>
-      <EvidenceViewer key={shown.id} evidence={shown} {...(phone ? { phone } : {})} />
+      <div className="ev-reader-view">
+        <EvidenceViewer key={shown.id} evidence={shown} {...(phone ? { phone } : {})} />
+      </div>
+      {decide ? (
+        <div className="ev-reader-decide">
+          <span className="ev-reader-seen">
+            {t('evidence.seenOf', { n: decide.seen, total: evidence.length })}
+          </span>
+          {decide.back ? (
+            <button type="button" className="btn quiet" onClick={decide.back.onClick}>
+              {decide.back.label}
+            </button>
+          ) : null}
+          {decide.approve ? (
+            <button type="button" className="btn primary" onClick={decide.approve.onClick}>
+              {decide.approve.label}
+            </button>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }
