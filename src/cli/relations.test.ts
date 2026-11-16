@@ -1,8 +1,16 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { type Cli, cliAt, presetCollection, tempGitRepo } from './testing.ts';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import {
+  type Cli,
+  cliAt,
+  presetCollection,
+  type SeededRepo,
+  seededLocalRepo,
+  type TempRepo,
+} from './testing.ts';
 
 describe('relations', () => {
-  let repo: ReturnType<typeof tempGitRepo>;
+  let seeded: SeededRepo;
+  let repo: TempRepo;
   let otea: Cli;
 
   const json = async (...argv: string[]) => JSON.parse((await otea(...argv, '--json')).out);
@@ -11,16 +19,25 @@ describe('relations', () => {
     return { code: result.code, error: JSON.parse(result.err).error.code as string };
   };
 
-  beforeEach(async () => {
-    repo = tempGitRepo();
+  // Every test starts from the same three parts and a bug, seeded once and copied per test.
+  beforeAll(async () => {
+    seeded = await seededLocalRepo(async (dir) => {
+      const seed = cliAt(dir, { OTEA_AGENT: 'claude' });
+      await seed('init', '--local');
+      presetCollection(dir, 'parts');
+      presetCollection(dir, 'bugs');
+      for (const title of ['Create wolf', 'Body', 'Movement']) {
+        await seed('create', '--collection', 'parts', '--title', title, '--description', 'D');
+      }
+      await seed('create', '--collection', 'bugs', '--title', 'Wolf clips', '--description', 'D');
+    });
+  });
+
+  afterAll(() => seeded.remove());
+
+  beforeEach(() => {
+    repo = seeded.fresh();
     otea = cliAt(repo.dir, { OTEA_AGENT: 'claude' });
-    await otea('init', '--local');
-    presetCollection(repo.dir, 'parts');
-    presetCollection(repo.dir, 'bugs');
-    for (const title of ['Create wolf', 'Body', 'Movement']) {
-      await otea('create', '--collection', 'parts', '--title', title, '--description', 'D');
-    }
-    await otea('create', '--collection', 'bugs', '--title', 'Wolf clips', '--description', 'D');
   });
 
   afterEach(() => repo.remove());

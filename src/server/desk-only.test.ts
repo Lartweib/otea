@@ -1,7 +1,7 @@
 import { mkdtempSync, realpathSync, renameSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { addCollection } from '../app/collections.ts';
 import { pairDevice } from '../app/devices.ts';
 import { initProject, type Project } from '../app/project.ts';
@@ -56,6 +56,7 @@ describe('desk-only routes, with LAN access on', () => {
   let project: Project;
   let server: OteaServer;
   let phoneCookie: string;
+  let folder: string;
 
   const repo = () => {
     const made = tempGitRepo();
@@ -103,72 +104,89 @@ describe('desk-only routes, with LAN access on', () => {
     return ((await response.json()) as { boards: Array<{ name: string }> }).boards;
   };
 
-  beforeEach(() => {
+  // A project served with LAN access on and a paired phone. Opening one costs several git and
+  // migration steps, which a loaded Windows runner stretches to seconds, so the refusals, which
+  // change nothing, share one; the desk's writes each get their own.
+  const open = () => {
     home = mkdtempSync(join(tmpdir(), 'otea-desk-home-'));
     const env = { OTEA_HOME: home };
     project = initProject(repo(), {}, env);
     phoneCookie = `otea_device_4400=${pairDevice(project.db, 'Pixel · Chrome').token}`;
     server = createServer(project, { token: TOKEN, lan: { addresses: [DESK] }, env });
-  });
-
-  afterEach(() => {
+    // A real folder for the routes that name one; a refused request never reads it.
+    folder = repo();
+  };
+  const shut = () => {
     server.close();
     project.db.close();
     for (const made of repos.splice(0)) made.remove();
     rmSync(home, { recursive: true, force: true });
-  });
+  };
 
-  it.each(DESK_ONLY)(
-    'refuses $method $path to a paired device with 403',
-    async ({ method, path, body }) => {
-      const response = await post(path, body(repo()), 'phone', method);
+  describe('from a paired device', () => {
+    beforeAll(open);
+    afterAll(shut);
 
-      expect(response.status).toBe(403);
-      expect(((await response.json()) as { error: unknown }).error).toMatchObject({
-        code: 'forbidden',
-        details: { kind: 'desk_only' },
-      });
-    },
-  );
+    it.each(DESK_ONLY)(
+      'refuses $method $path to a paired device with 403',
+      async ({ method, path, body }) => {
+        const response = await post(path, body(folder), 'phone', method);
 
-  it('changes nothing for a paired device', async () => {
-    const before = await settings();
-    for (const { method, path, body } of DESK_ONLY) await post(path, body(repo()), 'phone', method);
-
-    expect(await settings()).toEqual(before);
-    expect((await boards()).map(({ name }) => name)).toEqual(['Pedidos']);
-    expect(listCollections(project.db).map(({ name }) => name)).toEqual(['Pedidos']);
-  });
-
-  it('lets the desk add, relink and forget a path', async () => {
-    const added = repo();
-
-    expect((await post('/api/project/paths', { path: added }, 'desk')).status).toBe(201);
-    expect((await settings()).paths.map((path) => path.path)).toContain(added);
-    const moved = join(
-      realpathSync.native(mkdtempSync(join(tmpdir(), 'otea-desk-moved-'))),
-      'repo',
-    );
-    renameSync(added, moved);
-    repos.push({ dir: moved, remove: () => rmSync(moved, { recursive: true, force: true }) });
-    const relinked = await post('/api/project/paths/relink', { from: added, to: moved }, 'desk');
-    expect(relinked.status).toBe(200);
-    expect((await post('/api/project/paths/forget', { path: moved }, 'desk')).status).toBe(200);
-  });
-
-  it('lets the desk create a board', async () => {
-    expect((await post('/api/boards', { name: 'Criaturas', lang: 'es' }, 'desk')).status).toBe(201);
-    expect((await boards()).map(({ name }) => name).sort()).toEqual(['Criaturas', 'Pedidos']);
-  });
-
-  it('still lets a paired device work on items', async () => {
-    addCollection(project, { name: 'tasks' });
-    const created = await post(
-      '/api/items',
-      { collection: 'tasks', fields: { title: 'From the phone', description: 'Now' } },
-      'phone',
+        expect(response.status).toBe(403);
+        expect(((await response.json()) as { error: unknown }).error).toMatchObject({
+          code: 'forbidden',
+          details: { kind: 'desk_only' },
+        });
+      },
     );
 
-    expect(created.status).toBe(201);
+    it('changes nothing for a paired device', async () => {
+      const before = await settings();
+      for (const { method, path, body } of DESK_ONLY)
+        await post(path, body(folder), 'phone', method);
+
+      expect(await settings()).toEqual(before);
+      expect((await boards()).map(({ name }) => name)).toEqual(['Pedidos']);
+      expect(listCollections(project.db).map(({ name }) => name)).toEqual(['Pedidos']);
+    });
+  });
+
+  describe('for the desk and for items', () => {
+    beforeEach(open);
+    afterEach(shut);
+
+    it('lets the desk add, relink and forget a path', async () => {
+      const added = repo();
+
+      expect((await post('/api/project/paths', { path: added }, 'desk')).status).toBe(201);
+      expect((await settings()).paths.map((path) => path.path)).toContain(added);
+      const moved = join(
+        realpathSync.native(mkdtempSync(join(tmpdir(), 'otea-desk-moved-'))),
+        'repo',
+      );
+      renameSync(added, moved);
+      repos.push({ dir: moved, remove: () => rmSync(moved, { recursive: true, force: true }) });
+      const relinked = await post('/api/project/paths/relink', { from: added, to: moved }, 'desk');
+      expect(relinked.status).toBe(200);
+      expect((await post('/api/project/paths/forget', { path: moved }, 'desk')).status).toBe(200);
+    });
+
+    it('lets the desk create a board', async () => {
+      expect((await post('/api/boards', { name: 'Criaturas', lang: 'es' }, 'desk')).status).toBe(
+        201,
+      );
+      expect((await boards()).map(({ name }) => name).sort()).toEqual(['Criaturas', 'Pedidos']);
+    });
+
+    it('still lets a paired device work on items', async () => {
+      addCollection(project, { name: 'tasks' });
+      const created = await post(
+        '/api/items',
+        { collection: 'tasks', fields: { title: 'From the phone', description: 'Now' } },
+        'phone',
+      );
+
+      expect(created.status).toBe(201);
+    });
   });
 });

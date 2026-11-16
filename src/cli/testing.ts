@@ -1,5 +1,5 @@
 import { execFileSync, spawn } from 'node:child_process';
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -108,6 +108,10 @@ export type TempRepo = {
 export function tempGitRepo(): TempRepo {
   const dir = realpathSync.native(mkdtempSync(join(tmpdir(), 'otea-cli-')));
   execFileSync('git', ['init', '--quiet'], { cwd: dir, stdio: 'ignore' });
+  return tempRepoAt(dir);
+}
+
+function tempRepoAt(dir: string): TempRepo {
   return {
     dir,
     write: (path, content) => {
@@ -116,6 +120,24 @@ export function tempGitRepo(): TempRepo {
       writeFileSync(target, content);
     },
     remove: () => rmSync(dir, { recursive: true, force: true }),
+  };
+}
+
+// A repo with a local project (`init --local`, so all its data sits in the folder) seeded once by
+// `seed`; `fresh` hands each test its own copy. Seeding through the CLI costs seconds on a loaded
+// Windows runner, so a suite whose every test starts from the same items seeds them once.
+export type SeededRepo = { fresh: () => TempRepo; remove: () => void };
+
+export async function seededLocalRepo(seed: (dir: string) => Promise<void>): Promise<SeededRepo> {
+  const template = tempGitRepo();
+  await seed(template.dir);
+  return {
+    fresh: () => {
+      const dir = realpathSync.native(mkdtempSync(join(tmpdir(), 'otea-cli-')));
+      cpSync(template.dir, dir, { recursive: true });
+      return tempRepoAt(dir);
+    },
+    remove: template.remove,
   };
 }
 

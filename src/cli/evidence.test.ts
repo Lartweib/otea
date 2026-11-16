@@ -1,24 +1,42 @@
 import { execFileSync } from 'node:child_process';
 import { readFileSync, truncateSync } from 'node:fs';
 import { join } from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { MAX_EVIDENCE_BYTES } from '../core/evidence.ts';
-import { type Cli, cliAt, declareProfiles, presetCollection, tempGitRepo } from './testing.ts';
+import {
+  type Cli,
+  cliAt,
+  declareProfiles,
+  presetCollection,
+  type SeededRepo,
+  seededLocalRepo,
+  type TempRepo,
+} from './testing.ts';
 
 describe('attach', () => {
-  let repo: ReturnType<typeof tempGitRepo>;
+  let seeded: SeededRepo;
+  let repo: TempRepo;
   let otea: Cli;
 
   const json = async (...argv: string[]) => JSON.parse((await otea(...argv, '--json')).out);
   const errorCode = (err: string) => JSON.parse(err).error.code;
 
-  beforeEach(async () => {
-    repo = tempGitRepo();
+  // Every test starts from the same task, seeded once and copied per test.
+  beforeAll(async () => {
+    seeded = await seededLocalRepo(async (dir) => {
+      const seed = cliAt(dir, { OTEA_AGENT: 'claude' });
+      await seed('init', '--local');
+      declareProfiles(dir, 'claude', 'claude-a', 'claude-b', 'codex', 'gemini', 'quill');
+      presetCollection(dir, 'tasks');
+      await seed('create', '--collection', 'tasks', '--title', 'Crash', '--description', 'On save');
+    });
+  });
+
+  afterAll(() => seeded.remove());
+
+  beforeEach(() => {
+    repo = seeded.fresh();
     otea = cliAt(repo.dir, { OTEA_AGENT: 'claude' });
-    await otea('init', '--local');
-    declareProfiles(repo.dir, 'claude', 'claude-a', 'claude-b', 'codex', 'gemini', 'quill');
-    presetCollection(repo.dir, 'tasks');
-    await otea('create', '--collection', 'tasks', '--title', 'Crash', '--description', 'On save');
     repo.write('shots/before.png', 'png-before');
     repo.write('test.log', 'PASS 12 tests\n');
   });
