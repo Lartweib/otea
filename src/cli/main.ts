@@ -32,5 +32,6 @@ process.exitCode = await run(process.argv.slice(2), {
   openUrl: systemOpener(),
   tailscale: systemTailscale(),
   probe: fetchProbe,
+  gh: 'gh',
   ...(process.stdin.isTTY ? { ask } : { stdin }),
 });

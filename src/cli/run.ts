@@ -29,6 +29,9 @@ export type Io = {
   // elsewhere, so no test ever reaches this computer's network.
   tailscale?: TailscaleCli;
   probe?: Probe;
+  // The gh CLI otea check asks for a PR's branches, only where otea runs for a person (main.ts):
+  // without it a gh pr merge the hook cannot read is refused.
+  gh?: string;
   // Present only when a person can answer at the terminal.
   ask?: (question: string) => Promise<string>;
   // Present only when something is piped in.
@@ -138,6 +141,7 @@ function inputFor(command: Command, values: Values, args: string[], io: Io, json
     openUrl: io.openUrl,
     tailscale: io.tailscale ?? NO_TAILSCALE,
     probe: io.probe ?? (async () => false),
+    ...(io.gh === undefined ? {} : { gh: io.gh }),
     terminal: io.stdout.isTTY === true,
     warn: (message) =>
       io.stderr.write(`otea: ${message}

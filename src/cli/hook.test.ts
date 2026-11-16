@@ -270,6 +270,15 @@ describe('hook', () => {
       expect(result.err).toContain('merge refused: TAR-1 is in Propuesta');
     });
 
+    it('refuses a gh pr merge whose PR it cannot read, instead of letting it through', async () => {
+      const result = await merge('gh pr merge 482 --rebase');
+
+      expect(result.code).toBe(2);
+      expect(result.err).toBe(
+        'otea: merge refused: gh could not tell the branches of PR 482, so Otea cannot check it; merge it once gh can read the PR (gh auth status), or merge it yourself\n',
+      );
+    });
+
     const push = (command: string) => {
       const event = { cwd: repo.dir, tool_name: 'Bash', tool_input: { command } };
       const at = cliAt(repo.dir, {}, undefined, undefined, undefined, JSON.stringify(event));

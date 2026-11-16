@@ -140,16 +140,19 @@ export function pushTargets(command: string): PushTargets | { unknown: string } 
 const GH_TIMEOUT_MS = 10_000;
 
 // The head branch of a PR and the base branch it merges into, asked of gh in the repo at cwd (the
-// PR of the branch checked out, when `pr` names none); throws when gh is missing, fails or takes
-// too long.
+// PR of the branch checked out, when `pr` names none); throws UnreadPr when gh is missing, fails
+// or takes too long.
+export class UnreadPr extends Error {}
+
 export function prBranches(
   cwd: string,
   pr: string | undefined,
-  gh = 'gh',
+  gh: string | undefined,
 ): { head: string; base: string } {
   const which = pr === undefined ? [] : [pr];
   let read = '';
   try {
+    if (gh === undefined) throw new Error('no gh');
     read = execFileSync(
       gh,
       [
@@ -166,7 +169,7 @@ export function prBranches(
   } catch {}
   const [head = '', base = ''] = read.split(' ');
   if (head === '' || base === '') {
-    throw new Error(
+    throw new UnreadPr(
       `gh could not tell the branches of ${pr === undefined ? 'the PR' : `PR ${pr}`}`,
     );
   }
