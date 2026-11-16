@@ -249,17 +249,21 @@ export function listItems(ctx: Context, filter: ListItemsFilter = {}, now = syst
 
 // The matching item that has waited longest: the first to enter its current state, ties going to
 // the first created. Field updates and leases do not reset the wait.
+// `keep` leaves out the items it refuses (those next would never offer the agent waiting).
 export function oldestWaiting(
   ctx: Context,
   filter: ListItemsFilter,
   now = systemClock,
+  keep: (item: Item) => boolean = () => true,
 ): Item | undefined {
   const entered = selectStateEntries(ctx.db);
   const since = (item: Item) => entered.get(item.id) ?? item.createdAt;
-  return listItems(ctx, filter, now).reduce<Item | undefined>(
-    (oldest, item) => (oldest === undefined || since(item) < since(oldest) ? item : oldest),
-    undefined,
-  );
+  return listItems(ctx, filter, now)
+    .filter(keep)
+    .reduce<Item | undefined>(
+      (oldest, item) => (oldest === undefined || since(item) < since(oldest) ? item : oldest),
+      undefined,
+    );
 }
 
 export function getItem(ctx: Context, id: string, now = systemClock): ItemWithEvents {

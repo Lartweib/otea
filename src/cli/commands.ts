@@ -51,6 +51,7 @@ import {
   handoffItem,
   liveBoardOf,
   nextFor,
+  offerableTo,
   sendBackItem,
 } from '../app/next.ts';
 import { agentNotes, noteWaiting, replyNote, roundNotesOf } from '../app/notes.ts';
@@ -1241,8 +1242,14 @@ const wait: Command = {
       // A note from the person on an item this agent holds wakes it too: it answers it first. So
       // does the person's answer to its question.
       const me = input.actor.name;
+      // An agent waiting for unclaimed agent work wakes only for an item next would offer it: one left for
+      // or just offered to another agent would wake it to "nothing to do" again and again.
+      const forMe =
+        input.actor.kind === 'agent' && turn === 'agent' && filter.availableTo !== undefined;
       const check = () =>
-        noteWaiting(project, me) ?? answerWaiting(project, me) ?? oldestWaiting(project, filter);
+        noteWaiting(project, me) ??
+        answerWaiting(project, me) ??
+        oldestWaiting(project, filter, undefined, forMe ? offerableTo(project, me) : undefined);
       // Waiting is listening: the agent is heard as it waits, so it counts as connected and its
       // profile stays confirmed.
       const beat =
