@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { knowAgents } from './agent-mark.ts';
 import { fetchAgents } from './api.ts';
 import type { Connection } from './hooks.ts';
 import { type Agent, PRESENCE_POLL_MS } from './presence.ts';
@@ -25,7 +26,14 @@ export function useAgents(
   useEffect(() => {
     if (absent) return;
     const controller = new AbortController();
-    fetchAgents(controller.signal).then(setAgents, () => undefined);
+    fetchAgents(controller.signal).then(
+      (list) => {
+        // Each agent's mark is its own among the project's agents (agent-mark.ts).
+        if (list) knowAgents(list.map(({ name }) => name));
+        setAgents(list);
+      },
+      () => undefined,
+    );
     return () => controller.abort();
   }, [version, presence, tick, absent]);
   return agents;
