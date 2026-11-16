@@ -28,6 +28,7 @@ import {
 // which a copy turns into `@[id]`.
 
 import { EMPTY, type Lang, TITLE_NAME, type Words, w } from './template-words.ts';
+import { CATALOGUE_TEMPLATES } from './templates-catalogue.ts';
 import { COVERAGE_TEMPLATES, TEMPLATE_SETS } from './templates-coverage.ts';
 import { FLOW_TEMPLATES } from './templates-flows.ts';
 
@@ -71,7 +72,8 @@ type TemplateStep = {
   drop?: boolean;
 };
 
-// `hidden`: one board of a set, or a preset's reading; never listed on its own. `layout` places a
+// `hidden`: one board of a set, or a preset's reading; never listed on its own. `retired`: a board
+// the catalogue replaced; never listed, still made by its key for the projects and tests made with it. `layout` places a
 // part (by key), the rounds or the parts; the rest go to their kind's default zone. `row` lists
 // part keys; `list.group` a part key, STEP or MOTIVE. `split`: its items divide into parts on the
 // same board.
@@ -90,6 +92,7 @@ export type Template = {
   anytime: readonly string[];
   samples: Readonly<Record<Lang, readonly string[]>>;
   hidden?: boolean;
+  retired?: boolean;
   motives?: readonly (readonly [key: string, name: Words])[];
   dropBy?: Drop['by'];
   list?: { as: ListView['as']; group?: string };
@@ -98,11 +101,14 @@ export type Template = {
   split?: { always: boolean };
 };
 
-// Every single-board template: the five of the first Studio, then the ones that say what the old
-// presets did, then the boards that only come in a set (hidden).
+// Every single-board template: the catalogue first (what Studio offers), then the first Studio's
+// boards and the old presets' readings, kept hidden for the projects made with them, then the
+// boards that only come in a set (hidden).
 export const TEMPLATES: readonly Template[] = [
+  ...CATALOGUE_TEMPLATES,
   {
     key: 'bugs',
+    retired: true,
     icon: 'bug',
     name: w('Fix bugs', 'Arreglar bugs'),
     description: w(
@@ -238,110 +244,8 @@ export const TEMPLATES: readonly Template[] = [
     },
   },
   {
-    key: 'assets',
-    icon: 'paw',
-    name: w('Game assets', 'Recursos de juego'),
-    description: w(
-      'From concept to animation in the engine, with images and video every round.',
-      'Del concepto a la animación en el motor, con imágenes y vídeo en cada ronda.',
-    ),
-    board: w('Creatures', 'Criaturas'),
-    item: w('Creature', 'Criatura'),
-    about: w(
-      'Every creature, from sketch to scene. Style rules: clear silhouettes from afar.',
-      'Cada criatura, del boceto a la escena. El estilo manda: siluetas claras de lejos.',
-    ),
-    idle: EMPTY,
-    parts: [
-      {
-        key: 'desc',
-        kind: 'long',
-        name: w('Description', 'Descripción'),
-        hint: w('what it looks like and how it moves', 'cómo es y cómo se mueve'),
-      },
-      {
-        key: 'refs',
-        kind: 'images',
-        name: w('References', 'Referencias'),
-        hint: w('photos or drawings that help', 'fotos o dibujos que ayuden'),
-        show: 'gallery',
-      },
-      {
-        key: 'biome',
-        kind: 'choice',
-        name: w('Biome', 'Bioma'),
-        hint: w('where it lives', 'dónde vive'),
-        options: [w('Swamp', 'Pantano'), w('Forest', 'Bosque'), w('Dock', 'Muelle')],
-      },
-      {
-        key: 'art',
-        kind: 'images',
-        name: w('Concept art', 'Arte conceptual'),
-        hint: w('3 or 4 views: front, side and a pose', '3 o 4 vistas: frente, perfil y una pose'),
-        show: 'gallery',
-      },
-      {
-        key: 'anim',
-        kind: 'video',
-        name: w('Animation', 'Animación'),
-        hint: w(
-          'a 3 to 5 s idle and walk loop, recorded in the engine',
-          'un bucle de 3 a 5 s de reposo y paso, grabado en el motor',
-        ),
-        show: 'strip',
-      },
-      {
-        key: 'code',
-        kind: 'code',
-        name: w('Code changes', 'Cambios de código'),
-        hint: w('what you touched in the engine', 'lo que tocaste en el motor'),
-      },
-    ],
-    form: [
-      ['desc', true],
-      ['refs', false],
-    ],
-    steps: [
-      {
-        key: 'concept',
-        name: w('Concept', 'Concepto'),
-        doer: 'any',
-        reviewer: 'you',
-        hand: [['art', 'always', true]],
-        ways: [DONE],
-        take: w(
-          'Paint from the @{desc}; follow the style of the @{refs} when there are any.',
-          'Pinta a partir de la @{desc}; sigue el estilo de las @{refs} cuando las haya.',
-        ),
-        before: w('Attach 3 or 4 views as @{art}.', 'Adjunta 3 o 4 vistas como @{art}.'),
-      },
-      {
-        key: 'animate',
-        name: w('Animate', 'Animar'),
-        doer: 'any',
-        reviewer: 'you',
-        hand: [
-          ['anim', 'always', true],
-          ['code', 'no'],
-        ],
-        take: w(
-          'Set it up in the engine from the approved @{art}.',
-          'Móntala en el motor a partir del @{art} aprobado.',
-        ),
-        before: w(
-          'Record a new idle and walk @{anim}.',
-          'Graba una @{anim} nueva de reposo y paso.',
-        ),
-      },
-    ],
-    anytime: ['biome'],
-    samples: {
-      en: ['Mossy turtle', 'Swamp heron', 'Ash fox', 'Lighthouse moth'],
-      es: ['Tortuga musgosa', 'Garza del pantano', 'Zorro de ceniza', 'Polilla de faro'],
-    },
-  },
-  {
     key: 'blog',
+    retired: true,
     icon: 'book',
     name: w('Write for the blog', 'Escribir para el blog'),
     description: w(
@@ -436,6 +340,7 @@ export const TEMPLATES: readonly Template[] = [
   },
   {
     key: 'tasks',
+    retired: true,
     icon: 'checklist',
     name: w('Simple tasks', 'Tareas simples'),
     description: w(
@@ -479,84 +384,6 @@ export const TEMPLATES: readonly Template[] = [
         'Escribir la guía de controles',
         'Revisar la paleta del bosque',
         'Cerrar el mapa del muelle',
-      ],
-    },
-  },
-  {
-    key: 'research',
-    icon: 'beaker',
-    name: w('Research', 'Investigar'),
-    description: w(
-      'An agent researches, another sums it up with sources, and you decide.',
-      'Un agente investiga, otro resume con fuentes, y tú decides.',
-    ),
-    board: w('Questions', 'Preguntas'),
-    item: w('Question', 'Pregunta'),
-    about: w(
-      'Open questions of the project. Always cite the source.',
-      'Preguntas abiertas del proyecto. Cita siempre la fuente.',
-    ),
-    idle: EMPTY,
-    parts: [
-      {
-        key: 'question',
-        kind: 'long',
-        name: w('Question', 'Pregunta'),
-        hint: w('what we want to know', 'lo que queremos saber'),
-      },
-      {
-        key: 'findings',
-        kind: 'long',
-        name: w('Findings', 'Hallazgos'),
-        hint: w('what you found, unfiltered', 'lo que encontraste, sin filtrar'),
-      },
-      {
-        key: 'sources',
-        kind: 'url',
-        name: w('Sources', 'Fuentes'),
-        hint: w('where each fact comes from', 'de dónde sale cada dato'),
-      },
-      {
-        key: 'summary',
-        kind: 'long',
-        name: w('Summary', 'Resumen'),
-        hint: w('the answer in five lines', 'la respuesta en cinco líneas'),
-      },
-    ],
-    form: [['question', true]],
-    steps: [
-      {
-        key: 'dig',
-        name: w('Research', 'Investigar'),
-        doer: 'any',
-        reviewer: 'none',
-        hand: [
-          ['findings', 'always'],
-          ['sources', 'always'],
-        ],
-        take: w(
-          "Look in the project's own documentation first.",
-          'Busca primero en la documentación del propio proyecto.',
-        ),
-      },
-      {
-        key: 'sum',
-        name: w('Sum up', 'Resumir'),
-        doer: 'any',
-        reviewer: 'you',
-        hand: [['summary', 'always']],
-        take: w(
-          'Sum up the @{findings} citing the @{sources}.',
-          'Resume los @{findings} citando las @{sources}.',
-        ),
-      },
-    ],
-    anytime: [],
-    samples: {
-      en: ['Which search library fits our data?', 'How do similar tools handle offline use?'],
-      es: [
-        '¿Qué biblioteca de búsqueda encaja con nuestros datos?',
-        '¿Cómo resuelven el uso sin conexión herramientas parecidas?',
       ],
     },
   },
@@ -801,18 +628,20 @@ export function setView(set: TemplateSet, lang: Lang): TemplateView {
   };
 }
 
+const listed = ({ hidden, retired }: Template) => !hidden && !retired;
+
 // What Studio's home offers, in order: every template that is not only part of a set, then the
 // sets.
 export function listedTemplates(lang: Lang): TemplateView[] {
   return [
-    ...TEMPLATES.filter(({ hidden }) => !hidden).map((template) => templateView(template, lang)),
+    ...TEMPLATES.filter(listed).map((template) => templateView(template, lang)),
     ...TEMPLATE_SETS.map((set) => setView(set, lang)),
   ];
 }
 
 // The keys of what Studio's home offers, in its order: the one catalog the CLI takes and lists.
 export const LISTED_KEYS: readonly string[] = [
-  ...TEMPLATES.filter(({ hidden }) => !hidden).map(({ key }) => key),
+  ...TEMPLATES.filter(listed).map(({ key }) => key),
   ...TEMPLATE_SETS.map(({ key }) => key),
 ];
 

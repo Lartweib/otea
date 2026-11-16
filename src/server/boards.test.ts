@@ -48,21 +48,24 @@ describe('the boards API', () => {
     expect(status).toBe(200);
     const templates = body.templates as Json[];
     expect(templates.map(({ key }) => key)).toEqual([
-      'bugs',
+      'bug-reports',
+      'content',
+      'digest',
       'assets',
-      'blog',
-      'tasks',
       'research',
-      'triage',
-      'review',
       'decisions',
+      'experiments',
+      'support',
+      'visual-iteration',
+      'playtest',
+      'resume',
+      'bug-handoff',
       'changes',
       'repobugs',
       'ideas',
       'repos',
-      'product',
     ]);
-    expect(templates[3]?.name).toBe('Tareas simples');
+    expect(templates[11]?.name).toBe('Fallos para otro dueño');
     const repos = templates.find(({ key }) => key === 'repos');
     expect(((repos?.boards ?? []) as Json[]).map(({ name }) => name)).toEqual([
       'Trabajos',
