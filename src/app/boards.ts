@@ -433,6 +433,22 @@ const REQUEST_CLOSED: Readonly<Record<Lang, (name: string) => string>> = {
   es: (name) => `Publicado el tablero ${name}`,
 };
 
+// Prefixes nobody wants on every id, in English or Spanish.
+const AWKWARD = new Set(['ASS', 'CUL', 'FAG', 'FUC', 'FUK', 'KKK', 'NIG', 'PUT', 'SEX', 'TIT']);
+
+// The first three letters of a word that do not read as an awkward word: the first letter kept,
+// then the next letters in order (ASSET is ASE, PUTTER is PUE); the first three when every pick is.
+function pleasantPrefix(word: string): string {
+  const first = word.slice(0, 3);
+  if (word.length <= 3 || !AWKWARD.has(first)) return first;
+  for (let i = 1; i < word.length; i++)
+    for (let j = i + 1; j < word.length; j++) {
+      const pick = `${word[0]}${word[i]}${word[j]}`;
+      if (!AWKWARD.has(pick)) return pick;
+    }
+  return first;
+}
+
 // A prefix for a new board's item ids: the first letters of what each item is called.
 export function prefixOf(ctx: Context, item: string, name: string): string {
   const letters = (text: string) =>
@@ -441,7 +457,7 @@ export function prefixOf(ctx: Context, item: string, name: string): string {
       .replace(/[̀-ͯ]/g, '')
       .toUpperCase()
       .replace(/[^A-Z0-9]/g, '');
-  const base = (letters(item) || letters(name) || 'ITM').slice(0, 3);
+  const base = pleasantPrefix(letters(item) || letters(name) || 'ITM');
   for (let n = 1; ; n++) {
     const prefix = n === 1 ? base : `${base}${n}`;
     if (!collectionTaken(ctx.db, '\u0000', prefix)) return prefix;
