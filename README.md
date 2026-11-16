@@ -50,30 +50,28 @@ Without the desktop app, run the CLI from source inside the project you want to 
 alias otea='node --disable-warning=ExperimentalWarning /path/to/otea/src/cli/main.ts'
 
 cd /path/to/your/project
-otea init                                  # a new project starts with the boards Tareas and Errores
-otea init --template repos                 # or with a template's boards (changes, ideas, repos, repobugs, product, ...; none for no board)
-otea board add Roadmap --template tasks    # another board, from a template, published at once (yours: no agent name)
+otea init                                  # a new project starts with no board: pick them here or in Studio
+otea init --template changes               # Encargos, the changes you ask an agent for (templates below; none for no board)
+otea board add Errores --template bug-reports   # another board, from a template, published at once (yours: no agent name)
 
 # What an agent runs: every command that acts names the agent (--as, or OTEA_AGENT for the session)
 export OTEA_AGENT=claude
 otea profile --model claude-opus-5-5 --effort high --harness claude-code   # what it runs as (unknown if it cannot tell)
-otea create --collection Tareas --title "Write the docs" --description "Install and first steps"
-otea create --collection Tareas --title "Flaky login test"   # no description: starts in Completar
-otea create --collection Tareas --title "Fix the footer" --description "Wrong year" --field Prioridad=Alta
+otea create --collection Encargos --title "Write the docs" --field "Qué quiero=Install and first steps" --field "Cómo lo valido=Follow it on a clean machine"
+otea create --collection Encargos --title "Fix the footer" --field "Qué quiero=It shows last year"   # no Cómo lo valido: starts in Aclarar
 otea list --turn agent --unclaimed --json # waiting for agents and not held by another one
-otea list --field Prioridad=Alta           # items whose field holds that value, by name or id (repeat to AND them)
 otea next                                  # which item to take now, and what its step asks
-otea claim TAR-1                           # hold it for 15 minutes (--ttl 30m for another length)
-otea heartbeat TAR-1                       # extend the lease on long work
-otea handoff TAR-1 --note "Install and first steps written"     # to the person's review; then otea next again
-otea handoff TAR-2                         # refused (exit 8) while what Completar asks for is missing
-otea update TAR-2 --description "Fails on CI only, see run 42"   # fill what was missing
-otea handoff TAR-2                         # on to Hacerlo
+otea claim ENC-2                           # hold it for 15 minutes (--ttl 30m for another length)
+otea heartbeat ENC-2                       # extend the lease on long work
+otea handoff ENC-2                         # refused (exit 8) while what Aclarar asks for is missing
+otea update ENC-2 --field "Cómo lo valido=The footer shows this year" --field "Clase de cambio=Error"   # fill what was missing
+otea handoff ENC-2                         # on to Hacerlo; then otea next again
+otea list --field "Clase de cambio=Error"  # items whose field holds that value, by name or id (repeat to AND them)
 otea wait --turn agent --unclaimed         # nothing to do: block until there is something, then otea next
 otea check --gate push --branch --repo     # may this branch be pushed? exit 0 yes, 19 no (fails open)
 unset OTEA_AGENT
 otea list                                  # read without a name: list, show, events and board need none
-otea show TAR-1                            # what to do next, fields, moves the agent can relay, lease, timeline
+otea show ENC-1                            # what to do next, fields, moves the agent can relay, lease, timeline
 otea validate                              # check boards, collections and items
 
 otea hook install --git --claude           # in a repo: make that check a pre-push hook and a Claude Code hook
@@ -181,12 +179,12 @@ otea list --parent TAR-1                    # the children of TAR-1
 otea show TAR-1                             # children summary and relations by kind
 ```
 
-What waits on another item says so with `blocks`, and a step that waits for its blockers (**Algo que esperar** in Studio, `"waits": ["blockers"]` in `board.json`) is not handed off, or approved, while one of them is open. The Tareas board of `otea init --template product` waits for them:
+What waits on another item says so with `blocks`, and a step that waits for its blockers (**Algo que esperar** in Studio, `"waits": ["blockers"]` in `board.json`) is not handed off, or approved, while one of them is open. Implementación, the task board of `otea init --template ideas`, waits for them in Hacer:
 
 ```sh
 otea link TAR-2 blocks TAR-1                # the login page waits for the auth endpoint
-otea handoff TAR-1                          # exit 4 (blockers_open) while TAR-2 is open
-otea show TAR-1                             # its Handoff says "Nothing open blocks it: required (TAR-2 on Tareas, in Hacerlo, blocks it)"
+otea handoff TAR-1                          # in Hacer: exit 4 (blockers_open) while TAR-2 is open
+otea show TAR-1                             # its Handoff names TAR-2, its board and its step, as what still blocks it
 ```
 
 - `otea link <id> <kind> <other>` reads as a sentence for `blocks`, `duplicates`, `implements` and `relates`; `<id> parent <other>` makes `<other>` the parent of `<id>`. `otea create --parent <id>` creates the item as a child in the same write. `otea unlink` takes the link named the same way (`relates` either way round).
@@ -294,16 +292,34 @@ What an agent reads back costs tokens on every call, so output size is tested li
 
 ### Templates
 
-`otea init --template <key>`, `otea board add <name> --template <key>` and Studio's **Nuevo tablero** take the same templates: `bugs`, `assets`, `blog`, `tasks`, `research`, `triage`, `review`, `decisions`, `changes`, `repobugs`, and the sets `ideas`, `repos` and `product`, which make several boards at once (below). `otea init --help` and `otea board add --help` list them from the same catalog. `otea board add <name> --template repos` makes every board of the set, the name (and `--item`) naming the first; its `--json` is the list of boards it published.
+`otea init --template <key>`, `otea board add <name> --template <key>` and Studio's **Nuevo tablero** take the same templates: the catalogue of single boards below, `changes` and `repobugs`, and the sets `ideas` and `repos`, which make several boards at once (below). `otea init --help` and `otea board add --help` list them from the same catalog. `otea board add <name> --template repos` makes every board of the set, the name (and `--item`) naming the first; its `--json` is the list of boards it published.
 
-- Every project has **Pedidos**, the board for loose requests (an agent's board draft arrives on one too). It is made when the project is first opened, so `otea init --template none` leaves Pedidos and nothing else.
-- `otea init` makes boards only on a project with no boards of its own (Pedidos aside): Tareas and Errores by default, or the template's. On a project that already has boards it makes none and, when given `--template`, says to add one with `otea board add`. An unknown template fails with exit 3 (`not_found`) either way.
+- A project starts with no board: `otea init` makes one only when `--template` names it (`none` makes none either), and the person picks the rest in Studio's **Nuevo tablero** or with `otea board add`. The empty project page offers **Elegir tableros** until the project has one.
+- Every project also has **Pedidos**, the built-in board for loose requests, where an agent's board draft arrives. It is made when the project is first opened, but the places (the sidebar, `GET /api/collections`) list it only once it holds an item.
+- `otea init --template` makes boards only on a project with no boards of its own (Pedidos aside). On a project that already has boards it makes none and, when given `--template`, says to add one with `otea board add`. An unknown template fails with exit 3 (`not_found`) either way.
 
 ### Collections from before boards
 
 Projects made before boards kept each collection on a preset (`presets/<name>/preset.yaml`, official or the project's own). The first time such a project opens, every collection is read once as a board: an official preset becomes its template's board (`tasks` Tareas, `bug-triage` Errores, `change` Cambios plus Tareas de repo, and so on) with its own words for agents, and a project's own preset becomes a board of one step, Hacerlo, that keeps its items' fields, with the text of its playbooks (its own `playbook.md`, then its types') as the board's words, which agents read with `otea board <name>`. Nothing makes a collection on a preset any more: boards are made with `otea board add` or in Studio.
 
 **Icons.** `otea init --icon <icon>` gives the project an icon, also on a project that already exists; a project without one is drawn as a two-letter monogram of its name. `otea collection icon <name> <icon>` gives a board its own icon in the lists (`otea collection icon <name> default` shows its default again). Icons are named as in [`src/core/icons.ts`](src/core/icons.ts) (112 of them), and an unknown name fails with exit 6 (`invalid_icon`), naming the close ones, and changes nothing. `GET /api/collections` gives each collection its resolved `icon`, and `GET /api/project` the project's `id`, `name` and `icon` (`null` when it has none).
+
+The catalogue of single boards, each designed and run end to end before it was offered:
+
+- **Reportes de errores** (`bug-reports`): bugs reported by the people who use what you make. Completar (skipped when the report is complete), Triar (yours), Arreglar on its own branch, with the proof its kind asks for (a failing test for behaviour, a measurement for performance, a recording for a visual bug), which you review, and Integrar.
+- **Contenido** (`content`): posts, newsletters, docs pages. You approve the outline and the draft; the agent publishes what you approved.
+- **Resumen periódico** (`digest`): a recurring curated issue. The agent collects with sources, you pick, the agent writes (you review) and publishes.
+- **Recursos** (`assets`): art and other assets. The agent writes the spec, you make the art (or an agent, if a tool makes it), and the agent integrates it.
+- **Investigación** (`research`): a question searched with sources, answered in a recommendation you review; it never makes the change.
+- **Decisiones** (`decisions`): research before deciding. The agent lays out options with sources, you decide, and it records an ADR when the repository keeps them.
+- **Experimentos** (`experiments`): a hypothesis, a plan with a baseline and one deciding metric, and a run you review. Nothing runs against live systems.
+- **Soporte** (`support`): questions from the people who use what you make. The agent drafts the reply; you send it.
+- **Iteración visual** (`visual-iteration`): for what is judged by looking: each round changes one thing, renders with the previous round's seeds and camera, and you pick blind between A and B before it is revealed.
+- **Probar si es divertido** (`playtest`): a minimal prototype answers one question; you play it and keep going, adjust or kill the idea.
+- **Retomar un proyecto** (`resume`): coming back to a dormant project. The agent rebuilds where it stopped, what is open and what broke, and proposes next steps; you pick, and it creates them as items.
+- **Fallos para otro dueño** (`bug-handoff`): bugs in a product whose code is someone else's. They are reproduced, triaged, handed to their owner and verified when a new version comes back; the fix does not happen here.
+
+The first Studio's boards (`tasks`, `bugs`, `blog`, `triage`, `review`) are retired: no list offers them, and projects made with them keep their boards.
 
 ### Templates that make several boards
 
@@ -312,7 +328,6 @@ A template set makes several boards at once, joined the only way boards are decl
 ```sh
 otea init --template ideas     # Ideas, each divided into its Decisions, and Implementación, the tasks a planned Idea makes
 otea init --template repos     # Trabajos, which divides into Entregas (always: a delivery is always part of a Trabajo)
-otea init --template product   # Tareas, which waits for nothing open blocking it, and Errores (Clasificar errores)
 ```
 
 - **De la idea a las tareas** (`ideas`): an agent refines each Idea by asking you, one question at a time, into a Brief (or a Decision into its Options), designs it (an architecture document, Mermaid diagrams, the project's `.md` files) once its Decisions, parts on the same board, are closed, and plans it: it creates the tasks on Implementación, each linked `implements` to the Idea and `blocks` in order. Those tasks wait until you approve the plan. A task born complete skips Preparar; Hacer waits for its subtasks and blockers.
@@ -394,13 +409,20 @@ otea serve                  # Otea running at http://127.0.0.1:4400
 In another terminal in the same project, create and move items and watch them update:
 
 ```sh
-otea create --collection Tareas --title "Review the copy" --description "Landing page"
-otea handoff TAR-1 --as claude
+otea board add Preguntas --template research
+export OTEA_AGENT=claude                    # the agent's side (after its otea profile)
+otea create --collection Preguntas --title "Search library" --field "Pregunta=Which search library fits our data?" --field "Para qué=Pick the search for v2"
+otea claim PRE-1
+otea update PRE-1 --field "Hallazgos=Two libraries fit" --field "Fuentes=Their docs"
+otea handoff PRE-1                          # on to Responder
+otea claim PRE-1
+otea update PRE-1 --field "Conclusión=Use the smaller one"
+otea handoff PRE-1 --note "Answered with sources"
 ```
 
-`TAR-1` is now waiting for you: approve it or send it back with a note from its detail in the UI. The CLI refuses the approval, and the timeline shows your decision as `human (ui)`.
+`PRE-1` is now waiting for you: approve it or send it back with a note from its detail in the UI. The CLI refuses the approval, and the timeline shows your decision as `human (ui)`.
 
-You can also create items from the browser: when it is signed in, **New item** opens a form from the board's fields. Only the title is required; an item that lacks what the board's first step asks (a Descripción on Tareas) starts there, in Completar, for an agent to complete (`otea update`, then `otea handoff <id>`), and one that has it starts at the next step. The timeline shows who created it as `human (ui)`.
+You can also create items from the browser: when it is signed in, **New item** opens a form from the board's fields. Only the title is required; an item that lacks what the board's first step asks (Cómo lo valido on Encargos) starts there, in Aclarar, for an agent to complete (`otea update`, then `otea handoff <id>`), and one that has it starts at the next step. The timeline shows who created it as `human (ui)`.
 
 On a phone the selected item unfolds in place under its row, with its moves at the bottom of the screen. **Triage**, at the end of *Waiting for you*, shows what waits for you one card at a time: swipe right for the primary move, left to send it back to the agent (asking for the reason when the workflow requires one), or use the buttons.
 
