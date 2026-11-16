@@ -97,7 +97,7 @@ describe('the topbar', () => {
   it('says how many wait when nobody works, and that one has no profile', () => {
     setLanguage('es');
     const html = topbar({ agents: [agent('Scout', { profile: opus }), agent('Quill')] });
-    expect(html).toContain('<span>2 en espera</span><small class="wl">1 sin perfil</small>');
+    expect(html).toContain('<span>2 escuchando</span><small class="wl">1 sin perfil</small>');
     expect(html).not.toContain('pulse');
   });
 
@@ -237,7 +237,7 @@ describe('the agents menu', () => {
 
   it('heads with the project and what they do, one gone quiet in warn', () => {
     expect(menu()).toContain(
-      '<div class="plabel" data-i=""><span>agentes en Hollowmere</span><span class="sum"><b>1 trabajando</b> · 2 en espera · <span class="warn-t">1 callado</span></span></div>',
+      '<div class="plabel" data-i=""><span>agentes en Hollowmere</span><span class="sum"><b>1 trabajando</b> · 1 escuchando · <span class="warn-t">1 callado</span></span></div>',
     );
   });
 
@@ -279,8 +279,12 @@ describe('the agents menu', () => {
     expect(html).toContain(
       '<b>Ver actividad</b><small>reservas en curso, los últimos eventos</small>',
     );
-    expect(html).toContain('<b>Conectar un agente</b><small>otea mcp --as &lt;nombre&gt;</small>');
-    expect(html).toContain('conectado: tiene una reserva, o tuvo actividad en los últimos 5 min');
+    expect(html).toContain(
+      '<b>Conectar un agente</b><small>un comando, y una instrucción en cada sesión</small>',
+    );
+    expect(html).toContain(
+      'conectado: tiene una reserva, o escucha (su servidor MCP abierto, u otea wait corriendo)',
+    );
   });
 
   it('leads to how each model performs, in its footer', () => {

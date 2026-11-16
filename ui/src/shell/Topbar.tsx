@@ -382,7 +382,7 @@ export function AgentsMenuBody({
   onConnect,
   onPerformance,
 }: AgentsMenuProps) {
-  const waiting = counts.live - counts.holding;
+  const waiting = counts.idle;
   return (
     <>
       <MenuLabel

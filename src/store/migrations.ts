@@ -304,6 +304,11 @@ export const MIGRATIONS = [
   WHEN NOT EXISTS (SELECT 1 FROM boards WHERE id = OLD.board_id AND archived_at IS NOT NULL)
   BEGIN SELECT RAISE(ABORT, 'board versions are append-only'); END;
   `,
+  // When an agent was last heard listening (app/presence.ts): an open MCP server or a running
+  // otea wait beats it. Only a listening agent, or one holding a lease, counts as connected.
+  `
+  ALTER TABLE agents ADD COLUMN listening_at TEXT;
+  `,
 ];
 
 function userVersion(db: DatabaseSync): number {

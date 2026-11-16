@@ -509,6 +509,25 @@ describe('mcp server', () => {
       await other.close();
     });
 
+    it('names every agent that calls through it, so the open server keeps each one heard', async () => {
+      const heard: string[] = [];
+      const server = createMcpServer(COMMANDS, {
+        cwd: repo.dir,
+        agent: 'codex',
+        warn: () => {},
+        heard: (agent) => heard.push(agent),
+      });
+      const other = new Client({ name: 'codex-cli', version: '0.9.1' });
+      const [clientSide, serverSide] = InMemoryTransport.createLinkedPair();
+      await server.connect(serverSide);
+      await other.connect(clientSide);
+      await other.callTool({ name: 'list', arguments: {} });
+      await other.callTool({ name: 'list', arguments: { as: 'codex-b' } });
+
+      expect(heard).toEqual(['codex', 'codex-b']);
+      await other.close();
+    });
+
     it('records the client as the harness of the agent on each tool call', async () => {
       expect(agents()).toEqual([expect.objectContaining({ name: 'claude', harness: 'cli' })]);
 

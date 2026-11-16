@@ -23,7 +23,7 @@ export const shell = {
   'shell.agentsIn': 'agentes en {project}',
   'shell.pill.none': 'Sin agentes',
   'shell.pill.working': { one: '{count} trabajando', other: '{count} trabajando' },
-  'shell.pill.waiting': { one: '{count} en espera', other: '{count} en espera' },
+  'shell.pill.waiting': { one: '{count} escuchando', other: '{count} escuchando' },
   'shell.pill.quiet': { one: '{count} callado', other: '{count} callados' },
   'shell.pill.noProfile': { one: '{count} sin perfil', other: '{count} sin perfil' },
   'shell.pill.of': 'de {count}',
@@ -32,7 +32,7 @@ export const shell = {
   'shell.row.quiet': 'callado desde {time} ·',
   'shell.row.quietRan': 'callado desde {time} · su reserva venció',
   'shell.row.wait': 'espera tu respuesta ·',
-  'shell.row.idle': 'en espera · libre desde {time}',
+  'shell.row.idle': 'escuchando · libre desde {time}',
   'shell.row.noProfile': 'no toma pasos hasta declarar modelo y esfuerzo',
   'shell.flag.noProfile': 'sin perfil',
   'shell.flag.unconfirmed': 'sin confirmar',
@@ -43,10 +43,11 @@ export const shell = {
   'shell.activity': 'Ver actividad',
   'shell.activityLine': 'reservas en curso, los últimos eventos',
   'shell.connect': 'Conectar un agente',
-  'shell.connectLine': 'otea mcp --as <nombre>',
+  'shell.connectLine': 'un comando, y una instrucción en cada sesión',
   'shell.performance': 'Ver rendimiento',
   'shell.performanceLine': 'cuántas entregas vuelven, por modelo',
-  'shell.connectedRule': 'conectado: tiene una reserva, o tuvo actividad en los últimos 5 min',
+  'shell.connectedRule':
+    'conectado: tiene una reserva, o escucha (su servidor MCP abierto, u otea wait corriendo)',
   'shell.selfDeclared': 'el perfil lo declara cada agente: Otea lo guarda, no lo comprueba.',
 
   // Preferencias: lo que es de este navegador

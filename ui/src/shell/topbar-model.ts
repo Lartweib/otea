@@ -174,9 +174,9 @@ export function agentRows(
     .map(({ row }) => row);
 }
 
-// The agents the menu lists, those holding a lease ("trabajando") and the rest, holding none; of
-// them, those gone quiet and those with no profile: counted from the menu's own rows, so the pill
-// and the menu agree.
+// The agents the menu lists, those holding a lease ("trabajando"), those listening with nothing
+// held ("escuchando": never one gone quiet, which no longer listens), those gone quiet and those
+// with no profile: counted from the menu's own rows, so the pill and the menu agree.
 export function agentCounts(rows: readonly AgentRow[]): {
   live: number;
   holding: number;
@@ -188,7 +188,7 @@ export function agentCounts(rows: readonly AgentRow[]): {
   return {
     live: rows.length,
     holding,
-    idle: rows.length - holding,
+    idle: rows.filter((a) => !a.working && !a.quiet).length,
     quiet: rows.filter((a) => a.quiet).length,
     noProfile: rows.filter((a) => !a.profile).length,
   };
@@ -231,5 +231,5 @@ export function pillSummary(connection: Connection, rows: readonly AgentRow[]): 
           : null;
   return working
     ? { kind: 'working', count: c.holding, extra }
-    : { kind: 'waiting', count: c.live, extra };
+    : { kind: 'waiting', count: c.idle || c.live, extra };
 }

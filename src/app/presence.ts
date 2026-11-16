@@ -4,11 +4,13 @@ import { activeLease } from '../core/lease.ts';
 import {
   findAgent,
   findProfile,
+  markListening,
   type ProfileView,
   profileView,
   saveProfile,
   selectAgents,
   selectLeases,
+  selectListening,
   selectProfileChanges,
   unconfirmProfile,
   upsertAgent,
@@ -29,8 +31,15 @@ export type Sighting = {
   newSession?: boolean;
 };
 
-// An agent counts as live while it was seen this recently, or while it holds a lease.
+// Seen again after this long away, an agent connects anew (its connectedAt starts over).
 export const LIVE_WINDOW_MS = 5 * 60_000;
+
+// An agent counts as connected only while it listens or holds a lease: a listener (an open MCP
+// server, a running otea wait) is heard every LISTEN_BEAT_MS, and counts as listening for
+// LISTEN_WINDOW_MS after the last beat, so a closed session drops out within it. Having run a
+// command lately is no listening: an agent that read once and left is not shown as waiting.
+export const LISTEN_BEAT_MS = 60_000;
+export const LISTEN_WINDOW_MS = 150_000;
 
 // Seen again within this, an agent's last-seen time is left as it is: an agent reading item after
 // item writes once, not on every call (each write wakes the live UI).
@@ -50,7 +59,10 @@ export type AgentPresence = {
   connectedAt: string | null;
   holding: string[];
   lastSeen: string;
+  // Connected: it listens, or holds a lease.
   live: boolean;
+  // Heard listening within LISTEN_WINDOW_MS.
+  listening: boolean;
   profile: ProfileView | null;
   profileConfirmed: boolean;
   profileChangedAt: string | null;
@@ -92,18 +104,20 @@ export function seeAgent(db: DatabaseSync, sighting: Sighting, now: Clock = syst
   return true;
 }
 
-// A waiting agent is seen this often while `otea wait` blocks: inside LIVE_WINDOW_MS, so it stays
-// live, and far inside CLI_SESSION_GAP_MS, so a wait of hours is no time away and its profile
-// stays confirmed for what it does next.
-export const WAIT_BEAT_MS = 4 * 60_000;
+// Hears an agent that listens now: sees it, and notes it listening.
+export function hearAgent(db: DatabaseSync, sighting: Sighting, now: Clock = systemClock): void {
+  seeAgent(db, sighting, now);
+  markListening(db, sighting.agent, now());
+}
 
-// The beat of a wait (watch's `beat`): sees the agent again, never as a new session.
+// The beat of a wait (watch's `beat`): hears the agent again, never as a new session. Far inside
+// CLI_SESSION_GAP_MS, so a wait of hours is no time away and its profile stays confirmed.
 export function waitBeat(
   db: DatabaseSync,
   { newSession: _, ...sighting }: Sighting,
   now: Clock = systemClock,
 ): { everyMs: number; run: () => void } {
-  return { everyMs: WAIT_BEAT_MS, run: () => void seeAgent(db, sighting, now) };
+  return { everyMs: LISTEN_BEAT_MS, run: () => hearAgent(db, sighting, now) };
 }
 
 // A profile's harness is the MCP client's: when the client names another one, the profile follows.
@@ -123,10 +137,12 @@ export function listAgents(db: DatabaseSync, now: Clock = systemClock): AgentPre
     const live = activeLease(lease, at);
     if (live) holding.set(live.holder, [...(holding.get(live.holder) ?? []), id]);
   }
+  const heard = selectListening(db);
   const agents = selectAgents(db).map(
     ({ name, harness, harnessVersion, connectedAt, lastSeen }) => {
       const held = holding.get(name) ?? [];
-      const recent = Date.parse(at) - Date.parse(lastSeen) <= LIVE_WINDOW_MS;
+      const last = heard.get(name);
+      const listening = last !== undefined && Date.parse(at) - Date.parse(last) <= LISTEN_WINDOW_MS;
       const declared = findProfile(db, name);
       return {
         name,
@@ -135,7 +151,8 @@ export function listAgents(db: DatabaseSync, now: Clock = systemClock): AgentPre
         connectedAt,
         holding: held,
         lastSeen,
-        live: recent || held.length > 0,
+        live: listening || held.length > 0,
+        listening,
         profile: declared ? profileView(declared.profile) : null,
         profileConfirmed: declared?.confirmed ?? false,
         profileChangedAt: profileChangedAt(db, name),
