@@ -194,6 +194,9 @@ function readDraftFile(text: string, start: string) {
   return reading;
 }
 
+const nameNote = (kept: string, file: string) =>
+  `name: the board keeps the name "${kept}" it was asked for; the file's ${file.trim() ? `"${file.trim()}"` : 'empty name'} is not used [name]`;
+
 export type SubmitInput = { id: string; text: string; actor: Actor; channel: Channel };
 
 // `notes`: what reading it as today's board changed (a step that named one agent is any agent's).
@@ -215,7 +218,13 @@ export function submitAgentDraft(
 ): Submitted {
   const board = requireWaiting(project, input.id);
   const reading = readDraftFile(input.text, `Start from what otea board draft ${input.id} prints`);
-  const problems = boardProblems(project, board.id, reading.definition).map(problemWords);
+  // The name is the person's (the one asked for, or since given in Studio): the file is checked
+  // under it, so a name the file left empty or took from another board is no problem, and is said.
+  const name = board.draft?.definition.name ?? reading.definition.name;
+  const kept =
+    reading.definition.name.trim() === name.trim() ? [] : [nameNote(name, reading.definition.name)];
+  const checked = { ...reading.definition, name };
+  const problems = boardProblems(project, board.id, checked).map(problemWords);
   const evidence = transaction(project.db, () => {
     const item = requireItem(project.db, input.id);
     const at = now();
@@ -225,7 +234,7 @@ export function submitAgentDraft(
     return recordEvidence(project, item.id, placed, input, at);
   });
   mergeAgentDraft(project, board.id, evidence.id, now);
-  return { board: board.id, evidence, problems, notes: reading.notes ?? [] };
+  return { board: board.id, evidence, problems, notes: [...kept, ...(reading.notes ?? [])] };
 }
 
 export type ProposeInput = {
