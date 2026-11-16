@@ -40,10 +40,21 @@ describe('summary', () => {
     setLanguage('es');
     expect(text(summary(creatures()))).toBe(
       'Cada criatura empieza con Título, Descripción y Bioma. ' +
-        'En Concepto, cualquier agente lo hace y tú lo revisas; entrega Arte conceptual y Barro. ' +
+        'En Concepto, cualquier agente lo hace y tú lo revisas; entrega Arte conceptual y Barro (si Bioma es Pantano). ' +
         'Desde Concepto también puede ir a Hecho. ' +
         'Luego, en Animar, cualquier agente lo hace y otro agente lo revisa; entrega Animación y Comprobaciones. ' +
         'Luego, en Pulir, lo haces tú y nadie lo revisa. Después, Hecho.',
+    );
+  });
+
+  it('says when a part is handed off only for some value of another', () => {
+    setLanguage('es');
+    expect(text(summary(creatures()))).toContain(
+      'entrega Arte conceptual y Barro (si Bioma es Pantano).',
+    );
+    setLanguage('en');
+    expect(text(summary(creatures()))).toContain(
+      'it hands off Arte conceptual and Barro (if Bioma is Pantano).',
     );
   });
 

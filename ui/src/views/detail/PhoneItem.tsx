@@ -18,6 +18,7 @@ import { AgentMark, Button, Icon, StepPill } from '../../kit/index.ts';
 import type { Look } from '../../lanes/looks.ts';
 import { BottomSheet } from '../../phone/BottomSheet.tsx';
 import { useKeyboardInset } from '../../phone/CaptureSheet.tsx';
+import { valueWord } from '../../preset-words.ts';
 import { roundsOf } from '../../rounds.ts';
 import type { Evidence, ItemView, TypeView } from '../../types.ts';
 import { evidenceWords } from '../toca/phone.ts';
@@ -31,6 +32,7 @@ import type { ItemNote } from './notes.ts';
 import {
   compareFiles,
   fileMarks,
+  handedFields,
   notesDock,
   type PhoneRound,
   partNames,
@@ -306,8 +308,11 @@ function RoundView({
   parts,
   decide,
   onSeen,
+  handed,
 }: {
   r: PhoneRound;
+  // The fields the step handed off (Commit en main), on the newest round only: their values today.
+  handed?: readonly { ref: string; name: string; value: string }[] | undefined;
   parts?: ReadonlyMap<string, string> | undefined;
   decide?: ReaderDecide | undefined;
   // The round before it, to mark its files against.
@@ -324,9 +329,19 @@ function RoundView({
         <Lab x={newest && r.n > 1 ? t('phone.r.newIn', { n: r.n }) : t('toca.round', { n: r.n })}>
           {t('phone.r.delivered')}
         </Lab>
+        {handed?.length ? (
+          <dl className="p-handed">
+            {handed.map((f) => (
+              <div key={f.ref}>
+                <dt>{f.name}</dt>
+                <dd>{f.value}</dd>
+              </div>
+            ))}
+          </dl>
+        ) : null}
         {r.note ? (
           <NoteText className="p-text" text={r.note} />
-        ) : (
+        ) : handed?.length ? null : (
           <p className="p-text none">{t('phone.r.noNote')}</p>
         )}
         <div className="p-by">
@@ -431,6 +446,16 @@ export function PhoneItem(p: PhoneItemProps) {
     return phoneRounds(read, item.turn === 'human');
   }, [item.events, item.evidence, item.turn, p.type, p.board]);
   const parts = useMemo(() => (p.type ? partNames(p.type.layout) : undefined), [p.type]);
+  const handed = useMemo(
+    () =>
+      p.board
+        ? handedFields(p.board.def, p.board.step, item.fields).map((f) => ({
+            ...f,
+            value: valueWord(p.type, f.ref, f.value),
+          }))
+        : [],
+    [p.board, p.type, item.fields],
+  );
   const [pick, setPick] = useState<number | 'compare' | null>(null);
   const shown = pick === 'compare' ? null : (rounds.find((r) => r.n === pick) ?? rounds[0] ?? null);
   const newest = rounds[0];
@@ -660,6 +685,7 @@ export function PhoneItem(p: PhoneItemProps) {
           parts={parts}
           decide={shown === newest ? readerDecide : undefined}
           onSeen={markSeen}
+          handed={shown === newest ? handed : undefined}
         />
       ) : null}
 

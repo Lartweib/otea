@@ -24,6 +24,7 @@ export const studioEditor = {
   'bs.editor.sum.first_hand': 'In {step}, {does} and {reviews}; it hands off {hand}.',
   'bs.editor.sum.then': 'Then, in {step}, {does} and {reviews}.',
   'bs.editor.sum.then_hand': 'Then, in {step}, {does} and {reviews}; it hands off {hand}.',
+  'bs.editor.sum.when': '{name} (if {part} is {value})',
   'bs.editor.sum.ways': 'From {step} it can also go to {ways}.',
   'bs.editor.sum.end': 'After that, {done}.',
 

@@ -1,10 +1,12 @@
 import { afterEach, describe, expect, it } from 'vitest';
+import { creatures } from '../../../../src/core/board/testing.ts';
 import { setLanguage } from '../../i18n/i18n.ts';
 import type { Round } from '../../rounds.ts';
 import type { Evidence, Layout } from '../../types.ts';
 import {
   compareFiles,
   fileMarks,
+  handedFields,
   notesDock,
   partNames,
   phoneRounds,
@@ -162,5 +164,26 @@ describe('readerOf: what the reader reads', () => {
     const read = readerOf([], loose);
     expect(read.files.map((e) => e.filename)).toEqual(['b.png', 'a.log']);
     expect(read.marks.size).toBe(0);
+  });
+});
+
+describe('handedFields: what a step handed off that is not a file', () => {
+  it('lists the step’s handed-off fields that hold a value, by name, in the step’s order', () => {
+    const def = creatures();
+    const animate = def.steps.find((s) => s.id === 'sanimate');
+    if (!animate) throw new Error('sanimate');
+    animate.hand = [
+      { ref: 'fdesc', req: 'always', fresh: false },
+      { ref: 'eart', req: 'always', fresh: true },
+      { ref: 'fbiome', req: 'always', fresh: false },
+    ];
+    expect(handedFields(def, 'sanimate', { fdesc: 'Lenta', fbiome: '' })).toEqual([
+      { ref: 'fdesc', name: 'Descripción', value: 'Lenta' },
+    ]);
+    expect(handedFields(def, 'sanimate', { fdesc: 'Lenta', fbiome: 'cswamp' })).toEqual([
+      { ref: 'fdesc', name: 'Descripción', value: 'Lenta' },
+      { ref: 'fbiome', name: 'Bioma', value: 'cswamp' },
+    ]);
+    expect(handedFields(def, null, { fdesc: 'Lenta' })).toEqual([]);
   });
 });

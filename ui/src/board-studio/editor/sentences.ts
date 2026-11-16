@@ -77,9 +77,18 @@ export function summary(def: BoardDefinition): Sentence[] {
     return out;
   }
   def.steps.forEach((step, index) => {
+    // A part handed off only for some value of another says so: Barro (si Bioma es Pantano).
     const hand = step.hand
       .filter((h) => h.req !== 'no')
-      .map((h) => partOf(def, h.ref)?.name ?? '')
+      .map((h) => {
+        const name = partOf(def, h.ref)?.name ?? '';
+        if (!name || h.req !== 'when' || !h.when) return name;
+        return t('bs.editor.sum.when', {
+          name,
+          part: partOf(def, h.when.part)?.name ?? '…',
+          value: whenValueName(def, h.when.part, h.when.value),
+        });
+      })
       .filter(Boolean);
     const first = index === 0;
     const key =
