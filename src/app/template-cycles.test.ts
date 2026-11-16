@@ -187,4 +187,33 @@ describe('a project made from an official template', () => {
     const clear = newItem(ctx, changes, { all: true });
     expect(runToDone(ctx, clear, changes)).toEqual(['Hacerlo', 'Integrar']);
   });
+
+  const CATALOGUE: readonly (readonly [key: string, board: string, walk: readonly string[]])[] = [
+    ['bug-reports', 'Reportes de errores', ['Completar', 'Triar', 'Arreglar', 'Integrar']],
+    ['content', 'Contenido', ['Esquema', 'Redactar', 'Poner en línea']],
+    ['digest', 'Resumen periódico', ['Recoger', 'Elegir', 'Redactar', 'Poner en línea']],
+    ['assets', 'Recursos', ['Especificar', 'Hacer', 'Integrar']],
+    ['research', 'Investigación', ['Investigar', 'Responder']],
+    ['decisions', 'Decisiones', ['Investigar', 'Decidir', 'Registrar']],
+    ['experiments', 'Experimentos', ['Planificar', 'Correr']],
+    ['support', 'Soporte', ['Preparar la respuesta', 'Enviar']],
+    ['visual-iteration', 'Iteración visual', ['Predecir', 'Generar', 'Mirar', 'Integrar']],
+    ['playtest', 'Probar si es divertido', ['Prototipar', 'Jugar']],
+    ['resume', 'Retomar un proyecto', ['Reconstruir', 'Elegir', 'Preparar']],
+    [
+      'bug-handoff',
+      'Fallos para otro dueño',
+      ['Reproducir', 'Triar', 'Pasar al dueño', 'Verificar'],
+    ],
+  ];
+  for (const [key, name, walk] of CATALOGUE) {
+    it(`takes an item of the ${key} template through ${walk.join(', ')} to Hecho`, () => {
+      const ctx = memoryContext();
+      expect(initBoards(ctx, key).map(({ name: made }) => made)).toEqual([name]);
+      const board = boardOf(ctx, name);
+      const item = newItem(ctx, board);
+      expect(runToDone(ctx, item, board)).toEqual(walk);
+      expect(requireItem(ctx.db, item).state).toBe('done');
+    });
+  }
 });

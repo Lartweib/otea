@@ -17,23 +17,27 @@ import {
   TEMPLATES,
   templateView,
 } from './templates.ts';
+import { CATALOGUE_TEMPLATES } from './templates-catalogue.ts';
 
 describe('templates', () => {
   it('lists the templates of the design, in order, the sets last', () => {
     expect(listedTemplates('es').map(({ key, name }) => `${key}:${name}`)).toEqual([
-      'bugs:Arreglar bugs',
-      'assets:Recursos de juego',
-      'blog:Escribir para el blog',
-      'tasks:Tareas simples',
-      'research:Investigar',
-      'triage:Clasificar errores',
-      'review:Revisar por rondas',
+      'bug-reports:Reportes de errores',
+      'content:Contenido',
+      'digest:Resumen periódico',
+      'assets:Recursos',
+      'research:Investigación',
       'decisions:Decisiones',
+      'experiments:Experimentos',
+      'support:Soporte',
+      'visual-iteration:Iteración visual',
+      'playtest:Probar si es divertido',
+      'resume:Retomar un proyecto',
+      'bug-handoff:Fallos para otro dueño',
       'changes:Encargos',
       'repobugs:Errores de trabajo',
       'ideas:De la idea a las tareas',
       'repos:Trabajo en varios repos',
-      'product:Producto',
     ]);
   });
 
@@ -79,6 +83,7 @@ describe('templates', () => {
         const def = instantiate(template, lang, {}, sequenceIds());
         expect(assertIconName(def.icon)).toBe(def.icon);
         expect(problemsOf(def, {}).filter(({ level }) => level === 'error')).toEqual([]);
+        if (CATALOGUE_TEMPLATES.includes(template)) expect(problemsOf(def, {})).toEqual([]);
         for (const ref of usedRefs(def)) expect(partOf(def, ref)?.name).toBeTruthy();
         for (const step of def.steps) {
           for (const text of Object.values(step.instructions)) {

@@ -70,7 +70,7 @@ describe('createBoard', () => {
     expect(record.draft?.definition).toEqual(
       expect.objectContaining({
         name: 'Criaturas del pantano',
-        item: 'Criatura',
+        item: 'Recurso',
         template: 'assets',
       }),
     );

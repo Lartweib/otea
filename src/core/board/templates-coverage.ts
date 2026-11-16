@@ -9,6 +9,7 @@ import { FLOW_SETS } from './templates-flows.ts';
 export const COVERAGE_TEMPLATES: readonly Template[] = [
   {
     key: 'triage',
+    retired: true,
     icon: 'bug',
     name: w('Sort bugs', 'Clasificar errores'),
     description: w(
@@ -162,6 +163,7 @@ export const COVERAGE_TEMPLATES: readonly Template[] = [
   },
   {
     key: 'review',
+    retired: true,
     icon: 'compare',
     name: w('Review by rounds', 'Revisar por rondas'),
     description: w(
@@ -231,82 +233,6 @@ export const COVERAGE_TEMPLATES: readonly Template[] = [
     },
   },
   {
-    key: 'decisions',
-    icon: 'diagram',
-    name: w('Decisions', 'Decisiones'),
-    description: w(
-      'An agent drafts each decision with its options side by side; you choose.',
-      'Un agente redacta cada decisión con sus opciones lado a lado; tú eliges.',
-    ),
-    board: w('Architecture', 'Arquitectura'),
-    item: w('Decision', 'Decisión'),
-    about: w(
-      'Technical decisions of the game. When one replaces another, link them with relates and say there that it replaces it.',
-      'Decisiones técnicas del juego. Si una reemplaza a otra, enlázalas con relates y dilo ahí.',
-    ),
-    idle: EMPTY,
-    parts: [
-      {
-        key: 'context',
-        kind: 'long',
-        name: w('Context', 'Contexto'),
-        hint: w(
-          'what is going on and why a decision is needed',
-          'qué pasa y por qué hay que decidir',
-        ),
-      },
-      {
-        key: 'options',
-        kind: 'long',
-        name: w('Options', 'Opciones'),
-        hint: w('each one with its own ### title', 'cada una con su título ###'),
-        show: 'options',
-      },
-      {
-        key: 'decision',
-        kind: 'long',
-        name: w('Decision', 'Decisión'),
-        hint: w('which one and why', 'cuál y por qué'),
-      },
-      {
-        key: 'consequences',
-        kind: 'long',
-        name: w('Consequences', 'Consecuencias'),
-        hint: w('what changes from now on', 'qué cambia a partir de ahora'),
-      },
-      {
-        key: 'diagram',
-        kind: 'diagram',
-        name: w('Diagram', 'Diagrama'),
-        hint: w('how the parts fit', 'cómo encajan las partes'),
-      },
-    ],
-    form: [['context', true]],
-    steps: [
-      {
-        key: 'draft',
-        name: w('Draft', 'Redactar'),
-        doer: 'any',
-        reviewer: 'you',
-        hand: [
-          ['options', 'always'],
-          ['decision', 'always'],
-          ['consequences', 'always'],
-          ['diagram', 'no'],
-        ],
-        take: w(
-          'Write at least two @{options} before you propose the @{decision}.',
-          'Escribe al menos dos @{options} antes de proponer la @{decision}.',
-        ),
-      },
-    ],
-    anytime: [],
-    samples: {
-      en: ['Save games in the cloud', 'Physics engine for the wolves'],
-      es: ['Guardar partidas en la nube', 'Motor de físicas para los lobos'],
-    },
-  },
-  {
     key: 'blocked-tasks',
     hidden: true,
     icon: 'checklist',
@@ -368,18 +294,5 @@ export const COVERAGE_TEMPLATES: readonly Template[] = [
   },
 ];
 
-// Templates that make several boards at once: the validated flows (templates-flows.ts), then
-// Producto, whose two boards stay apart; a bug holds a task back with a link.
-export const TEMPLATE_SETS: readonly TemplateSet[] = [
-  ...FLOW_SETS,
-  {
-    key: 'product',
-    icon: 'checklist',
-    name: w('Product', 'Producto'),
-    description: w(
-      'Tasks and bugs on two boards: an unfinished bug can hold a task back.',
-      'Tareas y errores en dos tableros: un error sin terminar puede frenar una tarea.',
-    ),
-    boards: ['blocked-tasks', 'triage'],
-  },
-];
+// Templates that make several boards at once: the validated flows (templates-flows.ts).
+export const TEMPLATE_SETS: readonly TemplateSet[] = [...FLOW_SETS];
