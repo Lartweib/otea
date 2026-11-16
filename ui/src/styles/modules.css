@@ -103,9 +103,21 @@
   background: var(--rule);
 }
 
+/* A table wider than the page scrolls in its own box; its words never break mid-word. */
+.md-table {
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
 .md table {
   border-collapse: collapse;
   font-size: 13.5px;
+  overflow-wrap: normal;
+}
+
+.md th {
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 .md th,

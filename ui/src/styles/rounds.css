@@ -400,7 +400,13 @@
   font-weight: 500;
 }
 
-.rd-note q,
+/* the note under the name, Markdown, the whole width */
+.rd-note .rd-said {
+  flex-basis: 100%;
+  color: var(--ink);
+  overflow-wrap: break-word;
+}
+
 .rd-verdict-line q {
   color: var(--ink);
 }

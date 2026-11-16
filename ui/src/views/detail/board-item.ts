@@ -383,10 +383,12 @@ export function stepRounds(
   }
   const closing = history.moves.findLast(({ to, quiet }) => !quiet && isClosed(positionOf(to)));
   const closingFrom = closing ? positionOf(closing.from) : undefined;
+  // A closed item opens on the last step whose rounds said something (the step it closed from first),
+  // never on an empty one: a person who dropped it in their own step left no round to read.
+  const closedOn = closingFrom && !isClosed(closingFrom) ? closingFrom.step : steps.at(-1);
+  const said = (id: string) => roundNotes(def, id, events).some(({ notes }) => notes.length > 0);
   const last = isClosed(position)
-    ? closingFrom && !isClosed(closingFrom)
-      ? closingFrom.step
-      : steps.at(-1)
+    ? ([closedOn, ...[...steps].reverse()].find((id) => id !== undefined && said(id)) ?? closedOn)
     : position.step;
   const outcomeOf = (id: string): StepOutcome | undefined => {
     if (!isClosed(position) && id === position.step) return undefined;

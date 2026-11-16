@@ -9,6 +9,7 @@ import {
 import type { BoardDefinition } from '../../../../src/core/board/model.ts';
 import { evidenceFileUrl } from '../../api.ts';
 import { useApp } from '../../app/context.tsx';
+import { NoteText } from '../../components/NoteText.tsx';
 import { t, tx } from '../../i18n/i18n.ts';
 import { AgentMark, Button, Icon, StepPill } from '../../kit/index.ts';
 import type { Look } from '../../lanes/looks.ts';
@@ -226,7 +227,7 @@ function RoundView({
           {t('phone.r.delivered')}
         </Lab>
         {r.note ? (
-          <p className="p-text">{r.note}</p>
+          <NoteText className="p-text" text={r.note} />
         ) : (
           <p className="p-text none">{t('phone.r.noNote')}</p>
         )}
@@ -264,7 +265,7 @@ function CompareView({ older, newer }: { older: PhoneRound; newer: PhoneRound })
   const changes = compareFiles(older.evidence, newer.evidence);
   const note = (r: PhoneRound) =>
     r.note ? (
-      <p className="p-text">{r.note}</p>
+      <NoteText className="p-text" text={r.note} />
     ) : (
       <p className="p-text none">{t('phone.r.noNote')}</p>
     );

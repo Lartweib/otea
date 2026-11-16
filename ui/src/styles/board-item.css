@@ -215,9 +215,10 @@ button.lk2:hover {
 }
 
 /* the notes of each round */
+/* two rounds side by side only where each gets room enough to read; narrower, one under the other */
 .bi-rounds {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
   gap: 8px;
   margin-bottom: 10px;
 }
@@ -269,13 +270,21 @@ button.lk2:hover {
   white-space: nowrap;
   text-align: right;
 }
-.bi-rounds p {
+.bi-rounds p,
+.bi-rounds .rn {
   grid-column: 1 / -1;
   margin-top: 5px;
   font: 400 14.5px / 1.4 var(--serif);
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
+  min-width: 0;
 }
-.bi-rounds p small {
+/* a round's note is Markdown: its paragraphs and lists keep the card's serif, tighter */
+.bi-rounds .rn .md {
+  gap: 6px;
+  overflow-wrap: break-word;
+}
+.bi-rounds p small,
+.bi-rounds .rn small {
   display: block;
   margin-top: 2px;
   font: 400 11px / 1.3 var(--mono);

@@ -52,6 +52,22 @@ describe('RoundNotes: who did each round', () => {
   });
 });
 
+describe('RoundNotes: what each round said', () => {
+  it('reads a note as Markdown, never as its raw marks', () => {
+    const list = [
+      created,
+      ev('striage', 'sfix', you, '2026-01-02T00:00:00Z'),
+      ev('sfix', 'sfix__review', mender, '2026-01-03T00:00:00Z', {
+        note: 'Hecho:\n\n- **muelle** en `spring.ts`\n- pruebas',
+      }),
+    ];
+    const markup = html('sfix__review', list);
+    expect(markup).toContain('<strong>muelle</strong>');
+    expect(markup).toContain('<code>spring.ts</code>');
+    expect(markup).not.toContain('**muelle**');
+  });
+});
+
 describe('RoundNotes: the item’s whole history, grouped by step', () => {
   it('folds each earlier step into one line with its rounds and outcome; the current one is open', () => {
     setLanguage('es');
@@ -91,6 +107,20 @@ describe('RoundNotes: the item’s whole history, grouped by step', () => {
     ]);
     expect(markup).toContain('<span class="bo">done</span>');
     expect(markup).not.toContain('this round');
+  });
+
+  it('opens, on a closed item, the last step whose rounds said something, not an empty one', () => {
+    // Back in Triar with no word, the person drops it there: Triar's rounds say nothing, Arreglar's do.
+    const dropped = [
+      ...events.slice(0, 5),
+      ev('sfix__review', 'striage', you, '2026-01-06T00:00:00Z'),
+      ev('striage', 'dropped', you, '2026-01-07T00:00:00Z'),
+    ];
+    const steps = stepRounds(errores(), 'dropped', dropped);
+    expect(steps.map(({ step, open }) => `${step}:${open}`)).toEqual([
+      'sfix:true',
+      'striage:false',
+    ]);
   });
 });
 

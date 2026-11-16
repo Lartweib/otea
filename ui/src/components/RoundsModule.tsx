@@ -10,6 +10,7 @@ import type { Evidence, ItemView, LayoutEntry, TypeView } from '../types.ts';
 import { CompareRounds } from './CompareRounds.tsx';
 import { ImageSingle } from './evidence/ImageViews.tsx';
 import { VideoPlayer } from './evidence/VideoViews.tsx';
+import { NoteText } from './NoteText.tsx';
 
 const STEP = 210;
 const AG = 18;
@@ -170,11 +171,15 @@ function Compare({
 
 function Note({ round }: { round: Round }) {
   return (
-    <p className="rd-note">
+    <div className="rd-note">
       <AgentMark name={round.by.name} decorative />
       <span className="rd-who">{round.by.name}</span>
-      {round.note ? <q>{round.note}</q> : <span className="t-cap">{t('rounds.noNote')}</span>}
-    </p>
+      {round.note ? (
+        <NoteText className="rd-said" text={round.note} />
+      ) : (
+        <span className="t-cap">{t('rounds.noNote')}</span>
+      )}
+    </div>
   );
 }
 
