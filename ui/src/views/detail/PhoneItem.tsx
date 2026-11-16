@@ -29,6 +29,7 @@ import type { ItemNote } from './notes.ts';
 import {
   compareFiles,
   fileMarks,
+  notesDock,
   type PhoneRound,
   phoneRounds,
   roundTagWord,
@@ -390,7 +391,7 @@ export function PhoneItem(p: PhoneItemProps) {
   const dock = p.mode === 'moves' && app.session.canWrite;
   const sendback = plan.quiet.find((c) => c.kind === 'sendback' && !c.blocked);
   const primary = plan.primary && !plan.primary.blocked ? plan.primary : null;
-  const leave = app.session.canWrite ? p.notes?.leave : undefined;
+  const leave = notesDock(p.mode, app.session.canWrite) ? p.notes?.leave : undefined;
   const docked = (dock && (primary || sendback)) || !!leave;
   const [asking, setAsking] = useState<Asking | null>(null);
   const [refused, setRefused] = useState('');

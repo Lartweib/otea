@@ -103,7 +103,7 @@ export function IntakeForm({
   );
   const start = type ? startOf(type, values) : undefined;
   const landing = type ? landingOf(type, values) : undefined;
-  const roles = type ? rolesFor(type) : [];
+  const rolesOf = (name: string) => (type ? rolesFor(type, name) : []);
   // On a Studio board that is part of another ("Cada Cambio se divide en Tareas de repo"): the
   // parent is "Parte de", and a split that says always needs one before Crear.
   const app = useApp();
@@ -133,16 +133,18 @@ export function IntakeForm({
       return fresh;
     });
     setError(undefined);
-    const roles = next ? rolesFor(next) : [];
     setFiles((current) =>
-      current.map((draft) =>
-        roles.includes(draft.role) ? draft : { ...draft, role: firstRole(roles) },
-      ),
+      current.map((draft) => {
+        const roles = next ? rolesFor(next, draft.file.name) : [];
+        return roles.includes(draft.role) ? draft : { ...draft, role: firstRole(roles) };
+      }),
     );
   };
 
   const addFiles = (picked: File[]) =>
-    setFiles((current) => withFiles(current, picked, firstRole(roles), draftKey));
+    setFiles((current) =>
+      withFiles(current, picked, (file) => firstRole(rolesOf(file.name)), draftKey),
+    );
   const setRole = (key: string, role: EvidenceRole) =>
     setFiles((current) => current.map((draft) => (draft.key === key ? { ...draft, role } : draft)));
   const removeFile = (key: string) =>
@@ -361,7 +363,7 @@ export function IntakeForm({
         <div data-c="" className="fwrap">
           <IntakeFiles
             drafts={files}
-            roles={roles}
+            roles={rolesOf}
             disabled={posting}
             onAdd={addFiles}
             onRole={setRole}

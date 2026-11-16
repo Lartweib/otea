@@ -44,6 +44,19 @@ describe('intake files', () => {
     expect(rolesFor(typeWith([compare, log]))).toEqual(['single', 'before', 'after']);
   });
 
+  it('offers a file only the roles of the modules that take it', () => {
+    const compare: LayoutEntry = { module: 'images', id: 'pair', variant: 'compare' };
+    const log: LayoutEntry = { module: 'log', id: 'log' };
+    const shots: LayoutEntry = { module: 'images', id: 'shots', variant: 'gallery' };
+
+    // A photo on a board whose only image module compares: a before or an after, never single.
+    expect(rolesFor(typeWith([compare, log]), 'foto.jpg')).toEqual(['before', 'after']);
+    expect(rolesFor(typeWith([compare, log]), 'salida.log')).toEqual(['single']);
+    expect(rolesFor(typeWith([compare, shots]), 'foto.jpg')).toEqual(['single', 'before', 'after']);
+    // Nothing takes it: every role, and the server says why.
+    expect(rolesFor(typeWith([log]), 'foto.jpg')).toEqual(['single']);
+  });
+
   it('adds files up to the limit, each with its own key', () => {
     let next = 0;
     const key = () => `k${++next}`;

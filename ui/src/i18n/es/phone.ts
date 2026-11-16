@@ -24,6 +24,8 @@ export const phone = {
   'phone.capture.photo': 'Añadir foto',
   'phone.capture.photoAgain': 'Hacer otra foto',
   'phone.capture.removePhoto': 'Quitar la foto',
+  'phone.capture.roleOf': '¿La foto es el antes o el después?',
+  'phone.capture.roleWhere': 'La foto va como',
   'phone.capture.tooLarge': 'Pasa de {mb} MB: no se subirá',
   'phone.capture.lands': 'llega a {board} › {step}',
   'phone.capture.save': 'Guardar',

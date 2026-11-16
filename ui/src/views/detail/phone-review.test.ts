@@ -5,6 +5,7 @@ import type { Evidence } from '../../types.ts';
 import {
   compareFiles,
   fileMarks,
+  notesDock,
   phoneRounds,
   roundTagWord,
   splitEvidence,
@@ -115,5 +116,13 @@ describe('the rounds of the step under review, on the phone', () => {
     expect(marks.get(after.id)).toBe('changed');
     expect(marks.get(fresh.id)).toBe('new');
     expect(fileMarks([], [fresh]).size).toBe(0);
+  });
+});
+
+describe('the note dock on the phone', () => {
+  it('gives way to Retomar and Reasignar when the item is stuck', () => {
+    expect(notesDock('stuck', true)).toBe(false);
+    expect(notesDock('moves', true)).toBe(true);
+    expect(notesDock('moves', false)).toBe(false);
   });
 });

@@ -103,3 +103,9 @@ export function fileMarks(
   const was = new Map(older.map((e) => [e.filename, e]));
   return new Map(newer.map((e) => [e.id, changeOf(e, was)]));
 }
+
+// Whether the phone docks "Dejar una nota" at the bottom: while an agent works on it, unless the
+// item is stuck, where Retomar and Reasignar are what you need (a note to a gone agent waits).
+export function notesDock(mode: string, canLeave: boolean): boolean {
+  return canLeave && mode !== 'stuck';
+}

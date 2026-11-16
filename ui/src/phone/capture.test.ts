@@ -9,6 +9,7 @@ import {
   lastBoard,
   noteField,
   openCapture,
+  photoRoles,
   pickBoard,
   rememberBoard,
 } from './capture.ts';
@@ -187,6 +188,26 @@ describe('where it lands and what it sends', () => {
     });
     expect(fields).toEqual({ title: 'Niebla con parallax', description: 'dos capas' });
     expect(files).toEqual([{ file: photo, role: 'single' }]);
+  });
+
+  it('sends a photo as a before or an after where the only image module compares', () => {
+    const compare = type({
+      layout: {
+        ...LAYOUT,
+        evidence: [
+          { module: 'images', id: 'pair', variant: 'compare' },
+          { module: 'log', id: 'log' },
+        ],
+      },
+    });
+    const photo = new File(['x'], 'IMG_2.jpg', { type: 'image/jpeg' });
+    expect(photoRoles(compare, photo.name)).toEqual(['before', 'after']);
+    expect(capturePayload(compare, { title: 'A', note: '', photo }).files).toEqual([
+      { file: photo, role: 'before' },
+    ]);
+    expect(capturePayload(compare, { title: 'A', note: '', photo, role: 'after' }).files).toEqual([
+      { file: photo, role: 'after' },
+    ]);
   });
 
   it('sends no empty note and no files without a photo', () => {
