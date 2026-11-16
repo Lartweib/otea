@@ -29,6 +29,7 @@ import {
 } from '../core/board/engine.ts';
 import { type History, handoffNotes, historyOf, roundAfter } from '../core/board/history.ts';
 import { requiredParent } from '../core/board/joins.ts';
+import { type Merged, mergedFrom } from '../core/board/merged.ts';
 import {
   type BoardDefinition,
   DONE,
@@ -339,7 +340,30 @@ export type BoardBlock = {
   // While an agent's step is being done: the agent at work on it and when it last gave a sign of
   // life (any call, a heartbeat included), so the page can warn that a note may go unread.
   worker?: Worker;
+  // Once closed: the agent that did its last step's work and who approved it, as the moves say.
+  closedBy?: ClosedBy;
+  // Once Done: that its branch was merged (otea merged), with the PR and commit when given.
+  merged?: Merged;
 };
+
+export type ClosedBy = { doer?: string; reviewer?: Actor };
+
+// Who did a closed item's work and who approved it: the last agent that handed the item off out of
+// a step's doing, and the last one that moved it out of a review (or, for a step nobody reviews
+// that the person closed, the person).
+function closedByOf(events: readonly EventRecord[]): ClosedBy {
+  const out: ClosedBy = {};
+  for (const event of events) {
+    if (event.type !== 'transitioned') continue;
+    const from = positionOf(String(event.data.from));
+    if (isClosed(from)) continue;
+    if (from.phase === 'doing' && event.actor.kind === 'agent') out.doer = event.actor.name;
+    if (from.phase === 'review') out.reviewer = event.actor;
+  }
+  const last = events.findLast(({ type }) => type === 'transitioned');
+  if (!out.reviewer && last?.actor.kind === 'human') out.reviewer = last.actor;
+  return out;
+}
 
 export type Worker = { name: string; lastSeen: string | null; holds: boolean };
 
@@ -375,6 +399,8 @@ export function boardBlockOf(ctx: Context, item: ItemRecord): BoardBlock | undef
   const gate = (action: 'push' | 'merge') => gateAt(board.def, on.position, action);
   const request = draftRequestOf(ctx, item.id);
   const worker = workerOf(ctx, item, board.def);
+  const events = selectEvents(ctx.db, item.id);
+  const merged = mergedFrom(events);
   return {
     parts: on.links.parts,
     partsBoard: partsBoardOf(ctx, board)?.def.name ?? null,
@@ -393,6 +419,8 @@ export function boardBlockOf(ctx: Context, item: ItemRecord): BoardBlock | undef
     ...(on.questions.length === 0 ? {} : { questions: on.questions }),
     ...(on.asking === undefined ? {} : { asking: on.asking }),
     ...(worker === undefined ? {} : { worker }),
+    ...(isClosed(on.position) ? { closedBy: closedByOf(events) } : {}),
+    ...(merged === undefined ? {} : { merged }),
   };
 }
 
@@ -465,6 +493,7 @@ function textFor(
   const board = liveBoardOf(ctx, item.collection);
   const child = board ? partsBoardOf(ctx, board) : undefined;
   const planned = isClosed(on.position) ? undefined : plannedBy(ctx, item);
+  const merged = isClosed(on.position) ? mergedFrom(selectEvents(ctx.db, item.id)) : undefined;
   const stepName = isClosed(on.position) ? undefined : stepById(def, on.position.step)?.name;
   const handed = on.notes.findLast(({ step, round }) => step === stepName && round === on.round);
   return nextText(def, {
@@ -485,6 +514,7 @@ function textFor(
     ...(left === undefined ? {} : { leftFor: left }),
     ...(planned === undefined ? {} : { plannedBy: planned }),
     ...(handed === undefined ? {} : { handed: { note: handed.note, by: handed.by } }),
+    ...(merged === undefined ? {} : { merged }),
     ...(on.roundNotes.length === 0 ? {} : { notes: on.roundNotes }),
     ...(on.roundQuestions.length === 0 ? {} : { questions: on.roundQuestions }),
   });
