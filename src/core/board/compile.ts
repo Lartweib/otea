@@ -59,6 +59,11 @@ const EVIDENCE_MODULE: Readonly<Partial<Record<EvidenceKind, string>>> = {
   file: 'files',
 };
 
+// An audio part is a voice note: it takes audio only, while a file part takes any file.
+const ACCEPTS: Readonly<Partial<Record<EvidenceKind, string[]>>> = {
+  audio: ['audio'],
+};
+
 const VARIANT: Readonly<Record<string, string>> = {
   gallery: 'gallery',
   one: 'single',
@@ -133,11 +138,13 @@ function entryOf(part: Part): LayoutEntry | undefined {
   const module = EVIDENCE_MODULE[part.kind];
   if (!module) return undefined;
   const variant = part.show ? VARIANT[part.show] : undefined;
+  const accepts = ACCEPTS[part.kind];
   return {
     module: module as LayoutEntry['module'],
     id: part.id,
     ...(variant ? { variant } : {}),
     label: part.name,
+    ...(accepts ? { accepts: [...accepts] } : {}),
   };
 }
 
