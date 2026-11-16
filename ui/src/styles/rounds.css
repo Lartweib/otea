@@ -59,12 +59,37 @@
   scrollbar-width: thin;
 }
 
+/* The column's width, never under three quarters of the drawing's own size (labels stay readable);
+   wider, the stage scrolls sideways. */
 .dg {
   display: block;
-  max-width: 100%;
+  width: max(min(100%, calc(var(--dg-w) * 1px)), calc(var(--dg-w) * 0.75px));
+  max-width: none;
   height: auto;
   margin: 0 auto;
   overflow: visible;
+}
+
+.dg[data-zoom] {
+  max-width: none;
+}
+
+/* Enlarged, the diagram takes the screen's width (pops.css places it on the dialogs' line). */
+.dialog.dg-dialog {
+  --dlg-w: 1400px;
+}
+
+.dg-stage-big {
+  max-height: calc(100dvh - var(--dlg-top) - var(--dlg-foot) - 92px);
+  overflow: auto;
+  touch-action: pan-x pan-y;
+}
+
+.dg-level {
+  display: inline-grid;
+  place-items: center;
+  min-width: 52px;
+  cursor: default;
 }
 
 .dg-node rect,

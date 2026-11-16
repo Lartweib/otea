@@ -96,22 +96,91 @@ const RANK_GAP = 88;
 const NODE_GAP = 30;
 const MARGIN = 16;
 
-// Each node's rank: the longest path to it from a node nothing points at; edges back up a cycle
-// are left out of the count.
-function ranksOf({ nodes, edges }: Diagram): Map<string, number> {
-  const rank = new Map(nodes.map(({ id }) => [id, 0]));
-  for (let pass = 0; pass < nodes.length; pass += 1) {
+// The edges that close a cycle: a walk from the nodes nothing points at (then from the rest, in the
+// order the file names them) meets them going back to a node still on its path.
+function backEdges({ nodes, edges }: Diagram): Set<DiagramEdge> {
+  const out = new Map<string, DiagramEdge[]>(nodes.map(({ id }) => [id, []]));
+  for (const edge of edges) out.get(edge.from)?.push(edge);
+  const pointed = new Set(edges.filter(({ from, to }) => from !== to).map(({ to }) => to));
+  const starts = [
+    ...nodes.filter(({ id }) => !pointed.has(id)),
+    ...nodes.filter(({ id }) => pointed.has(id)),
+  ];
+  const state = new Map<string, 'open' | 'done'>();
+  const back = new Set<DiagramEdge>();
+  const walk = (id: string) => {
+    state.set(id, 'open');
+    for (const edge of out.get(id) ?? []) {
+      const seen = state.get(edge.to);
+      if (seen === 'open') back.add(edge);
+      else if (seen === undefined) walk(edge.to);
+    }
+    state.set(id, 'done');
+  };
+  for (const { id } of starts) if (!state.has(id)) walk(id);
+  return back;
+}
+
+// Each node's rank: the longest path to it from a node nothing points at, with the edges that close
+// a cycle left out, so every rank from 0 to the last holds a node.
+function ranksOf(diagram: Diagram): Map<string, number> {
+  const back = backEdges(diagram);
+  const forward = diagram.edges.filter((edge) => edge.from !== edge.to && !back.has(edge));
+  const rank = new Map(diagram.nodes.map(({ id }) => [id, 0]));
+  for (let pass = 0; pass < diagram.nodes.length; pass += 1) {
     let moved = false;
-    for (const { from, to } of edges) {
+    for (const { from, to } of forward) {
       const next = (rank.get(from) ?? 0) + 1;
-      if (from !== to && next > (rank.get(to) ?? 0) && next < nodes.length) {
+      if (next > (rank.get(to) ?? 0)) {
         rank.set(to, next);
         moved = true;
       }
     }
     if (!moved) break;
   }
-  return rank;
+  const used = [...new Set(rank.values())].sort((a, b) => a - b);
+  return new Map([...rank].map(([id, at]) => [id, used.indexOf(at)]));
+}
+
+// Within each rank, nodes sit near the middle of what links them to the rank before (then the rank
+// after), which keeps edges from crossing where the file's order alone would cross them.
+function orderColumns(columns: DiagramNode[][], edges: DiagramEdge[]): DiagramNode[][] {
+  const position = new Map<string, number>();
+  const note = () =>
+    columns.forEach((column) => {
+      column.forEach(({ id }, index) => {
+        position.set(id, index);
+      });
+    });
+  note();
+  const sweep = (index: number, neighbours: (id: string) => string[]) => {
+    const column = columns[index] ?? [];
+    const keyed = column.map((node, at) => {
+      const near = neighbours(node.id)
+        .map((id) => position.get(id))
+        .filter((value): value is number => value !== undefined);
+      const key = near.length ? near.reduce((sum, value) => sum + value, 0) / near.length : at;
+      return { node, key, at };
+    });
+    keyed.sort((a, b) => a.key - b.key || a.at - b.at);
+    columns[index] = keyed.map(({ node }) => node);
+    note();
+  };
+  const into = (id: string) => edges.filter(({ to }) => to === id).map(({ from }) => from);
+  const outOf = (id: string) => edges.filter(({ from }) => from === id).map(({ to }) => to);
+  for (let round = 0; round < 2; round += 1) {
+    for (let index = 1; index < columns.length; index += 1) sweep(index, into);
+    for (let index = columns.length - 2; index >= 0; index -= 1) sweep(index, outOf);
+  }
+  // A node nothing links stands first in its rank, clear of the loops that run round the far side.
+  const linked = new Set(edges.flatMap(({ from, to }) => [from, to]));
+  columns.forEach((column, index) => {
+    columns[index] = [
+      ...column.filter(({ id }) => !linked.has(id)),
+      ...column.filter(({ id }) => linked.has(id)),
+    ];
+  });
+  return columns;
 }
 
 const sizeOf = (node: DiagramNode) => ({
@@ -125,11 +194,10 @@ const sizeOf = (node: DiagramNode) => ({
 export function layoutDiagram(diagram: Diagram): Drawing {
   const across = diagram.direction === 'LR' || diagram.direction === 'RL';
   const ranks = ranksOf(diagram);
-  const columns: DiagramNode[][] = [];
-  for (const node of diagram.nodes) {
-    const at = ranks.get(node.id) ?? 0;
-    columns[at] = [...(columns[at] ?? []), node];
-  }
+  const count = Math.max(0, ...ranks.values()) + 1;
+  const columns: DiagramNode[][] = Array.from({ length: count }, () => []);
+  for (const node of diagram.nodes) columns[ranks.get(node.id) ?? 0]?.push(node);
+  orderColumns(columns, diagram.edges);
   const sized = new Map(diagram.nodes.map((node) => [node.id, sizeOf(node)]));
   // Along the flow, each rank is as deep as its deepest node; across it, the ranks are centred.
   const depth = columns.map((column) =>
@@ -169,12 +237,35 @@ export function layoutDiagram(diagram: Diagram): Drawing {
   }
   width = Math.max(width, 120);
   height = Math.max(height, 60);
+  // An edge that runs back against the flow (a cycle) loops round the outside, past every node, so
+  // it never cuts through the ones between its ends.
+  const LOOP = 36;
+  const outer = across ? height - MARGIN : width - MARGIN;
+  let looped = 0;
   const edges = diagram.edges.flatMap((edge): Route[] => {
     const a = placed.get(edge.from);
     const b = placed.get(edge.to);
     if (!a || !b) return [];
     const forward = across ? b.x >= a.x + a.w : b.y >= a.y + a.h;
     const backward = across ? b.x + b.w <= a.x : b.y + b.h <= a.y;
+    if ((ranks.get(edge.to) ?? 0) < (ranks.get(edge.from) ?? 0)) {
+      looped += 1;
+      const reach = outer + LOOP * looped;
+      if (across) {
+        const x1 = a.x + a.w / 2;
+        const x2 = b.x + b.w / 2;
+        const y1 = a.y + a.h;
+        const y2 = b.y + b.h;
+        const d = `M${x1} ${y1} C${x1} ${reach} ${x2} ${reach} ${x2} ${y2}`;
+        return [{ ...edge, d, lx: (x1 + x2) / 2, ly: (y1 + y2) / 8 + (reach * 3) / 4 }];
+      }
+      const y1 = a.y + a.h / 2;
+      const y2 = b.y + b.h / 2;
+      const x1 = a.x + a.w;
+      const x2 = b.x + b.w;
+      const d = `M${x1} ${y1} C${reach} ${y1} ${reach} ${y2} ${x2} ${y2}`;
+      return [{ ...edge, d, lx: (x1 + x2) / 8 + (reach * 3) / 4, ly: (y1 + y2) / 2 }];
+    }
     let x1: number;
     let y1: number;
     let x2: number;
@@ -213,6 +304,13 @@ export function layoutDiagram(diagram: Diagram): Drawing {
         : `M${x1} ${y1} C${x1} ${my} ${x2} ${my} ${x2} ${y2}`;
     return [{ ...edge, d, lx: mx, ly: my }];
   });
+  // The loops bulge three quarters of the way to their reach; the drawing grows to hold them and
+  // their labels.
+  if (looped > 0) {
+    const room = outer + ((LOOP * looped * 3) / 4 + (across ? 14 : 48)) + MARGIN;
+    if (across) height = Math.max(height, room);
+    else width = Math.max(width, room);
+  }
   return { width, height, nodes: [...placed.values()], edges };
 }
 
