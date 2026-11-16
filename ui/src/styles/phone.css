@@ -1566,3 +1566,15 @@
 .p-read .ev-reader-decide .btn {
   min-height: 44px;
 }
+/* A note on a line, on the phone: the box stays at the sheet's foot while you scroll to the line. */
+.p-read .ev-reader-note {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  padding-block: 8px 6px;
+  background: var(--sheet);
+  box-shadow: 0 24px 0 var(--sheet);
+}
+.p-read .ev-reader-note .btn {
+  min-height: 44px;
+}
