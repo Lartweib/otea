@@ -558,6 +558,8 @@ export const detail = {
   'notes.anyAgent': 'the agent',
   'notes.title': 'Notes',
   'notes.leave': 'Leave a note',
+  'notes.leaveSaysAny':
+    'reaches the agent on its next heartbeat · step, round and lease stay as they are',
   'notes.leaveSays':
     'reaches {agent} on its next heartbeat · step, round and lease stay as they are',
   'notes.quiet': '{agent} has given no sign of life for {minutes} min; it may not read it',

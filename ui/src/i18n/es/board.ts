@@ -139,6 +139,10 @@ export const board = {
   'boardView.missing.title': 'Tablero no encontrado',
   'boardView.missing.text': 'No hay ningún tablero llamado «{board}» en este proyecto.',
   'boardView.missing.home': 'Ir a Te toca',
+  'boardView.archived.title': 'Tablero archivado',
+  'boardView.archived.text':
+    '«{board}» está archivado. Sus ítems se pueden leer y buscar en Archivados, en Studio.',
+  'boardView.archived.open': 'Ver en Archivados',
   'boardView.doneCol': 'Hecho',
   'boardView.dek.bug-triage': 'Los errores, del primer aviso al arreglo.',
   'boardView.dek.tasks': 'El trabajo por hacer, del plan a hecho.',

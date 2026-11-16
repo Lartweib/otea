@@ -109,7 +109,7 @@ describe('Te toca', () => {
     expect(out).toContain('<span class="tt" data-s="A:t">El puente</span>');
     expect(out).toContain('data-title=""');
     expect(out).toContain(
-      '<span class="id" data-s="A:id">A</span><span class="bd">Errores › A verificar</span>',
+      '<span class="id" data-s="A:id">A</span><span class="bd"><span class="bdc">Errores</span><span class="bds">› A verificar</span></span>',
     );
     expect(out).toContain(
       '<div class="a" data-leaf="">Revisar<small>entrega <b>Mender</b></small></div>',

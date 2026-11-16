@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ArchivedBoard } from '../api.ts';
-import { archivedMatches, nameTyped } from './archive.ts';
+import { archivedMatches, archivedNamed, nameTyped } from './archive.ts';
 
 const board = (name: string, entries: [string, string][], parent: string | null = null) =>
   ({
@@ -63,5 +63,16 @@ describe('nameTyped', () => {
     expect(nameTyped('Criaturas', ' criaturas ')).toBe(true);
     expect(nameTyped('Criaturas', 'Criatura')).toBe(false);
     expect(nameTyped('Criaturas', '')).toBe(false);
+  });
+});
+
+describe('a link to an archived board', () => {
+  it('finds the archived board it names, as its collection or its name', () => {
+    expect(archivedNamed([criaturas, plantas], 'Plantas')?.id).toBe('b-Plantas');
+    expect(archivedNamed([criaturas, plantas], 'criaturas')?.id).toBe('b-Criaturas');
+  });
+
+  it('finds none for a board that was never archived', () => {
+    expect(archivedNamed([criaturas], 'Hongos')).toBeUndefined();
   });
 });

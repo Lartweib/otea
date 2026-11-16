@@ -18,8 +18,9 @@ import { relationSentence } from '../format.ts';
 import { t, tx } from '../i18n/i18n.ts';
 import { useEscape } from '../kit/escape.ts';
 import { AgentMark, Icon, IconButton, Swap } from '../kit/index.ts';
+import { returnFocus } from '../kit/pop/focus.ts';
 import { Choreo, part } from '../motion/choreo.ts';
-import { stateWord } from '../preset-words.ts';
+import { stateWord, stateWordIn } from '../preset-words.ts';
 
 // Actividad (SPEC §10.4, mock:804-827, 3538-3579): a 500 px drawer from the right of .main. It
 // slides in (translateX 100% → 0, 600 settle) while its parts resolve at 120 + 34·min(i, 5); the
@@ -78,6 +79,13 @@ function Lease({ row, now, onOpen }: { row: LeaseRow; now: number; onOpen: () =>
   );
 }
 
+// A step by the board's own words in the language on screen; the name its event kept only when the
+// board no longer has it (that name is the compiled one, in the board's first language).
+function named(phrase: { state: string; name?: string }, state: (s: string) => string): string {
+  const word = state(phrase.state);
+  return word !== phrase.state ? word : (phrase.name ?? word);
+}
+
 // The sentence of a feed line, the item's id as a button that opens it.
 function sentence(line: FeedLine, id: ReactNode, state: (s: string) => string): ReactNode {
   const { phrase } = line;
@@ -94,10 +102,18 @@ function sentence(line: FeedLine, id: ReactNode, state: (s: string) => string): 
     case 'activity.reassigned':
       return tx('activity.reassignedYou', { id, agent: phrase.agent });
     case 'activity.handed':
-      return tx(phrase.key, { id, state: state(phrase.state) });
+      return tx(phrase.key, { id, state: named(phrase, state) });
+    case 'activity.sentBack':
+      return tx(you ? 'activity.sentBackYou' : phrase.key, {
+        id,
+        state: named(phrase, state),
+      });
     case 'activity.moved':
     case 'activity.created':
-      return tx(you ? `${phrase.key}You` : phrase.key, { id, state: state(phrase.state) });
+      return tx(you ? `${phrase.key}You` : phrase.key, {
+        id,
+        state: named(phrase, state),
+      });
     case 'activity.attached':
       return tx(you ? 'activity.attachedYou' : phrase.key, { id, file: phrase.file });
     case 'activity.edited':
@@ -107,8 +123,13 @@ function sentence(line: FeedLine, id: ReactNode, state: (s: string) => string): 
       return tx(you ? `${phrase.key}You` : phrase.key, {
         relation: relationSentence(phrase.kind, phrase.from, phrase.to),
       });
-    case 'activity.other':
-      return tx(phrase.key, { id, type: phrase.type });
+    case 'activity.asked':
+    case 'activity.answered':
+    case 'activity.noteLeft':
+    case 'activity.noteAnswered':
+    case 'activity.merged':
+    case 'activity.touched':
+      return tx(you ? `${phrase.key}You` : phrase.key, { id });
   }
 }
 
@@ -120,6 +141,7 @@ export function ActivityDrawer({ open, onClose }: ActivityDrawerProps) {
   if (open && !mounted) setMounted(true);
   const el = useRef<HTMLElement>(null);
   const ch = useRef<Choreo | null>(null);
+  const focusBack = useRef<HTMLElement | null>(null);
   const now = useClock(open);
   const [kind, setKind] = useState<ActivityKind>('all');
   const [agent, setAgent] = useState<string | null>(null);
@@ -130,6 +152,7 @@ export function ActivityDrawer({ open, onClose }: ActivityDrawerProps) {
     if (!node) return;
     if (open) {
       if (!ch.current) {
+        focusBack.current = document.activeElement as HTMLElement | null;
         const items = [...node.querySelectorAll('[data-i]')].slice(0, 10);
         ch.current = new Choreo([
           part(
@@ -164,6 +187,7 @@ export function ActivityDrawer({ open, onClose }: ActivityDrawerProps) {
         if (latest && c.dir === 0) {
           ch.current = null;
           setMounted(false);
+          returnFocus(focusBack.current);
         }
       });
     }
@@ -179,9 +203,13 @@ export function ActivityDrawer({ open, onClose }: ActivityDrawerProps) {
   );
   const shown = shownLines(lines, kind, agent);
   const byId = new Map(app.all.map((it) => [it.id, it]));
+  // An item no longer listed (on an archived board, say) still names its step: by the label any
+  // board gives it, never by its bare key.
+  const allTypes = app.collections.flatMap((c) => c.types);
   const stateOf = (itemId: string) => (s: string) => {
     const it = byId.get(itemId);
-    return it ? stateWord(typeOfItem(it, app.collectionOf), s) : s;
+    const word = it ? stateWord(typeOfItem(it, app.collectionOf), s) : s;
+    return word !== s ? word : stateWordIn(allTypes, s);
   };
   const openItem = (id: string) => {
     app.openItem(id);

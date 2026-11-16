@@ -556,6 +556,8 @@ export const detail = {
   'notes.anyAgent': 'el agente',
   'notes.title': 'Notas',
   'notes.leave': 'Dejar una nota',
+  'notes.leaveSaysAny':
+    'le llega al agente en su próximo latido · no cambia paso, ronda ni reserva',
   'notes.leaveSays': 'le llega a {agent} en su próximo latido · no cambia paso, ronda ni reserva',
   'notes.quiet': '{agent} no da señales desde hace {minutes} min; puede que no la lea',
   'notes.form.title': 'Tu nota',

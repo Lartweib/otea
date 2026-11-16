@@ -484,8 +484,7 @@
   font-variant-numeric: tabular-nums;
   padding: 0 6px 0 10px;
   text-align: right;
-  color: var(--ink-2);
-  opacity: 0.75;
+  color: var(--ink-3);
 }
 
 .ev-text {

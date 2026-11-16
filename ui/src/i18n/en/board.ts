@@ -133,6 +133,10 @@ export const board = {
   'boardView.missing.title': 'Board not found',
   'boardView.missing.text': 'There is no board called “{board}” in this project.',
   'boardView.missing.home': 'Go to Your turn',
+  'boardView.archived.title': 'Board archived',
+  'boardView.archived.text':
+    '“{board}” is archived. Its items can be read and searched in Archived, in Studio.',
+  'boardView.archived.open': 'See it in Archived',
   'boardView.doneCol': 'Done',
   'boardView.dek.bug-triage': 'Bugs, from the first report to the fix.',
   'boardView.dek.tasks': 'The work to do, from the plan to done.',

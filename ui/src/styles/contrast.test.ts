@@ -168,3 +168,20 @@ describe('a disabled primary button', () => {
     expect(kit).not.toMatch(/\n\.btn\.primary:hover \{/);
   });
 });
+
+// A diff's added and removed lines: their words on their own tint, laid on a well or the sheet.
+describe.each([
+  ['light', light],
+  ['dark', dark],
+])('a diff line in %s', (_theme, t) => {
+  it.each([
+    ['--plus', 0.14],
+    ['--minus', 0.12],
+  ])('reads %s at 4.5:1 or more on its tint', (ink, share) => {
+    const fg = parse(t[ink] as string);
+    for (const name of ['well', 'sheet', 'ground']) {
+      const bg = over(fade(fg, share), parse(t[`--${name}`] as string));
+      expect(ratio(fg, bg), `${ink} on ${name}`).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+});

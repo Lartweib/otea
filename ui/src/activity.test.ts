@@ -239,3 +239,72 @@ describe('mergeFeed', () => {
     expect(mergeFeed([a], [a, b]).map(({ id }) => id)).toEqual([a.id, b.id]);
   });
 });
+
+describe('feedLines in words', () => {
+  it('says questions, notes and a merge in words, never by their event type', () => {
+    const lines = feedLines(
+      [
+        ev('T-1', 'question_asked', agent('ca'), 1, { question: 1, text: '¿Cuál?' }),
+        ev('T-1', 'question_answered', you, 2, { question: 1, text: 'Esa' }),
+        ev('T-1', 'note_left', you, 3, { note: 1, text: 'Mira esto' }),
+        ev('T-1', 'note_answered', agent('ca'), 4, { note: 1, text: 'Hecho' }),
+        ev('T-1', 'merged', agent('ca'), 5, { commit: 'abc1234' }),
+        ev('T-1', 'something_new', agent('ca'), 6),
+      ],
+      turnOf,
+    );
+    expect(lines.map((l) => l.phrase.key)).toEqual([
+      'activity.touched',
+      'activity.merged',
+      'activity.noteAnswered',
+      'activity.noteLeft',
+      'activity.answered',
+      'activity.asked',
+    ]);
+    for (const l of lines)
+      expect(JSON.stringify(l.phrase)).not.toMatch(/question_|note_|something_new/);
+  });
+
+  it('keeps the name a move wrote for its step', () => {
+    const [line] = feedLines(
+      [
+        ev('T-1', 'transitioned', agent('ca'), 1, {
+          from: 'sa',
+          to: 'sx8oakta',
+          toName: 'Arreglar',
+        }),
+      ],
+      turnOf,
+    );
+    expect(line?.phrase).toMatchObject({
+      key: 'activity.moved',
+      state: 'sx8oakta',
+      name: 'Arreglar',
+    });
+  });
+});
+
+describe('a send-back in the feed', () => {
+  it('says you sent it back, not that you moved it', () => {
+    const [line] = feedLines(
+      [
+        ev('T-8', 'transitioned', you, 1, {
+          from: 'todo__review',
+          to: 'todo',
+          toName: 'Hacerlo',
+          reason: 'Otra vez',
+        }),
+      ],
+      turnOf,
+    );
+    expect(line?.phrase).toMatchObject({ key: 'activity.sentBack', name: 'Hacerlo' });
+  });
+
+  it('keeps an approval as a move', () => {
+    const [line] = feedLines(
+      [ev('T-8', 'transitioned', you, 1, { from: 'todo__review', to: 'done' })],
+      turnOf,
+    );
+    expect(line?.phrase.key).toBe('activity.moved');
+  });
+});

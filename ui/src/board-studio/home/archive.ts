@@ -62,3 +62,13 @@ export function useArchiveDialog(): ArchiveDialog {
     () => open,
   );
 }
+
+// The archived board a board link names (by its collection or its name), for a link that outlived
+// it: the page says where it went instead of that it never was.
+export function archivedNamed(
+  boards: readonly ArchivedBoard[],
+  name: string,
+): ArchivedBoard | undefined {
+  const wanted = fold(name);
+  return boards.find((b) => fold(b.collection) === wanted || fold(b.name) === wanted);
+}

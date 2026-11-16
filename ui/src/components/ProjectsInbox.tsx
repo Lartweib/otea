@@ -10,6 +10,7 @@ import { lookOf } from '../lanes/looks.ts';
 import { stateWord } from '../preset-words.ts';
 import { inboxOf, itemHref, whereOf } from '../projects.ts';
 import type { Item, ProjectOverview } from '../types.ts';
+import { rowCall } from '../views/toca/blocks.tsx';
 import { dayLine } from '../views/toca/TocaView.tsx';
 
 // Te espera (#/projects, SPEC §10.4, mock:1494-1502, 1776-1784): what waits for you in every
@@ -18,16 +19,29 @@ import { dayLine } from '../views/toca/TocaView.tsx';
 
 const WAITS: readonly TocaSection[] = ['atasco', 'preguntas', 'revisiones', 'propios'];
 
-function action(sec: TocaSection, agent: string | null): { a: string; sub: ReactNode } {
+function action(
+  sec: Exclude<TocaSection, 'propios'>,
+  agent: string | null,
+): { a: string; sub: ReactNode } {
   const who = agent ? <b>{agent}</b> : '—';
   if (sec === 'atasco')
     return { a: t('projects.act.atasco'), sub: tx('projects.sub.holds', { agent: who }) };
   if (sec === 'preguntas')
     return { a: t('projects.act.preguntas'), sub: tx('projects.sub.asks', { agent: who }) };
-  if (sec === 'propios') return { a: t('projects.act.propios'), sub: t('projects.sub.yours') };
   return {
     a: t('projects.act.revisiones'),
     sub: agent ? tx('projects.sub.hands', { agent: who }) : '',
+  };
+}
+
+// Your own step says who takes it after you, as Te toca does: never who opened it.
+function ownStep(it: Item, ctx: Parameters<typeof rowCall>[2]): { a: string; sub: ReactNode } {
+  const call = rowCall(it, 'propios', ctx);
+  return {
+    a: call.act,
+    sub: call.sub.agent
+      ? tx(call.sub.key as 'toca.sub.then', { agent: <b>{call.sub.agent}</b> })
+      : t(call.sub.key as 'toca.sub.thenAgent'),
   };
 }
 
@@ -60,7 +74,8 @@ export function hereBlocks(
   for (const { it, sec } of rows) {
     const when = whenText(it, app.now);
     const asker = sec === 'preguntas' ? askingAgent(it, app.feed) : null;
-    const { a, sub } = action(sec, asker ?? agentOf(it, app.feed));
+    const { a, sub } =
+      sec === 'propios' ? ownStep(it, ctx) : action(sec, asker ?? agentOf(it, app.feed));
     const state = stateWord(typeOfItem(it, app.collectionOf), it.state);
     blocks.push({
       kind: 'row',
@@ -82,7 +97,8 @@ export function hereBlocks(
                 {it.id}
               </span>
               <span className="bd">
-                {it.collection} › {state}
+                <span className="bdc">{it.collection}</span>
+                <span className="bds">› {state}</span>
               </span>
             </div>
           </div>

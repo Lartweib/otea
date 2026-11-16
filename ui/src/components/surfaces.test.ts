@@ -152,6 +152,24 @@ describe('Actividad', () => {
     }
   });
 
+  it('says a question in words, never by its event type', () => {
+    setLanguage('es');
+    const asked: FeedEvent = {
+      id: 901,
+      itemId: 'ERR-3',
+      type: 'question_asked',
+      actor: agent('mender'),
+      at: ago(5),
+      data: { question: 1, text: '¿Cuál?' },
+    };
+    const html = render(
+      createElement(ActivityDrawer, { open: true, onClose: () => undefined }),
+      fakeApp({ feed: [...feed, asked] }),
+    );
+    expect(html).not.toContain('question_asked');
+    expect(html.replace(/<!-- -->/g, '')).toMatch(/te preguntó en <button[^>]*>ERR-3<\/button>/);
+  });
+
   it('renders nothing while closed', () => {
     expect(render(createElement(ActivityDrawer, { open: false, onClose: () => undefined }))).toBe(
       '',
@@ -222,6 +240,26 @@ describe('Te espera', () => {
       gloss: 'abierto ahora',
     });
     expect(blocks.filter((b) => b.kind === 'row').map((b) => b.key)).toEqual(['ERR-1', 'ERR-2']);
+  });
+
+  it('says who takes your own step next, never that you opened it', () => {
+    setLanguage('es');
+    const own = item({
+      id: 'ERR-4',
+      title: 'Una idea mía',
+      state: bug.initial,
+      turn: 'human',
+      createdBy: { kind: 'human', name: 'me' },
+    });
+    const blocks = hereBlocks(fakeApp({ all: [own] }), 'Hollowmere');
+    const row = blocks.find((b) => b.kind === 'row' && b.key === 'ERR-4');
+    expect(row).toBeDefined();
+    const html = renderToStaticMarkup(
+      createElement('div', null, (row as { content: ReactNode }).content),
+    );
+    expect(html).toContain('Tu paso');
+    expect(html).not.toContain('lo abriste');
+    expect(html).toMatch(/después (lo toma un agente|lo hace|se cierra)/);
   });
 
   it('lists another project by its path, its rows saying where they open', () => {
