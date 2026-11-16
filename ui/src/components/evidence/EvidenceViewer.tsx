@@ -142,6 +142,8 @@ export function EvidenceViewer({
 // opened, and the moves themselves. Approve never waits for the files left unopened.
 export type ReaderDecide = {
   seen: number;
+  // A line that never holds the moves: review comments that go with a send-back.
+  notice?: string | undefined;
   back?: { label: string; onClick: () => void } | undefined;
   approve?: { label: string; onClick: () => void } | undefined;
 };
@@ -367,6 +369,7 @@ export function EvidenceReader({
         <div className="ev-reader-decide">
           <span className="ev-reader-seen">
             {t('evidence.seenOf', { n: decide.seen, total: evidence.length })}
+            {decide.notice ? <small className="ev-reader-notice">{decide.notice}</small> : null}
           </span>
           {decide.back ? (
             <button type="button" className="btn quiet" onClick={decide.back.onClick}>

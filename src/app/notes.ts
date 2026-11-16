@@ -1,6 +1,6 @@
 import type { Channel } from '../core/authority.ts';
 import { deliverables, isClosed, positionOf } from '../core/board/engine.ts';
-import { stepById } from '../core/board/model.ts';
+import { SAME, stepById } from '../core/board/model.ts';
 import {
   type ItemNote,
   NOTE_ANSWERED,
@@ -63,22 +63,34 @@ export type LeaveNoteInput = {
   channel: Channel;
 };
 
-// The board and the step an agent is doing on the item, or the refusal of a note on it.
-function workedOn(ctx: Context, item: ItemRecord): { board: LiveBoard; step: string } {
+// The board and the step a note goes to, or the refusal of a note on the item: the step an agent
+// is doing; or the step the person reviews, where the note is a review comment for the round a
+// send-back would start (`review`).
+function workedOn(
+  ctx: Context,
+  item: ItemRecord,
+): { board: LiveBoard; step: string; review?: { for: { step: string; round: number } } } {
   const board = liveBoardOf(ctx, item.collection);
-  const position = positionOf(item.state);
-  const step =
-    board && !isClosed(position) && position.phase === 'doing'
-      ? stepById(board.def, position.step)
-      : undefined;
-  if (!board || !step || step.doer === 'you')
-    refuse(
-      'invalid_transition',
-      item.id,
-      'not_working',
-      `No note left on ${item.id}: notes go to an agent while it does a step, and no agent is doing one on it`,
-    );
-  return { board, step: step.id };
+  const at = positionOf(item.state);
+  const position = isClosed(at) ? undefined : at;
+  const step = board && position ? stepById(board.def, position.step) : undefined;
+  if (board && step && position?.phase === 'doing' && step.doer !== 'you')
+    return { board, step: step.id };
+  if (board && step && position?.phase === 'review' && step.reviewer === 'you') {
+    const back = step.back === SAME ? step.id : step.back;
+    const { rounds } = itemOnBoard(ctx, item, board.def);
+    return {
+      board,
+      step: step.id,
+      review: { for: { step: back, round: (rounds.rounds[back] ?? 0) + 1 } },
+    };
+  }
+  return refuse(
+    'invalid_transition',
+    item.id,
+    'not_working',
+    `No note left on ${item.id}: notes go to an agent while it does a step, or with your review of one, and neither is happening on it`,
+  );
 }
 
 // A line quoted, or a node named, as seen: trimmed, and never longer than an agent needs to find it.
@@ -174,7 +186,7 @@ export function leaveNote(ctx: Context, input: LeaveNoteInput, now = systemClock
   return transaction(ctx.db, () => {
     const item = requireWritableItem(ctx.db, id);
     const at = now();
-    const { board, step } = workedOn(ctx, item);
+    const { board, step, review } = workedOn(ctx, item);
     const on = itemOnBoard(ctx, item, board.def);
     const anchor =
       input.anchor === undefined
@@ -196,6 +208,7 @@ export function leaveNote(ctx: Context, input: LeaveNoteInput, now = systemClock
         delivered: deliverables(board.def, step, on.facts),
         ...(to === undefined ? {} : { to }),
         ...(anchor === undefined ? {} : { anchor }),
+        ...(review === undefined ? {} : { review }),
         channel: input.channel,
       },
     });
@@ -308,13 +321,22 @@ export function notesView(
   const on = itemOnBoard(ctx, item, board.def);
   const wanted = filter.step?.trim().toLocaleLowerCase();
   const current = isClosed(on.position) ? undefined : on.position.step;
-  const notes = on.thread.filter((note) => {
+  const stepNamed = (id: string) => stepById(board.def, id)?.name.toLocaleLowerCase() ?? id;
+  // A note is in a step and round where it was left, or, a review comment sent back, in the round
+  // it went to.
+  const lies = (stepId: string, name: string, round: number) => {
     if (wanted !== undefined) {
-      if (note.step !== filter.step && note.stepName.toLocaleLowerCase() !== wanted) return false;
-    } else if (filter.round !== undefined && current !== undefined && note.step !== current)
+      if (stepId !== filter.step && name !== wanted) return false;
+    } else if (filter.round !== undefined && current !== undefined && stepId !== current)
       return false;
-    return filter.round === undefined || note.round === filter.round;
-  });
+    return filter.round === undefined || round === filter.round;
+  };
+  const notes = on.thread.filter(
+    (note) =>
+      lies(note.step, note.stepName.toLocaleLowerCase(), note.round) ||
+      (note.review !== undefined &&
+        lies(note.review.for.step, stepNamed(note.review.for.step), note.review.for.round)),
+  );
   return { item: item.id, notes, worker: workerOf(ctx, item, board.def, now()) ?? null };
 }
 

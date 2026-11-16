@@ -1,4 +1,9 @@
-import { type ItemNote, type NoteEvent, notesOf } from '../../../../src/core/board/notes.ts';
+import {
+  type ItemNote,
+  type NoteEvent,
+  notesOf,
+  notesOfRound,
+} from '../../../../src/core/board/notes.ts';
 import { modelFamily, type Profile } from '../../../../src/core/profile.ts';
 import { latestFirst } from '../../evidence.ts';
 import { momentParts } from '../../format.ts';
@@ -29,7 +34,7 @@ export function roundNotesOf(
   step: string | null | undefined,
   round: number,
 ): ItemNote[] {
-  return thread.filter((note) => note.step === step && note.round === round);
+  return notesOfRound(thread, step ?? undefined, round);
 }
 
 export function notesCount(notes: readonly ItemNote[]): { count: number; unanswered: number } {

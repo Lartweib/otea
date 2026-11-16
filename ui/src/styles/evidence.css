@@ -1030,8 +1030,15 @@
 }
 .ev-reader-seen {
   margin-right: auto;
+  display: grid;
+  gap: 2px;
   font: 400 12.5px var(--sans);
   color: var(--ink-2);
+}
+
+.ev-reader-notice {
+  font: 400 12px / 1.35 var(--sans);
+  color: var(--ink-3);
 }
 
 /* The desk reader (review mock, desk): the round's files on the left, the one picked on the right. */
