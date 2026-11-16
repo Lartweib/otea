@@ -17,7 +17,7 @@ Agents produce work faster than a human can follow it live. Otea is where work c
 
 ## Status
 
-Early design. Nothing is usable yet. The product definition lives in [`docs/otea-product-definition.md`](docs/otea-product-definition.md).
+Early: usable, still changing fast. The product definition lives in [`docs/otea-product-definition.md`](docs/otea-product-definition.md).
 
 ## Install
 
@@ -52,29 +52,35 @@ alias otea='node --disable-warning=ExperimentalWarning /path/to/otea/src/cli/mai
 cd /path/to/your/project
 otea init                                  # a new project starts with the boards Tareas and Errores
 otea init --template repos                 # or with a template's boards (repos, product, triage, ...; none for no board)
-otea board add Roadmap --template tasks    # another board, from a template, published at once
+otea board add Roadmap --template tasks    # another board, from a template, published at once (yours: no agent name)
+
+# What an agent runs: every command that acts names the agent (--as, or OTEA_AGENT for the session)
+export OTEA_AGENT=claude
+otea profile --model claude-opus-5-5 --effort high --harness claude-code   # what it runs as (unknown if it cannot tell)
 otea create --collection Tareas --title "Write the docs" --description "Install and first steps"
 otea create --collection Tareas --title "Flaky login test"   # no description: starts in Completar
 otea create --collection Tareas --title "Fix the footer" --description "Wrong year" --field Prioridad=Alta
 otea list --turn agent --unclaimed --json # waiting for agents and not held by another one
-otea wait --turn agent --unclaimed         # or block until there is one (see below)
 otea list --field Prioridad=Alta           # items whose field holds that value, by name or id (repeat to AND them)
-otea profile --model claude-opus-5-5 --effort high --harness claude-code --as claude   # what you run as
-otea next --as claude                      # which item to take now, and what its step asks
-otea show TAR-1                            # what to do next, fields, moves the agent can relay, lease, timeline
-otea claim TAR-1 --as claude               # hold it for 15 minutes (--ttl 30m for another length)
-otea heartbeat TAR-1 --as claude           # extend the lease on long work
+otea next                                  # which item to take now, and what its step asks
+otea claim TAR-1                           # hold it for 15 minutes (--ttl 30m for another length)
+otea heartbeat TAR-1                       # extend the lease on long work
+otea handoff TAR-1 --note "Install and first steps written"     # to the person's review; then otea next again
 otea handoff TAR-2                         # refused (exit 8) while what Completar asks for is missing
 otea update TAR-2 --description "Fails on CI only, see run 42"   # fill what was missing
 otea handoff TAR-2                         # on to Hacerlo
-otea handoff TAR-1 --note "Install and first steps written"     # to the person's review
-otea validate                              # check boards, collections and items
+otea wait --turn agent --unclaimed         # nothing to do: block until there is something, then otea next
 otea check --gate push --branch --repo     # may this branch be pushed? exit 0 yes, 19 no (fails open)
+unset OTEA_AGENT
+otea list                                  # read without a name: list, show, events and board need none
+otea show TAR-1                            # what to do next, fields, moves the agent can relay, lease, timeline
+otea validate                              # check boards, collections and items
+
 otea hook install --git --claude           # in a repo: make that check a pre-push hook and a Claude Code hook
 otea help                                  # every command, global options and exit codes
 ```
 
-Agents claim an item before working it. A lease is atomic: while one agent holds an item, `otea claim`, `otea update` and `otea move` from any other agent fail with exit code 12 (`lease_held`), and `otea heartbeat` or `otea release` by someone who does not hold it fail with exit code 12 (`not_lease_holder`), saying who holds it. An expired lease reads as free and can be taken over; moving an item off the agent turn (for example to `review`) releases it automatically. On a published board a lease is for one step: every move (a handoff to the next step or to a review, an approval, a send-back) releases it, even when the next step is the agent's too, so it never blocks that step or reads as someone working there; an agent that goes on with the next step claims it again. While another agent holds an item, `otea show` and `otea next` for it say `Held by <agent> until 2026-11-12 10:04 UTC: pick another item.` instead of the agent's turn. Items nobody claimed stay writable, and the human in the web UI is never blocked by a lease. Every agent command acts as a named agent: `--as <name>`, or `$OTEA_AGENT`. There is no default name: an agent command without one fails with exit 2 (`unnamed_agent`) saying how to name yourself, and the name follows the rule below (exit 6, `invalid_agent_name`) wherever it is given. The name is the agent's identity, so each agent working at the same time uses its own; two agents under one name share every lease. Only items whose turn is the agent can be claimed (exit code 4, `not_claimable`, otherwise).
+Agents claim an item before working it. A lease is atomic: while one agent holds an item, `otea claim`, `otea update` and `otea move` from any other agent fail with exit code 12 (`lease_held`), and `otea heartbeat` or `otea release` by someone who does not hold it fail with exit code 12 (`not_lease_holder`), saying who holds it. An expired lease reads as free and can be taken over; moving an item off the agent turn (for example to `review`) releases it automatically. On a published board a lease is for one step: every move (a handoff to the next step or to a review, an approval, a send-back) releases it, even when the next step is the agent's too, so it never blocks that step or reads as someone working there; an agent that goes on with the next step claims it again. While another agent holds an item, `otea show` and `otea next` for it say `Held by <agent> until 2026-11-12 10:04 UTC: pick another item.` instead of the agent's turn. Items nobody claimed stay writable, and the human in the web UI is never blocked by a lease. Every agent command acts as a named agent: `--as <name>`, or `$OTEA_AGENT`. Reading (`otea list`, `show`, `events`, `board`) needs no name: without one it reads as the person, and is not recorded as an agent. There is no default name: a command that acts, without one, fails with exit 2 (`unnamed_agent`) saying how to name yourself, and the name follows the rule below (exit 6, `invalid_agent_name`) wherever it is given. The name is the agent's identity, so each agent working at the same time uses its own; two agents under one name share every lease. Only items whose turn is the agent can be claimed (exit code 4, `not_claimable`, otherwise).
 
 A lease that ran out without a release leaves its item stuck (**Atasco** in the web UI). There the person either puts it back in the queue of its step for any agent to claim (**Retomar**, `POST /api/items/:id/restart`) or leaves it for a named agent (**Reasignar**, `POST /api/items/:id/reassign` with `{"agent"}`). Both drop the lease that ran out and write a `released` event by the human with `cause` `restart` or `reassign` (and `next`, the agent it is left for); `otea show` reads them as `(back in the queue)` and `(left for <agent>)`. The agent named is expected, not enforced: any agent may still claim the item, but `otea next` offers it only to that agent, and `otea show` tells any other `Left for <agent>: pick another item.` (and that agent `The person left it for you.`) until an agent claims or moves it. An item whose lease is still running, or that has none, is refused (409, `not_stuck`). While its toast is up, `POST /api/items/:id/undo` with `{"release": true}` gives the lease back as it was (with `{"from"}` it takes back a move, as before); like moves, these writes need the session, JSON and the server's own origin.
 
