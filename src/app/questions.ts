@@ -21,6 +21,7 @@ import {
 } from '../store/queries.ts';
 import type { Context } from './context.ts';
 import { requireItem, requireWritableItem, systemClock } from './items.ts';
+import { takeItem } from './lease-take.ts';
 import { itemOnBoard, type LiveBoard, liveBoardOf } from './next.ts';
 
 // An agent's question to the person (core/board/questions.ts): the agent asks while it does a step,
@@ -131,6 +132,11 @@ export function answerQuestion(ctx: Context, input: AnswerInput, now = systemClo
       (each) => each.question === open.question,
     );
     if (!answered) throw new Error(`question ${open.question} on ${item.id} was not kept`);
+    // The answer goes back to the agent that asked: its lease, run out while the person thought,
+    // is taken again for it, unless another agent holds the item now.
+    const at = now();
+    const lease = activeLease(item.lease, at);
+    if (!lease) takeItem(ctx.db, item, { kind: 'agent', name: open.by }, at);
     return answered;
   });
 }

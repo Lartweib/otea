@@ -140,6 +140,22 @@ describe('an agent asks the person', () => {
 });
 
 describe('the person answers', () => {
+  it('gives the answer back to the agent that asked, though its lease ran out meanwhile', () => {
+    const ctx = memoryContext();
+    const item = working(ctx);
+    ask(ctx, item.id);
+    tick += 20 * 60;
+    expect(refusal(() => claimItem(ctx, { id: item.id, actor: scout }, now)).message).toBe(
+      `${item.id} waits for the person to answer kiln's question; claim only what is yours (otea next)`,
+    );
+
+    answerQuestion(ctx, { id: item.id, text: 'Con musgo', actor: you, channel: 'ui' }, now);
+
+    expect(getItem(ctx, item.id, now).lease?.holder).toBe('kiln');
+    expect(nextFor(ctx, 'scout', {}, now).item).toBeNull();
+    expect(nextFor(ctx, 'kiln', {}, now).item).toBe(item.id);
+  });
+
   it('gives the turn back to the agent in the same round, which reads the answer', () => {
     const ctx = memoryContext();
     const item = working(ctx);
