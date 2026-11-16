@@ -515,6 +515,24 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
           requestSummary={
             (firstField ? (item.fields[firstField] ?? '') : '').trim().split(/\n/)[0] ?? ''
           }
+          links={
+            links && (links.blockers.length || links.blocking.length || links.related.length) ? (
+              <LinksSection
+                item={item}
+                links={links}
+                canWrite={false}
+                now={now}
+                boardOf={(x) => x.collection}
+              />
+            ) : null
+          }
+          linksSummary={
+            links
+              ? [...links.blockers, ...links.blocking, ...links.related.flatMap((g) => g.items)]
+                  .map((x) => x.id)
+                  .join(' · ')
+              : ''
+          }
           refuse={live ? refuse : undefined}
           back={live ? (to: string) => backOf(live, item, to) : undefined}
           onClose={onClose}

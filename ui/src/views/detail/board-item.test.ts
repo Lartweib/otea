@@ -152,6 +152,36 @@ describe('linksOf: an item’s parts and what holds it back, across boards', () 
     expect(partsCount(links.parts)).toEqual({ total: 2, open: 1, ended: 1 });
   });
 
+  it('keeps what it implements, duplicates or relates to, in any board, by kind', () => {
+    const links = linksOf(
+      {
+        relations: [
+          rel('implements', 'IDE-1', { collection: 'Ideas' }),
+          rel('implemented_by', 'TAR-4', { collection: 'Implementación' }),
+          rel('implemented_by', 'TAR-5', { collection: 'Implementación' }),
+          rel('relates', 'TEM-2', { collection: 'Temas' }),
+          rel('blocks', 'TAR-3'),
+        ],
+        board: {
+          parts: [],
+          partsBoard: null,
+          blockers: [],
+          blocking: [{ id: 'TAR-3', board: 'Tareas', closed: false }],
+          notes: [],
+          gates: null,
+          branch: null,
+        },
+      },
+      names,
+    );
+    expect(links.related.map((g) => `${g.kind}:${g.items.map((x) => x.id).join(',')}`)).toEqual([
+      'implements:IDE-1',
+      'implemented_by:TAR-4,TAR-5',
+      'relates:TEM-2',
+    ]);
+    expect(links.related[0]?.items[0]).toMatchObject({ board: 'Ideas', title: 'IDE-1' });
+  });
+
   it('takes the board block’s lists when the server sends them, keeping titles from relations', () => {
     const links = linksOf(
       {
