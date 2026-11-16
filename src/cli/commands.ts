@@ -988,8 +988,18 @@ const handoffCommand: Command = {
     'Hand off the step you did on an item: refused, saying what is missing, until its handoff is complete; then to its review, or along --way (a step name or Done) with --reason when the step has several. --note is the note of the handoff, kept with the round (required where the step asks for one, and after a send-back); --way an earlier step, with --reason, takes the item back to it for its next round',
   args: ['id'],
   options: { way: { placeholder: 'step' }, reason: {}, note: {} },
-  execute: (input) => boardMove(input, handoffItem),
-};
+  execute: (input) => {
+    const moved = boardMove(input, handoffItem);
+    // An agent goes on to the next item: the reply says so, so it does not stop after one.
+    const next =
+      input.channel === 'mcp'
+        ? 'Next: call next, and keep going until the person stops you.'
+        : 'Next: otea next';
+    return {
+      data: { ...(moved.data as object), next },
+      text: `${moved.text}
+${next}`,
+    };
   },
 };
 

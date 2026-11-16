@@ -240,6 +240,7 @@ describe('mcp server', () => {
       expect(handed).toMatchObject({
         item: { state: 'todo__review' },
         text: 'Handed off. TASKS-1 waits for the person to review Hacerlo.',
+        next: 'Next: call next, and keep going until the person stops you.',
       });
       const refused = await call('approve', { id: 'TASKS-1' });
       expect(refused.isError).toBe(true);
