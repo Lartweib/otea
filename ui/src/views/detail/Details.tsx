@@ -12,6 +12,7 @@ import { reduced } from '../../motion/reduced.ts';
 import { type Agent, actedWith } from '../../presence.ts';
 import { typeWord } from '../../preset-words.ts';
 import type { ItemView, TypeView } from '../../types.ts';
+import { ClampValue } from './ClampValue.tsx';
 import type { Facts } from './facts.ts';
 import { DETAILS_SHOWN, moreOf } from './frame.ts';
 
@@ -112,7 +113,15 @@ export function detailCells(o: {
     ...head,
     ...short,
     ...side.flatMap((b) => (b.kind === 'fields' ? b.values : [])),
-  ].map((p) => ({ label: p.label, value: <Value placed={p} />, slot: slotData(p.at) }));
+  ].map((p) => ({
+    label: p.label,
+    value: (
+      <ClampValue>
+        <Value placed={p} />
+      </ClampValue>
+    ),
+    slot: slotData(p.at),
+  }));
   const parent = item.relations.find((r) => r.kind === 'parent');
   const created = item.createdBy;
   const gates = o.board ? [] : gateRows(type, item.state, item.gates);

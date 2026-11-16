@@ -242,9 +242,7 @@
   gap: 7px;
   align-items: center;
   min-width: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  overflow-wrap: anywhere;
 }
 .dlist dd.you {
   color: var(--you-ink);
@@ -1026,4 +1024,50 @@ section.evidence,
   display: inline-flex;
   gap: 7px;
   align-items: center;
+}
+
+/* A field's value wraps to three lines; "ver todo" opens its cell across the row. */
+.dlist dd:has(> .dv-wrap) {
+  display: block;
+  white-space: normal;
+}
+.dv-wrap {
+  display: grid;
+  justify-items: start;
+  gap: 2px;
+  min-width: 0;
+}
+.dv-clamp {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  max-width: 100%;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+.dv-wrap[data-open="true"] .dv-clamp {
+  display: block;
+  -webkit-line-clamp: none;
+  line-clamp: none;
+}
+.dlist > div:has(.dv-wrap[data-open="true"]) {
+  grid-column: 1 / -1;
+}
+.dv-more {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: 500 12px / 1.4 var(--sans);
+  color: var(--you-ink);
+  cursor: pointer;
+}
+.dv-more:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.dv-more:focus-visible {
+  outline: 2px solid var(--you);
+  outline-offset: 2px;
+  border-radius: 3px;
 }
