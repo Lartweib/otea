@@ -120,6 +120,26 @@ describe('a note from the person while an agent works', () => {
     ]);
   });
 
+  it('anchors a note to a line, quoting it, or to a diagram node', () => {
+    const ctx = memoryContext();
+    const item = working(ctx);
+    const seen = attach(ctx, item.id, 'pose.png');
+    const leave = (anchor: { evidence: number; line?: number; quote?: string; node?: string }) =>
+      leaveNote(ctx, { id: item.id, text: 'Ojo', anchor, actor: you, channel: 'ui' }, now);
+
+    expect(
+      leave({ evidence: seen, line: 12, quote: '  const port = 3000;  ' }).anchor,
+    ).toMatchObject({
+      line: 12,
+      quote: 'const port = 3000;',
+    });
+    expect(leave({ evidence: seen, node: ' Scan QR ' }).anchor).toMatchObject({ node: 'Scan QR' });
+    expect(leave({ evidence: seen, quote: 'x'.repeat(400), line: 1 }).anchor?.quote).toHaveLength(
+      200,
+    );
+    expect(() => leave({ evidence: seen, line: 0 })).toThrow(/not attached to it|line/);
+  });
+
   it('anchors a note to the very file seen: a file attached later in its place leaves it there', () => {
     const ctx = memoryContext();
     const item = working(ctx);

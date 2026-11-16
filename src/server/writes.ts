@@ -318,11 +318,25 @@ export async function reassignRequest(c: Context): Promise<{ agent: string }> {
 const NoteBody = z.object({
   text: z.string(),
   anchor: z
-    .object({ evidence: z.number().int().positive(), seconds: z.number().min(0).optional() })
+    .object({
+      evidence: z.number().int().positive(),
+      seconds: z.number().min(0).optional(),
+      line: z.number().int().positive().optional(),
+      quote: z.string().optional(),
+      node: z.string().optional(),
+    })
     .optional(),
 });
 
-export type NoteRequest = { text: string; anchor?: { evidence: number; seconds?: number } };
+export type NoteAnchorRequest = {
+  evidence: number;
+  seconds?: number;
+  line?: number;
+  quote?: string;
+  node?: string;
+};
+
+export type NoteRequest = { text: string; anchor?: NoteAnchorRequest };
 
 const AnswerBody = z.object({ text: z.string() });
 
@@ -342,10 +356,19 @@ export async function noteRequest(c: Context): Promise<NoteRequest> {
     throw new RejectedRequest(
       400,
       'invalid_body',
-      'Expected {"text": string, "anchor"?: {"evidence": number, "seconds"?: number}}',
+      'Expected {"text": string, "anchor"?: {"evidence": number, "seconds"?: number, "line"?: number, "quote"?: string, "node"?: string}}',
     );
   const { text, anchor } = parsed.data;
   if (anchor === undefined) return { text };
-  const { evidence, seconds } = anchor;
-  return { text, anchor: { evidence, ...(seconds === undefined ? {} : { seconds }) } };
+  const { evidence, seconds, line, quote, node } = anchor;
+  return {
+    text,
+    anchor: {
+      evidence,
+      ...(seconds === undefined ? {} : { seconds }),
+      ...(line === undefined ? {} : { line }),
+      ...(quote === undefined ? {} : { quote }),
+      ...(node === undefined ? {} : { node }),
+    },
+  };
 }
