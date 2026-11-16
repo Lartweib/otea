@@ -210,6 +210,12 @@ export function selectItems(db: DatabaseSync, filter: ItemFilter): ItemRecord[] 
   return (db.prepare(sql).all(params) as ItemRow[]).map(toItem);
 }
 
+export function hasItems(db: DatabaseSync, collection: string): boolean {
+  return (
+    db.prepare('SELECT 1 FROM items WHERE collection = ? LIMIT 1').get(collection) !== undefined
+  );
+}
+
 export function hasItemsOfType(db: DatabaseSync, collection: string, type: string): boolean {
   const sql = 'SELECT 1 FROM items WHERE collection = ? AND type = ? LIMIT 1';
   return db.prepare(sql).get(collection, type) !== undefined;

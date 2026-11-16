@@ -4,11 +4,13 @@ import { assertIconName } from '../core/icons.ts';
 import { prefixFor } from '../core/item.ts';
 import { DEFAULT_TYPE, type ItemType, typeOf } from '../core/preset.ts';
 import { type CollectionView, typeViews } from '../core/views.ts';
+import { listBoards } from '../store/boards.ts';
 import { transaction } from '../store/database.ts';
 import {
   type CollectionRecord,
   collectionTaken,
   findCollection,
+  hasItems,
   hasItemsOfType,
   insertCollection,
   listCollections,
@@ -128,4 +130,13 @@ export function listCollectionViews(
       view,
     };
   });
+}
+
+// The collections the places show: the built-in Pedidos only once it holds an item (an agent's
+// board draft arrives on it), so a new project lists only the boards the person picked.
+export function listShownCollectionViews(ctx: Context): CollectionView[] {
+  const idle = listBoards(ctx.db).find(
+    (row) => row.builtin && row.collection !== null && !hasItems(ctx.db, row.collection),
+  )?.collection;
+  return listCollectionViews(ctx).filter(({ name }) => name !== idle);
 }

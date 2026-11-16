@@ -238,6 +238,10 @@ export const surfaces = {
   'emptyProject.path': 'ruta',
   'emptyProject.store': 'almacén',
   'emptyProject.boards': 'tableros',
+  'emptyProject.noBoards':
+    'Este proyecto todavía no tiene tableros. Elige los que usas: cada uno trae sus pasos, quién hace cada uno y qué se entrega.',
+  'emptyProject.pickBoards': 'Elegir tableros',
+  'emptyProject.noBoardsYet': 'ninguno todavía',
   'emptyProject.example': 'Escribir la primera tarea',
 
   // Conectar un agente

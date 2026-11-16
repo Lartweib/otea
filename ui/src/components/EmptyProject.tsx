@@ -1,5 +1,6 @@
 import { fetchProjectSettings } from '../api.ts';
 import { useApp } from '../app/context.tsx';
+import { openNewBoard } from '../board-studio/home/studio-dialogs.ts';
 import { useRemote } from '../hooks.ts';
 import { t, tx } from '../i18n/i18n.ts';
 import { Button } from '../kit/Button.tsx';
@@ -14,24 +15,32 @@ export function EmptyProject() {
   return (
     <EmptyProjectView
       settings={settings.value}
+      boards={app.collections.map(({ name }) => name)}
       onNew={() => app.newItem()}
       onConnect={app.openConnect}
+      onPickBoards={() => openNewBoard(null)}
     />
   );
 }
 
-// The person writes the first item here, or connects an agent that will; the boards go by their
-// names, never by a hidden id.
+// The person writes the first item here, or connects an agent that will; a project with no board
+// yet asks for its boards first, since an item needs one. The boards go by their names, never by a
+// hidden id.
 export function EmptyProjectView({
   settings,
+  boards,
   onNew,
   onConnect,
+  onPickBoards,
 }: {
   settings: ProjectSettings;
+  boards: readonly string[];
   onNew: () => void;
   onConnect: () => void;
+  onPickBoards: () => void;
 }) {
-  const { name, dataDir, collections, paths } = settings;
+  const { name, dataDir, paths } = settings;
+  const none = boards.length === 0;
   return (
     <div className="pj-empty-project">
       <svg className="pj-empty-lanes" width="56" height="100%" aria-hidden="true">
@@ -40,11 +49,17 @@ export function EmptyProjectView({
       </svg>
       <div className="pj-empty-body">
         <h2 className="pj-empty-title">{t('emptyProject.title', { name })}</h2>
-        <p className="pj-empty-text">{t('emptyProject.text')}</p>
+        <p className="pj-empty-text">{t(none ? 'emptyProject.noBoards' : 'emptyProject.text')}</p>
         <div className="pj-empty-acts">
-          <Button variant="primary" onClick={onNew}>
-            {t('app.newItem')}
-          </Button>
+          {none ? (
+            <Button variant="primary" onClick={onPickBoards}>
+              {t('emptyProject.pickBoards')}
+            </Button>
+          ) : (
+            <Button variant="primary" onClick={onNew}>
+              {t('app.newItem')}
+            </Button>
+          )}
           <Button variant="quiet" onClick={onConnect}>
             <Icon name="plus" />
             {t('toca.connect')}
@@ -64,7 +79,7 @@ export function EmptyProjectView({
           <dt>{t('emptyProject.store')}</dt>
           <dd>{dataDir}</dd>
           <dt>{t('emptyProject.boards')}</dt>
-          <dd>{collections.map((each) => each.name).join(', ')}</dd>
+          <dd>{none ? t('emptyProject.noBoardsYet') : boards.join(', ')}</dd>
         </dl>
       </div>
     </div>

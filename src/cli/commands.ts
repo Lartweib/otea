@@ -296,7 +296,7 @@ const TEMPLATE_KEYS = LISTED_KEYS.join(', ');
 
 const init: Command = {
   name: 'init',
-  summary: `Create or reuse the project at the repository root: in the Otea home ($OTEA_HOME, default ~/.otea), or with --local in .otea at the root; --join <project> links the repo to a registered project instead (refused when a project in a folder above covers it, unless --here); on a project with no boards of its own yet it makes Tareas and Errores, or with --template <key> the boards of that template (${TEMPLATE_KEYS}; a set such as repos or product makes all of its boards; none makes no board but Pedidos, the board for loose requests every project has); on a project that has boards it makes none; --icon gives the project an icon (without one the UI draws a monogram of its name); --agents-md also adds (or refreshes) a block in AGENTS.md telling agents to run "otea next" and "otea board"`,
+  summary: `Create or reuse the project at the repository root: in the Otea home ($OTEA_HOME, default ~/.otea), or with --local in .otea at the root; --join <project> links the repo to a registered project instead (refused when a project in a folder above covers it, unless --here); it makes no board unless --template <key> names one, and only on a project with no boards of its own yet: the boards of that template (${TEMPLATE_KEYS}; a set such as ideas or repos makes all of its boards); you can also pick them later in Studio or with otea board add <name> --template <key>; --icon gives the project an icon (without one the UI draws a monogram of its name); --agents-md also adds (or refreshes) a block in AGENTS.md telling agents to run "otea next" and "otea board"`,
   args: [],
   options: {
     'agents-md': { flag: true },

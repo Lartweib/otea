@@ -195,6 +195,7 @@ describe('mcp server', () => {
 
   describe('writes', () => {
     it('fills a board description field from description, whatever its name', async () => {
+      await cliAt(repo.dir)('board', 'add', 'Errores', '--template', 'triage');
       const created = await data('create', {
         collection: 'Errores',
         title: 'Se cae',
