@@ -40,6 +40,8 @@ export type Input = {
   // The tailscale CLI otea phone tailscale runs, and how otea phone status tries a phone URL.
   tailscale: TailscaleCli;
   probe: Probe;
+  // The gh CLI, where otea runs for a person; none in tests and over MCP.
+  gh?: string;
   // Whether what the command prints goes to a terminal a person reads, not to a pipe or a log: only
   // there may it print a secret (the sign-in link).
   terminal: boolean;

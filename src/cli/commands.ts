@@ -111,7 +111,7 @@ import { ensureVapidKeys } from '../server/push.ts';
 import { createServer } from '../server/server.ts';
 import { ensureUiToken, readUiToken } from '../server/token.ts';
 import { type EventFilter, findProfile, type ProfileView, profileView } from '../store/queries.ts';
-import { mergeTarget, prBranches, pushTargets, readHookEvent } from './claude-hook.ts';
+import { mergeTarget, prBranches, pushTargets, readHookEvent, UnreadPr } from './claude-hook.ts';
 import { type Command, CommandFailure, type Input, type Output, UsageError } from './command.ts';
 import {
   columns,
@@ -1807,7 +1807,7 @@ function pushOf(cwd: string, branch: string, from = branch): Target {
 // The branches a hooked command acts on: the head branch of the PR a `gh pr merge` merges (and
 // the base it merges into) and the branches its `git push` calls write to, or the current branch
 // when it names none. Throws UntoldTarget for a push that may write to branches it does not name.
-function commandTargets(cwd: string, command: string | undefined): Target[] {
+function commandTargets(cwd: string, command: string | undefined, gh?: string): Target[] {
   const pr = command === undefined ? undefined : mergeTarget(command);
   const merges = command !== undefined && /\bgh\s+pr\s+merge\b/.test(command);
   const push = command === undefined ? undefined : pushTargets(command);
@@ -1817,7 +1817,7 @@ function commandTargets(cwd: string, command: string | undefined): Target[] {
   if (merges) {
     let asked: { head: string; base: string } | undefined;
     const ask = () => {
-      asked ??= prBranches(cwd, pr);
+      asked ??= prBranches(cwd, pr, gh);
       return asked;
     };
     const head = pr === undefined ? currentBranch(cwd) : ask().head;
@@ -1873,7 +1873,8 @@ function checkTargets(
 // and, with --branch and no name, the branches the call acts on (see commandBranches); it refuses
 // with exit 2 and the reason on stderr, which blocks the call. A push whose branches it cannot
 // tell is refused, not allowed: on a project, failing open there would skip every gate. So is a
-// push or merge in a repo the project cannot match (--repo with no name), whatever its folder.
+/// push or merge in a repo the project cannot match (--repo with no name), whatever its folder, and a
+// gh pr merge whose PR gh cannot read.
 const check: Command = {
   name: 'check',
   summary:
@@ -1902,12 +1903,20 @@ const check: Command = {
           sent === undefined
             ? pushOf(cwd, branch)
             : { branch, brings: () => branchesBrought(cwd, sent.to, sent.from) };
-        const targets = named === '' ? commandTargets(cwd, event.command) : [given(named ?? '')];
+        const targets =
+          named === '' ? commandTargets(cwd, event.command, input.gh) : [given(named ?? '')];
         const fields = (branch: string) => gateFields(input, cwd, project, () => branch);
         return checkTargets(project, gate, targets, fields);
       });
     } catch (error) {
       if (error instanceof UsageError) throw error;
+      // A PR the hook cannot read could merge any branch: refused, not allowed.
+      if (error instanceof UnreadPr) {
+        const why = `${gate} refused: ${error.message}, so Otea cannot check it; merge it once gh can read the PR (gh auth status), or merge it yourself`;
+        input.warn(why);
+        const failure = hook ? 'hook_refused' : 'gate_refused';
+        return { data: { gate, allowed: false, items: [] }, text: '', failure };
+      }
       if (error instanceof UntoldTarget) {
         const why = `${gate} refused: cannot tell which branches the command writes to (${error.message}); name them in it`;
         input.warn(why);
