@@ -140,6 +140,31 @@ describe('a note from the person while an agent works', () => {
     expect(() => leave({ evidence: seen, line: 0 })).toThrow(/not attached to it|line/);
   });
 
+  it('anchors a note to a point or a zone of an image, in percent, rounded to a tenth', () => {
+    const ctx = memoryContext();
+    const item = working(ctx);
+    const seen = attach(ctx, item.id, 'pose.png');
+    type Spot = { evidence: number; x?: number; y?: number; w?: number; h?: number };
+    const leave = (anchor: Spot) =>
+      leaveNote(ctx, { id: item.id, text: 'Aquí', anchor, actor: you, channel: 'ui' }, now);
+
+    expect(leave({ evidence: seen, x: 34.237, y: 61.81 }).anchor).toMatchObject({
+      x: 34.2,
+      y: 61.8,
+    });
+    expect(leave({ evidence: seen, x: 20, y: 30, w: 25, h: 30.5 }).anchor).toMatchObject({
+      x: 20,
+      y: 30,
+      w: 25,
+      h: 30.5,
+    });
+    // A point needs both coordinates, inside the image; a zone stays inside it too.
+    expect(() => leave({ evidence: seen, x: 10 })).toThrow(/point/);
+    expect(() => leave({ evidence: seen, x: 101, y: 5 })).toThrow(/point/);
+    expect(() => leave({ evidence: seen, x: 90, y: 5, w: 20, h: 5 })).toThrow(/point/);
+    expect(() => leave({ evidence: seen, x: 5, y: 5, w: 0, h: 5 })).toThrow(/point/);
+  });
+
   it('anchors a note to the very file seen: a file attached later in its place leaves it there', () => {
     const ctx = memoryContext();
     const item = working(ctx);

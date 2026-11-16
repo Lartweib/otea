@@ -324,6 +324,10 @@ const NoteBody = z.object({
       line: z.number().int().positive().optional(),
       quote: z.string().optional(),
       node: z.string().optional(),
+      x: z.number().optional(),
+      y: z.number().optional(),
+      w: z.number().optional(),
+      h: z.number().optional(),
     })
     .optional(),
 });
@@ -334,6 +338,10 @@ export type NoteAnchorRequest = {
   line?: number;
   quote?: string;
   node?: string;
+  x?: number;
+  y?: number;
+  w?: number;
+  h?: number;
 };
 
 export type NoteRequest = { text: string; anchor?: NoteAnchorRequest };
@@ -356,11 +364,11 @@ export async function noteRequest(c: Context): Promise<NoteRequest> {
     throw new RejectedRequest(
       400,
       'invalid_body',
-      'Expected {"text": string, "anchor"?: {"evidence": number, "seconds"?: number, "line"?: number, "quote"?: string, "node"?: string}}',
+      'Expected {"text": string, "anchor"?: {"evidence": number, "seconds"?: number, "line"?: number, "quote"?: string, "node"?: string, "x"?: number, "y"?: number, "w"?: number, "h"?: number}}',
     );
   const { text, anchor } = parsed.data;
   if (anchor === undefined) return { text };
-  const { evidence, seconds, line, quote, node } = anchor;
+  const { evidence, seconds, line, quote, node, x, y, w, h } = anchor;
   return {
     text,
     anchor: {
@@ -369,6 +377,10 @@ export async function noteRequest(c: Context): Promise<NoteRequest> {
       ...(line === undefined ? {} : { line }),
       ...(quote === undefined ? {} : { quote }),
       ...(node === undefined ? {} : { node }),
+      ...(x === undefined ? {} : { x }),
+      ...(y === undefined ? {} : { y }),
+      ...(w === undefined ? {} : { w }),
+      ...(h === undefined ? {} : { h }),
     },
   };
 }

@@ -47,7 +47,18 @@ export type LeaveNoteInput = {
   id: string;
   text: string;
   // A piece of evidence of this round of the item, by its id, and for a recording the moment seen.
-  anchor?: { evidence: number; seconds?: number; line?: number; quote?: string; node?: string };
+  anchor?: {
+    evidence: number;
+    seconds?: number;
+    line?: number;
+    quote?: string;
+    node?: string;
+    // A point (x, y) or a zone (x, y, w, h) of an image, in percent from its top left corner.
+    x?: number;
+    y?: number;
+    w?: number;
+    h?: number;
+  };
   actor: Actor;
   channel: Channel;
 };
@@ -101,6 +112,14 @@ function anchorFor(
       'anchor',
       `No note left on ${item.id}: evidence #${given.evidence} is not attached to it in this round`,
     );
+  const spot = spotOf(given);
+  if (spot === null)
+    refuse(
+      'invalid_fields',
+      item.id,
+      'anchor',
+      `No note left on ${item.id}: a point needs x and y between 0 and 100, and a zone a width and a height that keep it inside the image`,
+    );
   const part = evidence.module ?? undefined;
   const partName = part === undefined ? undefined : board.def.parts[part]?.name;
   const quote = clip(given.quote, QUOTE_MAX);
@@ -114,7 +133,28 @@ function anchorFor(
     ...(line === undefined ? {} : { line }),
     ...(quote === undefined ? {} : { quote }),
     ...(node === undefined ? {} : { node }),
+    ...spot,
   };
+}
+
+const tenth = (n: number) => Math.round(n * 10) / 10;
+
+// The point or zone of an image a note is on, to a tenth of a percent; {} when it is on none, null
+// when what was given is no point or zone inside the image.
+function spotOf(given: {
+  x?: number;
+  y?: number;
+  w?: number;
+  h?: number;
+}): { x?: number; y?: number; w?: number; h?: number } | null {
+  const { x, y, w, h } = given;
+  if (x === undefined && y === undefined && w === undefined && h === undefined) return {};
+  const inside = (n: number | undefined): n is number =>
+    typeof n === 'number' && Number.isFinite(n) && n >= 0 && n <= 100;
+  if (!inside(x) || !inside(y)) return null;
+  if (w === undefined && h === undefined) return { x: tenth(x), y: tenth(y) };
+  if (!inside(w) || !inside(h) || w <= 0 || h <= 0 || x + w > 100.05 || y + h > 100.05) return null;
+  return { x: tenth(x), y: tenth(y), w: tenth(w), h: tenth(h) };
 }
 
 // The person leaves a note on an item an agent is doing: the step, its round and the lease stay as

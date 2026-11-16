@@ -22,6 +22,7 @@ import {
 import { listDevices, revokeDevice } from '../app/devices.ts';
 import { handInText } from '../app/draft-request.ts';
 import { listEvents } from '../app/events.ts';
+import { cropNote } from '../app/crop.ts';
 import { attachEvidence } from '../app/evidence.ts';
 import { type Brings, checkGate, type GateCheck } from '../app/gates.ts';
 import { boardGuide, type Guide, guideIndex, hintFor } from '../app/guide.ts';
@@ -1410,6 +1411,30 @@ const reply: Command = {
   },
 };
 
+// The zone of an image a note is on, cut out for an agent that asks for it: the note says the zone
+// in percent; this gives its pixels, and for a PNG the pixels themselves in a file.
+const crop: Command = {
+  name: 'crop',
+  summary:
+    'Cut out the zone of an image a note of the person is on (--note, its number; a note on a point gives a fifth of the image around it): a PNG is written to a file (--out, or the temp folder) to read as an image; any other image gets the zone in its pixels',
+  args: ['id'],
+  options: { note: { required: true, placeholder: 'n' }, out: { placeholder: 'file.png' } },
+  execute: (input) => {
+    const [id = ''] = input.args;
+    const given = input.required('note');
+    if (!/^[1-9]\d*$/.test(given)) throw new UsageError('--note must be the number of a note');
+    const out = input.option('out');
+    return withAgent(input, (project) => {
+      const cut = cropNote(project, {
+        id,
+        note: Number(given),
+        ...(out === undefined ? {} : { out }),
+      });
+      return { data: cut, text: cut.text };
+    });
+  },
+};
+
 // That a Done item's branch is in: Done takes no other change, so this is how its page and rows
 // learn the work was merged.
 const merged: Command = {
@@ -2094,6 +2119,7 @@ export const COMMANDS: readonly Command[] = [
   unlink,
   next,
   reply,
+  crop,
   merged,
   ask,
   handoffCommand,

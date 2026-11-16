@@ -14,7 +14,8 @@ export const NOTE_ANSWERED = 'note_answered';
 // The piece of evidence a note is on: the very file the person saw (its evidence id, so a later
 // file attached in its place leaves the note on the one seen), its name and part then, and for a
 // recording, the moment in it; in a text, the line (its number when the viewer numbers it, and its
-// text as seen); in a diagram, the node by its label.
+// text as seen); in a diagram, the node by its label; in an image, a point (x, y) or a zone (x, y,
+// w, h), in percent of the image from its top left corner, to a tenth.
 export type NoteAnchor = {
   evidence: number;
   filename: string;
@@ -24,6 +25,10 @@ export type NoteAnchor = {
   line?: number;
   quote?: string;
   node?: string;
+  x?: number;
+  y?: number;
+  w?: number;
+  h?: number;
 };
 
 // `profile`: the one the agent had declared when it answered (every event keeps it).
@@ -67,6 +72,10 @@ function anchorOf(value: unknown): NoteAnchor | undefined {
     ...(typeof raw.line === 'number' ? { line: raw.line } : {}),
     ...(typeof raw.quote === 'string' ? { quote: raw.quote } : {}),
     ...(typeof raw.node === 'string' ? { node: raw.node } : {}),
+    ...(typeof raw.x === 'number' ? { x: raw.x } : {}),
+    ...(typeof raw.y === 'number' ? { y: raw.y } : {}),
+    ...(typeof raw.w === 'number' ? { w: raw.w } : {}),
+    ...(typeof raw.h === 'number' ? { h: raw.h } : {}),
   };
 }
 
@@ -159,7 +168,7 @@ export function moment(seconds: number): string {
 }
 
 // "on pausa.gif at 0:02", or "on ui/PauseMenu.tsx (Diff)" with the part's name.
-function onText(anchor: NoteAnchor, withPart: boolean): string {
+function onText(anchor: NoteAnchor, withPart: boolean, crop?: string): string {
   const part = withPart && anchor.partName ? ` (${anchor.partName})` : '';
   const at = anchor.seconds === undefined ? '' : ` at ${moment(anchor.seconds)}`;
   const quote = anchor.quote === undefined ? '' : `"${anchor.quote}"`;
@@ -170,7 +179,19 @@ function onText(anchor: NoteAnchor, withPart: boolean): string {
         ? ` at the line ${quote}`
         : '';
   const node = anchor.node === undefined ? '' : ` at node "${anchor.node}"`;
-  return `on ${anchor.filename}${part}${at}${line}${node}`;
+  return `on ${anchor.filename}${part}${at}${line}${node}${spotText(anchor, crop)}`;
+}
+
+const pct = (n: number) => `${Math.round(n * 10) / 10}`;
+
+// " at the point x 34.2%, y 61.8% (from the top left)", or a zone with the command that cuts it out.
+function spotText(anchor: NoteAnchor, crop?: string): string {
+  const { x, y, w, h } = anchor;
+  if (x === undefined || y === undefined) return '';
+  if (w === undefined || h === undefined)
+    return ` at the point x ${pct(x)}%, y ${pct(y)}% (from the top left)`;
+  const cut = crop ? `; ${crop} cuts it out` : '';
+  return ` at the zone x ${pct(x)}–${pct(x + w)}%, y ${pct(y)}–${pct(y + h)}% (from the top left${cut})`;
 }
 
 // What was in when the note was left: where, when, and how many deliverables.
@@ -202,14 +223,18 @@ export function notesBlock(id: string, notes: readonly ItemNote[], me?: string):
       answeredShown += 1;
       if (answeredShown > ANSWERED_SHOWN) continue;
       const who = note.answer.by === me ? 'you' : note.answer.by;
-      const on = note.anchor ? `${onText(note.anchor, false)} · ` : '';
+      const on = note.anchor
+        ? `${onText(note.anchor, false, `otea crop ${id} --note ${note.note}`)} · `
+        : '';
       lines.push(
         `  ${note.note} · "${brief(note.text)}"`,
         `      ${on}${who} answered ${timeText(note.answer.at)}`,
       );
       continue;
     }
-    const on = note.anchor ? `${onText(note.anchor, false)} · ` : '';
+    const on = note.anchor
+      ? `${onText(note.anchor, false, `otea crop ${id} --note ${note.note}`)} · `
+      : '';
     const [first = '', ...rest] = quoted(note.text, '      ');
     lines.push(
       `  ${note.note} · ${first}`,
