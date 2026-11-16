@@ -174,4 +174,17 @@ describe('a project made from an official template', () => {
     expect(runToDone(ctx, bug, bugs)).toEqual(['Triar', 'Arreglar', 'Verificar']);
     expect(requireItem(ctx.db, bug).state).toBe('done');
   });
+
+  it('takes an Encargo through Aclarar, Hacerlo and Integrar, with one approval', () => {
+    const ctx = memoryContext();
+    expect(initBoards(ctx, 'changes').map(({ name }) => name)).toEqual(['Encargos']);
+    const changes = boardOf(ctx, 'Encargos');
+
+    const change = newItem(ctx, changes);
+    expect(runToDone(ctx, change, changes)).toEqual(['Aclarar', 'Hacerlo', 'Integrar']);
+    expect(requireItem(ctx.db, change).state).toBe('done');
+    // Born with what Aclarar writes, it starts in Hacerlo.
+    const clear = newItem(ctx, changes, { all: true });
+    expect(runToDone(ctx, clear, changes)).toEqual(['Hacerlo', 'Integrar']);
+  });
 });

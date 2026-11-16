@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { assertIconName } from '../icons.ts';
+import { isLandStep } from './engine.ts';
 import { sequenceIds } from './ids.ts';
 import { mentionText } from './mentions.ts';
 import { type BoardDefinition, SAME } from './model.ts';
@@ -136,6 +137,51 @@ describe('the Errores de trabajo template', () => {
       expect(assertIconName(def.icon)).toBe(def.icon);
       const problems = problemsOf(def, {}).filter(({ code }) => code !== 'motive_agent_drop');
       expect(problems).toEqual([]);
+      for (const step of def.steps)
+        for (const text of Object.values(step.instructions))
+          expect(mentionText(def, text)).not.toMatch(/@[[{]/);
+    });
+  }
+});
+
+describe('the Encargos template', () => {
+  it('clarifies, does and lands each change, with one approval of yours', () => {
+    const def = instantiate(requireTemplate('changes'), 'es', {}, sequenceIds());
+    expect([def.name, def.item]).toEqual(['Encargos', 'Encargo']);
+    expect(def.steps.map(({ name, doer, reviewer }) => `${name}:${doer}/${reviewer}`)).toEqual([
+      'Aclarar:any/none',
+      'Hacerlo:any/you',
+      'Integrar:any/none',
+    ]);
+    const land = stepNamed(def, 'Integrar');
+    expect(isLandStep(def, land?.id ?? '')).toBe(true);
+    expect(partNamed(def, 'Rama')?.guard).toEqual({
+      push: [stepNamed(def, 'Hacerlo')?.id, land?.id],
+      base: 'main',
+    });
+  });
+
+  it('asks for screenshots of an interface change and the test output of a bug', () => {
+    const def = instantiate(requireTemplate('changes'), 'es', {}, sequenceIds());
+    const kind = partNamed(def, 'Clase de cambio');
+    const value = (name: string) => kind?.options.find((option) => option.name === name)?.id;
+    expect(kind?.initial).toBe(value('Otro'));
+    expect(handOf(def, 'Hacerlo', 'Capturas')).toMatchObject({
+      req: 'when',
+      when: { part: kind?.id, value: value('Interfaz') },
+      fresh: true,
+    });
+    expect(handOf(def, 'Hacerlo', 'Salida de las pruebas')?.when).toEqual({
+      part: kind?.id,
+      value: value('Error'),
+    });
+  });
+
+  for (const lang of ['en', 'es'] as const) {
+    it(`reads well in ${lang}`, () => {
+      const def = instantiate(requireTemplate('changes'), lang, {}, sequenceIds());
+      expect(assertIconName(def.icon)).toBe(def.icon);
+      expect(problemsOf(def, {})).toEqual([]);
       for (const step of def.steps)
         for (const text of Object.values(step.instructions))
           expect(mentionText(def, text)).not.toMatch(/@[[{]/);
