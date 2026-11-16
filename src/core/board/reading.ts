@@ -13,6 +13,7 @@ import {
   usedRefs,
 } from './model.ts';
 import { DONE_NAME, DROPPED_NAME } from './next.ts';
+import { type Lang, TITLE_NAME } from './template-words.ts';
 
 // What a reader of a board item meets and types: names, never the hidden ids under them. An agent
 // fills `--field Tamaño=Una`, attaches `--module Bocetos`, and reads `state: Concepto (in review)`;
@@ -204,8 +205,20 @@ export function fieldNames(def: BoardDefinition): string[] {
     .map(({ name }) => name);
 }
 
-// A stored value as a reader says it: choices by their names.
-export function valueName(part: Part, value: unknown): string {
+// The language a board was made in: its title field is named in it (Título).
+export function langOf(def: BoardDefinition): Lang {
+  return def.title === TITLE_NAME.es ? 'es' : 'en';
+}
+
+const LEVEL_SAID: Readonly<Record<Lang, Readonly<Record<string, string>>>> = {
+  en: { low: 'low', medium: 'medium', high: 'high', critical: 'critical' },
+  es: { low: 'baja', medium: 'media', high: 'alta', critical: 'crítica' },
+};
+
+// A stored value as a reader says it: choices by their names, a level in the board's language
+// (Severidad: media), as its field's name is.
+export function valueName(part: Part, value: unknown, lang: Lang = 'en'): string {
+  if (part.kind === 'level' && typeof value === 'string') return LEVEL_SAID[lang][value] ?? value;
   if (CHOICE_KINDS.includes(part.kind as never) && value !== null && value !== undefined)
     return listOf(value)
       .map((id) => part.options.find((choice) => choice.id === id)?.name ?? id)
@@ -222,7 +235,7 @@ export function fieldsByName(
   for (const [key, value] of Object.entries(fields)) {
     const part = def.parts[key];
     out[part?.name ?? key] = part
-      ? valueName(part, value)
+      ? valueName(part, value, langOf(def))
       : valueName({ id: key, name: key, kind: 'text', hint: '', options: [] }, value);
   }
   return out;

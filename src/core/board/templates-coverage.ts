@@ -18,8 +18,8 @@ export const COVERAGE_TEMPLATES: readonly Template[] = [
     board: w('Bugs', 'Errores'),
     item: w('Bug', 'Bug'),
     about: w(
-      'Bugs that come in from the beta. Nothing is fixed before it is reproduced.',
-      'Bugs que llegan de la beta. Nada se arregla sin reproducirlo primero.',
+      'Bugs reported by users or testers. Nothing is fixed before it is reproduced.',
+      'Errores que reportan usuarios o testers. Nada se arregla sin reproducirlo primero.',
     ),
     idle: EMPTY,
     parts: [
@@ -34,14 +34,9 @@ export const COVERAGE_TEMPLATES: readonly Template[] = [
       },
       {
         key: 'repro',
-        kind: 'check',
+        kind: 'long',
         name: w('Steps', 'Pasos'),
-        hint: w('how to reproduce it, in order', 'cómo reproducirlo, en orden'),
-        options: [
-          w('Open the game', 'Abrir la partida'),
-          w('Go to the place', 'Ir al lugar'),
-          w('Do the action', 'Hacer la acción'),
-        ],
+        hint: w('how to reproduce it, step by step', 'cómo reproducirlo, paso a paso'),
       },
       {
         key: 'expected',
@@ -59,7 +54,7 @@ export const COVERAGE_TEMPLATES: readonly Template[] = [
         key: 'severity',
         kind: 'level',
         name: w('Severity', 'Severidad'),
-        hint: w('how much it hurts whoever plays', 'cuánto le duele a quien juega'),
+        hint: w('how much it affects whoever uses it', 'cuánto afecta a quien lo usa'),
         initial: 'medium',
       },
       {
@@ -68,17 +63,16 @@ export const COVERAGE_TEMPLATES: readonly Template[] = [
         name: w('Category', 'Categoría'),
         hint: w('what kind of failure it is', 'qué clase de fallo es'),
         options: [
-          w('Gameplay', 'Juego'),
+          w('Functionality', 'Funcionamiento'),
           w('Interface', 'Interfaz'),
           w('Performance', 'Rendimiento'),
         ],
       },
       {
         key: 'area',
-        kind: 'choice',
+        kind: 'text',
         name: w('Area', 'Área'),
-        hint: w('where it is', 'dónde está'),
-        options: [w('Forest', 'Bosque'), w('Dock', 'Muelle'), w('Lighthouse', 'Faro')],
+        hint: w('the screen or part where it happens', 'la pantalla o parte donde pasa'),
       },
       {
         key: 'code',
@@ -153,16 +147,16 @@ export const COVERAGE_TEMPLATES: readonly Template[] = [
     row: ['severity', 'category'],
     samples: {
       en: [
-        'The lighthouse does not light up at dusk',
-        'The boat goes through the dock',
-        'Menus lag when the map opens',
-        'The wolf stays on the bridge',
+        'Login does nothing on the second try',
+        'Saving a draft loses the last paragraph',
+        'The list takes ten seconds to load',
+        'Dates show in the wrong time zone',
       ],
       es: [
-        'El faro no se enciende al anochecer',
-        'La barca atraviesa el muelle',
-        'Los menús tardan al abrir el mapa',
-        'El lobo se queda en el puente',
+        'El inicio de sesión no hace nada al segundo intento',
+        'Guardar un borrador pierde el último párrafo',
+        'La lista tarda diez segundos en cargar',
+        'Las fechas salen con la zona horaria equivocada',
       ],
     },
   },
