@@ -14,4 +14,5 @@ export const AGENT_GUIDE = [
   '9. Answer every note from the person (otea reply) before you hand off.',
   '10. Ask the person only with otea ask <id> "<question>" (MCP: ask).',
   '11. To propose a new board, run otea board draft --new "<name>" --why "<what it is for>" (MCP: board_draft); the person publishes it.',
+  '12. Keep going until the person stops you: after each handoff run otea next again; when it has nothing, run otea wait --turn agent --unclaimed (in the background if you can; MCP: wait), then otea next.',
 ].join('\n');

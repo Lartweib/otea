@@ -74,7 +74,7 @@ describe('board moves from the CLI', () => {
     });
     const back = await mender('handoff', id, '--way', 'Triar', '--reason', 'no es un bug');
     expect(back.code).toBe(0);
-    expect(back.out.trim()).toBe(`Taken back. ${id} returns to Triar, round 2.`);
+    expect(back.out.trim()).toBe(`Taken back. ${id} returns to Triar, round 2.\nNext: otea next`);
   });
 
   it('asks for the note with exit 8, then keeps it', async () => {
@@ -90,7 +90,9 @@ describe('board moves from the CLI', () => {
       },
     });
     const done = await mender('handoff', id, '--note', 'se enciende');
-    expect(done.out.trim()).toBe(`Handed off. ${id} waits for the person to review Arreglar.`);
+    expect(done.out.trim()).toBe(
+      `Handed off. ${id} waits for the person to review Arreglar.\nNext: otea next`,
+    );
     const shown = JSON.parse((await otea('show', id, '--json')).out);
     expect(shown.board.notes[0]).toMatchObject({ step: 'Arreglar', round: 1, note: 'se enciende' });
   });
