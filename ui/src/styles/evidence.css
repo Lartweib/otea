@@ -674,3 +674,44 @@
 .ev-offer-acts a {
   text-decoration: none;
 }
+
+/* The reader: where you are among a round's files and a step to the next. */
+.ev-reader-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.ev-reader-where {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+  font: 400 12px / 1.35 var(--sans);
+  color: var(--ink-2);
+}
+.ev-reader-where b {
+  font-weight: 600;
+  color: var(--ink);
+}
+.ev-reader-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--mono);
+}
+.ev-audio-player {
+  display: block;
+  width: 100%;
+}
+.ev-gif .ev-stage {
+  position: relative;
+}
+.ev-gif-toggle {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+}
+.ev-diff > .ev-tools {
+  margin-bottom: 6px;
+}

@@ -2,7 +2,13 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { setLanguage } from '../../i18n/i18n.ts';
 import type { Round } from '../../rounds.ts';
 import type { Evidence } from '../../types.ts';
-import { compareFiles, phoneRounds, roundTagWord, splitEvidence } from './phone-review.ts';
+import {
+  compareFiles,
+  fileMarks,
+  phoneRounds,
+  roundTagWord,
+  splitEvidence,
+} from './phone-review.ts';
 
 afterEach(() => setLanguage('en'));
 
@@ -88,5 +94,26 @@ describe('the rounds of the step under review, on the phone', () => {
       ['saves.ts', 'same'],
       ['old.log', 'gone'],
     ]);
+  });
+
+  it('marks a file that came again with other contents as changed, not the same', () => {
+    const before = { ...file('app.ts'), sha256: 'aaa' };
+    const kept = { ...file('readme.md'), sha256: 'bbb' };
+    const after = { ...file('app.ts'), sha256: 'ccc' };
+    const again = { ...file('readme.md'), sha256: 'bbb' };
+    expect(compareFiles([before, kept], [after, again]).map((c) => [c.name, c.change])).toEqual([
+      ['app.ts', 'changed'],
+      ['readme.md', 'same'],
+    ]);
+  });
+
+  it('says how each file of a round stands against the round before, by its id', () => {
+    const before = { ...file('app.ts'), sha256: 'aaa' };
+    const after = { ...file('app.ts'), sha256: 'ccc' };
+    const fresh = file('nuevo.ts');
+    const marks = fileMarks([before], [after, fresh]);
+    expect(marks.get(after.id)).toBe('changed');
+    expect(marks.get(fresh.id)).toBe('new');
+    expect(fileMarks([], [fresh]).size).toBe(0);
   });
 });

@@ -1215,6 +1215,10 @@
 .p-shot {
   position: relative;
   display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  cursor: pointer;
   height: 104px;
   border-radius: 10px;
   overflow: hidden;
@@ -1248,6 +1252,12 @@
 }
 .p-file {
   text-decoration: none;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -1275,6 +1285,64 @@
 }
 .p-file.gone .ch {
   color: var(--minus);
+}
+.p-file .kd {
+  margin-left: auto;
+  flex: none;
+  font: 400 12px var(--sans);
+  color: var(--ink-3);
+}
+/* How a file stands against the round before: new, changed, the same. */
+.p-file .mk,
+.p-shot .mk {
+  flex: none;
+  font: 500 11.5px var(--sans);
+  color: var(--ink-3);
+}
+.p-file .mk.new,
+.p-shot .mk.new {
+  color: var(--plus);
+}
+.p-file .mk.changed,
+.p-shot .mk.changed {
+  color: var(--you);
+}
+.p-shot .mk {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: color-mix(in oklch, var(--sheet) 90%, transparent);
+}
+.p-file.changed .ch {
+  color: var(--you);
+}
+/* The reader (DR-4): a file read in the desk's viewer for its kind, the others a step away. */
+.nsheet.p-read {
+  height: 94dvh;
+  max-height: 94dvh;
+}
+.p-read .ev-reader {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+.p-read .ev-reader-bar {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--sheet);
+}
+.p-read .ev-stage img,
+.p-read .ev-stage video,
+.p-read .ev-stage canvas {
+  max-width: 100%;
+  height: auto;
+  touch-action: pinch-zoom;
+}
+.p-read .ev-code {
+  font-size: 12px;
 }
 .p-file.gone .fn {
   text-decoration: line-through;
