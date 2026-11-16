@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { getItem } from '../app/items.ts';
+import { createItem, getItem } from '../app/items.ts';
 import { itemNextText, liveBoardOf } from '../app/next.ts';
 import { openProject } from '../app/project.ts';
+import { linkItems } from '../app/relations.ts';
 import { AGENT_GUIDE } from '../core/agent-guide.ts';
 import { boardText } from '../core/board/next.ts';
 import { listedTemplates } from '../core/board/templates.ts';
@@ -199,12 +200,18 @@ describe('board add', () => {
 
   it('names a related item’s step on its own board in otea show', async () => {
     presetCollection(repo.dir, 'work');
-    await otea('create', '--collection', 'work', '--title', 'A');
-    await otea('create', '--collection', 'work', '--title', 'B');
-    await otea('link', 'WORK-1', 'blocks', 'WORK-2');
+    // Set up in process: each CLI spawn costs seconds on Windows, and only show is under test.
     const project = openProject(repo.dir);
-    const state = getItem(project, 'WORK-2').state;
-    project.db.close();
+    let state: string;
+    try {
+      const actor = { kind: 'agent' as const, name: 'claude' };
+      createItem(project, { collection: 'work', title: 'A', actor });
+      createItem(project, { collection: 'work', title: 'B', actor });
+      linkItems(project, { id: 'WORK-1', kind: 'blocks', other: 'WORK-2', actor, channel: 'cli' });
+      state = getItem(project, 'WORK-2').state;
+    } finally {
+      project.db.close();
+    }
     const { out } = await otea('show', 'WORK-1');
     const row = out.split('\n').find((line) => line.includes('WORK-2')) ?? '';
     expect(row).not.toContain(` ${state} `);
