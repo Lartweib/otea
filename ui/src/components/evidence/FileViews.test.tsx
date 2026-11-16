@@ -33,6 +33,16 @@ describe('FileView', () => {
     expect(html).not.toMatch(/>file</);
   });
 
+  it('reads a PDF as its pages instead of offering it, loading until its engine is in', () => {
+    const html = renderToStaticMarkup(
+      <FileView evidence={file('informe.pdf', 'application/pdf')} />,
+    );
+    expect(html).toContain('class="ev-pdf"');
+    expect(html).toContain('aria-busy="true"');
+    expect(html).not.toContain('ev-offer');
+    expect(html).toContain('informe.pdf');
+  });
+
   it('reads Markdown and text files instead of offering them', () => {
     expect(
       renderToStaticMarkup(<FileView evidence={file('arquitectura.md', 'text/markdown')} />),

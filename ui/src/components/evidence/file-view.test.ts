@@ -25,8 +25,13 @@ describe('fileViewOf: how a file in a files part is read', () => {
     expect(fileViewOf(file('LICENSE', 'text/plain'))).toBe('text');
   });
 
+  it('reads a PDF as its pages', () => {
+    expect(fileViewOf(file('informe.pdf', 'application/pdf'))).toBe('pdf');
+    expect(fileViewOf(file('INFORME.PDF'))).toBe('pdf');
+    expect(fileViewOf(file('sin-nombre', 'application/pdf'))).toBe('pdf');
+  });
+
   it('offers anything else to open or download, never as text', () => {
-    expect(fileViewOf(file('informe.pdf', 'application/pdf'))).toBe('download');
     expect(fileViewOf(file('proyecto.bin'))).toBe('download');
     expect(fileViewOf(file('dibujo.svg', 'image/svg+xml'))).toBe('download');
   });

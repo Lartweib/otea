@@ -645,6 +645,49 @@
   overflow-wrap: break-word;
 }
 
+/* a PDF: its pages as pictures, fitted to the width, in a box of their own that scrolls */
+.ev-pdf {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.ev-pdf-zoom {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.ev-pdf-zoom .btn:not(.icon) {
+  min-width: 64px;
+  font-variant-numeric: tabular-nums;
+}
+
+.ev-pdf-pages {
+  display: grid;
+  /* safe: a page zoomed wider than the box starts at its left edge, so all of it scrolls into view */
+  justify-items: safe center;
+  gap: 12px;
+  max-height: min(80vh, 1100px);
+  padding: 12px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  border-radius: 8px;
+  background: var(--well);
+}
+
+.ev-pdf-page {
+  flex: none;
+  background: #fff;
+  box-shadow: 0 0 0 1px var(--rule);
+}
+
+.ev-pdf-page canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
 .ev-offer {
   display: flex;
   flex-wrap: wrap;
