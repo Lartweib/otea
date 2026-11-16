@@ -1,6 +1,7 @@
 import { useId, useState } from 'react';
 import { moment, type NoteAnchor } from '../../../../src/core/board/notes.ts';
 import { seekVideo } from '../../components/evidence/video-moment.ts';
+import { NoteText } from '../../components/NoteText.tsx';
 import { useFileUrl } from '../../evidence-files.ts';
 import { t, tx } from '../../i18n/i18n.ts';
 import { AgentMark, Icon } from '../../kit/index.ts';
@@ -135,7 +136,7 @@ function Exchange({
       </div>
       <div className={open ? 'nt-msg you open' : 'nt-msg you'}>
         {note.anchor ? <Cite anchor={note.anchor} evidence={cited} /> : null}
-        <q>{note.text}</q>
+        <NoteText className="nt-q" text={note.text} />
         <div className="by">
           {open ? (
             <>
@@ -155,7 +156,7 @@ function Exchange({
             {profile ? <span className="prof">({profile})</span> : null}
             <span>· {noteTime(note.answer.at, now)}</span>
           </div>
-          <q>{note.answer.text}</q>
+          <NoteText className="nt-q" text={note.answer.text} />
         </div>
       ) : (
         <div className="nt-msg wait">

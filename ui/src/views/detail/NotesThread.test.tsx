@@ -70,6 +70,23 @@ describe('the thread of notes', () => {
     expect(html).toMatch(/Hacerlo · ronda 2 · \d\d:\d\d · llevaba 1 de 3 entregables/);
   });
 
+  it('reads the notes and the answers as Markdown, never their raw marks', () => {
+    const marked = [
+      {
+        ...notes[0],
+        text: 'Mirá `main.ts`:\n\n- el menú\n- el foco',
+        answer: { text: 'Hecho en **dos** pasos.', at: ago(29), by: 'claude-d' },
+      } as ItemNote,
+    ];
+    const html = renderToStaticMarkup(
+      <Thread notes={marked} evidence={[gif]} now={NOW} agent="claude-d" />,
+    );
+    expect(html).toContain('<code>main.ts</code>');
+    expect(html).toContain('<li>el menú</li>');
+    expect(html).toContain('<strong>dos</strong>');
+    expect(html).not.toContain('**dos**');
+  });
+
   it('marks an unanswered note and leaves the agent’s side dashed', () => {
     setLanguage('es');
     const html = renderToStaticMarkup(

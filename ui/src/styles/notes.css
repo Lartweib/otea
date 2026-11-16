@@ -50,6 +50,21 @@
   overflow-wrap: anywhere;
   white-space: pre-line;
 }
+.nt-msg .nt-q {
+  font: 400 16px / 1.45 var(--serif);
+  color: var(--ink);
+  text-wrap: pretty;
+  overflow-wrap: anywhere;
+}
+.nt-msg .nt-q > :first-child {
+  margin-top: 0;
+}
+.nt-msg .nt-q > :last-child {
+  margin-bottom: 0;
+}
+.nt-msg.ag .nt-q {
+  font-size: 15.5px;
+}
 .nt-msg .by {
   display: flex;
   flex-wrap: wrap;
