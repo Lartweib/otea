@@ -109,3 +109,15 @@ export function fileMarks(
 export function notesDock(mode: string, canLeave: boolean): boolean {
   return canLeave && mode !== 'stuck';
 }
+
+// How many files of the round the person has not opened in the reader yet: Aprobar says so in one
+// line, without holding the move.
+export function unopenedOf(
+  evidence: readonly { id: number }[],
+  opened: ReadonlySet<number>,
+): { unopened: number; total: number } {
+  return {
+    unopened: evidence.filter(({ id }) => !opened.has(id)).length,
+    total: evidence.length,
+  };
+}
