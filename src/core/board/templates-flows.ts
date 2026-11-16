@@ -3,7 +3,8 @@ import { w } from './template-words.ts';
 import type { Template, TemplateSet } from './templates.ts';
 
 // The boards designed and run end to end during the overnight validation: from an idea to its
-// tasks (Ideas and Implementación).
+// tasks (Ideas and Implementación), work across repositories (Trabajos and Entregas) and the bugs
+// of a team's repositories (Errores de trabajo).
 
 const IDEAS: Template = {
   key: 'ideaboard',
@@ -37,7 +38,7 @@ const IDEAS: Template = {
     {
       key: 'kind',
       kind: 'choice',
-      name: w('Kind', 'Tipo'),
+      name: w('What it is', 'Qué es'),
       hint: w(
         'Idea: the whole app. Decision: an architecture decision the idea implies, a part of its idea',
         'Idea: la app entera. Decisión: una decisión de arquitectura que la idea implica, hija de su idea',
@@ -155,8 +156,8 @@ const IDEAS: Template = {
         'Qué documentaste, qué cambió desde la ronda anterior y qué riesgos ves',
       ),
       take: w(
-        'For an Idea: first open a Decision part for each architecture decision the @{brief} implies (otea create --collection Ideas --parent <id> --field Kind=Decision), and wait for the person to close them. With the decisions taken, write the @{architecture}, draw the @{diagrams} (Mermaid flowchart, .mmd files) and attach the @{docs} (.md) that start the project. For a Decision: write the @{decision} with the option the person chose.',
-        'Para una Idea: primero abre una Decisión hija por cada decisión de arquitectura que el @{brief} implica (otea create --collection Ideas --parent <id> --field Tipo=Decisión), y espera a que la persona las cierre. Con las decisiones tomadas, escribe el @{architecture}, dibuja los @{diagrams} (Mermaid flowchart, archivos .mmd) y adjunta los @{docs} (.md) que arrancan el proyecto. Para una Decisión: escribe la @{decision} con la opción que eligió la persona.',
+        'For an Idea: first open a Decision part for each architecture decision the @{brief} implies (otea create --collection Ideas --parent <id> --field "What it is=Decision"), and wait for the person to close them. With the decisions taken, write the @{architecture}, draw the @{diagrams} (Mermaid flowchart, .mmd files) and attach the @{docs} (.md) that start the project. For a Decision: write the @{decision} with the option the person chose.',
+        'Para una Idea: primero abre una Decisión hija por cada decisión de arquitectura que el @{brief} implica (otea create --collection Ideas --parent <id> --field "Qué es=Decisión"), y espera a que la persona las cierre. Con las decisiones tomadas, escribe el @{architecture}, dibuja los @{diagrams} (Mermaid flowchart, archivos .mmd) y adjunta los @{docs} (.md) que arrancan el proyecto. Para una Decisión: escribe la @{decision} con la opción que eligió la persona.',
       ),
       before: w(
         'Each decision in the @{architecture} points to its Decision by id. Each diagram reads on its own: a title, named nodes, arrows with a verb. A Decision ends here: take it to Done.',
@@ -346,7 +347,511 @@ const IMPLEMENTATION: Template = {
   },
 };
 
-export const FLOW_TEMPLATES: readonly Template[] = [IDEAS, IMPLEMENTATION];
+// Work across repositories, as a team runs it from GitHub: a Job born from an issue is analysed and
+// planned, then divides into one Delivery per repository, which agents do and review in parallel and
+// the person lets merge in order.
+const JOBS: Template = {
+  key: 'jobs',
+  icon: 'briefcase',
+  hidden: true,
+  name: w('Jobs', 'Trabajos'),
+  description: w(
+    'A job from an issue, analysed and planned by an agent, divided into one delivery per repository.',
+    'Un trabajo de un issue, que un agente analiza y planifica, dividido en una entrega por repositorio.',
+  ),
+  board: w('Jobs', 'Trabajos'),
+  item: w('Job', 'Trabajo'),
+  about: w(
+    'Each Job is born from a GitHub issue or epic. An agent analyses it and proposes the plan and the merge plan; you approve it; it divides into one Delivery per repo, which agents work in parallel up to its PR.',
+    'Cada Trabajo nace de un issue o épica de GitHub. Un agente lo analiza y propone el plan y el plan de merge; tú lo apruebas; se divide en una Entrega por repo, que los agentes trabajan en paralelo hasta su PR.',
+  ),
+  idle: w(
+    'See whether there are Deliveries to take: otea next --collection Deliveries.',
+    'Mira si hay Entregas para tomar: otea next --collection Entregas.',
+  ),
+  parts: [
+    {
+      key: 'issue',
+      kind: 'url',
+      name: w('Issue', 'Issue'),
+      hint: w(
+        'the link to the GitHub issue or epic the job comes from',
+        'el enlace al issue o épica de GitHub que origina el trabajo',
+      ),
+    },
+    {
+      key: 'what',
+      kind: 'long',
+      name: w('What to do', 'Qué hay que hacer'),
+      hint: w(
+        'the request, copied or summed up from the issue, with its acceptance criteria',
+        'el encargo, copiado o resumido del issue, con sus criterios de aceptación',
+      ),
+    },
+    {
+      key: 'analysis',
+      kind: 'long',
+      name: w('Analysis', 'Análisis'),
+      hint: w(
+        'what the code of each affected repo does today, risks and doubts',
+        'qué hace hoy el código de cada repo afectado, riesgos y dudas',
+      ),
+    },
+    {
+      key: 'plan',
+      kind: 'long',
+      name: w('Plan', 'Plan'),
+      hint: w(
+        'one line per delivery: repo, branch, what changes and what it depends on',
+        'una línea por entrega: repo, rama, qué cambia y de qué depende',
+      ),
+    },
+    {
+      key: 'mergeplan',
+      kind: 'long',
+      name: w('Merge plan', 'Plan de merge'),
+      hint: w(
+        'the order the PRs are merged in, why, and how to go back if something fails',
+        'el orden en que se mergean los PRs, por qué, y cómo volver atrás si algo falla',
+      ),
+    },
+    {
+      key: 'checked',
+      kind: 'long',
+      name: w('How it was checked', 'Cómo se verificó'),
+      hint: w(
+        'what you tested with every delivery together',
+        'qué probaste con todas las entregas juntas',
+      ),
+    },
+    {
+      key: 'checklog',
+      kind: 'log',
+      name: w('Integrated test', 'Prueba integrada'),
+      hint: w(
+        'the output of the tests with everything together',
+        'la salida de los tests con todo junto',
+      ),
+    },
+  ],
+  form: [
+    ['issue', true],
+    ['what', false],
+  ],
+  steps: [
+    {
+      key: 'analyse',
+      name: w('Analyse', 'Analizar'),
+      doer: 'any',
+      reviewer: 'you',
+      hand: [
+        ['what', 'always'],
+        ['analysis', 'always'],
+        ['plan', 'always'],
+        ['mergeplan', 'always'],
+      ],
+      drop: true,
+      note: w('doubts you need the person to decide', 'dudas que necesitas que la persona decida'),
+      take: w(
+        'Read the issue in @{issue} (and its sub-issues) and the code of each repo it touches. Write @{what} if it is empty, the @{analysis}, a @{plan} with one delivery per repo and per deliverable, and the @{mergeplan}. Do not touch code yet.',
+        'Lee el issue de @{issue} (y sus sub-issues) y el código de cada repo que toca. Escribe @{what} si está vacío, el @{analysis}, un @{plan} con una entrega por repo y por entregable, y el @{mergeplan}. No toques código todavía.',
+      ),
+      before: w(
+        'Each line of the @{plan} says repo, branch and which other delivery it depends on. The @{mergeplan} respects those dependencies.',
+        'Cada línea del @{plan} dice repo, rama y de qué otra entrega depende. El @{mergeplan} respeta esas dependencias.',
+      ),
+    },
+    {
+      key: 'deliver',
+      name: w('Deliver', 'Entregar'),
+      doer: 'any',
+      reviewer: 'you',
+      hand: [
+        ['checked', 'always'],
+        ['checklog', 'always', true],
+      ],
+      ways: ['analyse'],
+      waits: ['parts'],
+      take: w(
+        'Create a Delivery for each line of the approved @{plan} (otea create --collection Deliveries --parent <this id>), and link with blocks the one that must be merged first. Agents work the Deliveries in parallel; here you only follow them along.',
+        'Crea una Entrega por cada línea del @{plan} aprobado (otea create --collection Entregas --parent <este id>), y enlaza con blocks la que debe mergearse antes. Las Entregas las trabajan agentes en paralelo; aquí solo sigues que avancen.',
+      ),
+      before: w(
+        'When every Delivery is merged in the order of the @{mergeplan}, test everything together on main and tell it in @{checked} with the @{checklog}.',
+        'Cuando todas las Entregas están mergeadas en el orden del @{mergeplan}, prueba todo junto en main y cuéntalo en @{checked} con la @{checklog}.',
+      ),
+    },
+  ],
+  anytime: [],
+  row: ['issue'],
+  layout: {
+    rounds: 'main',
+    parts: 'main',
+    issue: 'side',
+    what: 'main',
+    analysis: 'main',
+    plan: 'main',
+    mergeplan: 'main',
+    checked: 'main',
+    checklog: 'main',
+  },
+  samples: {
+    en: ['Epic: visible names across the app', 'Move the login to OAuth'],
+    es: ['Épica: nombres visibles en toda la app', 'Migrar el login a OAuth'],
+  },
+};
+
+const DELIVERIES: Template = {
+  key: 'deliveries',
+  icon: 'git-branch',
+  hidden: true,
+  name: w('Deliveries', 'Entregas'),
+  description: w(
+    'One delivery per repository of a job: an agent does it, another reviews it, you let it merge.',
+    'Una entrega por repositorio de un trabajo: un agente la hace, otro la revisa, tú dejas que se mergee.',
+  ),
+  board: w('Deliveries', 'Entregas'),
+  item: w('Delivery', 'Entrega'),
+  about: w(
+    'One delivery per repo of a Job. It is worked only on its branch; another agent reviews the PR; you approve the merge, in the order its blockers set. Once the delivery is Done, an agent merges it and records it with otea merged.',
+    'Una entrega por repo de un Trabajo. Se trabaja solo en su rama; otro agente revisa el PR; tú apruebas el merge, en el orden que marcan sus bloqueos. Con la entrega terminada, un agente la mergea y lo registra con otea merged.',
+  ),
+  idle: w(
+    'No deliveries for you. Wait with otea wait --turn agent --unclaimed.',
+    'No hay entregas para ti. Espera con otea wait --turn agent --unclaimed.',
+  ),
+  parts: [
+    {
+      key: 'repo',
+      kind: 'text',
+      name: w('Repo', 'Repo'),
+      hint: w(
+        'the repository, by the name the project gives it (otea repos list), e.g. api',
+        'el repositorio, con el nombre que le da el proyecto (otea repos list), p. ej. api',
+      ),
+    },
+    {
+      key: 'branch',
+      kind: 'branch',
+      name: w('Branch', 'Rama'),
+      hint: w(
+        'the branch of this delivery, e.g. feat/display-name',
+        'la rama de esta entrega, p. ej. feat/display-name',
+      ),
+      guard: { push: ['implement'], repo: 'repo', base: 'main' },
+    },
+    {
+      key: 'proposal',
+      kind: 'long',
+      name: w('What it delivers', 'Qué entrega'),
+      hint: w(
+        "what changes in this repo, according to the Job's plan",
+        'qué cambia en este repo, según el plan del Trabajo',
+      ),
+    },
+    {
+      key: 'order',
+      kind: 'number',
+      name: w('Merge order', 'Orden de merge'),
+      hint: w(
+        "its place in the Job's merge plan: 1 is merged first",
+        'su lugar en el plan de merge del Trabajo: 1 se mergea primero',
+      ),
+    },
+    {
+      key: 'pr',
+      kind: 'url',
+      name: w('PR', 'PR'),
+      hint: w('the link to the pull request', 'el enlace al pull request'),
+    },
+    {
+      key: 'prstate',
+      kind: 'choice',
+      name: w('PR state', 'Estado del PR'),
+      hint: w('how the PR stands on GitHub', 'cómo está el PR en GitHub'),
+      options: [
+        w('Open', 'Abierto'),
+        w('Checks green', 'Checks en verde'),
+        w('Checks red', 'Checks en rojo'),
+        w('Merged', 'Mergeado'),
+      ],
+      optionKeys: ['open', 'green', 'red', 'merged'],
+    },
+    {
+      key: 'code',
+      kind: 'code',
+      name: w('Code changes', 'Cambios de código'),
+      hint: w("the PR's diff", 'el diff del PR'),
+    },
+    {
+      key: 'tests',
+      kind: 'log',
+      name: w('Tests', 'Tests'),
+      hint: w("the output of the repo's tests", 'la salida de los tests del repo'),
+    },
+  ],
+  form: [
+    ['repo', true],
+    ['branch', true],
+    ['proposal', true],
+    ['order', false],
+  ],
+  steps: [
+    {
+      key: 'implement',
+      name: w('Implement', 'Implementar'),
+      doer: 'any',
+      reviewer: 'any',
+      hand: [
+        ['code', 'always', true],
+        ['tests', 'always', true],
+        ['pr', 'always'],
+      ],
+      note: w('what changed and how to test it', 'qué cambió y cómo probarlo'),
+      take: w(
+        'Work on a @{branch} branch of the @{repo} repo, never on main. Do what @{proposal} says. Push the branch and open the PR against main.',
+        'Trabaja en una rama @{branch} del repo @{repo}, nunca en main. Haz lo que dice @{proposal}. Sube la rama y abre el PR contra main.',
+      ),
+      before: w(
+        'Leave the link in @{pr}, the diff in @{code} and the test output in @{tests}. In the note, what changed and how to test it.',
+        'Deja el enlace en @{pr}, el diff en @{code} y la salida de los tests en @{tests}. En la nota, qué cambió y cómo probarlo.',
+      ),
+      review: w(
+        'Review the diff and the tests against @{proposal}. If something is missing, send it back saying what. Do not review a delivery you did yourself.',
+        'Revisa el diff y los tests contra @{proposal}. Si algo falta, devuélvelo diciendo qué. No revises una entrega que hiciste tú.',
+      ),
+    },
+    {
+      key: 'approve',
+      name: w('Approve the merge', 'Aprobar el merge'),
+      doer: 'you',
+      reviewer: 'none',
+      hand: [],
+      ways: ['implement'],
+      waits: ['blockers'],
+    },
+  ],
+  anytime: ['pr', 'prstate'],
+  row: ['repo', 'prstate'],
+  layout: {
+    rounds: 'main',
+    repo: 'side',
+    branch: 'side',
+    order: 'side',
+    pr: 'side',
+    prstate: 'side',
+    proposal: 'main',
+    code: 'main',
+    tests: 'main',
+  },
+  samples: {
+    en: ['shared-lib: formatName', 'api: displayName on /users', 'web: profile with displayName'],
+    es: ['shared-lib: formatName', 'api: displayName en /users', 'web: perfil con displayName'],
+  },
+};
+
+// Bugs in a team's repositories: an agent reproduces and finds the cause, another reviews the fix,
+// and the person checks it before the merge.
+const REPO_BUGS: Template = {
+  key: 'repobugs',
+  icon: 'bug',
+  name: w('Bugs in your repositories', 'Errores de trabajo'),
+  description: w(
+    'An agent reproduces each bug and finds its cause, another reviews the fix, and you check it before the merge.',
+    'Un agente reproduce cada error y encuentra la causa, otro revisa el arreglo, y tú lo verificas antes del merge.',
+  ),
+  board: w('Work bugs', 'Errores de trabajo'),
+  item: w('Bug', 'Error'),
+  about: w(
+    'Bugs reported on GitHub or by support: an agent reproduces them and finds the cause, another reviews the fix, and you check it before the merge.',
+    'Errores reportados en GitHub o por soporte: un agente los reproduce y encuentra la causa, otro revisa el arreglo, y tú verificas antes del merge.',
+  ),
+  idle: w(
+    'No bugs for you. Wait with otea wait --turn agent --unclaimed.',
+    'No hay errores para ti. Espera con otea wait --turn agent --unclaimed.',
+  ),
+  parts: [
+    {
+      key: 'issue',
+      kind: 'url',
+      name: w('Issue', 'Issue'),
+      hint: w('the link to the GitHub issue', 'el enlace al issue de GitHub'),
+    },
+    {
+      key: 'report',
+      kind: 'long',
+      name: w('Report', 'Reporte'),
+      hint: w('steps, what was expected and what happened', 'pasos, qué se esperaba y qué pasó'),
+    },
+    {
+      key: 'severity',
+      kind: 'level',
+      name: w('Severity', 'Gravedad'),
+      hint: w('how much it hurts whoever suffers it', 'cuánto duele a quien lo sufre'),
+      initial: 'medium',
+    },
+    {
+      key: 'repo',
+      kind: 'text',
+      name: w('Repo', 'Repo'),
+      hint: w(
+        'the repo the bug is in (otea repos list)',
+        'el repo donde está el error (otea repos list)',
+      ),
+    },
+    {
+      key: 'cause',
+      kind: 'long',
+      name: w('Cause', 'Causa'),
+      hint: w(
+        'where the bug is in the code and why it happens',
+        'dónde está el error en el código y por qué pasa',
+      ),
+    },
+    {
+      key: 'repro',
+      kind: 'log',
+      name: w('Reproduction', 'Reproducción'),
+      hint: w(
+        'a test or command that fails before the fix',
+        'un test o comando que falla antes del arreglo',
+      ),
+    },
+    {
+      key: 'branch',
+      kind: 'branch',
+      name: w('Branch', 'Rama'),
+      hint: w(
+        'the branch of the fix, e.g. fix/profile-undefined',
+        'la rama del arreglo, p. ej. fix/profile-undefined',
+      ),
+      guard: { push: ['fix'], repo: 'repo', base: 'main' },
+    },
+    {
+      key: 'fixdiff',
+      kind: 'code',
+      name: w('The fix', 'Arreglo'),
+      hint: w('the diff of the fix', 'el diff del arreglo'),
+    },
+    {
+      key: 'tests',
+      kind: 'log',
+      name: w('Tests', 'Tests'),
+      hint: w(
+        'the test that failed, now green, and the rest',
+        'el test que fallaba, ahora en verde, y el resto',
+      ),
+    },
+    {
+      key: 'pr',
+      kind: 'url',
+      name: w('PR', 'PR'),
+      hint: w('the link to the pull request', 'el enlace al pull request'),
+    },
+  ],
+  form: [
+    ['issue', false],
+    ['report', true],
+    ['severity', false],
+  ],
+  steps: [
+    {
+      key: 'reportit',
+      name: w('Report it', 'Reportar'),
+      doer: 'you',
+      reviewer: 'none',
+      hand: [['report', 'always']],
+      skip: true,
+    },
+    {
+      key: 'triage',
+      name: w('Triage', 'Triar'),
+      doer: 'any',
+      reviewer: 'you',
+      hand: [
+        ['repo', 'always'],
+        ['cause', 'always'],
+        ['repro', 'always', true],
+        ['severity', 'always'],
+      ],
+      drop: true,
+      take: w(
+        'Reproduce the bug in the @{report} (read the @{issue} if there is one). Find the @{cause} and the @{repo}. Leave in @{repro} a test or command that fails.',
+        'Reproduce el error del @{report} (lee el @{issue} si hay). Encuentra la @{cause} y el @{repo}. Deja en @{repro} un test o comando que falle.',
+      ),
+      before: w(
+        'If it does not reproduce, drop it with the motive Does not reproduce.',
+        'Si no se reproduce, descártalo con el motivo No se reproduce.',
+      ),
+    },
+    {
+      key: 'fix',
+      name: w('Fix', 'Arreglar'),
+      doer: 'any',
+      reviewer: 'any',
+      hand: [
+        ['branch', 'always'],
+        ['fixdiff', 'always', true],
+        ['tests', 'always', true],
+        ['pr', 'always'],
+      ],
+      ways: ['triage'],
+      note: w('what changed', 'qué cambió'),
+      take: w(
+        'Fix the @{cause} on a @{branch} of the @{repo}; the test in @{repro} turns green. Push the branch and open the PR.',
+        'Arregla la @{cause} en una @{branch} del @{repo}; el test de @{repro} pasa a verde. Sube la rama y abre el PR.',
+      ),
+      before: w(
+        'Leave the @{pr}, the diff in @{fixdiff} and the @{tests}.',
+        'Deja el @{pr}, el diff en @{fixdiff} y los @{tests}.',
+      ),
+      review: w(
+        'Check that the test in @{repro} fails without the fix and passes with it.',
+        'Comprueba que el test de @{repro} falla sin el arreglo y pasa con él.',
+      ),
+    },
+    {
+      key: 'verify',
+      name: w('Verify', 'Verificar'),
+      doer: 'you',
+      reviewer: 'none',
+      hand: [],
+      ways: ['fix'],
+    },
+  ],
+  anytime: ['severity', 'issue'],
+  motives: [
+    ['norepro', w('Does not reproduce', 'No se reproduce')],
+    ['duplicate', w('Duplicate', 'Duplicado')],
+    ['notbug', w('Not a bug', 'No es un error')],
+  ],
+  row: ['severity', 'repo'],
+  layout: {
+    rounds: 'main',
+    issue: 'side',
+    severity: 'side',
+    repo: 'side',
+    branch: 'side',
+    pr: 'side',
+    report: 'main',
+    cause: 'main',
+    repro: 'main',
+    fixdiff: 'main',
+    tests: 'main',
+  },
+  samples: {
+    en: ['The profile shows undefined', 'The login fails with accents'],
+    es: ['El perfil muestra undefined', 'El login falla con tildes'],
+  },
+};
+
+export const FLOW_TEMPLATES: readonly Template[] = [
+  IDEAS,
+  IMPLEMENTATION,
+  JOBS,
+  DELIVERIES,
+  REPO_BUGS,
+];
 
 export const FLOW_SETS: readonly TemplateSet[] = [
   {
@@ -358,5 +863,16 @@ export const FLOW_SETS: readonly TemplateSet[] = [
       'Un agente refina cada idea con tus respuestas, la documenta con sus decisiones y diagramas, y planifica sus tareas en un segundo tablero, que esperan a que apruebes el plan.',
     ),
     boards: ['ideaboard', 'implementation'],
+  },
+  {
+    key: 'repos',
+    icon: 'layers',
+    name: w('Work across repositories', 'Trabajo en varios repos'),
+    description: w(
+      'Each Job from an issue is analysed and planned, then divides into one Delivery per repository: an agent does it, another reviews it, and you let them merge in order.',
+      'Cada Trabajo de un issue se analiza y planifica, y se divide en una Entrega por repositorio: un agente la hace, otro la revisa y tú dejas que se mergeen en orden.',
+    ),
+    boards: ['jobs', 'deliveries'],
+    split: { parent: 0, child: 1, always: true },
   },
 ];

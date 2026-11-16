@@ -151,4 +151,27 @@ describe('a project made from an official template', () => {
     const planned = newItem(ctx, tasks, { all: true });
     expect(runToDone(ctx, planned, tasks)).toEqual(['Hacer']);
   });
+
+  it('takes a Trabajo through Analizar and Entregar once its Entrega is merged in', () => {
+    const ctx = memoryContext();
+    expect(initBoards(ctx, 'repos').map(({ name }) => name)).toEqual(['Trabajos', 'Entregas']);
+    const jobs = boardOf(ctx, 'Trabajos');
+    const deliveries = boardOf(ctx, 'Entregas');
+
+    const job = newItem(ctx, jobs);
+    const delivery = newItem(ctx, deliveries, { parent: job });
+    expect(runToDone(ctx, delivery, deliveries)).toEqual(['Implementar', 'Aprobar el merge']);
+    expect(runToDone(ctx, job, jobs)).toEqual(['Analizar', 'Entregar']);
+    expect(requireItem(ctx.db, job).state).toBe('done');
+  });
+
+  it('takes an Error de trabajo from its report to Verificar', () => {
+    const ctx = memoryContext();
+    expect(initBoards(ctx, 'repobugs').map(({ name }) => name)).toEqual(['Errores de trabajo']);
+    const bugs = boardOf(ctx, 'Errores de trabajo');
+
+    const bug = newItem(ctx, bugs);
+    expect(runToDone(ctx, bug, bugs)).toEqual(['Triar', 'Arreglar', 'Verificar']);
+    expect(requireItem(ctx.db, bug).state).toBe('done');
+  });
 });

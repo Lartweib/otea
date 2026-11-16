@@ -19,7 +19,7 @@ const you = { kind: 'human' as const, name: 'fede' };
 let tick = 0;
 const now = () => new Date(Date.UTC(2026, 10, 12, 9, 0, tick++)).toISOString();
 
-// Cambios en varios repos: Cambios (the parent, split into) Tareas de repo (the child).
+// Trabajo en varios repos: Trabajos (the parent, split into) Entregas (the child).
 function pairOf(ctx: Context) {
   const [parent, child] = createBoardSet(
     ctx,
@@ -51,8 +51,8 @@ describe('publishPair', () => {
     expect(result.child?.version).toBe(1);
     expect(getBoardRecord(ctx, ids.parent).live?.version).toBe(1);
     expect(getBoardRecord(ctx, ids.child).live?.version).toBe(1);
-    expect(findCollection(ctx.db, 'Cambios')).toBeDefined();
-    expect(findCollection(ctx.db, 'Tareas de repo')).toBeDefined();
+    expect(findCollection(ctx.db, 'Trabajos')).toBeDefined();
+    expect(findCollection(ctx.db, 'Entregas')).toBeDefined();
   });
 
   it('publishes only the board asked for when only one has changes', () => {
@@ -90,7 +90,7 @@ describe('publishPair', () => {
     ).toThrow(OteaError);
     expect(getBoardRecord(ctx, ids.child).live).toBeNull();
     expect(getBoardRecord(ctx, ids.parent).live).toBeNull();
-    expect(findCollection(ctx.db, 'Tareas de repo')).toBeUndefined();
+    expect(findCollection(ctx.db, 'Entregas')).toBeUndefined();
   });
 
   it('refuses boards that are not one pair', () => {
@@ -121,8 +121,8 @@ describe('restorePair', () => {
     expect(restored.child?.live).toBeNull();
     expect(restored.parent?.draft).not.toBeNull();
     expect(restored.child?.draft).not.toBeNull();
-    expect(findCollection(ctx.db, 'Cambios')).toBeUndefined();
-    expect(findCollection(ctx.db, 'Tareas de repo')).toBeUndefined();
+    expect(findCollection(ctx.db, 'Trabajos')).toBeUndefined();
+    expect(findCollection(ctx.db, 'Entregas')).toBeUndefined();
   });
 
   it('is all or nothing: a child with items since keeps both boards published', () => {
@@ -134,7 +134,7 @@ describe('restorePair', () => {
       return Object.fromEntries((def?.form ?? []).map(({ ref }) => [ref, 'api']));
     };
     const change = createItem(ctx, {
-      collection: 'Cambios',
+      collection: 'Trabajos',
       title: 'Nube',
       fields: formOf(ids.parent),
       actor: you,
@@ -143,16 +143,16 @@ describe('restorePair', () => {
     const child = getBoardRecord(ctx, ids.child).live?.definition;
     const idOf = (name: string) =>
       Object.values(child?.parts ?? {}).find((part) => part.name === name)?.id ?? name;
-    // A Tarea de repo is always part of a Cambio.
+    // An Entrega is always part of a Trabajo.
     createItem(ctx, {
-      collection: 'Tareas de repo',
+      collection: 'Entregas',
       parent: change.id,
       title: 'API',
       fields: {
         ...formOf(ids.child),
         [idOf('Repo')]: 'api',
         [idOf('Rama')]: 'feat/nube',
-        [idOf('Qué propone')]: 'Una ruta nueva',
+        [idOf('Qué entrega')]: 'Una ruta nueva',
       },
       actor: you,
       channel: 'ui',

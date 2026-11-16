@@ -56,6 +56,7 @@ describe('the boards API', () => {
       'triage',
       'review',
       'decisions',
+      'repobugs',
       'ideas',
       'repos',
       'product',
@@ -63,8 +64,8 @@ describe('the boards API', () => {
     expect(templates[3]?.name).toBe('Tareas simples');
     const repos = templates.find(({ key }) => key === 'repos');
     expect(((repos?.boards ?? []) as Json[]).map(({ name }) => name)).toEqual([
-      'Cambios',
-      'Tareas de repo',
+      'Trabajos',
+      'Entregas',
     ]);
   });
 
@@ -72,7 +73,7 @@ describe('the boards API', () => {
     const { status, body } = await call('POST', '/boards/set', {
       set: 'repos',
       lang: 'es',
-      boards: [{ name: 'Cambios' }, {}],
+      boards: [{ name: 'Trabajos' }, {}],
     });
     expect(status).toBe(201);
     const records = body.records as Json[];

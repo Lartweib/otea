@@ -3,9 +3,8 @@ import type { Template, TemplateSet } from './templates.ts';
 import { FLOW_SETS } from './templates-flows.ts';
 
 // The templates that say what the old presets said: sorting bugs (bug-triage), reviewing by rounds
-// (review) and decisions (architecture); and the boards that only come in a set: Cambios and its
-// Tareas de repo (Cambios en varios repos), and the Tareas that wait for what blocks them
-// (Producto). Templates use any agent where the mock named one: agents are per project.
+// (review) and decisions (architecture); and the board that only comes in a set: the Tareas that
+// wait for what blocks them (Producto). Templates use any agent where the mock named one: agents are per project.
 
 export const COVERAGE_TEMPLATES: readonly Template[] = [
   {
@@ -314,167 +313,6 @@ export const COVERAGE_TEMPLATES: readonly Template[] = [
     },
   },
   {
-    key: 'changes',
-    hidden: true,
-    icon: 'layers',
-    name: w('Changes', 'Cambios'),
-    description: w(
-      'An agent analyses the change and carries it out repository by repository.',
-      'Un agente analiza el cambio y lo ejecuta repo por repo.',
-    ),
-    board: w('Changes', 'Cambios'),
-    item: w('Change', 'Cambio'),
-    about: w(
-      'Changes that touch more than one repository. Each repository is a Repo task.',
-      'Cambios que tocan más de un repositorio. Cada repo es una Tarea de repo.',
-    ),
-    idle: EMPTY,
-    parts: [
-      {
-        key: 'what',
-        kind: 'long',
-        name: w('What changes', 'Qué cambia'),
-        hint: w('the change, in your words', 'el cambio, en tus palabras'),
-      },
-      {
-        key: 'plan',
-        kind: 'long',
-        name: w('Plan', 'Plan'),
-        hint: w(
-          'what is touched in each repository, in order',
-          'qué se toca en cada repo, en orden',
-        ),
-      },
-      {
-        key: 'checked',
-        kind: 'long',
-        name: w('How it was checked', 'Cómo se comprobó'),
-        hint: w('what you tried with everything together', 'qué probaste con todo junto'),
-      },
-    ],
-    form: [['what', true]],
-    steps: [
-      {
-        key: 'analyse',
-        name: w('Analyse', 'Analizar'),
-        doer: 'any',
-        reviewer: 'you',
-        hand: [['plan', 'always']],
-        take: w(
-          'Read the code of each repository it touches before you propose the @{plan}.',
-          'Lee el código de cada repo afectado antes de proponer el @{plan}.',
-        ),
-      },
-      {
-        key: 'execute',
-        name: w('Execute', 'Ejecutar'),
-        doer: 'any',
-        reviewer: 'you',
-        hand: [['checked', 'always']],
-        waits: ['parts'],
-        take: w(
-          'Follow the approved @{plan}: one Repo task for each repository that changes.',
-          'Sigue el @{plan} aprobado: una Tarea de repo por cada repo que cambie.',
-        ),
-        before: w(
-          'Try everything together and tell it in @{checked}.',
-          'Prueba todo junto y cuéntalo en @{checked}.',
-        ),
-      },
-    ],
-    anytime: [],
-    layout: { parts: 'main' },
-    samples: {
-      en: ['Save games in the cloud', 'Full-screen map'],
-      es: ['Guardar partidas en la nube', 'Mapa en pantalla completa'],
-    },
-  },
-  {
-    key: 'repotasks',
-    hidden: true,
-    icon: 'git-branch',
-    name: w('Repo tasks', 'Tareas de repo'),
-    description: w(
-      'Each repository, its branch: you approve the proposal and an agent carries it out.',
-      'Cada repo, su rama: tú apruebas la propuesta y un agente la implementa.',
-    ),
-    board: w('Repo tasks', 'Tareas de repo'),
-    item: w('Repo task', 'Tarea de repo'),
-    about: w(
-      'One task per repository. It pushes only to its branch.',
-      'Una tarea por repositorio. Sube solo a su rama.',
-    ),
-    idle: EMPTY,
-    parts: [
-      {
-        key: 'repo',
-        kind: 'text',
-        name: w('Repo', 'Repo'),
-        hint: w(
-          'the repository, by the name the project gives it (otea repos list), e.g. api',
-          'el repositorio, con el nombre que le da el proyecto (otea repos list), p. ej. api',
-        ),
-      },
-      {
-        key: 'branch',
-        kind: 'branch',
-        name: w('Branch', 'Rama'),
-        hint: w('the branch the work goes on', 'la rama donde se trabaja'),
-        guard: { push: ['implement'], repo: 'repo' },
-      },
-      {
-        key: 'proposal',
-        kind: 'long',
-        name: w('What it proposes', 'Qué propone'),
-        hint: w('what changes in this repository', 'qué cambia en este repo'),
-      },
-      {
-        key: 'code',
-        kind: 'code',
-        name: w('Code changes', 'Cambios de código'),
-        hint: w('the diff', 'el diff'),
-      },
-      {
-        key: 'pr',
-        kind: 'url',
-        name: w('PR', 'PR'),
-        hint: w('the link to the review', 'el enlace a la revisión'),
-      },
-    ],
-    form: [
-      ['repo', true],
-      ['branch', true],
-    ],
-    steps: [
-      {
-        key: 'propose',
-        name: w('Proposal', 'Propuesta'),
-        doer: 'you',
-        reviewer: 'none',
-        hand: [['proposal', 'always']],
-      },
-      {
-        key: 'implement',
-        name: w('Implement', 'Implementar'),
-        doer: 'any',
-        reviewer: 'you',
-        hand: [['code', 'always']],
-        ways: ['propose'],
-        take: w(
-          'Implement @{proposal} on the @{branch}, without touching main.',
-          'Implementa @{proposal} en la @{branch}, sin tocar main.',
-        ),
-        before: w('Leave the link in @{pr}.', 'Deja el enlace en @{pr}.'),
-      },
-    ],
-    anytime: ['pr'],
-    row: ['repo'],
-    samples: {
-      en: ['Save API', 'Cloud button in the menu', 'Saves table schema'],
-      es: ['API de guardado', 'Botón de nube en el menú', 'Esquema de la tabla de partidas'],
-    },
-  },
-  {
     key: 'blocked-tasks',
     hidden: true,
     icon: 'checklist',
@@ -536,21 +374,10 @@ export const COVERAGE_TEMPLATES: readonly Template[] = [
   },
 ];
 
-// Templates that make several boards at once. Cambios en varios repos joins its two boards with
-// "se divide en"; Producto's two boards stay apart, and a bug holds a task back with a link.
+// Templates that make several boards at once: the validated flows (templates-flows.ts), then
+// Producto, whose two boards stay apart; a bug holds a task back with a link.
 export const TEMPLATE_SETS: readonly TemplateSet[] = [
   ...FLOW_SETS,
-  {
-    key: 'repos',
-    icon: 'layers',
-    name: w('Changes across repositories', 'Cambios en varios repos'),
-    description: w(
-      'Each Change divides into one Repo task per repository, and Otea protects the branch of each one.',
-      'Cada Cambio se divide en una Tarea de repo por repositorio, y Otea protege la rama de cada una.',
-    ),
-    boards: ['changes', 'repotasks'],
-    split: { parent: 0, child: 1, always: true },
-  },
   {
     key: 'product',
     icon: 'checklist',

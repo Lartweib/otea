@@ -62,7 +62,7 @@ function criaturas(name = 'Criaturas'): string {
 const add = (title: string, collection = 'Criaturas') =>
   createItem(project, { collection, title, fields: { fdesc: 'x' }, actor: you }, now).id;
 
-// Cambios, which divides into Tareas de repo, both published.
+// Trabajos, which divides into Entregas, both published.
 function pair(): { parent: string; child: string } {
   const [parent, child] = createBoardSet(project, { set: 'repos', lang: 'es', boards: [] }, now);
   if (!parent || !child) throw new Error('no pair');
@@ -197,8 +197,8 @@ describe('archiveBoard', () => {
 
     expect(code(() => archiveBoard(project, child, { by: you }, now))).toBe('in_use');
     expect(archivePlan(project, parent).boards.map(({ name }) => name)).toEqual([
-      'Cambios',
-      'Tareas de repo',
+      'Trabajos',
+      'Entregas',
     ]);
     expect(archiveBoard(project, parent, { by: you }, now)).toEqual({
       archived: [parent, child],
@@ -212,7 +212,7 @@ describe('archiveBoard', () => {
       listBoardSummaries(project)
         .map(({ name }) => name)
         .sort(),
-    ).toEqual(['Cambios', 'Tareas de repo']);
+    ).toEqual(['Entregas', 'Trabajos']);
   });
 });
 
@@ -314,8 +314,8 @@ describe('deleteBoardForever', () => {
 
     expect(code(() => deleteBoardForever(project, child, {}))).toBe('in_use');
     expect(deletePlan(project, parent).boards.map(({ name }) => name)).toEqual([
-      'Cambios',
-      'Tareas de repo',
+      'Trabajos',
+      'Entregas',
     ]);
     expect(deleteBoardForever(project, parent, {})).toEqual({ deleted: [parent, child] });
     expect(getBoardRecordOrNull(parent)).toBeNull();

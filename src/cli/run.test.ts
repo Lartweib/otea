@@ -138,7 +138,7 @@ describe('run', () => {
       const { code, out } = await otea('init', '--local', '--template', 'repos');
 
       expect(code).toBe(0);
-      expect(out).toBe(`Project data in ${oteaDir()}\nMade the boards Cambios, Tareas de repo\n`);
+      expect(out).toBe(`Project data in ${oteaDir()}\nMade the boards Trabajos, Entregas\n`);
     });
 
     it('prints root, path, storage and the project identity with --json', async () => {

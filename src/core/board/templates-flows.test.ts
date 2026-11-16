@@ -4,7 +4,13 @@ import { sequenceIds } from './ids.ts';
 import { mentionText } from './mentions.ts';
 import { type BoardDefinition, SAME } from './model.ts';
 import { problemsOf } from './problems.ts';
-import { instantiateSet, listedTemplates, requireSet } from './templates.ts';
+import {
+  instantiate,
+  instantiateSet,
+  listedTemplates,
+  requireSet,
+  requireTemplate,
+} from './templates.ts';
 
 const partNamed = (def: BoardDefinition, name: string) =>
   Object.values(def.parts).find((part) => part.name === name);
@@ -36,7 +42,7 @@ describe('the Ideas set', () => {
   it('asks for the Brief only of an Idea, and for the Options only of a Decision', () => {
     const [ideas] = made('ideas', 'es');
     if (!ideas) throw new Error('no Ideas board');
-    const kind = partNamed(ideas, 'Tipo');
+    const kind = partNamed(ideas, 'Qué es');
     const [idea, decision] = kind?.options ?? [];
     expect(kind?.initial).toBe(idea?.id);
     expect(handOf(ideas, 'Refinar', 'Brief')).toEqual({
@@ -60,10 +66,20 @@ describe('the Ideas set', () => {
     expect(stepNamed(tasks as BoardDefinition, 'Do it')?.waits).toEqual(['parts', 'blockers']);
   });
 
-  for (const lang of ['en', 'es'] as const) {
-    it(`reads well in ${lang}: real icons, every mention named, nothing left raw`, () => {
-      const defs = made('ideas', lang);
-      const boards = defs.map((def, index) => ({ id: `b${index}`, name: def.name }));
+  for (const [set, lang] of [
+    ['ideas', 'en'],
+    ['ideas', 'es'],
+    ['repos', 'en'],
+    ['repos', 'es'],
+  ] as const) {
+    it(`reads ${set} well in ${lang}: real icons, every mention named, nothing left raw`, () => {
+      const defs = made(set, lang);
+      const split = defs.map((def) => def.split);
+      const boards = defs.map((def, index) => ({
+        id: `b${index}`,
+        name: def.name,
+        ...(split[index] ? { split: split[index] } : {}),
+      }));
       defs.forEach((def, index) => {
         expect(assertIconName(def.icon)).toBe(def.icon);
         const problems = problemsOf(def, { id: `b${index}`, boards });
@@ -74,6 +90,55 @@ describe('the Ideas set', () => {
             expect(mentionText(def, text)).not.toMatch(/@[[{]/);
           }
       });
+    });
+  }
+});
+
+describe('the Trabajo en varios repos set', () => {
+  it('divides each Trabajo into Entregas, which guard their branch and main', () => {
+    const [jobs, deliveries] = made('repos', 'es');
+    if (!jobs || !deliveries) throw new Error('no boards');
+    expect(jobs.split).toEqual({ board: 'b1', always: true });
+    expect(jobs.steps.map(({ name }) => name)).toEqual(['Analizar', 'Entregar']);
+    expect(stepNamed(jobs, 'Entregar')?.waits).toEqual(['parts']);
+    expect(
+      deliveries.steps.map(({ name, doer, reviewer }) => `${name}:${doer}/${reviewer}`),
+    ).toEqual(['Implementar:any/any', 'Aprobar el merge:you/none']);
+    expect(stepNamed(deliveries, 'Aprobar el merge')?.waits).toEqual(['blockers']);
+    expect(partNamed(deliveries, 'Rama')?.guard).toEqual({
+      push: [stepNamed(deliveries, 'Implementar')?.id],
+      repo: partNamed(deliveries, 'Repo')?.id,
+      base: 'main',
+    });
+  });
+});
+
+describe('the Errores de trabajo template', () => {
+  it('has the person report and verify, an agent triage and another review the fix', () => {
+    const def = instantiate(requireTemplate('repobugs'), 'es', {}, sequenceIds());
+    expect(def.steps.map(({ name, doer, reviewer }) => `${name}:${doer}/${reviewer}`)).toEqual([
+      'Reportar:you/none',
+      'Triar:any/you',
+      'Arreglar:any/any',
+      'Verificar:you/none',
+    ]);
+    expect(partNamed(def, 'Rama')?.guard?.base).toBe('main');
+    expect(def.drop.motives.map(({ name }) => name)).toEqual([
+      'No se reproduce',
+      'Duplicado',
+      'No es un error',
+    ]);
+  });
+
+  for (const lang of ['en', 'es'] as const) {
+    it(`reads well in ${lang}`, () => {
+      const def = instantiate(requireTemplate('repobugs'), lang, {}, sequenceIds());
+      expect(assertIconName(def.icon)).toBe(def.icon);
+      const problems = problemsOf(def, {}).filter(({ code }) => code !== 'motive_agent_drop');
+      expect(problems).toEqual([]);
+      for (const step of def.steps)
+        for (const text of Object.values(step.instructions))
+          expect(mentionText(def, text)).not.toMatch(/@[[{]/);
     });
   }
 });

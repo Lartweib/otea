@@ -29,8 +29,9 @@ describe('templates', () => {
       'triage:Clasificar errores',
       'review:Revisar por rondas',
       'decisions:Decisiones',
+      'repobugs:Errores de trabajo',
       'ideas:De la idea a las tareas',
-      'repos:Cambios en varios repos',
+      'repos:Trabajo en varios repos',
       'product:Producto',
     ]);
   });
@@ -54,20 +55,20 @@ describe('templates', () => {
     }
   }
 
-  it('joins Cambios to its Tareas de repo by the child board id, always', () => {
-    const [changes, tasks] = instantiateSet(requireSet('repos'), 'es', [
-      { id: 'bcam', name: 'Cambios' },
-      { id: 'brt' },
+  it('joins Trabajos to its Entregas by the child board id, always', () => {
+    const [jobs, deliveries] = instantiateSet(requireSet('repos'), 'es', [
+      { id: 'btra', name: 'Trabajos' },
+      { id: 'bent' },
     ]);
-    expect(changes?.split).toEqual({ board: 'brt', always: true });
-    expect(tasks?.name).toBe('Tareas de repo');
-    expect(tasks?.split).toBeUndefined();
-    expect(changes?.madeWith).toEqual(['brt']);
-    expect(tasks?.madeWith).toEqual(['bcam']);
+    expect(jobs?.split).toEqual({ board: 'bent', always: true });
+    expect(deliveries?.name).toBe('Entregas');
+    expect(deliveries?.split).toBeUndefined();
+    expect(jobs?.madeWith).toEqual(['bent']);
+    expect(deliveries?.madeWith).toEqual(['btra']);
     const view = listedTemplates('es').find(({ key }) => key === 'repos');
     expect(view?.boards?.map(({ name, item }) => `${name}/${item}`)).toEqual([
-      'Cambios/Cambio',
-      'Tareas de repo/Tarea de repo',
+      'Trabajos/Trabajo',
+      'Entregas/Entrega',
     ]);
   });
 
