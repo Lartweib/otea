@@ -8,7 +8,7 @@ import { createBoard, publishBoard, saveDraft } from './boards.ts';
 import type { Context } from './context.ts';
 import { createItem, getItem, showItem } from './items.ts';
 import { claimItem } from './leases.ts';
-import { handoffItem, nextFor, sendBackItem } from './next.ts';
+import { approveItem, dropItem, handoffItem, nextFor, sendBackItem } from './next.ts';
 import { agentNotes, leaveNote, notesSummary, notesView, noteWaiting, replyNote } from './notes.ts';
 import { memoryContext } from './testing.ts';
 
@@ -204,7 +204,7 @@ describe('a note from the person while an agent works', () => {
     expect(error.details).toEqual({ kind: 'note', item: item.id, why: 'not_person' });
   });
 
-  it('refuses an empty note, and one on an item no agent is doing', () => {
+  it('refuses an empty note, and one on an item nobody does or reviews', () => {
     const ctx = memoryContext();
     const item = working(ctx);
     expect(
@@ -212,8 +212,7 @@ describe('a note from the person while an agent works', () => {
         .details,
     ).toEqual({ kind: 'note', item: item.id, why: 'empty' });
 
-    attach(ctx, item.id);
-    handoffItem(ctx, { id: item.id, actor: kiln, channel: 'cli' }, now);
+    dropItem(ctx, { id: item.id, actor: you, channel: 'ui', reason: 'no' }, now);
     const error = refusal(() =>
       leaveNote(ctx, { id: item.id, text: 'tarde', actor: you, channel: 'ui' }, now),
     );
@@ -372,6 +371,64 @@ describe('the agent and the notes', () => {
     expect(notesView(ctx, item.id, { round: 2 }).notes).toEqual([]);
     expect(notesView(ctx, item.id, { step: 'Concepto', round: 1 }).notes).toHaveLength(1);
     expect(notesSummary(ctx, getItem(ctx, item.id))).toBeUndefined();
+  });
+});
+
+describe('comments the person leaves while reviewing', () => {
+  it('go with a send-back as notes of the round it starts, which the agent answers', () => {
+    const ctx = memoryContext();
+    const item = working(ctx);
+    const seen = attach(ctx, item.id);
+    handoffItem(ctx, { id: item.id, actor: kiln, channel: 'cli' }, now);
+
+    const comment = leaveNote(
+      ctx,
+      {
+        id: item.id,
+        text: 'La cola es corta',
+        anchor: { evidence: seen, x: 10, y: 20 },
+        actor: you,
+        channel: 'ui',
+      },
+      now,
+    );
+    expect(comment).toMatchObject({ round: 1, review: { for: { step: 'sconcept', round: 2 } } });
+    // Nothing reaches the agent while you review.
+    expect(noteWaiting(ctx, 'kiln')).toBeUndefined();
+
+    sendBackItem(ctx, { id: item.id, actor: you, channel: 'ui', reason: 'Otra vez' }, now);
+    claimItem(ctx, { id: item.id, actor: kiln }, now);
+    expect(agentNotes(ctx, item.id)?.notes.map(({ note }) => note)).toEqual([1]);
+    expect(notesView(ctx, item.id, { round: 2 }).notes.map(({ note }) => note)).toEqual([1]);
+    attach(ctx, item.id);
+    expect(() => handoffItem(ctx, { id: item.id, actor: kiln, channel: 'cli' }, now)).toThrow();
+    replyNote(ctx, { id: item.id, note: 1, text: 'Alargada', actor: kiln, channel: 'cli' }, now);
+    const handed = { id: item.id, actor: kiln, channel: 'cli' as const, note: 'Alargué la cola' };
+    expect(handoffItem(ctx, handed, now).item.state).toBe('sconcept__review');
+  });
+
+  it('stay notes of the round reviewed when the person approves, and nobody has to answer them', () => {
+    const ctx = memoryContext();
+    const item = working(ctx);
+    attach(ctx, item.id);
+    handoffItem(ctx, { id: item.id, actor: kiln, channel: 'cli' }, now);
+    leaveNote(ctx, { id: item.id, text: 'Me gusta', actor: you, channel: 'ui' }, now);
+
+    approveItem(ctx, { id: item.id, actor: you, channel: 'ui' }, now);
+
+    expect(notesView(ctx, item.id, { step: 'Concepto', round: 1 }).notes).toHaveLength(1);
+    expect(noteWaiting(ctx, 'kiln')).toBeUndefined();
+    expect(agentNotes(ctx, item.id)).toBeUndefined();
+  });
+
+  it('are refused from an agent, and on a step an agent reviews', () => {
+    const ctx = memoryContext();
+    const item = working(ctx);
+    attach(ctx, item.id);
+    handoffItem(ctx, { id: item.id, actor: kiln, channel: 'cli' }, now);
+    expect(() =>
+      leaveNote(ctx, { id: item.id, text: 'x', actor: kiln, channel: 'cli' }, now),
+    ).toThrow(/only the person/);
   });
 });
 

@@ -49,6 +49,10 @@ export type ItemNote = {
   to?: string;
   anchor?: NoteAnchor;
   answer?: NoteAnswer;
+  // A comment left while the person reviewed the round: it goes with a send-back, as a note of the
+  // round it starts (`for`, that step and round), which the agent answers like any other; when the
+  // person approves, it stays a note of the round reviewed, and nobody has to answer it.
+  review?: { for: { step: string; round: number } };
 };
 
 export type NoteEvent = {
@@ -79,6 +83,29 @@ function anchorOf(value: unknown): NoteAnchor | undefined {
   };
 }
 
+function reviewOf(value: unknown): { review?: { for: { step: string; round: number } } } {
+  const step = (value as { for?: { step?: unknown } } | null)?.for?.step;
+  const round = (value as { for?: { round?: unknown } } | null)?.for?.round;
+  return typeof step === 'string' && typeof round === 'number'
+    ? { review: { for: { step, round } } }
+    : {};
+}
+
+// The notes of a step's round: those left in it and the review comments sent back into it.
+export function notesOfRound(
+  thread: readonly ItemNote[],
+  step: string | undefined,
+  round: number,
+): ItemNote[] {
+  return thread.filter(
+    (note) =>
+      (note.step === step && note.round === round) ||
+      (note.review !== undefined &&
+        note.review.for.step === step &&
+        note.review.for.round === round),
+  );
+}
+
 function deliveredOf(value: unknown): { done: number; of: number } {
   const raw = (value ?? {}) as Record<string, unknown>;
   return {
@@ -105,6 +132,7 @@ export function notesOf(events: readonly NoteEvent[]): ItemNote[] {
         delivered: deliveredOf(data.delivered),
         ...(typeof data.to === 'string' ? { to: data.to } : {}),
         ...(anchor ? { anchor } : {}),
+        ...reviewOf(data.review),
       });
     } else if (type === NOTE_ANSWERED) {
       const left = notes.get(data.note);

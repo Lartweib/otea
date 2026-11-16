@@ -19,10 +19,10 @@ import {
   setCollectionIcon,
   typeOfItem,
 } from '../app/collections.ts';
+import { cropNote } from '../app/crop.ts';
 import { listDevices, revokeDevice } from '../app/devices.ts';
 import { handInText } from '../app/draft-request.ts';
 import { listEvents } from '../app/events.ts';
-import { cropNote } from '../app/crop.ts';
 import { attachEvidence } from '../app/evidence.ts';
 import { type Brings, checkGate, type GateCheck } from '../app/gates.ts';
 import { boardGuide, type Guide, guideIndex, hintFor } from '../app/guide.ts';

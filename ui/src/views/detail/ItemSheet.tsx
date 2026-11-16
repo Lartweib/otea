@@ -255,6 +255,19 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
       : undefined;
   const round = onBoard?.round ?? 0;
   const roundNotes = agentStep ? roundNotesOf(thread, agentStep.id, round) : [];
+  // While you review a step: comments on what was handed, which go with a send-back.
+  const reviewing =
+    live &&
+    roundsStep &&
+    !isClosed(position) &&
+    position.phase === 'review' &&
+    roundsStep.reviewer === 'you' &&
+    app.session.canWrite
+      ? roundsStep
+      : undefined;
+  const reviewComments = reviewing
+    ? thread.filter((n) => n.review && n.step === reviewing.id && n.round === round)
+    : [];
   const { unanswered } = notesCount(roundNotes);
   const worker = block?.worker;
   const noteTo = worker?.name ?? facts.agent;
@@ -336,7 +349,12 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
   const postNote = (text: string, on?: NoteAnchorInput) =>
     app.note(item.id, text, on).then(
       () => {
-        toast({ msg: t('notes.sent', { agent: who, title: item.title }), id: item.id });
+        toast({
+          msg: reviewing
+            ? t('notes.review.saved', { title: item.title })
+            : t('notes.sent', { agent: who, title: item.title }),
+          id: item.id,
+        });
         requestAnimationFrame(() => root.current && clearOfToast(root.current));
       },
       () => toast({ msg: t('notes.failed'), id: item.id }),
@@ -442,6 +460,9 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
   const decide = deciding
     ? {
         seen: reader.files.filter((e) => seen.has(e.id)).length,
+        notice: reviewComments.length
+          ? t('notes.review.notice', { count: reviewComments.length })
+          : undefined,
         back: backChoice
           ? { label: backChoice.label, onClick: () => pressMove(backChoice.move.to) }
           : undefined,
@@ -451,10 +472,19 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
       }
     : undefined;
   const unseen = approveChoice && deciding ? unopenedOf(reader.files, seen) : null;
+  // What Aprobar says in one line, never holding it: files left unopened, and the review comments
+  // that would stay as notes of this round.
   const unopenedLine =
-    unseen && unseen.unopened > 0
-      ? t('evidence.reader.unopened', { n: unseen.unopened, total: unseen.total })
-      : undefined;
+    [
+      unseen && unseen.unopened > 0
+        ? t('evidence.reader.unopened', { n: unseen.unopened, total: unseen.total })
+        : '',
+      deciding && reviewComments.length
+        ? t('notes.review.notice', { count: reviewComments.length })
+        : '',
+    ]
+      .filter(Boolean)
+      .join(' ') || undefined;
   const canRead = app.session.canWrite && reader.files.length > 0;
 
   const cells = detailCells({
@@ -800,7 +830,7 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
                 decide={decide}
                 start={start}
                 note={
-                  canNote
+                  canNote || reviewing
                     ? {
                         onSend: (text, on) => {
                           void postNote(text, on);

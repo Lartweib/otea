@@ -256,6 +256,11 @@ export const detail = {
   'notes.pick.hintTouch': 'Tap a line or a diagram node to anchor the note to it.',
   'notes.pick.inLine': 'On a line…',
   'notes.pick.inNode': 'On a node…',
+  'notes.review.saved': 'Comment kept on “{title}”: it goes with a send-back.',
+  'notes.review.notice': {
+    one: '{count} comment goes with a send-back; if you approve, it stays a note of this round.',
+    other: '{count} comments go with a send-back; if you approve, they stay notes of this round.',
+  },
   'notes.pick.point': 'a point of the image',
   'notes.pick.zone': 'a zone of the image',
   'notes.pick.inSpot': 'On a point…',

@@ -255,6 +255,12 @@ export const detail = {
   'notes.pick.hintTouch': 'Toca una línea o un nodo del diagrama para anclar la nota.',
   'notes.pick.inLine': 'En una línea…',
   'notes.pick.inNode': 'En un nodo…',
+  'notes.review.saved': 'Comentario guardado en «{title}»: va con la devolución.',
+  'notes.review.notice': {
+    one: '{count} comentario va con la devolución; si apruebas, queda como nota de esta ronda.',
+    other:
+      '{count} comentarios van con la devolución; si apruebas, quedan como notas de esta ronda.',
+  },
   'notes.pick.point': 'un punto de la imagen',
   'notes.pick.zone': 'una zona de la imagen',
   'notes.pick.inSpot': 'En un punto…',

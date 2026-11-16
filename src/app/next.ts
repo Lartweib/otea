@@ -59,7 +59,7 @@ import {
   targetName,
   wayByName,
 } from '../core/board/next.ts';
-import { type ItemNote, notesOf, unansweredOf } from '../core/board/notes.ts';
+import { type ItemNote, notesOf, notesOfRound, unansweredOf } from '../core/board/notes.ts';
 import { type ItemQuestion, openQuestion, questionsOf } from '../core/board/questions.ts';
 import { evidenceByName, readFieldInput, stateByName, stateName } from '../core/board/reading.ts';
 import { readDefinition } from '../core/board/schema.ts';
@@ -273,7 +273,7 @@ export function itemOnBoard(ctx: Context, item: ItemRecord, def: BoardDefinition
   const sentBack = sentBackOf(def, position, history);
   const round = step === undefined ? 0 : (rounds.rounds[step] ?? 1);
   const thread = notesOf(events);
-  const roundNotes = thread.filter((note) => note.step === step && note.round === round);
+  const roundNotes = notesOfRound(thread, step, round);
   const unanswered =
     isClosed(position) || position.phase !== 'doing' ? [] : unansweredOf(roundNotes);
   const questions = questionsOf(events);
