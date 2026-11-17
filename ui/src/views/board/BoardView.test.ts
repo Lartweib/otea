@@ -117,7 +117,7 @@ describe('a board', () => {
     expect(html).toMatch(/class="row trow[^"]*" data-k="ERR-1"/);
   });
 
-  it('nests children under their parent, its progress coloured by whose turn each is', () => {
+  it('nests the children on its step under their parent, its progress coloured by whose turn each is', () => {
     const parent = item({
       id: 'ERR-9',
       title: 'El puente de cuerda',
@@ -130,8 +130,9 @@ describe('a board', () => {
     const html = render('list', [
       parent,
       kid('ERR-10', { state: 'verify' }),
-      kid('ERR-11', { state: 'fixing', turn: 'agent' }),
+      kid('ERR-11', { state: 'accepted', turn: 'agent' }),
     ]);
+    // The child waiting for you on another step still colours the parent's progress.
     expect(html).toContain('<span class="prog"><i class="you"></i><i class="ag"></i></span>');
     // Each part after the id keeps its dot with it, so a wrapped line never ends on one.
     expect(html).toContain('<span class="mpt"><span class="sep">·</span><span class="prog">');
@@ -139,9 +140,9 @@ describe('a board', () => {
       '<span class="mpt"><span class="sep">·</span><span class="stp you">A verificar</span></span>',
     );
     expect(html).toContain('2 de 2 abiertos');
-    expect(html).toMatch(
-      /data-k="ERR-9".*class="row child" data-k="ERR-10".*class="row child" data-k="ERR-11"/,
-    );
+    expect(html).toMatch(/data-k="ERR-9".*class="row child" data-k="ERR-11"/);
+    // The child on another step sits in that step's group, not under its parent.
+    expect(html).toMatch(/data-k="sec:verify".*class="row" data-k="ERR-10"/);
     expect(html).toContain('aria-expanded="true"');
   });
 

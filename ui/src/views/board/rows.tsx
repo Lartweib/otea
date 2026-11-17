@@ -8,6 +8,7 @@ import { AgentMark, Checkbox, EnumChip, SeverityBars, StepPill } from '../../kit
 import { laneOf } from '../../lanes/geometry.ts';
 import type { LaneBlock } from '../../lanes/LaneList.tsx';
 import { lookOf } from '../../lanes/looks.ts';
+import { parentOf } from '../../nesting.ts';
 import { stateWordIn, typeWord, valueWordIn } from '../../preset-words.ts';
 import type { CollectionView, Item } from '../../types.ts';
 import { type Entry, roundOf, severityOf, signalOf, tablaCells } from './model.ts';
@@ -124,14 +125,13 @@ function groupBlock(e: Extract<Entry, { kind: 'group' }>): LaneBlock {
 
 // ---- Lista ----
 
-// The children listed under each parent, from the entries.
+// The children of each parent listed, wherever each sits (under it, or on another step's group).
 function kidsUnder(entries: readonly Entry[]): Map<string, Item[]> {
   const out = new Map<string, Item[]>();
-  let parent: string | null = null;
   for (const e of entries) {
     if (e.kind !== 'row') continue;
-    if (!e.child) parent = e.item.id;
-    else if (parent) out.set(parent, [...(out.get(parent) ?? []), e.item]);
+    const parent = parentOf(e.item);
+    if (parent) out.set(parent, [...(out.get(parent) ?? []), e.item]);
   }
   return out;
 }
@@ -169,7 +169,7 @@ export function listaBlocks(entries: readonly Entry[], ctx: RowCtx): LaneBlock[]
                 <span className="sep">·</span>
                 <span className={it.turn === 'human' ? 'stp you' : 'stp'}>{word}</span>
               </span>
-              {e.kids > 0 ? <Progress item={it} kids={kids.get(it.id) ?? []} /> : null}
+              {kids.has(it.id) ? <Progress item={it} kids={kids.get(it.id) ?? []} /> : null}
               {stuck && it.expiredLease ? (
                 <span className="mpt">
                   <span className="sep">·</span>
