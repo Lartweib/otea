@@ -239,23 +239,20 @@ export const surfaces = {
   'emptyProject.store': 'almacén',
   'emptyProject.boards': 'tableros',
   'emptyProject.noBoards':
-    'Este proyecto todavía no tiene tableros. Elige los que usas: cada uno trae sus pasos, quién hace cada uno y qué se entrega.',
+    'Este proyecto todavía no tiene tableros. La forma más fácil de empezar: pega esto en el chat de tu agente. Lee el proyecto, te pregunta cómo trabajas y te propone los tableros para que los pruebes.',
+  'emptyProject.orPick': 'O elige tú los tableros:',
   'emptyProject.pickBoards': 'Elegir tableros',
   'emptyProject.noBoardsYet': 'ninguno todavía',
   'emptyProject.example': 'Escribir la primera tarea',
 
   // Conectar un agente
   'connect.title': 'Conectar un agente',
-  'connect.body':
-    'Una vez por proyecto, conéctalo; luego, en cada sesión, dile que siga trabajando.',
-  'connect.setup':
-    'En la terminal del agente, en el proyecto, con su propio nombre, modelo y esfuerzo (unknown si no puede saberlo):',
-  'connect.command': 'otea connect --as <nombre> --model <modelo> --effort <esfuerzo>',
   'connect.others':
     'Claude Code lee el .mcp.json que escribe. Codex, Gemini y los demás usan la CLI: {command} les deja la guía en AGENTS.md.',
-  'connect.session': 'En cada sesión, pégale esto para que siga hasta que lo detengas:',
-  'connect.prompt':
-    'Trabaja la cola de Otea hasta que te detenga. Llama a next con claim; haz el paso, entrégalo y vuelve a llamar a next sin parar. Cuando no haya nada que hacer, espera trabajo nuevo: ejecuta `otea wait --turn agent --unclaimed` en segundo plano si puedes (o llama a la herramienta wait con un timeout de 5m) y luego vuelve a llamar a next. Contesta mis notas con reply.',
+  'connect.startBody':
+    'Pega esto en el chat de tu agente. Configura Otea, se conecta, lee el proyecto, te pregunta cómo trabajas y te propone los tableros para que los pruebes.',
+  'connect.joinBody':
+    'Para sumar un agente más, pega esto en su chat. Se conecta con un nombre propio y trabaja los tableros junto a los demás, sin tomar lo que otro ya tiene.',
   'connect.copyPrompt': 'Copiar la instrucción',
   'connect.copiedPrompt': 'Copiada',
   'connect.appears': 'Aparece aquí en cuanto llame a Otea.',

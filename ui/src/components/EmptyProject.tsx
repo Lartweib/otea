@@ -6,16 +6,20 @@ import { t, tx } from '../i18n/i18n.ts';
 import { Button } from '../kit/Button.tsx';
 import { Icon } from '../kit/Icon.tsx';
 import type { ProjectSettings } from '../types.ts';
+import { PromptBlock, useAgentPrompt } from './AgentPrompt.tsx';
 
 // The list of a project with no items yet: its lanes run empty, and it says how items arrive.
 export function EmptyProject() {
   const app = useApp();
   const settings = useRemote(fetchProjectSettings, 0, 'live');
+  const boards = app.collections.map(({ name }) => name);
+  const prompt = useAgentPrompt('start', app.version);
   if (settings.status !== 'ready') return null;
   return (
     <EmptyProjectView
       settings={settings.value}
-      boards={app.collections.map(({ name }) => name)}
+      boards={boards}
+      prompt={prompt.status === 'ready' ? prompt.value.prompt : null}
       onNew={() => app.newItem()}
       onConnect={app.openConnect}
       onPickBoards={() => openNewBoard(null)}
@@ -23,18 +27,21 @@ export function EmptyProject() {
   );
 }
 
-// The person writes the first item here, or connects an agent that will; a project with no board
-// yet asks for its boards first, since an item needs one. The boards go by their names, never by a
-// hidden id.
+// The person writes the first item here, or connects an agent that will. A project with no board
+// yet starts from the agent prompt, first thing on the page: pasted into an agent's chat, it sets
+// the project up, interviews the person and drafts its boards; picking the boards oneself comes
+// second. The boards go by their names, never by a hidden id.
 export function EmptyProjectView({
   settings,
   boards,
+  prompt,
   onNew,
   onConnect,
   onPickBoards,
 }: {
   settings: ProjectSettings;
   boards: readonly string[];
+  prompt: string | null;
   onNew: () => void;
   onConnect: () => void;
   onPickBoards: () => void;
@@ -50,20 +57,30 @@ export function EmptyProjectView({
       <div className="pj-empty-body">
         <h2 className="pj-empty-title">{t('emptyProject.title', { name })}</h2>
         <p className="pj-empty-text">{t(none ? 'emptyProject.noBoards' : 'emptyProject.text')}</p>
+        {none && prompt ? (
+          <div className="pj-empty-prompt">
+            <PromptBlock prompt={prompt} primary />
+          </div>
+        ) : null}
         <div className="pj-empty-acts">
           {none ? (
-            <Button variant="primary" onClick={onPickBoards}>
-              {t('emptyProject.pickBoards')}
-            </Button>
+            <>
+              <span className="pj-empty-or">{t('emptyProject.orPick')}</span>
+              <Button variant={prompt ? 'quiet' : 'primary'} onClick={onPickBoards}>
+                {t('emptyProject.pickBoards')}
+              </Button>
+            </>
           ) : (
-            <Button variant="primary" onClick={onNew}>
-              {t('app.newItem')}
-            </Button>
+            <>
+              <Button variant="primary" onClick={onNew}>
+                {t('app.newItem')}
+              </Button>
+              <Button variant="quiet" onClick={onConnect}>
+                <Icon name="plus" />
+                {t('toca.connect')}
+              </Button>
+            </>
           )}
-          <Button variant="quiet" onClick={onConnect}>
-            <Icon name="plus" />
-            {t('toca.connect')}
-          </Button>
         </div>
         <p className="pj-empty-agents">
           {tx('emptyProject.agents', { command: <code>otea board</code> })}

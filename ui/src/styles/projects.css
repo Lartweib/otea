@@ -642,3 +642,13 @@
   flex-wrap: wrap;
   gap: 8px;
 }
+.pj-empty-prompt {
+  margin: 4px 0 18px;
+}
+.pj-empty-acts {
+  align-items: center;
+}
+.pj-empty-or {
+  font-size: 13.5px;
+  color: var(--ink-2);
+}

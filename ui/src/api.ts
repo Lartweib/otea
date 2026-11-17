@@ -341,6 +341,19 @@ export async function fetchProjects(signal: AbortSignal): Promise<ProjectOvervie
   return (await get('/api/projects', signal)).json();
 }
 
+// What to paste into an agent's chat, in the screen's language: without a kind, the project's
+// moment (the first contact while it has no board of its own, then one more agent joining).
+export type AgentPromptView = { kind: 'start' | 'join' | 'design'; prompt: string };
+
+export async function fetchAgentPrompt(
+  kind: AgentPromptView['kind'] | undefined,
+  lang: string,
+  signal: AbortSignal,
+): Promise<AgentPromptView> {
+  const query = new URLSearchParams({ lang, ...(kind ? { kind } : {}) });
+  return (await get(`/api/agent-prompt?${query}`, signal)).json();
+}
+
 export async function fetchProjectSettings(signal: AbortSignal): Promise<ProjectSettings> {
   return (await get('/api/project/settings', signal)).json();
 }

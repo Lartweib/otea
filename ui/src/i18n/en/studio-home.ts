@@ -37,6 +37,8 @@ export const studioHome = {
     'Copy a board made for one kind of work and change it as you like. It is not tied to the template.',
   'bs.home.templateCount': { one: '1 template', other: '{count} templates' },
   'bs.home.agentDraft': 'Have an agent draft it',
+  'bs.new.designWithAgent':
+    'Rather design it with your agent? Paste this into its chat: it reads the project, asks you and leaves you the draft.',
   'bs.home.agentDraftText':
     'Tell it what you need and it delivers a draft. You review it here before anything is published.',
   'bs.home.agentDraftKey': 'a request is created',

@@ -374,3 +374,49 @@
 .connect .cnote code.inl {
   white-space: nowrap;
 }
+
+/* What to paste into an agent's chat: the text, one paragraph per line, then the button that
+   copies it whole (Conectar un agente, the empty project, Nuevo tablero). */
+.cprompt-wrap {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+.cprompt-wrap .cprompt {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 6px;
+  background: var(--well);
+  font: 400 13px / 1.55 var(--sans);
+  color: var(--ink);
+  overflow-wrap: anywhere;
+  max-height: 300px;
+  overflow-y: auto;
+}
+.cprompt-wrap .cprompt p {
+  margin: 0;
+}
+.cprompt-wrap .cprompt p + p {
+  margin-top: 6px;
+}
+.cprompt-wrap .cprompt code.inl {
+  font-size: 12px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.cprompt-wrap .btn {
+  justify-self: start;
+}
+.connect .cpaste {
+  margin-top: 14px;
+}
+.connect .cpaste + .cnote {
+  margin-top: 14px;
+}
+.nb-design {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  margin-top: 10px;
+}
