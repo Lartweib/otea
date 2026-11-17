@@ -123,6 +123,8 @@ import { validateProject } from '../app/validate.ts';
 import { watch } from '../app/watch.ts';
 import { agentGuideFor, TOPICS_RULE } from '../core/agent-guide.ts';
 import { agentPrompt, isPromptKind, PROMPT_KINDS, type PromptKind } from '../core/agent-prompts.ts';
+import { isClosed, positionOf } from '../core/board/engine.ts';
+import { stepById } from '../core/board/model.ts';
 import { DROPPED_NAME } from '../core/board/next.ts';
 import { fieldsByName, stateName } from '../core/board/reading.ts';
 import type { Lang } from '../core/board/template-words.ts';
@@ -168,6 +170,7 @@ import {
 } from './format.ts';
 import {
   branchesBrought,
+  commitsOver,
   currentBranch,
   keepOutOfGit,
   keptOutNote,
@@ -1149,6 +1152,31 @@ function boardMove(
   });
 }
 
+// A step that hands a branch hands the work on it: an agent's handoff of one with no commits over
+// its base (the board's protected base, else origin's default branch, main or master) leaves the
+// review nothing to see. Only a branch this checkout has, here or on origin, is checked.
+function refuseEmptyBranch(project: Project, cwd: string, move: BoardMoveInput): void {
+  if (move.actor.kind !== 'agent' || move.way !== undefined) return;
+  const item = getItem(project, move.id);
+  const board = liveBoardOf(project, item.collection);
+  const position = positionOf(item.state);
+  if (!board || isClosed(position) || position.phase !== 'doing') return;
+  const step = stepById(board.def, position.step);
+  for (const hand of step?.hand ?? []) {
+    const part = board.def.parts[hand.ref];
+    const branch = part?.kind === 'branch' ? item.fields[part.id] : undefined;
+    if (!part || hand.req === 'no' || typeof branch !== 'string' || branch.trim() === '') continue;
+    const base = part.guard?.base;
+    const bases = [...(base ? [base, `origin/${base}`] : []), 'origin/HEAD', 'main', 'master'];
+    const over = commitsOver(cwd, branch.trim(), bases);
+    if (over?.count !== 0) continue;
+    throw new OteaError(
+      'missing_fields',
+      `${item.id} not handed off: ${part.name} ${branch.trim()} has no commits over ${over.base}, so the review would find nothing in it. Commit your work on ${branch.trim()}, then hand it off again.`,
+    );
+  }
+}
+
 const handoffCommand: Command = {
   name: 'handoff',
   summary:
@@ -1156,7 +1184,10 @@ const handoffCommand: Command = {
   args: ['id'],
   options: { way: { placeholder: 'step' }, reason: {}, note: {} },
   execute: (input) => {
-    const moved = boardMove(input, handoffItem);
+    const moved = boardMove(input, (project, move) => {
+      refuseEmptyBranch(project, input.cwd, move);
+      return handoffItem(project, move);
+    });
     // An agent goes on to the next item: the reply says so, so it does not stop after one.
     const next =
       input.channel === 'mcp'
