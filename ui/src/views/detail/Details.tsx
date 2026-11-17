@@ -70,6 +70,9 @@ export function detailCells(o: {
       }
     | undefined;
   agents?: readonly Agent[] | null | undefined;
+  // How many types its board holds: the type is said only where there are several (with one it
+  // repeats what the board's items are, beside a field such as Qué es).
+  types?: number | undefined;
 }): (Cell & { key: string })[] {
   const { item, type, facts, now } = o;
   const you = t('sheet.d.you');
@@ -150,15 +153,19 @@ export function detailCells(o: {
     doer,
     reviewer,
     lease,
-    {
-      label: t('sheet.d.type'),
-      value: (
-        <>
-          <TypeIcon name={type?.icon} size={14} />
-          {typeWord(type, item.type)}
-        </>
-      ),
-    },
+    ...((o.types ?? 1) > 1
+      ? [
+          {
+            label: t('sheet.d.type'),
+            value: (
+              <>
+                <TypeIcon name={type?.icon} size={14} />
+                {typeWord(type, item.type)}
+              </>
+            ),
+          },
+        ]
+      : []),
     ...fields,
     { label: t('sheet.d.board'), value: item.collection },
     {

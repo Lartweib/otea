@@ -185,7 +185,14 @@ export function closerOf(events: readonly ItemEvent[]): string | null {
   return last.actor.name;
 }
 
-export type Stand = { key: MessageKey; agent?: string; round?: number; time?: string };
+export type Stand = {
+  key: MessageKey;
+  agent?: string;
+  round?: number;
+  time?: string;
+  why?: string;
+  board?: string;
+};
 
 // The standfirst under the headline: who hands it to you, asks, has gone quiet; your step; done.
 export function standOf(o: {
@@ -197,9 +204,14 @@ export function standOf(o: {
   quiet: string | null;
   // You left the stuck item for `agent` (Reasignar) and no agent has taken it since.
   left?: boolean;
+  // Why it was dropped, when the drop said why.
+  why?: string | undefined;
+  // The archived board it is on: nobody works it until the board is restored.
+  archived?: string | undefined;
 }): Stand {
   const a = o.agent ? { agent: o.agent } : {};
   const r = o.round > 1;
+  if (o.archived !== undefined) return { key: 'sheet.stand.archived', board: o.archived };
   switch (o.look) {
     case 'yours':
       if (o.own) return { key: 'sheet.stand.own' };
@@ -229,6 +241,6 @@ export function standOf(o: {
     case 'done':
       return o.agent ? { key: 'sheet.stand.doneBy', ...a } : { key: 'sheet.stand.done' };
     case 'dropped':
-      return { key: 'sheet.stand.dropped' };
+      return o.why ? { key: 'sheet.stand.droppedWhy', why: o.why } : { key: 'sheet.stand.dropped' };
   }
 }

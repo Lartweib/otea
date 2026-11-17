@@ -180,6 +180,16 @@ describe('the standfirst (mock:2670-2678)', () => {
     expect(standOf({ ...base, look: 'done' }).key).toBe('sheet.stand.doneBy');
     expect(standOf({ ...base, look: 'done', agent: null }).key).toBe('sheet.stand.done');
     expect(standOf({ ...base, look: 'dropped' }).key).toBe('sheet.stand.dropped');
+    // Why it was dropped, at the top, when the drop said why.
+    expect(standOf({ ...base, look: 'dropped', why: 'No pasa en la versión actual.' })).toEqual({
+      key: 'sheet.stand.droppedWhy',
+      why: 'No pasa en la versión actual.',
+    });
+    // An archived board's item waits for nobody: it says where it is.
+    expect(standOf({ ...base, look: 'queued', archived: 'Errores' })).toEqual({
+      key: 'sheet.stand.archived',
+      board: 'Errores',
+    });
   });
 });
 

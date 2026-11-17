@@ -552,7 +552,11 @@ button.pmain:hover {
   text-decoration: underline;
   text-decoration-color: color-mix(in oklab, var(--you) 40%, transparent);
   text-underline-offset: 3px;
-  margin-left: 4px;
+  margin-left: -2px;
+  /* a target of at least 24 px (WCAG 2.5.8), grown around the word, the line kept */
+  padding: 3px 6px;
+  margin-block: -3px;
+  min-height: 24px;
   transition: text-decoration-color 240ms var(--o-drift);
 }
 .bi-hand .hc .lnk:hover {

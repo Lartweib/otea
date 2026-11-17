@@ -38,6 +38,8 @@ describe('slot paths in the DOM', () => {
 
     expect(html).toContain('data-type="bug" data-slot="body" data-index="1" data-field="steps"');
     expect(html).toContain('data-slot="body" data-index="0" data-field="description"');
+    // One type on the board: no Type row to repeat what the board already says its items are.
+    expect(html).not.toContain('class="detail-type"');
   });
 
   it('marks the header strip and the modules a layout places', () => {

@@ -371,6 +371,9 @@ export const detail = {
   'sheet.stand.done': 'Hecho.',
   'sheet.stand.doneBy': 'Hecho; lo hizo {agent}.',
   'sheet.stand.dropped': 'Descartado.',
+  'sheet.stand.droppedWhy': 'Descartado: {why}',
+  'sheet.stand.archived':
+    'Su tablero, {board}, está archivado: nadie lo trabaja hasta restaurarlo.',
   'sheet.move.approve': 'Aprobar',
   'sheet.move.own': 'Marcar hecho',
   'sheet.move.sendBack': 'Devolver…',

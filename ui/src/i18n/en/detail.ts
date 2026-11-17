@@ -367,6 +367,8 @@ export const detail = {
   'sheet.stand.done': 'Done.',
   'sheet.stand.doneBy': 'Done; {agent} did it.',
   'sheet.stand.dropped': 'Discarded.',
+  'sheet.stand.droppedWhy': 'Discarded: {why}',
+  'sheet.stand.archived': 'Its board, {board}, is archived: nobody works it until it is restored.',
   'sheet.move.approve': 'Approve',
   'sheet.move.own': 'Mark done',
   'sheet.move.sendBack': 'Send back…',

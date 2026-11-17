@@ -17,6 +17,7 @@ import {
   type PlacedValue,
   placesChildren,
   sectionsInRows,
+  showsTypes,
   slotData,
   typeMark,
   typeOf,
@@ -376,7 +377,7 @@ export function ItemDetail({
   const aside = side.filter((part) => part.kind !== 'relation');
   const mark = typeMark(collection, item.type);
   const detailRows: { label: string; value: ReactNode; slot?: Record<string, string> }[] = [
-    ...(mark
+    ...(mark && showsTypes(collection)
       ? [
           {
             label: t('detail.type'),

@@ -119,6 +119,15 @@ export function leaveSays(agent: string | null): ReactNode {
   return agent ? tx('notes.leaveSays', { agent: <b>{agent}</b> }) : t('notes.leaveSaysAny');
 }
 
+// Why the item was dropped: what the move that closed it said, when it said anything.
+function dropReason(item: ItemView): string | undefined {
+  const closing = item.events.findLast(
+    (e) => e.type === 'transitioned' && e.data.to === item.state,
+  );
+  const reason = typeof closing?.data.reason === 'string' ? closing.data.reason.trim() : '';
+  return reason || undefined;
+}
+
 export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheetProps) {
   const app = useApp();
   // The board this item is on, when Studio shapes it: Editar tablero opens its editor.
@@ -313,6 +322,8 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
     own: facts.own,
     quiet: look === 'stuck' ? quietFor(item.expiredLease?.expiresAt, now) : null,
     left: facts.left,
+    why: look === 'dropped' ? dropReason(item) : undefined,
+    archived: item.archived?.board,
   });
   const standText = tx(
     stand.key as 'sheet.stand.handedRound',
@@ -320,6 +331,8 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
       agent: <b>{stand.agent}</b>,
       round: stand.round ?? 0,
       ...(stand.time ? { time: stand.time } : {}),
+      ...(stand.why ? { why: stand.why } : {}),
+      ...(stand.board ? { board: stand.board } : {}),
     } as never,
   );
   const pathIndex = (state: string) => (type ? routeIndex(type, state, facts.visited) : -1);
@@ -514,6 +527,7 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
         }
       : undefined,
     agents: app.agents,
+    types: app.collectionOf(item.collection)?.types.length,
   });
   const canWrite = app.session.canWrite;
   const proofSections = (block?.checklists ?? []).map((list) => ({
@@ -623,7 +637,12 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
       <Route
         id={item.id}
         steps={steps}
-        words={onBoard ? onBoard.route.words : steps.map((s) => word(s.name))}
+        words={
+          onBoard
+            ? onBoard.route.words
+            : // A dropped item of a board: its reviews are visits, unnamed, as on the board's route.
+              steps.map((s) => (live && s.name.endsWith('__review') ? '' : word(s.name)))
+        }
         ci={ci}
         lane={lane}
         look={look}
