@@ -46,6 +46,9 @@ export type PublishDialogProps = {
   pair?: PairWorkspace;
   // What is left unmarked in the editor's setup checklist, when it shows.
   setupLeft?: number;
+  // The never-published boards its template set made with it (pair.ts unpublishedMates): a first
+  // publish takes them live too, and its Deshacer turns them back into drafts.
+  mates?: readonly { id: string; name: string }[];
 };
 
 export function PublishDialog({ pair, ...props }: PublishDialogProps) {
@@ -70,6 +73,7 @@ function SinglePublishDialog({
   onClose,
   onPublished,
   setupLeft = 0,
+  mates = [],
 }: Omit<PublishDialogProps, 'pair'>) {
   const [plan, setPlan] = useState<Plan>({ status: 'loading' });
   const [split, setSplit] = useState<SplitBoard | null>(null);
@@ -124,6 +128,9 @@ function SinglePublishDialog({
   const first = def.steps[0];
   const isNew = ready ? ready.from === null : draft.baseVersion === null;
   const name = def.name;
+  const along = isNew ? mates : [];
+  const alongIds = along.map((mate) => mate.id);
+  const alongNames = along.map((mate) => mate.name).join(', ');
 
   const publish = async () => {
     if (!ready) return;
@@ -131,7 +138,13 @@ function SinglePublishDialog({
     setError(null);
     try {
       const closing = !!ready.request && closeRequest;
-      const result = await publishBoard(id, moves, draft.record.draft?.updatedAt ?? null, closing);
+      const result = await publishBoard(
+        id,
+        moves,
+        draft.record.draft?.updatedAt ?? null,
+        closing,
+        alongIds,
+      );
       setBusy(false);
       onClose();
       onPublished(result.record);
@@ -141,12 +154,18 @@ function SinglePublishDialog({
           {t('bs.preview.publish.seeBoard')}
         </a>
       ) : null;
-      const msg = isNew
-        ? tx('bs.preview.publish.toast.first', {
+      const msg = along.length
+        ? tx('bs.preview.publish.toast.mates', {
             name: <b>{name}</b>,
+            names: <b>{alongNames}</b>,
             step: <b>{first?.name ?? '—'}</b>,
           })
-        : tx('bs.preview.publish.toast.next', { name: <b>{name}</b>, v: result.version });
+        : isNew
+          ? tx('bs.preview.publish.toast.first', {
+              name: <b>{name}</b>,
+              step: <b>{first?.name ?? '—'}</b>,
+            })
+          : tx('bs.preview.publish.toast.next', { name: <b>{name}</b>, v: result.version });
       const closed =
         closing && ready.request
           ? tx('bs.preview.publish.toast.requestClosed', { id: <b>{ready.request.id}</b> })
@@ -156,11 +175,15 @@ function SinglePublishDialog({
           {msg} {closed} {view}
         </>,
         () => {
-          restoreBoard(id, ready.from)
+          restoreBoard(id, ready.from, alongIds)
             .then((record) => {
               onPublished(record);
-              const undone =
-                ready.from === null
+              const undone = along.length
+                ? tx('bs.preview.publish.pair.undoneFirst', {
+                    a: <b>{name}</b>,
+                    b: <b>{alongNames}</b>,
+                  })
+                : ready.from === null
                   ? tx('bs.preview.publish.toast.undoneFirst', { name: <b>{name}</b> })
                   : t('bs.preview.publish.toast.undone', { v: ready.from });
               // The Pedido the publish closed is open again, its draft back on it.
@@ -334,6 +357,11 @@ function SinglePublishDialog({
               </li>
             ))}
           </ul>
+        ) : null}
+        {along.length ? (
+          <p className="bsp-fhint" data-i="">
+            {tx('bs.preview.publish.mates', { name: <b>{name}</b>, names: <b>{alongNames}</b> })}
+          </p>
         ) : null}
         {setupLeft > 0 ? (
           <p className="bsp-fhint" data-i="">

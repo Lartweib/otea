@@ -395,6 +395,10 @@ export const studioPreview = {
     'Publicado: {name} v{v}. Los agentes lo reciben en su próxima llamada.',
   'bs.preview.publish.toast.undoneFirst': '{name} vuelve a ser un borrador.',
   'bs.preview.publish.toast.undone': 'Vuelves a v{v}; tus cambios siguen en el borrador.',
+  'bs.preview.publish.mates':
+    'También se publica {names}: se creó junto con {name} y van juntos. Deshacer devuelve los dos a borrador.',
+  'bs.preview.publish.toast.mates':
+    '{name} y {names} ya están en marcha. Los agentes pueden tomar ítems en {step}.',
 
   'bs.preview.publish.waitingParts': {
     one: '1 ítem en {step} tiene {parts} sin terminar: no podrá entregarse hasta que terminen.',

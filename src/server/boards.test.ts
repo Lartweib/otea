@@ -126,6 +126,28 @@ describe('the boards API', () => {
     expect(wrong.status).toBe(400);
   });
 
+  it('publishes Ideas with the Implementación its set made with it, and undoes both at once', async () => {
+    const made = await call('POST', '/boards/set', { set: 'ideas', lang: 'es', boards: [] });
+    const [ideas, tasks] = (made.body.records as [Json, Json]).map(({ id }) => String(id));
+    const published = await call('POST', `/boards/${ideas}/publish`, {
+      moves: {},
+      alongside: [tasks],
+    });
+    expect(published.status).toBe(200);
+    const [mate] = published.body.alongside as Json[];
+    expect((mate?.record as Json | undefined)?.id).toBe(tasks);
+    const listed = await call('GET', '/boards');
+    expect((listed.body.boards as Json[]).map(({ status }) => status)).toEqual(['live', 'live']);
+
+    const undone = await call('POST', `/boards/${ideas}/restore`, {
+      version: null,
+      alongside: [tasks],
+    });
+    expect(undone.status).toBe(200);
+    const after = await call('GET', '/boards');
+    expect((after.body.boards as Json[]).map(({ status }) => status)).toEqual(['draft', 'draft']);
+  });
+
   it('creates a board with any name, saves its draft, plans and publishes it, and undoes that', async () => {
     const created = await call('POST', '/boards', { name: 'Tareas Ñandú', lang: 'es' });
     expect(created.status).toBe(201);

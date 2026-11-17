@@ -38,6 +38,12 @@ export function madeWithOf(boards: readonly BoardSummary[], id: string): BoardSu
   );
 }
 
+// The boards made together with `id` that were never published: they go live with it, as one
+// Publicar (Ideas plans its tasks on Implementación, so one live without the other breaks the set).
+export function unpublishedMates(boards: readonly BoardSummary[], id: string): BoardSummary[] {
+  return madeWithOf(boards, id).filter((board) => board.liveVersion === null);
+}
+
 // The workspace of a joined pair, as the editor holds it and the dialogs read it. `active` is the
 // board whose card, previews and "Sobre…" show; `select` switches board and selection at once.
 export type PairWorkspace = {

@@ -133,15 +133,26 @@ export function publishBoard(
   moves: Readonly<Record<string, Target>>,
   draftStamp?: string | null,
   closeRequest = false,
+  // The never-published boards its set made with it (pair.ts unpublishedMates): live with it.
+  alongside: readonly string[] = [],
 ): Promise<PublishResult> {
   const stamp = draftStamp === undefined ? {} : { draftStamp };
   const close = closeRequest ? { closeRequest } : {};
-  return call('POST', `${board(id)}/publish`, { moves, ...stamp, ...close });
+  const mates = alongside.length ? { alongside } : {};
+  return call('POST', `${board(id)}/publish`, { moves, ...stamp, ...close, ...mates });
 }
 
-// Undo publish: `version` is the one live before (null undoes a first publish).
-export function restoreBoard(id: string, version: number | null): Promise<BoardRecord> {
-  return call('POST', `${board(id)}/restore`, { version });
+// Undo publish: `version` is the one live before (null undoes a first publish, and the boards
+// published alongside it go back to drafts too).
+export function restoreBoard(
+  id: string,
+  version: number | null,
+  alongside: readonly string[] = [],
+): Promise<BoardRecord> {
+  return call('POST', `${board(id)}/restore`, {
+    version,
+    ...(alongside.length ? { alongside } : {}),
+  });
 }
 
 // A joined pair (pair.ts): both boards published as one, the child first; a role is published

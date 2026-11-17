@@ -9,7 +9,7 @@ import { C } from '../../motion/curves.ts';
 import { reduced } from '../../motion/reduced.ts';
 import { studioHash } from '../../selection.ts';
 import { type BoardSummary, fetchBoards } from '../api.ts';
-import { madeWithOf, type PairIds, type PairRole } from '../pair.ts';
+import { madeWithOf, type PairIds, type PairRole, unpublishedMates } from '../pair.ts';
 import { DiscardDialog, PracticeDialog, PublishDialog } from '../preview/dialogs.tsx';
 import { PreviewPane } from '../preview/PreviewPane.tsx';
 import { setBoardPrefixes } from '../preview/samples.ts';
@@ -488,6 +488,7 @@ function Editor({
         open={dialog === 'publish'}
         onClose={close}
         onPublished={() => draft.reload()}
+        mates={state ? [] : unpublishedMates(boards, draft.record.id)}
       />
       <DiscardDialog
         {...(state ? { pair: state.workspace } : {})}
