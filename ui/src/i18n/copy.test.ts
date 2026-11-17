@@ -75,13 +75,18 @@ describe('the copy says one thing one way', () => {
   it('says what Otea writes into the repos without a forced turn of phrase', () => {
     setLanguage('es');
     expect(t('settings.gate')).toBe('control');
-    expect(t('settings.reposNote', { agents: 'AGENTS.md' })).toBe(
-      'Otea solo escribe en tus repositorios AGENTS.md, y un hook donde el control es estricto.',
+    const files = {
+      agents: 'AGENTS.md',
+      mcp: '.mcp.json',
+      claude: '.claude/settings.local.json',
+    };
+    expect(t('settings.reposNote', files)).toBe(
+      'Otea solo escribe en tus repositorios AGENTS.md, el .mcp.json de los agentes y, donde el control es estricto, sus hooks: .claude/settings.local.json y el pre-push de git.',
     );
     expect(t('settings.notChecked')).toBe('sin comprobar hasta que vuelva a aparecer');
     setLanguage('en');
-    expect(t('settings.reposNote', { agents: 'AGENTS.md' })).toBe(
-      'Otea writes only AGENTS.md into your repos, and a hook where the gate is hard.',
+    expect(t('settings.reposNote', files)).toBe(
+      "Otea writes only AGENTS.md, the agents' .mcp.json and, where the gate is hard, its hooks (.claude/settings.local.json and git's pre-push) into your repos.",
     );
   });
 });

@@ -226,7 +226,13 @@ describe('Te espera', () => {
     storage: 'common',
     current: false,
     paths: [{ path: 'D:/juegos/salinas' } as ProjectOverview['paths'][number]],
-    waiting: [{ ...item({ id: 'SAL-12', title: 'La marea no sube' }), state: 'review' }],
+    waiting: [
+      {
+        ...item({ id: 'SAL-12', title: 'La marea no sube' }),
+        state: 'sk3j9x__review',
+        stateName: 'Refinar (en revisión)',
+      },
+    ],
     withAgents: 0,
     open: 1,
   };
@@ -270,6 +276,31 @@ describe('Te espera', () => {
     expect(blocks[1]).toMatchObject({ kind: 'row', inert: true, lane: 'you' });
     const served = elsewhereBlocks({ ...salinas, served: 'http://127.0.0.1:4500' });
     expect(served[1]).toMatchObject({ inert: false });
+    // The step in words, in the language on screen, never its id.
+    const html = renderToStaticMarkup(
+      createElement('div', null, (blocks[1] as { content: ReactNode }).content),
+    );
+    expect(html).toContain('Refinar · en revisión');
+    expect(html).not.toContain('sk3j9x');
+  });
+
+  it('calls idle only a project with nothing open, and counts the agents’ work apart', () => {
+    setLanguage('es');
+    const quiet = (id: string, withAgents: number): ProjectOverview => ({
+      ...salinas,
+      id,
+      name: id,
+      waiting: [],
+      withAgents,
+      open: withAgents,
+    });
+    const html = render(
+      createElement(ProjectsInbox, {}),
+      fakeApp({ projects: [quiet('nogit', 0), quiet('p3', 1), quiet('p4', 1)] }),
+    );
+    expect(html).toContain('nogit no tiene nada abierto.');
+    expect(html).toContain('No se listan aquí: 2 ítems con agentes, en p3 y p4.');
+    expect(html).not.toContain('p3 y p4 no tienen nada abierto');
   });
 
   it('heads the page Te espera on the lanes', () => {
@@ -316,6 +347,9 @@ describe('dialogs', () => {
     expect(html).toContain('(claude)');
     expect(html).toContain('- Cambios: Aclarar, Hacerlo (2 esperan a un agente ahora)');
     expect(html).not.toContain('otea board draft');
+    // One more agent rewrites the project's .mcp.json, never runs otea connect.
+    expect(html).toContain('Claude Code lee el .mcp.json del proyecto.');
+    expect(html).not.toContain('que escribe <code class="inl">otea connect</code>');
   });
 
   it('Conectar un agente speaks to the first agent of a project with boards, with no one to join', () => {

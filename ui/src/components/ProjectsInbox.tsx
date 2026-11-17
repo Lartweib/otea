@@ -7,7 +7,7 @@ import { listOf, t, tx } from '../i18n/i18n.ts';
 import { LaneHead } from '../lanes/LaneHead.tsx';
 import { type LaneBlock, LaneList } from '../lanes/LaneList.tsx';
 import { lookOf } from '../lanes/looks.ts';
-import { stateWord } from '../preset-words.ts';
+import { keptStateWord, stateWord } from '../preset-words.ts';
 import { inboxOf, itemHref, whereOf } from '../projects.ts';
 import type { Item, ProjectOverview } from '../types.ts';
 import { rowCall } from '../views/toca/blocks.tsx';
@@ -153,7 +153,7 @@ export function elsewhereBlocks(project: ProjectOverview): LaneBlock[] {
             <span className="id">{it.id}</span>
             <span className="mpt">
               <span className="sep">·</span>
-              <span className="stp you">{it.state}</span>
+              <span className="stp you">{keptStateWord(it.stateName ?? it.state)}</span>
             </span>
             <span className="mpt">
               <span className="sep">·</span>
@@ -187,11 +187,8 @@ export function ProjectsInbox() {
     if (app.route.item === key) app.closeItem();
     else app.openItem(key);
   };
-  const quiet = [
-    ...others
-      .filter((p) => p.waiting.length === 0 && p.unavailable === undefined)
-      .map((p) => p.name),
-  ];
+  // Idle: nothing open at all; one whose open work is all with agents is counted apart.
+  const quiet = inbox.idle;
   return (
     <div className="panel inbox">
       <section className="listcol">

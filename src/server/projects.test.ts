@@ -93,6 +93,8 @@ describe('the projects api', () => {
       expect(current?.withAgents).toBe(1);
       const other = projects.find((project) => !project.current);
       expect(other?.waiting.map((item) => item.title)).toEqual(['Fix the login']);
+      // Each says the step it is on in words, never its id (a board's steps are hidden ids).
+      expect(other?.waiting.map((item) => item.stateName)).toEqual(['Hacerlo (en revisión)']);
       expect(other?.paths[0]?.missing).toBe(false);
     });
 
