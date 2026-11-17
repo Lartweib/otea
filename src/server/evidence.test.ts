@@ -79,6 +79,59 @@ describe('evidence api', () => {
       });
     });
 
+    // Another project served later on the same host and port has its own evidence 1: a browser
+    // must never show that project the file it kept from this one.
+    describe('browser cache, which outlives the project on a port', () => {
+      const conditional = (etag: string) =>
+        Promise.resolve(
+          server.app.request('/api/evidence/1/file', {
+            headers: { host: LOCAL_HOST, cookie: SESSION_COOKIE, 'if-none-match': etag },
+          }),
+        );
+
+      beforeEach(() => {
+        attach('shot.png', 'png-bytes');
+      });
+
+      it('makes the browser ask again before it reuses a kept copy', async () => {
+        const response = await get('/api/evidence/1/file');
+
+        expect(response.headers.get('cache-control')).toBe('private, no-cache');
+        expect(response.headers.get('etag')).toMatch(/^".+"$/);
+      });
+
+      it('names the copy by the project and the content', async () => {
+        const etag = (await get('/api/evidence/1/file')).headers.get('etag') ?? '';
+        const sha256 = project.db.prepare('SELECT sha256 FROM evidence').get() as {
+          sha256: string;
+        };
+
+        expect(etag).toContain(project.identity.id);
+        expect(etag).toContain(sha256.sha256);
+      });
+
+      it('answers 304 with no body when the kept copy is this project’s file', async () => {
+        const etag = (await get('/api/evidence/1/file')).headers.get('etag') ?? '';
+
+        const response = await conditional(etag);
+
+        expect(response.status).toBe(304);
+        expect(await response.text()).toBe('');
+        expect(response.headers.get('etag')).toBe(etag);
+      });
+
+      it('serves the file again when the kept copy came from another project', async () => {
+        const sha256 = project.db.prepare('SELECT sha256 FROM evidence').get() as {
+          sha256: string;
+        };
+
+        const response = await conditional(`"other-project:${sha256.sha256}"`);
+
+        expect(response.status).toBe(200);
+        expect(await response.text()).toBe('png-bytes');
+      });
+    });
+
     describe('byte ranges, which video players need to seek', () => {
       const ranged = (range: string) =>
         Promise.resolve(
