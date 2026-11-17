@@ -48,4 +48,22 @@ describe('comparing rounds', () => {
     expect(sendBack?.to).toBe('in_progress');
     expect(verdictMoves([])).toEqual({});
   });
+
+  it('never sends back by approving when the next step is an agent’s', () => {
+    // An Encargos item in review: approving hands it on to the agent's Integrar step; sending
+    // back returns it to the agent's work step with the feedback.
+    const moves: Move[] = [
+      { to: 'smerge', by: 'human', reasonRequired: false, turn: 'agent' },
+      { to: 'swork', by: 'human', reasonRequired: true, turn: 'agent' },
+      { to: 'dropped', by: 'human', reasonRequired: true, turn: 'none', closes: 'discarded' },
+    ];
+    const { approve, sendBack } = verdictMoves(moves);
+    expect(sendBack?.to).toBe('swork');
+    expect(approve?.to).toBe('smerge');
+  });
+
+  it('offers no send-back when the only agent-bound move is the approval', () => {
+    const moves: Move[] = [{ to: 'smerge', by: 'human', reasonRequired: false, turn: 'agent' }];
+    expect(verdictMoves(moves)).toEqual({ approve: moves[0] });
+  });
 });

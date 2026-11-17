@@ -1,3 +1,4 @@
+import { moveBlock, moveVariants, type Waits } from './actions.ts';
 import type { Move } from './types.ts';
 
 // Comparing two rounds: which round is A and which is B, how they are laid over each other, and one
@@ -50,10 +51,22 @@ export function feedbackOf(note: string, marks: readonly number[], marked: strin
   return text === '' ? line : `${text}\n\n${line}`;
 }
 
-// The two verdicts the human gives in place: the move that closes the item as done, and the move
-// that hands it back to the agent with feedback.
-export function verdictMoves(moves: readonly Move[]): { approve?: Move; sendBack?: Move } {
-  const approve = moves.find((move) => move.closes === 'done' && move.by !== 'agent');
-  const sendBack = moves.find((move) => move.turn === 'agent' && move.by !== 'agent');
+// The two verdicts the human gives in place, read as the item's header reads them: the approving
+// move (its primary, which may close the item or hand it on to an agent's next step), and the move
+// that hands it back to an agent with feedback (one that asks a reason and closes nothing).
+export function verdictMoves(
+  moves: readonly Move[],
+  waits?: Waits,
+): { approve?: Move; sendBack?: Move } {
+  const variants = moveVariants(moves, waits);
+  const approve = moves.find((_, i) => variants[i] === 'primary');
+  const sendBack = moves.find(
+    (move) =>
+      move.by !== 'agent' &&
+      move.reasonRequired &&
+      move.turn === 'agent' &&
+      !move.closes &&
+      moveBlock(move, waits) === undefined,
+  );
   return { ...(approve ? { approve } : {}), ...(sendBack ? { sendBack } : {}) };
 }

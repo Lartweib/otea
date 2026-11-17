@@ -1,4 +1,5 @@
 import { type ReactNode, useState } from 'react';
+import { waitsOf } from '../actions.ts';
 import { moveItem } from '../api.ts';
 import { feedbackOf, frameLabel, toggleMark, verdictMoves } from '../compare.ts';
 import { momentLabel } from '../format.ts';
@@ -268,7 +269,7 @@ function Verdict({
   const [note, setNote] = useState('');
   const [error, setError] = useState<string>();
   const [busy, setBusy] = useState(false);
-  const { approve, sendBack } = verdictMoves(item.transitions);
+  const { approve, sendBack } = verdictMoves(item.transitions, waitsOf(item));
   const feedback = feedbackOf(note, marks, t('compare.marked'));
   const move = (to: string, reason: string) => {
     setBusy(true);
