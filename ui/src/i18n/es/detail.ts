@@ -552,7 +552,7 @@ export const detail = {
   'bi.parts.gloss': '{ended} de {total} terminadas',
   'proof.asks': 'pide prueba',
   'proof.count': '{ticked} de {total} marcados · {proved} con prueba',
-  'proof.missing': 'faltan {n}',
+  'proof.missing': { one: 'falta {count} punto', other: 'faltan {count} puntos' },
   'proof.none': 'sin prueba',
   'proof.untickedShort': 'falta',
   'proof.ticked': 'marcado',

@@ -548,7 +548,7 @@ export const detail = {
   'bi.parts.gloss': '{ended} of {total} finished',
   'proof.asks': 'asks for proof',
   'proof.count': '{ticked} of {total} ticked · {proved} with proof',
-  'proof.missing': '{n} missing',
+  'proof.missing': { one: '{count} point to go', other: '{count} points to go' },
   'proof.none': 'no proof',
   'proof.untickedShort': 'missing',
   'proof.ticked': 'ticked',
