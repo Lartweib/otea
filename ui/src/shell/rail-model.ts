@@ -14,6 +14,7 @@ export type RailKey =
   | 'studio'
   | 'settings'
   | 'performance'
+  | 'topics'
   | null;
 
 // The row the selection pill sits on: the view in sight, if the rail lists it.
@@ -33,6 +34,8 @@ export function railKey(route: Route): RailKey {
       return 'settings';
     case 'performance':
       return 'performance';
+    case 'topics':
+      return 'topics';
     default:
       return null;
   }

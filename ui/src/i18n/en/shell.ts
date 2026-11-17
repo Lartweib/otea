@@ -103,6 +103,7 @@ export const shell = {
   'nav.project': 'project',
   'nav.studio': 'Studio',
   'nav.settings': 'Settings',
+  'nav.topics': 'Topics',
   'nav.performance': 'Performance',
   'nav.prefs': 'Preferences',
   'nav.hide': 'Hide the panel',

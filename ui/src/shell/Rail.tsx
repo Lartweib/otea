@@ -16,6 +16,8 @@ import { C, F, lerp } from '../motion/curves.ts';
 import { type Drive, drive } from '../motion/drive.ts';
 import { reduced } from '../motion/reduced.ts';
 import { studioHash, type ViewRoute } from '../selection.ts';
+import { answeredTopics } from '../topics.ts';
+import { topicsShown, useTopics } from '../views/topics/use-topics.ts';
 import { PrefsButton } from './Preferences.tsx';
 import { type BoardIcon, boardEntries, foldClip, type RailKey, railKey } from './rail-model.ts';
 import { useMedia } from './use-media.ts';
@@ -189,6 +191,8 @@ export function Rail() {
   const yours = tocaCount(app.all, { now: app.now });
   const stuck = stuckCount(app.all, { now: app.now });
   const boards = boardEntries(app.collections, app.all);
+  // Side topics: listed while they are on or some were kept; the answered ones are yours.
+  const topics = useTopics();
   const foldLabel = folded ? t('nav.show') : t('nav.hide');
 
   useSelPill(navs, key);
@@ -347,6 +351,16 @@ export function Rail() {
               icon={<TypeIcon name="gear" size={16} />}
               label={t('nav.settings')}
               to={{ view: 'settings' }}
+            />
+          ) : null}
+          {topicsShown(topics) ? (
+            <Row
+              k="topics"
+              on={key === 'topics'}
+              icon={<TypeIcon name="chat-bubble" size={16} />}
+              label={t('nav.topics')}
+              to={{ view: 'topics' }}
+              pair={<Count value={answeredTopics(topics?.topics ?? []).length} tone="you" hold />}
             />
           ) : null}
           <Row

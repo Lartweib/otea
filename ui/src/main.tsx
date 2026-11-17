@@ -46,6 +46,7 @@ import './styles/activity.css';
 import './styles/intake.css';
 import './styles/projects.css';
 import './styles/performance.css';
+import './styles/topics.css';
 import './styles/pairing.css';
 import './styles/brief.css';
 import './styles/empty.css';

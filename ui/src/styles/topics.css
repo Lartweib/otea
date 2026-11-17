@@ -1,0 +1,333 @@
+/* Temas (#/topics): the side questions you asked an agent, as short conversations. The list on the
+   left in groups (left hanging first), the open topic on the right as a thread in the notes'
+   grammar (notes.css). Below 760 px the list and the topic are one page each. */
+
+.tp-body {
+  padding-left: 72px;
+}
+.tp-split {
+  container: tp / inline-size;
+  display: grid;
+  grid-template-columns: minmax(240px, 320px) minmax(0, 1fr);
+  gap: 32px;
+  align-items: start;
+  border-top: 1px solid var(--rule);
+  padding-top: 18px;
+}
+.tp-off {
+  display: grid;
+  justify-items: start;
+  gap: 14px;
+}
+.tp-off .pane-message {
+  padding-left: 0;
+  max-width: 56ch;
+}
+
+/* ───────── the list ───────── */
+.tp-group + .tp-group {
+  margin-top: 20px;
+}
+.tp-gh {
+  margin: 0 0 6px;
+  font: 600 11.5px / 1.2 var(--sans);
+  letter-spacing: 0.02em;
+  color: var(--ink-3);
+}
+.tp-gh .n {
+  font-weight: 500;
+  color: var(--ink-4, var(--ink-3));
+}
+.tp-group[data-state="hanging"] .tp-gh {
+  color: var(--warn, var(--ink-2));
+}
+.tp-list ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.tp-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: 10px;
+  row-gap: 2px;
+  min-height: 44px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  color: var(--ink);
+  text-decoration: none;
+  transition: background-color 160ms var(--ease-out, ease-out);
+}
+.tp-row:hover {
+  background: var(--hover, color-mix(in oklab, var(--ink) 5%, transparent));
+}
+.tp-row[aria-current="true"] {
+  background: color-mix(in oklab, var(--you) 10%, transparent);
+}
+.tp-row .tp-id {
+  grid-row: 1 / span 3;
+  font: 500 11.5px / 1.6 var(--mono);
+  color: var(--ink-3);
+}
+.tp-title {
+  font: 500 14px / 1.35 var(--sans);
+  overflow-wrap: anywhere;
+}
+.tp-sum {
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--ink-2);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.tp-turn {
+  font-size: 12px;
+  color: var(--ink-3);
+}
+.tp-turn[data-turn="human"] {
+  color: var(--you);
+  font-weight: 500;
+}
+.tp-all {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  margin-top: 10px;
+  padding-left: 12px;
+  font-size: 12.5px;
+  color: var(--ink-3);
+}
+
+/* ───────── the topic ───────── */
+.tp-back {
+  display: none;
+}
+.tp-th {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 14px;
+}
+.tp-th .tp-id {
+  font: 500 12px / 1 var(--mono);
+  color: var(--ink-3);
+}
+.tp-th h2 {
+  margin: 0;
+  font: 400 24px / 1.25 var(--serif);
+  font-variation-settings: "opsz" 28;
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+  overflow-wrap: anywhere;
+}
+.tp-resume,
+.tp-links {
+  margin: 0 0 10px;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.tp-resume code {
+  font: 12.5px / 1.4 var(--mono);
+  overflow-wrap: anywhere;
+}
+.tp-thread {
+  max-width: 72ch;
+}
+.tp-full {
+  margin-top: 8px;
+  border-top: 1px solid var(--rule);
+  padding-top: 6px;
+}
+.tp-full > summary {
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--ink-2);
+}
+.tp-src {
+  font-weight: 400;
+  color: var(--ink-3);
+}
+.tp-src[data-source="session"] {
+  color: var(--ok, var(--ink-3));
+}
+.tp-acts {
+  display: grid;
+  gap: 14px;
+  max-width: 72ch;
+  margin-top: 18px;
+}
+.tp-note {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px 10px;
+  align-items: end;
+}
+.tp-nl {
+  grid-column: 1 / -1;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--ink-2);
+}
+.tp-note textarea {
+  min-height: 44px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 0;
+  box-shadow: inset 0 0 0 1px var(--rule);
+  background: var(--sheet);
+  font: 14px / 1.4 var(--sans);
+  color: var(--ink);
+  resize: vertical;
+}
+.tp-moves,
+.tp-convert {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+.tp-convert label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.tp-convert select {
+  min-height: 32px;
+  border-radius: 8px;
+  border: 0;
+  box-shadow: inset 0 0 0 1px var(--rule);
+  background: var(--sheet);
+  color: var(--ink);
+  padding: 0 8px;
+}
+.tp-convert .action-error {
+  flex-basis: 100%;
+  margin: 0;
+}
+
+/* ───────── narrow: one page at a time ───────── */
+@container tp (max-width: 640px) {
+  .tp-split {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 760px) {
+  .tp-body {
+    padding-left: 0;
+  }
+  .tp-split {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+  .tp-page[data-open] .tp-side,
+  .tp-page[data-open] > .head,
+  .tp-page:not([data-open]) .tp-main {
+    display: none;
+  }
+  .tp-back {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    margin-bottom: 4px;
+    font-size: 13.5px;
+    color: var(--ink-2);
+    text-decoration: none;
+  }
+  .tp-note {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* ───────── Te toca's folded group ───────── */
+.tp-toca {
+  margin: 18px 0 0;
+  border-top: 1px solid var(--rule);
+  padding-top: 10px;
+}
+.tp-toca > summary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  cursor: pointer;
+  font: 600 13px / 1.2 var(--sans);
+  color: var(--ink-2);
+}
+.tp-toca > summary .n {
+  font-weight: 500;
+  color: var(--you);
+}
+.tp-toca-hint {
+  margin: 0 0 6px;
+  font-size: 12.5px;
+  color: var(--ink-3);
+}
+.tp-toca ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* ───────── Configuración's switch ───────── */
+.tp-setting {
+  display: grid;
+  justify-items: start;
+  gap: 8px;
+}
+.tp-setting .pj-hint {
+  margin: 0;
+}
+
+/* ───────── an item's related topics ───────── */
+.tp-item .d-body {
+  display: grid;
+  gap: 8px;
+}
+.tp-hint {
+  margin: 0;
+  font-size: 13.5px;
+  color: var(--you);
+}
+.tp-done,
+.tp-suggest {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 13.5px;
+  color: var(--ink-2);
+}
+.tp-item-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+  font-size: 13.5px;
+}
+.tp-item-list a {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  min-height: 32px;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.tp-item-list .tp-id {
+  font: 500 11.5px / 1 var(--mono);
+  color: var(--ink-3);
+}
+.tp-pending {
+  color: var(--you);
+  font-size: 12.5px;
+}
