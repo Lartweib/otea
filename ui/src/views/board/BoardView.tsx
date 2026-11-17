@@ -8,7 +8,10 @@ import {
   useState,
 } from 'react';
 import { flushSync } from 'react-dom';
+import { viewsOf } from '../../../../src/core/board/analysis.ts';
+import { setOrder } from '../../api.ts';
 import { useApp } from '../../app/context.tsx';
+import { Q } from '../../app/queue.ts';
 import { workspace } from '../../app/workspace.ts';
 import { type ArchivedBoard, fetchArchivedBoards } from '../../board-studio/api.ts';
 import { archivedNamed } from '../../board-studio/home/archive.ts';
@@ -18,6 +21,7 @@ import { Button } from '../../kit/Button.tsx';
 import { Count } from '../../kit/Count.tsx';
 import { Icon } from '../../kit/Icon.tsx';
 import { Chevron } from '../../kit/Marks.tsx';
+import { toast } from '../../kit/pop/toast.tsx';
 import { redrawLists } from '../../lanes/dom.ts';
 import { LaneHead } from '../../lanes/LaneHead.tsx';
 import { type LaneBlock, LaneList } from '../../lanes/LaneList.tsx';
@@ -29,6 +33,7 @@ import type { CollectionView, Item } from '../../types.ts';
 import type { ViewPrefs } from '../../view-prefs.ts';
 import { moveSplit } from '../detail/DetailHost.tsx';
 import { universeOf } from '../toca/TocaView.tsx';
+import { MatrixView } from './Matrix.tsx';
 import { ColumnMenu, ColumnsMenu, FilterMenu, GroupMenu, ShowOnlyMenu } from './menus.tsx';
 import {
   applyFilters,
@@ -215,6 +220,16 @@ function Board({ board }: { board: string }) {
   const [stageW, setStageW] = useState(0);
 
   const studio = useStudioBoard(board);
+  // The Matrix, a fourth way to look at a Studio board that mapped two scale roles (desk only).
+  const canMatrix = !app.phone && studio !== null && viewsOf(studio.live).includes('matrix');
+  const [matrixOn, setMatrixOn] = useState(() => readMatrix(board));
+  const matrix = canMatrix && matrixOn;
+  const showMatrix = (on: boolean) => {
+    setMatrixOn(on);
+    keepMatrix(board, on);
+    setTicked([]);
+    setMenu(null);
+  };
   // The phone reads a board in Lista only, by step: the step chip it shows, or every step.
   const phone = app.phone;
   const [step, setStep] = useState<string | null>(null);
@@ -586,7 +601,15 @@ function Board({ board }: { board: string }) {
             shown={shown}
             total={total}
             columnsShown={columns.length}
-            onMode={switchMode}
+            onMode={(m) => {
+              if (matrix) {
+                showMatrix(false);
+                if (m !== mode) setMode(m);
+                return;
+              }
+              switchMode(m);
+            }}
+            matrix={canMatrix ? { on: matrix, show: () => showMatrix(true) } : undefined}
             menu={menu}
             setMenu={setMenu}
             // One way to create on a board: the head's «Crear · Ítem» when Studio shapes it, else here.
@@ -609,7 +632,37 @@ function Board({ board }: { board: string }) {
             </button>
           </p>
         ) : null}
-        {modes.map((m) => modeEl(m, !!morphing && m === morphing.from))}
+        {matrix && studio ? (
+          <MatrixView
+            collection={board}
+            def={studio.live}
+            items={filtered.filter((it) => it.turn !== 'none')}
+            ticked={ticked}
+            onTick={(id) =>
+              setTicked((cur) => (cur.includes(id) ? cur.filter((k) => k !== id) : [...cur, id]))
+            }
+            onOpen={open}
+          >
+            <Tray
+              items={tickedItems}
+              collection={col}
+              onUntick={(id) => setTicked((cur) => cur.filter((k) => k !== id))}
+              onKeep={(ids) => setTicked(ids)}
+              onClear={() => setTicked([])}
+              onOrder={(ids) =>
+                Q.run(() => setOrder(board, ids)).then(
+                  () => {
+                    toast({ msg: t('matrix.ordered', { count: ids.length }) });
+                    setTicked([]);
+                  },
+                  () => toast({ msg: t('matrix.orderFailed') }),
+                )
+              }
+            />
+          </MatrixView>
+        ) : (
+          modes.map((m) => modeEl(m, !!morphing && m === morphing.from))
+        )}
       </div>
       {phone ? (
         <p className="ro" data-enter="fade" data-leaf="">
@@ -719,6 +772,7 @@ function Tools({
   total,
   columnsShown,
   onMode,
+  matrix,
   menu,
   setMenu,
   onNew,
@@ -730,6 +784,7 @@ function Tools({
   total: number;
   columnsShown: number;
   onMode: (m: BoardMode) => void;
+  matrix?: { on: boolean; show: () => void } | undefined;
   menu: Menu | null;
   setMenu: (m: Menu | null) => void;
   onNew: (() => void) | undefined;
@@ -751,8 +806,9 @@ function Tools({
     }
     placed.current = true;
   });
-  const group = useToolFade(mode !== 'pasos');
-  const columns = useToolFade(mode === 'tabla');
+  // The Matrix has neither groups nor columns: its axes are its own.
+  const group = useToolFade(mode !== 'pasos' && !matrix?.on);
+  const columns = useToolFade(mode === 'tabla' && !matrix?.on);
   const nFilters = Object.values(prefs.filters).filter((v) => v.length).length;
   const options = groupOptions(col);
   const groupName = options.find((o) => o.key === prefs.group)?.label ?? '';
@@ -771,19 +827,34 @@ function Tools({
         ref={sw}
         data-leaf=""
       >
-        {MODES.map((m) => (
+        {MODES.map((m) => {
+          const on = mode === m && !matrix?.on;
+          return (
+            <button
+              key={m}
+              type="button"
+              role="tab"
+              aria-selected={on}
+              className={on ? 'on' : undefined}
+              onClick={() => onMode(m)}
+            >
+              <Icon name={m} />
+              <span className="wl">{t(`boardView.mode.${m}`)}</span>
+            </button>
+          );
+        })}
+        {matrix ? (
           <button
-            key={m}
             type="button"
             role="tab"
-            aria-selected={mode === m}
-            className={mode === m ? 'on' : undefined}
-            onClick={() => onMode(m)}
+            aria-selected={matrix.on}
+            className={matrix.on ? 'on' : undefined}
+            onClick={matrix.show}
           >
-            <Icon name={m} />
-            <span className="wl">{t(`boardView.mode.${m}`)}</span>
+            <Icon name="tabla" />
+            <span className="wl">{t('boardView.mode.matriz')}</span>
           </button>
-        ))}
+        ) : null}
         <i className="uline" ref={uline} />
       </div>
       <span className="spacer" />
@@ -1034,4 +1105,21 @@ function BoardMenus({
       />
     </>
   );
+}
+
+// Whether this browser last looked at a board as its Matrix (`otea.matrix.<collection>`).
+function readMatrix(collection: string): boolean {
+  try {
+    return localStorage.getItem(`otea.matrix.${collection}`) === 'on';
+  } catch {
+    return false;
+  }
+}
+
+function keepMatrix(collection: string, on: boolean): void {
+  try {
+    localStorage.setItem(`otea.matrix.${collection}`, on ? 'on' : 'off');
+  } catch {
+    // A browser that refuses storage opens the board in its view again.
+  }
 }

@@ -1,6 +1,6 @@
 import { type ReactNode, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { openBlockers } from '../../actions.ts';
-import { fetchItem, undoMove } from '../../api.ts';
+import { fetchItem, pinItems, undoMove } from '../../api.ts';
 import { useApp } from '../../app/context.tsx';
 import { Q } from '../../app/queue.ts';
 import { bulkPlan, type Selected } from '../../bulk.ts';
@@ -111,12 +111,15 @@ export function Tray({
   onUntick,
   onKeep,
   onClear,
+  onOrder,
 }: {
   items: readonly Item[];
   collection: CollectionView;
   onUntick: (id: string) => void;
   onKeep: (ids: string[]) => void;
   onClear: () => void;
+  // On the matrix: «Fijar el orden», the ticked items in the order they were ticked.
+  onOrder?: (ids: string[]) => void;
 }) {
   const app = useApp();
   const [phase, setPhase] = useState<Phase>({ kind: 'idle' });
@@ -250,6 +253,24 @@ export function Tray({
     idleTimer.current = setTimeout(() => setPhase({ kind: 'idle' }), reduced() ? 1200 : 6000);
   };
 
+  // «Poner arriba»: the ticked items go on top of the agents' work, in the order ticked;
+  // «Quitar de arriba» once they all are.
+  const allPinned = items.length > 0 && items.every((it) => it.priority?.pin !== undefined);
+  const pin = (pinned: boolean) => {
+    const ids = items.map((it) => it.id);
+    Q.run(() => pinItems(ids, pinned)).then(
+      () => {
+        toast({
+          msg: pinned
+            ? t('boardView.tray.pinned', { count: ids.length })
+            : t('boardView.tray.unpinned', { count: ids.length }),
+        });
+        onClear();
+      },
+      () => toast({ msg: t('boardView.tray.pinFailed') }),
+    );
+  };
+
   const press = (b: TrayButton) => {
     if (b.reason) {
       setReason('');
@@ -359,6 +380,14 @@ export function Tray({
                   <Chevron />
                 </button>
               ) : null}
+              {onOrder ? (
+                <Button variant="quiet" size="sm" onClick={() => onOrder(items.map((it) => it.id))}>
+                  {t('boardView.tray.setOrder')}
+                </Button>
+              ) : null}
+              <Button variant="quiet" size="sm" onClick={() => pin(!allPinned)}>
+                {allPinned ? t('boardView.tray.unpin') : t('boardView.tray.pin')}
+              </Button>
               <Button
                 variant="quiet"
                 size="sm"
