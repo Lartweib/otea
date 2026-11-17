@@ -659,6 +659,13 @@ export function markListening(
   db.prepare(sql).run({ agent, at, session: session ?? null, harness: harness ?? null });
 }
 
+// Notes the agent no longer listening, if it was last heard listening `at` (and not since).
+export function clearListening(db: DatabaseSync, agent: string, at: string): void {
+  db.prepare(
+    'UPDATE agents SET listening_at = NULL WHERE name = :agent AND listening_at = :at',
+  ).run({ agent, at });
+}
+
 // The MCP server an agent was last heard listening from, the harness process that started it, and
 // when it was heard.
 export function selectListener(
