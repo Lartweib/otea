@@ -339,6 +339,53 @@ describe('check', () => {
       });
     });
 
+    it('refuses a push into the base that brings in commits no item’s branch holds', async () => {
+      person(task, 'implementing');
+      commit('keys');
+      await otea('move', task, 'implementing__review');
+      person(task, 'done');
+      git('checkout', '-q', 'main');
+      git('merge', '-q', '--ff-only', 'chg-1/keys');
+      const reviewed = git('rev-parse', 'HEAD');
+      commit('never reviewed');
+      const extra = git('rev-parse', '--short', 'HEAD');
+
+      expect(await push('--branch', '--repo')).toEqual({
+        code: 19,
+        out: `push refused: main would take 1 commit no reviewed branch holds (${extra}); it takes only the branches of the items it brings in, as they were pushed.\n`,
+        err: '',
+      });
+      git('reset', '-q', '--hard', reviewed);
+      expect((await push('--branch', '--repo')).code).toBe(0);
+    });
+
+    it('takes a merge commit that joins a Done branch into the base', async () => {
+      person(task, 'implementing');
+      commit('keys');
+      await otea('move', task, 'implementing__review');
+      person(task, 'done');
+      git('checkout', '-q', 'main');
+      commit('on main meanwhile');
+      git('update-ref', 'refs/remotes/origin/main', 'main');
+      git(
+        '-c',
+        'user.name=t',
+        '-c',
+        'user.email=t@t',
+        'merge',
+        '-q',
+        '--no-ff',
+        '-m',
+        'merge',
+        'chg-1/keys',
+      );
+
+      expect(await push('--branch', '--repo')).toMatchObject({
+        code: 0,
+        out: `push allowed: ${task} is Done; main takes its branch.\n`,
+      });
+    });
+
     it('stops a real push into the base through the pre-push hook until the item is Done', async () => {
       const remote = tempGitRepo();
       try {
@@ -370,6 +417,17 @@ describe('check', () => {
         );
         expect(git('--git-dir', bare, 'rev-parse', 'main')).not.toBe(git('rev-parse', 'main'));
         person(task, 'done');
+        commit('rides along unreviewed');
+        const riding = (() => {
+          try {
+            git('push', '-q', bare, 'main');
+            return 'pushed';
+          } catch (error) {
+            return String((error as { stdout?: string }).stdout);
+          }
+        })();
+        expect(riding).toContain('push refused: main would take 1 commit no reviewed branch holds');
+        git('reset', '-q', '--hard', 'chg-1/keys');
         git('push', '-q', bare, 'main');
         expect(git('--git-dir', bare, 'rev-parse', 'main')).toBe(git('rev-parse', 'main'));
       } finally {

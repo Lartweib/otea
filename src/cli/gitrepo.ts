@@ -42,8 +42,14 @@ function commitOf(cwd: string, ref: string): string | undefined {
 // local ones and the remote's alike, a remote one by its name on the remote (origin/feat/x is
 // feat/x), so a branch reviewed on the remote is known in a fresh clone too. `unpushed` names the
 // local branches among them that hold commits their remote never got: what the review saw is what
-// was pushed, so those commits were never reviewed. Throws outside a repo.
-export type Brought = { branches: string[]; unpushed: { branch: string; remote: string }[] };
+// was pushed, so those commits were never reviewed. `outside` names the commits of the push no
+// given branch holds (local or the remote's), merge commits aside: a merge joins commits, it brings
+// none of its own. Throws outside a repo.
+export type Brought = {
+  branches: string[];
+  unpushed: { branch: string; remote: string }[];
+  outside?: (held: readonly string[]) => string[];
+};
 
 export function branchesBrought(cwd: string, to: string, from?: string): Brought {
   const tip = commitOf(cwd, to);
@@ -70,7 +76,41 @@ export function branchesBrought(cwd: string, to: string, from?: string): Brought
     if (remote === undefined) return [];
     return isAncestor(cwd, `refs/heads/${branch}`, remote) ? [] : [{ branch, remote }];
   });
-  return { branches: [...new Set([...local, ...fromRemotes])], unpushed };
+  const brought: Brought = { branches: [...new Set([...local, ...fromRemotes])], unpushed };
+  // With nothing on the remote to start from, the whole history would count as brought in: only a
+  // push onto a branch the remote has is asked which commits ride along.
+  if (base) brought.outside = (held) => commitsOutside(cwd, tip, base, held, refs, remotes);
+  return brought;
+}
+
+// The commits in `tip` and not in `base` that none of the `held` branches holds, by short id, merge
+// commits aside; `refs` are the refs the push brings in, a branch counting by its local ref and by
+// the remote's alike.
+function commitsOutside(
+  cwd: string,
+  tip: string,
+  base: string,
+  held: readonly string[],
+  refs: readonly string[],
+  remotes: readonly string[],
+): string[] {
+  const holding = refs.filter((ref) =>
+    held.some(
+      (name) =>
+        ref === `refs/heads/${name}` ||
+        remotes.some((remote) => ref === `refs/remotes/${remote}/${name}`),
+    ),
+  );
+  const listed = git(
+    cwd,
+    'rev-list',
+    '--no-merges',
+    '--abbrev-commit',
+    tip,
+    `^${base}`,
+    ...holding.map((ref) => `^${ref}`),
+  );
+  return listed.split(/\r?\n/).filter(Boolean);
 }
 
 // The remote branch a local one is pushed to, by name (origin/feat/x): its upstream, or else

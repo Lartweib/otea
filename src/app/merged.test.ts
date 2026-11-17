@@ -197,6 +197,42 @@ describe('reopening a Done item whose branch is not merged', () => {
     );
   });
 
+  it('refuses an item an agent already merged in its land step, and never offers it', () => {
+    const ctx = memoryContext();
+    const def = tareasDeRepo();
+    def.steps.push(step('sland', 'Integrar', { reviewer: 'none' }));
+    publishAs(ctx, def, 'brt', now);
+    publishAs(ctx, cambios(), 'bcam', now);
+    const parent = createItem(
+      ctx,
+      { collection: 'Cambios', title: 'Nube', fields: { fwhat: 'x' }, actor: you },
+      now,
+    );
+    const { id } = createItem(
+      ctx,
+      {
+        collection: 'Tareas de repo',
+        title: 'API',
+        fields: { frepo: 'api', fbranch: 'feat/x' },
+        parent: parent.id,
+        actor: you,
+      },
+      now,
+    );
+    updateItemState(ctx.db, id, 'sland', now());
+    handoffItem(ctx, { id, actor: quill, channel: 'cli' }, now);
+    expect(requireItem(ctx.db, id).state).toBe('done');
+
+    expect(() => reopenItem(ctx, { id, actor: quill, channel: 'cli', reason: 'x' }, now)).toThrow(
+      `${id} was merged in Integrar already: its branch is in, so a further change is new work, not ${id}`,
+    );
+    expect(requireItem(ctx.db, id).state).toBe('done');
+    expect(checkGate(ctx, 'push', { branch: 'feat/x', repo: 'api' }).items[0]?.text).toBe(
+      `push refused: ${id} is Done; nothing is pushed to a closed item's branch.`,
+    );
+    expect(itemNextText(ctx, requireItem(ctx.db, id), 'quill', now)).not.toContain('otea reopen');
+  });
+
   it('names the Done items that wait to be merged when next has nothing to take', () => {
     const { ctx, id } = repoTask();
     updateItemState(ctx.db, id, 'done', now());
