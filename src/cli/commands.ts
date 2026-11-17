@@ -1083,13 +1083,16 @@ const move: Command = {
   },
 };
 
+// The guide's topics rule without its number, as next and wait say it.
+const TOPICS_TEXT = TOPICS_RULE.replace(/^\d+\. /, '');
+
 // While topics are on, next names the topics waiting for the agent's answer (a note otea wait woke
 // it for is still there once it runs next) and the topics rule, which an agent whose session began
 // before the person turned topics on never read in its guide.
 function topicLines(project: Project, agent: string): string[] {
   if (!topicsOn(project)) return [];
   const awaiting = topicsAwaitingText(topicsAwaiting(project, agent));
-  const rule = `Topics are on. ${TOPICS_RULE.replace(/^\d+\. /, '')}`;
+  const rule = `Topics are on. ${TOPICS_TEXT}`;
   return awaiting === undefined ? [rule] : [awaiting, rule];
 }
 
@@ -1427,7 +1430,15 @@ const wait: Command = {
         syncBoardPresets(project);
         return lookFor();
       };
+      // Topics the person turns on while an agent waits wake it once with their rule: its session
+      // began without it, and an agent at work reads it in next.
+      const topicsBefore = topicsOn(project);
+      const topicsTurnedOn = () =>
+        input.actor.kind === 'agent' && !topicsBefore && topicsOn(project)
+          ? { topics: 'on', text: `The person turned topics on. ${TOPICS_TEXT}` }
+          : undefined;
       const lookFor = () =>
+        topicsTurnedOn() ??
         noteWaiting(project, me) ??
         (input.actor.kind === 'agent' ? topicWaiting(project, me) : undefined) ??
         answerWaiting(project, me) ??

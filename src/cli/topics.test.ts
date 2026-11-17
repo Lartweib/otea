@@ -148,6 +148,26 @@ describe('otea topic', () => {
     const next = (await otea('next')).out;
     expect(next).toContain('TEM-1');
     expect(next).toContain('otea topic answer TEM-1');
+    // What the person wrote, so the agent answers it without a wait to show it.
+    expect(next).toContain('"¿Y en Linux?"');
+  });
+
+  it('wakes a waiting agent once the person turns topics on, with the topics rule', async () => {
+    const { repo } = fresh();
+    const person = cliAt(repo.dir);
+    const waiting = startCli(
+      repo.dir,
+      'wait',
+      '--turn',
+      'agent',
+      '--unclaimed',
+      '--timeout',
+      '20s',
+    );
+    await person('topic', 'on');
+    await until(() => waiting.out().includes('otea topic add'), 10_000);
+    expect(waiting.out()).toContain('turned topics on');
+    await waiting.stop();
   });
 
   it('refuses --from for a topic that does not exist', async () => {
