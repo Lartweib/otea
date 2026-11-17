@@ -72,6 +72,26 @@ describe('the processes that own a command', () => {
       }
     });
 
+    it('lists nothing once the parent is already gone', async () => {
+      let listings = 0;
+      const list = async () => {
+        listings += 1;
+        return [];
+      };
+      const owner = watchOwner(new AbortController().signal, {
+        list,
+        alive: (pid) => pid !== process.ppid,
+        everyMs: 10,
+      });
+      try {
+        await until(() => owner.signal.aborted);
+        expect(owner.orphaned()).toBe(true);
+        expect(listings).toBe(0);
+      } finally {
+        owner.stop();
+      }
+    });
+
     it('stops with the command interrupted, not orphaned', () => {
       const interrupt = new AbortController();
       const owner = watchOwner(interrupt.signal, { list: listed, everyMs: 10 });
