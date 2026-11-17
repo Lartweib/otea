@@ -165,7 +165,7 @@ export const board = {
   'matrix.top': 'Arriba',
   'matrix.label': '{x} a lo ancho, {y} hacia arriba',
   'matrix.estimated': 'Estimado por {agent}: ponlo en el ítem para confirmarlo',
-  'matrix.guess': 'est.',
+  'matrix.guess': 'estim.',
   'matrix.ordered': {
     one: 'Orden fijado: los agentes lo toman primero.',
     other: 'Orden fijado: los agentes toman estos {count} en este orden.',
