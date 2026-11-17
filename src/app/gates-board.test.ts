@@ -232,6 +232,40 @@ describe('gates on a board', () => {
       );
     });
 
+    it('lets a board that leaves the base alone land its approved item into it', () => {
+      // Errores lands its fix straight into main, which Entregas and Cambios protect: their
+      // protection holds for their items, never for an item of a board that does not protect main.
+      const { ctx } = repoTask('main');
+      const fixes = tareasDeRepo();
+      fixes.name = 'Arreglos';
+      fixes.item = 'Arreglo';
+      fixes.steps.push(step('sland', 'Integrar', { reviewer: 'none' }));
+      publishAs(ctx, fixes, 'barr', now);
+      const fix = createItem(
+        ctx,
+        {
+          collection: 'Arreglos',
+          title: 'Strings',
+          fields: { frepo: 'api', fbranch: 'fix/strings' },
+          actor: you,
+        },
+        now,
+      );
+      const brings = () => ['fix/strings'];
+      updateItemState(ctx.db, fix.id, 'simpl', now());
+      const early = checkGate(ctx, 'push', { branch: 'main', repo: 'api' }, brings);
+      expect(early).toMatchObject({ allowed: false, items: [{ id: fix.id, allowed: false }] });
+      expect(early.refusal).toBeUndefined();
+
+      updateItemState(ctx.db, fix.id, 'sland', now());
+      const push = checkGate(ctx, 'push', { branch: 'main', repo: 'api' }, brings);
+      expect(push).toMatchObject({ allowed: true, items: [{ id: fix.id, allowed: true }] });
+      expect(push.items[0]?.text).toBe(
+        `push allowed: ${fix.id} is being landed in Integrar, after your approval; main takes its branch.`,
+      );
+      expect(checkGate(ctx, 'push', { branch: 'main', repo: 'web' }, brings).allowed).toBe(false);
+    });
+
     it('still gates the item’s own branch as before', () => {
       const { ctx, id } = repoTask('main');
       updateItemState(ctx.db, id, 'simpl', now());
