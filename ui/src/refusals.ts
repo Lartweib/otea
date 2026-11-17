@@ -13,8 +13,9 @@ const BLOCKERS = 'wait:blockers';
 // "TAR-6 (Implementar)"; with the board, "ERR-4 (Errores, Arreglar)".
 function named(open: readonly Linked[], board = false): string {
   return listOf(
-    open.map(({ id, board: on, step }) => {
-      const where = [board ? on : '', step ?? ''].filter(Boolean).join(', ');
+    open.map(({ id, board: on, step, unmerged }) => {
+      const at = step ?? (unmerged ? t('link.unmerged') : '');
+      const where = [board ? on : '', at].filter(Boolean).join(', ');
       return where ? `${id} (${where})` : id;
     }),
   );
@@ -22,7 +23,10 @@ function named(open: readonly Linked[], board = false): string {
 
 function blockersWhy(wait: Missing): string {
   const open = wait.open ?? [];
-  return t('refusal.why.blockers', { list: named(open, true), count: open.length });
+  // Done blockers whose branch is not merged yet still hold it: merge order.
+  const unmerged = open.length > 0 && open.every((linked) => linked.unmerged);
+  const key = unmerged ? 'refusal.why.blockersUnmerged' : 'refusal.why.blockers';
+  return t(key, { list: named(open, true), count: open.length });
 }
 
 function partsWhy(wait: Missing): string {

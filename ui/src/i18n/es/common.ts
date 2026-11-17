@@ -128,6 +128,11 @@ export const common = {
     one: '{list} lo frena y sigue sin terminar',
     other: '{list} lo frenan y siguen sin terminar',
   },
+  'refusal.why.blockersUnmerged': {
+    one: '{list} lo frena y aún no se fusionó',
+    other: '{list} lo frenan y aún no se fusionaron',
+  },
+  'link.unmerged': 'Hecho, sin fusionar',
   'refusal.drop': 'No se descartó {item}: {why}.',
   'refusal.drop.notOpen': 'ya terminó',
   'refusal.drop.reason': 'di por qué',

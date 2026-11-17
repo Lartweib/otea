@@ -543,6 +543,8 @@ export const detail = {
     'Not approved {id}: {other} ({board}, {step}) holds it back and is still unfinished.',
   'bi.refuse.blockersEnded':
     'Not approved {id}: {other} ({board}) holds it back and is still unfinished.',
+  'bi.refuse.blockersUnmerged':
+    'Not approved {id}: {other} ({board}) holds it back and is not merged yet: approve it once its branch is in the base.',
   'bi.partOf': 'Part of',
   'bi.parts.title': 'Parts',
   'bi.parts.gloss': '{ended} of {total} finished',

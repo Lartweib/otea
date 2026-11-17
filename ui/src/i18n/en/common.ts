@@ -125,6 +125,11 @@ export const common = {
     one: '{list} blocks it and is not finished',
     other: '{list} block it and are not finished',
   },
+  'refusal.why.blockersUnmerged': {
+    one: '{list} blocks it and is not merged yet',
+    other: '{list} block it and are not merged yet',
+  },
+  'link.unmerged': 'Done, not merged yet',
   'refusal.drop': 'Not discarded {item}: {why}.',
   'refusal.drop.notOpen': 'it has already ended',
   'refusal.drop.reason': 'say why',

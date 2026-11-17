@@ -155,8 +155,11 @@ export function partsBoardOf(ctx: Context, board: LiveBoard): LiveBoard | undefi
   return split.board === SAME ? board : liveBoardById(ctx, split.board);
 }
 
-// Another item as a wait reads it: its board and, while open, its step, by name.
-function linkedOf(ctx: Context, id: string): Linked {
+// Another item as a wait reads it: its board and, while open, its step, by name. `blocking`: read
+// as a blocker, whose work must be in before the item it blocks goes on: a Done item whose
+// protected branch is not merged yet (on a board with no land step, where Done is merged already)
+// still blocks, as `unmerged`.
+function linkedOf(ctx: Context, id: string, blocking = false): Linked {
   const item = requireItem(ctx.db, id);
   const board = liveBoardOf(ctx, item.collection);
   if (!board) {
@@ -164,7 +167,11 @@ function linkedOf(ctx: Context, id: string): Linked {
     return { id, board: item.collection, ...(closed ? {} : { step: item.state }), closed };
   }
   const position = positionOf(item.state);
-  if (isClosed(position)) return { id, board: board.def.name, closed: true };
+  if (isClosed(position)) {
+    if (blocking && waitsToMerge(ctx, board, item))
+      return { id, board: board.def.name, closed: false, unmerged: true };
+    return { id, board: board.def.name, closed: true };
+  }
   const step = stepById(board.def, position.step)?.name ?? position.step;
   return { id, board: board.def.name, step, closed: false };
 }
@@ -178,7 +185,9 @@ export function linksOf(ctx: Context, id: string): Links {
     relations.filter((r) => r.kind === kind && r.to === id).map(({ from }) => linkedOf(ctx, from));
   return {
     parts: into('parent'),
-    blockers: into('blocks'),
+    blockers: relations
+      .filter((r) => r.kind === 'blocks' && r.to === id)
+      .map(({ from }) => linkedOf(ctx, from, true)),
     blocking: relations
       .filter((r) => r.kind === 'blocks' && r.from === id)
       .map(({ to }) => linkedOf(ctx, to)),
@@ -688,6 +697,16 @@ export function offerableTo(ctx: Context, agent: string, now = systemClock) {
     const record = requireItem(ctx.db, item.id);
     return !offered(record) && isTheirs(ctx, board.def, record, agent, at);
   };
+}
+
+// Whether a Done item of the board waits to be merged: its protected branch is set and not marked
+// merged, on a board with no land step (one with a land step merges in it, before Done).
+function waitsToMerge(ctx: Context, board: LiveBoard, item: ItemRecord): boolean {
+  const branch = guardedBranch(board.def);
+  if (!branch || item.state !== DONE) return false;
+  if (board.def.steps.some((step) => isLandStep(board.def, step.id))) return false;
+  if (String(item.fields[branch.id] ?? '').trim() === '') return false;
+  return mergedFrom(selectEvents(ctx.db, item.id)) === undefined;
 }
 
 // The board's Done items whose protected branch is set and not marked merged yet, oldest first: on a

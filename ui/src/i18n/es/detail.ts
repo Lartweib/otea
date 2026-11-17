@@ -547,6 +547,8 @@ export const detail = {
   'bi.refuse.blockers':
     'No se aprobó {id}: {other} ({board}, {step}) lo frena y sigue sin terminar.',
   'bi.refuse.blockersEnded': 'No se aprobó {id}: {other} ({board}) lo frena y sigue sin terminar.',
+  'bi.refuse.blockersUnmerged':
+    'No se aprobó {id}: {other} ({board}) lo frena y aún no se fusionó: apruébalo cuando su rama esté en la base.',
   'bi.partOf': 'Parte de',
   'bi.parts.title': 'Partes',
   'bi.parts.gloss': '{ended} de {total} terminadas',

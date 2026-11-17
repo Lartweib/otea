@@ -166,8 +166,13 @@ export function linksOf(
   const parentRel = item.relations.find((r) => r.kind === 'parent');
   const block = item.board;
   const known = new Map(item.relations.map((r) => [r.id, viewOf(r, names)]));
+  // A blocker that is Done but not merged yet still holds the item: it says so where a step goes.
   const merged = (list: readonly Linked[]) =>
-    list.map((linked) => ({ ...known.get(linked.id), ...linked }));
+    list.map((linked) => ({
+      ...known.get(linked.id),
+      ...linked,
+      ...(linked.unmerged ? { step: t('link.unmerged') } : {}),
+    }));
   return {
     parent: parentRel ? viewOf(parentRel, names) : null,
     parts: block ? merged(block.parts) : of('child'),
@@ -214,6 +219,8 @@ export function approvalRefusal(id: string, rows: readonly WaitRow[]): string | 
   const blockers = rows.find((r) => r.kind === 'blockers' && r.open.length);
   const first = blockers?.open[0];
   if (!first) return null;
+  if (first.unmerged)
+    return t('bi.refuse.blockersUnmerged', { id, other: first.id, board: first.board });
   return first.step
     ? t('bi.refuse.blockers', { id, other: first.id, board: first.board, step: first.step })
     : t('bi.refuse.blockersEnded', { id, other: first.id, board: first.board });

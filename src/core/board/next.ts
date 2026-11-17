@@ -650,8 +650,9 @@ const MISSING_NOTE: Readonly<Record<Missing['reason'], string>> = {
 
 // "RT-4 (Implementar), RT-7 (Propuesta)"; with `board`, "BUG-9 (Errores, Arreglar)".
 function named(open: readonly Linked[], board = false): string[] {
-  return open.map(({ id, board: on, step }) => {
-    const where = [board ? on : '', step ?? ''].filter(Boolean).join(', ');
+  return open.map(({ id, board: on, step, unmerged }) => {
+    const at = step ?? (unmerged ? `${DONE_NAME}, not merged yet` : '');
+    const where = [board ? on : '', at].filter(Boolean).join(', ');
     return where ? `${id} (${where})` : id;
   });
 }
@@ -667,11 +668,21 @@ function partsHold(id: string, wait: Missing): string {
   return `${open.length} of its ${total} ${wait.name} ${verb} not finished: ${list}`;
 }
 
-function blockersHold(wait: Missing): { text: string; them: string; one: boolean } {
+// `unmerged`: every one of them is Done and waits to be merged; `some`, at least one is.
+function blockersHold(wait: Missing): {
+  text: string;
+  them: string;
+  one: boolean;
+  unmerged: boolean;
+  some: boolean;
+} {
   const open = wait.open ?? [];
   const one = open.length === 1;
-  const text = `${and(named(open, true))} ${one ? 'blocks it and is' : 'block it and are'} not finished`;
-  return { text, them: one ? (open[0]?.id ?? '') : 'they', one };
+  const unmerged = open.length > 0 && open.every((linked) => linked.unmerged);
+  const some = open.some((linked) => linked.unmerged);
+  const state = unmerged ? 'not merged yet' : 'not finished';
+  const text = `${and(named(open, true))} ${one ? 'blocks it and is' : 'block it and are'} ${state}`;
+  return { text, them: one ? (open[0]?.id ?? '') : 'they', one, unmerged, some };
 }
 
 // The exact refusal of a handoff that lacks something: the parts and the note lead; when only
@@ -720,9 +731,15 @@ function lackingText(id: string, missing: readonly Missing[]): string {
   }
   if (waitingBlockers) {
     const hold = blockersHold(waitingBlockers);
+    const record = hold.one ? ` (otea merged ${hold.them})` : '';
+    const until = hold.unmerged
+      ? `merged${record}`
+      : hold.some
+        ? `${DONE_NAME} and merged`
+        : DONE_NAME;
     lines.push(
       `Not handed off ${id}: ${hold.text}.`,
-      `Hand it off again once ${hold.them} ${hold.one ? 'is' : 'are'} ${DONE_NAME} or ${DROPPED_NAME}, or ask the person to remove the link.`,
+      `Hand it off again once ${hold.them} ${hold.one ? 'is' : 'are'} ${until} or ${DROPPED_NAME}, or ask the person to remove the link.`,
     );
   }
   return lines.join('\n');
