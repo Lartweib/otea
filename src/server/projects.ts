@@ -27,6 +27,7 @@ import { identityAt, listRepos, type Repo, readReposAtFolder, reposInside } from
 import { hasOteaGitHook } from '../cli/hooks.ts';
 import { readServeFile } from '../cli/serve-file.ts';
 import { OteaError } from '../core/errors.ts';
+import { stateLabel } from '../core/workflow.ts';
 import type { PathKind, Storage } from '../store/registry.ts';
 
 export type OverviewPath = { path: string; kind: PathKind; missing: boolean };
@@ -65,11 +66,13 @@ function servedAt(dataDir: string): string | undefined {
   return info && alive(info.pid) ? `http://127.0.0.1:${info.port}` : undefined;
 }
 
-export type WaitingItem = Item & { icon?: string };
+// `stateName`: the step it is on in words (a board's steps are hidden ids), as its type names it.
+export type WaitingItem = Item & { icon?: string; stateName: string };
 
 function withIcon(project: Project, item: Item): WaitingItem {
-  const icon = typeOfItem(project, item).icon;
-  return icon === undefined ? item : { ...item, icon };
+  const type = typeOfItem(project, item);
+  const stateName = stateLabel(type.workflow, item.state);
+  return type.icon === undefined ? { ...item, stateName } : { ...item, icon: type.icon, stateName };
 }
 
 type Counts = Pick<ProjectOverview, 'waiting' | 'withAgents' | 'open'>;

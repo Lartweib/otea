@@ -221,7 +221,7 @@ export const surfaces = {
   'settings.evidence': 'evidence',
   'settings.repos': 'repos',
   'settings.reposNote':
-    'Otea writes only {agents} into your repos, and a hook where the gate is hard.',
+    "Otea writes only {agents}, the agents' {mcp} and, where the gate is hard, its hooks ({claude} and git's pre-push) into your repos.",
   'settings.copy': 'copy',
   'settings.copied': 'copied',
   'settings.copyCommand': 'Copy the command',
@@ -246,6 +246,8 @@ export const surfaces = {
   'connect.title': 'Connect an agent',
   'connect.others':
     'Claude Code reads the .mcp.json that {connect} writes. Codex, Gemini and the rest use the CLI: {command} gives them the guide in AGENTS.md.',
+  'connect.othersJoin':
+    "Claude Code reads the project's .mcp.json. Codex, Gemini and the rest use the CLI: {command} gives them the guide in AGENTS.md.",
   'connect.startBody':
     'Paste this into your agent’s chat. It sets Otea up, connects, reads the project, asks how you work and proposes the boards for you to try.',
   'connect.joinBody':

@@ -225,7 +225,7 @@ export const surfaces = {
   'settings.evidence': 'evidencia',
   'settings.repos': 'repositorios',
   'settings.reposNote':
-    'Otea solo escribe en tus repositorios {agents}, y un hook donde el control es estricto.',
+    'Otea solo escribe en tus repositorios {agents}, el {mcp} de los agentes y, donde el control es estricto, sus hooks: {claude} y el pre-push de git.',
   'settings.copy': 'copiar',
   'settings.copied': 'copiado',
   'settings.copyCommand': 'Copiar el comando',
@@ -249,6 +249,8 @@ export const surfaces = {
   'connect.title': 'Conectar un agente',
   'connect.others':
     'Claude Code lee el .mcp.json que escribe {connect}. Codex, Gemini y los demás usan la CLI: {command} les deja la guía en AGENTS.md.',
+  'connect.othersJoin':
+    'Claude Code lee el .mcp.json del proyecto. Codex, Gemini y los demás usan la CLI: {command} les deja la guía en AGENTS.md.',
   'connect.startBody':
     'Pega esto en el chat de tu agente. Configura Otea, se conecta, lee el proyecto, te pregunta cómo trabajas y te propone los tableros para que los pruebes.',
   'connect.joinBody':

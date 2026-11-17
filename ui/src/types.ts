@@ -274,7 +274,8 @@ export type PathKind = 'folder' | 'repo';
 export type ProjectPath = { path: string; kind: PathKind; missing: boolean };
 
 // An item waiting for you in some project, with its type's icon there.
-export type WaitingItem = Item & { icon?: string };
+// `stateName`: the step it is on in words, as its project names it (Refinar (en revisión)).
+export type WaitingItem = Item & { icon?: string; stateName?: string };
 
 // A project on this machine, as the projects inbox reads it (GET /api/projects).
 export type ProjectOverview = {

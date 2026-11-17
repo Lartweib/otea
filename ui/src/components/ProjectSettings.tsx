@@ -332,7 +332,11 @@ function Storage({ settings }: { settings: Settings }) {
       <dt>{t('settings.repos')}</dt>
       <dd>
         <span className="t-small">
-          {tx('settings.reposNote', { agents: <code className="pj-code">AGENTS.md</code> })}
+          {tx('settings.reposNote', {
+            agents: <code className="pj-code">AGENTS.md</code>,
+            mcp: <code className="pj-code">.mcp.json</code>,
+            claude: <code className="pj-code">.claude/settings.local.json</code>,
+          })}
         </span>
       </dd>
     </dl>
