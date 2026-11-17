@@ -35,7 +35,7 @@ import {
   insertNewBoardSet,
   saveDraft,
 } from './boards.ts';
-import { BOARD_JSON_SCHEMA, DRAFT_FILENAME } from './draft-request.ts';
+import { BOARD_JSON_SCHEMA, DRAFT_FILENAME, draftTitle } from './draft-request.ts';
 import { evidenceFile, placeFile, recordEvidence } from './evidence.ts';
 import { insertNewItem, requireItem, systemClock } from './items.ts';
 import { liveBoardOf } from './next.ts';
@@ -56,11 +56,6 @@ export const DRAFT_LEASE_TTL_MS = 24 * 60 * 60_000;
 const HANDED_IN: Readonly<Record<Lang, (name: string) => string>> = {
   en: (name) => `The draft of ${name} is in: try it in Studio and publish it`,
   es: (name) => `El esbozo de ${name} está listo: pruébalo en Studio y publícalo`,
-};
-
-const TITLE: Readonly<Record<Lang, (name: string) => string>> = {
-  en: (name) => `Draft the board ${name}`,
-  es: (name) => `Esbozar el tablero ${name}`,
 };
 
 // `by`: who asks for it, the person in Studio unless said otherwise (an agent the person asked for
@@ -99,7 +94,7 @@ export function requestAgentDraft(
       project,
       {
         collection,
-        title: TITLE[input.lang](input.name.trim()),
+        title: draftTitle(input.lang, input.name),
         fields: first ? { [first]: need } : {},
         actor,
         channel,
