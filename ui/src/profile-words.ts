@@ -6,4 +6,6 @@ import { t } from './i18n/i18n.ts';
 export const profileValue = (value: string) => (isUnknown(value) ? t('agent.notDeclared') : value);
 
 export const profilePair = (model: string, effort: string) =>
-  `${profileValue(model)} · ${profileValue(effort)}`;
+  isUnknown(model) && isUnknown(effort)
+    ? t('agent.notDeclared')
+    : `${profileValue(model)} · ${profileValue(effort)}`;

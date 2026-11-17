@@ -129,6 +129,8 @@ describe('otea board draft --new', () => {
     expect(error.code).toBe('invalid_board');
     expect(error.message).toContain('The file is not a board:');
     expect(error.message).toContain('Nothing was made');
+    // English words for the id to give, never the Spanish board name as a placeholder.
+    expect(error.message).toContain('otea board draft <id> prints');
     expect(boards()).not.toContain('Criaturas');
   });
 

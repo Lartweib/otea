@@ -112,6 +112,16 @@ describe('the Entregas con PR set', () => {
       base: 'main',
     });
   });
+
+  it('says which branch and repo to work on in words that read with the fields named', () => {
+    const [, es] = made('repos', 'es');
+    const [, en] = made('repos', 'en');
+    if (!es || !en) throw new Error('no Entregas');
+    const take = (def: BoardDefinition) =>
+      mentionText(def, stepNamed(def, def.steps[0]?.name ?? '')?.instructions.take ?? '');
+    expect(take(es)).toContain('Trabaja en la rama que dice Rama, en el repo que dice Repo,');
+    expect(take(en)).toContain('Work on the branch Branch names, in the repo Repo names,');
+  });
 });
 
 describe('the Cambios template', () => {

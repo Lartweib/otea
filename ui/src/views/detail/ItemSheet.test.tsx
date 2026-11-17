@@ -114,7 +114,7 @@ describe('the item sheet', () => {
   it('says a note reaches "el agente" with the contraction Spanish needs', () => {
     setLanguage('es');
     expect(leaveSays(null)).toBe(
-      'le llega al agente en su próximo latido · no cambia paso, ronda ni reserva',
+      'le llega al agente la próxima vez que consulte Otea · no cambia paso, ronda ni reserva',
     );
     expect(renderToStaticMarkup(<>{leaveSays('Mender')}</>)).toContain('le llega a <b>Mender</b>');
   });
