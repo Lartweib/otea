@@ -25,6 +25,7 @@ export const phone = {
   'phone.capture.photoAgain': 'Hacer otra foto',
   'phone.capture.removePhoto': 'Quitar la foto',
   'phone.capture.roleOf': '¿La foto es el antes o el después?',
+  'phone.capture.placeWhere': '¿Dónde va la foto?',
   'phone.capture.roleWhere': 'La foto va como',
   'phone.capture.tooLarge': 'Pasa de {mb} MB: no se subirá',
   'phone.capture.lands': 'llega a {board} › {step}',

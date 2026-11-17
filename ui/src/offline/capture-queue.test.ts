@@ -224,6 +224,16 @@ describe('captureRequest', () => {
     });
     expect((form.get('file') as File).name).toBe('p.jpg');
   });
+
+  it('sends the part a queued photo goes to, on a board with several (DR3-8)', () => {
+    const photo = { name: 'p.jpg', type: 'image/jpeg', bytes: new ArrayBuffer(3), role: 'single' };
+    const { init } = captureRequest(capture('a', 1, { photo: { ...photo, module: 'shots' } }));
+    const form = init.body as FormData;
+
+    expect(JSON.parse(String(form.get('item'))).evidence).toEqual([
+      { role: 'single', module: 'shots' },
+    ]);
+  });
 });
 
 describe('captureId', () => {

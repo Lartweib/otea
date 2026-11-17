@@ -19,7 +19,6 @@ import { Icon } from '../kit/Icon.tsx';
 import { toast } from '../kit/pop/toast.tsx';
 import { captureId, QUEUE_MAX_MB, type QueuedCapture } from '../offline/capture-queue.ts';
 import { enqueue, queueAvailable } from '../offline/queue-store.ts';
-import type { EvidenceRole } from '../types.ts';
 import { BottomSheet } from './BottomSheet.tsx';
 import {
   type BoardPick,
@@ -30,10 +29,12 @@ import {
   landsStep,
   lastBoard,
   noteField,
+  type PhotoPlace,
   photoName,
-  photoRoles,
+  photoPlaces,
   pickBoard,
   rememberBoard,
+  samePlace,
   useCapture,
 } from './capture.ts';
 
@@ -52,10 +53,11 @@ export type CaptureBodyProps = {
   title: string;
   note: string;
   photo: { name: string; size: number; url: string; tooLarge: boolean } | null;
-  // The roles the photo can take on this board; more than one is asked (Antes, Después).
-  roles?: readonly EvidenceRole[];
-  role?: EvidenceRole | undefined;
-  onRole?: (role: EvidenceRole) => void;
+  // Where the photo can go on this board; more than one is asked: the board's parts that take it
+  // (DR3-8), or a compare's Antes and Después.
+  places?: readonly PhotoPlace[];
+  place?: PhotoPlace | undefined;
+  onPlace?: (place: PhotoPlace) => void;
   posting: boolean;
   // The PC does not answer: Guardar keeps the capture in the queue, and the line says so.
   queues?: boolean;
@@ -81,6 +83,46 @@ function hintOf({ why, skipped }: Pick<CaptureBodyProps, 'why' | 'skipped'>): st
   if (why === 'here') return t('phone.capture.here');
   if (why === 'last') return t('phone.capture.last');
   return null;
+}
+
+// The parts a photo can go to, by the board's names (a compare's as «A y B · antes»), or only the
+// roles when every place is one part's or none names its part.
+function PlacePick({
+  places,
+  place,
+  onPlace,
+}: {
+  places: readonly PhotoPlace[];
+  place: PhotoPlace | undefined;
+  onPlace: ((place: PhotoPlace) => void) | undefined;
+}) {
+  const parts = new Set(places.map(({ module }) => module));
+  const byPart = parts.size > 1 && !parts.has(undefined);
+  const current = places.find((each) => place !== undefined && samePlace(each, place)) ?? places[0];
+  const word = ({ role, label }: PhotoPlace) => {
+    if (!byPart) return t(ROLE_WORD[role]);
+    return role === 'single' ? (label ?? '') : `${label ?? ''} · ${t(ROLE_WORD[role])}`;
+  };
+  const legend = byPart
+    ? t('phone.capture.placeWhere')
+    : places.some(({ role }) => role === 'single')
+      ? t('phone.capture.roleWhere')
+      : t('phone.capture.roleOf');
+  return (
+    <fieldset className="cap-roles">
+      <legend>{legend}</legend>
+      {places.map((each) => (
+        <button
+          key={`${each.module ?? ''}:${each.role}`}
+          type="button"
+          aria-pressed={current !== undefined && samePlace(each, current)}
+          onClick={() => onPlace?.(each)}
+        >
+          {word(each)}
+        </button>
+      ))}
+    </fieldset>
+  );
 }
 
 function whyNot(b: CaptureBoard): string {
@@ -188,24 +230,8 @@ export function CaptureBody(p: CaptureBodyProps) {
             </button>
           </div>
         ) : null}
-        {p.photo && p.roles && p.roles.length > 1 ? (
-          <fieldset className="cap-roles">
-            <legend>
-              {p.roles.includes('single')
-                ? t('phone.capture.roleWhere')
-                : t('phone.capture.roleOf')}
-            </legend>
-            {p.roles.map((each) => (
-              <button
-                key={each}
-                type="button"
-                aria-pressed={each === (p.role ?? p.roles?.[0])}
-                onClick={() => p.onRole?.(each)}
-              >
-                {t(ROLE_WORD[each])}
-              </button>
-            ))}
-          </fieldset>
+        {p.photo && p.places && p.places.length > 1 ? (
+          <PlacePick places={p.places} place={p.place} onPlace={p.onPlace} />
         ) : null}
         <div className="cap-acts">
           <label className="photo">
@@ -299,7 +325,7 @@ export function CaptureSheet() {
   const [title, setTitle] = useState('');
   const [note, setNote] = useState('');
   const [photo, setPhoto] = useState<Photo>(null);
-  const [role, setRole] = useState<EvidenceRole>();
+  const [photoPlace, setPhotoPlace] = useState<PhotoPlace>();
   const file = useRef<File | null>(null);
   const [posting, setPosting] = useState(false);
   const [error, setError] = useState<string>();
@@ -318,7 +344,7 @@ export function CaptureSheet() {
     setTitle('');
     setNote('');
     setPhoto(null);
-    setRole(undefined);
+    setPhotoPlace(undefined);
     file.current = null;
     setPosting(false);
     setError(undefined);
@@ -367,7 +393,12 @@ export function CaptureSheet() {
     if (!board || !type || posting) return;
     setPosting(true);
     setError(undefined);
-    const { fields, files } = capturePayload(type, { title, note, photo: file.current, role });
+    const { fields, files } = capturePayload(type, {
+      title,
+      note,
+      photo: file.current,
+      place: photoPlace,
+    });
     // The PC does not answer: the capture waits on the phone and goes when it does.
     const keep = async () => {
       const [photo] = files;
@@ -384,6 +415,7 @@ export function CaptureSheet() {
                 type: photo.file.type,
                 bytes: await photo.file.arrayBuffer(),
                 role: photo.role,
+                ...(photo.module === undefined ? {} : { module: photo.module }),
               },
             }
           : {}),
@@ -440,9 +472,9 @@ export function CaptureSheet() {
         title={title}
         note={note}
         photo={photo}
-        roles={board?.type && photo ? photoRoles(board.type, photo.name) : []}
-        role={role}
-        onRole={setRole}
+        places={board?.type && photo ? photoPlaces(board.type, photo.name) : []}
+        place={photoPlace}
+        onPlace={setPhotoPlace}
         posting={posting}
         queues={app.sync.offline && queueAvailable()}
         error={error}

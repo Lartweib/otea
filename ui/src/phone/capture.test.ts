@@ -10,7 +10,7 @@ import {
   noteField,
   openCapture,
   photoName,
-  photoRoles,
+  photoPlaces,
   pickBoard,
   rememberBoard,
 } from './capture.ts';
@@ -202,12 +202,67 @@ describe('where it lands and what it sends', () => {
       },
     });
     const photo = new File(['x'], 'IMG_2.jpg', { type: 'image/jpeg' });
-    expect(photoRoles(compare, photo.name)).toEqual(['before', 'after']);
-    expect(capturePayload(compare, { title: 'A', note: '', photo }).files).toEqual([
-      { file: photo, role: 'before' },
+    expect(photoPlaces(compare, photo.name)).toEqual([
+      { role: 'before', module: 'pair', label: 'pair' },
+      { role: 'after', module: 'pair', label: 'pair' },
     ]);
-    expect(capturePayload(compare, { title: 'A', note: '', photo, role: 'after' }).files).toEqual([
-      { file: photo, role: 'after' },
+    expect(capturePayload(compare, { title: 'A', note: '', photo }).files).toEqual([
+      { file: photo, role: 'before', module: 'pair' },
+    ]);
+    const after = { role: 'after', module: 'pair', label: 'pair' } as const;
+    expect(capturePayload(compare, { title: 'A', note: '', photo, place: after }).files).toEqual([
+      { file: photo, role: 'after', module: 'pair' },
+    ]);
+  });
+
+  // A board such as «Diseño visual» takes images in three parts; the server refuses a photo that
+  // does not say which one (DR3-8), so the photo always names its part.
+  describe('a board with several parts that take a photo (DR3-8)', () => {
+    const design = type({
+      layout: {
+        ...LAYOUT,
+        evidence: [
+          { module: 'images', id: 'refs', variant: 'gallery', label: 'Referencias' },
+          { module: 'images', id: 'shots', label: 'Imágenes' },
+          { module: 'images', id: 'ab', variant: 'compare', label: 'A y B' },
+          { module: 'diff', id: 'changes', label: 'Cambios' },
+        ],
+      },
+    });
+    const photo = new File(['x'], 'IMG_3.jpg', { type: 'image/jpeg' });
+
+    it('offers each part that takes it, a compare as its before and its after', () => {
+      expect(photoPlaces(design, photo.name)).toEqual([
+        { role: 'single', module: 'refs', label: 'Referencias' },
+        { role: 'single', module: 'shots', label: 'Imágenes' },
+        { role: 'before', module: 'ab', label: 'A y B' },
+        { role: 'after', module: 'ab', label: 'A y B' },
+      ]);
+    });
+
+    it('sends the photo to the first part unless another is picked', () => {
+      expect(capturePayload(design, { title: 'A', note: '', photo }).files).toEqual([
+        { file: photo, role: 'single', module: 'refs' },
+      ]);
+      const picked = { role: 'single', module: 'shots', label: 'Imágenes' } as const;
+      expect(capturePayload(design, { title: 'A', note: '', photo, place: picked }).files).toEqual([
+        { file: photo, role: 'single', module: 'shots' },
+      ]);
+    });
+
+    it('never sends a part the board does not have', () => {
+      const gone = { role: 'single', module: 'old', label: 'Old' } as const;
+      expect(capturePayload(design, { title: 'A', note: '', photo, place: gone }).files).toEqual([
+        { file: photo, role: 'single', module: 'refs' },
+      ]);
+    });
+  });
+
+  it('offers any role, with no part named, on a board without parts for files', () => {
+    expect(photoPlaces(type(), 'IMG_4.jpg')).toEqual([
+      { role: 'single' },
+      { role: 'before' },
+      { role: 'after' },
     ]);
   });
 
