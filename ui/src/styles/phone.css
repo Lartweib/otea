@@ -1589,6 +1589,18 @@
 .p-read .ev-reader-decide .btn {
   min-height: 44px;
 }
+/* At phone width the count and its notice take the row above the moves, which share the next: beside
+   two buttons the notice was squeezed to a word per line. */
+.p-read .ev-reader-decide {
+  flex-wrap: wrap;
+}
+.p-read .ev-reader-seen {
+  flex: 1 0 100%;
+  margin-right: 0;
+}
+.p-read .ev-reader-decide .btn {
+  flex: 1 1 0;
+}
 /* A note on a line, on the phone: the box stays at the sheet's foot while you scroll to the line. */
 .p-read .ev-reader-note {
   position: sticky;
