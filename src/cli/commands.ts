@@ -65,7 +65,6 @@ import {
   type Harness,
   hearAgent,
   LISTEN_BEAT_MS,
-  ownerGone,
   seeAgent,
   waitBeat,
 } from '../app/presence.ts';
@@ -172,6 +171,7 @@ import {
   removeGitHook,
 } from './hooks.ts';
 import { boardsOf, eventData, itemCollections, itemData, readableEvent } from './names.ts';
+import { watchOwner } from './owner.ts';
 import { PHONE_COMMANDS } from './phone.ts';
 import { portFrom, portToOpen } from './ports.ts';
 import { probeSignIn } from './probe.ts';
@@ -1298,9 +1298,6 @@ const TTL = { ttl: { placeholder: 'duration' } };
 // Lease expiry writes nothing, so a wait for unclaimed items also checks again on this timer.
 const LEASE_RECHECK_MS = 1000;
 
-// How often a wait checks that the process that started it still runs.
-const OWNER_CHECK_MS = 5_000;
-
 const wait: Command = {
   name: 'wait',
   summary:
@@ -1319,19 +1316,9 @@ const wait: Command = {
     const filter = listFilter(input);
     // A wait whose starter is gone (its agent's session ended) stops: left running it would keep
     // the agent shown as listening until its timeout.
-    const owner = process.ppid;
-    const stop = new AbortController();
-    let orphaned = false;
-    const onAbort = () => stop.abort();
-    input.signal.addEventListener('abort', onAbort, { once: true });
-    const watchOwner = setInterval(() => {
-      if (!ownerGone(owner, process.ppid)) return;
-      orphaned = true;
-      stop.abort();
-    }, OWNER_CHECK_MS);
-    watchOwner.unref();
+    const owner = watchOwner(input.signal);
     const options = {
-      signal: stop.signal,
+      signal: owner.signal,
       ...(timeoutMs === undefined ? {} : { timeoutMs }),
       ...(filter.availableTo === undefined ? {} : { recheckMs: LEASE_RECHECK_MS }),
     };
@@ -1368,10 +1355,7 @@ const wait: Command = {
           : {};
       // It listens from the start, not from its first beat.
       beat.beat?.run();
-      const waited = await watch(project.db, check, { ...options, ...beat }).finally(() => {
-        clearInterval(watchOwner);
-        input.signal.removeEventListener('abort', onAbort);
-      });
+      const waited = await watch(project.db, check, { ...options, ...beat }).finally(owner.stop);
       if (!('found' in waited)) return waited;
       const { found } = waited;
       return 'text' in found ? { data: found, text: found.text } : itemResult(project, found);
@@ -1380,7 +1364,7 @@ const wait: Command = {
     if (result.stopped === 'timeout') {
       throw new CommandFailure('timeout', `No item reached the ${turn} turn within ${timeout}`);
     }
-    if (orphaned) {
+    if (owner.orphaned()) {
       throw new CommandFailure('interrupted', 'Stopped waiting: the session that started it ended');
     }
     throw new CommandFailure('interrupted', 'Interrupted while waiting');
@@ -1864,12 +1848,18 @@ const serve: Command = {
   args: [],
   options: { port: {}, 'no-open': { flag: true }, lan: { flag: true } },
   execute: async ({ cwd, option, flag, signal, openUrl, warn, terminal, tailscale, probe }) => {
-    const served = await serveUntil(signal, cwd, {
+    // A server whose starter is gone (an agent's session that ran it in the background ended)
+    // stops, as it would with the terminal that ran it.
+    const owner = watchOwner(signal);
+    const served = await serveUntil(owner.signal, cwd, {
       port: portFrom(option('port')),
       lan: flag('lan'),
       tailscale,
       probe,
       warn,
+    }).catch((error: unknown) => {
+      owner.stop();
+      throw error;
     });
     const { url, signInUrl, phone } = served;
     // With --no-open the person signs a browser in by hand: the link carries the project's key, so

@@ -153,15 +153,17 @@ export function claimName(
 }
 
 // Whether the process that started a wait is gone (`start`, the parent it had then; `current`, the
-// parent it has now): it ended, or the wait was handed to another parent. A wait left running
-// after its agent's session ended would keep the agent shown as listening until it timed out.
+// parent it has now; `chain`, the shells above it up to its harness): one of them ended, or the
+// wait was handed to another parent. A wait left running after its agent's session ended would
+// keep the agent shown as listening until it timed out.
 export function ownerGone(
   start: number,
   current: number,
   alive: (pid: number) => boolean = processAlive,
+  chain: readonly number[] = [start],
 ): boolean {
   if (start <= 1) return false;
-  return current !== start || !alive(start);
+  return current !== start || !chain.every(alive);
 }
 
 // The beat of a wait (watch's `beat`): hears the agent again, never as a new session. Far inside
