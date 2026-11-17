@@ -310,3 +310,175 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* The Matrix on the phone: a small grid of counts as the index, then the list zone by zone, rows of
+   48 px, and the tray docked at the bottom. */
+
+.pmx {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 4px;
+  padding-bottom: 72px;
+}
+
+.pmx-sub {
+  margin: 4px 0 0;
+  color: var(--ink-3);
+  font: 400 12.5px / 1.4 var(--sans);
+}
+
+.pmx-grid {
+  display: grid;
+  gap: 4px;
+  margin: 8px 0 10px;
+}
+
+.pmx-cell {
+  min-height: 44px;
+  text-align: center;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  background: var(--sheet);
+  color: var(--ink-2);
+  font: 400 13px / 1 var(--mono);
+}
+
+.pmx-cell.h1 {
+  background: color-mix(in oklch, var(--you) 4%, var(--sheet));
+}
+
+.pmx-cell.h2 {
+  background: color-mix(in oklch, var(--you) 9%, var(--sheet));
+}
+
+.pmx-cell.h3 {
+  background: color-mix(in oklch, var(--warn) 8%, var(--sheet));
+}
+
+.pmx-cell.h4 {
+  background: color-mix(in oklch, var(--warn) 15%, var(--sheet));
+}
+
+.pmx-cell:disabled {
+  color: var(--ink-3);
+  opacity: 0.6;
+}
+
+.pmx-cell[aria-pressed="true"] {
+  border-color: var(--you);
+  box-shadow: inset 0 0 0 1px var(--you);
+  color: var(--you-ink);
+  font-weight: 600;
+}
+
+.pmx-zone h3 {
+  display: flex;
+  justify-content: space-between;
+  margin: 12px 0 2px;
+  color: var(--ink-3);
+  font: 600 11.5px / 1.3 var(--sans);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.pmx-zone h3 b {
+  padding-right: 2px;
+  font: 400 12px / 1.3 var(--mono);
+}
+
+.pmx-row {
+  display: flex;
+  align-items: stretch;
+  min-height: 48px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.pmx-tick {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 8px 0;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font: 400 14.5px / 1.35 var(--sans);
+  text-align: left;
+  cursor: pointer;
+}
+
+.pmx-box {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 1.5px solid var(--rule-2);
+  border-radius: 6px;
+  color: var(--on-you);
+  font-size: 13px;
+}
+
+.pmx-row.on .pmx-box {
+  border-color: var(--you);
+  background: var(--you);
+}
+
+.pmx-title {
+  overflow: hidden;
+  min-width: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pmx-id {
+  flex: none;
+  min-width: 56px;
+  padding: 0 0 0 10px;
+  border: 0;
+  background: none;
+  color: var(--ink-3);
+  font: 400 11.5px / 1 var(--mono);
+  text-align: right;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.pmx-tray {
+  /* Above the phone's bottom bar (phone.css .tabbar), never under it. */
+  position: fixed;
+  right: 0;
+  bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+  left: 0;
+  z-index: 36;
+  display: flex;
+  gap: 8px;
+  padding: 10px 16px;
+  box-shadow: 0 -10px 24px -18px var(--shadow, rgb(0 0 0 / 0.3));
+  border-top: 1px solid var(--rule);
+  background: var(--well);
+}
+
+.pmx-tray button {
+  flex: 1;
+  min-height: 44px;
+  border: 1px solid var(--rule-2);
+  border-radius: 8px;
+  background: var(--sheet);
+  color: var(--ink);
+  font: 500 14px / 1.2 var(--sans);
+  text-align: center;
+}
+
+.pmx-tray button.primary {
+  border-color: var(--you);
+  background: var(--you);
+  color: var(--on-you);
+}
+
+fieldset.pmx-grid {
+  min-width: 0;
+  padding: 0;
+  border: 0;
+}
