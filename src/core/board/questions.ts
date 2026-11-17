@@ -93,10 +93,11 @@ export function waitingAnswerText(question: ItemQuestion, me?: string): string[]
   ];
 }
 
-// next's and show's block for the round's answered questions, newest first: each question and the
-// person's answer, which the agent addresses as a send-back note.
+// next's and show's block for the round's answered questions, in the order they were asked (a
+// conversation reads forward): each question and the person's answer, which the agent addresses as
+// a send-back note.
 export function answersBlock(questions: readonly ItemQuestion[], me?: string): string[] {
-  const answered = questions.filter((each) => each.answer !== undefined).reverse();
+  const answered = questions.filter((each) => each.answer !== undefined);
   return answered.flatMap(({ text, by, answer }) => {
     if (!answer) return [];
     const who = by === me ? 'You' : by;

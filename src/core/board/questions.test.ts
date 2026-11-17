@@ -91,7 +91,7 @@ describe('what agents read of a question', () => {
     );
   });
 
-  it('gives each answered question with the person’s answer, newest first', () => {
+  it('gives each answered question with the person’s answer, in the order they were asked', () => {
     const at = new Date(Date.now() - 5 * 60_000).toISOString();
     const lines = answersBlock(
       [
@@ -103,13 +103,13 @@ describe('what agents read of a question', () => {
     );
     expect(lines).toEqual([
       '',
+      'You asked the person: "¿pregunta 1?"',
+      'The person answered: "la A"',
+      expect.stringMatching(/^ {2}.+; address it in this round\.$/),
+      '',
       'You asked the person: "línea uno',
       '  línea dos"',
       'The person answered: "la B"',
-      expect.stringMatching(/^ {2}.+; address it in this round\.$/),
-      '',
-      'You asked the person: "¿pregunta 1?"',
-      'The person answered: "la A"',
       expect.stringMatching(/; address it in this round\.$/),
     ]);
   });
