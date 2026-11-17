@@ -642,25 +642,42 @@ export function findAgent(db: DatabaseSync, name: string): AgentRecord | undefin
 
 // Notes that an agent listens now: its MCP server is open, or its otea wait blocks.
 // `session`: the MCP server heard, kept until another server is; a command-line wait gives none.
-export function markListening(db: DatabaseSync, agent: string, at: string, session?: number): void {
-  const sql = `INSERT INTO agents (name, last_seen, listening_at, listening_session)
-    VALUES (:agent, :at, :at, :session)
+export function markListening(
+  db: DatabaseSync,
+  agent: string,
+  at: string,
+  session?: number,
+  harness?: number,
+): void {
+  const sql = `INSERT INTO agents (name, last_seen, listening_at, listening_session, listening_harness)
+    VALUES (:agent, :at, :at, :session, :harness)
     ON CONFLICT (name) DO UPDATE SET listening_at = excluded.listening_at,
+      listening_harness = CASE WHEN excluded.listening_session IS NULL THEN listening_harness
+        ELSE excluded.listening_harness END,
       listening_session = coalesce(excluded.listening_session, listening_session)`;
-  db.prepare(sql).run({ agent, at, session: session ?? null });
+  db.prepare(sql).run({ agent, at, session: session ?? null, harness: harness ?? null });
 }
 
-// The MCP server an agent was last heard listening from, and when it was heard.
+// The MCP server an agent was last heard listening from, the harness process that started it, and
+// when it was heard.
 export function selectListener(
   db: DatabaseSync,
   agent: string,
-): { at: string | null; session: number | null } | undefined {
+): { at: string | null; session: number | null; harness: number | null } | undefined {
   const row = db
-    .prepare('SELECT listening_at, listening_session FROM agents WHERE name = :agent')
+    .prepare(
+      'SELECT listening_at, listening_session, listening_harness FROM agents WHERE name = :agent',
+    )
     .get({ agent }) as
-    | { listening_at: string | null; listening_session: number | null }
+    | {
+        listening_at: string | null;
+        listening_session: number | null;
+        listening_harness: number | null;
+      }
     | undefined;
-  return row && { at: row.listening_at, session: row.listening_session };
+  return (
+    row && { at: row.listening_at, session: row.listening_session, harness: row.listening_harness }
+  );
 }
 
 // When each agent was last heard listening, for those ever heard.
