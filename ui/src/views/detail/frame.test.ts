@@ -6,6 +6,7 @@ import {
   intakeTarget,
   moreOf,
   penPath,
+  pressInView,
   shortTitle,
   stuckToastOf,
   toastOf,
@@ -99,5 +100,17 @@ describe('the sheet after Crear (mock:3990)', () => {
   it('follows the place otherwise', () => {
     expect(intakeTarget(false, 'ERR-1', null)).toBe('ERR-1');
     expect(intakeTarget(false, null, null)).toBeNull();
+  });
+});
+
+describe('pressInView', () => {
+  it('brings a move button into view before pressing it, so the box it opens is on screen', () => {
+    const calls: string[] = [];
+    const button = {
+      scrollIntoView: (o: ScrollIntoViewOptions) => calls.push(`scroll ${o.block}`),
+      click: () => calls.push('click'),
+    };
+    pressInView(button);
+    expect(calls).toEqual(['scroll center', 'click']);
   });
 });

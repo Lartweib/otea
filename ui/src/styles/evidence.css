@@ -1177,6 +1177,14 @@
   min-height: 0;
   overflow: auto;
   overscroll-behavior: contain;
+  /* Its height is what the screen leaves it: a recording or a picture fits in it whole. */
+  container-type: size;
+}
+/* A recording keeps its controls and its caption (6 px gap, a 16 px line) in sight, instead of the
+   560 px a page gives it, which runs past the reader's foot on a 900 px screen. */
+.rd-main .ev-reader-view .ev-media,
+.rd-main .ev-reader-view .ev-img {
+  max-height: max(160px, calc(100cqh - 24px));
 }
 @media (max-width: 760px) {
   .rd-pane {
