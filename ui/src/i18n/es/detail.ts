@@ -264,7 +264,9 @@ export const detail = {
   'notes.pick.inLine': 'En una línea…',
   'notes.pick.inNode': 'En un nodo…',
   'notes.review.waiting': 'Comentario de tu revisión.',
-  'notes.review.phone': 'va con la devolución; si apruebas, queda como nota de esta ronda',
+  'notes.review.phone':
+    'Un comentario que dejes va con la devolución; si apruebas, queda como nota de esta ronda.',
+  'notes.review.goes': 'Va con la devolución; si apruebas, queda como nota de esta ronda.',
   'notes.review.saved': 'Comentario guardado en «{title}»: va con la devolución.',
   'notes.review.notice': {
     one: '{count} comentario va con la devolución; si apruebas, queda como nota de esta ronda.',
