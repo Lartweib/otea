@@ -197,12 +197,13 @@ export function agentCounts(rows: readonly AgentRow[]): {
 export type PillMark = 'working' | 'idle' | 'none' | 'offline';
 
 // The pill's 16 px mark: the working node with its orbit while an agent holds a lease, a ring with
-// agents connected, a dashed ring with none; offline while the stream is down (it cannot count).
+// agents connected, a dashed ring with none (one gone quiet is not connected); offline while the
+// stream is down (it cannot count).
 export function pillMark(connection: Connection, rows: readonly AgentRow[]): PillMark {
   if (connection !== 'live') return 'offline';
-  const { live, holding } = agentCounts(rows);
+  const { holding, idle } = agentCounts(rows);
   if (holding > 0) return 'working';
-  return live > 0 ? 'idle' : 'none';
+  return idle > 0 ? 'idle' : 'none';
 }
 
 // The pill's second datum, in grey or in warn: one gone quiet wins over one without a profile,
@@ -211,7 +212,7 @@ export type PillExtra = { kind: 'quiet' | 'noProfile' | 'of'; n: number } | null
 
 export type PillSummary =
   | { kind: 'offline' }
-  | { kind: 'none' }
+  | { kind: 'none'; quiet?: number }
   | { kind: 'working' | 'waiting'; count: number; extra: PillExtra };
 
 // What the pill says (mock §1): what happens, not how many there are. "2 trabajando" before "3
@@ -220,6 +221,8 @@ export function pillSummary(connection: Connection, rows: readonly AgentRow[]): 
   if (connection !== 'live') return { kind: 'offline' };
   const c = agentCounts(rows);
   if (c.live === 0) return { kind: 'none' };
+  // Only agents gone quiet: nobody listens, as Te toca says; the pill still names the silence.
+  if (c.holding === 0 && c.idle === 0) return { kind: 'none', quiet: c.quiet };
   const working = c.holding > 0;
   const extra: PillExtra =
     c.quiet > 0
@@ -231,5 +234,5 @@ export function pillSummary(connection: Connection, rows: readonly AgentRow[]): 
           : null;
   return working
     ? { kind: 'working', count: c.holding, extra }
-    : { kind: 'waiting', count: c.idle || c.live, extra };
+    : { kind: 'waiting', count: c.idle, extra };
 }
