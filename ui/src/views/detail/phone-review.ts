@@ -169,7 +169,8 @@ export function readerOf(
 
 // What a step handed off that is not a file (Commit en main): its fields that hold a value, by name,
 // in the step's order. A step that hands off only fields still shows what it delivered.
-export type HandedField = { ref: string; name: string; value: string };
+// `long` marks a long-text field: its value is Markdown, drawn as such, never read raw (IDEA2-2).
+export type HandedField = { ref: string; name: string; value: string; long: boolean };
 
 export function handedFields(
   def: BoardDefinition,
@@ -184,7 +185,54 @@ export function handedFields(
     if (!part || isEvidence(part) || value === undefined || value === null || value === '')
       return [];
     return [
-      { ref, name: part.name, value: typeof value === 'string' ? value : JSON.stringify(value) },
+      {
+        ref,
+        name: part.name,
+        value: typeof value === 'string' ? value : JSON.stringify(value),
+        long: part.kind === 'long',
+      },
     ];
   });
+}
+
+// One line of a Markdown value, for a folded summary (Lo pedido): its first line of prose, without
+// its marks. A heading or a table is read only when the value holds nothing else (DR2-22: the fold
+// showed «## Problema» and pipe tables raw).
+export function requestLine(markdown: string): string {
+  const inline = (s: string) =>
+    s
+      .replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1')
+      .replace(/(\*\*|__|\*|_|~~|`)(\S(?:.*?\S)?)\1/g, '$2')
+      .replace(/\s+/g, ' ')
+      .trim();
+  let fenced = false;
+  let heading = '';
+  let table = '';
+  for (const raw of markdown.split(/\r?\n/)) {
+    const line = raw.trim();
+    if (/^(```|~~~)/.test(line)) {
+      fenced = !fenced;
+      continue;
+    }
+    if (fenced || line === '' || /^([-*_])(\s*\1){2,}$/.test(line)) continue;
+    if (line.startsWith('|')) {
+      if (!table && !/^\|[\s|:-]+\|?$/.test(line))
+        table = line
+          .split('|')
+          .map((cell) => inline(cell))
+          .filter(Boolean)
+          .join(' · ');
+      continue;
+    }
+    const head = /^#{1,6}\s+(.*?)\s*#*$/.exec(line);
+    if (head) {
+      heading ||= inline(head[1] ?? '');
+      continue;
+    }
+    const prose = inline(
+      line.replace(/^(>\s*)+/, '').replace(/^([-*+]|\d+[.)])\s+(\[[ xX]\]\s+)?/, ''),
+    );
+    if (prose) return prose;
+  }
+  return heading || table;
 }
