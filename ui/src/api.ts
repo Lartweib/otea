@@ -67,10 +67,12 @@ export async function fetchItems(signal: AbortSignal): Promise<Item[]> {
   return (await get('/api/items', signal)).json();
 }
 
+// No such item reads null: the server answers null for it (never a 404 the console would show).
 export async function fetchItem(id: string, signal: AbortSignal): Promise<ItemView | null> {
-  const response = await get(`/api/items/${encodeURIComponent(id)}`, signal);
+  const response = await get(`/api/items/${encodeURIComponent(id)}?missing=null`, signal);
   if (response.status === 404) return null;
-  const item = (await response.json()) as ItemView;
+  const item = (await response.json()) as ItemView | null;
+  if (!item) return null;
   return { ...item, events: withoutUndone(item.events) };
 }
 

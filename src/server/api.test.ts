@@ -473,6 +473,17 @@ types:
         },
       });
     });
+
+    it('answers null for an unknown id the page asks for with missing=null, not a 404', async () => {
+      const response = await get('/api/items/TASKS-9?missing=null');
+
+      expect(response.status).toBe(200);
+      expect(await response.json()).toBeNull();
+      expect((await get('/api/items/BUGS-1?missing=null')).status).toBe(200);
+      expect(await (await get('/api/items/BUGS-1?missing=null')).json()).toMatchObject({
+        id: 'BUGS-1',
+      });
+    });
   });
 
   describe('GET /api/events', () => {
