@@ -13,13 +13,23 @@ describe('the start prompt', () => {
         'otea board draft --new',
         '--why',
         '--template',
-        'otea board draft <Pedido> --file board.json',
+        'otea board draft',
+        '--file board.json',
+        'otea profile --as',
         'otea next',
         'otea wait --turn agent --unclaimed',
         'otea reply',
       ])
         expect(text).toContain(command);
-      expect(text).toMatch(lang === 'es' ? /de a una pregunta/ : /one question at a time/);
+      expect(text).toMatch(lang === 'es' ? /una pregunta a la vez/ : /one question at a time/);
+      expect(text).toMatch(
+        lang === 'es'
+          ? /letras minúsculas, dígitos y guiones, como claude-b/
+          : /lowercase letters, digits and dashes, such as claude-b/,
+      );
+      // The board a draft hands in on is named in the screen's words, not the Spanish built-in's.
+      expect(text).toContain(lang === 'es' ? '<id del Pedido>' : '<request id>');
+      expect(text).not.toContain(lang === 'es' ? '<Pedido>' : 'Pedido');
       expect(text).toMatch(lang === 'es' ? /lo publico yo/ : /I publish it/);
     });
   }
@@ -66,11 +76,28 @@ describe('the join prompt', () => {
     expect(text).toContain(
       'otea profile --as <nombre> --model <modelo> --effort <esfuerzo> --harness <harness>',
     );
+    expect(text).toContain('letras minúsculas, dígitos y guiones, como claude-b');
+    // Two agents in one checkout would edit the same files.
+    expect(text).toContain('git worktree add');
+  });
+
+  it('lets the first agent of a project with boards connect, with nobody to join', () => {
+    for (const lang of ['en', 'es'] as const) {
+      const text = joinPrompt(lang, { ...facts, listening: [], first: true });
+      expect(text).toContain(
+        lang === 'es' ? 'otea connect --as <nombre>' : 'otea connect --as <name>',
+      );
+      expect(text).not.toMatch(/No ejecutes otea connect|Do not run otea connect/);
+      expect(text).not.toMatch(/junto a los otros|alongside the others|git worktree/);
+      expect(text).toContain('otea profile --as');
+    }
   });
 
   it('reads well with nobody listening and no agent steps, in English too', () => {
     const text = joinPrompt('en', { boards: [], listening: [] });
-    expect(text).toContain('1. Pick a name of your own and put it on every command');
+    expect(text).toContain(
+      '1. Pick a name of your own (lowercase letters, digits and dashes, such as claude-b) and put it on every command',
+    );
     expect(text).toContain('no board has agent steps yet');
     expect(joinPrompt('en', facts)).toContain('(2 waiting for an agent now)');
   });

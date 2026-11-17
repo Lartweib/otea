@@ -43,7 +43,7 @@ export const shell = {
   'shell.activity': 'Ver actividad',
   'shell.activityLine': 'reservas en curso, los últimos eventos',
   'shell.connect': 'Conectar un agente',
-  'shell.connectLine': 'un comando, y una instrucción en cada sesión',
+  'shell.connectLine': 'una instrucción para pegar en su chat',
   'shell.performance': 'Ver rendimiento',
   'shell.performanceLine': 'cuántas entregas vuelven, por modelo',
   'shell.connectedRule':

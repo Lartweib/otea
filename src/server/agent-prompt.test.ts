@@ -63,6 +63,18 @@ describe('GET /api/agent-prompt', () => {
     });
   });
 
+  it('tells the first agent of a project with boards to connect, with nobody to join', async () => {
+    initBoards(project, 'changes');
+
+    const { body } = await get('?lang=es');
+    expect(body).toMatchObject({ kind: 'join', first: true });
+    expect(body.prompt).toContain('otea connect --as <nombre>');
+    expect(body.prompt).not.toContain('No ejecutes otea connect');
+
+    hearAgent(project.db, { agent: 'claude', channel: 'mcp', harness: { name: 'claude-code' } });
+    expect((await get('?lang=es')).body.first).toBeUndefined();
+  });
+
   it('refuses a moment it does not know', async () => {
     expect((await get('?kind=later')).status).toBe(400);
   });

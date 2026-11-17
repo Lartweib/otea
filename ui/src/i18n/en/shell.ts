@@ -41,7 +41,7 @@ export const shell = {
   'shell.activity': 'See activity',
   'shell.activityLine': 'leases running down, the latest events',
   'shell.connect': 'Connect an agent',
-  'shell.connectLine': 'one command, then an instruction each session',
+  'shell.connectLine': 'one instruction to paste into its chat',
   'shell.performance': 'See performance',
   'shell.performanceLine': 'how many handoffs come back, per model',
   'shell.connectedRule':

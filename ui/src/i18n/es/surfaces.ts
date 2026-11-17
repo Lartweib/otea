@@ -248,11 +248,13 @@ export const surfaces = {
   // Conectar un agente
   'connect.title': 'Conectar un agente',
   'connect.others':
-    'Claude Code lee el .mcp.json que escribe. Codex, Gemini y los demás usan la CLI: {command} les deja la guía en AGENTS.md.',
+    'Claude Code lee el .mcp.json que escribe {connect}. Codex, Gemini y los demás usan la CLI: {command} les deja la guía en AGENTS.md.',
   'connect.startBody':
     'Pega esto en el chat de tu agente. Configura Otea, se conecta, lee el proyecto, te pregunta cómo trabajas y te propone los tableros para que los pruebes.',
   'connect.joinBody':
     'Para sumar un agente más, pega esto en su chat. Se conecta con un nombre propio y trabaja los tableros junto a los demás, sin tomar lo que otro ya tiene.',
+  'connect.firstBody':
+    'Pega esto en el chat de tu agente. Se conecta con un nombre propio, lee los tableros y trabaja lo que les toca a los agentes.',
   'connect.copyPrompt': 'Copiar la instrucción',
   'connect.copiedPrompt': 'Copiada',
   'connect.appears': 'Aparece aquí en cuanto llame a Otea.',

@@ -315,6 +315,17 @@ describe('dialogs', () => {
     expect(html).not.toContain('otea board draft');
   });
 
+  it('Conectar un agente speaks to the first agent of a project with boards, with no one to join', () => {
+    setLanguage('es');
+    const prompt = joinPrompt('es', { boards: [], listening: [], first: true });
+    const html = render(
+      createElement(ConnectView, { view: { kind: 'join', prompt, first: true } }),
+    );
+    expect(html).not.toContain('Para sumar un agente más');
+    expect(html).toContain('Pega esto en el chat de tu agente. Se conecta con un nombre propio');
+    expect(html).toContain('lee el .mcp.json que escribe <code class="inl">otea connect</code>');
+  });
+
   it('Connect an agent reads in English too', () => {
     setLanguage('en');
     const html = render(

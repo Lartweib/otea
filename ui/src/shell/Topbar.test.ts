@@ -291,7 +291,7 @@ describe('the agents menu', () => {
       '<b>Ver actividad</b><small>reservas en curso, los últimos eventos</small>',
     );
     expect(html).toContain(
-      '<b>Conectar un agente</b><small>un comando, y una instrucción en cada sesión</small>',
+      '<b>Conectar un agente</b><small>una instrucción para pegar en su chat</small>',
     );
     expect(html).toContain(
       'conectado: tiene una reserva, o escucha (su servidor MCP abierto, u otea wait corriendo)',

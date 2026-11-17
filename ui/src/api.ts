@@ -354,7 +354,12 @@ export async function fetchProjects(signal: AbortSignal): Promise<ProjectOvervie
 
 // What to paste into an agent's chat, in the screen's language: without a kind, the project's
 // moment (the first contact while it has no board of its own, then one more agent joining).
-export type AgentPromptView = { kind: 'start' | 'join' | 'design'; prompt: string };
+// `first`: a join prompt for a project's first agent, which connects since nobody else works there.
+export type AgentPromptView = {
+  kind: 'start' | 'join' | 'design';
+  prompt: string;
+  first?: boolean;
+};
 
 export async function fetchAgentPrompt(
   kind: AgentPromptView['kind'] | undefined,
