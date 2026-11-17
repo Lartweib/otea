@@ -1387,9 +1387,12 @@
   color: var(--you);
 }
 /* The reader (DR-4): a file read in the desk's viewer for its kind, the others a step away. */
+/* It sits on the keyboard (--kb) as the other sheets do: typing a note, the box and its button stay
+   above the keys (DR2-10). */
 .nsheet.p-read {
-  height: 94dvh;
-  max-height: 94dvh;
+  bottom: var(--kb, 0px);
+  height: calc(94dvh - var(--kb, 0px));
+  max-height: calc(94dvh - var(--kb, 0px));
 }
 .p-read .ev-reader {
   display: grid;
@@ -1589,15 +1592,21 @@
   gap: 10px;
   padding: 12px 0 4px;
 }
-/* Deciding from inside the reader: the moves stay at the foot of the sheet. */
-.p-read .ev-reader-decide {
+/* The reader's foot (DR2-10): the note and the moves in one block that stays at the sheet's bottom,
+   the note above the moves; while the note is being typed the moves step aside for it. */
+.p-read .ev-reader-foot {
   position: sticky;
   bottom: 0;
   z-index: 2;
+  display: grid;
+  gap: 8px;
   padding-bottom: 6px;
   background: var(--sheet);
-  /* The sheet's own padding below stays covered, so no line shows under the moves. */
+  /* The sheet's own padding below stays covered, so no line shows under the foot. */
   box-shadow: 0 24px 0 var(--sheet);
+}
+.p-read .ev-reader-foot:has(.ev-reader-note textarea:focus) .ev-reader-decide {
+  display: none;
 }
 .p-read .ev-reader-decide .btn {
   min-height: 44px;
@@ -1614,14 +1623,8 @@
 .p-read .ev-reader-decide .btn {
   flex: 1 1 0;
 }
-/* A note on a line, on the phone: the box stays at the sheet's foot while you scroll to the line. */
 .p-read .ev-reader-note {
-  position: sticky;
-  bottom: 0;
-  z-index: 2;
-  padding-block: 8px 6px;
-  background: var(--sheet);
-  box-shadow: 0 24px 0 var(--sheet);
+  padding-top: 8px;
 }
 .p-read .ev-reader-note .btn {
   min-height: 44px;

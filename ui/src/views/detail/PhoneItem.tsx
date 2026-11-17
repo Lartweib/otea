@@ -183,6 +183,9 @@ function Files({
   const { images, files } = splitEvidence(evidence);
   const order = [...images, ...files];
   const [at, setAt] = useState<number | null>(null);
+  // The note begun in the reader, kept while the sheet is closed and opened again (DR2-10).
+  const [draft, setDraft] = useState('');
+  const inset = useKeyboardInset(at !== null);
   const seenId = at === null ? null : (order[at]?.id ?? null);
   // biome-ignore lint/correctness/useExhaustiveDependencies: once per file shown
   useEffect(() => {
@@ -272,6 +275,7 @@ function Files({
         label={t('phone.r.reader')}
         title={t('phone.r.reader')}
         className="p-sb p-read"
+        style={{ '--kb': `${inset}px` } as CSSProperties}
         from={() => opened.current}
         onClose={() => setAt(null)}
       >
@@ -284,6 +288,8 @@ function Files({
               phone
               decide={deciding}
               note={comment ? { onSend: (text, on) => comment(text, on) } : undefined}
+              draft={draft}
+              onDraft={setDraft}
             />
           </div>
         ) : null}
@@ -896,6 +902,7 @@ export function PhoneItem(p: PhoneItemProps) {
                 onAt={setPickIn}
                 phone
                 draft={noteText}
+                onDraft={setNoteText}
                 note={{
                   onSend: (text, on) =>
                     leave.sendOn(text, on).then((went) => {
