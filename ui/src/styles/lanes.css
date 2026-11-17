@@ -495,9 +495,18 @@
   .row .sev {
     display: none;
   }
+  /* The title keeps room for its words: the call to act and the age give way first. */
+  .row .a {
+    width: 148px;
+  }
+  .row .age {
+    width: auto;
+    min-width: 48px;
+  }
 }
 @container list (max-width: 479px) {
-  .row .who {
+  .row .who,
+  .row .a {
     display: none;
   }
   .row .prog + .po {

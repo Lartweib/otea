@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { activeLease } from '../../active-lease.ts';
 import { typeOfItem, useApp } from '../../app/context.tsx';
+import { CommandWords } from '../../components/AgentPrompt.tsx';
 import { EmptyProject } from '../../components/EmptyProject.tsx';
 import { t, tx } from '../../i18n/i18n.ts';
 import { Button } from '../../kit/Button.tsx';
@@ -85,7 +86,9 @@ function NoAgents({
             <Icon name="plus" />
             {t('toca.connect')}
           </Button>
-          <code className="cmd">{t('toca.noAgents.command')}</code>
+          <code className="cmd">
+            <CommandWords text={t('toca.noAgents.command')} />
+          </code>
         </div>
       </div>
     </div>

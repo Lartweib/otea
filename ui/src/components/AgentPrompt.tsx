@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { Fragment, useCallback, useState } from 'react';
 import { type AgentPromptView, fetchAgentPrompt } from '../api.ts';
 import { useRemote } from '../hooks.ts';
 import { language, t } from '../i18n/i18n.ts';
@@ -21,13 +21,24 @@ export function useCopy(text: string): [boolean, () => void] {
   return [copied, copy];
 }
 
+// A command that wraps only between its words, never inside one (at an option's hyphen).
+export function CommandWords({ text }: { text: string }) {
+  return text.split(' ').map((word, index) => (
+    // biome-ignore lint/suspicious/noArrayIndexKey: the words never move
+    <Fragment key={index}>
+      {index > 0 ? ' ' : null}
+      <span className="nw">{word}</span>
+    </Fragment>
+  ));
+}
+
 // The instruction as the agent gets it, its `commands` set as code (copied as written).
 export function withCode(text: string) {
   return text.split('`').map((part, index) =>
     index % 2 === 1 ? (
       // biome-ignore lint/suspicious/noArrayIndexKey: the parts never move
       <code key={index} className="inl">
-        {part}
+        <CommandWords text={part} />
       </code>
     ) : (
       part

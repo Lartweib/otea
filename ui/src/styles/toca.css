@@ -35,6 +35,12 @@
 .panel .row .a {
   width: 288px;
 }
+/* a narrow window: the title keeps room for its words, the call to act wraps instead */
+@container list (max-width: 599px) {
+  .panel .row .a {
+    width: 148px;
+  }
+}
 .row .a small .pw {
   white-space: nowrap;
 }
