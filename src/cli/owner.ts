@@ -1,4 +1,5 @@
 import { execFile } from 'node:child_process';
+import { tmpdir } from 'node:os';
 import { basename } from 'node:path';
 import { ownerGone, processAlive } from '../app/presence.ts';
 
@@ -58,7 +59,9 @@ export function listProcesses(signal: AbortSignal): Promise<ProcessRow[] | undef
     execFile(
       command,
       args as string[],
-      { encoding: 'utf8', timeout: LISTING_TIMEOUT_MS, windowsHide: true, signal },
+      // From the temp folder: on Windows a process holds the folder it runs in, and the listing
+      // may outlive this command for a moment; it must never keep the project's folder busy.
+      { cwd: tmpdir(), encoding: 'utf8', timeout: LISTING_TIMEOUT_MS, windowsHide: true, signal },
       (error, stdout) => resolve(error ? undefined : readProcessTable(stdout)),
     );
   });
@@ -94,15 +97,16 @@ export function watchOwner(
   const onAbort = () => controller.abort();
   parent.addEventListener('abort', onAbort, { once: true });
   const timer = setInterval(() => {
-    if (!listed) {
-      listed = true;
-      void list(listing.signal).then((rows) => {
-        if (rows) chain = ownerChain(rows, start);
-      });
+    if (ownerGone(start, process.ppid, alive, chain)) {
+      orphaned = true;
+      controller.abort();
+      return;
     }
-    if (!ownerGone(start, process.ppid, alive, chain)) return;
-    orphaned = true;
-    controller.abort();
+    if (listed) return;
+    listed = true;
+    void list(listing.signal).then((rows) => {
+      if (rows) chain = ownerChain(rows, start);
+    });
   }, everyMs);
   timer.unref();
   const stop = () => {
