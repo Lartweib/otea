@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import type { Channel } from '../core/authority.ts';
+import { isClosed, positionOf, stateOf } from '../core/board/engine.ts';
 import {
   type BoardDefinition,
   clone,
@@ -13,10 +14,18 @@ import { parseDefinition } from '../core/board/schema.ts';
 import { boardLang, isSetKey, type Lang } from '../core/board/templates.ts';
 import { OteaError } from '../core/errors.ts';
 import type { Actor } from '../core/item.ts';
-import { DEFAULT_LEASE_TTL_MS, leaseExpiry } from '../core/lease.ts';
+import { leaseExpiry } from '../core/lease.ts';
 import { findDraft, listBoards } from '../store/boards.ts';
 import { transaction } from '../store/database.ts';
-import { appendEvent, type EvidenceRecord, findEvidence, takeLease } from '../store/queries.ts';
+import {
+  appendEvent,
+  clearLease,
+  type EvidenceRecord,
+  findEvidence,
+  type ItemRecord,
+  takeLease,
+  updateItemState,
+} from '../store/queries.ts';
 import {
   type BoardRecord,
   boardProblems,
@@ -39,6 +48,15 @@ import type { Project } from './project.ts';
 
 // The module the draft is kept under on the Pedido.
 export const DRAFT_MODULE = 'files';
+
+// The drafting agent holds the Pedido for the whole conversation with the person, which can run
+// far longer than a step's lease: a draft not handed in yet is no stuck work (ONB3-3).
+export const DRAFT_LEASE_TTL_MS = 24 * 60 * 60_000;
+
+const HANDED_IN: Readonly<Record<Lang, (name: string) => string>> = {
+  en: (name) => `The draft of ${name} is in: try it in Studio and publish it`,
+  es: (name) => `El esbozo de ${name} está listo: pruébalo en Studio y publícalo`,
+};
 
 const TITLE: Readonly<Record<Lang, (name: string) => string>> = {
   en: (name) => `Draft the board ${name}`,
@@ -89,7 +107,7 @@ export function requestAgentDraft(
       at,
     );
     if (input.agent) {
-      const lease = { holder: input.agent, expiresAt: leaseExpiry(at, DEFAULT_LEASE_TTL_MS) };
+      const lease = { holder: input.agent, expiresAt: leaseExpiry(at, DRAFT_LEASE_TTL_MS) };
       takeLease(project.db, item.id, lease, at);
       appendEvent(project.db, {
         itemId: item.id,
@@ -272,7 +290,9 @@ export function submitAgentDraft(
     const file = { filename: DRAFT_FILENAME, bytes: Buffer.from(input.text, 'utf8') };
     // The Pedido's page has no module for it: it is kept under files, found by its name.
     const placed = { ...placeFile(project, item, file, input.actor, at), module: DRAFT_MODULE };
-    return recordEvidence(project, item.id, placed, input, at);
+    const recorded = recordEvidence(project, item.id, placed, input, at);
+    waitForPerson(project, item, name, input, at);
+    return recorded;
   });
   mergeAgentDraft(project, board.id, evidence.id, now);
   return {
@@ -281,6 +301,47 @@ export function submitAgentDraft(
     problems,
     notes: [...kept, ...(reading.notes ?? []), ...unplacedNote(checked)],
   };
+}
+
+// Handing the draft in is the agent's handoff: the Pedido goes to the person's review of its step
+// (trying the board and publishing it, which closes the Pedido), and the agent's lease goes with
+// the work it ended. Handed in again from there, it stays where it waits.
+function waitForPerson(
+  project: Project,
+  item: ItemRecord,
+  name: string,
+  input: SubmitInput,
+  at: string,
+): void {
+  const position = positionOf(item.state);
+  if (isClosed(position) || position.phase !== 'doing') return;
+  const live = liveBoardOf(project, item.collection);
+  const step = live?.def.steps.find(({ id }) => id === position.step);
+  if (!live || !step || step.reviewer !== 'you') return;
+  const to = stateOf({ step: step.id, phase: 'review' });
+  updateItemState(project.db, item.id, to, at);
+  appendEvent(project.db, {
+    itemId: item.id,
+    type: 'transitioned',
+    actor: input.actor,
+    at,
+    data: {
+      from: item.state,
+      to,
+      reason: HANDED_IN[boardLang(live.def)](name.trim()),
+      channel: input.channel,
+    },
+  });
+  const held = item.lease;
+  if (!held) return;
+  clearLease(project.db, item.id);
+  appendEvent(project.db, {
+    itemId: item.id,
+    type: 'released',
+    actor: input.actor,
+    at,
+    data: { holder: held.holder, cause: 'handed_in' },
+  });
 }
 
 export type ProposeInput = {

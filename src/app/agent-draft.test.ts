@@ -25,7 +25,7 @@ import {
 } from './boards.ts';
 import { BOARD_JSON_SCHEMA } from './draft-request.ts';
 import { getItem, showItem } from './items.ts';
-import { itemNextText } from './next.ts';
+import { itemNextText, nextFor } from './next.ts';
 import type { Project } from './project.ts';
 import { memoryContext, projectOf } from './testing.ts';
 import { undoMove } from './undo.ts';
@@ -206,6 +206,71 @@ describe('an agent drafting a board', () => {
     }
   });
 
+  it('holds the Pedido for the whole drafting conversation, not the 15 minutes of a step', () => {
+    const ctx = project();
+    const at = now();
+    const { item } = requestAgentDraft(
+      ctx,
+      { name: 'Criaturas', need: 'x', agent: 'kiln', lang: 'es' },
+      () => at,
+    );
+    const lease = getItem(ctx, item, () => at).lease;
+    expect(Date.parse(lease?.expiresAt ?? '') - Date.parse(at)).toBe(24 * 60 * 60_000);
+  });
+
+  it('tells the drafting agent to hand the board in, never to run otea handoff', () => {
+    const ctx = project();
+    const { item } = requestAgentDraft(
+      ctx,
+      { name: 'Criaturas', need: 'x', agent: 'kiln', lang: 'es' },
+      now,
+    );
+    const text = itemNextText(ctx, getItem(ctx, item, now), 'kiln') ?? '';
+    // No command line runs otea handoff, and nothing it would carry is asked for.
+    expect(text).not.toMatch(/^\s+otea handoff/m);
+    expect(text).not.toContain('Qué hice');
+    expect(text).not.toContain('Handoff\n');
+    const finish = text.slice(text.indexOf('When you finish'));
+    expect(finish).toContain(`otea board draft ${item} --file board.json`);
+    expect(text).toContain('the person tries the board and publishes it in Studio');
+  });
+
+  it('hands the Pedido to the person once the draft is in: their turn, no lease, never offered to an agent', () => {
+    const ctx = project();
+    const { board, item } = requestAgentDraft(
+      ctx,
+      { name: 'Criaturas', need: 'x', agent: 'kiln', lang: 'es' },
+      now,
+    );
+    const draft = getBoardRecord(ctx, board.id).draft?.definition;
+    if (!draft) throw new Error('no draft');
+    const doing = getItem(ctx, item, now).state;
+    const hand = () =>
+      submitAgentDraft(
+        ctx,
+        { id: item, text: JSON.stringify(agentFile(draft)), actor: kiln, channel: 'cli' },
+        now,
+      );
+    hand();
+    const waiting = getItem(ctx, item, now);
+    expect(waiting.turn).toBe('human');
+    expect(waiting.lease).toBeNull();
+    expect(waiting.events.find(({ type }) => type === 'transitioned')).toMatchObject({
+      actor: kiln,
+      data: { from: doing, to: waiting.state },
+    });
+    expect(nextFor(ctx, 'kiln', {}, now).item).toBeNull();
+    expect(nextFor(ctx, 'otro', {}, now).item).toBeNull();
+    // Handing it in again (the agent fixes what was wrong) leaves it where it waits.
+    hand();
+    expect(getItem(ctx, item, now).state).toBe(waiting.state);
+    // Publishing closes it from there, and undoing the publish puts it back to wait.
+    publishBoard(ctx, board.id, { moves: {}, by: you, closeRequest: true }, now);
+    expect(getItem(ctx, item, now).state).toBe('done');
+    restoreBoard(ctx, board.id, { version: null, by: you }, now);
+    expect(getItem(ctx, item, now).state).toBe(waiting.state);
+  });
+
   it('offers to close the Pedido on publish, and closes it as done when asked', () => {
     const ctx = project();
     const { board, item } = requestAgentDraft(
@@ -233,7 +298,7 @@ describe('an agent drafting a board', () => {
     const closed = getItem(ctx, item, now);
     expect(closed.state).toBe('done');
     expect(closed.lease).toBeNull();
-    expect(closed.events.at(-2)).toMatchObject({
+    expect(closed.events.findLast(({ type }) => type === 'transitioned')).toMatchObject({
       type: 'transitioned',
       actor: you,
       data: { to: 'done', reason: 'Publicado el tablero Criaturas' },

@@ -89,7 +89,7 @@ import {
 } from '../store/queries.ts';
 import { collectionNamed } from './collections.ts';
 import type { Context } from './context.ts';
-import { type DraftRequest, draftRequestOf } from './draft-request.ts';
+import { DRAFT_FILENAME, type DraftRequest, draftRequestOf } from './draft-request.ts';
 import {
   type Item,
   landMove,
@@ -528,7 +528,8 @@ function withHandIn(ctx: Context, item: ItemRecord, def: BoardDefinition): Board
   const steps = def.steps.map((step) => {
     if (step.id !== position.step) return step;
     const take = [step.instructions.take.trim(), request.instructions].filter(Boolean).join('\n\n');
-    return { ...step, instructions: { ...step.instructions, take } };
+    // Handing the draft in is the handoff: the step asks for nothing otea handoff would carry.
+    return { ...step, hand: [], instructions: { ...step.instructions, take } };
   });
   return { ...def, steps };
 }
@@ -570,6 +571,14 @@ function textFor(
   const stepName = isClosed(on.position) ? undefined : stepById(def, on.position.step)?.name;
   const handed = on.notes.findLast(({ step, round }) => step === stepName && round === on.round);
   const parent = parentOf(ctx, item.id);
+  // A Pedido whose board draft is still to hand in (withHandIn gave its step the instructions).
+  const handIn =
+    def === live
+      ? undefined
+      : {
+          after: 'Done, once the person tries the board and publishes it in Studio',
+          command: `otea board draft ${item.id} --file ${DRAFT_FILENAME}`,
+        };
   return nextText(def, {
     id: item.id,
     title: item.title,
@@ -592,6 +601,7 @@ function textFor(
     ...(merged === undefined ? {} : { merged }),
     ...(on.roundNotes.length === 0 ? {} : { notes: on.roundNotes }),
     ...(on.roundQuestions.length === 0 ? {} : { questions: on.roundQuestions }),
+    ...(handIn ? { handIn } : {}),
   });
 }
 
