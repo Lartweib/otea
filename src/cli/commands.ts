@@ -11,7 +11,7 @@ import {
 } from '../app/agent-draft.ts';
 import { joinFacts, promptKindOf } from '../app/agent-prompts.ts';
 import { type AgentsMdAction, connectAgent, writeAgentsMd } from '../app/agents.ts';
-import { addBoard, addBoardSet, type BoardRecord } from '../app/boards.ts';
+import { addBoard, addBoardSet, type BoardRecord, syncBoardPresets } from '../app/boards.ts';
 import { briefFor } from '../app/brief.ts';
 import {
   collectionIcon,
@@ -1343,7 +1343,13 @@ const wait: Command = {
       // or just offered to another agent would wake it to "nothing to do" again and again.
       const forMe =
         input.actor.kind === 'agent' && turn === 'agent' && filter.availableTo !== undefined;
-      const check = () =>
+      // A board the person publishes while it waits joins the catalog before the check reads its
+      // items, as the server does on each request; it costs one query when nothing was published.
+      const check = () => {
+        syncBoardPresets(project);
+        return lookFor();
+      };
+      const lookFor = () =>
         noteWaiting(project, me) ??
         (input.actor.kind === 'agent' ? topicWaiting(project, me) : undefined) ??
         answerWaiting(project, me) ??
