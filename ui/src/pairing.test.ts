@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { CODE_TTL_MS } from '../../src/server/lan.ts';
 import { setLanguage, t } from './i18n/i18n.ts';
 import {
+  addressHint,
+  addressLabel,
   codeFromHash,
   deviceNameFrom,
   hostnameOf,
@@ -80,5 +82,36 @@ describe('the pair dialog says how long the code lasts (DR2-16)', () => {
     expect(t('lan.dialogLead')).toContain(` ${minutes} `);
     expect(t('lan.dialogLeadTailscale')).toContain(` ${minutes} `);
     setLanguage('en');
+  });
+});
+
+// The desk lists every address this computer has: each one says which to pick (DR3-13).
+describe('the addresses the pairing code can point at', () => {
+  it('tags each in the list: most likely, Tailscale, another network, not on Android', () => {
+    setLanguage('es');
+    expect(addressLabel('192.168.1.156:4400', 0)).toBe('192.168.1.156:4400 · probable');
+    expect(addressLabel('100.105.244.72:4400', 1)).toBe('100.105.244.72:4400 · Tailscale');
+    expect(addressLabel('192.168.56.1:4400', 2)).toBe('192.168.56.1:4400 · otra red');
+    expect(addressLabel('lartweib.local:4400', 4)).toBe('lartweib.local:4400 · no en Android');
+    setLanguage('en');
+    expect(addressLabel('192.168.1.156:4400', 0)).toBe('192.168.1.156:4400 · likely');
+    expect(addressLabel('lartweib.local:4400', 4)).toBe('lartweib.local:4400 · not on Android');
+  });
+
+  it('says in full why to pick the one chosen, or not', () => {
+    setLanguage('es');
+    expect(addressHint('lartweib.local:4400', 4)).toBe(
+      'el nombre del equipo: Android no lo abre, elige una dirección',
+    );
+    expect(addressHint('192.168.1.156:4400', 0)).toBe('la más probable para llegar al teléfono');
+    setLanguage('en');
+    expect(addressHint('100.105.244.72:4400', 1)).toBe('Tailscale: only devices on your tailnet');
+  });
+
+  it('names Tailscale only within its range', () => {
+    setLanguage('en');
+    expect(addressLabel('100.64.0.1:4400', 1)).toContain('Tailscale');
+    expect(addressLabel('100.127.255.1:4400', 1)).toContain('Tailscale');
+    expect(addressLabel('100.128.0.1:4400', 1)).toContain('other network');
   });
 });

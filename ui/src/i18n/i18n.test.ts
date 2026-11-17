@@ -89,7 +89,7 @@ describe('the catalogs', () => {
     'diagram.v',
     'bs.board.version',
     'brief.markdown',
-    'pair.token',
+    'lan.addrTag.tailscale',
     'catalog.local',
     'bs.kind.audio',
     'bs.kind.log',

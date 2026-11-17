@@ -1,3 +1,4 @@
+import { t } from './i18n/i18n.ts';
 // Pairing a phone over the LAN: the pieces of the pairing screen and the LAN panel that need no DOM.
 
 // The QR code carries the pairing code in the fragment: `/pair#code=7Q4M-2K9X`.
@@ -70,4 +71,30 @@ export function ipFallback(urls: readonly string[], pairingUrl: string): string 
   if (!byIp) return undefined;
   const { pathname, hash } = new URL(pairingUrl);
   return `${byIp}${pathname}${hash}`;
+}
+
+// Tailscale's addresses: 100.64.0.0/10.
+function isTailscale(hostname: string): boolean {
+  const [a, b] = hostname.split('.').map(Number);
+  return a === 100 && b !== undefined && b >= 64 && b <= 127;
+}
+
+// Which address to pick, of those the pairing code can point at: the server lists them best guess
+// first, Tailscale's apart, and this computer's .local name, which Android does not resolve
+// (DR3-13). The list names each by a short tag; the one chosen is told in full under it.
+type AddressKind = 'best' | 'tailscale' | 'other' | 'name';
+
+function addressKind(host: string, index: number): AddressKind {
+  const name = hostnameOf(host);
+  if (isLocalName(name)) return 'name';
+  if (isTailscale(name)) return 'tailscale';
+  return index === 0 ? 'best' : 'other';
+}
+
+export function addressHint(host: string, index: number): string {
+  return t(`lan.addr.${addressKind(host, index)}`);
+}
+
+export function addressLabel(host: string, index: number): string {
+  return `${host} · ${t(`lan.addrTag.${addressKind(host, index)}`)}`;
 }

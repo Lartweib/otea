@@ -4,7 +4,16 @@ import { useApp } from '../app/context.tsx';
 import { agoLabel, momentLabel } from '../format.ts';
 import { t, tx } from '../i18n/i18n.ts';
 import { Button, Swap } from '../kit/index.ts';
-import { hostnameOf, hostOf, ipFallback, isLocalName, qrPath, timeLeft } from '../pairing.ts';
+import {
+  addressHint,
+  addressLabel,
+  hostnameOf,
+  hostOf,
+  ipFallback,
+  isLocalName,
+  qrPath,
+  timeLeft,
+} from '../pairing.ts';
 import type { Remote } from '../remote.ts';
 import type { Device, LanView } from '../types.ts';
 
@@ -172,18 +181,26 @@ export function LanPanel({ canManage }: LanPanelProps) {
         <QrCode view={lan} now={now} />
         <div className="qrside">
           {lan && lan.urls.length > 1 ? (
-            <select
-              className="lan-net"
-              aria-label={t('lan.network')}
-              value={shown}
-              onChange={(event) => setAddress(event.target.value.split(':')[0])}
-            >
-              {lan.urls.map((url) => (
-                <option key={url} value={hostOf(url)}>
-                  {hostOf(url)}
-                </option>
-              ))}
-            </select>
+            <>
+              <select
+                className="lan-net"
+                aria-label={t('lan.network')}
+                value={shown}
+                onChange={(event) => setAddress(event.target.value.split(':')[0])}
+              >
+                {lan.urls.map((url, index) => (
+                  <option key={url} value={hostOf(url)}>
+                    {addressLabel(hostOf(url), index)}
+                  </option>
+                ))}
+              </select>
+              <span className="lan-hint">
+                {addressHint(
+                  shown,
+                  lan.urls.findIndex((url) => hostOf(url) === shown),
+                )}
+              </span>
+            </>
           ) : (
             <span className="lan-addr">
               {lan?.enabled ? `${tailscale ? 'https' : 'http'}://${shown}` : 'http://127.0.0.1'}

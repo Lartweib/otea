@@ -124,6 +124,7 @@ import {
   undoRequest,
   updateRequest,
 } from './writes.ts';
+import { wantsPage, wrongAddressPage } from './wrong-address.ts';
 
 export type OteaServer = {
   app: Hono<OteaEnv>;
@@ -798,6 +799,9 @@ export function createServer(project: Project, options: ServerOptions = {}): Ote
   app.route('/api', api(project, feed, streams, doors));
   mountUi(app, options.uiDir ?? BUILT_UI_DIR);
   app.onError((error, c) => {
+    if (error instanceof ForbiddenHost && wantsPage(c)) {
+      return c.html(wrongAddressPage(c.req.header('accept-language')), 403);
+    }
     const { status, body } = toErrorResponse(error);
     return c.json(body, status);
   });
