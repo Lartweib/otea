@@ -22,6 +22,7 @@ import { roundsOf } from '../../rounds.ts';
 import { studioHash } from '../../selection.ts';
 import type { ItemView, RelatedItem } from '../../types.ts';
 import { useStudioBoard } from '../board/studio-board.tsx';
+import { ItemTopics } from '../topics/ItemTopics.tsx';
 import { Acts, actsModeOf } from './Acts.tsx';
 import {
   BranchLine,
@@ -663,6 +664,7 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
                 {proofSections.map(({ key, node }) => (
                   <div key={key}>{node}</div>
                 ))}
+                <ItemTopics item={item} canWrite={app.session.canWrite} />
               </>
             }
             details={<Details cells={cells} k={`${item.state}:${item.updatedAt}`} />}
@@ -961,6 +963,7 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
           ) : null}
           <Details cells={cells} k={`${item.state}:${item.updatedAt}`} />
           <div className="d-line" />
+          <ItemTopics item={item} canWrite={app.session.canWrite} />
           <Body id={item.id} sections={sections} />
           <History id={item.id} lines={lines} />
         </div>

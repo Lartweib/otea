@@ -9,6 +9,7 @@ import { noteRead, readOf } from './offline/sync-state.ts';
 import { type Agent, parseAgents } from './presence.ts';
 import type { LinkRequest } from './relations.ts';
 import { serverMessage, unreachable } from './remote.ts';
+import type { ItemTopics, Topic, TopicsView } from './topics.ts';
 import type {
   CollectionView,
   EvidenceRole,
@@ -368,4 +369,41 @@ export async function relinkProjectPath(from: string, to: string, force: boolean
 
 export async function forgetProjectPath(path: string): Promise<void> {
   await post('/api/project/paths/forget', { path });
+}
+
+// Side topics (topics.ts): the list and whether the project keeps them; one topic's note, close
+// and conversion into a task; an item's linked and suggested topics.
+export async function fetchTopics(signal: AbortSignal, all = false): Promise<TopicsView> {
+  return (await get(`/api/topics${all ? '?all=1' : ''}`, signal)).json();
+}
+
+export async function switchTopics(on: boolean): Promise<TopicsView> {
+  return post('/api/topics/switch', { on });
+}
+
+export async function noteOnTopic(id: string, text: string): Promise<Topic> {
+  return post(`/api/topics/${encodeURIComponent(id)}/notes`, { text });
+}
+
+export async function closeTopicNow(id: string): Promise<Topic> {
+  return post(`/api/topics/${encodeURIComponent(id)}/close`, {});
+}
+
+export async function convertTopicTo(id: string, item: string): Promise<Topic> {
+  return post(`/api/topics/${encodeURIComponent(id)}/convert`, { item });
+}
+
+export async function fetchItemTopics(id: string, signal: AbortSignal): Promise<ItemTopics> {
+  return (await get(`/api/items/${encodeURIComponent(id)}/topics`, signal)).json();
+}
+
+export async function answerTopicSuggestion(
+  item: string,
+  topic: string,
+  answer: 'confirm' | 'dismiss',
+): Promise<void> {
+  await post(
+    `/api/items/${encodeURIComponent(item)}/topics/${encodeURIComponent(topic)}/${answer}`,
+    {},
+  );
 }

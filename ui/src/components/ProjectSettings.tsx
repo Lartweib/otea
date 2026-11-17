@@ -12,6 +12,7 @@ import { TypeIcon } from '../icons/TypeIcon.tsx';
 import { Button, Icon } from '../kit/index.ts';
 import { sizeLabel } from '../projects.ts';
 import type { RepoSettings, ProjectSettings as Settings } from '../types.ts';
+import { TopicsSetting } from '../views/topics/TopicsSetting.tsx';
 import { CopyGlyph } from './CopyCommand.tsx';
 import { PhoneTransport } from './PhoneTransport.tsx';
 import { settingsSectionId, takeSettingsFocus } from './settings-focus.ts';
@@ -435,6 +436,9 @@ export function ProjectSettings({ version, connection, canWrite }: ProjectSettin
           id={settingsSectionId('phone')}
         >
           <PhoneTransport canWrite={canWrite} onPair={() => app.go({ view: 'lan' })} />
+        </Section>
+        <Section name={t('topics.settings.label')} id={settingsSectionId('topics')}>
+          <TopicsSetting canWrite={canWrite} />
         </Section>
         <Section
           name={t('settings.storage')}

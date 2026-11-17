@@ -13,6 +13,7 @@ import { QueuedCaptures } from '../../offline/QueuedCaptures.tsx';
 import { discard, useQueue } from '../../offline/queue-store.ts';
 import { liveAgents } from '../../presence.ts';
 import type { Item } from '../../types.ts';
+import { AnsweredTopics } from '../topics/AnsweredTopics.tsx';
 import { dayLine, tocaBlocks, universeOf } from './blocks.tsx';
 import { atascoDek, tocaDek } from './dek.ts';
 import { type Today, todayCounts } from './today.ts';
@@ -170,6 +171,7 @@ export function TocaView({ atasco = false }: { atasco?: boolean }) {
               drawInOnMount
               onRow={open}
             />
+            {atasco ? null : <AnsweredTopics />}
           </>
         )}
       </section>

@@ -11,6 +11,7 @@ export type ViewRoute =
   | { view: 'projects' }
   | { view: 'settings' }
   | { view: 'performance' }
+  | { view: 'topics'; topic?: string }
   | { view: 'lan' }
   | { view: 'studio'; page: StudioPage }
   | { view: 'modules'; name?: string }
@@ -30,6 +31,7 @@ const LAN = '/lan';
 const PROJECTS = '/projects';
 const SETTINGS = '/settings';
 const PERFORMANCE = '/performance';
+const TOPICS = '/topics';
 
 // LAN access: the pairing code for a phone and the paired devices.
 export const LAN_HASH = `#${LAN}`;
@@ -42,6 +44,11 @@ export const SETTINGS_HASH = `#${SETTINGS}`;
 
 // How each model performs: handoffs, send-backs and rounds per model family and effort.
 export const PERFORMANCE_HASH = `#${PERFORMANCE}`;
+
+// Side topics: what you asked an agent off the work, as short conversations; one open by its id.
+export function topicsHash(topic?: string): string {
+  return topic ? `#${TOPICS}/${encodeURIComponent(topic)}` : `#${TOPICS}`;
+}
 
 // Swipe triage: what waits for you, one card at a time.
 export const TRIAGE_HASH = `#${TRIAGE}`;
@@ -87,6 +94,10 @@ export function routeFromHash(hash: string): Route {
   if (path === PROJECTS) return { view: 'projects' };
   if (path === SETTINGS) return { view: 'settings' };
   if (path === PERFORMANCE) return { view: 'performance' };
+  if (path === TOPICS || path.startsWith(`${TOPICS}/`)) {
+    const topic = decode(path.slice(TOPICS.length + 1));
+    return topic ? { view: 'topics', topic } : { view: 'topics' };
+  }
   if (path === ATASCO || path.startsWith(`${ATASCO}/`)) {
     return withItem({ view: 'atasco' }, path.slice(ATASCO.length));
   }
@@ -138,6 +149,8 @@ export function hashOf(route: Route): string {
       return SETTINGS_HASH;
     case 'performance':
       return PERFORMANCE_HASH;
+    case 'topics':
+      return topicsHash(route.topic);
     case 'lan':
       return LAN_HASH;
     case 'studio':

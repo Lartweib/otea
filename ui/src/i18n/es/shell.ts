@@ -106,6 +106,7 @@ export const shell = {
   'nav.project': 'proyecto',
   'nav.studio': 'Studio',
   'nav.settings': 'Configuración',
+  'nav.topics': 'Temas',
   'nav.performance': 'Rendimiento',
   'nav.prefs': 'Preferencias',
   'nav.hide': 'Ocultar el panel',

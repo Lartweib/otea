@@ -1,6 +1,6 @@
 // The section of Configuración another surface leads to (Preferencias leads to Teléfono): asked
 // for on the way there, taken once by the page when it has drawn its sections, then forgotten.
-export type SettingsSection = 'phone';
+export type SettingsSection = 'phone' | 'topics';
 
 let pending: SettingsSection | null = null;
 
