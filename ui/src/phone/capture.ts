@@ -1,10 +1,13 @@
 import { useSyncExternalStore } from 'react';
+import type { LayoutEntry as CoreEntry } from '../../../src/core/modules.ts';
+import { moduleAccepts } from '../../../src/core/placement.ts';
 import type { NewFile } from '../api.ts';
+import { evidenceEntries } from '../evidence.ts';
 import { fieldLabel, missingToCreate, startOf } from '../intake.ts';
-import { firstRole, rolesFor } from '../intake-files.ts';
+import { rolesFor } from '../intake-files.ts';
 import { intakeTypes } from '../item-types.ts';
 import { fieldWord, stateWord } from '../preset-words.ts';
-import type { CollectionView, EvidenceRole, TypeView } from '../types.ts';
+import type { CollectionView, EvidenceRole, LayoutSlot, TypeView } from '../types.ts';
 
 // The phone's quick capture (mock "Captura rápida", screen 3): a sheet from below with the title
 // focused, the board it goes to as a chip, an optional note and photo, and Guardar. This file is
@@ -154,36 +157,60 @@ export function noteField(type: TypeView): string | undefined {
   )?.name;
 }
 
-// The roles a photo can take on this type: those of the modules that take an image. More than one
-// is a choice the capture shows (Antes, Después).
-export function photoRoles(type: TypeView, name: string): EvidenceRole[] {
-  return rolesFor(type, name);
+// Where a photo can go on this type: each part (evidence module) that takes it, by the name the
+// board gives it, a compare as its before and its after. The server refuses a photo that fits more
+// than one part without saying which (DR3-8), so a photo always names its part. A type without
+// parts for files takes it in any role.
+export type PhotoPlace = { role: EvidenceRole; module?: string; label?: string };
+
+const SLOTS: readonly LayoutSlot[] = ['evidence', 'body', 'side', 'phone'];
+
+export function photoPlaces(type: TypeView, name: string): PhotoPlace[] {
+  const taking = evidenceEntries(type, SLOTS).filter(
+    (entry) => entry.id !== undefined && moduleAccepts(entry as CoreEntry, name),
+  );
+  if (taking.length === 0) return rolesFor(type, name).map((role) => ({ role }));
+  return taking.flatMap(({ id, label, module, variant }): PhotoPlace[] => {
+    const part = { module: id as string, label: label ?? (id as string) };
+    return module === 'images' && variant === 'compare'
+      ? [
+          { role: 'before', ...part },
+          { role: 'after', ...part },
+        ]
+      : [{ role: 'single', ...part }];
+  });
 }
 
+export const samePlace = (a: PhotoPlace, b: PhotoPlace): boolean =>
+  a.role === b.role && a.module === b.module;
+
 // What Guardar sends: the title, the note where the type keeps it, the photo as evidence, in the
-// role picked (else the first its modules take).
+// place picked (else the first the type offers).
 export function capturePayload(
   type: TypeView,
   {
     title,
     note,
     photo,
-    role,
-  }: { title: string; note: string; photo: File | null; role?: EvidenceRole | undefined },
+    place,
+  }: { title: string; note: string; photo: File | null; place?: PhotoPlace | undefined },
 ): { fields: Record<string, string>; files: NewFile[] } {
   const fields: Record<string, string> = { title: title.trim() };
   const into = noteField(type);
   if (into && note.trim() !== '') fields[into] = note.trim();
-  const roles = photo ? photoRoles(type, photo.name) : [];
-  const named = photo ? photoName(photo.name, title) : '';
+  if (!photo) return { fields, files: [] };
+  const places = photoPlaces(type, photo.name);
+  const at = places.find((each) => place !== undefined && samePlace(each, place)) ??
+    places[0] ?? { role: 'single' };
+  const named = photoName(photo.name, title);
   const file =
-    photo && named !== photo.name
+    named !== photo.name
       ? new File([photo], named, { type: photo.type, lastModified: photo.lastModified })
       : photo;
-  const files = file
-    ? [{ file, role: role && roles.includes(role) ? role : firstRole(roles) }]
-    : [];
-  return { fields, files };
+  return {
+    fields,
+    files: [{ file, role: at.role, ...(at.module === undefined ? {} : { module: at.module }) }],
+  };
 }
 
 // The name a photo is kept under: the camera's own (a long number, «image.jpg») says nothing in the

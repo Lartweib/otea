@@ -7,7 +7,14 @@
 // (idb-queue.ts, sendCapture), maps and fakes in the tests. Nothing in here is ever dropped but by
 // a send the PC took, or by the person (Descartar, on one the PC refused).
 
-export type QueuedPhoto = { name: string; type: string; bytes: ArrayBuffer; role: string };
+export type QueuedPhoto = {
+  name: string;
+  type: string;
+  bytes: ArrayBuffer;
+  role: string;
+  // The part it goes to, when the board has several that take a photo.
+  module?: string;
+};
 
 export type QueuedCapture = {
   // Made on the phone; the Idempotency-Key of every send.
@@ -120,7 +127,9 @@ export function captureRequest(capture: QueuedCapture): { init: RequestInit; url
     };
   }
   const form = new FormData();
-  form.append('item', JSON.stringify({ ...payload, evidence: [{ role: photo.role }] }));
+  const place =
+    photo.module === undefined ? { role: photo.role } : { role: photo.role, module: photo.module };
+  form.append('item', JSON.stringify({ ...payload, evidence: [place] }));
   form.append('file', new Blob([photo.bytes], { type: photo.type }), photo.name);
   return { url: '/api/items', init: { method: 'POST', headers, body: form } };
 }

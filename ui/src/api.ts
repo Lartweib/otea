@@ -234,7 +234,8 @@ export async function undoRelease(id: string): Promise<void> {
   await post(`/api/items/${encodeURIComponent(id)}/undo`, { release: true });
 }
 
-export type NewFile = { file: File; role: EvidenceRole };
+// module: the part (evidence module) it goes to, when the type has several that take it.
+export type NewFile = { file: File; role: EvidenceRole; module?: string };
 
 // parent: the item the new one is created under, as its child. files: attached as evidence in the
 // same write, sent as a form (the item's JSON in its "item" part, each file in a "file" part).
@@ -254,7 +255,12 @@ export function createItem(
   const form = new FormData();
   form.append(
     'item',
-    JSON.stringify({ ...payload, evidence: files.map(({ role }) => ({ role })) }),
+    JSON.stringify({
+      ...payload,
+      evidence: files.map(({ role, module }) =>
+        module === undefined ? { role } : { role, module },
+      ),
+    }),
   );
   for (const { file } of files) form.append('file', file, file.name);
   return post<Item>('/api/items', form, key);

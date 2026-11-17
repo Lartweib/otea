@@ -161,15 +161,39 @@ describe('the capture sheet (mock screen 3)', () => {
   it('asks whether the photo is a before or an after where the board compares', () => {
     setLanguage('es');
     const photo = { name: 'IMG_2042.jpg', size: 900_000, url: 'blob:y', tooLarge: false };
-    const html = render(props({ title: 'A', photo, roles: ['before', 'after'], role: 'after' }));
+    const before = { role: 'before', module: 'ab', label: 'A y B' } as const;
+    const after = { role: 'after', module: 'ab', label: 'A y B' } as const;
+    const html = render(props({ title: 'A', photo, places: [before, after], place: after }));
     expect(html).toContain('class="cap-roles"');
     expect(html).toMatch(/aria-pressed="false"[^>]*>antes</);
     expect(html).toMatch(/aria-pressed="true"[^>]*>después</);
     expect(html).toContain('¿La foto es el antes o el después?');
-    expect(render(props({ title: 'A', photo, roles: ['single'] }))).not.toContain('cap-roles');
-    expect(render(props({ title: 'A', photo, roles: ['single', 'before', 'after'] }))).toContain(
-      'La foto va como',
-    );
+    const single = [{ role: 'single', module: 'shots', label: 'Imágenes' }] as const;
+    expect(render(props({ title: 'A', photo, places: [...single] }))).not.toContain('cap-roles');
+    const loose = [{ role: 'single' }, { role: 'before' }, { role: 'after' }] as const;
+    expect(render(props({ title: 'A', photo, places: [...loose] }))).toContain('La foto va como');
+  });
+
+  it('asks which part the photo goes to where several take it, in the board’s words (DR3-8)', () => {
+    setLanguage('es');
+    const photo = { name: 'IMG_2043.jpg', size: 900_000, url: 'blob:z', tooLarge: false };
+    const places = [
+      { role: 'single', module: 'refs', label: 'Referencias' },
+      { role: 'single', module: 'shots', label: 'Imágenes' },
+      { role: 'before', module: 'ab', label: 'A y B' },
+      { role: 'after', module: 'ab', label: 'A y B' },
+    ] as const;
+    const html = render(props({ title: 'A', photo, places: [...places], place: places[1] }));
+    expect(html).toContain('¿Dónde va la foto?');
+    expect(html).toMatch(/aria-pressed="false"[^>]*>Referencias</);
+    expect(html).toMatch(/aria-pressed="true"[^>]*>Imágenes</);
+    expect(html).toMatch(/aria-pressed="false"[^>]*>A y B · antes</);
+    expect(html).toMatch(/aria-pressed="false"[^>]*>A y B · después</);
+    expect(html).not.toContain('--module');
+    setLanguage('en');
+    const en = render(props({ title: 'A', photo, places: [...places] }));
+    expect(en).toContain('Where does the photo go?');
+    expect(en).toMatch(/aria-pressed="true"[^>]*>Referencias</);
   });
 
   it('says why when no board takes a title alone', () => {
