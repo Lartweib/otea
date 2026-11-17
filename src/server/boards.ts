@@ -76,6 +76,9 @@ const PublishPairBody = z.strictObject({
   child: z.string(),
   moves: z.strictObject({ parent: Moves.optional(), child: Moves.optional() }),
   draftStamps: z.strictObject({ parent: Stamp.optional(), child: Stamp.optional() }).optional(),
+  closeRequests: z
+    .strictObject({ parent: z.boolean().optional(), child: z.boolean().optional() })
+    .optional(),
 });
 
 const RestorePairBody = z.strictObject({
@@ -171,13 +174,14 @@ export function boardsApi(project: Project, feed: ChangeFeed, auth: Session): Ho
         const input = await body(
           c,
           PublishPairBody,
-          '{"parent": id, "child": id, "moves": {"parent"?: moves, "child"?: moves}, "draftStamps"?: {"parent"?: string | null, "child"?: string | null}}',
+          '{"parent": id, "child": id, "moves": {"parent"?: moves, "child"?: moves}, "draftStamps"?: {"parent"?: string | null, "child"?: string | null}, "closeRequests"?: {"parent"?: boolean, "child"?: boolean}}',
         );
         const result = publishPair(project, {
           parent: input.parent,
           child: input.child,
           moves: roles(input.moves),
           draftStamps: roles(input.draftStamps),
+          closeRequests: roles(input.closeRequests),
           by: HUMAN,
         });
         feed.notify();

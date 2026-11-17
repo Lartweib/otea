@@ -11,11 +11,13 @@ import {
   type ItemFacts,
   initialPosition,
   isClosed,
+  isLandStep,
   type Linked,
   type Missing,
   type MoveResult,
   mayReview,
   mayTake,
+  openWaits,
   type Position,
   positionOf,
   type Rounds,
@@ -657,6 +659,27 @@ export function offerableTo(ctx: Context, agent: string, now = systemClock) {
   };
 }
 
+// The board's Done items whose protected branch is set and not marked merged yet, oldest first: on a
+// board with no land step an agent merges them once the person approved them, and nothing else
+// offers that work. A board with a land step merges in it, before Done.
+function waitingToMerge(ctx: Context, board: LiveBoard): { id: string; branch: string }[] {
+  const branch = guardedBranch(board.def);
+  if (!branch || board.def.steps.some((step) => isLandStep(board.def, step.id))) return [];
+  return selectItems(ctx.db, { collection: board.collection, state: DONE }).flatMap((item) => {
+    const name = String(item.fields[branch.id] ?? '').trim();
+    if (name === '' || mergedFrom(selectEvents(ctx.db, item.id))) return [];
+    return [{ id: item.id, branch: name }];
+  });
+}
+
+// Whether the step being done waits for parts or blockers still open: its handoff cannot pass yet.
+function waitsOpen(def: BoardDefinition, on: ItemOnBoard): boolean {
+  const position = on.position;
+  if (isClosed(position) || position.phase !== 'doing') return false;
+  const step = stepById(def, position.step);
+  return step !== undefined && openWaits(step, on.facts).length > 0;
+}
+
 // How far along its board an open item stands: whether it waits for a review, and its step's place.
 function progressOf(def: BoardDefinition, item: ItemRecord): { review: boolean; along: number } {
   const position = positionOf(item.state);
@@ -705,25 +728,30 @@ export function nextFor(
     const candidates = boards.flatMap((board) =>
       selectItems(ctx.db, { collection: board.collection })
         .filter((item) => !offered(item) && isTheirs(ctx, board.def, item, agent, at))
-        .map((item) => ({
-          item,
-          board,
-          held: activeLease(item.lease, at) !== null,
-          left: leftFor(ctx, item.id) === agent,
-          returned: itemOnBoard(ctx, item, board.def).sentBack !== undefined,
-          ...progressOf(board.def, item),
-        })),
+        .map((item) => {
+          const on = itemOnBoard(ctx, item, board.def);
+          return {
+            item,
+            board,
+            held: activeLease(item.lease, at) !== null,
+            left: leftFor(ctx, item.id) === agent,
+            returned: on.sentBack !== undefined,
+            waiting: waitsOpen(board.def, on),
+            ...progressOf(board.def, item),
+          };
+        }),
     );
     // What the agent holds, then what the person left for it (Reasignar), then what was sent back
-    // to it; then what the person put on top, then
-    // the order they fixed (app/priority.ts); then work already handed on comes before new work: a
-    // review, then the step furthest along (its earlier steps are approved), and only then the
-    // oldest.
+    // to it; then anything that can move on before a step that waits for parts or blockers still
+    // open (its handoff cannot pass yet); then what the person put on top, then the order they
+    // fixed (app/priority.ts); then work already handed on comes before new work: a review, then the
+    // step furthest along (its earlier steps are approved), and only then the oldest.
     candidates.sort(
       (a, b) =>
         Number(b.held) - Number(a.held) ||
         Number(b.left) - Number(a.left) ||
         Number(b.returned) - Number(a.returned) ||
+        Number(a.waiting) - Number(b.waiting) ||
         byOrder(pinOf(a.item), pinOf(b.item)) ||
         byOrder(rankOf(a.item), rankOf(b.item)) ||
         Number(b.review) - Number(a.review) ||
@@ -733,10 +761,14 @@ export function nextFor(
     );
     const first = candidates[0];
     if (!first) {
-      const idle = boards.map((board) => ({
-        def: board.def,
-        waitingForYou: waitingForYou(ctx, board),
-      }));
+      const idle = boards.map((board) => {
+        const toMerge = waitingToMerge(ctx, board);
+        return {
+          def: board.def,
+          waitingForYou: waitingForYou(ctx, board),
+          ...(toMerge.length === 0 ? {} : { toMerge }),
+        };
+      });
       return {
         item: null,
         collection: options.collection ?? null,

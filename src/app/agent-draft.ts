@@ -168,7 +168,6 @@ export function problemWords(problem: Problem): string {
     guard_no_push: `the branch${part} is protected but no step lets it be pushed`,
     guard_base: `the base branch the branch${part} protects too is not a branch name`,
     initial_invalid: `the field${part} starts with a value it does not have`,
-    motive_agent_drop: `an agent that drops in step${step} must name a motive`,
     mention_raw: `step${step} mentions something as @{…}: write it @[id], the id of the step or part`,
     mention_unknown: `step${step} mentions an @[id] the board does not have`,
     analysis_missing: `the analysis role${quoted('role')} names a field the board does not use`,

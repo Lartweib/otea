@@ -178,6 +178,43 @@ describe('a relayed drop', () => {
       repo.remove();
     }
   });
+
+  it('takes the motive with --motive where the person may drop through an agent', async () => {
+    const repo = tempGitRepo();
+    try {
+      const otea = cliAt(repo.dir, { OTEA_AGENT: 'claude' });
+      await otea('init', '--local', '--template', 'none');
+      const project = openProject(repo.dir);
+      try {
+        const def = errores();
+        def.drop.by = 'anyone';
+        publishAs(project, def, 'berr');
+      } finally {
+        project.db.close();
+      }
+      const id = JSON.parse(
+        (await otea('create', '--collection', 'Errores', '--title', 'Faro', '--json')).out,
+      ).id;
+      const asked = await otea('relay', id, 'Dropped', '--quote', 'tíralo', '--reason', 'repetido');
+      expect(asked.code).toBe(2);
+      expect(asked.err).toContain(`say which with --motive "Rechazado|Duplicado"`);
+      const relayed = await otea(
+        'relay',
+        id,
+        'Dropped',
+        '--motive',
+        'Duplicado',
+        '--quote',
+        'tíralo',
+        '--reason',
+        'repetido',
+      );
+      expect(relayed.code).toBe(0);
+      expect(JSON.parse((await otea('show', id, '--json')).out).state).toBe('dropped__duplicate');
+    } finally {
+      repo.remove();
+    }
+  });
 });
 
 describe('otea create on a board', () => {

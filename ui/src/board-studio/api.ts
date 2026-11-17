@@ -151,6 +151,8 @@ export function publishPair(input: {
   child: string;
   moves: PairRoles<Readonly<Record<string, Target>>>;
   draftStamps?: PairRoles<string | null>;
+  // Also close, as done, the open Pedido an agent drafted each named board on.
+  closeRequests?: PairRoles<boolean>;
 }): Promise<PublishPairResult> {
   return call('POST', '/api/boards/publish-pair', input);
 }

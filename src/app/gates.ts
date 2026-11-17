@@ -104,7 +104,7 @@ function boardVerdicts(
   board: LiveBoard,
   gate: GateAction,
   fields: Readonly<Record<string, string>>,
-): { verdict: GateVerdict; open: boolean }[] {
+): { verdict: GateVerdict; open: boolean; dropped?: boolean }[] {
   const keys = boardKeys(board.def, fields);
   if (!keys) return [];
   const repo = guardedBranch(board.def)?.guard.repo;
@@ -130,7 +130,7 @@ function boardVerdicts(
           mergedOf(ctx, item.id) !== undefined,
         ),
       };
-      return { verdict, open: !isClosed(position) };
+      return { verdict, open: !isClosed(position), dropped: isDropped(position) };
     });
 }
 
@@ -239,7 +239,11 @@ export function checkGate(
   const fromPresets = presetVerdicts(ctx, gate, fields, onBoards);
   const gated = [...fromBoards, ...fromPresets];
   const open = gated.filter((entry) => entry.open);
-  const items = (open.length > 0 ? open : gated).map(({ verdict }) => verdict);
+  // Of the closed ones, a dropped duplicate left on the branch never blocks the item that was done
+  // there; dropped ones alone still answer (and allow nothing).
+  const kept = gated.filter((entry) => !entry.dropped);
+  const closed = kept.length > 0 ? kept : gated;
+  const items = (open.length > 0 ? open : closed).map(({ verdict }) => verdict);
   const check: GateCheck = { gate, allowed: items.every(({ allowed }) => allowed), items };
   if (items.length === 0) check.note = `no item with a ${gate} gate matches`;
   return check;
@@ -285,7 +289,7 @@ function presetVerdicts(
   gate: string,
   fields: Record<string, string>,
   onBoards: ReadonlySet<string>,
-): { verdict: GateVerdict; open: boolean }[] {
+): { verdict: GateVerdict; open: boolean; dropped?: boolean }[] {
   // An error here fails the check closed: an item Otea cannot read is never allowed by silence.
   const { repo, ...exact } = fields;
   const items: Item[] = listItems(ctx, { fields: exact }).filter(

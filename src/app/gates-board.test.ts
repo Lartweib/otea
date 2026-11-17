@@ -228,8 +228,29 @@ describe('gates on a board', () => {
       const merge = checkGate(ctx, 'merge', { branch: 'main', repo: 'api' }, brings);
       expect(merge).toMatchObject({ allowed: true, items: [{ id: task.id, allowed: true }] });
       expect(merge.items[0]?.text).toBe(
-        `merge allowed: ${task.id} is being landed in Integrar, after your approval; main takes its branch.`,
+        `merge allowed: ${task.id} is being landed in Integrar, after the person's approval; main takes its branch.`,
       );
+    });
+
+    it('lets the Done item’s branch merge when a dropped duplicate shares it', () => {
+      const { ctx, id, parent } = repoTask();
+      const twin = createItem(
+        ctx,
+        {
+          collection: 'Tareas de repo',
+          title: 'API otra vez',
+          fields: { frepo: 'api', fbranch: 'feat/x' },
+          parent,
+          actor: you,
+        },
+        now,
+      );
+      updateItemState(ctx.db, twin.id, 'dropped', now());
+      updateItemState(ctx.db, id, 'done', now());
+      const merge = checkGate(ctx, 'merge', { branch: 'feat/x', repo: 'api' });
+      expect(merge).toMatchObject({ allowed: true, items: [{ id, allowed: true }] });
+      updateItemState(ctx.db, id, 'dropped', now());
+      expect(checkGate(ctx, 'merge', { branch: 'feat/x', repo: 'api' }).allowed).toBe(false);
     });
 
     it('lets a board that leaves the base alone land its approved item into it', () => {
@@ -261,7 +282,7 @@ describe('gates on a board', () => {
       const push = checkGate(ctx, 'push', { branch: 'main', repo: 'api' }, brings);
       expect(push).toMatchObject({ allowed: true, items: [{ id: fix.id, allowed: true }] });
       expect(push.items[0]?.text).toBe(
-        `push allowed: ${fix.id} is being landed in Integrar, after your approval; main takes its branch.`,
+        `push allowed: ${fix.id} is being landed in Integrar, after the person's approval; main takes its branch.`,
       );
       expect(checkGate(ctx, 'push', { branch: 'main', repo: 'web' }, brings).allowed).toBe(false);
     });

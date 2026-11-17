@@ -1,6 +1,6 @@
 import { type AgentChannel, authorizeRelay } from '../core/authority.ts';
-import { isClosed, positionOf } from '../core/board/engine.ts';
-import { stepById } from '../core/board/model.ts';
+import { isClosed, positionOf, stateOf } from '../core/board/engine.ts';
+import { DROPPED, stepById } from '../core/board/model.ts';
 import { OteaError } from '../core/errors.ts';
 import { assertCanLeave } from '../core/fields.ts';
 import type { Actor } from '../core/item.ts';
@@ -10,7 +10,13 @@ import { type EventRecord, type ItemRecord, selectEvents } from '../store/querie
 import { typeOfItem } from './collections.ts';
 import type { Context } from './context.ts';
 import { type Item, landMove, requireWritableItem, systemClock } from './items.ts';
-import { assertMoveHandsOff, boardState, liveBoardOf, roundWorkersOf } from './next.ts';
+import {
+  assertMoveHandsOff,
+  boardState,
+  liveBoardOf,
+  motiveByName,
+  roundWorkersOf,
+} from './next.ts';
 import { assertMayEnter } from './relations.ts';
 
 // The human a relayed decision belongs to: the same actor the web UI records.
@@ -25,7 +31,31 @@ export type RelayInput = {
   channel: AgentChannel;
   quote: string;
   reason?: string;
+  // On a board with motives, the motive of a relayed discard, by its name (any case) or its id.
+  motive?: string;
 };
+
+// Where a relayed decision moves the item: the state named, or, with a motive, the discard with
+// that motive (`otea relay ERR-2 Dropped --motive Duplicado`).
+function relayedState(ctx: Context, collection: string, to: string, motive?: string): string {
+  const state = boardState(ctx, collection, to);
+  if (motive === undefined) return state;
+  const board = liveBoardOf(ctx, collection);
+  const target = positionOf(state);
+  if (!board || !isClosed(target) || target.closed !== DROPPED)
+    throw new OteaError('invalid_fields', '--motive goes only with a discard on a board: Dropped');
+  const id = motiveByName(board.def, motive);
+  if (id === undefined) {
+    const names = board.def.drop.motives.map(({ name }) => name).join('|');
+    throw new OteaError(
+      'invalid_fields',
+      names
+        ? `${board.def.name} has no motive "${motive}": --motive "${names}"`
+        : `${board.def.name} has no motives`,
+    );
+  }
+  return stateOf({ closed: DROPPED, motive: id });
+}
 
 // A decision the human made in conversation, recorded by an agent. It is the human's, so like a
 // move in the web UI it is not bound by another agent's lease, and it is always marked as relayed.
@@ -43,7 +73,7 @@ export function relayDecision(ctx: Context, input: RelayInput, now = systemClock
     const type = typeOfItem(ctx, item);
     const { workflow } = type;
     const { reason, via, channel } = input;
-    const to = boardState(ctx, item.collection, input.to);
+    const to = relayedState(ctx, item.collection, input.to, input.motive);
     // On a board the engine says first: a discard the person makes only on the page, an approval
     // whose parts are not finished.
     const note = assertMoveHandsOff(ctx, item, to, RELAYED_HUMAN, {

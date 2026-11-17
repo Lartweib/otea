@@ -17,8 +17,10 @@ import {
   getBoardRecord,
   listBoardSummaries,
   publishBoard,
+  publishPair,
   publishPlan,
   restoreBoard,
+  restorePair,
   saveDraft,
 } from './boards.ts';
 import { BOARD_JSON_SCHEMA } from './draft-request.ts';
@@ -298,6 +300,67 @@ describe('an agent drafting a board', () => {
       board: board.id,
       arrived: true,
     });
+  });
+
+  it('closes the Pedidos of both boards when the pair is published together, and reopens them on undo', () => {
+    // Studio's "Publicar los dos" for two boards an agent drafted, one divided into the other.
+    const ctx = project();
+    const drafted = (name: string) => {
+      const { board, item } = requestAgentDraft(
+        ctx,
+        { name, need: 'x', agent: 'kiln', lang: 'es' },
+        now,
+      );
+      const draft = getBoardRecord(ctx, board.id).draft?.definition;
+      if (!draft) throw new Error('no draft');
+      submitAgentDraft(
+        ctx,
+        { id: item, text: JSON.stringify(agentFile(draft)), actor: kiln, channel: 'cli' },
+        now,
+      );
+      return { board: board.id, item, before: getItem(ctx, item, now).state };
+    };
+    const child = drafted('Tareas');
+    const parent = drafted('Proyectos');
+    const record = getBoardRecord(ctx, parent.board);
+    const def = record.draft?.definition;
+    if (!def) throw new Error('no draft');
+    saveDraft(
+      ctx,
+      parent.board,
+      {
+        definition: { ...def, split: { board: child.board, always: false } },
+        baseVersion: null,
+      },
+      now,
+    );
+
+    publishPair(
+      ctx,
+      {
+        parent: parent.board,
+        child: child.board,
+        moves: { parent: {}, child: {} },
+        closeRequests: { parent: true, child: true },
+        by: you,
+      },
+      now,
+    );
+    expect(getItem(ctx, parent.item, now).state).toBe('done');
+    expect(getItem(ctx, child.item, now).state).toBe('done');
+
+    restorePair(
+      ctx,
+      {
+        parent: parent.board,
+        child: child.board,
+        versions: { parent: null, child: null },
+        by: you,
+      },
+      now,
+    );
+    expect(getItem(ctx, parent.item, now).state).toBe(parent.before);
+    expect(getItem(ctx, child.item, now).state).toBe(child.before);
   });
 
   it('leaves the Pedido closed when a later publish, which did not close it, is undone', () => {

@@ -251,9 +251,11 @@ function waitLines(step: Step, input: NextInput): string[] {
     const open = parts.filter(({ closed }) => !closed);
     const name = input.child?.name ?? parts[0]?.board ?? 'Parts';
     out.push(
-      open.length === 0
-        ? `  ✓ ${name} finished: required`
-        : `  ✗ ${name} finished: required (${open.length} of ${parts.length} open: ${inSteps(open)})`,
+      parts.length === 0
+        ? `  ✓ ${name} finished: none yet, so nothing holds the handoff; add them first if it has any`
+        : open.length === 0
+          ? `  ✓ ${name} finished: required`
+          : `  ✗ ${name} finished: required (${open.length} of ${parts.length} open: ${inSteps(open)})`,
     );
   }
   if (step.waits.includes('blockers')) {
@@ -300,7 +302,7 @@ function branchOf(
   const value = String(fields[branch.id] ?? '').trim();
   const repo = branch.guard.repo ? String(fields[branch.guard.repo] ?? '').trim() : '';
   return {
-    value: value || `its ${branch.name}`,
+    value: value || `the branch (${branch.name} is empty)`,
     ...(repo ? { repo } : {}),
     push: branch.guard.push.flatMap((id) => stepById(def, id)?.name ?? []),
   };
@@ -321,11 +323,11 @@ function branchLines(
     ? []
     : landing
       ? [
-          `  ${base} is protected too: merge ${branch.value} into it now, in ${step.name}; you approved ${input.id}.`,
+          `  ${base} is protected too: merge ${branch.value} into it now, in ${step.name}; the person approved ${input.id}.`,
         ]
       : land
         ? [
-            `  ${base} is protected too: push or merge ${branch.value} into it only in ${land.name}, once you approved ${input.id}.`,
+            `  ${base} is protected too: push or merge ${branch.value} into it only in ${land.name}, once the person approved ${input.id}.`,
           ]
         : [
             `  ${base} is protected too: push or merge ${branch.value} into it only once ${input.id} is ${DONE_NAME}.`,
@@ -347,7 +349,7 @@ function pushLines(
   const where = `${branch.value}${branch.repo ? ` in ${branch.repo}` : ''}`;
   const land = landStepOf(def);
   const mergedWhen = land
-    ? `once you approve it, an agent merges it in ${land.name}`
+    ? `once the person approves it, an agent merges it in ${land.name}`
     : `it can be merged only once it is ${DONE_NAME}`;
   const merge = `${mergedWhen.charAt(0).toUpperCase()}${mergedWhen.slice(1)}.`;
   const answer = gateAt(def, position, 'push');
@@ -860,7 +862,7 @@ export function gateText(
     case 'done':
       return `merge allowed: ${id} is ${DONE_NAME}.`;
     case 'landing':
-      return `merge allowed: ${id} is being landed in ${name}, after your approval.`;
+      return `merge allowed: ${id} is being landed in ${name}, after the person's approval.`;
     case 'review': {
       const who = step ? reviewerName(step) : 'the person';
       return `push refused: ${id} waits for ${who} to review ${name}; its branch can be pushed only while ${push} is being done.`;
@@ -895,7 +897,7 @@ export function baseGateText(
   if (isClosed(position) && position.closed === DONE)
     return `${action} allowed: ${id} is ${DONE_NAME}; ${base} takes its branch.`;
   if (gateAt(def, position, 'merge').why === 'landing')
-    return `${action} allowed: ${id} is being landed in ${placeText(def, position)}, after your approval; ${base} takes its branch.`;
+    return `${action} allowed: ${id} is being landed in ${placeText(def, position)}, after the person's approval; ${base} takes its branch.`;
   const where = isClosed(position)
     ? `is ${closedName(def, position)}`
     : `is in ${stepById(def, position.step)?.name ?? ''}, round ${round}`;
@@ -926,7 +928,13 @@ export function handedText(def: BoardDefinition, id: string, to: Position): stri
   return `Handed off. ${id} waits for ${who} to review ${name}.`;
 }
 
-export type IdleBoard = { def: BoardDefinition; waitingForYou: number };
+// `toMerge`: its Done items whose branch is not marked merged yet, on a board with no land step
+// (there an agent merges what the person approved once it is Done).
+export type IdleBoard = {
+  def: BoardDefinition;
+  waitingForYou: number;
+  toMerge?: readonly { id: string; branch: string }[];
+};
 
 // What `next` answers when nothing on the boards asked is the agent's: that, once, naming them; each
 // board's own words for idle time and its cap on new items when it is on; and how to wait for the
@@ -956,6 +964,17 @@ export function idleText(boards: readonly IdleBoard[], collection?: string): str
       );
     }
   }
+  const toMerge = boards.flatMap(({ toMerge: done }) => done ?? []);
+  if (toMerge.length > 0)
+    lines.push(
+      ...section(
+        'Waiting to be merged',
+        toMerge.map(
+          ({ id, branch }) =>
+            `  ${id} (${branch}) is ${DONE_NAME}: merge its PR, then otea merged ${id} --pr <url>.`,
+        ),
+      ),
+    );
   const on = collection === undefined ? '' : ` --collection ${quoted(collection)}`;
   if (lines.length > 1) lines.push('');
   lines.push(`Wait for one: otea wait --turn agent --unclaimed${on}, then otea next${on}.`);

@@ -334,6 +334,29 @@ describe('the order next offers work in', () => {
     expect(nextFor(ctx, 'kiln', {}, now).item).toBe(along.id);
     expect(old.id).not.toBe(along.id);
   });
+
+  it('offers work that can move on before a step that waits for what is still open', () => {
+    // A Trabajo in Entregar waits for its Entregas: offering it first, ahead of an Entrega nobody
+    // took, loops a single agent on a handoff that cannot pass.
+    const ctx = memoryContext();
+    const def = creatures();
+    def.steps = def.steps.map((s) =>
+      s.id === 'sanimate' ? { ...s, waits: ['blockers' as const] } : s,
+    );
+    board(ctx, def);
+    const along = creature(ctx, 'Avanzada');
+    attach(ctx, along.id, 'eart');
+    handoffItem(ctx, { id: along.id, actor: quill, channel: 'cli' }, now);
+    approveItem(ctx, { id: along.id, actor: you, channel: 'ui' }, now);
+    const blocker = creature(ctx, 'Antes');
+    linkItems(
+      ctx,
+      { id: blocker.id, kind: 'blocks', other: along.id, actor: you, channel: 'ui' },
+      now,
+    );
+
+    expect(nextFor(ctx, 'kiln', {}, now).item).toBe(blocker.id);
+  });
 });
 
 describe('the old paths on a board', () => {

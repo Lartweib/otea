@@ -760,6 +760,8 @@ export type PublishPairInput = {
   child: string;
   moves: PairRoles<Readonly<Record<string, Target>>>;
   draftStamps?: PairRoles<string | null>;
+  // Closes, as done, the open Pedido an agent drafted each named board on (PublishInput).
+  closeRequests?: PairRoles<boolean>;
   by: Actor;
 };
 
@@ -775,7 +777,8 @@ function assertPair(ctx: Context, parent: string, child: string): void {
 
 function stamped(input: PublishPairInput, role: 'parent' | 'child', moves: PublishInput['moves']) {
   const stamp = input.draftStamps?.[role];
-  return { moves, by: input.by, ...(stamp === undefined ? {} : { draftStamp: stamp }) };
+  const close = input.closeRequests?.[role] === true ? { closeRequest: true } : {};
+  return { moves, by: input.by, ...(stamp === undefined ? {} : { draftStamp: stamp }), ...close };
 }
 
 // Publishes the pair's drafts in one transaction, the child first so the parent's split names a

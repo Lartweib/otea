@@ -494,7 +494,7 @@ export const CHANGES: Template = {
       ),
       before: w(
         'Write @{check} as a short list of things the person can check, pick the @{kind} and estimate the @{effort}.',
-        'Escribe @{check} como una lista corta de cosas que la persona puede comprobar, elige el @{kind} y estima el @{effort}.',
+        'Escribe @{check} como una lista corta de cosas que la persona puede comprobar, elige una opción en @{kind} y estima @{effort}.',
       ),
     },
     {
@@ -528,8 +528,8 @@ export const CHANGES: Template = {
       reviewer: 'none',
       hand: [['commit', 'always']],
       take: w(
-        'The person approved it: rebase @{branch} on main, bring it in with a fast-forward and push main. Add nothing the person did not approve.',
-        'La persona lo aprobó: rebasa @{branch} sobre main, intégrala con fast-forward y empuja main. No agregues nada que la persona no haya aprobado.',
+        'The person approved it: rebase @{branch} on main and bring it in with a fast-forward push of main or, where main takes changes only through a PR, open one and merge it with gh pr merge. Add nothing the person did not approve.',
+        'La persona lo aprobó: rebasa @{branch} sobre main e intégrala con fast-forward y push de main o, si main solo acepta cambios por PR, abre uno y mergéalo con gh pr merge. No agregues nada que la persona no haya aprobado.',
       ),
       before: w(
         'Write in @{commit} the short hash of the commit that landed on main, and delete the branch.',

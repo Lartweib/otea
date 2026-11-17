@@ -13,15 +13,8 @@ const found = (def: BoardDefinition, more = {}) =>
 
 describe('problemsOf, the later settings', () => {
   it('finds nothing wrong with the boards that use every setting', () => {
-    expect(found(errores())).toEqual([
-      // A board with motives words what an agent that drops must do.
-      {
-        level: 'warning',
-        code: 'motive_agent_drop',
-        params: { step: 'Arreglar' },
-        at: { kind: 'done' },
-      },
-    ]);
+    // Motives with an agent that may drop are no problem: the drop asks for the motive (WF-19).
+    expect(found(errores())).toEqual([]);
     const boards = [
       { id: 'bcam', name: 'Cambios', split: { board: 'brt', always: true } },
       { id: 'brt', name: 'Tareas de repo' },

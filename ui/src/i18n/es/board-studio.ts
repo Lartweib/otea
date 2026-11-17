@@ -35,8 +35,6 @@ export const boardStudio = {
   'bs.problem.guard_no_push': '«{part}» está protegida pero no se puede subir en ningún paso.',
   'bs.problem.guard_base': 'La rama base que protege «{part}» no es un nombre de rama.',
   'bs.problem.initial_invalid': '{part} empieza en un valor que ya no tiene. Elige otro.',
-  'bs.problem.motive_agent_drop':
-    'Con motivos de descarte, un agente que descarta en {step} tiene que elegir uno.',
   'bs.problem.mention_raw':
     'Las instrucciones de {step} nombran algo con @ y llaves: escribe @ y elígelo, así los agentes leen su nombre.',
   'bs.problem.analysis_missing':

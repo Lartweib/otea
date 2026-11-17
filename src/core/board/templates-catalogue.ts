@@ -235,8 +235,8 @@ const BUG_REPORTS: Template = {
       reviewer: 'none',
       hand: [['fcommit', 'always', false]],
       take: w(
-        'Fast-forward @{fbranch} into main without rewriting commits, then delete the branch.',
-        'Lleva @{fbranch} a main con fast-forward, sin reescribir commits, y borra la rama.',
+        'Bring @{fbranch} into main without rewriting commits: a fast-forward push of main or, where main takes changes only through a PR, a PR merged with gh pr merge. Then delete the branch.',
+        'Lleva @{fbranch} a main sin reescribir commits: con fast-forward y push de main o, si main solo acepta cambios por PR, con un PR que mergeas con gh pr merge. Después borra la rama.',
       ),
       before: w('Write the short hash in @{fcommit}.', 'Escribe el hash corto en @{fcommit}.'),
     },

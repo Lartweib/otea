@@ -45,7 +45,6 @@ export type ProblemCode =
   | 'guard_no_push'
   | 'guard_base'
   | 'initial_invalid'
-  | 'motive_agent_drop'
   | 'mention_raw'
   | 'mention_unknown'
   | 'analysis_missing'
@@ -268,10 +267,7 @@ function laterProblems(
     else if (!fitsRole(role, part))
       add('error', 'analysis_kind', { kind: 'about' }, { role, part: part.name });
   }
-  if (def.drop.motives.length > 0) {
-    const dropper = def.steps.find((step) => step.doerMayDrop && step.doer !== 'you');
-    if (dropper) add('warning', 'motive_agent_drop', { kind: 'done' }, { step: dropper.name });
-  }
+  // A board with motives whose agent may drop is not a problem: the drop asks for the motive.
   return out;
 }
 

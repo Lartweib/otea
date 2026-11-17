@@ -190,11 +190,15 @@ function SinglePublishDialog({
     setBusy(true);
     setError(null);
     try {
+      // The Pedidos an agent drafted the two boards on close with them, as a single publish
+      // closes its own when the box is ticked; a board drafted on none closes nothing.
+      const closing = !!ready.request && closeRequest;
       const result = await publishPair({
         parent: id,
         child: split.id,
         moves: { parent: moves, child: {} },
         draftStamps: { parent: draft.record.draft?.updatedAt ?? null },
+        ...(closing ? { closeRequests: { parent: true, child: true } } : {}),
       });
       setBusy(false);
       onClose();
