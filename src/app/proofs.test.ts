@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { creatures } from '../core/board/testing.ts';
 import { updateItemState } from '../store/queries.ts';
 import { attachEvidence } from './evidence.ts';
-import { createItem, requireItem } from './items.ts';
+import { createItem, requireItem, updateItem } from './items.ts';
 import { boardBlockOf, handoffItem } from './next.ts';
 import type { Project } from './project.ts';
 import { tickPoint } from './proofs.ts';
@@ -187,6 +187,19 @@ describe('ticking a checklist point with its proof', () => {
     ]);
     expect(() => handoffItem(project, { id, actor: quill, channel: 'cli' }, now)).toThrowError(
       /missing Comprobaciones \(a proof for Paleta\)[\s\S]*otea tick/,
+    );
+  });
+
+  it('holds the handoff when the points were ticked by setting the field, not with tick', () => {
+    attachEvidence(
+      project,
+      { id, path: file('anim.webm', 'video'), module: 'eanim', actor: quill, channel: 'cli' },
+      now,
+    );
+    updateItem(project, { id, fields: { Comprobaciones: 'Silueta, Paleta' }, actor: quill }, now);
+
+    expect(() => handoffItem(project, { id, actor: quill, channel: 'cli' }, now)).toThrowError(
+      /missing Comprobaciones \(a proof for Silueta and Paleta\)/,
     );
   });
 });

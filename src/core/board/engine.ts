@@ -5,6 +5,7 @@ import {
   DROPPED,
   defaultWay,
   guardedBranch,
+  type Hand,
   isEvidence,
   motiveById,
   type Part,
@@ -220,13 +221,37 @@ type MissingPart = {
   points?: string[];
 };
 
+// A checklist that asks for proof with ticked points that have none, however the points were
+// ticked (otea tick, or the field set by update).
+function unprovedOf(part: Part, facts: ItemFacts, fresh: boolean): MissingPart[] {
+  if (part.kind !== 'check' || !part.proof) return [];
+  const value = facts.fields[part.id];
+  const ticked = new Set(hasValue(part, value) ? asList(value) : []);
+  const proved = new Set(facts.proofs?.[part.id] ?? []);
+  const points = part.options.filter(({ id }) => ticked.has(id) && !proved.has(id));
+  if (points.length === 0) return [];
+  return [
+    { ref: part.id, part, reason: 'unproved', fresh, points: points.map(({ name }) => name) },
+  ];
+}
+
+// A part the step's handoff asks for: always, or when its condition holds.
+function isAsked(def: BoardDefinition, facts: ItemFacts, hand: Hand): boolean {
+  if (hand.req === 'always') return true;
+  return (
+    hand.req === 'when' &&
+    hand.when !== undefined &&
+    whenHolds(def, facts, hand.when.part, hand.when.value)
+  );
+}
+
 function missingOf(def: BoardDefinition, step: Step, facts: ItemFacts): MissingPart[] {
   return step.hand.flatMap((hand): MissingPart[] => {
     const part = partOf(def, hand.ref);
-    if (!part || hand.req === 'no') return [];
-    if (hand.req === 'when') {
-      if (!hand.when || !whenHolds(def, facts, hand.when.part, hand.when.value)) return [];
-    }
+    if (!part) return [];
+    // Not asked for here (optional, or its condition does not hold): nothing is missing, but a
+    // point ticked on a checklist that asks for proof still needs one.
+    if (!isAsked(def, facts, hand)) return unprovedOf(part, facts, false);
     const fresh = hand.fresh && isEvidence(part);
     if (isEvidence(part)) {
       const attached = facts.evidence.filter((entry) => entry.part === part.id);
@@ -242,20 +267,7 @@ function missingOf(def: BoardDefinition, step: Step, facts: ItemFacts): MissingP
       const ticked = new Set(asList(value));
       if (part.options.some(({ id }) => !ticked.has(id)))
         return [{ ref: part.id, part, reason: 'unchecked', fresh }];
-      if (part.proof) {
-        const proved = new Set(facts.proofs?.[part.id] ?? []);
-        const points = part.options.filter(({ id }) => ticked.has(id) && !proved.has(id));
-        if (points.length > 0)
-          return [
-            {
-              ref: part.id,
-              part,
-              reason: 'unproved',
-              fresh,
-              points: points.map(({ name }) => name),
-            },
-          ];
-      }
+      return unprovedOf(part, facts, fresh);
     }
     return [];
   });
@@ -295,12 +307,10 @@ export function deliverables(
 ): { done: number; of: number } {
   const step = stepById(def, stepId);
   if (!step) return { done: 0, of: 0 };
-  const of = step.hand.filter((hand) => {
-    if (!partOf(def, hand.ref) || hand.req === 'no') return false;
-    if (hand.req !== 'when') return true;
-    return hand.when !== undefined && whenHolds(def, facts, hand.when.part, hand.when.value);
-  }).length;
-  return { done: of - missingOf(def, step, facts).length, of };
+  const asked = step.hand.filter((hand) => partOf(def, hand.ref) && isAsked(def, facts, hand));
+  const refs = new Set(asked.map(({ ref }) => ref));
+  const missing = missingOf(def, step, facts).filter(({ ref }) => refs.has(ref));
+  return { done: asked.length - missing.length, of: asked.length };
 }
 
 // What the step's handoff still lacks: the parts in the order the step lists them, then the note,
