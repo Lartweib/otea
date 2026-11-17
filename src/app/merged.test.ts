@@ -5,6 +5,7 @@ import { checkGate } from './gates.ts';
 import { createItem, requireItem } from './items.ts';
 import { markMerged, mergedOf, reopenItem } from './merged.ts';
 import { approveItem, boardBlockOf, handoffItem, itemNextText, nextFor } from './next.ts';
+import { linkItems } from './relations.ts';
 import { memoryContext, publishAs } from './testing.ts';
 
 const you = { kind: 'human' as const, name: 'fede' };
@@ -148,6 +149,49 @@ describe('marking a Done item merged', () => {
       doer: 'quill',
       reviewer: you,
     });
+  });
+});
+
+describe('merge order', () => {
+  // ENT-1 blocks ENT-2: ENT-2's merge is approved only once ENT-1's branch is in, not merely Done,
+  // or ENT-2 could merge first.
+  it('refuses to approve an item while what blocks it is Done but not merged', () => {
+    const ctx = memoryContext();
+    const def = tareasDeRepo();
+    const impl = def.steps.find(({ id }) => id === 'simpl');
+    if (impl) impl.waits = ['blockers'];
+    publishAs(ctx, def, 'brt', now);
+    publishAs(ctx, cambios(), 'bcam', now);
+    const parent = createItem(
+      ctx,
+      { collection: 'Cambios', title: 'Nube', fields: { fwhat: 'x' }, actor: you },
+      now,
+    );
+    const task = (title: string, branch: string) =>
+      createItem(
+        ctx,
+        {
+          collection: 'Tareas de repo',
+          title,
+          fields: { frepo: 'api', fbranch: branch },
+          parent: parent.id,
+          actor: you,
+        },
+        now,
+      ).id;
+    const first = task('API', 'feat/a');
+    const second = task('Web', 'feat/b');
+    linkItems(ctx, { kind: 'blocks', id: first, other: second, actor: you, channel: 'ui' }, now);
+    updateItemState(ctx.db, first, 'done', now());
+    updateItemState(ctx.db, second, 'simpl__review', now());
+
+    expect(() => approveItem(ctx, { id: second, actor: you, channel: 'ui' }, now)).toThrow(
+      `Not approved ${second}: ${first} (Tareas de repo, Done, not merged yet) blocks it and is not merged yet.`,
+    );
+    markMerged(ctx, { id: first, actor: quill, channel: 'cli' }, now);
+    expect(approveItem(ctx, { id: second, actor: you, channel: 'ui' }, now).item.state).toBe(
+      'done',
+    );
   });
 });
 

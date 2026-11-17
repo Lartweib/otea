@@ -105,6 +105,22 @@ describe('a refusal from the server', () => {
     expect(serverMessage(blockers, 409)).toBe(
       'No se entregó CAM-1: ERR-4 (Errores, Arreglar) lo frena y sigue sin terminar.',
     );
+    const unmerged = refused('blockers_open', 'x', {
+      kind: 'handoff',
+      item: 'ENT-2',
+      missing: [
+        {
+          ref: 'wait:blockers',
+          name: 'blockers',
+          reason: 'open',
+          fresh: false,
+          open: [{ id: 'ENT-1', board: 'Entregas', closed: false, unmerged: true }],
+        },
+      ],
+    });
+    expect(serverMessage(unmerged, 409)).toBe(
+      'No se entregó ENT-2: ENT-1 (Entregas, Hecho, sin fusionar) lo frena y aún no se fusionó.',
+    );
   });
 
   it('says why a discard, a send-back, an undo or a restart was refused', () => {

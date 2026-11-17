@@ -486,6 +486,26 @@ describe('approvalRefusal: Aprobar refused in words when a wait no longer holds'
     expect(approvalRefusal('ERR-1', [])).toBeNull();
     setLanguage('en');
   });
+
+  it('says a Done blocker whose branch is not merged yet still holds it', () => {
+    setLanguage('es');
+    const item = {
+      relations: [rel('blocked_by', 'ENT-1', { collection: 'Entregas', state: 'done' })],
+      board: {
+        parts: [],
+        blockers: [{ id: 'ENT-1', board: 'Entregas', closed: false, unmerged: true as const }],
+        blocking: [],
+      },
+    } as unknown as Parameters<typeof linksOf>[0];
+    const links = linksOf(item, (r) => ({ board: r.collection }));
+    expect(links.blockers[0]).toMatchObject({ closed: false, step: 'Hecho, sin fusionar' });
+    const rows = waitRows(errores(), 'sfix', links);
+    expect(approvalRefusal('ENT-2', rows)).toBe(
+      'No se aprobó ENT-2: ENT-1 (Entregas) lo frena y aún no se fusionó: apruébalo cuando su rama esté en la base.',
+    );
+    expect(waitBlock(rows)).toBe('espera a ENT-1, que lo frena');
+    setLanguage('en');
+  });
 });
 
 describe('waitBlock: Entregar held while what the step waits for is open', () => {

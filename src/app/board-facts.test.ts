@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { cambios, errores, tareasDeRepo } from '../core/board/testing.ts';
+import { cambios, errores, step, tareasDeRepo } from '../core/board/testing.ts';
 import { updateItemState } from '../store/queries.ts';
 import { listBoardSummaries, publishBoard, publishPlan, saveDraft } from './boards.ts';
 import type { Context } from './context.ts';
 import { createItem, getItem, showItem } from './items.ts';
+import { markMerged } from './merged.ts';
 import { itemNextText, itemOnBoard } from './next.ts';
 import { linkItems } from './relations.ts';
 import { memoryContext, publishAs } from './testing.ts';
@@ -73,6 +74,47 @@ describe('the facts an item on a board carries', () => {
 
     expect(on.facts.blockers).toEqual([
       { id: bug.id, board: 'Errores', step: 'Completar', closed: false },
+    ]);
+  });
+
+  it('keeps a Done blocker blocking until its branch is merged', () => {
+    const ctx = memoryContext();
+    const { parts } = changes(ctx);
+    const [a, b] = parts.map(({ id }) => id) as [string, string];
+    linkItems(ctx, { kind: 'blocks', id: a, other: b, actor: you, channel: 'ui' }, now);
+    updateItemState(ctx.db, a, 'done', now());
+
+    const blockers = () => itemOnBoard(ctx, getItem(ctx, b), tareasDeRepo()).facts.blockers;
+    expect(blockers()).toEqual([{ id: a, board: 'Tareas de repo', closed: false, unmerged: true }]);
+    markMerged(ctx, { id: a, actor: { kind: 'agent', name: 'quill' }, channel: 'cli' }, now);
+    expect(blockers()).toEqual([{ id: a, board: 'Tareas de repo', closed: true }]);
+  });
+
+  it('counts a Done blocker merged on a board that merges in its land step', () => {
+    const ctx = memoryContext();
+    const { parts } = changes(ctx);
+    const [, b] = parts.map(({ id }) => id) as [string, string];
+    const def = tareasDeRepo();
+    def.name = 'Arreglos';
+    def.item = 'Arreglo';
+    def.steps.push(step('sland', 'Integrar', { reviewer: 'none' }));
+    publishAs(ctx, def, 'barr', now);
+    const fix = createItem(
+      ctx,
+      {
+        collection: 'Arreglos',
+        title: 'Fix',
+        fields: { frepo: 'api', fbranch: 'fix/a' },
+        actor: you,
+        channel: 'ui',
+      },
+      now,
+    );
+    linkItems(ctx, { kind: 'blocks', id: fix.id, other: b, actor: you, channel: 'ui' }, now);
+    updateItemState(ctx.db, fix.id, 'done', now());
+
+    expect(itemOnBoard(ctx, getItem(ctx, b), tareasDeRepo()).facts.blockers).toEqual([
+      { id: fix.id, board: 'Arreglos', closed: true },
     ]);
   });
 

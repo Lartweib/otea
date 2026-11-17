@@ -120,7 +120,14 @@ export function mayReview(
 
 // Another item an item waits for: one of its parts, or one that blocks it. `board` and `step` are
 // names as people read them (`step`: where it stands while open).
-export type Linked = { id: string; board: string; step?: string; closed: boolean };
+// `unmerged`: a blocker that is Done but whose branch is not merged yet, so it still blocks.
+export type Linked = {
+  id: string;
+  board: string;
+  step?: string;
+  closed: boolean;
+  unmerged?: true;
+};
 
 // What the engine reads of an item to check a handoff: its field values by part id, its evidence
 // by part (the evidence module id it was attached to) and when, and when the step's current round

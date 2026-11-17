@@ -295,6 +295,19 @@ describe('refusals and answers', () => {
         'Hand it off again once BUG-9 is Done or Dropped, or ask the person to remove the link.',
       ].join('\n'),
     );
+    const unmerged: Missing = {
+      ...blockers,
+      open: [{ id: 'ENT-1', board: 'Entregas', closed: false, unmerged: true }],
+    };
+    expect(refusalText('ENT-2', [unmerged])).toBe(
+      [
+        'Not handed off ENT-2: ENT-1 (Entregas, Done, not merged yet) blocks it and is not merged yet.',
+        'Hand it off again once ENT-1 is merged (otea merged ENT-1) or Dropped, or ask the person to remove the link.',
+      ].join('\n'),
+    );
+    expect(approvalRefusalText('ENT-2', [unmerged])).toBe(
+      'Not approved ENT-2: ENT-1 (Entregas, Done, not merged yet) blocks it and is not merged yet.',
+    );
     expect(approvalRefusalText('CH-3', [{ ...parts, open: [rt('RT-4', 'Implementar')] }])).toBe(
       'Not approved CH-3: 1 of its 3 Tareas de repo is not finished: RT-4 (Implementar).',
     );
