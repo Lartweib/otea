@@ -35,6 +35,7 @@ import {
 } from '../app/phone.ts';
 import { listAgents, presenceSignature } from '../app/presence.ts';
 import { listPresetViews } from '../app/preset-views.ts';
+import { estimatesOf, pinItems, priorityOf, setOrder } from '../app/priority.ts';
 import { type Env, type Project, projectView } from '../app/project.ts';
 import { answerQuestion } from '../app/questions.ts';
 import { linkItems, unlinkItems } from '../app/relations.ts';
@@ -112,7 +113,9 @@ import {
   MAX_INTAKE_FILES,
   moveRequest,
   noteRequest,
+  orderRequest,
   pathRequest,
+  pinRequest,
   reassignRequest,
   relinkRequest,
   undoRequest,
@@ -392,18 +395,41 @@ function api(
         const items = listItems(project, itemsFilter(c.req.query(), c.req.queries('field')));
         // On a board, each item's round as the engine counts it, so every list agrees with it.
         const boards = liveBoards(project);
+        const priority = priorityOf(project.db);
         return c.json(
           items.map((item) => {
             const round = boardRoundOf(project, item, boards);
             // The notes of its round: how many, how many wait, and what the agent answered last.
             const notes = notesSummary(project, item, boards);
+            // The person's order (app/priority.ts) and the role values an agent estimated.
+            const order = priority.get(item.id);
+            const def = boards.find(({ collection }) => collection === item.collection)?.def;
+            const estimates = def?.analysis ? estimatesOf(project, item, def) : {};
             return {
               ...item,
               ...(round === undefined ? {} : { round }),
               ...(notes === undefined ? {} : { notes }),
+              ...(order === undefined || Object.keys(order).length === 0
+                ? {}
+                : { priority: order }),
+              ...(Object.keys(estimates).length === 0 ? {} : { estimates }),
             };
           }),
         );
+      })
+      .post('/order', async (c) => {
+        assertWritable(c, auth);
+        const { collection, ids } = await orderRequest(c);
+        setOrder(project, { collection, ids, ...HUMAN_IN_UI });
+        feed.notify();
+        return c.json({ ok: true });
+      })
+      .post('/pin', async (c) => {
+        assertWritable(c, auth);
+        const { ids, pinned } = await pinRequest(c);
+        pinItems(project, { ids, pinned, ...HUMAN_IN_UI });
+        feed.notify();
+        return c.json({ ok: true });
       })
       .post('/items', bodyLimit({ maxSize: MAX_CREATE_BYTES, onError: tooLarge }), async (c) => {
         assertWritable(c, auth, true);

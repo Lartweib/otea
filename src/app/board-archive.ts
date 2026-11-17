@@ -299,6 +299,7 @@ export function deleteBoardForever(
         db.prepare('DELETE FROM relations WHERE from_id = ? OR to_id = ?').run(item, item);
         db.prepare('DELETE FROM evidence WHERE item_id = ?').run(item);
         db.prepare('DELETE FROM events WHERE item_id = ?').run(item);
+        db.prepare('DELETE FROM item_priority WHERE item_id = ?').run(item);
         db.prepare('DELETE FROM items WHERE id = ?').run(item);
       }
       deleteDraft(db, board.id);

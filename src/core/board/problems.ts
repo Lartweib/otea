@@ -1,4 +1,5 @@
 import { closeIconNames, isIconName } from '../icons.ts';
+import { fitsRole, isRole } from './analysis.ts';
 import { isLandStep, startsWith, waysOf } from './engine.ts';
 import { mentionedRefs, mentionNames } from './mentions.ts';
 import {
@@ -46,7 +47,9 @@ export type ProblemCode =
   | 'initial_invalid'
   | 'motive_agent_drop'
   | 'mention_raw'
-  | 'mention_unknown';
+  | 'mention_unknown'
+  | 'analysis_missing'
+  | 'analysis_kind';
 
 export type ProblemLevel = 'error' | 'warning';
 
@@ -256,6 +259,14 @@ function laterProblems(
       add('error', 'guard_base', partAt(part.id), { part: part.name });
     if (part.initial !== undefined && !initialFits(part.kind, part.options, part.initial))
       add('error', 'initial_invalid', partAt(part.id), { part: part.name });
+  }
+  // A role of the analysis views must name a field the board uses, of a kind the role reads.
+  for (const [role, ref] of Object.entries(def.analysis ?? {})) {
+    if (!isRole(role) || ref === undefined) continue;
+    const part = def.parts[ref];
+    if (!part || !used.has(ref)) add('error', 'analysis_missing', { kind: 'about' }, { role });
+    else if (!fitsRole(role, part))
+      add('error', 'analysis_kind', { kind: 'about' }, { role, part: part.name });
   }
   if (def.drop.motives.length > 0) {
     const dropper = def.steps.find((step) => step.doerMayDrop && step.doer !== 'you');

@@ -147,7 +147,28 @@ export function problemText(problem: Problem): string {
       return t('bs.problem.mention_raw', { step: str(p.step) as string });
     case 'mention_unknown':
       return t('bs.problem.mention_unknown', { step: str(p.step) as string });
+    case 'analysis_missing':
+      return t('bs.problem.analysis_missing', { role: roleWord(str(p.role) as string) });
+    case 'analysis_kind':
+      return t('bs.problem.analysis_kind', {
+        role: roleWord(str(p.role) as string),
+        part: str(p.part) as string,
+      });
   }
+}
+
+const ROLE_WORDS: Readonly<Record<string, PlainKey>> = {
+  effort: 'bs.role.effort',
+  risk: 'bs.role.risk',
+  impact: 'bs.role.impact',
+  area: 'bs.role.area',
+  due: 'bs.role.due',
+};
+
+// What an analysis role is called in the language on screen.
+export function roleWord(role: string): string {
+  const key = ROLE_WORDS[role];
+  return key ? t(key) : role;
 }
 
 const LEVEL_WORDS: Readonly<Record<string, PlainKey>> = {

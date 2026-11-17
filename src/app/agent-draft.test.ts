@@ -392,7 +392,7 @@ describe('an agent drafting a board', () => {
       [
         'The file is not a board:',
         '  the board lacks schema, item, icon, title, parts, form, anytime, layout, row, about, idle, cap and samples',
-        '  the board: a key a board does not know: "owner" (it takes schema, name, item, icon, title, parts, form, steps, anytime, layout, row, about, idle, cap, samples, template, split, madeWith, drop, list)',
+        '  the board: a key a board does not know: "owner" (it takes schema, name, item, icon, title, parts, form, steps, anytime, layout, row, about, idle, cap, samples, template, split, madeWith, analysis, drop, list)',
         `Start from what otea board draft ${item} prints: it has every key a board takes. Each key, with what it is for and an example, is in ${BOARD_JSON_SCHEMA}. A board you cannot get right in JSON, the person can finish in Studio.`,
       ].join('\n'),
     );

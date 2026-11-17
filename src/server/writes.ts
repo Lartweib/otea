@@ -384,3 +384,29 @@ export async function noteRequest(c: Context): Promise<NoteRequest> {
     },
   };
 }
+
+const OrderBody = z.object({ collection: z.string().min(1), ids: z.array(z.string().min(1)) });
+
+// "Fijar el orden" from a board's matrix: the items, in order.
+export async function orderRequest(c: Context): Promise<{ collection: string; ids: string[] }> {
+  const raw: unknown = await c.req.json().catch(() => undefined);
+  const parsed = OrderBody.safeParse(raw);
+  if (!parsed.success)
+    throw new RejectedRequest(
+      400,
+      'invalid_body',
+      'Expected {"collection": string, "ids": string[]}',
+    );
+  return parsed.data;
+}
+
+const PinBody = z.object({ ids: z.array(z.string().min(1)).min(1), pinned: z.boolean() });
+
+// "Poner arriba" / "Quitar de arriba": the items, and whether they go on top.
+export async function pinRequest(c: Context): Promise<{ ids: string[]; pinned: boolean }> {
+  const raw: unknown = await c.req.json().catch(() => undefined);
+  const parsed = PinBody.safeParse(raw);
+  if (!parsed.success)
+    throw new RejectedRequest(400, 'invalid_body', 'Expected {"ids": string[], "pinned": boolean}');
+  return parsed.data;
+}
