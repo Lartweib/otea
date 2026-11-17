@@ -1,4 +1,6 @@
 import type { Topic, TopicState } from '../../src/app/topics.ts';
+import { canSubmit, type FormValues, initialValues } from './intake.ts';
+import type { FieldView, TypeView } from './types.ts';
 
 // Side topics on the page (src/app/topics.ts): what the person asked an agent off the work, kept as
 // a short conversation. The page lists what waits on someone, what was left hanging first; Te toca
@@ -45,4 +47,22 @@ export function topicOfRoute(
 ): Topic | undefined {
   if (!topic) return undefined;
   return topics.find(({ id }) => id.toLowerCase() === topic.toLowerCase());
+}
+
+// Convertir en tarea: the form asks for the title and each field creating an item of the type needs
+// that has no default (a Cambio's "Qué quiero"), so the board never refuses the task it makes.
+export function convertFields({ fields }: TypeView): FieldView[] {
+  return fields.filter(
+    (field) =>
+      field.name === 'title' || (field.required === 'create' && field.default === undefined),
+  );
+}
+
+// The form as it opens: the topic's title as the task's, the rest as the type starts them.
+export function convertDraft(type: TypeView, topic: Pick<Topic, 'title'>): FormValues {
+  return { ...initialValues(type), title: topic.title };
+}
+
+export function convertReady(type: TypeView, values: FormValues): boolean {
+  return canSubmit(type, values);
 }
