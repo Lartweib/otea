@@ -1,4 +1,7 @@
 import { spawn } from 'node:child_process';
+import { existsSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -19,6 +22,7 @@ import {
 } from './testing.ts';
 
 const MAIN = fileURLToPath(new URL('./main.ts', import.meta.url));
+const GIT_BASH = 'C:\\Program Files\\Git\\bin\\bash.exe';
 
 const USAGE =
   'Usage: otea wait --turn <agent|human> [--collection <collection>] [--unclaimed] [--timeout <duration>]';
@@ -215,6 +219,59 @@ describe('wait', () => {
       if (processAlive(pid)) process.kill(pid);
     }
   });
+
+  // Claude Code on Windows: its session runs Git's bash, which forks a copy that becomes the npm sh
+  // shim and ends at once, and the shim stays as node's stub. The session ending leaves bash and
+  // the shim running: only MSYS still links the shim to the bash, and the bash to the session.
+  it.runIf(process.platform === 'win32' && existsSync(GIT_BASH))(
+    'stops waiting once the session that ran it through Git Bash and the npm shim is gone',
+    async () => {
+      const slash = (path: string) => path.replaceAll('\\', '/');
+      const shim = join(repo.dir, 'otea-shim');
+      writeFileSync(
+        shim,
+        `#!/bin/sh\nexec "${slash(process.execPath)}" --disable-warning=ExperimentalWarning "${slash(MAIN)}" "$@"\n`,
+      );
+      const done = join(repo.dir, 'wait-ended');
+      // Only the subshell that runs the wait stands in the project folder, so none holds it after.
+      const command = `(cd "${slash(repo.dir)}" && "${slash(shim)}" wait --turn human --collection tasks --timeout 2m); echo $? > "${slash(done)}"`;
+      // The session: it starts bash and stays until the test ends it. Detached, bash outlives it,
+      // as it outlives a Claude Code session.
+      const starter = [
+        "const c = require('node:child_process').spawn(process.argv[1], ['-c', process.argv[2]], { detached: true, stdio: 'ignore', windowsHide: true });",
+        'c.unref();',
+        "console.log('up');",
+        'setTimeout(() => {}, 120_000);',
+      ].join(' ');
+      const session = spawn(process.execPath, ['-e', starter, GIT_BASH, command], {
+        cwd: tmpdir(),
+        env: { ...process.env, OTEA_AGENT: 'claude' },
+        stdio: ['ignore', 'pipe', 'ignore'],
+      });
+      await new Promise((resolve) => session.stdout.once('data', resolve));
+      const listening = () => {
+        const project = openProject(repo.dir);
+        try {
+          return listAgents(project.db).some(
+            ({ name, listening }) => name === 'claude' && listening,
+          );
+        } finally {
+          project.db.close();
+        }
+      };
+      try {
+        await until(listening, 30_000);
+        // Past the first owner check, which reads the processes above the wait.
+        await delay(8_000);
+        expect(existsSync(done)).toBe(false);
+        session.kill();
+        await until(() => existsSync(done), 45_000);
+      } finally {
+        session.kill();
+      }
+    },
+    120_000,
+  );
 
   it('exits 130 without printing an item when interrupted', async () => {
     const waiting = startCli(repo.dir, 'wait', '--turn', 'human');
