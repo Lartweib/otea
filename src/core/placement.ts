@@ -67,7 +67,7 @@ export type Placement = { module: string | null; role: EvidenceRole };
 function chosen(
   modules: EvidenceModuleEntry[],
   target: Target,
-  { filename, module }: AttachRequest,
+  { filename, module, role }: AttachRequest,
 ): EvidenceModuleEntry {
   const subject = `${target.id} (${target.type})`;
   if (module !== undefined) {
@@ -96,6 +96,12 @@ function chosen(
       `${subject} does not take ${filename}. It takes: ${list}`,
       { kind: 'modules', modules: modules.map(({ id }) => id) },
     );
+  }
+  // A before or an after goes only to a compare: when one compare alone fits, the role names it.
+  const compares = fitting.filter(isCompare);
+  if (more.length > 0 && (role === 'before' || role === 'after') && compares.length === 1) {
+    const [compare] = compares;
+    if (compare) return compare;
   }
   if (more.length > 0) {
     // A board takes its evidence by name (--module "Vídeo del arreglo"), a preset by id.

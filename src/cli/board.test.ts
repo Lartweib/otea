@@ -56,6 +56,7 @@ describe('board', () => {
     expect(guide.text).toContain('work: steps for each Tarea');
   });
 
+  // Pedidos, with no item yet, is left out as the places leave it out.
   it('indexes the boards without a name, each with how to read it', async () => {
     presetCollection(repo.dir, 'work');
     presetCollection(repo.dir, 'changes', 'change');
@@ -68,7 +69,6 @@ describe('board', () => {
         AGENT_GUIDE,
         '',
         'Read the board you work in before acting:',
-        '  Pedidos         board  otea board Pedidos',
         '  work            board  otea board work',
         '  changes         board  otea board changes',
         '  Tareas de repo  board  otea board "Tareas de repo"',
@@ -82,7 +82,6 @@ describe('board', () => {
         board === null,
       ]),
     ).toEqual([
-      ['Pedidos', false],
       ['work', false],
       ['changes', false],
       ['Tareas de repo', false],
@@ -92,7 +91,7 @@ describe('board', () => {
   it('quotes a board name with spaces in the command', async () => {
     presetCollection(repo.dir, 'my work');
 
-    expect((await json('board')).boards[1].command).toBe('otea board "my work"');
+    expect((await json('board')).boards[0].command).toBe('otea board "my work"');
   });
 
   it('fails with not_found for an unknown collection', async () => {
@@ -185,6 +184,46 @@ describe('board add', () => {
     const { boards } = JSON.parse((await otea('board', '--json')).out);
     const names = boards.map(({ name }: { name: string }) => name);
     expect(names).toEqual(expect.arrayContaining(['Trabajos web', 'Entregas']));
+  });
+
+  it('gives a set board nobody named a free name when its own is taken', async () => {
+    // The name given goes to the first board; the template's second board is called Entregas too.
+    const first = await person('board', 'add', 'Entregas', '--template', 'repos');
+    expect(first.out).toBe('Published boards "Entregas", "Entregas 2" from template repos\n');
+    expect((await person('board', 'add', 'Ideas', '--template', 'ideas')).code).toBe(0);
+
+    const { code, out } = await person('board', 'add', 'Ideas web', '--template', 'ideas');
+
+    expect(code).toBe(0);
+    expect(out).toBe('Published boards "Ideas web", "Implementación 2" from template ideas\n');
+  });
+
+  it('lists Pedidos only once it holds an item, as the places do', async () => {
+    await person('board', 'add', 'Recados');
+    const names = async () =>
+      JSON.parse((await otea('board', '--json')).out).boards.map(
+        ({ name }: { name: string }) => name,
+      );
+    expect(await names()).toEqual(['Recados']);
+    expect((await otea('board')).out).not.toContain('Pedidos');
+
+    await otea('board', 'draft', '--new', 'Criaturas', '--why', 'Del pantano');
+
+    expect(await names()).toEqual(['Pedidos', 'Recados']);
+  });
+
+  it('lists boards in the order they were made, a set in its own order', async () => {
+    await person('board', 'add', 'Ideas', '--template', 'ideas');
+    await person('board', 'add', 'Trabajos', '--template', 'repos');
+
+    const { boards } = JSON.parse((await otea('board', '--json')).out);
+    const names = boards.map(({ name }: { name: string }) => name);
+    expect(names.filter((name: string) => name !== 'Pedidos')).toEqual([
+      'Ideas',
+      'Implementación',
+      'Trabajos',
+      'Entregas',
+    ]);
   });
 
   it('refuses a template that only comes as part of a set, as Studio never offers it', async () => {

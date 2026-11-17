@@ -105,6 +105,21 @@ describe('placeEvidence', () => {
     });
   });
 
+  it('takes --role before or after as naming the one compare among several that fit', () => {
+    const both = layoutOf({
+      evidence: [
+        { module: 'images', id: 'shots', variant: 'gallery' },
+        { module: 'images', id: 'fix', variant: 'compare' },
+      ],
+    });
+    expect(place(both, 'home.png', { role: 'before' })).toEqual({ module: 'fix', role: 'before' });
+    refused(
+      () => place(both, 'home.png'),
+      'module_required',
+      'home.png fits more than one evidence module of BUGS-1 (bug): pass --module shots or --module fix',
+    );
+  });
+
   it('refuses a module the type does not place', () => {
     refused(
       () => place(IMPR, 'home.png', { module: 'shots' }),

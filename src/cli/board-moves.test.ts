@@ -179,6 +179,33 @@ describe('a relayed drop', () => {
     }
   });
 
+  it('says Dropped once in show, with its motives, not once per motive', async () => {
+    const repo = tempGitRepo();
+    try {
+      const otea = cliAt(repo.dir, { OTEA_AGENT: 'claude' });
+      await otea('init', '--local', '--template', 'none');
+      const project = openProject(repo.dir);
+      try {
+        const def = errores();
+        def.drop.by = 'anyone';
+        publishAs(project, def, 'berr');
+      } finally {
+        project.db.close();
+      }
+      const id = JSON.parse(
+        (await otea('create', '--collection', 'Errores', '--title', 'Faro', '--json')).out,
+      ).id;
+
+      const { out } = await otea('show', id);
+
+      const relay = out.split('\n').find((line) => line.startsWith('Agent can relay to:'));
+      expect(relay).toContain('Dropped (reason required; --motive "Rechazado|Duplicado")');
+      expect(relay?.match(/Dropped/g)).toHaveLength(1);
+    } finally {
+      repo.remove();
+    }
+  });
+
   it('takes the motive with --motive where the person may drop through an agent', async () => {
     const repo = tempGitRepo();
     try {

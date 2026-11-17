@@ -14,6 +14,16 @@ const base = {
 };
 
 describe('nextText', () => {
+  it('asks for every box of a required checklist, as its handoff does', () => {
+    const text = nextText(def, {
+      ...base,
+      position: { step: 'sanimate', phase: 'doing' },
+      missing: [{ ref: 'fsteps', name: 'Comprobaciones', reason: 'missing', fresh: false }],
+    });
+    expect(text).toContain('Comprobaciones: required (missing); tick every one of Silueta, Paleta');
+    expect(text).not.toContain('any of Silueta');
+  });
+
   it('says, word for word, what an agent doing a step reads', () => {
     const text = nextText(def, {
       ...base,

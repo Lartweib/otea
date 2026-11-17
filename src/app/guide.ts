@@ -1,7 +1,7 @@
 import { boardText } from '../core/board/next.ts';
 import { OteaError } from '../core/errors.ts';
 import { listCollections } from '../store/queries.ts';
-import { getCollection } from './collections.ts';
+import { getCollection, idleRequests } from './collections.ts';
 import type { ItemView } from './items.ts';
 import { itemNextText, liveBoardOf } from './next.ts';
 import type { Project } from './project.ts';
@@ -44,9 +44,11 @@ export function boardGuide(project: Project, name: string): Guide {
   };
 }
 
-// The project's boards, each with how to read what its agents do.
+// The project's boards, each with how to read what its agents do: Pedidos once it holds an item.
 export function guideIndex(project: Project): GuideEntry[] {
-  return listCollections(project.db).map(({ name }) => ({
+  const idle = idleRequests(project);
+  const shown = listCollections(project.db).filter(({ name }) => name !== idle);
+  return shown.map(({ name }) => ({
     name,
     board: liveBoardOf(project, name)?.id ?? null,
     command: guideCommand(name),

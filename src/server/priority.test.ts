@@ -96,6 +96,14 @@ describe('the person’s order over the API', () => {
     expect(rows.find(({ id }) => id === 'CRI-2')).not.toHaveProperty('estimates');
   });
 
+  it('refuses an order for a collection the project does not have', async () => {
+    const answer = await call('/order', {
+      method: 'POST',
+      body: { collection: 'Nada', ids: [] },
+    });
+    expect(answer.status).toBe(404);
+  });
+
   it('refuses a malformed order', async () => {
     const answer = await call('/order', { method: 'POST', body: { ids: 'CRI-1' } });
     expect(answer.status).toBe(400);

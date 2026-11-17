@@ -419,18 +419,20 @@ function partLines(def: BoardDefinition, hands: readonly Hand[], input: NextInpu
           : 'optional';
     const mark = missing ? '✗' : hand.req === 'always' ? '✓' : '·';
     const proof = part.kind === 'check' && part.proof ? ', each ticked point with its proof' : '';
-    const line = `  ${mark} ${part.name}: ${req}${proof}${missing ? ` (${reasonText(missing)})` : ''}${choicesText(part)}`;
+    const line = `  ${mark} ${part.name}: ${req}${proof}${missing ? ` (${reasonText(missing)})` : ''}${choicesText(part, hand.req !== 'no')}`;
     return part.hint && hand.req !== 'no' ? [line, `      what goes here: ${part.hint}`] : [line];
   });
 }
 
-// What a field takes, when it is a choice: the names an agent fills it with.
-function choicesText(part: Part): string {
+// What a field takes, when it is a choice: the names an agent fills it with. A checklist the
+// handoff asks for (`asked`) takes every box ticked, as the handoff checks.
+function choicesText(part: Part, asked: boolean): string {
   if (part.kind === 'level') return `; one of ${LEVELS.join(', ')}`;
   if (part.kind === 'yesno') return '; yes or no';
   if (part.options.length === 0 || isEvidence(part)) return '';
   const names = part.options.map(({ name }) => name).join(', ');
-  return part.kind === 'choice' ? `; one of ${names}` : `; any of ${names}`;
+  if (part.kind === 'choice') return `; one of ${names}`;
+  return part.kind === 'check' && asked ? `; tick every one of ${names}` : `; any of ${names}`;
 }
 
 // The analysis matrix weighs items by the fields the board maps to effort, risk and impact

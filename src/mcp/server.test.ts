@@ -217,6 +217,15 @@ describe('mcp server', () => {
       );
     });
 
+    it('takes a note number or an event id as a JSON number', async () => {
+      const reply = await call('reply', { id: 'TASKS-1', answer: 'Hecho', note: 1 });
+      expect(reply.content[0]?.text).not.toMatch(/expected string|Invalid input/i);
+      expect(reply.content[0]?.text).toContain('note');
+
+      const events = await data('events', { id: 'TASKS-1', since: 0 });
+      expect(Array.isArray(events)).toBe(true);
+    });
+
     it('creates and updates items as the agent', async () => {
       const created = await data('create', {
         collection: 'tasks',

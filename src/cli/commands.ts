@@ -122,6 +122,7 @@ import { validateProject } from '../app/validate.ts';
 import { watch } from '../app/watch.ts';
 import { agentGuideFor, TOPICS_RULE } from '../core/agent-guide.ts';
 import { agentPrompt, isPromptKind, PROMPT_KINDS, type PromptKind } from '../core/agent-prompts.ts';
+import { DROPPED_NAME } from '../core/board/next.ts';
 import { fieldsByName, stateName } from '../core/board/reading.ts';
 import type { Lang } from '../core/board/template-words.ts';
 import { isSetKey, LISTED_KEYS, TEMPLATE_SETS, TEMPLATES } from '../core/board/templates.ts';
@@ -228,8 +229,18 @@ function readable<T extends Item>(project: Project, raw: T): T {
     fields: fieldsByName(def, item.fields),
   };
   const view = item as unknown as Partial<ItemView>;
-  const moves = (list: ItemView['transitions']) =>
-    list.map((move) => ({ ...move, to: named(move.to) }));
+  // A drop with each motive is a state of its own, all named Dropped: said once, with the motives.
+  const motives = def.drop.motives.map(({ name }) => name);
+  const moves = (list: ItemView['transitions']) => {
+    const said = new Map<string, ItemView['transitions'][number] & { motives?: string[] }>();
+    for (const move of list) {
+      const to = named(move.to);
+      if (said.has(to)) continue;
+      const drop = to === DROPPED_NAME && motives.length > 0;
+      said.set(to, { ...move, to, ...(drop ? { motives } : {}) });
+    }
+    return [...said.values()];
+  };
   const partName = (ref: unknown) => def.parts[String(ref)]?.name ?? String(ref);
   if (view.transitions) out.transitions = moves(view.transitions);
   if (view.relayable) out.relayable = moves(view.relayable);
