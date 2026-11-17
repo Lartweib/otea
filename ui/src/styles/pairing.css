@@ -393,13 +393,20 @@
   max-height: 300px;
   overflow-y: auto;
 }
-.cprompt-wrap .cprompt p {
+.cprompt-wrap .cprompt p,
+.dialog .cprompt-wrap .cprompt p {
   margin: 0;
+  font: inherit;
+  color: inherit;
 }
-.cprompt-wrap .cprompt p + p {
+.cprompt-wrap .cprompt p + p,
+.dialog .cprompt-wrap .cprompt p + p {
   margin-top: 6px;
 }
-.cprompt-wrap .cprompt code.inl {
+.cprompt-wrap .cprompt code.inl,
+.dialog .cprompt-wrap .cprompt code.inl {
+  padding: 0 3px;
+  background: none;
   font-size: 12px;
   white-space: normal;
   overflow-wrap: anywhere;
