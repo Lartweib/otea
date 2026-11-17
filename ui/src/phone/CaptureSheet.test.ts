@@ -97,10 +97,19 @@ describe('the capture sheet (mock screen 3)', () => {
     expect(html).not.toMatch(/type="submit"[^>]*disabled/);
   });
 
-  it('lets the phone offer its camera or its photos, never the camera alone (DR2-8)', () => {
+  // Chrome on Android 14 and later opens the system photo picker, with no camera, for a file input
+  // without `capture` (DR3-7); one with it opens the camera alone (DR2-8). So there are two.
+  it('offers the camera and the phone’s photos as two buttons (DR2-8, DR3-7)', () => {
+    setLanguage('es');
     const html = render(props());
-    expect(html).toMatch(/<input type="file" accept="image\/\*"/);
-    expect(html).not.toContain('capture=');
+    const inputs = [...html.matchAll(/<input type="file"[^>]*>/g)].map(([tag]) => tag);
+    expect(inputs).toHaveLength(2);
+    expect(inputs[0]).toMatch(/accept="image\/\*"/);
+    expect(inputs[0]).toContain('capture="environment"');
+    expect(inputs[0]).toContain('aria-label="Hacer una foto"');
+    expect(inputs[1]).toMatch(/accept="image\/\*"/);
+    expect(inputs[1]).not.toContain('capture=');
+    expect(inputs[1]).toContain('aria-label="Elegir una foto"');
   });
 
   it('saves once there is a title', () => {
