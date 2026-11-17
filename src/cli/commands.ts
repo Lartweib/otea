@@ -43,7 +43,7 @@ import {
 } from '../app/items.ts';
 import { oteaLauncher } from '../app/launcher.ts';
 import { claimItem, heartbeatItem, releaseItem } from '../app/leases.ts';
-import { markMerged } from '../app/merged.ts';
+import { markMerged, reopenItem } from '../app/merged.ts';
 import { type MigrationReport, migrateToCommon } from '../app/migrate.ts';
 import {
   approveItem,
@@ -1561,6 +1561,23 @@ const merged: Command = {
   },
 };
 
+const reopen: Command = {
+  name: 'reopen',
+  summary:
+    'Take a Done, unmerged item back to the step that pushes its branch (its PR conflicts) and through review again',
+  args: ['id'],
+  options: { reason: { placeholder: 'why its branch must change' } },
+  execute: (input) => {
+    const [id = ''] = input.args;
+    const { actor, channel } = input;
+    const reason = input.option('reason') ?? '';
+    return withAgent(input, (project) => {
+      const { item, text } = reopenItem(project, { id, actor, channel, reason });
+      return { data: item, text };
+    });
+  },
+};
+
 // The proof a tick names: an evidence entry (--evidence 3), a log line (--log build.log:212) or a
 // test of an attached report (--test "suite › name"); at most one.
 function proofSource(option: (name: string) => string | undefined): ProofSource {
@@ -2496,6 +2513,7 @@ export const COMMANDS: readonly Command[] = [
   reply,
   crop,
   merged,
+  reopen,
   tick,
   topicOn,
   topicOff,

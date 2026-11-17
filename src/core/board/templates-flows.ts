@@ -740,8 +740,8 @@ const DELIVERIES: Template = {
   board: w('Deliveries', 'Entregas'),
   item: w('Delivery', 'Entrega'),
   about: w(
-    'One delivery per repo of a Job. It is worked only on its branch; another agent reviews the PR; you approve the merge, in the order its blockers set. Once the delivery is Done, an agent merges it and records it with otea merged.',
-    'Una entrega por repo de un Trabajo. Se trabaja solo en su rama; otro agente revisa el PR; tú apruebas el merge, en el orden que marcan sus bloqueos. Con la entrega terminada, un agente la mergea y lo registra con otea merged.',
+    'One delivery per repo of a Job. It is worked only on its branch; another agent reviews the PR; you approve the merge, in the order its blockers set. Once the delivery is Done, an agent merges it and records it with otea merged; if its PR conflicts by then, the agent reopens it (otea reopen) and it is reviewed again.',
+    'Una entrega por repo de un Trabajo. Se trabaja solo en su rama; otro agente revisa el PR; tú apruebas el merge, en el orden que marcan sus bloqueos. Con la entrega terminada, un agente la mergea y lo registra con otea merged; si para entonces su PR choca, el agente la reabre (otea reopen) y vuelve a revisarse.',
   ),
   idle: w(
     'No deliveries for you. Wait with otea wait --turn agent --unclaimed.',

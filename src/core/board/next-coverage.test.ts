@@ -119,7 +119,7 @@ describe('nextText, the later settings', () => {
     ]);
     const done = nextText(def, { ...base, position: { closed: 'done' } });
     expect(done).toBe(
-      'BUG-4 · Bug · Done\nClosed: nothing left to do. Its branch feat/x may be merged now; once it is, otea merged BUG-4 --pr <url>.',
+      'BUG-4 · Bug · Done\nClosed: nothing left to do. Its branch feat/x may be merged now; once it is, otea merged BUG-4 --pr <url>. If its PR cannot merge as it is (a conflict), otea reopen BUG-4 --reason "…" takes it back to Arreglar.',
     );
   });
 

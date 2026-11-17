@@ -13,6 +13,7 @@ import { listCollections, selectItems } from '../store/queries.ts';
 import { presetOf } from './collections.ts';
 import type { Context } from './context.ts';
 import { type Item, listItems, workflowOf } from './items.ts';
+import { mergedOf } from './merged.ts';
 import { itemOnBoard, type LiveBoard, liveBoards } from './next.ts';
 
 // How one item stands on a gated action: whether its state allows it, and which states do, each
@@ -120,7 +121,14 @@ function boardVerdicts(
         allowed: gateAt(board.def, position, gate).allowed,
         allowedIn,
         allowedInNames: allowedIn.map((state) => stateName(board.def, state)),
-        text: gateText(board.def, item.id, position, gate, round),
+        text: gateText(
+          board.def,
+          item.id,
+          position,
+          gate,
+          round,
+          mergedOf(ctx, item.id) !== undefined,
+        ),
       };
       return { verdict, open: !isClosed(position) };
     });

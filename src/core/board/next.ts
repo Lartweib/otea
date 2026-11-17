@@ -13,6 +13,7 @@ import {
   NOTE_REF,
   NOTES_REF,
   type Position,
+  reopenStep,
   startsWith,
   WAIT_BLOCKERS,
   WAIT_PARTS,
@@ -483,7 +484,7 @@ export function nextText(def: BoardDefinition, input: NextInput): string {
         ? ''
         : input.merged
           ? ` Its branch ${branch.value} was merged${said}.`
-          : ` Its branch ${branch.value} may be merged now; once it is, otea merged ${id} --pr <url>.`;
+          : ` Its branch ${branch.value} may be merged now; once it is, otea merged ${id} --pr <url>.${reopenHint(def, id)}`;
     return `${id} · ${def.item} · ${closedName(def, position)}\nClosed: nothing left to do.${merge}`;
   }
   const step = stepById(def, position.step);
@@ -817,13 +818,31 @@ export function placeText(def: BoardDefinition, position: Position): string {
   return name;
 }
 
-// What otea check answers for one item, in the board's words.
+// The way back for a Done item whose branch is not merged yet: its PR may stop merging as it is
+// (another branch merged first and now conflicts), and its frozen branch cannot be fixed while it
+// stays Done. Empty on a board that protects no branch.
+function reopenHint(def: BoardDefinition, id: string): string {
+  const step = reopenStep(def);
+  const name = step === undefined ? undefined : stepById(def, step)?.name;
+  if (name === undefined) return '';
+  return ` If its PR cannot merge as it is (a conflict), otea reopen ${id} --reason "…" takes it back to ${name}.`;
+}
+
+// The line after otea reopen: where the item stands again, and that it is reviewed again.
+export function reopenedText(def: BoardDefinition, id: string, step: string): string {
+  const name = stepById(def, step)?.name ?? step;
+  return `Reopened ${id}: it is in ${name} again. Fix its branch there and hand it off: it goes through review again before it is ${DONE_NAME}.`;
+}
+
+// What otea check answers for one item, in the board's words. `merged`: whether a Done item's
+// branch was marked merged; while it is not, a refused push says how to reopen it.
 export function gateText(
   def: BoardDefinition,
   id: string,
   position: Position,
   action: GateAction,
   round: number,
+  merged = true,
 ): string {
   const answer = gateAt(def, position, action);
   const push = and(
@@ -848,8 +867,14 @@ export function gateText(
     }
     case 'not_push_step':
       return `push refused: ${id} is in ${where}; its branch can be pushed only while ${push} is being done.`;
-    case 'closed':
-      return `push refused: ${id} is ${closedName(def, position)}; nothing is pushed to a closed item's branch.`;
+    case 'closed': {
+      const refused = `push refused: ${id} is ${closedName(def, position)}; nothing is pushed to a closed item's branch.`;
+      const step = reopenStep(def);
+      const name = step === undefined ? undefined : stepById(def, step)?.name;
+      const done = isClosed(position) && position.closed === DONE;
+      if (!done || merged || name === undefined) return refused;
+      return `${refused} If its PR cannot merge as it is (a conflict), reopen it: otea reopen ${id} --reason "…" takes it back to ${name}, and through review again.`;
+    }
     case 'not_done':
       return isClosed(position)
         ? `merge refused: ${id} is ${closedName(def, position)}; its branch can be merged only once ${id} is ${DONE_NAME}.`
