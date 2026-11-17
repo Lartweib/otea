@@ -112,3 +112,11 @@ export function intakeTarget(
   if (created && want !== created) return 'intake';
   return want;
 }
+
+// A move pressed from the reader once it closes: its button on the page, brought to the middle of
+// the view first, so the reason box it opens under it is where you look, not where you scrolled to
+// read the files.
+export function pressInView(button: Pick<HTMLElement, 'scrollIntoView' | 'click'>): void {
+  button.scrollIntoView({ block: 'center' });
+  button.click();
+}

@@ -58,7 +58,7 @@ import {
 } from './board-item.ts';
 import { Details, detailCells } from './Details.tsx';
 import { boardFactsOf, factsOf, standAgentOf, standOf } from './facts.ts';
-import { toastOf } from './frame.ts';
+import { pressInView, toastOf } from './frame.ts';
 import { History } from './History.tsx';
 import { historyOf } from './history.ts';
 import { type MoveChoice, planMoves } from './moves.ts';
@@ -476,7 +476,10 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
         requestAnimationFrame(press);
         return;
       }
-      root.current?.querySelector<HTMLButtonElement>(`[data-move="${CSS.escape(to)}"]`)?.click();
+      const button = root.current?.querySelector<HTMLButtonElement>(
+        `[data-move="${CSS.escape(to)}"]`,
+      );
+      if (button) pressInView(button);
     };
     requestAnimationFrame(press);
   };
