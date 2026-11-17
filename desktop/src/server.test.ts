@@ -1,5 +1,30 @@
 import { describe, expect, it } from 'vitest';
-import { startOnFreePort } from './server.ts';
+import { cliError, startOnFreePort } from './server.ts';
+
+describe('cliError', () => {
+  it('keeps the code and the details of the CLI’s JSON error', () => {
+    const error = cliError(
+      JSON.stringify({
+        error: {
+          code: 'already_exists',
+          message: 'The Otea project at /p already covers /p/api',
+          details: { kind: 'covered', root: '/p/api', covering: '/p' },
+        },
+      }),
+      'fallback',
+    );
+    expect(error.message).toBe('The Otea project at /p already covers /p/api');
+    expect(error).toMatchObject({
+      code: 'already_exists',
+      details: { kind: 'covered', root: '/p/api', covering: '/p' },
+    });
+  });
+
+  it('is the text itself when it is not JSON, and the fallback when there is none', () => {
+    expect(cliError('boom\n', 'fallback').message).toBe('boom');
+    expect(cliError('', 'fallback').message).toBe('fallback');
+  });
+});
 
 const inUse = (port: number) =>
   new Error(`Port ${port} is already in use; stop the other process or pass --port <n>`);

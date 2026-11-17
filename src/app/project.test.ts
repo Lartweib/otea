@@ -9,7 +9,7 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { basename, join } from 'node:path';
+import { basename, join, resolve } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { openDatabase } from '../store/database.ts';
 import { migrate } from '../store/migrations.ts';
@@ -270,8 +270,26 @@ describe('project', () => {
     it('is not found from a folder outside it', () => {
       productFolder();
 
-      expect(() => openProject(tempDir(), ENV)).toThrow(
-        expect.objectContaining({ code: 'not_found' }),
+      const outside = tempDir();
+      expect(() => openProject(outside, ENV)).toThrow(
+        expect.objectContaining({
+          code: 'not_found',
+          details: { kind: 'no_project', root: resolve(outside) },
+        }),
+      );
+    });
+
+    it('names the repo root, where init would make it, when a subfolder has no project', () => {
+      const repo = tempDir();
+      git(repo, 'init', '--quiet');
+      const sub = join(repo, 'sub');
+      mkdirSync(sub);
+
+      expect(() => openProject(sub, ENV)).toThrow(
+        expect.objectContaining({
+          code: 'not_found',
+          details: { kind: 'no_project', root: resolve(repo) },
+        }),
       );
     });
 
@@ -282,6 +300,7 @@ describe('project', () => {
         expect.objectContaining({
           code: 'already_exists',
           message: expect.stringContaining(product),
+          details: { kind: 'covered', root: api, covering: product },
         }),
       );
       expect(existsSync(join(api, '.otea'))).toBe(false);

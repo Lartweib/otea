@@ -5,6 +5,7 @@ import { type ChildProcess, execFile, spawn } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { createInterface } from 'node:readline';
+import type { Probe } from './pick.ts';
 
 // `env` is added to the environment the CLI runs in.
 export type Cli = {
@@ -43,10 +44,22 @@ export function bundledCli(resourcesPath: string, execPath: string): Cli {
 
 const envOf = (cli: Cli) => (cli.env ? { ...process.env, ...cli.env } : process.env);
 
-function failure(stderr: string, fallback: string): Error {
+// A failure of the CLI: its message, and with --json its code and details, for the shell to say
+// it in its own words.
+export type CliError = Error & { code?: string; details?: unknown };
+
+export function cliError(stderr: string, fallback: string): CliError {
   try {
-    const parsed = JSON.parse(stderr) as { error?: { message?: string } };
-    if (parsed.error?.message) return new Error(parsed.error.message);
+    const parsed = JSON.parse(stderr) as {
+      error?: { code?: string; message?: string; details?: unknown };
+    };
+    const { code, message, details } = parsed.error ?? {};
+    if (message) {
+      return Object.assign(new Error(message), {
+        ...(code === undefined ? {} : { code }),
+        ...(details === undefined ? {} : { details }),
+      });
+    }
   } catch {
     // not JSON: the text itself says it
   }
@@ -60,7 +73,7 @@ function runJson<T>(cli: Cli, cwd: string, args: readonly string[]): Promise<T> 
       [...cli.args, ...args, '--json'],
       { cwd, windowsHide: true, env: envOf(cli) },
       (error, stdout, stderr) => {
-        if (error) reject(failure(stderr, error.message));
+        if (error) reject(cliError(stderr, error.message));
         else resolve(JSON.parse(stdout) as T);
       },
     );
@@ -71,10 +84,23 @@ export function currentProject(cli: Cli, cwd: string): Promise<Project> {
   return runJson(cli, cwd, ['projects', 'current']);
 }
 
-// `otea init` in the folder: the project at its repository root (or the folder), made or reused.
-export async function createProject(cli: Cli, cwd: string): Promise<Project> {
-  await runJson(cli, cwd, ['init']);
-  return currentProject(cli, cwd);
+// Whether the folder is in a project; when it is not, the CLI names where init would make one.
+export async function probeProject(cli: Cli, cwd: string): Promise<Probe> {
+  try {
+    await currentProject(cli, cwd);
+    return { kind: 'project' };
+  } catch (error) {
+    const { code, details } = error as CliError;
+    const root = (details as { kind?: string; root?: unknown } | undefined)?.root;
+    if (code === 'not_found' && typeof root === 'string') return { kind: 'none', root };
+    throw error;
+  }
+}
+
+// `otea init` in the folder: the project at its repository root (or the folder), made or reused;
+// `here` makes a separate one inside a project that covers the folder.
+export async function createProject(cli: Cli, cwd: string, here = false): Promise<void> {
+  await runJson(cli, cwd, here ? ['init', '--here'] : ['init']);
 }
 
 export function readServeFile(dataDir: string): { port: number; pid: number } | undefined {
@@ -129,7 +155,7 @@ export function startServe(
       stderr += chunk.toString();
     });
     child.once('error', reject);
-    child.once('exit', (code) => reject(failure(stderr, `otea serve exited with code ${code}`)));
+    child.once('exit', (code) => reject(cliError(stderr, `otea serve exited with code ${code}`)));
     const lines = createInterface({ input: child.stdout as NodeJS.ReadableStream });
     lines.once('line', (line) => {
       try {
