@@ -4,6 +4,7 @@ import type { Context } from './context.ts';
 import { memoryContext } from './testing.ts';
 import {
   addTopic,
+  answerFromSession,
   answerTopic,
   closeTopic,
   convertTopic,
@@ -241,5 +242,49 @@ describe('the list', () => {
       'TEM-3 answered',
     ]);
     expect(listTopics(ctx, { all: true }, now).map(({ id }) => id)).toContain('TEM-4');
+  });
+});
+
+describe('an answer read from the session', () => {
+  it('fills in the full answer of the topic the agent answered this turn, by its session', () => {
+    addTopic(ctx, { question: 'q', actor: quill, session: 's-1' }, now);
+    later(5_000);
+    const since = now();
+    later(1_000);
+    answerTopic(ctx, { id: 'TEM-1', summary: 'corto', full: 'copia', actor: quill }, now);
+
+    expect(answerFromSession(ctx, { session: 's-1', since, text: 'Lo que escribió.' }, now)).toBe(
+      'TEM-1',
+    );
+    expect(requireTopic(ctx, 'TEM-1', now).turns.at(-1)).toMatchObject({
+      text: 'corto',
+      full: 'Lo que escribió.',
+      source: 'session',
+    });
+  });
+
+  it('takes the one topic answered this turn when no session was given, and never an older one', () => {
+    addTopic(ctx, { question: 'viejo', actor: quill }, now);
+    answerTopic(ctx, { id: 'TEM-1', summary: 's', actor: quill }, now);
+    later(60_000);
+    const since = now();
+    later(1_000);
+    addTopic(ctx, { question: 'nuevo', actor: quill }, now);
+    answerTopic(ctx, { id: 'TEM-2', summary: 's', actor: quill }, now);
+
+    expect(answerFromSession(ctx, { session: 's-9', since, text: 'texto' }, now)).toBe('TEM-2');
+    expect(requireTopic(ctx, 'TEM-2', now).session).toBe('s-9');
+    expect(requireTopic(ctx, 'TEM-1', now).turns.at(-1)?.source).toBe('agent');
+  });
+
+  it('does nothing when it cannot tell which topic, or none was answered this turn', () => {
+    const since = now();
+    later(1_000);
+    expect(answerFromSession(ctx, { session: 's', since, text: 't' }, now)).toBeUndefined();
+    addTopic(ctx, { question: 'a', actor: quill }, now);
+    addTopic(ctx, { question: 'b', actor: quill }, now);
+    answerTopic(ctx, { id: 'TEM-1', summary: 's', actor: quill }, now);
+    answerTopic(ctx, { id: 'TEM-2', summary: 's', actor: quill }, now);
+    expect(answerFromSession(ctx, { session: 's', since, text: 't' }, now)).toBeUndefined();
   });
 });

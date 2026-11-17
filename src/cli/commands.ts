@@ -102,6 +102,7 @@ import {
 import type { TailscaleCli } from '../app/tailscale.ts';
 import {
   addTopic,
+  answerFromSession,
   answerTopic,
   closeTopic,
   linkTopic,
@@ -141,6 +142,7 @@ import { createServer } from '../server/server.ts';
 import { ensureUiToken, readUiToken } from '../server/token.ts';
 import { type EventFilter, findProfile, type ProfileView, profileView } from '../store/queries.ts';
 import { mergeTarget, prBranches, pushTargets, readHookEvent, UnreadPr } from './claude-hook.ts';
+import { lastExchange, readStopEvent } from './claude-transcript.ts';
 import { type Command, CommandFailure, type Input, type Output, UsageError } from './command.ts';
 import {
   columns,
@@ -2366,6 +2368,45 @@ const topicNote: Command = {
   },
 };
 
+// The Claude Code Stop hook (otea hook install --claude): at the end of the agent's turn it reads
+// the session's transcript and keeps the answer the agent wrote in the chat on the topic it
+// answered this turn, over the agent's own copy. It never fails the hook: nothing to keep, topics
+// off, or a transcript it cannot read all end quietly.
+const topicSession: Command = {
+  name: 'topic session',
+  summary:
+    "For Claude Code's Stop hook (--claude-hook, the event on stdin): keep the answer the agent wrote in its chat on the topic it answered this turn",
+  args: [],
+  options: { 'claude-hook': { flag: true } },
+  execute: async (input) => {
+    const quiet = { data: { topic: null }, text: '' };
+    if (!input.flag('claude-hook'))
+      throw new UsageError('topic session runs as a hook: --claude-hook');
+    const event = readStopEvent(await input.stdin());
+    if (!event) return quiet;
+    let transcript: string;
+    try {
+      transcript = readFileSync(event.transcript, 'utf8');
+    } catch {
+      return quiet;
+    }
+    const exchange = lastExchange(transcript);
+    if (!exchange) return quiet;
+    try {
+      return withProject(input.cwd, (project) => {
+        if (!topicsOn(project)) return quiet;
+        const topic = answerFromSession(project, { session: event.session, ...exchange });
+        return {
+          data: { topic: topic ?? null },
+          text: topic ? `Kept the answer on ${topic}.` : '',
+        };
+      });
+    } catch {
+      return quiet;
+    }
+  },
+};
+
 const topicClose: Command = {
   name: 'topic close',
   summary: 'For the person: close a topic you have read',
@@ -2425,6 +2466,7 @@ export const COMMANDS: readonly Command[] = [
   topicShow,
   topicNote,
   topicClose,
+  topicSession,
   ask,
   handoffCommand,
   dropCommand,

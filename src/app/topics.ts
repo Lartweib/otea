@@ -545,3 +545,42 @@ export function topicsListText(topics: readonly Topic[]): string {
   if (topics.length === 0) return 'No topics wait on anyone.';
   return topics.map((topic) => `${topic.id}  ${topic.state.padEnd(8)}  ${topic.title}`).join('\n');
 }
+
+export type SessionAnswer = { session: string; since: string; text: string };
+
+// The answer as the agent wrote it in its chat, read from its session at the end of its turn (the
+// Claude Code Stop hook): it goes to the topic the agent answered this turn, the one of this
+// session, or the only one answered this turn when the agent gave no session. Nothing when it
+// cannot tell which. Returns the topic it went to.
+export function answerFromSession(
+  ctx: Context,
+  input: SessionAnswer,
+  now = systemClock,
+): string | undefined {
+  const text = input.text.trim();
+  if (text === '') return undefined;
+  const rows = ctx.db
+    .prepare(
+      `SELECT t.* FROM topics t
+       WHERE t.state = 'answered' AND t.updated_at >= ?
+         AND (SELECT kind FROM topic_turns n WHERE n.topic_id = t.id ORDER BY n.id DESC LIMIT 1) = 'answer'`,
+    )
+    .all(input.since) as TopicRow[];
+  const ofSession = rows.filter((row) => row.session === input.session);
+  const unnamed = rows.filter((row) => row.session === null);
+  const candidates = ofSession.length > 0 ? ofSession : unnamed;
+  const [target] = candidates.length === 1 ? candidates : [];
+  if (!target?.agent) return undefined;
+  answerTopic(
+    ctx,
+    {
+      id: target.id,
+      full: text,
+      source: 'session',
+      actor: { kind: 'agent', name: target.agent },
+      session: input.session,
+    },
+    now,
+  );
+  return target.id;
+}

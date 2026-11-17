@@ -231,6 +231,24 @@ otea events --item TAR-1 --follow                          # keep printing new e
 - Every text of the CLI and the MCP tools says a time one way, as its UTC day and minute: `2026-11-12 10:04 UTC` (a lease, an event, a refusal). `--json` keeps the full ISO timestamp.
 - `otea events` prints the event log in commit order, filtered by `--item` and `--collection`. Each event has an id; pass the last one you read to `--since` to get only newer ones, and `--limit <n>` to read at most n. With `--json` each line is an event shaped like the ones in `otea show --json` (`id`, `itemId`, `type`, `actor`, `at`, `data`). On a board, whose steps and fields are stored under hidden ids, the text names them, and `--json` gives each id its name beside it (`stateName`, `fromName` and `toName`, `moduleName`, and a `name` on each field change). Items read the same way in `--json` and MCP: `stateName` beside `state`, `fields` as a list of `{ id, name, value }` (a choice also has its `label`), and each move's `toName`; the ids stay the keys a program sends back. `--follow` keeps printing new events as any process commits them, until Ctrl+C (exit 0); it cannot be combined with `--limit`.
 
+### Side topics
+
+The questions you ask an agent off the work at hand ("why is the Windows build slow?") get answered in the chat and then lost. With topics on, the agent keeps each one as a short conversation, and the page lists what is left hanging. Topics are off until you turn them on, and they are never work: no lease, and `otea next` never offers one.
+
+```sh
+otea topic on                                                    # you, once per project (or Settings › Topics)
+otea topic add "Why is the Windows build slow?" --as quill       # the agent records your question
+otea topic answer TEM-1 --summary "Defender scans node_modules." --full "<the whole answer>" --as quill
+otea topic note TEM-1 "And on Linux?"                            # you keep it going; a waiting agent wakes for it
+otea topic close TEM-1                                           # only you close a topic
+otea create --collection Cambios --title "Exclude node_modules" --field "Qué quiero=Faster builds" --from TEM-1 --as quill
+```
+
+- An open topic is the agent's turn; once answered it is yours, and Te toca folds the answered ones under its lanes. One nobody touched for a day reads as left hanging.
+- Each answer shows its summary, with the full answer folded below and where that text came from: copied by the agent, or read from the session. `otea hook install --claude` adds a Claude Code Stop hook that reads the session's transcript at the end of each turn and keeps the answer as the agent wrote it; it wins over the agent's copy.
+- From the page you can turn a topic into a task on a board you pick, linked both ways. An item lists its related topics, says while it is your turn that one is still open, and offers to close them once it is finished; a topic the same agent opened shortly before making the item is suggested, for you to link or wave off.
+- While topics are on, the agent guide (MCP instructions, `otea board`) tells agents to record them; while off it never mentions them.
+
 ### Telling agents what to do
 
 An agent finds its instructions in the project itself, in the words of each board:
