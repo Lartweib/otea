@@ -178,7 +178,7 @@ describe('leases', () => {
     it('is released when the holder moves it to review', async () => {
       const { out } = await otea('move', 'TASKS-1', 'todo__review', '--as', 'claude');
 
-      expect(out).toBe('TASKS-1  Hacerlo (in review)  human  First\n');
+      expect(out).toBe('TASKS-1  Hacerlo (en revisión)  human  First\n');
       expect((await otea('show', 'TASKS-1')).out).toMatch(/released +claude \(handed off\)$/m);
     });
 

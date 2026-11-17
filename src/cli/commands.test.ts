@@ -287,7 +287,7 @@ describe('commands', () => {
         it('prints aligned columns: id, state, turn, title', async () => {
           expect(await otea('list')).toMatchObject({
             code: 0,
-            out: 'TASKS-1  Hacerlo              agent  Write docs\nBUGS-1   Hacerlo (in review)  human  Fix login\n',
+            out: 'TASKS-1  Hacerlo                agent  Write docs\nBUGS-1   Hacerlo (en revisión)  human  Fix login\n',
           });
         });
 
@@ -351,7 +351,7 @@ describe('commands', () => {
 
           expect(events).toHaveLength(3);
           expect(events[1]).toMatch(/updated +Prioridad: "Media" -> "Alta"$/);
-          expect(events[2]).toMatch(/transitioned {2}Hacerlo -> Hacerlo \(in review\)$/);
+          expect(events[2]).toMatch(/transitioned {2}Hacerlo -> Hacerlo \(en revisión\)$/);
         });
 
         it('prints the item with events with --json', async () => {
@@ -395,7 +395,7 @@ describe('commands', () => {
           expect((await json('show', 'TASKS-1')).transitions).toEqual([
             {
               to: 'todo__review',
-              toName: 'Hacerlo (in review)',
+              toName: 'Hacerlo (en revisión)',
               by: 'agent',
               reasonRequired: false,
               turn: 'human',
@@ -492,7 +492,7 @@ describe('commands', () => {
         it('prints the moved item as a list row', async () => {
           expect(await otea('move', 'TASKS-1', 'todo__review')).toMatchObject({
             code: 0,
-            out: 'TASKS-1  Hacerlo (in review)  human  Write docs\n',
+            out: 'TASKS-1  Hacerlo (en revisión)  human  Write docs\n',
           });
         });
 
@@ -515,7 +515,7 @@ describe('commands', () => {
             error: {
               code: 'invalid_transition',
               message:
-                'TASKS-1 cannot go to Done: a handoff from Hacerlo goes to Hacerlo (in review); use otea handoff TASKS-1',
+                'TASKS-1 cannot go to Done: a handoff from Hacerlo goes to Hacerlo (en revisión); use otea handoff TASKS-1',
             },
           });
         });
@@ -535,12 +535,12 @@ describe('commands', () => {
             from: 'todo',
             fromName: 'Hacerlo',
             to: 'todo__review',
-            toName: 'Hacerlo (in review)',
+            toName: 'Hacerlo (en revisión)',
             reason: 'Ready',
             channel: 'cli',
           });
           expect((await otea('show', 'TASKS-1')).out).toMatch(
-            /transitioned {2}Hacerlo -> Hacerlo \(in review\) \(Ready\)$/m,
+            /transitioned {2}Hacerlo -> Hacerlo \(en revisión\) \(Ready\)$/m,
           );
         });
 
@@ -548,7 +548,7 @@ describe('commands', () => {
           const { code, err } = await otea('relay', 'BUGS-1', 'todo', '--quote', 'redo');
 
           expect(code).toBe(2);
-          expect(err).toContain('Moving from "Hacerlo (in review)" to "Hacerlo" requires a reason');
+          expect(err).toContain('Moving from "Hacerlo (en revisión)" to "Hacerlo" requires a reason');
           expect(
             (
               await otea(

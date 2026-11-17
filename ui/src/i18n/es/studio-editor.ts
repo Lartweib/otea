@@ -242,7 +242,7 @@ export const studioEditor = {
   'bs.editor.done.fixed': 'Hecho no se configura: es el mismo para todos los tableros.',
   'bs.editor.about.kicker': 'El tablero',
   'bs.editor.about.item': 'Cada ítem se llama',
-  'bs.editor.about.item_ph': 'Bug, Criatura, Entrada…',
+  'bs.editor.about.item_ph': 'Error, Artículo, Decisión…',
   'bs.editor.about.names':
     'Escribe los nombres como los dices: con mayúsculas, acentos o espacios. Por debajo, cada nombre lleva un id oculto, así que renombrar nunca rompe la historia.',
   'bs.editor.about.icon': 'Icono',
@@ -251,7 +251,7 @@ export const studioEditor = {
   'bs.editor.about.about': 'Sobre este tablero',
   'bs.editor.about.about_small': 'el contexto que vale para todos los pasos',
   'bs.editor.about.about_ph':
-    'Ej.: Cada criatura de Hollowmere, del boceto a la escena. El estilo manda.',
+    'Ej.: Los errores que reportan quienes usan la app, del reporte al arreglo. Primero se reproduce, después se arregla.',
   'bs.editor.about.idle': 'Cuando no hay nada que hacer',
   'bs.editor.about.idle_small': 'opcional; lo que hace un agente desocupado',
   'bs.editor.about.idle_ph':

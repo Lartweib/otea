@@ -44,7 +44,7 @@ describe('events', () => {
     expect(second).toMatch(new RegExp(`^2  BUGS-1  ${AT}  agent:claude  created  Hacerlo$`));
     expect(third).toMatch(
       new RegExp(
-        `^3 {2}TASKS-1 {2}${AT} {2}agent:claude {2}transitioned {2}Hacerlo -> Hacerlo \\(in review\\)$`,
+        `^3 {2}TASKS-1 {2}${AT} {2}agent:claude {2}transitioned {2}Hacerlo -> Hacerlo \\(en revisión\\)$`,
       ),
     );
     expect(rest).toEqual([]);
@@ -120,7 +120,7 @@ describe('events', () => {
       await until(() => lines(follow.out()).length === 2);
       await follow.stop();
 
-      expect(lines(follow.out())[1]).toMatch(/^5 {2}BUGS-1 .* Hacerlo -> Hacerlo \(in review\)$/);
+      expect(lines(follow.out())[1]).toMatch(/^5 {2}BUGS-1 .* Hacerlo -> Hacerlo \(en revisión\)$/);
     });
   });
 });

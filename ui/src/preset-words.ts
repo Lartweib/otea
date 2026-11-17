@@ -15,14 +15,15 @@ export function stateWord(type: TypeView | undefined, state: string): string {
   return wordsOf(type)?.states[state] ?? state;
 }
 
-// A state name an event kept when it was written (stateName, toName): Otea writes it in English
-// (Done, Dropped (Duplicado), Refinar (in review)); said here in the language on screen.
+// A state name an event kept when it was written (stateName, toName): Done and Dropped in English,
+// a review in the board's language (Refinar (en revisión), or (in review) on an English board);
+// said here in the language on screen.
 export function keptStateWord(name: string): string {
   if (name === 'Done') return t('node.done');
   if (name === 'Dropped') return t('node.discarded');
   const motive = /^Dropped \((.+)\)$/.exec(name);
   if (motive?.[1]) return motive[1];
-  const review = /^(.+) \(in review\)$/.exec(name);
+  const review = /^(.+) \((?:in review|en revisión)\)$/.exec(name);
   if (review?.[1]) return t('state.inReview', { step: review[1] });
   return name;
 }

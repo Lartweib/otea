@@ -114,6 +114,7 @@ describe('keptStateWord', () => {
     expect(keptStateWord('Refinar')).toBe('Refinar');
     setLanguage('en');
     expect(keptStateWord('Refinar (in review)')).toBe('Refinar · in review');
+    expect(keptStateWord('Refinar (en revisión)')).toBe('Refinar · in review');
     expect(keptStateWord('Done')).toBe('Done');
   });
 });

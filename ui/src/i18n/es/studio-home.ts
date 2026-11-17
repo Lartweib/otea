@@ -66,10 +66,10 @@ export const studioHome = {
   'bs.new.lede':
     'Un tablero es el camino que sigue un tipo de trabajo: una fila de pasos que termina en Hecho.',
   'bs.new.name': 'Nombre del tablero',
-  'bs.new.namePlaceholder': 'Criaturas, Bugs, Diario…',
+  'bs.new.namePlaceholder': 'Errores, Contenido, Decisiones…',
   'bs.new.item': 'Cada ítem se llama',
-  'bs.new.itemPlaceholder': 'Criatura, Bug, Entrada…',
-  'bs.new.itemHint': 'Es la palabra que verás en botones y listas: «Crear · Criatura».',
+  'bs.new.itemPlaceholder': 'Error, Artículo, Decisión…',
+  'bs.new.itemHint': 'Es la palabra que verás en botones y listas: «Crear · Error».',
   'bs.new.starts': 'Empieza',
   'bs.new.blankText':
     'Un paso, {step}: cualquier agente lo hace y tú lo revisas. Ya funciona, y lo vas afinando.',
@@ -95,10 +95,10 @@ export const studioHome = {
   'bs.ask.title': 'Que lo esboce un agente',
   'bs.ask.lede':
     'Se crea un pedido. Cuando el agente entregue su borrador, lo abres aquí, lo pruebas y decides.',
-  'bs.ask.namePlaceholder': 'Criaturas',
+  'bs.ask.namePlaceholder': 'Errores reportados',
   'bs.ask.need': 'Qué necesitas',
   'bs.ask.needPlaceholder':
-    'Ej.: Quiero que me abra tareas por cada criatura que creo en el motor y me vaya dando evidencia de los avances para aprobar o refinar.',
+    'Ej.: Quiero que abra un ítem por cada error que reporten los usuarios, lo reproduzca y me muestre la evidencia del arreglo para aprobarlo o devolverlo.',
   'bs.ask.who': 'Quién lo esboza',
   'bs.ask.send': 'Pedir el borrador',
   'bs.ask.sending': 'Pidiendo…',

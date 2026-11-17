@@ -156,13 +156,26 @@ export function evidenceByName(def: BoardDefinition, key: string): string {
   );
 }
 
+// How a review reads after its step's name, in the board's language (Concepto (en revisión)).
+const IN_REVIEW: Readonly<Record<Lang, string>> = { en: 'in review', es: 'en revisión' };
+
 // A state as a reader says it: the step's name, with its review when it is one.
 export function stateName(def: BoardDefinition, state: string): string {
   const position = positionOf(state);
   if (isClosed(position)) return position.closed === DONE ? DONE_NAME : DROPPED_NAME;
   const name = stepById(def, position.step)?.name ?? position.step;
-  if (position.phase === 'review') return `${name} (in review)`;
+  if (position.phase === 'review') return `${name} (${IN_REVIEW[langOf(def)]})`;
   return name;
+}
+
+// A review named in either language reads as the board says it, so `(in review)` still finds
+// `Concepto (en revisión)` and the other way round.
+function reviewSaidAsBoard(def: BoardDefinition, wanted: string): string {
+  const said = IN_REVIEW[langOf(def)];
+  return Object.values(IN_REVIEW).reduce(
+    (text, other) => (text.endsWith(`(${other})`) ? `${text.slice(0, -other.length - 2)}(${said})` : text),
+    wanted,
+  );
 }
 
 // Every state of the board's compiled workflow, closed ones included.
@@ -186,7 +199,7 @@ export function stateByName(def: BoardDefinition, text: string): string {
 
 // The state a reader names, by name (in any case) or id; undefined when the board has none.
 export function findState(def: BoardDefinition, text: string): string | undefined {
-  const wanted = fold(text);
+  const wanted = fold(reviewSaidAsBoard(def, text));
   if (['hecho', 'done'].includes(wanted)) return DONE;
   if (['descartado', 'dropped'].includes(wanted)) return DROPPED;
   return statesOf(def).find((state) => state === text || fold(stateName(def, state)) === wanted);
