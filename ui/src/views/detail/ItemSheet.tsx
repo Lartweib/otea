@@ -6,6 +6,7 @@ import type { NoteAnchorInput } from '../../api.ts';
 import { typeOfItem, useApp } from '../../app/context.tsx';
 import { boardOfCollection, boardsOf, useBoards } from '../../board-studio/home/boards-store.ts';
 import { DeskReader } from '../../components/evidence/DeskReader.tsx';
+import { EvidenceReader } from '../../components/evidence/EvidenceViewer.tsx';
 import { ItemEvidence } from '../../components/evidence/item-evidence.ts';
 import { READ_AT, type ReaderPick } from '../../components/evidence/reader-pick.ts';
 import { noteAnchor } from '../../components/evidence/video-moment.ts';
@@ -15,6 +16,7 @@ import { GhostButton, Icon, StepPill, Swap, toast } from '../../kit/index.ts';
 import { laneOf } from '../../lanes/geometry.ts';
 import { lookOf } from '../../lanes/looks.ts';
 import { NodeGlyph } from '../../lanes/NodeGlyph.tsx';
+import { BottomSheet } from '../../phone/BottomSheet.tsx';
 import { ItemTypeScope, stateWord, stateWordIn, typeWord } from '../../preset-words.ts';
 import { roundsOf } from '../../rounds.ts';
 import { studioHash } from '../../selection.ts';
@@ -731,6 +733,29 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
                 : undefined
             }
           />
+          {canRead ? (
+            // A proof chip, or a note's cite on a line, opens the round's files here at that file:
+            // the phone's own reader, as the desk opens its reader.
+            <BottomSheet
+              open={!!readAt?.open}
+              label={t('phone.r.reader')}
+              title={t('phone.r.reader')}
+              className="p-sb p-read"
+              onClose={closeReader}
+            >
+              {readAt?.open ? (
+                <div data-i="">
+                  <EvidenceReader
+                    evidence={reader.files}
+                    at={readAt.at}
+                    onAt={(at) => setReading({ item: item.id, at, open: true })}
+                    phone
+                    start={start}
+                  />
+                </div>
+              ) : null}
+            </BottomSheet>
+          ) : null}
         </ItemEvidence.Provider>
       </ItemTypeScope>
     );
