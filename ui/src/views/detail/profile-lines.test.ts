@@ -174,4 +174,24 @@ describe('Quién lo hace', () => {
     expect(cells({ kind: 'human', name: 'fede' })?.value).toBe('Tú');
     expect(cells(null)?.value).toBe('—');
   });
+
+  it('says the type only where the board holds several, never repeating its only one', () => {
+    setLanguage('es');
+    const view = {
+      ...item({ id: 'ERR-1' }),
+      events: events.slice(0, 3),
+      transitions: [],
+      relayable: [],
+      missing: [],
+      evidence: [],
+      relations: [],
+    } as unknown as ItemView;
+    const facts = factsOf(view, bug, NOW);
+    const labels = (types: number) =>
+      detailCells({ item: view, type: bug, facts, own: false, now: NOW, types }).map(
+        ({ label }) => label,
+      );
+    expect(labels(1)).not.toContain('Tipo');
+    expect(labels(2)).toContain('Tipo');
+  });
 });

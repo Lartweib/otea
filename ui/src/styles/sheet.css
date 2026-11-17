@@ -1041,19 +1041,24 @@ section.evidence,
   gap: 2px;
   min-width: 0;
 }
+/* Held by height, not line-clamp: a Markdown value is blocks (div.md > p), which a line-clamp
+   box does not cut (DR-6). Three lines, the last fading out. */
 .dv-clamp {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
-  line-clamp: 3;
+  display: block;
   max-width: 100%;
+  max-height: calc(3lh + 1px);
   overflow: hidden;
   overflow-wrap: anywhere;
 }
+.dv-clamp :is(p, ul, ol, pre, blockquote):first-child {
+  margin-top: 0;
+}
+.dv-wrap:not([data-open="true"]) .dv-clamp:has(+ .dv-more) {
+  -webkit-mask-image: linear-gradient(180deg, #000 calc(100% - 1lh), transparent);
+  mask-image: linear-gradient(180deg, #000 calc(100% - 1lh), transparent);
+}
 .dv-wrap[data-open="true"] .dv-clamp {
-  display: block;
-  -webkit-line-clamp: none;
-  line-clamp: none;
+  max-height: none;
 }
 .dlist > div:has(.dv-wrap[data-open="true"]) {
   grid-column: 1 / -1;
