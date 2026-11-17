@@ -154,6 +154,8 @@ export const board = {
   'boardView.mode.lista': 'Lista',
   'boardView.mode.tabla': 'Tabla',
   'boardView.mode.matriz': 'Matriz',
+  'matrix.estimatedCount': { one: '{count} estimado', other: '{count} estimados' },
+  'matrix.chip': 'Matriz',
   'matrix.across': 'A lo ancho',
   'matrix.up': 'Hacia arriba',
   'matrix.hint':

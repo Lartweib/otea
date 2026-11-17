@@ -9,7 +9,7 @@ import {
 } from 'react';
 import { flushSync } from 'react-dom';
 import { viewsOf } from '../../../../src/core/board/analysis.ts';
-import { setOrder } from '../../api.ts';
+import { pinItems, setOrder } from '../../api.ts';
 import { useApp } from '../../app/context.tsx';
 import { Q } from '../../app/queue.ts';
 import { workspace } from '../../app/workspace.ts';
@@ -33,7 +33,7 @@ import type { CollectionView, Item } from '../../types.ts';
 import type { ViewPrefs } from '../../view-prefs.ts';
 import { moveSplit } from '../detail/DetailHost.tsx';
 import { universeOf } from '../toca/TocaView.tsx';
-import { MatrixView } from './Matrix.tsx';
+import { MatrixView, PhoneMatrix } from './Matrix.tsx';
 import { ColumnMenu, ColumnsMenu, FilterMenu, GroupMenu, ShowOnlyMenu } from './menus.tsx';
 import {
   applyFilters,
@@ -221,7 +221,10 @@ function Board({ board }: { board: string }) {
 
   const studio = useStudioBoard(board);
   // The Matrix, a fourth way to look at a Studio board that mapped two scale roles (desk only).
-  const canMatrix = !app.phone && studio !== null && viewsOf(studio.live).includes('matrix');
+  const hasMatrix = studio !== null && viewsOf(studio.live).includes('matrix');
+  const canMatrix = !app.phone && hasMatrix;
+  // On the phone the Matrix is a chip beside the steps: its index and zones replace the list.
+  const [phoneMatrix, setPhoneMatrix] = useState(false);
   const [matrixOn, setMatrixOn] = useState(() => readMatrix(board));
   const matrix = canMatrix && matrixOn;
   const showMatrix = (on: boolean) => {
@@ -590,7 +593,26 @@ function Board({ board }: { board: string }) {
       <Head board={board} items={items} studio={studio} />
       {phone ? (
         // On the phone a board is read: no Crear, no Editar tablero; Nuevo is in the bottom bar.
-        <StepChips chips={phoneChips(col, items)} on={step} onPick={setStep} />
+        <StepChips
+          chips={phoneChips(col, items)}
+          on={phoneMatrix ? null : step}
+          onPick={(k) => {
+            setPhoneMatrix(false);
+            setTicked([]);
+            setStep(k);
+          }}
+          matrix={
+            app.phone && hasMatrix
+              ? {
+                  on: phoneMatrix,
+                  pick: () => {
+                    setTicked([]);
+                    setPhoneMatrix(true);
+                  },
+                }
+              : undefined
+          }
+        />
       ) : (
         <>
           {studio ? <BoardActs studio={studio} canWrite={app.session.canWrite} /> : null}
@@ -632,7 +654,40 @@ function Board({ board }: { board: string }) {
             </button>
           </p>
         ) : null}
-        {matrix && studio ? (
+        {phone && phoneMatrix && studio ? (
+          <PhoneMatrix
+            def={studio.live}
+            items={items.filter((it) => it.turn !== 'none')}
+            ticked={ticked}
+            onTick={(id) =>
+              setTicked((cur) => (cur.includes(id) ? cur.filter((k) => k !== id) : [...cur, id]))
+            }
+            onOpen={open}
+            onPin={(ids, pinned) =>
+              Q.run(() => pinItems(ids, pinned)).then(
+                () => {
+                  toast({
+                    msg: pinned
+                      ? t('boardView.tray.pinned', { count: ids.length })
+                      : t('boardView.tray.unpinned', { count: ids.length }),
+                    at: 'top',
+                  });
+                  setTicked([]);
+                },
+                () => toast({ msg: t('boardView.tray.pinFailed'), at: 'top' }),
+              )
+            }
+            onOrder={(ids) =>
+              Q.run(() => setOrder(board, ids)).then(
+                () => {
+                  toast({ msg: t('matrix.ordered', { count: ids.length }), at: 'top' });
+                  setTicked([]);
+                },
+                () => toast({ msg: t('matrix.orderFailed'), at: 'top' }),
+              )
+            }
+          />
+        ) : matrix && studio ? (
           <MatrixView
             collection={board}
             def={studio.live}
@@ -931,10 +986,12 @@ function StepChips({
   chips,
   on,
   onPick,
+  matrix,
 }: {
   chips: StepChip[];
   on: string | null;
   onPick: (step: string | null) => void;
+  matrix?: { on: boolean; pick: () => void } | undefined;
 }) {
   return (
     <fieldset className="stepchips" aria-label={t('phone.steps')} data-enter="fade">
@@ -942,12 +999,17 @@ function StepChips({
         <button
           key={c.key ?? ''}
           type="button"
-          aria-pressed={c.key === on}
+          aria-pressed={!matrix?.on && c.key === on}
           onClick={() => onPick(c.key)}
         >
           {c.label} <b>{c.count}</b>
         </button>
       ))}
+      {matrix ? (
+        <button type="button" aria-pressed={matrix.on} onClick={matrix.pick}>
+          {t('matrix.chip')}
+        </button>
+      ) : null}
     </fieldset>
   );
 }

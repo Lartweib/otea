@@ -148,6 +148,8 @@ export const board = {
   'boardView.mode.lista': 'List',
   'boardView.mode.tabla': 'Table',
   'boardView.mode.matriz': 'Matrix',
+  'matrix.estimatedCount': { one: '{count} estimated', other: '{count} estimated' },
+  'matrix.chip': 'Matrix',
   'matrix.across': 'Across',
   'matrix.up': 'Up',
   'matrix.hint':

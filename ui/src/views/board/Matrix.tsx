@@ -230,3 +230,156 @@ function Chip({
     </span>
   );
 }
+
+// The Matrix on the phone (approved mock): a matrix does not fit 390 px, so a small grid of counts
+// is the index (tapping a cell keeps the list to it) and the list below goes zone by zone, rows of
+// 48 px whose whole width ticks the item. The tray docks at the bottom: Poner arriba, Fijar el
+// orden. The axes are effort × risk, or the board's first two scales.
+export function PhoneMatrix({
+  def,
+  items,
+  ticked,
+  onTick,
+  onOpen,
+  onPin,
+  onOrder,
+}: {
+  def: BoardDefinition;
+  items: readonly Item[];
+  ticked: readonly string[];
+  onTick: (id: string) => void;
+  onOpen: (id: string) => void;
+  onPin: (ids: string[], pinned: boolean) => void;
+  onOrder: (ids: string[]) => void;
+}) {
+  const [zone, setZone] = useState<string | null>(null);
+  const axes = axesOf(def);
+  if (!axes) return null;
+  const m = matrixOf(def, items, axes);
+  const ykey = (y: number) => m.ys[y];
+  const zoneName = (x: number, y: number) =>
+    `${stepWord(def, axes.x, m.xs[x]?.value ?? '', m.xs[x]?.name ?? '')} · ${stepWord(
+      def,
+      axes.y,
+      ykey(y)?.value ?? '',
+      ykey(y)?.name ?? '',
+    )}`;
+  const cells = m.rows.flat().filter((cell) => cell.items.length > 0);
+  const shown = zone === null ? cells : cells.filter((cell) => `${cell.x},${cell.y}` === zone);
+  const picked = items.filter((it) => ticked.includes(it.id));
+  const allPinned = picked.length > 0 && picked.every((it) => it.priority?.pin !== undefined);
+  return (
+    <div className="pmx" data-mode="matriz">
+      <p className="pmx-sub">
+        {roleWord(axes.x)} × {roleWord(axes.y)} · {t('matrix.estimatedCount', { count: m.placed })}
+      </p>
+      <fieldset
+        className="pmx-grid"
+        style={{ gridTemplateColumns: `repeat(${m.xs.length}, minmax(0, 1fr))` }}
+        aria-label={t('matrix.label', { x: roleWord(axes.x), y: roleWord(axes.y) })}
+      >
+        {m.rows.flat().map((cell) => {
+          const key = `${cell.x},${cell.y}`;
+          return (
+            <button
+              key={key}
+              type="button"
+              className={`pmx-cell h${heatOf(m, cell)}`}
+              aria-pressed={zone === key}
+              aria-label={`${zoneName(cell.x, cell.y)}: ${cell.items.length}`}
+              disabled={cell.items.length === 0}
+              onClick={() => setZone(zone === key ? null : key)}
+            >
+              {cell.items.length}
+            </button>
+          );
+        })}
+      </fieldset>
+      {shown.map((cell) => (
+        <section key={`${cell.x},${cell.y}`} className="pmx-zone">
+          <h3>
+            <span>{zoneName(cell.x, cell.y)}</span> <b>{cell.items.length}</b>
+          </h3>
+          {cell.items.map((it) => (
+            <PhoneRow
+              key={it.id}
+              item={it}
+              on={ticked.includes(it.id)}
+              onTick={onTick}
+              onOpen={onOpen}
+            />
+          ))}
+        </section>
+      ))}
+      {zone === null && m.aside.length > 0 ? (
+        <section className="pmx-zone">
+          <h3>
+            <span>{t('matrix.aside')}</span> <b>{m.aside.length}</b>
+          </h3>
+          {m.aside.map((it) => (
+            <PhoneRow
+              key={it.id}
+              item={it}
+              on={ticked.includes(it.id)}
+              onTick={onTick}
+              onOpen={onOpen}
+            />
+          ))}
+        </section>
+      ) : null}
+      {picked.length > 0 ? (
+        <div className="pmx-tray">
+          <button
+            type="button"
+            onClick={() =>
+              onPin(
+                picked.map((it) => it.id),
+                !allPinned,
+              )
+            }
+          >
+            {allPinned ? t('boardView.tray.unpin') : t('boardView.tray.pin')}
+          </button>
+          <button
+            type="button"
+            className="primary"
+            onClick={() => onOrder(picked.map((it) => it.id))}
+          >
+            {t('boardView.tray.setOrder')} · {picked.length}
+          </button>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function PhoneRow({
+  item,
+  on,
+  onTick,
+  onOpen,
+}: {
+  item: Item;
+  on: boolean;
+  onTick: (id: string) => void;
+  onOpen: (id: string) => void;
+}) {
+  const guessed = Object.keys(item.estimates ?? {}).length > 0;
+  return (
+    <div className={`pmx-row${on ? ' on' : ''}`}>
+      <button type="button" className="pmx-tick" aria-pressed={on} onClick={() => onTick(item.id)}>
+        <span className="pmx-box" aria-hidden="true">
+          {on ? '✓' : ''}
+        </span>
+        <span className="pmx-title">{item.title}</span>
+        {item.priority?.pin !== undefined ? (
+          <span className="mx-pin">{t('matrix.top')}</span>
+        ) : null}
+        {guessed ? <span className="mx-guess">{t('matrix.guess')}</span> : null}
+      </button>
+      <button type="button" className="pmx-id" onClick={() => onOpen(item.id)}>
+        {item.id}
+      </button>
+    </div>
+  );
+}
