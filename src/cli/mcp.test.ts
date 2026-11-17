@@ -80,8 +80,8 @@ describe('mcp', () => {
     };
 
     try {
-      await until(() => agents().some(({ name }) => name === 'claude'));
-      // Seen while its session is open: closing it ends its listening.
+      // Seen, and heard listening, while its session is open: closing it ends its listening.
+      await until(() => agents().some(({ name, live }) => name === 'claude' && live));
       expect(agents().find(({ name }) => name === 'claude')).toMatchObject({
         harness: 'claude-code',
         live: true,
