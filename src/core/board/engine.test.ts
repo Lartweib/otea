@@ -136,6 +136,33 @@ describe('handoffCheck', () => {
     expect(handoffCheck(def, 'sanimate', facts(ticked)).ok).toBe(true);
   });
 
+  it('wants a proof for a ticked point of an optional checklist that asks for proof', () => {
+    const proving = structuredClone(def);
+    const steps = proving.parts.fsteps;
+    if (steps) steps.proof = true;
+    const hand = proving.steps[1]?.hand.find(({ ref }) => ref === 'fsteps');
+    if (hand) hand.req = 'no';
+    const anim = [{ part: 'eanim', at: at(12) }];
+    // Optional: nothing ticked hands off; a ticked point still needs its proof.
+    expect(handoffCheck(proving, 'sanimate', facts({ evidence: anim })).ok).toBe(true);
+    const ticked = facts({ fields: { fsteps: '["ctwo"]' }, evidence: anim });
+    expect(handoffCheck(proving, 'sanimate', ticked).missing).toEqual([
+      {
+        ref: 'fsteps',
+        name: 'Comprobaciones',
+        reason: 'unproved',
+        fresh: false,
+        points: ['Paleta'],
+      },
+    ]);
+    const proved = facts({
+      fields: { fsteps: '["ctwo"]' },
+      evidence: anim,
+      proofs: { fsteps: ['ctwo'] },
+    });
+    expect(handoffCheck(proving, 'sanimate', proved).ok).toBe(true);
+  });
+
   it('wants a note after a send-back, even where the step asks for none', () => {
     const art = [{ part: 'eart', at: at(12) }];
     expect(handoffCheck(def, 'sconcept', facts({ evidence: art, sentBack: true })).missing).toEqual(
