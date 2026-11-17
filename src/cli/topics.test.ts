@@ -21,7 +21,10 @@ describe('otea topic', () => {
   it('records a question and its answer, and lists what waits', async () => {
     const { repo, otea } = fresh();
     const person = cliAt(repo.dir);
-    expect((await person('topic', 'on')).code).toBe(0);
+    const on = await person('topic', 'on');
+    expect(on.code).toBe(0);
+    // Claude Code's Auto mode blocks otea topic add until the hook's allow rules are in.
+    expect(on.out).toContain('otea hook install --claude');
 
     const added = await otea(
       'topic',
