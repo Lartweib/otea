@@ -2,6 +2,7 @@ import {
   type GateAnswer,
   gateAt,
   isClosed,
+  isLandStep,
   type Linked,
   NOTE_REF,
   positionOf,
@@ -221,7 +222,7 @@ export function approvalRefusal(id: string, rows: readonly WaitRow[]): string | 
 // may it be merged (F10). The engine's gate answers, as otea check does.
 export type BranchStrip = {
   tone: 'ok' | 'frozen' | 'off';
-  key: 'push' | 'frozen' | 'merge' | 'merged' | 'closed' | 'noPush';
+  key: 'push' | 'frozen' | 'merge' | 'merged' | 'landed' | 'closed' | 'noPush';
   value: string;
   repo?: string;
   step?: string;
@@ -241,9 +242,13 @@ export function branchStrip(
   const repo = repoValue ? { repo: repoValue } : {};
   const position = positionOf(state);
   if (isClosed(position)) {
-    return position.closed === DONE
-      ? { tone: 'ok', key: o.merged ? 'merged' : 'merge', value, ...repo }
-      : { tone: 'off', key: 'closed', value, ...repo };
+    if (position.closed !== DONE) return { tone: 'off', key: 'closed', value, ...repo };
+    if (o.merged) return { tone: 'ok', key: 'merged', value, ...repo };
+    // A board with a land step reaches Done only once an agent merged it there.
+    const land = def.steps.find((s) => isLandStep(def, s.id));
+    return land
+      ? { tone: 'ok', key: 'landed', value, ...repo, step: land.name }
+      : { tone: 'ok', key: 'merge', value, ...repo };
   }
   const step = stepById(def, position.step)?.name ?? position.step;
   if (position.phase !== 'doing') return { tone: 'frozen', key: 'frozen', value, ...repo, step };

@@ -481,12 +481,16 @@ export function nextText(def: BoardDefinition, input: NextInput): string {
   if (isClosed(position)) {
     const branch = branchOf(def, input.fields);
     const said = input.merged?.commit ? ` (${input.merged.commit})` : '';
+    // On a board with a land step, Done means an agent already merged it there.
+    const land = landStepOf(def);
     const merge =
       position.closed !== DONE || !branch
         ? ''
         : input.merged
           ? ` Its branch ${branch.value} was merged${said}.`
-          : ` Its branch ${branch.value} may be merged now; once it is, otea merged ${id} --pr <url>.${reopenHint(def, id)}`;
+          : land
+            ? ` Its branch ${branch.value} was merged in ${land.name}.`
+            : ` Its branch ${branch.value} may be merged now; once it is, otea merged ${id} --pr <url>.${reopenHint(def, id)}`;
     return `${id} · ${def.item} · ${closedName(def, position)}\nClosed: nothing left to do.${merge}`;
   }
   const step = stepById(def, position.step);
@@ -913,19 +917,30 @@ export function baseRefusal(
   base: string,
 ): string {
   const names = all.map((def) => def.name).join(' and ');
-  const items = all.map((def) => `a ${def.item.trim() || 'item'}`).join(' or ');
+  // Named by board, never "a <item>": an item's name is the board's language ("a Entrega").
+  const items = `an item of ${all.map((def) => def.name).join(' or ')}`;
   const verb = all.length > 1 ? 'protect' : 'protects';
   return `${action} refused: ${base} is the base branch ${names} ${verb}; it takes only the branch of ${items} that is ${DONE_NAME}, and this ${action} brings in none.`;
 }
 
-// The line after a handoff, approval or send-back: where the item stands now.
-export function handedText(def: BoardDefinition, id: string, to: Position): string {
-  if (isClosed(to)) return `Handed off. ${id} is ${to.closed === DONE ? DONE_NAME : DROPPED_NAME}.`;
+// The line after a handoff or an approval: where the item stands now.
+export function handedText(
+  def: BoardDefinition,
+  id: string,
+  to: Position,
+  said: 'Handed off' | 'Approved' = 'Handed off',
+): string {
+  if (isClosed(to)) return `${said}. ${id} is ${to.closed === DONE ? DONE_NAME : DROPPED_NAME}.`;
   const step = stepById(def, to.step);
   const name = step?.name ?? to.step;
-  if (to.phase === 'doing') return `Handed off. ${id} moves on to ${name}.`;
+  if (to.phase === 'doing') return `${said}. ${id} moves on to ${name}.`;
   const who = step ? reviewerName(step) : 'the person';
-  return `Handed off. ${id} waits for ${who} to review ${name}.`;
+  return `${said}. ${id} waits for ${who} to review ${name}.`;
+}
+
+// The line after a send-back: the step it returns to, for its next round.
+export function sentBackText(def: BoardDefinition, id: string, step: string, round: number) {
+  return `Sent back. ${id} returns to ${targetName(def, step)}, round ${round}.`;
 }
 
 // `toMerge`: its Done items whose branch is not marked merged yet, on a board with no land step

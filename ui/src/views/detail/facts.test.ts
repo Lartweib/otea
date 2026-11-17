@@ -239,6 +239,18 @@ describe('who an item on a board waits for', () => {
     expect(standAgentOf(boardFactsOf(read, item, step, false), true)).toBe('mender');
   });
 
+  it('names who did a closed item’s work, never the agent that landed it last', () => {
+    const lander = { kind: 'agent', name: 'lander' } as const;
+    const item = view({
+      state: 'done',
+      turn: 'none',
+      events: [ev('transitioned', lander, { from: 'sland', to: 'done' }, 5)],
+    });
+    // The sheet reads who did it from the server (closedBy.doer) into facts.agent.
+    const read = { ...factsOf(item, undefined, NOW), agent: 'impl' };
+    expect(standAgentOf(read, false, true)).toBe('impl');
+  });
+
   it('names the holder, else the step’s agent, once no item was left for anyone', () => {
     const held = view({ turn: 'agent', lease: { holder: 'kiln', expiresAt: ago(-5) } });
     expect(boardFactsOf(factsOf(held, undefined, NOW), held, board, false).agent).toBe('kiln');

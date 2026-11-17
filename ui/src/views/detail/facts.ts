@@ -171,8 +171,9 @@ export function boardFactsOf(
 // Whom the standfirst names: the agent that handed it to you, else the agent that has it. On a
 // board's agent turn (`boardAgentTurn`) the agent that handed it on is done with it; the step waits
 // for its holder, its own agent, or the one you left it for (boardFactsOf).
-export function standAgentOf(facts: Facts, boardAgentTurn: boolean): string | null {
-  if (facts.left || boardAgentTurn) return facts.agent;
+// Once closed (`closed`), the agent that did its work (closedBy), not the last one to hand it on.
+export function standAgentOf(facts: Facts, boardAgentTurn: boolean, closed = false): string | null {
+  if (facts.left || boardAgentTurn || (closed && facts.agent)) return facts.agent;
   return facts.handed?.agent ?? facts.agent;
 }
 

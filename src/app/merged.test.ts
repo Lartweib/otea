@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cambios, tareasDeRepo } from '../core/board/testing.ts';
+import { cambios, step, tareasDeRepo } from '../core/board/testing.ts';
 import { insertEvidence, selectEvents, updateItemState } from '../store/queries.ts';
 import { checkGate } from './gates.ts';
 import { createItem, requireItem } from './items.ts';
@@ -70,6 +70,58 @@ describe('marking a Done item merged', () => {
     expect(itemNextText(ctx, requireItem(ctx.db, id), 'quill', now)).toContain(
       `Its branch feat/x may be merged now; once it is, otea merged ${id} --pr <url>.`,
     );
+  });
+
+  it('on a board with a land step, names the doer, not the lander, and says it was merged there', () => {
+    const ctx = memoryContext();
+    const def = tareasDeRepo();
+    def.steps.push(step('sland', 'Integrar', { reviewer: 'none' }));
+    publishAs(ctx, def, 'brt', now);
+    publishAs(ctx, cambios(), 'bcam', now);
+    const parent = createItem(
+      ctx,
+      { collection: 'Cambios', title: 'Nube', fields: { fwhat: 'x' }, actor: you },
+      now,
+    );
+    const { id } = createItem(
+      ctx,
+      {
+        collection: 'Tareas de repo',
+        title: 'API',
+        fields: { frepo: 'api', fbranch: 'feat/x' },
+        parent: parent.id,
+        actor: you,
+      },
+      now,
+    );
+    updateItemState(ctx.db, id, 'simpl', now());
+    insertEvidence(ctx.db, {
+      itemId: id,
+      role: 'after',
+      module: 'ecode',
+      kind: 'diff',
+      filename: 'a.diff',
+      contentType: 'text/x-diff',
+      size: 1,
+      sha256: 'a'.repeat(64),
+      caption: null,
+      createdAt: now(),
+      actor: quill,
+      channel: 'cli',
+    });
+    handoffItem(ctx, { id, actor: quill, channel: 'cli' }, now);
+    approveItem(ctx, { id, actor: you, channel: 'ui' }, now);
+    expect(requireItem(ctx.db, id).state).toBe('sland');
+    const lander = { kind: 'agent' as const, name: 'lander' };
+    handoffItem(ctx, { id, actor: lander, channel: 'cli' }, now);
+
+    expect(boardBlockOf(ctx, requireItem(ctx.db, id))?.closedBy).toEqual({
+      doer: 'quill',
+      reviewer: you,
+    });
+    const text = itemNextText(ctx, requireItem(ctx.db, id), 'quill', now);
+    expect(text).toContain('Its branch feat/x was merged in Integrar.');
+    expect(text).not.toContain('may be merged now');
   });
 
   it('says who did a closed item and who approved it', () => {

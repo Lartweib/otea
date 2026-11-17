@@ -567,6 +567,7 @@ export const detail = {
   'bi.branch.frozen': 'congelada mientras la revisas',
   'bi.branch.merge': 'se puede fusionar',
   'bi.branch.merged': 'fusionada',
+  'bi.branch.landed': 'fusionada en {step}',
   'bi.branch.closed': 'ya no se sube',
   'bi.branch.noPush': 'sin subidas en {step}',
   'bi.request.board': 'Tablero {name}',
