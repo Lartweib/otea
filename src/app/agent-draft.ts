@@ -10,7 +10,7 @@ import {
 } from '../core/board/model.ts';
 import type { Problem } from '../core/board/problems.ts';
 import { parseDefinition } from '../core/board/schema.ts';
-import { boardLang, type Lang } from '../core/board/templates.ts';
+import { boardLang, isSetKey, type Lang } from '../core/board/templates.ts';
 import { OteaError } from '../core/errors.ts';
 import type { Actor } from '../core/item.ts';
 import { DEFAULT_LEASE_TTL_MS, leaseExpiry } from '../core/lease.ts';
@@ -23,6 +23,7 @@ import {
   ensureRequestsBoard,
   getBoardRecord,
   insertNewBoard,
+  insertNewBoardSet,
   saveDraft,
 } from './boards.ts';
 import { BOARD_JSON_SCHEMA, DRAFT_FILENAME } from './draft-request.ts';
@@ -52,7 +53,7 @@ export type AgentDraftRequest = {
   agent: string | null;
   lang: Lang;
   by?: { actor: Actor; channel: Channel };
-  // A catalogue template the draft starts from (one board, never a set).
+  // A catalogue template the draft starts from: one board, or a set, whose first board it is.
   template?: string;
 };
 
@@ -64,7 +65,7 @@ export function requestAgentDraft(
   project: Project,
   input: AgentDraftRequest,
   now = systemClock,
-): { board: BoardRecord; item: string } {
+): { board: BoardRecord; item: string; others: BoardRecord[] } {
   ensureRequestsBoard(project, input.lang, now);
   return transaction(project.db, () => {
     const requests = listBoards(project.db).find(({ builtin }) => builtin);
@@ -98,6 +99,22 @@ export function requestAgentDraft(
         data: { ...lease, cause: 'assigned' },
       });
     }
+    if (input.template !== undefined && isSetKey(input.template)) {
+      // A set's boards are drafted together: the first waits on the Pedido, named as asked, and
+      // the others come with it under the template's names, for the person to publish as one.
+      const [board, ...others] = insertNewBoardSet(
+        project,
+        {
+          set: input.template,
+          lang: input.lang,
+          boards: [{ name: input.name }],
+          requestItem: item.id,
+        },
+        now,
+      );
+      if (!board) throw new OteaError('not_found', `There is no template ${input.template}`);
+      return { board, item: item.id, others };
+    }
     const board = insertNewBoard(
       project,
       {
@@ -108,7 +125,7 @@ export function requestAgentDraft(
       },
       now,
     );
-    return { board, item: item.id };
+    return { board, item: item.id, others: [] };
   });
 }
 
@@ -283,7 +300,7 @@ export function proposeAgentDraft(
   project: Project,
   input: ProposeInput,
   now = systemClock,
-): { board: BoardRecord; item: string; submitted?: Submitted } {
+): { board: BoardRecord; item: string; others: BoardRecord[]; submitted?: Submitted } {
   if (input.text !== undefined)
     readDraftFile(
       input.text,
@@ -308,7 +325,7 @@ export function proposeAgentDraft(
     { id: asked.item, text: input.text, actor, channel },
     now,
   );
-  return { board: getBoardRecord(project, asked.board.id), item: asked.item, submitted };
+  return { ...asked, board: getBoardRecord(project, asked.board.id), submitted };
 }
 
 type Words = {

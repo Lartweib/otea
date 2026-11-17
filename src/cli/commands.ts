@@ -811,7 +811,7 @@ const boardName = (record: BoardRecord) => (record.live ?? record.draft)?.defini
 
 const boardAdd: Command = {
   name: 'board add',
-  summary: `For the person, with no agent name: make a board and publish it, from a template (${TEMPLATE_KEYS}) or blank, in the project's language; --item names what each item is; a set such as repos or product makes all of its boards, the name and --item naming the first`,
+  summary: `For the person, with no agent name: make a board and publish it, from a template (${TEMPLATE_KEYS}) or blank, in the project's language; --item names what each item is; a set such as ideas or repos makes all of its boards, the name and --item naming the first`,
   details: TEMPLATE_LIST,
   args: ['name'],
   options: { template: { placeholder: 'key' }, item: {} },
@@ -910,6 +910,11 @@ function proposeBoard(input: Input, name: string): Output {
     const lines = [
       ...(made.submitted ? handedInLines(made.item, made.submitted) : []),
       `The board "${name.trim()}" waits in Studio for the person to try and publish, on the Pedido ${made.item} you hold: ${studio}`,
+      ...(made.others.length === 0
+        ? []
+        : [
+            `Made with it, from the same template, as drafts the person publishes together with it: ${made.others.map((record) => `"${boardName(record)}"`).join(', ')}`,
+          ]),
       ...(made.submitted ? [] : [handInText(made.item)]),
     ];
     return { data: { ...made, studio }, text: lines.join('\n') };
@@ -919,7 +924,8 @@ function proposeBoard(input: Input, name: string): Output {
 const boardDraft: Command = {
   name: 'board draft',
   summary:
-    'Draft the board a Pedido asks for: without --file, print the draft to start from (JSON); with --file, check it as a board and hand it in on the Pedido as board.json, saying what is still wrong (the board keeps the name it was asked for; the name in the file is not used). To propose a new board the person asked you for, --new <name> --why "<what it is for>" (and --template <key> to start from a catalogue board, --file to hand it in at once) makes it and its Pedido, which you hold; the person publishes it in Studio',
+    'Draft the board a Pedido asks for: without --file, print the draft to start from (JSON); with --file, check it as a board and hand it in on the Pedido as board.json, saying what is still wrong (the board keeps the name it was asked for; the name in the file is not used). To propose a new board the person asked you for, --new <name> --why "<what it is for>" (and --template <key> to start from a catalogue board, or from a set such as ideas or repos, which makes its other boards with it; --file to hand it in at once) makes it and its Pedido, which you hold; the person publishes it in Studio',
+  details: TEMPLATE_LIST,
   args: ['id?'],
   options: {
     file: { placeholder: 'board.json' },
