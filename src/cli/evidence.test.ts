@@ -160,6 +160,23 @@ describe('attach', () => {
     expect((await json('events', '--since', '1')).type).toBe('evidence_added');
   });
 
+  it('detaches a file attached by mistake, and says so in show', async () => {
+    await otea('attach', 'TASKS-1', 'test.log');
+    await otea('attach', 'TASKS-1', 'shots/before.png');
+
+    const { code, out } = await otea('detach', 'TASKS-1', '#2');
+
+    expect(code).toBe(0);
+    expect(out).toBe('Detached #2 before.png from TASKS-1.\n');
+    const shown = await otea('show', 'TASKS-1');
+    expect(shown.out).toContain('Evidence:\n  #1  single  log  test.log  14 B\n');
+    expect(shown.out).toMatch(/evidence_detached {2}#2 before\.png/);
+    expect((await otea('detach', 'TASKS-1', 'two')).code).toBe(2);
+    const again = await otea('detach', 'TASKS-1', '2', '--json');
+    expect(again.code).toBe(3);
+    expect(errorCode(again.err)).toBe('not_found');
+  });
+
   describe('refusals', () => {
     it('refuses an unknown role as a usage error (exit 2)', async () => {
       const { code, err } = await otea('attach', 'TASKS-1', 'test.log', '--role', 'during');

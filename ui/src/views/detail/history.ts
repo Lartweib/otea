@@ -245,6 +245,8 @@ export function historyOf(
         ...caption,
       };
     }
+    if (e.type === 'evidence_detached')
+      return { ...base, text: t('sheet.h.detached', { file: String(e.data.filename) }) };
     // A checklist point ticked with its proof (otea tick, attach --point): the point and what
     // shows it holds, a file, a log line or a passing test.
     if (e.type === POINT_PROVED) {

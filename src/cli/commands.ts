@@ -24,7 +24,7 @@ import { cropNote } from '../app/crop.ts';
 import { listDevices, revokeDevice } from '../app/devices.ts';
 import { handInText } from '../app/draft-request.ts';
 import { listEvents } from '../app/events.ts';
-import { attachEvidence } from '../app/evidence.ts';
+import { attachEvidence, detachEvidence } from '../app/evidence.ts';
 import { type Brings, checkGate, type GateCheck } from '../app/gates.ts';
 import { boardGuide, type Guide, guideIndex, hintFor } from '../app/guide.ts';
 import { forgetProjectPath, listProjects, relinkProjectPath, withRegistry } from '../app/home.ts';
@@ -1869,6 +1869,30 @@ const attach: Command = {
   },
 };
 
+// A file attached by mistake, taken back before the item moves on (AGENTS3-4).
+const detach: Command = {
+  name: 'detach',
+  summary:
+    'Take back a file you attached by mistake (its number in show), before the item moves on',
+  args: ['id', 'evidence'],
+  options: {},
+  execute: (input) => {
+    const [id = '', number = ''] = input.args;
+    const evidence = Number(number.replace(/^#/, ''));
+    if (!Number.isInteger(evidence) || evidence < 1) {
+      throw new UsageError(
+        `Not a file number: ${number}. Pass the number show gives it, such as 3`,
+      );
+    }
+    const { actor, channel } = input;
+    return withAgent(input, (project) => {
+      const entry = detachEvidence(project, { id, evidence, actor, channel });
+      const text = `Detached #${entry.id} ${entry.filename} from ${entry.itemId}.`;
+      return { data: { ...entry, detached: true }, text };
+    });
+  },
+};
+
 // Phone access, when a door is open: the chosen transport, the URLs a phone opens on it (on the
 // local network the .local name first when it resolves; on Tailscale its HTTPS name), the first
 // pairing code, and on the local network the same pairing link by IP when the first is a name.
@@ -2666,6 +2690,7 @@ export const COMMANDS: readonly Command[] = [
   release,
   update,
   attach,
+  detach,
   link,
   unlink,
   next,

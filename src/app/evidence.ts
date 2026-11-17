@@ -167,6 +167,17 @@ export function recordEvidence(
 // An attach that added nothing: the item already had the same file there.
 export type Attached = EvidenceRecord & { duplicate?: true };
 
+// The evidence ids attached since the item last moved (its current round).
+function addedSinceMoved(project: Project, itemId: string): Set<number> {
+  const events = selectEvents(project.db, itemId);
+  const moved = events.findLast(({ type }) => type === 'transitioned')?.id ?? 0;
+  return new Set(
+    events.flatMap(({ id, type, data }) =>
+      type === 'evidence_added' && id > moved ? [Number(data.evidenceId)] : [],
+    ),
+  );
+}
+
 // The entry the item already has for the same bytes in the same module and role, with the same
 // caption, attached since it last moved: attaching it again adds nothing. Once the item moves (a
 // new round), the same file is new again.
@@ -176,13 +187,7 @@ function sameSinceMoved(
   file: PlacedFile,
 ): EvidenceRecord | undefined {
   const sha256 = createHash('sha256').update(file.bytes).digest('hex');
-  const events = selectEvents(project.db, itemId);
-  const moved = events.findLast(({ type }) => type === 'transitioned')?.id ?? 0;
-  const since = new Set(
-    events.flatMap(({ id, type, data }) =>
-      type === 'evidence_added' && id > moved ? [Number(data.evidenceId)] : [],
-    ),
-  );
+  const since = addedSinceMoved(project, itemId);
   return selectEvidence(project.db, itemId).findLast(
     (entry) =>
       since.has(entry.id) &&
@@ -209,6 +214,64 @@ export function attachEvidence(project: Project, input: AttachInput, now = syste
     const same = sameSinceMoved(project, item.id, placed);
     if (same) return { ...same, duplicate: true };
     return recordEvidence(project, item.id, placed, input, at);
+  });
+}
+
+export type DetachInput = { id: string; evidence: number; actor: Actor; channel: Channel };
+
+// Takes back a file attached by mistake (AGENTS3-4): only the one who attached it, while the item
+// has not moved since, and while no note of the person or proof of a point rests on it. Evidence
+// stays append-only: an evidence_detached event takes it off the item's list, and the history
+// keeps both.
+export function detachEvidence(
+  project: Project,
+  input: DetachInput,
+  now = systemClock,
+): EvidenceRecord {
+  return transaction(project.db, () => {
+    const item = requireWritableItem(project.db, input.id);
+    const at = now();
+    assertMayWrite(item.id, activeLease(item.lease, at), input.actor);
+    const entry = selectEvidence(project.db, item.id).find(({ id }) => id === input.evidence);
+    if (!entry) {
+      throw new OteaError('not_found', `${item.id} has no attached file #${input.evidence}`);
+    }
+    const said = `#${entry.id} ${entry.filename}`;
+    if (entry.actor.kind !== input.actor.kind || entry.actor.name !== input.actor.name) {
+      throw new OteaError(
+        'forbidden',
+        `${said} was attached by ${entry.actor.name}: only who attached a file may detach it`,
+      );
+    }
+    if (!addedSinceMoved(project, item.id).has(entry.id)) {
+      throw new OteaError(
+        'forbidden',
+        `${said} went with an earlier move of ${item.id}, so it stays in the record: attach the right file instead`,
+      );
+    }
+    const resting = selectEvents(project.db, item.id).find(
+      ({ type, data }) =>
+        (type === 'point_proved' && Number(data.evidence) === entry.id) ||
+        (type === 'note_left' &&
+          Number((data.anchor as { evidence?: unknown } | undefined)?.evidence) === entry.id),
+    );
+    if (resting) {
+      const what = resting.type === 'note_left' ? 'a note of the person' : 'the proof of a point';
+      throw new OteaError('in_use', `${said} cannot be detached: ${what} rests on it`);
+    }
+    appendEvent(project.db, {
+      itemId: item.id,
+      type: 'evidence_detached',
+      actor: input.actor,
+      at,
+      data: {
+        evidenceId: entry.id,
+        filename: entry.filename,
+        ...(entry.module === null ? {} : { module: entry.module }),
+        channel: input.channel,
+      },
+    });
+    return entry;
   });
 }
 

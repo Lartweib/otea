@@ -83,7 +83,10 @@ export function readableEvent(def: Board, event: EventRecord): EventRecord {
       to: stateThen(def, data.to, data.toName),
     });
   if (def === undefined) return event;
-  if (event.type === 'evidence_added' && typeof data.module === 'string')
+  if (
+    (event.type === 'evidence_added' || event.type === 'evidence_detached') &&
+    typeof data.module === 'string'
+  )
     return named({ module: partName(def, data.module) });
   if (event.type === POINT_PROVED) {
     const part = partOf(def, data.part);
