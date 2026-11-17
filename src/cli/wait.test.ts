@@ -1,4 +1,4 @@
-import { execFileSync } from 'node:child_process';
+import { spawn } from 'node:child_process';
 import { setTimeout as delay } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -142,15 +142,15 @@ describe('wait', () => {
   });
 
   it('stops waiting once the process that started it is gone, so its agent no longer reads as listening', async () => {
-    // A parent that starts the wait in the background and ends, as a harness session that closed
-    // would. Detached: on Windows a child that is not dies with its parent anyway.
+    // A parent that starts the wait in the background and stays, as a harness session would, until
+    // the test ends it. Detached: on Windows a child that is not dies with its parent anyway.
     const starter = [
       "const c = require('node:child_process').spawn(process.execPath, process.argv.slice(1), { detached: true, stdio: 'ignore' });",
       'c.unref();',
       'console.log(c.pid);',
-      'setTimeout(() => process.exit(0), 300);',
+      'setTimeout(() => {}, 60_000);',
     ].join(' ');
-    const out = execFileSync(
+    const parent = spawn(
       process.execPath,
       [
         '-e',
@@ -165,13 +165,32 @@ describe('wait', () => {
         '--timeout',
         '1m',
       ],
-      { cwd: repo.dir, env: { ...process.env, OTEA_AGENT: 'claude' }, encoding: 'utf8' },
+      {
+        cwd: repo.dir,
+        env: { ...process.env, OTEA_AGENT: 'claude' },
+        stdio: ['ignore', 'pipe', 'ignore'],
+      },
     );
-    const pid = Number(out.trim());
-    expect(pid).toBeGreaterThan(0);
+    const pid = await new Promise<number>((resolve) =>
+      parent.stdout
+        .setEncoding('utf8')
+        .once('data', (line: string) => resolve(Number(line.trim()))),
+    );
+    const listening = () => {
+      const project = openProject(repo.dir);
+      try {
+        return listAgents(project.db).some(({ name, listening }) => name === 'claude' && listening);
+      } finally {
+        project.db.close();
+      }
+    };
     try {
+      // The wait has started, heard as listening, while its parent still runs.
+      await until(listening, 15_000);
+      parent.kill();
       await until(() => !processAlive(pid), 15_000);
     } finally {
+      parent.kill();
       if (processAlive(pid)) process.kill(pid);
     }
   });
