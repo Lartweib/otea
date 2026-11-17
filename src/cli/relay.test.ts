@@ -1,27 +1,33 @@
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { type Cli, cliAt, declareProfiles, presetCollection, tempGitRepo } from './testing.ts';
+import { type Cli, declareProfiles, presetCollection, seedOnce, type TempRepo } from './testing.ts';
 
 const QUOTE = 'Discard it, the old flow is gone';
 const USAGE = 'Usage: otea relay <id> <state> --quote <what the human said> [--reason <reason>]';
 
+// A tasks board and the agents these tests name, with their profiles declared.
+function tasksBoard(dir: string): void {
+  declareProfiles(dir, 'claude', 'claude-a', 'claude-b', 'codex', 'gemini', 'quill');
+  presetCollection(dir, 'tasks');
+}
+
 describe('relay', () => {
-  let repo: ReturnType<typeof tempGitRepo>;
+  let repo: TempRepo;
   let otea: Cli;
 
   const json = async (...argv: string[]) => JSON.parse((await otea(...argv, '--json')).out);
 
-  beforeEach(async () => {
-    repo = tempGitRepo();
-    otea = cliAt(repo.dir, { OTEA_AGENT: 'claude' });
-    await otea('init');
-    declareProfiles(repo.dir, 'claude', 'claude-a', 'claude-b', 'codex', 'gemini', 'quill');
-    presetCollection(repo.dir, 'tasks');
-    await otea('create', '--collection', 'tasks', '--title', 'Old flow', '--description', 'D');
-    await otea('create', '--collection', 'tasks', '--title', 'Held', '--description', 'D');
+  const seeded = seedOnce(async (seed, dir) => {
+    tasksBoard(dir);
+    await seed('create', '--collection', 'tasks', '--title', 'Old flow', '--description', 'D');
+    await seed('create', '--collection', 'tasks', '--title', 'Held', '--description', 'D');
     // Another agent did the step: an agent relays only decisions on work it did not do itself.
-    await otea('handoff', 'TASKS-1', '--as', 'codex');
+    await seed('handoff', 'TASKS-1', '--as', 'codex');
+  });
+
+  beforeEach(() => {
+    ({ repo, otea } = seeded.fresh());
   });
 
   afterEach(() => repo.remove());
@@ -141,19 +147,19 @@ describe('relay', () => {
 });
 
 describe('relay of a decision on the agent’s own step', () => {
-  let repo: ReturnType<typeof tempGitRepo>;
+  let repo: TempRepo;
   let otea: Cli;
 
   const json = async (...argv: string[]) => JSON.parse((await otea(...argv, '--json')).out);
 
-  beforeEach(async () => {
-    repo = tempGitRepo();
-    otea = cliAt(repo.dir, { OTEA_AGENT: 'claude' });
-    await otea('init');
-    declareProfiles(repo.dir, 'claude', 'claude-a', 'claude-b', 'codex', 'gemini', 'quill');
-    presetCollection(repo.dir, 'tasks');
-    await otea('create', '--collection', 'tasks', '--title', 'Mine', '--description', 'D');
-    await otea('handoff', 'TASKS-1');
+  const seeded = seedOnce(async (seed, dir) => {
+    tasksBoard(dir);
+    await seed('create', '--collection', 'tasks', '--title', 'Mine', '--description', 'D');
+    await seed('handoff', 'TASKS-1');
+  });
+
+  beforeEach(() => {
+    ({ repo, otea } = seeded.fresh());
   });
 
   afterEach(() => repo.remove());
@@ -205,19 +211,19 @@ describe('relay of a decision on the agent’s own step', () => {
 });
 
 describe('relay by an agent that worked the step but did not hand it off', () => {
-  let repo: ReturnType<typeof tempGitRepo>;
+  let repo: TempRepo;
   let otea: Cli;
 
   const relay = (...extra: string[]) =>
     otea('relay', 'TASKS-1', 'todo', '--quote', 'redo', '--reason', 'Redo', ...extra);
 
-  beforeEach(async () => {
-    repo = tempGitRepo();
-    otea = cliAt(repo.dir, { OTEA_AGENT: 'claude' });
-    await otea('init');
-    declareProfiles(repo.dir, 'claude', 'claude-a', 'claude-b', 'codex', 'gemini', 'quill');
-    presetCollection(repo.dir, 'tasks');
-    await otea('create', '--collection', 'tasks', '--title', 'Mine', '--description', 'D');
+  const seeded = seedOnce(async (seed, dir) => {
+    tasksBoard(dir);
+    await seed('create', '--collection', 'tasks', '--title', 'Mine', '--description', 'D');
+  });
+
+  beforeEach(() => {
+    ({ repo, otea } = seeded.fresh());
   });
 
   afterEach(() => repo.remove());
@@ -257,17 +263,17 @@ describe('relay by an agent that worked the step but did not hand it off', () =>
 });
 
 describe('move by an agent', () => {
-  let repo: ReturnType<typeof tempGitRepo>;
+  let repo: TempRepo;
   let otea: Cli;
 
-  beforeEach(async () => {
-    repo = tempGitRepo();
-    otea = cliAt(repo.dir, { OTEA_AGENT: 'claude' });
-    await otea('init');
-    declareProfiles(repo.dir, 'claude', 'claude-a', 'claude-b', 'codex', 'gemini', 'quill');
-    presetCollection(repo.dir, 'tasks');
-    await otea('create', '--collection', 'tasks', '--title', 'T', '--description', 'D');
-    await otea('handoff', 'TASKS-1');
+  const seeded = seedOnce(async (seed, dir) => {
+    tasksBoard(dir);
+    await seed('create', '--collection', 'tasks', '--title', 'T', '--description', 'D');
+    await seed('handoff', 'TASKS-1');
+  });
+
+  beforeEach(() => {
+    ({ repo, otea } = seeded.fresh());
   });
 
   afterEach(() => repo.remove());
