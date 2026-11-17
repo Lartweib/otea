@@ -45,6 +45,13 @@ describe('initBoards', () => {
     expect(names(ctx)).toEqual(['Encargos live']);
   });
 
+  it('does not know bug-handoff: the template was removed', () => {
+    const ctx = memoryContext();
+    expect(() => initBoards(ctx, 'bug-handoff')).toThrow(
+      expect.objectContaining({ code: 'not_found' }),
+    );
+  });
+
   it('refuses a retired template: the catalogue replaced it', () => {
     const ctx = memoryContext();
     expect(() => initBoards(ctx, 'tasks')).toThrow(expect.objectContaining({ code: 'not_found' }));

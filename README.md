@@ -317,7 +317,6 @@ The catalogue of single boards, each designed and run end to end before it was o
 - **Iteración visual** (`visual-iteration`): for what is judged by looking: each round changes one thing, renders with the previous round's seeds and camera, and you pick blind between A and B before it is revealed.
 - **Probar si es divertido** (`playtest`): a minimal prototype answers one question; you play it and keep going, adjust or kill the idea.
 - **Retomar un proyecto** (`resume`): coming back to a dormant project. The agent rebuilds where it stopped, what is open and what broke, and proposes next steps; you pick, and it creates them as items.
-- **Fallos para otro dueño** (`bug-handoff`): bugs in a product whose code is someone else's. They are reproduced, triaged, handed to their owner and verified when a new version comes back; the fix does not happen here.
 
 The first Studio's boards (`tasks`, `bugs`, `blog`, `triage`, `review`) are retired: no list offers them, and projects made with them keep their boards.
 

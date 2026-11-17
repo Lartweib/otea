@@ -59,13 +59,12 @@ describe('the boards API', () => {
       'visual-iteration',
       'playtest',
       'resume',
-      'bug-handoff',
       'changes',
       'repobugs',
       'ideas',
       'repos',
     ]);
-    expect(templates[11]?.name).toBe('Fallos para otro dueño');
+    expect(templates[11]?.name).toBe('Encargos');
     const repos = templates.find(({ key }) => key === 'repos');
     expect(((repos?.boards ?? []) as Json[]).map(({ name }) => name)).toEqual([
       'Trabajos',
