@@ -12,6 +12,7 @@ import {
   type BoardCtx,
   boardEntries,
   CLOSED_COL,
+  cardCount,
   columnKeyOf,
   defaultGroup,
   defaultMode,
@@ -160,11 +161,11 @@ describe('the Pasos columns', () => {
     ]);
   });
 
-  it('lays out cards per column, children inside their parent card, sorted like the list', () => {
+  it('lays out cards per column, children of the same step inside their parent card', () => {
     const items = [
       item({ id: 'P', state: 'fixing', turn: 'agent', updatedAt: ago(50) }),
-      child('K1', 'P', { state: 'verify' }),
-      child('K2', 'P', { state: 'fixed', turn: 'none', closes: 'done' }),
+      child('K1', 'P', { state: 'fixing', turn: 'agent' }),
+      child('K2', 'P', { state: 'fixing', turn: 'agent' }),
       item({ id: 'Q', state: 'fixing', turn: 'agent', updatedAt: ago(90) }),
     ];
     const cols = pasosColumns(errores, items);
@@ -173,7 +174,22 @@ describe('the Pasos columns', () => {
       ['Q', []],
       ['P', ['K1', 'K2']],
     ]);
-    expect(cards.get('verify')).toEqual([]);
+    expect(cardCount(cards.get('fixing') ?? [])).toBe(4);
+  });
+
+  it('draws a child on another step in that step’s column, as a card of its own', () => {
+    const items = [
+      item({ id: 'P', state: 'fixing', turn: 'agent' }),
+      child('K1', 'P', { state: 'verify' }),
+      child('K2', 'P', { state: 'fixed', turn: 'none', closes: 'done' }),
+      child('G1', 'K1', { state: 'verify' }),
+    ];
+    const cols = pasosColumns(errores, items);
+    const cards = pasosCards(items, cols, null, ctx());
+    const ids = (col: string) => cards.get(col)?.map((c) => [c.item.id, c.kids.map((k) => k.id)]);
+    expect(ids('fixing')).toEqual([['P', []]]);
+    expect(ids('verify')).toEqual([['K1', ['G1']]]);
+    expect(ids(CLOSED_COL)).toEqual([['K2', []]]);
   });
 
   it('shows a child as a card of its own when its parent is filtered out', () => {
@@ -349,7 +365,7 @@ describe('the entries of a grouped list', () => {
   ];
   const none = { collapsed: new Set<string>(), expanded: new Set<string>() };
 
-  it('nests children under their parent when grouped by step, counting them in its group', () => {
+  it('nests the children on its step under their parent, counting them in its group', () => {
     const { entries } = boardEntries(
       items,
       { group: 'state', sort: null, filters: {} },
@@ -360,9 +376,9 @@ describe('the entries of a grouped list', () => {
       entries.map((e) =>
         e.kind === 'group' ? `#${e.key}:${e.count}` : `${e.child ? '  ' : ''}${e.item.id}`,
       ),
-    ).toEqual(['#fixing:3', 'P', '  K1', '  K2', '#verify:1', 'Q']);
+    ).toEqual(['#fixing:2', 'P', '  K2', '#verify:2', 'K1', 'Q']);
     const P = entries.find((e) => e.kind === 'row' && e.item.id === 'P');
-    expect(P).toMatchObject({ kids: 2, folded: false });
+    expect(P).toMatchObject({ kids: 1, folded: false });
   });
 
   it('keeps folded children in the entries, hidden, so a fold never changes the rows', () => {
@@ -376,8 +392,8 @@ describe('the entries of a grouped list', () => {
     const rows = entries.filter((e) => e.kind === 'row');
     expect(rows.map((e) => [e.item.id, e.hidden])).toEqual([
       ['P', false],
-      ['K1', true],
       ['K2', true],
+      ['K1', false],
       ['Q', false],
     ]);
   });

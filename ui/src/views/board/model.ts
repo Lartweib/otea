@@ -103,37 +103,55 @@ export function phonePrefs(step: string | null): BoardPrefsLike {
 
 export type Card = { item: Item; kids: Item[] };
 
-// The cards of each column: an item whose parent is listed rides in its parent's card.
+// The cards of each column: an item whose parent is listed on the same step rides in its parent's
+// card; one on another step is a card of its own in that step's column, so every column holds and
+// counts what is on its step.
 export function pasosCards(
   items: readonly Item[],
   columns: readonly PasosColumn[],
   sort: BoardSort,
   ctx: BoardCtx,
 ): Map<string, Card[]> {
-  const here = new Set(items.map((it) => it.id));
-  const top = items.filter((it) => {
-    const p = parentOf(it);
-    return p === undefined || !here.has(p);
-  });
+  const key = (it: Item) => columnKeyOf(it);
   const out = new Map<string, Card[]>(columns.map((c) => [c.key, []]));
-  for (const it of sortBoard(top, sort, ctx)) {
-    const kids = descendants(it, items);
-    out.get(columnKeyOf(it))?.push({ item: it, kids });
+  for (const it of sortBoard(topOf(items, key), sort, ctx)) {
+    const kids = descendants(it, items, key);
+    out.get(key(it))?.push({ item: it, kids });
   }
   return out;
 }
 
-function descendants(parent: Item, items: readonly Item[]): Item[] {
+// The items a column counts: each card and the children riding in it.
+export function cardCount(cards: readonly Card[]): number {
+  return cards.reduce((n, c) => n + 1 + c.kids.length, 0);
+}
+
+// A child rides with its parent when the parent is listed and both sit in the same group (step);
+// the closed children of a parent whose children are all closed come along under it too.
+function ridesWith(it: Item, parent: Item | undefined, key: (it: Item) => string): boolean {
+  if (!parent) return false;
+  return key(it) === key(parent) || (it.turn === 'none' && isSettled(parent));
+}
+
+function topOf(items: readonly Item[], key: (it: Item) => string): Item[] {
+  const byId = new Map(items.map((it) => [it.id, it]));
+  return items.filter((it) => {
+    const p = parentOf(it);
+    return !ridesWith(it, p === undefined ? undefined : byId.get(p), key);
+  });
+}
+
+function descendants(parent: Item, items: readonly Item[], key: (it: Item) => string): Item[] {
   const out: Item[] = [];
-  const walk = (id: string, seen: Set<string>) => {
+  const walk = (of: Item, seen: Set<string>) => {
     for (const it of items) {
-      if (parentOf(it) !== id || seen.has(it.id)) continue;
+      if (parentOf(it) !== of.id || seen.has(it.id) || !ridesWith(it, of, key)) continue;
       seen.add(it.id);
       out.push(it);
-      walk(it.id, seen);
+      walk(it, seen);
     }
   };
-  walk(parent.id, new Set([parent.id]));
+  walk(parent, new Set([parent.id]));
   return out;
 }
 
@@ -459,16 +477,11 @@ export function boardEntries(
 ): { entries: Entry[]; shown: number; total: number } {
   const its = applyFilters(all, prefs.filters, ctx);
   const nest = prefs.group === 'state' && !prefs.sort;
-  const here = new Set(its.map((it) => it.id));
-  const top = nest
-    ? its.filter((it) => {
-        const p = parentOf(it);
-        return p === undefined || !here.has(p);
-      })
-    : its;
+  const key = (it: Item) => holds(it, 'state', ctx);
+  const top = nest ? topOf(its, key) : its;
   const entries: Entry[] = [];
   for (const g of groupBoard(top, prefs.group, ctx, prefs.sort)) {
-    const kidsOf = new Map(g.items.map((it) => [it.id, nest ? descendants(it, its) : []]));
+    const kidsOf = new Map(g.items.map((it) => [it.id, nest ? descendants(it, its, key) : []]));
     const count = g.items.reduce((n, it) => n + 1 + (kidsOf.get(it.id)?.length ?? 0), 0);
     if (g.title) entries.push({ kind: 'group', key: g.key, title: g.title, count });
     for (const it of g.items) {

@@ -8,12 +8,12 @@ import { SeverityBars } from '../../kit/Marks.tsx';
 import { laneOf } from '../../lanes/geometry.ts';
 import { lookOf } from '../../lanes/looks.ts';
 import type { CollectionView, Item } from '../../types.ts';
-import { type Card, type PasosColumn, roundOf, severityOf } from './model.ts';
+import { type Card, cardCount, type PasosColumn, roundOf, severityOf } from './model.ts';
 import { type CardSnap, pasosTransition, revealCols, snapCards } from './pasos-motion.ts';
 import { since } from './rows.tsx';
 
 // Pasos (SPEC §10.1, mock:399-425, 1606-1638): one column per step, a card per item with its
-// coloured edge; children ride in their parent's card, on a small branch.
+// coloured edge; children on the same step ride in their parent's card, on a small branch.
 
 type PasosProps = {
   collection: CollectionView;
@@ -196,7 +196,7 @@ export function Pasos(p: PasosProps) {
           <div key={col.key} className="col" data-col={ci}>
             <div className={you ? 'colh you' : 'colh'} data-leaf="">
               <h3>{col.label}</h3>
-              <Count value={cs.length} {...(you ? { tone: 'you' as const } : {})} />
+              <Count value={cardCount(cs)} {...(you ? { tone: 'you' as const } : {})} />
               <i className="rule" />
             </div>
             <div className="cards">
