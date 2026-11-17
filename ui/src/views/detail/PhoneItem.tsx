@@ -80,6 +80,12 @@ type PhoneItemProps = {
 // thread and «Dejar una nota» docked, its sheet with the pieces as a strip; when reviewing, each
 // round's notes folded under what was delivered.
 export type PhoneNotes = {
+  // While you review the step: a comment left from the reader, on a file, a line or a node, and
+  // the line the reader says of it (it goes with a send-back, or stays a note if you approve).
+  review?: {
+    says: string;
+    sendOn: (text: string, anchor: { evidence: number } & ReaderPick) => void;
+  };
   // The notes of a round of the step under review (or being done), by its number.
   of: (round: number) => ItemNote[];
   // How many notes are on each piece of evidence, by its id.
@@ -154,9 +160,12 @@ function Files({
   marks,
   parts,
   decide,
+  comment,
   onSeen,
 }: {
   evidence: readonly Evidence[];
+  // While you review: a comment left from the reader (it goes with a send-back).
+  comment?: ((text: string, anchor: { evidence: number } & ReaderPick) => void) | undefined;
   // The board part each file went to, by module id; a file without one reads by its kind.
   parts?: ReadonlyMap<string, string> | undefined;
   // Aprobar and Devolver from inside the reader, on the round that waits for your verdict.
@@ -193,6 +202,7 @@ function Files({
   const deciding = decide
     ? {
         seen: decide.seen,
+        notice: decide.notice,
         back: decide.back ? { ...decide.back, onClick: after(decide.back.onClick) } : undefined,
         approve: decide.approve
           ? { ...decide.approve, onClick: after(decide.approve.onClick) }
@@ -258,7 +268,14 @@ function Files({
       >
         {at !== null ? (
           <div data-i="">
-            <EvidenceReader evidence={order} at={at} onAt={setAt} phone decide={deciding} />
+            <EvidenceReader
+              evidence={order}
+              at={at}
+              onAt={setAt}
+              phone
+              decide={deciding}
+              note={comment ? { onSend: (text, on) => comment(text, on) } : undefined}
+            />
           </div>
         ) : null}
       </BottomSheet>
@@ -307,6 +324,7 @@ function RoundView({
   notes,
   parts,
   decide,
+  comment,
   onSeen,
   handed,
 }: {
@@ -315,6 +333,7 @@ function RoundView({
   handed?: readonly { ref: string; name: string; value: string }[] | undefined;
   parts?: ReadonlyMap<string, string> | undefined;
   decide?: ReaderDecide | undefined;
+  comment?: ((text: string, anchor: { evidence: number } & ReaderPick) => void) | undefined;
   // The round before it, to mark its files against.
   prior: PhoneRound | undefined;
   newest: boolean;
@@ -360,6 +379,7 @@ function RoundView({
           marks={prior ? fileMarks(prior.evidence, r.evidence) : undefined}
           parts={parts}
           decide={decide}
+          comment={comment}
           onSeen={onSeen}
         />
       </section>
@@ -541,6 +561,7 @@ export function PhoneItem(p: PhoneItemProps) {
     docked && dock && (primary || sendback) && newest
       ? {
           seen: newest.evidence.filter((e) => seen.has(e.id)).length,
+          notice: p.notes?.review?.says,
           back: sendback ? { label: sendback.label, onClick: () => choose(sendback) } : undefined,
           approve: primary ? { label: primary.label, onClick: () => choose(primary) } : undefined,
         }
@@ -684,6 +705,7 @@ export function PhoneItem(p: PhoneItemProps) {
           notes={leave ? undefined : p.notes}
           parts={parts}
           decide={shown === newest ? readerDecide : undefined}
+          comment={shown === newest ? p.notes?.review?.sendOn : undefined}
           onSeen={markSeen}
           handed={shown === newest ? handed : undefined}
         />
