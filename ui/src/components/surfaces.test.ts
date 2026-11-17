@@ -282,13 +282,16 @@ describe('Te espera', () => {
   });
 });
 
+// A command's words, each kept whole on its line (CommandWords), read back as the command.
+const unwrapWords = (html: string) => html.replace(/<span class="nw">([^<]*)<\/span>/g, '$1');
+
 describe('dialogs', () => {
   it('Conectar un agente gives a project with no board the whole first contact to paste', () => {
     setLanguage('es');
     workspace.set({ connect: true });
     expect(render(createElement(ConnectDialog))).toContain('>Hecho</button>');
-    const html = render(
-      createElement(ConnectView, { view: { kind: 'start', prompt: startPrompt('es') } }),
+    const html = unwrapWords(
+      render(createElement(ConnectView, { view: { kind: 'start', prompt: startPrompt('es') } })),
     );
     expect(html).toContain('Conectar un agente');
     expect(html).toContain('te pregunta cómo trabajas y te propone los tableros');
@@ -328,8 +331,8 @@ describe('dialogs', () => {
 
   it('Connect an agent reads in English too', () => {
     setLanguage('en');
-    const html = render(
-      createElement(ConnectView, { view: { kind: 'start', prompt: startPrompt('en') } }),
+    const html = unwrapWords(
+      render(createElement(ConnectView, { view: { kind: 'start', prompt: startPrompt('en') } })),
     );
     expect(html).toContain('otea connect --as &lt;name&gt; --model &lt;model&gt;');
     expect(html).toContain('Set up Otea in this project');

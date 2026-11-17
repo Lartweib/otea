@@ -59,6 +59,10 @@ svg.ic {
 code {
   font-family: var(--mono);
 }
+/* a command's word (CommandWords): the line wraps between words, never at an option's hyphen */
+.nw {
+  white-space: nowrap;
+}
 
 /* Pinned to the start of its containing block, so a hidden label never widens the page. */
 .visually-hidden {

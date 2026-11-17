@@ -397,7 +397,6 @@
   justify-self: start;
 }
 .connect .cprompt code.inl {
-  white-space: nowrap;
   font-size: 12px;
 }
 .connect > .psurf .pin > .cnote,

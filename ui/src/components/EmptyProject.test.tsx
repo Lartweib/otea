@@ -54,7 +54,8 @@ describe('the empty project page', () => {
 
   it('starts a project with no board yet from the agent prompt, or by picking boards', () => {
     setLanguage('es');
-    const html = render([]);
+    // A command's words, each kept whole on its line (CommandWords), read back as the command.
+    const html = render([]).replace(/<span class="nw">([^<]*)<\/span>/g, '$1');
     expect(html).toContain('Configura Otea en este proyecto.');
     expect(html).toContain('<code class="inl">otea init</code>');
     expect(html).toContain('Copiar la instrucción</button>');
