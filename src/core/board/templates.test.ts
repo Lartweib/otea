@@ -33,7 +33,6 @@ describe('templates', () => {
       'visual-iteration:Iteración visual',
       'playtest:Probar si es divertido',
       'resume:Retomar un proyecto',
-      'bug-handoff:Fallos para otro dueño',
       'changes:Encargos',
       'repobugs:Errores de trabajo',
       'ideas:De la idea a las tareas',

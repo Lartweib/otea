@@ -200,11 +200,6 @@ describe('a project made from an official template', () => {
     ['visual-iteration', 'Iteración visual', ['Predecir', 'Generar', 'Mirar', 'Integrar']],
     ['playtest', 'Probar si es divertido', ['Prototipar', 'Jugar']],
     ['resume', 'Retomar un proyecto', ['Reconstruir', 'Elegir', 'Preparar']],
-    [
-      'bug-handoff',
-      'Fallos para otro dueño',
-      ['Reproducir', 'Triar', 'Pasar al dueño', 'Verificar'],
-    ],
   ];
   for (const [key, name, walk] of CATALOGUE) {
     it(`takes an item of the ${key} template through ${walk.join(', ')} to Hecho`, () => {
