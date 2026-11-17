@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { ownerChain, readProcessTable, watchOwner } from './owner.ts';
+import {
+  ownerChain,
+  readPosixTable,
+  readProcessTable,
+  watchOwner,
+  withPosixParents,
+} from './owner.ts';
 import { until } from './testing.ts';
 
 describe('the processes that own a command', () => {
@@ -46,6 +52,55 @@ describe('the processes that own a command', () => {
       { pid: 400, parent: 500, name: 'node.exe' },
       { pid: 500, parent: 600, name: 'Git Bash.exe' },
     ]);
+  });
+
+  it('reads where each program lives when the listing says it', () => {
+    expect(
+      readProcessTable(
+        '500 600 sh.exe\tC:\\Program Files\\Git\\usr\\bin\\sh.exe\r\n4 0 System\t\r\n',
+      ),
+    ).toEqual([
+      { pid: 500, parent: 600, name: 'sh.exe', path: 'C:\\Program Files\\Git\\usr\\bin\\sh.exe' },
+      { pid: 4, parent: 0, name: 'System' },
+    ]);
+  });
+
+  describe('Git Bash on Windows', () => {
+    // What Claude Code's background Bash leaves: claude.exe runs Git's bash.exe, which runs the
+    // MSYS bash. That bash forks a copy (310) to run the npm shim; the copy becomes sh (320) and
+    // ends at once, so Windows names a parent no longer running. sh then runs node (400), and
+    // stays as its stub (500), the parent Windows gives node. Only the MSYS table links them.
+    const windows = [
+      { pid: 700, parent: 650, name: 'claude.exe' },
+      { pid: 600, parent: 700, name: 'bash.exe' },
+      { pid: 300, parent: 600, name: 'bash.exe' },
+      { pid: 500, parent: 310, name: 'sh.exe' },
+      { pid: 400, parent: 500, name: 'node.exe' },
+    ];
+    const msys = [
+      '      PID    PPID    PGID     WINPID   TTY         UID    STIME COMMAND',
+      '     1003       1    1003        300  ?         197609 21:29:38 /usr/bin/bash',
+      '     1006    1003    1003        400  ?         197609 21:29:39 /c/Program Files/nodejs/node',
+      '     1009       1    1009        999  ?         197609 21:29:43 /usr/bin/ps',
+    ].join('\r\n');
+
+    it('reads the MSYS process table', () => {
+      expect(readPosixTable(msys)).toEqual([
+        { pid: 1003, parent: 1, winpid: 300 },
+        { pid: 1006, parent: 1003, winpid: 400 },
+        { pid: 1009, parent: 1, winpid: 999 },
+      ]);
+    });
+
+    it('climbs from the shim past the shell copy that already ended, up to the harness', () => {
+      const rows = withPosixParents(windows, readPosixTable(msys));
+      expect(ownerChain(rows, 500)).toEqual([500, 300, 600, 700]);
+    });
+
+    it('keeps the Windows parents when there is no MSYS table', () => {
+      expect(withPosixParents(windows, [])).toEqual(windows);
+      expect(ownerChain(windows, 500)).toEqual([500]);
+    });
   });
 
   describe('watchOwner', () => {
