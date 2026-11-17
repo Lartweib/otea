@@ -147,9 +147,15 @@ function isOurs(hook: unknown): boolean {
   const command = (hook as { command?: unknown } | null)?.command;
   return (
     typeof command === 'string' &&
-    command.includes(' check --gate ') &&
+    (command.includes(' check --gate ') || command.includes(' topic session ')) &&
     command.endsWith('--claude-hook')
   );
+}
+
+// The Stop hook that keeps a side topic's answer as the agent wrote it in the chat; it does
+// nothing while the project keeps no topics.
+function stopHooks(otea: Launcher): Array<{ type: 'command'; command: string }> {
+  return [{ type: 'command', command: `${oteaCommand(otea)} topic session --claude-hook` }];
 }
 
 // The hooks name this machine's path to Otea, so they go to the settings of this machine only.
@@ -171,18 +177,22 @@ function readSettings(path: string): Settings {
   );
 }
 
-// The settings with Otea's PreToolUse hooks taken out, and empty groups and keys with them.
+// The settings with Otea's hooks (PreToolUse and Stop) taken out, and empty groups and keys with
+// them.
 function withoutOurs(settings: Settings): Settings {
-  const groups = settings.hooks?.PreToolUse;
-  if (!Array.isArray(groups)) return settings;
-  const kept = groups.flatMap((group: HookGroup) => {
-    if (!Array.isArray(group?.hooks)) return [group];
-    const hooks = group.hooks.filter((hook) => !isOurs(hook));
-    if (hooks.length === group.hooks.length) return [group];
-    return hooks.length > 0 ? [{ ...group, hooks }] : [];
-  });
-  const { PreToolUse: _, ...events } = settings.hooks ?? {};
-  const hooks = kept.length > 0 ? { ...events, PreToolUse: kept } : events;
+  let hooks: Record<string, unknown> = { ...(settings.hooks ?? {}) };
+  for (const event of ['PreToolUse', 'Stop']) {
+    const groups = hooks[event];
+    if (!Array.isArray(groups)) continue;
+    const kept = groups.flatMap((group: HookGroup) => {
+      if (!Array.isArray(group?.hooks)) return [group];
+      const left = group.hooks.filter((hook) => !isOurs(hook));
+      if (left.length === group.hooks.length) return [group];
+      return left.length > 0 ? [{ ...group, hooks: left }] : [];
+    });
+    const { [event]: _, ...others } = hooks;
+    hooks = kept.length > 0 ? { ...others, [event]: kept } : others;
+  }
   const { hooks: __, ...rest } = settings;
   return Object.keys(hooks).length > 0 ? { ...rest, hooks } : rest;
 }
@@ -197,12 +207,14 @@ export function installClaudeHook(cwd: string, otea: Launcher): HookChange {
   const before = readSettings(path);
   const base = withoutOurs(before);
   const group = { matcher: 'Bash', hooks: claudeHooks(otea) };
+  const stop = { hooks: stopHooks(otea) };
   const existing = Array.isArray(base.hooks?.PreToolUse) ? base.hooks.PreToolUse : [];
+  const stops = Array.isArray(base.hooks?.Stop) ? base.hooks.Stop : [];
   const next: Settings = {
     ...base,
-    hooks: { ...(base.hooks ?? {}), PreToolUse: [...existing, group] },
+    hooks: { ...(base.hooks ?? {}), PreToolUse: [...existing, group], Stop: [...stops, stop] },
   };
-  const content = JSON.stringify(group, null, 2);
+  const content = JSON.stringify({ PreToolUse: group, Stop: stop }, null, 2);
   const unchanged = JSON.stringify(next) === JSON.stringify(before);
   const existed = existsSync(path);
   if (!unchanged) writeSettings(path, next);
