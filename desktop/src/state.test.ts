@@ -94,28 +94,63 @@ const state = (yours: number, agents: number) =>
 
 describe('the words', () => {
   it('says the state in the tooltip and the menu header, singular and plural by count', () => {
-    expect(tooltip(state(3, 1))).toBe('Otea — 3 yours, 1 agent working');
-    expect(tooltip(state(3, 0))).toBe('Otea — 3 yours');
-    expect(tooltip(state(0, 2))).toBe('Otea — 2 agents working');
-    expect(tooltip(state(0, 0))).toBe('Otea — nothing is yours');
-    expect(menuHeader(state(3, 1))).toBe('3 yours · 1 agent working');
-    expect(menuHeader(state(0, 0))).toBe('Nothing is yours');
+    expect(tooltip(state(3, 1), 'en')).toBe('Otea — 3 yours, 1 agent working');
+    expect(tooltip(state(3, 0), 'en')).toBe('Otea — 3 yours');
+    expect(tooltip(state(0, 2), 'en')).toBe('Otea — 2 agents working');
+    expect(tooltip(state(0, 0), 'en')).toBe('Otea — nothing is yours');
+    expect(menuHeader(state(3, 1), 'en')).toBe('3 yours · 1 agent working');
+    expect(menuHeader(state(0, 0), 'en')).toBe('Nothing is yours');
+  });
+
+  it('says it in Spanish on a Spanish system', () => {
+    expect(tooltip(state(3, 1), 'es')).toBe('Otea — 3 te tocan, 1 agente trabajando');
+    expect(tooltip(state(1, 0), 'es')).toBe('Otea — 1 te toca');
+    expect(tooltip(state(0, 2), 'es')).toBe('Otea — 2 agentes trabajando');
+    expect(tooltip(state(0, 0), 'es')).toBe('Otea — nada te toca');
+    expect(menuHeader(state(3, 1), 'es')).toBe('3 te tocan · 1 agente trabajando');
+    expect(menuHeader(state(0, 0), 'es')).toBe('Nada te toca');
   });
 
   it('labels a collection with its counts in words', () => {
-    expect(collectionLabel({ name: 'animations', yours: 1, working: 1 })).toBe(
+    expect(collectionLabel({ name: 'animations', yours: 1, working: 1 }, 'en')).toBe(
       'animations · 1 yours · 1 working',
     );
-    expect(collectionLabel({ name: 'tasks', yours: 0, working: 0 })).toBe('tasks · nothing yours');
+    expect(collectionLabel({ name: 'tasks', yours: 0, working: 0 }, 'en')).toBe(
+      'tasks · nothing yours',
+    );
+    expect(collectionLabel({ name: 'bugs', yours: 2, working: 1 }, 'es')).toBe(
+      'bugs · 2 te tocan · 1 trabajando',
+    );
+    expect(collectionLabel({ name: 'tasks', yours: 0, working: 0 }, 'es')).toBe(
+      'tasks · nada te toca',
+    );
   });
 });
 
 describe('overlayOf', () => {
   it('puts yours over working, and nothing when nothing is yours and nobody works', () => {
-    expect(overlayOf(state(1, 1))).toEqual({ kind: 'yours', description: '1 item is yours' });
-    expect(overlayOf(state(3, 0))).toEqual({ kind: 'yours', description: '3 items are yours' });
-    expect(overlayOf(state(0, 1))).toEqual({ kind: 'working', description: 'An agent is working' });
-    expect(overlayOf(state(0, 0))).toBeNull();
+    expect(overlayOf(state(1, 1), 'en')).toEqual({ kind: 'yours', description: '1 item is yours' });
+    expect(overlayOf(state(3, 0), 'en')).toEqual({
+      kind: 'yours',
+      description: '3 items are yours',
+    });
+    expect(overlayOf(state(0, 1), 'en')).toEqual({
+      kind: 'working',
+      description: 'An agent is working',
+    });
+    expect(overlayOf(state(0, 0), 'en')).toBeNull();
+  });
+
+  it('describes the overlay in Spanish on a Spanish system', () => {
+    expect(overlayOf(state(1, 0), 'es')).toEqual({ kind: 'yours', description: '1 ítem te toca' });
+    expect(overlayOf(state(3, 0), 'es')).toEqual({
+      kind: 'yours',
+      description: '3 ítems te tocan',
+    });
+    expect(overlayOf(state(0, 1), 'es')).toEqual({
+      kind: 'working',
+      description: 'Un agente está trabajando',
+    });
   });
 });
 
