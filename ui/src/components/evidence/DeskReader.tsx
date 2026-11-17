@@ -1,3 +1,4 @@
+import { roleWord } from '../../evidence.ts';
 import { t } from '../../i18n/i18n.ts';
 import { Dialog } from '../../kit/pop/Dialog.tsx';
 import type { Evidence } from '../../types.ts';
@@ -47,6 +48,7 @@ export function ReaderPane({
         {evidence.map((e, i) => {
           const mark = marks?.get(e.id);
           const part = e.module === null ? undefined : parts?.get(e.module);
+          const side = roleWord(e);
           return (
             <button
               key={e.id}
@@ -57,7 +59,10 @@ export function ReaderPane({
               onClick={() => onAt(i)}
             >
               <span className="rd-fn">{e.filename}</span>
-              <span className="rd-kd">{part ?? t(`evidence.kind.${e.kind}`)}</span>
+              <span className="rd-kd">
+                {part ?? t(`evidence.kind.${e.kind}`)}
+                {side ? ` · ${side}` : ''}
+              </span>
               {mark ? <span className={`mk ${mark}`}>{t(MARK_KEY[mark])}</span> : null}
               {seen.has(e.id) ? (
                 <span className="rd-seen" role="img" aria-label={t('evidence.reader.opened')} />

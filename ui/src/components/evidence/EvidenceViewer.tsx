@@ -1,4 +1,5 @@
 import { type CSSProperties, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { pairIn, roleWord } from '../../evidence.ts';
 import { useFileUrl } from '../../evidence-files.ts';
 import { t } from '../../i18n/i18n.ts';
 import { Icon } from '../../kit/index.ts';
@@ -7,7 +8,7 @@ import { sendThenClear } from '../note-send.ts';
 import { DiagramView } from './DiagramView.tsx';
 import { FileMeta } from './FileMeta.tsx';
 import { FileView } from './FileViews.tsx';
-import { ImageSingle } from './ImageViews.tsx';
+import { ImageCompare, ImageSingle } from './ImageViews.tsx';
 import {
   findPick,
   pickAnchor,
@@ -186,13 +187,18 @@ export function EvidenceReader({
   const [text, setText] = useState(draft);
   const [sending, setSending] = useState(false);
   const shownId = shown?.id;
+  // A before or an after of an image, with its other side among the files: compared on one frame.
+  const pair = shown && shown.kind === 'image' ? pairIn(evidence, shown) : null;
+  const [comparing, setComparing] = useState(false);
+  const compared = comparing && pair !== null;
   // biome-ignore lint/correctness/useExhaustiveDependencies: once per cite that opens the reader
   useEffect(() => {
     if (start && shownId !== undefined) setPick({ id: shownId, pick: start });
   }, [start]);
   const picked = pick && pick.id === shownId ? pick.pick : null;
   // An image takes a point (or, on the desk, a zone dragged over it) for the note.
-  const spotting = note !== undefined && shown !== undefined && pickableOn(shown) === 'spot';
+  const spotting =
+    note !== undefined && shown !== undefined && !compared && pickableOn(shown) === 'spot';
   const press = useRef<{ x: number; y: number } | null>(null);
   const [drag, setDrag] = useState<ReaderPick | null>(null);
   const [frame, setFrame] = useState<CSSProperties | null>(null);
@@ -271,6 +277,19 @@ export function EvidenceReader({
           <Icon name="right" />
         </button>
       </div>
+      {pair ? (
+        <div className="ev-reader-pair">
+          <span>{t('evidence.reader.side', { side: roleWord(shown) ?? '' })}</span>
+          <button
+            type="button"
+            className="btn quiet sm"
+            aria-pressed={compared}
+            onClick={() => setComparing(!compared)}
+          >
+            {t('evidence.reader.compare')}
+          </button>
+        </div>
+      ) : null}
       {/* biome-ignore lint/a11y/noStaticElementInteractions: a click on a line picks it for the note; the note is also sent without one */}
       {/* biome-ignore lint/a11y/useKeyWithClickEvents: picking is optional, the note goes on the whole file */}
       <div
@@ -323,7 +342,11 @@ export function EvidenceReader({
             : undefined
         }
       >
-        <EvidenceViewer key={shown.id} evidence={shown} {...(phone ? { phone } : {})} />
+        {compared && pair ? (
+          <ImageCompare evidence={[pair.before, pair.after]} />
+        ) : (
+          <EvidenceViewer key={shown.id} evidence={shown} {...(phone ? { phone } : {})} />
+        )}
         {spot && frame ? (
           <div className="ev-spot-layer" style={frame} aria-hidden="true">
             <span
@@ -342,7 +365,7 @@ export function EvidenceReader({
         <div className="ev-reader-note">
           <div className="ev-reader-on">
             <b>{t('notes.pick.on', { what: pickWords(picked) })}</b>
-            <span>{pickHint(shown, !!phone)}</span>
+            <span>{compared ? t('notes.pick.hintCompare') : pickHint(shown, !!phone)}</span>
           </div>
           <textarea
             rows={2}
