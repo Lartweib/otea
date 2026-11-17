@@ -44,7 +44,12 @@ export type FieldWords = {
 
 const AS_STORED: FieldWords = { field: (key) => key, value: (_key, value) => value };
 
-export function describeEvent({ type, data }: ItemEvent, words: FieldWords = AS_STORED): string {
+// `you`: the person did it, so a field change reads in the second person.
+export function describeEvent(
+  { type, data }: ItemEvent,
+  words: FieldWords = AS_STORED,
+  o: { you?: boolean } = {},
+): string {
   if (type === 'created') return t('event.created', { state: String(data.state) });
   if (type === 'transitioned') {
     const moved = { from: String(data.from), to: String(data.to) };
@@ -52,7 +57,7 @@ export function describeEvent({ type, data }: ItemEvent, words: FieldWords = AS_
       ? t('event.moved', moved)
       : t('event.movedWhy', { ...moved, reason: String(data.reason) });
   }
-  if (type === 'updated') return describeUpdate(data.changes, words);
+  if (type === 'updated') return describeUpdate(data.changes, words, o.you === true);
   if (type === 'claimed') {
     const holder = String(data.holder);
     return data.previous === undefined
@@ -84,7 +89,7 @@ export function describeEvent({ type, data }: ItemEvent, words: FieldWords = AS_
 
 type Changes = Record<string, { from: string | null; to: string | null }>;
 
-function describeUpdate(changes: unknown, words: FieldWords): string {
+function describeUpdate(changes: unknown, words: FieldWords, you: boolean): string {
   const entries = Object.entries((changes ?? {}) as Changes);
   const shorten = (text: string) => (text.length > 40 ? `${text.slice(0, 40)}…` : text);
   const parts = entries.map(([field, { from }]) =>
@@ -93,7 +98,7 @@ function describeUpdate(changes: unknown, words: FieldWords): string {
       value: shorten(from === null ? t('event.empty') : words.value(field, from)),
     }),
   );
-  return t('event.updated', { changes: parts.join(', ') });
+  return t(you ? 'event.updatedYou' : 'event.updated', { changes: parts.join(', ') });
 }
 
 export function leaseLabel({ holder, expiresAt }: Lease, timeZone?: string): string {

@@ -9,7 +9,7 @@ import { C } from '../../motion/curves.ts';
 import { reduced } from '../../motion/reduced.ts';
 import { parseOptions } from '../../options.ts';
 import type { ItemView, TypeView } from '../../types.ts';
-import type { Facts } from './facts.ts';
+import { closerOf, type Facts } from './facts.ts';
 import { stuckToastOf, toastOf } from './frame.ts';
 import { type MoveChoice, type MovePlan, moveSaysOf } from './moves.ts';
 
@@ -455,8 +455,12 @@ export function Acts({
     let text: ReactNode;
     // The standfirst already says who has it or did it: the receipt adds only what is new.
     if (look === 'dropped') text = t('sheet.receipt.dropped');
-    else if (look === 'done') text = t('sheet.receipt.done');
-    else if (look === 'queued') text = t('sheet.receipt.queued');
+    else if (look === 'done') {
+      const closer = closerOf(item.events);
+      text = closer
+        ? tx('sheet.receipt.doneBy', { agent: <b>{closer}</b> })
+        : t('sheet.receipt.done');
+    } else if (look === 'queued') text = t('sheet.receipt.queued');
     else {
       const left = whenText(item, app.now);
       text = (

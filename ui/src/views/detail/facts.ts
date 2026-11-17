@@ -176,6 +176,14 @@ export function standAgentOf(facts: Facts, boardAgentTurn: boolean): string | nu
   return facts.handed?.agent ?? facts.agent;
 }
 
+// Who closed it: the agent whose move closed it (its last step, Integrar), or null when you did,
+// yourself or through an agent that passed on your decision.
+export function closerOf(events: readonly ItemEvent[]): string | null {
+  const last = events.findLast(({ type }) => type === 'transitioned');
+  if (!last || last.actor.kind !== 'agent' || relayOf(last)) return null;
+  return last.actor.name;
+}
+
 export type Stand = { key: MessageKey; agent?: string; round?: number; time?: string };
 
 // The standfirst under the headline: who hands it to you, asks, has gone quiet; your step; done.

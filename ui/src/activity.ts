@@ -1,3 +1,4 @@
+import { isClosed, positionOf } from '../../src/core/board/engine.ts';
 import { relayOf } from './format.ts';
 import { t } from './i18n/i18n.ts';
 import { activeLease } from './lease.ts';
@@ -17,14 +18,26 @@ export const FEED_SIZE = 200;
 // Whose turn a state of an item is, from the item's type in its collection.
 export type TurnOf = (itemId: string, state: string) => Turn | undefined;
 
-export function turnLookup(items: readonly Item[], collections: readonly CollectionView[]): TurnOf {
+// Where a state stands among its type's states (a board's steps in order); -1 when unknown.
+export type RankOf = (itemId: string, state: string) => number;
+
+function typeLookup(items: readonly Item[], collections: readonly CollectionView[]) {
   const byId = new Map(items.map((item) => [item.id, item]));
-  return (itemId, state) => {
+  return (itemId: string) => {
     const item = byId.get(itemId);
     const collection = collections.find((each) => each.name === item?.collection);
-    const type = collection?.types.find((each) => each.name === item?.type);
-    return type?.states.find((each) => each.name === state)?.turn;
+    return collection?.types.find((each) => each.name === item?.type);
   };
+}
+
+export function turnLookup(items: readonly Item[], collections: readonly CollectionView[]): TurnOf {
+  const typeOf = typeLookup(items, collections);
+  return (itemId, state) => typeOf(itemId)?.states.find((each) => each.name === state)?.turn;
+}
+
+export function rankLookup(items: readonly Item[], collections: readonly CollectionView[]): RankOf {
+  const typeOf = typeLookup(items, collections);
+  return (itemId, state) => typeOf(itemId)?.states.findIndex((each) => each.name === state) ?? -1;
 }
 
 // One line of the feed: the lane its dot sits in (an agent's acts on the left; yours, and what it
@@ -46,7 +59,11 @@ export type Phrase =
   | { key: 'activity.restarted' }
   | { key: 'activity.reassigned'; agent: string }
   | { key: 'activity.handed'; state: string; name?: string }
-  | { key: 'activity.moved' | 'activity.sentBack'; state: string; name?: string }
+  | {
+      key: 'activity.moved' | 'activity.sentBack' | 'activity.approved' | 'activity.closed';
+      state: string;
+      name?: string;
+    }
   | { key: 'activity.created'; state: string; name?: string }
   | { key: 'activity.attached'; file: string }
   | { key: 'activity.edited' }
@@ -90,7 +107,11 @@ export function arcDash(share: number): string {
   return `${(ARC * f).toFixed(1)} ${ARC.toFixed(1)}`;
 }
 
-function phraseOf(event: FeedEvent, turnOf: TurnOf): Pick<FeedLine, 'kind' | 'phrase'> {
+function phraseOf(
+  event: FeedEvent,
+  turnOf: TurnOf,
+  rankOf?: RankOf,
+): Pick<FeedLine, 'kind' | 'phrase'> {
   const { type, data, at } = event;
   const text = (value: unknown) => String(value ?? '');
   if (type === 'claimed') {
@@ -112,13 +133,23 @@ function phraseOf(event: FeedEvent, turnOf: TurnOf): Pick<FeedLine, 'kind' | 'ph
     const state = text(data.to);
     const name = named(data.toName);
     const handed = event.actor.kind === 'agent' && turnOf(event.itemId, state) === 'human';
-    // You sent it back: out of a review with what to change.
-    const back =
-      event.actor.kind === 'human' &&
-      /__review$/.test(text(data.from)) &&
-      typeof data.reason === 'string' &&
-      data.reason !== '';
-    if (back) return { kind: 'other', phrase: { key: 'activity.sentBack', state, ...name } };
+    const from = text(data.from);
+    // Into a closed state: closed (an approval into Done, a publish, an agent's last step).
+    const closes = turnOf(event.itemId, state) === 'none' || isClosed(positionOf(state));
+    if (closes) return { kind: 'other', phrase: { key: 'activity.closed', state, ...name } };
+    // Out of a board's review: back to its step or an earlier one with what to change, or
+    // approved on to a later step.
+    if (/__review$/.test(from)) {
+      const reviewed = from.replace(/__review$/, '');
+      const at = rankOf?.(event.itemId, state);
+      const earlier =
+        state === reviewed ||
+        (at !== undefined && at !== -1 && at < (rankOf?.(event.itemId, reviewed) ?? -1));
+      const reason = typeof data.reason === 'string' && data.reason !== '';
+      if (earlier || (rankOf === undefined && reason))
+        return { kind: 'other', phrase: { key: 'activity.sentBack', state, ...name } };
+      if (!handed) return { kind: 'other', phrase: { key: 'activity.approved', state, ...name } };
+    }
     return handed
       ? { kind: 'handoff', phrase: { key: 'activity.handed', state, ...name } }
       : { kind: 'other', phrase: { key: 'activity.moved', state, ...name } };
@@ -162,13 +193,17 @@ function named(value: unknown): { name?: string } {
 }
 
 // The feed, newest first. A lease released on a handoff is not drawn apart: the handoff says it.
-export function feedLines(events: readonly FeedEvent[], turnOf: TurnOf): FeedLine[] {
+export function feedLines(
+  events: readonly FeedEvent[],
+  turnOf: TurnOf,
+  rankOf?: RankOf,
+): FeedLine[] {
   return events
     .filter((event) => !(event.type === 'released' && event.data.cause === 'handoff'))
     .map((event) => {
       const relay = relayOf(event);
       const agent = relay ? relay.via : event.actor.kind === 'agent' ? event.actor.name : null;
-      const said = phraseOf(event, turnOf);
+      const said = phraseOf(event, turnOf, rankOf);
       // A handoff lands in your lane: from then on the item is yours.
       const yours = event.actor.kind !== 'agent' || said.kind === 'handoff';
       return {

@@ -10,6 +10,7 @@ import {
   leaseLeft,
   leaseRows,
   leftShare,
+  rankLookup,
   shownLines,
   turnLookup,
 } from '../activity.ts';
@@ -109,6 +110,8 @@ function sentence(line: FeedLine, id: ReactNode, state: (s: string) => string): 
         state: named(phrase, state),
       });
     case 'activity.moved':
+    case 'activity.approved':
+    case 'activity.closed':
     case 'activity.created':
       return tx(you ? `${phrase.key}You` : phrase.key, {
         id,
@@ -197,7 +200,11 @@ export function ActivityDrawer({ open, onClose }: ActivityDrawerProps) {
   useEscape(open, 'drawer', onClose);
 
   if (!mounted) return null;
-  const lines = feedLines(app.feed, turnLookup(app.all, app.collections));
+  const lines = feedLines(
+    app.feed,
+    turnLookup(app.all, app.collections),
+    rankLookup(app.all, app.collections),
+  );
   const leases = leaseRows(app.all, app.feed, now);
   const agents = [...new Set(lines.flatMap((l) => (l.agent ? [l.agent] : [])))].sort((a, b) =>
     a.localeCompare(b),

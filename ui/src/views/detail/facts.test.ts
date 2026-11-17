@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ago, NOW, officialType } from '../../derive/fixtures.ts';
 import type { ItemEvent, ItemView } from '../../types.ts';
-import { boardFactsOf, factsOf, standAgentOf, standOf } from './facts.ts';
+import { boardFactsOf, closerOf, factsOf, standAgentOf, standOf } from './facts.ts';
 
 const bug = officialType('bug-triage');
 let seq = 0;
@@ -248,5 +248,20 @@ describe('who an item on a board waits for', () => {
       agent: 'mender',
       left: false,
     });
+  });
+});
+
+describe('who closed it', () => {
+  it('names the agent whose move closed it; you, when you did or an agent passed on your decision', () => {
+    const handed = ev('transitioned', mender, { from: 'fixing', to: 'verify' }, 30);
+    expect(closerOf([handed, ev('transitioned', mender, { from: 'sland', to: 'done' }, 5)])).toBe(
+      'Mender',
+    );
+    expect(
+      closerOf([handed, ev('transitioned', you, { from: 'verify', to: 'fixed' }, 5)]),
+    ).toBeNull();
+    const relayed = ev('transitioned', you, { from: 'verify', to: 'fixed', via: 'Kiln' }, 5);
+    expect(closerOf([handed, relayed])).toBeNull();
+    expect(closerOf([])).toBeNull();
   });
 });

@@ -337,7 +337,7 @@ describe('the history of a field change, in the language on screen', () => {
       word,
       NOW,
     );
-    expect(line?.text).toBe('Actualizó Severidad (antes: media)');
+    expect(line?.text).toBe('Actualizaste Severidad (antes: media)');
   });
 
   it('says an evidence role in words', () => {
@@ -386,5 +386,123 @@ describe('a note to the agent at work, in one line', () => {
     expect(answered?.dot).toBe('note');
     expect(answered?.open).toBe(false);
     expect(answered?.who).toMatch(/^sobre pausa\.gif · contestó claude-d a las \d\d:\d\d$/);
+  });
+});
+
+describe('who did what on a board, in the history', () => {
+  afterEach(() => setLanguage('en'));
+  // Hacer (an agent does it, another agent reviews), Aprobar (you do it), Integrar (an agent lands
+  // it, no review), then Hecho.
+  const def = {
+    steps: [
+      { id: 'sdo', name: 'Hacer', doer: 'any', reviewer: 'any' },
+      { id: 'sok', name: 'Aprobar', doer: 'you', reviewer: 'none' },
+      { id: 'sland', name: 'Integrar', doer: 'any', reviewer: 'none' },
+    ],
+  } as unknown as BoardDefinition;
+  const type = {
+    ...bug,
+    states: [
+      { name: 'sdo', turn: 'agent' },
+      { name: 'sdo__review', turn: 'agent' },
+      { name: 'sok', turn: 'human' },
+      { name: 'sland', turn: 'agent' },
+      { name: 'done', turn: 'none', closes: 'done' },
+    ],
+  } as unknown as typeof bug;
+  const named = (s: string) =>
+    ({ sdo: 'Hacer', sdo__review: 'Hacer (revisión)', sok: 'Aprobar', sland: 'Integrar' })[s] ?? s;
+  const rev = { kind: 'agent', name: 'rev' } as const;
+  const events = [
+    ev('transitioned', mender, { from: 'sdo', to: 'sdo__review', reason: 'Hecho.' }, 90),
+    ev('transitioned', rev, { from: 'sdo__review', to: 'sdo', reason: 'Falta el test.' }, 80),
+    ev('transitioned', mender, { from: 'sdo', to: 'sdo__review', reason: 'Con test.' }, 70),
+    ev('transitioned', rev, { from: 'sdo__review', to: 'sok' }, 60),
+    ev('transitioned', you, { from: 'sok', to: 'sland' }, 50),
+    ev('transitioned', mender, { from: 'sland', to: 'done' }, 40),
+  ];
+
+  it('says an agent reviewer approved or sent it back, and that you handed off your own step', () => {
+    setLanguage('es');
+    expect(historyOf(events, type, named, NOW, def).map((l) => [l.text, l.who])).toEqual([
+      ['Lo cerró: done', 'Mender'],
+      ['Lo entregaste: pasa a Integrar', 'tú'],
+      ['Lo aprobó: pasa a Aprobar', 'rev'],
+      ['Lo pasó a Hacer (revisión)', 'Mender'],
+      ['Lo devolvió a Hacer con notas', 'rev'],
+      ['Lo pasó a Hacer (revisión)', 'Mender'],
+    ]);
+  });
+
+  it('says it in English too', () => {
+    expect(
+      historyOf(events, type, named, NOW, def)
+        .map((l) => l.text)
+        .slice(0, 5),
+    ).toEqual([
+      'Closed it: done',
+      'You handed it off: on to Integrar',
+      'Approved it: on to Aprobar',
+      'Moved it to Hacer (revisión)',
+      'Sent it back to Hacer with notes',
+    ]);
+  });
+
+  it('says your approval with a note as an approval, and your send-back as one', () => {
+    setLanguage('es');
+    const lines = historyOf(
+      [
+        ev('transitioned', you, { from: 'sdo__review', to: 'sdo', reason: 'Falta.' }, 30),
+        ev('transitioned', you, { from: 'sdo__review', to: 'sland', reason: 'Bien.' }, 20),
+      ],
+      type,
+      named,
+      NOW,
+      def,
+    );
+    expect(lines.map((l) => [l.text, l.quote])).toEqual([
+      ['Aprobaste: pasa a Integrar', 'Bien.'],
+      ['Lo devolviste a Hacer con notas', 'Falta.'],
+    ]);
+  });
+
+  it('says handed again only for a step it was handed in before', () => {
+    setLanguage('es');
+    const steps = {
+      ...bug,
+      states: [
+        { name: 'sa__review', turn: 'human' },
+        { name: 'sb__review', turn: 'human' },
+      ],
+    } as unknown as typeof bug;
+    const lines = historyOf(
+      [
+        ev('transitioned', mender, { from: 'sa', to: 'sa__review' }, 90),
+        ev('transitioned', you, { from: 'sa__review', to: 'sb' }, 80),
+        ev('transitioned', mender, { from: 'sb', to: 'sb__review' }, 70),
+        ev('transitioned', you, { from: 'sb__review', to: 'sb', reason: 'Otra vez.' }, 60),
+        ev('transitioned', mender, { from: 'sb', to: 'sb__review' }, 50),
+      ],
+      steps,
+      word,
+      NOW,
+    );
+    expect(lines.filter((l) => l.who === 'Mender').map((l) => l.text)).toEqual([
+      'Lo entregó otra vez en sb__review',
+      'Lo entregó en sb__review',
+      'Lo entregó en sa__review',
+    ]);
+  });
+
+  it('says a merge recorded in words, never its event type', () => {
+    setLanguage('es');
+    const [line] = historyOf(
+      [ev('merged', mender, { branch: 'feat/x', pr: 'https://github.com/a/b/pull/3' })],
+      type,
+      named,
+      NOW,
+      def,
+    );
+    expect(line?.text).toBe('Registró que feat/x se fusionó');
   });
 });
