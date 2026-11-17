@@ -95,7 +95,7 @@ describe('the Ideas set', () => {
   }
 });
 
-describe('the Trabajo en varios repos set', () => {
+describe('the Entregas con PR set', () => {
   it('divides each Trabajo into Entregas, which guard their branch and main', () => {
     const [jobs, deliveries] = made('repos', 'es');
     if (!jobs || !deliveries) throw new Error('no boards');
@@ -114,40 +114,10 @@ describe('the Trabajo en varios repos set', () => {
   });
 });
 
-describe('the Errores de trabajo template', () => {
-  it('has the person report and verify, an agent triage and another review the fix', () => {
-    const def = instantiate(requireTemplate('repobugs'), 'es', {}, sequenceIds());
-    expect(def.steps.map(({ name, doer, reviewer }) => `${name}:${doer}/${reviewer}`)).toEqual([
-      'Reportar:you/none',
-      'Triar:any/you',
-      'Arreglar:any/any',
-      'Verificar:you/none',
-    ]);
-    expect(partNamed(def, 'Rama')?.guard?.base).toBe('main');
-    expect(def.drop.motives.map(({ name }) => name)).toEqual([
-      'No se reproduce',
-      'Duplicado',
-      'No es un error',
-    ]);
-  });
-
-  for (const lang of ['en', 'es'] as const) {
-    it(`reads well in ${lang}`, () => {
-      const def = instantiate(requireTemplate('repobugs'), lang, {}, sequenceIds());
-      expect(assertIconName(def.icon)).toBe(def.icon);
-      const problems = problemsOf(def, {}).filter(({ code }) => code !== 'motive_agent_drop');
-      expect(problems).toEqual([]);
-      for (const step of def.steps)
-        for (const text of Object.values(step.instructions))
-          expect(mentionText(def, text)).not.toMatch(/@[[{]/);
-    });
-  }
-});
-
-describe('the Encargos template', () => {
+describe('the Cambios template', () => {
   it('clarifies, does and lands each change, with one approval of yours', () => {
     const def = instantiate(requireTemplate('changes'), 'es', {}, sequenceIds());
-    expect([def.name, def.item]).toEqual(['Encargos', 'Encargo']);
+    expect([def.name, def.item]).toEqual(['Cambios', 'Cambio']);
     expect(def.steps.map(({ name, doer, reviewer }) => `${name}:${doer}/${reviewer}`)).toEqual([
       'Aclarar:any/none',
       'Hacerlo:any/you',

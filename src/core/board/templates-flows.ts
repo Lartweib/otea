@@ -3,8 +3,8 @@ import { w } from './template-words.ts';
 import type { Template, TemplateSet } from './templates.ts';
 
 // The boards designed and run end to end during the overnight validation: from an idea to its
-// tasks (Ideas and Implementación), the changes a person asks of an agent (Encargos), work across
-// repositories (Trabajos and Entregas) and the bugs of a team's repositories (Errores de trabajo).
+// tasks (Ideas and Implementación), the changes a person asks of an agent (Cambios), work across
+// repositories (Trabajos and Entregas, the Entregas con PR set).
 
 const IDEAS: Template = {
   key: 'ideaboard',
@@ -349,23 +349,23 @@ const IMPLEMENTATION: Template = {
 
 // Small changes the person asks an agent for, each on its own branch: an agent clarifies it, does
 // it, and once the person approves it, lands it on main on its own (the land step).
-const CHANGES: Template = {
+export const CHANGES: Template = {
   key: 'changes',
   icon: 'git-merge',
-  name: w('Ask for changes', 'Encargos'),
+  name: w('Changes', 'Cambios'),
   description: w(
     'An agent clarifies each change, does it on its own branch with its proof, and merges it into main once you approve it.',
-    'Un agente aclara cada encargo, lo hace en su rama con su prueba y lo integra en main cuando lo apruebas.',
+    'Un agente aclara cada cambio, lo hace en su rama con su prueba y lo integra en main cuando lo apruebas.',
   ),
-  board: w('Changes', 'Encargos'),
-  item: w('Change', 'Encargo'),
+  board: w('Changes', 'Cambios'),
+  item: w('Change', 'Cambio'),
   about: w(
     "Small changes the person asks an agent for in their own project. Each one is done on its own branch and goes through the person's review before it reaches main.",
-    'Encargos chicos que la persona le pide a un agente en un proyecto propio. Cada uno se hace en su rama y pasa por la revisión de la persona antes de llegar a main.',
+    'Cambios chicos que la persona le pide a un agente en un proyecto propio. Cada uno se hace en su rama y pasa por la revisión de la persona antes de llegar a main.',
   ),
   idle: w(
     'No changes for you. Wait with otea wait --turn agent --unclaimed; do not make changes up.',
-    'No hay encargos para ti. Espera con otea wait --turn agent --unclaimed; no inventes encargos.',
+    'No hay cambios para ti. Espera con otea wait --turn agent --unclaimed; no inventes cambios.',
   ),
   parts: [
     {
@@ -407,7 +407,7 @@ const CHANGES: Template = {
       key: 'branch',
       kind: 'branch',
       name: w('Branch', 'Rama'),
-      hint: w('change/<id>-<topic>, made from main', 'encargo/<id>-<tema>, creada desde main'),
+      hint: w('change/<id>-<topic>, made from main', 'cambio/<id>-<tema>, creada desde main'),
       guard: { push: ['doit', 'land'], base: 'main' },
     },
     {
@@ -856,215 +856,13 @@ const DELIVERIES: Template = {
   },
 };
 
-// Bugs in a team's repositories: an agent reproduces and finds the cause, another reviews the fix,
-// and the person checks it before the merge.
-const REPO_BUGS: Template = {
-  key: 'repobugs',
-  icon: 'bug',
-  name: w('Bugs in your repositories', 'Errores de trabajo'),
-  description: w(
-    'An agent reproduces each bug and finds its cause, another reviews the fix, and you check it before the merge.',
-    'Un agente reproduce cada error y encuentra la causa, otro revisa el arreglo, y tú lo verificas antes del merge.',
-  ),
-  board: w('Work bugs', 'Errores de trabajo'),
-  item: w('Bug', 'Error'),
-  about: w(
-    'Bugs reported on GitHub or by support: an agent reproduces them and finds the cause, another reviews the fix, and you check it before the merge.',
-    'Errores reportados en GitHub o por soporte: un agente los reproduce y encuentra la causa, otro revisa el arreglo, y tú verificas antes del merge.',
-  ),
-  idle: w(
-    'No bugs for you. Wait with otea wait --turn agent --unclaimed.',
-    'No hay errores para ti. Espera con otea wait --turn agent --unclaimed.',
-  ),
-  parts: [
-    {
-      key: 'issue',
-      kind: 'url',
-      name: w('Issue', 'Issue'),
-      hint: w('the link to the GitHub issue', 'el enlace al issue de GitHub'),
-    },
-    {
-      key: 'report',
-      kind: 'long',
-      name: w('Report', 'Reporte'),
-      hint: w('steps, what was expected and what happened', 'pasos, qué se esperaba y qué pasó'),
-    },
-    {
-      key: 'severity',
-      kind: 'level',
-      name: w('Severity', 'Gravedad'),
-      hint: w('how much it hurts whoever suffers it', 'cuánto duele a quien lo sufre'),
-      initial: 'medium',
-    },
-    {
-      key: 'repo',
-      kind: 'text',
-      name: w('Repo', 'Repo'),
-      hint: w(
-        'the repo the bug is in (otea repos list)',
-        'el repo donde está el error (otea repos list)',
-      ),
-    },
-    {
-      key: 'cause',
-      kind: 'long',
-      name: w('Cause', 'Causa'),
-      hint: w(
-        'where the bug is in the code and why it happens',
-        'dónde está el error en el código y por qué pasa',
-      ),
-    },
-    {
-      key: 'repro',
-      kind: 'log',
-      name: w('Reproduction', 'Reproducción'),
-      hint: w(
-        'a test or command that fails before the fix',
-        'un test o comando que falla antes del arreglo',
-      ),
-    },
-    {
-      key: 'branch',
-      kind: 'branch',
-      name: w('Branch', 'Rama'),
-      hint: w(
-        'the branch of the fix, e.g. fix/profile-undefined',
-        'la rama del arreglo, p. ej. fix/profile-undefined',
-      ),
-      guard: { push: ['fix'], repo: 'repo', base: 'main' },
-    },
-    {
-      key: 'fixdiff',
-      kind: 'code',
-      name: w('The fix', 'Arreglo'),
-      hint: w('the diff of the fix', 'el diff del arreglo'),
-    },
-    {
-      key: 'tests',
-      kind: 'log',
-      name: w('Tests', 'Tests'),
-      hint: w(
-        'the test that failed, now green, and the rest',
-        'el test que fallaba, ahora en verde, y el resto',
-      ),
-    },
-    {
-      key: 'pr',
-      kind: 'url',
-      name: w('PR', 'PR'),
-      hint: w('the link to the pull request', 'el enlace al pull request'),
-    },
-  ],
-  form: [
-    ['issue', false],
-    ['report', true],
-    ['severity', false],
-  ],
-  steps: [
-    {
-      key: 'reportit',
-      name: w('Report it', 'Reportar'),
-      doer: 'you',
-      reviewer: 'none',
-      hand: [['report', 'always']],
-      skip: true,
-    },
-    {
-      key: 'triage',
-      name: w('Triage', 'Triar'),
-      doer: 'any',
-      reviewer: 'you',
-      hand: [
-        ['repo', 'always'],
-        ['cause', 'always'],
-        ['repro', 'always', true],
-        ['severity', 'always'],
-      ],
-      drop: true,
-      take: w(
-        'Reproduce the bug in the @{report} (read the @{issue} if there is one). Find the @{cause} and the @{repo}. Leave in @{repro} a test or command that fails.',
-        'Reproduce el error del @{report} (lee el @{issue} si hay). Encuentra la @{cause} y el @{repo}. Deja en @{repro} un test o comando que falle.',
-      ),
-      before: w(
-        'If it does not reproduce, drop it with the motive Does not reproduce.',
-        'Si no se reproduce, descártalo con el motivo No se reproduce.',
-      ),
-    },
-    {
-      key: 'fix',
-      name: w('Fix', 'Arreglar'),
-      doer: 'any',
-      reviewer: 'any',
-      hand: [
-        ['branch', 'always'],
-        ['fixdiff', 'always', true],
-        ['tests', 'always', true],
-        ['pr', 'always'],
-      ],
-      ways: ['triage'],
-      note: w('what changed', 'qué cambió'),
-      take: w(
-        'Fix the @{cause} on a @{branch} of the @{repo}; the test in @{repro} turns green. Push the branch and open the PR.',
-        'Arregla la @{cause} en una @{branch} del @{repo}; el test de @{repro} pasa a verde. Sube la rama y abre el PR.',
-      ),
-      before: w(
-        'Leave the @{pr}, the diff in @{fixdiff} and the @{tests}.',
-        'Deja el @{pr}, el diff en @{fixdiff} y los @{tests}.',
-      ),
-      review: w(
-        'Check that the test in @{repro} fails without the fix and passes with it.',
-        'Comprueba que el test de @{repro} falla sin el arreglo y pasa con él.',
-      ),
-    },
-    {
-      key: 'verify',
-      name: w('Verify', 'Verificar'),
-      doer: 'you',
-      reviewer: 'none',
-      hand: [],
-      ways: ['fix'],
-    },
-  ],
-  anytime: ['severity', 'issue'],
-  motives: [
-    ['norepro', w('Does not reproduce', 'No se reproduce')],
-    ['duplicate', w('Duplicate', 'Duplicado')],
-    ['notbug', w('Not a bug', 'No es un error')],
-  ],
-  row: ['severity', 'repo'],
-  layout: {
-    rounds: 'main',
-    issue: 'side',
-    severity: 'side',
-    repo: 'side',
-    branch: 'side',
-    pr: 'side',
-    report: 'main',
-    cause: 'main',
-    repro: 'main',
-    fixdiff: 'main',
-    tests: 'main',
-  },
-  samples: {
-    en: ['The profile shows undefined', 'The login fails with accents'],
-    es: ['El perfil muestra undefined', 'El login falla con tildes'],
-  },
-};
-
-export const FLOW_TEMPLATES: readonly Template[] = [
-  IDEAS,
-  IMPLEMENTATION,
-  CHANGES,
-  JOBS,
-  DELIVERIES,
-  REPO_BUGS,
-];
+export const FLOW_TEMPLATES: readonly Template[] = [IDEAS, IMPLEMENTATION, JOBS, DELIVERIES];
 
 export const FLOW_SETS: readonly TemplateSet[] = [
   {
     key: 'ideas',
     icon: 'lightbulb',
-    name: w('From idea to tasks', 'De la idea a las tareas'),
+    name: w('Ideas → Tasks', 'Ideas → Tareas'),
     description: w(
       'An agent refines each idea with your answers, documents it with its decisions and diagrams, and plans its tasks on a second board, which wait until you approve the plan.',
       'Un agente refina cada idea con tus respuestas, la documenta con sus decisiones y diagramas, y planifica sus tareas en un segundo tablero, que esperan a que apruebes el plan.',
@@ -1074,7 +872,7 @@ export const FLOW_SETS: readonly TemplateSet[] = [
   {
     key: 'repos',
     icon: 'layers',
-    name: w('Work across repositories', 'Trabajo en varios repos'),
+    name: w('Deliveries with PRs', 'Entregas con PR'),
     description: w(
       'Each Job from an issue is analysed and planned, then divides into one Delivery per repository: an agent does it, another reviews it, and you let them merge in order.',
       'Cada Trabajo de un issue se analiza y planifica, y se divide en una Entrega por repositorio: un agente la hace, otro la revisa y tú dejas que se mergeen en orden.',

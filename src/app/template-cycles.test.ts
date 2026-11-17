@@ -165,20 +165,10 @@ describe('a project made from an official template', () => {
     expect(requireItem(ctx.db, job).state).toBe('done');
   });
 
-  it('takes an Error de trabajo from its report to Verificar', () => {
+  it('takes a Cambio through Aclarar, Hacerlo and Integrar, with one approval', () => {
     const ctx = memoryContext();
-    expect(initBoards(ctx, 'repobugs').map(({ name }) => name)).toEqual(['Errores de trabajo']);
-    const bugs = boardOf(ctx, 'Errores de trabajo');
-
-    const bug = newItem(ctx, bugs);
-    expect(runToDone(ctx, bug, bugs)).toEqual(['Triar', 'Arreglar', 'Verificar']);
-    expect(requireItem(ctx.db, bug).state).toBe('done');
-  });
-
-  it('takes an Encargo through Aclarar, Hacerlo and Integrar, with one approval', () => {
-    const ctx = memoryContext();
-    expect(initBoards(ctx, 'changes').map(({ name }) => name)).toEqual(['Encargos']);
-    const changes = boardOf(ctx, 'Encargos');
+    expect(initBoards(ctx, 'changes').map(({ name }) => name)).toEqual(['Cambios']);
+    const changes = boardOf(ctx, 'Cambios');
 
     const change = newItem(ctx, changes);
     expect(runToDone(ctx, change, changes)).toEqual(['Aclarar', 'Hacerlo', 'Integrar']);
@@ -189,17 +179,12 @@ describe('a project made from an official template', () => {
   });
 
   const CATALOGUE: readonly (readonly [key: string, board: string, walk: readonly string[]])[] = [
-    ['bug-reports', 'Reportes de errores', ['Completar', 'Triar', 'Arreglar', 'Integrar']],
-    ['content', 'Contenido', ['Esquema', 'Redactar', 'Poner en línea']],
-    ['digest', 'Resumen periódico', ['Recoger', 'Elegir', 'Redactar', 'Poner en línea']],
-    ['assets', 'Recursos', ['Especificar', 'Hacer', 'Integrar']],
+    ['bug-reports', 'Errores', ['Completar', 'Triar', 'Arreglar', 'Integrar']],
     ['research', 'Investigación', ['Investigar', 'Responder']],
     ['decisions', 'Decisiones', ['Investigar', 'Decidir', 'Registrar']],
+    ['content', 'Contenido', ['Esquema', 'Redactar', 'Poner en línea']],
+    ['design', 'Diseño visual', ['Crear', 'Integrar']],
     ['experiments', 'Experimentos', ['Planificar', 'Correr']],
-    ['support', 'Soporte', ['Preparar la respuesta', 'Enviar']],
-    ['visual-iteration', 'Iteración visual', ['Predecir', 'Generar', 'Mirar', 'Integrar']],
-    ['playtest', 'Probar si es divertido', ['Prototipar', 'Jugar']],
-    ['resume', 'Retomar un proyecto', ['Reconstruir', 'Elegir', 'Preparar']],
   ];
   for (const [key, name, walk] of CATALOGUE) {
     it(`takes an item of the ${key} template through ${walk.join(', ')} to Hecho`, () => {

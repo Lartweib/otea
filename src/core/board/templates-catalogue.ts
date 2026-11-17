@@ -1,25 +1,26 @@
 import { DONE, MOTIVE, STEP } from './model.ts';
 import { EMPTY, w } from './template-words.ts';
 import type { Template } from './templates.ts';
+import { CHANGES } from './templates-flows.ts';
 
-// The catalogue of ready-made boards for common jobs, designed and run end to end before they were
-// offered: bug reports, content, a recurring digest, assets, research, decisions, experiments,
-// support, visual iteration, playtests, resuming a dormant project and bugs handed to their owner.
+// The starter catalogue: generic boards named by what they manage, each a base a person adapts to
+// their own fields and steps: bugs, changes, research, decisions, content, visual design and
+// experiments (the two sets, ideas to tasks and deliveries with PRs, live in templates-flows).
 // Keys are kept as the ids the boards were designed with.
 
 const BUG_REPORTS: Template = {
   key: 'bug-reports',
   icon: 'bug',
-  name: w('Bug reports', 'Reportes de errores'),
+  name: w('Bugs', 'Errores'),
   description: w(
-    'Bugs reported by the people who use what you make. Nothing is fixed before it is reproduced, and every fix comes with its proof.',
-    'Errores que reporta la gente que usa lo que haces. Nada se arregla antes de reproducirlo, y cada arreglo llega con su prueba.',
+    'Bugs, whether you find them or the people who use what you make report them. Nothing is fixed before it is reproduced, and every fix comes with its proof.',
+    'Errores, los encuentres tú o los reporte la gente que usa lo que haces. Nada se arregla antes de reproducirlo, y cada arreglo llega con su prueba.',
   ),
-  board: w('Bug reports', 'Reportes de errores'),
-  item: w('Report', 'Reporte'),
+  board: w('Bugs', 'Errores'),
+  item: w('Bug', 'Error'),
   about: w(
-    'Bugs reported by the people who use what you make. Nothing is fixed before it is reproduced, and every fix comes with its proof.',
-    'Errores que reporta la gente que usa lo que haces. Nada se arregla antes de reproducirlo, y cada arreglo llega con su prueba.',
+    'Bugs, whether you find them or the people who use what you make report them. Nothing is fixed before it is reproduced, and every fix comes with its proof.',
+    'Errores, los encuentres tú o los reporte la gente que usa lo que haces. Nada se arregla antes de reproducirlo, y cada arreglo llega con su prueba.',
   ),
   idle: w(
     'Nothing here for you. Wait with otea wait --turn agent --unclaimed; do not invent work.',
@@ -315,6 +316,15 @@ const CONTENT: Template = {
       show: 'gallery',
     },
     {
+      key: 'eaudio',
+      kind: 'audio',
+      name: w('Audio', 'Audio'),
+      hint: w(
+        'a voice-over or episode, when the piece is heard',
+        'una locución o un episodio, cuando la pieza se escucha',
+      ),
+    },
+    {
       key: 'furl',
       kind: 'url',
       name: w('Published at', 'Publicado en'),
@@ -368,7 +378,7 @@ const CONTENT: Template = {
       ),
     },
   ],
-  anytime: ['fcover', 'fchannel'],
+  anytime: ['fcover', 'eaudio', 'fchannel'],
   samples: {
     en: ['What changed in 2.0', 'How to migrate from the old API'],
     es: ['Qué cambió en la 2.0', 'Cómo migrar desde la API vieja'],
@@ -382,251 +392,8 @@ const CONTENT: Template = {
     foutline: 'main',
     fdraft: 'main',
     fcover: 'main',
+    eaudio: 'main',
     furl: 'side',
-  },
-};
-
-const DIGEST: Template = {
-  key: 'digest',
-  icon: 'book',
-  name: w('Digest', 'Resumen periódico'),
-  description: w(
-    'A recurring curated issue (daily or weekly): the agent collects with sources, you pick, the agent writes and publishes.',
-    'Una edición periódica y curada (diaria o semanal): el agente recoge con fuentes, tú eliges, y el agente redacta y publica.',
-  ),
-  board: w('Digest', 'Resumen periódico'),
-  item: w('Issue', 'Edición'),
-  about: w(
-    'A recurring curated issue (daily or weekly): the agent collects with sources, you pick, the agent writes and publishes.',
-    'Una edición periódica y curada (diaria o semanal): el agente recoge con fuentes, tú eliges, y el agente redacta y publica.',
-  ),
-  idle: w(
-    'Nothing here for you. Wait with otea wait --turn agent --unclaimed; do not invent work.',
-    'No hay nada para ti aquí. Espera con otea wait --turn agent --unclaimed; no inventes trabajo.',
-  ),
-  parts: [
-    {
-      key: 'fperiod',
-      kind: 'text',
-      name: w('Period', 'Periodo'),
-      hint: w('the day or week this issue covers', 'el día o la semana que cubre esta edición'),
-    },
-    {
-      key: 'fcand',
-      kind: 'long',
-      name: w('Candidates', 'Candidatas'),
-      hint: w(
-        'one per line: what happened and why it matters',
-        'una por línea: qué pasó y por qué importa',
-      ),
-    },
-    {
-      key: 'fsrc',
-      kind: 'url',
-      name: w('Sources', 'Fuentes'),
-      hint: w('the primary source of each candidate', 'la fuente primaria de cada candidata'),
-    },
-    {
-      key: 'fpick',
-      kind: 'long',
-      name: w('Picked', 'Elegidas'),
-      hint: w('what goes in, in order', 'lo que entra, en orden'),
-    },
-    {
-      key: 'ftext',
-      kind: 'long',
-      name: w('Issue', 'Edición'),
-      hint: w('the issue as it will go out', 'la edición tal como va a salir'),
-    },
-    {
-      key: 'furl',
-      kind: 'url',
-      name: w('Published at', 'Publicado en'),
-      hint: w('where it lives once published', 'dónde queda una vez publicado'),
-    },
-  ],
-  form: [['fperiod', true]],
-  steps: [
-    {
-      key: 'scollect',
-      name: w('Collect', 'Recoger'),
-      doer: 'any',
-      reviewer: 'none',
-      hand: [
-        ['fcand', 'always', false],
-        ['fsrc', 'always', false],
-      ],
-      take: w(
-        'Gather what happened in @{fperiod}. Primary sources only; leave out rumours.',
-        'Reúne lo que pasó en @{fperiod}. Solo fuentes primarias; deja fuera los rumores.',
-      ),
-    },
-    {
-      key: 'spick',
-      name: w('Pick', 'Elegir'),
-      doer: 'you',
-      reviewer: 'none',
-      hand: [['fpick', 'always', false]],
-    },
-    {
-      key: 'swrite',
-      name: w('Write', 'Redactar'),
-      doer: 'any',
-      reviewer: 'you',
-      hand: [['ftext', 'always', true]],
-      take: w(
-        'Write only what is in @{fpick}, in that order.',
-        'Escribe solo lo que está en @{fpick}, en ese orden.',
-      ),
-      review: w('Check every fact against @{fsrc}.', 'Comprueba cada dato contra @{fsrc}.'),
-    },
-    {
-      key: 'spublish',
-      name: w('Go live', 'Poner en línea'),
-      doer: 'any',
-      reviewer: 'none',
-      hand: [['furl', 'always', false]],
-    },
-  ],
-  anytime: [],
-  samples: { en: ['Week 47', 'Monday 17'], es: ['Semana 47', 'Lunes 17'] },
-  list: { as: 'list', group: STEP },
-  row: ['fperiod'],
-  layout: {
-    rounds: 'main',
-    fperiod: 'side',
-    fcand: 'main',
-    fsrc: 'side',
-    fpick: 'top',
-    ftext: 'main',
-    furl: 'side',
-  },
-};
-
-const ASSETS: Template = {
-  key: 'assets',
-  icon: 'paw',
-  name: w('Assets', 'Recursos'),
-  description: w(
-    'Art and other assets: the agent writes the spec and integrates, you make the art (change Make to an agent if a tool makes it).',
-    'Arte y otros recursos: el agente escribe la especificación e integra, tú haces el arte (cambia Hacer a un agente si lo hace una herramienta).',
-  ),
-  board: w('Assets', 'Recursos'),
-  item: w('Asset', 'Recurso'),
-  about: w(
-    'Art and other assets: the agent writes the spec and integrates, you make the art (change Make to an agent if a tool makes it).',
-    'Arte y otros recursos: el agente escribe la especificación e integra, tú haces el arte (cambia Hacer a un agente si lo hace una herramienta).',
-  ),
-  idle: w(
-    'Nothing here for you. Wait with otea wait --turn agent --unclaimed; do not invent work.',
-    'No hay nada para ti aquí. Espera con otea wait --turn agent --unclaimed; no inventes trabajo.',
-  ),
-  parts: [
-    {
-      key: 'fidea',
-      kind: 'long',
-      name: w('Idea', 'Idea'),
-      hint: w('what it is and where it is used', 'qué es y dónde se usa'),
-    },
-    {
-      key: 'frefs',
-      kind: 'images',
-      name: w('References', 'Referencias'),
-      hint: w('sketches or images that help', 'bocetos o imágenes que ayuden'),
-      show: 'gallery',
-    },
-    {
-      key: 'fspec',
-      kind: 'long',
-      name: w('Spec', 'Especificación'),
-      hint: w(
-        'sizes, format, states or variants, and the data it needs',
-        'tamaños, formato, estados o variantes, y los datos que necesita',
-      ),
-    },
-    {
-      key: 'eart',
-      kind: 'images',
-      name: w('Art', 'Arte'),
-      hint: w('the finished files', 'los archivos terminados'),
-      show: 'gallery',
-    },
-    {
-      key: 'fbranch',
-      kind: 'branch',
-      name: w('Branch', 'Rama'),
-      hint: w('asset/<id>-<name>, from main', 'asset/<id>-<nombre>, desde main'),
-      guard: { push: ['sintegrate'] },
-    },
-    {
-      key: 'ediff',
-      kind: 'code',
-      name: w('Changes', 'Cambios'),
-      hint: w('git diff main...HEAD', 'git diff main...HEAD'),
-    },
-    {
-      key: 'epreview',
-      kind: 'video',
-      name: w('In place', 'En su sitio'),
-      hint: w('the asset where it is used', 'el recurso donde se usa'),
-      show: 'player',
-    },
-  ],
-  form: [
-    ['fidea', true],
-    ['frefs', false],
-  ],
-  steps: [
-    {
-      key: 'sspec',
-      name: w('Specify', 'Especificar'),
-      doer: 'any',
-      reviewer: 'you',
-      hand: [['fspec', 'always', false]],
-      take: w(
-        'Match @{fspec} to the assets that already exist in the project.',
-        'Alinea @{fspec} con los recursos que ya tiene el proyecto.',
-      ),
-    },
-    {
-      key: 'smake',
-      name: w('Make', 'Hacer'),
-      doer: 'you',
-      reviewer: 'none',
-      hand: [['eart', 'always', false]],
-    },
-    {
-      key: 'sintegrate',
-      name: w('Integrate', 'Integrar'),
-      doer: 'any',
-      reviewer: 'you',
-      hand: [
-        ['fbranch', 'always', false],
-        ['ediff', 'always', true],
-        ['epreview', 'always', true],
-      ],
-      take: w(
-        'Wire @{eart} in the way the project already loads its assets.',
-        'Conecta @{eart} como el proyecto ya carga sus recursos.',
-      ),
-      review: w('Compare @{epreview} with @{fspec}.', 'Compara @{epreview} con @{fspec}.'),
-    },
-  ],
-  anytime: ['frefs'],
-  samples: {
-    en: ['New app icon set', 'Character idle animation'],
-    es: ['Nuevo juego de iconos de la app', 'Animación en reposo del personaje'],
-  },
-  list: { as: 'list', group: STEP },
-  layout: {
-    rounds: 'main',
-    fidea: 'top',
-    frefs: 'main',
-    fspec: 'main',
-    eart: 'main',
-    fbranch: 'side',
-    ediff: 'main',
-    epreview: 'main',
   },
 };
 
@@ -903,6 +670,192 @@ const DECISIONS: Template = {
   },
 };
 
+// Something judged by looking: an agent makes it, the person looks at each round (marking zones on
+// the images, comparing with the round before) and sends it back until it is right; blind A/B is a
+// choice made when the piece is created.
+const DESIGN: Template = {
+  key: 'design',
+  icon: 'compare',
+  name: w('Visual design', 'Diseño visual'),
+  description: w(
+    'Anything judged by looking: interfaces, illustrations, sprites, generated images. An agent makes it, you look at each round, mark what to change on the images and send it back until it is right.',
+    'Todo lo que se juzga mirando: interfaces, ilustraciones, sprites, imágenes generadas. Un agente lo hace, miras cada ronda, marcas sobre las imágenes qué cambiar y lo devuelves hasta que quede bien.',
+  ),
+  board: w('Visual design', 'Diseño visual'),
+  item: w('Piece', 'Pieza'),
+  about: w(
+    'Visual pieces an agent makes and the person approves by looking. Each round is shown the same way as the one before, so the person can compare them; it goes back as many times as needed.',
+    'Piezas visuales que hace un agente y la persona aprueba mirándolas. Cada ronda se muestra igual que la anterior, para poder compararlas; vuelve tantas veces como haga falta.',
+  ),
+  idle: w(
+    'No pieces for you. Wait with otea wait --turn agent --unclaimed; do not make pieces up.',
+    'No hay piezas para ti. Espera con otea wait --turn agent --unclaimed; no inventes piezas.',
+  ),
+  parts: [
+    {
+      key: 'fbrief',
+      kind: 'long',
+      name: w('What it must convey', 'Qué tiene que transmitir'),
+      hint: w(
+        'what someone should see or feel without explanation',
+        'lo que alguien tendría que ver o sentir sin explicación',
+      ),
+    },
+    {
+      key: 'frefs',
+      kind: 'images',
+      name: w('References', 'Referencias'),
+      hint: w('the style or result you aim for', 'el estilo o el resultado al que apuntas'),
+      show: 'gallery',
+    },
+    {
+      key: 'fblind',
+      kind: 'yesno',
+      name: w('Blind comparison', 'Comparar a ciegas'),
+      hint: w(
+        'yes to judge each round as A and B without knowing which is new',
+        'sí para juzgar cada ronda como A y B sin saber cuál es la nueva',
+      ),
+      initial: 'no',
+    },
+    {
+      key: 'fbranch',
+      kind: 'branch',
+      name: w('Branch', 'Rama'),
+      hint: w('design/<id>-<topic>, made from main', 'diseno/<id>-<tema>, creada desde main'),
+      guard: { push: ['screate', 'sland'], base: 'main' },
+    },
+    {
+      key: 'ediff',
+      kind: 'code',
+      name: w('Changes', 'Cambios'),
+      hint: w('git diff of the branch against main', 'git diff de la rama contra main'),
+    },
+    {
+      key: 'eshots',
+      kind: 'images',
+      name: w('Images', 'Imágenes'),
+      hint: w(
+        'the piece as it looks now, framed the same way every round',
+        'la pieza como se ve ahora, encuadrada igual en cada ronda',
+      ),
+      show: 'one',
+    },
+    {
+      key: 'eab',
+      kind: 'images',
+      name: w('A and B', 'A y B'),
+      hint: w(
+        'the previous round and this one, in random order, without saying which is which',
+        'la ronda anterior y esta, en orden al azar, sin decir cuál es cuál',
+      ),
+      show: 'ba',
+    },
+    {
+      key: 'emotion',
+      kind: 'video',
+      name: w('In motion', 'En movimiento'),
+      hint: w(
+        'a short GIF or video, when it is judged moving',
+        'un GIF o vídeo corto, cuando se juzga en movimiento',
+      ),
+      show: 'player',
+    },
+    {
+      key: 'fkey',
+      kind: 'text',
+      name: w('Which was which', 'Cuál era cuál'),
+      hint: w('what A and B were, told after approval', 'qué eran A y B, dicho tras la aprobación'),
+    },
+    {
+      key: 'fcommit',
+      kind: 'text',
+      name: w('Commit on main', 'Commit en main'),
+      hint: w(
+        'the short hash of the commit that landed on main',
+        'el hash corto del commit que quedó en main',
+      ),
+    },
+  ],
+  form: [
+    ['fbrief', true],
+    ['frefs', false],
+    ['fblind', false],
+  ],
+  steps: [
+    {
+      key: 'screate',
+      name: w('Create', 'Crear'),
+      doer: 'any',
+      reviewer: 'you',
+      hand: [
+        ['fbranch', 'always'],
+        ['ediff', 'always', true],
+        ['eshots', 'always', true],
+        ['eab', 'when', true, ['fblind', 'yes']],
+      ],
+      note: w('what you changed in this round and why', 'qué cambiaste en esta ronda y por qué'),
+      take: w(
+        'Read @{fbrief} and the notes of the last round before changing anything, and answer each one. Change what the notes ask for, nothing else.',
+        'Lee @{fbrief} y las notas de la ronda anterior antes de cambiar nada, y responde cada una. Cambia lo que piden las notas, nada más.',
+      ),
+      before: w(
+        'Attach @{eshots} framed exactly like the last round. With a blind comparison, attach @{eab} in random order and never say which one is new.',
+        'Adjunta @{eshots} con el mismo encuadre que la ronda anterior. Si la comparación es a ciegas, adjunta @{eab} en orden al azar y nunca digas cuál es la nueva.',
+      ),
+      review: w(
+        'Look before reading: mark on the images what you would change and send it back, or approve it.',
+        'Mira antes de leer: marca sobre las imágenes lo que cambiarías y devuélvela, o apruébala.',
+      ),
+    },
+    {
+      key: 'sland',
+      name: w('Land', 'Integrar'),
+      doer: 'any',
+      reviewer: 'none',
+      hand: [
+        ['fkey', 'when', false, ['fblind', 'yes']],
+        ['fcommit', 'always'],
+      ],
+      take: w(
+        'The person approved it: bring @{fbranch} into main and push it. Add nothing the person did not see.',
+        'La persona la aprobó: integra @{fbranch} en main y empújala. No agregues nada que la persona no haya visto.',
+      ),
+      before: w(
+        'Write in @{fcommit} the short hash on main; with a blind comparison, say in @{fkey} what A and B were.',
+        'Escribe en @{fcommit} el hash corto en main; si fue a ciegas, di en @{fkey} qué eran A y B.',
+      ),
+    },
+  ],
+  anytime: ['emotion', 'frefs'],
+  motives: [
+    ['mrejected', w('Rejected', 'Rechazada')],
+    ['mstale', w('No longer needed', 'Ya no hace falta')],
+  ],
+  list: { as: 'list', group: STEP },
+  layout: {
+    rounds: 'main',
+    fbrief: 'top',
+    frefs: 'main',
+    eshots: 'main',
+    eab: 'main',
+    emotion: 'main',
+    ediff: 'main',
+    fblind: 'side',
+    fbranch: 'side',
+    fkey: 'side',
+    fcommit: 'side',
+  },
+  samples: {
+    en: ['Home screen icon', 'Title screen background', 'Empty state illustration'],
+    es: [
+      'Ícono de la pantalla de inicio',
+      'Fondo de la pantalla de título',
+      'Ilustración del estado vacío',
+    ],
+  },
+};
+
 const EXPERIMENTS: Template = {
   key: 'experiments',
   icon: 'compare',
@@ -1031,660 +984,12 @@ const EXPERIMENTS: Template = {
   },
 };
 
-const SUPPORT: Template = {
-  key: 'support',
-  icon: 'checklist',
-  name: w('Support', 'Soporte'),
-  description: w(
-    'Questions from the people who use what you make. The agent drafts the reply; you send it.',
-    'Preguntas de la gente que usa lo que haces. El agente prepara la respuesta; tú la envías.',
-  ),
-  board: w('Support', 'Soporte'),
-  item: w('Request', 'Consulta'),
-  about: w(
-    'Questions from the people who use what you make. The agent drafts the reply; you send it.',
-    'Preguntas de la gente que usa lo que haces. El agente prepara la respuesta; tú la envías.',
-  ),
-  idle: w(
-    'Nothing here for you. Wait with otea wait --turn agent --unclaimed; do not invent work.',
-    'No hay nada para ti aquí. Espera con otea wait --turn agent --unclaimed; no inventes trabajo.',
-  ),
-  parts: [
-    {
-      key: 'fmsg',
-      kind: 'long',
-      name: w('Message', 'Mensaje'),
-      hint: w('what they asked, as they wrote it', 'lo que preguntaron, tal como lo escribieron'),
-    },
-    {
-      key: 'ffrom',
-      kind: 'text',
-      name: w('From', 'De'),
-      hint: w('who asked, as you know them', 'quién preguntó, como lo conoces'),
-    },
-    {
-      key: 'fsource',
-      kind: 'url',
-      name: w('Where', 'Dónde'),
-      hint: w('link to the thread, ticket or email', 'enlace al hilo, ticket o correo'),
-    },
-    {
-      key: 'freply',
-      kind: 'long',
-      name: w('Reply', 'Respuesta'),
-      hint: w('the reply, ready to send', 'la respuesta, lista para enviar'),
-    },
-    {
-      key: 'fsent',
-      kind: 'text',
-      name: w('Sent', 'Enviada'),
-      hint: w('when and where you sent it', 'cuándo y por dónde la enviaste'),
-    },
-  ],
-  form: [
-    ['fmsg', true],
-    ['ffrom', false],
-    ['fsource', false],
-  ],
-  steps: [
-    {
-      key: 'sreply',
-      name: w('Draft a reply', 'Preparar la respuesta'),
-      doer: 'any',
-      reviewer: 'you',
-      hand: [['freply', 'always', true]],
-      take: w(
-        'Answer from the project docs and code only. If you do not know, say what you would need to find out; never promise dates or features.',
-        'Responde solo con la documentación y el código del proyecto. Si no lo sabes, di qué necesitarías averiguar; nunca prometas fechas ni funciones.',
-      ),
-      review: w(
-        'Read @{freply} as the person in @{ffrom} would.',
-        'Lee @{freply} como lo leería la persona de @{ffrom}.',
-      ),
-    },
-    {
-      key: 'ssend',
-      name: w('Send', 'Enviar'),
-      doer: 'you',
-      reviewer: 'none',
-      hand: [['fsent', 'always', false]],
-    },
-  ],
-  anytime: [],
-  samples: {
-    en: ['Can I import from the old version?', 'Is there a dark theme?'],
-    es: ['¿Puedo importar desde la versión vieja?', '¿Hay tema oscuro?'],
-  },
-  list: { as: 'list', group: STEP },
-  layout: {
-    rounds: 'main',
-    fmsg: 'top',
-    ffrom: 'side',
-    fsource: 'side',
-    freply: 'main',
-    fsent: 'side',
-  },
-};
-
-const VISUAL_ITERATION: Template = {
-  key: 'visual-iteration',
-  icon: 'compare',
-  name: w('Visual iteration', 'Iteración visual'),
-  description: w(
-    'For what is judged by looking, not measuring: procedural generation, sprites, shaders, interfaces. Each round changes one thing, is filmed like the previous one, and the person picks blind between A and B.',
-    'Para lo que se juzga mirando, no midiendo: generación procedural, sprites, shaders, interfaces. Cada ronda cambia una sola cosa, se filma igual que la anterior, y la persona elige a ciegas entre A y B.',
-  ),
-  board: w('Visual iteration', 'Iteración visual'),
-  item: w('Round', 'Ronda'),
-  about: w(
-    'For what is judged by looking, not measuring: procedural generation, sprites, shaders, interfaces. Each round changes one thing, is filmed like the previous one, and the person picks blind between A and B.',
-    'Para lo que se juzga mirando, no midiendo: generación procedural, sprites, shaders, interfaces. Cada ronda cambia una sola cosa, se filma igual que la anterior, y la persona elige a ciegas entre A y B.',
-  ),
-  idle: w(
-    'No rounds for you. Wait with otea wait --turn agent --unclaimed.',
-    'No hay rondas para ti. Espera con otea wait --turn agent --unclaimed.',
-  ),
-  parts: [
-    {
-      key: 'fgoal',
-      kind: 'long',
-      name: w('What must read', 'Qué tiene que leerse'),
-      hint: w(
-        'what someone should see without explanation, such as "reads as a fish"',
-        'lo que alguien tendría que ver sin explicación, como «se lee como un pez»',
-      ),
-    },
-    {
-      key: 'fref',
-      kind: 'images',
-      name: w('Reference', 'Referencia'),
-      hint: w('the style or result you aim for', 'el estilo o el resultado al que apuntas'),
-      show: 'gallery',
-    },
-    {
-      key: 'fpred',
-      kind: 'long',
-      name: w('Prediction', 'Predicción'),
-      hint: w(
-        'what you change, what you expect to look different and what must not move',
-        'qué cambias, qué esperas que se vea distinto y qué no tiene que moverse',
-      ),
-    },
-    {
-      key: 'fbranch',
-      kind: 'branch',
-      name: w('Branch', 'Rama'),
-      hint: w(
-        'vis/<id>-<topic>, from the working branch',
-        'vis/<id>-<tema>, desde la rama de trabajo',
-      ),
-      guard: { push: ['srender', 'sland'] },
-    },
-    {
-      key: 'ediff',
-      kind: 'code',
-      name: w('Changes', 'Cambios'),
-      hint: w('git diff of the branch', 'git diff de la rama'),
-    },
-    {
-      key: 'esheet',
-      kind: 'images',
-      name: w('Contact sheet', 'Hoja de contactos'),
-      hint: w(
-        'the same seeds, camera and scale as the previous round',
-        'las mismas semillas, cámara y escala que la ronda anterior',
-      ),
-      show: 'gallery',
-    },
-    {
-      key: 'eab',
-      kind: 'images',
-      name: w('A and B', 'A y B'),
-      hint: w(
-        'before and now, in random order, without saying which is which',
-        'antes y ahora, en orden al azar, sin decir cuál es cuál',
-      ),
-      show: 'ba',
-    },
-    {
-      key: 'egif',
-      kind: 'video',
-      name: w('In motion', 'En movimiento'),
-      hint: w(
-        'a short gif or video, when the change shows in motion',
-        'un gif o vídeo corto, cuando el cambio se ve en movimiento',
-      ),
-      show: 'player',
-    },
-    {
-      key: 'fverdict',
-      kind: 'long',
-      name: w('What I see', 'Lo que veo'),
-      hint: w(
-        'what you see, in your own words; no numbers',
-        'lo que ves, con tus palabras; sin números',
-      ),
-    },
-    {
-      key: 'fpick',
-      kind: 'choice',
-      name: w('I keep', 'Me quedo con'),
-      hint: w('which one you prefer', 'cuál prefieres'),
-      options: [w('A', 'A'), w('B', 'B'), w('Neither', 'Ninguna')],
-      optionKeys: ['pa', 'pb', 'pnone'],
-    },
-    {
-      key: 'fkey',
-      kind: 'text',
-      name: w('Which was which', 'Cuál era cuál'),
-      hint: w(
-        'what A and B were, revealed after the verdict',
-        'qué eran A y B, revelado después del veredicto',
-      ),
-    },
-    {
-      key: 'fcommit',
-      kind: 'text',
-      name: w('Commit', 'Commit'),
-      hint: w('the short hash on the working branch', 'el hash corto en la rama de trabajo'),
-    },
-  ],
-  form: [
-    ['fgoal', true],
-    ['fref', false],
-  ],
-  steps: [
-    {
-      key: 'spredict',
-      name: w('Predict', 'Predecir'),
-      doer: 'any',
-      reviewer: 'none',
-      hand: [['fpred', 'always', false]],
-      take: w(
-        "Read the previous round's verdict before changing anything. One change per round.",
-        'Lee el veredicto de la ronda anterior antes de cambiar nada. Un cambio por ronda.',
-      ),
-    },
-    {
-      key: 'srender',
-      name: w('Render', 'Generar'),
-      doer: 'any',
-      reviewer: 'none',
-      hand: [
-        ['fbranch', 'always', false],
-        ['ediff', 'always', true],
-        ['esheet', 'always', true],
-        ['eab', 'always', true],
-      ],
-      take: w(
-        "Render @{esheet} with the previous round's seeds and camera. Build @{eab} in random order and keep the key out of the person's sight. No numbers in what the person looks at.",
-        'Genera @{esheet} con las semillas y la cámara de la ronda anterior. Arma @{eab} en orden al azar y no dejes la clave a la vista de la persona. Nada de números en lo que mira la persona.',
-      ),
-      before: w(
-        'A round that does not change what the generator does does not count: do not hand in only comments or diagnostics.',
-        'Una ronda que no cambia lo que hace el generador no cuenta: no entregues solo comentarios o diagnósticos.',
-      ),
-    },
-    {
-      key: 'slook',
-      name: w('Look', 'Mirar'),
-      doer: 'you',
-      reviewer: 'none',
-      hand: [
-        ['fverdict', 'always', false],
-        ['fpick', 'always', false],
-      ],
-      ways: ['spredict'],
-    },
-    {
-      key: 'sland',
-      name: w('Integrate', 'Integrar'),
-      doer: 'any',
-      reviewer: 'none',
-      hand: [
-        ['fkey', 'always', false],
-        ['fcommit', 'always', false],
-      ],
-      take: w(
-        'Write in @{fkey} what A and B were. If the new one won, integrate the branch; otherwise drop it and say so in the note.',
-        'Escribe en @{fkey} qué eran A y B. Si ganó la nueva, integra la rama; si no, descártala y dilo en la nota.',
-      ),
-    },
-  ],
-  anytime: ['egif', 'fref'],
-  samples: {
-    en: ['The fish must not read as a snake', 'One-pixel outline on the hind legs'],
-    es: ['El pez no tiene que parecer una serpiente', 'Contorno de un píxel en las patas traseras'],
-  },
-  motives: [
-    ['mstuck', w('No progress', 'Sin avance')],
-    ['mstale', w('No longer relevant', 'Ya no hace falta')],
-  ],
-  list: { as: 'list', group: STEP },
-  layout: {
-    rounds: 'main',
-    fgoal: 'top',
-    fref: 'main',
-    fpred: 'main',
-    fbranch: 'side',
-    ediff: 'main',
-    esheet: 'main',
-    eab: 'main',
-    egif: 'main',
-    fverdict: 'main',
-    fpick: 'side',
-    fkey: 'side',
-    fcommit: 'side',
-  },
-};
-
-const PLAYTEST: Template = {
-  key: 'playtest',
-  icon: 'checklist',
-  name: w('Playtest', 'Probar si es divertido'),
-  description: w(
-    'To validate a game or product idea before building it: a minimal prototype answers one question, the person plays it and decides to keep going, adjust or kill it.',
-    'Para validar una idea de juego o de producto antes de construirla: un prototipo mínimo responde una sola pregunta, la persona lo juega y decide seguir, ajustar o matarla.',
-  ),
-  board: w('Playtest', 'Probar si es divertido'),
-  item: w('Test', 'Prueba'),
-  about: w(
-    'To validate a game or product idea before building it: a minimal prototype answers one question, the person plays it and decides to keep going, adjust or kill it.',
-    'Para validar una idea de juego o de producto antes de construirla: un prototipo mínimo responde una sola pregunta, la persona lo juega y decide seguir, ajustar o matarla.',
-  ),
-  idle: w(
-    'No prototypes for you. Wait with otea wait --turn agent --unclaimed.',
-    'No hay prototipos para ti. Espera con otea wait --turn agent --unclaimed.',
-  ),
-  parts: [
-    {
-      key: 'fq',
-      kind: 'long',
-      name: w('The question', 'La pregunta'),
-      hint: w(
-        'the single hypothesis this test validates, such as "is approaching step by step fun?"',
-        'la única hipótesis que valida esta prueba, como «¿es divertido acercarse paso a paso?»',
-      ),
-    },
-    {
-      key: 'fkill',
-      kind: 'long',
-      name: w('Kill criterion', 'Criterio para matarla'),
-      hint: w(
-        'what would have to happen to drop the idea',
-        'qué tendría que pasar para abandonar la idea',
-      ),
-    },
-    {
-      key: 'frun',
-      kind: 'text',
-      name: w('How to play it', 'Cómo jugarlo'),
-      hint: w(
-        'the command or scene to open, and what to do',
-        'el comando o la escena que hay que abrir, y qué hacer',
-      ),
-    },
-    {
-      key: 'fbranch',
-      kind: 'branch',
-      name: w('Branch', 'Rama'),
-      hint: w('proto/<id>-<topic>, from main', 'proto/<id>-<tema>, desde main'),
-      guard: { push: ['sproto'] },
-    },
-    {
-      key: 'ediff',
-      kind: 'code',
-      name: w('Changes', 'Cambios'),
-      hint: w('git diff of the branch', 'git diff de la rama'),
-    },
-    {
-      key: 'evideo',
-      kind: 'video',
-      name: w('A playthrough', 'Una partida'),
-      hint: w(
-        'one full session recorded by the agent',
-        'una sesión completa grabada por el agente',
-      ),
-      show: 'player',
-    },
-    {
-      key: 'fplayed',
-      kind: 'long',
-      name: w('How it felt', 'Cómo se sintió'),
-      hint: w(
-        'what you felt while playing, in your own words',
-        'lo que sentiste al jugar, con tus palabras',
-      ),
-    },
-    {
-      key: 'fverdict',
-      kind: 'choice',
-      name: w('Verdict', 'Veredicto'),
-      hint: w('what happens to the idea', 'qué pasa con la idea'),
-      options: [w('Keep going', 'Seguir'), w('Adjust', 'Ajustar'), w('Kill it', 'Matarla')],
-      optionKeys: ['vgo', 'vtune', 'vkill'],
-    },
-    {
-      key: 'fchange',
-      kind: 'long',
-      name: w('What to adjust', 'Qué ajustar'),
-      hint: w('the next thing to try, if it goes on', 'lo próximo que hay que probar, si sigue'),
-    },
-  ],
-  form: [
-    ['fq', true],
-    ['fkill', true],
-  ],
-  steps: [
-    {
-      key: 'sproto',
-      name: w('Prototype', 'Prototipar'),
-      doer: 'any',
-      reviewer: 'none',
-      hand: [
-        ['fbranch', 'always', false],
-        ['ediff', 'always', true],
-        ['evideo', 'always', true],
-        ['frun', 'always', false],
-      ],
-      take: w(
-        'Build the least that answers @{fq}: plain shapes, no art or menus. If it needs more than a few days, say so with otea ask first.',
-        'Construye lo mínimo que responda @{fq}: formas simples, sin arte ni menús. Si necesita más de unos días, dilo antes con otea ask.',
-      ),
-      before: w(
-        'Record @{evideo} playing it yourself and explain in @{frun} how to open it.',
-        'Graba @{evideo} jugándolo tú y explica en @{frun} cómo abrirlo.',
-      ),
-    },
-    {
-      key: 'splay',
-      name: w('Play', 'Jugar'),
-      doer: 'you',
-      reviewer: 'none',
-      hand: [
-        ['fplayed', 'always', false],
-        ['fverdict', 'always', false],
-      ],
-      ways: ['sproto', DONE],
-    },
-  ],
-  anytime: ['fchange'],
-  samples: {
-    en: [
-      'Is reading the creature before each step fun?',
-      'Does the shop make you want another run?',
-    ],
-    es: [
-      '¿Es divertido leer a la criatura antes de cada paso?',
-      '¿La tienda te deja con ganas de otra partida?',
-    ],
-  },
-  motives: [
-    ['mkill', w('Killed by its criterion', 'Descartada por su criterio')],
-    ['mstale', w('No longer relevant', 'Ya no hace falta')],
-  ],
-  list: { as: 'list', group: STEP },
-  layout: {
-    rounds: 'main',
-    fq: 'top',
-    fkill: 'main',
-    frun: 'side',
-    fbranch: 'side',
-    ediff: 'main',
-    evideo: 'main',
-    fplayed: 'main',
-    fverdict: 'side',
-    fchange: 'main',
-  },
-};
-
-const RESUME: Template = {
-  key: 'resume',
-  icon: 'layers',
-  name: w('Resume a project', 'Retomar un proyecto'),
-  description: w(
-    'To come back to a project that was dormant: the agent rebuilds the context and proposes next steps, you pick, and the agent creates them as items.',
-    'Para volver a un proyecto que estuvo dormido: el agente reconstruye el contexto y propone próximos pasos, tú eliges, y el agente los deja creados como ítems.',
-  ),
-  board: w('Resume a project', 'Retomar un proyecto'),
-  item: w('Resumption', 'Retomada'),
-  about: w(
-    'To come back to a project that was dormant: the agent rebuilds the context and proposes next steps, you pick, and the agent creates them as items.',
-    'Para volver a un proyecto que estuvo dormido: el agente reconstruye el contexto y propone próximos pasos, tú eliges, y el agente los deja creados como ítems.',
-  ),
-  idle: w(
-    'Nothing here for you. Wait with otea wait --turn agent --unclaimed; do not invent work.',
-    'No hay nada para ti aquí. Espera con otea wait --turn agent --unclaimed; no inventes trabajo.',
-  ),
-  parts: [
-    {
-      key: 'frepo',
-      kind: 'text',
-      name: w('Project', 'Proyecto'),
-      hint: w('the folder or repository being resumed', 'la carpeta o el repo que se retoma'),
-    },
-    {
-      key: 'fgoal',
-      kind: 'long',
-      name: w('Why I am back', 'Para qué vuelvo'),
-      hint: w(
-        'what I want to get this time, even if vague',
-        'qué quiero conseguir esta vez, aunque sea vago',
-      ),
-    },
-    {
-      key: 'fstate',
-      kind: 'long',
-      name: w('Where it stopped', 'Dónde quedó'),
-      hint: w(
-        'last activity, branches, what builds and which tests pass today',
-        'última actividad, ramas, qué compila y qué pasan los tests hoy',
-      ),
-    },
-    {
-      key: 'fopen',
-      kind: 'long',
-      name: w('Open threads', 'Hilos abiertos'),
-      hint: w(
-        'TODOs, unmerged branches, issues, notes in the agent instructions or the log left half done',
-        'TODO, ramas sin integrar, issues, notas de CLAUDE.md o del diario que quedaron a medias',
-      ),
-    },
-    {
-      key: 'fbroke',
-      kind: 'long',
-      name: w('What broke', 'Qué se rompió'),
-      hint: w(
-        'outdated dependencies, expired keys or services, security advisories',
-        'dependencias viejas, claves o servicios caducados, avisos de seguridad',
-      ),
-    },
-    {
-      key: 'elog',
-      kind: 'log',
-      name: w('Check output', 'Salida de las comprobaciones'),
-      hint: w(
-        'install, build and run the tests, as it came out',
-        'instalar, compilar y pasar los tests, tal como salió',
-      ),
-    },
-    {
-      key: 'fnext',
-      kind: 'long',
-      name: w('Next steps', 'Próximos pasos'),
-      hint: w(
-        'three to seven numbered steps, each with its size and what it unblocks',
-        'de tres a siete pasos numerados, cada uno con su tamaño y lo que desbloquea',
-      ),
-    },
-    {
-      key: 'fpicked',
-      kind: 'long',
-      name: w('What I picked', 'Lo que elegí'),
-      hint: w(
-        'the chosen numbers, in order, and what will not be done',
-        'los números elegidos, en orden, y lo que no se hace',
-      ),
-    },
-    {
-      key: 'fmade',
-      kind: 'text',
-      name: w('What was created', 'Lo que quedó creado'),
-      hint: w(
-        'the items created on other boards, by id',
-        'los ítems creados en otros tableros, por id',
-      ),
-    },
-  ],
-  form: [
-    ['frepo', true],
-    ['fgoal', false],
-  ],
-  steps: [
-    {
-      key: 'sread',
-      name: w('Rebuild', 'Reconstruir'),
-      doer: 'any',
-      reviewer: 'none',
-      hand: [
-        ['fstate', 'always', false],
-        ['fopen', 'always', false],
-        ['fbroke', 'always', false],
-        ['elog', 'always', true],
-        ['fnext', 'always', false],
-      ],
-      take: w(
-        "Read the README, the agent instructions (such as AGENTS.md), the repository's log or decisions and the git history since the last burst of commits. Do not change anything in the repository yet.",
-        'Lee el README, las instrucciones para agentes (como AGENTS.md), el diario o las decisiones del repo y el historial de git desde la última racha de commits. No cambies nada del repo todavía.',
-      ),
-      before: w(
-        "Install and run the project's own checks and paste the output in @{elog}. In @{fnext}, put first whatever it takes to make it work again, and relate each step to @{fgoal}.",
-        'Instala y corre las comprobaciones del propio proyecto y pega la salida en @{elog}. En @{fnext} pon primero lo que haga falta para que vuelva a funcionar, y relaciona cada paso con @{fgoal}.',
-      ),
-      note: w(
-        'what surprised you about the state of the project',
-        'lo que te sorprendió del estado del proyecto',
-      ),
-    },
-    {
-      key: 'spick',
-      name: w('Pick', 'Elegir'),
-      doer: 'you',
-      reviewer: 'none',
-      hand: [['fpicked', 'always', false]],
-      ways: ['sread'],
-    },
-    {
-      key: 'sseed',
-      name: w('Prepare', 'Preparar'),
-      doer: 'any',
-      reviewer: 'none',
-      hand: [['fmade', 'always', false]],
-      take: w(
-        'Create one item for each step in @{fpicked} on the board it belongs to: a board of changes for changes, one of ideas for what still needs thinking. Cite this resumption in each.',
-        'Crea un ítem por cada paso de @{fpicked} en el tablero que le toque: uno de cambios para los cambios, uno de ideas para lo que aún hay que pensar. Cita esta retomada en cada uno.',
-      ),
-    },
-  ],
-  anytime: [],
-  samples: {
-    en: [
-      'Back to the side project after summer',
-      'Revive the old prototype',
-      'Pick up the CLI where it stopped',
-    ],
-    es: [
-      'Volver al proyecto personal después del verano',
-      'Revivir el prototipo viejo',
-      'Retomar la CLI donde quedó',
-    ],
-  },
-  list: { as: 'list', group: STEP },
-  row: ['frepo'],
-  layout: {
-    rounds: 'main',
-    frepo: 'side',
-    fgoal: 'top',
-    fstate: 'main',
-    fopen: 'main',
-    fbroke: 'main',
-    elog: 'main',
-    fnext: 'main',
-    fpicked: 'main',
-    fmade: 'side',
-  },
-};
-
 export const CATALOGUE_TEMPLATES: readonly Template[] = [
   BUG_REPORTS,
-  CONTENT,
-  DIGEST,
-  ASSETS,
+  CHANGES,
   RESEARCH,
   DECISIONS,
+  CONTENT,
+  DESIGN,
   EXPERIMENTS,
-  SUPPORT,
-  VISUAL_ITERATION,
-  PLAYTEST,
-  RESUME,
 ];
