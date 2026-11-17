@@ -206,8 +206,12 @@ export function checkGate(
     : [];
   if (bases.length > 0) {
     // Every board that protects the base is asked at once: the action must bring in an item of
-    // one of them, and every item it brings in, whatever its board, must allow it.
-    const items = bases.flatMap(
+    // one of them, and every item it brings in, whatever its board, must allow it. A board that
+    // leaves the base alone still lands its own items into it: an item of it that the action
+    // brings in counts like theirs, by its own board's steps, so their protection never blocks the
+    // land step of another board (Errores pushing its approved fix to main).
+    const guarding = boards.filter(({ def }) => guardedBranch(def) !== undefined);
+    const items = guarding.flatMap(
       (board) => baseCheck(ctx, board, gate as GateAction, fields, brings).items,
     );
     if (items.length === 0) {
