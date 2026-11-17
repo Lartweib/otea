@@ -21,6 +21,12 @@ import {
   waysOf,
 } from './engine.ts';
 import { mentionText } from './mentions.ts';
+import { type Lang, LEVEL_SAID, TITLE_NAME, YES_NO_SAID } from './template-words.ts';
+
+// The language the board was made in (reading.ts's langOf, which reads next.ts): its values are
+// given to the agent in it, as the board stores and accepts them.
+const boardLangOf = (def: BoardDefinition): Lang => (def.title === TITLE_NAME.es ? 'es' : 'en');
+
 import {
   type BoardDefinition,
   DONE,
@@ -434,16 +440,17 @@ function partLines(def: BoardDefinition, hands: readonly Hand[], input: NextInpu
           : 'optional';
     const mark = missing ? '✗' : hand.req === 'always' ? '✓' : '·';
     const proof = part.kind === 'check' && part.proof ? ', each ticked point with its proof' : '';
-    const line = `  ${mark} ${part.name}: ${req}${proof}${missing ? ` (${reasonText(missing)})` : ''}${choicesText(part, hand.req !== 'no')}`;
+    const line = `  ${mark} ${part.name}: ${req}${proof}${missing ? ` (${reasonText(missing)})` : ''}${choicesText(part, hand.req !== 'no', boardLangOf(def))}`;
     return part.hint && hand.req !== 'no' ? [line, `      what goes here: ${part.hint}`] : [line];
   });
 }
 
 // What a field takes, when it is a choice: the names an agent fills it with. A checklist the
 // handoff asks for (`asked`) takes every box ticked, as the handoff checks.
-function choicesText(part: Part, asked: boolean): string {
-  if (part.kind === 'level') return `; one of ${LEVELS.join(', ')}`;
-  if (part.kind === 'yesno') return '; yes or no';
+function choicesText(part: Part, asked: boolean, lang: Lang): string {
+  if (part.kind === 'level')
+    return `; one of ${LEVELS.map((level) => LEVEL_SAID[lang][level]).join(', ')}`;
+  if (part.kind === 'yesno') return `; ${YES_NO_SAID[lang]}`;
   if (part.options.length === 0 || isEvidence(part)) return '';
   const names = part.options.map(({ name }) => name).join(', ');
   if (part.kind === 'choice') return `; one of ${names}`;
@@ -464,8 +471,15 @@ function estimateLines(def: BoardDefinition, input: NextInput): string[] {
   if (empty.length === 0) return [];
   const names = empty.map(({ name }) => name).join(', ');
   const flags = empty.map(({ name }) => ` --field "${name}=…"`).join('');
+  // What each takes, so the agent never has to look for it elsewhere.
+  const lang = boardLangOf(def);
+  const values = empty.flatMap((part) => {
+    const takes = choicesText(part, false, lang).replace(/^; /, '');
+    return takes ? [`    ${part.name}: ${takes}`] : [];
+  });
   return [
     `  The person weighs items by ${names}: estimate them (otea update ${input.id}${flags}); they correct you.`,
+    ...values,
   ];
 }
 

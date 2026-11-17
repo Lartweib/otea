@@ -13,7 +13,7 @@ import {
   usedRefs,
 } from './model.ts';
 import { DONE_NAME, DROPPED_NAME } from './next.ts';
-import { type Lang, TITLE_NAME } from './template-words.ts';
+import { type Lang, LEVEL_SAID, TITLE_NAME } from './template-words.ts';
 
 // What a reader of a board item meets and types: names, never the hidden ids under them. An agent
 // fills `--field Tamaño=Una`, attaches `--module Bocetos`, and reads `state: Concepto (in review)`;
@@ -223,11 +223,6 @@ export function fieldNames(def: BoardDefinition): string[] {
 export function langOf(def: BoardDefinition): Lang {
   return def.title === TITLE_NAME.es ? 'es' : 'en';
 }
-
-const LEVEL_SAID: Readonly<Record<Lang, Readonly<Record<string, string>>>> = {
-  en: { low: 'low', medium: 'medium', high: 'high', critical: 'critical' },
-  es: { low: 'baja', medium: 'media', high: 'alta', critical: 'crítica' },
-};
 
 // A stored value as a reader says it: choices by their names, a level in the board's language
 // (Severidad: media), as its field's name is.
