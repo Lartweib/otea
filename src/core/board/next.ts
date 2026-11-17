@@ -1,5 +1,6 @@
 import { PERSON_READER } from '../item.ts';
 import { timeText } from '../time.ts';
+import { mappedScales, rolePart } from './analysis.ts';
 import {
   backTarget,
   backWaysOf,
@@ -429,6 +430,25 @@ function choicesText(part: Part): string {
   return part.kind === 'choice' ? `; one of ${names}` : `; any of ${names}`;
 }
 
+// The analysis matrix weighs items by the fields the board maps to effort, risk and impact
+// (core/board/analysis.ts): an agent doing a step estimates the ones still empty, and the person
+// corrects them.
+function estimateLines(def: BoardDefinition, input: NextInput): string[] {
+  const empty = mappedScales(def)
+    .map((role) => rolePart(def, role))
+    .filter((part): part is Part => part !== undefined)
+    .filter((part) => {
+      const value = input.fields[part.id];
+      return value === undefined || value === null || value === '';
+    });
+  if (empty.length === 0) return [];
+  const names = empty.map(({ name }) => name).join(', ');
+  const flags = empty.map(({ name }) => ` --field "${name}=…"`).join('');
+  return [
+    `  The person weighs items by ${names}: estimate them (otea update ${input.id}${flags}); they correct you.`,
+  ];
+}
+
 function section(title: string, lines: readonly string[]): string[] {
   return lines.length === 0 ? [] : ['', title, ...lines];
 }
@@ -534,6 +554,7 @@ export function nextText(def: BoardDefinition, input: NextInput): string {
     ),
   );
   lines.push(...section('Handoff', handLines(def, step, input)));
+  if (!reviewing) lines.push(...section('Estimate', estimateLines(def, input)));
   lines.push(...section('Branch', branchLines(def, step, position, input)));
   if (!reviewing)
     lines.push(

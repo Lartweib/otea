@@ -5,6 +5,8 @@
 //
 // This module is pure and browser-safe: the server, the CLI, MCP and the web UI import it.
 
+import type { Analysis } from './analysis.ts';
+
 export const FIELD_KINDS = [
   'text',
   'long',
@@ -213,6 +215,9 @@ export type BoardDefinition = {
   // The other boards a template set made with this one (their hidden ids): Producto's two boards
   // open each other ("Abrir Errores"), and Studio's home says they were made together.
   madeWith?: string[];
+  // Which of its fields plays each role of the analysis views (core/board/analysis.ts): effort,
+  // risk, impact, area, due. A view shows only once the roles it needs are mapped.
+  analysis?: Analysis;
 };
 
 // A board's settings that every new board starts with.

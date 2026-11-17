@@ -364,6 +364,17 @@ export const MIGRATIONS = [
 
   CREATE INDEX topic_links_item ON topic_links (item_id);
   `,
+  // The person's priority on a board's items (app/priority.ts): `pin` puts an item on top (pins in
+  // the order they were set), `rank` is the order the person fixed from the matrix. otea next
+  // reads them after what the agent holds and what was sent back to it.
+  `
+  CREATE TABLE item_priority (
+    item_id TEXT PRIMARY KEY REFERENCES items (id) ON DELETE CASCADE,
+    pin INTEGER,
+    rank INTEGER,
+    set_at TEXT NOT NULL
+  );
+  `,
 ];
 
 function userVersion(db: DatabaseSync): number {

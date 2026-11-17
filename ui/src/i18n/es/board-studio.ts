@@ -39,6 +39,15 @@ export const boardStudio = {
     'Con motivos de descarte, un agente que descarta en {step} tiene que elegir uno.',
   'bs.problem.mention_raw':
     'Las instrucciones de {step} nombran algo con @ y llaves: escribe @ y elígelo, así los agentes leen su nombre.',
+  'bs.problem.analysis_missing':
+    'El rol «{role}» de las vistas de análisis apunta a un campo que este tablero no usa. Elige otro campo o ninguno.',
+  'bs.problem.analysis_kind':
+    '{part} no puede hacer de «{role}»: no es un tipo de campo que ese rol lea. Elige otro campo.',
+  'bs.role.effort': 'Esfuerzo',
+  'bs.role.risk': 'Riesgo',
+  'bs.role.impact': 'Impacto',
+  'bs.role.area': 'Área',
+  'bs.role.due': 'Vencimiento',
   'bs.problem.mention_unknown':
     'Las instrucciones de {step} mencionan algo que este tablero ya no tiene.',
   'bs.use.title': 'el título',

@@ -281,6 +281,27 @@ export const definitionSchema = z
       )
       .optional(),
     madeWith: ids('The boards (hidden ids) a template made with this one', ['bbugs']).optional(),
+    analysis: z
+      .strictObject({
+        effort: idOf(
+          'The field (part id) that says how much work an item is',
+          'feffort',
+        ).optional(),
+        risk: idOf('The field (part id) that says how risky an item is to do', 'frisk').optional(),
+        impact: idOf(
+          'The field (part id) that says how much an item matters',
+          'fseverity',
+        ).optional(),
+        area: idOf('The field (part id) that says where an item belongs', 'farea').optional(),
+        due: idOf('The date field (part id) an item is due by', 'fdue').optional(),
+      })
+      .meta(
+        about(
+          'Which field plays each role of the analysis views: effort, risk and impact read a level, a number or a choice (its options in order are the scale); area a choice, several or a short text; due a date. The matrix shows once two of effort, risk and impact are mapped',
+          { effort: 'feffort', risk: 'frisk', impact: 'fseverity' },
+        ),
+      )
+      .optional(),
     drop: z
       .strictObject({
         by: z

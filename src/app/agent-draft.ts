@@ -171,6 +171,8 @@ export function problemWords(problem: Problem): string {
     motive_agent_drop: `an agent that drops in step${step} must name a motive`,
     mention_raw: `step${step} mentions something as @{…}: write it @[id], the id of the step or part`,
     mention_unknown: `step${step} mentions an @[id] the board does not have`,
+    analysis_missing: `the analysis role${quoted('role')} names a field the board does not use`,
+    analysis_kind: `the analysis role${quoted('role')} names${part}, which it cannot read: effort, risk and impact read a level, number or choice; area a choice, several or short text; due a date`,
   };
   return `${problem.level}: ${words[problem.code]}`;
 }

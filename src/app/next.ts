@@ -94,6 +94,7 @@ import {
   workflowOf,
 } from './items.ts';
 import { takeItem } from './lease-take.ts';
+import { priorityOf } from './priority.ts';
 
 // What agents meet on a published board: the facts the step engine reads of an item, `next` (the
 // item to take and its text) and the three moves an agent makes on a board (handoff, approve and
@@ -666,8 +667,14 @@ function progressOf(def: BoardDefinition, item: ItemRecord): { review: boolean; 
   };
 }
 
+// Lower first; two items with no place in an order tie.
+function byOrder(a: number, b: number): number {
+  return a === b ? 0 : a < b ? -1 : 1;
+}
+
 // The item the agent should take, and its text: one it holds first, then what was sent back to it,
-// then reviews and work furthest along, then the oldest waiting; never one another agent holds or was just offered. With `claim`, the
+// then what the person pinned and the order they fixed, then reviews and work furthest along, then
+// the oldest waiting; never one another agent holds or was just offered. With `claim`, the
 // agent claims it in the same transaction, so no other agent can take it between the two. When
 // there is none: that, once, each board's words for idle time and its cap, and how to wait.
 export function nextFor(
@@ -692,6 +699,9 @@ export function nextFor(
     const entered = selectStateEntries(ctx.db);
     const since = (item: ItemRecord) => entered.get(item.id) ?? item.createdAt;
     const offered = offeredElsewhere(ctx, agent, at);
+    const priority = priorityOf(ctx.db);
+    const pinOf = (item: ItemRecord) => priority.get(item.id)?.pin ?? Number.POSITIVE_INFINITY;
+    const rankOf = (item: ItemRecord) => priority.get(item.id)?.rank ?? Number.POSITIVE_INFINITY;
     const candidates = boards.flatMap((board) =>
       selectItems(ctx.db, { collection: board.collection })
         .filter((item) => !offered(item) && isTheirs(ctx, board.def, item, agent, at))
@@ -703,12 +713,16 @@ export function nextFor(
           ...progressOf(board.def, item),
         })),
     );
-    // Work already handed on comes before new work: a review, then the step furthest along (its
-    // earlier steps are approved), and only then the oldest.
+    // What the agent holds, then what was sent back to it; then what the person put on top, then
+    // the order they fixed (app/priority.ts); then work already handed on comes before new work: a
+    // review, then the step furthest along (its earlier steps are approved), and only then the
+    // oldest.
     candidates.sort(
       (a, b) =>
         Number(b.held) - Number(a.held) ||
         Number(b.returned) - Number(a.returned) ||
+        byOrder(pinOf(a.item), pinOf(b.item)) ||
+        byOrder(rankOf(a.item), rankOf(b.item)) ||
         Number(b.review) - Number(a.review) ||
         b.along - a.along ||
         since(a.item).localeCompare(since(b.item)) ||

@@ -38,6 +38,15 @@ export const boardStudio = {
     'With discard motives, an agent that drops in {step} has to pick one.',
   'bs.problem.mention_raw':
     'The instructions of {step} name something with @ and curly braces: type @ and pick it, so agents read its name.',
+  'bs.problem.analysis_missing':
+    "The role “{role}” of the analysis views names a field this board doesn't use. Pick another field or none.",
+  'bs.problem.analysis_kind':
+    "{part} can't play “{role}”: it isn't a kind of field that role reads. Pick another field.",
+  'bs.role.effort': 'Effort',
+  'bs.role.risk': 'Risk',
+  'bs.role.impact': 'Impact',
+  'bs.role.area': 'Area',
+  'bs.role.due': 'Due date',
   'bs.problem.mention_unknown':
     'The instructions of {step} mention something this board no longer has.',
   'bs.use.title': 'the title',

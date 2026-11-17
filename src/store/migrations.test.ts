@@ -44,16 +44,17 @@ describe('migrate', () => {
         'topics',
         'topic_turns',
         'topic_links',
+        'item_priority',
       ]),
     );
-    expect(userVersion(db)).toBe(25);
+    expect(userVersion(db)).toBe(26);
   });
 
   it('is idempotent', () => {
     migrate(db);
     migrate(db);
 
-    expect(userVersion(db)).toBe(25);
+    expect(userVersion(db)).toBe(26);
   });
 
   describe('from version 1', () => {

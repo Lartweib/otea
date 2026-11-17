@@ -558,6 +558,50 @@
       "description": "The boards (hidden ids) a template made with this one",
       "examples": [["bbugs"]]
     },
+    "analysis": {
+      "type": "object",
+      "properties": {
+        "effort": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]*$",
+          "description": "The field (part id) that says how much work an item is",
+          "examples": ["feffort"]
+        },
+        "risk": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]*$",
+          "description": "The field (part id) that says how risky an item is to do",
+          "examples": ["frisk"]
+        },
+        "impact": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]*$",
+          "description": "The field (part id) that says how much an item matters",
+          "examples": ["fseverity"]
+        },
+        "area": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]*$",
+          "description": "The field (part id) that says where an item belongs",
+          "examples": ["farea"]
+        },
+        "due": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]*$",
+          "description": "The date field (part id) an item is due by",
+          "examples": ["fdue"]
+        }
+      },
+      "additionalProperties": false,
+      "description": "Which field plays each role of the analysis views: effort, risk and impact read a level, a number or a choice (its options in order are the scale); area a choice, several or a short text; due a date. The matrix shows once two of effort, risk and impact are mapped",
+      "examples": [
+        {
+          "effort": "feffort",
+          "risk": "frisk",
+          "impact": "fseverity"
+        }
+      ]
+    },
     "drop": {
       "default": {
         "by": "anyone",
