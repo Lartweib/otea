@@ -62,7 +62,7 @@ describe('wait', () => {
     await spawnCli(repo.dir, 'move', 'TASKS-2', 'todo__review');
 
     expect(await waiting.done).toBe(0);
-    expect(waiting.out()).toBe('TASKS-2  Hacerlo (in review)  human  Second\n');
+    expect(waiting.out()).toBe('TASKS-2  Hacerlo (en revisión)  human  Second\n');
   });
 
   it('counts the waiting agent as listening from the start of its wait', async () => {

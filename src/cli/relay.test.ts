@@ -65,7 +65,7 @@ describe('relay', () => {
     await otea('relay', 'TASKS-1', 'dropped', '--quote', QUOTE, '--reason', 'Gone');
 
     expect((await otea('show', 'TASKS-1')).out).toMatch(
-      /human:human +transitioned {2}Hacerlo \(in review\) -> Dropped \(Gone\), relayed by claude: "Discard it, the old flow is gone"$/m,
+      /human:human +transitioned {2}Hacerlo \(en revisión\) -> Dropped \(Gone\), relayed by claude: "Discard it, the old flow is gone"$/m,
     );
   });
 
@@ -105,7 +105,7 @@ describe('relay', () => {
     expect(JSON.parse(err).error).toEqual({
       code: 'forbidden',
       message:
-        'Moving from "Hacerlo (in review)" to "Done" requires human-ui authority (a human in the web UI) and cannot be relayed; the human must make it in the web UI',
+        'Moving from "Hacerlo (en revisión)" to "Done" requires human-ui authority (a human in the web UI) and cannot be relayed; the human must make it in the web UI',
     });
     expect((await json('show', 'TASKS-1')).state).toBe('todo__review');
   });

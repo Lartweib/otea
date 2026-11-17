@@ -246,7 +246,7 @@ export const studioEditor = {
   'bs.editor.done.fixed': 'Done is not configured: it is the same for every board.',
   'bs.editor.about.kicker': 'The board',
   'bs.editor.about.item': 'Each item is called',
-  'bs.editor.about.item_ph': 'Bug, Creature, Entry…',
+  'bs.editor.about.item_ph': 'Bug, Article, Decision…',
   'bs.editor.about.names':
     'Write names as you say them: capitals, accents or spaces. Underneath, each name carries a hidden id, so renaming never breaks history.',
   'bs.editor.about.icon': 'Icon',
@@ -255,7 +255,7 @@ export const studioEditor = {
   'bs.editor.about.about': 'About this board',
   'bs.editor.about.about_small': 'the context that holds for every step',
   'bs.editor.about.about_ph':
-    'E.g.: Every creature of Hollowmere, from sketch to scene. Style rules.',
+    'E.g.: The bugs people report in the app, from report to fix. Reproduce first, then fix.',
   'bs.editor.about.idle': 'When there is nothing to do',
   'bs.editor.about.idle_small': 'optional; what an idle agent does',
   'bs.editor.about.idle_ph':

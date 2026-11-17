@@ -39,10 +39,10 @@ describe('names in output', () => {
 
     expect(item).toMatchObject({
       state: 'todo__review',
-      stateName: 'Hacerlo (in review)',
+      stateName: 'Hacerlo (en revisión)',
       fields: FIELDS,
     });
-    expect((await json('list'))[0]).toMatchObject({ stateName: 'Hacerlo (in review)' });
+    expect((await json('list'))[0]).toMatchObject({ stateName: 'Hacerlo (en revisión)' });
     expect((await json('list'))[0].fields).toEqual(FIELDS);
   });
 
@@ -58,7 +58,7 @@ describe('names in output', () => {
         from: 'todo',
         fromName: 'Hacerlo',
         to: 'todo__review',
-        toName: 'Hacerlo (in review)',
+        toName: 'Hacerlo (en revisión)',
       }),
     ]);
   });
@@ -68,14 +68,14 @@ describe('names in output', () => {
 
     expect(out).toMatch(/ created {2}Hacerlo\n/);
     expect(out).toMatch(/ updated {2}Prioridad: "Media" -> "Alta"\n/);
-    expect(out).toMatch(/ transitioned {2}Hacerlo -> Hacerlo \(in review\)\n/);
+    expect(out).toMatch(/ transitioned {2}Hacerlo -> Hacerlo \(en revisión\)\n/);
     expect(await ndjson('events')).toEqual((await json('show', 'TASKS-1')).events);
   });
 
   it('writes the brief with step and field names', async () => {
     const { out } = await otea('brief', 'TASKS-1');
 
-    expect(out).toContain('- board: tasks · Hacerlo (in review)\n- Prioridad: Alta\n');
+    expect(out).toContain('- board: tasks · Hacerlo (en revisión)\n- Prioridad: Alta\n');
   });
 
   it('answers MCP with the same names as --json', async () => {
@@ -93,7 +93,7 @@ describe('names in output', () => {
         content: { text: string }[];
       };
       expect(JSON.parse(reply.content[0]?.text ?? '')).toMatchObject({
-        stateName: 'Hacerlo (in review)',
+        stateName: 'Hacerlo (en revisión)',
         fields: FIELDS,
       });
     } finally {

@@ -48,7 +48,7 @@ describe('names in, names out', () => {
       await otea('update', 'BUG-2', '--field', 'Causa probable=red', '--field', 'Gravedad=Baja');
       expect((await otea('handoff', 'BUG-2')).code).toBe(0);
       expect((await listed('--state', 'refinar')).ids).toEqual(['BUG-1']);
-      expect((await listed('--state', 'Refinar (in review)')).ids).toEqual(['BUG-2']);
+      expect((await listed('--state', 'Refinar (en revisión)')).ids).toEqual(['BUG-2']);
       expect((await listed('--collection', 'Bugs', '--state', 'REFINAR')).ids).toEqual(['BUG-1']);
     });
 
@@ -69,7 +69,7 @@ describe('names in, names out', () => {
       const { code, err } = await listed('--collection', 'Bugs', '--state', 'Nada');
       expect(code).not.toBe(0);
       expect(err).toContain(
-        'Bugs has no step "Nada"; its steps are Refinar, Refinar (in review), Arreglar, Arreglar (in review), Done, Dropped',
+        'Bugs has no step "Nada"; its steps are Refinar, Refinar (en revisión), Arreglar, Arreglar (en revisión), Done, Dropped',
       );
       expect((await listed('--state', 'Nada')).err).toMatch(
         /No board has a step "Nada"; .*Refinar/,

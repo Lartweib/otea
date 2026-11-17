@@ -82,9 +82,9 @@ Agents claim an item before working it. A lease is atomic: while one agent holds
 
 A lease that ran out without a release leaves its item stuck (**Atasco** in the web UI). There the person either puts it back in the queue of its step for any agent to claim (**Retomar**, `POST /api/items/:id/restart`) or leaves it for a named agent (**Reasignar**, `POST /api/items/:id/reassign` with `{"agent"}`). Both drop the lease that ran out and write a `released` event by the human with `cause` `restart` or `reassign` (and `next`, the agent it is left for); `otea show` reads them as `(back in the queue)` and `(left for <agent>)`. The agent named is expected, not enforced: any agent may still claim the item, but `otea next` offers it only to that agent, and `otea show` tells any other `Left for <agent>: pick another item.` (and that agent `The person left it for you.`) until an agent claims or moves it. An item whose lease is still running, or that has none, is refused (409, `not_stuck`). While its toast is up, `POST /api/items/:id/undo` with `{"release": true}` gives the lease back as it was (with `{"from"}` it takes back a move, as before); like moves, these writes need the session, JSON and the server's own origin.
 
-`otea update` changes fields of an open item (a blank value clears an optional field) and records the old and new values in the timeline; items in a closed state (turn `none`) cannot be updated. Agents act through the CLI, so it only makes the moves a board gives agents. Approving a step the person reviews (`Hacerlo (in review)` -> `Done` on Tareas) is the person's, in the web UI: `otea approve`, `otea move` and `otea relay` refuse it with exit code 7 (`forbidden`).
+`otea update` changes fields of an open item (a blank value clears an optional field) and records the old and new values in the timeline; items in a closed state (turn `none`) cannot be updated. Agents act through the CLI, so it only makes the moves a board gives agents. Approving a step the person reviews (`Hacerlo (en revisión)` -> `Integrar` on Encargos; a review reads in the board's language, and `(in review)` is accepted too) is the person's, in the web UI: `otea approve`, `otea move` and `otea relay` refuse it with exit code 7 (`forbidden`).
 
-A board is named in any case wherever a command takes one (`--collection tareas` is Tareas, and so is `otea board tareas`), as its steps and fields are in `otea list --state/--field`: board names are unique whatever their case.
+A board is named in any case wherever a command takes one (`--collection encargos` is Encargos, and so is `otea board encargos`), as its steps and fields are in `otea list --state/--field`: board names are unique whatever their case.
 
 ### Projects
 
@@ -166,14 +166,18 @@ otea show BUGS-1                           # lists the evidence above the timeli
 Items link to each other with a typed relation: `parent`, `blocks`, `duplicates`, `implements` and `relates`. A collection is one board: a tree of `parent` links lives inside it, and the other kinds link items across the collections of the project.
 
 ```sh
-otea create --collection Tareas --title "Create wolf" --description "A wolf for the forest"
-otea create --collection Tareas --title "Body" --description "Mesh and rig" --parent TAR-1
-otea create --collection Tareas --title "Movement" --description "Walk, trot, run" --parent TAR-1
+# after otea init --template ideas: Ideas and Implementación
+otea create --collection Implementación --title "Create wolf" --field "Qué hay que hacer=A wolf for the forest"
+otea create --collection Implementación --title "Body" --field "Qué hay que hacer=Mesh and rig" --parent TAR-1
+otea create --collection Implementación --title "Movement" --field "Qué hay que hacer=Walk, trot, run" --parent TAR-1
 otea link TAR-2 blocks TAR-3                # body before movement
-otea link BUG-7 duplicates BUG-3            # BUG-7 is a copy of BUG-3
-otea link TAR-9 implements BUG-3            # work on one board delivers an item of another
-otea link TAR-3 parent TAR-4                # TAR-4 becomes the parent of TAR-3
-otea link BUG-3 parent TAR-1                # refused, exit 16 (parent_across_boards)
+otea create --collection Implementación --title "Wolf" --field "Qué hay que hacer=A wolf"
+otea link TAR-4 duplicates TAR-1            # TAR-4 is a copy of TAR-1
+otea create --collection Ideas --title "Forest fauna" --field "La idea=Animals that live in the forest"
+otea link TAR-1 implements IDE-1            # work on one board delivers an item of another
+otea create --collection Implementación --title "Pack" --field "Qué hay que hacer=Wolves together"
+otea link TAR-5 parent TAR-4                # TAR-4 becomes the parent of TAR-5
+otea link IDE-1 parent TAR-1                # refused, exit 16: a parent lives on its child's board
 otea unlink TAR-2 blocks TAR-3
 otea list --parent TAR-1                    # the children of TAR-1
 otea show TAR-1                             # children summary and relations by kind
@@ -182,9 +186,11 @@ otea show TAR-1                             # children summary and relations by 
 What waits on another item says so with `blocks`, and a step that waits for its blockers (**Algo que esperar** in Studio, `"waits": ["blockers"]` in `board.json`) is not handed off, or approved, while one of them is open. Implementación, the task board of `otea init --template ideas`, waits for them in Hacer:
 
 ```sh
-otea link TAR-2 blocks TAR-1                # the login page waits for the auth endpoint
-otea handoff TAR-1                          # in Hacer: exit 4 (blockers_open) while TAR-2 is open
-otea show TAR-1                             # its Handoff names TAR-2, its board and its step, as what still blocks it
+otea create --collection Implementación --title "Login page" --field "Qué hay que hacer=The login form" --field "Terminado cuando=It signs in" --field "Tamaño=S"
+otea create --collection Implementación --title "Auth endpoint" --field "Qué hay que hacer=POST /login" --field "Terminado cuando=It answers a token" --field "Tamaño=S"
+otea link TAR-7 blocks TAR-6                # the login page waits for the auth endpoint
+otea handoff TAR-6                          # in Hacer: refused while TAR-7 is open (exit 4, blockers_open, once its deliverables are in)
+otea show TAR-6                             # its Handoff names TAR-7, its board and its step, as what still blocks it
 ```
 
 - `otea link <id> <kind> <other>` reads as a sentence for `blocks`, `duplicates`, `implements` and `relates`; `<id> parent <other>` makes `<other>` the parent of `<id>`. `otea create --parent <id>` creates the item as a child in the same write. `otea unlink` takes the link named the same way (`relates` either way round).

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { evidenceByName, fieldsByName, readFieldInput, stateName } from './reading.ts';
+import { evidenceByName, fieldsByName, findState, readFieldInput, stateName } from './reading.ts';
 import { creatures, errores } from './testing.ts';
 
 const def = creatures();
@@ -30,12 +30,21 @@ describe('reading a board item by names', () => {
     expect(evidenceByName(def, 'arte conceptual')).toBe('eart');
     expect(() => evidenceByName(def, 'Bocetos')).toThrowError(/has no evidence "Bocetos"/);
     expect(stateName(def, 'sconcept')).toBe('Concepto');
-    expect(stateName(def, 'sconcept__review')).toBe('Concepto (in review)');
+    expect(stateName(def, 'sconcept__review')).toBe('Concepto (en revisión)');
     expect(stateName(def, 'done')).toBe('Done');
     expect(fieldsByName(def, { fbiome: 'cswamp', fdesc: 'Lenta' })).toEqual({
       Bioma: 'Pantano',
       Descripción: 'Lenta',
     });
+  });
+
+  it('says a review in the board’s language and reads it in either language', () => {
+    const english = creatures();
+    english.title = 'Title';
+    expect(stateName(english, 'sconcept__review')).toBe('Concepto (in review)');
+    expect(findState(def, 'Concepto (en revisión)')).toBe('sconcept__review');
+    expect(findState(def, 'concepto (in review)')).toBe('sconcept__review');
+    expect(findState(english, 'Concepto (en revisión)')).toBe('sconcept__review');
   });
 
   it('says a level in the board’s language, as its field name is', () => {

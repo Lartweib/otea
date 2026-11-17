@@ -63,10 +63,10 @@ export const studioHome = {
   'bs.new.title': 'New board',
   'bs.new.lede': 'A board is the path one kind of work follows: a row of steps that ends in Done.',
   'bs.new.name': 'Board name',
-  'bs.new.namePlaceholder': 'Creatures, Bugs, Journal…',
+  'bs.new.namePlaceholder': 'Bugs, Content, Decisions…',
   'bs.new.item': 'Each item is called',
-  'bs.new.itemPlaceholder': 'Creature, Bug, Entry…',
-  'bs.new.itemHint': 'It is the word you will see on buttons and lists: “Create · Creature”.',
+  'bs.new.itemPlaceholder': 'Bug, Article, Decision…',
+  'bs.new.itemHint': 'It is the word you will see on buttons and lists: “Create · Bug”.',
   'bs.new.starts': 'Starts from',
   'bs.new.blankText':
     'One step, {step}: any agent does it and you review it. It already works, and you refine it.',
@@ -91,10 +91,10 @@ export const studioHome = {
   'bs.ask.title': 'Have an agent draft it',
   'bs.ask.lede':
     'A request is created. When the agent delivers its draft, you open it here, try it and decide.',
-  'bs.ask.namePlaceholder': 'Creatures',
+  'bs.ask.namePlaceholder': 'Reported bugs',
   'bs.ask.need': 'What you need',
   'bs.ask.needPlaceholder':
-    'E.g.: Open a task for each creature I make in the engine and keep showing me how it goes, so I can approve or refine it.',
+    'E.g.: Open an item for each bug users report, reproduce it and show me the evidence of the fix so I can approve it or send it back.',
   'bs.ask.who': 'Who drafts it',
   'bs.ask.send': 'Ask for the draft',
   'bs.ask.sending': 'Asking…',
