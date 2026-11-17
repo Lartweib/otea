@@ -1,3 +1,5 @@
+import { execFileSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import type { DatabaseSync } from 'node:sqlite';
 import type { AgentChannel } from '../core/authority.ts';
 import { OteaError } from '../core/errors.ts';
@@ -124,25 +126,79 @@ export function processAlive(pid: number): boolean {
   }
 }
 
+// The process that started a process, read from the system; undefined when it can't be read.
+export function parentOf(pid: number): number | undefined {
+  try {
+    if (process.platform === 'linux') {
+      const stat = readFileSync(`/proc/${pid}/stat`, 'utf8');
+      const parent = Number(stat.slice(stat.lastIndexOf(')') + 2).split(' ')[1]);
+      return Number.isInteger(parent) && parent > 0 ? parent : undefined;
+    }
+    const out =
+      process.platform === 'win32'
+        ? execFileSync(
+            'powershell.exe',
+            [
+              '-NoProfile',
+              '-Command',
+              `(Get-CimInstance Win32_Process -Filter "ProcessId=${pid}").ParentProcessId`,
+            ],
+            { encoding: 'utf8', timeout: 5000, windowsHide: true },
+          )
+        : execFileSync('ps', ['-o', 'ppid=', '-p', String(pid)], {
+            encoding: 'utf8',
+            timeout: 5000,
+          });
+    const parent = Number(out.trim());
+    return Number.isInteger(parent) && parent > 0 ? parent : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+// Whether an open MCP session (its server's process id) was started by the same harness process as
+// this one: the harness restarted its server, so it is the same agent coming back.
+export function sameHarness(old: number): boolean {
+  const parent = parentOf(old);
+  return parent !== undefined && parent === process.ppid;
+}
+
 // An MCP session (`session`, its server's process id) takes an agent name only while no other open
 // session works under it: two sessions under one name would take one item twice and hand off each
 // other's work. A session that closed or went quiet leaves the name free; a command-line wait
-// shares it with its own agent.
+// shares it with its own agent. A server the same harness process started anew (`fresh`: its first
+// call under the name) takes the name from its sibling: the harness restarted it and no longer talks
+// to the old one, which is refused from then on.
 export function claimName(
   db: DatabaseSync,
   agent: string,
   session: number,
   alive: (pid: number) => boolean = processAlive,
   now: Clock = systemClock,
+  sameOwner: (old: number) => boolean = sameHarness,
+  fresh = false,
 ): void {
   const heard = selectListener(db, agent);
   if (!heard?.session || heard.session === session || !heard.at) return;
   if (Date.parse(now()) - Date.parse(heard.at) >= LISTEN_WINDOW_MS) return;
   if (!alive(heard.session)) return;
+  if (fresh && sameOwner(heard.session)) return;
   throw new OteaError(
     'name_in_use',
     `Another session works as ${agent} right now: give this one its own name, passing as "${agent}-2" (or another name) on every call`,
   );
+}
+
+// Whether the process that started a wait is gone (`start`, the parent it had then; `current`, the
+// parent it has now): it ended, or the wait was handed to another parent. A wait left running
+// after its agent's session ended would keep the agent shown as listening until it timed out.
+export function ownerGone(
+  start: number,
+  current: number,
+  alive: (pid: number) => boolean = processAlive,
+): boolean {
+  if (start <= 1) return false;
+  return current !== start || !alive(start);
 }
 
 // The beat of a wait (watch's `beat`): hears the agent again, never as a new session. Far inside

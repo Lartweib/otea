@@ -1,6 +1,8 @@
+import { execFileSync } from 'node:child_process';
 import { setTimeout as delay } from 'node:timers/promises';
+import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { listAgents } from '../app/presence.ts';
+import { listAgents, processAlive } from '../app/presence.ts';
 import { openProject } from '../app/project.ts';
 import {
   type Cli,
@@ -13,6 +15,8 @@ import {
   tempGitRepo,
   until,
 } from './testing.ts';
+
+const MAIN = fileURLToPath(new URL('./main.ts', import.meta.url));
 
 const USAGE =
   'Usage: otea wait --turn <agent|human> [--collection <collection>] [--unclaimed] [--timeout <duration>]';
@@ -135,6 +139,41 @@ describe('wait', () => {
       code: 'timeout',
       message: 'No item reached the human turn within 1s',
     });
+  });
+
+  it('stops waiting once the process that started it is gone, so its agent no longer reads as listening', async () => {
+    // A parent that starts the wait in the background and ends, as a harness session that closed
+    // would. Detached: on Windows a child that is not dies with its parent anyway.
+    const starter = [
+      "const c = require('node:child_process').spawn(process.execPath, process.argv.slice(1), { detached: true, stdio: 'ignore' });",
+      'c.unref();',
+      'console.log(c.pid);',
+      'setTimeout(() => process.exit(0), 300);',
+    ].join(' ');
+    const out = execFileSync(
+      process.execPath,
+      [
+        '-e',
+        starter,
+        '--disable-warning=ExperimentalWarning',
+        MAIN,
+        'wait',
+        '--turn',
+        'human',
+        '--collection',
+        'tasks',
+        '--timeout',
+        '1m',
+      ],
+      { cwd: repo.dir, env: { ...process.env, OTEA_AGENT: 'claude' }, encoding: 'utf8' },
+    );
+    const pid = Number(out.trim());
+    expect(pid).toBeGreaterThan(0);
+    try {
+      await until(() => !processAlive(pid), 15_000);
+    } finally {
+      if (processAlive(pid)) process.kill(pid);
+    }
   });
 
   it('exits 130 without printing an item when interrupted', async () => {

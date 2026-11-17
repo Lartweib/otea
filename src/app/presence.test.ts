@@ -10,6 +10,7 @@ import {
   claimName,
   hearAgent,
   listAgents,
+  ownerGone,
   presenceSignature,
   seeAgent,
   waitBeat,
@@ -259,7 +260,9 @@ describe('agent presence', () => {
     it('refuses a name another open MCP session works under, telling how to take another', () => {
       hearAgent(ctx.db, { ...mcp, session: 101 }, at(T0));
 
-      expect(() => claimName(ctx.db, 'claude', 202, alive([101, 202]), at(T1))).toThrow(
+      expect(() =>
+        claimName(ctx.db, 'claude', 202, alive([101, 202]), at(T1), () => false),
+      ).toThrow(
         'Another session works as claude right now: give this one its own name, passing as "claude-2" (or another name) on every call',
       );
       expect(() => claimName(ctx.db, 'claude', 101, alive([101, 202]), at(T1))).not.toThrow();
@@ -272,10 +275,49 @@ describe('agent presence', () => {
       expect(() => claimName(ctx.db, 'claude', 202, alive([101, 202]), at(T5))).not.toThrow();
     });
 
+    it('gives the name to a new server the same harness started, and refuses the old one then', () => {
+      hearAgent(ctx.db, { ...mcp, session: 101 }, at(T0));
+      const siblings = () => true;
+
+      expect(() =>
+        claimName(ctx.db, 'claude', 202, alive([101, 202]), at(T1), siblings, true),
+      ).not.toThrow();
+      hearAgent(ctx.db, { ...mcp, session: 202 }, at(T1));
+      expect(() =>
+        claimName(ctx.db, 'claude', 101, alive([101, 202]), at(T1), siblings, false),
+      ).toThrow('Another session works as claude right now');
+    });
+
+    it('never gives the name to a new server another harness started', () => {
+      hearAgent(ctx.db, { ...mcp, session: 101 }, at(T0));
+
+      expect(() =>
+        claimName(ctx.db, 'claude', 202, alive([101, 202]), at(T1), () => false, true),
+      ).toThrow('Another session works as claude right now');
+    });
+
     it('leaves a name a command-line wait listens under to the MCP session too', () => {
       hearAgent(ctx.db, { agent: 'claude', channel: 'cli', harness: CLI_HARNESS }, at(T0));
 
       expect(() => claimName(ctx.db, 'claude', 202, alive([202]), at(T1))).not.toThrow();
+    });
+  });
+
+  describe('ownerGone', () => {
+    const alive = (pids: number[]) => (pid: number) => pids.includes(pid);
+
+    it('holds while the process that started the wait still runs', () => {
+      expect(ownerGone(500, 500, alive([500]))).toBe(false);
+    });
+
+    it('is gone once that process ended, or the wait was handed to another parent', () => {
+      expect(ownerGone(500, 500, alive([]))).toBe(true);
+      expect(ownerGone(500, 1, alive([500]))).toBe(true);
+    });
+
+    it('never calls a wait started with no parent to watch orphaned', () => {
+      expect(ownerGone(1, 1, alive([]))).toBe(false);
+      expect(ownerGone(0, 0, alive([]))).toBe(false);
     });
   });
 
