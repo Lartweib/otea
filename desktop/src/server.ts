@@ -144,6 +144,37 @@ export function startServe(
   });
 }
 
+// otea serve's default port; the shell tries the next ones when another project already serves on
+// it, so opening a second project never fails on a taken port.
+const DEFAULT_PORT = 4400;
+const NEARBY_PORTS = 9;
+
+const portTaken = (error: unknown) =>
+  error instanceof Error && /is already in use/.test(error.message);
+
+// Starts on the port asked for; without one, on the default, then the next ports, then any free one
+// the system picks (port 0). A port asked for is kept: when taken, that is the error.
+export async function startOnFreePort<T>(
+  start: (port?: number) => Promise<T>,
+  port?: number,
+): Promise<T> {
+  if (port !== undefined) return start(port);
+  const candidates = [...Array.from({ length: NEARBY_PORTS }, (_, n) => DEFAULT_PORT + 1 + n), 0];
+  try {
+    return await start();
+  } catch (error) {
+    if (!portTaken(error)) throw error;
+  }
+  for (const candidate of candidates) {
+    try {
+      return await start(candidate);
+    } catch (error) {
+      if (!portTaken(error) || candidate === 0) throw error;
+    }
+  }
+  throw new Error('No free port to serve on');
+}
+
 // Attach to the project's running server when there is one, start it otherwise.
 export async function connect(cli: Cli, cwd: string, port?: number): Promise<Connection> {
   const project = await currentProject(cli, cwd);
@@ -154,7 +185,7 @@ export async function connect(cli: Cli, cwd: string, port?: number): Promise<Con
     const link = signInUrl(url, token);
     if (await servesThisProject(link)) return { project, url, signInUrl: link };
   }
-  const { url, child } = await startServe(cli, cwd, port);
+  const { url, child } = await startOnFreePort((free) => startServe(cli, cwd, free), port);
   const started = readUiToken(project.dataDir);
   if (!started) {
     child.kill();
