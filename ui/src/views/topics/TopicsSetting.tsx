@@ -21,6 +21,7 @@ export function TopicsSetting({ canWrite }: { canWrite: boolean }) {
       <p className="pj-hint" data-on={shown ? '' : undefined}>
         {shown ? t('topics.settings.on') : t('topics.settings.off')}
       </p>
+      {shown ? <p className="pj-hint">{t('topics.settings.auto')}</p> : null}
       {canWrite ? (
         <Button size="sm" variant={shown ? 'quiet' : 'primary'} onClick={flip} aria-pressed={shown}>
           {shown ? t('topics.settings.turnOff') : t('topics.settings.turnOn')}

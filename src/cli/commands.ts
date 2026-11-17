@@ -2332,7 +2332,10 @@ const topicOn: Command = {
       setTopicsOn(project, true);
       return {
         data: { topics: true },
-        text: 'Topics are on: agents record the side questions you ask them.',
+        text: [
+          'Topics are on: agents record the side questions you ask them.',
+          "In Claude Code's Auto mode, run otea hook install --claude in the repo so they may.",
+        ].join('\n'),
       };
     }),
 };

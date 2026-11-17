@@ -124,7 +124,21 @@ export function removeGitHook(cwd: string): HookChange {
 
 type ClaudeHook = { type: 'command'; if: string; command: string };
 type HookGroup = { matcher?: string; hooks?: unknown[] };
-type Settings = Record<string, unknown> & { hooks?: Record<string, unknown> };
+type Settings = Record<string, unknown> & {
+  hooks?: Record<string, unknown>;
+  permissions?: Record<string, unknown>;
+};
+
+// Recording and answering a side topic, from the CLI and the MCP tools (the server otea connect
+// names "otea"), allowed outright. Claude Code's Auto mode sends every call no rule allows to its
+// classifier, which blocks otea topic add; narrow rules like these survive Auto mode. Closing a
+// topic or switching topics stays with the person.
+const CLAUDE_TOPIC_RULES: readonly string[] = [
+  'Bash(otea topic add *)',
+  'Bash(otea topic answer *)',
+  'mcp__otea__topic_add',
+  'mcp__otea__topic_answer',
+];
 
 // The Bash calls each gated action covers, as permission rules: each rule matches a command alone
 // or with arguments.
@@ -193,8 +207,22 @@ function withoutOurs(settings: Settings): Settings {
     const { [event]: _, ...others } = hooks;
     hooks = kept.length > 0 ? { ...others, [event]: kept } : others;
   }
-  const { hooks: __, ...rest } = settings;
-  return Object.keys(hooks).length > 0 ? { ...rest, hooks } : rest;
+  const { hooks: __, permissions, ...rest } = settings;
+  const kept = withoutOurRules(permissions);
+  const others = kept === undefined ? rest : { ...rest, permissions: kept };
+  return Object.keys(hooks).length > 0 ? { ...others, hooks } : others;
+}
+
+// The permissions with Otea's allow rules taken out, and an empty allow list and permissions with
+// them.
+function withoutOurRules(
+  permissions: Record<string, unknown> | undefined,
+): Record<string, unknown> | undefined {
+  if (permissions === undefined || !Array.isArray(permissions.allow)) return permissions;
+  const allow = permissions.allow.filter((rule) => !CLAUDE_TOPIC_RULES.includes(rule));
+  const { allow: _, ...others } = permissions;
+  const kept = allow.length > 0 ? { ...others, allow } : others;
+  return Object.keys(kept).length > 0 ? kept : undefined;
 }
 
 function writeSettings(path: string, settings: Settings): void {
@@ -210,11 +238,17 @@ export function installClaudeHook(cwd: string, otea: Launcher): HookChange {
   const stop = { hooks: stopHooks(otea) };
   const existing = Array.isArray(base.hooks?.PreToolUse) ? base.hooks.PreToolUse : [];
   const stops = Array.isArray(base.hooks?.Stop) ? base.hooks.Stop : [];
+  const allow = Array.isArray(base.permissions?.allow) ? base.permissions.allow : [];
   const next: Settings = {
     ...base,
+    permissions: { ...(base.permissions ?? {}), allow: [...allow, ...CLAUDE_TOPIC_RULES] },
     hooks: { ...(base.hooks ?? {}), PreToolUse: [...existing, group], Stop: [...stops, stop] },
   };
-  const content = JSON.stringify({ PreToolUse: group, Stop: stop }, null, 2);
+  const content = JSON.stringify(
+    { PreToolUse: group, Stop: stop, allow: CLAUDE_TOPIC_RULES },
+    null,
+    2,
+  );
   const unchanged = JSON.stringify(next) === JSON.stringify(before);
   const existed = existsSync(path);
   if (!unchanged) writeSettings(path, next);

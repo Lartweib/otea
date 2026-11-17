@@ -142,6 +142,13 @@ describe('hook', () => {
   });
 
   describe('--claude', () => {
+    const TOPIC_RULES = [
+      'Bash(otea topic add *)',
+      'Bash(otea topic answer *)',
+      'mcp__otea__topic_add',
+      'mcp__otea__topic_answer',
+    ];
+
     it('adds PreToolUse hooks for git push and gh pr merge, keeping the other settings', async () => {
       repo.write(
         '.claude/settings.local.json',
@@ -164,7 +171,7 @@ describe('hook', () => {
       });
       expect(status).not.toContain('.claude');
       expect(read('.git/info/exclude')).toContain('/.claude/settings.local.json');
-      expect(permissions).toEqual({ allow: ['Bash(npm test)'] });
+      expect(permissions).toEqual({ allow: ['Bash(npm test)', ...TOPIC_RULES] });
       expect(theirs).toEqual({ matcher: 'Edit', hooks: [{ type: 'command', command: 'x' }] });
       expect(ours.matcher).toBe('Bash');
       expect(ours.hooks.map((hook: { if: string }) => hook.if)).toEqual([
@@ -175,6 +182,14 @@ describe('hook', () => {
       ]);
       expect(ours.hooks[0].command).toMatch(/check --gate push --branch --repo --claude-hook$/);
       expect(ours.hooks[2].command).toMatch(/check --gate merge --branch --repo --claude-hook$/);
+    });
+
+    // Claude Code's Auto mode sends every call no rule allows to its classifier, which blocked
+    // otea topic add: narrow allow rules for recording and answering a topic survive Auto mode.
+    it('allows recording and answering side topics, from the CLI and the MCP tools', async () => {
+      await otea('hook', 'install', '--claude');
+
+      expect(settings().permissions).toEqual({ allow: TOPIC_RULES });
     });
 
     it('is idempotent, and remove leaves the settings as they were', async () => {

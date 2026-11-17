@@ -498,6 +498,8 @@ export const surfaces = {
   'topics.settings.text':
     'Keeps the questions you ask an agent off the work, with their answer, so none is left hanging.',
   'topics.settings.on': 'On: agents note down your side questions.',
+  'topics.settings.auto':
+    'With Claude Code in Auto mode, run otea hook install --claude in the repo so they can note them down.',
   'topics.settings.off': 'Off.',
   'topics.settings.turnOn': 'Turn on',
   'topics.settings.turnOff': 'Turn off',

@@ -245,7 +245,7 @@ otea create --collection Cambios --title "Exclude node_modules" --field "Qué qu
 ```
 
 - An open topic is the agent's turn; once answered it is yours, and Te toca folds the answered ones under its lanes. One nobody touched for a day reads as left hanging.
-- Each answer shows its summary, with the full answer folded below and where that text came from: copied by the agent, or read from the session. `otea hook install --claude` adds a Claude Code Stop hook that reads the session's transcript at the end of each turn and keeps the answer as the agent wrote it; it wins over the agent's copy.
+- Each answer shows its summary, with the full answer folded below and where that text came from: copied by the agent, or read from the session. `otea hook install --claude` adds a Claude Code Stop hook that reads the session's transcript at the end of each turn and keeps the answer as the agent wrote it; it wins over the agent's copy. It also allows `otea topic add` and `otea topic answer` (and the MCP tools `topic_add` and `topic_answer`) outright: Claude Code's default Auto mode otherwise blocks an agent recording a topic, and narrow allow rules like these are the ones Auto mode keeps.
 - From the page you can turn a topic into a task on a board you pick, linked both ways. An item lists its related topics, says while it is your turn that one is still open, and offers to close them once it is finished; a topic the same agent opened shortly before making the item is suggested, for you to link or wave off.
 - While topics are on, the agent guide (MCP instructions, `otea board`) tells agents to record them; while off it never mentions them.
 
