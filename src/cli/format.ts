@@ -244,10 +244,18 @@ function relationLines({ relations, children }: ItemView): string[] {
   return lines.length > 0 ? [...lines, ''] : [];
 }
 
-function movesLine(label: string, moves: ItemView['transitions']): string {
-  const targets = moves.map(({ to, reasonRequired }) =>
-    reasonRequired ? `${to} (reason required)` : to,
-  );
+// A drop with motives (named once, `motives` its names) says how to give one.
+function movesLine(
+  label: string,
+  moves: readonly (ItemView['transitions'][number] & { motives?: readonly string[] })[],
+): string {
+  const targets = moves.map(({ to, reasonRequired, motives }) => {
+    const said = [
+      ...(reasonRequired ? ['reason required'] : []),
+      ...(motives?.length ? [`--motive "${motives.join('|')}"`] : []),
+    ];
+    return said.length > 0 ? `${to} (${said.join('; ')})` : to;
+  });
   return `Agent can ${label} to: ${targets.length > 0 ? targets.join(', ') : 'nothing'}`;
 }
 

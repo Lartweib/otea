@@ -4,7 +4,13 @@ import type { BoardDefinition } from '../core/board/model.ts';
 import { OteaError } from '../core/errors.ts';
 import type { Actor } from '../core/item.ts';
 import { transaction } from '../store/database.ts';
-import { findItem, selectEvents, selectEventsOfTypes, selectItems } from '../store/queries.ts';
+import {
+  findCollection,
+  findItem,
+  selectEvents,
+  selectEventsOfTypes,
+  selectItems,
+} from '../store/queries.ts';
 import type { Context } from './context.ts';
 import { systemClock } from './items.ts';
 
@@ -68,6 +74,8 @@ export function setOrder(
   const ids = [...new Set(input.ids)];
   transaction(ctx.db, () => {
     requireItemsOf(ctx.db, ids, input.collection);
+    if (!findCollection(ctx.db, input.collection))
+      throw new OteaError('not_found', `Collection "${input.collection}" not found`);
     const at = now();
     for (const item of selectItems(ctx.db, { collection: input.collection }))
       upsert(ctx.db, item.id, 'rank', null, at);

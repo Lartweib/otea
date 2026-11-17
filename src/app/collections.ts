@@ -135,8 +135,15 @@ export function listCollectionViews(
 // The collections the places show: the built-in Pedidos only once it holds an item (an agent's
 // board draft arrives on it), so a new project lists only the boards the person picked.
 export function listShownCollectionViews(ctx: Context): CollectionView[] {
-  const idle = listBoards(ctx.db).find(
-    (row) => row.builtin && row.collection !== null && !hasItems(ctx.db, row.collection),
-  )?.collection;
+  const idle = idleRequests(ctx);
   return listCollectionViews(ctx).filter(({ name }) => name !== idle);
+}
+
+// The built-in Pedidos while it holds no item: what the places (and otea board) leave out.
+export function idleRequests(ctx: Context): string | undefined {
+  return (
+    listBoards(ctx.db).find(
+      (row) => row.builtin && row.collection !== null && !hasItems(ctx.db, row.collection),
+    )?.collection ?? undefined
+  );
 }

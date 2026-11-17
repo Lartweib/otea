@@ -90,14 +90,15 @@ export function collectionArchived(db: DatabaseSync, name: string): boolean {
   return db.prepare(`SELECT 1 FROM (${ARCHIVED}) WHERE collection = ?`).get(name) !== undefined;
 }
 
-// The collections in use, an archived board's left out; `archived` lists those too.
+// The collections in use, an archived board's left out; `archived` lists those too. In the order
+// their boards were made (a set's in its own order, though its child is published first), then
+// the collections with no board (a preset's) as they were made.
 export function listCollections(
   db: DatabaseSync,
   options: { archived?: boolean } = {},
 ): CollectionRecord[] {
-  const sql = options.archived
-    ? 'SELECT * FROM collections'
-    : `SELECT * FROM collections WHERE name NOT IN (${ARCHIVED})`;
+  const where = options.archived ? '' : ` WHERE c.name NOT IN (${ARCHIVED})`;
+  const sql = `SELECT c.* FROM collections c LEFT JOIN boards b ON b.collection = c.name${where} ORDER BY b.id IS NULL, b.created_at, b.rowid, c.rowid`;
   return (db.prepare(sql).all() as CollectionRow[]).map(toCollection);
 }
 

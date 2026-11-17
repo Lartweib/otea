@@ -984,10 +984,18 @@ export function insertNewBoardSet(
     const defs = instantiateSet(set, input.lang, boards, ids);
     const taken = namesTaken(ctx);
     const seen: string[] = [];
-    for (const def of defs) {
+    const isTaken = (wanted: string) => [...taken, ...seen].some((name) => same(name, wanted));
+    for (const [index, def] of defs.entries()) {
       if (def.name.trim() === '')
         throw new OteaError('invalid_name', 'A board needs a name', { kind: 'board_name_empty' });
-      if ([...taken, ...seen].some((name) => same(name, def.name)))
+      // A later board nobody named keeps the template's name with the first number free (a second
+      // Ideas set makes Implementación 2): only a name someone gave is refused when taken.
+      if (index > 0 && boards[index]?.name === undefined && isTaken(def.name)) {
+        let n = 2;
+        while (isTaken(`${def.name} ${n}`)) n++;
+        def.name = `${def.name} ${n}`;
+      }
+      if (isTaken(def.name))
         throw new OteaError('already_exists', `There is already a board called ${def.name}`, {
           kind: 'board_name_taken',
           name: def.name,

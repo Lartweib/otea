@@ -140,9 +140,15 @@ export type McpContext = {
 
 type Values = Record<string, unknown>;
 
+// A number an option takes (a note's, an event id) may come as a JSON number: it is read as its
+// digits, as the CLI reads it.
+const NUMBERED = new Set(['n', 'event id']);
+
 function optionSchema(spec: OptionSpec): ZodType {
   if (spec.flag) return z.boolean().optional();
-  const value = spec.choices ? z.enum(spec.choices as [string, ...string[]]) : z.string();
+  const numbered = NUMBERED.has(spec.placeholder ?? '');
+  const text = numbered ? z.union([z.string(), z.number()]) : z.string();
+  const value = spec.choices ? z.enum(spec.choices as [string, ...string[]]) : text;
   const described = spec.placeholder ? value.describe(spec.placeholder) : value;
   if (spec.multiple) return z.array(described).optional();
   return spec.required ? described : described.optional();
@@ -187,7 +193,7 @@ function inputFor(
 ): Input {
   const option = (name: string) => {
     const value = values[name];
-    return typeof value === 'string' ? value : undefined;
+    return typeof value === 'string' || typeof value === 'number' ? String(value) : undefined;
   };
   const agent = typeof values.as === 'string' && values.as !== '' ? values.as : context.agent;
   // The first call of each agent on this server starts its session here.

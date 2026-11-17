@@ -70,7 +70,7 @@ export function findBoardOfCollection(db: DatabaseSync, collection: string): Boa
 export function listBoards(db: DatabaseSync, options: { archived?: boolean } = {}): BoardRow[] {
   const archived = options.archived ? '' : ' AND archived_at IS NULL';
   return db
-    .prepare(`SELECT * FROM boards WHERE retired_at IS NULL${archived} ORDER BY created_at, id`)
+    .prepare(`SELECT * FROM boards WHERE retired_at IS NULL${archived} ORDER BY created_at, rowid`)
     .all()
     .map(toBoard);
 }
