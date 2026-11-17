@@ -38,7 +38,7 @@ import {
   type LinkPort,
   type LinkState,
 } from './command-link.ts';
-import { COPY, type Copy, langOf } from './copy.ts';
+import { COPY, type Copy, type Lang, langOf } from './copy.ts';
 import { type Icons, loadIcons, type Theme } from './icons.ts';
 import { type DeskNotice, type Snapshot, type Watch, watchItems, watchNotices } from './live.ts';
 import { FRAME_MS } from './marks.ts';
@@ -63,6 +63,7 @@ import {
   menuHeader,
   nextLeaseExpiry,
   overlayOf,
+  reconnectingTooltip,
   surfaceKey,
   tooltip,
 } from './state.ts';
@@ -240,6 +241,7 @@ class Shell {
   private readonly tray: Tray;
   private readonly win: BrowserWindow;
   private readonly icons: Icons;
+  private readonly lang: Lang;
   private readonly copy: Copy;
   private connection: Connection | undefined;
   private watch: Watch | undefined;
@@ -256,9 +258,10 @@ class Shell {
   private readonly macCommand: string | undefined =
     IS_MAC && app.isPackaged ? join(process.resourcesPath, 'bin', 'otea') : undefined;
 
-  constructor(icons: Icons, copy: Copy) {
+  constructor(icons: Icons, lang: Lang) {
     this.icons = icons;
-    this.copy = copy;
+    this.lang = lang;
+    this.copy = COPY[lang];
     this.win = new BrowserWindow({
       width: 1280,
       height: 820,
@@ -375,9 +378,7 @@ class Shell {
         this.derive();
       },
     });
-    this.notices = watchNotices(connection.url, this.copy === COPY.es ? 'es' : 'en', (notice) =>
-      this.notify(notice),
-    );
+    this.notices = watchNotices(connection.url, this.lang, (notice) => this.notify(notice));
   }
 
   // Preferencias › Avisos in the desktop app: the server's notices as the system's notifications;
@@ -406,7 +407,7 @@ class Shell {
 
   pickerState(): PickerState {
     return {
-      lang: this.copy === COPY.es ? 'es' : 'en',
+      lang: this.lang,
       recents: this.recents,
       ...(this.opening === undefined ? {} : { opening: this.opening }),
       ...(this.pickerError === undefined ? {} : { error: this.pickerError }),
@@ -542,7 +543,9 @@ class Shell {
     const key = `${surfaceKey(next)}|${this.connected}|${this.theme}`;
     if (key !== this.appliedKey) {
       this.appliedKey = key;
-      this.tray.setToolTip(this.connected ? tooltip(next) : 'Otea — reconnecting to otea serve');
+      this.tray.setToolTip(
+        this.connected ? tooltip(next, this.lang) : reconnectingTooltip(this.lang),
+      );
       if (IS_MAC) this.tray.setTitle(next.yours > 0 ? String(next.yours) : '');
       if (IS_MAC) app.dock?.setBadge(badgeText(next.yours));
       this.drawOverlay();
@@ -557,7 +560,7 @@ class Shell {
   // overlay: it is drawn again on every show.
   private drawOverlay(): void {
     if (!IS_WIN || !this.attention) return;
-    const overlay = overlayOf(this.attention);
+    const overlay = overlayOf(this.attention, this.lang);
     this.win.setOverlayIcon(
       overlay ? this.icons.overlay[overlay.kind] : null,
       overlay?.description ?? '',
@@ -619,8 +622,8 @@ class Shell {
     const a = this.attention;
     const header: MenuItemConstructorOptions =
       IS_MAC && Number(process.getSystemVersion().split('.')[0]) >= 14
-        ? { type: 'header', label: a ? menuHeader(a) : 'Otea' }
-        : { label: a ? menuHeader(a) : 'Otea', enabled: false };
+        ? { type: 'header', label: a ? menuHeader(a, this.lang) : 'Otea' }
+        : { label: a ? menuHeader(a, this.lang) : 'Otea', enabled: false };
     const theme: Theme = nativeTheme.shouldUseDarkColors ? 'dark' : 'light';
     const recent: MenuItemConstructorOptions[] = (a?.recentYours ?? []).map((item) => ({
       label: `${item.id}  ${item.title}`,
@@ -628,7 +631,7 @@ class Shell {
       click: () => this.show(`#${encodeURIComponent(item.id)}`),
     }));
     const collections: MenuItemConstructorOptions[] = (a?.collections ?? []).map((each) => ({
-      label: collectionLabel(each),
+      label: collectionLabel(each, this.lang),
       click: () => this.show(),
     }));
     const menu = Menu.buildFromTemplate([
@@ -729,9 +732,8 @@ else {
   app.on('activate', () => shellInstance?.show());
   void app.whenReady().then(async () => {
     try {
-      const copy = COPY[langOf(app.getLocale())];
       const icons = await loadIcons(join(app.getPath('userData'), 'icons'));
-      shellInstance = new Shell(icons, copy);
+      shellInstance = new Shell(icons, langOf(app.getLocale()));
       shellInstance.start();
       wirePicker(shellInstance);
       wireUpdates(shellInstance);
