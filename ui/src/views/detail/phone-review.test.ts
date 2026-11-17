@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { creatures } from '../../../../src/core/board/testing.ts';
+import { pairIn, roleWord } from '../../evidence.ts';
 import { setLanguage } from '../../i18n/i18n.ts';
 import type { Round } from '../../rounds.ts';
 import type { Evidence, Layout } from '../../types.ts';
@@ -185,5 +186,37 @@ describe('handedFields: what a step handed off that is not a file', () => {
       { ref: 'fbiome', name: 'Bioma', value: 'cswamp' },
     ]);
     expect(handedFields(def, null, { fdesc: 'Lenta' })).toEqual([]);
+  });
+});
+
+describe('before and after in the reader', () => {
+  const side = (filename: string, role: Evidence['role'], module = 'eba') => ({
+    ...file(filename, 'image'),
+    role,
+    module,
+  });
+
+  it('finds the other side of a before or an after of the same part, and nothing for a single', () => {
+    const before = side('antes.png', 'before');
+    const after = side('despues.png', 'after');
+    const other = side('otra.png', 'after', 'eimg');
+    const single = file('captura.png', 'image');
+    const files = [single, after, other, before];
+    expect(pairIn(files, after)).toEqual({ before, after });
+    expect(pairIn(files, before)).toEqual({ before, after });
+    expect(pairIn(files, other)).toBeNull();
+    expect(pairIn(files, single)).toBeNull();
+  });
+
+  it('reads a before next to its after, and names each side', () => {
+    const before = side('antes.png', 'before');
+    const after = side('despues.png', 'after');
+    const shot = file('captura.png', 'image');
+    const { files } = readerOf([], [after, shot, before]);
+    expect(files.indexOf(after) - files.indexOf(before)).toBe(1);
+    const ahead = readerOf([], [before, shot, after]).files;
+    expect(ahead.indexOf(after) - ahead.indexOf(before)).toBe(1);
+    setLanguage('es');
+    expect([roleWord(before), roleWord(after), roleWord(shot)]).toEqual(['antes', 'después', null]);
   });
 });

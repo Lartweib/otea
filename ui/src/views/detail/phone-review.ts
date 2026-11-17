@@ -5,7 +5,7 @@ import {
   stepById,
 } from '../../../../src/core/board/model.ts';
 import { evidenceModules } from '../../../../src/core/placement.ts';
-import { latestFirst } from '../../evidence.ts';
+import { latestFirst, pairIn } from '../../evidence.ts';
 import { t } from '../../i18n/i18n.ts';
 import type { Round } from '../../rounds.ts';
 import type { Evidence, Layout } from '../../types.ts';
@@ -68,6 +68,18 @@ export function splitEvidence(evidence: readonly Evidence[]): {
     images: evidence.filter((e) => e.kind === 'image'),
     files: evidence.filter((e) => e.kind !== 'image'),
   };
+}
+
+// A before and its after side by side in a list, where the first of them stood.
+function pairedUp(files: readonly Evidence[]): Evidence[] {
+  const out: Evidence[] = [];
+  for (const e of files) {
+    if (out.includes(e)) continue;
+    const pair = pairIn(files, e);
+    if (pair) out.push(pair.before, pair.after);
+    else out.push(e);
+  }
+  return out;
 }
 
 export type FileChange = {
@@ -150,7 +162,7 @@ export function readerOf(
   const [newest, prior] = rounds;
   const { images, files } = splitEvidence(newest ? newest.evidence : latestFirst(evidence));
   return {
-    files: [...images, ...files],
+    files: pairedUp([...images, ...files]),
     marks: newest && prior ? fileMarks(prior.evidence, newest.evidence) : new Map(),
   };
 }

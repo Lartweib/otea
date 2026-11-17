@@ -13,6 +13,7 @@ import { useApp } from '../../app/context.tsx';
 import { EvidenceReader, type ReaderDecide } from '../../components/evidence/EvidenceViewer.tsx';
 import { pickableOn, type ReaderPick } from '../../components/evidence/reader-pick.ts';
 import { NoteText } from '../../components/NoteText.tsx';
+import { roleWord } from '../../evidence.ts';
 import { t, tx } from '../../i18n/i18n.ts';
 import { AgentMark, Button, Icon, StepPill } from '../../kit/index.ts';
 import type { Look } from '../../lanes/looks.ts';
@@ -230,7 +231,10 @@ function Files({
               onClick={(ev) => open(e, ev.currentTarget)}
             >
               <img src={evidenceFileUrl(e.id)} alt="" loading="lazy" />
-              <span className="cap">{e.filename}</span>
+              <span className="cap">
+                {e.filename}
+                {roleWord(e) ? ` · ${roleWord(e)}` : ''}
+              </span>
               {mark(e)}
               <Pin count={noted?.get(e.id)} />
             </button>
@@ -251,6 +255,7 @@ function Files({
               <span className="kd">
                 {(e.module === null ? undefined : parts?.get(e.module)) ??
                   t(`evidence.kind.${e.kind}`)}
+                {roleWord(e) ? ` · ${roleWord(e)}` : ''}
               </span>
               {mark(e)}
               <Pin count={noted?.get(e.id)} />

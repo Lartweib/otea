@@ -49,6 +49,29 @@ export function comparePair(evidence: readonly Evidence[]): {
   };
 }
 
+// The two sides of a before/after of one part, when the file shown is one of them and the other is
+// among the files: what the reader offers to compare.
+export function pairIn(
+  files: readonly Evidence[],
+  shown: Evidence,
+): { before: Evidence; after: Evidence } | null {
+  if (shown.role === 'single') return null;
+  const other = files.find(
+    (e) => e !== shown && e.module === shown.module && e.role !== 'single' && e.role !== shown.role,
+  );
+  if (!other) return null;
+  return shown.role === 'before'
+    ? { before: shown, after: other }
+    : { before: other, after: shown };
+}
+
+// The side a file is of a before/after, in words; null for a file on its own.
+export function roleWord(e: Pick<Evidence, 'role'>): string | null {
+  if (e.role === 'before') return t('evidence.before');
+  if (e.role === 'after') return t('evidence.after');
+  return null;
+}
+
 type Wording = { title: string; empty: string };
 
 const say = (title: PlainKey, empty: PlainKey): Wording => ({ title: t(title), empty: t(empty) });
