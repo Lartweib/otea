@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { basename, join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { EXIT_CODES } from './exit-codes.ts';
@@ -31,6 +31,18 @@ describe('run', () => {
       for (const [name, code] of Object.entries(EXIT_CODES)) {
         expect(out).toMatch(new RegExp(`^ +${code} +.*\\b${name}\\b`, 'm'));
       }
+    });
+
+    it.each([['--version'], ['-v']])('prints the version for %s', async (flag) => {
+      const { version } = JSON.parse(
+        readFileSync(new URL('../../package.json', import.meta.url), 'utf8'),
+      );
+      const { code, out, err } = await otea(flag);
+
+      expect(code).toBe(0);
+      expect(err).toBe('');
+      expect(out).toBe(`${version}
+`);
     });
 
     it('prints command usage for <command> --help', async () => {
@@ -133,6 +145,9 @@ describe('run', () => {
       expect(out).toContain('it makes no board unless --template <key> names one');
       expect(out).toContain('bug-reports, changes');
       expect(out).toContain('ideas, repos');
+      // Each key with what it is for.
+      expect(out).toMatch(/^ {2}bug-reports {2,}Bugs, whether you find them/m);
+      expect(out).toMatch(/^ {2}repos {2,}Deliveries with PRs \(a set\): Each Job/m);
     });
 
     it('makes the boards of a template set with --template', async () => {

@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { connectAgent } from './agents.ts';
-import { oteaLauncher, shellLine } from './launcher.ts';
+import { oteaLauncher, shellLine, withHome } from './launcher.ts';
 
 const MAIN = '/opt/Otea/resources/otea/src/cli/main.ts';
 
@@ -42,5 +42,20 @@ describe('oteaLauncher', () => {
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
+  });
+
+  describe('withHome', () => {
+    it('carries an Otea home set apart, quoted in a shell line', () => {
+      const launcher = withHome(oteaLauncher(MAIN, { execPath: 'node' }), 'C:\\Otea home');
+
+      expect(launcher.env).toEqual({ OTEA_HOME: 'C:\\Otea home' });
+      expect(shellLine(launcher)).toMatch(/^OTEA_HOME="C:\\Otea home" node /);
+    });
+
+    it('changes nothing without one', () => {
+      const launcher = oteaLauncher(MAIN, { execPath: 'node' });
+
+      expect(withHome(launcher, undefined)).toBe(launcher);
+    });
   });
 });

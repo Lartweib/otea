@@ -88,6 +88,15 @@ describe('next and the board moves', () => {
     expect(out).toBe(`${expected}\n\n${reminder('quill')}\n`);
   });
 
+  it('leaves Pedidos out of the boards it names while nothing was ever asked there', async () => {
+    await otea('attach', 'CRI-1', art(), '--module', 'eart', '--as', 'quill');
+    await otea('handoff', 'CRI-1', '--as', 'quill');
+
+    const { out } = await otea('next', '--as', 'kiln');
+
+    expect(out.split('\n')[0]).toBe('Nothing to do on Criaturas right now.');
+  });
+
   it('says what to do meanwhile when nothing is the agent’s', async () => {
     await otea('attach', 'CRI-1', art(), '--module', 'eart', '--as', 'quill');
     await otea('handoff', 'CRI-1', '--as', 'quill');

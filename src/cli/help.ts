@@ -38,5 +38,6 @@ export function generalHelp(): string {
 }
 
 export function commandHelp(command: Command): string {
-  return `Usage: ${usageOf(command)}\n\n${command.summary}`;
+  const details = command.details === undefined ? '' : `\n\n${command.details}`;
+  return `Usage: ${usageOf(command)}\n\n${command.summary}${details}`;
 }

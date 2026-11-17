@@ -166,6 +166,18 @@ describe('setup for agents', () => {
       expect(JSON.parse(read('.mcp.json')).mcpServers.otea).toEqual(entry('codex'));
     });
 
+    it('carries an Otea home set apart, so the server finds the same projects', async () => {
+      const home = join(repo.dir, 'my home');
+      const custom = cliAt(repo.dir, { OTEA_AGENT: 'claude', OTEA_HOME: home });
+
+      await custom('connect', '--as', 'claude', ...PROFILE);
+
+      expect(JSON.parse(read('.mcp.json')).mcpServers.otea).toEqual({
+        ...entry('claude'),
+        env: { OTEA_HOME: home },
+      });
+    });
+
     it('requires --as when it cannot ask', async () => {
       const { code, err } = await otea('connect');
 

@@ -764,7 +764,13 @@ export function nextFor(
     );
     const first = candidates[0];
     if (!first) {
-      const idle = boards.map((board) => {
+      // Pedidos, there on every project, is named only once something was asked on it.
+      const used = boards.filter(
+        (board) =>
+          !findBoardOfCollection(ctx.db, board.collection)?.builtin ||
+          selectItems(ctx.db, { collection: board.collection }).length > 0,
+      );
+      const idle = (used.length > 0 ? used : boards).map((board) => {
         const toMerge = waitingToMerge(ctx, board);
         return {
           def: board.def,
