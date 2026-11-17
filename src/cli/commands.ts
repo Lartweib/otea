@@ -100,9 +100,24 @@ import {
   UnknownRepo,
 } from '../app/repos.ts';
 import type { TailscaleCli } from '../app/tailscale.ts';
+import {
+  addTopic,
+  answerTopic,
+  closeTopic,
+  linkTopic,
+  listTopics,
+  noteTopic,
+  requireTopic,
+  requireTopicsOn,
+  setTopicsOn,
+  topicsListText,
+  topicsOn,
+  topicText,
+  topicWaiting,
+} from '../app/topics.ts';
 import { validateProject } from '../app/validate.ts';
 import { watch } from '../app/watch.ts';
-import { AGENT_GUIDE } from '../core/agent-guide.ts';
+import { agentGuideFor } from '../core/agent-guide.ts';
 import { agentPrompt, isPromptKind, PROMPT_KINDS, type PromptKind } from '../core/agent-prompts.ts';
 import { fieldsByName, stateName } from '../core/board/reading.ts';
 import type { Lang } from '../core/board/template-words.ts';
@@ -647,15 +662,19 @@ const create: Command = {
     description: {},
     field: { multiple: true, placeholder: 'key=value' },
     parent: { placeholder: 'id' },
+    from: { placeholder: 'topic' },
   },
   execute: (input) => {
     const collection = input.required('collection');
     const type = input.option('type');
     const title = input.required('title');
     const parent = input.option('parent');
+    const from = input.option('from');
     const fields = fieldsFrom(input);
     const { actor, channel } = input;
     return withAgent(input, (project) => {
+      // The topic the item comes from, checked before anything is made.
+      const topic = from === undefined ? undefined : requireTopic(project, from);
       const item = createItem(project, {
         collection,
         ...(type === undefined ? {} : { type }),
@@ -665,6 +684,7 @@ const create: Command = {
         actor,
         channel,
       });
+      if (topic) linkTopic(project, { id: topic.id, item: item.id, via: 'from' });
       // On a board: where it starts, and why when its first step was skipped or lacks something.
       return { data: itemData(project, item), text: createdTextOf(project, item) ?? item.id };
     });
@@ -759,12 +779,12 @@ const show: Command = {
 };
 
 // otea board text opens with Otea's agent guide; --json keeps the board's data alone.
-const withAgentGuide = (text: string) => `${AGENT_GUIDE}
+const withAgentGuide = (project: Project, text: string) => `${agentGuideFor(topicsOn(project))}
 
 ${text}`;
 
-function guideText(guide: Guide): string {
-  return withAgentGuide(guide.text);
+function guideText(project: Project, guide: Guide): string {
+  return withAgentGuide(project, guide.text);
 }
 
 const boardName = (record: BoardRecord) => (record.live ?? record.draft)?.definition.name ?? '';
@@ -959,7 +979,7 @@ const board: Command = {
     return withReader(input, (project) => {
       if (name !== '') {
         const guide = boardGuide(project, name);
-        return { data: guide, text: guideText(guide) };
+        return { data: guide, text: guideText(project, guide) };
       }
       const boards = guideIndex(project);
       const index =
@@ -977,7 +997,7 @@ const board: Command = {
                 ),
               ),
             ].join('\n');
-      return { data: { boards }, text: withAgentGuide(index) };
+      return { data: { boards }, text: withAgentGuide(project, index) };
     });
   },
 };
@@ -1306,6 +1326,7 @@ const wait: Command = {
         input.actor.kind === 'agent' && turn === 'agent' && filter.availableTo !== undefined;
       const check = () =>
         noteWaiting(project, me) ??
+        (input.actor.kind === 'agent' ? topicWaiting(project, me) : undefined) ??
         answerWaiting(project, me) ??
         oldestWaiting(project, filter, undefined, forMe ? offerableTo(project, me) : undefined);
       // Waiting is listening: the agent is heard as it waits, so it counts as connected and its
@@ -1952,7 +1973,18 @@ const mcp: Command = {
     beat.unref();
     const named = agent === undefined ? {} : { agent };
     try {
-      await serveStdio(createMcpServer(COMMANDS, { cwd, ...named, warn, greeted, heard }), signal);
+      // Whether the project keeps side topics, read once: the guide the agent gets says so.
+      const topics = (() => {
+        try {
+          return withProject(cwd, (project) => topicsOn(project));
+        } catch {
+          return false;
+        }
+      })();
+      await serveStdio(
+        createMcpServer(COMMANDS, { cwd, ...named, topics, warn, greeted, heard }),
+        signal,
+      );
     } finally {
       clearInterval(beat);
     }
@@ -2205,6 +2237,149 @@ const hookRemove: Command = {
     ),
 };
 
+// Side topics (app/topics.ts): what the person asked an agent off the work, kept as a short
+// conversation so none is left hanging. The agent records the question and answers it; the person
+// keeps it going, closes it or turns it into a task. They are not work: no lease, never in next.
+const topicOn: Command = {
+  name: 'topic on',
+  summary:
+    'For the person: keep side topics for this project, so agents record the questions you ask them off the work, with their answers',
+  args: [],
+  options: {},
+  execute: (input) =>
+    withProject(input.cwd, (project) => {
+      setTopicsOn(project, true);
+      return {
+        data: { topics: true },
+        text: 'Topics are on: agents record the side questions you ask them.',
+      };
+    }),
+};
+
+const topicOff: Command = {
+  name: 'topic off',
+  summary: 'For the person: stop keeping side topics for this project; the ones kept stay',
+  args: [],
+  options: {},
+  execute: (input) =>
+    withProject(input.cwd, (project) => {
+      setTopicsOn(project, false);
+      return { data: { topics: false }, text: 'Topics are off.' };
+    }),
+};
+
+const topicAdd: Command = {
+  name: 'topic add',
+  summary:
+    'Record a question the person asked you off the work at hand (--title, short; --session and --resume when known); then answer it with topic answer',
+  args: ['question'],
+  options: { title: {}, session: {}, resume: {} },
+  execute: (input) => {
+    const [question = ''] = input.args;
+    const title = input.option('title');
+    const session = input.option('session');
+    const resume = input.option('resume');
+    const { actor } = input;
+    return withAgent(input, (project) => {
+      requireTopicsOn(project);
+      const topic = addTopic(project, {
+        question,
+        actor,
+        ...(title === undefined ? {} : { title }),
+        ...(session === undefined ? {} : { session }),
+        ...(resume === undefined ? {} : { resume }),
+      });
+      return {
+        data: topic,
+        text: `Recorded ${topic.id}. Answer it with otea topic answer ${topic.id} --summary "<short answer>" --full "<your full answer>".`,
+      };
+    });
+  },
+};
+
+const topicAnswer: Command = {
+  name: 'topic answer',
+  summary:
+    'Answer a topic: --summary, a line or two; --full, your whole answer as given in the chat',
+  args: ['id'],
+  options: { summary: {}, full: {}, session: {}, resume: {} },
+  execute: (input) => {
+    const [id = ''] = input.args;
+    const summary = input.option('summary');
+    const full = input.option('full');
+    const session = input.option('session');
+    const resume = input.option('resume');
+    const { actor } = input;
+    return withAgent(input, (project) => {
+      requireTopicsOn(project);
+      const topic = answerTopic(project, {
+        id,
+        actor,
+        ...(summary === undefined ? {} : { summary }),
+        ...(full === undefined ? {} : { full }),
+        ...(session === undefined ? {} : { session }),
+        ...(resume === undefined ? {} : { resume }),
+      });
+      return { data: topic, text: `Answered ${topic.id}; it is the person's turn.` };
+    });
+  },
+};
+
+const topicList: Command = {
+  name: 'topic list',
+  summary:
+    'List the side topics that wait on someone, what is left hanging first (--all, closed ones too)',
+  args: [],
+  options: { all: { flag: true } },
+  execute: (input) =>
+    withReader(input, (project) => {
+      const topics = listTopics(project, { all: input.flag('all') });
+      return { data: topics, text: topicsListText(topics) };
+    }),
+};
+
+const topicShow: Command = {
+  name: 'topic show',
+  summary: 'Show a side topic: its question, answers and notes, with each full answer',
+  args: ['id'],
+  options: {},
+  execute: (input) => {
+    const [id = ''] = input.args;
+    return withReader(input, (project) => {
+      const topic = requireTopic(project, id);
+      return { data: topic, text: topicText(topic) };
+    });
+  },
+};
+
+const topicNote: Command = {
+  name: 'topic note',
+  summary: 'For the person: keep a topic going with a note; the agent that answered it gets it',
+  args: ['id', 'text'],
+  options: {},
+  execute: (input) => {
+    const [id = '', text = ''] = input.args;
+    return withReader(input, (project) => {
+      const topic = noteTopic(project, { id, text, actor: input.reader });
+      return { data: topic, text: `Left a note on ${topic.id}; it is the agent's turn.` };
+    });
+  },
+};
+
+const topicClose: Command = {
+  name: 'topic close',
+  summary: 'For the person: close a topic you have read',
+  args: ['id'],
+  options: {},
+  execute: (input) => {
+    const [id = ''] = input.args;
+    return withReader(input, (project) => {
+      const topic = closeTopic(project, { id, actor: input.reader });
+      return { data: topic, text: `Closed ${topic.id}.` };
+    });
+  },
+};
+
 export const COMMANDS: readonly Command[] = [
   init,
   projectsList,
@@ -2242,6 +2417,14 @@ export const COMMANDS: readonly Command[] = [
   crop,
   merged,
   tick,
+  topicOn,
+  topicOff,
+  topicAdd,
+  topicAnswer,
+  topicList,
+  topicShow,
+  topicNote,
+  topicClose,
   ask,
   handoffCommand,
   dropCommand,

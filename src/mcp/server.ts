@@ -11,7 +11,7 @@ import {
   type OptionSpec,
   UsageError,
 } from '../cli/command.ts';
-import { AGENT_GUIDE } from '../core/agent-guide.ts';
+import { agentGuideFor } from '../core/agent-guide.ts';
 import { type Actor, agentActor } from '../core/item.ts';
 import { parseDuration } from '../core/lease.ts';
 import { mcpWords } from './words.ts';
@@ -32,6 +32,8 @@ export const AGENT_COMMANDS = [
   'reply',
   'merged',
   'tick',
+  'topic add',
+  'topic answer',
   'ask',
   'handoff',
   'drop',
@@ -68,6 +70,13 @@ export const CLI_ONLY_COMMANDS = [
   'prompt',
   // A cut-out image is a file on the agent's own disk, which only the command line can hand it.
   'crop',
+  // Topics are the person's to turn on, read, keep going and close; agents record and answer them.
+  'topic on',
+  'topic off',
+  'topic list',
+  'topic show',
+  'topic note',
+  'topic close',
   'collection icon',
   'validate',
   'check',
@@ -122,6 +131,8 @@ const VERSION: string = JSON.parse(
 export type McpContext = {
   cwd: string;
   agent?: string;
+  // Whether the project keeps side topics: the guide then tells agents to record them.
+  topics?: boolean;
   warn(message: string): void;
   greeted?(harness: Harness | undefined): void;
   // An agent called a tool: the server, open, keeps it heard as listening (otea mcp beats it).
@@ -270,7 +281,10 @@ function inMcpWords(data: unknown, commands: readonly Command[]): unknown {
 export function createMcpServer(commands: readonly Command[], context: McpContext): McpServer {
   // Otea's agent guide as the server's instructions: clients such as Claude Code put them in the
   // agent's context when it connects.
-  const server = new McpServer({ name: 'otea', version: VERSION }, { instructions: AGENT_GUIDE });
+  const server = new McpServer(
+    { name: 'otea', version: VERSION },
+    { instructions: agentGuideFor(context.topics ?? false) },
+  );
   // The client names itself in initialize: its clientInfo is the harness the agent works through.
   const harness = (): Harness | undefined => {
     const client = server.server.getClientVersion();

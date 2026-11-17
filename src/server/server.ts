@@ -40,6 +40,19 @@ import { answerQuestion } from '../app/questions.ts';
 import { linkItems, unlinkItems } from '../app/relations.ts';
 import { reassignItem, restartItem, undoRelease } from '../app/restart.ts';
 import { NO_TAILSCALE, type TailscaleCli } from '../app/tailscale.ts';
+import {
+  closeTopic,
+  convertTopic,
+  dismissTopicSuggestion,
+  linkTopic,
+  listTopics,
+  noteTopic,
+  requireTopic,
+  setTopicsOn,
+  topicSuggestions,
+  topicsOfItem,
+  topicsOn,
+} from '../app/topics.ts';
 import { undoMove } from '../app/undo.ts';
 import { agentPrompt, isPromptKind, PROMPT_KINDS } from '../core/agent-prompts.ts';
 import { PERIOD_HINT, parsePeriod } from '../core/board/performance.ts';
@@ -230,6 +243,16 @@ type Doors = {
 };
 
 const TransportBody = z.object({ transport: z.string() });
+const TopicsSwitchBody = z.object({ on: z.boolean() });
+const TopicNoteBody = z.object({ text: z.string() });
+const TopicConvertBody = z.object({ item: z.string().min(1) });
+
+// A body the topic routes read, or a 400 saying what they expect.
+async function topicBody<T>(c: Context, schema: z.ZodType<T>, expected: string): Promise<T> {
+  const parsed = schema.safeParse(await c.req.json().catch(() => undefined));
+  if (!parsed.success) throw new RejectedRequest(400, 'invalid_body', `Expected ${expected}`);
+  return parsed.data;
+}
 
 function api(
   project: Project,
@@ -439,6 +462,69 @@ function api(
         leaveNote(project, { id, ...request, ...HUMAN_IN_UI });
         feed.notify();
         return c.json(notesView(project, id), 201);
+      })
+      // Side topics (app/topics.ts): the list, one topic, a note that keeps it going, closing it and
+      // turning it into a task, from the phone too; turning them on or off is the desk's.
+      .get('/topics', (c) =>
+        c.json({
+          on: topicsOn(project),
+          topics: listTopics(project, { all: c.req.query('all') === '1' }),
+        }),
+      )
+      .post('/topics/switch', async (c) => {
+        assertConfigurable(c, auth);
+        const { on } = await topicBody(c, TopicsSwitchBody, '{"on": boolean}');
+        setTopicsOn(project, on);
+        feed.notify();
+        return c.json({ on: topicsOn(project), topics: listTopics(project) });
+      })
+      .get('/topics/:id', (c) => c.json(requireTopic(project, c.req.param('id'))))
+      .post('/topics/:id/notes', async (c) => {
+        assertWritable(c, auth);
+        const { text } = await topicBody(c, TopicNoteBody, '{"text": string}');
+        if (text.trim() === '')
+          throw new RejectedRequest(400, 'invalid_body', 'Expected a note with some text');
+        const topic = noteTopic(project, { id: c.req.param('id'), text, actor: HUMAN_IN_UI.actor });
+        feed.notify();
+        return c.json(topic, 201);
+      })
+      .post('/topics/:id/close', (c) => {
+        assertWritable(c, auth);
+        const topic = closeTopic(project, { id: c.req.param('id'), actor: HUMAN_IN_UI.actor });
+        feed.notify();
+        return c.json(topic);
+      })
+      .post('/topics/:id/convert', async (c) => {
+        assertWritable(c, auth);
+        const { item } = await topicBody(c, TopicConvertBody, '{"item": string}');
+        const topic = convertTopic(project, {
+          id: c.req.param('id'),
+          item,
+          actor: HUMAN_IN_UI.actor,
+        });
+        feed.notify();
+        return c.json(topic);
+      })
+      // An item's topics: those linked to it, and those it may have come from, for the person to
+      // confirm or dismiss.
+      .get('/items/:id/topics', (c) => {
+        const id = c.req.param('id');
+        return c.json({
+          linked: topicsOfItem(project, id),
+          suggested: topicSuggestions(project, id),
+        });
+      })
+      .post('/items/:id/topics/:topic/confirm', (c) => {
+        assertWritable(c, auth);
+        linkTopic(project, { id: c.req.param('topic'), item: c.req.param('id'), via: 'confirmed' });
+        feed.notify();
+        return c.json({ ok: true });
+      })
+      .post('/items/:id/topics/:topic/dismiss', (c) => {
+        assertWritable(c, auth);
+        dismissTopicSuggestion(project, { id: c.req.param('topic'), item: c.req.param('id') });
+        feed.notify();
+        return c.json({ ok: true });
       })
       // The person's answer to an agent's question, from the phone too: the turn goes back to the
       // agent, in the same round.

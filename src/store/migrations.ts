@@ -314,6 +314,56 @@ export const MIGRATIONS = [
   `
   ALTER TABLE agents ADD COLUMN listening_session INTEGER;
   `,
+  // Side topics (app/topics.ts): questions the person asked an agent off the work, kept as a short
+  // conversation each, so none is left hanging. Off until the person turns them on for the project.
+  // A topic's turns are the person's question and notes and the agent's answers, a summary with the
+  // full answer; topic_links ties a topic to the items it led to or that a person confirmed.
+  `
+  CREATE TABLE topics_switch (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    enabled INTEGER NOT NULL
+  );
+
+  CREATE TABLE topics (
+    id TEXT PRIMARY KEY,
+    seq INTEGER NOT NULL UNIQUE,
+    title TEXT NOT NULL,
+    state TEXT NOT NULL,
+    agent TEXT,
+    session TEXT,
+    resume TEXT,
+    task TEXT REFERENCES items (id),
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    created_by_kind TEXT NOT NULL,
+    created_by_name TEXT NOT NULL
+  );
+
+  CREATE TABLE topic_turns (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    topic_id TEXT NOT NULL REFERENCES topics (id),
+    kind TEXT NOT NULL,
+    text TEXT NOT NULL,
+    full TEXT,
+    source TEXT,
+    actor_kind TEXT NOT NULL,
+    actor_name TEXT NOT NULL,
+    at TEXT NOT NULL,
+    seen_at TEXT
+  );
+
+  CREATE INDEX topic_turns_topic ON topic_turns (topic_id);
+
+  CREATE TABLE topic_links (
+    topic_id TEXT NOT NULL REFERENCES topics (id),
+    item_id TEXT NOT NULL REFERENCES items (id),
+    via TEXT NOT NULL,
+    at TEXT NOT NULL,
+    PRIMARY KEY (topic_id, item_id)
+  );
+
+  CREATE INDEX topic_links_item ON topic_links (item_id);
+  `,
 ];
 
 function userVersion(db: DatabaseSync): number {

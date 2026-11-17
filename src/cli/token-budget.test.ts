@@ -50,8 +50,10 @@ const BUDGETS: Readonly<Record<string, Sizes>> = {
   // an agent's question to the person, which hands the turn over (measured at 3481). Raised for
   // board_draft's new and why, an agent proposing a board the person asked for (measured at 3606).
   // Raised for merged, recording that a Done item's branch is in (measured at 3768). Raised for
-  // tick, a checklist point with its proof, and attach's --point (measured at 3980).
-  tools: { mcp: 4060 },
+  // tick, a checklist point with its proof, and attach's --point (measured at 3980). Raised for
+  // topic_add and topic_answer, the side topics an agent records, and create's --from (measured
+  // at 4275).
+  tools: { mcp: 4360 },
   // Otea's agent guide, the server's instructions: in every MCP agent's context from the start, so
   // it buys only what agents keep getting wrong. Measured at 203. Raised to 270 for the line on
   // declaring the profile every agent and subagent must keep current (measured at 246). Raised to
