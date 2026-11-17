@@ -71,6 +71,13 @@ function List({ topics, open }: { topics: readonly Topic[]; open: string | undef
 }
 
 function Turn({ turn, now }: { turn: TopicTurn; now: number }) {
+  if (turn.kind === 'event')
+    return (
+      <p className="tp-event">
+        {t('topics.taskDeleted', { id: turn.text })}
+        <span> · {noteTime(turn.at, now)}</span>
+      </p>
+    );
   if (turn.kind !== 'answer')
     return (
       <div className="nt-msg you">

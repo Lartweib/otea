@@ -458,6 +458,8 @@ export const surfaces = {
   'topics.turn.human': 'Te toca',
   'topics.you': 'Tú',
   'topics.fullAnswer': 'Ver la respuesta completa',
+  'topics.taskDeleted':
+    'La tarea {id} se borró con su tablero, así que el tema vuelve a estar pendiente.',
   'topics.source.session': 'leída de la sesión',
   'topics.source.agent': 'copiada por el agente',
   'topics.waiting': '{agent} todavía no contestó.',

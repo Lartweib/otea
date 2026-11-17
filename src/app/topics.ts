@@ -20,7 +20,8 @@ export const SUGGEST_WITHIN_MS = 12 * 60 * 60 * 1000;
 
 type StoredState = 'open' | 'answered' | 'closed' | 'task';
 export type TopicState = StoredState | 'hanging';
-export type TopicTurnKind = 'question' | 'answer' | 'note';
+// An event is a line Otea writes in the thread itself, such as the topic's task being deleted.
+export type TopicTurnKind = 'question' | 'answer' | 'note' | 'event';
 // Where an answer's full text came from: copied by the agent, or read from its session's transcript.
 export type AnswerSource = 'agent' | 'session';
 
@@ -388,6 +389,24 @@ export function convertTopic(
   });
 }
 
+// An item is being deleted (with its board): topics lose their link to it, and a topic it was
+// turned into goes back to whose turn it was, with a line in its thread naming the deleted task.
+export function forgetTopicItem(ctx: Context, item: string, at: string): void {
+  ctx.db.prepare('DELETE FROM topic_links WHERE item_id = ?').run(item);
+  const converted = ctx.db.prepare('SELECT id FROM topics WHERE task = ?').all(item) as {
+    id: string;
+  }[];
+  for (const { id } of converted) {
+    const answered = ctx.db
+      .prepare("SELECT 1 FROM topic_turns WHERE topic_id = ? AND kind = 'answer' LIMIT 1")
+      .get(id);
+    ctx.db
+      .prepare('UPDATE topics SET state = ?, task = NULL, updated_at = ? WHERE id = ?')
+      .run(answered ? 'answered' : 'open', at, id);
+    addTurn(ctx, id, { kind: 'event', text: item, by: { kind: 'human', name: 'otea' } }, at);
+  }
+}
+
 export function dismissTopicSuggestion(
   ctx: Context,
   input: { id: string; item: string },
@@ -529,7 +548,11 @@ export function topicText(topic: Topic): string {
   if (topic.resume) lines.push(`Resume the session: ${topic.resume}`);
   for (const turn of topic.turns) {
     const who = turn.by.kind === 'human' ? 'the person' : turn.by.name;
-    if (turn.kind === 'answer') {
+    if (turn.kind === 'event') {
+      lines.push(
+        `${turn.n}. The task ${turn.text} was deleted with its board, so the topic is pending again.`,
+      );
+    } else if (turn.kind === 'answer') {
       const from = turn.source === 'session' ? 'read from the session' : 'copied by the agent';
       lines.push(`${turn.n}. Answer by ${who}: ${turn.text}`);
       if (turn.full) lines.push(`   Full answer (${from}):\n${turn.full.replace(/^/gm, '   ')}`);

@@ -31,6 +31,7 @@ import { leaveNote } from './notes.ts';
 import type { Project } from './project.ts';
 import { linkItems } from './relations.ts';
 import { memoryContext, projectOf } from './testing.ts';
+import { addTopic, answerTopic, convertTopic, linkTopic, requireTopic } from './topics.ts';
 
 const you = { kind: 'human' as const, name: 'human' };
 const kiln = { kind: 'agent' as const, name: 'kiln' };
@@ -306,6 +307,32 @@ describe('deleteBoardForever', () => {
     // What happened on the other board stays in its history, the link to the deleted item too.
     expect(selectEvents(project.db, other)).toHaveLength(otherEvents);
     expect(listArchivedBoards(project)).toEqual([]);
+  });
+
+  it('deletes items topics point to: their topics lose the link, a converted one opens again', () => {
+    const board = criaturas();
+    const id = add('Ciervo');
+    const quill = { kind: 'agent' as const, name: 'quill' };
+    const asked = addTopic(project, { question: '¿Ciervo o alce?', actor: quill }, now);
+    answerTopic(project, { id: asked.id, summary: 'Ciervo', actor: quill }, now);
+    convertTopic(project, { id: asked.id, item: id, actor: you }, now);
+    const linked = addTopic(project, { question: '¿Y el pelaje?', actor: quill }, now);
+    linkTopic(project, { id: linked.id, item: id, via: 'from' }, now);
+    project.db
+      .prepare('INSERT INTO item_priority (item_id, pin, rank, set_at) VALUES (?, 1, NULL, ?)')
+      .run(id, now());
+    archiveBoard(project, board, { by: you }, now);
+
+    deleteBoardForever(project, board, { confirm: 'Criaturas' });
+
+    const back = requireTopic(project, asked.id, now);
+    expect(back.state).toBe('answered');
+    expect(back.task).toBeUndefined();
+    expect(back.links).toEqual([]);
+    expect(back.turns.at(-1)).toMatchObject({ kind: 'event', text: id });
+    expect(requireTopic(project, linked.id, now)).toMatchObject({ state: 'open', links: [] });
+    expect(project.db.prepare('SELECT count(*) AS n FROM topic_links').get()?.n).toBe(0);
+    expect(project.db.prepare('SELECT count(*) AS n FROM item_priority').get()?.n).toBe(0);
   });
 
   it('deletes the board a parent divides into with it, and refuses that board alone', () => {
