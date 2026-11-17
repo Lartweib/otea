@@ -3,6 +3,7 @@ import { cpSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } f
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { afterAll, beforeAll } from 'vitest';
 import { addCollection } from '../app/collections.ts';
 import { openProject } from '../app/project.ts';
 import { saveProfile } from '../store/queries.ts';
@@ -138,6 +139,31 @@ export async function seededLocalRepo(seed: (dir: string) => Promise<void>): Pro
       return tempRepoAt(dir);
     },
     remove: template.remove,
+  };
+}
+
+// Registers, for the enclosing describe block, one local project seeded once (`init --local`, then
+// `seed`); `fresh` hands each test its own copy and a CLI on it, as the agent named claude. Suites
+// whose every test starts from the same items use it instead of seeding through the CLI per test.
+export function seedOnce(seed: (otea: Cli, dir: string) => Promise<void>): {
+  fresh: () => { repo: TempRepo; otea: Cli };
+} {
+  const agent = { OTEA_AGENT: 'claude' };
+  let seeded: SeededRepo | undefined;
+  beforeAll(async () => {
+    seeded = await seededLocalRepo(async (dir) => {
+      const otea = cliAt(dir, agent);
+      await otea('init', '--local');
+      await seed(otea, dir);
+    });
+  });
+  afterAll(() => seeded?.remove());
+  return {
+    fresh: () => {
+      if (!seeded) throw new Error('seedOnce: the project is not seeded yet');
+      const repo = seeded.fresh();
+      return { repo, otea: cliAt(repo.dir, agent) };
+    },
   };
 }
 

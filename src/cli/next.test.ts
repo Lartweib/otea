@@ -11,7 +11,20 @@ import { nextText, refusalText } from '../core/board/next.ts';
 import { creatures } from '../core/board/testing.ts';
 import { createMcpServer } from '../mcp/server.ts';
 import { COMMANDS } from './commands.ts';
-import { type Cli, cliAt, declareProfiles, type TempRepo, tempGitRepo } from './testing.ts';
+import { type Cli, declareProfiles, seedOnce, type TempRepo } from './testing.ts';
+
+// The agents these tests name, with their profiles, and the Criaturas board published from `def`.
+function criaturas(dir: string, def: ReturnType<typeof creatures>): void {
+  declareProfiles(dir, 'claude', 'quill', 'kiln', 'scout');
+  const project = openProject(dir);
+  try {
+    const record = createBoard(project, { name: 'Criaturas', lang: 'es' });
+    saveDraft(project, record.id, { definition: def, baseVersion: null });
+    publishBoard(project, record.id, { moves: {}, by: { kind: 'human', name: 'fede' } });
+  } finally {
+    project.db.close();
+  }
+}
 
 // The line every next ends with, for an agent that declared the profile declareProfiles gives.
 const reminder = (agent: string) =>
@@ -24,20 +37,9 @@ describe('next and the board moves', () => {
 
   const json = async (...argv: string[]) => JSON.parse((await otea(...argv, '--json')).out);
 
-  beforeEach(async () => {
-    repo = tempGitRepo();
-    otea = cliAt(repo.dir, { OTEA_AGENT: 'claude' });
-    await otea('init');
-    declareProfiles(repo.dir, 'claude', 'quill', 'kiln', 'scout');
-    const project = openProject(repo.dir);
-    try {
-      const record = createBoard(project, { name: 'Criaturas', lang: 'es' });
-      saveDraft(project, record.id, { definition: creatures(), baseVersion: null });
-      publishBoard(project, record.id, { moves: {}, by: { kind: 'human', name: 'fede' } });
-    } finally {
-      project.db.close();
-    }
-    await otea(
+  const seeded = seedOnce(async (seed, dir) => {
+    criaturas(dir, creatures());
+    await seed(
       'create',
       '--collection',
       'Criaturas',
@@ -46,6 +48,10 @@ describe('next and the board moves', () => {
       '--field',
       'fdesc=Lenta',
     );
+  });
+
+  beforeEach(() => {
+    ({ repo, otea } = seeded.fresh());
   });
 
   afterEach(() => repo.remove());
@@ -267,11 +273,7 @@ describe('audio and other files on a board', () => {
   let repo: TempRepo;
   let otea: Cli;
 
-  beforeEach(async () => {
-    repo = tempGitRepo();
-    otea = cliAt(repo.dir, { OTEA_AGENT: 'claude' });
-    await otea('init');
-    declareProfiles(repo.dir, 'claude', 'quill', 'kiln', 'scout');
+  const seeded = seedOnce(async (seed, dir) => {
     const def = creatures();
     def.parts.evoice = { id: 'evoice', name: 'Voz', kind: 'audio', hint: '', options: [] };
     def.parts.efile = { id: 'efile', name: 'Proyecto', kind: 'file', hint: '', options: [] };
@@ -279,15 +281,12 @@ describe('audio and other files on a board', () => {
       { ref: 'evoice', req: 'no', fresh: false },
       { ref: 'efile', req: 'no', fresh: false },
     );
-    const project = openProject(repo.dir);
-    try {
-      const record = createBoard(project, { name: 'Criaturas', lang: 'es' });
-      saveDraft(project, record.id, { definition: def, baseVersion: null });
-      publishBoard(project, record.id, { moves: {}, by: { kind: 'human', name: 'fede' } });
-    } finally {
-      project.db.close();
-    }
-    await otea('create', '--collection', 'Criaturas', '--title', 'Rana', '--field', 'fdesc=Verde');
+    criaturas(dir, def);
+    await seed('create', '--collection', 'Criaturas', '--title', 'Rana', '--field', 'fdesc=Verde');
+  });
+
+  beforeEach(() => {
+    ({ repo, otea } = seeded.fresh());
   });
 
   afterEach(() => repo.remove());
