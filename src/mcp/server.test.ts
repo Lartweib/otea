@@ -111,6 +111,15 @@ describe('mcp server', () => {
       expect(await data('board', { name: 'tasks' })).toEqual(inTools(await json('board', 'tasks')));
     });
 
+    it('says what to do with an item in the words of the tools', async () => {
+      const shown = await data('show', { id: 'TASKS-1' });
+      const { hint } = await json('show', 'TASKS-1');
+
+      expect(hint).toContain('otea claim TASKS-1');
+      expect(shown.hint).toBe(mcpWords(hint, COMMANDS));
+      expect(shown.hint).toContain('claim { id: "TASKS-1" }');
+    });
+
     it('fails with not_found for an unknown collection, as the CLI does', async () => {
       const reply = await call('board', { name: 'nope' });
 
@@ -168,8 +177,9 @@ describe('mcp server', () => {
 
     it('shows an item as otea show --json does, relayable moves included', async () => {
       const shown = await data('show', { id: 'TASKS-2' });
+      const cli = await json('show', 'TASKS-2');
 
-      expect(shown).toEqual(await json('show', 'TASKS-2'));
+      expect(shown).toEqual({ ...cli, hint: mcpWords(cli.hint, COMMANDS) });
       expect(shown.hint).toContain(
         'TASKS-2 · Tarea · Completar, round 1\nYour turn: do this step.',
       );

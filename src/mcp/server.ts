@@ -274,11 +274,18 @@ async function callCommand(
   }
 }
 
-// What a command says to the agent (its `text`), in the words of the tools it calls.
+// What a command says to the agent (its `text`, and show's `hint`: what to do with the item now),
+// in the words of the tools it calls.
+const SAID = ['text', 'hint'] as const;
+
 function inMcpWords(data: unknown, commands: readonly Command[]): unknown {
   if (data === null || typeof data !== 'object' || Array.isArray(data)) return data;
-  const { text } = data as { text?: unknown };
-  return typeof text === 'string' ? { ...data, text: mcpWords(text, commands) } : data;
+  const said = data as Record<string, unknown>;
+  const words = SAID.flatMap((key) => {
+    const value = said[key];
+    return typeof value === 'string' ? [[key, mcpWords(value, commands)]] : [];
+  });
+  return words.length === 0 ? data : { ...data, ...Object.fromEntries(words) };
 }
 
 export function createMcpServer(commands: readonly Command[], context: McpContext): McpServer {

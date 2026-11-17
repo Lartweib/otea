@@ -5,6 +5,10 @@ import { AGENT_COMMANDS, toolName } from './server.ts';
 // sentence or a parenthesis.
 const TOKEN = /^(?:"[^"]*"|[^\s,;)`]+?)(?=[\s,;)`]|[.:](?:\s|$)|$)/;
 
+// The arguments that name an item, and what can stand for one in a text.
+const ITEM_ARGS = new Set(['id', 'ids...']);
+const ITEM_VALUE = /^(?:"[^"]*"|<[^>]+>|[A-Z][A-Z0-9]*-\d+)$/;
+
 const quoted = (value: string) =>
   value.startsWith('"') ? value : JSON.stringify(value.replace(/\.$/, ''));
 
@@ -52,8 +56,12 @@ function call(
       pairs.push(`${option}: ${quoted(value)}`);
       continue;
     }
-    const arg = args.shift();
+    const arg = args[0];
     if (arg === undefined) break;
+    // An item is named by its id, quoted or a placeholder: a word after the command is prose
+    // ("pregunta con otea ask antes de seguir").
+    if (ITEM_ARGS.has(arg) && !ITEM_VALUE.test(token)) break;
+    args.shift();
     at += space.length + token.length;
     pairs.push(`${arg}: ${quoted(token)}`);
   }

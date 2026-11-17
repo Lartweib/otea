@@ -36,6 +36,15 @@ describe('mcpWords', () => {
     );
   });
 
+  it('never reads the prose after a command as its item', () => {
+    expect(words('Si dudas, pregunta con otea ask antes de seguir.')).toBe(
+      'Si dudas, pregunta con ask antes de seguir.',
+    );
+    expect(words('Read it: otea show <id>, then otea board tasks.')).toBe(
+      'Read it: show { id: "<id>" }, then board { name: "tasks" }.',
+    );
+  });
+
   it('leaves a command the server does not serve as the person would run it', () => {
     expect(words('Ask the person to run otea init --agents-md.')).toBe(
       'Ask the person to run otea init --agents-md.',
