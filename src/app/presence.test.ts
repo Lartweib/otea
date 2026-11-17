@@ -312,6 +312,11 @@ describe('agent presence', () => {
       expect(ownerGone(500, 1, alive([500]))).toBe(true);
     });
 
+    it('is gone once any process of the chain that started it ended, though its parent runs', () => {
+      expect(ownerGone(500, 500, alive([500, 600]), [500, 600, 700])).toBe(true);
+      expect(ownerGone(500, 500, alive([500, 600, 700]), [500, 600, 700])).toBe(false);
+    });
+
     it('never calls a wait started with no parent to watch orphaned', () => {
       expect(ownerGone(1, 1, alive([]))).toBe(false);
       expect(ownerGone(0, 0, alive([]))).toBe(false);
