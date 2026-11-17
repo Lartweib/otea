@@ -20,6 +20,7 @@ import { NodeGlyph } from '../lanes/NodeGlyph.tsx';
 import { anim } from '../motion/anim.ts';
 import { Choreo, part } from '../motion/choreo.ts';
 import { reduced } from '../motion/reduced.ts';
+import { keepRevealed } from '../phone/reveal.ts';
 import { stateWord, valueWord } from '../preset-words.ts';
 import { approvalWaitWords } from '../refusals.ts';
 import {
@@ -209,6 +210,13 @@ function Notes({
         }
       });
     }
+  }, [open, mounted]);
+  // On the phone the box opens low on the card: the page scrolls it above the bottom bar and the
+  // keyboard, so «Enviar» is never under them and a tap never lands on Te toca (DR2-9).
+  useEffect(() => {
+    const node = el.current;
+    if (!open || !mounted || !node) return;
+    return keepRevealed(node);
   }, [open, mounted]);
   useEscape(open, 'notes', onCancel);
   if (!mounted) return null;
