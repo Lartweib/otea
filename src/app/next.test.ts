@@ -574,6 +574,54 @@ describe('leases on a board', () => {
   });
 });
 
+describe('an item the person left for an agent', () => {
+  function leftForKiln(ctx: Context) {
+    board(ctx);
+    const older = creature(ctx, 'Rana');
+    const item = creature(ctx);
+    claimItem(ctx, { id: item.id, actor: quill, ttlMs: 1000 }, now);
+    tick += 5;
+    reassignItem(ctx, { id: item.id, agent: 'kiln', actor: you, channel: 'ui' }, now);
+    return { older, item };
+  }
+
+  it('is offered to that agent before older work', () => {
+    const ctx = memoryContext();
+    const { item } = leftForKiln(ctx);
+
+    expect(nextFor(ctx, 'kiln', {}, now).item).toBe(item.id);
+  });
+
+  it('is claimed by no other agent', () => {
+    const ctx = memoryContext();
+    const { item } = leftForKiln(ctx);
+
+    expect(() => claimItem(ctx, { id: item.id, actor: scout }, now)).toThrow(
+      'CRI-2 was left for kiln; claim only what is yours (otea next)',
+    );
+    expect(claimItem(ctx, { id: item.id, actor: kiln }, now).lease?.holder).toBe('kiln');
+  });
+});
+
+describe('a handoff by an agent that holds no lease', () => {
+  it('is refused when another agent claimed the item in its step', () => {
+    const ctx = memoryContext();
+    board(ctx);
+    const item = creature(ctx);
+    claimItem(ctx, { id: item.id, actor: quill, ttlMs: 1000 }, now);
+    attach(ctx, item.id, 'eart');
+    tick += 5;
+
+    expect(() => handoffItem(ctx, { id: item.id, actor: scout, channel: 'cli' }, now)).toThrow(
+      'CRI-1 was claimed by quill; hand off only what is yours (otea next)',
+    );
+    // Its own lease ran out with nobody taking it: quill still hands it off.
+    expect(handoffItem(ctx, { id: item.id, actor: quill, channel: 'cli' }, now).item.id).toBe(
+      item.id,
+    );
+  });
+});
+
 describe('work planned by an item still in its step', () => {
   it('holds what implements an item until that item leaves the step it was planned in', () => {
     const ctx = memoryContext();

@@ -709,17 +709,20 @@ export function nextFor(
           item,
           board,
           held: activeLease(item.lease, at) !== null,
+          left: leftFor(ctx, item.id) === agent,
           returned: itemOnBoard(ctx, item, board.def).sentBack !== undefined,
           ...progressOf(board.def, item),
         })),
     );
-    // What the agent holds, then what was sent back to it; then what the person put on top, then
+    // What the agent holds, then what the person left for it (Reasignar), then what was sent back
+    // to it; then what the person put on top, then
     // the order they fixed (app/priority.ts); then work already handed on comes before new work: a
     // review, then the step furthest along (its earlier steps are approved), and only then the
     // oldest.
     candidates.sort(
       (a, b) =>
         Number(b.held) - Number(a.held) ||
+        Number(b.left) - Number(a.left) ||
         Number(b.returned) - Number(a.returned) ||
         byOrder(pinOf(a.item), pinOf(b.item)) ||
         byOrder(rankOf(a.item), rankOf(b.item)) ||
@@ -1383,12 +1386,29 @@ export function plannedBy(
   return undefined;
 }
 
+// The agent that claimed the item last while it stands where it is: none once it moved or was
+// released since.
+function lastClaimer(ctx: Context, id: string): string | undefined {
+  const last = selectEvents(ctx.db, id).findLast(({ type }) =>
+    ['claimed', 'released', 'transitioned'].includes(type),
+  );
+  return last?.type === 'claimed' && last.actor.kind === 'agent' ? last.actor.name : undefined;
+}
+
 function assertMayHandOff(ctx: Context, item: ItemRecord, agent: string, at: string): void {
   const left = leftFor(ctx, item.id);
   if (left !== undefined && left !== agent) {
     throw new OteaError(
       'not_claimable',
       `${item.id} was left for ${left}; hand off only what is yours (otea next)`,
+    );
+  }
+  // Another agent claimed it in this step: its lease may have run out, the work is still its own.
+  const claimer = lastClaimer(ctx, item.id);
+  if (left === undefined && claimer !== undefined && claimer !== agent) {
+    throw new OteaError(
+      'not_claimable',
+      `${item.id} was claimed by ${claimer}; hand off only what is yours (otea next)`,
     );
   }
   const offer = offeredElsewhere(ctx, agent, at);
@@ -1407,6 +1427,13 @@ export function assertMayClaim(ctx: Context, item: ItemRecord, agent: string): v
   if (isClosed(position)) return;
   const step = stepById(board.def, position.step);
   if (!step) return;
+  const left = leftFor(ctx, item.id);
+  if (left !== undefined && left !== agent) {
+    throw new OteaError(
+      'not_claimable',
+      `${item.id} was left for ${left}; claim only what is yours (otea next)`,
+    );
+  }
   const planned = plannedBy(ctx, item);
   if (planned) {
     throw new OteaError(
