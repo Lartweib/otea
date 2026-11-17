@@ -1,4 +1,3 @@
-import { readFileSync } from 'node:fs';
 import { type CallToolResult, McpServer } from '@modelcontextprotocol/server';
 import { StdioServerTransport } from '@modelcontextprotocol/server/stdio';
 import { type ZodType, z } from 'zod';
@@ -11,6 +10,7 @@ import {
   type OptionSpec,
   UsageError,
 } from '../cli/command.ts';
+import { OTEA_VERSION } from '../cli/version.ts';
 import { agentGuideFor } from '../core/agent-guide.ts';
 import { type Actor, agentActor } from '../core/item.ts';
 import { parseDuration } from '../core/lease.ts';
@@ -121,10 +121,6 @@ const NOTES: Readonly<Record<string, string>> = {
     'Returns the events after the event id given to since, as a JSON array; call it again with the last id to read newer ones.',
   wait: `Gives up with the timeout error after timeout (default ${WAIT_TIMEOUT}, at most ${WAIT_MAX.text}); call it again to keep waiting.`,
 };
-
-const VERSION: string = JSON.parse(
-  readFileSync(new URL('../../package.json', import.meta.url), 'utf8'),
-).version;
 
 // `agent`: the name the server was started as (otea mcp --as), which a call that names nobody acts
 // as. Subagents share their parent's server, so every call can name its own agent with `as`, which
@@ -292,7 +288,7 @@ export function createMcpServer(commands: readonly Command[], context: McpContex
   // Otea's agent guide as the server's instructions: clients such as Claude Code put them in the
   // agent's context when it connects.
   const server = new McpServer(
-    { name: 'otea', version: VERSION },
+    { name: 'otea', version: OTEA_VERSION },
     { instructions: agentGuideFor(context.topics ?? false) },
   );
   // The client names itself in initialize: its clientInfo is the harness the agent works through.

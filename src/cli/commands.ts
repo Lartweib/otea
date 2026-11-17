@@ -41,7 +41,7 @@ import {
   showItem,
   updateItem,
 } from '../app/items.ts';
-import { oteaLauncher } from '../app/launcher.ts';
+import { oteaLauncher, withHome } from '../app/launcher.ts';
 import { claimItem, heartbeatItem, releaseItem } from '../app/leases.ts';
 import { markMerged, reopenItem } from '../app/merged.ts';
 import { type MigrationReport, migrateToCommon } from '../app/migrate.ts';
@@ -122,7 +122,7 @@ import { agentGuideFor } from '../core/agent-guide.ts';
 import { agentPrompt, isPromptKind, PROMPT_KINDS, type PromptKind } from '../core/agent-prompts.ts';
 import { fieldsByName, stateName } from '../core/board/reading.ts';
 import type { Lang } from '../core/board/template-words.ts';
-import { isSetKey, LISTED_KEYS } from '../core/board/templates.ts';
+import { isSetKey, LISTED_KEYS, TEMPLATE_SETS, TEMPLATES } from '../core/board/templates.ts';
 import { OteaError } from '../core/errors.ts';
 import { EVIDENCE_ROLES, type EvidenceRole, MAX_EVIDENCE_MB } from '../core/evidence.ts';
 import type { FieldValues } from '../core/fields.ts';
@@ -317,9 +317,25 @@ function boardsText(boards: readonly InitBoard[]): string {
 // The templates the CLI takes, the same Studio's home offers, as its help lists them.
 const TEMPLATE_KEYS = LISTED_KEYS.join(', ');
 
+const firstSentence = (text: string) => text.match(/^.*?[.!?](?=\s|$)/)?.[0] ?? text;
+
+// Each template key with what it makes, for the help of the commands that take one.
+const TEMPLATE_LIST = (() => {
+  const width = Math.max(...LISTED_KEYS.map((key) => key.length)) + 2;
+  const lines = LISTED_KEYS.map((key) => {
+    const set = TEMPLATE_SETS.find((candidate) => candidate.key === key);
+    const template = set ?? TEMPLATES.find((candidate) => candidate.key === key);
+    if (!template) return `  ${key}`;
+    const name = set ? `${template.name.en} (a set): ` : '';
+    return `  ${key.padEnd(width)}${name}${firstSentence(template.description.en)}`;
+  });
+  return ['Templates (--template <key>):', ...lines].join('\n');
+})();
+
 const init: Command = {
   name: 'init',
   summary: `Create or reuse the project at the repository root: in the Otea home ($OTEA_HOME, default ~/.otea), or with --local in .otea at the root; --join <project> links the repo to a registered project instead (refused when a project in a folder above covers it, unless --here); it makes no board unless --template <key> names one, and only on a project with no boards of its own yet: the boards of that template (${TEMPLATE_KEYS}; a set such as ideas or repos makes all of its boards); you can also pick them later in Studio or with otea board add <name> --template <key>; --icon gives the project an icon (without one the UI draws a monogram of its name); --agents-md also adds (or refreshes) a block in AGENTS.md telling agents to run "otea next" and "otea board"`,
+  details: TEMPLATE_LIST,
   args: [],
   options: {
     'agents-md': { flag: true },
@@ -588,7 +604,8 @@ const connect: Command = {
     model: { placeholder: 'id' },
     effort: { placeholder: 'level' },
   },
-  execute: async ({ cwd, option, ask }) => {
+  execute: async (input) => {
+    const { cwd, option, ask } = input;
     const root = withProject(cwd, (project) => project.root);
     const name = option('as') ?? (await ask('Agent name (short, like claude-b): '))?.trim();
     if (name === undefined) throw new UsageError('Name the agent with --as <name>');
@@ -604,7 +621,7 @@ const connect: Command = {
         );
       }
     });
-    const connection = connectAgent(root, name, OTEA);
+    const connection = connectAgent(root, name, withHome(OTEA, input.home));
     // The entry names this machine's path to Otea: the file stays out of git.
     const git = keepOutOfGit(connection.path);
     const note = keptOutNote(connection.path, git);
@@ -795,6 +812,7 @@ const boardName = (record: BoardRecord) => (record.live ?? record.draft)?.defini
 const boardAdd: Command = {
   name: 'board add',
   summary: `For the person, with no agent name: make a board and publish it, from a template (${TEMPLATE_KEYS}) or blank, in the project's language; --item names what each item is; a set such as repos or product makes all of its boards, the name and --item naming the first`,
+  details: TEMPLATE_LIST,
   args: ['name'],
   options: { template: { placeholder: 'key' }, item: {} },
   execute: ({ cwd, args: [name = ''], option, agent }) => {
@@ -2274,13 +2292,15 @@ function hookOutput(changes: HookChange[]): Output {
 const hookInstall: Command = {
   name: 'hook install',
   summary:
-    'Make the gates hard in the repo here: --git writes a pre-push hook that runs otea check --gate push, --claude adds Claude Code PreToolUse hooks that run otea check before git push and gh pr merge; never overwrites a hook of someone else',
+    'Make the gates hard in the repo here: --git writes a pre-push hook that runs otea check --gate push, --claude adds Claude Code PreToolUse hooks that run otea check before git push and gh pr merge, and a Stop hook that keeps the answer to a side topic as the agent wrote it in the chat (otea topic session; it does nothing while the project keeps no topics); never overwrites a hook of someone else',
   args: [],
   options: HOOK_OPTIONS,
   execute: (input) =>
     hookOutput(
       hookTargets(input).map((target) =>
-        target === 'git' ? installGitHook(input.cwd, OTEA) : installClaudeHook(input.cwd, OTEA),
+        target === 'git'
+          ? installGitHook(input.cwd, withHome(OTEA, input.home))
+          : installClaudeHook(input.cwd, withHome(OTEA, input.home)),
       ),
     ),
 };

@@ -29,6 +29,14 @@ describe('hook', () => {
     expect(result.err).toContain('Name the hook: --git, --claude or both');
   });
 
+  it('says in its help that --claude also keeps side topics answered in the chat', async () => {
+    const { out } = await otea('hook', 'install', '--help');
+
+    expect(out).toContain(
+      'and a Stop hook that keeps the answer to a side topic as the agent wrote it in the chat (otea topic session;',
+    );
+  });
+
   describe('--git', () => {
     it('writes a pre-push hook that checks every pushed branch, and says what it wrote', async () => {
       const result = await otea('hook', 'install', '--git');

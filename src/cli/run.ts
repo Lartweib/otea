@@ -1,3 +1,4 @@
+import { resolve } from 'node:path';
 import { type ParseArgsOptionsConfig, parseArgs } from 'node:util';
 import type { Probe } from '../app/phone.ts';
 import { CLI_HARNESS } from '../app/presence.ts';
@@ -15,6 +16,7 @@ import { COMMANDS, findCommand } from './commands.ts';
 import { EXIT_CODES } from './exit-codes.ts';
 import { commandHelp, generalHelp, HELP_HINT } from './help.ts';
 import type { Opener } from './opener.ts';
+import { OTEA_VERSION } from './version.ts';
 
 type Writer = { write(chunk: string): unknown; isTTY?: boolean };
 
@@ -44,6 +46,7 @@ const GLOBAL_OPTIONS: ParseArgsOptionsConfig = {
   json: { type: 'boolean' },
   as: { type: 'string' },
   help: { type: 'boolean', short: 'h' },
+  version: { type: 'boolean', short: 'v' },
 };
 
 const PARSE_OPTIONS: ParseArgsOptionsConfig = Object.assign(
@@ -142,6 +145,7 @@ function inputFor(command: Command, values: Values, args: string[], io: Io, json
     tailscale: io.tailscale ?? NO_TAILSCALE,
     probe: io.probe ?? (async () => false),
     ...(io.gh === undefined ? {} : { gh: io.gh }),
+    ...(io.env.OTEA_HOME ? { home: resolve(io.cwd, io.env.OTEA_HOME) } : {}),
     terminal: io.stdout.isTTY === true,
     warn: (message) =>
       io.stderr.write(`otea: ${message}
@@ -165,6 +169,10 @@ async function dispatch(argv: string[], io: Io, json: boolean): Promise<number> 
   const { values, positionals } = parse(argv);
   if (positionals[0] === 'help' || (values.help && positionals.length === 0)) {
     io.stdout.write(`${generalHelp()}\n`);
+    return EXIT_CODES.ok;
+  }
+  if (values.version && positionals.length === 0) {
+    io.stdout.write(`${OTEA_VERSION}\n`);
     return EXIT_CODES.ok;
   }
   if (positionals.length === 0) throw new UsageError('Missing command');

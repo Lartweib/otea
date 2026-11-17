@@ -17,11 +17,18 @@ export function oteaLauncher(main: string, runtime: Runtime): Launcher {
   return { command: runtime.execPath, args: [main], env: { ELECTRON_RUN_AS_NODE: '1' } };
 }
 
+// The launcher carrying an Otea home set apart ($OTEA_HOME), so what runs it later (the MCP
+// server, a hook) finds the same projects; as it is without one.
+export function withHome(launcher: Launcher, home: string | undefined): Launcher {
+  if (home === undefined) return launcher;
+  return { ...launcher, env: { ...launcher.env, OTEA_HOME: home } };
+}
+
 // A bare word or a flag goes as it is; anything else (a path) in double quotes.
 const word = (part: string) => (/^(--)?[\w=.-]+$/.test(part) ? part : `"${part}"`);
 
 // The launcher as the start of a POSIX shell command line (git hooks, Claude Code hooks).
 export function shellLine(launcher: Launcher): string {
-  const env = Object.entries(launcher.env ?? {}).map(([name, value]) => `${name}=${value} `);
+  const env = Object.entries(launcher.env ?? {}).map(([name, value]) => `${name}=${word(value)} `);
   return `${env.join('')}${[launcher.command, ...launcher.args].map(word).join(' ')}`;
 }

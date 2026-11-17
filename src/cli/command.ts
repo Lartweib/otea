@@ -42,6 +42,8 @@ export type Input = {
   probe: Probe;
   // The gh CLI, where otea runs for a person; none in tests and over MCP.
   gh?: string;
+  // The Otea home the person set apart ($OTEA_HOME), as an absolute path; none for the default.
+  home?: string;
   // Whether what the command prints goes to a terminal a person reads, not to a pipe or a log: only
   // there may it print a secret (the sign-in link).
   terminal: boolean;
@@ -65,6 +67,8 @@ export type Output = { data: unknown; text: string; failure?: FailureCode };
 export type Command = {
   name: string;
   summary: string;
+  // What its help prints after the summary, such as a list to pick a value from.
+  details?: string;
   // A last name ending in `...` (`ids...`) takes that argument and every one after it, at least one;
   // one ending in `?` (`name?`) may be left out.
   args: readonly string[];
