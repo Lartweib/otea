@@ -406,16 +406,30 @@ export function defaultZone(kind: PartKind): Zone {
   return isEvidenceKind(kind) || kind === 'long' || kind === 'check' ? 'main' : 'side';
 }
 
+// A board name where a command takes it: quoted when it has a space.
+const asArg = (name: string) => (/\s/.test(name) ? `"${name}"` : name);
+
 // `keep`: the template's keys become the ids (a preset's reading keeps the keys its items' data is
 // stored under); otherwise every id is fresh, so nothing stays linked to the template.
+// `boards`: the names of the boards a set makes with it, by template key. A text names a board as
+// #{key} (#{key:arg} where a command takes it): this board's own name, the set's name for that
+// board, or else the template's.
 export function instantiate(
   template: Template,
   lang: Lang,
   names: { name?: string; item?: string },
   ids: IdSource = newId,
-  options: { keep?: boolean } = {},
+  options: { keep?: boolean; boards?: Readonly<Record<string, string>> } = {},
 ): BoardDefinition {
   const keep = options.keep === true;
+  const boardName = (key: string) => {
+    if (key === template.key) return names.name?.trim() || template.board[lang];
+    return options.boards?.[key] ?? requireTemplate(key).board[lang];
+  };
+  const named = (text: string) =>
+    text.replace(/#\{([a-z_-]+)(:arg)?\}/g, (_, key: string, arg?: string) =>
+      arg ? asArg(boardName(key)) : boardName(key),
+    );
   const refs = new Map<string, string>();
   const choices = new Map<string, string[]>();
   const parts: BoardDefinition['parts'] = {};
@@ -435,7 +449,7 @@ export function instantiate(
       id,
       name: part.name[lang],
       kind: part.kind,
-      hint: part.hint[lang],
+      hint: named(part.hint[lang]),
       options,
       ...(show === undefined ? {} : { show }),
     };
@@ -462,7 +476,7 @@ export function instantiate(
       };
   }
   const words = (text: Words | undefined) =>
-    (text?.[lang] ?? '').replace(/@\{([a-z_]+)\}/g, (_, key: string) => `@[${ref(key)}]`);
+    named(text?.[lang] ?? '').replace(/@\{([a-z_]+)\}/g, (_, key: string) => `@[${ref(key)}]`);
   const steps: Step[] = template.steps.map((step) => ({
     id: ref(step.key),
     name: step.name[lang],
@@ -576,6 +590,12 @@ export function instantiateSet(
   boards: readonly { id: string; name?: string; item?: string }[],
   ids: IdSource = newId,
 ): BoardDefinition[] {
+  const names = Object.fromEntries(
+    set.boards.map((key, index) => [
+      key,
+      boards[index]?.name?.trim() || requireTemplate(key).board[lang],
+    ]),
+  );
   const defs = set.boards.map((key, index) => {
     const { name, item } = boards[index] ?? {};
     return instantiate(
@@ -583,6 +603,7 @@ export function instantiateSet(
       lang,
       { ...(name ? { name } : {}), ...(item ? { item } : {}) },
       ids,
+      { boards: names },
     );
   });
   const split = set.split;

@@ -21,6 +21,7 @@ import {
   type Lang,
   listedTemplates,
   requestsBoard,
+  requireTemplate,
   TEMPLATE_SETS,
   TEMPLATES,
   type TemplateView,
@@ -58,9 +59,11 @@ import {
   listCollections,
   selectItems,
   setCollectionPreset,
+  updateItemContent,
   updateItemState,
 } from '../store/queries.ts';
 import type { Context } from './context.ts';
+import { draftTitle } from './draft-request.ts';
 import { type Clock, systemClock } from './items.ts';
 import { linksOf } from './next.ts';
 import type { LoadedPreset, PresetCatalog } from './presets.ts';
@@ -347,11 +350,50 @@ export function saveDraft(
       requestItem: previous?.requestItem ?? null,
       agentNote: agentNote ? JSON.stringify(agentNote) : (previous?.agentNote ?? null),
     });
+    if (previous?.requestItem)
+      retitleRequest(
+        ctx,
+        previous.requestItem,
+        readDefinition(previous.definition),
+        reading.definition,
+        now,
+      );
     return {
       record: getBoardRecord(ctx, id),
       problems: boardProblems(ctx, id, reading.definition),
       ...(reading.notes ? { notes: reading.notes } : {}),
     };
+  });
+}
+
+// A board renamed while it waits on its Pedido: the Pedido's title names it as it is called now,
+// unless someone gave the Pedido a title of their own (DR-22).
+function retitleRequest(
+  ctx: Context,
+  item: string,
+  before: BoardDefinition,
+  after: BoardDefinition,
+  now: Clock,
+): void {
+  if (before.name.trim() === after.name.trim()) return;
+  const pedido = findItem(ctx.db, item);
+  const lang = boardLang(before);
+  if (!pedido || pedido.title !== draftTitle(lang, before.name)) return;
+  if (isClosed(positionOf(pedido.state))) return;
+  const title = draftTitle(lang, after.name);
+  const at = now();
+  updateItemContent(ctx.db, item, {
+    title,
+    fields: pedido.fields,
+    presetVersion: pedido.presetVersion,
+    updatedAt: at,
+  });
+  appendEvent(ctx.db, {
+    itemId: item,
+    type: 'updated',
+    actor: { kind: 'human', name: 'human' },
+    at,
+    data: { changes: { title: { from: pedido.title, to: title } } },
   });
 }
 
@@ -1054,27 +1096,30 @@ export function insertNewBoardSet(
         ...(asked.item?.trim() ? { item: asked.item.trim() } : {}),
       };
     });
-    const defs = instantiateSet(set, input.lang, boards, ids);
     const taken = namesTaken(ctx);
     const seen: string[] = [];
     const isTaken = (wanted: string) => [...taken, ...seen].some((name) => same(name, wanted));
-    for (const [index, def] of defs.entries()) {
-      if (def.name.trim() === '')
-        throw new OteaError('invalid_name', 'A board needs a name', { kind: 'board_name_empty' });
+    // Each board's name is settled before the boards are made, so every text of the set names
+    // the boards of this set (a second Ideas set plans its tasks on Implementación 2).
+    const named = set.boards.map((key, index) => {
+      const given = boards[index]?.name;
+      let name = given ?? requireTemplate(key).board[input.lang];
       // A later board nobody named keeps the template's name with the first number free (a second
       // Ideas set makes Implementación 2): only a name someone gave is refused when taken.
-      if (index > 0 && boards[index]?.name === undefined && isTaken(def.name)) {
+      if (index > 0 && given === undefined && isTaken(name)) {
         let n = 2;
-        while (isTaken(`${def.name} ${n}`)) n++;
-        def.name = `${def.name} ${n}`;
+        while (isTaken(`${name} ${n}`)) n++;
+        name = `${name} ${n}`;
       }
-      if (isTaken(def.name))
-        throw new OteaError('already_exists', `There is already a board called ${def.name}`, {
+      if (isTaken(name))
+        throw new OteaError('already_exists', `There is already a board called ${name}`, {
           kind: 'board_name_taken',
-          name: def.name,
+          name,
         });
-      seen.push(def.name);
-    }
+      seen.push(name);
+      return { ...boards[index], id: boards[index]?.id ?? ids('b'), name };
+    });
+    const defs = instantiateSet(set, input.lang, named, ids);
     const at = now();
     return defs.map((definition, index) => {
       const id = boards[index]?.id ?? ids('b');

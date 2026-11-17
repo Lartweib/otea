@@ -1,5 +1,6 @@
 import { fileURLToPath } from 'node:url';
 import { readDefinition } from '../core/board/schema.ts';
+import type { Lang } from '../core/board/templates.ts';
 import { findBoard, findDraft, findVersion, listBoards } from '../store/boards.ts';
 import { selectEvents } from '../store/queries.ts';
 import type { Context } from './context.ts';
@@ -9,6 +10,16 @@ import type { Context } from './context.ts';
 // the step's instructions, which the agent reads in next and show and the page shows apart.
 
 export const DRAFT_FILENAME = 'board.json';
+
+// The Pedido's title: the board it asks for, by the name the board has now.
+const TITLE: Readonly<Record<Lang, (name: string) => string>> = {
+  en: (name) => `Draft the board ${name}`,
+  es: (name) => `Esbozar el tablero ${name}`,
+};
+
+export function draftTitle(lang: Lang, name: string): string {
+  return TITLE[lang](name.trim());
+}
 
 // The JSON Schema of board.json Otea ships, generated from the board's zod schema.
 export const BOARD_JSON_SCHEMA = fileURLToPath(

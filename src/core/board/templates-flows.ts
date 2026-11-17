@@ -18,8 +18,8 @@ const IDEAS: Template = {
   board: w('Ideas', 'Ideas'),
   item: w('Idea', 'Idea'),
   about: w(
-    'From nothing to a project ready to start: an Idea is refined by asking the person, divided into architecture Decisions, documented in Markdown and diagrams, and ends in a plan of tasks on Implementation. The person approves each step.',
-    'Del cero a un proyecto listo para arrancar: una Idea se refina con preguntas a la persona, se divide en Decisiones de arquitectura, se documenta con Markdown y diagramas, y termina en un plan de tareas en Implementación. La persona aprueba cada paso.',
+    'From nothing to a project ready to start: an Idea is refined by asking the person, divided into architecture Decisions, documented in Markdown and diagrams, and ends in a plan of tasks on #{implementation}. The person approves each step.',
+    'Del cero a un proyecto listo para arrancar: una Idea se refina con preguntas a la persona, se divide en Decisiones de arquitectura, se documenta con Markdown y diagramas, y termina en un plan de tareas en #{implementation}. La persona aprueba cada paso.',
   ),
   idle: w(
     'Nothing to do: wait for the person to add an idea.',
@@ -106,8 +106,8 @@ const IDEAS: Template = {
       kind: 'long',
       name: w('Implementation plan', 'Plan de implementación'),
       hint: w(
-        'In Markdown: the tasks created on Implementation, in order, with their id, the section of the document each one implements and what blocks what',
-        'En Markdown: las tareas creadas en Implementación, en orden, con su id, qué sección del documento implementa cada una y qué bloquea a qué',
+        'In Markdown: the tasks created on #{implementation}, in order, with their id, the section of the document each one implements and what blocks what',
+        'En Markdown: las tareas creadas en #{implementation}, en orden, con su id, qué sección del documento implementa cada una y qué bloquea a qué',
       ),
     },
   ],
@@ -156,8 +156,8 @@ const IDEAS: Template = {
         'Qué documentaste, qué cambió desde la ronda anterior y qué riesgos ves',
       ),
       take: w(
-        'For an Idea: first open a Decision part for each architecture decision the @{brief} implies (otea create --collection Ideas --parent <id> --field "What it is=Decision"), and wait for the person to close them. With the decisions taken, write the @{architecture}, draw the @{diagrams} (Mermaid flowchart, .mmd files) and attach the @{docs} (.md) that start the project. For a Decision: write the @{decision} with the option the person chose.',
-        'Para una Idea: primero abre una Decisión hija por cada decisión de arquitectura que el @{brief} implica (otea create --collection Ideas --parent <id> --field "Qué es=Decisión"), y espera a que la persona las cierre. Con las decisiones tomadas, escribe el @{architecture}, dibuja los @{diagrams} (Mermaid flowchart, archivos .mmd) y adjunta los @{docs} (.md) que arrancan el proyecto. Para una Decisión: escribe la @{decision} con la opción que eligió la persona.',
+        'For an Idea: first open a Decision part for each architecture decision the @{brief} implies (otea create --collection #{ideaboard:arg} --parent <id> --field "What it is=Decision"), and wait for the person to close them. With the decisions taken, write the @{architecture}, draw the @{diagrams} (Mermaid flowchart, .mmd files) and attach the @{docs} (.md) that start the project. For a Decision: write the @{decision} with the option the person chose.',
+        'Para una Idea: primero abre una Decisión hija por cada decisión de arquitectura que el @{brief} implica (otea create --collection #{ideaboard:arg} --parent <id> --field "Qué es=Decisión"), y espera a que la persona las cierre. Con las decisiones tomadas, escribe el @{architecture}, dibuja los @{diagrams} (Mermaid flowchart, archivos .mmd) y adjunta los @{docs} (.md) que arrancan el proyecto. Para una Decisión: escribe la @{decision} con la opción que eligió la persona.',
       ),
       before: w(
         'Each decision in the @{architecture} points to its Decision by id. Each diagram reads on its own: a title, named nodes, arrows with a verb. A Decision ends here: take it to Done.',
@@ -175,8 +175,8 @@ const IDEAS: Template = {
         'Cuántas tareas y subtareas creaste y qué dejaste fuera',
       ),
       take: w(
-        'From the @{architecture} and the Decisions, create the tasks on the Implementation board: one task per delivery that can be tested, with its done criteria; split the ones that take more than a day into subtasks (otea create --parent). Link each top-level task to this idea with otea link <task> implements <this idea>, and the order with otea link <before> blocks <after>. The tasks wait until the person approves this plan.',
-        'Del @{architecture} y las Decisiones, crea las tareas en el tablero Implementación: una tarea por entrega que se pueda probar, con su criterio de terminado; las que llevan más de un día, divídelas en subtareas (otea create --parent). Enlaza cada tarea de primer nivel a esta idea con otea link <tarea> implements <esta idea>, y el orden con otea link <antes> blocks <después>. Las tareas esperan a que la persona apruebe este plan.',
+        'From the @{architecture} and the Decisions, create the tasks on the #{implementation} board: one task per delivery that can be tested, with its done criteria; split the ones that take more than a day into subtasks (otea create --parent). Link each top-level task to this idea with otea link <task> implements <this idea>, and the order with otea link <before> blocks <after>. The tasks wait until the person approves this plan.',
+        'Del @{architecture} y las Decisiones, crea las tareas en el tablero #{implementation}: una tarea por entrega que se pueda probar, con su criterio de terminado; las que llevan más de un día, divídelas en subtareas (otea create --parent). Enlaza cada tarea de primer nivel a esta idea con otea link <tarea> implements <esta idea>, y el orden con otea link <antes> blocks <después>. Las tareas esperan a que la persona apruebe este plan.',
       ),
       before: w(
         'Each top-level task implements this idea, and the @{plan} lists them in order with their ids.',
@@ -219,8 +219,8 @@ const IMPLEMENTATION: Template = {
   board: w('Implementation', 'Implementación'),
   item: w('Task', 'Tarea'),
   about: w(
-    'The tasks that build what an Idea documented. Each top-level task implements its Idea (an implements link) and divides into subtasks when it is big; blocks marks the order. Tasks are born complete in Plan on Ideas, where the person approves the whole plan.',
-    'Las tareas para construir lo que una Idea documentó. Cada tarea de primer nivel implementa su Idea (enlace implements) y se divide en subtareas cuando es grande; blocks marca el orden. Las tareas nacen completas en Planificar de Ideas, donde la persona aprueba el plan entero.',
+    'The tasks that build what an Idea documented. Each top-level task implements its Idea (an implements link) and divides into subtasks when it is big; blocks marks the order. Tasks are born complete in Plan on #{ideaboard}, where the person approves the whole plan.',
+    'Las tareas para construir lo que una Idea documentó. Cada tarea de primer nivel implementa su Idea (enlace implements) y se divide en subtareas cuando es grande; blocks marca el orden. Las tareas nacen completas en Planificar de #{ideaboard}, donde la persona aprueba el plan entero.',
   ),
   idle: w(
     'Nothing to do: wait for an Idea to be planned.',
@@ -593,8 +593,8 @@ const JOBS: Template = {
     'Cada Trabajo nace de un issue o épica de GitHub. Un agente lo analiza y propone el plan y el plan de merge; tú lo apruebas; se divide en una Entrega por repo, que los agentes trabajan en paralelo hasta su PR.',
   ),
   idle: w(
-    'See whether there are Deliveries to take: otea next --collection Deliveries.',
-    'Mira si hay Entregas para tomar: otea next --collection Entregas.',
+    'See whether there are Deliveries to take: otea next --collection #{deliveries:arg}.',
+    'Mira si hay Entregas para tomar: otea next --collection #{deliveries:arg}.',
   ),
   parts: [
     {
@@ -700,8 +700,8 @@ const JOBS: Template = {
       ways: ['analyse'],
       waits: ['parts'],
       take: w(
-        'Create a Delivery for each line of the approved @{plan} (otea create --collection Deliveries --parent <this id>), and link with blocks the one that must be merged first. Agents work the Deliveries in parallel; here you only follow them along.',
-        'Crea una Entrega por cada línea del @{plan} aprobado (otea create --collection Entregas --parent <este id>), y enlaza con blocks la que debe mergearse antes. Las Entregas las trabajan agentes en paralelo; aquí solo sigues que avancen.',
+        'Create a Delivery for each line of the approved @{plan} (otea create --collection #{deliveries:arg} --parent <this id>), and link with blocks the one that must be merged first. Agents work the Deliveries in parallel; here you only follow them along.',
+        'Crea una Entrega por cada línea del @{plan} aprobado (otea create --collection #{deliveries:arg} --parent <este id>), y enlaza con blocks la que debe mergearse antes. Las Entregas las trabajan agentes en paralelo; aquí solo sigues que avancen.',
       ),
       before: w(
         'When every Delivery is merged in the order of the @{mergeplan}, test everything together on main and tell it in @{checked} with the @{checklog}.',

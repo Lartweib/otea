@@ -24,7 +24,7 @@ import {
   saveDraft,
 } from './boards.ts';
 import { BOARD_JSON_SCHEMA } from './draft-request.ts';
-import { getItem, showItem } from './items.ts';
+import { getItem, showItem, updateItem } from './items.ts';
 import { itemNextText, nextFor } from './next.ts';
 import type { Project } from './project.ts';
 import { memoryContext, projectOf } from './testing.ts';
@@ -269,6 +269,25 @@ describe('an agent drafting a board', () => {
     expect(getItem(ctx, item, now).state).toBe('done');
     restoreBoard(ctx, board.id, { version: null, by: you }, now);
     expect(getItem(ctx, item, now).state).toBe(waiting.state);
+  });
+
+  it('renames the Pedido with the board it drafts, unless it was retitled (DR-22)', () => {
+    const ctx = project();
+    const { board, item } = requestAgentDraft(
+      ctx,
+      { name: 'Temporal', need: 'x', agent: 'kiln', lang: 'es' },
+      now,
+    );
+    const rename = (name: string) => {
+      const definition = getBoardRecord(ctx, board.id).draft?.definition;
+      if (!definition) throw new Error('no draft');
+      saveDraft(ctx, board.id, { definition: { ...definition, name }, baseVersion: null }, now);
+    };
+    rename('Criaturas');
+    expect(getItem(ctx, item, now).title).toBe('Esbozar el tablero Criaturas');
+    updateItem(ctx, { id: item, title: 'Mi tablero de bichos', actor: kiln }, now);
+    rename('Bestiario');
+    expect(getItem(ctx, item, now).title).toBe('Mi tablero de bichos');
   });
 
   it('offers to close the Pedido on publish, and closes it as done when asked', () => {
