@@ -505,12 +505,13 @@ function AgentsPill() {
         data-quiet={offline || counts.live === 0 || undefined}
         aria-haspopup={offline ? undefined : 'dialog'}
         aria-expanded={offline ? undefined : open}
-        aria-label={t('shell.agentsTitle')}
         disabled={offline}
         onClick={() => setOpen((o) => !o)}
       >
         <AgentsMark kind={mark} quiet={!offline && counts.quiet > 0} />
         <PillWords summary={summary} />
+        {/* Named by the words it shows, then what it opens (WCAG 2.5.3). */}
+        <span className="visually-hidden"> · {t('shell.agentsTitle')}</span>
         {offline ? null : <Chevron />}
       </button>
       <Pop

@@ -101,6 +101,9 @@ describe('the topbar', () => {
       ],
     });
     expect(html).toContain('<span>1 trabajando</span><small class="wl">de 2</small>');
+    // Its name is what it shows, then what it is (WCAG 2.5.3): no label that hides the words.
+    expect(html).not.toMatch(/class="apill"[^>]*aria-label=/);
+    expect(html).toContain('<span class="visually-hidden"> · Agentes</span>');
     expect(html).toContain('class="amw pulse"');
     expect(html).toContain('class="orb"');
   });

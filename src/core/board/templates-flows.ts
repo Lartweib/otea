@@ -836,8 +836,8 @@ const DELIVERIES: Template = {
       ],
       note: w('what changed and how to test it', 'qué cambió y cómo probarlo'),
       take: w(
-        'Work on a @{branch} branch of the @{repo} repo, never on main. Do what @{proposal} says. Push the branch and open the PR against main.',
-        'Trabaja en una rama @{branch} del repo @{repo}, nunca en main. Haz lo que dice @{proposal}. Sube la rama y abre el PR contra main.',
+        'Work on the branch @{branch} names, in the repo @{repo} names, never on main. Do what @{proposal} says. Push the branch and open the PR against main.',
+        'Trabaja en la rama que dice @{branch}, en el repo que dice @{repo}, nunca en main. Haz lo que dice @{proposal}. Sube la rama y abre el PR contra main.',
       ),
       before: w(
         'Leave the link in @{pr}, the diff in @{code} and the test output in @{tests}. In the note, what changed and how to test it.',

@@ -1,8 +1,11 @@
+import { isUnknown } from '../../../src/core/profile.ts';
+import { t } from '../i18n/i18n.ts';
 import type { AgentProfile } from '../presence.ts';
 import { profileValue } from '../profile-words.ts';
 
 // A profile as every surface writes it (agents mock §5): the model and the effort in grey mono,
-// after the agent's name in its usual letter; in parentheses where a round names who did it.
+// after the agent's name in its usual letter; in parentheses where a round names who did it. A
+// profile the agent could read none of says so once.
 export function Prof({
   profile,
   paren = false,
@@ -15,7 +18,13 @@ export function Prof({
   const words = (
     <>
       {paren ? '(' : null}
-      {profileValue(profile.model)} <i>·</i> {profileValue(profile.effort)}
+      {isUnknown(profile.model) && isUnknown(profile.effort) ? (
+        t('agent.notDeclared')
+      ) : (
+        <>
+          {profileValue(profile.model)} <i>·</i> {profileValue(profile.effort)}
+        </>
+      )}
       {paren ? ')' : null}
     </>
   );

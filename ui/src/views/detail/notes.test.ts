@@ -114,8 +114,12 @@ describe('the agent’s profile, as a thread says it', () => {
 
   it('says plainly what the agent could not read', () => {
     setLanguage('es');
+    // Once, not once per value (UI-23).
     expect(profileWords({ harness: 'codex', model: 'unknown', effort: 'unknown' })).toBe(
-      'sin declarar · sin declarar',
+      'sin declarar',
+    );
+    expect(profileWords({ harness: 'codex', model: 'unknown', effort: 'high' })).toBe(
+      'sin declarar · high',
     );
   });
 });

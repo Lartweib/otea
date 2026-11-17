@@ -158,6 +158,12 @@ function SaysLine({ text }: { text: { verb: string; state: string; tail: string 
   );
 }
 
+// The box's label: "Or in your own words" after the options it is an alternative to; with no
+// options, just the answer.
+export function freeAnswerLabel(options: boolean): string {
+  return options ? t('sheet.qa.free') : t('sheet.qa.answer');
+}
+
 export function Acts({
   item,
   type,
@@ -304,7 +310,7 @@ export function Acts({
             </div>
           ) : null}
           <label className="free">
-            {t('sheet.qa.free')}
+            {freeAnswerLabel(options.length > 0)}
             <textarea
               placeholder={t('sheet.qa.placeholder')}
               rows={2}

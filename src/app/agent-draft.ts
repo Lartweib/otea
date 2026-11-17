@@ -304,7 +304,7 @@ export function proposeAgentDraft(
   if (input.text !== undefined)
     readDraftFile(
       input.text,
-      'Nothing was made. Without --file it makes the board and its Pedido; then start from what otea board draft <Pedido> prints',
+      'Nothing was made. Without --file it makes the board and its Pedido; then start from what otea board draft <id> prints',
     );
   const { actor, channel } = input;
   const asked = requestAgentDraft(
