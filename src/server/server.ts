@@ -380,7 +380,8 @@ function api(
         const lang = asked === 'es' ? 'es' : 'en';
         const moment = kind ?? promptKindOf(project);
         const facts = moment === 'join' ? joinFacts(project) : { boards: [], listening: [] };
-        return c.json({ kind: moment, prompt: agentPrompt(moment, lang, facts) });
+        const first = 'first' in facts && facts.first === true ? { first: true } : {};
+        return c.json({ kind: moment, prompt: agentPrompt(moment, lang, facts), ...first });
       })
       // How each model performs (Rendimiento): per model family and effort, for a board and a period.
       .get('/performance', (c) => {

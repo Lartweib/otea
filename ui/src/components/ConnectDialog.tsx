@@ -38,18 +38,27 @@ function ConnectBody({ version }: { version: number }) {
   return <ConnectView view={remote.status === 'ready' ? remote.value : null} />;
 }
 
+// The first agent of a project with boards joins no one: it is told to connect.
+function bodyOf(kind: AgentPromptView['kind'], first: boolean) {
+  if (kind !== 'join') return 'connect.startBody' as const;
+  return first ? ('connect.firstBody' as const) : ('connect.joinBody' as const);
+}
+
 // The dialog's words for the project's moment, and its prompt once the server wrote it.
 export function ConnectView({ view }: { view: AgentPromptView | null }) {
   const kind = view?.kind ?? 'start';
   return (
     <>
       <h4 data-i="">{t('connect.title')}</h4>
-      <p data-i="">{t(kind === 'join' ? 'connect.joinBody' : 'connect.startBody')}</p>
+      <p data-i="">{t(bodyOf(kind, view?.first === true))}</p>
       <div data-i="" className="cpaste">
         {view ? <PromptBlock prompt={view.prompt} primary /> : null}
       </div>
       <p className="cnote" data-i="">
-        {tx('connect.others', { command: <code className="inl">otea init --agents-md</code> })}
+        {tx('connect.others', {
+          connect: <code className="inl">otea connect</code>,
+          command: <code className="inl">otea init --agents-md</code>,
+        })}
       </p>
       <p className="cnote" data-i="">
         {t('connect.appears')}

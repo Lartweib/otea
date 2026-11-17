@@ -245,11 +245,13 @@ export const surfaces = {
   // Connect an agent
   'connect.title': 'Connect an agent',
   'connect.others':
-    'Claude Code reads the .mcp.json it writes. Codex, Gemini and the rest use the CLI: {command} gives them the guide in AGENTS.md.',
+    'Claude Code reads the .mcp.json that {connect} writes. Codex, Gemini and the rest use the CLI: {command} gives them the guide in AGENTS.md.',
   'connect.startBody':
     'Paste this into your agent’s chat. It sets Otea up, connects, reads the project, asks how you work and proposes the boards for you to try.',
   'connect.joinBody':
     'To add one more agent, paste this into its chat. It connects with a name of its own and works the boards alongside the others, never taking what another one holds.',
+  'connect.firstBody':
+    "Paste this into your agent's chat. It connects under a name of its own, reads the boards and works what is the agents' to do.",
   'connect.copyPrompt': 'Copy the instruction',
   'connect.copiedPrompt': 'Copied',
   'connect.appears': 'It shows up here as soon as it calls Otea.',
