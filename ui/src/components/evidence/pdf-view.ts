@@ -27,3 +27,10 @@ export function pageInView(shown: readonly number[]): number {
   });
   return best + 1;
 }
+
+// Which pdf.js build this browser runs: the modern one needs Chrome 140+ (it calls Uint8Array's
+// toHex and newer APIs); before that the legacy build, which carries its own polyfills (DR2-3: a
+// PDF failed on Chrome 133 with «a.toHex is not a function»).
+export function pdfBuild(uint8: object = Uint8Array.prototype): 'modern' | 'legacy' {
+  return typeof (uint8 as { toHex?: unknown }).toHex === 'function' ? 'modern' : 'legacy';
+}

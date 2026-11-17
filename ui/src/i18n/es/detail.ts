@@ -323,6 +323,7 @@ export const detail = {
   'evidence.changes.paragraphs': 'párrafos',
   'evidence.pdf.page': 'Página {n} de {total}',
   'evidence.pdf.pages': 'Páginas de {file}',
+  'evidence.pdf.open': 'Abrir {file}',
   'evidence.pdf.zoomIn': 'Acercar',
   'evidence.pdf.zoomOut': 'Alejar',
   'evidence.pdf.fit': 'Ajustar al ancho',

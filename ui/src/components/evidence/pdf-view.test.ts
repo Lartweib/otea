@@ -1,5 +1,17 @@
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import { pageInView, pageScale, ZOOM_MAX, ZOOM_MIN, zoomIn, zoomOut } from './pdf-view.ts';
+import { setLanguage } from '../../i18n/i18n.ts';
+import { PdfUnreadable } from './PdfView.tsx';
+import {
+  pageInView,
+  pageScale,
+  pdfBuild,
+  ZOOM_MAX,
+  ZOOM_MIN,
+  zoomIn,
+  zoomOut,
+} from './pdf-view.ts';
 
 describe('a PDF read as its pages', () => {
   it('fits a page to the width it has, then zooms from there', () => {
@@ -27,5 +39,25 @@ describe('a PDF read as its pages', () => {
     expect(pageInView([0, 0.2, 0.9, 0.1])).toBe(3);
     expect(pageInView([])).toBe(1);
     expect(pageInView([0, 0])).toBe(1);
+  });
+});
+
+describe('the pdf.js build a browser can run (DR2-3)', () => {
+  it('takes the modern build where Uint8Array has toHex (Chrome 140+), the legacy one before', () => {
+    expect(pdfBuild({ toHex() {} })).toBe('modern');
+    expect(pdfBuild({})).toBe('legacy');
+  });
+});
+
+describe('a PDF that does not load', () => {
+  it('says so and gives a link that opens the file on its own (DR2-3)', () => {
+    setLanguage('es');
+    const html = renderToStaticMarkup(
+      createElement(PdfUnreadable, { url: '/api/evidence/9/file', filename: 'informe.pdf' }),
+    );
+    expect(html).toContain('No se pudo cargar este archivo');
+    expect(html).toMatch(/<a [^>]*href="\/api\/evidence\/9\/file"[^>]*target="_blank"/);
+    expect(html).toContain('Abrir informe.pdf');
+    setLanguage('en');
   });
 });

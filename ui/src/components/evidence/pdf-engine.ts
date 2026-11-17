@@ -1,10 +1,27 @@
 // The PDF engine (Mozilla's pdf.js), loaded only when a PDF is opened. Its worker is a file of this
 // build, never fetched from elsewhere. A page is drawn as a picture: no scripts, no forms, no links
 // run from the file.
-import { AnnotationMode, GlobalWorkerOptions, getDocument } from 'pdfjs-dist';
-import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
+// A browser before Chrome 140 gets pdf.js's legacy build, which carries its own polyfills (DR2-3).
+import { pdfBuild } from './pdf-view.ts';
 
-GlobalWorkerOptions.workerSrc = workerUrl;
+type PdfLib = typeof import('pdfjs-dist');
+
+let loading: Promise<PdfLib> | undefined;
+
+function pdfLib(): Promise<PdfLib> {
+  loading ??= (
+    pdfBuild() === 'modern'
+      ? Promise.all([import('pdfjs-dist'), import('pdfjs-dist/build/pdf.worker.min.mjs?url')])
+      : Promise.all([
+          import('pdfjs-dist/legacy/build/pdf.mjs') as Promise<PdfLib>,
+          import('pdfjs-dist/legacy/build/pdf.worker.min.mjs?url'),
+        ])
+  ).then(([lib, worker]) => {
+    lib.GlobalWorkerOptions.workerSrc = worker.default;
+    return lib;
+  });
+  return loading;
+}
 
 export type PdfPage = { width: number; height: number };
 
@@ -17,6 +34,7 @@ export type OpenPdf = {
 };
 
 export async function openPdf(bytes: ArrayBuffer): Promise<OpenPdf> {
+  const { AnnotationMode, getDocument } = await pdfLib();
   const task = getDocument({ data: new Uint8Array(bytes), enableXfa: false });
   const doc = await task.promise;
   const pages: PdfPage[] = [];
