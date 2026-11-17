@@ -287,6 +287,12 @@ describe('the agents pill', () => {
     });
   });
 
+  it('never counts an agent gone quiet as listening: with only it, nobody is connected', () => {
+    const quiet = agentRows([agent('q', { live: false, lastSeen: ago(12) })], stuck, NOW);
+    expect(pillSummary('live', quiet)).toEqual({ kind: 'none', quiet: 1 });
+    expect(pillMark('live', quiet)).toBe('none');
+  });
+
   it('says nobody is connected, or that it cannot count while offline', () => {
     expect(pillSummary('live', [])).toEqual({ kind: 'none' });
     expect(pillSummary('reconnecting', rows([agent('a')]))).toEqual({ kind: 'offline' });

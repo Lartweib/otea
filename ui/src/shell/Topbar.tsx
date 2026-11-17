@@ -290,7 +290,15 @@ function AgentsMark({ kind, quiet }: { kind: PillMark; quiet: boolean }) {
 // The pill's words (mock §1): what happens, then one datum in grey, or in warn when one went quiet.
 export function PillWords({ summary }: { summary: PillSummary }) {
   if (summary.kind === 'offline') return <span>{t('shell.offline')}</span>;
-  if (summary.kind === 'none') return <span>{t('shell.pill.none')}</span>;
+  if (summary.kind === 'none')
+    return (
+      <>
+        <span>{t('shell.pill.none')}</span>
+        {summary.quiet ? (
+          <small className="wl warn-t">{t('shell.pill.quiet', { count: summary.quiet })}</small>
+        ) : null}
+      </>
+    );
   const { extra } = summary;
   return (
     <>
