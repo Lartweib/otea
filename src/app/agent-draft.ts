@@ -52,6 +52,8 @@ export type AgentDraftRequest = {
   agent: string | null;
   lang: Lang;
   by?: { actor: Actor; channel: Channel };
+  // A catalogue template the draft starts from (one board, never a set).
+  template?: string;
 };
 
 const PERSON = { actor: { kind: 'human', name: 'human' }, channel: 'ui' } as const;
@@ -98,7 +100,12 @@ export function requestAgentDraft(
     }
     const board = insertNewBoard(
       project,
-      { name: input.name, lang: input.lang, requestItem: item.id },
+      {
+        name: input.name,
+        lang: input.lang,
+        requestItem: item.id,
+        ...(input.template === undefined ? {} : { template: input.template }),
+      },
       now,
     );
     return { board, item: item.id };
@@ -265,6 +272,7 @@ export type ProposeInput = {
   actor: Actor;
   channel: Channel;
   text?: string;
+  template?: string;
 };
 
 // An agent the person asked for a board starts what Studio's "Que lo esboce un agente" does: the
@@ -289,6 +297,7 @@ export function proposeAgentDraft(
       agent: actor.name,
       lang: input.lang,
       by: { actor, channel },
+      ...(input.template === undefined ? {} : { template: input.template }),
     },
     now,
   );

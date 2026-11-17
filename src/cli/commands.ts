@@ -9,6 +9,7 @@ import {
   type Submitted,
   submitAgentDraft,
 } from '../app/agent-draft.ts';
+import { joinFacts, promptKindOf } from '../app/agent-prompts.ts';
 import { type AgentsMdAction, connectAgent, writeAgentsMd } from '../app/agents.ts';
 import { addBoard, addBoardSet, type BoardRecord } from '../app/boards.ts';
 import { briefFor } from '../app/brief.ts';
@@ -102,7 +103,9 @@ import type { TailscaleCli } from '../app/tailscale.ts';
 import { validateProject } from '../app/validate.ts';
 import { watch } from '../app/watch.ts';
 import { AGENT_GUIDE } from '../core/agent-guide.ts';
+import { agentPrompt, isPromptKind, PROMPT_KINDS, type PromptKind } from '../core/agent-prompts.ts';
 import { fieldsByName, stateName } from '../core/board/reading.ts';
+import type { Lang } from '../core/board/template-words.ts';
 import { isSetKey, LISTED_KEYS } from '../core/board/templates.ts';
 import { OteaError } from '../core/errors.ts';
 import { EVIDENCE_ROLES, type EvidenceRole, MAX_EVIDENCE_MB } from '../core/evidence.ts';
@@ -847,6 +850,7 @@ function studioLink(project: Project, board: string): string {
 function proposeBoard(input: Input, name: string): Output {
   const why = input.option('why')?.trim() ?? '';
   const file = input.option('file');
+  const template = input.option('template');
   return withAgent(input, (project) => {
     if (why === '')
       throw new OteaError('missing_fields', 'Say what the board is for: --why "<what it is for>"');
@@ -859,6 +863,7 @@ function proposeBoard(input: Input, name: string): Output {
       actor,
       channel,
       ...(text === undefined ? {} : { text }),
+      ...(template === undefined ? {} : { template }),
     });
     const studio = studioLink(project, made.board.id);
     const lines = [
@@ -873,12 +878,13 @@ function proposeBoard(input: Input, name: string): Output {
 const boardDraft: Command = {
   name: 'board draft',
   summary:
-    'Draft the board a Pedido asks for: without --file, print the draft to start from (JSON); with --file, check it as a board and hand it in on the Pedido as board.json, saying what is still wrong (the board keeps the name it was asked for; the name in the file is not used). To propose a new board the person asked you for, --new <name> --why "<what it is for>" (and --file to hand it in at once) makes it and its Pedido, which you hold; the person publishes it in Studio',
+    'Draft the board a Pedido asks for: without --file, print the draft to start from (JSON); with --file, check it as a board and hand it in on the Pedido as board.json, saying what is still wrong (the board keeps the name it was asked for; the name in the file is not used). To propose a new board the person asked you for, --new <name> --why "<what it is for>" (and --template <key> to start from a catalogue board, --file to hand it in at once) makes it and its Pedido, which you hold; the person publishes it in Studio',
   args: ['id?'],
   options: {
     file: { placeholder: 'board.json' },
     new: { placeholder: 'name' },
     why: { placeholder: 'what it is for' },
+    template: { placeholder: 'key' },
   },
   execute: (input) => {
     const [id] = input.args;
@@ -888,6 +894,8 @@ const boardDraft: Command = {
     if (name !== undefined) return proposeBoard(input, name);
     if (id === undefined) throw new UsageError('Give the Pedido, or --new <name> for a new board');
     if (input.option('why') !== undefined) throw new UsageError('--why goes with --new <name>');
+    if (input.option('template') !== undefined)
+      throw new UsageError('--template goes with --new <name>');
     const file = input.option('file');
     return withAgent(input, (project) => {
       if (file === undefined) {
@@ -899,6 +907,44 @@ const boardDraft: Command = {
       const submitted = submitAgentDraft(project, { id, text, actor, channel });
       return { data: submitted, text: handedInLines(id, submitted).join('\n') };
     });
+  },
+};
+
+// otea prompt: what the person pastes into an agent's chat, as the UI copies it. With no moment it
+// picks the project's: the first contact where there is no project or no board of its own, the
+// join prompt (written from the project as it is now) once there are boards.
+function projectPrompt(cwd: string, kind: PromptKind | undefined, lang: Lang): string {
+  const empty = { boards: [], listening: [] };
+  let project: Project;
+  try {
+    project = openProject(cwd);
+  } catch (error) {
+    if (error instanceof OteaError && error.code === 'not_found' && kind !== 'join')
+      return agentPrompt(kind ?? 'start', lang, empty);
+    throw error;
+  }
+  try {
+    const moment = kind ?? promptKindOf(project);
+    return agentPrompt(moment, lang, moment === 'join' ? joinFacts(project) : empty);
+  } finally {
+    project.db.close();
+  }
+}
+
+const promptCommand: Command = {
+  name: 'prompt',
+  summary:
+    "Print what to paste into an agent's chat: start (a new project: set up, connect, read the project, interview you one question at a time and draft its boards), join (one more agent working the boards there are, named from the project now) or design (one more board); without one, start until the project has boards of its own, then join. --lang en|es (default es)",
+  args: ['moment?'],
+  options: { lang: { placeholder: 'en|es' } },
+  execute: (input) => {
+    const [moment] = input.args;
+    if (moment !== undefined && !isPromptKind(moment))
+      throw new UsageError(`The moment is one of ${PROMPT_KINDS.join(', ')}`);
+    const lang = input.option('lang') ?? 'es';
+    if (lang !== 'en' && lang !== 'es') throw new UsageError('--lang is en or es');
+    const text = projectPrompt(input.cwd, moment as PromptKind | undefined, lang);
+    return { data: { prompt: text }, text };
   },
 };
 
@@ -2178,6 +2224,7 @@ export const COMMANDS: readonly Command[] = [
   boardAdd,
   boardDraft,
   board,
+  promptCommand,
   brief,
   events,
   stats,
