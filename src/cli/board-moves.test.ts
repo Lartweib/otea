@@ -118,6 +118,23 @@ describe('board moves from the CLI', () => {
       error: { code: 'forbidden', message: `Not dropped ${id}: only the person drops items here.` },
     });
   });
+
+  it('reopens a Done item whose branch is not merged, so its branch can change', async () => {
+    const project = openProject(repo.dir);
+    try {
+      const { updateItemState } = await import('../store/queries.ts');
+      updateItemState(project.db, id, 'done', new Date().toISOString());
+    } finally {
+      project.db.close();
+    }
+    expect((await errorOf(mender, 'reopen', id)).error.code).toBe('reason_required');
+    const reopened = await mender('reopen', id, '--reason', 'el PR choca con main');
+    expect(reopened.code).toBe(0);
+    expect(reopened.out.trim()).toBe(
+      `Reopened ${id}: it is in Arreglar again. Fix its branch there and hand it off: it goes through review again before it is Done.`,
+    );
+    expect(JSON.parse((await otea('show', id, '--json')).out).state).toBe('sfix');
+  });
 });
 
 describe('a relayed drop', () => {

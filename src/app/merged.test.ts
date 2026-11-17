@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { cambios, tareasDeRepo } from '../core/board/testing.ts';
-import { insertEvidence, updateItemState } from '../store/queries.ts';
+import { insertEvidence, selectEvents, updateItemState } from '../store/queries.ts';
+import { checkGate } from './gates.ts';
 import { createItem, requireItem } from './items.ts';
-import { markMerged, mergedOf } from './merged.ts';
+import { markMerged, mergedOf, reopenItem } from './merged.ts';
 import { approveItem, boardBlockOf, handoffItem, itemNextText } from './next.ts';
 import { memoryContext, publishAs } from './testing.ts';
 
@@ -95,5 +96,60 @@ describe('marking a Done item merged', () => {
       doer: 'quill',
       reviewer: you,
     });
+  });
+});
+
+describe('reopening a Done item whose branch is not merged', () => {
+  // ENT-1 merged first; ENT-2's PR now conflicts with main. The agent must fix its branch, which
+  // stays frozen while ENT-2 is Done: reopening sends it back to the step that pushes the branch,
+  // and through review again.
+  it('takes it back to the step that pushes its branch, with why, for another round', () => {
+    const { ctx, id } = repoTask();
+    updateItemState(ctx.db, id, 'simpl', now());
+    updateItemState(ctx.db, id, 'done', now());
+    expect(checkGate(ctx, 'push', { branch: 'feat/x', repo: 'api' }).items[0]?.text).toBe(
+      `push refused: ${id} is Done; nothing is pushed to a closed item's branch. If its PR cannot merge as it is (a conflict), reopen it: otea reopen ${id} --reason "…" takes it back to Implementar, and through review again.`,
+    );
+
+    const reopened = reopenItem(
+      ctx,
+      { id, actor: quill, channel: 'cli', reason: 'the PR conflicts with main after API-1' },
+      now,
+    );
+    expect(reopened.item.state).toBe('simpl');
+    expect(reopened.text).toBe(
+      `Reopened ${id}: it is in Implementar again. Fix its branch there and hand it off: it goes through review again before it is Done.`,
+    );
+    expect(checkGate(ctx, 'push', { branch: 'feat/x', repo: 'api' }).allowed).toBe(true);
+    const moved = selectEvents(ctx.db, id).findLast(({ type }) => type === 'transitioned');
+    expect(moved?.data).toMatchObject({
+      from: 'done',
+      to: 'simpl',
+      reason: 'the PR conflicts with main after API-1',
+    });
+  });
+
+  it('refuses without a reason, off Done, and once the branch is merged', () => {
+    const { ctx, id } = repoTask();
+    updateItemState(ctx.db, id, 'simpl', now());
+    expect(() => reopenItem(ctx, { id, actor: quill, channel: 'cli', reason: 'x' }, now)).toThrow(
+      `${id} is not Done: only a Done item whose branch is not merged yet reopens`,
+    );
+    updateItemState(ctx.db, id, 'done', now());
+    expect(() => reopenItem(ctx, { id, actor: quill, channel: 'cli', reason: ' ' }, now)).toThrow(
+      `Reopening ${id} needs a reason: why its branch must change`,
+    );
+    markMerged(ctx, { id, actor: quill, channel: 'cli' }, now);
+    expect(() => reopenItem(ctx, { id, actor: quill, channel: 'cli', reason: 'x' }, now)).toThrow(
+      `${id} is merged already: its branch is in, so a further change is new work, not ${id}`,
+    );
+  });
+
+  it('tells the agent on a Done item how to reopen it when its PR cannot merge', () => {
+    const { ctx, id } = repoTask();
+    updateItemState(ctx.db, id, 'done', now());
+    expect(itemNextText(ctx, requireItem(ctx.db, id), 'quill', now)).toContain(
+      `If its PR cannot merge as it is (a conflict), otea reopen ${id} --reason "…" takes it back to Implementar.`,
+    );
   });
 });

@@ -530,6 +530,14 @@ export function isLandStep(def: BoardDefinition, stepId: string): boolean {
   return into.length > 0 && into.every((other) => closer(other) === 'you');
 }
 
+// Where a Done item whose branch is not merged yet reopens: the last step, in board order, that
+// pushes its protected branch, so the branch can change (a PR that conflicts after another merged)
+// and the change goes through review again. Undefined on a board that protects no branch.
+export function reopenStep(def: BoardDefinition): string | undefined {
+  const pushes = new Set(guardedBranch(def)?.guard.push ?? []);
+  return def.steps.findLast((step) => pushes.has(step.id))?.id;
+}
+
 // Whether the item's protected branch may take the action where the item stands: a push only while
 // one of the guard's steps is being done (never during its review), a merge only once it is Hecho.
 export function gateAt(def: BoardDefinition, position: Position, action: GateAction): GateAnswer {

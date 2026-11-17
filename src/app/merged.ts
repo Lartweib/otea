@@ -1,13 +1,15 @@
 import type { Channel } from '../core/authority.ts';
-import { isClosed, positionOf } from '../core/board/engine.ts';
+import { isClosed, positionOf, reopenStep, stateOf } from '../core/board/engine.ts';
 import { MERGED, type Merged, mergedFrom } from '../core/board/merged.ts';
 import { DONE, guardedBranch } from '../core/board/model.ts';
+import { reopenedText } from '../core/board/next.ts';
 import { OteaError } from '../core/errors.ts';
 import type { Actor } from '../core/item.ts';
+import { activeLease } from '../core/lease.ts';
 import { transaction } from '../store/database.ts';
 import { appendEvent, selectEvents } from '../store/queries.ts';
 import type { Context } from './context.ts';
-import { requireWritableItem, systemClock } from './items.ts';
+import { type Item, landMove, requireWritableItem, systemClock, workflowOf } from './items.ts';
 import { liveBoardOf } from './next.ts';
 
 export type { Merged };
@@ -60,5 +62,57 @@ export function markMerged(ctx: Context, input: MarkMergedInput, now = systemClo
     const merged = mergedOf(ctx, id);
     if (!merged) throw new Error(`the merge of ${id} was not kept`);
     return merged;
+  });
+}
+
+export type ReopenInput = { id: string; actor: Actor; channel: Channel; reason: string };
+
+// Takes a Done item whose branch is not merged yet back to the step that pushes its branch: its PR
+// stopped merging as it is (another branch merged first and now conflicts) and its branch, frozen
+// while it is Done, must change. Whoever asks (the agent that hits the conflict, or the person)
+// says why; the change goes through the step's review again, so the person approves it again.
+// Once the branch is merged the item stays Done: a further change is new work.
+export function reopenItem(
+  ctx: Context,
+  input: ReopenInput,
+  now = systemClock,
+): { item: Item; text: string } {
+  const { id } = input;
+  return transaction(ctx.db, () => {
+    const item = requireWritableItem(ctx.db, id);
+    const position = positionOf(item.state);
+    const refuse = (kind: 'not_done' | 'merged_already' | 'no_branch', text: string): never => {
+      throw new OteaError('invalid_transition', text, { kind, item: id });
+    };
+    if (!isClosed(position) || position.closed !== DONE)
+      refuse(
+        'not_done',
+        `${id} is not Done: only a Done item whose branch is not merged yet reopens`,
+      );
+    if (mergedOf(ctx, id))
+      refuse(
+        'merged_already',
+        `${id} is merged already: its branch is in, so a further change is new work, not ${id}`,
+      );
+    const board = liveBoardOf(ctx, item.collection);
+    const step = board ? reopenStep(board.def) : undefined;
+    if (!board || step === undefined)
+      return refuse('no_branch', `${id} protects no branch: there is nothing to reopen it for`);
+    if (!input.reason.trim())
+      throw new OteaError(
+        'reason_required',
+        `Reopening ${id} needs a reason: why its branch must change`,
+        { kind: 'way_back_reason', item: id },
+      );
+    const to = stateOf({ step, phase: 'doing' });
+    const at = now();
+    const moved = landMove(
+      ctx.db,
+      workflowOf(ctx, item),
+      item,
+      { to, actor: input.actor, at, lease: activeLease(item.lease, at), board: true },
+      { reason: input.reason.trim(), reopened: true, channel: input.channel },
+    );
+    return { item: moved, text: reopenedText(board.def, id, step) };
   });
 }

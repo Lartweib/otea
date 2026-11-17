@@ -31,6 +31,7 @@ export const AGENT_COMMANDS = [
   'next',
   'reply',
   'merged',
+  'reopen',
   'tick',
   'topic add',
   'topic answer',
