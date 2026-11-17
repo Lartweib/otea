@@ -1,5 +1,6 @@
 import { execFileSync } from 'node:child_process';
-import { existsSync, readFileSync, statSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, realpathSync, rmSync, statSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { moveItem } from '../app/items.ts';
@@ -75,6 +76,38 @@ describe('hook', () => {
       expect(install.err).toContain('check --gate push --branch');
       expect((await otea('hook', 'remove', '--git')).code).toBe(7);
       expect(read('.git/hooks/pre-push')).toBe('#!/bin/sh\necho mine\n');
+    });
+
+    it('still adds the Claude hooks when the repo has a pre-push hook of its own', async () => {
+      repo.write('.git/hooks/pre-push', '#!/bin/sh\necho mine\n');
+
+      const install = await otea('hook', 'install', '--git', '--claude');
+
+      expect(install.code).toBe(5);
+      expect(install.err).toContain(`Wrote ${join(repo.dir, '.claude', 'settings.local.json')}`);
+      expect(install.err).toContain('is another pre-push hook; Otea leaves it as it is');
+      expect(settings().hooks.PreToolUse).toBeDefined();
+    });
+
+    it('says a pre-push hook needs a git repository, and still adds the Claude hooks', async () => {
+      const outside = realpathSync.native(mkdtempSync(join(tmpdir(), 'otea-nogit-')));
+      try {
+        const install = await cliAt(outside, { OTEA_AGENT: 'claude' })(
+          'hook',
+          'install',
+          '--git',
+          '--claude',
+        );
+
+        expect(install.code).toBe(3);
+        expect(install.err).toContain(
+          `${outside} is not in a git repository: a pre-push hook goes in one`,
+        );
+        expect(install.err).not.toContain('Command failed');
+        expect(existsSync(join(outside, '.claude', 'settings.local.json'))).toBe(true);
+      } finally {
+        rmSync(outside, { recursive: true, force: true });
+      }
     });
 
     // A real push through the hook, with a stand-in for Otea that logs the branch it is asked

@@ -58,6 +58,25 @@ describe('attach', () => {
     expect(out).toBe('#1  before  image  before.png  10 B  Blank page after save\n');
   });
 
+  it('says when a diagram is outside the Mermaid flowchart Otea draws, and keeps it', async () => {
+    repo.write('seq.mmd', 'sequenceDiagram\n  A->>B: hola\n');
+    repo.write('flow.mmd', 'flowchart LR\n  A[Inicio] --> B[Fin]\n');
+
+    const seq = await otea('attach', 'TASKS-1', 'seq.mmd');
+    const flow = await otea('attach', 'TASKS-1', 'flow.mmd');
+
+    expect(seq.code).toBe(0);
+    expect(seq.out).toContain(
+      'Otea cannot draw seq.mmd (line 1: expected "flowchart LR" (or TD, RL, BT) first): the person sees its source',
+    );
+    expect(seq.out).toContain('flowchart or graph LR|TD|RL|BT');
+    expect(flow.out).not.toContain('cannot draw');
+    repo.write('hex.mmd', 'flowchart LR\n  A{{Hex}} --> B\n');
+    expect((await json('attach', 'TASKS-1', 'hex.mmd')).cannotDraw).toMatch(
+      /^Otea cannot draw hex\.mmd \(line 2: /,
+    );
+  });
+
   it('prints the entry with --json', async () => {
     expect(await json('attach', 'TASKS-1', 'test.log')).toMatchObject({
       id: 1,

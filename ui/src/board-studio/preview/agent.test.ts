@@ -114,7 +114,7 @@ describe('agentView: the new capabilities', () => {
     const create = view.answers.find(({ label }) => label === 'onCreate');
     expect(create?.runs.map(({ text }) => text)).toEqual([
       'Created BUG-13 in Triar: it already had everything Completar asks for.',
-      'Created BUG-14 in Completar: missing Pasos. Fill them, then otea handoff BUG-14.',
+      'Created BUG-14 in Completar: missing Pasos. Fill it, then otea handoff BUG-14.',
     ]);
   });
 

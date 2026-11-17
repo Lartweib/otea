@@ -22,7 +22,7 @@ describe('commands', () => {
     const { code, err } = await otea('list');
 
     expect(code).toBe(3);
-    expect(err).toContain('run init first');
+    expect(err).toContain('run otea init first');
   });
 
   describe('with a project in a folder above the repo', () => {

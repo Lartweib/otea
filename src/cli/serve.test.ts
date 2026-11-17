@@ -170,6 +170,6 @@ describe('serve without a project', () => {
 
     repo.remove();
     expect(code).toBe(3);
-    expect(err).toContain('run init first');
+    expect(err).toContain('run otea init first');
   });
 });

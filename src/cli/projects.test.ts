@@ -52,6 +52,14 @@ describe('projects', () => {
     expect(JSON.parse(spawned.out).map((item: { id: string }) => item.id)).toEqual(['TASKS-1']);
   }, 30_000);
 
+  it('init --join says which project it linked the repo to', async () => {
+    const { id, name, path } = await json(a, 'init');
+
+    const { out } = await cliAt(b.dir)('init', '--join', id);
+
+    expect(out).toBe(`Linked ${b.dir} to the project ${name} (${id})\nProject data in ${path}\n`);
+  });
+
   it('serves the shared project to an MCP client in the other repo', async () => {
     const { id } = await json(a, 'init');
     await json(b, 'init', '--join', id);

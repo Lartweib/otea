@@ -458,6 +458,18 @@ export function prefixOf(ctx: Context, item: string, name: string): string {
       .toUpperCase()
       .replace(/[^A-Z0-9]/g, '');
   const base = pleasantPrefix(letters(item) || letters(name) || 'ITM');
+  const free = (prefix: string) => !collectionTaken(ctx.db, '\u0000', prefix);
+  if (free(base)) return base;
+  // Taken: the initials of the name's later words tell it apart (Cambios web is CAMW), words of
+  // one or two letters (de, la) aside; then a number.
+  const initials = name
+    .split(/\s+/)
+    .slice(1)
+    .map(letters)
+    .filter((word) => word.length > 2)
+    .map((word) => word[0])
+    .join('');
+  if (initials !== '' && free(`${base}${initials}`)) return `${base}${initials}`;
   for (let n = 1; ; n++) {
     const prefix = n === 1 ? base : `${base}${n}`;
     if (!collectionTaken(ctx.db, '\u0000', prefix)) return prefix;

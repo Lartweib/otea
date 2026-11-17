@@ -125,7 +125,8 @@ import { agentPrompt, isPromptKind, PROMPT_KINDS, type PromptKind } from '../cor
 import { DROPPED_NAME } from '../core/board/next.ts';
 import { fieldsByName, stateName } from '../core/board/reading.ts';
 import type { Lang } from '../core/board/template-words.ts';
-import { isSetKey, LISTED_KEYS, TEMPLATE_SETS, TEMPLATES } from '../core/board/templates.ts';
+import { isSetKey, LANGS, LISTED_KEYS, TEMPLATE_SETS, TEMPLATES } from '../core/board/templates.ts';
+import { parseDiagram } from '../core/diagram.ts';
 import { OteaError } from '../core/errors.ts';
 import { EVIDENCE_ROLES, type EvidenceRole, MAX_EVIDENCE_MB } from '../core/evidence.ts';
 import type { FieldValues } from '../core/fields.ts';
@@ -146,7 +147,14 @@ import { ensureUiToken, readUiToken } from '../server/token.ts';
 import { type EventFilter, findProfile, type ProfileView, profileView } from '../store/queries.ts';
 import { mergeTarget, prBranches, pushTargets, readHookEvent, UnreadPr } from './claude-hook.ts';
 import { lastExchange, readStopEvent } from './claude-transcript.ts';
-import { type Command, CommandFailure, type Input, type Output, UsageError } from './command.ts';
+import {
+  type Command,
+  CommandFailure,
+  failureCode,
+  type Input,
+  type Output,
+  UsageError,
+} from './command.ts';
 import {
   columns,
   formatEvent,
@@ -391,6 +399,9 @@ const init: Command = {
     }
     const data = { root, path, ...shown, storage, boards: made };
     const lines = [
+      ...(target === undefined
+        ? []
+        : [`Linked ${root} to the project ${shown.name} (${shown.id})`]),
       `Project data in ${path}`,
       ...(made.length > 0 ? [boardsText(made)] : []),
       ...(kept
@@ -648,7 +659,7 @@ const DEFAULT_ICON = 'default';
 
 const collectionIconCommand: Command = {
   name: 'collection icon',
-  summary: `Give a collection its own icon, or "${DEFAULT_ICON}" to show its preset's again`,
+  summary: `Give a collection its own icon, or "${DEFAULT_ICON}" to go back to the icon it came with`,
   args: ['name', 'icon'],
   options: {},
   execute: ({ cwd, args: [name = '', icon = ''] }) => {
@@ -820,15 +831,20 @@ function guideText(project: Project, guide: Guide): string {
   return withAgentGuide(project, guide.text);
 }
 
+// --lang (checked against LANGS as the option's choices), the project's language without it.
+const langOption = (given: string | undefined): Lang =>
+  given === undefined ? PROJECT_LANG : (given as Lang);
+
 const boardName = (record: BoardRecord) => (record.live ?? record.draft)?.definition.name ?? '';
 
 const boardAdd: Command = {
   name: 'board add',
-  summary: `For the person, with no agent name: make a board and publish it, from a template (${TEMPLATE_KEYS}) or blank, in the project's language; --item names what each item is; a set such as ideas or repos makes all of its boards, the name and --item naming the first`,
+  summary: `For the person, with no agent name: make a board and publish it, from a template (${TEMPLATE_KEYS}) or blank, in the project's language (es) or the one --lang gives; --item names what each item is; a set such as ideas or repos makes all of its boards, the name and --item naming the first`,
   details: TEMPLATE_LIST,
   args: ['name'],
-  options: { template: { placeholder: 'key' }, item: {} },
+  options: { template: { placeholder: 'key' }, item: {}, lang: { choices: LANGS } },
   execute: ({ cwd, args: [name = ''], option, agent }) => {
+    const lang = langOption(option('lang'));
     // Publishing is the person's: an agent that names itself proposes the board instead.
     if (agent !== undefined) {
       throw new OteaError(
@@ -842,7 +858,7 @@ const boardAdd: Command = {
       const boards = withProject(cwd, (project) =>
         addBoardSet(project, {
           set: template,
-          lang: PROJECT_LANG,
+          lang,
           by: { kind: 'human', name: 'human' },
           boards: [{ name, ...(item === undefined ? {} : { item }) }],
         }),
@@ -853,7 +869,7 @@ const boardAdd: Command = {
     const added = withProject(cwd, (project) =>
       addBoard(project, {
         name,
-        lang: PROJECT_LANG,
+        lang,
         by: { kind: 'human', name: 'human' },
         ...(template === undefined ? {} : { template }),
         ...(item === undefined ? {} : { item }),
@@ -1753,6 +1769,20 @@ const update: Command = {
   },
 };
 
+// A diagram Otea cannot draw (outside its Mermaid flowchart subset, core/diagram.ts) is kept, and
+// the person sees its source: the agent is told, with the subset, so it can attach one that draws.
+function diagramNote(path: string, { filename }: { filename: string }): string {
+  let source: string;
+  try {
+    source = readFileSync(path, 'utf8');
+  } catch {
+    return '';
+  }
+  const parsed = parseDiagram(source);
+  if (parsed.ok) return '';
+  return `\nOtea cannot draw ${filename} (line ${parsed.line}: ${parsed.message}): the person sees its source. It draws a Mermaid flowchart: flowchart or graph LR|TD|RL|BT first, then nodes id[label], id(label) or id{label} joined by -->, ---, -.-> or ==> (with |label|); attach a version that keeps to it.`;
+}
+
 const attach: Command = {
   name: 'attach',
   summary: `Attach a file to an open item as evidence (at most ${MAX_EVIDENCE_MB} MB), into an evidence module of its type that accepts it; --module picks one when several do, --role before and after fill a compare; --point ticks that checklist point with it`,
@@ -1793,9 +1823,15 @@ const attach: Command = {
         point === undefined
           ? undefined
           : tickPoint(project, { id, point, source: { evidence: evidence.id }, actor, channel });
-      const text = `${formatEvidence(shown)}${same}${ticked ? `\n${ticked.text}` : ''}`;
+      const drawn = evidence.kind === 'diagram' ? diagramNote(evidenceInput.path, evidence) : '';
+      const text = `${formatEvidence(shown)}${same}${drawn}${ticked ? `\n${ticked.text}` : ''}`;
       return withNotes(project, evidence.itemId, {
-        data: ticked ? { ...data, ticked } : data,
+        // --json and MCP read the diagram's refusal to be drawn too.
+        data: {
+          ...data,
+          ...(ticked ? { ticked } : {}),
+          ...(drawn ? { cannotDraw: drawn.trim() } : {}),
+        },
         text,
       });
     });
@@ -2328,14 +2364,27 @@ const hookInstall: Command = {
     'Make the gates hard in the repo here: --git writes a pre-push hook that runs otea check --gate push, --claude adds Claude Code PreToolUse hooks that run otea check before git push and gh pr merge, and a Stop hook that keeps the answer to a side topic as the agent wrote it in the chat (otea topic session; it does nothing while the project keeps no topics); never overwrites a hook of someone else',
   args: [],
   options: HOOK_OPTIONS,
-  execute: (input) =>
-    hookOutput(
-      hookTargets(input).map((target) =>
-        target === 'git'
-          ? installGitHook(input.cwd, withHome(OTEA, input.home))
-          : installClaudeHook(input.cwd, withHome(OTEA, input.home)),
-      ),
-    ),
+  // Each hook is installed on its own: one that cannot be (no repo, a team's own pre-push hook)
+  // never keeps the other from being written, and the refusal says what was written.
+  execute: (input) => {
+    const changes: HookChange[] = [];
+    const refused: Error[] = [];
+    for (const target of hookTargets(input)) {
+      try {
+        const otea = withHome(OTEA, input.home);
+        changes.push(
+          target === 'git' ? installGitHook(input.cwd, otea) : installClaudeHook(input.cwd, otea),
+        );
+      } catch (error) {
+        if (!(error instanceof CommandFailure || error instanceof OteaError)) throw error;
+        refused.push(error);
+      }
+    }
+    const [first] = refused;
+    if (!first) return hookOutput(changes);
+    const said = [...changes.map(hookText), ...refused.map(({ message }) => message)];
+    throw new CommandFailure(failureCode(first), said.join('\n'));
+  },
 };
 
 const hookRemove: Command = {
