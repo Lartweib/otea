@@ -115,6 +115,25 @@ describe('the diagram module', () => {
     expect(back.height).toBeGreaterThan(ahead.height);
   });
 
+  it('runs a loop back round the outside, never through a node beside one of its ends', () => {
+    const drawing = layoutDiagram(
+      parsed(
+        `flowchart LR
+  A[Pedido] --> B{¿Todo?}
+  B -- sí --> C[Hacerlo]
+  B -- no --> D[Completar la información pendiente]
+  C --> E[Revisión]
+  E -->|aprobado| F[Listo]
+  E -->|devuelto| C`,
+      ),
+    );
+    const at = (id: string) => drawing.nodes.find((node) => node.id === id);
+    const c = at('C');
+    const d = at('D');
+    // The loop leaves C's far side: nothing of its rank stands beyond it.
+    expect(c && d && c.y > d.y).toBe(true);
+  });
+
   it('says what a version adds to the one before, in nodes, edges and lines', () => {
     const v1 = 'flowchart LR\n  web --> api\n  api --> keys';
     const v2 = 'flowchart LR\n  web --> api\n  mobile --> api\n  api --> keys';

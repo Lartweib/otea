@@ -1,8 +1,20 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { setLanguage } from '../../i18n/i18n.ts';
-import { pickAnchor, pickableOn, pickOf, pickOfAnchor, pickWords, spotOf } from './reader-pick.ts';
+import {
+  pickAnchor,
+  pickableOn,
+  pickHint,
+  pickOf,
+  pickOfAnchor,
+  pickWords,
+  revealUpright,
+  spotOf,
+} from './reader-pick.ts';
 
 afterEach(() => setLanguage('en'));
+
+const e = (kind: string, filename: string, contentType = 'application/octet-stream') =>
+  ({ kind, filename, contentType }) as Parameters<typeof pickableOn>[0];
 
 describe('pickOf: what a click in the reader picked', () => {
   it('reads a numbered log line', () => {
@@ -49,9 +61,6 @@ describe('pickWords and pickAnchor', () => {
 });
 
 describe('pickableOn: what a note can be on inside a file', () => {
-  const e = (kind: string, filename: string, contentType = 'application/octet-stream') =>
-    ({ kind, filename, contentType }) as Parameters<typeof pickableOn>[0];
-
   it('a line of a diff, a log or a text file', () => {
     expect(pickableOn(e('diff', 'cambios.diff'))).toBe('line');
     expect(pickableOn(e('log', 'ejecucion.log'))).toBe('line');
@@ -71,6 +80,26 @@ describe('pickableOn: what a note can be on inside a file', () => {
     expect(pickableOn(e('file', 'informe.md', 'text/markdown'))).toBeNull();
     expect(pickableOn(e('file', 'datos.csv', 'text/csv'))).toBeNull();
     expect(pickableOn(e('file', 'proyecto.bin'))).toBeNull();
+  });
+});
+
+describe('pickHint: what the note box says a click does on the file shown', () => {
+  it('names only what the file takes: a line, a node, a point, or the whole file', () => {
+    setLanguage('es');
+    expect(pickHint(e('log', 'a.log'), false)).toBe('Haz clic en una línea para anclar la nota.');
+    expect(pickHint(e('diagram', 'flujo.mmd'), true)).toBe(
+      'Toca un nodo del diagrama para anclar la nota.',
+    );
+    expect(pickHint(e('image', 'a.png', 'image/png'), true)).toBe(
+      'Toca la imagen para marcar un punto.',
+    );
+    expect(pickHint(e('file', 'guia.md', 'text/markdown'), true)).toBe(
+      'Este tipo de archivo se comenta entero, sin marcar una parte.',
+    );
+    setLanguage('en');
+    expect(pickHint(e('file', 'informe.pdf', 'application/pdf'), false)).toBe(
+      'This kind of file takes a note as a whole, with no part marked.',
+    );
   });
 });
 
@@ -109,5 +138,21 @@ describe('spotOf', () => {
     expect(pickWords({ x: 3, y: 4, w: 5, h: 6 })).toBe('a zone of the image');
     expect(pickOfAnchor({ x: 3, y: 4 })).toEqual({ x: 3, y: 4 });
     expect(pickOfAnchor({})).toBeNull();
+  });
+});
+
+describe('revealUpright', () => {
+  it('scrolls the picked line into view up or down, never sideways', () => {
+    const well = { scrollLeft: 0, parentElement: null };
+    const row = { scrollLeft: 0, parentElement: well };
+    const line = {
+      parentElement: row,
+      scrollIntoView: () => {
+        well.scrollLeft = 47;
+        row.scrollLeft = 3;
+      },
+    };
+    revealUpright(line as unknown as HTMLElement);
+    expect([well.scrollLeft, row.scrollLeft]).toEqual([0, 0]);
   });
 });

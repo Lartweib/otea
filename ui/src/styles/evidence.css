@@ -1045,6 +1045,23 @@
 .dialog.rd-dialog {
   --dlg-w: 1400px;
 }
+/* The reader takes the screen's height under the top bar: the list and the file scroll inside it,
+   and the note box and the moves stay at its foot, never below the fold. */
+@media (min-width: 721px) {
+  .dialog.rd-dialog {
+    --dlg-top: 76px;
+  }
+}
+.rd-dialog .pin {
+  display: flex;
+  flex-direction: column;
+  height: calc(100dvh - var(--dlg-top) - var(--dlg-foot));
+  overflow: hidden;
+}
+.rd-dialog .pin > :last-child {
+  flex: 1;
+  min-height: 0;
+}
 .rd-head {
   display: flex;
   align-items: center;
@@ -1060,13 +1077,14 @@
   display: grid;
   grid-template-columns: minmax(200px, 260px) minmax(0, 1fr);
   gap: 20px;
+  height: 100%;
   min-height: 0;
 }
 .rd-list {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  max-height: calc(100dvh - var(--dlg-top) - var(--dlg-foot) - 110px);
+  min-height: 0;
   overflow: auto;
 }
 .rd-file {
@@ -1100,6 +1118,11 @@
 .rd-file .mk {
   grid-column: 2;
   grid-row: 1;
+  /* The word whole: not the kit's 22 px agent mark. */
+  width: auto;
+  height: auto;
+  background: none;
+  white-space: nowrap;
   font: 500 11.5px var(--sans);
   color: var(--ink-3);
 }
@@ -1121,18 +1144,24 @@
 }
 .rd-main {
   min-width: 0;
+  min-height: 0;
 }
 .rd-main .ev-reader {
   display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  grid-auto-rows: auto;
   gap: 12px;
+  height: 100%;
 }
 .rd-main .ev-reader-view {
-  max-height: calc(100dvh - var(--dlg-top) - var(--dlg-foot) - 190px);
+  min-height: 0;
   overflow: auto;
+  overscroll-behavior: contain;
 }
 @media (max-width: 760px) {
   .rd-pane {
     grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
   }
   .rd-list {
     max-height: 160px;

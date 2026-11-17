@@ -144,7 +144,11 @@ function ranksOf(diagram: Diagram): Map<string, number> {
 
 // Within each rank, nodes sit near the middle of what links them to the rank before (then the rank
 // after), which keeps edges from crossing where the file's order alone would cross them.
-function orderColumns(columns: DiagramNode[][], edges: DiagramEdge[]): DiagramNode[][] {
+function orderColumns(
+  columns: DiagramNode[][],
+  edges: DiagramEdge[],
+  ranks: ReadonlyMap<string, number>,
+): DiagramNode[][] {
   const position = new Map<string, number>();
   const note = () =>
     columns.forEach((column) => {
@@ -173,11 +177,19 @@ function orderColumns(columns: DiagramNode[][], edges: DiagramEdge[]): DiagramNo
     for (let index = columns.length - 2; index >= 0; index -= 1) sweep(index, outOf);
   }
   // A node nothing links stands first in its rank, clear of the loops that run round the far side.
+  // The ends of a loop back stand last, on the far side the loop runs round, so it leaves and
+  // reaches them without crossing a node of their rank.
   const linked = new Set(edges.flatMap(({ from, to }) => [from, to]));
+  const looping = new Set(
+    edges
+      .filter(({ from, to }) => (ranks.get(to) ?? 0) < (ranks.get(from) ?? 0))
+      .flatMap(({ from, to }) => [from, to]),
+  );
   columns.forEach((column, index) => {
     columns[index] = [
       ...column.filter(({ id }) => !linked.has(id)),
-      ...column.filter(({ id }) => linked.has(id)),
+      ...column.filter(({ id }) => linked.has(id) && !looping.has(id)),
+      ...column.filter(({ id }) => looping.has(id)),
     ];
   });
   return columns;
@@ -197,7 +209,7 @@ export function layoutDiagram(diagram: Diagram): Drawing {
   const count = Math.max(0, ...ranks.values()) + 1;
   const columns: DiagramNode[][] = Array.from({ length: count }, () => []);
   for (const node of diagram.nodes) columns[ranks.get(node.id) ?? 0]?.push(node);
-  orderColumns(columns, diagram.edges);
+  orderColumns(columns, diagram.edges, ranks);
   const sized = new Map(diagram.nodes.map((node) => [node.id, sizeOf(node)]));
   // Along the flow, each rank is as deep as its deepest node; across it, the ranks are centred.
   const depth = columns.map((column) =>

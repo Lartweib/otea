@@ -1351,6 +1351,10 @@
 .p-file .mk,
 .p-shot .mk {
   flex: none;
+  width: auto;
+  height: auto;
+  white-space: nowrap;
+  padding: 1px 6px;
   font: 500 11.5px var(--sans);
   color: var(--ink-3);
 }

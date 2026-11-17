@@ -69,10 +69,16 @@
   text-decoration-thickness: 2px;
 }
 
-.md code {
+/* Inline in its sentence, in a dialog too (a dialog's own code reads as a block: pops.css). */
+.md code,
+.dialog .md code {
+  display: inline;
+  margin: 0;
   padding: 1px 5px;
   border-radius: 4px;
   background: var(--well);
+  font: inherit;
+  font-family: var(--mono);
   font-size: 12.5px;
 }
 
@@ -84,7 +90,8 @@
   scrollbar-width: thin;
 }
 
-.md pre code {
+.md pre code,
+.dialog .md pre code {
   padding: 0;
   background: none;
   font-size: 12.5px;
