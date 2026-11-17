@@ -29,6 +29,7 @@ import { toastOf } from './frame.ts';
 import { type MoveChoice, type MovePlan, moveSaysOf } from './moves.ts';
 import { AnchorPicker, countWords, showPiece, Thread } from './NotesThread.tsx';
 import type { ItemNote } from './notes.ts';
+import { useOpened } from './opened.ts';
 import {
   compareFiles,
   fileMarks,
@@ -486,8 +487,7 @@ export function PhoneItem(p: PhoneItemProps) {
   const before = rounds[1];
 
   // The files the person has opened in the reader, for Aprobar to say what is left unseen.
-  const [seen, setSeen] = useState<ReadonlySet<number>>(() => new Set());
-  const markSeen = (id: number) => setSeen((had) => (had.has(id) ? had : new Set([...had, id])));
+  const [seen, markSeen] = useOpened(item.id, app.session.canWrite);
   const unseen = newest ? unopenedOf(newest.evidence, seen) : { unopened: 0, total: 0 };
 
   const [details, setDetails] = useState(false);

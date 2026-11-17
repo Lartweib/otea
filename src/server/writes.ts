@@ -385,6 +385,17 @@ export async function noteRequest(c: Context): Promise<NoteRequest> {
   };
 }
 
+const OpenedBody = z.object({ evidence: z.number().int().positive() });
+
+// A file the person opened in the reader: its evidence id.
+export async function openedRequest(c: Context): Promise<{ evidence: number }> {
+  const raw: unknown = await c.req.json().catch(() => undefined);
+  const parsed = OpenedBody.safeParse(raw);
+  if (!parsed.success)
+    throw new RejectedRequest(400, 'invalid_body', 'Expected {"evidence": number}');
+  return parsed.data;
+}
+
 const OrderBody = z.object({ collection: z.string().min(1), ids: z.array(z.string().min(1)) });
 
 // "Fijar el orden" from a board's matrix: the items, in order.

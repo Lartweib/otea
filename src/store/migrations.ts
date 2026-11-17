@@ -380,6 +380,17 @@ export const MIGRATIONS = [
   `
   ALTER TABLE agents ADD COLUMN listening_harness INTEGER;
   `,
+  // The files the person opened in the reader (app/opened.ts), on the desk or the phone: what
+  // Aprobar counts as left unopened, the same on every device and after a reload.
+  `
+  CREATE TABLE evidence_opened (
+    evidence_id INTEGER PRIMARY KEY REFERENCES evidence (id) ON DELETE CASCADE,
+    item_id TEXT NOT NULL REFERENCES items (id) ON DELETE CASCADE,
+    opened_at TEXT NOT NULL
+  );
+
+  CREATE INDEX evidence_opened_item ON evidence_opened (item_id);
+  `,
 ];
 
 function userVersion(db: DatabaseSync): number {
