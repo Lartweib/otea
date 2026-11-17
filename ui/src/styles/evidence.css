@@ -548,6 +548,15 @@
   min-height: 80px;
   border-radius: 7px;
 }
+/* A PDF this browser could not draw: what happened, and the file to open on its own under it. */
+.ev-pdf-failed {
+  gap: 10px;
+  padding: 16px;
+  text-align: center;
+}
+.ev-pdf-failed .btn {
+  min-height: 44px;
+}
 
 @media (prefers-reduced-motion: reduce) {
   .ev-set {

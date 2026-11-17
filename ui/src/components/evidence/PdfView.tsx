@@ -193,14 +193,28 @@ export function PdfFileView({ evidence }: { evidence: Evidence }) {
     <div className="ev-pdf">
       {state.status === 'ready' ? (
         <PdfPages pdf={state.pdf} label={t('evidence.pdf.pages', { file: evidence.filename })} />
+      ) : state.status === 'failed' ? (
+        <PdfUnreadable url={url} filename={evidence.filename} />
       ) : (
-        <div className="ev-code-state well" aria-busy={state.status === 'loading'}>
-          <span className="t-cap">
-            {state.status === 'loading' ? t('evidence.loading') : t('evidence.unreadable')}
-          </span>
+        <div className="ev-code-state well" aria-busy="true">
+          <span className="t-cap">{t('evidence.loading')}</span>
         </div>
       )}
       <FileMeta evidence={evidence} />
+    </div>
+  );
+}
+
+// A PDF this browser could not draw: said, with the file a tap away in its own tab, where the
+// phone's or the browser's own viewer opens it (DR2-3: the phone said «ábrelo por separado» with
+// no way to).
+export function PdfUnreadable({ url, filename }: { url: string; filename: string }) {
+  return (
+    <div className="ev-code-state well ev-pdf-failed" role="status">
+      <span className="t-cap">{t('evidence.unreadable')}</span>
+      <a className="btn quiet sm" href={url} target="_blank" rel="noreferrer">
+        {t('evidence.pdf.open', { file: filename })}
+      </a>
     </div>
   );
 }
