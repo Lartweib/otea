@@ -58,6 +58,7 @@ import {
 import { undoMove } from '../app/undo.ts';
 import { agentPrompt, isPromptKind, PROMPT_KINDS } from '../core/agent-prompts.ts';
 import { PERIOD_HINT, parsePeriod } from '../core/board/performance.ts';
+import { OteaError } from '../core/errors.ts';
 import { MAX_EVIDENCE_MB } from '../core/evidence.ts';
 import { TURNS, type Turn } from '../core/workflow.ts';
 import { type EventFilter, itemOfClientKey } from '../store/queries.ts';
@@ -462,7 +463,17 @@ function api(
         return c.json(item, 201);
       })
       .get('/items/:id', (c) => {
-        const item = showItem(project, c.req.param('id'), HUMAN_IN_UI);
+        const id = c.req.param('id');
+        let item: ReturnType<typeof showItem>;
+        try {
+          item = showItem(project, id, HUMAN_IN_UI);
+        } catch (error) {
+          // The page asks for null rather than a 404 when there is no such item (it says so
+          // itself), so a mistyped link leaves no error in the browser's console.
+          const missing = error instanceof OteaError && error.details?.kind === 'item_missing';
+          if (missing && c.req.query('missing') === 'null') return c.json(null);
+          throw error;
+        }
         if (!item.archived) return c.json(item);
         // An archived board's collection is in no list: the page reads the item's words from here.
         const collection = listCollectionViews(project, { archived: true }).find(

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { reassignItem, restartItem, undoRelease } from './api.ts';
+import { fetchItem, reassignItem, restartItem, undoRelease } from './api.ts';
 
 // Retomar, Reasignar and their Deshacer, as the UI asks the server.
 
@@ -36,5 +36,20 @@ describe('a stuck item, from the UI', () => {
     stubFetch();
     await undoRelease('ERR-7');
     expect(calls).toEqual([{ path: '/api/items/ERR-7/undo', body: { release: true } }]);
+  });
+});
+
+describe('an item opened by its link', () => {
+  it('asks for null rather than a 404, and reads null as no such item', async () => {
+    const asked: string[] = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (path: string) => {
+        asked.push(path);
+        return new Response('null', { status: 200 });
+      }),
+    );
+    expect(await fetchItem('NOPE-99', new AbortController().signal)).toBeNull();
+    expect(asked).toEqual(['/api/items/NOPE-99?missing=null']);
   });
 });
