@@ -40,16 +40,20 @@ describe('migrate', () => {
         'offers',
         'phone',
         'notify_targets',
+        'topics_switch',
+        'topics',
+        'topic_turns',
+        'topic_links',
       ]),
     );
-    expect(userVersion(db)).toBe(24);
+    expect(userVersion(db)).toBe(25);
   });
 
   it('is idempotent', () => {
     migrate(db);
     migrate(db);
 
-    expect(userVersion(db)).toBe(24);
+    expect(userVersion(db)).toBe(25);
   });
 
   describe('from version 1', () => {

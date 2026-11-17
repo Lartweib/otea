@@ -16,3 +16,12 @@ export const AGENT_GUIDE = [
   '11. To propose a new board, run otea board draft --new "<name>" --why "<what it is for>" --template <key> (MCP: board_draft) after asking the person one question at a time how they work; the person publishes it.',
   '12. Keep going until the person stops you: after each handoff run otea next again; when it has nothing, run otea wait --turn agent --unclaimed (in the background if you can; MCP: wait), then otea next.',
 ].join('\n');
+
+// Added to the guide while the project keeps side topics (app/topics.ts); never otherwise.
+export const TOPICS_RULE =
+  '13. When the person asks you something off the work at hand, record it: otea topic add "<their question>" (MCP: topic_add), then answer it there too with otea topic answer <id> --summary "<a line or two>" --full "<your whole answer>". A task you make from a topic takes --from <id>.';
+
+// The guide an agent of this project reads: with the topics rule only while topics are on.
+export function agentGuideFor(topics: boolean): string {
+  return topics ? `${AGENT_GUIDE}\n${TOPICS_RULE}` : AGENT_GUIDE;
+}
