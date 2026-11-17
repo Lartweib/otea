@@ -7,7 +7,7 @@ import type { Context } from './context.ts';
 import { createItem, updateItem } from './items.ts';
 import { claimItem } from './leases.ts';
 import { nextFor } from './next.ts';
-import { estimatesOf, pinItems, priorityOf, setOrder } from './priority.ts';
+import { estimatesOf, estimatesOfItems, pinItems, priorityOf, setOrder } from './priority.ts';
 import { memoryContext } from './testing.ts';
 
 const you = { kind: 'human' as const, name: 'fede' };
@@ -135,5 +135,32 @@ describe('the agent is asked to estimate', () => {
     expect(text).toContain(`estimate them (otea update ${a.id} --field "Esfuerzo=…")`);
     updateItem(ctx, { id: a.id, fields: { feffort: 'cs' }, actor: you }, now);
     expect(nextFor(ctx, 'scout', {}, now).text).not.toContain('Estimate');
+  });
+});
+
+describe('estimates of a whole list', () => {
+  it('reads every item of a 500-item board in a fixed number of queries, within budget', () => {
+    const ctx = memoryContext();
+    const def = board(ctx);
+    const items = Array.from({ length: 500 }, (_, n) => {
+      const item = creature(ctx, `C${n}`);
+      if (n % 2 === 1) return item;
+      return updateItem(ctx, { id: item.id, fields: { feffort: 'cl' }, actor: scout }, now);
+    });
+    const prepare = ctx.db.prepare.bind(ctx.db);
+    let queries = 0;
+    ctx.db.prepare = ((sql: string) => {
+      queries += 1;
+      return prepare(sql);
+    }) as typeof ctx.db.prepare;
+    const started = performance.now();
+
+    const estimates = estimatesOfItems(ctx, items, () => def);
+
+    expect(performance.now() - started).toBeLessThan(1000);
+    expect(queries).toBeLessThanOrEqual(2);
+    expect(estimates.get(items[0]!.id)).toEqual({ feffort: 'scout' });
+    expect(estimates.get(items[1]!.id)).toBeUndefined();
+    expect([...estimates.keys()]).toHaveLength(250);
   });
 });
