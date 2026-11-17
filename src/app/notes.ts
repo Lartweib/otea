@@ -46,7 +46,7 @@ function refuse(
 export type LeaveNoteInput = {
   id: string;
   text: string;
-  // A piece of evidence of this round of the item, by its id, and for a recording the moment seen.
+  // A piece of evidence of the item, of any step or round, by its id, and for a recording the moment seen.
   anchor?: {
     evidence: number;
     seconds?: number;
@@ -106,15 +106,14 @@ function anchorFor(
   ctx: Context,
   item: ItemRecord,
   board: LiveBoard,
-  roundStartedAt: string | undefined,
   given: NonNullable<LeaveNoteInput['anchor']>,
 ): NoteAnchor {
+  // Any file of the item, of this round or an earlier step's: the reader lists them all.
   const evidence = findEvidence(ctx.db, given.evidence);
   const { seconds, line } = given;
   const fits =
     evidence !== undefined &&
     evidence.itemId === item.id &&
-    (roundStartedAt === undefined || evidence.createdAt >= roundStartedAt) &&
     (seconds === undefined || (Number.isFinite(seconds) && seconds >= 0)) &&
     (line === undefined || (Number.isInteger(line) && line > 0));
   if (!fits)
@@ -122,7 +121,7 @@ function anchorFor(
       'invalid_fields',
       item.id,
       'anchor',
-      `No note left on ${item.id}: evidence #${given.evidence} is not attached to it in this round`,
+      `No note left on ${item.id}: evidence #${given.evidence} is not attached to it`,
     );
   const spot = spotOf(given);
   if (spot === null)
@@ -189,9 +188,7 @@ export function leaveNote(ctx: Context, input: LeaveNoteInput, now = systemClock
     const { board, step, review } = workedOn(ctx, item);
     const on = itemOnBoard(ctx, item, board.def);
     const anchor =
-      input.anchor === undefined
-        ? undefined
-        : anchorFor(ctx, item, board, on.facts.roundStartedAt, input.anchor);
+      input.anchor === undefined ? undefined : anchorFor(ctx, item, board, input.anchor);
     const note = Math.max(0, ...on.thread.map(({ note: n }) => n)) + 1;
     const to = activeLease(item.lease, at)?.holder;
     appendEvent(ctx.db, {

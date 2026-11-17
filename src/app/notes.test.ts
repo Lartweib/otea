@@ -220,7 +220,34 @@ describe('a note from the person while an agent works', () => {
     expect(error.details).toEqual({ kind: 'note', item: item.id, why: 'not_working' });
   });
 
-  it('refuses an anchor that is not evidence of this round of the item', () => {
+  it('anchors a note to a file of an earlier step or round, as the reader lists them', () => {
+    const ctx = memoryContext();
+    const item = working(ctx);
+    const early = attach(ctx, item.id, 'captura-1.png');
+    handoffItem(ctx, { id: item.id, actor: kiln, channel: 'cli' }, now);
+    sendBackItem(ctx, { id: item.id, actor: you, channel: 'ui', reason: 'Otra vez' }, now);
+    claimItem(ctx, { id: item.id, actor: kiln }, now);
+    const leave = (text: string) =>
+      leaveNote(
+        ctx,
+        { id: item.id, text, anchor: { evidence: early, x: 10, y: 20 }, actor: you, channel: 'ui' },
+        now,
+      );
+
+    expect(leave('En la ronda 1').anchor).toMatchObject({
+      evidence: early,
+      filename: 'captura-1.png',
+    });
+
+    attach(ctx, item.id);
+    replyNote(ctx, { id: item.id, note: 1, text: 'Visto', actor: kiln, channel: 'cli' }, now);
+    handoffItem(ctx, { id: item.id, actor: kiln, channel: 'cli', note: 'Otra' }, now);
+    approveItem(ctx, { id: item.id, actor: you, channel: 'ui' }, now);
+    claimItem(ctx, { id: item.id, actor: scout }, now);
+    expect(leave('De Concepto')).toMatchObject({ step: 'sanimate', anchor: { evidence: early } });
+  });
+
+  it('refuses an anchor that is not evidence of the item', () => {
     const ctx = memoryContext();
     const item = working(ctx);
     const other = creature(ctx);

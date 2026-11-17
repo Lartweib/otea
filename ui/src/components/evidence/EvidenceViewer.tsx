@@ -3,6 +3,7 @@ import { useFileUrl } from '../../evidence-files.ts';
 import { t } from '../../i18n/i18n.ts';
 import { Icon } from '../../kit/index.ts';
 import type { Evidence } from '../../types.ts';
+import { sendThenClear } from '../note-send.ts';
 import { DiagramView } from './DiagramView.tsx';
 import { FileMeta } from './FileMeta.tsx';
 import { FileView } from './FileViews.tsx';
@@ -149,9 +150,9 @@ export type ReaderDecide = {
 };
 
 // A note to the agent at work from inside the reader, on the file read: on the line or diagram node
-// clicked, else on the whole file.
+// clicked, else on the whole file. True once it went: what was typed stays until then.
 export type ReaderNote = {
-  onSend: (text: string, anchor: { evidence: number } & ReaderPick) => void;
+  onSend: (text: string, anchor: { evidence: number } & ReaderPick) => Promise<boolean>;
 };
 
 // The files of a round read one at a time, the same viewer as the desk's: where you are among them
@@ -181,6 +182,7 @@ export function EvidenceReader({
   const view = useRef<HTMLDivElement>(null);
   const [pick, setPick] = useState<{ id: number; pick: ReaderPick } | null>(null);
   const [text, setText] = useState(draft);
+  const [sending, setSending] = useState(false);
   const shownId = shown?.id;
   // biome-ignore lint/correctness/useExhaustiveDependencies: once per cite that opens the reader
   useEffect(() => {
@@ -354,11 +356,16 @@ export function EvidenceReader({
           <button
             type="button"
             className="btn primary"
-            disabled={!text.trim()}
+            disabled={!text.trim() || sending}
             onClick={() => {
-              note.onSend(text.trim(), pickAnchor(shown.id, picked));
-              setText('');
-              setPick(null);
+              setSending(true);
+              void sendThenClear(
+                () => note.onSend(text.trim(), pickAnchor(shown.id, picked)),
+                () => {
+                  setText('');
+                  setPick(null);
+                },
+              ).finally(() => setSending(false));
             }}
           >
             {t('notes.pick.send')}

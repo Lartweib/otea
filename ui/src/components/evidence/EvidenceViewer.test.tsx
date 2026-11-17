@@ -89,7 +89,7 @@ describe('EvidenceReader', () => {
   });
 
   it('carries a note begun elsewhere into its own, and on the phone says to tap', () => {
-    const note = { onSend: () => {} };
+    const note = { onSend: async () => true };
     const phone = renderToStaticMarkup(
       <EvidenceReader evidence={files} at={1} onAt={() => {}} phone note={note} draft="Mirá" />,
     );

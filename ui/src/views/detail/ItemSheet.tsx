@@ -350,7 +350,8 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
     setAnchor(null);
     setNoting({ button, open: true, below: noting ? null : below });
   };
-  const postNote = (text: string, on?: NoteAnchorInput) =>
+  // True once the note went; on a failure the box it was typed in keeps it.
+  const postNote = (text: string, on?: NoteAnchorInput): Promise<boolean> =>
     app.note(item.id, text, on).then(
       () => {
         toast({
@@ -360,14 +361,19 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
           id: item.id,
         });
         requestAnimationFrame(() => root.current && clearOfToast(root.current));
+        return true;
       },
-      () => toast({ msg: t('notes.failed'), id: item.id }),
+      () => {
+        toast({ msg: t('notes.failed'), id: item.id });
+        return false;
+      },
     );
   const sendNote = (text: string) => {
     if (!noting) return;
-    setNoting({ ...noting, open: false });
-    // On a recording, the moment its player is at goes with the note.
-    void postNote(text, noteAnchor(anchor));
+    // On a recording, the moment its player is at goes with the note. The form closes once it went.
+    void postNote(text, noteAnchor(anchor)).then((went) => {
+      if (went) setNoting((n) => (n ? { ...n, open: false } : n));
+    });
   };
   const quiet = canNote ? quietMinutes(worker, now) : null;
   const who = noteTo ?? t('notes.anyAgent');
@@ -889,9 +895,7 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
                 note={
                   canNote || reviewing
                     ? {
-                        onSend: (text, on) => {
-                          void postNote(text, on);
-                        },
+                        onSend: (text, on) => postNote(text, on),
                       }
                     : undefined
                 }
