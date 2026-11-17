@@ -146,6 +146,21 @@ describe('rounds on a board', () => {
     ]);
   });
 
+  it('ends a round with the doer’s handoff to an agent reviewer, whose move is its verdict', () => {
+    const kiln = { kind: 'agent' as const, name: 'kiln' };
+    const scout = { kind: 'agent' as const, name: 'scout' };
+    const events = [
+      ...story,
+      moved('13:00', kiln, 'sanimate', 'sanimate__review', { note: 'Un bucle' }),
+      moved('14:00', scout, 'sanimate__review', 'spolish'),
+    ];
+    const rounds = roundsOf(events, [], BOARD, { def, step: 'sanimate' });
+    expect(rounds.map(({ n, by, note, verdict }) => [n, by.name, note, verdict?.kind])).toEqual([
+      [1, 'kiln', 'Un bucle', 'approved'],
+    ]);
+    expect(rounds[0]?.verdict?.actor.name).toBe('scout');
+  });
+
   it('keeps the last step’s rounds once the item is closed', () => {
     const done = moved('13:00', you, 'sconcept__review', 'done', { channel: 'ui' });
     const rounds = roundsOf([created, handed, done], [], BOARD, { def });

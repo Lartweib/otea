@@ -279,9 +279,10 @@ function roundDoers(
   events: readonly ItemEvent[],
 ): (Round['doer'] | undefined)[] {
   const sorted = [...events].sort((a, b) => a.id - b.id);
+  // A handoff out of the step's doing: an agent moving it out of the review only reviewed it.
   const offStep = (e: ItemEvent) => {
     const from = positionOf(String(e.data.from ?? ''));
-    return !isClosed(from) && from.step === stepId;
+    return !isClosed(from) && from.step === stepId && from.phase === 'doing';
   };
   return starts.map(({ at }, i) => {
     const next = starts[i + 1]?.at;
