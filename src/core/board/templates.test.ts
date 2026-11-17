@@ -90,6 +90,19 @@ describe('templates', () => {
     }
   }
 
+  it('maps the analysis roles where they fit: bugs by effort, risk and area, changes and tasks by effort', () => {
+    const roles = (key: string) => {
+      const def = instantiate(requireTemplate(key), 'es', {}, sequenceIds());
+      return Object.fromEntries(
+        Object.entries(def.analysis ?? {}).map(([role, ref]) => [role, partOf(def, ref)?.name]),
+      );
+    };
+
+    expect(roles('bug-reports')).toEqual({ effort: 'Esfuerzo', risk: 'Riesgo', area: 'Área' });
+    expect(roles('changes')).toEqual({ effort: 'Esfuerzo', impact: 'Impacto' });
+    expect(roles('implementation')).toEqual({ effort: 'Tamaño' });
+  });
+
   it('speaks the language asked for', () => {
     const es = instantiate(requireTemplate('bugs'), 'es', {}, sequenceIds());
     const en = instantiate(requireTemplate('bugs'), 'en', {}, sequenceIds());

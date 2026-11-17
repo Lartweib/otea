@@ -1,3 +1,4 @@
+import type { Role } from './analysis.ts';
 import { type IdSource, newId } from './ids.ts';
 import {
   BOARD_SCHEMA,
@@ -99,6 +100,8 @@ export type Template = {
   row?: readonly string[];
   layout?: Readonly<Record<string, Zone>>;
   split?: { always: boolean };
+  // Which of its parts plays each analysis role (core/board/analysis.ts), by part key.
+  analysis?: Readonly<Partial<Record<Role, string>>>;
 };
 
 // Every single-board template: the catalogue first (what Studio offers), then the first Studio's
@@ -531,6 +534,13 @@ export function instantiate(
     cap: { on: false, n: 3 },
     samples: [...template.samples[lang]],
     ...(template.split ? { split: { board: SAME, always: template.split.always } } : {}),
+    ...(template.analysis
+      ? {
+          analysis: Object.fromEntries(
+            Object.entries(template.analysis).map(([role, key]) => [role, ref(key)]),
+          ),
+        }
+      : {}),
     template: template.key,
   };
 }

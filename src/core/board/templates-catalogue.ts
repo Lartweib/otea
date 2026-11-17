@@ -98,6 +98,30 @@ const BUG_REPORTS: Template = {
       hint: w('how much it hurts the people who use it', 'cuánto le duele a quien lo usa'),
     },
     {
+      key: 'feffort',
+      kind: 'level',
+      name: w('Effort', 'Esfuerzo'),
+      hint: w(
+        'how much work the fix looks like; an agent estimates it, you correct it',
+        'cuánto trabajo parece el arreglo; lo estima un agente y tú lo corriges',
+      ),
+    },
+    {
+      key: 'frisk',
+      kind: 'level',
+      name: w('Risk', 'Riesgo'),
+      hint: w(
+        'how likely the fix is to break something else',
+        'qué tan probable es que el arreglo rompa otra cosa',
+      ),
+    },
+    {
+      key: 'farea',
+      kind: 'text',
+      name: w('Area', 'Área'),
+      hint: w('the part of the product it touches', 'la parte del producto que toca'),
+    },
+    {
       key: 'fbranch',
       kind: 'branch',
       name: w('Branch', 'Rama'),
@@ -157,10 +181,13 @@ const BUG_REPORTS: Template = {
         ['fexp', 'always', false],
         ['fgot', 'always', false],
         ['fenv', 'always', false],
+        ['feffort', 'no', false],
+        ['frisk', 'no', false],
+        ['farea', 'no', false],
       ],
       take: w(
-        'Read @{fsaid} and @{fsource}. If it is not enough to reproduce, ask the person with otea ask; never guess the steps.',
-        'Lee @{fsaid} y @{fsource}. Si no alcanza para reproducirlo, pregunta a la persona con otea ask; nunca adivines los pasos.',
+        'Read @{fsaid} and @{fsource}. If it is not enough to reproduce, ask the person with otea ask; never guess the steps. Estimate @{feffort}, @{frisk} and @{farea} from what you found; the person corrects them when triaging.',
+        'Lee @{fsaid} y @{fsource}. Si no alcanza para reproducirlo, pregunta a la persona con otea ask; nunca adivines los pasos. Estima @{feffort}, @{frisk} y @{farea} con lo que encontraste; la persona los corrige al triar.',
       ),
       skip: true,
     },
@@ -172,6 +199,8 @@ const BUG_REPORTS: Template = {
       hand: [
         ['fsev', 'always', false],
         ['fkind', 'always', false],
+        ['feffort', 'always', false],
+        ['frisk', 'always', false],
       ],
     },
     {
@@ -212,7 +241,7 @@ const BUG_REPORTS: Template = {
       before: w('Write the short hash in @{fcommit}.', 'Escribe el hash corto en @{fcommit}.'),
     },
   ],
-  anytime: ['fkind'],
+  anytime: ['fkind', 'feffort', 'frisk', 'farea'],
   samples: {
     en: [
       'Login loops back to the start page',
@@ -233,6 +262,7 @@ const BUG_REPORTS: Template = {
   ],
   list: { as: 'table', group: 'fsev' },
   row: ['fsev', 'fkind'],
+  analysis: { effort: 'feffort', risk: 'frisk', area: 'farea' },
   layout: {
     rounds: 'main',
     fsaid: 'top',
@@ -243,6 +273,9 @@ const BUG_REPORTS: Template = {
     fexp: 'main',
     fgot: 'main',
     fsev: 'side',
+    feffort: 'side',
+    frisk: 'side',
+    farea: 'side',
     fbranch: 'side',
     ediff: 'main',
     etests: 'main',
