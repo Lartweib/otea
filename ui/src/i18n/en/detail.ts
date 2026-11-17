@@ -509,6 +509,14 @@ export const detail = {
     one: 'Not approved {id}: {list} is still unfinished.',
     other: 'Not approved {id}: {list} are still unfinished.',
   },
+  'bi.block.parts': {
+    one: 'waits for {list} to finish',
+    other: 'waits for {list} to finish',
+  },
+  'bi.block.blockers': {
+    one: 'waits for {list}, which holds it back',
+    other: 'waits for {list}, which hold it back',
+  },
   'bi.move.deliver': 'Hand off',
   'bi.refuse.missing': {
     one: 'Not handed off {id}: {list} is missing.',
