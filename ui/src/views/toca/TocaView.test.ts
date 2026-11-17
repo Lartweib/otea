@@ -54,7 +54,7 @@ describe('Te toca', () => {
       ['Preguntas para ti', 0, undefined],
       ['Revisiones', 1, undefined],
       ['Tus propios pasos', 0, undefined],
-      ['En camino', 0, 'vuelven a ti cuando terminen'],
+      ['En camino', 0, 'con los agentes por ahora'],
       ['Cerrados', 1, 'hechos y descartados'],
     ]);
     expect(blocks.find((b) => b.key === 'empty:atasco')).toMatchObject({
@@ -208,6 +208,68 @@ describe('a row’s call to act', () => {
       act: 'Descartado',
       sub: { key: 'toca.sub.closedByYou' },
     });
+  });
+
+  it('says on the way what comes next: your review, more agent work, the close, or a blocker', () => {
+    setLanguage('es');
+    // fixing → verify, yours: it comes back for your review.
+    expect(rowCall(item({ id: 'F', turn: 'agent', state: 'fixing' }), 'encamino', ctx()).act).toBe(
+      'Vuelve a tu revisión',
+    );
+    // accepted → fixing, another agent step: not yet back to you.
+    expect(
+      rowCall(item({ id: 'U', turn: 'agent', state: 'accepted' }), 'encamino', ctx()).act,
+    ).toBe('Sigue con los agentes');
+    // An agent step that closes the item when done.
+    const closing = {
+      ...bug,
+      states: [
+        { name: 'land', turn: 'agent' as const },
+        { name: 'fixed', turn: 'none' as const, closes: 'done' as const },
+      ],
+      initial: 'land',
+      transitions: [{ from: 'land', to: 'fixed', by: 'agent' as const, reasonRequired: false }],
+    };
+    expect(
+      rowCall(item({ id: 'L', turn: 'agent', state: 'land' }), 'encamino', {
+        ...ctx(),
+        types: () => closing,
+      }).act,
+    ).toBe('Se cierra al terminar');
+    // On a board, a step of yours next (not a review): your turn, not your review.
+    const yours = {
+      ...bug,
+      states: [
+        { name: 'sfill', turn: 'agent' as const },
+        { name: 'striage', turn: 'human' as const },
+        { name: 'striage__review', turn: 'human' as const },
+      ],
+      initial: 'sfill',
+      transitions: [{ from: 'sfill', to: 'striage', by: 'agent' as const, reasonRequired: false }],
+    };
+    const onBoard = { ...ctx(), types: () => yours, onBoard: () => true };
+    expect(rowCall(item({ id: 'E', turn: 'agent', state: 'sfill' }), 'encamino', onBoard).act).toBe(
+      'Después te toca a ti',
+    );
+    // Held back by an open item: waits for it, whatever comes next.
+    const blocker = item({ id: 'ENT-1', turn: 'agent', state: 'fixing' });
+    const held = item({
+      id: 'T',
+      turn: 'agent',
+      state: 'fixing',
+      relations: [{ kind: 'blocked_by', id: 'ENT-1' }],
+    });
+    const find = (id: string) => (id === 'ENT-1' ? blocker : undefined);
+    expect(rowCall(held, 'encamino', { ...ctx(), find }).act).toBe('Espera a ENT-1');
+    const ended = { ...blocker, turn: 'none' as const, state: 'fixed', closes: 'done' as const };
+    expect(rowCall(held, 'encamino', { ...ctx(), find: () => ended }).act).toBe(
+      'Vuelve a tu revisión',
+    );
+    setLanguage('en');
+    expect(
+      rowCall(item({ id: 'U', turn: 'agent', state: 'accepted' }), 'encamino', ctx()).act,
+    ).toBe('Goes on with agents');
+    expect(rowCall(held, 'encamino', { ...ctx(), find }).act).toBe('Waits for ENT-1');
   });
 
   it('counts the rounds an item has been through', () => {

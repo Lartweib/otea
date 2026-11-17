@@ -31,6 +31,8 @@ export type TocaContext = {
   // Whether the item is on a published board: there a step on your turn that is being done (not
   // reviewed) is your own step, whoever handed it to you.
   onBoard?: (item: Item) => boolean;
+  // Another listed item by id: what blocks a row on the way, to say it waits for it while open.
+  find?: (id: string) => Item | undefined;
 };
 
 // Closed work stays in Cerrados for a week.
