@@ -513,6 +513,14 @@ export const detail = {
     one: 'No se aprobó {id}: {list} sigue sin terminar.',
     other: 'No se aprobó {id}: {list} siguen sin terminar.',
   },
+  'bi.block.parts': {
+    one: 'espera a que termine {list}',
+    other: 'espera a que terminen {list}',
+  },
+  'bi.block.blockers': {
+    one: 'espera a {list}, que lo frena',
+    other: 'espera a {list}, que lo frenan',
+  },
   'bi.move.deliver': 'Entregar',
   'bi.refuse.missing': {
     one: 'No se entregó {id}: falta {list}.',

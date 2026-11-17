@@ -17,6 +17,7 @@ import {
   DONE,
   guardedBranch,
   isEvidence,
+  LEVELS,
   type Part,
   type Step,
   stepById,
@@ -216,6 +217,24 @@ export function approvalRefusal(id: string, rows: readonly WaitRow[]): string | 
   return first.step
     ? t('bi.refuse.blockers', { id, other: first.id, board: first.board, step: first.step })
     : t('bi.refuse.blockersEnded', { id, other: first.id, board: first.board });
+}
+
+// Why Entregar waits on a step that waits for something still open, in the line under the
+// buttons: the open parts first, else what holds it back. The engine refuses the handoff too.
+export function waitBlock(rows: readonly WaitRow[]): string | undefined {
+  const parts = rows.find((r) => r.kind === 'parts' && r.open.length);
+  if (parts)
+    return t('bi.block.parts', {
+      list: listOf(parts.open.map((x) => x.id)),
+      count: parts.open.length,
+    });
+  const blockers = rows.find((r) => r.kind === 'blockers' && r.open.length);
+  if (blockers)
+    return t('bi.block.blockers', {
+      list: listOf(blockers.open.map((x) => x.id)),
+      count: blockers.open.length,
+    });
+  return undefined;
 }
 
 // The protected branch in one line, after the buttons: may it be pushed, is it frozen in review,
@@ -497,6 +516,12 @@ export function ownStepOf(
   return step?.doer === 'you' ? step : undefined;
 }
 
+// The button that ends your own step: Entregar when it hands something (a part, the note), else the
+// step's own name ("Aprobar el merge"), since there is nothing to hand.
+export function deliverLabel(step: Step): string {
+  return step.hand.length > 0 || step.note.req === 'always' ? t('bi.move.deliver') : step.name;
+}
+
 // The handoff checklist of the person's own step (the mock's itemChecklist): the note when the step
 // asks for one, then each part it hands, done unless the engine still finds it missing.
 export type HandRow = {
@@ -540,6 +565,36 @@ export function handRows(
     });
   }
   return rows;
+}
+
+// How Rellenar fills a field in place: the values it may take, picked from a list (a choice, a
+// level, a yes or no), or the kind of box to type it in.
+export type FillControl =
+  | { choices: { id: string; name: string }[] }
+  | { input: 'text' | 'long' | 'number' | 'date' | 'url' };
+
+const capital = (word: string) => word.charAt(0).toUpperCase() + word.slice(1);
+
+export function fillControl(part: Part): FillControl {
+  if (part.kind === 'level')
+    return {
+      choices: LEVELS.map((level) => ({
+        id: level,
+        name: capital(t(`bs.level.${level}` as 'bs.level.low')),
+      })),
+    };
+  if (part.kind === 'yesno')
+    return {
+      choices: [
+        { id: 'yes', name: capital(t('bs.yes')) },
+        { id: 'no', name: capital(t('bs.no')) },
+      ],
+    };
+  if (part.options.length > 0)
+    return { choices: part.options.map(({ id, name }) => ({ id, name })) };
+  if (part.kind === 'long' || part.kind === 'number' || part.kind === 'date' || part.kind === 'url')
+    return { input: part.kind };
+  return { input: 'text' };
 }
 
 // Entregar on the person's own step, in the page's words, while a part it hands is missing (the

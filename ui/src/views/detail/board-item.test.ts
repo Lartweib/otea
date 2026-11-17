@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import type { Part } from '../../../../src/core/board/model.ts';
 import {
   cambios,
   creatures,
@@ -13,6 +14,8 @@ import {
   backOf,
   boardItemOf,
   branchStrip,
+  deliverLabel,
+  fillControl,
   handRefusal,
   handRows,
   linksOf,
@@ -23,6 +26,7 @@ import {
   selectOnFold,
   sheetLook,
   stepRounds,
+  waitBlock,
   waitRows,
 } from './board-item.ts';
 
@@ -484,6 +488,33 @@ describe('approvalRefusal: Aprobar refused in words when a wait no longer holds'
   });
 });
 
+describe('waitBlock: Entregar held while what the step waits for is open', () => {
+  it('names the open parts, else what holds it back, else nothing', () => {
+    setLanguage('es');
+    const links = linksOf(
+      {
+        relations: [
+          rel('child', 'RT-4', { state: 'simpl' }),
+          rel('blocked_by', 'ERR-2', { collection: 'Errores', state: 'striage' }),
+          rel('blocked_by', 'ERR-3', { collection: 'Errores', state: 'striage' }),
+        ],
+      },
+      (r) => ({ board: r.collection, step: 'Triar' }),
+    );
+    expect(waitBlock(waitRows(cambios(), 'sexec', links))).toBe('espera a que termine RT-4');
+    expect(waitBlock(waitRows(errores(), 'sfix', { ...links, parts: [] }))).toBe(
+      'espera a ERR-2 y ERR-3, que lo frenan',
+    );
+    expect(waitBlock(waitRows(errores(), 'sfix', { ...links, parts: [], blockers: [] }))).toBe(
+      undefined,
+    );
+    setLanguage('en');
+    expect(waitBlock(waitRows(errores(), 'sfix', { ...links, parts: [] }))).toBe(
+      'waits for ERR-2 and ERR-3, which hold it back',
+    );
+  });
+});
+
 describe('sheetLook: open parts are a wait at the handoff, not a look', () => {
   it('reads an item on a board with open parts as queued; every other look stays', () => {
     expect(sheetLook('waiting', true)).toBe('queued');
@@ -542,6 +573,54 @@ describe('the person’s own step', () => {
     expect(row()).toMatchObject({ ok: false, required: false });
     expect(row(() => false)).toMatchObject({ ok: false, required: false });
     expect(row((ref) => ref === 'fwhat')).toMatchObject({ ok: true, required: false });
+  });
+
+  it('names the hand-off Entregar when the step hands something, else by the step itself', () => {
+    setLanguage('es');
+    const def = tareasDeRepo();
+    const own = ownStepOf(def, { state: 'sprop', turn: 'human' });
+    if (!own) throw new Error('no own step');
+    expect(deliverLabel(own)).toBe('Entregar');
+    const empty = {
+      ...own,
+      name: 'Aprobar el merge',
+      hand: [],
+      note: { ...own.note, req: 'no' as const },
+    };
+    expect(deliverLabel(empty)).toBe('Aprobar el merge');
+  });
+
+  it('fills a level, a yes or no and a choice from their values, and types numbers and dates', () => {
+    setLanguage('es');
+    const part = (kind: Part['kind'], options: Part['options'] = []): Part => ({
+      id: 'fx',
+      name: 'X',
+      kind,
+      hint: '',
+      options,
+    });
+    expect(fillControl(part('level'))).toEqual({
+      choices: [
+        { id: 'low', name: 'Baja' },
+        { id: 'medium', name: 'Media' },
+        { id: 'high', name: 'Alta' },
+        { id: 'critical', name: 'Crítica' },
+      ],
+    });
+    expect(fillControl(part('yesno'))).toEqual({
+      choices: [
+        { id: 'yes', name: 'Sí' },
+        { id: 'no', name: 'No' },
+      ],
+    });
+    expect(fillControl(part('choice', [{ id: 'c1', name: 'Bug' }]))).toEqual({
+      choices: [{ id: 'c1', name: 'Bug' }],
+    });
+    expect(fillControl(part('number'))).toEqual({ input: 'number' });
+    expect(fillControl(part('date'))).toEqual({ input: 'date' });
+    expect(fillControl(part('url'))).toEqual({ input: 'url' });
+    expect(fillControl(part('long'))).toEqual({ input: 'long' });
+    expect(fillControl(part('text'))).toEqual({ input: 'text' });
   });
 
   it('leaves out a deliverable asked only when a field holds a value it does not hold', () => {

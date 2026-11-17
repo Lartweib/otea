@@ -21,6 +21,7 @@ import type { Item, ItemView, RelatedItem } from '../../types.ts';
 import {
   type BranchStrip,
   type DraftRequest,
+  fillControl,
   type HandRow,
   type ItemLinks,
   type LinkedView,
@@ -89,7 +90,7 @@ export function HandChecklist({
     <div className="bi-check bi-hand" data-c>
       {rows.map((row) => {
         const editing = open === row.ref && !!row.part;
-        const options = row.part?.options ?? [];
+        const control = row.part ? fillControl(row.part) : null;
         return (
           <div key={row.ref} className="bi-hrow">
             <div className={['hc', row.ok ? 'ok' : 'miss', row.required ? 'req' : ''].join(' ')}>
@@ -126,7 +127,7 @@ export function HandChecklist({
                   save(row);
                 }}
               >
-                {options.length > 0 ? (
+                {control && 'choices' in control ? (
                   <select
                     aria-label={row.name}
                     value={value}
@@ -135,13 +136,13 @@ export function HandChecklist({
                     <option value="" disabled>
                       {row.name}
                     </option>
-                    {options.map((o) => (
+                    {control.choices.map((o) => (
                       <option key={o.id} value={o.id}>
                         {o.name}
                       </option>
                     ))}
                   </select>
-                ) : row.part.kind === 'long' ? (
+                ) : control?.input === 'long' ? (
                   <textarea
                     aria-label={row.name}
                     rows={3}
@@ -154,6 +155,7 @@ export function HandChecklist({
                 ) : (
                   <input
                     aria-label={row.name}
+                    type={control && 'input' in control ? control.input : 'text'}
                     value={value}
                     placeholder={row.part.hint || row.name}
                     onChange={(e) => setValue(e.target.value)}

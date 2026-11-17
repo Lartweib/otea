@@ -42,6 +42,7 @@ import {
   backOf,
   boardItemOf,
   branchStrip,
+  deliverLabel,
   handRefusal,
   handRows,
   type ItemBoardBlock,
@@ -52,6 +53,7 @@ import {
   selectOnFold,
   sheetLook,
   stepRounds,
+  waitBlock,
   waitRows,
 } from './board-item.ts';
 import { Details, detailCells } from './Details.tsx';
@@ -197,13 +199,16 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
   };
   const block0 = (item as ItemView & { board?: ItemBoardBlock }).board;
   const missing = block0?.missing ?? [];
-  // On your own step the primary hands it off ("Entregar"), asking for the note when the step does.
+  // On your own step the primary hands it off ("Entregar"), asking for the note when the step does;
+  // while what the step waits for is open it stays off and says what it waits for.
+  const held = waitBlock(waits);
   const deliver =
     ownStep && planned.primary
       ? {
           ...planned.primary,
-          label: t('bi.move.deliver'),
+          label: deliverLabel(ownStep),
           deliver: true,
+          ...(held ? { blocked: held } : {}),
           move: {
             ...planned.primary.move,
             reasonRequired:
