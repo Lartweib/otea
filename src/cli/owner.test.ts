@@ -97,6 +97,16 @@ describe('the processes that own a command', () => {
       expect(ownerChain(rows, 500)).toEqual([500, 300, 600, 700]);
     });
 
+    it('counts a harness that ended before the listing as gone, once the parents are real', () => {
+      const ended = withPosixParents(
+        windows.filter(({ pid }) => pid !== 700),
+        readPosixTable(msys),
+      );
+      expect(ownerChain(ended, 500, true)).toEqual([500, 300, 600, 700]);
+      // Without MSYS's table a missing parent may be the fork that ended: it proves nothing.
+      expect(ownerChain(windows, 500)).toEqual([500]);
+    });
+
     it('keeps the Windows parents when there is no MSYS table', () => {
       expect(withPosixParents(windows, [])).toEqual(windows);
       expect(ownerChain(windows, 500)).toEqual([500]);
@@ -106,10 +116,13 @@ describe('the processes that own a command', () => {
   describe('watchOwner', () => {
     const harness = 424242;
     // This process's parent is a shell started by `harness`, as Claude Code's bash is.
-    const listed = async () => [
-      { pid: process.ppid, parent: harness, name: 'bash.exe' },
-      { pid: harness, parent: 1, name: 'claude.exe' },
-    ];
+    const listed = async () => ({
+      rows: [
+        { pid: process.ppid, parent: harness, name: 'bash.exe' },
+        { pid: harness, parent: 1, name: 'claude.exe' },
+      ],
+      complete: true,
+    });
 
     it('stops once the harness above the shells ended, though the shell still runs', async () => {
       let harnessRuns = true;
@@ -131,7 +144,7 @@ describe('the processes that own a command', () => {
       let listings = 0;
       const list = async () => {
         listings += 1;
-        return [];
+        return { rows: [], complete: true };
       };
       const owner = watchOwner(new AbortController().signal, {
         list,

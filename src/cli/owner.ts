@@ -20,13 +20,20 @@ const isShell = (name: string) =>
 // The processes a command started by `parent` belongs to: the parent, and while it is a shell the
 // one that started it, up to the first that is none (the harness). Claude Code on Windows runs a
 // command through bash and npm's sh shim; ending its session leaves both running, so watching the
-// parent alone would never see the session end.
-export function ownerChain(rows: readonly ProcessRow[], parent: number): number[] {
+// parent alone would never see the session end. `complete`: each parent in `rows` is the real one,
+// so a shell whose parent is not listed outlived it (a session that ended before the listing), and
+// that parent joins the chain as gone; otherwise a missing parent may be a shell's ended fork.
+export function ownerChain(
+  rows: readonly ProcessRow[],
+  parent: number,
+  complete = false,
+): number[] {
   const byPid = new Map(rows.map((row) => [row.pid, row]));
   const chain = [parent];
   let row = byPid.get(parent);
   while (row && isShell(row.name)) {
     const next = byPid.get(row.parent);
+    if (!next && complete && row.parent > 0 && !chain.includes(row.parent)) chain.push(row.parent);
     if (!next || chain.includes(next.pid)) break;
     chain.push(next.pid);
     row = next;
@@ -117,15 +124,19 @@ function posixLister(rows: readonly ProcessRow[], start: number): string | undef
   return existsSync(ps) ? ps : undefined;
 }
 
+// The processes, and whether each parent there is the real one (ownerChain's `complete`).
+export type ProcessTable = { rows: ProcessRow[]; complete: boolean };
+
 // Every process on this computer with its parent, or undefined when the system does not say. On
-// Windows, a command `start` runs through Git Bash gets its parents from MSYS (withPosixParents).
+// Windows, a command `start` runs through Git Bash gets its parents from MSYS (withPosixParents);
+// without MSYS's table, a parent Windows names may be a shell's fork that ended.
 export async function listProcesses(
   signal: AbortSignal,
   start: number = process.ppid,
-): Promise<ProcessRow[] | undefined> {
+): Promise<ProcessTable | undefined> {
   if (process.platform !== 'win32') {
     const out = await run('ps', ['-A', '-o', 'pid=,ppid=,comm='], signal);
-    return out === undefined ? undefined : readProcessTable(out);
+    return out === undefined ? undefined : { rows: readProcessTable(out), complete: true };
   }
   const out = await run(
     'powershell.exe',
@@ -136,7 +147,9 @@ export async function listProcesses(
   const rows = readProcessTable(out);
   const ps = posixLister(rows, start);
   const posix = ps === undefined ? undefined : await run(ps, [], signal);
-  return posix === undefined ? rows : withPosixParents(rows, readPosixTable(posix));
+  return posix === undefined
+    ? { rows, complete: false }
+    : { rows: withPosixParents(rows, readPosixTable(posix)), complete: true };
 }
 
 // How often a long-running command checks that the processes that started it still run.
@@ -155,7 +168,7 @@ export function watchOwner(
     alive = processAlive,
     everyMs = OWNER_CHECK_MS,
   }: {
-    list?: (signal: AbortSignal) => Promise<ProcessRow[] | undefined>;
+    list?: (signal: AbortSignal) => Promise<ProcessTable | undefined>;
     alive?: (pid: number) => boolean;
     everyMs?: number;
   } = {},
@@ -176,8 +189,8 @@ export function watchOwner(
     }
     if (listed) return;
     listed = true;
-    void list(listing.signal).then((rows) => {
-      if (rows) chain = ownerChain(rows, start);
+    void list(listing.signal).then((table) => {
+      if (table) chain = ownerChain(table.rows, start, table.complete);
     });
   }, everyMs);
   timer.unref();

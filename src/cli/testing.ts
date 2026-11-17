@@ -120,7 +120,8 @@ function tempRepoAt(dir: string): TempRepo {
       mkdirSync(dirname(target), { recursive: true });
       writeFileSync(target, content);
     },
-    remove: () => rmSync(dir, { recursive: true, force: true }),
+    // A process that just ended can hold the folder a moment longer on Windows.
+    remove: () => rmSync(dir, { recursive: true, force: true, maxRetries: 10 }),
   };
 }
 
