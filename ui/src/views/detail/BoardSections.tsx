@@ -752,15 +752,22 @@ function StepRoundCards({
 // dropped__<id>; a board without motives discards to plain dropped.
 export type DropChoice = { to: string; name: string };
 
+// Discarding never touches git: the item's branch, pushed or not, stays for the person to delete.
+export function dropBranchNote(branch: string | undefined): string | null {
+  return branch ? t('bi.drop.branch', { branch }) : null;
+}
+
 export function DropDialog({
   open,
   item,
   choices,
+  branch,
   onClose,
   onDrop,
 }: {
   open: boolean;
   item: ItemView;
+  branch?: string | undefined;
   choices: readonly DropChoice[];
   onClose: () => void;
   onDrop: (choice: DropChoice, reason: string) => void;
@@ -776,6 +783,7 @@ export function DropDialog({
         key={String(open)}
         item={item}
         choices={choices}
+        branch={branch}
         onClose={onClose}
         onDrop={onDrop}
       />
@@ -786,10 +794,12 @@ export function DropDialog({
 function DropForm({
   item,
   choices,
+  branch,
   onClose,
   onDrop,
 }: {
   item: ItemView;
+  branch?: string | undefined;
   choices: readonly DropChoice[];
   onClose: () => void;
   onDrop: (choice: DropChoice, reason: string) => void;
@@ -815,6 +825,11 @@ function DropForm({
       <p className="lede" data-i="">
         {t('bi.drop.lede')}
       </p>
+      {dropBranchNote(branch) ? (
+        <p className="lede" data-i="">
+          {dropBranchNote(branch)}
+        </p>
+      ) : null}
       {motives ? (
         <div data-i="">
           <span className="flab">{t('bi.drop.motive')}</span>

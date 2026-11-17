@@ -965,6 +965,7 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
               open={dropping}
               item={item}
               choices={dropChoices}
+              branch={strip?.value || undefined}
               onClose={() => setDropping(false)}
               onDrop={drop}
             />

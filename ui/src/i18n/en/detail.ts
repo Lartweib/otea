@@ -621,6 +621,8 @@ export const detail = {
   'bi.drop.open': 'Discard…',
   'bi.drop.title': 'Discard {id}',
   'bi.drop.lede': 'It stays as Dropped, with its history. It can be reopened from here.',
+  'bi.drop.branch':
+    'Its branch {branch} stays in the repo: Otea does not delete it. Delete it yourself if you do not want it.',
   'bi.drop.motive': 'Motive',
   'bi.drop.why': 'Why',
   'bi.drop.placeholder': 'A note for whoever reads it later.',

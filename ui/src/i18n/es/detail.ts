@@ -624,6 +624,8 @@ export const detail = {
   'bi.drop.open': 'Descartar…',
   'bi.drop.title': 'Descartar {id}',
   'bi.drop.lede': 'Queda como Descartado, con su historia. Se puede reabrir desde aquí.',
+  'bi.drop.branch':
+    'Su rama {branch} sigue en el repositorio: Otea no la borra. Bórrala tú si no la quieres.',
   'bi.drop.motive': 'Motivo',
   'bi.drop.why': 'Por qué',
   'bi.drop.placeholder': 'Una nota para quien lo lea después.',
