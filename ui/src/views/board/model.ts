@@ -5,6 +5,7 @@ import { whenText } from '../../derive/when.ts';
 import { availableColumns, normalText, sortItems, textValues } from '../../grid.ts';
 import { t } from '../../i18n/i18n.ts';
 import { fieldLabel } from '../../intake.ts';
+import { rowValues } from '../../item-types.ts';
 import { timeCell } from '../../lease.ts';
 import { type Folds, parentOf } from '../../nesting.ts';
 import { fieldWord, stateWordIn, typeWord, valueWordIn } from '../../preset-words.ts';
@@ -532,6 +533,16 @@ export function roundOf(
     if (reason && agentStates.has(String(e.data.to))) n += 1;
   }
   return n;
+}
+
+// What the row shows besides the step (the board's row, Acomodar): each value placed there, in
+// words, the severity left to its bars. Empty values say nothing.
+export function rowWords(item: Item, collection: CollectionView): string[] {
+  const type = collection.types.find((ty) => ty.name === item.type) ?? collection.types[0];
+  if (!type) return [];
+  return rowValues(type, item.fields)
+    .filter(({ field, value }) => field.module !== 'severity' && value.trim() !== '')
+    .map(({ field, value }) => valueWordIn(collection.types, field.name, value));
 }
 
 // A signal worth a glance in the meta line: the first enum field set off its default.

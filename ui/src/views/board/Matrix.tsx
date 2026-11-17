@@ -218,7 +218,9 @@ function Chip({
         className="mx-tick"
         aria-pressed={on}
         onClick={() => onTick(item.id)}
-        title={guessed ? t('matrix.estimated', { agent: by ?? '' }) : item.title}
+        title={
+          guessed ? `${item.title} · ${t('matrix.estimated', { agent: by ?? '' })}` : item.title
+        }
       >
         {pinned ? <span className="mx-pin">{t('matrix.top')}</span> : null}
         <span className="mx-t">{item.title}</span>
