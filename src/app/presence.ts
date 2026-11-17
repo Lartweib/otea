@@ -126,6 +126,10 @@ export function processAlive(pid: number): boolean {
   }
 }
 
+// How long reading a process's parent may take: Windows asks WMI, which a busy machine answers slowly.
+// It is read only when a name is contested.
+const PARENT_LOOKUP_MS = 20_000;
+
 // The process that started a process, read from the system; undefined when it can't be read.
 export function parentOf(pid: number): number | undefined {
   try {
@@ -143,11 +147,11 @@ export function parentOf(pid: number): number | undefined {
               '-Command',
               `(Get-CimInstance Win32_Process -Filter "ProcessId=${pid}").ParentProcessId`,
             ],
-            { encoding: 'utf8', timeout: 5000, windowsHide: true },
+            { encoding: 'utf8', timeout: PARENT_LOOKUP_MS, windowsHide: true },
           )
         : execFileSync('ps', ['-o', 'ppid=', '-p', String(pid)], {
             encoding: 'utf8',
-            timeout: 5000,
+            timeout: PARENT_LOOKUP_MS,
           });
     const parent = Number(out.trim());
     return Number.isInteger(parent) && parent > 0 ? parent : undefined;
@@ -159,9 +163,18 @@ export function parentOf(pid: number): number | undefined {
 // Whether an open MCP session (its server's process id) was started by the same harness process as
 // this one: the harness restarted its server, so it is the same agent coming back.
 export function sameHarness(old: number): boolean {
+  const known = siblings.get(old);
+  if (known !== undefined) return known;
   const parent = parentOf(old);
-  return parent !== undefined && parent === process.ppid;
+  if (parent === undefined) return false;
+  const same = parent === process.ppid;
+  siblings.set(old, same);
+  return same;
 }
+
+// What sameHarness found for each server asked about: a process's parent never changes, and reading
+// it can take seconds on Windows.
+const siblings = new Map<number, boolean>();
 
 // An MCP session (`session`, its server's process id) takes an agent name only while no other open
 // session works under it: two sessions under one name would take one item twice and hand off each
