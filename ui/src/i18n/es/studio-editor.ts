@@ -265,6 +265,19 @@ export const studioEditor = {
   'bs.editor.about.cap_on':
     'Cuando {n} esperan tu revisión, los agentes dejan de crear aquí y descansan.',
   'bs.editor.about.cap_off': 'Sin tope: los agentes pueden crear tantos como quieran.',
+  'bs.editor.analysis.label': 'Vistas de análisis',
+  'bs.editor.analysis.gloss':
+    'di qué campo es el esfuerzo, el riesgo o el impacto de un ítem y el tablero ofrece una matriz para elegir qué abordar primero',
+  'bs.editor.analysis.none': 'Ninguno',
+  'bs.editor.analysis.no_fit': 'Ningún campo encaja',
+  'bs.editor.analysis.matrix_on': 'El tablero muestra la Matriz, cruzando {roles}.',
+  'bs.editor.analysis.matrix_off':
+    'Asigna dos de Esfuerzo, Riesgo e Impacto y el tablero muestra la Matriz.',
+  'bs.editor.analysis.fits.effort': 'un nivel, un número o una opción con orden',
+  'bs.editor.analysis.fits.risk': 'un nivel, un número o una opción con orden',
+  'bs.editor.analysis.fits.impact': 'un nivel, un número o una opción con orden',
+  'bs.editor.analysis.fits.area': 'una opción, varias o un texto corto',
+  'bs.editor.analysis.fits.due': 'una fecha',
   'bs.editor.any.kicker': 'Fuera de los pasos',
   'bs.editor.any.sentence':
     'Campos y evidencia que no pertenecen a ningún paso: se rellenan cuando haga falta, por ti o por un agente.',

@@ -268,6 +268,19 @@ export const studioEditor = {
   'bs.editor.about.cap': 'Cap',
   'bs.editor.about.cap_on': 'When {n} wait for your review, agents stop creating here and rest.',
   'bs.editor.about.cap_off': 'No cap: agents can create as many as they like.',
+  'bs.editor.analysis.label': 'Analysis views',
+  'bs.editor.analysis.gloss':
+    'say which field is the effort, the risk or the impact of an item, and the board offers a matrix to pick what to tackle first',
+  'bs.editor.analysis.none': 'None',
+  'bs.editor.analysis.no_fit': 'No field fits',
+  'bs.editor.analysis.matrix_on': 'The board shows the Matrix, crossing {roles}.',
+  'bs.editor.analysis.matrix_off':
+    'Map two of Effort, Risk and Impact and the board shows the Matrix.',
+  'bs.editor.analysis.fits.effort': 'a level, a number or a choice in order',
+  'bs.editor.analysis.fits.risk': 'a level, a number or a choice in order',
+  'bs.editor.analysis.fits.impact': 'a level, a number or a choice in order',
+  'bs.editor.analysis.fits.area': 'a choice, several or a short text',
+  'bs.editor.analysis.fits.due': 'a date',
   'bs.editor.any.kicker': 'Outside the steps',
   'bs.editor.any.sentence':
     'Fields and evidence that belong to no step: they are filled in when needed, by you or by an agent.',

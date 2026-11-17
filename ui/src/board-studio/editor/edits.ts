@@ -1,3 +1,4 @@
+import { ROLES, type Role } from '../../../../src/core/board/analysis.ts';
 import { type IdKind, type IdSource, newId } from '../../../../src/core/board/ids.ts';
 import { mentionSegments, toMentions } from '../../../../src/core/board/mentions.ts';
 import {
@@ -224,6 +225,8 @@ export function removePart(def: BoardDefinition, at: PartPlace, ref: string): vo
         delete h.when;
         h.req = 'always';
       }
+  // A role of the analysis views that read it plays no field any more.
+  for (const role of ROLES) if (def.analysis?.[role] === ref) setRole(def, role, undefined);
 }
 
 export function renamePart(def: BoardDefinition, ref: string, name: string): void {
@@ -593,4 +596,14 @@ export function setIcon(def: BoardDefinition, icon: string): void {
 
 export function setCap(def: BoardDefinition, cap: { on?: boolean; n?: number }): void {
   def.cap = { ...def.cap, ...cap };
+}
+
+// Which field plays a role of the analysis views (core/board/analysis.ts); undefined: none. The
+// block goes away once no role is mapped.
+export function setRole(def: BoardDefinition, role: Role, ref: string | undefined): void {
+  const analysis = { ...def.analysis };
+  if (ref === undefined) delete analysis[role];
+  else analysis[role] = ref;
+  if (Object.keys(analysis).length === 0) delete def.analysis;
+  else def.analysis = analysis;
 }

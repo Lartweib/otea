@@ -22,6 +22,7 @@ import {
   setInstruction,
   setRequirement,
   setReviewer,
+  setRole,
   setWhen,
   uniqueName,
 } from './edits.ts';
@@ -154,6 +155,21 @@ describe('parts', () => {
     expect(def.parts.fbiome).toBeDefined();
     // Concepto's "only when Bioma is Pantano" can no longer read it: it becomes required always.
     expect(def.steps[0]?.hand[1]).toEqual({ ref: 'eswamp', req: 'always', fresh: false });
+  });
+
+  it('maps a field to a role of the analysis views, and drops the block once nothing is mapped', () => {
+    const def = creatures();
+    setRole(def, 'area', 'fbiome');
+    expect(def.analysis).toEqual({ area: 'fbiome' });
+    setRole(def, 'area', undefined);
+    expect(def.analysis).toBeUndefined();
+  });
+
+  it('drops a role whose field nothing uses any more', () => {
+    const def = creatures();
+    setRole(def, 'area', 'fbiome');
+    removePart(def, { type: 'form' }, 'fbiome');
+    expect(def.analysis).toBeUndefined();
   });
 
   it('renames a part and every mention follows', () => {
