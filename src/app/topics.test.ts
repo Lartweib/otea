@@ -17,6 +17,7 @@ import {
   setTopicsOn,
   topicSuggestions,
   topicsAwaiting,
+  topicsAwaitingText,
   topicsOfItem,
   topicsOn,
   topicWaiting,
@@ -238,6 +239,24 @@ describe('topics awaiting an agent', () => {
     addTopic(ctx, { question: 'de otro', actor: { kind: 'agent', name: 'ink' } }, now);
 
     expect(topicsAwaiting(ctx, 'quill', now).map(({ id }) => id)).toEqual(['TEM-1', 'TEM-3']);
+  });
+
+  it('say what the person wrote since the last answer, so next is enough to answer it', () => {
+    addTopic(ctx, { question: 'sin responder', actor: quill }, now);
+    addTopic(ctx, { question: 'con nota', actor: quill }, now);
+    answerTopic(ctx, { id: 'TEM-2', summary: 'Funciona en macOS.', actor: quill }, now);
+    noteTopic(ctx, { id: 'TEM-2', text: '¿Y en Linux?', actor: fede }, now);
+    noteTopic(ctx, { id: 'TEM-2', text: 'Y en Windows', actor: fede }, now);
+    topicWaiting(ctx, 'quill', now);
+
+    const answer = 'otea topic answer <id> --summary "<short answer>" --full "<your full answer>"';
+    expect(topicsAwaitingText(topicsAwaiting(ctx, 'quill', now))).toBe(
+      [
+        'Topics waiting for your answer (the person reads it in Temas):',
+        `  TEM-1 "sin responder": ${answer.replace('<id>', 'TEM-1')}`,
+        `  TEM-2 "con nota": the person wrote after your answer: "¿Y en Linux?" "Y en Windows". Answer it: ${answer.replace('<id>', 'TEM-2')}`,
+      ].join('\n'),
+    );
   });
 });
 

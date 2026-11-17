@@ -530,14 +530,29 @@ export function topicsAwaiting(ctx: Context, agent: string, now = systemClock): 
   );
 }
 
+// The person's notes since the agent last answered: otea wait showed them only once, and an agent
+// that runs next instead reads here what it is to answer.
+function notesSinceAnswer(topic: Topic): string[] {
+  const last = topic.turns.findLastIndex((turn) => turn.kind === 'answer');
+  if (last < 0) return [];
+  return topic.turns
+    .slice(last + 1)
+    .filter((turn) => turn.kind === 'note')
+    .map((turn) => turn.text);
+}
+
 export function topicsAwaitingText(topics: readonly Topic[]): string | undefined {
   if (topics.length === 0) return undefined;
   return [
     'Topics waiting for your answer (the person reads it in Temas):',
-    ...topics.map(
-      ({ id, title }) =>
-        `  ${id} "${title}": otea topic answer ${id} --summary "<short answer>" --full "<your full answer>"`,
-    ),
+    ...topics.map((topic) => {
+      const { id, title } = topic;
+      const answer = `otea topic answer ${id} --summary "<short answer>" --full "<your full answer>"`;
+      const notes = notesSinceAnswer(topic);
+      if (notes.length === 0) return `  ${id} "${title}": ${answer}`;
+      const wrote = notes.map((note) => `"${note}"`).join(' ');
+      return `  ${id} "${title}": the person wrote after your answer: ${wrote}. Answer it: ${answer}`;
+    }),
   ].join('\n');
 }
 
