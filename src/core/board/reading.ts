@@ -173,7 +173,8 @@ export function stateName(def: BoardDefinition, state: string): string {
 function reviewSaidAsBoard(def: BoardDefinition, wanted: string): string {
   const said = IN_REVIEW[langOf(def)];
   return Object.values(IN_REVIEW).reduce(
-    (text, other) => (text.endsWith(`(${other})`) ? `${text.slice(0, -other.length - 2)}(${said})` : text),
+    (text, other) =>
+      text.endsWith(`(${other})`) ? `${text.slice(0, -other.length - 2)}(${said})` : text,
     wanted,
   );
 }

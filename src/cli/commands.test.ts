@@ -548,7 +548,9 @@ describe('commands', () => {
           const { code, err } = await otea('relay', 'BUGS-1', 'todo', '--quote', 'redo');
 
           expect(code).toBe(2);
-          expect(err).toContain('Moving from "Hacerlo (en revisión)" to "Hacerlo" requires a reason');
+          expect(err).toContain(
+            'Moving from "Hacerlo (en revisión)" to "Hacerlo" requires a reason',
+          );
           expect(
             (
               await otea(
