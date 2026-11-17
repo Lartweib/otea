@@ -1,19 +1,38 @@
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { encodeIco } from './ico.ts';
-import { appIconSvg, INK_ON_LIGHT, markSvg, overlaySvg, TEMPLATE } from './marks.ts';
+import {
+  appIconSvg,
+  faviconSvg,
+  INK_ON_DARK,
+  INK_ON_LIGHT,
+  MARK,
+  macAppIconSvg,
+  markSvg,
+  overlaySvg,
+  pwaIconSvg,
+  TEMPLATE,
+} from './marks.ts';
 
-const BLUE = INK_ON_LIGHT.you;
+const PUBLIC = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'ui', 'public');
 
 describe('markSvg', () => {
-  it('fills the counter in blue only when something is yours', () => {
-    expect(markSvg('idle', 16, INK_ON_LIGHT)).not.toContain(BLUE);
-    expect(markSvg('working', 16, INK_ON_LIGHT)).not.toContain(BLUE);
-    expect(markSvg('yours', 16, INK_ON_LIGHT)).toContain(BLUE);
-    expect(markSvg('yours-working', 16, INK_ON_LIGHT)).toContain(BLUE);
+  it('shows the blue dot while something is yours or an agent works, never at rest', () => {
+    expect(markSvg('idle', 16, INK_ON_LIGHT)).not.toContain(MARK);
+    expect(markSvg('yours', 16, INK_ON_LIGHT)).toContain(MARK);
+    expect(markSvg('working', 16, INK_ON_LIGHT)).toContain(MARK);
+    expect(markSvg('yours-working', 16, INK_ON_LIGHT)).toContain(MARK);
   });
 
-  it('draws the orbit only while an agent works, and turns it 30° a step', () => {
-    expect(markSvg('idle', 16, INK_ON_LIGHT)).not.toContain('<path');
+  it('is the same blue on light and dark grounds', () => {
+    expect(INK_ON_DARK.you).toBe(MARK);
+    expect(INK_ON_LIGHT.you).toBe(MARK);
+  });
+
+  it('draws the trail only while an agent works, and turns dot and trail 30° a step', () => {
+    expect(markSvg('yours', 16, INK_ON_LIGHT)).not.toContain('<path');
     expect(markSvg('working', 16, INK_ON_LIGHT)).toContain('<path');
     expect(markSvg('working', 16, INK_ON_LIGHT, 0)).not.toBe(
       markSvg('working', 16, INK_ON_LIGHT, 1),
@@ -21,25 +40,50 @@ describe('markSvg', () => {
     expect(markSvg('working', 16, INK_ON_LIGHT, 0)).toBe(markSvg('working', 16, INK_ON_LIGHT, 12));
   });
 
-  it('matches the favicon geometry on the 16 grid', () => {
-    // ui/public/otea-yours-working.svg: orbit from (9.26, 0.86), node r 3.93 at 2.14
-    const svg = markSvg('yours-working', 16, INK_ON_LIGHT);
-    expect(svg).toContain('M9.26 0.86');
-    expect(svg).toContain('r="3.93" fill="none" stroke="#1b1f29" stroke-width="2.14"');
+  it('keeps the dot top right while yours, and still frames of work bottom right', () => {
+    // 16 grid: ring centre line r 6, so top right is (12.24, 3.76) and bottom right (12.24, 12.24)
+    expect(markSvg('yours', 16, INK_ON_LIGHT)).toContain('cx="12.24" cy="3.76"');
+    expect(markSvg('working', 16, INK_ON_LIGHT)).toContain('cx="12.24" cy="12.24"');
   });
 
-  it('says yours as a filled node in a template image, with no color', () => {
-    const yours = markSvg('yours', 16, TEMPLATE);
-    expect(yours).toContain('r="7" fill="#000"');
-    expect(markSvg('idle', 16, TEMPLATE)).toContain('fill="none"');
+  it('grows the dot only while an agent works', () => {
+    const r = (s: string) => Number(/class="dot"[^>]* r="([\d.]+)"/.exec(s)?.[1]);
+    const still = r(markSvg('yours', 32, INK_ON_LIGHT));
+    expect(r(markSvg('working', 32, INK_ON_LIGHT))).toBeCloseTo(still * 1.22, 1);
+  });
+
+  it('says yours with the dot in a template image, with no color', () => {
+    expect(markSvg('yours', 16, TEMPLATE)).toContain('class="dot"');
+    expect(markSvg('idle', 16, TEMPLATE)).not.toContain('class="dot"');
+    expect(markSvg('yours', 16, TEMPLATE)).not.toContain(MARK);
+  });
+});
+
+describe('the favicons in ui/public', () => {
+  it.each(['idle', 'yours', 'working', 'yours-working'] as const)('%s is faviconSvg', (frame) => {
+    const file = readFileSync(join(PUBLIC, `otea-${frame}.svg`), 'utf8');
+    expect(file.trim()).toBe(faviconSvg(frame).trim());
   });
 });
 
 describe('overlaySvg and appIconSvg', () => {
-  it('never puts blue on the static app icon, nor on the working overlay', () => {
-    for (const size of [16, 24, 32, 256]) expect(appIconSvg(size)).not.toContain(BLUE);
-    expect(overlaySvg('working', 16)).not.toContain(BLUE);
-    expect(overlaySvg('yours', 16)).toContain(BLUE);
+  it('puts the blue dot on the app icon at every size', () => {
+    for (const size of [16, 24, 32, 256]) expect(appIconSvg(size)).toContain(MARK);
+    expect(macAppIconSvg()).toContain(MARK);
+  });
+
+  it('keeps the working overlay in ink, and the yours overlay blue', () => {
+    expect(overlaySvg('working', 16)).not.toContain(MARK);
+    expect(overlaySvg('yours', 16)).toContain(MARK);
+  });
+
+  it('draws the home-screen icons edge to edge, the maskable one inside the safe circle', () => {
+    expect(pwaIconSvg(512, 'maskable')).toContain('width="512" height="512" fill');
+    // the ring's outer edge stays inside the 40% safe radius
+    const outer = /ring" cx="256" cy="256" r="([\d.]+)"[^>]*stroke-width="([\d.]+)"/.exec(
+      pwaIconSvg(512, 'maskable'),
+    );
+    expect(Number(outer?.[1]) + Number(outer?.[2]) / 2).toBeLessThanOrEqual(512 * 0.4);
   });
 });
 

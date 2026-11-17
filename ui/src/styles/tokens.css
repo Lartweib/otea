@@ -52,6 +52,8 @@
   --you: oklch(0.5 0.2 266);
   --you-ink: oklch(0.455 0.18 266);
   --you-wash: oklch(0.5 0.2 266 / 0.07);
+  /* the mark's dot: one blue on both grounds, read against the ring, not the page (logo board) */
+  --mark-you: oklch(0.6 0.21 266);
   --tint: oklch(0.5 0.2 266 / 0.1);
   --on-you: oklch(0.99 0.005 266);
   --warn: oklch(0.55 0.17 30);

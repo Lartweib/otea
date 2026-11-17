@@ -80,6 +80,17 @@ describe('the topbar', () => {
     expect(busy).toContain('class="brand yours working"');
   });
 
+  it('draws the o as a letter of the word: a ring at the stems’ weight, its dot and trail', () => {
+    const html = topbar({ all: [item({ id: 'A', turn: 'agent' })] });
+    // Schibsted's o in font units: centre (305.5, -265.6), outer radius 281 at weight 150
+    expect(html).toContain('class="brand-ring" cx="305.5" cy="-265.6" r="206"');
+    expect(html).toContain('stroke-width="150"');
+    expect(html).toContain('class="brand-dot"');
+    expect(html).toContain('class="brand-trail"');
+    expect(html).not.toContain('brand-orbit');
+    expect(html).not.toContain('brand-fill');
+  });
+
   it('says how many work, with the total in grey, the halo breathing behind the orbit', () => {
     setLanguage('es');
     const html = topbar({

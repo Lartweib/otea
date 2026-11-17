@@ -31,33 +31,24 @@ import {
 // pill. Both pills open a Pop: the line leads from the pill's centre, the surface unrolls, the rows
 // resolve, and it closes as the same gesture mirrored.
 
-// The mark: "otea" whose o is a node. Its counter fills your blue while anything waits for you; its
-// orbit draws in and turns while an agent holds a lease, clipped where "tea" begins.
+// The mark: "otea" whose o is a letter of the word (C · Órbita): a ring at the weight of the
+// other stems, in Schibsted's o's font units (centre 305.5, -265.6; outer radius 281, weight 150).
+// A dot on the ring shows while anything waits for you or an agent holds a lease; while one works
+// the dot grows, a trail of 80° follows it at half strength and it turns (shell.css).
 export function Brand({ yours, working }: { yours: boolean; working: boolean }) {
   const cls = ['brand', yours ? 'yours' : '', working ? 'working' : ''].filter(Boolean).join(' ');
   return (
     <a className={cls} href="#/" aria-label={t('nav.home')}>
-      <svg className="brand-o" viewBox="0 -703 584.44 823" aria-hidden="true">
-        <defs>
-          <clipPath id="brand-om">
-            <rect x="-600" y="-1200" width="1164.44" height="1600" />
-          </clipPath>
-        </defs>
-        <g clipPath="url(#brand-om)">
-          <g className="brand-spin">
-            <circle
-              className="brand-orbit"
-              cx="305.5"
-              cy="-263.5"
-              r="378"
-              strokeWidth="60"
-              pathLength={100}
-              transform="rotate(-80 305.5 -263.5)"
-            />
-          </g>
+      <svg className="brand-o" viewBox="0 -600 611 640" aria-hidden="true">
+        <circle className="brand-ring" cx="305.5" cy="-265.6" r="206" strokeWidth="150" />
+        <g className="brand-spin">
+          <path
+            className="brand-trail"
+            d="M187.3 -434.3 A206 206 0 0 1 440.6 -421.1"
+            strokeWidth="150"
+          />
+          <circle className="brand-dot" cx="451.2" cy="-411.3" r="76" strokeWidth="34" />
         </g>
-        <circle className="brand-fill" cx="305.5" cy="-263.5" r="209" />
-        <circle className="brand-ring" cx="305.5" cy="-263.5" r="209" strokeWidth="128" />
       </svg>
       tea
     </a>
