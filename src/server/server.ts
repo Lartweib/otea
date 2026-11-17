@@ -383,7 +383,7 @@ function api(
           throw new InvalidQuery(`kind must be one of ${PROMPT_KINDS.join(', ')}`);
         const lang = asked === 'es' ? 'es' : 'en';
         const moment = kind ?? promptKindOf(project);
-        const facts = moment === 'join' ? joinFacts(project) : { boards: [], listening: [] };
+        const facts = moment === 'join' ? joinFacts(project) : { boards: [], working: [] };
         const first = 'first' in facts && facts.first === true ? { first: true } : {};
         return c.json({ kind: moment, prompt: agentPrompt(moment, lang, facts), ...first });
       })
