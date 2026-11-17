@@ -66,7 +66,7 @@ describe('feedLines', () => {
     const lines = feedLines(events, turnOf);
 
     expect(lines.map(({ kind, lane, agent, phrase }) => [kind, lane, agent, phrase])).toEqual([
-      ['other', 'you', null, { key: 'activity.moved', state: 'done' }],
+      ['other', 'you', null, { key: 'activity.closed', state: 'done' }],
       ['handoff', 'you', 'claude-a', { key: 'activity.handed', state: 'review' }],
       ['evidence', 'agent', 'claude-a', { key: 'activity.attached', file: 'after.png' }],
       ['lease', 'agent', 'claude-a', { key: 'activity.claimed', time: '15 min' }],
@@ -302,11 +302,50 @@ describe('a send-back in the feed', () => {
     expect(line?.phrase).toMatchObject({ key: 'activity.sentBack', name: 'Hacerlo' });
   });
 
-  it('keeps an approval as a move', () => {
+  it('says an approval that closes it as closing it', () => {
     const [line] = feedLines(
       [ev('T-8', 'transitioned', you, 1, { from: 'todo__review', to: 'done' })],
       turnOf,
     );
-    expect(line?.phrase.key).toBe('activity.moved');
+    expect(line?.phrase.key).toBe('activity.closed');
+  });
+
+  it('never says a publish that closes a Pedido sent it back', () => {
+    const [line] = feedLines(
+      [
+        ev('PED-1', 'transitioned', you, 1, {
+          from: 'sdraft__review',
+          to: 'done',
+          reason: 'publish',
+        }),
+      ],
+      turnOf,
+    );
+    expect(line?.phrase.key).toBe('activity.closed');
+  });
+
+  // Hacerlo (sdo), then the agent's Integrar (sland): the board's steps in order.
+  const rankOf = (_id: string, state: string) =>
+    ['sdo', 'sdo__review', 'sland'].indexOf(state.replace(/^done$/, 'x'));
+
+  it('says an approval on to an agent’s step as approving it, even with a note', () => {
+    const lines = feedLines(
+      [
+        ev('CAM-1', 'transitioned', you, 1, { from: 'sdo__review', to: 'sland' }),
+        ev('CAM-2', 'transitioned', you, 2, { from: 'sdo__review', to: 'sland', reason: 'Bien' }),
+      ],
+      turnOf,
+      rankOf,
+    );
+    expect(lines.map((l) => l.phrase.key)).toEqual(['activity.approved', 'activity.approved']);
+  });
+
+  it('says a send-back to an earlier step as one', () => {
+    const [line] = feedLines(
+      [ev('CAM-1', 'transitioned', you, 1, { from: 'sland__review', to: 'sdo', reason: 'No' })],
+      turnOf,
+      (_id, state) => ['sdo', 'sland', 'sland__review'].indexOf(state),
+    );
+    expect(line?.phrase.key).toBe('activity.sentBack');
   });
 });

@@ -1,4 +1,5 @@
 import { isClosed, positionOf } from '../../../../src/core/board/engine.ts';
+import { MERGED } from '../../../../src/core/board/merged.ts';
 import { type BoardDefinition, stepById } from '../../../../src/core/board/model.ts';
 import {
   NOTE_ANSWERED,
@@ -79,7 +80,7 @@ export function historyOf(
     .filter(({ type }) => type !== NOTE_ANSWERED)
     .sort((a, b) => a.id - b.id);
   const notes = new Map(notesOf(events as unknown as NoteEvent[]).map((note) => [note.note, note]));
-  let handed = 0;
+  const handedTo = new Set<string>();
   // Before Otea read the item onto its board, its states were a preset's: their names are not
   // the board's words, so those lines say what happened without them.
   const reading = sorted.findLastIndex(
@@ -169,15 +170,25 @@ export function historyOf(
         };
       }
       const q = reason ? { quote: reason } : {};
+      const from = positionOf(String(e.data.from ?? ''));
       if (!human) {
+        if (target?.closes === 'discarded')
+          return { ...base, text: t('sheet.h.agentDiscarded', { state }), ...q };
+        if (target?.turn === 'none')
+          return { ...base, text: t('sheet.h.agentClosed', { state }), ...q };
+        // An agent reviewing another's work approves it on or sends it back: it hands nothing off.
+        if (!isClosed(from) && from.phase === 'review') {
+          const back = backTo(from.step, to, board);
+          return back
+            ? { ...base, text: t('sheet.h.agentSentBack', { state: named(back, '') }), ...q }
+            : { ...base, text: t('sheet.h.agentApproved', { state }), ...q };
+        }
         if (target?.turn === 'human') {
-          handed += 1;
+          // "Again" only for a step it was handed in before: a later step is a first handoff.
+          const again = handedTo.has(to);
+          handedTo.add(to);
           const asked = legacyAsks(reason);
-          const key = asked
-            ? 'sheet.h.asked'
-            : handed > 1
-              ? 'sheet.h.handedAgain'
-              : 'sheet.h.handed';
+          const key = asked ? 'sheet.h.asked' : again ? 'sheet.h.handedAgain' : 'sheet.h.handed';
           return { ...base, text: t(key, { state }), ...q };
         }
         return { ...base, text: t('sheet.h.moved', { state }), ...q };
@@ -185,9 +196,22 @@ export function historyOf(
       if (target?.closes === 'discarded')
         return { ...base, text: t('sheet.h.discarded', { state }), ...q };
       if (target?.turn === 'none') return { ...base, text: t('sheet.h.closed', { state }), ...q };
-      if (target?.turn === 'agent' && reason)
+      // Your own step on a board, handed off: you did it, so it is no approval.
+      if (
+        board &&
+        !isClosed(from) &&
+        from.phase === 'doing' &&
+        stepById(board, from.step)?.doer === 'you'
+      )
+        return { ...base, text: t('sheet.h.delivered', { state }), ...q };
+      // Out of a board's review, the steps say whether it went back (your note is its why) or on
+      // (your note goes with the approval); elsewhere, a reason marks a send-back.
+      const reviewed = !isClosed(from) && from.phase === 'review' ? from.step : undefined;
+      const back = reviewed ? backTo(reviewed, to, board) !== undefined : !!reason;
+      if (target?.turn === 'agent' && back)
         return { ...base, text: t('sheet.h.sentBack', { state }), ...q };
-      if (target?.turn === 'agent') return { ...base, text: t('sheet.h.approved', { state }) };
+      if (target?.turn === 'agent')
+        return { ...base, text: t('sheet.h.approved', { state }), ...q };
       return { ...base, text: t('sheet.h.youMoved', { state }), ...q };
     }
     if (e.type === 'claimed') {
@@ -234,9 +258,31 @@ export function historyOf(
         }),
       };
     }
-    return { ...base, text: describeEvent(e, fieldWords) };
+    // otea merged: that the Done item's branch is in, with its pull request when given.
+    if (e.type === MERGED) {
+      const branch = String(e.data.branch ?? '');
+      const pr = typeof e.data.pr === 'string' && e.data.pr !== '' ? { quote: e.data.pr } : {};
+      return {
+        ...base,
+        text: t(human ? 'sheet.h.mergedYou' : 'sheet.h.merged', { branch }),
+        ...pr,
+      };
+    }
+    return { ...base, text: describeEvent(e, fieldWords, { you: human }) };
   });
   return withProfileChanges(sorted, lines).reverse();
+}
+
+// Where a review's move sends the item back, when it does: a doing step no later than the one
+// reviewed (on a board, by the steps' order; off one, only the same step).
+function backTo(reviewed: string, to: string, board?: BoardDefinition): string | undefined {
+  const target = positionOf(to);
+  if (isClosed(target) || target.phase !== 'doing') return undefined;
+  if (target.step === reviewed) return to;
+  if (!board) return undefined;
+  const order = board.steps.map(({ id }) => id);
+  const at = order.indexOf(target.step);
+  return at !== -1 && at < order.indexOf(reviewed) ? to : undefined;
 }
 
 // An agent that acts on the item with another profile than its last one here gets a line of its
