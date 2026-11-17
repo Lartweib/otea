@@ -943,11 +943,13 @@ export function listTemplates(lang: Lang): TemplateView[] {
 }
 
 export type CreateSetInput = {
-  // A template set key (Cambios en varios repos, Producto).
+  // A template set key (Ideas → Tareas, Entregas con PR).
   set: string;
   lang: Lang;
   // The names the person typed for each board, in the set's order; empty keeps the template's.
   boards: readonly { name?: string | undefined; item?: string | undefined }[];
+  // The Pedido an agent drafts the set on: the set's first board waits on it.
+  requestItem?: string;
 };
 
 // Creates every board of a set as a draft, in one transaction: none, or all of them. A split
@@ -958,9 +960,19 @@ export function createBoardSet(
   now: Clock = systemClock,
   ids: IdSource = newId,
 ): BoardRecord[] {
+  return transaction(ctx.db, () => insertNewBoardSet(ctx, input, now, ids));
+}
+
+// Creates the set's boards inside the caller's transaction, so they can go with what asked for them.
+export function insertNewBoardSet(
+  ctx: Context,
+  input: CreateSetInput,
+  now: Clock = systemClock,
+  ids: IdSource = newId,
+): BoardRecord[] {
   const set = TEMPLATE_SETS.find(({ key }) => key === input.set);
   if (!set) throw new OteaError('not_found', `There is no template ${input.set}`);
-  return transaction(ctx.db, () => {
+  {
     const boards = set.boards.map((_, index) => {
       const asked = input.boards[index] ?? {};
       return {
@@ -991,12 +1003,12 @@ export function createBoardSet(
         definition: JSON.stringify(definition),
         baseVersion: null,
         updatedAt: at,
-        requestItem: null,
+        requestItem: index === 0 ? (input.requestItem ?? null) : null,
         agentNote: null,
       });
       return getBoardRecord(ctx, id);
     });
-  });
+  }
 }
 
 // Creates a board (from a template, or blank) and publishes it at once: what the home does, for the

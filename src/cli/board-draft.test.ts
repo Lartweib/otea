@@ -174,6 +174,73 @@ describe('otea board draft --new', () => {
     expect(draft.steps.map(({ name }: { name: string }) => name)).toEqual(['Crear', 'Integrar']);
   });
 
+  it('proposes every board of a set with --template, the first one waiting on the Pedido', async () => {
+    const { code, out } = await otea(
+      'board',
+      'draft',
+      '--new',
+      'Ideas del juego',
+      '--why',
+      'Ideas que se refinan y se planifican',
+      '--template',
+      'ideas',
+    );
+
+    expect(code).toBe(0);
+    const { item, waiting, drafts } = read((project) => {
+      const [pedido] = listItems(project, { collection: 'Pedidos' });
+      const id = pedido?.id ?? '';
+      const summaries = listBoardSummaries(project).filter(({ builtin }) => !builtin);
+      return {
+        item: id,
+        waiting: waitingDraftOf(project, id)?.draft?.definition,
+        drafts: summaries.map(({ name, liveVersion }) => ({
+          name,
+          published: liveVersion !== null,
+        })),
+      };
+    });
+    expect(waiting?.name).toBe('Ideas del juego');
+    expect(waiting?.template).toBe('ideas');
+    expect(drafts).toHaveLength(2);
+    expect(drafts).toEqual(
+      expect.arrayContaining([
+        { name: 'Ideas del juego', published: false },
+        { name: 'Implementación', published: false },
+      ]),
+    );
+    expect(out).toContain(`on the Pedido ${item} you hold`);
+    expect(out).toContain('Implementación');
+    const draft = JSON.parse((await otea('board', 'draft', item)).out);
+    expect(draft.name).toBe('Ideas del juego');
+  });
+
+  it('proposes the set over MCP too', async () => {
+    const server = createMcpServer(COMMANDS, { cwd: repo.dir, warn: () => {} });
+    const client = new Client({ name: 'test', version: '0' });
+    const [clientSide, serverSide] = InMemoryTransport.createLinkedPair();
+    await server.connect(serverSide);
+    await client.connect(clientSide);
+    try {
+      const reply = (await client.callTool({
+        name: 'board_draft',
+        arguments: { as: 'kiln', new: 'Trabajos', why: 'Issues por repo', template: 'repos' },
+      })) as { isError?: boolean; content: { text: string }[] };
+
+      expect(reply.isError, reply.content[0]?.text).toBeFalsy();
+      expect(boards()).toEqual(expect.arrayContaining(['Trabajos', 'Entregas']));
+    } finally {
+      await client.close();
+    }
+  });
+
+  it('lists the templates it takes, with what each makes, in its help', async () => {
+    const { out } = await otea('board', 'draft', '--help');
+
+    expect(out).toContain('Templates (--template <key>):');
+    expect(out).toMatch(/ideas +Ideas → Tasks \(a set\)/);
+  });
+
   it('refuses a template that is not one board of the catalogue, making nothing', async () => {
     const { error } = await errorOf(
       otea,
