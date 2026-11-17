@@ -232,7 +232,7 @@ function zoneOf(def: BoardDefinition, part: Part): Zone {
 // version. Throws when the board cannot be published: problemsOf says why in words first.
 export function compileBoard(id: string, version: number, def: BoardDefinition): Preset {
   const first = def.steps[0];
-  if (!first) throw new OteaError('invalid_preset', `Board ${def.name} has no steps`);
+  if (!first) throw new OteaError('invalid_board', `Board ${def.name} has no steps`);
   const used = usedRefs(def);
   // Layout order: the parts Acomodar placed, in its order, then the rest in board order.
   const ordered = [
@@ -392,7 +392,7 @@ export function compileBoard(id: string, version: number, def: BoardDefinition):
   const reading = readPreset(JSON.stringify(raw));
   if (!reading.ok)
     throw new OteaError(
-      'invalid_preset',
+      'invalid_board',
       `Board ${def.name} does not compile: ${reading.problems.join('; ')}`,
     );
   // Its states are hidden ids: each reads as its step (Refinar (in review)), in what Otea says.

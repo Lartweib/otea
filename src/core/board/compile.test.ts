@@ -5,6 +5,12 @@ import { blankBoard, instantiate, TEMPLATES } from './templates.ts';
 import { creatures } from './testing.ts';
 
 describe('compileBoard', () => {
+  it('refuses a board that cannot run as a board error, never a preset one (ONB-28)', () => {
+    expect(() => compileBoard('bcria', 1, { ...creatures(), steps: [] })).toThrow(
+      expect.objectContaining({ code: 'invalid_board' }),
+    );
+  });
+
   it('turns a board version into the preset the rest of Otea reads', () => {
     const preset = compileBoard('bcria', 4, creatures());
     expect(preset.name).toBe('bcria');

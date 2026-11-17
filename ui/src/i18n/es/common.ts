@@ -186,7 +186,7 @@ export const common = {
   'refusal.parentBoard': 'No se enlazó: las partes de {parent} van en {board}.',
   'refusal.parentElsewhere': 'No se enlazó: {item} y {parent} están en tableros distintos.',
   'refusal.noLink': 'Ese enlace ya no existe.',
-  'refusal.parentRequired': 'No se creó: un {item} siempre es parte de un {parent}.',
+  'refusal.parentRequired': 'No se creó: cada {item} siempre es parte de otro ítem ({parent}).',
   'refusal.parentRequiredAny': 'No se creó: tiene que ser parte de otro ítem.',
   'refusal.draftChanged':
     'El borrador cambió desde que lo abriste (un agente entregó su tablero u otra ventana lo guardó): recarga para verlo.',

@@ -183,7 +183,7 @@ export const common = {
   'refusal.parentBoard': 'Not linked: the parts of {parent} go on {board}.',
   'refusal.parentElsewhere': 'Not linked: {item} and {parent} are on different boards.',
   'refusal.noLink': 'That link no longer exists.',
-  'refusal.parentRequired': 'Not created: a {item} is always part of a {parent}.',
+  'refusal.parentRequired': 'Not created: each {item} is always part of one {parent}.',
   'refusal.parentRequiredAny': 'Not created: it has to be part of another item.',
   'refusal.draftChanged':
     'The draft changed since you opened it (an agent handed in its board, or another window saved it): reload to see it.',

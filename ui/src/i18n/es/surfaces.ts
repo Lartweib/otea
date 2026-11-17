@@ -240,7 +240,7 @@ export const surfaces = {
   'emptyProject.boards': 'tableros',
   'emptyProject.noBoards':
     'Este proyecto todavía no tiene tableros. La forma más fácil de empezar: pega esto en el chat de tu agente. Lee el proyecto, te pregunta cómo trabajas y te propone los tableros para que los pruebes.',
-  'emptyProject.orPick': 'O elige tú los tableros:',
+  'emptyProject.orPick': 'O elige tú del catálogo:',
   'emptyProject.pickBoards': 'Elegir un tablero',
   'emptyProject.noBoardsYet': 'ninguno todavía',
   'emptyProject.example': 'Escribir la primera tarea',

@@ -237,7 +237,7 @@ export const surfaces = {
   'emptyProject.boards': 'boards',
   'emptyProject.noBoards':
     'This project has no boards yet. The easiest way to start: paste this into your agent’s chat. It reads the project, asks how you work and proposes the boards for you to try.',
-  'emptyProject.orPick': 'Or pick the boards yourself:',
+  'emptyProject.orPick': 'Or choose yourself from the catalogue:',
   'emptyProject.pickBoards': 'Pick a board',
   'emptyProject.noBoardsYet': 'none yet',
   'emptyProject.example': 'Write the first task',

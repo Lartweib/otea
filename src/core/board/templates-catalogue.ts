@@ -387,8 +387,8 @@ const CONTENT: Template = {
       reviewer: 'you',
       hand: [['fdraft', 'always', true]],
       take: w(
-        'Write @{fdraft} from the approved @{foutline}. Cite a source for every fact.',
-        'Escribe @{fdraft} a partir del @{foutline} aprobado. Cita una fuente para cada dato.',
+        'Write @{fdraft} from what was approved in @{foutline}. Cite a source for every fact.',
+        'Escribe @{fdraft} con lo aprobado en @{foutline}. Cita una fuente para cada dato.',
       ),
       review: w(
         'Read it as the audience in @{fbrief} would.',

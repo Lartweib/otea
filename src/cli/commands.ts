@@ -839,10 +839,15 @@ const boardName = (record: BoardRecord) => (record.live ?? record.draft)?.defini
 
 const boardAdd: Command = {
   name: 'board add',
-  summary: `For the person, with no agent name: make a board and publish it, from a template (${TEMPLATE_KEYS}) or blank, in the project's language (es) or the one --lang gives; --item names what each item is; a set such as ideas or repos makes all of its boards, the name and --item naming the first`,
+  summary: `For the person, with no agent name: make a board and publish it, from a template (${TEMPLATE_KEYS}) or blank, in the project's language (es) or the one --lang gives; --item names what each item is; a set such as ideas or repos makes all of its boards, the name and --item naming the first; --prefix chooses how its item ids start (2 to 6 letters or digits; one board only)`,
   details: TEMPLATE_LIST,
   args: ['name'],
-  options: { template: { placeholder: 'key' }, item: {}, lang: { choices: LANGS } },
+  options: {
+    template: { placeholder: 'key' },
+    item: {},
+    lang: { choices: LANGS },
+    prefix: { placeholder: 'letters' },
+  },
   execute: ({ cwd, args: [name = ''], option, agent }) => {
     const lang = langOption(option('lang'));
     // Publishing is the person's: an agent that names itself proposes the board instead.
@@ -854,7 +859,12 @@ const boardAdd: Command = {
     }
     const template = option('template');
     const item = option('item');
+    const prefix = option('prefix');
     if (template !== undefined && isSetKey(template)) {
+      if (prefix !== undefined)
+        throw new UsageError(
+          `--prefix names the ids of one board, and ${template} makes several: add it without --prefix`,
+        );
       const boards = withProject(cwd, (project) =>
         addBoardSet(project, {
           set: template,
@@ -873,9 +883,10 @@ const boardAdd: Command = {
         by: { kind: 'human', name: 'human' },
         ...(template === undefined ? {} : { template }),
         ...(item === undefined ? {} : { item }),
+        ...(prefix === undefined ? {} : { prefix }),
       }),
     );
-    const prefix = added.record.collection
+    const ids = added.record.collection
       ? withProject(
           cwd,
           (project) => getCollection(project.db, added.record.collection ?? '').prefix,
@@ -884,7 +895,7 @@ const boardAdd: Command = {
     const from = template === undefined ? 'blank' : `from template ${template}`;
     return {
       data: added,
-      text: `Published board "${name.trim()}" v${added.version} ${from} (ids ${prefix}-<n>)`,
+      text: `Published board "${name.trim()}" v${added.version} ${from} (ids ${ids}-<n>)`,
     };
   },
 };
