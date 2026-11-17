@@ -96,6 +96,9 @@ export type NextInput = {
   handed?: { note: string; by: string };
   // Once Done: that its branch was merged, and the commit when given.
   merged?: { commit?: string };
+  // A step whose work is handed in some other way than otea handoff (a board draft on its
+  // Pedido): what comes after it and the command that hands it in, in place of the handoff's.
+  handIn?: { after: string; command: string };
 };
 
 // Another agent's say on the item keeps the asking agent off it: a live lease it does not hold, or
@@ -581,7 +584,8 @@ export function nextText(def: BoardDefinition, input: NextInput): string {
       indent(mentionText(def, instruction)),
     ),
   );
-  lines.push(...section('Handoff', handLines(def, step, input)));
+  // Work handed in some other way carries nothing of an otea handoff.
+  if (reviewing || !input.handIn) lines.push(...section('Handoff', handLines(def, step, input)));
   if (!reviewing) lines.push(...section('Estimate', estimateLines(def, input)));
   lines.push(...section('Branch', branchLines(def, step, position, input)));
   if (!reviewing)
@@ -618,6 +622,12 @@ export function nextText(def: BoardDefinition, input: NextInput): string {
       others.push(
         `  Or drop it if it is not worth doing: otea drop ${id} --reason "why"${motiveFlag(def)}`,
       );
+  }
+  const handIn = reviewing ? undefined : input.handIn;
+  if (handIn) {
+    lines.push(...section('Next', [`  ${handIn.after}`]));
+    lines.push(...section('When you finish', [`  ${handIn.command}`]));
+    return lines.join('\n');
   }
   lines.push(...section('Next', [`  ${after}`, ...others]));
 
