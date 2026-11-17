@@ -64,6 +64,8 @@ export const CLI_ONLY_COMMANDS = [
   'migrate',
   'connect',
   'board add',
+  // What the person pastes into an agent's chat: the person copies it, the agent never needs it.
+  'prompt',
   // A cut-out image is a file on the agent's own disk, which only the command line can hand it.
   'crop',
   'collection icon',

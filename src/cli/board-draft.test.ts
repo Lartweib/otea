@@ -151,6 +151,48 @@ describe('otea board draft --new', () => {
     expect(pedidos).toHaveLength(1);
   });
 
+  it('starts the draft from a catalogue template with --template', async () => {
+    const made = JSON.parse(
+      (
+        await otea(
+          'board',
+          'draft',
+          '--new',
+          'Piezas',
+          '--why',
+          'Las pantallas del juego',
+          '--template',
+          'design',
+          '--json',
+        )
+      ).out,
+    );
+
+    const draft = JSON.parse((await otea('board', 'draft', made.item)).out);
+    expect(draft.name).toBe('Piezas');
+    expect(draft.template).toBe('design');
+    expect(draft.steps.map(({ name }: { name: string }) => name)).toEqual(['Crear', 'Integrar']);
+  });
+
+  it('refuses a template that is not one board of the catalogue, making nothing', async () => {
+    const { error } = await errorOf(
+      otea,
+      'board',
+      'draft',
+      '--new',
+      'Ideas',
+      '--why',
+      'x',
+      '--template',
+      'nope',
+    );
+
+    expect(error.code).toBe('not_found');
+    expect(boards()).not.toContain('Ideas');
+    expect(read((project) => listItems(project, { collection: 'Pedidos' }))).toHaveLength(0);
+    expect((await otea('board', 'draft', 'PED-1', '--template', 'design')).code).toBe(2);
+  });
+
   it('asks what the board is for', async () => {
     const { error } = await errorOf(otea, 'board', 'draft', '--new', 'Criaturas');
 

@@ -42,6 +42,8 @@ describe("Otea's agent guide", () => {
       'declare unknown. Never guess.',
       'To propose a new board, run otea board draft --new "<name>" --why "<what it is for>"',
       'the person publishes it',
+      'asking the person one question at a time',
+      '--template <key>',
       'Keep going until the person stops you',
       'otea wait --turn agent --unclaimed',
       'in the background',

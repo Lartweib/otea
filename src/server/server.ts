@@ -3,6 +3,7 @@ import { bodyLimit } from 'hono/body-limit';
 import { getCookie } from 'hono/cookie';
 import { z } from 'zod';
 import { agentDetail } from '../app/agent-detail.ts';
+import { joinFacts, promptKindOf } from '../app/agent-prompts.ts';
 import { syncBoardPresets } from '../app/boards.ts';
 import { briefFor } from '../app/brief.ts';
 import { listCollectionViews, listShownCollectionViews } from '../app/collections.ts';
@@ -40,6 +41,7 @@ import { linkItems, unlinkItems } from '../app/relations.ts';
 import { reassignItem, restartItem, undoRelease } from '../app/restart.ts';
 import { NO_TAILSCALE, type TailscaleCli } from '../app/tailscale.ts';
 import { undoMove } from '../app/undo.ts';
+import { agentPrompt, isPromptKind, PROMPT_KINDS } from '../core/agent-prompts.ts';
 import { PERIOD_HINT, parsePeriod } from '../core/board/performance.ts';
 import { MAX_EVIDENCE_MB } from '../core/evidence.ts';
 import { TURNS, type Turn } from '../core/workflow.ts';
@@ -343,6 +345,17 @@ function api(
       .get('/collections', (c) => c.json(listShownCollectionViews(project)))
       .get('/presets', (c) => c.json(listPresetViews(project)))
       .get('/agents', (c) => c.json({ agents: listAgents(project.db) }))
+      // What to paste into an agent's chat (Conectar un agente, the empty project): the first contact,
+      // one more agent joining, or one more board; without a kind, the project's moment.
+      .get('/agent-prompt', (c) => {
+        const { kind, lang: asked } = c.req.query();
+        if (kind !== undefined && !isPromptKind(kind))
+          throw new InvalidQuery(`kind must be one of ${PROMPT_KINDS.join(', ')}`);
+        const lang = asked === 'es' ? 'es' : 'en';
+        const moment = kind ?? promptKindOf(project);
+        const facts = moment === 'join' ? joinFacts(project) : { boards: [], listening: [] };
+        return c.json({ kind: moment, prompt: agentPrompt(moment, lang, facts) });
+      })
       // How each model performs (Rendimiento): per model family and effort, for a board and a period.
       .get('/performance', (c) => {
         const { board, since = 'all' } = c.req.query();

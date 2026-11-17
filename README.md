@@ -344,8 +344,10 @@ In Studio, **Que lo esboce un agente** (on Studio's home and in **Nuevo tablero*
 
 An agent the person asks for a board starts the same thing from the CLI or MCP (the `board_draft` tool, with `new` and `why`): `otea board draft --new "<name>" --why "<what it is for>"` makes the waiting board and its Pedido, held by the agent, with `--why` as what the board is for. A name another board or draft has is refused (`already_exists`), as in Studio, and an unnamed agent too. With `--file board.json` it hands the draft in at once, checked as below; a file that is not a board makes nothing. It prints the Pedido and the board's link in Studio, where it waits for the person to try and publish: agents never publish.
 
+`--template <key>` starts the draft from a board of the catalogue (one board, never a set) instead of a blank one, so the agent adapts the closest template rather than writing a board from nothing.
+
 ```sh
-otea board draft --new "Criaturas" --why "Swamp creatures, with art and animation"   # makes PED-1 and the board
+otea board draft --new "Piezas" --why "The game's screens, reviewed by looking" --template design   # PED-1, starting from Diseño visual
 otea board draft PED-1 > board.json          # the draft to start from: every key a board takes
 otea board draft PED-1 --file board.json     # check it as a board and hand it in on the Pedido
 ```
@@ -355,6 +357,16 @@ otea board draft PED-1 --file board.json     # check it as a board and hand it i
 - A board that is a board but not ready (a step with no name, an agent closing an item as Done) is handed in all the same, and the command lists what is still to fix for it to be published.
 - A step is done by `"you"` (the person) or `"any"` agent, and reviewed by `"none"`, `"you"` or `"any"` agent; a step never names one agent. A board written before, whose step names one (`{"agent": "claude-b"}`), is read as `"any"`, nothing else changing: a hand-in says so under `Read as today's board:` (and `PUT /api/boards/:id/draft` answers it as `notes`), and a board already stored reads the same way.
 - Publishing the board offers to close its Pedido as done (checked by default): publishing is the person taking the draft. Unchecked, the Pedido stays open.
+
+### What to paste into an agent's chat
+
+`otea prompt` prints what the person pastes into an agent's chat, the same text the UI copies (**Conectar un agente** and the empty project page), in Spanish or with `--lang en`:
+
+- `start`, the first contact on a new project: set it up (`otea init`, no template) and connect (`otea connect` with the agent's own name, model and effort), read the project (README, code, git history, CLAUDE.md or AGENTS.md, CI), ask the person one question at a time how they want to work, draft the boards with `otea board draft --new … --why … --template <key>`, say where to review them and to try them with a first item, and then keep working.
+- `join`, one more agent on a project that has boards: connect with a name none of the listening agents has (they are named), read the guide and the boards, written from the project as it is now (each board's agent steps and how many items wait for an agent), and work the queue (`otea next --claim`, hand off, `otea wait`), never taking an item another agent holds and never designing boards.
+- `design`, one more board on a project that already has some.
+
+Without one, it gives `start` until the project has a board of its own (or where there is no project yet), then `join`. `GET /api/agent-prompt?kind=&lang=` answers the same for the UI.
 
 ### Archiving and deleting a board
 
