@@ -34,6 +34,7 @@ import { useOpened } from './opened.ts';
 import {
   compareFiles,
   fileMarks,
+  type HandedField,
   handedFields,
   notesDock,
   type PhoneRound,
@@ -299,6 +300,27 @@ function Quote({ text }: { text: string }) {
   );
 }
 
+// What a step handed off that is not a file, by name: a long field drawn as Markdown (its headings,
+// lists and tables), a short one as it is (IDEA2-2: a brief read raw, «## Problema» and pipes).
+export function HandedList({ fields }: { fields: readonly HandedField[] }) {
+  return (
+    <dl className="p-handed">
+      {fields.map((f) => (
+        <div key={f.ref} className={f.long ? 'long' : undefined}>
+          <dt>{f.name}</dt>
+          {f.long ? (
+            <dd>
+              <NoteText className="p-text" text={f.value} />
+            </dd>
+          ) : (
+            <dd>{f.value}</dd>
+          )}
+        </div>
+      ))}
+    </dl>
+  );
+}
+
 // A round's notes, folded under what was delivered: open the first time.
 function RoundThread({
   notes,
@@ -338,7 +360,7 @@ function RoundView({
 }: {
   r: PhoneRound;
   // The fields the step handed off (Commit en main), on the newest round only: their values today.
-  handed?: readonly { ref: string; name: string; value: string }[] | undefined;
+  handed?: readonly HandedField[] | undefined;
   parts?: ReadonlyMap<string, string> | undefined;
   decide?: ReaderDecide | undefined;
   comment?:
@@ -358,16 +380,7 @@ function RoundView({
         <Lab x={newest && r.n > 1 ? t('phone.r.newIn', { n: r.n }) : t('toca.round', { n: r.n })}>
           {t('phone.r.delivered')}
         </Lab>
-        {handed?.length ? (
-          <dl className="p-handed">
-            {handed.map((f) => (
-              <div key={f.ref}>
-                <dt>{f.name}</dt>
-                <dd>{f.value}</dd>
-              </div>
-            ))}
-          </dl>
-        ) : null}
+        {handed?.length ? <HandedList fields={handed} /> : null}
         {r.note ? (
           <NoteText className="p-text" text={r.note} />
         ) : handed?.length ? null : (

@@ -12,6 +12,7 @@ import {
   partNames,
   phoneRounds,
   readerOf,
+  requestLine,
   roundTagWord,
   splitEvidence,
 } from './phone-review.ts';
@@ -179,13 +180,31 @@ describe('handedFields: what a step handed off that is not a file', () => {
       { ref: 'fbiome', req: 'always', fresh: false },
     ];
     expect(handedFields(def, 'sanimate', { fdesc: 'Lenta', fbiome: '' })).toEqual([
-      { ref: 'fdesc', name: 'Descripción', value: 'Lenta' },
+      { ref: 'fdesc', name: 'Descripción', value: 'Lenta', long: true },
     ]);
     expect(handedFields(def, 'sanimate', { fdesc: 'Lenta', fbiome: 'cswamp' })).toEqual([
-      { ref: 'fdesc', name: 'Descripción', value: 'Lenta' },
-      { ref: 'fbiome', name: 'Bioma', value: 'cswamp' },
+      { ref: 'fdesc', name: 'Descripción', value: 'Lenta', long: true },
+      { ref: 'fbiome', name: 'Bioma', value: 'cswamp', long: false },
     ]);
     expect(handedFields(def, null, { fdesc: 'Lenta' })).toEqual([]);
+  });
+});
+
+describe('requestLine: the folded request, one line of its prose (IDEA2-2, DR2-22)', () => {
+  it('reads the first line of prose, never a heading mark, a table or a fence', () => {
+    const brief = [
+      '## Problema',
+      'Sostener **hábitos** diarios cuesta; ver la [racha](https://x.y) ayuda.',
+      '',
+      '| Entra | Fuera |',
+      '|---|---|',
+    ].join('\n');
+    expect(requestLine(brief)).toBe('Sostener hábitos diarios cuesta; ver la racha ayuda.');
+    expect(requestLine('| Entra | Fuera |\n|---|---|\n| Marcar | Cuentas |')).toBe('Entra · Fuera');
+    expect(requestLine('- `otea` falla en *CI*\n- otra')).toBe('otea falla en CI');
+    expect(requestLine('## Solo un título')).toBe('Solo un título');
+    expect(requestLine('```\nnpm test\n```\nY después')).toBe('Y después');
+    expect(requestLine('  ')).toBe('');
   });
 });
 

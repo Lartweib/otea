@@ -73,7 +73,7 @@ import {
 import { useOpened } from './opened.ts';
 import { PhoneItem } from './PhoneItem.tsx';
 import { ProofChecklist } from './ProofChecklist.tsx';
-import { partNames, phoneRounds, readerOf, unopenedOf } from './phone-review.ts';
+import { partNames, phoneRounds, readerOf, requestLine, unopenedOf } from './phone-review.ts';
 import { Route } from './Route.tsx';
 import { routeIndex, routeSteps } from './route.ts';
 
@@ -670,9 +670,7 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
               .filter(Boolean)
               .join(' · ')}
             request={request.length ? <Body id={item.id} sections={request} /> : null}
-            requestSummary={
-              (firstField ? (item.fields[firstField] ?? '') : '').trim().split(/\n/)[0] ?? ''
-            }
+            requestSummary={firstField ? requestLine(String(item.fields[firstField] ?? '')) : ''}
             links={
               links && (links.blockers.length || links.blocking.length || links.related.length) ? (
                 <LinksSection

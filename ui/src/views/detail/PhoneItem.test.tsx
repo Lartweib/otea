@@ -5,6 +5,7 @@ import { ago, inMinutes, NOW, officialType } from '../../derive/fixtures.ts';
 import { setLanguage } from '../../i18n/i18n.ts';
 import type { CollectionView, ItemEvent, ItemView } from '../../types.ts';
 import { ItemSheet } from './ItemSheet.tsx';
+import { HandedList } from './PhoneItem.tsx';
 
 afterEach(() => setLanguage('en'));
 
@@ -200,6 +201,41 @@ describe('reviewing an item on the phone', () => {
     expect(html).not.toContain('cerrar como');
     expect(html).toContain('class="p-ihead"');
     expect(html).not.toContain('p-dock');
+  });
+
+  it('folds what was asked under one line of its prose, never its raw Markdown (DR2-22)', () => {
+    setLanguage('es');
+    const html = render({
+      ...review,
+      fields: {
+        ...review.fields,
+        description: '## Problema\nLos **lobos** se quedan.\n\n| A | B |\n|---|---|',
+      },
+    });
+    const fold = html.slice(html.indexOf('Lo pedido'));
+    const summary = /class="s">([^<]*)</.exec(fold)?.[1];
+    expect(summary).toBe('Los lobos se quedan.');
+  });
+
+  it('draws a long field a step handed off as Markdown, a short one as it is (IDEA2-2)', () => {
+    const html = renderToStaticMarkup(
+      <HandedList
+        fields={[
+          {
+            ref: 'fbrief',
+            name: 'Brief',
+            value: '## Problema\n\n| A | B |\n|---|---|\n| 1 | 2 |',
+            long: true,
+          },
+          { ref: 'fsha', name: 'Commit', value: 'abc123', long: false },
+        ]}
+      />,
+    );
+    expect(html).toContain('<h2>Problema</h2>');
+    expect(html).toContain('<table');
+    expect(html).not.toContain('## Problema');
+    expect(html).not.toContain('|---|');
+    expect(html).toContain('<dd>abc123</dd>');
   });
 
   it('leaves the desk sheet as it was', () => {
