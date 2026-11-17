@@ -164,6 +164,9 @@ export const studioEditor = {
   'bs.editor.part.hint_ph': 'a hint; agents read it',
   'bs.editor.part.options': 'Options',
   'bs.editor.part.boxes': 'Boxes',
+  'bs.editor.part.proof': 'Asks for proof',
+  'bs.editor.part.proof_small':
+    'each ticked box needs its proof in the round: a screenshot, a log line or a test that passes',
   'bs.editor.part.option_ph': '+ add and Enter',
   'bs.editor.part.option_add': 'Add an option',
   'bs.editor.part.option_remove': 'Remove {name}',

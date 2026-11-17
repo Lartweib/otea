@@ -110,6 +110,7 @@ export const common = {
   'refusal.why.missing': { one: 'missing {list}', other: 'missing {list}' },
   'refusal.why.fresh': 'new this round',
   'refusal.why.unchecked': 'every box ticked',
+  'refusal.why.unproved': 'a proof for {list}',
   'refusal.why.note': 'a note',
   'refusal.why.part': 'its part {list} is not finished',
   'refusal.why.allParts': {

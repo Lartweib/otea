@@ -1212,3 +1212,16 @@ input.se-stepname:focus {
     height: 32px;
   }
 }
+
+/* "Pide prueba" on a checklist: the chip, then what it asks for */
+.se-proof {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  margin-top: 10px;
+}
+.se-proof-small {
+  font: 400 italic 13.5px / 1.35 var(--serif);
+  color: var(--ink-3);
+}

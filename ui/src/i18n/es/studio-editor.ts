@@ -162,6 +162,9 @@ export const studioEditor = {
   'bs.editor.part.hint_ph': 'una pista; la leen los agentes',
   'bs.editor.part.options': 'Opciones',
   'bs.editor.part.boxes': 'Casillas',
+  'bs.editor.part.proof': 'Pide prueba',
+  'bs.editor.part.proof_small':
+    'cada casilla marcada necesita su prueba en la ronda: una captura, una línea del log o un test que pase',
   'bs.editor.part.option_ph': '+ añadir y Enter',
   'bs.editor.part.option_add': 'Añadir una opción',
   'bs.editor.part.option_remove': 'Quitar {name}',

@@ -606,3 +606,116 @@ button.pmain:hover {
     animation: none;
   }
 }
+
+/* a checklist that asks for proof: each point, its proof as a chip, the count below */
+.proof-points {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.proof-point {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--rule);
+}
+.proof-box {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border: 1.5px solid var(--ink-3);
+  border-radius: 4px;
+  color: var(--you-ink);
+}
+.proof-point:not(.unticked) .proof-box {
+  border-color: var(--you);
+}
+.proof-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  font: 400 15px / 1.4 var(--sans);
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.proof-point.unticked .proof-name {
+  color: var(--ink-2);
+}
+.proof-chip {
+  flex: 0 1 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 55%;
+  min-height: 32px;
+  padding: 4px 10px;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  background: var(--well);
+  color: var(--ink-2);
+  font: 400 12px / 1.3 var(--mono);
+  cursor: pointer;
+}
+.proof-chip:disabled {
+  cursor: default;
+}
+.proof-chip:not(:disabled):hover {
+  color: var(--ink);
+  border-color: var(--ink-3);
+}
+.proof-chip.test .ic {
+  color: var(--ok, var(--you));
+}
+.proof-what,
+.proof-line {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.proof-what {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+.proof-chip.log .proof-what {
+  flex: none;
+}
+.proof-line {
+  flex: 0 1 auto;
+  min-width: 0;
+  color: var(--ink-3);
+  max-width: 22ch;
+}
+.proof-gap {
+  flex: none;
+  padding: 4px 10px;
+  border: 1px dashed var(--ink-3);
+  border-radius: 6px;
+  font: 400 12px / 1.3 var(--mono);
+  color: var(--ink-3);
+}
+.proof-point.unproved .proof-gap {
+  border-color: var(--warn);
+  color: var(--warn);
+}
+.proof-foot {
+  margin: 8px 0 0;
+  font: 400 12px / 1.4 var(--mono);
+  color: var(--ink-3);
+}
+.proof-foot.short {
+  color: var(--warn);
+}
+@media (max-width: 560px) {
+  .proof-point {
+    flex-wrap: wrap;
+  }
+  .proof-chip,
+  .proof-gap {
+    margin-left: 28px;
+    max-width: calc(100% - 28px);
+    min-height: 44px;
+  }
+}

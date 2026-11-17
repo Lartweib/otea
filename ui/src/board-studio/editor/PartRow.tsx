@@ -496,6 +496,25 @@ function Choices({ part }: { part: Part }) {
           }}
         />
       </div>
+      {part.kind === 'check' ? (
+        <div className="se-proof">
+          <ChipButton
+            className="you"
+            on={part.proof === true}
+            onClick={() =>
+              draft.mutate((d) => {
+                const target = d.parts[part.id];
+                if (!target) return;
+                if (target.proof) delete target.proof;
+                else target.proof = true;
+              })
+            }
+          >
+            {t('bs.editor.part.proof')}
+          </ChipButton>
+          <span className="se-proof-small">{t('bs.editor.part.proof_small')}</span>
+        </div>
+      ) : null}
     </div>
   );
 }
