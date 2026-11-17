@@ -62,6 +62,7 @@ import { performanceOf } from '../app/performance.ts';
 import { lanOpen, type Probe, type TransportKind } from '../app/phone.ts';
 import {
   claimName,
+  endListening,
   type Harness,
   hearAgent,
   LISTEN_BEAT_MS,
@@ -1446,19 +1447,26 @@ const wait: Command = {
         oldestWaiting(project, filter, undefined, forMe ? offerableTo(project, me) : undefined);
       // Waiting is listening: the agent is heard as it waits, so it counts as connected and its
       // profile stays confirmed.
-      const beat =
+      // When it was last heard: a wait whose session ended stops its agent listening at once.
+      let heardAt: string | undefined;
+      const heard =
         input.actor.kind === 'agent'
-          ? {
-              beat: waitBeat(project.db, {
-                agent: me,
-                channel: input.channel,
-                harness: input.harness,
-              }),
-            }
-          : {};
+          ? waitBeat(project.db, { agent: me, channel: input.channel, harness: input.harness })
+          : undefined;
+      const beat = heard
+        ? {
+            beat: {
+              everyMs: heard.everyMs,
+              run: () => {
+                heardAt = heard.run();
+              },
+            },
+          }
+        : {};
       // It listens from the start, not from its first beat.
       beat.beat?.run();
       const waited = await watch(project.db, check, { ...options, ...beat }).finally(owner.stop);
+      if (owner.orphaned() && heardAt) endListening(project.db, me, heardAt);
       if (!('found' in waited)) return waited;
       const { found } = waited;
       return 'text' in found ? { data: found, text: found.text } : itemResult(project, found);
@@ -2077,11 +2085,13 @@ function heardBy(
   newSession = false,
   // Its first call under the name: a new server its harness started may take it from the old one.
   fresh = newSession,
+  // When it was heard, for the server to end its listening when its client closes.
+  heard?: (at: string) => void,
 ) {
   try {
     withProject(cwd, (project) => {
       claimName(project.db, agent, process.pid, undefined, undefined, process.ppid, fresh);
-      hearAgent(project.db, {
+      const at = hearAgent(project.db, {
         agent,
         channel: 'mcp',
         harness,
@@ -2089,6 +2099,7 @@ function heardBy(
         launcher: process.ppid,
         ...(newSession ? { newSession } : {}),
       });
+      heard?.(at);
     });
     return true;
   } catch (error) {
@@ -2122,6 +2133,9 @@ const mcp: Command = {
     // Every agent that connected or called through this server, heard again on each beat until
     // the client disconnects: that is what makes it count as connected.
     const voices = new Set<string>();
+    // When this server last heard each of them: closing, it ends their listening (endListening).
+    const lastHeard = new Map<string, string>();
+    const note = (name: string) => (at: string) => lastHeard.set(name, at);
     // Every name this server ever worked under: one it lost to a newer server never counts as new.
     const used = new Set<string>();
     let client: Harness | undefined;
@@ -2129,17 +2143,18 @@ const mcp: Command = {
       client = harness;
       if (agent === undefined) return;
       used.add(agent);
-      if (heardBy(cwd, agent, harness, warn, true)) voices.add(agent);
+      if (heardBy(cwd, agent, harness, warn, true, true, note(agent))) voices.add(agent);
     };
     const heard = (name: string) => {
       const fresh = !used.has(name);
       used.add(name);
       claimedBy(cwd, name, fresh);
-      heardBy(cwd, name, client, warn, false, fresh);
+      heardBy(cwd, name, client, warn, false, fresh, note(name));
       voices.add(name);
     };
     const beat = setInterval(() => {
-      for (const name of voices) if (!heardBy(cwd, name, client, warn)) voices.delete(name);
+      for (const name of voices)
+        if (!heardBy(cwd, name, client, warn, false, false, note(name))) voices.delete(name);
     }, LISTEN_BEAT_MS);
     beat.unref();
     const named = agent === undefined ? {} : { agent };
@@ -2158,10 +2173,23 @@ const mcp: Command = {
       );
     } finally {
       clearInterval(beat);
+      // The client closed the session: its agents no longer listen through this server.
+      endListeningAll(cwd, lastHeard);
     }
     return undefined;
   },
 };
+
+function endListeningAll(cwd: string, lastHeard: ReadonlyMap<string, string>): void {
+  if (lastHeard.size === 0) return;
+  try {
+    withProject(cwd, (project) => {
+      for (const [name, at] of lastHeard) endListening(project.db, name, at);
+    });
+  } catch {
+    // The project may be gone; its agents' listening then lapses on its own.
+  }
+}
 
 // The fields a gate check matches: --field pairs, plus the branch and the repo, which default to
 // the git checkout's when given without a value (the branch to `defaultBranch`, when given; the

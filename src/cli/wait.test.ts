@@ -215,6 +215,8 @@ describe('wait', () => {
       await until(listening, 15_000);
       parent.kill();
       await until(() => !processAlive(pid), 15_000);
+      // At once, not a listening window later.
+      expect(listening()).toBe(false);
     } finally {
       parent.kill();
       if (processAlive(pid)) process.kill(pid);

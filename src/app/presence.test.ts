@@ -8,6 +8,7 @@ import { claimItem, releaseItem } from './leases.ts';
 import {
   CLI_HARNESS,
   claimName,
+  endListening,
   hearAgent,
   listAgents,
   ownerGone,
@@ -125,6 +126,17 @@ describe('agent presence', () => {
       seeAgent(ctx.db, { agent: 'claude', channel: 'cli' }, at(T0));
 
       expect(listAgents(ctx.db, at(T0))[0]).toMatchObject({ live: false, listening: false });
+    });
+
+    it('stops counting an agent listening once its listener ends, unless another heard it since', () => {
+      const heard = hearAgent(ctx.db, { agent: 'claude', channel: 'mcp', session: 101 }, at(T0));
+      endListening(ctx.db, 'claude', heard);
+      expect(listAgents(ctx.db, at(T0_20S))[0]).toMatchObject({ listening: false });
+
+      const first = hearAgent(ctx.db, { agent: 'claude', channel: 'mcp', session: 101 }, at(T0));
+      hearAgent(ctx.db, { agent: 'claude', channel: 'cli' }, at(T0_20S));
+      endListening(ctx.db, 'claude', first);
+      expect(listAgents(ctx.db, at(T0_20S))[0]).toMatchObject({ listening: true });
     });
 
     it('counts an agent live while it listens: an open MCP server or a wait hears it', () => {

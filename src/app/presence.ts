@@ -3,6 +3,7 @@ import type { AgentChannel } from '../core/authority.ts';
 import { OteaError } from '../core/errors.ts';
 import { activeLease } from '../core/lease.ts';
 import {
+  clearListening,
   findAgent,
   findProfile,
   markListening,
@@ -110,10 +111,19 @@ export function seeAgent(db: DatabaseSync, sighting: Sighting, now: Clock = syst
   return true;
 }
 
-// Hears an agent that listens now: sees it, and notes it listening.
-export function hearAgent(db: DatabaseSync, sighting: Sighting, now: Clock = systemClock): void {
-  seeAgent(db, sighting, now);
-  markListening(db, sighting.agent, now(), sighting.session, sighting.launcher);
+// Hears an agent that listens now: sees it, and notes it listening. Returns when, for endListening.
+export function hearAgent(db: DatabaseSync, sighting: Sighting, now: Clock = systemClock): string {
+  const at = now();
+  seeAgent(db, sighting, () => at);
+  markListening(db, sighting.agent, at, sighting.session, sighting.launcher);
+  return at;
+}
+
+// A listener that ends (an MCP server whose client closed it, a wait whose session ended) stops
+// counting its agent as listening at once, not a listening window later: unless another one heard
+// the agent after its last beat (`heardAt`, what hearAgent returned).
+export function endListening(db: DatabaseSync, agent: string, heardAt: string): void {
+  clearListening(db, agent, heardAt);
 }
 
 // Whether a process still runs on this computer, where every MCP server of the project runs.
@@ -172,7 +182,7 @@ export function waitBeat(
   db: DatabaseSync,
   { newSession: _, ...sighting }: Sighting,
   now: Clock = systemClock,
-): { everyMs: number; run: () => void } {
+): { everyMs: number; run: () => string } {
   return { everyMs: LISTEN_BEAT_MS, run: () => hearAgent(db, sighting, now) };
 }
 

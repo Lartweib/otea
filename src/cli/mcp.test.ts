@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { Client } from '@modelcontextprotocol/client';
 import { getDefaultEnvironment, StdioClientTransport } from '@modelcontextprotocol/client/stdio';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { listAgents } from '../app/presence.ts';
+import { listAgents, processAlive } from '../app/presence.ts';
 import { openProject } from '../app/project.ts';
 import {
   type Cli,
@@ -81,14 +81,14 @@ describe('mcp', () => {
 
     try {
       await until(() => agents().some(({ name }) => name === 'claude'));
+      // Seen while its session is open: closing it ends its listening.
+      expect(agents().find(({ name }) => name === 'claude')).toMatchObject({
+        harness: 'claude-code',
+        live: true,
+      });
     } finally {
       await client.close();
     }
-
-    expect(agents().find(({ name }) => name === 'claude')).toMatchObject({
-      harness: 'claude-code',
-      live: true,
-    });
   });
 
   it('refuses a second open session the name another session works under', async () => {
@@ -171,6 +171,32 @@ describe('mcp', () => {
       await old.close();
       await restarted.close();
     }
+  });
+
+  it('stops counting its agent as listening once the client closes the session', async () => {
+    const client = new Client({ name: 'claude-code', version: '2.1.0' });
+    const transport = new StdioClientTransport({
+      command: process.execPath,
+      args: [...ARGS, '--as', 'claude'],
+      cwd: repo.dir,
+      env: { ...getDefaultEnvironment(), OTEA_HOME: process.env.OTEA_HOME ?? '' },
+      stderr: 'pipe',
+    });
+    await client.connect(transport);
+    const listening = () => {
+      const project = openProject(repo.dir);
+      try {
+        return listAgents(project.db).some(({ name, listening }) => name === 'claude' && listening);
+      } finally {
+        project.db.close();
+      }
+    };
+    await until(listening);
+    const server = transport.pid;
+    await client.close();
+    // Within the server's own exit, not the listening window of minutes.
+    await until(() => server === null || !processAlive(server), 10_000);
+    expect(listening()).toBe(false);
   });
 
   it('prints nothing but the protocol and exits once the client closes stdin', async () => {
