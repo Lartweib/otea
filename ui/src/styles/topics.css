@@ -222,6 +222,10 @@
   flex-basis: 100%;
   margin: 0;
 }
+/* Holds the convert button for its focus to come back to; lays out as the button alone. */
+.tp-cv {
+  display: contents;
+}
 /* The fields the board needs to create the task, each on its own row as in the new-item form. */
 .tp-convert .fwrap {
   flex-basis: 100%;

@@ -16,6 +16,7 @@ import {
   requireTopic,
   setTopicsOn,
   topicSuggestions,
+  topicsAwaiting,
   topicsOfItem,
   topicsOn,
   topicWaiting,
@@ -225,6 +226,21 @@ describe('topics and items', () => {
   });
 });
 
+describe('topics awaiting an agent', () => {
+  it('are its open ones: a question it has not answered, or a note the person left', () => {
+    addTopic(ctx, { question: 'sin responder', actor: quill }, now);
+    addTopic(ctx, { question: 'respondido', actor: quill }, now);
+    answerTopic(ctx, { id: 'TEM-2', summary: 's', actor: quill }, now);
+    addTopic(ctx, { question: 'con nota', actor: quill }, now);
+    answerTopic(ctx, { id: 'TEM-3', summary: 's', actor: quill }, now);
+    noteTopic(ctx, { id: 'TEM-3', text: '¿Y en Linux?', actor: fede }, now);
+    topicWaiting(ctx, 'quill', now);
+    addTopic(ctx, { question: 'de otro', actor: { kind: 'agent', name: 'ink' } }, now);
+
+    expect(topicsAwaiting(ctx, 'quill', now).map(({ id }) => id)).toEqual(['TEM-1', 'TEM-3']);
+  });
+});
+
 describe('the list', () => {
   it('puts what is left hanging first, then open, answered, and hides closed ones unless asked', () => {
     addTopic(ctx, { question: 'viejo', actor: quill }, now);
@@ -275,6 +291,32 @@ describe('an answer read from the session', () => {
     expect(answerFromSession(ctx, { session: 's-9', since, text: 'texto' }, now)).toBe('TEM-2');
     expect(requireTopic(ctx, 'TEM-2', now).session).toBe('s-9');
     expect(requireTopic(ctx, 'TEM-1', now).turns.at(-1)?.source).toBe('agent');
+  });
+
+  it('leaves out the lines that only say the topic was recorded', () => {
+    addTopic(ctx, { question: 'q', actor: quill, session: 's-1' }, now);
+    const since = now();
+    later(1_000);
+    answerTopic(ctx, { id: 'TEM-1', summary: 'corto', actor: quill }, now);
+    const said =
+      'Defender escanea node_modules.\n\nLo dejé registrado en otea como TEM-1 con la respuesta.';
+
+    expect(answerFromSession(ctx, { session: 's-1', since, text: said }, now)).toBe('TEM-1');
+    expect(requireTopic(ctx, 'TEM-1', now).turns.at(-1)?.full).toBe(
+      'Defender escanea node_modules.',
+    );
+  });
+
+  it('keeps the agent copy when the chat said nothing but that the topic was recorded', () => {
+    addTopic(ctx, { question: 'q', actor: quill, session: 's-1' }, now);
+    const since = now();
+    later(1_000);
+    answerTopic(ctx, { id: 'TEM-1', summary: 'corto', full: 'copia', actor: quill }, now);
+
+    expect(
+      answerFromSession(ctx, { session: 's-1', since, text: 'Registrado como TEM-1.' }, now),
+    ).toBeUndefined();
+    expect(requireTopic(ctx, 'TEM-1', now).turns.at(-1)?.full).toBe('copia');
   });
 
   it('does nothing when it cannot tell which topic, or none was answered this turn', () => {

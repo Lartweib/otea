@@ -522,6 +522,25 @@ export function topicWaiting(
   };
 }
 
+// The topics waiting for this agent's answer: its open ones, a question it recorded and has not
+// answered or a note the person left (which otea wait woke it for only once), for otea next to name.
+export function topicsAwaiting(ctx: Context, agent: string, now = systemClock): Topic[] {
+  return listTopics(ctx, {}, now).filter(
+    (topic) => topic.turn === 'agent' && topic.agent === agent,
+  );
+}
+
+export function topicsAwaitingText(topics: readonly Topic[]): string | undefined {
+  if (topics.length === 0) return undefined;
+  return [
+    'Topics waiting for your answer (the person reads it in Temas):',
+    ...topics.map(
+      ({ id, title }) =>
+        `  ${id} "${title}": otea topic answer ${id} --summary "<short answer>" --full "<your full answer>"`,
+    ),
+  ].join('\n');
+}
+
 // Refuses topic work while topics are off for the project.
 export function requireTopicsOn(ctx: Context): void {
   if (!topicsOn(ctx))
@@ -571,6 +590,18 @@ export function topicsListText(topics: readonly Topic[]): string {
 
 export type SessionAnswer = { session: string; since: string; text: string };
 
+// The chat's answer without the lines that name the topic itself ("Lo dejé registrado en otea como
+// TEM-1"): they say where the answer was kept, not what it says.
+function withoutRecording(text: string, id: string): string {
+  const names = new RegExp(`\\b${id}\\b`, 'i');
+  return text
+    .split('\n')
+    .filter((line) => !names.test(line))
+    .join('\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
 // The answer as the agent wrote it in its chat, read from its session at the end of its turn (the
 // Claude Code Stop hook): it goes to the topic the agent answered this turn, the one of this
 // session, or the only one answered this turn when the agent gave no session. Nothing when it
@@ -594,11 +625,13 @@ export function answerFromSession(
   const candidates = ofSession.length > 0 ? ofSession : unnamed;
   const [target] = candidates.length === 1 ? candidates : [];
   if (!target?.agent) return undefined;
+  const full = withoutRecording(text, target.id);
+  if (full === '') return undefined;
   answerTopic(
     ctx,
     {
       id: target.id,
-      full: text,
+      full,
       source: 'session',
       actor: { kind: 'agent', name: target.agent },
       session: input.session,

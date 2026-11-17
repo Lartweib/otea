@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   answeredTopics,
+  convertBoard,
   convertDraft,
   convertFields,
   convertReady,
@@ -97,5 +98,22 @@ describe('turning a topic into a task', () => {
     expect(convertReady(change, draft)).toBe(false);
     expect(convertReady(change, { ...draft, 'Qué quiero': 'Que pase en Windows' })).toBe(true);
     expect(convertReady(change, { ...draft, title: ' ', 'Qué quiero': 'x' })).toBe(false);
+  });
+});
+
+describe('the board a topic turns into a task on', () => {
+  const boards = [{ name: 'Pedidos' }, { name: 'Cambios' }, { name: 'Errores' }];
+  const items = [
+    { id: 'CAM-1', collection: 'Cambios' },
+    { id: 'ERR-2', collection: 'Errores' },
+  ];
+
+  it('is the board of the item the topic is linked to', () => {
+    expect(convertBoard({ links: ['ERR-2'] }, boards, items)).toBe('Errores');
+  });
+
+  it('is left for the person to pick when the topic names no item on a board offered', () => {
+    expect(convertBoard({ links: [] }, boards, items)).toBe('');
+    expect(convertBoard({ links: ['OLD-9'] }, boards, items)).toBe('');
   });
 });

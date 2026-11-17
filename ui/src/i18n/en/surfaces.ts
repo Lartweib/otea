@@ -473,6 +473,7 @@ export const surfaces = {
   'topics.close': 'Close the topic',
   'topics.convert': 'Turn into a task',
   'topics.convert.board': 'Board',
+  'topics.convert.pick': 'Pick a board',
   'topics.convert.go': 'Create the task',
   'topics.convert.cancel': 'Cancel',
   'topics.convert.failed':
