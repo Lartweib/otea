@@ -221,7 +221,9 @@ export function ItemPreview({
           {step.hand.map((hand) => {
             const part = partOf(def, hand.ref);
             if (!part) return null;
-            const ok = at !== 'doing' && hand.req !== 'no';
+            // In review only what is always asked is surely in: a deliverable asked only sometimes
+            // (Opciones, for a Decisión) reads as such, never as ready on an item it skips.
+            const ok = at !== 'doing' && hand.req === 'always';
             const word = ok
               ? t(hand.fresh ? 'bs.preview.check.fresh' : 'bs.preview.check.ready')
               : t(

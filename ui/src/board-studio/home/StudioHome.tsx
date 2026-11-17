@@ -20,6 +20,7 @@ import {
   homeRows,
   joinsMap,
   setBoards,
+  shownBoards,
   statusOf,
 } from './home-model.ts';
 import { MiniRoute } from './MiniRoute.tsx';
@@ -40,7 +41,7 @@ export function StudioHome({ canWrite }: StudioHomeProps) {
   const root = useRef<HTMLDivElement>(null);
   useEntrance(root);
   const tpls = templates.state.status === 'ready' ? templates.state.templates : [];
-  const own = boards.status === 'ready' ? boards.boards : [];
+  const own = boards.status === 'ready' ? shownBoards(boards.boards, app.all) : [];
 
   return (
     <div className="sh" ref={root}>

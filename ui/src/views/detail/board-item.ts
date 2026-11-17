@@ -515,6 +515,9 @@ export function handRows(
   // The item's fields: a deliverable asked only when a field holds a value is left out while it
   // does not (the engine neither asks for it nor counts it).
   fields?: Readonly<Record<string, unknown>>,
+  // Whether a part holds something (a field's value, a file): an optional deliverable is done only
+  // then, as the engine never counts it missing.
+  filled?: (ref: string) => boolean,
 ): HandRow[] {
   const lacks = new Set(missing.map(({ ref }) => ref));
   const applies = (hand: Step['hand'][number]) =>
@@ -531,7 +534,7 @@ export function handRows(
     rows.push({
       ref: hand.ref,
       name: part.name,
-      ok: !lacks.has(hand.ref),
+      ok: hand.req === 'no' ? (filled?.(hand.ref) ?? false) : !lacks.has(hand.ref),
       required: hand.req !== 'no',
       ...(isEvidence(part) ? {} : { part }),
     });

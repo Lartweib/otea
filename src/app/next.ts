@@ -51,6 +51,7 @@ import {
   dropRefusalText,
   handedText,
   idleText,
+  type NextInput,
   NOT_TAKEN_BACK,
   nextText,
   noWayText,
@@ -76,6 +77,7 @@ import { transaction } from '../store/database.ts';
 import {
   type EventRecord,
   findAgent,
+  findItem,
   type ItemRecord,
   saveOffer,
   selectEvents,
@@ -531,6 +533,20 @@ function withHandIn(ctx: Context, item: ItemRecord, def: BoardDefinition): Board
   return { ...def, steps };
 }
 
+// The item `id` is part of, as next names it: its title, board and step (no step once closed).
+function parentOf(ctx: Context, id: string): NextInput['parent'] {
+  const relation = selectRelationsOf(ctx.db, id).find((r) => r.kind === 'parent' && r.from === id);
+  const item = relation ? findItem(ctx.db, relation.to) : undefined;
+  if (!relation || !item) return undefined;
+  const linked = linkedOf(ctx, relation.to);
+  return {
+    id: item.id,
+    title: item.title,
+    board: linked.board,
+    ...(linked.closed || linked.step === undefined ? {} : { step: linked.step }),
+  };
+}
+
 function textFor(
   ctx: Context,
   item: ItemRecord,
@@ -553,6 +569,7 @@ function textFor(
   const merged = isClosed(on.position) ? mergedFrom(selectEvents(ctx.db, item.id)) : undefined;
   const stepName = isClosed(on.position) ? undefined : stepById(def, on.position.step)?.name;
   const handed = on.notes.findLast(({ step, round }) => step === stepName && round === on.round);
+  const parent = parentOf(ctx, item.id);
   return nextText(def, {
     id: item.id,
     title: item.title,
@@ -570,6 +587,7 @@ function textFor(
     ...(lease ? { holder: { name: lease.holder, expiresAt: lease.expiresAt } } : {}),
     ...(left === undefined ? {} : { leftFor: left }),
     ...(planned === undefined ? {} : { plannedBy: planned }),
+    ...(parent === undefined ? {} : { parent }),
     ...(handed === undefined ? {} : { handed: { note: handed.note, by: handed.by } }),
     ...(merged === undefined ? {} : { merged }),
     ...(on.roundNotes.length === 0 ? {} : { notes: on.roundNotes }),

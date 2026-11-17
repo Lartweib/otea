@@ -95,6 +95,7 @@ export const studioHome = {
     'A request is created. When the agent delivers its draft, you open it here, try it and decide.',
   'bs.ask.namePlaceholder': 'Reported bugs',
   'bs.ask.need': 'What you need',
+  'bs.ask.needEmpty': 'Say what the board is for.',
   'bs.ask.needPlaceholder':
     'E.g.: Open an item for each bug users report, reproduce it and show me the evidence of the fix so I can approve it or send it back.',
   'bs.ask.who': 'Who drafts it',

@@ -1,17 +1,64 @@
 import { describe, expect, it } from 'vitest';
+import type { Agent } from '../../presence.ts';
 import type { Item } from '../../types.ts';
 import type { BoardSummary } from '../api.ts';
 import {
   arrivedDrafts,
   blockJoins,
+  draftersOf,
   freeName,
   freshlyLive,
   homeRows,
   joinsMap,
   nameIssue,
   setBoards,
+  shownBoards,
   statusOf,
 } from './home-model.ts';
+
+describe('the boards Tus tableros lists', () => {
+  const pedidos = (over: Partial<BoardSummary> = {}) =>
+    ({
+      id: 'breq',
+      name: 'Pedidos',
+      builtin: true,
+      collection: 'Pedidos',
+      ...over,
+    }) as BoardSummary;
+  const own = { id: 'b2', name: 'Errores', builtin: false, collection: 'Errores' } as BoardSummary;
+
+  it('leaves out Pedidos while it holds no item, as the places do', () => {
+    expect(shownBoards([pedidos(), own], []).map(({ name }) => name)).toEqual(['Errores']);
+    const asked = { id: 'PED-1', collection: 'Pedidos' } as Item;
+    expect(shownBoards([pedidos(), own], [asked]).map(({ name }) => name)).toEqual([
+      'Pedidos',
+      'Errores',
+    ]);
+  });
+});
+
+describe('who may draft a board', () => {
+  const at = '2026-11-17T12:00:00.000Z';
+  const agent = (name: string, lastSeen: string, live = false) =>
+    ({ name, lastSeen, live, harness: null, holding: [] }) as Agent;
+
+  it('offers the agents connected or seen this week, the ones here now first', () => {
+    const agents = [
+      agent('old', '2026-10-01T10:00:00.000Z'),
+      agent('kiln', '2026-11-16T10:00:00.000Z'),
+      agent('quill', '2026-11-17T11:00:00.000Z', true),
+      agent('scout', '2026-11-17T09:00:00.000Z'),
+    ];
+    expect(draftersOf(agents, at)).toEqual(['quill', 'scout', 'kiln']);
+  });
+
+  it('offers at most eight', () => {
+    const many = Array.from({ length: 12 }, (_, n) =>
+      agent(`a${n}`, `2026-11-17T0${(n % 9) + 1}:00:00.000Z`),
+    );
+    expect(draftersOf(many, at)).toHaveLength(8);
+  });
+});
 
 // What Studio's home decides without drawing: a board's status in words, a free name for a copy,
 // the checks of a new board's name, the drafts an agent just delivered, and the boards the rail

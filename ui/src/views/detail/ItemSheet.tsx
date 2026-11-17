@@ -247,7 +247,14 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
       : c.kind === 'own' && ownStep
         ? handRefusal(item.id, missing)
         : null;
-  const hand = live && ownStep ? handRows(live, ownStep, missing, item.fields) : [];
+  const filled = (ref: string) => {
+    const value = item.fields[ref];
+    const held = Array.isArray(value)
+      ? value.length > 0
+      : value != null && String(value).trim() !== '';
+    return held || item.evidence.some(({ module }) => module === ref);
+  };
+  const hand = live && ownStep ? handRows(live, ownStep, missing, item.fields, filled) : [];
 
   // ---- notes to the agent while it does its step (the notes mock) ----
   const thread = useMemo(() => threadOf(block, item.events), [block, item.events]);

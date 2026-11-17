@@ -108,6 +108,10 @@ describe('an agent drafting a board', () => {
     expect(take).toContain(`otea board draft ${item} > board.json`);
     expect(take).toContain(`otea board draft ${item} --file board.json`);
     expect(take).toContain(`is the JSON Schema ${BOARD_JSON_SCHEMA}.`);
+    // A Pedido made in Studio closes on publish, as one made with draft --new does.
+    expect(take).toContain(
+      'Handing it in is your handoff: the person tries the board and publishes it in Studio, which closes this Pedido; there is no otea handoff to run.',
+    );
     expect(text).toContain('Qué necesitas: Criaturas del pantano');
 
     const shown = showItem(ctx, item, { actor: kiln, channel: 'cli' }, now).board?.request;

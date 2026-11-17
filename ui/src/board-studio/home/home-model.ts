@@ -1,8 +1,34 @@
+import type { Agent } from '../../presence.ts';
 import type { Item } from '../../types.ts';
 import type { BoardSummary, TemplateView } from '../api.ts';
 import { madeWithOf, pairOf } from '../pair.ts';
 
 // What Studio's home decides without drawing (home-model.test.ts).
+
+// Tus tableros: the built-in Pedidos only once it holds an item, as the places and otea board list
+// it, so a new project counts only the boards the person picked.
+export function shownBoards(
+  boards: readonly BoardSummary[],
+  items: readonly Pick<Item, 'collection'>[],
+): BoardSummary[] {
+  return boards.filter(
+    (board) => !board.builtin || items.some(({ collection }) => collection === board.collection),
+  );
+}
+
+const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+const DRAFTERS = 8;
+
+// Who Que lo esboce un agente offers to draft a board: the agents here now, then the ones seen this
+// week, most recent first, eight at most; any other agent can still take it as any agent.
+export function draftersOf(agents: readonly Agent[], now: string): string[] {
+  const since = Date.parse(now) - WEEK_MS;
+  return agents
+    .filter((agent) => agent.live || Date.parse(agent.lastSeen) >= since)
+    .toSorted((a, b) => Number(b.live) - Number(a.live) || b.lastSeen.localeCompare(a.lastSeen))
+    .slice(0, DRAFTERS)
+    .map(({ name }) => name);
+}
 
 export type BoardStatusView =
   | { kind: 'live'; version: number }

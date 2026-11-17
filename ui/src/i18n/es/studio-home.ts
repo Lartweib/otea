@@ -99,6 +99,7 @@ export const studioHome = {
     'Se crea un pedido. Cuando el agente entregue su borrador, lo abres aquí, lo pruebas y decides.',
   'bs.ask.namePlaceholder': 'Errores reportados',
   'bs.ask.need': 'Qué necesitas',
+  'bs.ask.needEmpty': 'Di para qué es el tablero.',
   'bs.ask.needPlaceholder':
     'Ej.: Quiero que abra un ítem por cada error que reporten los usuarios, lo reproduzca y me muestre la evidencia del arreglo para aprobarlo o devolverlo.',
   'bs.ask.who': 'Quién lo esboza',

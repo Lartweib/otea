@@ -89,6 +89,9 @@ export type NextInput = {
   did?: readonly string[];
   // The item that planned this one, while it still stands in the step it planned it in.
   plannedBy?: { id: string; step: string };
+  // The item this one is part of (its parent), with its board and the step it stands on (none once
+  // closed): what it decided is the context of this one.
+  parent?: { id: string; title: string; board: string; step?: string };
   // The note the doer handed this round off with, for its reviewer to read.
   handed?: { note: string; by: string };
   // Once Done: that its branch was merged, and the commit when given.
@@ -148,6 +151,19 @@ function choiceNames(part: Part, value: unknown): string {
           .split(',')
           .map((piece) => piece.trim());
   return ids.map((id) => part.options.find((choice) => choice.id === id)?.name ?? id).join(', ');
+}
+
+// "IDE-1 · Pantano vivo (Ideas, Planificar): what it decided is in otea show IDE-1".
+function parentLine({ id, title, board, step }: NonNullable<NextInput['parent']>): string {
+  const where = step ? `${board}, ${step}` : board;
+  return `${id} · ${title} (${where}): what it decided is in otea show ${id}`;
+}
+
+function isEmpty(part: Part, input: NextInput): boolean {
+  if (isEvidence(part)) return (input.evidence[part.id] ?? 0) === 0;
+  const value = part.id === 'title' ? input.title : input.fields[part.id];
+  if (value === undefined || value === null) return true;
+  return Array.isArray(value) ? value.length === 0 : String(value).trim() === '';
 }
 
 function valueText(part: Part, input: NextInput): string {
@@ -543,12 +559,15 @@ export function nextText(def: BoardDefinition, input: NextInput): string {
   if (!reviewing && input.sentBack) lines.push(...sentBackLines(input.sentBack));
   if (!reviewing) lines.push(...answersBlock(input.questions ?? [], input.me));
   lines.push(...section('About this board', indent(aboutBrief(def))));
+  if (input.parent) lines.push(...section('Part of', [`  ${parentLine(input.parent)}`]));
   lines.push(
     ...section(
       'Starts with',
       startsWith(def, step.id).flatMap(({ ref, from }) => {
         const part = partOf(def, ref);
         if (!part) return [];
+        // What an earlier step left empty (a deliverable asked only sometimes) is not there to read.
+        if (from && isEmpty(part, input)) return [];
         const origin = from ? ` (from ${stepById(def, from)?.name ?? from})` : '';
         return [`  ${part.name}${origin}: ${valueText(part, input)}`];
       }),

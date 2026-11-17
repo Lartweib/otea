@@ -14,6 +14,29 @@ const base = {
 };
 
 describe('nextText', () => {
+  it('names the item it is part of, and where to read it', () => {
+    const text = nextText(def, {
+      ...base,
+      position: { step: 'sconcept', phase: 'doing' },
+      missing: [],
+      parent: { id: 'IDE-1', title: 'Pantano vivo', board: 'Ideas', step: 'Planificar' },
+    });
+    expect(text).toContain(
+      '\nPart of\n  IDE-1 · Pantano vivo (Ideas, Planificar): what it decided is in otea show IDE-1\n',
+    );
+  });
+
+  it('leaves out of Starts with what an earlier step left empty', () => {
+    const text = nextText(def, {
+      ...base,
+      evidence: { eart: 2 },
+      position: { step: 'sanimate', phase: 'doing' },
+      missing: [],
+    });
+    expect(text).toContain('  Arte conceptual (from Concepto): 2 files');
+    expect(text).not.toContain('Barro (from Concepto)');
+  });
+
   it('asks for every box of a required checklist, as its handoff does', () => {
     const text = nextText(def, {
       ...base,
