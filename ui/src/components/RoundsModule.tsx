@@ -356,11 +356,17 @@ export function RoundsModule({
   }
   const previous = rounds.at(-2);
   const closed = latest.verdict?.kind === 'closed';
+  // Sent back to where it stands now: the next round is under way, as its row counts it.
+  const underway = latest.verdict?.kind === 'sent-back' && latest.verdict.to === item.state;
   return (
     <section className="rd-module" aria-label={title} {...slot}>
       <div className="rd-head">
         <h2 className="t-label">{title}</h2>
-        <span className="t-cap">{t('rounds.count', { count: rounds.length })}</span>
+        <span className="t-cap">
+          {underway
+            ? t('rounds.underway', { n: latest.n + 1 })
+            : t('rounds.count', { count: rounds.length })}
+        </span>
       </div>
       <div className="rd-scroll">
         <Rail rounds={rounds} closed={closed} name={name} />

@@ -151,6 +151,7 @@ export const detail = {
   'rounds.title': 'Rondas',
   'rounds.titleOf': '{title} de {step}',
   'rounds.count': { one: '{count} ronda', other: '{count} rondas' },
+  'rounds.underway': 'ronda {n} en curso',
   'rounds.round': 'ronda {n}',
   'rounds.none': 'Todavía no hay rondas: la primera termina cuando el agente te lo entrega.',
   'rounds.first': 'la primera ronda: no hay con qué comparar',

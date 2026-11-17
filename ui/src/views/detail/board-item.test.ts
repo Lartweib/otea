@@ -302,6 +302,16 @@ describe('roundNotes: each round of the step with its notes', () => {
     ]);
   });
 
+  it('names the agent that did the round, never the agent that reviewed it', () => {
+    const def = creatures();
+    const events: ItemEvent[] = [
+      created('sanimate'),
+      moved('sanimate', 'sanimate__review', agent('impl'), '2026-01-02T00:00:00Z'),
+      moved('sanimate__review', 'spolish', agent('rev-1'), '2026-01-03T00:00:00Z'),
+    ];
+    expect(roundNotes(def, 'sanimate', events).map((r) => r.doer?.name)).toEqual(['impl']);
+  });
+
   it('starts the next round of Completar with the question Devolver brought', () => {
     const events: ItemEvent[] = [
       created('sfill'),

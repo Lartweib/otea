@@ -96,6 +96,27 @@ describe('the rounds’ route', () => {
   });
 });
 
+describe('the count of rounds, as the row says it', () => {
+  it('names the round under way once it was sent back, as the row does', () => {
+    setLanguage('es');
+    const back: ItemView = {
+      ...fresh,
+      state: 'fixing',
+      turn: 'agent',
+      events: [
+        moved('20:10', scout, 'accepted', 'fixing'),
+        moved('20:20', scout, 'fixing', 'verify'),
+        moved('20:28', you, 'verify', 'fixing'),
+      ],
+    };
+    const html = renderToStaticMarkup(
+      <RoundsModule item={back} type={bug} entry={{ module: 'rounds' }} canWrite />,
+    );
+    expect(html).toContain('ronda 2 en curso');
+    expect(html).not.toContain('1 ronda<');
+  });
+});
+
 describe('the rounds of a board step', () => {
   // Concepto handed in by pinta with a note, sent back, handed in again and approved into Animar.
   const def = creatures();

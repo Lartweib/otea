@@ -72,7 +72,15 @@ export function roundsOf(
     const state = turn.get(to);
     const open = rounds.at(-1);
     const relay = relayOf(event);
-    if (event.actor.kind === 'agent' && !relay && state?.turn === 'human') {
+    // On a board a round ends with the doer's handoff out of the step's doing, whoever reviews it
+    // (an agent reviewer too); an agent's move out of a review is that review's verdict.
+    const from = positionOf(String(event.data.from));
+    const reviewing = !isClosed(from) && from.phase === 'review';
+    const target = positionOf(to);
+    const handoff = board
+      ? !reviewing && (state?.turn === 'human' || (!isClosed(target) && target.phase === 'review'))
+      : state?.turn === 'human';
+    if (event.actor.kind === 'agent' && !relay && handoff) {
       const note = board ? noteOf(event) : reasonOf(event);
       const step = board ? stepLeft(event) : undefined;
       rounds.push({
@@ -87,7 +95,8 @@ export function roundsOf(
       since = event.at;
       continue;
     }
-    if (open && !open.verdict && (event.actor.kind === 'human' || relay)) {
+    const agentReview = Boolean(board) && event.actor.kind === 'agent' && reviewing;
+    if (open && !open.verdict && (event.actor.kind === 'human' || relay || agentReview)) {
       const reason = reasonOf(event);
       const closes = state?.closes;
       const kind =
