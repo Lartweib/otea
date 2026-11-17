@@ -59,18 +59,18 @@ describe('the empty project page', () => {
     expect(html).toContain('Configura Otea en este proyecto.');
     expect(html).toContain('<code class="inl">otea init</code>');
     expect(html).toContain('Copiar la instrucción</button>');
-    expect(html).toContain('>Elegir tableros</button>');
-    expect(html.indexOf('Copiar la instrucción')).toBeLessThan(html.indexOf('Elegir tableros'));
+    expect(html).toContain('>Elegir un tablero</button>');
+    expect(html.indexOf('Copiar la instrucción')).toBeLessThan(html.indexOf('Elegir un tablero'));
     expect(html).not.toContain('Nuevo ítem');
     expect(html).toContain('ninguno todavía');
     setLanguage('en');
-    expect(render([])).toContain('>Pick boards</button>');
+    expect(render([])).toContain('>Pick a board</button>');
     setLanguage('es');
   });
 
   it('shows no prompt once the project has boards, nor while it loads', () => {
     setLanguage('es');
     expect(render()).not.toContain('Copiar la instrucción');
-    expect(render([], null)).toContain('>Elegir tableros</button>');
+    expect(render([], null)).toContain('>Elegir un tablero</button>');
   });
 });

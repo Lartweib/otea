@@ -64,9 +64,11 @@ export function Card() {
           { transform: 'scaleX(1)', opacity: 1 },
           { transform: 'scaleX(1)', opacity: 0 },
         ],
-        { duration: 900, easing: C.glide },
+        { duration: 560, easing: C.glide },
       );
     }
+    // The card's content is in place within half a second (UI-17: it took 900 ms to open and
+    // closed at once).
     for (const [i, c] of [
       ...el.querySelectorAll<HTMLElement>(':scope > .se-card-in > *'),
     ].entries())
@@ -75,7 +77,7 @@ export function Card() {
           { opacity: 0, transform: 'translateY(5px)', filter: 'blur(1px)' },
           { opacity: 1, transform: 'none', filter: 'blur(0px)' },
         ],
-        { duration: 380, delay: 90 + 34 * Math.min(i, 8), easing: C.glide, fill: 'backwards' },
+        { duration: 260, delay: 40 + 22 * Math.min(i, 8), easing: C.glide, fill: 'backwards' },
       );
   }, [key]);
 
