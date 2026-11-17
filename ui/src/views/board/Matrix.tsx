@@ -257,13 +257,12 @@ export function PhoneMatrix({
   if (!axes) return null;
   const m = matrixOf(def, items, axes);
   const ykey = (y: number) => m.ys[y];
+  const xWord = (x: number) => stepWord(def, axes.x, m.xs[x]?.value ?? '', m.xs[x]?.name ?? '');
+  const yWord = (y: number) => stepWord(def, axes.y, ykey(y)?.value ?? '', ykey(y)?.name ?? '');
+  // Each value beside its axis («Esfuerzo: L · Riesgo: Crítica»): two bare values did not say
+  // which was which (IDEA2-5).
   const zoneName = (x: number, y: number) =>
-    `${stepWord(def, axes.x, m.xs[x]?.value ?? '', m.xs[x]?.name ?? '')} · ${stepWord(
-      def,
-      axes.y,
-      ykey(y)?.value ?? '',
-      ykey(y)?.name ?? '',
-    )}`;
+    `${roleWord(axes.x)}: ${xWord(x)} · ${roleWord(axes.y)}: ${yWord(y)}`;
   const cells = m.rows.flat().filter((cell) => cell.items.length > 0);
   const shown = zone === null ? cells : cells.filter((cell) => `${cell.x},${cell.y}` === zone);
   const picked = items.filter((it) => ticked.includes(it.id));
@@ -273,28 +272,60 @@ export function PhoneMatrix({
       <p className="pmx-sub">
         {roleWord(axes.x)} × {roleWord(axes.y)} · {t('matrix.estimatedCount', { count: m.placed })}
       </p>
-      <fieldset
-        className="pmx-grid"
-        style={{ gridTemplateColumns: `repeat(${m.xs.length}, minmax(0, 1fr))` }}
-        aria-label={t('matrix.label', { x: roleWord(axes.x), y: roleWord(axes.y) })}
-      >
-        {m.rows.flat().map((cell) => {
-          const key = `${cell.x},${cell.y}`;
-          return (
-            <button
-              key={key}
-              type="button"
-              className={`pmx-cell h${heatOf(m, cell)}`}
-              aria-pressed={zone === key}
-              aria-label={`${zoneName(cell.x, cell.y)}: ${cell.items.length}`}
-              disabled={cell.items.length === 0}
-              onClick={() => setZone(zone === key ? null : key)}
-            >
-              {cell.items.length}
-            </button>
-          );
-        })}
-      </fieldset>
+      <div className="pmx-plot">
+        {/* The axes named on the grid, as the desk names them (IDEA2-5): the rows' values beside
+          them, the columns' under them; the cells already say both to a screen reader. */}
+        <span className="pmx-axis y" aria-hidden="true">
+          ↑ {roleWord(axes.y)}
+        </span>
+        <div
+          className="pmx-ys"
+          aria-hidden="true"
+          style={{ gridTemplateRows: `repeat(${m.rows.length}, minmax(0, 1fr))` }}
+        >
+          {m.rows.map((row) => (
+            <span key={row[0]?.y} className="pmx-y">
+              {row[0] ? yWord(row[0].y) : ''}
+            </span>
+          ))}
+        </div>
+        <fieldset
+          className="pmx-grid"
+          style={{ gridTemplateColumns: `repeat(${m.xs.length}, minmax(0, 1fr))` }}
+          aria-label={t('matrix.label', { x: roleWord(axes.x), y: roleWord(axes.y) })}
+        >
+          {m.rows.flat().map((cell) => {
+            const key = `${cell.x},${cell.y}`;
+            return (
+              <button
+                key={key}
+                type="button"
+                className={`pmx-cell h${heatOf(m, cell)}`}
+                aria-pressed={zone === key}
+                aria-label={`${zoneName(cell.x, cell.y)}: ${cell.items.length}`}
+                disabled={cell.items.length === 0}
+                onClick={() => setZone(zone === key ? null : key)}
+              >
+                {cell.items.length}
+              </button>
+            );
+          })}
+        </fieldset>
+        <div
+          className="pmx-xs"
+          aria-hidden="true"
+          style={{ gridTemplateColumns: `repeat(${m.xs.length}, minmax(0, 1fr))` }}
+        >
+          {m.xs.map((x, i) => (
+            <span key={x.value} className="pmx-x">
+              {xWord(i)}
+            </span>
+          ))}
+        </div>
+        <span className="pmx-axis x" aria-hidden="true">
+          {roleWord(axes.x)} →
+        </span>
+      </div>
       {shown.map((cell) => (
         <section key={`${cell.x},${cell.y}`} className="pmx-zone">
           <h3>
