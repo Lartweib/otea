@@ -54,6 +54,58 @@ const item = (state: string, events: ItemEvent[]) => ({
   events,
 });
 
+describe('a reopened item: the page says why it came back from Done', () => {
+  const reopenedEvents = (): ItemEvent[] => {
+    const back = moved('done', 'simpl', agent('quill'), '2026-01-05T00:00:00Z');
+    back.data = { from: 'done', to: 'simpl', reason: 'the PR conflicts', reopened: true };
+    return [
+      created('simpl'),
+      moved('simpl', 'simpl__review', agent('quill'), '2026-01-02T00:00:00Z'),
+      moved('simpl__review', 'done', you, '2026-01-03T00:00:00Z'),
+      back,
+    ];
+  };
+
+  it('reads the reason and loops the route back from Done', () => {
+    const on = boardItemOf(tareasDeRepo(), item('simpl', reopenedEvents()), {
+      ...words,
+      reopen: () => 'reabierto',
+    });
+    expect(on?.reopened).toEqual({
+      why: 'the PR conflicts',
+      by: 'quill',
+      person: false,
+      at: '2026-01-05T00:00:00Z',
+    });
+    expect(on?.round).toBe(2);
+    expect(on?.route.dips).toEqual([{ at: (on?.route.steps.length ?? 0) - 1, label: 'reabierto' }]);
+  });
+
+  it('opens the new round with the reason, as a reopen', () => {
+    const rounds = roundNotes(tareasDeRepo(), 'simpl', reopenedEvents());
+    expect(rounds.at(-1)?.notes).toEqual([
+      {
+        kind: 'back',
+        text: 'the PR conflicts',
+        by: 'quill',
+        person: false,
+        at: '2026-01-05T00:00:00Z',
+        reopened: true,
+      },
+    ]);
+  });
+
+  it('says nothing once the reopened step is handed off', () => {
+    const events = [
+      ...reopenedEvents(),
+      moved('simpl', 'simpl__review', agent('quill'), '2026-01-06T00:00:00Z'),
+    ];
+    expect(boardItemOf(tareasDeRepo(), item('simpl__review', events), words)?.reopened).toBe(
+      undefined,
+    );
+  });
+});
+
 describe('boardItemOf: the item page reads a published board through the step engine', () => {
   it('names no agent at a step any agent does, not the last agent that moved the item', () => {
     const events = [

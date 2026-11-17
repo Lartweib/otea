@@ -584,11 +584,12 @@ export function gateAt(def: BoardDefinition, position: Position, action: GateAct
 export type Transition = { from: string; to: string; at: string; quiet?: boolean };
 
 // A step's round counts every time the item entered it, never restarting; `startedAt` is when the
-// current round of each step began, and `dips` are the send-backs, for the route to draw.
+// current round of each step began, and `dips` are the send-backs, for the route to draw; a
+// reopen (a closed item taken back to a step) dips from Done, `reopened`.
 export type Rounds = {
   rounds: Record<string, number>;
   startedAt: Record<string, string>;
-  dips: { from: string; to: string; at: string }[];
+  dips: { from: string; to: string; at: string; reopened?: true }[];
 };
 
 export function roundsOf(
@@ -614,6 +615,8 @@ export function roundsOf(
     const source = positionOf(from);
     if (!isClosed(source) && source.step === target.step && source.phase === 'doing') continue;
     enter(target.step, at);
+    // A reopen: a closed item taken back to a step, a loop from Done for the route to draw.
+    if (isClosed(source)) out.dips.push({ from: DONE, to: target.step, at, reopened: true });
     // A send-back from a review (to this step or an earlier one), or the doer taking it back.
     if (!isClosed(source)) {
       const from = stepIndex(def, source.step);
@@ -623,6 +626,21 @@ export function roundsOf(
     }
   }
   return out;
+}
+
+// The move that started the step's current round when it was a reopen (the item was closed and was
+// taken back to the step), as its index in `transitions`; -1 when the round began any other way.
+export function reopenedAt(transitions: readonly Transition[], stepId: string): number {
+  for (let index = transitions.length - 1; index >= 0; index -= 1) {
+    const move = transitions[index];
+    if (!move || move.quiet) continue;
+    const target = positionOf(move.to);
+    if (isClosed(target) || target.phase !== 'doing' || target.step !== stepId) continue;
+    const source = positionOf(move.from);
+    if (!isClosed(source) && source.step === stepId && source.phase === 'doing') continue;
+    return isClosed(source) ? index : -1;
+  }
+  return -1;
 }
 
 // The move that started the step's current round when it was a send-back (from a review of this

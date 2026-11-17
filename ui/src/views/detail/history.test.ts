@@ -466,6 +466,22 @@ describe('who did what on a board, in the history', () => {
     ]);
   });
 
+  it('says a Done item was reopened, with why, by an agent or by you', () => {
+    setLanguage('es');
+    const reopen = { from: 'done', to: 'sdo', reason: 'El PR choca.', reopened: true };
+    const lines = historyOf(
+      [ev('transitioned', mender, reopen, 30), ev('transitioned', you, reopen, 20)],
+      type,
+      named,
+      NOW,
+      def,
+    );
+    expect(lines.map((l) => [l.text, l.quote])).toEqual([
+      ['Lo reabriste y volvió a Hacer', 'El PR choca.'],
+      ['Lo reabrió y volvió a Hacer', 'El PR choca.'],
+    ]);
+  });
+
   it('says handed again only for a step it was handed in before', () => {
     setLanguage('es');
     const steps = {

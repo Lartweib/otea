@@ -208,10 +208,20 @@ export function standOf(o: {
   why?: string | undefined;
   // The archived board it is on: nobody works it until the board is restored.
   archived?: string | undefined;
+  // Why it was reopened, while an agent redoes the step it was reopened to.
+  reopened?: string | undefined;
 }): Stand {
   const a = o.agent ? { agent: o.agent } : {};
   const r = o.round > 1;
   if (o.archived !== undefined) return { key: 'sheet.stand.archived', board: o.archived };
+  const agentTurn = o.look === 'working' || o.look === 'queued' || o.look === 'stuck';
+  if (o.reopened !== undefined && agentTurn) {
+    // Quoted inside a sentence of its own: its closing stop would double the sentence's.
+    const why = o.reopened.trim().replace(/[.。]+$/, '');
+    return o.agent
+      ? { key: 'sheet.stand.reopened', ...a, why }
+      : { key: 'sheet.stand.reopenedWaits', why };
+  }
   switch (o.look) {
     case 'yours':
       if (o.own) return { key: 'sheet.stand.own' };

@@ -217,6 +217,13 @@ describe('reopening a Done item whose branch is not merged', () => {
       `Reopened ${id}: it is in Implementar again. Fix its branch there and hand it off: it goes through review again before it is Done.`,
     );
     expect(checkGate(ctx, 'push', { branch: 'feat/x', repo: 'api' }).allowed).toBe(true);
+    const text = itemNextText(ctx, requireItem(ctx.db, id), 'quill', now);
+    expect(text).toContain('\nReopened: "the PR conflicts with main after API-1"\n  by quill, ');
+    expect(text).toContain(', after it was Done\n');
+    expect(boardBlockOf(ctx, requireItem(ctx.db, id))?.sentBack).toMatchObject({
+      note: 'the PR conflicts with main after API-1',
+      reopened: true,
+    });
     const moved = selectEvents(ctx.db, id).findLast(({ type }) => type === 'transitioned');
     expect(moved?.data).toMatchObject({
       from: 'done',

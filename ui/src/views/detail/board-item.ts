@@ -6,6 +6,7 @@ import {
   type Linked,
   NOTE_REF,
   positionOf,
+  reopenedAt,
   roundsOf,
   type Transition,
   turnAt,
@@ -42,7 +43,13 @@ import type { ProofChecklistView } from './proof-checklist.ts';
 // drawn from the definition, the same route Studio's preview draws. The preset the board compiles
 // to knows only "an agent" and a column per review, so the item page asks the board instead.
 
-export type BoardItem = { agent: string | null; round: number; route: DefinitionRoute };
+// `reopened`: while the step it was reopened to is being done, why and by whom it was reopened.
+export type BoardItem = {
+  agent: string | null;
+  round: number;
+  route: DefinitionRoute;
+  reopened?: { why: string; by: string; person: boolean; at: string };
+};
 
 type ItemLike = { state: string; createdAt: string; events: readonly ItemEvent[] };
 
@@ -65,7 +72,20 @@ export function boardItemOf(
   const agent = null;
   const round = isClosed(position) ? 0 : (rounds.rounds[position.step] ?? 1);
   const at = isClosed(position) ? DONE : { step: position.step, phase: position.phase };
-  return { agent, round, route: definitionRoute(def, at, rounds.dips, words) };
+  const out: BoardItem = { agent, round, route: definitionRoute(def, at, rounds.dips, words) };
+  if (!isClosed(position) && position.phase === 'doing') {
+    const index = reopenedAt(history.moves, position.step);
+    const move = history.moves[index];
+    const said = history.said[index];
+    if (move && said?.text)
+      out.reopened = {
+        why: said.text.trim(),
+        by: said.by.name,
+        person: said.by.kind === 'human',
+        at: move.at,
+      };
+  }
+  return out;
 }
 
 // ---- what the item page reads of a board item (PLAN §9.1) ----
@@ -288,12 +308,14 @@ export function branchStrip(
 // a way back into the step ("Devolver a Completar") or a migration's question opens the next.
 // `person`: the person wrote it (a send-back, a Devolver, the question a migration carried); `by`
 // is empty when nobody can be named (a migration).
+// `reopened`: a `back` note that reopened the closed item, its reason.
 export type RoundNote = {
   kind: 'handoff' | 'back';
   text: string;
   by: string;
   person: boolean;
   at: string;
+  reopened?: true;
 };
 // `doer`: the agent that did the round, with the profile it did it with (agents mock §5).
 export type Round = {
@@ -353,6 +375,7 @@ export function roundNotes(
             by: back.said.reading ? '' : back.said.by.name,
             person: back.said.by.kind === 'human',
             at: back.at,
+            ...(back.reopened ? { reopened: true as const } : {}),
           },
         ]
       : [],

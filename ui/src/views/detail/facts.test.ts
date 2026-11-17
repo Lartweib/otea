@@ -145,6 +145,21 @@ describe('the standfirst (mock:2670-2678)', () => {
     });
   });
 
+  it('says an item was reopened, and why, while an agent redoes it', () => {
+    const why = 'the PR conflicts';
+    expect(standOf({ ...base, look: 'working', round: 2, reopened: why })).toEqual({
+      key: 'sheet.stand.reopened',
+      agent: 'Mender',
+      why,
+    });
+    expect(standOf({ ...base, agent: null, look: 'queued', reopened: why })).toEqual({
+      key: 'sheet.stand.reopenedWaits',
+      why,
+    });
+    expect(standOf({ ...base, look: 'yours', reopened: why }).key).toBe('sheet.stand.handed');
+    expect(standOf({ ...base, look: 'working', reopened: `${why}.` }).why).toBe(why);
+  });
+
   it('says a question, your own step, your turn with nobody to name', () => {
     expect(standOf({ ...base, look: 'yours', question: true }).key).toBe('sheet.stand.asks');
     expect(standOf({ ...base, look: 'yours', own: true }).key).toBe('sheet.stand.own');
