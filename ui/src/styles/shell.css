@@ -199,16 +199,16 @@
   background: var(--sheet);
 }
 
-/* the mark: otea, its o a node */
+/* the mark: otea, its o a letter of the word with a dot on its ring (C · Órbita) */
 .tb-mid {
   display: flex;
   justify-content: center;
 }
 .brand {
-  display: inline-flex;
-  align-items: center;
-  font: 700 20px / 1 var(--sans);
+  display: inline-block;
+  font: 700 20px / 32px var(--sans);
   letter-spacing: -0.02em;
+  white-space: nowrap;
   color: var(--ink);
   text-decoration: none;
   cursor: pointer;
@@ -216,47 +216,52 @@
   padding: 0 4px;
   border-radius: 6px;
 }
+/* in font units (1000/em): the o's box is its advance (611) by its height, sat on the baseline */
 .brand-o {
-  width: 0.58444em;
-  height: 0.823em;
+  width: 0.611em;
+  height: 0.64em;
+  vertical-align: -0.04em;
+  margin-right: -0.02em;
   overflow: visible;
-  vertical-align: -0.12em;
 }
 .brand-ring {
   fill: none;
   stroke: var(--ink);
 }
-.brand-fill {
-  fill: var(--you);
+/* the dot is cut out of the ring by a hairline of the ground it sits on */
+.brand-dot {
+  fill: var(--mark-you);
+  stroke: var(--ground);
+  paint-order: stroke;
   transform-box: view-box;
-  transform-origin: 305.5px -263.5px;
+  transform-origin: 451.2px -411.3px;
   transition:
     transform 420ms var(--o-settle),
     opacity 240ms var(--o-drift);
 }
-.brand:not(.yours) .brand-fill {
+.brand:not(.yours):not(.working) .brand-dot {
   transform: scale(0.2);
   opacity: 0;
 }
-.brand-spin,
-.spin {
-  transform-box: view-box;
-  transform-origin: 305.5px -263.5px;
-  animation: spin 2.2s linear infinite;
+.brand.working .brand-dot {
+  transform: scale(1.22);
 }
-.brand-orbit {
+.brand-trail {
   fill: none;
-  stroke: var(--ink);
-  stroke-linecap: round;
-  stroke-dasharray: 0 100;
+  stroke: var(--mark-you);
+  stroke-opacity: 0.5;
   opacity: 0;
-  transition:
-    stroke-dasharray 420ms var(--o-glide),
-    opacity 240ms var(--o-drift);
+  transition: opacity 300ms var(--o-drift);
 }
-.brand.working .brand-orbit {
-  stroke-dasharray: 25 75;
+.brand.working .brand-trail {
   opacity: 1;
+}
+.brand-spin {
+  transform-box: view-box;
+  transform-origin: 305.5px -265.6px;
+}
+.brand.working .brand-spin {
+  animation: spin 2.6s linear infinite;
 }
 
 /* ---- the project menu (mock:745-759) ---- */

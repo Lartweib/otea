@@ -184,6 +184,10 @@ code {
 }
 
 /* ---- reduced motion: perpetual motion rests (mock:237-238, 882-886) ---- */
+:root[data-motion="reduced"] .brand.working .brand-spin {
+  animation: none;
+  transform: rotate(90deg);
+}
 :root[data-motion="reduced"] .brand-spin,
 :root[data-motion="reduced"] .orb,
 :root[data-motion="reduced"] .spin,
@@ -191,6 +195,11 @@ code {
   animation: none;
 }
 @media (prefers-reduced-motion: reduce) {
+  /* the mark at work still says so: its dot rests down and right, its trail beside it */
+  :root:not([data-motion="full"]) .brand.working .brand-spin {
+    animation: none;
+    transform: rotate(90deg);
+  }
   :root:not([data-motion="full"]) .brand-spin,
   :root:not([data-motion="full"]) .orb,
   :root:not([data-motion="full"]) .spin,
