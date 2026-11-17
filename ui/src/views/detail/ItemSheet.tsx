@@ -145,6 +145,7 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
         ? boardItemOf(live, item, {
             done: t('bs.done'),
             dip: (n, at) => t('sheet.dip', { n, when: at ? dipWhen(at, now) : '' }),
+            reopen: (at) => t('sheet.reopenDip', { when: at ? dipWhen(at, now) : '' }),
           })
         : null,
     [live, item, now],
@@ -324,6 +325,7 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
     left: facts.left,
     why: look === 'dropped' ? dropReason(item) : undefined,
     archived: item.archived?.board,
+    reopened: onBoard?.reopened?.why,
   });
   const standText = tx(
     stand.key as 'sheet.stand.handedRound',

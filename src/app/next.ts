@@ -22,6 +22,7 @@ import {
   positionOf,
   type Rounds,
   refusalCode,
+  reopenedAt,
   roundsOf,
   sendBack,
   sentBackAt,
@@ -46,6 +47,7 @@ import {
 } from '../core/board/model.ts';
 import {
   approvalRefusalText,
+  closedName,
   createdText,
   droppedText,
   dropRefusalText,
@@ -227,6 +229,19 @@ function sentBackOf(
   history: History,
 ): SentBack | undefined {
   if (isClosed(position) || position.phase !== 'doing') return undefined;
+  const reopened = reopenedAt(history.moves, position.step);
+  const reopen = history.moves[reopened];
+  const why = history.said[reopened];
+  if (reopen && why) {
+    return {
+      note: why.text ?? '',
+      by: { kind: why.by.kind, name: why.by.name },
+      at: reopen.at,
+      step: closedName(def, positionOf(reopen.from)),
+      round: roundAfter(def, history, position.step, reopened + 1),
+      reopened: true,
+    };
+  }
   const index = sentBackAt(def, history.moves, position.step);
   const move = history.moves[index];
   const said = history.said[index];

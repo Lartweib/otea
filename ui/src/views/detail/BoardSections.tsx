@@ -585,6 +585,8 @@ export function LinksSection({
 
 // Who wrote a round's note: you, or the agent by name.
 const bylineOf = (n: RoundNote): string => {
+  if (n.reopened)
+    return n.person ? t('bi.rounds.reopenedYou') : t('bi.rounds.reopened', { by: n.by });
   if (n.person) return n.kind === 'back' ? t('bi.rounds.backYou') : t('bi.rounds.handoffYou');
   return n.kind === 'back'
     ? t('bi.rounds.back', { by: n.by })

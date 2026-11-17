@@ -171,6 +171,13 @@ export function historyOf(
       }
       const q = reason ? { quote: reason } : {};
       const from = positionOf(String(e.data.from ?? ''));
+      // A closed board item taken back to a step (otea reopen): its reason is why.
+      if (board && isClosed(from) && !isClosed(positionOf(to)))
+        return {
+          ...base,
+          text: t(human ? 'sheet.h.reopenedYou' : 'sheet.h.reopened', { state }),
+          ...q,
+        };
       if (!human) {
         if (target?.closes === 'discarded')
           return { ...base, text: t('sheet.h.agentDiscarded', { state }), ...q };

@@ -154,7 +154,8 @@ export function handoffNotes(
 export type RoundStart = {
   round: number;
   at: string;
-  back?: { said: Said; at: string };
+  // `reopened`: the move reopened the item, closed until then, with what it said as its reason.
+  back?: { said: Said; at: string; reopened?: true };
 };
 
 // The rounds of one step, oldest first, each started by entering the step as the engine counts it.
@@ -176,16 +177,20 @@ export function roundsOfStep(def: BoardDefinition, history: History, step: strin
       const move = count === 0 ? undefined : history.moves[count - 1];
       const said = count === 0 ? undefined : history.said[count - 1];
       const source = move ? positionOf(move.from) : undefined;
+      const live = move !== undefined && !move.quiet && source !== undefined;
+      const reopened = live && isClosed(source);
       const back =
-        move !== undefined &&
-        !move.quiet &&
-        source !== undefined &&
-        !isClosed(source) &&
-        ((source.step === step && source.phase !== 'doing') || stepIndex(def, source.step) > index);
+        live &&
+        (reopened ||
+          (!isClosed(source) &&
+            ((source.step === step && source.phase !== 'doing') ||
+              stepIndex(def, source.step) > index)));
       out.push({
         round: now,
         at: move?.at ?? history.createdAt,
-        ...(back && said?.text ? { back: { said, at: move.at } } : {}),
+        ...(back && said?.text
+          ? { back: { said, at: move.at, ...(reopened ? { reopened: true as const } : {}) } }
+          : {}),
       });
     }
     before = now;

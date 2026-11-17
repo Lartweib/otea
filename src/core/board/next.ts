@@ -54,12 +54,15 @@ export const DROPPED_NAME = 'Dropped';
 
 // The send-back that started the round being done: the reviewer's note, who sent it (`by`) and
 // when, and the review it came from (that step's name and round).
+// `reopened`: the round began when the closed item was reopened (`step` is the closed state's name,
+// `note` the reason), not with a send-back from a review.
 export type SentBack = {
   note: string;
   by: { kind: 'human' | 'agent'; name: string };
   at: string;
   step: string;
   round: number;
+  reopened?: true;
 };
 
 // The note's hint when the round was sent back and the step itself asks for no note.
@@ -257,16 +260,17 @@ function noteLine(step: Step, input: NextInput): string[] {
 
 // The block a round sent back starts with: the note as the reviewer wrote it, then who, when and
 // from which review.
+// A reopened round starts with the reason it was reopened for, who reopened it and when.
 function sentBackLines(sent: SentBack): string[] {
   const [first = '', ...rest] = sent.note.trim().split(/\r?\n/);
-  const quoted = [`Sent back to you: "${first}`, ...rest.map((line) => `  ${line}`)];
+  const lead = sent.reopened ? 'Reopened' : 'Sent back to you';
+  const quoted = [`${lead}: "${first}`, ...rest.map((line) => `  ${line}`)];
   quoted[quoted.length - 1] += '"';
   const who = sent.by.kind === 'human' ? 'the person' : sent.by.name;
-  return [
-    '',
-    ...quoted,
-    `  by ${who}, ${timeText(sent.at)}, from the review of ${sent.step} round ${sent.round}`,
-  ];
+  const from = sent.reopened
+    ? `after it was ${sent.step}`
+    : `from the review of ${sent.step} round ${sent.round}`;
+  return ['', ...quoted, `  by ${who}, ${timeText(sent.at)}, ${from}`];
 }
 
 // What the step waits for: the last lines of the Handoff.
@@ -386,7 +390,7 @@ function pushLines(
 }
 
 // How a closed item reads: Done, Dropped, or Dropped with its motive.
-function closedName(def: BoardDefinition, position: Position): string {
+export function closedName(def: BoardDefinition, position: Position): string {
   if (!isClosed(position) || position.closed === DONE) return DONE_NAME;
   const motive = position.motive ? motiveById(def, position.motive) : undefined;
   return motive ? `${DROPPED_NAME} (${motive.name})` : DROPPED_NAME;

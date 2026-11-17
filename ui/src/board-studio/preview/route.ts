@@ -22,8 +22,13 @@ export type DefinitionRoute = {
   dips: DipSpec[];
 };
 
-// dip: the label of a send-back, its round and, when known, when it happened.
-export type RouteWords = { done: string; dip: (round: number, at?: string) => string };
+// dip: the label of a send-back, its round and, when known, when it happened; reopen: the label of
+// a loop from Done, a closed item reopened (the dip's label when not given).
+export type RouteWords = {
+  done: string;
+  dip: (round: number, at?: string) => string;
+  reopen?: (at?: string) => string;
+};
 
 const laneOfWho = (who: Doer | Reviewer): Lane => (who === 'you' ? 'you' : 'ag');
 
@@ -32,7 +37,7 @@ const visitOf = (stepId: string) => `${stepId}:review`;
 export function definitionRoute(
   def: BoardDefinition,
   at: RouteAt,
-  dips: readonly { from: string; at?: string }[],
+  dips: readonly { from: string; at?: string; reopened?: true }[],
   words: RouteWords,
 ): DefinitionRoute {
   const steps: RouteStep[] = [];
@@ -68,12 +73,14 @@ export function definitionRoute(
 
   const sent = new Map<string, number>();
   const dipped: DipSpec[] = [];
-  for (const { from, at: when } of dips) {
-    const at = reviewAt(from);
+  for (const { from, at: when, reopened } of dips) {
+    // A reopen loops back from Done, the last stop.
+    const at = reopened ? steps.length - 1 : reviewAt(from);
     if (at < 0) continue;
     const n = (sent.get(from) ?? 0) + 1;
     sent.set(from, n);
-    dipped.push({ at, label: words.dip(n, when) });
+    const label = reopened && words.reopen ? words.reopen(when) : words.dip(n, when);
+    dipped.push({ at, label });
   }
   return { steps, words: shown, ci, lane, dips: dipped };
 }
