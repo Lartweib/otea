@@ -84,7 +84,7 @@ export type PhoneNotes = {
   // the line the reader says of it (it goes with a send-back, or stays a note if you approve).
   review?: {
     says: string;
-    sendOn: (text: string, anchor: { evidence: number } & ReaderPick) => void;
+    sendOn: (text: string, anchor: { evidence: number } & ReaderPick) => Promise<boolean>;
   };
   // The notes of a round of the step under review (or being done), by its number.
   of: (round: number) => ItemNote[];
@@ -101,7 +101,7 @@ export type PhoneNotes = {
     warn: boolean;
     send: (text: string, anchor: number | null) => void;
     // A note on a line or a diagram node of a piece, picked in the reader.
-    sendOn: (text: string, anchor: { evidence: number } & ReaderPick) => void;
+    sendOn: (text: string, anchor: { evidence: number } & ReaderPick) => Promise<boolean>;
   };
 };
 
@@ -165,7 +165,9 @@ function Files({
 }: {
   evidence: readonly Evidence[];
   // While you review: a comment left from the reader (it goes with a send-back).
-  comment?: ((text: string, anchor: { evidence: number } & ReaderPick) => void) | undefined;
+  comment?:
+    | ((text: string, anchor: { evidence: number } & ReaderPick) => Promise<boolean>)
+    | undefined;
   // The board part each file went to, by module id; a file without one reads by its kind.
   parts?: ReadonlyMap<string, string> | undefined;
   // Aprobar and Devolver from inside the reader, on the round that waits for your verdict.
@@ -333,7 +335,9 @@ function RoundView({
   handed?: readonly { ref: string; name: string; value: string }[] | undefined;
   parts?: ReadonlyMap<string, string> | undefined;
   decide?: ReaderDecide | undefined;
-  comment?: ((text: string, anchor: { evidence: number } & ReaderPick) => void) | undefined;
+  comment?:
+    | ((text: string, anchor: { evidence: number } & ReaderPick) => Promise<boolean>)
+    | undefined;
   // The round before it, to mark its files against.
   prior: PhoneRound | undefined;
   newest: boolean;
@@ -875,10 +879,11 @@ export function PhoneItem(p: PhoneItemProps) {
                 phone
                 draft={noteText}
                 note={{
-                  onSend: (text, on) => {
-                    setPickIn(null);
-                    leave.sendOn(text, on);
-                  },
+                  onSend: (text, on) =>
+                    leave.sendOn(text, on).then((went) => {
+                      if (went) setPickIn(null);
+                      return went;
+                    }),
                 }}
               />
             </div>

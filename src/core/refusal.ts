@@ -113,7 +113,7 @@ export type RefusalDetails =
   | { kind: 'board_not_archived'; board: string }
   // A note from the person, or an agent's answer to one, refused: left by someone other than the
   // person (or answered by someone other than an agent), without text, on an item no agent is
-  // doing, or on evidence not attached to the item in this round.
+  // doing, or on evidence not attached to the item.
   | {
       kind: 'note';
       item: string;

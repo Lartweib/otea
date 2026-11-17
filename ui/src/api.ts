@@ -189,7 +189,7 @@ export async function pinItems(ids: readonly string[], pinned: boolean): Promise
   await post('/api/pin', { ids, pinned });
 }
 
-// Where a note is on: a piece of evidence of this round by its id, and in it the moment of a
+// Where a note is on: a piece of evidence of the item by its id, and in it the moment of a
 // recording, a line of a text, a node of a diagram, or a point or zone of an image (in percent).
 export type NoteAnchorInput = {
   evidence: number;
