@@ -85,7 +85,7 @@ describe('the Ideas set', () => {
         expect(assertIconName(def.icon)).toBe(def.icon);
         const problems = problemsOf(def, { id: `b${index}`, boards });
         // Only the reminder that an agent dropping an item names a motive may remain.
-        expect(problems.filter(({ code }) => code !== 'motive_agent_drop')).toEqual([]);
+        expect(problems).toEqual([]);
         for (const step of def.steps)
           for (const text of Object.values(step.instructions)) {
             expect(mentionText(def, text)).not.toMatch(/@[[{]/);

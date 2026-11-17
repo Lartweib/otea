@@ -4,7 +4,7 @@ import { insertEvidence, selectEvents, updateItemState } from '../store/queries.
 import { checkGate } from './gates.ts';
 import { createItem, requireItem } from './items.ts';
 import { markMerged, mergedOf, reopenItem } from './merged.ts';
-import { approveItem, boardBlockOf, handoffItem, itemNextText } from './next.ts';
+import { approveItem, boardBlockOf, handoffItem, itemNextText, nextFor } from './next.ts';
 import { memoryContext, publishAs } from './testing.ts';
 
 const you = { kind: 'human' as const, name: 'fede' };
@@ -142,6 +142,20 @@ describe('reopening a Done item whose branch is not merged', () => {
     markMerged(ctx, { id, actor: quill, channel: 'cli' }, now);
     expect(() => reopenItem(ctx, { id, actor: quill, channel: 'cli', reason: 'x' }, now)).toThrow(
       `${id} is merged already: its branch is in, so a further change is new work, not ${id}`,
+    );
+  });
+
+  it('names the Done items that wait to be merged when next has nothing to take', () => {
+    const { ctx, id } = repoTask();
+    updateItemState(ctx.db, id, 'done', now());
+    const idle = nextFor(ctx, 'quill', { collection: 'Tareas de repo' }, now);
+    expect(idle.item).toBeNull();
+    expect(idle.text).toContain(
+      `Waiting to be merged\n  ${id} (feat/x) is Done: merge its PR, then otea merged ${id} --pr <url>.`,
+    );
+    markMerged(ctx, { id, actor: quill, channel: 'cli' }, now);
+    expect(nextFor(ctx, 'quill', { collection: 'Tareas de repo' }, now).text).not.toContain(
+      'Waiting to be merged',
     );
   });
 

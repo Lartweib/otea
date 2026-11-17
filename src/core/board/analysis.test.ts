@@ -42,8 +42,7 @@ function triage(): BoardDefinition {
 }
 
 // The fixture's own warning (an agent may drop without a motive) is not what these tests read.
-const problemsOf = (def: BoardDefinition, ctx: object) =>
-  allProblems(def, ctx).filter(({ code }) => code !== 'motive_agent_drop');
+const problemsOf = (def: BoardDefinition, ctx: object) => allProblems(def, ctx);
 
 const part = (kind: Part['kind']): Part => ({ id: 'f', name: 'F', kind, hint: '', options: [] });
 

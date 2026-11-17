@@ -96,6 +96,18 @@ describe('nextText, the later settings', () => {
       '  ✓ Tareas de repo finished: required',
       '  ✓ Nothing open blocks it: required',
     ]);
+    // With no parts yet nothing holds the handoff, and next says so rather than "finished" (WF2-15).
+    const none = nextText(def, {
+      ...base,
+      position: { step: 'sfix', phase: 'doing' },
+      child: tareasDeRepo(),
+      parts: [],
+      blockers: [],
+      me: 'mender',
+    });
+    expect(lines(none, 'Handoff').slice(-2)[0]).toBe(
+      '  ✓ Tareas de repo finished: none yet, so nothing holds the handoff; add them first if it has any',
+    );
   });
 
   it('says what the protected branch allows in each phase', () => {
@@ -123,6 +135,18 @@ describe('nextText, the later settings', () => {
     );
   });
 
+  it('says the branch is not set yet, rather than naming the field as if it were one', () => {
+    const empty = nextText(errores(), {
+      ...base,
+      fields: { ...base.fields, fbranch: '' },
+      position: { step: 'sfix', phase: 'doing' },
+      me: 'mender',
+    });
+    expect(lines(empty, 'Branch')[1]).toBe(
+      '  the branch (Rama is empty) in api: you may push while you do Arreglar. While it is reviewed it is frozen; it can be merged only once it is Done.',
+    );
+  });
+
   it('says the base branch takes the branch only once Done, when the board protects it', () => {
     const def = errores();
     const branch = Object.values(def.parts).find((part) => part.guard);
@@ -140,7 +164,7 @@ describe('nextText, the later settings', () => {
     ]);
   });
 
-  it('says the agent merges in the land step, once you approved, when the board has one', () => {
+  it('says the agent merges in the land step, once the person approved, when the board has one', () => {
     const def = errores();
     const branch = Object.values(def.parts).find((part) => part.guard);
     if (!branch?.guard) throw new Error('no protected branch');
@@ -155,8 +179,8 @@ describe('nextText, the later settings', () => {
     });
     expect(lines(doing, 'Branch')).toEqual([
       'Branch',
-      '  feat/x in api: you may push while you do Arreglar. While it is reviewed it is frozen; once you approve it, an agent merges it in Integrar.',
-      '  main is protected too: push or merge feat/x into it only in Integrar, once you approved BUG-4.',
+      '  feat/x in api: you may push while you do Arreglar. While it is reviewed it is frozen; once the person approves it, an agent merges it in Integrar.',
+      '  main is protected too: push or merge feat/x into it only in Integrar, once the person approved BUG-4.',
     ]);
     const landing = nextText(def, {
       ...base,
@@ -164,7 +188,7 @@ describe('nextText, the later settings', () => {
       me: 'mender',
     });
     expect(lines(landing, 'Branch')).toContain(
-      '  main is protected too: merge feat/x into it now, in Integrar; you approved BUG-4.',
+      '  main is protected too: merge feat/x into it now, in Integrar; the person approved BUG-4.',
     );
   });
 

@@ -1170,14 +1170,27 @@ const relay: Command = {
   summary:
     'Record a decision the human made in conversation: move the item as the human, via you (human transitions only; human-ui ones stay in the web UI)',
   args: ['id', 'state'],
-  options: { quote: { required: true, placeholder: 'what the human said' }, reason: {} },
+  options: {
+    quote: { required: true, placeholder: 'what the human said' },
+    reason: {},
+    motive: { placeholder: 'name' },
+  },
   execute: (input) => {
     const [id = '', to = ''] = input.args;
     const quote = input.required('quote');
     const reason = input.option('reason');
+    const motive = input.option('motive');
     const via = input.actor.name;
     const { channel } = input;
-    const relayed = { id, to, via, channel, quote, ...(reason ? { reason } : {}) };
+    const relayed = {
+      id,
+      to,
+      via,
+      channel,
+      quote,
+      ...(reason ? { reason } : {}),
+      ...(motive ? { motive } : {}),
+    };
     return withAgent(input, (project) => itemResult(project, relayDecision(project, relayed)));
   },
 };

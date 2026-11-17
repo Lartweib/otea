@@ -34,8 +34,6 @@ export const boardStudio = {
   'bs.problem.guard_no_push': '“{part}” is protected but cannot be pushed in any step.',
   'bs.problem.guard_base': 'The base branch “{part}” protects is not a branch name.',
   'bs.problem.initial_invalid': '{part} starts with a value it no longer has. Pick another.',
-  'bs.problem.motive_agent_drop':
-    'With discard motives, an agent that drops in {step} has to pick one.',
   'bs.problem.mention_raw':
     'The instructions of {step} name something with @ and curly braces: type @ and pick it, so agents read its name.',
   'bs.problem.analysis_missing':
