@@ -1042,21 +1042,34 @@ export function idleText(boards: readonly IdleBoard[], collection?: string): str
       );
     }
   }
-  const toMerge = boards.flatMap(({ toMerge: done }) => done ?? []);
-  if (toMerge.length > 0)
-    lines.push(
-      ...section(
-        'Waiting to be merged',
-        toMerge.map(
-          ({ id, branch }) =>
-            `  ${id} (${branch}) is ${DONE_NAME}: merge its PR, then otea merged ${id} --pr <url>.`,
-        ),
-      ),
-    );
+  lines.push(...mergeLines(boards.flatMap(({ toMerge: done }) => done ?? [])));
   const on = collection === undefined ? '' : ` --collection ${quoted(collection)}`;
   if (lines.length > 1) lines.push('');
   lines.push(`Wait for one: otea wait --turn agent --unclaimed${on}, then otea next${on}.`);
   return lines.join('\n');
+}
+
+// The Done items whose branch waits to be merged, each with how to merge and record it.
+export type ToMerge = { id: string; branch: string };
+
+export function mergeLines(toMerge: readonly ToMerge[]): string[] {
+  return section(
+    'Waiting to be merged',
+    toMerge.map(
+      ({ id, branch }) =>
+        `  ${id} (${branch}) is ${DONE_NAME}: merge its PR, then otea merged ${id} --pr <url>.`,
+    ),
+  );
+}
+
+// What next says when the item to take waits for parts still to be merged: merge them first.
+export function mergeFirstText(id: string, toMerge: readonly ToMerge[]): string {
+  return [
+    `Merge first: ${id} waits for its parts to be merged.`,
+    ...mergeLines(toMerge),
+    '',
+    'Then run otea next again.',
+  ].join('\n');
 }
 
 // A name as a command line takes it: bare when it is one plain word, quoted otherwise.

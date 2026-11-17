@@ -33,7 +33,7 @@ function repoTask() {
     },
     now,
   );
-  return { ctx, id: task.id };
+  return { ctx, id: task.id, parent: parent.id };
 }
 
 describe('marking a Done item merged', () => {
@@ -295,6 +295,50 @@ describe('reopening a Done item whose branch is not merged', () => {
     markMerged(ctx, { id, actor: quill, channel: 'cli' }, now);
     expect(nextFor(ctx, 'quill', { collection: 'Tareas de repo' }, now).text).not.toContain(
       'Waiting to be merged',
+    );
+  });
+
+  it('offers the merges before the step of the parent that waits for them', () => {
+    const { ctx, id, parent } = repoTask();
+    updateItemState(ctx.db, id, 'done', now());
+    updateItemState(ctx.db, parent, 'sexec', now());
+
+    const first = nextFor(ctx, 'quill', {}, now);
+    expect(first.item).toBeNull();
+    expect(first.text).toBe(
+      [
+        `Merge first: ${parent} waits for its parts to be merged.`,
+        '',
+        'Waiting to be merged',
+        `  ${id} (feat/x) is Done: merge its PR, then otea merged ${id} --pr <url>.`,
+        '',
+        'Then run otea next again.',
+      ].join('\n'),
+    );
+    markMerged(ctx, { id, actor: quill, channel: 'cli' }, now);
+    expect(nextFor(ctx, 'quill', {}, now).item).toBe(parent);
+  });
+
+  it('keeps the list of merges under the item it offers', () => {
+    const { ctx, id, parent } = repoTask();
+    updateItemState(ctx.db, id, 'done', now());
+    const other = createItem(
+      ctx,
+      {
+        collection: 'Tareas de repo',
+        title: 'Web',
+        fields: { frepo: 'api', fbranch: 'feat/web' },
+        parent,
+        actor: you,
+      },
+      now,
+    );
+    updateItemState(ctx.db, other.id, 'simpl', now());
+
+    const offered = nextFor(ctx, 'quill', {}, now);
+    expect(offered.item).toBe(other.id);
+    expect(offered.text).toContain(
+      `\n\nWaiting to be merged\n  ${id} (feat/x) is Done: merge its PR, then otea merged ${id} --pr <url>.`,
     );
   });
 

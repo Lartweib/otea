@@ -53,6 +53,8 @@ import {
   dropRefusalText,
   handedText,
   idleText,
+  mergeFirstText,
+  mergeLines,
   type NextInput,
   NOT_TAKEN_BACK,
   nextText,
@@ -737,6 +739,20 @@ function waitingToMerge(ctx: Context, board: LiveBoard): { id: string; branch: s
   });
 }
 
+// Whether the step being done waits for its parts and one of them is Done but waits to be merged
+// (`merging`): the merge comes first.
+function waitsForMerges(
+  def: BoardDefinition,
+  on: ItemOnBoard,
+  merging: ReadonlySet<string>,
+): boolean {
+  const position = on.position;
+  if (isClosed(position) || position.phase !== 'doing') return false;
+  const step = stepById(def, position.step);
+  if (!step?.waits.includes('parts')) return false;
+  return on.links.parts.some(({ id }) => merging.has(id));
+}
+
 // Whether the step being done waits for parts or blockers still open: its handoff cannot pass yet.
 function waitsOpen(def: BoardDefinition, on: ItemOnBoard): boolean {
   const position = on.position;
@@ -788,6 +804,10 @@ export function nextFor(
     const since = (item: ItemRecord) => entered.get(item.id) ?? item.createdAt;
     const offered = offeredElsewhere(ctx, agent, at);
     const priority = priorityOf(ctx.db);
+    // The Done items whose branch waits to be merged: an agent merges them before the step of an
+    // item that waits for them as its parts, and next keeps naming them under what it offers.
+    const toMerge = liveBoards(ctx).flatMap((board) => waitingToMerge(ctx, board));
+    const merging = new Set(toMerge.map(({ id }) => id));
     const pinOf = (item: ItemRecord) => priority.get(item.id)?.pin ?? Number.POSITIVE_INFINITY;
     const rankOf = (item: ItemRecord) => priority.get(item.id)?.rank ?? Number.POSITIVE_INFINITY;
     const candidates = boards.flatMap((board) =>
@@ -802,6 +822,7 @@ export function nextFor(
             left: leftFor(ctx, item.id) === agent,
             returned: on.sentBack !== undefined,
             waiting: waitsOpen(board.def, on),
+            merges: waitsForMerges(board.def, on, merging),
             ...progressOf(board.def, item),
           };
         }),
@@ -817,6 +838,7 @@ export function nextFor(
         Number(b.left) - Number(a.left) ||
         Number(b.returned) - Number(a.returned) ||
         Number(a.waiting) - Number(b.waiting) ||
+        Number(a.merges) - Number(b.merges) ||
         byOrder(pinOf(a.item), pinOf(b.item)) ||
         byOrder(rankOf(a.item), rankOf(b.item)) ||
         Number(b.review) - Number(a.review) ||
@@ -846,6 +868,15 @@ export function nextFor(
         text: idleText(idle, options.collection),
       };
     }
+    if (first.merges) {
+      const { links } = itemOnBoard(ctx, first.item, first.board.def);
+      const theirs = toMerge.filter(({ id }) => links.parts.some((part) => part.id === id));
+      return {
+        item: null,
+        collection: options.collection ?? null,
+        text: mergeFirstText(first.item.id, theirs),
+      };
+    }
     const { board } = first;
     const lease = options.claim
       ? takeItem(ctx.db, first.item, { kind: 'agent', name: agent }, at)
@@ -856,7 +887,7 @@ export function nextFor(
     return {
       item: item.id,
       collection: board.collection,
-      text: textFor(ctx, item, board.def, at, agent),
+      text: [textFor(ctx, item, board.def, at, agent), ...mergeLines(toMerge)].join('\n'),
       ...(sentBack === undefined ? {} : { sentBack }),
       ...(lease ? { lease } : {}),
       ...(roundNotes.length === 0 ? {} : { notes: roundNotes }),
