@@ -101,6 +101,22 @@ describe('EvidenceReader', () => {
     expect(desk).toContain('Click a line');
     expect(desk).toMatch(/<textarea[^>]*><\/textarea>/);
   });
+
+  it('on the phone stacks the note above the moves in one foot, never one over the other (DR2-10)', () => {
+    const note = { onSend: async () => true };
+    const decide = { seen: 1, approve: { label: 'Approve', onClick: () => {} } };
+    const phone = renderToStaticMarkup(
+      <EvidenceReader evidence={files} at={1} onAt={() => {}} phone note={note} decide={decide} />,
+    );
+    const foot = phone.slice(phone.indexOf('class="ev-reader-foot"'));
+    expect(phone).toContain('class="ev-reader-foot"');
+    expect(foot.indexOf('ev-reader-note')).toBeGreaterThan(0);
+    expect(foot.indexOf('ev-reader-decide')).toBeGreaterThan(foot.indexOf('ev-reader-note'));
+    const desk = renderToStaticMarkup(
+      <EvidenceReader evidence={files} at={1} onAt={() => {}} note={note} decide={decide} />,
+    );
+    expect(desk).not.toContain('ev-reader-foot');
+  });
 });
 
 describe('a diff', () => {

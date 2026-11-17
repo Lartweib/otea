@@ -170,6 +170,7 @@ export function EvidenceReader({
   note,
   start,
   draft = '',
+  onDraft,
 }: {
   evidence: readonly Evidence[];
   at: number;
@@ -180,11 +181,17 @@ export function EvidenceReader({
   start?: ReaderPick | undefined;
   // The note already begun elsewhere (the phone's note sheet), carried into the reader's.
   draft?: string;
+  // The note as it is typed, kept by the caller: closing the reader never loses it (DR2-10).
+  onDraft?: ((text: string) => void) | undefined;
 }) {
   const shown = evidence[at];
   const view = useRef<HTMLDivElement>(null);
   const [pick, setPick] = useState<{ id: number; pick: ReaderPick } | null>(null);
-  const [text, setText] = useState(draft);
+  const [text, setTextHere] = useState(draft);
+  const setText = (value: string) => {
+    setTextHere(value);
+    onDraft?.(value);
+  };
   const [sending, setSending] = useState(false);
   const shownId = shown?.id;
   // A before or an after of an image, with its other side among the files: compared on one frame.
@@ -251,6 +258,56 @@ export function EvidenceReader({
     return () => cancelAnimationFrame(frame);
   }, [picked, shownId]);
   if (!shown) return null;
+  const noteBox = note ? (
+    <div className="ev-reader-note">
+      <div className="ev-reader-on">
+        <b>{t('notes.pick.on', { what: pickWords(picked) })}</b>
+        <span>{compared ? t('notes.pick.hintCompare') : pickHint(shown, !!phone)}</span>
+      </div>
+      <textarea
+        rows={2}
+        value={text}
+        placeholder={t('notes.pick.placeholder')}
+        aria-label={t('notes.pick.on', { what: pickWords(picked) })}
+        onChange={(e) => setText(e.currentTarget.value)}
+      />
+      <button
+        type="button"
+        className="btn primary"
+        disabled={!text.trim() || sending}
+        onClick={() => {
+          setSending(true);
+          void sendThenClear(
+            () => note.onSend(text.trim(), pickAnchor(shown.id, picked)),
+            () => {
+              setText('');
+              setPick(null);
+            },
+          ).finally(() => setSending(false));
+        }}
+      >
+        {t('notes.pick.send')}
+      </button>
+    </div>
+  ) : null;
+  const decideBar = decide ? (
+    <div className="ev-reader-decide">
+      <span className="ev-reader-seen">
+        {t('evidence.seenOf', { n: decide.seen, total: evidence.length })}
+        {decide.notice ? <small className="ev-reader-notice">{decide.notice}</small> : null}
+      </span>
+      {decide.back ? (
+        <button type="button" className="btn quiet" onClick={decide.back.onClick}>
+          {decide.back.label}
+        </button>
+      ) : null}
+      {decide.approve ? (
+        <button type="button" className="btn primary" onClick={decide.approve.onClick}>
+          {decide.approve.label}
+        </button>
+      ) : null}
+    </div>
+  ) : null;
   return (
     <div className="ev-reader">
       <div className="ev-reader-bar">
@@ -361,56 +418,19 @@ export function EvidenceReader({
           </div>
         ) : null}
       </div>
-      {note ? (
-        <div className="ev-reader-note">
-          <div className="ev-reader-on">
-            <b>{t('notes.pick.on', { what: pickWords(picked) })}</b>
-            <span>{compared ? t('notes.pick.hintCompare') : pickHint(shown, !!phone)}</span>
-          </div>
-          <textarea
-            rows={2}
-            value={text}
-            placeholder={t('notes.pick.placeholder')}
-            aria-label={t('notes.pick.on', { what: pickWords(picked) })}
-            onChange={(e) => setText(e.currentTarget.value)}
-          />
-          <button
-            type="button"
-            className="btn primary"
-            disabled={!text.trim() || sending}
-            onClick={() => {
-              setSending(true);
-              void sendThenClear(
-                () => note.onSend(text.trim(), pickAnchor(shown.id, picked)),
-                () => {
-                  setText('');
-                  setPick(null);
-                },
-              ).finally(() => setSending(false));
-            }}
-          >
-            {t('notes.pick.send')}
-          </button>
+      {phone && (note || decide) ? (
+        // On the phone the note and the moves share one foot that stays at the sheet's bottom: two
+        // sticky feet laid the moves over the note box (DR2-10).
+        <div className="ev-reader-foot">
+          {noteBox}
+          {decideBar}
         </div>
-      ) : null}
-      {decide ? (
-        <div className="ev-reader-decide">
-          <span className="ev-reader-seen">
-            {t('evidence.seenOf', { n: decide.seen, total: evidence.length })}
-            {decide.notice ? <small className="ev-reader-notice">{decide.notice}</small> : null}
-          </span>
-          {decide.back ? (
-            <button type="button" className="btn quiet" onClick={decide.back.onClick}>
-              {decide.back.label}
-            </button>
-          ) : null}
-          {decide.approve ? (
-            <button type="button" className="btn primary" onClick={decide.approve.onClick}>
-              {decide.approve.label}
-            </button>
-          ) : null}
-        </div>
-      ) : null}
+      ) : (
+        <>
+          {noteBox}
+          {decideBar}
+        </>
+      )}
     </div>
   );
 }

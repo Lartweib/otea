@@ -132,6 +132,20 @@ describe('a finger’s size: every control on the phone is at least 44 px (#34)'
   });
 });
 
+describe('the phone reader', () => {
+  it('sits on the keyboard, so the note box and Dejar nota stay above the keys (DR2-10)', () => {
+    const read = rules(phoneCss, '.nsheet.p-read');
+    expect(read).toMatch(/bottom:\s*var\(--kb, 0px\)/);
+    expect(read).toMatch(/height:\s*calc\(94dvh - var\(--kb, 0px\)\)/);
+  });
+
+  it('keeps the note and the moves in one sticky foot, the note never under them', () => {
+    expect(rules(phoneCss, '.p-read .ev-reader-foot')).toMatch(/position:\s*sticky/);
+    expect(rules(phoneCss, '.p-read .ev-reader-note')).not.toMatch(/position:\s*sticky/);
+    expect(rules(phoneCss, '.p-read .ev-reader-decide')).not.toMatch(/position:\s*sticky/);
+  });
+});
+
 describe('the paired page', () => {
   it('sets the home-screen hint as a padded card with its steps inside it (DR2-17)', () => {
     const pairing = sheet('pairing.css');
