@@ -1225,3 +1225,21 @@ input.se-stepname:focus {
   font: 400 italic 13.5px / 1.35 var(--serif);
   color: var(--ink-3);
 }
+
+/* Vistas de análisis: one field per role, in a grid that folds to one column on a narrow card. */
+.se-roles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 14px 18px;
+}
+
+.se-role select:disabled {
+  color: var(--ink-3);
+}
+
+.se-rolefits {
+  display: block;
+  margin-top: 4px;
+  color: var(--ink-3);
+  font: 400 12px / 1.35 var(--sans);
+}

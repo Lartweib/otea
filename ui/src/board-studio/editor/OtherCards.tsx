@@ -1,10 +1,11 @@
 import { useState } from 'react';
+import { mappedScales, partsFor, ROLES, viewsOf } from '../../../../src/core/board/analysis.ts';
 import { waysOf } from '../../../../src/core/board/engine.ts';
-import { DONE, SAME, TITLE } from '../../../../src/core/board/model.ts';
+import { DONE, SAME, TITLE, usedRefs } from '../../../../src/core/board/model.ts';
 import { listOf, t, tx } from '../../i18n/i18n.ts';
 import { MenuItem, MenuLabel, MenuRule } from '../../kit/pop/Menu.tsx';
 import { studioHash } from '../../selection.ts';
-import { doesText } from '../words.ts';
+import { doesText, roleWord } from '../words.ts';
 import { useEditor } from './context.ts';
 import {
   addMotive,
@@ -14,6 +15,7 @@ import {
   setDropBy,
   setIcon,
   setItemName,
+  setRole,
   setSplit,
   setSplitAlways,
 } from './edits.ts';
@@ -467,6 +469,7 @@ export function AboutCard() {
         </div>
       </div>
       <PartsSection />
+      <AnalysisSection />
       <Section label={t('bs.editor.about.instr')} gloss={t('bs.editor.about.instr_gloss')}>
         <div className="se-instr">
           <MentionArea
@@ -516,6 +519,57 @@ export function AboutCard() {
         </p>
       </Section>
     </>
+  );
+}
+
+// "Vistas de análisis": which field of the board plays each role (effort, risk, impact, area, due
+// date). Each role offers only the board's fields that fit it; the matrix turns on once two of
+// effort, risk and impact are mapped (core/board/analysis.ts).
+function AnalysisSection() {
+  const { draft } = useEditor();
+  const def = draft.def;
+  const used = usedRefs(def);
+  const views = viewsOf(def);
+  const scales = mappedScales(def);
+  return (
+    <Section label={t('bs.editor.analysis.label')} gloss={t('bs.editor.analysis.gloss')}>
+      <div className="se-roles">
+        {ROLES.map((role) => {
+          const fits = partsFor(def, role).filter(({ id }) => used.has(id));
+          const value = def.analysis?.[role] ?? '';
+          return (
+            <label key={role} className="se-fld se-role">
+              <span className="se-flab">{roleWord(role)}</span>
+              <select
+                className="se-tx"
+                value={value}
+                disabled={fits.length === 0 && value === ''}
+                onChange={(e) => draft.mutate((d) => setRole(d, role, e.target.value || undefined))}
+              >
+                <option value="">
+                  {fits.length === 0
+                    ? t('bs.editor.analysis.no_fit')
+                    : t('bs.editor.analysis.none')}
+                </option>
+                {fits.map((part) => (
+                  <option key={part.id} value={part.id}>
+                    {part.name}
+                  </option>
+                ))}
+              </select>
+              <small className="se-rolefits">{t(`bs.editor.analysis.fits.${role}`)}</small>
+            </label>
+          );
+        })}
+      </div>
+      <p className="se-conseq">
+        {views.includes('matrix')
+          ? t('bs.editor.analysis.matrix_on', {
+              roles: listOf(scales.map((role) => roleWord(role))),
+            })
+          : t('bs.editor.analysis.matrix_off')}
+      </p>
+    </Section>
   );
 }
 
