@@ -35,7 +35,7 @@ import {
 } from '../app/phone.ts';
 import { listAgents, presenceSignature } from '../app/presence.ts';
 import { listPresetViews } from '../app/preset-views.ts';
-import { estimatesOf, pinItems, priorityOf, setOrder } from '../app/priority.ts';
+import { estimatesOfItems, pinItems, priorityOf, setOrder } from '../app/priority.ts';
 import { type Env, type Project, projectView } from '../app/project.ts';
 import { answerQuestion } from '../app/questions.ts';
 import { linkItems, unlinkItems } from '../app/relations.ts';
@@ -396,6 +396,11 @@ function api(
         // On a board, each item's round as the engine counts it, so every list agrees with it.
         const boards = liveBoards(project);
         const priority = priorityOf(project.db);
+        const estimated = estimatesOfItems(
+          project,
+          items,
+          (collection) => boards.find((board) => board.collection === collection)?.def,
+        );
         return c.json(
           items.map((item) => {
             const round = boardRoundOf(project, item, boards);
@@ -403,8 +408,7 @@ function api(
             const notes = notesSummary(project, item, boards);
             // The person's order (app/priority.ts) and the role values an agent estimated.
             const order = priority.get(item.id);
-            const def = boards.find(({ collection }) => collection === item.collection)?.def;
-            const estimates = def?.analysis ? estimatesOf(project, item, def) : {};
+            const estimates = estimated.get(item.id) ?? {};
             return {
               ...item,
               ...(round === undefined ? {} : { round }),

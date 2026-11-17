@@ -4,7 +4,7 @@ import type { BoardDefinition } from '../core/board/model.ts';
 import { OteaError } from '../core/errors.ts';
 import type { Actor } from '../core/item.ts';
 import { transaction } from '../store/database.ts';
-import { findItem, selectEvents, selectItems } from '../store/queries.ts';
+import { findItem, selectEvents, selectEventsOfTypes, selectItems } from '../store/queries.ts';
 import type { Context } from './context.ts';
 import { systemClock } from './items.ts';
 
@@ -107,6 +107,14 @@ export function pinItems(
 // Who last set each role's field on an item, when it was an agent: the matrix says "estimado por
 // un agente" until the person sets the value. A value set when the item was created is its
 // creator's; a later change is whoever changed it.
+type Estimated = {
+  id: string;
+  collection: string;
+  fields: Record<string, unknown>;
+  createdBy: Actor;
+};
+type Updated = { actor: Actor; data: Record<string, unknown> };
+
 export function estimatesOf(
   ctx: Context,
   item: { id: string; fields: Record<string, unknown>; createdBy: Actor },
@@ -114,10 +122,47 @@ export function estimatesOf(
 ): Partial<Record<string, string>> {
   const refs = scaleRefs(def.analysis);
   if (refs.length === 0) return {};
+  const updates = selectEvents(ctx.db, item.id).filter(({ type }) => type === 'updated');
+  return estimatesFrom(item, refs, updates);
+}
+
+// The same for a whole list (the board's items in /api/items): every item's updates come from one
+// query instead of one per item. An item without estimates is left out of the map.
+export function estimatesOfItems(
+  ctx: Context,
+  items: readonly Estimated[],
+  defOf: (collection: string) => BoardDefinition | undefined,
+): Map<string, Partial<Record<string, string>>> {
+  const refsOf = new Map<string, string[]>();
+  for (const { collection } of items) {
+    if (!refsOf.has(collection)) refsOf.set(collection, scaleRefs(defOf(collection)?.analysis));
+  }
+  const out = new Map<string, Partial<Record<string, string>>>();
+  if (![...refsOf.values()].some((refs) => refs.length > 0)) return out;
+  const updates = new Map<string, Updated[]>();
+  for (const event of selectEventsOfTypes(ctx.db, ['updated'])) {
+    const list = updates.get(event.itemId);
+    if (list) list.push(event);
+    else updates.set(event.itemId, [event]);
+  }
+  for (const item of items) {
+    const refs = refsOf.get(item.collection) ?? [];
+    if (refs.length === 0) continue;
+    const estimates = estimatesFrom(item, refs, updates.get(item.id) ?? []);
+    if (Object.keys(estimates).length > 0) out.set(item.id, estimates);
+  }
+  return out;
+}
+
+// Who last set each role's field: its creator for a value set at creation, else the last update.
+function estimatesFrom(
+  item: { fields: Record<string, unknown>; createdBy: Actor },
+  refs: readonly string[],
+  updates: readonly Updated[],
+): Partial<Record<string, string>> {
   const by = new Map<string, Actor>();
   for (const ref of refs) if (item.fields[ref] !== undefined) by.set(ref, item.createdBy);
-  for (const event of selectEvents(ctx.db, item.id)) {
-    if (event.type !== 'updated') continue;
+  for (const event of updates) {
     const changes = (event.data.changes ?? {}) as Record<string, unknown>;
     for (const ref of refs) if (ref in changes) by.set(ref, event.actor);
   }
