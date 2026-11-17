@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { BoardDefinition } from '../../../src/core/board/model.ts';
 import { cambios, creatures, errores, tareasDeRepo } from '../../../src/core/board/testing.ts';
 import type { BoardSummary } from './api.ts';
-import { madeWithOf, pairOf } from './pair.ts';
+import { madeWithOf, pairOf, unpublishedMates } from './pair.ts';
 
 function summary(id: string, definition: BoardDefinition): BoardSummary {
   return {
@@ -48,5 +48,17 @@ describe('pairOf', () => {
       summary('brt', { ...tareasDeRepo(), madeWith: ['bcam'] }),
     ];
     expect(madeWithOf(pair, 'bcam')).toEqual([]);
+  });
+});
+
+describe('unpublishedMates', () => {
+  it('lists the boards a set made together that were never published, to publish with it', () => {
+    const ideas = { ...creatures(), name: 'Ideas', madeWith: ['bimp'] };
+    const tasks = { ...errores(), name: 'Implementación', madeWith: ['bide'] };
+    const draft = [summary('bide', ideas), summary('bimp', tasks)];
+    expect(unpublishedMates(draft, 'bide').map(({ id }) => id)).toEqual(['bimp']);
+    expect(unpublishedMates(draft, 'bimp').map(({ id }) => id)).toEqual(['bide']);
+    const live = [summary('bide', ideas), { ...summary('bimp', tasks), liveVersion: 1 }];
+    expect(unpublishedMates(live, 'bide')).toEqual([]);
   });
 });

@@ -484,12 +484,17 @@ export type PublishInput = {
   // Closes, as done, the open Pedido an agent drafted the board on: publishing is the person
   // taking the draft.
   closeRequest?: boolean;
+  // The boards a template set made with this one (its madeWith) that were never published: they go
+  // live first, in the same transaction, so Ideas never goes live without Implementación.
+  alongside?: readonly string[];
 };
 
 export type PublishResult = {
   version: number;
   moved: { id: string; from: string; to: string }[];
   record: BoardRecord;
+  // The set's boards published with this one (PublishInput.alongside), in the order asked.
+  alongside?: PublishResult[];
 };
 
 // `boards`: the definitions the moves leave and land in, whose step names the events keep, so the
@@ -559,9 +564,53 @@ export function publishBoard(
   input: PublishInput,
   now: Clock = systemClock,
 ): PublishResult {
-  const result = transaction(ctx.db, () => publishWithin(ctx, id, input, now));
+  const { alongside = [], ...own } = input;
+  const result = transaction(ctx.db, () => {
+    assertMadeWith(ctx, id, alongside, 'publish');
+    const mates = alongside.map((mate) =>
+      publishWithin(
+        ctx,
+        mate,
+        { moves: {}, by: own.by, ...(own.closeRequest ? { closeRequest: true } : {}) },
+        now,
+      ),
+    );
+    const main = publishWithin(ctx, id, own, now);
+    return mates.length ? { ...main, alongside: mates } : main;
+  });
   syncBoardPresets(ctx);
-  return result;
+  // Each record was read before the next publish finished: read them again.
+  if (!result.alongside) return result;
+  return {
+    ...result,
+    record: getBoardRecord(ctx, id),
+    alongside: result.alongside.map((mate) => ({
+      ...mate,
+      record: getBoardRecord(ctx, mate.record.id),
+    })),
+  };
+}
+
+// The boards published or undone with `id`: each one its template set made with it, and each one
+// not yet published (publish) or still on the first version it went live with (restore).
+function assertMadeWith(
+  ctx: Context,
+  id: string,
+  mates: readonly string[],
+  action: 'publish' | 'restore',
+): void {
+  if (mates.length === 0) return;
+  const record = getBoardRecord(ctx, id);
+  const made = new Set((record.draft ?? record.live)?.definition.madeWith ?? []);
+  for (const mate of mates) {
+    const row = requireStanding(ctx, mate);
+    if (mate === id || !made.has(mate))
+      throw new OteaError('invalid_board', `Board ${mate} was not made with board ${id}`);
+    if (action === 'publish' && row.liveVersion !== null)
+      throw new OteaError('invalid_board', `Board ${mate} is already published`);
+    if (action === 'restore' && row.liveVersion !== 1)
+      throw new OteaError('not_undoable', `Board ${mate} is not on its first version`);
+  }
 }
 
 // The body of a publish, inside a transaction the caller holds.
@@ -632,7 +681,12 @@ function publishWithin(ctx: Context, id: string, input: PublishInput, now: Clock
   return { version, moved, record: getBoardRecord(ctx, id) };
 }
 
-export type RestoreInput = { version: number | null; by: Actor };
+export type RestoreInput = {
+  version: number | null;
+  by: Actor;
+  // Undoing a first publish made alongside other boards of the set: they go back to drafts too.
+  alongside?: readonly string[];
+};
 
 // Undoes a publish: `version` (the one before, or null to undo a first publish) is live again, the
 // items the undone publish moved go back where they were, and the undone version's changes return
@@ -643,9 +697,16 @@ export function restoreBoard(
   input: RestoreInput,
   now: Clock = systemClock,
 ): BoardRecord {
-  const result = transaction(ctx.db, () => restoreWithin(ctx, id, input, now));
+  const { alongside = [], ...own } = input;
+  transaction(ctx.db, () => {
+    if (alongside.length && own.version !== null)
+      throw new OteaError('not_undoable', 'Only a first publish is undone with other boards');
+    assertMadeWith(ctx, id, alongside, 'restore');
+    restoreWithin(ctx, id, own, now);
+    for (const mate of alongside) restoreWithin(ctx, mate, { version: null, by: own.by }, now);
+  });
   syncBoardPresets(ctx);
-  return result;
+  return getBoardRecord(ctx, id);
 }
 
 // The body of a restore, inside a transaction the caller holds.

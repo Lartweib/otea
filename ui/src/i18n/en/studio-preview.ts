@@ -396,6 +396,10 @@ export const studioPreview = {
   'bs.preview.publish.toast.next': 'Published: {name} v{v}. Agents get it on their next call.',
   'bs.preview.publish.toast.undoneFirst': '{name} is a draft again.',
   'bs.preview.publish.toast.undone': 'Back to v{v}; your changes stay in the draft.',
+  'bs.preview.publish.mates':
+    '{names} is published too: it was made together with {name} and they go together. Undo turns both back into drafts.',
+  'bs.preview.publish.toast.mates':
+    '{name} and {names} are now running. The agents can take items in {step}.',
 
   'bs.preview.publish.waitingParts': {
     one: '1 item in {step} has {parts} unfinished: it cannot be handed off until they finish.',

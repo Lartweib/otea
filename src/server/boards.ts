@@ -62,9 +62,14 @@ const PublishBody = z.strictObject({
   moves: z.record(z.string(), z.string()),
   draftStamp: z.string().nullable().optional(),
   closeRequest: z.boolean().optional(),
+  // The never-published boards its template set made with it: they go live with it.
+  alongside: z.array(z.string()).optional(),
 });
 
-const RestoreBody = z.strictObject({ version: z.number().int().positive().nullable() });
+const RestoreBody = z.strictObject({
+  version: z.number().int().positive().nullable(),
+  alongside: z.array(z.string()).optional(),
+});
 
 const Moves = z.record(z.string(), z.string());
 const Stamp = z.string().nullable();
@@ -269,24 +274,33 @@ export function boardsApi(project: Project, feed: ChangeFeed, auth: Session): Ho
       .post('/boards/:id/publish/plan', (c) => c.json(publishPlan(project, id(c))))
       .post('/boards/:id/publish', async (c) => {
         assertConfigurable(c, auth);
-        const { moves, draftStamp, closeRequest } = await body(
+        const { moves, draftStamp, closeRequest, alongside } = await body(
           c,
           PublishBody,
-          '{"moves": {[stepId]: stepId | "done"}, "draftStamp"?: string | null, "closeRequest"?: boolean}',
+          '{"moves": {[stepId]: stepId | "done"}, "draftStamp"?: string | null, "closeRequest"?: boolean, "alongside"?: [id]}',
         );
         const result = publishBoard(project, id(c), {
           moves,
           by: HUMAN,
           ...(draftStamp === undefined ? {} : { draftStamp }),
           ...(closeRequest === undefined ? {} : { closeRequest }),
+          ...(alongside === undefined ? {} : { alongside }),
         });
         feed.notify();
         return c.json(result);
       })
       .post('/boards/:id/restore', async (c) => {
         assertConfigurable(c, auth);
-        const { version } = await body(c, RestoreBody, '{"version": number | null}');
-        const record = restoreBoard(project, id(c), { version, by: HUMAN });
+        const { version, alongside } = await body(
+          c,
+          RestoreBody,
+          '{"version": number | null, "alongside"?: [id]}',
+        );
+        const record = restoreBoard(project, id(c), {
+          version,
+          by: HUMAN,
+          ...(alongside === undefined ? {} : { alongside }),
+        });
         feed.notify();
         return c.json(record);
       })
