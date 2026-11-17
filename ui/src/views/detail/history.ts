@@ -6,6 +6,7 @@ import {
   type NoteEvent,
   notesOf,
 } from '../../../../src/core/board/notes.ts';
+import { POINT_PROVED } from '../../../../src/core/board/proofs.ts';
 import {
   legacyAsks,
   QUESTION_ANSWERED,
@@ -211,6 +212,26 @@ export function historyOf(
         ...base,
         text: t('sheet.h.attached', { file: String(e.data.filename) }),
         ...caption,
+      };
+    }
+    // A checklist point ticked with its proof (otea tick, attach --point): the point and what
+    // shows it holds, a file, a log line or a passing test.
+    if (e.type === POINT_PROVED) {
+      const part = String(e.data.part ?? '');
+      const file = String(e.data.file ?? '');
+      const proof =
+        e.data.kind === 'log'
+          ? t('sheet.h.proofLog', { line: String(e.data.line ?? ''), file })
+          : e.data.kind === 'test'
+            ? t('sheet.h.proofTest', { test: String(e.data.test ?? ''), file })
+            : file;
+      return {
+        ...base,
+        text: t('sheet.h.proved', {
+          point: fieldWords.value(part, String(e.data.point ?? '')),
+          part: fieldWords.field(part),
+          proof,
+        }),
       };
     }
     return { ...base, text: describeEvent(e, fieldWords) };
