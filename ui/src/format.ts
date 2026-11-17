@@ -79,6 +79,7 @@ export function describeEvent(
     const caption = typeof data.caption === 'string' ? `: ${data.caption}` : '';
     return `${t('event.attached', { file: String(data.filename) })}${role}${caption}`;
   }
+  if (type === 'evidence_detached') return t('event.detached', { file: String(data.filename) });
   if (type === 'note_left') return t('event.noteLeft');
   if (type === 'note_answered') return t('event.noteAnswered', { n: String(data.note) });
   if (type === 'question_asked') return t('event.questionAsked');

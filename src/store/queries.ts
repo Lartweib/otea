@@ -490,8 +490,12 @@ export function findEvidence(db: DatabaseSync, id: number): EvidenceRecord | und
 }
 
 export function selectEvidence(db: DatabaseSync, itemId: string): EvidenceRecord[] {
-  const sql = 'SELECT * FROM evidence WHERE item_id = ? ORDER BY id';
-  return (db.prepare(sql).all(itemId) as EvidenceRow[]).map(toEvidence);
+  // A file detached by mistake (an evidence_detached event) is off the item's list; its row stays.
+  const sql = `SELECT * FROM evidence WHERE item_id = ? AND id NOT IN (
+      SELECT json_extract(data, '$.evidenceId') FROM events
+      WHERE item_id = ? AND type = 'evidence_detached'
+    ) ORDER BY id`;
+  return (db.prepare(sql).all(itemId, itemId) as EvidenceRow[]).map(toEvidence);
 }
 
 // A stored relation and who made it.

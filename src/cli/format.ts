@@ -154,6 +154,10 @@ function describeAction({ type, data }: Event): string {
     const into = typeof data.module === 'string' ? ` in ${data.module}` : '';
     return `#${String(evidenceId)} ${String(role)} ${String(kind)} ${String(filename)}${into}${caption}`;
   }
+  if (type === 'evidence_detached') {
+    const from = typeof data.module === 'string' ? ` from ${data.module}` : '';
+    return `#${String(data.evidenceId)} ${String(data.filename)}${from}`;
+  }
   return JSON.stringify(data);
 }
 

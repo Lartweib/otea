@@ -116,6 +116,10 @@ describe('format', () => {
       'Attached test.log: All green',
     ],
     [
+      event('evidence_detached', { evidenceId: 2, filename: 'test.log', channel: 'cli' }),
+      'Took back test.log, attached by mistake',
+    ],
+    [
       event('relation_added', { kind: 'parent', from: 'P-2', to: 'E-1', channel: 'cli' }),
       'Linked: P-2 is a child of E-1',
     ],

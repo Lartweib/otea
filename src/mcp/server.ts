@@ -26,6 +26,7 @@ export const AGENT_COMMANDS = [
   'create',
   'update',
   'attach',
+  'detach',
   'link',
   'unlink',
   'next',
