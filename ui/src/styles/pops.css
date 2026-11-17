@@ -260,7 +260,9 @@
   outline: none;
   border-color: var(--you);
 }
-.dialog input.bad {
+.dialog input.bad,
+.dialog textarea.bad,
+.dialog textarea.bad:focus {
   border-color: var(--warn);
   box-shadow: 0 0 0 1px var(--warn);
 }

@@ -531,6 +531,19 @@ describe('the person’s own step', () => {
     expect(handRows(def, step, [])[0]?.ok).toBe(true);
   });
 
+  it('marks an optional deliverable done only once it holds something', () => {
+    setLanguage('es');
+    const def = tareasDeRepo();
+    const step = def.steps.find((s) => s.id === 'simpl');
+    if (!step) throw new Error('no Implementar');
+    step.hand.push({ ref: 'fwhat', req: 'no', fresh: false });
+    const row = (filled?: (ref: string) => boolean) =>
+      handRows(def, step, [], {}, filled).find(({ ref }) => ref === 'fwhat');
+    expect(row()).toMatchObject({ ok: false, required: false });
+    expect(row(() => false)).toMatchObject({ ok: false, required: false });
+    expect(row((ref) => ref === 'fwhat')).toMatchObject({ ok: true, required: false });
+  });
+
   it('leaves out a deliverable asked only when a field holds a value it does not hold', () => {
     setLanguage('es');
     const def = tareasDeRepo();

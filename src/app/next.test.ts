@@ -742,6 +742,25 @@ describe('rounds and Deshacer', () => {
     expect(on.round).toBe(1);
   });
 
+  it('names the item an item is part of, on its board and step', () => {
+    const ctx = memoryContext();
+    board(ctx);
+    const whole = creature(ctx, 'Pantano');
+    const part = creature(ctx, 'Garza');
+    linkItems(
+      ctx,
+      { id: part.id, kind: 'parent', other: whole.id, actor: you, channel: 'ui' },
+      now,
+    );
+
+    const text = itemNextText(ctx, getItem(ctx, part.id), 'kiln', now) ?? '';
+
+    expect(text).toContain(
+      `Part of\n  ${whole.id} · Pantano (Criaturas, Concepto): what it decided is in otea show ${whole.id}`,
+    );
+    expect(itemNextText(ctx, getItem(ctx, whole.id), 'kiln', now)).not.toContain('Part of');
+  });
+
   it('takes a send-back back: the step keeps its round and no note waits for the agent', () => {
     const ctx = memoryContext();
     const item = handedTortuga(ctx);

@@ -8,7 +8,7 @@ import { studioHash } from '../../selection.ts';
 import { requestAgentDraft } from '../api.ts';
 import { whoName } from '../words.ts';
 import { loadBoards } from './boards-store.ts';
-import { nameIssue } from './home-model.ts';
+import { draftersOf, nameIssue } from './home-model.ts';
 import { rememberDrafter } from './studio-dialogs.ts';
 
 // Que lo esboce un agente (the mock's agentDraftDialog): the board's name, what you need and who
@@ -44,8 +44,10 @@ function AgentDraftForm({ start, onClose }: { start: string; onClose: () => void
   const [problem, setProblem] = useState('');
   const [posting, setPosting] = useState(false);
   const nameRef = useRef<HTMLInputElement>(null);
-  // The same agents the editor's step menus offer: every agent Otea has seen.
-  const agents = (app.agents ?? []).map((a) => a.name);
+  const needRef = useRef<HTMLTextAreaElement>(null);
+  // The agents here now or seen this week (not every agent Otea ever saw); any other takes it as
+  // any agent.
+  const agents = draftersOf(app.agents ?? [], new Date().toISOString());
 
   const submit = () => {
     if (posting) return;
@@ -53,6 +55,11 @@ function AgentDraftForm({ start, onClose }: { start: string; onClose: () => void
     if (nameIssue(clean, []) === 'empty') {
       setProblem(t('bs.new.empty'));
       nameRef.current?.focus();
+      return;
+    }
+    if (need.trim() === '') {
+      setProblem(t('bs.ask.needEmpty'));
+      needRef.current?.focus();
       return;
     }
     setPosting(true);
@@ -108,11 +115,16 @@ function AgentDraftForm({ start, onClose }: { start: string; onClose: () => void
           {t('bs.ask.need')}
         </label>
         <textarea
+          ref={needRef}
           id="ad-need"
+          className={problem && name.trim() && !need.trim() ? 'bad' : undefined}
           rows={3}
           placeholder={t('bs.ask.needPlaceholder')}
           value={need}
-          onChange={(e) => setNeed(e.target.value)}
+          onChange={(e) => {
+            setNeed(e.target.value);
+            setProblem('');
+          }}
         />
       </div>
       <div data-i="">
