@@ -20,6 +20,29 @@ export function currentBranch(cwd: string): string {
   }
 }
 
+// How many commits `branch` holds over the first of `bases` the repo at cwd has: the branch as it
+// is here, or else on origin. Undefined when the repo has neither, or cwd is no repo.
+export function commitsOver(
+  cwd: string,
+  branch: string,
+  bases: readonly string[],
+): { base: string; count: number } | undefined {
+  const tip =
+    commitOf(cwd, `refs/heads/${branch}`) ?? commitOf(cwd, `refs/remotes/origin/${branch}`);
+  if (!tip) return undefined;
+  for (const base of bases) {
+    if (base === branch || base === `origin/${branch}`) continue;
+    const from = commitOf(cwd, base);
+    if (!from) continue;
+    try {
+      return { base, count: Number(git(cwd, 'rev-list', '--count', `${from}..${tip}`)) };
+    } catch {
+      return undefined;
+    }
+  }
+  return undefined;
+}
+
 // The local branches of the repo at cwd; throws outside a repo.
 export function localBranches(cwd: string): string[] {
   const listed = git(cwd, 'for-each-ref', '--format=%(refname:short)', 'refs/heads');
