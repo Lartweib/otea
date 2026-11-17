@@ -5,6 +5,8 @@ import { lanTransport, type PhoneTransport } from './transports.ts';
 // addresses, at the server's own port, beside the one on 127.0.0.1; closing it stops them. What
 // gets in is still lan.ts's policy (a private address naming this computer, a device token); this
 // only opens and shuts the door. Otea never touches the firewall or the network settings.
+// The addresses come before the .local name in what the phone is shown (the pairing code's link):
+// Android does not resolve .local names, every phone opens an address (DR2-11).
 
 export type LanHosts = { addresses: string[]; names: string[] };
 
@@ -64,7 +66,7 @@ export function lanAccess(
         throw unavailable(`Could not listen on ${address}:${port()} (${reason})`);
       }
     }
-    opened = { transport: lanTransport([...names, ...addresses]), stops };
+    opened = { transport: lanTransport([...addresses, ...names]), stops };
   };
   const close = async () => {
     const was = opened;
@@ -82,12 +84,12 @@ export function lanAccess(
 // A door opened by the caller, who already listens on every interface (tests, and servers given
 // their addresses up front): open from the start, nothing to stop.
 export function openLan(hosts: LanHosts): LanAccess {
-  let transport: PhoneTransport | undefined = lanTransport([...hosts.names, ...hosts.addresses]);
+  let transport: PhoneTransport | undefined = lanTransport([...hosts.addresses, ...hosts.names]);
   return {
     isOpen: () => transport !== undefined,
     transport: () => transport,
     open: async () => {
-      transport ??= lanTransport([...hosts.names, ...hosts.addresses]);
+      transport ??= lanTransport([...hosts.addresses, ...hosts.names]);
     },
     close: async () => {
       transport = undefined;

@@ -389,7 +389,7 @@ export const surfaces = {
   'projects.sub.hands': 'handed over by {agent}',
   'projects.sub.asks': '{agent} asks',
   'projects.sub.holds': '{agent} has it',
-  'lan.dialogLead': 'Scan it with the phone on the same network. It expires in 5 minutes.',
+  'lan.dialogLead': 'Scan it with the phone on the same network. It expires in 10 minutes.',
   'lan.dialogLeadTailscale':
     'Scan it with the phone logged in to Tailscale. It expires in 10 minutes.',
   'lan.done': 'Done',

@@ -9,6 +9,7 @@ import {
   lastBoard,
   noteField,
   openCapture,
+  photoName,
   photoRoles,
   pickBoard,
   rememberBoard,
@@ -208,6 +209,24 @@ describe('where it lands and what it sends', () => {
     expect(capturePayload(compare, { title: 'A', note: '', photo, role: 'after' }).files).toEqual([
       { file: photo, role: 'after' },
     ]);
+  });
+
+  it('names a camera photo after the item, not by the camera’s number (DR2-24)', () => {
+    const shot = new File(['x'], '17318745963215428.jpg', { type: 'image/jpeg' });
+    const [sent] = capturePayload(requests.types[0] as TypeView, {
+      title: '  Botón gris en Safari: ¿por qué? ',
+      note: '',
+      photo: shot,
+    }).files;
+    expect(sent?.file.name).toBe('boton-gris-en-safari-por-que.jpg');
+    expect(sent?.file.type).toBe('image/jpeg');
+    expect(sent?.file.size).toBe(1);
+    expect(photoName('image.JPEG', 'Niebla')).toBe('niebla.jpeg');
+    expect(photoName('2026-11-17_14-55.png', '')).toBe('photo.png');
+    expect(photoName('1731874596321', '¡!')).toBe('photo.jpg');
+    // A photo picked with a name of its own keeps it.
+    expect(photoName('boton-gris.png', 'Otra cosa')).toBe('boton-gris.png');
+    expect(photoName('IMG_1.jpg', 'Otra cosa')).toBe('IMG_1.jpg');
   });
 
   it('sends no empty note and no files without a photo', () => {

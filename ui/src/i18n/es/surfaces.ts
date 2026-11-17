@@ -392,7 +392,7 @@ export const surfaces = {
   'projects.sub.hands': 'entrega {agent}',
   'projects.sub.asks': 'pregunta {agent}',
   'projects.sub.holds': 'lo tiene {agent}',
-  'lan.dialogLead': 'Escanéalo con el teléfono en la misma red. Caduca en 5 minutos.',
+  'lan.dialogLead': 'Escanéalo con el teléfono en la misma red. Caduca en 10 minutos.',
   'lan.dialogLeadTailscale':
     'Escanéalo con el teléfono con sesión en Tailscale. Caduca en 10 minutos.',
   'lan.done': 'Hecho',

@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import { CODE_TTL_MS } from '../../src/server/lan.ts';
+import { setLanguage, t } from './i18n/i18n.ts';
 import {
   codeFromHash,
   deviceNameFrom,
@@ -68,5 +70,15 @@ describe('the .local name and its IP fallback', () => {
     expect(ipFallback(['http://lartweib.local:4485'], 'http://lartweib.local:4485/pair')).toBe(
       undefined,
     );
+  });
+});
+
+describe('the pair dialog says how long the code lasts (DR2-16)', () => {
+  it.each(['es', 'en'] as const)('names the server’s own lifetime in %s', (lang) => {
+    setLanguage(lang);
+    const minutes = String(CODE_TTL_MS / 60_000);
+    expect(t('lan.dialogLead')).toContain(` ${minutes} `);
+    expect(t('lan.dialogLeadTailscale')).toContain(` ${minutes} `);
+    setLanguage('en');
   });
 });

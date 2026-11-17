@@ -33,6 +33,8 @@ export const phone = {
   'phone.capture.needs': 'pide {fields} para crear · en el ordenador',
   'phone.capture.partOf': 'siempre es parte de {board} · en el ordenador',
   'phone.capture.none': 'Ningún tablero acepta solo un título. Créalo en el ordenador.',
+  'phone.capture.noBoards':
+    'Este proyecto todavía no tiene tableros. Se crean en Studio, en el ordenador; después puedes anotar aquí.',
   'phone.deskOnly.studio': 'Studio está en el ordenador.',
   'phone.deskOnly.settings': 'Configuración está en el ordenador.',
   'phone.deskOnly.modules': 'El catálogo de módulos está en el ordenador.',

@@ -97,9 +97,10 @@ describe('the capture sheet (mock screen 3)', () => {
     expect(html).not.toMatch(/type="submit"[^>]*disabled/);
   });
 
-  it('opens the system camera for the photo', () => {
+  it('lets the phone offer its camera or its photos, never the camera alone (DR2-8)', () => {
     const html = render(props());
-    expect(html).toMatch(/<input type="file" accept="image\/\*" capture="environment"/);
+    expect(html).toMatch(/<input type="file" accept="image\/\*"/);
+    expect(html).not.toContain('capture=');
   });
 
   it('saves once there is a title', () => {
@@ -175,6 +176,14 @@ describe('the capture sheet (mock screen 3)', () => {
     const html = render(props({ board: undefined, why: 'none' }));
     expect(html).toContain('No board takes a title alone');
     expect(html).not.toContain('type="submit"');
+  });
+
+  it('says the project has no boards yet, and where they are made, when it has none (ONB2-6)', () => {
+    setLanguage('es');
+    const html = render(props({ boards: [], board: undefined, why: 'none' }));
+    expect(html).toContain('Este proyecto todavía no tiene tableros');
+    expect(html).toContain('Studio');
+    expect(html).not.toContain('Ningún tablero acepta');
   });
 
   it('says a refusal from the server', () => {
