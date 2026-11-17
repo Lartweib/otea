@@ -39,7 +39,7 @@ function handoffWhy(missing: readonly Missing[]): string {
   const note = missing.some(({ ref }) => ref === NOTE);
   const parts = missing.filter(({ reason, ref }) => reason !== 'open' && ref !== NOTE);
   if (parts.length > 0 || note) {
-    const what = parts.map(({ name, reason, fresh }) => {
+    const what = parts.map(({ name, reason, fresh, points }) => {
       const said =
         reason === 'missing' && fresh
           ? t('refusal.why.fresh')
@@ -47,7 +47,9 @@ function handoffWhy(missing: readonly Missing[]): string {
             ? t('refusal.why.fresh')
             : reason === 'unchecked'
               ? t('refusal.why.unchecked')
-              : '';
+              : reason === 'unproved'
+                ? t('refusal.why.unproved', { list: listOf(points ?? []) })
+                : '';
       return said ? `${name} (${said})` : name;
     });
     if (note) what.push(t('refusal.why.note'));

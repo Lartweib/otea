@@ -60,6 +60,7 @@ import {
   wayByName,
 } from '../core/board/next.ts';
 import { type ItemNote, notesOf, notesOfRound, unansweredOf } from '../core/board/notes.ts';
+import { type Proof, proofsFrom, provedPoints } from '../core/board/proofs.ts';
 import { type ItemQuestion, openQuestion, questionsOf } from '../core/board/questions.ts';
 import { evidenceByName, readFieldInput, stateByName, stateName } from '../core/board/reading.ts';
 import { readDefinition } from '../core/board/schema.ts';
@@ -199,6 +200,8 @@ export type ItemOnBoard = {
   questions: ItemQuestion[];
   roundQuestions: ItemQuestion[];
   asking?: ItemQuestion;
+  // The checklist points proved in the round of the step it stands on (core/board/proofs.ts).
+  proofs: Proof[];
 };
 
 // The send-back that started the round of the step being done, with its note, who sent it, when
@@ -281,6 +284,7 @@ export function itemOnBoard(ctx: Context, item: ItemRecord, def: BoardDefinition
   const asking =
     isClosed(position) || position.phase !== 'doing' ? undefined : openQuestion(events);
   const did = roundWorkers(position, events, startedAt);
+  const proofs = step === undefined ? [] : proofsFrom(events, startedAt);
   const facts: ItemFacts = {
     fields: { ...item.fields, title: item.title },
     evidence,
@@ -290,6 +294,7 @@ export function itemOnBoard(ctx: Context, item: ItemRecord, def: BoardDefinition
     blockers: links.blockers,
     ...(unanswered.length === 0 ? {} : { unanswered }),
     ...(did.length === 0 ? {} : { did }),
+    ...(proofs.length === 0 ? {} : { proofs: provedPoints(proofs) }),
   };
   const notes = handoffNotes(def, history).map(({ step: id, round: n, note, at, by }) => ({
     step: stepById(def, id)?.name ?? id,
@@ -311,6 +316,7 @@ export function itemOnBoard(ctx: Context, item: ItemRecord, def: BoardDefinition
     questions,
     roundQuestions,
     ...(asking === undefined ? {} : { asking }),
+    proofs,
   };
 }
 
@@ -344,7 +350,47 @@ export type BoardBlock = {
   closedBy?: ClosedBy;
   // Once Done: that its branch was merged (otea merged), with the PR and commit when given.
   merged?: Merged;
+  // The checklist points proved in the round of the step it stands on (otea tick).
+  proofs?: Proof[];
+  // Each checklist that asks for proof, point by point: ticked or not, and its proof this round.
+  checklists?: ProvedChecklist[];
 };
+
+export type ProvedPoint = { id: string; name: string; ticked: boolean; proof?: Proof };
+export type ProvedChecklist = { part: string; name: string; points: ProvedPoint[] };
+
+// The checklists of the board that ask for proof, each point with whether it is ticked and the
+// proof it has in the round.
+function provedChecklists(
+  def: BoardDefinition,
+  fields: Readonly<Record<string, unknown>>,
+  proofs: readonly Proof[],
+): ProvedChecklist[] {
+  return Object.values(def.parts)
+    .filter((part) => part.kind === 'check' && part.proof === true)
+    .map((part) => {
+      const ticked = new Set(tickedOf(fields[part.id]));
+      return {
+        part: part.id,
+        name: part.name,
+        points: part.options.map(({ id, name }) => {
+          const proof = proofs.find((one) => one.part === part.id && one.point === id);
+          return { id, name, ticked: ticked.has(id), ...(proof === undefined ? {} : { proof }) };
+        }),
+      };
+    });
+}
+
+function tickedOf(value: unknown): string[] {
+  if (Array.isArray(value)) return value.map(String);
+  if (typeof value !== 'string' || value.trim() === '') return [];
+  try {
+    const parsed: unknown = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed.map(String) : [];
+  } catch {
+    return [];
+  }
+}
 
 export type ClosedBy = { doer?: string; reviewer?: Actor };
 
@@ -401,6 +447,7 @@ export function boardBlockOf(ctx: Context, item: ItemRecord): BoardBlock | undef
   const worker = workerOf(ctx, item, board.def);
   const events = selectEvents(ctx.db, item.id);
   const merged = mergedFrom(events);
+  const checklists = provedChecklists(board.def, item.fields, on.proofs);
   return {
     parts: on.links.parts,
     partsBoard: partsBoardOf(ctx, board)?.def.name ?? null,
@@ -421,6 +468,8 @@ export function boardBlockOf(ctx: Context, item: ItemRecord): BoardBlock | undef
     ...(worker === undefined ? {} : { worker }),
     ...(isClosed(on.position) ? { closedBy: closedByOf(events) } : {}),
     ...(merged === undefined ? {} : { merged }),
+    ...(on.proofs.length === 0 ? {} : { proofs: on.proofs }),
+    ...(checklists.length === 0 ? {} : { checklists }),
   };
 }
 

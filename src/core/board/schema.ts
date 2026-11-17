@@ -100,6 +100,14 @@ const part = z
         }),
       )
       .optional(),
+    proof: z
+      .boolean()
+      .meta({
+        description:
+          'A checklist only ("pide prueba"): each ticked point needs a proof in the round (an attached file, a line of an attached log, or a test that passes in an attached report) before the step that hands it is handed off',
+        examples: [true],
+      })
+      .optional(),
   })
   .meta(
     about('A field (something to fill) or a piece of evidence (something to show)', {
@@ -411,6 +419,8 @@ function idClashes(raw: unknown, definition: BoardDefinition): string[] {
       problems.push(problem(raw, ['parts', id], `${id} is a word the board keeps for itself`));
     if (part.guard && part.kind !== 'branch')
       problems.push(problem(raw, ['parts', id, 'guard'], 'only a branch field is protected'));
+    if (part.proof && part.kind !== 'check')
+      problems.push(problem(raw, ['parts', id, 'proof'], 'only a checklist asks for proof'));
   }
   const motives = new Set<string>();
   definition.drop.motives.forEach(({ id }, index) => {

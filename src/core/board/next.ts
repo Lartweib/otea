@@ -173,8 +173,23 @@ const REASON: Readonly<Record<Missing['reason'], string>> = {
   missing: 'missing',
   not_new: 'not new this round',
   unchecked: 'boxes still open',
+  unproved: 'points without proof',
   open: 'not finished',
 };
+
+// What a missing part says after its name: its reason, and for a checklist short of proof, the
+// points that have none ("no proof yet: Paleta, Silueta").
+function reasonText(missing: Missing): string {
+  if (missing.reason === 'unproved' && missing.points?.length)
+    return `no proof yet: ${missing.points.join(', ')}`;
+  return REASON[missing.reason];
+}
+
+// How an agent proves a checklist point: a line of a log or a test of a report it attached, an
+// evidence entry it attached, or a file it attaches for that point.
+export function proveText(id: string): string {
+  return `Prove each point with otea tick ${id} "<point>" --log <file>:<line> | --test "<test name>" | --evidence <n>, or otea attach ${id} <file> --point "<point>".`;
+}
 
 // "RT-4 in Implementar, RT-7 in Propuesta"
 function inSteps(open: readonly Linked[]): string {
@@ -399,7 +414,8 @@ function partLines(def: BoardDefinition, hands: readonly Hand[], input: NextInpu
           ? whenText(def, hand)
           : 'optional';
     const mark = missing ? '✗' : hand.req === 'always' ? '✓' : '·';
-    const line = `  ${mark} ${part.name}: ${req}${missing ? ` (${REASON[missing.reason]})` : ''}${choicesText(part)}`;
+    const proof = part.kind === 'check' && part.proof ? ', each ticked point with its proof' : '';
+    const line = `  ${mark} ${part.name}: ${req}${proof}${missing ? ` (${reasonText(missing)})` : ''}${choicesText(part)}`;
     return part.hint && hand.req !== 'no' ? [line, `      what goes here: ${part.hint}`] : [line];
   });
 }
@@ -573,6 +589,7 @@ const MISSING_NOTE: Readonly<Record<Missing['reason'], string>> = {
   missing: '',
   not_new: 'new this round',
   unchecked: 'every box ticked',
+  unproved: 'a proof for each ticked point',
   open: '',
 };
 
@@ -619,8 +636,13 @@ function lackingText(id: string, missing: readonly Missing[]): string {
   const flag = note ? ` with ${noteArg(hint)}` : '';
   const parts = missing.filter(({ reason, ref }) => reason !== 'open' && ref !== NOTE_REF);
   if (parts.length > 0 || note) {
-    const what = parts.map(({ name, reason, fresh }) => {
-      const said = reason === 'missing' && fresh ? 'new this round' : MISSING_NOTE[reason];
+    const what = parts.map(({ name, reason, fresh, points }) => {
+      const said =
+        reason === 'missing' && fresh
+          ? 'new this round'
+          : reason === 'unproved' && points?.length
+            ? `a proof for ${and(points)}`
+            : MISSING_NOTE[reason];
       return said ? `${name} (${said})` : name;
     });
     if (note)
@@ -629,7 +651,8 @@ function lackingText(id: string, missing: readonly Missing[]): string {
       parts.length === 0
         ? `Call handoff again${flag}.`
         : `Attach or fill them with otea attach ${id} / otea update ${id}, then call handoff again${flag}.`;
-    return [`Not handed off ${id}: missing ${and(what)}.`, then].join('\n');
+    const prove = parts.some(({ reason }) => reason === 'unproved') ? [proveText(id)] : [];
+    return [`Not handed off ${id}: missing ${and(what)}.`, then, ...prove].join('\n');
   }
   const lines: string[] = [];
   const waitingParts = missing.find(({ ref }) => ref === WAIT_PARTS);

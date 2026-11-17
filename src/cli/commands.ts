@@ -84,6 +84,7 @@ import {
   projectView,
   setProjectIcon,
 } from '../app/project.ts';
+import { type ProofSource, tickPoint } from '../app/proofs.ts';
 import { answerWaiting, askQuestion } from '../app/questions.ts';
 import { readerFilter } from '../app/reader-filter.ts';
 import { linkItems, unlinkItems } from '../app/relations.ts';
@@ -1462,6 +1463,68 @@ const merged: Command = {
   },
 };
 
+// The proof a tick names: an evidence entry (--evidence 3), a log line (--log build.log:212) or a
+// test of an attached report (--test "suite › name"); at most one.
+function proofSource(option: (name: string) => string | undefined): ProofSource {
+  const evidence = option('evidence');
+  const log = option('log');
+  const test = option('test');
+  const given = [evidence, log, test].filter((value) => value !== undefined);
+  if (given.length > 1)
+    throw new OteaError('invalid_fields', 'Prove a point with one of --evidence, --log or --test');
+  if (evidence !== undefined) {
+    const n = Number(evidence.replace(/^#/, ''));
+    if (!Number.isInteger(n) || n < 1)
+      throw new OteaError(
+        'invalid_fields',
+        '--evidence takes the number of an attached file, such as 3',
+      );
+    return { evidence: n };
+  }
+  if (log !== undefined) {
+    const at = /^(.+):(\d+)$/.exec(log.trim());
+    if (!at?.[1] || !at[2])
+      throw new OteaError(
+        'invalid_fields',
+        "--log takes the log's file name and a line, such as build.log:212",
+      );
+    return { log: { file: at[1], line: Number(at[2]) } };
+  }
+  if (test !== undefined) return { test };
+  return {};
+}
+
+// Ticks a checklist point, with what proves it: Otea checks the log line exists and the test passes.
+const tick: Command = {
+  name: 'tick',
+  summary:
+    'Tick a checklist point with its proof: --log file:line, --test "name" (passing, in an attached report) or --evidence n; --part names the checklist',
+  args: ['id', 'point'],
+  options: {
+    part: { placeholder: 'checklist' },
+    log: { placeholder: 'file:line' },
+    test: { placeholder: 'name' },
+    evidence: { placeholder: 'n' },
+  },
+  execute: (input) => {
+    const [id = '', point = ''] = input.args;
+    const { actor, channel, option } = input;
+    const part = option('part');
+    const source = proofSource(option);
+    return withAgent(input, (project) => {
+      const done = tickPoint(project, {
+        id,
+        point,
+        source,
+        actor,
+        channel,
+        ...(part === undefined ? {} : { part }),
+      });
+      return withNotes(project, id, { data: done, text: done.text });
+    });
+  },
+};
+
 // An agent's question to the person: the turn is theirs until they answer, nothing else moves.
 const ask: Command = {
   name: 'ask',
@@ -1529,12 +1592,13 @@ const update: Command = {
 
 const attach: Command = {
   name: 'attach',
-  summary: `Attach a file to an open item as evidence (at most ${MAX_EVIDENCE_MB} MB), into an evidence module of its type that accepts it; --module picks one when several do, --role before and after fill a compare`,
+  summary: `Attach a file to an open item as evidence (at most ${MAX_EVIDENCE_MB} MB), into an evidence module of its type that accepts it; --module picks one when several do, --role before and after fill a compare; --point ticks that checklist point with it`,
   args: ['id', 'file'],
   options: {
     role: { choices: EVIDENCE_ROLES },
     module: { placeholder: 'id' },
     caption: { placeholder: 'text' },
+    point: { placeholder: 'checklist point' },
   },
   execute: (input) => {
     const [id = '', file = ''] = input.args;
@@ -1561,7 +1625,16 @@ const attach: Command = {
         ? `\n${evidence.itemId} already has this file as #${evidence.id}; nothing added.`
         : '';
       const data = name === undefined ? evidence : { ...evidence, moduleName: name };
-      return withNotes(project, evidence.itemId, { data, text: `${formatEvidence(shown)}${same}` });
+      const point = option('point');
+      const ticked =
+        point === undefined
+          ? undefined
+          : tickPoint(project, { id, point, source: { evidence: evidence.id }, actor, channel });
+      const text = `${formatEvidence(shown)}${same}${ticked ? `\n${ticked.text}` : ''}`;
+      return withNotes(project, evidence.itemId, {
+        data: ticked ? { ...data, ticked } : data,
+        text,
+      });
     });
   },
 };
@@ -2121,6 +2194,7 @@ export const COMMANDS: readonly Command[] = [
   reply,
   crop,
   merged,
+  tick,
   ask,
   handoffCommand,
   dropCommand,

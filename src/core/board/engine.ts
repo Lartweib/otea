@@ -137,6 +137,8 @@ export type ItemFacts = {
   parts?: readonly Linked[];
   blockers?: readonly Linked[];
   unanswered?: readonly number[];
+  // The points of each checklist part proved in the round, by part id (core/board/proofs.ts).
+  proofs?: Readonly<Record<string, readonly string[]>>;
   // The agents that did the step in its current round, none of which may review it.
   did?: readonly string[];
 };
@@ -149,19 +151,21 @@ export const WAIT_PARTS = 'wait:parts';
 export const WAIT_BLOCKERS = 'wait:blockers';
 
 // `missing`: nothing there; `not_new`: there, but from an earlier round; `unchecked`: a checklist
-// with boxes still open; `open`: a wait whose items are not finished (`open`, of `total`). The note
+// with boxes still open; `unproved`: a checklist that asks for proof with ticked points that have
+// none this round (`points`, by name); `open`: a wait whose items are not finished (`open`, of `total`). The note
 // carries its `hint` ("Qué va aquí"), and `sentBack` when it is wanted because the round was sent
 // back. The person's unanswered notes carry their numbers (`notes`).
 export type Missing = {
   ref: string;
   name: string;
-  reason: 'missing' | 'not_new' | 'unchecked' | 'open';
+  reason: 'missing' | 'not_new' | 'unchecked' | 'unproved' | 'open';
   fresh: boolean;
   hint?: string;
   sentBack?: boolean;
   open?: Linked[];
   total?: number;
   notes?: number[];
+  points?: string[];
 };
 
 export type HandoffCheck = { ok: boolean; missing: Missing[] };
@@ -208,7 +212,13 @@ export function whenHolds(
   return String(given) === value;
 }
 
-type MissingPart = { ref: string; part: Part; reason: Missing['reason']; fresh: boolean };
+type MissingPart = {
+  ref: string;
+  part: Part;
+  reason: Missing['reason'];
+  fresh: boolean;
+  points?: string[];
+};
 
 function missingOf(def: BoardDefinition, step: Step, facts: ItemFacts): MissingPart[] {
   return step.hand.flatMap((hand): MissingPart[] => {
@@ -232,6 +242,20 @@ function missingOf(def: BoardDefinition, step: Step, facts: ItemFacts): MissingP
       const ticked = new Set(asList(value));
       if (part.options.some(({ id }) => !ticked.has(id)))
         return [{ ref: part.id, part, reason: 'unchecked', fresh }];
+      if (part.proof) {
+        const proved = new Set(facts.proofs?.[part.id] ?? []);
+        const points = part.options.filter(({ id }) => ticked.has(id) && !proved.has(id));
+        if (points.length > 0)
+          return [
+            {
+              ref: part.id,
+              part,
+              reason: 'unproved',
+              fresh,
+              points: points.map(({ name }) => name),
+            },
+          ];
+      }
     }
     return [];
   });
@@ -284,12 +308,15 @@ export function deliverables(
 export function handoffCheck(def: BoardDefinition, stepId: string, facts: ItemFacts): HandoffCheck {
   const step = stepById(def, stepId);
   if (!step) return { ok: false, missing: [] };
-  const missing: Missing[] = missingOf(def, step, facts).map(({ ref, part, reason, fresh }) => ({
-    ref,
-    name: part.name,
-    reason,
-    fresh,
-  }));
+  const missing: Missing[] = missingOf(def, step, facts).map(
+    ({ ref, part, reason, fresh, points }) => ({
+      ref,
+      name: part.name,
+      reason,
+      fresh,
+      ...(points === undefined ? {} : { points }),
+    }),
+  );
   const sentBack = step.note.req !== 'always' && facts.sentBack === true;
   if ((step.note.req === 'always' || sentBack) && !facts.note?.trim())
     missing.push({

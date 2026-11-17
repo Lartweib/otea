@@ -79,6 +79,9 @@ export type Part = {
   // field (part id) the repository's name is read from. `base` names the base branch the board
   // protects too: an agent pushes or merges into it only to bring in an item that is Hecho.
   guard?: Guard;
+  // "Pide prueba", on a checklist only: each ticked point needs a proof in the round (a file, a
+  // log line or a passing test; core/board/proofs.ts) before the step that hands it is handed off.
+  proof?: boolean;
 };
 
 export type Guard = { push: string[]; repo?: string; base?: string };

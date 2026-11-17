@@ -33,6 +33,7 @@ import type { Look } from '../../lanes/looks.ts';
 import type { AgentProfile } from '../../presence.ts';
 import { keptStateWord } from '../../preset-words.ts';
 import type { ItemEvent, RelatedItem } from '../../types.ts';
+import type { ProofChecklistView } from './proof-checklist.ts';
 
 // An item on a published board, as the step engine reads it: the agent whose turn it is by the
 // board (the step's own agent, or the reviewer's), the round of the step it is on, and its route
@@ -92,6 +93,8 @@ export type ItemBoardBlock = {
   closedBy?: { doer?: string; reviewer?: { kind: 'human' | 'agent'; name: string } };
   // Once Done: that its branch was merged (otea merged).
   merged?: { at: string; by: string; branch?: string; pr?: string; commit?: string };
+  // Each checklist that asks for proof, point by point (app/next.ts provedChecklists).
+  checklists?: ProofChecklistView[];
 };
 
 // The board a Pedido asks an agent to draft (app/draft-request.ts): `arrived` once it handed one in;

@@ -168,6 +168,11 @@
                 "base": "main"
               }
             ]
+          },
+          "proof": {
+            "type": "boolean",
+            "description": "A checklist only (\"pide prueba\"): each ticked point needs a proof in the round (an attached file, a line of an attached log, or a test that passes in an attached report) before the step that hands it is handed off",
+            "examples": [true]
           }
         },
         "required": ["id", "name", "kind", "hint", "options"],

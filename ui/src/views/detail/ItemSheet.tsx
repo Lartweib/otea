@@ -68,6 +68,7 @@ import {
   threadOf,
 } from './notes.ts';
 import { PhoneItem } from './PhoneItem.tsx';
+import { ProofChecklist } from './ProofChecklist.tsx';
 import { partNames, phoneRounds, readerOf, unopenedOf } from './phone-review.ts';
 import { Route } from './Route.tsx';
 import { routeIndex, routeSteps } from './route.ts';
@@ -502,9 +503,23 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
     agents: app.agents,
   });
   const canWrite = app.session.canWrite;
+  const proofSections = (block?.checklists ?? []).map((list) => ({
+    key: `bi:proof:${list.part}`,
+    node: (
+      <ProofChecklist
+        list={list}
+        onRead={
+          canRead
+            ? (id: number, line?: number) => onRead(id, line ? { line } : undefined)
+            : undefined
+        }
+      />
+    ),
+  }));
   const boardSections =
     live && links
       ? [
+          ...proofSections,
           ...(split && childCollection
             ? [
                 {
@@ -643,6 +658,9 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
                   />
                 ) : null}
                 {live ? <WaitChecklist rows={waits} child={partsName} now={now} /> : null}
+                {proofSections.map(({ key, node }) => (
+                  <div key={key}>{node}</div>
+                ))}
               </>
             }
             details={<Details cells={cells} k={`${item.state}:${item.updatedAt}`} />}

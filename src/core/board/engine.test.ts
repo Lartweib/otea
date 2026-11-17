@@ -113,6 +113,29 @@ describe('handoffCheck', () => {
     expect(handoffCheck(def, 'sanimate', all).ok).toBe(true);
   });
 
+  it('wants a proof for every ticked point of a checklist that asks for proof', () => {
+    const proving = structuredClone(def);
+    const steps = proving.parts.fsteps;
+    if (steps) steps.proof = true;
+    const anim = [{ part: 'eanim', at: at(12) }];
+    const ticked = { fields: { fsteps: '["cone","ctwo"]' }, evidence: anim };
+    expect(handoffCheck(proving, 'sanimate', facts(ticked)).missing).toEqual([
+      {
+        ref: 'fsteps',
+        name: 'Comprobaciones',
+        reason: 'unproved',
+        fresh: false,
+        points: ['Silueta', 'Paleta'],
+      },
+    ]);
+    const one = facts({ ...ticked, proofs: { fsteps: ['cone'] } });
+    expect(handoffCheck(proving, 'sanimate', one).missing[0]?.points).toEqual(['Paleta']);
+    const both = facts({ ...ticked, proofs: { fsteps: ['cone', 'ctwo'] } });
+    expect(handoffCheck(proving, 'sanimate', both).ok).toBe(true);
+    // A checklist that does not ask for proof hands off without one.
+    expect(handoffCheck(def, 'sanimate', facts(ticked)).ok).toBe(true);
+  });
+
   it('wants a note after a send-back, even where the step asks for none', () => {
     const art = [{ part: 'eart', at: at(12) }];
     expect(handoffCheck(def, 'sconcept', facts({ evidence: art, sentBack: true })).missing).toEqual(

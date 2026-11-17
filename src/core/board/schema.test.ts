@@ -235,4 +235,17 @@ describe('parseDefinition', () => {
       ],
     });
   });
+
+  it('takes proof on a checklist and refuses it on any other part', () => {
+    const def = creatures();
+    const steps = { ...def.parts.fsteps, proof: true };
+    expect(parseDefinition({ ...def, parts: { ...def.parts, fsteps: steps } }).ok).toBe(true);
+    const desc = { ...def.parts.fdesc, proof: true };
+    expect(parseDefinition({ ...def, parts: { ...def.parts, fdesc: desc } })).toEqual({
+      ok: false,
+      problems: [
+        'field "Descripción" (fdesc) › proof: only a checklist asks for proof [parts.fdesc.proof]',
+      ],
+    });
+  });
 });
