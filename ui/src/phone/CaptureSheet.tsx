@@ -30,6 +30,7 @@ import {
   landsStep,
   lastBoard,
   noteField,
+  photoName,
   photoRoles,
   pickBoard,
   rememberBoard,
@@ -104,7 +105,7 @@ export function CaptureBody(p: CaptureBodyProps) {
   if (!board)
     return (
       <p className="cap-none" data-i="">
-        {t('phone.capture.none')}
+        {p.boards.length === 0 ? t('phone.capture.noBoards') : t('phone.capture.none')}
       </p>
     );
   return (
@@ -170,7 +171,7 @@ export function CaptureBody(p: CaptureBodyProps) {
           <div className="cap-photo">
             <img src={p.photo.url} alt="" />
             <span className="cp-name">
-              {p.photo.name}
+              {photoName(p.photo.name, p.title)}
               <small className={p.photo.tooLarge ? 'big' : undefined}>
                 {p.photo.tooLarge
                   ? t('phone.capture.tooLarge', { mb: MAX_FILE_MB })
@@ -211,8 +212,9 @@ export function CaptureBody(p: CaptureBodyProps) {
             <input
               ref={p.photoRef}
               type="file"
+              // No `capture`: the phone's own chooser offers the camera and its photos, so a
+              // screenshot or an older picture goes in too (DR2-8).
               accept="image/*"
-              capture="environment"
               aria-label={p.photo ? t('phone.capture.photoAgain') : t('phone.capture.photo')}
               onChange={(e: ChangeEvent<HTMLInputElement>) => {
                 p.onPhoto(e.target.files?.[0] ?? null);

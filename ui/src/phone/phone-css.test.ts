@@ -131,3 +131,16 @@ describe('a finger’s size: every control on the phone is at least 44 px (#34)'
     for (const sel of ['.d-head .lnk', 'a.id', '.rchip .x']) expect(list, sel).toContain(sel);
   });
 });
+
+describe('the paired page', () => {
+  it('sets the home-screen hint as a padded card with its steps inside it (DR2-17)', () => {
+    const pairing = sheet('pairing.css');
+    expect(rules(pairing, '.pair-hint')).toMatch(/padding:/);
+    expect(rules(pairing, '.pair-hint-steps')).toMatch(/padding:\s*0 0 0 \d+px/);
+    expect(rules(pairing, '.pair-hint-steps li')).toMatch(/font:/);
+  });
+
+  it('breaks a long fallback link inside the pair dialog (DR2-16)', () => {
+    expect(rules(sheet('pairing.css'), '.lan-fall')).toMatch(/overflow-wrap:\s*anywhere/);
+  });
+});

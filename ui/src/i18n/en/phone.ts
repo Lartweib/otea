@@ -31,6 +31,8 @@ export const phone = {
   'phone.capture.needs': 'asks for {fields} to create · on the computer',
   'phone.capture.partOf': 'always part of {board} · on the computer',
   'phone.capture.none': 'No board takes a title alone. Create it on the computer.',
+  'phone.capture.noBoards':
+    'This project has no boards yet. They are made in Studio, on the computer; then you can jot things down here.',
   'phone.deskOnly.studio': 'Studio is on the computer.',
   'phone.deskOnly.settings': 'Settings is on the computer.',
   'phone.deskOnly.modules': 'The module catalog is on the computer.',

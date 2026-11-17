@@ -175,10 +175,34 @@ export function capturePayload(
   const into = noteField(type);
   if (into && note.trim() !== '') fields[into] = note.trim();
   const roles = photo ? photoRoles(type, photo.name) : [];
-  const files = photo
-    ? [{ file: photo, role: role && roles.includes(role) ? role : firstRole(roles) }]
+  const named = photo ? photoName(photo.name, title) : '';
+  const file =
+    photo && named !== photo.name
+      ? new File([photo], named, { type: photo.type, lastModified: photo.lastModified })
+      : photo;
+  const files = file
+    ? [{ file, role: role && roles.includes(role) ? role : firstRole(roles) }]
     : [];
   return { fields, files };
+}
+
+// The name a photo is kept under: the camera's own (a long number, «image.jpg») says nothing in the
+// item's files, so the photo takes the item's title, made a file name (DR2-24). A name with words of
+// its own (a picked «boton-gris.png», «IMG_1.jpg») stays as it is.
+export function photoName(original: string, title: string): string {
+  const dot = original.lastIndexOf('.');
+  const stem = dot > 0 ? original.slice(0, dot) : original;
+  const ext = dot > 0 ? original.slice(dot + 1).toLowerCase() : 'jpg';
+  if (/[a-z]{2,}/i.test(stem.replace(/^(image|photo|picture)$/i, ''))) return original;
+  const slug = title
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 60)
+    .replace(/-+$/, '');
+  return `${slug || 'photo'}.${ext}`;
 }
 
 // ───────── the last board used, per device and project ─────────

@@ -110,14 +110,16 @@ describe('opening the local network while the server runs', () => {
     expect(opened.status).toBe(200);
     expect(await opened.json()).toMatchObject({
       transport: 'lan',
-      url: 'http://desk.local:4400',
+      url: `http://${DESK}:4400`,
       lanOpen: true,
     });
     expect(network.listening).toEqual([`${DESK}:4400`]);
     const shown = await view();
     expect(shown.enabled).toBe(true);
-    expect(shown.urls).toEqual(['http://desk.local:4400', `http://${DESK}:4400`]);
-    expect(shown.code?.url).toMatch(/^http:\/\/desk\.local:4400\/pair#code=/);
+    // The address first, in the code: Android does not resolve .local names (DR2-11); the name
+    // stays a choice beside it.
+    expect(shown.urls).toEqual([`http://${DESK}:4400`, 'http://desk.local:4400']);
+    expect(shown.code?.url).toBe(`http://${DESK}:4400/pair#code=${shown.code?.code}`);
     expect(lanOpen(project.db)).toBe(true);
     expect((await fromPhone('/api/items')).status).toBe(401);
   });
