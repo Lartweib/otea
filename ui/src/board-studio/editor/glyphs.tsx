@@ -1,4 +1,5 @@
 import type { PartKind } from '../../../../src/core/board/model.ts';
+import { t } from '../../i18n/i18n.ts';
 
 // The editor's small drawings (mock 40-core.js IC): a mark for each kind of part and the tools of
 // the card and the bar, 16 px on a 16 px grid, current colour.
@@ -69,6 +70,11 @@ export const BOARD_ICONS: readonly GlyphName[] = [
   'flask',
   'check2',
 ];
+
+// An icon of BOARD_ICONS as the picker names it to a screen reader.
+export function boardIconName(icon: GlyphName): string {
+  return t(`bs.icon.${icon}` as 'bs.icon.board');
+}
 
 export function kindGlyph(kind: PartKind): GlyphName {
   return kind === 'check' ? 'check_k' : kind;

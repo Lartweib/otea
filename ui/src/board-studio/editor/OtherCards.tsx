@@ -19,7 +19,7 @@ import {
   setSplit,
   setSplitAlways,
 } from './edits.ts';
-import { BOARD_ICONS, boardGlyph, Glyph } from './glyphs.tsx';
+import { BOARD_ICONS, boardGlyph, boardIconName, Glyph } from './glyphs.tsx';
 import { parentInfo, splitInfo } from './joined.ts';
 import { MentionArea } from './MentionArea.tsx';
 import { Blank, EdPop, useAnchor } from './menus.tsx';
@@ -258,7 +258,7 @@ function PartsSection() {
       gloss={t('bs.editor.parts.gloss', { item: def.item })}
     >
       <p className="se-sent se-sent-sm se-partsent">
-        {tx('bs.editor.parts.sentence', {
+        {tx(sp ? 'bs.editor.parts.sentence' : 'bs.editor.parts.sentence_none', {
           item: def.item,
           into: (
             <span className="se-nw">
@@ -459,7 +459,7 @@ export function AboutCard() {
                 type="button"
                 className={boardGlyph(def.icon) === k ? 'on' : undefined}
                 aria-pressed={boardGlyph(def.icon) === k}
-                aria-label={k}
+                aria-label={boardIconName(k)}
                 onClick={() => draft.mutate((d) => setIcon(d, k))}
               >
                 <Glyph name={k} />
