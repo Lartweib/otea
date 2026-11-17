@@ -96,6 +96,34 @@ export type RowCall = { act: string; sub: { key: SubKey; agent?: string } };
 const sub = (key: SubKey, agent?: string | null): RowCall['sub'] =>
   agent ? { key, agent } : { key };
 
+// What comes of a row on the way: while an open item blocks it, it waits for that one; else what
+// its next state is, along its main path (or the first way on from a state off it): your review,
+// another agent's step, or the close.
+function onTheWay(item: Item, ctx: TocaContext): string {
+  const blocker = item.relations?.find(
+    (r) => r.kind === 'blocked_by' && (ctx.find?.(r.id)?.turn ?? 'none') !== 'none',
+  );
+  if (blocker) return t('toca.act.waitsOn', { id: blocker.id });
+  const type = ctx.types(item);
+  if (!type) return t('toca.act.encamino');
+  const path = mainPath(type);
+  const at = path.indexOf(item.state);
+  const next =
+    at >= 0
+      ? path[at + 1]
+      : type.transitions?.find(
+          (m) =>
+            m.from === item.state &&
+            type.states.find((s) => s.name === m.to)?.closes !== 'discarded',
+        )?.to;
+  const turn = type.states.find((s) => s.name === next)?.turn;
+  if (turn === 'agent') return t('toca.act.agents');
+  if (turn === 'none') return t('toca.act.closes');
+  // On a board a step of yours (not its review) comes next: your turn, not your review.
+  if (next && ctx.onBoard?.(item) && !next.endsWith('__review')) return t('toca.act.yours');
+  return t('toca.act.encamino');
+}
+
 // What the row asks of you, and its small line: who has it, who asks, who hands it over, who comes
 // next (mock:1740-1747).
 export function rowCall(item: Item, sec: TocaSection, ctx: TocaContext): RowCall {
@@ -132,15 +160,12 @@ export function rowCall(item: Item, sec: TocaSection, ctx: TocaContext): RowCall
       };
     }
     case 'encamino': {
+      const act = onTheWay(item, ctx);
       const holder = activeLease(item.lease, now)?.holder;
-      if (holder) return { act: t('toca.act.encamino'), sub: sub('toca.sub.does', holder) };
-      if ((item.children?.open ?? 0) > 0)
-        return { act: t('toca.act.encamino'), sub: sub('toca.sub.waitsKids') };
+      if (holder) return { act, sub: sub('toca.sub.does', holder) };
+      if ((item.children?.open ?? 0) > 0) return { act, sub: sub('toca.sub.waitsKids') };
       const who = agentOf(item, feed);
-      return {
-        act: t('toca.act.encamino'),
-        sub: who ? sub('toca.sub.waitsFor', who) : sub('toca.sub.waitsAgent'),
-      };
+      return { act, sub: who ? sub('toca.sub.waitsFor', who) : sub('toca.sub.waitsAgent') };
     }
     case 'cerrados': {
       if (item.closes === 'discarded') {
@@ -319,11 +344,13 @@ export function tocaBlocks(
   o: { onTriage?: () => void; phone?: TocaPhone } = {},
 ): LaneBlock[] {
   const phone = atasco ? undefined : o.phone;
+  const listed = new Map(app.all.map((it) => [it.id, it]));
   const ctx: TocaContext = {
     now: app.now,
     feed: app.feed,
     types: (it: Item) => typeOfItem(it, app.collectionOf),
     onBoard: (it: Item) => onPublishedBoard(it.collection),
+    find: (id: string) => listed.get(id),
   };
   const by = new Map<TocaSection, Item[]>();
   for (const it of app.all) {
