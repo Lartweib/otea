@@ -144,6 +144,10 @@ export function CaptureBody(p: CaptureBodyProps) {
     if (ready) p.onSave();
     else if (noteMissing && p.title.trim() !== '') note.current?.focus();
   };
+  const pickPhoto = (e: ChangeEvent<HTMLInputElement>) => {
+    p.onPhoto(e.target.files?.[0] ?? null);
+    e.target.value = '';
+  };
   if (!board)
     return (
       <p className="cap-none" data-i="">
@@ -234,20 +238,28 @@ export function CaptureBody(p: CaptureBodyProps) {
           <PlacePick places={p.places} place={p.place} onPlace={p.onPlace} />
         ) : null}
         <div className="cap-acts">
+          {/* Two ways in: the camera (`capture` opens it alone) and the phone's photos, for a
+              screenshot or an older picture (DR2-8). Without `capture`, Chrome on Android 14 and
+              later opens the system photo picker, which has no camera (DR3-7). */}
           <label className="photo">
             <input
               ref={p.photoRef}
               type="file"
-              // No `capture`: the phone's own chooser offers the camera and its photos, so a
-              // screenshot or an older picture goes in too (DR2-8).
               accept="image/*"
+              capture="environment"
               aria-label={p.photo ? t('phone.capture.photoAgain') : t('phone.capture.photo')}
-              onChange={(e: ChangeEvent<HTMLInputElement>) => {
-                p.onPhoto(e.target.files?.[0] ?? null);
-                e.target.value = '';
-              }}
+              onChange={pickPhoto}
             />
             <Icon name="camera" className="cam" />
+          </label>
+          <label className="photo">
+            <input
+              type="file"
+              accept="image/*"
+              aria-label={p.photo ? t('phone.capture.galleryAgain') : t('phone.capture.gallery')}
+              onChange={pickPhoto}
+            />
+            <Icon name="image" className="cam" />
           </label>
           <span className="lands">
             {type && p.queues
