@@ -119,7 +119,7 @@ describe('gates on a board', () => {
       const check = checkGate(ctx, 'push', { branch: 'main', repo: 'api' }, () => ['scratch']);
       expect(check).toMatchObject({ allowed: false, items: [] });
       expect(check.refusal).toBe(
-        'push refused: main is the base branch Tareas de repo protects; it takes only the branch of a Tarea de repo that is Done, and this push brings in none.',
+        'push refused: main is the base branch Tareas de repo protects; it takes only the branch of an item of Tareas de repo that is Done, and this push brings in none.',
       );
       expect(checkGate(ctx, 'push', { branch: 'main', repo: 'api' }).allowed).toBe(false);
     });
@@ -148,7 +148,7 @@ describe('gates on a board', () => {
         `merge refused: ${id} is in Propuesta, round 1; main takes its branch only once ${id} is Done.`,
       );
       expect(checkGate(ctx, 'merge', { branch: 'main' }, () => ['feat/z']).refusal).toBe(
-        'merge refused: main is the base branch Tareas de repo protects; it takes only the branch of a Tarea de repo that is Done, and this merge brings in none.',
+        'merge refused: main is the base branch Tareas de repo protects; it takes only the branch of an item of Tareas de repo that is Done, and this merge brings in none.',
       );
     });
 
@@ -168,7 +168,7 @@ describe('gates on a board', () => {
       const none = checkGate(ctx, 'merge', { branch: 'main', repo: 'api' }, () => ['feat/z']);
       expect(none.allowed).toBe(false);
       expect(none.refusal).toBe(
-        'merge refused: main is the base branch Tareas de repo and Cambios de base protect; it takes only the branch of a Tarea de repo or a Cambio de base that is Done, and this merge brings in none.',
+        'merge refused: main is the base branch Tareas de repo and Cambios de base protect; it takes only the branch of an item of Tareas de repo or Cambios de base that is Done, and this merge brings in none.',
       );
     });
 

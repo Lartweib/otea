@@ -406,7 +406,7 @@ describe('check', () => {
       commit('straight onto main');
       const head = git('rev-parse', 'HEAD');
       const none =
-        'push refused: main is the base branch Tareas de repo protects; it takes only the branch of a Tarea de repo that is Done, and this push brings in none.\n';
+        'push refused: main is the base branch Tareas de repo protects; it takes only the branch of an item of Tareas de repo that is Done, and this push brings in none.\n';
 
       expect(await push('--branch', '--repo')).toEqual({ code: 19, out: none, err: '' });
       expect(await push('--branch', 'main', '--repo', '--commits', `${root}..${head}`)).toEqual({

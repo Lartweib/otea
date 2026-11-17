@@ -564,6 +564,7 @@ export const detail = {
   'bi.branch.frozen': 'frozen while you review it',
   'bi.branch.merge': 'can be merged',
   'bi.branch.merged': 'merged',
+  'bi.branch.landed': 'merged in {step}',
   'bi.branch.closed': 'no longer pushed',
   'bi.branch.noPush': 'no pushes in {step}',
   'bi.request.board': 'Board {name}',

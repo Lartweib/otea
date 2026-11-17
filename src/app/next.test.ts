@@ -149,8 +149,9 @@ describe('the next service', () => {
     const item = creature(ctx);
     attach(ctx, item.id, 'eart');
     handoffItem(ctx, { id: item.id, actor: quill, channel: 'cli' }, now);
-    approveItem(ctx, { id: item.id, actor: you, channel: 'ui' }, now);
+    const approved = approveItem(ctx, { id: item.id, actor: you, channel: 'ui' }, now);
     expect(getItem(ctx, item.id).state).toBe('sanimate');
+    expect(approved.text).toBe(`Approved. ${item.id} moves on to Animar.`);
 
     ctx.db
       .prepare('UPDATE items SET fields = ? WHERE id = ?')
@@ -167,6 +168,7 @@ describe('the next service', () => {
     );
 
     expect(back.item.state).toBe('sconcept');
+    expect(back.text).toBe(`Sent back. ${item.id} returns to Concepto, round 2.`);
     expect(nextFor(ctx, 'quill', {}, now).text).toContain('Concepto, round 2');
     // The concept art from round 1 is not new this round.
     expect(() => handoffItem(ctx, { id: item.id, actor: quill, channel: 'cli' }, now)).toThrowError(

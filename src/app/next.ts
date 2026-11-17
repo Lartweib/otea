@@ -11,6 +11,7 @@ import {
   type ItemFacts,
   initialPosition,
   isClosed,
+  isLandStep,
   type Linked,
   type Missing,
   type MoveResult,
@@ -55,6 +56,7 @@ import {
   parentRequiredText,
   refusalText,
   type SentBack,
+  sentBackText,
   takenBackText,
   targetName,
   wayByName,
@@ -397,14 +399,16 @@ export type ClosedBy = { doer?: string; reviewer?: Actor };
 
 // Who did a closed item's work and who approved it: the last agent that handed the item off out of
 // a step's doing, and the last one that moved it out of a review (or, for a step nobody reviews
-// that the person closed, the person).
-function closedByOf(events: readonly EventRecord[]): ClosedBy {
+// that the person closed, the person). An agent that only landed it (the land step) did not do it.
+function closedByOf(def: BoardDefinition, events: readonly EventRecord[]): ClosedBy {
   const out: ClosedBy = {};
   for (const event of events) {
     if (event.type !== 'transitioned') continue;
     const from = positionOf(String(event.data.from));
     if (isClosed(from)) continue;
-    if (from.phase === 'doing' && event.actor.kind === 'agent') out.doer = event.actor.name;
+    const landing = isLandStep(def, from.step);
+    if (from.phase === 'doing' && event.actor.kind === 'agent' && !landing)
+      out.doer = event.actor.name;
     if (from.phase === 'review') out.reviewer = event.actor;
   }
   const last = events.findLast(({ type }) => type === 'transitioned');
@@ -467,7 +471,7 @@ export function boardBlockOf(ctx: Context, item: ItemRecord): BoardBlock | undef
     ...(on.questions.length === 0 ? {} : { questions: on.questions }),
     ...(on.asking === undefined ? {} : { asking: on.asking }),
     ...(worker === undefined ? {} : { worker }),
-    ...(isClosed(on.position) ? { closedBy: closedByOf(events) } : {}),
+    ...(isClosed(on.position) ? { closedBy: closedByOf(board.def, events) } : {}),
     ...(merged === undefined ? {} : { merged }),
     ...(on.proofs.length === 0 ? {} : { proofs: on.proofs }),
     ...(checklists.length === 0 ? {} : { checklists }),
@@ -1005,7 +1009,7 @@ export function approveItem(
       refuse(board.def, item, result, input.way);
     }
     const moved = land(ctx, item, board, result.to, input, at);
-    return { item: moved, text: handedText(board.def, item.id, result.to) };
+    return { item: moved, text: handedText(board.def, item.id, result.to, 'Approved') };
   });
 }
 
@@ -1033,7 +1037,10 @@ export function sendBackItem(
     if (!result.ok && result.code === 'own_work') refuseOwnWork(board.def, item, input.actor.name);
     if (!result.ok) refuse(board.def, item, result);
     const moved = land(ctx, item, board, result.to, input, at);
-    return { item: moved, text: handedText(board.def, item.id, result.to) };
+    if (isClosed(result.to))
+      return { item: moved, text: handedText(board.def, item.id, result.to) };
+    const round = itemOnBoard(ctx, requireItem(ctx.db, item.id), board.def).round;
+    return { item: moved, text: sentBackText(board.def, item.id, result.to.step, round) };
   });
 }
 

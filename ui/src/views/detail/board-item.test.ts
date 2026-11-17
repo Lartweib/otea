@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { cambios, creatures, errores, tareasDeRepo } from '../../../../src/core/board/testing.ts';
+import {
+  cambios,
+  creatures,
+  errores,
+  step,
+  tareasDeRepo,
+} from '../../../../src/core/board/testing.ts';
 import { setLanguage } from '../../i18n/i18n.ts';
 import type { ItemEvent, RelatedItem } from '../../types.ts';
 import {
@@ -239,6 +245,17 @@ describe('branchStrip: the protected branch where the item stands', () => {
       key: 'noPush',
       step: 'Propuesta',
     });
+  });
+
+  it('is merged in the land step once Done, on a board that has one, never «may be merged»', () => {
+    const landing = tareasDeRepo();
+    landing.steps.push(step('sland', 'Integrar', { reviewer: 'none' }));
+    expect(branchStrip(landing, 'done', fields)).toMatchObject({
+      tone: 'ok',
+      key: 'landed',
+      step: 'Integrar',
+    });
+    expect(branchStrip(landing, 'done', fields, { merged: true })?.key).toBe('merged');
   });
 
   it('is nothing on a board without a protected branch, or before the branch is named', () => {

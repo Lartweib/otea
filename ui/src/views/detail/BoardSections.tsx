@@ -259,8 +259,8 @@ export function WaitChecklist({
 export function BranchLine({ strip }: { strip: BranchStrip | null }) {
   if (!strip) return null;
   const said =
-    strip.key === 'noPush'
-      ? t('bi.branch.noPush', { step: strip.step ?? '' })
+    strip.key === 'noPush' || strip.key === 'landed'
+      ? t(`bi.branch.${strip.key}`, { step: strip.step ?? '' })
       : t(`bi.branch.${strip.key}` as 'bi.branch.push');
   return (
     <div className={`bstrip ${strip.tone}`} data-c title={t('bi.branch.label')}>

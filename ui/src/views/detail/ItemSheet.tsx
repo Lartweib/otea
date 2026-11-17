@@ -297,7 +297,7 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
   const ci = onBoard ? onBoard.route.ci : type ? routeIndex(type, item.state, facts.visited) : 0;
   const stand = standOf({
     look,
-    agent: standAgentOf(facts, onBoard !== null && item.turn === 'agent'),
+    agent: standAgentOf(facts, onBoard !== null && item.turn === 'agent', !!closedBy?.doer),
     round: facts.round,
     question: facts.question,
     own: facts.own,
