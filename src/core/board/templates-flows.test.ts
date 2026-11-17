@@ -11,6 +11,7 @@ import {
   listedTemplates,
   requireSet,
   requireTemplate,
+  TEMPLATES,
 } from './templates.ts';
 
 const partNamed = (def: BoardDefinition, name: string) =>
@@ -167,4 +168,22 @@ describe('the Cambios template', () => {
           expect(mentionText(def, text)).not.toMatch(/@[[{]/);
     });
   }
+});
+
+describe('the words of the catalogue', () => {
+  // What a template says, as an agent or the person reads it, mentions named.
+  const read = (key: string, lang: 'en' | 'es') => {
+    const def = instantiate(requireTemplate(key), lang, {}, sequenceIds());
+    return [def.about, ...def.steps.flatMap(({ instructions }) => Object.values(instructions))]
+      .map((text) => mentionText(def, text))
+      .join('\n');
+  };
+
+  it('reads in neutral Spanish, and names a part without an article that clashes with it (IDEA3-8)', () => {
+    const es = TEMPLATES.map(({ key }) => read(key, 'es')).join('\n');
+    expect(es).not.toMatch(/\bchicos?\b/);
+    expect(es).not.toContain('Lee el issue de Issue');
+    expect(es).not.toContain('a partir del Secciones');
+    expect(read('jobs', 'en')).toContain('Read the Issue (and its sub-issues)');
+  });
 });

@@ -62,7 +62,7 @@ describe('creating an item on a board', () => {
     ).toEqual({
       code: 'parent_required',
       message:
-        "Not created: a Tarea de repo is always part of a Cambio. Create it with --parent <the Cambio's id>.",
+        'Not created: each Tarea de repo is always part of one Cambio. Create it with --parent <the id of that Cambio>.',
     });
   });
 
@@ -88,7 +88,7 @@ describe('creating an item on a board', () => {
       ),
     ).toEqual({
       code: 'parent_type',
-      message: `Not linked: the parts of a Cambio are Tareas de repo, and ${bug.id} is on Errores.`,
+      message: `Not linked: the parts of each Cambio are on Tareas de repo, and ${bug.id} is on Errores.`,
     });
     expect(
       linkItems(

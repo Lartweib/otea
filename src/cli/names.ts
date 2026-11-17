@@ -152,16 +152,18 @@ export function itemData(
     events: readonly EventRecord[];
   }>;
   const moves = (list: Moves) => list.map((move) => ({ ...move, toName: state(def, move.to) }));
-  // stateName right after state, where a reader looks for it.
+  // stateName right after state, where a reader looks for it; the version of its board it was
+  // written under as boardVersion (presets are what boards were called once).
   const out: Record<string, unknown> = Object.fromEntries(
-    Object.entries(item).flatMap(([key, value]) =>
-      key === 'state'
-        ? [
-            [key, value],
-            ['stateName', state(def, item.state)],
-          ]
-        : [[key, value]],
-    ),
+    Object.entries(item).flatMap(([key, value]) => {
+      if (key === 'state')
+        return [
+          [key, value],
+          ['stateName', state(def, item.state)],
+        ];
+      if (key === 'presetVersion') return [['boardVersion', value]];
+      return [[key, value]];
+    }),
   );
   out.fields = fieldsData(def, item.fields);
   if (view.transitions) out.transitions = moves(view.transitions);

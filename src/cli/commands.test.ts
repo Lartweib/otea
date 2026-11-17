@@ -141,11 +141,13 @@ describe('commands', () => {
             { id: 'description', name: 'Descripción', value: 'Why' },
             { id: 'priority', name: 'Prioridad', value: 'high', label: 'Alta' },
           ],
-          presetVersion: 1,
+          boardVersion: 1,
           state: 'todo',
           turn: 'agent',
           createdBy: { kind: 'agent', name: 'claude' },
         });
+        // The version of its board it was written under, as boards are called now (ONB-28).
+        expect(item).not.toHaveProperty('presetVersion');
       });
 
       it('records that the item was created through the cli', async () => {

@@ -157,6 +157,15 @@ describe('board add', () => {
     expect((await otea('create', '--collection', 'Recados', '--title', 'Pan')).code).toBe(0);
   });
 
+  it('starts the ids with the prefix the person chose with --prefix (ONB-25)', async () => {
+    const { code, out } = await person('board', 'add', 'Cambios web', '--prefix', 'web');
+
+    expect(code).toBe(0);
+    expect(out).toContain('(ids WEB-<n>)');
+    const set = await person('board', 'add', 'Ideas', '--template', 'ideas', '--prefix', 'IDE');
+    expect(set.code).toBe(2);
+  });
+
   it('refuses an agent, which proposes a board instead of publishing it as the person', async () => {
     const { code, err } = await otea('board', 'add', 'Recados', '--json');
 

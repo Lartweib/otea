@@ -362,7 +362,7 @@ export const CHANGES: Template = {
   item: w('Change', 'Cambio'),
   about: w(
     "Small changes the person asks an agent for in their own project. Each one is done on its own branch and goes through the person's review before it reaches main.",
-    'Cambios chicos que la persona le pide a un agente en un proyecto propio. Cada uno se hace en su rama y pasa por la revisión de la persona antes de llegar a main.',
+    'Cambios pequeños que la persona le pide a un agente en un proyecto propio. Cada uno se hace en su rama y pasa por la revisión de la persona antes de llegar a main.',
   ),
   idle: w(
     'No changes for you. Wait with otea wait --turn agent --unclaimed; do not make changes up.',
@@ -680,8 +680,8 @@ const JOBS: Template = {
       drop: true,
       note: w('doubts you need the person to decide', 'dudas que necesitas que la persona decida'),
       take: w(
-        'Read the issue in @{issue} (and its sub-issues) and the code of each repo it touches. Write @{what} if it is empty, the @{analysis}, a @{plan} with one delivery per repo and per deliverable, and the @{mergeplan}. Do not touch code yet.',
-        'Lee el issue de @{issue} (y sus sub-issues) y el código de cada repo que toca. Escribe @{what} si está vacío, el @{analysis}, un @{plan} con una entrega por repo y por entregable, y el @{mergeplan}. No toques código todavía.',
+        'Read the @{issue} (and its sub-issues) and the code of each repo it touches. Write @{what} if it is empty, the @{analysis}, a @{plan} with one delivery per repo and per deliverable, and the @{mergeplan}. Do not touch code yet.',
+        'Lee el @{issue} (y sus sub-issues) y el código de cada repo que toca. Escribe @{what} si está vacío, el @{analysis}, un @{plan} con una entrega por repo y por entregable, y el @{mergeplan}. No toques código todavía.',
       ),
       before: w(
         'Each line of the @{plan} says repo, branch and which other delivery it depends on. The @{mergeplan} respects those dependencies.',

@@ -822,7 +822,7 @@ export function createdText(
 
 // The refusal of a part created alone on a board whose items are always part of another's.
 export function parentRequiredText(child: BoardDefinition, parent: BoardDefinition): string {
-  return `Not created: a ${child.item} is always part of a ${parent.item}. Create it with --parent <the ${parent.item}'s id>.`;
+  return `Not created: each ${child.item} is always part of one ${parent.item}. Create it with --parent <the id of that ${parent.item}>.`;
 }
 
 // The refusal of a part on a board the parent does not divide into.
@@ -832,7 +832,7 @@ export function parentTypeText(
   other: string,
   otherBoard: string,
 ): string {
-  return `Not linked: the parts of a ${parent.item} are ${child.name}, and ${other} is on ${otherBoard}.`;
+  return `Not linked: the parts of each ${parent.item} are on ${child.name}, and ${other} is on ${otherBoard}.`;
 }
 
 // A board that divides into nothing keeps an item's parts on itself: a part on another board is

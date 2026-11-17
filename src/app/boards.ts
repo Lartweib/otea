@@ -503,7 +503,8 @@ export function prefixOf(ctx: Context, item: string, name: string): string {
   const free = (prefix: string) => !collectionTaken(ctx.db, '\u0000', prefix);
   if (free(base)) return base;
   // Taken: the initials of the name's later words tell it apart (Cambios web is CAMW), words of
-  // one or two letters (de, la) aside; then a number.
+  // one or two letters (de, la) aside; then one letter more of the item (Camb is CAMB); then a
+  // number.
   const initials = name
     .split(/\s+/)
     .slice(1)
@@ -512,10 +513,27 @@ export function prefixOf(ctx: Context, item: string, name: string): string {
     .map((word) => word[0])
     .join('');
   if (initials !== '' && free(`${base}${initials}`)) return `${base}${initials}`;
+  const word = letters(item) || letters(name);
+  const longer = `${base}${word.slice(base.length, base.length + 1)}`;
+  if (longer.length > base.length && free(longer)) return longer;
   for (let n = 1; ; n++) {
     const prefix = n === 1 ? base : `${base}${n}`;
     if (!collectionTaken(ctx.db, '\u0000', prefix)) return prefix;
   }
+}
+
+// The prefix the person chose for a new board's ids: two to six letters or digits, starting with a
+// letter, and no other board's.
+function chosenPrefix(ctx: Context, wanted: string): string {
+  const prefix = wanted.trim().toUpperCase();
+  if (!/^[A-Z][A-Z0-9]{1,5}$/.test(prefix))
+    throw new OteaError(
+      'invalid_name',
+      `The prefix ${wanted.trim() || '""'} is not 2 to 6 letters or digits starting with a letter`,
+    );
+  if (collectionTaken(ctx.db, '\u0000', prefix))
+    throw new OteaError('already_exists', `Another board's ids already start with ${prefix}`);
+  return prefix;
 }
 
 // `draftStamp`: the draft the plan was shown for; a draft changed since refuses the publish.
@@ -523,6 +541,8 @@ export type PublishInput = {
   moves: Readonly<Record<string, Target>>;
   by: Actor;
   draftStamp?: string | null;
+  // On a first publish: the prefix the person chose for the board's ids (otea board add --prefix).
+  prefix?: string;
   // Closes, as done, the open Pedido an agent drafted the board on: publishing is the person
   // taking the draft.
   closeRequest?: boolean;
@@ -693,7 +713,10 @@ function publishWithin(ctx: Context, id: string, input: PublishInput, now: Clock
     collection = draft.name.trim();
     insertCollection(ctx.db, {
       name: collection,
-      prefix: prefixOf(ctx, draft.item, draft.name),
+      prefix:
+        input.prefix === undefined
+          ? prefixOf(ctx, draft.item, draft.name)
+          : chosenPrefix(ctx, input.prefix),
       preset: id,
       presetVersion: version,
       nextSeq: 1,
@@ -1141,13 +1164,18 @@ export function insertNewBoardSet(
 // CLI.
 export function addBoard(
   ctx: Context,
-  input: CreateBoardInput & { by: Actor },
+  input: CreateBoardInput & { by: Actor; prefix?: string },
   now: Clock = systemClock,
 ): PublishResult {
-  const { by, ...create } = input;
+  const { by, prefix, ...create } = input;
   const record = createBoard(ctx, create, now);
   try {
-    return publishBoard(ctx, record.id, { moves: {}, by }, now);
+    return publishBoard(
+      ctx,
+      record.id,
+      { moves: {}, by, ...(prefix === undefined ? {} : { prefix }) },
+      now,
+    );
   } catch (error) {
     discardDraft(ctx, record.id, now);
     throw error;

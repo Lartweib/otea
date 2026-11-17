@@ -343,10 +343,10 @@ describe('refusals and answers', () => {
   it('refuses a part made alone or under the wrong board', () => {
     const parent: BoardDefinition = cambios();
     expect(parentRequiredText(tareasDeRepo(), parent)).toBe(
-      "Not created: a Tarea de repo is always part of a Cambio. Create it with --parent <the Cambio's id>.",
+      'Not created: each Tarea de repo is always part of one Cambio. Create it with --parent <the id of that Cambio>.',
     );
     expect(parentTypeText(parent, tareasDeRepo(), 'TASK-3', 'Tareas')).toBe(
-      'Not linked: the parts of a Cambio are Tareas de repo, and TASK-3 is on Tareas.',
+      'Not linked: the parts of each Cambio are on Tareas de repo, and TASK-3 is on Tareas.',
     );
   });
 
