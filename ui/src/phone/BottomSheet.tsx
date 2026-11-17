@@ -17,6 +17,7 @@ import { C, clamp } from '../motion/curves.ts';
 import { type Drive, drive } from '../motion/drive.ts';
 import { reduced } from '../motion/reduced.ts';
 import { spring } from '../motion/spring.ts';
+import { holdBack } from './back.ts';
 import { type DragState, dragFrame, dragStart, release } from './drag.ts';
 import { sheetParts } from './sheet-parts.ts';
 
@@ -154,6 +155,13 @@ export function BottomSheet({
   );
 
   useEscape(open, 'dialog', onClose);
+  // Android's Back closes the sheet, never the page under it (DR3-12).
+  const closing = useRef(onClose);
+  closing.current = onClose;
+  useEffect(() => {
+    if (!open) return;
+    return holdBack(() => closing.current());
+  }, [open]);
 
   const write = (y: number) => {
     const el = sheet.current;

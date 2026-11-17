@@ -570,6 +570,8 @@ section.evidence,
 }
 .qa .actions {
   margin: 14px 0 6px;
+  /* Brought above the phone's keyboard with some room under it (DR3-15). */
+  scroll-margin-bottom: 16px;
 }
 .notes {
   position: relative;

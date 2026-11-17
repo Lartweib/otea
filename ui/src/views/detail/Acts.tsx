@@ -1,4 +1,4 @@
-import { type ReactNode, useLayoutEffect, useRef, useState } from 'react';
+import { type ReactNode, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useApp } from '../../app/context.tsx';
 import { mainPath } from '../../derive/path.ts';
 import { whenText } from '../../derive/when.ts';
@@ -8,6 +8,7 @@ import type { Look } from '../../lanes/looks.ts';
 import { C } from '../../motion/curves.ts';
 import { reduced } from '../../motion/reduced.ts';
 import { parseOptions } from '../../options.ts';
+import { keepInView } from '../../phone/keep-in-view.ts';
 import type { ItemView, TypeView } from '../../types.ts';
 import { closerOf, type Facts } from './facts.ts';
 import { stuckToastOf, toastOf } from './frame.ts';
@@ -186,6 +187,10 @@ export function Acts({
   const [stuckSays, setStuckSays] = useState<'resume' | 'reassign'>('resume');
   const [opt, setOpt] = useState<string | null>(null);
   const [free, setFree] = useState('');
+  // While the answer is typed: its send row kept above the phone's keyboard (DR3-15).
+  const sendRow = useRef<HTMLDivElement>(null);
+  const following = useRef<(() => void) | null>(null);
+  useEffect(() => () => following.current?.(), []);
   const agent = facts.agent;
   const says = (c: MoveChoice | null) =>
     c ? moveSaysOf(c, { agent, round: facts.round, word, back }) : null;
@@ -316,9 +321,17 @@ export function Acts({
               rows={2}
               value={free}
               onChange={(e) => setFree(e.target.value)}
+              onFocus={() => {
+                following.current?.();
+                following.current = keepInView(sendRow.current);
+              }}
+              onBlur={() => {
+                following.current?.();
+                following.current = null;
+              }}
             />
           </label>
-          <div className="actions">
+          <div className="actions" ref={sendRow}>
             <Button
               variant="primary"
               disabled={!answer}

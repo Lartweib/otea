@@ -102,6 +102,35 @@ describe('EvidenceReader', () => {
     expect(desk).toMatch(/<textarea[^>]*><\/textarea>/);
   });
 
+  it('keeps the line a note begun was on, after the reader closed and opened again (DR3-16)', () => {
+    const note = { onSend: async () => true };
+    const diff = files[1] as Evidence;
+    const html = renderToStaticMarkup(
+      <EvidenceReader
+        evidence={files}
+        at={1}
+        onAt={() => {}}
+        phone
+        note={note}
+        draft="Esto no"
+        draftPick={{ id: diff.id, pick: { line: 3 } }}
+      />,
+    );
+    expect(html).toContain('Note on line 3');
+    // On another file it is a note on that file as a whole.
+    const other = renderToStaticMarkup(
+      <EvidenceReader
+        evidence={files}
+        at={2}
+        onAt={() => {}}
+        phone
+        note={note}
+        draftPick={{ id: diff.id, pick: { line: 3 } }}
+      />,
+    );
+    expect(other).toContain('Note on the whole file');
+  });
+
   it('on the phone stacks the note above the moves in one foot, never one over the other (DR2-10)', () => {
     const note = { onSend: async () => true };
     const decide = { seen: 1, approve: { label: 'Approve', onClick: () => {} } };

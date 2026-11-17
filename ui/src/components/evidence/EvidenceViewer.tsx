@@ -158,6 +158,9 @@ export type ReaderNote = {
   onSend: (text: string, anchor: { evidence: number } & ReaderPick) => Promise<boolean>;
 };
 
+// A line, node or spot picked in a file, by the file's evidence id.
+export type Picked = { id: number; pick: ReaderPick };
+
 // The files of a round read one at a time, the same viewer as the desk's: where you are among them
 // ("2 of 7") and a step to the one before or after. `start` lights a line or node on opening, as a
 // note's cite asks.
@@ -171,6 +174,8 @@ export function EvidenceReader({
   start,
   draft = '',
   onDraft,
+  draftPick = null,
+  onDraftPick,
 }: {
   evidence: readonly Evidence[];
   at: number;
@@ -183,10 +188,17 @@ export function EvidenceReader({
   draft?: string;
   // The note as it is typed, kept by the caller: closing the reader never loses it (DR2-10).
   onDraft?: ((text: string) => void) | undefined;
+  // The line, node or spot that note is on, kept by the caller too (DR3-16).
+  draftPick?: Picked | null;
+  onDraftPick?: ((pick: Picked | null) => void) | undefined;
 }) {
   const shown = evidence[at];
   const view = useRef<HTMLDivElement>(null);
-  const [pick, setPick] = useState<{ id: number; pick: ReaderPick } | null>(null);
+  const [pick, setPickHere] = useState<Picked | null>(draftPick);
+  const setPick = (value: Picked | null) => {
+    setPickHere(value);
+    onDraftPick?.(value);
+  };
   const [text, setTextHere] = useState(draft);
   const setText = (value: string) => {
     setTextHere(value);

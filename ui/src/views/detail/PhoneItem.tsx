@@ -10,7 +10,11 @@ import {
 import type { BoardDefinition } from '../../../../src/core/board/model.ts';
 import { evidenceFileUrl } from '../../api.ts';
 import { useApp } from '../../app/context.tsx';
-import { EvidenceReader, type ReaderDecide } from '../../components/evidence/EvidenceViewer.tsx';
+import {
+  EvidenceReader,
+  type Picked,
+  type ReaderDecide,
+} from '../../components/evidence/EvidenceViewer.tsx';
 import { pickableOn, type ReaderPick } from '../../components/evidence/reader-pick.ts';
 import { NoteText } from '../../components/NoteText.tsx';
 import { roleWord } from '../../evidence.ts';
@@ -183,8 +187,10 @@ function Files({
   const { images, files } = splitEvidence(evidence);
   const order = [...images, ...files];
   const [at, setAt] = useState<number | null>(null);
-  // The note begun in the reader, kept while the sheet is closed and opened again (DR2-10).
+  // The note begun in the reader, and what it is on, kept while the sheet is closed and opened
+  // again (DR2-10, DR3-16).
   const [draft, setDraft] = useState('');
+  const [draftPick, setDraftPick] = useState<Picked | null>(null);
   const inset = useKeyboardInset(at !== null);
   const seenId = at === null ? null : (order[at]?.id ?? null);
   // biome-ignore lint/correctness/useExhaustiveDependencies: once per file shown
@@ -290,6 +296,8 @@ function Files({
               note={comment ? { onSend: (text, on) => comment(text, on) } : undefined}
               draft={draft}
               onDraft={setDraft}
+              draftPick={draftPick}
+              onDraftPick={setDraftPick}
             />
           </div>
         ) : null}
