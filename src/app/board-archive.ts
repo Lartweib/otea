@@ -23,6 +23,7 @@ import type { Context } from './context.ts';
 import { evidenceFile } from './evidence.ts';
 import { type Clock, systemClock } from './items.ts';
 import type { Project } from './project.ts';
+import { forgetTopicItem } from './topics.ts';
 
 // Archiving and deleting a board, the person's own acts in Studio (human-ui, like publishing: no
 // CLI or MCP command, and the API takes them only from this computer's signed-in browser).
@@ -300,6 +301,7 @@ export function deleteBoardForever(
         db.prepare('DELETE FROM evidence WHERE item_id = ?').run(item);
         db.prepare('DELETE FROM events WHERE item_id = ?').run(item);
         db.prepare('DELETE FROM item_priority WHERE item_id = ?').run(item);
+        forgetTopicItem(project, item, at);
         db.prepare('DELETE FROM items WHERE id = ?').run(item);
       }
       deleteDraft(db, board.id);

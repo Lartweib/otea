@@ -454,6 +454,7 @@ export const surfaces = {
   'topics.turn.human': 'Your turn',
   'topics.you': 'You',
   'topics.fullAnswer': 'See the full answer',
+  'topics.taskDeleted': 'The task {id} was deleted with its board, so the topic is pending again.',
   'topics.source.session': 'read from the session',
   'topics.source.agent': 'copied by the agent',
   'topics.waiting': '{agent} has not answered yet.',
