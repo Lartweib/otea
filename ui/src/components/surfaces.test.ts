@@ -340,7 +340,7 @@ describe('dialogs', () => {
     setLanguage('es');
     const prompt = joinPrompt('es', {
       boards: [{ name: 'Cambios', agentSteps: ['Aclarar', 'Hacerlo'], waiting: 2 }],
-      listening: ['claude'],
+      working: ['claude'],
     });
     const html = render(createElement(ConnectView, { view: { kind: 'join', prompt } }));
     expect(html).toContain('Para sumar un agente más');
@@ -354,7 +354,7 @@ describe('dialogs', () => {
 
   it('Conectar un agente speaks to the first agent of a project with boards, with no one to join', () => {
     setLanguage('es');
-    const prompt = joinPrompt('es', { boards: [], listening: [], first: true });
+    const prompt = joinPrompt('es', { boards: [], working: [], first: true });
     const html = render(
       createElement(ConnectView, { view: { kind: 'join', prompt, first: true } }),
     );

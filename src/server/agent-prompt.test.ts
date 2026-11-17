@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { initBoards } from '../app/init-boards.ts';
 import { createItem } from '../app/items.ts';
+import { claimItem } from '../app/leases.ts';
 import { liveBoardOf } from '../app/next.ts';
 import { hearAgent } from '../app/presence.ts';
 import type { Project } from '../app/project.ts';
@@ -61,6 +62,25 @@ describe('GET /api/agent-prompt', () => {
       kind: 'design',
       prompt: designPrompt('es'),
     });
+  });
+
+  it('names an agent working under a lease though it is not listening now', async () => {
+    initBoards(project, 'changes');
+    const want = liveBoardOf(project, 'Cambios')?.def.form[0]?.ref ?? '';
+    const item = createItem(project, {
+      collection: 'Cambios',
+      title: 'Fix the footer',
+      fields: { [want]: 'It shows last year' },
+      actor: { kind: 'human', name: 'fede' },
+      channel: 'ui',
+    });
+    const long = () => new Date(Date.now() - 60 * 60_000).toISOString();
+    hearAgent(project.db, { agent: 'claude-b', channel: 'cli' }, long);
+    claimItem(project, { id: item.id, actor: { kind: 'agent', name: 'claude-b' } });
+
+    const { prompt } = (await get('?lang=en')).body;
+    expect(prompt).toContain('not one already working here (claude-b)');
+    expect(prompt).toContain('such as claude-c)');
   });
 
   it('tells the first agent of a project with boards to connect, with nobody to join', async () => {

@@ -7,7 +7,7 @@ import { listAgents } from './presence.ts';
 
 // The project as an agent joining it reads it: each published board of the person's (Pedidos
 // aside) with the steps an agent does and how many items wait for an agent with nobody holding
-// them, and the names of the agents listening now.
+// them, and the names of the agents working now.
 export function joinFacts(ctx: Context, now = systemClock): JoinFacts {
   const boards = listBoardSummaries(ctx)
     .filter(
@@ -25,9 +25,10 @@ export function joinFacts(ctx: Context, now = systemClock): JoinFacts {
       return [{ name: live.def.name, agentSteps, waiting }];
     });
   const agents = listAgents(ctx.db, now);
-  const listening = agents.filter(({ listening: heard }) => heard).map(({ name }) => name);
+  // Working: listening now, or holding an item it works on, which a long step does without a wait.
+  const working = agents.filter(({ live }) => live).map(({ name }) => name);
   // No agent was ever seen: the one joining is the project's first, and connects.
-  return { boards, listening, ...(agents.length === 0 ? { first: true } : {}) };
+  return { boards, working, ...(agents.length === 0 ? { first: true } : {}) };
 }
 
 // The moment a project is in: no board of its own yet is a first contact, any board makes a new

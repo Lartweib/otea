@@ -1001,7 +1001,7 @@ const boardDraft: Command = {
 // picks the project's: the first contact where there is no project or no board of its own, the
 // join prompt (written from the project as it is now) once there are boards.
 function projectPrompt(cwd: string, kind: PromptKind | undefined, lang: Lang): string {
-  const empty = { boards: [], listening: [] };
+  const empty = { boards: [], working: [] };
   let project: Project;
   try {
     project = openProject(cwd);
