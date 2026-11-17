@@ -29,6 +29,7 @@ import './styles/toca.css';
 import './styles/agents.css';
 import './styles/board.css';
 import './styles/pasos.css';
+import './styles/matrix.css';
 import './styles/table.css';
 import './styles/tray.css';
 import './styles/sheet.css';

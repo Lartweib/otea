@@ -49,6 +49,11 @@ export type Item = {
   // The item's relations, read from it, and a parent's children summary; absent when it has none.
   relations?: RelationRef[];
   children?: ChildrenSummary;
+  // The person's order (app/priority.ts): put on top (`pin`, in the order pinned) and the order
+  // fixed from the matrix (`rank`); absent when it has neither.
+  priority?: { pin?: number; rank?: number };
+  // The analysis role fields an agent set and the person has not touched since: part id → agent.
+  estimates?: Record<string, string>;
 };
 
 // `profile`: what the agent behind the event (the one acting, or relaying your word) had declared

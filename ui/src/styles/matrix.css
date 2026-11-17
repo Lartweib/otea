@@ -1,0 +1,312 @@
+/* The Matrix (views/board/Matrix.tsx): a board's open items in cells, one scale across and one up.
+   Cells, not dots; the warmer the cell, the more of both. The tray docks at its foot as in Tabla. */
+
+.matriz {
+  display: grid;
+  gap: 14px;
+  padding-bottom: 96px;
+  animation: mx-in 260ms var(--settle, cubic-bezier(0.22, 1, 0.36, 1)) both;
+}
+
+@keyframes mx-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .matriz {
+    animation: none;
+  }
+}
+
+.mx-axes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 18px;
+  color: var(--ink-2);
+  font: 400 13px / 1.4 var(--sans);
+}
+
+.mx-axes label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mx-axes select {
+  min-height: 32px;
+  padding: 3px 8px;
+  border: 1px solid var(--rule-2);
+  border-radius: 6px;
+  background: var(--well);
+  color: var(--ink);
+  font: inherit;
+}
+
+.mx-hint {
+  flex: 1 1 280px;
+  margin: 0;
+  color: var(--ink-3);
+}
+
+.mx-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 240px;
+  gap: 18px;
+  align-items: start;
+}
+
+@media (max-width: 1100px) {
+  .mx-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.mx-wrap {
+  min-width: 0;
+  overflow-x: auto;
+}
+
+.mx-grid {
+  display: grid;
+  min-width: 520px;
+}
+
+.mx-row {
+  display: contents;
+}
+
+.mx-ylab,
+.mx-xlab {
+  display: flex;
+  color: var(--ink-2);
+  font: 400 12.5px / 1.3 var(--sans);
+}
+
+.mx-ylab {
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 10px;
+  text-align: right;
+}
+
+.mx-xlab {
+  justify-content: center;
+  padding-top: 8px;
+}
+
+.mx-cell {
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  gap: 5px;
+  min-height: 92px;
+  padding: 7px;
+  border-top: 1px solid var(--rule);
+  border-right: 1px solid var(--rule);
+}
+
+.mx-row .mx-cell:nth-child(2) {
+  border-left: 1px solid var(--rule);
+}
+
+.mx-row:nth-last-child(2) .mx-cell {
+  border-bottom: 1px solid var(--rule);
+}
+
+.mx-cell.h1 {
+  background: color-mix(in oklch, var(--you) 4%, transparent);
+}
+
+.mx-cell.h2 {
+  background: color-mix(in oklch, var(--you) 8%, transparent);
+}
+
+.mx-cell.h3 {
+  background: color-mix(in oklch, var(--warn) 8%, transparent);
+}
+
+.mx-cell.h4 {
+  background: color-mix(in oklch, var(--warn) 14%, transparent);
+}
+
+.mx-title {
+  margin: 6px 0 0;
+  color: var(--ink-3);
+  font: 600 10.5px / 1.3 var(--sans);
+  letter-spacing: 0.06em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.mx-chip {
+  display: inline-flex;
+  max-width: 100%;
+  border: 1px solid var(--rule-2);
+  border-radius: 999px;
+  background: var(--sheet);
+  color: var(--ink);
+  font: 400 12.5px / 1.3 var(--sans);
+}
+
+.mx-chip.guess {
+  border-style: dashed;
+}
+
+.mx-chip button {
+  min-height: 30px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.mx-tick {
+  font: inherit;
+}
+
+.mx-tick {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  padding: 3px 4px 3px 10px;
+  border-radius: 999px 0 0 999px;
+}
+
+.mx-t {
+  overflow: hidden;
+  max-width: 150px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mx-id {
+  flex: none;
+  padding: 3px 10px 3px 4px;
+  white-space: nowrap;
+  border-radius: 0 999px 999px 0;
+  color: var(--ink-3);
+  font: 400 11px / 1 var(--mono);
+}
+
+.mx-id:hover {
+  color: var(--you-ink);
+  text-decoration: underline;
+}
+
+.mx-guess,
+.mx-pin {
+  flex: none;
+  color: var(--ink-3);
+  font: 600 10px / 1 var(--sans);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.mx-pin {
+  color: var(--you-ink);
+}
+
+.mx-chip.on {
+  border-color: var(--you);
+  background: var(--you);
+  color: var(--on-you);
+}
+
+.mx-chip.on .mx-id,
+.mx-chip.on .mx-guess,
+.mx-chip.on .mx-pin {
+  color: var(--on-you);
+}
+
+.mx-chip button:focus-visible {
+  outline: 2px solid var(--you);
+  outline-offset: 2px;
+}
+
+.mx-side {
+  display: grid;
+  gap: 18px;
+  align-content: start;
+  padding: 14px;
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  background: var(--well);
+}
+
+.mx-side h4 {
+  margin: 0 0 8px;
+  color: var(--ink-3);
+  font: 600 11px / 1.3 var(--sans);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.mx-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.mx-none {
+  margin: 0;
+  color: var(--ink-3);
+  font: 400 13px / 1.4 var(--sans);
+}
+
+.mx-order {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: mx;
+}
+
+.mx-order li {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+  padding: 5px 8px;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  background: var(--sheet);
+  font: 400 13px / 1.35 var(--sans);
+  counter-increment: mx;
+}
+
+.mx-order li::before {
+  min-width: 1ch;
+  color: var(--you-ink);
+  font: 400 11.5px / 1 var(--mono);
+  content: counter(mx);
+}
+
+.mx-top {
+  color: var(--you-ink);
+  font: 600 10px / 1 var(--sans);
+  text-transform: uppercase;
+}
+
+.mx-oid {
+  flex: none;
+  padding: 0;
+  white-space: nowrap;
+  border: 0;
+  background: none;
+  color: var(--ink-3);
+  font: 400 11px / 1 var(--mono);
+  cursor: pointer;
+}
+
+.mx-ot {
+  overflow: hidden;
+  min-width: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

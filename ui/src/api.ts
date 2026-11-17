@@ -179,6 +179,16 @@ export async function reassignItem(id: string, agent: string): Promise<void> {
   await post(`/api/items/${encodeURIComponent(id)}/reassign`, { agent });
 }
 
+// The person's order of the work (app/priority.ts): «Fijar el orden» from a board's matrix (the
+// items in order; the board's earlier order goes), and «Poner arriba» / «Quitar de arriba».
+export async function setOrder(collection: string, ids: readonly string[]): Promise<void> {
+  await post('/api/order', { collection, ids });
+}
+
+export async function pinItems(ids: readonly string[], pinned: boolean): Promise<void> {
+  await post('/api/pin', { ids, pinned });
+}
+
 // Where a note is on: a piece of evidence of this round by its id, and in it the moment of a
 // recording, a line of a text, a node of a diagram, or a point or zone of an image (in percent).
 export type NoteAnchorInput = {
