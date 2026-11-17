@@ -92,6 +92,10 @@
       .mark { display: block; width: 36px; height: 36px; margin-bottom: 28px; }
       .mark circle { stroke: var(--ink); }
       .mark .orbit { fill: var(--you); transform-origin: 20px 20px; opacity: 0; }
+      /* While a project opens only the mark, its name and a line show: centred in the window, not
+         at the left of the picker's column. */
+      .opening { text-align: center; }
+      .opening .mark { margin-inline: auto; }
       .opening .mark .orbit { opacity: 1; }
       .opening .mark .orbit { animation: turn 2.2s linear infinite; }
       @media (prefers-reduced-motion: reduce) { .opening .mark .orbit { animation: none; } }
