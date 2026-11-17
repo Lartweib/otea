@@ -408,6 +408,7 @@ export const studioEditor = {
   'bs.editor.form.parent_may':
     'When creating it you can pick which {parent} it is part of, in {board}.',
   'bs.icon.board': 'Board',
+  'bs.icon.current': 'Its icon now ({name})',
   'bs.icon.bug': 'Bug',
   'bs.icon.paw': 'Paw',
   'bs.icon.book': 'Book',

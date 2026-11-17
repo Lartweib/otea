@@ -401,6 +401,7 @@ export const studioEditor = {
   'bs.editor.form.parent_always': 'Cada {item} se crea dentro de su {parent}: lo dice {board}.',
   'bs.editor.form.parent_may': 'Al crearlo se puede elegir de qué {parent} es parte, en {board}.',
   'bs.icon.board': 'Tablero',
+  'bs.icon.current': 'El icono que tiene ({name})',
   'bs.icon.bug': 'Error',
   'bs.icon.paw': 'Huella',
   'bs.icon.book': 'Libro',

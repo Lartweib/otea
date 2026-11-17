@@ -108,6 +108,10 @@ describe('an agent drafting a board', () => {
     expect(take).toContain(`otea board draft ${item} > board.json`);
     expect(take).toContain(`otea board draft ${item} --file board.json`);
     expect(take).toContain(`is the JSON Schema ${BOARD_JSON_SCHEMA}.`);
+    // Who does a step is its doer; its words speak to that doer (AGENTS3-6).
+    expect(take).toContain(
+      'Who does each step is its doer (any agent, a named agent or the person), never its text: write its instructions to whoever does it, and call the person "the person" (in Spanish, "la persona").',
+    );
     // A Pedido made in Studio closes on publish, as one made with draft --new does.
     expect(take).toContain(
       'Handing it in is your handoff: the person tries the board and publishes it in Studio, which closes this Pedido; there is no otea handoff to run.',
@@ -168,9 +172,13 @@ describe('an agent drafting a board', () => {
       'parts: Texto corto and Capturas are on no form, handoff or anytime, so no item gets them: place each, or remove it [parts]',
     );
     expect(submitted.notes.join(' ')).not.toMatch(/ftexto|eimg/);
-    // Studio never says it added what no item gets.
-    const note = getBoardRecord(ctx, board.id).draft?.agentNote ?? [];
-    expect(note.join(' ')).not.toMatch(/Texto corto|Capturas/);
+    // Studio never says it added what no item gets: it says it was left out, and leaves it out of
+    // the board, so nothing unplaced waits unseen in the draft (UI-14).
+    const merged = getBoardRecord(ctx, board.id).draft;
+    expect(merged?.agentNote).toContain('sin lugar, no se agregó: Texto corto, Capturas');
+    expect(merged?.agentNote?.join(' ')).not.toMatch(/\+ (campo|evidencia) (Texto corto|Capturas)/);
+    expect(Object.keys(merged?.definition.parts ?? {})).not.toContain('ftexto');
+    expect(Object.keys(merged?.definition.parts ?? {})).not.toContain('eimg');
   });
 
   it('keeps the board’s name whatever the file calls it, checks it under that name, and says so', () => {

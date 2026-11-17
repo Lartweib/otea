@@ -71,6 +71,13 @@ export const BOARD_ICONS: readonly GlyphName[] = [
   'check2',
 ];
 
+// The icons the picker offers: the board's own first when it is not one of BOARD_ICONS (one a
+// template or an agent gave it, such as fork), so the picker shows it chosen, never another.
+export function iconChoices(current: string): string[] {
+  const offered: readonly string[] = BOARD_ICONS;
+  return current === '' || offered.includes(current) ? [...offered] : [current, ...offered];
+}
+
 // An icon of BOARD_ICONS as the picker names it to a screen reader.
 export function boardIconName(icon: GlyphName): string {
   return t(`bs.icon.${icon}` as 'bs.icon.board');
