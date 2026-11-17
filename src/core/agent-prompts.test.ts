@@ -61,11 +61,16 @@ describe('the join prompt', () => {
     expect(text).toContain('otea next --claim');
     expect(text).toContain('Nunca tomes un ítem que tiene otro agente');
     expect(text).not.toContain('otea board draft');
+    // A second agent's otea connect would rewrite the .mcp.json the first one uses.
+    expect(text).toContain('No ejecutes otea connect');
+    expect(text).toContain(
+      'otea profile --as <nombre> --model <modelo> --effort <esfuerzo> --harness <harness>',
+    );
   });
 
   it('reads well with nobody listening and no agent steps, in English too', () => {
     const text = joinPrompt('en', { boards: [], listening: [] });
-    expect(text).toContain('1. Connect with a name of your own: `otea connect');
+    expect(text).toContain('1. Pick a name of your own and put it on every command');
     expect(text).toContain('no board has agent steps yet');
     expect(joinPrompt('en', facts)).toContain('(2 waiting for an agent now)');
   });

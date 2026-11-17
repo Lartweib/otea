@@ -27,6 +27,9 @@ const DRAFT =
 const DRAFT_ES =
   'otea board draft --new "<nombre>" --why "<para qué es, con mis palabras>" --template <clave>';
 const LOOP = 'otea wait --turn agent --unclaimed';
+const PROFILE = 'otea profile --as <name> --model <model> --effort <effort> --harness <harness>';
+const PROFILE_ES =
+  'otea profile --as <nombre> --model <modelo> --effort <esfuerzo> --harness <harness>';
 
 const WORDS = {
   en: {
@@ -50,7 +53,7 @@ const WORDS = {
       intro:
         'Join the work on this project as one more agent, alongside the others. Do not design or change boards.',
       connect: (taken: string) =>
-        `1. Connect with a name of your own${taken}: \`${CONNECT}\`, with unknown for any value you cannot read from your settings.`,
+        `1. Pick a name of your own${taken} and put it on every command (\`--as <name>\`; MCP tools: as). Do not run otea connect: it rewrites the project's .mcp.json, which the other agents use. Declare what you run as: \`${PROFILE}\`, with unknown for a model or effort you cannot read from your settings.`,
       taken: (names: string) => `, not one already working here (${names})`,
       read: '2. Read the guide and the boards: `otea board`. Where agents work:',
       board: (name: string, steps: string, waiting: number) =>
@@ -80,7 +83,7 @@ const WORDS = {
       intro:
         'Súmate al trabajo de este proyecto como un agente más, junto a los otros. No diseñes ni cambies tableros.',
       connect: (taken: string) =>
-        `1. Conéctate con un nombre propio${taken}: \`${CONNECT_ES}\`, con unknown en lo que no puedas leer de tu configuración.`,
+        `1. Elige un nombre propio${taken} y ponlo en cada comando (\`--as <nombre>\`; herramientas MCP: as). No ejecutes otea connect: reescribe el .mcp.json del proyecto, que usan los otros agentes. Declara con qué corres: \`${PROFILE_ES}\`, con unknown en el modelo o el esfuerzo que no puedas leer de tu configuración.`,
       taken: (names: string) => `, que no sea uno de los que ya trabajan aquí (${names})`,
       read: '2. Lee la guía y los tableros: `otea board`. Donde trabajan los agentes:',
       board: (name: string, steps: string, waiting: number) =>
