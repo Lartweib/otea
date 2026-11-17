@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { blankBoard } from '../../../../src/core/board/templates.ts';
 import { useApp } from '../../app/context.tsx';
+import { useAgentPrompt, useCopy } from '../../components/AgentPrompt.tsx';
+import { CopyGlyph } from '../../components/CopyCommand.tsx';
 import { language, t, tx } from '../../i18n/i18n.ts';
 import { Button, ChipButton } from '../../kit/Button.tsx';
 import { Icon } from '../../kit/Icon.tsx';
@@ -230,6 +232,7 @@ function NewBoardForm({ start, onClose }: { start: string; onClose: () => void }
             {t('bs.home.agentDraft')}
           </ChipButton>
         </div>
+        <DesignWithAgent version={app.version} />
         <Swap k={pick} as="div" dy={3} className="nb-body">
           {tpl && set ? (
             <>
@@ -305,5 +308,22 @@ function NewBoardForm({ start, onClose }: { start: string; onClose: () => void }
         </Button>
       </div>
     </>
+  );
+}
+
+// The other way to a new board: design it talking with your agent, which reads the project, asks
+// you one question at a time and drafts it for you to publish. Copies that instruction.
+function DesignWithAgent({ version }: { version: number }) {
+  const remote = useAgentPrompt('design', version);
+  const [copied, copy] = useCopy(remote.status === 'ready' ? remote.value.prompt : '');
+  if (remote.status !== 'ready') return null;
+  return (
+    <p className="fhint nb-design">
+      {t('bs.new.designWithAgent')}{' '}
+      <Button variant="quiet" onClick={copy}>
+        <CopyGlyph />
+        {copied ? t('connect.copiedPrompt') : t('connect.copyPrompt')}
+      </Button>
+    </p>
   );
 }

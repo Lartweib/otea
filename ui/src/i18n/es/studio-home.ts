@@ -39,6 +39,8 @@ export const studioHome = {
     'Copias un tablero hecho para un trabajo y lo cambias a tu gusto. No queda atado a la plantilla.',
   'bs.home.templateCount': { one: '1 plantilla', other: '{count} plantillas' },
   'bs.home.agentDraft': 'Que lo esboce un agente',
+  'bs.new.designWithAgent':
+    '¿Prefieres diseñarlo con tu agente? Pega esto en su chat: lee el proyecto, te pregunta y te deja el borrador.',
   'bs.home.agentDraftText':
     'Le cuentas qué necesitas y te entrega un borrador. Lo revisas aquí antes de publicar nada.',
   'bs.home.agentDraftKey': 'se crea un pedido',

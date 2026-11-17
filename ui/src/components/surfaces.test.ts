@@ -1,6 +1,7 @@
 import { createElement, type FunctionComponent, type ReactNode } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { joinPrompt, startPrompt } from '../../../src/core/agent-prompts.ts';
 import type { FeedEvent } from '../activity.ts';
 import { type App, AppTestProvider } from '../app/context.tsx';
 import { workspace } from '../app/workspace.ts';
@@ -8,7 +9,7 @@ import { agent, ago, inMinutes, item, moved, NOW, officialType } from '../derive
 import { setLanguage } from '../i18n/i18n.ts';
 import type { CollectionView, ProjectOverview } from '../types.ts';
 import { ActivityDrawer } from './ActivityDrawer.tsx';
-import { ConnectDialog } from './ConnectDialog.tsx';
+import { ConnectDialog, ConnectView } from './ConnectDialog.tsx';
 import { LandsAs, previewBlock } from './LandsAs.tsx';
 import { LanPanel } from './LanPanel.tsx';
 import { NewItemForm } from './NewItemForm.tsx';
@@ -282,32 +283,45 @@ describe('Te espera', () => {
 });
 
 describe('dialogs', () => {
-  it('Conectar un agente gives the command that connects it and the instruction for each session', () => {
+  it('Conectar un agente gives a project with no board the whole first contact to paste', () => {
     setLanguage('es');
     workspace.set({ connect: true });
-    const html = render(createElement(ConnectDialog));
-    expect(html).toContain('Conectar un agente');
-    expect(html).toContain(
-      'otea connect --as &lt;nombre&gt; --model &lt;modelo&gt; --effort &lt;esfuerzo&gt;',
+    expect(render(createElement(ConnectDialog))).toContain('>Hecho</button>');
+    const html = render(
+      createElement(ConnectView, { view: { kind: 'start', prompt: startPrompt('es') } }),
     );
+    expect(html).toContain('Conectar un agente');
+    expect(html).toContain('te pregunta cómo trabajas y te propone los tableros');
+    expect(html).toContain('otea connect --as &lt;nombre&gt; --model &lt;modelo&gt;');
+    expect(html).toContain('otea board draft --new');
     expect(html).not.toContain('otea mcp --as');
     expect(html).toContain('otea init --agents-md');
-    expect(html).toContain('Trabaja la cola de Otea hasta que te detenga.');
     expect(html).toContain('otea wait --turn agent --unclaimed');
     expect(html).toContain('Copiar la instrucción');
     expect(html).toContain('en cuanto llame a Otea');
     expect(html).not.toContain('primera reserva');
-    expect(html).toContain('>Hecho</button>');
+  });
+
+  it('Conectar un agente gives a project with boards the join prompt, from the project now', () => {
+    setLanguage('es');
+    const prompt = joinPrompt('es', {
+      boards: [{ name: 'Cambios', agentSteps: ['Aclarar', 'Hacerlo'], waiting: 2 }],
+      listening: ['claude'],
+    });
+    const html = render(createElement(ConnectView, { view: { kind: 'join', prompt } }));
+    expect(html).toContain('Para sumar un agente más');
+    expect(html).toContain('(claude)');
+    expect(html).toContain('- Cambios: Aclarar, Hacerlo (2 esperan a un agente ahora)');
+    expect(html).not.toContain('otea board draft');
   });
 
   it('Connect an agent reads in English too', () => {
     setLanguage('en');
-    workspace.set({ connect: true });
-    const html = render(createElement(ConnectDialog));
-    expect(html).toContain(
-      'otea connect --as &lt;name&gt; --model &lt;model&gt; --effort &lt;effort&gt;',
+    const html = render(
+      createElement(ConnectView, { view: { kind: 'start', prompt: startPrompt('en') } }),
     );
-    expect(html).toContain('Work the Otea queue until I stop you.');
+    expect(html).toContain('otea connect --as &lt;name&gt; --model &lt;model&gt;');
+    expect(html).toContain('Set up Otea in this project');
     expect(html).toContain('Copy the instruction');
     setLanguage('es');
   });
