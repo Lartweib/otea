@@ -70,6 +70,7 @@ import {
   roundNotesOf,
   threadOf,
 } from './notes.ts';
+import { useOpened } from './opened.ts';
 import { PhoneItem } from './PhoneItem.tsx';
 import { ProofChecklist } from './ProofChecklist.tsx';
 import { partNames, phoneRounds, readerOf, unopenedOf } from './phone-review.ts';
@@ -110,9 +111,6 @@ const dipWhen = (iso: string, now: number): string => {
   );
   return t('sheet.when.on', { day: fmt.format(Date.parse(iso)) });
 };
-
-// No file opened yet in the reader.
-const NONE_SEEN: ReadonlySet<number> = new Set();
 
 // Where a note goes: to the agent by its name, or "al agente" when none holds the step yet.
 export function leaveSays(agent: string | null): ReactNode {
@@ -419,19 +417,13 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
   );
   const parts = useMemo(() => (type ? partNames(type.layout) : undefined), [type]);
   const [reading, setReading] = useState<{ item: string; at: number; open: boolean } | null>(null);
-  const [opened, setOpened] = useState<{ item: string; ids: ReadonlySet<number> }>({
-    item: item.id,
-    ids: new Set(),
-  });
-  const seen = opened.item === item.id ? opened.ids : NONE_SEEN;
+  // The files opened in the reader, on this device or another (opened.ts).
+  const [seen, markSeen] = useOpened(item.id, app.session.canWrite);
   const readAt = reading?.item === item.id ? reading : null;
   const shownId = readAt?.open ? reader.files[readAt.at]?.id : undefined;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: once per file shown
   useEffect(() => {
-    if (shownId === undefined) return;
-    setOpened((was) => {
-      const ids = was.item === item.id ? was.ids : NONE_SEEN;
-      return ids.has(shownId) ? was : { item: item.id, ids: new Set([...ids, shownId]) };
-    });
+    if (shownId !== undefined) markSeen(shownId);
   }, [shownId, item.id]);
   const [start, setStart] = useState<ReaderPick | undefined>(undefined);
   const onRead = (id?: number, pick?: ReaderPick) => {

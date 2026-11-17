@@ -21,6 +21,7 @@ import {
 } from '../app/items.ts';
 import { boardRoundOf, liveBoards } from '../app/next.ts';
 import { leaveNote, notesSummary, notesView } from '../app/notes.ts';
+import { markOpened, openedFiles } from '../app/opened.ts';
 import { performanceOf } from '../app/performance.ts';
 import {
   choosePhoneTransport,
@@ -113,6 +114,7 @@ import {
   MAX_INTAKE_FILES,
   moveRequest,
   noteRequest,
+  openedRequest,
   orderRequest,
   pathRequest,
   pinRequest,
@@ -493,6 +495,18 @@ function api(
         leaveNote(project, { id, ...request, ...HUMAN_IN_UI });
         feed.notify();
         return c.json(notesView(project, id), 201);
+      })
+      // The files the person opened in the reader (app/opened.ts), on the desk or the phone: what
+      // Aprobar counts as left unopened, the same on every device. No event, no feed change.
+      .get('/items/:id/opened', (c) =>
+        c.json({ evidence: openedFiles(project, c.req.param('id')) }),
+      )
+      .post('/items/:id/opened', async (c) => {
+        assertWritable(c, auth);
+        const { evidence } = await openedRequest(c);
+        const id = c.req.param('id');
+        markOpened(project, { id, evidence, ...HUMAN_IN_UI });
+        return c.json({ evidence: openedFiles(project, id) });
       })
       // Side topics (app/topics.ts): the list, one topic, a note that keeps it going, closing it and
       // turning it into a task, from the phone too; turning them on or off is the desk's.

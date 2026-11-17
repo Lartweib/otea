@@ -204,9 +204,23 @@ export type NoteAnchorInput = {
 };
 
 // A note to the agent doing the item's step: it moves nothing; `anchor` is a piece of evidence of
-// this round, by its id, and for a recording the moment seen.
+// the item, by its id, and for a recording the moment seen.
 export async function postNote(id: string, text: string, anchor?: NoteAnchorInput): Promise<void> {
   await post(`/api/items/${encodeURIComponent(id)}/notes`, anchor ? { text, anchor } : { text });
+}
+
+// The files of an item the person opened in the reader, on any device, by evidence id.
+export async function fetchOpened(id: string, signal: AbortSignal): Promise<number[]> {
+  const body = (await (
+    await get(`/api/items/${encodeURIComponent(id)}/opened`, signal)
+  ).json()) as {
+    evidence: number[];
+  };
+  return body.evidence;
+}
+
+export async function postOpened(id: string, evidence: number): Promise<void> {
+  await post(`/api/items/${encodeURIComponent(id)}/opened`, { evidence });
 }
 
 // Your answer to an agent's question (otea ask): the turn goes back to the agent, in the same round.
