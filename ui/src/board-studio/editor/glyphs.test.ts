@@ -1,22 +1,14 @@
-import { afterEach, describe, expect, it } from 'vitest';
-import { setLanguage } from '../../i18n/i18n.ts';
-import { BOARD_ICONS, boardIconName } from './glyphs.tsx';
+import { describe, expect, it } from 'vitest';
+import { BOARD_ICONS, iconChoices } from './glyphs.tsx';
 
-afterEach(() => setLanguage('en'));
+describe('iconChoices', () => {
+  it('offers the board icons, the chosen one among them', () => {
+    expect(iconChoices('bug')).toEqual([...BOARD_ICONS]);
+  });
 
-describe('the icons a board can wear', () => {
-  it('names each in the language on screen, never by its id', () => {
-    setLanguage('es');
-    expect(BOARD_ICONS.map(boardIconName)).toEqual([
-      'Tablero',
-      'Error',
-      'Huella',
-      'Libro',
-      'Bandeja',
-      'Matraz',
-      'Visto',
-    ]);
-    setLanguage('en');
-    expect(boardIconName('check2')).toBe('Check');
+  it('puts the board’s own icon first when the picker has no drawing of its own for it (UI3-4)', () => {
+    const choices = iconChoices('fork');
+    expect(choices[0]).toBe('fork');
+    expect(choices.slice(1)).toEqual([...BOARD_ICONS]);
   });
 });

@@ -33,6 +33,7 @@ export function handInText(id: string): string {
     'change it (keep the ids of what is there; give what you add new ids), then run',
     `otea board draft ${id} --file ${DRAFT_FILENAME}. It says what is wrong until the board is right.`,
     `To check it before: its shape, each key with an example, is the JSON Schema ${BOARD_JSON_SCHEMA}.`,
+    'Who does each step is its doer (any agent, a named agent or the person), never its text: write its instructions to whoever does it, and call the person "the person" (in Spanish, "la persona").',
     'Handing it in is your handoff: the person tries the board and publishes it in Studio, which closes this Pedido; there is no otea handoff to run.',
   ].join('\n');
 }

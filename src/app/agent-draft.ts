@@ -394,6 +394,7 @@ type Words = {
   item: string;
   about: string;
   idle: string;
+  unplaced: string;
 };
 
 const NOTE_WORDS: Readonly<Record<Lang, Words>> = {
@@ -407,6 +408,7 @@ const NOTE_WORDS: Readonly<Record<Lang, Words>> = {
     item: 'item:',
     about: 'About this board',
     idle: 'When there is nothing to do',
+    unplaced: 'placed nowhere, not added:',
   },
   es: {
     step: '+ paso',
@@ -418,6 +420,7 @@ const NOTE_WORDS: Readonly<Record<Lang, Words>> = {
     item: 'ítem:',
     about: 'Sobre este tablero',
     idle: 'Cuando no hay nada que hacer',
+    unplaced: 'sin lugar, no se agregó:',
   },
 };
 
@@ -432,14 +435,22 @@ export function mergeDefinitions(
   agent: BoardDefinition,
 ): { definition: BoardDefinition; note: string[] } {
   const words = NOTE_WORDS[boardLang(draft)];
+  // A part the agent adds and places nowhere would reach no item and wait unseen in the draft: it
+  // is left out, and the note says so by name.
+  const placed = usedRefs(agent);
+  const unplaced = Object.values(agent.parts).filter(
+    (part) => !draft.parts[part.id] && !placed.has(part.id),
+  );
+  const parts = clone(agent.parts);
+  for (const { id } of unplaced) delete parts[id];
+  const layout = { ...draft.layout, ...agent.layout };
+  for (const { id } of unplaced) delete layout[id];
   const out: BoardDefinition = {
     ...clone(agent),
     name: draft.name,
-    parts: { ...clone(draft.parts), ...clone(agent.parts) },
-    layout: { ...draft.layout, ...agent.layout },
+    parts: { ...clone(draft.parts), ...parts },
+    layout,
   };
-  // A part placed nowhere is not on the board: Studio never says it was added.
-  const placed = usedRefs(agent);
   const added: Part[] = Object.values(agent.parts).filter(
     (part) => !draft.parts[part.id] && placed.has(part.id),
   );
@@ -460,6 +471,9 @@ export function mergeDefinitions(
     ...(agent.item !== draft.item ? [`${words.item} ${agent.item}`] : []),
     ...(agent.about !== draft.about ? [`${words.changed} ${words.about}`] : []),
     ...(agent.idle !== draft.idle ? [`${words.changed} ${words.idle}`] : []),
+    ...(unplaced.length
+      ? [`${words.unplaced} ${unplaced.map(({ name }) => name).join(', ')}`]
+      : []),
   ];
   return { definition: out, note };
 }

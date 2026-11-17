@@ -3,8 +3,11 @@ import { mappedScales, partsFor, ROLES, viewsOf } from '../../../../src/core/boa
 import { waysOf } from '../../../../src/core/board/engine.ts';
 import { DONE, SAME, TITLE, usedRefs } from '../../../../src/core/board/model.ts';
 import { listOf, t, tx } from '../../i18n/i18n.ts';
+import { TypeIcon } from '../../icons/TypeIcon.tsx';
+import { Icon } from '../../kit/Icon.tsx';
 import { MenuItem, MenuLabel, MenuRule } from '../../kit/pop/Menu.tsx';
 import { studioHash } from '../../selection.ts';
+import { boardIcon } from '../../shell/rail-model.ts';
 import { doesText, roleWord } from '../words.ts';
 import { useEditor } from './context.ts';
 import {
@@ -19,7 +22,14 @@ import {
   setSplit,
   setSplitAlways,
 } from './edits.ts';
-import { BOARD_ICONS, boardGlyph, boardIconName, Glyph } from './glyphs.tsx';
+import {
+  BOARD_ICONS,
+  boardGlyph,
+  boardIconName,
+  Glyph,
+  type GlyphName,
+  iconChoices,
+} from './glyphs.tsx';
 import { parentInfo, splitInfo } from './joined.ts';
 import { MentionArea } from './MentionArea.tsx';
 import { Blank, EdPop, useAnchor } from './menus.tsx';
@@ -240,6 +250,12 @@ function ParentLink({ id, name }: { id: string; name: string }) {
   );
 }
 
+// A board icon the picker has no drawing of its own for, drawn as the rail draws it.
+function OwnIcon({ name }: { name: string }) {
+  const icon = boardIcon(name);
+  return icon.kind === 'mock' ? <Icon name={icon.name} /> : <TypeIcon name={icon.name} size={16} />;
+}
+
 // Sobre el tablero › Partes: what each item divides into, and (on a child board) whose part it is.
 function PartsSection() {
   const { draft, boards } = useEditor();
@@ -453,18 +469,23 @@ export function AboutCard() {
         <div className="se-iconrow">
           <span className="se-flab">{t('bs.editor.about.icon')}</span>
           <div className="se-iconpick">
-            {BOARD_ICONS.map((k) => (
-              <button
-                key={k}
-                type="button"
-                className={boardGlyph(def.icon) === k ? 'on' : undefined}
-                aria-pressed={boardGlyph(def.icon) === k}
-                aria-label={boardIconName(k)}
-                onClick={() => draft.mutate((d) => setIcon(d, k))}
-              >
-                <Glyph name={k} />
-              </button>
-            ))}
+            {iconChoices(def.icon).map((k) => {
+              const own = (BOARD_ICONS as readonly string[]).includes(k);
+              return (
+                <button
+                  key={k}
+                  type="button"
+                  className={def.icon === k ? 'on' : undefined}
+                  aria-pressed={def.icon === k}
+                  aria-label={
+                    own ? boardIconName(k as GlyphName) : t('bs.icon.current', { name: k })
+                  }
+                  onClick={() => draft.mutate((d) => setIcon(d, k))}
+                >
+                  {own ? <Glyph name={k as GlyphName} /> : <OwnIcon name={k} />}
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>
