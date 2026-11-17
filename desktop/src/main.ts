@@ -40,6 +40,7 @@ import {
 } from './command-link.ts';
 import { COPY, type Copy, type Lang, langOf } from './copy.ts';
 import { type Icons, loadIcons, type Theme } from './icons.ts';
+import { type LaunchData, secondLaunchProject } from './launch.ts';
 import { type DeskNotice, type Snapshot, type Watch, watchItems, watchNotices } from './live.ts';
 import { FRAME_MS } from './marks.ts';
 import type { NoticeView } from './notice.ts';
@@ -337,6 +338,8 @@ class Shell {
       this.win.loadFile(join(import.meta.dirname, 'picker.html')).catch(() => {});
     }
     try {
+      // Without the folder the CLI cannot even start there (Node says "spawn … ENOENT").
+      if (!existsSync(dir)) throw new Error(this.copy.folderMissing(dir));
       const found = await connect(CLI, dir, port);
       // Already open: the server just started for it is not needed.
       if (this.connection?.project.id === found.project.id) found.child?.kill();
@@ -711,20 +714,19 @@ function wirePicker(shellInstance: Shell): void {
   ipcMain.on('desktop:notice-dismiss', () => shellInstance.dismissNotice());
 }
 
-const projectArg = (argv: readonly string[]) => {
-  const at = argv.indexOf('--project');
-  return at >= 0 ? argv[at + 1] : undefined;
-};
+// A second launch hands the running app the folder it was asked for, resolved where it ran.
+const launchData: LaunchData =
+  typeof options.project === 'string' ? { project: resolve(options.project) } : {};
 
-if (!app.requestSingleInstanceLock()) app.quit();
+if (!app.requestSingleInstanceLock(launchData)) app.quit();
 else {
   if (IS_WIN) app.setAppUserModelId('dev.otea.desktop');
   Menu.setApplicationMenu(null);
   let shellInstance: Shell | undefined;
   // `--project` on a second launch opens that project in the running app.
-  app.on('second-instance', (_event, argv) => {
-    const dir = projectArg(argv);
-    if (dir !== undefined) void shellInstance?.open(resolve(dir));
+  app.on('second-instance', (_event, argv, workingDirectory, data) => {
+    const dir = secondLaunchProject(data, argv, workingDirectory);
+    if (dir !== undefined) void shellInstance?.open(dir);
     else shellInstance?.show();
   });
   // Closed to the tray: the app lives on until Quit Otea.
