@@ -17,6 +17,13 @@ const en = {
   chooseNewFolder: 'Choose the folder for the new project',
   noProjectTitle: 'No Otea project here',
   noProject: (dir: string) => `${dir} is not in an Otea project yet. Create one there?`,
+  noProjectInRepo: (dir: string, root: string) =>
+    `${dir} is in the repository ${root}, which has no Otea project yet. Create one for the whole repository, at ${root}?`,
+  coveredTitle: 'This folder is already in a project',
+  covered: (root: string, covering: string) =>
+    `The Otea project at ${covering} already covers ${root}. Create a separate project at ${root}, or open the one at ${covering}?`,
+  createSeparate: 'Create a separate project',
+  openCovering: 'Open that project',
   folderMissing: (dir: string) => `There is no folder ${dir}.`,
   cancel: 'Cancel',
   updated: 'Otea updated',
@@ -54,6 +61,13 @@ const es: Copy = {
   chooseNewFolder: 'Elige la carpeta del proyecto nuevo',
   noProjectTitle: 'Aquí no hay un proyecto de Otea',
   noProject: (dir) => `${dir} todavía no está en un proyecto de Otea. ¿Lo creas ahí?`,
+  noProjectInRepo: (dir, root) =>
+    `${dir} está en el repositorio ${root}, que todavía no tiene un proyecto de Otea. ¿Lo creas para todo el repositorio, en ${root}?`,
+  coveredTitle: 'Esta carpeta ya está en un proyecto',
+  covered: (root, covering) =>
+    `El proyecto de Otea de ${covering} ya cubre ${root}. ¿Creas un proyecto aparte en ${root} o abres el de ${covering}?`,
+  createSeparate: 'Crear un proyecto aparte',
+  openCovering: 'Abrir ese proyecto',
   folderMissing: (dir) => `No existe la carpeta ${dir}.`,
   cancel: 'Cancelar',
   updated: 'Otea se actualizó',

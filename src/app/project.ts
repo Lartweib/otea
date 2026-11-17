@@ -219,6 +219,7 @@ export function openProject(cwd: string, env: Env = process.env): Project {
     throw new OteaError(
       'not_found',
       `No Otea project at ${root} or above it; run init first${join}`,
+      { kind: 'no_project', root },
     );
   }
   return openFound(found);
@@ -301,6 +302,7 @@ export function initProject(
     throw new OteaError(
       'already_exists',
       `The Otea project at ${existing.root} already covers ${root}; run init --here to create a separate project at ${root}`,
+      { kind: 'covered', root, covering: existing.root },
     );
   }
   return options.local ? createLocal(location) : createCommon(location, env);

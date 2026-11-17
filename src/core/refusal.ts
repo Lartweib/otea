@@ -100,6 +100,10 @@ export type RefusalDetails =
   | { kind: 'restore_used' }
   | { kind: 'restore_step_lost'; item: string; step: string; version: number }
   | { kind: 'restore_name_taken'; name: string }
+  // No project at a folder or above it: `root` is where init would make one (its repo's root).
+  | { kind: 'no_project'; root: string }
+  // An init where a project in a folder above (`covering`) already covers `root`.
+  | { kind: 'covered'; root: string; covering: string }
   // A setup change from a device other than this computer's signed-in browser.
   | { kind: 'desk_only' }
   // Archiving and deleting boards (app/board-archive.ts): an item or a board of an archived board

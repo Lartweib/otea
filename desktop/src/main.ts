@@ -44,6 +44,7 @@ import { type LaunchData, secondLaunchProject } from './launch.ts';
 import { type DeskNotice, type Snapshot, type Watch, watchItems, watchNotices } from './live.ts';
 import { FRAME_MS } from './marks.ts';
 import type { NoticeView } from './notice.ts';
+import { type Answer, pickProject, type Question, samePath } from './pick.ts';
 import type { PickerState } from './picker.ts';
 import { firstProject, forget, parseRecents, type Recent, remember } from './recent.ts';
 import {
@@ -52,7 +53,7 @@ import {
   type Connection,
   connect,
   createProject,
-  currentProject,
+  probeProject,
   sourceCli,
 } from './server.ts';
 import {
@@ -418,7 +419,7 @@ class Shell {
   }
 
   // "Abrir carpeta" and "Crear proyecto": a folder from the system's dialog, made a project when it
-  // is not one yet (asking first, unless the person asked to create one).
+  // is not one yet (asking first: always on open, and on create when it lands elsewhere).
   async pickFolder(create: boolean): Promise<PickerState> {
     const chosen = await dialog.showOpenDialog(this.win, {
       title: create ? this.copy.chooseNewFolder : this.copy.chooseFolder,
@@ -428,25 +429,46 @@ class Shell {
     if (chosen.canceled || dir === undefined) return this.pickerState();
     this.pickerError = undefined;
     try {
-      if (create) await createProject(CLI, dir);
-      else if (!(await isProject(dir))) {
-        const { response } = await dialog.showMessageBox(this.win, {
-          type: 'question',
-          message: this.copy.noProjectTitle,
-          detail: this.copy.noProject(dir),
-          buttons: [this.copy.createProject, this.copy.cancel],
-          defaultId: 0,
-          cancelId: 1,
-        });
-        if (response !== 0) return this.pickerState();
-        await createProject(CLI, dir);
-      }
+      const picked = await pickProject(
+        {
+          probe: (at) => probeProject(CLI, at),
+          init: (at, here) => createProject(CLI, at, here),
+          ask: (question) => this.ask(question),
+        },
+        dir,
+        create,
+      );
+      if (picked.kind === 'cancel') return this.pickerState();
+      void this.open(picked.dir);
     } catch (error) {
       this.pickerError = message(error);
-      return this.pickerState();
     }
-    void this.open(dir);
     return this.pickerState();
+  }
+
+  private async ask(question: Question): Promise<Answer> {
+    const { copy } = this;
+    if (question.kind === 'create') {
+      const { dir, root } = question;
+      const { response } = await dialog.showMessageBox(this.win, {
+        type: 'question',
+        message: copy.noProjectTitle,
+        detail: samePath(dir, root) ? copy.noProject(dir) : copy.noProjectInRepo(dir, root),
+        buttons: [copy.createProject, copy.cancel],
+        defaultId: 0,
+        cancelId: 1,
+      });
+      return response === 0 ? 'create' : 'cancel';
+    }
+    const { response } = await dialog.showMessageBox(this.win, {
+      type: 'question',
+      message: copy.coveredTitle,
+      detail: copy.covered(question.root, question.covering),
+      buttons: [copy.createSeparate, copy.openCovering, copy.cancel],
+      defaultId: 1,
+      cancelId: 2,
+    });
+    return (['create', 'open', 'cancel'] as const)[response] ?? 'cancel';
   }
 
   openRecent(root: string): PickerState {
@@ -658,12 +680,6 @@ class Shell {
     if (!IS_WIN) this.tray.setContextMenu(menu);
   }
 }
-
-const isProject = (dir: string) =>
-  currentProject(CLI, dir).then(
-    () => true,
-    () => false,
-  );
 
 function wireUpdates(shellInstance: Shell): void {
   const mode = updateMode({
