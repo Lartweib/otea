@@ -16,6 +16,11 @@ import {
 
 const MAIN = fileURLToPath(new URL('./main.ts', import.meta.url));
 const ARGS = ['--disable-warning=ExperimentalWarning', MAIN, 'mcp'];
+// Runs the server under a parent of its own, as another harness process would start it.
+const UNDER_ANOTHER_HARNESS = [
+  '-e',
+  "const c = require('node:child_process').spawn(process.execPath, process.argv.slice(1), { stdio: 'inherit' }); c.on('exit', (code) => process.exit(code ?? 0)); process.stdin.on('end', () => c.kill());",
+];
 
 describe('mcp', () => {
   let repo: ReturnType<typeof tempGitRepo>;
@@ -87,12 +92,12 @@ describe('mcp', () => {
   });
 
   it('refuses a second open session the name another session works under', async () => {
-    const open = async () => {
+    const open = async (wrap: string[] = []) => {
       const client = new Client({ name: 'claude-code', version: '2.1.0' });
       await client.connect(
         new StdioClientTransport({
           command: process.execPath,
-          args: [...ARGS, '--as', 'claude'],
+          args: [...wrap, ...ARGS, '--as', 'claude'],
           cwd: repo.dir,
           env: { ...getDefaultEnvironment(), OTEA_HOME: process.env.OTEA_HOME ?? '' },
           stderr: 'pipe',
@@ -110,7 +115,7 @@ describe('mcp', () => {
       }
     };
     await until(listening);
-    const second = await open();
+    const second = await open(UNDER_ANOTHER_HARNESS);
     try {
       const mine = await first.callTool({ name: 'claim', arguments: { id: 'TASKS-1' } });
       expect(mine.isError).toBeFalsy();
@@ -125,6 +130,46 @@ describe('mcp', () => {
     } finally {
       await first.close();
       await second.close();
+    }
+  });
+
+  it('gives the name to a new server its harness started, and refuses the old one from then on', async () => {
+    const open = async () => {
+      const client = new Client({ name: 'claude-code', version: '2.1.0' });
+      await client.connect(
+        new StdioClientTransport({
+          command: process.execPath,
+          args: [...ARGS, '--as', 'claude'],
+          cwd: repo.dir,
+          env: { ...getDefaultEnvironment(), OTEA_HOME: process.env.OTEA_HOME ?? '' },
+          stderr: 'pipe',
+        }),
+      );
+      return client;
+    };
+    const listeningFrom = () => {
+      const project = openProject(repo.dir);
+      try {
+        return listAgents(project.db).some(({ name, listening }) => name === 'claude' && listening);
+      } finally {
+        project.db.close();
+      }
+    };
+    const old = await open();
+    await until(listeningFrom);
+    const restarted = await open();
+    try {
+      const mine = await restarted.callTool({ name: 'claim', arguments: { id: 'TASKS-1' } });
+      expect(mine.isError).toBeFalsy();
+
+      const refused = await old.callTool({ name: 'list', arguments: {} });
+      expect(refused.isError).toBe(true);
+      expect(JSON.parse((refused.content as { text: string }[])[0]?.text ?? '')).toMatchObject({
+        error: { code: 'name_in_use' },
+      });
+    } finally {
+      await old.close();
+      await restarted.close();
     }
   });
 

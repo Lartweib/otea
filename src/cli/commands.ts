@@ -65,6 +65,7 @@ import {
   type Harness,
   hearAgent,
   LISTEN_BEAT_MS,
+  ownerGone,
   seeAgent,
   waitBeat,
 } from '../app/presence.ts';
@@ -1297,6 +1298,9 @@ const TTL = { ttl: { placeholder: 'duration' } };
 // Lease expiry writes nothing, so a wait for unclaimed items also checks again on this timer.
 const LEASE_RECHECK_MS = 1000;
 
+// How often a wait checks that the process that started it still runs.
+const OWNER_CHECK_MS = 5_000;
+
 const wait: Command = {
   name: 'wait',
   summary:
@@ -1313,8 +1317,21 @@ const wait: Command = {
     const timeout = input.option('timeout');
     const timeoutMs = durationFrom('timeout', timeout);
     const filter = listFilter(input);
+    // A wait whose starter is gone (its agent's session ended) stops: left running it would keep
+    // the agent shown as listening until its timeout.
+    const owner = process.ppid;
+    const stop = new AbortController();
+    let orphaned = false;
+    const onAbort = () => stop.abort();
+    input.signal.addEventListener('abort', onAbort, { once: true });
+    const watchOwner = setInterval(() => {
+      if (!ownerGone(owner, process.ppid)) return;
+      orphaned = true;
+      stop.abort();
+    }, OWNER_CHECK_MS);
+    watchOwner.unref();
     const options = {
-      signal: input.signal,
+      signal: stop.signal,
       ...(timeoutMs === undefined ? {} : { timeoutMs }),
       ...(filter.availableTo === undefined ? {} : { recheckMs: LEASE_RECHECK_MS }),
     };
@@ -1345,7 +1362,10 @@ const wait: Command = {
           : {};
       // It listens from the start, not from its first beat.
       beat.beat?.run();
-      const waited = await watch(project.db, check, { ...options, ...beat });
+      const waited = await watch(project.db, check, { ...options, ...beat }).finally(() => {
+        clearInterval(watchOwner);
+        input.signal.removeEventListener('abort', onAbort);
+      });
       if (!('found' in waited)) return waited;
       const { found } = waited;
       return 'text' in found ? { data: found, text: found.text } : itemResult(project, found);
@@ -1353,6 +1373,9 @@ const wait: Command = {
     if ('data' in result) return result;
     if (result.stopped === 'timeout') {
       throw new CommandFailure('timeout', `No item reached the ${turn} turn within ${timeout}`);
+    }
+    if (orphaned) {
+      throw new CommandFailure('interrupted', 'Stopped waiting: the session that started it ended');
     }
     throw new CommandFailure('interrupted', 'Interrupted while waiting');
   },
@@ -1916,10 +1939,12 @@ function heardBy(
   harness: Harness | undefined,
   warn: Input['warn'],
   newSession = false,
+  // Its first call under the name: a new server its harness started may take it from the old one.
+  fresh = newSession,
 ) {
   try {
     withProject(cwd, (project) => {
-      claimName(project.db, agent, process.pid);
+      claimName(project.db, agent, process.pid, undefined, undefined, undefined, fresh);
       hearAgent(project.db, {
         agent,
         channel: 'mcp',
@@ -1939,9 +1964,11 @@ function heardBy(
 
 // The first call of an agent on this server: refused while another open session works under its
 // name, so two sessions never share one.
-function claimedBy(cwd: string, agent: string): void {
+function claimedBy(cwd: string, agent: string, fresh: boolean): void {
   try {
-    withProject(cwd, (project) => claimName(project.db, agent, process.pid));
+    withProject(cwd, (project) =>
+      claimName(project.db, agent, process.pid, undefined, undefined, undefined, fresh),
+    );
   } catch (error) {
     if (error instanceof OteaError && error.code === 'name_in_use') throw error;
   }
@@ -1958,15 +1985,20 @@ const mcp: Command = {
     // Every agent that connected or called through this server, heard again on each beat until
     // the client disconnects: that is what makes it count as connected.
     const voices = new Set<string>();
+    // Every name this server ever worked under: one it lost to a newer server never counts as new.
+    const used = new Set<string>();
     let client: Harness | undefined;
     const greeted = (harness: Harness | undefined) => {
       client = harness;
       if (agent === undefined) return;
+      used.add(agent);
       if (heardBy(cwd, agent, harness, warn, true)) voices.add(agent);
     };
     const heard = (name: string) => {
-      claimedBy(cwd, name);
-      heardBy(cwd, name, client, warn);
+      const fresh = !used.has(name);
+      used.add(name);
+      claimedBy(cwd, name, fresh);
+      heardBy(cwd, name, client, warn, false, fresh);
       voices.add(name);
     };
     const beat = setInterval(() => {
