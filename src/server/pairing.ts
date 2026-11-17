@@ -2,7 +2,14 @@ import type { Context } from 'hono';
 import { setCookie } from 'hono/cookie';
 import { encode } from 'uqr';
 import { z } from 'zod';
-import { type Device, deviceName, listDevices, pairDevice, revokeDevice } from '../app/devices.ts';
+import {
+  type Device,
+  deviceName,
+  listDevices,
+  pairDevice,
+  repairDevice,
+  revokeDevice,
+} from '../app/devices.ts';
 import type { PhoneSettings, TransportKind } from '../app/phone.ts';
 import type { Project } from '../app/project.ts';
 import { RejectedRequest } from './errors.ts';
@@ -153,12 +160,19 @@ export async function pair(c: Context, project: Project, phone: Phone, port: Por
   attempt(c, on);
   const result = on.codes.redeem(code);
   if (result !== 'ok') refuse(result);
-  const { device, token } = pairDevice(project.db, named);
   const client = clientOf(c);
+  // A phone paired already (its token came with the request) scanning a new code stays one device.
+  const { device, token } =
+    client.kind === 'device'
+      ? repairDevice(project.db, client.device.id, named)
+      : pairDevice(project.db, named);
   setCookie(c, deviceCookie(port()), token, {
     path: '/',
     httpOnly: true,
-    sameSite: 'Strict',
+    // Lax: the home-screen shortcut, a notification and a link from another app open Otea as a
+    // navigation from outside it, which a Strict cookie never comes with, so each of them landed on
+    // the pairing screen. A write still needs the UI's own origin (assertSameOrigin).
+    sameSite: 'Lax',
     maxAge: DEVICE_COOKIE_MAX_AGE,
     // Over HTTPS (Tailscale) the token never travels in the clear.
     secure: client.kind !== 'local' && client.secure,
