@@ -50,18 +50,32 @@ function rangeOf(header: string | undefined, size: number): Span | 'unsatisfiabl
   return end < start ? undefined : { start, end };
 }
 
+// If-None-Match lists the tags of the copies a browser keeps, or * for any.
+function matches(header: string | undefined, etag: string): boolean {
+  if (header === undefined) return false;
+  return header.split(',').some((tag) => {
+    const trimmed = tag.trim();
+    return trimmed === '*' || trimmed.replace(/^W\//, '') === etag;
+  });
+}
+
 export function serveEvidence(c: Context, project: Project, id: string): Response {
   const { evidence, path } = evidenceToServe(project, id);
   const { type, inline } = presentation(evidence);
+  const etag = `"${project.identity.id}:${evidence.sha256}"`;
   const headers = {
     'content-type': type,
     'content-disposition': disposition(inline, evidence.filename),
     'accept-ranges': 'bytes',
     'x-content-type-options': 'nosniff',
     'content-security-policy': 'sandbox',
-    // An entry never changes: its file is addressed by content and evidence is append-only.
-    'cache-control': 'private, max-age=31536000, immutable',
+    // The URL names an entry by its number, which another project served later on this host and
+    // port reuses for another file. So the browser asks every time, and the tag that lets it keep
+    // its copy names this project and the file's content.
+    'cache-control': 'private, no-cache',
+    etag,
   };
+  if (matches(c.req.header('if-none-match'), etag)) return c.body(null, 304, headers);
   const range = rangeOf(c.req.header('range'), evidence.size);
   if (range === 'unsatisfiable') {
     return c.body(null, 416, { ...headers, 'content-range': `bytes */${evidence.size}` });
