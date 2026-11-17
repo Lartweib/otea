@@ -183,7 +183,7 @@ function Exchange({
             // A comment left while you reviewed: nobody answers it unless you send the step back.
             <>
               <p>{t('notes.review.waiting')}</p>
-              <small>{t('notes.review.phone')}</small>
+              <small>{t('notes.review.goes')}</small>
             </>
           ) : (
             <>

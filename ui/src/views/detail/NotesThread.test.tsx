@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import type { ItemNote } from '../../../../src/core/board/notes.ts';
 import { AppTestProvider } from '../../app/context.tsx';
 import { ago, NOW } from '../../derive/fixtures.ts';
-import { setLanguage } from '../../i18n/i18n.ts';
+import { setLanguage, t } from '../../i18n/i18n.ts';
 import { testApp } from '../../shell/test-app.ts';
 import type { Evidence } from '../../types.ts';
 import { HandChecklist } from './BoardSections.tsx';
@@ -118,8 +118,19 @@ describe('the thread of notes', () => {
       <Thread notes={[comment]} evidence={[gif]} now={NOW} agent="claude-d" />,
     );
     expect(html).toContain('Comentario de tu revisión.');
-    expect(html).toContain('va con la devolución');
+    expect(html).toContain('Va con la devolución');
     expect(html).not.toContain('todavía no contestó');
+  });
+
+  it('says in the reader’s foot, before any comment, what goes with a send-back (DR2-15)', () => {
+    setLanguage('es');
+    expect(t('notes.review.phone')).toBe(
+      'Un comentario que dejes va con la devolución; si apruebas, queda como nota de esta ronda.',
+    );
+    setLanguage('en');
+    expect(t('notes.review.phone')).toBe(
+      'A comment you leave goes with a send-back; if you approve, it stays a note of this round.',
+    );
   });
 
   it('cites the piece a note is on with its thumbnail and part', () => {
