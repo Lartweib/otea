@@ -11,7 +11,7 @@ import { lookOf } from '../../lanes/looks.ts';
 import { parentOf } from '../../nesting.ts';
 import { stateWordIn, typeWord, valueWordIn } from '../../preset-words.ts';
 import type { CollectionView, Item } from '../../types.ts';
-import { type Entry, roundOf, severityOf, signalOf, tablaCells } from './model.ts';
+import { type Entry, roundOf, rowWords, severityOf, signalOf, tablaCells } from './model.ts';
 import { cellClass } from './table.ts';
 
 // The rows of Lista (board rows on the lanes, mock:1725-1733) and Tabla (40 px rows whose cells
@@ -145,7 +145,10 @@ export function listaBlocks(entries: readonly Entry[], ctx: RowCtx): LaneBlock[]
     const when = whenText(it, ctx.now);
     const stuck = isStuck(it, ctx.now);
     const round = roundOf(it, ctx.feed, typeOf(it, ctx.collection));
-    const signal = signalOf(it, ctx.collection);
+    // What the board's row shows (a repo, a branch, a kind), else the first choice set off its default.
+    const placed = rowWords(it, ctx.collection);
+    const signals =
+      placed.length > 0 ? placed : [signalOf(it, ctx.collection)].filter((x): x is string => !!x);
     const sev = severityOf(it, ctx.collection);
     return {
       ...rowBase(e, ctx),
@@ -183,12 +186,12 @@ export function listaBlocks(entries: readonly Entry[], ctx: RowCtx): LaneBlock[]
                   <span className="round">{t('boardView.round', { n: round })}</span>
                 </span>
               ) : null}
-              {signal ? (
-                <span className="mpt">
+              {signals.map((signal) => (
+                <span key={signal} className="mpt">
                   <span className="sep">·</span>
                   <span>{signal}</span>
                 </span>
-              ) : null}
+              ))}
             </div>
           </div>
           <span className="sev" data-leaf="">

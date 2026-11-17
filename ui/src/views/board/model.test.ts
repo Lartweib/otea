@@ -1,12 +1,14 @@
+import { readFileSync } from 'node:fs';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { compileBoard } from '../../../../src/core/board/compile.ts';
 import { creatures, errores as erroresBoard } from '../../../../src/core/board/testing.ts';
+import { parsePreset } from '../../../../src/core/preset.ts';
 import { typeViews } from '../../../../src/core/views.ts';
 import type { FeedEvent } from '../../activity.ts';
 import { agent, ago, inMinutes, item, moved, NOW, officialType } from '../../derive/fixtures.ts';
 import { setLanguage } from '../../i18n/i18n.ts';
 import { stateWordIn } from '../../preset-words.ts';
-import type { CollectionView, Item } from '../../types.ts';
+import type { CollectionView, Item, TypeView } from '../../types.ts';
 import {
   applyFilters,
   type BoardCtx,
@@ -27,6 +29,7 @@ import {
   phoneChips,
   phonePrefs,
   roundOf,
+  rowWords,
   signalOf,
   sortBoard,
   stepsStrip,
@@ -443,6 +446,24 @@ describe('the entries of a grouped list', () => {
 });
 
 describe('what a board row says', () => {
+  it('says the values its row shows: a repo, a branch, a kind, never the severity bars', () => {
+    const yaml = readFileSync(
+      new URL('../../../../presets/change/preset.yaml', import.meta.url),
+      'utf8',
+    );
+    const repoTask = typeViews(parsePreset(yaml).types).find(
+      ({ name }) => name === 'repo_task',
+    ) as unknown as TypeView;
+    const row = {
+      ...repoTask,
+      layout: { ...repoTask.layout, row: [{ field: 'repo' }, { field: 'branch' }] },
+    } as TypeView;
+    const col = { ...tareas, types: [{ ...row, name: 'item' }] };
+    const it = item({ id: 'ENT-1', fields: { repo: 'web', branch: 'feat/login' } });
+    expect(rowWords(it, col)).toEqual(['web', 'feat/login']);
+    expect(rowWords(item({ id: 'ENT-2' }), col)).toEqual([]);
+  });
+
   it('counts the rounds an item went back to an agent with your notes', () => {
     const feed = [
       moved(
