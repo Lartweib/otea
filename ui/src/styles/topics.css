@@ -202,14 +202,14 @@
   align-items: center;
   gap: 10px;
 }
-.tp-convert label {
+.tp-convert > label {
   display: flex;
   align-items: center;
   gap: 8px;
   font-size: 13px;
   color: var(--ink-2);
 }
-.tp-convert select {
+.tp-convert > label select {
   min-height: 32px;
   border-radius: 8px;
   border: 0;
@@ -221,6 +221,10 @@
 .tp-convert .action-error {
   flex-basis: 100%;
   margin: 0;
+}
+/* The fields the board needs to create the task, each on its own row as in the new-item form. */
+.tp-convert .fwrap {
+  flex-basis: 100%;
 }
 
 /* ───────── narrow: one page at a time ───────── */

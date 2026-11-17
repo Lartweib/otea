@@ -8,12 +8,26 @@ import {
   switchTopics,
 } from '../../api.ts';
 import { useApp } from '../../app/context.tsx';
+import { FieldControl } from '../../components/FieldControl.tsx';
 import { NoteText } from '../../components/NoteText.tsx';
 import { useRemote } from '../../hooks.ts';
 import { t } from '../../i18n/i18n.ts';
+import { type FormValues, payloadOf } from '../../intake.ts';
+import { intakeTypes } from '../../item-types.ts';
 import { AgentMark, Button, GhostButton, toast } from '../../kit/index.ts';
+import { fieldWord, valueWord } from '../../preset-words.ts';
 import { hashFor, topicsHash } from '../../selection.ts';
-import { lastAnswer, type Topic, type TopicTurn, topicGroups, topicOfRoute } from '../../topics.ts';
+import {
+  convertDraft,
+  convertFields,
+  convertReady,
+  lastAnswer,
+  type Topic,
+  type TopicTurn,
+  topicGroups,
+  topicOfRoute,
+} from '../../topics.ts';
+import type { TypeView } from '../../types.ts';
 import { noteTime } from '../detail/notes.ts';
 
 // Temas (#/topics): the side questions you asked an agent off the work, each a short conversation.
@@ -151,24 +165,41 @@ function NoteBox({ topic, onDone }: { topic: Topic; onDone: (topic: Topic) => vo
 
 function Convert({ topic, onDone }: { topic: Topic; onDone: (topic: Topic) => void }) {
   const app = useApp();
-  const boards = app.collections.filter((c) => (c.types?.length ?? 0) > 0);
+  const boards = app.collections.filter((c) => intakeTypes(c, undefined).length > 0);
   const [board, setBoard] = useState(boards[0]?.name ?? '');
+  const collection = app.collectionOf(board);
+  const type = collection ? intakeTypes(collection, undefined)[0] : undefined;
+  const [values, setValues] = useState<FormValues>({});
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string>();
   const [busy, setBusy] = useState(false);
+  // Each board asks for its own fields: another board starts them again, the title kept.
+  const start = (next: TypeView | undefined, title = topic.title) =>
+    setValues(next ? { ...convertDraft(next, topic), title } : {});
   if (!open)
     return (
-      <Button size="sm" onClick={() => setOpen(true)} disabled={boards.length === 0}>
+      <Button
+        size="sm"
+        onClick={() => {
+          start(type);
+          setOpen(true);
+        }}
+        disabled={boards.length === 0}
+      >
         {t('topics.convert')}
       </Button>
     );
+  const ready = type !== undefined && convertReady(type, values);
+  const choose = (name: string) => {
+    setBoard(name);
+    const next = app.collectionOf(name);
+    start(next ? intakeTypes(next, undefined)[0] : undefined, values.title ?? topic.title);
+  };
   const go = () => {
-    const collection = app.collectionOf(board);
-    const type = collection?.types?.[0];
-    if (!collection || !type || busy) return;
+    if (!collection || !type || !ready || busy) return;
     setBusy(true);
     setError(undefined);
-    createItem(collection.name, type.name, { title: topic.title })
+    createItem(collection.name, type.name, payloadOf(values))
       .then((item) => convertTopicTo(topic.id, item.id).then((next) => ({ item, next })))
       .then(
         ({ item, next }) => {
@@ -187,7 +218,7 @@ function Convert({ topic, onDone }: { topic: Topic; onDone: (topic: Topic) => vo
     <div className="tp-convert">
       <label>
         <span>{t('topics.convert.board')}</span>
-        <select value={board} onChange={(event) => setBoard(event.target.value)}>
+        <select value={board} onChange={(event) => choose(event.target.value)}>
           {boards.map(({ name }) => (
             <option key={name} value={name}>
               {name}
@@ -195,7 +226,25 @@ function Convert({ topic, onDone }: { topic: Topic; onDone: (topic: Topic) => vo
           ))}
         </select>
       </label>
-      <Button variant="primary" size="sm" onClick={go} disabled={busy || board === ''}>
+      {type
+        ? convertFields(type).map((field) => (
+            <div key={`${board}:${field.name}`} className="fwrap">
+              <FieldControl
+                id={`tp-convert-${topic.id}-${field.name}`}
+                field={field}
+                value={values[field.name] ?? ''}
+                disabled={busy}
+                onChange={(value) => setValues((was) => ({ ...was, [field.name]: value }))}
+                label={
+                  field.name === 'title' ? t('intake.titleField') : fieldWord(type, field.name)
+                }
+                word={(v) => valueWord(type, field.name, v)}
+                hinted={false}
+              />
+            </div>
+          ))
+        : null}
+      <Button variant="primary" size="sm" onClick={go} disabled={busy || !ready}>
         {t('topics.convert.go')}
       </Button>
       <GhostButton onClick={() => setOpen(false)}>{t('topics.convert.cancel')}</GhostButton>

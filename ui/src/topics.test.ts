@@ -1,12 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import {
   answeredTopics,
+  convertDraft,
+  convertFields,
+  convertReady,
   lastAnswer,
   pendingTopics,
   type Topic,
   topicGroups,
   topicOfRoute,
 } from './topics.ts';
+import type { FieldView, TypeView } from './types.ts';
 
 const topic = (id: string, state: Topic['state'], answers: string[] = []): Topic => ({
   id,
@@ -59,5 +63,39 @@ describe('topics on the page', () => {
     expect(lastAnswer(topic('TEM-1', 'open'))).toBeUndefined();
     expect(topicOfRoute('tem-2', [topic('TEM-2', 'open')])?.id).toBe('TEM-2');
     expect(topicOfRoute(undefined, [topic('TEM-2', 'open')])).toBeUndefined();
+  });
+});
+
+describe('turning a topic into a task', () => {
+  const field = (name: string, extra: Partial<FieldView> = {}): FieldView => ({
+    name,
+    module: 'text',
+    ...extra,
+  });
+  const change: TypeView = {
+    name: 'change',
+    label: 'Change',
+    initial: 'todo',
+    states: [],
+    layout: { header: [], evidence: [], body: [], side: [], row: [], phone: [], intake: [] },
+    fields: [
+      field('title', { required: 'create' }),
+      field('Qué quiero', { module: 'markdown', required: 'create' }),
+      field('Cómo lo valido', { required: 'complete' }),
+      field('kind', { required: 'create', default: 'feature' }),
+      field('notes'),
+    ],
+  };
+
+  it('asks for the title and every field creating the item needs that has no default', () => {
+    expect(convertFields(change).map(({ name }) => name)).toEqual(['title', 'Qué quiero']);
+  });
+
+  it('starts the title as the topic and holds the task until each such field is filled', () => {
+    const draft = convertDraft(change, topic('TEM-1', 'answered'));
+    expect(draft.title).toBe('TEM-1');
+    expect(convertReady(change, draft)).toBe(false);
+    expect(convertReady(change, { ...draft, 'Qué quiero': 'Que pase en Windows' })).toBe(true);
+    expect(convertReady(change, { ...draft, title: ' ', 'Qué quiero': 'x' })).toBe(false);
   });
 });
