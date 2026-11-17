@@ -53,6 +53,29 @@ describe('show of a repo task', () => {
     });
   });
 
+  it('says a checkout with a pre-push hook of its own needs the check added to it, not install', async () => {
+    repo.write('.git/hooks/pre-push', '#!/bin/sh\necho team\n');
+
+    const { out } = await otea('show', task);
+
+    expect(out).toContain(
+      `Git hook: ${repo.dir} has a pre-push hook of its own: add Otea's check to it (otea hook install --git prints the lines)`,
+    );
+    expect(out).not.toContain('run otea hook install --git there');
+    expect((await json('show', task)).gitHook).toEqual({
+      repo: basename(repo.dir),
+      installed: [],
+      missing: [],
+      foreign: [repo.dir],
+    });
+  });
+
+  it('counts a team hook that runs Otea’s check as installed', async () => {
+    repo.write('.git/hooks/pre-push', '#!/bin/sh\notea check --gate push --branch main\n');
+
+    expect((await otea('show', task)).out).toContain(`Git hook: installed in ${repo.dir}`);
+  });
+
   it('says the hook is installed once it is', async () => {
     await otea('hook', 'install', '--git');
 

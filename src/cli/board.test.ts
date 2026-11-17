@@ -226,6 +226,16 @@ describe('board add', () => {
     ]);
   });
 
+  it('makes the board in English with --lang en, in the project language otherwise', async () => {
+    const title = async (...argv: string[]) =>
+      JSON.parse((await person('board', 'add', ...argv, '--json')).out).record.live.definition
+        .title;
+
+    expect(await title('Research', '--template', 'research', '--lang', 'en')).toBe('Title');
+    expect(await title('Investigación', '--template', 'research')).toBe('Título');
+    expect((await person('board', 'add', 'Otro', '--lang', 'fr')).code).toBe(2);
+  });
+
   it('refuses a template that only comes as part of a set, as Studio never offers it', async () => {
     expect((await person('board', 'add', 'Sueltos', '--template', 'deliveries')).code).toBe(3);
   });

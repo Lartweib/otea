@@ -37,7 +37,7 @@ describe('creating an item on a board', () => {
     );
     expect(getItem(ctx, lacking.id).state).toBe('sfill');
     expect(createdTextOf(ctx, getItem(ctx, lacking.id))).toBe(
-      `Created ${lacking.id} in Completar: missing Pasos. Fill them, then otea handoff ${lacking.id}.`,
+      `Created ${lacking.id} in Completar: missing Pasos. Fill it, then otea handoff ${lacking.id}.`,
     );
   });
 

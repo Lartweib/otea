@@ -165,6 +165,27 @@ function inputFor(command: Command, values: Values, args: string[], io: Io, json
   };
 }
 
+// What some commands people look for are, in the commands there are.
+const INSTEAD: Readonly<Record<string, string>> = {
+  'repos rename': 'to rename a repo, otea repos add <path> --name <name>',
+};
+
+// A group's name alone (otea projects) or with a word it does not take names the group's
+// commands, so the group reads as there; anything else is plainly unknown.
+function unknownCommand(positionals: readonly string[]): string {
+  const [group = '', word] = positionals;
+  const subcommands = COMMANDS.flatMap(({ name }) => {
+    const [first, ...rest] = name.split(' ');
+    return first === group && rest.length > 0 ? [rest.join(' ')] : [];
+  });
+  if (subcommands.length === 0) return `Unknown command "${group}"`;
+  const list = subcommands.join(', ');
+  if (word === undefined)
+    return `"${group}" needs a command: ${list} (otea ${group} <command> --help)`;
+  const instead = INSTEAD[`${group} ${word}`];
+  return `Unknown command "${group} ${word}": otea ${group} takes ${list}${instead ? `; ${instead}` : ''}`;
+}
+
 async function dispatch(argv: string[], io: Io, json: boolean): Promise<number> {
   const { values, positionals } = parse(argv);
   if (positionals[0] === 'help' || (values.help && positionals.length === 0)) {
@@ -177,7 +198,7 @@ async function dispatch(argv: string[], io: Io, json: boolean): Promise<number> 
   }
   if (positionals.length === 0) throw new UsageError('Missing command');
   const command = findCommand(positionals);
-  if (!command) throw new UsageError(`Unknown command "${positionals[0]}"`);
+  if (!command) throw new UsageError(unknownCommand(positionals));
   if (values.help) {
     io.stdout.write(`${commandHelp(command)}\n`);
     return EXIT_CODES.ok;

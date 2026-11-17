@@ -57,7 +57,15 @@ export function gitHookFile(cwd: string): string {
 }
 
 export function installGitHook(cwd: string, otea: Launcher): HookChange {
-  const path = gitHookFile(cwd);
+  let path: string;
+  try {
+    path = gitHookFile(cwd);
+  } catch {
+    throw new CommandFailure(
+      'not_found',
+      `${cwd} is not in a git repository: a pre-push hook goes in one (run otea hook install --git in the repo)`,
+    );
+  }
   const content = preHook(otea);
   const current = existsSync(path) ? readFileSync(path, 'utf8') : undefined;
   if (current !== undefined && !current.includes(MARK)) {
@@ -83,28 +91,47 @@ function gitHookNote(path: string): string {
   return 'core.hooksPath puts it outside .git: do not commit it, the hook names the path to Otea on this machine';
 }
 
-// Whether the repo at cwd has Otea's pre-push hook, which makes its gates hard; false outside a repo.
-export function hasOteaGitHook(cwd: string): boolean {
+// The pre-push hook of the repo at cwd: Otea's (or one of its own that runs Otea's check, as the
+// lines hook install prints), another one, or none (none outside a repo too).
+type GitHookKind = 'otea' | 'foreign' | 'none';
+
+function gitHookKind(cwd: string): GitHookKind {
   try {
     const path = gitHookFile(cwd);
-    return existsSync(path) && readFileSync(path, 'utf8').includes(MARK);
+    if (!existsSync(path)) return 'none';
+    const content = readFileSync(path, 'utf8');
+    return content.includes(MARK) || content.includes('check --gate push') ? 'otea' : 'foreign';
   } catch {
-    return false;
+    return 'none';
   }
 }
 
+// Whether the repo at cwd has Otea's pre-push hook, which makes its gates hard; false outside a repo.
+export function hasOteaGitHook(cwd: string): boolean {
+  return gitHookKind(cwd) === 'otea';
+}
+
 // Where the repo a repo task names is checked out in the project's folders, and which of those
-// checkouts have Otea's pre-push hook: a push from one without it is never checked.
-export type GitHookStatus = { repo: string; installed: string[]; missing: string[] };
+// checkouts have Otea's pre-push hook: a push from one without it is never checked. `foreign`: the
+// checkouts with a pre-push hook of their own, which install leaves alone: Otea's check goes in it.
+export type GitHookStatus = {
+  repo: string;
+  installed: string[];
+  missing: string[];
+  foreign?: string[];
+};
 
 export function gitHookOf(project: Project, item: Item): GitHookStatus | undefined {
   const repo = repoOfItem(project, item);
   if (typeof repo !== 'string' || repo.trim() === '') return undefined;
-  const checkouts = checkoutsOf(project, repo);
+  const kinds = checkoutsOf(project, repo).map((path) => ({ path, kind: gitHookKind(path) }));
+  const of = (kind: GitHookKind) => kinds.filter((c) => c.kind === kind).map(({ path }) => path);
+  const foreign = of('foreign');
   return {
     repo,
-    installed: checkouts.filter((path) => hasOteaGitHook(path)),
-    missing: checkouts.filter((path) => !hasOteaGitHook(path)),
+    installed: of('otea'),
+    missing: of('none'),
+    ...(foreign.length > 0 ? { foreign } : {}),
   };
 }
 

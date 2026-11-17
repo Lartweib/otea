@@ -200,7 +200,10 @@ function named(cwd: string, value: string, env: Env): Found {
     );
   });
   if (!found) {
-    throw new OteaError('not_found', `No Otea project at ${path} (OTEA_PROJECT); run init first`);
+    throw new OteaError(
+      'not_found',
+      `No Otea project at ${path} (OTEA_PROJECT); run otea init first`,
+    );
   }
   return found;
 }
@@ -218,7 +221,7 @@ export function openProject(cwd: string, env: Env = process.env): Project {
       : '';
     throw new OteaError(
       'not_found',
-      `No Otea project at ${root} or above it; run init first${join}`,
+      `No Otea project at ${root} or above it; run otea init first${join}`,
       { kind: 'no_project', root },
     );
   }

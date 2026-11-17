@@ -71,6 +71,23 @@ describe('run', () => {
       expect(err).toContain('Unknown command "frobnicate"');
     });
 
+    it('names the commands of a group it was given alone or with a word it does not take', async () => {
+      const bare = await otea('projects');
+      expect(bare.code).toBe(2);
+      expect(bare.err).toContain(
+        '"projects" needs a command: list, current, add, relink, forget (otea projects <command> --help)',
+      );
+
+      const rename = await otea('projects', 'rename', 'x');
+      expect(rename.code).toBe(2);
+      expect(rename.err).toContain(
+        'Unknown command "projects rename": otea projects takes list, current, add, relink, forget',
+      );
+
+      const repos = await otea('repos', 'rename', 'api', 'web');
+      expect(repos.err).toContain('to rename a repo, otea repos add <path> --name <name>');
+    });
+
     it('rejects an unknown option with the command usage', async () => {
       const { code, err } = await otea('init', '--bogus');
 

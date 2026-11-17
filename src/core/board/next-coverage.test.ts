@@ -333,7 +333,7 @@ describe('refusals and answers', () => {
     );
     const missing = handoffCheck(def, 'sfill', { fields: {}, evidence: [] }).missing;
     expect(createdText(def, 'BUG-12', { step: 'sfill', phase: 'doing' }, missing)).toBe(
-      'Created BUG-12 in Completar: missing Pasos. Fill them, then otea handoff BUG-12.',
+      'Created BUG-12 in Completar: missing Pasos. Fill it, then otea handoff BUG-12.',
     );
     expect(createdText(cambios(), 'CH-1', { step: 'sanalyse', phase: 'doing' }, [])).toBe(
       'Created CH-1 in Analizar.',

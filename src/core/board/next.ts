@@ -787,7 +787,7 @@ export function createdText(
     return `Created ${id} in ${name}: it already had everything ${first.name} asks for.`;
   const lacking = missing.filter(({ reason }) => reason !== 'open' && reason !== undefined);
   if (first?.skipWhenReady && lacking.length > 0)
-    return `Created ${id} in ${name}: missing ${and(lacking.map(({ name: part }) => part))}. Fill them, then otea handoff ${id}.`;
+    return `Created ${id} in ${name}: missing ${and(lacking.map(({ name: part }) => part))}. Fill ${lacking.length === 1 ? 'it' : 'them'}, then otea handoff ${id}.`;
   return `Created ${id} in ${name}.`;
 }
 
