@@ -714,7 +714,19 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
                             sendOn: (text, on) => postNote(text, on),
                           },
                         }
-                      : {}),
+                      : reviewing
+                        ? {
+                            // While you review: a comment from the reader goes with a send-back,
+                            // or stays a note of this round if you approve (the desk's rule).
+                            review: {
+                              says: reviewComments.length
+                                ? t('notes.review.notice', { count: reviewComments.length })
+                                : t('notes.review.phone'),
+                              sendOn: (text: string, on: { evidence: number } & ReaderPick) =>
+                                postNote(text, on),
+                            },
+                          }
+                        : {}),
                   }
                 : undefined
             }

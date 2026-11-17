@@ -179,8 +179,18 @@ function Exchange({
         </div>
       ) : (
         <div className="nt-msg wait">
-          <p>{who ? t('notes.waiting', { agent: who }) : t('notes.waitingAny')}</p>
-          <small>{t('notes.waitingSmall')}</small>
+          {note.review ? (
+            // A comment left while you reviewed: nobody answers it unless you send the step back.
+            <>
+              <p>{t('notes.review.waiting')}</p>
+              <small>{t('notes.review.phone')}</small>
+            </>
+          ) : (
+            <>
+              <p>{who ? t('notes.waiting', { agent: who }) : t('notes.waitingAny')}</p>
+              <small>{t('notes.waitingSmall')}</small>
+            </>
+          )}
         </div>
       )}
     </div>

@@ -104,6 +104,24 @@ describe('the thread of notes', () => {
     expect(html).toContain('claude-d todavía no contestó.');
   });
 
+  it('says a comment from your review goes with a send-back, not that the agent owes an answer', () => {
+    setLanguage('es');
+    const comment: ItemNote = {
+      ...base,
+      note: 3,
+      text: 'La sombra parpadea.',
+      at: ago(5),
+      delivered: { done: 1, of: 1 },
+      review: { for: { step: 'sdo', round: 3 } },
+    };
+    const html = renderToStaticMarkup(
+      <Thread notes={[comment]} evidence={[gif]} now={NOW} agent="claude-d" />,
+    );
+    expect(html).toContain('Comentario de tu revisión.');
+    expect(html).toContain('va con la devolución');
+    expect(html).not.toContain('todavía no contestó');
+  });
+
   it('cites the piece a note is on with its thumbnail and part', () => {
     setLanguage('es');
     const html = renderToStaticMarkup(

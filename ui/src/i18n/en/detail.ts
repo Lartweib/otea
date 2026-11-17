@@ -256,6 +256,8 @@ export const detail = {
   'notes.pick.hintTouch': 'Tap a line or a diagram node to anchor the note to it.',
   'notes.pick.inLine': 'On a line…',
   'notes.pick.inNode': 'On a node…',
+  'notes.review.waiting': 'A comment from your review.',
+  'notes.review.phone': 'it goes with a send-back; if you approve, it stays a note of this round',
   'notes.review.saved': 'Comment kept on “{title}”: it goes with a send-back.',
   'notes.review.notice': {
     one: '{count} comment goes with a send-back; if you approve, it stays a note of this round.',
