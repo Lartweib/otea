@@ -57,6 +57,23 @@ export function pairDevice(
   return { device: toDevice(row), token };
 }
 
+// Pairs a device that is paired already once more: it keeps its id (and so its notifications),
+// takes the new name and a new token, and the old token opens nothing from now on.
+export function repairDevice(
+  db: DatabaseSync,
+  id: string,
+  name: string,
+  now = new Date(),
+): { device: Device; token: string } {
+  const token = randomBytes(32).toString('base64url');
+  db.prepare(
+    'UPDATE devices SET name = ?, token_hash = ?, paired_at = ?, last_seen_at = ? WHERE id = ?',
+  ).run(deviceName(name), hashToken(token), now.toISOString(), now.toISOString(), id);
+  const row = db.prepare('SELECT * FROM devices WHERE id = ?').get(id) as DeviceRow | undefined;
+  if (!row) throw new OteaError('not_found', `No paired device ${id}`);
+  return { device: toDevice(row), token };
+}
+
 export function listDevices(db: DatabaseSync): Device[] {
   const rows = db.prepare('SELECT * FROM devices ORDER BY paired_at, id').all() as DeviceRow[];
   return rows.map(toDevice);

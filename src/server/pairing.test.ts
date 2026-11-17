@@ -44,8 +44,8 @@ describe('LAN access', () => {
   const deviceCookieOf = (response: Response) =>
     /otea_device_4400=[^;]+/.exec(response.headers.get('set-cookie') ?? '')?.[0];
   const issue = () => formatCode(server.phone.codes.issue().code);
-  const pairPhone = async (code = issue(), name = 'Pixel · Chrome') => {
-    const response = await call('/api/pair', { method: 'POST', body: { code, name } });
+  const pairPhone = async (code = issue(), name = 'Pixel · Chrome', cookie?: string) => {
+    const response = await call('/api/pair', { method: 'POST', body: { code, name }, cookie });
     return { response, cookie: deviceCookieOf(response) };
   };
 
@@ -184,12 +184,14 @@ describe('LAN access', () => {
   });
 
   describe('pairing', () => {
+    // Lax, not Strict: the phone's home-screen shortcut, a notification and a link from another app
+    // open Otea as a navigation from outside it, which a Strict cookie is never sent with.
     it('trades the code for a device token kept only as a hash', async () => {
       const { response, cookie } = await pairPhone();
 
       expect(response.status).toBe(201);
       expect(response.headers.get('set-cookie')).toMatch(
-        /^otea_device_4400=[A-Za-z0-9_-]{43}; Max-Age=34560000; Path=\/; HttpOnly; SameSite=Strict$/,
+        /^otea_device_4400=[A-Za-z0-9_-]{43}; Max-Age=34560000; Path=\/; HttpOnly; SameSite=Lax$/,
       );
       expect(await response.json()).toMatchObject({ device: { name: 'Pixel · Chrome' } });
       const token = cookie?.split('=')[1] ?? '';
@@ -235,6 +237,29 @@ describe('LAN access', () => {
       expect((await call('/api/lan/code', { method: 'POST', body: {}, cookie })).status).toBe(403);
       const revoke = await call(`/api/devices/${id}/revoke`, { method: 'POST', body: {}, cookie });
       expect(revoke.status).toBe(403);
+    });
+
+    it('pairs a phone that is already paired again as the same device, not one more', async () => {
+      const first = await pairPhone();
+      const [device] = listDevices(project.db);
+
+      const again = await pairPhone(issue(), 'Pixel · Chrome (2)', first.cookie);
+
+      expect(again.response.status).toBe(201);
+      expect(listDevices(project.db)).toEqual([
+        expect.objectContaining({ id: device?.id, name: 'Pixel · Chrome (2)' }),
+      ]);
+      expect((await call('/api/items', { cookie: again.cookie })).status).toBe(200);
+      expect((await call('/api/items', { cookie: first.cookie })).status).toBe(401);
+    });
+
+    it('adds a device when the phone pairing carries no token of this project', async () => {
+      await pairPhone();
+      clock += 1000;
+
+      await pairPhone(issue(), 'Tablet', 'otea_device_4400=not-a-device');
+
+      expect(listDevices(project.db).map((d) => d.name)).toEqual(['Pixel · Chrome', 'Tablet']);
     });
 
     it('takes the code without the dash or in lower case', async () => {
