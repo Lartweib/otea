@@ -260,9 +260,7 @@ describe('agent presence', () => {
     it('refuses a name another open MCP session works under, telling how to take another', () => {
       hearAgent(ctx.db, { ...mcp, session: 101 }, at(T0));
 
-      expect(() =>
-        claimName(ctx.db, 'claude', 202, alive([101, 202]), at(T1), () => false),
-      ).toThrow(
+      expect(() => claimName(ctx.db, 'claude', 202, alive([101, 202]), at(T1))).toThrow(
         'Another session works as claude right now: give this one its own name, passing as "claude-2" (or another name) on every call',
       );
       expect(() => claimName(ctx.db, 'claude', 101, alive([101, 202]), at(T1))).not.toThrow();
@@ -276,24 +274,23 @@ describe('agent presence', () => {
     });
 
     it('gives the name to a new server the same harness started, and refuses the old one then', () => {
-      hearAgent(ctx.db, { ...mcp, session: 101 }, at(T0));
-      const siblings = () => true;
+      hearAgent(ctx.db, { ...mcp, session: 101, launcher: 9 }, at(T0));
 
       expect(() =>
-        claimName(ctx.db, 'claude', 202, alive([101, 202]), at(T1), siblings, true),
+        claimName(ctx.db, 'claude', 202, alive([101, 202]), at(T1), 9, true),
       ).not.toThrow();
-      hearAgent(ctx.db, { ...mcp, session: 202 }, at(T1));
-      expect(() =>
-        claimName(ctx.db, 'claude', 101, alive([101, 202]), at(T1), siblings, false),
-      ).toThrow('Another session works as claude right now');
+      hearAgent(ctx.db, { ...mcp, session: 202, launcher: 9 }, at(T1));
+      expect(() => claimName(ctx.db, 'claude', 101, alive([101, 202]), at(T1), 9, false)).toThrow(
+        'Another session works as claude right now',
+      );
     });
 
     it('never gives the name to a new server another harness started', () => {
-      hearAgent(ctx.db, { ...mcp, session: 101 }, at(T0));
+      hearAgent(ctx.db, { ...mcp, session: 101, launcher: 9 }, at(T0));
 
-      expect(() =>
-        claimName(ctx.db, 'claude', 202, alive([101, 202]), at(T1), () => false, true),
-      ).toThrow('Another session works as claude right now');
+      expect(() => claimName(ctx.db, 'claude', 202, alive([101, 202]), at(T1), 10, true)).toThrow(
+        'Another session works as claude right now',
+      );
     });
 
     it('leaves a name a command-line wait listens under to the MCP session too', () => {

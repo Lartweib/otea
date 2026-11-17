@@ -1944,12 +1944,13 @@ function heardBy(
 ) {
   try {
     withProject(cwd, (project) => {
-      claimName(project.db, agent, process.pid, undefined, undefined, undefined, fresh);
+      claimName(project.db, agent, process.pid, undefined, undefined, process.ppid, fresh);
       hearAgent(project.db, {
         agent,
         channel: 'mcp',
         harness,
         session: process.pid,
+        launcher: process.ppid,
         ...(newSession ? { newSession } : {}),
       });
     });
@@ -1967,7 +1968,7 @@ function heardBy(
 function claimedBy(cwd: string, agent: string, fresh: boolean): void {
   try {
     withProject(cwd, (project) =>
-      claimName(project.db, agent, process.pid, undefined, undefined, undefined, fresh),
+      claimName(project.db, agent, process.pid, undefined, undefined, process.ppid, fresh),
     );
   } catch (error) {
     if (error instanceof OteaError && error.code === 'name_in_use') throw error;

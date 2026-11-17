@@ -375,6 +375,11 @@ export const MIGRATIONS = [
     set_at TEXT NOT NULL
   );
   `,
+  // The harness process that started the MCP server an agent was last heard from: a new server the
+  // same harness started (it restarted its server) takes the agent's name back (claimName).
+  `
+  ALTER TABLE agents ADD COLUMN listening_harness INTEGER;
+  `,
 ];
 
 function userVersion(db: DatabaseSync): number {

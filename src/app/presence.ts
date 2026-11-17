@@ -1,5 +1,3 @@
-import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
 import type { DatabaseSync } from 'node:sqlite';
 import type { AgentChannel } from '../core/authority.ts';
 import { OteaError } from '../core/errors.ts';
@@ -35,6 +33,8 @@ export type Sighting = {
   newSession?: boolean;
   // The MCP server it is heard through (its process id), which keeps its name to itself.
   session?: number;
+  // The harness process that started that server (the server's parent process id).
+  launcher?: number;
 };
 
 // Seen again after this long away, an agent connects anew (its connectedAt starts over).
@@ -113,7 +113,7 @@ export function seeAgent(db: DatabaseSync, sighting: Sighting, now: Clock = syst
 // Hears an agent that listens now: sees it, and notes it listening.
 export function hearAgent(db: DatabaseSync, sighting: Sighting, now: Clock = systemClock): void {
   seeAgent(db, sighting, now);
-  markListening(db, sighting.agent, now(), sighting.session);
+  markListening(db, sighting.agent, now(), sighting.session, sighting.launcher);
 }
 
 // Whether a process still runs on this computer, where every MCP server of the project runs.
@@ -126,76 +126,26 @@ export function processAlive(pid: number): boolean {
   }
 }
 
-// How long reading a process's parent may take: Windows asks WMI, which a busy machine answers slowly.
-// It is read only when a name is contested.
-const PARENT_LOOKUP_MS = 20_000;
-
-// The process that started a process, read from the system; undefined when it can't be read.
-export function parentOf(pid: number): number | undefined {
-  try {
-    if (process.platform === 'linux') {
-      const stat = readFileSync(`/proc/${pid}/stat`, 'utf8');
-      const parent = Number(stat.slice(stat.lastIndexOf(')') + 2).split(' ')[1]);
-      return Number.isInteger(parent) && parent > 0 ? parent : undefined;
-    }
-    const out =
-      process.platform === 'win32'
-        ? execFileSync(
-            'powershell.exe',
-            [
-              '-NoProfile',
-              '-Command',
-              `(Get-CimInstance Win32_Process -Filter "ProcessId=${pid}").ParentProcessId`,
-            ],
-            { encoding: 'utf8', timeout: PARENT_LOOKUP_MS, windowsHide: true },
-          )
-        : execFileSync('ps', ['-o', 'ppid=', '-p', String(pid)], {
-            encoding: 'utf8',
-            timeout: PARENT_LOOKUP_MS,
-          });
-    const parent = Number(out.trim());
-    return Number.isInteger(parent) && parent > 0 ? parent : undefined;
-  } catch {
-    return undefined;
-  }
-}
-
-// Whether an open MCP session (its server's process id) was started by the same harness process as
-// this one: the harness restarted its server, so it is the same agent coming back.
-export function sameHarness(old: number): boolean {
-  const known = siblings.get(old);
-  if (known !== undefined) return known;
-  const parent = parentOf(old);
-  if (parent === undefined) return false;
-  const same = parent === process.ppid;
-  siblings.set(old, same);
-  return same;
-}
-
-// What sameHarness found for each server asked about: a process's parent never changes, and reading
-// it can take seconds on Windows.
-const siblings = new Map<number, boolean>();
-
 // An MCP session (`session`, its server's process id) takes an agent name only while no other open
 // session works under it: two sessions under one name would take one item twice and hand off each
 // other's work. A session that closed or went quiet leaves the name free; a command-line wait
-// shares it with its own agent. A server the same harness process started anew (`fresh`: its first
-// call under the name) takes the name from its sibling: the harness restarted it and no longer talks
-// to the old one, which is refused from then on.
+// shares it with its own agent. A server the same harness process (`harness`, its parent's id) started
+// anew (`fresh`: its first call under the name) takes the name from its sibling: the harness
+// restarted it and no longer talks to the old one, which is refused from then on.
 export function claimName(
   db: DatabaseSync,
   agent: string,
   session: number,
   alive: (pid: number) => boolean = processAlive,
   now: Clock = systemClock,
-  sameOwner: (old: number) => boolean = sameHarness,
+  harness?: number,
   fresh = false,
 ): void {
   const heard = selectListener(db, agent);
   if (!heard?.session || heard.session === session || !heard.at) return;
   if (Date.parse(now()) - Date.parse(heard.at) >= LISTEN_WINDOW_MS) return;
   if (!alive(heard.session)) return;
-  if (fresh && sameOwner(heard.session)) return;
+  if (fresh && harness !== undefined && heard.harness === harness) return;
   throw new OteaError(
     'name_in_use',
     `Another session works as ${agent} right now: give this one its own name, passing as "${agent}-2" (or another name) on every call`,

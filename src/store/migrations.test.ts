@@ -47,14 +47,14 @@ describe('migrate', () => {
         'item_priority',
       ]),
     );
-    expect(userVersion(db)).toBe(26);
+    expect(userVersion(db)).toBe(27);
   });
 
   it('is idempotent', () => {
     migrate(db);
     migrate(db);
 
-    expect(userVersion(db)).toBe(26);
+    expect(userVersion(db)).toBe(27);
   });
 
   describe('from version 1', () => {
