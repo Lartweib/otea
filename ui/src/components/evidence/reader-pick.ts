@@ -31,6 +31,18 @@ export function pickableOn(
   return null;
 }
 
+// What the note box says a click does on the file shown: only what the file takes.
+export function pickHint(
+  evidence: Pick<Evidence, 'kind' | 'filename' | 'contentType'>,
+  phone: boolean,
+): string {
+  const on = pickableOn(evidence);
+  if (on === 'spot') return t(phone ? 'notes.pick.hintImageTouch' : 'notes.pick.hintImage');
+  if (on === 'line') return t(phone ? 'notes.pick.hintLineTouch' : 'notes.pick.hintLine');
+  if (on === 'node') return t(phone ? 'notes.pick.hintNodeTouch' : 'notes.pick.hintNode');
+  return t('notes.pick.hintFile');
+}
+
 // What a click read from the viewer: a line's numbers (a diff has the old and the new), its text
 // and the sign drawn before it; or a node's label.
 export type PickSource = {
@@ -155,4 +167,13 @@ function pickAtLine(lines: HTMLElement[], pick: ReaderPick): HTMLElement | undef
     }
     return pick.quote !== undefined && read.quote === pick.quote;
   });
+}
+
+// Brings a picked line or node into view up or down only: a diff's long line would otherwise scroll
+// its well sideways and cut the +/− signs off. Every box around it keeps its sideways scroll.
+export function revealUpright(el: HTMLElement): void {
+  const kept: [HTMLElement, number][] = [];
+  for (let at = el.parentElement; at; at = at.parentElement) kept.push([at, at.scrollLeft]);
+  el.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
+  for (const [box, left] of kept) if (box.scrollLeft !== left) box.scrollLeft = left;
 }

@@ -13,8 +13,10 @@ import {
   pickAnchor,
   pickAt,
   pickableOn,
+  pickHint,
   pickWords,
   type ReaderPick,
+  revealUpright,
   spotOf,
 } from './reader-pick.ts';
 import { ReportOr } from './TestReportView.tsx';
@@ -236,7 +238,7 @@ export function EvidenceReader({
       const el = findPick(root, picked);
       if (el) {
         el.setAttribute('data-picked', 'true');
-        el.scrollIntoView?.({ block: 'nearest' });
+        revealUpright(el);
       } else if (tries++ < 90) frame = requestAnimationFrame(light);
     };
     light();
@@ -340,11 +342,7 @@ export function EvidenceReader({
         <div className="ev-reader-note">
           <div className="ev-reader-on">
             <b>{t('notes.pick.on', { what: pickWords(picked) })}</b>
-            <span>
-              {spotting
-                ? t(phone ? 'notes.pick.hintImageTouch' : 'notes.pick.hintImage')
-                : t(phone ? 'notes.pick.hintTouch' : 'notes.pick.hint')}
-            </span>
+            <span>{pickHint(shown, !!phone)}</span>
           </div>
           <textarea
             rows={2}
