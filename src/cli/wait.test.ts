@@ -4,6 +4,8 @@ import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { listAgents, processAlive } from '../app/presence.ts';
 import { openProject } from '../app/project.ts';
+import { publishAs } from '../app/testing.ts';
+import { errores } from '../core/board/testing.ts';
 import {
   type Cli,
   cliAt,
@@ -100,6 +102,25 @@ describe('wait', () => {
 
     expect(await waiting.done).toBe(0);
     expect(waiting.out()).toMatch(/^BUGS-1 {2}Hacerlo/);
+  });
+
+  it('keeps waiting while the person publishes a board, and wakes for an item on it', async () => {
+    const waiting = startCli(repo.dir, 'wait', '--turn', 'human');
+    expect(await settled(waiting)).toBe(false);
+
+    // Studio publishes from the server's own process; the wait only sees the new board's rows.
+    const project = openProject(repo.dir);
+    try {
+      publishAs(project, errores(), 'berr');
+    } finally {
+      project.db.close();
+    }
+    expect(await settled(waiting)).toBe(false);
+    await otea('create', '--collection', 'Errores', '--title', 'Faro', '--field', 'Pasos=abrir');
+
+    expect(await waiting.done).toBe(0);
+    expect(waiting.err()).toBe('');
+    expect(waiting.out()).toBe('BUG-1  Triar  human  Faro\n');
   });
 
   describe('--unclaimed', () => {
