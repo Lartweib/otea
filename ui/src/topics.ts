@@ -66,3 +66,17 @@ export function convertDraft(type: TypeView, topic: Pick<Topic, 'title'>): FormV
 export function convertReady(type: TypeView, values: FormValues): boolean {
   return canSubmit(type, values);
 }
+
+// The board the convert form starts on: that of the item the topic is linked to, when it is one the
+// form offers; none otherwise, for the person to pick (never simply the first board).
+export function convertBoard(
+  topic: Pick<Topic, 'links'>,
+  boards: readonly { name: string }[],
+  items: readonly { id: string; collection: string }[],
+): string {
+  for (const id of topic.links) {
+    const board = items.find((item) => item.id === id)?.collection;
+    if (board !== undefined && boards.some(({ name }) => name === board)) return board;
+  }
+  return '';
+}

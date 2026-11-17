@@ -122,6 +122,34 @@ describe('otea topic', () => {
     expect((await otea('board')).out).toContain('otea topic add');
   });
 
+  it('names in otea next the topics waiting for the agent, and the topics rule while they are on', async () => {
+    const { repo, otea } = fresh();
+    const person = cliAt(repo.dir);
+    await otea(
+      'profile',
+      '--model',
+      'claude-opus-5-5',
+      '--effort',
+      'high',
+      '--harness',
+      'claude-code',
+    );
+    const before = await otea('next');
+    expect(before.err).toBe('');
+    expect(before.out).not.toContain('otea topic');
+
+    // Turned on mid-session: the agent never read rule 13 in its guide.
+    await person('topic', 'on');
+    expect((await otea('next')).out).toContain('otea topic add');
+
+    await otea('topic', 'add', 'q');
+    await otea('topic', 'answer', 'TEM-1', '--summary', 's');
+    await person('topic', 'note', 'TEM-1', '¿Y en Linux?');
+    const next = (await otea('next')).out;
+    expect(next).toContain('TEM-1');
+    expect(next).toContain('otea topic answer TEM-1');
+  });
+
   it('refuses --from for a topic that does not exist', async () => {
     const { repo, otea } = fresh();
     await cliAt(repo.dir)('topic', 'on');

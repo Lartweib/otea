@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   closeTopicNow,
   convertTopicTo,
@@ -18,6 +18,7 @@ import { AgentMark, Button, GhostButton, toast } from '../../kit/index.ts';
 import { fieldWord, valueWord } from '../../preset-words.ts';
 import { hashFor, topicsHash } from '../../selection.ts';
 import {
+  convertBoard,
   convertDraft,
   convertFields,
   convertReady,
@@ -166,28 +167,42 @@ function NoteBox({ topic, onDone }: { topic: Topic; onDone: (topic: Topic) => vo
 function Convert({ topic, onDone }: { topic: Topic; onDone: (topic: Topic) => void }) {
   const app = useApp();
   const boards = app.collections.filter((c) => intakeTypes(c, undefined).length > 0);
-  const [board, setBoard] = useState(boards[0]?.name ?? '');
+  const [board, setBoard] = useState(() => convertBoard(topic, boards, app.all));
   const collection = app.collectionOf(board);
   const type = collection ? intakeTypes(collection, undefined)[0] : undefined;
   const [values, setValues] = useState<FormValues>({});
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string>();
   const [busy, setBusy] = useState(false);
+  // Opening the form puts focus on its board; Cancelar hands it back to the button that opened it.
+  const box = useRef<HTMLDivElement>(null);
+  const moved = useRef(false);
+  useEffect(() => {
+    if (!moved.current) return;
+    moved.current = false;
+    box.current?.querySelector<HTMLElement>(open ? 'select' : 'button')?.focus();
+  }, [open]);
+  const toggle = (next: boolean) => {
+    moved.current = true;
+    setOpen(next);
+  };
   // Each board asks for its own fields: another board starts them again, the title kept.
   const start = (next: TypeView | undefined, title = topic.title) =>
     setValues(next ? { ...convertDraft(next, topic), title } : {});
   if (!open)
     return (
-      <Button
-        size="sm"
-        onClick={() => {
-          start(type);
-          setOpen(true);
-        }}
-        disabled={boards.length === 0}
-      >
-        {t('topics.convert')}
-      </Button>
+      <div className="tp-cv" ref={box}>
+        <Button
+          size="sm"
+          onClick={() => {
+            start(type);
+            toggle(true);
+          }}
+          disabled={boards.length === 0}
+        >
+          {t('topics.convert')}
+        </Button>
+      </div>
     );
   const ready = type !== undefined && convertReady(type, values);
   const choose = (name: string) => {
@@ -215,10 +230,15 @@ function Convert({ topic, onDone }: { topic: Topic; onDone: (topic: Topic) => vo
       );
   };
   return (
-    <div className="tp-convert">
+    <div className="tp-convert" ref={box}>
       <label>
         <span>{t('topics.convert.board')}</span>
         <select value={board} onChange={(event) => choose(event.target.value)}>
+          {board === '' ? (
+            <option value="" disabled>
+              {t('topics.convert.pick')}
+            </option>
+          ) : null}
           {boards.map(({ name }) => (
             <option key={name} value={name}>
               {name}
@@ -247,7 +267,7 @@ function Convert({ topic, onDone }: { topic: Topic; onDone: (topic: Topic) => vo
       <Button variant="primary" size="sm" onClick={go} disabled={busy || !ready}>
         {t('topics.convert.go')}
       </Button>
-      <GhostButton onClick={() => setOpen(false)}>{t('topics.convert.cancel')}</GhostButton>
+      <GhostButton onClick={() => toggle(false)}>{t('topics.convert.cancel')}</GhostButton>
       {error ? (
         <p className="action-error" role="alert">
           {t('topics.convert.failed', { message: error })}

@@ -478,6 +478,7 @@ export const surfaces = {
   'topics.close': 'Cerrar el tema',
   'topics.convert': 'Convertir en tarea',
   'topics.convert.board': 'Tablero',
+  'topics.convert.pick': 'Elige un tablero',
   'topics.convert.go': 'Crear la tarea',
   'topics.convert.cancel': 'Cancelar',
   'topics.convert.failed':

@@ -111,6 +111,8 @@ import {
   requireTopic,
   requireTopicsOn,
   setTopicsOn,
+  topicsAwaiting,
+  topicsAwaitingText,
   topicsListText,
   topicsOn,
   topicText,
@@ -118,7 +120,7 @@ import {
 } from '../app/topics.ts';
 import { validateProject } from '../app/validate.ts';
 import { watch } from '../app/watch.ts';
-import { agentGuideFor } from '../core/agent-guide.ts';
+import { agentGuideFor, TOPICS_RULE } from '../core/agent-guide.ts';
 import { agentPrompt, isPromptKind, PROMPT_KINDS, type PromptKind } from '../core/agent-prompts.ts';
 import { fieldsByName, stateName } from '../core/board/reading.ts';
 import type { Lang } from '../core/board/template-words.ts';
@@ -1043,6 +1045,16 @@ const move: Command = {
   },
 };
 
+// While topics are on, next names the topics waiting for the agent's answer (a note otea wait woke
+// it for is still there once it runs next) and the topics rule, which an agent whose session began
+// before the person turned topics on never read in its guide.
+function topicLines(project: Project, agent: string): string[] {
+  if (!topicsOn(project)) return [];
+  const awaiting = topicsAwaitingText(topicsAwaiting(project, agent));
+  const rule = `Topics are on. ${TOPICS_RULE.replace(/^\d+\. /, '')}`;
+  return awaiting === undefined ? [rule] : [awaiting, rule];
+}
+
 const next: Command = {
   name: 'next',
   summary:
@@ -1059,7 +1071,11 @@ const next: Command = {
         ...(collection === undefined ? {} : { collection }),
         ...(claim ? { claim } : {}),
       });
-      const text = `${answer.text}\n\n${profileReminder(profile, actor.name, channel)}`;
+      const text = [
+        answer.text,
+        ...topicLines(project, actor.name),
+        profileReminder(profile, actor.name, channel),
+      ].join('\n\n');
       return { data: { ...answer, text, profile: profileView(profile) }, text };
     });
   },
