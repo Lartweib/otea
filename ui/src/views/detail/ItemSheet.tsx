@@ -659,6 +659,8 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
             route={route}
             checks={
               <>
+                {/* Its branch and where it stands: «fusionada» once merged, as on the desk (WF-3). */}
+                <BranchLine strip={strip} />
                 {hand.length ? (
                   <HandChecklist item={item} rows={hand} canWrite={app.session.canWrite} />
                 ) : null}
