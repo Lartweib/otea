@@ -331,6 +331,7 @@ const IMPLEMENTATION: Template = {
   ],
   list: { as: 'list', group: 'step' },
   row: ['size'],
+  analysis: { effort: 'size' },
   layout: {
     rounds: 'main',
     todo: 'main',
@@ -404,6 +405,21 @@ export const CHANGES: Template = {
       initial: 'other',
     },
     {
+      key: 'impact',
+      kind: 'level',
+      name: w('Impact', 'Impacto'),
+      hint: w('how much it matters to the people who use it', 'cuánto le importa a quien lo usa'),
+    },
+    {
+      key: 'effort',
+      kind: 'level',
+      name: w('Effort', 'Esfuerzo'),
+      hint: w(
+        'how much work it looks like; an agent estimates it, you correct it',
+        'cuánto trabajo parece; lo estima un agente y tú lo corriges',
+      ),
+    },
+    {
       key: 'branch',
       kind: 'branch',
       name: w('Branch', 'Rama'),
@@ -458,6 +474,7 @@ export const CHANGES: Template = {
     ['want', true],
     ['check', false],
     ['kind', false],
+    ['impact', false],
   ],
   steps: [
     {
@@ -468,6 +485,7 @@ export const CHANGES: Template = {
       hand: [
         ['want', 'always'],
         ['check', 'always'],
+        ['effort', 'no'],
       ],
       skip: true,
       take: w(
@@ -475,8 +493,8 @@ export const CHANGES: Template = {
         'Lee @{want}. Si no alcanza para saber qué hacer o cómo comprobarlo, pregúntale a la persona con otea ask; no adivines.',
       ),
       before: w(
-        'Write @{check} as a short list of things the person can check, and pick the @{kind}.',
-        'Escribe @{check} como una lista corta de cosas que la persona puede comprobar, y elige el @{kind}.',
+        'Write @{check} as a short list of things the person can check, pick the @{kind} and estimate the @{effort}.',
+        'Escribe @{check} como una lista corta de cosas que la persona puede comprobar, elige el @{kind} y estima el @{effort}.',
       ),
     },
     {
@@ -519,7 +537,7 @@ export const CHANGES: Template = {
       ),
     },
   ],
-  anytime: ['kind', 'video'],
+  anytime: ['kind', 'video', 'impact', 'effort'],
   motives: [
     ['rejected', w('Rejected', 'Rechazado')],
     ['duplicate', w('Duplicate', 'Duplicado')],
@@ -536,9 +554,12 @@ export const CHANGES: Template = {
     video: 'main',
     tests: 'main',
     kind: 'side',
+    impact: 'side',
+    effort: 'side',
     branch: 'side',
     commit: 'side',
   },
+  analysis: { effort: 'effort', impact: 'impact' },
   samples: {
     en: [
       'A more visible button',
