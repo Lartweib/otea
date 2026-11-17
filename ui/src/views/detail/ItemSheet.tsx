@@ -535,6 +535,7 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
     node: (
       <ProofChecklist
         list={list}
+        short={(block?.missing ?? []).some(({ ref }) => ref === list.part)}
         onRead={
           canRead
             ? (id: number, line?: number) => onRead(id, line ? { line } : undefined)

@@ -10,16 +10,20 @@ import {
 
 // A checklist that asks for proof: each point with its tick and, at its right, its proof as a chip
 // (the file, the log line, the passing test) that opens the reader on it; a point ticked without
-// proof shows a dashed gap. The footer counts what is ticked and proved.
+// proof shows a dashed gap. The footer counts what is ticked and proved and, while the step being
+// done still needs the checklist (`short`, as the engine finds it), how many points are left. An
+// optional checklist is never shown as lacking (DR3-10).
 export function ProofChecklist({
   list,
+  short = false,
   onRead,
 }: {
   list: ProofChecklistView;
+  short?: boolean;
   onRead?: ((evidence: number, line?: number) => void) | undefined;
 }) {
   const count = proofCount(list);
-  const missing = count.total - count.proved;
+  const missing = short ? count.total - count.proved : 0;
   return (
     <section className="isec proof-list" data-key={`isec:proof:${list.part}`}>
       <div className="ch">
@@ -28,7 +32,7 @@ export function ProofChecklist({
       </div>
       <ul className="proof-points">
         {list.points.map((point) => (
-          <Point key={point.id} point={point} onRead={onRead} />
+          <Point key={point.id} point={point} short={short} onRead={onRead} />
         ))}
       </ul>
       <p className={`proof-foot${missing ? ' short' : ''}`}>
@@ -37,7 +41,7 @@ export function ProofChecklist({
           proved: count.proved,
           total: count.total,
         })}
-        {missing ? ` · ${t('proof.missing', { n: missing })}` : ''}
+        {missing ? ` · ${t('proof.missing', { count: missing })}` : ''}
       </p>
     </section>
   );
@@ -45,9 +49,11 @@ export function ProofChecklist({
 
 function Point({
   point,
+  short,
   onRead,
 }: {
   point: ProofPoint;
+  short: boolean;
   onRead?: ((evidence: number, line?: number) => void) | undefined;
 }) {
   const state = pointState(point);
@@ -82,7 +88,11 @@ function Point({
         </button>
       ) : (
         <span className="proof-gap">
-          {state === 'unproved' ? t('proof.none') : t('proof.untickedShort')}
+          {state === 'unproved'
+            ? t('proof.none')
+            : short
+              ? t('proof.untickedShort')
+              : t('proof.unticked')}
         </span>
       )}
     </li>
