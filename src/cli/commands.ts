@@ -808,8 +808,9 @@ const show: Command = {
       };
       const { layout } = typeOfItem(project, shown);
       const named = liveBoardOf(project, item.collection) !== undefined;
+      // Evidence is grouped by the module id it went to: its part name would match no module.
       const text = formatItemWithEvents(
-        readable(project, item),
+        { ...readable(project, item), evidence: item.evidence },
         layout,
         typesShown(project),
         named,

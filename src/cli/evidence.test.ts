@@ -2,6 +2,9 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync, truncateSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { openProject } from '../app/project.ts';
+import { publishAs } from '../app/testing.ts';
+import { creatures } from '../core/board/testing.ts';
 import { MAX_EVIDENCE_BYTES } from '../core/evidence.ts';
 import {
   type Cli,
@@ -11,6 +14,7 @@ import {
   type SeededRepo,
   seededLocalRepo,
   type TempRepo,
+  tempGitRepo,
 } from './testing.ts';
 
 describe('attach', () => {
@@ -199,5 +203,48 @@ describe('attach', () => {
       expect(code).toBe(4);
       expect(errorCode(err)).toBe('item_closed');
     });
+  });
+});
+
+// A board names its parts; show must still file each picture under the part it went to.
+describe('show on a board with two picture parts', () => {
+  let repo: TempRepo;
+  let otea: Cli;
+  let id: string;
+
+  beforeEach(async () => {
+    repo = tempGitRepo();
+    otea = cliAt(repo.dir, { OTEA_AGENT: 'claude' });
+    await otea('init', '--local', '--template', 'none');
+    const project = openProject(repo.dir);
+    try {
+      publishAs(project, creatures(), 'bcre');
+    } finally {
+      project.db.close();
+    }
+    const created = await otea(
+      'create',
+      '--collection',
+      'Criaturas',
+      '--title',
+      'Sapo',
+      '--field',
+      'Descripción=verde',
+      '--json',
+    );
+    id = JSON.parse(created.out).id;
+    repo.write('mud.png', 'png-mud');
+  });
+
+  afterEach(() => repo.remove());
+
+  it('lists a picture under the part it was attached to, not the first that takes pictures', async () => {
+    await otea('claim', id);
+    expect((await otea('attach', id, 'mud.png', '--module', 'Barro')).code).toBe(0);
+
+    const { out } = await otea('show', id);
+
+    expect(out).toMatch(/Arte conceptual \([^)]*\)\n {4}nothing yet/);
+    expect(out).toMatch(/Barro \([^)]*\)\n {4}#1 {2}single {2}image {2}mud\.png/);
   });
 });
