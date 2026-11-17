@@ -47,6 +47,38 @@ describe('nextText', () => {
     expect(text).not.toContain('any of Silueta');
   });
 
+  it('names the values a level and a yes or no take in the language of the board', () => {
+    const board = creatures();
+    board.parts.fsev = { id: 'fsev', name: 'Gravedad', kind: 'level', hint: '', options: [] };
+    board.parts.fok = { id: 'fok', name: 'Revisado', kind: 'yesno', hint: '', options: [] };
+    const animate = board.steps.find(({ id }) => id === 'sanimate');
+    animate?.hand.push(
+      { ref: 'fsev', req: 'no', fresh: false },
+      { ref: 'fok', req: 'no', fresh: false },
+    );
+    const text = nextText(board, {
+      ...base,
+      position: { step: 'sanimate', phase: 'doing' },
+      missing: [],
+    });
+    expect(text).toContain('Gravedad: optional; one of baja, media, alta, crítica');
+    expect(text).toContain('Revisado: optional; sí or no');
+    expect(text).not.toContain('one of low');
+  });
+
+  it('names what each field to estimate takes', () => {
+    const board = creatures();
+    board.parts.fsev = { id: 'fsev', name: 'Esfuerzo', kind: 'level', hint: '', options: [] };
+    board.analysis = { ...board.analysis, effort: 'fsev' };
+    const text = nextText(board, {
+      ...base,
+      position: { step: 'sanimate', phase: 'doing' },
+      missing: [],
+    });
+    expect(text).toContain('The person weighs items by Esfuerzo');
+    expect(text).toContain('    Esfuerzo: one of baja, media, alta, crítica');
+  });
+
   it('says, word for word, what an agent doing a step reads', () => {
     const text = nextText(def, {
       ...base,
