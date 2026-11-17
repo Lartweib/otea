@@ -525,8 +525,10 @@ export function AboutCard() {
 // "Vistas de análisis": which field of the board plays each role (effort, risk, impact, area, due
 // date). Each role offers only the board's fields that fit it; the matrix turns on once two of
 // effort, risk and impact are mapped (core/board/analysis.ts).
-function AnalysisSection() {
+// Not on the built-in Pedidos board: its items are board drafts, nothing to estimate.
+export function AnalysisSection() {
   const { draft } = useEditor();
+  if (draft.record.builtin) return null;
   const def = draft.def;
   const used = usedRefs(def);
   const views = viewsOf(def);
