@@ -9,6 +9,7 @@ import {
   isClosed,
   isLandStep,
   type Linked,
+  landStepOf,
   type Missing,
   NOTE_REF,
   NOTES_REF,
@@ -352,11 +353,6 @@ function branchLines(
             `  ${base} is protected too: push or merge ${branch.value} into it only once ${input.id} is ${DONE_NAME}.`,
           ];
   return [...pushLines(def, step, position, branch), ...into];
-}
-
-// The board's land step, when it has one: where an agent merges what the person approved.
-function landStepOf(def: BoardDefinition): Step | undefined {
-  return def.steps.find((step) => isLandStep(def, step.id));
 }
 
 function pushLines(
@@ -909,7 +905,8 @@ export function gateText(
       const step = reopenStep(def);
       const name = step === undefined ? undefined : stepById(def, step)?.name;
       const done = isClosed(position) && position.closed === DONE;
-      if (!done || merged || name === undefined) return refused;
+      // On a board with a land step, a Done item was merged there: it never reopens.
+      if (!done || merged || name === undefined || landStepOf(def)) return refused;
       return `${refused} If its PR cannot merge as it is (a conflict), reopen it: otea reopen ${id} --reason "…" takes it back to ${name}, and through review again.`;
     }
     case 'not_done':

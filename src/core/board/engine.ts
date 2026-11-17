@@ -530,6 +530,12 @@ export function isLandStep(def: BoardDefinition, stepId: string): boolean {
   return into.length > 0 && into.every((other) => closer(other) === 'you');
 }
 
+// The board's land step, when it has one: where an agent merges what the person approved, so on
+// such a board a Done item's branch is in already.
+export function landStepOf(def: BoardDefinition): Step | undefined {
+  return def.steps.find((step) => isLandStep(def, step.id));
+}
+
 // Where a Done item whose branch is not merged yet reopens: the last step, in board order, that
 // pushes its protected branch, so the branch can change (a PR that conflicts after another merged)
 // and the change goes through review again. Undefined on a board that protects no branch.

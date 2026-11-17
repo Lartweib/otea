@@ -1,5 +1,5 @@
 import type { Channel } from '../core/authority.ts';
-import { isClosed, positionOf, reopenStep, stateOf } from '../core/board/engine.ts';
+import { isClosed, landStepOf, positionOf, reopenStep, stateOf } from '../core/board/engine.ts';
 import { MERGED, type Merged, mergedFrom } from '../core/board/merged.ts';
 import { DONE, guardedBranch } from '../core/board/model.ts';
 import { reopenedText } from '../core/board/next.ts';
@@ -71,7 +71,8 @@ export type ReopenInput = { id: string; actor: Actor; channel: Channel; reason: 
 // stopped merging as it is (another branch merged first and now conflicts) and its branch, frozen
 // while it is Done, must change. Whoever asks (the agent that hits the conflict, or the person)
 // says why; the change goes through the step's review again, so the person approves it again.
-// Once the branch is merged the item stays Done: a further change is new work.
+// Once the branch is merged (marked so, or landed in the board's land step) the item stays Done: a
+// further change is new work.
 export function reopenItem(
   ctx: Context,
   input: ReopenInput,
@@ -95,6 +96,13 @@ export function reopenItem(
         `${id} is merged already: its branch is in, so a further change is new work, not ${id}`,
       );
     const board = liveBoardOf(ctx, item.collection);
+    // On a board with a land step, an agent merged the item there before it was Done.
+    const land = board ? landStepOf(board.def) : undefined;
+    if (land)
+      refuse(
+        'merged_already',
+        `${id} was merged in ${land.name} already: its branch is in, so a further change is new work, not ${id}`,
+      );
     const step = board ? reopenStep(board.def) : undefined;
     if (!board || step === undefined)
       return refuse('no_branch', `${id} protects no branch: there is nothing to reopen it for`);
