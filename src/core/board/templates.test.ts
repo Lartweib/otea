@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { assertIconName } from '../icons.ts';
 import { sequenceIds } from './ids.ts';
 import { mentionText } from './mentions.ts';
-import { partOf, usedRefs } from './model.ts';
+import { EVIDENCE_KINDS, EVIDENCE_SHOWS, partOf, usedRefs } from './model.ts';
 import { problemsOf } from './problems.ts';
 import {
   blankBoard,
@@ -22,21 +22,15 @@ import { CATALOGUE_TEMPLATES } from './templates-catalogue.ts';
 describe('templates', () => {
   it('lists the templates of the design, in order, the sets last', () => {
     expect(listedTemplates('es').map(({ key, name }) => `${key}:${name}`)).toEqual([
-      'bug-reports:Reportes de errores',
-      'content:Contenido',
-      'digest:Resumen periódico',
-      'assets:Recursos',
+      'bug-reports:Errores',
+      'changes:Cambios',
       'research:Investigación',
       'decisions:Decisiones',
+      'content:Contenido',
+      'design:Diseño visual',
       'experiments:Experimentos',
-      'support:Soporte',
-      'visual-iteration:Iteración visual',
-      'playtest:Probar si es divertido',
-      'resume:Retomar un proyecto',
-      'changes:Encargos',
-      'repobugs:Errores de trabajo',
-      'ideas:De la idea a las tareas',
-      'repos:Trabajo en varios repos',
+      'ideas:Ideas → Tareas',
+      'repos:Entregas con PR',
     ]);
   });
 
@@ -114,11 +108,11 @@ describe('templates', () => {
   });
 
   it('takes the name and item name given, and fresh ids every time', () => {
-    const one = instantiate(requireTemplate('assets'), 'es', {
+    const one = instantiate(requireTemplate('design'), 'es', {
       name: 'Criaturas del pantano',
       item: 'Bicho',
     });
-    const two = instantiate(requireTemplate('assets'), 'es', {});
+    const two = instantiate(requireTemplate('design'), 'es', {});
     expect([one.name, one.item]).toEqual(['Criaturas del pantano', 'Bicho']);
     expect(one.steps[0]?.id).not.toBe(two.steps[0]?.id);
   });
@@ -160,6 +154,44 @@ describe('the Research template', () => {
       const def = instantiate(requireTemplate('research'), lang, {});
       const words = JSON.stringify([def.about, def.samples, def.steps.map((s) => s.instructions)]);
       expect(words).not.toMatch(/engine|wolves|saved game|motor|lobos|partida/i);
+    }
+  });
+});
+
+describe('the official catalogue', () => {
+  // Every way the item page draws evidence must be offered by at least one template a person can
+  // pick, or the catalogue never shows what the detail view can do.
+  it('uses every evidence kind and every way of showing it', () => {
+    const official = TEMPLATES.filter(({ key }) => LISTED_KEYS.includes(key)).concat(
+      TEMPLATE_SETS.flatMap(({ boards }) => boards.map(requireTemplate)),
+    );
+    const used = new Set(
+      official.flatMap(({ parts }) =>
+        parts.flatMap(({ kind, show }) => {
+          const shows = EVIDENCE_SHOWS[kind as keyof typeof EVIDENCE_SHOWS];
+          return shows ? [`${kind}:${show ?? shows[0]}`] : [kind];
+        }),
+      ),
+    );
+    const wanted = EVIDENCE_KINDS.flatMap((kind) => {
+      const shows = EVIDENCE_SHOWS[kind];
+      return shows ? shows.map((show) => `${kind}:${show}`) : [kind];
+    });
+    expect(wanted.filter((kind) => !used.has(kind))).toEqual([]);
+  });
+
+  it('offers exactly the nine starter templates, none named after a way of working', () => {
+    expect(LISTED_KEYS).toHaveLength(9);
+    for (const gone of [
+      'playtest',
+      'resume',
+      'visual-iteration',
+      'digest',
+      'support',
+      'assets',
+      'repobugs',
+    ]) {
+      expect(TEMPLATES.some(({ key }) => key === gone)).toBe(false);
     }
   });
 });

@@ -167,7 +167,7 @@ describe('the readings of the shipped presets', () => {
     expect(rereadable({ liveVersion: 1, publishedBy: 'otea', template: 'tasks' })).toBe(true);
     expect(rereadable({ liveVersion: 2, publishedBy: 'otea', template: 'tasks' })).toBe(false);
     expect(rereadable({ liveVersion: 1, publishedBy: 'human', template: 'tasks' })).toBe(false);
-    expect(rereadable({ liveVersion: 1, publishedBy: 'otea', template: 'assets' })).toBe(false);
+    expect(rereadable({ liveVersion: 1, publishedBy: 'otea', template: 'design' })).toBe(false);
   });
 
   it('reads a collection on a preset Otea never shipped as one step that keeps its data', () => {

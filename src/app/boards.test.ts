@@ -64,14 +64,14 @@ describe('createBoard', () => {
     const ctx = memoryContext();
     const record = createBoard(
       ctx,
-      { name: 'Criaturas del pantano', template: 'assets', lang: 'es' },
+      { name: 'Criaturas del pantano', template: 'design', lang: 'es' },
       now,
     );
     expect(record.draft?.definition).toEqual(
       expect.objectContaining({
         name: 'Criaturas del pantano',
-        item: 'Recurso',
-        template: 'assets',
+        item: 'Pieza',
+        template: 'design',
       }),
     );
   });

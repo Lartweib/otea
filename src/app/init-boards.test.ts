@@ -42,7 +42,7 @@ describe('initBoards', () => {
 
     expect(initBoards(ctx, 'repos')).toEqual([]);
     expect(initBoards(ctx, 'decisions')).toEqual([]);
-    expect(names(ctx)).toEqual(['Encargos live']);
+    expect(names(ctx)).toEqual(['Cambios live']);
   });
 
   it('does not know bug-handoff: the template was removed', () => {

@@ -112,7 +112,7 @@ describe('run', () => {
       const [path] = first.out.split('\n');
 
       expect(path).toMatch(/^Project data in /);
-      expect(first.out).toBe(`${path}\nMade the boards Encargos\n`);
+      expect(first.out).toBe(`${path}\nMade the boards Cambios\n`);
       expect(await otea('init')).toMatchObject({ code: 0, out: `${path}\n` });
       expect(await otea('init', '--local')).toMatchObject({ code: 0, out: `${path}\n` });
     });
@@ -131,7 +131,7 @@ describe('run', () => {
       const { out } = await otea('init', '--help');
 
       expect(out).toContain('it makes no board unless --template <key> names one');
-      expect(out).toContain('bug-reports, content');
+      expect(out).toContain('bug-reports, changes');
       expect(out).toContain('ideas, repos');
     });
 
