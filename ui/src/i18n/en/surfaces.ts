@@ -302,6 +302,8 @@ export const surfaces = {
   'activity.noteAnsweredYou': 'You answered a note on {id}',
   'activity.merged': 'recorded that {id} was merged',
   'activity.mergedYou': 'You recorded that {id} was merged',
+  'activity.proved': 'proved a checklist point on {id}',
+  'activity.provedYou': 'You proved a checklist point on {id}',
   'activity.touched': 'updated {id}',
   'activity.touchedYou': 'You updated {id}',
   'activity.movedYou': 'You moved {id} to {state}',

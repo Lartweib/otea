@@ -138,6 +138,16 @@ function describeAction({ type, data }: Event): string {
   }
   if (type === 'question_asked' || type === 'question_answered')
     return `question ${String(data.question)}: ${JSON.stringify(String(data.text ?? ''))}`;
+  if (type === 'point_proved') {
+    const file = String(data.file);
+    const proof =
+      data.kind === 'log'
+        ? `${file} line ${String(data.line)}`
+        : data.kind === 'test'
+          ? `the test ${JSON.stringify(String(data.test))} of ${file} (passes)`
+          : `${file} (#${String(data.evidence)})`;
+    return `proved ${JSON.stringify(String(data.point))} in ${String(data.part)} with ${proof}`;
+  }
   if (type === 'evidence_added') {
     const caption = typeof data.caption === 'string' ? ` (${JSON.stringify(data.caption)})` : '';
     const { evidenceId, role, kind, filename } = data;

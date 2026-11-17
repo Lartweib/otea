@@ -46,3 +46,30 @@ describe('a step an old event names only by id', () => {
     ).toBe('Sketch');
   });
 });
+
+describe('a checklist point proved', () => {
+  const board = {
+    lang: 'en',
+    steps: [],
+    parts: {
+      pchk: {
+        id: 'pchk',
+        name: 'Checks',
+        kind: 'check',
+        options: [{ id: 'oks', name: 'Saves' }],
+      },
+    },
+  } as unknown as BoardDefinition;
+  const proved: EventRecord = {
+    id: 2,
+    itemId: 'ART-1',
+    type: 'point_proved',
+    actor: { kind: 'agent', name: 'kiln' },
+    at: '2026-01-01T00:00:00.000Z',
+    data: { part: 'pchk', point: 'oks', kind: 'file', evidence: 3, file: 'after.png' },
+  };
+
+  it('reads by the checklist’s and the point’s names', () => {
+    expect(readableEvent(board, proved).data).toMatchObject({ part: 'Checks', point: 'Saves' });
+  });
+});

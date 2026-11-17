@@ -57,3 +57,27 @@ describe('a note on a recording in the timeline', () => {
     expect(note({ evidence: 4, filename: 'shot.png' })).toMatch(/\(on shot\.png\)$/);
   });
 });
+
+describe('a checklist point proved in the timeline', () => {
+  const proved = (data: Record<string, unknown>) =>
+    formatEvent({
+      id: 11,
+      itemId: 'TASKS-1',
+      type: 'point_proved',
+      actor: { kind: 'agent', name: 'kiln' },
+      at: 'T',
+      data: { part: 'Checks', point: 'Saves', evidence: 3, ...data },
+    });
+
+  it('names the point and its proof: a log line, a passing test or a file', () => {
+    expect(proved({ kind: 'log', file: 'test.log', line: 12 })).toMatch(
+      /proved "Saves" in Checks with test\.log line 12$/,
+    );
+    expect(proved({ kind: 'test', file: 'junit.xml', test: 'saves a draft' })).toMatch(
+      /proved "Saves" in Checks with the test "saves a draft" of junit\.xml \(passes\)$/,
+    );
+    expect(proved({ kind: 'file', file: 'after.png' })).toMatch(
+      /proved "Saves" in Checks with after\.png \(#3\)$/,
+    );
+  });
+});

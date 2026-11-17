@@ -36,6 +36,47 @@ describe('an agent’s question and your answer in the history', () => {
   });
 });
 
+describe('a checklist point proved, in the history', () => {
+  afterEach(() => setLanguage('en'));
+  const proved = [
+    ev(
+      'point_proved',
+      mender,
+      { part: 'checks', point: 'saves', kind: 'log', evidence: 3, file: 'test.log', line: 12 },
+      6,
+    ),
+    ev(
+      'point_proved',
+      mender,
+      { part: 'checks', point: 'loads', kind: 'test', evidence: 4, file: 'junit.xml', test: 'ok' },
+      4,
+    ),
+    ev(
+      'point_proved',
+      mender,
+      { part: 'checks', point: 'looks', kind: 'file', evidence: 5, file: 'after.png' },
+      2,
+    ),
+  ];
+
+  it('says which point, with what proof', () => {
+    expect(historyOf(proved, bug, word, NOW).map((l) => [l.text, l.who])).toEqual([
+      ['Proved “looks” in checks with after.png', 'Mender'],
+      ['Proved “loads” in checks with the test “ok” of junit.xml, which passes', 'Mender'],
+      ['Proved “saves” in checks with line 12 of test.log', 'Mender'],
+    ]);
+  });
+
+  it('says it in Spanish too', () => {
+    setLanguage('es');
+    expect(historyOf(proved, bug, word, NOW).map((l) => l.text)).toEqual([
+      'Probó «looks» en checks con after.png',
+      'Probó «loads» en checks con el test «ok» de junit.xml, que pasa',
+      'Probó «saves» en checks con la línea 12 de test.log',
+    ]);
+  });
+});
+
 describe('the history, newest first, in words', () => {
   const events = [
     ev('created', { kind: 'agent', name: 'Scout' }, { state: 'reported' }, 900),

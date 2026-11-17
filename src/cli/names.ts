@@ -3,6 +3,7 @@ import { liveBoardOf } from '../app/next.ts';
 import type { Project } from '../app/project.ts';
 import { isClosed, positionOf } from '../core/board/engine.ts';
 import { type BoardDefinition, type Part, stepById } from '../core/board/model.ts';
+import { POINT_PROVED } from '../core/board/proofs.ts';
 import { langOf, stateName, valueName } from '../core/board/reading.ts';
 import { type EventRecord, findItem } from '../store/queries.ts';
 
@@ -84,6 +85,13 @@ export function readableEvent(def: Board, event: EventRecord): EventRecord {
   if (def === undefined) return event;
   if (event.type === 'evidence_added' && typeof data.module === 'string')
     return named({ module: partName(def, data.module) });
+  if (event.type === POINT_PROVED) {
+    const part = partOf(def, data.part);
+    return named({
+      part: partName(def, data.part),
+      point: part ? valueName(part, data.point, langOf(def)) : String(data.point),
+    });
+  }
   if (event.type === 'updated' && data.changes && typeof data.changes === 'object') {
     const changes = Object.fromEntries(
       Object.entries(data.changes as Record<string, { from?: unknown; to?: unknown }>).map(

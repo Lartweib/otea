@@ -249,12 +249,14 @@ describe('feedLines in words', () => {
         ev('T-1', 'note_left', you, 3, { note: 1, text: 'Mira esto' }),
         ev('T-1', 'note_answered', agent('ca'), 4, { note: 1, text: 'Hecho' }),
         ev('T-1', 'merged', agent('ca'), 5, { commit: 'abc1234' }),
-        ev('T-1', 'something_new', agent('ca'), 6),
+        ev('T-1', 'point_proved', agent('ca'), 6, { part: 'pc', point: 'ok', kind: 'file' }),
+        ev('T-1', 'something_new', agent('ca'), 7),
       ],
       turnOf,
     );
     expect(lines.map((l) => l.phrase.key)).toEqual([
       'activity.touched',
+      'activity.proved',
       'activity.merged',
       'activity.noteAnswered',
       'activity.noteLeft',
@@ -262,7 +264,7 @@ describe('feedLines in words', () => {
       'activity.asked',
     ]);
     for (const l of lines)
-      expect(JSON.stringify(l.phrase)).not.toMatch(/question_|note_|something_new/);
+      expect(JSON.stringify(l.phrase)).not.toMatch(/question_|note_|point_|something_new/);
   });
 
   it('keeps the name a move wrote for its step', () => {
