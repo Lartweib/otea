@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process';
-import { existsSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
@@ -9,6 +9,7 @@ import { listAgents, processAlive } from '../app/presence.ts';
 import { openProject } from '../app/project.ts';
 import { publishAs } from '../app/testing.ts';
 import { errores } from '../core/board/testing.ts';
+import { listProcesses, ownerChain, type ProcessRow } from './owner.ts';
 import {
   type Cli,
   cliAt,
@@ -228,9 +229,11 @@ describe('wait', () => {
     async () => {
       const slash = (path: string) => path.replaceAll('\\', '/');
       const shim = join(repo.dir, 'otea-shim');
+      // The shim notes its Windows id, which stays as node's stub.
+      const shimPid = join(repo.dir, 'shim-pid');
       writeFileSync(
         shim,
-        `#!/bin/sh\nexec "${slash(process.execPath)}" --disable-warning=ExperimentalWarning "${slash(MAIN)}" "$@"\n`,
+        `#!/bin/sh\ncat /proc/$$/winpid > "${slash(shimPid)}"\nexec "${slash(process.execPath)}" --disable-warning=ExperimentalWarning "${slash(MAIN)}" "$@"\n`,
       );
       const done = join(repo.dir, 'wait-ended');
       // Only the subshell that runs the wait stands in the project folder, so none holds it after.
@@ -259,18 +262,29 @@ describe('wait', () => {
           project.db.close();
         }
       };
+      let wait: ProcessRow | undefined;
       try {
         await until(listening, 30_000);
-        // Past the first owner check, which reads the processes above the wait.
-        await delay(8_000);
+        // The processes as the wait reads them: the session is above it.
+        const signal = new AbortController().signal;
+        const stub = Number(readFileSync(shimPid, 'utf8').trim());
+        // As Windows lists them (from this process, no shell), node runs under the shim's stub.
+        wait = (await listProcesses(signal, process.pid))?.rows.find(
+          ({ parent }) => parent === stub,
+        );
+        expect(wait, 'the wait runs under the sh shim').toBeDefined();
+        const table = await listProcesses(signal, stub);
+        expect(table?.complete).toBe(true);
+        expect(ownerChain(table?.rows ?? [], stub, true)).toContain(session.pid);
         expect(existsSync(done)).toBe(false);
         session.kill();
-        await until(() => existsSync(done), 45_000);
+        await until(() => existsSync(done), 60_000);
       } finally {
         session.kill();
+        if (wait && processAlive(wait.pid)) process.kill(wait.pid);
       }
     },
-    120_000,
+    150_000,
   );
 
   it('exits 130 without printing an item when interrupted', async () => {
