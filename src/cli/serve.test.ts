@@ -117,12 +117,12 @@ describe('serve', () => {
     expect(signIn.status).toBe(302);
   });
 
-  it('keeps the token out of piped output and --json, pointing to otea open instead', async () => {
+  it('prints the sign-in url without a terminal too, for an agent to relay, but never in --json', async () => {
     const { out } = await otea('serve', '--port', '0', '--no-open');
-    const url = /^Otea running at (\S+)\n/.exec(out)?.[1];
+    const [, origin = '', id = ''] = /^Otea running at (\S+)\/p\/([a-z0-9-]+)\/\n/.exec(out) ?? [];
 
     expect(out).toBe(
-      `Otea running at ${url}\nRun "otea open" here to sign a browser in (the sign-in link is printed only at a terminal)\n`,
+      `Otea running at ${origin}/p/${id}/\nSign a browser in at ${signInFor(origin, token(), id)} (it holds this computer's Otea key: keep it to yourself)\n`,
     );
     interrupt.abort();
     interrupt = new AbortController();
@@ -190,7 +190,9 @@ describe('serve', () => {
   });
 
   it('is listed in the help', async () => {
-    expect((await otea('help')).out).toContain('otea serve [--port <port>] [--no-open] [--lan]');
+    expect((await otea('help', 'all')).out).toContain(
+      'otea serve [--port <port>] [--no-open] [--lan]',
+    );
   });
 });
 

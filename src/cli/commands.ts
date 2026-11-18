@@ -149,13 +149,10 @@ import { profileLine } from '../core/profile.ts';
 import { describeRelation, RELATION_KINDS } from '../core/relations.ts';
 import { timeText } from '../core/time.ts';
 import { TURNS, type Turn } from '../core/workflow.ts';
-import { createMcpServer, serveStdio } from '../mcp/server.ts';
+import { DEFAULT_PORT } from '../server/hosts.ts';
 import { machineProjects } from '../server/hub.ts';
 import { formatCode } from '../server/lan.ts';
-import { DEFAULT_PORT, listen, localNetwork } from '../server/listen.ts';
-import { pairingUrl } from '../server/pairing.ts';
 import { ensureVapidKeys } from '../server/push.ts';
-import { createServer } from '../server/server.ts';
 import { ensureUiToken, readUiToken } from '../server/token.ts';
 import { type EventFilter, findProfile, type ProfileView, profileView } from '../store/queries.ts';
 import {
@@ -369,6 +366,13 @@ const TEMPLATE_LIST = (() => {
   return ['Templates (--template <key>):', ...lines].join('\n');
 })();
 
+// What init says to do next: the person opens the desk, which hands them the text for their agent's
+// chat; an agent setting the project up connects itself.
+export const INIT_NEXT = [
+  "Next: otea serve opens the desk, which gives you the text to paste into your agent's chat (otea prompt prints it here).",
+  'An agent setting itself up runs otea connect --as <name> --model <id> --effort <level>.',
+];
+
 const init: Command = {
   name: 'init',
   summary: `Create or reuse the project at the repository root: in the Otea home ($OTEA_HOME, default ~/.otea), or with --local in .otea at the root; --join <project> links the repo to a registered project instead (refused when a project in a folder above covers it, unless --here); it makes no board unless --template <key> names one, and only on a project with no boards of its own yet: the boards of that template (${TEMPLATE_KEYS}; a set such as ideas or repos makes all of its boards); you can also pick them later in Studio or with otea board add <name> --template <key>; --icon gives the project an icon (without one the UI draws a monogram of its name); --agents-md also adds (or refreshes) a block in AGENTS.md telling agents to run "otea next" and "otea board"`,
@@ -426,10 +430,10 @@ const init: Command = {
           ]
         : []),
     ];
-    if (!flag('agents-md')) return { data, text: lines.join('\n') };
+    if (!flag('agents-md')) return { data, text: [...lines, ...INIT_NEXT].join('\n') };
     const agentsMd = writeAgentsMd(root);
-    const text = [...lines, AGENTS_MD_TEXT[agentsMd.action](agentsMd.path)].join('\n');
-    return { data: { ...data, agentsMd }, text };
+    const text = [...lines, AGENTS_MD_TEXT[agentsMd.action](agentsMd.path), ...INIT_NEXT];
+    return { data: { ...data, agentsMd }, text: text.join('\n') };
   },
 };
 
@@ -2077,6 +2081,12 @@ async function serveUntil(
   const token = ensureUiToken(home, { warn });
   const machine = openMachine();
   const source = machineProjects(process.env, machine);
+  // The web server's modules load only here, so every other command starts without them.
+  const [{ createServer }, { listen, localNetwork }, { pairingUrl }] = await Promise.all([
+    import('../server/server.ts'),
+    import('../server/listen.ts'),
+    import('../server/pairing.ts'),
+  ]);
   try {
     const server = createServer(source, {
       token,
@@ -2158,7 +2168,7 @@ const serve: Command = {
   summary: `Serve the live UI of every project on this computer on 127.0.0.1 (default port ${DEFAULT_PORT}) until Ctrl+C, and open this project's page signed in; when this computer's otea serve runs already, it opens this project there instead. It also opens to phones on the same network when that was left open (Settings > Phone, otea phone lan --open), and --lan opens it for this run only; a phone on Tailscale (otea phone tailscale) pairs without it`,
   args: [],
   options: { port: {}, 'no-open': { flag: true }, lan: { flag: true } },
-  execute: async ({ cwd, option, flag, signal, openUrl, warn, terminal, tailscale, probe }) => {
+  execute: async ({ cwd, option, flag, signal, openUrl, warn, tailscale, probe }) => {
     // A server whose starter is gone (an agent's session that ran it in the background ended)
     // stops, as it would with the terminal that ran it.
     const owner = watchOwner(signal);
@@ -2175,17 +2185,13 @@ const serve: Command = {
     // Pointing at the server that runs: nothing of this process stays running.
     if (served.attached) owner.stop();
     const { url, signInUrl, phone, attached } = served;
-    // With --no-open the person signs a browser in by hand: the link carries the server's key, so
-    // it is printed only to a terminal, never to a pipe, a log or --json.
+    // With --no-open the person signs a browser in by hand, from a terminal or from what an agent
+    // that started the server relays. The link carries the server's key: it is never in --json.
     const signIn = !flag('no-open')
       ? []
-      : terminal
-        ? [
-            `Sign a browser in at ${signInUrl} (it holds this computer's Otea key: keep it to yourself)`,
-          ]
-        : [
-            'Run "otea open" here to sign a browser in (the sign-in link is printed only at a terminal)',
-          ];
+      : [
+          `Sign a browser in at ${signInUrl} (it holds this computer's Otea key: keep it to yourself)`,
+        ];
     if (!flag('no-open')) {
       await openUrl(signInUrl).catch((error: unknown) => {
         const reason = error instanceof Error ? error.message : String(error);
@@ -2356,6 +2362,8 @@ const mcp: Command = {
           return false;
         }
       })();
+      // The MCP server's modules load only here, so every other command starts without them.
+      const { createMcpServer, serveStdio } = await import('../mcp/server.ts');
       await serveStdio(
         createMcpServer(COMMANDS, {
           cwd,

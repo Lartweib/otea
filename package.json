@@ -5,6 +5,9 @@
   "description": "The asynchronous handoff surface between you and your AI agents.",
   "license": "AGPL-3.0-only",
   "type": "module",
+  "bin": {
+    "otea": "bin/otea.mjs"
+  },
   "engines": {
     "node": ">=22.18"
   },
