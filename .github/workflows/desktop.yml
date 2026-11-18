@@ -162,7 +162,16 @@ jobs:
         shell: pwsh
         run: |
           $setup = Get-ChildItem 'Otea-Setup-*.exe' | Select-Object -First 1
-          Start-Process -FilePath $setup.FullName -ArgumentList '/S' -Wait
+          # While it writes the app the installer keeps a flag the app waits on, and drops it at the end.
+          $flag = Join-Path $env:APPDATA 'Otea\installing'
+          $install = Start-Process -FilePath $setup.FullName -ArgumentList '/S' -PassThru
+          $flagged = $false
+          while (-not $install.HasExited) {
+            if (Test-Path $flag) { $flagged = $true }
+            Start-Sleep -Milliseconds 100
+          }
+          if (-not $flagged) { throw 'the installer kept no flag while it wrote the app' }
+          if (Test-Path $flag) { throw 'the installer left its flag behind' }
           $userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
           $bin = $userPath -split ';' | Where-Object { $_ -like '*\resources\bin' } | Select-Object -First 1
           if (-not $bin) { throw "the installer did not put otea on the user's PATH: $userPath" }
