@@ -258,10 +258,7 @@ describe('LAN access', () => {
 
       await pairPhone(issue(), 'Tablet', 'otea_device_4400=not-a-device');
 
-      // Both may be paired in the same millisecond (pairing stamps the real time, not the test
-      // clock), and the list then orders them by their random ids: compare them as a set.
-      const names = listDevices(project.db).map((d) => d.name);
-      expect(names.sort()).toEqual(['Pixel · Chrome', 'Tablet']);
+      expect(listDevices(project.db).map((d) => d.name)).toEqual(['Pixel · Chrome', 'Tablet']);
     });
 
     it('takes the code without the dash or in lower case', async () => {
