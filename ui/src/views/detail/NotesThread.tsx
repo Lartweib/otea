@@ -219,13 +219,18 @@ export function Thread({
 }
 
 // "3 notas" over "1 sin respuesta" (or "todas contestadas"), for a margin label or a phone's.
-export function countWords(notes: readonly ItemNote[]): { count: string; state: string } {
-  const { count, unanswered } = notesCount(notes);
+export function countWords(
+  notes: readonly ItemNote[],
+  at?: { step: string; round: number },
+): { count: string; state: string } {
+  const { count, unanswered, waiting } = notesCount(notes, at);
   return {
     count: t('notes.count', { count }),
     state: unanswered
       ? t('notes.unanswered', { count: unanswered })
-      : t('notes.allAnswered', { count }),
+      : waiting
+        ? t('notes.review.withBack', { count: waiting })
+        : t('notes.allAnswered', { count }),
   };
 }
 
@@ -318,16 +323,27 @@ export function RoundNotesLine({
   live,
   evidence,
   now,
+  at,
 }: {
   notes: readonly ItemNote[];
   live: boolean;
   evidence: readonly Evidence[];
   now: number;
+  // The round they show in: a review comment waiting there owes no answer (P5-8).
+  at?: { step: string; round: number } | undefined;
 }) {
   const [open, setOpen] = useState(false);
   const body = useId();
-  const { count, unanswered } = notesCount(notes);
+  const { count, unanswered, waiting } = notesCount(notes, at);
   if (count === 0) return null;
+  // Comments of your review that wait in it: none owes an answer yet (P5-8).
+  const state = unanswered ? (
+    <span className="nt-un">{t('notes.unanswered', { count: unanswered })}</span>
+  ) : waiting ? (
+    <span className="st">{t('notes.review.withBack', { count: waiting })}</span>
+  ) : (
+    <span className="st">{t('notes.allAnswered', { count })}</span>
+  );
   if (live)
     return (
       <button
@@ -340,11 +356,7 @@ export function RoundNotesLine({
         }
       >
         <b>{t('notes.round.live', { count })}</b>
-        {unanswered ? (
-          <span className="nt-un">{t('notes.unanswered', { count: unanswered })}</span>
-        ) : (
-          <span className="st">{t('notes.allAnswered', { count })}</span>
-        )}
+        {state}
       </button>
     );
   return (
@@ -357,12 +369,12 @@ export function RoundNotesLine({
         onClick={() => setOpen(!open)}
       >
         <Icon name="chevron" />
-        <b>{t('notes.round.done', { count })}</b>
-        {unanswered ? (
-          <span className="nt-un">{t('notes.unanswered', { count: unanswered })}</span>
-        ) : (
-          <span className="st">{t('notes.allAnswered', { count })}</span>
-        )}
+        <b>
+          {waiting === count
+            ? t('notes.round.review', { count })
+            : t('notes.round.done', { count })}
+        </b>
+        {state}
       </button>
       <div className="rn-body" id={body}>
         <div className="rn-inner" inert={!open}>

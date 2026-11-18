@@ -24,6 +24,10 @@ export function withoutUndone<E extends Pick<HistoryEvent, 'id' | 'data'>>(
   return gone.size === 0 ? (events as E[]) : events.filter((e) => !gone.has(e.id));
 }
 
+// The agent changed its handoff's note while the review waited (P3C-11): the note of the move
+// before it.
+export const HANDOFF_AMENDED = 'handoff_amended';
+
 // Moves the board made itself, not the work: a publish or a restore placing the item, and the
 // reading of a preset collection as a board.
 const BOARD_MOVES = new Set(['publish', 'restore', 'migrate']);
@@ -115,6 +119,18 @@ export function historyOf(
       ...(BOARD_MOVES.has(String(data.reason)) ? { quiet: true } : {}),
     });
     out.said.push(saidOf(data, actor));
+  }
+  // An amended note replaces the note of the handoff it follows.
+  const moves = moved.slice(migrated + 1);
+  for (const amend of live) {
+    if (amend.type !== HANDOFF_AMENDED || !words(amend.data.note)) continue;
+    const index =
+      moves.findLastIndex(({ id }) => id < amend.id) + (out.moves.length - moves.length);
+    const said = out.said[index];
+    if (index < 0 || !said) continue;
+    out.said[index] = { ...said, text: amend.data.note };
+    const kept = out.notes.find(({ before }) => before === index);
+    if (kept) kept.note = amend.data.note;
   }
   return out;
 }

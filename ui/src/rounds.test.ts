@@ -124,6 +124,18 @@ describe('rounds on a board', () => {
   const approved = moved('12:00', you, 'sconcept__review', 'sanimate', { channel: 'ui' });
   const story = [created, handed, back, again, approved];
 
+  it('reads a handoff note the agent amended while the review waited (P3C-11)', () => {
+    const amended: ItemEvent = {
+      id: ++ids,
+      type: 'handoff_amended',
+      actor: pinta,
+      at: '2026-11-02T09:05:00.000Z',
+      data: { note: 'Dos bocetos y un color' },
+    };
+    const rounds = roundsOf([created, handed, amended], [], BOARD, { def, step: 'sconcept' });
+    expect(rounds.map(({ note }) => note)).toEqual(['Dos bocetos y un color']);
+  });
+
   it('reads each handoff’s note, and an approval as approved, never as sent back', () => {
     const rounds = roundsOf(story, [], BOARD, { def, step: 'sconcept' });
     expect(rounds.map(({ n, note, verdict }) => [n, note, verdict?.kind])).toEqual([

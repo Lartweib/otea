@@ -131,6 +131,7 @@ function sentence(line: FeedLine, id: ReactNode, state: (s: string) => string): 
     case 'activity.noteLeft':
     case 'activity.noteAnswered':
     case 'activity.noteEdited':
+    case 'activity.handoffAmended':
     case 'activity.noteWithdrawn':
     case 'activity.merged':
     case 'activity.proved':

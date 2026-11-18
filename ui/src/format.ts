@@ -82,6 +82,7 @@ export function describeEvent(
   if (type === 'evidence_detached') return t('event.detached', { file: String(data.filename) });
   if (type === 'note_left') return t('event.noteLeft');
   if (type === 'note_answered') return t('event.noteAnswered', { n: String(data.note) });
+  if (type === 'handoff_amended') return t('event.handoffAmended');
   if (type === 'note_edited') return t('event.noteEdited', { n: String(data.note) });
   if (type === 'note_withdrawn') return t('event.noteWithdrawn', { n: String(data.note) });
   if (type === 'question_asked') return t('event.questionAsked');

@@ -314,6 +314,8 @@ export const surfaces = {
   'activity.noteAnswered': 'answered your note on {id}',
   'activity.noteAnsweredYou': 'You answered a note on {id}',
   'activity.noteEdited': 'changed a note on {id}',
+  'activity.handoffAmended': 'changed the handoff note of {id}',
+  'activity.handoffAmendedYou': 'You changed the handoff note of {id}',
   'activity.noteEditedYou': 'You changed a note on {id}',
   'activity.noteWithdrawn': 'took back a note on {id}',
   'activity.noteWithdrawnYou': 'You took back a note on {id}',

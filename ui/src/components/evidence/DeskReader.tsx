@@ -2,7 +2,12 @@ import { t } from '../../i18n/i18n.ts';
 import { Dialog } from '../../kit/pop/Dialog.tsx';
 import { useSideWord } from '../../preset-words.ts';
 import type { Evidence } from '../../types.ts';
-import { EvidenceReader, type ReaderDecide, type ReaderNote } from './EvidenceViewer.tsx';
+import {
+  EvidenceReader,
+  type ReaderDecide,
+  type ReaderNote,
+  stepByKey,
+} from './EvidenceViewer.tsx';
 import type { ReaderPick } from './reader-pick.ts';
 
 // A file of the round against the round before it.
@@ -47,7 +52,8 @@ export function ReaderPane({
 }: PaneProps) {
   const roleWord = useSideWord();
   return (
-    <div className="rd-pane">
+    // biome-ignore lint/a11y/noStaticElementInteractions: ← and → step files from the list too (P5-9)
+    <div className="rd-pane" onKeyDown={(e) => stepByKey(e, at, evidence.length, onAt)}>
       <nav className="rd-list" aria-label={t('evidence.reader.files')}>
         {evidence.map((e, i) => {
           const mark = marks?.get(e.id);
@@ -60,6 +66,8 @@ export function ReaderPane({
               type="button"
               className="rd-file"
               aria-current={i === at ? 'true' : undefined}
+              // The reader opens with the focus on the file shown, never on Cerrar (P5-9).
+              data-autofocus={i === at ? '' : undefined}
               data-seen={seen.has(e.id) ? 'true' : undefined}
               onClick={() => onAt(i)}
             >

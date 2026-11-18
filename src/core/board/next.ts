@@ -89,6 +89,8 @@ export type NextInput = {
   child?: BoardDefinition;
   // The send-back that started this round, while the step is being done.
   sentBack?: SentBack;
+  // The approval that started this round, when the reviewer said something with it (P6-11).
+  approved?: SentBack;
   // The agent holding the item's live lease, and until when.
   holder?: { name: string; expiresAt: string };
   // The agent the person left a stuck item for (Reasignar), until an agent claims or moves it.
@@ -285,6 +287,19 @@ function sentBackLines(sent: SentBack): string[] {
     ? `after it was ${sent.step}`
     : `from the review of ${sent.step} round ${sent.round}`;
   return ['', ...quoted, `  by ${who}, ${timeText(sent.at)}, ${from}`];
+}
+
+// The note an approval carried into this step: what the reviewer said, who and when.
+function approvedLines(approved: SentBack): string[] {
+  const [first = '', ...rest] = approved.note.trim().split(/\r?\n/);
+  const quoted = [`Approved with a note: "${first}`, ...rest.map((line) => `  ${line}`)];
+  quoted[quoted.length - 1] += '"';
+  const who = approved.by.kind === 'human' ? 'the person' : approved.by.name;
+  return [
+    '',
+    ...quoted,
+    `  by ${who}, ${timeText(approved.at)}, from the review of ${approved.step} round ${approved.round}`,
+  ];
 }
 
 // What the step waits for: the last lines of the Handoff.
@@ -606,6 +621,7 @@ export function nextText(def: BoardDefinition, input: NextInput): string {
     );
   if (!reviewing) lines.push(...notesBlock(id, input.notes ?? [], input.me));
   if (!reviewing && input.sentBack) lines.push(...sentBackLines(input.sentBack));
+  if (!reviewing && input.approved) lines.push(...approvedLines(input.approved));
   if (!reviewing) lines.push(...answersBlock(input.questions ?? [], input.me));
   lines.push(...section('About this board', indent(aboutBrief(def))));
   if (input.chosen) lines.push(...section('The person chose', choiceLines(input.chosen)));

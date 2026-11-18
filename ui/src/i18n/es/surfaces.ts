@@ -317,6 +317,8 @@ export const surfaces = {
   'activity.noteAnswered': 'respondió tu nota en {id}',
   'activity.noteAnsweredYou': 'Respondiste una nota en {id}',
   'activity.noteEdited': 'cambió una nota en {id}',
+  'activity.handoffAmended': 'cambió la nota de la entrega de {id}',
+  'activity.handoffAmendedYou': 'Cambiaste la nota de la entrega de {id}',
   'activity.noteEditedYou': 'Cambiaste una nota en {id}',
   'activity.noteWithdrawn': 'retiró una nota en {id}',
   'activity.noteWithdrawnYou': 'Retiraste una nota en {id}',
