@@ -54,7 +54,7 @@ export const shell = {
   'shell.performance': 'Ver rendimiento',
   'shell.performanceLine': 'cuántas entregas vuelven, por modelo',
   'shell.connectedRule':
-    'conectado: tiene una reserva o su servidor MCP está abierto; escucha solo mientras otea wait corre',
+    'conectado: tiene una reserva, su servidor MCP está abierto o usó Otea hace un momento; escucha solo mientras otea wait corre',
   'shell.selfDeclared': 'el perfil lo declara cada agente: Otea lo guarda, no lo comprueba.',
 
   // Preferencias: lo que es de este navegador

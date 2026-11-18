@@ -138,7 +138,7 @@ describe('setup for agents', () => {
       const { out } = await otea('connect', '--help');
 
       expect(out).toContain(
-        'otea connect [--as <name>] [--model <id>] [--effort <level>] [--check]',
+        'otea connect [--as <name>] [--model <id>] [--effort <level>] [--harness <name>] [--check]',
       );
     });
 
@@ -191,7 +191,12 @@ describe('setup for agents', () => {
       const profile = JSON.parse(
         (await cliAt(repo.dir, { OTEA_AGENT: 'claude-b' })('profile', '--json')).out,
       );
-      expect(profile.profile).toMatchObject({ model: 'claude-opus-5-5', effort: 'high' });
+      expect(profile.profile).toMatchObject({
+        model: 'claude-opus-5-5',
+        effort: 'high',
+        // No harness named: it works through the command line until its MCP client names one.
+        harness: 'cli',
+      });
     });
 
     it('requires the profile of an agent named that never declared one', async () => {

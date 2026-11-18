@@ -318,7 +318,7 @@ describe('the agents menu', () => {
       '<b>Conectar un agente</b><small>una instrucción para pegar en su chat</small>',
     );
     expect(html).toContain(
-      'conectado: tiene una reserva o su servidor MCP está abierto; escucha solo mientras otea wait corre',
+      'conectado: tiene una reserva, su servidor MCP está abierto o usó Otea hace un momento; escucha solo mientras otea wait corre',
     );
   });
 
