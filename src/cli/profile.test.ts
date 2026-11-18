@@ -191,7 +191,7 @@ describe('otea profile', () => {
 
       expect(code).toBe(0);
       expect(profileOf('claude-b')).toEqual({
-        profile: { harness: 'mcp', model: 'gpt-5', effort: 'low' },
+        profile: { harness: 'cli', model: 'gpt-5', effort: 'low' },
         confirmed: false,
       });
     });
