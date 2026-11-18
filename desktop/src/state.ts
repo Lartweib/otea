@@ -22,15 +22,16 @@ export type DeskItem = {
 export type CollectionCount = { name: string; yours: number; working: number };
 
 // The page's Attention plus what the desktop adds: how many agents hold an active lease, the three
-// most recent items that became yours, and the counts per collection for the tray menu.
+// items that have waited longest for you (the oldest first), and the counts per collection for the
+// tray menu.
 export type DeskAttention = Attention & {
   frame: AttentionFrame;
   agents: number;
-  recentYours: DeskItem[];
+  waitingYours: DeskItem[];
   collections: CollectionCount[];
 };
 
-const RECENT = 3;
+const WAITING = 3;
 
 export function deskAttention(
   items: readonly DeskItem[],
@@ -40,16 +41,16 @@ export function deskAttention(
   const attention = attentionOf(items, now);
   const live = (item: DeskItem) => activeLease(item.lease, now);
   const holders = new Set(items.flatMap((item) => live(item)?.holder ?? []));
-  const recentYours = items
+  const waitingYours = items
     .filter((item) => item.turn === 'human')
-    .toSorted((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt))
-    .slice(0, RECENT);
+    .toSorted((a, b) => Date.parse(a.updatedAt) - Date.parse(b.updatedAt))
+    .slice(0, WAITING);
   const names = [...new Set([...collections, ...items.map((item) => item.collection)])];
   return {
     ...attention,
     frame: attentionFrame(attention),
     agents: holders.size,
-    recentYours,
+    waitingYours,
     collections: names.map((name) => {
       const own = items.filter((item) => item.collection === name);
       return {
@@ -89,7 +90,7 @@ const WORDS: Record<
   en: {
     yours: (count) => `${count} yours`,
     agents: (count) => `${one(count, 'agent', 'agents')} working`,
-    working: (count) => `${count} working`,
+    working: (count) => `${count} in progress`,
     itemsYours: (count) => `${one(count, 'item is', 'items are')} yours`,
     nothing: 'nothing is yours',
     nothingHeader: 'Nothing is yours',
@@ -99,7 +100,7 @@ const WORDS: Record<
   es: {
     yours: (count) => one(count, 'te toca', 'te tocan'),
     agents: (count) => `${one(count, 'agente', 'agentes')} trabajando`,
-    working: (count) => `${count} trabajando`,
+    working: (count) => `${count} en curso`,
     itemsYours: (count) => one(count, 'ítem te toca', 'ítems te tocan'),
     nothing: 'nada te toca',
     nothingHeader: 'Nada te toca',
@@ -125,10 +126,17 @@ export function tooltip(attention: DeskAttention, lang: Lang): string {
 // The tooltip while the live stream from otea serve is down.
 export const reconnectingTooltip = (lang: Lang): string => WORDS[lang].reconnecting;
 
-// The tray menu's header: the state in words.
-export function menuHeader(attention: DeskAttention, lang: Lang): string {
+// The tray menu's header: the project, then the state in words.
+export function menuHeader(attention: DeskAttention, lang: Lang, project?: string): string {
   const said = parts(attention, lang);
-  return said.length > 0 ? said.join(' · ') : WORDS[lang].nothingHeader;
+  if (project === undefined) return said.length > 0 ? said.join(' · ') : WORDS[lang].nothingHeader;
+  return [project, ...(said.length > 0 ? said : [WORDS[lang].nothing])].join(' · ');
+}
+
+// An item's row in the tray menu: its title first, its id after it. (A tab does not push the id to
+// the right in Electron's menus on Windows: it draws as a glyph.)
+export function itemLabel({ id, title }: Pick<DeskItem, 'id' | 'title'>): string {
+  return `${title} · ${id}`;
 }
 
 export type Overlay = { label: BadgeLabel; description: string } | null;
@@ -153,7 +161,7 @@ export function collectionLabel({ name, yours, working }: CollectionCount, lang:
   const said: string[] = [];
   if (yours > 0) said.push(words.yours(yours));
   if (working > 0) said.push(words.working(working));
-  return `${name} · ${said.length > 0 ? said.join(' · ') : words.nothingInCollection}`;
+  return `${name}: ${said.length > 0 ? said.join(', ') : words.nothingInCollection}`;
 }
 
 // What the tray, the overlay and the menu have to be redrawn for; equal keys are a no-op.
@@ -162,7 +170,7 @@ export function surfaceKey(attention: DeskAttention): string {
     attention.frame,
     attention.yours,
     attention.agents,
-    attention.recentYours.map((item) => [item.id, item.title]),
+    attention.waitingYours.map((item) => [item.id, item.title]),
     attention.collections,
   ]);
 }

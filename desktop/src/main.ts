@@ -65,6 +65,7 @@ import {
   type DeskAttention,
   deskAttention,
   grew,
+  itemLabel,
   menuHeader,
   nextLeaseExpiry,
   overlayOf,
@@ -702,14 +703,14 @@ class Shell {
 
   private buildMenu(): void {
     const a = this.attention;
+    const said = a ? menuHeader(a, this.lang, this.connection?.project.name) : 'Otea';
     const header: MenuItemConstructorOptions =
       IS_MAC && Number(process.getSystemVersion().split('.')[0]) >= 14
-        ? { type: 'header', label: a ? menuHeader(a, this.lang) : 'Otea' }
-        : { label: a ? menuHeader(a, this.lang) : 'Otea', enabled: false };
-    const theme: Theme = nativeTheme.shouldUseDarkColors ? 'dark' : 'light';
-    const recent: MenuItemConstructorOptions[] = (a?.recentYours ?? []).map((item) => ({
-      label: `${item.id}  ${item.title}`,
-      icon: this.icons.menuYours(theme),
+        ? { type: 'header', label: said }
+        : { label: said, enabled: false };
+    // No mark on each row: the header already says what is yours.
+    const recent: MenuItemConstructorOptions[] = (a?.waitingYours ?? []).map((item) => ({
+      label: itemLabel(item),
       click: () => this.show(`#${encodeURIComponent(item.id)}`),
     }));
     const collections: MenuItemConstructorOptions[] = (a?.collections ?? []).map((each) => ({

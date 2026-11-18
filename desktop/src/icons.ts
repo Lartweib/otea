@@ -32,7 +32,6 @@ export type Icons = {
   tray(frame: AttentionFrame, theme: Theme, step: number): NativeImage;
   // The taskbar's count of what is yours (Windows only; empty elsewhere).
   badge(label: BadgeLabel): NativeImage;
-  menuYours(theme: Theme): NativeImage;
 };
 
 const ALL_FRAMES: AttentionFrame[] = ['idle', 'yours', 'working', 'yours-working'];
@@ -91,8 +90,6 @@ async function windowsIcons(dir: string): Promise<Icons> {
     ['dark', INK_ON_DARK],
   ];
   for (const [theme, ink] of inks) {
-    batch.add(`menu.${theme}.16`, markSvg('yours', 16, ink), 16);
-    batch.add(`menu.${theme}.32`, markSvg('yours', 32, ink), 32);
     for (const frame of ALL_FRAMES) {
       for (let step = 0; step < stepsOf(frame); step++) {
         for (const [size, grid] of TRAY_SIZES) {
@@ -130,27 +127,16 @@ async function windowsIcons(dir: string): Promise<Icons> {
       }
     }
   }
-  const png = (name: string) => pngs.get(name) as Buffer;
   return {
     app,
     tray: (frame, theme, step) => tray.get(key(frame, theme, step % stepsOf(frame))) as NativeImage,
     badge: (label) => badges.get(label) as NativeImage,
-    menuYours: (theme) =>
-      fromScales([
-        [1, png(`menu.${theme}.16`)],
-        [2, png(`menu.${theme}.32`)],
-      ]),
   };
 }
 
 async function macIcons(): Promise<Icons> {
   const batch = new Batch();
   batch.add('app', macAppIconSvg(), 512);
-  for (const theme of ['light', 'dark'] as const) {
-    const ink = theme === 'dark' ? INK_ON_DARK : INK_ON_LIGHT;
-    batch.add(`menu.${theme}.16`, markSvg('yours', 16, ink), 16);
-    batch.add(`menu.${theme}.32`, markSvg('yours', 32, ink), 32);
-  }
   for (const frame of ALL_FRAMES) {
     for (let step = 0; step < stepsOf(frame); step++) {
       batch.add(`${frame}.${step}.16`, markSvg(frame, 16, TEMPLATE, step), 16);
@@ -175,11 +161,6 @@ async function macIcons(): Promise<Icons> {
     app: nativeImage.createFromBuffer(png('app')),
     tray: (frame, _theme, step) => tray.get(`${frame}.${step % stepsOf(frame)}`) as NativeImage,
     badge: () => empty,
-    menuYours: (theme) =>
-      fromScales([
-        [1, png(`menu.${theme}.16`)],
-        [2, png(`menu.${theme}.32`)],
-      ]),
   };
 }
 
@@ -190,8 +171,6 @@ async function linuxIcons(): Promise<Icons> {
     batch.add(`${frame}.24`, plateMarkSvg(frame), 24);
     batch.add(`${frame}.48`, plateMarkSvg(frame), 48);
   }
-  batch.add('menu.16', markSvg('yours', 16, INK_ON_LIGHT), 16);
-  batch.add('menu.32', markSvg('yours', 32, INK_ON_LIGHT), 32);
   const pngs = await batch.run();
   const png = (name: string) => pngs.get(name) as Buffer;
   const tray = new Map(
@@ -204,15 +183,10 @@ async function linuxIcons(): Promise<Icons> {
     ]),
   );
   const empty = nativeImage.createEmpty();
-  const menu = fromScales([
-    [1, png('menu.16')],
-    [2, png('menu.32')],
-  ]);
   return {
     app: nativeImage.createFromBuffer(png('app')),
     tray: (frame) => tray.get(frame) as NativeImage,
     badge: () => empty,
-    menuYours: () => menu,
   };
 }
 

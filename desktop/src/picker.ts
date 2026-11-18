@@ -1,5 +1,5 @@
 // The project picker (picker.html, bundled to picker.js): the window's first page when there is no
-// project to reopen, and where "Open another project…" leads. It asks the main process for
+// project to reopen, and where "Switch project…" leads. It asks the main process for
 // everything through the preload's window.oteaDesktop.
 import { COPY, type Lang } from './copy.ts';
 import type { Recent } from './recent.ts';

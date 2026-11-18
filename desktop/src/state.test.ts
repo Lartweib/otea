@@ -5,6 +5,7 @@ import {
   type DeskItem,
   deskAttention,
   grew,
+  itemLabel,
   menuHeader,
   overlayOf,
   surfaceKey,
@@ -52,15 +53,15 @@ describe('deskAttention', () => {
     expect(a).toMatchObject({ yours: 0, working: false, agents: 0, frame: 'idle' });
   });
 
-  it('keeps the three most recently updated items that are yours', () => {
+  it('keeps the three items that are yours and have waited longest, the oldest first', () => {
     const a = deskAttention(
-      ['1', '2', '3', '4'].map((n) =>
+      ['3', '1', '4', '2'].map((n) =>
         item(`BUGS-${n}`, { turn: 'human', updatedAt: `2026-11-0${n}T00:00:00Z` }),
       ),
       [],
       NOW,
     );
-    expect(a.recentYours.map((each) => each.id)).toEqual(['BUGS-4', 'BUGS-3', 'BUGS-2']);
+    expect(a.waitingYours.map((each) => each.id)).toEqual(['BUGS-1', 'BUGS-2', 'BUGS-3']);
   });
 
   it('counts each collection, an empty one included', () => {
@@ -113,17 +114,27 @@ describe('the words', () => {
 
   it('labels a collection with its counts in words', () => {
     expect(collectionLabel({ name: 'animations', yours: 1, working: 1 }, 'en')).toBe(
-      'animations · 1 yours · 1 working',
+      'animations: 1 yours, 1 in progress',
     );
     expect(collectionLabel({ name: 'tasks', yours: 0, working: 0 }, 'en')).toBe(
-      'tasks · nothing yours',
+      'tasks: nothing yours',
     );
     expect(collectionLabel({ name: 'bugs', yours: 2, working: 1 }, 'es')).toBe(
-      'bugs · 2 te tocan · 1 trabajando',
+      'bugs: 2 te tocan, 1 en curso',
     );
     expect(collectionLabel({ name: 'tasks', yours: 0, working: 0 }, 'es')).toBe(
-      'tasks · nada te toca',
+      'tasks: nada te toca',
     );
+  });
+
+  it('names the project first in the menu header', () => {
+    expect(menuHeader(state(2, 1), 'es', 'proj')).toBe('proj · 2 te tocan · 1 agente trabajando');
+    expect(menuHeader(state(0, 0), 'es', 'proj')).toBe('proj · nada te toca');
+    expect(menuHeader(state(0, 0), 'en', 'proj')).toBe('proj · nothing is yours');
+  });
+
+  it('labels an item with its title first and its id after it', () => {
+    expect(itemLabel(item('DEC-2', { title: 'Revisar el menú' }))).toBe('Revisar el menú · DEC-2');
   });
 });
 
