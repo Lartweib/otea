@@ -51,6 +51,9 @@ export type RefusalDetails =
   | { kind: 'frozen'; item: string; part: string; steps: string[] }
   // An item that has ended takes no update.
   | { kind: 'closed'; item: string }
+  // A Pedido closed as done while the board it drafts still waits as a draft: publishing the board
+  // in Studio is what closes it.
+  | { kind: 'board_unpublished'; item: string; board: string }
   // An undo the server no longer honours.
   | {
       kind: 'undo';

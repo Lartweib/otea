@@ -161,6 +161,8 @@ export const common = {
   'refusal.frozen':
     'No se actualizó {item}: su {part} está congelado aquí; solo cambia mientras se hace {steps}.',
   'refusal.closed': '{item} ya terminó: no admite cambios.',
+  'refusal.draftNotPublished':
+    '{item} se cierra al publicar el tablero {board}: pruébalo y publícalo en Studio.',
   'refusal.undo': 'No se deshizo {item}: {why}.',
   'refusal.undo.notMoved': 'no se ha movido',
   'refusal.undo.alreadyUndone': 'su último movimiento ya se deshizo',

@@ -161,10 +161,14 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
     return closedBy?.doer ? { ...on, agent: closedBy.doer } : on;
   }, [item, type, now, onBoard, ownStep, closedBy]);
   const lane = onBoard?.route.lane ?? laneOf(item.turn);
-  const planned = planMoves(item.transitions, { own: facts.own, word, waits: waitsOf(item) });
-
   // ---- what a Studio board adds: parts, links, waits, branch, rounds, motives (board-item.ts) ----
   const block = (item as ItemView & { board?: ItemBoardBlock }).board;
+  const planned = planMoves(item.transitions, {
+    own: facts.own,
+    word,
+    waits: waitsOf(item),
+    draftWaits: !!block?.request && !block.request.published,
+  });
   const nameOf = (r: RelatedItem) => {
     const types = app.collectionOf(r.collection)?.types ?? [];
     const step = r.closes === 'done' ? t('bs.done') : stateWordIn(types, r.state);

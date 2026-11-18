@@ -23,12 +23,20 @@ const cap = (s: string) => (s ? s[0]?.toLocaleUpperCase() + s.slice(1) : s);
 
 export function planMoves(
   moves: readonly Move[],
-  o: { own: boolean; word: (state: string) => string; waits?: Waits },
+  o: {
+    own: boolean;
+    word: (state: string) => string;
+    waits?: Waits;
+    // A board an agent drafts on this Pedido waits as a draft: publishing it in Studio closes the
+    // Pedido, so closing it as done is not offered here.
+    draftWaits?: boolean;
+  },
 ): MovePlan {
   const variants = moveVariants(moves, o.waits);
   const backs = moves.filter((m) => m.reasonRequired && m.turn === 'agent' && !m.closes).length;
   const plan: MovePlan = { primary: null, quiet: [], close: [] };
   moves.forEach((move, i) => {
+    if (o.draftWaits && move.closes === 'done') return;
     const blocked = moveBlock(move, o.waits);
     const extra = blocked ? { blocked } : {};
     if (move.closes === 'discarded') {

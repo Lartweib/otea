@@ -158,6 +158,8 @@ export const common = {
   'refusal.frozen':
     'Not updated {item}: its {part} is frozen here; it changes only while {steps} is being done.',
   'refusal.closed': '{item} has ended: it takes no more changes.',
+  'refusal.draftNotPublished':
+    '{item} closes when you publish the board {board}: try it and publish it in Studio.',
   'refusal.undo': 'Not undone {item}: {why}.',
   'refusal.undo.notMoved': 'it has not moved',
   'refusal.undo.alreadyUndone': 'its last move is already undone',
