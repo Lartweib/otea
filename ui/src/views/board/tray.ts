@@ -75,17 +75,20 @@ export function trayGroups(buttons: readonly TrayButton[]): {
 }
 
 // The notice under the buttons, one plain sentence: reading, nothing shared, or only the shared
-// moves showing. `why` when there are moves left out to name behind "por qué".
+// moves showing. `why` when there are moves left out to name behind "por qué". When all that is
+// left out is a decision's approval (it goes with a pick, on its page), it says just that.
 export function trayNotice(
   plan: {
     moves: readonly Move[];
-    hidden: readonly { moves: readonly string[] }[];
+    hidden: readonly { moves: readonly string[]; pick?: true }[];
     loading: boolean;
   },
   count: number,
 ): { say: string; why: boolean } | null {
   if (plan.loading) return { say: t('boardView.tray.reading'), why: false };
   const why = plan.hidden.some((h) => h.moves.length > 0);
+  if (why && plan.hidden.every((h) => h.pick))
+    return { say: t('boardView.tray.pickSay'), why: false };
   if (!plan.moves.length) return { say: t('boardView.tray.noneShared', { count }), why };
   if (why) return { say: t('boardView.tray.someShared', { count }), why };
   return null;

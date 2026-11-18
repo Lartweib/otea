@@ -187,6 +187,8 @@ function said(details: RefusalDetails): string | undefined {
       return t('refusal.closed', { item: details.item });
     case 'board_unpublished':
       return t('refusal.draftNotPublished', { item: details.item, board: details.board });
+    case 'choice':
+      return details.why === 'no_pick' ? t('refusal.noPick', { item: details.item }) : undefined;
     case 'undo': {
       const key = UNDO_WHY[details.why];
       return key && t('refusal.undo', { item: details.item, why: t(key) });

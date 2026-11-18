@@ -115,6 +115,15 @@ describe('triagePlan', () => {
     expect(triagePlan([ship, backWithReason])).toEqual({ forward: ship, back: backWithReason });
     expect(triagePlan([ship])).toEqual({ forward: ship });
   });
+
+  it('never approves a decision by a gesture or a press: its approval goes through the pick', () => {
+    const design: Move = { to: 'design', by: 'human', reasonRequired: false, turn: 'agent' };
+    const refine: Move = { to: 'refine', by: 'human', reasonRequired: true, turn: 'agent' };
+    const plan = triagePlan([design, refine], undefined, undefined, ['design']);
+    expect(plan).toEqual({ pick: design, back: refine });
+    expect(swipeAction('right', plan)).toEqual({ kind: 'none' });
+    expect(swipeAction('left', plan)).toEqual({ kind: 'explain', to: 'refine' });
+  });
 });
 
 describe('swipeAction', () => {

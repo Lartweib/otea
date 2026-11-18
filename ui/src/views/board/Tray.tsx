@@ -1,4 +1,5 @@
 import { type ReactNode, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { pickAt } from '../../../../src/core/board/choices.ts';
 import { openBlockers } from '../../actions.ts';
 import { fetchItem, pinItems, undoMove } from '../../api.ts';
 import { useApp } from '../../app/context.tsx';
@@ -19,6 +20,7 @@ import { Choreo, part } from '../../motion/choreo.ts';
 import { reduced } from '../../motion/reduced.ts';
 import { stateWordIn } from '../../preset-words.ts';
 import type { CollectionView, Item, Move } from '../../types.ts';
+import { useStudioBoard } from './studio-board.tsx';
 import { type TrayButton, trayButtons, trayGroups, trayNotice, trayStates } from './tray.ts';
 
 // The tray (SPEC §10.1, mock:478-494, 3738-3844): docked at the foot of the table while rows are
@@ -103,6 +105,25 @@ function hiddenSaid(
   return rest > 0
     ? `${labels.slice(0, 2).join(', ')} ${t('boardView.tray.andMore', { count: rest })}`
     : labels.join(t('boardView.tray.and'));
+}
+
+// What "por qué" says: the moves only some ticked items take, in one sentence; a decision's
+// approval, kept out for the pick it needs, says so on its own.
+function whyLines(
+  selected: readonly Selected[],
+  hidden: readonly { moves: string[]; why: string; pick?: true }[],
+  word: (s: string) => string,
+): string[] {
+  const rest = hidden.filter(({ pick }) => !pick);
+  const picks = hidden
+    .filter(({ pick }) => pick)
+    .map(({ moves, why }) =>
+      t('bulk.hiddenMoves', { moves: hiddenSaid(selected, [{ moves }], word), why }),
+    );
+  const some = rest.length
+    ? [t('boardView.tray.hiddenSaid', { moves: hiddenSaid(selected, rest, word) })]
+    : [];
+  return [...some, ...picks.map((line) => `${line}.`)];
 }
 
 export function Tray({
@@ -194,9 +215,11 @@ export function Tray({
   }, [want, present]);
 
   const moves = useMoves(items);
+  const def = useStudioBoard(collection.name)?.live;
   const selected: Selected[] = items.map((item) => {
     const m = moves.get(at(item));
-    return { item, moves: m?.moves, blockers: m?.blockers ?? 0 };
+    const picks = def ? pickAt(def, item)?.forward : undefined;
+    return { item, moves: m?.moves, blockers: m?.blockers ?? 0, picks };
   });
   const plan = bulkPlan(selected);
   const buttons = trayButtons(plan.moves, word);
@@ -413,10 +436,7 @@ export function Tray({
                   </button>
                   {whyOpen ? (
                     <span className="twhylist">
-                      {' '}
-                      {t('boardView.tray.hiddenSaid', {
-                        moves: hiddenSaid(selected, plan.hidden, word),
-                      })}
+                      {whyLines(selected, plan.hidden, word).map((line) => ` ${line}`)}
                     </span>
                   ) : null}
                 </>

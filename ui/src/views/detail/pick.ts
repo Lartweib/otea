@@ -1,11 +1,6 @@
-import { type ItemChoice, pickableOptions } from '../../../../src/core/board/choices.ts';
+import { type ItemChoice, pickAt } from '../../../../src/core/board/choices.ts';
 import { isClosed, positionOf } from '../../../../src/core/board/engine.ts';
-import {
-  type BoardDefinition,
-  DONE,
-  stepById,
-  stepIndex,
-} from '../../../../src/core/board/model.ts';
+import { type BoardDefinition, DONE, stepIndex } from '../../../../src/core/board/model.ts';
 import { t } from '../../i18n/i18n.ts';
 import type { DecisionOption } from '../../options.ts';
 import type { MoveChoice, MovePlan } from './moves.ts';
@@ -14,7 +9,8 @@ import type { MoveChoice, MovePlan } from './moves.ts';
 // with two or more), you pick one, with a comment if you like, as you approve it: every way on is
 // «Elegir → <step>» or «Elegir y cerrar», side by side, so where it goes after the pick is a choice
 // of the same weight. The option starts on the one you picked before, else the agent's
-// recommendation. Sending it back carries no pick.
+// recommendation. Sending it back carries no pick. Only the review of the step that hands the
+// options in asks (core pickAt): a later review never asks to pick again.
 
 export type Pick = {
   options: DecisionOption[];
@@ -29,10 +25,7 @@ export function pickOf(
   chosen: ItemChoice | undefined,
 ): Pick | undefined {
   if (!def) return undefined;
-  const position = positionOf(item.state);
-  if (isClosed(position) || position.phase !== 'review') return undefined;
-  if (stepById(def, position.step)?.reviewer !== 'you') return undefined;
-  const found = pickableOptions(def, item.fields);
+  const found = pickAt(def, item);
   if (!found) return undefined;
   const { options } = found;
   const before = chosen && options.some(({ letter }) => letter === chosen.option);

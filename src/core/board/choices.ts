@@ -1,4 +1,5 @@
-import type { BoardDefinition } from './model.ts';
+import { isClosed, positionOf, stateOf, waysOf } from './engine.ts';
+import { type BoardDefinition, DONE, stepById } from './model.ts';
 
 // The options a decision weighs and the one the person picks. Options are a long text the board
 // shows as options (`show: 'options'`), written one `### A · Name` heading per option, a line that
@@ -62,6 +63,28 @@ export function pickableOptions(
     if (options.length >= 2) return { part: part.id, options };
   }
   return undefined;
+}
+
+// Where the person picks: on their review of the step that hands the options in (a later review
+// never asks again: the choice is made), or, on a board whose steps never hand them in, on any
+// review of theirs. forward: the states the approvals out of that review lead to, each of which
+// carries the pick. Undefined when this review asks for no pick.
+export function pickAt(
+  def: BoardDefinition,
+  item: { state: string; fields: Readonly<Record<string, unknown>> },
+): { part: string; options: DecisionOption[]; forward: string[] } | undefined {
+  const position = positionOf(item.state);
+  if (isClosed(position) || position.phase !== 'review') return undefined;
+  const step = stepById(def, position.step);
+  if (step?.reviewer !== 'you') return undefined;
+  const found = pickableOptions(def, item.fields);
+  if (!found) return undefined;
+  const handing = def.steps.filter(({ hand }) => hand.some(({ ref }) => ref === found.part));
+  if (handing.length > 0 && !handing.includes(step)) return undefined;
+  const forward = waysOf(def, step.id).map((way) =>
+    stateOf(way === DONE ? { closed: DONE } : { step: way, phase: 'doing' }),
+  );
+  return { ...found, forward };
 }
 
 // The option the person picked: its letter and name, their comment, and the review it was picked

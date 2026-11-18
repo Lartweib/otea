@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { choiceOf, OPTION_CHOSEN, optionsOf, pickableOptions } from './choices.ts';
+import { choiceOf, OPTION_CHOSEN, optionsOf, pickAt, pickableOptions } from './choices.ts';
 import type { BoardDefinition } from './model.ts';
+import { instantiate, requireTemplate } from './templates.ts';
 
 const OPTIONS = [
   '### A · SQLite on the device (recommended)',
@@ -78,5 +79,33 @@ describe('the options a person picks from', () => {
       stepName: 'Design',
     });
     expect(choiceOf([])).toBeUndefined();
+  });
+});
+
+describe('where the person picks', () => {
+  const board = instantiate(requireTemplate('ideaboard'), 'es', {}, undefined, { keep: true });
+  const fields = { options: OPTIONS };
+
+  it('asks for a pick on the review of the step that hands the options in, with its ways on', () => {
+    const at = pickAt(board, { state: 'refine__review', fields });
+    expect(at?.options.map(({ letter }) => letter)).toEqual(['A', 'B']);
+    expect(at?.forward).toEqual(['design']);
+  });
+
+  it('never asks again at a later review, nor while the step is being done', () => {
+    expect(pickAt(board, { state: 'design__review', fields })).toBeUndefined();
+    expect(pickAt(board, { state: 'refine', fields })).toBeUndefined();
+    expect(pickAt(board, { state: 'done', fields })).toBeUndefined();
+  });
+
+  it('on a board whose steps never hand the options in, asks on any review of yours', () => {
+    const loose = {
+      ...board,
+      steps: board.steps.map((step) => ({
+        ...step,
+        hand: step.hand.filter(({ ref }) => ref !== 'options'),
+      })),
+    };
+    expect(pickAt(loose, { state: 'design__review', fields })?.forward).toEqual(['planit', 'done']);
   });
 });

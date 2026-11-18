@@ -35,7 +35,7 @@ import {
   updateItemState,
 } from '../store/queries.ts';
 import { type Asks, askingItems, withAsks } from './asking.ts';
-import { type ChoiceInput, recordChoice } from './choices.ts';
+import { assertPicked, type ChoiceInput, recordChoice } from './choices.ts';
 import { collectionNamed, getCollection, presetOf, typeOfItem } from './collections.ts';
 import type { Context } from './context.ts';
 import { draftRequestOf } from './draft-request.ts';
@@ -461,6 +461,7 @@ export function moveItem(ctx: Context, input: MoveItemInput, now = systemClock):
     assertMayEnter(ctx, item, workflow, to, at);
     const data = { ...(reason ? { reason } : {}), ...(note ? { note } : {}), channel };
     const live = liveBoardOf(ctx, item.collection);
+    if (live) assertPicked(live.def, item, { to, actor }, input.choice);
     if (input.choice) {
       if (!live)
         throw new OteaError('invalid_transition', `Not chosen on ${item.id}: it is on no board`);

@@ -35,6 +35,10 @@ describe('picking an option as you approve', () => {
     expect(
       pickOf(def, { state: 'design', fields: { options: OPTIONS } }, undefined),
     ).toBeUndefined();
+    // Diseñar's review never asks again: the pick was made in Refinar.
+    expect(
+      pickOf(def, { state: 'design__review', fields: { options: OPTIONS } }, undefined),
+    ).toBeUndefined();
     const one = { state: 'refine__review', fields: { options: '### A · Solo' } };
     expect(pickOf(def, one, undefined)).toBeUndefined();
     expect(pickOf(undefined, one, undefined)).toBeUndefined();
