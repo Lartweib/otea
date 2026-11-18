@@ -206,6 +206,15 @@ describe('requestLine: the folded request, one line of its prose (IDEA2-2, DR2-2
     expect(requestLine('```\nnpm test\n```\nY después')).toBe('Y después');
     expect(requestLine('  ')).toBe('');
   });
+
+  it('keeps the underscores inside a word and inside code (P7-10)', () => {
+    expect(requestLine('Falla user_name_here con _cursiva_ y __init__')).toBe(
+      'Falla user_name_here con cursiva y init',
+    );
+    expect(requestLine('Lee `__dunder__` y `a_b_c` en snake_case')).toBe(
+      'Lee __dunder__ y a_b_c en snake_case',
+    );
+  });
 });
 
 describe('before and after in the reader', () => {
