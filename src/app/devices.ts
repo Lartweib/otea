@@ -74,8 +74,10 @@ export function repairDevice(
   return { device: toDevice(row), token };
 }
 
+// In the order they were paired: two paired in the same millisecond keep the order of their rows,
+// not that of their random ids.
 export function listDevices(db: DatabaseSync): Device[] {
-  const rows = db.prepare('SELECT * FROM devices ORDER BY paired_at, id').all() as DeviceRow[];
+  const rows = db.prepare('SELECT * FROM devices ORDER BY paired_at, rowid').all() as DeviceRow[];
   return rows.map(toDevice);
 }
 
