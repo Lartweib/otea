@@ -87,8 +87,8 @@ export function currentProject(cli: Cli, cwd: string): Promise<Project> {
 // Whether the folder is in a project; when it is not, the CLI names where init would make one.
 export async function probeProject(cli: Cli, cwd: string): Promise<Probe> {
   try {
-    await currentProject(cli, cwd);
-    return { kind: 'project' };
+    const project = await currentProject(cli, cwd);
+    return { kind: 'project', root: project.root };
   } catch (error) {
     const { code, details } = error as CliError;
     const root = (details as { kind?: string; root?: unknown } | undefined)?.root;
