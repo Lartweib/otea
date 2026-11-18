@@ -3,11 +3,9 @@ import { existsSync, mkdtempSync, readFileSync, realpathSync, rmSync, statSync }
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { moveItem } from '../app/items.ts';
 import { oteaLauncher } from '../app/launcher.ts';
-import { openProject } from '../app/project.ts';
 import { installGitHook } from './hooks.ts';
-import { type Cli, cliAt, presetCollection, tempGitRepo } from './testing.ts';
+import { type Cli, cliAt, tempGitRepo } from './testing.ts';
 
 describe('hook', () => {
   let repo: ReturnType<typeof tempGitRepo>;
@@ -23,19 +21,14 @@ describe('hook', () => {
 
   afterEach(() => repo.remove());
 
-  it('needs --git, --claude or both', async () => {
+  it('needs --git, and installs no harness hook', async () => {
     const result = await otea('hook', 'install');
 
     expect(result.code).toBe(2);
-    expect(result.err).toContain('Name the hook: --git, --claude or both');
-  });
-
-  it('says in its help that --claude also keeps side topics answered in the chat', async () => {
-    const { out } = await otea('hook', 'install', '--help');
-
-    expect(out).toContain(
-      'and a Stop hook that keeps the answer to a side topic as the agent wrote it in the chat (otea topic session;',
-    );
+    expect(result.err).toContain('Name the hook: --git');
+    const claude = await otea('hook', 'install', '--claude');
+    expect(claude.code).toBe(2);
+    expect(existsSync(join(repo.dir, '.claude'))).toBe(false);
   });
 
   describe('--git', () => {
@@ -78,33 +71,16 @@ describe('hook', () => {
       expect(read('.git/hooks/pre-push')).toBe('#!/bin/sh\necho mine\n');
     });
 
-    it('still adds the Claude hooks when the repo has a pre-push hook of its own', async () => {
-      repo.write('.git/hooks/pre-push', '#!/bin/sh\necho mine\n');
-
-      const install = await otea('hook', 'install', '--git', '--claude');
-
-      expect(install.code).toBe(5);
-      expect(install.err).toContain(`Wrote ${join(repo.dir, '.claude', 'settings.local.json')}`);
-      expect(install.err).toContain('is another pre-push hook; Otea leaves it as it is');
-      expect(settings().hooks.PreToolUse).toBeDefined();
-    });
-
-    it('says a pre-push hook needs a git repository, and still adds the Claude hooks', async () => {
+    it('says a pre-push hook needs a git repository', async () => {
       const outside = realpathSync.native(mkdtempSync(join(tmpdir(), 'otea-nogit-')));
       try {
-        const install = await cliAt(outside, { OTEA_AGENT: 'claude' })(
-          'hook',
-          'install',
-          '--git',
-          '--claude',
-        );
+        const install = await cliAt(outside, { OTEA_AGENT: 'claude' })('hook', 'install', '--git');
 
         expect(install.code).toBe(3);
         expect(install.err).toContain(
           `${outside} is not in a git repository: a pre-push hook goes in one`,
         );
         expect(install.err).not.toContain('Command failed');
-        expect(existsSync(join(outside, '.claude', 'settings.local.json'))).toBe(true);
       } finally {
         rmSync(outside, { recursive: true, force: true });
       }
@@ -174,203 +150,68 @@ describe('hook', () => {
     });
   });
 
-  describe('--claude', () => {
-    const TOPIC_RULES = [
-      'Bash(otea topic add *)',
-      'Bash(otea topic answer *)',
-      'mcp__otea__topic_add',
-      'mcp__otea__topic_answer',
-    ];
+  // otea hook install --claude is gone (no gate depends on a harness hook); hook remove --claude
+  // still takes out what it wrote, whose commands no longer exist.
+  describe('remove --claude', () => {
+    const OLD = {
+      permissions: {
+        allow: [
+          'Bash(npm test)',
+          'Bash(otea topic add *)',
+          'Bash(otea topic answer *)',
+          'mcp__otea__topic_add',
+          'mcp__otea__topic_answer',
+        ],
+      },
+      hooks: {
+        PreToolUse: [
+          { matcher: 'Edit', hooks: [{ type: 'command', command: 'x' }] },
+          {
+            matcher: 'Bash',
+            hooks: [
+              {
+                type: 'command',
+                if: 'Bash(git push)',
+                command: 'otea check --gate push --branch --repo --claude-hook',
+              },
+              {
+                type: 'command',
+                if: 'Bash(gh pr merge *)',
+                command: 'otea check --gate merge --branch --repo --claude-hook',
+              },
+            ],
+          },
+        ],
+        Stop: [{ hooks: [{ type: 'command', command: 'otea topic session --claude-hook' }] }],
+      },
+    };
 
-    it('adds PreToolUse hooks for git push and gh pr merge, keeping the other settings', async () => {
+    it('takes out the old Claude Code hooks and allow rules, keeping the other settings', async () => {
+      repo.write('.claude/settings.local.json', JSON.stringify(OLD));
+
+      const result = await otea('hook', 'remove', '--claude');
+
+      expect(result.code).toBe(0);
+      expect(result.out).toContain('Removed the Otea hook from');
+      expect(settings()).toEqual({
+        permissions: { allow: ['Bash(npm test)'] },
+        hooks: { PreToolUse: [{ matcher: 'Edit', hooks: [{ type: 'command', command: 'x' }] }] },
+      });
+      expect((await otea('hook', 'remove', '--claude')).out).toContain('has no Otea hook');
+    });
+
+    it('removes a settings file that held only the old hooks', async () => {
+      const { hooks } = OLD;
       repo.write(
         '.claude/settings.local.json',
-        JSON.stringify({
-          permissions: { allow: ['Bash(npm test)'] },
-          hooks: { PreToolUse: [{ matcher: 'Edit', hooks: [{ type: 'command', command: 'x' }] }] },
-        }),
+        JSON.stringify({ hooks: { PreToolUse: [hooks.PreToolUse[1]], Stop: hooks.Stop } }),
       );
+      await otea('hook', 'install', '--git');
 
-      const result = await otea('hook', 'install', '--claude');
-      const { permissions, hooks } = settings();
-      const [theirs, ours] = hooks.PreToolUse;
-
-      expect(result.out).toContain(
-        "settings.local.json (kept out of git through .git/info/exclude: it names this machine's path to Otea):",
-      );
-      const status = execFileSync('git', ['status', '--porcelain'], {
-        cwd: repo.dir,
-        encoding: 'utf8',
-      });
-      expect(status).not.toContain('.claude');
-      expect(read('.git/info/exclude')).toContain('/.claude/settings.local.json');
-      expect(permissions).toEqual({ allow: ['Bash(npm test)', ...TOPIC_RULES] });
-      expect(theirs).toEqual({ matcher: 'Edit', hooks: [{ type: 'command', command: 'x' }] });
-      expect(ours.matcher).toBe('Bash');
-      expect(ours.hooks.map((hook: { if: string }) => hook.if)).toEqual([
-        'Bash(git push)',
-        'Bash(git push *)',
-        'Bash(gh pr merge)',
-        'Bash(gh pr merge *)',
-      ]);
-      expect(ours.hooks[0].command).toMatch(/check --gate push --branch --repo --claude-hook$/);
-      expect(ours.hooks[2].command).toMatch(/check --gate merge --branch --repo --claude-hook$/);
-      // What it prints is what it added, in the file's own shape.
-      const printed = JSON.parse(
-        result.out.slice(result.out.indexOf(':\n') + 2).replace(/^ {2}/gm, ''),
-      );
-      expect(printed).toEqual({
-        permissions: { allow: TOPIC_RULES },
-        hooks: { PreToolUse: [ours], Stop: hooks.Stop },
-      });
-    });
-
-    // Claude Code's Auto mode sends every call no rule allows to its classifier, which blocked
-    // otea topic add: narrow allow rules for recording and answering a topic survive Auto mode.
-    it('allows recording and answering side topics, from the CLI and the MCP tools', async () => {
-      await otea('hook', 'install', '--claude');
-
-      expect(settings().permissions).toEqual({ allow: TOPIC_RULES });
-    });
-
-    it('is idempotent, and remove leaves the settings as they were', async () => {
-      const before = { permissions: { allow: ['Bash(npm test)'] } };
-      repo.write('.claude/settings.local.json', JSON.stringify(before));
-      await otea('hook', 'install', '--claude');
-
-      expect((await otea('hook', 'install', '--claude')).out).toContain(
-        'already has the Otea hook',
-      );
-      await otea('hook', 'remove', '--claude');
-      expect(settings()).toEqual(before);
-    });
-
-    it('removes a settings file that held only its hooks', async () => {
-      await otea('hook', 'install', '--claude', '--git');
       await otea('hook', 'remove', '--claude', '--git');
 
       expect(existsSync(join(repo.dir, '.claude/settings.local.json'))).toBe(false);
       expect(existsSync(join(repo.dir, '.git/hooks/pre-push'))).toBe(false);
-    });
-  });
-
-  describe('otea check --claude-hook', () => {
-    beforeEach(async () => {
-      execFileSync('git', ['checkout', '--quiet', '-b', 'chg-1/keys'], { cwd: repo.dir });
-      execFileSync('git', ['remote', 'add', 'origin', 'https://github.com/acme/keys'], {
-        cwd: repo.dir,
-      });
-      await otea('init', '--template', 'none');
-      presetCollection(repo.dir, 'changes', 'change');
-      await otea('create', '--collection', 'changes', '--title', 'Keys');
-      await otea(
-        'create',
-        '--collection',
-        'Tareas de repo',
-        '--parent',
-        'CHANGES-1',
-        '--title',
-        'Keys',
-        '--field',
-        'repo=elsewhere',
-        '--field',
-        'branch=chg-1/keys',
-      );
-    });
-
-    // The hook runs from wherever Claude Code started; the event's cwd is where the call runs.
-    const hook = (cwd: string, ...argv: string[]) => {
-      const event = { cwd, hook_event_name: 'PreToolUse', tool_name: 'Bash' };
-      const at = cliAt(
-        join(repo.dir, '..'),
-        {},
-        undefined,
-        undefined,
-        undefined,
-        JSON.stringify(event),
-      );
-      return at('check', '--gate', 'push', ...argv, '--claude-hook');
-    };
-
-    it('refuses with exit 2 and the reason on stderr, which blocks the tool call', async () => {
-      expect(await hook(repo.dir, '--branch', '--repo', 'elsewhere')).toEqual({
-        code: 2,
-        out: '',
-        err: 'otea: push refused: TAR-1 is in Propuesta; its branch can be pushed only while Implementar is being done.\n',
-      });
-    });
-
-    it('lets the call through when allowed, unmatched or unreadable', async () => {
-      const project = openProject(repo.dir);
-      try {
-        moveItem(project, {
-          id: 'TAR-1',
-          to: 'implementing',
-          actor: { kind: 'human', name: 'ana' },
-          channel: 'ui',
-        });
-      } finally {
-        project.db.close();
-      }
-
-      expect((await hook(repo.dir, '--branch', '--repo', 'elsewhere')).code).toBe(0);
-      expect((await hook(repo.dir, '--branch', '--repo')).code).toBe(0);
-      const garbled = cliAt(repo.dir, {}, undefined, undefined, undefined, 'not json');
-      const result = await garbled('check', '--gate', 'push', '--branch', '--claude-hook');
-      expect(result.code).toBe(0);
-      expect(result.err).toContain('could not check');
-    });
-
-    const merge = (command: string) => {
-      const event = { cwd: repo.dir, tool_name: 'Bash', tool_input: { command } };
-      const at = cliAt(repo.dir, {}, undefined, undefined, undefined, JSON.stringify(event));
-      return at('check', '--gate', 'merge', '--branch', '--repo', 'elsewhere', '--claude-hook');
-    };
-
-    it('checks a bare gh pr merge against the current branch', async () => {
-      const result = await merge('gh pr merge --squash');
-
-      expect(result.code).toBe(2);
-      expect(result.err).toContain('merge refused: TAR-1 is in Propuesta');
-    });
-
-    it('refuses a gh pr merge whose PR it cannot read, instead of letting it through', async () => {
-      const result = await merge('gh pr merge 482 --rebase');
-
-      expect(result.code).toBe(2);
-      expect(result.err).toBe(
-        'otea: merge refused: gh could not tell the branches of PR 482, so Otea cannot check it; merge it once gh can read the PR (gh auth status), or merge it yourself\n',
-      );
-    });
-
-    const push = (command: string) => {
-      const event = { cwd: repo.dir, tool_name: 'Bash', tool_input: { command } };
-      const at = cliAt(repo.dir, {}, undefined, undefined, undefined, JSON.stringify(event));
-      return at('check', '--gate', 'push', '--branch', '--repo', 'elsewhere', '--claude-hook');
-    };
-
-    it('checks the branches a git push writes to, not the one checked out', async () => {
-      const commit = ['-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '--allow-empty'];
-      execFileSync('git', [...commit, '--quiet', '-m', 'one'], { cwd: repo.dir });
-      execFileSync('git', ['checkout', '--quiet', '-b', 'other'], { cwd: repo.dir });
-
-      const forced = await push('git push origin main:refs/heads/chg-1/keys --force');
-      expect(forced.code).toBe(2);
-      expect(forced.err).toContain('push refused: TAR-1 is in Propuesta');
-      expect((await push('git push origin a:b +HEAD:chg-1/keys')).code).toBe(2);
-      expect((await push('git push origin other')).code).toBe(0);
-      expect((await push('git push')).code).toBe(0);
-      expect((await push('git push --all origin')).code).toBe(2);
-      execFileSync('git', ['checkout', '--quiet', 'chg-1/keys'], { cwd: repo.dir });
-      expect((await push('git push origin chg-1/keys:other')).code).toBe(0);
-      expect((await push('git push -u origin')).code).toBe(2);
-    });
-
-    it('refuses a git push whose branches it cannot tell', async () => {
-      const result = await push('git push --mirror origin');
-
-      expect(result.code).toBe(2);
-      expect(result.err).toContain('push refused: cannot tell which branches');
     });
   });
 });

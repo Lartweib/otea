@@ -7,7 +7,7 @@ import type { Project } from '../app/project.ts';
 import { checkoutsOf } from '../app/repos.ts';
 import { CommandFailure } from './command.ts';
 import { EXIT_CODES } from './exit-codes.ts';
-import { gitPath, keepOutOfGit, keptOutNote, repoRoot } from './gitrepo.ts';
+import { gitPath, repoRoot } from './gitrepo.ts';
 
 // What installing or removing a hook did to its file; `content` is what was written or removed.
 export type HookChange = {
@@ -149,40 +149,22 @@ export function removeGitHook(cwd: string): HookChange {
   return { path, action: 'removed', content };
 }
 
-type ClaudeHook = { type: 'command'; if: string; command: string };
 type HookGroup = { matcher?: string; hooks?: unknown[] };
 type Settings = Record<string, unknown> & {
   hooks?: Record<string, unknown>;
   permissions?: Record<string, unknown>;
 };
 
-// Recording and answering a side topic, from the CLI and the MCP tools (the server otea connect
-// names "otea"), allowed outright. Claude Code's Auto mode sends every call no rule allows to its
-// classifier, which blocks otea topic add; narrow rules like these survive Auto mode. Closing a
-// topic or switching topics stays with the person.
+// Otea no longer writes Claude Code hooks: correctness never depends on a harness. hook remove
+// --claude still takes out what an older otea hook install --claude wrote (the PreToolUse gate
+// that ran otea check --claude-hook, the Stop hook that ran otea topic session, and these allow
+// rules), since the commands those hooks run are gone.
 const CLAUDE_TOPIC_RULES: readonly string[] = [
   'Bash(otea topic add *)',
   'Bash(otea topic answer *)',
   'mcp__otea__topic_add',
   'mcp__otea__topic_answer',
 ];
-
-// The Bash calls each gated action covers, as permission rules: each rule matches a command alone
-// or with arguments.
-const CLAUDE_GATES: ReadonlyArray<[string, string]> = [
-  ['push', 'git push'],
-  ['merge', 'gh pr merge'],
-];
-
-function claudeHooks(otea: Launcher): ClaudeHook[] {
-  return CLAUDE_GATES.flatMap(([gate, command]) =>
-    [`Bash(${command})`, `Bash(${command} *)`].map((rule) => ({
-      type: 'command' as const,
-      if: rule,
-      command: `${oteaCommand(otea)} check --gate ${gate} --branch --repo --claude-hook`,
-    })),
-  );
-}
 
 function isOurs(hook: unknown): boolean {
   const command = (hook as { command?: unknown } | null)?.command;
@@ -193,14 +175,8 @@ function isOurs(hook: unknown): boolean {
   );
 }
 
-// The Stop hook that keeps a side topic's answer as the agent wrote it in the chat; it does
-// nothing while the project keeps no topics.
-function stopHooks(otea: Launcher): Array<{ type: 'command'; command: string }> {
-  return [{ type: 'command', command: `${oteaCommand(otea)} topic session --claude-hook` }];
-}
-
-// The hooks name this machine's path to Otea, so they go to the settings of this machine only.
-export function claudeSettingsFile(cwd: string): string {
+// Where an older otea hook install --claude wrote its hooks.
+function claudeSettingsFile(cwd: string): string {
   return join(repoRoot(cwd), '.claude', 'settings.local.json');
 }
 
@@ -255,35 +231,6 @@ function withoutOurRules(
 function writeSettings(path: string, settings: Settings): void {
   mkdirSync(dirname(path), { recursive: true });
   writeFileSync(path, `${JSON.stringify(settings, null, 2)}\n`);
-}
-
-export function installClaudeHook(cwd: string, otea: Launcher): HookChange {
-  const path = claudeSettingsFile(cwd);
-  const before = readSettings(path);
-  const base = withoutOurs(before);
-  const group = { matcher: 'Bash', hooks: claudeHooks(otea) };
-  const stop = { hooks: stopHooks(otea) };
-  const existing = Array.isArray(base.hooks?.PreToolUse) ? base.hooks.PreToolUse : [];
-  const stops = Array.isArray(base.hooks?.Stop) ? base.hooks.Stop : [];
-  const allow = Array.isArray(base.permissions?.allow) ? base.permissions.allow : [];
-  const next: Settings = {
-    ...base,
-    permissions: { ...(base.permissions ?? {}), allow: [...allow, ...CLAUDE_TOPIC_RULES] },
-    hooks: { ...(base.hooks ?? {}), PreToolUse: [...existing, group], Stop: [...stops, stop] },
-  };
-  // What Otea adds, in the shape the file holds it, so the printed preview reads like the file.
-  const content = JSON.stringify(
-    { permissions: { allow: CLAUDE_TOPIC_RULES }, hooks: { PreToolUse: [group], Stop: [stop] } },
-    null,
-    2,
-  );
-  const unchanged = JSON.stringify(next) === JSON.stringify(before);
-  const existed = existsSync(path);
-  if (!unchanged) writeSettings(path, next);
-  // The hooks name this machine's path to Otea: the file stays out of git.
-  const note = keptOutNote(path, keepOutOfGit(path));
-  const action = unchanged ? 'unchanged' : existed ? 'updated' : 'created';
-  return { path, action, content, ...(note ? { note } : {}) };
 }
 
 export function removeClaudeHook(cwd: string): HookChange {

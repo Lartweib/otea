@@ -79,8 +79,6 @@ export const CLI_ONLY_COMMANDS = [
   'topic show',
   'topic note',
   'topic close',
-  // Claude Code runs it as a Stop hook; an agent never calls it.
-  'topic session',
   'collection icon',
   'validate',
   'check',

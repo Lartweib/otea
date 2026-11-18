@@ -8,8 +8,7 @@ export type FailureCode =
   | 'not_running'
   | 'timeout'
   | 'interrupted'
-  | 'gate_refused'
-  | 'hook_refused';
+  | 'gate_refused';
 
 export const EXIT_CODES: Readonly<Record<'ok' | FailureCode, number>> = {
   ok: 0,
@@ -17,8 +16,6 @@ export const EXIT_CODES: Readonly<Record<'ok' | FailureCode, number>> = {
   // otea check: the gate refuses the action, the exit code hooks stop on; its own, so a hook never
   // stops on a crash or a busy port.
   gate_refused: 19,
-  // otea check --claude-hook: the code that makes Claude Code block the tool call.
-  hook_refused: 2,
   usage: 2,
   not_found: 3,
   invalid_transition: 4,
