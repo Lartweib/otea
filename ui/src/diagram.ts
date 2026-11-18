@@ -130,6 +130,55 @@ const sizeOf = (node: DiagramNode) => ({
   h: node.sub ? 54 : 40,
 });
 
+// An edge's cubic Bézier: its start, two control points and its end.
+type Curve = [number, number, number, number, number, number, number, number];
+
+type Box = { x: number; y: number; w: number; h: number };
+
+const pointAt = ([x0, y0, x1, y1, x2, y2, x3, y3]: Curve, t: number) => {
+  const u = 1 - t;
+  const a = u * u * u;
+  const b = 3 * u * u * t;
+  const c = 3 * u * t * t;
+  const e = t * t * t;
+  return { x: a * x0 + b * x1 + c * x2 + e * x3, y: a * y0 + b * y1 + c * y2 + e * y3 };
+};
+
+// A label's box as DiagramView draws it (6.8px a letter, 8px each side, 20px high), with room
+// around it.
+const LABEL_ROOM = 3;
+const labelBox = (label: string, x: number, y: number): Box => ({
+  x: x - label.length * 3.4 - 8 - LABEL_ROOM,
+  y: y - 10 - LABEL_ROOM,
+  w: label.length * 6.8 + 16 + LABEL_ROOM * 2,
+  h: 20 + LABEL_ROOM * 2,
+});
+
+const meets = (a: Box, b: Box) =>
+  a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+
+// Where along its edge each label sits: halfway, unless that covers a node or a label already
+// placed (the edges a decision fans out to meet halfway); then the nearest point along the same
+// edge that covers neither, so a label never leaves its line.
+const ALONG = [0.5, 0.6, 0.4, 0.7, 0.3, 0.78, 0.22, 0.85, 0.15];
+function clearLabels(edges: Route[], curves: readonly Curve[], nodes: readonly Box[]): void {
+  const taken: Box[] = [];
+  edges.forEach((edge, index) => {
+    const curve = curves[index];
+    if (!edge.label || !curve) return;
+    const label = edge.label;
+    const fits = (box: Box) => ![...nodes, ...taken].some((other) => meets(box, other));
+    const spot = ALONG.map((t) => pointAt(curve, t)).find(({ x, y }) =>
+      fits(labelBox(label, x, y)),
+    );
+    if (spot) {
+      edge.lx = spot.x;
+      edge.ly = spot.y;
+    }
+    taken.push(labelBox(label, edge.lx, edge.ly));
+  });
+}
+
 export function layoutDiagram(diagram: Diagram): Drawing {
   const across = diagram.direction === 'LR' || diagram.direction === 'RL';
   const ranks = ranksOf(diagram);
@@ -149,6 +198,15 @@ export function layoutDiagram(diagram: Diagram): Drawing {
     ),
   );
   const widest = Math.max(0, ...breadth);
+  // Across (LR, RL), a labelled edge from one rank to the next runs along the gap between them:
+  // the gap is wide enough to hold its label clear of both nodes.
+  const gaps = columns.map(() => RANK_GAP);
+  if (across)
+    for (const { from, to, label } of diagram.edges) {
+      const rank = ranks.get(from) ?? 0;
+      if (!label || (ranks.get(to) ?? 0) !== rank + 1) continue;
+      gaps[rank] = Math.max(gaps[rank] ?? RANK_GAP, labelBox(label, 0, 0).w + 2 * LABEL_ROOM + 12);
+    }
   const placed = new Map<string, Placed>();
   let along = MARGIN;
   columns.forEach((column, index) => {
@@ -161,9 +219,9 @@ export function layoutDiagram(diagram: Diagram): Drawing {
       placed.set(node.id, { ...node, x, y, w, h });
       side += (across ? h : w) + NODE_GAP;
     }
-    along += (depth[index] ?? 0) + RANK_GAP;
+    along += (depth[index] ?? 0) + (gaps[index] ?? RANK_GAP);
   });
-  const length = along - RANK_GAP + MARGIN;
+  const length = along - (gaps.at(-1) ?? RANK_GAP) + MARGIN;
   const span = widest + MARGIN * 2;
   let width = across ? length : span;
   let height = across ? span : length;
@@ -181,6 +239,7 @@ export function layoutDiagram(diagram: Diagram): Drawing {
   const LOOP = 36;
   const outer = across ? height - MARGIN : width - MARGIN;
   let looped = 0;
+  const curves: Curve[] = [];
   const edges = diagram.edges.flatMap((edge): Route[] => {
     const a = placed.get(edge.from);
     const b = placed.get(edge.to);
@@ -196,6 +255,7 @@ export function layoutDiagram(diagram: Diagram): Drawing {
         const y1 = a.y + a.h;
         const y2 = b.y + b.h;
         const d = `M${x1} ${y1} C${x1} ${reach} ${x2} ${reach} ${x2} ${y2}`;
+        curves.push([x1, y1, x1, reach, x2, reach, x2, y2]);
         return [{ ...edge, d, lx: (x1 + x2) / 2, ly: (y1 + y2) / 8 + (reach * 3) / 4 }];
       }
       const y1 = a.y + a.h / 2;
@@ -203,6 +263,7 @@ export function layoutDiagram(diagram: Diagram): Drawing {
       const x1 = a.x + a.w;
       const x2 = b.x + b.w;
       const d = `M${x1} ${y1} C${reach} ${y1} ${reach} ${y2} ${x2} ${y2}`;
+      curves.push([x1, y1, reach, y1, reach, y2, x2, y2]);
       return [{ ...edge, d, lx: (x1 + x2) / 8 + (reach * 3) / 4, ly: (y1 + y2) / 2 }];
     }
     let x1: number;
@@ -237,10 +298,11 @@ export function layoutDiagram(diagram: Diagram): Drawing {
             : 'h';
     const mx = (x1 + x2) / 2;
     const my = (y1 + y2) / 2;
-    const d =
-      bend === 'h'
-        ? `M${x1} ${y1} C${mx} ${y1} ${mx} ${y2} ${x2} ${y2}`
-        : `M${x1} ${y1} C${x1} ${my} ${x2} ${my} ${x2} ${y2}`;
+    const curve: Curve =
+      bend === 'h' ? [x1, y1, mx, y1, mx, y2, x2, y2] : [x1, y1, x1, my, x2, my, x2, y2];
+    curves.push(curve);
+    const [, , c1x, c1y, c2x, c2y] = curve;
+    const d = `M${x1} ${y1} C${c1x} ${c1y} ${c2x} ${c2y} ${x2} ${y2}`;
     return [{ ...edge, d, lx: mx, ly: my }];
   });
   // The loops bulge three quarters of the way to their reach; the drawing grows to hold them and
@@ -250,6 +312,7 @@ export function layoutDiagram(diagram: Diagram): Drawing {
     if (across) height = Math.max(height, room);
     else width = Math.max(width, room);
   }
+  clearLabels(edges, curves, [...placed.values()]);
   return { width, height, nodes: [...placed.values()], edges };
 }
 
