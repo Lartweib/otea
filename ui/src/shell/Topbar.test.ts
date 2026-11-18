@@ -268,6 +268,29 @@ describe('the agents menu', () => {
     );
   });
 
+  // It asked for MCP (otea connect) and its harness never loaded Otea's server.
+  it('flags in warn an agent whose MCP never connected, saying why on hover', () => {
+    setLanguage('es');
+    const rows = agentRows([agent('Quill', { mcpMissing: true, profile: opus })], items, NOW);
+    const html = renderIn(
+      testApp(),
+      createElement(AgentsMenuBody, {
+        project: 'Hollowmere',
+        rows,
+        counts: agentCounts(rows),
+        now: NOW,
+        onOpen: () => undefined,
+        onActivity: () => undefined,
+        onConnect: () => undefined,
+        onPerformance: () => undefined,
+      }),
+    );
+    expect(html).toMatch(
+      /<span class="flag" title="Pidió conectarse por MCP[^"]*"><svg[\s\S]*?<\/svg>MCP sin conectar<\/span>/,
+    );
+    expect(menu()).not.toContain('MCP sin conectar');
+  });
+
   it('marks a profile missing in warn, unconfirmed or just changed in grey', () => {
     const html = menu();
     expect(html).toMatch(/<span class="flag"><svg[\s\S]*?<\/svg>sin perfil<\/span>/);

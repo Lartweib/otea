@@ -1,10 +1,13 @@
-import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { Client, InMemoryTransport } from '@modelcontextprotocol/client';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { listAgents } from '../app/presence.ts';
+import { openProject } from '../app/project.ts';
 import { AGENT_GUIDE } from '../core/agent-guide.ts';
-import { INIT_NEXT } from './commands.ts';
+import { createMcpServer } from '../mcp/server.ts';
+import { COMMANDS, INIT_NEXT } from './commands.ts';
 import { type Cli, cliAt, tempGitRepo } from './testing.ts';
 
 // The profile connect gives the agent it pins.
@@ -91,15 +94,23 @@ describe('setup for agents', () => {
       id = (await json('projects', 'current')).id;
     });
 
-    // The entry pins the project too: its server refuses writes to any other (OTEA_PROJECT_ID).
-    const entry = (name: string) => ({
+    // The server an agent adds to its own harness: pinned to the project, naming no agent.
+    const entry = () => ({
       command: 'node',
-      args: ['--disable-warning=ExperimentalWarning', MAIN, 'mcp', '--as', name],
-      env: { OTEA_PROJECT_ID: id },
+      args: ['--disable-warning=ExperimentalWarning', MAIN, 'mcp', '--project', id],
     });
 
+    // Whether the desk shows the agent asked for MCP and was never heard through it.
+    const missing = (name: string) => {
+      const project = openProject(repo.dir);
+      try {
+        return listAgents(project.db).find((agent) => agent.name === name)?.mcpMissing;
+      } finally {
+        project.db.close();
+      }
+    };
+
     it('refuses a pinned agent writing to another project, and lets it write to its own', async () => {
-      await otea('connect', '--as', 'claude-b', ...PROFILE);
       const elsewhere = cliAt(repo.dir, {
         OTEA_AGENT: 'claude-b',
         OTEA_PROJECT_ID: 'other-zzzzzz',
@@ -123,98 +134,112 @@ describe('setup for agents', () => {
       expect(made.code).toBe(0);
     });
 
-    it('names --as in its usage, beside the profile', async () => {
+    it('names --as and --check in its usage, beside the profile', async () => {
       const { out } = await otea('connect', '--help');
 
-      expect(out).toContain('otea connect [--as <name>] [--model <id>] [--effort <level>]');
+      expect(out).toContain(
+        'otea connect [--as <name>] [--model <id>] [--effort <level>] [--check]',
+      );
     });
 
-    it('pins the agent name in the project MCP config', async () => {
-      const { code, out } = await otea('connect', '--as', 'claude-b', ...PROFILE);
+    it('writes AGENTS.md and prints the MCP server to add, writing no harness config', async () => {
+      const { code, out } = await otea('connect');
 
       expect(code).toBe(0);
-      expect(JSON.parse(read('.mcp.json'))).toEqual({ mcpServers: { otea: entry('claude-b') } });
-      expect(out).toBe(
-        `Connected "claude-b": ${join(repo.dir, '.mcp.json')} serves otea mcp --as claude-b (kept out of git through .git/info/exclude: it names this machine's path to Otea)\n`,
-      );
+      expect(read('AGENTS.md')).toBe(`${BLOCK}\n`);
+      expect(existsSync(join(repo.dir, '.mcp.json'))).toBe(false);
+      expect(out).toContain(`Added the Otea block to ${join(repo.dir, 'AGENTS.md')}`);
+      expect(out).toContain('a line @AGENTS.md in it imports this file');
+      expect(out).toContain("add this MCP server to your harness's own MCP config yourself");
+      expect(out).toMatch(/^ {2}name {5}otea$/m);
+      expect(out).toMatch(/^ {2}command {2}node$/m);
+      expect(out).toContain(`As JSON: ${JSON.stringify({ otea: entry() })}`);
+      expect(out).toContain('otea connect --check');
     });
 
-    it('keeps .mcp.json out of git, as the per-machine file it is, once', async () => {
-      await otea('connect', '--as', 'claude', ...PROFILE);
-      await otea('connect', '--as', 'claude-b', ...PROFILE);
-
-      const status = execFileSync('git', ['status', '--porcelain'], {
-        cwd: repo.dir,
-        encoding: 'utf8',
+    it('prints the server and what it did with AGENTS.md with --json', async () => {
+      expect(await json('connect')).toEqual({
+        agentsMd: { path: join(repo.dir, 'AGENTS.md'), action: 'created' },
+        mcp: { name: 'otea', ...entry() },
       });
-      expect(status).not.toContain('.mcp.json');
-      const lines = read('.git/info/exclude').split(/\r?\n/);
-      expect(lines.filter((line) => line === '/.mcp.json')).toHaveLength(1);
-    });
-
-    it('says so when .mcp.json is tracked, and leaves git alone', async () => {
-      repo.write('.mcp.json', JSON.stringify({ mcpServers: {} }));
-      execFileSync('git', ['add', '.mcp.json'], { cwd: repo.dir });
-
-      const { out } = await otea('connect', '--as', 'claude', ...PROFILE);
-
-      expect(out).toContain(
-        "(.mcp.json is tracked by git: it now names this machine's path to Otea, so keep that change out of your commits)",
-      );
-      expect(read('.git/info/exclude')).not.toContain('/.mcp.json');
-    });
-
-    it('prints the config it wrote with --json', async () => {
-      expect(await json('connect', '--as', 'claude', ...PROFILE)).toEqual({
-        path: join(repo.dir, '.mcp.json'),
-        server: 'otea',
-        agent: 'claude',
-        ...entry('claude'),
-        git: 'excluded',
-      });
-    });
-
-    it('keeps the other servers and replaces its own entry', async () => {
-      repo.write('.mcp.json', JSON.stringify({ mcpServers: { other: { command: 'x' } } }));
-      await otea('connect', '--as', 'claude', ...PROFILE);
-      await otea('connect', '--as', 'claude-b', ...PROFILE);
-
-      expect(JSON.parse(read('.mcp.json'))).toEqual({
-        mcpServers: { other: { command: 'x' }, otea: entry('claude-b') },
-      });
-    });
-
-    it('asks for the name when none is given and it can ask', async () => {
-      const questions: string[] = [];
-      const ask = async (question: string) => {
-        questions.push(question);
-        return ' codex \n';
-      };
-      const asking = cliAt(repo.dir, {}, undefined, undefined, ask);
-
-      expect((await asking('connect', ...PROFILE)).code).toBe(0);
-      expect(questions).toEqual(['Agent name (short, like claude-b): ']);
-      expect(JSON.parse(read('.mcp.json')).mcpServers.otea).toEqual(entry('codex'));
     });
 
     it('carries an Otea home set apart, so the server finds the same projects', async () => {
       const home = join(repo.dir, 'my home');
-      const custom = cliAt(repo.dir, { OTEA_AGENT: 'claude', OTEA_HOME: home });
+      const custom = cliAt(repo.dir, { OTEA_HOME: home });
+      await custom('init', '--local');
+      const own = JSON.parse((await custom('projects', 'current', '--json')).out).id;
 
-      await custom('connect', '--as', 'claude', ...PROFILE);
+      const { mcp } = JSON.parse((await custom('connect', '--json')).out);
 
-      expect(JSON.parse(read('.mcp.json')).mcpServers.otea).toEqual({
-        ...entry('claude'),
-        env: { OTEA_HOME: home, OTEA_PROJECT_ID: id },
+      expect(mcp).toEqual({
+        name: 'otea',
+        command: 'node',
+        args: ['--disable-warning=ExperimentalWarning', MAIN, 'mcp', '--project', own],
+        env: { OTEA_HOME: home },
       });
     });
 
-    it('requires --as when it cannot ask', async () => {
-      const { code, err } = await otea('connect');
+    it('declares the profile of the agent named, and the desk warns until it is heard over MCP', async () => {
+      const { code } = await otea('connect', '--as', 'claude-b', ...PROFILE);
+
+      expect(code).toBe(0);
+      expect(missing('claude-b')).toBe(true);
+      const profile = JSON.parse(
+        (await cliAt(repo.dir, { OTEA_AGENT: 'claude-b' })('profile', '--json')).out,
+      );
+      expect(profile.profile).toMatchObject({ model: 'claude-opus-5-5', effort: 'high' });
+    });
+
+    it('requires the profile of an agent named that never declared one', async () => {
+      const { code, err } = await otea('connect', '--as', 'claude-b');
 
       expect(code).toBe(2);
-      expect(err).toContain('Name the agent with --as <name>');
-      expect(existsSync(join(repo.dir, '.mcp.json'))).toBe(false);
+      expect(err).toContain('--model <id> --effort <level>');
+    });
+
+    it('says, with --check, that nobody reached Otea over MCP yet', async () => {
+      await otea('connect', '--as', 'claude-b', ...PROFILE);
+
+      const { code, out } = await otea('connect', '--check', '--as', 'claude-b');
+
+      expect(code).toBe(11);
+      expect(out).toContain('claude-b has not reached Otea through its MCP server');
+    });
+
+    it('says, with --check, that the agent was heard over MCP, and the desk stops warning', async () => {
+      await otea('connect', '--as', 'claude-b', ...PROFILE);
+      const client = new Client({ name: 'opencode', version: '1.4.0' });
+      const [clientSide, serverSide] = InMemoryTransport.createLinkedPair();
+      await createMcpServer(COMMANDS, { cwd: repo.dir, warn: () => {} }).connect(serverSide);
+      await client.connect(clientSide);
+      try {
+        const called = await client.callTool({ name: 'list', arguments: { as: 'claude-b' } });
+        expect(called.isError).toBeFalsy();
+      } finally {
+        await client.close();
+      }
+
+      const { code, out } = await otea('connect', '--check', '--as', 'claude-b');
+
+      expect(code).toBe(0);
+      expect(out).toMatch(
+        /^MCP works: claude-b was heard through Otea's MCP server .* \(opencode\)$/m,
+      );
+      expect(missing('claude-b')).toBe(false);
+    });
+
+    it('points at the otea entry an older connect left in .mcp.json', async () => {
+      repo.write(
+        '.mcp.json',
+        JSON.stringify({ mcpServers: { otea: { command: 'node', args: ['mcp', '--as', 'x'] } } }),
+      );
+
+      const { out } = await otea('connect');
+
+      expect(out).toContain(
+        `${join(repo.dir, '.mcp.json')} still has the otea entry an older otea connect wrote`,
+      );
     });
 
     it.each([
@@ -226,13 +251,12 @@ describe('setup for agents', () => {
       'a-very-long-agent-name-indeed',
       'you',
       'human',
-      '',
     ])('refuses %j with invalid_agent_name', async (name) => {
       const { code, err } = await otea('connect', `--as=${name}`, '--json');
 
       expect(code).toBe(6);
       expect(JSON.parse(err).error.code).toBe('invalid_agent_name');
-      expect(existsSync(join(repo.dir, '.mcp.json'))).toBe(false);
+      expect(existsSync(join(repo.dir, 'AGENTS.md'))).toBe(false);
     });
 
     it('fails with not_found before init', async () => {

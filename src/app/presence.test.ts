@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { Actor } from '../core/item.ts';
-import { findAgent } from '../store/queries.ts';
+import { findAgent, markMcpAsked } from '../store/queries.ts';
 import { addCollection } from './collections.ts';
 import type { Context } from './context.ts';
 import { createItem, listItems } from './items.ts';
@@ -55,6 +55,9 @@ describe('agent presence', () => {
         harnessVersion: '2.1.0',
         lastSeen: T0,
         connectedAt: T0,
+        // Heard through the MCP server: its harness loaded Otea's server.
+        mcpAt: T0,
+        mcpAskedAt: null,
       });
     });
 
@@ -157,9 +160,21 @@ describe('agent presence', () => {
           profile: null,
           profileConfirmed: false,
           profileChangedAt: null,
+          mcpAt: T0,
+          mcpMissing: false,
         },
       ]);
       expect(listAgents(ctx.db, at(T2_31S))[0]).toMatchObject({ live: false, listening: false });
+    });
+
+    // otea connect --as notes it asked for MCP: until it is heard through the server, the desk warns.
+    it('flags an agent that asked for MCP and was never heard through it', () => {
+      markMcpAsked(ctx.db, 'claude', T0);
+      seeAgent(ctx.db, { agent: 'claude', channel: 'cli' }, at(T2));
+      expect(listAgents(ctx.db, at(T2))[0]).toMatchObject({ mcpAt: null, mcpMissing: true });
+
+      seeAgent(ctx.db, { agent: 'claude', channel: 'mcp', harness: CLAUDE_CODE }, at(T5));
+      expect(listAgents(ctx.db, at(T5))[0]).toMatchObject({ mcpAt: T5, mcpMissing: false });
     });
 
     it('hears an agent on every beat of its wait', () => {

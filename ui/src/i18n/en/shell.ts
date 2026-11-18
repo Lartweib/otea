@@ -40,6 +40,9 @@ export const shell = {
   'shell.flag.unconfirmed': 'unconfirmed',
   'shell.flag.unconfirmedTip': 'Declared in an earlier session, not confirmed in this one',
   'shell.flag.changed': 'changed {time}',
+  'shell.flag.noMcp': 'MCP not connected',
+  'shell.flag.noMcpTip':
+    "It asked to connect over MCP (otea connect), but its harness never loaded Otea's server: it was declined when asked, or never added. It still works through the otea command.",
   'shell.noAgents': 'No agent connected yet.',
   'shell.cli': 'CLI',
   'shell.activity': 'See activity',

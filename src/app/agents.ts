@@ -2,7 +2,6 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { AGENT_GUIDE } from '../core/agent-guide.ts';
 import { OteaError } from '../core/errors.ts';
-import { assertAgentName } from '../core/item.ts';
 import type { Launcher } from './launcher.ts';
 
 const BEGIN = '<!-- otea:begin -->';
@@ -53,11 +52,8 @@ export const MCP_SERVER = 'otea';
 
 export type McpEntry = { command: string; args: string[]; env?: Record<string, string> };
 
-export type Connection = McpEntry & { path: string; server: string; agent: string };
-
-// Pins the agent's name in the project's MCP config (.mcp.json, read by Claude Code and other
-// clients), so everything the server does is attributed to it. Other servers are kept.
-// The project an agent is pinned to, in its MCP config's environment (otea connect writes it).
+// The project an agent is pinned to: `otea mcp --project <id>`, or this variable in the
+// environment of its shell or MCP server.
 export const PIN_ENV = 'OTEA_PROJECT_ID';
 
 // A write by an agent pinned to another project than the one its folder resolves to: refused.
@@ -65,42 +61,34 @@ export function assertPinned(pin: string | undefined, project: { id: string; nam
   if (pin === undefined || pin === project.id) return;
   throw new OteaError(
     'forbidden',
-    `This agent is pinned to the project ${pin} (${PIN_ENV} in its MCP config), but this folder is the project ${project.name} (${project.id}); nothing was written. Work from a folder of ${pin}, or run otea connect here to work in ${project.id}`,
+    `This agent is pinned to the project ${pin} (otea mcp --project, or ${PIN_ENV}), but this folder is the project ${project.name} (${project.id}); nothing was written. Work from a folder of ${pin}, or point the agent's MCP server at ${project.id}`,
   );
 }
 
-// `project`: the id of the project the agent works in. The entry pins it (OTEA_PROJECT_ID): one
-// Otea server serves every project of the computer, and an agent's MCP server that resolves a
-// folder of another project (started elsewhere, or a config copied) refuses to write there.
-export function connectAgent(
-  root: string,
-  agent: string,
-  launcher: Launcher,
-  project?: string,
-): Connection {
-  assertAgentName(agent);
-  const path = join(root, '.mcp.json');
-  const config = existsSync(path) ? readConfig(path) : {};
-  const env = {
-    ...(launcher.env ?? {}),
-    ...(project === undefined ? {} : { [PIN_ENV]: project }),
-  };
-  const entry: McpEntry = {
+// The MCP server an agent adds to its own harness's config (Otea writes none: it works with any
+// harness, and each keeps its config its own way): named otea, it runs this Otea's `mcp` for the
+// project `project`, pinned to it, so a server started from another project's folder refuses to
+// write there. It names no agent: every session names itself, so two terminals never share a name.
+export function mcpEntry(launcher: Launcher, project: string): McpEntry {
+  return {
     command: launcher.command,
-    args: [...launcher.args, 'mcp', '--as', agent],
-    ...(Object.keys(env).length > 0 ? { env } : {}),
+    args: [...launcher.args, 'mcp', '--project', project],
+    ...(launcher.env && Object.keys(launcher.env).length > 0 ? { env: { ...launcher.env } } : {}),
   };
-  const servers = { ...(config.mcpServers ?? {}), [MCP_SERVER]: entry };
-  writeFileSync(path, `${JSON.stringify({ ...config, mcpServers: servers }, null, 2)}\n`);
-  return { path, server: MCP_SERVER, agent, ...entry };
 }
 
-type McpConfig = { mcpServers?: Record<string, unknown> };
-
-function readConfig(path: string): McpConfig {
+// The otea entry an older `otea connect` wrote in the project's .mcp.json, which named one agent
+// for every session started there; undefined when there is none.
+export function oldMcpEntry(root: string): string | undefined {
+  const path = join(root, '.mcp.json');
+  if (!existsSync(path)) return undefined;
   try {
-    const config: unknown = JSON.parse(readFileSync(path, 'utf8'));
-    if (config !== null && typeof config === 'object' && !Array.isArray(config)) return config;
-  } catch {}
-  throw new Error(`${path} is not a JSON object; fix it or remove it, then connect again`);
+    const config = JSON.parse(readFileSync(path, 'utf8')) as {
+      mcpServers?: Record<string, { args?: unknown }>;
+    };
+    const args = config.mcpServers?.[MCP_SERVER]?.args;
+    return Array.isArray(args) && args.includes('--as') ? path : undefined;
+  } catch {
+    return undefined;
+  }
 }

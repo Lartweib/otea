@@ -396,6 +396,13 @@ export const MIGRATIONS = [
   `
   ALTER TABLE agents ADD COLUMN waiting_at TEXT;
   `,
+  // When an agent was last heard through Otea's MCP server, and when it asked for that connection
+  // (otea connect): asked and never heard, its harness never loaded the server (declined, or never
+  // added), and the desk says so.
+  `
+  ALTER TABLE agents ADD COLUMN mcp_at TEXT;
+  ALTER TABLE agents ADD COLUMN mcp_asked_at TEXT;
+  `,
 ];
 
 function userVersion(db: DatabaseSync): number {

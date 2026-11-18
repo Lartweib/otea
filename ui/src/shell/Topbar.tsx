@@ -442,6 +442,12 @@ export function AgentsMenuBody({
                   {t('shell.flag.changed', { time: clockOf(Date.parse(a.changedAt)) })}
                 </span>
               ) : null}
+              {a.mcpMissing ? (
+                <span className="flag" title={t('shell.flag.noMcpTip')}>
+                  <Icon name="warn" />
+                  {t('shell.flag.noMcp')}
+                </span>
+              ) : null}
             </span>
             <RowDoing row={a} now={now} />
           </span>

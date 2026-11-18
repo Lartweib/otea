@@ -6,6 +6,7 @@ export type FailureCode =
   | 'unexpected'
   | 'validation_failed'
   | 'not_running'
+  | 'not_connected'
   | 'timeout'
   | 'interrupted'
   | 'gate_refused'
@@ -41,6 +42,8 @@ export const EXIT_CODES: Readonly<Record<'ok' | FailureCode, number>> = {
   invalid_preset: 9,
   validation_failed: 10,
   not_running: 11,
+  // otea connect --check: no agent reached Otea through its MCP server yet.
+  not_connected: 11,
   lease_held: 12,
   not_lease_holder: 12,
   // Another open MCP session works under the agent name.

@@ -163,7 +163,7 @@ In the UI the human navigates between linked projects and, inside a project, bet
 ### Stack
 
 - **Node.js only**, TypeScript end to end. Electron already ships Node; a second runtime would mean two SQLite drivers on the same file.
-- The installed CLI runs on Electron's bundled Node (as editors like VS Code do for their CLI): the app carries the CLI's source and production dependencies in `resources/otea`, and `resources/bin/otea` runs `src/cli/main.ts` with `ELECTRON_RUN_AS_NODE=1`, Node stripping the types as it does from source. What the CLI writes to run itself later (the `.mcp.json` entry, the hooks) does the same, so a machine with the app needs no Node. Without the installer it is `npm i -g @otea/cli`.
+- The installed CLI runs on Electron's bundled Node (as editors like VS Code do for their CLI): the app carries the CLI's source and production dependencies in `resources/otea`, and `resources/bin/otea` runs `src/cli/main.ts` with `ELECTRON_RUN_AS_NODE=1`, Node stripping the types as it does from source. What the CLI gives to run itself later (the MCP server `otea connect` prints, the hooks) does the same, so a machine with the app needs no Node. Without the installer it is a checkout with `npm link`.
 - `node:sqlite` (built in, no native module to rebuild for Electron). Its API is still marked release candidate, so all database access is confined to `src/store/`; swapping to `better-sqlite3` would stay local to that folder.
 - Verified by spike (Electron 45.0.0, Node 24.22, SQLite 3.53.4, Windows):
   - `node:sqlite` works without flags in the Electron main process and under `ELECTRON_RUN_AS_NODE` (the bundled CLI). Plain Node 22 also works but prints an `ExperimentalWarning`; the npm-installed CLI requires Node >= 24 or filters the warning.

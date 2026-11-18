@@ -55,11 +55,8 @@ export function ConnectView({ view }: { view: AgentPromptView | null }) {
         {view ? <PromptBlock prompt={view.prompt} primary /> : null}
       </div>
       <p className="cnote" data-i="">
-        {/* One more agent rewrites the project's .mcp.json; only the first runs otea connect. */}
-        {tx(kind === 'join' && view?.first !== true ? 'connect.othersJoin' : 'connect.others', {
-          connect: <code className="inl">otea connect</code>,
-          command: <code className="inl">otea init --agents-md</code>,
-        })}
+        {/* Every agent connects the same way, whatever its harness: Otea writes no harness config. */}
+        {tx('connect.mcp', { connect: <code className="inl">otea connect</code> })}
       </p>
       <p className="cnote" data-i="">
         {t('connect.appears')}

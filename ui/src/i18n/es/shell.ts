@@ -42,6 +42,9 @@ export const shell = {
   'shell.flag.unconfirmed': 'sin confirmar',
   'shell.flag.unconfirmedTip': 'Lo declaró en una sesión anterior y no lo confirmó en esta',
   'shell.flag.changed': 'cambió {time}',
+  'shell.flag.noMcp': 'MCP sin conectar',
+  'shell.flag.noMcpTip':
+    'Pidió conectarse por MCP (otea connect), pero su harness nunca cargó el servidor de Otea: lo rechazó al pedir aprobarlo, o nunca se agregó. Sigue trabajando con el comando otea.',
   'shell.noAgents': 'Todavía no hay agentes conectados.',
   'shell.cli': 'CLI',
   'shell.activity': 'Ver actividad',

@@ -54,6 +54,8 @@ export type McpContext = {
   greeted?(harness: Harness | undefined): void;
   // An agent called a tool: the server, open, keeps it heard as listening (otea mcp beats it).
   heard?(agent: string): void;
+  // An agent calls again: refused once another session took its name (claimName).
+  still?(agent: string): void;
 };
 
 type Values = Record<string, unknown>;
@@ -118,6 +120,7 @@ function inputFor(
   const newSession = agent !== undefined && !seen.has(agent);
   if (agent !== undefined) {
     if (newSession) context.heard?.(agent);
+    else context.still?.(agent);
     seen.add(agent);
   }
   return {

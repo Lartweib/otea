@@ -80,6 +80,11 @@ export type AgentPresence = {
   profile: ProfileView | null;
   profileConfirmed: boolean;
   profileChangedAt: string | null;
+  // When it was last heard through Otea's MCP server (null if never), and whether it asked for that
+  // connection (otea connect) and was never heard through it: its harness declined the server, or
+  // it was never added.
+  mcpAt: string | null;
+  mcpMissing: boolean;
 };
 
 // The harness an agent is known by after a sighting: an MCP client names itself and replaces what
@@ -113,8 +118,16 @@ export function seeAgent(db: DatabaseSync, sighting: Sighting, now: Clock = syst
   // It connects anew on its first sighting, in a new session, or back after it was away.
   const back = !known?.connectedAt || Date.parse(at) - Date.parse(known.lastSeen) > LIVE_WINDOW_MS;
   const connectedAt = sighting.newSession || back ? at : (known?.connectedAt ?? at);
-  if (fresh && same && connectedAt === known?.connectedAt) return false;
-  upsertAgent(db, { name: sighting.agent, ...next, lastSeen: at, connectedAt });
+  // Heard through the MCP server: its harness loaded Otea's server.
+  const mcp = sighting.channel === 'mcp';
+  if (fresh && same && connectedAt === known?.connectedAt && (!mcp || known?.mcpAt)) return false;
+  upsertAgent(db, {
+    name: sighting.agent,
+    ...next,
+    lastSeen: at,
+    connectedAt,
+    ...(mcp ? { mcpAt: at } : {}),
+  });
   return true;
 }
 
@@ -128,9 +141,15 @@ export function hearAgent(db: DatabaseSync, sighting: Sighting, now: Clock = sys
 
 // A listener that ends (an MCP server whose client closed it, a wait whose session ended) stops
 // counting its agent as listening at once, not a listening window later: unless another one heard
-// the agent after its last beat (`heardAt`, what hearAgent returned).
-export function endListening(db: DatabaseSync, agent: string, heardAt: string): void {
-  clearListening(db, agent, heardAt);
+// the agent after its last beat (`heardAt`, what hearAgent returned). An MCP server that ends
+// gives its `session`: the calls it served heard the agent after its beat, through it.
+export function endListening(
+  db: DatabaseSync,
+  agent: string,
+  heardAt: string,
+  session?: number,
+): void {
+  clearListening(db, agent, heardAt, session);
 }
 
 // Whether a process still runs on this computer, where every MCP server of the project runs.
@@ -241,7 +260,7 @@ export function listAgents(db: DatabaseSync, now: Clock = systemClock): AgentPre
   const within = (last: string | undefined) =>
     last !== undefined && Date.parse(at) - Date.parse(last) <= LISTEN_WINDOW_MS;
   const agents = selectAgents(db).map(
-    ({ name, harness, harnessVersion, connectedAt, lastSeen }) => {
+    ({ name, harness, harnessVersion, connectedAt, lastSeen, mcpAt, mcpAskedAt }) => {
       const held = holding.get(name) ?? [];
       const listening = within(heard.get(name));
       const declared = findProfile(db, name);
@@ -258,6 +277,8 @@ export function listAgents(db: DatabaseSync, now: Clock = systemClock): AgentPre
         profile: declared ? profileView(declared.profile) : null,
         profileConfirmed: declared?.confirmed ?? false,
         profileChangedAt: profileChangedAt(db, name),
+        mcpAt: mcpAt ?? null,
+        mcpMissing: Boolean(mcpAskedAt) && !mcpAt,
       };
     },
   );
@@ -274,15 +295,18 @@ export function listAgents(db: DatabaseSync, now: Clock = systemClock): AgentPre
 export function presenceSignature(db: DatabaseSync, now: Clock = systemClock): string {
   const agents = listAgents(db, now).sort((a, b) => a.name.localeCompare(b.name));
   return JSON.stringify(
-    agents.map(({ name, harness, holding, lastSeen, profile, profileConfirmed, waiting }) => [
-      name,
-      harness,
-      holding,
-      lastSeen,
-      profile,
-      profileConfirmed,
-      waiting,
-    ]),
+    agents.map(
+      ({ name, harness, holding, lastSeen, profile, profileConfirmed, waiting, mcpMissing }) => [
+        name,
+        harness,
+        holding,
+        lastSeen,
+        profile,
+        profileConfirmed,
+        waiting,
+        mcpMissing,
+      ],
+    ),
   );
 }
 
