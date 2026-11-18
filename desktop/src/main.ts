@@ -12,6 +12,7 @@ import {
   readFileSync,
   readlinkSync,
   rmSync,
+  statSync,
   symlinkSync,
   writeFileSync,
 } from 'node:fs';
@@ -40,6 +41,7 @@ import {
 } from './command-link.ts';
 import { COPY, type Copy, type Lang, langOf } from './copy.ts';
 import { type Icons, loadIcons, type Theme } from './icons.ts';
+import { installing, untilInstalled } from './install-wait.ts';
 import { type LaunchData, secondLaunchProject } from './launch.ts';
 import { type DeskNotice, type Snapshot, type Watch, watchItems, watchNotices } from './live.ts';
 import { FRAME_MS } from './marks.ts';
@@ -151,6 +153,37 @@ function fail(message: string): void {
 }
 
 const message = (error: unknown) => (error instanceof Error ? error.message : String(error));
+
+// The Windows installer's flag while it writes the app's files (build/installer.nsh).
+const INSTALLING_FLAG = () => join(app.getPath('userData'), 'installing');
+
+function installerWriting(): boolean {
+  if (!IS_WIN || !app.isPackaged) return false;
+  try {
+    return installing(statSync(INSTALLING_FLAG()).mtimeMs, Date.now());
+  } catch {
+    return false;
+  }
+}
+
+// Started while the installer still writes the app, it waits in a small window of its own, drawn
+// from no file of the app's, and then goes on.
+async function waitForInstaller(lang: Lang): Promise<void> {
+  let wait: BrowserWindow | undefined;
+  await untilInstalled({
+    installing: installerWriting,
+    onWaiting: () => {
+      if (SMOKE) return;
+      wait = new BrowserWindow({ width: 440, height: 170, resizable: false, title: 'Otea' });
+      const style =
+        'margin:0;display:grid;place-items:center;height:100vh;padding:0 28px;box-sizing:border-box;font:15px/1.45 system-ui,sans-serif';
+      const page = `<!doctype html><meta charset="utf-8"><title>Otea</title><body style="${style}"><p>${COPY[lang].installing}</p>`;
+      void wait.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(page)}`);
+    },
+    sleep: (ms) => new Promise((done) => setTimeout(done, ms)),
+  });
+  wait?.destroy();
+}
 
 const RECENTS_FILE = () => join(app.getPath('userData'), 'recent-projects.json');
 
@@ -750,6 +783,7 @@ else {
   app.on('activate', () => shellInstance?.show());
   void app.whenReady().then(async () => {
     try {
+      await waitForInstaller(langOf(app.getLocale()));
       const icons = await loadIcons(join(app.getPath('userData'), 'icons'));
       shellInstance = new Shell(icons, langOf(app.getLocale()));
       shellInstance.start();
