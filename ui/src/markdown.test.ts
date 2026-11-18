@@ -1,6 +1,19 @@
 import { describe, expect, it } from 'vitest';
 import { renderMarkdown } from './markdown.ts';
 
+describe('images a document points at beside it (P5-7)', () => {
+  it('loads a relative image from the file of that name, leaving the rest as they are', () => {
+    const html = renderMarkdown(
+      '![Fig](figura.png) ![x](https://a.b/c.png) ![y](./img/z%20a.png) ![n](falta.png)',
+      (name) => ({ 'figura.png': '/api/evidence/7/file', 'z a.png': '/api/evidence/8/file' })[name],
+    );
+    expect(html).toContain('<img src="/api/evidence/7/file" alt="Fig" />');
+    expect(html).toContain('<img src="https://a.b/c.png" alt="x" />');
+    expect(html).toContain('<img src="/api/evidence/8/file" alt="y" />');
+    expect(html).toContain('<img src="falta.png" alt="n" />');
+  });
+});
+
 describe('markdown', () => {
   it('renders headings, lists, code and links', () => {
     const html = renderMarkdown(

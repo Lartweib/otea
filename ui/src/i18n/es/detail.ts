@@ -296,6 +296,14 @@ export const detail = {
     other:
       '{count} comentarios van con la devolución; si apruebas, quedan como notas de esta ronda.',
   },
+  'notes.pick.pageZone': 'una zona de la página {n}',
+  'notes.pick.pagePoint': 'un punto de la página {n}',
+  'notes.pick.phrase': 'la frase «{quote}»',
+  'notes.pick.hintPage':
+    'Haz clic en una página para marcar un punto, o arrastra sobre ella para marcar una zona.',
+  'notes.pick.hintPageTouch': 'Toca una página para marcar un punto.',
+  'notes.pick.hintPhrase': 'Haz clic en un párrafo, o selecciona una frase, para anclar la nota.',
+  'notes.pick.hintPhraseTouch': 'Toca un párrafo para anclar la nota.',
   'notes.pick.point': 'un punto de la imagen',
   'notes.pick.zone': 'una zona de la imagen',
   'notes.pick.inSpot': 'En un punto…',

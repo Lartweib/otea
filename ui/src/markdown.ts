@@ -117,9 +117,31 @@ function commonMark(source: string): string {
 // Links open in a new tab so following one never leaves Otea. A list numbered "1)" keeps its ")"
 // (class "paren"), so the text reads as it was written. GFM tables are drawn too, each cell read as
 // inline Markdown, in a box that scrolls sideways when the table is wider than the page.
-export function renderMarkdown(source: string): string {
-  return blocks(source)
+// `image`: where an image the document names by a relative path loads from, by its file name (a
+// file handed beside it, P5-7); undefined leaves it as written.
+export function renderMarkdown(
+  source: string,
+  image?: (name: string) => string | undefined,
+): string {
+  const html = blocks(source)
     .map(({ table, text, html }) => (table ? (html ?? '') : commonMark(text)))
     .join('')
     .replace(/<a href="([^"]*)"/g, '<a href="$1" target="_blank" rel="noopener noreferrer"');
+  if (!image) return html;
+  return html.replace(/<img src="([^"]*)"/g, (whole, src: string) => {
+    // A URL with a scheme, or a path from the root, is not beside the document.
+    if (/^[a-z][a-z0-9+.-]*:/i.test(src) || src.startsWith('/') || src.startsWith('#'))
+      return whole;
+    const name = decodeName(src.split(/[?#]/)[0]?.split('/').at(-1) ?? '');
+    const url = name ? image(name) : undefined;
+    return url ? `<img src="${url.replace(/"/g, '&quot;')}"` : whole;
+  });
+}
+
+function decodeName(text: string): string {
+  try {
+    return decodeURIComponent(text.replace(/&amp;/g, '&'));
+  } catch {
+    return text;
+  }
 }

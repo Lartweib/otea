@@ -1625,7 +1625,9 @@
   /* The sheet's own padding below stays covered, so no line shows under the foot. */
   box-shadow: 0 24px 0 var(--sheet);
 }
-.p-read .ev-reader-foot:has(.ev-reader-note textarea:focus) .ev-reader-decide {
+/* Its send button counts too: a press on it moved focus off the box, the moves came back and pushed
+   the button up from under the finger, and the note was never sent. */
+.p-read .ev-reader-foot:has(.ev-reader-note :focus) .ev-reader-decide {
   display: none;
 }
 .p-read .ev-reader-decide .btn {

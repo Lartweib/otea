@@ -8,7 +8,7 @@ import type { Evidence } from '../../types.ts';
 import { compareCells, parseDelimited } from './data-view.ts';
 import { FileMeta } from './FileMeta.tsx';
 import { fileViewOf } from './file-view.ts';
-import { useEarlier } from './item-evidence.ts';
+import { useDocImages, useEarlier } from './item-evidence.ts';
 import { PdfFileView } from './PdfView.tsx';
 import { mayBeReport, ReportOr } from './TestReportView.tsx';
 import { TextChanges } from './TextChanges.tsx';
@@ -185,6 +185,7 @@ export function JsonFileView({ evidence }: { evidence: Evidence }) {
 export function MarkdownFileView({ evidence }: { evidence: Evidence }) {
   const state = useEvidenceText(evidence);
   const earlier = useEarlier(evidence);
+  const images = useDocImages();
   const [show, setShow] = useState<'read' | 'source' | 'changes'>('read');
   if (state.status !== 'ready') return <TextState state={state} evidence={evidence} />;
   const toggle = (to: 'source' | 'changes') => setShow(show === to ? 'read' : to);
@@ -211,7 +212,7 @@ export function MarkdownFileView({ evidence }: { evidence: Evidence }) {
         <div
           className="md ev-doc-body"
           // biome-ignore lint/security/noDangerouslySetInnerHtml: renderMarkdown escapes raw HTML and drops dangerous links
-          dangerouslySetInnerHTML={{ __html: renderMarkdown(state.text) }}
+          dangerouslySetInnerHTML={{ __html: renderMarkdown(state.text, images) }}
         />
       )}
     </div>

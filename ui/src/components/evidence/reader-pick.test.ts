@@ -54,6 +54,23 @@ describe('pickWords and pickAnchor', () => {
     expect(pickWords({ line: 3 })).toBe('línea 3');
   });
 
+  it('says a phrase of a document and a zone of a PDF page (P5-6)', () => {
+    expect(pickWords({ quote: 'Never stretch the logo.', phrase: true })).toBe(
+      'the phrase “Never stretch the logo.”',
+    );
+    expect(pickWords({ quote: 'x'.repeat(80), phrase: true })).toBe(
+      `the phrase “${'x'.repeat(47)}…”`,
+    );
+    expect(pickWords({ page: 2, x: 1, y: 2, w: 3, h: 4 })).toBe('a zone of page 2');
+    expect(pickWords({ page: 1, x: 1, y: 2 })).toBe('a point of page 1');
+    setLanguage('es');
+    expect(pickWords({ page: 2, x: 1, y: 2, w: 3, h: 4 })).toBe('una zona de la página 2');
+  });
+
+  it('keeps the page of a PDF note when it opens the reader there', () => {
+    expect(pickOfAnchor({ page: 2, x: 1, y: 2 })).toEqual({ page: 2, x: 1, y: 2 });
+  });
+
   it('turns a pick into the note anchor of a file', () => {
     expect(pickAnchor(7, { line: 2, quote: 'a' })).toEqual({ evidence: 7, line: 2, quote: 'a' });
     expect(pickAnchor(7, null)).toEqual({ evidence: 7 });
@@ -75,9 +92,13 @@ describe('pickableOn: what a note can be on inside a file', () => {
     expect(pickableOn(e('image', 'a.png', 'image/png'))).toBe('spot');
   });
 
+  it('a phrase of a Markdown document, and a spot of a PDF page (P5-6)', () => {
+    expect(pickableOn(e('file', 'informe.md', 'text/markdown'))).toBe('phrase');
+    expect(pickableOn(e('file', 'manual.pdf', 'application/pdf'))).toBe('spot');
+  });
+
   it('nothing inside a recording or a document read whole', () => {
     expect(pickableOn(e('video', 'v.webm', 'video/webm'))).toBeNull();
-    expect(pickableOn(e('file', 'informe.md', 'text/markdown'))).toBeNull();
     expect(pickableOn(e('file', 'datos.csv', 'text/csv'))).toBeNull();
     expect(pickableOn(e('file', 'proyecto.bin'))).toBeNull();
   });
@@ -94,11 +115,17 @@ describe('pickHint: what the note box says a click does on the file shown', () =
       'Toca la imagen para marcar un punto.',
     );
     expect(pickHint(e('file', 'guia.md', 'text/markdown'), true)).toBe(
+      'Toca un párrafo para anclar la nota.',
+    );
+    expect(pickHint(e('file', 'datos.bin'), true)).toBe(
       'Este tipo de archivo se comenta entero, sin marcar una parte.',
     );
     setLanguage('en');
+    expect(pickHint(e('file', 'guia.md', 'text/markdown'), false)).toBe(
+      'Click a paragraph, or select a phrase, to anchor the note.',
+    );
     expect(pickHint(e('file', 'informe.pdf', 'application/pdf'), false)).toBe(
-      'This kind of file takes a note as a whole, with no part marked.',
+      'Click a page to mark a point, or drag over it to mark a zone.',
     );
   });
 });

@@ -382,6 +382,7 @@ const NoteBody = z.object({
       line: z.number().int().positive().optional(),
       quote: z.string().optional(),
       node: z.string().optional(),
+      page: z.number().int().positive().optional(),
       x: z.number().optional(),
       y: z.number().optional(),
       w: z.number().optional(),
@@ -396,6 +397,7 @@ export type NoteAnchorRequest = {
   line?: number;
   quote?: string;
   node?: string;
+  page?: number;
   x?: number;
   y?: number;
   w?: number;
@@ -426,7 +428,7 @@ export async function noteRequest(c: Context): Promise<NoteRequest> {
     );
   const { text, anchor } = parsed.data;
   if (anchor === undefined) return { text };
-  const { evidence, seconds, line, quote, node, x, y, w, h } = anchor;
+  const { evidence, seconds, line, quote, node, page, x, y, w, h } = anchor;
   return {
     text,
     anchor: {
@@ -435,6 +437,7 @@ export async function noteRequest(c: Context): Promise<NoteRequest> {
       ...(line === undefined ? {} : { line }),
       ...(quote === undefined ? {} : { quote }),
       ...(node === undefined ? {} : { node }),
+      ...(page === undefined ? {} : { page }),
       ...(x === undefined ? {} : { x }),
       ...(y === undefined ? {} : { y }),
       ...(w === undefined ? {} : { w }),

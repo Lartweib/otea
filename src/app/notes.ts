@@ -55,6 +55,8 @@ export type LeaveNoteInput = {
     line?: number;
     quote?: string;
     node?: string;
+    // In a PDF, the page (from 1) the point or zone is on.
+    page?: number;
     // A point (x, y) or a zone (x, y, w, h) of an image, in percent from its top left corner.
     x?: number;
     y?: number;
@@ -112,12 +114,13 @@ function anchorFor(
 ): NoteAnchor {
   // Any file of the item, of this round or an earlier step's: the reader lists them all.
   const evidence = findEvidence(ctx.db, given.evidence);
-  const { seconds, line } = given;
+  const { seconds, line, page } = given;
   const fits =
     evidence !== undefined &&
     evidence.itemId === item.id &&
     (seconds === undefined || (Number.isFinite(seconds) && seconds >= 0)) &&
-    (line === undefined || (Number.isInteger(line) && line > 0));
+    (line === undefined || (Number.isInteger(line) && line > 0)) &&
+    (page === undefined || (Number.isInteger(page) && page > 0));
   if (!fits)
     refuse(
       'invalid_fields',
@@ -146,6 +149,7 @@ function anchorFor(
     ...(line === undefined ? {} : { line }),
     ...(quote === undefined ? {} : { quote }),
     ...(node === undefined ? {} : { node }),
+    ...(page === undefined ? {} : { page }),
     ...spot,
   };
 }

@@ -12,6 +12,10 @@ export type ReaderPick = {
   line?: number;
   quote?: string;
   node?: string;
+  // In a PDF, the page (from 1) the point or zone is on (P5-6).
+  page?: number;
+  // The quote is a phrase of a document, not a line (P5-6); never sent.
+  phrase?: true;
   x?: number;
   y?: number;
   w?: number;
@@ -23,11 +27,16 @@ export type ReaderPick = {
 // is read whole.
 export function pickableOn(
   evidence: Pick<Evidence, 'kind' | 'filename' | 'contentType'>,
-): 'line' | 'node' | 'spot' | null {
+): 'line' | 'node' | 'spot' | 'phrase' | null {
   if (evidence.kind === 'image') return 'spot';
   if (evidence.kind === 'diff' || evidence.kind === 'log') return 'line';
   if (evidence.kind === 'diagram') return 'node';
-  if (evidence.kind === 'file' && fileViewOf(evidence) === 'text') return 'line';
+  if (evidence.kind !== 'file') return null;
+  const view = fileViewOf(evidence);
+  if (view === 'text') return 'line';
+  // A document: a paragraph or a phrase of it; a PDF: a point or a zone of a page (P5-6).
+  if (view === 'markdown') return 'phrase';
+  if (view === 'pdf') return 'spot';
   return null;
 }
 
@@ -37,7 +46,10 @@ export function pickHint(
   phone: boolean,
 ): string {
   const on = pickableOn(evidence);
+  const pdf = evidence.kind === 'file' && fileViewOf(evidence) === 'pdf';
+  if (on === 'spot' && pdf) return t(phone ? 'notes.pick.hintPageTouch' : 'notes.pick.hintPage');
   if (on === 'spot') return t(phone ? 'notes.pick.hintImageTouch' : 'notes.pick.hintImage');
+  if (on === 'phrase') return t(phone ? 'notes.pick.hintPhraseTouch' : 'notes.pick.hintPhrase');
   if (on === 'line') return t(phone ? 'notes.pick.hintLineTouch' : 'notes.pick.hintLine');
   if (on === 'node') return t(phone ? 'notes.pick.hintNodeTouch' : 'notes.pick.hintNode');
   return t('notes.pick.hintFile');
@@ -69,8 +81,16 @@ export function pickOf(source: PickSource): ReaderPick | null {
 // What the note will be on, in a few words.
 export function pickWords(pick: ReaderPick | null): string {
   if (!pick) return t('notes.pick.file');
+  if (pick.x !== undefined && pick.page !== undefined)
+    return t(pick.w !== undefined ? 'notes.pick.pageZone' : 'notes.pick.pagePoint', {
+      n: pick.page,
+    });
   if (pick.x !== undefined)
     return pick.w !== undefined ? t('notes.pick.zone') : t('notes.pick.point');
+  if (pick.phrase && pick.quote !== undefined) {
+    const q = pick.quote.length > 48 ? `${pick.quote.slice(0, 47).trimEnd()}…` : pick.quote;
+    return t('notes.pick.phrase', { quote: q });
+  }
   if (pick.node !== undefined) return t('notes.pick.node', { node: pick.node });
   if (pick.line !== undefined) return t('notes.pick.line', { n: pick.line });
   return t('notes.pick.quote');
@@ -80,7 +100,8 @@ export function pickAnchor(
   evidence: number,
   pick: ReaderPick | null,
 ): { evidence: number } & ReaderPick {
-  return { evidence, ...(pick ?? {}) };
+  const { phrase: _phrase, ...sent } = pick ?? {};
+  return { evidence, ...sent };
 }
 
 // What a click in the reader's viewer picked, read from the page: the line or diagram node under it.
@@ -101,14 +122,38 @@ export function pickAt(target: EventTarget | null): { el: HTMLElement; pick: Rea
     const pick = pickOf({ node: node.textContent ?? '' });
     return pick ? { el: node, pick } : null;
   }
+  const block = target.closest<HTMLElement>(DOC_BLOCK);
+  if (block) {
+    const quote = phraseOf(block.textContent ?? '');
+    return quote ? { el: block, pick: { quote, phrase: true } } : null;
+  }
   return null;
+}
+
+// The blocks of a document read in the reader that a note can be on (P5-6).
+const DOC_BLOCK = '.ev-doc-body :is(p, li, h1, h2, h3, h4, h5, h6, td, th, blockquote, pre)';
+
+// A phrase as a note keeps it: on one line, as long as an agent needs to find it.
+export function phraseOf(text: string): string {
+  return text.replace(/\s+/g, ' ').trim().slice(0, 200);
+}
+
+// The phrase selected inside a document in `root`, if any.
+export function selectedPhrase(root: HTMLElement): ReaderPick | null {
+  const selection = typeof window === 'undefined' ? null : window.getSelection();
+  if (!selection || selection.isCollapsed || selection.rangeCount === 0) return null;
+  const at = selection.getRangeAt(0).commonAncestorContainer;
+  const el = at instanceof Element ? at : at.parentElement;
+  if (!el || !root.contains(el) || !el.closest('.ev-doc-body')) return null;
+  const quote = phraseOf(selection.toString());
+  return quote ? { quote, phrase: true } : null;
 }
 
 // What a note's anchor was picked on inside its file, to open the reader there; null when the note
 // is on the file whole (or a moment of a recording, which the player seeks).
 export function pickOfAnchor(anchor: ReaderPick): ReaderPick | null {
   const pick: ReaderPick = {};
-  for (const key of ['line', 'quote', 'node', 'x', 'y', 'w', 'h'] as const) {
+  for (const key of ['line', 'quote', 'node', 'page', 'x', 'y', 'w', 'h'] as const) {
     const value = anchor[key];
     if (value !== undefined) Object.assign(pick, { [key]: value });
   }
@@ -148,6 +193,15 @@ export function spotOf(
 export function findPick(root: ParentNode, pick: ReaderPick): HTMLElement | null {
   // A spot of an image is drawn over it, not found in it.
   if (pick.x !== undefined) return null;
+  if (pick.line === undefined && pick.quote !== undefined) {
+    // A phrase of a document: the innermost block that holds it.
+    const quote = pick.quote;
+    const blocks = [...root.querySelectorAll<HTMLElement>(DOC_BLOCK)].filter((b) =>
+      phraseOf(b.textContent ?? '').includes(quote),
+    );
+    const inner = blocks.find((b) => !blocks.some((o) => o !== b && b.contains(o)));
+    if (inner) return inner;
+  }
   if (pick.node !== undefined) {
     return (
       [...root.querySelectorAll<HTMLElement>('.dg-node')].find(

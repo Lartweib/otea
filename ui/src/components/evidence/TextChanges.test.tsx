@@ -42,4 +42,15 @@ describe('a document against the round before', () => {
     expect(html).toContain('Against the earlier version: 20% of the words changed');
     expect(html).toMatch(/aria-pressed="true"[^>]*>words</);
   });
+
+  it('draws a table that changed as tables, before and after, never as raw pipes (P5-7)', () => {
+    const table = (v: string) =>
+      `Intro igual.\n\n| Token | Valor |\n|---|---|\n| brand | ${v} |\n\nFin igual.`;
+    keepEvidenceText('/api/evidence/14/file', table('#6b4f2a'));
+    keepEvidenceText('/api/evidence/15/file', table('#2f6b3a'));
+    const html = renderToStaticMarkup(<TextChanges evidence={doc(15)} earlier={doc(14)} />);
+    expect(html).not.toContain('|---|');
+    expect(html).toMatch(/ev-del-block[\s\S]*<table>[\s\S]*#6b4f2a/);
+    expect(html).toMatch(/ev-ins-block[\s\S]*<table>[\s\S]*#2f6b3a/);
+  });
 });
