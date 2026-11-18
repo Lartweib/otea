@@ -84,6 +84,13 @@ describe('the page a phone adds to its home screen', () => {
     }
   });
 
+  // The server serves the description in the device's language (src/server/ui.ts).
+  it('describes Otea in English and in Spanish', () => {
+    expect(manifest.lang).toBe('en');
+    expect(manifest.description).toMatch(/handoff/);
+    expect(manifest.description_localized.es).toMatch(/traspaso/);
+  });
+
   // The status bar and the splash take the page's ground, light and dark, from the tokens.
   it('takes its theme colours from the ground token', () => {
     const tokens = readFileSync(new URL('./styles/tokens.css', import.meta.url), 'utf8');

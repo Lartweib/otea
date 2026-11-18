@@ -24,6 +24,8 @@ await build({
   target: 'node24',
   // electron-updater ships in the app's node_modules (a dependency), Electron is the runtime.
   external: ['electron', 'electron-updater'],
+  // The face of the window that waits for the installer, which may load no file of the app's.
+  loader: { '.woff2': 'dataurl' },
 });
 await build({
   ...common,

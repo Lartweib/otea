@@ -1,7 +1,9 @@
 {
   "name": "Otea",
   "short_name": "Otea",
+  "lang": "en",
   "description": "The handoff surface between you and your AI agents.",
+  "description_localized": { "es": "El traspaso de trabajo entre tú y tus agentes de IA." },
   "id": "/",
   "start_url": "/",
   "scope": "/",

@@ -3,6 +3,7 @@
 // everything through the preload's window.oteaDesktop.
 import { COPY, type Lang } from './copy.ts';
 import type { Recent } from './recent.ts';
+import { BRAND_CSS, wordmark } from './wordmark.ts';
 
 export type PickerState = {
   lang: Lang;
@@ -32,6 +33,7 @@ function render(state: PickerState): void {
   const main = byId<HTMLElement>('picker');
   main.hidden = false;
   main.classList.toggle('opening', state.opening !== undefined);
+  byId('brand').innerHTML = wordmark(state.opening !== undefined);
   byId('title').textContent = state.opening ?? copy.pickerTitle;
   byId('dek').textContent = copy.pickerDek;
   byId('dek').hidden = state.opening !== undefined;
@@ -87,4 +89,7 @@ function act(next: Promise<PickerState>): void {
   });
 }
 
+const brandStyle = document.createElement('style');
+brandStyle.textContent = BRAND_CSS;
+document.head.append(brandStyle);
 void desktop.state().then(render);
