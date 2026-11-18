@@ -15,17 +15,17 @@ describe('Prof', () => {
   it('says plainly a value the agent could not read', () => {
     setLanguage('es');
     expect(renderToStaticMarkup(<Prof profile={{ model: 'unknown', effort: 'high' }} />)).toBe(
-      '<span class="prof">sin declarar <i>·</i> high</span>',
+      '<span class="prof">desconocido <i>·</i> high</span>',
     );
   });
 
   it('says once a profile the agent could read none of', () => {
     setLanguage('es');
     expect(renderToStaticMarkup(<Prof profile={{ model: 'unknown', effort: 'unknown' }} />)).toBe(
-      '<span class="prof">sin declarar</span>',
+      '<span class="prof">desconocido</span>',
     );
     expect(
       renderToStaticMarkup(<Prof profile={{ model: 'unknown', effort: 'unknown' }} paren />),
-    ).toBe('<span class="prof">(sin declarar)</span>');
+    ).toBe('<span class="prof">(desconocido)</span>');
   });
 });

@@ -19,7 +19,7 @@ export function Prof({
     <>
       {paren ? '(' : null}
       {isUnknown(profile.model) && isUnknown(profile.effort) ? (
-        t('agent.notDeclared')
+        t('agent.unknown')
       ) : (
         <>
           {profileValue(profile.model)} <i>·</i> {profileValue(profile.effort)}

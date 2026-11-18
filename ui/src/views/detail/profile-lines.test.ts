@@ -100,7 +100,7 @@ describe('a profile change in the history', () => {
     setLanguage('es');
     const unread = { ...opus, effort: 'unknown' };
     const lines = historyOf([by(1, 'ana', opus, 60), by(2, 'ana', unread, 50)], bug, (s) => s, NOW);
-    expect(lines[1]?.text).toBe('Cambió a opus · sin declarar');
+    expect(lines[1]?.text).toBe('Cambió a opus · desconocido');
   });
 
   it('names the harness when that is what changed', () => {

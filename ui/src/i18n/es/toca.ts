@@ -47,7 +47,7 @@ export const toca = {
   'toca.act.preguntas': 'Responder',
   'toca.act.revisiones': 'Revisar',
   'toca.act.propios': 'Tu paso',
-  'toca.act.encamino': 'Vuelve a tu revisión',
+  'toca.act.encamino': 'Después lo revisas tú',
   'toca.act.waitsOn': 'Espera a {id}',
   'toca.act.agents': 'Sigue con los agentes',
   'toca.act.yours': 'Después te toca a ti',

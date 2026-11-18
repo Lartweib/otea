@@ -191,7 +191,7 @@ describe('a row’s call to act', () => {
       lease: { holder: 'Mender', expiresAt: inMinutes(40) },
     });
     expect(rowCall(working, 'encamino', ctx())).toEqual({
-      act: 'Vuelve a tu revisión',
+      act: 'Después lo revisas tú',
       sub: { key: 'toca.sub.does', agent: 'Mender' },
     });
     const queued = item({ id: 'U', turn: 'agent', state: 'accepted' });
@@ -214,7 +214,7 @@ describe('a row’s call to act', () => {
     setLanguage('es');
     // fixing → verify, yours: it comes back for your review.
     expect(rowCall(item({ id: 'F', turn: 'agent', state: 'fixing' }), 'encamino', ctx()).act).toBe(
-      'Vuelve a tu revisión',
+      'Después lo revisas tú',
     );
     // accepted → fixing, another agent step: not yet back to you.
     expect(
@@ -263,7 +263,7 @@ describe('a row’s call to act', () => {
     expect(rowCall(held, 'encamino', { ...ctx(), find }).act).toBe('Espera a ENT-1');
     const ended = { ...blocker, turn: 'none' as const, state: 'fixed', closes: 'done' as const };
     expect(rowCall(held, 'encamino', { ...ctx(), find: () => ended }).act).toBe(
-      'Vuelve a tu revisión',
+      'Después lo revisas tú',
     );
     setLanguage('en');
     expect(

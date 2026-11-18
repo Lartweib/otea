@@ -19,10 +19,10 @@ const row = (family: string, effort: string, handoffs: number, sentBack: number)
   ({ family, effort, ...numbers(handoffs, sentBack), models: [], steps: [] }) as PerformanceRow;
 
 describe('labelOf: a row as the table names it', () => {
-  it('says not declared for a model or an effort the agent could not read', () => {
-    expect(labelOf(row('unknown', 'high', 1, 0))).toBe('not declared · high');
+  it('says unknown for a model or an effort the agent could not read', () => {
+    expect(labelOf(row('unknown', 'high', 1, 0))).toBe('unknown · high');
     setLanguage('es');
-    expect(labelOf(row('opus', 'unknown', 1, 0))).toBe('opus · sin declarar');
+    expect(labelOf(row('opus', 'unknown', 1, 0))).toBe('opus · desconocido');
   });
 });
 
