@@ -279,6 +279,7 @@ export function PhoneMatrix({
   const cells = m.rows.flat().filter((cell) => cell.items.length > 0);
   const shown = zone === null ? cells : cells.filter((cell) => `${cell.x},${cell.y}` === zone);
   const picked = items.filter((it) => ticked.includes(it.id));
+  const order = orderList(items);
   const allPinned = picked.length > 0 && picked.every((it) => it.priority?.pin !== undefined);
   return (
     <div className="pmx" data-mode="matriz">
@@ -369,6 +370,27 @@ export function PhoneMatrix({
               onOpen={onOpen}
             />
           ))}
+        </section>
+      ) : null}
+      {zone === null && order.length > 0 ? (
+        // The order you fixed, as the desk's side column lists it (IDEA2-5).
+        <section className="pmx-zone">
+          <h3>
+            <span>{t('matrix.order')}</span> <b>{order.length}</b>
+          </h3>
+          <ol className="mx-order">
+            {order.map((it) => (
+              <li key={it.id}>
+                {it.priority?.pin !== undefined ? (
+                  <span className="mx-top">{t('matrix.top')}</span>
+                ) : null}
+                <button type="button" className="mx-oid" onClick={() => onOpen(it.id)}>
+                  {it.id}
+                </button>
+                <span className="mx-ot">{it.title}</span>
+              </li>
+            ))}
+          </ol>
         </section>
       ) : null}
       {picked.length > 0 ? (

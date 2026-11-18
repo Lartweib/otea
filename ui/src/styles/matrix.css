@@ -353,6 +353,16 @@
   padding-bottom: 72px;
 }
 
+/* «Tu orden» on the phone: each id a thumb's height */
+.pmx-zone .mx-order li {
+  align-items: center;
+  padding-block: 0;
+}
+.pmx-zone .mx-oid {
+  min-height: 44px;
+  padding-inline: 4px;
+}
+
 .pmx-sub {
   margin: 4px 0 0;
   color: var(--ink-3);
