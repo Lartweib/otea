@@ -1,5 +1,5 @@
 import type { Command } from '../cli/command.ts';
-import { AGENT_COMMANDS, toolName } from './server.ts';
+import { AGENT_COMMANDS, toolName } from './commands.ts';
 
 // A token of a command line: a quoted value, or a run up to a space or the punctuation that ends a
 // sentence or a parenthesis.

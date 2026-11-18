@@ -1,8 +1,12 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { basename, join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { INIT_NEXT } from './commands.ts';
 import { EXIT_CODES } from './exit-codes.ts';
 import { type Cli, cliAt, tempGitRepo } from './testing.ts';
+
+// What init says to do next, after what it did.
+const NEXT = `${INIT_NEXT.join('\n')}\n`;
 
 describe('run', () => {
   let repo: ReturnType<typeof tempGitRepo>;
@@ -22,11 +26,31 @@ describe('run', () => {
       expect(code).toBe(0);
       expect(err).toBe('');
       expect(out).toContain('Usage: otea <command> [options]');
-      expect(out).toContain('otea init');
+      expect(out).toContain('otea next');
+    });
+
+    it('is short: the agent commands in a line each, the others by name, and where the rest is', async () => {
+      const { code, out } = await otea('help');
+
+      expect(code).toBe(0);
+      expect(out.length).toBeLessThan(6000);
+      expect(out).toMatch(/^ {2}next {2,}\S/m);
+      expect(out).toMatch(/^ {2}handoff <id> {2,}\S/m);
+      expect(out).toContain('init, ');
+      expect(out).toContain('otea help all');
+      expect(out).toContain('otea board');
+      expect(out).not.toContain('Exit codes:');
+    });
+
+    it('prints a command help for help <command>', async () => {
+      const { code, out } = await otea('help', 'projects', 'add');
+
+      expect(code).toBe(0);
+      expect(out).toContain('Usage: otea projects add');
     });
 
     it('documents every exit code', async () => {
-      const { out } = await otea('help');
+      const { out } = await otea('help', 'all');
 
       for (const [name, code] of Object.entries(EXIT_CODES)) {
         expect(out).toMatch(new RegExp(`^ +${code} +.*\\b${name}\\b`, 'm'));
@@ -132,7 +156,7 @@ describe('run', () => {
       const { code, out } = await otea('init', '--local');
 
       expect(code).toBe(0);
-      expect(out).toBe(`Project data in ${oteaDir()}\n`);
+      expect(out).toBe(`Project data in ${oteaDir()}\n${NEXT}`);
       expect(existsSync(join(oteaDir(), 'otea.db'))).toBe(true);
     });
 
@@ -141,9 +165,9 @@ describe('run', () => {
       const [path] = first.out.split('\n');
 
       expect(path).toMatch(/^Project data in /);
-      expect(first.out).toBe(`${path}\nMade the boards Cambios\n`);
-      expect(await otea('init')).toMatchObject({ code: 0, out: `${path}\n` });
-      expect(await otea('init', '--local')).toMatchObject({ code: 0, out: `${path}\n` });
+      expect(first.out).toBe(`${path}\nMade the boards Cambios\n${NEXT}`);
+      expect(await otea('init')).toMatchObject({ code: 0, out: `${path}\n${NEXT}` });
+      expect(await otea('init', '--local')).toMatchObject({ code: 0, out: `${path}\n${NEXT}` });
     });
 
     it('makes no board from --template on a project that has boards, and says how to add one', async () => {
@@ -151,7 +175,7 @@ describe('run', () => {
 
       expect(await otea('init', '--local', '--template', 'ideas')).toMatchObject({
         code: 0,
-        out: `Project data in ${oteaDir()}\nThe project already has boards; add one with otea board add <name> --template ideas\n`,
+        out: `Project data in ${oteaDir()}\nThe project already has boards; add one with otea board add <name> --template ideas\n${NEXT}`,
       });
       expect((await otea('init', '--local', '--template', 'nope')).code).toBe(3);
     });
@@ -171,7 +195,7 @@ describe('run', () => {
       const { code, out } = await otea('init', '--local', '--template', 'repos');
 
       expect(code).toBe(0);
-      expect(out).toBe(`Project data in ${oteaDir()}\nMade the boards Trabajos, Entregas\n`);
+      expect(out).toBe(`Project data in ${oteaDir()}\nMade the boards Trabajos, Entregas\n${NEXT}`);
     });
 
     it('prints root, path, storage and the project identity with --json', async () => {

@@ -132,6 +132,6 @@ describe('open', () => {
   });
 
   it('is listed in the help', async () => {
-    expect((await otea('help')).out).toContain('otea open [--port <port>]');
+    expect((await otea('help', 'all')).out).toContain('otea open [--port <port>]');
   });
 });
