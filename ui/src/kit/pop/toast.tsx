@@ -38,6 +38,10 @@ export function toastClass(at: ToastOptions['at']): string {
 type Shown = ToastOptions & { seq: number };
 
 const DWELL = 12_000;
+
+// A mouse resting on the toast holds it up; a finger never does: a tap fires mouseenter with no
+// mouseleave after it, and the toast stayed over Triage's buttons for minutes (P7-4).
+export const holdsOn = (pointerType: string): boolean => pointerType === 'mouse';
 let seqN = 0;
 let latest: Shown | null = null;
 const listeners = new Set<() => void>();
@@ -239,9 +243,10 @@ export function ToastHost() {
       className={toastClass(at)}
       role="status"
       aria-live="polite"
-      onMouseEnter={pause}
-      onMouseLeave={arm}
-      onFocus={pause}
+      onPointerEnter={(e) => holdsOn(e.pointerType) && pause()}
+      onPointerLeave={(e) => holdsOn(e.pointerType) && arm()}
+      // Only a keyboard's focus holds it: a tap focuses Deshacer too.
+      onFocus={(e) => e.target.matches(':focus-visible') && pause()}
       onBlur={arm}
     >
       <i className="pline">

@@ -37,6 +37,7 @@ import { type MoveChoice, type MovePlan, moveSaysOf } from './moves.ts';
 import { AnchorPicker, countWords, showPiece, Thread } from './NotesThread.tsx';
 import type { ItemNote } from './notes.ts';
 import { useOpened } from './opened.ts';
+import { PhoneDiffFiles } from './PhoneDiff.tsx';
 import { PickForm, type PickMade } from './PickForm.tsx';
 import {
   compareFiles,
@@ -282,6 +283,18 @@ function Files({
               <Pin count={noted?.get(e.id)} />
             </button>
           ))}
+          {files
+            .filter((e) => e.kind === 'diff')
+            .map((e) => (
+              <PhoneDiffFiles
+                key={`diff-${e.id}`}
+                evidence={e}
+                onOpen={() => {
+                  opened.current = null;
+                  setAt(order.indexOf(e));
+                }}
+              />
+            ))}
         </div>
       ) : null}
       {images.length + files.length === 0 ? (

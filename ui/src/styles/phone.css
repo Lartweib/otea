@@ -711,6 +711,12 @@
     top: calc(56px + 8px + env(safe-area-inset-top, 0px));
     bottom: auto;
   }
+  /* So does any toast while Triage or the reader is open: their moves are at the foot (P7-4). */
+  body:has(.tri) .toast,
+  body:has(.p-read) .toast {
+    top: calc(56px + 8px + env(safe-area-inset-top, 0px));
+    bottom: auto;
+  }
 
   /* The topbar: the project pill takes what the agents pill leaves. */
   .pill .nm {
@@ -1339,6 +1345,54 @@
 }
 .p-file + .p-file {
   border-top: 1px solid var(--rule);
+}
+/* The files a diff changed, under the round's files (P7-8). */
+.p-diff {
+  display: grid;
+  gap: 6px;
+  width: 100%;
+  padding: 10px 0 12px;
+  border: 0;
+  border-top: 1px solid var(--rule);
+  background: transparent;
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+}
+.p-diff-head {
+  display: flex;
+  justify-content: space-between;
+  font: 600 13px var(--sans);
+}
+.p-diff ul {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.p-diff li {
+  display: flex;
+  gap: 10px;
+  font: 400 12.5px var(--mono);
+  color: var(--ink-2);
+}
+.p-diff .fn {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.p-diff-n {
+  margin-left: auto;
+  flex: none;
+  font: 400 12px var(--mono);
+}
+.p-diff .add {
+  color: var(--plus);
+}
+.p-diff .del {
+  color: var(--minus);
 }
 .p-file .fn {
   min-width: 0;

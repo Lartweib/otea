@@ -67,6 +67,8 @@ export const phone = {
   'phone.r.noNote': 'No dejó nota.',
   'phone.r.unopened': 'Sin abrir: {n} de {total} archivos',
   'phone.r.noEvidence': 'Sin archivos en esta ronda.',
+  'phone.r.diffFiles': { one: '{count} archivo cambiado', other: '{count} archivos cambiados' },
+  'phone.r.diffOpen': 'Ver los cambios de {file}',
   'phone.r.asked': 'Lo que pediste en la ronda {n}',
   'phone.r.yourNote': 'Tu nota al devolverla',
   'phone.r.changed': 'de la ronda {a} a la {b}',
