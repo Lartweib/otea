@@ -529,6 +529,10 @@ export const detail = {
   'sheet.toast.reassigned': 'Le dejaste «{title}» a {agent}.',
 
   // Un ítem de un tablero de Studio: sus partes, sus enlaces, su rama, sus rondas, el descarte.
+  'bi.refuse.partsUnmerged': {
+    one: 'No se aprobó {id}: {list} aún no se fusionó.',
+    other: 'No se aprobó {id}: {list} aún no se fusionaron.',
+  },
   'bi.refuse.parts': {
     one: 'No se aprobó {id}: {list} sigue sin terminar.',
     other: 'No se aprobó {id}: {list} siguen sin terminar.',

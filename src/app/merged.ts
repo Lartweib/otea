@@ -20,6 +20,8 @@ export type MarkMergedInput = {
   channel: Channel;
   pr?: string;
   commit?: string;
+  // What the forge says of the PR (gh pr view): its state and head branch, when it could be read.
+  forge?: { state: string; head: string };
 };
 
 export function mergedOf(ctx: Context, id: string): Merged | undefined {
@@ -47,6 +49,21 @@ export function markMerged(ctx: Context, input: MarkMergedInput, now = systemClo
     const board = liveBoardOf(ctx, item.collection);
     const part = board ? guardedBranch(board.def) : undefined;
     const branch = part ? String(item.fields[part.id] ?? '').trim() : '';
+    // A merge the forge contradicts is refused: a wrong mark would freeze the item for good.
+    const { forge } = input;
+    const pr = input.pr?.trim() ?? '';
+    if (forge && forge.state.toUpperCase() !== 'MERGED')
+      throw new OteaError(
+        'invalid_transition',
+        `Not marked ${id} merged: its PR ${pr} is ${forge.state.toLowerCase()}, not merged. Merge it first, then otea merged ${id} --pr ${pr}.`,
+        { kind: 'pr_not_merged', item: id, state: forge.state },
+      );
+    if (forge && branch !== '' && forge.head !== branch)
+      throw new OteaError(
+        'invalid_transition',
+        `Not marked ${id} merged: its PR ${pr} merges ${forge.head}, not ${id}'s branch ${branch}.`,
+        { kind: 'pr_other_branch', item: id, head: forge.head },
+      );
     appendEvent(ctx.db, {
       itemId: id,
       type: MERGED,

@@ -524,6 +524,10 @@ export const detail = {
   'sheet.toast.reassigned': 'You left “{title}” for {agent}.',
 
   // An item on a Studio board: its parts, its links, its branch, its rounds, the discard dialog.
+  'bi.refuse.partsUnmerged': {
+    one: 'Not approved {id}: {list} is not merged yet.',
+    other: 'Not approved {id}: {list} are not merged yet.',
+  },
   'bi.refuse.parts': {
     one: 'Not approved {id}: {list} is still unfinished.',
     other: 'Not approved {id}: {list} are still unfinished.',

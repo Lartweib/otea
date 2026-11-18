@@ -160,10 +160,10 @@ export function partsBoardOf(ctx: Context, board: LiveBoard): LiveBoard | undefi
 }
 
 // Another item as a wait reads it: its board and, while open, its step, by name. `blocking`: read
-// as a blocker, whose work must be in before the item it blocks goes on: a Done item whose
-// protected branch is not merged yet (on a board with no land step, where Done is merged already)
-// still blocks, as `unmerged`.
-function linkedOf(ctx: Context, id: string, blocking = false): Linked {
+// as a blocker or a part, whose work must be in before the item waiting for it goes on: a Done item
+// whose protected branch is not merged yet (on a board with no land step, where Done is merged
+// already) still holds it, as `unmerged`.
+function linkedOf(ctx: Context, id: string, waited = false): Linked {
   const item = requireItem(ctx.db, id);
   const board = liveBoardOf(ctx, item.collection);
   if (!board) {
@@ -172,7 +172,7 @@ function linkedOf(ctx: Context, id: string, blocking = false): Linked {
   }
   const position = positionOf(item.state);
   if (isClosed(position)) {
-    if (blocking && waitsToMerge(ctx, board, item))
+    if (waited && waitsToMerge(ctx, board, item))
       return { id, board: board.def.name, closed: false, unmerged: true };
     return { id, board: board.def.name, closed: true };
   }
@@ -186,12 +186,12 @@ export type Links = { parts: Linked[]; blockers: Linked[]; blocking: Linked[] };
 export function linksOf(ctx: Context, id: string): Links {
   const relations = selectRelationsOf(ctx.db, id);
   const into = (kind: string) =>
-    relations.filter((r) => r.kind === kind && r.to === id).map(({ from }) => linkedOf(ctx, from));
+    relations
+      .filter((r) => r.kind === kind && r.to === id)
+      .map(({ from }) => linkedOf(ctx, from, true));
   return {
     parts: into('parent'),
-    blockers: relations
-      .filter((r) => r.kind === 'blocks' && r.to === id)
-      .map(({ from }) => linkedOf(ctx, from, true)),
+    blockers: into('blocks'),
     blocking: relations
       .filter((r) => r.kind === 'blocks' && r.from === id)
       .map(({ to }) => linkedOf(ctx, to)),

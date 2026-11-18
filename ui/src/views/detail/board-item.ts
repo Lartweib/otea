@@ -234,6 +234,12 @@ export function approvalRefusal(id: string, rows: readonly WaitRow[]): string | 
   const parts = rows.find((r) => r.kind === 'parts' && r.open.length);
   if (parts) {
     const list = listOf(parts.open.map((x) => (x.step ? `${x.id} (${x.step})` : x.id)));
+    if (parts.open.every((x) => x.unmerged))
+      return t('bi.refuse.partsUnmerged', {
+        id,
+        list: listOf(parts.open.map((x) => x.id)),
+        count: parts.open.length,
+      });
     return t('bi.refuse.parts', { id, list, count: parts.open.length });
   }
   const blockers = rows.find((r) => r.kind === 'blockers' && r.open.length);

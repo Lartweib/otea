@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { mergeTarget, prBranches, pushTargets, readHookEvent } from './claude-hook.ts';
+import { mergeTarget, prBranches, prState, pushTargets, readHookEvent } from './claude-hook.ts';
 
 // Without gh, the check that calls this fails open with the note it throws.
 describe('prBranches', () => {
@@ -10,6 +10,14 @@ describe('prBranches', () => {
     expect(() => prBranches(process.cwd(), undefined, 'otea-no-such-gh')).toThrow(
       'gh could not tell the branches of the PR',
     );
+  });
+});
+
+// otea merged checks its PR with gh; without gh it records the mark as given.
+describe('prState', () => {
+  it('says nothing when gh is missing or cannot read the PR', () => {
+    expect(prState(process.cwd(), '482', 'otea-no-such-gh')).toBeUndefined();
+    expect(prState(process.cwd(), '482', undefined)).toBeUndefined();
   });
 });
 

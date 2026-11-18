@@ -148,7 +148,14 @@ import { ensureVapidKeys } from '../server/push.ts';
 import { createServer } from '../server/server.ts';
 import { ensureUiToken, readUiToken } from '../server/token.ts';
 import { type EventFilter, findProfile, type ProfileView, profileView } from '../store/queries.ts';
-import { mergeTarget, prBranches, pushTargets, readHookEvent, UnreadPr } from './claude-hook.ts';
+import {
+  mergeTarget,
+  prBranches,
+  prState,
+  pushTargets,
+  readHookEvent,
+  UnreadPr,
+} from './claude-hook.ts';
 import { lastExchange, readStopEvent } from './claude-transcript.ts';
 import {
   type Command,
@@ -1673,6 +1680,11 @@ const merged: Command = {
     const { actor, channel } = input;
     const pr = input.option('pr');
     const commit = input.option('commit');
+    // With a PR, gh says whether it really merged and which branch: a wrong mark is refused. When
+    // gh cannot tell, the mark is kept as given, with a note.
+    const forge = pr === undefined ? undefined : prState(input.cwd, pr, input.gh);
+    if (pr !== undefined && forge === undefined)
+      input.warn(`could not check PR ${pr} with gh; recorded as merged as you said`);
     return withAgent(input, (project) => {
       const done = markMerged(project, {
         id,
@@ -1680,6 +1692,7 @@ const merged: Command = {
         channel,
         ...(pr === undefined ? {} : { pr }),
         ...(commit === undefined ? {} : { commit }),
+        ...(forge === undefined ? {} : { forge }),
       });
       const said = [done.pr, done.commit].filter(Boolean).join(', ');
       return { data: done, text: `Marked ${id} merged${said ? ` (${said})` : ''}.` };

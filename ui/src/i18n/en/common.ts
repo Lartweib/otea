@@ -113,6 +113,10 @@ export const common = {
   'refusal.why.unproved': 'a proof for {list}',
   'refusal.why.note': 'a note',
   'refusal.why.part': 'its part {list} is not finished',
+  'refusal.why.partsUnmerged': {
+    one: 'its part {list} is not merged yet',
+    other: 'its parts {list} are not merged yet',
+  },
   'refusal.why.allParts': {
     one: 'its {count} part is not finished: {list}',
     other: 'its {count} parts are not finished: {list}',
