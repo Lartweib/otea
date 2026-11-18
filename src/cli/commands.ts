@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { hostname } from 'node:os';
 import { resolve } from 'node:path';
 import type { DatabaseSync } from 'node:sqlite';
 import { fileURLToPath } from 'node:url';
@@ -27,7 +28,13 @@ import { listEvents } from '../app/events.ts';
 import { attachEvidence, detachEvidence } from '../app/evidence.ts';
 import { type Brings, checkGate, type GateCheck } from '../app/gates.ts';
 import { boardGuide, type Guide, guideIndex, hintFor } from '../app/guide.ts';
-import { forgetProjectPath, listProjects, relinkProjectPath, withRegistry } from '../app/home.ts';
+import {
+  forgetProjectPath,
+  listProjects,
+  oteaHome,
+  relinkProjectPath,
+  withRegistry,
+} from '../app/home.ts';
 import { hasOwnBoards, type InitBoard, initBoards, NO_BOARDS } from '../app/init-boards.ts';
 import {
   createItem,
@@ -43,6 +50,7 @@ import {
 } from '../app/items.ts';
 import { oteaLauncher, withHome } from '../app/launcher.ts';
 import { claimItem, heartbeatItem, releaseItem } from '../app/leases.ts';
+import { openMachine, rememberLocalProject, withMachine } from '../app/machine.ts';
 import { markMerged, reopenItem } from '../app/merged.ts';
 import { type MigrationReport, migrateToCommon } from '../app/migrate.ts';
 import {
@@ -141,6 +149,7 @@ import { describeRelation, RELATION_KINDS } from '../core/relations.ts';
 import { timeText } from '../core/time.ts';
 import { TURNS, type Turn } from '../core/workflow.ts';
 import { createMcpServer, serveStdio } from '../mcp/server.ts';
+import { machineProjects } from '../server/hub.ts';
 import { formatCode } from '../server/lan.ts';
 import { DEFAULT_PORT, listen, localNetwork } from '../server/listen.ts';
 import { pairingUrl } from '../server/pairing.ts';
@@ -195,7 +204,7 @@ import {
 import { boardsOf, eventData, itemCollections, itemData, readableEvent } from './names.ts';
 import { watchOwner } from './owner.ts';
 import { PHONE_COMMANDS } from './phone.ts';
-import { portFrom, portToOpen } from './ports.ts';
+import { portFrom, portToOpen, projectPage } from './ports.ts';
 import { probeSignIn } from './probe.ts';
 import { readServeFile, removeServeFile, writeServeFile } from './serve-file.ts';
 import { statsText } from './stats.ts';
@@ -451,7 +460,8 @@ const projectsList: Command = {
 
 const projectsCurrent: Command = {
   name: 'projects current',
-  summary: 'Show the project this folder resolves to: id, name, storage, folder and data folder',
+  summary:
+    'Show the project this folder resolves to: id, name, storage, folder, data folder and the Otea home whose server serves it',
   args: [],
   options: {},
   execute: ({ cwd }) => {
@@ -460,6 +470,7 @@ const projectsCurrent: Command = {
       storage,
       root,
       dataDir,
+      home: oteaHome(),
     }));
     return {
       data,
@@ -603,17 +614,17 @@ function migrationText(report: MigrationReport): string {
 const migrateCommand: Command = {
   name: 'migrate',
   summary:
-    'Move the local project (.otea/) into common storage in the Otea home, verified, keeping the old folder as a backup; refused while otea serve runs on it',
+    'Move the local project (.otea/) into common storage in the Otea home, verified, keeping the old folder as a backup; refused while otea serve runs on this computer',
   args: [],
   options: { to: { required: true, choices: ['common'] } },
   execute: ({ cwd, required }) => {
     required('to');
-    const dir = withProject(cwd, (project) => project.dataDir);
-    const server = readServeFile(dir);
+    withProject(cwd, () => undefined);
+    const server = readServeFile(oteaHome());
     if (server && processAlive(server.pid)) {
       throw new OteaError(
         'in_use',
-        `otea serve (pid ${server.pid}, port ${server.port}) holds the project; stop it first`,
+        `otea serve (pid ${server.pid}, port ${server.port}) holds the project's database; stop it first`,
       );
     }
     const report = migrateToCommon(cwd);
@@ -935,8 +946,8 @@ function handedInLines(id: string, submitted: Submitted): string[] {
 
 // The board's page in Studio, on the port otea serve runs on (or would).
 function studioLink(project: Project, board: string): string {
-  const port = portToOpen(project.dataDir, undefined);
-  return `http://127.0.0.1:${port}/#/studio/board/${encodeURIComponent(board)}`;
+  const page = projectPage(portToOpen(undefined), project.identity.id);
+  return `${page}#/studio/board/${encodeURIComponent(board)}`;
 }
 
 // otea board draft --new: the agent the person asked for a board starts it; the person publishes.
@@ -1949,7 +1960,9 @@ type PhoneServed = {
   code: string | undefined;
 };
 
-type Served = { url: string; signInUrl: string; phone?: PhoneServed };
+// `url`: the page of the project the command ran in (or the server's home outside any project);
+// `attached`: another otea serve was running already, and this one only pointed at it.
+type Served = { url: string; signInUrl: string; attached?: true; phone?: PhoneServed };
 
 type ServeOptions = {
   port: number;
@@ -1959,42 +1972,108 @@ type ServeOptions = {
   warn: Input['warn'];
 };
 
+// The project the command runs in, when there is one; a local one is remembered for the server to
+// serve (a registered one it finds in the registry). Its database is closed again: the server
+// opens its own.
+function projectHere(cwd: string): { id: string } | undefined {
+  let project: Project;
+  try {
+    project = openProject(cwd);
+  } catch (error) {
+    if (error instanceof OteaError && error.details?.kind === 'no_project') return undefined;
+    throw error;
+  }
+  try {
+    const { id } = project.identity;
+    if (project.storage === 'local') {
+      withMachine(process.env, (machine) =>
+        rememberLocalProject(machine, { id, root: project.root }),
+      );
+    }
+    return { id };
+  } finally {
+    project.db.close();
+  }
+}
+
+// The page to open, and the sign-in link that lands on it.
+function pages(url: string, token: string, here: { id: string } | undefined) {
+  const next = here === undefined ? '/' : `/p/${here.id}/`;
+  return {
+    url: `${url}${next}`,
+    signInUrl: `${url}/auth?token=${encodeURIComponent(token)}&next=${encodeURIComponent(next)}`,
+  };
+}
+
+function alive(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    return (error as NodeJS.ErrnoException).code === 'EPERM';
+  }
+}
+
+// This computer's otea serve, when one runs and answers with this Otea home's key.
+async function runningServer(home: string): Promise<{ url: string; token: string } | undefined> {
+  const info = readServeFile(home);
+  const token = readUiToken(home);
+  if (!info || !token || !alive(info.pid)) return undefined;
+  const url = `http://127.0.0.1:${info.port}`;
+  const probe = await probeSignIn(`${url}/auth?token=${encodeURIComponent(token)}`);
+  return probe === 'ours' ? { url, token } : undefined;
+}
+
+// How often the server looks for projects registered (or served) since it started, so each one's
+// notices go out without waiting for a page to open it.
+const SYNC_EVERY_MS = 10_000;
+
 async function serveUntil(
   signal: AbortSignal,
   cwd: string,
   options: ServeOptions,
 ): Promise<Served> {
   const { port, lan, tailscale, probe, warn } = options;
-  const project = openProject(cwd);
+  const here = projectHere(cwd);
+  const home = oteaHome();
+  // One server per Otea home: a second otea serve points at the one running.
+  const running = await runningServer(home);
+  if (running) return { ...pages(running.url, running.token, here), attached: true };
+  const token = ensureUiToken(home, { warn });
+  const machine = openMachine();
+  const source = machineProjects(process.env, machine);
   try {
-    const dir = project.dataDir;
-    const token = ensureUiToken(dir, { warn });
-    const server = createServer(project, {
+    const server = createServer(source, {
       token,
+      machine,
+      computer: hostname(),
       tailscale,
       probe,
-      // The project's own key pair for Web Push, kept beside the UI token.
-      notify: { keys: ensureVapidKeys(dir, { warn }) },
+      // The server's own key pair for Web Push, kept beside the UI token.
+      notify: { keys: ensureVapidKeys(home, { warn }) },
       network: localNetwork,
     });
-    const running = await listen(server, port);
+    const listening = await listen(server, port);
     // Open to the local network when it was left open (Settings › Phone, otea phone lan --open),
     // or for this run only with --lan; if it cannot open, Otea still serves this computer.
-    if (lan || lanOpen(project.db)) {
+    if (lan || lanOpen(machine)) {
       await server.lan.open().catch((error: unknown) => {
         warn(`Could not open Otea to the local network: ${(error as Error).message}`);
       });
     }
-    writeServeFile(dir, { port: running.port, pid: process.pid });
+    writeServeFile(home, { port: listening.port, pid: process.pid });
+    const sync = setInterval(() => server.sync(), SYNC_EVERY_MS);
+    sync.unref();
     const stop = () => {
-      removeServeFile(dir, process.pid);
-      return running.close().finally(() => project.db.close());
+      clearInterval(sync);
+      removeServeFile(home, process.pid);
+      return listening.close().finally(() => machine.close());
     };
     signal.addEventListener('abort', stop, { once: true });
-    const served = { url: running.url, signInUrl: signInUrl(running.url, token) };
+    const served = pages(listening.url, token, here);
     const door = server.phone.chosen();
     if (!door) return served;
-    const urls = door.urls(running.port);
+    const urls = door.urls(listening.port);
     const code = server.phone.codes.issue();
     const first = urls[0];
     // The .local name comes first when it resolves; the same link by IP comes along.
@@ -2014,13 +2093,10 @@ async function serveUntil(
       },
     };
   } catch (error) {
-    project.db.close();
+    source.close();
+    machine.close();
     throw error;
   }
-}
-
-function signInUrl(url: string, token: string): string {
-  return `${url}/auth?token=${encodeURIComponent(token)}`;
 }
 
 function phoneText(phone: PhoneServed): string {
@@ -2033,7 +2109,7 @@ function phoneText(phone: PhoneServed): string {
       : `LAN access on: ${phone.urls.join(', ')} (same network only; otea phone tailscale reaches it when away)`;
   return [
     where,
-    `Pair a phone: scan this code, or open ${phone.pairingUrl} (pairing code ${phone.code}, 10 minutes, works once)`,
+    `Pair a phone: scan this code, or open ${phone.pairingUrl} (pairing code ${phone.code}, 10 minutes, works once; the phone then opens every project on this computer)`,
     ...(phone.byAddress
       ? [`If the phone cannot open the .local name, open ${phone.byAddress}`]
       : []),
@@ -2044,7 +2120,7 @@ function phoneText(phone: PhoneServed): string {
 
 const serve: Command = {
   name: 'serve',
-  summary: `Serve the live UI on 127.0.0.1 (default port ${DEFAULT_PORT}) until Ctrl+C and sign this browser in; it also opens to phones on the same network when that was left open (Settings > Phone, otea phone lan --open), and --lan opens it for this run only; a phone on Tailscale (otea phone tailscale) pairs without it`,
+  summary: `Serve the live UI of every project on this computer on 127.0.0.1 (default port ${DEFAULT_PORT}) until Ctrl+C, and open this project's page signed in; when this computer's otea serve runs already, it opens this project there instead. It also opens to phones on the same network when that was left open (Settings > Phone, otea phone lan --open), and --lan opens it for this run only; a phone on Tailscale (otea phone tailscale) pairs without it`,
   args: [],
   options: { port: {}, 'no-open': { flag: true }, lan: { flag: true } },
   execute: async ({ cwd, option, flag, signal, openUrl, warn, terminal, tailscale, probe }) => {
@@ -2061,13 +2137,17 @@ const serve: Command = {
       owner.stop();
       throw error;
     });
-    const { url, signInUrl, phone } = served;
-    // With --no-open the person signs a browser in by hand: the link carries the project's key, so
+    // Pointing at the server that runs: nothing of this process stays running.
+    if (served.attached) owner.stop();
+    const { url, signInUrl, phone, attached } = served;
+    // With --no-open the person signs a browser in by hand: the link carries the server's key, so
     // it is printed only to a terminal, never to a pipe, a log or --json.
     const signIn = !flag('no-open')
       ? []
       : terminal
-        ? [`Sign a browser in at ${signInUrl} (it holds this project's key: keep it to yourself)`]
+        ? [
+            `Sign a browser in at ${signInUrl} (it holds this computer's Otea key: keep it to yourself)`,
+          ]
         : [
             'Run "otea open" here to sign a browser in (the sign-in link is printed only at a terminal)',
           ];
@@ -2077,20 +2157,24 @@ const serve: Command = {
         warn(`Could not open a browser (${reason}); run "otea open" to try again`);
       });
     }
-    const running = [`Otea running at ${url}`, ...signIn].join('\n');
-    if (!phone) return { data: { url }, text: running };
-    return { data: { url, phone }, text: `${running}\n${phoneText(phone)}` };
+    const where = attached
+      ? `Otea already runs on this computer: this project is at ${url}`
+      : `Otea running at ${url}`;
+    const running = [where, ...signIn].join('\n');
+    const data = { url, ...(attached ? { attached } : {}) };
+    if (!phone) return { data, text: running };
+    return { data: { ...data, phone }, text: `${running}\n${phoneText(phone)}` };
   },
 };
 
 const devicesList: Command = {
   name: 'devices list',
   summary:
-    'List the paired phones and tablets (local network or otea phone tailscale), with when each was last seen',
+    'List the paired phones and tablets (local network or otea phone tailscale), with when each was last seen; each one opens every project on this computer',
   args: [],
   options: {},
-  execute: ({ cwd }) => {
-    const devices = withProject(cwd, (project) => listDevices(project.db));
+  execute: () => {
+    const devices = withMachine(process.env, listDevices);
     const text = devices
       .map(
         ({ id, name, pairedAt, lastSeenAt, hint }) =>
@@ -2106,32 +2190,33 @@ const devicesRevoke: Command = {
   summary: 'Revoke a paired device: its token stops working at once, even while otea serve runs',
   args: ['id'],
   options: {},
-  execute: ({ cwd, args: [id = ''] }) => {
-    const device = withProject(cwd, (project) => revokeDevice(project.db, id));
+  execute: ({ args: [id = ''] }) => {
+    const device = withMachine(process.env, (machine) => revokeDevice(machine, id));
     return { data: device, text: `Revoked ${device.id} (${device.name})` };
   },
 };
 
 function notRunning(message: string): CommandFailure {
-  return new CommandFailure('not_running', `${message}; run "otea serve" in this project first`);
+  return new CommandFailure('not_running', `${message}; run "otea serve" first`);
 }
 
 const open: Command = {
   name: 'open',
-  summary: 'Open the UI of the running "otea serve" in the browser, signed in to act on items',
+  summary:
+    "Open this project's page on this computer's running otea serve in the browser, signed in to act on items",
   args: [],
   options: { port: {} },
   execute: async ({ cwd, option, openUrl }) => {
-    const dir = withProject(cwd, (project) => project.dataDir);
-    const port = portToOpen(dir, option('port'));
-    const token = readUiToken(dir);
-    if (!token) throw notRunning('No Otea server has been started for this project');
-    const url = `http://127.0.0.1:${port}`;
-    const link = signInUrl(url, token);
+    const here = projectHere(cwd);
+    const home = oteaHome();
+    const port = portToOpen(option('port'));
+    const token = readUiToken(home);
+    if (!token) throw notRunning('No Otea server has been started on this computer');
+    const { url, signInUrl: link } = pages(`http://127.0.0.1:${port}`, token, here);
     const probe = await probeSignIn(link);
     if (probe === 'down') throw notRunning(`No Otea server answers on port ${port}`);
     if (probe === 'other')
-      throw notRunning(`The Otea server on port ${port} serves another project`);
+      throw notRunning(`The Otea server on port ${port} is another Otea home's (OTEA_HOME)`);
     await openUrl(link).catch((error: unknown) => {
       const reason = error instanceof Error ? error.message : String(error);
       throw new Error(`Could not open a browser (${reason})`);

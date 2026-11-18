@@ -10,7 +10,7 @@ import {
 } from './sw-strategies.ts';
 
 const ORIGIN = 'https://desk.tail1234.ts.net';
-const PRECACHED = new Set(['/', '/assets/index-abc.js', '/icons/otea-192.png']);
+const PRECACHED = new Set(['/index.html', '/assets/index-abc.js', '/icons/otea-192.png']);
 
 const route = (path: string, o: { method?: string; mode?: string; origin?: string } = {}) =>
   swRoute(
@@ -20,9 +20,24 @@ const route = (path: string, o: { method?: string; mode?: string; origin?: strin
   );
 
 describe('swRoute', () => {
-  it('opens every page load from the cached app', () => {
-    expect(route('/', { mode: 'navigate' })).toBe('shell');
+  it("opens every project's page and the pairing screen from the cached app", () => {
+    expect(route('/p/web-k3x7qa/', { mode: 'navigate' })).toBe('shell');
+    expect(route('/p/web-k3x7qa/index.html', { mode: 'navigate' })).toBe('shell');
     expect(route('/pair', { mode: 'navigate' })).toBe('shell');
+  });
+
+  // P3C-1: a sign-in served from the cache sets no cookie, and every write is refused after.
+  it('leaves the sign-in link and the home page to the PC', () => {
+    expect(route('/auth?token=abc&next=%2Fp%2Fweb-k3x7qa%2F', { mode: 'navigate' })).toBe(
+      'network',
+    );
+    expect(route('/', { mode: 'navigate' })).toBe('network');
+  });
+
+  it("reads a project's API under its path as the API", () => {
+    expect(route('/p/web-k3x7qa/api/items')).toBe('data');
+    expect(route('/p/web-k3x7qa/api/stream')).toBe('network');
+    expect(route('/p/web-k3x7qa/api/evidence/3/file', { mode: 'navigate' })).toBe('network');
   });
 
   it('serves the built files from the cache, and nothing else it does not know', () => {

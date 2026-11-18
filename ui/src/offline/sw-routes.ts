@@ -1,8 +1,10 @@
 // What the service worker does with each request (the installed app over HTTPS, see sw.ts). It is
 // pure, so the routing is tested without a browser:
 //
-// - shell: a page load. The app's page, from the cache first: it opens with the PC off, and a new
-//   version, installed in the background, applies on the next open.
+// - shell: a page load of a project (/p/<id>/…) or of the pairing screen. The app's page, from the
+//   cache first: it opens with the PC off, and a new version, installed in the background, applies
+//   on the next open. Never the sign-in link (/auth), which must reach the PC to set its cookie
+//   (P3C-1), nor `/`, which the PC answers by opening the last project.
 // - static: the page's own files, listed when it was built (precached). Cache first.
 // - data: what the read views show. The network first; when the PC does not answer, the last
 //   answer that came back, marked as such (see offline headers below).
@@ -10,6 +12,8 @@
 //   phone settings, the notification settings, other origins.
 
 export type SwRoute = 'shell' | 'static' | 'data' | 'network';
+
+const PROJECT_PREFIX = /^\/p\/[^/]+(?=\/)/;
 
 export type SwRequest = { method: string; url: string; mode: string };
 
@@ -31,16 +35,21 @@ export function swRoute(
   if (request.method !== 'GET') return 'network';
   const url = new URL(request.url);
   if (url.origin !== origin) return 'network';
-  const path = url.pathname;
+  // A project's API is under its page's path: /p/<id>/api/….
+  const path = url.pathname.replace(PROJECT_PREFIX, '');
   if (path === '/api' || path.startsWith('/api/')) {
     return LIVE_ONLY.some((live) => path === live || path.startsWith(live)) ? 'network' : 'data';
   }
-  if (request.mode === 'navigate') return 'shell';
-  return precached.has(path) ? 'static' : 'network';
+  if (request.mode === 'navigate') {
+    const page = url.pathname.startsWith('/p/') || url.pathname === '/pair';
+    return page ? 'shell' : 'network';
+  }
+  return precached.has(url.pathname) ? 'static' : 'network';
 }
 
-// The page itself, as the cache keeps it: every page load opens it.
-export const SHELL_KEY = '/';
+// The page itself, as the cache keeps it: every page load opens it (every project's page is the
+// same app; its path says which project it shows).
+export const SHELL_KEY = '/index.html';
 
 // Set on a data answer the cache kept: when it came from the PC (ms since the epoch)…
 export const SAVED_AT = 'x-otea-saved-at';

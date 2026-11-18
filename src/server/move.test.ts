@@ -19,7 +19,7 @@ describe('POST /api/items/:id/move', () => {
 
   const post = (id: string, { body, headers }: Post = {}) =>
     Promise.resolve(
-      server.app.request(`/api/items/${id}/move`, {
+      server.app.request(`/p/memory-aaaaaa/api/items/${id}/move`, {
         method: 'POST',
         body: body ?? '',
         headers: {
@@ -138,7 +138,7 @@ describe('POST /api/items/:id/move', () => {
   it('takes back your approval within the toast, though the workflow has no move back', async () => {
     await move('TASKS-1', { to: 'done' });
     const response = await Promise.resolve(
-      server.app.request('/api/items/TASKS-1/undo', {
+      server.app.request('/p/memory-aaaaaa/api/items/TASKS-1/undo', {
         method: 'POST',
         body: JSON.stringify({ from: 'review' }),
         headers: {

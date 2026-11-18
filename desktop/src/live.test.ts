@@ -39,6 +39,13 @@ describe('parseNotice', () => {
     ).toEqual({ title: 'Te toca', body: 'T-1 · Ship', tag: 'otea-item-T-1', url: '/#/i/T-1' });
   });
 
+  it("opens a project's place on this server", () => {
+    expect(parseNotice('{"title":"x","body":"y","url":"/p/web-k3x7qa/#/i/T-1"}')?.url).toBe(
+      '/p/web-k3x7qa/#/i/T-1',
+    );
+    expect(parseNotice('{"title":"x","body":"y","url":"/p/../#/"}')?.url).toBe('/#/');
+  });
+
   it('opens only places in the app, and skips what does not read', () => {
     expect(parseNotice('{"title":"x","body":"y","url":"https://evil.example"}')?.url).toBe('/#/');
     expect(parseNotice('{"title":1}')).toBeUndefined();
@@ -47,7 +54,7 @@ describe('parseNotice', () => {
 });
 
 describe('the serve files', () => {
-  it('reads the port and the token otea serve leaves in the data folder', () => {
+  it('reads the port and the token otea serve leaves in the Otea home', () => {
     const dir = mkdtempSync(join(tmpdir(), 'otea-desktop-'));
     try {
       expect(readServeFile(dir)).toBeUndefined();
@@ -63,9 +70,9 @@ describe('the serve files', () => {
     }
   });
 
-  it('builds the sign-in link the browser gets from otea open', () => {
-    expect(signInUrl('http://127.0.0.1:4486', 'a+b')).toBe(
-      'http://127.0.0.1:4486/auth?token=a%2Bb',
+  it("builds the sign-in link that lands on the project's page, as otea open does", () => {
+    expect(signInUrl('http://127.0.0.1:4486', 'a+b', 'web-k3x7qa')).toBe(
+      'http://127.0.0.1:4486/auth?token=a%2Bb&next=%2Fp%2Fweb-k3x7qa%2F',
     );
   });
 });

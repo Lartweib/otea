@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useReducer, useRef, useState, useSyncExternalStore } from 'react';
 import { type Attention, attentionOf, nextLeaseExpiry } from './attention.ts';
+import { apiUrl } from './base.ts';
 import { activeLease, type TimeCell, timeCell } from './lease.ts';
 import { afterFailure, type Remote } from './remote.ts';
 import { hideTier } from './row-grid.ts';
@@ -27,7 +28,7 @@ export function useLive(url = '/api/stream'): Live {
     // comes back to the front or online.
     const open = () => {
       clearTimeout(retry);
-      source = new EventSource(url);
+      source = new EventSource(apiUrl(url));
       source.addEventListener('ready', () => {
         setConnection('live');
         refresh();

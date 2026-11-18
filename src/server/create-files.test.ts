@@ -24,7 +24,7 @@ describe('POST /api/items as a form, with files', () => {
 
   const send = (form: FormData, headers: Record<string, string> = {}) =>
     Promise.resolve(
-      server.app.request('/api/items', {
+      server.app.request('/p/memory-aaaaaa/api/items', {
         method: 'POST',
         body: form,
         headers: { host: LOCAL_HOST, origin: ORIGIN, cookie: SESSION_COOKIE, ...headers },
@@ -131,7 +131,7 @@ describe('POST /api/items as a form, with files', () => {
     form.append('to', 'closed');
 
     const response = await Promise.resolve(
-      server.app.request('/api/items/PROOF-1/move', {
+      server.app.request('/p/memory-aaaaaa/api/items/PROOF-1/move', {
         method: 'POST',
         body: form,
         headers: { host: LOCAL_HOST, origin: ORIGIN, cookie: SESSION_COOKIE },

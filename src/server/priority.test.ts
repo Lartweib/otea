@@ -38,7 +38,7 @@ describe('the person’s order over the API', () => {
   const call = (path: string, init: { method?: string; body?: unknown } = {}) =>
     Promise.resolve(
       server.app.request(
-        `/api${path}`,
+        `/p/memory-aaaaaa/api${path}`,
         {
           method: init.method ?? 'GET',
           headers: {

@@ -115,7 +115,7 @@ export const surfaces = {
   'lan.addrTag.name': 'not on Android',
   'lan.fallback': 'If the phone cannot open {name}, use {url}',
   'lan.signIn': 'Sign this browser in with {command} on this computer to pair a phone.',
-  'pair.title': 'Pair with {project}',
+  'pair.title': 'Pair with {computer}',
   'pair.titlePlain': 'Pair this phone',
   'pair.intro':
     'You scanned the code on the desk. This phone gets a key of its own; you can revoke it from the desk at any time.',
@@ -135,7 +135,7 @@ export const surfaces = {
   'pair.going': 'Pairing…',
   'pair.done': 'Paired',
   'pair.doneText':
-    'This phone can open {project} whenever it is on the same network as the desk. Nothing else changes on the desk.',
+    'This phone can open all your projects on {computer} whenever it is on the same network as the desk. Nothing else changes on the desk.',
   'pair.token': 'key',
   'pair.tokenKept': '··{hint} · kept on this phone',
   'pair.reach': 'reach',
@@ -389,12 +389,10 @@ export const surfaces = {
   'projects.kicker': 'All projects',
   'projects.display': 'Waiting for you',
   'projects.dek':
-    'What waits for you in every project on this machine. {name} is open; the others open in their own tab when {serve} runs there.',
+    'What waits for you in every project on this machine. {name} is open; a row of another project opens it here.',
   'projects.dekAlone':
     'What waits for you in every project on this machine. Only {name} lives here; another project starts with {init} in its repo.',
   'projects.openNow': 'open now',
-  'projects.inTab': 'opens in its tab',
-  'projects.noServer': 'no server',
   'projects.emptyHere': 'Nothing waits for you here.',
   'projects.act.revisiones': 'Review',
   'projects.act.preguntas': 'Answer',

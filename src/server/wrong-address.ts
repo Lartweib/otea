@@ -1,4 +1,5 @@
 import type { Context } from 'hono';
+import { isApiPath } from './hosts.ts';
 
 // A page opened at an address this server does not answer at: the Android emulator's 10.0.2.2, a
 // name the router gave the computer, an old IP. The API keeps its JSON refusal (forbidden_host);
@@ -18,7 +19,7 @@ const WORDS = {
 
 // Whether the refusal goes to a person's browser: a page asked for, outside the API.
 export function wantsPage(c: Context): boolean {
-  if (c.req.method !== 'GET' || c.req.path.startsWith('/api/')) return false;
+  if (c.req.method !== 'GET' || isApiPath(c.req.path)) return false;
   return (c.req.header('accept') ?? '').includes('text/html');
 }
 

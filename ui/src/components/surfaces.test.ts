@@ -273,9 +273,10 @@ describe('Te espera', () => {
     setLanguage('es');
     const blocks = elsewhereBlocks(salinas);
     expect(blocks[0]).toMatchObject({ kind: 'sec', title: 'Salinas', gloss: 'D:/juegos/salinas' });
-    expect(blocks[1]).toMatchObject({ kind: 'row', inert: true, lane: 'you' });
-    const served = elsewhereBlocks({ ...salinas, served: 'http://127.0.0.1:4500' });
-    expect(served[1]).toMatchObject({ inert: false });
+    // Every project is on this same server: its rows open its page.
+    expect(blocks[1]).toMatchObject({ kind: 'row', inert: false, lane: 'you' });
+    const gone = elsewhereBlocks({ ...salinas, unavailable: 'The data is missing' });
+    expect(gone.find((block) => block.kind === 'row')).toMatchObject({ inert: true });
     // The step in words, in the language on screen, never its id.
     const html = renderToStaticMarkup(
       createElement('div', null, (blocks[1] as { content: ReactNode }).content),
@@ -309,7 +310,8 @@ describe('Te espera', () => {
     expect(html).toContain('Todos los proyectos');
     expect(html).toContain('Te espera');
     expect(html).toContain('data-list="projects"');
-    expect(html).toContain('sin servidor');
+    expect(html).toContain('una fila de otro proyecto lo abre aquí');
+    expect(html).not.toContain('pestaña');
   });
 });
 

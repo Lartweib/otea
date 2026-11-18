@@ -56,7 +56,7 @@ describe('POST /api/items/:id/update', () => {
 
   it('says what the person’s own step still lacks, then fills it as the person', async () => {
     const before = (await (
-      await server.app.request(`/api/items/${id}`, {
+      await server.app.request(`/p/memory-aaaaaa/api/items/${id}`, {
         headers: { host: LOCAL_HOST, cookie: SESSION_COOKIE },
       })
     ).json()) as { board: { missing: { ref: string; name: string }[] } };
@@ -64,13 +64,15 @@ describe('POST /api/items/:id/update', () => {
       expect.objectContaining({ ref: 'fwhat', name: 'Qué propone' }),
     ]);
 
-    const response = await post(`/api/items/${id}/update`, { fields: { fwhat: 'dos rutas' } });
+    const response = await post(`/p/memory-aaaaaa/api/items/${id}/update`, {
+      fields: { fwhat: 'dos rutas' },
+    });
     expect(response.status).toBe(200);
     expect(getItem(project, id).fields.fwhat).toBe('dos rutas');
   });
 
   it('refuses a body without fields', async () => {
-    const response = await post(`/api/items/${id}/update`, { fields: 'x' });
+    const response = await post(`/p/memory-aaaaaa/api/items/${id}/update`, { fields: 'x' });
     expect(response.status).toBe(400);
   });
 });
@@ -87,7 +89,7 @@ describe('GET /api/items on a board', () => {
       actor: you,
     });
     const server = createServer(project, { token: TOKEN });
-    const response = await server.app.request('/api/items', {
+    const response = await server.app.request('/p/memory-aaaaaa/api/items', {
       headers: { host: LOCAL_HOST, cookie: SESSION_COOKIE },
     });
     const items = (await response.json()) as { id: string; round?: number }[];
@@ -108,7 +110,7 @@ describe('GET /api/items on a board', () => {
     });
     dropItem(project, { id: bug.id, actor: you, channel: 'ui', reason: 'x', motive: 'Rechazado' });
     const server = createServer(project, { token: TOKEN });
-    const response = await server.app.request('/api/items', {
+    const response = await server.app.request('/p/memory-aaaaaa/api/items', {
       headers: { host: LOCAL_HOST, cookie: SESSION_COOKIE },
     });
     const items = (await response.json()) as { id: string; round?: number }[];

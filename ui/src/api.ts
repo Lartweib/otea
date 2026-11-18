@@ -2,6 +2,7 @@ import { withoutUndone } from '../../src/core/board/history.ts';
 import type { PerformanceView } from '../../src/core/board/performance.ts';
 import type { NotifyPrefs } from '../../src/core/notify/planner.ts';
 import type { FeedEvent } from './activity.ts';
+import { apiUrl } from './base.ts';
 import type { WrittenBrief } from './brief.ts';
 import { type Language, t } from './i18n/i18n.ts';
 import type { NotifyView } from './notify/offer.ts';
@@ -30,12 +31,13 @@ import { type AgentDetail, parseAgentDetail } from './views/agent/agent-sheet.ts
 
 async function get(path: string, signal: AbortSignal): Promise<Response> {
   // Every read says whether the PC answered it (the offline line, sync-state.ts).
-  const response = await fetch(path, { signal, headers: { accept: 'application/json' } }).catch(
-    (error: unknown) => {
-      if (!signal.aborted) noteRead({ kind: 'failed' });
-      throw error;
-    },
-  );
+  const response = await fetch(apiUrl(path), {
+    signal,
+    headers: { accept: 'application/json' },
+  }).catch((error: unknown) => {
+    if (!signal.aborted) noteRead({ kind: 'failed' });
+    throw error;
+  });
   noteRead(readOf(response.headers));
   // A device on the LAN whose token was revoked (or never paired) goes back to the pairing screen.
   if (response.status === 401) {
@@ -96,7 +98,7 @@ export async function fetchEvents(
 
 // Served only to a signed-in browser, as a download unless it is an image, a video or plain text.
 export function evidenceFileUrl(id: number): string {
-  return `/api/evidence/${id}/file`;
+  return apiUrl(`/api/evidence/${id}/file`);
 }
 
 export async function fetchSession(signal: AbortSignal): Promise<Session> {
@@ -142,7 +144,7 @@ async function post<T>(
   extra: Record<string, string> = {},
 ): Promise<T> {
   const form = payload instanceof FormData;
-  const response = await fetch(path, {
+  const response = await fetch(apiUrl(path), {
     method: 'POST',
     headers: form
       ? { accept: 'application/json', ...extra }
@@ -364,7 +366,7 @@ export class PairingRefused extends Error {
 }
 
 async function pairingCall<T>(path: string, payload: unknown): Promise<T> {
-  const response = await fetch(path, {
+  const response = await fetch(apiUrl(path), {
     method: 'POST',
     headers: { accept: 'application/json', 'content-type': 'application/json' },
     body: JSON.stringify(payload),

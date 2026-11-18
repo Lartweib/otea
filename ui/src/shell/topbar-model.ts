@@ -57,7 +57,7 @@ export function projectRows(
     const href = each.unavailable ? undefined : projectHref(each);
     const where = whereOf(each) ?? '';
     const missing = each.paths.some((path) => path.missing);
-    const line = href ? where : t('shell.notServed');
+    const line = href ? where : t('shell.unavailable');
     return {
       id: each.id,
       name: each.name,

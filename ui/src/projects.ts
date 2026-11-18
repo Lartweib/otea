@@ -1,3 +1,4 @@
+import { projectPage } from './base.ts';
 import { hashFor } from './selection.ts';
 import type { ProjectOverview, WaitingItem } from './types.ts';
 
@@ -41,16 +42,15 @@ export function waitingElsewhere(projects: readonly ProjectOverview[]): {
   };
 }
 
-// Where a row of the inbox leads: the item here, or in the server that shows its project; nowhere
-// when no server shows it.
-export function itemHref(project: ProjectOverview, item: WaitingItem): string | undefined {
+// Where a row of the inbox leads: the item, here or on its project's page of this same server.
+export function itemHref(project: ProjectOverview, item: WaitingItem): string {
   if (project.current) return hashFor(item.id);
-  return project.served === undefined ? undefined : `${project.served}/${hashFor(item.id)}`;
+  return projectPage(project.id, hashFor(item.id));
 }
 
-export function projectHref(project: ProjectOverview): string | undefined {
+export function projectHref(project: ProjectOverview): string {
   if (project.current) return '#/';
-  return project.served === undefined ? undefined : `${project.served}/`;
+  return projectPage(project.id);
 }
 
 // The first path of a project that is still there, to name where it lives.

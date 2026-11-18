@@ -1,10 +1,15 @@
 import { readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { listen } from '../server/listen.ts';
+import { createServer } from '../server/server.ts';
+import { memoryProject } from '../server/testing.ts';
 import { type Cli, cliAt, type TempRepo, tempGitRepo } from './testing.ts';
 
 // The first line; --no-open adds how to sign a browser in after it.
-const URL_LINE = /^Otea running at (http:\/\/127\.0\.0\.1:(\d+))\n/;
+const URL_LINE = /^Otea running at (http:\/\/127\.0\.0\.1:(\d+))\/p\/([a-z0-9-]+)\/\n/;
+
+const home = () => process.env.OTEA_HOME ?? '';
 
 describe('open', () => {
   let repo: TempRepo;
@@ -12,13 +17,16 @@ describe('open', () => {
   let opened: string[];
   let otea: Cli;
 
-  const token = () => readFileSync(join(repo.dir, '.otea', 'ui-token'), 'utf8').trim();
-  const serveFile = () => join(repo.dir, '.otea', 'serve.json');
+  // One server per Otea home: its key and where it runs are in the home.
+  const token = () => readFileSync(join(home(), 'ui-token'), 'utf8').trim();
+  const serveFile = () => join(home(), 'serve.json');
   const serve = async (cwd = repo.dir) => {
     const { out } = await cliAt(cwd, {}, interrupt.signal)('serve', '--port', '0', '--no-open');
-    const [, url = '', port = ''] = URL_LINE.exec(out) ?? [];
-    return { url, port };
+    const [, origin = '', port = '', id = ''] = URL_LINE.exec(out) ?? [];
+    return { origin, port, id, page: `${origin}/p/${id}/` };
   };
+  const signIn = (origin: string, next: string) =>
+    `${origin}/auth?token=${token()}&next=${encodeURIComponent(next)}`;
 
   beforeEach(async () => {
     repo = tempGitRepo();
@@ -35,39 +43,47 @@ describe('open', () => {
     await vi.waitFor(() => repo.remove());
   });
 
-  it('opens the browser signed in to the running server without printing the token', async () => {
-    const { url } = await serve();
+  it("opens this project's page signed in to the running server without printing the token", async () => {
+    const { origin, id, page } = await serve();
 
     const { code, out, err } = await otea('open');
 
     expect(code).toBe(0);
-    expect(out).toBe(`Opened Otea at ${url}\n`);
-    expect(opened).toEqual([`${url}/auth?token=${token()}`]);
+    expect(out).toBe(`Opened Otea at ${page}\n`);
+    expect(opened).toEqual([signIn(origin, `/p/${id}/`)]);
     expect(out + err).not.toContain(token());
   });
 
   it('prints the url with --json', async () => {
-    const { url } = await serve();
+    const { page } = await serve();
 
-    expect(JSON.parse((await otea('open', '--json')).out)).toEqual({ url });
+    expect(JSON.parse((await otea('open', '--json')).out)).toEqual({ url: page });
   });
 
   it('uses --port when serve.json is missing', async () => {
-    const { url, port } = await serve();
+    const { origin, port, id } = await serve();
     rmSync(serveFile());
 
     const { code } = await otea('open', '--port', port);
 
     expect(code).toBe(0);
-    expect(opened).toEqual([`${url}/auth?token=${token()}`]);
+    expect(opened).toEqual([signIn(origin, `/p/${id}/`)]);
   });
 
-  it('tells to run serve when nothing has been served yet', async () => {
-    const { code, err } = await otea('open');
-
-    expect(code).toBe(11);
-    expect(err).toContain('run "otea serve"');
-    expect(opened).toEqual([]);
+  it('opens the home page of the server outside any project', async () => {
+    const { origin } = await serve();
+    const elsewhere = tempGitRepo();
+    try {
+      const outside = cliAt(elsewhere.dir, {}, interrupt.signal, async (url) => {
+        opened.push(url);
+      });
+      const { code, out } = await outside('open');
+      expect(code).toBe(0);
+      expect(out).toBe(`Opened Otea at ${origin}/\n`);
+      expect(opened).toEqual([signIn(origin, '/')]);
+    } finally {
+      elsewhere.remove();
+    }
   });
 
   it('tells to run serve when the recorded server is gone', async () => {
@@ -86,22 +102,24 @@ describe('open', () => {
     expect(opened).toEqual([]);
   });
 
-  // It makes and serves a second project besides this one: twice the work of the other tests, which
-  // passed 8s on a Windows runner and 20s on a loaded one. It gets twice their budget.
-  it('refuses a server that belongs to another project', async () => {
-    const other = tempGitRepo();
-    await cliAt(other.dir)('init', '--local');
-    const { port } = await serve(other.dir);
+  it('refuses a server that belongs to another Otea home', async () => {
     await serve();
+    const project = memoryProject();
+    const other = await listen(
+      createServer(project, { token: 'another-home-0123456789abcdefghijklmnopq' }),
+      0,
+    );
+    try {
+      const { code, err } = await otea('open', '--port', String(other.port));
 
-    const { code, err } = await otea('open', '--port', port);
-
-    expect(code).toBe(11);
-    expect(err).toContain(`The Otea server on port ${port} serves another project`);
-    expect(opened).toEqual([]);
-    interrupt.abort();
-    await vi.waitFor(() => other.remove());
-  }, 40_000);
+      expect(code).toBe(11);
+      expect(err).toContain(`The Otea server on port ${other.port} is another Otea home's`);
+      expect(opened).toEqual([]);
+    } finally {
+      await other.close();
+      project.db.close();
+    }
+  });
 
   it('fails when no browser can be opened', async () => {
     await serve();
@@ -115,17 +133,5 @@ describe('open', () => {
 
   it('is listed in the help', async () => {
     expect((await otea('help')).out).toContain('otea open [--port <port>]');
-  });
-});
-
-describe('open without a project', () => {
-  it('fails with not_found', async () => {
-    const repo = tempGitRepo();
-
-    const { code, err } = await cliAt(repo.dir)('open');
-
-    repo.remove();
-    expect(code).toBe(3);
-    expect(err).toContain('run otea init first');
   });
 });

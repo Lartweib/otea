@@ -10,7 +10,7 @@ export const shell = {
   'shell.projectOpen': 'abierto ahora',
   'shell.newProject': 'proyecto nuevo: {command} en un repo',
   'shell.allProjectsLine': 'lo que te espera, en todos lados',
-  'shell.notServed': 'sin servidor · otea serve allí lo abre',
+  'shell.unavailable': 'no se puede leer ahora',
   'shell.pathMissing': 'falta una ruta',
   'shell.settingsOf': 'configuración de {project}',
   'shell.otherProjects': { one: '{count} proyecto', other: '{count} proyectos' },

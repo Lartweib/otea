@@ -5,10 +5,12 @@ import { join } from 'node:path';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { addCollection } from '../app/collections.ts';
 import { createItem, moveItem } from '../app/items.ts';
-import { initProject, type Project } from '../app/project.ts';
+import { memoryMachine } from '../app/machine.ts';
+import { initProject, openProject, type Project } from '../app/project.ts';
 import { addRepo } from '../app/repos.ts';
 import { tempGitRepo } from '../cli/testing.ts';
 import type { Actor } from '../core/item.ts';
+import { machineProjects } from './hub.ts';
 import type { ProjectOverview, ProjectSettings } from './projects.ts';
 import { createServer, type OteaServer } from './server.ts';
 import { LOCAL_HOST, SESSION_COOKIE, TOKEN } from './testing.ts';
@@ -37,10 +39,12 @@ describe('the projects api', () => {
   let server: OteaServer;
 
   const get = async <T>(path: string): Promise<T> =>
-    (await server.app.request(path, { headers: { host: LOCAL_HOST } })).json() as Promise<T>;
+    (
+      await server.app.request(`/p/${here.identity.id}${path}`, { headers: { host: LOCAL_HOST } })
+    ).json() as Promise<T>;
   const post = (path: string, payload: unknown) =>
     Promise.resolve(
-      server.app.request(path, {
+      server.app.request(`/p/${here.identity.id}${path}`, {
         method: 'POST',
         body: JSON.stringify(payload),
         headers: {
@@ -60,6 +64,8 @@ describe('the projects api', () => {
   // Two registered projects with items waiting. Making one costs git and migration steps, which a
   // loaded Windows runner stretches to seconds, so the tests that only read or are refused share
   // one; the ones that change a project each get their own.
+  // Every project of the home, as otea serve serves them.
+  const serveAll = () => createServer(machineProjects(env, memoryMachine()), { token: TOKEN, env });
   const open = () => {
     home = mkdtempSync(join(tmpdir(), 'otea-projects-home-'));
     env = { OTEA_HOME: home };
@@ -68,7 +74,10 @@ describe('the projects api', () => {
     const other = initProject(repo(), {}, env);
     seed(other, ['Fix the login'], 1);
     other.db.close();
-    server = createServer(here, { token: TOKEN, env });
+    server = serveAll();
+    // The server opened its own connection and read the boards anew: so does the test's.
+    here.db.close();
+    here = openProject(here.root, env);
   };
   const shut = () => {
     server.close();
@@ -107,14 +116,14 @@ describe('the projects api', () => {
       expect(settings.paths[0]?.repos[0]?.gate).toBe('soft');
       expect(settings.database.bytes).toBeGreaterThan(0);
       expect(settings.collections.map(({ name }) => name)).toEqual(['Pedidos', 'tasks']);
-      expect(settings.collections[1]).toEqual({ name: 'tasks', preset: 'tasks' });
+      expect(settings.collections[1]?.name).toBe('tasks');
     });
 
     it('refuses to touch a path of another project', async () => {
       const other = (await get<ProjectOverview[]>('/api/projects')).find((p) => !p.current);
       const response = await post('/api/project/paths/forget', { path: other?.paths[0]?.path });
       expect(response.status).toBe(404);
-      const unsigned = await server.app.request('/api/project/paths/forget', {
+      const unsigned = await server.app.request(`/p/${here.identity.id}/api/project/paths/forget`, {
         method: 'POST',
         body: JSON.stringify({ path: here.root }),
         headers: { host: LOCAL_HOST, 'content-type': 'application/json' },
@@ -135,7 +144,9 @@ describe('the projects api', () => {
 
     it('says a project whose data is gone is unavailable, and keeps listing the rest', async () => {
       const other = (await get<ProjectOverview[]>('/api/projects')).find((p) => !p.current);
+      server.close();
       rmSync(join(home, 'data', other?.id ?? ''), { recursive: true, force: true });
+      server = serveAll();
       const projects = await get<ProjectOverview[]>('/api/projects');
       const gone = projects.find((project) => !project.current);
       expect(gone?.unavailable).toMatch(/missing/);

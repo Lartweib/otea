@@ -1,3 +1,6 @@
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { type FakeTailscale, fakeTailscale, TAILNET_HOST } from '../app/tailscale-testing.ts';
 import { type Cli, cliAt, tempGitRepo } from './testing.ts';
@@ -9,8 +12,13 @@ describe('otea phone', () => {
   let cli: FakeTailscale;
   let reachable: boolean;
   let otea: Cli;
+  // Phone access is the computer's: each test gets an Otea home of its own.
+  const shared = process.env.OTEA_HOME;
+  let home: string;
 
   beforeEach(async () => {
+    home = mkdtempSync(join(tmpdir(), 'otea-phone-home-'));
+    process.env.OTEA_HOME = home;
     repo = tempGitRepo();
     interrupt = new AbortController();
     cli = fakeTailscale();
@@ -25,6 +33,8 @@ describe('otea phone', () => {
   afterEach(async () => {
     interrupt.abort();
     await vi.waitFor(() => repo.remove());
+    process.env.OTEA_HOME = shared;
+    await vi.waitFor(() => rmSync(home, { recursive: true, force: true }));
   });
 
   describe('tailscale', () => {

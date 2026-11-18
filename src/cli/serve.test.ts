@@ -4,7 +4,10 @@ import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { type Cli, cliAt, presetCollection, tempGitRepo } from './testing.ts';
 
-const URL_LINE = /^Otea running at (http:\/\/127\.0\.0\.1:\d+)\n$/;
+// `Otea running at <origin>/p/<project id>/`: every project has its page on the one server.
+const URL_LINE = /^Otea running at (http:\/\/127\.0\.0\.1:\d+)\/p\/([a-z0-9-]+)\/\n$/;
+
+const home = () => process.env.OTEA_HOME ?? '';
 
 function occupyPort(): Promise<{ port: number; server: Server }> {
   const server = createServer();
@@ -16,14 +19,18 @@ function occupyPort(): Promise<{ port: number; server: Server }> {
   });
 }
 
+const signInFor = (origin: string, token: string, id: string) =>
+  `${origin}/auth?token=${token}&next=${encodeURIComponent(`/p/${id}/`)}`;
+
 describe('serve', () => {
   let repo: ReturnType<typeof tempGitRepo>;
   let interrupt: AbortController;
   let otea: Cli;
   let opened: string[];
 
-  const token = () => readFileSync(join(repo.dir, '.otea', 'ui-token'), 'utf8').trim();
-  const serveFile = () => join(repo.dir, '.otea', 'serve.json');
+  // One server per Otea home: its key and where it runs are kept in the home, not the project.
+  const token = () => readFileSync(join(home(), 'ui-token'), 'utf8').trim();
+  const serveFile = () => join(home(), 'serve.json');
 
   beforeEach(async () => {
     repo = tempGitRepo();
@@ -40,30 +47,54 @@ describe('serve', () => {
     await vi.waitFor(() => repo.remove());
   });
 
-  it('serves the project on 127.0.0.1 until interrupted', async () => {
+  it('serves the project on 127.0.0.1, under its own path, until interrupted', async () => {
     presetCollection(repo.dir, 'tasks');
     await otea('create', '--collection', 'tasks', '--title', 'First');
 
     const { code, out } = await otea('serve', '--port', '0');
-    const url = URL_LINE.exec(out)?.[1];
+    const [, origin, id] = URL_LINE.exec(out) ?? [];
 
     expect(code).toBe(0);
-    expect(url).toBeDefined();
-    const items = await (await fetch(`${url}/api/items`)).json();
+    expect(origin).toBeDefined();
+    const items = await (await fetch(`${origin}/p/${id}/api/items`)).json();
     expect(items).toMatchObject([{ id: 'TASKS-1', title: 'First' }]);
 
     interrupt.abort();
-    await vi.waitFor(() => expect(fetch(`${url}/api/items`)).rejects.toThrow());
+    await vi.waitFor(() => expect(fetch(`${origin}/p/${id}/api/items`)).rejects.toThrow());
   });
 
-  it('opens the browser at a sign-in url without printing the token', async () => {
+  it('opens the browser at a sign-in url for this project without printing the token', async () => {
     const { out, err } = await otea('serve', '--port', '0');
-    const url = URL_LINE.exec(out)?.[1];
+    const [, origin = '', id = ''] = URL_LINE.exec(out) ?? [];
 
-    expect(opened).toEqual([`${url}/auth?token=${token()}`]);
+    expect(opened).toEqual([signInFor(origin, token(), id)]);
     expect(out + err).not.toContain(token());
     const signIn = await fetch(opened[0] ?? '', { redirect: 'manual' });
     expect(signIn.status).toBe(302);
+    expect(signIn.headers.get('location')).toBe(`/p/${id}/`);
+  });
+
+  it('points a second otea serve at the one running, from another project', async () => {
+    const { out } = await otea('serve', '--port', '0', '--json');
+    const { origin } = new URL((JSON.parse(out) as { url: string }).url);
+    const other = tempGitRepo();
+    try {
+      const there = cliAt(other.dir, { OTEA_AGENT: 'claude' }, interrupt.signal);
+      await there('init', '--local');
+      const second = await there('serve', '--port', '0', '--no-open', '--json');
+      const data = JSON.parse(second.out) as { url: string; attached?: boolean };
+      expect(data.attached).toBe(true);
+      const page = new URL(data.url);
+      expect(page.origin).toBe(origin);
+      // The running server serves the second project too, which it had never seen.
+      const project = await fetch(`${data.url}api/project`);
+      expect(project.status).toBe(200);
+      expect(page.pathname).toBe(`/p/${((await project.json()) as { id: string }).id}/`);
+    } finally {
+      // The server holds the second project open until it stops.
+      interrupt.abort();
+      await vi.waitFor(() => other.remove());
+    }
   });
 
   it('does not open the browser with --no-open', async () => {
@@ -77,12 +108,12 @@ describe('serve', () => {
     const terminal = cliAt(repo.dir, {}, interrupt.signal, undefined, undefined, undefined, true);
 
     const { out } = await terminal('serve', '--port', '0', '--no-open');
-    const url = /^Otea running at (\S+)\n/.exec(out)?.[1];
+    const [, origin = '', id = ''] = /^Otea running at (\S+)\/p\/([a-z0-9-]+)\/\n/.exec(out) ?? [];
 
     expect(out).toBe(
-      `Otea running at ${url}\nSign a browser in at ${url}/auth?token=${token()} (it holds this project's key: keep it to yourself)\n`,
+      `Otea running at ${origin}/p/${id}/\nSign a browser in at ${signInFor(origin, token(), id)} (it holds this computer's Otea key: keep it to yourself)\n`,
     );
-    const signIn = await fetch(`${url}/auth?token=${token()}`, { redirect: 'manual' });
+    const signIn = await fetch(signInFor(origin, token(), id), { redirect: 'manual' });
     expect(signIn.status).toBe(302);
   });
 
@@ -104,11 +135,11 @@ describe('serve', () => {
     const failing = cliAt(repo.dir, {}, interrupt.signal, () => Promise.reject(new Error('nope')));
 
     const { code, out, err } = await failing('serve', '--port', '0');
-    const url = URL_LINE.exec(out)?.[1];
+    const [, origin, id] = URL_LINE.exec(out) ?? [];
 
     expect(code).toBe(0);
     expect(err).toBe('otea: Could not open a browser (nope); run "otea open" to try again\n');
-    expect((await fetch(`${url}/api/items`)).status).toBe(200);
+    expect((await fetch(`${origin}/p/${id}/api/items`)).status).toBe(200);
   });
 
   it('reuses the token across restarts', async () => {
@@ -123,11 +154,12 @@ describe('serve', () => {
     again.abort();
   });
 
-  it('records its port in serve.json while running and removes it on shutdown', async () => {
+  it('records its port in the home serve.json while running and removes it on shutdown', async () => {
     const { out } = await otea('serve', '--port', '0');
     const port = Number(new URL(URL_LINE.exec(out)?.[1] ?? '').port);
 
     expect(JSON.parse(readFileSync(serveFile(), 'utf8'))).toEqual({ port, pid: process.pid });
+    expect(existsSync(join(repo.dir, '.otea', 'serve.json'))).toBe(false);
 
     interrupt.abort();
     await vi.waitFor(() => expect(existsSync(serveFile())).toBe(false));
@@ -136,7 +168,7 @@ describe('serve', () => {
   it('prints the url with --json', async () => {
     const { out } = await otea('serve', '--port', '0', '--json');
 
-    expect(JSON.parse(out).url).toMatch(/^http:\/\/127\.0\.0\.1:\d+$/);
+    expect(JSON.parse(out).url).toMatch(/^http:\/\/127\.0\.0\.1:\d+\/p\/[a-z0-9-]+\/$/);
     expect(JSON.parse(out).phone).toBeUndefined();
   });
 
@@ -162,14 +194,27 @@ describe('serve', () => {
   });
 });
 
-describe('serve without a project', () => {
-  it('fails with not_found', async () => {
+describe('serve outside any project', () => {
+  it('serves every project of the home, opening at its home page', async () => {
     const repo = tempGitRepo();
-
-    const { code, err } = await cliAt(repo.dir)('serve', '--port', '0');
-
-    repo.remove();
-    expect(code).toBe(3);
-    expect(err).toContain('run otea init first');
+    const interrupt = new AbortController();
+    try {
+      const { code, out } = await cliAt(repo.dir, {}, interrupt.signal)(
+        'serve',
+        '--port',
+        '0',
+        '--no-open',
+        '--json',
+      );
+      expect(code).toBe(0);
+      const { url } = JSON.parse(out) as { url: string };
+      expect(url).toMatch(/^http:\/\/127\.0\.0\.1:\d+\/$/);
+      interrupt.abort();
+      // Stopped: it no longer answers, and it let go of the home's files.
+      await vi.waitFor(() => expect(fetch(url)).rejects.toThrow());
+    } finally {
+      interrupt.abort();
+      await vi.waitFor(() => repo.remove());
+    }
   });
 });

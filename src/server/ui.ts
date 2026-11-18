@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { serveStatic } from '@hono/node-server/serve-static';
-import type { Hono } from 'hono';
+import type { Context, Hono } from 'hono';
 import type { OteaEnv } from './session.ts';
 
 export const BUILT_UI_DIR = fileURLToPath(new URL('../../ui/dist', import.meta.url));
@@ -23,5 +23,10 @@ export function mountUi(app: Hono<OteaEnv>, uiDir: string): void {
     if (!c.req.path.startsWith('/assets/')) c.header('cache-control', 'no-cache');
   });
   app.use('*', serveStatic({ root: uiDir }));
-  app.get('*', (c) => c.html(readFileSync(index, 'utf8')));
+  // The page: a project's (/p/<id>/…, its places in the hash) and the pairing screen. The installed
+  // app keeps it as /index.html, so it opens any project's page without the PC.
+  const page = (c: Context) => c.html(readFileSync(index, 'utf8'));
+  app.get('/p/*', page);
+  app.get('/pair', page);
+  app.get('*', (c) => c.text('Not found', 404));
 }

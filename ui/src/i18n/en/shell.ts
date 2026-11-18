@@ -8,7 +8,7 @@ export const shell = {
   'shell.projectOpen': 'open now',
   'shell.newProject': 'new project: {command} in a repo',
   'shell.allProjectsLine': 'what waits for you, everywhere',
-  'shell.notServed': 'not served · otea serve there opens it',
+  'shell.unavailable': 'cannot be read now',
   'shell.pathMissing': 'a path is missing',
   'shell.settingsOf': '{project} settings',
   'shell.otherProjects': { one: '{count} other project', other: '{count} other projects' },

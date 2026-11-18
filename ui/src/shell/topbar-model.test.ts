@@ -44,7 +44,7 @@ describe('the project menu’s rows', () => {
     const { rows } = projectRows(
       here,
       [
-        overview({ id: 'mirefall', served: 'http://127.0.0.1:4700', waiting: waiting(2) }),
+        overview({ id: 'mirefall', waiting: waiting(2) }),
         overview({ id: 'hm', name: 'Hollowmere', current: true, waiting: waiting(9) }),
       ],
       3,
@@ -59,26 +59,22 @@ describe('the project menu’s rows', () => {
     expect(rows[0]?.href).toBeUndefined();
   });
 
-  it('opens a served project at its own address, names where it lives', () => {
-    const { rows } = projectRows(
-      here,
-      [overview({ id: 'mirefall', served: 'http://127.0.0.1:4700', waiting: waiting(2) })],
-      0,
-    );
+  it('opens another project at its page on this server, names where it lives', () => {
+    const { rows } = projectRows(here, [overview({ id: 'mirefall', waiting: waiting(2) })], 0);
     expect(rows.find((r) => r.id === 'mirefall')).toMatchObject({
-      href: 'http://127.0.0.1:4700/',
+      href: '/p/mirefall/#/',
       line: '/repos/mirefall',
       waiting: 2,
       inert: false,
     });
   });
 
-  it('keeps an unserved project inert, saying how to open it', () => {
+  it('keeps a project it cannot read inert, saying so', () => {
     setLanguage('es');
-    const { rows } = projectRows(here, [overview({ id: 'quiet' })], 0);
+    const { rows } = projectRows(here, [overview({ id: 'quiet', unavailable: 'gone' })], 0);
     expect(rows.find((r) => r.id === 'quiet')).toMatchObject({
       inert: true,
-      line: 'sin servidor · otea serve allí lo abre',
+      line: 'no se puede leer ahora',
     });
   });
 
@@ -88,7 +84,6 @@ describe('the project menu’s rows', () => {
       [
         overview({
           id: 'gone',
-          served: 'http://x',
           paths: [{ path: '/old', missing: true }] as ProjectOverview['paths'],
         }),
       ],

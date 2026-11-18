@@ -1,6 +1,7 @@
-// Finding the project's `otea serve`, or starting one. Everything goes through the otea CLI and the
-// files it writes in the project's data folder (serve.json, ui-token), so the shell never opens the
-// database itself and stays a client like the browser.
+// Finding this computer's `otea serve`, or starting it: one server per Otea home serves every
+// project, each at /p/<id>/. Everything goes through the otea CLI and the files it keeps in the Otea
+// home (serve.json, ui-token), so the shell never opens a database itself and stays a client like
+// the browser.
 import { type ChildProcess, execFile, spawn } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -14,10 +15,13 @@ export type Cli = {
   env?: Readonly<Record<string, string>>;
 };
 
-export type Project = { id: string; name: string; root: string; dataDir: string };
+// `home`: the Otea home whose one server serves it.
+export type Project = { id: string; name: string; root: string; dataDir: string; home: string };
 
 export type Connection = {
   project: Project;
+  // The project's page on the server, without the trailing slash (`<origin>/p/<id>`): its API is
+  // under it.
   url: string;
   signInUrl: string;
   // Set when the shell started the server, which it then stops on quit.
@@ -103,44 +107,35 @@ export async function createProject(cli: Cli, cwd: string, here = false): Promis
   await runJson(cli, cwd, here ? ['init', '--here'] : ['init']);
 }
 
-export function readServeFile(dataDir: string): { port: number; pid: number } | undefined {
+export function readServeFile(home: string): { port: number; pid: number } | undefined {
   try {
-    const info = JSON.parse(readFileSync(join(dataDir, 'serve.json'), 'utf8'));
+    const info = JSON.parse(readFileSync(join(home, 'serve.json'), 'utf8'));
     return Number.isInteger(info.port) && Number.isInteger(info.pid) ? info : undefined;
   } catch {
     return undefined;
   }
 }
 
-export function readUiToken(dataDir: string): string | undefined {
+export function readUiToken(home: string): string | undefined {
   try {
-    const token = readFileSync(join(dataDir, 'ui-token'), 'utf8').trim();
+    const token = readFileSync(join(home, 'ui-token'), 'utf8').trim();
     return /^[A-Za-z0-9_-]{43}$/.test(token) ? token : undefined;
   } catch {
     return undefined;
   }
 }
 
-export const signInUrl = (url: string, token: string) =>
-  `${url}/auth?token=${encodeURIComponent(token)}`;
+// The sign-in link that lands on a project's page: `origin` is the server's, `id` the project's.
+export const signInUrl = (origin: string, token: string, id: string) =>
+  `${origin}/auth?token=${encodeURIComponent(token)}&next=${encodeURIComponent(`/p/${id}/`)}`;
 
-// Whether the server on that URL is this project's: it accepts this project's token.
-export async function servesThisProject(link: string): Promise<boolean> {
-  try {
-    const response = await fetch(link, { redirect: 'manual', signal: AbortSignal.timeout(2000) });
-    await response.body?.cancel();
-    return response.status === 302 && response.headers.get('location') === '/';
-  } catch {
-    return false;
-  }
-}
-
-// `otea serve --json` prints {"url": ...} once it listens and keeps running until it is stopped.
+// `otea serve --json` prints {"url": ...} once it listens and keeps running until it is stopped;
+// when this computer's otea serve runs already it prints {"url": ..., "attached": true} and ends.
 export function startServe(
   cli: Cli,
   cwd: string,
   port?: number,
-): Promise<{ url: string; child: ChildProcess }> {
+): Promise<{ url: string; child: ChildProcess; attached: boolean }> {
   const args = [...cli.args, 'serve', '--no-open', '--json'];
   if (port !== undefined) args.push('--port', String(port));
   const child = spawn(cli.command, args, {
@@ -159,9 +154,9 @@ export function startServe(
     const lines = createInterface({ input: child.stdout as NodeJS.ReadableStream });
     lines.once('line', (line) => {
       try {
-        const { url } = JSON.parse(line) as { url: string };
+        const { url, attached } = JSON.parse(line) as { url: string; attached?: boolean };
         child.removeAllListeners('exit');
-        resolve({ url, child });
+        resolve({ url, child, attached: attached === true });
       } catch {
         child.kill();
         reject(new Error(`Unexpected output from otea serve: ${line}`));
@@ -170,8 +165,8 @@ export function startServe(
   });
 }
 
-// otea serve's default port; the shell tries the next ones when another project already serves on
-// it, so opening a second project never fails on a taken port.
+// otea serve's default port; the shell tries the next ones when another program (or another Otea
+// home's server) holds it, so opening a project never fails on a taken port.
 const DEFAULT_PORT = 4400;
 const NEARBY_PORTS = 9;
 
@@ -201,21 +196,23 @@ export async function startOnFreePort<T>(
   throw new Error('No free port to serve on');
 }
 
-// Attach to the project's running server when there is one, start it otherwise.
+// Opens the project on this computer's one server: otea serve points at it when it runs (from a
+// terminal, or started by this app before), and starts it otherwise, the app then owning it.
 export async function connect(cli: Cli, cwd: string, port?: number): Promise<Connection> {
   const project = await currentProject(cli, cwd);
-  const running = readServeFile(project.dataDir);
-  const token = readUiToken(project.dataDir);
-  if (running && token) {
-    const url = `http://127.0.0.1:${running.port}`;
-    const link = signInUrl(url, token);
-    if (await servesThisProject(link)) return { project, url, signInUrl: link };
+  const { url, child, attached } = await startOnFreePort(
+    (free) => startServe(cli, cwd, free),
+    port,
+  );
+  const token = readUiToken(project.home);
+  if (!token) {
+    if (!attached) child.kill();
+    throw new Error(`otea serve started without a sign-in token in ${project.home}`);
   }
-  const { url, child } = await startOnFreePort((free) => startServe(cli, cwd, free), port);
-  const started = readUiToken(project.dataDir);
-  if (!started) {
-    child.kill();
-    throw new Error(`otea serve started without a sign-in token in ${project.dataDir}`);
-  }
-  return { project, url, signInUrl: signInUrl(url, started), child };
+  const { origin } = new URL(url);
+  const page = `${origin}/p/${project.id}`;
+  const link = signInUrl(origin, token, project.id);
+  return attached
+    ? { project, url: page, signInUrl: link }
+    : { project, url: page, signInUrl: link, child };
 }

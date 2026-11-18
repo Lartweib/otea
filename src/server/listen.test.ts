@@ -19,7 +19,7 @@ function occupyPort(): Promise<{ port: number; server: Server }> {
 function reopenStreamOnSameSocket(url: string): Promise<void> {
   const { hostname, port } = new URL(url);
   const socket = connect(Number(port), hostname);
-  const request = `GET /api/stream HTTP/1.1\r\nHost: ${hostname}:${port}\r\n\r\n`;
+  const request = `GET /p/memory-aaaaaa/api/stream HTTP/1.1\r\nHost: ${hostname}:${port}\r\n\r\n`;
   const { promise: ready, resolve } = Promise.withResolvers<void>();
   let received = '';
   let reopened = false;
@@ -63,7 +63,7 @@ describe('listen', () => {
     listening = await listen(createServer(project), 0);
 
     expect(listening.url).toMatch(/^http:\/\/127\.0\.0\.1:\d+$/);
-    expect((await fetch(`${listening.url}/api/items`)).status).toBe(200);
+    expect((await fetch(`${listening.url}/p/memory-aaaaaa/api/items`)).status).toBe(200);
   });
 
   const lan = lanAddresses()[0];
@@ -71,23 +71,25 @@ describe('listen', () => {
   it.skipIf(lan === undefined)('does not answer on the LAN unless it is opened', async () => {
     listening = await listen(createServer(project, { network: localNetwork }), 0);
 
-    await expect(fetch(`http://${lan}:${listening.port}/api/items`)).rejects.toThrow();
+    await expect(
+      fetch(`http://${lan}:${listening.port}/p/memory-aaaaaa/api/items`),
+    ).rejects.toThrow();
   });
 
   it.skipIf(lan === undefined)('opens the LAN while it runs, and closes it again', async () => {
     const server = createServer(project, { network: localNetwork });
     listening = await listen(server, 0);
-    const items = `http://${lan}:${listening.port}/api/items`;
+    const items = `http://${lan}:${listening.port}/p/memory-aaaaaa/api/items`;
 
     await server.lan.open();
     const response = await fetch(items);
     expect(response.status).toBe(401);
     expect(await response.json()).toMatchObject({ error: { code: 'unpaired' } });
-    expect((await fetch(`${listening.url}/api/items`)).status).toBe(200);
+    expect((await fetch(`${listening.url}/p/memory-aaaaaa/api/items`)).status).toBe(200);
 
     await server.lan.close();
     await expect(fetch(items)).rejects.toThrow();
-    expect((await fetch(`${listening.url}/api/items`)).status).toBe(200);
+    expect((await fetch(`${listening.url}/p/memory-aaaaaa/api/items`)).status).toBe(200);
   });
 
   it.skipIf(lan === undefined)('stops listening on the LAN when it stops', async () => {
@@ -99,7 +101,7 @@ describe('listen', () => {
     await listening.close();
     listening = undefined;
 
-    await expect(fetch(`http://${lan}:${port}/api/items`)).rejects.toThrow();
+    await expect(fetch(`http://${lan}:${port}/p/memory-aaaaaa/api/items`)).rejects.toThrow();
   });
 
   it('fails with a clear error when the port is busy', async () => {
@@ -114,7 +116,7 @@ describe('listen', () => {
   it('ends open streams and stops listening on close', async () => {
     listening = await listen(createServer(project), 0);
     const { url } = listening;
-    const response = await fetch(`${url}/api/stream`);
+    const response = await fetch(`${url}/p/memory-aaaaaa/api/stream`);
     const reader = response.body?.getReader();
 
     await listening.close();
@@ -122,7 +124,7 @@ describe('listen', () => {
 
     let done = false;
     while (!done) done = (await reader?.read().catch(() => undefined))?.done ?? true;
-    await expect(fetch(`${url}/api/items`)).rejects.toThrow();
+    await expect(fetch(`${url}/p/memory-aaaaaa/api/items`)).rejects.toThrow();
   });
 
   it('closes promptly when a client reopens the stream on its kept-alive connection', async () => {

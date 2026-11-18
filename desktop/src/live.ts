@@ -128,6 +128,9 @@ export function watchItems(base: string, events: WatchEvents): Watch {
   return { close: () => stop.abort() };
 }
 
+// A place in the app: a project's page at one of its places (`/p/<id>/#/i/T-1`), or this page's.
+const PLACE = /^(?:\/p\/[a-z0-9-]+)?\/#\//;
+
 // A notice the server tells the desktop app (Preferencias › Avisos), already in words.
 export type DeskNotice = { title: string; body: string; tag: string; url: string };
 
@@ -140,7 +143,7 @@ export function parseNotice(data: string): DeskNotice | undefined {
       title,
       body,
       tag: typeof tag === 'string' ? tag : '',
-      url: typeof url === 'string' && url.startsWith('/#') ? url : '/#/',
+      url: typeof url === 'string' && PLACE.test(url) ? url : '/#/',
     };
   } catch {
     return undefined;

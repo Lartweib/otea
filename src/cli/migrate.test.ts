@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { writeServeFile } from './serve-file.ts';
+import { removeServeFile, writeServeFile } from './serve-file.ts';
 import { type Cli, cliAt, presetCollection, type TempRepo, tempGitRepo } from './testing.ts';
 
 describe('migrate', () => {
@@ -40,10 +40,12 @@ describe('migrate', () => {
     expect(out).toContain('already in common storage');
   });
 
-  it('refuses while otea serve runs on the project', async () => {
-    writeServeFile(join(repo.dir, '.otea'), { port: 4475, pid: process.pid });
+  it('refuses while otea serve runs on this computer', async () => {
+    const home = process.env.OTEA_HOME ?? '';
+    writeServeFile(home, { port: 4475, pid: process.pid });
 
     const { code, err } = await otea('migrate', '--to', 'common');
+    removeServeFile(home, process.pid);
 
     expect(code).toBe(18);
     expect(err).toContain('stop it first');

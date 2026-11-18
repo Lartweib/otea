@@ -34,15 +34,25 @@ describe('ui', () => {
       server = createServer(project, { uiDir });
     });
 
-    it('serves index.html at /', async () => {
-      const response = await get('/');
+    it('opens a project from /, and serves its page at /p/<id>/', async () => {
+      const home = await get('/');
+      expect(home.status).toBe(302);
+      expect(home.headers.get('location')).toBe('/p/memory-aaaaaa/');
 
+      const response = await get('/p/memory-aaaaaa/');
       expect(response.status).toBe(200);
       expect(await response.text()).toContain('<title>Otea</title>');
+      expect((await get('/p/memory-aaaaaa')).headers.get('location')).toBe('/p/memory-aaaaaa/');
+    });
+
+    it('sends a project it does not serve back to /', async () => {
+      const response = await get('/p/gone-zzzzzz/');
+      expect(response.status).toBe(302);
+      expect(response.headers.get('location')).toBe('/');
     });
 
     it('has the page checked on every load, but not the assets', async () => {
-      expect((await get('/')).headers.get('cache-control')).toBe('no-cache');
+      expect((await get('/p/memory-aaaaaa/')).headers.get('cache-control')).toBe('no-cache');
       expect((await get('/pair')).headers.get('cache-control')).toBe('no-cache');
       expect((await get('/assets/app.js')).headers.get('cache-control')).toBeNull();
     });
@@ -55,8 +65,12 @@ describe('ui', () => {
       expect(await response.text()).toBe('console.log(1)');
     });
 
-    it('falls back to index.html for unknown paths', async () => {
-      const response = await get('/some/page');
+    it('answers no page outside a project and the pairing screen', async () => {
+      expect((await get('/some/page')).status).toBe(404);
+    });
+
+    it('falls back to index.html for unknown paths of a project', async () => {
+      const response = await get('/p/memory-aaaaaa/some/page');
 
       expect(response.status).toBe(200);
       expect(response.headers.get('content-type')).toContain('text/html');
@@ -70,7 +84,7 @@ describe('ui', () => {
     });
 
     it('keeps unknown api routes as JSON 404', async () => {
-      const response = await get('/api/nope');
+      const response = await get('/p/memory-aaaaaa/api/nope');
 
       expect(response.status).toBe(404);
       expect(await response.json()).toMatchObject({ error: { code: 'not_found' } });
@@ -82,8 +96,8 @@ describe('ui', () => {
       server = createServer(project, { uiDir: join(dir, 'missing') });
     });
 
-    it('tells how to build it at /', async () => {
-      const response = await get('/');
+    it('tells how to build it on a project page', async () => {
+      const response = await get('/p/memory-aaaaaa/');
 
       expect(response.status).toBe(503);
       expect(await response.text()).toContain('npm run build:ui');

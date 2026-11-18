@@ -16,7 +16,7 @@ describe('POST /api/items', () => {
 
   const post = ({ body, headers }: Post = {}) =>
     Promise.resolve(
-      server.app.request('/api/items', {
+      server.app.request('/p/memory-aaaaaa/api/items', {
         method: 'POST',
         body: body ?? '',
         headers: {

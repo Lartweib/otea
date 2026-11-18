@@ -89,6 +89,8 @@ describe('projects', () => {
       storage: 'common',
       root: a.dir,
       dataDir: path,
+      // The Otea home whose one server serves it (the desktop app reads its token there).
+      home: process.env.OTEA_HOME,
     });
     expect(await json(b, 'projects', 'current')).toMatchObject({
       storage: 'local',

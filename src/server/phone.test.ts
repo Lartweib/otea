@@ -105,7 +105,7 @@ describe('phone transports on the server', () => {
 
   describe('on Tailscale', () => {
     beforeEach(() => {
-      choosePhoneTransport(project.db, { transport: 'tailscale', tailscaleHost: TAILNET_HOST });
+      choosePhoneTransport(server.machine, { transport: 'tailscale', tailscaleHost: TAILNET_HOST });
     });
 
     it('sends a phone that has not paired to the pairing screen', async () => {
@@ -113,7 +113,7 @@ describe('phone transports on the server', () => {
       expect(page.status).toBe(302);
       expect(page.headers.get('location')).toBe('/pair');
 
-      const api = await viaTailscale('/api/items');
+      const api = await viaTailscale('/p/memory-aaaaaa/api/items');
       expect(api.status).toBe(401);
       expect(await errorOf(api)).toBe('unpaired');
     });
@@ -123,20 +123,22 @@ describe('phone transports on the server', () => {
 
       expect(response.status).toBe(201);
       expect(response.headers.get('set-cookie')).toMatch(/; Secure/);
-      expect(listDevices(project.db)).toHaveLength(1);
+      expect(listDevices(server.machine)).toHaveLength(1);
     });
 
     it('lets the paired phone read and act from its HTTPS page, and nothing more', async () => {
       const { cookie } = await pairOverTailscale();
 
-      expect((await viaTailscale('/api/items', { cookie })).status).toBe(200);
-      expect(await (await viaTailscale('/api/session', { cookie })).json()).toEqual({
-        canWrite: true,
-        canManageDevices: false,
-        canConfigure: false,
-      });
+      expect((await viaTailscale('/p/memory-aaaaaa/api/items', { cookie })).status).toBe(200);
+      expect(await (await viaTailscale('/p/memory-aaaaaa/api/session', { cookie })).json()).toEqual(
+        {
+          canWrite: true,
+          canManageDevices: false,
+          canConfigure: false,
+        },
+      );
       const update = (origin: string) =>
-        viaTailscale('/api/items/TASKS-1/update', {
+        viaTailscale('/p/memory-aaaaaa/api/items/TASKS-1/update', {
           method: 'POST',
           body: { fields: { description: 'Later' } },
           cookie,
@@ -144,7 +146,7 @@ describe('phone transports on the server', () => {
         });
       expect((await update(`https://${TAILNET_HOST}`)).status).toBe(200);
       expect(await errorOf(await update(`http://${TAILNET_HOST}`))).toBe('forbidden_origin');
-      const choose = await viaTailscale('/api/phone', {
+      const choose = await viaTailscale('/p/memory-aaaaaa/api/phone', {
         method: 'POST',
         body: { transport: 'lan' },
         cookie,
@@ -153,7 +155,7 @@ describe('phone transports on the server', () => {
     });
 
     it('never takes what tailscale serve forwards for this computer’s own browser', async () => {
-      const response = await viaTailscale('/api/items', {
+      const response = await viaTailscale('/p/memory-aaaaaa/api/items', {
         host: LOCAL_HOST,
         cookie: SESSION_COOKIE,
       });
@@ -163,7 +165,7 @@ describe('phone transports on the server', () => {
     });
 
     it('turns away the tailnet name from anywhere but tailscale serve', async () => {
-      const response = await viaTailscale('/api/items', { from: PHONE_ON_TAILNET });
+      const response = await viaTailscale('/p/memory-aaaaaa/api/items', { from: PHONE_ON_TAILNET });
 
       expect(response.status).toBe(403);
       expect(await errorOf(response)).toBe('forbidden_host');
@@ -171,7 +173,7 @@ describe('phone transports on the server', () => {
 
     it('shows the desk a code that opens the HTTPS name', async () => {
       const code = formatCode(server.phone.codes.issue().code);
-      const view = (await (await desk('/api/lan')).json()) as PairingView;
+      const view = (await (await desk('/p/memory-aaaaaa/api/lan')).json()) as PairingView;
 
       expect(view).toMatchObject({
         transport: 'tailscale',
@@ -184,29 +186,29 @@ describe('phone transports on the server', () => {
 
   describe('on the local network without --lan', () => {
     it('has no door open and no code to show', async () => {
-      const view = (await (await desk('/api/lan')).json()) as PairingView;
+      const view = (await (await desk('/p/memory-aaaaaa/api/lan')).json()) as PairingView;
 
       expect(view).toMatchObject({ transport: 'lan', enabled: false, urls: [], code: null });
     });
 
     it('turns away what a proxy forwards, even naming localhost', async () => {
-      const response = await viaTailscale('/api/items', { host: LOCAL_HOST });
+      const response = await viaTailscale('/p/memory-aaaaaa/api/items', { host: LOCAL_HOST });
 
       expect(response.status).toBe(403);
       expect(await errorOf(response)).toBe('forbidden_host');
     });
 
     it('turns away the tailnet name', async () => {
-      expect((await viaTailscale('/api/items')).status).toBe(403);
+      expect((await viaTailscale('/p/memory-aaaaaa/api/items')).status).toBe(403);
     });
   });
 
   describe('Configuración', () => {
     it('reads the transport, its URL and whether it answers', async () => {
-      choosePhoneTransport(project.db, { transport: 'tailscale', tailscaleHost: TAILNET_HOST });
+      choosePhoneTransport(server.machine, { transport: 'tailscale', tailscaleHost: TAILNET_HOST });
       cli.routes = [{ host: TAILNET_HOST, port: 443, path: '/', target: 'http://127.0.0.1:4400' }];
 
-      const response = await desk('/api/phone');
+      const response = await desk('/p/memory-aaaaaa/api/phone');
 
       expect(await response.json()).toMatchObject({
         transport: 'tailscale',
@@ -218,7 +220,7 @@ describe('phone transports on the server', () => {
     });
 
     it('sets Tailscale up and points tailscale serve at this port', async () => {
-      const response = await desk('/api/phone', {
+      const response = await desk('/p/memory-aaaaaa/api/phone', {
         method: 'POST',
         body: { transport: 'tailscale' },
       });
@@ -236,7 +238,7 @@ describe('phone transports on the server', () => {
     it('says what is missing and stays on the local network', async () => {
       cli.installed = false;
 
-      const response = await desk('/api/phone', {
+      const response = await desk('/p/memory-aaaaaa/api/phone', {
         method: 'POST',
         body: { transport: 'tailscale' },
       });
@@ -248,27 +250,33 @@ describe('phone transports on the server', () => {
           install: { link: expect.stringContaining('tailscale.com') },
         },
       });
-      expect(phoneSettings(project.db).transport).toBe('lan');
+      expect(phoneSettings(server.machine).transport).toBe('lan');
     });
 
     it('goes back to the local network', async () => {
-      choosePhoneTransport(project.db, { transport: 'tailscale', tailscaleHost: TAILNET_HOST });
+      choosePhoneTransport(server.machine, { transport: 'tailscale', tailscaleHost: TAILNET_HOST });
 
-      const response = await desk('/api/phone', { method: 'POST', body: { transport: 'lan' } });
+      const response = await desk('/p/memory-aaaaaa/api/phone', {
+        method: 'POST',
+        body: { transport: 'lan' },
+      });
 
       expect(await response.json()).toMatchObject({ transport: 'lan', tailscale: null });
-      expect(phoneSettings(project.db).transport).toBe('lan');
+      expect(phoneSettings(server.machine).transport).toBe('lan');
     });
 
     it('refuses the Otea relay, which is not available yet', async () => {
-      const response = await desk('/api/phone', { method: 'POST', body: { transport: 'relay' } });
+      const response = await desk('/p/memory-aaaaaa/api/phone', {
+        method: 'POST',
+        body: { transport: 'relay' },
+      });
 
       expect(response.status).toBe(409);
       expect(await errorOf(response)).toBe('transport_unavailable');
     });
 
     it('is the signed-in browser’s alone', async () => {
-      const response = await desk('/api/phone', {
+      const response = await desk('/p/memory-aaaaaa/api/phone', {
         method: 'POST',
         body: { transport: 'tailscale' },
         cookie: '',

@@ -279,6 +279,9 @@ class Shell {
   private readonly lang: Lang;
   private readonly copy: Copy;
   private connection: Connection | undefined;
+  // The computer's one otea serve, when this app started it: it serves every project, so it stops
+  // only when the app quits, never when another project opens.
+  private server: Connection['child'];
   private watch: Watch | undefined;
   private notices: Watch | undefined;
   // The system notifications shown, by tag: a later one about the same item takes the place of
@@ -350,16 +353,17 @@ class Shell {
     app.on('before-quit', () => {
       this.quitting = true;
       this.detach();
+      this.server?.kill();
+      this.server = undefined;
     });
   }
 
-  // Leaves the project shown: stops watching it, and stops its otea serve if the app started it.
+  // Leaves the project shown: stops watching it. The server goes on serving every project.
   private detach(): void {
     this.watch?.close();
     this.watch = undefined;
     this.notices?.close();
     this.notices = undefined;
-    this.connection?.child?.kill();
     this.connection = undefined;
   }
 
@@ -375,9 +379,8 @@ class Shell {
       // Without the folder the CLI cannot even start there (Node says "spawn … ENOENT").
       if (!existsSync(dir)) throw new Error(this.copy.folderMissing(dir));
       const found = await connect(CLI, dir, port);
-      // Already open: the server just started for it is not needed.
-      if (this.connection?.project.id === found.project.id) found.child?.kill();
-      else this.attach(found);
+      if (found.child) this.server = found.child;
+      if (this.connection?.project.id !== found.project.id) this.attach(found);
       const connection = this.connection ?? found;
       const { project } = connection;
       this.recents = remember(this.recents, {
@@ -429,7 +432,7 @@ class Shell {
       body: notice.body,
       icon: this.icons.app,
     });
-    shown.on('click', () => this.show(notice.url.slice(1)));
+    shown.on('click', () => this.showPlace(notice.url));
     shown.on('close', () => {
       if (this.shown.get(key) === shown) this.shown.delete(key);
     });
@@ -564,6 +567,13 @@ class Shell {
   private commandMissing(): boolean {
     if (!this.macCommand) return false;
     return !isInstalled(macLinkPort(this.copy).state(COMMAND_LINK), this.macCommand);
+  }
+
+  // A place in the app (`/p/<id>/#/i/T-1`): its hash on the page shown, or that project's page.
+  private showPlace(url: string): void {
+    this.show();
+    const go = `((u) => { const t = new URL(u, location.href); if (t.pathname === location.pathname) location.hash = t.hash; else location.assign(t.href); })`;
+    void this.win.webContents.executeJavaScript(`${go}(${JSON.stringify(url)})`);
   }
 
   show(hash?: string): void {

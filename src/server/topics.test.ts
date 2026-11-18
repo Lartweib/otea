@@ -34,7 +34,7 @@ describe('topics over the API', () => {
     };
     return Promise.resolve(
       server.app.request(
-        `/api${path}`,
+        `/p/memory-aaaaaa/api${path}`,
         {
           method: init.method ?? 'GET',
           headers,
@@ -50,8 +50,8 @@ describe('topics over the API', () => {
     const record = createBoard(project, { name: 'Criaturas', lang: 'es' });
     saveDraft(project, record.id, { definition: creatures(), baseVersion: null });
     publishBoard(project, record.id, { moves: {}, by: { kind: 'human', name: 'fede' } });
-    phoneCookie = `otea_device_4400=${pairDevice(project.db, 'Pixel · Chrome').token}`;
     server = createServer(project, { token: TOKEN, lan: { addresses: [DESK] } });
+    phoneCookie = `otea_device_4400=${pairDevice(server.machine, 'Pixel · Chrome').token}`;
   });
 
   afterEach(() => {

@@ -66,7 +66,10 @@ describe('relations over the API', () => {
 
   describe('POST /api/items/:id/link', () => {
     it('links as the human in the ui and returns the relation', async () => {
-      const response = await post('/api/items/TASKS-2/link', { kind: 'parent', other: 'TASKS-1' });
+      const response = await post('/p/memory-aaaaaa/api/items/TASKS-2/link', {
+        kind: 'parent',
+        other: 'TASKS-1',
+      });
 
       expect(response.status).toBe(201);
       expect(await response.json()).toMatchObject({
@@ -88,7 +91,7 @@ describe('relations over the API', () => {
       [{ kind: 'sibling', other: 'TASKS-3' }, 400, 'invalid_relation'],
       [{ kind: 'blocks' }, 400, 'invalid_body'],
     ])('refuses %j with %i %s', async (payload, status, code) => {
-      const response = await post('/api/items/TASKS-2/link', payload);
+      const response = await post('/p/memory-aaaaaa/api/items/TASKS-2/link', payload);
 
       expect(response.status).toBe(status);
       expect(await errorOf(response)).toBe(code);
@@ -96,10 +99,16 @@ describe('relations over the API', () => {
     });
 
     it('answers a cycle and a second parent with 409', async () => {
-      await post('/api/items/TASKS-2/link', { kind: 'parent', other: 'TASKS-1' });
+      await post('/p/memory-aaaaaa/api/items/TASKS-2/link', { kind: 'parent', other: 'TASKS-1' });
 
-      const second = await post('/api/items/TASKS-2/link', { kind: 'parent', other: 'TASKS-3' });
-      const cycle = await post('/api/items/TASKS-1/link', { kind: 'parent', other: 'TASKS-2' });
+      const second = await post('/p/memory-aaaaaa/api/items/TASKS-2/link', {
+        kind: 'parent',
+        other: 'TASKS-3',
+      });
+      const cycle = await post('/p/memory-aaaaaa/api/items/TASKS-1/link', {
+        kind: 'parent',
+        other: 'TASKS-2',
+      });
 
       expect([second.status, await errorOf(second)]).toEqual([409, 'parent_exists']);
       expect([cycle.status, await errorOf(cycle)]).toEqual([409, 'relation_cycle']);
@@ -114,7 +123,10 @@ describe('relations over the API', () => {
         actor: bot,
       });
 
-      const across = await post('/api/items/BUGS-1/link', { kind: 'parent', other: 'TASKS-1' });
+      const across = await post('/p/memory-aaaaaa/api/items/BUGS-1/link', {
+        kind: 'parent',
+        other: 'TASKS-1',
+      });
 
       expect([across.status, await errorOf(across)]).toEqual([409, 'parent_across_boards']);
       expect(listRelations(project)).toEqual([]);
@@ -122,12 +134,12 @@ describe('relations over the API', () => {
 
     it('needs a signed-in browser from its own origin', async () => {
       const anonymous = await post(
-        '/api/items/TASKS-2/link',
+        '/p/memory-aaaaaa/api/items/TASKS-2/link',
         { kind: 'relates', other: 'TASKS-3' },
         { cookie: '' },
       );
       const foreign = await post(
-        '/api/items/TASKS-2/link',
+        '/p/memory-aaaaaa/api/items/TASKS-2/link',
         { kind: 'relates', other: 'TASKS-3' },
         { origin: 'http://evil.test' },
       );
@@ -140,10 +152,16 @@ describe('relations over the API', () => {
 
   describe('POST /api/items/:id/unlink', () => {
     it('removes the relation, and answers 404 when there is none', async () => {
-      await post('/api/items/TASKS-2/link', { kind: 'blocks', other: 'TASKS-3' });
+      await post('/p/memory-aaaaaa/api/items/TASKS-2/link', { kind: 'blocks', other: 'TASKS-3' });
 
-      const removed = await post('/api/items/TASKS-2/unlink', { kind: 'blocks', other: 'TASKS-3' });
-      const again = await post('/api/items/TASKS-2/unlink', { kind: 'blocks', other: 'TASKS-3' });
+      const removed = await post('/p/memory-aaaaaa/api/items/TASKS-2/unlink', {
+        kind: 'blocks',
+        other: 'TASKS-3',
+      });
+      const again = await post('/p/memory-aaaaaa/api/items/TASKS-2/unlink', {
+        kind: 'blocks',
+        other: 'TASKS-3',
+      });
 
       expect(removed.status).toBe(200);
       expect(await removed.json()).toEqual({ kind: 'blocks', from: 'TASKS-2', to: 'TASKS-3' });
@@ -153,7 +171,7 @@ describe('relations over the API', () => {
   });
 
   it('creates a child with parent in the create body', async () => {
-    const response = await post('/api/items', {
+    const response = await post('/p/memory-aaaaaa/api/items', {
       collection: 'tasks',
       parent: 'TASKS-1',
       fields: { title: 'Animation' },
@@ -167,18 +185,18 @@ describe('relations over the API', () => {
   });
 
   it('lists the children of a parent with ?parent=', async () => {
-    await post('/api/items/TASKS-3/link', { kind: 'parent', other: 'TASKS-1' });
+    await post('/p/memory-aaaaaa/api/items/TASKS-3/link', { kind: 'parent', other: 'TASKS-1' });
 
-    const response = await request(server, '/api/items?parent=TASKS-1');
+    const response = await request(server, '/p/memory-aaaaaa/api/items?parent=TASKS-1');
 
     const items = (await response.json()) as { id: string }[];
     expect(items.map(({ id }) => id)).toEqual(['TASKS-3']);
   });
 
   it('shows the relations and the children summary of an item', async () => {
-    await post('/api/items/TASKS-3/link', { kind: 'parent', other: 'TASKS-1' });
+    await post('/p/memory-aaaaaa/api/items/TASKS-3/link', { kind: 'parent', other: 'TASKS-1' });
 
-    const response = await request(server, '/api/items/TASKS-1');
+    const response = await request(server, '/p/memory-aaaaaa/api/items/TASKS-1');
 
     expect(await response.json()).toMatchObject({
       relations: [{ kind: 'child', id: 'TASKS-3', title: 'Movement', turn: 'agent' }],
@@ -199,10 +217,13 @@ describe('relations over the API', () => {
     });
 
     it('lists the requirement on the move and answers 409 while a child is open', async () => {
-      await post('/api/items/CREATURES-2/link', { kind: 'parent', other: 'CREATURES-1' });
+      await post('/p/memory-aaaaaa/api/items/CREATURES-2/link', {
+        kind: 'parent',
+        other: 'CREATURES-1',
+      });
 
-      const shown = await (await request(server, '/api/items/CREATURES-1')).json();
-      const moved = await post('/api/items/CREATURES-1/move', { to: 'review' });
+      const shown = await (await request(server, '/p/memory-aaaaaa/api/items/CREATURES-1')).json();
+      const moved = await post('/p/memory-aaaaaa/api/items/CREATURES-1/move', { to: 'review' });
 
       expect(shown).toMatchObject({
         transitions: [{ to: 'review', requires: ['children_closed'] }],

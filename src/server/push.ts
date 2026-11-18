@@ -16,7 +16,8 @@ import { restrictToOwner } from '../app/owner-only.ts';
 // web-push package: the protocol is two small, fixed recipes, and web-push would bring its own
 // dependency tree (http_ece, asn1.js, jws, https-proxy-agent) into a CLI that ships six.
 //
-// The VAPID key pair is made per project, on first use, and kept beside the UI token (mode 0600,
+/// The VAPID key pair is made once per Otea home (one server, every project), on first use, and kept
+// beside the UI token (mode 0600,
 // and on Windows an ACL for the current user alone);
 // the public half goes to the phone's browser, which hands it to its push service. Nothing else
 // ever leaves this computer but the encrypted payload, and only to a browser's push service.

@@ -11,6 +11,7 @@ import type {
 import type { BoardDefinition, Target } from '../../../src/core/board/model.ts';
 import type { Problem } from '../../../src/core/board/problems.ts';
 import type { Lang, TemplateView } from '../../../src/core/board/templates.ts';
+import { apiUrl } from '../base.ts';
 import { serverMessage, unreachable } from '../remote.ts';
 
 // The board Studio's client for /api/boards and /api/templates (src/server/boards.ts). Every
@@ -47,7 +48,7 @@ export class StudioRequestError extends Error {
 async function call<T>(method: string, path: string, given?: unknown, signal?: AbortSignal) {
   // The server takes a write only as JSON (src/server/writes.ts): one with nothing to say sends {}.
   const payload = given === undefined && method !== 'GET' ? {} : given;
-  const response = await fetch(path, {
+  const response = await fetch(apiUrl(path), {
     method,
     headers: {
       accept: 'application/json',

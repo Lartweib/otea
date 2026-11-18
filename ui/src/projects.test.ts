@@ -48,7 +48,6 @@ describe('the projects inbox', () => {
       waiting: [item('BUGS-7')],
       open: 4,
       withAgents: 3,
-      served: 'http://127.0.0.1:4482',
     }),
     project('dotfiles'),
     project('gone', { unavailable: 'The data is missing' }),
@@ -68,12 +67,11 @@ describe('the projects inbox', () => {
     expect(waitingElsewhere(projects)).toEqual({ count: 1, projects: 1 });
   });
 
-  it('leads a row here, to the server that shows it, or nowhere', () => {
-    const [api, web, dotfiles] = projects;
+  it("leads a row here, or to its project's page on this same server", () => {
+    const [api, web] = projects;
     expect(api && itemHref(api, item('TASKS-1'))).toBe('#TASKS-1');
-    expect(web && itemHref(web, item('BUGS-7'))).toBe('http://127.0.0.1:4482/#BUGS-7');
-    expect(dotfiles && itemHref(dotfiles, item('X-1'))).toBeUndefined();
-    expect(web && projectHref(web)).toBe('http://127.0.0.1:4482/');
+    expect(web && itemHref(web, item('BUGS-7'))).toBe('/p/web-aaaaaa/#BUGS-7');
+    expect(web && projectHref(web)).toBe('/p/web-aaaaaa/#/');
   });
 
   it('names where a project lives by its first path still there', () => {

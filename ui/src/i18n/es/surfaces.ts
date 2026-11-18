@@ -120,7 +120,7 @@ export const surfaces = {
   'lan.fallback': 'Si el teléfono no puede abrir {name}, usa {url}',
   'lan.signIn':
     'Inicia sesión en este navegador con {command} en este equipo para emparejar un teléfono.',
-  'pair.title': 'Emparejar con {project}',
+  'pair.title': 'Emparejar con {computer}',
   'pair.titlePlain': 'Emparejar este teléfono',
   'pair.intro':
     'Escaneaste el código del escritorio. Este teléfono recibe una clave propia; puedes revocarla desde el escritorio cuando quieras.',
@@ -141,7 +141,7 @@ export const surfaces = {
   'pair.going': 'Emparejando…',
   'pair.done': 'Emparejado',
   'pair.doneText':
-    'Este teléfono puede abrir {project} siempre que esté en la misma red que el escritorio. Nada más cambia en el escritorio.',
+    'Este teléfono puede abrir todos tus proyectos de {computer} siempre que esté en la misma red que el escritorio. Nada más cambia en el escritorio.',
   'pair.token': 'clave',
   'pair.tokenKept': '··{hint} · guardada en este teléfono',
   'pair.reach': 'alcance',
@@ -392,12 +392,10 @@ export const surfaces = {
   'projects.kicker': 'Todos los proyectos',
   'projects.display': 'Te espera',
   'projects.dek':
-    'Lo que te espera en cada proyecto de esta máquina. {name} está abierto; los demás se abren en su propia pestaña cuando {serve} corre allí.',
+    'Lo que te espera en cada proyecto de esta máquina. {name} está abierto; una fila de otro proyecto lo abre aquí.',
   'projects.dekAlone':
     'Lo que te espera en cada proyecto de esta máquina. Solo vive aquí {name}; otro proyecto empieza con {init} en su repo.',
   'projects.openNow': 'abierto ahora',
-  'projects.inTab': 'se abre en su pestaña',
-  'projects.noServer': 'sin servidor',
   'projects.emptyHere': 'Nada te espera aquí.',
   'projects.act.revisiones': 'Revisar',
   'projects.act.preguntas': 'Responder',

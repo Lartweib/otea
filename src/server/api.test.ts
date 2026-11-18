@@ -52,7 +52,7 @@ describe('api', () => {
   });
 
   it('GET /api/project returns the project identity without a session', async () => {
-    const response = await get('/api/project');
+    const response = await get('/p/memory-aaaaaa/api/project');
 
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ ...project.identity, icon: null });
@@ -60,14 +60,19 @@ describe('api', () => {
 
   // The installed app's cache keeps one project's answers at a time: every answer says whose it is.
   it('says on every answer of the API the project that answered', async () => {
-    for (const path of ['/api/project', '/api/items', '/api/items/BUGS-1', '/api/nothing-here'])
+    for (const path of [
+      '/p/memory-aaaaaa/api/project',
+      '/p/memory-aaaaaa/api/items',
+      '/p/memory-aaaaaa/api/items/BUGS-1',
+      '/p/memory-aaaaaa/api/nothing-here',
+    ])
       expect((await get(path)).headers.get('x-otea-project')).toBe(project.identity.id);
   });
 
   it('refuses a write meant for another project served on this address before', async () => {
     const guarded = createServer(project, { token: TOKEN });
     const post = (meant: string) =>
-      guarded.app.request('/api/items', {
+      guarded.app.request('/p/memory-aaaaaa/api/items', {
         method: 'POST',
         headers: {
           host: LOCAL_HOST,
@@ -88,7 +93,7 @@ describe('api', () => {
     insertProjectIdentity(project.db, project.identity);
     setProjectIcon(project, 'rocket');
 
-    expect(await (await get('/api/project')).json()).toEqual({
+    expect(await (await get('/p/memory-aaaaaa/api/project')).json()).toEqual({
       ...project.identity,
       icon: 'rocket',
     });
@@ -105,7 +110,7 @@ describe('api', () => {
       );
       claimItem(project, { id: 'TASKS-1', actor: bot });
 
-      const response = await get('/api/agents');
+      const response = await get('/p/memory-aaaaaa/api/agents');
 
       expect(response.status).toBe(200);
       expect(await response.json()).toEqual({
@@ -133,7 +138,7 @@ describe('api', () => {
     it('gives one agent with the profiles it declared, and 404 for one never seen', async () => {
       seeAgent(project.db, { agent: 'codex', channel: 'cli', harness: CLI_HARNESS }, () => T0);
 
-      const response = await get('/api/agents/codex');
+      const response = await get('/p/memory-aaaaaa/api/agents/codex');
 
       expect(response.status).toBe(200);
       expect(await response.json()).toMatchObject({
@@ -141,20 +146,22 @@ describe('api', () => {
         profiles: [],
         steps: [],
       });
-      expect((await get('/api/agents/ghost')).status).toBe(404);
+      expect((await get('/p/memory-aaaaaa/api/agents/ghost')).status).toBe(404);
     });
 
     it('lists no one before an agent is seen', async () => {
       const empty = createServer(memoryProject());
 
-      expect(await (await request(empty, '/api/agents')).json()).toEqual({ agents: [] });
+      expect(await (await request(empty, '/p/memory-aaaaaa/api/agents')).json()).toEqual({
+        agents: [],
+      });
       empty.close();
     });
   });
 
   describe('GET /api/collections', () => {
     it('lists every collection with the preset types a form needs, without a session', async () => {
-      const response = await get('/api/collections');
+      const response = await get('/p/memory-aaaaaa/api/collections');
 
       expect(response.status).toBe(200);
       const collections = (await response.json()) as Array<{ name: string; types: unknown[] }>;
@@ -199,9 +206,9 @@ describe('api', () => {
     it('leaves the built-in Pedidos out until it holds an item', async () => {
       ensureRequestsBoard(project, 'es');
       const names = async () =>
-        ((await (await get('/api/collections')).json()) as Array<{ name: string }>).map(
-          ({ name }) => name,
-        );
+        (
+          (await (await get('/p/memory-aaaaaa/api/collections')).json()) as Array<{ name: string }>
+        ).map(({ name }) => name);
 
       expect(await names()).toEqual(['tasks', 'bugs']);
       createItem(project, {
@@ -220,7 +227,7 @@ describe('api', () => {
       addCollection(project, { name: 'roadmap', preset: 'tasks', icon: 'map' });
       setCollectionIcon(project, 'bugs', 'rocket');
 
-      const collections = (await (await get('/api/collections')).json()) as Array<{
+      const collections = (await (await get('/p/memory-aaaaaa/api/collections')).json()) as Array<{
         name: string;
         icon: string | null;
       }>;
@@ -238,7 +245,9 @@ describe('api', () => {
       addCollection(reviews, { name: 'reviews', preset: 'reviews' });
       const withReviews = createServer(reviews);
 
-      const [collection] = (await (await request(withReviews, '/api/collections')).json()) as {
+      const [collection] = (await (
+        await request(withReviews, '/p/memory-aaaaaa/api/collections')
+      ).json()) as {
         icon: string | null;
       }[];
 
@@ -249,7 +258,7 @@ describe('api', () => {
 
   describe('GET /api/presets', () => {
     it('lists every loaded preset with its fields and collections, without a session', async () => {
-      const response = await get('/api/presets');
+      const response = await get('/p/memory-aaaaaa/api/presets');
 
       expect(response.status).toBe(200);
       const presets = (await response.json()) as Array<{ name: string; fields: unknown[] }>;
@@ -302,7 +311,9 @@ describe('api', () => {
       const reviews = memoryProject(REVIEWS);
       const withReviews = createServer(reviews);
 
-      const presets = (await (await request(withReviews, '/api/presets')).json()) as Array<{
+      const presets = (await (
+        await request(withReviews, '/p/memory-aaaaaa/api/presets')
+      ).json()) as Array<{
         name: string;
         origin: string;
       }>;
@@ -341,8 +352,8 @@ types:
         ).find((each) => each.name === name)?.types;
 
       for (const [path, name] of [
-        ['/api/presets', 'icons'],
-        ['/api/collections', 'mixed'],
+        ['/p/memory-aaaaaa/api/presets', 'icons'],
+        ['/p/memory-aaaaaa/api/collections', 'mixed'],
       ] as const) {
         const [bug, note] = (await typesOf(path, name)) ?? [];
         expect(bug).toMatchObject({ name: 'bug', label: 'Bug', icon: 'bug' });
@@ -354,7 +365,7 @@ types:
     });
 
     it('is behind the host guard like every other route', async () => {
-      const response = await request(server, '/api/presets', 'evil.example:4400');
+      const response = await request(server, '/p/memory-aaaaaa/api/presets', 'evil.example:4400');
 
       expect(response.status).toBe(403);
     });
@@ -362,7 +373,7 @@ types:
 
   describe('GET /api/items', () => {
     it('lists every item with its turn', async () => {
-      const response = await get('/api/items');
+      const response = await get('/p/memory-aaaaaa/api/items');
 
       expect(response.status).toBe(200);
       expect(await response.json()).toMatchObject([
@@ -374,7 +385,7 @@ types:
     it('includes the active lease of each item', async () => {
       const { lease } = claimItem(project, { id: 'TASKS-1', actor: bot });
 
-      expect(await (await get('/api/items')).json()).toMatchObject([
+      expect(await (await get('/p/memory-aaaaaa/api/items')).json()).toMatchObject([
         { id: 'TASKS-1', lease: { holder: 'claude', expiresAt: lease?.expiresAt } },
         { id: 'BUGS-1', lease: null },
       ]);
@@ -391,11 +402,11 @@ types:
       ['?field=priority=medium&field=title=Fix%20login', ['BUGS-1']],
       ['?field=priority=high&field=title=Fix%20login', []],
     ])('filters with %s', async (query, expected) => {
-      expect(await ids(`/api/items${query}`)).toEqual(expected);
+      expect(await ids(`/p/memory-aaaaaa/api/items${query}`)).toEqual(expected);
     });
 
     it('rejects a field that is not key=value with 400', async () => {
-      const response = await get('/api/items?field=priority');
+      const response = await get('/p/memory-aaaaaa/api/items?field=priority');
 
       expect(response.status).toBe(400);
       expect(await response.json()).toEqual({
@@ -404,7 +415,7 @@ types:
     });
 
     it('rejects an unknown turn with 400', async () => {
-      const response = await get('/api/items?turn=robot');
+      const response = await get('/p/memory-aaaaaa/api/items?turn=robot');
 
       expect(response.status).toBe(400);
       expect(await response.json()).toEqual({
@@ -427,15 +438,19 @@ types:
         actor: bot,
       });
 
-      expect(await (await get('/api/items/CHANGES-2')).json()).toMatchObject({
+      expect(await (await get('/p/memory-aaaaaa/api/items/CHANGES-2')).json()).toMatchObject({
         gates: { push: false, merge: false },
       });
-      expect(await (await get('/api/items/CHANGES-1')).json()).not.toHaveProperty('gates');
-      expect(await (await get('/api/items/TASKS-1')).json()).not.toHaveProperty('gates');
+      expect(await (await get('/p/memory-aaaaaa/api/items/CHANGES-1')).json()).not.toHaveProperty(
+        'gates',
+      );
+      expect(await (await get('/p/memory-aaaaaa/api/items/TASKS-1')).json()).not.toHaveProperty(
+        'gates',
+      );
     });
 
     it('returns the item with its events', async () => {
-      const response = await get('/api/items/BUGS-1');
+      const response = await get('/p/memory-aaaaaa/api/items/BUGS-1');
       const item = (await response.json()) as { events: Array<{ type: string }> };
 
       expect(response.status).toBe(200);
@@ -450,15 +465,17 @@ types:
     it('returns the active lease of the item', async () => {
       claimItem(project, { id: 'TASKS-1', actor: bot });
 
-      expect(await (await get('/api/items/TASKS-1')).json()).toMatchObject({
+      expect(await (await get('/p/memory-aaaaaa/api/items/TASKS-1')).json()).toMatchObject({
         lease: { holder: 'claude' },
         events: [{ type: 'created' }, { type: 'claimed', data: { holder: 'claude' } }],
       });
-      expect(await (await get('/api/items/BUGS-1')).json()).toMatchObject({ lease: null });
+      expect(await (await get('/p/memory-aaaaaa/api/items/BUGS-1')).json()).toMatchObject({
+        lease: null,
+      });
     });
 
     it('returns the moves available to the human in the ui', async () => {
-      const item = await (await get('/api/items/BUGS-1')).json();
+      const item = await (await get('/p/memory-aaaaaa/api/items/BUGS-1')).json();
 
       expect(item).toMatchObject({
         transitions: [
@@ -473,13 +490,13 @@ types:
     it('returns the fields still missing to complete the item', async () => {
       createItem(project, { collection: 'tasks', title: 'Vague', actor: bot });
 
-      const item = await (await get('/api/items/TASKS-2')).json();
+      const item = await (await get('/p/memory-aaaaaa/api/items/TASKS-2')).json();
 
       expect(item).toMatchObject({ state: 'incomplete', missing: ['description'] });
     });
 
     it('returns the preset fields of the item', async () => {
-      const item = await (await get('/api/items/TASKS-1')).json();
+      const item = await (await get('/p/memory-aaaaaa/api/items/TASKS-1')).json();
 
       expect(item).toMatchObject({
         fields: { description: 'For v1', priority: 'medium' },
@@ -488,7 +505,7 @@ types:
     });
 
     it('returns 404 with the error code for an unknown id', async () => {
-      const response = await get('/api/items/TASKS-9');
+      const response = await get('/p/memory-aaaaaa/api/items/TASKS-9');
 
       expect(response.status).toBe(404);
       expect(await response.json()).toEqual({
@@ -501,12 +518,14 @@ types:
     });
 
     it('answers null for an unknown id the page asks for with missing=null, not a 404', async () => {
-      const response = await get('/api/items/TASKS-9?missing=null');
+      const response = await get('/p/memory-aaaaaa/api/items/TASKS-9?missing=null');
 
       expect(response.status).toBe(200);
       expect(await response.json()).toBeNull();
-      expect((await get('/api/items/BUGS-1?missing=null')).status).toBe(200);
-      expect(await (await get('/api/items/BUGS-1?missing=null')).json()).toMatchObject({
+      expect((await get('/p/memory-aaaaaa/api/items/BUGS-1?missing=null')).status).toBe(200);
+      expect(
+        await (await get('/p/memory-aaaaaa/api/items/BUGS-1?missing=null')).json(),
+      ).toMatchObject({
         id: 'BUGS-1',
       });
     });
@@ -519,7 +538,7 @@ types:
       );
 
     it('lists the event log across items in commit order, without a session', async () => {
-      expect(await summary('/api/events')).toEqual([
+      expect(await summary('/p/memory-aaaaaa/api/events')).toEqual([
         '1 TASKS-1 created',
         '2 BUGS-1 created',
         '3 BUGS-1 transitioned',
@@ -528,10 +547,16 @@ types:
     });
 
     it('reads after a cursor, by item or collection, and the newest with latest', async () => {
-      expect(await summary('/api/events?since=3')).toEqual(['4 BUGS-1 transitioned']);
-      expect(await summary('/api/events?collection=tasks')).toEqual(['1 TASKS-1 created']);
-      expect(await summary('/api/events?item=BUGS-1&limit=1')).toEqual(['2 BUGS-1 created']);
-      expect(await summary('/api/events?latest=2')).toEqual([
+      expect(await summary('/p/memory-aaaaaa/api/events?since=3')).toEqual([
+        '4 BUGS-1 transitioned',
+      ]);
+      expect(await summary('/p/memory-aaaaaa/api/events?collection=tasks')).toEqual([
+        '1 TASKS-1 created',
+      ]);
+      expect(await summary('/p/memory-aaaaaa/api/events?item=BUGS-1&limit=1')).toEqual([
+        '2 BUGS-1 created',
+      ]);
+      expect(await summary('/p/memory-aaaaaa/api/events?latest=2')).toEqual([
         '3 BUGS-1 transitioned',
         '4 BUGS-1 transitioned',
       ]);
@@ -539,7 +564,7 @@ types:
 
     it('rejects a cursor or a count that is not a whole number with 400', async () => {
       for (const query of ['since=-1', 'limit=0', 'latest=ten', 'limit=2&latest=2']) {
-        const response = await get(`/api/events?${query}`);
+        const response = await get(`/p/memory-aaaaaa/api/events?${query}`);
 
         expect(response.status).toBe(400);
         expect(await response.json()).toMatchObject({ error: { code: 'invalid_query' } });
@@ -547,12 +572,12 @@ types:
     });
 
     it('returns 404 for an unknown collection', async () => {
-      expect((await get('/api/events?collection=nope')).status).toBe(404);
+      expect((await get('/p/memory-aaaaaa/api/events?collection=nope')).status).toBe(404);
     });
   });
 
   it('returns a JSON 404 for an unknown api route', async () => {
-    const response = await get('/api/nope');
+    const response = await get('/p/memory-aaaaaa/api/nope');
 
     expect(response.status).toBe(404);
     expect(await response.json()).toMatchObject({ error: { code: 'not_found' } });

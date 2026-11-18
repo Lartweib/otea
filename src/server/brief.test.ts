@@ -15,7 +15,7 @@ describe('POST /api/brief', () => {
 
   const post = (body: unknown) =>
     Promise.resolve(
-      server.app.request('/api/brief', {
+      server.app.request('/p/memory-aaaaaa/api/brief', {
         method: 'POST',
         headers: { host: LOCAL_HOST, 'content-type': 'application/json' },
         body: JSON.stringify(body),

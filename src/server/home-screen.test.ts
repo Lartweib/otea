@@ -76,7 +76,7 @@ describe('home screen on the LAN', () => {
   });
 
   it('still keeps everything else from an unpaired device', async () => {
-    expect((await get('/api/items')).status).toBe(401);
+    expect((await get('/p/memory-aaaaaa/api/items')).status).toBe(401);
     expect((await get('/icons/../index.html')).status).not.toBe(200);
   });
 

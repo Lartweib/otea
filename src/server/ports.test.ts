@@ -27,13 +27,15 @@ async function signIn({ listening, token }: Running): Promise<string> {
 
 const canWrite = async ({ listening }: Running, cookie: string) =>
   (
-    (await (await fetch(`${listening.url}/api/session`, { headers: { cookie } })).json()) as {
+    (await (
+      await fetch(`${listening.url}/p/memory-aaaaaa/api/session`, { headers: { cookie } })
+    ).json()) as {
       canWrite: boolean;
     }
   ).canWrite;
 
 const approve = ({ listening }: Running, cookie: string) =>
-  fetch(`${listening.url}/api/items/TASKS-1/move`, {
+  fetch(`${listening.url}/p/memory-aaaaaa/api/items/TASKS-1/move`, {
     method: 'POST',
     headers: { cookie, origin: listening.url, 'content-type': 'application/json' },
     body: JSON.stringify({ to: 'done' }),

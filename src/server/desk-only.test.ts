@@ -82,7 +82,7 @@ describe('desk-only routes, with LAN access on', () => {
     const remoteAddress = from === 'desk' ? '127.0.0.1' : PHONE;
     return Promise.resolve(
       server.app.request(
-        path,
+        `/p/${project.identity.id}${path}`,
         { method, headers, body: JSON.stringify(body) },
         { incoming: { socket: { remoteAddress } } },
       ),
@@ -90,7 +90,7 @@ describe('desk-only routes, with LAN access on', () => {
   };
   const settings = async () => {
     const response = await server.app.request(
-      '/api/project/settings',
+      `/p/${project.identity.id}/api/project/settings`,
       { headers: { host: LOCAL_HOST } },
       { incoming: { socket: { remoteAddress: '127.0.0.1' } } },
     );
@@ -99,7 +99,7 @@ describe('desk-only routes, with LAN access on', () => {
 
   const boards = async () => {
     const response = await server.app.request(
-      '/api/boards',
+      `/p/${project.identity.id}/api/boards`,
       { headers: { host: LOCAL_HOST } },
       { incoming: { socket: { remoteAddress: '127.0.0.1' } } },
     );
@@ -113,8 +113,8 @@ describe('desk-only routes, with LAN access on', () => {
     home = mkdtempSync(join(tmpdir(), 'otea-desk-home-'));
     const env = { OTEA_HOME: home };
     project = initProject(repo(), {}, env);
-    phoneCookie = `otea_device_4400=${pairDevice(project.db, 'Pixel · Chrome').token}`;
     server = createServer(project, { token: TOKEN, lan: { addresses: [DESK] }, env });
+    phoneCookie = `otea_device_4400=${pairDevice(server.machine, 'Pixel · Chrome').token}`;
     // A real folder for the routes that name one; a refused request never reads it.
     folder = repo();
   };
