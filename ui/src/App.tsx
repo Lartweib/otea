@@ -23,6 +23,7 @@ import { ToastHost } from './kit/pop/toast.tsx';
 import { Tooltip } from './kit/Tooltip.tsx';
 import { LaneDefs } from './lanes/LaneDefs.tsx';
 import { MODULES } from './modules/registry.ts';
+import { useQuestionNotice } from './notify/question-notice.ts';
 import { OfflineBar } from './offline/OfflineBar.tsx';
 import { CaptureSheet } from './phone/CaptureSheet.tsx';
 import { DeskOnly, deskOnlyOf } from './phone/DeskOnly.tsx';
@@ -116,6 +117,7 @@ function Shell() {
   const ws = useWorkspace();
   const { yours, working } = useAttention(app.all);
   useEffect(() => applyAttention({ yours, working }), [yours, working]);
+  useQuestionNotice(app.feed, { open: app.route.item, phone: app.phone, onAnswer: app.openItem });
   const route = app.route;
   return (
     <>
