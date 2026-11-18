@@ -253,21 +253,18 @@ export type AnswerTopicInput = {
   id: string;
   summary?: string;
   full?: string;
-  source?: AnswerSource;
   actor: Actor;
   session?: string;
   resume?: string;
 };
 
-// The agent's answer: a short summary to read in the list and the full answer, folded. An answer
-// read from the session (the Claude Code hook) fills in the full text of the last answer, and wins
-// over the agent's own copy, whichever came first.
+// The agent's answer: a short summary to read in the list and the full answer, folded, both as the
+// agent copied them (no harness hook reads its chat).
 export function answerTopic(ctx: Context, input: AnswerTopicInput, now = systemClock): Topic {
   if (input.actor.kind !== 'agent') refuse('forbidden', 'Only an agent answers a topic');
   const row = requireRow(ctx, input.id);
   if (row.state === 'closed' || row.state === 'task')
     refuse('invalid_transition', `${row.id} is closed: it takes no more answers`);
-  const source = input.source ?? 'agent';
   const at = now();
   return transaction(ctx.db, () => {
     const last = ctx.db
@@ -278,20 +275,12 @@ export function answerTopic(ctx: Context, input: AnswerTopicInput, now = systemC
     const summary = input.summary?.trim();
     const full = input.full?.trim();
     if (last?.kind === 'answer') {
-      // The same answer again: a later summary replaces the earlier one; the session's full text
-      // stays once read.
-      const keepFull = last.source === 'session' && source === 'agent';
+      // The same answer again: a later summary and full text replace the earlier ones.
       ctx.db
-        .prepare('UPDATE topic_turns SET text = ?, full = ?, source = ? WHERE id = ?')
-        .run(
-          summary || last.text,
-          keepFull ? last.full : (full ?? last.full),
-          keepFull ? 'session' : source,
-          last.id,
-        );
+        .prepare("UPDATE topic_turns SET text = ?, full = ?, source = 'agent' WHERE id = ?")
+        .run(summary || last.text, full ?? last.full, last.id);
     } else {
-      if (!summary && source === 'agent')
-        refuse('invalid_fields', 'An answer needs its summary (--summary)');
+      if (!summary) refuse('invalid_fields', 'An answer needs its summary (--summary)');
       addTurn(
         ctx,
         row.id,
@@ -299,7 +288,7 @@ export function answerTopic(ctx: Context, input: AnswerTopicInput, now = systemC
           kind: 'answer',
           text: summary || titleOf(full ?? ''),
           ...(full === undefined ? {} : { full }),
-          source,
+          source: 'agent',
           by: input.actor,
         },
         at,
@@ -601,57 +590,4 @@ export function topicText(topic: Topic): string {
 export function topicsListText(topics: readonly Topic[]): string {
   if (topics.length === 0) return 'No topics wait on anyone.';
   return topics.map((topic) => `${topic.id}  ${topic.state.padEnd(8)}  ${topic.title}`).join('\n');
-}
-
-export type SessionAnswer = { session: string; since: string; text: string };
-
-// The chat's answer without the lines that name the topic itself ("Lo dejé registrado en otea como
-// TEM-1"): they say where the answer was kept, not what it says.
-function withoutRecording(text: string, id: string): string {
-  const names = new RegExp(`\\b${id}\\b`, 'i');
-  return text
-    .split('\n')
-    .filter((line) => !names.test(line))
-    .join('\n')
-    .replace(/\n{3,}/g, '\n\n')
-    .trim();
-}
-
-// The answer as the agent wrote it in its chat, read from its session at the end of its turn (the
-// Claude Code Stop hook): it goes to the topic the agent answered this turn, the one of this
-// session, or the only one answered this turn when the agent gave no session. Nothing when it
-// cannot tell which. Returns the topic it went to.
-export function answerFromSession(
-  ctx: Context,
-  input: SessionAnswer,
-  now = systemClock,
-): string | undefined {
-  const text = input.text.trim();
-  if (text === '') return undefined;
-  const rows = ctx.db
-    .prepare(
-      `SELECT t.* FROM topics t
-       WHERE t.state = 'answered' AND t.updated_at >= ?
-         AND (SELECT kind FROM topic_turns n WHERE n.topic_id = t.id ORDER BY n.id DESC LIMIT 1) = 'answer'`,
-    )
-    .all(input.since) as TopicRow[];
-  const ofSession = rows.filter((row) => row.session === input.session);
-  const unnamed = rows.filter((row) => row.session === null);
-  const candidates = ofSession.length > 0 ? ofSession : unnamed;
-  const [target] = candidates.length === 1 ? candidates : [];
-  if (!target?.agent) return undefined;
-  const full = withoutRecording(text, target.id);
-  if (full === '') return undefined;
-  answerTopic(
-    ctx,
-    {
-      id: target.id,
-      full,
-      source: 'session',
-      actor: { kind: 'agent', name: target.agent },
-      session: input.session,
-    },
-    now,
-  );
-  return target.id;
 }

@@ -516,8 +516,6 @@ export const surfaces = {
   'topics.settings.text':
     'Guarda las preguntas que le haces a un agente fuera del trabajo, con su respuesta, para que ninguna quede en el aire.',
   'topics.settings.on': 'Activados: los agentes anotan tus preguntas aparte.',
-  'topics.settings.auto':
-    'Con Claude Code en modo Auto, ejecuta otea hook install --claude en el repositorio para que puedan anotarlas.',
   'topics.settings.off': 'Apagados.',
   'topics.settings.turnOn': 'Activar',
   'topics.settings.turnOff': 'Apagar',

@@ -111,7 +111,6 @@ import {
 import type { TailscaleCli } from '../app/tailscale.ts';
 import {
   addTopic,
-  answerFromSession,
   answerTopic,
   closeTopic,
   linkTopic,
@@ -158,15 +157,6 @@ import { createServer } from '../server/server.ts';
 import { ensureUiToken, readUiToken } from '../server/token.ts';
 import { type EventFilter, findProfile, type ProfileView, profileView } from '../store/queries.ts';
 import {
-  mergeTarget,
-  prBranches,
-  prState,
-  pushTargets,
-  readHookEvent,
-  UnreadPr,
-} from './claude-hook.ts';
-import { lastExchange, readStopEvent } from './claude-transcript.ts';
-import {
   type Command,
   CommandFailure,
   failureCode,
@@ -184,19 +174,18 @@ import {
   formatReport,
   indent,
 } from './format.ts';
+import { prState } from './gh.ts';
 import {
   branchesBrought,
   commitsOver,
   currentBranch,
   keepOutOfGit,
   keptOutNote,
-  localBranches,
   remoteOf,
 } from './gitrepo.ts';
 import {
   gitHookOf,
   type HookChange,
-  installClaudeHook,
   installGitHook,
   removeClaudeHook,
   removeGitHook,
@@ -2398,48 +2387,6 @@ function gateText({ gate, allowed, items, refusal }: GateCheck): string {
     .join('\n');
 }
 
-// One branch a check asks about: the branch, what a push or merge into it brings in (when a board
-// protects it as its base), and for a merged PR the base it merges into, asked only when no item
-// has the PR's branch.
-type Target = { branch: string; brings?: Brings; into?: () => string };
-
-// What a push of `branch` sent from `from` brings in: the local branches in it and not yet on
-// the remote's `branch`.
-function pushOf(cwd: string, branch: string, from = branch): Target {
-  return { branch, brings: () => branchesBrought(cwd, from, remoteOf(cwd, branch)) };
-}
-
-// The branches a hooked command acts on: the head branch of the PR a `gh pr merge` merges (and
-// the base it merges into) and the branches its `git push` calls write to, or the current branch
-// when it names none. Throws UntoldTarget for a push that may write to branches it does not name.
-function commandTargets(cwd: string, command: string | undefined, gh?: string): Target[] {
-  const pr = command === undefined ? undefined : mergeTarget(command);
-  const merges = command !== undefined && /\bgh\s+pr\s+merge\b/.test(command);
-  const push = command === undefined ? undefined : pushTargets(command);
-  if (push !== undefined && 'unknown' in push) throw new UntoldTarget(push.unknown);
-  if (!merges && push === undefined) return [pushOf(cwd, currentBranch(cwd))];
-  const targets: Target[] = [];
-  if (merges) {
-    let asked: { head: string; base: string } | undefined;
-    const ask = () => {
-      asked ??= prBranches(cwd, pr, gh);
-      return asked;
-    };
-    const head = pr === undefined ? currentBranch(cwd) : ask().head;
-    targets.push({ branch: head, into: () => ask().base });
-  }
-  if (push !== undefined) {
-    for (const branch of push.branches) targets.push(pushOf(cwd, branch, push.from[branch]));
-    if (push.current) targets.push(pushOf(cwd, currentBranch(cwd), 'HEAD'));
-    if (push.every) targets.push(...localBranches(cwd).map((branch) => pushOf(cwd, branch)));
-  }
-  return targets.filter(
-    (target, index) => targets.findIndex(({ branch }) => branch === target.branch) === index,
-  );
-}
-
-class UntoldTarget extends Error {}
-
 // The commits a push sends, as `--commits <remote>..<local>` names them: what the remote has of
 // the branch and what it gets (the ids a pre-push hook reads; all zeros for a branch created or
 // deleted).
@@ -2451,39 +2398,13 @@ function commitsOption(value: string): { from: string; to: string } {
   return { from, to };
 }
 
-// One check of the gate for each branch: refused when any is, with the items of all. A merged PR
-// whose branch no item has is checked as a merge into its base, which a board may protect.
-function checkTargets(
-  project: Project,
-  gate: string,
-  targets: readonly Target[],
-  fields: (branch: string) => Record<string, string>,
-): GateCheck {
-  if (targets.length === 0) return { gate, allowed: true, items: [], note: 'no branch to check' };
-  const checks = targets.map((target) => {
-    const check = checkGate(project, gate, fields(target.branch), target.brings);
-    if (check.items.length > 0 || check.refusal !== undefined || !target.into) return check;
-    return checkGate(project, gate, fields(target.into()), () => [target.branch]);
-  });
-  const items = checks.flatMap((check) => check.items);
-  const result: GateCheck = { gate, allowed: checks.every((check) => check.allowed), items };
-  const refusals = checks.flatMap((check) => check.refusal ?? []);
-  if (refusals.length > 0) result.refusal = refusals.join('\n');
-  else if (items.length === 0 && checks[0]?.note) result.note = checks[0].note;
-  return result;
-}
-
 // A gate check fails open: anything that keeps it from answering allows the action, with a note.
-// As a Claude Code hook it reads the call from the event on stdin: it checks where the call runs
-// and, with --branch and no name, the branches the call acts on (see commandBranches); it refuses
-// with exit 2 and the reason on stderr, which blocks the call. A push whose branches it cannot
-// tell is refused, not allowed: on a project, failing open there would skip every gate. So is a
-/// push or merge in a repo the project cannot match (--repo with no name), whatever its folder, and a
-// gh pr merge whose PR gh cannot read.
+// A push or merge in a repo the project cannot match (--repo with no name) is refused, not
+// allowed, whatever its folder: on a project, failing open there would skip every gate.
 const check: Command = {
   name: 'check',
   summary:
-    'Check whether the items matching the fields allow a gated action: exit 0 when allowed, 19 when refused, 2 for a gate nothing declares; repo names match whatever their case; it allows the action, with a note, when no item matches or the check cannot run. --branch defaults to the branch checked out, --repo to the name the project gives the repo checked out (otea repos list), refused when the project does not know it. A push or merge into a base branch a board protects is checked against the items whose branches it brings in: --commits <remote>..<local> names the commits a push sends (the pre-push hook passes them), else the branch against its upstream; --claude-hook reads a Claude Code PreToolUse event on stdin and refuses with exit 2',
+    'Check whether the items matching the fields allow a gated action: exit 0 when allowed, 19 when refused, 2 for a gate nothing declares; repo names match whatever their case; it allows the action, with a note, when no item matches or the check cannot run. --branch defaults to the branch checked out, --repo to the name the project gives the repo checked out (otea repos list), refused when the project does not know it. A push or merge into a base branch a board protects is checked against the items whose branches it brings in: --commits <remote>..<local> names the commits a push sends (the pre-push hook passes them), else the branch against its upstream',
   args: [],
   options: {
     gate: { required: true, placeholder: 'action' },
@@ -2491,47 +2412,30 @@ const check: Command = {
     branch: { optionalValue: true, placeholder: 'name' },
     repo: { optionalValue: true, placeholder: 'name' },
     commits: { placeholder: 'remote..local' },
-    'claude-hook': { flag: true },
   },
   execute: async (input) => {
     const gate = input.required('gate');
-    const hook = input.flag('claude-hook');
     let result: GateCheck;
     try {
-      const event = hook ? readHookEvent(await input.stdin()) : {};
-      const cwd = event.cwd ?? input.cwd;
+      const { cwd } = input;
       const named = input.option('branch');
       const commits = input.option('commits');
       const sent = commits === undefined ? undefined : commitsOption(commits);
       result = withProject(cwd, (project) => {
-        const given = (branch: string): Target =>
+        // The branch is asked of git only when the check needs it.
+        const branch = () => named || currentBranch(cwd);
+        const brings: Brings =
           sent === undefined
-            ? pushOf(cwd, branch)
-            : { branch, brings: () => branchesBrought(cwd, sent.to, sent.from) };
-        const targets =
-          named === '' ? commandTargets(cwd, event.command, input.gh) : [given(named ?? '')];
-        const fields = (branch: string) => gateFields(input, cwd, project, () => branch);
-        return checkTargets(project, gate, targets, fields);
+            ? () => branchesBrought(cwd, branch(), remoteOf(cwd, branch()))
+            : () => branchesBrought(cwd, sent.to, sent.from);
+        return checkGate(project, gate, gateFields(input, cwd, project, branch), brings);
       });
     } catch (error) {
       if (error instanceof UsageError) throw error;
-      // A PR the hook cannot read could merge any branch: refused, not allowed.
-      if (error instanceof UnreadPr) {
-        const why = `${gate} refused: ${error.message}, so Otea cannot check it; merge it once gh can read the PR (gh auth status), or merge it yourself`;
-        input.warn(why);
-        const failure = hook ? 'hook_refused' : 'gate_refused';
-        return { data: { gate, allowed: false, items: [] }, text: '', failure };
-      }
-      if (error instanceof UntoldTarget) {
-        const why = `${gate} refused: cannot tell which branches the command writes to (${error.message}); name them in it`;
-        input.warn(why);
-        return { data: { gate, allowed: false, items: [] }, text: '', failure: 'hook_refused' };
-      }
       // Inside a project, a repo it cannot match could be any of its repos: refused, not allowed.
       if (error instanceof UnknownRepo) {
         input.warn(`${gate} refused: ${error.message}`);
-        const failure = hook ? 'hook_refused' : 'gate_refused';
-        return { data: { gate, allowed: false, items: [] }, text: '', failure };
+        return { data: { gate, allowed: false, items: [] }, text: '', failure: 'gate_refused' };
       }
       // A field or a gate nothing names is a typo in the call, never a reason to allow the action.
       if (error instanceof OteaError && error.code === 'invalid_fields')
@@ -2545,19 +2449,19 @@ const check: Command = {
       return { data: result, text: '' };
     const text = gateText(result);
     if (result.allowed) return { data: result, text };
-    if (!hook) return { data: result, text, failure: 'gate_refused' };
-    input.warn(text);
-    return { data: result, text: '', failure: 'hook_refused' };
+    return { data: result, text, failure: 'gate_refused' };
   },
 };
 
-const HOOK_OPTIONS = { git: { flag: true }, claude: { flag: true } };
-
-// The hooks a command names: --git, --claude or both, never none.
-function hookTargets({ flag }: Input): Array<'git' | 'claude'> {
-  const targets = (['git', 'claude'] as const).filter((target) => flag(target));
-  if (targets.length === 0) throw new UsageError('Name the hook: --git, --claude or both');
-  return targets;
+// The hooks a command names, of those it takes; never none. No gate depends on a harness hook:
+// install writes only the git hook, and remove --claude takes out the Claude Code hooks an older
+// otea hook install --claude wrote, whose commands are gone.
+function hookTargets<T extends string>({ flag }: Input, targets: readonly T[]): T[] {
+  const named = targets.filter((target) => flag(target));
+  if (named.length === 0) {
+    throw new UsageError(`Name the hook: ${targets.map((target) => `--${target}`).join(' or ')}`);
+  }
+  return named;
 }
 
 function hookText({ path, action, content, note }: HookChange): string {
@@ -2578,20 +2482,17 @@ function hookOutput(changes: HookChange[]): Output {
 const hookInstall: Command = {
   name: 'hook install',
   summary:
-    'Make the gates hard in the repo here: --git writes a pre-push hook that runs otea check --gate push, --claude adds Claude Code PreToolUse hooks that run otea check before git push and gh pr merge, and a Stop hook that keeps the answer to a side topic as the agent wrote it in the chat (otea topic session; it does nothing while the project keeps no topics); never overwrites a hook of someone else',
+    'Make the gates hard in the repo here: --git writes a pre-push hook that runs otea check --gate push, whatever tool runs the push; never overwrites a hook of someone else',
   args: [],
-  options: HOOK_OPTIONS,
+  options: { git: { flag: true } },
   // Each hook is installed on its own: one that cannot be (no repo, a team's own pre-push hook)
-  // never keeps the other from being written, and the refusal says what was written.
+  // never keeps another from being written, and the refusal says what was written.
   execute: (input) => {
     const changes: HookChange[] = [];
     const refused: Error[] = [];
-    for (const target of hookTargets(input)) {
+    for (const _target of hookTargets(input, ['git'])) {
       try {
-        const otea = withHome(OTEA, input.home);
-        changes.push(
-          target === 'git' ? installGitHook(input.cwd, otea) : installClaudeHook(input.cwd, otea),
-        );
+        changes.push(installGitHook(input.cwd, withHome(OTEA, input.home)));
       } catch (error) {
         if (!(error instanceof CommandFailure || error instanceof OteaError)) throw error;
         refused.push(error);
@@ -2606,12 +2507,13 @@ const hookInstall: Command = {
 
 const hookRemove: Command = {
   name: 'hook remove',
-  summary: 'Remove the hooks otea hook install wrote (--git, --claude), leaving every other hook',
+  summary:
+    'Remove the hooks Otea wrote, leaving every other hook: --git the pre-push hook; --claude the Claude Code hooks and allow rules an older otea hook install --claude added to .claude/settings.local.json',
   args: [],
-  options: HOOK_OPTIONS,
+  options: { git: { flag: true }, claude: { flag: true } },
   execute: (input) =>
     hookOutput(
-      hookTargets(input).map((target) =>
+      hookTargets(input, ['git', 'claude']).map((target) =>
         target === 'git' ? removeGitHook(input.cwd) : removeClaudeHook(input.cwd),
       ),
     ),
@@ -2631,10 +2533,7 @@ const topicOn: Command = {
       setTopicsOn(project, true);
       return {
         data: { topics: true },
-        text: [
-          'Topics are on: agents record the side questions you ask them.',
-          "In Claude Code's Auto mode, run otea hook install --claude in the repo so they may.",
-        ].join('\n'),
+        text: 'Topics are on: agents record the side questions you ask them.',
       };
     }),
 };
@@ -2749,45 +2648,6 @@ const topicNote: Command = {
   },
 };
 
-// The Claude Code Stop hook (otea hook install --claude): at the end of the agent's turn it reads
-// the session's transcript and keeps the answer the agent wrote in the chat on the topic it
-// answered this turn, over the agent's own copy. It never fails the hook: nothing to keep, topics
-// off, or a transcript it cannot read all end quietly.
-const topicSession: Command = {
-  name: 'topic session',
-  summary:
-    "For Claude Code's Stop hook (--claude-hook, the event on stdin): keep the answer the agent wrote in its chat on the topic it answered this turn",
-  args: [],
-  options: { 'claude-hook': { flag: true } },
-  execute: async (input) => {
-    const quiet = { data: { topic: null }, text: '' };
-    if (!input.flag('claude-hook'))
-      throw new UsageError('topic session runs as a hook: --claude-hook');
-    const event = readStopEvent(await input.stdin());
-    if (!event) return quiet;
-    let transcript: string;
-    try {
-      transcript = readFileSync(event.transcript, 'utf8');
-    } catch {
-      return quiet;
-    }
-    const exchange = lastExchange(transcript);
-    if (!exchange) return quiet;
-    try {
-      return withProject(input.cwd, (project) => {
-        if (!topicsOn(project)) return quiet;
-        const topic = answerFromSession(project, { session: event.session, ...exchange });
-        return {
-          data: { topic: topic ?? null },
-          text: topic ? `Kept the answer on ${topic}.` : '',
-        };
-      });
-    } catch {
-      return quiet;
-    }
-  },
-};
-
 const topicClose: Command = {
   name: 'topic close',
   summary: 'For the person: close a topic you have read',
@@ -2849,7 +2709,6 @@ export const COMMANDS: readonly Command[] = [
   topicShow,
   topicNote,
   topicClose,
-  topicSession,
   ask,
   handoffCommand,
   dropCommand,

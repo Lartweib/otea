@@ -1,5 +1,3 @@
-import { readFileSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { cliAt, seedOnce, startCli, until } from './testing.ts';
 
@@ -23,8 +21,8 @@ describe('otea topic', () => {
     const person = cliAt(repo.dir);
     const on = await person('topic', 'on');
     expect(on.code).toBe(0);
-    // Claude Code's Auto mode blocks otea topic add until the hook's allow rules are in.
-    expect(on.out).toContain('otea hook install --claude');
+    // Harness-agnostic: no advice to install a Claude Code hook.
+    expect(on.out.trim()).toBe('Topics are on: agents record the side questions you ask them.');
 
     const added = await otea(
       'topic',
@@ -185,61 +183,5 @@ describe('otea topic', () => {
       'TEM-9',
     );
     expect(made.code).not.toBe(0);
-  });
-
-  it('keeps the answer the agent wrote in its chat, from the Claude Code Stop hook', async () => {
-    const { repo, otea } = fresh();
-    const person = cliAt(repo.dir);
-    await person('topic', 'on');
-    await otea('topic', 'add', '¿Por qué falla?', '--session', 's-1');
-    await otea('topic', 'answer', 'TEM-1', '--summary', 'Una variable.', '--full', 'copia');
-    const transcript = join(repo.dir, 'transcript.jsonl');
-    writeFileSync(
-      transcript,
-      [
-        {
-          type: 'user',
-          timestamp: '2000-01-01T00:00:00.000Z',
-          message: { content: '¿Por qué falla?' },
-        },
-        {
-          type: 'assistant',
-          timestamp: '2000-01-01T00:00:05.000Z',
-          message: { content: [{ type: 'text', text: 'Falta la variable OTEA_HOME en el CI.' }] },
-        },
-      ]
-        .map((entry) => JSON.stringify(entry))
-        .join('\n'),
-    );
-    const event = JSON.stringify({ session_id: 's-1', transcript_path: transcript, cwd: repo.dir });
-    const hook = cliAt(repo.dir, {}, undefined, undefined, undefined, event);
-    const ran = await hook('topic', 'session', '--claude-hook');
-    expect(ran.code).toBe(0);
-
-    const topic = JSON.parse((await person('topic', 'show', 'TEM-1', '--json')).out) as {
-      turns: { full?: string; source?: string }[];
-    };
-    expect(topic.turns.at(-1)).toMatchObject({
-      full: 'Falta la variable OTEA_HOME en el CI.',
-      source: 'session',
-    });
-  });
-
-  it('ends the Stop hook quietly when there is nothing to keep', async () => {
-    const { repo } = fresh();
-    const hook = cliAt(repo.dir, {}, undefined, undefined, undefined, 'not json');
-    expect((await hook('topic', 'session', '--claude-hook')).code).toBe(0);
-  });
-
-  it('installs and removes the Stop hook with the other Claude Code hooks', async () => {
-    const { repo } = fresh();
-    const person = cliAt(repo.dir);
-    await person('hook', 'install', '--claude');
-    const settings = JSON.parse(
-      readFileSync(join(repo.dir, '.claude', 'settings.local.json'), 'utf8'),
-    );
-    expect(JSON.stringify(settings.hooks.Stop)).toContain('topic session --claude-hook');
-    await person('hook', 'remove', '--claude');
-    expect(() => readFileSync(join(repo.dir, '.claude', 'settings.local.json'), 'utf8')).toThrow();
   });
 });

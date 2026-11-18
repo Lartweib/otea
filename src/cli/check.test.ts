@@ -435,29 +435,6 @@ describe('check', () => {
       }
     });
 
-    it('refuses an agent’s git push into the base by what it sends, as a Claude Code hook', async () => {
-      const hooked = (command: string) => {
-        const event = { cwd: repo.dir, tool_name: 'Bash', tool_input: { command } };
-        const at = cliAt(repo.dir, {}, undefined, undefined, undefined, JSON.stringify(event));
-        return at('check', '--gate', 'push', '--branch', '--repo', '--claude-hook');
-      };
-      person(task, 'implementing');
-      commit('keys');
-      await otea('move', task, 'implementing__review');
-
-      const sent = await hooked('git push origin chg-1/keys:main');
-      expect(sent.code).toBe(2);
-      expect(sent.err).toContain(`main takes its branch only once ${task} is Done`);
-      expect((await hooked('git push origin main')).code).toBe(2);
-      expect((await hooked('git push origin --delete main')).code).toBe(2);
-      git('checkout', '-q', 'main');
-      git('merge', '-q', '--ff-only', 'chg-1/keys');
-      expect((await hooked('git push')).code).toBe(2);
-      person(task, 'done');
-      expect((await hooked('git push origin main')).code).toBe(0);
-      expect((await hooked('git push origin HEAD:main')).code).toBe(0);
-    });
-
     it('refuses a push to the base that brings in no item, by the commits the push sends', async () => {
       const root = git('rev-parse', 'HEAD');
       git('checkout', '-q', 'main');
