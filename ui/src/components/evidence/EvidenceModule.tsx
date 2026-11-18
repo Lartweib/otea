@@ -1,12 +1,14 @@
-import { type ReactNode, useState } from 'react';
-import { emptyText, evidenceOf, latestFirst, moduleTitle } from '../../evidence.ts';
+import { type ReactNode, useContext, useState } from 'react';
+import { comparePair, emptyText, evidenceOf, latestFirst, moduleTitle } from '../../evidence.ts';
 import { t } from '../../i18n/i18n.ts';
 import { Button } from '../../kit/index.ts';
 import type { Evidence, LayoutEntry } from '../../types.ts';
 import { EvidenceList } from '../EvidenceList.tsx';
 import { DiagramView } from './DiagramView.tsx';
+import { BlindPick } from './EvidenceViewer.tsx';
 import { FileView } from './FileViews.tsx';
 import { ImageCompare, ImageGallery, ImageSingle } from './ImageViews.tsx';
+import { ItemReview } from './item-evidence.ts';
 import { ReportOr } from './TestReportView.tsx';
 import { DiffView, LogView } from './TextViews.tsx';
 import { VideoFrames, VideoPlayer } from './VideoViews.tsx';
@@ -41,6 +43,7 @@ function Empty({ entry }: { entry: LayoutEntry }) {
 }
 
 // Several files in a module that shows one: newest first, the newest shown until another is picked.
+// Each says the round it came in; images of two rounds can be compared side by side (P5-5).
 function OneOf({
   evidence,
   label,
@@ -50,10 +53,22 @@ function OneOf({
   label: string;
   children: (shown: Evidence) => ReactNode;
 }) {
+  const { roundOf } = useContext(ItemReview);
   const newest = latestFirst(evidence);
   const [picked, setPicked] = useState<number | undefined>(undefined);
+  const [comparing, setComparing] = useState(false);
   const shown = newest.find(({ id }) => id === picked) ?? newest[0];
   if (!shown) return null;
+  const round = (e: Evidence) => roundOf?.get(e.id);
+  // The newest against the one picked (else the one before it), both images.
+  const latest = newest[0];
+  const other = shown === latest ? newest[1] : shown;
+  const images = !!latest && !!other && latest.kind === 'image' && other.kind === 'image';
+  const compared = comparing && images && latest && other;
+  const tag = (e: Evidence) => {
+    const n = round(e);
+    return n === undefined ? e.filename : t('evidence.roundTag', { n });
+  };
   return (
     <div className="ev-one">
       {newest.length > 1 ? (
@@ -63,23 +78,69 @@ function OneOf({
               key={entry.id}
               size="sm"
               className="ev-pick"
-              aria-pressed={entry.id === shown.id}
-              onClick={() => setPicked(entry.id)}
+              aria-pressed={!compared && entry.id === shown.id}
+              onClick={() => {
+                setPicked(entry.id);
+                setComparing(false);
+              }}
             >
+              {round(entry) !== undefined ? (
+                <span className="ev-round">{t('evidence.roundTag', { n: round(entry) ?? 0 })}</span>
+              ) : null}
               {entry.filename}
               {index === 0 ? <span className="ev-latest">{t('evidence.latest')}</span> : null}
             </Button>
           ))}
+          {images ? (
+            <Button
+              size="sm"
+              className="ev-pick ev-pick-rounds"
+              aria-pressed={!!compared}
+              onClick={() => setComparing(!comparing)}
+            >
+              {t('evidence.rounds')}
+            </Button>
+          ) : null}
         </fieldset>
       ) : null}
-      {children(shown)}
+      {compared ? (
+        <ImageCompare
+          key={`${other.id}-${latest.id}`}
+          evidence={[
+            { ...other, role: 'before' },
+            { ...latest, role: 'after' },
+          ]}
+          names={{ before: tag(other), after: tag(latest) }}
+          initial="side"
+        />
+      ) : (
+        children(shown)
+      )}
     </div>
+  );
+}
+
+// A blind A and B: named so, never before and after, with «Me quedo con A/B» while you review.
+function BlindCompare({ held }: { held: Evidence[] }) {
+  const { note } = useContext(ItemReview);
+  const { before, after } = comparePair(held);
+  return (
+    <>
+      <ImageCompare evidence={held} blind />
+      {note && before && after ? (
+        <div className="ev-blind-pick">
+          <BlindPick ids={[before.id, after.id]} shown={before} side="A" note={note} />
+          <BlindPick ids={[before.id, after.id]} shown={after} side="B" note={note} />
+        </div>
+      ) : null}
+    </>
   );
 }
 
 function Body({ entry, held, title }: { entry: LayoutEntry; held: Evidence[]; title: string }) {
   const { module, variant } = entry;
-  if (module === 'images' && variant === 'compare') return <ImageCompare evidence={held} />;
+  if (module === 'images' && variant === 'compare')
+    return entry.blind ? <BlindCompare held={held} /> : <ImageCompare evidence={held} />;
   if (module === 'diagram') return <DiagramView evidence={held} />;
   if (module === 'images' && variant === 'gallery') {
     return <ImageGallery evidence={held} label={title} />;

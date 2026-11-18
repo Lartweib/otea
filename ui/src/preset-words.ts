@@ -1,6 +1,7 @@
 import { createContext, createElement, type ReactNode, useContext } from 'react';
+import { blindPartsOf, sideWord } from './evidence.ts';
 import { language, t } from './i18n/i18n.ts';
-import type { TypeView } from './types.ts';
+import type { Evidence, TypeView } from './types.ts';
 
 // The words a preset wrote (its types, states and fields), in the language on screen when the
 // preset labels them in it (`labels: { es: … }`), and as written otherwise. A language labels all
@@ -94,6 +95,19 @@ export function ItemTypeScope({
   children?: ReactNode;
 }) {
   return createElement(ItemTypeContext.Provider, { value: type }, children);
+}
+
+// The side of a compare a file is, in words, for the item in scope: A and B on a blind one.
+export function useSideWord(): (e: Pick<Evidence, 'role' | 'module'>) => string | null {
+  const type = useContext(ItemTypeContext);
+  const blind = blindPartsOf(type);
+  return (e) => sideWord(e, blind);
+}
+
+// Whether a file is of a compare judged blind, for the item in scope.
+export function useBlind(): (e: Pick<Evidence, 'module'>) => boolean {
+  const blind = blindPartsOf(useContext(ItemTypeContext));
+  return (e) => e.module !== null && blind.has(e.module);
 }
 
 // A value's word for the item in scope.

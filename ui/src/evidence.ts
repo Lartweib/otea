@@ -65,6 +65,31 @@ export function pairIn(
     : { before: other, after: shown };
 }
 
+// The compare parts of a type judged blind, by module id: their sides are A and B (P5-4).
+export function blindPartsOf(type: TypeView | undefined): Set<string> {
+  if (!type) return new Set();
+  const all = [
+    ...Object.values(type.layout).flat(),
+    ...(type.layout.sections ?? []).flatMap((s) => s.entries),
+  ];
+  return new Set(
+    all.flatMap((e) =>
+      typeof e === 'object' && e && 'blind' in e && e.blind && e.id ? [e.id] : [],
+    ),
+  );
+}
+
+// The side a file is of a compare, in words: A or B when it is judged blind, else before or after;
+// null for a file on its own.
+export function sideWord(
+  e: Pick<Evidence, 'role' | 'module'>,
+  blind: ReadonlySet<string>,
+): string | null {
+  if (e.module !== null && blind.has(e.module) && e.role !== 'single')
+    return e.role === 'before' ? 'A' : 'B';
+  return roleWord(e);
+}
+
 // The side a file is of a before/after, in words; null for a file on its own.
 export function roleWord(e: Pick<Evidence, 'role'>): string | null {
   if (e.role === 'before') return t('evidence.before');
@@ -76,8 +101,10 @@ type Wording = { title: string; empty: string };
 
 const say = (title: PlainKey, empty: PlainKey): Wording => ({ title: t(title), empty: t(empty) });
 
-function wording({ module, variant }: LayoutEntry): Wording {
+function wording(entry: LayoutEntry): Wording {
+  const { module, variant } = entry;
   if (module === 'images' && variant === 'compare') {
+    if (entry.blind) return say('evidence.blind', 'evidence.blindEmpty');
     return say('evidence.compare', 'evidence.compareEmpty');
   }
   if (module === 'images' && variant === 'gallery') {

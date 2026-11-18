@@ -1,6 +1,6 @@
-import { roleWord } from '../../evidence.ts';
 import { t } from '../../i18n/i18n.ts';
 import { Dialog } from '../../kit/pop/Dialog.tsx';
+import { useSideWord } from '../../preset-words.ts';
 import type { Evidence } from '../../types.ts';
 import { EvidenceReader, type ReaderDecide, type ReaderNote } from './EvidenceViewer.tsx';
 import type { ReaderPick } from './reader-pick.ts';
@@ -45,6 +45,7 @@ export function ReaderPane({
   note,
   start,
 }: PaneProps) {
+  const roleWord = useSideWord();
   return (
     <div className="rd-pane">
       <nav className="rd-list" aria-label={t('evidence.reader.files')}>

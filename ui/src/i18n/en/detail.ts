@@ -184,6 +184,15 @@ export const detail = {
   'rounds.earlier': { one: 'Earlier · {count} round', other: 'Earlier · {count} rounds' },
 
   // Comparing two rounds on one clock, and the verdict given in place
+  'compare.pickNote': 'I pick {side}.',
+  'compare.pick': 'I pick {side}',
+  'compare.picked': 'You keep {side}',
+  'evidence.reader.sideBlind': 'Side {side} of a blind comparison.',
+  'evidence.reader.compareBlind': 'Compare A and B',
+  'evidence.blind': 'A and B, blind',
+  'evidence.blindEmpty': 'No A and B yet',
+  'evidence.rounds': 'Compare rounds',
+  'evidence.roundTag': 'round {n}',
   'compare.title': 'Compare rounds',
   'compare.mode': 'How to look at A and B',
   'compare.side': 'side by side',

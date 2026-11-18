@@ -172,6 +172,7 @@ export const boardStudio = {
   'bs.show.gallery': 'en galería',
   'bs.show.one': 'una sola',
   'bs.show.ba': 'antes y después',
+  'bs.show.ab': 'A y B, a ciegas',
   'bs.show.strip': 'en tira de fotogramas',
   'bs.show.player': 'en reproductor',
   'bs.level.low': 'baja',

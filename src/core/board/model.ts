@@ -40,7 +40,8 @@ export type PartKind = FieldKind | EvidenceKind;
 // How a piece of evidence shows on the item page, for the kinds that show in more than one way.
 // The first is the default.
 export const EVIDENCE_SHOWS: Readonly<Partial<Record<EvidenceKind, readonly string[]>>> = {
-  images: ['gallery', 'one', 'ba'],
+  // ab: A and B judged blind, never named before and after (P5-4).
+  images: ['gallery', 'one', 'ba', 'ab'],
   video: ['strip', 'player'],
 };
 
