@@ -193,6 +193,7 @@ import {
   removeClaudeHook,
   removeGitHook,
 } from './hooks.ts';
+import { mergedOutsideLine } from './merged-outside.ts';
 import { boardsOf, eventData, itemCollections, itemData, readableEvent } from './names.ts';
 import { watchOwner } from './owner.ts';
 import { PHONE_COMMANDS } from './phone.ts';
@@ -842,7 +843,14 @@ const show: Command = {
       // The person's notes of this round, as data too: the text has them in its Next: block.
       const notes = roundNotesOf(project, item.id);
       const data = itemData(project, item);
-      return { data: notes.length === 0 ? data : { ...data, notes }, text };
+      const outside = mergedOutsideLine(project, input.cwd, shown);
+      const said =
+        outside === undefined
+          ? text
+          : `${outside}
+
+${text}`;
+      return { data: notes.length === 0 ? data : { ...data, notes }, text: said };
     });
   },
 };
@@ -1137,7 +1145,10 @@ const next: Command = {
         ...(collection === undefined ? {} : { collection }),
         ...(claim ? { claim } : {}),
       });
+      const offered = answer.item === null ? undefined : getItem(project, answer.item);
+      const outside = offered && mergedOutsideLine(project, input.cwd, offered);
       const text = [
+        ...(outside ? [outside] : []),
         answer.text,
         ...topicLines(project, actor.name),
         profileReminder(profile, actor.name, channel),

@@ -426,6 +426,10 @@ export const detail = {
   'sheet.says.back': 'vuelve a {agent} con tus notas, en la ronda {round}',
   'sheet.says.backAgent': 'vuelve a un agente con tus notas, en la ronda {round}',
   'sheet.says.yours': 'sigue siendo tuyo',
+  'sheet.says.lands': 'luego un agente la fusiona en {base} y sube {base} al remoto',
+  'sheet.says.landsAny': 'luego un agente la fusiona y la sube al remoto',
+  'sheet.says.closesUnmerged':
+    'queda Hecho, pero aún no se fusionó nada: un agente fusiona su rama y lo registra',
   'sheet.says.resume': 'vuelve a la cola de {state}, para cualquier agente',
   'sheet.says.reassign': 'se lo dejas al agente que elijas',
   'sheet.receipt.has': 'Lo tiene {agent}.',
@@ -655,6 +659,7 @@ export const detail = {
   'bi.branch.merge': 'se puede fusionar',
   'bi.branch.merged': 'fusionada',
   'bi.branch.landed': 'fusionada en {step}',
+  'bi.branch.landing': 'un agente la fusiona en {base} ahora y sube {base} al remoto',
   'bi.branch.closed': 'ya no se sube',
   'bi.branch.noPush': 'sin subidas en {step}',
   'bi.request.board': 'Tablero {name}',

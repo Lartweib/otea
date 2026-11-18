@@ -511,6 +511,8 @@ export function Acts({
             <Icon name="note" />
             {t('notes.leave')}
           </Button>
+          {/* An approved item an agent lands: the person may still send it back (P1-4). */}
+          {plan.quiet.filter((c) => c.kind === 'sendback').map((c) => btn(c, 'quiet'))}
           {closeAs}
         </div>
         <div className="movesays">{note.says}</div>

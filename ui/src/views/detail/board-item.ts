@@ -292,10 +292,12 @@ export function waitBlock(rows: readonly WaitRow[]): string | undefined {
 // may it be merged (F10). The engine's gate answers, as otea check does.
 export type BranchStrip = {
   tone: 'ok' | 'frozen' | 'off';
-  key: 'push' | 'frozen' | 'merge' | 'merged' | 'landed' | 'closed' | 'noPush';
+  key: 'push' | 'frozen' | 'merge' | 'merged' | 'landed' | 'landing' | 'closed' | 'noPush';
   value: string;
   repo?: string;
   step?: string;
+  // In the land step: the base an agent merges it into and pushes now.
+  base?: string;
 };
 
 export function branchStrip(
@@ -322,6 +324,9 @@ export function branchStrip(
   }
   const step = stepById(def, position.step)?.name ?? position.step;
   if (position.phase !== 'doing') return { tone: 'frozen', key: 'frozen', value, ...repo, step };
+  // In the land step an agent merges it and pushes the base, which the page says before it does.
+  if (isLandStep(def, position.step) && branch.guard.base)
+    return { tone: 'ok', key: 'landing', value, ...repo, step, base: branch.guard.base };
   return gateAt(def, position, 'push').allowed
     ? { tone: 'ok', key: 'push', value, ...repo, step }
     : { tone: 'off', key: 'noPush', value, ...repo, step };
@@ -544,18 +549,29 @@ export function sheetLook(look: Look, onBoard: boolean): Look {
 
 // Where a way back (or a send-back) lands: the round it starts on that step, as the engine counts
 // rounds, and the step's own agent (none when any agent may take it).
+// `lands`: the step it lands on is the board's land step, where an agent merges the approved
+// branch and pushes it, into the base it names (none when the board protects no base).
+// `unmerged`: it closes as Done on a board with no land step, where nothing merges it on the way.
 export function backOf(
   def: BoardDefinition,
   item: ItemLike,
   to: string,
-): { agent: string | null; round: number } {
+): { agent: string | null; round: number; lands?: string; unmerged?: true } {
   const target = positionOf(to);
-  if (isClosed(target)) return { agent: null, round: 0 };
+  const branch = guardedBranch(def);
+  const land = def.steps.find((s) => isLandStep(def, s.id));
+  if (isClosed(target))
+    return target.closed === DONE && branch && !land
+      ? { agent: null, round: 0, unmerged: true }
+      : { agent: null, round: 0 };
   const history = historyFor(def, item.events, item.createdAt);
   const rounds = roundsOf(def, history.initial, history.createdAt, history.moves);
   const turn = turnAt(def, { step: target.step, phase: 'doing' });
   const agent = null;
-  return { agent, round: (rounds.rounds[target.step] ?? 0) + 1 };
+  const round = (rounds.rounds[target.step] ?? 0) + 1;
+  return branch && land?.id === target.step
+    ? { agent, round, lands: branch.guard.base ?? '' }
+    : { agent, round };
 }
 
 // The step the person does while it is being done (Propuesta, Triar): their own step, whoever

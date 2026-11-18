@@ -223,7 +223,7 @@ export const board = {
   'boardView.quiet': 'quiet · {time}',
   'boardView.quietCard': 'quiet {time}',
   'boardView.round': 'round {n}',
-  'boardView.toMerge': 'branch not merged yet',
+  'boardView.approvedUnmerged': 'Approved, not merged yet',
   'boardView.merged': 'branch merged',
   'boardView.queued': 'queued',
   'boardView.blocked': { one: 'waits for {count} blocker', other: 'waits for {count} blockers' },
