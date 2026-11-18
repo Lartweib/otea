@@ -456,6 +456,14 @@
   max-width: 64ch;
   color: var(--ink);
 }
+/* its headings read as the note's own, not as the card's title */
+.tcard .say :is(h1, h2, h3, h4, h5, h6) {
+  font: 600 15px / 1.35 var(--sans);
+  font-variation-settings: normal;
+  letter-spacing: -0.008em;
+  margin: 0;
+  text-wrap: wrap;
+}
 /* What the round hands in: the step's fields, each value under its name, and its other files. */
 .tcard .tc-hand {
   margin-top: 16px;
