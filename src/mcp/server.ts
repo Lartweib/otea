@@ -130,6 +130,8 @@ const NOTES: Readonly<Record<string, string>> = {
 // before its first call.
 export type McpContext = {
   cwd: string;
+  // The project the agent is pinned to (otea connect's OTEA_PROJECT_ID): writes elsewhere refused.
+  pin?: string;
   agent?: string;
   // Whether the project keeps side topics: the guide then tells agents to record them.
   topics?: boolean;
@@ -205,6 +207,7 @@ function inputFor(
   }
   return {
     cwd: context.cwd,
+    ...(context.pin === undefined ? {} : { pin: context.pin }),
     get actor(): Actor {
       return agentActor(agent, NAME_YOURSELF);
     },

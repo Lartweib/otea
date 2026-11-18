@@ -44,6 +44,9 @@ export type Input = {
   gh?: string;
   // The Otea home the person set apart ($OTEA_HOME), as an absolute path; none for the default.
   home?: string;
+  // The project the agent is pinned to ($OTEA_PROJECT_ID, written by otea connect): its writes to
+  // any other project are refused.
+  pin?: string | undefined;
   // Whether what the command prints goes to a terminal a person reads, not to a pipe or a log: only
   // there may it print a secret (the sign-in link).
   terminal: boolean;

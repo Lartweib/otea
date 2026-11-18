@@ -19,9 +19,10 @@ import { mcpWords } from './words.ts';
 type Reply = { isError?: boolean; content: { type: string; text: string }[] };
 
 // `name`: the agent the server was started as (otea mcp --as), or none.
-async function connect(cwd: string, name?: string): Promise<Client> {
+async function connect(cwd: string, name?: string, pin?: string): Promise<Client> {
   const agent = name === undefined ? {} : { agent: name };
-  const server = createMcpServer(COMMANDS, { cwd, ...agent, warn: () => {} });
+  const pinned = pin === undefined ? {} : { pin };
+  const server = createMcpServer(COMMANDS, { cwd, ...agent, ...pinned, warn: () => {} });
   const client = new Client({ name: 'test', version: '0' });
   const [clientSide, serverSide] = InMemoryTransport.createLinkedPair();
   await server.connect(serverSide);
@@ -59,6 +60,19 @@ describe('mcp server', () => {
   afterEach(async () => {
     await client.close();
     repo.remove();
+  });
+
+  // otea connect pins the project: an MCP server whose folder is another project's writes nothing.
+  it('refuses a write when the agent is pinned to another project', async () => {
+    const pinned = await connect(repo.dir, 'claude', 'other-zzzzzz');
+    try {
+      const reply = await call('claim', { id: 'TASKS-1' }, pinned);
+      expect(reply.isError).toBe(true);
+      expect(reply.content[0]?.text).toContain('pinned to the project other-zzzzzz');
+      expect((await json('show', 'TASKS-1')).lease).toBeFalsy();
+    } finally {
+      await pinned.close();
+    }
   });
 
   describe('tools', () => {

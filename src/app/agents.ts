@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { AGENT_GUIDE } from '../core/agent-guide.ts';
+import { OteaError } from '../core/errors.ts';
 import { assertAgentName } from '../core/item.ts';
 import type { Launcher } from './launcher.ts';
 
@@ -56,14 +57,38 @@ export type Connection = McpEntry & { path: string; server: string; agent: strin
 
 // Pins the agent's name in the project's MCP config (.mcp.json, read by Claude Code and other
 // clients), so everything the server does is attributed to it. Other servers are kept.
-export function connectAgent(root: string, agent: string, launcher: Launcher): Connection {
+// The project an agent is pinned to, in its MCP config's environment (otea connect writes it).
+export const PIN_ENV = 'OTEA_PROJECT_ID';
+
+// A write by an agent pinned to another project than the one its folder resolves to: refused.
+export function assertPinned(pin: string | undefined, project: { id: string; name: string }) {
+  if (pin === undefined || pin === project.id) return;
+  throw new OteaError(
+    'forbidden',
+    `This agent is pinned to the project ${pin} (${PIN_ENV} in its MCP config), but this folder is the project ${project.name} (${project.id}); nothing was written. Work from a folder of ${pin}, or run otea connect here to work in ${project.id}`,
+  );
+}
+
+// `project`: the id of the project the agent works in. The entry pins it (OTEA_PROJECT_ID): one
+// Otea server serves every project of the computer, and an agent's MCP server that resolves a
+// folder of another project (started elsewhere, or a config copied) refuses to write there.
+export function connectAgent(
+  root: string,
+  agent: string,
+  launcher: Launcher,
+  project?: string,
+): Connection {
   assertAgentName(agent);
   const path = join(root, '.mcp.json');
   const config = existsSync(path) ? readConfig(path) : {};
+  const env = {
+    ...(launcher.env ?? {}),
+    ...(project === undefined ? {} : { [PIN_ENV]: project }),
+  };
   const entry: McpEntry = {
     command: launcher.command,
     args: [...launcher.args, 'mcp', '--as', agent],
-    ...(launcher.env ? { env: { ...launcher.env } } : {}),
+    ...(Object.keys(env).length > 0 ? { env } : {}),
   };
   const servers = { ...(config.mcpServers ?? {}), [MCP_SERVER]: entry };
   writeFileSync(path, `${JSON.stringify({ ...config, mcpServers: servers }, null, 2)}\n`);
