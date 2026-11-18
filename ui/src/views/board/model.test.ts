@@ -24,6 +24,7 @@ import {
   groupOptions,
   holds,
   motivesOf,
+  openBlockersOf,
   pasosCards,
   pasosColumns,
   phoneChips,
@@ -193,6 +194,45 @@ describe('the Pasos columns', () => {
     expect(ids('fixing')).toEqual([['P', []]]);
     expect(ids('verify')).toEqual([['K1', ['G1']]]);
     expect(ids(CLOSED_COL)).toEqual([['K2', []]]);
+  });
+
+  // A Done part of a parent whose parts were all closed was drawn inside the parent's card under
+  // its step, and counted there: «Hacer 4 / Hecho 0» (IDEA-11).
+  it('draws a closed part in Hecho even when every part of its parent is closed', () => {
+    const items = [
+      item({
+        id: 'P',
+        state: 'fixing',
+        turn: 'agent',
+        children: { total: 1, open: 0, done: 1, discarded: 0 },
+      }),
+      child('K1', 'P', { state: 'fixed', turn: 'none', closes: 'done' }),
+    ];
+    const cols = pasosColumns(errores, items);
+    const cards = pasosCards(items, cols, null, ctx());
+    expect(cards.get('fixing')?.map((c) => [c.item.id, c.kids.map((k) => k.id)])).toEqual([
+      ['P', []],
+    ]);
+    expect(cards.get(CLOSED_COL)?.map((c) => c.item.id)).toEqual(['K1']);
+    expect(cardCount(cards.get('fixing') ?? [])).toBe(1);
+  });
+
+  // A blocked task read «en cola» like any other (IDEA-12): it says it waits for its blockers.
+  it('counts the open items that block an item, wherever they are', () => {
+    const blocked = item({
+      id: 'T2',
+      relations: [
+        { kind: 'blocked_by', id: 'T1' },
+        { kind: 'blocked_by', id: 'T9' },
+      ],
+    });
+    const all = [
+      blocked,
+      item({ id: 'T1', turn: 'agent' }),
+      item({ id: 'T9', turn: 'none', closes: 'done' }),
+    ];
+    expect(openBlockersOf(blocked, all)).toBe(1);
+    expect(openBlockersOf(item({ id: 'T3' }), all)).toBe(0);
   });
 
   it('shows a child as a card of its own when its parent is filtered out', () => {

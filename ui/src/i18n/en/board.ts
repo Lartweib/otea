@@ -211,6 +211,7 @@ export const board = {
   'boardView.toMerge': 'branch not merged yet',
   'boardView.merged': 'branch merged',
   'boardView.queued': 'queued',
+  'boardView.blocked': { one: 'waits for {count} blocker', other: 'waits for {count} blockers' },
   'boardView.waits': 'waits {count}',
   'boardView.col.title': 'item',
   'boardView.col.state': 'step',

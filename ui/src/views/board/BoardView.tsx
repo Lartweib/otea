@@ -527,6 +527,7 @@ function Board({ board }: { board: string }) {
           cards={pasosCards(filtered, cols, prefs.sort, ctx)}
           now={app.now}
           feed={app.feed}
+          all={app.all}
           selected={selected}
           onOpen={open}
           reveal={drawIn}

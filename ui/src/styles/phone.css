@@ -951,6 +951,13 @@
   .ffield select {
     min-height: 44px;
   }
+  /* «Rellenar» beside a part the handoff still lacks */
+  .hn .lnk {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding-inline: 6px;
+  }
 }
 
 /* ───────── a finger: every control answers 44 px around it ───────── */

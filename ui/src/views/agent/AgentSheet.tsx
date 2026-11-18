@@ -1,4 +1,5 @@
 import { type ReactNode, useEffect, useState } from 'react';
+import { isUnknown } from '../../../../src/core/profile.ts';
 import { activeLease } from '../../active-lease.ts';
 import { clockOf, turnLookup } from '../../activity.ts';
 import { fetchAgent } from '../../api.ts';
@@ -122,9 +123,15 @@ function ProfileBlock({
       <div className="pnow">
         {profile ? (
           <span className="pbig">
-            {profileValue(profile.model)}
-            <i>·</i>
-            {profileValue(profile.effort)}
+            {isUnknown(profile.model) && isUnknown(profile.effort) ? (
+              t('agent.notDeclared')
+            ) : (
+              <>
+                {profileValue(profile.model)}
+                <i>·</i>
+                {profileValue(profile.effort)}
+              </>
+            )}
           </span>
         ) : (
           <span className="pbig warn">{t('agent.noProfile')}</span>
