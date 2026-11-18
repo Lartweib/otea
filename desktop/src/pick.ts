@@ -4,8 +4,9 @@
 // already covers the folder).
 import { resolve } from 'node:path';
 
-// Whether the folder is in a project; `root` is where `otea init` would make one when it is not.
-export type Probe = { kind: 'project' } | { kind: 'none'; root: string };
+// Whether the folder is in a project (`root`: that project's root, when the CLI names it); when it
+// is not, `root` is where `otea init` would make one.
+export type Probe = { kind: 'project'; root?: string } | { kind: 'none'; root: string };
 
 export type Question =
   // No project yet: create one at `root` (the folder itself, or its repository's root)?
@@ -55,6 +56,15 @@ export async function pickProject(port: PickPort, dir: string, create: boolean):
     return { kind: 'open', dir: probe.root };
   }
   if (!create) return { kind: 'open', dir };
+  // A folder inside a project made elsewhere (a plain folder of a repository whose project is at
+  // its root): init would reuse that project and the app would open it without a word, so ask.
+  if (probe.root !== undefined && !samePath(probe.root, dir)) {
+    const answer = await port.ask({ kind: 'covered', root: dir, covering: probe.root });
+    if (answer === 'open') return { kind: 'open', dir: probe.root };
+    if (answer !== 'create') return { kind: 'cancel' };
+    await port.init(dir, true);
+    return { kind: 'open', dir };
+  }
   try {
     await port.init(dir, false);
     return { kind: 'open', dir };

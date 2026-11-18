@@ -113,6 +113,29 @@ describe('Crear proyecto', () => {
     expect(await result).toEqual({ kind: 'open', dir: '/product' });
   });
 
+  // In a plain folder of a repository whose project sits at the repository's root, otea init made
+  // nothing and reused the root's project, so the app opened the parent without a word.
+  it('asks in a folder inside a project, before init reuses the project above', async () => {
+    const { result, asked, inits } = run(
+      { probe: { kind: 'project', root: '/repo' }, answer: 'create' },
+      '/repo/docs',
+      true,
+    );
+    expect(await result).toEqual({ kind: 'open', dir: '/repo/docs' });
+    expect(asked).toEqual([{ kind: 'covered', root: '/repo/docs', covering: '/repo' }]);
+    expect(inits).toEqual([{ dir: '/repo/docs', here: true }]);
+  });
+
+  it('or opens the project above, making nothing', async () => {
+    const { result, inits } = run(
+      { probe: { kind: 'project', root: '/repo' }, answer: 'open' },
+      '/repo/docs',
+      true,
+    );
+    expect(await result).toEqual({ kind: 'open', dir: '/repo' });
+    expect(inits).toEqual([]);
+  });
+
   it('passes any other failure on', async () => {
     const { result } = run(
       {
