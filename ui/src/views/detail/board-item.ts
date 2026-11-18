@@ -220,12 +220,16 @@ export type WaitRow = { kind: 'parts' | 'blockers'; open: LinkedView[]; total: n
 export function waitRows(def: BoardDefinition, stepId: string, links: ItemLinks): WaitRow[] {
   const step = stepById(def, stepId);
   if (!step) return [];
-  return (['parts', 'blockers'] as const)
-    .filter((kind) => step.waits.includes(kind))
-    .map((kind) => {
-      const all = kind === 'parts' ? links.parts : links.blockers;
-      return { kind, open: all.filter((x) => !x.closed), total: all.length };
-    });
+  return (
+    (['parts', 'blockers'] as const)
+      .filter((kind) => step.waits.includes(kind))
+      .map((kind) => {
+        const all = kind === 'parts' ? links.parts : links.blockers;
+        return { kind, open: all.filter((x) => !x.closed), total: all.length };
+      })
+      // An item with no parts has none to wait for: the row would only say so (IDEA3-7).
+      .filter((row) => row.kind !== 'parts' || row.total > 0)
+  );
 }
 
 // The refusal Aprobar answers in the page's words while a wait no longer holds (the engine's

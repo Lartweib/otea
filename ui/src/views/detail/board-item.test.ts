@@ -278,6 +278,11 @@ describe('waitRows: what a step waits for', () => {
     ]);
     expect(waitRows(errores(), 'striage', links)).toEqual([]);
   });
+
+  it('says nothing of parts on an item that has none: there is nothing to wait for (IDEA3-7)', () => {
+    const links = linksOf({ relations: [] }, names);
+    expect(waitRows(errores(), 'sfix', links).map((r) => r.kind)).toEqual(['blockers']);
+  });
 });
 
 describe('branchStrip: the protected branch where the item stands', () => {

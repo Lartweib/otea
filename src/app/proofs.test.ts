@@ -39,7 +39,8 @@ describe('ticking a checklist point with its proof', () => {
     root = mkdtempSync(join(tmpdir(), 'otea-proofs-'));
     const def = creatures();
     const steps = def.parts.fsteps;
-    if (steps) steps.proof = true;
+    // The checklist asks for proof, but in the test of one that does not (UI3-6).
+    if (steps) steps.proof = !expect.getState().currentTestName?.includes('UI3-6');
     def.parts.elog = {
       id: 'elog',
       name: 'Salida',
@@ -125,6 +126,24 @@ describe('ticking a checklist point with its proof', () => {
     expect(by('art › silhouette reads at 32 px')().text).toBe(
       'Ticked "Paleta" in Comprobaciones with the test "art › silhouette reads at 32 px" of junit.xml (passes).',
     );
+  });
+
+  it('shows a proof given on a checklist that does not ask for one, on the page too (UI3-6)', () => {
+    const log = attach(file('build.log', 'start\nsilhouette ok\n'));
+    tickPoint(
+      project,
+      {
+        id,
+        point: 'Silueta',
+        source: { log: { file: 'build.log', line: 2 } },
+        actor: quill,
+        channel: 'cli',
+      },
+      now,
+    );
+    const block = boardBlockOf(project, requireItem(project.db, id));
+    expect(block?.checklists).toEqual([expect.objectContaining({ part: 'fsteps', asks: false })]);
+    expect(block?.checklists?.[0]?.points[0]?.proof).toMatchObject({ evidence: log.id, line: 2 });
   });
 
   it('holds the handoff until every ticked point has its proof, and shows them on the page', () => {

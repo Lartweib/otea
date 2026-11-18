@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ago, NOW, officialType } from '../../derive/fixtures.ts';
 import type { ItemEvent, ItemView } from '../../types.ts';
-import { boardFactsOf, closerOf, factsOf, standAgentOf, standOf } from './facts.ts';
+import { boardFactsOf, closerOf, doerOf, factsOf, standAgentOf, standOf } from './facts.ts';
 
 const bug = officialType('bug-triage');
 let seq = 0;
@@ -65,6 +65,26 @@ describe('what the sheet reads from the item', () => {
     ];
     const f = factsOf(view({ events, state: 'fixing', turn: 'agent' }), bug, NOW);
     expect(f.sentBack).toEqual([]);
+  });
+
+  it('gives the answers you gave in the round the agent handed you (IDEA3-10)', () => {
+    const events = [
+      ...twoRounds.slice(0, 3),
+      ev('question_asked', mender, { question: 1, text: '¿Para quién es?' }, 40),
+      ev('question_answered', you, { question: 1, text: 'Para el equipo.' }, 30),
+      ev('transitioned', mender, { from: 'fixing', to: 'verify', reason: 'Listo.' }, 20),
+    ];
+    const f = factsOf(view({ events }), bug, NOW);
+    expect(f.answers).toEqual([
+      { agent: 'Mender', question: '¿Para quién es?', answer: 'Para el equipo.' },
+    ]);
+    expect(factsOf(view({ events: twoRounds }), bug, NOW).answers).toBeUndefined();
+  });
+
+  it('keeps your send-back notes to the step you sent back, not a later one (IDEA3-9)', () => {
+    const later = [...twoRounds, ev('transitioned', you, { from: 'verify', to: 'fixed' }, 10)];
+    const f = factsOf(view({ events: later, state: 'fixed', turn: 'human' }), bug, NOW);
+    expect(f.mine).toBeNull();
   });
 
   it('reads the agent that handed it, its note, the round and your notes', () => {
@@ -300,5 +320,22 @@ describe('who closed it', () => {
     const relayed = ev('transitioned', you, { from: 'verify', to: 'fixed', via: 'Kiln' }, 5);
     expect(closerOf([handed, relayed])).toBeNull();
     expect(closerOf([])).toBeNull();
+  });
+});
+
+describe('doerOf: who does it, in the details', () => {
+  it('names an agent that took the item or moved it, never one that only relayed or created it', () => {
+    const relayed = ev(
+      'transitioned',
+      you,
+      { from: 'reported', to: 'dropped', relay: { via: 'claude-a', quote: 'tíralo' } },
+      5,
+    );
+    expect(doerOf('claude-a', [ev('created', mender, {}, 9), relayed])).toBeNull();
+    const claimed = ev('claimed', mender, { holder: 'Mender' }, 8);
+    expect(doerOf('Mender', [claimed, relayed])).toBe('Mender');
+    const handed = ev('transitioned', mender, { from: 'fixing', to: 'verify' }, 7);
+    expect(doerOf('Mender', [handed])).toBe('Mender');
+    expect(doerOf(null, [handed])).toBeNull();
   });
 });

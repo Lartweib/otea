@@ -28,7 +28,7 @@ export function ProofChecklist({
     <section className="isec proof-list" data-key={`isec:proof:${list.part}`}>
       <div className="ch">
         <span className="margin-label">{list.name}</span>
-        <span className="gloss">{t('proof.asks')}</span>
+        {list.asks === false ? null : <span className="gloss">{t('proof.asks')}</span>}
       </div>
       <ul className="proof-points">
         {list.points.map((point) => (

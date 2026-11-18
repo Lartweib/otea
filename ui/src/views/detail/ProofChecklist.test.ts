@@ -61,3 +61,11 @@ describe('the footer of a checklist that asks for proof', () => {
     expect(gaps(render({ list: list(0), short: true }))).toEqual(['falta', 'falta', 'falta']);
   });
 });
+
+describe('a checklist that does not ask for proof, with a point proved anyway (UI3-6)', () => {
+  it('shows the proof without saying the checklist asks for one', () => {
+    setLanguage('es');
+    expect(render({ list: { ...list(1), asks: false } })).not.toContain('class="gloss"');
+    expect(render({ list: list(1) })).toContain('class="gloss"');
+  });
+});

@@ -13,7 +13,7 @@ import { type Agent, actedWith } from '../../presence.ts';
 import { typeWord } from '../../preset-words.ts';
 import type { ItemView, TypeView } from '../../types.ts';
 import { ClampValue } from './ClampValue.tsx';
-import type { Facts } from './facts.ts';
+import { doerOf, type Facts } from './facts.ts';
 import { DETAILS_SHOWN, moreOf } from './frame.ts';
 
 // Details (SPEC §10.3, mock:2703-2720): who does it, who reviews, the lease, the type, the type's
@@ -77,15 +77,18 @@ export function detailCells(o: {
   const { item, type, facts, now } = o;
   const you = t('sheet.d.you');
   // The profile the doer acted with on this item (agents mock §5), else the one it declares now.
-  const doerProfile = facts.agent ? actedWith(facts.agent, item.events, o.agents) : null;
+  // On the agent's turn the facts name who has it or whose step it is; otherwise only an agent
+  // that took or moved the item did it (a relayed drop is not doing it, UI3-8).
+  const doerName = item.turn === 'agent' ? facts.agent : doerOf(facts.agent, item.events);
+  const doerProfile = doerName ? actedWith(doerName, item.events, o.agents) : null;
   const doer: Cell = o.own
     ? { label: t('sheet.d.doer'), value: you, cls: 'you' }
     : {
         label: t('sheet.d.doer'),
-        value: facts.agent ? (
+        value: doerName ? (
           <>
-            <AgentMark name={facts.agent} decorative />
-            {facts.agent}
+            <AgentMark name={doerName} decorative />
+            {doerName}
             {doerProfile ? <Prof profile={doerProfile} small /> : null}
           </>
         ) : (

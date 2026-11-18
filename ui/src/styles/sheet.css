@@ -456,6 +456,25 @@ section.evidence,
   font-style: italic;
   color: var(--ink-2);
 }
+/* The agent's questions and what you answered, in the round you review: each question small, your
+   answer under it in your own voice. */
+.qa-answers dl {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  max-width: 72ch;
+}
+.qa-answers dt {
+  font: 400 13px / 1.4 var(--sans);
+  color: var(--ink-3);
+}
+.qa-answers dd {
+  margin: 2px 0 0;
+  font: italic 400 17px / 1.5 var(--serif);
+  font-variation-settings: "opsz" 18;
+  color: var(--ink-2);
+  white-space: pre-line;
+}
 /* The type's own fields, read as prose in the body. */
 .d-sec.field .md {
   font: 400 17px / 1.5 var(--serif);

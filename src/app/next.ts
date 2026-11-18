@@ -389,9 +389,16 @@ export type BoardBlock = {
 };
 
 export type ProvedPoint = { id: string; name: string; ticked: boolean; proof?: Proof };
-export type ProvedChecklist = { part: string; name: string; points: ProvedPoint[] };
+// `asks`: the checklist asks for proof («pide prueba»); one that does not is listed only once a
+// point of it was proved anyway, so the proof shows on the page and not only in the history.
+export type ProvedChecklist = {
+  part: string;
+  name: string;
+  asks: boolean;
+  points: ProvedPoint[];
+};
 
-// The checklists of the board that ask for proof, each point with whether it is ticked and the
+// The checklists of the board that ask for proof, and those with a point proved anyway, each point with whether it is ticked and the
 // proof it has in the round.
 function provedChecklists(
   def: BoardDefinition,
@@ -399,12 +406,17 @@ function provedChecklists(
   proofs: readonly Proof[],
 ): ProvedChecklist[] {
   return Object.values(def.parts)
-    .filter((part) => part.kind === 'check' && part.proof === true)
+    .filter(
+      (part) =>
+        part.kind === 'check' &&
+        (part.proof === true || proofs.some((one) => one.part === part.id)),
+    )
     .map((part) => {
       const ticked = new Set(tickedOf(fields[part.id]));
       return {
         part: part.id,
         name: part.name,
+        asks: part.proof === true,
         points: part.options.map(({ id, name }) => {
           const proof = proofs.find((one) => one.part === part.id && one.point === id);
           return { id, name, ticked: ticked.has(id), ...(proof === undefined ? {} : { proof }) };
