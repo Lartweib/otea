@@ -128,6 +128,16 @@ describe('Triaje', () => {
       expect(html).toContain(word);
   });
 
+  it('reads the handoff note as Markdown, never its raw marks (P7-11)', () => {
+    setLanguage('es');
+    const reason = '## Resumen\n- **causa**: el_parseo';
+    const said = [moved('ERR-1', 'verify', agent('mender'), { reason })];
+    const html = render(createElement(Triage, {}), fakeApp({ feed: said }));
+    expect(html).toContain('<h2>Resumen</h2>');
+    expect(html).toContain('<strong>causa</strong>: el_parseo');
+    expect(html).not.toContain('## Resumen');
+  });
+
   it('is all caught up when nothing waits for review', () => {
     setLanguage('es');
     const html = render(createElement(Triage, {}), fakeApp({ all: items.slice(2) }));

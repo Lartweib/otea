@@ -59,6 +59,7 @@ import type { Evidence, Item, ItemView, Move } from '../types.ts';
 import { useStudioBoard } from '../views/board/studio-board.tsx';
 import type { ItemBoardBlock } from '../views/detail/board-item.ts';
 import { askPick } from '../views/detail/pick-intent.ts';
+import { NoteText } from './NoteText.tsx';
 import {
   arriveUnder,
   dropFace,
@@ -472,7 +473,7 @@ function TriCard({
       </div>
       <h2>{item.title}</h2>
       <p className="sf">{standfirst(words)}</p>
-      {words.say ? <p className="say">{words.say}</p> : null}
+      {words.say ? <NoteText className="say" text={words.say} /> : null}
       <Delivered round={round} />
       <Figures shown={round.figures} />
       <div className="tc-acts">
