@@ -189,6 +189,20 @@ describe('the item sheet', () => {
     expect(heard).not.toContain('data-unheard');
   });
 
+  it('lets the person free a live lease, and says how long it has left, not the item’s age', () => {
+    const held: ItemView = {
+      ...item,
+      state: 'fixing',
+      turn: 'agent',
+      lease: { holder: 'Mender', expiresAt: new Date(NOW + 18 * 60_000).toISOString() },
+    };
+    const html = render(held);
+    expect(html).toContain('data-free');
+    expect(html).toContain('Free it');
+    expect(html).toContain('Mender · 18 min left');
+    expect(render({ ...held, lease: null })).not.toContain('data-free');
+  });
+
   it('disables Previous at the start of the list', () => {
     expect(render()).toMatch(/data-nav="-1"[^>]*disabled=""/);
   });

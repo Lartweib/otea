@@ -21,6 +21,14 @@ function age(minutes: number): string {
   return t('when.days', { count: Math.round(minutes / 1440) });
 }
 
+// How long a live lease has left, «quedan 18 min»; null when it ran out.
+export function leaseLeftText(lease: Item['lease'], now: number): string | null {
+  const live = activeLease(lease, now);
+  if (!live) return null;
+  const left = Math.max(1, Math.ceil((Date.parse(live.expiresAt) - now) / MIN));
+  return t('when.left', { time: span(left) });
+}
+
 // When, as a row's age column says it (mock:1315-1325): the time left on the lease of an agent at
 // work, "expired" in warn when its lease ran out, else how long the item has been where it is.
 export function whenText(item: Item, now: number): { text: string; warn: boolean } {

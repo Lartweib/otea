@@ -267,6 +267,19 @@ describe('leases', () => {
       expect(move('in_progress', codex, T15)).toMatchObject({ state: 'in_progress', lease: null });
     });
 
+    it('refuses a write by the holder whose lease ran out until it claims again', () => {
+      const update = () =>
+        updateItem(ctx, { id: 'TASKS-1', title: 'Late', actor: claude }, at(T20));
+
+      expect(update).toThrow(expect.objectContaining({ code: 'not_lease_holder' }));
+      expect(update).toThrow(/ran out.*otea claim TASKS-1/);
+      expect(() => move('in_progress', claude, T20)).toThrow(
+        expect.objectContaining({ code: 'not_lease_holder' }),
+      );
+      claimItem(ctx, { id: 'TASKS-1', actor: claude }, at(T20));
+      expect(update()).toMatchObject({ title: 'Late' });
+    });
+
     it('releases the lease when the item moves to the human turn', () => {
       move('in_progress', claude);
       const moved = move('review', claude);

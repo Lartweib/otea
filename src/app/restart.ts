@@ -1,9 +1,7 @@
 import type { Channel } from '../core/authority.ts';
 import { OteaError } from '../core/errors.ts';
 import { type Actor, assertAgentName } from '../core/item.ts';
-import { activeLease } from '../core/lease.ts';
 import type { RefusalDetails } from '../core/refusal.ts';
-import { timeText } from '../core/time.ts';
 import { transaction } from '../store/database.ts';
 import {
   appendEvent,
@@ -47,7 +45,7 @@ function releaseStuck(
   return transaction(db, () => {
     const item = requireWritableItem(db, input.id);
     const at = now();
-    const ran = stuckLease(item, at);
+    const ran = stuckLease(item);
     clearLease(db, item.id);
     appendEvent(db, {
       itemId: item.id,
@@ -60,17 +58,12 @@ function releaseStuck(
   });
 }
 
-function stuckLease(item: ItemRecord, at: string) {
-  const live = activeLease(item.lease, at);
-  if (live) {
-    throw new OteaError(
-      'not_stuck',
-      `${item.id} is held by ${live.holder} until ${timeText(live.expiresAt)}; it is not stuck`,
-      { kind: 'not_stuck', item: item.id, holder: live.holder },
-    );
-  }
+// The lease the person frees: one that ran out (Atasco), or a live one, since the person leads (a
+// subagent that ended still holding it). The agent that held it claims it again before it writes
+// (assertMayWriteItem).
+function stuckLease(item: ItemRecord) {
   if (!item.lease)
-    throw new OteaError('not_stuck', `${item.id} has no lease that ran out`, {
+    throw new OteaError('not_stuck', `${item.id} has no lease to free`, {
       kind: 'not_stuck',
       item: item.id,
     });

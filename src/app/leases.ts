@@ -2,7 +2,7 @@ import { positionOf } from '../core/board/engine.ts';
 import { placeText } from '../core/board/next.ts';
 import { OteaError } from '../core/errors.ts';
 import type { Actor } from '../core/item.ts';
-import { activeLease, DEFAULT_LEASE_TTL_MS, leaseExpiry, leaseHeld } from '../core/lease.ts';
+import { activeLease, DEFAULT_LEASE_TTL_MS, heldText, leaseExpiry } from '../core/lease.ts';
 import { turnOf } from '../core/workflow.ts';
 import { transaction } from '../store/database.ts';
 import { appendEvent, clearLease, type ItemRecord, takeLease } from '../store/queries.ts';
@@ -16,7 +16,7 @@ export type LeaseInput = { id: string; actor: Actor; ttlMs?: number };
 function notHolder(item: ItemRecord, actor: Actor, at: string): OteaError {
   const lease = activeLease(item.lease, at);
   const message = lease
-    ? `${leaseHeld(item.id, lease).message}, not by ${actor.name}: only ${lease.holder} can renew or release it`
+    ? `${heldText(item.id, lease)}, not by ${actor.name}: only ${lease.holder} can renew or release it`
     : `${item.id} is not held by ${actor.name}; claim it first`;
   return new OteaError('not_lease_holder', message);
 }

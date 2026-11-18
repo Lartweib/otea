@@ -1,7 +1,7 @@
 import type { DatabaseSync } from 'node:sqlite';
 import type { AgentChannel } from '../core/authority.ts';
 import { OteaError } from '../core/errors.ts';
-import { activeLease } from '../core/lease.ts';
+import { activeLease, DEFAULT_LEASE_TTL_MS, leaseExpiry } from '../core/lease.ts';
 import {
   clearListening,
   clearWaiting,
@@ -18,6 +18,7 @@ import {
   selectListening,
   selectProfileChanges,
   selectWaiting,
+  takeLease,
   unconfirmProfile,
   upsertAgent,
 } from '../store/queries.ts';
@@ -193,9 +194,22 @@ export function waitBeat(
   const run = () => {
     const at = hearAgent(db, sighting, now);
     markWaiting(db, sighting.agent, at);
+    keepLeases(db, sighting.agent, at);
     return at;
   };
   return { everyMs: LISTEN_BEAT_MS, run };
+}
+
+// A waiting agent is alive: a parent waiting on its children, or on the person's answer, keeps
+// what it holds, each live lease extended to a default lease from now, never shortened. A lease
+// that already ran out stays as it is (Atasco): the agent claims it again.
+function keepLeases(db: DatabaseSync, agent: string, at: string): void {
+  const until = leaseExpiry(at, DEFAULT_LEASE_TTL_MS);
+  for (const { id, lease } of selectLeases(db)) {
+    const live = activeLease(lease, at);
+    if (live?.holder !== agent || live.expiresAt >= until) continue;
+    takeLease(db, id, { holder: agent, expiresAt: until }, at);
+  }
 }
 
 // A wait that ends (it found what it waited for, or its session ended) stops its agent waiting at

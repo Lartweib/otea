@@ -3,7 +3,7 @@ import type { Actor } from '../core/item.ts';
 import { findAgent } from '../store/queries.ts';
 import { addCollection } from './collections.ts';
 import type { Context } from './context.ts';
-import { createItem } from './items.ts';
+import { createItem, listItems } from './items.ts';
 import { claimItem, releaseItem } from './leases.ts';
 import {
   CLI_HARNESS,
@@ -185,6 +185,19 @@ describe('agent presence', () => {
 
       endWaiting(ctx.db, 'claude', heard);
       expect(listAgents(ctx.db, at(T5_1S))[0]).toMatchObject({ listening: true, waiting: false });
+    });
+
+    it('keeps the leases of a waiting agent alive on every beat: it waits on, it did not go quiet', () => {
+      claimItem(ctx, { id: 'TASKS-1', actor: claude }, at(T0));
+      claimItem(ctx, { id: 'TASKS-2', actor: claude, ttlMs: 60 * 60_000 }, at(T0));
+
+      waitBeat(ctx.db, { agent: 'claude', channel: 'cli' }, at(T5)).run();
+
+      const leases = listItems(ctx, {}, at(T5)).map(({ id, lease }) => [id, lease?.expiresAt]);
+      expect(leases).toEqual([
+        ['TASKS-1', '2026-01-01T00:20:00.000Z'],
+        ['TASKS-2', '2026-01-01T01:00:00.000Z'],
+      ]);
     });
 
     it('stops counting a wait as waiting a listening window after its last beat', () => {

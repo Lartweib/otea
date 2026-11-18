@@ -640,7 +640,11 @@ describe('a handoff by an agent that holds no lease', () => {
     expect(() => handoffItem(ctx, { id: item.id, actor: scout, channel: 'cli' }, now)).toThrow(
       'CRI-1 was claimed by quill; hand off only what is yours (otea next)',
     );
-    // Its own lease ran out with nobody taking it: quill still hands it off.
+    // Its own lease ran out with nobody taking it: quill claims it again, then hands it off.
+    expect(() => handoffItem(ctx, { id: item.id, actor: quill, channel: 'cli' }, now)).toThrow(
+      'Your lease on CRI-1 ran out',
+    );
+    claimItem(ctx, { id: item.id, actor: quill }, now);
     expect(handoffItem(ctx, { id: item.id, actor: quill, channel: 'cli' }, now).item.id).toBe(
       item.id,
     );

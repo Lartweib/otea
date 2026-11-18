@@ -5,7 +5,7 @@ import { OteaError } from '../core/errors.ts';
 import { assertCanLeave, type FieldValues, intake, revise } from '../core/fields.ts';
 import { assertStandsAlone } from '../core/hierarchy.ts';
 import { type Actor, formatItemId } from '../core/item.ts';
-import { activeLease, assertMayWrite, type Lease } from '../core/lease.ts';
+import { activeLease, type Lease } from '../core/lease.ts';
 import { type ItemType, typeFor, typeOf } from '../core/preset.ts';
 import { type ChildrenSummary, childrenSummary, type RelationRef } from '../core/relations.ts';
 import { itemMoves } from '../core/views.ts';
@@ -40,6 +40,7 @@ import { collectionNamed, getCollection, presetOf, typeOfItem } from './collecti
 import type { Context } from './context.ts';
 import { draftRequestOf } from './draft-request.ts';
 import { presentEvidence } from './evidence.ts';
+import { assertMayWriteItem } from './lease-take.ts';
 import {
   assertBranchMayChange,
   assertMayStandAlone,
@@ -337,7 +338,7 @@ export function updateItem(ctx: Context, input: UpdateItemInput, now = systemClo
     const preset = presetOf(ctx, getCollection(db, item.collection));
     const type: ItemType = typeOf(preset, item.type);
     const at = now();
-    assertMayWrite(item.id, activeLease(item.lease, at), input.actor);
+    assertMayWriteItem(db, item, input.actor, at);
     if (turnOf(type.workflow, item.state) === 'none') {
       throw new OteaError(
         'item_closed',
@@ -447,7 +448,7 @@ export function moveItem(ctx: Context, input: MoveItemInput, now = systemClock):
     const to = boardState(ctx, item.collection, input.to);
     const at = now();
     const lease = activeLease(item.lease, at);
-    assertMayWrite(item.id, lease, actor);
+    assertMayWriteItem(db, item, actor, at);
     // On a board, the step engine says first, in the board's words, why a move is not this actor's.
     const note = assertMoveHandsOff(ctx, item, to, actor, {
       ...(reason === undefined ? {} : { reason }),

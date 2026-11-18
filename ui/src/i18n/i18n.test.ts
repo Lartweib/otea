@@ -98,6 +98,7 @@ describe('the catalogs', () => {
     'bs.preview.branch.sample',
     'bs.preview.branch.repo',
     'agent.harness',
+    'sheet.d.leaseLeft',
   ]);
 
   it('leave no English message untranslated in Spanish', () => {

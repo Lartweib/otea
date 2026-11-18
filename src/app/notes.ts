@@ -16,7 +16,7 @@ import {
 } from '../core/board/notes.ts';
 import { OteaError } from '../core/errors.ts';
 import type { Actor } from '../core/item.ts';
-import { activeLease, assertMayWrite } from '../core/lease.ts';
+import { activeLease } from '../core/lease.ts';
 import { transaction } from '../store/database.ts';
 import {
   appendEvent,
@@ -27,6 +27,7 @@ import {
 } from '../store/queries.ts';
 import type { Context } from './context.ts';
 import { requireItem, requireWritableItem, systemClock } from './items.ts';
+import { assertMayWriteItem } from './lease-take.ts';
 import { itemOnBoard, type LiveBoard, liveBoardOf, type Worker, workerOf } from './next.ts';
 
 // Notes from the person while an agent does a step (core/board/notes.ts): the person leaves one
@@ -336,7 +337,7 @@ export function replyNote(ctx: Context, input: ReplyNoteInput, now = systemClock
         'invalid_transition',
         `Note ${input.note} on ${item.id} is already answered`,
       );
-    assertMayWrite(item.id, activeLease(item.lease, at), input.actor);
+    assertMayWriteItem(ctx.db, item, input.actor, at);
     const text = input.text.trim();
     if (text === '')
       refuse('reason_required', id, 'empty', `Not answered: say your answer to note ${input.note}`);
