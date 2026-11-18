@@ -1,4 +1,4 @@
-import { FROM_CACHE, SAVED_AT } from './sw-routes.ts';
+import { FROM_CACHE, PROJECT, SAVED_AT } from './sw-routes.ts';
 
 // How the service worker answers each route (sw-routes.ts), over the few calls of the Cache API it
 // needs, so the tests give it a map and a fake network.
@@ -6,7 +6,23 @@ import { FROM_CACHE, SAVED_AT } from './sw-routes.ts';
 export type CacheLike = {
   match(key: string): Promise<Response | undefined>;
   put(key: string, response: Response): Promise<void>;
+  keys(): Promise<readonly string[]>;
+  delete(key: string): Promise<boolean>;
 };
+
+// Where the data cache notes the project its answers are from.
+const PROJECT_KEY = '/__otea/project';
+
+// The answers kept are of one project, the last one that answered on this address: an answer of
+// another project first forgets everything kept, so offline never shows one project's items under
+// another (two projects served one after the other on the same port).
+async function keepProject(cache: CacheLike, project: string | null): Promise<void> {
+  if (!project) return;
+  const held = await cache.match(PROJECT_KEY);
+  if (held && (await held.text()) === project) return;
+  for (const key of await cache.keys()) await cache.delete(key);
+  await cache.put(PROJECT_KEY, new Response(project));
+}
 
 export type Net = (request: Request | string) => Promise<Response>;
 
@@ -53,8 +69,10 @@ export async function networkFirst(
     clearTimeout(timer);
   }
   if (response && !unreachable(response)) {
-    if (response.ok)
+    if (response.ok) {
+      await keepProject(cache, response.headers.get(PROJECT));
       await cache.put(key, withHeaders(response.clone(), { [SAVED_AT]: `${now()}` }));
+    }
     return response;
   }
   const kept = await cache.match(key);

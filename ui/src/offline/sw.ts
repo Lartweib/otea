@@ -57,6 +57,8 @@ const opened = (name: string): Promise<CacheLike> =>
   caches.open(name).then((cache) => ({
     match: (key) => cache.match(key),
     put: (key, response) => cache.put(key, response),
+    keys: () => cache.keys().then((requests) => requests.map((request) => request.url)),
+    delete: (key) => cache.delete(key),
   }));
 
 const net = (request: Request | string) => fetch(request);

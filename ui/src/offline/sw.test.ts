@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { FROM_CACHE, SAVED_AT, swRoute } from './sw-routes.ts';
+import { FROM_CACHE, PROJECT, SAVED_AT, swRoute } from './sw-routes.ts';
 import {
   type CacheLike,
   cacheFirst,
@@ -68,6 +68,8 @@ function memoryCache(entries: Record<string, Response> = {}) {
     put: async (key, response) => {
       map.set(key, response);
     },
+    keys: async () => [...map.keys()],
+    delete: async (key) => map.delete(key),
   };
   return { cache, map };
 }
@@ -138,6 +140,46 @@ describe('networkFirst', () => {
 
     expect(response.status).toBe(401);
     expect(await map.get(ITEMS)?.clone().json()).toEqual([{ id: 'old' }]);
+  });
+});
+
+// Two projects served one after the other on the same address (the desktop app hands ports out
+// from 4400) share the browser's cache: offline, one once showed the other's items.
+describe('networkFirst, one project at a time', () => {
+  const ITEM = `${ORIGIN}/api/items/CAM-1`;
+  const from = (project: string, body: unknown) =>
+    new Response(JSON.stringify(body), { headers: { [PROJECT]: project } });
+
+  it('forgets what another project answered once a new one answers on this address', async () => {
+    const { cache, map } = memoryCache();
+    await networkFirst(new Request(ITEM), {
+      net: async () => from('p2', { title: 'Secret of p2' }),
+      cache,
+      now: () => 0,
+    });
+    await networkFirst(new Request(ITEMS), {
+      net: async () => from('p1', [{ id: 'CAM-3' }]),
+      cache,
+      now: () => 0,
+    });
+    expect(map.has(ITEM)).toBe(false);
+
+    const offline = await networkFirst(new Request(ITEM), { net: down, cache, now: () => 0 });
+    expect(offline.status).toBe(503);
+    const items = await networkFirst(new Request(ITEMS), { net: down, cache, now: () => 0 });
+    expect(await items.json()).toEqual([{ id: 'CAM-3' }]);
+  });
+
+  it('keeps every answer of the same project', async () => {
+    const { cache, map } = memoryCache();
+    await networkFirst(new Request(ITEM), { net: async () => from('p1', {}), cache, now: () => 0 });
+    await networkFirst(new Request(ITEMS), {
+      net: async () => from('p1', []),
+      cache,
+      now: () => 0,
+    });
+    expect(map.has(ITEM)).toBe(true);
+    expect(map.has(ITEMS)).toBe(true);
   });
 });
 

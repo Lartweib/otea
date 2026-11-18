@@ -784,9 +784,25 @@ export function createServer(project: Project, options: ServerOptions = {}): Ote
       );
     }
     await next();
+    // Whose answer it is: the installed app's cache keeps one project's answers at a time, since
+    // two projects served one after the other on the same address share it (ui/src/offline).
+    if (c.req.path === '/api' || c.req.path.startsWith('/api/'))
+      c.header('x-otea-project', project.identity.id);
   });
   const boundPort = () => port;
   mountAuth(app, options.token, boundPort);
+  // A write made for another project, one that answered on this address before (a capture queued on
+  // the phone while the PC was off): never applied to this one.
+  app.use('/api/*', async (c, next) => {
+    const meant = c.req.header('x-otea-project');
+    if (c.req.method !== 'GET' && meant && meant !== project.identity.id)
+      throw new RejectedRequest(
+        409,
+        'other_project',
+        'This was made for another project, not the one served at this address now',
+      );
+    await next();
+  });
   const keys = options.notify?.keys ?? generateVapidKeys();
   const notifier = createNotifier(project, feed, {
     sender: options.notify?.sender ?? webPushSender(keys),
