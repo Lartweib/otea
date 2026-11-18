@@ -449,12 +449,12 @@
   font-weight: 600;
   color: var(--ink);
 }
+/* the handoff note, read as Markdown (NoteText): its marks drawn, never shown raw */
 .tcard .say {
   font: 400 16px / 1.5 var(--serif);
   margin-top: 14px;
   max-width: 64ch;
   color: var(--ink);
-  white-space: pre-line;
 }
 /* What the round hands in: the step's fields, each value under its name, and its other files. */
 .tcard .tc-hand {
