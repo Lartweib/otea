@@ -16,6 +16,8 @@ export type HookChange = {
   content?: string;
   // Why the hook went where it did.
   note?: string;
+  // What Otea says it did, when not one of a hook's words (the forge's ruleset).
+  said?: string;
 };
 
 // The first lines of the pre-push hook Otea writes; a hook without them is someone else's.

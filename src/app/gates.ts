@@ -281,6 +281,13 @@ export function checkGate(
   return check;
 }
 
+// The base branches the project's live boards protect (guard.base), each once, for the forge to
+// enforce (otea hook install --forge).
+export function protectedBases(ctx: Context): string[] {
+  const bases = liveBoards(ctx).flatMap(({ def }) => guardedBranch(def)?.guard.base ?? []);
+  return [...new Set(bases)].sort();
+}
+
 // A gate no board and no preset declares is a typo (`psuh`) or an action Otea does not gate
 // (`deploy`): the check refuses it rather than matching nothing and allowing the action.
 function assertKnownGate(ctx: Context, gate: string, onBoards: ReadonlySet<string>): void {

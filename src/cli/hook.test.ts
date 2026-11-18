@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { oteaLauncher } from '../app/launcher.ts';
+import type { ForgeCli, Ruleset } from './forge.ts';
 import { installGitHook } from './hooks.ts';
 import { type Cli, cliAt, tempGitRepo } from './testing.ts';
 
@@ -25,10 +26,69 @@ describe('hook', () => {
     const result = await otea('hook', 'install');
 
     expect(result.code).toBe(2);
-    expect(result.err).toContain('Name the hook: --git');
+    expect(result.err).toContain('Name the hook: --git or --forge');
     const claude = await otea('hook', 'install', '--claude');
     expect(claude.code).toBe(2);
     expect(existsSync(join(repo.dir, '.claude'))).toBe(false);
+  });
+
+  // GitHub enforces the base branches the boards protect, for any tool; gh is a stand-in here, so
+  // no test reaches GitHub.
+  describe('--forge', () => {
+    const forge = (): ForgeCli & { saved: Ruleset[] } => {
+      const saved: Ruleset[] = [];
+      return {
+        saved,
+        status: () => 'ready',
+        repo: () => 'acme/keys',
+        rulesets: () => saved.map(({ name }, index) => ({ id: index + 1, name })),
+        saveRuleset: (_cwd, _repo, ruleset, id) => {
+          if (id === undefined) saved.push(ruleset);
+          else saved[id - 1] = ruleset;
+        },
+        deleteRuleset: (_cwd, _repo, id) => {
+          saved.splice(id - 1, 1);
+        },
+      };
+    };
+
+    beforeEach(async () => {
+      const person = cliAt(repo.dir);
+      expect((await person('init', '--template', 'none')).code).toBe(0);
+      expect((await person('board', 'add', 'Cambios', '--template', 'changes')).code).toBe(0);
+    });
+
+    it('sets a GitHub ruleset on the base branch the board protects, and takes it off', async () => {
+      const gh = forge();
+      const at = cliAt(repo.dir, {}, undefined, undefined, undefined, undefined, false, {
+        forge: gh,
+      });
+
+      const install = await at('hook', 'install', '--forge');
+      expect(install.code).toBe(0);
+      expect(install.out).toContain(
+        'Set the ruleset "Otea: protected base branches" on github.com/acme/keys (GitHub now refuses a direct push, a force push and a deletion of main from any tool',
+      );
+      expect(gh.saved.map(({ conditions }) => conditions.ref_name.include)).toEqual([
+        ['refs/heads/main'],
+      ]);
+      expect((await at('hook', 'install', '--forge')).out).toContain('Updated the ruleset');
+      expect(gh.saved).toHaveLength(1);
+
+      const removed = await at('hook', 'remove', '--forge');
+      expect(removed.out).toContain('Removed the ruleset "Otea: protected base branches"');
+      expect(gh.saved).toEqual([]);
+    });
+
+    it('prints the steps by hand when gh is not there, and still writes the git hook', async () => {
+      const install = await otea('hook', 'install', '--git', '--forge');
+
+      expect(install.code).toBe(22);
+      expect(install.err).toContain('Wrote');
+      expect(install.err).toContain('gh, the GitHub CLI, is not installed. To have GitHub enforce');
+      expect(install.err).toContain('Settings > Rules > Rulesets > New ruleset');
+      expect(existsSync(join(repo.dir, '.git/hooks/pre-push'))).toBe(true);
+    });
   });
 
   describe('--git', () => {

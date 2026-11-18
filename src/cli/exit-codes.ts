@@ -8,7 +8,8 @@ export type FailureCode =
   | 'not_running'
   | 'timeout'
   | 'interrupted'
-  | 'gate_refused';
+  | 'gate_refused'
+  | 'forge_unavailable';
 
 export const EXIT_CODES: Readonly<Record<'ok' | FailureCode, number>> = {
   ok: 0,
@@ -72,6 +73,9 @@ export const EXIT_CODES: Readonly<Record<'ok' | FailureCode, number>> = {
   transport_unavailable: 20,
   // An item of an archived board: it is read-only until the person restores the board in Studio.
   board_archived: 21,
+  // otea hook install --forge could not set the forge's rules (no gh, signed out, refused): it
+  // printed the steps to take by hand.
+  forge_unavailable: 22,
   // 128 + SIGINT, as shells report a command stopped by Ctrl+C.
   interrupted: 130,
 };

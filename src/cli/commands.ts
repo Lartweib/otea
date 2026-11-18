@@ -26,7 +26,7 @@ import { listDevices, revokeDevice } from '../app/devices.ts';
 import { handInText } from '../app/draft-request.ts';
 import { listEvents } from '../app/events.ts';
 import { attachEvidence, detachEvidence } from '../app/evidence.ts';
-import { type Brings, checkGate, type GateCheck } from '../app/gates.ts';
+import { type Brings, checkGate, type GateCheck, protectedBases } from '../app/gates.ts';
 import { boardGuide, type Guide, guideIndex, hintFor } from '../app/guide.ts';
 import {
   forgetProjectPath,
@@ -164,6 +164,7 @@ import {
   type Output,
   UsageError,
 } from './command.ts';
+import { installForge, removeForge } from './forge.ts';
 import {
   columns,
   formatEvent,
@@ -2464,14 +2465,13 @@ function hookTargets<T extends string>({ flag }: Input, targets: readonly T[]): 
   return named;
 }
 
-function hookText({ path, action, content, note }: HookChange): string {
+function hookText({ path, action, content, note, said }: HookChange): string {
   const why = note === undefined ? '' : ` (${note})`;
-  if (action === 'unchanged') return `${path} already has the Otea hook${why}`;
-  if (action === 'absent') return `${path} has no Otea hook`;
-  const done = { created: 'Wrote', updated: 'Rewrote', removed: 'Removed the Otea hook from' }[
-    action
-  ];
-  const head = `${done} ${path}${why}`;
+  if (said === undefined && action === 'unchanged')
+    return `${path} already has the Otea hook${why}`;
+  if (said === undefined && action === 'absent') return `${path} has no Otea hook`;
+  const done = { created: 'Wrote', updated: 'Rewrote', removed: 'Removed the Otea hook from' };
+  const head = said ?? `${done[action as keyof typeof done]} ${path}${why}`;
   return content === undefined ? head : `${head}:\n${indent(content.trimEnd())}`;
 }
 
@@ -2482,17 +2482,21 @@ function hookOutput(changes: HookChange[]): Output {
 const hookInstall: Command = {
   name: 'hook install',
   summary:
-    'Make the gates hard in the repo here: --git writes a pre-push hook that runs otea check --gate push, whatever tool runs the push; never overwrites a hook of someone else',
+    'Make the gates hard in the repo here, whatever tool runs the push or merge: --git writes a pre-push hook that runs otea check --gate push (never overwrites a hook of someone else); --forge has gh set a GitHub ruleset on the base branches the boards protect, so GitHub refuses a direct push, a force push and a deletion of them, or prints the steps to set it by hand',
   args: [],
-  options: { git: { flag: true } },
+  options: { git: { flag: true }, forge: { flag: true } },
   // Each hook is installed on its own: one that cannot be (no repo, a team's own pre-push hook)
   // never keeps another from being written, and the refusal says what was written.
   execute: (input) => {
     const changes: HookChange[] = [];
     const refused: Error[] = [];
-    for (const _target of hookTargets(input, ['git'])) {
+    for (const target of hookTargets(input, ['git', 'forge'])) {
       try {
-        changes.push(installGitHook(input.cwd, withHome(OTEA, input.home)));
+        changes.push(
+          target === 'git'
+            ? installGitHook(input.cwd, withHome(OTEA, input.home))
+            : installForge(input.cwd, withProject(input.cwd, protectedBases), input.forge),
+        );
       } catch (error) {
         if (!(error instanceof CommandFailure || error instanceof OteaError)) throw error;
         refused.push(error);
@@ -2508,13 +2512,17 @@ const hookInstall: Command = {
 const hookRemove: Command = {
   name: 'hook remove',
   summary:
-    'Remove the hooks Otea wrote, leaving every other hook: --git the pre-push hook; --claude the Claude Code hooks and allow rules an older otea hook install --claude added to .claude/settings.local.json',
+    'Remove the hooks Otea wrote, leaving every other hook and rule: --git the pre-push hook; --forge the GitHub ruleset hook install --forge set; --claude the Claude Code hooks and allow rules an older otea hook install --claude added to .claude/settings.local.json',
   args: [],
-  options: { git: { flag: true }, claude: { flag: true } },
+  options: { git: { flag: true }, forge: { flag: true }, claude: { flag: true } },
   execute: (input) =>
     hookOutput(
-      hookTargets(input, ['git', 'claude']).map((target) =>
-        target === 'git' ? removeGitHook(input.cwd) : removeClaudeHook(input.cwd),
+      hookTargets(input, ['git', 'forge', 'claude']).map((target) =>
+        target === 'git'
+          ? removeGitHook(input.cwd)
+          : target === 'forge'
+            ? removeForge(input.cwd, input.forge)
+            : removeClaudeHook(input.cwd),
       ),
     ),
 };
