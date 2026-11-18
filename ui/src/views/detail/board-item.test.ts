@@ -318,6 +318,14 @@ describe('branchStrip: the protected branch where the item stands', () => {
       step: 'Integrar',
     });
     expect(branchStrip(landing, 'done', fields, { merged: true })?.key).toBe('merged');
+    // While it is landed: an agent merges it into the base and pushes, said on the page (P5-15).
+    const guard = landing.parts.fbranch?.guard;
+    if (guard) guard.base = 'main';
+    expect(branchStrip(landing, 'sland', fields)).toMatchObject({
+      tone: 'ok',
+      key: 'landing',
+      base: 'main',
+    });
   });
 
   it('is nothing on a board without a protected branch, or before the branch is named', () => {

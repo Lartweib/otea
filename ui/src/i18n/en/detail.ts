@@ -409,6 +409,10 @@ export const detail = {
   'sheet.says.back': 'back to {agent} with your notes, in round {round}',
   'sheet.says.backAgent': 'back to an agent with your notes, in round {round}',
   'sheet.says.yours': 'it stays yours',
+  'sheet.says.lands': 'an agent then merges it into {base} and pushes {base} to the remote',
+  'sheet.says.landsAny': 'an agent then merges it and pushes it to the remote',
+  'sheet.says.closesUnmerged':
+    'it is Done, but nothing is merged yet: an agent merges its branch and records it',
   'sheet.says.resume': 'back in the queue of {state}, for any agent',
   'sheet.says.reassign': 'you leave it for the agent you pick',
   'sheet.receipt.has': '{agent} has it.',
@@ -639,6 +643,7 @@ export const detail = {
   'bi.branch.merge': 'can be merged',
   'bi.branch.merged': 'merged',
   'bi.branch.landed': 'merged in {step}',
+  'bi.branch.landing': 'an agent merges it into {base} now and pushes {base} to the remote',
   'bi.branch.closed': 'no longer pushed',
   'bi.branch.noPush': 'no pushes in {step}',
   'bi.request.board': 'Board {name}',

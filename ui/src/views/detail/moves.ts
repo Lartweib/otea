@@ -79,7 +79,16 @@ export function moveSaysOf(
     round: number;
     word: (state: string) => string;
     // On a board: the agent and round the move lands on (a way back may go to another step).
-    back?: ((state: string) => { agent: string | null; round: number }) | undefined;
+    // `lands`: it goes on to the land step (an agent merges and pushes, into that base);
+    // `unmerged`: it closes as Done with its branch not merged yet.
+    back?:
+      | ((state: string) => {
+          agent: string | null;
+          round: number;
+          lands?: string;
+          unmerged?: true;
+        })
+      | undefined;
   },
 ): Says {
   const { move, kind } = choice;
@@ -101,11 +110,18 @@ export function moveSaysOf(
       ? t('sheet.says.back', { agent: lands.agent, round: lands.round })
       : t('sheet.says.backAgent', { round: lands.round });
   } else if (move.closes === 'discarded') tail = t('sheet.says.closesUndone');
+  else if (move.closes === 'done' && o.back?.(move.to).unmerged)
+    // Done before anything merged (P6-12): say an agent still merges it.
+    tail = t('sheet.says.closesUnmerged');
   else if (move.closes || move.turn === 'none') tail = t('sheet.says.closes');
   else if (move.turn === 'agent') {
     // On a board, the agent of the step it lands on (none named when any agent may take it).
-    const who = o.back ? o.back(move.to).agent : o.agent;
-    tail = who ? t('sheet.says.agent', { agent: who }) : t('sheet.says.anAgent');
+    const lands = o.back?.(move.to);
+    const who = lands ? lands.agent : o.agent;
+    // Before it acts: the land step pushes and merges (P5-15).
+    if (lands?.lands !== undefined)
+      tail = lands.lands ? t('sheet.says.lands', { base: lands.lands }) : t('sheet.says.landsAny');
+    else tail = who ? t('sheet.says.agent', { agent: who }) : t('sheet.says.anAgent');
   } else tail = t('sheet.says.yours');
   if (choice.blocked) tail = choice.blocked;
   return { verb, state, tail };

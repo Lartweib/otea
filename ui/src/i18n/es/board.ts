@@ -216,7 +216,7 @@ export const board = {
   'boardView.quiet': 'callado · {time}',
   'boardView.quietCard': 'callado {time}',
   'boardView.round': 'ronda {n}',
-  'boardView.toMerge': 'rama sin fusionar',
+  'boardView.approvedUnmerged': 'Aprobado, sin fusionar',
   'boardView.merged': 'rama fusionada',
   'boardView.queued': 'en cola',
   'boardView.blocked': {

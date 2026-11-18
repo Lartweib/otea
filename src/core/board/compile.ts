@@ -197,6 +197,17 @@ function transitionsOf(def: BoardDefinition): RawTransition[] {
       const land = isLandStep(def, step.id) ? { land: true as const } : {};
       for (const to of ways)
         out.push({ from: doing, to, by: doer, ...note, ...(to === DONE ? land : {}) });
+      // The person may send an approved item back from its land step, before it lands, to the
+      // step they approved, saying why.
+      if (land.land)
+        for (const into of def.steps)
+          if (into.id !== step.id && waysOf(def, into.id).includes(step.id))
+            out.push({
+              from: doing,
+              to: stateOf({ step: into.id, phase: 'doing' }),
+              by: 'human',
+              reason: 'required',
+            });
       continue;
     }
     const review = stateOf({ step: step.id, phase: 'review' });

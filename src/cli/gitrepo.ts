@@ -155,6 +155,18 @@ function isAncestor(cwd: string, ancestor: string, of: string): boolean {
   }
 }
 
+// Whether `branch` (here, or else on origin) is in `base` already (here, or on origin, as this
+// checkout last saw it): merged, whoever merged it. False when the repo has either of them not,
+// or cwd is no repo.
+export function mergedInto(cwd: string, branch: string, base: string): boolean {
+  const tip =
+    commitOf(cwd, `refs/heads/${branch}`) ?? commitOf(cwd, `refs/remotes/origin/${branch}`);
+  if (!tip) return false;
+  return [`refs/heads/${base}`, `refs/remotes/origin/${base}`].some(
+    (ref) => commitOf(cwd, ref) !== undefined && isAncestor(cwd, tip, ref),
+  );
+}
+
 // What the remote has of a branch, as this checkout last saw it: its upstream, or else
 // origin/<branch>.
 export function remoteOf(cwd: string, branch: string): string {

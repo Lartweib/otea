@@ -128,6 +128,30 @@ describe('what the hovered move does (the movesays line)', () => {
   });
 });
 
+describe('what an approve leads to, said before it acts', () => {
+  const land: Move = { to: 'sland', by: 'human', reasonRequired: false, turn: 'agent' };
+
+  it('says an approve into the land step merges into the base and pushes it (P5-15)', () => {
+    const p = planMoves([land], { own: false, word });
+    const lands = () => ({ agent: null, round: 1, lands: 'main' });
+    expect(moveSaysOf(must(p.primary), { agent: null, round: 1, word, back: lands }).tail).toBe(
+      'an agent then merges it into main and pushes main to the remote',
+    );
+    const any = () => ({ agent: null, round: 1, lands: '' });
+    expect(moveSaysOf(must(p.primary), { agent: null, round: 1, word, back: any }).tail).toBe(
+      'an agent then merges it and pushes it to the remote',
+    );
+  });
+
+  it('says an approve that closes as Done merged nothing yet, on a board with no land step (P6-12)', () => {
+    const p = planMoves([fixed], { own: false, word });
+    const unmerged = () => ({ agent: null, round: 0, unmerged: true as const });
+    expect(moveSaysOf(must(p.primary), { agent: null, round: 1, word, back: unmerged }).tail).toBe(
+      'it is Done, but nothing is merged yet: an agent merges its branch and records it',
+    );
+  });
+});
+
 describe('moveSaysOf on a board', () => {
   it('says the round and agent the way back lands on, when the board knows them', () => {
     const choice = { kind: 'sendback', move: { to: 'sfill' } } as unknown as MoveChoice;

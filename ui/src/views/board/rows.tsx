@@ -146,7 +146,11 @@ export function listaBlocks(entries: readonly Entry[], ctx: RowCtx): LaneBlock[]
   return entries.map((e): LaneBlock => {
     if (e.kind === 'group') return groupBlock(e);
     const it = e.item;
-    const word = stateWordIn(ctx.collection.types, it.state);
+    // Done with its branch not merged yet reads as approved, never as Done (P6-12).
+    const word =
+      it.merge === 'waiting'
+        ? t('boardView.approvedUnmerged')
+        : stateWordIn(ctx.collection.types, it.state);
     const when = whenText(it, ctx.now);
     const stuck = isStuck(it, ctx.now);
     const round = roundOf(it, ctx.feed, typeOf(it, ctx.collection));
@@ -177,12 +181,10 @@ export function listaBlocks(entries: readonly Entry[], ctx: RowCtx): LaneBlock[]
                 <span className="sep">·</span>
                 <span className={it.turn === 'human' ? 'stp you' : 'stp'}>{word}</span>
               </span>
-              {it.merge ? (
+              {it.merge === 'merged' ? (
                 <span className="mpt">
                   <span className="sep">·</span>
-                  <span className={it.merge === 'waiting' ? 'warn' : undefined}>
-                    {t(it.merge === 'waiting' ? 'boardView.toMerge' : 'boardView.merged')}
-                  </span>
+                  <span>{t('boardView.merged')}</span>
                 </span>
               ) : null}
               {kids.has(it.id) ? <Progress item={it} kids={kids.get(it.id) ?? []} /> : null}
