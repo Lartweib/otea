@@ -198,9 +198,10 @@ export type PhoneStatus = {
   firewallPrompt: boolean;
 };
 
-export type PairingPeek = { project: string; expiresAt: string };
+// The computer's name: one pairing opens every project its server serves.
+export type PairingPeek = { computer: string; expiresAt: string };
 
-export type Paired = { project: string; device: Device };
+export type Paired = { computer: string; device: Device };
 
 // Module names have one source, the core preset format. Type-only: nothing from src/ is bundled.
 export type { FieldModule, FieldRequirement } from '../../src/core/preset.ts';
@@ -286,14 +287,12 @@ export type ProjectOverview = {
   id: string;
   name: string;
   storage: 'common' | 'local';
-  // The project this server serves.
+  // The project this page is on; every one is served at /p/<id>/ on the same server.
   current: boolean;
   paths: ProjectPath[];
   waiting: WaitingItem[];
   withAgents: number;
   open: number;
-  // The address of the otea serve that shows it, when that is another server.
-  served?: string;
   unavailable?: string;
 };
 

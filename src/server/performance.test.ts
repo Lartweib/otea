@@ -37,7 +37,10 @@ describe('GET /api/performance', () => {
   });
 
   it('gives each model family and effort its numbers, for a board and a period', async () => {
-    const response = await request(server, '/api/performance?board=Criaturas&since=30d');
+    const response = await request(
+      server,
+      '/p/memory-aaaaaa/api/performance?board=Criaturas&since=30d',
+    );
 
     expect(response.status).toBe(200);
     const view = (await response.json()) as { rows: unknown[]; since: string | null };
@@ -48,7 +51,7 @@ describe('GET /api/performance', () => {
   });
 
   it('refuses a period it cannot read with 400, and a board there is not with 404', async () => {
-    expect((await request(server, '/api/performance?since=soon')).status).toBe(400);
-    expect((await request(server, '/api/performance?board=Nada')).status).toBe(404);
+    expect((await request(server, '/p/memory-aaaaaa/api/performance?since=soon')).status).toBe(400);
+    expect((await request(server, '/p/memory-aaaaaa/api/performance?board=Nada')).status).toBe(404);
   });
 });

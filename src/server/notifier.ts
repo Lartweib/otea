@@ -1,3 +1,4 @@
+import type { DatabaseSync } from 'node:sqlite';
 import { listItems } from '../app/items.ts';
 import { boardRoundOf, liveBoards } from '../app/next.ts';
 import { notesSummary } from '../app/notes.ts';
@@ -38,6 +39,9 @@ export type Notifier = {
 
 export type NotifierOptions = {
   sender: PushSender;
+  // Where the devices and the desktop app that listen are kept: the machine store, shared by every
+  // project this server serves (app/machine.ts).
+  targets: DatabaseSync;
   now?: () => number;
   minuteOfDay?: (ms: number) => number;
   tickMs?: number;
@@ -63,6 +67,14 @@ export function createNotifier(
   feed: ChangeFeed,
   options: NotifierOptions,
 ): Notifier {
+  const targetsDb = options.targets;
+  // A notice names its project and opens it: one phone and one desktop app hear every project.
+  const { id, name } = project.identity;
+  const ofProject = (text: NoticeText): NoticeText => ({
+    ...text,
+    title: `${name} · ${text.title}`,
+    url: `/p/${id}${text.url}`,
+  });
   const now = options.now ?? Date.now;
   const minuteOfDay = options.minuteOfDay ?? localMinuteOfDay;
   const planners = new Map<string, Planner>();
@@ -79,7 +91,7 @@ export function createNotifier(
       .send(subscription, JSON.stringify(text))
       .then((result) => {
         if (result !== 'gone') return;
-        dropEndpoint(project.db, subscription.endpoint);
+        dropEndpoint(targetsDb, subscription.endpoint);
         refresh();
       })
       .catch(() => {})
@@ -88,8 +100,8 @@ export function createNotifier(
   };
 
   const listeners = (): NotifyTarget[] => {
-    const targets = listTargets(project.db);
-    if (desktop.size > 0) targets.push(desktopTarget(project.db));
+    const targets = listTargets(targetsDb);
+    if (desktop.size > 0) targets.push(desktopTarget(targetsDb));
     return targets;
   };
 
@@ -116,13 +128,13 @@ export function createNotifier(
       planner.offer(fresh, target.prefs, at);
       for (const notice of planner.take(at, seen, target.prefs)) {
         if (target.id !== DESKTOP) {
-          push(target, noticeText(notice, target.lang));
+          push(target, ofProject(noticeText(notice, target.lang)));
           continue;
         }
         // The language chosen in Preferencias, once it was; else the system's.
-        const chose = desktopChosen(project.db);
+        const chose = desktopChosen(targetsDb);
         for (const [listener, { lang }] of desktop) {
-          listener(noticeText(notice, chose ? target.lang : lang));
+          listener(ofProject(noticeText(notice, chose ? target.lang : lang)));
         }
       }
     }
@@ -140,7 +152,7 @@ export function createNotifier(
   const refresh = () => {
     let wanted = desktop.size > 0;
     try {
-      wanted ||= listTargets(project.db).length > 0;
+      wanted ||= listTargets(targetsDb).length > 0;
     } catch {
       wanted = false;
     }

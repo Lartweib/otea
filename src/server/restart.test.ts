@@ -25,7 +25,7 @@ describe('restarting and reassigning a stuck item', () => {
 
   const post = (path: string, payload: unknown = {}, headers: Record<string, string> = {}) =>
     Promise.resolve(
-      server.app.request(`/api/items/${path}`, {
+      server.app.request(`/p/memory-aaaaaa/api/items/${path}`, {
         method: 'POST',
         body: JSON.stringify(payload),
         headers: { ...HEADERS, ...headers },

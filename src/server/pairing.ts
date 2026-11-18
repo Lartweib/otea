@@ -1,3 +1,4 @@
+import type { DatabaseSync } from 'node:sqlite';
 import type { Context } from 'hono';
 import { setCookie } from 'hono/cookie';
 import { encode } from 'uqr';
@@ -11,7 +12,6 @@ import {
   revokeDevice,
 } from '../app/devices.ts';
 import type { PhoneSettings, TransportKind } from '../app/phone.ts';
-import type { Project } from '../app/project.ts';
 import { RejectedRequest } from './errors.ts';
 import { type AttemptLimiter, formatCode, type PairingCode, type PairingCodes } from './lan.ts';
 import { clientOf, deviceCookie, type Port, type Session } from './session.ts';
@@ -25,7 +25,7 @@ export type Phone = {
   lan: PhoneTransport | undefined;
   codes: PairingCodes;
   attempts: AttemptLimiter;
-  // The chosen transport, read from the project each time (otea phone and Configuración change it).
+  // The chosen transport, read from the machine store each time (otea phone and Configuración change it).
   settings(): PhoneSettings;
   // The doors open now: the chosen transport's and the local network's, when each is open.
   doors(): PhoneTransport[];
@@ -62,12 +62,12 @@ const hostnameOf = (url: string) => new URL(url).hostname.replace(/^\[|\]$/g, ''
 
 // What the desk shows to pair a phone; `pick` is the host the person chose among several.
 export function pairingView(
-  project: Project,
+  machine: DatabaseSync,
   phone: Phone,
   port: number,
   pick?: string,
 ): PairingView {
-  const devices = listDevices(project.db);
+  const devices = listDevices(machine);
   const { transport } = phone.settings();
   const door = phone.chosen();
   if (!door) return { transport, enabled: false, urls: [], code: null, devices };
@@ -143,17 +143,23 @@ function refuse(result: 'expired' | 'wrong'): never {
 }
 
 // The phone reads what it is about to pair with before it asks for a token; the code stays good.
-export async function peekPairing(c: Context, project: Project, phone: Phone) {
+export async function peekPairing(c: Context, computer: string, phone: Phone) {
   const on = assertPhoneOn(phone);
   const { code } = await body(c, CodeBody, '{"code": string}');
   attempt(c, on);
   const result = on.codes.check(code);
   if (result !== 'ok') refuse(result);
   const expiresAt = new Date(on.codes.current()?.expiresAt ?? 0).toISOString();
-  return { project: project.identity.name, expiresAt };
+  return { computer, expiresAt };
 }
 
-export async function pair(c: Context, project: Project, phone: Phone, port: Port) {
+export async function pair(
+  c: Context,
+  machine: DatabaseSync,
+  computer: string,
+  phone: Phone,
+  port: Port,
+) {
   const on = assertPhoneOn(phone);
   const { code, name } = await body(c, PairBody, '{"code": string, "name": string}');
   const named = deviceName(name);
@@ -164,8 +170,8 @@ export async function pair(c: Context, project: Project, phone: Phone, port: Por
   // A phone paired already (its token came with the request) scanning a new code stays one device.
   const { device, token } =
     client.kind === 'device'
-      ? repairDevice(project.db, client.device.id, named)
-      : pairDevice(project.db, named);
+      ? repairDevice(machine, client.device.id, named)
+      : pairDevice(machine, named);
   setCookie(c, deviceCookie(port()), token, {
     path: '/',
     httpOnly: true,
@@ -178,9 +184,9 @@ export async function pair(c: Context, project: Project, phone: Phone, port: Por
     secure: client.kind !== 'local' && client.secure,
   });
   c.header('cache-control', 'no-store');
-  return { project: project.identity.name, device };
+  return { computer, device };
 }
 
-export function revoke(project: Project, id: string): Device {
-  return revokeDevice(project.db, id);
+export function revoke(machine: DatabaseSync, id: string): Device {
+  return revokeDevice(machine, id);
 }

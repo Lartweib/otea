@@ -83,7 +83,7 @@ describe('LAN access', () => {
     it('refuses a request naming a LAN address, even from the LAN', async () => {
       const response = await Promise.resolve(
         local.app.request(
-          '/api/items',
+          '/p/memory-aaaaaa/api/items',
           { headers: { host: LAN_HOST } },
           {
             incoming: { socket: { remoteAddress: PHONE } },
@@ -114,15 +114,18 @@ describe('LAN access', () => {
   });
 
   describe('an unpaired device', () => {
-    it.each(['/api/items', '/api/items/TASKS-1', '/api/stream', '/api/session', '/api/lan'])(
-      'is refused %s with 401',
-      async (path) => {
-        const response = await call(path);
+    it.each([
+      '/p/memory-aaaaaa/api/items',
+      '/p/memory-aaaaaa/api/items/TASKS-1',
+      '/p/memory-aaaaaa/api/stream',
+      '/p/memory-aaaaaa/api/session',
+      '/p/memory-aaaaaa/api/lan',
+    ])('is refused %s with 401', async (path) => {
+      const response = await call(path);
 
-        expect(response.status).toBe(401);
-        expect(await errorOf(response)).toBe('unpaired');
-      },
-    );
+      expect(response.status).toBe(401);
+      expect(await errorOf(response)).toBe('unpaired');
+    });
 
     it('cannot move an item', async () => {
       moveItem(project, {
@@ -131,7 +134,7 @@ describe('LAN access', () => {
         actor: { kind: 'agent', name: 'c' },
         channel: 'cli',
       });
-      const response = await call('/api/items/TASKS-1/move', {
+      const response = await call('/p/memory-aaaaaa/api/items/TASKS-1/move', {
         method: 'POST',
         body: { to: 'done' },
       });
@@ -159,7 +162,7 @@ describe('LAN access', () => {
     });
 
     it('gets nothing with the UI session cookie', async () => {
-      const response = await call('/api/items', { cookie: SESSION_COOKIE });
+      const response = await call('/p/memory-aaaaaa/api/items', { cookie: SESSION_COOKIE });
 
       expect(response.status).toBe(401);
     });
@@ -177,7 +180,9 @@ describe('LAN access', () => {
     });
 
     it('is refused a forged device cookie', async () => {
-      const response = await call('/api/items', { cookie: 'otea_device_4400=not-a-token' });
+      const response = await call('/p/memory-aaaaaa/api/items', {
+        cookie: 'otea_device_4400=not-a-token',
+      });
 
       expect(response.status).toBe(401);
     });
@@ -195,9 +200,9 @@ describe('LAN access', () => {
       );
       expect(await response.json()).toMatchObject({ device: { name: 'Pixel · Chrome' } });
       const token = cookie?.split('=')[1] ?? '';
-      const stored = JSON.stringify(project.db.prepare('SELECT * FROM devices').all());
+      const stored = JSON.stringify(server.machine.prepare('SELECT * FROM devices').all());
       expect(stored).not.toContain(token);
-      expect(listDevices(project.db)).toHaveLength(1);
+      expect(listDevices(server.machine)).toHaveLength(1);
     });
 
     it('lets the paired device read and act', async () => {
@@ -215,13 +220,13 @@ describe('LAN access', () => {
       });
       const { cookie } = await pairPhone();
 
-      expect((await call('/api/items', { cookie })).status).toBe(200);
-      expect(await (await call('/api/session', { cookie })).json()).toEqual({
+      expect((await call('/p/memory-aaaaaa/api/items', { cookie })).status).toBe(200);
+      expect(await (await call('/p/memory-aaaaaa/api/session', { cookie })).json()).toEqual({
         canWrite: true,
         canManageDevices: false,
         canConfigure: false,
       });
-      const moved = await call('/api/items/TASKS-1/move', {
+      const moved = await call('/p/memory-aaaaaa/api/items/TASKS-1/move', {
         method: 'POST',
         body: { to: 'done' },
         cookie,
@@ -231,26 +236,32 @@ describe('LAN access', () => {
 
     it('does not let a paired device manage devices', async () => {
       const { cookie } = await pairPhone();
-      const id = listDevices(project.db)[0]?.id ?? '';
+      const id = listDevices(server.machine)[0]?.id ?? '';
 
-      expect((await call('/api/lan', { cookie })).status).toBe(403);
-      expect((await call('/api/lan/code', { method: 'POST', body: {}, cookie })).status).toBe(403);
-      const revoke = await call(`/api/devices/${id}/revoke`, { method: 'POST', body: {}, cookie });
+      expect((await call('/p/memory-aaaaaa/api/lan', { cookie })).status).toBe(403);
+      expect(
+        (await call('/p/memory-aaaaaa/api/lan/code', { method: 'POST', body: {}, cookie })).status,
+      ).toBe(403);
+      const revoke = await call(`/p/memory-aaaaaa/api/devices/${id}/revoke`, {
+        method: 'POST',
+        body: {},
+        cookie,
+      });
       expect(revoke.status).toBe(403);
     });
 
     it('pairs a phone that is already paired again as the same device, not one more', async () => {
       const first = await pairPhone();
-      const [device] = listDevices(project.db);
+      const [device] = listDevices(server.machine);
 
       const again = await pairPhone(issue(), 'Pixel · Chrome (2)', first.cookie);
 
       expect(again.response.status).toBe(201);
-      expect(listDevices(project.db)).toEqual([
+      expect(listDevices(server.machine)).toEqual([
         expect.objectContaining({ id: device?.id, name: 'Pixel · Chrome (2)' }),
       ]);
-      expect((await call('/api/items', { cookie: again.cookie })).status).toBe(200);
-      expect((await call('/api/items', { cookie: first.cookie })).status).toBe(401);
+      expect((await call('/p/memory-aaaaaa/api/items', { cookie: again.cookie })).status).toBe(200);
+      expect((await call('/p/memory-aaaaaa/api/items', { cookie: first.cookie })).status).toBe(401);
     });
 
     it('adds a device when the phone pairing carries no token of this project', async () => {
@@ -258,7 +269,7 @@ describe('LAN access', () => {
 
       await pairPhone(issue(), 'Tablet', 'otea_device_4400=not-a-device');
 
-      expect(listDevices(project.db).map((d) => d.name)).toEqual(['Pixel · Chrome', 'Tablet']);
+      expect(listDevices(server.machine).map((d) => d.name)).toEqual(['Pixel · Chrome', 'Tablet']);
     });
 
     it('takes the code without the dash or in lower case', async () => {
@@ -284,7 +295,7 @@ describe('LAN access', () => {
       expect(response.status).toBe(410);
       expect(await errorOf(response)).toBe('code_expired');
       expect(cookie).toBeUndefined();
-      expect(listDevices(project.db)).toEqual([]);
+      expect(listDevices(server.machine)).toEqual([]);
     });
 
     it('refuses a wrong code', async () => {
@@ -331,7 +342,7 @@ describe('LAN access', () => {
       const peek = await call('/api/pair/peek', { method: 'POST', body: { code } });
 
       expect(await peek.json()).toEqual({
-        project: project.identity.name,
+        computer: 'Otea',
         expiresAt: new Date(clock + CODE_TTL_MS).toISOString(),
       });
       expect((await pairPhone(code)).response.status).toBe(201);
@@ -341,18 +352,18 @@ describe('LAN access', () => {
   describe('a revoked device', () => {
     it('is refused at once', async () => {
       const { cookie } = await pairPhone();
-      const id = listDevices(project.db)[0]?.id ?? '';
-      revokeDevice(project.db, id);
+      const id = listDevices(server.machine)[0]?.id ?? '';
+      revokeDevice(server.machine, id);
 
-      const response = await call('/api/items', { cookie });
+      const response = await call('/p/memory-aaaaaa/api/items', { cookie });
       expect(response.status).toBe(401);
       expect(await errorOf(response)).toBe('unpaired');
     });
 
     it('is refused once revoked from the desk', async () => {
       const { cookie } = await pairPhone();
-      const id = listDevices(project.db)[0]?.id ?? '';
-      const revoke = await call(`/api/devices/${id}/revoke`, {
+      const id = listDevices(server.machine)[0]?.id ?? '';
+      const revoke = await call(`/p/memory-aaaaaa/api/devices/${id}/revoke`, {
         method: 'POST',
         body: {},
         host: LOCAL_HOST,
@@ -361,7 +372,7 @@ describe('LAN access', () => {
       });
 
       expect(revoke.status).toBe(200);
-      expect((await call('/api/items', { cookie })).status).toBe(401);
+      expect((await call('/p/memory-aaaaaa/api/items', { cookie })).status).toBe(401);
     });
   });
 
@@ -370,14 +381,16 @@ describe('LAN access', () => {
       call(path, { host: LOCAL_HOST, from: '127.0.0.1', cookie: SESSION_COOKIE, ...call_ });
 
     it('works from localhost as before', async () => {
-      expect((await desk('/api/items', { cookie: '' })).status).toBe(200);
-      expect((await desk('/api/items', { from: '::ffff:127.0.0.1' })).status).toBe(200);
+      expect((await desk('/p/memory-aaaaaa/api/items', { cookie: '' })).status).toBe(200);
+      expect((await desk('/p/memory-aaaaaa/api/items', { from: '::ffff:127.0.0.1' })).status).toBe(
+        200,
+      );
     });
 
     it('shows the pairing code as a QR code and the paired devices', async () => {
       const code = issue();
-      pairDevice(project.db, 'iPad');
-      const view = (await (await desk('/api/lan')).json()) as PairingView;
+      pairDevice(server.machine, 'iPad');
+      const view = (await (await desk('/p/memory-aaaaaa/api/lan')).json()) as PairingView;
 
       expect(view).toMatchObject({
         transport: 'lan',
@@ -391,7 +404,7 @@ describe('LAN access', () => {
 
     it('issues a new code, replacing the old one', async () => {
       const old = issue();
-      const response = await desk('/api/lan/code', { method: 'POST', body: {} });
+      const response = await desk('/p/memory-aaaaaa/api/lan/code', { method: 'POST', body: {} });
       const { code } = ((await response.json()) as PairingView).code ?? { code: '' };
 
       expect(response.status).toBe(201);
@@ -402,7 +415,7 @@ describe('LAN access', () => {
     it('needs the signed-in browser to see the code', async () => {
       issue();
 
-      expect((await desk('/api/lan', { cookie: '' })).status).toBe(403);
+      expect((await desk('/p/memory-aaaaaa/api/lan', { cookie: '' })).status).toBe(403);
     });
   });
 });

@@ -169,7 +169,7 @@ export function PairScreen() {
   };
 
   const desk = window.location.host;
-  const project = phase.step === 'paired' ? phase.paired.project : peek?.project;
+  const computer = phase.step === 'paired' ? phase.paired.computer : peek?.computer;
   return (
     <main className="pair-screen">
       <PairRoute phase={phase.step} desk={desk} />
@@ -178,7 +178,7 @@ export function PairScreen() {
           <h1 id="pair-title" className="t-display">
             {t('pair.done')}
           </h1>
-          <p className="t-small">{t('pair.doneText', { project: phase.paired.project })}</p>
+          <p className="t-small">{t('pair.doneText', { computer: phase.paired.computer })}</p>
           <dl className="pair-fields">
             <dt className="t-label">{t('pair.token')}</dt>
             <dd className="mono">{t('pair.tokenKept', { hint: phase.paired.device.hint })}</dd>
@@ -195,8 +195,8 @@ export function PairScreen() {
       ) : (
         <form className="pair-body" aria-labelledby="pair-title" onSubmit={submit}>
           <h1 id="pair-title" className="t-display">
-            {project
-              ? t('pair.title', { project })
+            {computer
+              ? t('pair.title', { computer })
               : standalone
                 ? t('pair.titleApp')
                 : t('pair.titlePlain')}

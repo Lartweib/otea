@@ -23,7 +23,7 @@ describe('POST /api/items/:id/evidence', () => {
 
   const send = (id: string, form: FormData, cookie = SESSION_COOKIE) =>
     Promise.resolve(
-      server.app.request(`/api/items/${id}/evidence`, {
+      server.app.request(`/p/memory-aaaaaa/api/items/${id}/evidence`, {
         method: 'POST',
         body: form,
         headers: { host: LOCAL_HOST, origin: ORIGIN, cookie },

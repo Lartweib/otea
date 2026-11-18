@@ -8,5 +8,12 @@ export default defineConfig({
   plugins: [react(), serviceWorker()],
   // Hover styles only where a pointer hovers: never stuck under a finger.
   css: { postcss: { plugins: [hoverOnly()] } },
-  server: { proxy: { '/api': 'http://127.0.0.1:4400' } },
+  // A project's API is under its page's path (/p/<id>/api); the pairing calls are at /api.
+  server: {
+    proxy: {
+      '^/p/[^/]+/api': 'http://127.0.0.1:4400',
+      '/api': 'http://127.0.0.1:4400',
+      '/auth': 'http://127.0.0.1:4400',
+    },
+  },
 });

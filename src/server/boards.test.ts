@@ -20,7 +20,7 @@ describe('the boards API', () => {
   let server: OteaServer;
 
   const call = async (method: string, path: string, payload?: unknown) => {
-    const response = await server.app.request(`/api${path}`, {
+    const response = await server.app.request(`/p/memory-aaaaaa/api${path}`, {
       method,
       ...(payload === undefined ? {} : { body: JSON.stringify(payload) }),
       headers: {
@@ -250,7 +250,7 @@ describe('an agent drafting a board', () => {
     const serving = initProject(dir, { local: true });
     const server = createServer(serving, { token: TOKEN });
     const call = async (method: string, path: string, payload?: unknown) => {
-      const response = await server.app.request(`/api${path}`, {
+      const response = await server.app.request(`/p/${serving.identity.id}/api${path}`, {
         method,
         ...(payload === undefined ? {} : { body: JSON.stringify(payload) }),
         headers: {
@@ -377,7 +377,7 @@ describe('a board published elsewhere', () => {
         channel: 'ui',
       });
 
-      const response = await server.app.request(`/api/items/${item.id}`, {
+      const response = await server.app.request(`/p/${serving.identity.id}/api/items/${item.id}`, {
         headers: { host: LOCAL_HOST },
       });
 

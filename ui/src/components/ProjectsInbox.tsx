@@ -136,14 +136,14 @@ export function elsewhereBlocks(project: ProjectOverview): LaneBlock[] {
     });
   }
   for (const it of project.waiting) {
-    const served = project.served !== undefined;
+    const readable = project.unavailable === undefined;
     blocks.push({
       kind: 'row',
       key: `${project.id}:${it.id}`,
       lane: 'you',
       look: 'yours',
       sec: key,
-      inert: !served,
+      inert: !readable,
       content: (
         <div className="main-c">
           <div className="t" data-leaf="" data-title="">
@@ -157,7 +157,7 @@ export function elsewhereBlocks(project: ProjectOverview): LaneBlock[] {
             </span>
             <span className="mpt">
               <span className="sep">·</span>
-              <span>{served ? t('projects.inTab') : t('projects.noServer')}</span>
+              <span>{project.name}</span>
             </span>
           </div>
         </div>
@@ -180,7 +180,8 @@ export function ProjectsInbox() {
       const it = p.waiting.find((w) => `${p.id}:${w.id}` === key);
       const href = it ? itemHref(p, it) : undefined;
       if (href) {
-        window.open(href, '_blank', 'noopener');
+        // Another project of this same server: its page, in this window.
+        window.location.assign(href);
         return;
       }
     }
@@ -201,7 +202,7 @@ export function ProjectsInbox() {
           </h1>
           <p className="dek" data-leaf="">
             {others.length > 0
-              ? tx('projects.dek', { name, serve: <em>otea serve</em> })
+              ? tx('projects.dek', { name })
               : tx('projects.dekAlone', { name, init: <em>otea init</em> })}
           </p>
         </header>

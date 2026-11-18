@@ -35,7 +35,7 @@ describe('the files opened in the reader, over the API', () => {
     };
     return Promise.resolve(
       server.app.request(
-        `/api${path}`,
+        `/p/memory-aaaaaa/api${path}`,
         {
           method: init.method ?? 'GET',
           headers,
@@ -72,8 +72,8 @@ describe('the files opened in the reader, over the API', () => {
       actor: kiln,
       channel: 'cli',
     });
-    phoneCookie = `otea_device_4400=${pairDevice(project.db, 'Pixel · Chrome').token}`;
     server = createServer(project, { token: TOKEN, lan: { addresses: [DESK] } });
+    phoneCookie = `otea_device_4400=${pairDevice(server.machine, 'Pixel · Chrome').token}`;
   });
 
   afterEach(() => {

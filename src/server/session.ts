@@ -29,7 +29,7 @@ export function clientOf(c: Context): Client {
 const BAD_LINK = `<!doctype html>
 <meta charset="utf-8">
 <title>Otea</title>
-<p>This sign-in link is not valid for this Otea server. Run <code>otea open</code> in the project to open the UI with a fresh link.</p>
+<p>This sign-in link is not valid for this Otea server. Run <code>otea open</code> in a project folder to open the UI with a fresh link.</p>
 `;
 
 export type Session = {
@@ -54,6 +54,14 @@ export function session(token: string | undefined, port: Port): Session {
   };
 }
 
+// Where a sign-in goes on to: a project's page on this server (`otea open` names the project it
+// was run in), never another site; anything else lands on `/`, which opens the last project.
+const PROJECT_PAGE = /^\/p\/[a-z0-9-]{1,64}\/(?:#[^\s]*)?$/;
+
+export function nextPage(next: string | undefined): string {
+  return next !== undefined && PROJECT_PAGE.test(next) ? next : '/';
+}
+
 export function mountAuth(app: Hono<OteaEnv>, token: string | undefined, port: Port): void {
   app.get('/auth', (c) => {
     c.header('referrer-policy', 'no-referrer');
@@ -63,6 +71,6 @@ export function mountAuth(app: Hono<OteaEnv>, token: string | undefined, port: P
     const local = clientOf(c).kind === 'local';
     if (!local || token === undefined || !sameToken(given, token)) return c.html(BAD_LINK, 401);
     setCookie(c, sessionCookie(port()), token, { path: '/', httpOnly: true, sameSite: 'Strict' });
-    return c.redirect('/', 302);
+    return c.redirect(nextPage(c.req.query('next')), 302);
   });
 }

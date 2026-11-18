@@ -53,7 +53,7 @@ describe('evidence api', () => {
     it('includes the evidence metadata of the item', async () => {
       attach('before.png', 'png', 'before');
 
-      const item = (await (await get('/api/items/TASKS-1', '')).json()) as ItemView;
+      const item = (await (await get('/p/memory-aaaaaa/api/items/TASKS-1', '')).json()) as ItemView;
 
       expect(item.evidence).toEqual([
         expect.objectContaining({ id: 1, role: 'before', kind: 'image', filename: 'before.png' }),
@@ -66,7 +66,7 @@ describe('evidence api', () => {
     it('streams an image inline with its stored type', async () => {
       attach('before.png', 'png-bytes');
 
-      const response = await get('/api/evidence/1/file');
+      const response = await get('/p/memory-aaaaaa/api/evidence/1/file');
 
       expect(response.status).toBe(200);
       expect(await response.text()).toBe('png-bytes');
@@ -84,7 +84,7 @@ describe('evidence api', () => {
     describe('browser cache, which outlives the project on a port', () => {
       const conditional = (etag: string) =>
         Promise.resolve(
-          server.app.request('/api/evidence/1/file', {
+          server.app.request('/p/memory-aaaaaa/api/evidence/1/file', {
             headers: { host: LOCAL_HOST, cookie: SESSION_COOKIE, 'if-none-match': etag },
           }),
         );
@@ -94,14 +94,14 @@ describe('evidence api', () => {
       });
 
       it('makes the browser ask again before it reuses a kept copy', async () => {
-        const response = await get('/api/evidence/1/file');
+        const response = await get('/p/memory-aaaaaa/api/evidence/1/file');
 
         expect(response.headers.get('cache-control')).toBe('private, no-cache');
         expect(response.headers.get('etag')).toMatch(/^".+"$/);
       });
 
       it('names the copy by the project and the content', async () => {
-        const etag = (await get('/api/evidence/1/file')).headers.get('etag') ?? '';
+        const etag = (await get('/p/memory-aaaaaa/api/evidence/1/file')).headers.get('etag') ?? '';
         const sha256 = project.db.prepare('SELECT sha256 FROM evidence').get() as {
           sha256: string;
         };
@@ -111,7 +111,7 @@ describe('evidence api', () => {
       });
 
       it('answers 304 with no body when the kept copy is this project’s file', async () => {
-        const etag = (await get('/api/evidence/1/file')).headers.get('etag') ?? '';
+        const etag = (await get('/p/memory-aaaaaa/api/evidence/1/file')).headers.get('etag') ?? '';
 
         const response = await conditional(etag);
 
@@ -135,7 +135,7 @@ describe('evidence api', () => {
     describe('byte ranges, which video players need to seek', () => {
       const ranged = (range: string) =>
         Promise.resolve(
-          server.app.request('/api/evidence/1/file', {
+          server.app.request('/p/memory-aaaaaa/api/evidence/1/file', {
             headers: { host: LOCAL_HOST, cookie: SESSION_COOKIE, range },
           }),
         );
@@ -145,7 +145,9 @@ describe('evidence api', () => {
       });
 
       it('announces that it serves ranges', async () => {
-        expect((await get('/api/evidence/1/file')).headers.get('accept-ranges')).toBe('bytes');
+        expect(
+          (await get('/p/memory-aaaaaa/api/evidence/1/file')).headers.get('accept-ranges'),
+        ).toBe('bytes');
       });
 
       it.each([
@@ -185,7 +187,7 @@ describe('evidence api', () => {
     it('serves diffs and logs as plain text', async () => {
       attach('fix.diff', '<script>alert(1)</script>');
 
-      const response = await get('/api/evidence/1/file');
+      const response = await get('/p/memory-aaaaaa/api/evidence/1/file');
 
       expect(response.headers.get('content-type')).toBe('text/plain; charset=utf-8');
       expect(response.headers.get('content-disposition')).toMatch(/^inline;/);
@@ -197,7 +199,7 @@ describe('evidence api', () => {
     ])('serves %s as a download, never rendered in the app origin', async (name, type) => {
       attach(name, '<svg onload="alert(1)"/>');
 
-      const response = await get('/api/evidence/1/file');
+      const response = await get('/p/memory-aaaaaa/api/evidence/1/file');
 
       expect(response.headers.get('content-type')).toBe(type);
       expect(response.headers.get('content-disposition')).toMatch(/^attachment;/);
@@ -207,9 +209,9 @@ describe('evidence api', () => {
     it('keeps a filename outside ASCII usable in the download header', async () => {
       attach("ñandú 'v1'.png", 'png');
 
-      expect((await get('/api/evidence/1/file')).headers.get('content-disposition')).toBe(
-        `inline; filename="_and_ 'v1'.png"; filename*=UTF-8''%C3%B1and%C3%BA%20%27v1%27.png`,
-      );
+      expect(
+        (await get('/p/memory-aaaaaa/api/evidence/1/file')).headers.get('content-disposition'),
+      ).toBe(`inline; filename="_and_ 'v1'.png"; filename*=UTF-8''%C3%B1and%C3%BA%20%27v1%27.png`);
     });
 
     it.each([
@@ -218,35 +220,36 @@ describe('evidence api', () => {
     ])('requires the session: 401 with %s', async (_, cookie) => {
       attach('before.png', 'png');
 
-      const response = await get('/api/evidence/1/file', cookie);
+      const response = await get('/p/memory-aaaaaa/api/evidence/1/file', cookie);
 
       expect(response.status).toBe(401);
       expect(await errorCode(response)).toBe('unauthorized');
     });
 
-    it.each(['/api/evidence/9/file', '/api/evidence/abc/file', '/api/evidence/1.5/file'])(
-      'answers 404 for %s',
-      async (path) => {
-        attach('before.png', 'png');
+    it.each([
+      '/p/memory-aaaaaa/api/evidence/9/file',
+      '/p/memory-aaaaaa/api/evidence/abc/file',
+      '/p/memory-aaaaaa/api/evidence/1.5/file',
+    ])('answers 404 for %s', async (path) => {
+      attach('before.png', 'png');
 
-        const response = await get(path);
+      const response = await get(path);
 
-        expect(response.status).toBe(404);
-        expect(await errorCode(response)).toBe('not_found');
-      },
-    );
+      expect(response.status).toBe(404);
+      expect(await errorCode(response)).toBe('not_found');
+    });
 
     it('answers 404 when the stored file is gone', async () => {
       const { sha256 } = attach('before.png', 'png');
       rmSync(evidenceFile(project.dataDir, sha256));
 
-      expect((await get('/api/evidence/1/file')).status).toBe(404);
+      expect((await get('/p/memory-aaaaaa/api/evidence/1/file')).status).toBe(404);
     });
 
     it('keeps the host guard', async () => {
       attach('before.png', 'png');
 
-      const response = await server.app.request('/api/evidence/1/file', {
+      const response = await server.app.request('/p/memory-aaaaaa/api/evidence/1/file', {
         headers: { host: 'evil.example:4400', cookie: SESSION_COOKIE },
       });
 

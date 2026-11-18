@@ -1,4 +1,7 @@
+import type { DatabaseSync } from 'node:sqlite';
 import { listDevices } from '../app/devices.ts';
+import { oteaHome } from '../app/home.ts';
+import { openMachine } from '../app/machine.ts';
 import {
   choosePhoneTransport,
   lanOpen,
@@ -9,7 +12,6 @@ import {
   setLanOpen,
   switchToTailscale,
 } from '../app/phone.ts';
-import { openProject, type Project } from '../app/project.ts';
 import type { TailscaleCheck } from '../app/tailscale.ts';
 import { lanAddresses, localName } from '../server/lan.ts';
 import { sessionCookie } from '../server/session.ts';
@@ -21,12 +23,14 @@ import { readServeFile } from './serve-file.ts';
 // otea phone: how a phone reaches the desk. The local network is the default; Tailscale is set up
 // here; the Otea relay is a seam for later. See app/phone.ts.
 
-async function withProject<T>(cwd: string, use: (project: Project) => Promise<T>): Promise<T> {
-  const project = openProject(cwd);
+// Phone access is the computer's, not a project's: one pairing and one door for every project its
+// otea serve serves, kept in the machine store of the Otea home (app/machine.ts).
+async function withMachine<T>(use: (machine: DatabaseSync) => Promise<T>): Promise<T> {
+  const machine = openMachine();
   try {
-    return await use(project);
+    return await use(machine);
   } finally {
-    project.db.close();
+    machine.close();
   }
 }
 
@@ -103,17 +107,17 @@ function statusText(status: PhoneStatus, { running, devices, open }: Shown): str
 const phoneStatusCommand: Command = {
   name: 'phone status',
   summary:
-    'Show how a phone reaches this project: the transport (local network or Tailscale), its URL, whether Otea answers there, and the paired devices',
+    'Show how a phone reaches this computer: the transport (local network or Tailscale), its URL, whether Otea answers there, and the paired devices',
   args: [],
   options: { port: {} },
-  execute: ({ cwd, option, tailscale, probe }) =>
-    withProject(cwd, async (project) => {
-      const port = portToOpen(project.dataDir, option('port'));
-      const running = readServeFile(project.dataDir)?.port;
-      const urls = phoneSettings(project.db).transport === 'lan' ? await lanUrls(port) : [];
-      const status = await phoneStatus(project.db, { port, lanUrls: urls, tailscale, probe });
-      const devices = listDevices(project.db).length;
-      const open = lanOpen(project.db);
+  execute: ({ option, tailscale, probe }) =>
+    withMachine(async (machine) => {
+      const port = portToOpen(option('port'));
+      const running = readServeFile(oteaHome())?.port;
+      const urls = phoneSettings(machine).transport === 'lan' ? await lanUrls(port) : [];
+      const status = await phoneStatus(machine, { port, lanUrls: urls, tailscale, probe });
+      const devices = listDevices(machine).length;
+      const open = lanOpen(machine);
       return {
         data: { ...status, lanOpen: open, port, running: running !== undefined, devices },
         text: statusText(status, { running, devices, open }),
@@ -122,10 +126,10 @@ const phoneStatusCommand: Command = {
 };
 
 // Opens or closes the local network on the otea serve running on `port`, as Settings › Phone
-// does: from this computer, signed in with the project's key. It keeps the choice itself. Says
+// does: from this computer, signed in with the server's key. It keeps the choice itself. Says
 // 'down' when nothing answers there (a serve file left behind), so the choice is kept here instead.
-async function tellRunning(dir: string, port: number, open: boolean): Promise<'done' | 'down'> {
-  const token = readUiToken(dir);
+async function tellRunning(port: number, open: boolean): Promise<'done' | 'down'> {
+  const token = readUiToken(oteaHome());
   if (!token) return 'down';
   const base = `http://127.0.0.1:${port}`;
   let response: Response;
@@ -157,15 +161,15 @@ async function tellRunning(dir: string, port: number, open: boolean): Promise<'d
 }
 
 // Keeps the choice, on the running otea serve when there is one; says where it stands.
-async function keepLan(project: Project, open: boolean): Promise<string> {
-  const running = readServeFile(project.dataDir)?.port;
-  const told = running === undefined ? 'down' : await tellRunning(project.dataDir, running, open);
+async function keepLan(machine: DatabaseSync, open: boolean): Promise<string> {
+  const running = readServeFile(oteaHome())?.port;
+  const told = running === undefined ? 'down' : await tellRunning(running, open);
   if (told === 'done') {
     return open
-      ? `The otea serve on port ${running} is open to it now, and every otea serve after starts open.`
+      ? `The otea serve on port ${running} is open to it now, for every project it serves, and it starts open from now on.`
       : `The otea serve on port ${running} stopped listening on the network.`;
   }
-  setLanOpen(project.db, open);
+  setLanOpen(machine, open);
   return open
     ? 'Otea is not running: the next otea serve starts open to it.'
     : 'Otea is not running; the next otea serve answers this computer only.';
@@ -177,23 +181,23 @@ const phoneLan: Command = {
     'Pair phones over the local network (the default): plain HTTP to this computer; --open opens it to phones now and for every otea serve after (the same as Settings > Phone), --close closes it again',
   args: [],
   options: { open: { flag: true }, close: { flag: true } },
-  execute: ({ cwd, flag }) =>
-    withProject(cwd, async (project) => {
+  execute: ({ flag }) =>
+    withMachine(async (machine) => {
       if (flag('open') && flag('close')) {
         throw new UsageError('--open cannot be combined with --close');
       }
       if (flag('close')) {
         const lines = [
           'Otea is closed to the local network.',
-          await keepLan(project, false),
+          await keepLan(machine, false),
           'Paired phones stay paired; they reach Otea again once it is open.',
         ];
-        return { data: { ...phoneSettings(project.db), lanOpen: false }, text: lines.join('\n') };
+        return { data: { ...phoneSettings(machine), lanOpen: false }, text: lines.join('\n') };
       }
-      const was = phoneSettings(project.db);
-      const settings = choosePhoneTransport(project.db, { transport: 'lan', tailscaleHost: null });
-      const kept = flag('open') ? await keepLan(project, true) : undefined;
-      const open = lanOpen(project.db);
+      const was = phoneSettings(machine);
+      const settings = choosePhoneTransport(machine, { transport: 'lan', tailscaleHost: null });
+      const kept = flag('open') ? await keepLan(machine, true) : undefined;
+      const open = lanOpen(machine);
       const lines = [
         open
           ? 'Phones now pair over the local network, and Otea is open to it.'
@@ -218,14 +222,14 @@ const phoneTailscale: Command = {
     'Pair phones through Tailscale: checks the tailscale CLI, its login, MagicDNS and HTTPS certificates, then runs tailscale serve so https://<machine>.<tailnet>.ts.net reaches Otea from your own devices anywhere; installs nothing, --login runs tailscale up',
   args: [],
   options: { port: {}, login: { flag: true } },
-  execute: ({ cwd, option, flag, tailscale }) =>
-    withProject(cwd, async (project) => {
-      const port = portToOpen(project.dataDir, option('port'));
-      const check = await switchToTailscale(project.db, tailscale, port, { login: flag('login') });
+  execute: ({ option, flag, tailscale }) =>
+    withMachine(async (machine) => {
+      const port = portToOpen(option('port'));
+      const check = await switchToTailscale(machine, tailscale, port, { login: flag('login') });
       if (check.state !== 'ready') {
         throw new CommandFailure('transport_unavailable', tailscaleProblem(check));
       }
-      const running = readServeFile(project.dataDir)?.port;
+      const running = readServeFile(oteaHome())?.port;
       const lines = [
         `Tailscale ready: ${check.url} forwards to Otea on port ${port} (tailscale serve: your tailnet only, never funnel).`,
         'Phones now pair through Tailscale; the pairing code, device tokens and what a phone may do are the same.',

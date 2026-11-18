@@ -16,7 +16,7 @@ describe('precacheList', () => {
     );
 
     expect(list).toEqual([
-      '/',
+      '/index.html',
       '/assets/index-abc.js',
       '/assets/index-d.css',
       '/icons/otea-192.png',

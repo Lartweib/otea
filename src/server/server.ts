@@ -1,6 +1,7 @@
+import type { DatabaseSync } from 'node:sqlite';
 import { type Context, Hono } from 'hono';
 import { bodyLimit } from 'hono/body-limit';
-import { getCookie } from 'hono/cookie';
+import { getCookie, setCookie } from 'hono/cookie';
 import { z } from 'zod';
 import { agentDetail } from '../app/agent-detail.ts';
 import { joinFacts, promptKindOf } from '../app/agent-prompts.ts';
@@ -19,6 +20,7 @@ import {
   showItem,
   updateItem,
 } from '../app/items.ts';
+import { memoryMachine } from '../app/machine.ts';
 import { boardRoundOf, liveBoards, rowFactsOf } from '../app/next.ts';
 import { leaveNote, notesSummary, notesView } from '../app/notes.ts';
 import { markOpened, openedFiles } from '../app/opened.ts';
@@ -72,7 +74,8 @@ import {
   toErrorResponse,
 } from './errors.ts';
 import { serveEvidence } from './evidence.ts';
-import { DEFAULT_PORT, isAllowedHost } from './hosts.ts';
+import { DEFAULT_PORT, isAllowedHost, isApiPath } from './hosts.ts';
+import { openProjects, type ProjectSource } from './hub.ts';
 import { AttemptLimiter, type Clock, isLoopback, PairingCodes, plainAddress } from './lan.ts';
 import { type LanAccess, type LanNetwork, lanAccess, openLan } from './lan-access.ts';
 import { createNotifier, type Notifier } from './notifier.ts';
@@ -91,6 +94,7 @@ import { generateVapidKeys, type PushSender, type VapidKeys, webPushSender } fro
 import {
   type Client,
   deviceCookie,
+  LOCAL,
   mountAuth,
   type OteaEnv,
   type Port,
@@ -129,14 +133,18 @@ import { wantsPage, wrongAddressPage } from './wrong-address.ts';
 
 export type OteaServer = {
   app: Hono<OteaEnv>;
+  // What the server keeps for the machine rather than for a project (app/machine.ts).
+  machine: DatabaseSync;
+  // The notifier of a project served, once it is open.
+  notifierOf(id: string): Notifier | undefined;
+  // Opens every project served now, so each one's notices go out from the start.
+  sync(): void;
   // Phone access: the pairing code and the doors a phone comes through (opening the local network
   // opens its own; choosing Tailscale opens its own).
   phone: Phone;
   // The local network's door, opened and closed while the server runs (Settings › Phone, otea
   // phone lan --open, otea serve --lan).
   lan: LanAccess;
-  // Who is told when something becomes theirs (pushes to phones, the desktop app's notices).
-  notifier: Notifier;
   listeningOn(port: number): void;
   close(): void;
 };
@@ -153,14 +161,18 @@ export type ServerOptions = {
   // fake). Without it, and without `lan`, the local network cannot open.
   network?: LanNetwork;
   now?: Clock;
-  // Where the registry of the other projects is found (OTEA_HOME).
+  // Where the registry of the projects is found (OTEA_HOME).
   env?: Env;
+  // The machine store (app/machine.ts); a fresh one in memory when none is given.
+  machine?: DatabaseSync;
+  // This computer's name, as a phone that pairs reads it.
+  computer?: string;
   // The tailscale CLI Configuración's Tailscale option runs, and how a phone URL is tried; the
   // real ones only where otea serve runs (tests give fakes).
   tailscale?: TailscaleCli;
   probe?: Probe;
-  // Notifications: the project's VAPID keys (otea serve keeps them in .otea; a test gets fresh
-  // ones), how a push is sent (the real web push, or a fake), and how often the items are looked
+  // Notifications: the server's VAPID keys (otea serve keeps them in the Otea home; a test gets
+  // fresh ones), how a push is sent (the real web push, or a fake), and how often the items are looked
   // at again for what a clock alone changes (a lease running out).
   notify?: {
     keys?: VapidKeys;
@@ -238,9 +250,13 @@ function tooLarge(): never {
   );
 }
 
+// What every project's API shares: the machine's doors, devices and settings.
 type Doors = {
   lan: LanAccess;
-  notifier: Notifier;
+  machine: DatabaseSync;
+  source: ProjectSource;
+  // A device paired or was revoked: every project's page and notifier hears of it.
+  changed(): void;
   keys: VapidKeys;
   auth: Session;
   phone: Phone;
@@ -262,21 +278,12 @@ async function topicBody<T>(c: Context, schema: z.ZodType<T>, expected: string):
   return parsed.data;
 }
 
-function api(
-  project: Project,
-  feed: ChangeFeed,
-  streams: LiveStreams,
-  doors: Doors,
-): Hono<OteaEnv> {
-  const { auth, phone, port, env } = doors;
+// What is the computer's rather than a project's: the session, the pairing code and the paired
+// devices, and how a phone reaches the server. Answered at /api and in every project's API alike.
+function machineApi(doors: Doors): Hono<OteaEnv> {
+  const { auth, phone, port, machine } = doors;
   return (
     new Hono<OteaEnv>()
-      // A board published from another process (the CLI, another server) joins the catalog before
-      // anything reads items; it costs one query when nothing was published.
-      .use(async (_c, next) => {
-        syncBoardPresets(project);
-        await next();
-      })
       .get('/session', (c) =>
         c.json({
           canWrite: auth.canWrite(c),
@@ -284,41 +291,35 @@ function api(
           canConfigure: auth.canConfigure(c),
         }),
       )
-      .post('/pair/peek', async (c) => c.json(await peekPairing(c, project, phone)))
-      .post('/pair', async (c) => {
-        const paired = await pair(c, project, phone, port);
-        feed.notify();
-        return c.json(paired, 201);
-      })
       .get('/lan', (c) => {
         assertCanManageDevices(c, auth);
-        return c.json(pairingView(project, phone, port(), c.req.query('address')));
+        return c.json(pairingView(machine, phone, port(), c.req.query('address')));
       })
       .post('/lan/code', (c) => {
         assertCanManageDevices(c, auth);
         assertSameOrigin(c);
         assertPhoneOn(phone).codes.issue();
-        return c.json(pairingView(project, phone, port(), c.req.query('address')), 201);
+        return c.json(pairingView(machine, phone, port(), c.req.query('address')), 201);
       })
       // How a phone reaches the desk: the chosen transport, its URL and whether it answers there.
       .get('/phone', async (c) => {
         assertCanManageDevices(c, auth);
-        return c.json(await phoneView(project, doors));
+        return c.json(await phoneView(doors));
       })
       // Opens the local network to phones without a restart, and keeps it open for the next otea
       // serve; closing it stops listening there. Paired devices stay paired either way.
       .post('/lan/open', async (c) => {
         assertConfigurable(c, auth);
         await doors.lan.open();
-        setLanOpen(project.db, true);
+        setLanOpen(machine, true);
         if (phone.chosen()) phone.codes.issue();
-        return c.json(await phoneView(project, doors));
+        return c.json(await phoneView(doors));
       })
       .post('/lan/close', async (c) => {
         assertConfigurable(c, auth);
-        setLanOpen(project.db, false);
+        setLanOpen(machine, false);
         await doors.lan.close();
-        return c.json(await phoneView(project, doors));
+        return c.json(await phoneView(doors));
       })
       // Chooses the transport. Tailscale is set up first (tailscale serve points at this port) and
       // kept only once it is ready; the Otea relay is not available yet.
@@ -338,25 +339,37 @@ function api(
         }
         const check =
           transport === 'tailscale'
-            ? await switchToTailscale(project.db, doors.tailscale, port())
+            ? await switchToTailscale(machine, doors.tailscale, port())
             : null;
-        if (transport === 'lan')
-          choosePhoneTransport(project.db, { transport, tailscaleHost: null });
+        if (transport === 'lan') choosePhoneTransport(machine, { transport, tailscaleHost: null });
         if (phone.chosen()) phone.codes.issue();
-        const status = await phoneView(project, doors);
+        const status = await phoneView(doors);
         return c.json({ ...status, ...(check ? { tailscale: check } : {}) });
       })
       .post('/devices/:id/revoke', (c) => {
         assertCanManageDevices(c, auth);
         assertSameOrigin(c);
         // Its push subscription goes with it.
-        const device = revoke(project, c.req.param('id'));
-        doors.notifier.refresh();
-        feed.notify();
+        const device = revoke(machine, c.req.param('id'));
+        doors.changed();
         return c.json(device);
       })
+  );
+}
+
+function api(project: Project, { feed, streams, notifier }: Live, doors: Doors): Hono<OteaEnv> {
+  const { auth, env, machine } = doors;
+  return (
+    new Hono<OteaEnv>()
+      // A board published from another process (the CLI, another server) joins the catalog before
+      // anything reads items; it costs one query when nothing was published.
+      .use(async (_c, next) => {
+        syncBoardPresets(project);
+        await next();
+      })
+      .route('/', machineApi(doors))
       .get('/project', (c) => c.json(projectView(project)))
-      .get('/projects', (c) => c.json(projectOverviews(project, env)))
+      .get('/projects', (c) => c.json(projectOverviews(doors.source.list(), project.identity.id)))
       .get('/project/settings', (c) => c.json(projectSettings(project, env)))
       .post('/project/paths', async (c) => {
         assertConfigurable(c, auth);
@@ -669,7 +682,7 @@ function api(
         return serveEvidence(c, project, c.req.param('id'));
       })
       .route('/', boardsApi(project, feed, auth))
-      .route('/', notifyApi(project, doors.notifier, doors.keys, auth))
+      .route('/', notifyApi(machine, notifier, doors.keys, auth))
       .get('/events', (c) => c.json(listEvents(project, eventsFilter(c.req.query()))))
       .get('/stream', (c) => streams.handle(c))
       .all('*', (c) => c.json(errorBody('not_found', `No route ${c.req.path}`), 404))
@@ -706,8 +719,8 @@ function statusSources(doors: Doors) {
 
 // The transport's status, whether the local network is open now, and whether opening it may make
 // Windows ask for a firewall permission (Otea never changes the firewall itself).
-async function phoneView(project: Project, doors: Doors) {
-  const status = await phoneStatus(project.db, statusSources(doors));
+async function phoneView(doors: Doors) {
+  const status = await phoneStatus(doors.machine, statusSources(doors));
   return { ...status, lanOpen: doors.lan.isOpen(), firewallPrompt: process.platform === 'win32' };
 }
 
@@ -721,9 +734,32 @@ function remoteAddress(c: Context): string | undefined {
 // Last seen is written at most once a minute per device, not on every request.
 const SEEN_EVERY_MS = 60 * 1000;
 
-export function createServer(project: Project, options: ServerOptions = {}): OteaServer {
-  const feed = createChangeFeed(project.db, options.pollIntervalMs);
-  const streams = liveStreams(feed, () => presenceSignature(project.db));
+// A project's own live parts: its change feed, the pages' live streams and its notifier.
+type Live = { feed: ChangeFeed; streams: LiveStreams; notifier: Notifier };
+
+type Host = Live & { app: Hono<OteaEnv> };
+
+// The project a page is on: `/p/<id>/…`.
+const PROJECT_PATH = /^\/p\/([^/]+)(\/.*)?$/;
+
+// Browsers cap a cookie's lifetime at 400 days.
+const LAST_COOKIE_MAX_AGE = 400 * 24 * 60 * 60;
+
+// The project a browser last had open on this server, so `/` (the home-screen shortcut, a plain
+// `otea serve`) opens it again. Named after the port, as the session is.
+const lastCookie = (port: number) => `otea_project_${port}`;
+
+function isProject(served: Project | ProjectSource): served is Project {
+  return 'db' in served;
+}
+
+export function createServer(
+  served: Project | ProjectSource,
+  options: ServerOptions = {},
+): OteaServer {
+  const source = isProject(served) ? openProjects(served) : served;
+  const machine = options.machine ?? memoryMachine();
+  const ownMachine = options.machine === undefined;
   const now = options.now ?? Date.now;
   let port = DEFAULT_PORT;
   const app = new Hono<OteaEnv>();
@@ -731,7 +767,7 @@ export function createServer(project: Project, options: ServerOptions = {}): Ote
     ? openLan({ addresses: options.lan.addresses, names: options.lan.names ?? [] })
     : lanAccess(app.fetch, () => port, options.network);
   const tailscaleDoor = (): PhoneTransport | undefined => {
-    const { transport, tailscaleHost } = phoneSettings(project.db);
+    const { transport, tailscaleHost } = phoneSettings(machine);
     return transport === 'tailscale' && tailscaleHost
       ? tailscaleTransport(tailscaleHost)
       : undefined;
@@ -742,10 +778,10 @@ export function createServer(project: Project, options: ServerOptions = {}): Ote
     },
     codes: new PairingCodes(now),
     attempts: new AttemptLimiter(now),
-    settings: () => phoneSettings(project.db),
+    settings: () => phoneSettings(machine),
     doors: () => [tailscaleDoor(), lan.transport()].filter((door) => door !== undefined),
     chosen: () =>
-      phoneSettings(project.db).transport === 'tailscale' ? tailscaleDoor() : lan.transport(),
+      phoneSettings(machine).transport === 'tailscale' ? tailscaleDoor() : lan.transport(),
   };
   // A request one of the open phone doors admits is a device's: from the local network, a private
   // address naming one of this computer's addresses or its own .local name (any other DNS name is
@@ -768,18 +804,20 @@ export function createServer(project: Project, options: ServerOptions = {}): Ote
       return { kind: 'local' };
     }
     const { address, secure } = admission;
-    const device = deviceByToken(project.db, getCookie(c, deviceCookie(port)) ?? '');
+    const device = deviceByToken(machine, getCookie(c, deviceCookie(port)) ?? '');
     if (!device) return { kind: 'unpaired', address, secure };
     const seen = device.lastSeenAt === null ? 0 : Date.parse(device.lastSeenAt);
-    if (now() - seen >= SEEN_EVERY_MS) touchDevice(project.db, device.id, new Date(now()));
+    if (now() - seen >= SEEN_EVERY_MS) touchDevice(machine, device.id, new Date(now()));
     return { kind: 'device', device, address, secure };
   };
+  // Each project's API runs as its own app; the client the root identified travels with the request.
+  const clients = new WeakMap<Request, Client>();
   app.use(async (c, next) => {
     const client = identify(c);
     c.set('client', client);
+    clients.set(c.req.raw, client);
     if (client.kind === 'unpaired' && !isPairingPath(c)) {
-      if (c.req.method === 'GET' && !c.req.path.startsWith('/api/'))
-        return c.redirect('/pair', 302);
+      if (c.req.method === 'GET' && !isApiPath(c.req.path)) return c.redirect('/pair', 302);
       throw new RejectedRequest(
         401,
         'unpaired',
@@ -787,69 +825,167 @@ export function createServer(project: Project, options: ServerOptions = {}): Ote
       );
     }
     await next();
-    // Whose answer it is: the installed app's cache keeps one project's answers at a time, since
-    // two projects served one after the other on the same address share it (ui/src/offline).
-    if (c.req.path === '/api' || c.req.path.startsWith('/api/'))
-      c.header('x-otea-project', project.identity.id);
   });
   const boundPort = () => port;
   mountAuth(app, options.token, boundPort);
-  // A write made for another project, one that answered on this address before (a capture queued on
-  // the phone while the PC was off): never applied to this one.
-  app.use('/api/*', async (c, next) => {
-    const meant = c.req.header('x-otea-project');
-    if (c.req.method !== 'GET' && meant && meant !== project.identity.id)
-      throw new RejectedRequest(
-        409,
-        'other_project',
-        'This was made for another project, not the one served at this address now',
-      );
-    await next();
-  });
   const keys = options.notify?.keys ?? generateVapidKeys();
-  const notifier = createNotifier(project, feed, {
-    sender: options.notify?.sender ?? webPushSender(keys),
-    now,
-    ...(options.notify?.tickMs === undefined ? {} : { tickMs: options.notify.tickMs }),
-    ...(options.notify?.minuteOfDay === undefined
-      ? {}
-      : { minuteOfDay: options.notify.minuteOfDay }),
-  });
-  // Devices subscribed before this start are told from now on.
-  notifier.refresh();
+  const sender = options.notify?.sender ?? webPushSender(keys);
+  const hosts = new Map<string, Host>();
+  const auth = session(options.token, boundPort);
+  const computer = options.computer ?? 'Otea';
+  const onError = (error: Error, c: Context) => {
+    if (error instanceof ForbiddenHost && wantsPage(c)) {
+      return c.html(wrongAddressPage(c.req.header('accept-language')), 403);
+    }
+    const { status, body } = toErrorResponse(error);
+    return c.json(body, status);
+  };
   const doors: Doors = {
     lan,
-    notifier,
+    machine,
+    source,
+    changed() {
+      for (const host of hosts.values()) {
+        host.notifier.refresh();
+        host.feed.notify();
+      }
+    },
     keys,
-    auth: session(options.token, boundPort),
+    auth,
     phone,
     port: boundPort,
     env: options.env ?? process.env,
     tailscale: options.tailscale ?? NO_TAILSCALE,
     probe: options.probe ?? fetchProbe,
   };
-  app.route('/api', api(project, feed, streams, doors));
-  mountUi(app, options.uiDir ?? BUILT_UI_DIR);
-  app.onError((error, c) => {
-    if (error instanceof ForbiddenHost && wantsPage(c)) {
-      return c.html(wrongAddressPage(c.req.header('accept-language')), 403);
-    }
-    const { status, body } = toErrorResponse(error);
-    return c.json(body, status);
+
+  const open = (project: Project): Host => {
+    const { id } = project.identity;
+    const feed = createChangeFeed(project.db, options.pollIntervalMs);
+    const streams = liveStreams(feed, () => presenceSignature(project.db));
+    const notifier = createNotifier(project, feed, {
+      sender,
+      targets: machine,
+      now,
+      ...(options.notify?.tickMs === undefined ? {} : { tickMs: options.notify.tickMs }),
+      ...(options.notify?.minuteOfDay === undefined
+        ? {}
+        : { minuteOfDay: options.notify.minuteOfDay }),
+    });
+    // Devices subscribed before this start are told from now on.
+    notifier.refresh();
+    const live = { feed, streams, notifier };
+    const projectApp = new Hono<OteaEnv>().basePath(`/p/${id}`);
+    projectApp.use(async (c, next) => {
+      c.set('client', clients.get(c.req.raw) ?? LOCAL);
+      await next();
+      // Whose answer it is, for the installed app's cache and its queue (ui/src/offline).
+      c.header('x-otea-project', id);
+    });
+    // A write made for another project (a capture queued on the phone): never applied to this one.
+    projectApp.use('/api/*', async (c, next) => {
+      const meant = c.req.header('x-otea-project');
+      if (c.req.method !== 'GET' && meant && meant !== id)
+        throw new RejectedRequest(
+          409,
+          'other_project',
+          'This was made for another project, not the one at this address',
+        );
+      await next();
+    });
+    projectApp.route('/api', api(project, live, doors));
+    projectApp.onError(onError);
+    const host = { ...live, app: projectApp };
+    hosts.set(id, host);
+    return host;
+  };
+
+  const hostOf = (id: string): Host | undefined => {
+    const held = hosts.get(id);
+    if (held) return held;
+    const project = source.get(id);
+    return project ? open(project) : undefined;
+  };
+
+  const sync = () => {
+    for (const each of source.list()) if (each.project) hostOf(each.id);
+  };
+
+  // The pairing screen's two calls: a device pairs with the computer, not with one project.
+  app.post('/api/pair/peek', async (c) => c.json(await peekPairing(c, computer, phone)));
+  app.post('/api/pair', async (c) => {
+    const paired = await pair(c, machine, computer, phone, boundPort);
+    doors.changed();
+    return c.json(paired, 201);
   });
+  app.route('/api', machineApi(doors));
+  app.all('/api/*', (c) =>
+    c.json(
+      errorBody('not_found', `No route ${c.req.path}; a project's API is at /p/<id>/api`),
+      404,
+    ),
+  );
+
+  // `/`: the project this browser had open last, else the first one served.
+  app.get('/', (c) => {
+    const last = getCookie(c, lastCookie(port));
+    const listed = source.list().filter((each) => each.project);
+    const target = listed.find((each) => each.id === last) ?? listed[0];
+    if (!target) return c.text(NO_PROJECTS, 404);
+    return c.redirect(`/p/${target.id}/`, 302);
+  });
+
+  app.all('/p/*', async (c, next) => {
+    const match = PROJECT_PATH.exec(c.req.path);
+    const id = match?.[1] ?? '';
+    const rest = match?.[2] ?? '';
+    const host = hostOf(id);
+    if (isApiPath(rest)) {
+      if (!host) {
+        throw new RejectedRequest(404, 'no_project', `This server serves no project ${id}`);
+      }
+      return host.app.fetch(c.req.raw, c.env);
+    }
+    if (c.req.method !== 'GET' && c.req.method !== 'HEAD') return next();
+    // A project no longer served (forgotten, its data gone): the home opens another.
+    if (!host) return c.redirect('/', 302);
+    if (rest === '') return c.redirect(`/p/${id}/`, 301);
+    setCookie(c, lastCookie(port), id, {
+      path: '/',
+      sameSite: 'Lax',
+      maxAge: LAST_COOKIE_MAX_AGE,
+    });
+    await next();
+  });
+  mountUi(app, options.uiDir ?? BUILT_UI_DIR);
+  app.onError(onError);
+  sync();
+  let closed = false;
   return {
     app,
+    machine,
     phone,
     lan,
-    notifier,
+    notifierOf: (id) => hosts.get(id)?.notifier,
+    sync,
     listeningOn(listened) {
       port = listened;
     },
     close() {
+      if (closed) return;
+      closed = true;
       void lan.close();
-      notifier.close();
-      streams.closeAll();
-      feed.close();
+      for (const host of hosts.values()) {
+        host.notifier.close();
+        host.streams.closeAll();
+        host.feed.close();
+      }
+      hosts.clear();
+      source.close();
+      if (ownMachine) machine.close();
     },
   };
 }
+
+const NO_PROJECTS =
+  'This Otea server serves no project yet. Run "otea init" in a project folder, then "otea open" there.';

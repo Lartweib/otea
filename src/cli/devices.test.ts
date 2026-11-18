@@ -38,7 +38,7 @@ describe('devices', () => {
     const data = JSON.parse(out);
 
     expect(code).toBe(0);
-    expect(data.url).toMatch(/^http:\/\/127\.0\.0\.1:\d+$/);
+    expect(data.url).toMatch(/^http:\/\/127\.0\.0\.1:\d+\/p\/[a-z0-9-]+\/$/);
     if (lan === undefined) {
       expect(data.phone).toEqual({ transport: 'lan', urls: [] });
       return;
@@ -63,7 +63,9 @@ describe('devices', () => {
       body: JSON.stringify({ code: served.code, name: 'Pixel · Chrome' }),
     });
     const cookie = (paired.headers.get('set-cookie') ?? '').split(';')[0] ?? '';
-    const items = () => fetch(`${base}/api/items`, { headers: { cookie } });
+    // One pairing opens every project: this one's page is under its own path.
+    const page = new URL(JSON.parse(out).url).pathname;
+    const items = () => fetch(`${base}${page}api/items`, { headers: { cookie } });
 
     expect(paired.status).toBe(201);
     expect((await items()).status).toBe(200);

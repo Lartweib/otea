@@ -138,10 +138,9 @@ describe('the project menu', () => {
     overview({
       id: 'mirefall',
       name: 'Mirefall',
-      served: 'http://127.0.0.1:4700',
       waiting: waiting(2),
     }),
-    overview({ id: 'quiet', name: 'Quiet' }),
+    overview({ id: 'quiet', name: 'Quiet', unavailable: 'The data is missing' }),
   ];
   const menu = (phone = false) => {
     setLanguage('es');
@@ -175,16 +174,15 @@ describe('the project menu', () => {
     );
   });
 
-  it('ticks the project open now, opens a served one in a new tab, keeps an unserved one inert', () => {
+  it('ticks the project open now, opens another in this window, keeps an unreadable one inert', () => {
     const html = menu();
     expect(html).toMatch(/class="prow cur"[^>]*aria-current="page"/);
     expect(html).toContain('abierto ahora');
     expect(html).toContain('class="tick"');
-    expect(html).toMatch(
-      /<a class="prow" data-i="" href="http:\/\/127.0.0.1:4700\/" target="_blank"/,
-    );
+    expect(html).toContain('<a class="prow" data-i="" href="/p/mirefall/#/">');
+    expect(html).not.toContain('_blank');
     expect(html).toMatch(/class="prow inert" data-i="" aria-disabled="true"/);
-    expect(html).toContain('sin servidor · otea serve allí lo abre');
+    expect(html).toContain('no se puede leer ahora');
   });
 
   it('ends with the project’s settings and how to start another', () => {

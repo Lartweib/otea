@@ -9,7 +9,9 @@ describe('auth', () => {
 
   const session = async (headers: Record<string, string> = {}) =>
     (
-      await server.app.request('/api/session', { headers: { host: LOCAL_HOST, ...headers } })
+      await server.app.request('/p/memory-aaaaaa/api/session', {
+        headers: { host: LOCAL_HOST, ...headers },
+      })
     ).json();
 
   beforeEach(() => {

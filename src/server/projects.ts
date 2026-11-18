@@ -8,7 +8,6 @@ import {
   forgetProjectPath,
   keyOf,
   kindOf,
-  type ListedProject,
   listProjects,
   openRegistry,
   relinkProjectPath,
@@ -16,29 +15,23 @@ import {
 } from '../app/home.ts';
 import { type Item, listItems } from '../app/items.ts';
 import { liveBoards } from '../app/next.ts';
-import {
-  addPathToProject,
-  databasePath,
-  type Env,
-  openRegistered,
-  type Project,
-} from '../app/project.ts';
+import { addPathToProject, databasePath, type Env, type Project } from '../app/project.ts';
 import { identityAt, listRepos, type Repo, readReposAtFolder, reposInside } from '../app/repos.ts';
 import { hasOteaGitHook } from '../cli/hooks.ts';
-import { readServeFile } from '../cli/serve-file.ts';
 import { OteaError } from '../core/errors.ts';
 import { stateLabel } from '../core/workflow.ts';
-import type { PathKind, Storage } from '../store/registry.ts';
+import type { Storage } from '../store/registry.ts';
+import type { ServedPath, ServedProject } from './hub.ts';
 
-export type OverviewPath = { path: string; kind: PathKind; missing: boolean };
+export type OverviewPath = ServedPath;
 
 // A project on this machine as the projects inbox and the switcher read it: what waits for you
-// there, how much is with agents, and where another `otea serve` shows it.
+// there and how much is with agents. Every one is served here, at /p/<id>/.
 export type ProjectOverview = {
   id: string;
   name: string;
   storage: Storage;
-  // The project this server serves.
+  // The project the page asking is on.
   current: boolean;
   paths: OverviewPath[];
   // Open items on your turn, each with its type's icon.
@@ -46,25 +39,9 @@ export type ProjectOverview = {
   // Open items on an agent's turn.
   withAgents: number;
   open: number;
-  // The address of the `otea serve` running for it, when that is not this server.
-  served?: string;
   // Why its items could not be read (its data is missing, say).
   unavailable?: string;
 };
-
-function alive(pid: number): boolean {
-  try {
-    process.kill(pid, 0);
-    return true;
-  } catch (error) {
-    return (error as NodeJS.ErrnoException).code === 'EPERM';
-  }
-}
-
-function servedAt(dataDir: string): string | undefined {
-  const info = readServeFile(dataDir);
-  return info && alive(info.pid) ? `http://127.0.0.1:${info.port}` : undefined;
-}
 
 // `stateName`: the step it is on in words (a board's steps are hidden ids), as its type names it.
 export type WaitingItem = Item & { icon?: string; stateName: string };
@@ -93,40 +70,26 @@ export function countsOf(project: Project): Counts {
 
 const NOTHING: Counts = { waiting: [], withAgents: 0, open: 0 };
 
-function overviewOf(listed: ListedProject, current: Project): ProjectOverview {
-  const { id, name, storage, paths } = listed;
-  const base = { id, name, storage, paths };
-  if (id === current.identity.id) return { ...base, current: true, ...countsOf(current) };
-  const served = servedAt(listed.dataDir);
-  const root = paths.find((path) => !path.missing)?.path ?? paths[0]?.path ?? listed.dataDir;
-  let other: Project | undefined;
+function overviewOf(served: ServedProject, currentId: string): ProjectOverview {
+  const { id, name, storage, paths, project } = served;
+  const base = { id, name, storage, paths, current: id === currentId };
+  if (!project) {
+    return { ...base, ...NOTHING, unavailable: served.unavailable ?? `${name} is not available` };
+  }
   try {
-    other = openRegistered(listed, root);
-    return { ...base, current: false, ...countsOf(other), ...(served ? { served } : {}) };
+    return { ...base, ...countsOf(project) };
   } catch (error) {
     const unavailable = error instanceof Error ? error.message : String(error);
-    return { ...base, current: false, ...NOTHING, unavailable, ...(served ? { served } : {}) };
-  } finally {
-    other?.db.close();
+    return { ...base, ...NOTHING, unavailable };
   }
 }
 
-// Every registered project in the registry's order; a local project served here, which the
-// registry does not hold, comes first.
-export function projectOverviews(current: Project, env: Env = process.env): ProjectOverview[] {
-  const listed = withRegistry(env, listProjects) ?? [];
-  const overviews = listed.map((project) => overviewOf(project, current));
-  if (overviews.some((overview) => overview.current)) return overviews;
-  const { id, name } = current.identity;
-  const here: ProjectOverview = {
-    id,
-    name,
-    storage: current.storage,
-    current: true,
-    paths: [{ path: current.root, kind: kindOf(current.root), missing: false }],
-    ...countsOf(current),
-  };
-  return [here, ...overviews];
+// Every project this server serves, by name; `currentId` is the one the page asking is on.
+export function projectOverviews(
+  served: readonly ServedProject[],
+  currentId: string,
+): ProjectOverview[] {
+  return served.map((each) => overviewOf(each, currentId));
 }
 
 export type GateKind = 'hard' | 'soft';

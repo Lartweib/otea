@@ -16,7 +16,7 @@ describe('GET /api/agent-prompt', () => {
   let server: OteaServer;
 
   const get = async (query: string) => {
-    const response = await server.app.request(`/api/agent-prompt${query}`, {
+    const response = await server.app.request(`/p/memory-aaaaaa/api/agent-prompt${query}`, {
       headers: { host: LOCAL_HOST, cookie: SESSION_COOKIE },
     });
     return { status: response.status, body: (await response.json()) as Record<string, unknown> };

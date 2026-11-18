@@ -87,7 +87,7 @@ describe('notifications on the server', () => {
   };
   const endpoint = (n = 1) => `https://fcm.googleapis.com/fcm/send/phone-${n}`;
   const subscribe = (cookie: string | undefined, n = 1) =>
-    viaTailscale('/api/notify/subscribe', {
+    viaTailscale('/p/memory-aaaaaa/api/notify/subscribe', {
       method: 'POST',
       cookie,
       body: { endpoint: endpoint(n), keys: browserKeys(), lang: 'es' },
@@ -107,8 +107,8 @@ describe('notifications on the server', () => {
   // A moment passes and the server looks again.
   const pass = async (ms: number) => {
     clock += ms;
-    server.notifier.scan();
-    await server.notifier.settled();
+    server.notifierOf(project.identity.id)?.scan();
+    await server.notifierOf(project.identity.id)?.settled();
   };
 
   beforeEach(() => {
@@ -117,13 +117,13 @@ describe('notifications on the server', () => {
     clock = T0;
     answer = 'sent';
     sent.length = 0;
-    choosePhoneTransport(project.db, { transport: 'tailscale', tailscaleHost: TAILNET_HOST });
     server = createServer(project, {
       token: TOKEN,
       tailscale: fakeTailscale(),
       now: () => clock,
       notify: { sender, tickMs: 60 * 60_000, minuteOfDay: () => 12 * 60 },
     });
+    choosePhoneTransport(server.machine, { transport: 'tailscale', tailscaleHost: TAILNET_HOST });
   });
 
   afterEach(() => {
@@ -134,7 +134,7 @@ describe('notifications on the server', () => {
   describe('the subscription API', () => {
     it('gives a paired phone on HTTPS the key to subscribe with, and its defaults', async () => {
       const { cookie } = await pair();
-      const view = await (await viaTailscale('/api/notify', { cookie })).json();
+      const view = await (await viaTailscale('/p/memory-aaaaaa/api/notify', { cookie })).json();
       expect(view).toEqual({
         target: 'device',
         key: expect.stringMatching(/^[A-Za-z0-9_-]{87}$/),
@@ -148,7 +148,7 @@ describe('notifications on the server', () => {
       const subscribed = await subscribe(cookie);
       expect(subscribed.status).toBe(201);
       expect(await subscribed.json()).toMatchObject({ subscribed: true });
-      expect(listTargets(project.db)).toEqual([
+      expect(listTargets(server.machine)).toEqual([
         expect.objectContaining({
           device,
           lang: 'es',
@@ -156,35 +156,35 @@ describe('notifications on the server', () => {
         }),
       ]);
 
-      const left = await viaTailscale('/api/notify/unsubscribe', {
+      const left = await viaTailscale('/p/memory-aaaaaa/api/notify/unsubscribe', {
         method: 'POST',
         cookie,
         body: {},
       });
       expect(await left.json()).toMatchObject({ subscribed: false });
-      expect(listTargets(project.db)).toEqual([]);
+      expect(listTargets(server.machine)).toEqual([]);
     });
 
     it('refuses an endpoint that is not a browser’s push service, and keys that do not read', async () => {
       const { cookie } = await pair();
-      const local = await viaTailscale('/api/notify/subscribe', {
+      const local = await viaTailscale('/p/memory-aaaaaa/api/notify/subscribe', {
         method: 'POST',
         cookie,
         body: { endpoint: 'https://192.168.1.20/hook', keys: browserKeys(), lang: 'es' },
       });
       expect(local.status).toBe(400);
-      const bad = await viaTailscale('/api/notify/subscribe', {
+      const bad = await viaTailscale('/p/memory-aaaaaa/api/notify/subscribe', {
         method: 'POST',
         cookie,
         body: { endpoint: endpoint(), keys: { p256dh: 'AAAA', auth: 'AAAA' }, lang: 'es' },
       });
       expect(bad.status).toBe(400);
-      expect(listTargets(project.db)).toEqual([]);
+      expect(listTargets(server.machine)).toEqual([]);
     });
 
     it('refuses a subscription from another origin or from a device not paired', async () => {
       const { cookie } = await pair();
-      const cross = await viaTailscale('/api/notify/subscribe', {
+      const cross = await viaTailscale('/p/memory-aaaaaa/api/notify/subscribe', {
         method: 'POST',
         cookie,
         origin: 'https://evil.example',
@@ -203,13 +203,13 @@ describe('notifications on the server', () => {
         stuck: true,
         quiet: { from: '23:00', to: '07:00' },
       };
-      const saved = await viaTailscale('/api/notify/prefs', {
+      const saved = await viaTailscale('/p/memory-aaaaaa/api/notify/prefs', {
         method: 'POST',
         cookie,
         body: { prefs, lang: 'en' },
       });
       expect(await saved.json()).toMatchObject({ prefs });
-      const wrong = await viaTailscale('/api/notify/prefs', {
+      const wrong = await viaTailscale('/p/memory-aaaaaa/api/notify/prefs', {
         method: 'POST',
         cookie,
         body: { prefs: { ...prefs, quiet: { from: '25:00', to: '07:00' } }, lang: 'en' },
@@ -220,23 +220,26 @@ describe('notifications on the server', () => {
     it('unsubscribes a phone when it is unpaired', async () => {
       const { cookie, device } = await pair();
       await subscribe(cookie);
-      const revoked = await desk(`/api/devices/${device}/revoke`, { method: 'POST', body: {} });
+      const revoked = await desk(`/p/memory-aaaaaa/api/devices/${device}/revoke`, {
+        method: 'POST',
+        body: {},
+      });
       expect(revoked.status).toBe(200);
-      expect(listTargets(project.db)).toEqual([]);
+      expect(listTargets(server.machine)).toEqual([]);
     });
 
     it('keeps the desktop app’s prefs for this computer’s signed-in browser only', async () => {
-      expect(await (await desk('/api/notify')).json()).toMatchObject({
+      expect(await (await desk('/p/memory-aaaaaa/api/notify')).json()).toMatchObject({
         target: 'desktop',
         key: null,
       });
       const prefs = { turn: true, replied: true, stuck: false, quiet: null };
-      const saved = await desk('/api/notify/prefs', {
+      const saved = await desk('/p/memory-aaaaaa/api/notify/prefs', {
         method: 'POST',
         body: { prefs, lang: 'es' },
       });
       expect(await saved.json()).toMatchObject({ target: 'desktop', prefs });
-      const unsigned = await desk('/api/notify/prefs', {
+      const unsigned = await desk('/p/memory-aaaaaa/api/notify/prefs', {
         method: 'POST',
         cookie: '',
         body: { prefs, lang: 'es' },
@@ -246,14 +249,15 @@ describe('notifications on the server', () => {
 
     it('lets only this computer listen to the desktop app’s notices', async () => {
       const { cookie } = await pair();
-      expect((await viaTailscale('/api/notify/stream', { cookie })).status).toBe(403);
+      expect((await viaTailscale('/p/memory-aaaaaa/api/notify/stream', { cookie })).status).toBe(
+        403,
+      );
     });
   });
 
   describe('on the local network’s plain HTTP', () => {
     it('gives no key and says notifications need HTTPS', async () => {
       server.close();
-      choosePhoneTransport(project.db, { transport: 'lan', tailscaleHost: null });
       server = createServer(project, {
         token: TOKEN,
         lan: { addresses: ['192.168.1.20'] },
@@ -281,8 +285,10 @@ describe('notifications on the server', () => {
       const paired = await lan('/api/pair', { method: 'POST', body: { code, name: 'Phone' } });
       const cookie = /otea_device_4400=[^;]+/.exec(paired.headers.get('set-cookie') ?? '')?.[0];
 
-      expect(await (await lan('/api/notify', { cookie })).json()).toMatchObject({ key: null });
-      const refused = await lan('/api/notify/subscribe', {
+      expect(await (await lan('/p/memory-aaaaaa/api/notify', { cookie })).json()).toMatchObject({
+        key: null,
+      });
+      const refused = await lan('/p/memory-aaaaaa/api/notify/subscribe', {
         method: 'POST',
         cookie,
         body: { endpoint: endpoint(), keys: browserKeys(), lang: 'es' },
@@ -310,10 +316,10 @@ describe('notifications on the server', () => {
         {
           subscription: expect.objectContaining({ endpoint: endpoint() }),
           payload: {
-            title: 'Te toca',
+            title: 'memory · Te toca',
             body: `${first} · Ship the login`,
             tag: `otea-item-${first}`,
-            url: `/#/i/${first}`,
+            url: `/p/memory-aaaaaa/#/i/${first}`,
             item: first,
           },
         },
@@ -347,10 +353,10 @@ describe('notifications on the server', () => {
       await pass(GATHER_MS);
       expect(sent.map(({ payload }) => payload)).toEqual([
         {
-          title: '3 cosas te tocan',
+          title: 'memory · 3 cosas te tocan',
           body: 'Ship the login · Fix the menu · Write the docs',
           tag: 'otea-group',
-          url: '/#/',
+          url: '/p/memory-aaaaaa/#/',
           item: null,
         },
       ]);
@@ -361,7 +367,9 @@ describe('notifications on the server', () => {
       await pass(1000);
       await pass(60_000);
       await pass(GATHER_MS);
-      expect(sent.map(({ payload }) => payload.title)).toEqual(['Se atascó · codex no responde']);
+      expect(sent.map(({ payload }) => payload.title)).toEqual([
+        'memory · Se atascó · codex no responde',
+      ]);
     });
 
     it('waits a few minutes before telling about the same item again', async () => {
@@ -386,7 +394,7 @@ describe('notifications on the server', () => {
     it('leaves out a kind the phone turned off', async () => {
       const { cookie } = await pair();
       await subscribe(cookie, 2);
-      await viaTailscale('/api/notify/prefs', {
+      await viaTailscale('/p/memory-aaaaaa/api/notify/prefs', {
         method: 'POST',
         cookie,
         body: { prefs: { turn: false, replied: true, stuck: true, quiet: null }, lang: 'es' },
@@ -403,14 +411,16 @@ describe('notifications on the server', () => {
       await pass(1000);
       await pass(GATHER_MS);
       expect(sent).toHaveLength(1);
-      expect(listTargets(project.db)).toEqual([]);
+      expect(listTargets(server.machine)).toEqual([]);
     });
   });
 
   describe('the desktop app', () => {
     it('hears the same notices on its stream, in its language', async () => {
       const id = newTask('Ship the login');
-      const response = await desk('/api/notify/stream?lang=en', { cookie: undefined });
+      const response = await desk('/p/memory-aaaaaa/api/notify/stream?lang=en', {
+        cookie: undefined,
+      });
       expect(response.status).toBe(200);
       const reader = response.body?.getReader();
       const decoder = new TextDecoder();
@@ -428,7 +438,10 @@ describe('notifications on the server', () => {
       await pass(GATHER_MS);
       await until('event: notice');
       const data = /event: notice\ndata: (.+)\n/.exec(text)?.[1] ?? '{}';
-      expect(JSON.parse(data)).toMatchObject({ title: 'Your turn', url: `/#/i/${id}` });
+      expect(JSON.parse(data)).toMatchObject({
+        title: 'memory · Your turn',
+        url: `/p/memory-aaaaaa/#/i/${id}`,
+      });
       await reader?.cancel();
     });
   });

@@ -42,7 +42,7 @@ describe('archiving and deleting boards over the API', () => {
   const errorOf = async (response: Response) =>
     ((await response.json()) as { error: { code: string; details?: unknown } }).error;
   const names = async () => {
-    const response = await call('/api/boards');
+    const response = await call('/p/memory-aaaaaa/api/boards');
     return ((await response.json()) as { boards: { name: string }[] }).boards.map((b) => b.name);
   };
 
@@ -67,50 +67,59 @@ describe('archiving and deleting boards over the API', () => {
   });
 
   it('archives from the signed-in browser: gone from the lists, kept to read, frozen', async () => {
-    const plan = await call(`/api/boards/${board}/archive/plan`);
+    const plan = await call(`/p/memory-aaaaaa/api/boards/${board}/archive/plan`);
     expect(await plan.json()).toMatchObject({ boards: [{ name: 'Criaturas', open: 1 }] });
 
-    const archived = await call(`/api/boards/${board}/archive`, { method: 'POST', body: {} });
+    const archived = await call(`/p/memory-aaaaaa/api/boards/${board}/archive`, {
+      method: 'POST',
+      body: {},
+    });
 
     expect(archived.status).toBe(200);
     expect(await names()).toEqual(['Pedidos']);
-    const items = (await (await call('/api/items')).json()) as { id: string }[];
+    const items = (await (await call('/p/memory-aaaaaa/api/items')).json()) as { id: string }[];
     expect(items.map(({ id }) => id)).not.toContain(item);
-    const listed = await call('/api/boards/archived');
+    const listed = await call('/p/memory-aaaaaa/api/boards/archived');
     expect(await listed.json()).toMatchObject({
       boards: [{ id: board, name: 'Criaturas', items: 1, entries: [{ id: item }] }],
     });
-    const shown = await call(`/api/items/${item}`);
+    const shown = await call(`/p/memory-aaaaaa/api/items/${item}`);
     expect(await shown.json()).toMatchObject({
       id: item,
       transitions: [],
       archived: { board: 'Criaturas', id: board, collection: { name: 'Criaturas' } },
     });
 
-    const moved = await call(`/api/items/${item}/move`, { method: 'POST', body: { to: 'done' } });
+    const moved = await call(`/p/memory-aaaaaa/api/items/${item}/move`, {
+      method: 'POST',
+      body: { to: 'done' },
+    });
     expect(moved.status).toBe(409);
     expect(await errorOf(moved)).toMatchObject({
       code: 'board_archived',
       details: { kind: 'board_archived', board: 'Criaturas', item },
     });
 
-    const restored = await call(`/api/boards/${board}/unarchive`, { method: 'POST', body: {} });
+    const restored = await call(`/p/memory-aaaaaa/api/boards/${board}/unarchive`, {
+      method: 'POST',
+      body: {},
+    });
     expect(restored.status).toBe(200);
     expect((await names()).sort()).toEqual(['Criaturas', 'Pedidos']);
   });
 
   it('refuses an agent without the session, and a request a proxy forwarded', async () => {
-    const agent = await call(`/api/boards/${board}/archive`, {
+    const agent = await call(`/p/memory-aaaaaa/api/boards/${board}/archive`, {
       method: 'POST',
       body: {},
       cookie: '',
     });
-    const forwarded = await call(`/api/boards/${board}/archive`, {
+    const forwarded = await call(`/p/memory-aaaaaa/api/boards/${board}/archive`, {
       method: 'POST',
       body: {},
       forwardedFor: '100.101.102.103',
     });
-    const deleted = await call(`/api/boards/${board}`, {
+    const deleted = await call(`/p/memory-aaaaaa/api/boards/${board}`, {
       method: 'DELETE',
       body: { confirm: 'Criaturas' },
       cookie: '',
@@ -126,8 +135,14 @@ describe('archiving and deleting boards over the API', () => {
   it('refuses Pedidos', async () => {
     const pedidos = ensureRequestsBoard(project, 'es');
 
-    const archived = await call(`/api/boards/${pedidos}/archive`, { method: 'POST', body: {} });
-    const deleted = await call(`/api/boards/${pedidos}`, { method: 'DELETE', body: {} });
+    const archived = await call(`/p/memory-aaaaaa/api/boards/${pedidos}/archive`, {
+      method: 'POST',
+      body: {},
+    });
+    const deleted = await call(`/p/memory-aaaaaa/api/boards/${pedidos}`, {
+      method: 'DELETE',
+      body: {},
+    });
 
     expect(archived.status).toBe(403);
     expect(await errorOf(archived)).toMatchObject({ details: { kind: 'board_builtin' } });
@@ -135,28 +150,31 @@ describe('archiving and deleting boards over the API', () => {
   });
 
   it('deletes an archived board once its name is typed', async () => {
-    const standing = await call(`/api/boards/${board}`, {
+    const standing = await call(`/p/memory-aaaaaa/api/boards/${board}`, {
       method: 'DELETE',
       body: { confirm: 'Criaturas' },
     });
     expect(standing.status).toBe(409);
     expect(await errorOf(standing)).toMatchObject({ details: { kind: 'board_has_items' } });
-    await call(`/api/boards/${board}/archive`, { method: 'POST', body: {} });
-    const plan = await call(`/api/boards/${board}/delete/plan`);
+    await call(`/p/memory-aaaaaa/api/boards/${board}/archive`, { method: 'POST', body: {} });
+    const plan = await call(`/p/memory-aaaaaa/api/boards/${board}/delete/plan`);
     expect(await plan.json()).toMatchObject({ items: 1, confirm: true });
 
-    const unconfirmed = await call(`/api/boards/${board}`, { method: 'DELETE', body: {} });
+    const unconfirmed = await call(`/p/memory-aaaaaa/api/boards/${board}`, {
+      method: 'DELETE',
+      body: {},
+    });
     expect(unconfirmed.status).toBe(400);
     expect(await errorOf(unconfirmed)).toMatchObject({
       details: { kind: 'board_delete_confirm', board: 'Criaturas', items: 1 },
     });
-    const deleted = await call(`/api/boards/${board}`, {
+    const deleted = await call(`/p/memory-aaaaaa/api/boards/${board}`, {
       method: 'DELETE',
       body: { confirm: 'Criaturas' },
     });
 
     expect(deleted.status).toBe(200);
     expect(findBoard(project.db, board)).toBeUndefined();
-    expect((await call(`/api/items/${item}`)).status).toBe(404);
+    expect((await call(`/p/memory-aaaaaa/api/items/${item}`)).status).toBe(404);
   });
 });

@@ -84,7 +84,7 @@ describe('opening the local network while the server runs', () => {
     call(path, { host: `${DESK}:4400`, from: PHONE, cookie });
   const errorOf = async (response: Response) =>
     ((await response.json()) as { error: { code: string; details?: unknown } }).error;
-  const view = async () => (await (await call('/api/lan')).json()) as PairingView;
+  const view = async () => (await (await call('/p/memory-aaaaaa/api/lan')).json()) as PairingView;
 
   beforeEach(() => {
     project = memoryProject();
@@ -101,11 +101,11 @@ describe('opening the local network while the server runs', () => {
   it('starts closed: a phone on the network is refused at the door', async () => {
     expect(server.lan.isOpen()).toBe(false);
     expect((await view()).enabled).toBe(false);
-    expect((await fromPhone('/api/items')).status).toBe(403);
+    expect((await fromPhone('/p/memory-aaaaaa/api/items')).status).toBe(403);
   });
 
   it('opens from this computer’s browser: listens, shows a code and remembers it', async () => {
-    const opened = await post('/api/lan/open');
+    const opened = await post('/p/memory-aaaaaa/api/lan/open');
 
     expect(opened.status).toBe(200);
     expect(await opened.json()).toMatchObject({
@@ -120,46 +120,52 @@ describe('opening the local network while the server runs', () => {
     // stays a choice beside it.
     expect(shown.urls).toEqual([`http://${DESK}:4400`, 'http://desk.local:4400']);
     expect(shown.code?.url).toBe(`http://${DESK}:4400/pair#code=${shown.code?.code}`);
-    expect(lanOpen(project.db)).toBe(true);
-    expect((await fromPhone('/api/items')).status).toBe(401);
+    expect(lanOpen(server.machine)).toBe(true);
+    expect((await fromPhone('/p/memory-aaaaaa/api/items')).status).toBe(401);
   });
 
   it('opening twice listens once', async () => {
-    await post('/api/lan/open');
-    await post('/api/lan/open');
+    await post('/p/memory-aaaaaa/api/lan/open');
+    await post('/p/memory-aaaaaa/api/lan/open');
 
     expect(network.listening).toEqual([`${DESK}:4400`]);
   });
 
   it('closes again: stops listening, forgets the choice, keeps the paired devices', async () => {
-    const { token } = pairDevice(project.db, 'Pixel · Chrome');
-    await post('/api/lan/open');
-    expect((await fromPhone('/api/items', `otea_device_4400=${token}`)).status).toBe(200);
+    const { token } = pairDevice(server.machine, 'Pixel · Chrome');
+    await post('/p/memory-aaaaaa/api/lan/open');
+    expect(
+      (await fromPhone('/p/memory-aaaaaa/api/items', `otea_device_4400=${token}`)).status,
+    ).toBe(200);
 
-    const closed = await post('/api/lan/close');
+    const closed = await post('/p/memory-aaaaaa/api/lan/close');
 
     expect(closed.status).toBe(200);
     expect(await closed.json()).toMatchObject({ lanOpen: false, url: null });
     expect(network.listening).toEqual([]);
-    expect(lanOpen(project.db)).toBe(false);
+    expect(lanOpen(server.machine)).toBe(false);
     expect((await view()).enabled).toBe(false);
     expect((await view()).devices.map(({ name }) => name)).toEqual(['Pixel · Chrome']);
-    expect((await fromPhone('/api/items', `otea_device_4400=${token}`)).status).toBe(403);
+    expect(
+      (await fromPhone('/p/memory-aaaaaa/api/items', `otea_device_4400=${token}`)).status,
+    ).toBe(403);
   });
 
   it('says whether Windows may ask for a firewall permission', async () => {
-    const status = (await (await call('/api/phone')).json()) as { firewallPrompt: boolean };
+    const status = (await (await call('/p/memory-aaaaaa/api/phone')).json()) as {
+      firewallPrompt: boolean;
+    };
 
     expect(status.firewallPrompt).toBe(process.platform === 'win32');
   });
 
   it('refuses a paired phone: it neither opens nor closes the network', async () => {
-    const { token } = pairDevice(project.db, 'Pixel · Chrome');
+    const { token } = pairDevice(server.machine, 'Pixel · Chrome');
     await server.lan.open();
     const cookie = `otea_device_4400=${token}`;
     const phone = { host: `${DESK}:4400`, from: PHONE, cookie, origin: `http://${DESK}:4400` };
 
-    for (const path of ['/api/lan/close', '/api/lan/open']) {
+    for (const path of ['/p/memory-aaaaaa/api/lan/close', '/p/memory-aaaaaa/api/lan/open']) {
       const refused = await post(path, phone);
       expect(refused.status).toBe(403);
       expect(await errorOf(refused)).toMatchObject({
@@ -172,16 +178,18 @@ describe('opening the local network while the server runs', () => {
   });
 
   it('refuses what a proxy forwarded, even from this computer', async () => {
-    const forwarded = await post('/api/lan/open', { forwardedFor: '100.101.102.103' });
+    const forwarded = await post('/p/memory-aaaaaa/api/lan/open', {
+      forwardedFor: '100.101.102.103',
+    });
 
     expect(forwarded.status).toBe(403);
     expect(network.listening).toEqual([]);
   });
 
   it('refuses a request forwarded through Tailscale', async () => {
-    choosePhoneTransport(project.db, { transport: 'tailscale', tailscaleHost: TAILNET_HOST });
-    const { token } = pairDevice(project.db, 'Pixel · Chrome');
-    const refused = await post('/api/lan/open', {
+    choosePhoneTransport(server.machine, { transport: 'tailscale', tailscaleHost: TAILNET_HOST });
+    const { token } = pairDevice(server.machine, 'Pixel · Chrome');
+    const refused = await post('/p/memory-aaaaaa/api/lan/open', {
       host: TAILNET_HOST,
       forwardedFor: '100.101.102.103',
       cookie: `otea_device_4400=${token}`,
@@ -193,12 +201,12 @@ describe('opening the local network while the server runs', () => {
   });
 
   it('refuses a browser that is not signed in, and another origin', async () => {
-    expect((await post('/api/lan/open', { cookie: '' })).status).toBe(401);
-    const cross = await post('/api/lan/open', { origin: 'http://evil.example' });
+    expect((await post('/p/memory-aaaaaa/api/lan/open', { cookie: '' })).status).toBe(401);
+    const cross = await post('/p/memory-aaaaaa/api/lan/open', { origin: 'http://evil.example' });
     expect(cross.status).toBe(403);
     expect((await errorOf(cross)).code).toBe('forbidden_origin');
     expect(network.listening).toEqual([]);
-    expect(lanOpen(project.db)).toBe(false);
+    expect(lanOpen(server.machine)).toBe(false);
   });
 
   it('says why it could not listen, and stays closed', async () => {
@@ -207,19 +215,19 @@ describe('opening the local network while the server runs', () => {
     network.fail = '10.0.0.7';
     server = createServer(project, { token: TOKEN, network, probe });
 
-    const failed = await post('/api/lan/open');
+    const failed = await post('/p/memory-aaaaaa/api/lan/open');
 
     expect(failed.status).toBe(409);
     expect(await errorOf(failed)).toMatchObject({ code: 'transport_unavailable' });
     expect(network.listening).toEqual([]);
     expect(server.lan.isOpen()).toBe(false);
-    expect(lanOpen(project.db)).toBe(false);
+    expect(lanOpen(server.machine)).toBe(false);
   });
 
   it('cannot open without a network to listen on', async () => {
     server.close();
     server = createServer(project, { token: TOKEN, probe });
 
-    expect((await post('/api/lan/open')).status).toBe(409);
+    expect((await post('/p/memory-aaaaaa/api/lan/open')).status).toBe(409);
   });
 });

@@ -28,7 +28,7 @@ describe('GET /api/stream', () => {
   let server: OteaServer;
 
   const connect = async () => {
-    const response = await request(server, '/api/stream');
+    const response = await request(server, '/p/memory-aaaaaa/api/stream');
     const reader = response.body?.getReader() as Reader;
     await readUntil(reader, 'event: ready');
     return { response, reader };
@@ -86,7 +86,7 @@ describe('GET /api/stream', () => {
     const first = await connect();
     const second = await connect();
 
-    const response = await server.app.request('/api/items/TASKS-1/move', {
+    const response = await server.app.request('/p/memory-aaaaaa/api/items/TASKS-1/move', {
       method: 'POST',
       body: JSON.stringify({ to: 'done' }),
       headers: {
@@ -107,7 +107,7 @@ describe('GET /api/stream', () => {
   it('emits change after an item is created from the ui', async () => {
     const { reader } = await connect();
 
-    const response = await server.app.request('/api/items', {
+    const response = await server.app.request('/p/memory-aaaaaa/api/items', {
       method: 'POST',
       body: JSON.stringify({ collection: 'tasks', fields: { title: 'From the form' } }),
       headers: {

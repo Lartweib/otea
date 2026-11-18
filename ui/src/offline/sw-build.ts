@@ -16,7 +16,7 @@ export function precacheList(bundled: readonly string[], publicFiles: readonly s
     .map((name) => name.replaceAll('\\', '/'))
     .filter((name) => !/\.(map|woff)$/.test(name) && name !== 'sw.js' && name !== 'index.html')
     .map((name) => `/${name}`);
-  return ['/', ...[...new Set(files)].sort()];
+  return ['/index.html', ...[...new Set(files)].sort()];
 }
 
 // The files the app is made of and the worker's own code: a change to either is a new version.

@@ -149,15 +149,7 @@ export function ProjectMenuBody({ project, rows, total, onClose }: ProjectMenuPr
         }
         if (row.href) {
           return (
-            <a
-              key={row.id}
-              className="prow"
-              data-i=""
-              href={row.href}
-              target="_blank"
-              rel="noopener"
-              onClick={onClose}
-            >
+            <a key={row.id} className="prow" data-i="" href={row.href} onClick={onClose}>
               {body}
             </a>
           );

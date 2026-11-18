@@ -1,3 +1,4 @@
+import type { DatabaseSync } from 'node:sqlite';
 import { type Context, Hono } from 'hono';
 import { streamSSE } from 'hono/streaming';
 import { z } from 'zod';
@@ -9,7 +10,6 @@ import {
   saveSubscription,
   targetOfDevice,
 } from '../app/notify-targets.ts';
-import type { Project } from '../app/project.ts';
 import { DEFAULT_PREFS, type NotifyPrefs, TIME_PATTERN } from '../core/notify/planner.ts';
 import { isNoticeLang, type NoticeLang } from '../core/notify/text.ts';
 import { RejectedRequest } from './errors.ts';
@@ -20,7 +20,7 @@ import { clientOf, type OteaEnv, type Session } from './session.ts';
 import { assertSameOrigin, assertWritable } from './writes.ts';
 
 // Preferencias › Avisos, as the server answers it:
-// - a paired device over HTTPS subscribes to Web Push with the project's public VAPID key, chooses
+// - a paired device over HTTPS subscribes to Web Push with the server's public VAPID key, chooses
 //   what it is told and when, and unsubscribes (unpairing it unsubscribes it too);
 // - this computer's signed-in browser chooses the desktop app's notices (the desktop app shows
 //   them itself, see notifier.ts), and the desktop app listens for them on /api/notify/stream.
@@ -79,10 +79,10 @@ function pushDevice(c: Context): string {
   return client.device.id;
 }
 
-function view(c: Context, project: Project, keys: VapidKeys): NotifyView {
+function view(c: Context, machine: DatabaseSync, keys: VapidKeys): NotifyView {
   const client = clientOf(c);
   if (client.kind === 'device') {
-    const target = targetOfDevice(project.db, client.device.id);
+    const target = targetOfDevice(machine, client.device.id);
     return {
       target: 'device',
       key: client.secure ? keys.publicKey : null,
@@ -90,18 +90,18 @@ function view(c: Context, project: Project, keys: VapidKeys): NotifyView {
       prefs: target?.prefs ?? DEFAULT_PREFS,
     };
   }
-  return { target: 'desktop', key: null, subscribed: true, prefs: desktopTarget(project.db).prefs };
+  return { target: 'desktop', key: null, subscribed: true, prefs: desktopTarget(machine).prefs };
 }
 
 export function notifyApi(
-  project: Project,
+  machine: DatabaseSync,
   notifier: Notifier,
   keys: VapidKeys,
   auth: Session,
 ): Hono<OteaEnv> {
   return (
     new Hono<OteaEnv>()
-      .get('/notify', (c) => c.json(view(c, project, keys)))
+      .get('/notify', (c) => c.json(view(c, machine, keys)))
       .post('/notify/subscribe', async (c) => {
         assertWritable(c, auth);
         const device = pushDevice(c);
@@ -120,9 +120,9 @@ export function notifyApi(
         if (bytes(subscription.p256dh) !== 65 || bytes(subscription.auth) !== 16) {
           throw new RejectedRequest(400, 'invalid_body', 'The subscription keys do not read');
         }
-        saveSubscription(project.db, device, { endpoint, ...subscription }, lang);
+        saveSubscription(machine, device, { endpoint, ...subscription }, lang);
         notifier.refresh();
-        return c.json(view(c, project, keys), 201);
+        return c.json(view(c, machine, keys), 201);
       })
       .post('/notify/unsubscribe', (c) => {
         assertWritable(c, auth);
@@ -135,9 +135,9 @@ export function notifyApi(
             'Only a paired device unsubscribes from push',
           );
         }
-        dropSubscription(project.db, client.device.id);
+        dropSubscription(machine, client.device.id);
         notifier.refresh();
-        return c.json(view(c, project, keys));
+        return c.json(view(c, machine, keys));
       })
       .post('/notify/prefs', async (c) => {
         assertWritable(c, auth);
@@ -147,12 +147,12 @@ export function notifyApi(
           '{"prefs": {"turn": boolean, "replied": boolean, "stuck": boolean, "quiet": {"from": "HH:MM", "to": "HH:MM"} | null}, "lang": "es" | "en"}',
         );
         const client = clientOf(c);
-        if (client.kind === 'device') savePrefs(project.db, client.device.id, prefs, lang);
+        if (client.kind === 'device') savePrefs(machine, client.device.id, prefs, lang);
         else {
           assertCanManageDevices(c, auth);
-          saveDesktopPrefs(project.db, prefs, lang);
+          saveDesktopPrefs(machine, prefs, lang);
         }
-        return c.json(view(c, project, keys));
+        return c.json(view(c, machine, keys));
       })
       // The desktop app's notices, as server-sent events; for this computer only.
       .get('/notify/stream', (c) => {

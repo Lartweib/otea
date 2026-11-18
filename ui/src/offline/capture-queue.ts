@@ -7,6 +7,7 @@
 // (idb-queue.ts, sendCapture), maps and fakes in the tests. Nothing in here is ever dropped but by
 // a send the PC took, or by the person (Descartar, on one the PC refused).
 
+import { apiUrl } from '../base.ts';
 import { PROJECT } from './sw-routes.ts';
 
 export type QueuedPhoto = {
@@ -121,10 +122,14 @@ export function captureRequest(capture: QueuedCapture): { init: RequestInit; url
     'idempotency-key': capture.id,
     ...(capture.project ? { [PROJECT]: capture.project } : {}),
   };
+  // Sent to the project it was made for, wherever the app is now (the worker has no page).
+  const url = capture.project
+    ? `/p/${encodeURIComponent(capture.project)}/api/items`
+    : apiUrl('/api/items');
   const { photo } = capture;
   if (!photo) {
     return {
-      url: '/api/items',
+      url,
       init: {
         method: 'POST',
         headers: { ...headers, 'content-type': 'application/json' },
@@ -137,7 +142,7 @@ export function captureRequest(capture: QueuedCapture): { init: RequestInit; url
     photo.module === undefined ? { role: photo.role } : { role: photo.role, module: photo.module };
   form.append('item', JSON.stringify({ ...payload, evidence: [place] }));
   form.append('file', new Blob([photo.bytes], { type: photo.type }), photo.name);
-  return { url: '/api/items', init: { method: 'POST', headers, body: form } };
+  return { url, init: { method: 'POST', headers, body: form } };
 }
 
 // Not heard: no answer, the door's own (nothing behind Tailscale serve), a timeout or too many
