@@ -35,8 +35,9 @@ export function modelFamily(model: string): string {
 const VALUE = /^\S{1,100}$/;
 
 // A profile value is one word as the agent declares it (an exact model id, an effort level, a
-// harness name): no translation between vendors, so it is only checked to be one word. A model or
-// an effort the agent cannot read is unknown, kept in one spelling; the harness it always knows.
+// harness name): no translation between vendors, so it is only checked to be one word (a harness
+// may have spaces, as its maker writes it). A model or an effort the agent cannot read is unknown,
+// kept in one spelling; the harness it always knows.
 export function assertProfileValue(name: 'model' | 'effort' | 'harness', value: string): string {
   const unknown = value.toLowerCase() === UNKNOWN;
   if (unknown && name === 'harness') {
@@ -47,6 +48,9 @@ export function assertProfileValue(name: 'model' | 'effort' | 'harness', value: 
   }
   if (unknown) return UNKNOWN;
   if (VALUE.test(value)) return value;
+  // A harness is named as its maker writes it ("Claude Code", "OpenCode 1.4"), spaces and all.
+  const named = value.trim();
+  if (name === 'harness' && named !== '' && named.length <= 100) return named;
   // Each option with its own example, and unknown offered only where it is taken.
   const said: Record<typeof name, string> = {
     model:
@@ -55,9 +59,10 @@ export function assertProfileValue(name: 'model' | 'effort' | 'harness', value: 
       'the effort, as your harness names it (such as high), or unknown when you cannot read it: never guess',
     harness: 'the tool you run in (such as claude-code, codex or gemini-cli)',
   };
+  const takes = name === 'harness' ? 'a name' : 'one word';
   throw new OteaError(
     'invalid_profile',
-    `--${name} takes one word of at most 100 characters: ${said[name]}`,
+    `--${name} takes ${takes} of at most 100 characters: ${said[name]}`,
   );
 }
 

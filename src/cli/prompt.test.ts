@@ -39,8 +39,8 @@ describe('otea prompt', () => {
     );
 
     const join = (await otea('prompt')).out;
-    // Nobody works there now (the item's author left): nobody to join.
-    expect(join).toContain('Empieza a trabajar en este proyecto');
+    // The item's author acted just now: it counts as working there, so this one joins it.
+    expect(join).toContain('Súmate al trabajo de este proyecto');
     expect(join).toContain('- Cambios: Aclarar, Hacerlo, Integrar (1 espera a un agente ahora)');
     expect((await otea('prompt', 'design')).out.trim()).toBe(designPrompt('es'));
     expect((await otea('prompt', 'start')).out.trim()).toBe(startPrompt('es'));

@@ -32,7 +32,8 @@ const BUDGETS: Readonly<Record<string, Sizes>> = {
   // Matrix, a word agents did not know (measured at 449), and with claiming again once a lease ran
   // out and a subagent releasing what it holds before it ends (measured at 473), and with every
   // chat request going on a board first and waiting in a background shell (measured at 512).
-  'board index': { text: 530, json: 53, mcp: 53 },
+  // Raised to 560 for otea whoami, which gives a new session the name it worked under.
+  'board index': { text: 560, json: 53, mcp: 53 },
   // The bug board's own words and each step's instructions, read once per session; show's Next:
   // block covers the step at hand. Raised when a preset collection read as a board kept its
   // playbook as the board's text: what agents read on the preset, as before.
@@ -59,8 +60,8 @@ const BUDGETS: Readonly<Record<string, Sizes>> = {
   // at 4275). Raised for reopen, the way back for a Done item whose PR conflicts (measured at 4393). Raised for
   // detach, taking back a file attached by mistake (measured at 4541). Raised for topic_list (with
   // its search) and topic_show, so an agent asked what was concluded before reads the topics kept
-  // (measured at 4806).
-  tools: { mcp: 4850 },
+  // (measured at 4806). Raised for whoami, the name a new session worked under before.
+  tools: { mcp: 4990 },
   // Otea's agent guide, the server's instructions: in every MCP agent's context from the start, so
   // it buys only what agents keep getting wrong. Measured at 203. Raised to 270 for the line on
   // declaring the profile every agent and subagent must keep current (measured at 246). Raised to
@@ -75,7 +76,8 @@ const BUDGETS: Readonly<Record<string, Sizes>> = {
   // ends, as dead subagents' leases blocked the lead (measured at 454). Raised to 510 for every chat
   // request going on a board first, as an agent did eleven chat requests with no item, and for
   // waiting in a background shell, as the MCP wait tool held OpenCode's chat (measured at 494).
-  instructions: { mcp: 510 },
+  // Raised to 545 for otea whoami (rule 1), so one agent keeps one name across sessions.
+  instructions: { mcp: 545 },
 };
 
 // A bug as an agent files it in the bug-triage preset, every field filled.

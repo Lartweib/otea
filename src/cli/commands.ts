@@ -86,6 +86,7 @@ import {
   hearAgent,
   LISTEN_BEAT_MS,
   listAgents,
+  nameFor,
   seeAgent,
   waitBeat,
 } from '../app/presence.ts';
@@ -167,6 +168,7 @@ import { ensureVapidKeys } from '../server/push.ts';
 import { ensureUiToken, readUiToken } from '../server/token.ts';
 import {
   type EventFilter,
+  findAgent,
   findProfile,
   markMcpAsked,
   type ProfileView,
@@ -315,6 +317,7 @@ function seen(project: Project, input: Input, actor: Actor = input.actor): void 
     agent: actor.name,
     channel,
     harness,
+    folder: input.cwd,
     ...(newSession ? { newSession } : {}),
   });
 }
@@ -1708,6 +1711,53 @@ const claim: Command = {
   },
 };
 
+// The name a session takes: the one it worked under before here (same folder, same harness, not
+// connected now), so it keeps one name across sessions; else a new one, never one connected now.
+const whoami: Command = {
+  name: 'whoami',
+  summary:
+    'Say which agent name to use in this session: the one you worked under before from this folder through the same harness (and not connected now), or that you pick a new one, not one of the agents connected now. --harness names the tool you run in (an MCP client names its own)',
+  args: [],
+  options: { harness: { placeholder: 'name' } },
+  execute: (input) => {
+    const { cwd, option } = input;
+    const client = input.channel === 'mcp' ? input.harness?.name : undefined;
+    const harness = option('harness') ?? client;
+    return withProject(cwd, (project) => {
+      const advice = nameFor(project.db, { folder: cwd, harness });
+      const others = advice.others.length > 0 ? advice.others : [];
+      if (input.agent !== undefined) {
+        assertAgentName(input.agent);
+        return {
+          data: { ...advice, name: input.agent, given: true },
+          text: `You are ${input.agent}: put it on every command (--as ${input.agent}; MCP tools: as).`,
+        };
+      }
+      if (advice.name !== null) {
+        const known = findAgent(project.db, advice.name);
+        const when = known ? ` (last seen ${timeText(known.lastSeen)})` : '';
+        return {
+          data: { ...advice, reuse: true },
+          text: [
+            `Reuse your name: ${advice.name}${when}, the agent that worked here before through this harness and is not connected now. Put it on every command: --as ${advice.name} (MCP tools: as).`,
+            ...(others.length > 0
+              ? [`Others that worked here and are not connected now: ${others.join(', ')}.`]
+              : []),
+          ].join('\n'),
+        };
+      }
+      const taken =
+        advice.working.length > 0
+          ? `, not one of the agents connected now (${advice.working.join(', ')})`
+          : '';
+      return {
+        data: { ...advice, reuse: false },
+        text: `No earlier session of yours is known here: pick a new short name of your own (lowercase letters, digits and dashes)${taken}, and put it on every command (--as <name>; MCP tools: as).`,
+      };
+    });
+  },
+};
+
 // The profile an agent runs as: declared with --model and --effort (--harness too for a
 // command-line agent the first time; an MCP client names its own), or shown without them.
 const profileCommandSpec: Command = {
@@ -2887,6 +2937,7 @@ export const COMMANDS: readonly Command[] = [
   wait,
   claim,
   profileCommandSpec,
+  whoami,
   heartbeat,
   release,
   update,

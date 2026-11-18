@@ -2,6 +2,7 @@ import type { DatabaseSync } from 'node:sqlite';
 import type { AgentChannel } from '../core/authority.ts';
 import { OteaError } from '../core/errors.ts';
 import { activeLease, DEFAULT_LEASE_TTL_MS, leaseExpiry } from '../core/lease.ts';
+import { pathKey } from '../core/path-key.ts';
 import {
   clearListening,
   clearWaiting,
@@ -40,15 +41,18 @@ export type Sighting = {
   session?: number;
   // The harness process that started that server (the server's parent process id).
   launcher?: number;
+  // The folder it works from: the command's working directory, or the one its MCP server runs in.
+  folder?: string | undefined;
 };
 
 // Seen again after this long away, an agent connects anew (its connectedAt starts over).
 export const LIVE_WINDOW_MS = 5 * 60_000;
 
-// An agent counts as connected only while it listens or holds a lease: a listener (an open MCP
-// server, a running otea wait) is heard every LISTEN_BEAT_MS, and counts as listening for
-// LISTEN_WINDOW_MS after the last beat, so a closed session drops out within it. Having run a
-// command lately is no listening: an agent that read once and left is not shown as waiting.
+// An agent counts as connected while it listens, holds a lease, or acted within LISTEN_WINDOW_MS: a
+// listener (an open MCP server, a running otea wait) is heard every LISTEN_BEAT_MS, and counts as
+// listening for LISTEN_WINDOW_MS after the last beat, so a closed session drops out within it. An
+// agent working through the command line, between its commands, counts as connected too, never as
+// listening: having run a command lately is no listening.
 export const LISTEN_BEAT_MS = 60_000;
 export const LISTEN_WINDOW_MS = 150_000;
 
@@ -70,7 +74,7 @@ export type AgentPresence = {
   connectedAt: string | null;
   holding: string[];
   lastSeen: string;
-  // Connected: it listens, or holds a lease.
+  // Connected: it listens, holds a lease, or acted within LISTEN_WINDOW_MS.
   live: boolean;
   // Heard listening within LISTEN_WINDOW_MS.
   listening: boolean;
@@ -85,6 +89,8 @@ export type AgentPresence = {
   // it was never added.
   mcpAt: string | null;
   mcpMissing: boolean;
+  // The folder it was last seen working from (null before any).
+  folder: string | null;
 };
 
 // The harness an agent is known by after a sighting: an MCP client names itself and replaces what
@@ -120,13 +126,16 @@ export function seeAgent(db: DatabaseSync, sighting: Sighting, now: Clock = syst
   const connectedAt = sighting.newSession || back ? at : (known?.connectedAt ?? at);
   // Heard through the MCP server: its harness loaded Otea's server.
   const mcp = sighting.channel === 'mcp';
-  if (fresh && same && connectedAt === known?.connectedAt && (!mcp || known?.mcpAt)) return false;
+  const moved = sighting.folder !== undefined && sighting.folder !== known?.folder;
+  const unchanged = fresh && same && connectedAt === known?.connectedAt && !moved;
+  if (unchanged && (!mcp || known?.mcpAt)) return false;
   upsertAgent(db, {
     name: sighting.agent,
     ...next,
     lastSeen: at,
     connectedAt,
     ...(mcp ? { mcpAt: at } : {}),
+    ...(sighting.folder === undefined ? {} : { folder: sighting.folder }),
   });
   return true;
 }
@@ -260,9 +269,12 @@ export function listAgents(db: DatabaseSync, now: Clock = systemClock): AgentPre
   const within = (last: string | undefined) =>
     last !== undefined && Date.parse(at) - Date.parse(last) <= LISTEN_WINDOW_MS;
   const agents = selectAgents(db).map(
-    ({ name, harness, harnessVersion, connectedAt, lastSeen, mcpAt, mcpAskedAt }) => {
+    ({ name, harness, harnessVersion, connectedAt, lastSeen, mcpAt, mcpAskedAt, folder }) => {
       const held = holding.get(name) ?? [];
       const listening = within(heard.get(name));
+      // It acted lately (a command-line agent between its commands); a profile given for it by
+      // the person, with no sighting of its own, is no act.
+      const active = connectedAt !== null && within(lastSeen);
       const declared = findProfile(db, name);
       return {
         name,
@@ -271,7 +283,7 @@ export function listAgents(db: DatabaseSync, now: Clock = systemClock): AgentPre
         connectedAt,
         holding: held,
         lastSeen,
-        live: listening || held.length > 0,
+        live: listening || held.length > 0 || active,
         listening,
         waiting: within(waits.get(name)),
         profile: declared ? profileView(declared.profile) : null,
@@ -279,6 +291,7 @@ export function listAgents(db: DatabaseSync, now: Clock = systemClock): AgentPre
         profileChangedAt: profileChangedAt(db, name),
         mcpAt: mcpAt ?? null,
         mcpMissing: Boolean(mcpAskedAt) && !mcpAt,
+        folder: folder ?? null,
       };
     },
   );
@@ -317,4 +330,45 @@ export function profileChangedAt(db: DatabaseSync, agent: string): string | null
   const keys = changes.map(key);
   const at = keys.findLastIndex((each, i) => i > 0 && each !== keys[i - 1]);
   return at < 0 ? null : (changes[at]?.at ?? null);
+}
+
+// What a session should call itself (otea whoami): the name it worked under before, when an agent
+// of the same harness worked from this folder (or one inside or around it) and is not connected
+// now, so a returning session keeps one name; never a name connected now, so a second terminal
+// never takes another's. `name`: the one to reuse, the most recently seen; `others`, the rest that
+// fit; `working`, the names connected now.
+export type NameAdvice = { name: string | null; others: string[]; working: string[] };
+
+const harnessKey = (name: string) => name.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+function sameFolder(a: string, b: string): boolean {
+  const [x, y] = [pathKey(a, process.platform), pathKey(b, process.platform)];
+  const inside = (outer: string, inner: string) =>
+    inner === outer || inner.startsWith(outer.endsWith('/') ? outer : `${outer}/`);
+  return inside(x, y) || inside(y, x);
+}
+
+export function nameFor(
+  db: DatabaseSync,
+  { folder, harness }: { folder: string; harness?: string | undefined },
+  now: Clock = systemClock,
+): NameAdvice {
+  const agents = listAgents(db, now);
+  const working = agents.filter(({ live }) => live).map(({ name }) => name);
+  const wanted = harness && harness.toLowerCase() !== 'cli' ? harnessKey(harness) : undefined;
+  // The harnesses it is known by: its MCP client's, and the one its profile declares.
+  const harnesses = (agent: AgentPresence) =>
+    [agent.harness, agent.profile?.harness]
+      .filter((each): each is string => Boolean(each) && each?.toLowerCase() !== 'cli')
+      .map(harnessKey);
+  const fits = agents
+    .filter((agent) => !agent.live && agent.connectedAt !== null && agent.folder !== null)
+    .filter((agent) => sameFolder(agent.folder ?? '', folder))
+    .filter((agent) => {
+      const known = harnesses(agent);
+      return wanted === undefined || known.length === 0 || known.includes(wanted);
+    })
+    .sort((a, b) => Date.parse(b.lastSeen) - Date.parse(a.lastSeen))
+    .map(({ name }) => name);
+  return { name: fits[0] ?? null, others: fits.slice(1), working };
 }

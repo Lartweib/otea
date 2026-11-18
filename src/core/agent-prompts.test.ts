@@ -146,7 +146,7 @@ describe('the join prompt', () => {
   it('reads well with nobody listening and no agent steps, in English too', () => {
     const text = joinPrompt('en', { boards: [], working: [] });
     expect(text).toContain(
-      '1. Pick a name of your own (lowercase letters, digits and dashes, such as claude-b) and connect: `otea connect --as <name>',
+      'Without one, pick a name of your own (lowercase letters, digits and dashes, such as claude-b). Then connect: `otea connect --as <name>',
     );
     expect(text).toContain('no board has agent steps yet');
     expect(joinPrompt('en', facts)).toContain('(2 waiting for an agent now)');

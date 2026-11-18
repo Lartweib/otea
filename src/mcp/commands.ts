@@ -31,6 +31,7 @@ export const AGENT_COMMANDS = [
   'move',
   'claim',
   'profile',
+  'whoami',
   'heartbeat',
   'release',
   'relay',
@@ -89,6 +90,7 @@ export const READ_ONLY = new Set([
   'wait',
   'topic list',
   'topic show',
+  'whoami',
 ]);
 
 // A tool is named after its command, with words joined by underscores (send-back is send_back).
