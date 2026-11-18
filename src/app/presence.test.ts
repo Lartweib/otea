@@ -58,6 +58,7 @@ describe('agent presence', () => {
         // Heard through the MCP server: its harness loaded Otea's server.
         mcpAt: T0,
         mcpAskedAt: null,
+        folder: null,
       });
     });
 
@@ -126,10 +127,13 @@ describe('agent presence', () => {
       expect(listAgents(ctx.db, at(T0))).toEqual([]);
     });
 
-    it('never counts an agent live for having been seen: a read or a write is no listening', () => {
+    // A command-line agent at work between its commands: connected, so the desk never says nobody
+    // is there while it delivers (P1-11), but never listening; gone once it stops acting.
+    it('counts an agent that acted lately as connected, never as listening', () => {
       seeAgent(ctx.db, { agent: 'claude', channel: 'cli' }, at(T0));
 
-      expect(listAgents(ctx.db, at(T0))[0]).toMatchObject({ live: false, listening: false });
+      expect(listAgents(ctx.db, at(T0))[0]).toMatchObject({ live: true, listening: false });
+      expect(listAgents(ctx.db, at(T2_31S))[0]).toMatchObject({ live: false, listening: false });
     });
 
     it('stops counting an agent listening once its listener ends, unless another heard it since', () => {
@@ -162,6 +166,7 @@ describe('agent presence', () => {
           profileChangedAt: null,
           mcpAt: T0,
           mcpMissing: false,
+          folder: null,
         },
       ]);
       expect(listAgents(ctx.db, at(T2_31S))[0]).toMatchObject({ live: false, listening: false });

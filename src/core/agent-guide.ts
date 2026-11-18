@@ -3,7 +3,7 @@
 // prints it first. Every agent reads it once a session, so every word costs: keep it short.
 export const AGENT_GUIDE = [
   "Otea's agent guide: the board is the procedure; follow it to the letter.",
-  "1. Name yourself on every call: --as <name> (MCP tools: as). Each agent and every subagent has its own unique name; never reuse your parent's.",
+  "1. Name yourself on every call: --as <name> (MCP tools: as). A new session runs otea whoami first (MCP: whoami): reuse the name it gives back, or pick a new one when it gives none. Each agent and every subagent has its own unique name (a subagent: <your name>-<role>); never reuse your parent's.",
   '2. Declare your model and effort: otea profile --model <id> --effort <level> (MCP: profile), each session and on any change; subagents too. Declare only what you can read from your settings; if you cannot know a value, declare unknown. Never guess.',
   '3. Start with otea next: it follows the order the person set on the Matrix (a board view weighing two fields, like effort × impact). Claim before you work: otea claim <id>, or otea next --claim. A claim lasts one step: claim it again at each new step, and when your lease ran out. A subagent releases what it holds before it ends: otea release <id>.',
   '4. Every request the person makes, in chat too, goes on a board first: otea create it, then work it there. Do what the step says: its instructions and every line of "Before you hand it off". Do not skip, reorder or add steps; never invent a procedure of your own.',

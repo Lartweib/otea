@@ -13,7 +13,8 @@ import {
 import { NO_FORGE } from '../cli/forge.ts';
 import { OTEA_VERSION } from '../cli/version.ts';
 import { agentGuideFor } from '../core/agent-guide.ts';
-import { type Actor, agentActor } from '../core/item.ts';
+import { OteaError } from '../core/errors.ts';
+import { type Actor, agentActor, assertAgentName } from '../core/item.ts';
 import { parseDuration } from '../core/lease.ts';
 import { AGENT_COMMANDS, READ_ONLY, toolName } from './commands.ts';
 import { mcpWords } from './words.ts';
@@ -79,6 +80,18 @@ const AS = z.string().optional().describe('your agent name; each subagent its ow
 
 const NAME_YOURSELF = 'pass as with your agent name on every call';
 
+// A server started under a name (otea mcp --as) is that agent's: a call names it, or one of its
+// subagents (<name>-<role>), never another agent, which would spread one agent over several names.
+export function assertPinnedName(pinned: string | undefined, agent: string | undefined): void {
+  if (pinned === undefined || agent === undefined) return;
+  assertAgentName(agent);
+  if (agent === pinned || agent.startsWith(`${pinned}-`)) return;
+  throw new OteaError(
+    'forbidden',
+    `This MCP server is ${pinned}'s (otea mcp --as ${pinned}): call as ${pinned}, or as ${pinned}-<role> for a subagent; nothing was done as ${agent}`,
+  );
+}
+
 function inputSchema(command: Command) {
   const omitted = OMITTED_OPTIONS[command.name] ?? [];
   const shape: Record<string, ZodType> = { as: AS };
@@ -116,6 +129,7 @@ function inputFor(
     return typeof value === 'string' || typeof value === 'number' ? String(value) : undefined;
   };
   const agent = typeof values.as === 'string' && values.as !== '' ? values.as : context.agent;
+  assertPinnedName(context.agent, agent);
   // The first call of each agent on this server starts its session here.
   const newSession = agent !== undefined && !seen.has(agent);
   if (agent !== undefined) {

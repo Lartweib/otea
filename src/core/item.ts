@@ -23,7 +23,7 @@ export function agentActor(name: string | undefined, how: string): Actor {
   if (name === undefined || name === '') {
     throw new OteaError(
       'unnamed_agent',
-      `Name yourself first: ${how}. Pick a short name no other agent working now uses, such as claude-b; subagents each use their own.`,
+      `Name yourself first: ${how}. otea whoami (MCP: whoami) gives back the name you worked under here before; else pick a short name no other agent working now uses, such as claude-b; subagents each use their own.`,
     );
   }
   assertAgentName(name);

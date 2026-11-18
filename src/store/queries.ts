@@ -623,6 +623,8 @@ export type AgentRecord = {
   // When it was last heard through the MCP server, and when it asked to be (otea connect).
   mcpAt?: string | null;
   mcpAskedAt?: string | null;
+  // The folder it was last seen working from.
+  folder?: string | null;
 };
 
 type AgentRow = {
@@ -633,6 +635,7 @@ type AgentRow = {
   connected_at: string | null;
   mcp_at: string | null;
   mcp_asked_at: string | null;
+  folder: string | null;
 };
 
 function toAgent(row: AgentRow): AgentRecord {
@@ -644,6 +647,7 @@ function toAgent(row: AgentRow): AgentRecord {
     connectedAt: row.connected_at,
     mcpAt: row.mcp_at,
     mcpAskedAt: row.mcp_asked_at,
+    folder: row.folder,
   };
 }
 
@@ -745,12 +749,13 @@ export function upsertAgent(
   db: DatabaseSync,
   agent: Omit<AgentRecord, 'connectedAt' | 'mcpAskedAt'> & { connectedAt?: string | null },
 ): void {
-  const sql = `INSERT INTO agents (name, harness, harness_version, last_seen, connected_at, mcp_at)
-    VALUES (:name, :harness, :harnessVersion, :lastSeen, :connectedAt, :mcpAt)
+  const sql = `INSERT INTO agents (name, harness, harness_version, last_seen, connected_at, mcp_at, folder)
+    VALUES (:name, :harness, :harnessVersion, :lastSeen, :connectedAt, :mcpAt, :folder)
     ON CONFLICT (name) DO UPDATE SET harness = excluded.harness,
       harness_version = excluded.harness_version, last_seen = excluded.last_seen,
       connected_at = COALESCE(excluded.connected_at, agents.connected_at),
-      mcp_at = COALESCE(excluded.mcp_at, agents.mcp_at)`;
+      mcp_at = COALESCE(excluded.mcp_at, agents.mcp_at),
+      folder = COALESCE(excluded.folder, agents.folder)`;
   const { name, harness, harnessVersion, lastSeen } = agent;
   db.prepare(sql).run({
     name,
@@ -759,6 +764,7 @@ export function upsertAgent(
     lastSeen,
     connectedAt: agent.connectedAt ?? null,
     mcpAt: agent.mcpAt ?? null,
+    folder: agent.folder ?? null,
   });
 }
 

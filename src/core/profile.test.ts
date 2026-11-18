@@ -53,9 +53,15 @@ describe('assertProfileValue', () => {
     expect(() => assertProfileValue('effort', 'two words')).toThrow(/unknown.*never guess/);
   });
 
+  // The harness is named as its maker names it, spaces and all (P3C-10).
+  it('takes any name for the harness, as the agent writes it', () => {
+    expect(assertProfileValue('harness', 'Claude Code')).toBe('Claude Code');
+    expect(assertProfileValue('harness', '  OpenCode 1.4 ')).toBe('OpenCode 1.4');
+  });
+
   it('never offers unknown for a harness, where it is refused', () => {
-    expect(() => assertProfileValue('harness', 'claude code')).toThrow(
-      '--harness takes one word of at most 100 characters: the tool you run in (such as claude-code, codex or gemini-cli)',
+    expect(() => assertProfileValue('harness', ' ')).toThrow(
+      '--harness takes a name of at most 100 characters: the tool you run in (such as claude-code, codex or gemini-cli)',
     );
   });
 

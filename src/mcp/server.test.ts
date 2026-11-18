@@ -113,6 +113,7 @@ describe('mcp server', () => {
         'topic_list',
         'topic_show',
         'wait',
+        'whoami',
       ]);
     });
   });
@@ -484,9 +485,9 @@ describe('mcp server', () => {
     });
 
     it('keeps two subagents on one server apart: one cannot take what the other holds', async () => {
-      declareProfiles(repo.dir, 'scout', 'fixer');
-      await data('claim', { id: 'TASKS-1', as: 'scout' });
-      const reply = await call('claim', { id: 'TASKS-1', as: 'fixer' });
+      declareProfiles(repo.dir, 'claude-scout', 'claude-fixer');
+      await data('claim', { id: 'TASKS-1', as: 'claude-scout' });
+      const reply = await call('claim', { id: 'TASKS-1', as: 'claude-fixer' });
 
       expect(reply.isError).toBe(true);
       expect(error(reply).code).toBe('lease_held');
@@ -505,6 +506,19 @@ describe('mcp server', () => {
       } finally {
         await bare.close();
       }
+    });
+
+    // A server started under a name is that agent's: its subagents are <name>-<role>, and another
+    // agent's name would spread one agent over several (P3C-7).
+    it('refuses, on a server started under a name, a call as another agent', async () => {
+      declareProfiles(repo.dir, 'codex');
+      const reply = await call('claim', { id: 'TASKS-1', as: 'codex' });
+
+      expect(reply.isError).toBe(true);
+      expect(error(reply)).toMatchObject({
+        code: 'forbidden',
+        message: expect.stringContaining('call as claude, or as claude-<role> for a subagent'),
+      });
     });
 
     it('refuses an invalid name in as, as the CLI does', async () => {

@@ -403,6 +403,11 @@ export const MIGRATIONS = [
   ALTER TABLE agents ADD COLUMN mcp_at TEXT;
   ALTER TABLE agents ADD COLUMN mcp_asked_at TEXT;
   `,
+  // The folder an agent was last seen working from: a new session there, of the same harness, is
+  // told the name it worked under (otea whoami), so it keeps one name across sessions.
+  `
+  ALTER TABLE agents ADD COLUMN folder TEXT;
+  `,
 ];
 
 function userVersion(db: DatabaseSync): number {

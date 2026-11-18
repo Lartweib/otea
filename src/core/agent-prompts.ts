@@ -83,7 +83,7 @@ const WORDS = {
       firstIntro:
         'Start working on this project as its agent: its boards are ready. Do not design or change boards.',
       connect: (taken: string, example: string) =>
-        `1. Pick a name of your own (${NAME(example)})${taken} and connect: \`${CONNECT}\`, with unknown for any value you cannot read from your settings (never guess); ${CONNECTS}. Then put your name on every command (\`--as <name>\`; MCP tools: as). Declare it for this session too: \`${PROFILE}\`.`,
+        `1. Run \`otea whoami\`: it gives back the name you worked under here before. Without one, pick a name of your own (${NAME(example)})${taken}. Then connect: \`${CONNECT}\`, with unknown for any value you cannot read from your settings (never guess); ${CONNECTS}. Then put your name on every command (\`--as <name>\`; MCP tools: as). Declare it for this session too: \`${PROFILE}\`.`,
       worktree:
         'Other agents work in this same checkout: do your work on your own branch in your own git worktree (`git worktree add`), never in files another agent is changing.',
       firstWorktree:
@@ -123,7 +123,7 @@ const WORDS = {
       firstIntro:
         'Empieza a trabajar en este proyecto como su agente: sus tableros están listos. No diseñes ni cambies tableros.',
       connect: (taken: string, example: string) =>
-        `1. Elige un nombre propio (${NAME_ES(example)})${taken} y conéctate: \`${CONNECT_ES}\`, con unknown en lo que no puedas leer de tu configuración (nunca adivines); ${CONNECTS_ES}. Luego pon tu nombre en cada comando (\`--as <nombre>\`; herramientas MCP: as). Decláralo también para esta sesión: \`${PROFILE_ES}\`.`,
+        `1. Ejecuta \`otea whoami\`: te devuelve el nombre con el que ya trabajaste aquí. Si no te da ninguno, elige un nombre propio (${NAME_ES(example)})${taken}. Luego conéctate: \`${CONNECT_ES}\`, con unknown en lo que no puedas leer de tu configuración (nunca adivines); ${CONNECTS_ES}. Luego pon tu nombre en cada comando (\`--as <nombre>\`; herramientas MCP: as). Decláralo también para esta sesión: \`${PROFILE_ES}\`.`,
       worktree:
         'Otros agentes trabajan en esta misma copia del repositorio: haz tu trabajo en tu propia rama y en tu propio worktree de git (`git worktree add`), nunca en archivos que otro agente está cambiando.',
       firstWorktree:

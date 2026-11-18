@@ -48,14 +48,14 @@ describe('migrate', () => {
         'evidence_opened',
       ]),
     );
-    expect(userVersion(db)).toBe(30);
+    expect(userVersion(db)).toBe(31);
   });
 
   it('is idempotent', () => {
     migrate(db);
     migrate(db);
 
-    expect(userVersion(db)).toBe(30);
+    expect(userVersion(db)).toBe(31);
   });
 
   describe('from version 1', () => {
