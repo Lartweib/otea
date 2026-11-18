@@ -113,6 +113,6 @@ describe('validate', () => {
   });
 
   it('is listed in the help', async () => {
-    expect((await otea('help')).out).toContain('otea validate');
+    expect((await otea('help', 'all')).out).toContain('otea validate');
   });
 });
