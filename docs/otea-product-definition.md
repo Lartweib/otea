@@ -89,6 +89,7 @@ The preset defines the actual states. The core provides the building blocks ever
 1. **Intake**
    - *Agent-created*: an agent creates a complete item following the playbook (e.g. a documented bug).
    - *Human-created*: a form generated from the preset's fields. If every field required for completeness is filled, the item enters the normal flow. If not, it enters an incomplete state whose turn is the agent's: the agent follows the playbook's enrichment section to investigate and complete it, **or closes it with a reason** (not reproducible, duplicate, out of scope).
+   - *A board drafted by an agent*: in Studio the human asks an agent to draft a board («Que lo esboce un agente»), which files a Pedido. «Quién lo esboza» offers any agent, or by name only the agents connected now or seen in the last hour (a session that may still be open; an older name would leave the Pedido waiting for nobody), most recent first, never one that declared no profile (Otea refuses it every claim until it does).
 2. **Triage** (human, many items at once): filter, group, cross-check, prioritize, discard, select what gets worked on.
 3. **Work** (agent): claim with a lease, verify the problem still exists, act, attach evidence.
 4. **Review** (human, one item in depth): inspect evidence, answer the preset's questions, approve or request changes.

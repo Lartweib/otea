@@ -103,6 +103,8 @@ export const studioHome = {
   'bs.ask.needPlaceholder':
     'Ej.: Quiero que abra un ítem por cada error que reporten los usuarios, lo reproduzca y me muestre la evidencia del arreglo para aprobarlo o devolverlo.',
   'bs.ask.who': 'Quién lo esboza',
+  'bs.ask.whoHint':
+    'Los agentes conectados ahora o vistos en la última hora. Cualquier otro puede tomarlo como «Cualquier agente».',
   'bs.ask.send': 'Pedir el borrador',
   'bs.ask.sending': 'Pidiendo…',
   'bs.ask.sent': 'Pedido {id}: el borrador de {name}. Lo verás aquí en cuanto llegue.',

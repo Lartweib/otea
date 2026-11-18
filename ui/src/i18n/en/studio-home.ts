@@ -99,6 +99,8 @@ export const studioHome = {
   'bs.ask.needPlaceholder':
     'E.g.: Open an item for each bug users report, reproduce it and show me the evidence of the fix so I can approve it or send it back.',
   'bs.ask.who': 'Who drafts it',
+  'bs.ask.whoHint':
+    'The agents connected now or seen in the last hour. Any other can take it as “Any agent”.',
   'bs.ask.send': 'Ask for the draft',
   'bs.ask.sending': 'Asking…',
   'bs.ask.sent': 'Request {id}: the draft of {name}. You will see it here as soon as it arrives.',

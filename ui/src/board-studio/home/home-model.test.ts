@@ -39,22 +39,39 @@ describe('the boards Tus tableros lists', () => {
 
 describe('who may draft a board', () => {
   const at = '2026-11-17T12:00:00.000Z';
-  const agent = (name: string, lastSeen: string, live = false) =>
-    ({ name, lastSeen, live, harness: null, holding: [] }) as Agent;
+  const profile = { harness: 'claude-code', model: 'opus', effort: 'high', family: 'claude' };
+  const agent = (name: string, lastSeen: string, live = false, declared = true) =>
+    ({
+      name,
+      lastSeen,
+      live,
+      harness: null,
+      holding: [],
+      profile: declared ? profile : null,
+    }) as Agent;
 
-  it('offers the agents connected or seen this week, the ones here now first', () => {
+  it('offers the agents connected now or seen in the last hour, the ones here now first', () => {
     const agents = [
       agent('old', '2026-10-01T10:00:00.000Z'),
-      agent('kiln', '2026-11-16T10:00:00.000Z'),
+      agent('kiln', '2026-11-17T10:30:00.000Z'),
       agent('quill', '2026-11-17T11:00:00.000Z', true),
-      agent('scout', '2026-11-17T09:00:00.000Z'),
+      agent('scout', '2026-11-17T11:40:00.000Z'),
+      agent('held', '2026-11-16T09:00:00.000Z', true),
     ];
-    expect(draftersOf(agents, at)).toEqual(['quill', 'scout', 'kiln']);
+    expect(draftersOf(agents, at)).toEqual(['quill', 'held', 'scout']);
+  });
+
+  it('never offers an agent Otea refuses work from: one that declared no profile', () => {
+    const agents = [
+      agent('quill', '2026-11-17T11:50:00.000Z'),
+      agent('nameless', '2026-11-17T11:55:00.000Z', true, false),
+    ];
+    expect(draftersOf(agents, at)).toEqual(['quill']);
   });
 
   it('offers at most eight', () => {
     const many = Array.from({ length: 12 }, (_, n) =>
-      agent(`a${n}`, `2026-11-17T0${(n % 9) + 1}:00:00.000Z`),
+      agent(`a${n}`, `2026-11-17T11:${String(10 + n).padStart(2, '0')}:00.000Z`),
     );
     expect(draftersOf(many, at)).toHaveLength(8);
   });

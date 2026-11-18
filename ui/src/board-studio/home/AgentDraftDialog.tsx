@@ -45,8 +45,8 @@ function AgentDraftForm({ start, onClose }: { start: string; onClose: () => void
   const [posting, setPosting] = useState(false);
   const nameRef = useRef<HTMLInputElement>(null);
   const needRef = useRef<HTMLTextAreaElement>(null);
-  // The agents here now or seen this week (not every agent Otea ever saw); any other takes it as
-  // any agent.
+  // The agents here now or seen in the last hour that declared a profile (never every agent Otea
+  // ever saw, nor one it refuses work from); any other takes it as any agent.
   const agents = draftersOf(app.agents ?? [], new Date().toISOString());
 
   const submit = () => {
@@ -139,6 +139,7 @@ function AgentDraftForm({ start, onClose }: { start: string; onClose: () => void
             </ChipButton>
           ))}
         </div>
+        <p className="fhint">{t('bs.ask.whoHint')}</p>
       </div>
       <p className="dhint" role="alert">
         {problem}
