@@ -150,14 +150,15 @@ export function elsewhereBlocks(project: ProjectOverview): LaneBlock[] {
             <span className="tt">{it.title}</span>
           </div>
           <div className="m" data-leaf="">
+            {/* Ids repeat across projects (PED-1 in each): the project goes with it. */}
             <span className="id">{it.id}</span>
             <span className="mpt">
               <span className="sep">·</span>
-              <span className="stp you">{keptStateWord(it.stateName ?? it.state)}</span>
+              <span className="pid">{project.name}</span>
             </span>
             <span className="mpt">
               <span className="sep">·</span>
-              <span>{project.name}</span>
+              <span className="stp you">{keptStateWord(it.stateName ?? it.state)}</span>
             </span>
           </div>
         </div>
