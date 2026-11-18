@@ -1730,7 +1730,9 @@ const whoami: Command = {
     const client = input.channel === 'mcp' ? input.harness?.name : undefined;
     const harness = option('harness') ?? client;
     return withProject(cwd, (project) => {
-      const advice = nameFor(project.db, { folder: cwd, harness });
+      // Over MCP this server asks: a name it hears is this session's own.
+      const session = input.channel === 'mcp' ? process.pid : undefined;
+      const advice = nameFor(project.db, { folder: cwd, harness, session });
       const others = advice.others.length > 0 ? advice.others : [];
       if (input.agent !== undefined) {
         assertAgentName(input.agent);
