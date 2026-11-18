@@ -701,10 +701,14 @@ export function answeredFor(ctx: Context, item: ItemRecord, on: ItemOnBoard): st
   const answered = on.roundQuestions.findLast((q) => q.answer);
   const at = answered?.answer?.at;
   if (!answered || at === undefined) return undefined;
-  const acted = selectEvents(ctx.db, item.id).some(
-    (event) => event.at > at && event.actor.kind === 'agent' && event.actor.name === answered.by,
+  // It acted since, or the person freed the item for any agent (Retomar, Reasignar).
+  const done = selectEvents(ctx.db, item.id).some(
+    (event) =>
+      event.at > at &&
+      ((event.actor.kind === 'agent' && event.actor.name === answered.by) ||
+        (event.actor.kind === 'human' && event.type === 'released')),
   );
-  return acted ? undefined : answered.by;
+  return done ? undefined : answered.by;
 }
 
 // Whether the item is the agent's to take now: a doing phase it may take, or a review any agent

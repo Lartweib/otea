@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { setLanguage } from '../i18n/i18n.ts';
 import { ago, inMinutes, item, NOW } from './fixtures.ts';
-import { agoText, whenText } from './when.ts';
+import { agoText, turnSince, whenText } from './when.ts';
 
 afterEach(() => setLanguage('en'));
 
@@ -26,6 +26,15 @@ describe('when, as a row says it', () => {
       expiredLease: { holder: 'kiln', expiresAt: ago(12) },
     });
     expect(whenText(lapsed, NOW)).toEqual({ text: 'vencida', warn: true });
+  });
+
+  it('counts your turn from when it began, not from the item’s last change (P1-6)', () => {
+    setLanguage('es');
+    const yours = item({ id: 'B', turn: 'human', enteredAt: ago(90), updatedAt: ago(5) });
+    expect(whenText(yours, NOW).text).toBe('2 h');
+    const asks = { question: 1, by: 'mender', text: '¿A o B?', at: ago(20) };
+    expect(whenText({ ...yours, asks }, NOW).text).toBe('20 min');
+    expect(turnSince(item({ id: 'C', updatedAt: ago(3) }))).toBe(Date.parse(ago(3)));
   });
 
   it('else says how long it has been where it is', () => {

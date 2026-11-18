@@ -42,6 +42,8 @@ export type Item = {
   closes?: Closing;
   createdAt: string;
   updatedAt: string;
+  // When it entered the state it stands in (its turn began then); absent from an older server.
+  enteredAt?: string;
   createdBy: Actor;
   lease: Lease | null;
   // A lease that ran out with nobody releasing it; lease is null then.

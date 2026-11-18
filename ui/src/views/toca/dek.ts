@@ -1,4 +1,5 @@
 import { isStuck } from '../../derive/toca.ts';
+import { turnSince } from '../../derive/when.ts';
 import { t } from '../../i18n/i18n.ts';
 import type { Item } from '../../types.ts';
 import { numberWord, sinceText, spanText } from './words.ts';
@@ -11,7 +12,7 @@ const MARK = '\u0000';
 // When a waiting item started waiting: when it came to you, or when its agent's lease ran out.
 const waitingSince = (it: Item, now: number): number | null =>
   it.turn === 'human'
-    ? Date.parse(it.updatedAt)
+    ? turnSince(it)
     : isStuck(it, now) && it.expiredLease
       ? Date.parse(it.expiredLease.expiresAt)
       : null;

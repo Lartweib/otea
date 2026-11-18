@@ -13,7 +13,7 @@ import {
   type TocaSection,
   tocaSection,
 } from '../../derive/toca.ts';
-import { whenText } from '../../derive/when.ts';
+import { turnSince, whenText } from '../../derive/when.ts';
 import { language, type PlainKey, t, tx } from '../../i18n/i18n.ts';
 import { Icon } from '../../kit/Icon.tsx';
 import { AgentMark } from '../../kit/Marks.tsx';
@@ -365,7 +365,7 @@ export function tocaBlocks(
     if (s) by.set(s, [...(by.get(s) ?? []), it]);
   }
   const blocks: LaneBlock[] = [];
-  const at = (it: Item) => Date.parse(it.updatedAt);
+  const at = (it: Item) => turnSince(it);
   const quiet: TocaSection[] = [];
   const quietBlock = () => {
     if (!quiet.length) return;

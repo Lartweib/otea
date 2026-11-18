@@ -29,6 +29,12 @@ export function leaseLeftText(lease: Item['lease'], now: number): string | null 
   return t('when.left', { time: span(left) });
 }
 
+// When the item's turn began (P1-6): an agent's question since it was asked, else since the item
+// entered its state, never its last change (a note or a field edit is no new turn).
+export function turnSince(item: Pick<Item, 'asks' | 'enteredAt' | 'updatedAt'>): number {
+  return Date.parse(item.asks?.at ?? item.enteredAt ?? item.updatedAt);
+}
+
 // When, as a row's age column says it (mock:1315-1325): the time left on the lease of an agent at
 // work, "expired" in warn when its lease ran out, else how long the item has been where it is.
 export function whenText(item: Item, now: number): { text: string; warn: boolean } {
@@ -40,7 +46,7 @@ export function whenText(item: Item, now: number): { text: string; warn: boolean
     }
     if (item.expiredLease) return { text: t('when.expired'), warn: true };
   }
-  return { text: age((now - Date.parse(item.updatedAt)) / MIN), warn: false };
+  return { text: age((now - turnSince(item)) / MIN), warn: false };
 }
 
 // How long ago something happened, as a sentence says it: «hace 12 min», and «ahora» or «ayer»
