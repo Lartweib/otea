@@ -35,9 +35,9 @@ describe('GET /api/agent-prompt', () => {
   it('gives the first contact while the project has no board of its own', async () => {
     expect(await get('?lang=es')).toEqual({
       status: 200,
-      body: { kind: 'start', prompt: startPrompt('es') },
+      body: { kind: 'start', prompt: startPrompt('es', false) },
     });
-    expect((await get('?lang=en')).body.prompt).toBe(startPrompt('en'));
+    expect((await get('?lang=en')).body.prompt).toBe(startPrompt('en', false));
   });
 
   it('gives the join prompt once there are boards, naming who listens and what waits', async () => {

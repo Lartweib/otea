@@ -34,11 +34,31 @@ describe('the start prompt', () => {
       // A command run without the name fails (exit 2): the prompt says to put it on each one.
       expect(text).toContain(
         lang === 'es'
-          ? 'ponlo en cada comando de otea (`--as <nombre>`'
-          : 'put it on every otea command (`--as <name>`',
+          ? 'pon tu nombre en cada comando de otea (`--as <nombre>`'
+          : 'put your name on every otea command (`--as <name>`',
       );
     });
   }
+
+  // A plain folder (a page kept by someone who never uses git): no repo, git, CI or diff words.
+  it('speaks of no repository, git, CI or diff in a folder that is no git repository', () => {
+    for (const lang of ['en', 'es'] as const) {
+      const text = startPrompt(lang, false);
+      expect(text).not.toMatch(/repositor|\bgit\b|\bCI\b|\bdiff\b/i);
+      expect(text).toContain(lang === 'es' ? 'en esta carpeta' : 'in this folder');
+      expect(text).toContain('otea connect --as');
+    }
+    expect(agentPrompt('start', 'en', { boards: [], working: [], repo: false })).toBe(
+      startPrompt('en', false),
+    );
+  });
+
+  it('tells the agent connect prints the MCP server it adds to its own harness', () => {
+    expect(startPrompt('en')).toContain(
+      "prints the MCP server to add to your own harness's config: add it yourself",
+    );
+    expect(startPrompt('es')).toContain('agrégalo tú');
+  });
 
   it('speaks the language of the screen', () => {
     expect(startPrompt('es')).toMatch(/^Configura Otea/);
@@ -78,8 +98,9 @@ describe('the join prompt', () => {
     expect(text).toContain('otea next --claim');
     expect(text).toContain('Nunca tomes un ítem que tiene otro agente');
     expect(text).not.toContain('otea board draft');
-    // A second agent's otea connect would rewrite the .mcp.json the first one uses.
-    expect(text).toContain('No ejecutes otea connect');
+    // Every agent connects: what connect writes names nobody, so it takes nothing from another.
+    expect(text).toContain('otea connect --as <nombre>');
+    expect(text).toContain('servidor MCP');
     expect(text).toContain(
       'otea profile --as <nombre> --model <modelo> --effort <esfuerzo> --harness <harness>',
     );
@@ -102,6 +123,19 @@ describe('the join prompt', () => {
     }
   });
 
+  // Agents seen before, none working now: nobody to join, as for the very first one.
+  it('joins nobody when no agent works there now', () => {
+    const text = joinPrompt('es', { boards: facts.boards, working: [] });
+    expect(text).toMatch(/^Empieza a trabajar en este proyecto como su agente/);
+    expect(text).not.toContain('junto a los otros');
+  });
+
+  it('asks for no worktree in a folder that is no git repository', () => {
+    const text = joinPrompt('en', { ...facts, repo: false });
+    expect(text).not.toMatch(/worktree|checkout|\bgit\b/);
+    expect(text).toContain('never change files another agent is changing');
+  });
+
   it('gives as example a name nobody works under', () => {
     const text = joinPrompt('en', { boards: [], working: ['claude-b', 'claude-c'] });
     expect(text).toContain('such as claude-d)');
@@ -112,7 +146,7 @@ describe('the join prompt', () => {
   it('reads well with nobody listening and no agent steps, in English too', () => {
     const text = joinPrompt('en', { boards: [], working: [] });
     expect(text).toContain(
-      '1. Pick a name of your own (lowercase letters, digits and dashes, such as claude-b) and put it on every command',
+      '1. Pick a name of your own (lowercase letters, digits and dashes, such as claude-b) and connect: `otea connect --as <name>',
     );
     expect(text).toContain('no board has agent steps yet');
     expect(joinPrompt('en', facts)).toContain('(2 waiting for an agent now)');

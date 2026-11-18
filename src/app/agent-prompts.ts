@@ -1,3 +1,5 @@
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
 import type { JoinFacts, PromptKind } from '../core/agent-prompts.ts';
 import { listBoardSummaries } from './boards.ts';
 import type { Context } from './context.ts';
@@ -5,10 +7,19 @@ import { listItems, systemClock } from './items.ts';
 import { liveBoardOf } from './next.ts';
 import { listAgents } from './presence.ts';
 
+// A project as the prompts read it: its folder too, when known.
+type Place = Context & { root?: string };
+
+// Whether the project's folder is a git repository: a plain folder (a page kept by someone who
+// never uses git) gets prompts with no repository, history, CI or worktree in them.
+function isRepo({ root }: Place): boolean {
+  return root === undefined || existsSync(join(root, '.git'));
+}
+
 // The project as an agent joining it reads it: each published board of the person's (Pedidos
 // aside) with the steps an agent does and how many items wait for an agent with nobody holding
 // them, and the names of the agents working now.
-export function joinFacts(ctx: Context, now = systemClock): JoinFacts {
+export function joinFacts(ctx: Place, now = systemClock): JoinFacts {
   const boards = listBoardSummaries(ctx)
     .filter(
       ({ builtin, liveVersion, collection }) => !builtin && liveVersion !== null && collection,
@@ -24,11 +35,24 @@ export function joinFacts(ctx: Context, now = systemClock): JoinFacts {
       ).length;
       return [{ name: live.def.name, agentSteps, waiting }];
     });
-  const agents = listAgents(ctx.db, now);
   // Working: listening now, or holding an item it works on, which a long step does without a wait.
-  const working = agents.filter(({ live }) => live).map(({ name }) => name);
-  // No agent was ever seen: the one joining is the project's first, and connects.
-  return { boards, working, ...(agents.length === 0 ? { first: true } : {}) };
+  const working = listAgents(ctx.db, now)
+    .filter(({ live }) => live)
+    .map(({ name }) => name);
+  // Nobody works there now: the one joining has nobody to join.
+  return {
+    boards,
+    working,
+    ...(working.length === 0 ? { first: true } : {}),
+    repo: isRepo(ctx),
+  };
+}
+
+// The facts a prompt of the moment is written from: the join prompt reads the whole project; the
+// others only whether it is a git repository.
+export function promptFacts(ctx: Place, moment: PromptKind, now = systemClock): JoinFacts {
+  if (moment === 'join') return joinFacts(ctx, now);
+  return { boards: [], working: [], repo: isRepo(ctx) };
 }
 
 // The moment a project is in: no board of its own yet is a first contact, any board makes a new
