@@ -664,7 +664,7 @@ function mcpInstructionText(entry: McpEntry): string[] {
   const env = Object.entries(entry.env ?? {}).map(([name, value]) => `${name}=${value}`);
   const json = JSON.stringify({ [MCP_SERVER]: entry });
   return [
-    "To use Otea's MCP tools, add this MCP server to your harness's own MCP config yourself (a local stdio server; Otea writes no harness config):",
+    "To use Otea's MCP tools, add this MCP server to your harness's MCP config yourself, for this project only (the project's own config or your harness's per-folder scope, never your global config: the server is pinned to this project). It is a local stdio server; Otea writes no harness config:",
     indent(
       columns([
         ['name', MCP_SERVER],
