@@ -150,7 +150,10 @@ describe('setup for agents', () => {
       expect(existsSync(join(repo.dir, '.mcp.json'))).toBe(false);
       expect(out).toContain(`Added the Otea block to ${join(repo.dir, 'AGENTS.md')}`);
       expect(out).toContain('a line @AGENTS.md in it imports this file');
-      expect(out).toContain("add this MCP server to your harness's own MCP config yourself");
+      expect(out).toContain(
+        "add this MCP server to your harness's MCP config yourself, for this project only",
+      );
+      expect(out).toContain('never your global config');
       expect(out).toMatch(/^ {2}name {5}otea$/m);
       expect(out).toMatch(/^ {2}command {2}node$/m);
       expect(out).toContain(`As JSON: ${JSON.stringify({ otea: entry() })}`);
