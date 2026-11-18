@@ -26,7 +26,10 @@ describe('main', () => {
   });
 
   // The command npm link puts on the PATH: Node with no flags, so Node's notices stay quiet.
-  it('runs as the otea command npm installs, with no warning on stderr', () => {
+  // Its first run fills Node's compile cache, which takes a while on a slow Windows runner.
+  it('runs as the otea command npm installs, with no warning on stderr', {
+    timeout: 90_000,
+  }, () => {
     const { status, stdout, stderr } = spawnSync(process.execPath, [BIN, 'help'], {
       encoding: 'utf8',
     });
