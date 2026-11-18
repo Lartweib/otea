@@ -4,7 +4,7 @@ import { bodyLimit } from 'hono/body-limit';
 import { getCookie, setCookie } from 'hono/cookie';
 import { z } from 'zod';
 import { agentDetail } from '../app/agent-detail.ts';
-import { joinFacts, promptKindOf } from '../app/agent-prompts.ts';
+import { promptFacts, promptKindOf } from '../app/agent-prompts.ts';
 import { syncBoardPresets } from '../app/boards.ts';
 import { briefFor } from '../app/brief.ts';
 import { listCollectionViews, listShownCollectionViews } from '../app/collections.ts';
@@ -397,7 +397,7 @@ function api(project: Project, { feed, streams, notifier }: Live, doors: Doors):
           throw new InvalidQuery(`kind must be one of ${PROMPT_KINDS.join(', ')}`);
         const lang = asked === 'es' ? 'es' : 'en';
         const moment = kind ?? promptKindOf(project);
-        const facts = moment === 'join' ? joinFacts(project) : { boards: [], working: [] };
+        const facts = promptFacts(project, moment);
         const first = 'first' in facts && facts.first === true ? { first: true } : {};
         return c.json({ kind: moment, prompt: agentPrompt(moment, lang, facts), ...first });
       })
