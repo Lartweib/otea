@@ -19,6 +19,8 @@ export type ProofPoint = {
 export type ProofChecklistView = {
   part: string;
   name: string;
+  // Asks for proof («pide prueba»); false on a checklist a point of which was proved anyway.
+  asks?: boolean;
   points: ProofPoint[];
 };
 

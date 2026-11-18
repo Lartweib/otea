@@ -34,3 +34,12 @@ export function whenText(item: Item, now: number): { text: string; warn: boolean
   }
   return { text: age((now - Date.parse(item.updatedAt)) / MIN), warn: false };
 }
+
+// How long ago something happened, as a sentence says it: «hace 12 min», and «ahora» or «ayer»
+// alone (never «hace ahora», IDEA3-4).
+export function agoText(at: string, now: number): string {
+  const minutes = (now - Date.parse(at)) / MIN;
+  const said = age(minutes);
+  if (minutes < 1 || (minutes >= 1440 && minutes < 2880)) return said;
+  return t('sheet.ago', { time: said });
+}

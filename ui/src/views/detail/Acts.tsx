@@ -1,7 +1,7 @@
 import { type ReactNode, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useApp } from '../../app/context.tsx';
 import { mainPath } from '../../derive/path.ts';
-import { whenText } from '../../derive/when.ts';
+import { agoText, whenText } from '../../derive/when.ts';
 import { t, tx } from '../../i18n/i18n.ts';
 import { Button, Icon, MenuItem, MenuLabel, MenuNote, Pop, Swap } from '../../kit/index.ts';
 import type { Look } from '../../lanes/looks.ts';
@@ -285,14 +285,12 @@ export function Acts({
     const hasOptions = !!type?.fields.some((f) => f.name === 'options');
     const options = hasOptions ? parseOptions(item.fields.options ?? '') : [];
     const answer = [opt, free.trim()].filter(Boolean).join('. ');
-    const ago = facts.handed
-      ? whenText({ ...item, updatedAt: facts.handed.at, turn: 'none' }, app.now).text
-      : '';
+    const ago = facts.handed ? agoText(facts.handed.at, app.now) : '';
     body = (
       <section className="qa" data-key="qa">
         <div className="margin-label">
           {t('sheet.qa.asks', { agent: agent ?? '—' })}
-          <span>{t('sheet.ago', { time: ago })}</span>
+          <span>{ago}</span>
         </div>
         <div>
           <p className="q">{facts.handed?.reason}</p>

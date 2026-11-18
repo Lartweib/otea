@@ -451,6 +451,8 @@ export const detail = {
   'sheet.d.expired': 'vencida',
   'sheet.says': '{agent} dice',
   'sheet.mine': 'Tus notas',
+  'sheet.answers': 'Lo que respondiste',
+  'sheet.answersTo': 'a {agent}, en esta ronda',
   'sheet.round': 'ronda {n}',
   'sheet.answered': 'Respondiste',
   'sheet.asked': '{agent} preguntó',

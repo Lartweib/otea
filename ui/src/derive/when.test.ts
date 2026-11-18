@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { setLanguage } from '../i18n/i18n.ts';
 import { ago, inMinutes, item, NOW } from './fixtures.ts';
-import { whenText } from './when.ts';
+import { agoText, whenText } from './when.ts';
 
 afterEach(() => setLanguage('en'));
 
@@ -38,5 +38,17 @@ describe('when, as a row says it', () => {
     setLanguage('en');
     expect(whenText(item({ id: 'A', updatedAt: ago(1500) }), NOW).text).toBe('yesterday');
     expect(whenText(item({ id: 'A', updatedAt: ago(4320) }), NOW).text).toBe('3 days');
+  });
+});
+
+describe('agoText', () => {
+  it('says how long ago, and «ahora» or «ayer» alone, never «hace ahora»', () => {
+    setLanguage('es');
+    expect(agoText(ago(0), NOW)).toBe('ahora');
+    expect(agoText(ago(12), NOW)).toBe('hace 12 min');
+    expect(agoText(ago(60 * 30), NOW)).toBe('ayer');
+    setLanguage('en');
+    expect(agoText(ago(0), NOW)).toBe('now');
+    expect(agoText(ago(12), NOW)).toBe('12 min ago');
   });
 });

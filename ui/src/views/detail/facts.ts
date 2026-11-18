@@ -33,6 +33,9 @@ export type Facts = {
   visited: string[];
   // The rounds you sent back, oldest first, with the state the agent had handed it to.
   sentBack: { n: number; at: string; state: string }[];
+  // The agent's questions you answered while it did the round it handed you, oldest first: what
+  // shaped the work you review (IDEA3-10).
+  answers?: { agent: string; question: string; answer: string }[];
 };
 
 const reasonOf = (e: ItemEvent) => (typeof e.data.reason === 'string' ? e.data.reason : '');
@@ -59,6 +62,29 @@ function answeredQuestion(events: readonly ItemEvent[]): Facts['answered'] {
     at: answer.at,
     ...(asked ? { asked: { agent: asked.actor.name, text: String(asked.data.text ?? '') } } : {}),
   };
+}
+
+// The questions answered between the move before the last one and the last one: in the round the
+// agent just handed you.
+function roundAnswers(events: readonly ItemEvent[]): NonNullable<Facts['answers']> {
+  const moves = events.flatMap((e, i) => (e.type === 'transitioned' ? [i] : []));
+  const last = moves.at(-1);
+  if (last === undefined) return [];
+  const from = moves.at(-2) ?? -1;
+  return events.slice(from + 1, last).flatMap((e) => {
+    if (e.type !== QUESTION_ANSWERED) return [];
+    const asked = events.find(
+      (q) => q.type === QUESTION_ASKED && q.data.question === e.data.question,
+    );
+    if (!asked) return [];
+    return [
+      {
+        agent: asked.actor.name,
+        question: String(asked.data.text ?? ''),
+        answer: String(e.data.text ?? ''),
+      },
+    ];
+  });
 }
 
 // Your send-backs: a move of yours from a step on your turn back to an agent's (not forward along
@@ -100,9 +126,12 @@ export function factsOf(item: ItemView, type: TypeView | undefined, _now: number
   const sentBack = sentBackOf(events, type);
   const yours = events.filter((e) => isYourMove(e) && reasonOf(e) !== '');
   const lastBack = [...sentBack].reverse()[0];
-  const mineEvent = lastBack
-    ? yours.findLast((e) => e.at === lastBack.at && !asks(reasonOf(e)))
-    : undefined;
+  // Your notes of a send-back belong to the step you sent back: once the item stands elsewhere (a
+  // later step's review), they stay in the history, not at the top of the page (IDEA3-9).
+  const mineEvent =
+    lastBack && lastBack.state === item.state
+      ? yours.findLast((e) => e.at === lastBack.at && !asks(reasonOf(e)))
+      : undefined;
   // What you answered: your move with words right after an agent's question.
   let answered: Facts['answered'] = null;
   for (let i = 1; i < events.length; i++) {
@@ -134,6 +163,7 @@ export function factsOf(item: ItemView, type: TypeView | undefined, _now: number
     item.lease?.holder ??
     item.expiredLease?.holder ??
     (left === undefined ? (handed?.agent ?? turnAgent(events) ?? null) : left);
+  const answers = item.turn === 'human' && handed && !item.asks ? roundAnswers(events) : [];
   return {
     agent,
     left: left !== undefined,
@@ -148,6 +178,7 @@ export function factsOf(item: ItemView, type: TypeView | undefined, _now: number
     answered,
     visited,
     sentBack,
+    ...(answers.length > 0 ? { answers } : {}),
   };
 }
 
@@ -253,4 +284,17 @@ export function standOf(o: {
     case 'dropped':
       return o.why ? { key: 'sheet.stand.droppedWhy', why: o.why } : { key: 'sheet.stand.dropped' };
   }
+}
+
+// Who does it, as the details say it (UI3-8): the agent the facts name, once it took the item (a
+// claim) or moved it itself. An agent that only created it, or relayed the person's drop, did not
+// do it: nobody did.
+export function doerOf(agent: string | null, events: readonly ItemEvent[]): string | null {
+  if (agent === null) return null;
+  const worked = events.some(
+    (e) =>
+      (e.type === 'claimed' && e.data.holder === agent) ||
+      (isAgentMove(e) && e.actor.name === agent),
+  );
+  return worked ? agent : null;
 }

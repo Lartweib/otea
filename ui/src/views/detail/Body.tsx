@@ -4,7 +4,7 @@ import { EvidenceList } from '../../components/EvidenceList.tsx';
 import { EvidenceModule } from '../../components/evidence/EvidenceModule.tsx';
 import { OptionsModule } from '../../components/OptionsModule.tsx';
 import { RoundsModule } from '../../components/RoundsModule.tsx';
-import { whenText } from '../../derive/when.ts';
+import { agoText } from '../../derive/when.ts';
 import { latestFirst, leftovers } from '../../evidence.ts';
 import { useFileUrl } from '../../evidence-files.ts';
 import { t } from '../../i18n/i18n.ts';
@@ -25,8 +25,7 @@ import { Structure } from './Structure.tsx';
 
 export type Sec = { key: string; node: ReactNode };
 
-const agoOf = (item: ItemView, at: string, now: number) =>
-  t('sheet.ago', { time: whenText({ ...item, updatedAt: at, turn: 'none' }, now).text });
+const agoOf = (_item: ItemView, at: string, now: number) => agoText(at, now);
 
 function Note({
   k,
@@ -130,6 +129,28 @@ export function bodySections(o: {
           aside={t('sheet.round', { n: facts.mine.round })}
           text={facts.mine.reason}
         />
+      ),
+    });
+  // What you answered the agent while it did the round you review: next to the work it shaped.
+  if (facts.answers?.length && item.turn === 'human')
+    out.push({
+      key: 'answers',
+      node: (
+        <section className="note qa-answers" data-key="answers">
+          <div className="margin-label">
+            {t('sheet.answers')}
+            <span>{t('sheet.answersTo', { agent: facts.answers[0]?.agent ?? '' })}</span>
+          </div>
+          <dl>
+            {facts.answers.map((a, i) => (
+              // biome-ignore lint/suspicious/noArrayIndexKey: answers keep their order
+              <div key={i}>
+                <dt>{a.question}</dt>
+                <dd>{a.answer}</dd>
+              </div>
+            ))}
+          </dl>
+        </section>
       ),
     });
   const asked = facts.answered?.asked;
