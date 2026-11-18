@@ -80,6 +80,15 @@ describe('the moves, from the transitions and never from state names', () => {
     expect(plan.primary).toBeNull();
     expect(plan.quiet[0]?.blocked).toBe('waits for 1 open child');
   });
+
+  // A Pedido an agent drafts a board on closes when the person publishes the board in Studio:
+  // approving it closed the Pedido and left the board unpublished.
+  it('offers no Approve on a Pedido whose board waits as a draft, only the way back and discarding', () => {
+    const plan = planMoves([fixed, fixing, wontFix], { own: false, word, draftWaits: true });
+    expect(plan.primary).toBeNull();
+    expect(plan.quiet.map((c) => c.move.to)).toEqual(['fixing']);
+    expect(plan.close.map((c) => c.move.to)).toEqual(['wont_fix']);
+  });
 });
 
 describe('what the hovered move does (the movesays line)', () => {

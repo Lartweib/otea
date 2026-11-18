@@ -180,6 +180,11 @@ describe('a refusal from the server', () => {
         'ERR-1 no está atascado: kiln lo tiene reservado.',
       ],
       ['item_closed', { kind: 'closed', item: 'ERR-1' }, 'ERR-1 ya terminó: no admite cambios.'],
+      [
+        'invalid_transition',
+        { kind: 'board_unpublished', item: 'PED-1', board: 'Criaturas' },
+        'PED-1 se cierra al publicar el tablero Criaturas: pruébalo y publícalo en Studio.',
+      ],
       ['not_found', { kind: 'item_missing', item: 'ERR-9' }, 'No existe el ítem ERR-9.'],
       [
         'invalid_board',

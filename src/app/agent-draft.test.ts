@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { BoardDefinition } from '../core/board/model.ts';
 import { step } from '../core/board/testing.ts';
+import { OteaError } from '../core/errors.ts';
 import {
   draftToStartFrom,
   mergeAgentDraft,
@@ -24,7 +25,7 @@ import {
   saveDraft,
 } from './boards.ts';
 import { BOARD_JSON_SCHEMA } from './draft-request.ts';
-import { getItem, showItem, updateItem } from './items.ts';
+import { getItem, moveItem, showItem, updateItem } from './items.ts';
 import { itemNextText, nextFor } from './next.ts';
 import type { Project } from './project.ts';
 import { memoryContext, projectOf } from './testing.ts';
@@ -277,6 +278,41 @@ describe('an agent drafting a board', () => {
     expect(getItem(ctx, item, now).state).toBe('done');
     restoreBoard(ctx, board.id, { version: null, by: you }, now);
     expect(getItem(ctx, item, now).state).toBe(waiting.state);
+  });
+
+  // Approving the Pedido once closed it as done while its board stayed a draft: publishing is the
+  // person taking the draft, so only publishing closes it.
+  it('refuses to close the Pedido as done while its board waits as a draft', () => {
+    const ctx = project();
+    const { board, item } = requestAgentDraft(
+      ctx,
+      { name: 'Criaturas', need: 'x', agent: 'kiln', lang: 'es' },
+      now,
+    );
+    const draft = getBoardRecord(ctx, board.id).draft?.definition;
+    if (!draft) throw new Error('no draft');
+    submitAgentDraft(
+      ctx,
+      { id: item, text: JSON.stringify(agentFile(draft)), actor: kiln, channel: 'cli' },
+      now,
+    );
+    const approve = () => moveItem(ctx, { id: item, to: 'done', actor: you, channel: 'ui' }, now);
+    let refused: unknown;
+    try {
+      approve();
+    } catch (error) {
+      refused = error;
+    }
+    expect(refused).toBeInstanceOf(OteaError);
+    expect(refused).toMatchObject({
+      code: 'invalid_transition',
+      details: { kind: 'board_unpublished', item, board: 'Criaturas' },
+    });
+    expect((refused as Error).message).toContain('publish');
+    expect(getItem(ctx, item, now).state).not.toBe('done');
+    // Publishing closes it, as always.
+    publishBoard(ctx, board.id, { moves: {}, by: you, closeRequest: true }, now);
+    expect(getItem(ctx, item, now).state).toBe('done');
   });
 
   it('renames the Pedido with the board it drafts, unless it was retitled (DR-22)', () => {

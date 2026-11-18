@@ -37,6 +37,7 @@ import {
 import { type Asks, askingItems, withAsks } from './asking.ts';
 import { collectionNamed, getCollection, presetOf, typeOfItem } from './collections.ts';
 import type { Context } from './context.ts';
+import { draftRequestOf } from './draft-request.ts';
 import { presentEvidence } from './evidence.ts';
 import {
   assertBranchMayChange,
@@ -418,6 +419,20 @@ export function landMove(
   return present(moved, workflow, at);
 }
 
+// A Pedido an agent drafts a board on closes as done when the person publishes the board, never
+// by approving it while the board still waits as a draft (that closed the Pedido and left the
+// board unpublished). Discarding it stays open to the person.
+function assertDraftPublished(ctx: Context, id: string, closes: Closing | undefined): void {
+  if (closes !== 'done') return;
+  const request = draftRequestOf(ctx, id);
+  if (!request || request.published) return;
+  throw new OteaError(
+    'invalid_transition',
+    `Not closed ${id}: the board ${request.name} it drafts is not published yet. The person publishes it in Studio, which closes this Pedido.`,
+    { kind: 'board_unpublished', item: id, board: request.name },
+  );
+}
+
 export function moveItem(ctx: Context, input: MoveItemInput, now = systemClock): Item {
   const { db } = ctx;
   return transaction(db, () => {
@@ -435,6 +450,7 @@ export function moveItem(ctx: Context, input: MoveItemInput, now = systemClock):
       ...(input.note === undefined ? {} : { note: input.note }),
     });
     authorizeMove(workflow, item.state, to, { actor, channel }, reason);
+    assertDraftPublished(ctx, item.id, closesOf(workflow, to));
     assertCanLeave(type, item.state, to, item.fields);
     assertMayEnter(ctx, item, workflow, to, at);
     const data = { ...(reason ? { reason } : {}), ...(note ? { note } : {}), channel };
