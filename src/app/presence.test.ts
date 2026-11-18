@@ -12,6 +12,7 @@ import {
   endWaiting,
   hearAgent,
   listAgents,
+  nameFor,
   ownerGone,
   presenceSignature,
   seeAgent,
@@ -400,6 +401,33 @@ describe('agent presence', () => {
 
       expect(after).not.toBe(before);
       expect(presenceSignature(ctx.db, at(T30))).toBe(after);
+    });
+  });
+
+  // otea whoami: a harness that keeps one MCP server for its new sessions asks through the server
+  // its agent was heard by; a server whose harness was killed is no session.
+  describe('nameFor', () => {
+    const FOLDER = 'D:/work/shorty';
+    const heardThrough = (session: number) =>
+      hearAgent(
+        ctx.db,
+        { agent: 'bigp', channel: 'mcp', harness: { name: 'opencode' }, session, folder: FOLDER },
+        at(T0),
+      );
+
+    it('never gives a name another open session listens under', () => {
+      heardThrough(101);
+      expect(
+        nameFor(ctx.db, { folder: FOLDER, harness: 'opencode' }, at(T0), () => true).name,
+      ).toBeNull();
+    });
+
+    it('gives it to the server it was heard through, and when that server is gone', () => {
+      heardThrough(101);
+      const ask = (session: number | undefined, alive: boolean) =>
+        nameFor(ctx.db, { folder: FOLDER, harness: 'opencode', session }, at(T0), () => alive).name;
+      expect(ask(101, true)).toBe('bigp');
+      expect(ask(202, false)).toBe('bigp');
     });
   });
 });

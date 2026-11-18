@@ -357,8 +357,13 @@ function sameFolder(a: string, b: string): boolean {
 
 export function nameFor(
   db: DatabaseSync,
-  { folder, harness }: { folder: string; harness?: string | undefined },
+  {
+    folder,
+    harness,
+    session,
+  }: { folder: string; harness?: string | undefined; session?: number | undefined },
   now: Clock = systemClock,
+  alive: (pid: number) => boolean = processAlive,
 ): NameAdvice {
   const agents = listAgents(db, now);
   const working = agents.filter(({ live }) => live).map(({ name }) => name);
@@ -368,7 +373,17 @@ export function nameFor(
     [agent.harness, agent.profile?.harness]
       .filter((each): each is string => Boolean(each) && each?.toLowerCase() !== 'cli')
       .map(harnessKey);
-  const busy = (agent: AgentPresence) => agent.listening || agent.holding.length > 0;
+  // Busy: a lease, or another session listening under the name. The MCP server asking (`session`,
+  // its process id) is no other session: a harness that keeps one server for its new sessions
+  // (OpenCode does) asks through the server its agent was heard by. A server that is gone (its
+  // harness was killed) is no session either.
+  const listens = (agent: AgentPresence) => {
+    if (!agent.listening) return false;
+    const heard = selectListener(db, agent.name);
+    if (!heard?.session) return true;
+    return heard.session !== session && alive(heard.session);
+  };
+  const busy = (agent: AgentPresence) => listens(agent) || agent.holding.length > 0;
   const fits = agents
     .filter((agent) => !busy(agent) && agent.connectedAt !== null && agent.folder !== null)
     .filter((agent) => sameFolder(agent.folder ?? '', folder))
