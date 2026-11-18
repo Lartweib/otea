@@ -142,14 +142,19 @@ describe('the Cambios template', () => {
     });
   });
 
-  it('asks for screenshots of an interface change and the test output of a bug', () => {
+  it('asks for screenshots of a visual change, the terminal output of a command-line one and the test output of a bug', () => {
     const def = instantiate(requireTemplate('changes'), 'es', {}, sequenceIds());
     const kind = partNamed(def, 'Clase de cambio');
     const value = (name: string) => kind?.options.find((option) => option.name === name)?.id;
     expect(kind?.initial).toBe(value('Otro'));
     expect(handOf(def, 'Hacerlo', 'Capturas')).toMatchObject({
       req: 'when',
-      when: { part: kind?.id, value: value('Interfaz') },
+      when: { part: kind?.id, value: value('Interfaz visual') },
+      fresh: true,
+    });
+    expect(handOf(def, 'Hacerlo', 'Salida en la terminal')).toMatchObject({
+      req: 'when',
+      when: { part: kind?.id, value: value('Línea de comandos') },
       fresh: true,
     });
     expect(handOf(def, 'Hacerlo', 'Salida de las pruebas')?.when).toEqual({

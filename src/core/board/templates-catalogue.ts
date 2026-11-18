@@ -542,6 +542,133 @@ const RESEARCH: Template = {
   },
 };
 
+// Work that is not code: writing, planning, organising, looking something up. No branch, no diff,
+// no tests: the agent does it, says what it did in plain words with what it made, the person looks.
+const TODOS: Template = {
+  key: 'todos',
+  icon: 'checkbox',
+  name: w('To-dos', 'Pendientes'),
+  description: w(
+    'Anything you hand to an agent that is not code: writing, planning, organising, looking something up. It does it, you look at the result and approve it or send it back.',
+    'Lo que le encargas a un agente y no es código: escribir, planificar, organizar, averiguar algo. Lo hace, miras el resultado y lo apruebas o lo devuelves.',
+  ),
+  board: w('To-dos', 'Pendientes'),
+  item: w('To-do', 'Pendiente'),
+  about: w(
+    'Things the person hands to an agent that are not code. The agent does each one and shows the result in plain words, with what it made; the person approves it or sends it back with what to change.',
+    'Cosas que la persona le encarga a un agente y no son código. El agente hace cada una y muestra el resultado en palabras simples, con lo que hizo; la persona lo aprueba o lo devuelve con qué cambiar.',
+  ),
+  idle: w(
+    'Nothing here for you. Wait with otea wait --turn agent --unclaimed; do not invent work.',
+    'No hay nada para ti aquí. Espera con otea wait --turn agent --unclaimed; no inventes trabajo.',
+  ),
+  parts: [
+    {
+      key: 'twant',
+      kind: 'long',
+      name: w('What is needed', 'Qué hace falta'),
+      hint: w(
+        'in your own words: what you want, and by when if it matters',
+        'en tus palabras: qué quieres y para cuándo, si importa',
+      ),
+    },
+    {
+      key: 'tdone',
+      kind: 'long',
+      name: w('Done when', 'Listo cuando'),
+      hint: w(
+        'how you will know it is right, if you know already',
+        'cómo vas a saber que está bien, si ya lo sabes',
+      ),
+    },
+    {
+      key: 'tresult',
+      kind: 'long',
+      name: w('What I did', 'Lo que hice'),
+      hint: w(
+        'the result in plain words, or where it is and how to see it',
+        'el resultado en palabras simples, o dónde quedó y cómo verlo',
+      ),
+    },
+    {
+      key: 'timages',
+      kind: 'images',
+      name: w('Images', 'Imágenes'),
+      hint: w('how it looks, when that matters', 'cómo se ve, cuando importa'),
+      show: 'gallery',
+    },
+    {
+      key: 'tfiles',
+      kind: 'file',
+      name: w('Files', 'Archivos'),
+      hint: w(
+        'the documents, sheets or files it made',
+        'los documentos, planillas o archivos que hizo',
+      ),
+    },
+    {
+      key: 'tlinks',
+      kind: 'url',
+      name: w('Links', 'Enlaces'),
+      hint: w('where to see it or what it used', 'dónde verlo o qué usó'),
+    },
+  ],
+  form: [
+    ['twant', true],
+    ['tdone', false],
+  ],
+  steps: [
+    {
+      key: 'tdo',
+      name: w('Do it', 'Hacerlo'),
+      doer: 'any',
+      reviewer: 'you',
+      hand: [['tresult', 'always', false]],
+      note: w('what you did and what is still open', 'qué hiciste y qué quedó abierto'),
+      take: w(
+        'Read @{twant}. If something is unclear, ask with otea ask, one question at a time and in plain words; do not guess. Do only what it asks.',
+        'Lee @{twant}. Si algo no está claro, pregunta con otea ask, una pregunta por vez y en palabras simples; no adivines. Haz solo lo que pide.',
+      ),
+      before: w(
+        'Write in @{tresult} what you did, in plain words, and add what the person needs to check it: @{timages} of how it looks, the @{tfiles} it opens, @{tlinks}. Meet each point of @{tdone}.',
+        'Escribe en @{tresult} lo que hiciste, en palabras simples, y suma lo que la persona necesita para comprobarlo: @{timages} de cómo se ve, los @{tfiles} que abre, @{tlinks}. Cumple cada punto de @{tdone}.',
+      ),
+      review: w(
+        'Look at the result: approve it, or send it back saying what to change.',
+        'Mira el resultado: apruébalo, o devuélvelo diciendo qué cambiar.',
+      ),
+    },
+  ],
+  // What the agent made goes in whenever it has it: required only when the piece needs it.
+  anytime: ['tdone', 'timages', 'tfiles', 'tlinks'],
+  motives: [
+    ['tnotneeded', w('No longer needed', 'Ya no hace falta')],
+    ['trejected', w('Not this', 'No es esto')],
+  ],
+  samples: {
+    en: [
+      'Plan the team offsite',
+      'Write the welcome email for new members',
+      'Compare three printing suppliers',
+    ],
+    es: [
+      'Organizar la salida del equipo',
+      'Escribir el correo de bienvenida',
+      'Comparar tres imprentas',
+    ],
+  },
+  list: { as: 'list', group: STEP },
+  layout: {
+    rounds: 'main',
+    twant: 'top',
+    tdone: 'main',
+    tresult: 'main',
+    timages: 'main',
+    tfiles: 'main',
+    tlinks: 'side',
+  },
+};
+
 const DECISIONS: Template = {
   key: 'decisions',
   icon: 'beaker',
@@ -753,6 +880,16 @@ const DESIGN: Template = {
       initial: 'no',
     },
     {
+      key: 'frepo',
+      kind: 'yesno',
+      name: w('In the repository', 'En el repositorio'),
+      hint: w(
+        'yes when the piece lives in the code (an interface, a sprite of the game): it is made on a branch and lands on main; no for an image that lives on its own',
+        'sí cuando la pieza vive en el código (una interfaz, un sprite del juego): se hace en una rama y llega a main; no para una imagen que vive por su cuenta',
+      ),
+      initial: 'yes',
+    },
+    {
       key: 'fbranch',
       kind: 'branch',
       name: w('Branch', 'Rama'),
@@ -763,17 +900,20 @@ const DESIGN: Template = {
       key: 'ediff',
       kind: 'code',
       name: w('Changes', 'Cambios'),
-      hint: w('git diff of the branch against main', 'git diff de la rama contra main'),
+      hint: w(
+        'git diff of the branch against main, once it has one; attach it again when it changes',
+        'git diff de la rama contra main, en cuanto la tenga; vuelve a adjuntarlo cuando cambie',
+      ),
     },
     {
       key: 'eshots',
       kind: 'images',
       name: w('Images', 'Imágenes'),
       hint: w(
-        'the piece as it looks now, framed the same way every round',
-        'la pieza como se ve ahora, encuadrada igual en cada ronda',
+        'the piece as it looks now, framed the same way every round; one image per view',
+        'la pieza como se ve ahora, encuadrada igual en cada ronda; una imagen por vista',
       ),
-      show: 'one',
+      show: 'gallery',
     },
     {
       key: 'eab',
@@ -814,6 +954,7 @@ const DESIGN: Template = {
   form: [
     ['fbrief', true],
     ['frefs', false],
+    ['frepo', false],
     ['fblind', false],
   ],
   steps: [
@@ -823,8 +964,8 @@ const DESIGN: Template = {
       doer: 'any',
       reviewer: 'you',
       hand: [
-        ['fbranch', 'always'],
-        ['ediff', 'always', true],
+        ['fbranch', 'when', false, ['frepo', 'yes']],
+        ['ediff', 'when', false, ['frepo', 'yes']],
         ['eshots', 'always', true],
         ['eab', 'when', true, ['fblind', 'yes']],
       ],
@@ -834,8 +975,8 @@ const DESIGN: Template = {
         'Lee @{fbrief} y las notas de la ronda anterior antes de cambiar nada, y responde cada una. Cambia lo que piden las notas, nada más.',
       ),
       before: w(
-        'Attach @{eshots} framed exactly like the last round. With a blind comparison, attach @{eab} in random order and never say which one is new.',
-        'Adjunta @{eshots} con el mismo encuadre que la ronda anterior. Si la comparación es a ciegas, adjunta @{eab} en orden al azar y nunca digas cuál es la nueva.',
+        'Attach @{eshots} framed exactly like the last round. When the piece is in the repository, @{fbranch} and the @{ediff} are asked once: attach the @{ediff} again only when it changed. With a blind comparison, attach @{eab} in random order and never say which one is new.',
+        'Adjunta @{eshots} con el mismo encuadre que la ronda anterior. Si la pieza está en el repositorio, la @{fbranch} y los @{ediff} se piden una vez: vuelve a adjuntar los @{ediff} solo si cambiaron. Si la comparación es a ciegas, adjunta @{eab} en orden al azar y nunca digas cuál es la nueva.',
       ),
       review: w(
         'Look before reading: mark on the images what you would change and send it back, or approve it.',
@@ -849,11 +990,11 @@ const DESIGN: Template = {
       reviewer: 'none',
       hand: [
         ['fkey', 'when', false, ['fblind', 'yes']],
-        ['fcommit', 'always'],
+        ['fcommit', 'when', false, ['frepo', 'yes']],
       ],
       take: w(
-        'The person approved it: bring @{fbranch} into main and push it. Add nothing the person did not see.',
-        'La persona la aprobó: integra @{fbranch} en main y empújala. No agregues nada que la persona no haya visto.',
+        'The person approved it: bring @{fbranch} into main and push it. Add nothing the person did not see. A piece that is not in the repository has nothing to bring in: hand it off.',
+        'La persona la aprobó: integra @{fbranch} en main y empújala. No agregues nada que la persona no haya visto. Una pieza que no está en el repositorio no tiene nada que integrar: entrégala.',
       ),
       before: w(
         'Write in @{fcommit} the short hash on main; with a blind comparison, say in @{fkey} what A and B were.',
@@ -876,6 +1017,7 @@ const DESIGN: Template = {
     emotion: 'main',
     ediff: 'main',
     fblind: 'side',
+    frepo: 'side',
     fbranch: 'side',
     fkey: 'side',
     fcommit: 'side',
@@ -955,6 +1097,16 @@ const EXPERIMENTS: Template = {
         'la métrica frente a la base, y si la hipótesis se sostiene',
       ),
     },
+    {
+      key: 'echart',
+      kind: 'images',
+      name: w('Chart', 'Gráfico'),
+      hint: w(
+        'the deciding metric against its baseline, in one image',
+        'la métrica que decide frente a su base, en una imagen',
+      ),
+      show: 'one',
+    },
   ],
   form: [
     ['fhyp', true],
@@ -982,6 +1134,7 @@ const EXPERIMENTS: Template = {
         ['ediff', 'always', true],
         ['elog', 'always', true],
         ['fresult', 'always', false],
+        ['echart', 'no', true],
       ],
       take: w(
         'Run exactly @{fplan}. Never touch production data or live systems.',
@@ -1019,6 +1172,7 @@ const EXPERIMENTS: Template = {
 };
 
 export const CATALOGUE_TEMPLATES: readonly Template[] = [
+  TODOS,
   BUG_REPORTS,
   CHANGES,
   RESEARCH,

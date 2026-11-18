@@ -55,6 +55,17 @@ describe('what happened today', () => {
     ];
     expect(todayCounts(feed, ctx(items))).toEqual({ handed: 1, approved: 2, sent: 1 });
   });
+
+  it('never counts publishing a board as an approval: neither the Pedido it closes nor the items it moves', () => {
+    const items = [item({ id: 'C', state: 'fixed', turn: 'none' })];
+    const closed = moved('C', 'fixed', you, {
+      from: 'verify',
+      reason: 'Publicado el tablero Menú',
+    });
+    closed.data.published_board = 'b1';
+    const feed = [closed, moved('C', 'fixed', you, { from: 'verify', reason: 'publish' })];
+    expect(todayCounts(feed, ctx(items))).toEqual({ handed: 0, approved: 0, sent: 0 });
+  });
 });
 
 describe('the dek of Te toca', () => {
