@@ -46,3 +46,7 @@ export const SHELL_KEY = '/';
 export const SAVED_AT = 'x-otea-saved-at';
 // …and on one served from the cache because the PC did not answer.
 export const FROM_CACHE = 'x-otea-offline';
+// Set by the PC on every answer of its API: the project that answered. Two projects served one
+// after the other on the same address share the browser's cache, so the cache keeps one project's
+// answers at a time (sw-strategies.ts networkFirst).
+export const PROJECT = 'x-otea-project';

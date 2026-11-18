@@ -7,6 +7,8 @@
 // (idb-queue.ts, sendCapture), maps and fakes in the tests. Nothing in here is ever dropped but by
 // a send the PC took, or by the person (Descartar, on one the PC refused).
 
+import { PROJECT } from './sw-routes.ts';
+
 export type QueuedPhoto = {
   name: string;
   type: string;
@@ -25,6 +27,9 @@ export type QueuedCapture = {
   type: string;
   fields: Record<string, string>;
   photo?: QueuedPhoto;
+  // The project it was made for (its identity id): the PC refuses it when another project answers
+  // on this address now.
+  project?: string;
   // The PC took the send but refused the item (a board that changed meanwhile): why, in its words.
   // It stays until the person discards it.
   refused?: string;
@@ -114,6 +119,7 @@ export function captureRequest(capture: QueuedCapture): { init: RequestInit; url
   const headers: Record<string, string> = {
     accept: 'application/json',
     'idempotency-key': capture.id,
+    ...(capture.project ? { [PROJECT]: capture.project } : {}),
   };
   const { photo } = capture;
   if (!photo) {

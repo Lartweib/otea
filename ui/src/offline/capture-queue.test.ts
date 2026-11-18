@@ -236,6 +236,15 @@ describe('captureRequest', () => {
   });
 });
 
+// Captured for one project while the PC was off, it must never land in another project served
+// later on the same address: it says whose it is, and the PC refuses it if that is not its own.
+describe('a capture made for one project', () => {
+  it('says the project it was made for on its send', () => {
+    const { init } = captureRequest(capture('a', 1, { project: 'p2-abc' }));
+    expect((init.headers as Record<string, string>)['x-otea-project']).toBe('p2-abc');
+  });
+});
+
 describe('captureId', () => {
   it('is random hex, without randomUUID (plain HTTP has none)', () => {
     const id = captureId((b) => b.fill(171));

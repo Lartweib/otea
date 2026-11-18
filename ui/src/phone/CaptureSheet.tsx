@@ -417,6 +417,7 @@ export function CaptureSheet() {
       const capture: QueuedCapture = {
         id: key.current,
         at: Date.now(),
+        ...(project ? { project } : {}),
         board: board.name,
         type: type.name,
         fields,

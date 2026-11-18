@@ -10,7 +10,7 @@ import type { Actor } from '../core/item.ts';
 import { parsePreset } from '../core/preset.ts';
 import { insertProjectIdentity } from '../store/queries.ts';
 import { createServer, type OteaServer } from './server.ts';
-import { memoryProject, request } from './testing.ts';
+import { LOCAL_HOST, memoryProject, request, SESSION_COOKIE, TOKEN } from './testing.ts';
 
 const ana: Actor = { kind: 'human', name: 'ana' };
 const bot: Actor = { kind: 'agent', name: 'claude' };
@@ -56,6 +56,32 @@ describe('api', () => {
 
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ ...project.identity, icon: null });
+  });
+
+  // The installed app's cache keeps one project's answers at a time: every answer says whose it is.
+  it('says on every answer of the API the project that answered', async () => {
+    for (const path of ['/api/project', '/api/items', '/api/items/BUGS-1', '/api/nothing-here'])
+      expect((await get(path)).headers.get('x-otea-project')).toBe(project.identity.id);
+  });
+
+  it('refuses a write meant for another project served on this address before', async () => {
+    const guarded = createServer(project, { token: TOKEN });
+    const post = (meant: string) =>
+      guarded.app.request('/api/items', {
+        method: 'POST',
+        headers: {
+          host: LOCAL_HOST,
+          cookie: SESSION_COOKIE,
+          'content-type': 'application/json',
+          'x-otea-project': meant,
+        },
+        body: JSON.stringify({ collection: 'tasks', fields: { title: 'From the queue' } }),
+      });
+    const other = await post('another-project');
+    expect(other.status).toBe(409);
+    expect(((await other.json()) as { error: { code: string } }).error.code).toBe('other_project');
+    expect((await post(project.identity.id)).status).not.toBe(409);
+    guarded.close();
   });
 
   it('GET /api/project carries the icon the project was given', async () => {
