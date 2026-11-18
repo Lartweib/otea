@@ -128,29 +128,20 @@ describe('the words', () => {
 });
 
 describe('overlayOf', () => {
-  it('puts yours over working, and nothing when nothing is yours and nobody works', () => {
-    expect(overlayOf(state(1, 1), 'en')).toEqual({ kind: 'yours', description: '1 item is yours' });
-    expect(overlayOf(state(3, 0), 'en')).toEqual({
-      kind: 'yours',
-      description: '3 items are yours',
+  it('counts what is yours on the taskbar, 9+ past 9, and nothing while only an agent works', () => {
+    expect(overlayOf(state(1, 1), 'en')).toEqual({ label: '1', description: '1 item is yours' });
+    expect(overlayOf(state(3, 0), 'en')).toEqual({ label: '3', description: '3 items are yours' });
+    expect(overlayOf(state(12, 0), 'en')).toEqual({
+      label: '9+',
+      description: '12 items are yours',
     });
-    expect(overlayOf(state(0, 1), 'en')).toEqual({
-      kind: 'working',
-      description: 'An agent is working',
-    });
+    expect(overlayOf(state(0, 1), 'en')).toBeNull();
     expect(overlayOf(state(0, 0), 'en')).toBeNull();
   });
 
-  it('describes the overlay in Spanish on a Spanish system', () => {
-    expect(overlayOf(state(1, 0), 'es')).toEqual({ kind: 'yours', description: '1 ítem te toca' });
-    expect(overlayOf(state(3, 0), 'es')).toEqual({
-      kind: 'yours',
-      description: '3 ítems te tocan',
-    });
-    expect(overlayOf(state(0, 1), 'es')).toEqual({
-      kind: 'working',
-      description: 'Un agente está trabajando',
-    });
+  it('describes the count in Spanish on a Spanish system', () => {
+    expect(overlayOf(state(1, 0), 'es')).toEqual({ label: '1', description: '1 ítem te toca' });
+    expect(overlayOf(state(3, 0), 'es')).toEqual({ label: '3', description: '3 ítems te tocan' });
   });
 });
 

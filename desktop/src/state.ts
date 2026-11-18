@@ -7,6 +7,7 @@ import {
   nextLeaseExpiry,
 } from '../../ui/src/attention.ts';
 import type { Lang } from './copy.ts';
+import type { BadgeLabel } from './marks.ts';
 
 // What the shell needs from an item, as /api/items returns it.
 export type DeskItem = {
@@ -82,7 +83,6 @@ const WORDS: Record<
     nothing: string;
     nothingHeader: string;
     nothingInCollection: string;
-    agentWorking: string;
     reconnecting: string;
   }
 > = {
@@ -94,7 +94,6 @@ const WORDS: Record<
     nothing: 'nothing is yours',
     nothingHeader: 'Nothing is yours',
     nothingInCollection: 'nothing yours',
-    agentWorking: 'An agent is working',
     reconnecting: 'Otea — reconnecting to otea serve',
   },
   es: {
@@ -105,7 +104,6 @@ const WORDS: Record<
     nothing: 'nada te toca',
     nothingHeader: 'Nada te toca',
     nothingInCollection: 'nada te toca',
-    agentWorking: 'Un agente está trabajando',
     reconnecting: 'Otea — reconectando con otea serve',
   },
 };
@@ -133,12 +131,14 @@ export function menuHeader(attention: DeskAttention, lang: Lang): string {
   return said.length > 0 ? said.join(' · ') : WORDS[lang].nothingHeader;
 }
 
-export type Overlay = { kind: 'yours' | 'working'; description: string } | null;
+export type Overlay = { label: BadgeLabel; description: string } | null;
 
-// The taskbar overlay: yours wins over working; nothing yours and nobody working is no overlay.
-export function overlayOf({ yours, working }: DeskAttention, lang: Lang): Overlay {
-  if (yours > 0) return { kind: 'yours', description: WORDS[lang].itemsYours(yours) };
-  return working ? { kind: 'working', description: WORDS[lang].agentWorking } : null;
+// The taskbar overlay: the count of what is yours ("9+" past 9), and nothing otherwise. The icon
+// under it is already the mark, so an agent at work shows in the tray, not as a second mark here.
+export function overlayOf({ yours }: DeskAttention, lang: Lang): Overlay {
+  if (yours <= 0) return null;
+  const label = (yours > 9 ? '9+' : String(yours)) as BadgeLabel;
+  return { label, description: WORDS[lang].itemsYours(yours) };
 }
 
 // The Dock badge: the count of yours, "99+" past 99, empty at zero.

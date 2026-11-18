@@ -8,6 +8,9 @@ import type { AttentionFrame } from '../../ui/src/attention.ts';
 import { encodeIco } from './ico.ts';
 import {
   appIconSvg,
+  BADGE_LABELS,
+  type BadgeLabel,
+  badgeSvg,
   FRAMES,
   type Grid,
   ICON_SIZES,
@@ -16,7 +19,6 @@ import {
   type Ink,
   macAppIconSvg,
   markSvg,
-  overlaySvg,
   plateMarkSvg,
   TEMPLATE,
 } from './marks.ts';
@@ -28,7 +30,8 @@ export type Icons = {
   app: NativeImage;
   // The tray in a frame; `step` turns the orbit (Windows and macOS animate, Linux stays still).
   tray(frame: AttentionFrame, theme: Theme, step: number): NativeImage;
-  overlay: Record<'yours' | 'working', NativeImage>;
+  // The taskbar's count of what is yours (Windows only; empty elsewhere).
+  badge(label: BadgeLabel): NativeImage;
   menuYours(theme: Theme): NativeImage;
 };
 
@@ -66,6 +69,9 @@ function writeIco(dir: string, name: string, pngs: Map<string, Buffer>, sizes: [
   return nativeImage.createFromPath(path);
 }
 
+// The taskbar overlay's sizes: 16 at 100%, 24 at 150%, 32 at 200%.
+const BADGE_SIZES = [16, 24, 32] as const;
+
 // Windows tray sizes: 16, 20, 24 and 32 (100, 125, 150 and 200%); up to 24 from the 16 grid.
 const TRAY_SIZES: [number, Grid][] = [
   [16, 16],
@@ -77,10 +83,8 @@ const TRAY_SIZES: [number, Grid][] = [
 async function windowsIcons(dir: string): Promise<Icons> {
   const batch = new Batch();
   for (const size of ICON_SIZES) batch.add(`app.${size}`, appIconSvg(size), size);
-  for (const kind of ['yours', 'working'] as const) {
-    batch.add(`overlay.${kind}.16`, overlaySvg(kind, 16), 16);
-    batch.add(`overlay.${kind}.24`, overlaySvg(kind, 32), 24);
-    batch.add(`overlay.${kind}.32`, overlaySvg(kind, 32), 32);
+  for (const label of BADGE_LABELS) {
+    for (const size of BADGE_SIZES) batch.add(`badge.${label}.${size}`, badgeSvg(label), size);
   }
   const inks: [Theme, Ink][] = [
     ['light', INK_ON_LIGHT],
@@ -105,12 +109,17 @@ async function windowsIcons(dir: string): Promise<Icons> {
     pngs,
     ICON_SIZES.map((size) => [`app.${size}`, size]),
   );
-  const overlay = (kind: 'yours' | 'working') =>
-    writeIco(dir, `overlay-${kind}`, pngs, [
-      [`overlay.${kind}.16`, 16],
-      [`overlay.${kind}.24`, 24],
-      [`overlay.${kind}.32`, 32],
-    ]);
+  const badges = new Map(
+    BADGE_LABELS.map((label, index) => [
+      label,
+      writeIco(
+        dir,
+        `badge-${index + 1}`,
+        pngs,
+        BADGE_SIZES.map((size): [string, number] => [`badge.${label}.${size}`, size]),
+      ),
+    ]),
+  );
   const tray = new Map<string, NativeImage>();
   for (const theme of ['light', 'dark'] as const) {
     for (const frame of ALL_FRAMES) {
@@ -125,7 +134,7 @@ async function windowsIcons(dir: string): Promise<Icons> {
   return {
     app,
     tray: (frame, theme, step) => tray.get(key(frame, theme, step % stepsOf(frame))) as NativeImage,
-    overlay: { yours: overlay('yours'), working: overlay('working') },
+    badge: (label) => badges.get(label) as NativeImage,
     menuYours: (theme) =>
       fromScales([
         [1, png(`menu.${theme}.16`)],
@@ -165,7 +174,7 @@ async function macIcons(): Promise<Icons> {
   return {
     app: nativeImage.createFromBuffer(png('app')),
     tray: (frame, _theme, step) => tray.get(`${frame}.${step % stepsOf(frame)}`) as NativeImage,
-    overlay: { yours: empty, working: empty },
+    badge: () => empty,
     menuYours: (theme) =>
       fromScales([
         [1, png(`menu.${theme}.16`)],
@@ -202,7 +211,7 @@ async function linuxIcons(): Promise<Icons> {
   return {
     app: nativeImage.createFromBuffer(png('app')),
     tray: (frame) => tray.get(frame) as NativeImage,
-    overlay: { yours: empty, working: empty },
+    badge: () => empty,
     menuYours: () => menu,
   };
 }

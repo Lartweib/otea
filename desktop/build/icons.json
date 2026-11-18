@@ -1,0 +1,12 @@
+{
+  "ui/public/otea-idle.svg": "79dfbcc208cb195789bb59b608da6203430d4e51609f87cada7eb16b0f94e625",
+  "ui/public/otea-yours.svg": "f6b4c35dee4ded15c6b16c0655d26327830007e26368a921636fca53e8a16dc9",
+  "ui/public/otea-working.svg": "06660d99827764eaf67da0e5862f49790245320f959c7bee97a0b55394ebf485",
+  "ui/public/otea-yours-working.svg": "06660d99827764eaf67da0e5862f49790245320f959c7bee97a0b55394ebf485",
+  "ui/public/icons/otea-192.png": "78a961c1587c7ac02df130a730c5804565b23b6aa076a2c213da71e8063f8458",
+  "ui/public/icons/otea-512.png": "208b6afc75f146b581286c1241895054710c632ccc0ad6fd9f845232d8c625b9",
+  "ui/public/icons/otea-maskable-512.png": "28225721f76fdb277b590a6d40be4d57fa182760b61e2e458158af3aa74a157a",
+  "ui/public/icons/apple-touch-icon.png": "dda3338b8c8bc4987514ddf087f650f3fba4b63eb81ca9cd27220bd7445dce98",
+  "desktop/build/icon.ico": "1c9ee5b68bfdbf2cf2d85412baaf80b3c38926ac6db75b76e61b6844a0bd4c3e",
+  "desktop/build/icon.png": "154376922859fefa37d591ab0cfa2a2e1591100aee63e7384ab0babe1a9aa28e"
+}

@@ -1,5 +1,5 @@
 // The Otea desktop shell: the UI of `otea serve` in a window, and the attention state on the
-// surfaces the desktop has (Desk-Spec): a static app icon, the Windows taskbar overlay and flash, the
+// surfaces the desktop has (Desk-Spec): a static app icon, the Windows taskbar's count and flash, the
 // macOS Dock badge and bounce, and a tray that carries the living mark. The main process derives the
 // state itself from /api/items and the live stream (Desk-Pick: "owner"), with the page's own
 // attentionOf, so the tray keeps working while the window is closed to it.
@@ -644,7 +644,7 @@ class Shell {
     if (!IS_WIN || !this.attention) return;
     const overlay = overlayOf(this.attention, this.lang);
     this.win.setOverlayIcon(
-      overlay ? this.icons.overlay[overlay.kind] : null,
+      overlay ? this.icons.badge(overlay.label) : null,
       overlay?.description ?? '',
     );
   }

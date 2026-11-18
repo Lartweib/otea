@@ -29,7 +29,9 @@ publish:
 
 win:
   target: nsis
-  icon: ../ui/public/icons/otea-512.png
+  # Every size Windows asks for, each hinted on its own grid (npm run icons draws it from
+  # src/marks.ts): Otea.exe, its shortcut and the installer stay sharp at 16, 24, 32 and 48.
+  icon: build/icon.ico
 nsis:
   # Per user, no admin: installs in %LOCALAPPDATA%\Programs\Otea and puts its bin on the user's PATH.
   oneClick: true
@@ -45,7 +47,7 @@ mac:
     - target: zip
       arch: universal
   category: public.app-category.developer-tools
-  icon: ../ui/public/icons/otea-512.png
+  icon: build/icon.png
 dmg:
   artifactName: ${productName}-${version}-mac.${ext}
 
