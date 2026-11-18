@@ -20,6 +20,27 @@ export function platformOf(userAgent: string, maxTouchPoints = 0): Platform {
   return /Android/.test(userAgent) ? 'android' : 'other';
 }
 
+// The shortcut a page offers (P7-13): on a project's page its own manifest, which names the shortcut
+// after the project and opens it (src/server/ui.ts), and Safari's title; Otea's elsewhere. Set on the
+// page, not in index.html: the installed app opens every project from the one cached page.
+export function shortcutOf(project: { id: string; name: string } | null): {
+  manifest: string;
+  title: string;
+} {
+  return project
+    ? { manifest: `/p/${project.id}/manifest.webmanifest`, title: project.name }
+    : { manifest: '/manifest.webmanifest', title: 'Otea' };
+}
+
+export function offerShortcut(project: { id: string; name: string } | null): void {
+  const { manifest, title } = shortcutOf(project);
+  const link = document.querySelector<HTMLLinkElement>('link[rel="manifest"]');
+  if (link && link.getAttribute('href') !== manifest) link.setAttribute('href', manifest);
+  document
+    .querySelector<HTMLMetaElement>('meta[name="apple-mobile-web-app-title"]')
+    ?.setAttribute('content', title);
+}
+
 export const HOME_HINT_KEY = 'otea.homeScreenHint';
 
 type Store = Pick<Storage, 'getItem' | 'setItem'>;

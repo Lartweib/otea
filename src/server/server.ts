@@ -982,7 +982,7 @@ export function createServer(
     });
     await next();
   });
-  mountUi(app, options.uiDir ?? BUILT_UI_DIR);
+  mountUi(app, options.uiDir ?? BUILT_UI_DIR, (id) => source.get(id)?.identity.name);
   app.onError(onError);
   sync();
   let closed = false;

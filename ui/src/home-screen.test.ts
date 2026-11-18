@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { dismissHint, hintDismissed, isStandalone, platformOf } from './home-screen.ts';
+import { dismissHint, hintDismissed, isStandalone, platformOf, shortcutOf } from './home-screen.ts';
 
 const media = (standalone: boolean) => (query: string) => ({
   matches: standalone && query === '(display-mode: standalone)',
@@ -107,6 +107,20 @@ describe('the page a phone adds to its home screen', () => {
     expect(html).toContain(
       `<meta name="theme-color" media="(prefers-color-scheme: dark)" content="${dark}" />`,
     );
+  });
+});
+
+// Each project's page offers its own shortcut, named after it (P7-13); the pairing screen keeps Otea.
+describe('the shortcut a page offers', () => {
+  it('is the project’s own manifest and name on a project page', () => {
+    expect(shortcutOf({ id: 'web-x1', name: 'Web' })).toEqual({
+      manifest: '/p/web-x1/manifest.webmanifest',
+      title: 'Web',
+    });
+  });
+
+  it('is Otea’s without a project', () => {
+    expect(shortcutOf(null)).toEqual({ manifest: '/manifest.webmanifest', title: 'Otea' });
   });
 });
 

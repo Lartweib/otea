@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { Project } from '../app/project.ts';
 import { createServer, type OteaServer } from './server.ts';
-import { memoryProject } from './testing.ts';
+import { LOCAL_HOST, memoryProject, SESSION_COOKIE, TOKEN } from './testing.ts';
 
 const DESK = '192.168.1.24';
 const PHONE = '192.168.1.50';
@@ -138,4 +138,70 @@ describe('home screen on the LAN', () => {
       expect((await get('/pair', host)).status).toBe(403);
     },
   );
+});
+
+// One server serves every project: each one's page offers its own home-screen shortcut, named after
+// it and opening it, so three projects never make three icons all called Otea (P7-13).
+describe('a home-screen shortcut per project', () => {
+  let dir: string;
+  let project: Project;
+  let server: OteaServer;
+
+  const get = (path: string, language = 'en') =>
+    Promise.resolve(
+      server.app.request(path, {
+        headers: { host: LOCAL_HOST, cookie: SESSION_COOKIE, 'accept-language': language },
+      }),
+    );
+
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), 'otea-home-'));
+    writeFileSync(join(dir, 'index.html'), '<!doctype html>');
+    writeFileSync(
+      join(dir, 'manifest.webmanifest'),
+      JSON.stringify({
+        name: 'Otea',
+        short_name: 'Otea',
+        lang: 'en',
+        description: 'In English.',
+        description_localized: { es: 'En español.' },
+        id: '/',
+        start_url: '/',
+        scope: '/',
+        display: 'standalone',
+      }),
+    );
+    project = memoryProject();
+    server = createServer(project, { uiDir: dir, token: TOKEN });
+  });
+
+  afterEach(() => {
+    server.close();
+    project.db.close();
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('names the shortcut after the project and opens that project', async () => {
+    const { id, name } = project.identity;
+    const response = await get(`/p/${id}/manifest.webmanifest`, 'es-ES,es;q=0.9');
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get('content-type')).toContain('application/manifest+json');
+    expect(await response.json()).toMatchObject({
+      name: `${name} · Otea`,
+      short_name: name,
+      id: `/p/${id}/`,
+      start_url: `/p/${id}/`,
+      scope: '/',
+      display: 'standalone',
+      description: 'En español.',
+    });
+  });
+
+  it('keeps the plain Otea manifest for the pairing screen', async () => {
+    expect(await (await get('/manifest.webmanifest')).json()).toMatchObject({
+      name: 'Otea',
+      start_url: '/',
+    });
+  });
 });
