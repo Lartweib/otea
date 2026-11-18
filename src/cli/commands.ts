@@ -674,7 +674,7 @@ function mcpInstructionText(entry: McpEntry): string[] {
       ]),
     ),
     `As JSON: ${json}`,
-    'It names no agent: each session names itself (--as; MCP tools: as). Then restart or reload your session so it loads the server, approve it if your harness asks, and run otea connect --check: the desk shows the agent connected, or warns that it is not. Until then, and whenever MCP is off, the otea command does the same.',
+    'It names no agent: each session names itself (--as; MCP tools: as). If your harness already has a server named otea that runs anything else (an older Otea, or mcp --as <name>), replace it for this project with this one. Then restart or reload your session so it loads the server, approve it if your harness asks, call any Otea tool, and run otea connect --check: the desk shows the agent connected, or warns that it is not. Until then, and whenever MCP is off, the otea command does the same.',
   ];
 }
 
@@ -695,10 +695,10 @@ function mcpCheck(project: Project, agent: string | undefined, now = systemClock
     );
     return { data, text: lines.join('\n') };
   }
-  const who = agent ?? 'No agent';
+  const who = agent ? `${agent} has not reached` : 'No agent has reached';
   return {
     data,
-    text: `${who} ${agent ? 'has' : 'has'} not reached Otea through its MCP server in this project yet. If you added the server, restart or reload the session and approve it when your harness asks (declining turns it off for the project), then call any Otea tool, such as next. Meanwhile the otea command works the same.`,
+    text: `${who} Otea through its MCP server in this project yet. If you added the server, restart or reload the session and approve it when your harness asks (declining turns it off for the project), then call any Otea tool, such as next. If Otea tools answer you but this still says so, your harness runs another otea server (an older one, or one started with --as): replace it for this project with the one otea connect prints. Meanwhile the otea command works the same.`,
     failure: 'not_connected',
   };
 }
@@ -1739,7 +1739,12 @@ const whoami: Command = {
         return {
           data: { ...advice, reuse: true },
           text: [
-            `Reuse your name: ${advice.name}${when}, the agent that worked here before through this harness and is not connected now. Put it on every command: --as ${advice.name} (MCP tools: as).`,
+            `Reuse your name: ${advice.name}${when}, the agent that worked here before through this harness, with no session working under it now. Put it on every command: --as ${advice.name} (MCP tools: as).`,
+            ...(advice.lately
+              ? [
+                  `${advice.name} acted moments ago: if another terminal still works as ${advice.name}, pick a new name instead.`,
+                ]
+              : []),
             ...(others.length > 0
               ? [`Others that worked here and are not connected now: ${others.join(', ')}.`]
               : []),

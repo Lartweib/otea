@@ -333,11 +333,18 @@ export function profileChangedAt(db: DatabaseSync, agent: string): string | null
 }
 
 // What a session should call itself (otea whoami): the name it worked under before, when an agent
-// of the same harness worked from this folder (or one inside or around it) and is not connected
-// now, so a returning session keeps one name; never a name connected now, so a second terminal
-// never takes another's. `name`: the one to reuse, the most recently seen; `others`, the rest that
-// fit; `working`, the names connected now.
-export type NameAdvice = { name: string | null; others: string[]; working: string[] };
+// of the same harness worked from this folder (or one inside or around it) and no session listens
+// or holds a lease under it now, so a returning session keeps one name, even right after its last
+// one closed; never a name a session listens or works under, so a second terminal never takes
+// another's. `name`: the one to reuse, the most recently seen; `lately`: it acted moments ago (a
+// command-line agent between its commands may still be at work), which the session is told;
+// `others`, the rest that fit; `working`, the names connected now.
+export type NameAdvice = {
+  name: string | null;
+  lately: boolean;
+  others: string[];
+  working: string[];
+};
 
 const harnessKey = (name: string) => name.toLowerCase().replace(/[^a-z0-9]/g, '');
 
@@ -361,14 +368,20 @@ export function nameFor(
     [agent.harness, agent.profile?.harness]
       .filter((each): each is string => Boolean(each) && each?.toLowerCase() !== 'cli')
       .map(harnessKey);
+  const busy = (agent: AgentPresence) => agent.listening || agent.holding.length > 0;
   const fits = agents
-    .filter((agent) => !agent.live && agent.connectedAt !== null && agent.folder !== null)
+    .filter((agent) => !busy(agent) && agent.connectedAt !== null && agent.folder !== null)
     .filter((agent) => sameFolder(agent.folder ?? '', folder))
     .filter((agent) => {
       const known = harnesses(agent);
       return wanted === undefined || known.length === 0 || known.includes(wanted);
     })
-    .sort((a, b) => Date.parse(b.lastSeen) - Date.parse(a.lastSeen))
-    .map(({ name }) => name);
-  return { name: fits[0] ?? null, others: fits.slice(1), working };
+    .sort((a, b) => Date.parse(b.lastSeen) - Date.parse(a.lastSeen));
+  const [first] = fits;
+  return {
+    name: first?.name ?? null,
+    lately: first?.live === true,
+    others: fits.slice(1).map(({ name }) => name),
+    working: working.filter((name) => name !== first?.name),
+  };
 }

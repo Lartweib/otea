@@ -67,8 +67,11 @@ describe('otea whoami', () => {
     });
   });
 
-  it('never gives the name of an agent working now: a second terminal picks its own', async () => {
+  it('never gives the name a session works under: a second terminal picks its own', async () => {
     await workedHere('ana', 'claude-code');
+    const ana = cliAt(repo.dir, { OTEA_AGENT: 'ana' });
+    await ana('create', '--collection', 'tasks', '--title', 'Docs', '--description', 'For v1');
+    await ana('claim', 'TASKS-1');
 
     const { out } = await otea('whoami', '--harness', 'claude-code');
 
@@ -78,6 +81,22 @@ describe('otea whoami', () => {
       name: null,
       reuse: false,
       working: ['ana'],
+    });
+  });
+
+  // A session that closed a moment ago comes back under its name, told another may still be at it.
+  it('gives back the name of an agent that acted moments ago, saying another terminal may have it', async () => {
+    await workedHere('ana', 'claude-code');
+
+    const { out } = await otea('whoami', '--harness', 'claude-code');
+
+    expect(out).toMatch(/^Reuse your name: ana/);
+    expect(out).toContain(
+      'ana acted moments ago: if another terminal still works as ana, pick a new name instead.',
+    );
+    expect(await json(otea, 'whoami', '--harness', 'claude-code')).toMatchObject({
+      name: 'ana',
+      lately: true,
     });
   });
 
