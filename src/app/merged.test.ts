@@ -4,7 +4,14 @@ import { insertEvidence, selectEvents, updateItemState } from '../store/queries.
 import { checkGate } from './gates.ts';
 import { createItem, requireItem } from './items.ts';
 import { markMerged, mergedOf, reopenItem } from './merged.ts';
-import { approveItem, boardBlockOf, handoffItem, itemNextText, nextFor } from './next.ts';
+import {
+  approveItem,
+  boardBlockOf,
+  handoffItem,
+  itemNextText,
+  nextFor,
+  rowFactsOf,
+} from './next.ts';
 import { linkItems } from './relations.ts';
 import { memoryContext, publishAs } from './testing.ts';
 
@@ -82,6 +89,15 @@ describe('marking a Done item merged', () => {
     expect(mark({ state: 'MERGED', head: 'feat/x' })).toMatchObject({ pr, branch: 'feat/x' });
   });
 
+  it('gives a closed item’s row its doer and whether its branch was merged', () => {
+    const { ctx, id } = repoTask();
+    expect(rowFactsOf(ctx, requireItem(ctx.db, id))).toEqual({});
+    updateItemState(ctx.db, id, 'done', now());
+    expect(rowFactsOf(ctx, requireItem(ctx.db, id))).toEqual({ merge: 'waiting' });
+    markMerged(ctx, { id, actor: quill, channel: 'cli' }, now);
+    expect(rowFactsOf(ctx, requireItem(ctx.db, id))).toEqual({ merge: 'merged' });
+  });
+
   it('tells the agent how to record the merge while the branch waits', () => {
     const { ctx, id } = repoTask();
     updateItemState(ctx.db, id, 'done', now());
@@ -137,6 +153,8 @@ describe('marking a Done item merged', () => {
       doer: 'quill',
       reviewer: you,
     });
+    // Its row names the doer, not the lander, and says nothing of a merge it had in Integrar.
+    expect(rowFactsOf(ctx, requireItem(ctx.db, id))).toEqual({ doer: 'quill' });
     const text = itemNextText(ctx, requireItem(ctx.db, id), 'quill', now);
     expect(text).toContain('Its branch feat/x was merged in Integrar.');
     expect(text).not.toContain('may be merged now');

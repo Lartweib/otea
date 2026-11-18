@@ -256,6 +256,17 @@ export function approvalRefusal(id: string, rows: readonly WaitRow[]): string | 
     : t('bi.refuse.blockersEnded', { id, other: first.id, board: first.board });
 }
 
+// Aprobar on a review whose step waits for something still open stays off, saying what it waits
+// for, as Entregar does on your own step: the engine refuses the approval too.
+export function holdApproval<C extends { kind: string; blocked?: string }>(
+  choice: C | null,
+  rows: readonly WaitRow[],
+): C | null {
+  const held = waitBlock(rows);
+  if (!choice || choice.kind !== 'approve' || !held) return choice;
+  return { ...choice, blocked: held };
+}
+
 // Why Entregar waits on a step that waits for something still open, in the line under the
 // buttons: the open parts first, else what holds it back. The engine refuses the handoff too.
 export function waitBlock(rows: readonly WaitRow[]): string | undefined {
@@ -556,10 +567,10 @@ export function ownStepOf(
   return step?.doer === 'you' ? step : undefined;
 }
 
-// The button that ends your own step: Entregar when it hands something (a part, the note), else the
-// step's own name ("Aprobar el merge"), since there is nothing to hand.
+// The button that ends your own step: the step's own name, the action you take ("Triar",
+// "Decidir", "Aprobar el merge"), whatever it hands; Entregar only for a step with no name.
 export function deliverLabel(step: Step): string {
-  return step.hand.length > 0 || step.note.req === 'always' ? t('bi.move.deliver') : step.name;
+  return step.name.trim() || t('bi.move.deliver');
 }
 
 // The handoff checklist of the person's own step (the mock's itemChecklist): the note when the step

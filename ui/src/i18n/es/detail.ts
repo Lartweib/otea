@@ -478,6 +478,7 @@ export const detail = {
   'sheet.h.askedYou': 'Te preguntó',
   'sheet.h.youAnswered': 'Le respondiste',
   'sheet.h.moved': 'Lo pasó a {state}',
+  'sheet.h.handedReview': 'Lo entregó: otro agente revisa {step}',
   'sheet.h.reopened': 'Lo reabrió y volvió a {state}',
   'sheet.h.reopenedYou': 'Lo reabriste y volvió a {state}',
   'sheet.h.approved': 'Aprobaste: pasa a {state}',

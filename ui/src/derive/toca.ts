@@ -99,6 +99,8 @@ export function agentOf(
   const left = leftFor(feed.filter((e) => e.itemId === item.id));
   if (left !== undefined) return left;
   if (item.turn === 'agent' && onBoard(item.collection)) return null;
+  // A closed board item names the agent that did it, not the last one that touched it (a lander).
+  if (item.doer) return item.doer;
   const last = feed.findLast((event) => event.itemId === item.id && event.actor.kind === 'agent');
   return last ? last.actor.name : null;
 }

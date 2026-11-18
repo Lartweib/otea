@@ -172,6 +172,14 @@ export function listaBlocks(entries: readonly Entry[], ctx: RowCtx): LaneBlock[]
                 <span className="sep">·</span>
                 <span className={it.turn === 'human' ? 'stp you' : 'stp'}>{word}</span>
               </span>
+              {it.merge ? (
+                <span className="mpt">
+                  <span className="sep">·</span>
+                  <span className={it.merge === 'waiting' ? 'warn' : undefined}>
+                    {t(it.merge === 'waiting' ? 'boardView.toMerge' : 'boardView.merged')}
+                  </span>
+                </span>
+              ) : null}
               {kids.has(it.id) ? <Progress item={it} kids={kids.get(it.id) ?? []} /> : null}
               {stuck && it.expiredLease ? (
                 <span className="mpt">

@@ -19,7 +19,7 @@ import {
   showItem,
   updateItem,
 } from '../app/items.ts';
-import { boardRoundOf, liveBoards } from '../app/next.ts';
+import { boardRoundOf, liveBoards, rowFactsOf } from '../app/next.ts';
 import { leaveNote, notesSummary, notesView } from '../app/notes.ts';
 import { markOpened, openedFiles } from '../app/opened.ts';
 import { performanceOf } from '../app/performance.ts';
@@ -415,8 +415,11 @@ function api(
             // The person's order (app/priority.ts) and the role values an agent estimated.
             const order = priority.get(item.id);
             const estimates = estimated.get(item.id) ?? {};
+            // A closed board item: who did it, and whether its branch was merged.
+            const row = rowFactsOf(project, item, boards);
             return {
               ...item,
+              ...row,
               ...(round === undefined ? {} : { round }),
               ...(notes === undefined ? {} : { notes }),
               ...(order === undefined || Object.keys(order).length === 0

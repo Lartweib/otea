@@ -18,6 +18,7 @@ import {
   fillControl,
   handRefusal,
   handRows,
+  holdApproval,
   linksOf,
   ownStepOf,
   partsCount,
@@ -582,6 +583,28 @@ describe('approvalRefusal: Aprobar refused in words when a wait no longer holds'
   });
 });
 
+describe('holdApproval: Aprobar held while a part is open', () => {
+  it('turns Aprobar off with what it waits for, and leaves other moves alone', () => {
+    setLanguage('es');
+    const links = linksOf({ relations: [rel('child', 'RT-4', { state: 'simpl' })] }, (r) => ({
+      board: r.collection,
+      step: 'Implementar',
+    }));
+    const rows = waitRows(cambios(), 'sexec', links);
+    const approve = { kind: 'approve', label: 'Aprobar' };
+    expect(holdApproval(approve, rows)).toEqual({
+      ...approve,
+      blocked: 'espera a que termine RT-4',
+    });
+    expect(holdApproval({ kind: 'sendback', label: 'Devolver' }, rows)).toEqual({
+      kind: 'sendback',
+      label: 'Devolver',
+    });
+    expect(holdApproval(approve, [])).toEqual(approve);
+    setLanguage('en');
+  });
+});
+
 describe('waitBlock: Entregar held while what the step waits for is open', () => {
   it('names the open parts, else what holds it back, else nothing', () => {
     setLanguage('es');
@@ -669,12 +692,15 @@ describe('the person’s own step', () => {
     expect(row((ref) => ref === 'fwhat')).toMatchObject({ ok: true, required: false });
   });
 
-  it('names the hand-off Entregar when the step hands something, else by the step itself', () => {
+  it('names the hand-off by the step itself, whatever it hands', () => {
     setLanguage('es');
+    const triage = ownStepOf(errores(), { state: 'striage', turn: 'human' });
+    if (!triage) throw new Error('no own step');
+    expect(deliverLabel(triage)).toBe('Triar');
     const def = tareasDeRepo();
     const own = ownStepOf(def, { state: 'sprop', turn: 'human' });
     if (!own) throw new Error('no own step');
-    expect(deliverLabel(own)).toBe('Entregar');
+    expect(deliverLabel({ ...own, name: ' ' })).toBe('Entregar');
     const empty = {
       ...own,
       name: 'Aprobar el merge',
