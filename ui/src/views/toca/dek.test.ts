@@ -56,6 +56,22 @@ describe('what happened today', () => {
     expect(todayCounts(feed, ctx(items))).toEqual({ handed: 1, approved: 2, sent: 1 });
   });
 
+  // A send-back made with review comments only has no reason of its own; an approval may carry a
+  // note. The way the move goes tells them apart, not whether it has words.
+  it('counts a send-back with only review comments, and an approval with a note as approved', () => {
+    const items = [
+      item({ id: 'B', state: 'fixing', turn: 'agent' }),
+      item({ id: 'F', state: 'fixing', turn: 'agent' }),
+      item({ id: 'E', state: 'accepted', turn: 'agent' }),
+    ];
+    const feed = [
+      moved('B', 'fixing', you, { minutes: 30, from: 'verify' }),
+      moved('F', 'fixing', you, { minutes: 25, from: 'verify' }),
+      moved('E', 'accepted', you, { minutes: 20, from: 'reported', reason: 'Bien visto.' }),
+    ];
+    expect(todayCounts(feed, ctx(items))).toEqual({ handed: 0, approved: 1, sent: 2 });
+  });
+
   it('never counts publishing a board as an approval: neither the Pedido it closes nor the items it moves', () => {
     const items = [item({ id: 'C', state: 'fixed', turn: 'none' })];
     const closed = moved('C', 'fixed', you, {
