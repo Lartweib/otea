@@ -783,7 +783,7 @@ const DESIGN: Template = {
         'the previous round and this one, in random order, without saying which is which',
         'la ronda anterior y esta, en orden al azar, sin decir cuál es cuál',
       ),
-      show: 'ba',
+      show: 'ab',
     },
     {
       key: 'emotion',

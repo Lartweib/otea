@@ -108,32 +108,40 @@ export function ImageGallery({ evidence, label }: { evidence: Evidence[]; label:
   );
 }
 
-type CompareMode = 'slider' | 'side';
+export type CompareMode = 'slider' | 'side';
 
 type Side = 'before' | 'after';
 
-const sideLabel = (side: Side) => t(side === 'before' ? 'evidence.before' : 'evidence.after');
+// What each side is called: before and after, A and B on a blind compare (P5-4), or the rounds
+// they come from (P5-5).
+export type SideNames = Readonly<Record<Side, string>>;
 
-const sideAlt = (side: Side, evidence: Evidence) =>
-  t('evidence.alt', { side: sideLabel(side), alt: altOf(evidence) });
+const BLIND: SideNames = { before: 'A', after: 'B' };
 
-function Missing({ side }: { side: Side }) {
+const sideNames = (): SideNames => ({ before: t('evidence.before'), after: t('evidence.after') });
+
+const sideAlt = (label: string, evidence: Evidence) =>
+  t('evidence.alt', { side: label, alt: altOf(evidence) });
+
+function Missing({ side, blind }: { side: Side; blind: boolean }) {
   return (
     <div className="ev-frame ev-missing well">
       <span className="t-cap">
-        {t(side === 'before' ? 'evidence.noBefore' : 'evidence.noAfter')}
+        {blind
+          ? t('evidence.blindEmpty')
+          : t(side === 'before' ? 'evidence.noBefore' : 'evidence.noAfter')}
       </span>
     </div>
   );
 }
 
-function Framed({ evidence, side }: { evidence: Evidence; side: Side }) {
+function Framed({ evidence, label }: { evidence: Evidence; label: string }) {
   const fileUrl = useFileUrl();
   return (
     <figure className="ev-frame">
       <div className="ev-stage well">
-        <img className="ev-img" src={fileUrl(evidence)} alt={sideAlt(side, evidence)} />
-        <span className="ev-tag l">{sideLabel(side)}</span>
+        <img className="ev-img" src={fileUrl(evidence)} alt={sideAlt(label, evidence)} />
+        <span className="ev-tag l">{label}</span>
       </div>
       <figcaption>
         <FileMeta evidence={evidence} />
@@ -144,10 +152,21 @@ function Framed({ evidence, side }: { evidence: Evidence; side: Side }) {
 
 // The latest before and after on one frame, a divider between them: drag it, or focus it and use the
 // arrow keys. Side by side shows them apart.
-export function ImageCompare({ evidence }: { evidence: Evidence[] }) {
+export function ImageCompare({
+  evidence,
+  blind = false,
+  names,
+  initial = 'slider',
+}: {
+  evidence: Evidence[];
+  blind?: boolean;
+  names?: SideNames | undefined;
+  initial?: CompareMode;
+}) {
   const fileUrl = useFileUrl();
   const { before, after } = comparePair(evidence);
-  const [mode, setMode] = useState<CompareMode>('slider');
+  const [mode, setMode] = useState<CompareMode>(initial);
+  const label = names ?? (blind ? BLIND : sideNames());
   const [split, setSplit] = useState(50);
   const [ratio, setRatio] = useState<number | undefined>(undefined);
   const [dragging, setDragging] = useState(false);
@@ -155,8 +174,16 @@ export function ImageCompare({ evidence }: { evidence: Evidence[] }) {
   if (!before || !after) {
     return (
       <div className="ev-pair">
-        {before ? <Framed evidence={before} side="before" /> : <Missing side="before" />}
-        {after ? <Framed evidence={after} side="after" /> : <Missing side="after" />}
+        {before ? (
+          <Framed evidence={before} label={label.before} />
+        ) : (
+          <Missing side="before" blind={blind} />
+        )}
+        {after ? (
+          <Framed evidence={after} label={label.after} />
+        ) : (
+          <Missing side="after" blind={blind} />
+        )}
       </div>
     );
   }
@@ -210,19 +237,19 @@ export function ImageCompare({ evidence }: { evidence: Evidence[] }) {
             <img
               className="ev-img"
               src={fileUrl(after)}
-              alt={sideAlt('after', after)}
+              alt={sideAlt(label.after, after)}
               onLoad={onLoad}
               draggable={false}
             />
             <img
               className="ev-img ev-cmp-before"
               src={fileUrl(before)}
-              alt={sideAlt('before', before)}
+              alt={sideAlt(label.before, before)}
               style={{ clipPath: `inset(0 ${100 - split}% 0 0)` }}
               draggable={false}
             />
-            <span className="ev-tag l">{sideLabel('before')}</span>
-            <span className="ev-tag r">{sideLabel('after')}</span>
+            <span className="ev-tag l">{label.before}</span>
+            <span className="ev-tag r">{label.after}</span>
             <div
               className="ev-divider"
               style={{ left: `${split}%` }}
@@ -233,7 +260,11 @@ export function ImageCompare({ evidence }: { evidence: Evidence[] }) {
               aria-valuemin={0}
               aria-valuemax={100}
               aria-valuenow={shown}
-              aria-valuetext={t('evidence.split', { before: shown, after: 100 - shown })}
+              aria-valuetext={
+                names || blind
+                  ? `${label.before} ${shown} % · ${label.after} ${100 - shown} %`
+                  : t('evidence.split', { before: shown, after: 100 - shown })
+              }
               onKeyDown={onKeyDown}
             >
               <span className="ev-knob" aria-hidden="true">
@@ -249,8 +280,8 @@ export function ImageCompare({ evidence }: { evidence: Evidence[] }) {
         </figure>
       ) : (
         <div className="ev-pair">
-          <Framed evidence={before} side="before" />
-          <Framed evidence={after} side="after" />
+          <Framed evidence={before} label={label.before} />
+          <Framed evidence={after} label={label.after} />
         </div>
       )}
     </div>

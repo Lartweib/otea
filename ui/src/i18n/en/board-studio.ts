@@ -175,6 +175,7 @@ export const boardStudio = {
   'bs.show.gallery': 'as a gallery',
   'bs.show.one': 'a single one',
   'bs.show.ba': 'before and after',
+  'bs.show.ab': 'A and B, blind',
   'bs.show.strip': 'as a strip of frames',
   'bs.show.player': 'in a player',
   'bs.level.low': 'low',

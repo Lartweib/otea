@@ -11,6 +11,22 @@ describe('compileBoard', () => {
     );
   });
 
+  it('draws a blind A and B as a compare that never says which is before (P5-4)', () => {
+    const design = TEMPLATES.find(({ key }) => key === 'design');
+    if (!design) throw new Error('no design template');
+    const def = instantiate(design, 'es', {}, undefined, { keep: true });
+    const [type] = compileBoard('bdis', 1, def).types;
+    const entries = Object.values(type?.layout ?? {})
+      .flat()
+      .flatMap((e) => ('module' in e ? [e] : []));
+    expect(entries.find(({ id }) => id === 'eab')).toMatchObject({
+      module: 'images',
+      variant: 'compare',
+      blind: true,
+    });
+    expect(entries.find(({ id }) => id === 'eshots')).not.toHaveProperty('blind');
+  });
+
   it('turns a board version into the preset the rest of Otea reads', () => {
     const preset = compileBoard('bcria', 4, creatures());
     expect(preset.name).toBe('bcria');

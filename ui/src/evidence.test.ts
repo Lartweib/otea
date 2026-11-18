@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  blindPartsOf,
   comparePair,
   emptyText,
   evidenceOf,
@@ -9,6 +10,7 @@ import {
   moduleTitle,
   nudgeSplit,
   parseDiff,
+  sideWord,
   splitAt,
   stepIndex,
 } from './evidence.ts';
@@ -92,6 +94,27 @@ describe('comparePair', () => {
 
     expect(comparePair([b1, a1, b2])).toEqual({ before: b2, after: a1 });
     expect(comparePair([b1])).toEqual({ before: b1, after: undefined });
+  });
+});
+
+describe('the sides of a compare', () => {
+  const blindType: TypeView = {
+    ...bug,
+    layout: { ...bug.layout, evidence: [compare, { ...compare, id: 'ab', blind: true }] },
+  };
+
+  it('names a blind compare A and B, never before and after (P5-4)', () => {
+    const blind = blindPartsOf(blindType);
+    expect([...blind]).toEqual(['ab']);
+    const a = evidence('x.png', { module: 'ab', role: 'before' });
+    const b = evidence('y.png', { module: 'ab', role: 'after' });
+    const seen = evidence('z.png', { module: 'shots', role: 'before' });
+    expect([sideWord(a, blind), sideWord(b, blind), sideWord(seen, blind)]).toEqual([
+      'A',
+      'B',
+      'before',
+    ]);
+    expect(sideWord(evidence('w.png'), blind)).toBeNull();
   });
 });
 

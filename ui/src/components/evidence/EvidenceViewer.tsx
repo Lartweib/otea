@@ -1,12 +1,14 @@
 import { type CSSProperties, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { parseTestReport } from '../../../../src/core/test-report.ts';
-import { pairIn, roleWord } from '../../evidence.ts';
+import { pairIn } from '../../evidence.ts';
 import { useFileUrl } from '../../evidence-files.ts';
 import { t } from '../../i18n/i18n.ts';
 import { Icon } from '../../kit/index.ts';
+import { useBlind, useSideWord } from '../../preset-words.ts';
 import type { Evidence } from '../../types.ts';
 import type { ItemNote } from '../../views/detail/notes.ts';
 import { keepDraftThen, sendThenClear } from '../note-send.ts';
+import { pickNoteText, pickOf } from './blind-pick.ts';
 import { DiagramView } from './DiagramView.tsx';
 import { FileMeta } from './FileMeta.tsx';
 import { FileView } from './FileViews.tsx';
@@ -219,6 +221,9 @@ export function EvidenceReader({
   const pair = shown && shown.kind === 'image' ? pairIn(evidence, shown) : null;
   const [comparing, setComparing] = useState(false);
   const compared = comparing && pair !== null;
+  const roleWord = useSideWord();
+  const blindOf = useBlind();
+  const blind = !!pair && !!shown && blindOf(shown);
   // biome-ignore lint/correctness/useExhaustiveDependencies: once per cite that opens the reader
   useEffect(() => {
     if (start && shownId !== undefined) setPick({ id: shownId, pick: start });
@@ -421,14 +426,26 @@ export function EvidenceReader({
       </div>
       {pair ? (
         <div className="ev-reader-pair">
-          <span>{t('evidence.reader.side', { side: roleWord(shown) ?? '' })}</span>
+          <span>
+            {t(blind ? 'evidence.reader.sideBlind' : 'evidence.reader.side', {
+              side: roleWord(shown) ?? '',
+            })}
+          </span>
+          {blind && note ? (
+            <BlindPick
+              ids={[pair.before.id, pair.after.id]}
+              shown={shown}
+              side={(roleWord(shown) ?? 'A') as 'A' | 'B'}
+              note={note}
+            />
+          ) : null}
           <button
             type="button"
             className="btn quiet sm"
             aria-pressed={compared}
             onClick={() => setComparing(!compared)}
           >
-            {t('evidence.reader.compare')}
+            {t(blind ? 'evidence.reader.compareBlind' : 'evidence.reader.compare')}
           </button>
         </div>
       ) : null}
@@ -485,7 +502,7 @@ export function EvidenceReader({
         }
       >
         {compared && pair ? (
-          <ImageCompare evidence={[pair.before, pair.after]} />
+          <ImageCompare evidence={[pair.before, pair.after]} blind={blind} />
         ) : (
           <EvidenceViewer key={shown.id} evidence={shown} {...(phone ? { phone } : {})} />
         )}
@@ -527,6 +544,43 @@ export function EvidenceReader({
         </>
       )}
     </div>
+  );
+}
+
+// «Me quedo con A» on a blind compare's file: a comment of the review on it, which replaces a pick
+// of the other side (P5-4).
+export function BlindPick({
+  ids,
+  shown,
+  side,
+  note,
+}: {
+  ids: readonly number[];
+  shown: Evidence;
+  side: 'A' | 'B';
+  note: ReaderNote;
+}) {
+  const [busy, setBusy] = useState(false);
+  const pending = note.pending ?? (() => false);
+  const picked = pickOf(note.left ?? [], ids, pending);
+  const here = picked?.anchor?.evidence === shown.id;
+  if (here) return <span className="ev-picked">{t('compare.picked', { side })}</span>;
+  const pickIt = async () => {
+    if (picked) await note.onWithdraw?.(picked.note);
+    await note.onSend(pickNoteText(side), { evidence: shown.id });
+  };
+  return (
+    <button
+      type="button"
+      className="btn quiet sm"
+      disabled={busy}
+      onClick={() => {
+        setBusy(true);
+        void pickIt().finally(() => setBusy(false));
+      }}
+    >
+      {t('compare.pick', { side })}
+    </button>
   );
 }
 

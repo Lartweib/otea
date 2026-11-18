@@ -113,11 +113,11 @@ export function PartValue({ part, empty = false }: { part: Part; empty?: boolean
             <Figure k={0} />
           </div>
         );
-      if (part.show === 'ba')
+      if (part.show === 'ba' || part.show === 'ab')
         return (
           <div className="bsp-figs two">
-            <Figure k={0} cap={t('bs.preview.value.before')} />
-            <Figure k={1} cap={t('bs.preview.value.after')} />
+            <Figure k={0} cap={part.show === 'ab' ? 'A' : t('bs.preview.value.before')} />
+            <Figure k={1} cap={part.show === 'ab' ? 'B' : t('bs.preview.value.after')} />
           </div>
         );
       return (

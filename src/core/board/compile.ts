@@ -68,6 +68,7 @@ const VARIANT: Readonly<Record<string, string>> = {
   gallery: 'gallery',
   one: 'single',
   ba: 'compare',
+  ab: 'compare',
   strip: 'frames',
   player: 'player',
 };
@@ -143,6 +144,7 @@ function entryOf(part: Part): LayoutEntry | undefined {
     module: module as LayoutEntry['module'],
     id: part.id,
     ...(variant ? { variant } : {}),
+    ...(part.show === 'ab' ? { blind: true } : {}),
     label: part.name,
     ...(accepts ? { accepts: [...accepts] } : {}),
   };

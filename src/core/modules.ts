@@ -50,6 +50,8 @@ export type LayoutEntry = {
   id?: string;
   field?: string;
   variant?: string;
+  // A compare judged blind: its two sides are A and B, never before and after.
+  blind?: boolean;
   accepts?: string[];
   required?: boolean;
   label?: string;
@@ -87,6 +89,7 @@ function evidenceConfig(variants?: readonly [string, ...string[]]) {
     module: z.string(),
     id,
     ...(variants ? { variant: z.enum(variants).optional() } : {}),
+    blind: z.boolean().optional(),
     accepts: z.array(z.string()).nonempty().optional(),
     required: z.boolean().optional(),
     label,
