@@ -251,9 +251,10 @@ function Version({
         <p className="dg-error t-small">
           {t('diagram.unreadable', {
             line: parsed.line,
-            message: t(`diagram.why.${parsed.why}` as 'diagram.why.header', {
-              at: parsed.at ?? '',
-            }),
+            message:
+              parsed.why === 'unread' || parsed.why === 'edge'
+                ? t(`diagram.why.${parsed.why}`, { at: parsed.at ?? '' })
+                : t(`diagram.why.${parsed.why}`),
           })}
         </p>
         <Source text={text.text} added={lines} failed={parsed.line} />
