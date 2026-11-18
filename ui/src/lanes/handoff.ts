@@ -214,6 +214,9 @@ export function runHandoff(
   let flight: Drive | null = null;
   let flying: Flying[] = [];
   let roomsAt = 0;
+  // The nodes' light the full move carries (filled below); declared before finish, which puts it
+  // back, since the reduced crossfade finishes before the full move is set up.
+  const lit: { g: SVGGElement; y: number; dy: number; carried: boolean; at: string | null }[] = [];
   const halos = svg?.querySelector<SVGGElement>('.glow .halos') ?? null;
 
   const finish = (interrupted: boolean) => {
@@ -438,7 +441,6 @@ export function runHandoff(
 
   // The light of agent and stuck nodes lies where the rows land (drawn once), and rides with the
   // rows that make room; a carried row's light comes in as it lands.
-  const lit: { g: SVGGElement; y: number; dy: number; carried: boolean; at: string | null }[] = [];
   if (svg) {
     drawLight(svg, pB, { keepHalos: true });
     const roomDy = new Map(plan.rooms.map((r) => [r.k, r.dy]));
