@@ -266,6 +266,7 @@ otea create --collection Cambios --title "Exclude node_modules" --field "Qué qu
 - From the page you can turn a topic into a task on a board you pick, linked both ways. An item lists its related topics, says while it is your turn that one is still open, and offers to close them once it is finished; a topic the same agent opened shortly before making the item is suggested, for you to link or wave off.
 - While topics are on, the agent guide (MCP instructions, `otea board`) tells agents to record each side question before answering it, and to look in the topics (`topic_list` with `search`, `topic_show`) when you ask what was concluded before; `otea next` and `otea wait` remind them. While off it never mentions them.
 - `otea topic --help` lists the topic commands.
+- The page has a search box over titles, questions and full answers, open and closed. Te toca shows three answered topics at most, the rest on the page; «Todos los proyectos» lists each project's answered topics too. Turning a topic into a task starts its first text field with the question and the last answer.
 
 ### Telling agents what to do
 

@@ -36,7 +36,7 @@ export function pendingTopics(topics: readonly ItemTopic[]): ItemTopic[] {
 }
 
 // The last answer of a topic, if any: its summary shows in the list.
-export function lastAnswer(topic: Topic) {
+export function lastAnswer(topic: Pick<Topic, 'turns'>) {
   return topic.turns.findLast((turn) => turn.kind === 'answer');
 }
 
@@ -58,9 +58,32 @@ export function convertFields({ fields }: TypeView): FieldView[] {
   );
 }
 
-// The form as it opens: the topic's title as the task's, the rest as the type starts them.
-export function convertDraft(type: TypeView, topic: Pick<Topic, 'title'>): FormValues {
-  return { ...initialValues(type), title: topic.title };
+const TEXT_MODULES = new Set(['text', 'markdown']);
+
+// What the task starts from: the person's question and, once answered, the agent's last answer.
+function topicBrief(topic: Pick<Topic, 'turns'>): string {
+  const question = topic.turns.find((turn) => turn.kind === 'question')?.text ?? '';
+  const answer = lastAnswer(topic)?.text;
+  return answer ? `${question}\n\n${answer}` : question;
+}
+
+// The form as it opens: the topic's title as the task's, and the first text the form asks for (a
+// Cambio's "Qué quiero") with what the topic said; the rest as the type starts them.
+export function convertDraft(type: TypeView, topic: Pick<Topic, 'title' | 'turns'>): FormValues {
+  const values: FormValues = { ...initialValues(type), title: topic.title };
+  const text = convertFields(type).find(
+    (field) =>
+      field.name !== 'title' && field.values === undefined && TEXT_MODULES.has(field.module),
+  );
+  if (text && values[text.name] === '') values[text.name] = topicBrief(topic);
+  return values;
+}
+
+// Te toca shows a few answered topics, so they never crowd its lanes; the topics page has them all.
+export const TOCA_TOPICS = 3;
+
+export function capped<T>(topics: readonly T[]): { shown: T[]; more: number } {
+  return { shown: topics.slice(0, TOCA_TOPICS), more: Math.max(0, topics.length - TOCA_TOPICS) };
 }
 
 export function convertReady(type: TypeView, values: FormValues): boolean {

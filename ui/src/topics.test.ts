@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   answeredTopics,
+  capped,
   convertBoard,
   convertDraft,
   convertFields,
@@ -95,9 +96,30 @@ describe('turning a topic into a task', () => {
   it('starts the title as the topic and holds the task until each such field is filled', () => {
     const draft = convertDraft(change, topic('TEM-1', 'answered'));
     expect(draft.title).toBe('TEM-1');
-    expect(convertReady(change, draft)).toBe(false);
+    expect(convertReady(change, { ...draft, 'Qué quiero': ' ' })).toBe(false);
     expect(convertReady(change, { ...draft, 'Qué quiero': 'Que pase en Windows' })).toBe(true);
     expect(convertReady(change, { ...draft, title: ' ', 'Qué quiero': 'x' })).toBe(false);
+  });
+
+  it('starts the first text it asks for with the question and the last answer', () => {
+    const asked = { ...topic('TEM-1', 'answered', ['Falta una variable.']) };
+    asked.turns[0] = { ...asked.turns[0], text: '¿Por qué falla el build?' } as Topic['turns'][0];
+    const draft = convertDraft(change, asked);
+    expect(draft['Qué quiero']).toBe('¿Por qué falla el build?\n\nFalta una variable.');
+    expect(convertReady(change, draft)).toBe(true);
+    // An open topic has no answer yet: the question alone.
+    expect(convertDraft(change, topic('TEM-2', 'open'))['Qué quiero']).toBe('q');
+  });
+
+  it('leaves a field with choices as the type starts it', () => {
+    const picky: TypeView = {
+      ...change,
+      fields: [
+        field('title', { required: 'create' }),
+        field('area', { module: 'enum', required: 'create', values: ['ui', 'cli'] }),
+      ],
+    };
+    expect(convertDraft(picky, topic('TEM-1', 'open')).area).toBe('');
   });
 });
 
@@ -115,5 +137,13 @@ describe('the board a topic turns into a task on', () => {
   it('is left for the person to pick when the topic names no item on a board offered', () => {
     expect(convertBoard({ links: [] }, boards, items)).toBe('');
     expect(convertBoard({ links: ['OLD-9'] }, boards, items)).toBe('');
+  });
+});
+
+describe('answered topics in Te toca', () => {
+  it('shows a few, the rest left to the topics page', () => {
+    const many = ['TEM-1', 'TEM-2', 'TEM-3', 'TEM-4', 'TEM-5'].map((id) => topic(id, 'answered'));
+    expect(capped(many)).toEqual({ shown: many.slice(0, 3), more: 2 });
+    expect(capped(many.slice(0, 2))).toEqual({ shown: many.slice(0, 2), more: 0 });
   });
 });

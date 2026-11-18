@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { typeOfItem, useApp } from '../app/context.tsx';
+import { projectPage } from '../base.ts';
 import { onPublishedBoard } from '../board-studio/home/boards-store.ts';
 import { agentOf, askingAgent, type TocaSection, tocaSection } from '../derive/toca.ts';
 import { whenText } from '../derive/when.ts';
@@ -9,7 +10,9 @@ import { type LaneBlock, LaneList } from '../lanes/LaneList.tsx';
 import { lookOf } from '../lanes/looks.ts';
 import { keptStateWord, stateWord } from '../preset-words.ts';
 import { inboxOf, itemHref, whereOf } from '../projects.ts';
-import type { Item, ProjectOverview } from '../types.ts';
+import { topicsHash } from '../selection.ts';
+import { capped } from '../topics.ts';
+import type { AnsweredTopic, Item, ProjectOverview } from '../types.ts';
 import { rowCall } from '../views/toca/blocks.tsx';
 import { dayLine } from '../views/toca/TocaView.tsx';
 
@@ -34,6 +37,73 @@ function action(
   };
 }
 
+// Where a topic row opens: the topic on its project's page (this one's, or another of this server).
+function topicHref(project: string | undefined, id?: string): string {
+  return project === undefined ? topicsHash(id) : projectPage(project, topicsHash(id));
+}
+
+// A project's answered topics: yours to read, never work. A few rows, then how many more wait on
+// its topics page, so a chatty day never floods the inbox. `project`: another project's id.
+function topicBlocks(
+  topics: readonly AnsweredTopic[],
+  sec: string,
+  where: { key: string; project?: string; name?: string },
+): LaneBlock[] {
+  const { shown, more } = capped(topics);
+  const blocks: LaneBlock[] = shown.map((topic) => ({
+    kind: 'row',
+    key: `topic:${where.key}:${topic.id}`,
+    lane: 'you',
+    look: 'yours',
+    sec,
+    content: (
+      <>
+        <div className="main-c">
+          <div className="t" data-leaf="" data-title="">
+            <span className="tt">{topic.title}</span>
+          </div>
+          <div className="m" data-leaf="">
+            <span className="id">{topic.id}</span>
+            {where.name ? (
+              <span className="mpt">
+                <span className="sep">·</span>
+                <span className="pid">{where.name}</span>
+              </span>
+            ) : null}
+            <span className="mpt">
+              <span className="sep">·</span>
+              <span className="stp you">{t('projects.topic.kind')}</span>
+            </span>
+          </div>
+        </div>
+        <div className="a" data-leaf="">
+          {t('projects.topic.act')}
+          {topic.agent ? <small>{t('projects.topic.sub', { agent: topic.agent })}</small> : null}
+        </div>
+      </>
+    ),
+  }));
+  if (more > 0)
+    blocks.push({
+      kind: 'empty',
+      key: `more:${where.key}`,
+      content: (
+        <a className="inbox-more" href={topicHref(where.project)}>
+          {t('projects.topics.more', { count: more })}
+        </a>
+      ),
+    });
+  return blocks;
+}
+
+// Where a topic row of the inbox leads, from its key: `topic:<project id or here>:<topic id>`.
+export function topicRowHref(key: string): string | undefined {
+  const match = /^topic:(.+):([^:]+)$/.exec(key);
+  if (!match) return undefined;
+  const [, project, id] = match;
+  return topicHref(project === 'here' ? undefined : project, id);
+}
+
 // Your own step says who takes it after you, as Te toca does: never who opened it.
 function ownStep(it: Item, ctx: Parameters<typeof rowCall>[2]): { a: string; sub: ReactNode } {
   const call = rowCall(it, 'propios', ctx);
@@ -49,6 +119,7 @@ function ownStep(it: Item, ctx: Parameters<typeof rowCall>[2]): { a: string; sub
 export function hereBlocks(
   app: Pick<ReturnType<typeof useApp>, 'all' | 'now' | 'feed' | 'collectionOf' | 'route'>,
   name: string,
+  topics: readonly AnsweredTopic[] = [],
 ): LaneBlock[] {
   const ctx = {
     now: app.now,
@@ -65,11 +136,11 @@ export function hereBlocks(
       kind: 'sec',
       key: `p:${name}`,
       title: name,
-      count: rows.length,
+      count: rows.length + topics.length,
       gloss: t('projects.openNow'),
     },
   ];
-  if (rows.length === 0)
+  if (rows.length === 0 && topics.length === 0)
     blocks.push({ kind: 'empty', key: `empty:p:${name}`, content: t('projects.emptyHere') });
   for (const { it, sec } of rows) {
     const when = whenText(it, app.now);
@@ -113,6 +184,7 @@ export function hereBlocks(
       ),
     });
   }
+  blocks.push(...topicBlocks(topics, `p:${name}`, { key: 'here' }));
   return blocks;
 }
 
@@ -124,7 +196,7 @@ export function elsewhereBlocks(project: ProjectOverview): LaneBlock[] {
       kind: 'sec',
       key,
       title: project.name,
-      count: project.waiting.length,
+      count: project.waiting.length + (project.topics?.length ?? 0),
       gloss: whereOf(project) ?? '',
     },
   ];
@@ -165,6 +237,14 @@ export function elsewhereBlocks(project: ProjectOverview): LaneBlock[] {
       ),
     });
   }
+  if (project.unavailable === undefined)
+    blocks.push(
+      ...topicBlocks(project.topics ?? [], key, {
+        key: project.id,
+        project: project.id,
+        name: project.name,
+      }),
+    );
   return blocks;
 }
 
@@ -173,10 +253,18 @@ export function ProjectsInbox() {
   const name = app.project?.name ?? '';
   const projects = app.projects ?? [];
   const others = projects.filter((p) => !p.current);
-  const shown = others.filter((p) => p.waiting.length > 0 || p.unavailable !== undefined);
-  const blocks = [...hereBlocks(app, name), ...shown.flatMap(elsewhereBlocks)];
+  const shown = others.filter(
+    (p) => p.waiting.length > 0 || (p.topics?.length ?? 0) > 0 || p.unavailable !== undefined,
+  );
+  const here = projects.find((p) => p.current)?.topics ?? [];
+  const blocks = [...hereBlocks(app, name, here), ...shown.flatMap(elsewhereBlocks)];
   const inbox = inboxOf(others);
   const open = (key: string) => {
+    const topic = topicRowHref(key);
+    if (topic) {
+      window.location.assign(topic);
+      return;
+    }
     for (const p of others) {
       const it = p.waiting.find((w) => `${p.id}:${w.id}` === key);
       const href = it ? itemHref(p, it) : undefined;

@@ -165,6 +165,14 @@ export const surfaces = {
   'projects.open': 'open project',
   'projects.notServed': 'not served · {command} there opens it',
   'projects.here': 'here',
+  'topics.toca.more': {
+    one: 'And {count} more in Topics',
+    other: 'And {count} more in Topics',
+  },
+  'projects.topics.more': {
+    one: 'And {count} more answered topic',
+    other: 'And {count} more answered topics',
+  },
   'projects.withAgents': {
     one: 'Not listed here: {count} item with agents, in {projects}.',
     other: 'Not listed here: {count} items with agents, in {projects}.',
@@ -497,6 +505,12 @@ export const surfaces = {
   'topics.convert.failed':
     'It could not be created: {message} Create it from New item and link it from there.',
   'topics.showClosed': 'Show closed ones',
+  'topics.search.label': 'Search the topics',
+  'topics.search.placeholder': 'Search questions and answers…',
+  'topics.search.none': 'No topic mentions “{words}”.',
+  'projects.topic.act': 'Read',
+  'projects.topic.sub': 'answered by {agent}',
+  'projects.topic.kind': 'Answered topic',
   'topics.back': 'All topics',
   'topics.pick': 'Pick a topic to read it.',
   'topics.closed': 'Closed {id}.',

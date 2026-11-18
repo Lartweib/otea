@@ -291,6 +291,38 @@ describe('Te espera', () => {
     expect(html).not.toContain('sk3j9x');
   });
 
+  // Answered topics wait for you too, though never work: a few per project, the rest counted.
+  it('lists the topics an agent answered in each project, a few at most', () => {
+    setLanguage('es');
+    const answered = (n: number) => ({
+      id: `TEM-${n}`,
+      title: `Tema ${n}`,
+      summary: 'MIT.',
+      agent: 'quill',
+      updatedAt: '2026-11-17T10:00:00.000Z',
+    });
+    const chatty = { ...salinas, topics: [1, 2, 3, 4, 5].map(answered) };
+    const blocks = elsewhereBlocks(chatty);
+    expect(blocks[0]).toMatchObject({ kind: 'sec', count: 6 });
+    expect(blocks.filter((b) => b.kind === 'row').map((b) => b.key)).toEqual([
+      'salinas:SAL-12',
+      'topic:salinas:TEM-1',
+      'topic:salinas:TEM-2',
+      'topic:salinas:TEM-3',
+    ]);
+    const more = blocks.find((b) => b.kind === 'empty');
+    const html = renderToStaticMarkup(
+      createElement('div', null, (more as { content: ReactNode }).content),
+    );
+    expect(html).toContain('Y 2 temas respondidos más');
+    expect(html).toContain('/p/salinas/#/topics');
+
+    const here = hereBlocks(fakeApp({ all: [] }), 'Hollowmere', [answered(7)]);
+    expect(here[0]).toMatchObject({ kind: 'sec', count: 1 });
+    expect(here.some((b) => b.kind === 'empty')).toBe(false);
+    expect(here.find((b) => b.kind === 'row')?.key).toBe('topic:here:TEM-7');
+  });
+
   it('calls idle only a project with nothing open, and counts the agents’ work apart', () => {
     setLanguage('es');
     const quiet = (id: string, withAgents: number): ProjectOverview => ({
