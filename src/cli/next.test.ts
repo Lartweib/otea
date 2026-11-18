@@ -85,7 +85,9 @@ describe('next and the board moves', () => {
       project.db.close();
     }
     expect(code).toBe(0);
-    expect(out).toBe(`${expected}\n\n${reminder('quill')}\n`);
+    expect(out).toBe(
+      `${expected}\n\n${reminder('quill')}\n\nWhen you finish and otea next --as quill has nothing: otea wait --turn agent --unclaimed --as quill in the background if you can.\n`,
+    );
   });
 
   it('leaves Pedidos out of the boards it names while nothing was ever asked there', async () => {
@@ -105,7 +107,7 @@ describe('next and the board moves', () => {
 
     expect(code).toBe(0);
     expect(out).toBe(
-      `Nothing to do on Criaturas right now.\nWait for one: otea wait --turn agent --unclaimed --collection Criaturas, then otea next --collection Criaturas.\n\n${reminder('kiln')}\n`,
+      `Nothing to do on Criaturas right now.\n\n${reminder('kiln')}\n\nWait for one: otea wait --turn agent --unclaimed --collection Criaturas --as kiln in the background if you can, then otea next --collection Criaturas --as kiln.\n`,
     );
     expect((await otea('next', '--collection', 'Nope')).code).toBe(3);
   });

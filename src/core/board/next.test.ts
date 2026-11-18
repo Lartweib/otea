@@ -368,25 +368,19 @@ describe('nextText, what the item starts with', () => {
 describe('idleText', () => {
   const quiet = { ...def, idle: '' };
 
-  it('says once that there is nothing to do, and how to wait for the next item', () => {
+  it('says once that there is nothing to do', () => {
     expect(idleText([{ def: quiet, waitingForYou: 0 }])).toBe(
-      [
-        'Nothing to do on Criaturas right now.',
-        'Wait for one: otea wait --turn agent --unclaimed, then otea next.',
-      ].join('\n'),
+      'Nothing to do on Criaturas right now.',
     );
   });
 
   it('names every board on one line, then each board’s own words for idle time', () => {
     const tasks = { ...quiet, name: 'Tareas', idle: 'Revisa los tests.', cap: { on: true, n: 2 } };
     expect(
-      idleText(
-        [
-          { def: quiet, waitingForYou: 0 },
-          { def: tasks, waitingForYou: 3 },
-        ],
-        'Tareas',
-      ),
+      idleText([
+        { def: quiet, waitingForYou: 0 },
+        { def: tasks, waitingForYou: 3 },
+      ]),
     ).toBe(
       [
         'Nothing to do on Criaturas or Tareas right now.',
@@ -396,8 +390,6 @@ describe('idleText', () => {
         '',
         'New items on Tareas',
         '  Do not add items: 3 already wait for the person (the cap is 2).',
-        '',
-        'Wait for one: otea wait --turn agent --unclaimed --collection Tareas, then otea next --collection Tareas.',
       ].join('\n'),
     );
   });

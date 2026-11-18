@@ -57,6 +57,7 @@ import {
   systemClock,
   updateItem,
 } from '../app/items.ts';
+import { keepWaitingCommand, keepWaitingLine, waitAgainLine } from '../app/keep-waiting.ts';
 import { oteaLauncher, withHome } from '../app/launcher.ts';
 import { claimItem, heartbeatItem, releaseItem } from '../app/leases.ts';
 import { openMachine, rememberLocalProject, withMachine } from '../app/machine.ts';
@@ -191,7 +192,13 @@ import {
   indent,
 } from './format.ts';
 import { prState } from './gh.ts';
-import { branchesBrought, commitsOver, currentBranch, remoteOf } from './gitrepo.ts';
+import {
+  branchesBrought,
+  commitsOver,
+  currentBranch,
+  inMainCheckout,
+  remoteOf,
+} from './gitrepo.ts';
 import {
   gitHookOf,
   type HookChange,
@@ -1218,11 +1225,14 @@ const next: Command = {
       });
       const offered = answer.item === null ? undefined : getItem(project, answer.item);
       const outside = offered && mergedOutsideLine(project, input.cwd, offered);
+      // It always ends with the exact command to keep waiting: told only to wait, agents ended
+      // their turn, and the person's answer on the desk went unheard.
       const text = [
         ...(outside ? [outside] : []),
         answer.text,
         ...topicLines(project, actor.name),
         profileReminder(profile, actor.name, channel),
+        keepWaitingLine(actor.name, channel, { idle: answer.idle === true, collection }),
       ].join('\n\n');
       return { data: { ...answer, text, profile: profileView(profile) }, text };
     });
@@ -1618,17 +1628,27 @@ const wait: Command = {
         return { ...waited, asked: onItsQuestion() ? askedByAgent(project, me) : [] };
       }
       const { found } = waited;
-      return 'text' in found ? { data: found, text: found.text } : itemResult(project, found);
+      const woke = 'text' in found ? { data: found, text: found.text } : itemResult(project, found);
+      // An agent woken on its turn reads what woke it, then waits again: told so in exact words.
+      if (input.actor.kind !== 'agent' || turn !== 'agent') return woke;
+      return {
+        ...woke,
+        text: `${woke.text}\n${waitAgainLine(me, input.channel, filter.collection)}`,
+      };
     });
     if ('data' in result) return result;
     if (result.stopped === 'timeout') {
       const asked = result.asked.join(', ');
-      throw new CommandFailure(
-        'timeout',
+      const said =
         asked === ''
           ? `No item reached the ${turn} turn within ${timeout}`
-          : `The person has not answered your question on ${asked} within ${timeout}`,
-      );
+          : `The person has not answered your question on ${asked} within ${timeout}`;
+      // A timeout is no end of the work: an agent waits again, with the exact command.
+      const again =
+        input.actor.kind === 'agent' && turn === 'agent'
+          ? `; keep waiting: ${keepWaitingCommand(input.actor.name, filter.collection)}`
+          : '';
+      throw new CommandFailure('timeout', `${said}${again}`);
     }
     if (owner.orphaned()) {
       throw new CommandFailure('interrupted', 'Stopped waiting: the session that started it ended');
@@ -1636,6 +1656,22 @@ const wait: Command = {
     throw new CommandFailure('interrupted', 'Interrupted while waiting');
   },
 };
+
+// An agent that claims in the repo's main checkout while other agents hold work in the project is
+// told to work in its own worktree (P1-15): two agents in one checkout change each other's files.
+function sharedCheckoutLine(project: Project, input: Input): string | undefined {
+  const me = input.actor.name;
+  const others = [
+    ...new Set(
+      listAgents(project.db)
+        .filter((agent) => agent.name !== me && agent.holding.length > 0)
+        .map(({ name }) => name),
+    ),
+  ];
+  if (others.length === 0 || !inMainCheckout(input.cwd)) return undefined;
+  const who = others.join(', ');
+  return `${who} also holds work in this project, and you are in the repository's main checkout: do your work on your own branch in your own git worktree (git worktree add ../<folder> -b <branch>), never in files another agent is changing.`;
+}
 
 const claim: Command = {
   name: 'claim',
@@ -1650,7 +1686,9 @@ const claim: Command = {
     const lease = { id, actor, ...(ttl === undefined ? {} : { ttlMs: ttl }) };
     return withAgent(input, (project) => {
       requireProfile(project.db, actor.name, { channel: input.channel });
-      return itemResult(project, claimItem(project, lease));
+      const claimed = itemResult(project, claimItem(project, lease));
+      const shared = sharedCheckoutLine(project, input);
+      return shared ? { ...claimed, text: `${claimed.text}\n${shared}` } : claimed;
     });
   },
 };

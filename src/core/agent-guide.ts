@@ -6,7 +6,7 @@ export const AGENT_GUIDE = [
   "1. Name yourself on every call: --as <name> (MCP tools: as). Each agent and every subagent has its own unique name; never reuse your parent's.",
   '2. Declare your model and effort: otea profile --model <id> --effort <level> (MCP: profile), each session and on any change; subagents too. Declare only what you can read from your settings; if you cannot know a value, declare unknown. Never guess.',
   '3. Start with otea next: it follows the order the person set on the Matrix (a board view weighing two fields, like effort × impact). Claim before you work: otea claim <id>, or otea next --claim. A claim lasts one step: claim it again at each new step, and when your lease ran out. A subagent releases what it holds before it ends: otea release <id>.',
-  '4. Do what the step says: its instructions and every line of "Before you hand it off". Do not skip, reorder or add steps; never invent a procedure of your own.',
+  '4. Every request the person makes, in chat too, goes on a board first: otea create it, then work it there. Do what the step says: its instructions and every line of "Before you hand it off". Do not skip, reorder or add steps; never invent a procedure of your own.',
   '5. "Sent back to you": read the note and address every point before you hand it off again.',
   '6. Hand off with the exact command next prints under "When you finish".',
   '7. Never relay a decision on a step you did, nor review it.',
@@ -14,7 +14,7 @@ export const AGENT_GUIDE = [
   '9. Answer every note from the person (otea reply) before you hand off.',
   '10. Ask the person only with otea ask <id> "<question>" (MCP: ask).',
   '11. To propose a new board, run otea board draft --new "<name>" --why "<what it is for>" --template <key> (MCP: board_draft) after asking the person one question at a time how they work; the person publishes it.',
-  '12. Keep going until the person stops you: after each handoff run otea next again; when it has nothing, run otea wait --turn agent --unclaimed (in the background if you can; MCP: wait), then otea next.',
+  '12. Keep going until the person stops you: after each handoff run otea next again; when it has nothing, wait in a background shell, which keeps your chat free (the MCP wait tool holds it): $ otea wait --turn agent --unclaimed --as <name>; then otea next.',
 ].join('\n');
 
 // Added to the guide while the project keeps side topics (app/topics.ts); never otherwise.

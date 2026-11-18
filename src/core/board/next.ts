@@ -1074,9 +1074,9 @@ export type IdleBoard = {
 };
 
 // What `next` answers when nothing on the boards asked is the agent's: that, once, naming them; each
-// board's own words for idle time and its cap on new items when it is on; and how to wait for the
-// next item (on `collection` when next was asked of one).
-export function idleText(boards: readonly IdleBoard[], collection?: string): string {
+// board's own words for idle time and its cap on new items when it is on. next itself ends with how
+// to wait for the next item.
+export function idleText(boards: readonly IdleBoard[]): string {
   const names = boards.map(({ def }) => def.name);
   const lines = [`Nothing to do on ${and(names, 'or')} right now.`];
   const of = (title: string, def: BoardDefinition) =>
@@ -1102,9 +1102,7 @@ export function idleText(boards: readonly IdleBoard[], collection?: string): str
     }
   }
   lines.push(...mergeLines(boards.flatMap(({ toMerge: done }) => done ?? [])));
-  const on = collection === undefined ? '' : ` --collection ${quoted(collection)}`;
-  if (lines.length > 1) lines.push('');
-  lines.push(`Wait for one: otea wait --turn agent --unclaimed${on}, then otea next${on}.`);
+  // How to wait for the next one is next's last line, with the agent's name (app/keep-waiting.ts).
   return lines.join('\n');
 }
 
@@ -1132,7 +1130,7 @@ export function mergeFirstText(id: string, toMerge: readonly ToMerge[]): string 
 }
 
 // A name as a command line takes it: bare when it is one plain word, quoted otherwise.
-function quoted(name: string): string {
+export function quoted(name: string): string {
   return /^[\w.-]+$/.test(name) ? name : `"${name}"`;
 }
 

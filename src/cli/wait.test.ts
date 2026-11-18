@@ -67,7 +67,9 @@ describe('wait', () => {
     const { code, out } = await otea('wait', '--turn', 'agent');
 
     expect(code).toBe(0);
-    expect(out).toBe('TASKS-2  Hacerlo  agent  Second\n');
+    expect(out).toBe(
+      'TASKS-2  Hacerlo  agent  Second\nThen keep going: otea next --as claude; when it has nothing, otea wait --turn agent --unclaimed --as claude in the background if you can.\n',
+    );
   });
 
   it('prints the item like an entry of list --json with --json', async () => {
@@ -122,7 +124,7 @@ describe('wait', () => {
     const { code, out } = await otea('wait', '--turn', 'agent', '--unclaimed', '--as', 'gemini');
 
     expect(code).toBe(0);
-    expect(out).toBe('TASKS-2  Hacerlo  agent  Second\n');
+    expect(out.split('\n')[0]).toBe('TASKS-2  Hacerlo  agent  Second');
   });
 
   it('keeps waiting while the only matches are in another collection', async () => {
@@ -176,7 +178,7 @@ describe('wait', () => {
       await until(() => waiting.out() !== '', 8000);
 
       expect(await waiting.done).toBe(0);
-      expect(waiting.out()).toMatch(/^TASKS-1 {2}Hacerlo {2}agent {2}First\n$/);
+      expect(waiting.out()).toMatch(/^TASKS-1 {2}Hacerlo {2}agent {2}First\nThen keep going: /);
     });
   });
 

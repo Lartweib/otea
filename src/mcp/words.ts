@@ -77,7 +77,9 @@ export function mcpWords(text: string, commands: readonly Command[]): string {
   let at = 0;
   while (at < text.length) {
     if (text.startsWith('otea ', at) && (at === 0 || /[\s(`"']/.test(text[at - 1] ?? ''))) {
-      const told = call(text, at + 'otea '.length, commands);
+      // A shell line ("$ otea wait …"), which an MCP agent runs in its shell, is kept as it is.
+      const shell = text.slice(Math.max(0, at - 2), at) === '$ ';
+      const told = shell ? undefined : call(text, at + 'otea '.length, commands);
       if (told) {
         out += told.said;
         at = told.end;

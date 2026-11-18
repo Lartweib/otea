@@ -41,6 +41,18 @@ describe('leases', () => {
       );
     });
 
+    it('tells an agent claiming in the main checkout, while another agent holds work, to use its own worktree', async () => {
+      await otea('claim', 'TASKS-1', '--as', 'claude-a');
+
+      const { code, out } = await otea('claim', 'TASKS-2', '--as', 'claude-b');
+
+      expect(code).toBe(0);
+      expect(out).toContain('claude-a also holds work in this project');
+      expect(out).toContain('git worktree add');
+      const alone = await otea('claim', 'TASKS-1', '--as', 'claude-a');
+      expect(alone.out).toContain('claude-b also holds work');
+    });
+
     it('prints the item with its lease with --json, 15 minutes by default', async () => {
       const item = await json('claim', 'TASKS-1', '--as', 'claude');
       const claimed = (await json('show', 'TASKS-1')).events.at(-1);

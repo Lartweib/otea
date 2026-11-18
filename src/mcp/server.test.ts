@@ -145,13 +145,16 @@ describe('mcp server', () => {
       await data('profile', { model: 'claude-opus-5-5', effort: 'high' });
       const next = await data('next');
 
-      // The last line says how to update the profile on each surface.
+      // The last lines say how to update the profile and how to wait, each on its own surface.
       const { text, ...rest } = await json('next');
       expect(next).toEqual({ ...rest, text: expect.any(String) });
-      expect(next.text.split('\n').slice(0, -1)).toEqual(
-        mcpWords(text, COMMANDS).split('\n').slice(0, -1),
+      expect(next.text.split('\n').slice(0, -3)).toEqual(
+        mcpWords(text, COMMANDS).split('\n').slice(0, -3),
       );
       expect(next.text).toContain('update it: the profile tool with as "claude", model <id>');
+      expect(next.text.split('\n').at(-1)).toBe(
+        'When you finish and next has nothing: wait { turn: "agent", unclaimed: true }. To keep your chat free while you wait, run it in a background shell instead: $ otea wait --turn agent --unclaimed --as claude',
+      );
       expect(next).toMatchObject({ item: 'TASKS-1', collection: 'tasks' });
       expect(next.text).toContain('Your turn: do this step.');
     });
