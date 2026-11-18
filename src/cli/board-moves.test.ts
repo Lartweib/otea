@@ -134,6 +134,23 @@ describe('board moves from the CLI', () => {
       `Reopened ${id}: it is in Arreglar again. Fix its branch there and hand it off: it goes through review again before it is Done.`,
     );
     expect(JSON.parse((await otea('show', id, '--json')).out).state).toBe('sfix');
+
+    // As MCP answers it: the item with its fields by name and what to do, like any other move.
+    const again = openProject(repo.dir);
+    try {
+      const { updateItemState } = await import('../store/queries.ts');
+      updateItemState(again.db, id, 'done', new Date().toISOString());
+    } finally {
+      again.db.close();
+    }
+    const data = JSON.parse((await mender('reopen', id, '--reason', 'otra vez', '--json')).out);
+    expect(data.text).toBe(
+      `Reopened ${id}: it is in Arreglar again. Fix its branch there and hand it off: it goes through review again before it is Done.`,
+    );
+    expect(data.item).toMatchObject({ id });
+    expect(
+      Object.keys(data.item.fields ?? {}).some((key) => /^[a-z]\w*[0-9a-f]{4,}$/.test(key)),
+    ).toBe(false);
   });
 });
 

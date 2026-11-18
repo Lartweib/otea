@@ -215,6 +215,14 @@ describe('hook', () => {
       ]);
       expect(ours.hooks[0].command).toMatch(/check --gate push --branch --repo --claude-hook$/);
       expect(ours.hooks[2].command).toMatch(/check --gate merge --branch --repo --claude-hook$/);
+      // What it prints is what it added, in the file's own shape.
+      const printed = JSON.parse(
+        result.out.slice(result.out.indexOf(':\n') + 2).replace(/^ {2}/gm, ''),
+      );
+      expect(printed).toEqual({
+        permissions: { allow: TOPIC_RULES },
+        hooks: { PreToolUse: [ours], Stop: hooks.Stop },
+      });
     });
 
     // Claude Code's Auto mode sends every call no rule allows to its classifier, which blocked

@@ -378,10 +378,18 @@ function pushLines(
     : `it can be merged only once it is ${DONE_NAME}`;
   const merge = `${mergedWhen.charAt(0).toUpperCase()}${mergedWhen.slice(1)}.`;
   const answer = gateAt(def, position, 'push');
-  if (answer.why === 'doing')
+  if (answer.why === 'doing') {
+    // The land step itself is where the branch is merged; a step nobody reviews never freezes it.
+    if (land?.id === step.id)
+      return [
+        `  ${where}: you may push while you do ${step.name}; it is merged here, in ${step.name}.`,
+      ];
+    if (step.reviewer === 'none')
+      return [`  ${where}: you may push while you do ${step.name}; ${mergedWhen}.`];
     return [
       `  ${where}: you may push while you do ${step.name}. While it is reviewed it is frozen; ${mergedWhen}.`,
     ];
+  }
   if (answer.why === 'review') {
     return [`  ${where} is frozen while ${reviewerName(step)} reviews it: do not push. ${merge}`];
   }
