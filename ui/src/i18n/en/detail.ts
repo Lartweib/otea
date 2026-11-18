@@ -438,7 +438,7 @@ export const detail = {
   'sheet.receipt.hasAny': 'An agent has it.',
   'sheet.receipt.lease': 'Its lease: {time}.',
   'sheet.receipt.free': 'Free it',
-  'sheet.receipt.back': 'It comes back to your review when it’s done.',
+  'sheet.receipt.back': 'When it’s done, you review it.',
   'sheet.receipt.queued': 'It comes back to you when it’s done.',
   'sheet.receipt.done': 'You closed it.',
   'sheet.receipt.doneBy': '{agent} closed it.',
@@ -802,7 +802,7 @@ export const detail = {
   'agent.since': 'since {time}',
   'agent.unconfirmed': 'not confirmed in this session',
   'agent.noProfile': 'No profile',
-  'agent.notDeclared': 'not declared',
+  'agent.unknown': 'unknown',
   'agent.trail.first': 'declared {profile}',
   'agent.trail.change': 'went from {from} to {to}',
   'agent.selfNote':

@@ -540,10 +540,10 @@ describe('who did what on a board, in the history', () => {
   });
 });
 
-// An agent that could read neither its model nor its effort read «sin declarar · sin declarar»
+// An agent that could read neither its model nor its effort read «desconocido · desconocido»
 // (UI-23): it says so once.
 describe('a profile the agent could not read, in the history', () => {
-  it('says it is not declared, once', () => {
+  it('says it is unknown, once', () => {
     const kiln = { kind: 'agent', name: 'kiln' } as const;
     const declared = { model: 'opus', effort: 'high', harness: 'claude-code' };
     const unread = { model: 'unknown', effort: 'unknown', harness: 'claude-code' };
@@ -556,6 +556,6 @@ describe('a profile the agent could not read, in the history', () => {
       word,
       NOW,
     );
-    expect(lines.map((l) => l.text)).toContain('Switched to not declared');
+    expect(lines.map((l) => l.text)).toContain('Switched to unknown');
   });
 });

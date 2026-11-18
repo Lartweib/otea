@@ -124,7 +124,7 @@ function ProfileBlock({
         {profile ? (
           <span className="pbig">
             {isUnknown(profile.model) && isUnknown(profile.effort) ? (
-              t('agent.notDeclared')
+              t('agent.unknown')
             ) : (
               <>
                 {profileValue(profile.model)}

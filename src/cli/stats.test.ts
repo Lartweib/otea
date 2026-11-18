@@ -138,7 +138,7 @@ describe('statsText', () => {
     medianClaimToHandoffMs: null,
   };
 
-  it('says not declared for a model or an effort the agent could not read', () => {
+  it('says unknown for a model or an effort the agent could not read', () => {
     const out = statsText(
       {
         rows: [
@@ -158,8 +158,7 @@ describe('statsText', () => {
       'all',
     );
 
-    expect(out).toMatch(/^opus · not declared\s+3/m);
-    expect(out).toMatch(/^not declared · high\s+3/m);
-    expect(out).not.toContain('unknown');
+    expect(out).toMatch(/^opus · unknown\s+3/m);
+    expect(out).toMatch(/^unknown · high\s+3/m);
   });
 });
