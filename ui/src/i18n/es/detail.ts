@@ -455,6 +455,12 @@ export const detail = {
   'sheet.answered': 'Respondiste',
   'sheet.asked': '{agent} preguntó',
   'sheet.evidence': 'Evidencia',
+  'sheet.attach': 'Adjuntar',
+  'sheet.attached': {
+    one: 'Adjuntaste {file} a {id}.',
+    other: 'Adjuntaste {count} archivos a {id}.',
+  },
+  'sheet.attachFailed': 'No se adjuntó: {why}',
   'sheet.noEvidence': 'Sin evidencia todavía.',
   'sheet.files': { one: '{count} archivo', other: '{count} archivos' },
   'sheet.structure': 'Estructura',

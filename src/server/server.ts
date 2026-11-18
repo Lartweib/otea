@@ -9,7 +9,7 @@ import { briefFor } from '../app/brief.ts';
 import { listCollectionViews, listShownCollectionViews } from '../app/collections.ts';
 import { deviceByToken, touchDevice } from '../app/devices.ts';
 import { listEvents } from '../app/events.ts';
-import { createItemWithEvidence } from '../app/intake.ts';
+import { attachFiles, createItemWithEvidence } from '../app/intake.ts';
 import {
   createItem,
   getItem,
@@ -106,6 +106,7 @@ import {
   assertSameOrigin,
   assertSignedIn,
   assertWritable,
+  attachRequest,
   briefRequest,
   clientKeyOf,
   createRequest,
@@ -463,6 +464,18 @@ function api(
         feed.notify();
         return c.json(item, 201);
       })
+      // Files the person adds to an item that exists, from its page.
+      .post(
+        '/items/:id/evidence',
+        bodyLimit({ maxSize: MAX_CREATE_BYTES, onError: tooLarge }),
+        async (c) => {
+          assertWritable(c, auth, true);
+          const files = await attachRequest(c);
+          const evidence = attachFiles(project, { id: c.req.param('id'), ...HUMAN_IN_UI }, files);
+          feed.notify();
+          return c.json(evidence, 201);
+        },
+      )
       .get('/items/:id', (c) => {
         const id = c.req.param('id');
         let item: ReturnType<typeof showItem>;

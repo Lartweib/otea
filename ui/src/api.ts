@@ -266,6 +266,14 @@ export function createItem(
   return post<Item>('/api/items', form, key);
 }
 
+// Files the person adds to an item that exists (ONB-18), sent as a form: each file in a "file"
+// part. On a board they go where the person's files go, outside the parts the agents hand.
+export async function attachFiles(id: string, files: readonly File[]): Promise<void> {
+  const form = new FormData();
+  for (const file of files) form.append('file', file, file.name);
+  await post(`/api/items/${encodeURIComponent(id)}/evidence`, form);
+}
+
 export async function linkItems({ id, kind, other }: LinkRequest): Promise<void> {
   await post(`/api/items/${encodeURIComponent(id)}/link`, { kind, other });
 }

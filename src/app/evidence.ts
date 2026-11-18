@@ -12,7 +12,13 @@ import {
 import type { Actor } from '../core/item.ts';
 import { activeLease, assertMayWrite } from '../core/lease.ts';
 import type { Layout } from '../core/modules.ts';
-import { holderOf, type Placement, placeEvidence } from '../core/placement.ts';
+import {
+  evidenceModules,
+  holderOf,
+  moduleAccepts,
+  type Placement,
+  placeEvidence,
+} from '../core/placement.ts';
 import { turnOf } from '../core/workflow.ts';
 import { transaction } from '../store/database.ts';
 import {
@@ -26,7 +32,7 @@ import {
 } from '../store/queries.ts';
 import { typeOfItem } from './collections.ts';
 import { requireWritableItem, systemClock } from './items.ts';
-import { boardModule } from './next.ts';
+import { boardModule, liveBoardOf } from './next.ts';
 import type { Project } from './project.ts';
 
 // Files are stored once under evidence/ in the project's data folder, named by their sha256, so
@@ -89,6 +95,38 @@ export type PlacedFile = Omit<EvidenceFile, 'role' | 'module'> & Placement;
 
 // Evidence obeys the rules of an update: another agent's lease and a closed item refuse it. It goes
 // to a module of the item's layout that accepts it, in a role that module takes (see placeEvidence).
+// Where a file the person attaches to a board item goes when they name no part (ONB3-4): the
+// first part the board's creation form asks for that takes it, else nowhere, kept with the item
+// outside the parts. The parts the steps hand are the agents' deliverables: a file of the person's
+// never fills one, unless the person names it. undefined: the usual placement (an agent's file, a
+// named part, an item that is not on a board).
+function personsPlace(
+  project: Project,
+  item: ItemRecord,
+  actor: Actor,
+  request: { filename: string; role?: EvidenceRole; module?: string },
+): Placement | undefined {
+  if (actor.kind !== 'human' || request.module !== undefined) return undefined;
+  const board = liveBoardOf(project, item.collection);
+  if (!board) return undefined;
+  const asked = new Set(board.def.form.map(({ ref }) => ref));
+  const type = typeOfItem(project, item);
+  const form = evidenceModules(type.layout).find(
+    (entry) => asked.has(entry.id) && moduleAccepts(entry, request.filename),
+  );
+  if (form) {
+    return placeEvidence(
+      type.layout,
+      { id: item.id, type: type.name },
+      {
+        ...request,
+        module: form.id,
+      },
+    );
+  }
+  return { module: null, role: request.role ?? 'single' };
+}
+
 export function placeFile(
   project: Project,
   item: ItemRecord,
@@ -118,7 +156,9 @@ export function placeFile(
       : { module: boardModule(project, item.collection, file.module) }),
   };
   const { filename, bytes, caption } = file;
-  const placement = placeEvidence(type.layout, { id: item.id, type: type.name }, request);
+  const placement =
+    personsPlace(project, item, actor, request) ??
+    placeEvidence(type.layout, { id: item.id, type: type.name }, request);
   return { filename, bytes, ...(caption === undefined ? {} : { caption }), ...placement };
 }
 
@@ -276,8 +316,12 @@ export function detachEvidence(
 }
 
 // Each entry with the module that draws it in this layout (see holderOf), for readers.
-export function presentEvidence(layout: Layout, evidence: EvidenceRecord[]): EvidenceRecord[] {
-  return evidence.map((entry) => ({ ...entry, module: holderOf(layout, entry) }));
+export function presentEvidence(
+  layout: Layout,
+  evidence: EvidenceRecord[],
+  keepLoose = false,
+): EvidenceRecord[] {
+  return evidence.map((entry) => ({ ...entry, module: holderOf(layout, entry, keepLoose) }));
 }
 
 const EVIDENCE_ID = /^[1-9][0-9]*$/;

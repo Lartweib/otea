@@ -119,6 +119,15 @@ describe('the item sheet', () => {
     expect(renderToStaticMarkup(<>{leaveSays('Mender')}</>)).toContain('le llega a <b>Mender</b>');
   });
 
+  it('lets the person attach a file to an open item, and not to a closed one', () => {
+    setLanguage('es');
+    expect(render()).toContain('>Adjuntar<');
+    expect(render()).toContain('type="file"');
+    expect(render({ ...item, state: 'fixed', turn: 'none', transitions: [] })).not.toContain(
+      '>Adjuntar<',
+    );
+  });
+
   it('names its icon-only buttons, so a narrow bar still reads them', () => {
     const html = render();
     expect(html).toMatch(

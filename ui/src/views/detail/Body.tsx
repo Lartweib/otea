@@ -1,4 +1,5 @@
 import { type ReactNode, useLayoutEffect, useRef } from 'react';
+import { attachFiles } from '../../api.ts';
 import { EvidenceList } from '../../components/EvidenceList.tsx';
 import { EvidenceModule } from '../../components/evidence/EvidenceModule.tsx';
 import { OptionsModule } from '../../components/OptionsModule.tsx';
@@ -8,7 +9,7 @@ import { latestFirst, leftovers } from '../../evidence.ts';
 import { useFileUrl } from '../../evidence-files.ts';
 import { t } from '../../i18n/i18n.ts';
 import { type DetailBlock, detailBlocks, slotData } from '../../item-types.ts';
-import { Button } from '../../kit/index.ts';
+import { Button, toast } from '../../kit/index.ts';
 import { moduleFor } from '../../modules/registry.ts';
 import { C } from '../../motion/curves.ts';
 import { reduced } from '../../motion/reduced.ts';
@@ -292,6 +293,7 @@ export function bodySections(o: {
               {t('evidence.reader.open')}
             </Button>
           ) : null}
+          {canWrite && item.turn !== 'none' ? <AttachFile id={item.id} /> : null}
         </div>
         {evidence.length ? (
           <div className="evs">{evidence}</div>
@@ -304,6 +306,44 @@ export function bodySections(o: {
   if (board) out.push(...board.sections);
   else out.push({ key: 'structure', node: <Structure item={item} /> });
   return out;
+}
+
+// The person adds a file to the item as it stands (ONB-18): a screenshot of what is wrong before a
+// send-back, a log to go with a note. On a board it stays with the item, outside the parts the
+// agents hand; the agent sees it in show among the other files.
+function AttachFile({ id }: { id: string }) {
+  const input = useRef<HTMLInputElement>(null);
+  const send = (list: FileList | null) => {
+    const files = [...(list ?? [])];
+    if (input.current) input.current.value = '';
+    if (files.length === 0) return;
+    attachFiles(id, files).then(
+      () =>
+        toast({
+          msg: t('sheet.attached', { count: files.length, file: files[0]?.name ?? '', id }),
+          id,
+        }),
+      (error: unknown) =>
+        toast({
+          msg: t('sheet.attachFailed', { why: error instanceof Error ? error.message : '' }),
+          id,
+        }),
+    );
+  };
+  return (
+    <>
+      <Button size="sm" variant="text" className="ev-attach" onClick={() => input.current?.click()}>
+        {t('sheet.attach')}
+      </Button>
+      <input
+        ref={input}
+        type="file"
+        multiple
+        hidden
+        onChange={(event) => send(event.currentTarget.files)}
+      />
+    </>
+  );
 }
 
 // Images no module draws, as figures: before and after side by side, a caption led by its kicker.
