@@ -58,6 +58,39 @@ describe('home screen on the LAN', () => {
     expect(await response.json()).toMatchObject({ name: 'Otea', display: 'standalone' });
   });
 
+  it('describes Otea in the language the device asks for, English otherwise', async () => {
+    writeFileSync(
+      join(dir, 'manifest.webmanifest'),
+      JSON.stringify({
+        name: 'Otea',
+        lang: 'en',
+        description: 'In English.',
+        description_localized: { es: 'En español.' },
+      }),
+    );
+    const ask = async (language: string | undefined) => {
+      const response = await Promise.resolve(
+        server.app.request(
+          '/manifest.webmanifest',
+          {
+            headers: { host: `${DESK}:4400`, ...(language ? { 'accept-language': language } : {}) },
+          },
+          { incoming: { socket: { remoteAddress: PHONE } } },
+        ),
+      );
+      expect(response.headers.get('content-type')).toContain('application/manifest+json');
+      expect(response.headers.get('vary')).toContain('Accept-Language');
+      return response.json();
+    };
+
+    expect(await ask('es-AR,es;q=0.9,en;q=0.8')).toMatchObject({
+      lang: 'es',
+      description: 'En español.',
+    });
+    expect(await ask('fr-FR,en;q=0.8')).toMatchObject({ lang: 'en', description: 'In English.' });
+    expect(await ask(undefined)).toMatchObject({ lang: 'en', description: 'In English.' });
+  });
+
   it.each(['/icons/otea-192.png', '/icons/apple-touch-icon.png'])(
     'serves %s to an unpaired device',
     async (path) => {

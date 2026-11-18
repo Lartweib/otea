@@ -10,6 +10,31 @@ export const BUILT_UI_DIR = fileURLToPath(new URL('../../ui/dist', import.meta.u
 const NOT_BUILT =
   'The Otea UI is not built yet. Run "npm run build:ui" in the Otea checkout, then restart "otea serve".';
 
+// The home-screen manifest in the device's language: ui/public/manifest.webmanifest says it in its
+// `lang` and keeps the other languages in `description_localized`; a home screen reads one
+// description, so the server serves the one the device asks for first (Accept-Language).
+type Manifest = {
+  lang?: string;
+  description?: string;
+  description_localized?: Record<string, string>;
+  [key: string]: unknown;
+};
+
+function localizedManifest(c: Context, path: string): Response {
+  const manifest = JSON.parse(readFileSync(path, 'utf8')) as Manifest;
+  const localized = manifest.description_localized ?? {};
+  const asked = (c.req.header('accept-language') ?? '')
+    .split(',')
+    .map((part) => part.split(';')[0]?.trim().split('-')[0]?.toLowerCase() ?? '');
+  const lang = asked.find((tag) => tag === manifest.lang || tag in localized);
+  const served =
+    lang && lang !== manifest.lang && localized[lang]
+      ? { ...manifest, lang, description: localized[lang] }
+      : manifest;
+  c.header('vary', 'Accept-Language');
+  return c.body(JSON.stringify(served), 200, { 'content-type': 'application/manifest+json' });
+}
+
 export function mountUi(app: Hono<OteaEnv>, uiDir: string): void {
   const index = join(uiDir, 'index.html');
   if (!existsSync(index)) {
@@ -22,6 +47,9 @@ export function mountUi(app: Hono<OteaEnv>, uiDir: string): void {
     await next();
     if (!c.req.path.startsWith('/assets/')) c.header('cache-control', 'no-cache');
   });
+  app.get('/manifest.webmanifest', (c) =>
+    localizedManifest(c, join(uiDir, 'manifest.webmanifest')),
+  );
   app.use('*', serveStatic({ root: uiDir }));
   // The page: a project's (/p/<id>/…, its places in the hash) and the pairing screen. The installed
   // app keeps it as /index.html, so it opens any project's page without the PC.

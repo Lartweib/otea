@@ -18,6 +18,7 @@ import {
 } from 'node:fs';
 import { basename, join, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
+import SCHIBSTED from '@fontsource-variable/schibsted-grotesk/files/schibsted-grotesk-latin-wght-normal.woff2';
 import {
   app,
   BrowserWindow,
@@ -25,6 +26,7 @@ import {
   ipcMain,
   Menu,
   type MenuItemConstructorOptions,
+  type NativeImage,
   Notification,
   nativeTheme,
   shell,
@@ -42,6 +44,7 @@ import {
 import { COPY, type Copy, type Lang, langOf } from './copy.ts';
 import { type Icons, loadIcons, type Theme } from './icons.ts';
 import { installing, untilInstalled } from './install-wait.ts';
+import { INSTALLING_GROUND, installingPage } from './installing-page.ts';
 import { type LaunchData, secondLaunchProject } from './launch.ts';
 import { type DeskNotice, type Snapshot, type Watch, watchItems, watchNotices } from './live.ts';
 import { FRAME_MS } from './marks.ts';
@@ -170,16 +173,22 @@ function installerWriting(): boolean {
 
 // Started while the installer still writes the app, it waits in a small window of its own, drawn
 // from no file of the app's, and then goes on.
-async function waitForInstaller(lang: Lang): Promise<void> {
+async function waitForInstaller(lang: Lang, icon: NativeImage): Promise<void> {
   let wait: BrowserWindow | undefined;
   await untilInstalled({
     installing: installerWriting,
     onWaiting: () => {
       if (SMOKE) return;
-      wait = new BrowserWindow({ width: 440, height: 170, resizable: false, title: 'Otea' });
-      const style =
-        'margin:0;display:grid;place-items:center;height:100vh;padding:0 28px;box-sizing:border-box;font:15px/1.45 system-ui,sans-serif';
-      const page = `<!doctype html><meta charset="utf-8"><title>Otea</title><body style="${style}"><p>${COPY[lang].installing}</p>`;
+      wait = new BrowserWindow({
+        width: 460,
+        height: 200,
+        resizable: false,
+        title: 'Otea',
+        icon,
+        autoHideMenuBar: true,
+        backgroundColor: INSTALLING_GROUND[nativeTheme.shouldUseDarkColors ? 'dark' : 'light'],
+      });
+      const page = installingPage({ lang, font: SCHIBSTED });
       void wait.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(page)}`);
     },
     sleep: (ms) => new Promise((done) => setTimeout(done, ms)),
@@ -808,8 +817,10 @@ else {
   app.on('activate', () => shellInstance?.show());
   void app.whenReady().then(async () => {
     try {
-      await waitForInstaller(langOf(app.getLocale()));
+      // The icons first: they are drawn into Otea's data folder, never the app's, so the window
+      // that waits for the installer can wear the app icon too.
       const icons = await loadIcons(join(app.getPath('userData'), 'icons'));
+      await waitForInstaller(langOf(app.getLocale()), icons.app);
       shellInstance = new Shell(icons, langOf(app.getLocale()));
       shellInstance.start();
       wirePicker(shellInstance);
