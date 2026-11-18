@@ -1,4 +1,5 @@
 import { type CSSProperties, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { parseTestReport } from '../../../../src/core/test-report.ts';
 import { pairIn } from '../../evidence.ts';
 import { useFileUrl } from '../../evidence-files.ts';
@@ -13,6 +14,7 @@ import { DiagramView } from './DiagramView.tsx';
 import { FileMeta } from './FileMeta.tsx';
 import { FileView } from './FileViews.tsx';
 import { ImageCompare, ImageSingle } from './ImageViews.tsx';
+import { ZOOM_MAX, ZOOM_MIN, zoomIn, zoomOut } from './pdf-view.ts';
 import {
   findPick,
   pickAnchor,
@@ -23,6 +25,7 @@ import {
   pickWords,
   type ReaderPick,
   revealUpright,
+  selectedPhrase,
   spotOf,
 } from './reader-pick.ts';
 import { mayBeReport, ReportOr } from './TestReportView.tsx';
@@ -232,24 +235,59 @@ export function EvidenceReader({
   // An image takes a point (or, on the desk, a zone dragged over it) for the note.
   const spotting =
     note !== undefined && shown !== undefined && !compared && pickableOn(shown) === 'spot';
-  const press = useRef<{ x: number; y: number } | null>(null);
+  const press = useRef<{ x: number; y: number; el: HTMLElement; page?: number } | null>(null);
   const [drag, setDrag] = useState<ReaderPick | null>(null);
   const [frame, setFrame] = useState<CSSProperties | null>(null);
   const imageOf = () => view.current?.querySelector<HTMLImageElement>('img.ev-img:not([hidden])');
+  // What a press lands on to mark a spot: the image, or a page of a PDF (P5-6).
+  const spotTarget = (target: EventTarget | null): { el: HTMLElement; page?: number } | null => {
+    if (!(target instanceof Element)) return null;
+    const img = imageOf();
+    if (img && target === img) return { el: img };
+    const page = target.closest<HTMLElement>('.ev-pdf-page[data-page]');
+    return page ? { el: page, page: Number(page.dataset.page) } : null;
+  };
   const spot = drag ?? (picked?.x !== undefined ? picked : null);
+  // A screenshot zoomed in the reader, by the PDF's steps (P4-11); each file opens fitted.
+  const [zoom, setZoom] = useState(1);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: each file opens fitted
+  useEffect(() => setZoom(1), [shownId]);
+  const zoomable = !!shown && !compared && viewOf(shown) === 'image';
   // The notes already left on the file shown, numbered as listed; the points and zones among them
-  // are drawn over the image beside the one being picked (P5-3).
+  // are drawn over the image, or on their page of a PDF, beside the one being picked (P5-3).
   const leftHere = (note?.left ?? []).filter((n) => n.anchor?.evidence === shownId);
-  const savedSpots = compared
+  const allSpots = compared
     ? []
     : leftHere.flatMap((n, k) => (n.anchor?.x !== undefined ? [{ k: k + 1, a: n.anchor }] : []));
+  const savedSpots = allSpots.filter(({ a }) => a.page === undefined);
+  const pageSpots = allSpots.filter(({ a }) => a.page !== undefined);
+  const imageSpot = spot && spot.page === undefined ? spot : null;
+  const pageSpot = spot && spot.page !== undefined ? spot : null;
   const spotsKey = savedSpots.map(({ a }) => `${a.x},${a.y},${a.w},${a.h}`).join(';');
+  // The pages of a PDF shown, once drawn, to draw the spots on them.
+  const [pages, setPages] = useState<ReadonlyMap<number, HTMLElement>>(new Map());
+  const wantPages = pageSpots.length > 0 || pageSpot !== null;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: found anew per file shown
+  useEffect(() => {
+    if (!wantPages) return;
+    let tries = 0;
+    let timer = 0;
+    const find = () => {
+      const found = new Map<number, HTMLElement>();
+      const els = view.current?.querySelectorAll<HTMLElement>('.ev-pdf-page[data-page]') ?? [];
+      for (const el of els) found.set(Number(el.dataset.page), el);
+      if (found.size) setPages(found);
+      else if (tries++ < 40) timer = window.setTimeout(find, 150);
+    };
+    find();
+    return () => clearTimeout(timer);
+  }, [shownId, wantPages]);
   // The spot is drawn over the image, so the layer follows the image's box as the page lays out.
   // biome-ignore lint/correctness/useExhaustiveDependencies: the image is found anew per file shown
   useLayoutEffect(() => {
     const root = view.current;
     const img = imageOf();
-    if ((!spot && !spotsKey) || !root || !img) {
+    if ((!imageSpot && !spotsKey) || !root || !img) {
       setFrame(null);
       return;
     }
@@ -266,11 +304,14 @@ export function EvidenceReader({
     measure();
     img.addEventListener('load', measure);
     window.addEventListener('resize', measure);
+    // A zoomed image scrolls in its stage: the spots follow it.
+    root.addEventListener('scroll', measure, true);
     return () => {
       img.removeEventListener('load', measure);
       window.removeEventListener('resize', measure);
+      root.removeEventListener('scroll', measure, true);
     };
-  }, [spot?.x, spot?.y, spot?.w, spot?.h, shownId, spotsKey]);
+  }, [imageSpot?.x, imageSpot?.y, imageSpot?.w, imageSpot?.h, shownId, spotsKey, zoom]);
   // The lines and nodes notes were left on are marked with their number, once drawn.
   const markedKey = leftHere.map((n) => `${n.note}:${n.anchor?.line}:${n.anchor?.node}`).join(';');
   // biome-ignore lint/correctness/useExhaustiveDependencies: marked anew per file and per note
@@ -449,6 +490,38 @@ export function EvidenceReader({
           </button>
         </div>
       ) : null}
+      {zoomable ? (
+        <div className="ev-reader-zoom">
+          <button
+            type="button"
+            className="btn quiet sm icon"
+            disabled={zoom <= ZOOM_MIN}
+            aria-label={t('evidence.pdf.zoomOut')}
+            onClick={() => setZoom(zoomOut(zoom))}
+          >
+            −
+          </button>
+          <button
+            type="button"
+            className="btn quiet sm"
+            aria-pressed={zoom === 1}
+            aria-label={t('evidence.pdf.fit')}
+            title={t('evidence.pdf.fit')}
+            onClick={() => setZoom(1)}
+          >
+            {zoom === 1 ? t('evidence.pdf.fitShort') : `${Math.round(zoom * 100)} %`}
+          </button>
+          <button
+            type="button"
+            className="btn quiet sm icon"
+            disabled={zoom >= ZOOM_MAX}
+            aria-label={t('evidence.pdf.zoomIn')}
+            onClick={() => setZoom(zoomIn(zoom))}
+          >
+            +
+          </button>
+        </div>
+      ) : null}
       {/* biome-ignore lint/a11y/noStaticElementInteractions: a click on a line picks it for the note; the note is also sent without one */}
       {/* biome-ignore lint/a11y/useKeyWithClickEvents: picking is optional, the note goes on the whole file */}
       <div
@@ -456,13 +529,16 @@ export function EvidenceReader({
         className="ev-reader-view"
         data-picking={note ? 'true' : undefined}
         data-spotting={spotting ? 'true' : undefined}
+        data-zoomed={zoom !== 1 ? 'true' : undefined}
+        style={zoom !== 1 ? ({ '--zoom': String(zoom) } as CSSProperties) : undefined}
         onPointerDown={
           spotting
             ? (e) => {
-                const img = imageOf();
-                if (!img || e.target !== img) return;
-                e.preventDefault();
-                press.current = { x: e.clientX, y: e.clientY };
+                const on = spotTarget(e.target);
+                if (!on) return;
+                // A PDF page scrolls under a finger: only the image holds the press.
+                if (on.page === undefined) e.preventDefault();
+                press.current = { x: e.clientX, y: e.clientY, ...on };
                 e.currentTarget.setPointerCapture?.(e.pointerId);
               }
             : undefined
@@ -470,32 +546,45 @@ export function EvidenceReader({
         onPointerMove={
           spotting && !phone
             ? (e) => {
-                const img = imageOf();
-                if (!press.current || !img) return;
+                const from = press.current;
+                if (!from) return;
                 const at = { x: e.clientX, y: e.clientY };
-                const zone = spotOf(img.getBoundingClientRect(), press.current, at, true);
-                setDrag(zone?.w !== undefined ? zone : null);
+                const zone = spotOf(from.el.getBoundingClientRect(), from, at, true);
+                setDrag(
+                  zone?.w !== undefined
+                    ? { ...zone, ...(from.page === undefined ? {} : { page: from.page }) }
+                    : null,
+                );
               }
             : undefined
         }
         onPointerUp={
           spotting
             ? (e) => {
-                const img = imageOf();
                 const from = press.current;
                 press.current = null;
                 setDrag(null);
-                if (!from || !img) return;
+                if (!from) return;
                 const at = { x: e.clientX, y: e.clientY };
-                const hit = spotOf(img.getBoundingClientRect(), from, at, !phone);
-                if (hit) setPick({ id: shown.id, pick: hit });
+                const hit = spotOf(from.el.getBoundingClientRect(), from, at, !phone);
+                if (hit)
+                  setPick({
+                    id: shown.id,
+                    pick: { ...hit, ...(from.page === undefined ? {} : { page: from.page }) },
+                  });
               }
             : undefined
         }
+        onPointerCancel={() => {
+          press.current = null;
+          setDrag(null);
+        }}
         onClick={
           note
             ? (e) => {
-                const hit = pickAt(e.target);
+                const root = view.current;
+                const phrase = root ? selectedPhrase(root) : null;
+                const hit = phrase ? { pick: phrase } : pickAt(e.target);
                 if (hit) setPick({ id: shown.id, pick: hit.pick });
               }
             : undefined
@@ -506,7 +595,37 @@ export function EvidenceReader({
         ) : (
           <EvidenceViewer key={shown.id} evidence={shown} {...(phone ? { phone } : {})} />
         )}
-        {(spot || savedSpots.length) && frame ? (
+        {pageSpots.map(({ k, a }) => {
+          const el = a.page === undefined ? undefined : pages.get(a.page);
+          return el
+            ? createPortal(
+                <span
+                  className="ev-spot"
+                  data-saved="true"
+                  data-zone={a.w !== undefined ? 'true' : undefined}
+                  style={spotStyle(a)}
+                  aria-hidden="true"
+                >
+                  <i>{k}</i>
+                </span>,
+                el,
+                `page-${k}`,
+              )
+            : null;
+        })}
+        {pageSpot?.page !== undefined && pages.get(pageSpot.page)
+          ? createPortal(
+              <span
+                className="ev-spot"
+                data-zone={pageSpot.w !== undefined ? 'true' : undefined}
+                style={spotStyle(pageSpot)}
+                aria-hidden="true"
+              />,
+              pages.get(pageSpot.page) as HTMLElement,
+              'page-pick',
+            )
+          : null}
+        {(imageSpot || savedSpots.length) && frame ? (
           <div className="ev-spot-layer" style={frame} aria-hidden="true">
             {savedSpots.map(({ k, a }) => (
               <span
@@ -519,17 +638,24 @@ export function EvidenceReader({
                 <i>{k}</i>
               </span>
             ))}
-            {spot ? (
+            {imageSpot ? (
               <span
                 className="ev-spot"
-                data-zone={spot.w !== undefined ? 'true' : undefined}
-                style={spotStyle(spot)}
+                data-zone={imageSpot.w !== undefined ? 'true' : undefined}
+                style={spotStyle(imageSpot)}
               />
             ) : null}
           </div>
         ) : null}
       </div>
-      {note && leftHere.length ? <LeftNotes key={shown.id} notes={leftHere} note={note} /> : null}
+      {note && leftHere.length ? (
+        <LeftNotes
+          key={shown.id}
+          notes={leftHere}
+          note={note}
+          phrase={pickableOn(shown) === 'phrase'}
+        />
+      ) : null}
       {phone && (note || decide) ? (
         // On the phone the note and the moves share one foot that stays at the sheet's bottom: two
         // sticky feet laid the moves over the note box (DR2-10).
@@ -594,7 +720,16 @@ function spotStyle(at: ReaderPick): CSSProperties {
 
 // The notes already left on the file shown, numbered as the pins over it are: what each says and
 // where it is. A comment of the review still open can be changed or taken back before it goes.
-function LeftNotes({ notes, note }: { notes: readonly ItemNote[]; note: ReaderNote }) {
+function LeftNotes({
+  notes,
+  note,
+  phrase,
+}: {
+  notes: readonly ItemNote[];
+  note: ReaderNote;
+  // The file is a document: a quote is a phrase of it, not a line.
+  phrase: boolean;
+}) {
   const [editing, setEditing] = useState<{ note: number; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const run = (act: () => Promise<boolean>, done?: () => void) => {
@@ -612,7 +747,8 @@ function LeftNotes({ notes, note }: { notes: readonly ItemNote[]; note: ReaderNo
       <ol>
         {notes.map((n, k) => {
           const pending = !!note.pending?.(n);
-          const where = pickWords(n.anchor ? pickOfAnchor(n.anchor) : null);
+          const at = n.anchor ? pickOfAnchor(n.anchor) : null;
+          const where = pickWords(at && phrase ? { ...at, phrase: true } : at);
           const open = editing?.note === n.note ? editing : null;
           return (
             <li key={n.note} data-pending={pending ? 'true' : undefined}>

@@ -457,6 +457,38 @@ describe('comments the person leaves while reviewing', () => {
     expect(agentNotes(ctx, item.id)).toBeUndefined();
   });
 
+  it('can be on a zone of a page of a PDF, which the agent reads (P5-6)', () => {
+    const ctx = memoryContext();
+    const item = working(ctx);
+    const pdf = attach(ctx, item.id, 'manual.pdf');
+    handoffItem(ctx, { id: item.id, actor: kiln, channel: 'cli' }, now);
+    const on = { evidence: pdf, page: 2, x: 10, y: 20, w: 30, h: 15 };
+    const left = leaveNote(
+      ctx,
+      { id: item.id, text: 'Este bloque', anchor: on, actor: you, channel: 'ui' },
+      now,
+    );
+    expect(left.anchor).toMatchObject({ page: 2, x: 10, w: 30 });
+    expect(() =>
+      leaveNote(
+        ctx,
+        {
+          id: item.id,
+          text: 'x',
+          anchor: { evidence: pdf, page: 0 },
+          actor: you,
+          channel: 'ui',
+        },
+        now,
+      ),
+    ).toThrow(/not attached|page/);
+    sendBackItem(ctx, { id: item.id, actor: you, channel: 'ui' }, now);
+    claimItem(ctx, { id: item.id, actor: kiln }, now);
+    expect(agentNotes(ctx, item.id)?.text).toContain(
+      'on manual.pdf (Arte conceptual) on page 2 at the zone x 10–40%, y 20–35% (from the top left),',
+    );
+  });
+
   it('can be changed or taken back while the review is open, never once they went (P5-3)', () => {
     const ctx = memoryContext();
     const item = working(ctx);

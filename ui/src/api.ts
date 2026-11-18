@@ -213,6 +213,7 @@ export type NoteAnchorInput = {
   line?: number;
   quote?: string;
   node?: string;
+  page?: number;
   x?: number;
   y?: number;
   w?: number;

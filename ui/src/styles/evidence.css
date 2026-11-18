@@ -1522,6 +1522,52 @@
   left: 14px;
 }
 
+/* A page of a PDF holds the spots of its notes (P5-6). */
+.ev-pdf-page {
+  position: relative;
+}
+.ev-pdf-page .ev-spot {
+  pointer-events: none;
+}
+.ev-reader-view[data-spotting="true"] .ev-pdf-page {
+  cursor: crosshair;
+}
+
+/* A paragraph or phrase of a document a note is on (P5-6). */
+.ev-reader-view[data-picking="true"]
+  .ev-doc-body
+  :is(p, li, h1, h2, h3, h4, h5, h6, td, th, blockquote, pre) {
+  cursor: pointer;
+}
+.ev-reader-view .ev-doc-body [data-picked="true"] {
+  background: var(--you-wash);
+  box-shadow: 0 0 0 3px var(--you-wash);
+  border-radius: 3px;
+}
+.ev-reader-view .ev-doc-body [data-noted] {
+  outline: 1px dashed color-mix(in oklch, var(--you) 75%, transparent);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+/* A screenshot zoomed in the reader (P4-11): it grows past the stage, which scrolls. */
+.ev-reader-zoom {
+  display: flex;
+  justify-content: flex-end;
+  gap: 4px;
+}
+.ev-reader-view[data-zoomed] .ev-stage {
+  display: block;
+  overflow: auto;
+  max-height: min(75vh, 900px);
+}
+.ev-reader-view[data-zoomed] .ev-stage .ev-img,
+.rd-main .ev-reader-view[data-zoomed] .ev-img {
+  width: calc(var(--zoom, 1) * 100%);
+  max-width: none;
+  max-height: none;
+}
+
 /* A line or node a note was left on: dashed, as its pin on an image is. */
 .ev-reader-view .ev-line[data-noted] {
   outline: 1px dashed color-mix(in oklch, var(--you) 75%, transparent);

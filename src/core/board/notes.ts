@@ -28,6 +28,8 @@ export type NoteAnchor = {
   line?: number;
   quote?: string;
   node?: string;
+  // In a PDF, the page (from 1) the point or zone is on (P5-6).
+  page?: number;
   x?: number;
   y?: number;
   w?: number;
@@ -79,6 +81,7 @@ function anchorOf(value: unknown): NoteAnchor | undefined {
     ...(typeof raw.line === 'number' ? { line: raw.line } : {}),
     ...(typeof raw.quote === 'string' ? { quote: raw.quote } : {}),
     ...(typeof raw.node === 'string' ? { node: raw.node } : {}),
+    ...(typeof raw.page === 'number' ? { page: raw.page } : {}),
     ...(typeof raw.x === 'number' ? { x: raw.x } : {}),
     ...(typeof raw.y === 'number' ? { y: raw.y } : {}),
     ...(typeof raw.w === 'number' ? { w: raw.w } : {}),
@@ -215,7 +218,10 @@ function onText(anchor: NoteAnchor, withPart: boolean, crop?: string): string {
         ? ` at the line ${quote}`
         : '';
   const node = anchor.node === undefined ? '' : ` at node "${anchor.node}"`;
-  return `on ${anchor.filename}${part}${at}${line}${node}${spotText(anchor, crop)}`;
+  // A PDF's zone is read on its page; otea crop cuts images only.
+  const page = anchor.page === undefined ? '' : ` on page ${anchor.page}`;
+  const spot = spotText(anchor, anchor.page === undefined ? crop : undefined);
+  return `on ${anchor.filename}${part}${at}${line}${node}${page}${spot}`;
 }
 
 const pct = (n: number) => `${Math.round(n * 10) / 10}`;

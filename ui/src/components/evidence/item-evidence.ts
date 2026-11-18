@@ -1,4 +1,5 @@
 import { createContext, useContext } from 'react';
+import { useFileUrl } from '../../evidence-files.ts';
 import type { Evidence } from '../../types.ts';
 import type { ReaderNote } from './EvidenceViewer.tsx';
 
@@ -27,6 +28,21 @@ export function earlierOf(all: readonly Evidence[], evidence: Evidence): Evidenc
     .sort((a, b) =>
       a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : b.id - a.id,
     )[0];
+}
+
+// Where an image a document names beside it loads from: the newest image of the item with that
+// file name (P5-7: «![logo](logo.png)» in a guide drew a broken image).
+export function useDocImages(): (name: string) => string | undefined {
+  const all = useContext(ItemEvidence);
+  const fileUrl = useFileUrl();
+  return (name) => {
+    const found = all
+      .filter((e) => e.kind === 'image' && e.filename === name)
+      .sort((a, b) =>
+        a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : b.id - a.id,
+      )[0];
+    return found ? fileUrl(found) : undefined;
+  };
 }
 
 export function useEarlier(evidence: Evidence): Evidence | undefined {

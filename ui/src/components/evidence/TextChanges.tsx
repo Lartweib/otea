@@ -3,18 +3,23 @@ import { t } from '../../i18n/i18n.ts';
 import { renderMarkdown } from '../../markdown.ts';
 import { diffText, plainMarkdown, type TextDiffMode } from '../../text-diff.ts';
 import type { Evidence } from '../../types.ts';
+import { useDocImages } from './item-evidence.ts';
 import { TextState, useEvidenceText } from './TextViews.tsx';
 
 // A Markdown paragraph drawn as the document draws it, never as raw markup (DR3-2).
 function Md({ text, className }: { text: string; className?: string }) {
+  const images = useDocImages();
   return (
     <div
       className={className ? `md ${className}` : 'md'}
       // biome-ignore lint/security/noDangerouslySetInnerHtml: renderMarkdown escapes raw HTML and drops dangerous links
-      dangerouslySetInnerHTML={{ __html: renderMarkdown(text) }}
+      dangerouslySetInnerHTML={{ __html: renderMarkdown(text, images) }}
     />
   );
 }
+
+// A GFM table: a row of pipes over a delimiter row.
+const isTable = (text: string) => /^\s*\|?.*\|.*\n\s*\|?\s*:?-{3,}/m.test(text);
 
 // A document against its version of the round before: inside a paragraph that changed, the words
 // removed and added; once more than a third of it changed, paragraph by paragraph instead, with
@@ -54,7 +59,8 @@ export function TextChanges({ evidence, earlier }: { evidence: Evidence; earlier
             return <Md key={key} text={block.text} className="ev-ins-block" />;
           if (block.kind === 'removed')
             return <Md key={key} text={block.text} className="ev-del-block" />;
-          if (diff.mode === 'paragraphs')
+          // A table reads as a table: word by word it would show its pipes (P5-7).
+          if (diff.mode === 'paragraphs' || isTable(block.before) || isTable(block.after))
             return (
               <div key={key} className="ev-para-pair">
                 <Md text={block.before} className="ev-del-block" />

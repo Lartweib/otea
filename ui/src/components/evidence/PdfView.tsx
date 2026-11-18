@@ -92,6 +92,7 @@ function PdfPageCanvas({
     <div
       ref={box}
       className="ev-pdf-page"
+      data-page={at + 1}
       style={{ width: page.width * scale, height: page.height * scale }}
     >
       <canvas
