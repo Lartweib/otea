@@ -173,6 +173,18 @@ export function remoteOf(cwd: string, branch: string): string {
   return commitOf(cwd, `${branch}@{upstream}`) ? `${branch}@{upstream}` : `origin/${branch}`;
 }
 
+// Whether cwd is in a repo's main checkout, not one of its linked worktrees (git worktree add);
+// false outside a repo.
+export function inMainCheckout(cwd: string): boolean {
+  try {
+    const dir = resolve(cwd, git(cwd, 'rev-parse', '--git-dir'));
+    const common = resolve(cwd, git(cwd, 'rev-parse', '--git-common-dir'));
+    return dir === common;
+  } catch {
+    return false;
+  }
+}
+
 // The top folder of the repo at cwd, or cwd itself outside a repo.
 export function repoRoot(cwd: string): string {
   try {

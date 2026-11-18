@@ -131,7 +131,9 @@ describe('notes from the person, on the CLI and over MCP', () => {
     note('¿Y la cola?');
     const { code, out } = await otea('wait', '--turn', 'agent', '--timeout', '5s');
     expect(code).toBe(0);
-    expect(out).toBe('CRI-1: new note from the person (note 1). Read it: otea show CRI-1\n');
+    expect(out).toBe(
+      'CRI-1: new note from the person (note 1). Read it: otea show CRI-1\nThen keep going: otea next --as claude; when it has nothing, otea wait --turn agent --unclaimed --as claude in the background if you can.\n',
+    );
   });
 
   it('answers over MCP with the reply tool, and gives the notes as JSON with the text', async () => {

@@ -119,8 +119,23 @@ describe('the next service', () => {
     expect(nextFor(ctx, 'kiln', { collection: 'Criaturas' }, now)).toEqual({
       item: null,
       collection: 'Criaturas',
-      text: idleText([{ def, waitingForYou: 0 }], 'Criaturas'),
+      text: idleText([{ def, waitingForYou: 0 }]),
+      idle: true,
     });
+  });
+
+  it('tells an idle agent who holds the work, and how it is shared, while another agent has it', () => {
+    const ctx = memoryContext();
+    board(ctx);
+    const item = creature(ctx);
+    claimItem(ctx, { id: item.id, actor: quill }, now);
+
+    const answer = nextFor(ctx, 'kiln', {}, now);
+
+    expect(answer.idle).toBe(true);
+    expect(answer.text).toContain(
+      `quill holds ${item.id} now. Two agents share a board by taking different items:`,
+    );
   });
 
   it('refuses a handoff that lacks something, with the exact refusal, and lets it through after', () => {

@@ -8,6 +8,10 @@ import { createMcpServer } from '../mcp/server.ts';
 import { COMMANDS } from './commands.ts';
 import { type Cli, cliAt, declareProfiles, type TempRepo, tempGitRepo } from './testing.ts';
 
+// What wait ends with for claude once it woke.
+const AGAIN =
+  'Then keep going: otea next --as claude; when it has nothing, otea wait --turn agent --unclaimed --as claude in the background if you can.\n';
+
 // An agent's question to the person: otea ask on the CLI and ask over MCP, what show and next say
 // while it waits and once answered, and the wait the answer wakes.
 describe('an agent asks the person, on the CLI and over MCP', () => {
@@ -73,7 +77,9 @@ describe('an agent asks the person, on the CLI and over MCP', () => {
     answer('Con musgo');
 
     const waited = await otea('wait', '--turn', 'agent', '--timeout', '5s');
-    expect(waited.out).toBe('CRI-1: the person answered your question. Read it: otea show CRI-1\n');
+    expect(waited.out).toBe(
+      `CRI-1: the person answered your question. Read it: otea show CRI-1\n${AGAIN}`,
+    );
     const next = await otea('next');
     expect(next.out).toContain('Concepto, round 1');
     expect(next.out).toContain('You asked the person: "¿Caparazón liso o con musgo?"');
@@ -91,7 +97,9 @@ describe('an agent asks the person, on the CLI and over MCP', () => {
 
     answer('Con musgo');
     const woken = await otea('wait', '--turn', 'agent', '--unclaimed', '--timeout', '5s');
-    expect(woken.out).toBe('CRI-1: the person answered your question. Read it: otea show CRI-1\n');
+    expect(woken.out).toBe(
+      `CRI-1: the person answered your question. Read it: otea show CRI-1\n${AGAIN}`,
+    );
   });
 
   it('refuses a question with no words', async () => {

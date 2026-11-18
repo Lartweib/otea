@@ -46,7 +46,9 @@ describe("Otea's agent guide", () => {
       '--template <key>',
       'Keep going until the person stops you',
       'otea wait --turn agent --unclaimed',
-      'in the background',
+      'in a background shell, which keeps your chat free',
+      'Every request the person makes, in chat too, goes on a board first: otea create it',
+      'A subagent releases what it holds before it ends',
     ]) {
       expect(AGENT_GUIDE).toContain(line);
     }

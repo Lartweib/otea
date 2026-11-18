@@ -21,6 +21,12 @@ describe('mcpWords', () => {
     );
   });
 
+  it('keeps a shell line as it is: an MCP agent runs it in its shell', () => {
+    expect(words('In a background shell: $ otea wait --turn agent --unclaimed --as kiln')).toBe(
+      'In a background shell: $ otea wait --turn agent --unclaimed --as kiln',
+    );
+  });
+
   it('names an option on its own as the argument', () => {
     expect(words('Not taken back: say why with --reason.')).toBe(
       'Not taken back: say why with { reason }.',

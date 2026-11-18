@@ -765,6 +765,8 @@ export type NextAnswer = {
   lease?: Lease;
   // The notes the person left in the round of the step to do, when there are any.
   notes?: ItemNote[];
+  // Nothing on the boards is the agent's now: it waits for the next item.
+  idle?: true;
 };
 
 // For this long after `next` offers an item to an agent, no other agent is offered it, so two
@@ -856,6 +858,29 @@ function byOrder(a: number, b: number): number {
   return a === b ? 0 : a < b ? -1 : 1;
 }
 
+// With nothing to do while other agents hold the boards' work (P6-18): who holds what, and how two
+// agents share a board, so the idle one neither waits blind nor takes over what another holds.
+function heldElsewhere(
+  ctx: Context,
+  boards: readonly LiveBoard[],
+  agent: string,
+  at: string,
+): string[] {
+  const held = new Map<string, string[]>();
+  for (const board of boards) {
+    for (const item of selectItems(ctx.db, { collection: board.collection })) {
+      const lease = activeLease(item.lease, at);
+      if (!lease || lease.holder === agent) continue;
+      held.set(lease.holder, [...(held.get(lease.holder) ?? []), item.id]);
+    }
+  }
+  if (held.size === 0) return [];
+  const who = [...held].map(([holder, ids]) => `${holder} holds ${ids.join(', ')}`).join('; ');
+  return [
+    `${who} now. Two agents share a board by taking different items: ask the person for more, or to split a big one into parts, which next then offers you; never work on an item another agent holds.`,
+  ];
+}
+
 // The item the agent should take, and its text: one it holds first, then what was sent back to it,
 // then what the person pinned and the order they fixed, then reviews and work furthest along, then
 // the oldest waiting; never one another agent holds or was just offered. With `claim`, the
@@ -945,7 +970,8 @@ export function nextFor(
       return {
         item: null,
         collection: options.collection ?? null,
-        text: idleText(idle, options.collection),
+        text: [idleText(idle), ...heldElsewhere(ctx, boards, agent, at)].join('\n\n'),
+        idle: true,
       };
     }
     if (first.merges) {

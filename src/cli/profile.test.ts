@@ -150,13 +150,14 @@ describe('otea profile', () => {
       expect(err).toContain('claude has no profile yet');
     });
 
-    it('ends with the profile on record and how to update it', async () => {
+    it('ends with the profile on record and how to update it, then how to keep waiting', async () => {
       await otea(...DECLARE, '--harness', 'claude-code');
 
       const { out } = await otea('next');
       const answer = await json('next');
 
-      expect(out.trimEnd().split('\n').at(-1)).toBe(
+      expect(out.trimEnd().split('\n').at(-1)).toMatch(/^(Wait for one|When you finish)/);
+      expect(out.trimEnd().split('\n').at(-3)).toBe(
         'Your profile: claude-opus-5-5 · high. If you changed model or effort, update it: otea profile --model <id> --effort <level> --as claude',
       );
       expect(answer.profile).toEqual({
