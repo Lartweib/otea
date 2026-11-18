@@ -45,6 +45,7 @@ import {
   assertMayStandAlone,
   assertMoveHandsOff,
   type BoardBlock,
+  backWithComments,
   boardBlockOf,
   boardFieldInput,
   boardStart,
@@ -452,7 +453,9 @@ export function moveItem(ctx: Context, input: MoveItemInput, now = systemClock):
       ...(reason === undefined ? {} : { reason }),
       ...(input.note === undefined ? {} : { note: input.note }),
     });
-    authorizeMove(workflow, item.state, to, { actor, channel }, reason);
+    // A send-back that goes with the person's review comments needs no words of its own (P4-7).
+    const commented = !reason?.trim() && backWithComments(ctx, item, to);
+    authorizeMove(workflow, item.state, to, { actor, channel }, reason, commented);
     assertDraftPublished(ctx, item.id, closesOf(workflow, to));
     assertCanLeave(type, item.state, to, item.fields);
     assertMayEnter(ctx, item, workflow, to, at);

@@ -8,3 +8,16 @@ export async function sendThenClear(
   if (went) clear();
   return went;
 }
+
+// A move made while a note is still in its box: the note goes first, then the move; a note that
+// did not go holds the move, so what was typed is never dropped on the way (P7-3).
+export async function keepDraftThen(
+  draft: string,
+  send: (text: string) => Promise<boolean>,
+  move: () => void,
+): Promise<boolean> {
+  const text = draft.trim();
+  if (text !== '' && !(await send(text).catch(() => false))) return false;
+  move();
+  return true;
+}

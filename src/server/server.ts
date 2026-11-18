@@ -22,7 +22,7 @@ import {
 } from '../app/items.ts';
 import { memoryMachine } from '../app/machine.ts';
 import { boardRoundOf, liveBoards, rowFactsOf } from '../app/next.ts';
-import { leaveNote, notesSummary, notesView } from '../app/notes.ts';
+import { editNote, leaveNote, notesSummary, notesView, withdrawNote } from '../app/notes.ts';
 import { markOpened, openedFiles } from '../app/opened.ts';
 import { performanceOf } from '../app/performance.ts';
 import {
@@ -536,6 +536,24 @@ function api(project: Project, { feed, streams, notifier }: Live, doors: Doors):
         leaveNote(project, { id, ...request, ...HUMAN_IN_UI });
         feed.notify();
         return c.json(notesView(project, id), 201);
+      })
+      // A review comment changed or taken back while the review is open (app/notes.ts).
+      .post('/items/:id/notes/:note/edit', async (c) => {
+        assertWritable(c, auth);
+        const { text } = await answerRequest(c);
+        const id = c.req.param('id');
+        const note = wholeNumber('note', c.req.param('note'), 1) ?? 0;
+        editNote(project, { id, note, text, ...HUMAN_IN_UI });
+        feed.notify();
+        return c.json(notesView(project, id));
+      })
+      .post('/items/:id/notes/:note/withdraw', (c) => {
+        assertWritable(c, auth);
+        const id = c.req.param('id');
+        const note = wholeNumber('note', c.req.param('note'), 1) ?? 0;
+        withdrawNote(project, { id, note, ...HUMAN_IN_UI });
+        feed.notify();
+        return c.json(notesView(project, id));
       })
       // The files the person opened in the reader (app/opened.ts), on the desk or the phone: what
       // Aprobar counts as left unopened, the same on every device. No event, no feed change.

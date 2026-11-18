@@ -14,6 +14,7 @@ import {
   EvidenceReader,
   type Picked,
   type ReaderDecide,
+  type ReaderNote,
 } from '../../components/evidence/EvidenceViewer.tsx';
 import { pickableOn, type ReaderPick } from '../../components/evidence/reader-pick.ts';
 import { NoteText } from '../../components/NoteText.tsx';
@@ -98,7 +99,11 @@ export type PhoneNotes = {
   // the line the reader says of it (it goes with a send-back, or stays a note if you approve).
   review?: {
     says: string;
-    sendOn: (text: string, anchor: { evidence: number } & ReaderPick) => Promise<boolean>;
+    // The reader's note: its send, and the comments already left, which can be changed or taken
+    // back while the review is open (P5-3).
+    reader: ReaderNote;
+    // Whether the review holds comments: a send-back then needs no words of its own (P4-7).
+    commented: boolean;
   };
   // The notes of a round of the step under review (or being done), by its number.
   of: (round: number) => ItemNote[];
@@ -179,9 +184,7 @@ function Files({
 }: {
   evidence: readonly Evidence[];
   // While you review: a comment left from the reader (it goes with a send-back).
-  comment?:
-    | ((text: string, anchor: { evidence: number } & ReaderPick) => Promise<boolean>)
-    | undefined;
+  comment?: ReaderNote | undefined;
   // The board part each file went to, by module id; a file without one reads by its kind.
   parts?: ReadonlyMap<string, string> | undefined;
   // Aprobar and Devolver from inside the reader, on the round that waits for your verdict.
@@ -300,7 +303,7 @@ function Files({
               onAt={setAt}
               phone
               decide={deciding}
-              note={comment ? { onSend: (text, on) => comment(text, on) } : undefined}
+              note={comment}
               draft={draft}
               onDraft={setDraft}
               draftPick={draftPick}
@@ -384,9 +387,7 @@ function RoundView({
   handed?: readonly HandedField[] | undefined;
   parts?: ReadonlyMap<string, string> | undefined;
   decide?: ReaderDecide | undefined;
-  comment?:
-    | ((text: string, anchor: { evidence: number } & ReaderPick) => Promise<boolean>)
-    | undefined;
+  comment?: ReaderNote | undefined;
   // The round before it, to mark its files against.
   prior: PhoneRound | undefined;
   newest: boolean;
@@ -615,8 +616,10 @@ export function PhoneItem(p: PhoneItemProps) {
           approve: primary ? { label: primary.label, onClick: () => choose(primary) } : undefined,
         }
       : undefined;
+  // A send-back with your review's comments goes with them: words of its own are optional (P4-7).
+  const bare = asking?.choice.kind === 'sendback' && !!p.notes?.review?.commented;
   const send = () => {
-    if (!asking || !text.trim()) return;
+    if (!asking || (!text.trim() && !bare)) return;
     setAsking({ ...asking, open: false });
     make(asking.choice, text.trim());
   };
@@ -754,7 +757,7 @@ export function PhoneItem(p: PhoneItemProps) {
           notes={leave ? undefined : p.notes}
           parts={parts}
           decide={shown === newest ? readerDecide : undefined}
-          comment={shown === newest ? p.notes?.review?.sendOn : undefined}
+          comment={shown === newest ? p.notes?.review?.reader : undefined}
           onSeen={markSeen}
           handed={shown === newest ? handed : undefined}
         />
@@ -1004,7 +1007,7 @@ export function PhoneItem(p: PhoneItemProps) {
           data-i=""
           rows={4}
           aria-label={t('phone.sb.note')}
-          placeholder={t('phone.sb.placeholder')}
+          placeholder={bare ? t('notes.review.optional') : t('phone.sb.placeholder')}
           value={text}
           onChange={(e) => setText(e.target.value)}
         />
@@ -1012,7 +1015,7 @@ export function PhoneItem(p: PhoneItemProps) {
           <Button variant="quiet" onClick={() => setAsking((a) => (a ? { ...a, open: false } : a))}>
             {t('phone.sb.cancel')}
           </Button>
-          <Button variant="primary" disabled={!text.trim()} onClick={send}>
+          <Button variant="primary" disabled={!text.trim() && !bare} onClick={send}>
             {t('phone.sb.send')}
           </Button>
         </div>

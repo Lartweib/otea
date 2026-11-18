@@ -10,6 +10,9 @@ import { timeText } from '../time.ts';
 
 export const NOTE_LEFT = 'note_left';
 export const NOTE_ANSWERED = 'note_answered';
+// A review comment the person changed or took back while the review was still open (P5-3).
+export const NOTE_EDITED = 'note_edited';
+export const NOTE_WITHDRAWN = 'note_withdrawn';
 
 // The piece of evidence a note is on: the very file the person saw (its evidence id, so a later
 // file attached in its place leaves the note on the one seen), its name and part then, and for a
@@ -134,6 +137,11 @@ export function notesOf(events: readonly NoteEvent[]): ItemNote[] {
         ...(anchor ? { anchor } : {}),
         ...reviewOf(data.review),
       });
+    } else if (type === NOTE_EDITED) {
+      const left = notes.get(data.note);
+      if (left && !left.answer) left.text = String(data.text ?? left.text);
+    } else if (type === NOTE_WITHDRAWN) {
+      notes.delete(data.note);
     } else if (type === NOTE_ANSWERED) {
       const left = notes.get(data.note);
       if (!left || left.answer) continue;

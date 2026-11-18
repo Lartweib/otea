@@ -4,7 +4,9 @@ import { SAME, stepById } from '../core/board/model.ts';
 import {
   type ItemNote,
   NOTE_ANSWERED,
+  NOTE_EDITED,
   NOTE_LEFT,
+  NOTE_WITHDRAWN,
   type NoteAnchor,
   newNotesText,
   notesOf,
@@ -189,7 +191,8 @@ export function leaveNote(ctx: Context, input: LeaveNoteInput, now = systemClock
     const on = itemOnBoard(ctx, item, board.def);
     const anchor =
       input.anchor === undefined ? undefined : anchorFor(ctx, item, board, input.anchor);
-    const note = Math.max(0, ...on.thread.map(({ note: n }) => n)) + 1;
+    // Numbered past every note ever left, a withdrawn one too: a number never names two notes.
+    const note = Math.max(0, ...leftNumbers(ctx, item.id)) + 1;
     const to = activeLease(item.lease, at)?.holder;
     appendEvent(ctx.db, {
       itemId: item.id,
@@ -212,6 +215,92 @@ export function leaveNote(ctx: Context, input: LeaveNoteInput, now = systemClock
     const left = notesOf(selectEvents(ctx.db, item.id)).find((each) => each.note === note);
     if (!left) throw new Error(`note ${note} on ${item.id} was not kept`);
     return left;
+  });
+}
+
+function leftNumbers(ctx: Context, id: string): number[] {
+  return selectEvents(ctx.db, id)
+    .filter(({ type, data }) => type === NOTE_LEFT && typeof data.note === 'number')
+    .map(({ data }) => Number(data.note));
+}
+
+export type EditNoteInput = {
+  id: string;
+  note: number;
+  text: string;
+  actor: Actor;
+  channel: Channel;
+};
+export type WithdrawNoteInput = { id: string; note: number; actor: Actor; channel: Channel };
+
+// A review comment of the review still open, the one the person may change or take back: once a
+// send-back took it to the agent, or an approval kept it, it stays as it went.
+function pendingComment(ctx: Context, item: ItemRecord, n: number, actor: Actor): ItemNote {
+  if (actor.kind !== 'human')
+    refuse(
+      'forbidden',
+      item.id,
+      'not_person',
+      `Note ${n} on ${item.id} unchanged: only the person changes their notes`,
+    );
+  const board = liveBoardOf(ctx, item.collection);
+  const on = board ? itemOnBoard(ctx, item, board.def) : undefined;
+  const note = on?.thread.find((each) => each.note === n);
+  if (!on || !note) throw new OteaError('not_found', `${item.id} has no note ${n}`);
+  const open =
+    note.review !== undefined &&
+    !isClosed(on.position) &&
+    on.position.phase === 'review' &&
+    on.position.step === note.step &&
+    on.round === note.round;
+  if (!open)
+    refuse(
+      'invalid_transition',
+      item.id,
+      'not_working',
+      `Note ${n} on ${item.id} unchanged: it already went with the review it was left in`,
+    );
+  return note;
+}
+
+// The person changes the words of a review comment while the review is open; where it is stays.
+export function editNote(ctx: Context, input: EditNoteInput, now = systemClock): ItemNote {
+  const text = input.text.trim();
+  if (text === '')
+    refuse(
+      'reason_required',
+      input.id,
+      'empty',
+      `Note ${input.note} on ${input.id} unchanged: it has no text`,
+    );
+  return transaction(ctx.db, () => {
+    const item = requireWritableItem(ctx.db, input.id);
+    pendingComment(ctx, item, input.note, input.actor);
+    appendEvent(ctx.db, {
+      itemId: item.id,
+      type: NOTE_EDITED,
+      actor: input.actor,
+      at: now(),
+      data: { note: input.note, text, channel: input.channel },
+    });
+    const note = notesOf(selectEvents(ctx.db, item.id)).find((each) => each.note === input.note);
+    if (!note) throw new Error(`note ${input.note} on ${item.id} was not kept`);
+    return note;
+  });
+}
+
+// The person takes back a review comment while the review is open: it never reaches the agent.
+export function withdrawNote(ctx: Context, input: WithdrawNoteInput, now = systemClock): void {
+  transaction(ctx.db, () => {
+    const item = requireWritableItem(ctx.db, input.id);
+    pendingComment(ctx, item, input.note, input.actor);
+    appendEvent(ctx.db, {
+      itemId: item.id,
+      type: NOTE_WITHDRAWN,
+      actor: input.actor,
+      at: now(),
+      data: { note: input.note, channel: input.channel },
+    });
   });
 }
 

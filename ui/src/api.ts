@@ -225,6 +225,15 @@ export async function postNote(id: string, text: string, anchor?: NoteAnchorInpu
   await post(`/api/items/${encodeURIComponent(id)}/notes`, anchor ? { text, anchor } : { text });
 }
 
+// A review comment of the review still open, changed or taken back before it goes (P5-3).
+export async function editNote(id: string, note: number, text: string): Promise<void> {
+  await post(`/api/items/${encodeURIComponent(id)}/notes/${note}/edit`, { text });
+}
+
+export async function withdrawNote(id: string, note: number): Promise<void> {
+  await post(`/api/items/${encodeURIComponent(id)}/notes/${note}/withdraw`, {});
+}
+
 // The files of an item the person opened in the reader, on any device, by evidence id.
 export async function fetchOpened(id: string, signal: AbortSignal): Promise<number[]> {
   const body = (await (

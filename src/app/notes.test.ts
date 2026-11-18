@@ -6,10 +6,19 @@ import { OteaError } from '../core/errors.ts';
 import { insertEvidence, saveProfile, selectEvents, upsertAgent } from '../store/queries.ts';
 import { createBoard, publishBoard, saveDraft } from './boards.ts';
 import type { Context } from './context.ts';
-import { createItem, getItem, showItem } from './items.ts';
+import { createItem, getItem, moveItem, showItem } from './items.ts';
 import { claimItem } from './leases.ts';
 import { approveItem, dropItem, handoffItem, nextFor, sendBackItem } from './next.ts';
-import { agentNotes, leaveNote, notesSummary, notesView, noteWaiting, replyNote } from './notes.ts';
+import {
+  agentNotes,
+  editNote,
+  leaveNote,
+  notesSummary,
+  notesView,
+  noteWaiting,
+  replyNote,
+  withdrawNote,
+} from './notes.ts';
 import { memoryContext } from './testing.ts';
 
 const you = { kind: 'human' as const, name: 'fede' };
@@ -446,6 +455,80 @@ describe('comments the person leaves while reviewing', () => {
     expect(notesView(ctx, item.id, { step: 'Concepto', round: 1 }).notes).toHaveLength(1);
     expect(noteWaiting(ctx, 'kiln')).toBeUndefined();
     expect(agentNotes(ctx, item.id)).toBeUndefined();
+  });
+
+  it('can be changed or taken back while the review is open, never once they went (P5-3)', () => {
+    const ctx = memoryContext();
+    const item = working(ctx);
+    const seen = attach(ctx, item.id);
+    handoffItem(ctx, { id: item.id, actor: kiln, channel: 'cli' }, now);
+    const on = { evidence: seen, x: 10, y: 20, w: 30, h: 15 };
+    leaveNote(ctx, { id: item.id, text: 'La hoja', anchor: on, actor: you, channel: 'ui' }, now);
+    leaveNote(ctx, { id: item.id, text: 'El color', actor: you, channel: 'ui' }, now);
+
+    const changed = editNote(
+      ctx,
+      { id: item.id, note: 1, text: 'La hoja, más fina', actor: you, channel: 'ui' },
+      now,
+    );
+    expect(changed).toMatchObject({ text: 'La hoja, más fina', anchor: { x: 10, w: 30 } });
+    withdrawNote(ctx, { id: item.id, note: 2, actor: you, channel: 'ui' }, now);
+    expect(notesView(ctx, item.id).notes.map(({ note, text }) => [note, text])).toEqual([
+      [1, 'La hoja, más fina'],
+    ]);
+    expect(() =>
+      editNote(ctx, { id: item.id, note: 1, text: 'x', actor: kiln, channel: 'cli' }, now),
+    ).toThrow(/only the person/);
+
+    sendBackItem(ctx, { id: item.id, actor: you, channel: 'ui', reason: 'Otra vez' }, now);
+    expect(
+      refusal(() => withdrawNote(ctx, { id: item.id, note: 1, actor: you, channel: 'ui' }, now))
+        .message,
+    ).toMatch(/already went/);
+    expect(
+      refusal(() =>
+        editNote(ctx, { id: item.id, note: 1, text: 'y', actor: you, channel: 'ui' }, now),
+      ).message,
+    ).toMatch(/already went/);
+  });
+
+  it('let a send-back go with no words of its own: the comments are what to change (P4-7)', () => {
+    const ctx = memoryContext();
+    const item = working(ctx);
+    const seen = attach(ctx, item.id);
+    handoffItem(ctx, { id: item.id, actor: kiln, channel: 'cli' }, now);
+    expect(
+      refusal(() => sendBackItem(ctx, { id: item.id, actor: you, channel: 'ui' }, now)).code,
+    ).toBe('reason_required');
+    leaveNote(
+      ctx,
+      {
+        id: item.id,
+        text: 'La cola',
+        anchor: { evidence: seen, x: 1, y: 2 },
+        actor: you,
+        channel: 'ui',
+      },
+      now,
+    );
+
+    const back = sendBackItem(ctx, { id: item.id, actor: you, channel: 'ui' }, now);
+
+    expect(back.item.state).toBe('sconcept');
+    claimItem(ctx, { id: item.id, actor: kiln }, now);
+    expect(agentNotes(ctx, item.id)?.notes.map(({ text }) => text)).toEqual(['La cola']);
+  });
+
+  it("let the page's Devolver go with the comments alone, and never a close (P4-7)", () => {
+    const ctx = memoryContext();
+    const item = working(ctx);
+    attach(ctx, item.id);
+    handoffItem(ctx, { id: item.id, actor: kiln, channel: 'cli' }, now);
+    const back = { id: item.id, to: 'sconcept', actor: you, channel: 'ui' as const };
+    expect(refusal(() => moveItem(ctx, back, now)).code).toBe('reason_required');
+    leaveNote(ctx, { id: item.id, text: 'La cola', actor: you, channel: 'ui' }, now);
+
+    expect(moveItem(ctx, back, now).state).toBe('sconcept');
   });
 
   it('are refused from an agent, and on a step an agent reviews', () => {

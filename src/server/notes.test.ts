@@ -3,6 +3,7 @@ import { createBoard, publishBoard, saveDraft } from '../app/boards.ts';
 import { pairDevice } from '../app/devices.ts';
 import { createItem, getItem } from '../app/items.ts';
 import { claimItem } from '../app/leases.ts';
+import { handoffItem } from '../app/next.ts';
 import { replyNote } from '../app/notes.ts';
 import type { Project } from '../app/project.ts';
 import { creatures } from '../core/board/testing.ts';
@@ -136,6 +137,38 @@ describe('notes from the person over the API', () => {
     expect(notes.find(({ text }) => text === 'Esta línea')).toMatchObject({
       anchor: { evidence, line: 3, quote: 'x = 1', node: 'A' },
     });
+  });
+
+  it('changes and takes back a review comment while the review is open', async () => {
+    insertEvidence(project.db, {
+      itemId: 'CRI-1',
+      role: 'after',
+      module: 'eart',
+      kind: 'image',
+      filename: 'pose.png',
+      contentType: 'image/png',
+      size: 1,
+      sha256: 'a'.repeat(64),
+      caption: null,
+      createdAt: new Date().toISOString(),
+      actor: kiln,
+      channel: 'cli',
+    });
+    handoffItem(project, { id: 'CRI-1', actor: kiln, channel: 'cli' });
+    await call('/items/CRI-1/notes', { method: 'POST', body: { text: 'uno' } });
+    await call('/items/CRI-1/notes', { method: 'POST', body: { text: 'dos' } });
+
+    const edited = await call('/items/CRI-1/notes/1/edit', {
+      method: 'POST',
+      body: { text: 'uno, mejor' },
+    });
+    expect(edited.status).toBe(200);
+    const gone = await call('/items/CRI-1/notes/2/withdraw', { method: 'POST' }, 'phone');
+    expect(((await gone.json()) as { notes: unknown[] }).notes).toMatchObject([
+      { note: 1, text: 'uno, mejor' },
+    ]);
+    const missing = await call('/items/CRI-1/notes/9/withdraw', { method: 'POST' });
+    expect(missing.status).toBe(404);
   });
 
   it('refuses a malformed note and an empty one', async () => {
