@@ -16,14 +16,19 @@ export function shownBoards(
   );
 }
 
-const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+const RECENT_MS = 60 * 60 * 1000;
 const DRAFTERS = 8;
 
-// Who Que lo esboce un agente offers to draft a board: the agents here now, then the ones seen this
-// week, most recent first, eight at most; any other agent can still take it as any agent.
+// Who Que lo esboce un agente offers to draft a board: the agents here now, then the ones seen in
+// the last hour (a session that may still be open: an older name is most likely gone, and a Pedido
+// left for it would wait for nobody), most recent first, eight at most. Never an agent that declared
+// no profile: Otea refuses it every claim until it does, so it could not take the Pedido (an older
+// server that sends no profile at all refuses nothing). Any other agent can still take it as any
+// agent.
 export function draftersOf(agents: readonly Agent[], now: string): string[] {
-  const since = Date.parse(now) - WEEK_MS;
+  const since = Date.parse(now) - RECENT_MS;
   return agents
+    .filter((agent) => agent.profile !== null)
     .filter((agent) => agent.live || Date.parse(agent.lastSeen) >= since)
     .toSorted((a, b) => Number(b.live) - Number(a.live) || b.lastSeen.localeCompare(a.lastSeen))
     .slice(0, DRAFTERS)
