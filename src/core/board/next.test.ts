@@ -26,6 +26,22 @@ describe('nextText', () => {
     );
   });
 
+  // A task made from an Idea never named it (IDEA-14): next says what it implements.
+  it('names what the item implements, and where to read it', () => {
+    const text = nextText(def, {
+      ...base,
+      position: { step: 'sconcept', phase: 'doing' },
+      missing: [],
+      implements: [{ id: 'IDE-1', title: 'Pantano vivo', board: 'Ideas' }],
+    });
+    expect(text).toContain(
+      '
+Implements
+  IDE-1 · Pantano vivo (Ideas): what it decided is in otea show IDE-1
+',
+    );
+  });
+
   it('leaves out of Starts with what an earlier step left empty', () => {
     const text = nextText(def, {
       ...base,

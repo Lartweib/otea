@@ -102,6 +102,9 @@ export type NextInput = {
   // The item this one is part of (its parent), with its board and the step it stands on (none once
   // closed): what it decided is the context of this one.
   parent?: { id: string; title: string; board: string; step?: string };
+  // What this one implements (an Idea a task was planned from), the same way: its decision is the
+  // context of this one.
+  implements?: { id: string; title: string; board: string; step?: string }[];
   // The note the doer handed this round off with, for its reviewer to read.
   handed?: { note: string; by: string };
   // Once Done: that its branch was merged, and the commit when given.
@@ -585,6 +588,13 @@ export function nextText(def: BoardDefinition, input: NextInput): string {
   if (!reviewing) lines.push(...answersBlock(input.questions ?? [], input.me));
   lines.push(...section('About this board', indent(aboutBrief(def))));
   if (input.parent) lines.push(...section('Part of', [`  ${parentLine(input.parent)}`]));
+  if (input.implements?.length)
+    lines.push(
+      ...section(
+        'Implements',
+        input.implements.map((it) => `  ${parentLine(it)}`),
+      ),
+    );
   lines.push(
     ...section(
       'Starts with',
