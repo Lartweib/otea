@@ -253,7 +253,7 @@ export const detail = {
   'evidence.ofFiles': '{n} de {total}',
   'evidence.seenOf': 'Visto {n} de {total}',
   'evidence.reader.title': 'Lector',
-  'evidence.reader.open': 'Leer de a uno',
+  'evidence.reader.open': 'Leer uno a uno',
   'evidence.reader.openAt': 'Leer {file} en el lector',
   'evidence.reader.close': 'Cerrar',
   'evidence.reader.files': 'Archivos',
