@@ -305,6 +305,8 @@ export const surfaces = {
   'activity.sentBack': 'sent {id} back to {state}',
   'activity.sentBackYou': 'You sent {id} back to {state}',
   'activity.asked': 'asked you on {id}',
+  'notice.asked': '{agent} asks you on {id}',
+  'notice.answer': 'Answer',
   'activity.askedYou': 'You asked on {id}',
   'activity.answered': 'answered on {id}',
   'activity.answeredYou': 'You answered the question on {id}',

@@ -308,6 +308,8 @@ export const surfaces = {
   'activity.sentBack': 'devolvió {id} a {state}',
   'activity.sentBackYou': 'Devolviste {id} a {state}',
   'activity.asked': 'te preguntó en {id}',
+  'notice.asked': '{agent} te pregunta en {id}',
+  'notice.answer': 'Responder',
   'activity.askedYou': 'Preguntaste en {id}',
   'activity.answered': 'contestó en {id}',
   'activity.answeredYou': 'Contestaste la pregunta de {id}',
