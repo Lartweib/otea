@@ -473,6 +473,10 @@ describe('boardText', () => {
         '  Bioma: one of Pantano, Bosque',
         '  Comprobaciones: any of Silueta, Paleta',
         '',
+        // The fields the board's form takes, so no option it lacks is tried (P1-12).
+        'To add one',
+        '  otea create --collection Criaturas --title "<title>" --field "Descripción=…" --field "Bioma=…" (Bioma may wait)',
+        '',
         '1. Concepto: any agent does it; the person reviews it',
         '   When you take it',
         '     Pinta desde la Descripción.',

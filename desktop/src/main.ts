@@ -531,6 +531,28 @@ class Shell {
     return (['create', 'open', 'cancel'] as const)[response] ?? 'cancel';
   }
 
+  // A folder given with --project: one that is no project yet is asked about in the app's words,
+  // as Abrir carpeta asks, never left to the CLI's raw English refusal (P4-13).
+  async openAsked(dir: string): Promise<void> {
+    if (!existsSync(dir)) return this.open(dir);
+    try {
+      const picked = await pickProject(
+        {
+          probe: (at) => probeProject(CLI, at),
+          init: (at, here) => createProject(CLI, at, here),
+          ask: (question) => this.ask(question),
+        },
+        dir,
+        false,
+      );
+      if (picked.kind === 'cancel') return this.showPicker();
+      return this.open(picked.dir);
+    } catch (error) {
+      this.pickerError = message(error);
+      return this.showPicker();
+    }
+  }
+
   openRecent(root: string): PickerState {
     void this.open(root);
     return this.pickerState();
@@ -809,7 +831,7 @@ else {
   // `--project` on a second launch opens that project in the running app.
   app.on('second-instance', (_event, argv, workingDirectory, data) => {
     const dir = secondLaunchProject(data, argv, workingDirectory);
-    if (dir !== undefined) void shellInstance?.open(dir);
+    if (dir !== undefined) void shellInstance?.openAsked(dir);
     else shellInstance?.show();
   });
   // Closed to the tray: the app lives on until Quit Otea.
@@ -826,7 +848,10 @@ else {
       wirePicker(shellInstance);
       wireUpdates(shellInstance);
       const first = firstProject({ asked: ASKED_DIR, recents: readRecents(), exists: existsSync });
-      if (first.kind === 'open') await shellInstance.open(first.dir);
+      // The folder --project names may be no project yet; a recent one is.
+      if (first.kind === 'open' && first.dir === ASKED_DIR)
+        await shellInstance.openAsked(first.dir);
+      else if (first.kind === 'open') await shellInstance.open(first.dir);
       else await shellInstance.showPicker();
     } catch (error) {
       fail(message(error));
