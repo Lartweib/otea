@@ -521,4 +521,19 @@ describe('boardText', () => {
 
     expect(boardText(board)).not.toContain('Antiguo');
   });
+
+  it('says how the person weighs the items on the Matrix, and only on a board that has it', () => {
+    const board = creatures();
+    expect(boardText(board)).not.toContain('Matrix');
+    board.parts.feffort = { id: 'feffort', name: 'Esfuerzo', kind: 'level', hint: '', options: [] };
+    board.parts.fimp = { id: 'fimp', name: 'Impacto', kind: 'level', hint: '', options: [] };
+    board.analysis = { effort: 'feffort', impact: 'fimp' };
+    expect(boardText(board)).toContain(
+      [
+        '',
+        'The Matrix',
+        '  The person weighs this board’s items on the Matrix, Esfuerzo × Impacto, and fixes the order you take them in: otea next offers them in that order. Estimate Esfuerzo and Impacto on every item you take (otea update <id> --field "Esfuerzo=…"); the person corrects you.',
+      ].join('\n'),
+    );
+  });
 });

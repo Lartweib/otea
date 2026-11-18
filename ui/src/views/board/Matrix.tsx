@@ -4,7 +4,16 @@ import type { BoardDefinition } from '../../../../src/core/board/model.ts';
 import { roleWord } from '../../board-studio/words.ts';
 import { t } from '../../i18n/i18n.ts';
 import type { Item } from '../../types.ts';
-import { type Axes, axesOf, heatOf, type Matrix, matrixOf, orderList } from './matrix.ts';
+import {
+  type Axes,
+  axesOf,
+  heatOf,
+  type Matrix,
+  type MatrixCell,
+  matrixOf,
+  orderList,
+  quadrantOf,
+} from './matrix.ts';
 
 // The Matrix (approved mock, "Vistas de análisis"), the fourth way to look at a board: its open
 // items in cells, one mapped scale role across and another up, effort × risk by default. Tapping an
@@ -141,6 +150,17 @@ export function MatrixView({
   );
 }
 
+// The name of a cell's quadrant, said once per quadrant: in the corner cell of the grid it holds.
+function quadrantWord(m: Matrix, cell: MatrixCell): string | undefined {
+  const quadrant = quadrantOf(m, cell);
+  return quadrant ? t(`matrix.quad.${quadrant}` as 'matrix.quad.quick') : undefined;
+}
+function corner(m: Matrix, cell: MatrixCell): string | undefined {
+  const edgeX = cell.x === 0 || cell.x === m.xs.length - 1;
+  const edgeY = cell.y === 0 || cell.y === m.ys.length - 1;
+  return edgeX && edgeY ? quadrantWord(m, cell) : undefined;
+}
+
 function Grid(p: {
   def: BoardDefinition;
   m: Matrix;
@@ -167,6 +187,7 @@ function Grid(p: {
               </div>
               {row.map((cell) => (
                 <div key={cell.x} className={`mx-cell h${heatOf(p.m, cell)}`}>
+                  {corner(p.m, cell) ? <span className="mx-quad">{corner(p.m, cell)}</span> : null}
                   {cell.items.map((it) => (
                     <Chip
                       key={it.id}
@@ -343,7 +364,13 @@ export function PhoneMatrix({
       {shown.map((cell) => (
         <section key={`${cell.x},${cell.y}`} className="pmx-zone">
           <h3>
-            <span>{zoneName(cell.x, cell.y)}</span> <b>{cell.items.length}</b>
+            <span>
+              {quadrantWord(m, cell) ? (
+                <em className="pmx-quad">{quadrantWord(m, cell)} · </em>
+              ) : null}
+              {zoneName(cell.x, cell.y)}
+            </span>{' '}
+            <b>{cell.items.length}</b>
           </h3>
           {cell.items.map((it) => (
             <PhoneRow

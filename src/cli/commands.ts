@@ -78,6 +78,7 @@ import {
   seeAgent,
   waitBeat,
 } from '../app/presence.ts';
+import { priorityOf } from '../app/priority.ts';
 import {
   declareProfile,
   presetProfile,
@@ -776,7 +777,7 @@ function listFilter({ option, options, flag, reader }: Input): ListItemsFilter {
 const list: Command = {
   name: 'list',
   summary:
-    'List items in creation order, optionally filtered; --unclaimed hides items others hold, --parent keeps the children of an item, --field key=value (repeatable) keeps items whose field holds exactly that value; --state and --field take the board names (any case) or ids',
+    'List items in creation order, with the order the person set beside those it places (on top 1, order 2: what they put on top and fixed on the Matrix, as otea next takes them), optionally filtered; --unclaimed hides items others hold, --parent keeps the children of an item, --field key=value (repeatable) keeps items whose field holds exactly that value; --state and --field take the board names (any case) or ids',
   args: [],
   options: {
     collection: {},
@@ -795,9 +796,15 @@ const list: Command = {
       const items = listItems(project, stored).filter(readerFilter(project, filter));
       const shown = items.map((item) => readable(project, item));
       const boardOf = boardsOf(project);
+      // The person's order beside each item it places, as otea next takes them.
+      const order = priorityOf(project.db);
       return {
-        data: items.map((item) => itemData(project, item, boardOf)),
-        text: formatItems(shown, typesShown(project)),
+        data: items.map((item) => {
+          const placed = order.get(item.id);
+          const data = itemData(project, item, boardOf);
+          return placed && Object.keys(placed).length > 0 ? { ...data, priority: placed } : data;
+        }),
+        text: formatItems(shown, typesShown(project), order),
       };
     });
   },

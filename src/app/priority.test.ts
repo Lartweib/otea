@@ -111,6 +111,19 @@ describe('otea next reads the order', () => {
     claimItem(ctx, { id: c!.id, actor: kiln }, now);
     expect(nextFor(ctx, 'kiln', {}, now).item).toBe(c!.id);
   });
+
+  it('says why it offers an item first: on top, or its place in the order', () => {
+    const ctx = memoryContext();
+    board(ctx);
+    const [a, b, c] = ['A', 'B', 'C'].map((title) => creature(ctx, title));
+    expect(nextFor(ctx, 'kiln', {}, now).text).not.toContain('the person fixed');
+    setOrder(ctx, { collection: 'Criaturas', ids: [c!.id, a!.id], actor: you }, now);
+    expect(nextFor(ctx, 'scout', {}, now).text).toContain(
+      'It is number 1 in the order the person fixed on the Matrix.',
+    );
+    pinItems(ctx, { ids: [b!.id], pinned: true, actor: you }, now);
+    expect(nextFor(ctx, 'quill', {}, now).text).toContain('The person put it on top (number 1).');
+  });
 });
 
 describe('estimates', () => {

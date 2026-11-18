@@ -340,6 +340,20 @@ The starter catalogue: nine generic boards named by what they manage, each a bas
 
 The first Studio's boards (`tasks`, `bugs`, `blog`, `triage`, `review`) are retired: no list offers them, and projects made with them keep their boards. The earlier catalogue's `digest`, `assets`, `support`, `visual-iteration`, `playtest`, `resume` and `repobugs` are gone.
 
+### The Matrix
+
+The Matrix is a board view that weighs open items by two of their fields. **Ideas** and **Cambios** use effort × impact, and **Errores** uses effort × risk. These three boards have it from the start. In Studio, any board gets it once two of its fields play the effort, risk or impact roles (`analysis` in `board.json`).
+
+- **The scales.** Effort is a size (Pequeño, Mediano, Grande, Enorme).
+- **The quadrants.** A corner names each one:
+  - on effort × impact: Victorias rápidas, Grandes apuestas, Para un rato libre, Pozos de tiempo;
+  - on effort × risk: Rápidas y seguras, Rápidas pero delicadas, Largas pero seguras, Largas y delicadas.
+- **Agents estimate the two values.** `otea next` asks an agent for them under **Estimate**, and the Matrix marks an agent's value as estimated until you set it yourself.
+- **You order the work.** Pick items there and use **Fijar el orden** or **Poner arriba**.
+  - `otea next` offers them in that order and says why ("It is number 1 in the order the person fixed on the Matrix").
+  - `otea list` shows `on top 1` and `order 2` beside them, and its `--json` gives each such item's `priority`.
+  - A step you do or review yourself still waits for you in Te toca: the order only changes what agents take first.
+
 ### Templates that make several boards
 
 A template set makes several boards at once, joined the only way boards are declared to join: **"se divide en"** (each item of one board divides into items of another).

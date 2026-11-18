@@ -656,6 +656,7 @@ function textFor(
   const handed = on.notes.findLast(({ step, round }) => step === stepName && round === on.round);
   const parent = parentOf(ctx, item.id);
   const implemented = implementedBy(ctx, item.id);
+  const order = priorityOf(ctx.db).get(item.id);
   // A Pedido whose board draft is still to hand in (withHandIn gave its step the instructions).
   const handIn =
     def === live
@@ -688,6 +689,7 @@ function textFor(
     ...(on.roundNotes.length === 0 ? {} : { notes: on.roundNotes }),
     ...(on.roundQuestions.length === 0 ? {} : { questions: on.roundQuestions }),
     ...(on.chosen === undefined ? {} : { chosen: on.chosen }),
+    ...(order && (order.pin !== undefined || order.rank !== undefined) ? { order } : {}),
     ...(handIn ? { handIn } : {}),
   });
 }

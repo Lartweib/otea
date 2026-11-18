@@ -1,5 +1,5 @@
 import { DONE, MOTIVE, STEP } from './model.ts';
-import { EMPTY, w } from './template-words.ts';
+import { EFFORT_SIZES, EMPTY, w } from './template-words.ts';
 import type { Template } from './templates.ts';
 import { CHANGES } from './templates-flows.ts';
 
@@ -99,12 +99,13 @@ const BUG_REPORTS: Template = {
     },
     {
       key: 'feffort',
-      kind: 'level',
+      kind: 'choice',
       name: w('Effort', 'Esfuerzo'),
       hint: w(
         'how much work the fix looks like; an agent estimates it, you correct it',
         'cuánto trabajo parece el arreglo; lo estima un agente y tú lo corriges',
       ),
+      ...EFFORT_SIZES,
     },
     {
       key: 'frisk',

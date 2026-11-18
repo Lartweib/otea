@@ -34,6 +34,7 @@ import type { ViewPrefs } from '../../view-prefs.ts';
 import { moveSplit } from '../detail/DetailHost.tsx';
 import { universeOf } from '../toca/TocaView.tsx';
 import { MatrixView, PhoneMatrix } from './Matrix.tsx';
+import { orderedSaid } from './matrix.ts';
 import { ColumnMenu, ColumnsMenu, FilterMenu, GroupMenu, ShowOnlyMenu } from './menus.tsx';
 import {
   applyFilters,
@@ -682,7 +683,7 @@ function Board({ board }: { board: string }) {
             onOrder={(ids) =>
               Q.run(() => setOrder(board, ids)).then(
                 () => {
-                  toast({ msg: t('matrix.ordered', { count: ids.length }), at: 'top' });
+                  toast({ msg: orderedSaid(ids, items), at: 'top' });
                   setTicked([]);
                 },
                 () => toast({ msg: t('matrix.orderFailed'), at: 'top' }),
@@ -709,7 +710,7 @@ function Board({ board }: { board: string }) {
               onOrder={(ids) =>
                 Q.run(() => setOrder(board, ids)).then(
                   () => {
-                    toast({ msg: t('matrix.ordered', { count: ids.length }) });
+                    toast({ msg: orderedSaid(ids, items) });
                     setTicked([]);
                   },
                   () => toast({ msg: t('matrix.orderFailed') }),

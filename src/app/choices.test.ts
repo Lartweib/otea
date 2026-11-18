@@ -38,7 +38,11 @@ function refinedDecision() {
     now,
   );
   claimItem(ctx, { id, actor: quill }, now);
-  updateItem(ctx, { id, fields: { Opciones: OPTIONS }, actor: quill }, now);
+  updateItem(
+    ctx,
+    { id, fields: { Opciones: OPTIONS, Impacto: 'alta', Esfuerzo: 'Pequeño' }, actor: quill },
+    now,
+  );
   handoffItem(ctx, { id, actor: quill, channel: 'cli', note: 'Dos opciones' }, now);
   const step = (name: string) => {
     const found = liveBoardOf(ctx, 'Ideas')?.def.steps.find((each) => each.name === name);
