@@ -70,4 +70,19 @@ describe('a board named in another case', () => {
   it('still refuses a name no board has', async () => {
     expect((await otea('create', '--collection', 'tareass', '--title', 'X')).code).toBe(3);
   });
+
+  // Agents name boards by their first word, without accents (P3C-9).
+  it('takes the start of a board name, or the name without its accents, when only one board fits', async () => {
+    await cliAt(repo.dir)('board', 'add', 'Cambios de código', '--template', 'changes');
+    await cliAt(repo.dir)('board', 'add', 'Implementación', '--template', 'tasks');
+
+    expect((await json('list', '--collection', 'cambios')).length).toBe(0);
+    expect((await otea('list', '--collection', 'cambios')).code).toBe(0);
+    expect((await otea('board', 'implementacion')).out).toContain('Implementación');
+    expect((await otea('board', 'cambios')).out).toContain('Cambios de código');
+    // Too short, or more than one board starts so: no guess.
+    await cliAt(repo.dir)('board', 'add', 'Campañas', '--template', 'tasks');
+    expect((await otea('board', 'cam')).code).toBe(3);
+    expect((await otea('create', '--collection', 'ca', '--title', 'X')).code).toBe(3);
+  });
 });

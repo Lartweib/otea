@@ -1178,6 +1178,20 @@ function fieldValueLines(def: BoardDefinition): string[] {
   });
 }
 
+// How to add an item: the fields of the board's own form, by name, so an agent never tries an
+// option the board does not take (--description on a board with no description field).
+function createLines(def: BoardDefinition): string[] {
+  const fields = def.form.flatMap(({ ref, required }) => {
+    const part = def.parts[ref];
+    return part ? [{ name: part.name, required }] : [];
+  });
+  const given = fields.map(({ name }) => ` --field "${name}=…"`).join('');
+  const later = fields.filter(({ required }) => !required).map(({ name }) => name);
+  const wait = later.length > 0 ? ` (${and(later)} may wait)` : '';
+  const quoted = /\s/.test(def.name) ? `"${def.name}"` : def.name;
+  return [`  otea create --collection ${quoted} --title "<title>"${given}${wait}`];
+}
+
 // The Matrix, on a board that maps two scale roles (core/board/analysis.ts): what the person does
 // there and what it asks of an agent. An agent told "use the Matrix" knows the word from here.
 function matrixLines(def: BoardDefinition): string[] {
@@ -1202,6 +1216,7 @@ export function boardText(def: BoardDefinition): string {
       ]),
     );
   lines.push(...section('What its fields take', fieldValueLines(def)));
+  lines.push(...section('To add one', createLines(def)));
   lines.push(...section('The Matrix', matrixLines(def)));
   def.steps.forEach((step, index) => {
     const say = (title: string, text: string) => {

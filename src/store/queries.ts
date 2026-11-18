@@ -70,16 +70,31 @@ export function setCollectionPreset(
   db.prepare('UPDATE items SET preset_version = ? WHERE collection = ?').run(version, name);
 }
 
-// A collection by its name, or by the same name in another case: a collection is a board, whose
-// name is unique whatever its case, so `tareas` is Tareas.
+// A name as boards are matched by: in any case, without accents.
+export const foldedName = (name: string) =>
+  name
+    .trim()
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .toLocaleLowerCase();
+
+// The shortest start of a board's name taken for the whole: shorter would be a guess.
+const PREFIX_MIN = 3;
+
+// A collection by its name, or by the same name in another case or without its accents: a
+// collection is a board, whose name is unique whatever its case, so `tareas` is Tareas and
+// `implementacion` is Implementación. Else the one board whose name starts so (`cambios` for
+// Cambios de código), when only one does.
 export function findCollection(db: DatabaseSync, name: string): CollectionRecord | undefined {
   const row = db.prepare('SELECT * FROM collections WHERE name = ?').get(name);
   if (row) return toCollection(row as CollectionRow);
-  const folded = name.trim().toLocaleLowerCase();
-  const same = listCollections(db, { archived: true }).filter(
-    (each) => each.name.toLocaleLowerCase() === folded,
-  );
-  return same.length === 1 ? same[0] : undefined;
+  const folded = foldedName(name);
+  const all = listCollections(db, { archived: true });
+  const same = all.filter((each) => foldedName(each.name) === folded);
+  if (same.length > 0) return same.length === 1 ? same[0] : undefined;
+  if (folded.length < PREFIX_MIN) return undefined;
+  const starting = listCollections(db).filter((each) => foldedName(each.name).startsWith(folded));
+  return starting.length === 1 ? starting[0] : undefined;
 }
 
 // The collections of an archived board (app/board-archive.ts): left out of every list.
