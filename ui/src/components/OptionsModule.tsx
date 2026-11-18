@@ -1,7 +1,8 @@
+import type { ItemChoice } from '../../../src/core/board/choices.ts';
 import { t } from '../i18n/i18n.ts';
 import { AgentMark } from '../kit/index.ts';
 import { moduleFor } from '../modules/registry.ts';
-import { parseOptions } from '../options.ts';
+import { type DecisionOption, parseOptions } from '../options.ts';
 import type { ItemView, LayoutEntry } from '../types.ts';
 
 const FIELD = 'options';
@@ -12,13 +13,15 @@ function agentOf(item: ItemView): string | undefined {
 
 // The options a decision weighed, side by side: a letter, a name, a line, then what each gains and
 // costs. The agent's pick carries its mark and a ring; once the decision is accepted it carries the
-// check and the others step back.
+// check and the others step back. On a Studio board you pick one as you approve (`chosen`, the last
+// you picked): that one carries the check and your comment, and the others step back.
 export function OptionsModule({
   item,
   entry,
   slot,
   field = FIELD,
   sideBySide = false,
+  chosen,
 }: {
   item: ItemView;
   entry: LayoutEntry;
@@ -27,6 +30,8 @@ export function OptionsModule({
   field?: string;
   // A Studio board's long text shown as options: the options in columns, as the mock draws them.
   sideBySide?: boolean;
+  // On a Studio board: the option you picked last, with your comment.
+  chosen?: ItemChoice | undefined;
 }) {
   const text = item.fields[field] ?? '';
   if (text.trim() === '') return null;
@@ -41,24 +46,32 @@ export function OptionsModule({
       </section>
     );
   }
-  const accepted = item.closes === 'done';
+  const picked = chosen && options.some(({ letter }) => letter === chosen.option) ? chosen : null;
+  const accepted = !picked && item.closes === 'done';
   const agent = agentOf(item);
+  const isChosen = (option: DecisionOption) =>
+    picked ? option.letter === picked.option : accepted && option.recommended;
+  const settled = !!picked || accepted;
   return (
     <section className="op-module" aria-label={title} {...slot}>
       <div className="op-head">
         <h2 className="t-label">{t('options.count', { count: options.length })}</h2>
-        {agent ? <span className="t-cap">{t('options.writtenBy', { agent })}</span> : null}
+        {agent ? (
+          <span className="t-cap">
+            {t(sideBySide ? 'options.writtenByPick' : 'options.writtenBy', { agent })}
+          </span>
+        ) : null}
       </div>
       <ol className={sideBySide ? 'op-list side' : 'op-list'}>
         {options.map((option) => {
-          const chosen = accepted && option.recommended;
+          const on = isChosen(option);
           return (
             <li
               key={option.letter}
               className="op-option"
               data-recommended={option.recommended || undefined}
-              data-chosen={chosen || undefined}
-              data-out={(accepted && !option.recommended) || undefined}
+              data-chosen={on || undefined}
+              data-out={(settled && !on) || undefined}
             >
               <span className="op-letter" aria-hidden="true">
                 {option.letter}
@@ -66,11 +79,11 @@ export function OptionsModule({
               <div className="op-body">
                 <div className="op-name">
                   <b>{option.name}</b>
-                  {chosen ? (
+                  {on ? (
                     <span className="op-tag" data-on="true">
                       {t('options.chosen')}
                     </span>
-                  ) : option.recommended && !accepted ? (
+                  ) : option.recommended && !settled ? (
                     <span className="op-tag">
                       {agent ? <AgentMark name={agent} decorative /> : null}
                       {t('options.recommends')}
@@ -78,6 +91,11 @@ export function OptionsModule({
                   ) : null}
                 </div>
                 {option.summary ? <p className="op-summary">{option.summary}</p> : null}
+                {on && picked?.comment ? (
+                  <p className="op-comment">
+                    <span className="t-cap">{t('pick.yourComment')}</span> {picked.comment}
+                  </p>
+                ) : null}
                 {option.gains.length + option.costs.length > 0 ? (
                   <div className="op-trade">
                     <ul className="op-gains" aria-label={t('options.gains')}>

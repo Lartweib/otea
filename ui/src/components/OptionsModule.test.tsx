@@ -32,4 +32,26 @@ describe('OptionsModule', () => {
     expect(render(true)).toContain('class="op-list side"');
     expect(render()).toContain('class="op-list"');
   });
+
+  it('marks the option you picked, with your comment, and steps the others back', () => {
+    const html = renderToStaticMarkup(
+      <OptionsModule
+        item={decision}
+        entry={{ module: 'options' }}
+        field="fopts"
+        sideBySide
+        chosen={{
+          option: 'B',
+          name: 'Nube',
+          comment: 'Hay que sincronizar',
+          at: ago(1),
+          by: 'fede',
+          step: 's1',
+          stepName: 'Refinar',
+        }}
+      />,
+    );
+    expect(html).toMatch(/data-chosen="true"[^>]*>[\s\S]*?>B<[\s\S]*?Hay que sincronizar/);
+    expect(html.match(/data-out="true"/g)).toHaveLength(1);
+  });
 });

@@ -132,6 +132,7 @@ function sentence(line: FeedLine, id: ReactNode, state: (s: string) => string): 
     case 'activity.noteAnswered':
     case 'activity.merged':
     case 'activity.proved':
+    case 'activity.chose':
     case 'activity.touched':
       return tx(you ? `${phrase.key}You` : phrase.key, { id });
   }

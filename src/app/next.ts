@@ -1,4 +1,5 @@
 import type { Channel } from '../core/authority.ts';
+import { choiceOf, type ItemChoice } from '../core/board/choices.ts';
 import {
   approve,
   backWaysOf,
@@ -221,6 +222,8 @@ export type ItemOnBoard = {
   asking?: ItemQuestion;
   // The checklist points proved in the round of the step it stands on (core/board/proofs.ts).
   proofs: Proof[];
+  // The option the person picked last, on an item that carries options (core/board/choices.ts).
+  chosen?: ItemChoice;
 };
 
 // The send-back that started the round of the step being done, with its note, who sent it, when
@@ -317,6 +320,7 @@ export function itemOnBoard(ctx: Context, item: ItemRecord, def: BoardDefinition
     isClosed(position) || position.phase !== 'doing' ? undefined : openQuestion(events);
   const did = roundWorkers(position, events, startedAt);
   const proofs = step === undefined ? [] : proofsFrom(events, startedAt);
+  const chosen = choiceOf(events);
   const facts: ItemFacts = {
     fields: { ...item.fields, title: item.title },
     evidence,
@@ -349,6 +353,7 @@ export function itemOnBoard(ctx: Context, item: ItemRecord, def: BoardDefinition
     roundQuestions,
     ...(asking === undefined ? {} : { asking }),
     proofs,
+    ...(chosen === undefined ? {} : { chosen }),
   };
 }
 
@@ -375,6 +380,8 @@ export type BoardBlock = {
   // that waits for the person's answer now, when there are any.
   questions?: ItemQuestion[];
   asking?: ItemQuestion;
+  // The option the person picked last, on an item that carries options.
+  chosen?: ItemChoice;
   // While an agent's step is being done: the agent at work on it and when it last gave a sign of
   // life (any call, a heartbeat included), so the page can warn that a note may go unread.
   worker?: Worker;
@@ -511,6 +518,7 @@ export function boardBlockOf(ctx: Context, item: ItemRecord): BoardBlock | undef
     ...(on.thread.length === 0 ? {} : { thread: on.thread }),
     ...(on.questions.length === 0 ? {} : { questions: on.questions }),
     ...(on.asking === undefined ? {} : { asking: on.asking }),
+    ...(on.chosen === undefined ? {} : { chosen: on.chosen }),
     ...(worker === undefined ? {} : { worker }),
     ...(isClosed(on.position) ? { closedBy: closedByOf(board.def, events) } : {}),
     ...(merged === undefined ? {} : { merged }),
@@ -679,6 +687,7 @@ function textFor(
     ...(merged === undefined ? {} : { merged }),
     ...(on.roundNotes.length === 0 ? {} : { notes: on.roundNotes }),
     ...(on.roundQuestions.length === 0 ? {} : { questions: on.roundQuestions }),
+    ...(on.chosen === undefined ? {} : { chosen: on.chosen }),
     ...(handIn ? { handIn } : {}),
   });
 }

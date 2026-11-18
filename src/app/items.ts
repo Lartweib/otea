@@ -35,6 +35,7 @@ import {
   updateItemState,
 } from '../store/queries.ts';
 import { type Asks, askingItems, withAsks } from './asking.ts';
+import { type ChoiceInput, recordChoice } from './choices.ts';
 import { collectionNamed, getCollection, presetOf, typeOfItem } from './collections.ts';
 import type { Context } from './context.ts';
 import { draftRequestOf } from './draft-request.ts';
@@ -378,6 +379,8 @@ export type MoveItemInput = {
   // On a board: the note of a handoff, kept with the round (a step that asks for one reads the
   // reason when no note is given).
   note?: string;
+  // On a board item that carries options: the one the person picks, going on with this approval.
+  choice?: ChoiceInput;
 };
 
 // Lands an authorized move: the new state, its transitioned event and the release of the lease it
@@ -454,7 +457,13 @@ export function moveItem(ctx: Context, input: MoveItemInput, now = systemClock):
     assertCanLeave(type, item.state, to, item.fields);
     assertMayEnter(ctx, item, workflow, to, at);
     const data = { ...(reason ? { reason } : {}), ...(note ? { note } : {}), channel };
-    const board = liveBoardOf(ctx, item.collection) !== undefined;
+    const live = liveBoardOf(ctx, item.collection);
+    if (input.choice) {
+      if (!live)
+        throw new OteaError('invalid_transition', `Not chosen on ${item.id}: it is on no board`);
+      recordChoice(db, live.def, item, { to, actor, channel, at }, input.choice);
+    }
+    const board = live !== undefined;
     return landMove(db, workflow, item, { to, actor, at, lease, board }, data);
   });
 }

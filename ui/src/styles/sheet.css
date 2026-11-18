@@ -1049,6 +1049,84 @@ section.evidence,
     animation: none;
   }
 }
+/* Picking a decision's option as you approve: the options as buttons, the agent's recommendation
+   said quietly, a comment, then the ways on side by side, of the same weight. */
+.pick .opt-rec {
+  font-weight: 400;
+  color: var(--ink-3);
+}
+.pick .opt.on .opt-rec {
+  color: var(--you-ink);
+}
+.pick .pick-ways {
+  margin: 14px 0 6px;
+}
+.pick textarea {
+  display: block;
+  width: 100%;
+  max-width: 72ch;
+  margin-top: 7px;
+  min-height: 66px;
+  resize: vertical;
+  padding: 9px 11px;
+  border-radius: 7px;
+  border: 1px solid var(--rule-2);
+  background: var(--sheet);
+  font: 400 15.5px / 1.45 var(--serif);
+  color: var(--ink);
+  text-transform: none;
+  letter-spacing: 0;
+}
+.pick textarea:focus {
+  outline: none;
+  border-color: var(--you);
+}
+.pick textarea::placeholder {
+  color: var(--ink-3);
+  font-style: italic;
+}
+.pick > div > .said {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--ink-3);
+}
+/* In the phone's sheet: one column, the ways stacked full width. */
+.p-pick .pick {
+  grid-template-columns: minmax(0, 1fr);
+}
+.p-pick .pick > .margin-label {
+  display: none;
+}
+.p-pick .pick .opts {
+  margin-top: 4px;
+}
+.pick .actions.more {
+  margin: 10px 0 0;
+}
+.p-pick .pick .opt {
+  width: 100%;
+  height: auto;
+  min-height: 44px;
+  text-align: left;
+}
+.p-pick .pick-ways {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+.p-pick .pick-ways .btn {
+  min-height: 44px;
+}
+/* The comment you left with the option you picked, under it on the item. */
+.op-comment {
+  margin: 6px 0 0;
+  font: italic 400 14px / 1.5 var(--serif);
+  color: var(--ink-2);
+}
+.op-comment .t-cap {
+  font-style: normal;
+  margin-right: 4px;
+}
+
 /* Answering in place: the other moves wait quietly under the answer. */
 .qa .actions.more {
   margin: 4px 0 0 -8px;

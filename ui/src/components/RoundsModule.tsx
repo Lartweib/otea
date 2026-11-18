@@ -245,6 +245,9 @@ type RoundsModuleProps = {
   slot?: Readonly<Record<string, string>>;
   // A Studio board draws its round notes above: no "no rounds yet" under them.
   quiet?: boolean;
+  // While you pick one of the item's options as you approve, the moves are the pick's: no verdict
+  // here that would approve without one.
+  noVerdict?: boolean;
   // On a board: its rounds are its step's, as the step engine counts them.
   board?: BoardRounds;
   // That step's name, said in the title when the item went through several steps.
@@ -335,6 +338,7 @@ export function RoundsModule({
   canWrite,
   slot,
   quiet,
+  noVerdict,
   board,
   stepName,
 }: RoundsModuleProps) {
@@ -389,7 +393,7 @@ export function RoundsModule({
         ) : (
           <Compare current={latest} previous={previous} modules={modules} />
         )}
-        {canWrite && !latest.verdict && item.turn === 'human' ? (
+        {canWrite && !noVerdict && !latest.verdict && item.turn === 'human' ? (
           <Verdict
             item={item}
             round={latest}

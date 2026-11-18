@@ -36,6 +36,23 @@ describe('an agent’s question and your answer in the history', () => {
   });
 });
 
+describe('an option you picked, in the history', () => {
+  afterEach(() => setLanguage('en'));
+
+  it('names the option, with your comment as its quote', () => {
+    const events = [
+      ev('option_chosen', you, { option: 'B', name: 'Cloud backend', comment: 'we sync' }, 3),
+      ev('option_chosen', you, { option: 'A', name: 'SQLite' }, 1),
+    ];
+    expect(historyOf(events, bug, word, NOW).map((l) => [l.text, l.quote, l.dot])).toEqual([
+      ['You chose A · SQLite', undefined, 'you'],
+      ['You chose B · Cloud backend', 'we sync', 'you'],
+    ]);
+    setLanguage('es');
+    expect(historyOf(events, bug, word, NOW)[0]?.text).toBe('Elegiste A · SQLite');
+  });
+});
+
 describe('a checklist point proved, in the history', () => {
   afterEach(() => setLanguage('en'));
   const proved = [

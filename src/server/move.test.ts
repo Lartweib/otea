@@ -55,6 +55,16 @@ describe('POST /api/items/:id/move', () => {
     project.db.close();
   });
 
+  it('passes the option the person picks on to the move, and refuses a malformed one', async () => {
+    // Off a board there are no options to pick from: the pick reached the move, which refuses it.
+    const off = await move('TASKS-1', { to: 'done', choice: { option: 'A', comment: 'ok' } });
+    expect(off.status).toBe(409);
+    expect(await errorOf(off)).toBe('invalid_transition');
+    const bad = await move('TASKS-1', { to: 'done', choice: { comment: 'no option' } });
+    expect(bad.status).toBe(400);
+    expect(getItem(project, 'TASKS-1').state).toBe('review');
+  });
+
   it('approves a human-ui transition as the human in the ui', async () => {
     const response = await move('TASKS-1', { to: 'done' });
 

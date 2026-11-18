@@ -14,9 +14,18 @@ import { clientOf, type Session } from './session.ts';
 
 export const HUMAN_IN_UI: Performer = { actor: { kind: 'human', name: 'human' }, channel: 'ui' };
 
-const MoveBody = z.object({ to: z.string().min(1), reason: z.string().optional() });
+// `choice`: on a board item that carries options, the one the person picks with this approval.
+const MoveBody = z.object({
+  to: z.string().min(1),
+  reason: z.string().optional(),
+  choice: z.object({ option: z.string().min(1), comment: z.string().optional() }).optional(),
+});
 
-export type MoveRequest = { to: string; reason?: string };
+export type MoveRequest = {
+  to: string;
+  reason?: string;
+  choice?: { option: string; comment?: string };
+};
 
 const UndoBody = z.union([
   z.object({ from: z.string().min(1) }),
@@ -79,10 +88,25 @@ export async function moveRequest(c: Context): Promise<MoveRequest> {
   const raw: unknown = await c.req.json().catch(() => undefined);
   const parsed = MoveBody.safeParse(raw);
   if (!parsed.success) {
-    throw new RejectedRequest(400, 'invalid_body', 'Expected {"to": string, "reason"?: string}');
+    throw new RejectedRequest(
+      400,
+      'invalid_body',
+      'Expected {"to": string, "reason"?: string, "choice"?: {"option": string, "comment"?: string}}',
+    );
   }
-  const { to, reason } = parsed.data;
-  return reason === undefined ? { to } : { to, reason };
+  const { to, reason, choice } = parsed.data;
+  return {
+    to,
+    ...(reason === undefined ? {} : { reason }),
+    ...(choice === undefined
+      ? {}
+      : {
+          choice: {
+            option: choice.option,
+            ...(choice.comment === undefined ? {} : { comment: choice.comment }),
+          },
+        }),
+  };
 }
 
 const UpdateBody = z.object({ fields: z.record(z.string(), z.string()) });

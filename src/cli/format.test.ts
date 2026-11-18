@@ -81,3 +81,21 @@ describe('a checklist point proved in the timeline', () => {
     );
   });
 });
+
+describe('an option the person picked in the timeline', () => {
+  it('names the option, and their comment when they left one', () => {
+    const chose = (data: Record<string, unknown>) =>
+      formatEvent({
+        id: 12,
+        itemId: 'IDE-2',
+        type: 'option_chosen',
+        actor: { kind: 'human', name: 'fede' },
+        at: 'T',
+        data: { option: 'B', name: 'A cloud backend', step: 'design', stepName: 'Design', ...data },
+      });
+    expect(chose({})).toMatch(/chose B · A cloud backend$/);
+    expect(chose({ comment: 'we need sync' })).toMatch(
+      /chose B · A cloud backend: "we need sync"$/,
+    );
+  });
+});

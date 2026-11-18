@@ -1,3 +1,4 @@
+import type { ItemChoice } from '../../../../src/core/board/choices.ts';
 import {
   type GateAnswer,
   gateAt,
@@ -109,6 +110,8 @@ export type ItemBoardBlock = {
   // waits for your answer now (core/board/questions.ts).
   questions?: ItemQuestion[];
   asking?: ItemQuestion;
+  // The option the person picked last, on an item that carries options (core/board/choices.ts).
+  chosen?: ItemChoice;
   // While an agent does its step: that agent and its last sign of life.
   worker?: { name: string; lastSeen: string | null; holds: boolean };
   // Once closed: the agent that did the work and who approved it (app/next.ts closedByOf).

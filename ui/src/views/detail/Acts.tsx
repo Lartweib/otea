@@ -13,6 +13,8 @@ import type { ItemView, TypeView } from '../../types.ts';
 import { closerOf, type Facts } from './facts.ts';
 import { stuckToastOf, toastOf } from './frame.ts';
 import { type MoveChoice, type MovePlan, moveSaysOf } from './moves.ts';
+import { PickForm, type PickMade } from './PickForm.tsx';
+import type { Pick } from './pick.ts';
 
 // The moves and what stands in for them (SPEC §10.3, mock:2689-2702): the moves with the line that
 // says what the hovered one does; a question answered in place; the stuck item's commands; the
@@ -20,7 +22,7 @@ import { type MoveChoice, type MovePlan, moveSaysOf } from './moves.ts';
 // When the item changes, the old block and the new are both present while one leaves and the other
 // arrives, and the box's height glides (mock:3150-3162).
 
-export type ActsMode = 'moves' | 'qa' | 'stuck' | 'wait' | 'receipt' | 'read';
+export type ActsMode = 'moves' | 'pick' | 'qa' | 'stuck' | 'wait' | 'receipt' | 'read';
 
 export function actsModeOf(o: {
   look: Look;
@@ -64,6 +66,9 @@ type ActsProps = {
   // Under the moves, when files of the round were not opened in the reader: one line, never a
   // hold on Aprobar.
   unopened?: string | undefined;
+  // Reviewing an item that carries options (mode 'pick'): the options and the ways on, named for
+  // the pick; `plan` then holds the rest (the send-backs, the closes).
+  pick?: { pick: Pick; ways: MoveChoice[] } | undefined;
 };
 
 export type LeaveNote = {
@@ -180,6 +185,7 @@ export function Acts({
   back,
   note,
   unopened,
+  pick,
 }: ActsProps) {
   const app = useApp();
   const [pointed, setPointed] = useState<MoveChoice | null>(null);
@@ -199,15 +205,18 @@ export function Acts({
   // A refusal stands until the item changes (a field filled, a move).
   const refusalKey = `${item.id}:${item.state}:${item.updatedAt}`;
   // A move Otea refuses says so in the page's words, never as an error nobody sees.
-  const make = (c: MoveChoice, reason = '') => {
+  const make = (c: MoveChoice, reason = '', made?: PickMade) => {
     const kind = c.deliver
       ? 'deliver'
       : c.move.closes === 'done' && c.kind !== 'own'
         ? 'close'
         : c.kind;
     const k = refusalKey;
+    const choice = made
+      ? { option: made.option, ...(made.comment ? { comment: made.comment } : {}) }
+      : undefined;
     app
-      .move(item.id, c.move.to, reason, toastOf(kind, item.title, word(c.move.to)))
+      .move(item.id, c.move.to, reason, toastOf(kind, item.title, word(c.move.to)), choice)
       .catch(() => setRefused({ k, text: t('sheet.refused') }));
   };
   const refusedNow = refused?.k === refusalKey ? refused.text : '';
@@ -279,6 +288,37 @@ export function Acts({
           </p>
         ) : null}
       </>
+    );
+  } else if (mode === 'pick' && pick) {
+    body = (
+      <PickForm
+        pick={pick.pick}
+        ways={pick.ways}
+        onChoose={(way, made) => {
+          const no = refuse?.(way);
+          if (no) setRefused({ k: refusalKey, text: no });
+          else make(way, '', made);
+        }}
+        says={(way, option) => {
+          const line = says(way);
+          return line ? (
+            <SaysLine text={{ ...line, verb: t('pick.verb', { option: option ?? '' }) }} />
+          ) : null;
+        }}
+      >
+        {plan.quiet.length > 0 || closeAs ? (
+          <div className="actions more">
+            {plan.quiet.map((c) => btn(c, 'quiet'))}
+            {closeAs}
+          </div>
+        ) : null}
+        {unopened && !refusedNow ? <p className="said unseen">{unopened}</p> : null}
+        {refusedNow ? (
+          <p className="said warn" role="alert">
+            {refusedNow}
+          </p>
+        ) : null}
+      </PickForm>
     );
   } else if (mode === 'qa') {
     const back = plan.quiet.find((c) => c.kind === 'sendback');

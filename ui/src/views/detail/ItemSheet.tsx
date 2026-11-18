@@ -77,6 +77,7 @@ import { useOpened } from './opened.ts';
 import { PhoneItem } from './PhoneItem.tsx';
 import { ProofChecklist } from './ProofChecklist.tsx';
 import { partNames, phoneRounds, readerOf, requestLine, unopenedOf } from './phone-review.ts';
+import { pickOf, pickWays } from './pick.ts';
 import { Route } from './Route.tsx';
 import { routeIndex, routeSteps } from './route.ts';
 
@@ -319,6 +320,15 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
     plan,
     asks: !!item.asks,
   });
+  // Reviewing an item that carries options, you pick one as you approve: the ways on are named for
+  // the pick, and the moves keep the rest (the send-backs, the closes).
+  const options = reviewing && live && stepId ? pickOf(live, item, block?.chosen) : undefined;
+  const ways =
+    options && live && stepId && mode === 'moves' ? pickWays(plan, live, stepId, word) : null;
+  const picking =
+    options && ways && ways.ways.length > 0 ? { pick: options, ways: ways.ways } : undefined;
+  const actsMode = picking ? 'pick' : mode;
+  const actsPlan = picking && ways ? ways.rest : plan;
   const steps = onBoard ? onBoard.route.steps : type ? routeSteps(type) : [];
   const ci = onBoard ? onBoard.route.ci : type ? routeIndex(type, item.state, facts.visited) : 0;
   const stand = standOf({
@@ -610,6 +620,8 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
               .filter((p) => p.show === 'options')
               .map((p) => p.id),
           ),
+          chosen: block?.chosen,
+          picking: !!picking,
           rounds: journey.length ? (
             <RoundNotes
               steps={journey}
@@ -683,8 +695,9 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
             }
             look={look}
             facts={facts}
-            plan={plan}
-            mode={mode}
+            plan={actsPlan}
+            mode={actsMode}
+            pick={picking}
             word={word}
             stand={standText}
             route={route}
@@ -907,8 +920,9 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
               type={type}
               facts={facts}
               look={look}
-              plan={plan}
-              mode={mode}
+              plan={actsPlan}
+              mode={actsMode}
+              pick={picking}
               word={word}
               notesOpen={notes?.open ? notes.choice : null}
               onNotes={openNotes}
