@@ -205,6 +205,10 @@ describe('setup for agents', () => {
 
       expect(code).toBe(11);
       expect(out).toContain('claude-b has not reached Otea through its MCP server');
+      expect(out).toContain('your harness runs another otea server');
+      expect((await otea('connect', '--check')).out).toMatch(
+        /^No agent has reached Otea through its MCP server/,
+      );
     });
 
     it('says, with --check, that the agent was heard over MCP, and the desk stops warning', async () => {
