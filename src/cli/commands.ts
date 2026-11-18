@@ -1441,7 +1441,9 @@ function eventFilter({ option }: Input): EventFilter {
   if (item !== undefined) filter.item = item;
   if (collection !== undefined) filter.collection = collection;
   if (since !== undefined) filter.since = since;
-  if (limit !== undefined) filter.limit = limit;
+  // After a cursor, --limit pages forward from it; alone, it reads the latest events.
+  if (limit !== undefined && since !== undefined) filter.limit = limit;
+  if (limit !== undefined && since === undefined) filter.latest = limit;
   return filter;
 }
 
@@ -1471,7 +1473,7 @@ const brief: Command = {
 const events: Command = {
   name: 'events',
   summary:
-    'Print the event log in commit order, after the event id given to --since; --follow keeps printing new events until Ctrl+C',
+    'Print the event log in commit order, after the event id given to --since; --limit alone prints the latest n, after --since the first n; --follow keeps printing new events until Ctrl+C',
   args: [],
   options: {
     item: { placeholder: 'id' },
@@ -1483,7 +1485,7 @@ const events: Command = {
   execute: async (input) => {
     const filter = eventFilter(input);
     const follow = input.flag('follow');
-    if (follow && filter.limit !== undefined) {
+    if (follow && (filter.limit ?? filter.latest) !== undefined) {
       throw new UsageError('--limit cannot be combined with --follow');
     }
     await withReaderWhile(input, async (project) => {
