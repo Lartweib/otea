@@ -504,6 +504,9 @@ section.evidence,
 }
 .evs {
   display: grid;
+  /* One column no wider than the page: a diff's long line scrolls inside its well, it never
+     widens the evidence past the sheet. */
+  grid-template-columns: minmax(0, 1fr);
   gap: 16px;
   min-width: 0;
   max-width: 1040px;

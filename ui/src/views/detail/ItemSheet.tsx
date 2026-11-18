@@ -918,6 +918,7 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
                 onAt={(at) => setReading({ item: item.id, at, open: true })}
                 parts={parts}
                 marks={reader.marks}
+                noted={noted}
                 seen={seen}
                 decide={decide}
                 start={start}

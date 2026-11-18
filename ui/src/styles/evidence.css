@@ -1132,6 +1132,15 @@
   font: 400 12px var(--sans);
   color: var(--ink-3);
 }
+/* A file that holds the person's notes says how many, after its part (DR3-14). */
+.rd-notes {
+  color: var(--you);
+  white-space: nowrap;
+}
+.rd-notes::before {
+  content: " · ";
+  color: var(--ink-3);
+}
 .rd-file .mk {
   grid-column: 2;
   grid-row: 1;
@@ -1403,6 +1412,29 @@
 .ev-para-pair {
   display: grid;
   gap: 6px;
+}
+
+/* A Markdown paragraph that came or went whole, drawn as the document draws it (DR3-2). */
+.ev-changes-body .md > :first-child {
+  margin-top: 0;
+}
+.ev-changes-body .md > :last-child {
+  margin-bottom: 0;
+}
+.ev-changes-body .md.ev-ins-block,
+.ev-changes-body .md.ev-del-block {
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.ev-changes-body .md.ev-ins-block {
+  color: var(--plus);
+  background: color-mix(in oklch, var(--plus) 13%, transparent);
+}
+.ev-changes-body .md.ev-del-block {
+  color: var(--minus);
+  background: color-mix(in oklch, var(--minus) 11%, transparent);
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
 }
 
 /* A point or a zone of an image a note is on, drawn over the image in the reader. */
