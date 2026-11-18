@@ -36,11 +36,16 @@ const rail = (o: Parameters<typeof testApp>[0] = {}) => {
 };
 
 describe('the rail', () => {
-  it('heads with the fold, the views label and a new item', () => {
+  // The + names what it makes: beside the word vistas it read as a new view (P7-14).
+  it('heads with the fold and a new item that says so, the views label under them', () => {
     const html = rail();
     expect(html).toMatch(/class="ibtn"[^>]*aria-expanded="true"[^>]*aria-label="Ocultar el panel"/);
-    expect(html).toContain('<span class="lbl">vistas</span>');
-    expect(html).toContain('aria-label="Nuevo ítem"');
+    expect(html).toMatch(
+      /<button type="button" class="rnew"[^>]*>.*?<span class="lbl">Nuevo ítem<\/span><\/button>/,
+    );
+    expect(html).toContain('<div class="rail-label first">vistas</div>');
+    expect(html.indexOf('class="rnew"')).toBeLessThan(html.indexOf('vistas</div>'));
+    expect(html.indexOf('vistas</div>')).toBeLessThan(html.indexOf('Te toca'));
   });
 
   it('counts Te toca in your blue and Atasco in warn, each with its folded badge', () => {
@@ -97,7 +102,8 @@ describe('the rail', () => {
     });
     expect(reader).not.toContain('Configuración');
     expect(reader).not.toContain('Nuevo tablero');
-    expect(reader).not.toContain('aria-label="Nuevo ítem"');
+    expect(reader).not.toContain('class="rnew"');
+    expect(reader).toContain('<div class="rail-label first">vistas</div>');
   });
 
   it('ends with Preferencias and you', () => {

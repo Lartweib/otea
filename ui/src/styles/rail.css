@@ -33,6 +33,37 @@
   white-space: nowrap;
   transition: opacity 360ms var(--o-drift);
 }
+/* + Nuevo ítem: the head's one action, named, so beside vistas it never reads as a new view */
+.rhead .rnew {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 32px;
+  padding: 0 10px;
+  border-radius: 8px;
+  color: var(--ink-2);
+  font-size: 13.5px;
+  font-weight: 500;
+  white-space: nowrap;
+  transition:
+    background-color 120ms var(--ease),
+    color 120ms var(--ease);
+}
+.rhead .rnew:hover {
+  color: var(--ink);
+  background: color-mix(in oklch, var(--hov) 70%, transparent);
+}
+.rhead .rnew svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+}
+.rhead .rnew .lbl {
+  font: inherit;
+  color: inherit;
+}
 .rhead .ibtn:disabled {
   cursor: default;
   color: var(--ink-3);
@@ -239,6 +270,10 @@
   color: var(--ink-3);
   transition: opacity 360ms var(--o-drift);
   white-space: nowrap;
+}
+
+.rail-label.first {
+  margin-top: 10px;
 }
 
 /* ---- Studio's tree, unfolded under Studio while Studio is open ---- */

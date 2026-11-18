@@ -22,8 +22,8 @@ import { PrefsButton } from './Preferences.tsx';
 import { type BoardIcon, boardEntries, foldClip, type RailKey, railKey } from './rail-model.ts';
 import { useMedia } from './use-media.ts';
 
-// The rail (SPEC §7.2, mock:159-198, 1420-1458, 4038-4069): the head (fold, vistas, + Nuevo ítem),
-// Te toca and Atasco, the boards with yours / open, Nuevo tablero, the project's Studio and
+// The rail (SPEC §7.2, mock:159-198, 1420-1458, 4038-4069): the head (fold, + Nuevo ítem, named so
+// it never reads as a new view, P7-14), vistas with Te toca and Atasco, the boards with yours / open, Nuevo tablero, the project's Studio and
 // settings, one selection pill that slides to the row in view, and Preferences at the foot. It
 // folds to a 60 px strip of icons: the rail clips, the labels fade, badges come up, and the main
 // pane slides from where it was, so nothing reflows. Below 1024 px it is always folded.
@@ -263,19 +263,16 @@ export function Rail() {
         >
           <Icon name="side" />
         </IconButton>
-        <span className="lbl">{t('nav.views')}</span>
         {canWrite ? (
-          <IconButton
-            aria-label={t('nav.newItem')}
-            data-tip={t('nav.newItem')}
-            onClick={() => app.newItem()}
-          >
+          <button type="button" className="rnew" onClick={() => app.newItem()}>
             <Icon name="plus" />
-          </IconButton>
+            <span className="lbl">{t('nav.newItem')}</span>
+          </button>
         ) : null}
       </div>
       <div className="navs" ref={navs}>
         <i className="rsel" aria-hidden="true" />
+        <div className="rail-label first">{t('nav.views')}</div>
         <nav className="nav">
           <Row
             k="toca"
